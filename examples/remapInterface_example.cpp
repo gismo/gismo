@@ -625,23 +625,21 @@ int main(int argc, char* argv[])
 
         gsInfo << ri << "\n";
 
-        gsMatrix<> in(4,2);
+        gsMatrix<> in(3,2);
 
         in <<
               0.8,  .5,
               1,    .5,
-              0.5,  .5,
-              0.25, .5;
+              0.5,  .5;
 
         gsInfo << "In:\n" << in << "\n\n";
 
-        gsMatrix<> expected(4,2);
+        gsMatrix<> expected(3,2);
 
         expected <<
               0.8,  .5,
               1,    .5,
-              0.5,  .5,
-              0.25, .5;
+              0.5,  .5;
 
         gsInfo << "Expected:\n" << expected << "\n\n";
 

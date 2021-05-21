@@ -37,7 +37,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
     GISMO_ASSERT( m_g1->geoDim()==m_g2->geoDim(), "gsRemapInterface: Dimensions do not agree." );
 
     // First we construct the affine mapping
-    computeBoundingBox();
+    constructInterfaceBox();
 
     // Setup the affine mapping
     m_intfMap = gsAffineFunction<T>::make(
@@ -60,7 +60,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
         GISMO_ENSURE( m_isAffine || domainDim() <= 2,
             "gsRemapInterface: Can handle non-affine interfaces only for 2 dimensions." );
 
-        constructReparam();
+        constructFittingCurve();
     }
 
     constructBreaks();
@@ -69,7 +69,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
 
 namespace {
 template <class T>
-gsMatrix<T> parameterBounds(const gsGeometry<T> & geo, boxSide s)
+gsMatrix<T> determineParameterBounds(const gsGeometry<T> & geo, boxSide s)
 {
     gsMatrix<T> pr = geo.parameterRange();
     const index_t dim = pr.rows();
@@ -105,13 +105,13 @@ gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1, const gsGeometry<T
 
 }
 
-}
+} // end anonymous namespace
 
 template <class T>
-void gsRemapInterface<T>::computeBoundingBox()
+void gsRemapInterface<T>::constructInterfaceBox()
 {
-    m_parameterBounds1 = parameterBounds(*m_g1,m_bi.first());
-    m_parameterBounds2 = parameterBounds(*m_g2,m_bi.second());
+    m_parameterBounds1 = determineParameterBounds(*m_g1,m_bi.first());
+    m_parameterBounds2 = determineParameterBounds(*m_g2,m_bi.second());
 
     gsMatrix<T> parameterBounds1trafsferedTo2
         = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,m_newtonTolerance);
@@ -160,62 +160,31 @@ bool gsRemapInterface<T>::checkIfAffine(index_t steps)
             ).norm() < (T)(m_equalityTolerance);
 }
 
-
 namespace {
-template <class T, class Vector>
-inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& parameterBounds,
-    const Vector& point, const T equalityTolerance)
+
+// Takes the univariate parameter on interface and returns the corresponding (bivariate)
+// points on parameter domain
+template <class T>
+void enrichToVector(const gsMatrix<T>   & u,
+                    const index_t         direction,
+                    const gsMatrix<T>   & parameterBounds,
+                    gsMatrix <T>        & result)
 {
-    const index_t dim = point.rows();
-    for (index_t d=0; d<dim; ++d)
+    const index_t dim = 2;
+    result.resize(dim, u.cols());
+    for (index_t i=0; i<dim; ++i)
     {
-        const T t = point(d,0);
-        if ( parameterBounds(d,0) <= t && t <= parameterBounds(d,1) )
-        {
-            // As in gsSortedVector::push_sorted_unique
-            typename std::vector<T>::iterator pos = std::lower_bound(breaks[d].begin(), breaks[d].end(), t-equalityTolerance );
-            if ( pos == breaks[d].end() || *pos > t+equalityTolerance ) // If not found
-                breaks[d].insert(pos, t);
-        }
+        if (direction==i)
+            result.row(i).setConstant( parameterBounds(i,0) );
+        else
+            result.row(i) = u;
     }
 }
-}
+
+} // End anonyomous namespace
 
 template <class T>
-void gsRemapInterface<T>::constructBreaks()
-{
-    m_breakpoints.resize(domainDim());
-
-    const typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(m_bi.first());
-    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0), m_equalityTolerance);
-    for (; domIt1->good(); domIt1->next())
-        addBreaks(m_breakpoints, m_parameterBounds1, domIt1->upperCorner(), m_equalityTolerance);
-    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(1), m_equalityTolerance);
-
-    const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(m_bi.second());
-    if (m_isAffine)
-    {
-        gsAffineFunction<T> intfMap_inverse(m_bi.dirMap(m_bi.second()), m_bi.dirOrientation(m_bi.second()),
-            m_parameterBounds2, m_parameterBounds1);
-
-        for (; domIt2->good(); domIt2->next())
-            addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2->upperCorner()), m_equalityTolerance);
-    }
-    else
-    {
-        gsVector<T> breakpoint_transfered = m_parameterBounds1.col(0); // initial guess
-        for (; domIt2->good(); domIt2->next())
-        {
-            m_g1->newtonRaphson( m_g2->eval(domIt2->upperCorner()), breakpoint_transfered, true, m_newtonTolerance, 100 );
-            addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, m_equalityTolerance);
-        }
-    }
-
-}
-
-
-template <class T>
-void gsRemapInterface<T>::constructReparam()
+void gsRemapInterface<T>::constructFittingCurve()
 {
     // assert domainDim()==2 taken care by constructor
 
@@ -315,8 +284,8 @@ void gsRemapInterface<T>::constructReparam()
     //gsMatrix<T> vals2dPatch1(t_vals.rows()+1, t_vals.cols()), vals2dPatch2(t_vals.rows()+1, t_vals.cols());
     // TODO: use already available information
     gsMatrix<T> vals2dPatch1, vals2dPatch2;
-    enrichToVector(m_bi.first(), *m_g1, t_vals.row(0), vals2dPatch1);
-    enrichToVector(m_bi.second(), *m_g2, t_vals.row(1), vals2dPatch2);
+    enrichToVector<T>(t_vals.row(0), m_bi.first().direction(),  m_parameterBounds1, vals2dPatch1);
+    enrichToVector<T>(t_vals.row(1), m_bi.second().direction(), m_parameterBounds2, vals2dPatch2);
 
     m_g1->eval_into(vals2dPatch1, samples_left);
     m_g2->eval_into(vals2dPatch2, samples_right);
@@ -387,7 +356,7 @@ void gsRemapInterface<T>::constructReparam()
     //eval_fit(0,0) -= 0.0001; // do a nasty slight correction since the first entry is out of the domain of definition due to rounding errors
 
     // TODO: also here use already available information
-    enrichToVector(m_bi.second(), *m_g2, eval_points.row(1), id);
+    enrichToVector<T>(eval_points.row(1), m_bi.second().direction(), m_parameterBounds2, id);
 
     m_g2->eval_into(eval_fit, eval_orig);
     m_g2->eval_into(id, B2);
@@ -443,11 +412,106 @@ void gsRemapInterface<T>::constructReparam()
 
 }
 
+namespace {
+
+template <class T, class Vector>
+inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& parameterBounds,
+    const Vector& point, const T equalityTolerance)
+{
+    const index_t dim = point.rows();
+    for (index_t d=0; d<dim; ++d)
+    {
+        const T t = point(d,0);
+        if ( parameterBounds(d,0) <= t && t <= parameterBounds(d,1) )
+        {
+            // As in gsSortedVector::push_sorted_unique
+            typename std::vector<T>::iterator pos = std::lower_bound(breaks[d].begin(), breaks[d].end(), t-equalityTolerance );
+            if ( pos == breaks[d].end() || *pos > t+equalityTolerance ) // If not found
+                breaks[d].insert(pos, t);
+        }
+    }
+}
+
+} // end anonymous namespace
+
+template <class T>
+void gsRemapInterface<T>::constructBreaks()
+{
+    m_breakpoints.resize(domainDim());
+
+    const typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(m_bi.first());
+    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0), m_equalityTolerance);
+    for (; domIt1->good(); domIt1->next())
+        addBreaks(m_breakpoints, m_parameterBounds1, domIt1->upperCorner(), m_equalityTolerance);
+    addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(1), m_equalityTolerance);
+
+    const typename gsBasis<T>::domainIter domIt2 = m_b2->makeDomainIterator(m_bi.second());
+    if (m_isAffine)
+    {
+        gsAffineFunction<T> intfMap_inverse(m_bi.dirMap(m_bi.second()), m_bi.dirOrientation(m_bi.second()),
+            m_parameterBounds2, m_parameterBounds1);
+
+        for (; domIt2->good(); domIt2->next())
+            addBreaks(m_breakpoints, m_parameterBounds1, intfMap_inverse.eval(domIt2->upperCorner()), m_equalityTolerance);
+    }
+    else
+    {
+        gsVector<T> breakpoint_transfered = m_parameterBounds1.col(0); // initial guess
+        for (; domIt2->good(); domIt2->next())
+        {
+            m_g1->newtonRaphson( m_g2->eval(domIt2->upperCorner()), breakpoint_transfered, true, m_newtonTolerance, 100 );
+            addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, m_equalityTolerance);
+        }
+    }
+
+}
+
+namespace {
+
+// Check if incoming parameters are located on interface
+template <class T>
+bool checkIfOnInterface(const gsMatrix<T> & u, const gsMatrix<T> & parameterBounds, const T equalityTolerance)
+{
+    for (index_t r=0; r<u.rows(); ++r)
+    {
+        const T begin = parameterBounds(r, 0);
+        const T end = parameterBounds(r, 1);
+        for (index_t c=0; c<u.cols(); ++c)
+        {
+            if ( u(r,c) < begin-equalityTolerance || u(r,c) > end+equalityTolerance )
+                return false;
+        }
+    }
+
+    return true;
+}
+
+// Map the parameterization onto interface
+template <class T>
+void projectOntoInterface(gsMatrix<T> & u, const gsMatrix<T> & parameterBounds)
+{
+    for(index_t r = 0; r < u.rows(); r++)
+    {
+        const T begin = parameterBounds(r, 0);
+        const T end = parameterBounds(r, 1);
+
+        for(index_t c = 0; c < u.cols(); c++)
+            u(r,c) = std::min( std::max( u(r,c), begin ), end );
+    }
+}
+
+
+} // End anonyomous namespace
+
 template <class T>
 void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-    GISMO_ASSERT( u.rows() == domainDim(), "gsRemapInterface<T>::eval_into: "
+    GISMO_ASSERT( u.rows() == domainDim(), "gsRemapInterface::eval_into: "
         "The rows of the evaluation points must be equal to the dimension of the domain." );
+
+    GISMO_ASSERT( checkIfOnInterface( u, m_parameterBounds1, m_equalityTolerance ),
+        "gsRemapInterface::eval_into: The incoming coefficients are not located on the interface."
+        <<"\nu=\n"<<u<<"\nm_parameterBounds1=\n"<<m_parameterBounds1);
 
     if (m_isAffine)
     {
@@ -455,37 +519,19 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     }
     else
     {
-        // TODO: What is going on here?
+        gsMatrix<T> uprojected = u;
+        projectOntoInterface(uprojected, m_parameterBounds1);
 
-        const index_t fixedDir = m_bi.first().direction();
-        // v is fixed => loop over u values
+        // Note that the fitting curve is univariate, so we only consider the direction
+        // that is orthogonal to the normal vector's direction. Since we are in 2D,
+        // that direction is obtained using !direction1
+        const index_t direction1 = m_bi.first().direction();
+        m_intfMap->eval_into(uprojected.row(!direction1),result);
 
-        m_intfMap->eval_into(checkIfInBound(u.row(!fixedDir)), result); // ????
-
-        // need here the second basis since result store points in the second geometry
-        if (const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&m_g2->basis()))
-        {
-            const short_t direction = m_bi.second().direction();
-            result.row(direction).setConstant(m_bi.second().parameter() ?
-                                               tb->knots(direction).last() :
-                                               tb->knots(direction).first());
-
-            return;
-        }
-
-        if (const gsTensorNurbsBasis<2, T> * ntb = dynamic_cast<const gsTensorNurbsBasis<2, T> * >(&(m_g2->basis())))
-        {
-            const short_t direction = m_bi.second().direction();
-            result.row(direction).setConstant(m_bi.second().parameter() ?
-                                               ntb->source().knots(direction).last() :
-                                               ntb->source().knots(direction).first());
-            return;
-        }
-
-        GISMO_ERROR("Unfitted interface not supported");
+        projectOntoInterface(result, m_parameterBounds2);
     }
-
 }
+
 
 template <class T>
 typename gsDomainIterator<T>::uPtr gsRemapInterface<T>::makeDomainIterator() const
@@ -499,89 +545,6 @@ typename gsDomainIterator<T>::uPtr gsRemapInterface<T>::makeDomainIterator() con
     return typename gsDomainIterator<T>::uPtr(tdi);
 }
 
-// Function to enhance a sequence of 1D points in an interval to 2D points in the parameter domain
-// A matrix pts with the already correct dimensions is expected
-// boundarySide is the boundary side according to gismo's boundary::side
-// intervals is the number of samples to enrich to more dimensions
-// pts is the matrix populated with the corresponding points for more dimensions
-// only works for 2d at the moment!!
-// TODO: Generalize for arbitrary dimensions
-template <class T>
-void gsRemapInterface<T>::enrichToVector(const boxSide         boundarySide,
-                                         const gsGeometry<T> & geo,
-                                         const gsMatrix<T>   & intervals,
-                                               gsMatrix <T>  & pts)
-{
-    pts.resize(geo.geoDim(), intervals.cols());
-
-    //const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&geo.basis());
-
-    //if(tb == NULL)
-    //const gsTensorNurbsBasis<2, T> * tb = dynamic_cast<const gsTensorNurbsBasis<2, T> * >(&(geo.basis()));
-
-    const index_t dim = 2;
-
-    if(const gsTensorBSplineBasis<2, T> *tb = dynamic_cast<const gsTensorBSplineBasis<2, T> * >(&geo.basis()))
-    {
-        for (index_t i=0; i<dim; ++i)
-        {
-            if (boundarySide.direction()==i)
-                pts.row(i) = gsMatrix<T>::Constant(1, intervals.cols(),
-                    boundarySide.parameter()==0 ? tb->knots(0).first() : tb->knots(i).last()
-                );
-            else
-                pts.row(i) = intervals;
-        }
-    }
-    else
-    {
-        const gsTensorNurbsBasis<2, T> * ntb = dynamic_cast<const gsTensorNurbsBasis<2, T> * >(&(geo.basis()));
-
-        for (index_t i=0; i<dim; ++i)
-        {
-            if (boundarySide.direction()==i)
-                pts.row(i) = gsMatrix<T>::Constant(1, intervals.cols(),
-                    boundarySide.parameter()==0 ? ntb->source().knots(0).first() : ntb->source().knots(i).last()
-                );
-            else
-                pts.row(i) = intervals;
-        }
-    }
-}
-
-template <class T>
-gsMatrix<T> gsRemapInterface<T>::checkIfInBound(const gsMatrix<T> & u) const
-{
-    // Here u contains only the coordinates in one direction
-    gsMatrix<T> evalpts = u;
-
-    const T begin = m_parameterBounds1(!m_bi.first().direction(), 0);
-    const T end = m_parameterBounds1(!m_bi.first().direction(), 1);
-
-    for(index_t c = 0; c < u.cols(); c++)
-        if(u(0,c) - begin < 0)
-            evalpts(0,c) += (begin - u(0,c));
-        else
-            break;
-
-
-    for(index_t c = u.cols()-1; c > -1; c--)
-        if(u(0, c) - end > 0)
-            evalpts(0, c) -= (u(0, c) - end);
-        else
-            break;
-
-    /*
-    if(u(0,0) - begin < 0)
-        evalpts(0,0) += (begin - u(0,0));
-
-
-    if(u(0, u.cols()-1) - end > 0)
-        evalpts(0, u.cols()-1) -= (u(0, u.cols()-1) - end);
-    */
-
-    return evalpts;
-}
 
 template <class T>
 std::ostream& gsRemapInterface<T>::print(std::ostream& os) const

@@ -87,7 +87,7 @@ public:
 
 public:
 
-    /// @brief Returns the interface map
+    /// @brief Returns the interface map iff affine, otherwise the fitting curve
     ///
     /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents
     /// \f$ G_2^{-1} \circ G_1 \f$
@@ -99,7 +99,7 @@ public:
     /// \f$ G_2^{-1} \circ G_1 \f$
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
-    /// @brief Returns parameter dimension of the domains
+    /// Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_g1->geoDim(); }
 
     /// @brief Returns a domain iterator
@@ -109,40 +109,31 @@ public:
     /// on \f$ \widehat \Omega_2 \f$, mapped to \f$ \widehat \Omega_1 \f$.
     typename gsDomainIterator<T>::uPtr makeDomainIterator() const;
 
-    /// @brief Returns true iff the interface is matching
+    /// Returns true iff the interface is matching
     bool isMatching() const { return m_isMatching; }
 
-    /// @brief Returns true iff the interface is affine
+    /// Returns true iff the interface is affine
     bool isAffine() const { return m_isAffine; }
 
-    /// @brief Returns the break points used in \ref makeDomainIterator
+    /// Returns the break points used in \ref makeDomainIterator
     const std::vector< std::vector<T> > & breakPoints() const { return m_breakpoints; }
 
-    /// @brief Prints the state of the object
-    virtual std::ostream & print(std::ostream& os) const override;
+    /// Prints the state of the object
+    virtual std::ostream & print(std::ostream& os) const;
 
 private:
 
     /// Computes the box which represents the intersection of sides of incoming patches
-    void computeBoundingBox();
+    void constructInterfaceBox();
 
     /// Checks if affine mapping between the incoming patches is correct
     bool checkIfAffine(index_t steps);
 
+    /// Constructs the reparametrization \a m_intfMap in the non-affine case
+    void constructFittingCurve();
+
     /// Constructs the breakpoints \a m_breakpoints
     void constructBreaks();
-
-    /// Helper to compute the closest point to lti on the other patch via Newton's method
-    gsMatrix<T> closestPoint(const gsMatrix<T> b_null, const gsGeometry<T> & R, const gsMatrix<T> & lti);
-
-    /// Member to enrich a matrix of 1D points to a matrix of m_domain.geoDim() points
-    void enrichToVector(boxSide boundarySide, const gsGeometry<T> & geo, const gsMatrix<T> & intervals, gsMatrix<T> & pts);
-
-    /// Check if the incoming evaluation points are out of bounds because of rounding errors
-    gsMatrix<T> checkIfInBound(const gsMatrix<T> & u) const;
-
-    /// Constructs the reparametrization \a m_intfMap in the non-affine case
-    void constructReparam();
 
 private:
     const gsGeometry<T> * m_g1;                       ///< Geometry of first patch
@@ -158,8 +149,7 @@ private:
 
     std::vector< std::vector<T> > m_breakpoints;      ///< Union of breakpoints of both bases
 
-    // TODO: This is only the interface map in the affine case, otherwise it is the fitting curve.
-    typename gsFunction<T>::Ptr m_intfMap;            ///< The interface map itself
+    typename gsFunction<T>::Ptr m_intfMap;            ///< Iff affine, interface map, otherwise the fitting curve
 
     /// @brief The bounds of the box that represents \f$ \widehat \Gamma_1 \f$
     ///
