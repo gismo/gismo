@@ -206,73 +206,38 @@ void gsRemapInterface<T>::constructFittingCurve(const index_t numSamplePoints,
     // assert domainDim()==2 taken care by constructor
 
     const short_t direction1 = m_bi.first().direction();
-    const short_t direction2 = m_bi.second().direction();
 
     // In 2d, there is one tangential direction
     const short_t tangential1 = ! direction1;
-    const short_t tangential2 = ! direction2;
 
     // In 2d, the second side could have same or flipped direction
     const bool flipSide2 = (m_bi.dirOrientation()(tangential1) == 0);
 
-    // Assume tensor structure
-    // now create samples for both patches
-    // the knot intervals can be different, e.g.,
-    //----------------------------
-    //-                          -
-    //----------------------------
-    //    --------
-    //    -      -
-    //    --------
-    gsMatrix<T> t_vals1, t_vals2;
-    gsMatrix<T> points1, points2;
-    gsVector<unsigned> numPoints(1);
-    numPoints[0] = numSamplePoints;
+    // Setup of point grid on patch1
+    gsVector<unsigned> numPoints = gsVector<unsigned>::Constant(2,numSamplePoints);
+    numPoints[direction1] = 1;
+    gsVector<T> lower = m_parameterBounds1.col(0);
+    gsVector<T> upper = m_parameterBounds1.col(1);
+    gsMatrix<T> points = gsPointGrid(lower, upper, numPoints);
+
+    // Map points to physical domain
+    gsMatrix<T> physPoints = m_g1->eval(points);
+
+    // Map the points to patch2
+    gsMatrix<T> B(numSamplePoints, 2);
+    // Find a suitable start value for the Newton iteration. After the first iteration,
+    // we just continue where we are.
+    gsVector<T> pointMapped =  m_parameterBounds2.col(flipSide2 ? 1 : 0);
+    for (index_t i = 0; i < numSamplePoints; ++i)
     {
-        gsVector<T> lower(1), upper(1);
-        lower[0] = m_parameterBounds1(tangential1, 0);
-        upper[0] = m_parameterBounds1(tangential1, 1);
-        t_vals1 = gsPointGrid(lower, upper, numPoints);
-        enrichToVector<T>(t_vals1, m_bi.first().direction(),  m_parameterBounds1, points1);
-    }
-    {
-        gsVector<T> lower(1), upper(1);
-        lower[0] = m_parameterBounds2(tangential2, flipSide2 ? 1 : 0);
-        upper[0] = m_parameterBounds2(tangential2, flipSide2 ? 0 : 1);
-        t_vals2 = gsPointGrid(lower, upper, numPoints);
-        enrichToVector<T>(t_vals2, m_bi.second().direction(), m_parameterBounds2, points2);
-    }
-
-    gsMatrix<T> physPoints1, physPoints2;
-    m_g1->eval_into(points1, physPoints1);
-    m_g2->eval_into(points2, physPoints2);
-
-    gsMatrix<T> B(numSamplePoints, m_g1->geoDim());
-    gsMatrix<T> find_start_value;
-    for (index_t i = 0; i < physPoints1.cols(); i++)
-    {
-        // find a suitable start value for the Newton iteration
-        find_start_value = (physPoints2.colwise()) - physPoints1.col(i);
-
-        size_t row, col;
-
-        find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
-
-        gsVector<T> b_null = points2.col(col);
-
-        // this gives the same result as above
-        m_g2->newtonRaphson(physPoints1.col(i), b_null, true, m_newtonTolerance, 100);
-        //gsInfo << "newton: " << b_null << "\n";
-
-        // TODO: Check if the order of the coefficients has an impact on the mapping regarding assembling aso.
-        B.row(i) = b_null.transpose(); // to be in the correct order
-
+        m_g2->newtonRaphson(physPoints.col(i), pointMapped, true, m_newtonTolerance, 100);
+        B.row(i) = pointMapped.transpose();
     }
 
     // Use equidstant knot vector for fitting curve
     gsKnotVector<T> KV(m_parameterBounds1(tangential1, 0), m_parameterBounds1(tangential1, 1),
         intervalsOfFittingCurve, degreeOfFittingCurve+1);
-    gsCurveFitting<T> fit(t_vals1.transpose(), B, KV);
+    gsCurveFitting<T> fit(points.row(tangential1).transpose(), B, KV);
     fit.compute();
 
     m_intfMap = fit.curve().clone();
