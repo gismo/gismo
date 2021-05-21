@@ -105,6 +105,22 @@ gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1, const gsGeometry<T
 
 }
 
+template <class T>
+void setToIntersection( bool & matching, T & min1, T & max1, const T min2, const T max2, const T tol )
+{
+    GISMO_ASSERT( min2<max1+tol && max2>min1-tol, "gsRemapInterface: Cannot find interface." );
+    if (min2>min1+tol)
+    {
+        min1 = std::min( min2, max1 );
+        matching = false;
+    }
+    if (max2<max1-tol)
+    {
+        max1 = std::max( max2, min1 );
+        matching = false;
+    }
+}
+
 } // end anonymous namespace
 
 template <class T>
@@ -113,44 +129,25 @@ void gsRemapInterface<T>::constructInterfaceBox()
     m_parameterBounds1 = determineParameterBounds(*m_g1,m_bi.first());
     m_parameterBounds2 = determineParameterBounds(*m_g2,m_bi.second());
 
-    gsMatrix<T> parameterBounds1trafsferedTo2
+    gsMatrix<T> parameterBounds1transferredTo2
         = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,m_newtonTolerance);
-    gsMatrix<T> parameterBounds2trafsferedTo1
+    gsMatrix<T> parameterBounds2transferredTo1
         = transferParameterBounds(*m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,m_newtonTolerance);
 
     for (index_t i=0; i<domainDim(); ++i)
     {
-        GISMO_ASSERT( parameterBounds2trafsferedTo1(i,0)<m_parameterBounds1(i,1)+m_equalityTolerance,
-            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
-        if (parameterBounds2trafsferedTo1(i,0)>m_parameterBounds1(i,0)+m_equalityTolerance)
-        {
-            m_parameterBounds1(i,0) = std::min(parameterBounds2trafsferedTo1(i,0),m_parameterBounds1(i,1));
-            m_isMatching = false;
-        }
-
-        GISMO_ASSERT( parameterBounds2trafsferedTo1(i,1)>m_parameterBounds1(i,0)-m_equalityTolerance,
-            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
-        if (parameterBounds2trafsferedTo1(i,1)<m_parameterBounds1(i,1)-m_equalityTolerance)
-        {
-            m_parameterBounds1(i,1) = std::max(parameterBounds2trafsferedTo1(i,1),m_parameterBounds1(i,0));
-            m_isMatching = false;
-        }
-
-        GISMO_ASSERT( parameterBounds1trafsferedTo2(i,0)<m_parameterBounds2(i,1)+m_equalityTolerance,
-            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
-        if (parameterBounds1trafsferedTo2(i,0)>m_parameterBounds2(i,0)+m_equalityTolerance)
-        {
-            m_parameterBounds2(i,0) = std::min(parameterBounds1trafsferedTo2(i,0),m_parameterBounds2(i,1));
-            m_isMatching = false;
-        }
-
-        GISMO_ASSERT( parameterBounds1trafsferedTo2(i,1)>m_parameterBounds2(i,0)-m_equalityTolerance,
-            "gsRemapInterface::constructInterfaceBox: Cannot find interface." );
-        if (parameterBounds1trafsferedTo2(i,1)<m_parameterBounds2(i,1)-m_equalityTolerance)
-        {
-            m_parameterBounds2(i,1) = std::max(parameterBounds1trafsferedTo2(i,1),m_parameterBounds2(i,0));
-            m_isMatching = false;
-        }
+        setToIntersection(
+            m_isMatching, // in&out
+            m_parameterBounds1(i,0), m_parameterBounds1(i,1), // in&out
+            parameterBounds2transferredTo1(i,0), parameterBounds2transferredTo1(i,1), // in
+            m_equalityTolerance
+        );
+        setToIntersection(
+            m_isMatching, // in&out
+            m_parameterBounds2(i,0), m_parameterBounds2(i,1), // in&out
+            parameterBounds1transferredTo2(i,0), parameterBounds1transferredTo2(i,1), // in
+            m_equalityTolerance
+        );
     }
 }
 
