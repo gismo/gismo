@@ -25,9 +25,12 @@ template <class T>
 gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                                       const gsMultiBasis<T>   & basis,
                                       const boundaryInterface & bi,
-                                      index_t checkAffine,
-                                      T equalityTolerance,
-                                      T newtonTolerance)
+                                      const index_t             checkAffine,
+                                      const index_t             numSamplePoints,
+                                      const index_t             intervalsOfFittingCurve,
+                                      const index_t             degreeOfFittingCurve,
+                                      const T                   equalityTolerance,
+                                      const T                   newtonTolerance)
     : m_g1(&(mp[bi.first().patch])), m_g2(&(mp[bi.second().patch])),
       m_b1(&(basis[bi.first().patch])), m_b2(&(basis[bi.second().patch])),
       m_bi(bi),
@@ -60,7 +63,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
         GISMO_ENSURE( m_isAffine || domainDim() <= 2,
             "gsRemapInterface: Can handle non-affine interfaces only for 2 dimensions." );
 
-        constructFittingCurve();
+        constructFittingCurve(numSamplePoints, intervalsOfFittingCurve, degreeOfFittingCurve);
     }
 
     constructBreaks();
@@ -69,7 +72,7 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
 
 namespace {
 template <class T>
-gsMatrix<T> determineParameterBounds(const gsGeometry<T> & geo, boxSide s)
+gsMatrix<T> determineParameterBounds(const gsGeometry<T> & geo, const boxSide s)
 {
     gsMatrix<T> pr = geo.parameterRange();
     const index_t dim = pr.rows();
@@ -85,8 +88,11 @@ gsMatrix<T> determineParameterBounds(const gsGeometry<T> & geo, boxSide s)
 }
 
 template <class T>
-gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1, const gsGeometry<T> & g2,
-                const gsMatrix<T> & parameterBounds1, const gsMatrix<T> & parameterBounds2, T solverTolerance)
+gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1,
+                                    const gsGeometry<T> & g2,
+                                    const gsMatrix<T>   & parameterBounds1,
+                                    const gsMatrix<T>   & parameterBounds2,
+                                    const T               solverTolerance)
 {
     gsVector<T> transfered[2];
     for (index_t j=0; j<2; ++j)
@@ -106,7 +112,7 @@ gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1, const gsGeometry<T
 }
 
 template <class T>
-void setToIntersection( bool & matching, T & min1, T & max1, const T min2, const T max2, const T tol )
+void setToIntersection(bool & matching, T & min1, T & max1, const T min2, const T max2, const T tol)
 {
     GISMO_ASSERT( min2<max1+tol && max2>min1-tol, "gsRemapInterface: Cannot find interface." );
     if (min2>min1+tol)
@@ -152,7 +158,7 @@ void gsRemapInterface<T>::constructInterfaceBox()
 }
 
 template <class T>
-T gsRemapInterface<T>::estimateReparamError(index_t steps) const
+T gsRemapInterface<T>::estimateReparamError(const index_t steps) const
 {
     gsVector<T> lower = m_parameterBounds1.col(0);
     gsVector<T> upper = m_parameterBounds1.col(1);
@@ -193,14 +199,11 @@ void enrichToVector(const gsMatrix<T>   & u,
 } // End anonyomous namespace
 
 template <class T>
-void gsRemapInterface<T>::constructFittingCurve()
+void gsRemapInterface<T>::constructFittingCurve(const index_t numSamplePoints,
+                                                const index_t intervalsOfFittingCurve,
+                                                const index_t degreeOfFittingCurve)
 {
     // assert domainDim()==2 taken care by constructor
-
-    // Some settings, TODO: make them configurable
-    const index_t numSamplePoints = 11;
-    const index_t intervalsOfFittingCurve = 5;
-    const index_t degreeOfFittingCurve = 3;
 
     const short_t direction1 = m_bi.first().direction();
     const short_t direction2 = m_bi.second().direction();
@@ -279,8 +282,10 @@ void gsRemapInterface<T>::constructFittingCurve()
 namespace {
 
 template <class T, class Vector>
-inline void addBreaks(std::vector< std::vector<T> >& breaks, const gsMatrix<T>& parameterBounds,
-    const Vector& point, const T equalityTolerance)
+inline void addBreaks(std::vector< std::vector<T> > & breaks,
+                      const gsMatrix<T>             & parameterBounds,
+                      const Vector                  & point,
+                      const T                         equalityTolerance)
 {
     const index_t dim = point.rows();
     for (index_t d=0; d<dim; ++d)
@@ -334,7 +339,9 @@ namespace {
 
 // Check if incoming parameters are located on interface
 template <class T>
-bool checkIfOnInterface(const gsMatrix<T> & u, const gsMatrix<T> & parameterBounds, const T equalityTolerance)
+bool checkIfOnInterface(const gsMatrix<T> & u,
+                        const gsMatrix<T> & parameterBounds,
+                        const T             equalityTolerance)
 {
     for (index_t r=0; r<u.rows(); ++r)
     {
@@ -368,7 +375,7 @@ void projectOntoInterface(gsMatrix<T> & u, const gsMatrix<T> & parameterBounds)
 } // End anonyomous namespace
 
 template <class T>
-void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+void gsRemapInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     GISMO_ASSERT( u.rows() == domainDim(), "gsRemapInterface::eval_into: "
         "The rows of the evaluation points must be equal to the dimension of the domain." );
@@ -383,14 +390,13 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     }
     else
     {
-        gsMatrix<T> uprojected = u;
-        projectOntoInterface(uprojected, m_parameterBounds1);
+        gsMatrix<T> uProjected = u;
+        projectOntoInterface(uProjected, m_parameterBounds1);
 
-        // Note that the fitting curve is univariate, so we only consider the direction
-        // that is orthogonal to the normal vector's direction. Since we are in 2D,
-        // that direction is obtained using !direction1
+        // Since we are in 2D, there is exactly one tangential direction
         const index_t direction1 = m_bi.first().direction();
-        m_intfMap->eval_into(uprojected.row(!direction1),result);
+        const index_t tangential1 = ! direction1;
+        m_intfMap->eval_into(uProjected.row(tangential1),result);
 
         projectOntoInterface(result, m_parameterBounds2);
     }
@@ -411,7 +417,7 @@ typename gsDomainIterator<T>::uPtr gsRemapInterface<T>::makeDomainIterator() con
 
 
 template <class T>
-std::ostream& gsRemapInterface<T>::print(std::ostream& os) const
+std::ostream& gsRemapInterface<T>::print(std::ostream & os) const
 {
     os << "gsRemapInterface:"
        << "\n    First side:         " << m_bi.first()

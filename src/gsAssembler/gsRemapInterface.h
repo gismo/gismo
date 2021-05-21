@@ -75,15 +75,21 @@ public:
     ///                            check if the mapping is affine. If set to i, the grid consits of i interor
     ///                            point and the two boundary points per direction, so \f$ (i+2)^d \f$ points.
     ///                            For \a alwaysAffine or \a notAffine, no checks are performed.
+    /// @param  numSamplePoints    Number of sample points for computing fitting curve (if not affine)
+    /// @param  intervalsOfFittingCurve  Number of knot space in the fitting curve (if not affine)
+    /// @param  degreeOfFittingCurve     Spline degree of fitting curve (if not affine)
     /// @param  equalityTolerance  Points are considered equal iff difference is smaller.
     /// @param  newtonTolerance    Tolerance for Newton solvers (should be significantly smaller than
     ///                            equalityTolerance)
-    gsRemapInterface(const gsMultiPatch<T> & mp,
-                     const gsMultiBasis<T> & mb,
+    gsRemapInterface(const gsMultiPatch<T>   & mp,
+                     const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
-                     index_t checkAffine = 1,
-                     T equalityTolerance = 1e-5,
-                     T newtonTolerance = 1e-8);
+                     index_t                   checkAffine = 1,
+                     index_t                   numSamplePoints = 11,
+                     index_t                   intervalsOfFittingCurve = 5,
+                     index_t                   degreeOfFittingCurve = 3,
+                     T                         equalityTolerance = 1e-5,
+                     T                         newtonTolerance = 1e-8);
 
 public:
 
@@ -97,7 +103,7 @@ public:
     ///
     /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents
     /// \f$ G_2^{-1} \circ G_1 \f$
-    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
 
     /// Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_g1->geoDim(); }
@@ -130,7 +136,8 @@ private:
     T estimateReparamError(index_t steps) const;
 
     /// Constructs the fitting curve \a m_intfMap in the non-affine case
-    void constructFittingCurve();
+    void constructFittingCurve(index_t numSamplePoints, index_t intervalsOfFittingCurve,
+            index_t degreeOfFittingCurve);
 
     /// Constructs the breakpoints \a m_breakpoints
     void constructBreaks();
@@ -171,7 +178,7 @@ private:
 /// @brief   Prints the state of the object
 /// @relates gsRemapInterface
 template <class T>
-inline std::ostream & operator<<(std::ostream& os, const gsRemapInterface<T>& remapIf)
+inline std::ostream & operator<<(std::ostream & os, const gsRemapInterface<T> & remapIf)
 { return remapIf.print(os); }
 
 } // End namespace gismo
