@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
     index_t num = 8;        //number of refinements
     index_t str = 2;
     bool require_fin = false;
+    bool plot = false;
     index_t subdiv = 1;
     index_t bc = 1;
     index_t startrefine = 1;
@@ -57,6 +58,7 @@ int main(int argc, char* argv[])
     cmd.addInt("s", "strat", "Method for Dirichlet Imposition", str);
     cmd.addInt("", "sub", "Number of subdivision of an element for quadrature nodes", subdiv);
     cmd.addSwitch("", "fin", "After computation, wait until button is pressed", require_fin);
+    cmd.addSwitch("","plot","Create Paraview file for visualization",plot);
     cmd.addInt("", "bc", "Type of Boundary conditions on all boundaries", bc);
     cmd.addInt("", "startrefine", "Number of refinement steps before entering nested iteration", startrefine);
     cmd.addReal("","lambda","Parameter for lambda",lambda);
@@ -160,6 +162,7 @@ int main(int argc, char* argv[])
     {
         f = gsFunctionExpr<>("1", 2);
         u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(x^2+y^2)^(" + std::to_string(p) + "/(2*(" + std::to_string(p) + "-1))))", 2);
+        //u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(max(abs(x),abs(y)))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
     }
     else
     {
@@ -192,8 +195,8 @@ int main(int argc, char* argv[])
 
 
     //! [Geometry data]
-   	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,-0.5,-0.5));
-    //gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
+   	//gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(2,-1,-1));
+    gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
     //! [Geometry data]
 
     //! [Boundary conditions]
@@ -363,7 +366,7 @@ int main(int argc, char* argv[])
         A.constructSolution(solVector, mpsol); //construct solution from the free DoFs via the assembler that is set to elimination.
         gsField<> sol(A.patches(), mpsol);
         
-        gsWriteParaview(sol, "solution");
+        if (plot){gsWriteParaview(sol, "solution");}
 
         e_0old = e_0;
         e_Fold = e_F;
