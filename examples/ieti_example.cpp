@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
+    index_t reduceContinuity = 0;
+    real_t checkerboard = 1;
     std::string boundaryConditions("d");
     std::string primals("c");
     bool eliminateCorners = false;
@@ -46,6 +48,8 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addInt   ("",  "ReduceContinuity",      "Reduce the smoothness by adding that many repetitions of knots", reduceContinuity);
+    cmd.addReal  ("",  "Checkerboard",          "", checkerboard); //TODO
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addSwitch("e", "EliminateCorners",      "Eliminate corners (if they are primals)", eliminateCorners);
@@ -150,6 +154,33 @@ int main(int argc, char *argv[])
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
+    /***************** Setup of coefficients ****************/
+    const index_t nPatches = mp.nPatches();
+
+    if (checkerboard<1)
+    {
+        gsInfo << "The parameter checkerboard must be greater than or equal 1.\n";
+        return EXIT_FAILURE;
+    }
+
+    // TODO checkerboard=1
+    gsVector<real_t> coef(nPatches);
+    coef.setZero();
+    coef[0] = 1.;
+    for( bool allCorrect = false; !allCorrect; )
+    {
+        allCorrect = true;
+        for (gsMultiPatch<>::iiterator it = mp.iBegin(); it<mp.iEnd(); ++it)
+        {
+            const index_t first  = it->first().patch;
+            const index_t second = it->second().patch;
+            if      (coef[first]  == 1  )            coef[second] = checkerboard;
+            else if (coef[first]  == checkerboard)   coef[second] = 1;
+            else if (coef[second] == 1  )            coef[first]  = checkerboard;
+            else if (coef[second] == checkerboard)   coef[first]  = 1;
+            else    allCorrect = false;
+        }
+    }
 
     /************ Setup bases and adjust degree *************/
 
@@ -161,7 +192,10 @@ int main(int argc, char *argv[])
 
     //! [Set degree and refine]
     for ( size_t i = 0; i < mb.nBases(); ++ i )
+    {
         mb[i].setDegreePreservingMultiplicity(degree);
+        mb[i].reduceContinuity(reduceContinuity);
+    }
 
     for ( index_t i = 0; i < refinements; ++i )
         mb.uniformRefine();
@@ -172,8 +206,6 @@ int main(int argc, char *argv[])
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
-
-    const index_t nPatches = mp.nPatches();
 
     //! [Define IetiMapper]
     gsIetiMapper<> ietiMapper;
@@ -288,7 +320,7 @@ int main(int argc, char *argv[])
         assembler.initSystem(false);
 
         // Compute the system matrix and right-hand side
-        assembler.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
+        assembler.assemble( coef[k] * igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Add contributions from Neumann conditions to right-hand side
         variable g_N = assembler.getBdrFunction();
@@ -364,7 +396,8 @@ int main(int argc, char *argv[])
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
-    prec.setupMultiplicityScaling();
+    //prec.setupMultiplicityScaling();
+    prec.setupCoefficientScaling(coef);
     //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
