@@ -215,6 +215,12 @@ public:
     /// This requires that the subdomains have been defined first.
     void setupMultiplicityScaling();
 
+    /// @brief This sets up the member vector \a localScaling based on
+    ///        coefficient scaling (TODO: docs)
+    ///
+    /// This requires that the subdomains have been defined first.
+    void setupCoefficientScaling(const gsVector<T>& coefs);
+
     /// @brief This returns the preconditioner as \a gsLinearOperator
     ///
     /// This requires that the subdomains have been defined first.

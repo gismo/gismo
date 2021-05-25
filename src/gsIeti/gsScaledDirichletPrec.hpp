@@ -161,11 +161,57 @@ void gsScaledDirichletPrec<T>::setupMultiplicityScaling()
 
         JumpMatrix & jm = *(m_jumpMatrices[k]);
 
-        for (index_t i=0; i<jm.outerSize(); ++i){
+        for (index_t i=0; i<jm.outerSize(); ++i)
+        {
             for (typename JumpMatrix::InnerIterator it(jm, i); it; ++it)
             {
                 const index_t c = it.col();
                 sc(c,0) += 1;
+            }
+        }
+    }
+}
+
+template <class T>
+void gsScaledDirichletPrec<T>::setupCoefficientScaling(const gsVector<T>& coef)
+{
+    const index_t pnr = m_jumpMatrices.size();
+
+    gsVector<T> tmp(m_jumpMatrices[0]->rows());
+    tmp.setZero();
+    for (index_t k=0; k<pnr; ++k)
+    {
+        JumpMatrix & jm = *(m_jumpMatrices[k]);
+        for (index_t i=0; i<jm.outerSize(); ++i)
+        {
+            for (typename JumpMatrix::InnerIterator it(jm, i); it; ++it)
+            {
+                const index_t r = it.row();
+                tmp[r] += coef[k]; // TODO: Here, we stor both values on one field,
+                                   // which might not be the smartest idea.
+            }
+        }
+    }
+
+    for (index_t k=0; k<pnr; ++k)
+    {
+        const index_t sz = m_localSchurOps[k]->rows();
+        gsMatrix<T> & sc = m_localScaling[k];
+        sc.resize(sz, 1);
+
+        for (index_t i=0; i<sz; ++i)
+          sc(i,0) = 1;
+
+        JumpMatrix & jm = *(m_jumpMatrices[k]);
+
+        for (index_t i=0; i<jm.outerSize(); ++i)
+        {
+            for (typename JumpMatrix::InnerIterator it(jm, i); it; ++it)
+            {
+                const index_t r = it.row();
+                const index_t c = it.col();
+                sc(c,0) += ( tmp[r] - coef[k] ) / coef[k] ;
+                GISMO_ENSURE( tmp[r] - coef[k] > 0, "..." );
             }
         }
     }
