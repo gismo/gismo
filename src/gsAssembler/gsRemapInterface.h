@@ -89,7 +89,7 @@ public:
                      index_t                   intervalsOfFittingCurve = 5,
                      index_t                   degreeOfFittingCurve = 3,
                      T                         equalityTolerance = 1e-5,
-                     T                         newtonTolerance = 1e-8);
+                     T                         newtonTolerance = 1e-10);
 
 public:
 
