@@ -162,7 +162,8 @@ int main(int argc, char* argv[])
     {
         f = gsFunctionExpr<>("1", 2);
         u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(x^2+y^2)^(" + std::to_string(p) + "/(2*(" + std::to_string(p) + "-1))))", 2);
-        //u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(max(abs(x),abs(y)))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
+        //u = gsFunctionExpr<>("((" + std::to_string(p) + "-1)/" + std::to_string(p) + ")*(1-(max(abs(x),abs(y)))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
+        //u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(abs(x)+abs(y))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
     }
     else
     {
@@ -362,11 +363,15 @@ int main(int argc, char* argv[])
         std::clock_t c_end = std::clock();
         double time = (c_end - c_start) / CLOCKS_PER_SEC;
 
+        gsMatrix<> u_=projectL2(patch,basis,u);
         gsMultiPatch<> mpsol;
+        gsMultiPatch<> mpexact;
         A.constructSolution(solVector, mpsol); //construct solution from the free DoFs via the assembler that is set to elimination.
+        A.constructSolution(u_,mpexact);
         gsField<> sol(A.patches(), mpsol);
+        gsField<> exact(A.patches(),mpexact);
         
-        if (plot){gsWriteParaview(sol, "solution");}
+        if (plot){gsWriteParaview(exact, "solution");}
 
         e_0old = e_0;
         e_Fold = e_F;
