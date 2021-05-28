@@ -21,7 +21,7 @@ namespace gismo {
     int typeLumping;
     int typeProjection;
     int typeSmoother;
-    int typeSolver;
+    gsMatrix<> hp;
     T   tol;
     
   public:
@@ -36,7 +36,6 @@ namespace gismo {
         typeLumping(1),
         typeProjection(1),
         typeSmoother(1),
-        typeSolver(1),
         tol(1e-8)
     {}
 
@@ -46,8 +45,17 @@ namespace gismo {
     void setTolerance(T tol)
     { this->tol = tol; }
     
-    void setNumLevels(int numLevels)
-    { this->numLevels = numLevels; }
+    void setNumLevels(int numLevels, int typeProjection, int numDegree)
+    { 
+     if(typeProjection == 1)
+     {
+      this->numLevels = numLevels - numDegree + 2;
+     }
+     else
+     { 
+      this->numLevels = numLevels; 
+     }
+    }
 
     void setNumSmoothing(int numSmoothing)
     { this->numSmoothing = numSmoothing; }
@@ -70,22 +78,61 @@ namespace gismo {
     void setTypeSmoother(int typeSmoother)
     { this->typeSmoother = typeSmoother; }
 
-    void setTypeSolver(int typeSolver)
-    { this->typeSolver = typeSolver; }
+    void setCoarsening(gsMatrix<> hp)
+    { this->hp = hp; }
 
-    virtual gsXBraidMultigridBase& compute(const gsSparseMatrix<T>&)
-    { return *this; }
+    virtual gsXBraidMultigridBase& compute(const gsSparseMatrix<T>& mat, const T tstep, const int& numDegree, index_t typeMethod)
+    {
+      // Get arguments explicitly
+      gsMatrix<T> x = gsMatrix<>::Zero(mat.rows(),1);
+      gsMatrix<T> b = gsMatrix<>::Zero(mat.rows(),1);
+      gsFunctionExpr<> rhs("1",2);
+      int iterTot = 1;
+      int typeMultigrid = 2;
+      int typeCoarseOperator = 1;
+      
+      ///  @brief Set-up p-multigrid solver 
+           setup(rhs,
+                 x,
+                 b,
+                 iterTot,
+                 numLevels,
+                 numDegree,
+                 typeMultigrid,
+                 hp,
+                 typeCoarseOperator,
+                 tstep,
+                 typeMethod);
+ 
+
+      return *this; }
 
     virtual gsMatrix<T> solveWithGuess(const gsMatrix<T>& b,
                                        const gsMatrix<T>& x0)
     {
+      // Get arguments explicitly
       gsMatrix<T> x(x0);
-      solvecoarse(b, x, 1);
+      x = x0;
+
+      gsFunctionExpr<> rhs("1",2);
+      int iterTot = 1;
+      int typeMultigrid = 2;
+      int typeCoarseOperator = 1;
+      
+      ///  @brief Apply p-multigrid solver to given right-hand side on level l
+            solve(rhs,
+                  x,
+                  b,
+                  iterTot,
+                  numLevels,
+                  typeMultigrid,
+                  hp,
+                  typeCoarseOperator);
       return x;
     }
     
     /// @brief Apply p-multigrid solver to given right-hand side on level l
-    virtual void solve(const gsMatrix<T> & rhs,
+    virtual void solveMG(const gsMatrix<T> & rhs,
                        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_bases,
                        gsMatrix<T>& x,
                        const int& numLevels,
@@ -100,11 +147,10 @@ namespace gismo {
                        const gsMatrix<T>& hp)
     {
       if ( numLevels == 1)
-        {
+      {
           solvecoarse(rhs, x, numLevels);
           return;
-        }
-
+      }
 
       if (hp(std::max(numLevels-2,0),0) == 0 )
         {
@@ -119,7 +165,7 @@ namespace gismo {
           coarseCorr.setZero(coarseRes.rows(),1);
           for( int j = 0 ; j < (typeCycle_p == 2 ? 2 : 1) ; j++)
             {   
-              solve(coarseRes, m_bases, coarseCorr, numLevels-1,
+              solveMG(coarseRes, m_bases, coarseCorr, numLevels-1,
                     bcInfo, mp,
                     m_prolongation_P, m_restriction_P,
                     m_prolongation_M, m_restriction_M,
@@ -147,7 +193,7 @@ namespace gismo {
           coarseCorr.setZero(coarseRes.rows(),1);
           for( int i = 0 ; i < (typeCycle_h == 2 ? 2 : 1) ; i++)
             {  
-              solve(coarseRes, m_bases, coarseCorr, numLevels-1,
+              solveMG(coarseRes, m_bases, coarseCorr, numLevels-1,
                     bcInfo, mp,
                     m_prolongation_P, m_restriction_P,
                     m_prolongation_M, m_restriction_M,
@@ -163,20 +209,26 @@ namespace gismo {
         }
     }
 
-    /// @brief Setup p-multigrid to given linear system
-    virtual void setup(const gsMatrix<T> & rhs,
-                       std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_bases,
-                       gsMatrix<T>& x,
-                       const int& numLevels,
-                       gsBoundaryConditions<T> bcInfo,
-                       gsMultiPatch<T> mp,
-                       std::vector<gsSparseMatrix<T> >& m_prolongation_P,
-                       std::vector<gsSparseMatrix<T> >& m_restriction_P,
-                       std::vector<gsMatrix<T> >& m_prolongation_M,
-                       std::vector<gsMatrix<T> >& m_restriction_M,
-                       std::vector<gsSparseMatrix<T> >& m_prolongation_H,
-                       std::vector<gsSparseMatrix<T> >& m_restriction_H,
-                       const gsMatrix<T>& hp) {}
+    virtual void setup(const gsFunctionExpr<T> & rhs,
+               gsMatrix<T>& x,
+               gsMatrix<T> f,
+               const int& iterTot,
+               const int& numLevels,
+               const int& numDegree,
+               const int& typeMultigrid,
+               const gsMatrix<T>& hp,
+               const int& typeCoarseOperator,
+               T tstep,
+               index_t typeMethod){}
+
+   virtual void solve(const gsFunctionExpr<T> & rhs,
+               gsMatrix<T>& x,
+               gsMatrix<T> f,
+               const int& iterTot,
+               const int& numLevels,
+               const int& typeMultigrid,
+               const gsMatrix<T>& hp,
+               const int& typeCoarseOperator){}
   
     /// @brief Apply fixed number of smoothing steps (pure virtual method)
     virtual void presmoothing(const gsMatrix<T>& rhs,
@@ -342,7 +394,7 @@ namespace gismo {
    *  restriction operators are generated internally. Therefore, a
    *  problem-specific assembler has to be passed as template argument.
    */
-  template<class T, class CoarseSolver, class Assembler>
+  template<class T, class CoarseSolver>
   struct gsXBraidMultigrid : public gsXBraidMultigridBase<T>
   {
   private:
@@ -416,9 +468,6 @@ namespace gismo {
     /// std::vector of std::vector of shift objects
     std::vector < std::vector< int > > m_shift;
 
-    /// std::vector of assembler objects
-    std::vector<Assembler> m_assembler;
-
   public:
 
     // Constructor
@@ -445,9 +494,8 @@ namespace gismo {
                const int& typeMultigrid,
                const gsMatrix<T>& hp,
                const int& typeCoarseOperator,
-               const gsFunctionExpr<T> coeff_diff,
-               const gsFunctionExpr<T> coeff_conv,
-               const gsFunctionExpr<T> coeff_reac)
+               T tstep,
+               index_t typeMethod)
     {
       for (int i = 1; i < numLevels; i++)
         {
@@ -464,57 +512,72 @@ namespace gismo {
               m_bases.back()->degreeIncrease(); break;
             }
         }
-    
-      // Generate sequence of assembler objects and assemble
-      for (typename std::vector<memory::shared_ptr<gsMultiBasis<T> > >::iterator it = m_bases.begin();
-           it != m_bases.end(); ++it)
-        {
-          m_assembler.push_back(Assembler(*m_mp_ptr,
-                                          *(*it).get(),
-                                          *m_bcInfo_ptr,
-                                          rhs,
-                                          coeff_diff,
-                                          coeff_conv,
-                                          coeff_reac,
-                                          (Base::typeBCHandling == 1 ?
-                                           dirichlet::elimination :
-                                           dirichlet::nitsche),
-                                          iFace::glue));
-        }
-   
-      // Resize vector of operators
+
+     // Generate sequence of matrix K and M 
       m_operator.resize(numLevels);
+      gsStopwatch clock;
+      //gsInfo << "|| Multigrid hierarchy ||" <<std::endl;
+     
+      for (int i = 0; i < numLevels; i++)
+      {  
+        //gsInfo << "Level " << i+1 << " " ;
+        //gsInfo << "Degree: " << m_bases[i]->degree() << ", Ndof: " << m_bases[i]->totalSize() <<std::endl; 
+
+        typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+        typedef typename gsExprAssembler<T>::variable    variable;
+        typedef typename gsExprAssembler<T>::space       space;
+        typedef typename gsExprAssembler<T>::solution    solution;
+
+        gsExprAssembler<T> K, M; 
+
+        // Set the bases
+        K.setIntegrationElements(*m_bases[i]);
+        M.setIntegrationElements(*m_bases[i]);
+
+        // Set the geometry map
+        geometryMap G_K = K.getMap(*m_mp_ptr);
+        geometryMap G_M = M.getMap(*m_mp_ptr);
+
+        // Set the discretization space
+        space u_K = K.getSpace(*m_bases[i]);
+        space u_M = M.getSpace(*m_bases[i]);
+        u_K.setInterfaceCont(0);
+        u_M.setInterfaceCont(0);
+        u_K.addBc( m_bcInfo_ptr->get("Dirichlet") );
+        u_M.addBc( m_bcInfo_ptr->get("Dirichlet") );
+
+        // Set the source term
+        variable ff_K = K.getCoeff(rhs, G_K);
+        variable ff_M = M.getCoeff(rhs, G_M);
+
+        // Initialize and assemble the system matrix
+        K.initSystem();
+        K.assemble( igrad(u_K, G_K) * igrad(u_K, G_K).tr() * meas(G_K), u_K * ff_K * meas(G_K) );
+
+        // Initialize and assemble the mass matrix
+        M.initSystem();
+        M.assemble( u_M * u_M.tr() * meas(G_M), u_M * ff_M * meas(G_M) );
+
+
+        m_operator[i] = M.matrix() + tstep*K.matrix();
+        switch(typeMethod)
+          {
+            case 0: m_operator[i] = M.matrix(); break;
+            case 1: m_operator[i] = M.matrix() + tstep*K.matrix(); break;
+            case 2: m_operator[i] = M.matrix() + 0.5*tstep*K.matrix();
+          }
+
+      }
+      real_t Time_Assembly = clock.stop();
+ 
+
+      // Resize vector of operators
       m_prolongation_P.resize(numLevels-1);
       m_prolongation_M.resize(numLevels-1);
       m_prolongation_H.resize(numLevels-1);
       m_restriction_P.resize(numLevels-1);
       m_restriction_M.resize(numLevels-1);
       m_restriction_H.resize(numLevels-1);
-
-      // Assemble operators at finest level
-      gsStopwatch clock;
-      gsInfo << "|| Multigrid hierarchy ||" <<std::endl;
-      for (int i = 0; i < numLevels; i++)
-        {
-          gsInfo << "Level " << i+1 << " " ;
-          if (typeCoarseOperator == 1)
-            {
-              m_assembler[i].assemble();
-              m_operator[i] = m_assembler[i].matrix();
-              gsInfo << "Degree: " << m_bases[i]->degree() << ", Ndof: " << m_bases[i]->totalSize() <<std::endl; 
-            }
-          else
-            {
-              if (hp(std::min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
-                {
-                  m_assembler[i].assemble();
-                  m_operator[i] = m_assembler[i].matrix();
-                  gsInfo << "\nDegree of the bases: " << m_bases[i]->degree() <<std::endl;
-                  gsInfo << "Size of the bases functions: " << m_bases[i]->totalSize() <<std::endl;
-                }
-            }
-        }
-      real_t Time_Assembly = clock.stop();
     
       // Determine prolongation/restriction operators in p
       clock.restart();
@@ -545,7 +608,7 @@ namespace gismo {
         }
       real_t Time_Transfer = clock.stop();
     
-      // Obtain operators with Galerkin projection
+      // Obtain operators with Galerkin projection (TO DO)
       clock.restart();
       if (typeCoarseOperator == 2)
         {
@@ -744,12 +807,12 @@ namespace gismo {
         }
       
       real_t Time_Block_ILUT_Factorization = clock.stop();
-      gsInfo << "\n|| Setup Timings || " <<std::endl;
-      gsInfo << "Total Assembly time: " << Time_Assembly <<std::endl;
-      gsInfo << "Total ILUT factorization time: " << Time_ILUT_Factorization <<std::endl;
-      gsInfo << "Total block ILUT factorization time: " << Time_Block_ILUT_Factorization <<std::endl;
-      gsInfo << "Total SCMS time: " << Time_SCMS <<std::endl;
-      gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS <<std::endl;
+      // gsInfo << "\n|| Setup Timings || " <<std::endl;
+      // gsInfo << "Total Assembly time: " << Time_Assembly <<std::endl;
+      // gsInfo << "Total ILUT factorization time: " << Time_ILUT_Factorization <<std::endl;
+      // gsInfo << "Total block ILUT factorization time: " << Time_Block_ILUT_Factorization <<std::endl;
+      // gsInfo << "Total SCMS time: " << Time_SCMS <<std::endl;
+      // gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS <<std::endl;
     }
 
     ///  @brief Apply p-multigrid solver to given right-hand side on level l
@@ -763,15 +826,7 @@ namespace gismo {
                const int& typeCoarseOperator)
     {
       gsStopwatch clock;
-    
-      if (Base::typeSolver == 1)
-        {
-          x = gsMatrix<T>::Random(m_operator[numLevels-1].rows(),1);
-        }
-     
-      gsMatrix<T> b;    
-      Base::typeSolver == 1 ? b = m_assembler.back().rhs() : b = f;
-
+      gsMatrix<T> b = f;
 
       // Determine residual and L2 error
       real_t r0 = (m_operator[numLevels-1]*x - b).norm();
@@ -781,14 +836,16 @@ namespace gismo {
       // Solve with p-multigrid method 
       real_t r_old = r0;
       clock.restart();
-      while( (Base::typeSolver == 1 || Base::typeSolver == 5) ? r/r0 > Base::tol && iter < Base::maxIter : iter < 2)
+      // Adjusted stopping criterion!!
+       while( r/b.norm() > Base::tol && iter < Base::maxIter )   
         {
           // Call solver from base class
-          Base::solve(b, m_bases, x, numLevels,
+          Base::solveMG(b, m_bases, x, numLevels,
                       *m_bcInfo_ptr, *m_mp_ptr,
                       m_prolongation_P, m_restriction_P,
                       m_prolongation_M, m_restriction_M,
                       m_prolongation_H, m_restriction_H, hp);
+          
           r = (m_operator[numLevels-1]*x - b).norm();
           if ( r_old < r)
             {
@@ -799,10 +856,11 @@ namespace gismo {
           iter++;
         }
       real_t Time_Solve = clock.stop();
-      gsInfo << "\n|| Solver information || " <<std::endl;
-      gsInfo << "Solver converged in " << Time_Solve << " seconds!" <<std::endl;
-      gsInfo << "Solver converged in: " << iter-1 << " iterations!" <<std::endl;           
-    }
+
+    // gsInfo << "\n|| Solver information || " <<std::endl;
+    // gsInfo << "Solver converged in " << Time_Solve << " seconds!" <<std::endl;
+    // gsInfo << "Solver converged in: " << iter-1 << " iterations!" <<std::endl;           
+  }
 
   private:
 
@@ -811,12 +869,10 @@ namespace gismo {
                              gsMatrix<T>& x,
                              const int& numLevels)
     {
-      gsInfo << "Coarse solver is applied! " <<std::endl;
-
-      // Direct solver (LU factorization)
+      //Direct solver (LU factorization)
       CoarseSolver solver;
-      solver.analyzePattern(m_operator[0]);
-      solver.factorize(m_operator[0]);
+      solver.analyzePattern(m_operator[numLevels-1]);
+      solver.factorize(m_operator[numLevels-1]);
       x = solver.solve(rhs); 
     }
   
@@ -940,7 +996,7 @@ namespace gismo {
                               gsMatrix<T> & fineRes,
                               const gsMatrix<T>& hp)
     { 
-      gsInfo << "Residual before presmoothing: " << (rhs-m_operator[numLevels-1]*x).norm() << " at level " << numLevels <<std::endl;
+      //gsInfo << "Residual before presmoothing: " << (rhs-m_operator[numLevels-1]*x).norm() << " at level " << numLevels <<std::endl;
       for(int i = 0 ; i < Base::numSmoothing ; i++)
         {
           if (Base::typeSmoother == 1)
@@ -998,7 +1054,7 @@ namespace gismo {
     {
       real_t alpha = 1;
       x = x - alpha*fineCorr;
-      gsInfo << "Residual before postsmoothing: " << (rhs-m_operator[numLevels-1]*x).norm() << " at level " << numLevels <<std::endl;
+      //gsInfo << "Residual before postsmoothing: " << (rhs-m_operator[numLevels-1]*x).norm() << " at level " << numLevels <<std::endl;
 
       for(int i = 0 ; i < Base::numSmoothing ; i++)
         {
@@ -1006,7 +1062,7 @@ namespace gismo {
             {
               if (hp(numLevels-2,0) == 1 && hp(hp.rows()-1,0) == 0)
                 { 
-                  ( Base::typeSolver == 3 ? internal::reverseGaussSeidelSweep(m_operator[numLevels-1],x,rhs) : internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs)); 
+                   internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs);      
                 }
               else
                 { 
@@ -1021,7 +1077,7 @@ namespace gismo {
             }
           if (Base::typeSmoother == 2)
             {
-              ( Base::typeSolver == 3 ? internal::reverseGaussSeidelSweep(m_operator[numLevels-1],x,rhs) : internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs));
+                internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs);      
             }
           if (Base::typeSmoother == 3)
             {
@@ -1030,8 +1086,8 @@ namespace gismo {
           if (Base::typeSmoother == 5)
             {
               if (hp(numLevels-2,0) == 1 && hp(hp.rows()-1,0) == 0)
-                { 
-                  ( Base::typeSolver == 3 ? internal::reverseGaussSeidelSweep(m_operator[numLevels-1],x,rhs) : internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs)); 
+                {
+                  internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs); 
                 }
               else
                 { 
@@ -1048,23 +1104,72 @@ namespace gismo {
     }
   };
 
-  /** @brief The p-multigrid class implements a generic p-multigrid solver
-   *  that can be customized by passing assembler and coarse
-   *  solver as template arguments.
-   *
-   *  @note: This implementation assumes that all required prolongation/
-   *  restriction operators are generated externally and provided as
-   *  constant references through the constructor. Therefore, no assembler
-   *  is passed as template parameter.
-   */
-  template<class T, class CoarseSolver>
-  struct gsXBraidMultigrid<T, CoarseSolver, void> : public gsXBraidMultigridBase<T>
-  {
-    // Default constructor
-    gsXBraidMultigrid()
+// Create the subspace corrected mass smoother
+gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatrix<>& matrix, const gsMultiBasis<>& mb, const gsBoundaryConditions<>& bc, const gsOptionList& opt, const int &typeBCHandling)
+{
+    const short_t dim = mb.topology().dim();
+
+    // Setup dof mapper
+    gsDofMapper dm;
+    mb.getMapper(
+       typeBCHandling == 1 ? (dirichlet::strategy)opt.askInt("DirichletStrategy",11) : (dirichlet::strategy)opt.askInt("DirichletStrategy",14),
+       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       bc,
+       dm,
+       0
+    );
+    const index_t nTotalDofs = dm.freeSize();
+
+    // Decompose the whole domain into components
+    std::vector< std::vector<patchComponent> > components = mb.topology().allComponents(true);
+    const index_t nr_components = components.size();
+
+    // Setup Dirichlet boundary conditions
+    gsBoundaryConditions<> dir_bc;
+    for( index_t ps=0; ps < 2*dim; ++ps )
+        dir_bc.addCondition( 0, 1+ps, condition_type::dirichlet, NULL );
+
+    // Setup transfer matrices and local preconditioners
+    std::vector< gsSparseMatrix<real_t,RowMajor> > transfers;
+    transfers.reserve(nr_components);
+    std::vector< gsLinearOperator<>::Ptr > ops;
+    ops.reserve(nr_components);
+
+    for (index_t i=0; i<nr_components; ++i)
     {
-      gsInfo << "The specific case";
+        gsMatrix<index_t> indices;
+        std::vector<gsBasis<>::uPtr> bases = mb.componentBasis_withIndices(components[i],dm,indices,true);
+        index_t sz = indices.rows();
+        gsSparseEntries<> se;
+        se.reserve(sz);
+        for (index_t i=0; i<sz; ++i)
+            se.add(indices(i,0),i,real_t(1));
+        gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
+        transfer.setFrom(se);
+        if (sz>0)
+        {
+            if (bases[0]->dim() == dim)
+            {
+                GISMO_ASSERT ( bases.size() == 1, "Only one basis is expected for each patch." );
+                ops.push_back(
+                    gsPatchPreconditionersCreator<>::subspaceCorrectedMassSmootherOp(
+                        *(bases[0]),
+                        dir_bc,
+                        gsOptionList(),
+                        opt.getReal("Scaling")
+                    )
+                );
+            }
+            else
+            {
+                gsSparseMatrix<> mat = transfer.transpose() * matrix * transfer;
+                ops.push_back( makeSparseCholeskySolver(mat) );
+            }
+            transfers.push_back(give(transfer));
+        }
     }
-  };
+    return gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsAdditiveOp<>::make(transfers, ops));
+}
+
 
 } // namespace gismo
