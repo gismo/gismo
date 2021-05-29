@@ -74,9 +74,6 @@ int main(int argc, char* argv[])
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
 
-	real_t eps_ = eps;
-	real_t p_ = p;
-
 	gsInfo << "Printing command line arguments:\n"
 		<< "eps               = " << eps << "\n"
 		<< "pow               = " << p << "\n"
@@ -247,16 +244,16 @@ int main(int argc, char* argv[])
 	if (str == 2) { hbcInfo = bcInfo; }
 
 	gsLinpLapPde<real_t> pde(patch, bcInfo, f, eps, p, w_, lambda, alpha);
-	gsLinpLapPde<real_t> pde_(patch, hbcInfo, f, eps_, p, w_, lambda, alpha);
+	gsPoissonPde<real_t> pde_(patch, hbcInfo, f);
 
 	gsLinpLapAssembler<real_t> A;
 	A.initialize(pde, epsR, refine_basis, opt, subdiv);
 
-	gsLinpLapAssembler<real_t> rA;
-	rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
+	gsPoissonAssembler<real_t> rA;
+	rA.initialize(pde_, refine_basis, opt);
 
 	A.initialize(pde, epsR, refine_basis, opt, subdiv);
-	rA.initialize(pde_, epsR, refine_basis, opt, subdiv, prec);
+	rA.initialize(pde_, refine_basis, opt);
 
 	gsMatrix<real_t> solVector = w_;
 	gsMatrix<real_t> step;
@@ -303,33 +300,19 @@ int main(int argc, char* argv[])
 		//pde.w = projectL2(patch, refine_basis, u0);
 
 		pde.w = transfer * pde.w; //update w
-		pde.p = p_;
-		pde.eps = eps_;
+   
+		A.initialize(pde, epsR, refine_basis, opt, subdiv);
+		A.assemble();
+		Kh = A.matrix();
+		fh = A.rhs();
    
     if(prec)
-    {
-      pde_.w = gsMatrix<real_t>::Zero(n, 1); //update w
-		  pde_.p = p;
-		  pde_.eps = 1;
+    { 
+        rA.initialize(pde_, refine_basis, opt);
+		    rA.assemble();
+        Kh_ = rA.matrix();
+		    fh_ = rA.rhs();
     }
-    else
-    {
-      pde_.w=pde.w;
-      pde_.p=pde.p;
-      pde_.eps=pde.eps;
-    }
-
-		A.initialize(pde, epsR, refine_basis, opt, subdiv);
-		rA.initialize(pde_, epsR, refine_basis, opt, subdiv/*, prec*/);
-
-		A.assemble();
-		rA.assemble();
-
-		Kh = A.matrix();
-		Kh_ = rA.matrix();
-   
-		fh = A.rhs();
-		fh_ = rA.rhs();
 
 		//Jh = A.energy();
 
@@ -359,8 +342,16 @@ int main(int argc, char* argv[])
    
       gsInfo<<cg_cond<<"\n";
       */
-
-		  gsSparseSolver<>::LU solver(Kh_);
+      gsSparseSolver<>::LU solver;
+      if(prec)
+      {
+		      solver.compute(Kh_);
+      }
+      else
+      {
+          solver.compute(Kh);
+      }
+      
 			step = solver.solve(-rh);
 
 			//gsInfo << (rh.transpose()*step).value()/(rh.norm()*step.norm()) << "\n";
@@ -380,19 +371,12 @@ int main(int argc, char* argv[])
 			solVector = solVector + tau * step;
 
 			pde.w = addDirVal(A, solVector); //add Dirichlet values to current solution and set as new w.
-			if(!prec){pde_.w = pde.w;}
+			//if(!prec){pde_.w = pde.w;}
 
 			A.initialize(pde, epsR, refine_basis, opt);
-			rA.initialize(pde_, epsR, refine_basis, opt, subdiv/*, prec*/);
-
 			A.assemble();
-			rA.assemble();
-
 			Kh = A.matrix(); //compute new lhs matrix to compute residuum of the nonlinear problem --> Kh(uh)*uh-fh
-			Kh_ = rA.matrix();
-
 			fh = A.rhs();
-			fh_ = rA.rhs();
 
 			//Jh = A.energy();
 
@@ -425,7 +409,7 @@ int main(int argc, char* argv[])
 		*/
 
 		pde.w = addDirVal(A, solVector);
-		pde_.w = pde.w;
+		//pde_.w = pde.w;
 
 		gsMultiPatch<> mpsol;
 		A.constructSolution(solVector, mpsol); //construct solution from the free DoFs via the assembler that is set to elimination.

@@ -162,8 +162,11 @@ int main(int argc, char* argv[])
     {
         f = gsFunctionExpr<>("1", 2);
         u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(x^2+y^2)^(" + std::to_string(p) + "/(2*(" + std::to_string(p) + "-1))))", 2);
-        //u = gsFunctionExpr<>("((" + std::to_string(p) + "-1)/" + std::to_string(p) + ")*(1-(max(abs(x),abs(y)))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
-        //u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(abs(x)+abs(y))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
+    }
+    else if (problemId == 6)
+    {
+        f = gsFunctionExpr<>("1", 2);
+        u = gsFunctionExpr<>("((" + std::to_string(p) + "-1)/" + std::to_string(p) + ")*(1-(max(abs(x),abs(y)))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
     }
     else
     {
@@ -196,8 +199,8 @@ int main(int argc, char* argv[])
 
 
     //! [Geometry data]
-   	//gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(2,-1,-1));
-    gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
+   	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(2,-1,-1));
+    //gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
     //! [Geometry data]
 
     //! [Boundary conditions]
@@ -371,7 +374,12 @@ int main(int argc, char* argv[])
         gsField<> sol(A.patches(), mpsol);
         gsField<> exact(A.patches(),mpexact);
         
-        if (plot){gsWriteParaview(exact, "solution");}
+        gsMatrix<> box(2,2);
+        box << -1 , 1,
+               -1 , 1;
+        
+        //if (plot){gsWriteParaview(u, box, "solution");}
+        if (plot){gsWriteParaview(sol, "solution");}
 
         e_0old = e_0;
         e_Fold = e_F;
