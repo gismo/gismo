@@ -127,12 +127,14 @@ int main(int argc, char* argv[])
     gsFunctionExpr<> u_derNorth;
     gsFunctionExpr<> u_derSouth;
     gsFunctionExpr<> f; // Source function
+    
+    gsMultiPatch<> patch;
 
     if (problemId == 1)
     {
         f = 	gsFunctionExpr<>("-((" + std::to_string(gamma) + "^2*(x^2 + y^2)^(" + std::to_string(gamma) + "/2)*(" + std::to_string(eps) + "^2 + " + std::to_string(gamma) + "^2*(x^2 + y^2)^(-1 + " + std::to_string(gamma) + "))^(" + std::to_string(p) + "/2)*(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "*(2 + " + std::to_string(gamma) + "*(-1 + " + std::to_string(p) + ") - " + std::to_string(p) + ")*(x^2 + y^2)^" + std::to_string(gamma) + "))/(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "^2*(x^2 + y^2)^" + std::to_string(gamma) + ")^2)", 2);
         u = gsFunctionExpr<>("(x^2+y^2)^(" + std::to_string(gamma) + "/2)", 2);
-
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,-0.5,-0-5));
     }
     else if (problemId == 2)
     {
@@ -144,6 +146,7 @@ int main(int argc, char* argv[])
         u_derWest = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(-" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
         u_derNorth = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
         u_derSouth = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+2*cos(" + std::to_string(omega) + "*pi*(x+y))^2*" + std::to_string(omega) + "^2*pi^2)^((" + std::to_string(p) + "-2)/2)*(-" + std::to_string(omega) + "*pi*cos(pi*" + std::to_string(omega) + "*(x+y)))", 2);
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,0,0));
         
     }
     else if (problemId == 3)
@@ -151,22 +154,27 @@ int main(int argc, char* argv[])
         f = gsFunctionExpr<>("8*pi^2*(" + std::to_string(eps*eps) + "+2*pi^2+pi^2*(-(" + std::to_string(p) + "-2)*cos(4*pi*y)-cos(4*pi*x)*(" + std::to_string(p) + "-2+2*(" + std::to_string(p) + "-1)*cos(4*pi*y))))*(" + std::to_string(eps*eps) + "+2*pi^2-pi^2*(cos(4*pi*(x-y))+cos(4*pi*(x+y))))^((" + std::to_string(p) + "-4)/2)*(sin(2*pi*x)*sin(2*pi*y))+" + std::to_string(lambda) + "*abs(sin(2*pi*x)*sin(2*pi*y))^" + std::to_string(alpha) +"*sin(2*pi*x)*sin(2*pi*y)", 2);
         
         u = gsFunctionExpr<>("sin(2*pi*x)*sin(2*pi*y)", 2);
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,0,0));
     }
     else if (problemId == 4)
     {
         f = gsFunctionExpr<>("(" + std::to_string(eps*eps) + "+cos(x)^2)^(" + std::to_string(p) + "/2-2)*(" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*cos(x)^2)*sin(x) + " + std::to_string(lambda) + "* abs(sin(x))^" + std::to_string(alpha) +"*sin(x)", 2);
         
         u = gsFunctionExpr<>("sin(x)", 2);
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,0,0));
     }
     else if (problemId == 5)
     {
         f = gsFunctionExpr<>("1", 2);
+        //u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(abs(x)+abs(y))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
         u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(x^2+y^2)^(" + std::to_string(p) + "/(2*(" + std::to_string(p) + "-1))))", 2);
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
     }
     else if (problemId == 6)
     {
         f = gsFunctionExpr<>("1", 2);
         u = gsFunctionExpr<>("((" + std::to_string(p) + "-1)/" + std::to_string(p) + ")*(1-(max(abs(x),abs(y)))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(2,-1,-1));
     }
     else
     {
@@ -196,12 +204,6 @@ int main(int argc, char* argv[])
     gsInfo << "Exact solution " << u << "\n";
     gsInfo << "Initial guess" << u0 << "\n\n";
     //! [Function data]
-
-
-    //! [Geometry data]
-   	gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(2,-1,-1));
-    //gsMultiPatch<> patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
-    //! [Geometry data]
 
     //! [Boundary conditions]
    	gsBoundaryConditions<> bcInfo;
