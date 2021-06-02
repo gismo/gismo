@@ -71,65 +71,67 @@ gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
 }
 
 namespace {
+
 template <class T>
-gsMatrix<T> determineParameterBounds(const gsGeometry<T> & geo, const boxSide s)
+gsMatrix<T> determineCorners(const gsGeometry<T> & geo, const boxSide s)
 {
     gsMatrix<T> pr = geo.parameterRange();
     const index_t dim = pr.rows();
-    gsMatrix<T> result(dim, 2);
+    gsVector<T> lower(dim);
+    gsVector<T> upper(dim);
+    gsVector<unsigned> numberGridPoints(dim);
     for (index_t i = 0; i<dim; ++i)
     {
         if (s.direction()==i)
-            result(i,0) = result(i,1) = pr( i, s.parameter() == false ? 0 : 1 );
+        {
+            lower[i] = upper[i] = pr( i, s.parameter() );
+            numberGridPoints[i] = 1;
+        }
         else
-            result.row(i) = pr.row(i);
+        {
+            lower[i] = pr(i, 0);
+            upper[i] = pr(i, 1);
+            numberGridPoints[i] = 2;
+        }
     }
-    return result;
+    return gsPointGrid(lower,upper,numberGridPoints);
 }
 
 template <class T>
-gsMatrix<T> transferParameterBounds(const index_t         direction1,
-                                    const gsGeometry<T> & g1,
-                                    const gsGeometry<T> & g2,
-                                    const gsMatrix<T>   & parameterBounds1,
-                                    const gsMatrix<T>   & parameterBounds2,
-                                    const T               solverTolerance)
+void transferCorners(const gsMatrix<T> &corners, const gsGeometry<T> &g1, const gsGeometry<T> &g2,
+    const T newtonTolerance, const T equalityTolerance, gsMatrix<T> &cornersTransfered, gsVector<bool> &converged)
 {
-    gsVector<T> transfered[2];
-    for (index_t j=0; j<2; ++j)
-    {
-        transfered[j] = parameterBounds1.col(j); // initial guess
-        g1.newtonRaphson( g2.eval(parameterBounds2).col(j), transfered[j], true, solverTolerance, 100 );
-        //TODO: We might add such a statement:
-        //transfered[j][direction1] = parameterBounds1(direction1,j);
-    }
+    cornersTransfered.resize(corners.rows(), corners.cols());
+    converged.resize(corners.cols());
 
-    gsMatrix<T> result(transfered[0].rows(), 2);
-    for (index_t i=0; i<transfered[0].rows(); ++i)
+    gsVector<T> cornerTransferred = g2.parameterRange().col(0);
+    for (index_t i=0; i<corners.cols(); ++i)
     {
-        result(i,0) = std::min( transfered[0][i], transfered[1][i] );
-        result(i,1) = std::max( transfered[0][i], transfered[1][i] );
-        // TODO: store orientation and use it for setup of affine mapping
+        gsVector<T> cornerPhysical = g1.eval(corners.col(i));
+        g2.newtonRaphson(cornerPhysical, cornerTransferred, true, newtonTolerance, 100);
+        cornersTransfered.col(i) = cornerTransferred;
+        converged[i] = (cornerPhysical - g2.eval(cornerTransferred)).norm() < equalityTolerance;
     }
-    return result;
-
 }
 
-template <class T>
-void setToIntersection(bool & matching, T & min1, T & max1, const T min2, const T max2, const T tol)
+template <class Vector, class T>
+void widenParameterBounds(const Vector &point, gsMatrix<T> &parameterBounds)
 {
-    GISMO_ASSERT( min2<max1+tol && max2>min1-tol, "gsRemapInterface: Cannot find interface: "
-        "(" << min1 << "," << max1 << ") and (" << min2 << "," << max2 << ") do not overlap.");
-    if (min2>min1+tol)
+    if (parameterBounds.cols()==0)
     {
-        min1 = std::min( min2, max1 );
-        matching = false;
+        parameterBounds.resize(point.rows(),2);
+        parameterBounds.col(0) = point;
+        parameterBounds.col(1) = point;
     }
-    if (max2<max1-tol)
+    else
     {
-        max1 = std::max( max2, min1 );
-        matching = false;
+        for (index_t i=0; i<parameterBounds.rows(); ++i)
+        {
+            parameterBounds(i,0) = std::min( parameterBounds(i,0), point(i,0) );
+            parameterBounds(i,1) = std::max( parameterBounds(i,1), point(i,0) );
+        }
     }
+
 }
 
 } // end anonymous namespace
@@ -137,34 +139,62 @@ void setToIntersection(bool & matching, T & min1, T & max1, const T min2, const 
 template <class T>
 void gsRemapInterface<T>::constructInterfaceBox()
 {
-    m_parameterBounds1 = determineParameterBounds(*m_g1,m_bi.first());
-    m_parameterBounds2 = determineParameterBounds(*m_g2,m_bi.second());
+    gsMatrix<T> corners1 = determineCorners(*m_g1,m_bi.first());
+    gsMatrix<T> corners2 = determineCorners(*m_g2,m_bi.second());
 
-    gsMatrix<T> parameterBounds1transferredTo2 = transferParameterBounds(m_bi.second().direction(),
-        *m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,m_newtonTolerance);
-    gsMatrix<T> parameterBounds2transferredTo1 = transferParameterBounds(m_bi.first().direction(),
-        *m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,m_newtonTolerance);
+    // Transfer the corners to the other patch and determine if the Newton
+    // did converge
+    gsMatrix<T> corners1transferedTo2, corners2transferedTo1;
+    gsVector<bool> converged1, converged2;
+    transferCorners(corners1, *m_g1, *m_g2, m_newtonTolerance, m_equalityTolerance, corners1transferedTo2, converged1);
+    transferCorners(corners2, *m_g2, *m_g1, m_newtonTolerance, m_equalityTolerance, corners2transferedTo1, converged2);
 
-    gsInfo << "m_parameterBounds1:\n" << m_parameterBounds1 << "\n\n";
-    gsInfo << "m_parameterBounds2:\n" << m_parameterBounds2 << "\n\n";
-    gsInfo << "parameterBounds1transferredTo2:\n" << parameterBounds1transferredTo2 << "\n\n";
-    gsInfo << "parameterBounds2transferredTo1:\n" << parameterBounds2transferredTo1 << "\n\n";
-
-    for (index_t i=0; i<domainDim(); ++i)
+    // The parameter bounds are set such that all corners that are located on
+    // the (common part of the) interface are in the parameterBound
+    m_isMatching = true;
+    for (index_t i=0; i<corners1.cols(); ++i)
     {
-        setToIntersection(
-            m_isMatching, // in&out
-            m_parameterBounds1(i,0), m_parameterBounds1(i,1), // in&out
-            parameterBounds2transferredTo1(i,0), parameterBounds2transferredTo1(i,1), // in
-            m_equalityTolerance
-        );
-        setToIntersection(
-            m_isMatching, // in&out
-            m_parameterBounds2(i,0), m_parameterBounds2(i,1), // in&out
-            parameterBounds1transferredTo2(i,0), parameterBounds1transferredTo2(i,1), // in
-            m_equalityTolerance
-        );
+        if (converged1[i])
+        {
+            widenParameterBounds(corners1.col(i), m_parameterBounds1);
+            widenParameterBounds(corners1transferedTo2.col(i), m_parameterBounds2);
+        }
+        else
+        {
+            m_isMatching = false;
+        }
     }
+
+    for (index_t i=0; i<corners2.cols(); ++i)
+    {
+        if (converged2[i])
+        {
+            widenParameterBounds(corners2.col(i), m_parameterBounds2);
+            widenParameterBounds(corners2transferedTo1.col(i), m_parameterBounds1);
+        }
+        else
+        {
+            m_isMatching = false;
+        }
+    }
+
+    // Make sure that the proper value is chosen in the normal direction
+    const index_t d1 = m_bi.first().direction();
+    m_parameterBounds1.row(d1).setConstant(m_g1->parameterRange()(d1,m_bi.first().parameter()));
+
+    const index_t d2 = m_bi.second().direction();
+    m_parameterBounds2.row(d2).setConstant(m_g2->parameterRange()(d2,m_bi.second().parameter()));
+
+    GISMO_ASSERT ( m_parameterBounds1.cols()&&m_parameterBounds2.cols(),
+        "gsRemapInterface<T>::constructInterfaceBox: Could not find an interface.");
+    for (index_t j=0; j<domainDim(); ++j)
+    {
+        GISMO_ASSERT ( j==m_bi.first().direction() ||m_parameterBounds1(j,0) < m_parameterBounds1(j,1),
+            "gsRemapInterface<T>::constructInterfaceBox: Could not find an interface.");
+        GISMO_ASSERT ( j==m_bi.second().direction()||m_parameterBounds2(j,0) < m_parameterBounds2(j,1),
+            "gsRemapInterface<T>::constructInterfaceBox: Could not find an interface.");
+    }
+
 }
 
 template <class T>
@@ -241,6 +271,8 @@ void gsRemapInterface<T>::constructFittingCurve(const index_t numSamplePoints,
     for (index_t i = 0; i < numSamplePoints; ++i)
     {
         m_g2->newtonRaphson(physPoints.col(i), pointMapped, true, m_newtonTolerance, 100);
+        GISMO_ASSERT ( (physPoints.col(i)-m_g2->eval(pointMapped)).norm() <= m_equalityTolerance,
+            "gsRemapInterface<T>::constructFittingCurve: Newton did not converge." );
         B.row(i) = pointMapped.transpose();
     }
 
@@ -303,8 +335,11 @@ void gsRemapInterface<T>::constructBreaks()
         gsVector<T> breakpoint_transfered = m_parameterBounds1.col(0); // initial guess
         for (; domIt2->good(); domIt2->next())
         {
-            m_g1->newtonRaphson( m_g2->eval(domIt2->upperCorner()), breakpoint_transfered, true, m_newtonTolerance, 100 );
-            addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, m_equalityTolerance);
+            gsMatrix<T> breakpoint_phys = m_g2->eval(domIt2->upperCorner());
+            m_g1->newtonRaphson( breakpoint_phys, breakpoint_transfered, true, m_newtonTolerance, 100 );
+            // TODO
+            if ( (breakpoint_phys-m_g1->eval(breakpoint_phys)).norm() <= m_equalityTolerance )
+                addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, m_equalityTolerance);
         }
     }
 

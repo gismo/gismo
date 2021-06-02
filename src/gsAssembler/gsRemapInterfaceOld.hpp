@@ -567,13 +567,14 @@ void gsRemapInterfaceOld<T>::constructReparam()
 
             find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
 
-            gsVector<T> b_null = samples_right.col(col);
+            //gsVector<T> b_null = samples_right.col(col);
+            gsVector<T> b_null = vals2dPatch2.col(col);
 
             // Pass on g2 if one wants to find a mapping from interface1 to interface2
             //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));
 
             // this gives the same result as above
-            m_g2.newtonRaphson(samples_left.col(i), b_null, true, 10e-6, 100);
+            m_g2.newtonRaphson(samples_left.col(i), b_null, true, 10e-10, 100);
             //gsInfo << "newton: " << b_null << "\n";
 
             // TODO: Check if the order of the coefficients has an impact on the mapping regarding assembling aso.
