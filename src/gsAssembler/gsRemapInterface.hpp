@@ -88,7 +88,8 @@ gsMatrix<T> determineParameterBounds(const gsGeometry<T> & geo, const boxSide s)
 }
 
 template <class T>
-gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1,
+gsMatrix<T> transferParameterBounds(const index_t         direction1,
+                                    const gsGeometry<T> & g1,
                                     const gsGeometry<T> & g2,
                                     const gsMatrix<T>   & parameterBounds1,
                                     const gsMatrix<T>   & parameterBounds2,
@@ -99,6 +100,8 @@ gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1,
     {
         transfered[j] = parameterBounds1.col(j); // initial guess
         g1.newtonRaphson( g2.eval(parameterBounds2).col(j), transfered[j], true, solverTolerance, 100 );
+        //TODO: We might add such a statement:
+        //transfered[j][direction1] = parameterBounds1(direction1,j);
     }
 
     gsMatrix<T> result(transfered[0].rows(), 2);
@@ -106,6 +109,7 @@ gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1,
     {
         result(i,0) = std::min( transfered[0][i], transfered[1][i] );
         result(i,1) = std::max( transfered[0][i], transfered[1][i] );
+        // TODO: store orientation and use it for setup of affine mapping
     }
     return result;
 
@@ -114,7 +118,8 @@ gsMatrix<T> transferParameterBounds(const gsGeometry<T> & g1,
 template <class T>
 void setToIntersection(bool & matching, T & min1, T & max1, const T min2, const T max2, const T tol)
 {
-    GISMO_ASSERT( min2<max1+tol && max2>min1-tol, "gsRemapInterface: Cannot find interface." );
+    GISMO_ASSERT( min2<max1+tol && max2>min1-tol, "gsRemapInterface: Cannot find interface: "
+        "(" << min1 << "," << max1 << ") and (" << min2 << "," << max2 << ") do not overlap.");
     if (min2>min1+tol)
     {
         min1 = std::min( min2, max1 );
@@ -135,10 +140,15 @@ void gsRemapInterface<T>::constructInterfaceBox()
     m_parameterBounds1 = determineParameterBounds(*m_g1,m_bi.first());
     m_parameterBounds2 = determineParameterBounds(*m_g2,m_bi.second());
 
-    gsMatrix<T> parameterBounds1transferredTo2
-        = transferParameterBounds(*m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,m_newtonTolerance);
-    gsMatrix<T> parameterBounds2transferredTo1
-        = transferParameterBounds(*m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,m_newtonTolerance);
+    gsMatrix<T> parameterBounds1transferredTo2 = transferParameterBounds(m_bi.second().direction(),
+        *m_g2,*m_g1,m_parameterBounds2,m_parameterBounds1,m_newtonTolerance);
+    gsMatrix<T> parameterBounds2transferredTo1 = transferParameterBounds(m_bi.first().direction(),
+        *m_g1,*m_g2,m_parameterBounds1,m_parameterBounds2,m_newtonTolerance);
+
+    gsInfo << "m_parameterBounds1:\n" << m_parameterBounds1 << "\n\n";
+    gsInfo << "m_parameterBounds2:\n" << m_parameterBounds2 << "\n\n";
+    gsInfo << "parameterBounds1transferredTo2:\n" << parameterBounds1transferredTo2 << "\n\n";
+    gsInfo << "parameterBounds2transferredTo1:\n" << parameterBounds2transferredTo1 << "\n\n";
 
     for (index_t i=0; i<domainDim(); ++i)
     {
@@ -388,7 +398,7 @@ std::ostream& gsRemapInterface<T>::print(std::ostream & os) const
        << "\n    First side:         " << m_bi.first()
        << "\n    Second side:        " << m_bi.second()
        << "\n    Is Affine:          " << ( m_isAffine   ? "yes" : "no")
-       << "\n    Matching:           " << ( m_isMatching ? "yes" : "no")
+       << "\n    Is Matching:        " << ( m_isMatching ? "yes" : "no")
        << "\n    Bounding box 1 min: " << m_parameterBounds1.transpose().row(0)
        << "\n                   max: " << m_parameterBounds1.transpose().row(1)
        << "\n    Bounding box 2 min: " << m_parameterBounds2.transpose().row(0)
