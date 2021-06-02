@@ -131,8 +131,46 @@ private:
     // Cconstructs the breakpoints \a m_breakpoints
     void constructBreaks();
 
+    T estimateReparamError(const index_t steps) const
+    {
+        gsVector<T> lower = m_parameterbounds.first.col(0);
+        gsVector<T> upper = m_parameterbounds.first.col(1);
+        gsVector<unsigned> numberGridPoints = gsVector<unsigned>::Constant(domainDim(),2+steps);
+        numberGridPoints[m_side1.direction()] = 1;
+        gsMatrix<T> points1 = gsPointGrid(lower,upper,numberGridPoints);
+        gsMatrix<T> points2;
+        eval_into(points1, points2);
+
+        return  (
+                    m_g1.eval(points1)
+                    -
+                    m_g2.eval(points2)
+                ).template lpNorm<Eigen::Infinity>();
+    }
+
+public:
+    std::ostream& print(std::ostream & os) const
+    {
+        os << "gsRemapInterface:"
+           << "\n    First side:         " << m_side1
+           << "\n    Second side:        " << m_side2
+           << "\n    Is MatchingOld:     " << ( m_isMatching ? "yes" : "no")
+           << "\n    Bounding box 1 min: " << m_parameterbounds.first.transpose().row(0)
+           << "\n                   max: " << m_parameterbounds.first.transpose().row(1)
+           << "\n    Bounding box 2 min: " << m_parameterbounds.second.transpose().row(0)
+           << "\n                   max: " << m_parameterbounds.second.transpose().row(1)
+           << "\n    Beakpoints        :\n" << m_breakpoints << "\n";
+        if (!m_isMatching)
+            os << "\n    Fitting curve     : " << *m_fittedInterface << "\n";
+        os << "\n    Error of reparam old: " << estimateReparamError(20) << "\n";
+        return os;
+    }
+
 }; // End gsRemapInterface
 
+template <class T>
+inline std::ostream & operator<<(std::ostream & os, const gsRemapInterface<T> & remapIf)
+{ return remapIf.print(os); }
 
 } // End namespace gismo
 
