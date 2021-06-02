@@ -99,9 +99,9 @@ gsMatrix<T> determineCorners(const gsGeometry<T> & geo, const boxSide s)
 
 template <class T>
 void transferCorners(const gsMatrix<T> &corners, const gsGeometry<T> &g1, const gsGeometry<T> &g2,
-    const T newtonTolerance, const T equalityTolerance, gsMatrix<T> &cornersTransfered, gsVector<bool> &converged)
+    const T newtonTolerance, const T equalityTolerance, gsMatrix<T> &cornerstransferred, gsVector<bool> &converged)
 {
-    cornersTransfered.resize(corners.rows(), corners.cols());
+    cornerstransferred.resize(corners.rows(), corners.cols());
     converged.resize(corners.cols());
 
     gsVector<T> cornerTransferred = g2.parameterRange().col(0);
@@ -109,7 +109,7 @@ void transferCorners(const gsMatrix<T> &corners, const gsGeometry<T> &g1, const 
     {
         gsVector<T> cornerPhysical = g1.eval(corners.col(i));
         g2.newtonRaphson(cornerPhysical, cornerTransferred, true, newtonTolerance, 100);
-        cornersTransfered.col(i) = cornerTransferred;
+        cornerstransferred.col(i) = cornerTransferred;
         converged[i] = (cornerPhysical - g2.eval(cornerTransferred)).norm() < equalityTolerance;
     }
 }
@@ -144,10 +144,10 @@ void gsRemapInterface<T>::constructInterfaceBox()
 
     // Transfer the corners to the other patch and determine if the Newton
     // did converge
-    gsMatrix<T> corners1transferedTo2, corners2transferedTo1;
+    gsMatrix<T> corners1transferredTo2, corners2transferredTo1;
     gsVector<bool> converged1, converged2;
-    transferCorners(corners1, *m_g1, *m_g2, m_newtonTolerance, m_equalityTolerance, corners1transferedTo2, converged1);
-    transferCorners(corners2, *m_g2, *m_g1, m_newtonTolerance, m_equalityTolerance, corners2transferedTo1, converged2);
+    transferCorners(corners1, *m_g1, *m_g2, m_newtonTolerance, m_equalityTolerance, corners1transferredTo2, converged1);
+    transferCorners(corners2, *m_g2, *m_g1, m_newtonTolerance, m_equalityTolerance, corners2transferredTo1, converged2);
 
     // The parameter bounds are set such that all corners that are located on
     // the (common part of the) interface are in the parameterBound
@@ -157,7 +157,7 @@ void gsRemapInterface<T>::constructInterfaceBox()
         if (converged1[i])
         {
             widenParameterBounds(corners1.col(i), m_parameterBounds1);
-            widenParameterBounds(corners1transferedTo2.col(i), m_parameterBounds2);
+            widenParameterBounds(corners1transferredTo2.col(i), m_parameterBounds2);
         }
         else
         {
@@ -170,7 +170,7 @@ void gsRemapInterface<T>::constructInterfaceBox()
         if (converged2[i])
         {
             widenParameterBounds(corners2.col(i), m_parameterBounds2);
-            widenParameterBounds(corners2transferedTo1.col(i), m_parameterBounds1);
+            widenParameterBounds(corners2transferredTo1.col(i), m_parameterBounds1);
         }
         else
         {
@@ -308,6 +308,17 @@ inline void addBreaks(std::vector< std::vector<T> > & breaks,
     }
 }
 
+template <class T, class Vector>
+inline bool inRange(const gsMatrix<T> & range,
+                    const Vector      & point)
+{
+    for (index_t i=0; i<range.rows(); ++i)
+        if ( point(i,0) < range(i,0) || point(i,0) > range(i,1) )
+            return false;
+    return true;
+}
+
+
 } // end anonymous namespace
 
 template <class T>
@@ -332,14 +343,20 @@ void gsRemapInterface<T>::constructBreaks()
     }
     else
     {
-        gsVector<T> breakpoint_transfered = m_parameterBounds1.col(0); // initial guess
+        gsVector<T> breakpoint_transferred = m_parameterBounds1.col(0); // initial guess
         for (; domIt2->good(); domIt2->next())
         {
-            gsMatrix<T> breakpoint_phys = m_g2->eval(domIt2->upperCorner());
-            m_g1->newtonRaphson( breakpoint_phys, breakpoint_transfered, true, m_newtonTolerance, 100 );
-            // TODO
-            if ( (breakpoint_phys-m_g1->eval(breakpoint_phys)).norm() <= m_equalityTolerance )
-                addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transfered, m_equalityTolerance);
+            if (inRange(m_parameterBounds2, domIt2->upperCorner()))
+            {
+                gsMatrix<T> breakpoint_phys = m_g2->eval(domIt2->upperCorner());
+
+                m_g1->newtonRaphson( breakpoint_phys, breakpoint_transferred, true, m_newtonTolerance, 100 );
+                GISMO_ASSERT ( (breakpoint_phys-m_g1->eval(breakpoint_transferred)).norm() <= m_equalityTolerance,
+                    "gsRemapInterface::constructBreaks: Newton method did not find point in parameter domain."
+                    << (breakpoint_phys-m_g1->eval(breakpoint_transferred)).norm() );
+
+                addBreaks(m_breakpoints, m_parameterBounds1, breakpoint_transferred, m_equalityTolerance);
+            }
         }
     }
 
