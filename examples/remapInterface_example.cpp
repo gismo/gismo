@@ -14,7 +14,6 @@
 #include <gismo.h>
 
 #include <gsAssembler/gsRemapInterface.h>
-#include <gsAssembler/gsRemapInterfaceOld.h>
 
 using namespace gismo;
 
@@ -77,37 +76,9 @@ int main(int argc, char* argv[])
         gsInfo << "\n\nSecond: " << bi.second() << "\n";
         showCorners(mp[bi.second().patch]);
         gsInfo << "\n\n";
-        gsInfo << "Setup Old: \n";
-        gsRemapInterfaceOld<real_t> riOld(mp,mb,bi);
-        gsInfo << "done.\n" << riOld << "Setup New: \n";
         gsRemapInterface<real_t> ri(mp,mb,bi,checkAffine);
-        gsInfo << "done.\n" << ri << "\n";
+        gsInfo << ri << "\n";
 
-        /*gsMatrix<> points(3,2);
-        if ( bi.first().direction() == 0 )
-        {
-            real_t v = bi.first().parameter();
-            points << v,0,   v,.5,   v,1;
-        }
-        else
-        {
-            real_t v = bi.first().parameter();
-            points << 0,v,   .5,v,   1,v;
-        }
-
-        gsInfo << "Points1:\n" << points << "\n\n";
-        gsMatrix<> points2 = ri.eval(points.transpose()).transpose();
-        gsInfo << "Points2:\n" << points2 << "\n\n";
-
-
-        gsMatrix<> phys1 = mp[bi.first().patch].eval(points.transpose()).transpose();
-        gsInfo << "Phys1:\n" << phys1 << "\n\n";
-        gsMatrix<> phys2 = mp[bi.second().patch].eval(points2.transpose()).transpose();
-        gsInfo << "Phys2:\n" << phys2 << "\n\n";
-
-
-        GISMO_ENSURE( (phys1-phys2).norm() < 1e-4, "Brrrr");
-        */
     }
     return 0;
 }
