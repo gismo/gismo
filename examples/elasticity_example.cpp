@@ -18,6 +18,82 @@
 using namespace gismo;
 //! [Include namespace]
 
+namespace gismo{
+namespace expr{
+
+template<class E>
+class B_expr : public _expr<B_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+
+private:
+    enum {ColBlocks = 1 };
+
+    typename E::Nested_t _u;
+
+public:
+    enum{ Space = E::Space };
+
+    B_expr(const E & u) : _u(u) { }
+
+    mutable gsMatrix<Scalar> res;
+    mutable gsMatrix<Scalar> uGrads;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
+
+    index_t rows() const { return 3; }
+    index_t cols() const { return _u.dim(); }
+
+    void setFlag() const
+    {
+        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+    }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    {
+        evList.push_sorted_unique(&_u.source());
+        _u.data().flags |= NEED_GRAD;
+    }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    enum{rowSpan = E::rowSpan, colSpan = 0};
+
+    void print(std::ostream &os) const { os << "B("; _u.print(os); os <<")"; }
+
+private:
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
+
+        res.resize(rows(), cols() * numAct); // (3 x 2*actives)
+        res.setZero();
+
+        uGrads = _u.data().values[1].col(k); // dNj_dx1 = uGrads.at(2*j), dNj_dx2 = uGrads.at(2*j+1)
+        for (index_t i = 0; i != numAct; ++i) // for all basis functions
+        {
+            res(0,2*i)   = uGrads.at(2*i);
+            res(2,2*i  ) = uGrads.at(2*i+1);
+            res(1,2*i+1) = uGrads.at(2*i+1);
+            res(2,2*i+1) = uGrads.at(2*i);
+        }
+
+        return res;
+    }
+};
+
+template<class E> EIGEN_STRONG_INLINE
+B_expr<E> B(const E & u) { return B_expr<E>(u); }
+
+}
+}
+
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -117,8 +193,8 @@ int main(int argc, char *argv[])
 
     /// --------------------------------------------------
 
-    //gsVector<> pt(2);
-    //pt.setConstant(0.5);
+    gsVector<> pt(2);
+    pt.setConstant(0.5);
 
     // gsLinearMaterial<> matf(1,0.3);
     // variable mat = A.getCoeff(matf, G);
@@ -134,15 +210,15 @@ int main(int argc, char *argv[])
                   		  0          	 , 0         , (1-nu)/2
      */
 
-    bool bl_plane_stress = True;
+    bool bl_plane_stress = true;
 
     real_t E = 1;
     real_t nu = 0.3;
 
+    gsMatrix<> C(3,3);
     if (bl_plane_stress)
     {
        real_t mm_factor = E/(1-pow(nu,2));
-       gsMatrix<> C(3,3);
        C.row(0)<<mm_factor   , mm_factor*nu  ,0;
        C.row(1)<<mm_factor*nu, mm_factor     ,0;
        C.row(2)<<0           , 0             ,mm_factor*((1-nu)/2);
@@ -153,12 +229,13 @@ int main(int argc, char *argv[])
     gsConstantFunction<> Cfun(C,2);
     variable mat = A.getCoeff(Cfun, G);
 
-    //gsInfo<<ev.eval(reshape(mat,3,3),pt)<<"\n";
+    gsInfo<<ev.eval(reshape(mat,3,3),pt)<<"\n";
 
-    //space v = A.getSpace(dbasis,2);
+    space v = A.getSpace(dbasis,2);
 
 
-    //gsInfo<<ev.eval(v,pt)<<"\n";
+    gsInfo<<ev.eval(v,pt)<<"\n";
+    gsInfo<<ev.eval(B(v),pt)<<"\n";
 
 
     //gsInfo<<ev.eval(jac(v).tr()*jac(v),pt)<<"\n";
@@ -168,16 +245,16 @@ int main(int argc, char *argv[])
      			   K = B^T D B
 
        
- 				N_1,x , 0 
-       2D Case:		B_i = 	0, N_1,y	, with i being shape function index
-    				N_1,y , N_1,x
+ 				           N_1,x,  0
+       2D Case:		B_i =  0,      N_1,y	, with i being shape function index
+    				       N_1,y,  N_1,x
 
 
        assembly of B-matrix for multiple trial functions
 	
-		N_1,x , 0 	N_2,x , 0
-	B = 	0 , N_1,y	0 , N_2,y	...
-    		N_1,y , N_1,x 	N_2,y , N_2,x
+		    N_1,x , 0 	   | N_2,x,   0
+	B = 	0     , N_1,y  | 0,       N_2,y	...
+    		N_1,y , N_1,x  | N_2,y,   N_2,x
 
        this should probably go into an _expr as in kirchhoff-love example.
 
