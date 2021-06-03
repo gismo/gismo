@@ -93,6 +93,8 @@ template<class E> class sqNorm_expr;
 template<class E> class det_expr;
 template<class E> class value_expr;
 template<class E> class asdiag_expr;
+template<class E> class rowsum_expr;
+template<class E> class colsum_expr;
 template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
@@ -232,6 +234,14 @@ public:
     /// Returns a diagonal matrix expression of the vector expression
     asdiag_expr<E> asDiag() const
     { return asdiag_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the rowSum of a matrix
+    rowsum_expr<E> rowSum() const
+    { return rowsum_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the colSum of a matrix
+    colsum_expr<E> colSum() const
+    { return colsum_expr<E>(static_cast<E const&>(*this)); }
 
     col_expr<E> operator[](const index_t i) const
     { return col_expr<E>(static_cast<E const&>(*this),i); }
@@ -1723,6 +1733,88 @@ public:
 template <typename E> EIGEN_STRONG_INLINE
 flat_expr<E> const flat(E const & u)
 { return flat_expr<E>(u); }
+
+
+/// Takes the row-sum of a matrix expression
+template<class E>
+class rowsum_expr  : public _expr<rowsum_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E::Space};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> tmp;
+
+public:
+
+    rowsum_expr(_expr<E> const& u) : _u(u)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        tmp = _u.eval(k).rowwise().sum();
+        return tmp;
+    }
+
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return 1; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
+
+    void print(std::ostream &os) const { os << "rowsum("; _u.print(os); os<<")"; }
+};
+
+/// Takes the column-sum of a matrix or vector expression
+template<class E>
+class colsum_expr  : public _expr<colsum_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E::Space};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> tmp;
+
+public:
+
+    colsum_expr(_expr<E> const& u) : _u(u)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        tmp = _u.eval(k).colwise().sum();
+        return tmp;
+    }
+
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return 1; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    enum{rowSpan = E::rowSpan, colSpan = E::colSpan};
+
+    void print(std::ostream &os) const { os << "colsum("; _u.print(os); os<<")"; }
+};
+
 
 /*
    Expression for the diagonal(s) of a (matrix) expression
