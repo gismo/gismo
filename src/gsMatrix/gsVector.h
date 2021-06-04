@@ -159,10 +159,18 @@ public:
 #endif
 
     /// \brief Returns the \a i-th element of the vector
-    inline T at(index_t i) const { return *(this->data()+i);}
+    inline T at(index_t i) const
+    {
+        GISMO_ASSERT(i<this->size(), "Access invalid position "<<i<<" of gsVector of size "<<this->size());
+        return *(this->data()+i);
+    }
 
     /// \brief Returns the \a i-th element of the vector
-    inline T & at(index_t i)     { return *(this->data()+i);}
+    inline T & at(index_t i)
+    {
+        GISMO_ASSERT(i<this->size(), "Access invalid position "<<i<<" of gsVector of size "<<this->size());
+        return *(this->data()+i);
+    }
 
     /// \brief Returns the last (bottom) element of the vector
     inline T last() const { return *(this->data()+this->size()-1);}
