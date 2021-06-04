@@ -508,7 +508,7 @@ private:
 
 
         // evaluate the geometry map of U
-        tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
+        tmp = _u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second);
         vEv = _v.eval(k);
         res = vEv * tmp.transpose();
         return res;
@@ -524,14 +524,14 @@ private:
             hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form
             [hess(v_1)*n_1 .., hess(v_2)*n_2 .., hess(v_3)*n_3 ..]. Here, the dots .. represent the active basis functions.
         */
-        const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
-        const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
-        res.resize(rows()*cardinality, cols() );
-        tmp.transpose() =_u.data().values[2].reshapeCol(k, cols(), numAct );
+        const index_t numAct = u.data().values[0].rows(); // number of actives of a basis function
+        const index_t cardinality = u.cardinality();      // total number of actives (=3*numAct)
+        res.resize(rows() * cardinality, cols());
+        tmp.transpose() = _u.data().values[2].reshapeCol(k, cols(), numAct);
         vEv = _v.eval(k);
 
-        for (index_t i = 0; i!=_u.dim(); i++)
-            res.block(i*numAct, 0, numAct, cols() ) = tmp * vEv.at(i);
+        for (index_t i = 0; i != _u.dim(); i++)
+            res.block(i * numAct, 0, numAct, cols()) = tmp * vEv.at(i);
 
         return res;
     }
@@ -551,12 +551,12 @@ private:
         */
 
         gsMatrix<> tmp2;
-        tmp =  u.data().values[2].col(k);
+        tmp = u.data().values[2].col(k);
         index_t nDers = _u.source().domainDim() * (_u.source().domainDim() + 1) / 2;
         index_t dim = _u.source().targetDim();
-        tmp2.resize(nDers,dim);
+        tmp2.resize(nDers, dim);
         for (index_t comp = 0; comp != u.source().targetDim(); comp++)
-            tmp2.col(comp) = tmp.block(comp*nDers,0,nDers,1); //star,length
+            tmp2.col(comp) = tmp.block(comp * nDers, 0, nDers, 1); //star,length
 
         vEv = _v.eval(k);
         res = vEv * tmp2.transpose();
@@ -1951,25 +1951,19 @@ int main(int argc, char *argv[])
     gsMultiBasis<> basisH = basisL;
     basisH.degreeElevate(1);
 
-    // gsInfo<<"Basis Primal: "<<basisL.basis(0)<<"\n";
-    // gsInfo<<"Basis Dual:   "<<basisH.basis(0)<<"\n";
+    gsInfo<<"Basis Primal: "<<basisL.basis(0)<<"\n";
+    gsInfo<<"Basis Dual:   "<<basisH.basis(0)<<"\n";
 
     gsBoundaryConditions<> bc;
     bc.setGeoMap(mp);
     gsVector<> tmp(3);
     tmp << 0, 0, 0;
 
-    gsVector<> neu(3);
-    neu << 0, 0, 0;
-
-    gsFunctionExpr<> displ("1",3);
     real_t load = 1.0;
     real_t D = E_modulus * math::pow(thickness,3) / ( 12 * ( 1- math::pow(PoissonRatio,2) ) );
 
     gsFunctionExpr<> u_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += -16.0 * " + std::to_string(load) + " / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
     gsFunctionExpr<> z_ex( "0","0","w:= 0; for (u := 1; u < 100; u += 2) { for (v := 1; v < 100; v += 2) { w += 16.0 * 1 / ( pi^6*" + std::to_string(D) + " ) * 1 / (v * u * ( v^2 + u^2 )^2 ) * sin( v * pi * x) * sin(u * pi * y) } }",3);
-
-    gsConstantFunction<> neuData(neu,3);
 
     for (index_t i=0; i!=3; ++i)
     {
@@ -2228,8 +2222,6 @@ int main(int argc, char *argv[])
         solVectorL = solVectorDualL = eigSolver.eigenvectors().col(modeIdx);
         real_t eigvalL,dualvalL;
         eigvalL = dualvalL = eigSolver.eigenvalues()[modeIdx];
-        uL_sol.extract(uL2_mp);
-        zL_sol.extract(zL2_mp);
 
         // Deform mps
         gsMatrix<> cc;
@@ -2251,7 +2243,6 @@ int main(int argc, char *argv[])
         gsDebugVar(math::sqrt(eigSolver.eigenvalues()[modeIdx]));
         solVectorDualH = eigSolver.eigenvectors().col(modeIdx);
         real_t dualvalH = eigSolver.eigenvalues()[modeIdx];
-        zH_sol.extract(zH2_mp);
 
         for ( size_t k =0; k!=mp.nPatches(); ++k) // Deform the geometry
         {
@@ -2271,17 +2262,24 @@ int main(int argc, char *argv[])
 
 
         auto massL_sol  = rhoL.val() * ttL.val() * (uL_sol.tr() * uL_sol);
-        auto massL2_sol = rhoL.val() * ttL.val() * (zL_sol.tr() * zL_sol);
-        auto massH_sol  = rhoH.val() *ttH.val() * (zH_sol.tr() * zH_sol);
+        auto massL2_sol = rhoL.val() * ttL.val() * (uL_sol.tr() * zL_sol);
+        auto massH_sol  = rhoH.val() *ttH.val() * (uL2.tr() * zH_sol);
 
         // Normalize the mode shapes according to M(phi_h,phi_h)=1
         real_t ampl;
         ampl = evL.integral(massL_sol * meas(mapL));
-        solVectorL      *= 1. / ampl;
-        solVectorDualL  *= 1. / ampl;
+        solVectorL      = solVectorL / ampl;
+        gsDebugVar(ampl);
+        solVectorDualL  = solVectorDualL / ampl;
+        gsDebugVar(ampl);
 
         ampl = evH.integral(massH_sol*meas(mapH));
-        solVectorDualH  *= 1. / ampl;
+        gsDebugVar(ampl);
+        solVectorDualH  = solVectorDualH / ampl;
+
+        uL_sol.extract(uL2_mp);
+        zL_sol.extract(zL2_mp);
+        zH_sol.extract(zH2_mp);
 
         /*
             // CHECK NORMALIZATION
@@ -2315,6 +2313,18 @@ int main(int argc, char *argv[])
         auto mass2  = rhoL.val() *ttL.val() * (uL_sol.tr() * uL_sol);
 
         auto Fint = ( N_der * E_m_der.tr() - M_der * E_f_der.tr() );
+
+        gsVector<> pt(2);
+        pt.setConstant(0.25);
+
+        gsDebug << evL.eval(mapL.tr(), pt) << "\n";
+        gsDebug << evL.eval(defL.tr(), pt) << "\n";
+        gsDebug << evL.eval(zL_sol.tr(), pt) << "\n";
+        gsDebug << evL.eval(zH2.tr(), pt) << "\n";
+        gsDebug << evL.eval(N_der, pt) << "\n";
+        gsDebug << evL.eval(M_der, pt) << "\n";
+        gsDebug << evL.eval(Fint, pt) << "\n";
+        gsDebug << evL.eval(Fint * meas(mapL), pt) << "\n";
 
         gsInfo<<"Fint_m = "<<evL.integral(( N_der * E_m_der.tr() ) * meas(mapL) )<<"\n";
         gsInfo<<"Fint_f = "<<evL.integral(( M_der * E_f_der.tr() ) * meas(mapL) )<<"\n";

@@ -2115,6 +2115,15 @@ int main(int argc, char *argv[])
         uL_sol.extract(uH2_mp);
         gsInfo << "done." << " --> ";
 
+        gsVector<> pt(2);
+        pt.setConstant(0.25);
+        gsDebug<<evL.eval(defL,pt);
+        gsDebug<<evL.eval(E_m_derL,pt);
+        gsDebug<<evL.eval(E_f_derL,pt);
+        gsDebug<<evL.eval(E_m_derL * reshape(mmL,3,3),pt);
+        gsDebug<<evL.eval(N_derL,pt);
+        gsDebug<<evL.eval(N_derL * gismo::expr::uv(0,3) * meas(mapL) ,pt);
+
         // Assemble matrix and rhs
         exL.initSystem(false);
         exL.assemble( ( N_derL * E_m_derL.tr() + E_m_der2_L + M_derL * E_f_derL.tr() - E_f_der2_L ) * meas(mapL) );
@@ -2129,8 +2138,14 @@ int main(int argc, char *argv[])
             exL.assemble( 2 * E_m_derL * E_mL.tr() * meas(mapL) );
         else if (goal == 4)
             exL.assemble( S_m_derL * gismo::expr::uv(0,3) * meas(mapL) );
+        else if (goal == 5)
+            exL.assemble( N_derL * gismo::expr::uv(0,3) * meas(mapL) );
+            // exL.assemble( N_derL * gismo::expr::uv(0,3) * meas(mapL) );
+        else if (goal == 6)
+            exL.assemble( 2 * E_f_derL * E_fL.tr() * meas(mapL) );
+        else if (goal == 7)
+            exL.assemble( E_f_derL * gismo::expr::uv(0,3) * meas(mapL) );
         gsInfo << "done." << "\n";
-
 
         // Solve system
         gsInfo << "Solving dual (low), size = "<<exL.matrix().rows()<<","<<exL.matrix().cols()<<"... "<< std::flush;
@@ -2140,6 +2155,9 @@ int main(int argc, char *argv[])
         solVectorDualL = solver.solve(exL.rhs());
         // gsDebugVar(exL.rhs().transpose());
         // gsDebugVar(exL.matrix().toDense());
+
+        gsDebugVar(exL.rhs());
+        gsDebugVar(solVectorDualL);
 
         zL_sol.setSolutionVector(solVectorDualL);
         zL_sol.extract(zL2_mp);
@@ -2159,6 +2177,12 @@ int main(int argc, char *argv[])
             exH.assemble( 2*E_m_derH * E_mH.tr() * meas(mapH) );
         else if (goal == 4)
             exH.assemble( S_m_derH * gismo::expr::uv(0,3) * meas(mapH) );
+        else if (goal == 5)
+            exH.assemble( N_derH * gismo::expr::uv(0,3) * meas(mapH) );
+        else if (goal == 6)
+            exL.assemble( 2 * E_f_derL * E_fL.tr() * meas(mapL) );
+        else if (goal == 7)
+            exL.assemble( E_f_derL * gismo::expr::uv(0,3) * meas(mapL) );
 
         gsInfo << "done." << "\n";
 
@@ -2169,6 +2193,9 @@ int main(int argc, char *argv[])
         solver.compute(matrixH);
         solVectorDualH = solver.solve(exH.rhs());
         // gsDebugVar(exH.matrix().toDense());
+
+        gsDebugVar(exH.rhs());
+        gsDebugVar(solVectorDualH);
 
         zH_sol.setSolutionVector(solVectorDualH);
         zH_sol.extract(zH2_mp);
@@ -2203,11 +2230,26 @@ int main(int argc, char *argv[])
         auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
         auto S_mG = E_mG * reshape(mmRef,3,3);
         auto S_fG = E_fG * reshape(mmRef,3,3);
+        auto N_G = ttL.val() * S_mG;
+        auto M_G = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_fG;
 
         real_t fint_m = evL.integral(( N * E_m_der.tr() ) * meas(mapL) );
         real_t fint_f = evL.integral(( M * E_f_der.tr() ) * meas(mapL) );
         real_t fint = fint_m - fint_f;
         real_t fext = evL.integral( Fext  );
+
+        // gsVector<> pt(2);
+        // pt.setConstant(0.25);
+        gsDebug<<evL.eval(mapL.tr(),pt)<<"\n";
+        gsDebug<<evL.eval(defL.tr(),pt)<<"\n";
+        gsDebug<<evL.eval(zL_sol.tr(),pt)<<"\n";
+        gsDebug<<evL.eval(zH2.tr(),pt)<<"\n";
+
+        gsDebug<<evL.eval(N.tr(),pt)<<"\n";
+        gsDebug<<evL.eval(M.tr(),pt)<<"\n";
+
+        gsDebug<<evL.eval(E_m_der.tr(),pt)<<"\n";
+        gsDebug<<evL.eval(E_f_der.tr(),pt)<<"\n";
 
         gsInfo<<"Fint_m = "<<fint_m<<"\n";
         gsInfo<<"Fint_f = "<<fint_f<<"\n";
@@ -2227,7 +2269,12 @@ int main(int argc, char *argv[])
             exact = evRef.integral(E_mG * E_mG.tr() *meas(mapRef) ) - evL.integral(E_m * E_m.tr() *meas(mapL) );
         else if (goal==4)
             exact = evRef.integral(S_mG * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(S_m * gismo::expr::uv(0,3)*meas(mapL) );
-
+        else if (goal==5)
+            exact = evRef.integral(N_G * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(N * gismo::expr::uv(0,3)*meas(mapL) );
+        else if (goal==6)
+            exact = evRef.integral(E_fG * gismo::expr::uv(0,3) *meas(mapRef) ) - evL.integral(E_f * gismo::expr::uv(0,3) *meas(mapL) );
+        else if (goal==7)
+            exact = evRef.integral(E_fG * E_fG.tr() *meas(mapRef) ) - evL.integral(E_f * E_f.tr() *meas(mapL) );
 
         gsInfo<<"Exact = "<<exact<<"\n";
         gsInfo<<"Efficiency = "<<approx/exact<<"\n";
