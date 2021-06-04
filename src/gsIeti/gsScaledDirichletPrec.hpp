@@ -177,8 +177,7 @@ void gsScaledDirichletPrec<T>::setupCoefficientScaling(const gsVector<T>& coef)
 {
     const index_t pnr = m_jumpMatrices.size();
 
-    gsVector<T> tmp(m_jumpMatrices[0]->rows());
-    tmp.setZero();
+    gsMatrix<index_t> local_patches = gsMatrix<index_t>::Constant( m_jumpMatrices[0]->rows(), 2, -1 );
     for (index_t k=0; k<pnr; ++k)
     {
         JumpMatrix & jm = *(m_jumpMatrices[k]);
@@ -187,8 +186,11 @@ void gsScaledDirichletPrec<T>::setupCoefficientScaling(const gsVector<T>& coef)
             for (typename JumpMatrix::InnerIterator it(jm, i); it; ++it)
             {
                 const index_t r = it.row();
-                tmp[r] += coef[k]; // TODO: Here, we stor both values on one field,
-                                   // which might not be the smartest idea.
+                GISMO_ASSERT ( local_patches(r,1)==-1, "Internal error." );
+                if (local_patches(r,0)==-1)
+                    local_patches(r,0)=k;
+                else //(local_patches(r,1)==-1)
+                    local_patches(r,1)=k;
             }
         }
     }
@@ -210,8 +212,10 @@ void gsScaledDirichletPrec<T>::setupCoefficientScaling(const gsVector<T>& coef)
             {
                 const index_t r = it.row();
                 const index_t c = it.col();
-                sc(c,0) += ( tmp[r] - coef[k] ) / coef[k] ;
-                GISMO_ENSURE( tmp[r] - coef[k] > 0, "..." );
+                const index_t other_patch_index = local_patches(r,0)==k?local_patches(r,1):local_patches(r,0);
+                GISMO_ASSERT ( other_patch_index>-1, "Internal error." );
+
+                sc(c,0) += coef[k] / coef[other_patch_index];
             }
         }
     }
