@@ -799,6 +799,7 @@ public:
 
 
 
+
 // template<class E1, class E2>
 // class hessdot_expr : public _expr<hessdot_expr<E1,E2> >
 // {
@@ -2036,6 +2037,12 @@ int main(int argc, char *argv[])
     variable mmH = exH.getCoeff(materialMat); // evaluates in the parametric domain, but the class transforms E and nu to physical
     variable mmRef = exRef.getCoeff(materialMat);
 
+    gsVector<> null(9);
+    null.setZero();
+    gsConstantFunction<> nullMat(null,3);
+    variable mmNullL = exL.getCoeff(nullMat, mapL); // evaluates in the parametric domain, but the class transforms E and nu to physical
+    variable mmNullH = exH.getCoeff(nullMat, mapH); // evaluates in the parametric domain, but the class transforms E and nu to physical
+
     gsFunctionExpr<> mult2t("1","0","0","0","1","0","0","0","2",3);
     variable m2L = exL.getCoeff(mult2t, mapL); // evaluates in the physical domain
     variable m2H = exH.getCoeff(mult2t, mapH); // evaluates in the physical domain
@@ -2097,23 +2104,28 @@ int main(int argc, char *argv[])
     auto S_mL = E_mL * reshape(mmL,3,3);
     auto N_L       = ttL.val() * S_mL;
 
-    auto E_m_derL = flat( jac(defL).tr() * jac(uL) ) ; //[checked]
-    auto S_m_derL = E_m_derL * reshape(mmL,3,3);
-    auto N_derL   = ttL.val() * S_m_derL;
-
-    auto E_m_der2_L = flatdot( jac(uL),jac(uL).tr(), N_L ); //[checked]
-
     // Flexural components
     auto E_fL = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(defL,sn(defL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
     auto S_fL = E_fL * reshape(mmL,3,3);
     auto M_L   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_fL;
 
+    // Strain variations
+    auto E_m_derL = flat( jac(defL).tr() * jac(uL) ) ; //[checked]
     auto E_f_derL = ( deriv2(uL,sn(defL).normalized().tr() ) + deriv2(defL,var1(uL,defL) ) ) * reshape(m2L,3,3); //[checked]
-    auto S_f_derL = E_f_derL * reshape(mmL,3,3);
+
+    // Stress variations
+    auto S_m_derL = E_m_derL * reshape(mmL,3,3);// + E_f_derL * reshape(mmNullL,3,3);
+    auto S_f_derL = E_f_derL * reshape(mmL,3,3);// + E_m_derL * reshape(mmNullL,3,3);
+
+    // Force variations
+    auto N_derL   = ttL.val() * S_m_derL;
     auto M_derL   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f_derL;
 
+    // Second variations
+    auto E_m_der2_L = flatdot( jac(uL),jac(uL).tr(), N_L ); //[checked]
     auto E_f_der2_L = flatdot2( deriv2(uL), var1(uL,defL).tr(), M_L  ).symmetrize() + var2(uL,uL,defL, M_L );
 
+    // Force
     auto F_L        = ffL;
 
     // --------------------------------------------------Higher-order basis---------------------------------------------------------------- //
@@ -2122,23 +2134,29 @@ int main(int argc, char *argv[])
     auto S_mH = E_mH * reshape(mmH,3,3);
     auto N_H       = ttH.val() * S_mH;
 
-    auto E_m_derH = flat( jac(defH).tr() * jac(zH) ) ; //[checked]
-    auto S_m_derH = E_m_derH * reshape(mmH,3,3);
-    auto N_derH   = ttH.val() * S_m_derH;
-
-    auto E_m_der2_H = flatdot( jac(zH),jac(zH).tr(), N_H ); //[checked]
-
     // Flexural components
     auto E_fH = ( deriv2(mapH,sn(mapH).normalized().tr()) - deriv2(defH,sn(defH).normalized().tr()) ) * reshape(m2H,3,3) ; //[checked]
     auto S_fH = E_fH * reshape(mmH,3,3);
     auto M_H   = ttH.val() * ttH.val() * ttH.val() / 12.0 * S_fH;
 
+    // Strain variations
+    auto E_m_derH = flat( jac(defH).tr() * jac(zH) ) ; //[checked]
     auto E_f_derH = ( deriv2(zH,sn(defH).normalized().tr() ) + deriv2(defH,var1(zH,defH) ) ) * reshape(m2H,3,3); //[checked]
-    auto S_f_derH = E_f_derH * reshape(mmH,3,3);
+
+    // Stress variations
+    auto S_m_derH = E_m_derH * reshape(mmH,3,3);// + E_f_derH * reshape(mmNullH,3,3);
+    auto S_f_derH = E_f_derH * reshape(mmH,3,3);// + E_m_derH * reshape(mmNullH,3,3);
+
+    // Force variations
+    auto N_derH   = ttH.val() * S_m_derH;
     auto M_derH   = ttH.val() * ttH.val() * ttH.val() / 12.0 * S_f_derH;
 
-    auto E_f_der2_H = flatdot2( deriv2(zH), var1(zH,defH).tr(), M_H  ).symmetrize() + var2(zH,zH,defH, M_H );
 
+    // Second variations
+    auto E_f_der2_H = flatdot2( deriv2(zH), var1(zH,defH).tr(), M_H  ).symmetrize() + var2(zH,zH,defH, M_H );
+    auto E_m_der2_H = flatdot( jac(zH),jac(zH).tr(), N_H ); //[checked]
+
+    // Force
     auto F_H        = ffH;
 
     // ! [Solve linear problem]
@@ -2220,6 +2238,13 @@ int main(int argc, char *argv[])
             exL.assemble( 2 * E_m_derL * E_mL.tr() * meas(mapL) );
         else if (goal == 4)
             exL.assemble( S_m_derL * gismo::expr::uv(0,3) * meas(mapL) );
+        else if (goal == 5)
+            exL.assemble( N_derL * gismo::expr::uv(0,3) * meas(mapL) );
+            // exL.assemble( N_derL * gismo::expr::uv(0,3) * meas(mapL) );
+        else if (goal == 6)
+            exL.assemble( 2 * E_f_derL * E_fL.tr() * meas(mapL) );
+        else if (goal == 7)
+            exL.assemble( E_f_derL * gismo::expr::uv(0,3) * meas(mapL) );
         gsInfo << "done." << "\n";
 
         // Solve system
@@ -2237,21 +2262,19 @@ int main(int argc, char *argv[])
         gsInfo << "Assembling dual vector (high), size = "<<exH.rhs().rows()<<",1... "<< std::flush;
 
         if (goal == 1)
-            exH.assemble(
-                    zH * gismo::expr::uv(2,3) * meas(mapH)
-                );
+            exH.assemble( zH * gismo::expr::uv(2,3) * meas(mapH) );
         else if (goal == 2)
-            exH.assemble(
-                    2 * zH * uL2 * meas(mapH)
-                );
+            exH.assemble( 2 * zH * uL2 * meas(mapH) );
         else if (goal == 3)
-            exH.assemble(
-                    2*E_m_derH * E_mH.tr() * meas(mapH)
-                );
+            exH.assemble( 2*E_m_derH * E_mH.tr() * meas(mapH) );
         else if (goal == 4)
-            exH.assemble(
-                    S_m_derH * gismo::expr::uv(0,3) * meas(mapH)
-                );
+            exH.assemble( S_m_derH * gismo::expr::uv(0,3) * meas(mapH) );
+        else if (goal == 5)
+            exH.assemble( N_derH * gismo::expr::uv(0,3) * meas(mapH) );
+        else if (goal == 6)
+            exH.assemble( 2 * E_f_derH * E_fH.tr() * meas(mapH) );
+        else if (goal == 7)
+            exH.assemble( E_f_derH * gismo::expr::uv(0,3) * meas(mapH) );
 
         gsInfo << "done." << "\n";
 
@@ -2270,33 +2293,39 @@ int main(int argc, char *argv[])
         // ---------------------------------------------------------Computing DWR error estimate-------------------------------------------- //
         // --------------------------------------------------------------------------------------------------------------------------------- //
 
-        auto E_m = 0.5 * ( flat(jac(mapL).tr()*jac(mapL)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
+         // Membrane components
+        auto E_m = 0.5 * ( flat(jac(defL).tr()*jac(defL)) - flat(jac(mapL).tr()* jac(mapL)) ) ; //[checked]
         auto S_m = E_m * reshape(mmL,3,3);
         auto N   = ttL.val() * S_m;
 
-        auto E_f = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(mapL,sn(mapL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
+        // Flexural components
+        auto E_f = ( deriv2(mapL,sn(mapL).normalized().tr()) - deriv2(defL,sn(defL).normalized().tr()) ) * reshape(m2L,3,3) ; //[checked]
         auto S_f = E_f * reshape(mmL,3,3);
         auto M   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f;
 
+        // Strain variations
         auto E_m_der = flat( jac(mapL).tr() * (fjac(zH2) - jac(zL_sol)) ) ; //[checked]
-        auto S_m_der = E_m_der * reshape(mmL,3,3);
-        auto N_der   = ttL.val() * S_m_der;
-
         auto E_f_der =  ( deriv2(zH2,sn(mapL).normalized().tr() ) - deriv2(zL_sol,sn(mapL).normalized().tr() ) + deriv2(mapL,var1(zH2,mapL) ) - deriv2(mapL,var1(zL_sol,mapL) ) ) * reshape(m2L,3,3); //[checked]
-        auto S_f_der = E_f_der * reshape(mmL,3,3);
+
+        // Stress variations
+        auto S_m_der = E_m_der * reshape(mmL,3,3) + E_f_der * reshape(mmNullL,3,3);
+        auto S_f_der = E_f_der * reshape(mmL,3,3) + E_m_der * reshape(mmNullL,3,3);
+
+        // Force variations
+        auto N_der   = ttL.val() * S_m_der;
         auto M_der   = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_f_der;
 
+        auto Fint_m = ( N * E_m_der.tr() ) * meas(mapL);
+        auto Fint_f = ( M * E_f_der.tr() ) * meas(mapL);
         auto Fint = ( N * E_m_der.tr() - M * E_f_der.tr() ) * meas(mapL);
-        // auto Fint = ( ( N * E_m_der.tr() ) * meas(mapL) ).tr();
-        // auto Fint = ( ( M * E_f_der.tr() ) * meas(mapL) ).tr();
-        auto F_H        = ffL;
-
-        auto Fext = (zH2-zL_sol).tr() * F_L * meas(mapL);
+        auto Fext = ( zH2.tr() * ffL - zL_sol.tr() * ffL ) * meas(mapL);
 
         auto E_mG = 0.5 * ( flat(jac(defRef).tr()*jac(defRef)) - flat(jac(mapRef).tr()* jac(mapRef)) ) ; //[checked]
         auto E_fG = ( deriv2(mapRef,sn(mapRef).normalized().tr()) - deriv2(defRef,sn(defRef).normalized().tr()) ) * reshape(m2Ref,3,3) ; //[checked]
         auto S_mG = E_mG * reshape(mmRef,3,3);
         auto S_fG = E_fG * reshape(mmRef,3,3);
+        auto N_G = ttL.val() * S_mG;
+        auto M_G = ttL.val() * ttL.val() * ttL.val() / 12.0 * S_fG;
 
         gsVector<real_t> pt(2);
         pt.setConstant(0.5);
@@ -2319,7 +2348,6 @@ int main(int argc, char *argv[])
 
         if (goal==1)
         {
-            // exact = evL.integral((primal_exL-uL_sol).tr() * gismo::expr::uv(2,3)*meas(mapL));
             exact = evRef.integral((defRef-mapRef).tr() * gismo::expr::uv(2,3)*meas(mapRef)) - evL.integral((defL-mapL).tr() * gismo::expr::uv(2,3)*meas(mapL));
         }
         else if (goal==2)
@@ -2338,12 +2366,27 @@ int main(int argc, char *argv[])
         {
             exact = evRef.integral(S_mG * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(S_m * gismo::expr::uv(0,3)*meas(mapL) );
         }
+        else if (goal==5)
+        {
+            exact = evRef.integral(N_G * gismo::expr::uv(0,3)*meas(mapRef) ) - evL.integral(N * gismo::expr::uv(0,3)*meas(mapL) );
+        }
+        else if (goal==6)
+        {
+            exact = evRef.integral(E_fG * E_fG.tr() *meas(mapRef) ) - evL.integral(E_f * E_f.tr() *meas(mapL) );
+        }
+        else if (goal==7)
+        {
+            gsDebugVar(evRef.integral(E_fG * gismo::expr::uv(0,3) *meas(mapRef) ));
+            gsDebugVar(evL.integral(E_f * gismo::expr::uv(0,3) *meas(mapL)));
+            exact = evRef.integral(E_fG * gismo::expr::uv(0,3) *meas(mapRef) ) - evL.integral(E_f * gismo::expr::uv(0,3) *meas(mapL) );
+        }
+
 
 
         // gsDebug<<evL.integral(((primal_exL).tr() * gismo::expr::uv(2,3))*meas(mapL))<<"\n";
+        gsInfo<<"Approx = "<<approx<<"\n";
         gsInfo<<"Exact = "<<exact<<"\n";
         gsInfo<<"Efficiency = "<<approx/exact<<"\n";
-
 
         // auto dzW1 = (zH2-zL_sol).asDiag() * jac(uL);
         // auto dzW2 = uL.tr().asDiag() * (fjac(zH2).tr() - jac(zL_sol)) ;
@@ -2449,6 +2492,7 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
+        gsInfo<<"Plotting in Paraview...\n";
         gsMatrix<> cc;
         uL_sol.setSolutionVector(solVectorL);
         mp_def = mp;
@@ -2465,10 +2509,8 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( mp_ex , "mp_ex" , 1000, true);
 
         gsField<> solField(mp, deformation);
-        gsInfo<<"Plotting in Paraview...\n";
         gsWriteParaview<>( solField, "solution", 1000, true);
 
-        gsInfo<<"Plotting in Paraview...\n";
         evL.options().setSwitch("plot.elements", true);
         evH.options().setSwitch("plot.elements", true);
         evL.writeParaview( defL-mapL   , mapL, "solution_primalL");
@@ -2483,6 +2525,13 @@ int main(int argc, char *argv[])
 
 
         // gsFileManager::open("solution.pvd");
+
+        gsField<> u_exField(mp, u_ex);
+        gsWriteParaview<>( u_exField, "u_ex", 1000, true);
+
+        gsField<> z_exField(mp, z_ex);
+        gsWriteParaview<>( z_exField, "z_ex", 1000, true);
+
     }
 
     return EXIT_SUCCESS;
