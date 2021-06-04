@@ -32,7 +32,8 @@ int main(int argc, char *argv[])
     index_t refinements = 1;
     index_t degree = 2;
     index_t reduceContinuity = 0;
-    real_t checkerboard = 1;
+    std::string heterogenousProblem("");
+    real_t heterogenousCoef = 0;
     std::string boundaryConditions("d");
     std::string primals("c");
     bool eliminateCorners = false;
@@ -49,7 +50,8 @@ int main(int argc, char *argv[])
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("",  "ReduceContinuity",      "Reduce the smoothness by adding that many repetitions of knots", reduceContinuity);
-    cmd.addReal  ("",  "Checkerboard",          "", checkerboard); //TODO
+    cmd.addString("",  "HeterogenousProblem",   "Consider a heterogenous problem (a: checkerboard, b: modify only patch #0)", heterogenousProblem);
+    cmd.addReal  ("",  "HeterogenousCoef",      "Coefficient to be considered for heterogenous problem", heterogenousCoef);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addSwitch("e", "EliminateCorners",      "Eliminate corners (if they are primals)", eliminateCorners);
@@ -157,29 +159,51 @@ int main(int argc, char *argv[])
     /***************** Setup of coefficients ****************/
     const index_t nPatches = mp.nPatches();
 
-    if (checkerboard<1)
-    {
-        gsInfo << "The parameter checkerboard must be greater than or equal 1.\n";
-        return EXIT_FAILURE;
-    }
-
-    // TODO checkerboard=1
     gsVector<real_t> coef(nPatches);
-    coef.setZero();
-    coef[0] = 1.;
-    for( bool allCorrect = false; !allCorrect; )
+    coef.setOnes();
+    if (heterogenousProblem == "a")
     {
-        allCorrect = true;
-        for (gsMultiPatch<>::iiterator it = mp.iBegin(); it<mp.iEnd(); ++it)
+        if (heterogenousCoef <= 0)
         {
-            const index_t first  = it->first().patch;
-            const index_t second = it->second().patch;
-            if      (coef[first]  == 1  )            coef[second] = checkerboard;
-            else if (coef[first]  == checkerboard)   coef[second] = 1;
-            else if (coef[second] == 1  )            coef[first]  = checkerboard;
-            else if (coef[second] == checkerboard)   coef[first]  = 1;
-            else    allCorrect = false;
+            gsInfo << "Set --HeterogenousCoef to a non-negative value.\n";
+            return EXIT_FAILURE;
         }
+        for( bool allCorrect = false; !allCorrect; )
+        {
+            allCorrect = true;
+            for (gsMultiPatch<>::iiterator it = mp.iBegin(); it<mp.iEnd(); ++it)
+            {
+                const index_t first  = it->first().patch;
+                const index_t second = it->second().patch;
+                if      (coef[first]  == 1  )               coef[second] = heterogenousCoef;
+                else if (coef[first]  == heterogenousCoef)  coef[second] = 1;
+                else if (coef[second] == 1  )               coef[first]  = heterogenousCoef;
+                else if (coef[second] == heterogenousCoef)  coef[first]  = 1;
+                else    allCorrect = false;
+            }
+        }
+    }
+    else if (heterogenousProblem == "b")
+    {
+        if (heterogenousCoef <= 0)
+        {
+            gsInfo << "Set --HeterogenousCoef to a non-negative value.\n";
+            return EXIT_FAILURE;
+        }
+        coef[0] = heterogenousCoef;
+    }
+    else if (heterogenousProblem.empty())
+    {
+        if (heterogenousCoef != 0)
+        {
+            gsInfo << "Option --HeterogenousCoef has no effect if --HeterogenousProblem is not set.\n";
+            return EXIT_FAILURE;
+        }
+    }
+    else
+    {
+        gsInfo << "Option --HeterogenousProblem has invalid value; allowed are only a and b.\n";
+        return EXIT_FAILURE;
     }
 
     /************ Setup bases and adjust degree *************/
@@ -396,8 +420,10 @@ int main(int argc, char *argv[])
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
-    //prec.setupMultiplicityScaling();
-    prec.setupCoefficientScaling(coef);
+    if (heterogenousProblem.empty())
+        prec.setupMultiplicityScaling();
+    else
+        prec.setupCoefficientScaling(coef);
     //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
