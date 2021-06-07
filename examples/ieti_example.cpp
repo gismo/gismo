@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
     index_t refinements = 1;
     index_t degree = 2;
     index_t reduceContinuity = 0;
-    std::string heterogenousProblem("");
-    real_t heterogenousCoef = 0;
+    std::string heterogeneousProblem("");
+    real_t heterogeneousCoef = 0;
     std::string boundaryConditions("d");
     std::string primals("c");
     bool eliminateCorners = false;
@@ -50,8 +50,8 @@ int main(int argc, char *argv[])
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addInt   ("",  "ReduceContinuity",      "Reduce the smoothness by adding that many repetitions of knots", reduceContinuity);
-    cmd.addString("",  "HeterogenousProblem",   "Consider a heterogenous problem (a: checkerboard, b: modify only patch #0)", heterogenousProblem);
-    cmd.addReal  ("",  "HeterogenousCoef",      "Coefficient to be considered for heterogenous problem", heterogenousCoef);
+    cmd.addString("",  "HeterogeneousProblem",   "Consider a heterogeneous problem (a: checkerboard, b: modify only patch #0)", heterogeneousProblem);
+    cmd.addReal  ("",  "HeterogeneousCoef",      "Coefficient to be considered for heterogeneous problem", heterogeneousCoef);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addSwitch("e", "EliminateCorners",      "Eliminate corners (if they are primals)", eliminateCorners);
@@ -161,11 +161,11 @@ int main(int argc, char *argv[])
 
     gsVector<real_t> coef(nPatches);
     coef.setOnes();
-    if (heterogenousProblem == "a")
+    if (heterogeneousProblem == "a")
     {
-        if (heterogenousCoef <= 0)
+        if (heterogeneousCoef <= 0)
         {
-            gsInfo << "Set --HeterogenousCoef to a non-negative value.\n";
+            gsInfo << "Set --HeterogeneousCoef to a non-negative value.\n";
             return EXIT_FAILURE;
         }
         for( bool allCorrect = false; !allCorrect; )
@@ -175,34 +175,34 @@ int main(int argc, char *argv[])
             {
                 const index_t first  = it->first().patch;
                 const index_t second = it->second().patch;
-                if      (coef[first]  == 1  )               coef[second] = heterogenousCoef;
-                else if (coef[first]  == heterogenousCoef)  coef[second] = 1;
-                else if (coef[second] == 1  )               coef[first]  = heterogenousCoef;
-                else if (coef[second] == heterogenousCoef)  coef[first]  = 1;
+                if      (coef[first]  == 1  )               coef[second] = heterogeneousCoef;
+                else if (coef[first]  == heterogeneousCoef) coef[second] = 1;
+                else if (coef[second] == 1  )               coef[first]  = heterogeneousCoef;
+                else if (coef[second] == heterogeneousCoef) coef[first]  = 1;
                 else    allCorrect = false;
             }
         }
     }
-    else if (heterogenousProblem == "b")
+    else if (heterogeneousProblem == "b")
     {
-        if (heterogenousCoef <= 0)
+        if (heterogeneousCoef <= 0)
         {
-            gsInfo << "Set --HeterogenousCoef to a non-negative value.\n";
+            gsInfo << "Set --HeterogeneousCoef to a non-negative value.\n";
             return EXIT_FAILURE;
         }
-        coef[0] = heterogenousCoef;
+        coef[0] = heterogeneousCoef;
     }
-    else if (heterogenousProblem.empty())
+    else if (heterogeneousProblem.empty())
     {
-        if (heterogenousCoef != 0)
+        if (heterogeneousCoef != 0)
         {
-            gsInfo << "Option --HeterogenousCoef has no effect if --HeterogenousProblem is not set.\n";
+            gsInfo << "Option --HeterogeneousCoef has no effect if --HeterogeneousProblem is not set.\n";
             return EXIT_FAILURE;
         }
     }
     else
     {
-        gsInfo << "Option --HeterogenousProblem has invalid value; allowed are only a and b.\n";
+        gsInfo << "Option --HeterogeneousProblem has invalid value; allowed are only a and b.\n";
         return EXIT_FAILURE;
     }
 
@@ -420,7 +420,7 @@ int main(int argc, char *argv[])
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
-    if (heterogenousProblem.empty())
+    if (heterogeneousProblem.empty())
         prec.setupMultiplicityScaling();
     else
         prec.setupCoefficientScaling(coef);
