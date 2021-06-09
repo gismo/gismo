@@ -37,7 +37,7 @@ namespace gismo
     not implemented).
 */
 template <class T, class bhVisitor = gsVisitorG1Biharmonic<T> >
-class gsG1BiharmonicAssembler : public gsAssembler<T>
+class gsBiharmonicArgyrisAssembler : public gsAssembler<T>
 {
 public:
     typedef gsAssembler<T> Base;
@@ -58,7 +58,7 @@ public:
     \param[in] dirStrategy option for the treatment of Dirichlet boundary in the \em bconditions object.
     \param[in] intStrategy option for the treatment of patch interfaces
 */
-    gsG1BiharmonicAssembler( gsMultiPatch<T> const         & patches,
+    gsBiharmonicArgyrisAssembler( gsMultiPatch<T> const         & patches,
                            gsMappedBasis<2,T> const         & bases,
                            gsBoundaryConditions<T> const & bconditions,
                            gsBoundaryConditions<T> const & bconditions2,
@@ -113,7 +113,7 @@ protected:
 };
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
 {
     // We use predefined helper which initializes the system matrix
     // rows and columns using the same test and trial space
@@ -295,7 +295,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::refresh()
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::assemble()
 {
     GISMO_ASSERT(m_system.initialized(), "Sparse system is not initialized, call refresh()");
 
@@ -337,7 +337,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::assemble()
 
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::push()
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::push()
 {
     for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
     {
@@ -348,7 +348,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::push()
 }
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::push(const bcContainer & BCs)
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::push(const bcContainer & BCs)
 {
     for (typename bcContainer::const_iterator it
          = BCs.begin(); it!= BCs.end(); ++it)
@@ -361,7 +361,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::push(const bcContainer & BCs)
 
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::apply(bhVisitor & visitor, size_t patchIndex, boxSide side)
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::apply(bhVisitor & visitor, size_t patchIndex, boxSide side)
 {
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
 
@@ -416,7 +416,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::apply(bhVisitor & visitor, size_t pat
 } // apply
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::apply(gsVisitorLaplaceBiharmonic<T> & visitor, size_t patchIndex, boxSide side)
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::apply(gsVisitorLaplaceBiharmonic<T> & visitor, size_t patchIndex, boxSide side)
 {
     //gsDebug<< "Apply to patch "<< patchIndex <<"("<< side <<")\n";
 
@@ -472,7 +472,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::apply(gsVisitorLaplaceBiharmonic<T> &
 
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T>& solVector,
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T>& solVector,
                                        gsMatrix<T>& result, short_t unk) const
 {
     // we might need to get a result even without having the system ..
@@ -522,7 +522,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::constructSolution(const gsMatrix<T>& 
 } // constructSolution
 
 template <class T, class bhVisitor>
-void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const short_t unk_)
+void gsBiharmonicArgyrisAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(const short_t unk_)
 {
     const gsDofMapper & mapper = m_system.colMapper(unk_);
     m_ddof.resize(m_system.numUnknowns());

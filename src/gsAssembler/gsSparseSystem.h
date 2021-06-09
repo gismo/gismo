@@ -1009,6 +1009,47 @@ public: /* Add local contributions to system matrix and right-hand side */
             }
         }
     }
+    // Pascal
+    void pushWithTagged(const gsMatrix<T> & localMat,
+                        const gsMatrix<T> & localRhs,
+                        const gsMatrix<index_t> & actives,
+                        const gsMatrix<T> & eliminatedDofs,
+                        const size_t r = 0, const size_t c = 0)
+    {
+        const index_t numActive = actives.rows();
+        const gsDofMapper & rowMap = m_mappers[m_row.at(r)];
+
+        GISMO_ASSERT( &rowMap == &m_mappers[m_col.at(c)], "Error");
+        GISMO_ASSERT( m_matrix.cols() == m_rhs.rows(), "gsSparseSystem is not allocated");
+        //Assert eliminatedDofs.rows() == rowMap.boundarySize()
+
+        for (index_t i = 0; i != numActive; ++i)
+        {
+            const int ii =  m_rstr.at(r) + actives(i);
+            if ( rowMap.is_free_index(actives.at(i)) )
+            {
+                m_rhs.row(ii) += localRhs.row(i);
+
+                for (index_t j = 0; j < numActive; ++j)
+                {
+                    const int jj =  m_cstr.at(c) + actives(j);
+                    if ( rowMap.is_free_index(actives.at(j)) )
+                    {
+                        // If matrix is symmetric, we store only lower
+                        // triangular part
+                        if ( (!symm) || jj <= ii )
+                            m_matrix.coeffRef(ii, jj) += localMat(i, j);
+                    }
+                    else if ( rowMap.is_boundary_index(jj) && rowMap.is_tagged_index(jj) == false ) // Fixed DoF?
+                    {
+                        m_rhs.row(ii).noalias() -= localMat(i, j) *
+                                                   eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
+                    }
+                }
+            }
+        }
+    }
+
 
     /**
      * @brief push pushes the local system matrix and rhs for an element to the global system,

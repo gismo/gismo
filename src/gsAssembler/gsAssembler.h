@@ -30,7 +30,8 @@
 #include <gsAssembler/gsSparseSystem.h>
 #include <gsAssembler/gsRemapInterface.h>
 
-
+// Pascal
+# include <gsG1Basis/gsG1MultiBasis.h>
 
 namespace gismo
 {
@@ -442,6 +443,19 @@ public: /* Element visitors */
              = BCs.begin(); it!= BCs.end(); ++it)
         {
             BElementVisitor visitor(*m_pde_ptr, *it);
+            //Assemble (fill m_matrix and m_rhs) contribution from this BC
+            apply(visitor, it->patch(), it->side());
+        }
+    }
+
+    // Pascal: for biharmonic
+    template<class BElementVisitor>
+    void push(const bcContainer & BCs, gsG1MultiBasis<T> & g1MultiBasis)
+    {
+        for (typename bcContainer::const_iterator it
+                = BCs.begin(); it!= BCs.end(); ++it)
+        {
+            BElementVisitor visitor(*m_pde_ptr, *it, g1MultiBasis);
             //Assemble (fill m_matrix and m_rhs) contribution from this BC
             apply(visitor, it->patch(), it->side());
         }

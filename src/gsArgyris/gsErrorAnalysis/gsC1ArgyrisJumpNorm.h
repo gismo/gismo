@@ -239,7 +239,7 @@ protected:
 
 protected:
     gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true
-    gsMatrix<T> f1ders, f1ders2, f2ders, f2ders2;
+    gsMatrix<T> f1ders, f2ders;
     gsMapData<T> md_L, md_R;
 
 };

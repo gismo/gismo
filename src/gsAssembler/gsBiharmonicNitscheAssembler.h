@@ -152,28 +152,7 @@ namespace gismo
         gsSparseMatrix<> matrix_B = m_system.matrix();
         m_system_stab = m_system;
         m_system_stab.setZero();
-        pushInterface();
-        gsSparseMatrix<> matrix_A = m_system_stab.matrix();
-
-        gsDofMapper mapper = m_system.colMapper(0);
-        size_t size_patch1 = mapper.freeSize()/2;
-        gsInfo << "size: " << size_patch1 << "\n";
-        Eigen::MatrixXd A = matrix_A.toDense();
-        Eigen::MatrixXd B = matrix_B.toDense();
-        Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
-        //ges.compute(A.block(0,0,size_patch1,size_patch1), B.block(0,0,size_patch1,size_patch1));
-        //gsInfo << "Det: " << B.determinant() << "\n";
-        //gsInfo << "A: " << A << "\n";
-        //gsInfo << "B: " << B << "\n";
-        //gsInfo << "The (complex) numerators of the generalzied eigenvalues are: " << ges.alphas().transpose() << "\n";
-        //gsInfo << "The (real) denominatore of the generalzied eigenvalues are: " << ges.betas().transpose() << "\n";
-        //gsInfo << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().transpose() << "\n";
-        //gsInfo << "The (complex) generalzied eigenvalues are (alphas./beta): " << ges.eigenvalues().real().transpose() << "\n";
-        //gsMatrix<> eigenvalues = ges.eigenvalues().real();
-        //real_t lambdamax = eigenvalues.maxCoeff() * 2;
-        real_t lambdamax = m_options.getReal("mu");
-        //m_options.setReal("mu", lambdamax);
-        gsInfo << "Max lambda: " << lambdamax << "\n";
+        //pushInterface();
 
         // Neumann conditions of second kind // TODO Rename to Laplace
         Base::template push<gsVisitorNeumannBiharmonic<T> >(

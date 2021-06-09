@@ -12,11 +12,10 @@
 */
 # include <omp.h>
 
-
 //! [Include namespace]
 #include <gismo.h>
 
-# include <gsAssembler/gsG1BiharmonicAssembler.h>
+# include <gsAssembler/gsBiharmonicArgyrisAssembler.h>
 # include <gsArgyris/gsC1Argyris.h>
 # include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisNorms.h>
 # include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
@@ -273,23 +272,23 @@ int main(int argc, char *argv[])
         gsInfo<<"\tAssembly of mapping:\t"<< time_mat(l, 0) <<"\t[s]\n";
 
         time.restart();
-        gsG1BiharmonicAssembler<real_t> g1BiharmonicAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
-        gsInfo<<"\tDegrees of freedom:\t"<< g1BiharmonicAssembler.numDofs() <<"\n";
-        g1BiharmonicAssembler.assemble();
+        gsBiharmonicArgyrisAssembler<real_t> biharmonicArgyrisAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
+        gsInfo<<"\tDegrees of freedom:\t"<< biharmonicArgyrisAssembler.numDofs() <<"\n";
+        biharmonicArgyrisAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done
         time_mat(l, 1) = time.stop();
         gsInfo<<"\tSystem assembly:\t"<<time_mat(l, 1)<<"\t[s]\n";
 
         time.restart();
         gsSparseSolver<real_t>::CGDiagonal solver;
-        solver.compute(g1BiharmonicAssembler.matrix());
-        gsMatrix<real_t> solVector= solver.solve(g1BiharmonicAssembler.rhs());
+        solver.compute(biharmonicArgyrisAssembler.matrix());
+        gsMatrix<real_t> solVector= solver.solve(biharmonicArgyrisAssembler.rhs());
         time_mat(l, 2) = time.stop();
         gsInfo<<"\tSolving system:\t\t"<<time_mat(l, 2)<<"\t[s]\n";
 
         time.restart();
         gsMatrix<real_t> solFull;
-        g1BiharmonicAssembler.constructSolution(solVector, solFull);
+        biharmonicArgyrisAssembler.constructSolution(solVector, solFull);
         sparseMatrix_argyris = solFull.asDiagonal() * sparseMatrix_argyris;
         c1Argyris.setSystem(sparseMatrix_argyris);
         gsInfo<< "." <<std::flush;// Linear solving done
@@ -304,7 +303,7 @@ int main(int argc, char *argv[])
 
         // Collecting data
         normerr(l,0) = c1Argyris.getMinMeshSize();
-        normerr(l,1) = g1BiharmonicAssembler.numDofs();
+        normerr(l,1) = biharmonicArgyrisAssembler.numDofs();
 
         normerr(l,2) = argyrisNorms.valueL2();
         normerr(l,4) = math::sqrt(argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));

@@ -47,6 +47,13 @@ public:
         // p-refine
         for (size_t np = 0; np < m_mp.nPatches(); ++np)
             multiBasis.basis(np).setDegree(m_optionList.getInt("discreteDegree"));
+    }
+
+    gsC1Argyris(gsMultiPatch<T> const & mp,
+                gsMultiBasis<T> const & mb,
+                const gsOptionList & optionList)
+            : m_mp(mp), multiBasis(mb), m_optionList(optionList)
+    {
 
     }
 

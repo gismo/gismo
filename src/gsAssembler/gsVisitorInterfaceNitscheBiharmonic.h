@@ -42,7 +42,6 @@ namespace gismo
             mu = options.getReal("mu");
 
             side1 = bi.first().side();
-            side2 = bi.second().side();
             const int dir = side1.direction();
 
             gsVector<int> numQuadNodes ( basis1.dim() );
@@ -86,18 +85,25 @@ namespace gismo
             geo2.computeMap(md2);
 
             // Initialize local matrix/rhs
+            /*
             localMatrix1.setZero(numActive1, numActive1);
             localMatrix2.setZero(numActive2, numActive2);
 
             localMatrix12.setZero(numActive1, numActive2);
             localMatrix21.setZero(numActive2, numActive1);
-
+*/
             localRhs1.setZero(numActive1, 1);
             localRhs2.setZero(numActive2, 1);
+
+            // Initialize local matrices
+            B11.setZero(numActive1, numActive1); B12.setZero(numActive1, numActive2);
+            E11.setZero(numActive1, numActive1); E12.setZero(numActive1, numActive2);
+            B22.setZero(numActive2, numActive2); B21.setZero(numActive2, numActive1);
+            E22.setZero(numActive2, numActive2); E21.setZero(numActive2, numActive1);
         }
 
-        inline void assemble(gsDomainIterator<T>    & element,
-                             gsDomainIterator<T>    & ,
+        inline void assemble(gsDomainIterator<T>    & element1,
+                             gsDomainIterator<T>    & element2,
                              gsVector<T> const      & quWeights)
         {
             gsMatrix<T> basisVals1 = basisData1[0];
@@ -112,12 +118,13 @@ namespace gismo
             {
                 // Compute the outer normal vector on the side
                 outerNormal(md1, k, side1, unormal1);
-                outerNormal(md2, k, side2, unormal2);
+                //outerNormal(md2, k, side2, unormal2);
 
                 // Multiply quadrature weight by the measure of normal
-                const T weight = quWeights[k] * md1.measure(k);
+                const T weight = quWeights[k] * unormal1.norm();
                 unormal1.normalize();
-                unormal2.normalize();
+                //unormal2.normalize();
+
                 //Get gradients of the physical space
                 transformGradients(md1, k, basisDers1, physBasisGrad1);
                 transformGradients(md2, k, basisDers2, physBasisGrad2);
@@ -126,28 +133,47 @@ namespace gismo
                 transformLaplaceHgrad(md1, k, basisDers1, basis2Ders1, physBasisLaplace1);
                 transformLaplaceHgrad(md2, k, basisDers2, basis2Ders2, physBasisLaplace2);
 
-                const T h = element.getCellSize();
-                const T mu_h = mu ; // / (0 != h ? h : 1);
+                // Compute element matrices
+                const T c1     = weight * T(0.5);
+                N1.noalias()   = physBasisGrad1.transpose()*unormal1;
+                N2.noalias()   = physBasisGrad2.transpose()*unormal1;
 
-                localMatrix1.noalias() += weight * ( physBasisGrad1.transpose() * unormal1 * physBasisLaplace1
+                B11.noalias() += c1 * ( N1 * physBasisLaplace1 );
+                B12.noalias() += c1 * ( N1 * physBasisLaplace2 );
+                B22.noalias() -= c1 * ( N2 * physBasisLaplace2 );
+                B21.noalias() -= c1 * ( N2 * physBasisLaplace1 );
+
+                //const T h = element.getCellSize();
+                //const T mu_h = mu / (0 != h ? h : 1);
+
+                const T h1     = element1.getCellSize();
+                const T h2     = element2.getCellSize();
+                // Maybe, the h should be scaled with the patch diameter, since its the h from the parameterdomain.
+                const T c2     = weight * mu * 2*(1./h1 + 1./h2);
+
+                E11.noalias() += c2 * ( N1 * N1.transpose() );
+                E12.noalias() += c2 * ( N1 * N2.transpose() );
+                E22.noalias() += c2 * ( N2 * N2.transpose() );
+                E21.noalias() += c2 * ( N2 * N1.transpose() );
+
+/*
+                localMatrix1.noalias() += weight * (physBasisGrad1.transpose() * unormal1 * physBasisLaplace1
                                                     + (physBasisGrad1.transpose() * unormal1 * physBasisLaplace1).transpose()
                                                 - mu_h * (physBasisGrad1.transpose() * unormal1) * (physBasisGrad1.transpose() * unormal1).transpose());
 
-                localMatrix2.noalias() += weight * ( physBasisGrad2.transpose() * unormal2 * physBasisLaplace2
+                localMatrix2.noalias() += weight * (physBasisGrad2.transpose() * unormal2 * physBasisLaplace2
                                                     + (physBasisGrad2.transpose() * unormal2 * physBasisLaplace2).transpose()
                                                     - mu_h * (physBasisGrad2.transpose() * unormal2) * (physBasisGrad2.transpose() * unormal2).transpose());
 
-                localMatrix12.noalias() += weight * ( physBasisGrad1.transpose() * unormal1 * physBasisLaplace2
+                localMatrix12.noalias() += weight * (physBasisGrad1.transpose() * unormal1 * physBasisLaplace2
                                                     + (physBasisGrad2.transpose() * unormal2 * physBasisLaplace1).transpose()
                                                     - mu_h * (physBasisGrad1.transpose() * unormal1) * (physBasisGrad2.transpose() * unormal2).transpose());
 
-                localMatrix21.noalias() += weight * (physBasisGrad2.transpose() * unormal2 * physBasisLaplace1
-                                                     + (physBasisGrad1.transpose() * unormal1 * physBasisLaplace2).transpose()
+                localMatrix21.noalias() += weight * ( physBasisGrad2.transpose() * unormal2 * physBasisLaplace1
+                                                     +  (physBasisGrad1.transpose() * unormal1 * physBasisLaplace2).transpose()
                                                      - mu_h * (physBasisGrad2.transpose() * unormal2) * (physBasisGrad1.transpose() * unormal1).transpose());
 
-
-                //gsInfo << "mat1: " << localMatrix1 << "\n";
-                //gsInfo << "mat2: " << localMatrix21 << "\n";
+*/
             }
         }
 
@@ -161,23 +187,28 @@ namespace gismo
             system.mapColIndices(actives1, patchIndex1, actives1);
 
             // Add contributions to the system matrix and right-hand side
-            system.push(localMatrix1, localRhs1, actives1, eliminatedDofs[0], 0, 0);
+            //system.push(localMatrix1, localRhs1, actives1, eliminatedDofs[0], 0, 0);
 
             // Map patch-local DoFs to global DoFs
             system.mapColIndices(actives2, patchIndex2, actives2);
 
             // Add contributions to the system matrix and right-hand side
-            system.push(localMatrix2, localRhs2, actives2, eliminatedDofs[0], 0, 0);
+            //system.push(localMatrix2, localRhs2, actives2, eliminatedDofs[0], 0, 0);
 
-            system.push(localMatrix12, localRhs1, actives1, actives2, eliminatedDofs[0], 0, 0);
-            system.push(localMatrix21, localRhs2, actives2, actives1, eliminatedDofs[0], 0, 0);
+            //system.push(localMatrix12, localRhs1, actives1, actives2, eliminatedDofs[0], 0, 0);
+            //system.push(localMatrix21, localRhs2, actives2, actives1, eliminatedDofs[0], 0, 0);
+
+            system.push(-B11 - B11.transpose() + E11, localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
+            system.push(-B21 - B12.transpose() - E21, localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
+            system.push(-B12 - B21.transpose() - E12, localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
+            system.push(-B22 - B22.transpose() + E22, localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
         }
 
     protected:
 
 
         // Neumann function
-        boxSide side1, side2;
+        boxSide side1;
 
         // Basis values
         std::vector<gsMatrix<T>> basisData1, basisData2;
@@ -186,13 +217,15 @@ namespace gismo
         // Normal and Neumann values
         gsMatrix<T> physBasisGrad1, physBasisGrad2, physBasisLaplace1, physBasisLaplace2;
 
-        gsVector<T> unormal1, unormal2;
-        gsMatrix<T> neuData;
+        gsVector<T> unormal1;
         index_t numActive1, numActive2;
 
         // Local matrix and rhs
-        gsMatrix<T> localMatrix1, localMatrix2, localMatrix12, localMatrix21;
         gsMatrix<T> localRhs1, localRhs2;
+
+        // Auxiliary element matrices
+        gsMatrix<T> B11, B12, E11, E12, N1,
+                B22, B21, E22, E21, N2;
 
         gsMapData<T> md1, md2;
 
