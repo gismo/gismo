@@ -1253,7 +1253,7 @@ int main(int argc, char *argv[])
     }
 
     //! [Assembler setup]
-    gsExprAssembler<> A;
+    gsExprAssembler<> A(1,1);
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -1271,7 +1271,6 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(dbasis, 3);
-    u.setup(bc, dirichlet::interpolation, 0);
 
     // Solution vector and solution variable
     gsMatrix<> random;
@@ -1299,6 +1298,8 @@ int main(int argc, char *argv[])
     //! [System assembly]
 
     // Initialize the system
+    u.setup(bc, dirichlet::interpolation, 0);
+
     A.initSystem();
 
     gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
@@ -1350,7 +1351,7 @@ int main(int argc, char *argv[])
     auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde; //[checked]
 
     // // For Neumann (same for Dirichlet/Nitsche) conditions
-    variable g_N = A.getBdrFunction();
+    auto g_N = A.getBdrFunction();
 
     real_t alpha_d = 1e3;
     A.assembleLhsRhsBc
