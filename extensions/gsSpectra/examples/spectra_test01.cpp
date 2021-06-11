@@ -60,12 +60,13 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Test for eigenvalue solvers.\n A is a symmetric matrix and B is positive definite\n";
 
-    gsSpectraSymSolver<gsMatrix<real_t>> minev(A.toDense(), math::floor(sz/2), sz);
+    gsMatrix<> Ad = A.toDense();
+    gsSpectraSymSolver<gsMatrix<real_t>> minev(Ad, math::floor(sz/2), sz);
     minev.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
     gsInfo << "Symmetric solver:\n";
     gsInfo << "Eigenvalues A*x=lambda*x:\n" << minev.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraSymShiftSolver<gsMatrix<real_t>> minev2(A.toDense(), math::floor(sz/2), sz,0.0);
+    gsSpectraSymShiftSolver<gsMatrix<real_t>> minev2(Ad, math::floor(sz/2), sz,0.0);
     minev2.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
     gsInfo << "Symmetric solver:\n";
     gsInfo << "Eigenvalues A*x=lambda*x:\n" << minev2.eigenvalues().transpose() <<"\n\n";
