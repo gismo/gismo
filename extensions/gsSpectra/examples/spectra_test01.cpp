@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsIO/gsReadFile.h>
 #include <gsSpectra/gsSpectra.h>
 
 using namespace gismo;
