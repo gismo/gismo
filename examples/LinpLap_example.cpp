@@ -73,6 +73,10 @@ int main(int argc, char* argv[])
   cmd.addInt("","initial","Choice for initial guess u_0",initial);
 	try { cmd.getValues(argc, argv); }
 	catch (int rv) { return rv; }
+ 
+gsKnotVector<> kv(0,1,0,3);
+
+gsInfo<< kv <<"\n";
 
 	gsInfo << "Printing command line arguments:\n"
 		<< "eps               = " << eps << "\n"

@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
     {
         f = 	gsFunctionExpr<>("-((" + std::to_string(gamma) + "^2*(x^2 + y^2)^(" + std::to_string(gamma) + "/2)*(" + std::to_string(eps) + "^2 + " + std::to_string(gamma) + "^2*(x^2 + y^2)^(-1 + " + std::to_string(gamma) + "))^(" + std::to_string(p) + "/2)*(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "*(2 + " + std::to_string(gamma) + "*(-1 + " + std::to_string(p) + ") - " + std::to_string(p) + ")*(x^2 + y^2)^" + std::to_string(gamma) + "))/(" + std::to_string(eps) + "^2*(x^2 + y^2) + " + std::to_string(gamma) + "^2*(x^2 + y^2)^" + std::to_string(gamma) + ")^2)", 2);
         u = gsFunctionExpr<>("(x^2+y^2)^(" + std::to_string(gamma) + "/2)", 2);
-        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,-0.5,-0-5));
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(1,-0.5,-0.5));
     }
     else if (problemId == 2)
     {
@@ -166,7 +166,6 @@ int main(int argc, char* argv[])
     else if (problemId == 5)
     {
         f = gsFunctionExpr<>("1", 2);
-        //u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(abs(x)+abs(y))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
         u = gsFunctionExpr<>("(" + std::to_string(p) + "-1)/" + std::to_string(p) + "*(1/2)^(1/(" + std::to_string(p) + "-1))*(1-(x^2+y^2)^(" + std::to_string(p) + "/(2*(" + std::to_string(p) + "-1))))", 2);
         patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsDisk());
     }
@@ -175,6 +174,16 @@ int main(int argc, char* argv[])
         f = gsFunctionExpr<>("1", 2);
         u = gsFunctionExpr<>("((" + std::to_string(p) + "-1)/" + std::to_string(p) + ")*(1-(max(abs(x),abs(y)))^(" + std::to_string(p) + "/((" + std::to_string(p) + "-1))))", 2);
         patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::BSplineSquare(2,-1,-1));
+    }
+    else if (problemId == 7)
+    {
+        f = gsFunctionExpr<>("1./(x^2+y^2)*2*pi*(" + std::to_string(eps*eps) + "+4*pi^2*cos(2*pi*(x^2+y^2)^(1./2))^2)^((" + std::to_string(p) + "-4)/2)*(-" + std::to_string(eps*eps) + "*(x^2+y^2)^(1./2)*cos(2*pi*(x^2+y^2)^(1./2))-4*pi^2*(x^2+y^2)^(1./2)*cos(2*pi*(x^2+y^2)^(1./2))^3+2*pi*(x^2+y^2)*((" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*pi^2)*sin(2*pi*(x^2+y^2)^(1./2))+(" + std::to_string(p) + "-1)*pi^2*sin(6*pi*(x^2+y^2)^(1./2))))", 2);
+        u = gsFunctionExpr<>("sin(2*pi*(x^2+y^2)^(1./2))", 2);
+        
+        u_derNorth = gsFunctionExpr<>("-(" + std::to_string(eps*eps) + "+cos(2*pi*(x^2+y^2)^(1./2))^2)^((" + std::to_string(p) + "-2)/2)*cos(2*pi*(x^2+y^2)^(1./2))*x/(x^2+y^2)^(1./2)", 2);
+        u_derSouth = gsFunctionExpr<>("-(" + std::to_string(eps*eps) + "+cos(2*pi*(x^2+y^2)^(1./2))^2)^((" + std::to_string(p) + "-2)/2)*cos(2*pi*(x^2+y^2)^(1./2))*y/(x^2+y^2)^(1./2)", 2);
+        
+        patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsQuarterAnnulus(0.5,1));
     }
     else
     {
@@ -237,15 +246,15 @@ int main(int argc, char* argv[])
     else
     {
         bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &u);
-		    bcInfo.addCondition(0, boundary::east, condition_type::neumann, &u_derEast);
+		    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &u);
 		    bcInfo.addCondition(0, boundary::north, condition_type::neumann, &u_derNorth);
-		    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u);
+		    bcInfo.addCondition(0, boundary::south, condition_type::neumann, &u_derSouth);
 		    //bcInfo.addCornerValue(boundary::southwest, 0);
 
 		    hbcInfo.addCondition(0, boundary::west, condition_type::dirichlet, &Z);
-		    hbcInfo.addCondition(0, boundary::east, condition_type::neumann, &Z);
+		    hbcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &Z);
 		    hbcInfo.addCondition(0, boundary::north, condition_type::neumann, &Z);
-		    hbcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &Z);
+		    hbcInfo.addCondition(0, boundary::south, condition_type::neumann, &Z);
 		    //hbcInfo.addCornerValue(boundary::southwest,0);
     }
     //! [Boundary conditions]
