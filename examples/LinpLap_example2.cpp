@@ -177,11 +177,11 @@ int main(int argc, char* argv[])
     }
     else if (problemId == 7)
     {
-        f = gsFunctionExpr<>("1./(x^2+y^2)*2*pi*(" + std::to_string(eps*eps) + "+4*pi^2*cos(2*pi*(x^2+y^2)^(1./2))^2)^((" + std::to_string(p) + "-4)/2)*(-" + std::to_string(eps*eps) + "*(x^2+y^2)^(1./2)*cos(2*pi*(x^2+y^2)^(1./2))-4*pi^2*(x^2+y^2)^(1./2)*cos(2*pi*(x^2+y^2)^(1./2))^3+2*pi*(x^2+y^2)*((" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*pi^2)*sin(2*pi*(x^2+y^2)^(1./2))+(" + std::to_string(p) + "-1)*pi^2*sin(6*pi*(x^2+y^2)^(1./2))))", 2);
-        u = gsFunctionExpr<>("sin(2*pi*(x^2+y^2)^(1./2))", 2);
+        f = gsFunctionExpr<>("1./(x^2+y^2)*2*pi*(" + std::to_string(eps*eps) + "+4*pi^2*cos(2*pi*(x^2+y^2)^(1./2))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "*(x^2+y^2)^(1./2)*cos(2*pi*(x^2+y^2)^(1./2))+4*pi^2*(x^2+y^2)^(1./2)*cos(2*pi*(x^2+y^2)^(1./2))^3-2*pi*(x^2+y^2)*((" + std::to_string(eps*eps) + "+(" + std::to_string(p) + "-1)*pi^2)*sin(2*pi*(x^2+y^2)^(1./2))+(" + std::to_string(p) + "-1)*pi^2*sin(6*pi*(x^2+y^2)^(1./2))))", 2);
+        u = gsFunctionExpr<>("sin(2*pi*((x^2+y^2)^(1./2)-0.5))", 2);
         
-        u_derNorth = gsFunctionExpr<>("-(" + std::to_string(eps*eps) + "+cos(2*pi*(x^2+y^2)^(1./2))^2)^((" + std::to_string(p) + "-2)/2)*cos(2*pi*(x^2+y^2)^(1./2))*x/(x^2+y^2)^(1./2)", 2);
-        u_derSouth = gsFunctionExpr<>("-(" + std::to_string(eps*eps) + "+cos(2*pi*(x^2+y^2)^(1./2))^2)^((" + std::to_string(p) + "-2)/2)*cos(2*pi*(x^2+y^2)^(1./2))*y/(x^2+y^2)^(1./2)", 2);
+        u_derNorth = gsFunctionExpr<>("-(" + std::to_string(eps*eps) + "+cos(2*pi*((x^2+y^2)^(1./2))^2-0.5))^((" + std::to_string(p) + "-2)/2)*cos(2*pi*((x^2+y^2)^(1./2)-0.5))*x/(x^2+y^2)^(1./2)", 2);
+        u_derSouth = gsFunctionExpr<>("-(" + std::to_string(eps*eps) + "+cos(2*pi*((x^2+y^2)^(1./2))^2-0.5))^((" + std::to_string(p) + "-2)/2)*cos(2*pi*((x^2+y^2)^(1./2)-0.5))*y/(x^2+y^2)^(1./2)", 2);
         
         patch = gsMultiPatch<>(*gsNurbsCreator<real_t>::NurbsQuarterAnnulus(0.5,1));
     }
