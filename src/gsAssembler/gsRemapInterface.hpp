@@ -25,18 +25,18 @@ template <class T>
 gsRemapInterface<T>::gsRemapInterface(const gsMultiPatch<T>   & mp,
                                       const gsMultiBasis<T>   & basis,
                                       const boundaryInterface & bi,
-                                      const index_t             checkAffine,
-                                      const index_t             numSamplePoints,
-                                      const index_t             intervalsOfFittingCurve,
-                                      const index_t             degreeOfFittingCurve,
-                                      const T                   equalityTolerance,
-                                      const T                   newtonTolerance)
+                                      const gsOptionList      & opt)
     : m_g1(&(mp[bi.first().patch])), m_g2(&(mp[bi.second().patch])),
       m_b1(&(basis[bi.first().patch])), m_b2(&(basis[bi.second().patch])),
       m_bi(bi),
       m_isMatching(true), m_isAffine(true),
-      m_equalityTolerance(equalityTolerance), m_newtonTolerance(newtonTolerance)
+      m_equalityTolerance(opt.getReal("EqualityTolerance")), m_newtonTolerance(opt.getReal("NewtonTolerance"))
 {
+    const index_t checkAffine             = opt.getInt("CheckAffine");
+    const index_t numSamplePoints         = opt.getInt("NumSamplePoints");
+    const index_t intervalsOfFittingCurve = opt.getInt("IntervalsOfFittingCurve");
+    const index_t degreeOfFittingCurve    = opt.getInt("DegreeOfFittingCurve");
+
     GISMO_ASSERT( m_g1->geoDim()==m_g2->geoDim(), "gsRemapInterface: Dimensions do not agree." );
 
     // First we construct the affine mapping

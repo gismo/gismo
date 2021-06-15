@@ -17,6 +17,14 @@
 
 using namespace gismo;
 
+namespace {
+gsOptionList optHelper(index_t checkAffine)
+{
+    gsOptionList opt = gsRemapInterface<real_t>::defaultOptions();
+    opt.setInt("CheckAffine", checkAffine);
+    return opt;
+}
+}
 
 SUITE(gsRemapInterface_test)
 {
@@ -34,7 +42,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( ri.isAffine() );
         CHECK ( ri.isMatching() );
@@ -74,7 +82,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,gsRemapInterface<real_t>::neverAffine);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(gsRemapInterface<real_t>::neverAffine));
 
         CHECK ( !ri.isAffine() );
         CHECK ( ri.isMatching() );
@@ -114,7 +122,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( ri.isAffine() );
         CHECK ( ri.isMatching() );
@@ -162,7 +170,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( ri.isAffine() );
         CHECK ( !ri.isMatching() );
@@ -200,7 +208,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( ri.isAffine() );
         CHECK ( !ri.isMatching() );
@@ -238,7 +246,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( ri.isAffine() );
         CHECK ( !ri.isMatching() );
@@ -276,7 +284,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( ri.isAffine() );
         CHECK ( !ri.isMatching() );
@@ -314,7 +322,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( ri.isAffine() );
         CHECK ( ri.isMatching() );
@@ -358,7 +366,7 @@ SUITE(gsRemapInterface_test)
 
         gsMultiBasis<> mb(mp); // extract basis
 
-        gsRemapInterface<real_t> ri(mp,mb,bi,5);
+        gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));
 
         CHECK ( !ri.isAffine() );
         CHECK ( ri.isMatching() );

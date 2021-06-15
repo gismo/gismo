@@ -17,6 +17,7 @@
 
 #include <gsCore/gsAffineFunction.h>
 #include <gsCore/gsBoundary.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo {
 
@@ -71,25 +72,40 @@ public:
     /// @param  mp                 The multi-patch object
     /// @param  mb                 The multi-basis object
     /// @param  bi                 The boundary interface (specifying the patches and their \a patchSide s)
-    /// @param  checkAffine        The number of interior points (per direction) in point grid used to
-    ///                            check if the mapping is affine. If set to i, the grid consits of i interor
-    ///                            point and the two boundary points per direction, so \f$ (i+2)^d \f$ points.
-    ///                            For \a alwaysAffine or \a notAffine, no checks are performed.
-    /// @param  numSamplePoints    Number of sample points for computing fitting curve (if not affine)
-    /// @param  intervalsOfFittingCurve  Number of knot space in the fitting curve (if not affine)
-    /// @param  degreeOfFittingCurve     Spline degree of fitting curve (if not affine)
-    /// @param  equalityTolerance  Points are considered equal iff difference is smaller.
-    /// @param  newtonTolerance    Tolerance for Newton solvers (should be significantly smaller than
-    ///                            equalityTolerance)
+    /// @param  opt                Options; see below:
+    ///
+    ///  | Option                  | Meaning
+    ///  |------------------------ | --------------------------------------------------------------------------------------
+    ///  | CheckAffine             | The number of interior points (per direction) in point grid used to
+    ///  |                         | check if the mapping is affine. If set to i, the grid consits of i interior
+    ///  |                         | points and the two boundary points per direction, so \f$ (i+2)^d \f$ points.
+    ///  |                         | For \a alwaysAffine (=0) or \a neverAffine (-1), no checks are performed; default: 1
+    ///  | NumSamplePoints         | Number of sample points for computing fitting curve (if not affine); default: 11
+    ///  | IntervalsOfFittingCurve | Number of knot space in the fitting curve (if not affine); default: 5
+    ///  | DegreeOfFittingCurve    | Spline degree of fitting curve (if not affine); default: 3
+    ///  | EqualityTolerance       | Points are considered equal iff difference is smaller; default 1e-5
+    ///  | NewtonTolerance         | Tolerance for Newton solvers (should be significantly smaller than EqualityTolerance);
+    ///  |                         | default: 1e-10
     gsRemapInterface(const gsMultiPatch<T>   & mp,
                      const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
-                     index_t                   checkAffine = 1,
-                     index_t                   numSamplePoints = 11,
-                     index_t                   intervalsOfFittingCurve = 5,
-                     index_t                   degreeOfFittingCurve = 3,
-                     T                         equalityTolerance = 1e-5,
-                     T                         newtonTolerance = 1e-10);
+                     const gsOptionList      & opt = defaultOptions() );
+
+    /// @Returns default options
+    ///
+    /// See constructor for their meaning
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList result;
+        result.addInt ( "CheckAffine",             "The number of interior points (per direction) in point grid used to "
+                                                   "check if the mapping is affine",                                      1     );
+        result.addInt ( "NumSamplePoints",         "Number of sample points for computing fitting curve (if not affine)", 11    );
+        result.addInt ( "IntervalsOfFittingCurve", "Number of knot space in the fitting curve (if not affine)",           5     );
+        result.addInt ( "DegreeOfFittingCurve",    "Spline degree of fitting curve (if not affine)",                      3     );
+        result.addReal( "EqualityTolerance",       "Points are considered equal iff difference is smaller",               1e-5  );
+        result.addReal( "NewtonTolerance",         "Tolerance for Newton solvers",                                        1e-10 );
+        return result;
+    }
 
 public:
 
