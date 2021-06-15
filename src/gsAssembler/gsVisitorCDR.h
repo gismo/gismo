@@ -31,18 +31,9 @@ namespace gismo
  *
  * Obviously, setting \f$ A= I\f$, \f$ b= 0\f$, and \f$c = 0\f$ results
  * in the special case of the Poisson equation.
- *
+ * 
+ * \ingroup Assembler
  */
-
-struct stabilizerCDR
-{
-    enum method
-    {
-        SUPG = 1,
-        none = 0
-    };
-};
-
 template <class T>
 class gsVisitorCDR
 {
