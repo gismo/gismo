@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
     }
     else if (problemId == 2)
     {
-        f	= gsFunctionExpr<>("2*" + std::to_string(omega) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)*sin(" + std::to_string(omega) + "*pi*(x+y))+ " + std::to_string(lambda) + "*abs(sin(" + std::to_string(omega) + "*pi*(x+y)))^" + std::to_string(alpha) +"*sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
+        f	= gsFunctionExpr<>("2*" + std::to_string(omega) + "^2*pi^2*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)^((" + std::to_string(p) + "-4)/2)*(" + std::to_string(eps*eps) + "+2*" + std::to_string(omega) + "^2*(" + std::to_string(p) + "-1)*pi^2*cos(" + std::to_string(omega) + "*pi*(x+y))^2)*sin(" + std::to_string(omega) + "*pi*(x+y))+ " + std::to_string(lambda) + "*(" + std::to_string(eps*eps) + "+sin(" + std::to_string(omega) + "*pi*(x+y))^2)^((" + std::to_string(alpha) +")/2)*sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
         
         u =	gsFunctionExpr<>("sin(" + std::to_string(omega) + "*pi*(x+y))", 2);
         

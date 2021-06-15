@@ -139,7 +139,7 @@ namespace gismo
 
 				localJ += weight * (pow(eps * eps + (wGrad.transpose() * wGrad).value(), (pde_ptr->p) / 2) / (pde_ptr->p) - (rhsVals.col(k).transpose()*wVal).value());
 				localRhs.noalias() += weight * (bVals.col(k) * rhsVals.col(k).transpose());
-				localMat.noalias() += weight * (a * (physGrad.transpose() * physGrad) + pde_ptr->lambda * pow(wVal.value()*wVal.value(),pde_ptr->alpha/2) * bVals.col(k) * bVals.col(k).transpose());
+				localMat.noalias() += weight * (a * (physGrad.transpose() * physGrad) + pde_ptr->lambda * pow(eps*eps+wVal.value()*wVal.value(),pde_ptr->alpha/2) * bVals.col(k) * bVals.col(k).transpose());
 			}
 		}
 
