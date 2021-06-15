@@ -498,8 +498,8 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     KnotVectorType knotsR(give(matR),p);
 
     // rescale the splitted knot vector (not mandatory)
-    // knotsL.affineTransformTo(0,1);
-    // knotsR.affineTransformTo(0,1);
+     knotsL.affineTransformTo(0,1);
+     knotsR.affineTransformTo(0,1);
 
     //collect the other directions
     std::vector<KnotVectorType> KVL, KVR;

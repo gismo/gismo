@@ -112,7 +112,7 @@ public:
     /// Solves the linear system of equations
     /// @param[in]     rhs      the right hand side of the linear system
     /// @param[in,out] x        starting value; the solution is stored in here
-    void solve( const VectorType& rhs, VectorType& x )
+    virtual void solve( const VectorType& rhs, VectorType& x )
     {
         if (initIteration(rhs, x)) return;
 
@@ -197,7 +197,7 @@ public:
                       "Iterative solvers only work for single right-hand side and solution." );
             GISMO_ASSERT( x.rows() == m_mat->cols(),
                       "The initial guess does not match the matrix: "
-                      << rhs.rows() <<"!="<< m_mat->cols() );
+                      << x.rows() <<"!="<< m_mat->cols() );
         }
         return false; // iteration is not finished
     }
