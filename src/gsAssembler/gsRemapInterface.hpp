@@ -577,7 +577,7 @@ void gsRemapInterface<T>::constructReparam()
 
             find_start_value.colwise().squaredNorm().minCoeff(&row, &col);
 
-            gsVector<T> b_null = samples_right.col(col);
+            gsVector<T> b_null = vals2dPatch2.col(col);
 
             // Pass on g2 if one wants to find a mapping from interface1 to interface2
             //gsMatrix<T> b = closestPoint(b_null, g2, samples_left.col(i));

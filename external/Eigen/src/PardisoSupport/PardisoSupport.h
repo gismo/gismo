@@ -431,14 +431,13 @@ class PardisoLU : public PardisoImpl< PardisoLU<MatrixType> >
 {
   protected:
     typedef PardisoImpl<PardisoLU> Base;
-    typedef typename Base::Scalar Scalar;
-    typedef typename Base::RealScalar RealScalar;
     using Base::pardisoInit;
     using Base::m_matrix;
     friend class PardisoImpl< PardisoLU<MatrixType> >;
 
   public:
-
+    typedef typename Base::Scalar Scalar;
+    typedef typename Base::RealScalar RealScalar;
     using Base::compute;
     using Base::solve;
 

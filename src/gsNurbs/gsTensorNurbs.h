@@ -369,7 +369,46 @@ public:
         this->basis().swapDirections(i,j);
     }
 
-
+    /// Splits the geometry either two parts in direction \a dir, or if \a dir = -1
+    /// in 2^d parts, by calling splitAt() for each direction.
+    /// The function automatically searches for the midpoint the corresponding knot vector.
+    std::vector<gsGeometry<T>*> uniformSplit(index_t dir = -1) const
+    {
+        // We use the simple fact that a NURBS function in R^d is the central probjection
+        // of a spline function in R^{d+1} into R^d.
+        //
+        // Create a B-spline in R^{d+1} and split it
+        gsRationalBasis< gsTensorBSplineBasis<d,T> > * basis
+            = dynamic_cast< gsRationalBasis< gsTensorBSplineBasis<d,T> > * >(m_basis);
+        GISMO_ENSURE( basis, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
+        gsMatrix<T> coefs(m_coefs);
+        const size_t dm = coefs.cols(), N = coefs.rows();
+        coefs.conservativeResize(Eigen::NoChange,dm+1);
+        for (size_t i=0; i<N; ++i)
+        {
+            coefs(i,dm) = 1;
+            coefs.row(i) *= basis->weights()(i,0);
+        }
+        std::vector<gsGeometry<T>*> splitGeo = gsTensorBSpline<d,T>(basis->source(), coefs).uniformSplit(dir);
+        // Turn the B-splines in R^{d+1} back into NURBS in R^d
+        const size_t sz = splitGeo.size();
+        std::vector<gsGeometry<T>*> result;
+        result.reserve(sz);
+        for (size_t k=0; k!=sz; ++k)
+        {
+            gsTensorBSpline<d,T>* splitSpline
+                = dynamic_cast<gsTensorBSpline<d,T>*>(splitGeo[k]);
+            GISMO_ENSURE( splitSpline, "gsTensorNurbs::uniformSplit: Dynamic cast failed." );
+            gsTensorNurbsBasis<d,T> nurbsBasis(splitSpline->basis().clone().release(), splitSpline->coefs().rightCols(1));
+            gsMatrix<T> splitCoefs(give(splitSpline->coefs()));
+            for (size_t i=0; i<N; ++i)
+                splitCoefs.row(i) /= splitCoefs(i,dm);
+            splitCoefs.conservativeResize(Eigen::NoChange,dm);
+            result.push_back( new gsTensorNurbs<d,T>( nurbsBasis, splitCoefs ) );
+        }
+        freeAll(splitGeo);
+        return result;
+    }
 
 protected:
     // todo: check function: check the coefficient number, degree, knot vector ...

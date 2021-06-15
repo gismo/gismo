@@ -90,7 +90,7 @@ public:
     /// Add another operator at the end
     void addOperator( BasePtr op )
     {
-        GISMO_ASSERT ( m_ops.empty() || m_ops.back()->cols() == op->rows(),
+        GISMO_ASSERT ( m_ops.empty() || m_ops.back()->rows() == op->cols(),
                        "Dimensions of the operators do not fit." );
         m_ops.push_back(give(op));
     }
