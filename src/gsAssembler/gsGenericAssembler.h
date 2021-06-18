@@ -14,13 +14,7 @@
 #pragma once
 
 #include <gsAssembler/gsAssembler.h>
-#include <gsAssembler/gsVisitorMass.h>
-//#include <gsAssembler/gsVisitorTPmass.h>
-#include <gsAssembler/gsVisitorGradGrad.h>
-#include <gsAssembler/gsVisitorMoments.h>
-
 #include <gsPde/gsLaplacePde.h>
-
 
 #include <gsAssembler/gsExpressions.h>
 #include <gsAssembler/gsExprHelper.h>
@@ -32,7 +26,7 @@ namespace gismo
 /**
    @brief Assembles the mass, stiffness matrix on a given domain
 
-   
+
    \ingroup Assembler
  */
 template <class T>
@@ -55,7 +49,7 @@ public:
             m_pde.boundaryConditions() = *bc;
             this->m_ddof.resize(1);
         }
-        
+
         Base::initialize(m_pde, bases, opt);
         gsGenericAssembler::refresh();
     }
@@ -73,7 +67,6 @@ public:
         gsGenericAssembler::refresh();
     }
     */
-
     void refresh()
     {
         // Setup sparse system
@@ -89,51 +82,18 @@ public:
     }
 
     /// Mass assembly routine
-    const gsSparseMatrix<T> & assembleMass()
-    {
-        /*
-        typedef gsExprAssembler<>::geometryMap geometryMap;
-        typedef gsExprAssembler<>::variable    variable;
-        typedef gsExprAssembler<>::space       space;
-        typedef gsExprAssembler<>::solution    solution;
-        
-        // Elements used for numerical integration
-        gsExprAssembler<> A(1,1);
-        A.setIntegrationElements(m_bases.front());
-        geometryMap G = A.getMap(m_pde_ptr->patches());
-        space u = A.getSpace(m_bases.front());
+    const gsSparseMatrix<T> & assembleMass();
 
-        A.initSystem();
-        //m_system.matrix() = A.assemble( u * u.tr() * meas(G) );
-        A.assemble( u * u.tr() * meas(G) );
-        m_system.matrix() = A.matrix();
-        
-        return m_system.matrix();
-        */
-
-        // Clean the sparse system
-        gsGenericAssembler::refresh();
-        const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
-        m_system.matrix().reservePerColumn(nz);
-        
-        // Assemble mass integrals
-        //this->template push<gsVisitorMass<T> >();
-        this->template push<gsVisitorMass<T> >();
-
-        // Assembly is done, compress the matrix
-        this->finalize();
-
-        return m_system.matrix();
-    }
-
-        /// Mass assembly routine
+    /// Mass assembly routine
+    ///
+    /// This routine uses the expression assembler
     const gsSparseMatrix<T> & assembleMass2()
     {
         typedef gsExprAssembler<>::geometryMap geometryMap;
         typedef gsExprAssembler<>::variable    variable;
         typedef gsExprAssembler<>::space       space;
         typedef gsExprAssembler<>::solution    solution;
-        
+
         // Elements used for numerical integration
         gsExprAssembler<> A(1,1);
         A.setIntegrationElements(m_bases.front());
@@ -144,59 +104,20 @@ public:
         //m_system.matrix() = A.assemble( u * u.tr() * meas(G) );
         A.assemble( u * u.tr() * meas(G) );
         m_system.matrix() = A.matrix();
-        
-        return m_system.matrix();
-    }
 
-    /*// Mass assembly routine
-    const gsSparseMatrix<T> & assembleMass3()
-    {
-        // Clean the sparse system
-        gsGenericAssembler::refresh();
-        
-        //this->template push<gsVisitorTPmass<T> >();
-        this->finalize();
         return m_system.matrix();
     }
-    */
 
     /// Stiffness assembly routine
-    const gsSparseMatrix<T> & assembleStiffness()
-    {
-        // Clean the sparse system
-        gsGenericAssembler::refresh();
-        const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
-        m_system.matrix().reservePerColumn(nz);
-
-        // Assemble stiffness integrals
-        this->template push<gsVisitorGradGrad<T> >();
-
-        // Assembly is done, compress the matrix
-        this->finalize();
-
-        return m_system.matrix();
-    }
+    const gsSparseMatrix<T> & assembleStiffness();
 
     /// Moments assembly routine
-    const gsMatrix<T> & assembleMoments(const gsFunction<T> & func)
-    {
-        // Reset the right-hand side vector
-        m_system.rhs().setZero(m_system.cols(), 1);
+    const gsMatrix<T> & assembleMoments(const gsFunction<T> & func);
 
-        // Assemble moment integrals
-        gsVisitorMoments<T> mom(func);
-        this->push(mom);
-        
-        // Assembly is done, compress the matrix
-        this->finalize();
-
-        return m_system.rhs();
-    }
-
-    /// Stiffness assembly routine on patch \a patchIndex
+    /// Mass assembly routine on patch \a patchIndex
     const gsSparseMatrix<T> & assembleMass(index_t patchIndex)
     {
-        gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex), 
+        gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex),
                                   m_bases[patchIndex], m_options);
         tmp.assembleMass();
         m_system.matrix().swap(tmp.m_system.matrix());
@@ -206,13 +127,13 @@ public:
     /// Stiffness assembly routine on patch \a patchIndex
     const gsSparseMatrix<T> & assembleStiffness(index_t patchIndex)
     {
-        gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex), 
+        gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex),
                                   m_bases[patchIndex],  m_options);
         tmp.assembleStiffness();
         m_system.matrix().swap(tmp.m_system.matrix());
         return m_system.matrix();
     }
-    
+
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() might return a lower diagonal
     /// matrix, if we exploit possible symmetry during assembly
@@ -230,7 +151,7 @@ public:
     {
         return m_system.matrix().template selfadjointView<Lower>();
     }
-    
+
 
 private:
 
@@ -249,4 +170,3 @@ private:
 
 
 } // namespace gismo
-
