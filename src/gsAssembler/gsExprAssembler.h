@@ -69,7 +69,7 @@ public:
 
     void cleanUp()
     {
-        m_exprdata->clean();
+        m_exprdata->cleanUp();
     }
 
     /// Constructor
@@ -203,7 +203,7 @@ public:
     {
         GISMO_ASSERT(NULL!=m_vcol[id], "Not set.");
         expr::gsFeSpace<T> s = m_exprdata->
-            getSpace(*m_vcol[id].fs,m_vcol[id]->dim());
+            getSpace(*m_vcol[id]->fs,m_vcol[id]->dim());
         s.setSpaceData(*m_vcol[id]);
         return s;
     }
@@ -216,7 +216,7 @@ public:
     {
         GISMO_ASSERT(NULL!=m_vrow[id], "Not set.");
         expr::gsFeSpace<T> s = m_exprdata->
-            getSpace(*m_vrow[id].fs,m_vrow[id]->dim());
+            getSpace(*m_vrow[id]->fs,m_vrow[id]->dim());
         s.setSpaceData(*m_vrow[id]);
         return *m_vrow[id];
     }

@@ -1256,7 +1256,6 @@ int main(int argc, char *argv[])
     gsExprAssembler<> A(1,1);
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
