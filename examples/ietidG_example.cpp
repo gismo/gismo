@@ -19,6 +19,9 @@
 
 #include <ctime>
 
+#define DEBUGVAR(v) gsInfo << #v << ": " << v << "\n";
+#define DEBUGMAT(m) gsInfo << #m << ": " << m.rows() << "x" << m.cols() << "\n";
+
 #include <gismo.h>
 #include <gsAssembler/gsVisitorDg.h>
 #include <gsIeti/gsArtificialIfaces.h>
@@ -254,15 +257,28 @@ int main(int argc, char *argv[])
 
         gsInfo << "\n patch " << k<< "\n";
         localMatrix.uncompress();
+        const index_t diff = ai.dofMapperLocal(k).freeSize() - localMatrix.rows();
+        if (diff!=0)
+        {
+            DEBUGVAR(ai.dofMapperLocal(k).freeSize());
+            DEBUGVAR(ai.dofMapperLocal(k).size());
+            //DEBUGVAR(ai.dofMapperLocal(k).fixedSize());
+            DEBUGVAR(ietiMapper.dofMapperLocal(k).freeSize());
+            DEBUGVAR(ietiMapper.dofMapperLocal(k).size());
+            //DEBUGVAR(ietiMapper.dofMapperLocal(k).fixedSize());
+            DEBUGMAT(localMatrix);
+            DEBUGMAT(jumpMatrix);
+        }
 
-        const index_t diff = localMatrix.rows()<ai.dofMapperLocal(k).freeSize();
-        if (diff>0)
+        /*if (diff>0)
         {
             gsInfo << "Enlarge local system by " << diff << " dofs. Why??\n";
             localMatrix.conservativeResize(ai.dofMapperLocal(k).freeSize(), ai.dofMapperLocal(k).freeSize());
             localRhs.conservativeResize(ai.dofMapperLocal(k).freeSize(),1);
             localRhs.bottomRows(diff).setZero();
-        }
+        }*/
+        GISMO_ENSURE (diff==0, "diff: " <<diff);
+
         adddGInterfaceContributions(
             ai,
             mp,
@@ -272,6 +288,7 @@ int main(int argc, char *argv[])
             localMatrix,
             localRhs
         );
+        localMatrix.makeCompressed();
         gsInfo << "\n matrix \n" << localMatrix.toDense() << "\n";
 
         // Add the patch to the scaled Dirichlet preconditioner
