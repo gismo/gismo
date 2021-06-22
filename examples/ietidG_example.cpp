@@ -260,6 +260,12 @@ int main(int argc, char *argv[])
         const index_t diff = ai.dofMapperLocal(k).freeSize() - localMatrix.rows();
         //if (diff!=0)
         {
+
+            for(index_t jjj=0; jjj<ai.artificialIfaces(k).size(); ++jjj)
+            {
+                gsInfo << "ifindices: " << ai.artificialIfaces(k)[jjj].ifaceIndices << "\n";
+            }
+
             DEBUGVAR(ai.dofMapperLocal(k).freeSize());
             DEBUGVAR(ai.dofMapperLocal(k).size());
             gsInfo << ai.dofMapperLocal(k)  << "\n";
@@ -270,6 +276,11 @@ int main(int argc, char *argv[])
             //DEBUGVAR(ietiMapper.dofMapperLocal(k).fixedSize());
             DEBUGMAT(localMatrix);
             DEBUGMAT(jumpMatrix);
+
+            auto tmp = ai.artificialIfaces(k);
+            for (index_t i=0; i<tmp.size(); ++i)
+            { DEBUGVAR(("ai.artificialIfaces(k)",tmp[i].realIface)); }
+
         }
 
         /*if (diff>0)
