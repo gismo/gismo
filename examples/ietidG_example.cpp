@@ -254,17 +254,19 @@ int main(int argc, char *argv[])
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
         gsSparseMatrix<>                 localMatrix = assembler.matrix();
         gsMatrix<>                       localRhs    = assembler.rhs();
-
-        gsInfo << "\n patch " << k<< "\n";
+        DEBUGVAR( nPatches );
+        gsInfo << "current patch: k=" << k<< "\n";
         localMatrix.uncompress();
         const index_t diff = ai.dofMapperLocal(k).freeSize() - localMatrix.rows();
-        if (diff!=0)
+        //if (diff!=0)
         {
             DEBUGVAR(ai.dofMapperLocal(k).freeSize());
             DEBUGVAR(ai.dofMapperLocal(k).size());
+            gsInfo << ai.dofMapperLocal(k)  << "\n";
             //DEBUGVAR(ai.dofMapperLocal(k).fixedSize());
             DEBUGVAR(ietiMapper.dofMapperLocal(k).freeSize());
             DEBUGVAR(ietiMapper.dofMapperLocal(k).size());
+            gsInfo << ietiMapper.dofMapperLocal(k) << "\n";
             //DEBUGVAR(ietiMapper.dofMapperLocal(k).fixedSize());
             DEBUGMAT(localMatrix);
             DEBUGMAT(jumpMatrix);
@@ -289,19 +291,37 @@ int main(int argc, char *argv[])
             localRhs
         );
         localMatrix.makeCompressed();
-        gsInfo << "\n matrix \n" << localMatrix.toDense() << "\n";
-
+        //gsInfo << "\n matrix \n" << localMatrix.toDense() << "\n";
+        DEBUGMAT(localMatrix);
         // Add the patch to the scaled Dirichlet preconditioner
-        prec.addSubdomain(
-            gsScaledDirichletPrec<>::restrictToSkeleton(
+        gsInfo << "gsScaledDirichletPrec<>::restrictToSkeleton\n";
+        auto skel = gsScaledDirichletPrec<>::restrictToSkeleton(
                 jumpMatrix,
                 localMatrix,
                 ietiMapper.skeletonDofs(k)
-            )
+            );
+        gsInfo << "prec.addSubdomain\n";
+        prec.addSubdomain(
+            skel
+            /*gsScaledDirichletPrec<>::restrictToSkeleton(
+                jumpMatrix,
+                localMatrix,
+                ietiMapper.skeletonDofs(k)
+            )*/
         );
-
+        gsInfo << "primal.handleConstraints\n";
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubmp().
+        DEBUGVAR(ietiMapper.primalConstraints(k).size());
+        if (ietiMapper.primalConstraints(k).size()>0)
+        {
+            DEBUGMAT(ietiMapper.primalConstraints(k)[0]);
+        }
+        //DEBUGVAR(ietiMapper.primalDofIndices(k));
+        DEBUGMAT(jumpMatrix);
+        DEBUGMAT(localMatrix);
+        DEBUGMAT(localRhs);
+
         primal.handleConstraints(
             ietiMapper.primalConstraints(k),
             ietiMapper.primalDofIndices(k),
@@ -309,13 +329,14 @@ int main(int argc, char *argv[])
             localMatrix,
             localRhs
         );
-
+        gsInfo << "ieti.addSubdomain\n";
         // Add the patch to the Ieti system
         ieti.addSubdomain(
             jumpMatrix.moveToPtr(),
             makeMatrixOp(localMatrix.moveToPtr()),
             give(localRhs)
         );
+        gsInfo << "done with loop for k=" << k << "\n";
     }
     gsInfo << "All patches are assembled\nNow handle primal system..." << std::flush;
     // Add the primal problem if there are primal constraints

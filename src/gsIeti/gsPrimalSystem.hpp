@@ -154,8 +154,8 @@ gsPrimalSystem<T>::primalBasis(
         "Forgot to call gsPrimalSystem::init()?" );
 
     SparseMatrix result( localDofs, nPrimalDofs );
-
-    if (nPrimalDofs==0) return result;
+gsInfo << "rhsForBasis:" << rhsForBasis.rows() << "x" << rhsForBasis.cols() << "\n";
+    if (nPrimalDofs==0||rhsForBasis.cols()==0) return result;
 
     Matrix tmp;
     localSaddlePointSolver->apply(rhsForBasis, tmp);
@@ -207,23 +207,35 @@ void gsPrimalSystem<T>::handleConstraints(
         Matrix& localRhs
     )
 {
+
     SparseMatrix modifiedLocalMatrix, localEmbedding, embeddingForBasis;
     Matrix rhsForBasis;
-
+gsInfo << "incorporateConstraints\n";
     incorporateConstraints(primalConstraints,eliminatePointwiseConstraints(),
         localMatrix,
         modifiedLocalMatrix,localEmbedding,embeddingForBasis,rhsForBasis);
+gsInfo << "makeSparseLUSolver\n";
+    auto solver = makeSparseLUSolver(modifiedLocalMatrix);
+gsInfo << "primalBasis\n";
+    auto pb = primalBasis(
+            give(solver),
+            embeddingForBasis, rhsForBasis, primalDofIndices, nPrimalDofs()
+        );
 
+gsInfo << "addContribution\n";
     addContribution(
         jumpMatrix, localMatrix, localRhs,
-        primalBasis(
+        pb
+        /*primalBasis(
             makeSparseLUSolver(modifiedLocalMatrix),
             embeddingForBasis, rhsForBasis, primalDofIndices, nPrimalDofs()
-        )
+        )*/
     );
-
+gsInfo << "localMatrix\n";
     localMatrix  = give(modifiedLocalMatrix);
+gsInfo << "localRhs\n";
     localRhs     = localEmbedding * localRhs;
+gsInfo << "jumpMatrix\n";
     jumpMatrix   = jumpMatrix * localEmbedding.transpose();
 }
 
