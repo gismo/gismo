@@ -43,7 +43,7 @@ public:
         ArtificialIface ai;
         ai.realIface = realIface;
         ai.artificialIface = artificialIface;
-        ai.ifaceIndices = (*m_multiBasis)[realIface.patch].boundary(artificialIface);
+        ai.ifaceIndices = (*m_multiBasis)[artificialIface.patch].boundary(artificialIface);
         m_artificialIfaces[realIface.patch].push_back(give(ai));
     }
 
@@ -131,7 +131,7 @@ public:
                         const index_t global_idx = m_dofMapperOrig.index(ii,kk);
                         if (m_dofMapperOrig.is_boundary_index(global_idx))
                         {
-                            m_dofMapperMod.eliminateDof(idx,k); // TODO: necessary?
+                            //m_dofMapperMod.eliminateDof(idx,k); // TODO: necessary?
                             m_dofMapperLocal[k].eliminateDof(ii,l+1);
                         }
                         ++idx;
@@ -145,10 +145,12 @@ public:
                 for (index_t i=0; i<m_artificialIfaces[k][l].ifaceIndices.rows(); ++i)
                 {
                     const index_t idx = m_artificialIfaces[k][l].ifaceIndices[i];
+                    GISMO_ASSERT (idx>last_idx, "Not sorted; k="<<k<<"; l="<<l);
                     for (index_t j=last_idx+1; j<idx; ++j)
                         m_dofMapperLocal[k].eliminateDof(j,l+1);
                     last_idx = idx;
                 }
+                GISMO_ASSERT (sizes[k][l+1]>last_idx, "Not sorted; k="<<k<<"; l="<<l);
                 for (index_t j=last_idx+1; j<sizes[k][l+1]; ++j)
                     m_dofMapperLocal[k].eliminateDof(j,l+1);
             }
