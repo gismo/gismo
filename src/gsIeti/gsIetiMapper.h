@@ -187,8 +187,6 @@ private:
         const gsBasis<T>& basis, const gsDofMapper& dm,
         boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
-    void setupMappers(const Matrix&);     ///< Setup of local mappers
-
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper

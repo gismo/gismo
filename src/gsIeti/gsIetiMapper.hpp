@@ -53,7 +53,9 @@ void gsIetiMapper<T>::init(
     m_multiBasis = &multiBasis;
     m_dofMapperGlobal = give(dofMapperGlobal);
     m_dofMapperLocal.clear();
+    m_dofMapperLocal.resize(nPatches);
     m_fixedPart.clear();
+    m_fixedPart.resize(nPatches);
     m_jumpMatrices.clear();
     m_nPrimalDofs = 0;
     m_primalConstraints.clear();
@@ -62,28 +64,13 @@ void gsIetiMapper<T>::init(
     m_primalDofIndices.resize(nPatches);
     m_status = 1;
 
-    setupMappers(fixedPart);
-}
-
-template <class T>
-void gsIetiMapper<T>::setupMappers(const Matrix& fixedPart)
-{
-    const index_t nPatches = m_dofMapperGlobal.numPatches();
-    m_dofMapperLocal.resize(nPatches);
-    m_fixedPart.reserve(nPatches);
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t nDofs = m_dofMapperGlobal.patchSize(k);
         GISMO_ASSERT( nDofs>=m_multiBasis->piece(k).size(), "gsIetiMapper::setupMappers: "
             "The mapper for patch "<<k<<" has less dofs than the corresponding basis." );
         if (nDofs>m_multiBasis->piece(k).size())
-        {
-            if ( !(m_status&2) )
-                gsInfo << "***************************************************************\n"
-                       << "Hi, I found some artificial dofs!\n"
-                       << "***************************************************************\n";
             m_status |= 2;
-        }
 
         m_dofMapperLocal[k].setIdentity(1,nDofs);
 
@@ -97,8 +84,7 @@ void gsIetiMapper<T>::setupMappers(const Matrix& fixedPart)
         m_dofMapperLocal[k].finalize();
 
         const index_t szFixedPart = m_dofMapperLocal[k].boundarySize();
-        m_fixedPart.push_back(Matrix(szFixedPart,1));
-        m_fixedPart[k].setZero();
+        m_fixedPart[k].setZero(szFixedPart,1);
         for (index_t i=0; i<nDofs; ++i)
         {
             const index_t idx = m_dofMapperGlobal.index(i,k);
