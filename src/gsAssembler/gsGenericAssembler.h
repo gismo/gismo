@@ -37,6 +37,9 @@ public:
 
 public:
 
+    /// Returns the list of default options for assembly
+    static gsOptionList defaultOptions();
+
     /// Constructor with gsMultiBasis
     gsGenericAssembler( const gsMultiPatch<T>    & patches,
                         const gsMultiBasis<T>    & bases,
@@ -110,6 +113,11 @@ public:
 
     /// Stiffness assembly routine
     const gsSparseMatrix<T> & assembleStiffness();
+
+    /// Assemble dG interface terms
+    ///
+    /// See \a gsVisiorDg for possible options
+    const gsSparseMatrix<T> & assembleDG(const gsOptionList & opt);
 
     /// Moments assembly routine
     const gsMatrix<T> & assembleMoments(const gsFunction<T> & func);

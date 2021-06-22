@@ -30,7 +30,7 @@ void adddGInterfaceContributions(
     const gsArtificialIfaces<>& ai,
     const gsMultiPatch<>& mp,
     const gsMultiBasis<>& mb,
-    const gsOptionList& options,
+          gsOptionList options,
     const index_t patch,
     gsSparseMatrix<>& localMatrix,
     gsMatrix<>& localRhs
@@ -402,12 +402,13 @@ void adddGInterfaceContributions(
     const gsArtificialIfaces<>& ai,
     const gsMultiPatch<>& mp,
     const gsMultiBasis<>& mb,
-    const gsOptionList& options,
+          gsOptionList options,
     const index_t patch,
     gsSparseMatrix<>& localMatrix,
     gsMatrix<>& localRhs
 )
 {
+    options.addSwitch("DG.NonSymmetric", "", true);
     const std::vector<gsArtificialIfaces<>::ArtificialIface>& artIfaces = ai.artificialIfaces(patch);
 
     gsDofMapper localMapperTempCopy = ai.dofMapperLocal(patch);
@@ -461,7 +462,7 @@ void adddGInterfaceContributions(
             // Here, the iterators are only used for the calculation of the cell size
 
             // Map it back
-            dg.localToGlobalNonSymm(0, l+1, fixedPart, sparseSystem);
+            dg.localToGlobal(0, l+1, fixedPart, sparseSystem);
 
         }
 

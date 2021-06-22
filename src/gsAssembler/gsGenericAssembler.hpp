@@ -17,9 +17,18 @@
 #include <gsAssembler/gsVisitorMass.h>
 #include <gsAssembler/gsVisitorGradGrad.h>
 #include <gsAssembler/gsVisitorMoments.h>
+#include <gsAssembler/gsVisitorDg.h>
 
 namespace gismo
 {
+
+template <class T>
+gsOptionList gsGenericAssembler<T>::defaultOptions()
+{
+    gsOptionList options = gsAssembler<T>::defaultOptions();
+    options.update( gsVisitorDg<T>::defaultOptions(), gsOptionList::addIfUnknown );
+    return options;
+}
 
 template <class T>
 const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleMass()
@@ -90,6 +99,22 @@ const gsMatrix<T> & gsGenericAssembler<T>::assembleMoments(const gsFunction<T> &
     this->finalize();
 
     return m_system.rhs();
+}
+
+template <class T>
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleDG(const gsOptionList & opt)
+{
+    // Clean the sparse system
+    gsGenericAssembler::refresh();
+    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
+    m_system.matrix().reservePerColumn(nz);
+
+    this->template pushInterface<gsVisitorDg<T> >();
+
+    // Assembly is done, compress the matrix
+    this->finalize();
+
+    return m_system.matrix();
 }
 
 

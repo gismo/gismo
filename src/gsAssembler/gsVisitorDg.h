@@ -1,6 +1,7 @@
 /** @file gsVisitorDg.h
 
-    @brief A DG interface visitor for the Poisson problem .
+    @brief Visitor for adding the interface conditions for the interior
+    penalty methods of the Poisson problem.
 
     This file is part of the G+Smo library.
 
@@ -15,31 +16,14 @@
 
 namespace gismo
 {
-/** @brief
-  * Implementation of a interface condition for the
-  * discontinuous Galerkin Assembler.
-  *
-  * It uses the Symmetric Interior Penalty discontinuous Galerkin (SIPG)
-  * method.
-  *
-  * It sets up an assembler and assembles the system patch wise and
-  * combines the patch-local stiffness matrices into a global system.
-  * Dirichlet boundary can also be imposed weakly (i.e. Nitsche).
-  */
-
-template <class T>
-class gsVisitorDg
-{
-public:
-
-   /** \brief Visitor for adding the interface conditions for the
-     * interior penalty method of the Poisson problem.
+   /** \brief Visitor for adding the interface conditions for the interior
+     * penalty methods of the Poisson problem.
      *
      * This visitor adds the following term to the left-hand side (bilinear form).
      * \f[
      *     s(u,v) :=
-     *        - \{\nabla u\} \cdot \mathbf{n} [ v ]
-     *        - \{\nabla v\} \cdot \mathbf{n} [ u ]
+     *        - \gamma \{\nabla u\} \cdot \mathbf{n} [ v ]
+     *        - \beta  \{\nabla v\} \cdot \mathbf{n} [ u ]
      *        + \alpha (h_k^{-1} + h_\ell^{-1}) [ u ][ v ],
      * \f]
      * where \f$ v \f$ is the test function and \f$ u \f$ is trial function,
@@ -47,38 +31,64 @@ public:
      * and \f$ \{ u \} = (u^{(k)} + u^{(\ell)})/2\f$ denotes the average between
      * the two patches.
      *
-     * We have \f$ s(u,v) = m(u,v) + m(v,u) \f$, where
-     * \f[
-     *     m(u,v) :=
-     *        - \nabla u^{(k)} \cdot \mathbf{n} [ v ]
-     *        - \nabla v^{(k)} \cdot \mathbf{n} [ u ]
-     *        + \alpha h_k^{-1} [ u ][ v ].
-     * \f]
-     * This bilinear form can be obtained using \ref localToGlobalNonSymm.
-     * TODO: How is alpha chosen? Are the bilinear forms correct?
+     * The default values are \f$ \gamma=\beta= 1 \f$ and \f$ \alpha = p^2 \f$,
+     * which corresponds to the Symmetric Interior Penalty discontinuous Galerkin
+     * (SIPG) method.
+     *
+     * An analogous visitor for handling the Dirichlet boundary conditions weakly,
+     * is the \a gsVisitorNitsche.
+     *
+     * \ingroup Assembler
      */
 
+template <class T>
+class gsVisitorDg
+{
+public:
+
     /// Constructor
-    gsVisitorDg() {}
+    gsVisitorDg()
+    {}
 
     /// Constructor. The given Pde is ignored.
-    gsVisitorDg(const gsPde<T> &) {}
+    gsVisitorDg(const gsPde<T> &)
+    {}
+
+    /// Default options
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList options;
+        options.addReal  ("DG.Alpha",        "",    -1);
+        options.addReal  ("DG.Beta",         "",     1);
+        options.addReal  ("DG.Gamma",        "",     1);
+        options.addSwitch("DG.NonSymmetric", "", false);
+        return options;
+    }
 
     /// Initialize
     void initialize(const gsBasis<T> & basis1,
-                    const gsBasis<T> & ,
+                    const gsBasis<T> & basis2,
                     const boundaryInterface & bi,
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
+
         side1 = bi.first().side();
 
         // Setup Quadrature
         rule = gsQuadrature::get(basis1, options, side1.direction());
 
         // Compute penalty parameter
-        const int deg = basis1.maxDegree();
-        penalty = (deg + basis1.dim()) * (deg + 1) * T(2.0);
+        const int deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
+
+        // If not given, run automatically
+        m_alpha = options.askReal("DG.Alpha",-1);
+        if (m_alpha<0)
+            m_alpha = (deg + basis1.dim()) * (deg + 1) * T(2);
+
+        m_beta  = options.askReal("DG.Beta" , 1);
+        m_gamma = options.askReal("DG.Gamma", 1);
+        m_nonSymm = options.askSwitch("DG.NonSymmetric", false);
 
         // Set Geometry evaluation flags
         md1.flags = md2.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
@@ -151,6 +161,8 @@ public:
             const T c1     = weight * T(0.5);
             N1.noalias()   = unormal.transpose() * phGrad1;
             N2.noalias()   = unormal.transpose() * phGrad2;
+            // TODO: m_beta and m_gamma
+            // TODO: ieti part
             B11.noalias() += c1 * ( val1 * N1 );
             B12.noalias() += c1 * ( val1 * N2 );
             B22.noalias() -= c1 * ( val2 * N2 );
@@ -158,8 +170,8 @@ public:
 
             const T h1     = element1.getCellSize();
             const T h2     = element2.getCellSize();
-            // Maybe, the h should be scaled with the patch diameter, since its the h from the parameterdomain.
-            const T c2     = weight * penalty * 2*(1./h1 + 1./h2);
+            // Maybe, the h should be scaled with the patch diameter, since its the h from the parameter domain.
+            const T c2     = weight * m_alpha * 2*(1./h1 + 1./h2);
 
             E11.noalias() += c2 * ( val1 * val1.transpose() );
             E12.noalias() += c2 * ( val1 * val2.transpose() );
@@ -181,37 +193,28 @@ public:
         m_localRhs1.setZero(actives1.rows(),system.rhsCols());
         m_localRhs2.setZero(actives2.rows(),system.rhsCols());
 
-        system.push(-B11 - B11.transpose() + E11, m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
-        system.push(-B21 - B12.transpose() - E21, m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
-        system.push(-B12 - B21.transpose() - E12, m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
-        system.push(-B22 - B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
-
+        if (m_nonSymm) // TODO: should be done differently
+        {
+            system.push((-B11 - B11.transpose() + E11)/T(2), m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
+            system.push( -B21                   - E21 /T(2), m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
+            system.push(      - B21.transpose() - E12 /T(2), m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
+            system.push(                          E22 /T(2), m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
+        }
+        else
+        {
+            system.push(-B11 - B11.transpose() + E11, m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
+            system.push(-B21 - B12.transpose() - E21, m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
+            system.push(-B12 - B21.transpose() - E12, m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
+            system.push(-B22 - B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
+        }
     }
-
-    /// Adds the contirbutions for $\f m(u,v) \f$ to the sparse system
-    inline void localToGlobalNonSymm(const index_t                     patch1,
-                                     const index_t                     patch2,
-                                     const std::vector<gsMatrix<T> > & eliminatedDofs,
-                                     gsSparseSystem<T>               & system)
-    {
-        // Map patch-local DoFs to global DoFs
-        system.mapColIndices(actives1, patch1, actives1);
-        system.mapColIndices(actives2, patch2, actives2);
-
-        m_localRhs1.setZero(actives1.rows(),system.rhsCols());
-        m_localRhs2.setZero(actives2.rows(),system.rhsCols());
-
-        system.push((-B11 - B11.transpose() + E11)/T(2), m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
-        system.push( -B21                   - E21 /T(2), m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
-        system.push(      - B21.transpose() - E12 /T(2), m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
-        system.push(                          E22 /T(2), m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
-
-    }
-
+    
 private:
 
     // Penalty constant
-    T penalty;
+    T m_alpha, m_beta, m_gamma;
+
+    bool m_nonSymm;
 
     // Side
     boxSide side1;
@@ -220,7 +223,7 @@ private:
 
     // Basis values etc
     std::vector<gsMatrix<T> > basisData1, basisData2;
-    gsMatrix<T>        phGrad1   , phGrad2;
+    gsMatrix<T>       phGrad1   , phGrad2;
     gsMatrix<index_t> actives1  , actives2;
 
     // Outer normal
