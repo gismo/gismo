@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
         gsInfo << "\n patch " << k<< "\n";
         localMatrix.uncompress();
 
-        const index_t diff = localMatrix.rows()<ai.dofMapperLocal(k).freeSize();
+        const index_t diff = localMatrix.rows()-ai.dofMapperLocal(k).freeSize();
         if (diff>0)
         {
             gsInfo << "Enlarge local system by " << diff << " dofs. Why??\n";
@@ -263,6 +263,7 @@ int main(int argc, char *argv[])
             localRhs.conservativeResize(ai.dofMapperLocal(k).freeSize(),1);
             localRhs.bottomRows(diff).setZero();
         }
+        GISMO_ENSURE (diff>=0, "");
         adddGInterfaceContributions(
             ai,
             mp,
