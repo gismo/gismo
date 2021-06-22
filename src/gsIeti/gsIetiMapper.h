@@ -97,7 +97,7 @@ public:
     /// patch averages. In this case, the requirement that it contributes to
     /// at least two patches does not apply. For corners, use \ref cornersAsPrimals
     /// instead.
-    void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d);
+    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d );
 
     /// @brief With this function, the caller can register more primal constraints
     ///
@@ -112,12 +112,12 @@ public:
     ///                        if false, then no redundancy
     /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
     ///                        if the corners are chosen as primal dofs
-    void computeJumpMatrices(bool fullyRedundant, bool excludeCorners);
+    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners );
 
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
     /// @param patch   Number of the patch
-    std::vector<index_t> skeletonDofs(index_t patch) const;
+    std::vector<index_t> skeletonDofs( index_t patch ) const;
 
     /// @brief Apply the required changes to a space object of the expression
     /// assembler
@@ -127,7 +127,7 @@ public:
     ///
     /// This function exposes the \ref dofMapperLocal and the \ref fixedPart to
     /// the space.
-    void initFeSpace(typename gsExprAssembler<T>::space u, index_t k)
+    void initFeSpace( typename gsExprAssembler<T>::space u, index_t k )
     {
         GISMO_ASSERT( m_status&1,
             "gsIetiMapper: The class has not been initialized." );

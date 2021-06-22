@@ -18,10 +18,9 @@
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor
  *       (m_status&2)!=0    means that there are artificial dofs
- *       (m_status&4)!=0    unused
- *       (m_status&8)!=0    means that the jump matrices have been computed
- *       (m_status&16)!=0   means that corners have been set up as primal constraints
- *       (m_status&flag)!=0 for flag = 32, 64,... means that edges, faces, ... have been set up as primal constraints
+ *       (m_status&4)!=0    means that the jump matrices have been computed
+ *       (m_status&8)!=0    means that corners have been set up as primal constraints
+ *       (m_status&flag)!=0 for flag = 16, 32,... means that edges, faces, ... have been set up as primal constraints
  *
  *   This class allows that the dof mappers have more dofs than the bases.
  *   It is assumed the first N0 basis functions in the mapper are associated
@@ -141,8 +140,8 @@ template <class T>
 void gsIetiMapper<T>::cornersAsPrimals()
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
-    GISMO_ASSERT( !(m_status&16), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
-    m_status |= 16;
+    GISMO_ASSERT( !(m_status&8), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
+    m_status |= 8;
 
     const index_t nPatches = m_dofMapperLocal.size();
 
@@ -253,7 +252,7 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 
 
 template <class T>
-void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, const short_t d)
+void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
@@ -267,7 +266,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, con
     GISMO_ASSERT( !(m_status&2), "gsIetiMapper::interfaceAveragesAsPrimals "
         "is not implemented for artificial ifaces." ); //TODO
 
-    const unsigned flag = 1<<(4+d);
+    const unsigned flag = 1<<(3+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
         " already been called for d="<<d );
     m_status |= flag;
@@ -305,7 +304,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, con
 
 
 template <class T>
-void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,SparseVector> > data)
+void gsIetiMapper<T>::customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
@@ -320,7 +319,7 @@ void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,Spa
 }
 
 template <class T>
-std::vector<index_t> gsIetiMapper<T>::skeletonDofs(const index_t patch) const
+std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
@@ -330,15 +329,15 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs(const index_t patch) const
     result.reserve(2*dim*std::pow(patchSize,(1.0-dim)/dim));
     for (index_t i=0; i<patchSize; ++i)
         if ( m_dofMapperGlobal.is_coupled(i,patch) )
-            result.push_back( m_dofMapperLocal[patch].index(i,0) );
+            result.push_back(m_dofMapperLocal[patch].index(i,0));
     return result;
 }
 
 template <class T>
-void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorners)
+void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
-    GISMO_ASSERT( !(m_status&8), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
+    GISMO_ASSERT( !(m_status&4), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
     m_status |= 8;
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
