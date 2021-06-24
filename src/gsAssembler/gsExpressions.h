@@ -61,16 +61,14 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
 /// Struct containing information for matrix assembly
 template<class T> struct gsFeSpaceData
 {
-    gsFeSpaceData(const gsFunctionSet<T> & _fs, index_t _id):
-    fs(&_fs), id(give(_id)) { }
+    gsFeSpaceData(const gsFunctionSet<T> & _fs, index_t _dim, index_t _id):
+    fs(&_fs), dim(give(_dim)), id(give(_id)) { }
 
     const gsFunctionSet<T> * fs;
-    index_t id;
+    index_t dim, id;
     gsDofMapper mapper;
     gsMatrix<T> fixedDofs;
     index_t cont; //int. coupling
-
-    index_t dim() const { return mapper.numComponents();}
 };
 
 // Forward declaration in gismo namespace
@@ -109,6 +107,8 @@ template<class E> class sqNorm_expr;
 template<class E> class det_expr;
 template<class E> class value_expr;
 template<class E> class asdiag_expr;
+template<class E> class rowsum_expr;
+template<class E> class colsum_expr;
 template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
@@ -248,6 +248,14 @@ public:
     /// Returns a diagonal matrix expression of the vector expression
     asdiag_expr<E> asDiag() const
     { return asdiag_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the rowSum of a matrix
+    rowsum_expr<E> rowSum() const
+    { return rowsum_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the colSum of a matrix
+    colsum_expr<E> colSum() const
+    { return colsum_expr<E>(static_cast<E const&>(*this)); }
 
     col_expr<E> operator[](const index_t i) const
     { return col_expr<E>(static_cast<E const&>(*this),i); }
@@ -1656,6 +1664,80 @@ public:
     void print(std::ostream &os) const { os << "diag("; _u.print(os); os <<")";}
 };
 
+template<class E>
+class rowsum_expr  : public _expr<rowsum_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks = E::ColBlocks};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> tmp;
+
+public:
+
+    rowsum_expr(_expr<E> const& u) : _u(u)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        tmp = _u.eval(k).rowwise().sum();
+        return tmp;
+    }
+
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return 1; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    void print(std::ostream &os) const { os << "rowsum("; _u.print(os); os<<")"; }
+};
+
+template<class E>
+class colsum_expr  : public _expr<colsum_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks = E::ColBlocks};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> tmp;
+
+public:
+
+    colsum_expr(_expr<E> const& u) : _u(u)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        tmp = _u.eval(k).colwise().sum();
+        return tmp;
+    }
+
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return 1; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    void print(std::ostream &os) const { os << "colsum("; _u.print(os); os<<")"; }
+};
+
 /**
    Expression for the identity matrix
 */
@@ -2639,7 +2721,7 @@ public:
             (_u.data().dim.first*(1+_u.data().dim.first));
         //gsDebugVar(_u.data().values.front().rows());//empty!
     }
-    
+
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
@@ -2663,7 +2745,7 @@ protected:
 public:
     typedef T Scalar;
     enum{Space = 0, ScalarValued = 0, ColBlocks = 0 };
-    
+
     hess_expr(const gsFeSolution<T> & u) : _u(u) { }
 
     mutable gsMatrix<T> res;
@@ -3383,6 +3465,7 @@ public:
         //GISMO_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks,
         //             "Error: "<< E1::ColBlocks <<"!="<< E2::ColBlocks);
     }
+    mutable gsMatrix<Scalar> res;
 
     AutoReturn_t eval(const index_t k) const
     {
@@ -3392,7 +3475,8 @@ public:
         GISMO_ASSERT(_u.cols() == _v.cols(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in + operation:\n"
                      << _u <<" plus \n" << _v );
-        return _u.eval(k) + _v.eval(k);
+        res = _u.eval(k) + _v.eval(k);
+        return res;
     }
 
     index_t rows() const { return _u.rows(); }
@@ -3475,7 +3559,7 @@ public:
         GISMO_ERROR("A");
         return 0;
     }
-    
+
     void print(std::ostream &os) const
     { os << "sum("; _M.print(os); os<<","; _u.print(os); os<<")"; }
 
@@ -3540,7 +3624,7 @@ public:
                      "Cardinality "<< _u.cardinality()<<" != "<< _v.cardinality());
         return _u.cardinality();
     }
-    
+
     void print(std::ostream &os) const
     { os << "("; _u.print(os); os<<" - ";_v.print(os); os << ")";}
 };
