@@ -338,7 +338,7 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( !(m_status&4), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
-    m_status |= 8;
+    m_status |= 4;
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
