@@ -19,6 +19,7 @@ namespace gismo
 template<class T>
 void gsDofMapper::init( const gsMultiBasis<T> & bases, index_t nComp)
 {
+    GISMO_ASSERT(nComp>0,"Zero components");
     m_curElimId   = -1;
     m_numCpldDofs.assign(nComp+1, 1); m_numCpldDofs.front()=0;
     m_numElimDofs.assign(nComp+1,0);
@@ -124,6 +125,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
 template<class T>
 void gsDofMapper::initSingle( const gsBasis<T> & basis, index_t nComp)
 {
+    GISMO_ASSERT(nComp>0,"Zero components");
     m_curElimId   = -1;
     m_numFreeDofs.assign(nComp+1,basis.size()); m_numFreeDofs.front()=0;
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
