@@ -21,19 +21,39 @@ namespace gismo
      *
      * This visitor adds the following term to the left-hand side (bilinear form).
      * \f[
-     *     s(u,v) :=
-     *        - \gamma \{\nabla u\} \cdot \mathbf{n} [ v ]
-     *        - \beta  \{\nabla v\} \cdot \mathbf{n} [ u ]
-     *        + \alpha (h_k^{-1} + h_\ell^{-1}) [ u ][ v ],
+     *     s_{k,\ell}(u,v) :=
+     *        - \alpha \int_{\Gamma^{(k,\ell)}}  \{\nabla u\} \cdot \mathbf{n} [ v ]
+     *        - \beta  \int_{\Gamma^{(k,\ell)}}  \{\nabla v\} \cdot \mathbf{n} [ u ]
+     *        + \delta ( h_k^{-1} + h_\ell^{-1} \int_{\Gamma^{(k,\ell)}}  [ u ][ v ],
      * \f]
      * where \f$ v \f$ is the test function and \f$ u \f$ is trial function,
      * \f$ [u] = u^{(k)} - u^{(\ell)} \f$ denotes the jump accross the interface
      * and \f$ \{ u \} = (u^{(k)} + u^{(\ell)})/2\f$ denotes the average between
      * the two patches.
      *
-     * The default values are \f$ \gamma=\beta= 1 \f$ and \f$ \alpha = p^2 \f$,
+     * The default values are \f$\alpha =\beta=1\f$ and \f$\delta=2(p+d)(p+1)\f$,
      * which corresponds to the Symmetric Interior Penalty discontinuous Galerkin
-     * (SIPG) method.
+     * (SIPG) method. These values can be specified via the parameters DG.Alpha,
+     * DG.Beta and DG.Delta.
+     *
+     * The (normal) grid sizes are estimated based on the geometry function. Use
+     * the option DG.ParameterGridSize to just use the grid size on the parameter
+     * domain. [TODO: implement that]
+     *
+     * The overall term is symmetric between patches \f$ k \f$ and \f$ \ell \f$,
+     * however a non-symmetric variant is also available:
+     * \f[
+     *      s_{k,\ell}(u,v) = s_{\ell,k}(u,v) = n_{k,\ell}(u,v) + n_{\ell,k}(u,v),
+     * \f]
+     * where
+     * \f[
+     *     n_{k,\ell}(u,v) :=
+     *        - \alpha \int_{\Gamma^{(k,\ell)}}  \nabla u^{(k)} \cdot \mathbf{n} [ v ]
+     *        - \beta  \int_{\Gamma^{(k,\ell)}}  \nabla v^{(k)} \cdot \mathbf{n} [ u ]
+     *        + 2^{-1} \delta ( h_k^{-1} + h_\ell^{-1} \int_{\Gamma^{(k,\ell)}}  [ u ][ v ].
+     * \f]
+     * Use the option DG.OneSided to obtain the contrinutions for the bilinar form
+     * \f$ n \f$.
      *
      * An analogous visitor for handling the Dirichlet boundary conditions weakly,
      * is the \a gsVisitorNitsche.
@@ -58,10 +78,16 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList options;
-        options.addReal  ("DG.Alpha",        "",    -1);
-        options.addReal  ("DG.Beta",         "",     1);
-        options.addReal  ("DG.Gamma",        "",     1);
-        options.addSwitch("DG.NonSymmetric", "", false);
+        options.addReal  ("DG.Alpha",
+                          "Parameter alpha for dG scheme; use 1 for SIPG and NIPG.",                              1);
+        options.addReal  ("DG.Beta",
+                          "Parameter beta for dG scheme; use 1 for SIPG and -1 for NIPG",                         1);
+        options.addReal  ("DG.Delta",
+                          "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.",    -1);
+        //options.addSwitch("DG.ParameterGridSize",
+        //                  "Use grid size on parameter domain for the penalty term.",                          false);
+        options.addSwitch("DG.OneSided",
+                          "Derive only one-sided bilinear form n(.,.).",                                      false);
         return options;
     }
 
@@ -72,26 +98,30 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-
         side1 = bi.first().side();
 
         // Setup Quadrature
         rule = gsQuadrature::get(basis1, options, side1.direction());
 
-        // Compute penalty parameter
-        const int deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
+        m_delta     = options.askReal("DG.Delta",-1);
+        // If not given, use default
+        if (m_delta<0)
+        {
+            const index_t deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
+            m_delta = T(4) * (deg + basis1.dim()) * (deg + 1);
+        }
 
-        // If not given, run automatically
-        m_alpha = options.askReal("DG.Alpha",-1);
-        if (m_alpha<0)
-            m_alpha = (deg + basis1.dim()) * (deg + 1) * T(2);
+        m_alpha     = options.askReal("DG.Alpha", 1);
+        m_beta      = options.askReal("DG.Beta" , 1);
 
-        m_beta  = options.askReal("DG.Beta" , 1);
-        m_gamma = options.askReal("DG.Gamma", 1);
-        m_nonSymm = options.askSwitch("DG.NonSymmetric", false);
+        m_oneSided  = options.askSwitch("DG.OneSided", false);
+
+        // TODO
+        m_h1        = basis1.getMinCellLength();
+        m_h2        = basis2.getMinCellLength();
 
         // Set Geometry evaluation flags
-        md1.flags = md2.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
+        md1.flags   = md2.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
     }
 
     /// Evaluate on element
@@ -130,6 +160,18 @@ public:
                          gsDomainIterator<T>    & element2,
                          gsVector<T>            & quWeights)
     {
+        if (m_oneSided)
+            assemble_impl<1>(element1, element2, quWeights);
+        else
+            assemble_impl<0>(element1, element2, quWeights);
+    }
+
+private:
+    template<bool oneSided>
+    inline void assemble_impl(gsDomainIterator<T>    & element1,
+                              gsDomainIterator<T>    & element2,
+                              gsVector<T>            & quWeights)
+    {
         const index_t numActive1 = actives1.rows();
         const index_t numActive2 = actives2.rows();
 
@@ -146,39 +188,40 @@ public:
             unormal.normalize();
 
             // Take blocks of values and derivatives of basis functions
-            //const typename gsMatrix<T>::Column val1 = basisData1.col(k);//bug
             const typename gsMatrix<T>::Block val1 = basisData1[0].block(0,k,numActive1,1);
             gsMatrix<T> & grads1 = basisData1[1];// all grads
-            //const typename gsMatrix<T>::Column val2 = basisData2.col(k);//bug
             const typename gsMatrix<T>::Block val2 = basisData2[0].block(0,k,numActive2,1);
             gsMatrix<T> & grads2 = basisData2[1];// all grads
 
             // Transform the basis gradients
             transformGradients(md1, k, grads1, phGrad1);
-            transformGradients(md2, k, grads2, phGrad2);
+            if (!oneSided)
+                transformGradients(md2, k, grads2, phGrad2);
 
             // Compute element matrices
-            const T c1     = weight * T(0.5);
+            const T c1     = weight / T(2);
             N1.noalias()   = unormal.transpose() * phGrad1;
-            N2.noalias()   = unormal.transpose() * phGrad2;
-            // TODO: m_beta and m_gamma
-            // TODO: ieti part
-            B11.noalias() += c1 * ( val1 * N1 );
-            B12.noalias() += c1 * ( val1 * N2 );
-            B22.noalias() -= c1 * ( val2 * N2 );
-            B21.noalias() -= c1 * ( val2 * N1 );
+            if (!oneSided)
+                N2.noalias()   = unormal.transpose() * phGrad2;
 
-            const T h1     = element1.getCellSize();
-            const T h2     = element2.getCellSize();
-            // Maybe, the h should be scaled with the patch diameter, since its the h from the parameter domain.
-            const T c2     = weight * m_alpha * 2*(1./h1 + 1./h2);
+            B11.noalias() += c1 * ( val1 * N1 );
+            B21.noalias() -= c1 * ( val2 * N1 );
+            if (!oneSided)
+            {
+                B12.noalias() += c1 * ( val1 * N2 );
+                B22.noalias() -= c1 * ( val2 * N2 );
+            }
+
+            const T c2     = weight * m_delta * (1./m_h1 + 1./m_h2) / (oneSided?2:1);
 
             E11.noalias() += c2 * ( val1 * val1.transpose() );
             E12.noalias() += c2 * ( val1 * val2.transpose() );
             E22.noalias() += c2 * ( val2 * val2.transpose() );
             E21.noalias() += c2 * ( val2 * val1.transpose() );
+
         }
     }
+public:
 
     /// Adds the contirbutions to the sparse system
     inline void localToGlobal(const index_t                     patch1,
@@ -193,30 +236,21 @@ public:
         m_localRhs1.setZero(actives1.rows(),system.rhsCols());
         m_localRhs2.setZero(actives2.rows(),system.rhsCols());
 
-        if (m_nonSymm) // TODO: should be done differently
-        {
-            system.push((-B11 - B11.transpose() + E11)/T(2), m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
-            system.push( -B21                   - E21 /T(2), m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
-            system.push(      - B21.transpose() - E12 /T(2), m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
-            system.push(                          E22 /T(2), m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
-        }
-        else
-        {
-            system.push(-B11 - B11.transpose() + E11, m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
-            system.push(-B21 - B12.transpose() - E21, m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
-            system.push(-B12 - B21.transpose() - E12, m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
-            system.push(-B22 - B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
-        }
+        system.push(-m_alpha*B11 - m_beta*B11.transpose() + E11, m_localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
+        system.push(-m_alpha*B21 - m_beta*B12.transpose() - E21, m_localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
+        system.push(-m_alpha*B12 - m_beta*B21.transpose() - E12, m_localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
+        system.push(-m_alpha*B22 - m_beta*B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
     }
-    
+
 private:
 
-    // Penalty constant
-    T m_alpha, m_beta, m_gamma;
+    /// Parameters for the bilinear form
+    T m_alpha, m_beta, m_delta;
 
-    bool m_nonSymm;
+    /// Only compute bilinear form n.
+    bool m_oneSided;
 
-    // Side
+    /// Side on first patch that corresponds to interface
     boxSide side1;
 
 private:
@@ -236,6 +270,8 @@ private:
     gsMatrix<T> m_localRhs1, m_localRhs2;
 
     gsMapData<T> md1, md2;
+
+    T m_h1, m_h2;
 };
 
 

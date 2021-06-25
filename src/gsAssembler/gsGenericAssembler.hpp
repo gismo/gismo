@@ -102,14 +102,21 @@ const gsMatrix<T> & gsGenericAssembler<T>::assembleMoments(const gsFunction<T> &
 }
 
 template <class T>
-const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleDG(const gsOptionList & opt)
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleDG(const boundaryInterface & iFace)
 {
+    GISMO_ENSURE( m_options.getInt("InterfaceStrategy")==iFace::dg,
+        "Assembling DG terms only makes sense in corresponding setting." );
+
     // Clean the sparse system
     gsGenericAssembler::refresh();
     const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
-    m_system.matrix().reservePerColumn(nz);
+    m_system.reserve(nz,1);
 
-    this->template pushInterface<gsVisitorDg<T> >();
+    //this->template pushInterface<gsVisitorDg<T> >();
+
+    gsVisitorDg<T> visitor(*m_pde_ptr);
+
+    this->apply(visitor, iFace);
 
     // Assembly is done, compress the matrix
     this->finalize();

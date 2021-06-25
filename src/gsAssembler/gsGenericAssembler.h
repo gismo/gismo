@@ -117,7 +117,7 @@ public:
     /// Assemble dG interface terms
     ///
     /// See \a gsVisiorDg for possible options
-    const gsSparseMatrix<T> & assembleDG(const gsOptionList & opt);
+    const gsSparseMatrix<T> & assembleDG(const boundaryInterface & iFace);
 
     /// Moments assembly routine
     const gsMatrix<T> & assembleMoments(const gsFunction<T> & func);
