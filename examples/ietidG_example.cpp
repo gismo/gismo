@@ -48,6 +48,9 @@ int main(int argc, char *argv[])
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
+    real_t alpha = 1;
+    real_t beta = 1;
+    real_t delta = -1;
     std::string boundaryConditions("d");
     std::string primals("c");
     real_t tolerance = 1.e-8;
@@ -61,6 +64,9 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addReal  ("",  "DG.Alpha",              "Parameter alpha for dG scheme; use 1 for SIPG and NIPG.", alpha );
+    cmd.addReal  ("",  "DG.Beta",               "Parameter beta for dG scheme; use 1 for SIPG and -1 for NIPG", beta );
+    cmd.addReal  ("",  "DG.Delta",              "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.", delta );
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
@@ -225,17 +231,37 @@ int main(int argc, char *argv[])
         // We use the local variants of everything
         gsBoundaryConditions<> bc_local;
         bc.getConditionsForPatch(k,bc_local);
-        gsMultiPatch<> mp_local = mp[k];
-        gsMultiBasis<> mb_local = mb[k];
 
-        // Setup assembler
-        gsPoissonAssembler<> assembler(
-            mp_local,
-            mb_local,
-            bc_local,
-            f,
-            dirichlet::elimination,
-            iFace::dg
+        // TODO: Neumann assembling
+
+        gsOptionList assemblerOptions = gsGenericAssembler<>::defaultOptions();
+        assemblerOptions.setInt("DirichletStrategy", dirichlet::elimination);
+        assemblerOptions.setInt("InterfaceStrategy", iFace::dg);
+        assemblerOptions.setSwitch("DG.OneSided", true);
+        assemblerOptions.setReal("DG.Alpha", alpha);
+        assemblerOptions.setReal("DG.Beta", beta);
+        assemblerOptions.setReal("DG.Delta", delta);
+
+        const std::vector<gsArtificialIfaces<>::ArtificialIface>& artIfaces = ai.artificialIfaces(k);
+
+        std::vector<gsGeometry<>* > mp2_;
+        std::vector<gsBasis<>* > mb2_;
+        mp2_.push_back(mp[k].clone().release());
+        mb2_.push_back(mb[k].clone().release());
+        for (index_t i=0; i<artIfaces.size(); ++i)
+        {
+             mp2_.push_back(mp[artIfaces[i].artificialIface.patch].clone().release());
+             mb2_.push_back(mb[artIfaces[i].artificialIface.patch].clone().release());
+        }
+        gsMultiPatch<> mp2(mp2_);
+        mp2.computeTopology();
+        gsMultiBasis<> mb2(mb2_,mp2);
+
+        gsGenericAssembler<> gAssembler(
+            mp2,
+            mb2,
+            assemblerOptions,
+            &bc_local
         );
 
         // This provides a new dof mapper and the Dirichlet data
@@ -243,96 +269,44 @@ int main(int argc, char *argv[])
         // Dirichlet boundary just with a corner or that a 3d-patch touches the
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
-        gsDofMapper tmp = ietiMapper.dofMapperLocal(k);
-        assembler.system() = gsSparseSystem<>(tmp); // gsSparseSystem takes per reference and steals contents
-        assembler.setFixedDofVector(ietiMapper.fixedPart(k));
+        gAssembler.setMapper(ai.dofMapperLocal(k));
+        gsMatrix<> fixedPart(ai.dofMapperLocal(k).boundarySize(), 1 );
+        fixedPart.setZero();
+        fixedPart.topRows(ietiMapper.fixedPart(k).rows()) = ietiMapper.fixedPart(k); // TODO
+        gAssembler.setFixedDofVector(fixedPart);
 
-        // Assemble
-        assembler.assemble();
-
-        // Fetch data
+        // Assemble and fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
-        gsSparseMatrix<>                 localMatrix = assembler.matrix();
-        gsMatrix<>                       localRhs    = assembler.rhs();
-        DEBUGVAR( nPatches );
-        gsInfo << "current patch: k=" << k<< "\n";
-        localMatrix.uncompress();
-        const index_t diff = ai.dofMapperLocal(k).freeSize() - localMatrix.rows();
-        //if (diff!=0)
+
+        gsMatrix<>                       localRhs    = gAssembler.assembleMoments(f,0);
+
+        gAssembler.setMapper(ai.dofMapperLocal(k));
+        gsSparseMatrix<>                 localMatrix  = gAssembler.assembleStiffness(0);
+                                         localRhs    += gAssembler.rhs();
+
+        gAssembler.setMapper(ai.dofMapperLocal(k));
+
+        GISMO_ENSURE (ai.dofMapperLocal(k).freeSize() == localMatrix.rows(), "??");
+
+        for (index_t i=0; i<artIfaces.size(); ++i)
         {
-
-            for(index_t jjj=0; jjj<ai.artificialIfaces(k).size(); ++jjj)
-            {
-                gsInfo << "ifindices: " << ai.artificialIfaces(k)[jjj].ifaceIndices << "\n";
-            }
-
-            DEBUGVAR(ai.dofMapperLocal(k).freeSize());
-            DEBUGVAR(ai.dofMapperLocal(k).size());
-            gsInfo << ai.dofMapperLocal(k)  << "\n";
-            //DEBUGVAR(ai.dofMapperLocal(k).fixedSize());
-            DEBUGVAR(ietiMapper.dofMapperLocal(k).freeSize());
-            DEBUGVAR(ietiMapper.dofMapperLocal(k).size());
-            gsInfo << ietiMapper.dofMapperLocal(k) << "\n";
-            //DEBUGVAR(ietiMapper.dofMapperLocal(k).fixedSize());
-            DEBUGMAT(localMatrix);
-            DEBUGMAT(jumpMatrix);
-
-            auto tmp = ai.artificialIfaces(k);
-            for (index_t i=0; i<tmp.size(); ++i)
-            { DEBUGVAR(("ai.artificialIfaces(k)",tmp[i].realIface)); }
-
+            patchSide side1(0,artIfaces[i].realIface.side());
+            patchSide side2(i+1,artIfaces[i].artificialIface.side());
+            boundaryInterface bi(side1, side2, mp.geoDim());
+            localMatrix += gAssembler.assembleDG(bi);
+            gAssembler.setMapper(ai.dofMapperLocal(k));
         }
 
-        /*if (diff>0)
-        {
-            gsInfo << "Enlarge local system by " << diff << " dofs. Why??\n";
-            localMatrix.conservativeResize(ai.dofMapperLocal(k).freeSize(), ai.dofMapperLocal(k).freeSize());
-            localRhs.conservativeResize(ai.dofMapperLocal(k).freeSize(),1);
-            localRhs.bottomRows(diff).setZero();
-        }*/
-        GISMO_ENSURE (diff==0, "diff: " <<diff);
-
-        adddGInterfaceContributions(
-            ai,
-            mp,
-            mb,
-            assembler.options(),
-            k,
-            localMatrix,
-            localRhs
-        );
-        localMatrix.makeCompressed();
-        //gsInfo << "\n matrix \n" << localMatrix.toDense() << "\n";
-        DEBUGMAT(localMatrix);
         // Add the patch to the scaled Dirichlet preconditioner
-        gsInfo << "gsScaledDirichletPrec<>::restrictToSkeleton\n";
-        auto skel = gsScaledDirichletPrec<>::restrictToSkeleton(
-                jumpMatrix,
-                localMatrix,
-                ietiMapper.skeletonDofs(k)
-            );
-        gsInfo << "prec.addSubdomain\n";
         prec.addSubdomain(
-            skel
-            /*gsScaledDirichletPrec<>::restrictToSkeleton(
+            gsScaledDirichletPrec<>::restrictToSkeleton(
                 jumpMatrix,
                 localMatrix,
                 ietiMapper.skeletonDofs(k)
-            )*/
+            )
         );
-        gsInfo << "primal.handleConstraints\n";
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubmp().
-        DEBUGVAR(ietiMapper.primalConstraints(k).size());
-        if (ietiMapper.primalConstraints(k).size()>0)
-        {
-            DEBUGMAT(ietiMapper.primalConstraints(k)[0]);
-        }
-        //DEBUGVAR(ietiMapper.primalDofIndices(k));
-        DEBUGMAT(jumpMatrix);
-        DEBUGMAT(localMatrix);
-        DEBUGMAT(localRhs);
-
         primal.handleConstraints(
             ietiMapper.primalConstraints(k),
             ietiMapper.primalDofIndices(k),
@@ -340,14 +314,13 @@ int main(int argc, char *argv[])
             localMatrix,
             localRhs
         );
-        gsInfo << "ieti.addSubdomain\n";
+
         // Add the patch to the Ieti system
         ieti.addSubdomain(
             jumpMatrix.moveToPtr(),
             makeMatrixOp(localMatrix.moveToPtr()),
             give(localRhs)
         );
-        gsInfo << "done with loop for k=" << k << "\n";
     }
     gsInfo << "All patches are assembled\nNow handle primal system..." << std::flush;
     // Add the primal problem if there are primal constraints
@@ -444,80 +417,4 @@ int main(int argc, char *argv[])
                   "file containing the solution or --fn to write solution to xml file.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
-
-void adddGInterfaceContributions(
-    const gsArtificialIfaces<>& ai,
-    const gsMultiPatch<>& mp,
-    const gsMultiBasis<>& mb,
-          gsOptionList options,
-    const index_t patch,
-    gsSparseMatrix<>& localMatrix,
-    gsMatrix<>& localRhs
-)
-{
-    options.addSwitch("DG.NonSymmetric", "", true);
-    const std::vector<gsArtificialIfaces<>::ArtificialIface>& artIfaces = ai.artificialIfaces(patch);
-
-    gsDofMapper localMapperTempCopy = ai.dofMapperLocal(patch);
-    gsSparseSystem<real_t> sparseSystem (localMapperTempCopy); // Yummi. Mapper tastes good.
-    sparseSystem.reserve(7,1); // TODO: first parameter should be number of non-zeros per row
-
-    std::vector< gsMatrix<> > fixedPart(1, ai.fixedDofs(patch) );
-
-    gsMatrix<> quNodes1, quNodes2;// Mapped nodes
-    gsVector<> quWeights;         // Mapped weights
-
-    gsQuadRule<real_t> QuRule;
-
-    for (size_t l = 0; l < artIfaces.size(); ++l)
-    {
-
-        const patchSide& side1     = artIfaces[l].realIface;
-        const patchSide& side2     = artIfaces[l].artificialIface;
-        const gsBasis<>& basis1    = mb[side1.patch];
-        const gsBasis<>& basis2    = mb[side2.patch];
-        const gsGeometry<>& geo1   = mp[side1.patch];
-        const gsGeometry<>& geo2   = mp[side2.patch];
-
-        gsVisitorDg<real_t> dg;
-
-        boundaryInterface bi(side1, side2, mp.domainDim());
-        gsRemapInterface<real_t> interfaceMap(mp, mb, bi);
-
-        // Initialize
-        dg.initialize(basis1, basis2, bi, options, QuRule);
-
-        // Initialize mp element iterators
-        // TODO: What should we do to tell the system which basis is to be used for iterating?
-        typename gsBasis<>::domainIter domIt = interfaceMap.makeDomainIterator();
-
-        // The following iterators are required such that the visitor knows the correct penality term
-        typename gsBasis<>::domainIter domIt_helper1 = basis1.makeDomainIterator(bi.first().side());
-        typename gsBasis<>::domainIter domIt_helper2 = basis2.makeDomainIterator(bi.second().side());
-
-        // iterate over all boundary grid cells on the "left"
-        for (; domIt->good(); domIt->next() )
-        {
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
-            interfaceMap.eval_into(quNodes1,quNodes2);
-
-            // Perform required evaluations on the quadrature nodes
-            dg.evaluate(basis1, geo1, basis2, geo2, quNodes1, quNodes2);
-
-            // Assemble on element
-            dg.assemble(*domIt_helper1, *domIt_helper2, quWeights);
-            // Here, the iterators are only used for the calculation of the cell size
-
-            // Map it back
-            dg.localToGlobal(0, l+1, fixedPart, sparseSystem);
-
-        }
-
-    }
-
-    localRhs +=       sparseSystem.rhs();
-    localMatrix +=    sparseSystem.matrix();
-
 }

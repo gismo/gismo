@@ -45,7 +45,7 @@ public:
                         const gsMultiBasis<T>    & bases,
                         const gsOptionList & opt = Base::defaultOptions(),
                         const gsBoundaryConditions<T> * bc = NULL)
-    : m_pde(patches)
+    : m_pde(patches), m_refresh(true)
     {
         if ( bc != NULL)
         {
@@ -72,6 +72,7 @@ public:
     */
     void refresh()
     {
+        if (!m_refresh) return;
         // Setup sparse system
         gsDofMapper mapper;
         m_bases[0].getMapper(
@@ -84,8 +85,14 @@ public:
         //        m_system.reserve(nz, 1);
     }
 
+    void setMapper(gsDofMapper mapper)
+    {
+         m_system = gsSparseSystem<T>(mapper);
+         m_refresh = false;
+    }
+
     /// Mass assembly routine
-    const gsSparseMatrix<T> & assembleMass();
+    const gsSparseMatrix<T> & assembleMass(const index_t patchIndex = -1);
 
     /// Mass assembly routine
     ///
@@ -112,7 +119,7 @@ public:
     }
 
     /// Stiffness assembly routine
-    const gsSparseMatrix<T> & assembleStiffness();
+    const gsSparseMatrix<T> & assembleStiffness(const index_t patchIndex = -1);
 
     /// Assemble dG interface terms
     ///
@@ -120,27 +127,7 @@ public:
     const gsSparseMatrix<T> & assembleDG(const boundaryInterface & iFace);
 
     /// Moments assembly routine
-    const gsMatrix<T> & assembleMoments(const gsFunction<T> & func);
-
-    /// Mass assembly routine on patch \a patchIndex
-    const gsSparseMatrix<T> & assembleMass(index_t patchIndex)
-    {
-        gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex),
-                                  m_bases[patchIndex], m_options);
-        tmp.assembleMass();
-        m_system.matrix().swap(tmp.m_system.matrix());
-        return m_system.matrix();
-    }
-
-    /// Stiffness assembly routine on patch \a patchIndex
-    const gsSparseMatrix<T> & assembleStiffness(index_t patchIndex)
-    {
-        gsGenericAssembler<T> tmp(m_pde.patches().patch(patchIndex),
-                                  m_bases[patchIndex],  m_options);
-        tmp.assembleStiffness();
-        m_system.matrix().swap(tmp.m_system.matrix());
-        return m_system.matrix();
-    }
+    const gsMatrix<T> & assembleMoments(const gsFunction<T> & func, const index_t patchIndex = -1);
 
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() might return a lower diagonal
@@ -173,6 +160,7 @@ private:
 private:
 
     gsLaplacePde<T> m_pde;
+    bool m_refresh;
 };
 
 

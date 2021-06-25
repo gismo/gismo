@@ -31,72 +31,76 @@ gsOptionList gsGenericAssembler<T>::defaultOptions()
 }
 
 template <class T>
-const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleMass()
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleMass(const index_t patchIndex)
 {
-    /*
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
-    // Elements used for numerical integration
-    gsExprAssembler<> A(1,1);
-    A.setIntegrationElements(m_bases.front());
-    geometryMap G = A.getMap(m_pde_ptr->patches());
-    space u = A.getSpace(m_bases.front());
-
-    A.initSystem();
-    //m_system.matrix() = A.assemble( u * u.tr() * meas(G) );
-    A.assemble( u * u.tr() * meas(G) );
-    m_system.matrix() = A.matrix();
-
-    return m_system.matrix();
-    */
-
     // Clean the sparse system
     gsGenericAssembler::refresh();
     const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
     m_system.matrix().reservePerColumn(nz);
 
     // Assemble mass integrals
-    //this->template push<gsVisitorMass<T> >();
-    this->template push<gsVisitorMass<T> >();
+    if ( patchIndex < 0 )
+    {
+        this->template push<gsVisitorMass<T> >();
+    }
+    else
+    {
+        gsVisitorMass<T> visitor(*m_pde_ptr);
+        this->apply(visitor, patchIndex);
+    }
 
     // Assembly is done, compress the matrix
     this->finalize();
+
+    m_refresh = true;
 
     return m_system.matrix();
 }
 
 template <class T>
-const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleStiffness()
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleStiffness(const index_t patchIndex)
 {
     // Clean the sparse system
     gsGenericAssembler::refresh();
-    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
-    m_system.matrix().reservePerColumn(nz);
+    m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
+    Base::computeDirichletDofs();
 
     // Assemble stiffness integrals
-    this->template push<gsVisitorGradGrad<T> >();
+    if ( patchIndex < 0 )
+    {
+        this->template push<gsVisitorGradGrad<T> >();
+    }
+    else
+    {
+        gsVisitorGradGrad<T> visitor(*m_pde_ptr);
+        this->apply(visitor, patchIndex);
+    }
 
     // Assembly is done, compress the matrix
     this->finalize();
+
+    m_refresh = true;
 
     return m_system.matrix();
 }
 
 template <class T>
-const gsMatrix<T> & gsGenericAssembler<T>::assembleMoments(const gsFunction<T> & func)
+const gsMatrix<T> & gsGenericAssembler<T>::assembleMoments(const gsFunction<T> & func, const index_t patchIndex)
 {
     // Reset the right-hand side vector
     m_system.rhs().setZero(m_system.cols(), 1);
 
     // Assemble moment integrals
     gsVisitorMoments<T> mom(func);
-    this->push(mom);
+    if (patchIndex<0)
+        this->push(mom);
+    else
+        this->apply(mom,patchIndex);
 
     // Assembly is done, compress the matrix
     this->finalize();
+
+    m_refresh = true;
 
     return m_system.rhs();
 }
@@ -112,14 +116,13 @@ const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleDG(const boundaryInterf
     const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
     m_system.reserve(nz,1);
 
-    //this->template pushInterface<gsVisitorDg<T> >();
-
     gsVisitorDg<T> visitor(*m_pde_ptr);
-
     this->apply(visitor, iFace);
 
     // Assembly is done, compress the matrix
     this->finalize();
+
+    m_refresh = true;
 
     return m_system.matrix();
 }
