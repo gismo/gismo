@@ -66,7 +66,7 @@ void gsIetiMapper<T>::init(
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t nDofs = m_dofMapperGlobal.patchSize(k);
-        GISMO_ASSERT( nDofs==m_multiBasis->piece(k).size(), "gsIetiMapper::init: "
+        GISMO_ASSERT( nDofs>=m_multiBasis->piece(k).size(), "gsIetiMapper::init: "
             "The mapper for patch "<<k<<" has not as many dofs as the corresponding basis." );
 
         if (nDofs>m_multiBasis->piece(k).size())
