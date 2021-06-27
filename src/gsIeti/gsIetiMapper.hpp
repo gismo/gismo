@@ -263,7 +263,6 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
-
     GISMO_ASSERT( !(m_status&2), "gsIetiMapper::interfaceAveragesAsPrimals "
         "is not implemented for artificial ifaces." ); //TODO
 

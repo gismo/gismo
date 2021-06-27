@@ -67,11 +67,11 @@ class gsVisitorDg
 public:
 
     /// Constructor
-    gsVisitorDg()
+    gsVisitorDg() : m_pde(NULL)
     {}
 
     /// Constructor. The given Pde is ignored.
-    gsVisitorDg(const gsPde<T> &)
+    gsVisitorDg(const gsPde<T> & pde) : m_pde(&pde)
     {}
 
     /// Default options
@@ -84,8 +84,8 @@ public:
                           "Parameter beta for dG scheme; use 1 for SIPG and -1 for NIPG",                         1);
         options.addReal  ("DG.Delta",
                           "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.",    -1);
-        //options.addSwitch("DG.ParameterGridSize",
-        //                  "Use grid size on parameter domain for the penalty term.",                          false);
+        options.addSwitch("DG.ParameterGridSize",
+                          "Use grid size on parameter domain for the penalty term.",                          false);
         options.addSwitch("DG.OneSided",
                           "Derive only one-sided bilinear form n(.,.).",                                      false);
         return options;
@@ -98,7 +98,8 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        side1 = bi.first().side();
+        side1 = bi.first();
+        side2 = bi.second();
 
         // Setup Quadrature
         rule = gsQuadrature::get(basis1, options, side1.direction());
@@ -116,18 +117,34 @@ public:
 
         m_oneSided  = options.askSwitch("DG.OneSided", false);
 
-        // TODO
-        m_h1        = basis1.getMinCellLength();
-        m_h2        = basis2.getMinCellLength();
+        if (options.getSwitch("DG.ParameterGridSize"))
+        {
+            m_h1    = basis1.getMinCellLength();
+            m_h2    = basis2.getMinCellLength();
+        }
+        else
+        {
+            GISMO_ENSURE (m_pde, "gsVisitorDg::initialize: No PDE given.");
+            m_h1    = estimateSmallestPerpendicularCellSize(
+                          basis1,
+                          m_pde->patches()[side1.patch],
+                          side1
+                      );
+            m_h2    = estimateSmallestPerpendicularCellSize(
+                          basis2,
+                          m_pde->patches()[side2.patch],
+                          side2
+                      );
+        }
 
         // Set Geometry evaluation flags
-        md1.flags   = md2.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
+        md1.flags = md2.flags = NEED_VALUE|NEED_JACOBIAN|NEED_GRAD_TRANSFORM;
     }
 
     /// Evaluate on element
-    inline void evaluate(const gsBasis<T>       & B1, // to do: more unknowns
+    inline void evaluate(const gsBasis<T>       & B1,
                          const gsGeometry<T>    & geo1,
-                         const gsBasis<T>       & B2, // to do: more unknowns
+                         const gsBasis<T>       & B2,
                          const gsGeometry<T>    & geo2,
                          const gsMatrix<T>      & quNodes1,
                          const gsMatrix<T>      & quNodes2)
@@ -141,8 +158,8 @@ public:
         const index_t numActive2 = actives2.rows();
 
         // Evaluate basis functions and their first derivatives
-        B1.evalAllDers_into( md1.points, 1, basisData1);
-        B2.evalAllDers_into( md2.points, 1, basisData2);
+        B1.evalAllDers_into(md1.points, 1, basisData1);
+        B2.evalAllDers_into(md2.points, 1, basisData2);
 
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo1.computeMap(md1);
@@ -242,6 +259,33 @@ public:
         system.push(-m_alpha*B22 - m_beta*B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
     }
 
+    static T estimateSmallestPerpendicularCellSize(const gsBasis<T> & basis,
+                                                   const gsGeometry<T> & geo,
+                                                   patchSide side)
+    {
+        typename gsDomainIterator<T>::uPtr domIt = basis.makeDomainIterator(side);
+
+        T result = 0;
+
+        for (gsDomainIterator<T>& element = *domIt; element.good(); element.next() )
+        {
+            gsVector<T> parameterCenter = element.centerPoint();
+            const gsMatrix<T> center1 = geo.eval(parameterCenter);
+
+            parameterCenter(side.direction()) += ( side.parameter() == 0 ? 1 : -1 )
+                                                 * element.getPerpendicularCellSize();
+            const gsMatrix<T> center2 = geo.eval(parameterCenter);
+
+            const real_t diff = (center1 - center2).norm();
+
+            if (result == 0 || result > diff)
+              result = diff;
+        }
+        return result;
+    }
+
+
+
 private:
 
     /// Parameters for the bilinear form
@@ -251,7 +295,13 @@ private:
     bool m_oneSided;
 
     /// Side on first patch that corresponds to interface
-    boxSide side1;
+    patchSide side1;
+
+    /// Side on second patch that corresponds to interface
+    patchSide side2;
+
+    /// The underlying PDE
+    const gsPde<T> * m_pde;
 
 private:
 
