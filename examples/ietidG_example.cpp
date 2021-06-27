@@ -209,9 +209,31 @@ int main(int argc, char *argv[])
          noLagrangeMultipliersForCorners = true;
     ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
 
+    // Which primal dofs should we choose?
+    bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
+    for (size_t i=0; i<primals.length(); ++i)
+        switch (primals[i])
+        {
+            case 'c': cornersAsPrimals = true;   break;
+            case 'e': edgesAsPrimals = true;     break;
+            case 'f': facesAsPrimals = true;     break;
+            default:
+                gsInfo << "\nUnkown type of primal constraint: \"" << primals[i] << "\"\n";
+                return EXIT_FAILURE;
+        }
+
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
-    ietiMapper.cornersAsPrimals();
+    //! [Define primals]
+    if (cornersAsPrimals)
+        ietiMapper.cornersAsPrimals();
+
+    if (edgesAsPrimals)
+        ietiMapper.interfaceAveragesAsPrimals(mp,1);
+
+    if (facesAsPrimals)
+        ietiMapper.interfaceAveragesAsPrimals(mp,2);
+    //! [Define primals]
 
     // The ieti system does not have a special treatment for the
     // primal dofs. They are just one more submp
