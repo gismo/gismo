@@ -45,7 +45,7 @@ public:
                         const gsMultiBasis<T>    & bases,
                         const gsOptionList & opt = Base::defaultOptions(),
                         const gsBoundaryConditions<T> * bc = NULL)
-    : m_pde(patches), m_refresh(true)
+    : m_pde(patches)
     {
         if ( bc != NULL)
         {
@@ -72,7 +72,6 @@ public:
     */
     void refresh()
     {
-        if (!m_refresh) return;
         // Setup sparse system
         gsDofMapper mapper;
         m_bases[0].getMapper(
@@ -85,14 +84,13 @@ public:
         //        m_system.reserve(nz, 1);
     }
 
-    void setMapper(gsDofMapper mapper)
+    void refresh(gsDofMapper mapper)
     {
          m_system = gsSparseSystem<T>(mapper);
-         m_refresh = false;
     }
 
     /// Mass assembly routine
-    const gsSparseMatrix<T> & assembleMass(const index_t patchIndex = -1);
+    const gsSparseMatrix<T> & assembleMass(const index_t patchIndex = -1, bool refresh = true);
 
     /// Mass assembly routine
     ///
@@ -119,15 +117,20 @@ public:
     }
 
     /// Stiffness assembly routine
-    const gsSparseMatrix<T> & assembleStiffness(const index_t patchIndex = -1);
+    const gsSparseMatrix<T> & assembleStiffness(const index_t patchIndex = -1, const bool refresh = true);
+
+    /// Moments assembly routine
+    const gsMatrix<T> & assembleMoments(const gsFunction<T> & func, index_t patchIndex = -1, bool refresh = true);
 
     /// Assemble dG interface terms
     ///
     /// See \a gsVisiorDg for possible options
-    const gsSparseMatrix<T> & assembleDG(const boundaryInterface & iFace);
+    const gsSparseMatrix<T> & assembleDG(const boundaryInterface & iFace, bool refresh = true);
 
-    /// Moments assembly routine
-    const gsMatrix<T> & assembleMoments(const gsFunction<T> & func, const index_t patchIndex = -1);
+    /// Assemble Neumann boundary terms
+    ///
+    /// See \a gsVisiorDg for possible options
+    const gsSparseMatrix<T> & assembleNeumann(const boundary_condition<T> & bc, bool refresh = true);
 
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() might return a lower diagonal
@@ -160,7 +163,6 @@ private:
 private:
 
     gsLaplacePde<T> m_pde;
-    bool m_refresh;
 };
 
 

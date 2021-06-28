@@ -254,8 +254,6 @@ int main(int argc, char *argv[])
         gsBoundaryConditions<> bc_local;
         bc.getConditionsForPatch(k,bc_local);
 
-        // TODO: Neumann assembling
-
         gsOptionList assemblerOptions = gsGenericAssembler<>::defaultOptions();
         assemblerOptions.setInt("DirichletStrategy", dirichlet::elimination);
         assemblerOptions.setInt("InterfaceStrategy", iFace::dg);
@@ -291,33 +289,33 @@ int main(int argc, char *argv[])
         // Dirichlet boundary just with a corner or that a 3d-patch touches the
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
-        gAssembler.setMapper(ai.dofMapperLocal(k));
+        gAssembler.refresh(ai.dofMapperLocal(k));
         gsMatrix<> fixedPart(ai.dofMapperLocal(k).boundarySize(), 1 );
         fixedPart.setZero();
         fixedPart.topRows(ietiMapper.fixedPart(k).rows()) = ietiMapper.fixedPart(k); // TODO
         gAssembler.setFixedDofVector(fixedPart);
+        gAssembler.system().reserve(mb2, assemblerOptions, 1);
 
-        // Assemble and fetch data
-        gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
-
-        gsMatrix<>                       localRhs    = gAssembler.assembleMoments(f,0);
-
-        gAssembler.setMapper(ai.dofMapperLocal(k));
-        gsSparseMatrix<>                 localMatrix  = gAssembler.assembleStiffness(0);
-                                         localRhs    += gAssembler.rhs();
-
-        gAssembler.setMapper(ai.dofMapperLocal(k));
-
-        GISMO_ENSURE (ai.dofMapperLocal(k).freeSize() == localMatrix.rows(), "??");
+        // Assemble
+        gAssembler.assembleStiffness(0,false);
+        gAssembler.assembleMoments(f,0,false);
+        gsBoundaryConditions<>::bcContainer neumannSides = bc_local.neumannSides();
+        for (gsBoundaryConditions<>::bcContainer::const_iterator it = neumannSides.begin();
+                it!= neumannSides.end(); ++it)
+            gAssembler.assembleNeumann(*it,false);
 
         for (index_t i=0; i<artIfaces.size(); ++i)
         {
             patchSide side1(0,artIfaces[i].realIface.side());
             patchSide side2(i+1,artIfaces[i].artificialIface.side());
             boundaryInterface bi(side1, side2, mp.geoDim());
-            localMatrix += gAssembler.assembleDG(bi);
-            gAssembler.setMapper(ai.dofMapperLocal(k));
+            gAssembler.assembleDG(bi,false);
         }
+
+        // Fetch data
+        gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
+        gsMatrix<>                       localRhs    = gAssembler.rhs();
+        gsSparseMatrix<>                 localMatrix = gAssembler.matrix();
 
         // Add the patch to the scaled Dirichlet preconditioner
         prec.addSubdomain(

@@ -18,6 +18,7 @@
 #include <gsAssembler/gsVisitorGradGrad.h>
 #include <gsAssembler/gsVisitorMoments.h>
 #include <gsAssembler/gsVisitorDg.h>
+#include <gsAssembler/gsVisitorNeumann.h>
 
 namespace gismo
 {
@@ -31,12 +32,15 @@ gsOptionList gsGenericAssembler<T>::defaultOptions()
 }
 
 template <class T>
-const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleMass(const index_t patchIndex)
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleMass(const index_t patchIndex, const bool refresh)
 {
     // Clean the sparse system
-    gsGenericAssembler::refresh();
-    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
-    m_system.matrix().reservePerColumn(nz);
+    if (refresh)
+    {
+        gsGenericAssembler::refresh();
+        m_system.reserve(m_bases[0], m_options, 1);
+        Base::computeDirichletDofs();
+    }
 
     // Assemble mass integrals
     if ( patchIndex < 0 )
@@ -52,18 +56,19 @@ const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleMass(const index_t patc
     // Assembly is done, compress the matrix
     this->finalize();
 
-    m_refresh = true;
-
     return m_system.matrix();
 }
 
 template <class T>
-const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleStiffness(const index_t patchIndex)
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleStiffness(const index_t patchIndex, const bool refresh)
 {
     // Clean the sparse system
-    gsGenericAssembler::refresh();
-    m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
-    Base::computeDirichletDofs();
+    if (refresh)
+    {
+        gsGenericAssembler::refresh();
+        m_system.reserve(m_bases[0], m_options, 1);
+        Base::computeDirichletDofs();
+    }
 
     // Assemble stiffness integrals
     if ( patchIndex < 0 )
@@ -79,16 +84,18 @@ const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleStiffness(const index_t
     // Assembly is done, compress the matrix
     this->finalize();
 
-    m_refresh = true;
-
     return m_system.matrix();
 }
 
 template <class T>
-const gsMatrix<T> & gsGenericAssembler<T>::assembleMoments(const gsFunction<T> & func, const index_t patchIndex)
+const gsMatrix<T> & gsGenericAssembler<T>::assembleMoments(const gsFunction<T> & func, const index_t patchIndex, const bool refresh)
 {
-    // Reset the right-hand side vector
-    m_system.rhs().setZero(m_system.cols(), 1);
+    // Clean the sparse system
+    if (refresh)
+    {
+        gsGenericAssembler::refresh();
+        m_system.rhs().setZero(m_system.cols(), 1);
+    }
 
     // Assemble moment integrals
     gsVisitorMoments<T> mom(func);
@@ -100,21 +107,22 @@ const gsMatrix<T> & gsGenericAssembler<T>::assembleMoments(const gsFunction<T> &
     // Assembly is done, compress the matrix
     this->finalize();
 
-    m_refresh = true;
-
     return m_system.rhs();
 }
 
 template <class T>
-const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleDG(const boundaryInterface & iFace)
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleDG(const boundaryInterface & iFace, const bool refresh)
 {
     GISMO_ENSURE( m_options.getInt("InterfaceStrategy")==iFace::dg,
         "Assembling DG terms only makes sense in corresponding setting." );
 
     // Clean the sparse system
-    gsGenericAssembler::refresh();
-    const index_t nz = gsAssemblerOptions::numColNz(m_bases[0][0],2,1,0.333333);
-    m_system.reserve(nz,1);
+    if (refresh)
+    {
+        gsGenericAssembler::refresh();
+        m_system.reserve(m_bases[0], m_options, 1);
+        Base::computeDirichletDofs();
+    }
 
     gsVisitorDg<T> visitor(*m_pde_ptr);
     this->apply(visitor, iFace);
@@ -122,7 +130,26 @@ const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleDG(const boundaryInterf
     // Assembly is done, compress the matrix
     this->finalize();
 
-    m_refresh = true;
+    return m_system.matrix();
+}
+
+template <class T>
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleNeumann(const boundary_condition<T> & bc, const bool refresh)
+{
+    GISMO_ASSERT( bc.ctype() == "Neumann", "gsGenericAssembler::assembleNeumann: Got " << bc.ctype() << "bc.");
+
+    // Clean the sparse system
+    if (refresh)
+    {
+        gsGenericAssembler::refresh();
+        m_system.rhs().setZero(m_system.cols(), 1);
+    }
+
+    gsVisitorNeumann<T> visitor(*m_pde_ptr,bc);
+    this->apply(visitor, bc.patch(), bc.side());
+
+    // Assembly is done, compress the matrix
+    this->finalize();
 
     return m_system.matrix();
 }
