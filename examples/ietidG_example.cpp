@@ -19,8 +19,8 @@
 
 #include <ctime>
 
-#define DEBUGVAR(v) gsInfo << #v << ": " << v << "\n";
-#define DEBUGMAT(m) gsInfo << #m << ": " << m.rows() << "x" << m.cols() << "\n";
+#define DEBUGVAR(v) gsInfo << #v << ": " << (v) << "\n"
+#define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
 
 #include <gismo.h>
 #include <gsAssembler/gsVisitorDg.h>
@@ -204,11 +204,6 @@ int main(int argc, char *argv[])
 
     gsIetiMapper<> ietiMapper( mb, ai.dofMapperMod(), assembler.fixedDofs() );
 
-    // Compute the jump matrices
-    bool fullyRedundant = true,
-         noLagrangeMultipliersForCorners = true;
-    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
-
     // Which primal dofs should we choose?
     bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
     for (size_t i=0; i<primals.length(); ++i)
@@ -224,7 +219,6 @@ int main(int argc, char *argv[])
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
-    //! [Define primals]
     if (cornersAsPrimals)
         ietiMapper.cornersAsPrimals();
 
@@ -233,7 +227,12 @@ int main(int argc, char *argv[])
 
     if (facesAsPrimals)
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
-    //! [Define primals]
+
+    // TODO: Jump matrices before or after primals?
+    // Compute the jump matrices
+    bool fullyRedundant = true,
+         noLagrangeMultipliersForCorners = true;
+    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
 
     // The ieti system does not have a special treatment for the
     // primal dofs. They are just one more submp

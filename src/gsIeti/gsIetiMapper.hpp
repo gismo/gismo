@@ -36,6 +36,10 @@
 namespace gismo
 {
 
+#define DEBUGVAR(v) gsInfo << #v << ": " << (v) << "\n"
+#define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
+
+
 template <class T>
 void gsIetiMapper<T>::init(
         const gsMultiBasis<T>& multiBasis,
@@ -166,6 +170,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
                 corners.push_back(dh);
 
                 // If there are artificial dofs somewhere, we have to do more
+                /*
                 if (m_status&2)
                 {
                     // If there artificial dofs, we have check if the corner
@@ -187,6 +192,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
                         }
                     }
                 }
+                //*/
             }
         }
     }
@@ -263,8 +269,6 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
-    GISMO_ASSERT( !(m_status&2), "gsIetiMapper::interfaceAveragesAsPrimals "
-        "is not implemented for artificial ifaces." ); //TODO
 
     const unsigned flag = 1<<(3+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
@@ -295,7 +299,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                     ++used;
                 }
             }
-            GISMO_ASSERT( used==0 || used == sz, "Internal error." );
+            //TODO:GISMO_ASSERT( used==0 || used == sz, "Internal error." );
             if (used)
                 ++m_nPrimalDofs;
         }
@@ -339,6 +343,8 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( !(m_status&4), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
     m_status |= 4;
+
+    helper(); // TODO
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
@@ -433,6 +439,89 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
         m_jumpMatrices[i].setFrom(jumpMatrices_se[i]);
     }
 
+}
+
+template <class T>
+void gsIetiMapper<T>::helper()
+{
+    const index_t nPatches = m_dofMapperGlobal.numPatches();
+    const index_t nDofs = m_dofMapperGlobal.freeSize();
+    gsMatrix<index_t> dofs(nDofs,2);   // Has information (patch, localIndex) for each global dof
+    dofs.setZero();
+
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        // Here we only consider the real values
+        const index_t sz = m_multiBasis->piece(k).size();
+        for (index_t i=0; i<sz; ++i)
+        {
+            if (m_dofMapperGlobal.is_free(i,k))
+            {
+                const index_t globalIndex = m_dofMapperGlobal.index(i,k);
+                GISMO_ASSERT( dofs(globalIndex,0) == 0, "Internal error.");
+                dofs(globalIndex,0) = k;
+                dofs(globalIndex,1) = m_dofMapperLocal[k].index(i,0);
+            }
+        }
+    }
+
+    // patch           neigboring patch    its indices
+    std::vector< std::map< index_t, gsVector<index_t> > > dofInfo( nPatches );
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        const index_t sz  = m_multiBasis->piece(k).size();
+        const index_t sz2 = m_dofMapperGlobal.patchSize(k);
+        for (index_t i=sz; i<sz2; ++i)
+        {
+            const index_t globalIndex       = m_dofMapperGlobal.index(i,k);
+            if (m_dofMapperGlobal.is_free_index(globalIndex))
+            {
+                const index_t otherPatch        = dofs(globalIndex,0);
+                const index_t indexOnOtherPatch = dofs(globalIndex,1);
+                gsVector<index_t> & which = dofInfo[otherPatch][k];
+                if (which.rows() == 0)
+                    which.setZero( m_dofMapperGlobal.patchSize(otherPatch), 1 );
+                which[indexOnOtherPatch] = 1+i;
+            }
+        }
+    }
+
+    // Now, this does the trick
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        const index_t sz = m_primalConstraints[k].size();
+        for ( index_t i=0; i<sz; ++i )
+        {
+            const SparseVector & constr = m_primalConstraints[k][i];
+            for (std::map< index_t, gsVector<index_t> >::const_iterator itt = dofInfo[k].begin();
+                itt != dofInfo[k].end(); ++itt )
+            {
+                const index_t otherPatch = itt->first;
+                const gsVector<index_t> & indexRef = itt->second;
+
+                // iterate over vector
+                bool ok = true;
+                for (typename SparseVector::InnerIterator it(constr); it; ++it)
+                    if (indexRef[it.row()]==0)
+                        ok = false;
+
+                if (ok)
+                {
+                    SparseVector newConstr( m_dofMapperLocal[otherPatch].freeSize() );
+                    for (typename SparseVector::InnerIterator it(constr); it; ++it)
+                    {
+                        const index_t idx = m_dofMapperLocal[otherPatch].index( indexRef[it.row()] - 1, 0 );
+                        newConstr[idx] = it.value();
+                    }
+
+                    //TODO: The new one should not be subject to any further considerations. Is this already the case anyway?
+                    m_primalConstraints[otherPatch].push_back(newConstr);
+                    m_primalDofIndices [otherPatch].push_back(m_primalDofIndices[k][i]);
+                }
+            }
+
+        }
+    }
 }
 
 } // namespace gismo
