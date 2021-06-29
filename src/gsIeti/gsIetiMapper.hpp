@@ -272,7 +272,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
 
     const unsigned flag = 1<<(3+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
-        " already been called for d="<<d );
+        "already been called for d="<<d );
     m_status |= flag;
 
     std::vector< std::vector<patchComponent> > components = geo.allComponents();
@@ -455,12 +455,12 @@ void gsIetiMapper<T>::helper()
         const index_t sz = m_multiBasis->piece(k).size();
         for (index_t i=0; i<sz; ++i)
         {
-            if (m_dofMapperGlobal.is_free(i,k))
+            const index_t globalIndex = m_dofMapperGlobal.index(i,k);
+            if (m_dofMapperGlobal.is_free_index(globalIndex))
             {
-                const index_t globalIndex = m_dofMapperGlobal.index(i,k);
                 GISMO_ASSERT( dofs(globalIndex,0) == 0, "Internal error.");
                 dofs(globalIndex,0) = k;
-                dofs(globalIndex,1) = m_dofMapperLocal[k].index(i,0);
+                dofs(globalIndex,1) = m_dofMapperLocal[k].index(i,0) + 1;
             }
         }
     }
@@ -477,11 +477,12 @@ void gsIetiMapper<T>::helper()
             if (m_dofMapperGlobal.is_free_index(globalIndex))
             {
                 const index_t otherPatch        = dofs(globalIndex,0);
-                const index_t indexOnOtherPatch = dofs(globalIndex,1);
+                const index_t indexOnOtherPatch = dofs(globalIndex,1) - 1;
+                GISMO_ASSERT( indexOnOtherPatch>=0, "Internal error." );
                 gsVector<index_t> & which = dofInfo[otherPatch][k];
                 if (which.rows() == 0)
-                    which.setZero( m_dofMapperGlobal.patchSize(otherPatch), 1 );
-                which[indexOnOtherPatch] = 1+i;
+                    which.setZero( m_dofMapperLocal[otherPatch].freeSize(), 1 );
+                which[indexOnOtherPatch] = i + 1;
             }
         }
     }
@@ -514,7 +515,7 @@ void gsIetiMapper<T>::helper()
                         newConstr[idx] = it.value();
                     }
 
-                    //TODO: The new one should not be subject to any further considerations. Is this already the case anyway?
+                    // The new one should not be subject to any further considerations. Is this already the case anyway?
                     m_primalConstraints[otherPatch].push_back(newConstr);
                     m_primalDofIndices [otherPatch].push_back(m_primalDofIndices[k][i]);
                 }
