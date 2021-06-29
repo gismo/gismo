@@ -1,4 +1,4 @@
-
+#include <gsUtils/gsPointGrid.h>
 namespace gismo {
 
 namespace expr
