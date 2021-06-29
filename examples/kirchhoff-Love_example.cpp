@@ -73,7 +73,7 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        const index_t A = _u.cardinality()/_u.targetDim();
+        const index_t A = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
         res.resize(_u.cardinality(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
@@ -219,12 +219,12 @@ public:
 
     index_t rows() const
     {
-        return 0; // because the resulting matrix has scalar entries for every combination of active basis functions
+        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
     index_t cols() const
     {
-        return 0; // because the resulting matrix has scalar entries for every combination of active basis functions
+        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
@@ -272,8 +272,13 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
+        gsDebugVar("Parsed");
         evList.add(_u);
-        _u.data().flags |= NEED_DERIV2;
+        // _u.data().flags |= NEED_DERIV | NEED_2ND_DER | NEED_DERIV2;
+        _u.data().flags |= NEED_DERIV2 | NEED_GRAD | NEED_ACTIVE; // define flags
+        // evList.parse(_u);
+
+        evList.parse(_v);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -296,8 +301,18 @@ private:
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
 
-
+        gsDebugVar("geometryMap");
         // evaluate the geometry map of U
+
+        gsDebugVar(_u.data().values[0].rows());
+        gsDebugVar(_u.data().values[0].cols());
+
+        gsDebugVar(_u.data().values[1].rows());
+        gsDebugVar(_u.data().values[1].cols());
+
+        gsDebugVar(_u.data().values[2].rows());
+        gsDebugVar(_u.data().values[2].cols());
+
         tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
         vEv = _v.eval(k);
         res = vEv * tmp.transpose();
@@ -314,9 +329,20 @@ private:
             hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form
             [hess(v_1)*n_1 .., hess(v_2)*n_2 .., hess(v_3)*n_3 ..]. Here, the dots .. represent the active basis functions.
         */
+        gsDebugVar("space");
         const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
         const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
         res.resize(rows()*cardinality, cols() );
+
+        gsDebugVar(_u.data().values[0].rows());
+        gsDebugVar(_u.data().values[0].cols());
+
+        gsDebugVar(_u.data().values[1].rows());
+        gsDebugVar(_u.data().values[1].cols());
+
+        gsDebugVar(_u.data().values[2].rows());
+        gsDebugVar(_u.data().values[2].cols());
+
         tmp.transpose() =_u.data().values[2].reshapeCol(k, cols(), numAct );
         vEv = _v.eval(k);
 
@@ -545,8 +571,8 @@ public:
         return res;
     }
 
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
     void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
@@ -608,8 +634,8 @@ public:
         return res;
     }
 
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
@@ -1350,7 +1376,8 @@ int main(int argc, char *argv[])
     auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde; //[checked]
 
     // // For Neumann (same for Dirichlet/Nitsche) conditions
-    auto g_N = A.getBdrFunction();
+    // auto g_N = A.getBdrFunction();
+    auto g_N = ff;
 
     real_t alpha_d = 1e3;
     A.assembleLhsRhsBc
@@ -1384,6 +1411,13 @@ int main(int argc, char *argv[])
     // For Neumann conditions
     A.assembleRhsBc(u * g_N * tv(G).norm(), bc.neumannSides() );
 
+    gsDebugVar("Eval");
+    gsVector<> pt2(2);
+    pt2.setConstant(0.25);
+    gsDebugVar(ev.eval(deriv2(defG,defG ),pt2));
+
+
+    gsDebugVar("Below");
     A.assemble(
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
         ,

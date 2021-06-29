@@ -387,7 +387,10 @@ public:
         this->m_fd->flags |= NEED_VALUE | NEED_ACTIVE;
     }
 
-    index_t cardinality_impl() const { return m_d * m_fd->actives.rows(); }
+    index_t cardinality_impl() const
+    {
+        return m_d * this->data().actives.rows();
+    }
 
 private:
 
