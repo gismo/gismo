@@ -221,7 +221,8 @@ void gsIetiMapper<T>::cornersAsPrimals()
     std::sort(corners.begin(), corners.end());
 
     // Create data
-    index_t lastIndex=-1;
+    index_t lastIndex = -1;
+    bool firstOfClass = false;
     const index_t sz = corners.size();
     for (index_t i=0; i<sz; ++i)
     {
@@ -229,6 +230,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
         {
             lastIndex = corners[i].globalIndex;
             ++m_nPrimalDofs;
+            firstOfClass = true;
         }
         const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
@@ -240,7 +242,10 @@ void gsIetiMapper<T>::cornersAsPrimals()
         m_primalConstraints[patch].push_back(give(constr));
         m_primalDofIndices[patch].push_back(cornerIndex);
 
-        transferConstraintToArtificialIfaces(patch, m_primalConstraints[patch].size()-1); //TODO: only once
+        if (firstOfClass)
+            transferConstraintToArtificialIfaces(patch, m_primalConstraints[patch].size()-1);
+
+        firstOfClass = false;
     }
 
 }
@@ -279,6 +284,42 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 
 }
 
+template <class T>
+std::vector< std::vector<patchComponent> > gsIetiMapper<T>::decomposeBasedOnMapper( const std::vector< std::vector<patchComponent> >& in ) const
+{
+    const index_t sz = in.size();
+    std::vector< std::vector<patchComponent> > result;
+    result.reserve(sz);
+    for (index_t i=0; i<sz; ++i)
+    {
+        //if (in[i].size()<2)
+        {
+            result.push_back(in[i]);
+        }
+        /*else
+        {
+            std::map< gsVector<index_t>, std::vector< patchComponent > > data;
+            
+            for (index_t j=0; j<in[i].size(); ++j)
+            {
+                //TODO: indicesForPatchComponent
+                data[ indicesForPatchComponent(in[i][j]) ].push_back(in[i][j]);
+            }
+            
+            for (std::map< gsVector<index_t>, std::vector< patchComponent > >::const_iterator it=data.begin();
+                it!=data.end(); ++it)
+            {
+                const index_t n = (*it).size();
+                std::vector<patchComponent> component;
+                component.reserve(n);
+                for (index_t j=0; j<n; ++j)
+                    component.push_back( (*it)[j] );
+                result.push_back(give(component));                
+            }        
+        }*/
+    }
+    return result;
+}
 
 template <class T>
 void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d )
@@ -297,7 +338,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
         "already been called for d="<<d );
     m_status |= flag;
 
-    std::vector< std::vector<patchComponent> > components = geo.allComponents();
+    std::vector< std::vector<patchComponent> > components = decomposeBasedOnMapper(geo.allComponents());
     const index_t nComponents = components.size();
     for (index_t n=0; n<nComponents; ++n)
     {
@@ -318,13 +359,17 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                 {
                     m_primalConstraints[k].push_back(give(constr));
                     m_primalDofIndices[k].push_back(m_nPrimalDofs);
-                    transferConstraintToArtificialIfaces(k, m_primalConstraints[k].size()-1); //TODO: only once
                     ++used;
                 }
             }
-            //TODO:GISMO_ASSERT( used==0 || used == sz, "Internal error." );
+            gsInfo << "n="<<n<<", sz="<<sz<<", used="<<used<<"\n";
+            GISMO_ASSERT( used==0 || used == sz, "Internal error: sz="<<sz<<", used="<<used );
             if (used)
+            {
                 ++m_nPrimalDofs;
+                const index_t k = components[n][0].patch();
+                transferConstraintToArtificialIfaces(k, m_primalConstraints[k].size()-1);
+            }
         }
     }
 }
@@ -467,6 +512,8 @@ void gsIetiMapper<T>::transferConstraintToArtificialIfaces(index_t k, index_t i)
 {
     if ((m_status&2)==0) return;
 
+    index_t added = 0;
+
     const SparseVector & constr = m_primalConstraints[k][i];
     for (std::map< index_t, gsVector<index_t> >::const_iterator itt = m_artificialDofInfo[k].begin();
         itt != m_artificialDofInfo[k].end(); ++itt )
@@ -492,9 +539,10 @@ void gsIetiMapper<T>::transferConstraintToArtificialIfaces(index_t k, index_t i)
             // The new one should not be subject to any further considerations. Is this already the case anyway?
             m_primalConstraints[otherPatch].push_back(give(newConstr));
             m_primalDofIndices [otherPatch].push_back(m_primalDofIndices[k][i]);
+            ++added;
         }
     }
-
+    gsInfo << "Added " << added << " constraints for artIf.\n";
 }
 
 } // namespace gismo

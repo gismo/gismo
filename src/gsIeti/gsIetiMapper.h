@@ -189,6 +189,9 @@ private:
 
     void transferConstraintToArtificialIfaces(index_t k, index_t i);  ///< TODO: docs
 
+    std::vector< std::vector<patchComponent> >
+    decomposeBasedOnMapper( const std::vector< std::vector<patchComponent> >& in ) const;  ///< TODO: docs
+
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper
