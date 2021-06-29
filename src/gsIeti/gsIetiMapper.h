@@ -187,7 +187,7 @@ private:
         const gsBasis<T>& basis, const gsDofMapper& dm,
         boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
-    void helper();
+    void transferConstraintToArtificialIfaces(index_t k, index_t i);  ///< TODO: docs
 
 private:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
@@ -199,6 +199,7 @@ private:
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
     std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
+    std::vector< std::map< index_t, gsVector<index_t> > >   m_artificialDofInfo;  ///< TODO: docs
 };
 
 } // namespace gismo
