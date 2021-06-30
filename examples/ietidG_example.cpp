@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
         );
     }
 
-    gsInfo << "done.\n";
+    gsInfo << "done. " << ietiMapper.nPrimalDofs() << " primal dofs.\n";
 
     /**************** Setup solver and solve ****************/
     gsInfo << "Setup solver and solve... \n"
