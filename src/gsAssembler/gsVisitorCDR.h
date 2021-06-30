@@ -16,7 +16,7 @@
 namespace gismo
 {
 
-/** \brief Visitor for the convection-diffusion-reaction equation.
+/** @brief Visitor for the convection-diffusion-reaction equation.
  *
  * Visitor for PDEs of the form\n
  * Find \f$ u: \mathbb R^d \rightarrow \mathbb R^d\f$
@@ -32,7 +32,7 @@ namespace gismo
  * Obviously, setting \f$ A= I\f$, \f$ b= 0\f$, and \f$c = 0\f$ results
  * in the special case of the Poisson equation.
  *
- * \ingroup Assembler
+ * @ingroup Assembler
  */
 template <class T>
 class gsVisitorCDR

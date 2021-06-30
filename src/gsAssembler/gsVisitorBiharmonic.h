@@ -13,15 +13,18 @@
 
 #pragma once
 
+#include <gsAssembler/gsQuadrature.h>
+
 namespace gismo
 {
 
-/** \brief Visitor for the biharmonic equation.
+/** @brief Visitor for the biharmonic equation.
  *
  * Assembles the bilinear terms
  * \f[ (\Delta u,\Delta v)_\Omega \text{ and } (f,v)_\Omega \f]
  * For \f[ u = g \quad on \quad \partial \Omega \f],
  *
+ * @ingroup Assembler
  */
 
 template <class T>
@@ -34,9 +37,9 @@ public:
         rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs() ;
     }
 
-    /** \brief Constructor for gsVisitorBiharmonic.
+    /** @brief Constructor for gsVisitorBiharmonic.
      *
-     * \param[in] rhs Given right-hand-side function/source term that, for
+     * @param[in] rhs Right-hand-side function/source term
      */
     gsVisitorBiharmonic(const gsFunction<T> & rhs) :
         rhs_ptr(&rhs)

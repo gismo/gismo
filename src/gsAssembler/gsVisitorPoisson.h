@@ -18,12 +18,16 @@
 namespace gismo
 {
 
-/** \brief Visitor for the Poisson equation.
+/** @brief Visitor for the Poisson equation.
  *
- * Assembles the bilinear terms
- * \f[ (\nabla u,\nabla v)_\Omega \text{ and } (f,v)_\Omega \f]
- * For \f[ u = g \quad on \quad \partial \Omega \f],
+ *  This visitor assembles the bilinear form
+ *  \f[ ( \nabla u, \nabla v )_\Omega \f]
+ *  and simultainously the linear form
+ *  \f[ ( f, v )_\Omega, \f]
+ *  where \f$u\f$  is the trial function, \f$v\f$ is the test function and
+ *  \f$f\f$ is the right-hand-side function.
  *
+ *  @ingroup Assembler
  */
 
 template <class T, bool paramCoef = false>

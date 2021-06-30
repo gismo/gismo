@@ -16,7 +16,7 @@
 namespace gismo
 {
 
-/** \brief Visitor for Neumann boundary condition for the biharmonic equation.
+/** @brief Visitor for Neumann boundary condition for the biharmonic equation.
  *
  * Visitor for boundary condition term of the form:\n
  * Let g be the function given BVP formulation, typically
@@ -24,6 +24,8 @@ namespace gismo
  * Then this visitor adds the follow term on the right-hand side.
  * \f[ (g, \nabla v \cdot \mathbf{n})_\Gamma \f]
  * Where v is the test function and \f[ \Gamma \f] is the boundary.
+ *
+ * @ingroup Assembler
  */
 template <class T>
 class gsVisitorNeumannBiharmonic

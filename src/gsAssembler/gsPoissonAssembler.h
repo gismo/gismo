@@ -40,6 +40,9 @@ public:
 
 public:
 
+    /// Returns the list of default options for assembly
+    static gsOptionList defaultOptions();
+
     gsPoissonAssembler()
     { }
 
