@@ -16,11 +16,13 @@
 namespace gismo
 {
 
-/** \brief Visitor for the moment vector of a function
+/** @brief Visitor for the moment vector of a function
  *
- * Assembles the linear term
- * \f[ (f,v)_\Omega \f]
+ *  Assembles the linear term
+ *  \f[ (f,v)_\Omega, \f]
+ *  where \f$f\f$ is the right-hand-side function and \f$v\f$ is the test function.
  *
+ * @ingroup Assembler
  */
 
 template <class T, bool paramCoef = false>
@@ -28,11 +30,10 @@ class gsVisitorMoments
 {
 public:
     
-    /** \brief Constructor for gsVisitorMoments.
+    /** @brief Constructor for gsVisitorMoments.
      *
-     * \param[in] rhs Given right-hand-side function/source term that, for
+     *  @param[in] rhs Right-hand-side function/source term
      */
-    /// Constructor with the right hand side function of the Poisson equation
     gsVisitorMoments(const gsFunction<T> & rhs)
     : rhs_ptr(&rhs)
     { }

@@ -19,6 +19,7 @@
 #include <gsAssembler/gsVisitorMoments.h>
 #include <gsAssembler/gsVisitorDg.h>
 #include <gsAssembler/gsVisitorNeumann.h>
+#include <gsAssembler/gsVisitorNitsche.h>
 
 namespace gismo
 {
@@ -28,6 +29,7 @@ gsOptionList gsGenericAssembler<T>::defaultOptions()
 {
     gsOptionList options = gsAssembler<T>::defaultOptions();
     options.update( gsVisitorDg<T>::defaultOptions(), gsOptionList::addIfUnknown );
+    options.update( gsVisitorNitsche<T>::defaultOptions(), gsOptionList::addIfUnknown );
     return options;
 }
 
@@ -146,6 +148,29 @@ const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleNeumann(const boundary_
     }
 
     gsVisitorNeumann<T> visitor(*m_pde_ptr,bc);
+    this->apply(visitor, bc.patch(), bc.side());
+
+    // Assembly is done, compress the matrix
+    this->finalize();
+
+    return m_system.matrix();
+}
+
+template <class T>
+const gsSparseMatrix<T> & gsGenericAssembler<T>::assembleNitsche(const boundary_condition<T> & bc, const bool refresh)
+{
+    GISMO_ASSERT( bc.ctype() == "Dirichlet", "gsGenericAssembler::assembleNitsche: Got " << bc.ctype() << "bc.");
+
+    // Clean the sparse system
+    if (refresh)
+    {
+        gsGenericAssembler::refresh();
+        m_system.reserve(m_bases[0], m_options, 1);
+        Base::computeDirichletDofs();
+    }
+
+
+    gsVisitorNitsche<T> visitor(*m_pde_ptr,bc);
     this->apply(visitor, bc.patch(), bc.side());
 
     // Assembly is done, compress the matrix

@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     index_t degree = 2;
     real_t alpha = 1;
     real_t beta = 1;
-    real_t delta = -1;
+    real_t penalty = -1;
     std::string boundaryConditions("d");
     std::string primals("c");
     real_t tolerance = 1.e-8;
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addReal  ("",  "DG.Alpha",              "Parameter alpha for dG scheme; use 1 for SIPG and NIPG.", alpha );
     cmd.addReal  ("",  "DG.Beta",               "Parameter beta for dG scheme; use 1 for SIPG and -1 for NIPG", beta );
-    cmd.addReal  ("",  "DG.Delta",              "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.", delta );
+    cmd.addReal  ("",  "DG.Penalty",            "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.", penalty );
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
         assemblerOptions.setSwitch("DG.OneSided", true);
         assemblerOptions.setReal("DG.Alpha", alpha);
         assemblerOptions.setReal("DG.Beta", beta);
-        assemblerOptions.setReal("DG.Delta", delta);
+        assemblerOptions.setReal("DG.Penalty", penalty);
 
         const std::vector<gsArtificialIfaces<>::ArtificialIface>& artIfaces = ai.artificialIfaces(k);
 

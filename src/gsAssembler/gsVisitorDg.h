@@ -19,26 +19,27 @@ namespace gismo
    /** \brief Visitor for adding the interface conditions for the interior
      * penalty methods of the Poisson problem.
      *
-     * This visitor adds the following term to the left-hand side (bilinear form).
+     * This visitor adds the following term to the left-hand side (bilinear form):
      * \f[
      *     s_{k,\ell}(u,v) :=
      *        - \alpha \int_{\Gamma^{(k,\ell)}}  \{\nabla u\} \cdot \mathbf{n} [ v ]
      *        - \beta  \int_{\Gamma^{(k,\ell)}}  \{\nabla v\} \cdot \mathbf{n} [ u ]
-     *        + \delta ( h_k^{-1} + h_\ell^{-1} \int_{\Gamma^{(k,\ell)}}  [ u ][ v ],
+     *        + \delta ( h_k^{-1} + h_\ell^{-1}) \int_{\Gamma^{(k,\ell)}}  [ u ][ v ],
      * \f]
      * where \f$ v \f$ is the test function and \f$ u \f$ is trial function,
      * \f$ [u] = u^{(k)} - u^{(\ell)} \f$ denotes the jump accross the interface
      * and \f$ \{ u \} = (u^{(k)} + u^{(\ell)})/2\f$ denotes the average between
      * the two patches.
      *
-     * The default values are \f$\alpha =\beta=1\f$ and \f$\delta=2(p+d)(p+1)\f$,
+     * The default values for DG.Alpha and DG.Beta are \f$\alpha=\beta=1\f$,
      * which corresponds to the Symmetric Interior Penalty discontinuous Galerkin
-     * (SIPG) method. These values can be specified via the parameters DG.Alpha,
-     * DG.Beta and DG.Delta.
+     * (SIPG) method. The default value for DG.Penalty is -1, which yields
+     * \f$\delta=4(p+d)(p+1)\f$. If a positive value for DG.Penalty is chosen,
+     * that value is taken for \f$\delta\f$.
      *
      * The (normal) grid sizes are estimated based on the geometry function. Use
      * the option DG.ParameterGridSize to just use the grid size on the parameter
-     * domain. [TODO: implement that]
+     * domain.
      *
      * The overall term is symmetric between patches \f$ k \f$ and \f$ \ell \f$,
      * however a non-symmetric variant is also available:
@@ -50,7 +51,7 @@ namespace gismo
      *     n_{k,\ell}(u,v) :=
      *        - \alpha \int_{\Gamma^{(k,\ell)}}  \nabla u^{(k)} \cdot \mathbf{n} [ v ]
      *        - \beta  \int_{\Gamma^{(k,\ell)}}  \nabla v^{(k)} \cdot \mathbf{n} [ u ]
-     *        + 2^{-1} \delta ( h_k^{-1} + h_\ell^{-1} \int_{\Gamma^{(k,\ell)}}  [ u ][ v ].
+     *        + 2^{-1} \delta ( h_k^{-1} + h_\ell^{-1}) \int_{\Gamma^{(k,\ell)}}  [ u ][ v ].
      * \f]
      * Use the option DG.OneSided to obtain the contrinutions for the bilinar form
      * \f$ n \f$.
@@ -70,7 +71,9 @@ public:
     gsVisitorDg() : m_pde(NULL)
     {}
 
-    /// Constructor. The given Pde is ignored.
+    /// @brief Constructor
+    ///
+    /// @param pde     The \a gsPde object
     gsVisitorDg(const gsPde<T> & pde) : m_pde(&pde)
     {}
 
@@ -82,8 +85,8 @@ public:
                           "Parameter alpha for dG scheme; use 1 for SIPG and NIPG.",                              1);
         options.addReal  ("DG.Beta",
                           "Parameter beta for dG scheme; use 1 for SIPG and -1 for NIPG",                         1);
-        options.addReal  ("DG.Delta",
-                          "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.",    -1);
+        options.addReal  ("DG.Penalty",
+                          "Penalty parameter penalty for dG scheme; if negative, default 4(p+d)(p+1) is used.",  -1);
         options.addSwitch("DG.ParameterGridSize",
                           "Use grid size on parameter domain for the penalty term.",                          false);
         options.addSwitch("DG.OneSided",
@@ -98,18 +101,18 @@ public:
                     const gsOptionList & options,
                     gsQuadRule<T> & rule)
     {
-        side1 = bi.first();
-        side2 = bi.second();
+        m_side1 = bi.first();
+        m_side2 = bi.second();
 
         // Setup Quadrature
-        rule = gsQuadrature::get(basis1, options, side1.direction());
+        rule = gsQuadrature::get(basis1, options, m_side1.direction());
 
-        m_delta     = options.askReal("DG.Delta",-1);
+        m_penalty     = options.askReal("DG.Penalty",-1);
         // If not given, use default
-        if (m_delta<0)
+        if (m_penalty<0)
         {
             const index_t deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
-            m_delta = T(4) * (deg + basis1.dim()) * (deg + 1);
+            m_penalty = T(4) * (deg + basis1.dim()) * (deg + 1);
         }
 
         m_alpha     = options.askReal("DG.Alpha", 1);
@@ -127,13 +130,13 @@ public:
             GISMO_ENSURE (m_pde, "gsVisitorDg::initialize: No PDE given.");
             m_h1    = estimateSmallestPerpendicularCellSize(
                           basis1,
-                          m_pde->patches()[side1.patch],
-                          side1
+                          m_pde->patches()[m_side1.patch],
+                          m_side1
                       );
             m_h2    = estimateSmallestPerpendicularCellSize(
                           basis2,
-                          m_pde->patches()[side2.patch],
-                          side2
+                          m_pde->patches()[m_side2.patch],
+                          m_side2
                       );
         }
 
@@ -195,7 +198,7 @@ private:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Compute the outer normal vector from patch1
-            outerNormal(md1, k, side1, unormal);
+            outerNormal(md1, k, m_side1, unormal);
 
             // Integral transformation and quadrature weight (patch1)
             // assumed the same on both sides
@@ -229,7 +232,7 @@ private:
                 B22.noalias() -= c1 * ( val2 * N2 );
             }
 
-            const T c2     = weight * m_delta * (1./m_h1 + 1./m_h2) / (oneSided?2:1);
+            const T c2     = weight * m_penalty * (1./m_h1 + 1./m_h2) / (oneSided?2:1);
 
             E11.noalias() += c2 * ( val1 * val1.transpose() );
             E12.noalias() += c2 * ( val1 * val2.transpose() );
@@ -288,20 +291,26 @@ public:
 
 private:
 
-    /// Parameters for the bilinear form
-    T m_alpha, m_beta, m_delta;
+    /// The underlying PDE
+    const gsPde<T> * m_pde;
+
+    /// Parameter \f$\alpha\f$ for the bilinear form
+    T m_alpha;
+
+    /// Parameter \f$\beta\f$ for the bilinear form
+    T m_beta;
+
+    /// Parameter \f$\delta\f$ for the bilinear form
+    T m_penalty;
 
     /// Only compute bilinear form n.
     bool m_oneSided;
 
     /// Side on first patch that corresponds to interface
-    patchSide side1;
+    patchSide m_side1;
 
     /// Side on second patch that corresponds to interface
-    patchSide side2;
-
-    /// The underlying PDE
-    const gsPde<T> * m_pde;
+    patchSide m_side2;
 
 private:
 
@@ -321,6 +330,7 @@ private:
 
     gsMapData<T> md1, md2;
 
+    // Grid sizes
     T m_h1, m_h2;
 };
 

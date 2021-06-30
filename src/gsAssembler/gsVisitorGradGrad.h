@@ -21,10 +21,14 @@ namespace gismo
 
 
 /** 
-    @brief The visitor computes element grad-grad integrals
-    
-    \ingroup Assembler
-*/
+ *  @brief The visitor computes element grad-grad integrals
+ * 
+ *  This visitor assemble the element-wise bilinear form:
+ *  \f[ ( \nabla u, \nabla v )_{\Omega}, \f]
+ *  where \f$u\f$  is the trial function and \f$v\f$ is the test function.
+ *
+ *  @ingroup Assembler
+ */
 template <class T>
 class gsVisitorGradGrad : public gsVisitorMass<T> // inherit to reuse functionality
 {
@@ -32,12 +36,8 @@ public:
     typedef gsVisitorMass<T> Base;
 
 public:
-/** @brief Visitor for stiffness (grad-grad) integrals
- * 
- * This visitor assemble the element-wise bilinear form:
- * \f[ ( \nabla u , \nabla v )_{K} \f].
- * Where \f[ v$ \f]  is the test function and \f[u \f] is trial function.
- */
+
+    /// Constructor
     gsVisitorGradGrad(const gsPde<T> & /*pde*/)
     { }
 

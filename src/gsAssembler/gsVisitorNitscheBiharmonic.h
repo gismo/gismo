@@ -17,12 +17,14 @@
 namespace gismo
 {
 /** @brief
-    Visitor for the first-type Nitsche BC of the biharmonic problem.
-
-    It sets up an assembler and assembles the system patch wise and
-    combines the patch-local stiffness matrices into a global system.
-    Dirichlet boundary can also be imposed weakly (i.e Nitsche ) 
-*/
+ *  Visitor for the first-type Nitsche BC of the biharmonic problem.
+ *
+ *  It sets up an assembler and assembles the system patch wise and
+ *  combines the patch-local stiffness matrices into a global system.
+ *  Dirichlet boundary can also be imposed weakly (i.e Nitsche )
+ *
+ *  @ingroup Assembler
+ */
 
 template <class T>
 class gsVisitorNitscheBiharmonic

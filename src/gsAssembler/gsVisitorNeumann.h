@@ -18,11 +18,13 @@
 namespace gismo
 {
 /** @brief
-    Implementation of a Neumann BC for elliptic Assembler.
-
-    It sets up an assembler and adds the following term to the linear term.
-    \f[ \nabla u \cdot \mathbf{n} = g_N  \f]
-*/
+ *  Implementation of a Neumann BC for elliptic Assembler.
+ *
+ *  It sets up an assembler and adds the following term to the linear term.
+ *  \f[ \nabla u \cdot \mathbf{n} = g_N  \f]
+ *
+ *  @ingroup Assembler
+ */
 
 template <class T>
 class gsVisitorNeumann

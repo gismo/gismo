@@ -132,6 +132,11 @@ public:
     /// See \a gsVisiorDg for possible options
     const gsSparseMatrix<T> & assembleNeumann(const boundary_condition<T> & bc, bool refresh = true);
 
+    /// Assemble Nitsche terms for weakly imposing Dirichlet conditions
+    ///
+    /// See \a gsVisiorNitsche for possible options
+    const gsSparseMatrix<T> & assembleNitsche(const boundary_condition<T> & bc, bool refresh = true);
+
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() might return a lower diagonal
     /// matrix, if we exploit possible symmetry during assembly
