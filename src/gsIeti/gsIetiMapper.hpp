@@ -398,7 +398,6 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                                 }
 
                                 constraint2.globalIndices = constraint.globalIndices;
-
                                 constraints.push_back(give(constraint2));
                             }
                         }
@@ -409,7 +408,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                 }
             }
 
-            // Sort constraints to collapse corners with same global indices
+            // Sort constraints to collapse constraints with same global indices
             std::sort(constraints.begin(), constraints.end());
 
             // Construct data
@@ -419,13 +418,16 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                 bool ignore = false;
                 if ( i==0 || constraints[i-1]<constraints[i] )
                 {
-                    if (i<nConstraints-1 && ! (constraints[i]<constraints[i+1]))
+                    if ( (i<nConstraints-1 && ! (constraints[i]<constraints[i+1])) || m_multiBasis->dim() == d )
                         ++m_nPrimalDofs;
-                    else if (m_multiBasis->dim() < d)
+                    else
                         ignore = true; // Ignore constraints that are not shared between patches (except if it is the average in the interior)
                 }
+                DEBUGVAR(nConstraints);
+                DEBUGVAR(i);
                 DEBUGVAR(m_nPrimalDofs);
                 DEBUGVAR(ignore);
+                DEBUGVAR(constraints[i].vector.transpose());
                 if (!ignore)
                 {
                     const index_t & k = constraints[i].patch;
