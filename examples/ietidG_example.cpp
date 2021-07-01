@@ -29,6 +29,32 @@
 using namespace gismo;
 
 
+struct ctr {
+   gsSparseVector<real_t> c;
+   index_t k;
+   index_t i;
+
+   bool operator <( const ctr& other ) const
+   {
+       if (i!=other.i) return i<other.i;
+       return k<other.k;
+   }
+};
+
+void printPrimalConstraints( std::vector< std::vector< gsSparseVector<real_t> > > & c,
+                             std::vector< std::vector< index_t > > & ii )
+{
+    std::vector<ctr> data;
+    for (index_t i=0; i<c.size(); ++i)
+         for (index_t j=0; j<c[i].size(); ++j)
+         { ctr d; d.c=c[i][j]; d.k=i; d.i=ii[i][j]; data.push_back(d); }
+    std::sort(data.begin(), data.end());
+    for (index_t i=0; i<data.size(); ++i)
+    {
+        std::cout << data[i].i << " [" << data[i].k << "]" << data[i].c.transpose() << "\n";
+    }
+}
+
 void adddGInterfaceContributions(
     const gsArtificialIfaces<>& ai,
     const gsMultiPatch<>& mp,
@@ -227,6 +253,9 @@ int main(int argc, char *argv[])
 
     if (facesAsPrimals)
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
+
+
+printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofIndices);
 
     // TODO: Jump matrices before or after primals?
     // Compute the jump matrices
