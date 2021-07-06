@@ -2,12 +2,12 @@
 
     @brief Poisson equation element visitor.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -18,26 +18,31 @@
 namespace gismo
 {
 
-/** \brief Visitor for the Poisson equation.
- *
- * Assembles the bilinear terms
- * \f[ (\nabla u,\nabla v)_\Omega \text{ and } (f,v)_\Omega \f]
- * For \f[ u = g \quad on \quad \partial \Omega \f],
- *
- */
+   /** @brief Visitor for the Poisson equation.
+     *
+     *  This visitor assembles the bilinear form
+     *  \f[ ( \nabla u, \nabla v )_\Omega \f]
+     *  and simultainously the linear form
+     *  \f[ ( f, v )_\Omega, \f]
+     *  where \f$u\f$  is the trial function, \f$v\f$ is the test function and
+     *  \f$f\f$ is the right-hand-side function.
+     *
+     *  @ingroup Assembler
+     */
 
 template <class T, bool paramCoef = false>
 class gsVisitorPoisson
 {
 public:
 
-    /** \brief Constructor for gsVisitorPoisson.
-     */
+    /// @brief Constructor
+    ///
+    /// @param pde     Reference to \a gsPoissonPde object
     gsVisitorPoisson(const gsPde<T> & pde)
-    { 
-        pde_ptr = static_cast<const gsPoissonPde<T>*>(&pde);
-    }
-    
+    : pde_ptr(static_cast<const gsPoissonPde<T>*>(&pde))
+    {}
+
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
                     const index_t patchIndex,
                     const gsOptionList & options,
@@ -45,7 +50,7 @@ public:
     {
         // Grab right-hand side for current patch
         rhs_ptr = &pde_ptr->rhs()->piece(patchIndex);
-        
+
         // Setup Quadrature
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
@@ -53,7 +58,7 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & basis,
                          const gsGeometry<T>    & geo,
                          const gsMatrix<T>      & quNodes)
@@ -63,23 +68,24 @@ public:
         // Assumes actives are the same for all quadrature points on the elements
         basis.active_into(md.points.col(0), actives);
         numActive = actives.rows();
-        
+
         // Evaluate basis functions on element
         basis.evalAllDers_into( md.points, 1, basisData);
-        
+
         // Compute image of Gauss nodes under geometry mapping as well as Jacobians
         geo.computeMap(md);
-        
+
         // Evaluate right-hand side at the geometry points paramCoef
         // specifies whether the right hand side function should be
         // evaluated in parametric(true) or physical (false)
         rhs_ptr->eval_into( (paramCoef ?  md.points :  md.values[0] ), rhsVals );
-        
+
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );
         localRhs.setZero(numActive, rhsVals.rows() );//multiple right-hand sides
     }
-    
+
+    /// Assemble on element
     inline void assemble(gsDomainIterator<T>    & ,
                          gsVector<T> const      & quWeights)
     {
@@ -90,15 +96,16 @@ public:
         {
             // Multiply weight by the geometry measure
             const T weight = quWeights[k] * md.measure(k);
-            
+
             // Compute physical gradients at k as a Dim x NumActive matrix
             transformGradients(md, k, bGrads, physGrad);
-            
+
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
             localMat.noalias() += weight * (physGrad.transpose() * physGrad);
         }
     }
 
+    /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>               & system)
@@ -113,7 +120,7 @@ public:
 protected:
     // Pointer to the pde data
     const gsPoissonPde<T> * pde_ptr;
-    
+
 protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
@@ -138,4 +145,3 @@ protected:
 
 
 } // namespace gismo
-

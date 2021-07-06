@@ -12,7 +12,7 @@
 */
 
 #pragma once
-
+#include <gsAssembler/gsVisitorMass.h>
 
 namespace gismo
 {

@@ -18,12 +18,19 @@
 #include <gsAssembler/gsVisitorCDR.h> //
 #include <gsAssembler/gsVisitorNeumann.h> // Neumann boundary integrals
 #include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
-#include <gsAssembler/gsVisitorDg.h>      // Disc. Galerkin interface integrals
 
 //#include <gsAssembler/gsAssemblerUtils.h>
 
 namespace gismo
 {
+
+template <class T>
+gsOptionList gsCDRAssembler<T>::defaultOptions()
+{
+    gsOptionList options = gsAssembler<T>::defaultOptions();
+    options.update( gsVisitorNitsche<T>::defaultOptions(), gsOptionList::addIfUnknown );
+    return options;
+}
 
 template<class T>
 void gsCDRAssembler<T>::assemble()
