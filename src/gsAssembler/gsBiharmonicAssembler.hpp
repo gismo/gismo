@@ -38,15 +38,15 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
 
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
-    
+
     // Assemble volume integrals
     Base::template push<bhVisitor >();
-    
-    // Newman conditions of first kind
+
+    // Neumann conditions of first kind
     Base::template push<gsVisitorNeumann<T> >(
         m_ppde.bcFirstKind().neumannSides() );
-    
-    // Newman conditions of second kind
+
+    // Neumann conditions of second kind
     Base::template push<gsVisitorNeumannBiharmonic<T> >(
         m_ppde.bcSecondKind().neumannSides() );
 
@@ -58,13 +58,10 @@ void gsBiharmonicAssembler<T,bhVisitor>::assemble()
     this->template push<gsVisitorNitscheBiharmonic<T> >(
     m_ppde.bcSecondKind().dirichletSides() );
     */
-    
+
     // Assembly is done, compress the matrix
     Base::finalize();
 }
 
 
 } // namespace gismo
-
-
-
