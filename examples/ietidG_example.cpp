@@ -435,9 +435,18 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
         std::time_t time = std::time(NULL);
         fd.add(opt);
         fd.add(uVec);
+        gsMatrix<> mat; ieti.saddlePointProblem()->toMatrix(mat); fd.add(mat);
         fd.addComment(std::string("ietidG_example   Timestamp:")+std::ctime(&time));
         fd.save(fn);
         gsInfo << "Write solution to file " << fn << "\n";
+
+        for (int i=0; i<mat.rows(); ++i)
+        {
+            for (int j=0; j<mat.cols(); ++j)
+                gsInfo << ( mat(i,j) > 1.e-4 ? '+' : mat(i,j) < -1.e-4 ? '-' : ' ' );
+            gsInfo << "\n"; 
+        }
+
     }
     /*
     if (plot)

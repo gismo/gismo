@@ -182,7 +182,9 @@ struct dof_helper {
     index_t patch;
     index_t localIndex;
     bool operator<(const dof_helper& other) const
-    { return globalIndex < other.globalIndex; }
+    {
+        return globalIndex < other.globalIndex;
+    }
 };
 }
 
@@ -211,29 +213,25 @@ void gsIetiMapper<T>::cornersAsPrimals()
             dh.localIndex = m_dofMapperLocal[k].index( idx, 0 );
             if (m_dofMapperGlobal.is_free_index(dh.globalIndex))
             {
-                // Store the corner
-                corners.push_back(dh);
-
                 if (m_status&2)
                 {
-                    // If there artificial dofs, we have check if the corner
-                    // is also there
+                    // If there artificial dofs, we have to find all pre-images, which are then mapped back
                     std::vector< std::pair<index_t,index_t> > preImages;
                     m_dofMapperGlobal.preImage(dh.globalIndex, preImages);
+                    gsInfo << "Found " << preImages.size() << " pre-images.\n";
                     for (size_t i=0; i<preImages.size(); ++i)
                     {
-                        const index_t patch2 = preImages[i].first;
-                        const index_t idx2   = preImages[i].second;
-                        // Is it atificial? Yes, if the index does not belong to basis!
-                        if (idx2 > m_multiBasis->piece(patch2).size())
-                        {
-                            dof_helper dh2;
-                            dh2.globalIndex = dh.globalIndex;
-                            dh2.patch = patch2;
-                            dh2.localIndex = m_dofMapperLocal[patch2].index( idx2, 0 );
-                            corners.push_back(dh2);
-                        }
+                        dof_helper dh2;
+                        dh2.globalIndex = dh.globalIndex;
+                        dh2.patch = preImages[i].first;
+                        dh2.localIndex = m_dofMapperLocal[preImages[i].first].index( preImages[i].second, 0 );
+                        corners.push_back(give(dh2));
                     }
+                }
+                else
+                {
+                    // Store the corner
+                    corners.push_back(give(dh));
                 }
             }
         }
@@ -255,7 +253,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
         const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
         const index_t localIndex  = corners[i].localIndex;
-
+        
         SparseVector constr(m_dofMapperLocal[patch].freeSize());
         constr[localIndex] = 1;
 
