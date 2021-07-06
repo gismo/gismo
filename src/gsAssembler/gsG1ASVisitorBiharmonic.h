@@ -49,7 +49,7 @@ public:
     {
         gsVector<index_t> numQuadNodes( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i) // to do: improve
-            numQuadNodes[i] = basis.degree(i) + 1;
+            numQuadNodes[i] = 2 * basis.degree(i) + 1;
 
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// NB!

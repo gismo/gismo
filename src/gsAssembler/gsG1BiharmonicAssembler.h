@@ -292,6 +292,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
         gsMapData<T> md(NEED_MEASURE);
 
+
         // Iterate over all patch-sides with Dirichlet-boundary conditions
         for ( typename gsBoundaryConditions<T>::const_iterator
                   iter = m_pde_ptr->bc().dirichletBegin();
@@ -310,6 +311,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
             const size_t patchIdx = iter->patch();
             const index_t sideIdx = iter->side();
 
+
             size_t row_Edge = 0;
             for (size_t numBdy = 0; numBdy < m_pde_ptr->domain().boundaries().size(); numBdy++ )
                 if (m_pde_ptr->domain().boundaries()[numBdy].patch == patchIdx && m_pde_ptr->domain().boundaries()[numBdy].m_index == sideIdx)
@@ -317,6 +319,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
             gsMultiPatch<T> multiPatch_Edges;
             gsTensorBSplineBasis<2,real_t> temp_basis = dynamic_cast<gsTensorBSplineBasis<2,real_t>  &>(m_bases[unk_].basis(patchIdx));
+
             for (size_t i = 0; i < numBoundaryEdgeFunctions[row_Edge+1] - numBoundaryEdgeFunctions[row_Edge]; i++)
             {
                 index_t ii = numBoundaryEdgeFunctions[row_Edge] + i;
@@ -387,6 +390,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
 
             for(; bdryIter->good(); bdryIter->next() )
             {
+
                 bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
                                 md.points, quWeights);
 
@@ -458,6 +462,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletDofsL2Proj(gsG1System
                 for( size_t i=0; i < multiPatch_Edges.nPatches(); i++)
                     {
                     eltBdryFcts.push_back( i );
+
                     }
                 for( size_t i=0; i < multiPatch_Vertex_0.nPatches(); i++)
                     {
@@ -549,6 +554,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
         mapper.markBoundary(it->patch(), act);
 
     }
+
 
     // Corner boundary dofs
     for(size_t numVer=0; numVer < m_ppde.domain().vertices().size(); numVer++)
@@ -683,6 +689,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
         for(; bdryIter->good(); bdryIter->next() )
         {
+
             bdQuRule.mapTo( bdryIter->lowerCorner(), bdryIter->upperCorner(),
                             md.points, quWeights);
 
@@ -752,6 +759,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
                     unormal.normalize();
 
                     // Only run through the active boundary functions on the element:
+
                     for( size_t i0=0; i0 < eltBdryFcts.size(); i0++ )
                     {
                         // Each active boundary function/DOF in eltBdryFcts has...
@@ -870,6 +878,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
     B_0_sparse.reserve(int(g1System.boundary_size()*3*1.1));
     B_0_sparse.setZero();
+
 
     for(size_t i = 0; i < g1System.boundary_size(); i++)
     {

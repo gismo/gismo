@@ -23,7 +23,7 @@ public:
     {
         gsVector<index_t> numQuadNodes( basis.dim() );
         for (int i = 0; i < basis.dim(); ++i) // to do: improve
-            numQuadNodes[i] = basis.degree(i) + 1;
+            numQuadNodes[i] = 2 * basis.degree(i) + 1;
 
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// NB!
@@ -58,7 +58,7 @@ public:
             gsMatrix<> ones(1, md.points.cols());
             ones.setOnes();
 
-            gsMatrix<> lam = ones / 100000000000;
+            gsMatrix<> lam = ones / 100000000000000;
 
             gsMatrix<> DuFR(FR.targetDim(), md.points.cols());
             gsMatrix<> DvFR(FR.targetDim(), md.points.cols());
@@ -245,7 +245,7 @@ public:
 
         gsMatrix<> alpha_R_L = alpha_R.cwiseProduct(alpha_L);
 
-        gsMatrix<> lamB = ones / 10000000;
+        gsMatrix<> lamB = ones / 100000000000;
 
 
         basisDataBeta.setZero(numActiveBeta * numActiveBeta, md.points.cols());

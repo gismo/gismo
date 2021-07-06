@@ -656,6 +656,7 @@ void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<
     B_boundary_sparse.setZero();
 
 
+    gsInfo << "Dim bdy: " << dim_G1_Bdy << "\n";
 
     // Add for the G1 Dofs to 1
     if(optionList.getSwitch("L2approx") == false)
@@ -707,7 +708,6 @@ void gsG1System<T>::finalize(gsMultiPatch<> & mp, gsMultiBasis<> & mb, gsMatrix<
 
     // Set up the boundary vector
     m_g1.block(dim_G1_Dofs,0,dim_G1_Bdy,1) = g1;
-
 }
 
 template<class T>

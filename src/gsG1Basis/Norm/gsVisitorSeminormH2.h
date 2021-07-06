@@ -37,7 +37,7 @@ public:
         gsVector<index_t> numQuadNodes( d );
         for (unsigned i = 0; i < d; ++i)
         {
-            numQuadNodes[i] = basis.degree(i) + 1;
+            numQuadNodes[i] = 2 * basis.degree(i) + 1;
         }
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
