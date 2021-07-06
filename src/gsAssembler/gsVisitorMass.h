@@ -15,33 +15,36 @@
 
 namespace gismo
 {
-/** 
- *  @brief The visitor computes element mass integrals
- *
- *  Assembles the bilinear term
- *  \f[ (u,v)_\Omega, \f]
- *  where \f$u\f$ is the trial function and \f$v\f$ is the test function.
- * 
- *  @ingroup Assembler
- */
+
+   /**  @brief The visitor computes element mass integrals
+     *
+     *  Assembles the bilinear term
+     *  \f[ (u,v)_\Omega, \f]
+     *  where \f$u\f$ is the trial function and \f$v\f$ is the test function.
+     *
+     *  @ingroup Assembler
+     */
+
 template <class T>
 class gsVisitorMass
 {
 public:
 
+    /// Constructor
     gsVisitorMass()
     { }
 
-    /** \brief Visitor for assembling the mass matrix
-     *  
-     */
+    /// @brief Constructor
+    ///
+    /// @param pde     Reference to \a gsPde object (is ignored)
     gsVisitorMass(const gsPde<T> & pde)
     { GISMO_UNUSED(pde); }
 
-    void initialize(const gsBasis<T> & basis,
+    /// Initialize
+    void initialize(const gsBasis<T>   & basis,
                     const index_t ,
-                    const gsOptionList & options, 
-                    gsQuadRule<T>    & rule)
+                    const gsOptionList & options,
+                    gsQuadRule<T>      & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
@@ -50,7 +53,7 @@ public:
         md.flags = NEED_MEASURE;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
                          const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
@@ -72,14 +75,16 @@ public:
         localMat.setZero(numActive, numActive);
     }
 
+    /// Assemble on element
     inline void assemble(gsDomainIterator<T>    & ,
                          gsVector<T> const      & quWeights)
     {
-        localMat.noalias() = 
-            basisData * quWeights.asDiagonal() * 
+        localMat.noalias() =
+            basisData * quWeights.asDiagonal() *
             md.measures.asDiagonal() * basisData.transpose();
     }
 
+    /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>               & system)
@@ -93,13 +98,13 @@ public:
 
 /* -----------------------  to be removed later*/
 
-    void initialize(const gsBasis<T> & basis,
-                           gsQuadRule<T> & rule)
+    void initialize(const gsBasis<T>    & basis,
+                          gsQuadRule<T> & rule)
     {
         gsVector<short_t> numQuadNodes( basis.dim() );
         for (short_t i = 0; i < basis.dim(); ++i)
             numQuadNodes[i] = basis.degree(i) + 1;
-        
+
         // Setup Quadrature
         rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
 
@@ -121,7 +126,7 @@ public:
         for (index_t i = 0; i < numActive; ++i)
         {
             const int ii = actives(i,0); // N_i
-            
+
             if ( mapper.is_free_index(ii) )
             {
                 for (index_t j = 0; j < numActive; ++j)
@@ -150,4 +155,3 @@ protected:
 
 
 } // namespace gismo
-

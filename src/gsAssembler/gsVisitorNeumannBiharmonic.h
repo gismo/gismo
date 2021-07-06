@@ -2,12 +2,12 @@
 
     @brief Neumann conditions visitor for 4th order problems.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris, J. Sogn
 */
 
@@ -16,31 +16,42 @@
 namespace gismo
 {
 
-/** @brief Visitor for Neumann boundary condition for the biharmonic equation.
- *
- * Visitor for boundary condition term of the form:\n
- * Let g be the function given BVP formulation, typically
- * \f[ g = \Delta u\f].
- * Then this visitor adds the follow term on the right-hand side.
- * \f[ (g, \nabla v \cdot \mathbf{n})_\Gamma \f]
- * Where v is the test function and \f[ \Gamma \f] is the boundary.
- *
- * @ingroup Assembler
- */
+   /** @brief Visitor for Neumann boundary condition for the biharmonic equation.
+     *
+     * Visitor for boundary condition term of the form:
+     *
+     * Let g be the function given BVP formulation, typically
+     * \f[ g = \Delta u. \f]
+     * Then this visitor adds the following term on the right-hand side:
+     * \f[ (g, \nabla v \cdot \mathbf{n})_\Gamma, \f]
+     * where v is the test function and \f$ \Gamma \f$ is the boundary.
+     *
+     * @ingroup Assembler
+     */
+
 template <class T>
 class gsVisitorNeumannBiharmonic
 {
 public:
 
-    gsVisitorNeumannBiharmonic(const gsPde<T> & , const boundary_condition<T> & s)
-    : neudata_ptr( s.function().get() ), side(s.side())
+    /// @brief Constructor
+    ///
+    /// @param pde     Reference to \a gsPde object (is ignored)
+    /// @param bc      The boundary condition to be realized
+    gsVisitorNeumannBiharmonic(const gsPde<T> & pde, const boundary_condition<T> & bc)
+    : neudata_ptr( bc.function().get() ), side(bc.side())
+    { GISMO_UNUSED(pde); }
+
+    /// @brief Constructor
+    ///
+    /// @param neudata Neumann boundary function
+    /// @param s       Side of the geometry where neumann BC is prescribed
+    gsVisitorNeumannBiharmonic(const gsFunction<T> & neudata, boxSide s)
+    : neudata_ptr(&neudata), side(s)
     { }
 
-    gsVisitorNeumannBiharmonic(const gsFunction<T> & neudata, boxSide s) :
-    neudata_ptr(&neudata), side(s)
-    { }
-
-    void initialize(const gsBasis<T> & basis, 
+    /// Initialize
+    void initialize(const gsBasis<T> & basis,
                     gsQuadRule<T>    & rule)
     {
         const int dir = side.direction();
@@ -57,9 +68,10 @@ public:
 
     }
 
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
-                    const gsOptionList & options, 
+                    const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
@@ -71,7 +83,7 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
                          const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
@@ -96,6 +108,7 @@ public:
         localRhs.setZero(numActive, neudata_ptr->targetDim() );
     }
 
+    /// Assemble on element
     inline void assemble(gsDomainIterator<T>    & ,
                          gsVector<T> const      & quWeights)
     {
@@ -103,7 +116,7 @@ public:
         {
             // Compute the outer normal vector on the side
             outerNormal(md, k, side, unormal);
-            
+
             // Multiply quadrature weight by the measure of normal
             const T weight = quWeights[k] * unormal.norm();
             unormal.normalize();
@@ -113,7 +126,8 @@ public:
             localRhs.noalias() += weight *(( physBasisGrad.transpose() * unormal )* neuData.col(k).transpose());
         }
     }
-    
+
+    /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & ,
                               gsSparseSystem<T>               & system)
@@ -150,7 +164,7 @@ public:
 
 protected:
 
-    
+
     // Neumann function
     const gsFunction<T> * neudata_ptr;
     boxSide side;

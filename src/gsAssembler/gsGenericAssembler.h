@@ -23,12 +23,11 @@
 namespace gismo
 {
 
-/**
-   @brief Assembles the mass, stiffness matrix on a given domain
+   /** @brief Assembles mass and stiffness matrices and right-hand sides on a given domain
+     *
+     * @ingroup Assembler
+     */
 
-
-   \ingroup Assembler
- */
 template <class T>
 class gsGenericAssembler : public gsAssembler<T>
 {
@@ -40,10 +39,15 @@ public:
     /// Returns the list of default options for assembly
     static gsOptionList defaultOptions();
 
-    /// Constructor with gsMultiBasis
-    gsGenericAssembler( const gsMultiPatch<T>    & patches,
-                        const gsMultiBasis<T>    & bases,
-                        const gsOptionList & opt = Base::defaultOptions(),
+    /// @brief Constructor
+    ///
+    /// @param  patches   The geometry as \a gsMultiPatch
+    /// @param  bases     The bases as \a gsMultiBasis
+    /// @param  opt       The assembler options
+    /// @param  bc        The boundary conditons (used for setting up \a gsDofMapper)
+    gsGenericAssembler( const gsMultiPatch<T>         & patches,
+                        const gsMultiBasis<T>         & bases,
+                        const gsOptionList            & opt = defaultOptions(),
                         const gsBoundaryConditions<T> * bc = NULL)
     : m_pde(patches)
     {
@@ -70,6 +74,8 @@ public:
         gsGenericAssembler::refresh();
     }
     */
+
+    /// Refreshes the sparse system (deletes assembled matrices and vectors)
     void refresh()
     {
         // Setup sparse system
@@ -84,17 +90,21 @@ public:
         //        m_system.reserve(nz, 1);
     }
 
+    /// Refreshes the sparse system based on given dof mapper
     void refresh(gsDofMapper mapper)
     {
          m_system = gsSparseSystem<T>(mapper);
     }
 
-    /// Mass assembly routine
+    /// @brief Mass assembly routine
+    ///
+    /// @param patchIndex   If non-negative, only assemble matrix for specified patch
+    /// @param refresh      Calles member refresh
     const gsSparseMatrix<T> & assembleMass(const index_t patchIndex = -1, bool refresh = true);
 
-    /// Mass assembly routine
+    /// @brief Mass assembly routine
     ///
-    /// This routine uses the expression assembler
+    /// This routine uses the expression assembler and always overwrites already assembled matrices.
     const gsSparseMatrix<T> & assembleMass2()
     {
         typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -116,29 +126,43 @@ public:
         return m_system.matrix();
     }
 
-    /// Stiffness assembly routine
+    /// @brief Stiffness assembly routine
+    ///
+    /// @param patchIndex   If non-negative, only assemble matrix for specified patch
+    /// @param refresh      Calles member refresh
     const gsSparseMatrix<T> & assembleStiffness(const index_t patchIndex = -1, const bool refresh = true);
 
-    /// Moments assembly routine
+    /// @brief Moments assembly routine
+    ///
+    /// @param func         Right-hand-side (source) function
+    /// @param patchIndex   If non-negative, only assemble matrix for specified patch
+    /// @param refresh      Calles member refresh
     const gsMatrix<T> & assembleMoments(const gsFunction<T> & func, index_t patchIndex = -1, bool refresh = true);
 
-    /// Assemble dG interface terms
+    /// @brief Assemble dG interface terms
     ///
+    /// @param iFace        The interface for which assembling is done
+    /// @param refresh      Calles member refresh
     /// See \a gsVisiorDg for possible options
     const gsSparseMatrix<T> & assembleDG(const boundaryInterface & iFace, bool refresh = true);
 
-    /// Assemble Neumann boundary terms
+    /// @brief Assemble Neumann boundary terms
     ///
-    /// See \a gsVisiorDg for possible options
+    /// @param bc           The boundary condition for which assembling is done
+    /// @param refresh      Calles member refresh
     const gsSparseMatrix<T> & assembleNeumann(const boundary_condition<T> & bc, bool refresh = true);
 
-    /// Assemble Nitsche terms for weakly imposing Dirichlet conditions
+    /// @brief Assemble Nitsche terms for weakly imposing Dirichlet conditions
+    ///
+    /// @param bc           The boundary condition for which assembling is done
+    /// @param refresh      Calles member refresh
     ///
     /// See \a gsVisiorNitsche for possible options
     const gsSparseMatrix<T> & assembleNitsche(const boundary_condition<T> & bc, bool refresh = true);
 
-    /// Returns an expression of the "full" assembled sparse
-    /// matrix. Note that matrix() might return a lower diagonal
+    /// @brief Returns an expression of the "full" assembled sparse matrix.
+    ///
+    /// Note that matrix() might return a lower diagonal
     /// matrix, if we exploit possible symmetry during assembly
     /// (check: m_matrix.symmetry() == true )
     typename gsSparseMatrix<T>::fullView fullMatrix()
@@ -146,8 +170,9 @@ public:
         return m_system.matrix().template selfadjointView<Lower>();
     }
 
-    /// Returns an expression of the "full" assembled sparse
-    /// matrix. Note that matrix() might return a lower diagonal
+    /// @brief Returns an expression of the "full" assembled sparse matrix.
+    ///
+    /// Note that matrix() might return a lower diagonal
     /// matrix, if we exploit possible symmetry during assembly
     /// (check: m_matrix.symmetry() == true )
     const typename gsSparseMatrix<T>::constFullView fullMatrix() const

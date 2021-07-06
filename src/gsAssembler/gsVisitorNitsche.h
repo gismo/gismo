@@ -34,13 +34,13 @@ namespace gismo
      * \f]
      * where \f$g_D\f$ is the Dirichlet value.
      *
-     * The default values for DG.Alpha and DG.Beta are \f$\alpha=\beta=1\f$,
+     * The default values for Nitsche.Alpha and Nitsche.Beta are \f$\alpha=\beta=1\f$,
      * which corresponds to the standard Nitsche method. The default value for
-     * DG.Penalty is -1, which yields \f$\delta=2.5(p+d)(p+1)\f$. If a positive
-     * value for DG.Penalty is chosen, that value is taken for \f$\delta\f$.
+     * Nitsche.Penalty is -1, which yields \f$\delta=2.5(p+d)(p+1)\f$. If a positive
+     * value for Nitsche.Penalty is chosen, that value is taken for \f$\delta\f$.
      *
      * The (normal) grid sizes are estimated based on the geometry function. Use
-     * the option DG.ParameterGridSize to just use the grid size on the parameter
+     * the option Nitsche.ParameterGridSize to just use the grid size on the parameter
      * domain.
      *
      * An analogous visitor for handling the internal smoothness weakly, is the
@@ -57,9 +57,8 @@ public:
 
     /// @brief Constructor
     ///
-    /// @param pde     The \a gsPde object
+    /// @param pde     Reference to \a gsPde object
     /// @param bc      The boundary condition to be realized
-
     gsVisitorNitsche(const gsPde<T> & pde, const boundary_condition<T> & bc)
         : m_pde(&pde), m_dirdata_ptr( bc.function().get() ), m_side(bc.ps), m_penalty(-1)
     { }
@@ -68,14 +67,14 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList options;
-        //options.addReal  ("Nitsche.Alpha",
-        //                  "Parameter alpha for dG scheme; use 1 for SIPG and NIPG.",                              1);
-        //options.addReal  ("Nitsche.Beta",
-         //                 "Parameter beta for dG scheme; use 1 for SIPG and -1 for NIPG",                         1);
+        options.addReal  ("Nitsche.Alpha",
+                          "Parameter alpha for Nitsche scheme.",                                                       1);
+        options.addReal  ("Nitsche.Beta",
+                          "Parameter beta for Nitsche scheme.",                                                        1);
         options.addReal  ("Nitsche.Penalty",
-                          "Penalty parameter penalty for dG scheme; if negative, default 4(p+d)(p+1) is used.",  -1);
+                          "Penalty parameter penalty for Nitsche scheme; if negative, default 2.5(p+d)(p+1) is used.",-1);
         options.addSwitch("Nitsche.ParameterGridSize",
-                          "Use grid size on parameter domain for the penalty term.",                          false);
+                          "Use grid size on parameter domain for the penalty term.",                               false);
         return options;
     }
 
@@ -88,7 +87,6 @@ public:
         // Setup Quadrature (harmless slicing occurs)
         rule = gsQuadrature::get(basis, options, m_side.direction());
 
-
         m_penalty     = options.askReal("Nitsche.Penalty",-1);
         // If not given, use default
         if (m_penalty<0)
@@ -97,8 +95,8 @@ public:
             m_penalty = T(2.5) * (deg + basis.dim()) * (deg + 1);
         }
 
-        //TODO m_alpha     = options.askReal("Nitsche.Alpha", 1);
-        //TODO m_beta      = options.askReal("Nitsche.Beta" , 1);
+        m_alpha     = options.askReal("Nitsche.Alpha", 1);
+        m_beta      = options.askReal("Nitsche.Beta" , 1);
 
         if (options.getSwitch("DG.ParameterGridSize"))
         {
@@ -155,35 +153,36 @@ public:
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
 
-        const typename gsMatrix<T>::Block bVals =
-            basisData[0].block(0,k,numActive,1);
+            const typename gsMatrix<T>::Block bVals =
+                basisData[0].block(0,k,numActive,1);
 
-        // Compute the outer normal vector on the side
-        outerNormal(md, k, m_side, unormal);
+            // Compute the outer normal vector on the side
+            outerNormal(md, k, m_side, unormal);
 
-        // Multiply quadrature weight by the geometry measure
-        const T weight = quWeights[k] *unormal.norm();
+            // Multiply quadrature weight by the geometry measure
+            const T weight = quWeights[k] * unormal.norm();
 
-        // Compute the unit normal vector
-        unormal.normalize();
+            // Compute the unit normal vector
+            unormal.normalize();
 
-        // Compute physical gradients at k as a Dim x NumActive matrix
-        transformGradients(md, k, bGrads, pGrads);
+            // Compute physical gradients at k as a Dim x NumActive matrix
+            transformGradients(md, k, bGrads, pGrads);
 
-        // Get penalty parameter
-        const T mu = m_penalty / m_h;
+            // Get penalty parameter
+            const T mu = m_penalty / m_h;
 
-        // Sum up quadrature point evaluations
-        localRhs.noalias() -= weight * (( pGrads.transpose() * unormal - mu * bVals )
-                                        * dirData.col(k).transpose() );
+            // Sum up quadrature point evaluations
+            localRhs.noalias() -= weight * ( ( m_beta * pGrads.transpose() * unormal - mu * bVals ) * dirData.col(k).transpose() );
 
-        localMat.noalias() -= weight * ( bVals * unormal.transpose() * pGrads
-                           +  (bVals * unormal.transpose() * pGrads).transpose()
-                           -  mu * bVals * bVals.transpose() );
+            localMat.noalias() -= weight * (
+                                            m_alpha *  bVals * unormal.transpose() * pGrads
+                                            + m_beta  * (bVals * unormal.transpose() * pGrads).transpose()
+                                            - mu      *  bVals                       * bVals.transpose()
+                                        );
         }
     }
 
-    /// Adds the contirbutions to the sparse system
+    /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & ,
                               gsSparseSystem<T>               & system)
@@ -195,7 +194,7 @@ public:
         system.pushAllFree(localMat, localRhs, actives, 0);
     }
 
-    /// Adds the contirbutions to the sparse system
+    /// Adds the contributions to the sparse system
     void localToGlobal(const gsDofMapper  & mapper,
                        const gsMatrix<T>  & eliminatedDofs,
                        const index_t        patchIndex,
@@ -229,11 +228,18 @@ private:
     /// Dirichlet function
     const gsFunction<T> * m_dirdata_ptr;
 
+    /// Parameter \f$\alpha\f$ for the linear form
+    T m_alpha;
+
+    /// Parameter \f$\beta\f$ for the linear form
+    T m_beta;
+
+    /// Parameter \f$\delta\f$ for the linear form
+    T m_penalty;
+
     /// Patch side
     patchSide m_side;
 
-    /// Parameter \f$\delta\f$ for the bilinear form
-    T m_penalty;
 
 private:
     // Basis values

@@ -68,13 +68,15 @@ class gsVisitorDg
 public:
 
     /// Constructor
-    gsVisitorDg() : m_pde(NULL)
+    gsVisitorDg()
+    : m_pde(NULL)
     {}
 
     /// @brief Constructor
     ///
-    /// @param pde     The \a gsPde object
-    gsVisitorDg(const gsPde<T> & pde) : m_pde(&pde)
+    /// @param pde     Reference to \a gsPde object
+    gsVisitorDg(const gsPde<T> & pde)
+    : m_pde(&pde)
     {}
 
     /// Default options
@@ -200,6 +202,7 @@ private:
             // Compute the outer normal vector from patch1
             outerNormal(md1, k, m_side1, unormal);
 
+            // Multiply quadrature weight by the geometry measure
             // Integral transformation and quadrature weight (patch1)
             // assumed the same on both sides
             const T weight = quWeights[k] * unormal.norm();
@@ -243,7 +246,7 @@ private:
     }
 public:
 
-    /// Adds the contirbutions to the sparse system
+    /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patch1,
                               const index_t                     patch2,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
@@ -262,13 +265,14 @@ public:
         system.push(-m_alpha*B22 - m_beta*B22.transpose() + E22, m_localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
     }
 
+    /// Estimates the gird size perpendicular to the given side on the physical domain, as required for SIPG and Nitsche
     static T estimateSmallestPerpendicularCellSize(const gsBasis<T> & basis,
                                                    const gsGeometry<T> & geo,
                                                    patchSide side)
     {
-        typename gsDomainIterator<T>::uPtr domIt = basis.makeDomainIterator(side);
-
         T result = 0;
+        bool first = true;
+        typename gsDomainIterator<T>::uPtr domIt = basis.makeDomainIterator(side);
 
         for (gsDomainIterator<T>& element = *domIt; element.good(); element.next() )
         {
@@ -281,8 +285,10 @@ public:
 
             const real_t diff = (center1 - center2).norm();
 
-            if (result == 0 || result > diff)
-              result = diff;
+            if (first || result > diff)
+                result = diff;
+
+            first = false;
         }
         return result;
     }
