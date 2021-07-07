@@ -195,8 +195,8 @@ public:
             N2.noalias()   = unormal.transpose() * phGrad2;
 
             B11.noalias() += c1 * ( val1 * N1 );
-            B21.noalias() -= c1 * ( val2 * N1 );
             B12.noalias() += c1 * ( val1 * N2 );
+            B21.noalias() -= c1 * ( val2 * N1 );
             B22.noalias() -= c1 * ( val2 * N2 );
 
             const T c2     = weight * m_penalty * (1./m_h1 + 1./m_h2);
@@ -208,7 +208,6 @@ public:
 
         }
     }
-public:
 
     /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patch1,

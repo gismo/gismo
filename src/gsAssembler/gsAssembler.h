@@ -489,6 +489,7 @@ public: /* Element visitors */
         }
     }
 
+
 public:  /* Dirichlet degrees of freedom computation */
 
     /// @brief Triggers computation of the Dirichlet dofs
