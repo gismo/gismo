@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#include<gsUtils/gsPointGrid.h>
+#include <gsUtils/gsPointGrid.h>
 
 namespace gismo {
 

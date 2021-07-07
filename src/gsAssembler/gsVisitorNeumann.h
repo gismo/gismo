@@ -156,6 +156,7 @@ public:
 
 protected:
 
+
     // Neumann function
     const gsFunction<T> * neudata_ptr;
     boxSide side;
