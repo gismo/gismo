@@ -40,6 +40,9 @@ public:
 
 public:
 
+    /// Returns the list of default options for assembly
+    static gsOptionList defaultOptions();
+
     gsPoissonAssembler()
     { }
 
@@ -51,6 +54,7 @@ public:
     gsPoissonAssembler( const gsPoissonPde<T>          & pde,
                         const gsMultiBasis<T>          & bases)
     {
+        m_options = defaultOptions();
         Base::initialize(pde, bases, m_options);
     }
 
@@ -67,6 +71,7 @@ public:
                         dirichlet::strategy           dirStrategy,
                         iFace::strategy               intStrategy = iFace::glue)
     {
+        m_options = defaultOptions();
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
@@ -92,6 +97,7 @@ public:
                         dirichlet::strategy           dirStrategy = dirichlet::elimination,
                         iFace::strategy               intStrategy = iFace::glue)
     {
+        m_options = defaultOptions();
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
