@@ -20,6 +20,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET default)# this is needed to get the CoDiPack tap
 ## CoDiPack package
 ##
 
+
 # Download CoDiPack sources at configure time
 include(gsFetch)
 gismo_fetch_directory(CoDiPack
@@ -35,13 +36,11 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
   CACHE INTERNAL "Gismo include directories")
 
 # Add needed instantiations to the precompiled library
-foreach(ins ${GISMO_COEFF_TYPE} ${GISMO_EXTRA_INSTANCE})
-  set(GISMO_CODIPACK_INSTANCE ${GISMO_CODIPACK_INSTANCE} "codi::RealForwardGen<${ins}>;codi::RealReverseGen<${ins}>;codi::RealReverseIndexGen<${ins}>")
+foreach(instance ${GISMO_COEFF_TYPE} ${GISMO_EXTRA_COEFF_TYPE})
+  set(GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} 
+    "codi::RealForwardGen<${instance}>;codi::RealReverseGen<${instance}>;codi::RealReverseIndexGen<${instance}>"
+    CACHE INTERNAL "Additional instantiations")
 endforeach()
-
-set (GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} ${GISMO_CODIPACK_INSTANCE}
-  CACHE INTERNAL "Additional instantiations")
-message(${GISMO_EXTRA_INSTANCE})
 add_library(${PROJECT_NAME} OBJECT gsCoDiPack_.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
