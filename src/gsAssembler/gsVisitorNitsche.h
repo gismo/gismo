@@ -60,7 +60,7 @@ public:
     /// @param pde     Reference to \a gsPde object
     /// @param bc      The boundary condition to be realized
     gsVisitorNitsche(const gsPde<T> & pde, const boundary_condition<T> & bc)
-        : m_pde(&pde), m_dirdata_ptr( bc.function().get() ), m_side(bc.ps), m_penalty(-1)
+        : m_pde(&pde), m_dirdata_ptr( bc.function().get() ), m_penalty(-1), m_side(bc.ps)
     { }
 
     /// Default options
