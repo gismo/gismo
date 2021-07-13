@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
     }
     //! [Primal to system]
 
-    gsInfo << "done. " << ietiMapper.nPrimalDofs() << " primal dofs.\n";
+    gsInfo << "done.\n";
 
     /**************** Setup solver and solve ****************/
 
