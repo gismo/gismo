@@ -57,8 +57,9 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
-        evList.add(_G);
         _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
     }
 
@@ -230,10 +231,12 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
-        evList.add(_G);
         _u.data().flags |= NEED_GRAD;
+
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-        evList.parse(_Ef);
+
+        _Ef.parse(evList);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -272,13 +275,12 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        gsDebugVar("Parsed");
-        evList.add(_u);
-        // _u.data().flags |= NEED_DERIV | NEED_2ND_DER | NEED_DERIV2;
+        evList.add(_u);   // We manage the flags of _u "manually" here (sets data)
         _u.data().flags |= NEED_DERIV2 | NEED_GRAD | NEED_ACTIVE; // define flags
-        // evList.parse(_u);
 
-        evList.parse(_v);
+        _v.parse(evList); // We need to evaluate _v (_v.eval(.) is called)
+
+        // Note: evList.parse(.) is called only in exprAssembler for the global expression
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -315,6 +317,7 @@ private:
 
         tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
         vEv = _v.eval(k);
+        
         res = vEv * tmp.transpose();
         return res;
     }
@@ -1414,7 +1417,7 @@ int main(int argc, char *argv[])
     gsDebugVar("Eval");
     gsVector<> pt2(2);
     pt2.setConstant(0.25);
-    gsDebugVar(ev.eval(deriv2(defG,defG ),pt2));
+    gsDebugVar(ev.eval(deriv2(defG,defG.tr() ),pt2));
 
 
     gsDebugVar("Below");
