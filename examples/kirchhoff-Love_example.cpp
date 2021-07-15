@@ -57,7 +57,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
-        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+        _u.data().flags |= NEED_GRAD;
 
         evList.add(_G);
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
@@ -235,7 +235,6 @@ public:
 
         evList.add(_G);
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-
         _Ef.parse(evList);
     }
 
@@ -245,7 +244,7 @@ public:
     void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
 };
 
-
+// vector v should be a row vector
 template<class E1, class E2>
 class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
 {
@@ -254,6 +253,8 @@ class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
 
 public:
     enum{ Space = E1::Space, ScalarValued= 0, ColBlocks= 0 };
+    // Note: what happens if E2 is a space? The following can fix it:
+    // enum{ Space = (E1::Space == 1 || E2::Space == 1) ? 1 : 0, ScalarValued= 0, ColBlocks= 0 };
 
     typedef typename E1::Scalar Scalar;
 
@@ -276,15 +277,36 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);   // We manage the flags of _u "manually" here (sets data)
-        _u.data().flags |= NEED_DERIV2 | NEED_GRAD | NEED_ACTIVE; // define flags
+        _u.data().flags |= NEED_DERIV2; // define flags
 
         _v.parse(evList); // We need to evaluate _v (_v.eval(.) is called)
 
         // Note: evList.parse(.) is called only in exprAssembler for the global expression
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const
+    {
+        // Note: what happens if E2 is a space? The following can fix it:
+        // if      (E1::Space == 1 && E2::Space == 0)
+        //     return _u.rowVar();
+        // else if (E1::Space == 0 && E2::Space == 1)
+        //     return _v.rowVar();
+        // else
+
+        return _u.rowVar();
+    }
+
+    const gsFeSpace<Scalar> & colVar() const
+    {
+        // Note: what happens if E2 is a space? The following can fix it:
+        // if      (E1::Space == 1 && E2::Space == 0)
+        //     return _v.rowVar();
+        // else if (E1::Space == 0 && E2::Space == 1)
+        //     return _u.rowVar();
+        // else
+
+        return _v.rowVar();
+    }
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
 
@@ -302,19 +324,7 @@ private:
             And we want to compute [d11 c .v; d22 c .v;  d12 c .v] ( . denotes a dot product and c and v are both vectors)
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
-
-        gsDebugVar("geometryMap");
         // evaluate the geometry map of U
-
-        gsDebugVar(_u.data().values[0].rows());
-        gsDebugVar(_u.data().values[0].cols());
-
-        gsDebugVar(_u.data().values[1].rows());
-        gsDebugVar(_u.data().values[1].cols());
-
-        gsDebugVar(_u.data().values[2].rows());
-        gsDebugVar(_u.data().values[2].cols());
-
         tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
         vEv = _v.eval(k);
         
@@ -332,20 +342,9 @@ private:
             hess(v) . normal = hess(v_i) * n_i (vector-scalar multiplication. The result is then of the form
             [hess(v_1)*n_1 .., hess(v_2)*n_2 .., hess(v_3)*n_3 ..]. Here, the dots .. represent the active basis functions.
         */
-        gsDebugVar("space");
         const index_t numAct = u.data().values[0].rows();   // number of actives of a basis function
         const index_t cardinality = u.cardinality();        // total number of actives (=3*numAct)
         res.resize(rows()*cardinality, cols() );
-
-        gsDebugVar(_u.data().values[0].rows());
-        gsDebugVar(_u.data().values[0].cols());
-
-        gsDebugVar(_u.data().values[1].rows());
-        gsDebugVar(_u.data().values[1].cols());
-
-        gsDebugVar(_u.data().values[2].rows());
-        gsDebugVar(_u.data().values[2].cols());
-
         tmp.transpose() =_u.data().values[2].reshapeCol(k, cols(), numAct );
         vEv = _v.eval(k);
 
@@ -1414,13 +1413,6 @@ int main(int argc, char *argv[])
     // For Neumann conditions
     A.assembleRhsBc(u * g_N * tv(G).norm(), bc.neumannSides() );
 
-    gsDebugVar("Eval");
-    gsVector<> pt2(2);
-    pt2.setConstant(0.25);
-    gsDebugVar(ev.eval(deriv2(defG,defG.tr() ),pt2));
-
-
-    gsDebugVar("Below");
     A.assemble(
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
         ,
