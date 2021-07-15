@@ -3470,7 +3470,7 @@ public:
     }
     mutable gsMatrix<Scalar> res;
 
-    AutoReturn_t eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in + operation:\n"
