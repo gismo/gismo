@@ -120,6 +120,10 @@ public:
     }
 
 public:
+
+    // Look at gsBasis.h for the documentation of this function
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
+
     /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
 
