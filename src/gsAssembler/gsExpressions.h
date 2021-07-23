@@ -235,14 +235,13 @@ public:
     asdiag_expr<E> asDiag() const
     { return asdiag_expr<E>(static_cast<E const&>(*this)); }
 
-    /// Returns a diagonal matrix expression of the vector expression
+    /// Returns the rowSum of a matrix
     rowsum_expr<E> rowSum() const
     { return rowsum_expr<E>(static_cast<E const&>(*this)); }
 
-    /// Returns a diagonal matrix expression of the vector expression
+    /// Returns the colSum of a matrix
     colsum_expr<E> colSum() const
     { return colsum_expr<E>(static_cast<E const&>(*this)); }
-
 
     col_expr<E> operator[](const index_t i) const
     { return col_expr<E>(static_cast<E const&>(*this),i); }
@@ -1740,6 +1739,8 @@ template <typename E> EIGEN_STRONG_INLINE
 flat_expr<E> const flat(E const & u)
 { return flat_expr<E>(u); }
 
+
+/// Takes the row-sum of a matrix expression
 template<class E>
 class rowsum_expr  : public _expr<rowsum_expr<E> >
 {
@@ -1779,6 +1780,7 @@ public:
     void print(std::ostream &os) const { os << "rowsum("; _u.print(os); os<<")"; }
 };
 
+/// Takes the column-sum of a matrix or vector expression
 template<class E>
 class colsum_expr  : public _expr<colsum_expr<E> >
 {

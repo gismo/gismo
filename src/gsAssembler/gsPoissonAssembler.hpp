@@ -20,6 +20,15 @@
 namespace gismo
 {
 
+template <class T>
+gsOptionList gsPoissonAssembler<T>::defaultOptions()
+{
+    gsOptionList options = gsAssembler<T>::defaultOptions();
+    options.update( gsVisitorDg<T>::defaultOptions(), gsOptionList::addIfUnknown );
+    options.update( gsVisitorNitsche<T>::defaultOptions(), gsOptionList::addIfUnknown );
+    return options;
+}
+
 template<class T>
 void gsPoissonAssembler<T>::refresh()
 {

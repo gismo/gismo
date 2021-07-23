@@ -327,11 +327,13 @@ endif()
 
 option(GISMO_STRUCTURALANALYSIS "Enable Structural Analysis module" OFF)
 if(GISMO_STRUCTURALANALYSIS)
+  include(gsFetch)
   gismo_fetch_module(gsStructuralAnalysis)
 endif()
 
 option(GISMO_KLSHELL "Enable Kirchhoff-Love Shell" OFF)
 if(GISMO_KLSHELL)
+  include(gsFetch)
   gismo_fetch_module(gsKLShell)
 endif()
 
