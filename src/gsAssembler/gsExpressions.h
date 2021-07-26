@@ -2099,10 +2099,10 @@ public:
                 }
                 else
                 {
-                    res.noalias() +=
-                        _u.fixedPart().row( map.global_to_bindex(ii) ).asDiagonal() *
+                    res.row(c) +=
+                        _u.fixedPart().at( map.global_to_bindex(ii) ) *
                         _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                        .transpose().replicate(_u.dim(),1);
+                        .transpose();
                 }
             }
         }
@@ -2116,6 +2116,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         _u.parse(evList);                         // add symbol
+        // evList.add(_u);
         _u.data().flags |= NEED_GRAD|NEED_ACTIVE; // define flags
     }
 
