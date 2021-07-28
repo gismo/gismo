@@ -2093,16 +2093,14 @@ public:
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
                     res.row(c) += _u.coefs().at(ii) *
-                        _u.data().values[1]
-                        //.block(i*_u.parDim(),k,_u.parDim(),1).transpose();
-                        .col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
+                        _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
                 else
                 {
                     res.row(c) +=
                         _u.fixedPart().at( map.global_to_bindex(ii) ) *
-                        _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim())
-                        .transpose();
+                        _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
+                        // _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
             }
         }
@@ -2116,7 +2114,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         _u.parse(evList);                         // add symbol
-        // evList.add(_u);
+        evList.add(_u.space());
         _u.data().flags |= NEED_GRAD|NEED_ACTIVE; // define flags
     }
 
@@ -2495,7 +2493,7 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u.space());
-        _u.data().flags |= NEED_DERIV2;
+        _u.data().flags |= NEED_ACTIVE | NEED_DERIV2;
     }
 
     void print(std::ostream &os) const { os << "lap(s)"; }
@@ -2755,7 +2753,7 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> eval(const index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected. Actives: \n"<<_u.data().actives);
 
         const gsDofMapper & map = _u.mapper();
 
@@ -2787,7 +2785,7 @@ public:
             for (index_t i = 0; i!=numActs; ++i)
             {
                 const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
-                deriv2 = _u.data().values[2].block(i*numDers,k,numDers,1).transpose(); // start row, start col, rows, cols
+                deriv2 = _u.space().data().values[2].block(i*numDers,k,numDers,1).transpose(); // start row, start col, rows, cols
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.row(c) += _u.coefs().at(ii) * deriv2;
                 else
@@ -2797,17 +2795,19 @@ public:
 
     }
 
-    index_t rows() const { return _u.parDim(); }
-
+    index_t rows() const
+    {
+        return _u.dim(); //  number of components
+    }
     index_t cols() const
     {// second derivatives in the columns; i.e. [d11, d22, d33, d12, d13, d23]
-        return _u.parDim();
+        return _u.parDim() * (_u.parDim() + 1) / 2;
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u.space());
-        _u.data().flags |= NEED_DERIV2;
+        _u.data().flags |= NEED_ACTIVE | NEED_VALUE | NEED_DERIV2;
     }
 
     void print(std::ostream &os) const { os << "hess(s)"; }
