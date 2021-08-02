@@ -336,64 +336,6 @@ int main(int argc, char *argv[])
 
     zH.extract(zH2_mp);// this updates zH2 variable
 
-    gsDebug<<"zL "<<evL.eval(zL,pt)<<"\n";
-    gsDebug<<"zL "<<evH.eval(zL,pt)<<"\n";
-    gsDebug<<"zH "<<evL.eval(zH2,pt)<<"\n";
-    gsDebug<<"zH "<<evH.eval(zH,pt)<<"\n"; // Different from the above
-    gsDebug<<"\n";
-    gsDebug<<"grad zL "<<evL.eval(grad(zL),pt)<<"\n";
-    gsDebug<<"grad zL "<<evH.eval(grad(zL2),pt)<<"\n";
-    gsDebug<<"grad zH "<<evL.eval(grad(zH2),pt)<<"\n";
-    gsDebug<<"grad zH "<<evH.eval(grad(zH),pt)<<"\n";
-    gsDebug<<"\n";
-    gsDebug<<"grad uL "<<evL.eval(grad(zH2),pt)<<"\n";
-    gsDebug<<"\n";
-    // gsDebug<<"lapl zL "<<evL.eval(lapl(zL),pt)<<"\n";
-    // gsDebug<<"lapl zL "<<evH.eval(lapl(zL2),pt)<<"\n";
-    // gsDebug<<"lapl zH "<<evL.eval(lapl(zH2),pt)<<"\n";
-    // gsDebug<<"lapl zH "<<evH.eval(lapl(zH),pt)<<"\n";
-    // gsDebug<<"\n";
-    // Integrals via the assembler and partition of unity.
-    space v0 = exH.getSpace(basisH); // full basis
-    space u0 = exL.getSpace(basisL); // full basis
-
-    gsBoundaryConditions<> nobc;
-
-    u0.setup(nobc,dirichlet::interpolation,0);
-    v0.setup(nobc,dirichlet::interpolation,0);
-
-    exL.initSystem();
-
-    gsDebugVar(evL.eval(zL,pt));
-    gsDebugVar(evL.eval(u0,pt));
-    gsDebugVar(evL.eval(zL.val() * u0,pt));
-
-    exL.assemble(zL.val() * u0);
-
-    gsDebug<<"int zL "<<evL.integral(zL)<<"; "<<exL.rhs().sum()<<"\n";
-
-    exH.initSystem();
-    exH.assemble(zL2.val() * v0);
-    gsDebug<<"int zH "<<evH.integral(zL2)<<"; "<<exH.rhs().sum()<<"\n";
-
-    exL.initSystem();
-    exL.assemble(zH2.val() * u0);
-    gsDebug<<"int zH "<<evL.integral(zH2)<<"; "<<exL.rhs().sum()<<"\n";
-
-    exH.initSystem();
-    exH.assemble(zH.val() * v0);
-    gsDebug<<"int zH "<<evH.integral(zH)<<"; "<<exH.rhs().sum()<<"\n";
-
-    exL.initSystem();
-    exL.assemble(u0 * grad(zH2)*grad(uL).tr());
-    gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(uL).tr())<<"; "<<exL.rhs().sum()<<"\n";
-
-    // exL.initSystem(false);
-    // exL.assemble(u * grad(zH2)*grad(zH2).tr());
-    // gsDebug<<"int grad-norm "<<evL.integral(grad(zH2)*grad(zH2).tr())<<"; "<<exL.rhs().sum()<<"\n";
-
-
-
     gsInfo<<"Objective function errors J(u)-J(u_h)\n";
     real_t error = evL.integral((0.5*primal_exL*primal_exL)*meas(G)) - evL.integral((0.5*uL*uL)*meas(G));
     real_t errest = evL.integral( (zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
@@ -443,14 +385,13 @@ int main(int argc, char *argv[])
 
 
     }
-    // FUNCTION WISE ERROR ESTIMATION
+    // ELEMENT WISE ERROR ESTIMATION
     else if (est==1)
     {
         exL.initSystem();
         // ( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );
-        auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr() + u0 * ( jac(zH2) * grad(uL).tr() - grad(zL) * grad(uL).tr() ); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
-        // auto lhs2 = u0 * ( jac(zH2) * grad(uL).tr() - grad(zL) * grad(uL).tr() ) ;
-        auto rhs = ff.val() * (zH2 - zL).val() * u0;
+        auto lhs = ((zH2 - zL) * grad(uL) * grad(u).tr()).tr() + u * ( jac(zH2) * grad(uL).tr() - grad(zL) * grad(uL).tr() ); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
+        auto rhs = ff.val() * (zH2 - zL).val() * u;
 
         evL.integralElWise((zH2-zL) * ff * meas(G)-(((igrad(zH2) - igrad(zL))*igrad(uL).tr()) ) * meas(G));
         std::vector<real_t> errors = evL.elementwise();
@@ -491,6 +432,14 @@ int main(int argc, char *argv[])
     // FUNCTION WISE ERROR ESTIMATION
     else if (est==2)
     {
+        // Space without BCs
+        space v0 = exH.getSpace(basisH); // full basis
+        space u0 = exL.getSpace(basisL); // full basis
+
+        gsBoundaryConditions<> nobc;
+        u0.setup(nobc,dirichlet::interpolation,0);
+        v0.setup(nobc,dirichlet::interpolation,0);
+
         exL.initSystem();
         // ( grad(uLp) * ( grad(v) * (zH - zLp) + v * ( grad(zH) - grad(zLp) ) ) - gg * v * (zH - zLp)  );
         auto lhs = ((zH2 - zL) * grad(uL) * grad(u0).tr()).tr() + u0 * ( jac(zH2) * grad(uL).tr() - grad(zL) * grad(uL).tr() ); // + v * ( grad(zH) - grad(zLp) ) * grad(uLp).tr();
@@ -504,7 +453,7 @@ int main(int argc, char *argv[])
         gsInfo<< "  Result (global)    : "<< res.sum()<<"\n";
 
         MarkingStrategy adaptRefCrit = PUCA;
-        const real_t adaptRefParam = 0.8;
+        const real_t adaptRefParam = 0.85;
         std::vector<bool> funMarked( res.size() );
         std::vector<real_t> errors( res.size() );
         gsVector<>::Map(&errors[0],res.size() ) = res;
