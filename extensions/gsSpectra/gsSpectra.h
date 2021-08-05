@@ -44,6 +44,7 @@ public:
     typedef typename MatrixType::Nested NestedMatrix;
     NestedMatrix m_mat;
 public:
+    SpectraMatProd(const MatrixType&&   ) = delete;
     SpectraMatProd(const MatrixType& mat) : m_mat(mat) { }
     int rows() const { return m_mat.rows(); }
     int cols() const { return m_mat.cols(); }
@@ -67,6 +68,7 @@ public:
     typename gsSparseSolver<Scalar>::LU m_solver;
 
 public:
+    SpectraMatShiftSolve(const MatrixType&&   ) = delete;
     SpectraMatShiftSolve(const MatrixType& mat)
     :
     m_mat(mat), m_n(mat.rows())
@@ -106,6 +108,7 @@ public:
     typename Spectra::BKLDLT<Scalar> m_solver;
 
 public:
+    SpectraMatShiftSolve(const gsMatrix<Scalar>&&) = delete;
     SpectraMatShiftSolve(const gsMatrix<Scalar>& mat)
     :
     m_mat(mat), m_n(mat.rows())
@@ -149,6 +152,7 @@ class gsSpectraSolver : private SpectraMatProd<MatrixType>,
     typedef SpectraMatProd<MatrixType> MatOp;
     typedef Spectra::GenEigsSolver<MatOp> Base;
 public:
+    gsSpectraSolver(const MatrixType &&   , int nev_, int ncv_) = delete;
     gsSpectraSolver(const MatrixType & mat, int nev_, int ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };
@@ -175,6 +179,7 @@ class gsSpectraSymShiftSolver :
     typedef SpectraMatShiftSolve<MatrixType> Op;
     typedef Spectra::SymEigsShiftSolver<Op> Base;
 public:
+    gsSpectraSymShiftSolver(const MatrixType &&   , int nev_, int ncv_, const Scalar& sigma) = delete;
     gsSpectraSymShiftSolver(const MatrixType & mat, int nev_, int ncv_, const Scalar& sigma) :
     Op(mat), Base(*this, nev_, ncv_,sigma) { Base::init(); }
 };
@@ -251,6 +256,7 @@ class gsSpectraGenSymSolver :
 
     typedef Spectra::SymGEigsSolver<MatOp, typename Ops::InvOp,GEigsMode> Base;
 public:
+    gsSpectraGenSymSolver(const MatrixType &&    , const MatrixType &&    , int nev_, int ncv_) = delete;
     gsSpectraGenSymSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_)
     : Ops(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()))
     { Base::init(); }
@@ -269,6 +275,7 @@ class gsSpectraGenSymShiftSolver :
 
     typedef Spectra::SymGEigsShiftSolver<typename OpType::InvOp, BOpType,GEigsMode> Base;
 public:
+    gsSpectraGenSymShiftSolver(const MatrixType &&    , const MatrixType &&    , int nev_, int ncv_, const Scalar& sigma) = delete;
     gsSpectraGenSymShiftSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_, const Scalar& sigma)
     : OpType(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()),sigma)
     { Base::init(); }
