@@ -257,6 +257,20 @@ public:
     void insertBox (point const & lower, point const & upper, int lvl)
     { insertBox(lower, upper, m_root, lvl); }
 
+
+    /**
+     * @brief      The clear function which ckears box
+    defined by points \em lower and \em upper to level \em lvl.
+
+    [\em lower, \em upper] are given by unique knot indices of level \em lvl.
+
+    \param lower the lower left corner of the box given in \em lvl representation
+    \param upper the upper right corner of the box given in \em lvl representation
+    \param lvl the desired level
+    */
+    void clearBox (point const & lower, point const & upper,
+                    int lvl);
+
     /** \brief Sinks the box defined by points \em lower and \em upper
     to one level higher.
 
@@ -267,6 +281,8 @@ public:
     \param lvl the level in which \a lower and \a upper are defined
     */
     void sinkBox (point const & lower, point const & upper, int lvl);
+
+    // void raiseBox (point const & lower, point const & upper, int lvl);
 
     /// Returns the internal coordinates of point \a point_idx of level \a lvl
     void internalIndex (point const & point_idx, int lvl, point & internal_idx)

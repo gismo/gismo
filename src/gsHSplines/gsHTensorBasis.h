@@ -703,6 +703,8 @@ public:
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
 
+    virtual void unrefine(gsMatrix<T> const & boxes, int refExt);
+
     std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     // std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
@@ -715,6 +717,7 @@ public:
      * (See also documentation of refine() for the format of \em box)
      */
     virtual void refine(gsMatrix<T> const & boxes);
+    virtual void unrefine(gsMatrix<T> const & boxes);
 
     /**
      * @brief Insert the given boxes into the quadtree.
@@ -742,6 +745,15 @@ public:
      * See description above for details on the format.
      */
     virtual void refineElements(std::vector<index_t> const & boxes);
+
+    /**
+     * @brief      Clear the given boxes into the quadtree.
+     *
+     * @param      boxes   See refineElements
+     * @param[in]  refExt  See refineElements
+     */
+    virtual void unrefineElements(std::vector<index_t> const & boxes);
+
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);

@@ -314,6 +314,60 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 }
 
 template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefine(gsMatrix<T> const & boxes, int refExt)
+{
+    GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
+    GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide refine() with them.");
+
+#ifndef NDEBUG
+    gsMatrix<T> para = support();
+    for(int i = 0; i < boxes.cols()/2; i++)
+    {
+        for( short_t j = 0; j < d; j++ )
+        {
+            GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
+                          "In refine() the first corner is outside the computational domain.");
+            GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
+                          "In refine() the second corner is outside the computational domain." );
+        }
+    }
+#endif
+
+    // Make an element vector
+    std::vector<index_t> refVector = this->asElements(boxes, 0);//std::vector<unsigned> refVector = this->asElements(boxes, refExt);
+
+    // ...and refine
+    this->unrefineElements( refVector );
+
+    // if( refExt == 0 )
+    // {
+    //     // If there is no refinement-extension, just use the
+    //     // "regular" unrefinement function unrefine( gsMatrix )
+    //     // this->unrefine( boxes );
+
+    //     // Make an element vector
+    //     std::vector<index_t> refVector = this->asElements(boxes, 0);//std::vector<unsigned> refVector = this->asElements(boxes, refExt);
+
+    //     // ...and refine
+    //     this->unrefineElements( refVector );
+
+    //     // Make an element vector
+    //     // this->unrefine( boxes );
+    // }
+    // else
+    // {
+    //     // Make an element vector
+    //     std::vector<index_t> refVector = this->asElements(boxes, refExt);//std::vector<unsigned> refVector = this->asElements(boxes, refExt);
+
+    //     // ...and refine
+    //     this->unrefineElements( refVector );
+    // }
+
+    // Update the basis (already done by now)
+    //update_structure();
+}
+
+template<short_t d, class T>
 std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, int refExt) const
 {
     // If there is a refinement-extension, we will have to use
@@ -436,6 +490,62 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     // update_structure();
 }
 
+// template<short_t d, class T>
+// void gsHTensorBasis<d,T>::unrefine(gsMatrix<T> const & boxes)
+// {
+//     GISMO_ASSERT(boxes.rows() == d, "unrefine() needs d rows of boxes.");
+//     GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provide unrefine() with them.");
+
+// #ifndef NDEBUG
+//     gsMatrix<T> para = support();
+//     for(int i = 0; i < boxes.cols()/2; i++)
+//     {
+//         for( short_t j = 0; j < d; j++ )
+//         {
+//             GISMO_ASSERT( para(j,0) <= boxes(j, 2*i) ,
+//                           "In unrefine() the first corner is outside the computational domain.");
+//             GISMO_ASSERT( para(j,1) >= boxes(j, 2*i+1),
+//                           "In unrefine() the second corner is outside the computational domain." );
+//         }
+//     }
+// #endif
+
+//     gsVector<index_t,d> k1, k2;
+//     for(index_t i = 0; i < boxes.cols()/2; i++)
+//     {
+//         // 1. Get a small cell containing the box
+//         const int fLevel = m_bases.size()-1;
+
+//         for(index_t j = 0; j < k1.size();j++)
+//         {
+//             const gsKnotVector<T> & kv = m_bases.back()->knots(j);
+//             k1[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+//                                       boxes(j,2*i  ) ) - 1).uIndex();
+//             k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+//                                       boxes(j,2*i+1) ) - 1).uIndex();
+
+//             // Trivial boxes trigger some refinement
+//             if ( k1[j] == k2[j])
+//             {
+//                 if (0!=k1[j]) {--k1[j];}
+//                 ++k2[j];
+//             }
+//         }
+
+//         // 2. Find the smallest level in which the box is completely contained
+//         //const int level = m_tree.query3(k1,k2,fLevel) + 1;
+//         // make sure that the grid is computed ( needLevel(level) )
+//         //const tensorBasis & tb = tensorLevel(level);
+//         //GISMO_UNUSED(tb);
+
+//         // Sink box
+//         m_tree.raiseBox(k1, k2, fLevel);
+//     }
+
+//     // Update the basis
+//     // update_structure();
+// }
+
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineBasisFunction(const index_t i)
 {
@@ -484,6 +594,30 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<index_t> const & boxes)
             i2[j] = boxes[(i*(2*d+1))+d+j+1];
         }
         insert_box(i1,i2,boxes[i*(2*d+1)]);
+    }
+
+    update_structure();
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
+{
+    point i1;
+    point i2;
+
+    GISMO_ASSERT( (boxes.size()%(2*d + 1))==0,
+                  "The points did not define boxes properly. The boxes were not added to the basis.");
+
+    for(size_t i = 0; i < (boxes.size())/(2*d+1); i++)
+    {
+        for( short_t j = 0; j < d; j++ )
+        {
+            i1[j] = boxes[(i*(2*d+1))+j+1];
+            i2[j] = boxes[(i*(2*d+1))+d+j+1];
+        }
+
+        m_tree.clearBox(i1,i2, boxes[i*(2*d+1)]);
+        // needLevel( m_tree.getMaxInsLevel() );
     }
 
     update_structure();
