@@ -717,7 +717,7 @@ public:
      * (See also documentation of refine() for the format of \em box)
      */
     virtual void refine(gsMatrix<T> const & boxes);
-    virtual void unrefine(gsMatrix<T> const & boxes);
+    // virtual void unrefine(gsMatrix<T> const & boxes);
 
     /**
      * @brief Insert the given boxes into the quadtree.
