@@ -1,13 +1,9 @@
 ######################################################################
-## CMakeLists.txt ---
+## gismoUse.cmake
 ## This file is part of the G+Smo library.
 ##
+## Macros for using G+Smo in third-party projects
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2015 RICAM-Linz.
-######################################################################
-
-######################################################################
-# Macros for adding executables linked to G+Smo
 ######################################################################
 
 # add an executable
@@ -31,9 +27,9 @@ macro(add_gismo_pure_executable FILE)
     else()
         get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     endif()
-    add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME})
     #message(STATUS "exec (pure template): ${FNAME}")
     add_executable(${FNAME} ${FILE} ${gismo_SOURCES} ${gismo_EXTENSIONS} ${gismo_dev_EXTENSIONS})
+    add_test(NAME ${FNAME} COMMAND $<TARGET_FILE:${FNAME}>)
     target_link_libraries(${FNAME} gismo_static)
     if(UNIX AND NOT APPLE)
         target_link_libraries(${FNAME} dl)
@@ -53,10 +49,10 @@ macro(add_gismo_shared_executable FILE)
     else()
         get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     endif()
-    add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME})
     #message(STATUS "exec (dynamically linked): ${FNAME}")
     add_executable(${FNAME} ${FILE})
     target_link_libraries(${FNAME} gismo)
+    add_test(NAME ${FNAME} COMMAND $<TARGET_FILE:${FNAME}>)
     if (GISMO_BUILD_COVERAGE)
       target_link_libraries(${FNAME} gcov)
     endif(GISMO_BUILD_COVERAGE)
@@ -75,9 +71,9 @@ macro(add_gismo_static_executable FILE)
     else()
         get_filename_component(FNAME ${FILE} NAME_WE) # name without extension
     endif()
-    add_test(${FNAME} ${CMAKE_BINARY_DIR}/bin/${FNAME})
     #message(STATUS "exec (statically linked): ${FNAME}")
     add_executable(${FNAME} ${FILE})
+    add_test(NAME ${FNAME} COMMAND $<TARGET_FILE:${FNAME}>)
     target_link_libraries(${FNAME} gismo_static)
     if(UNIX AND NOT APPLE)
         target_link_libraries(${FNAME} dl)
@@ -131,10 +127,15 @@ macro(aux_cxx_source_directory DIR VAR)
         FILE(GLOB ${ARGV1} ${DIR}/[^.]*.cxx)
 endmacro(aux_cxx_source_directory)
 
-# collect _.cpp (instance) files
+# collect _.cpp (instance/template instantiation) files
 macro(aux_instance_directory DIR VAR)
         FILE(GLOB ${ARGV1} ${DIR}/[^.]*_.cpp)
 endmacro(aux_instance_directory)
+
+# collect .cpp files that are not template instantiation
+macro(aux_cpp_noins_directory DIR VAR)
+        FILE(GLOB ${ARGV1} ${DIR}/[^.]*[^_].cpp)
+endmacro(aux_cpp_noins_directory)
 
 function(get_repo_info repository revision) #REPO_REVISION
   if (NOT DEFINED ${repository})

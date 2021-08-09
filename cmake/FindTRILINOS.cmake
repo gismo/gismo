@@ -3,7 +3,6 @@
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2016 RICAM-Linz.
 ##
 ## Required TRILINOS packages are:
 ## - Epetra
