@@ -305,7 +305,7 @@ public:
     ///
     /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
-    void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+    void locatePoints(const gsMatrix<T> & points, index_t pid1, std::vector<std::pair<index_t, gsMatrix<T>> > & pid2) const;
     
 protected:
 
