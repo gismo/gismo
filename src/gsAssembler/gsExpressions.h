@@ -96,6 +96,7 @@ template<class E> class asdiag_expr;
 template<class E> class rowsum_expr;
 template<class E> class colsum_expr;
 template<class E> class col_expr;
+template<class E> class row_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
 template<class E> class tr_expr;
@@ -245,6 +246,12 @@ public:
 
     col_expr<E> operator[](const index_t i) const
     { return col_expr<E>(static_cast<E const&>(*this),i); }
+
+    col_expr<E> col(const index_t i) const
+    { return col_expr<E>(static_cast<E const&>(*this),i); }
+
+    row_expr<E> row(const index_t i) const
+    { return row_expr<E>(static_cast<E const&>(*this),i); }
 
     /// Returns the row-size of the expression
     index_t rows() const
@@ -526,6 +533,38 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return _c.colVar(); }
 
     void print(std::ostream &os) const { os<<_c<<"["<<_i<<"]"; }
+};
+
+/*
+    Row expression
+*/
+template<class E>
+class row_expr : public _expr<row_expr<E> >
+{
+    typename E::Nested_t _c;
+    const index_t _i;
+public:
+    typedef typename E::Scalar Scalar;
+    typedef const row_expr<E> Nested_t;
+
+    row_expr(const E & c, const index_t i) : _c(c), _i(i) { }
+
+public:
+
+    //ConstColXpr
+    inline MatExprType eval(const index_t k) const { return _c.eval(k).row(_i); }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return _c.cols(); }
+    void setFlag() const { _c.setFlag();}
+    void parse(gsSortedVector<const gsFunctionSet<Scalar>*> & evList) const { _c.parse(evList); }
+
+    enum{rowSpan = 0, colSpan = E::colSpan};
+
+    const gsFeSpace<Scalar> & rowVar() const { return _c.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _c.colVar(); }
+
+    void print(std::ostream &os) const { os<<_c<<".row("<<_i<<")"; }
 };
 
 /*
