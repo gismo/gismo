@@ -31,6 +31,7 @@ struct condition_type
         dirichlet = 0, ///< Dirichlet type
         weak_dirichlet = 10, ///< Dirichlet type
         neumann   = 1, ///< Neumann type
+        par_neumann   = 20, ///< parametric Neumann type
         robin     = 2, ///< Robin type
         clamped   = 3, ///< Robin type
         weak_clamped = 30,
@@ -60,6 +61,11 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
     case condition_type::neumann:
     {
         os<< "Neumann";
+        break;
+    }
+    case condition_type::par_neumann:
+    {
+        os<< "Parametric Neumann";
         break;
     }
     case condition_type::robin:
@@ -114,6 +120,7 @@ struct boundary_condition
         if (m_label == "Dirichlet") m_type = condition_type::dirichlet;
         else if (m_label == "Weak Dirichlet") m_type = condition_type::weak_dirichlet;
         else if (m_label == "Neumann")   m_type = condition_type::neumann;
+        else if (m_label == "Parametric Neumann")   m_type = condition_type::par_neumann;
         else if (m_label == "Robin")     m_type = condition_type::robin;
         else if (m_label == "Clamped")   m_type = condition_type::clamped;
         else if (m_label == "Weak Clamped")   m_type = condition_type::weak_clamped;
@@ -145,6 +152,11 @@ struct boundary_condition
         case condition_type::neumann:
         {
             m_label = "Neumann";
+            break;
+        }
+        case condition_type::par_neumann:
+        {
+            m_label = "Parametric Neumann";
             break;
         }
         case condition_type::robin:
@@ -197,6 +209,11 @@ struct boundary_condition
         case condition_type::neumann:
         {
             m_label = "Neumann";
+            break;
+        }
+        case condition_type::par_neumann:
+        {
+            m_label = "Parametric Neumann";
             break;
         }
         case condition_type::robin:
@@ -386,8 +403,11 @@ public:
     /// Return a reference to the Weak Dirichlet sides
     const bcContainer & weakDirichletSides() const {return m_bc["Weak Dirichlet"]; }
 
-    /// Return a reference to the Neumann sides
+    /// Return a reference to the parametric Neumann sides
     const bcContainer & neumannSides()   const {return m_bc["Neumann"]; }
+
+    /// Return a reference to the Weak Dirichlet sides
+    const bcContainer & parNeumannSides() const {return m_bc["Parametric Neumann"]; }
 
     /// Return a reference to the Robin sides
     const bcContainer & robinSides()     const {return m_bc["Robin"]; }
@@ -495,6 +515,26 @@ public:
     iterator neumannEnd()
     { return m_bc["Neumann"].end(); }
 
+    /// Get a const-iterator to the beginning of the parametric Neumann sides
+    /// \return an iterator to the beginning of the parametric Neumann sides
+    const_iterator parNeumannBegin() const
+    { return m_bc["Parametric Neumann"].begin(); }
+
+    /// Get a const-iterator to the end of the parametric Neumann sides
+    /// \return an iterator to the end of the parametric Neumann sides
+    const_iterator parNeumannEnd() const
+    { return m_bc["Parametric Neumann"].end(); }
+
+    /// Get an iterator to the beginning of the parametric Neumann sides
+    /// \return an iterator to the beginning of the parametric Neumann sides
+    iterator parNeumannBegin()
+    { return m_bc["Parametric Neumann"].begin(); }
+
+    /// Get an iterator to the end of the parametric Neumann sides
+    /// \return an iterator to the end of the parametric Neumann sides
+    iterator parNeumannEnd()
+    { return m_bc["Parametric Neumann"].end(); }
+
     /// Get a const-iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     const_iterator robinBegin() const
@@ -599,6 +639,9 @@ public:
         case condition_type::neumann :
             m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
+        case condition_type::par_neumann :
+            m_bc["Parametric Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
+            break;
         case condition_type::robin :
             m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
             break;
@@ -695,6 +738,11 @@ public:
         cur=std::find_if(beg,end,psRef);
         if (cur != end)
             return &(*cur);
+        beg = parNeumannBegin();
+        end = parNeumannEnd();
+        cur=std::find_if(beg,end,psRef);
+        if (cur != end)
+            return &(*cur);
         beg = robinBegin();
         end = robinEnd();
         cur = std::find_if(beg,end,psRef);
@@ -727,6 +775,12 @@ public:
             if(cur->ps == ps)
                 result.push_back(*cur);
 
+        beg = parNeumannBegin();
+        end = parNeumannEnd();
+        for(cur=beg; cur!=end; cur++)
+            if(cur->ps == ps)
+                result.push_back(*cur);
+
         beg = robinBegin();
         end = robinEnd();
         for(cur=beg; cur!=end; cur++)
@@ -748,7 +802,7 @@ public:
         {
             if((*it).patch()==np)
             {
-                if(it->type() == condition_type::dirichlet || it->type() == condition_type::neumann || it->type() == condition_type::robin)
+                if(it->type() == condition_type::dirichlet || it->type() == condition_type::neumann || it->type() == condition_type::par_neumann || it->type() == condition_type::robin)
                     result.addCondition(0,(*it).side(),(*it).type(),(*it).function(),(*it).unknown());
                 else
                    result.add(0,(*it).side(),it->ctype(),(*it).function(),(*it).unknown());
