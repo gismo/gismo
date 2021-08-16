@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
         // geom = mspline.exportToPatches();
 
 
-        assembler = new gsThinShellAssembler<3, real_t, true>(mp,dbasis,bc,force,&materialMatrix);
+        assembler = new gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
         assembler->setSpaceBasis(bb2);
         assembler->setPointLoads(pLoads);
 
