@@ -165,6 +165,7 @@ class gsSpectraSymSolver : private SpectraMatProd<MatrixType>,
     typedef SpectraMatProd<MatrixType> MatOp;
     typedef Spectra::SymEigsSolver<MatOp> Base;
 public:
+    gsSpectraSymSolver(const MatrixType &&   , int nev_, int ncv_) = delete;
     gsSpectraSymSolver(const MatrixType & mat, int nev_, int ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };

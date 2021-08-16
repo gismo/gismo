@@ -27,6 +27,51 @@ namespace gismo
 {
 
 template<short_t d, class T>
+gsMatrix<index_t>  gsTHBSplineBasis<d,T>::
+boundaryOffset(boxSide const & s,index_t offset) const
+{
+    if (1!=offset)
+        return gsHTensorBasis<d,T>::boundaryOffset(s,offset);
+    else
+    {
+        //get information on the side
+        const index_t k   = s.direction();
+        const bool par = s.parameter();
+
+        const index_t shift = ( par ? -1 : 1);
+
+        std::vector<index_t> temp;
+        gsVector<index_t,d>  ind;
+        index_t hi;
+        // i goes through all levels of the hierarchical basis
+        for(unsigned i = 0; i <= this->maxLevel(); i++)
+        {
+            GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
+                         "Offset cannot be bigger than the amount of basis"
+                         "functions orthogonal to Boxside s!");
+
+            index_t r = ( par ? this->m_bases[i]->size(k) - 1 : 0);
+            for (typename CMatrix::const_iterator it = m_xmatrix[i].begin();
+                 it != m_xmatrix[i].end(); it++)
+            {
+                ind = this->m_bases[i]->tensorIndex(*it);
+                if ( ind[k]==r )
+                {
+                    ind[k]+=shift;
+                    hi = this->flatTensorIndexToHierachicalIndex(this->m_bases[i]->index(ind),i);
+
+                    GISMO_ASSERT(hi!=-1,"Neightbouring basis function with coordinates "<<ind.transpose()<<" of level "<<i<<" does not exist.");
+
+                    temp.push_back(hi);
+                }
+            }
+        }
+        return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
+    }
+
+}
+
+template<short_t d, class T>
 typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");

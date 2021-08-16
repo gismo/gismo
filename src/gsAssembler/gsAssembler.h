@@ -480,7 +480,7 @@ public: /* Element visitors */
         for ( typename gsMultiPatch<T>::const_iiterator
                   it = mp.iBegin(); it != mp.iEnd(); ++it )
         {
-            const boundaryInterface & iFace = //recover master elemen
+            const boundaryInterface & iFace = //recover master element
                 ( m_bases[0][it->first() .patch].numElements(it->first() .side() ) <
                   m_bases[0][it->second().patch].numElements(it->second().side() ) ?
                   it->getInverse() : *it );
