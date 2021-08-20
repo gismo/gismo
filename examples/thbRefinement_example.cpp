@@ -113,14 +113,13 @@ int main(int argc, char *argv[])
 
 
     gsMatrix<> matbox(2,2);
-    matbox.col(0)<<0,0;
-    matbox.col(1)<<0.25,0.25;
+    matbox.col(0)<<0.0,0.0;
+    matbox.col(1)<<0.0625,0.0625;
 
-    thb.unrefine(matbox,0);
+    thb.unrefine(matbox,1);
 
     // thb.unrefineElements(boxes);
     gsWriteParaview( thb , "thb_unrefined", 1000, true);
-
 
 
     return 0;

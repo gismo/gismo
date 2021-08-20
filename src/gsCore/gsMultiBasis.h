@@ -374,6 +374,12 @@ public:
         m_bases[k]->refine(boxes);
     }
 
+    // @brief Refine the boxes defined by "boxes"
+    void unrefine(int k, gsMatrix<T> const & boxes)
+    {
+        m_bases[k]->unrefine(boxes);
+    }
+
     /// @brief Refine the are defined by \em boxes
     /// on patch \em k.
     ///
@@ -381,6 +387,11 @@ public:
     void refineElements(int k, std::vector<index_t> const & boxes)
     {
         m_bases[k]->refineElements(boxes);
+    }
+
+    void unrefineElements(int k, std::vector<index_t> const & boxes)
+    {
+        m_bases[k]->unrefineElements(boxes);
     }
 
     /// @brief Refine the are defined by \em boxes
@@ -392,6 +403,12 @@ public:
         GISMO_ASSERT( k < m_bases.size(),
                       "Invalid patch index "<<k<<" requested from gsMultiBasis" );
         m_bases[k]->refine( boxes, refExt);
+    }
+    void unrefine(size_t k, gsMatrix<T> const & boxes, int refExt)
+    {
+        GISMO_ASSERT( k < m_bases.size(),
+                      "Invalid patch index "<<k<<" requested from gsMultiBasis" );
+        m_bases[k]->unrefine( boxes, refExt);
     }
 
     /// @brief Coarsen every basis uniformly

@@ -257,9 +257,8 @@ public:
     void insertBox (point const & lower, point const & upper, int lvl)
     { insertBox(lower, upper, m_root, lvl); }
 
-
     /**
-     * @brief      The clear function which ckears box
+     * @brief      The clear function which clears box
     defined by points \em lower and \em upper to level \em lvl.
 
     [\em lower, \em upper] are given by unique knot indices of level \em lvl.
