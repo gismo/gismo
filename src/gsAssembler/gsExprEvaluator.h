@@ -413,7 +413,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     {
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(bit->patch), m_options,bit->direction());
-        m_exprdata->mapData.side = bit->side();
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -428,7 +427,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(bit->patch);
+            m_exprdata->precompute(bit->patch, bit->side() );
 
             // Compute on element
             elVal = _op::init();
