@@ -84,17 +84,6 @@ template<class T> class gsExprHelper;
 namespace expr
 {
 
-#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
-#  define MatExprType  auto
-#  define AutoReturn_t auto
-#  define GS_CONSTEXPR constexpr
-//note: in c++11 auto-return requires -> decltype(.)
-#else // 199711L, 201103L
-#  define MatExprType typename gsMatrix<Scalar>::constRef
-#  define AutoReturn_t typename util::conditional<ScalarValued,Scalar,MatExprType>::type
-#  define GS_CONSTEXPR
-#endif
-
 template<class T> class gsFeSpace;
 template<class T> class gsFeVariable;
 template<class T> class gsFeSolution;
@@ -129,6 +118,17 @@ public:
     typedef real_t Scalar;//todo
     typedef const E Nested_t;
 };
+
+#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
+#  define MatExprType  auto
+#  define AutoReturn_t auto
+#  define GS_CONSTEXPR constexpr
+//note: in c++11 auto-return requires -> decltype(.)
+#else // 199711L, 201103L
+#  define MatExprType typename gsMatrix<real_t>::constRef
+#  define AutoReturn_t typename util::conditional<ScalarValued,real_t,MatExprType>::type
+#  define GS_CONSTEXPR
+#endif
 
 template <class E> struct is_arithmetic{enum{value=0};};
 template <> struct is_arithmetic<real_t>{enum{value=1};};
@@ -4018,11 +4018,11 @@ template<class E> EIGEN_STRONG_INLINE
 GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
 
 template<class E> EIGEN_STRONG_INLINE
-    mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 0>
+mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
 
 template<class E> EIGEN_STRONG_INLINE trace_expr<
-    mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 0>
+    mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 1>
     >
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
