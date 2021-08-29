@@ -126,6 +126,9 @@ public:
 
     /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
+    
+    // Look at gsBasis class for documentation
+    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const;
 
     // Look at gsBasis class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const;

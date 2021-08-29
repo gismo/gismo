@@ -92,6 +92,54 @@ typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basis
 }
 
 template<short_t d, class T>
+void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
+{
+    gsMatrix<index_t> hresult;
+    this->gsHTensorBasis<d, T>::active_into(u, hresult);
+
+    std::vector<std::vector<index_t>> temp_output(u.cols());
+    size_t sz = 0;
+
+    for (index_t j = 0; j < hresult.cols(); ++j) {
+        for (index_t i = 0; i < hresult.rows(); ++i) {
+
+            const index_t cur = hresult(i, j);
+            if (i != 0 && cur == 0)
+                break;
+
+            if (this->m_is_truncated[cur] == -1) {
+                temp_output[j].push_back(cur);
+            }
+            else {
+                unsigned level = this->m_is_truncated[cur];
+                const gsSparseVector<T>& coefs = getCoefs(cur);
+                const gsTensorBSplineBasis<d, T>& base =
+                    *this->m_bases[level];
+
+                gsMatrix<index_t> ind;
+                base.active_into(u.col(j), ind);
+
+                for (index_t k = 0; k < ind.rows(); ++k) {
+                    if (!gsClose(coefs(ind.at(k)), 0.0, 1e-10)) {
+                        temp_output[j].push_back(cur);
+                        break;
+                    }
+                }
+            }
+        }
+        if (temp_output[j].size() > sz)
+            sz = temp_output[j].size();
+    }
+    result.resize(sz, u.cols());
+    for (index_t i = 0; i < result.cols(); i++)
+    {
+        result.col(i).topRows(temp_output[i].size())
+            = gsAsConstVector<index_t>(temp_output[i]);
+        result.col(i).bottomRows(sz - temp_output[i].size()).setZero();
+    }
+}
+
+template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::representBasis()
 {
     // Cleanup previous basis
