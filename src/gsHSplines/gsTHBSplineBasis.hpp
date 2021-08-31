@@ -1083,7 +1083,7 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
             cur = low;
             do
             {
-                CMatrix::const_iterator it =
+                typename CMatrix::const_iterator it =
                     m_xmatrix[i].find_it_or_fail( m_bases[i]->index(cur) );
 
                 if( it != m_xmatrix[i].end() )// if index is found
