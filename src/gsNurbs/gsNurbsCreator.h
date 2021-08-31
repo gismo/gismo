@@ -47,6 +47,38 @@ struct gsNurbsCreator
 
 public:
 
+    static TensorBSpline2Ptr rotate2D(gsTensorBSpline<2,T> const & geo, const T turndeg = 0, const T Tx = 0, const T Ty = 0);
+
+    static void rotate2D(gsGeometry<T> & geo, const T turndeg = 0, const T Tx = 0, const T Ty = 0);
+
+    static TensorBSpline2Ptr shift2D(gsTensorBSpline<2,T> const & geo, const T dx = 0, const T dy = 0, const T dz = 0);
+
+    static void shift2D(gsGeometry<T> & geo, const T dx = 0, const T dy = 0, const T dz = 0);
+
+    static void shift2D(gsMultiPatch<T> & mp, const T dx = 0, const T dy = 0, const T dz = 0);
+
+    static TensorBSpline2Ptr mirror2D(gsTensorBSpline<2,T> & geo, bool axis);
+
+    static void mirror2D(gsGeometry<T> & geo, bool axis);
+
+    static void mirror2D(gsMultiPatch<T> & mp, bool axis);
+
+    static TensorBSpline2Ptr scale2D(gsTensorBSpline<2,T> const & geo, T factor = 1.0);
+
+    static TensorBSpline2Ptr scale2D(gsTensorBSpline<2,T> const & geo, std::vector<T> factors);
+
+    static void scale2D(gsGeometry<T> & geo, T factor = 1.0);
+
+    static void scale2D(gsGeometry<T> & geo, std::vector<T> factors);
+
+    static void scale2D(gsMultiPatch<T> & mp,  T factor = 1.0);
+
+    static void scale2D(gsMultiPatch<T> & mp, std::vector<T> factors);
+
+    static void makeGrid(gsMultiPatch<T> & mp, const index_t M=0, const index_t N=0);
+
+    static gsMultiPatch<T> makeGrid(std::vector<gsMultiPatch<T>> & mps, const index_t M=0, const index_t N=0);
+
     static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
 
     static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);

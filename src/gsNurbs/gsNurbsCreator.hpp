@@ -19,6 +19,7 @@
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsBSpline.h>
+#include <math.h>
 
 namespace gismo
 {
@@ -26,6 +27,233 @@ namespace gismo
 /*
    @brief Class gsNurbsCreator provides some simple examples of Nurbs Geometries
 */
+
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::rotate2D(gsTensorBSpline<2,T> const & geo, const T turndeg, const T Tx, const T Ty)
+{
+    GISMO_ASSERT(geo.geoDim() >= 2,"Geometry must be 2D or higher");
+
+    T r = turndeg / 180 * M_PI;
+    T tx, ty;
+
+    gsMatrix<T> newcoefs = geo.coefs();
+
+
+    for(index_t i =0; i < geo.coefs().rows(); i++)
+    {
+        tx = newcoefs(i,0);
+        ty = newcoefs(i,1);
+        newcoefs(i,0) = math::cos(r) * (tx-Tx) - math::sin(r) * (ty-Ty) + Tx;
+        newcoefs(i,1) = math::sin(r) * (tx-Tx) + math::cos(r) * (ty-Ty) + Ty;
+    }
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::rotate2D(gsGeometry<T> & geo, const T turndeg, const T Tx, const T Ty)
+{
+    const T pi = 3.1415926535897932384626433832795;
+    T r = turndeg / 180 * pi;
+
+    T tx, ty;
+    for(index_t i =0; i < geo.coefs().rows(); i++)
+    {
+        tx = geo.coefs()(i,0);
+        ty = geo.coefs()(i,1);
+        geo.coefs()(i,0) = math::cos(r) * (tx-Tx) - math::sin(r) * (ty-Ty) + Tx;
+        geo.coefs()(i,1) = math::sin(r) * (tx-Tx) + math::cos(r) * (ty-Ty) + Ty;
+    }
+}
+
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::shift2D(gsTensorBSpline<2,T> const & geo, const T dx, const T dy, const T dz)
+{
+    GISMO_ASSERT(geo.geoDim() >= 2,"Geometry must be 2D or higher");
+    gsMatrix<T> newcoefs = geo.coefs();
+
+    newcoefs.col(0) += gsVector<T>::Ones(newcoefs.rows())*dx;
+    newcoefs.col(1) += gsVector<T>::Ones(newcoefs.rows())*dy;
+    if (newcoefs.cols()==3)
+        newcoefs.col(2) += gsVector<T>::Ones(newcoefs.rows())*dz;
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::shift2D(gsGeometry<T> & geo, const T dx, const T dy, const T dz)
+{
+    geo.coefs().col(0) += gsVector<T>::Ones(geo.coefs().rows())*dx;
+    geo.coefs().col(1) += gsVector<T>::Ones(geo.coefs().rows())*dy;
+    if (geo.coefs().cols()==3)
+        geo.coefs().col(2) += gsVector<T>::Ones(geo.coefs().rows())*dz;
+}
+
+template<class T>
+void gsNurbsCreator<T>::shift2D(gsMultiPatch<T> & mp, const T dx, const T dy, const T dz)
+{
+    for (size_t k = 0; k!=mp.nPatches(); k++)
+        shift2D(mp.patch(k),dx,dy,dz);
+}
+
+template <class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::mirror2D(gsTensorBSpline<2,T> & geo, bool axis)
+{
+    gsMatrix<T> newcoefs = geo.coefs();
+
+    T mid = newcoefs.col(!axis).maxCoeff() - newcoefs.col(!axis).minCoeff();
+    newcoefs.col(!axis) -= gsVector<T>::Ones(newcoefs.rows())*mid;
+    newcoefs.col(!axis) *= -1;
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::mirror2D(gsGeometry<T> & geo, bool axis)
+{
+    T mid = geo.coefs().col(!axis).maxCoeff() - geo.coefs().col(!axis).minCoeff();
+    geo.coefs().col(!axis) -= gsVector<T>::Ones(geo.coefs().rows())*mid;
+    geo.coefs().col(!axis) *= -1;
+
+}
+
+template <class T>
+void gsNurbsCreator<T>::mirror2D(gsMultiPatch<T> & mp, bool axis)
+{
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+
+    T mid = (bbox(!axis,1)+bbox(!axis,0))/2;
+    for (size_t p = 0; p!=mp.nPatches(); p++)
+    {
+        mp.patch(p).coefs().col(!axis) -= gsVector<T>::Ones(mp.patch(p).coefs().rows())*mid;
+        mp.patch(p).coefs().col(!axis) *= -1;
+    }
+}
+
+template <class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::scale2D(gsTensorBSpline<2,T> const & geo, T factor)
+{
+    gsMatrix<T> newcoefs = geo.coefs();
+    for (index_t k = 0; k!= newcoefs.cols(); k++)
+    {
+        newcoefs.col(k) *= factor;
+    }
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::scale2D(gsTensorBSpline<2,T> const & geo, std::vector<T> factors)
+{
+    gsMatrix<T> newcoefs = geo.coefs();
+    GISMO_ENSURE(factors.size()==static_cast<size_t>(newcoefs.cols()),"Number of scaling factors must be the same as the number of dimensions");
+    for (index_t k = 0; k!= newcoefs.cols(); k++)
+    {
+        newcoefs.col(k) *= factors.at(k);
+    }
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(0),geo.basis().knots(1), give(newcoefs) ));
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsGeometry<T> & geo, T factor)
+{
+    for (index_t k = 0; k!= geo.coefs().cols(); k++)
+    {
+        geo.coefs().col(k) *= factor;
+    }
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsGeometry<T> & geo, std::vector<T> factors)
+{
+    GISMO_ENSURE(factors.size()==static_cast<size_t>(geo.coefs().cols()),"Number of scaling factors must be the same as the number of dimensions");
+    for (index_t k = 0; k!= geo.coefs().cols(); k++)
+    {
+        geo.coefs().col(k) *= factors.at(k);
+    }
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsMultiPatch<T> & mp,  T factor)
+{
+    for (size_t p = 0; p!=mp.nPatches(); p++)
+        scale2D(mp.patch(p),factor);
+}
+
+template <class T>
+void gsNurbsCreator<T>::scale2D(gsMultiPatch<T> & mp, std::vector<T> factors)
+{
+    for (size_t p = 0; p!=mp.nPatches(); p++)
+        scale2D(mp.patch(p),factors);
+}
+
+template <typename T>
+void gsNurbsCreator<T>::makeGrid(gsMultiPatch<T> & mp, const index_t M, const index_t N)
+{
+    gsMultiPatch<T> mp_ori(mp);
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+
+    T L = bbox(0,1)-bbox(0,0);
+    T H = bbox(1,1)-bbox(1,0);
+
+    mp.clear();
+    for (index_t m = 0; m!=M; m++)
+        for (index_t n = 0; n!=N; n++)
+        {
+            gsMultiPatch<T> mp_tmp(mp_ori);
+            shift2D(mp_tmp,(m)*L,(n)*H);
+            for (size_t k=0; k!=mp_tmp.nPatches(); k++)
+                mp.addPatch(mp_tmp.patch(k));
+        }
+    mp.computeTopology();
+}
+
+template <typename T>
+gsMultiPatch<T> gsNurbsCreator<T>::makeGrid(std::vector<gsMultiPatch<T>> & mps, const index_t M, const index_t N)
+{
+    gsMultiPatch<T> mp;
+
+    std::vector<gsMultiPatch<T>> mps_ori(mps);
+    std::vector<T> Hs,Ls;
+    Hs.reserve(mps.size());
+    Ls.reserve(mps.size());
+    gsMatrix<T> bbox;
+    for (typename std::vector<gsMultiPatch<T>>::iterator it = mps.begin(); it!=mps.end(); it++)
+    {
+        it->boundingBox(bbox);
+        Ls.push_back(bbox(0,1)-bbox(0,0));
+        Hs.push_back(bbox(1,1)-bbox(1,0));
+    }
+
+    typename std::vector<gsMultiPatch<T>>::iterator mp_it = mps.begin();
+    typename std::vector<T>::iterator L_it = Ls.begin();
+    typename std::vector<T>::iterator H_it = Hs.begin();
+    for (index_t m = 0; m!=M; m++)
+    {
+        for (index_t n = 0; n!=N; n++)
+        {
+            gsMultiPatch<T> mp_tmp(*mp_it);
+            shift2D(mp_tmp,(m)*(*L_it),(n)*(*H_it));
+            for (size_t k=0; k!=mp_tmp.nPatches(); k++)
+                mp.addPatch(mp_tmp.patch(k));
+
+            mp_it==mps.end()-1 ? mp_it = mps.begin() : mp_it++;
+            L_it==Ls.end()-1 ? L_it = Ls.begin() : L_it++;
+            H_it==Hs.end()-1 ? H_it = Hs.begin() : H_it++;
+        }
+
+        // if the size of mps is and if n is even, we need to add to the iterators to make sure the pattern is alternating
+        if (mps.size() % 2 == 0 && N % 2 == 0)
+        {
+            mp_it==mps.end()-1 ? mp_it = mps.begin() : mp_it++;
+            L_it==Ls.end()-1 ? L_it = Ls.begin() : L_it++;
+            H_it==Hs.end()-1 ? H_it = Hs.begin() : H_it++;
+        }
+    }
+    mp.computeTopology();
+    return mp;
+}
 
 template<class T> typename gsNurbsCreator<T>::TensorBSpline3Ptr
 gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)

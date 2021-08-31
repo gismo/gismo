@@ -77,10 +77,13 @@ int main(int argc, char *argv[])
             // mp.embed(3);
             mp.computeTopology();
 
-            bc.addCondition(0,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::east, condition_type::dirichlet, 0 );
+            for (index_t d = 0; d!=3; d++)
+            {
+                bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, 0, false, d );
+                bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
+            }
         }
         else if (geometry==1)
         {
@@ -97,14 +100,16 @@ int main(int argc, char *argv[])
             mp.addInterface(0,boundary::side::east,1,boundary::side::west);
 
             mp.addAutoBoundaries();
+            for (index_t d = 0; d!=3; d++)
+            {
+                bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(0,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0 );
-
-            bc.addCondition(1,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(1,boundary::east, condition_type::dirichlet, 0 );
+                bc.addCondition(1,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, 0, false, d);
+            }
         }
         else if (geometry==2)
         {
@@ -132,17 +137,19 @@ int main(int argc, char *argv[])
 
             // // Needed
             // mp.uniformRefine(1);
+            for (index_t d = 0; d!=3; d++)
+            {
+                bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::east, condition_type::dirichlet, 0 );
+                bc.addCondition(1,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(1,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(1,boundary::east, condition_type::dirichlet, 0 );
-
-            bc.addCondition(2,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(2,boundary::west, condition_type::dirichlet, 0 );
-            bc.addCondition(2,boundary::south, condition_type::dirichlet, 0 );
+                bc.addCondition(2,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(2,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(2,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+            }
 
         }
         else if (geometry==3)
@@ -175,17 +182,20 @@ int main(int argc, char *argv[])
 
             mp.addAutoBoundaries();
 
-            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0 );
+            for (index_t d = 0; d!=3; d++)
+            {
+                bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(1,boundary::east, condition_type::dirichlet, 0 );
+                bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(2,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(2,boundary::west, condition_type::dirichlet, 0 );
+                bc.addCondition(2,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(2,boundary::west, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(3,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(3,boundary::east, condition_type::dirichlet, 0 );
+                bc.addCondition(3,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(3,boundary::east, condition_type::dirichlet, 0, 0, false, d);
+            }
         }
         else if (geometry==4)
         {
@@ -193,16 +203,19 @@ int main(int argc, char *argv[])
             // mp.embed(3);
             mp.clearTopology();
             mp.computeTopology();
-        mp.degreeElevate(numElevate);
+            mp.degreeElevate(numElevate);
 
-            bc.addCondition(0,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::east, condition_type::dirichlet, 0 );
+            for (index_t d = 0; d!=3; d++)
+            {
+                bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(1,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(1,boundary::west, condition_type::dirichlet, 0 );
+                bc.addCondition(1,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(1,boundary::west, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(2,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(2,boundary::west, condition_type::dirichlet, 0 );
+                bc.addCondition(2,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(2,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+            }
         }
         else if (geometry==5)
         {
@@ -210,19 +223,22 @@ int main(int argc, char *argv[])
             // mp.embed(3);
             mp.clearTopology();
             mp.computeTopology();
-        mp.degreeElevate(numElevate);
+            mp.degreeElevate(numElevate);
 
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::east, condition_type::dirichlet, 0 );
+            for (index_t d = 0; d!=3; d++)
+            {
+                bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(1,boundary::west, condition_type::dirichlet, 0 );
+                bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(1,boundary::west, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(2,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(2,boundary::east, condition_type::dirichlet, 0 );
+                bc.addCondition(2,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(2,boundary::east, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(3,boundary::north, condition_type::dirichlet, 0 );
-            bc.addCondition(3,boundary::west, condition_type::dirichlet, 0 );
+                bc.addCondition(3,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(3,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+            }
 
         }
         else if (geometry==6)
@@ -232,14 +248,126 @@ int main(int argc, char *argv[])
             mp.clearTopology();
             mp.computeTopology();
 
-            bc.addCondition(0,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(0,boundary::west, condition_type::dirichlet, 0 );
+            for (index_t d = 0; d!=3; d++)
+            {
+                bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(1,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(1,boundary::east, condition_type::dirichlet, 0 );
+                bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, 0, false, d);
 
-            bc.addCondition(2,boundary::south, condition_type::dirichlet, 0 );
-            bc.addCondition(2,boundary::east, condition_type::dirichlet, 0 );
+                bc.addCondition(2,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                bc.addCondition(2,boundary::east, condition_type::dirichlet, 0, 0, false, d);
+            }
+        }
+        else if (geometry==7)
+        {
+            real_t L = 1;
+            index_t N = 5;
+            index_t M = 5;
+            mp = gsNurbsCreator<>::BSplineSquareGrid(N,M,L,0,0);
+            mp.computeTopology();
+
+            gsMatrix<> bbox, pbbox;
+            mp.boundingBox(bbox);
+            // std::vector<index_t> boundaryPatches(mp.nPatches());
+            for (size_t p = 0; p!= mp.nPatches(); p++)
+            {
+                gsMultiPatch<> mp_tmp(mp.patch(p));
+                mp_tmp.boundingBox(pbbox);
+                if ( (bbox(0,0) - pbbox(0,0)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on west side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                if ( (bbox(0,1) - pbbox(0,1)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on east side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::east, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                if ( (bbox(1,0) - pbbox(1,0)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on south side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                if ( (bbox(1,1) - pbbox(1,1)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on north side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                // if ( (bbox(0,0) - pbbox(0,0)) * (bbox(0,1) - pbbox(0,1)) * (bbox(0,1) - pbbox(0,1)) * (bbox(1,1) - pbbox(1,1)) != 0 )
+                //     boundaryPatches[p] = 0;
+            }
+        }
+        else if (geometry==8)
+        {
+            index_t N = 5;
+            index_t M = 5;
+            gsReadFile<>("planar/diamondTile.xml", mp);
+
+            std::vector<gsMultiPatch<>> container(2);
+            gsMultiPatch<> mp_copy = mp;
+            mp.clear();
+            mp = mp_copy;
+            gsNurbsCreator<>::mirror2D(mp,1);
+            container[0] = mp_copy;
+            container[1] = mp;
+            mp = gsNurbsCreator<>::makeGrid(container,N,M);
+
+            gsMatrix<> bbox, pbbox;
+            mp.boundingBox(bbox);
+            // std::vector<index_t> boundaryPatches(mp.nPatches());
+            for (size_t p = 0; p!= mp.nPatches(); p++)
+            {
+                gsMultiPatch<> mp_tmp(mp.patch(p));
+                mp_tmp.boundingBox(pbbox);
+                if ( (bbox(0,0) - pbbox(0,0)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on west side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                if ( (bbox(0,1) - pbbox(0,1)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on east side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::east, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                if ( (bbox(1,0) - pbbox(1,0)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on south side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                if ( (bbox(1,1) - pbbox(1,1)) ==0 )
+                {
+                    gsInfo<<"Patch "<<p<<" is a boundary patch on north side!\n";
+                    for (index_t d = 0; d!=3; d++)
+                    {
+                        bc.addCondition(p,boundary::north, condition_type::dirichlet, 0, 0, false, d);
+                    }
+                }
+                // if ( (bbox(0,0) - pbbox(0,0)) * (bbox(0,1) - pbbox(0,1)) * (bbox(0,1) - pbbox(0,1)) * (bbox(1,1) - pbbox(1,1)) != 0 )
+                //     boundaryPatches[p] = 0;
+            }
         }
         else
             GISMO_ERROR("Geometry with index "<<geometry<<" unknown.");
@@ -270,12 +398,6 @@ int main(int argc, char *argv[])
 
     gsWriteParaview(mp,"mp",1000,true,false);
 
-    // NOTE: Points go wrong!
-    gsPointLoads<real_t> pLoads = gsPointLoads<real_t>();
-    gsVector<> point(2); point<< 1, 0.5 ;
-    gsVector<> load (3); load << 0.0, 0.0, 0.0 ;
-    pLoads.addLoad(point, load, 0 );
-
     real_t thickness = 1.0;
     real_t E_modulus = 1.0;
     real_t PoissonRatio = 0.0;
@@ -283,6 +405,15 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> t(std::to_string(thickness),3);
     gsFunctionExpr<> E(std::to_string(E_modulus),3);
     gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
+
+    gsPointLoads<real_t> pLoads = gsPointLoads<real_t>();
+    if (geometry==1)
+    {
+        gsVector<> point(2); point<< 1, 0.5 ;
+        gsVector<> load (3); load << 0.0, 0.0, 1.0 ;
+        pLoads.addLoad(point, load, 0 );
+        force = gsFunctionExpr<>("0","0","0",3);
+    }
 
 
     std::vector<gsFunction<>*> parameters(2);
@@ -369,11 +500,12 @@ int main(int argc, char *argv[])
 
         gsInfo<<"\tError computations:\t"<<time.stop()<<"\t[s]\n"; // This takes longer for the D-patch, probably because there are a lot of points being evaluated, all containing the linear combinations of the MSplines
 
+        gsWriteParaview(dbasis.basis(0),"basis");
         // TO DO: Refine the mb
         mp.uniformRefine();
         dbasis = gsMultiBasis<>(mp);
 
-        gsWriteParaview(dbasis.basis(0),"basis");
+
     }
     //! [Solver loop]
 
@@ -402,9 +534,10 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        assembler->plotSolution("solution", solVector);
+        // assembler->plotSolution("solution", solVector);
 
         gsMultiPatch<> deformation = assembler->constructDisplacement(solVector);
+        // gsMultiPatch<> mp_def = assembler->constructSolution(solVector);
 
         gsField<> solField(geom, deformation);
         gsInfo<<"Plotting in Paraview...\n";
