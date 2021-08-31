@@ -261,6 +261,67 @@ gsNurbsCreator<T>::BSplineRectangle( T const & low_x,
 
 }
 
+/*
+                    Ltop
+          <-------------------->
+        C *--------------------* D
+         /           ^           \
+        /            | H          \
+    A *---------------------------* B
+      <->
+       d
+      <--------------------------->
+                   Lbot
+ */
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::BSplineTrapezium( T const & Ax, T const & Ay,
+                                     T const & Bx, T const & By,
+                                     T const & Cx, T const & Cy,
+                                     T const & Dx, T const & Dy,
+                                     T const & turndeg)
+{
+
+    gsKnotVector<T> KV (0,1,0,2) ;
+    gsMatrix<T> C(4,2);
+
+    const T pi = 3.1415926535897932384626433832795;
+
+    T r = turndeg / 180. * pi;
+
+    C <<    Ax, Ay,
+            Bx, By,
+            Cx, Cy,
+            Dx, Dy;
+
+    T tx;
+    T ty;
+    for(int i =0; i < 4; i++)
+    {
+        tx = C(i,0); ty = C(i,1);
+        C(i,0) = math::cos(r) * tx - math::sin(r) * ty;
+        C(i,1) = math::sin(r) * tx + math::cos(r) * ty;
+    }
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(C)));
+
+}
+
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::BSplineTrapezium( T const & Lbot,
+                                     T const & Ltop,
+                                     T const & H,
+                                     T const & d, T const & turndeg)
+{
+    T Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
+    Ax = Ay = By = 0.0;
+    Bx = Lbot;
+    Cx = d;
+    Dx = d+Ltop;
+    Cy = Dy = H;
+
+    return BSplineTrapezium(Ax,Ay,Bx,By,Cx,Cy,Dx,Dy,turndeg);
+}
+
 
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
 gsNurbsCreator<T>::BSplineRectangleWithPara( T low_x, T low_y, T upp_x, T upp_y)
@@ -276,6 +337,90 @@ gsNurbsCreator<T>::BSplineRectangleWithPara( T low_x, T low_y, T upp_x, T upp_y)
          upp_x, upp_y;
 
     return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KVx, KVy, give(C)));
+}
+
+/*
+                    Ltop
+          <-------------------->
+        C *--------------------* D *
+         /           ^           \
+         *           |   *        \
+        /            | H          \
+    A *--------------*------------* B
+      <->
+       d
+      <--------------------------->
+                   Lbot
+
+                   Where BD is an arc
+ */
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsArcTrapezium( T const & Ax, T const & Ay,
+                                     T const & Bx, T const & By,
+                                     T const & Cx, T const & Cy,
+                                     T const & Dx, T const & Dy,
+                                     T const & turndeg)
+{
+
+    gsKnotVector<T> KV1 (0,1,0,2);
+    gsKnotVector<T> KV2 (0,1,0,3);
+    gsMatrix<T> C(4,2);
+
+    const T pi = 3.1415926535897932384626433832795;
+
+    T r = turndeg / 180 * pi;
+
+    C <<    Ax, Ay,
+            Bx, By,
+            Cx, Cy,
+            Dx, Dy;
+
+    gsDebugVar(C);
+
+
+    gsMatrix<T> D(6,2);
+    D.setZero();
+    D(0,0) = C(0,0); D(0,1) = C(0,1);
+    D(1,0) = C(1,0); D(1,1) = C(1,1);
+    D(4,0) = C(2,0); D(4,1) = C(2,1);
+    D(5,0) = C(3,0); D(5,1) = C(3,1);
+
+    D(2,0) = (C(0,0)+C(2,0))/2; D(2,1) = (C(0,1)+C(2,1))/2;
+    D(3,0) = C(3,0);            D(3,1) = C(0,0);
+
+    gsDebugVar(D);
+
+    T tx;
+    T ty;
+    for(int i =0; i < 6; i++)
+    {
+        tx = D(i,0); ty = D(i,1);
+        D(i,0) = math::cos(r) * tx - math::sin(r) * ty;
+        D(i,1) = math::sin(r) * tx + math::cos(r) * ty;
+    }
+
+    gsMatrix<T> newweights(6, 1);
+    newweights.setOnes();
+    newweights(3,0) = 0.7071;
+
+    return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KV1,KV2, give(D),newweights));
+
+}
+
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsArcTrapezium( T const & Lbot,
+                                     T const & Ltop,
+                                     T const & H,
+                                     T const & d, T const & turndeg)
+{
+    T Ax,Ay,Bx,By,Cx,Cy,Dx,Dy;
+    Ax = Ay = By = 0.0;
+    Bx = Lbot;
+    Cx = d;
+    Dx = d+Ltop;
+    Cy = Dy = H;
+
+    return NurbsArcTrapezium(Ax,Ay,Bx,By,Cx,Cy,Dx,Dy,turndeg);
 }
 
 

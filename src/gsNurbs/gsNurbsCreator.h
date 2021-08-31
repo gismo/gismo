@@ -78,6 +78,31 @@ public:
                                                     T const & upp_x = 1,
                                                     T const & upp_y = 1, T const & turndeg = 0);
 
+
+    /// 2d-trapezium
+    static TensorBSpline2Ptr BSplineTrapezium( T const & Lbot = 1,
+                                                    T const & Ltop = 0.5,
+                                                    T const & H = 1,
+                                                    T const & d = 0, T const & turndeg = 0);
+
+    /// 2d-trapezium
+    static TensorBSpline2Ptr BSplineTrapezium(  T const & Ax, T const & Ay,
+                                                T const & Bx, T const & By,
+                                                T const & Cx, T const & Cy,
+                                                T const & Dx, T const & Dy, T const & turndeg = 0);
+
+    /// 2d-trapezium
+    static TensorNurbs2Ptr NurbsArcTrapezium(   T const & Lbot = 1,
+                                                    T const & Ltop = 0.5,
+                                                    T const & H = 1,
+                                                    T const & d = 0, T const & turndeg = 0);
+
+    /// 2d-trapezium
+    static TensorNurbs2Ptr NurbsArcTrapezium(   T const & Ax, T const & Ay,
+                                                T const & Bx, T const & By,
+                                                T const & Cx, T const & Cy,
+                                                T const & Dx, T const & Dy, T const & turndeg = 0);
+
     // Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
     static TensorBSpline2Ptr BSplineRectangleWithPara( T low_x = 0, T low_y = 0, T upp_x = 1, T upp_y = 1);
 
