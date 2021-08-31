@@ -1058,6 +1058,81 @@ void gsTHBSplineBasis<d,T>::globalRefinement(const gsMatrix<T> & thbCoefs,
 
 
 template<short_t d, class T>
+void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
+{
+    gsMatrix<T> currPoint;
+    point low, upp, cur;
+    const int maxLevel = this->m_tree.getMaxInsLevel();
+
+    std::vector<std::vector<index_t> > temp_output;//collects the outputs
+    temp_output.resize( u.cols() );
+    size_t sz = 0;
+
+    for(index_t p = 0; p < u.cols(); p++) //for all input points
+    {
+        currPoint = u.col(p); 
+        for(short_t i = 0; i != d; ++i)
+            low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
+
+        // Identify the level of the point
+        const int lvl = this->m_tree.levelOf(low, maxLevel);
+
+        for(int i = 0; i <= lvl; i++)
+        {
+            m_bases[i]->active_cwise(currPoint, low, upp);
+            cur = low;
+            do
+            {
+                CMatrix::const_iterator it =
+                    m_xmatrix[i].find_it_or_fail( m_bases[i]->index(cur) );
+
+                if( it != m_xmatrix[i].end() )// if index is found
+                {
+                    const index_t act = this->m_xmatrix_offset[i] + (it - m_xmatrix[i].begin());
+
+                    if (this->m_is_truncated[act] == -1) 
+                    {
+                        temp_output[p].push_back(act);
+                    }
+                    else 
+                    {
+                        const gsSparseVector<T>& coefs = getCoefs(act);
+                        const gsTensorBSplineBasis<d, T>& base =
+                            *this->m_bases[this->m_is_truncated[act]];
+
+                        gsMatrix<index_t> ind;
+                        base.active_into(currPoint, ind);
+
+                        for (index_t k = 0; k < ind.rows(); ++k) 
+                        {
+                            if (!gsClose(coefs(ind.at(k)), 0.0, 1e-10)) 
+                            {
+                                temp_output[p].push_back(act);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            while( nextCubePoint(cur,low,upp) );
+            //*/
+        }
+
+        // update result size
+        if ( temp_output[p].size() > sz )
+            sz = temp_output[p].size();
+    }
+
+    result.resize(sz, u.cols() );
+    for(index_t i = 0; i < result.cols(); i++)
+    {
+        result.col(i).topRows(temp_output[i].size())
+            = gsAsConstVector<index_t>(temp_output[i]);
+        result.col(i).bottomRows(sz-temp_output[i].size()).setZero();
+    }
+}
+
+template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
