@@ -1202,8 +1202,18 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
         m_g1.invertPoints(m_g1.coefAtCorner(corners(0)).transpose(), parIm);
 
         int bound = 0;
-        if (parIm.isApprox(inversMaps.col(0), 1e-6))
-            bound = 2;
+        if(parIm.norm() <= 1.e-10)
+        {
+            if(inversMaps.col(0).norm() <= 1.e-10)
+                bound = 2;
+            else
+                bound = 0;
+        }
+        else
+        {
+            if (parIm.isApprox(inversMaps.col(0), 1e-6))
+                bound = 2;
+        }
 
         //gsInfo << "bound: \n" << inversMaps.col(bound) << " and parameter Image: \n" << parIm << "\n";
         if (m_side1.index() == 3 || m_side1.index() == 4) //sort w.r.t u
