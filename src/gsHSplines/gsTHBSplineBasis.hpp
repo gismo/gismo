@@ -1105,7 +1105,7 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
 
                         for (index_t k = 0; k < ind.rows(); ++k) 
                         {
-                            if (math::abs(coefs(ind.at(k))) > std::numeric_limits<T>::epsilon() * 100)
+                            if (math::abs(coefs(ind.at(k))) > math::limits::epsilon() * 100)
                             {
                                 temp_output[p].push_back(act);
                                 break;
