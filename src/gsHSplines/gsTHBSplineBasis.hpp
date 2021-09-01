@@ -1061,6 +1061,7 @@ template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
 {
     gsMatrix<T> currPoint;
+    gsMatrix<index_t> ind;
     point low, upp, cur;
     const int maxLevel = this->m_tree.getMaxInsLevel();
 
@@ -1100,12 +1101,11 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
                         const gsTensorBSplineBasis<d, T>& base =
                             *this->m_bases[this->m_is_truncated[act]];
 
-                        gsMatrix<index_t> ind;
                         base.active_into(currPoint, ind);
 
                         for (index_t k = 0; k < ind.rows(); ++k) 
                         {
-                            if (!gsClose(coefs(ind.at(k)), 0.0, 1e-10)) 
+                            if (math::abs(coefs(ind.at(k))) > std::numeric_limits<T>::epsilon() * 100)
                             {
                                 temp_output[p].push_back(act);
                                 break;
