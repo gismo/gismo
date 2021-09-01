@@ -1105,7 +1105,7 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
 
                         for (index_t k = 0; k < ind.rows(); ++k) 
                         {
-                            if (coefs(ind.at(k))) != 0)
+                            if (coefs(ind.at(k)) != 0)
                             {
                                 temp_output[p].push_back(act);
                                 break;
