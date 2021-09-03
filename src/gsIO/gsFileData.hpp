@@ -1714,13 +1714,13 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
     static int c, endknot;    /* counter of points */
     static int b[4]; /* b[0,1]-maxindex_of_ctrl_pts, b[2,3]-degree_of_Bspl */
     int i;  /* i-order of the character */
-    static int j, jmax;  /* n-temporary, j-order of head., jmax-length of header */
+    static int j;  /* j-order of head. */
     if (begin == 1)
     {
         phase=0;
         c=0;
         m=0;
-        j=0; jmax=10;
+        j=0;
     }
     for (i=0; i <= 64; i++)
     {
@@ -1732,31 +1732,17 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
             case 1:
             case 2:
             case 3:
-                if (s[i] == ',')
-                {
-                    t[m]='\0';
-                    b[j-1]=atoi(t);
-                    j++; m=0;
-                }
-                else {
-                    t[m]=s[i]; m++;
-                }
-                break;
             case 4:
                 if (s[i] == ',')
                 {
                     t[m]='\0';
                     b[j-1]=atoi(t);
                     j++; m=0;
-                    //printf(" Got sum-ends: %d, %d \n", b[0],b[1]);
-                    //printf(" Got Degrees: %d, %d \n", b[2],b[3]);
-                    //printf("knots: %d\n", endknot);
                 }
-                else {
-                    t[m]=s[i]; m++;
-                }
+                else
+                { t[m]=s[i]; m++; }
                 break;
-            default:
+            default: //j=0, 5..9
                 if (s[i] == ',')
                 {
                     // j=0: 128
@@ -1783,7 +1769,7 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
                     m++;
                     break;
                 }
-                if (j == jmax)
+                if ( 10 == j )
                 {
                     endknot = b[0]+b[2]+2+b[1]+b[3]+2;   
                     phase=2; // knots start
@@ -1869,15 +1855,15 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
     static int phase; /* 0-header, 1-cps, 2-knots, 3-weights */
     static int m;       /* marker in strings x, y, z */
     static int c, endknot;    /* counter of points */
-    static int b[4]; /* b[0]-maxindex_of_ctrl_pts, b[1]-degree_of_Bspl */
+    static int b[2]; /* b[0]-maxindex_of_ctrl_pts, b[1]-degree_of_Bspl */
     int i;  /* i-order of the character */
-    static int j, jmax;  /* n-temporary, j-order of head., jmax-length of header */
+    static int j;  /* j-order of head. */
     if (begin == 1)
     {
         phase=0;
         c=0;
         m=0;
-        j=0; jmax=10;
+        j=0;
     }
     for (i=0; i <= 64; i++)
     {
@@ -1888,30 +1874,16 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
             {
             case 1:
             case 2:
-            case 3:
                 if (s[i] == ',')
                 {
                     t[m]='\0';
                     b[j-1]=atoi(t);
                     j++; m=0;
                 }
-                else {
-                    t[m]=s[i]; m++;
-                }
+                else
+                { t[m]=s[i]; m++; }
                 break;
-            case 4:
-                if (s[i] == ',')
-                {
-                    t[m]='\0';
-                    b[j-1]=atoi(t);
-                    j++; m=0;
-                    endknot = b[0]+b[1]+2;
-                }
-                else {
-                    t[m]=s[i]; m++;
-                }
-                break;
-            default:
+            default:  //j=0, 3..6
                 if (s[i] == ',')
                 {
                     // j=0: 126
@@ -1920,9 +1892,8 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
                     // j=4: open/closed curve
                     // j=5: rational
                     // j=6: periodic
-                    // b[0]+b[2]+2  u-knots
-                    // b[1]+b[2]+2  v-knots
-                    // (b[0]+1)*(b[1]+1) weights
+                    // b[0]+b[1]+2  knots
+                    // b[0]+1 weights
                     // control points
                     t[m]= '\0';
                     m= 0;
@@ -1935,7 +1906,11 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
                     m++;
                     break;
                 }
-                if (j == jmax) phase=2; // knots start
+                if ( 7 == j )
+                {
+                    endknot = b[0]+b[1]+2;
+                    phase=2; // knots start
+                }
             }
             break;
         case 1:  // PHASE CP
@@ -2025,7 +2000,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
 
     char line[81],          /* text content of current line from IGES */
         pairline[81];       /* pair line (in D section of IGES file) */
-    char pd_seq_s[7];
+    char pd_seq_s[8]; pd_seq_s[7]='\0';
     int  pd_seq;           /* parameter data sequence number */
     int err_code;
 
