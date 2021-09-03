@@ -1772,11 +1772,11 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
                 if ( 10 == j )
                 {
                     endknot = b[0]+b[2]+2+b[1]+b[3]+2;   
-                    phase=2; // knots start
+                    phase=1; // knots start
                 }
             }
             break;
-        case 1:  // PHASE CP
+        case 3:  // PHASE CP
             if (s[i] == ' ') return;
             else if (s[i] == ',' || s[i] == ';')  /* the last coordinate */
             {
@@ -1797,7 +1797,7 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
                 m++;
             }
             break;
-        case 2:  // PHASE knots
+        case 1:  // PHASE knots
             if (s[i] == ' ') return;
             else if (s[i] == ',')
             {                 /* next knot */
@@ -1818,10 +1818,10 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
             {
                 ss<<","<<b[3]<<",";
                 c=0;
-                phase=3; //weights start
+                phase=2; //weights start
             }
             break;
-        case 3:  // PHASE weights
+        case 2:  // PHASE weights
             if (s[i] == ' ') return;
             else if (s[i] == ',')
             {                 /* next knot */
@@ -1841,7 +1841,7 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
             {
                 ss<<",";
                 c=0;
-                phase=1; //control points start
+                phase=3; //control points start
             }
             break;
         }
@@ -1909,11 +1909,11 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
                 if ( 7 == j )
                 {
                     endknot = b[0]+b[1]+2;
-                    phase=2; // knots start
+                    phase=1; // knots start
                 }
             }
             break;
-        case 1:  // PHASE CP
+        case 3:  // PHASE CP
             if (s[i] == ' ') return;
             else if (s[i] == ',' || s[i] == ';')  /* the last coordinate */
             {
@@ -1934,7 +1934,7 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
                 m++;
             }
             break;
-        case 2:  // PHASE knots
+        case 1:  // PHASE knots
             if (s[i] == ' ') return;
             else if (s[i] == ',')
             {                 /* next knot */
@@ -1954,10 +1954,10 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
             {
                 ss<<","<<b[1]<<",";
                 c=0;
-                phase=3; //weights start
+                phase=2; //weights start
             }
             break;
-        case 3:  // PHASE weights
+        case 2:  // PHASE weights
             if (s[i] == ' ') return;
             else if (s[i] == ',')
             {                 /* next knot */
@@ -1977,7 +1977,7 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
             {
                 ss<<",";
                 c=0;
-                phase=1; //control points start
+                phase=3; //control points start
             }
             break;
         }
