@@ -1748,7 +1748,6 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
                     t[m]='\0';
                     b[j-1]=atoi(t);
                     j++; m=0;
-                    endknot = b[0]+b[2]+2+b[1]+b[3]+2;
                     //printf(" Got sum-ends: %d, %d \n", b[0],b[1]);
                     //printf(" Got Degrees: %d, %d \n", b[2],b[3]);
                     //printf("knots: %d\n", endknot);
@@ -1784,7 +1783,11 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
                     m++;
                     break;
                 }
-                if (j == jmax) phase=2; // knots start
+                if (j == jmax)
+                {
+                    endknot = b[0]+b[2]+2+b[1]+b[3]+2;   
+                    phase=2; // knots start
+                }
             }
             break;
         case 1:  // PHASE CP
@@ -2121,7 +2124,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
             //todo: read in here..
           
             break;
-        case 128:          
+        case 128:
             for (int i=1; i <= entity[emark][PD_CNT]; i++)
             {
                 read_iges_pd128(line, i, ss);
