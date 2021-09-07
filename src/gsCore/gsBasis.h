@@ -788,6 +788,7 @@ public:
      * \param[in] refExt Extension to be applied to the refinement boxes
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt = 0);
+    virtual void unrefine(gsMatrix<T> const & boxes, int refExt = 0);
 
     virtual std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
@@ -799,6 +800,7 @@ public:
      *
      */
     virtual void refineElements(std::vector<index_t> const & boxes);
+    virtual void unrefineElements(std::vector<index_t> const & boxes);
 
     /** @brief Refine basis and geometry coefficients to levels.
      *
@@ -806,6 +808,7 @@ public:
      * input depend on the implementation of refineElements().
      */
     virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+    virtual void unrefineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span

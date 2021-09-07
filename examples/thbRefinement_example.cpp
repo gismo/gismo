@@ -98,6 +98,30 @@ int main(int argc, char *argv[])
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
 
+    unsigned extent = degree;
+    unsigned meshSize = numknots+1;
+    int lvl = 2;
+    const unsigned nb  = 1;//meshSize*(1<<lvl);
+    boxes.resize(5*nb);
+    for ( unsigned i = 0; i!= nb; ++i)
+    {
+      boxes[5*i  ] = lvl-1;
+      boxes[5*i+1] = boxes[5*i+2] = i-extent/2;
+      boxes[5*i+3] = boxes[5*i+4] = i+extent/2;
+    }
+    gsInfo << "Diagonal refinement.\n";
+
+
+    gsMatrix<> matbox(2,2);
+    matbox.col(0)<<0.0,0.0;
+    matbox.col(1)<<0.0625,0.0625;
+
+    thb.unrefine(matbox,1);
+
+    // thb.unrefineElements(boxes);
+    gsWriteParaview( thb , "thb_unrefined", 1000, true);
+
+
     return 0;
 }
 

@@ -24,8 +24,12 @@ int main(int argc, char *argv[])
    //! [Parse command line]
    bool plot = false;
 
+   // Number of refinement loops to be done
+   int numRefinementLoops = 4;
+
    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+   cmd.addInt("r", "numLoop", "number of refinement loops", numRefinementLoops);
    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
    //! [Parse command line]
 
@@ -116,8 +120,7 @@ int main(int argc, char *argv[])
    // --------------- set up adaptive refinement loop ---------------
 
    //! [adaptRefSettings]
-   // Number of refinement loops to be done
-   int numRefinementLoops = 4;
+
 
    // Specify cell-marking strategy...
    MarkingStrategy adaptRefCrit = PUCA;
@@ -172,7 +175,7 @@ int main(int argc, char *argv[])
 
        // Get the element-wise norms.
        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-       const std::vector<real_t> & eltErrs  = ev.elementwise();
+       std::vector<real_t> eltErrs  = ev.elementwise();
        //! [errorComputation]
 
        // --------------- adaptive refinement ---------------
@@ -183,8 +186,18 @@ int main(int argc, char *argv[])
        std::vector<bool> elMarked( eltErrs.size() );
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
 
+       std::vector<bool> elCMarked( eltErrs.size() );
+       for (index_t k=0; k!=eltErrs.size(); k++)
+            eltErrs[k] = -eltErrs[k];
+
+       gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
+
+       for (index_t k=0; k!=elMarked.size(); k++)
+        gsInfo<<elMarked[k]<<"\t"<<elCMarked[k]<<"\n";
+
        // Refine the marked elements with a 1-ring of cells around marked elements
        gsRefineMarkedElements( bases, elMarked, 1 );
+       gsUnrefineMarkedElements( bases, elCMarked, 1 );
        //! [adaptRefinementPart]
 
 

@@ -587,6 +587,7 @@ public:
 
     // Refine the basis and adjust the given matrix of coefficients accordingly
     void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
+    // void unrefine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
 
     /** Refine the basis and adjust the given matrix of coefficients accordingly.
      * @param coefs is a matrix of coefficients as given, e.g., by gsTHBSpline<>::coefs();
@@ -598,6 +599,9 @@ public:
     void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
     void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+
+    void unrefineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+    void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
@@ -718,8 +722,10 @@ public:
      *
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
+    virtual void unrefine(gsMatrix<T> const & boxes, int refExt);
 
     std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+    std::vector<index_t> asElementsUnrefine(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     // std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
@@ -731,6 +737,7 @@ public:
      * (See also documentation of refine() for the format of \em box)
      */
     virtual void refine(gsMatrix<T> const & boxes);
+    // virtual void unrefine(gsMatrix<T> const & boxes);
 
     /**
      * @brief Insert the given boxes into the quadtree.
@@ -758,6 +765,14 @@ public:
      * See description above for details on the format.
      */
     virtual void refineElements(std::vector<index_t> const & boxes);
+
+    /**
+     * @brief      Clear the given boxes into the quadtree.
+     *
+     * @param      boxes   See refineElements
+     * @param[in]  refExt  See refineElements
+     */
+    virtual void unrefineElements(std::vector<index_t> const & boxes);
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
