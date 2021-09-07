@@ -207,10 +207,8 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
-    refineElements(boxes);
     gsSparseMatrix<> transf;
-    this->transfer(OX, transf);
+    this->refineElements_withTransfer(boxes,transf);
     //gsDebug<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
@@ -249,32 +247,20 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::unrefineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
-    unrefineElements(boxes);
     gsSparseMatrix<> transf;
-    this->transfer(OX, transf);
+    this->unrefineElements_withTransfer(boxes,transf);
     //gsDebug<<"tranf orig:\n"<<transf<<std::endl;
-    coefs = transf*coefs;
+
+    typename gsSparseSolver<T>::QR solver(transf);
+    coefs=solver.solve(coefs);
 }
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
 {
-    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    typename gsHTensorBasis<d,T>::uPtr cp = this->clone();
     this->unrefineElements(boxes);
-    this->transfer(OX, tran);
-}
-
-
-template<short_t d, class T>
-void gsHTensorBasis<d,T>::unrefineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
-{
-    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
-    unrefineElements(boxes);
-    gsSparseMatrix<> transf;
-    this->transfer2(OX, transf);
-    //gsDebug<<"tranf 2:\n"<<transf<<std::endl;
-    coefs = transf*coefs;
+    cp->transfer(this->m_xmatrix,tran);
 }
 
 template<short_t d, class T>
@@ -486,9 +472,13 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
 
     // Initialize vector of size
     // "entries per box" times "number of boxes":
-    std::vector<index_t> refVector( offset * boxes.cols()/2 );
+    std::vector<index_t> refVector;
+    refVector.reserve( offset * boxes.cols()/2 );
     gsMatrix<T> ctr(d,1);
 
+    // Index for the actual boxes that can be unrefined
+    // (so not the ones with level < 0 )
+    index_t I = 0;
     // Loop over all boxes:
     for(index_t i = 0; i < boxes.cols()/2; i++)
     {
@@ -499,10 +489,15 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
         // the level at the centerpoint will be taken for reference
         const int refLevel = getLevelAtPoint( ctr ) - 1;
 
+        // If the level is 0, we cannot coarsen
+        if (refLevel < 0) continue;
+
+        refVector.resize(refVector.size() + 5);
+
         for(index_t j = 0; j < boxes.rows();j++)
         {
             // Convert the parameter coordinates to (unique) knot indices
-            const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
+            const gsKnotVector<T> & kv = m_bases[refLevel+1]->knots(j);
             int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
                                        boxes(j,2*i  ) ) - 1).uIndex();
             int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
@@ -516,22 +511,28 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
             }
 
             // If applicable, add the refinement extension.
-            // Note that extending by one cell on level L means
-            // extending by two cells in level L+1
-            ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-            const index_t maxKtIndex = kv.size();
-            ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
+            ( k1 < refExt ? k1=0 : k1-=refExt );
+            const index_t maxKtIndexd = kv.uSize();
+            ( k2 + refExt >= maxKtIndexd ? k2=maxKtIndexd-1 : k2+=refExt);
+
+            k1 = std::floor(static_cast<T>(k1) / 2);
+            k2 = std::ceil( static_cast<T>(k2) / 2);
 
             // Store the data...
-            refVector[i*offset]       = refLevel;
-            refVector[i*offset+1+j]   = k1;
-            refVector[i*offset+1+j+d] = k2;
+            refVector[I*offset]       = refLevel;
+            refVector[I*offset+1+j]   = k1;
+            refVector[I*offset+1+j+d] = k2;
         }
+
+        I++;
     }
-    // gsDebug<<"begin\n";
-    // for (std::vector<unsigned>::const_iterator i = refVector.begin(); i != refVector.end(); ++i)
-    //     std::cout << *i << ' ';
-    // gsDebug<<"end\n";
+
+
+
+    gsDebug<<"begin\n";
+    for (std::vector<index_t>::const_iterator it = refVector.begin(); it!=refVector.end(); it++)
+        gsDebug<<*it<<"\n";
+    gsDebug<<"end\n";
 
     return refVector;
 }
@@ -1529,6 +1530,8 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >&
         freeAll(m_bases.end() - sizeDiff, m_bases.end());
         m_bases.resize(m_xmatrix.size());
     }
+
+    result.makeCompressed();
 }
 
 template<short_t d, class T>
@@ -1564,6 +1567,8 @@ void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<index_t> >
         m_xmatrix.push_back( gsSortedVector<index_t>() );
 
     result = this->coarsening_direct2(old, m_xmatrix, transfer);
+
+    result.makeCompressed();
 }
 
 

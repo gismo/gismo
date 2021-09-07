@@ -587,9 +587,6 @@ public:
     void unrefineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
     void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
-    void unrefineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
-
-
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
@@ -709,8 +706,6 @@ public:
      *
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
-    virtual void unrefine(gsMatrix<T> const & boxes, int refExt);
-
     virtual void unrefine(gsMatrix<T> const & boxes, int refExt);
 
     std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
