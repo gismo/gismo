@@ -545,14 +545,15 @@ template <class T>
 void gsProcessMarkedElements(gsMultiPatch<T> & mp,
                             const std::vector<bool> & elRefined,
                             const std::vector<bool> & elCoarsened,
-                            int refExtension = 0)
+                            index_t refExtension = 0,
+                            index_t refExtensionC = 0)
 {
     const int dim = mp.dim();
 
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
     // globalCount: counter for the current global element index
-    int numRefined, numCoarsened, poffset = 0, globalCount = 0;
+    index_t numRefined, numCoarsened, poffset = 0, globalCount = 0;
 
     // refBoxes: contains marked boxes on a given patch
     gsMatrix<T> refBoxes, crsBoxes;
@@ -560,7 +561,7 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
     for (size_t pn=0; pn < mp.nPatches(); ++pn )// for all patches
     {
         // Get number of elements to be refined on this patch
-        const int numEl = mp[pn].basis().numElements();
+        const size_t numEl = mp[pn].basis().numElements();
         numRefined = std::count_if(elRefined.begin() + poffset,
                                   elRefined.begin() + poffset + numEl,
                                   GS_BIND2ND(std::equal_to<bool>(), true) );
@@ -584,8 +585,8 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                refBoxes.col(2*numRefined  ) =
-                        refBoxes.col(2*numRefined+1) = domIt->centerPoint();
+                refBoxes.col(2*numRefined  ) = domIt->lowerCorner();
+                refBoxes.col(2*numRefined+1) = domIt->upperCorner();
 
                 // Advance marked cells counter
                 numRefined++;
@@ -594,8 +595,8 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
             {
                 // Construct degenerate box by setting both
                 // corners equal to the center
-                crsBoxes.col(2*numCoarsened  ) =
-                        crsBoxes.col(2*numCoarsened+1) = domIt->centerPoint();
+                crsBoxes.col(2*numCoarsened  ) = domIt->lowerCorner();
+                crsBoxes.col(2*numCoarsened+1) = domIt->upperCorner();
 
                 // Advance marked cells counter
                 numCoarsened++;
