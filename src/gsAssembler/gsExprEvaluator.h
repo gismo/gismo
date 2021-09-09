@@ -335,6 +335,7 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
 #   ifdef _OPENMP
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
+    index_t patch_cnt = 0;
 #   endif
 
     gsQuadRule<T> QuRule;  // Quadrature rule
@@ -358,6 +359,11 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
+        if ( storeElWise )
+        {
+            c = patch_cnt + tid*nt;
+            patch_cnt += domIt->numElements();// a bit costy
+        }
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #       else
         for (; domIt->good(); domIt->next() )
