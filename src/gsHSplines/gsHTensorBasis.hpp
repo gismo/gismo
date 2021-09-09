@@ -527,13 +527,6 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
         I++;
     }
 
-
-
-    gsDebug<<"begin\n";
-    for (std::vector<index_t>::const_iterator it = refVector.begin(); it!=refVector.end(); it++)
-        gsDebug<<*it<<"\n";
-    gsDebug<<"end\n";
-
     return refVector;
 }
 

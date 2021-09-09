@@ -548,6 +548,10 @@ std::vector<index_t> gsBasis<T>::asElements(gsMatrix<T> const &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+std::vector<index_t> gsBasis<T>::asElementsUnrefine(gsMatrix<T> const &, int) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
