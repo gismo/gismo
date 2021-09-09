@@ -29,10 +29,16 @@ public:
     gsApproxGluingDataAssembler(const gsGeometry<> & patch,
                                 gsBSplineBasis<T> & bsp_Gd,
                                 index_t uv,
-                                const gsOptionList & optionList)
-        : m_patch(patch), m_bspGD(bsp_Gd), m_uv(uv), m_optionList(optionList)
+                                const gsOptionList & optionList,
+                                index_t patchID)
+        : m_patch(patch), m_bspGD(bsp_Gd), m_uv(uv), m_optionList(optionList), m_patchID(patchID)
     {
-        gsWriteParaview(m_patch.patch(0),"geogeo",2000);
+        interpolation_value = false;
+        interpolation_deriv = false;
+
+        if (m_bspGD.size() < 4) // Only if the gd space is too small
+            interpolation_deriv = false;
+
         refresh();
         assemble();
         solve();
@@ -59,6 +65,10 @@ protected:
 
     gsOptionList m_optionList;
 
+    index_t m_patchID;
+
+    bool interpolation_value, interpolation_deriv;
+
     //using Base::m_system;
     using Base::m_ddof;
 
@@ -76,8 +86,31 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::refresh()
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map_alpha_S(m_bspGD);
-
     gsDofMapper map_beta_S(m_bspGD);
+
+    if (interpolation_value)
+    {
+        gsMatrix<index_t> act;
+        act = m_bspGD.boundaryOffset(1,0); // WEST
+        map_beta_S.markBoundary(0, act); // Patch 0
+        map_alpha_S.markBoundary(0, act); // Patch 0
+
+        act = m_bspGD.boundaryOffset(2,0); // East
+        map_beta_S.markBoundary(0, act); // Patch 0
+        map_alpha_S.markBoundary(0, act); // Patch 0
+
+        if (interpolation_deriv)
+        {
+            act = m_bspGD.boundaryOffset(1,1); // WEST
+            map_beta_S.markBoundary(0, act); // Patch 0
+            map_alpha_S.markBoundary(0, act); // Patch 0
+
+            act = m_bspGD.boundaryOffset(2,1); // East
+            map_beta_S.markBoundary(0, act); // Patch 0
+            map_alpha_S.markBoundary(0, act); // Patch 0
+        }
+    }
+
 
     map_alpha_S.finalize();
     map_beta_S.finalize();
@@ -105,10 +138,111 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::assemble()
     const gsDofMapper & mapper_alpha = m_system_alpha_S.colMapper(0);
     const gsDofMapper & mapper_beta = m_system_beta_S.colMapper(0);
 
-    m_ddof[0].setZero(mapper_alpha.boundarySize(), 1 ); // tilde
-    m_ddof[1].setZero(mapper_beta.boundarySize(), 1 ); // bar
+    m_ddof[0].setZero(mapper_alpha.boundarySize(), 1 ); // alpha
+    m_ddof[1].setZero(mapper_beta.boundarySize(), 1 ); // beta
 
     // Compute Boundary of Gluing Data
+    if (mapper_alpha.boundarySize() > 0)
+    {
+        // alpha^S
+        gsMatrix<> points(1,2), uv, ev, D0;
+        points.setZero();
+        points(0,1) = 1.0;
+
+        uv.setZero(2,points.cols());
+        uv.row(m_uv) = points; // u
+
+        // ======== Determine bar{alpha^(L)} == Patch 0 ========
+        const gsGeometry<> & P0 = m_patch.patch(0); // Right
+        for (index_t i = 0; i < uv.cols(); i++)
+        {
+            P0.jacobian_into(uv.col(i), ev);
+            uv(0, i) = 1 * ev.determinant();
+        }
+        //m_ddof[0].block(0,0,2,1) = uv.row(0).transpose();
+        m_ddof[0](mapper_alpha.bindex(0),0) = uv(0,0);
+        m_ddof[0](mapper_alpha.bindex(m_bspGD.size()-1),0) = uv(0,1);
+
+
+        // Beta
+        uv.setZero(2,points.cols());
+        uv.row(m_uv) = points; // u
+        for(index_t i = 0; i < uv.cols(); i++)
+        {
+            P0.jacobian_into(uv.col(i),ev);
+            D0 = ev.col(m_uv);
+            real_t D1 = 1/ D0.norm();
+            uv(0,i) = - 1 * D1 * D1 * ev.col(1).transpose() * ev.col(0);
+        }
+        //m_ddof[1].block(0,0,2,1)  = uv.row(0).transpose();
+        m_ddof[1](mapper_beta.bindex(0),0) = uv(0,0);
+        m_ddof[1](mapper_beta.bindex(m_bspGD.size()-1),0) = uv(0,1);
+
+        if (interpolation_deriv)
+        {
+            gsMatrix<> ev2;
+            // alpha^S
+            uv.setZero(2,points.cols());
+            uv.row(m_uv) = points; // u
+
+            // ======== Determine bar{alpha^(L)} == Patch 0 ========
+            for (index_t i = 0; i < uv.cols(); i++)
+            {
+                P0.jacobian_into(uv.col(i), ev);
+                P0.deriv2_into(uv.col(i), ev2);
+                if (m_uv == 1)
+                    uv(0, i) = 1.0 * (ev2(2,0)*ev(1,1) + ev2(4,0)*ev(0,0) -
+                                                ev2(1,0)*ev(1,0) - ev2(5,0)*ev(0,1));
+                else if (m_uv == 0)
+                    uv(0, i) = 1.0 * (ev2(0,0)*ev(1,1) + ev2(5,0)*ev(0,0) -
+                                                ev2(2,0)*ev(1,0) - ev2(3,0)*ev(0,1));
+            }
+            // Correctur
+            //gsInfo << "Alpha deriv 2: " << uv.row(0) << "\n";
+            uv(0,0) = (uv(0,0) - m_ddof[0](mapper_alpha.bindex(0),0) * m_bspGD.derivSingle(0,points)(0,0)) *
+                    (1 / m_bspGD.derivSingle(1,points)(0,0));
+            uv(0,1) = (uv(0,1) - m_ddof[0](mapper_alpha.bindex(m_bspGD.size()-1),0) * m_bspGD.derivSingle(m_bspGD.size()-1,points)(0,1)) *
+                      (1 / m_bspGD.derivSingle(m_bspGD.size()-2,points)(0,1));
+            //m_ddof[0].block(2,0,2,1)  = uv.row(0).transpose();
+            //gsInfo << "Alpha deriv exact 2: " << uv(0,1)*m_bspGD.derivSingle(m_bspGD.size()-2,points)(0,1) + m_ddof[0](1,0) * m_bspGD.derivSingle(m_bspGD.size()-1,points)(0,1) << "\n";
+            m_ddof[0](mapper_alpha.bindex(1),0) = uv(0,0);
+            m_ddof[0](mapper_alpha.bindex(m_bspGD.size()-2),0) = uv(0,1);
+
+            // beta^S
+            uv.setZero(2,points.cols());
+            uv.row(m_uv) = points; // u
+
+            const index_t d = m_patch.patch(0).parDim();
+            gsVector<> D0(d);
+
+            // ======== Determine bar{beta}^L ========
+            for(index_t i = 0; i < uv.cols(); i++)
+            {
+                P0.jacobian_into(uv.col(i),ev);
+                P0.deriv2_into(uv.col(i), ev2);
+                D0 = ev.col(m_uv);
+                real_t D1 = 1/ D0.squaredNorm();
+                real_t D2 = D0.squaredNorm();
+                if (m_uv == 1)
+                    uv(0,i) = - 1.0 * D1 * D1 * (D2*(ev2(2,0)*ev(0,1) + ev2(1,0)*ev(0,0)+
+                                                               ev2(5,0)*ev(1,1) + ev2(4,0)*ev(1,0)) -
+                                                           (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(1,0)*ev(0,1) + ev2(4,0)*ev(1,1)));
+                else if (m_uv == 0)
+                    uv(0,i) = - 1.0 * D1 * D1 * (D2*(ev2(0,0)*ev(0,1) + ev2(2,0)*ev(0,0)+
+                                                               ev2(3,0)*ev(1,1) + ev2(5,0)*ev(1,0)) -
+                                                           (ev.col(1).transpose() * ev.col(0))(0,0) * 2.0 * (ev2(0,0)*ev(0,0) + ev2(3,0)*ev(1,0)));
+
+            }
+            // Correctur
+            uv(0,0) = (uv(0,0) - m_ddof[1](mapper_beta.bindex(0),0) * m_bspGD.derivSingle(0,points)(0,0)) *
+                      (1 / m_bspGD.derivSingle(1,points)(0,0));
+            uv(0,1) = (uv(0,1) - m_ddof[1](mapper_beta.bindex(m_bspGD.size()-1),0) * m_bspGD.derivSingle(m_bspGD.size()-1,points)(0,1)) *
+                      (1 / m_bspGD.derivSingle(m_bspGD.size()-2,points)(0,1));
+            //m_ddof[1].block(2,0,2,1)  = uv.row(0).transpose();
+            m_ddof[1](mapper_beta.bindex(1),0) = uv(0,0);
+            m_ddof[1](mapper_beta.bindex(m_bspGD.size()-2),0) = uv(0,1);
+        }
+    }
 
     // Assemble volume integrals
     bhVisitor visitor;
@@ -159,7 +293,7 @@ inline void gsApproxGluingDataAssembler<T, bhVisitor>::apply(bhVisitor & visitor
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(m_patch, m_bspGD, quNodes, m_uv, m_optionList);
+            visitor_.evaluate(m_patch, m_bspGD, quNodes, m_uv, m_optionList, m_patchID);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
@@ -180,19 +314,70 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
     gsVector<> sol_a, sol_b;
 
     // Solve alpha^S
-    solver.compute(m_system_alpha_S.matrix());
-    sol_a = solver.solve(m_system_alpha_S.rhs());
+    if (m_system_alpha_S.matrix().dim().first > 0)
+    {
+        solver.compute(m_system_alpha_S.matrix());
+        sol_a = solver.solve(m_system_alpha_S.rhs());
+    }
+
+
+
+    gsVector<> alpha_sol, beta_sol;
+    alpha_sol.setZero(m_bspGD.size());
+    beta_sol.setZero(m_bspGD.size());
+
+    const gsDofMapper & mapper = m_system_alpha_S.colMapper(0); // unknown = 0
+    for (index_t i = 0; i < m_bspGD.size(); ++i)
+    {
+        if (mapper.is_free(i, 0)) // DoF value is in the solVector // 0 = unitPatch
+        {
+            alpha_sol[i] = sol_a(mapper.index(i, 0),0);
+        }
+        else // eliminated DoF: fill with Dirichlet data
+        {
+            alpha_sol[i] = m_ddof[0]( mapper.bindex(i, 0), 0); // = 0
+        }
+    }
+
 
     gsGeometry<>::uPtr tilde_temp;
-    tilde_temp = m_bspGD.makeGeometry(sol_a);
+    tilde_temp = m_bspGD.makeGeometry(alpha_sol);
     alpha_S = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
 
     // Solve beta^S
-    solver.compute(m_system_beta_S.matrix());
-    sol_b = solver.solve(m_system_beta_S.rhs());
+    if (m_system_beta_S.matrix().dim().first > 0)
+    {
+        solver.compute(m_system_beta_S.matrix());
+        sol_b = solver.solve(m_system_beta_S.rhs());
+    }
 
-    tilde_temp = m_bspGD.makeGeometry(sol_b);
+
+
+    const gsDofMapper & mapper_b = m_system_beta_S.colMapper(0); // unknown = 0
+    for (index_t i = 0; i < m_bspGD.size(); ++i)
+    {
+        if (mapper_b.is_free(i, 0)) // DoF value is in the solVector // 0 = unitPatch
+        {
+            beta_sol[i] = sol_b(mapper_b.index(i, 0),0);
+        }
+        else // eliminated DoF: fill with Dirichlet data
+        {
+            beta_sol[i] = m_ddof[1]( mapper_b.bindex(i, 0), 0); // = 0
+        }
+    }
+
+    tilde_temp = m_bspGD.makeGeometry(beta_sol);
     beta_S = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
+
+    gsMatrix<> points(1,2);
+    points.setZero();
+    points(0,1) = 1.0;
+    /*
+    gsInfo << "Alpha: " << alpha_S.eval(points) << "\n";
+    gsInfo << "Beta: " << beta_S.eval(points) << "\n";
+    gsInfo << "Alpha deriv: " << alpha_S.deriv(points) << "\n";
+    gsInfo << "Beta deriv: " << beta_S.deriv(points) << "\n";
+     */
 
 } // solve
 

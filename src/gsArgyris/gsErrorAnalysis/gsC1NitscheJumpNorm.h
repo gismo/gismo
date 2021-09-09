@@ -35,6 +35,7 @@ namespace gismo
         {
             m_value.resize(patchesPtr->interfaces().size());
             m_value.setZero();
+            m_valueSum = T(0.0);
         }
 
 
@@ -125,13 +126,15 @@ namespace gismo
                     computeb(side_L, quWeights, value, switch_side);
 
                 }
+                m_valueSum += value;
                 m_value(numInt) = takeRoot(value);
             }
-
+            m_valueSum = takeRoot(m_valueSum);
         }
 
 
         gsVector<T> value() const { return m_value; }
+        T valueSum() const { return m_valueSum; }
 
     protected:
 
@@ -236,7 +239,7 @@ namespace gismo
 
     protected:
         gsVector<T> m_value;     // the total value of the norm
-
+        T m_valueSum;
     protected:
         gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true
         gsMatrix<T> f1ders, f2ders;

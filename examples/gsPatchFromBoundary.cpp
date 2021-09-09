@@ -41,6 +41,8 @@ int main(int argc, char* argv[])
     GISMO_ENSURE( boundary.isClosed(), "The boundary is not closed, adjust tolerance.");
     boundary.closeGaps(tol);
 
+    gsInfo << boundary << "\n";
+
     switch (method)
     {
     case 1:

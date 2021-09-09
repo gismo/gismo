@@ -23,6 +23,19 @@
 
 #include <boost/filesystem.hpp>
 
+#include <sstream>
+
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n = 2)
+{
+    std::ostringstream out;
+    out.precision(n);
+    out << std::fixed << a_value;
+    return out.str();
+}
+
+
+
 using namespace gismo;
 //! [Include namespace]
 
@@ -33,6 +46,11 @@ int main(int argc, char *argv[])
     bool last       = false;
     index_t discrete_p = 3; // Polynomial degree of the discrete space
     index_t discrete_r = 1; // Regularity of the discrete space
+
+    // If no gluing data is chosen, then gluingData_p = discrete_p - 1
+    // and gluingData_r = gluingData_p - 1
+    index_t gluingData_p = -1; // Polynomial degree of the discrete space
+    index_t gluingData_r = -1; // Regularity of the discrete space
 
     index_t numRefine = 0; // Number of loops = refinement steps
 
@@ -68,6 +86,12 @@ int main(int argc, char *argv[])
                 "Polynomial degree of the discrete space", discrete_p );
     cmd.addInt( "r", "discreteRegularity",
                 "Regularity of the discrete space",  discrete_r );
+
+    // For the gluing data space
+    cmd.addInt( "P", "gluingDataDegree",
+                "Polynomial degree of the gluing data space", gluingData_p );
+    cmd.addInt( "R", "gluingDataRegularity",
+                "Regularity of the gluing data space",  gluingData_r );
 
     // For computing the convergence rates
     cmd.addInt( "l", "loop",
@@ -221,13 +245,20 @@ int main(int argc, char *argv[])
 
         numRefine = 0;
     }
+    else
+    {
+        index_t p = mb.minCwiseDegree();
+        index_t r = optionList.getInt("discreteRegularity");
+        mb.uniformRefine(1, p-r);
+    }
     //! [Initialise the discrete space]
 
     //! [Solver loop]
-    gsMatrix<> jumperr(numRefine+1, mp.nInterfaces()), jumperrRate(numRefine+1, mp.nInterfaces());
-    gsMatrix<> normerr(numRefine+1, 8); // 8 == 3 Norms + 3 Rates + h + dofs
+    gsMatrix<> jumperr(numRefine+1, mp.nInterfaces()), jumperrRate(numRefine+1, mp.nInterfaces()),
+               nitschePen(numRefine+1, mp.nInterfaces());
+    gsMatrix<> normerr(numRefine+1, 10); // 10 == 4 Norms + 4 Rates + h + dofs
     gsMatrix<> time_mat(numRefine+1, 4);
-    normerr.setZero(); jumperrRate.setZero();
+    normerr.setZero(); jumperrRate.setZero(); nitschePen.setZero();
 
     gsInfo<< "(dot1=got_argyris_space, dot2=assembled, dot3=solved, dot4=got_error)\n";
     gsStopwatch time;
@@ -240,6 +271,8 @@ int main(int argc, char *argv[])
             biharmonic = new gsBiharmonicNitsche<real_t>(mp, mb, optionList);
         else if (method == "direct")
             biharmonic = new gsBiharmonicArgyrisDirect<real_t>(mp, mb, optionList);
+        else
+            biharmonic = new gsBiharmonicArgyris<real_t>(mp, mb, optionList); // Only for avoiding the warning
 
         gsInfo << "--------------------------------------------------------------\n";
 
@@ -281,7 +314,10 @@ int main(int argc, char *argv[])
         normerr(l,4) = math::sqrt(biharmonic->valueH1() * biharmonic->valueH1() + normerr(l,2) * normerr(l,2));
         normerr(l,6) = math::sqrt(biharmonic->valueH2() * biharmonic->valueH2() +
                                           biharmonic->valueH1() * biharmonic->valueH1() + normerr(l,2) * normerr(l,2));
+        normerr(l,8) = biharmonic->valueJumpSum();
         jumperr.row(l) = biharmonic->valueJump();
+        if (method == "nitsche")
+            nitschePen.row(l) = biharmonic->valuePenalty();
         gsInfo<< ". " <<std::flush;// Error computations done
 
         // Refine the discrete space
@@ -297,7 +333,11 @@ int main(int argc, char *argv[])
     gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<normerr.col(2).transpose()<<"\n";
     gsInfo<< "H1 error: "<<std::scientific<<normerr.col(4).transpose()<<"\n";
     gsInfo<< "H2 error: "<<std::scientific<<normerr.col(6).transpose()<<"\n";
-    gsInfo<< "Jump error: "<<std::scientific<<jumperr.transpose()<<"\n";
+    gsInfo<< "Jump error: "<<std::scientific<<normerr.col(8).transpose()<<"\n";
+    gsInfo<< "Jump error single: \n"<<std::scientific<<jumperr.transpose()<<"\n";
+
+    if (method == "nitsche")
+        gsInfo<< "Penalty value: \n"<<std::scientific<<nitschePen.transpose()<<"\n";
 
     if (numRefine>0)
     {
@@ -308,6 +348,8 @@ int main(int argc, char *argv[])
                                                normerr.col(4).tail(numRefine).array() ).log() / std::log(2.0); // H1
         normerr.block(1, 7, numRefine, 1)  = ( normerr.col(6).head(numRefine).array() /
                                                normerr.col(6).tail(numRefine).array() ).log() / std::log(2.0); // H2
+        normerr.block(1, 9, numRefine, 1)  = ( normerr.col(8).head(numRefine).array() /
+                                               normerr.col(8).tail(numRefine).array() ).log() / std::log(2.0); // H2
 
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               << normerr.col(3).transpose() <<"\n";
@@ -315,6 +357,8 @@ int main(int argc, char *argv[])
               << normerr.col(5).transpose() <<"\n";
         gsInfo<<   "EoC (H2): "<< std::fixed<<std::setprecision(2)
               << normerr.col(7).transpose() <<"\n";
+        gsInfo<<   "EoC (Jump): "<< std::fixed<<std::setprecision(2)
+              << normerr.col(9).transpose() <<"\n";
 
         for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
         {
@@ -341,7 +385,7 @@ int main(int argc, char *argv[])
     //! [Save results to csv file]
     if (csv)
     {
-        std::vector<std::string> colNames, colNamesJump, colNamesTime;
+        std::vector<std::string> colNames, colNamesJump, colNamesTime, colNamesInter;
         colNames.push_back("h");
         colNames.push_back("dofs");
         colNames.push_back("L2");
@@ -350,10 +394,13 @@ int main(int argc, char *argv[])
         colNames.push_back("Rate");
         colNames.push_back("H2");
         colNames.push_back("Rate");
+        colNames.push_back("Jump");
+        colNames.push_back("Rate");
 
         for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
         {
             colNamesJump.push_back("Interface" + util::to_string(numInt) );
+            colNamesInter.push_back("Interface" + util::to_string(numInt) );
             colNamesJump.push_back("Rate");
         }
 
@@ -366,14 +413,25 @@ int main(int argc, char *argv[])
         for(index_t i = 0; i < argc; i++)
             fullname += (std::string) argv[i] + " ";
 
-        std::string name = "-g" + std::to_string(geometry) + "--" + (isogeometric ? "isogeometric" : "nonisogeometric")
+        std::string smallNumber = "";
+        if (mu < 1)
+            while(mu < 1)
+            {
+                mu *= 10;
+                smallNumber += "0";
+            }
+
+        std::string name = "-g" + std::to_string(geometry)
+                           + "--" + (method == "argyris" ? "argyris" : "nitsche")
+                           + "--" + (isogeometric ? "isogeometric" : "nonisogeometric")
                            + "--" + (interpolation ? "interpolation" : "projection") +
                            (simplified ? "--simplified" : "") +
                            "-p" + std::to_string(discrete_p) +
                            "-r" + std::to_string(discrete_r) +
-                           "-l" + std::to_string(numRefine);
+                           "-l" + std::to_string(numRefine)
+                           + (method == "nitsche" ? "-y" + smallNumber + to_string_with_precision(mu,0) : "");
 
-        std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
+        std::string path = "../../gismo_results/results/g" + std::to_string(geometry) + "/nitsche";
 
         std::string command = "mkdir " + path;
         system(command.c_str());
@@ -385,6 +443,10 @@ int main(int argc, char *argv[])
         c1ArgyrisIO.writeBlockMatrix(file, "Error", normerr, colNames, true);
         c1ArgyrisIO.writeBlockMatrix(file, "Jump", jumperr, jumperrRate, colNamesJump);
         c1ArgyrisIO.writeBlockMatrix(file, "Time", time_mat, colNamesTime);
+
+        if (method == "nitsche")
+            c1ArgyrisIO.writeBlockMatrix(file, "Penalty", nitschePen, colNamesInter);
+
         file.close();
     }
     //! [Save results to csv file]
@@ -396,7 +458,7 @@ int main(int argc, char *argv[])
         std::string command = "mkdir " + path;
         system(command.c_str());
 
-        c1ArgyrisIO.saveMesh(path, mp, mb, 100);
+        c1ArgyrisIO.saveMesh(path, mp, mb, 30);
     }
     //! [Save mesh to csv file]
 
@@ -411,6 +473,17 @@ int main(int argc, char *argv[])
         c1ArgyrisIO.saveSolution(path, mp, mb, solVal, 50);
     }
     //! [Save solution to csv file]
+
+    if (latex)
+    {
+        for (index_t i = 0; i < normerr.rows(); i++)
+        {
+            printf("%-5f & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f & %-14.6e & %-5.2f \\\\ \n",
+                   normerr(i,0), normerr(i,2), normerr(i,3), normerr(i,4), normerr(i,5),
+                   normerr(i,6), normerr(i,7), normerr(i,8), normerr(i,9));
+        }
+    }
+
 
     return EXIT_SUCCESS;
 

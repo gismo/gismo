@@ -151,8 +151,6 @@ public:
                 }
 
                 //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with index: " << m_vertexIndices[i] << "\n";
-                gsMatrix<> points;
-                points.setZero(2,1);
 
                 // Compute Gluing data
                 gsApproxGluingData<d, T> approxGluingData(auxPatchSingle, m_optionList, sideContainer);
@@ -373,14 +371,14 @@ public:
                 index_t i_shift = 0;
                 for(size_t numInt = 0; numInt < mp_vertex.nInterfaces(); numInt++)
                 {
-                    if (mp_vertex.interfaces()[numInt].first().patch == i)
+                    if (mp_vertex.interfaces()[numInt].first().patch == (index_t) i)
                     {
                         if (mp_vertex.interfaces()[numInt].first().side().index() > 2 && dir == 0)
                             i_shift = numInt*5;
                         else if (mp_vertex.interfaces()[numInt].first().side().index() < 3 && dir == 1)
                             i_shift = numInt*5;
                     }
-                    if (mp_vertex.interfaces()[numInt].second().patch == i)
+                    if (mp_vertex.interfaces()[numInt].second().patch == (index_t) i)
                     {
                         if (mp_vertex.interfaces()[numInt].second().side().index() > 2 && dir == 0)
                             i_shift = numInt*5;
@@ -473,7 +471,7 @@ public:
         Eigen::FullPivLU<gsMatrix<>> KernelVertex(coeffs_mat);
         KernelVertex.setThreshold(threshold);
         //gsInfo << "Coefs: " << coefs_corner << "\n";
-        while (KernelVertex.dimensionOfKernel() < mp_vertex.nInterfaces()+3)
+        while (KernelVertex.dimensionOfKernel() < (index_t) mp_vertex.nInterfaces()+3)
         {
             threshold += 1e-8;
             KernelVertex.setThreshold(threshold);
@@ -494,13 +492,13 @@ public:
                 for (index_t dir = 0; dir < 2; dir++) {
                     index_t i_shift = 0;
                     for (size_t numInt = 0; numInt < mp_vertex.nInterfaces(); numInt++) {
-                        if (mp_vertex.interfaces()[numInt].first().patch == i) {
+                        if (mp_vertex.interfaces()[numInt].first().patch == (index_t) i) {
                             if (mp_vertex.interfaces()[numInt].first().side().index() > 2 && dir == 0)
                                 i_shift = numInt * 5;
                             else if (mp_vertex.interfaces()[numInt].first().side().index() < 3 && dir == 1)
                                 i_shift = numInt * 5;
                         }
-                        if (mp_vertex.interfaces()[numInt].second().patch == i) {
+                        if (mp_vertex.interfaces()[numInt].second().patch == (index_t) i) {
                             if (mp_vertex.interfaces()[numInt].second().side().index() > 2 && dir == 0)
                                 i_shift = numInt * 5;
                             else if (mp_vertex.interfaces()[numInt].second().side().index() < 3 && dir == 1)
@@ -667,7 +665,7 @@ public:
         {
             size_t patch = m_patchesAroundVertex[i];
             size_t vertex = m_vertexIndices[i];
-            index_t dir_u, dir_v;
+            index_t dir_u = -1, dir_v = -1;
             switch (vertex) // == vertex
             {
                 case 1:
@@ -1074,7 +1072,7 @@ public:
         real_t sigma = 0;
 
         real_t p = 0;
-        real_t h_geo = 0;
+        real_t h_geo = 1;
         for(size_t i = 0; i < m_auxPatches.size(); i++)
         {
             gsTensorBSplineBasis<2, real_t> bsp_temp = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(vertexIndices[i]);
@@ -1085,8 +1083,8 @@ public:
 
             for(index_t j = 0; j < m_auxPatches[i].getPatch().parDim(); j++)
             {
-                real_t h_geo_temp = bsp_temp.knot(j,p + 2);
-                h_geo = (h_geo < h_geo_temp ? h_geo_temp : h_geo);
+                real_t h_geo_temp = bsp_temp.knot(j,p + 1);
+                h_geo = (h_geo > h_geo_temp ? h_geo_temp : h_geo);
             }
         }
 
@@ -1141,7 +1139,7 @@ public:
             gsInfo << "Something went wrong \n";
 
         index_t dofsCorner = 3;
-        if (matrix_det.determinant()*matrix_det.determinant() > 0) // There is a kink
+        if (matrix_det.determinant()*matrix_det.determinant() > 1e-15) // There is (numerically) a kink
             dofsCorner = 1;
 
         for(size_t np = 0; np < mp_vertex.nPatches(); np++)
@@ -1184,7 +1182,7 @@ public:
             }
         }
 
-        real_t threshold = 1e-8;
+        real_t threshold = 1e-10;
         Eigen::FullPivLU<gsMatrix<>> KernelCorner(coefs_corner);
         KernelCorner.setThreshold(threshold);
         //gsInfo << "Coefs: " << coefs_corner << "\n";
@@ -1207,7 +1205,7 @@ public:
             kernel.col(kernel.cols() - 1) = vertBas.col(count);
 
             Eigen::FullPivLU<gsMatrix<>> ker_temp(kernel);
-            ker_temp.setThreshold(1e-5);
+            ker_temp.setThreshold(1e-6);
             if (ker_temp.dimensionOfKernel() != 0) {
                 kernel = kernel.block(0, 0, kernel.rows(), kernel.cols() - 1);
             }

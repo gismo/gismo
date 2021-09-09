@@ -69,6 +69,8 @@ namespace gismo
 
             m_options.addReal("mu", "Mu", optionList.getReal("mu"));
 
+            valuePenalty.setZero(patches.nInterfaces());
+
             Base::initialize(m_ppde, bases, m_options);
         }
 
@@ -81,10 +83,14 @@ namespace gismo
         void apply(gsVisitorInterfaceNitscheBiharmonicStability<T> & visitor,
                    const boundaryInterface & bi);
 
+        gsVector<> get_valuePenalty() { return valuePenalty; }
+
     protected:
 
         // fixme: add constructor and remove this
         gsBiharmonicPde<T> m_ppde;
+
+        gsVector<> valuePenalty;
 
         // Members from gsAssembler
         using Base::m_pde_ptr;
@@ -149,9 +155,9 @@ namespace gismo
         //        m_ppde.bcFirstKind().neumannSides() );
 
         // For the stability parameter
-        gsSparseMatrix<> matrix_B = m_system.matrix();
-        m_system_stab = m_system;
-        m_system_stab.setZero();
+        //gsSparseMatrix<> matrix_B = m_system.matrix();
+        //m_system_stab = m_system;
+        //m_system_stab.setZero();
         //pushInterface();
 
         // Neumann conditions of second kind // TODO Rename to Laplace
@@ -159,7 +165,7 @@ namespace gismo
                 m_ppde.bcSecondKind().laplaceSides() );
 
         // Add interface integrals
-        Base::template pushInterface<gsVisitorInterfaceNitscheBiharmonic<T> >();
+        Base::template pushInterface<gsVisitorInterfaceNitscheBiharmonic<T>>( valuePenalty );
 
         if ( m_options.getInt("InterfaceStrategy") == iFace::dg )
             gsWarn <<"DG option ignored.\n";

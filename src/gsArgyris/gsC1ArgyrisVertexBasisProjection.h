@@ -54,10 +54,11 @@ public:
             m_basis_minus[localdir] = m_auxPatches[0].getArygrisBasisRotated().getBasisMinus(sideContainer[dir]);
             m_basis_geo[localdir] = m_auxPatches[0].getArygrisBasisRotated().getBasisGeo(sideContainer[dir]);
 
+            //m_basis_geo[localdir].reduceContinuity(1);
+
             kindOfEdge[localdir] = m_auxPatches[0].getArygrisBasisRotated().isInterface(sideContainer[dir]);
 
         }
-
 /*
         gsInfo << "Basis plus: " << m_basis_plus[0] << "\n";
         gsInfo << "Basis minus: " << m_basis_minus[0] << "\n";
@@ -167,14 +168,14 @@ void gsC1ArgyrisVertexBasisProjection<d, T, bhVisitor>::refresh()
     index_t p_2 = m_basis_g1.degree(1);
 
     gsMatrix<index_t> act;
-    if (2*p_1+1 < m_basis_g1.component(0).size())
-        for (index_t i = 2*p_1+1; i < m_basis_g1.component(0).size(); i++) // only the first 2*p+1
+    if (3*p_1+1 < m_basis_g1.component(0).size())
+        for (index_t i = 3*p_1+1; i < m_basis_g1.component(0).size(); i++) // only the first 2*p+1
         {
             act = m_basis_g1.boundaryOffset(1, i); // WEST
             map.markBoundary(0, act); // Patch 0
         }
-    if (2*p_2+1 < m_basis_g1.component(1).size())
-        for (index_t i = 2*p_2+1; i < m_basis_g1.component(1).size(); i++) // only the first 2*p+1
+    if (3*p_2+1 < m_basis_g1.component(1).size())
+        for (index_t i = 3*p_2+1; i < m_basis_g1.component(1).size(); i++) // only the first 2*p+1
         {
             act = m_basis_g1.boundaryOffset(3, i); // WEST
             map.markBoundary(0, act); // Patch 0

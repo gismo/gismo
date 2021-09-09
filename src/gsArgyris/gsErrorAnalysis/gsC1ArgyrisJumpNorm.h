@@ -35,6 +35,8 @@ public:
     {
         m_value.resize(patchesPtr->interfaces().size());
         m_value.setZero();
+
+        m_sum_value = T(0.0);
     }
 
 
@@ -80,9 +82,9 @@ public:
             const gsGeometry<T> & patch_L = patchesPtr->patch(L);
             const gsGeometry<T> & patch_R = patchesPtr->patch(R);
 
-            const gsAffineFunction<> ifaceMap(patchesPtr->getMapForInterface(iFace, dom_R.size() >= dom_L.size() ? 1 : -1));
+            const gsAffineFunction<> ifaceMap(patchesPtr->getMapForInterface(iFace));
 
-            typename gsBasis<T>::domainIter domIt = dom_R.size() >= dom_L.size() ? dom_R.makeDomainIterator(side_R) : dom_L.makeDomainIterator(side_L);
+            typename gsBasis<T>::domainIter domIt = dom_R.makeDomainIterator(side_R);
             for (; domIt->good(); domIt->next())
             {
                 // Map the Quadrature rule to the element
@@ -90,10 +92,10 @@ public:
                 domItCorner.col(0) = domIt->lowerCorner();
                 domItCorner.col(1) = domIt->upperCorner();
 
-                dom_R.size() >= dom_L.size() ? QuRule_R.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes_R, quWeights) :
-                    QuRule_L.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_L, quWeights);
+                QuRule_R.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_R, quWeights);
 
                 ifaceMap.eval_into(domItCorner,domItCorner);
+
                 /*
                 if (domItCorner(1-side_L.direction(),0) > domItCorner(1-side_L.direction(),1) && dom_R.size() >= dom_L.size()) // integral border switched
                 {
@@ -109,8 +111,7 @@ public:
                 }
                 */
 
-                dom_R.size() >= dom_L.size() ? QuRule_L.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_L, quWeights):
-                    QuRule_R.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_R, quWeights);
+                QuRule_L.mapTo(domItCorner.col(0), domItCorner.col(1), quNodes_L, quWeights);
 
                 quWeights = quWeights.cwiseAbs(); // if at the interface the direction is not the same
 
@@ -125,13 +126,16 @@ public:
                 computeb(side_L, quWeights, value, switch_side);
 
             }
+            m_sum_value += value;
             m_value(numInt) = takeRoot(value);
         }
-
+        m_sum_value = takeRoot(m_sum_value);
     }
 
 
     gsVector<T> value() const { return m_value; }
+
+    real_t value_sum() const { return m_sum_value; }
 
 protected:
 
@@ -236,6 +240,7 @@ protected:
 
 protected:
     gsVector<T> m_value;     // the total value of the norm
+    real_t m_sum_value;
 
 protected:
     gsMatrix<T> f1pders, f2pders; // f2pders only needed if f2param = true

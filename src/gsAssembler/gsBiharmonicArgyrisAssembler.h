@@ -226,7 +226,7 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
             if(kink[1])
                 bdy_interface(1+numIntBdy,0) = matched_dofs1(-2,0);
 
-            map.markBoundary(iter->first(), bdy_interface); // TODO Shift to vertex
+            map.markBoundary(iter->first().patch, bdy_interface); // TODO Shift to vertex
         }
 
 
@@ -244,7 +244,7 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
             bdy_interface.row(1) = matched_dofs1.bottomRows(1);
 
 
-            map.markBoundary(iter->first(), bdy_interface); // TODO Shift to vertex
+            map.markBoundary(iter->first().patch, bdy_interface); // TODO Shift to vertex
         }
 
         map.matchDofs(iter->first().patch, matched_dofs1, iter->second().patch, matched_dofs2);
@@ -281,8 +281,6 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
             {
                 map.matchDofs(patchIndex[i], bdy_cornerContainer[i], patchIndex[0], bdy_cornerContainer[0]);
             }
-
-
 
     }
 

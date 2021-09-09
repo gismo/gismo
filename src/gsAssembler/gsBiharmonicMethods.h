@@ -51,7 +51,9 @@ public:
     virtual T valueL2() const { GISMO_NO_IMPLEMENTATION };
     virtual T valueH1() const { GISMO_NO_IMPLEMENTATION };
     virtual T valueH2() const { GISMO_NO_IMPLEMENTATION };
+    virtual T valueJumpSum() const { GISMO_NO_IMPLEMENTATION };
     virtual gsVector<T> valueJump() const { GISMO_NO_IMPLEMENTATION };
+    virtual gsVector<T> valuePenalty() const { GISMO_NO_IMPLEMENTATION };
 };
 
 template<class T>
@@ -111,12 +113,15 @@ public:
         h1Error = argyrisNorms.valueH1();
         h2Error = argyrisNorms.valueH2();
         jumpError = c1ArgyrisJumpNorm.value();
+        jumpErrorSum = c1ArgyrisJumpNorm.value_sum();
     }
 
     T valueL2() const { return l2Error; }
     T valueH1() const { return h1Error; }
     T valueH2() const { return h2Error; }
+    T valueJumpSum() const { return jumpErrorSum; }
     gsVector<T> valueJump() const { return jumpError; }
+
 
 
 protected:
@@ -137,7 +142,7 @@ protected:
     gsBiharmonicArgyrisAssembler<real_t> *g1BiharmonicAssembler;
 
     gsVector<T> jumpError;
-    T l2Error, h1Error, h2Error;
+    T l2Error, h1Error, h2Error, jumpErrorSum;
 
 }; // class gsBiharmonicArgyris
 
@@ -173,6 +178,11 @@ public:
     {
         biharmonicNitscheAssembler = new gsBiharmonicNitscheAssembler<real_t>(m_mp, m_mb, bcInfo, bcInfo2, source, m_optionList);
         biharmonicNitscheAssembler->assemble();
+
+        // TODO
+        penaltyValue.resize(m_mp.nInterfaces());
+        penaltyValue.setZero();
+        penaltyValue = biharmonicNitscheAssembler->get_valuePenalty();
     }
 
     void constructSolution(gsMatrix<T> & solVector)
@@ -191,12 +201,15 @@ public:
         h1Error = c1NitscheNorms.valueH1();
         h2Error = c1NitscheNorms.valueH2();
         jumpError = c1NitscheJumpNorm.value();
+        jumpErrorSum = c1NitscheJumpNorm.valueSum();
     }
 
     T valueL2() const { return l2Error; }
     T valueH1() const { return h1Error; }
     T valueH2() const { return h2Error; }
+    T valueJumpSum() const { return jumpErrorSum; }
     gsVector<T> valueJump() const { return jumpError; }
+    gsVector<T> valuePenalty() const { return penaltyValue; }
 
 
 protected:
@@ -213,8 +226,8 @@ protected:
 protected:
     gsBiharmonicNitscheAssembler<real_t> *biharmonicNitscheAssembler;
 
-    gsVector<T> jumpError;
-    T l2Error, h1Error, h2Error;
+    gsVector<T> jumpError, penaltyValue;
+    T l2Error, h1Error, h2Error, jumpErrorSum;
 
 }; // class gsBiharmonicNitsche
 

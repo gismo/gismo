@@ -47,6 +47,14 @@ public:
         // p-refine
         for (size_t np = 0; np < m_mp.nPatches(); ++np)
             multiBasis.basis(np).setDegree(m_optionList.getInt("discreteDegree"));
+
+        p_tilde = m_optionList.getInt("gluingDataDegree");//math::max(m_optionList.getInt("discreteDegree") - 1, 2);
+        r_tilde = m_optionList.getInt("gluingDataRegularity");//p_tilde - 1;
+        if (p_tilde == -1 || r_tilde == -1)
+        {
+            p_tilde = math::max(m_optionList.getInt("discreteDegree") - 1, 2);
+            r_tilde = p_tilde - 1;
+        }
     }
 
     gsC1Argyris(gsMultiPatch<T> const & mp,
@@ -54,7 +62,14 @@ public:
                 const gsOptionList & optionList)
             : m_mp(mp), multiBasis(mb), m_optionList(optionList)
     {
+        p_tilde = m_optionList.getInt("gluingDataDegree");//math::max(m_optionList.getInt("discreteDegree") - 1, 2);
+        r_tilde = m_optionList.getInt("gluingDataRegularity");//p_tilde - 1;
 
+        if (p_tilde == -1 || r_tilde == -1)
+        {
+            p_tilde = math::max(m_optionList.getInt("discreteDegree") - 1, 2);
+            r_tilde = p_tilde - 1;
+        }
     }
 
     void createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
@@ -74,6 +89,12 @@ public:
                            gsKnotVector<T> & kv_1, gsKnotVector<T> & kv_2,
                            gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
 
+    void createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
+                              gsKnotVector<T> & kv_1,
+                              gsKnotVector<T> & kv1_result);
+
+    void createLokalVertexSpace(gsTensorBSplineBasis<d,T> & basis_vertex_1, gsTensorBSplineBasis<d,T> & result_1);
+
     void init()
     {
         m_bases.reserve(m_mp.nPatches()); // For each Patch
@@ -83,10 +104,31 @@ public:
             m_bases.push_back(c1ArgyrisBasis);
         }
 
-        // Create inner spline space
+        // Create interior spline space
         for (size_t np = 0; np < m_mp.nPatches(); np++)
         {
             gsTensorBSplineBasis<d, T> basis_inner = dynamic_cast<gsTensorBSplineBasis<d, T> &>(multiBasis.basis(np));
+
+            // Construct special space for r = p - 1:
+            // The first and the last knot (not 0,1) are repeated +1, e.g.
+            // deg 3, r = 2: |||| || | [...] | || ||||
+            index_t r = m_optionList.getInt("discreteRegularity"); // Assume same reg for each direction
+            for (index_t uv = 0; uv < 2; uv++)
+            {
+                if (basis_inner.degree(uv) - r == 1 && !m_optionList.getSwitch("twoPatch"))
+                {
+                    T knot_u = basis_inner.knot(uv,basis_inner.degree(uv)+1);
+                    if (knot_u != 1)
+                        basis_inner.insertKnot(knot_u,uv,1);
+
+                    if (knot_u != 0.5 && knot_u != 1)
+                        basis_inner.insertKnot(1-knot_u,uv,1);
+                }
+            }
+
+            //gsInfo << "basis u " << basis_inner.knots(0).asMatrix() << "\n";
+            //gsInfo << "basis v " << basis_inner.knots(1).asMatrix() << "\n";
+
             m_bases[np].setInnerBasis(basis_inner);
         }
 
@@ -121,12 +163,14 @@ public:
             gsKnotVector<T> kv_plus, kv_minus, kv_gluingData;
             createPlusMinusSpace(kv_1, kv_2, kv_patch_1, kv_patch_2, kv_plus, kv_minus);
 
-            gsBSplineBasis<> basis_plus(kv_plus);
-            gsBSplineBasis<> basis_minus(kv_minus);
+            gsBSplineBasis<> basis_plus(kv_plus); // S(p,r+1,h)
+            gsBSplineBasis<> basis_minus(kv_minus); // S(p-1,r,h)
 
+            //\tilde{p} = max(p-1,2)
+            //\tilde{r} = \tilde{p}-1
             createGluingDataSpace(kv_1, kv_2, kv_patch_1, kv_patch_2, kv_gluingData);
 
-            gsBSplineBasis<> basis_gluingData(kv_gluingData);
+            gsBSplineBasis<> basis_gluingData(kv_gluingData); // S(\tilde{p},\tilde{r},h)
 
             m_bases[patch_1].setBasisPlus(basis_plus, side_1);
             m_bases[patch_2].setBasisPlus(basis_plus, side_2);
@@ -139,7 +183,7 @@ public:
 
             m_bases[patch_1].setBasisGluingData(basis_gluingData, side_1);
             m_bases[patch_2].setBasisGluingData(basis_gluingData, side_2);
-
+/*
             if (m_optionList.getSwitch("info"))
             {
                 gsInfo << "Basis geo 1 : " << basis_geo_1.knots().asMatrix() << "\n";
@@ -149,7 +193,7 @@ public:
 
                 gsInfo << "Basis gluingData : " << basis_gluingData.knots().asMatrix() << "\n";
             }
-
+*/
 
             if (m_optionList.getSwitch("isogeometric"))
             {
@@ -168,9 +212,10 @@ public:
 
                 createLokalEdgeSpace(kv_plus, kv_minus, kv_gluingData, kv_gluingData, kv_patch_1, kv_patch_2, kv_edge_1, kv_edge_2);
                 gsBSplineBasis<> basis_edge(kv_edge_1);
+/*
                 if (m_optionList.getSwitch("info"))
                     gsInfo << "Basis edge : " << basis_edge.knots().asMatrix() << "\n";
-
+*/
                 gsTensorBSplineBasis<d, T> basis_edge_1(dir_1 == 0 ? kv_edge_1 : kv_geo_1, dir_1 == 0 ? kv_geo_1 : kv_edge_1);
                 gsTensorBSplineBasis<d, T> basis_edge_2(dir_2 == 0 ? kv_edge_2 : kv_geo_2, dir_2 == 0 ? kv_geo_2 : kv_edge_2);
 
@@ -215,30 +260,55 @@ public:
 
                 basis_plus = gsBSplineBasis<>(kv_plus);
                 basis_minus = gsBSplineBasis<>(kv_minus);
-            }
+
+                if (basis_geo_1.degree(0) - m_optionList.getInt("discreteRegularity") == 1 && !m_optionList.getSwitch("twoPatch"))
+                {
 /*
-            gsInfo << "basis_plus edge: " << basis_plus << "\n";
-            gsInfo << "basis_minus edge: " << basis_minus << "\n";
-
-            index_t p_tilde_1 = math::max(basis_edge_1.degree(dir_1) - 2, 2);
-            basis_edge_1.degreeElevate(p_tilde_1 - 1);
-
-            index_t r = m_optionList.getInt("discreteRegularity");
-            if (r > 1)
-                basis_edge_1.reduceContinuity(r-1);
+                    T knot_u = basis_edge_1.knot(0,basis_edge_1.degree(0)+1);
+                    if (knot_u != 1)
+                    {
+                        basis_geo_1.insertKnot(knot_u,1); // the first
+                        //basis_geo_1.insertKnot(knot_u+knot_u,1);
+                    }
+                    if (knot_u != 0.5)
+                    {
+                        basis_geo_1.insertKnot(1-knot_u,1); // the last
+                        //basis_geo_1.insertKnot(1-knot_u-knot_u,1);
+                    }
 */
-            //basis_plus = basis_1;
-            //basis_minus = basis_1;
+                    basis_geo_1.reduceContinuity(1);
+                }
+                m_bases[patch_1].setBasisGeo(basis_geo_1, side_1);
 
-            //basis_edge_1.reduceContinuity(1);
-            //gsInfo << "basis boundary: " << basis_edge_1 << "\n";
+                if (m_optionList.getSwitch("simplified"))
+                {
+                    m_bases[patch_1].setEdgeBasis(basis_edge_1, side_1);
 
-            m_bases[patch_1].setEdgeBasis(basis_edge_1, side_1);
+                    m_bases[patch_1].setBasisPlus(basis_plus, side_1);
+                    m_bases[patch_1].setBasisMinus(basis_minus, side_1);
+/*
+                    if (m_optionList.getSwitch("info"))
+                        gsInfo << "Basis boundary: " << basis_edge_1 << "\n";
+*/
+                }
+                else
+                {
+                    gsKnotVector<T> kv_edge_1;
+                    createLokalEdgeSpace(kv_plus, kv_minus, kv_patch_1, kv_edge_1);
 
-            m_bases[patch_1].setBasisPlus(basis_plus, side_1);
-            m_bases[patch_1].setBasisMinus(basis_minus, side_1);
+                    gsKnotVector<T> kv_geo_1 = basis_geo_1.knots();
+                    gsTensorBSplineBasis<d, T> basis_edge_1_temp(dir_1 == 0 ? kv_edge_1 : kv_geo_1, dir_1 == 0 ? kv_geo_1 : kv_edge_1);
 
-            m_bases[patch_1].setBasisGeo(basis_geo_1, side_1);
+                    m_bases[patch_1].setEdgeBasis(basis_edge_1_temp, side_1);
+
+                    m_bases[patch_1].setBasisPlus(basis_plus, side_1);
+                    m_bases[patch_1].setBasisMinus(basis_minus, side_1);
+/*
+                    if (m_optionList.getSwitch("info"))
+                        gsInfo << "Basis boundary: " << basis_edge_1_temp << "\n";
+*/
+                }
+            }
         }
 
         // For loop over the Vertex to construct the spaces
@@ -259,21 +329,29 @@ public:
                 index_t vertex_1 = vertIndex[0];
 
                 gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(patch_1));
-/*
-                index_t p_tilde_1 = math::max(basis_vertex_1.degree(0) - 2, 2);
-                index_t p_tilde_2 = math::max(basis_vertex_1.degree(1) - 2, 2);
 
-                basis_vertex_1.degreeElevate(p_tilde_1 - 1, 0);
-                basis_vertex_1.degreeElevate(p_tilde_2 - 1, 1);
+                if (m_optionList.getSwitch("isogeometric")) {
 
-                index_t r = m_optionList.getInt("discreteRegularity");
-                if (r > 1)
-                    basis_vertex_1.reduceContinuity(r-1);
-*/
+                    m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
+                    m_bases[patch_1].setKindOfVertex(-1, vertex_1);
+                }
+                else
+                {
+                    if (m_optionList.getSwitch("simplified"))
+                    {
+                        m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
+                        m_bases[patch_1].setKindOfVertex(-1, vertex_1);
+                    }
+                    else
+                    {
+                        index_t r = m_optionList.getInt("discreteRegularity");
+                        if (basis_vertex_1.degree(0) - r == 1) // == basis_vertex_1.degree(1)
+                            basis_vertex_1.reduceContinuity(1); // In the case for the max. smoothness
 
-
-                m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
-                m_bases[patch_1].setKindOfVertex(-1, vertex_1);
+                        m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
+                        m_bases[patch_1].setKindOfVertex(-1, vertex_1);
+                    }
+                }
             }
             else if (patchIndex.size() > 1)
             {
@@ -300,11 +378,24 @@ public:
                             gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(
                                     patch_1));
 
-                            index_t p_tilde_1 = math::max(basis_vertex_1.degree(0) - 2, 2);
-                            index_t p_tilde_2 = math::max(basis_vertex_1.degree(1) - 2, 2);
+                            //createLokalVertexSpace(basis_vertex_1, basis_vertex_result);
 
-                            basis_vertex_1.degreeElevate(p_tilde_1 - 1, 0);
-                            basis_vertex_1.degreeElevate(p_tilde_2 - 1, 1);
+                            //index_t p_tilde_1 = math::max(multiBasis.basis(patch_1).degree(0)-1,3);
+                            //index_t p_tilde_2 = math::max(multiBasis.basis(patch_1).degree(1)-1,3);
+
+                            basis_vertex_1.degreeElevate(p_tilde-1,0); // Keep smoothness
+                            basis_vertex_1.degreeElevate(p_tilde-1,1);
+
+                            index_t r = m_optionList.getInt("discreteRegularity");
+                            //if (multiBasis.basis(patch_1).degree(0) - r == 1)
+                            //    basis_vertex_1.reduceContinuity(r-1); // In the case for the max. smoothness
+                            //else if (r > 2)
+                            {
+                                if (r != 1)
+                                    basis_vertex_1.reduceContinuity(1); // bcs of minus space
+                                if (r_tilde < r-1)
+                                    basis_vertex_1.reduceContinuity(r-r_tilde-1);
+                            }
 
                             m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
                             m_bases[patch_1].setKindOfVertex(0, vertex_1);
@@ -331,19 +422,32 @@ public:
                         {
                             gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(multiBasis.basis(patch_1));
 
-                            index_t p_tilde_1 = math::max(basis_vertex_1.degree(0)-2,2);
-                            index_t p_tilde_2 = math::max(basis_vertex_1.degree(1)-2,2);
+                            //index_t p_tilde_1 = math::max(multiBasis.basis(patch_1).degree(0)-1,3);
+                            //index_t p_tilde_2 = math::max(multiBasis.basis(patch_1).degree(1)-1,3);
 
-                            //p_tilde_1 = m_mp.isBoundary(patch_1, side_0) ? 1 : p_tilde_1;
-                            //p_tilde_1 = m_mp.isBoundary(patch_1, side_1) ? 1 : p_tilde_2;
+                            basis_vertex_1.degreeElevate(p_tilde-1,0); // Keep smoothness
+                            basis_vertex_1.degreeElevate(p_tilde-1,1);
 
-                            basis_vertex_1.degreeElevate(p_tilde_1-1,0); // Keep smoothness
-                            basis_vertex_1.degreeElevate(p_tilde_2-1,1);
+                            index_t r = m_optionList.getInt("discreteRegularity");
+                            //if (multiBasis.basis(patch_1).degree(0) - r == 1)
+                            //    basis_vertex_1.reduceContinuity(r-1); // In the case for the max. smoothness
+                            //else if (r > 2)
+                            {
+                                if (r != 1)
+                                    basis_vertex_1.reduceContinuity(1); // bcs of minus space
+                                if (r_tilde < r-1)
+                                    basis_vertex_1.reduceContinuity(r-r_tilde-1);
+                            }
 
-                            //index_t r = m_optionList.getInt("discreteRegularity");
-                            //if (r > 1)
-                            //    basis_vertex_1.reduceContinuity(r-1);
-
+/*
+                            if (m_optionList.getSwitch("info"))
+                            {
+                                gsBSplineBasis<> basis_geo_1 = dynamic_cast<gsBSplineBasis<> &>(basis_vertex_1.component(0));
+                                gsInfo << "Basis vertex 1: " << basis_geo_1.knots().asMatrix() << "\n";
+                                gsBSplineBasis<> basis_geo_2 = dynamic_cast<gsBSplineBasis<> &>(basis_vertex_1.component(1));
+                                gsInfo << "Basis vertex 2: " << basis_geo_2.knots().asMatrix() << "\n";
+                            }
+*/
                             m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
                             m_bases[patch_1].setKindOfVertex(1, vertex_1);
                         }
@@ -368,6 +472,10 @@ public:
         m_system.resize(dim_row, dim_col);
         const index_t nz = 7*dim_row; // TODO
         m_system.reserve(nz);
+
+        if (m_optionList.getSwitch("info"))
+            for (size_t np = 0; np < m_mp.nPatches(); np++)
+               m_bases[np].print_spaces();
 
     }
 
@@ -689,6 +797,10 @@ public:
                 }
             }
 
+            //gsFunctionExpr<> solVal("x",2);
+            //gsFunctionExpr<> solVal("-1*cos(pi*x)*sin(pi*y)",2);
+            gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+            eval_field -= solVal.eval(eval_geo);
 
             /*
             for (size_t numSpaces = 0; numSpaces < m_bases[pp].getBasisG1Container().size(); ++numSpaces)
@@ -785,6 +897,8 @@ protected:
 
     gsSparseMatrix<T> m_system;
 
+    index_t p_tilde, r_tilde;
+
 }; // Class gsC1Argyris
 
 
@@ -796,6 +910,9 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<
     std::vector<real_t> knots_unique_1 = kv1.unique();
     std::vector<real_t> knots_unique_2 = kv2.unique();
 
+    std::vector<index_t> knots_mult_1 = kv1.multiplicities();
+    std::vector<index_t> knots_mult_2 = kv2.multiplicities();
+
     std::vector<real_t> patch_kv_unique_1 = kv1_patch.unique();
     std::vector<index_t> patch_kv_mult_1 = kv1_patch.multiplicities();
 
@@ -805,6 +922,29 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<
     index_t p = math::max(kv1.degree(), kv2.degree());
 
     std::vector<real_t> knot_vector_plus, knot_vector_minus;
+
+    if (knots_unique_1 != knots_unique_2)
+        gsInfo << "NOT IMPLEMENTED YET 1: Plus, Minus space \n";
+
+    if (kv1.degree() != kv2.degree())
+        gsInfo << "NOT IMPLEMENTED YET 2: Plus, Minus space \n";
+
+    // patch_kv_unique_1 should be for now 0, 1
+    if (patch_kv_unique_1[1] != 1)
+        gsInfo << "NOT IMPLEMENTED YET 3: Plus, Minus space \n";
+
+    if (knots_mult_1 != knots_mult_2)
+        gsInfo << "NOT IMPLEMENTED YET 4: Plus, Minus space \n";
+
+    kv1_result = kv1; // == kv2
+    if (p - m_optionList.getInt("discreteRegularity") != 1)
+        kv1_result.reduceMultiplicity(1);
+
+    kv2_result = kv1; // == kv2
+    kv2_result.degreeDecrease(1);
+    if (p - m_optionList.getInt("discreteRegularity") != 1)
+        kv2_result.reduceMultiplicity(1);
+
 /*
  * TODO Add geometry inner knot regularity
  *
@@ -812,7 +952,7 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<
 
     std::vector<real_t>::iterator it3 = patch_kv_unique_1.begin();
     std::vector<real_t>::iterator it4 = patch_kv_unique_2.begin();
-*/
+
     std::vector<real_t>::iterator it2 = knots_unique_2.begin();
     for(std::vector<real_t>::iterator it = knots_unique_1.begin(); it != knots_unique_1.end(); ++it)
     {
@@ -841,11 +981,17 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<
         }
     }
 
+
     // Repeat the first and the last vector p or p-1 times
     kv1_result = gsKnotVector<>(knot_vector_plus);
     kv1_result.degreeIncrease(p);
+    if (kv1.multiplicities()[1] > p-2 && knots_unique_1[1] != 1) // TODO Check
+        kv1_result.increaseMultiplicity(kv1.multiplicities()[1]-2);
     kv2_result = gsKnotVector<>(knot_vector_minus);
     kv2_result.degreeIncrease(p-1);
+    if (kv2.multiplicities()[1] > p-2 && knots_unique_2[1] != 1) // TODO Check
+        kv2_result.increaseMultiplicity(kv2.multiplicities()[1]-2);
+*/
 }
 
 
@@ -861,7 +1007,16 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1,
 
     index_t p = math::max(kv1.degree(), 0);
 
-    std::vector<real_t> knot_vector_plus, knot_vector_minus;
+    kv1_result = kv1;
+    if (p - m_optionList.getInt("discreteRegularity") != 1)
+        kv1_result.reduceMultiplicity(1);
+
+    kv2_result = kv1;
+    kv2_result.degreeDecrease(1);
+    if (p - m_optionList.getInt("discreteRegularity") != 1)
+        kv2_result.reduceMultiplicity(1);
+
+
     /*
     * TODO Add geometry inner knot regularity
     *
@@ -869,7 +1024,8 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1,
 
     std::vector<real_t>::iterator it3 = patch_kv_unique_1.begin();
     std::vector<real_t>::iterator it4 = patch_kv_unique_2.begin();
-    */
+
+    std::vector<real_t> knot_vector_plus, knot_vector_minus;
 
     for(std::vector<real_t>::iterator it = knots_unique_1.begin(); it != knots_unique_1.end(); ++it)
     {
@@ -882,6 +1038,7 @@ void gsC1Argyris<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1,
     kv1_result.degreeIncrease(p);
     kv2_result = gsKnotVector<>(knot_vector_minus);
     kv2_result.degreeIncrease(p-1);
+     */
 }
 
 template<short_t d,class T>
@@ -889,19 +1046,22 @@ void gsC1Argyris<d,T>::createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotVector
                            gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
                            gsKnotVector<T> & kv_result)
 {
-    index_t p_tilde = math::max(math::max(kv1.degree(), kv2.degree())-2,2);
-    //index_t r_tilde = p_tilde - 1;
+    //index_t p_tilde = math::max(math::max(kv1.degree(), kv2.degree())-1,3); // max(p-1,3)
+    //index_t r_tilde = math::max(p_tilde - 2, 1); // C^2 gluing data
 
     std::vector<real_t> knots_unique_1 = kv1.unique();
     std::vector<real_t> knots_unique_2 = kv2.unique();
 
     std::vector<real_t> knot_vector;
 
-/*
- * TODO Add geometry inner knot regularity
- *
- */
+    /*
+     * TODO Add geometry inner knot regularity
+     */
+    if (knots_unique_1 != knots_unique_2)
+        gsInfo << "\n\n ERROR: Interfaces are not matching!!! \n\n";
 
+    knot_vector = knots_unique_1; // = knots_unique_2
+/*
     std::vector<real_t>::iterator it2 = knots_unique_2.begin();
     for(std::vector<real_t>::iterator it = knots_unique_1.begin(); it != knots_unique_1.end(); ++it)
     {
@@ -925,21 +1085,48 @@ void gsC1Argyris<d,T>::createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotVector
             ++it2;
         }
     }
+*/
 
     kv_result = gsKnotVector<>(knot_vector);
     kv_result.degreeIncrease(p_tilde);
+    kv_result.increaseMultiplicity(p_tilde-r_tilde-1);
 } // createGluingDataSpace
 
 
 template<short_t d,class T>
 void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                            gsKnotVector<T> & kv_gD_1, gsKnotVector<T> & kv_gD_2,
-                           gsKnotVector<T> & kv_1, gsKnotVector<T> & kv_2,
+                           gsKnotVector<T> & kv_patch_1, gsKnotVector<T> & kv_patch_2,
                            gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result)
 {
     index_t p_1 = math::max(kv_plus.degree()+kv_gD_1.degree()-1, kv_minus.degree()+kv_gD_1.degree() );
     //index_t p_2 = math::max(kv_plus.degree()+kv_gD_2.degree()-1, kv_minus.degree()+kv_gD_2.degree() ); == p_1
 
+    std::vector<real_t> knots_unique_plus = kv_plus.unique(); // == kv_minus.unique()
+
+    if (knots_unique_plus != kv_minus.unique())
+        gsInfo << "ERROR LOKAL EDGE SPACE \n";
+
+    kv1_result = gsKnotVector<>(knots_unique_plus);
+    kv1_result.degreeIncrease(p_1);
+    if (knots_unique_plus[1] != 1)
+    {
+        index_t r_plus = kv_plus.degree() - kv_plus.multiplicities()[1]; // The same for all
+        index_t r_minus = kv_minus.degree() - kv_minus.multiplicities()[1]; // The same for all
+        index_t r_tilde = kv_gD_1.degree() - kv_gD_1.multiplicities()[1]; // The same for all
+        //gsInfo << "R_tilde " << r_tilde << "\n";
+        //gsInfo << "r_plus " << r_plus << "\n";
+        //gsInfo << "r_minus " << r_minus << "\n";
+
+        index_t r = math::min(r_tilde, math::min(r_plus, r_minus));
+        //gsInfo << "r " << r << "\n";
+
+        kv1_result.increaseMultiplicity(p_1-r-1);
+    }
+    // ==
+    kv2_result = kv1_result;
+
+/*
     index_t p_plus_diff = p_1 - kv_plus.degree();
     index_t p_gD_diff = p_1 - kv_gD_1.degree();
     index_t p_patch_diff = p_1 - kv_1.degree();
@@ -948,6 +1135,7 @@ void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVec
     std::vector<real_t> knots_unique_gD = kv_gD_1.unique();
 
     std::vector<real_t> knots_unique_1 = kv_1.unique();
+
     knots_unique_1.erase(knots_unique_1.begin()); // First
     knots_unique_1.pop_back(); // Last
 
@@ -961,12 +1149,6 @@ void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVec
 
     std::vector<real_t> knot_vector;
 
-/*
- * TODO Add geometry inner knot regularity
- *
- */
-
-
     index_t i_plus = 0;
     index_t i_1 = 1;
     std::vector<real_t>::iterator it_1 = knots_unique_1.begin();
@@ -975,7 +1157,7 @@ void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVec
         if (*it_1 == *it && it_1 != knots_unique_1.end())
         {
             index_t i_temp = 0;
-            while(i_temp < math::max(patch_kv_mult_1[i_1]+1+p_patch_diff, math::max(patch_kv_mult_plus[i_plus]+p_plus_diff, patch_kv_mult_gD[i_plus]+p_gD_diff)))
+            while(i_temp < math::max(patch_kv_mult_1[i_1]+p_patch_diff, math::max(patch_kv_mult_plus[i_plus]+p_plus_diff, patch_kv_mult_gD[i_plus]+p_gD_diff)))
             {
                 knot_vector.push_back(*it);
                 ++i_temp;
@@ -998,9 +1180,60 @@ void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVec
 
     }
 
+
     kv1_result = gsKnotVector<>(knot_vector);
     // ==
     kv2_result = gsKnotVector<>(knot_vector);
+*/
 } // createLokalEdgeSpace
+
+    template<short_t d,class T>
+    void gsC1Argyris<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
+                                                gsKnotVector<T> & kv_patch_1,
+                                                gsKnotVector<T> & kv1_result)
+    {
+        index_t p_1 = math::max(kv_plus.degree(), kv_minus.degree() );
+
+        std::vector<real_t> knots_unique_plus = kv_plus.unique(); // == kv_minus.unique()
+
+        if (knots_unique_plus != kv_minus.unique())
+            gsInfo << "ERROR LOKAL EDGE SPACE \n";
+
+        kv1_result = gsKnotVector<>(knots_unique_plus);
+        kv1_result.degreeIncrease(p_1);
+        if (knots_unique_plus[1] != 1)
+        {
+            index_t r_plus = kv_plus.degree() - kv_plus.multiplicities()[1]; // The same for all
+            index_t r_minus = kv_minus.degree() - kv_minus.multiplicities()[1]; // The same for all
+
+            index_t r = math::min(r_plus, r_minus);
+
+            kv1_result.increaseMultiplicity(p_1-r-1);
+        }
+    } // createLokalEdgeSpace
+
+    template<short_t d,class T>
+    void gsC1Argyris<d,T>::createLokalVertexSpace(gsTensorBSplineBasis<d, T> & basis_vertex, gsTensorBSplineBasis<d, T> & basis_vertex_result)
+    {
+        index_t p_1 = basis_vertex.degree(0); // == basis_vertex.degree(1)
+        //index_t p_tilde = math::max(p_1 - 1, 3); // TODO more general
+
+        index_t r = m_optionList.getInt("discreteRegularity");
+
+        if (basis_vertex.degree(0) != basis_vertex.degree(1))
+            gsInfo << "ERROR LOKAL Vertex SPACE \n";
+
+        basis_vertex_result = basis_vertex;
+
+        //gsInfo << "basis u " << basis_vertex_result.knots(0).asMatrix() << "\n";
+        //gsInfo << "basis v " << basis_vertex_result.knots(1).asMatrix() << "\n";
+
+        basis_vertex_result.degreeElevate(p_tilde, 0); // p + \tilde{p} - 1
+        basis_vertex_result.degreeElevate(p_tilde, 1); // p + \tilde{p} - 1
+        basis_vertex_result.reduceContinuity(r-1);
+
+
+
+    } // createLokalVertexSpace
 
 } // Namespace gismo

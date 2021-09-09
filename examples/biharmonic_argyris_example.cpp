@@ -33,9 +33,15 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot       = false;
+    bool plotSol    = false;
     bool last       = false;
     index_t discrete_p = 3; // Polynomial degree of the discrete space
     index_t discrete_r = 1; // Regularity of the discrete space
+
+    // If no gluing data is chosen, then gluingData_p = discrete_p - 1
+    // and gluingData_r = gluingData_p - 1
+    index_t gluingData_p = -1; // Polynomial degree of the discrete space
+    index_t gluingData_r = -1; // Regularity of the discrete space
 
     index_t numRefine = 0; // Number of loops = refinement steps
 
@@ -58,6 +64,9 @@ int main(int argc, char *argv[])
     bool twoPatch = false;
     bool simplified = false;
 
+    // Example:
+    // make -j8 biharmonic_argyris_example && ./bin/biharmonic_argyris_example -g 1012 -p 3 -r 2 -l 4 --simplified
+    //
     gsCmdLine cmd("Solving biharmonic equation with Argyris space.");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
     cmd.addInt( "g", "geometry", "Which geometry",  geometry );
@@ -67,6 +76,12 @@ int main(int argc, char *argv[])
                 "Polynomial degree of the discrete space", discrete_p );
     cmd.addInt( "r", "discreteRegularity",
                 "Regularity of the discrete space",  discrete_r );
+
+    // For the gluing data space
+    cmd.addInt( "P", "gluingDataDegree",
+                "Polynomial degree of the gluing data space", gluingData_p );
+    cmd.addInt( "R", "gluingDataRegularity",
+                "Regularity of the gluing data space",  gluingData_r );
 
     // For computing the convergence rates
     cmd.addInt( "l", "loop",
@@ -86,6 +101,7 @@ int main(int argc, char *argv[])
     // Output features
     cmd.addSwitch("latex","Print the rate and error latex-ready",latex);
     cmd.addSwitch("plot", "Plotting the results!",plot);
+    cmd.addSwitch("plotSol", "Only plotting the (discrete) solution!",plotSol);
     cmd.addSwitch("last", "Last case only!",last);
     cmd.addSwitch( "info", "Print information", info );
     cmd.addSwitch( "csv", "Save the output to a csv file", csv );
@@ -95,6 +111,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     //! [Exact solution]
+
     gsFunctionExpr<> source("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> laplace("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -112,6 +129,15 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> sol2der("0",
                              "0",
                              "0", 2);
+
+    gsFunctionExpr<> source  ("-4*pi*pi*pi*pi*cos(pi*x)*sin(pi*y)",2);
+    gsFunctionExpr<> laplace ("2*pi*pi*cos(pi*x)*sin(pi*y)",2);
+    gsFunctionExpr<> solVal("-1*cos(pi*x)*sin(pi*y)",2);
+    gsFunctionExpr<>sol1der ("pi*sin(pi*x)*sin(pi*y)",
+                             "-1*pi*cos(pi*x)*cos(pi*y)",2);
+    gsFunctionExpr<>sol2der ("pi^2*cos(pi*x)*sin(pi*y)",
+                             "pi^2*cos(pi*x)*sin(pi*y)",
+                             "pi^2*cos(pi*x)*sin(pi*y)", 2);
 */
     gsFunctionWithDerivatives<real_t> solution(solVal, sol1der, sol2der);
 
@@ -214,6 +240,7 @@ int main(int argc, char *argv[])
     //! [Initialise the discrete space]
     // TODO
     mb = gsMultiBasis<>(mp);
+
     gsC1Argyris<2, real_t> c1Argyris(mp, optionList);
     gsMappedBasis<2,real_t> mappedBasis;
     /*
@@ -236,7 +263,7 @@ int main(int argc, char *argv[])
 
     //! [Solver loop]
     gsMatrix<> jumperr(numRefine+1, mp.nInterfaces()), jumperrRate(numRefine+1, mp.nInterfaces());
-    gsMatrix<> normerr(numRefine+1, 8); // 8 == 3 Norms + 3 Rates + h + dofs
+    gsMatrix<> normerr(numRefine+1, 10); // 8 == 4 Norms + 4 Rates + h + dofs
     gsMatrix<> time_mat(numRefine+1, 4);
     normerr.setZero(); jumperrRate.setZero();
 
@@ -254,13 +281,13 @@ int main(int argc, char *argv[])
 
         if (plot) {
             gsInfo << "Plot start \n";
-            c1Argyris.writeParaviewSinglePatch(0, "inner");
-            c1Argyris.writeParaviewSinglePatch(0, "edge");
-            c1Argyris.writeParaviewSinglePatch(0, "vertex");
-
             c1Argyris.writeParaviewSinglePatch(1, "inner");
             c1Argyris.writeParaviewSinglePatch(1, "edge");
             c1Argyris.writeParaviewSinglePatch(1, "vertex");
+
+            c1Argyris.writeParaviewSinglePatch(0, "inner");
+            c1Argyris.writeParaviewSinglePatch(0, "edge");
+            c1Argyris.writeParaviewSinglePatch(0, "vertex");
             gsInfo << "Plot end \n";
         }
 
@@ -281,6 +308,7 @@ int main(int argc, char *argv[])
 
         time.restart();
         gsSparseSolver<real_t>::CGDiagonal solver;
+        //gsSparseSolver<real_t>::BiCGSTABDiagonal solver;
         solver.compute(biharmonicArgyrisAssembler.matrix());
         gsMatrix<real_t> solVector= solver.solve(biharmonicArgyrisAssembler.rhs());
         time_mat(l, 2) = time.stop();
@@ -309,6 +337,7 @@ int main(int argc, char *argv[])
         normerr(l,4) = math::sqrt(argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));
         normerr(l,6) = math::sqrt(argyrisNorms.valueH2() * argyrisNorms.valueH2() +
                 argyrisNorms.valueH1() * argyrisNorms.valueH1() + normerr(l,2) * normerr(l,2));
+        normerr(l, 8) = c1ArgyrisJumpNorm.value_sum();
         jumperr.row(l) = c1ArgyrisJumpNorm.value();
         gsInfo<< ". " <<std::flush;// Error computations done
 
@@ -323,7 +352,8 @@ int main(int argc, char *argv[])
     gsInfo<< "\n\nL2 error: "<<std::scientific<<std::setprecision(3)<<normerr.col(2).transpose()<<"\n";
     gsInfo<< "H1 error: "<<std::scientific<<normerr.col(4).transpose()<<"\n";
     gsInfo<< "H2 error: "<<std::scientific<<normerr.col(6).transpose()<<"\n";
-    gsInfo<< "Jump error: "<<std::scientific<<jumperr.transpose()<<"\n";
+    gsInfo<< "Jump error: "<<std::scientific<<normerr.col(8).transpose()<<"\n";
+    gsInfo<< "Jump error single: \n"<<std::scientific<<jumperr.transpose()<<"\n";
 
     if (numRefine>0)
     {
@@ -334,6 +364,8 @@ int main(int argc, char *argv[])
                 normerr.col(4).tail(numRefine).array() ).log() / std::log(2.0); // H1
         normerr.block(1, 7, numRefine, 1)  = ( normerr.col(6).head(numRefine).array() /
                 normerr.col(6).tail(numRefine).array() ).log() / std::log(2.0); // H2
+        normerr.block(1, 9, numRefine, 1)  = ( normerr.col(8).head(numRefine).array() /
+               normerr.col(8).tail(numRefine).array() ).log() / std::log(2.0); // H2
 
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               << normerr.col(3).transpose() <<"\n";
@@ -341,6 +373,8 @@ int main(int argc, char *argv[])
               << normerr.col(5).transpose() <<"\n";
         gsInfo<<   "EoC (H2): "<< std::fixed<<std::setprecision(2)
               << normerr.col(7).transpose() <<"\n";
+        gsInfo<<   "EoC (Jump): "<< std::fixed<<std::setprecision(2)
+              << normerr.col(9).transpose() <<"\n";
 
         for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
         {
@@ -355,7 +389,7 @@ int main(int argc, char *argv[])
     //! [Error and convergence rates]
 
     //! [Export visualization in ParaView]
-    if (plot)
+    if (plotSol || plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
         c1Argyris.plotParaview("G1Biharmonic",10000);
@@ -376,6 +410,8 @@ int main(int argc, char *argv[])
         colNames.push_back("Rate");
         colNames.push_back("H2");
         colNames.push_back("Rate");
+        colNames.push_back("Jump");
+        colNames.push_back("Rate");
 
         for (size_t numInt = 0; numInt < mp.interfaces().size(); numInt++ )
         {
@@ -392,12 +428,14 @@ int main(int argc, char *argv[])
         for(index_t i = 0; i < argc; i++)
             fullname += (std::string) argv[i] + " ";
 
-        std::string name = "-g" + std::to_string(geometry) + "--" + (isogeometric ? "isogeometric" : "nonisogeometric")
-                + "--" + (interpolation ? "interpolation" : "projection") +
-                (simplified ? "--simplified" : "") +
-                "-p" + std::to_string(discrete_p) +
-                "-r" + std::to_string(discrete_r) +
-                "-l" + std::to_string(numRefine);
+        std::string name = "-g" + std::to_string(geometry)
+                           + "--" + "argyris"
+                           + "--" + (isogeometric ? "isogeometric" : "nonisogeometric")
+                           + "--" + (interpolation ? "interpolation" : "projection") +
+                           (simplified ? "--simplified" : "") +
+                           "-p" + std::to_string(discrete_p) +
+                           "-r" + std::to_string(discrete_r) +
+                           "-l" + std::to_string(numRefine);
 
         std::string path = "../../gismo_results/results/g" + std::to_string(geometry);
 
@@ -422,7 +460,7 @@ int main(int argc, char *argv[])
         std::string command = "mkdir " + path;
         system(command.c_str());
 
-        c1ArgyrisIO.saveMesh(path, mp, mb, 100);
+        c1ArgyrisIO.saveMesh(path, mp, mb, 50);
     }
     //! [Save mesh to csv file]
 
@@ -434,7 +472,7 @@ int main(int argc, char *argv[])
         std::string command = "mkdir " + path;
         system(command.c_str());
 
-        c1ArgyrisIO.saveSolution(path, mp, mb, solVal, 50);
+        c1ArgyrisIO.saveSolution(path, mp, mb, solVal, 25);
     }
     //! [Save solution to csv file]
 

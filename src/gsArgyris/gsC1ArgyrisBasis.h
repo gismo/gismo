@@ -39,6 +39,7 @@ public:
         twoPatch = optionList.getSwitch("twoPatch");
         simplified = optionList.getSwitch("simplified");
 
+        // 9 Subspaces for the single patch
         basisG1Container.resize(9);
 
         // For each side:
@@ -62,6 +63,8 @@ public:
 
         // For boundary
         numDofsVertex.resize(4);
+        for (size_t i = 0; i<numDofsVertex.size(); i++)
+            numDofsVertex[i] = 1; // to get for boundary vertex == 1
     }
 
     static uPtr make(   const gsC1ArgyrisBasis& other)
@@ -71,16 +74,21 @@ public:
 
 
 public:
-    // [0] : inner, [1] : west, [2] : east, [3] : south, [4] : north,
-    // [5] : southwest, [6] : southeast, [7] : northwest, [8] : northeast
+    // basisG1Container:
+    // - Interior space: [0] : inner,
+    // - Edge spaces:    [1] : west, [2] : east, [3] : south, [4] : north,
+    // - Vertex spaces:  [5] : southwest, [6] : southeast, [7] : northwest, [8] : northeast
     void setInnerBasis(gsTensorBSplineBasis<d, T> & innerBasis) { basisG1Container[0] = innerBasis; }
     gsTensorBSplineBasis<d, T> & getInnerBasis() { return basisG1Container[0]; }
 
+    // side index: 1 == west, 2 == east, 3 == south, 4 == north
     void setEdgeBasis(gsTensorBSplineBasis<d, T> & edgeBasis, index_t side) { basisG1Container[side] = edgeBasis; }
     gsTensorBSplineBasis<d, T> & getEdgeBasis(index_t side) { return basisG1Container[side]; }
 
+    // corner index: 1 == sw, 2 == se, 3 == nw, 4 == ne
     void setVertexBasis(gsTensorBSplineBasis<d, T> & vertexBasis, index_t corner) { basisG1Container[4+corner] = vertexBasis; }
     gsTensorBSplineBasis<d, T> & getVertexBasis(index_t corner) { return basisG1Container[4+corner]; }
+    // basisG1Container END
 
     void setBasisPlus(gsBSplineBasis<> & basisPlus, index_t side) { basisPlusContainer[side-1] = basisPlus; }
     gsBSplineBasis<> & getBasisPlus(index_t side) { return basisPlusContainer[side-1]; }
@@ -98,6 +106,83 @@ public:
     std::vector<index_t> & getRowContainer() { return rowContainer; }
     std::vector<index_t> & getColContainer() { return colContainer; }
 
+    void print_spaces()
+    {
+        // Some tests:
+        for (index_t i = 0; i < 9; i++)
+            if(basisG1Container[i].getMinCellLength() != basisG1Container[i].getMaxCellLength())
+                gsInfo << "Different mesh-sizes is not implemented! \n";
+
+
+        gsInfo << "-------------------------- Spaces for patch " << m_patchID << " --------------------------\n";
+        gsInfo << "Interior space: S_1(" << basisG1Container[0].degree(0) << ", [";
+        std::vector<index_t> kv_mult = basisG1Container[0].knots(0).multiplicities();
+        for (size_t j = 1; j < kv_mult.size()-1; j++)
+            gsInfo << kv_mult[j] << " ";
+        gsInfo << "], " << basisG1Container[0].getMinCellLength() <<") ";
+        gsInfo << "x S_2(" << basisG1Container[0].degree(1) << ", [";
+        std::vector<index_t> kv_mult2 = basisG1Container[0].knots(1).multiplicities();
+        for (size_t j = 1; j < kv_mult2.size()-1; j++)
+            gsInfo << kv_mult2[j] << " ";
+        gsInfo << "], " << basisG1Container[0].getMinCellLength() <<")\n";
+        gsInfo << "\n------ Edge space:\n";
+        for (index_t i = 1; i < 5; i++)
+        {
+            gsInfo << (kindOfEdge[i-1] ? "Interface-edge" : "Boundary-edge") << " space: S_1(" << basisG1Container[i].degree(0) << ", [";
+            std::vector<index_t> kv_mult = basisG1Container[i].knots(0).multiplicities();
+            for (size_t j = 1; j < kv_mult.size()-1; j++)
+                gsInfo << kv_mult[j] << " ";
+            gsInfo << "], " << basisG1Container[i].getMinCellLength() <<") ";
+            gsInfo << "x S_2(" << basisG1Container[i].degree(1) << ", [";
+            std::vector<index_t> kv_mult2 = basisG1Container[i].knots(1).multiplicities();
+            for (size_t j = 1; j < kv_mult2.size()-1; j++)
+                gsInfo << kv_mult2[j] << " ";
+            gsInfo << "], " << basisG1Container[i].getMinCellLength() <<")\n";
+        }
+        gsInfo << "\n------ Vertex space:\n";
+        for (index_t i = 5; i < 9; i++)
+        {
+            gsInfo << (kindOfVertex[i-5] == -1 ? "Boundary-vertex" : (kindOfVertex[i-5] == 0 ? "Internal-vertex" : "Interface-vertex"))
+                << " space: S_1(" << basisG1Container[i].degree(0) << ", [";
+            std::vector<index_t> kv_mult = basisG1Container[i].knots(0).multiplicities();
+            for (size_t j = 1; j < kv_mult.size()-1; j++)
+                gsInfo << kv_mult[j] << " ";
+            gsInfo << "], " << basisG1Container[i].getMinCellLength() <<") ";
+            gsInfo << "x S_2(" << basisG1Container[i].degree(1) << ", [";
+            std::vector<index_t> kv_mult2 = basisG1Container[i].knots(1).multiplicities();
+            for (size_t j = 1; j < kv_mult2.size()-1; j++)
+                gsInfo << kv_mult2[j] << " ";
+            gsInfo << "], " << basisG1Container[i].getMinCellLength() <<")\n";
+        }
+        gsInfo << "\n------ Plus/Minus space:\n";
+        for (index_t i = 0; i < 4; i++)
+        {
+            gsInfo << "Plus space: S_1(" << basisPlusContainer[i].degree() << ", [";
+            std::vector<index_t> kv_mult = basisPlusContainer[i].knots().multiplicities();
+            for (size_t j = 1; j < kv_mult.size()-1; j++)
+                gsInfo << kv_mult[j] << " ";
+            gsInfo << "], " << basisPlusContainer[i].getMinCellLength() <<") ";
+            gsInfo << "Minus space: S_1(" << basisMinusContainer[i].degree() << ", [";
+            std::vector<index_t> kv_mult2 = basisMinusContainer[i].knots().multiplicities();
+            for (size_t j = 1; j < kv_mult2.size()-1; j++)
+                gsInfo << kv_mult2[j] << " ";
+            gsInfo << "], " << basisMinusContainer[i].getMinCellLength() <<")\n";
+        }
+        gsInfo << "\n------ Gluing data/Geo space:\n";
+        for (index_t i = 0; i < 4; i++)
+        {
+            gsInfo << "Gluing data space: S_1(" << basisGluingDataContainer[i].degree() << ", [";
+            std::vector<index_t> kv_mult = basisGluingDataContainer[i].knots().multiplicities();
+            for (size_t j = 1; j < kv_mult.size()-1; j++)
+                gsInfo << kv_mult[j] << " ";
+            gsInfo << "], " << basisGluingDataContainer[i].getMinCellLength() <<") ";
+            gsInfo << "Geo space: S_1(" << basisGeoContainer[i].degree() << ", [";
+            std::vector<index_t> kv_mult2 = basisGeoContainer[i].knots().multiplicities();
+            for (size_t j = 1; j < kv_mult2.size()-1; j++)
+                gsInfo << kv_mult2[j] << " ";
+            gsInfo << "], " << basisGeoContainer[i].getMinCellLength() <<")\n";
+        }
+    }
 
     // Kind of edge
     // true == interface
@@ -152,14 +237,18 @@ public:
                 colContainer[i] = basisG1Container[i].size();
 
         // Inner basis functions
-        rowContainer[0] = basisG1Container[0].size();
-        index_t dim_u = basisG1Container[0].component(0).size();
-        index_t dim_v = basisG1Container[0].component(1).size();
-        rowContainer[0] = (dim_u - 4)*(dim_v - 4);
+        {
+            index_t dim_u = basisG1Container[0].component(0).size();
+            index_t dim_v = basisG1Container[0].component(1).size();
+            rowContainer[0] = (dim_u - 4) * (dim_v - 4);
+        }
 
         // Interface basis functions
         for (index_t i = 0; i<4; ++i)
         {
+            index_t dim_u = basisG1Container[i+1].component(0).size();
+            index_t dim_v = basisG1Container[i+1].component(1).size();
+
             if (m_mp.isBoundary(m_patchID,i+1)) // +1 of side index
             {
                 if (twoPatch)
@@ -214,6 +303,8 @@ public:
 
     }
 
+    index_t getPatchID() const { return m_patchID; }
+
     index_t cols(index_t side = 0) const { return colContainer[side]; }
 
     index_t rows(index_t side = 0) const { return rowContainer[side]; }
@@ -261,7 +352,7 @@ public:
                 index_t bdy_shift = twoPatch ? 4 : 6;
                 if (!kindOfEdge[side_id - 1])
                     if (simplified)
-                        num = basisG1Container[0].component(side_id < 3 ? 1 : 0).size() - bdy_shift; // Boundary
+                        num = basisG1Container[side_id].component(side_id < 3 ? 1 : 0).size() - bdy_shift; // Boundary
                     else
                         num = basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
                 else

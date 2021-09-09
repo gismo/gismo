@@ -206,6 +206,7 @@ namespace gismo
 
     protected:
 
+        gsVector<> m_valuePenalty;
 
         // Neumann function
         boxSide side1;

@@ -503,6 +503,34 @@ public: /* Element visitors */
         }
     }
 
+    /// @brief Iterates over all elements of interfaces and
+    /// applies the \a InterfaceVisitor
+    template<class InterfaceVisitor>
+    void pushInterface(gsVector<> & penalty)
+    {
+        InterfaceVisitor visitor(*m_pde_ptr);
+
+        const gsMultiPatch<T> & mp = m_pde_ptr->domain();
+
+        penalty.resize(mp.nInterfaces());
+        penalty.setZero();
+        index_t i = 0;
+        for ( typename gsMultiPatch<T>::const_iiterator
+                      it = mp.iBegin(); it != mp.iEnd(); ++it, ++i )
+        {
+            const boundaryInterface & iFace = //recover master elemen
+                    ( m_bases[0][it->first() .patch].numElements(it->first() .side() ) <
+                      m_bases[0][it->second().patch].numElements(it->second().side() ) ?
+                      it->getInverse() : *it );
+
+            this->apply(visitor, iFace);
+
+            T h1 = m_bases[0][it->first() .patch].getMinCellLength();
+            T h2 = m_bases[0][it->second() .patch].getMinCellLength();
+            T mu = m_options.getReal("mu");
+            penalty[i] = mu * 2*(1./h1 + 1./h2);
+        }
+    }
 
 public:  /* Dirichlet degrees of freedom computation */
 

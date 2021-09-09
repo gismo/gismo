@@ -87,10 +87,23 @@ void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t glob
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
     gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGluingData(globalSide);
 
-    gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList);
+    gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList,
+                                                             m_auxPatches[patchID].getArygrisBasisRotated().getPatchID());
     alphaSContainer[dir] = approxGluingDataAssembler.getAlphaS();
     betaSContainer[dir] = approxGluingDataAssembler.getBetaS();
 /*
+    if (m_auxPatches.size() == 1)
+        gsInfo << m_auxPatches[patchID].getArygrisBasisRotated().getPatchID() << "\n";
+
+    gsMatrix<> points(1,6);
+    points << 0, 0.2, 0.4, 0.6, 0.8, 1;
+    gsInfo << "Beta S " << approxGluingDataAssembler.getBetaS().eval(points) << "\n";
+    gsInfo << "Alpha " << approxGluingDataAssembler.getAlphaS().eval(points) << "\n";
+
+    gsMatrix<> ones = points;
+    ones.setOnes();
+    gsInfo << "Beta " << -29403.0/20000.0 * ones + 29403.0*points/10000.0 - 29403.0/20000.0 * points.cwiseProduct(points) << "\n";
+
     if (patchID == 0)
         gsWriteParaview(approxGluingDataAssembler.getAlphaS(), "alpha_R", 1000);
     if (patchID == 1)

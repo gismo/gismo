@@ -45,7 +45,8 @@ public:
                          gsBasis<T>      & basis,
                          gsMatrix<T>     & quNodes,
                          index_t m_uv,
-                         gsOptionList & optionList)
+                         gsOptionList & optionList,
+                         index_t patchID)
     {
         md.points = quNodes;
 
@@ -87,6 +88,22 @@ public:
             uv(0,i) = - gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
         }
         rhsVals_beta = uv.row(0);
+
+        if (optionList.getInt("geometry") == 1501)
+        {
+            gsMatrix<> ones(md.points.rows(), md.points.cols());
+            ones.setOnes();
+            if (patchID == 0)
+            {
+                rhsVals_alpha = +2079.0/200.0 * ones - 279.0/200.0 * md.points;
+                rhsVals_beta = + 99.0/200.0 * ones - 99.0/200.0 * md.points;
+            }
+            else if (patchID == 1)
+            {
+                rhsVals_alpha = + 297.0/40.0 * ones + 63.0/40.0 * md.points;
+                rhsVals_beta = - 99.0/200.0 * ones + 99.0/200.0 * md.points;
+            }
+        }
 
         // Initialize local matrix/rhs
         localMat.setZero(numActive, numActive      );
