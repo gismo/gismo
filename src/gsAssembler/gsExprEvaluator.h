@@ -361,7 +361,7 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
 #       ifdef _OPENMP
         if ( storeElWise )
         {
-            c = patch_cnt + tid*nt;
+            c = patch_cnt + tid;
             patch_cnt += domIt->numElements();// a bit costy
         }
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
@@ -382,7 +382,14 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
                 _op::acc(_arg.val().eval(k), quWeights[k], elVal);
 
             if ( storeElWise )
+            {
+#               ifdef _OPENMP
+                m_elWise[c] = elVal;
+                c += nt;
+#               else
                 m_elWise[c++] = elVal;
+#               endif
+            }
 
 #           pragma omp critical (_op_acc)
             _op::acc(elVal, 1, m_value);
