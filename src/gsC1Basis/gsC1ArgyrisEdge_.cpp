@@ -13,8 +13,8 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsArgyris/gsC1ArgyrisEdge.h>
-#include <gsArgyris/gsC1ArgyrisEdge.hpp>
+#include <gsC1Basis/gsC1ArgyrisEdge.h>
+#include <gsC1Basis/gsC1ArgyrisEdge.hpp>
 
 namespace gismo
 {

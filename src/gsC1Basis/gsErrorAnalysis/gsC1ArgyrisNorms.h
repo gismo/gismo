@@ -7,7 +7,7 @@
     Author(s): A. Mantzaflaris & P. Weinmueller
 */
 
-#include <gsArgyris/gsErrorAnalysis/gsC1NitscheNormsVisitor.h>
+#include <gsC1Basis/gsErrorAnalysis/gsC1ArgyrisNormsVisitor.h>
 
 
 #pragma once
@@ -20,16 +20,16 @@ namespace gismo
  *
  * \ingroup Assembler
 */
-    template <class T, class Visitor = gsC1NitscheNormsVisitor<T> >
-    class gsC1NitscheNorms
+    template <class T, class Visitor = gsC1ArgyrisNormsVisitor<T> >
+    class gsC1ArgyrisNorms
     {
 
     public:
 
-        gsC1NitscheNorms(const gsMultiPatch<T> & multiPatch,
-                         const gsMultiPatch<T> & discretSolution,
+        gsC1ArgyrisNorms(const gsMultiPatch<T> & multiPatch,
+                         const gsMappedBasis<2, T> & multiBasis,
                          const gsFunctionWithDerivatives<T> &exactSolution)
-                : patchesPtr( &multiPatch ), discretSol( &discretSolution ), exactSol(exactSolution)
+                : patchesPtr( &multiPatch ), basisPtr( &multiBasis ), exactSol(exactSolution)
         {
         }
 
@@ -72,7 +72,7 @@ namespace gismo
                     //const gsFunction<T> & func2p = exactSol->function(pn);
 
                     // Obtain an integration domain
-                    const gsBasis<T> & dom = discretSol->basis(pn);
+                    const gsBasis<T> & dom = basisPtr->getBase(pn);
 
                     // Initialize visitor
                     visitor.initialize(dom, QuRule, evFlags);
@@ -96,7 +96,7 @@ namespace gismo
                         QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                         // Evaluate on quadrature points
-                        visitor.evaluate(patch, discretSol, exactSol, quNodes);
+                        visitor.evaluate(patch, basisPtr, exactSol, quNodes);
 
                         // Accumulate value from the current element (squared)
                         T temp = 0.0;
@@ -133,7 +133,7 @@ namespace gismo
 
         const gsMultiPatch<T> * patchesPtr;
 
-        const gsMultiPatch<T> * discretSol;
+        const gsMappedBasis<2, T> * basisPtr;
 
         const gsFunctionWithDerivatives<T> & exactSol;
 

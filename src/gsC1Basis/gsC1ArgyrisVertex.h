@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
-#include <gsArgyris/gsC1ArgyrisVertexBasisProjection.h>
+#include <gsC1Basis/gsC1ArgyrisAuxiliaryPatch.h>
+#include <gsC1Basis/gsC1ArgyrisVertexBasisProjection.h>
 
 
 

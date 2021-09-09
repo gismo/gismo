@@ -13,7 +13,7 @@
 
 #pragma once
 
-# include <gsG1Basis/gsG1MultiBasis.h>
+# include <gsC1BasisDirect/gsG1MultiBasis.h>
 
 namespace gismo
 {

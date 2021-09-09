@@ -13,11 +13,11 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1ArgyrisBasis.h>
-#include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
+#include <gsC1Basis/gsC1ArgyrisBasis.h>
+#include <gsC1Basis/gsC1ArgyrisAuxiliaryPatch.h>
 
-#include <gsArgyris/gsGluingData/gsApproxGluingData.h>
-#include <gsArgyris/gsC1ArgyrisEdgeBasisProjection.h>
+#include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
+#include <gsC1Basis/gsC1ArgyrisEdgeBasisProjection.h>
 
 namespace gismo
 {
@@ -114,8 +114,6 @@ public:
             }
             collection.save();
         }
-
-
     }
 
     gsC1ArgyrisEdge(gsMultiPatch<T> const & mp,

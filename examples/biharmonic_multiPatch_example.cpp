@@ -19,7 +19,7 @@
 
 #include <gsAssembler/gsBiharmonicMethods.h>
 
-#include <gsArgyris/gsC1ArgyrisIO.h>
+#include <gsC1Basis/gsC1ArgyrisIO.h>
 
 #include <boost/filesystem.hpp>
 

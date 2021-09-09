@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1ArgyrisVertexBasisProjectionVisitor.h>
+#include <gsC1Basis/gsC1ArgyrisVertexBasisProjectionVisitor.h>
 
 
 namespace gismo

@@ -32,7 +32,7 @@ public:
 
     gsC1ArgyrisBasis(gsMultiPatch<T> const & mp,
                 const index_t & patchID,
-                const gsOptionList & optionList)
+                gsOptionList & optionList)
                 : m_mp(mp), m_patchID(patchID)
     {
         info = optionList.getSwitch("info");
@@ -341,6 +341,7 @@ public:
         return col_index;
     }
 
+    // TODO REALLY BAD IMPLEMENTATION: NEED A HUGE NEW IMPLEMENTATION
     gsMatrix<index_t> boundaryOffset(boxSide const & side , index_t offset = 0) const
     {
         if (side.index() < 5) // Edge

@@ -23,7 +23,7 @@
 #include <gsAssembler/gsVisitorLaplaceBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
 
-#include <gsArgyris/gsC1ArgyrisBasis.h>
+#include <gsC1Basis/gsC1ArgyrisBasis.h>
 
 namespace gismo
 {

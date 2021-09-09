@@ -14,8 +14,8 @@
 #pragma once
 
 
-#include <gsArgyris/gsGluingData/gsApproxGluingData.h>
-#include <gsArgyris/gsC1ArgyrisEdgeBasisProjectionVisitor.h>
+#include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
+#include <gsC1Basis/gsC1ArgyrisEdgeBasisProjectionVisitor.h>
 
 
 

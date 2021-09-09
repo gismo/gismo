@@ -13,12 +13,12 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1ArgyrisEdge.h>
+#include <gsC1Basis/gsC1ArgyrisEdge.h>
 
-#include <gsArgyris/gsC1ArgyrisAuxiliaryPatch.h>
+#include <gsC1Basis/gsC1ArgyrisAuxiliaryPatch.h>
 
-#include <gsArgyris/gsGluingData/gsApproxGluingData.h>
-#include <gsArgyris/gsC1ArgyrisEdgeBasisProjection.h>
+#include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
+#include <gsC1Basis/gsC1ArgyrisEdgeBasisProjection.h>
 
 namespace gismo
 {

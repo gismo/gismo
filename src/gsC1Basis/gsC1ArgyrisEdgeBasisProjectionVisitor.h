@@ -13,7 +13,7 @@
 
 #pragma once
 
-# include <gsArgyris/gsGluingData/gsApproxGluingData.h>
+# include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
 
 
 namespace gismo

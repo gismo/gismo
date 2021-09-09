@@ -13,17 +13,17 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1Argyris.h>
+#include <gsC1Basis/gsC1Argyris.h>
 
 #include <gsAssembler/gsBiharmonicArgyrisAssembler.h>
 #include <gsAssembler/gsBiharmonicNitscheAssembler.h>
 #include <gsAssembler/gsBiharmonicArgyrisDirectAssembler.h>
 
-#include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisNorms.h>
-#include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
-#include <gsArgyris/gsErrorAnalysis/gsC1NitscheNorms.h>
-#include <gsArgyris/gsErrorAnalysis/gsC1NitscheJumpNorm.h>
-#include <gsG1Basis/gsG1Norm.h>
+#include <gsC1Basis/gsErrorAnalysis/gsC1ArgyrisNorms.h>
+#include <gsC1Basis/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
+#include <gsC1Basis/gsErrorAnalysis/gsC1NitscheNorms.h>
+#include <gsC1Basis/gsErrorAnalysis/gsC1NitscheJumpNorm.h>
+#include <gsC1BasisDirect/gsG1Norm.h>
 
 namespace gismo
 {

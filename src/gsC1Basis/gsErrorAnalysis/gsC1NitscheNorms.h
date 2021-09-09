@@ -7,7 +7,7 @@
     Author(s): A. Mantzaflaris & P. Weinmueller
 */
 
-#include <gsG1Basis/gsVisitorG1Norm.h>
+#include <gsC1Basis/gsErrorAnalysis/gsC1NitscheNormsVisitor.h>
 
 
 #pragma once
@@ -20,19 +20,16 @@ namespace gismo
  *
  * \ingroup Assembler
 */
-    template <class T, class Visitor = gsVisitorG1Norm<T> >
-    class gsG1Norm
+    template <class T, class Visitor = gsC1NitscheNormsVisitor<T> >
+    class gsC1NitscheNorms
     {
 
     public:
 
-        gsG1Norm(const gsMultiPatch<T> & multiPatch,
-                     const gsMultiBasis<> & multiBasis,
-                     const gsMultiPatch<T> & mpSol,
-                     const gsMatrix<T> & g1Solution,
-                     const gsFunctionWithDerivatives<T> &exactSolution)
-                : patchesPtr( &multiPatch ), basisPtr( &multiBasis ),
-                  mpSolPtr(&mpSol), g1Sol(&g1Solution), exactSol(exactSolution)
+        gsC1NitscheNorms(const gsMultiPatch<T> & multiPatch,
+                         const gsMultiPatch<T> & discretSolution,
+                         const gsFunctionWithDerivatives<T> &exactSolution)
+                : patchesPtr( &multiPatch ), discretSol( &discretSolution ), exactSol(exactSolution)
         {
         }
 
@@ -70,15 +67,12 @@ namespace gismo
                 // Evaluation flags for the Geometry map
                 unsigned evFlags(0);
 
-                // G1 MultiBasis
-                gsG1MultiBasis<T> g1MultiBasis(*patchesPtr, *basisPtr); // Maybe earlier? Only need for #patches>2
-
                 for (size_t pn = 0; pn < patchesPtr->nPatches(); ++pn)// for all patches
                 {
                     //const gsFunction<T> & func2p = exactSol->function(pn);
 
                     // Obtain an integration domain
-                    const gsBasis<T> & dom = basisPtr->basis(pn);
+                    const gsBasis<T> & dom = discretSol->basis(pn);
 
                     // Initialize visitor
                     visitor.initialize(dom, QuRule, evFlags);
@@ -102,7 +96,7 @@ namespace gismo
                         QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
 
                         // Evaluate on quadrature points
-                        visitor.evaluate(patch, basisPtr, mpSolPtr, g1Sol, exactSol, g1MultiBasis, quNodes);
+                        visitor.evaluate(patch, discretSol, exactSol, quNodes);
 
                         // Accumulate value from the current element (squared)
                         T temp = 0.0;
@@ -139,17 +133,10 @@ namespace gismo
 
         const gsMultiPatch<T> * patchesPtr;
 
-        const gsMultiBasis<T> * basisPtr;
-
-        const gsMultiPatch<T> * mpSolPtr;
-
-        const gsMatrix<T> * g1Sol;
+        const gsMultiPatch<T> * discretSol;
 
         const gsFunctionWithDerivatives<T> & exactSol;
 
-    private:
-
-        bool f2param;
 
     protected:
 

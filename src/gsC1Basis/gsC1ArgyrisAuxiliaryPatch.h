@@ -13,7 +13,7 @@
 #pragma once
 
 #include <gismo.h>
-#include <gsArgyris/gsC1ArgyrisBasis.h>
+#include <gsC1Basis/gsC1ArgyrisBasis.h>
 
 namespace gismo
 {

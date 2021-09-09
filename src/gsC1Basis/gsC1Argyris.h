@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsArgyris/gsC1ArgyrisEdge.h>
-#include <gsArgyris/gsC1ArgyrisVertex.h>
+#include <gsC1Basis/gsC1ArgyrisEdge.h>
+#include <gsC1Basis/gsC1ArgyrisVertex.h>
 
 namespace gismo
 {
@@ -438,7 +438,6 @@ public:
                                 if (r_tilde < r-1)
                                     basis_vertex_1.reduceContinuity(r-r_tilde-1);
                             }
-
 /*
                             if (m_optionList.getSwitch("info"))
                             {

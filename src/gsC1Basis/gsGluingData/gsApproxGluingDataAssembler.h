@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsArgyris/gsGluingData/gsApproxGluingDataVisitor.h>
+#include <gsC1Basis/gsGluingData/gsApproxGluingDataVisitor.h>
 
 namespace gismo
 {
