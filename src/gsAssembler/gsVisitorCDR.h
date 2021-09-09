@@ -32,17 +32,8 @@ namespace gismo
  * Obviously, setting \f$ A= I\f$, \f$ b= 0\f$, and \f$c = 0\f$ results
  * in the special case of the Poisson equation.
  *
+ * \ingroup Assembler
  */
-
-struct stabilizerCDR
-{
-    enum method
-    {
-        SUPG = 1,
-        none = 0
-    };
-};
-
 template <class T>
 class gsVisitorCDR
 {
@@ -50,17 +41,17 @@ public:
 
 
     gsVisitorCDR(const gsPde<T> & pde)
-    { 
+    {
         const gsConvDiffRePde<T>* cdr =
             static_cast<const gsConvDiffRePde<T>*>(&pde);
-        
+
         coeff_A_ptr = cdr->diffusion ();
         coeff_b_ptr = cdr->convection();
         coeff_c_ptr = cdr->reaction  ();
         rhs_ptr     = cdr->rhs       ();
 
         flagStabType = stabilizerCDR::none;
-        
+
         GISMO_ASSERT( rhs_ptr->targetDim() == 1 ,
                       "Not yet tested for multiple right-hand-sides");
     }
@@ -142,7 +133,7 @@ public:
         localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
 
-    
+
     inline void assemble(gsDomainIterator<T>    & element,
                          const gsVector<T>      & quWeights)
     {
@@ -416,4 +407,3 @@ protected:
 
 
 } // namespace gismo
-

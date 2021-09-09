@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsCore/gsConfig.h>
+#include <gsCore/gsLinearAlgebra.h>
 
 #include <Spectra/Spectra/SymEigsSolver.h>
 #include <Spectra/Spectra/SymEigsShiftSolver.h>
@@ -29,6 +30,8 @@
 #include <Spectra/Spectra/MatOp/DenseCholesky.h>
 #include <Spectra/Spectra/MatOp/SparseRegularInverse.h>
 #include <Spectra/Spectra/MatOp/SymShiftInvert.h>
+#include <Spectra/Spectra/MatOp/DenseSymShiftSolve.h>
+#include <Spectra/Spectra/MatOp/SparseSymShiftSolve.h>
 
 namespace gismo {
 
@@ -47,10 +50,84 @@ public:
     int cols() const { return m_mat.cols(); }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
+        GISMO_ASSERT(m_mat.rows()!=0 && m_mat.cols()!=0,"The matrix has zero rows or columns. Is the matrix a temporary (e.g. A-B)?");
         gsAsVector<Scalar>(y_out, m_mat.rows()).noalias() =
             m_mat * gsAsConstVector<Scalar>(x_in,  m_mat.cols());
     }
 };
+
+// Shift operation wrapper
+template <class MatrixType>
+class SpectraMatShiftSolve
+{
+public:
+    typedef typename MatrixType::Scalar Scalar;
+    typedef typename MatrixType::Nested NestedMatrix;
+    NestedMatrix m_mat;
+    const index_t m_n;
+    typename gsSparseSolver<Scalar>::LU m_solver;
+
+public:
+    SpectraMatShiftSolve(const MatrixType& mat)
+    :
+    m_mat(mat), m_n(mat.rows())
+    {
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix must be square!");
+    }
+    int rows() const { return m_n; }
+    int cols() const { return m_n; }
+    void perform_op(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
+    }
+
+    void set_shift(const Scalar& sigma)
+    {
+        MatrixType mat(m_mat);
+        MatrixType identity(m_n,m_n);
+        identity.setIdentity();
+
+        mat = mat - sigma * identity;
+        m_solver.isSymmetric(true);
+        m_solver.compute(mat);
+
+        GISMO_ASSERT(m_solver.info() == Eigen::Success,"SparseSymShiftSolve: factorization failed with the given shift");
+    }
+};
+
+// Shift operation wrapper (dense matrix)
+template <class T>
+class SpectraMatShiftSolve<gsMatrix<T>>
+{
+public:
+    typedef typename gsMatrix<T>::Nested NestedMatrix;
+    typedef typename gsMatrix<T>::Scalar Scalar;
+    NestedMatrix m_mat;
+    const index_t m_n;
+    typename Spectra::BKLDLT<Scalar> m_solver;
+
+public:
+    SpectraMatShiftSolve(const gsMatrix<Scalar>&&) = delete;
+    SpectraMatShiftSolve(const gsMatrix<Scalar>& mat)
+    :
+    m_mat(mat), m_n(mat.rows())
+    {
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix must be square!");
+    }
+    int rows() const { return m_n; }
+    int cols() const { return m_n; }
+    void perform_op(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
+    }
+
+    void set_shift(const Scalar& sigma)
+    {
+        m_solver.compute(m_mat, Eigen::Lower, sigma);
+        GISMO_ASSERT(m_solver.info() == Spectra::CompInfo::Successful,"DenseSymShiftSolve: factorization failed with the given shift");
+    }
+};
+
 
 /** \brief Eigenvalue solver for general real matrices
 
@@ -74,6 +151,7 @@ class gsSpectraSolver : private SpectraMatProd<MatrixType>,
     typedef SpectraMatProd<MatrixType> MatOp;
     typedef Spectra::GenEigsSolver<MatOp> Base;
 public:
+    gsSpectraSolver(const MatrixType &&   , int nev_, int ncv_) = delete;
     gsSpectraSolver(const MatrixType & mat, int nev_, int ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };
@@ -86,11 +164,27 @@ class gsSpectraSymSolver : private SpectraMatProd<MatrixType>,
     typedef SpectraMatProd<MatrixType> MatOp;
     typedef Spectra::SymEigsSolver<MatOp> Base;
 public:
+    gsSpectraSymSolver(const MatrixType &&   , int nev_, int ncv_) = delete;
     gsSpectraSymSolver(const MatrixType & mat, int nev_, int ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };
 
+/// Shifted Eigenvalue solver for real symmetric matrices
+template <class MatrixType>
+class gsSpectraSymShiftSolver :
+        private SpectraMatShiftSolve<MatrixType>,
+        public Spectra::SymEigsShiftSolver<SpectraMatShiftSolve<MatrixType> >
+{
+    typedef typename MatrixType::Scalar Scalar;
+    typedef SpectraMatShiftSolve<MatrixType> Op;
+    typedef Spectra::SymEigsShiftSolver<Op> Base;
+public:
+    gsSpectraSymShiftSolver(const MatrixType &&   , int nev_, int ncv_, const Scalar& sigma) = delete;
+    gsSpectraSymShiftSolver(const MatrixType & mat, int nev_, int ncv_, const Scalar& sigma) :
+    Op(mat), Base(*this, nev_, ncv_,sigma) { Base::init(); }
+};
 
+/// SpectraOps is for generalized eigenvalue problems
 /// For GEigsMode::Cholesky
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::Cholesky>
 class SpectraOps
@@ -152,8 +246,9 @@ protected:
 /// GE Solver with shifts. Works for GEigsMode = Cholesky or RegularInverse.
 /// See the Spectra Documentation (SymGEigsSolver) for more information
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::Cholesky>
-class gsSpectraGenSymSolver : private SpectraOps<MatrixType,GEigsMode>,
-public Spectra::SymGEigsSolver<SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType,GEigsMode>::InvOp, GEigsMode>
+class gsSpectraGenSymSolver :
+    private SpectraOps<MatrixType,GEigsMode>,
+    public Spectra::SymGEigsSolver<SpectraMatProd<MatrixType>, typename SpectraOps<MatrixType,GEigsMode>::InvOp, GEigsMode>
 {
     typedef typename MatrixType::Scalar Scalar;
     typedef SpectraOps<MatrixType,GEigsMode> Ops;
@@ -161,6 +256,7 @@ public Spectra::SymGEigsSolver<SpectraMatProd<MatrixType>, typename SpectraOps<M
 
     typedef Spectra::SymGEigsSolver<MatOp, typename Ops::InvOp,GEigsMode> Base;
 public:
+    gsSpectraGenSymSolver(const MatrixType &&    , const MatrixType &&    , int nev_, int ncv_) = delete;
     gsSpectraGenSymSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_)
     : Ops(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()))
     { Base::init(); }
@@ -169,8 +265,9 @@ public:
 /// GE Solver with shifts. Works for GEigsMode = ShiftInvert, Buckling or Cayley
 /// See the Spectra Documentation (SymGEigsShiftSolver) for more information
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::ShiftInvert>
-class gsSpectraGenSymShiftSolver : private SpectraShiftOps<MatrixType,GEigsMode>,
-public Spectra::SymGEigsShiftSolver<typename SpectraShiftOps<MatrixType,GEigsMode>::InvOp, SpectraMatProd<MatrixType>, GEigsMode>
+class gsSpectraGenSymShiftSolver :
+    private SpectraShiftOps<MatrixType,GEigsMode>,
+    public Spectra::SymGEigsShiftSolver<typename SpectraShiftOps<MatrixType,GEigsMode>::InvOp, SpectraMatProd<MatrixType>, GEigsMode>
 {
     typedef typename MatrixType::Scalar Scalar;
     typedef SpectraShiftOps<MatrixType,GEigsMode> OpType;
@@ -178,6 +275,7 @@ public Spectra::SymGEigsShiftSolver<typename SpectraShiftOps<MatrixType,GEigsMod
 
     typedef Spectra::SymGEigsShiftSolver<typename OpType::InvOp, BOpType,GEigsMode> Base;
 public:
+    gsSpectraGenSymShiftSolver(const MatrixType &&    , const MatrixType &&    , int nev_, int ncv_, const Scalar& sigma) = delete;
     gsSpectraGenSymShiftSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_, const Scalar& sigma)
     : OpType(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()),sigma)
     { Base::init(); }

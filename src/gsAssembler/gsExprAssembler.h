@@ -69,7 +69,7 @@ public:
 
     void cleanUp()
     {
-        m_exprdata->clean();
+        m_exprdata->cleanUp();
     }
 
     /// Constructor
@@ -110,7 +110,7 @@ public:
     {
         index_t nb = 0;
         for (size_t i = 0; i!=m_vrow.size(); ++i)
-            nb += m_vrow[i]->dim();
+            nb += m_vrow[i]->dim;
         return nb;
     }
 
@@ -170,7 +170,7 @@ public:
                      "Given ID "<<id<<" exceeds "<<m_vrow.size()-1 );
 
         expr::gsFeSpace<T> u = m_exprdata->getSpace(mp,dim);
-        m_sdata.emplace_back(mp,id);
+        m_sdata.emplace_back(mp,dim,id);
         u.setSpaceData(m_sdata.back());
         m_vrow[id] = m_vcol[id] = &m_sdata.back();
         return u;
@@ -191,7 +191,7 @@ public:
     space getTestSpace(space u, const gsFunctionSet<T> & mp, index_t dim = -1)
     {
         expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,(-1 == dim ? u.dim() : dim));
-        m_sdata.emplace_back(mp,u.id());
+        m_sdata.emplace_back(mp,s.dim(),u.id());
         s.setSpaceData(m_sdata.back());
         m_vrow[s.id()] = &m_sdata.back();
         return s;
@@ -203,7 +203,7 @@ public:
     {
         GISMO_ASSERT(NULL!=m_vcol[id], "Not set.");
         expr::gsFeSpace<T> s = m_exprdata->
-            getSpace(*m_vcol[id].fs,m_vcol[id]->dim());
+            getSpace(*m_vcol[id]->fs,m_vcol[id]->dim);
         s.setSpaceData(*m_vcol[id]);
         return s;
     }
@@ -216,7 +216,7 @@ public:
     {
         GISMO_ASSERT(NULL!=m_vrow[id], "Not set.");
         expr::gsFeSpace<T> s = m_exprdata->
-            getSpace(*m_vrow[id].fs,m_vrow[id]->dim());
+            getSpace(*m_vrow[id]->fs,m_vrow[id]->dim());
         s.setSpaceData(*m_vrow[id]);
         return *m_vrow[id];
     }
@@ -528,9 +528,9 @@ private:
                     const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); //N_i
                     if ( rowMap.is_free_index(ii) )
                     {
-                        for (index_t c = 0; c != cd; ++c)
+                        if (isMatrix)
                         {
-                            if (isMatrix)
+                            for (index_t c = 0; c != cd; ++c)
                             {
                                 const index_t cls = c * colInd0.rows();     //local stride
 
@@ -557,11 +557,11 @@ private:
                                     }
                                 }
                             }
-                            else
-                            {
-#                               pragma omp atomic
-                                m_rhs.at(ii) += localMat.at(rls+i);
-                            }
+                        }
+                        else
+                        {
+#                           pragma omp atomic
+                            m_rhs.at(ii) += localMat.at(rls+i);
                         }
                     }
                 }
@@ -653,11 +653,11 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                     m_vcol[i-1]->dim()*m_vcol[i-1]->mapper.freeSize() );
+                                     m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
         if ( m_vcol[i] != m_vrow[i] )
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                         m_vrow[i-1]->dim()*m_vrow[i-1]->mapper.freeSize() );
+                                         m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
     }
 }
 

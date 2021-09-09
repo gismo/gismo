@@ -92,9 +92,24 @@ T gsConjugateGradient<T>::getConditionNumber()
                  " and call solve with an arbitrary right hand side";
         return -1;
     }
-
-    gsLanczosMatrix<T> L(m_gamma,m_delta);
-    return L.maxEigenvalue()/L.minEigenvalue();
+    // If the condition number is calculated before the solver has ended,
+    // then we need to scale the last entry
+    if (m_error < m_tol)
+    {
+        gsLanczosMatrix<T> L(m_gamma,m_delta);
+        return L.maxEigenvalue()/L.minEigenvalue();
+    }
+    else
+    {
+        T tmp_original = m_delta.back();
+        m_mat->apply(m_update,m_tmp);
+        T alpha = m_abs_new / m_update.col(0).dot(m_tmp.col(0));
+        m_delta.back()+=(1./alpha);
+        gsLanczosMatrix<T> L(m_gamma,m_delta);
+        T result = L.maxEigenvalue()/L.minEigenvalue();
+        m_delta.back() = tmp_original;
+        return result;
+    }
 }
 
 template<class T>

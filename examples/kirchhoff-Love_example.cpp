@@ -57,8 +57,9 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
+        _u.data().flags |= NEED_GRAD;
+
         evList.add(_G);
-        _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
     }
 
@@ -73,7 +74,7 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        const index_t A = _u.cardinality()/_u.targetDim();
+        const index_t A = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
         res.resize(_u.cardinality(), cols()); // rows()*
 
         normal = _G.data().normal(k);// not normalized to unit length
@@ -219,21 +220,22 @@ public:
 
     index_t rows() const
     {
-        return 0; // because the resulting matrix has scalar entries for every combination of active basis functions
+        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
     index_t cols() const
     {
-        return 0; // because the resulting matrix has scalar entries for every combination of active basis functions
+        return 1; // because the resulting matrix has scalar entries for every combination of active basis functions
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
-        evList.add(_G);
         _u.data().flags |= NEED_GRAD;
+
+        evList.add(_G);
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
-        evList.parse(_Ef);
+        _Ef.parse(evList);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -242,7 +244,7 @@ public:
     void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
 };
 
-
+// vector v should be a row vector
 template<class E1, class E2>
 class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
 {
@@ -251,6 +253,8 @@ class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
 
 public:
     enum{ Space = E1::Space, ScalarValued= 0, ColBlocks= 0 };
+    // Note: what happens if E2 is a space? The following can fix it:
+    // enum{ Space = (E1::Space == 1 || E2::Space == 1) ? 1 : 0, ScalarValued= 0, ColBlocks= 0 };
 
     typedef typename E1::Scalar Scalar;
 
@@ -272,12 +276,37 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);
-        _u.data().flags |= NEED_DERIV2;
+        evList.add(_u);   // We manage the flags of _u "manually" here (sets data)
+        _u.data().flags |= NEED_DERIV2; // define flags
+
+        _v.parse(evList); // We need to evaluate _v (_v.eval(.) is called)
+
+        // Note: evList.parse(.) is called only in exprAssembler for the global expression
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const
+    {
+        // Note: what happens if E2 is a space? The following can fix it:
+        // if      (E1::Space == 1 && E2::Space == 0)
+        //     return _u.rowVar();
+        // else if (E1::Space == 0 && E2::Space == 1)
+        //     return _v.rowVar();
+        // else
+
+        return _u.rowVar();
+    }
+
+    const gsFeSpace<Scalar> & colVar() const
+    {
+        // Note: what happens if E2 is a space? The following can fix it:
+        // if      (E1::Space == 1 && E2::Space == 0)
+        //     return _v.rowVar();
+        // else if (E1::Space == 0 && E2::Space == 1)
+        //     return _u.rowVar();
+        // else
+
+        return _v.rowVar();
+    }
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
 
@@ -295,11 +324,10 @@ private:
             And we want to compute [d11 c .v; d22 c .v;  d12 c .v] ( . denotes a dot product and c and v are both vectors)
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
-
-
         // evaluate the geometry map of U
         tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
         vEv = _v.eval(k);
+        
         res = vEv * tmp.transpose();
         return res;
     }
@@ -545,8 +573,8 @@ public:
         return res;
     }
 
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
     void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
@@ -608,8 +636,8 @@ public:
         return res;
     }
 
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
@@ -1253,10 +1281,9 @@ int main(int argc, char *argv[])
     }
 
     //! [Assembler setup]
-    gsExprAssembler<> A;
+    gsExprAssembler<> A(1,1);
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
@@ -1271,7 +1298,6 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(dbasis, 3);
-    u.setup(bc, dirichlet::interpolation, 0);
 
     // Solution vector and solution variable
     gsMatrix<> random;
@@ -1299,6 +1325,8 @@ int main(int argc, char *argv[])
     //! [System assembly]
 
     // Initialize the system
+    u.setup(bc, dirichlet::interpolation, 0);
+
     A.initSystem();
 
     gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
@@ -1350,7 +1378,8 @@ int main(int argc, char *argv[])
     auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde; //[checked]
 
     // // For Neumann (same for Dirichlet/Nitsche) conditions
-    variable g_N = A.getBdrFunction();
+    // auto g_N = A.getBdrFunction();
+    auto g_N = ff;
 
     real_t alpha_d = 1e3;
     A.assembleLhsRhsBc
