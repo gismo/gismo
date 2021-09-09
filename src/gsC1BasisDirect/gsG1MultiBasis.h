@@ -10,6 +10,7 @@
 */
 #pragma once
 
+
 namespace gismo
 {
 template <class T>
@@ -30,7 +31,7 @@ public:
             index_t dir = item.first().m_index < 3 ? 1 : 0; // dir of interface
 
             // TODO assume that basis 2 is the same space
-            gsBSplineBasis<> basis_int = dynamic_cast<gsBSplineBasis<>&>(m_mb.basis(item.first().patch).component(dir));
+            gsBSplineBasis<T> basis_int = dynamic_cast<gsBSplineBasis<T>&>(m_mb.basis(item.first().patch).component(dir));
 
             //gsInfo << "Basis int : " << basis_int.knots().asMatrix() << "\n";
 
@@ -41,7 +42,7 @@ public:
 
             // first,last,interior,mult_ends,mult_interior
             gsKnotVector<real_t> kv_plus(0, 1, 0, p + 1, p - 1 - r); // p,r+1 //-1 bc r+1
-            gsBSplineBasis<> basis_plus(kv_plus);
+            gsBSplineBasis<T> basis_plus(kv_plus);
 
             for (size_t i = p + 1; i < basis_int.knots().size() - (p + 1); i += basis_int.knots().multiplicityIndex(i))
                 basis_plus.insertKnot(basis_int.knot(i), p - 1 - r);
@@ -50,7 +51,7 @@ public:
             //gsInfo << "Basis plus : " << basis_plus.knots().asMatrix() << "\n";
 
             gsKnotVector<real_t> kv_minus(0, 1, 0, p + 1 - 1, p - 1 - r); // p-1,r //-1 bc p-1
-            gsBSplineBasis<> basis_minus(kv_minus);
+            gsBSplineBasis<T> basis_minus(kv_minus);
 
             for (size_t i = p + 1; i < basis_int.knots().size() - (p + 1); i += basis_int.knots().multiplicityIndex(i))
                     basis_minus.insertKnot(basis_int.knot(i), p - 1 - r);
@@ -59,7 +60,7 @@ public:
             //gsInfo << "Basis minus : " << basis_minus.knots().asMatrix() << "\n";
 
             // TODO assume that basis 2 is the same space
-            basis_geo = dynamic_cast<gsBSplineBasis<>&>(m_mb.basis(item.first().patch).component(1-dir));
+            basis_geo = dynamic_cast<gsBSplineBasis<T>&>(m_mb.basis(item.first().patch).component(1-dir));
         }
     }
 
@@ -81,9 +82,9 @@ protected:
     gsMultiPatch<T> const m_mp;
     gsMultiBasis<T> m_mb;
 
-    std::vector<gsBSplineBasis<>> basis_pm;
+    std::vector<gsBSplineBasis<T>> basis_pm;
 
-    gsBSplineBasis<> basis_geo;
+    gsBSplineBasis<T> basis_geo;
 
     std::vector<gsMatrix<index_t>> g1active;
 }; // class gsG1MultiBasis
