@@ -335,6 +335,7 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
 #   ifdef _OPENMP
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
+    index_t patch_cnt = 0;
 #   endif
 
     gsQuadRule<T> QuRule;  // Quadrature rule
@@ -358,6 +359,11 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
+        if ( storeElWise )
+        {
+            c = patch_cnt + tid;
+            patch_cnt += domIt->numElements();// a bit costy
+        }
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #       else
         for (; domIt->good(); domIt->next() )
@@ -376,7 +382,14 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
                 _op::acc(_arg.val().eval(k), quWeights[k], elVal);
 
             if ( storeElWise )
+            {
+#               ifdef _OPENMP
+                m_elWise[c] = elVal;
+                c += nt;
+#               else
                 m_elWise[c++] = elVal;
+#               endif
+            }
 
 #           pragma omp critical (_op_acc)
             _op::acc(elVal, 1, m_value);
@@ -413,7 +426,6 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
     {
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(bit->patch), m_options,bit->direction());
-        m_exprdata->mapData.side = bit->side();
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -428,7 +440,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(bit->patch);
+            m_exprdata->precompute(bit->patch, bit->side() );
 
             // Compute on element
             elVal = _op::init();

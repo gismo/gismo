@@ -34,7 +34,7 @@ SUITE(gsExprAssembler_test)
                     gsExprEvaluator<> ev;
                     ev.setIntegrationElements(mb);
                     gsExprEvaluator<>::geometryMap G = ev.getMap(patches);
-                    gsExprEvaluator<>::variable f = ev.getVariable(ff, G);
+                    auto f = ev.getVariable(ff, G);
 
                     ev.integral(f);
 
