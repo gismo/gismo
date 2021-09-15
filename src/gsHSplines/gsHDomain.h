@@ -549,11 +549,7 @@ public:
         return m_maxInsLevel;
     }
 
-    inline void computeMaxInsLevel()
-    {
-        m_maxInsLevel = leafSearch< maxLevel_visitor >();
-    }
-
+    void computeMaxInsLevel();
 
 private:
     

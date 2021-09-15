@@ -1771,4 +1771,10 @@ template<short_t d, class T> inline void
 gsHDomain<d,T>::printLeaves() const
     { leafSearch< printLeaves_visitor >(); }
 
+template<short_t d, class T>
+void gsHDomain<d,T>::computeMaxInsLevel()
+{
+    m_maxInsLevel = leafSearch< maxLevel_visitor >();
+}
+
 }// end namespace gismo

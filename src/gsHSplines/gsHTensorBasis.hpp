@@ -54,6 +54,8 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 
     const int maxLevel = m_tree.getMaxInsLevel();
 
+    needLevel(maxLevel);
+
     for( int i =0; i < Dim; i++)
         loIdx[i] = m_bases[maxLevel]->knots(i).uFind( Pt(i,0) ).uIndex();
 
