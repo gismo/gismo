@@ -718,6 +718,8 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
         // needLevel( m_tree.getMaxInsLevel() );
     }
 
+    //recompute max-ins-level
+    m_tree.computeMaxInsLevel();
     update_structure();
 }
 
