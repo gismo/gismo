@@ -192,6 +192,7 @@ gsHDomain<d,T>::isDegenerate(box const & someBox)
 */
 }
 
+//use "surface area heuristic" (SAH) ?
 template<short_t d, class T > void
 gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
                             node *_node, int lvl) // CONSTRAINT: lvl is "minimum level"
@@ -328,7 +329,7 @@ gsHDomain<d,T>::clearBox ( point const & k1, point const & k2,
         curNode = stack.back(); //top();
         stack.pop_back();       //pop();
 
-/*
+ /*
         if ( curNode->is_Node() ) // reached a leaf
         {
             if ( isDegenerate(*curNode->box) )
@@ -352,7 +353,7 @@ gsHDomain<d,T>::clearBox ( point const & k1, point const & k2,
             // Since we reached a leaf, it should overlap with iBox
 
             // If this leaf is already in level lvl, then we have nothing to do
-            if ( lvl >= curNode->level )
+            if ( curNode->level <= lvl )
                 continue;
 
             // Split the leaf (if possible)
@@ -389,9 +390,7 @@ gsHDomain<d,T>::clearBox ( point const & k1, point const & k2,
         }
     }
 
-    // Update maximum inserted level
-    if ( static_cast<unsigned>(lvl) > m_maxInsLevel)
-        m_maxInsLevel = lvl;
+    computeMaxInsLevel(); // compute again globally
 }
 
 template<short_t d, class T > void

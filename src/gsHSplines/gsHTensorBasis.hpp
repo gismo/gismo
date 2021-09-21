@@ -720,6 +720,19 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
         // needLevel( m_tree.getMaxInsLevel() );
     }
 
+    // /*
+    // reconstruct the whole tree to fix alignment
+    gsHDomain<d> newtree( m_tree.upperCornerIndex() );
+    auto leafIt = m_tree.beginLeafIterator();
+    for (; leafIt.good(); leafIt.next())
+    {
+        if ( leafIt.level()>0 )
+            newtree.insertBox(leafIt.lowerCorner(),
+                              leafIt.upperCorner(), leafIt.level() );
+    }
+    m_tree = newtree;
+    //*/
+
     //recompute max-ins-level
     m_tree.computeMaxInsLevel();
     update_structure();
