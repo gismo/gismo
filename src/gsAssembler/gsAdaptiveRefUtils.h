@@ -606,13 +606,13 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
         }
 
         std::vector<index_t> elements;
+        // Unrefine all of the found refBoxes in this patch
+        elements = mp.patch(pn).basis().asElementsUnrefine(crsBoxes, refExtension);
+        mp.patch(pn).unrefineElements( elements );
+
         // Refine all of the found refBoxes in this patch
         elements = mp.patch(pn).basis().asElements(refBoxes, refExtension);
         mp.patch(pn).refineElements( elements );
-
-        // Unefine all of the found refBoxes in this patch
-        elements = mp.patch(pn).basis().asElementsUnrefine(crsBoxes, refExtension+1);
-        mp.patch(pn).unrefineElements( elements );
     }
 }
 
