@@ -261,6 +261,10 @@ public:
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2Func_into(u, m_coefs, result); }
 
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const
+    { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+
     /// @}
 
 
@@ -493,29 +497,42 @@ public:
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }
 
+    typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
+    
     /// Embeds coefficients in 3D
     void embed3d()
     {
         embed(3);
     }
 
-    /// Embeds coefficients in \a N dimension
-    void embed(index_t N)
-    { 
+    /// \brief Embeds coefficients in \a N dimensions
+    ///For the new dimensions zeros are added (or removed) on the
+    /// right (if \a pad_right is true) or on the left (if \a
+    /// pad_right is false)
+    void embed(index_t N, bool pad_right = true)
+    {
         GISMO_ASSERT( N > 0, "Embed dimension must be positive");
 
         const index_t nc = N - m_coefs.cols();
+        if ( nc == 0 ) return;
 
-        if ( nc != 0 )
+        if (!pad_right && nc<0)
+            m_coefs.leftCols(N) = m_coefs.rightCols(N);
+        m_coefs.conservativeResize(Eigen::NoChange, N);
+
+        if ( nc > 0 )
         {
-            m_coefs.conservativeResize(Eigen::NoChange, N);
-            if ( nc > 0 )
+            if (pad_right)
                 m_coefs.rightCols(nc).setZero();
-            else // nc < 0
+            else
             {
-                gsWarn<<"Coefficients projected (deleted)..\n";
+                m_coefs.rightCols(N-nc) = m_coefs.leftCols(N-nc);
+                m_coefs.leftCols(nc).setZero();
             }
         }
+#       ifndef NDEBUG
+        else gsWarn<<"Coefficients projected (deleted)..\n";
+#       endif
     }
 
     /// \brief Returns the degree wrt direction i
@@ -552,6 +569,9 @@ public:
 
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
+
+    /// Get parametrization of box component \a bc as a new gsGeometry uPtr.
+    typename gsGeometry::uPtr component(boxComponent const& bc) const;
 
     GISMO_UPTR_FUNCTION_PURE(gsGeometry, clone)
 

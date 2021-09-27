@@ -120,6 +120,8 @@ public:
 
     const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
+    gsMultiPatch<T> coord(const index_t c) const;
+
     index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
 
     index_t size() const { return 1; }

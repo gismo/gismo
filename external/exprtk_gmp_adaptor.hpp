@@ -202,7 +202,7 @@ inline T logn_impl(const T& v0, const T& v1, mpq_type_tag)
 template <typename T>
 inline T sinc_impl(const T& v, mpq_type_tag)
 {
-    if (abs(v) >= epsilon_type<mpq_class>::value())
+    if (abs(v) >= epsilon_type<mpq_type_tag>::value())
         return(sin(v) / v);
     else
         return T(1);

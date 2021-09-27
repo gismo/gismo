@@ -32,6 +32,7 @@ namespace gismo
 class GISMO_EXPORT gsOptionList
 {
 public:
+    typedef GISMO_COEFF_TYPE Real;
 
     /// \brief Reads value for option \a label from options.
     ///
@@ -40,7 +41,7 @@ public:
     /// @copydoc gsOptionList::getString()
     index_t     getInt   (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
-    real_t      getReal  (const std::string & label) const;
+    Real      getReal  (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
     bool        getSwitch(const std::string & label) const;
 
@@ -51,7 +52,7 @@ public:
     /// @copydoc gsOptionList::getMultiString()
     std::vector<index_t>     getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
-    std::vector<real_t>      getMultiReal  (const std::string & gn) const;
+    std::vector<Real>      getMultiReal  (const std::string & gn) const;
 
     /// \brief Reads value for option \a label from options.
     ///
@@ -60,7 +61,7 @@ public:
     /// @copydoc gsOptionList::askString()
     index_t     askInt   (const std::string & label, const index_t &     value = 0     ) const;
     /// @copydoc gsOptionList::askString()
-    real_t      askReal  (const std::string & label, const real_t &      value = 0     ) const;
+    Real      askReal  (const std::string & label, const Real &      value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     bool        askSwitch(const std::string & label, const bool &        value = false ) const;
 
@@ -71,7 +72,7 @@ public:
     /// @copydoc gsOptionList::askMultiString
     //std::vector<index_t>     askMultiInt   (const std::string & gn, const std::vector<index_t> &     values = std::vector<index_t>()    ) const;
     /// @copydoc gsOptionList::askMultiString
-    //std::vector<real_t>      askMultiReal  (const std::string & gn, const std::vector<real_t> &      values = std::vector<real_t>()     ) const;*/
+    //std::vector<Real>      askMultiReal  (const std::string & gn, const std::vector<Real> &      values = std::vector<Real>()     ) const;*/
 
     /// \brief Sets an existing option \a label to be equal to \a value.
     ///
@@ -80,7 +81,7 @@ public:
     /// @copydoc gsOptionList::setString()
     void setInt   (const std::string & label, const index_t &     value);
     /// @copydoc gsOptionList::setString()
-    void setReal  (const std::string & label, const real_t &      value);
+    void setReal  (const std::string & label, const Real &      value);
     /// @copydoc gsOptionList::setString()
     void setSwitch(const std::string & label, const bool &        value);
 
@@ -91,7 +92,7 @@ public:
     /// @copydoc gsOptionList::setMultiString
     //void setMultiInt   (const std::string & gn, const std::vector<index_t> &     values );
     /// @copydoc gsOptionList::setMultiString
-    //void setMultiReal  (const std::string & gn, const std::vector<real_t> &      values );*/
+    //void setMultiReal  (const std::string & gn, const std::vector<Real> &      values );*/
 
     /// \brief Adds a option named \a label, with description \a desc
     /// and value \a value.
@@ -103,7 +104,7 @@ public:
     /// @copydoc gsOptionList::addString()
     void addInt   (const std::string & label, const std::string & desc, const index_t &     value );
     /// @copydoc gsOptionList::addString()
-    void addReal  (const std::string & label, const std::string & desc, const real_t &      value );
+    void addReal  (const std::string & label, const std::string & desc, const Real &      value );
     /// @copydoc gsOptionList::addString()
     void addSwitch(const std::string & label, const std::string & desc, const bool &        value );
 
@@ -117,7 +118,7 @@ public:
     /// If \a gn is not found, the function throws.
     void addMultiInt(const std::string & label, const std::string & desc, const std::vector<index_t> &  values);
     /*/// @copydoc gsOptionList::addMultiString()
-    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<real_t> & values);*/
+    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<Real> & values);*/
 
     /// \brief Removes the option named \a label (if it exists).
     void remove(const std::string& label);
@@ -251,7 +252,7 @@ private:
     // Format: std::pair<Value,Description>
     typedef std::pair<std::string,std::string> StringOpt;
     typedef std::pair<index_t    ,std::string> IntOpt;
-    typedef std::pair<real_t     ,std::string> RealOpt;
+    typedef std::pair<Real     ,std::string> RealOpt;
     typedef std::pair<bool       ,std::string> SwitchOpt;
 
     // Format: std::map<Label, std::pair<Value,Description> >

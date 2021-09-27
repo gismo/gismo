@@ -64,7 +64,10 @@ void gsFunctionSet<T>::active_into (const gsMatrix<T> &, gsMatrix<index_t> &) co
 
 template <typename T>
 void gsFunctionSet<T>::eval_into (const gsMatrix<T> &, gsMatrix<T> &) const
-{GISMO_NO_IMPLEMENTATION}
+{
+    gsWarn << "Is piece(.) needed/implemented ?\n";
+    GISMO_NO_IMPLEMENTATION
+}
 
 template <typename T>
 void gsFunctionSet<T>::deriv_into (const gsMatrix<T> &, gsMatrix<T> &) const

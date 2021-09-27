@@ -3,7 +3,6 @@
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2012 - 2015 RICAM-Linz.
 ##
 ##
 ## MPFR_FOUND       - system has MPFR lib

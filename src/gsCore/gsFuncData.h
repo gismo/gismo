@@ -193,7 +193,7 @@ public:
     }
 
 
-    inline matrixTransposeView jacobian (index_t point, index_t func = 0) const
+    inline matrixTransposeView jacobian(index_t point, index_t func = 0) const
     {
        GISMO_ASSERT(flags & NEED_DERIV,
                   "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");
@@ -280,7 +280,7 @@ public:
         return outNormals.col(point);
     }
 
-    inline matrixTransposeView jacobians () const
+    inline matrixTransposeView jacobians() const
     {
        GISMO_ASSERT(flags & NEED_DERIV,
                   "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");

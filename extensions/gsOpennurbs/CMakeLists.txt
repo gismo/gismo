@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsOpennurbs
+## This file is part of the G+Smo library.
 ## 
 ## Author: Angelos Mantzaflaris 
-## Copyright (C) 2013 - RICAM-Linz.
 ######################################################################
 
 ## OpenNurbs extension
@@ -288,11 +289,6 @@ if(HAVE_SYS_STAT_H)
   add_definitions(-DHAVE_SYS_STAT_H)
 endif(HAVE_SYS_STAT_H)
 
-# Ideally, we should only need ZLIB here
-#include_directories(
-#  ${${CMAKE_PROJECT_NAME}_SOURCE_DIR}/onurbs/zlib
-#  )
-
 # Apply same configuration as G+Smo
 include(gsConfig)
 
@@ -350,5 +346,5 @@ set(gismo_LINKER ${gismo_LINKER} Rpcrt4
 endif()
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo/${PROJECT_NAME}/
+        DESTINATION include/gismo
         FILES_MATCHING PATTERN "*.h")

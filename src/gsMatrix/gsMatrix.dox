@@ -1,6 +1,7 @@
 namespace gismo {
 
 /** \defgroup Matrix Matrix module
+\ingroup Modules
 
     This module provides dense and sparse matrix data structures. It
     is based on the <a href="http://eigen.tuxfamily.org"

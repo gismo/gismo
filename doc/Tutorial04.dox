@@ -119,7 +119,7 @@ Problems or bugs might also be related to the platform or operating
 system. Nightly compilations and tests on several systems detects such
 problems. The CDash server:
 
-https://cdash.ricam.oeaw.ac.at/index.php?project=Gismo-stable
+https://cdash-ci.inria.fr/index.php?project=Gismo
 
 collects the result of compilation and testing from compilation nodes.
 To Submit your compilation and test log to the CDash server you can type:
@@ -212,9 +212,8 @@ And please don't use auto and the fancy new foreach loop.
    */
    \endverbatim
 
-- Get in touch with other developers in the mailing list
-  gismo@ricam.oeaw.ac.at for discussions/ideas/changes/comments about the code.
-  Issues can be also discussed on Github: https://github.com/filiatra/gismo/issues
+- Get in touch with us on Github wiki: https://github.com/gismo/gismo/wiki
+  and issues: https://github.com/gismo/gismo/issues
 
 */
 }

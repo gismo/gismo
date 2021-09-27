@@ -24,6 +24,17 @@ namespace gismo
 {
 
 template<class T>
+gsMultiPatch<T> gsMultiPatch<T>::coord(const index_t c) const
+{
+    gsMultiPatch<T> result;
+    for ( const_iterator it = m_patches.begin(); it != m_patches.end(); ++it )
+    {
+        result.addPatch( (*it)->coord(c) );
+    }
+    return result;
+}
+
+template<class T>
 gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
     : BaseA( geo.parDim() )
 {

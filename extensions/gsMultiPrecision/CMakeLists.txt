@@ -1,7 +1,8 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsMultiPrecision
+## This file is part of the G+Smo library.
 ## 
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2016 - RICAM-Linz.
+## Author: Angelos Mantzaflaris, Matthias Moller
 ######################################################################
 
 # Multi-precision floating-point extension
@@ -58,7 +59,7 @@ if (GISMO_WITH_MPFR OR GISMO_WITH_GMP)
     
     # Install GMP header files
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/include
-        DESTINATION include/gismo/gmp/
+        DESTINATION include/gismo/
         FILES_MATCHING PATTERN "*.h")
   endif (NOT GMP_FOUND)
 endif (GISMO_WITH_MPFR OR GISMO_WITH_GMP)
@@ -106,13 +107,13 @@ if (GISMO_WITH_MPFR)
     
     # Install MPFR header files
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/include
-        DESTINATION include/gismo/mpfr/
+        DESTINATION include/gismo/
         FILES_MATCHING PATTERN "*.h")
   endif(NOT MPFR_FOUND)
 endif(GISMO_WITH_MPFR)
 
 ##
-## gsMultiPrecision extensions
+## gsMultiPrecision extension
 ##
 
 # Compile gsMultiPrecision extension as part of the G+Smo library
@@ -134,15 +135,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # Add gsMultiPrecision extension to the list of G+Smo extensions
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "gismo extensions to be included")
+    CACHE INTERNAL "Gismo extensions to be included")
 
 # Add GMP and MPFR include directories to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR} ${MPFR_INCLUDE_DIR}
-  CACHE INTERNAL "gismo include directories")
+  CACHE INTERNAL "Gismo include directories")
 
 # Link G+Smo to GMP, GMPXX and MPFR libraries (either dynamically or statically)
-set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY} ${GMP_LIBRARY} ${GMPXX_LIBRARY}
-    CACHE INTERNAL "gismo extra linker objects")
+set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY} ${GMPXX_LIBRARY} ${GMP_LIBRARY}
+    CACHE INTERNAL "Gismo extra linker objects")
 
 # Install gsMultiPrecision header files
 install(DIRECTORY ${PROJECT_SOURCE_DIR}

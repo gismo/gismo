@@ -515,7 +515,7 @@ template<typename T>
 void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     GISMO_ASSERT ( u.rows() == my->dim, "Inconsistent point dimension (expected: "
-                   << my->dim <<", got "<< u.rows() <<")");
+                   << my->dim <<", got "<< u.rows() <<")\n"<< *this);
 
     const short_t n = targetDim();
     result.resize(n, u.cols());

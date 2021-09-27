@@ -101,6 +101,7 @@ template <class T, int D=-1, class uiter=typename std::vector<T>::const_iterator
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;
 template <class T=real_t>                class gsFunction;
+template <class T=real_t>                class gsFuncCoordinate;
 template <class T=real_t>                class gsFuncData;
 template <class T=real_t>                class gsMapData;
 template <class T=real_t>                class gsFunctionExpr;
@@ -272,6 +273,13 @@ template <class T=real_t>                class gsPatchPreconditionersCreator;
 
 template <class T=real_t>                class gsMultiGridOp;
 template <class T=real_t>                class gsGridHierarchy;
+
+// gsIeti
+
+template <class T=real_t>                class gsIetiMapper;
+template <class T=real_t>                class gsIetiSystem;
+template <class T=real_t>                class gsPrimalSystem;
+template <class T=real_t>                class gsScaledDirichletPrec;
 
 /// @endcond
 

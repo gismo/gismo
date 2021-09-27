@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## gsLibrary.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 #include (GenerateExportHeader)
@@ -28,6 +27,12 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
+if (GISMO_EXTRA_DEBUG)
+  if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
+    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
+  endif()
+endif()
+
   add_library(${PROJECT_NAME} SHARED
     ${${PROJECT_NAME}_MODULES}
     ${${PROJECT_NAME}_SOURCES}
@@ -38,8 +43,8 @@ endif()
 
   set_target_properties(${PROJECT_NAME} PROPERTIES
   #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
-  VERSION ${${PROJECT_NAME}_VERSION}
-  SOVERSION ${${PROJECT_NAME}_VERSION_MAJOR}
+  VERSION "${${PROJECT_NAME}_VERSION}"
+  SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}"
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX

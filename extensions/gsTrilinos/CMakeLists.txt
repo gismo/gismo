@@ -1,10 +1,11 @@
-### CMakeLists.txt ---
+######################################################################
+### CMakeLists.txt --- gsTrilinos
+## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2016 - RICAM-Linz.
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 2.8.12)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -34,6 +35,10 @@ aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
 
 # Apply same configuration as G+Smo
 include(gsConfig)
+
+if(NOT GISMO_WITH_MPI)
+  message(FATAL_ERROR "Trilinos requires GISMO_WITH_MPI=ON. Please enable MPI and try again.")
+endif()
 
 # Look for pre-installed Trilinos libraries
 find_package(TRILINOS QUIET)
