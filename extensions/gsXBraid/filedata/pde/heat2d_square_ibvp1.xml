@@ -87,13 +87,13 @@
     <int label="cycle_p" desc="Type of cycle in p-multigrid, V-cycle (1) or W-cycle (2)" value="1"/>
     <int label="lumping" desc="Restriction and Prolongation performed with the lumped (1) or consistent (2) mass matrix" value="1"/>
     <int label="maxIter" desc="Maximum number of iterations" value="100000"/>
-    <int label="numLevels" desc="Number of levels in multigrid method" value="5"/>
+    <int label="numLevels" desc="Number of levels in multigrid method" value="4"/>
     <int label="numSmoothing" desc="Number of pre/post smoothing steps" value="1"/>
     <int label="projection" desc="Direct projection on coarsest level (1) or via all other levels (2)" value="1"/>
     <int label="smoother" desc="Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS (4) Block ILUT (5) Block Gauss-Seidel" value="1"/>
     <int label="bcHandling" desc="Type of boundary handling: (1) elimination (2) Nitsche" value="1"/>
     <real label="tol" desc="Tolerance" value="1e-10"/>
-    <string label="coarseStrategy" desc="Expression that defines coarsening strategy" value="hhpp"/>
+    <string label="coarseStrategy" desc="Expression that defines coarsening strategy" value="hhp"/>
    </OptionList>
 
   <!-- other options -->
