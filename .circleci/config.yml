@@ -13,7 +13,7 @@ jobs:
     steps:
       - run:
           name: Install dependencies
-          command: brew update; brew install cmake
+          command: git -C /usr/local/Homebrew/Library/Taps/homebrew/homebrew-core fetch --unshallow; git -C /usr/local/Homebrew/Library/Taps/homebrew/homebrew-cask fetch --unshallow; brew update; brew install cmake
       - checkout
       - run:
           name: Configure G+Smo on MacOS
