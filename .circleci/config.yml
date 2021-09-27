@@ -1,9 +1,9 @@
 version: 2.0
 
 jobs:
-  macos_x86_64_xcode9_cxx98_release:
+  macos_x86_64_xcode10_cxx98_release:
     macos:
-      xcode: "9.4.1"
+      xcode: "10.3.0"
     filters:
       branches:
         - only: stable
@@ -17,33 +17,12 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="macos_x86_64_xcode9_cxx98_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode10_cxx98_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-  macos_x86_64_xcode10_cxx11_release:
-    macos:
-      xcode: "10.3.0"
-    filters:
-      branches:
-        - only: stable
-    working_directory: ~/gismo
-    environment:
-      MAKEFLAGS: -j4
-    steps:
-      - run:
-          name: Install dependencies
-          command: brew install cmake
-      - checkout
-      - run:
-          name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="macos_x86_64_xcode10_cxx11_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
-      - run:
-          name: Build and test G+Smo on MacOS
-          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
-
-  macos_x86_64_xcode11_cxx14_release:
+  macos_x86_64_xcode11_cxx11_release:
     macos:
       xcode: "11.7.0"
     filters:
@@ -59,14 +38,14 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="macos_x86_64_xcode11_cxx14_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode11_cxx11_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
 
-  macos_x86_64_xcode12_cxx17_release:
+  macos_x86_64_xcode12_cxx14_release:
     macos:
-      xcode: "12.2.0"
+      xcode: "12.5.1"
     filters:
       branches:
         - only: stable
@@ -80,7 +59,28 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DBUILDNAME="macos_x86_64_xcode12_cxx17_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode12_cxx14_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on MacOS
+          command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
+
+  macos_x86_64_xcode13_cxx17_release:
+    macos:
+      xcode: "13.0.0"
+    filters:
+      branches:
+        - only: stable
+    working_directory: ~/gismo
+    environment:
+      MAKEFLAGS: -j4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DBUILDNAME="macos_x86_64_xcode13_cxx17_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-D ExperimentalMemCheck
@@ -89,7 +89,7 @@ workflows:
   version: 2
   build:
     jobs:
-      - macos_x86_64_xcode9_cxx98_release
-      - macos_x86_64_xcode10_cxx11_release
-      - macos_x86_64_xcode11_cxx14_release
-      - macos_x86_64_xcode12_cxx17_release
+      - macos_x86_64_xcode10_cxx98_release
+      - macos_x86_64_xcode11_cxx11_release
+      - macos_x86_64_xcode12_cxx14_release
+      - macos_x86_64_xcode13_cxx17_release
