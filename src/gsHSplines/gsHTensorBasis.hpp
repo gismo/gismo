@@ -494,7 +494,7 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
         // If the level is 0, we cannot coarsen
         if (refLevel < 0) continue;
 
-        refVector.resize(refVector.size() + 5);
+        refVector.resize(refVector.size() + offset);
 
         for(index_t j = 0; j < boxes.rows();j++)
         {

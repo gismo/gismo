@@ -476,7 +476,7 @@ void gsProcessMarkedElements(gsMultiBasis<T> & basis,
                             const std::vector<bool> & elRefined,
                             const std::vector<bool> & elCoarsened,
                             index_t refExtension = 0,
-                            index_t refExtensionC = 0)
+                            index_t crsExtension = 0)
 {
     const short_t dim = basis.dim();
 
@@ -536,7 +536,7 @@ void gsProcessMarkedElements(gsMultiBasis<T> & basis,
             globalCount++;
         }
         // Refine all of the found refBoxes in this patch
-        basis.unrefine( pn, crsBoxes, refExtensionC);
+        basis.unrefine( pn, crsBoxes, crsExtension);
         basis.refine( pn, refBoxes, refExtension );
     }
 }
@@ -546,7 +546,7 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
                             const std::vector<bool> & elRefined,
                             const std::vector<bool> & elCoarsened,
                             index_t refExtension = 0,
-                            index_t refExtensionC = 0)
+                            index_t crsExtension = 0)
 {
     const int dim = mp.dim();
 
@@ -607,7 +607,7 @@ void gsProcessMarkedElements(gsMultiPatch<T> & mp,
 
         std::vector<index_t> elements;
         // Unrefine all of the found refBoxes in this patch
-        elements = mp.patch(pn).basis().asElementsUnrefine(crsBoxes, refExtension);
+        elements = mp.patch(pn).basis().asElementsUnrefine(crsBoxes, crsExtension);
         mp.patch(pn).unrefineElements( elements );
 
         // Refine all of the found refBoxes in this patch
