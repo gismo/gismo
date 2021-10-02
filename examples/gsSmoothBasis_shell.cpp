@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
 {
     bool plot       = false;
     bool last       = false;
+    bool writeMatrix= false;
     index_t numRefine  = 2;
     index_t numElevate = 1;
     index_t geometry = 1;
@@ -63,6 +64,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "s", "smooth", "Smoothing method to use",  smoothing );
     cmd.addSwitch("plot", "plot",plot);
     cmd.addSwitch("last", "last case only",last);
+    cmd.addSwitch("writeMat", "Write projection matrix",writeMatrix);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsMultiPatch<> mp;
@@ -461,10 +463,33 @@ int main(int argc, char *argv[])
             geom = dpatch.exportToPatches();
             dbasis = dpatch.localBasis();
         }
+        else if (smoothing==2) // Pascal
+        {
+            gsDPatch<2,real_t> dpatch(mp);
+            dpatch.matrix_into(global2local);
+            global2local = global2local.transpose();
+            geom = dpatch.exportToPatches();
+            dbasis = dpatch.localBasis();
+        }
+        else if (smoothing==3) // Andrea
+        {
+            // gsDPatch<2,real_t> dpatch(mp);
+            // dpatch.matrix_into(global2local);
+            // global2local = global2local.transpose();
+            // geom = dpatch.exportToPatches();
+            // dbasis = dpatch.localBasis();
+        }
         else
             GISMO_ERROR("Option "<<smoothing<<" for smoothing does not exist");
 
         gsInfo<<"\tAssembly of mapping:\t"<<time.stop()<<"\t[s]\n";
+
+        if (writeMatrix)
+        {
+            gsWrite(global2local,"mat");
+            gsWrite(geom,"geom");
+            gsWrite(dbasis,"dbasis");
+        }
 
         bb2.init(dbasis,global2local);
         // gsMappedSpline<2,real_t> mspline(bb2,coefs);

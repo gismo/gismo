@@ -84,17 +84,6 @@ template<class T> class gsExprHelper;
 namespace expr
 {
 
-#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
-#  define MatExprType  auto
-#  define AutoReturn_t auto
-#  define GS_CONSTEXPR constexpr
-//note: in c++11 auto-return requires -> decltype(.)
-#else // 199711L, 201103L
-#  define MatExprType typename gsMatrix<Scalar>::constRef
-#  define AutoReturn_t typename util::conditional<ScalarValued,Scalar,MatExprType>::type
-#  define GS_CONSTEXPR
-#endif
-
 template<class T> class gsFeSpace;
 template<class T> class gsFeVariable;
 template<class T> class gsFeSolution;
@@ -113,6 +102,7 @@ template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
 template<class E> class tr_expr;
+template<class E> class cb_expr;
 template<class E> class sign_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
@@ -129,6 +119,17 @@ public:
     typedef real_t Scalar;//todo
     typedef const E Nested_t;
 };
+
+#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
+#  define MatExprType  auto
+#  define AutoReturn_t auto
+#  define GS_CONSTEXPR constexpr
+//note: in c++11 auto-return requires -> decltype(.)
+#else // 199711L, 201103L
+#  define MatExprType typename gsMatrix<real_t>::constRef
+#  define AutoReturn_t typename util::conditional<ScalarValued,real_t,MatExprType>::type
+#  define GS_CONSTEXPR
+#endif
 
 template <class E> struct is_arithmetic{enum{value=0};};
 template <> struct is_arithmetic<real_t>{enum{value=1};};
@@ -198,6 +199,10 @@ public:
     /// Returns the transpose of the expression
     tr_expr<E> tr() const
     { return tr_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the puts the expression to colBlocks
+    cb_expr<E> cb() const
+    { return cb_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the sign of the expression
     sign_expr<E> sgn() const
@@ -558,7 +563,7 @@ protected:
 
 public:
 
-    index_t rows() const { return m_fd->dim.second; }
+    index_t rows() const { return m_fs->targetDim(); }
     index_t cols() const { return 1; }
 
     const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
@@ -1249,6 +1254,88 @@ private:
 */
 };
 
+/*
+  Expression to make an expression colblocks
+*/
+template<class E>
+class cb_expr : public _expr<cb_expr<E> >
+{
+    typename E::Nested_t _u;
+
+public:
+
+    typedef typename E::Scalar Scalar;
+
+    cb_expr(_expr<E> const& u)
+    : _u(u) { }
+
+public:
+    enum {ColBlocks = 1, ScalarValued=E::ScalarValued};
+    enum {Space = E::Space};
+
+    mutable gsMatrix<Scalar> ev, res;
+
+    //MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        //return _u.eval(k).transpose();
+        // /*
+        ev = _u.eval(k);
+        if (E::ColBlocks)
+        {
+            return res;
+        }
+        else
+        {
+            res = _u.eval(k);
+
+            GISMO_ASSERT(res.rows() % _u.rows() == 0 && res.cols() % _u.cols() == 0,"Result is not a multiple of the space dimensions?");
+
+            index_t cardinality;
+            if ( (cardinality = res.rows() / _u.rows()) >= 1 && res.cols() / _u.cols() == 1 ) // stored in rows
+            {
+                res.resize(_u.rows(), cardinality * _u.cols());
+                for (index_t r = 0; r!=cardinality; r++)
+                    res.block(0 , r * _u.cols(), _u.rows(), _u.cols()) = ev.block( r * _u.rows(), 0, _u.rows(), _u.cols() );
+            }
+            else if ( (cardinality = res.rows() / _u.rows()) == 1 && res.cols() / _u.cols() >= 1 ) // stored in cols ----->>>> This is already colBlocks???
+            {
+                res.resize(_u.rows(), cardinality * _u.cols());
+                for (index_t r = 0; r!=cardinality; r++)
+                    res.block(0 , r * _u.cols(), _u.rows(), _u.cols()) = ev.block( 0, r * _u.cols(), _u.rows(), _u.cols() );
+            }
+        }
+        return res;
+    }
+
+    index_t rows() const { return _u.rows(); }
+
+    index_t cols() const { return _u.cols(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+    index_t cardinality_impl() const
+    {
+        res = _u.eval(0);
+        index_t cardinality;
+        if ( res.rows() / _u.rows() >= 1 && res.cols() / _u.cols() == 1 ) // stored in rows
+            cardinality = res.rows() / _u.rows();
+        else if ( res.rows() / _u.rows() == 1 && res.cols() / _u.cols() >= 1 )
+            cardinality = res.cols() / _u.cols();
+        else
+            GISMO_ERROR("Cardinality for cb_expr cannot be determined.");
+
+        return cardinality;
+        // return _u.cardinality_impl();
+    }
+
+    void print(std::ostream &os) const { os<<"{"; _u.print(os); os <<"}"; }
+};
+
 
 /*
   Expression for an evaluation of the (sub-)expression in temporary memory
@@ -1488,7 +1575,7 @@ class flat_expr  : public _expr<flat_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0}; // to do: ColBlocks
  private:
     typename E::Nested_t _u;
     mutable gsMatrix<Scalar> tmp;
@@ -1658,6 +1745,8 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
     index_t rows() const { return _u.rows(); }
     index_t cols() const { return _u.rows() * _u.cols(); }
@@ -2601,16 +2690,14 @@ public:
         return res;
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u; }
+    const gsFeSpace<Scalar> & rowVar() const { return rowVar_impl<E>(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
-    index_t rows() const { return _u.dim(); }
-    index_t cols() const
-    {   //bug: Should return the column size of each BLOCK contained
-        // return _u.dim() * _u.data().actives.rows() * _u.data().dim.first;
-        //return _u.data().dim.first;
-        return _u.source().domainDim();
-    }
+    index_t rows() const { return rows_impl(_u); }
+    index_t cols() const { return cols_impl(_u); }
+
+    // index_t rows() const { return _u.dim(); }
+    // index_t cols() const { return _u.source().domainDim(); }
 
     index_t cardinality_impl() const
     {
@@ -2625,10 +2712,61 @@ public:
     }
 
     void print(std::ostream &os) const { os << "jac("; _u.print(os);os <<")"; }
+
+private:
+
+    // The jacobian is different for gsFeVariable, gsFeSolution and gsFeSpace
+    // gsFeSolution: Does not work
+    // gsFeVariable: dim()=1 and source().targetDim()=d
+    // gsFeSpace: dim()=d and source().targetDim()=1
+    template<class U> inline
+    typename util::enable_if<!(util::is_same<U,gsFeSpace<Scalar> >::value), index_t >::type  // What about solution??
+    rows_impl(const U & u)  const
+    {
+        return u.source().targetDim();
+    }
+
+    template<class U> inline
+    typename util::enable_if< (util::is_same<U,gsFeSpace<Scalar> >::value), index_t >::type
+    rows_impl(const U & u) const
+    {
+        return u.dim();
+    }
+
+    template<class U> inline
+    typename util::enable_if<!(util::is_same<U,gsFeSpace<Scalar> >::value), index_t >::type
+    cols_impl(const U & u)  const
+    {
+        return u.source().domainDim();
+    }
+
+    template<class U> inline
+    typename util::enable_if< (util::is_same<U,gsFeSpace<Scalar> >::value), index_t >::type
+    cols_impl(const U & u) const
+    {
+        return u.source().domainDim();
+    }
+
+    // The jacobian is different for gsFeVariable, gsFeSolution and gsFeSpace
+    // gsFeSolution: Does not work
+    // gsFeVariable: rowVar = NULL
+    // gsFeSpace: rowVar = u
+    template<class U> inline
+    typename util::enable_if<!(util::is_same<U,gsFeSpace<Scalar> >::value), const gsFeSpace<Scalar> &  >::type
+    rowVar_impl() const
+    {
+        return gsNullExpr<Scalar>::get();
+    }
+
+    template<class U> inline
+    typename util::enable_if<(util::is_same<U,gsFeSpace<Scalar> >::value), const gsFeSpace<Scalar> &  >::type
+    rowVar_impl() const
+    {
+        return _u;
+    }
 };
 
-
- /*
+/*
   Expression for the Jacobian matrix of a geometry map
 */
 template<class T>
@@ -4018,11 +4156,11 @@ template<class E> EIGEN_STRONG_INLINE
 GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
 
 template<class E> EIGEN_STRONG_INLINE
-    mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 0>
+mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 1>
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
 
 template<class E> EIGEN_STRONG_INLINE trace_expr<
-    mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 0>
+    mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 1>
     >
 GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
 
