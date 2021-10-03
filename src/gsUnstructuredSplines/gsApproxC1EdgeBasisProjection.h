@@ -1,4 +1,4 @@
-/** @file gsC1ArgyrisEdgeBasisProjection.h
+/** @file gsApproxC1EdgeBasisProjection.h
 
     @brief Provides assembler for a G1 Basis for multiPatch.
 
@@ -14,26 +14,26 @@
 #pragma once
 
 
-#include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
-#include <gsC1Basis/gsC1ArgyrisEdgeBasisProjectionVisitor.h>
+#include <gsUnstructuredSplines/gsApproxGluingData.h>
+#include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjectionVisitor.h>
 
 
 
 namespace gismo
 {
-template<short_t d, class T, class bhVisitor = gsC1ArgyrisEdgeBasisProjectionVisitor<d, T>>
-class gsC1ArgyrisEdgeBasisProjection : public gsAssembler<T>
+template<short_t d, class T, class bhVisitor = gsApproxC1EdgeBasisProjectionVisitor<d, T>>
+class gsApproxC1EdgeBasisProjection : public gsAssembler<T>
 {
 private:
-    typedef typename std::vector<gsC1ArgyrisAuxiliaryPatch<d,T>> ArgyrisAuxPatchContainer;
+    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
 
 public:
     typedef gsAssembler<T> Base;
 
 public:
-    gsC1ArgyrisEdgeBasisProjection() { };
+    gsApproxC1EdgeBasisProjection() { };
 
-    gsC1ArgyrisEdgeBasisProjection(ArgyrisAuxPatchContainer & auxPatches,
+    gsApproxC1EdgeBasisProjection(C1AuxPatchContainer & auxPatches,
                                    gsApproxGluingData<d, T> & approxGluingData,
                                    index_t patchID,
                                    const gsOptionList & optionList,
@@ -45,14 +45,14 @@ public:
         m_dir = patchID == 0 ? 1 : 0;
 
         // Collect the needed basis
-        m_basis_g1 = m_auxPatches[patchID].getArygrisBasisRotated().getEdgeBasis(m_side);
+        m_basis_g1 = m_auxPatches[patchID].getC1BasisRotated().getEdgeBasis(m_side);
 
-        m_basis_plus = m_auxPatches[patchID].getArygrisBasisRotated().getBasisPlus(m_side);
-        m_basis_minus = m_auxPatches[patchID].getArygrisBasisRotated().getBasisMinus(m_side);
-        m_basis_geo = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGeo(m_side);
+        m_basis_plus = m_auxPatches[patchID].getC1BasisRotated().getBasisPlus(m_side);
+        m_basis_minus = m_auxPatches[patchID].getC1BasisRotated().getBasisMinus(m_side);
+        m_basis_geo = m_auxPatches[patchID].getC1BasisRotated().getBasisGeo(m_side);
     }
 
-    gsC1ArgyrisEdgeBasisProjection(ArgyrisAuxPatchContainer & auxPatches,
+    gsApproxC1EdgeBasisProjection(C1AuxPatchContainer & auxPatches,
                                    index_t patchID,
                                    const gsOptionList & optionList,
                                    const bool & isBoundary = true)
@@ -62,11 +62,11 @@ public:
         m_dir = patchID == 0 ? 1 : 0;
 
         // Collect the needed basis
-        m_basis_g1 = m_auxPatches[patchID].getArygrisBasisRotated().getEdgeBasis(m_side);
+        m_basis_g1 = m_auxPatches[patchID].getC1BasisRotated().getEdgeBasis(m_side);
 
-        m_basis_plus = m_auxPatches[patchID].getArygrisBasisRotated().getBasisPlus(m_side);
-        m_basis_minus = m_auxPatches[patchID].getArygrisBasisRotated().getBasisMinus(m_side);
-        m_basis_geo = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGeo(m_side);
+        m_basis_plus = m_auxPatches[patchID].getC1BasisRotated().getBasisPlus(m_side);
+        m_basis_minus = m_auxPatches[patchID].getC1BasisRotated().getBasisMinus(m_side);
+        m_basis_geo = m_auxPatches[patchID].getC1BasisRotated().getBasisGeo(m_side);
     }
 
     // Computed the gluing data globally
@@ -81,7 +81,7 @@ public:
 protected:
 
     // Input
-    ArgyrisAuxPatchContainer m_auxPatches;
+    C1AuxPatchContainer m_auxPatches;
     gsApproxGluingData<d, T> m_approxGluingData;
     index_t m_patchID;
     const gsOptionList m_optionList;
@@ -105,7 +105,7 @@ protected:
 }; // class gsG1BasisEdge
 
 template <short_t d, class T, class bhVisitor>
-void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
+void gsApproxC1EdgeBasisProjection<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
 {
     result.clear();
 
@@ -190,7 +190,7 @@ void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::setG1BasisEdge(gsMultiPatch
 } // setG1BasisEdge
 
 template <short_t d, class T, class bhVisitor>
-void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result)
+void gsApproxC1EdgeBasisProjection<d, T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result)
 {
     // Dim is the same for all basis functions
     const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[0].cols() );
@@ -221,7 +221,7 @@ void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::constructSolution(const gsM
 }
 
 template <short_t d, class T, class bhVisitor>
-void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
+void gsApproxC1EdgeBasisProjection<d, T,bhVisitor>::refresh(index_t bfID, std::string typeBf)
 {
     // 1. Obtain a map from basis functions to matrix columns and rows
     gsDofMapper map(m_basis_g1);
@@ -242,7 +242,7 @@ void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::refresh(index_t bfID, std::
 } // refresh()
 
 template <short_t d, class T, class bhVisitor>
-void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::assemble(index_t bfID, std::string typeBf)
+void gsApproxC1EdgeBasisProjection<d, T,bhVisitor>::assemble(index_t bfID, std::string typeBf)
 {
     // Reserve sparse system
     const index_t nz = gsAssemblerOptions::numColNz(m_basis_g1,2,1,0.333333);
@@ -269,7 +269,7 @@ void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::assemble(index_t bfID, std:
 } // assemble()
 
 template <short_t d, class T, class bhVisitor>
-void gsC1ArgyrisEdgeBasisProjection<d, T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, std::string typeBf)
+void gsApproxC1EdgeBasisProjection<d, T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, std::string typeBf)
 {
 #pragma omp parallel
     {

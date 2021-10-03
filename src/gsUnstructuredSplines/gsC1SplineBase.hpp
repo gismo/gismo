@@ -11,20 +11,22 @@
     Author(s): F. Buchegger
 */
 
+#include<gsUnstructuredSplines/gsC1SplineBase.h>
+
 namespace gismo
 {
 
-template<short_t d,class T>
-gsC1SplineBase<d,T>::defaultOptions()
-{
-    m_options.addInt("test","a test option",0);
-}
 
-template<short_t d,class T>
-gsC1SplineBase<d,T>::getOptions()
-{
-    index_t test = m_options.getInt("test");
-}
 
+
+/*
+template<short_t d,class T>
+gsC1SplineBase<d,T>::gsC1SplineBase( gsMultiPatch<T> const & mp)
+        :
+        m_patches(mp)
+{
+
+}
+*/
 
 } // namespace gismo

@@ -1,6 +1,6 @@
-/** @file gsC1ArgyrisEdge.hpp
+/** @file gsApproxC1Edge.hpp
 
-    @brief Creates the C1 Argyris space.
+    @brief Creates the (approx) C1 space.
 
     This file is part of the G+Smo library.
 
@@ -13,14 +13,14 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsC1Basis/gsC1ArgyrisEdge.h>
-#include <gsC1Basis/gsC1ArgyrisEdge.hpp>
+#include <gsUnstructuredSplines/gsApproxC1Edge.h>
+#include <gsUnstructuredSplines/gsApproxC1Edge.hpp>
 
 namespace gismo
 {
 
-//CLASS_TEMPLATE_INST gsC1ArgyrisEdge<1,real_t> ;
-CLASS_TEMPLATE_INST gsC1ArgyrisEdge<2,real_t> ;
-//CLASS_TEMPLATE_INST gsC1ArgyrisEdge<3,real_t> ;
+//CLASS_TEMPLATE_INST gsApproxC1Edge<1,real_t> ;
+CLASS_TEMPLATE_INST gsApproxC1Edge<2,real_t> ;
+//CLASS_TEMPLATE_INST gsApproxC1Edge<3,real_t> ;
 
 } // end namespace gismo

@@ -13,7 +13,7 @@
 
 #pragma once
 
-# include <gsC1Basis/gsGluingData/gsApproxGluingDataAssembler.h>
+# include <gsUnstructuredSplines/gsApproxGluingDataAssembler.h>
 
 
 namespace gismo
@@ -23,14 +23,14 @@ template<short_t d, class T>
 class gsApproxGluingData
 {
 private:
-    typedef typename std::vector<gsC1ArgyrisAuxiliaryPatch<d,T>> ArgyrisAuxPatchContainer;
+    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
 
 public:
     gsApproxGluingData()
     { }
 
 
-    gsApproxGluingData(ArgyrisAuxPatchContainer const & auxPatchContainer,
+    gsApproxGluingData(C1AuxPatchContainer const & auxPatchContainer,
                        gsOptionList const & optionList,
                        std::vector<index_t> sidesContainer = std::vector<index_t>{})
         : m_auxPatches(auxPatchContainer), m_optionList(optionList)
@@ -49,7 +49,7 @@ public:
                 index_t localSide = auxPatchContainer[0].getMapIndex(sidesContainer[dir]);
                 //gsInfo << "Global: " << sidesContainer[dir] << " : " << localSide << "\n";
                 index_t localDir = localSide < 3 ? 1 : 0;
-                if(auxPatchContainer[0].getArygrisBasisRotated().isInterface(sidesContainer[dir])) // West
+                if(auxPatchContainer[0].getC1BasisRotated().isInterface(sidesContainer[dir])) // West
                     setGlobalGluingData(0, sidesContainer[dir], localDir);
                 else
                 {
@@ -71,7 +71,7 @@ public:
 protected:
 
     // Spline space for the gluing data + multiPatch
-    ArgyrisAuxPatchContainer m_auxPatches;
+    C1AuxPatchContainer m_auxPatches;
 
     const gsOptionList m_optionList;
 
@@ -85,15 +85,15 @@ template<short_t d, class T>
 void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t globalSide, index_t dir)
 {
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
-    gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGluingData(globalSide);
+    gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getC1BasisRotated().getBasisGluingData(globalSide);
 
     gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList,
-                                                             m_auxPatches[patchID].getArygrisBasisRotated().getPatchID());
+                                                             m_auxPatches[patchID].getC1BasisRotated().getPatchID());
     alphaSContainer[dir] = approxGluingDataAssembler.getAlphaS();
     betaSContainer[dir] = approxGluingDataAssembler.getBetaS();
 /*
     if (m_auxPatches.size() == 1)
-        gsInfo << m_auxPatches[patchID].getArygrisBasisRotated().getPatchID() << "\n";
+        gsInfo << m_auxPatches[patchID].getC1BasisRotated().getPatchID() << "\n";
 
     gsMatrix<> points(1,6);
     points << 0, 0.2, 0.4, 0.6, 0.8, 1;

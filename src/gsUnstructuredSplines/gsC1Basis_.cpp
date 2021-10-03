@@ -16,6 +16,8 @@
 #include <gsUnstructuredSplines/gsC1Basis.h>
 #include <gsUnstructuredSplines/gsC1Basis.hpp>
 
+#include <gsNurbs/gsTensorBSplineBasis.h>
+
 // #include <gsUnstructuredSplines/gsC1Pascal.hpp>
 // #include <gsUnstructuredSplines/gsC1Pascal.hpp>
 

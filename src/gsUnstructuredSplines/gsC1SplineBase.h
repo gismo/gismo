@@ -13,11 +13,12 @@
 
 /*
     TO DO
- */
+*/
 
 #pragma once
 
 #include<gsIO/gsOptionList.h>
+#include<gsUnstructuredSplines/gsC1Basis.h>
 
 namespace gismo
 {
@@ -26,63 +27,88 @@ template<short_t d,class T>
 class gsC1SplineBase
 {
 
+private:
+    typedef gsC1Basis<d,T> Basis;
+    typedef typename std::vector<Basis> C1BasisContainer;
+
+    /// Shared pointer for gsC1SplineBase
+    typedef memory::shared_ptr< gsC1SplineBase > Ptr;
+
+    /// Unique pointer for gsC1SplineBase
+    typedef memory::unique_ptr< gsC1SplineBase > uPtr;
+
 public:
 
     virtual ~gsC1SplineBase() {};
 
-public:
-    // To be overwritten in inheriting classes
-
-    /**
-     * @brief      Returns the smoothing matrix into \a matrix
-     *
-     * @param      matrix  The matrix
-     */
-    virtual void matrix_into(gsSparseMatrix<T> & matrix) const = 0;
-
-    /**
-     * @brief      Returns the basis that is used.
-     *
-     * @return     { description_of_the_return_value }
-     */
-    virtual gsMultiBasis<T> localBasis() const =0;
-
-
-// implementations of gsBasis
-public:
-    // Functions that do not depend on implementation
-
-    /**
-     * @brief      Returns the smoothing matrix
-     *
-     * The number of columns of the matrix corresponds to the number of basis functions in the local basis; this is the sum of all the basis functions over all the patches.
-     * The number of rows of the matrix corresponds to the number of global basis functions, i.e. the number of basis functions corresponding to the D-Patch.
-     * Multiplying the basis with the local basis function values gives the values of the basis functions in the global basis.
-     *
-     * @return     A matrix \a result to transfer local to global coefficients
-     */
-    gsSparseMatrix<T> matrix() const
+    gsC1SplineBase(gsMultiPatch<T> & mp, gsMultiBasis<T> & mb)
+    : m_patches(mp), m_multiBasis(mb)
     {
-        gsSparseMatrix<T> result; matrix_into(result);
-        return result;
+
     }
 
-    gsOptionList options() {return m_options;}
-    void defaultOptions();
-    void getOptions();
+public:
+
+    virtual gsOptionList options() { return m_options; }
+    virtual void defaultOptions() { };
+
+    virtual void setOptions(gsOptionList opt) {m_options.update(opt, gsOptionList::addIfUnknown); };
+
+    virtual void init() = 0;
+    virtual void compute() = 0;
+
+    void uniformRefine()
+    {
+        index_t p = m_multiBasis.minCwiseDegree();
+        index_t r = m_options.getInt("discreteRegularity");
+
+        m_multiBasis.uniformRefine(1,p-r);
+    }
+
+    void getMultiBasis(gsMultiBasis<T> & multiBasis_result)
+    {
+        multiBasis_result.clear();
+
+        std::vector<gsBasis<T> *> basis_temp = std::vector<gsBasis<T> *>(m_patches.nPatches());
+        for (size_t np = 0; np < m_patches.nPatches(); np++) {
+            gsC1Basis<2, real_t>::uPtr basis = gsC1Basis<d, T>::make(m_bases[np]);
+            basis_temp[np] = static_cast<gsBasis<> *>(basis.release());
+        }
+
+        multiBasis_result = gsMultiBasis<>(basis_temp, m_patches.topology());
+    };
+
+    gsSparseMatrix<T> & getSystem() { return m_matrix; };
+    void setSystem(gsSparseMatrix<T> & system) { m_matrix = system; };
+
+    T getMinMeshSize()
+    {
+        T meshSize = 1.0;
+        for (size_t np = 0; np < m_patches.nPatches(); np++)
+            if (m_multiBasis.basis(np).getMinCellLength() < meshSize)
+                meshSize = m_multiBasis.basis(np).getMinCellLength();
+        return meshSize;
+    }
 
 private:
     // Helper functions
-
-public:
-    gsSparseMatrix<T> m_matrix;
 
 protected:
     // Data members
 
     // Put here the members of the shared functions
+    /// Multipatch
+    gsMultiPatch<T> & m_patches;
+    gsMultiBasis<T> m_multiBasis;
 
+    /// Optionlist
+    gsOptionList m_options;
 
+    /// C1 Basis
+    C1BasisContainer m_bases;
+
+    /// System matrix
+    gsSparseMatrix<T> m_matrix;
 };
 
 }

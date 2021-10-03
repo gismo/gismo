@@ -23,7 +23,7 @@
 #include <gsAssembler/gsVisitorLaplaceBiharmonic.h>
 //#include <gsAssembler/gsVisitorNitscheBiharmonic.h>
 
-#include <gsC1Basis/gsC1ArgyrisBasis.h>
+#include <gsUnstructuredSplines/gsC1Basis.h>
 
 namespace gismo
 {
@@ -118,7 +118,7 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
     gsVector<index_t> sz(m_bases.nPatches());
     for (size_t np = 0; np < m_bases.nPatches(); np++)
     {
-        const gsC1ArgyrisBasis<2,T> c1ArgyrisBasis = static_cast<const gsC1ArgyrisBasis<2,T>&>(m_bases.getBase(np));
+        const gsC1Basis<2,T> c1ArgyrisBasis = static_cast<const gsC1Basis<2,T>&>(m_bases.getBase(np));
         sz[np] = c1ArgyrisBasis.size_rows();
     }
 
@@ -447,7 +447,7 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::constructSolution(const gsMatrix
     for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
     {
         // Reconstruct solution coefficients on patch p
-        const gsC1ArgyrisBasis<2,T> c1ArgyrisBasis = static_cast<const gsC1ArgyrisBasis<2,T>&>(m_bases.getBase(np));
+        const gsC1Basis<2,T> c1ArgyrisBasis = static_cast<const gsC1Basis<2,T>&>(m_bases.getBase(np));
         index_t sz  = c1ArgyrisBasis.size_rows();
         coeffs.resize(sz, dim);
 

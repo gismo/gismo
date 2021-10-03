@@ -13,23 +13,22 @@
 #pragma once
 
 #include <gismo.h>
-#include <gsC1Basis/gsC1ArgyrisBasis.h>
+#include <gsUnstructuredSplines/gsC1Basis.h>
 
 namespace gismo
 {
 
 template<short_t d, class T>
-class gsC1ArgyrisAuxiliaryPatch
+class gsC1AuxiliaryPatch
 {
 public:
 
-    gsC1ArgyrisAuxiliaryPatch()
+    gsC1AuxiliaryPatch()
     {}
 
-    gsC1ArgyrisAuxiliaryPatch(const gsGeometry<> & patch, gsC1ArgyrisBasis<d,T> & singlePatch, const index_t side)
-    : m_patchRotated(patch), m_side(side)
+    gsC1AuxiliaryPatch(const gsGeometry<> & patch, gsC1Basis<d,T> & singlePatch, const index_t side)
+    : m_patchRotated(patch), m_C1BasisRotated(singlePatch), m_side(side)
     {
-        m_ArgyrisBasisRotated = singlePatch;
         rotationNum = 0;
         axisOrientation = 0;
 
@@ -70,7 +69,7 @@ public:
         m_patchRotated.swap(newpatch);
 
         // BASES
-        m_ArgyrisBasisRotated.swapAxis();
+        m_C1BasisRotated.swapAxis();
 
         // Map Index
         mapIndex[0] = 3;
@@ -109,7 +108,7 @@ public:
         m_patchRotated.swap(newpatch);
 
         // BASES
-        m_ArgyrisBasisRotated.swapAxis();
+        m_C1BasisRotated.swapAxis();
 /*
         if (withBasis)
         {
@@ -169,7 +168,7 @@ public:
         m_patchRotated.swap(newpatch);
 
         // BASES
-        m_ArgyrisBasisRotated.swapAxis();
+        m_C1BasisRotated.swapAxis();
 /*
         if (withBasis)
         {
@@ -470,7 +469,7 @@ public:
         return rotationNum;
     }
 
-    gsC1ArgyrisBasis<d, T> getArygrisBasisRotated() const { return m_ArgyrisBasisRotated; }
+    gsC1Basis<d, T> getC1BasisRotated() const { return m_C1BasisRotated; }
 
     void setSide(index_t side ) { m_side = side; }
     index_t side() { return m_side; }
@@ -481,7 +480,7 @@ protected:
 
     gsMultiPatch<> m_patchRotated;
 
-    gsC1ArgyrisBasis<d, T> m_ArgyrisBasisRotated;
+    gsC1Basis<d, T> m_C1BasisRotated;
 
     // Global side/vertex index in the initial geometry
     index_t m_side;

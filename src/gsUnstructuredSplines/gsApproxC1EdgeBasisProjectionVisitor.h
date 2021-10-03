@@ -1,4 +1,4 @@
-/** @file gsC1ArgyrisEdgeBasisProjectionVisitor.h
+/** @file gsApproxC1EdgeBasisProjectionVisitor.h.h
 
     @brief Visitor for the G1 Basis.
 
@@ -13,17 +13,17 @@
 
 #pragma once
 
-# include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
+# include <gsUnstructuredSplines/gsApproxGluingData.h>
 
 
 namespace gismo
 {
 template <short_t d, class T>
-class gsC1ArgyrisEdgeBasisProjectionVisitor
+class gsApproxC1EdgeBasisProjectionVisitor
 {
 public:
 
-    gsC1ArgyrisEdgeBasisProjectionVisitor()
+    gsApproxC1EdgeBasisProjectionVisitor()
     {
     }
 

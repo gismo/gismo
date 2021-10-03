@@ -1,6 +1,6 @@
-/** @file gsC1Argyris.h
+/** @file gsApproxC1Edge.h
 
-    @brief Creates the C1 Argyris space.
+    @brief Creates the (approx) C1 Edge space.
 
     This file is part of the G+Smo library.
 
@@ -13,37 +13,37 @@
 
 #pragma once
 
-#include <gsC1Basis/gsC1ArgyrisBasis.h>
-#include <gsC1Basis/gsC1ArgyrisAuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsC1Basis.h>
+#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
 
-#include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
-#include <gsC1Basis/gsC1ArgyrisEdgeBasisProjection.h>
+#include <gsUnstructuredSplines/gsApproxGluingData.h>
+#include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjection.h>
 
 namespace gismo
 {
 template<short_t d, class T>
-class gsC1ArgyrisEdge
+class gsApproxC1Edge
 {
 
 private:
-    typedef gsC1ArgyrisBasis<d, T> Basis;
-    typedef typename std::vector<Basis> ArgyrisBasisContainer;
-    typedef typename std::vector<gsC1ArgyrisAuxiliaryPatch<d,T>> ArgyrisAuxPatchContainer;
+    typedef gsC1Basis<d, T> Basis;
+    typedef typename std::vector<Basis> C1BasisContainer;
+    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
 
-    /// Shared pointer for gsC1Argyris
-    typedef memory::shared_ptr<gsC1ArgyrisEdge> Ptr;
+    /// Shared pointer for gsApproxC1Edge
+    typedef memory::shared_ptr<gsApproxC1Edge> Ptr;
 
-    /// Unique pointer for gsC1Argyris
-    typedef memory::unique_ptr<gsC1ArgyrisEdge> uPtr;
+    /// Unique pointer for gsApproxC1Edge
+    typedef memory::unique_ptr<gsApproxC1Edge> uPtr;
 
 
 public:
     /// Empty constructor
-    ~gsC1ArgyrisEdge() { }
+    ~gsApproxC1Edge() { }
 
 
-    gsC1ArgyrisEdge(gsMultiPatch<T> const & mp,
-                ArgyrisBasisContainer & bases,
+    gsApproxC1Edge(gsMultiPatch<T> const & mp,
+                C1BasisContainer & bases,
                 const boundaryInterface & item,
                 size_t & numInt,
                 const gsOptionList & optionList)
@@ -59,8 +59,8 @@ public:
         //const index_t dir_2 = side_2 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsC1ArgyrisAuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
-        m_auxPatches.push_back(gsC1ArgyrisAuxiliaryPatch<d,T>(m_mp.patch(patch_2), m_bases[patch_2], side_2));
+        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
+        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_2), m_bases[patch_2], side_2));
 
         reparametrizeInterfacePatches();
 
@@ -69,11 +69,11 @@ public:
 
         gsMultiPatch<T> result_1, result_2;
 
-        gsC1ArgyrisEdgeBasisProjection<d, T> approxArgyrisEdgeBasis(m_auxPatches, approxGluingData, 0, m_optionList);
-        gsC1ArgyrisEdgeBasisProjection<d, T> approxArgyrisEdgeBasis2(m_auxPatches, approxGluingData, 1, m_optionList);
+        gsApproxC1EdgeBasisProjection<d, T> approxEdgeBasis(m_auxPatches, approxGluingData, 0, m_optionList);
+        gsApproxC1EdgeBasisProjection<d, T> approxEdgeBasis2(m_auxPatches, approxGluingData, 1, m_optionList);
 
-        approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
-        approxArgyrisEdgeBasis2.setG1BasisEdge(result_2);
+        approxEdgeBasis.setG1BasisEdge(result_1);
+        approxEdgeBasis2.setG1BasisEdge(result_2);
 
 
         // parametrizeBasisBack
@@ -107,8 +107,8 @@ public:
         }
     }
 
-    gsC1ArgyrisEdge(gsMultiPatch<T> const & mp,
-                ArgyrisBasisContainer & bases,
+    gsApproxC1Edge(gsMultiPatch<T> const & mp,
+                C1BasisContainer & bases,
                 const patchSide & item,
                 size_t & numBdy,
                 const gsOptionList & optionList)
@@ -120,13 +120,13 @@ public:
         //const index_t dir_1 = side_1 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsC1ArgyrisAuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
+        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
 
         reparametrizeSinglePatch(side_1);
 
         gsMultiPatch<> result_1;
-        gsC1ArgyrisEdgeBasisProjection<d, T> approxArgyrisEdgeBasis(m_auxPatches, 0, m_optionList);
-        approxArgyrisEdgeBasis.setG1BasisEdge(result_1);
+        gsApproxC1EdgeBasisProjection<d, T> approxEdgeBasis(m_auxPatches, 0, m_optionList);
+        approxEdgeBasis.setG1BasisEdge(result_1);
 
 
         // parametrizeBasisBack
@@ -302,11 +302,11 @@ public:
             index_t dir = patchID == 0 ? 1 : 0;
             index_t side = m_auxPatches[patchID].side();
 
-            gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[patchID].getArygrisBasisRotated().getEdgeBasis(side); // 0 -> u, 1 -> v
+            gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[patchID].getC1BasisRotated().getEdgeBasis(side); // 0 -> u, 1 -> v
 
-            gsBSplineBasis<T> basis_plus = m_auxPatches[patchID].getArygrisBasisRotated().getBasisPlus(side);
-            gsBSplineBasis<T> basis_minus = m_auxPatches[patchID].getArygrisBasisRotated().getBasisMinus(side);
-            gsBSplineBasis<T> basis_geo = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGeo(side);
+            gsBSplineBasis<T> basis_plus = m_auxPatches[patchID].getC1BasisRotated().getBasisPlus(side);
+            gsBSplineBasis<T> basis_minus = m_auxPatches[patchID].getC1BasisRotated().getBasisMinus(side);
+            gsBSplineBasis<T> basis_geo = m_auxPatches[patchID].getC1BasisRotated().getBasisGeo(side);
 
             index_t n_plus = basis_plus.size();
             index_t n_minus = basis_minus.size();
@@ -380,11 +380,11 @@ public:
         index_t side = m_auxPatches[0].side();
         index_t dir = 1;
 
-        gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getArygrisBasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
+        gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getC1BasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
 
-        gsBSplineBasis<T> basis_plus = m_auxPatches[0].getArygrisBasisRotated().getBasisPlus(side);
-        gsBSplineBasis<T> basis_minus = m_auxPatches[0].getArygrisBasisRotated().getBasisMinus(side);
-        gsBSplineBasis<T> basis_geo = m_auxPatches[0].getArygrisBasisRotated().getBasisGeo(side);
+        gsBSplineBasis<T> basis_plus = m_auxPatches[0].getC1BasisRotated().getBasisPlus(side);
+        gsBSplineBasis<T> basis_minus = m_auxPatches[0].getC1BasisRotated().getBasisMinus(side);
+        gsBSplineBasis<T> basis_geo = m_auxPatches[0].getC1BasisRotated().getBasisGeo(side);
 
         index_t n_plus = basis_plus.size();
         index_t n_minus = basis_minus.size();
@@ -439,14 +439,14 @@ protected:
 
     // Input
     gsMultiPatch<T> const & m_mp;
-    ArgyrisBasisContainer & m_bases;
+    C1BasisContainer & m_bases;
 
     const gsOptionList & m_optionList;
 
     index_t patch_1, patch_2, side_1, side_2;
 
     // Need for rotation, etc.
-    ArgyrisAuxPatchContainer m_auxPatches;
+    C1AuxPatchContainer m_auxPatches;
 
     // Store temp solution
     std::vector<gsMultiPatch<T>> basisEdgeResult;
@@ -465,10 +465,10 @@ private:
 
     void computeKernel(gsMultiPatch<> & result_0, gsMultiPatch<> & result_1, index_t side_0);
 
-}; // Class gsC1ArgyrisEdge
+}; // Class gsApproxC1Edge
 
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsC1ArgyrisEdge.hpp)
+#include GISMO_HPP_HEADER(gsApproxC1Edge.hpp)
 #endif

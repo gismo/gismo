@@ -26,6 +26,7 @@ namespace gismo
 
 // CLASS_TEMPLATE_INST gsC1Basis<1,real_t> ;
 CLASS_TEMPLATE_INST gsC1SplineBase<2,real_t> ;
+CLASS_TEMPLATE_INST gsApproxC1Spline<2,real_t>;
 // CLASS_TEMPLATE_INST gsC1Basis<3,real_t> ;
 
 } // end namespace gismo

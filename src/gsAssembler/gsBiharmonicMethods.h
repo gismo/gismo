@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsC1Basis/gsC1Argyris.h>
+//#include <gsC1Basis/gsC1Argyris.h>
 
 #include <gsAssembler/gsBiharmonicArgyrisAssembler.h>
 #include <gsAssembler/gsBiharmonicNitscheAssembler.h>
@@ -22,6 +22,8 @@
 #include <gsC1Basis/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
 #include <gsC1Basis/gsErrorAnalysis/gsC1NitscheNorms.h>
 #include <gsC1Basis/gsErrorAnalysis/gsC1NitscheJumpNorm.h>
+
+#include <gsUnstructuredSplines/gsApproxC1Spline.h>
 
 namespace gismo
 {
@@ -67,7 +69,9 @@ public:
                         const gsOptionList & optionList)
                         : m_mp(mp), m_mb(mb), m_optionList(optionList)
     {
-        c1Argyris = gsC1Argyris<2, real_t>(m_mp, m_mb, m_optionList);
+        //c1Argyris = gsC1Argyris<2, real_t>(m_mp, m_mb, m_optionList);
+        approxC1Spline = new gsApproxC1Spline<2, real_t>(m_mp, m_mb, m_optionList);
+        //approxC1Spline->setOptions(m_optionList);
     }
 
     index_t numDofs() const { return g1BiharmonicAssembler->numDofs(); }
@@ -76,10 +80,10 @@ public:
 
     void init()
     {
-        c1Argyris.init();
-        c1Argyris.createArgyrisSpace();
-        c1Argyris.getMultiBasis(mb_argyris);
-        sparseMatrix_argyris = c1Argyris.getSystem();
+        approxC1Spline->init();
+        approxC1Spline->compute();
+        approxC1Spline->getMultiBasis(mb_argyris);
+        sparseMatrix_argyris = approxC1Spline->getSystem();
         mappedBasis.init(mb_argyris, sparseMatrix_argyris.transpose());
     }
 
@@ -96,7 +100,7 @@ public:
         gsMatrix<real_t> solFull;
         g1BiharmonicAssembler->constructSolution(solVector, solFull);
         sparseMatrix_argyris = solFull.asDiagonal() * sparseMatrix_argyris;
-        c1Argyris.setSystem(sparseMatrix_argyris);
+        approxC1Spline->setSystem(sparseMatrix_argyris);
     }
 
     void error(const gsFunctionWithDerivatives<T> &solution)
@@ -131,7 +135,8 @@ protected:
     gsOptionList m_optionList;
 
 protected:
-    gsC1Argyris<2, real_t> c1Argyris;
+    //gsC1Argyris<2, real_t> c1Argyris;
+    gsC1SplineBase<2, real_t> * approxC1Spline;
     gsMappedBasis<2,real_t> mappedBasis;
 
     gsSparseMatrix<> sparseMatrix_argyris;

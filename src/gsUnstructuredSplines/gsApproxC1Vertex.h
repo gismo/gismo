@@ -1,6 +1,6 @@
-/** @file gsC1ArgyrisVertex.h
+/** @file gsApproxC1Vertex.h
 
-    @brief Creates the C1 Argyris Vertex space.
+    @brief Creates the (approx.) C1 Vertex space.
 
     This file is part of the G+Smo library.
 
@@ -13,35 +13,35 @@
 
 #pragma once
 
-#include <gsC1Basis/gsC1ArgyrisAuxiliaryPatch.h>
-#include <gsC1Basis/gsC1ArgyrisVertexBasisProjection.h>
+#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsApproxC1VertexBasisProjection.h>
 
 
 
 namespace gismo {
 template<short_t d, class T>
-class gsC1ArgyrisVertex
+class gsApproxC1Vertex
 {
 
 private:
-    typedef gsC1ArgyrisBasis<d, T> Basis;
-    typedef typename std::vector<Basis> ArgyrisBasisContainer;
-    typedef typename std::vector<gsC1ArgyrisAuxiliaryPatch<d,T>> ArgyrisAuxPatchContainer;
+    typedef gsC1Basis<d, T> Basis;
+    typedef typename std::vector<Basis> C1BasisContainer;
+    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
 
-    /// Shared pointer for gsC1Argyris
-    typedef memory::shared_ptr<gsC1ArgyrisVertex> Ptr;
+    /// Shared pointer for gsApproxC1Vertex
+    typedef memory::shared_ptr<gsApproxC1Vertex> Ptr;
 
-    /// Unique pointer for gsC1Argyris
-    typedef memory::unique_ptr<gsC1ArgyrisVertex> uPtr;
+    /// Unique pointer for gsApproxC1Vertex
+    typedef memory::unique_ptr<gsApproxC1Vertex> uPtr;
 
 
 public:
     /// Empty constructor
-    ~gsC1ArgyrisVertex() { }
+    ~gsApproxC1Vertex() { }
 
 
-    gsC1ArgyrisVertex(gsMultiPatch<T> const & mp,
-                ArgyrisBasisContainer & bases,
+    gsApproxC1Vertex(gsMultiPatch<T> const & mp,
+                C1BasisContainer & bases,
                 const std::vector<size_t> & patchesAroundVertex,
                 const std::vector<size_t> & vertexIndices,
                 const index_t & numVer,
@@ -57,7 +57,7 @@ public:
             index_t vertex_1 = m_vertexIndices[i];
             index_t patch_1 = m_patchesAroundVertex[i];
 
-            m_auxPatches.push_back(gsC1ArgyrisAuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
+            m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
         }
 
         reparametrizeVertexPatches();
@@ -69,7 +69,7 @@ public:
 
         for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
         {
-            ArgyrisAuxPatchContainer auxPatchSingle;
+            C1AuxPatchContainer auxPatchSingle;
             auxPatchSingle.push_back(m_auxPatches[i]);
 
             std::vector<index_t> sideContainer;
@@ -131,9 +131,9 @@ public:
 
             // Create Basis functions
             gsMultiPatch<> result_1;
-            gsC1ArgyrisVertexBasisProjection<d, T> approxArgyrisVertexBasis(auxPatchSingle, approxGluingData,
+            gsApproxC1VertexBasisProjection<d, T> approxC1VertexBasis(auxPatchSingle, approxGluingData,
                                                                                 m_vertexIndices[i], sideContainer, sigma, m_optionList);
-            approxArgyrisVertexBasis.setBasisVertex(result_1);
+            approxC1VertexBasis.setBasisVertex(result_1);
 
 
             // Store temporary
@@ -142,7 +142,7 @@ public:
             gD.push_back(approxGluingData); // delete later
         }
 
-        if (m_auxPatches[0].getArygrisBasisRotated().getKindOfVertex(m_vertexIndices[0]) != 0) // No internal vertex
+        if (m_auxPatches[0].getC1BasisRotated().getKindOfVertex(m_vertexIndices[0]) != 0) // No internal vertex
         {
 /*
             if (m_patchesAroundVertex.size() == 2 && m_vertexIndices[0] == 2)
@@ -296,8 +296,8 @@ public:
         }
     }
 
-    gsC1ArgyrisVertex(gsMultiPatch<T> const & mp,
-                      ArgyrisBasisContainer & bases,
+    gsApproxC1Vertex(gsMultiPatch<T> const & mp,
+                      C1BasisContainer & bases,
                       const std::vector<size_t> & patchesAroundVertex,
                       const std::vector<size_t> & vertexIndices,
                       const index_t & numVer,
@@ -314,7 +314,7 @@ public:
             index_t vertex_1 = m_vertexIndices[i];
             index_t patch_1 = m_patchesAroundVertex[i];
 
-            m_auxPatches.push_back(gsC1ArgyrisAuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
+            m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
         }
 
         // 2 == u,v
@@ -739,7 +739,7 @@ public:
     {
 
         // Collect the needed basis
-        gsTensorBSplineBasis<d, T> basis_vertex = m_auxPatches[i].getArygrisBasisRotated().getVertexBasis(corner);
+        gsTensorBSplineBasis<d, T> basis_vertex = m_auxPatches[i].getC1BasisRotated().getVertexBasis(corner);
 
         std::vector<gsBSplineBasis<T>> basis_plus(2);
         std::vector<gsBSplineBasis<T>> basis_minus(2);
@@ -751,11 +751,11 @@ public:
         {
             index_t localdir = m_auxPatches[i].getMapIndex(sideContainer[dir]) < 3 ? 1 : 0;
 
-            basis_plus[localdir] = m_auxPatches[i].getArygrisBasisRotated().getBasisPlus(sideContainer[dir]);
-            basis_minus[localdir] = m_auxPatches[i].getArygrisBasisRotated().getBasisMinus(sideContainer[dir]);
-            basis_geo[localdir] = m_auxPatches[i].getArygrisBasisRotated().getBasisGeo(sideContainer[dir]);
+            basis_plus[localdir] = m_auxPatches[i].getC1BasisRotated().getBasisPlus(sideContainer[dir]);
+            basis_minus[localdir] = m_auxPatches[i].getC1BasisRotated().getBasisMinus(sideContainer[dir]);
+            basis_geo[localdir] = m_auxPatches[i].getC1BasisRotated().getBasisGeo(sideContainer[dir]);
 
-            kindOfEdge[localdir] = m_auxPatches[i].getArygrisBasisRotated().isInterface(sideContainer[dir]);
+            kindOfEdge[localdir] = m_auxPatches[i].getC1BasisRotated().isInterface(sideContainer[dir]);
 
         }
 
@@ -1043,7 +1043,7 @@ public:
         real_t h_geo = 1;
         for(size_t i = 0; i < m_auxPatches.size(); i++)
         {
-            gsTensorBSplineBasis<2, real_t> bsp_temp = m_auxPatches[0].getArygrisBasisRotated().getVertexBasis(vertexIndices[i]);
+            gsTensorBSplineBasis<2, real_t> bsp_temp = m_auxPatches[0].getC1BasisRotated().getVertexBasis(vertexIndices[i]);
 
             real_t p_temp = math::max(bsp_temp.degree(0), bsp_temp.degree(1));
 
@@ -1206,7 +1206,7 @@ protected:
 
     // Input
     gsMultiPatch<T> const & m_mp;
-    ArgyrisBasisContainer & m_bases;
+    C1BasisContainer & m_bases;
 
     const std::vector<size_t> & m_patchesAroundVertex;
     const std::vector<size_t> & m_vertexIndices;
@@ -1214,11 +1214,11 @@ protected:
     const gsOptionList & m_optionList;
 
     // Need for rotation, etc.
-    ArgyrisAuxPatchContainer m_auxPatches;
+    C1AuxPatchContainer m_auxPatches;
 
     // Store temp solution
     std::vector<gsMultiPatch<T>> basisVertexResult;
 
-}; // gsC1ArgyrisVertex
+}; // gsApproxC1Vertex
 
 } // namespace gismo

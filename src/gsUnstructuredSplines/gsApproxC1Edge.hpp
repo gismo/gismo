@@ -1,6 +1,6 @@
-/** @file gsC1ArgyrisEdge.hpp
+/** @file gsApproxC1Edge.hpp
 
-    @brief Creates the C1 Argyris space.
+    @brief Creates the approx C1 space.
 
     This file is part of the G+Smo library.
 
@@ -13,18 +13,18 @@
 
 #pragma once
 
-#include <gsC1Basis/gsC1ArgyrisEdge.h>
+#include <gsUnstructuredSplines/gsApproxC1Edge.h>
 
-#include <gsC1Basis/gsC1ArgyrisAuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
 
-#include <gsC1Basis/gsGluingData/gsApproxGluingData.h>
-#include <gsC1Basis/gsC1ArgyrisEdgeBasisProjection.h>
+#include <gsUnstructuredSplines/gsApproxGluingData.h>
+#include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjection.h>
 
 namespace gismo
 {
 
     template<short_t d,class T>
-    void gsC1ArgyrisEdge<d,T>::computeAuxTopology()
+    void gsApproxC1Edge<d,T>::computeAuxTopology()
     {
         for(unsigned i = 0; i <  m_auxPatches.size(); i++)
         {
@@ -38,7 +38,7 @@ namespace gismo
 
 
     template<short_t d,class T>
-    void gsC1ArgyrisEdge<d,T>::reparametrizeInterfacePatches()
+    void gsApproxC1Edge<d,T>::reparametrizeInterfacePatches()
     {
         computeAuxTopology();
 
@@ -89,7 +89,7 @@ namespace gismo
 
 
     template<short_t d,class T>
-    void gsC1ArgyrisEdge<d,T>::reparametrizeSinglePatch(index_t side)
+    void gsApproxC1Edge<d,T>::reparametrizeSinglePatch(index_t side)
     {
         computeAuxTopology();
 
@@ -139,10 +139,10 @@ namespace gismo
 
 
     template<short_t d,class T>
-    void gsC1ArgyrisEdge<d,T>::computeKernel(gsMultiPatch<> & result_0, gsMultiPatch<> & result_1, index_t side_0)
+    void gsApproxC1Edge<d,T>::computeKernel(gsMultiPatch<> & result_0, gsMultiPatch<> & result_1, index_t side_0)
     {
-        index_t n_plus = m_auxPatches[0].getArygrisBasisRotated().getBasisPlus(side_0).size(); // == patch 1, side 1
-        index_t n_minus = m_auxPatches[0].getArygrisBasisRotated().getBasisMinus(side_0).size();
+        index_t n_plus = m_auxPatches[0].getC1BasisRotated().getBasisPlus(side_0).size(); // == patch 1, side 1
+        index_t n_minus = m_auxPatches[0].getC1BasisRotated().getBasisMinus(side_0).size();
 
         index_t dim_U_0 = result_0.basis(0).component(0).size();
         index_t dim_V_0 = result_0.basis(0).component(1).size();
