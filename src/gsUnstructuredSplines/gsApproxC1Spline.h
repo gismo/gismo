@@ -37,19 +37,29 @@ public:
         //Base::m_patches(patches);
         //Base::m_multiBasis = gsMultiBasis<T>(m_patches);
 
+        // if (Base::m_patches.targetDim() >2 )
+        //     Base::m_patches.embed(2);
+
         Base::setOptions(optionList);
 
         // p-refine
         for (size_t np = 0; np < m_patches.nPatches(); ++np)
             m_multiBasis.basis(np).setDegree(m_options.getInt("discreteDegree"));
+    };
 
-        p_tilde = m_options.getInt("gluingDataDegree");//math::max(m_optionList.getInt("discreteDegree") - 1, 2);
-        r_tilde = m_options.getInt("gluingDataRegularity");//p_tilde - 1;
-        if (p_tilde == -1 || r_tilde == -1)
-        {
-            p_tilde = math::max(m_options.getInt("discreteDegree") - 1, 2);
-            r_tilde = p_tilde - 1;
-        }
+
+    gsApproxC1Spline(gsMultiPatch<T> & patches, gsMultiBasis<T> & multiBasis)
+    :
+    Base(patches, multiBasis)
+    {
+
+        // if (Base::m_patches.targetDim() >2 )
+        // {
+        //     Base::m_patches = patches;
+        //     Base::m_patches.embed(2);
+        // }
+
+        this->defaultOptions();
     };
 
 public:
@@ -62,6 +72,8 @@ public:
     void plotParaview( std::string fn, index_t npts = 1000 );
 
 private:
+    void defaultOptions();
+
     // Helper functions
     void createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
                               gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
@@ -75,16 +87,16 @@ private:
                                gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
                                gsKnotVector<T> & kv_result);
 
-    void createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
+    void createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                               gsKnotVector<T> & kv_gD_1, gsKnotVector<T> & kv_gD_2,
                               gsKnotVector<T> & kv_1, gsKnotVector<T> & kv_2,
                               gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
 
-    void createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
+    void createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                               gsKnotVector<T> & kv_1,
                               gsKnotVector<T> & kv1_result);
 
-    void createLokalVertexSpace(gsTensorBSplineBasis<d,T> & basis_vertex_1, gsTensorBSplineBasis<d,T> & result_1);
+    void createLocalVertexSpace(gsTensorBSplineBasis<d,T> & basis_vertex_1, gsTensorBSplineBasis<d,T> & result_1);
 
 protected:
     // Data members

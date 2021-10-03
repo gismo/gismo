@@ -18,6 +18,8 @@
 
 #include <gsMSplines/gsDPatch.h>
 
+#include <gsUnstructuredSplines/gsApproxC1Spline.h>
+
 #include <gsKLShell/gsThinShellAssembler.h>
 #include <gsKLShell/gsMaterialMatrixLinear.h>
 
@@ -46,6 +48,7 @@ int main(int argc, char *argv[])
 {
     bool plot       = false;
     bool last       = false;
+    bool info       = false;
     bool writeMatrix= false;
     index_t numRefine  = 2;
     index_t numElevate = 1;
@@ -65,6 +68,12 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "plot",plot);
     cmd.addSwitch("last", "last case only",last);
     cmd.addSwitch("writeMat", "Write projection matrix",writeMatrix);
+    cmd.addSwitch( "info", "Print information", info );
+
+    // to do:
+    // smoothing method add nitsche @Pascal
+
+
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsMultiPatch<> mp;
@@ -399,6 +408,9 @@ int main(int argc, char *argv[])
     }
 
     gsWriteParaview(mp,"mp",1000,true,false);
+    for (index_t p = 0; p!=mp.nPatches(); ++p)
+    gsDebugVar(mp.patch(p));
+
 
     real_t thickness = 1.0;
     real_t E_modulus = 1.0;
@@ -465,11 +477,23 @@ int main(int argc, char *argv[])
         }
         else if (smoothing==2) // Pascal
         {
-            gsDPatch<2,real_t> dpatch(mp);
-            dpatch.matrix_into(global2local);
+            mp.embed(2);
+            gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
+            approxC1.options().setSwitch("info",info);
+            approxC1.options().setSwitch("plot",plot);
+            // approxC1.options().setInt("gluingDataDegree",)
+            // approxC1.options().setInt("gluingDataRegularity",)
+
+    gsDebugVar(approxC1.options());
+
+            approxC1.init();
+            approxC1.compute();
+            mp.embed(3);
+
+            global2local = approxC1.getSystem();
             global2local = global2local.transpose();
-            geom = dpatch.exportToPatches();
-            dbasis = dpatch.localBasis();
+            geom = mp;
+            approxC1.getMultiBasis(dbasis);
         }
         else if (smoothing==3) // Andrea
         {
@@ -495,7 +519,6 @@ int main(int argc, char *argv[])
         // gsMappedSpline<2,real_t> mspline(bb2,coefs);
         // geom = mspline.exportToPatches();
 
-
         assembler = new gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
         assembler->setSpaceBasis(bb2);
         assembler->setPointLoads(pLoads);
@@ -514,23 +537,25 @@ int main(int argc, char *argv[])
         solver.compute( matrix );
         solVector = solver.solve(vector);
 
+        gsDebugVar(solVector);
+
         gsInfo<<"\tSolving system:\t\t"<<time.stop()<<"\t[s]\n";
         time.restart();
 
         // l2err[r]= math::sqrt( ev.integral( (f - s).sqNorm()*meas(G) ) / ev.integral(f.sqNorm()*meas(G)) );
-
         // h1err[r]= l2err[r] + math::sqrt(ev.integral( ( igrad(f) - grad(s)*jac(G).inv() ).sqNorm()*meas(G) )/ev.integral( igrad(f).sqNorm()*meas(G) ) );
-
         // linferr[r] = ev.max( f-s ) / ev.max(f);
+
+        l2err[r]= 0;
+        h1err[r]= 0;
+        linferr[r] = 0;
+
 
         gsInfo<<"\tError computations:\t"<<time.stop()<<"\t[s]\n"; // This takes longer for the D-patch, probably because there are a lot of points being evaluated, all containing the linear combinations of the MSplines
 
-        gsWriteParaview(dbasis.basis(0),"basis");
         // TO DO: Refine the mb
         mp.uniformRefine();
         dbasis = gsMultiBasis<>(mp);
-
-
     }
     //! [Solver loop]
 

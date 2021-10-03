@@ -46,7 +46,7 @@ public:
 
     gsOptionList options() {return m_options;}
     void defaultOptions();
-    void setOptions(gsOptionList & options) { m_options = options; };
+    void setOptions(gsOptionList opt) {m_options.update(opt, gsOptionList::addIfUnknown); };
 
     void print_spaces();
 

@@ -21,8 +21,6 @@
 
 #include <gsC1Basis/gsC1ArgyrisIO.h>
 
-#include <boost/filesystem.hpp>
-
 #include <sstream>
 
 template <typename T>

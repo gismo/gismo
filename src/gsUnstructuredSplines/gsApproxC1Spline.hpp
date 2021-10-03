@@ -20,8 +20,30 @@ namespace gismo
 {
 
 template<short_t d,class T>
+void gsApproxC1Spline<d,T>::defaultOptions()
+{
+    /*
+        to do: general
+    */
+    gsTensorBSplineBasis<d, T> basis = dynamic_cast<gsTensorBSplineBasis<d, T> &>(m_multiBasis.basis(0));
+    index_t p = basis.degree(0);
+
+
+    // For the gluing data space
+    m_options.addInt("gluingDataDegree","Polynomial degree of the gluing data space", p-1 );
+    m_options.addInt("gluingDataRegularity","Regularity of the gluing data space",  p-2 );
+    m_options.addSwitch("info","Print debug information",  false );
+    m_options.addSwitch("plot","Print debug information",  false );
+
+
+
+}
+template<short_t d,class T>
 void gsApproxC1Spline<d,T>::init()
 {
+    p_tilde = m_options.getInt("gluingDataDegree");//math::max(m_optionList.getInt("discreteDegree") - 1, 2);
+    r_tilde = m_options.getInt("gluingDataRegularity");//p_tilde - 1;
+
     m_bases.reserve(m_patches.nPatches()); // For each Patch
     for (size_t np = 0; np < m_patches.nPatches(); np++)
     {
@@ -38,10 +60,13 @@ void gsApproxC1Spline<d,T>::init()
         // Construct special space for r = p - 1:
         // The first and the last knot (not 0,1) are repeated +1, e.g.
         // deg 3, r = 2: |||| || | [...] | || ||||
-        index_t r = m_options.getInt("discreteRegularity"); // Assume same reg for each direction
+
+        index_t m,p;
         for (index_t uv = 0; uv < 2; uv++)
         {
-            if (basis_inner.degree(uv) - r == 1)
+            p = basis_inner.degree(uv);
+            m = basis_inner.knots(uv).multiplicityIndex(p+1);
+            if (m == 1)
             {
                 T knot_u = basis_inner.knot(uv,basis_inner.degree(uv)+1);
                 if (knot_u != 1)
@@ -126,7 +151,7 @@ void gsApproxC1Spline<d,T>::init()
 
         gsKnotVector<T> kv_edge_1, kv_edge_2;
 
-        createLokalEdgeSpace(kv_plus, kv_minus, kv_gluingData, kv_gluingData, kv_patch_1, kv_patch_2, kv_edge_1, kv_edge_2);
+        createLocalEdgeSpace(kv_plus, kv_minus, kv_gluingData, kv_gluingData, kv_patch_1, kv_patch_2, kv_edge_1, kv_edge_2);
         gsBSplineBasis<> basis_edge(kv_edge_1);
 /*
         if (m_options.getSwitch("info"))
@@ -170,7 +195,11 @@ void gsApproxC1Spline<d,T>::init()
         basis_plus = gsBSplineBasis<>(kv_plus);
         basis_minus = gsBSplineBasis<>(kv_minus);
 
-        if (basis_geo_1.degree(0) - m_options.getInt("discreteRegularity") == 1)
+
+        index_t m, p;
+        p = basis_1.degree();
+        m = basis_1.knots().multiplicityIndex(p+1);
+        if (m == 1)
         {
 /*
             T knot_u = basis_edge_1.knot(0,basis_edge_1.degree(0)+1);
@@ -190,7 +219,7 @@ void gsApproxC1Spline<d,T>::init()
         m_bases[patch_1].setBasisGeo(basis_geo_1, side_1);
 
         gsKnotVector<T> kv_edge_1;
-        createLokalEdgeSpace(kv_plus, kv_minus, kv_patch_1, kv_edge_1);
+        createLocalEdgeSpace(kv_plus, kv_minus, kv_patch_1, kv_edge_1);
 
         gsKnotVector<T> kv_geo_1 = basis_geo_1.knots();
         gsTensorBSplineBasis<d, T> basis_edge_1_temp(dir_1 == 0 ? kv_edge_1 : kv_geo_1, dir_1 == 0 ? kv_geo_1 : kv_edge_1);
@@ -226,8 +255,13 @@ void gsApproxC1Spline<d,T>::init()
 
             gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(m_multiBasis.basis(patch_1));
 
-            index_t r = m_options.getInt("discreteRegularity");
-            if (basis_vertex_1.degree(0) - r == 1) // == basis_vertex_1.degree(1)
+            /*
+                to do: fix for general regularity.
+             */
+            index_t m, p;
+            p = basis_vertex_1.degree(0);
+            m = basis_vertex_1.knots(0).multiplicityIndex(p+1);
+            if (m == 1) // == basis_vertex_1.degree(1)
                 basis_vertex_1.reduceContinuity(1); // In the case for the max. smoothness
 
             m_bases[patch_1].setVertexBasis(basis_vertex_1, vertex_1);
@@ -251,7 +285,7 @@ void gsApproxC1Spline<d,T>::init()
                     gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(m_multiBasis.basis(
                             patch_1));
 
-                    //createLokalVertexSpace(basis_vertex_1, basis_vertex_result);
+                    //createLocalVertexSpace(basis_vertex_1, basis_vertex_result);
 
                     //index_t p_tilde_1 = math::max(m_multiBasis.basis(patch_1).degree(0)-1,3);
                     //index_t p_tilde_2 = math::max(m_multiBasis.basis(patch_1).degree(1)-1,3);
@@ -259,7 +293,11 @@ void gsApproxC1Spline<d,T>::init()
                     basis_vertex_1.degreeElevate(p_tilde-1,0); // Keep smoothness
                     basis_vertex_1.degreeElevate(p_tilde-1,1);
 
-                    index_t r = m_options.getInt("discreteRegularity");
+                    // todo: fix for general regularity
+                    index_t r, p;
+                    p = basis_vertex_1.degree(0);
+                    r = p - basis_vertex_1.knots(0).multiplicityIndex(p+1);
+
                     //if (m_multiBasis.basis(patch_1).degree(0) - r == 1)
                     //    basis_vertex_1.reduceContinuity(r-1); // In the case for the max. smoothness
                     //else if (r > 2)
@@ -297,7 +335,11 @@ void gsApproxC1Spline<d,T>::init()
                     basis_vertex_1.degreeElevate(p_tilde-1,0); // Keep smoothness
                     basis_vertex_1.degreeElevate(p_tilde-1,1);
 
-                    index_t r = m_options.getInt("discreteRegularity");
+                    // todo: fix for general regularity
+                    index_t r, p;
+                    p = basis_vertex_1.degree(0);
+                    r = p - basis_vertex_1.knots(0).multiplicityIndex(p+1);
+
                     //if (m_multiBasis.basis(patch_1).degree(0) - r == 1)
                     //    basis_vertex_1.reduceContinuity(r-1); // In the case for the max. smoothness
                     //else if (r > 2)
@@ -667,8 +709,6 @@ void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVe
     std::vector<real_t> patch_kv_unique_2 = kv2_patch.unique();
     std::vector<index_t> patch_kv_mult_2 = kv2_patch.multiplicities();
 
-    index_t p = math::max(kv1.degree(), kv2.degree());
-
     std::vector<real_t> knot_vector_plus, knot_vector_minus;
 
     if (knots_unique_1 != knots_unique_2)
@@ -684,13 +724,18 @@ void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVe
     if (knots_mult_1 != knots_mult_2)
         gsInfo << "NOT IMPLEMENTED YET 4: Plus, Minus space \n";
 
+    // todo: fix for general regularity
+    index_t m, p;
+    p = math::max(kv1.degree(), kv2.degree());
+    m = kv1.multiplicityIndex(p+1);
+
     kv1_result = kv2; // == kv2
-    if (p - m_options.getInt("discreteRegularity") != 1)
+    if (m != 1)
         kv1_result.reduceMultiplicity(1);
 
     kv2_result = kv2; // == kv2
     kv2_result.degreeDecrease(1);
-    if (p - m_options.getInt("discreteRegularity") != 1)
+    if (m != 1)
         kv2_result.reduceMultiplicity(1);
 
 /*
@@ -752,15 +797,17 @@ void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1,
     std::vector<real_t> patch_kv_unique_1 = kv1_patch.unique();
     std::vector<index_t> patch_kv_mult_1 = kv1_patch.multiplicities();
 
-    index_t p = math::max(kv1.degree(), 0);
+    index_t m,p;
+    p = math::max(kv1.degree(), 0);
+    m = kv1.multiplicityIndex(p+1);
 
     kv1_result = kv1;
-    if (p - m_options.getInt("discreteRegularity") != 1)
+    if (m != 1)
         kv1_result.reduceMultiplicity(1);
 
     kv2_result = kv1;
     kv2_result.degreeDecrease(1);
-    if (p - m_options.getInt("discreteRegularity") != 1)
+    if (m != 1)
         kv2_result.reduceMultiplicity(1);
 
 
@@ -841,7 +888,7 @@ else if (*it > *it2)
 
 
 template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
+void gsApproxC1Spline<d,T>::createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                                                gsKnotVector<T> & kv_gD_1, gsKnotVector<T> & kv_gD_2,
                                                gsKnotVector<T> & kv_patch_1, gsKnotVector<T> & kv_patch_2,
                                                gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result)
@@ -932,10 +979,10 @@ kv1_result = gsKnotVector<>(knot_vector);
 // ==
 kv2_result = gsKnotVector<>(knot_vector);
 */
-} // createLokalEdgeSpace
+} // createLocalEdgeSpace
 
 template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
+void gsApproxC1Spline<d,T>::createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                                                gsKnotVector<T> & kv_patch_1,
                                                gsKnotVector<T> & kv1_result)
 {
@@ -957,15 +1004,18 @@ void gsApproxC1Spline<d,T>::createLokalEdgeSpace(gsKnotVector<T> & kv_plus, gsKn
 
         kv1_result.increaseMultiplicity(p_1-r-1);
     }
-} // createLokalEdgeSpace
+} // createLocalEdgeSpace
 
 template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createLokalVertexSpace(gsTensorBSplineBasis<d, T> & basis_vertex, gsTensorBSplineBasis<d, T> & basis_vertex_result)
+void gsApproxC1Spline<d,T>::createLocalVertexSpace(gsTensorBSplineBasis<d, T> & basis_vertex, gsTensorBSplineBasis<d, T> & basis_vertex_result)
 {
     index_t p_1 = basis_vertex.degree(0); // == basis_vertex.degree(1)
     //index_t p_tilde = math::max(p_1 - 1, 3); // TODO more general
 
-    index_t r = m_options.getInt("discreteRegularity");
+
+    // todo: fix for general regularity
+    index_t r;
+    r = p_1 - basis_vertex.knots(0).multiplicityIndex(p_1);
 
     if (basis_vertex.degree(0) != basis_vertex.degree(1))
         gsInfo << "ERROR LOKAL Vertex SPACE \n";
@@ -981,7 +1031,7 @@ void gsApproxC1Spline<d,T>::createLokalVertexSpace(gsTensorBSplineBasis<d, T> & 
 
 
 
-} // createLokalVertexSpace
+} // createLocalVertexSpace
 
 
 

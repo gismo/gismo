@@ -49,7 +49,7 @@ public:
 
 public:
 
-    virtual gsOptionList options() { return m_options; }
+    virtual gsOptionList & options() { return m_options; }
     virtual void defaultOptions() { };
 
     virtual void setOptions(gsOptionList opt) {m_options.update(opt, gsOptionList::addIfUnknown); };
