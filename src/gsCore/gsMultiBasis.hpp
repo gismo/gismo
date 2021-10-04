@@ -226,7 +226,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     // Get fine mapper
     gsDofMapper fineMapper;
     this->getMapper(
-            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",12),
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             fineMapper,
@@ -243,7 +243,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     // Get coarse mapper
     gsDofMapper coarseMapper;
     this->getMapper(
-            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",12),
+            (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             coarseMapper,
