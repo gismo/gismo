@@ -1,12 +1,8 @@
 ######################################################################
-## gsIntall.cmake ---
+## gsInstall.cmake
 ## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris
-## Author: Harald Weiner
-## Copyright (C) 2012-2015 - RICAM-Linz.
-######################################################################
-## Installation
+## Authors: Angelos Mantzaflaris, Harald Weiner
 ######################################################################
 
 message ("  CMAKE_INSTALL_PREFIX    ${CMAKE_INSTALL_PREFIX}")
@@ -26,7 +22,7 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 if(WIN32 AND NOT CYGWIN)
   set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake)
 else()
-   set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR})
+   set(DEF_CMAKE_INSTALL_DIR ${LIB_INSTALL_DIR}/gismo)
 endif()
 set(CMAKE_INSTALL_DIR ${DEF_CMAKE_INSTALL_DIR} CACHE STRING
     "Installation directory for CMake files")
@@ -68,8 +64,8 @@ file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_
 # ... for the install tree
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
-set(CONF_MODULE_PATH   "${CMAKE_INSTALL_DIR}")
-set(CONF_USE_FILE     "${CMAKE_INSTALL_DIR}/gismoUse.cmake")
+set(CONF_MODULE_PATH  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}")
+set(CONF_USE_FILE     "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}/gismoUse.cmake")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
                "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)
 
@@ -128,10 +124,20 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
 
 # Install cmake files
 install(FILES
-        "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
-        "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
-        "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
-        DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
+  "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
+  "${CMAKE_BINARY_DIR}/gismoConfigVersion.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsConfig.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/gsDebugExtra.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckCCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCXXCompilerFlag.cmake"
+  DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Install the export set for use with the install-tree
 #install(EXPORT gismoTargets DESTINATION
@@ -141,18 +147,10 @@ else(GISMO_BUILD_LIB)
    message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
 endif(GISMO_BUILD_LIB)
 
-# Install docs (if available)
-set(DOC_SRC_DIR "${PROJECT_BINARY_DIR}/doc/html/")
-#message("DOC_SRC_DIR='${DOC_SRC_DIR}'")
-
-set(TMP_VERSION "${gismo_VERSION}")
-string(REGEX REPLACE "[a-zA-Z]+" "" TMP_VERSION ${TMP_VERSION})
-#message("TMP_VERSION='${TMP_VERSION}'")
-set(DOC_INSTALL_DIR share/doc/gismo-${TMP_VERSION} CACHE PATH
+# Install docs (if available/generated)
+set(DOC_INSTALL_DIR share/doc/gismo CACHE PATH #-${GISMO_VERSION}
     "Installation directory for documentation")
-#message("DOC_INSTALL_DIR='${DOC_INSTALL_DIR}'")
-
-install(DIRECTORY "${DOC_SRC_DIR}"
+install(DIRECTORY "${PROJECT_BINARY_DIR}/doc/html/"
         COMPONENT doc
         DESTINATION "${DOC_INSTALL_DIR}/"
         USE_SOURCE_PERMISSIONS

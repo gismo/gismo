@@ -51,7 +51,11 @@ int main(int argc, char *argv[])
 
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
+    bc.setGeoMap(mp);
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+
+    gsFunctionExpr<> ms;
+    fd.getId(3, ms); // id=3: reference solution
 
     gsOptionList Aopt;
     fd.getId(4, Aopt); // id=4: assembler options
@@ -80,7 +84,8 @@ int main(int argc, char *argv[])
     gsExprAssembler<> A(1,1);
     A.setOptions(Aopt);
 
-    //gsInfo<<"Active options:\n"<< A.options() <<"\n";
+    gsInfo<<"Active options:\n"<< A.options() <<"\n";
+
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
@@ -95,27 +100,22 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(dbasis);
-    u.setInterfaceCont(0);
-    u.addBc( bc.get("Dirichlet") );
 
     // Set the source term
     variable ff = A.getCoeff(f, G);
 
     // Recover manufactured solution
-    gsFunctionExpr<> ms;
-    fd.getId(3, ms); // id=3: reference solution
-    //gsInfo<<"Exact solution: "<< ms << "\n";
     variable u_ex = ev.getVariable(ms, G);
 
     // Solution vector and solution variable
     gsMatrix<> solVector;
     solution u_sol = A.getSolution(u, solVector);
 
-    gsSparseSolver<>::CGDiagonal solver;
-
     //! [Problem setup]
 
     //! [Solver loop]
+    gsSparseSolver<>::CGDiagonal solver;
+
     gsVector<> l2err(numRefine+1), h1err(numRefine+1);
     gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
         "\nDoFs: ";
@@ -123,8 +123,10 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
 
+        u.setup(bc, dirichlet::interpolation, 0);
+
         // Initialize the system
-        A.initSystem();
+        A.initSystem(false);
 
         gsInfo<< A.numDofs() <<std::flush;
 
@@ -134,8 +136,6 @@ int main(int argc, char *argv[])
         // Enforce Neumann conditions to right-hand side
         variable g_N = A.getBdrFunction();
         A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
-        //gsInfo<<"Sparse Matrix:\n"<< A.matrix().toDense() <<"\n";
-        //gsInfo<<"Rhs vector:\n"<< A.rhs().transpose() <<"\n";
 
         gsInfo<< "." <<std::flush;// Assemblying done
 
@@ -169,8 +169,6 @@ int main(int argc, char *argv[])
                   h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
     }
     //! [Error and convergence rates]
-
-    // if (save)
 
     //! [Export visualization in ParaView]
     if (plot)

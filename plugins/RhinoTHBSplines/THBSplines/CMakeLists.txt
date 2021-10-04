@@ -10,14 +10,14 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/THBSplines.rc.in"
 
 include_external_msproject(THBSplines
                            ${CMAKE_CURRENT_SOURCE_DIR}/THBSplines.vcxproj
-						   GismoSupport)
+                           GismoSupport)
 set_target_properties(THBSplines PROPERTIES
     FOLDER "Rhino THB plug-ins"  )
 
 #---- Native cmake
 else()
 
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 2.8.12)
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
@@ -42,7 +42,7 @@ set(${PROJECT_NAME}_HEADERS
     THBSplinesApp.h
     THBSplinesPlugIn.h
     )
-		
+    
 set(${PROJECT_NAME}_SOURCES
     cmdActiveLevel.cpp
     cmdFitThbSurface.cpp
@@ -55,7 +55,7 @@ set(${PROJECT_NAME}_SOURCES
     THBSplinesApp.cpp
     THBSplinesPlugIn.cpp
     )
-	
+  
 #set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1) #cmake>=3.4, maybe problematic
 
 include_directories(${RHINO_SDK}/inc)

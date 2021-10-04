@@ -1,4 +1,5 @@
 
+#include <gsCore/gsDebug.h> // to purge warning on MSVC
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsCore/gsBasis.h>

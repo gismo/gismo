@@ -61,10 +61,10 @@ void checkAssemblerOptions(gsOptionList& myList)
     CHECK_EQUAL(1, myList.getInt("bdB"));
     CHECK_EQUAL(1, myList.getInt("quB"));
     CHECK_EQUAL(2.0, myList.getReal("bdA"));
-    #ifndef GISMO_WITH_MPQ
+    #ifndef GISMO_WITH_GMP
         CHECK_EQUAL(0.333, myList.getReal("bdO"));
     #else
-        CHECK_CLOSE(0.333, myList.getReal("bdO"), 1e-5);
+        CHECK_CLOSE(0.333, myList.getReal("bdO"), 1e-3);
     #endif
     CHECK_EQUAL(1.0, myList.getReal("quA"));
 }
@@ -407,7 +407,8 @@ SUITE(gsOptionList_test)
 
         CHECK_EQUAL(true, myList.getSwitch("boundary"));
         CHECK_EQUAL(11, myList.getInt("strategy"));
-        CHECK_EQUAL((real_t)1/100000, myList.getReal("tolerance"));
+        CHECK_CLOSE((real_t)1/100000, myList.getReal("tolerance"),EPSILON);
+        //CHECK_EQUAL((real_t)1/100000, myList.getReal("tolerance"));
         CHECK_EQUAL("/path/to/square.xml", myList.getString("geometry"));
     }
 

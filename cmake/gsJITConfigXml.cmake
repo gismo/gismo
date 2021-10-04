@@ -1,9 +1,8 @@
 ######################################################################
-## gsJITConfigXml ---
+## gsJITConfigXml.cmake
 ## This file is part of the G+Smo library. 
 ##
 ## Author: Matthias Moeller
-## Copyright (C) 2012 - 2017 RICAM-Linz.
 ######################################################################
 
 ## This macro defines the following variables:

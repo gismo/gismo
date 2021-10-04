@@ -35,6 +35,19 @@ gsQuadRule<T>::mapTo( T startVal, T endVal,
     weights.noalias() = (0==h?T(0.5):h) * m_weights;
 }
 
+// Note: left here for inlining
+template<class T> void
+gsQuadRule<T>::mapTo( const gsMatrix<T>& ab,
+                      gsMatrix<T> & nodes) const
+{
+    GISMO_ASSERT( ab.rows() == m_nodes.rows(), "Inconsistent quadrature mapping");
+    nodes.resize( m_nodes.rows(), m_nodes.cols() );
+    nodes.setZero();
+    const gsVector<T> h = (ab.col(1)-ab.col(0)) / T(2) ;
+    nodes.noalias() = ( h.asDiagonal() * (m_nodes.array()+1).matrix() ).colwise() + ab.col(0);
+}
+
+
 template<class T> void
 gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
                          gsMatrix<T> & nodes, gsVector<T> & weights ) const
@@ -67,29 +80,38 @@ template<class T> void
 gsQuadRule<T>::computeTensorProductRule(const std::vector<gsVector<T> > & nodes,
                                         const std::vector<gsVector<T> > & weights)
 {
+    this->computeTensorProductRule_into(nodes,weights,m_nodes,m_weights);
+}
+
+template<class T> void
+gsQuadRule<T>::computeTensorProductRule_into(const std::vector<gsVector<T> > & nodes,
+                                             const std::vector<gsVector<T> > & weights,
+                                             gsMatrix<T> & targetNodes,
+                                             gsVector<T> & targetWeights) const
+{
     const short_t d  = static_cast<short_t>(nodes.size());
     GISMO_ASSERT( static_cast<size_t>(d) == weights.size(),
                   "Nodes and weights do not agree." );
 
     // compute the tensor quadrature rule
-    gsPointGrid(nodes, m_nodes);
+    gsPointGrid(nodes, targetNodes);
 
     gsVector<index_t> numNodes(d);
     for( short_t i=0; i<d; ++i )
         numNodes[i] = weights[i].rows();
 
-    GISMO_ASSERT( m_nodes.cols() == numNodes.prod(),
+    GISMO_ASSERT( targetNodes.cols() == numNodes.prod(),
                   "Inconsistent sizes in nodes and weights.");
 
     // Compute weight products
-    m_weights.resize( m_nodes.cols() );
+    targetWeights.resize( targetNodes.cols() );
     size_t r = 0;
     gsVector<index_t> curr(d);
     curr.setZero();
     do {
-        m_weights[r] = weights[0][curr[0]];
+        targetWeights[r] = weights[0][curr[0]];
         for (short_t i=1; i<d; ++i)
-            m_weights[r] *= weights[i][curr[i]];
+            targetWeights[r] *= weights[i][curr[i]];
         ++r;
     } while (nextLexicographic(curr, numNodes));
 }

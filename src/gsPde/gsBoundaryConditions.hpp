@@ -87,19 +87,28 @@ public:
             const int uIndex = atoi(child->first_attribute("unknown")->value());
             const int fIndex = atoi(
                     child->first_attribute("function")->value());
-            //const int cIndex = atoi( child->first_attribute("comp")->value() );
+
+            const gsXmlAttribute * comp = child->first_attribute("component");
+            int cIndex = -1;
+            if (NULL != comp)
+                cIndex = atoi( comp->value() );
+
+            const gsXmlAttribute * att_ispar = child->first_attribute("parametric");
+            bool ispar = false;
+            if (NULL != att_ispar)
+                ispar = atoi( att_ispar->value() );
 
             getBoundaries(child, ids, boundaries);
-            
+
             const gsXmlAttribute * bcat = child->first_attribute("type");
             GISMO_ASSERT(NULL != bcat, "No type provided");
             const char * bctype = bcat->value();
             for (std::vector<patchSide>::const_iterator it = boundaries.begin();
                     it != boundaries.end(); ++it)
-                result.add(it->patch, it->side(), bctype, func[fIndex], uIndex,
-                        false);        //parametric
+                result.add(it->patch, it->side(), bctype,
+                           func[fIndex], uIndex,cIndex, ispar);
         }
-        
+
         T val(0);
         for (gsXmlNode * child = node->first_node("cv"); child;
                 child = child->next_sibling("cv"))
@@ -111,11 +120,11 @@ public:
             const int cIndex = atoi(child->first_attribute("corner")->value());
             int pIndex = atoi(child->first_attribute("patch")->value());
             pIndex = ids[pIndex];
-            
+
             result.addCornerValue(cIndex, val, pIndex, uIndex);
         }
     }
-    
+
     static gsXmlNode * put(const Object & obj, gsXmlTree & data)
     {
         // Check if the last node is a multipatch

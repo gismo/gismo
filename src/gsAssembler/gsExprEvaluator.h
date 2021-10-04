@@ -41,6 +41,7 @@ private:
 
 public:
     typedef std::vector< boundaryInterface > intContainer;
+    typedef std::vector< patchSide > bContainer;
 
     typedef typename gsExprHelper<T>::element     element;
     typedef typename gsExprHelper<T>::geometryMap geometryMap;
@@ -152,13 +153,21 @@ public:
     /// boundary of the integration domain
     template<class E> // note: integralBdrElWise not offered
     T integralBdr(const expr::_expr<E> & expr)
-    { return computeBdr_impl<E,plus_op>(expr); }
+    { return computeBdr_impl<E,plus_op>(expr,
+      m_exprdata->multiBasis().topology().boundaries()); }
+
+    /// Calculates the integral of the expression \a expr on the
+    /// boundaries contained in \a bdrlist
+    template<class E> // note: integralBdrElWise not offered
+    T integralBdr(const expr::_expr<E> & expr, const bContainer & bdrlist)
+    { return computeBdr_impl<E,plus_op>(expr,bdrlist); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces of the (multi-basis) integration domain
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr)
-    { return computeInterface_impl<E,plus_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+    { return computeInterface_impl<E,plus_op>(expr,
+      m_exprdata->multiBasis().topology().interfaces()); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces \a iFaces of the integration domain
@@ -283,7 +292,7 @@ private:
     T compute_impl(const expr::_expr<E> & expr);
 
     template<class E, class _op>
-    T computeBdr_impl(const expr::_expr<E> & expr);
+    T computeBdr_impl(const expr::_expr<E> & expr, const bContainer & bdrlist);
 
     template<class E, class _op>
     T computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces);
@@ -375,11 +384,13 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
 template<class T>
 template<class E, class _op>
-T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
+T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
+                                      const bContainer & bdrlist)
 {
-    GISMO_ASSERT( expr.isScalar(),
-                  "Expecting scalar expression instead of "
-                  <<expr.cols()<<" x "<<expr.rows() );
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
+
     //expr.print(gsInfo);
 
     gsQuadRule<T> QuRule;  // Quadrature rule
@@ -394,7 +405,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
     m_elWise.clear();
 
     for (typename gsBoxTopology::const_biterator bit = //!! not multipatch!
-             m_exprdata->multiBasis().topology().bBegin(); bit != m_exprdata->multiBasis().topology().bEnd(); ++bit)
+             bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(bit->patch), m_options,bit->direction());
@@ -432,9 +443,9 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces)
 {
-    GISMO_ASSERT( expr.isScalar(),
-                  "Expecting scalar expression instead of "
-                  <<expr.cols()<<" x "<<expr.rows() );
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
 
     //expr.print(gsInfo);
 
@@ -556,7 +567,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
-    expr.printDetail(gsInfo); //
+    // expr.printDetail(gsInfo); //
 
     m_value = expr.val().eval(0);
     return gsAsConstMatrix<T>(&m_value,1,1);
@@ -572,7 +583,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
-    expr.printDetail(gsInfo); //after precompute
+    // expr.printDetail(gsInfo); //after precompute
 
     gsMatrix<T> tmp = expr.eval(0);
     // const index_t r = expr.rows();

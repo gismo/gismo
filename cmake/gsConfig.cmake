@@ -1,15 +1,9 @@
-
 ######################################################################
-## CMakeLists.txt ---
+## gsConfig.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2015 RICAM-Linz.
 ######################################################################
-
-## #################################################################
-## Configuration
-## #################################################################
 
 include(CheckCXXCompilerFlag)
 
@@ -31,18 +25,26 @@ endif()
 # Set a default coefficient numeric types if not specified
 if(NOT GISMO_COEFF_TYPE)
   set (GISMO_COEFF_TYPE "double" CACHE STRING
-   "Coefficient type(float, double, long double, mpfr::mpreal, mpq_class, posit_32_2)" FORCE)
+   "Coefficient type(float, double, long double, mpfr::mpreal, mpq_class, posit_2_0, posit_3_0, posit_3_1, posit_4_0, posit_8_0, posit_8_1, posit_16_1, posit_32_2, posit_64_3, posit_128_4, posit_256_5)" FORCE)
 elseif(${GISMO_COEFF_TYPE} STREQUAL "mpfr::mpreal")
   set(GISMO_WITH_MPFR ON CACHE BOOL "Use MPFR" FORCE)
-  #set(GISMO_WITH_MPQ OFF CACHE BOOL "Use GMP/mpq_class")
 elseif(${GISMO_COEFF_TYPE} STREQUAL "mpq_class")
-  set(GISMO_WITH_MPQ ON CACHE BOOL "Use GMP/mpq_class" FORCE)
-  #set(GISMO_WITH_MPFR OFF CACHE BOOL "Use MPFR")
-elseif(${GISMO_COEFF_TYPE} STREQUAL "posit_32_2")
+  set(GISMO_WITH_GMP ON CACHE BOOL "Use GMP" FORCE)
+elseif(${GISMO_COEFF_TYPE} STREQUAL "posit_2_0"   OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_3_0"   OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_3_1"   OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_4_0"   OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_8_0"   OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_8_1"   OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_16_1"  OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_32_2"  OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_64_3"  OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_128_4" OR
+       ${GISMO_COEFF_TYPE} STREQUAL "posit_256_5")
   set(GISMO_WITH_UNUM ON CACHE BOOL "Use UNUM" FORCE)
 endif()
 set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
-"float" "double" "long double" "mpfr::mpreal" "mpq_class" "posit_32_2")
+"float" "double" "long double" "mpfr::mpreal" "mpq_class" "posit_2_0" "posit_3_0" "posit_3_1" "posit_4_0" "posit_8_0" "posit_8_1" "posit_16_1" "posit_32_2" "posit_64_3" "posit_128_4" "posit_256_5")
 
 if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING
@@ -84,7 +86,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(AddCXXCompileOptions)
 
-if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel" AND "x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
   # message(STATUS "Using Boost for smart pointers")
   find_package(Boost REQUIRED)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -153,12 +155,12 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Note: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
   # affects -Wno-ignored-attributes in Eigen
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -Wunused-variable") # -fmax-errors=5
   if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}") #-ftrack-macro-expansion=0 -Wno-ignored-attributes
   endif()
   if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98"
-      AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.2)
+      AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.4)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-compat")
   endif()
 
@@ -199,17 +201,34 @@ elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Dar
 endif()
 
 if (GISMO_WITH_OPENMP)
-   find_package(OpenMP REQUIRED)
-   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-   #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+   # Apple explicitly disabled OpenMP support in their compilers that
+   # are shipped with XCode but there is an easy workaround as
+   # described at https://mac.r-project.org/openmp/
+   if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
+       "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      find_path(OpenMP_C_INCLUDE_DIR
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+      find_path(OpenMP_CXX_INCLUDE_DIR
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+      find_library(OpenMP_libomp_LIBRARY
+        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES lib)
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fopenmp -I${OpenMP_C_INCLUDE_DIR}")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp -I${OpenMP_CXX_INCLUDE_DIR}")
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
+   else() 
+      find_package(OpenMP REQUIRED)
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+      #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+   endif()
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
+if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel" AND NOT GISMO_WITH_OPENMP)
    if ( CMAKE_SYSTEM_NAME MATCHES "Linux" )
      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -diag-disable 3180") #comma for more warns
    elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" )
@@ -229,12 +248,12 @@ endif()
 #string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
   #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
-  foreach (flag ${Vc_ARCHITECTURE_FLAGS})
+  foreach (flag ${OFA_ARCHITECTURE_FLAGS})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
   endforeach()
-endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")

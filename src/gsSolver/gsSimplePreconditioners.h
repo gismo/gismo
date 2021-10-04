@@ -48,11 +48,11 @@ public:
     /// Base class
     typedef gsPreconditionerOp<T> Base;
 
-    /// @brief Constructor with given matrix
+    /// Constructor with given matrix
     explicit gsRichardsonOp(const MatrixType& _mat, T _tau = 1)
     : m_mat(), m_expr(_mat.derived()), m_tau(_tau) {}
 
-    /// @brief Constructor with shared pointer to matrix
+    /// Constructor with shared pointer to matrix
     explicit gsRichardsonOp(const MatrixPtr& _mat, T _tau = 1)
     : m_mat(_mat), m_expr(m_mat->derived()), m_tau(_tau) { }
 
@@ -127,23 +127,19 @@ private:
     T m_tau;
 };
 
-/**
-   \brief Returns a smart pointer to a Richardson operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a Richardson operator referring on \a mat
+/// \relates gsRichardsonOp
 template <class Derived>
 typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsRichardsonOp<Derived>::make(mat.derived(), tau); }
 
-/**
-   \brief Returns a smart pointer to a Richardson operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a Richardson operator referring on \a mat
+/// \relates gsRichardsonOp
 template <class Derived>
 typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsRichardsonOp<Derived>::make(mat, tau); }
 
 /// @brief Jacobi preconditioner
-///
-/// Requires a positive definite matrix.
 ///
 /// \ingroup Solver
 template <typename MatrixType>
@@ -165,11 +161,11 @@ public:
     /// Base class
     typedef gsPreconditionerOp<T> Base;
 
-    /// @brief Constructor with given matrix
+    /// Constructor with given matrix
     explicit gsJacobiOp(const MatrixType& _mat, T _tau = 1)
     : m_mat(), m_expr(_mat.derived()), m_tau(_tau) {}
 
-    /// @brief Constructor with shared pointer to matrix
+    /// Constructor with shared pointer to matrix
     explicit gsJacobiOp(const MatrixPtr& _mat, T _tau = 1)
     : m_mat(_mat), m_expr(m_mat->derived()), m_tau(_tau) { }
 
@@ -248,26 +244,22 @@ private:
 };
 
 
-/**
-   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a Jacobi operator referring on \a mat
+/// \relates gsJacobiOp
 template <class Derived>
 typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsJacobiOp<Derived>::make(mat.derived(), tau); }
 
-/**
-   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a Jacobi operator referring on \a mat
+/// \relates gsJacobiOp
 template <class Derived>
 typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const memory::shared_ptr<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsJacobiOp<Derived>::make(mat, tau); }
 
+
 struct gsGaussSeidel
 {
-    /// @brief Gauss-Seidel preconditioner
-    ///
-    /// Specify the ordering of Gauss Seidel
-    ///
+    /// @brief Specify the ordering of \a gsGaussSeidelOp preconditioner
     /// \ingroup Solver
     enum ordering
     {
@@ -279,7 +271,7 @@ struct gsGaussSeidel
 
 /// @brief Gauss-Seidel preconditioner
 ///
-/// Requires a positive definite matrix.
+/// `ordering` can be `gsGaussSeidel::forward`, `gsGaussSeidel::reverse` or `gsGaussSeidel::symmetric`.
 ///
 /// \ingroup Solver
 template <typename MatrixType, gsGaussSeidel::ordering ordering = gsGaussSeidel::forward>
@@ -301,11 +293,11 @@ public:
     /// Base class
     typedef gsPreconditionerOp<T> Base;
 
-    /// @brief Constructor with given matrix
+    /// Constructor with given matrix
     explicit gsGaussSeidelOp(const MatrixType& _mat)
     : m_mat(), m_expr(_mat.derived()) {}
 
-    /// @brief Constructor with shared pointer to matrix
+    /// Constructor with shared pointer to matrix
     explicit gsGaussSeidelOp(const MatrixPtr& _mat)
     : m_mat(_mat), m_expr(m_mat->derived()) { }
 
@@ -360,44 +352,38 @@ private:
     NestedMatrix    m_expr; ///< Nested Eigen expression
 };
 
-/**
-   \brief Returns a smart pointer to a Gauss-Seidel operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a Gauss-Seidel operator referring on \a mat
+/// \relates gsGaussSeidelOp
 template <class Derived>
 typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived>::make(mat.derived()); }
 
-/**
-   \brief Returns a smart pointer to a Jacobi operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a Jacobi operator referring on \a mat
+/// \relates gsGaussSeidelOp
 template <class Derived>
 typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const memory::shared_ptr<Derived>& mat)
 { return gsGaussSeidelOp<Derived>::make(mat); }
 
-/**
-   \brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
+/// \relates gsGaussSeidelOp
 template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat.derived()); }
 
-/**
-   \brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
+/// \relates gsGaussSeidelOp
 template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const memory::shared_ptr<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat); }
 
-/**
-   \brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
+/// \relates gsGaussSeidelOp
 template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat.derived()); }
 
-/**
-   \brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
-*/
+/// @brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
+/// \relates gsGaussSeidelOp
 template <class Derived>
 typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const memory::shared_ptr<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat); }

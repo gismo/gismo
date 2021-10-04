@@ -58,7 +58,7 @@ SUITE(gsKnotVectors_test)
             }
         }
 
-        // It would be great to merge the two test to one but I am off to look for the problem in gsHierarchical_box_test.cpp, as Angelos promised me 0.50 EUR for solving it.
+        // It would be great to merge the two tests to one but I am off to look for the problem in gsHierarchical_box_test.cpp, as Angelos promised me 0.50 EUR for solving it.
     };
 
 
@@ -105,6 +105,26 @@ SUITE(gsKnotVectors_test)
         CHECK( regular[6] == 1 );
 
         CHECK( regular.size() == 7 );
+    }
+
+    TEST(notClampedKnotVector)
+    {
+	gsKnotVector<real_t> KV(0.0, 1.0, 1, 1, 1, 1);
+
+	std::vector<real_t> repKnots = KV.get();
+	CHECK( repKnots.size() == 5 );
+	CHECK_CLOSE( repKnots[0], -0.5, 1e-6 );
+	CHECK_CLOSE( repKnots[1],  0.0, 1e-6 );
+	CHECK_CLOSE( repKnots[2],  0.5, 1e-6 );
+	CHECK_CLOSE( repKnots[3],  1.0, 1e-6 );
+	CHECK_CLOSE( repKnots[4],  1.5, 1e-6 );
+
+	const gsKnotVector<real_t>::mult_t* multSum = KV.multSumData();
+	CHECK( *multSum == 1 );
+	CHECK( *(multSum + 1) == 2 );
+	CHECK( *(multSum + 2) == 3 );
+	CHECK( *(multSum + 3) == 4 );
+	CHECK( *(multSum + 4) == 5 );
     }
 
     TEST(gsBasis_refine)
@@ -224,14 +244,16 @@ SUITE(gsKnotVectors_test_2)
         knotIter kitEnd( KV.end() );
         mult_t i = 0;
         for(  ; kit != kitEnd; ++kit, ++i )
-            CHECK( math::abs(*kit - corrKnots[i]) <= std::numeric_limits<real_t>::epsilon()*100 );
+            CHECK_CLOSE( *kit, corrKnots[i], EPSILON );
+            //CHECK( math::abs(*kit - corrKnots[i]) <= std::numeric_limits<real_t>::epsilon()*100 );
 
         uniqIter uit = KV.ubegin();
         uniqIter uitEnd = KV.uend();
         i = 0;
         for( ; uit != uitEnd; ++uit, ++i )
         {
-            CHECK( math::abs(*uit - corrUKnots[i])<= std::numeric_limits<real_t>::epsilon()*100 );
+            CHECK_CLOSE( *uit, corrUKnots[i], EPSILON );
+            //CHECK( math::abs(*uit - corrUKnots[i])<= std::numeric_limits<real_t>::epsilon()*100 );
             CHECK( uit.multSum() == corrEndPos[i] );
         }
         CHECK(KV.degree() == corrDeg);
@@ -258,12 +280,24 @@ SUITE(gsKnotVectors_test_2)
             real_t data[]={-0.1, 0.0, 0.0, 0.2 ,0.3, 0.3, 0.5, 0.7, 1.0, 1.1, 1.2};
             gsKnotVector<real_t> KV( 2, data, data+11);
 
-            CHECK( KV.uFind(0.00).uIndex() == 1 );
-            CHECK( KV.uFind(0.49).uIndex() == 3 );
-            CHECK( KV.uFind(0.50).uIndex() == 4 );
-            CHECK( KV.uFind(0.55).uIndex() == 4 );
-            CHECK( KV.uFind(0.99).uIndex() == 5 );
-            CHECK( KV.uFind(1.00).uIndex() == 5 );
+            CHECK( KV.numLeftGhosts() == 1 );
+            CHECK( KV[0] == KV(-1) ); // unique indices of left ghosts are negative
+            CHECK( KV[1] == KV(0)  );
+            CHECK( KV[10] == KV(7) );
+
+            CHECK( KV.uFind(0.00).uIndex() == 0 );
+            CHECK( KV.uFind(0.49).uIndex() == 2 );
+            CHECK( KV.uFind(0.50).uIndex() == 3 );
+            CHECK( KV.uFind(0.55).uIndex() == 3 );
+            CHECK( KV.uFind(0.99).uIndex() == 4 );
+            CHECK( KV.uFind(1.00).uIndex() == 4 );
+
+            CHECK( KV.uFind(0.00).uCardinalIndex() == 1 );
+            CHECK( KV.uFind(0.49).uCardinalIndex() == 3 );
+            CHECK( KV.uFind(0.50).uCardinalIndex() == 4 );
+            CHECK( KV.uFind(0.55).uCardinalIndex() == 4 );
+            CHECK( KV.uFind(0.99).uCardinalIndex() == 5 );
+            CHECK( KV.uFind(1.00).uCardinalIndex() == 5 );
 
             CHECK( KV.iFind(0.00) - KV.begin() == 2 );
             CHECK( KV.iFind(0.49) - KV.begin() == 5 );

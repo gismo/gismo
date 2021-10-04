@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## CMakeLists.txt --- unittests
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - RICAM-Linz.
 ######################################################################
 
 project(unittests)
@@ -48,7 +47,7 @@ endif()
 
 foreach(file ${unittests_SRCS})
   get_filename_component(testname ${file} NAME_WE) # name without extension
-  add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${file})
+  add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
   set_property(TEST unit_${testname} PROPERTY LABELS unittests)
 endforeach(file ${FILES})
 

@@ -23,7 +23,10 @@
 #define GISMO_PATCH      @gismo_VERSION_PATCH@
 
 /** Define default coefficient type. */
-#define real_t           @GISMO_COEFF_TYPE@
+#define GISMO_COEFF_TYPE @GISMO_COEFF_TYPE@
+#ifndef real_t
+#define real_t           GISMO_COEFF_TYPE
+#endif
 
 /** Define default index type. */
 #define index_t          @GISMO_INDEX_TYPE@
@@ -46,7 +49,7 @@
 #cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI
-#cmakedefine GISMO_WITH_MPQ
+#cmakedefine GISMO_WITH_GMP
 #cmakedefine GISMO_WITH_ONURBS
 #cmakedefine GISMO_WITH_OCC
 #cmakedefine GISMO_WITH_PARDISO
@@ -65,13 +68,17 @@
 #include <mpreal.h>
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 #include <gmpxx.h>
 #include <unsupported/Eigen/MPQClassExtra>
 #endif
 
 #ifdef GISMO_WITH_UNUM
 #include <gsUnum/gsUnum.h>
+#endif
+
+#ifdef GISMO_WITH_CODIPACK
+#include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
 /* Determine if only header files should be used. */
@@ -127,4 +134,6 @@
     See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html */
 #cmakedefine EIGEN_USE_MKL_ALL
 
+#cmakedefine EIGEN_DONT_VECTORIZE
+#cmakedefine EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
 /**@}*/

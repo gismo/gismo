@@ -88,10 +88,12 @@ public:
     friend std::ostream& operator<< (std::ostream& os, const gsGenericStopwatch& sw)
     { return formatTime(os, sw.m_value); }
 
-private:
-    gsGenericStopwatch (const gsGenericStopwatch&);
-    gsGenericStopwatch& operator=(const gsGenericStopwatch&);
+#if __cplusplus >= 201103L || _MSC_VER >= 1600   // C++11 //
+    gsGenericStopwatch (const gsGenericStopwatch&) = delete;
+    gsGenericStopwatch& operator=(const gsGenericStopwatch&) = delete;
+#endif
 
+private:
     double m_start;
     double m_value;
 }; // class gsGenericStopwatch

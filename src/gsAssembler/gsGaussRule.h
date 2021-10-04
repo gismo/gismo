@@ -18,29 +18,36 @@
 namespace gismo
 {
 
-/** 
+/**
     \brief Class that represents the (tensor) Gauss-Legendre quadrature rule
-    
+
     \ingroup Assembler
-*/  
+*/
 template<class T>
 class gsGaussRule GISMO_FINAL : public gsQuadRule<T>
 {
 public:
 
+    typedef memory::unique_ptr<gsGaussRule> uPtr;
+
     /// Default empty constructor
     gsGaussRule() { }
 
     /// Initialize a tensor-product Gauss quadrature rule with \a numNodes (direction-wise)
-    gsGaussRule(gsVector<index_t> const & numNodes, 
+    gsGaussRule(gsVector<index_t> const & numNodes,
                 const unsigned digits = 0 )
-    { 
+    {
         gsGaussRule::setNodes(numNodes, digits);
     }
 
+    /// Make function returning a smart pointer
+    static uPtr make(gsVector<index_t> const & numNodes,
+                        const unsigned digits = 0 )
+    { return uPtr( new gsGaussRule(numNodes,digits) ); }
+
     /// Initialize a 1D Gauss quadrature rule with \a numNodes
     gsGaussRule(index_t numNodes, const unsigned digits = 0 )
-    { 
+    {
         this->setNodes(numNodes, digits);
     }
 

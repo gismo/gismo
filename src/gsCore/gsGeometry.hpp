@@ -165,13 +165,27 @@ gsGeometry<T>::boundary(boxSide const& s) const
 
     for (index_t i=0; i != ind.size(); i++ )
     {
-        coeffs.row(i) = m_coefs.row( (ind)(i,0) );
+        coeffs.row(i) = m_coefs.row( ind(i,0) );
     }
 
     typename gsBasis<T>::uPtr Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
-    uPtr bgeo = Bs->makeGeometry( give(coeffs) );
+    return Bs->makeGeometry( give(coeffs) );
+}
 
-    return bgeo;
+template<class T>
+typename gsGeometry<T>::uPtr
+gsGeometry<T>::component(boxComponent const& bc) const
+{
+    gsMatrix<index_t> ind;
+    typename gsBasis<T>::uPtr Bs = this->basis().componentBasis_withIndices(bc, ind, false);
+    gsMatrix<T> coefs (ind.size(), geoDim());
+
+    for (index_t i=0; i != ind.size(); i++ )
+    {
+        coefs.row(i) = m_coefs.row( ind(i,0) );
+    }
+
+    return Bs->makeGeometry( coefs );
 }
 
 template<class T>
@@ -309,7 +323,7 @@ void gsGeometry<T>::outerNormal_into(const gsMatrix<T>&, gsMatrix<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-std::vector<gsGeometry<T> *> gsGeometry<T>:: boundary() const
+std::vector<gsGeometry<T> *> gsGeometry<T>::boundary() const
 {
     // TO DO: get boundary curves, using basis().boundary();
     GISMO_NO_IMPLEMENTATION
@@ -405,7 +419,6 @@ template <class T>
 void
 gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 {
-
     const unsigned flags = out.flags | NEED_ACTIVE;
     const index_t  numPt = in.cols();
     const index_t  numCo = m_coefs.cols();
@@ -437,7 +450,10 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
             for (index_t p=0; p< numPt; ++p)
                 out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
         }
-    } else
+        if (flags & NEED_ACTIVE)
+            this->active_into(in.col(0), out.actives);
+    }
+    else
     {
         gsMatrix<T> coefM;
         const index_t derS = tmp.derivSize();
@@ -446,6 +462,7 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
         if (flags & NEED_VALUE)  out.values[0].resize(numCo,numPt);
         if (flags & NEED_DERIV)  out.values[1].resize(numCo*derS,numPt);
         if (flags & NEED_DERIV2) out.values[2].resize(numCo*der2S,numPt);
+        if (flags & NEED_ACTIVE) this->active_into(in, out.actives);
 
         for (index_t p=0; p<numPt;++p)
         {
