@@ -136,60 +136,6 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
     typedef std::vector<boundaryInterface>::const_iterator i_const_iter;
     for(i_const_iter iter = m_ppde.domain().iBegin();iter!=m_ppde.domain().iEnd();++iter)
     {
-        index_t numIntBdy = 0;
-        std::vector<bool> kink;
-        kink.resize(2);
-        kink[0] = false; // u = 0
-        kink[1] = false; // u = 1
-
-        gsMatrix<> points_1, points_2, matrix_det(2,2);
-        points_1.setZero(2,2);
-        points_2.setZero(2,2);
-
-        switch(iter->first().side().index())
-        {
-            case 1:
-                points_1(1,1) = 1;
-                break;
-            case 2:
-                points_1.setOnes();
-                points_1(1,0) = 0;
-                break;
-            case 3:
-                points_1(0,1) = 1;
-                break;
-            case 4:
-                points_1.setOnes();
-                points_1(0,0) = 0;
-                break;
-            default:
-                gsInfo << "Something went wrong! \n";
-                break;
-        }
-
-        switch(iter->second().side().index())
-        {
-            case 1:
-                points_2(1,1) = 1;
-                break;
-            case 2:
-                points_2.setOnes();
-                points_2(1,0) = 0;
-                break;
-            case 3:
-                points_2(0,1) = 1;
-                break;
-            case 4:
-                points_2.setOnes();
-                points_2(0,0) = 0;
-                break;
-            default:
-                gsInfo << "Something went wrong! \n";
-                break;
-        }
-
-
-
         gsMatrix<index_t> matched_dofs1, matched_dofs2;
         matched_dofs1 = m_bases.getBase(iter->first().patch).boundaryOffset(iter->first().side().index(), 0);
         matched_dofs2 = m_bases.getBase(iter->second().patch).boundaryOffset(iter->second().side().index(), 0);

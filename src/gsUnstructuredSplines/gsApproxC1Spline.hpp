@@ -717,10 +717,6 @@ void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVe
     if (kv1.degree() != kv2.degree())
         gsInfo << "NOT IMPLEMENTED YET 2: Plus, Minus space \n";
 
-    // patch_kv_unique_1 should be for now 0, 1
-    if (patch_kv_unique_1[1] != 1)
-        gsInfo << "NOT IMPLEMENTED YET 3: Plus, Minus space \n";
-
     if (knots_mult_1 != knots_mult_2)
         gsInfo << "NOT IMPLEMENTED YET 4: Plus, Minus space \n";
 

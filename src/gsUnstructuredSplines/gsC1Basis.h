@@ -134,6 +134,9 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
         return basisG1Container[0].makeDomainIterator();
     }
 
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
+
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT(u.rows() == d, "Dimension of the points in active_into is wrong");

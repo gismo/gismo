@@ -584,6 +584,26 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
+        // PASCAL
+        if (smoothing ==2)
+        {
+
+            gsMatrix<real_t> solFull;
+            //g1BiharmonicAssembler->constructSolution(solVector, solFull);
+            global2local = solFull.asDiagonal() * global2local;
+
+            gsMultiBasis<> multiBasis(mp);
+            for (size_t np = 0; np < mp.nPatches(); np++)
+            {
+                gsBasis<> & basis = multiBasis.basis(np);
+                gsMatrix<> points2D = basis.anchors();
+                // Update dbasis with solution
+                typename gsGeometry<>::uPtr patch = basis.interpolateAtAnchors(dbasis.basis(np).eval(points2D));
+            }
+        }
+
+
+
         // assembler->plotSolution("solution", solVector);
 
         gsMultiPatch<> deformation = assembler->constructDisplacement(solVector);

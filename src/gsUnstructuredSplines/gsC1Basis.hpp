@@ -195,8 +195,48 @@ void gsC1Basis<d,T>::init()
 }
 
 template<short_t d, class T>
+void gsC1Basis<d,T>::matchWith(const boundaryInterface &bi, const gsBasis<T> &other, gsMatrix<int> &bndThis,
+                               gsMatrix<int> &bndOther) const
+{
+    bndThis = this->boundaryOffset(bi.first().side(), 0);
+    bndOther = other.boundaryOffset(bi.second().side(), 0);
+}
+
+
+template<short_t d, class T>
 gsMatrix<int> gsC1Basis<d,T>::boundaryOffset(const boxSide &side, int offset) const
 {
+    if (offset > 1)
+        gsInfo << "Offset > 1 is not implemented! \n";
+
+    std::vector<boxCorner> containedCorners;
+    side.getContainedCorners(d, containedCorners);
+
+    short_t side_id = side.index();
+    index_t num = 0;
+
+    if (offset == 0)
+        num = basisPlusContainer[side_id - 1].size() - 6; // -6 is shifting, the same for bdy and interface
+    else if (offset == 1)
+        num = basisMinusContainer[side_id - 1].size() - 4; // Interface
+    else
+        gsInfo << "Offset > 1 is not implemented! \n";
+
+    num = num < 0 ? 0 : num; // if there are no bf at the interface
+
+    gsMatrix<index_t> indizes(num , 1);
+
+    index_t start = rowBegin(side_id); // The first num basis functions
+    if (offset == 1)
+        start += basisPlusContainer[side_id - 1].size() - 6; // second row shift
+
+        index_t ii = 0;
+    for (index_t i = start; i < start + num; i++, ii++) // Single basis function
+        indizes(ii, 0) = i;
+
+    return indizes;
+
+    /*
     if (side.index() < 5) // Edge
     {
         short_t side_id = side.index();
@@ -278,6 +318,7 @@ gsMatrix<int> gsC1Basis<d,T>::boundaryOffset(const boxSide &side, int offset) co
     null(0, 0) = -1;
 
     return null;
+     */
 }
 
 template<short_t d,class T>
