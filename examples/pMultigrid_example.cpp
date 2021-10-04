@@ -126,10 +126,10 @@ public:
         gsExprAssembler<real_t> ex2(1,1);
         geometryMap G2 = ex2.getMap(mp);
         space w_n = ex2.getSpace(basisH ,1, 0);
-        w_n.setInterfaceCont(0);
+        //w_n.setInterfaceCont(0);
         if(typeBCHandling == 1)
         {
-          w_n.addBc(bcInfo.get("Dirichlet"));
+            w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
         ex2.setIntegrationElements(basisH);
         ex2.initSystem();
@@ -146,7 +146,9 @@ public:
   }
 
   /// @brief Restrict fine space function to coarse space
-  virtual void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, const int& numLevels, const int& numCoarsening, vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsBoundaryConditions<T> bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection, vector<gsSparseMatrix<T>>& m_prolongation_P,vector<gsSparseMatrix<T>>& m_restriction_P, vector<gsMatrix<T>>& m_prolongation_M,vector<gsMatrix<T>>& m_restriction_M,vector<gsSparseMatrix<T>>& m_prolongation_H,vector<gsSparseMatrix<T>>& m_restriction_H, const gsMatrix<>& hp)
+  virtual void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, const int& numLevels, const int& numCoarsening, vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling,
+                           const gsBoundaryConditions<T> & bcInfo,
+                           gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection, vector<gsSparseMatrix<T>>& m_prolongation_P,vector<gsSparseMatrix<T>>& m_restriction_P, vector<gsMatrix<T>>& m_prolongation_M,vector<gsMatrix<T>>& m_restriction_M,vector<gsSparseMatrix<T>>& m_prolongation_H,vector<gsSparseMatrix<T>>& m_restriction_H, const gsMatrix<>& hp)
   {
     if(hp(numLevels-2,0) == 1)
     {
@@ -174,10 +176,10 @@ public:
         gsExprAssembler<real_t> ex2(1,1);
         geometryMap G2 = ex2.getMap(mp);
         space w_n = ex2.getSpace(basisL ,1, 0);
-        w_n.setInterfaceCont(0);
+        //w_n.setInterfaceCont(0);
         if(typeBCHandling == 1)
         {
-          w_n.addBc(bcInfo.get("Dirichlet"));
+            w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
         ex2.setIntegrationElements(basisL);
         ex2.initSystem();
@@ -663,7 +665,7 @@ private:
       w_n.setInterfaceCont(0);
       if(typeBCHandling == 1)
       {
-        w_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+          w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
       }
       ex2.setIntegrationElements(basisH);
       ex2.initSystem();
@@ -685,13 +687,13 @@ private:
       typedef gsExprAssembler<real_t>::variable variable;
       typedef gsExprAssembler<real_t>::space    space;
       space v_n = ex.getSpace(basisH ,1, 0);
-      v_n.setInterfaceCont(0);
+      //v_n.setInterfaceCont(0);
       space u_n = ex.getTestSpace(v_n , basisL);
-      u_n.setInterfaceCont(0);
+      //u_n.setInterfaceCont(0);
       if(typeBCHandling == 1)
       {
-        v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
-        u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+          v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+          u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
       }
       ex.setIntegrationElements(basisH);
       ex.initSystem();
@@ -714,10 +716,10 @@ private:
       gsExprAssembler<real_t> ex2(1,1);
       geometryMap G2 = ex2.getMap(*m_mp_ptr);
       space w_n = ex2.getSpace(basisL ,1, 0);
-      w_n.setInterfaceCont(0);
+      //w_n.setInterfaceCont(0);
       if(typeBCHandling == 1)
       {
-        w_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+          w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
       }
       ex2.setIntegrationElements(basisL);
       ex2.initSystem();
@@ -740,13 +742,13 @@ private:
       typedef gsExprAssembler<real_t>::variable variable;
       typedef gsExprAssembler<real_t>::space    space;
       space v_n = ex.getSpace(basisH ,1, 0);
-      v_n.setInterfaceCont(0);
+      //v_n.setInterfaceCont(0);
       space u_n = ex.getTestSpace(v_n , basisL);
-      u_n.setInterfaceCont(0);
+      //u_n.setInterfaceCont(0);
       if( typeBCHandling == 1)
       {
-        u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
-        v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+          u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+          v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
       }
       ex.setIntegrationElements(basisH);
       ex.initSystem();
@@ -1071,7 +1073,8 @@ int main(int argc, char* argv[])
     {
             bcInfo.addCondition( *bit, condition_type::dirichlet, &sol_exact);
     }
-
+    bcInfo.setGeoMap(mp);
+    
     int iterTot = 1;
     int numCoarsening = numRefH+1;
   
