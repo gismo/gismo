@@ -21,6 +21,12 @@ namespace gismo
 {
 
 template <class T>
+gsFuncCoordinate<T> gsFunction<T>::coord(const index_t c) const
+{
+    return gsFuncCoordinate<T>(*this,c);
+}
+
+template <class T>
 gsMatrix<T>
 gsFunction<T>::jacobian(const gsMatrix<T>& u) const
 {
