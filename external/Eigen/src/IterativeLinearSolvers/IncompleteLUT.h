@@ -176,6 +176,15 @@ class IncompleteLUT : public SparseSolverBase<IncompleteLUT<_Scalar, _StorageInd
       x = m_P * x; 
     }
 
+    const FactorType factors() const
+    {return m_lu; }
+
+    const PermutationMatrix<Dynamic,Dynamic,StorageIndex> fillReducingPermutation() const
+    {return m_P; }
+
+    const PermutationMatrix<Dynamic,Dynamic,StorageIndex> inversePermutation() const
+    {return m_Pinv; }
+
 protected:
 
     /** keeps off-diagonal entries; drops diagonal entries */
@@ -186,13 +195,12 @@ protected:
       }
     };
 
-public:
+
+protected:
 
     FactorType m_lu;
     PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_P;     // Fill-reducing permutation
     PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_Pinv;  // Inverse permutation
-protected:
-
     RealScalar m_droptol;
     int m_fillfactor;
     bool m_analysisIsOk;
