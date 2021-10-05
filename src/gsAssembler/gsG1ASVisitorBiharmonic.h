@@ -201,33 +201,6 @@ public:
 
             for(index_t i = 0; i < numActive; i++)
             {
-//              1 / sqrt^4( det( G ) ) *
-//              [
-//              Du( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
-//              Dv( 1 / sqrt( det( G ) ) ) * G* ^-1 * grad( u ) ) +
-//              1 / sqrt( det( G ) ) * ( div ( G* ^-1 * grad( u ) ) )
-//              ]
-
-//                surfParametricLaplace.row(i) = Du_SqrtDetGinv.cwiseProduct(
-//                                               G22.cwiseProduct( basisGrads.row( i * 2 ) ) -
-//                                               G12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) )
-//                                               +
-//                                               Dv_SqrtDetGinv.cwiseProduct(
-//                                               G11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
-//                                               G12.cwiseProduct( basisGrads.row( i * 2 ) ) )
-//                                               +
-//                                               sqrtDetG_inv.cwiseProduct(
-//                                               DuG22.cwiseProduct( basisGrads.row( i * 2 ) ) +
-//                                               G22.cwiseProduct( basis2ndDerivs.row( i * 3 ) ) -
-//                                               DuG12.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) -
-//                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) -
-//                                               G12.cwiseProduct( basis2ndDerivs.row( i * 3 + 2 ) ) +
-//                                               DvG11.cwiseProduct( basisGrads.row( i * 2 + 1 ) ) +
-//                                               G11.cwiseProduct( basis2ndDerivs.row( i * 3 + 1 ) ) -
-//                                               DvG21.cwiseProduct( basisGrads.row( i * 2 ) ) );
-//
-//                surfParametricLaplace.row(i) = sqrt4DetG_inv.cwiseProduct(surfParametricLaplace.row(i));
-
                 surfParametricLaplace.row(i) = ( ( G22.cwiseProduct( DvG11 ) -
                                                    2 * G12.cwiseProduct( DvG21 ) +
                                                    G11.cwiseProduct( DvG22 ) ).cwiseProduct(
@@ -314,6 +287,10 @@ public:
 
                 if(g1OptionList.getSwitch("L2approx") == false)
                 {
+                    gsMatrix<> L2approximation = basisVals.col(k) * basisVals.col(k).transpose() * sqrt(G.determinant());
+
+                    localMat.noalias() += weight * ( L2approximation );
+
                     localMat.noalias() += weight * ( surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
                     localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
 //
