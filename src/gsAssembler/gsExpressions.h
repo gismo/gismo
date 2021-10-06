@@ -1164,22 +1164,30 @@ public:
     void extractFull(gsMatrix<T> & result) const
     {
         index_t offset, ii, bi;
-        result.resize(_u.mapper().mapSize(),1);
-        for (index_t c=0; c!=_u.dim(); c++)
-            for (size_t j=0; j!=_u.mapper().numPatches(); j++)
-                for (size_t i=0; i!=_u.mapper().patchSize(j); i++) // loop over all DoFs (free and eliminated)
-                {
-                    offset = _u.mapper().offset(j);
 
-                    ii = _u.mapper().index(i,j,c); // global index
-                    if (_u.mapper().is_boundary(i,j,c))
-                    {
-                        bi = _u.mapper().global_to_bindex(ii); // boundary index
-                        result(i+offset,0) = _u.fixedPart().at(bi);
-                    }
-                    else
+        const index_t dim = _u.dim();
+
+        result.resize(_u.mapper().size(), 1); // (!)
+        for (index_t p=0; p!=_u.mapper().numPatches(); ++p)
+        {
+            offset = _u.mapper().offset(p);
+            // Reconstruct solution coefficients on patch p
+
+            for (index_t c = 0; c!=dim; c++) // for all components
+            {
+                const index_t sz  = _u.mapper().patchSize(p,c);
+                // loop over all basis functions (even the eliminated ones)
+                for (index_t i = 0; i < sz; ++i)
+                {
+                    const int ii = _u.mapper().index(i, p, c);
+                    if ( _u.mapper().is_free_index(ii) ) // DoF value is in the solVector
                         result(i+offset,0) = _Sv->at(ii);
+                    else // eliminated DoF: fill with Dirichlet data
+                        result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
                 }
+                offset += sz;
+            }
+        }
     }
 
     /// Extract this variable as a multipatch object
