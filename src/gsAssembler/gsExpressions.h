@@ -767,7 +767,7 @@ public:
     index_t   interfaceCont() const {return m_sd->cont;}
     index_t & setInterfaceCont(const index_t _r) const
     {
-        GISMO_ASSERT(_r>-2 && _r<1, "Invalid or not implemented (r="<<_r<<").");
+        GISMO_ASSERT(_r>-2 && _r<2, "Invalid or not implemented (r="<<_r<<").");
         return m_sd->cont = _r;
     }
 
@@ -984,7 +984,51 @@ public:
         else if (const gsMappedBasis<2,T> * mapb =
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
+            gsInfo << "I am here \n";
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
+
+            // Pascal
+            if ( 0==this->interfaceCont() ) // C^0 matching interface
+            {
+                gsMatrix<index_t> int1, int2;
+                for ( gsBoxTopology::const_iiterator it = mapb->getTopol().iBegin();
+                      it != mapb->getTopol().iEnd(); ++it )
+                {
+                    int1 = mapb->basis(it->first().patch).boundaryOffset( it->first().side(), 0);
+                    int2 = mapb->basis(it->second().patch).boundaryOffset( it->second().side(), 0);
+
+                    m_sd->mapper.matchDofs(it->first().patch, int1, it->second().patch, int2);
+                }
+            }
+            if ( 1==this->interfaceCont() ) // C^1 matching interface
+            {
+
+                gsMatrix<index_t> int1, int2;
+                for ( gsBoxTopology::const_iiterator it = mapb->getTopol().iBegin();
+                      it != mapb->getTopol().iEnd(); ++it )
+                {
+                    //mapb->matchInterface(*it, m_sd->mapper);
+                    // copied from matchInterface to do add the function in gsMappedBasis
+                    // should work for all basis which have matchWith() implementeds
+
+                    gsMatrix<index_t> b1, b2;
+/*                    b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 0);
+                    b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 0);
+
+                    // Match the dofs on the interface
+                    for (size_t i = 0; i!=m_sd->mapper.componentsSize(); ++i)
+                        m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i );
+*/
+                    b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 1);
+                    b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 1);
+
+                    // Match the dofs on the interface
+                    for (size_t i = 0; i!=m_sd->mapper.componentsSize(); ++i)
+                        m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i );
+
+                }
+            }
+
             gsMatrix<index_t> bnd;
             for (typename gsBoundaryConditions<T>::const_iterator
                      it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )

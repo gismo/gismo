@@ -113,7 +113,12 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
         return sz;
     }
 
-    index_t size_cols() const { return size(); }
+    index_t size_cols() const {
+        index_t sz = 0;
+        for (size_t i = 0; i < colContainer.size(); ++i)
+            sz += colContainer[i];
+        return sz;
+    }
 
     index_t size() const {
         index_t sz = 0;
@@ -234,9 +239,11 @@ public:
 
     void setBasisPlus(gsBSplineBasis<> & basisPlus, index_t side) { basisPlusContainer[side-1] = basisPlus; }
     gsBSplineBasis<> & getBasisPlus(index_t side) { return basisPlusContainer[side-1]; }
+    index_t getBasisPlusSize(index_t side) const { return basisPlusContainer[side-1].size(); }
 
     void setBasisMinus(gsBSplineBasis<> & basisMinus, index_t side) { basisMinusContainer[side-1] = basisMinus; }
     gsBSplineBasis<> & getBasisMinus(index_t side) { return basisMinusContainer[side-1]; }
+    index_t getBasisMinusSize(index_t side) const { return basisMinusContainer[side-1].size(); }
 
     void setBasisGeo(gsBSplineBasis<> & basisGeo, index_t side) { basisGeoContainer[side-1] = basisGeo; }
     gsBSplineBasis<> & getBasisGeo(index_t side) { return basisGeoContainer[side-1]; }
@@ -311,7 +318,7 @@ protected:
     gsMultiPatch<T> & m_patches;
 
     /// The ID of the single basis
-    index_t & m_patchID;
+    index_t m_patchID;
 
     // Collection of the subspaces
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;
