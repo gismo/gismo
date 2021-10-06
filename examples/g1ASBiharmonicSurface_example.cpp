@@ -1033,25 +1033,6 @@ int main(int argc, char *argv[])
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
 
-    std::string string_geo_planar = "KirchhoffLoveGeo/square_sixPatch.xml";
-    gsFileData<> fdPlanar(string_geo_planar);
-    gsMultiPatch<> multiPatchPlanar;
-    fdPlanar.getId(0, multiPatchPlanar); // id=0: Multipatch domain
-    multiPatchPlanar.computeTopology();
-    multiPatchPlanar.degreeElevate(2 + g1OptionList.getInt("q_tilde"));
-
-
-//    std::vector<int> mul={0, 3};
-//    for(size_t i = 0; i < multiPatch_init.nPatches(); i++)
-//    {
-//        multiPatch_init.patch(i).uniformRefine(3, mul);
-////        multiPatch_init.patch(i).degreeElevate(2, 1);
-//        multiPatchPlanar.patch(i).uniformRefine(3, mul);
-////        multiPatchPlanar.patch(i).degreeElevate(2, 1);
-//        gsInfo << "KV: " << multiPatch_init.patch(i).basis() << "\n";
-//
-//    }
-
 
     gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
 
@@ -1117,7 +1098,7 @@ int main(int argc, char *argv[])
             std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatchSurf, multiPatchPlanar, item.first().patch, item.second().patch);
+            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatchSurf, item.first().patch, item.second().patch);
                 singleInt.computeG1InterfaceBasis(g1OptionList);
 
 
@@ -1157,7 +1138,7 @@ int main(int argc, char *argv[])
             std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatchSurf, multiPatchPlanar, bit.patch);
+            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatchSurf, bit.patch);
              singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
 
 
@@ -1200,7 +1181,7 @@ int main(int argc, char *argv[])
                 vertIndex.push_back(allcornerList.m_index);
             }
 
-                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatchSurf, multiPatchPlanar, patchIndex, vertIndex);
+                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatchSurf, patchIndex, vertIndex);
                 singleVertex.computeG1InternalVertexBasis(g1OptionList);
 
                 for (index_t i = 0; i < 6; i++)

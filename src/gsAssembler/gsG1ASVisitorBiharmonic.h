@@ -289,7 +289,7 @@ public:
                 {
                     gsMatrix<> L2approximation = basisVals.col(k) * basisVals.col(k).transpose() * sqrt(G.determinant());
 
-                    localMat.noalias() += weight * ( L2approximation );
+//                    localMat.noalias() += weight * ( L2approximation );
 
                     localMat.noalias() += weight * ( surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );
                     localRhs.noalias() += weight * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
