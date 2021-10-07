@@ -255,7 +255,7 @@ public:
     {
         // Check spaces.nPatches==mesh.patches
         initMatrix();
-        m_rhs.setZero(numDofs(), 1);
+        m_rhs.setZero(numTestDofs(), 1);
     }
 
     /// \brief Initializes the sparse matrix only

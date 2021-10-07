@@ -263,8 +263,7 @@ int main(int argc, char *argv[])
         // geom = mspline.exportToPatches();
 
 
-        // u.setup(bc, dirichlet::interpolation, 0);
-        u.setup(bc, dirichlet::interpolation, 0);
+        u.setup(bc, dirichlet::interpolation, -1);
 
         time.restart();
         // Initialize the system
