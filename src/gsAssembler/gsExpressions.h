@@ -1167,7 +1167,12 @@ public:
 
         const index_t dim = _u.dim();
 
-        result.resize(_u.mapper().size(), 1); // (!)
+        size_t totalSz = 0;
+        for (index_t c = 0; c!=dim; c++) // for all components
+            totalSz += _u.mapper().totalSize(c);
+
+        //result.resize(_u.mapper().size(), 1); // (!)
+        result.resize(totalSz, 1); // (!)
         for (index_t p=0; p!=_u.mapper().numPatches(); ++p)
         {
             offset = _u.mapper().offset(p);
@@ -1176,12 +1181,17 @@ public:
             for (index_t c = 0; c!=dim; c++) // for all components
             {
                 const index_t sz  = _u.mapper().patchSize(p,c);
+
                 // loop over all basis functions (even the eliminated ones)
                 for (index_t i = 0; i < sz; ++i)
                 {
+                    //gsDebugVar(i);
                     const int ii = _u.mapper().index(i, p, c);
+                    //gsDebugVar(ii);
                     if ( _u.mapper().is_free_index(ii) ) // DoF value is in the solVector
+                    {
                         result(i+offset,0) = _Sv->at(ii);
+                    }
                     else // eliminated DoF: fill with Dirichlet data
                         result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
                 }
