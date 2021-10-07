@@ -19,9 +19,16 @@
 #include <gsMSplines/gsDPatch.h>
 
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
+// #include <gsUnstructuredSplines/gsC1Spline.h>
 
 #include <gsKLShell/gsThinShellAssembler.h>
 #include <gsKLShell/gsMaterialMatrixLinear.h>
+
+#include <gsUtils/gsQuasiInterpolate.h>
+
+
+#include <gsAssembler/gsExprAssembler.h>
+
 
 
 using namespace gismo;
@@ -98,6 +105,7 @@ int main(int argc, char *argv[])
         }
         else if (geometry==1)
         {
+
             mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // patch 0
             mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // patch 1
             // mp.embed(3);
@@ -109,6 +117,8 @@ int main(int argc, char *argv[])
             mp.patch(1).coefs().col(0) += ones; // patch 1
 
             mp.addInterface(0,boundary::side::east,1,boundary::side::west);
+
+            // gsReadFile<>("domain2d/twoSquares.xml", mp);
 
             mp.addAutoBoundaries();
             for (index_t d = 0; d!=3; d++)
@@ -409,7 +419,7 @@ int main(int argc, char *argv[])
 
     gsWriteParaview(mp,"mp",1000,true,false);
     for (index_t p = 0; p!=mp.nPatches(); ++p)
-    gsDebugVar(mp.patch(p));
+        gsDebugVar(mp.patch(p));
 
 
     real_t thickness = 1.0;
@@ -453,6 +463,7 @@ int main(int argc, char *argv[])
     gsStopwatch time;
 
     gsMultiBasis<> dbasis(mp);
+    gsWriteParaview(mp.basis(0),"basis",1000);
 
     for( index_t r = 0; r<=numRefine; ++r)
     {
@@ -497,11 +508,7 @@ int main(int argc, char *argv[])
         }
         else if (smoothing==3) // Andrea
         {
-            // gsDPatch<2,real_t> dpatch(mp);
-            // dpatch.matrix_into(global2local);
-            // global2local = global2local.transpose();
-            // geom = dpatch.exportToPatches();
-            // dbasis = dpatch.localBasis();
+
         }
         else
             GISMO_ERROR("Option "<<smoothing<<" for smoothing does not exist");
@@ -519,9 +526,15 @@ int main(int argc, char *argv[])
         // gsMappedSpline<2,real_t> mspline(bb2,coefs);
         // geom = mspline.exportToPatches();
 
+        gsDebugVar(bb2.size());
+
         assembler = new gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
+        assembler->options().setInt("Continuity",-1);
         assembler->setSpaceBasis(bb2);
         assembler->setPointLoads(pLoads);
+        // gsOptionList options = assembler->options();
+        // options.setInt("Continuity",1);
+        // assembler->setOptions(options);
 
         time.restart();
         // Initialize the system
@@ -585,21 +598,195 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // PASCAL
-        if (smoothing ==2)
+        // if (smoothing ==2)
         {
 
-            gsMatrix<real_t> solFull;
-            //g1BiharmonicAssembler->constructSolution(solVector, solFull);
-            global2local = solFull.asDiagonal() * global2local;
 
-            gsMultiBasis<> multiBasis(mp);
-            for (size_t np = 0; np < mp.nPatches(); np++)
+            gsMatrix<real_t> solFull = assembler->fullSolutionVector(solVector);
+
+
+
+            GISMO_ASSERT(solFull.rows() % 3==0,"Rows of the solution vector does not match the number of control points");
+
+
+
+            solFull.resize(solFull.rows()/3,3);
+            gsMappedBasis<2,real_t> mbasis(dbasis,global2local);
+            gsMappedSpline<2,real_t> mspline(mbasis,solFull);
+
+
+            gsMatrix<> pts(2,1);
+            pts.setConstant(0.5);
+            gsMatrix<> res;
+            mspline.eval_into(pts,res);
+
+
+            // gsMultiPatch<> mpatches = mspline.exportToPatches();
+            // pts.col(0)<<1.0,0.5;
+            // mpatches.patch(0).eval_into(pts,res);
+
+            // QUASI INTERPOLATION
+            /*
+
+                gsMatrix<> tmp;
+                mbasis.global_coef_to_local_coef(solFull,tmp);
+                gsDebugVar(tmp.rows());
+
+                // gsMultiPatch<> mpatches = mbasis.exportToPatches(tmp);
+                gsField<> solfield2(mp,mpatches,true);
+                gsWriteParaview(solfield2,"solfieldsadasdasd");
+
+                gsMultiPatch<> mp2;
+                for (index_t p = 0; p!=mp.nPatches(); p++)
+                {
+                    gsMatrix<> coefs;
+                    gsQuasiInterpolate<real_t>::localIntpl(mp.basis(p), mpatches.piece(p), coefs);
+                    mp2.addPatch(mp.basis(p).makeGeometry( give(coefs) ));
+                }
+
+                gsField<> solfield(mp,mp2,true);
+                gsWriteParaview(solfield,"solfield");
+
+             */
+
+
+            // L2 PROJECTION
+
+            // /*
+            gsMultiBasis<> mb(mp);
+            gsBoundaryConditions<> bc_empty;
+
+            typedef gsExprAssembler<>::geometryMap geometryMap;
+            typedef gsExprAssembler<>::space       space;
+            typedef gsExprAssembler<>::solution    solution;
+            gsExprAssembler<> L2Projector(1,1);
+            geometryMap G   = L2Projector.getMap(mp);
+
+            L2Projector.setIntegrationElements(mb);
+            space u = L2Projector.getSpace(mb, 1); // last argument is the space ID
+            space v = L2Projector.getSpace(bb2, 1); // last argument is the space ID
+
+            u.setup(bc_empty,dirichlet::homogeneous);
+            v.setup(bc_empty,dirichlet::homogeneous);
+
+            solution sol = L2Projector.getSolution(v,solFull);
+
+            gsExprEvaluator<> ev(L2Projector);
+            gsMatrix<> pt(2,1);
+            pt.setConstant(0.25);
+            gsDebugVar(ev.eval(sol,pt));
+            gsDebugVar(ev.eval(v,pt));
+            gsDebugVar(ev.eval(u,pt));
+
+            ev.writeParaview(sol,G,"solution");
+
+            L2Projector.initSystem();
+            gsDebugVar(L2Projector.numDofs());
+            gsDebugVar("Assembling...");
+
+            L2Projector.assemble(u * v.tr());
+            L2Projector.assemble(u * sol);
+
+            gsDebugVar("Assembly finished");
+
+            gsDebugVar(L2Projector.matrix().toDense());
+            gsDebugVar(L2Projector.rhs().transpose());
+
+
+            gsDebugVar(L2Projector.matrix().rows());
+            gsDebugVar(L2Projector.matrix().cols());
+            gsDebugVar(L2Projector.rhs().rows());
+            gsDebugVar(L2Projector.rhs().cols());
+
+            typename gsSparseSolver<real_t>::BiCGSTABILUT solver( L2Projector.matrix() );
+            gsVector<> solvector = solver.solve(L2Projector.rhs());
+
+            gsDebugVar(solvector);
+            // */
+
+            // Interpolate at anchors
+            /*
+            // gsMultiBasis<> mb(mp);
+            gsMultiPatch<> mp2;
+            for (size_t p = 0; p!=mp.nPatches(); ++p)
             {
-                gsBasis<> & basis = multiBasis.basis(np);
-                gsMatrix<> points2D = basis.anchors();
-                // Update dbasis with solution
-                typename gsGeometry<>::uPtr patch = basis.interpolateAtAnchors(dbasis.basis(np).eval(points2D));
+                gsMatrix<> anchors;
+                mb.basis(p).anchors_into(anchors);
+                gsMatrix<> result;
+                bb2.eval_into(p,anchors,result);
+                mp2.addPatch(mb.basis(p).interpolateAtAnchors(result));
             }
+
+            gsField<> solField(mp,mp2);
+
+            gsWriteParaview(solField,"beer");
+            */
+            // gsDebugVar(solFull.rows());
+            // gsDebugVar(mbasis.size());
+
+            // gsMatrix<> u(2,1);
+            // u.setConstant(0.25);
+
+            // gsMatrix<> B ;
+            // gsMatrix<index_t> actives;
+
+            // mspline.basis().eval_into(u,B);
+            // mbasis.active_into(u,actives);
+
+
+            gsField<> solField(mp.patch(0),mspline,true);
+
+            gsWriteParaview(solField,"mspline");
+
+
+
+            return 0;
+
+            // solFull.resize(solFull.rows()/3,3);
+            // gsDebugVar(solFull);
+
+
+            index_t compSize = solFull.rows() / 3;
+            for (size_t d = 0; d!=3; d++)
+            {
+ gsDebugVar(global2local.rows());
+ gsDebugVar(global2local.cols());
+ gsDebugVar(coefs.rows());
+ gsDebugVar(coefs.cols());
+
+
+                gsMatrix<> coefs = solFull.block(d*compSize,0,compSize,1);
+                global2local = coefs.asDiagonal() * global2local;
+
+
+
+                gsMappedBasis<2,real_t> mbasis(dbasis,global2local);
+                gsMappedSpline<2,real_t> mspline(mbasis,coefs);
+                gsMultiPatch<> test = mspline.exportToPatches();
+                gsDebugVar(test);
+            }
+
+            gsDebugVar(global2local.rows());
+            gsDebugVar(global2local.cols());
+            global2local = solFull.asDiagonal() * global2local;
+            gsDebugVar(global2local);
+
+            // gsMappedSpline<2,real_t> mspline(dbasis,global2local);
+
+            // gsMultiPatch<> test = mspline.exportToPatches();
+            // gsWriteParaview("test",test,1000,true);
+
+
+
+
+            // gsMultiBasis<> multiBasis(mp);
+            // for (size_t np = 0; np < mp.nPatches(); np++)
+            // {
+            //     gsBasis<> & basis = multiBasis.basis(np);
+            //     gsMatrix<> points2D = basis.anchors();
+            //     // Update dbasis with solution
+            //     typename gsGeometry<>::uPtr patch = basis.interpolateAtAnchors(dbasis.basis(np).eval(points2D));
+            // }
         }
 
 
