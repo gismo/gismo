@@ -112,6 +112,9 @@ public:
     short_t domainDim() const
     { return m_mbases->domainDim(); }
 
+    short_t targetDim() const
+    { return m_coefs.cols(); }
+
     /// returns the amount of patches of the multi patch
     size_t nPatches() const
     { return m_mbases->nPatches(); }

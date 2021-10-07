@@ -656,44 +656,42 @@ int main(int argc, char *argv[])
             L2Projector.setIntegrationElements(mb);
             space v = L2Projector.getSpace(bb2, 1);//m-splines
             space u = L2Projector.getTestSpace(v,mb);//TP splines
+            solution sol = L2Projector.getSolution(v,solFull);
+
+            gsDebugVar(mb.totalSize());
 
             u.setup(bc_empty,dirichlet::homogeneous);
             v.setup(bc_empty,dirichlet::homogeneous);
 
-            solution sol = L2Projector.getSolution(v,solFull);
 
             gsExprEvaluator<> ev(L2Projector);
             gsMatrix<> pt(2,1);
             pt.setConstant(0.25);
-            gsDebugVar(ev.eval(sol,pt));
-            gsDebugVar(ev.eval(v,pt));
-            gsDebugVar(ev.eval(u,pt));
-
             ev.writeParaview(sol,G,"solution");
 
             L2Projector.initSystem();
+            L2Projector.initVector(3);
             gsDebugVar(L2Projector.numDofs());
             gsDebugVar(L2Projector.numTestDofs());
-            gsDebugVar("Assembling...");
+            gsDebugVar(L2Projector.rhs().rows());
+            gsDebugVar(L2Projector.rhs().cols());
+            gsDebugVar(L2Projector.matrix().rows());
+            gsDebugVar(L2Projector.matrix().cols());
 
             L2Projector.assemble(u * v.tr());
             L2Projector.assemble( u * sol );
-
-            // gsDebugVar("Assembly finished");
-
-            // gsDebugVar(L2Projector.matrix().toDense());
-            // gsDebugVar(L2Projector.rhs().transpose());
-
-            gsDebugVar(L2Projector.matrix().rows());
-            gsDebugVar(L2Projector.matrix().cols());
-            gsDebugVar(L2Projector.rhs().rows());
-            gsDebugVar(L2Projector.rhs().cols());
-
             gsSparseSolver<>::QR solver( L2Projector.matrix() );
-            gsVector<> solvector = solver.solve(L2Projector.rhs());
+            gsMatrix<> result(mb.totalSize(),solFull.cols());
+            for (index_t k=0; k!=L2Projector.rhs().cols(); k++)
+            {
+                gsDebugVar(solver.solve(L2Projector.rhs().col(k)));
+                // result.col(k) = solver.solve(L2Projector.rhs().col(k));
+            }
 
-            
-            gsDebugVar(solvector);
+            gsDebugVar(result);
+
+
+
             // */
 
             // Interpolate at anchors
