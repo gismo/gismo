@@ -663,8 +663,8 @@ int main(int argc, char *argv[])
             geometryMap G   = L2Projector.getMap(mp);
 
             L2Projector.setIntegrationElements(mb);
-            space u = L2Projector.getSpace(mb, 1); // last argument is the space ID
-            space v = L2Projector.getSpace(bb2, 1); // last argument is the space ID
+            space v = L2Projector.getSpace(bb2, 1);//m-splines
+            space u = L2Projector.getTestSpace(v,mb);//TP splines
 
             u.setup(bc_empty,dirichlet::homogeneous);
             v.setup(bc_empty,dirichlet::homogeneous);
@@ -682,25 +682,26 @@ int main(int argc, char *argv[])
 
             L2Projector.initSystem();
             gsDebugVar(L2Projector.numDofs());
+            gsDebugVar(L2Projector.numTestDofs());
             gsDebugVar("Assembling...");
 
             L2Projector.assemble(u * v.tr());
-            L2Projector.assemble(u * sol);
+            L2Projector.assemble( u * sol );
 
             gsDebugVar("Assembly finished");
 
             gsDebugVar(L2Projector.matrix().toDense());
             gsDebugVar(L2Projector.rhs().transpose());
 
-
             gsDebugVar(L2Projector.matrix().rows());
             gsDebugVar(L2Projector.matrix().cols());
             gsDebugVar(L2Projector.rhs().rows());
             gsDebugVar(L2Projector.rhs().cols());
 
-            typename gsSparseSolver<real_t>::BiCGSTABILUT solver( L2Projector.matrix() );
+            gsSparseSolver<>::QR solver( L2Projector.matrix() );
             gsVector<> solvector = solver.solve(L2Projector.rhs());
 
+            
             gsDebugVar(solvector);
             // */
 
