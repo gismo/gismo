@@ -15,19 +15,19 @@
 
 #include <gsCore/gsMultiPatch.h>
 
-#include <gsMSplines/gsMappedSpline.h>
+#include <gsMSplines/gsCompositeGeom.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
 
 namespace gismo
 {
 template<short_t d,class T>
-class gsCompositeIncrSmoothnessGeom : public gsMappedSpline<d,T>
+class gsCompositeIncrSmoothnessGeom : public gsCompositeGeom<d,T>
 {
 
 private:
     typedef gsMappedSingleBasis<d,T> Basis;
-    typedef gsMappedSpline<d,T> Base;
+    typedef gsCompositeGeom<d,T> Base;
 public:
     /// Default empty constructor
     gsCompositeIncrSmoothnessGeom() : Base() { }

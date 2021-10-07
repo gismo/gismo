@@ -15,7 +15,7 @@
 
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsCompositeHBasis.h>
-#include <gsMSplines/gsMappedSpline.h>
+#include <gsMSplines/gsCompositeGeom.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
 
 #include <gsRecipeAssembler/gsRecipeAssemblerQMOpt.h>
@@ -261,7 +261,7 @@ void solvePoissonCollectResults_oneStep(
     {
         vc_refine_bases.push_back(new gsMappedSingleBasis<2,real_t>(compBasis->getMappedSingleBasis(i)));
     }
-    gsMappedSpline<2,real_t> geo(*compBasis,reconstructedSol);
+    gsCompositeGeom<2,real_t> geo(*compBasis,reconstructedSol);
     gsMultiPatch<real_t> mp2 = geo.exportToPatches();
     gsField<real_t> sol(domain,mp2);
 
@@ -392,7 +392,7 @@ void solveBiharmonicCollectResults_oneStep(
     {
         vc_refine_bases.push_back(new gsMappedSingleBasis<2,real_t>(compBasis->getMappedSingleBasis(i)));
     }
-    gsMappedSpline<2,real_t> geo(*compBasis,reconstructedSol);
+    gsCompositeGeom<2,real_t> geo(*compBasis,reconstructedSol);
     gsMultiPatch<real_t> mp2 = geo.exportToPatches();
     gsField<real_t> sol(*domain,mp2);
 
