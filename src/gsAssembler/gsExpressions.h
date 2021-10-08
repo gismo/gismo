@@ -1163,7 +1163,7 @@ public:
     /// coupled and boundary DoFs
     void extractFull(gsMatrix<T> & result) const
     {
-        index_t offset, ii, bi;
+        index_t offset;
 
         const index_t dim = _u.dim();
 
@@ -1173,7 +1173,7 @@ public:
 
         //result.resize(_u.mapper().size(), 1); // (!)
         result.resize(totalSz, 1); // (!)
-        for (index_t p=0; p!=_u.mapper().numPatches(); ++p)
+        for (size_t p=0; p!=_u.mapper().numPatches(); ++p)
         {
             offset = _u.mapper().offset(p);
             // Reconstruct solution coefficients on patch p

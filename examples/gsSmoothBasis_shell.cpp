@@ -418,9 +418,8 @@ int main(int argc, char *argv[])
     }
 
     gsWriteParaview(mp,"mp",1000,true,false);
-    for (index_t p = 0; p!=mp.nPatches(); ++p)
+    for (size_t p = 0; p!=mp.nPatches(); ++p)
         gsDebugVar(mp.patch(p));
-
 
     real_t thickness = 1.0;
     real_t E_modulus = 1.0;
@@ -446,7 +445,7 @@ int main(int argc, char *argv[])
 
     gsMaterialMatrixLinear<3,real_t> materialMatrix(mp,t,parameters);
 
-    gsThinShellAssemblerBase<real_t>* assembler;
+    gsThinShellAssemblerBase<real_t> * assembler;
 
     //! [Solver loop]
     gsVector<> l2err(numRefine+1), h1err(numRefine+1), linferr(numRefine+1),
@@ -528,6 +527,7 @@ int main(int argc, char *argv[])
 
         gsDebugVar(bb2.size());
 
+        //mem-leak here
         assembler = new gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
         assembler->options().setInt("Continuity",-1);
         assembler->setSpaceBasis(bb2);
@@ -549,8 +549,6 @@ int main(int argc, char *argv[])
 
         solver.compute( matrix );
         solVector = solver.solve(vector);
-
-        gsDebugVar(solVector);
 
         gsInfo<<"\tSolving system:\t\t"<<time.stop()<<"\t[s]\n";
         time.restart();
@@ -603,12 +601,10 @@ int main(int argc, char *argv[])
 
 
             gsMatrix<real_t> solFull = assembler->fullSolutionVector(solVector);
-
+            
 
 
             GISMO_ASSERT(solFull.rows() % 3==0,"Rows of the solution vector does not match the number of control points");
-
-
 
             solFull.resize(solFull.rows()/3,3);
             /// why?
@@ -628,7 +624,7 @@ int main(int argc, char *argv[])
                 gsWriteParaview(solfield2,"solfieldsadasdasd");
 
                 gsMultiPatch<> mp2;
-                for (index_t p = 0; p!=mp.nPatches(); p++)
+                for (size_t p = 0; p!=mp.nPatches(); p++)
                 {
                     gsMatrix<> coefs;
                     gsQuasiInterpolate<real_t>::localIntpl(mp.basis(p), mspline.piece(p), coefs);
@@ -656,10 +652,9 @@ int main(int argc, char *argv[])
             L2Projector.setIntegrationElements(mb);
             space v = L2Projector.getSpace(bb2, 1);//m-splines
             space u = L2Projector.getTestSpace(v,mb);//TP splines
-            solution sol = L2Projector.getSolution(v,solFull);
-
-            gsDebugVar(mb.totalSize());
-
+            //solution sol = L2Projector.getSolution(v,solFull);
+            auto sol = L2Projector.getCoeff(mspline);
+                       
             u.setup(bc_empty,dirichlet::homogeneous);
             v.setup(bc_empty,dirichlet::homogeneous);
 
@@ -668,27 +663,17 @@ int main(int argc, char *argv[])
             gsMatrix<> pt(2,1);
             pt.setConstant(0.25);
             ev.writeParaview(sol,G,"solution");
-
-            L2Projector.initSystem();
-            L2Projector.initVector(3);
-            gsDebugVar(L2Projector.numDofs());
-            gsDebugVar(L2Projector.numTestDofs());
-            gsDebugVar(L2Projector.rhs().rows());
-            gsDebugVar(L2Projector.rhs().cols());
-            gsDebugVar(L2Projector.matrix().rows());
-            gsDebugVar(L2Projector.matrix().cols());
-
-            L2Projector.assemble(u * v.tr());
-            L2Projector.assemble( u * sol );
+            
+            L2Projector.initSystem(3);
+            L2Projector.assemble(u * v.tr(), u * sol.tr() );
             gsMatrix<> result = L2Projector.matrix().toDense().
                 colPivHouseholderQr().solve(L2Projector.rhs());
-
+            
             /*
             gsSparseSolver<>::QR solver( L2Projector.matrix() );
             gsMatrix<> result = solver.solve(L2Projector.rhs().col(k));
             */
             gsDebugVar(result);
-
 
 
             // */
@@ -738,16 +723,13 @@ int main(int argc, char *argv[])
             index_t compSize = solFull.rows() / 3;
             for (size_t d = 0; d!=3; d++)
             {
- gsDebugVar(global2local.rows());
- gsDebugVar(global2local.cols());
- gsDebugVar(coefs.rows());
- gsDebugVar(coefs.cols());
-
+                gsDebugVar(global2local.rows());
+                gsDebugVar(global2local.cols());
+                gsDebugVar(coefs.rows());
+                gsDebugVar(coefs.cols());
 
                 gsMatrix<> coefs = solFull.block(d*compSize,0,compSize,1);
                 global2local = coefs.asDiagonal() * global2local;
-
-
 
                 gsMappedBasis<2,real_t> mbasis(dbasis,global2local);
                 gsMappedSpline<2,real_t> mspline(mbasis,coefs);

@@ -87,10 +87,6 @@ void gsMappedSpline<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u,
     m_mbases->active_into(patch,u,actives);
     gsMatrix<T> evals;
     m_mbases->eval_into(patch,u,evals);
-    // gsMatrix<T> coefs(actives.size(),m_coefs.cols());
-    // for (index_t k = 0; k!=actives.size(); k++)
-    //     coefs.row(k) = m_coefs.row(actives(k,0));
-
     m_mbases->getBase(patch).linearCombination_into(m_coefs,actives,evals,result);
 }
 
@@ -101,11 +97,7 @@ void gsMappedSpline<d,T>::deriv_into(const unsigned patch, const gsMatrix<T> & u
     m_mbases->active_into(patch,u,actives);
     gsMatrix<T> evals;
     m_mbases->deriv_into(patch,u,evals);
-    gsMatrix<T> coefs(actives.size(),m_coefs.cols());
-    for (index_t k = 0; k!=actives.size(); k++)
-        coefs.row(k) = m_coefs.row(actives(k,0));
-
-    m_mbases->getBase(patch).linearCombination_into(coefs,actives,evals,result);
+    m_mbases->getBase(patch).linearCombination_into(m_coefs,actives,evals,result);
 }
 
 template<short_t d,class T>
@@ -115,11 +107,7 @@ void gsMappedSpline<d,T>::deriv2_into(const unsigned patch, const gsMatrix<T> & 
     m_mbases->active_into(patch,u,actives);
     gsMatrix<T> evals;
     m_mbases->deriv2_into(patch,u,evals);
-    gsMatrix<T> coefs(actives.size(),m_coefs.cols());
-    for (index_t k = 0; k!=actives.size(); k++)
-        coefs.row(k) = m_coefs.row(actives(k,0));
-
-    m_mbases->getBase(patch).linearCombination_into(coefs,actives,evals,result);
+    m_mbases->getBase(patch).linearCombination_into(m_coefs,actives,evals,result);
 }
 
 template<short_t d,class T>
@@ -132,12 +120,8 @@ void gsMappedSpline<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<
     m_mbases->active_into(patch,u,actives);
     std::vector< gsMatrix<T> > evals;
     m_mbases->evalAllDers_into(patch,u,n,evals);
-    gsMatrix<T> coefs(actives.size(),m_coefs.cols());
-    for (index_t k = 0; k!=actives.size(); k++)
-        coefs.row(k) = m_coefs.row(actives(k,0));
-
     for( int i = 0; i <= n; i++)
-        m_mbases->getBase(patch).linearCombination_into( coefs, actives, evals[i], result[i] );
+        m_mbases->getBase(patch).linearCombination_into(m_coefs, actives, evals[i], result[i] );
 }
 
 template<short_t d,class T>

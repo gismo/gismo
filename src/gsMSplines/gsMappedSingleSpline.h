@@ -31,10 +31,10 @@ template<short_t d,class T> class gsMappedSpline;
 
 */
 template<short_t d,class T>
-class gsMappedSingleSpline : public gsGeoTraits<d,T>::GeometryBase
+class gsMappedSingleSpline : public gsFunction<T>
 {
 private:
-    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
+    typedef gsFunction<T> Base;
 
     typedef gsMappedSingleBasis<d,T> Basis;
 

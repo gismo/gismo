@@ -121,6 +121,7 @@ public:
 
     const gsMappedSingleSpline<d,T> & piece(const index_t k) const { return m_ss[k]; }
 
+    index_t size() const {return 1;}
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -128,6 +129,9 @@ public:
 
     const gsMappedBasis<d,T> & getMappedBasis() const
     { return *m_mbases; }
+
+    const gsMatrix<T> & getMappedCoefs() const
+    { return m_coefs; }
 
     gsMappedBasis<d,T> & getMappedBasis()
     { return *m_mbases; }

@@ -498,7 +498,7 @@ private:
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(isMatrix || (0!=m_rhs.size()), "The right-hand side vector is not initialized");
-
+            
             const index_t cd            = u.dim();
             const index_t rd            = v.dim();
             const gsDofMapper  & rowMap = v.mapper();
@@ -519,7 +519,11 @@ private:
                 colMap.localToGlobal(colInd0, patchInd, colInd);
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
                               "Invalid values for fixed part");
+                // gsDebugVar(rowInd.transpose());
+                // gsDebugVar(colInd.transpose());
+                // gsDebugVar(localMat);
             }
+
             for (index_t r = 0; r != rd; ++r)
             {
                 const index_t rls = r * rowInd0.rows();     //local stride
@@ -550,7 +554,8 @@ private:
                                     else // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
-                                        // GISMO_ASSERT(1==m_rhs.cols(), "-");
+                                        GISMO_ASSERT(1==m_rhs.cols(),
+                                                     "The right-hnad side has more than one columns");
 #                                       pragma omp atomic
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
@@ -561,7 +566,8 @@ private:
                         else
                         {
 #                           pragma omp atomic
-                            m_rhs.at(ii) += localMat.at(rls+i);
+                            //The right-hand side can have more than one columns
+                            m_rhs.row(ii) += localMat.row(rls+i);
                         }
                     }
                 }
