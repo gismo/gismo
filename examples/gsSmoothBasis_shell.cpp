@@ -680,14 +680,13 @@ int main(int argc, char *argv[])
 
             L2Projector.assemble(u * v.tr());
             L2Projector.assemble( u * sol );
-            gsSparseSolver<>::QR solver( L2Projector.matrix() );
-            gsMatrix<> result(mb.totalSize(),solFull.cols());
-            for (index_t k=0; k!=L2Projector.rhs().cols(); k++)
-            {
-                gsDebugVar(solver.solve(L2Projector.rhs().col(k)));
-                // result.col(k) = solver.solve(L2Projector.rhs().col(k));
-            }
+            gsMatrix<> result = L2Projector.matrix().toDense().
+                colPivHouseholderQr().solve(L2Projector.rhs());
 
+            /*
+            gsSparseSolver<>::QR solver( L2Projector.matrix() );
+            gsMatrix<> result = solver.solve(L2Projector.rhs().col(k));
+            */
             gsDebugVar(result);
 
 

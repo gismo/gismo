@@ -251,11 +251,11 @@ public:
     void setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk = 0, size_t patch = 0);
 
     /// \brief Initializes the sparse system (sparse matrix and rhs)
-    void initSystem()
+    void initSystem(const index_t numRhs = 1)
     {
         // Check spaces.nPatches==mesh.patches
         initMatrix();
-        m_rhs.setZero(numTestDofs(), 1);
+        m_rhs.setZero(numTestDofs(), numRhs);
     }
 
     /// \brief Initializes the sparse matrix only
@@ -285,7 +285,7 @@ public:
     void initVector(const index_t numRhs = 1)
     {
         resetDimensions();
-        m_rhs.setZero(numDofs(), numRhs);
+        m_rhs.setZero(numTestDofs(), numRhs);
     }
 
     /// Returns a block view of the system matrix, each block
