@@ -149,9 +149,9 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
         //    gsInfo << "Active_into only for one point computed\n";
 
         result.resize(0,1);
-        //for (index_t u_i = 0; u_i < u.cols(); ++u_i) // For each points
+        for (index_t u_i = 0; u_i < u.cols(); ++u_i) // For each points
         {
-            index_t u_i = 0; // Check if the points are in the same element TODO
+            //index_t u_i = 0; // Check if the points are in the same element TODO
             index_t shift = 0;
             gsMatrix<index_t> result_single(0,1);
             for (size_t i=0; i< basisG1Container.size(); ++i)
@@ -167,8 +167,8 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
                     shift += basisG1Container[i].size();
                 }
             }
-            result.conservativeResize(result.rows()+result_single.rows(), 1 );
-            result.bottomRows(result_single.rows()) = result_single;
+            result.conservativeResize(result.rows()+result_single.rows(), u.cols() );
+            result.block(result.rows()-result_single.rows(),u_i, result_single.rows(), 1) = result_single;
         }
     }
 
