@@ -984,10 +984,9 @@ public:
         else if (const gsMappedBasis<2,T> * mapb =
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
-            gsInfo << "I am here \n";
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
 
-            // Pascal
+            // Does this work for the D-Patch as well??
             if ( 0==this->interfaceCont() ) // C^0 matching interface
             {
                 gsMatrix<index_t> int1, int2;

@@ -183,6 +183,7 @@ template<short_t d,class T>
 void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     gsMatrix<index_t> bact;
+    m_bases[patch]->active_into(u, bact);
 
     std::vector<index_t>  act, act0;
     gsMatrix<T> beval, map;//r:B,c:C
@@ -190,14 +191,13 @@ void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, 
     result.resizeLike(bact);
     for (index_t i = 0; i!=u.cols(); ++i)
     {
-        m_bases[patch]->active_into(u.col(i), bact);
         act0 = std::vector<index_t>(bact.col(i).data(), bact.col(i).data()+bact.col(i).rows());
+        m_bases[patch]->eval_into(u.col(i), beval);
         std::transform(act0.begin(), act0.end(), act0.begin(),
                        GS_BIND2ND(std::plus<index_t>(), shift));
+
         m_mapper->fastSourceToTarget(act0,act);
         m_mapper->getLocalMap(act0, act, map);
-
-        m_bases[patch]->eval_into(u.col(i), beval);
         result.col(i).noalias() = map.transpose() * beval; // todo: remove transpose()
     }
 }
