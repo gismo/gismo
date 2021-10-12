@@ -121,7 +121,7 @@ public:
 
     const gsMappedSingleSpline<d,T> & piece(const index_t k) const { return m_ss[k]; }
 
-    index_t size() const {return 1;}
+    index_t size() const {return nPieces();}
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
