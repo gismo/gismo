@@ -25,6 +25,14 @@
 namespace gismo
 {
 
+template <class T>
+gsOptionList gsCDRAssembler<T>::defaultOptions()
+{
+    gsOptionList options = gsAssembler<T>::defaultOptions();
+    options.update( gsVisitorNitsche<T>::defaultOptions(), gsOptionList::addIfUnknown );
+    return options;
+}
+
 template<class T>
 void gsCDRAssembler<T>::assemble()
 {

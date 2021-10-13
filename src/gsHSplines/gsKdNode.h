@@ -37,6 +37,12 @@ public:
         second = u;
     }
 
+    gsAabb(const point & u)
+    {
+        first.setZero();
+        second = u;
+    }
+
 public:
 
     //point lower;

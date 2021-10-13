@@ -32,8 +32,11 @@ void gsIetiMapper<T>::init(
         const Matrix& fixedPart
     )
 {
-    GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper<T>::init: "
+    GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper:init: "
         "Got only 1 multi basis, so a gsDofMapper with only 1 component is expected." );
+    GISMO_ASSERT( dofMapperGlobal.numPatches() == multiBasis.nBases(), "gsIetiMapper::init: "
+        "Number of patches does not agree." );
+
     const index_t nPatches = dofMapperGlobal.numPatches();
     m_multiBasis = &multiBasis;
     m_dofMapperGlobal = give(dofMapperGlobal);
@@ -52,6 +55,8 @@ void gsIetiMapper<T>::init(
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t nDofs = m_dofMapperGlobal.patchSize(k);
+        GISMO_ASSERT( nDofs==m_multiBasis->piece(k).size(), "gsIetiMapper::init: "
+            "The mapper for patch "<<k<<" has not as many dofs as the corresponding basis." );
         m_dofMapperLocal[k].setIdentity(1,nDofs);
         for (index_t i=0; i<nDofs; ++i)
         {
@@ -103,7 +108,7 @@ gsIetiMapper<T>::constructGlobalSolutionFromLocalSolutions( const std::vector<Ma
     return result;
 }
 
-namespace{
+namespace {
 struct dof_helper {
     index_t globalIndex;
     index_t patch;
@@ -124,9 +129,11 @@ void gsIetiMapper<T>::cornersAsPrimals()
 
     // Construct all corners
     std::vector<dof_helper> corners;
-    corners.reserve(4*nPatches);
     const index_t dim = m_multiBasis->dim();
+    corners.reserve((1<<dim)*nPatches);
+    // Add corners on all patches
     for (index_t k=0; k<nPatches; ++k)
+    {
         for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
         {
             const index_t idx = (*m_multiBasis)[k].functionAtCorner(it);
@@ -137,6 +144,9 @@ void gsIetiMapper<T>::cornersAsPrimals()
             if (m_dofMapperGlobal.is_free_index(dh.globalIndex))
                 corners.push_back(dh);
         }
+    }
+
+    // Sort corners to collapse corners with same global index
     std::sort(corners.begin(), corners.end());
 
     // Create data
@@ -198,7 +208,7 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 
 
 template <class T>
-void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, const short_t d)
+void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
@@ -247,7 +257,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, con
 
 
 template <class T>
-void gsIetiMapper<T>::customPrimalConstraints(std::vector< std::pair<index_t,SparseVector> > data)
+void gsIetiMapper<T>::customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
@@ -268,17 +278,16 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 
     std::vector<index_t> result;
     const index_t patchSize = m_dofMapperGlobal.patchSize(patch);
-    result.reserve(4*std::sqrt(patchSize));
+    const index_t dim = m_multiBasis->dim();
+    result.reserve(2*dim*std::pow(patchSize,(1.0-dim)/dim));
     for (index_t i=0; i<patchSize; ++i)
-    {
         if ( m_dofMapperGlobal.is_coupled(i,patch) )
             result.push_back(m_dofMapperLocal[patch].index(i,0));
-    }
     return result;
 }
 
 template <class T>
-void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorners)
+void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
@@ -313,6 +322,7 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     {
         const index_t dim = m_multiBasis->dim();
         for (index_t k=0; k<nPatches; ++k)
+        {
             for (boxCorner it = boxCorner::getFirst(dim); it!=boxCorner::getEnd(dim); ++it)
             {
                 const index_t idx = (*m_multiBasis)[k].functionAtCorner(it);
@@ -323,6 +333,7 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
                     coupling[coupledIndex].clear();
                 }
             }
+        }
     }
 
     // Compute the number of Lagrange multipliers
@@ -341,13 +352,16 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     // Compute the jump matrices
     std::vector< gsSparseEntries<T> > jumpMatrices_se(nPatches);
     for (index_t i=0; i<nPatches; ++i)
-        jumpMatrices_se[i].reserve( std::sqrt( m_dofMapperLocal[i].freeSize() ) );
+    {
+        const index_t dim = m_multiBasis->dim();
+        jumpMatrices_se[i].reserve(std::pow(m_dofMapperLocal[i].freeSize(),(1.0-dim)/dim));
+    }
 
     index_t multiplier = 0;
     for (index_t i=0; i<coupledSize; ++i)
     {
         const index_t n = coupling[i].size();
-        index_t maxIndex = fullyRedundant ? (n-1) : 1;
+        const index_t maxIndex = fullyRedundant ? (n-1) : 1;
         for (index_t j1=0; j1<maxIndex; ++j1)
         {
             const index_t patch1 = coupling[i][j1].first;
@@ -375,6 +389,5 @@ void gsIetiMapper<T>::computeJumpMatrices(bool fullyRedundant, bool excludeCorne
     }
 
 }
-
 
 } // namespace gismo
