@@ -292,6 +292,8 @@ bool gsFileData<T>::readAxelFile( String const & fn )
         { readAxelCurve(child);  }
         if ( s == "surface" )
         { readAxelSurface(child); }
+        if ( s == "mesh" )
+        { readAxelMesh(child); }
     }
 
     buffer.clear();
@@ -389,6 +391,28 @@ bool gsFileData<T>::readAxelSurface(gsXmlNode * node )
     return true;
 };
 
+template<class T>
+bool gsFileData<T>::readAxelMesh(gsXmlNode * node )
+{
+    std::ostringstream str;
+    gsXmlNode * tmp = node->first_node("points");
+    str<< tmp->value();
+    tmp = node->first_node("faces");
+    str<< tmp->value();
+    internal::gsXmlNode* g = internal::makeNode("Mesh", str.str(), *data);
+    g->append_attribute(internal::makeAttribute("type", "off", *data ) );
+
+    tmp = node->first_node("count");
+    std::istringstream iss(tmp->value());
+    int n;
+    iss >> n;
+    g->append_attribute(internal::makeAttribute("vertices", n, *data ) );
+    iss >> n; iss >> n; //skips one deliberately
+    g->append_attribute( internal::makeAttribute("faces", n, *data ) );
+    internal::gsXmlNode* parent = data->first_node("xml") ;
+    parent->append_node(g);
+    return true;
+}
 
 // ******************************** //
 // GoTools g2 file

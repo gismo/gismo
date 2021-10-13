@@ -21,6 +21,7 @@
 
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsKnotVector.h>
+#include <gsUtils/gsMesh/gsMesh.h>
 
 #include <onurbs/opennurbs.h>
 
@@ -34,7 +35,89 @@ namespace gismo {
 
 namespace extensions {
 
+void writeON_Init(ONX_Model & model)
+{
+  ON::Begin();
+  // If you want to learn to write b-rep models, first work through
+  // this example paying close attention to write_trimmed_surface_example(),
+  // then examime example_brep.cpp.
 
+  // set revision history information
+  model.m_properties.m_RevisionHistory.NewRevision();
+
+  // set application information
+  model.m_properties.m_Application.m_application_name = "OpenNURBS write_curves_example() function";
+  model.m_properties.m_Application.m_application_URL = "http://www.opennurbs.org";
+  model.m_properties.m_Application.m_application_details = "Example program in OpenNURBS toolkit.";
+
+  // some notes
+  model.m_properties.m_Notes.m_notes = "This file was made with the OpenNURBS write_curves_example() function.";
+  model.m_properties.m_Notes.m_bVisible = true;
+
+
+  // file settings (units, tolerances, views, ...)
+  model.m_settings.m_ModelUnitsAndTolerances.m_unit_system = ON::inches;
+  model.m_settings.m_ModelUnitsAndTolerances.m_absolute_tolerance = 0.001;
+  model.m_settings.m_ModelUnitsAndTolerances.m_angle_tolerance = ON_PI/180.0; // radians
+  model.m_settings.m_ModelUnitsAndTolerances.m_relative_tolerance = 0.01; // 1%
+
+
+/*  ON_Layer layer;
+  layer.SetLayerName("Default");
+  layer.SetVisible(true);
+  layer.SetLocked(false);
+  layer.SetColor( ON_Color(0,0,0) );
+  model.m_layer_table.Append(layer);
+*/
+}
+
+bool writeON_Write3dm(ONX_Model & model, const std::string & fname)
+{
+    const char* filename = fname.c_str();
+
+    // errors printed to stdout
+    ON_TextLog error_log;
+    
+    // messages printed to stdout
+    ON_TextLog message_log;
+    
+    // errors logged in text file
+    //FILE* error_log_fp = ON::OpenFile("error_log.txt","w");
+    //ON_TextLog error_log(error_log_fp);
+    
+    // The OpenNURBS toolkit will write version 2 and 3 and read
+    // version 1, 2 and 3 of the 3DM file format.
+    //
+    // version 1 is the legacy Rhino I/O tookit format and was used by Rhino 1.x.
+    // version 2 is the OpenNURBS format (released 1 July 2000) and is used by Rhino 2.x
+    // version 3 is the OpenNURBS format (released 1 November 2002) and is used by Rhino 3.x
+    // version 4 is the OpenNURBS format (released September 2006) and is used by Rhino 4.x
+    // version 5 is the OpenNURBS format (released September 2009) and is used by Rhino 5.x
+    
+    // version to write
+    int version = 0; // version will be ON_BinaryArchive::CurrentArchiveVersion()
+
+    FILE* fp = ON::OpenFile( filename, "wb" );
+    ON_BinaryFile archive( ON::write3dm, fp ); // fp = pointer from fopoen(...,"wb")
+    // start section comment
+    const char* sStartSectionComment = __FILE__ "write_points_example()" __DATE__;
+    // Set uuid's, indices, etc.
+    model.Polish();
+    // writes model to archive
+    bool ok = model.Write(archive, version, sStartSectionComment, &error_log );
+    
+    ON::CloseFile( fp );
+    if (ok)
+        message_log.Print("Successfully wrote %s.\n",filename);
+    else
+        message_log.Print("Errors while writing %s.\n",filename);
+    
+    ON::End();
+    
+    return true;
+}
+
+    
 /// Writes a Curve to OpenNurbs file
 template<class T>
 bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std::string & name)
@@ -93,11 +176,11 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
         );
     
     int c = 0;
-
+    bool fs = (surface.geoDim()<3?false:true);
     for ( int j = 0; j < onsurf->CVCount(1); j++ )
         for ( int i = 0; i < onsurf->CVCount(0); i++ )
         {
-            ON_3dPoint pt(cast<T,double>(surface.coef(c,0)), cast<T,double>(surface.coef(c,1)), cast<T,double>(surface.coef(c,2)) );
+            ON_3dPoint pt(cast<T,double>(surface.coef(c,0)), cast<T,double>(surface.coef(c,1)), (fs? cast<T,double>(surface.coef(c,2)) : 0.0) );
             //ON_3dPoint pt( surface.coef(c,0), surface.coef(c,1), 0 );
             onsurf->SetCV( i, j, pt );//Note: j runs faster than i for CP(i,j)
             c++;
@@ -134,69 +217,8 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
 template<class T>
 bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
 {
-  //bool rc;
-  const char* filename;
-
-  ON::Begin();
-  // If you want to learn to write b-rep models, first work through
-  // this example paying close attention to write_trimmed_surface_example(),
-  // then examime example_brep.cpp.
-
-  // The OpenNURBS toolkit will write version 2 and 3 and read
-  // version 1, 2 and 3 of the 3DM file format.
-  //
-  // version 1 is the legacy Rhino I/O tookit format and was used by Rhino 1.x.
-  // version 2 is the OpenNURBS format (released 1 July 2000) and is used by Rhino 2.x
-  // version 3 is the OpenNURBS format (released 1 November 2002) and is used by Rhino 3.x
-  // version 4 is the OpenNURBS format (released September 2006) and is used by Rhino 4.x
-  // version 5 is the OpenNURBS format (released September 2009) and is used by Rhino 5.x
-
-  // version to write
-  int version = 0; // version will be ON_BinaryArchive::CurrentArchiveVersion()
-
-  // errors printed to stdout
-  ON_TextLog error_log;
-
-  // messages printed to stdout
-  ON_TextLog message_log;
-
-  // errors logged in text file
-  //FILE* error_log_fp = ON::OpenFile("error_log.txt","w");
-  //ON_TextLog error_log(error_log_fp);
-
-  filename = "mp.3dm";
-  FILE* fp = ON::OpenFile( filename, "wb" );
-
-  // example demonstrates how to write a NURBS curve, line, and circle
-  ONX_Model model;
-
-  // set revision history information
-  model.m_properties.m_RevisionHistory.NewRevision();
-
-  // set application information
-  model.m_properties.m_Application.m_application_name = "OpenNURBS write_curves_example() function";
-  model.m_properties.m_Application.m_application_URL = "http://www.opennurbs.org";
-  model.m_properties.m_Application.m_application_details = "Example program in OpenNURBS toolkit.";
-
-  // some notes
-  model.m_properties.m_Notes.m_notes = "This file was made with the OpenNURBS write_curves_example() function.";
-  model.m_properties.m_Notes.m_bVisible = true;
-
-
-  // file settings (units, tolerances, views, ...)
-  model.m_settings.m_ModelUnitsAndTolerances.m_unit_system = ON::inches;
-  model.m_settings.m_ModelUnitsAndTolerances.m_absolute_tolerance = 0.001;
-  model.m_settings.m_ModelUnitsAndTolerances.m_angle_tolerance = ON_PI/180.0; // radians
-  model.m_settings.m_ModelUnitsAndTolerances.m_relative_tolerance = 0.01; // 1%
-
-
-/*  ON_Layer layer;
-  layer.SetLayerName("Default");
-  layer.SetVisible(true);
-  layer.SetLocked(false);
-  layer.SetColor( ON_Color(0,0,0) );
-  model.m_layer_table.Append(layer);
-*/
+    ONX_Model model;
+    writeON_Init(model);
 
   for(size_t i = 0; i < patches.nPatches(); ++i)
   {          
@@ -215,92 +237,15 @@ bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
       }
   }
 
-  ON_BinaryFile archive( ON::write3dm, fp ); // fp = pointer from fopoen(...,"wb")
-  // start section comment
-  const char* sStartSectionComment = __FILE__ "write_points_example()" __DATE__;
-  // Set uuid's, indices, etc.
-  model.Polish();
-  // writes model to archive
-  bool ok = model.Write(archive, version, sStartSectionComment, &error_log );
-
-  ON::CloseFile( fp );
-  if (ok)
-    message_log.Print("Successfully wrote %s.\n",filename);
-  else
-    message_log.Print("Errors while writing %s.\n",filename);
-
-  ON::End();
-
-    return true;
+  return writeON_Write3dm(model,"mp.3dm");
 }
 
 /// Writes a planar domain to OpenNurbs file
 template<class T>
 bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd)
 {
-  //bool rc;
-  const char* filename;
-
-  ON::Begin();
-  // If you want to learn to write b-rep models, first work through
-  // this example paying close attention to write_trimmed_surface_example(),
-  // then examime example_brep.cpp.
-
-  // The OpenNURBS toolkit will write version 2 and 3 and read
-  // version 1, 2 and 3 of the 3DM file format.
-  //
-  // version 1 is the legacy Rhino I/O tookit format and was used by Rhino 1.x.
-  // version 2 is the OpenNURBS format (released 1 July 2000) and is used by Rhino 2.x
-  // version 3 is the OpenNURBS format (released 1 November 2002) and is used by Rhino 3.x
-  // version 4 is the OpenNURBS format (released September 2006) and is used by Rhino 4.x
-  // version 5 is the OpenNURBS format (released September 2009) and is used by Rhino 5.x
-
-  // version to write
-  int version = 0; // version will be ON_BinaryArchive::CurrentArchiveVersion()
-
-  // errors printed to stdout
-  ON_TextLog error_log;
-
-  // messages printed to stdout
-  ON_TextLog message_log;
-
-  // errors logged in text file
-  //FILE* error_log_fp = ON::OpenFile("error_log.txt","w");
-  //ON_TextLog error_log(error_log_fp);
-
-  filename = "pd.3dm";
-  FILE* fp = ON::OpenFile( filename, "wb" );
-
-  // example demonstrates how to write a NURBS curve, line, and circle
-  ONX_Model model;
-
-  // set revision history information
-  model.m_properties.m_RevisionHistory.NewRevision();
-
-  // set application information
-  model.m_properties.m_Application.m_application_name = "OpenNURBS write_curves_example() function";
-  model.m_properties.m_Application.m_application_URL = "http://www.opennurbs.org";
-  model.m_properties.m_Application.m_application_details = "Example program in OpenNURBS toolkit.";
-
-  // some notes
-  model.m_properties.m_Notes.m_notes = "This file was made with the OpenNURBS write_curves_example() function.";
-  model.m_properties.m_Notes.m_bVisible = true;
-
-
-  // file settings (units, tolerances, views, ...)
-  model.m_settings.m_ModelUnitsAndTolerances.m_unit_system = ON::inches;
-  model.m_settings.m_ModelUnitsAndTolerances.m_absolute_tolerance = 0.001;
-  model.m_settings.m_ModelUnitsAndTolerances.m_angle_tolerance = ON_PI/180.0; // radians
-  model.m_settings.m_ModelUnitsAndTolerances.m_relative_tolerance = 0.01; // 1%
-
-
-/*  ON_Layer layer;
-  layer.SetLayerName("Default");
-  layer.SetVisible(true);
-  layer.SetLocked(false);
-  layer.SetColor( ON_Color(0,0,0) );
-  model.m_layer_table.Append(layer);
-*/
+    ONX_Model model;
+    writeON_Init(model);
 
   for(index_t i =0; i<pd.numLoops();i++)
       for(index_t j =0; j< pd.loop(i).numCurves() ; j++)
@@ -312,28 +257,65 @@ bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd)
       nm << i <<"_"<<j;
       
       writeON_NurbsCurve(c, model, nm.str() );
-
     }
 
-  ON_BinaryFile archive( ON::write3dm, fp ); // fp = pointer from fopoen(...,"wb")
-  // start section comment
-  const char* sStartSectionComment = __FILE__ "write_points_example()" __DATE__;
-  // Set uuid's, indices, etc.
-  model.Polish();
-  // writes model to archive
-  bool ok = model.Write(archive, version, sStartSectionComment, &error_log );
-
-  ON::CloseFile( fp );
-  if (ok)
-    message_log.Print("Successfully wrote %s.\n",filename);
-  else
-    message_log.Print("Errors while writing %s.\n",filename);
-
-  ON::End();
-
-    return true;
+  return writeON_Write3dm(model,"pd.3dm");
 }
 
+
+/// Writes a Mesh to OpenNurbs file
+template<class T>
+bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name)
+{
+    ONX_Model model;
+    writeON_Init(model);
+    
+    const size_t nf = msh.numFaces();
+    const size_t nv = msh.numVertices();
+
+    ON_Mesh* mesh = new ON_Mesh(nf, nv, true, false);
+
+    for (size_t i = 0; i < nv; i++)
+    {
+        const gsVertex<T> & v = msh.vertex(i);
+        mesh->SetVertex(i, ON_3fPoint(v.x(), v.y(), v.z()) );
+    }
+
+    gsVector<index_t> v;
+    for (size_t i = 0; i < nf; i++)
+    {
+        v = msh.faceIndices(i);
+        switch (v.size())
+        {
+        case 3:
+            mesh->SetTriangle(i, v[0], v[1], v[2]);
+            break;
+        case 4:
+            mesh->SetQuad(i, v[0], v[1], v[2], v[3]);
+            break;
+        default:
+            break;
+        }
+    }
+            
+    mesh->ComputeVertexNormals();
+    mesh->Compact();
+      
+    ON_TextLog log;
+    if ( mesh->IsValid(&log) ) 
+    {
+        ONX_Model_Object& mo = model.m_object_table.AppendNew();
+        mo.m_object = mesh;
+        mo.m_bDeleteObject = true;
+        mo.m_attributes.m_layer_index = 0;
+        mo.m_attributes.m_name = name.c_str();
+        //mo.m_attributes.m_uuid = ON_UUID();
+      }
+      else
+          delete mesh;
+
+    return writeON_Write3dm(model,name+".3dm");
+}
 
 }// namespace extensions
 
