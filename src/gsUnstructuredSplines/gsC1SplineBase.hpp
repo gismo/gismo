@@ -17,16 +17,4 @@ namespace gismo
 {
 
 
-
-
-/*
-template<short_t d,class T>
-gsC1SplineBase<d,T>::gsC1SplineBase( gsMultiPatch<T> const & mp)
-        :
-        m_patches(mp)
-{
-
-}
-*/
-
 } // namespace gismo
