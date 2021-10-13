@@ -328,7 +328,7 @@ gsMatrix<int> gsC1Basis<d,T>::boundaryOffset(const boxSide &side, int offset) co
 
         if (offset == 1) // DIRTY AND QUICK
         {
-            result_temp = basisG1Container[corner_id].boundaryOffset(boxSide(side_id), offset+1);
+            result_temp = basisG1Container[corner_id].boundaryOffset(boxSide(side_id), offset+1); // TODO
             result_temp.array() += shift;
 
             result.conservativeResize(result.rows()+result_temp.rows(), 1 );

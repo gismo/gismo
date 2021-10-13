@@ -145,7 +145,7 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT(u.rows() == d, "Dimension of the points in active_into is wrong");
-        GISMO_ASSERT(u.cols() == 1, "Active_into is wrong");
+        //GISMO_ASSERT(u.cols() == 1, "Active_into is wrong");
 
         index_t nr = 0;
         std::vector<gsMatrix<index_t>> result_temp;
@@ -160,13 +160,15 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
         result.resize(nr,u.cols());
 
         index_t shift = 0;
+        index_t shift_rows = 0;
         for (size_t i=0; i< basisG1Container.size(); ++i)
         {
             if (rowContainer[i] != 0)
             {
                 result_temp[i].array() += shift;
-                result.block(shift, 0, result_temp[i].rows(), u.cols()) = result_temp[i];
+                result.block(shift_rows, 0, result_temp[i].rows(), u.cols()) = result_temp[i];
                 shift += basisG1Container[i].size();
+                shift_rows += result_temp[i].rows();
             }
         }
     }

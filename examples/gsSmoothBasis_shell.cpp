@@ -391,6 +391,18 @@ int main(int argc, char *argv[])
                 //     boundaryPatches[p] = 0;
             }
         }
+        else if(geometry > 999)
+        {
+            input = "planar/geometries/g" + std::to_string(geometry) + ".xml";
+            gsReadFile<>(input, mp);
+            mp.clearTopology();
+            mp.computeTopology();
+            for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+                for (index_t d = 0; d!=3; d++)
+                    bc.addCondition(bit->patch, bit->side(), condition_type::dirichlet, 0, 0, false, d);
+
+        }
+
         else
             GISMO_ERROR("Geometry with index "<<geometry<<" unknown.");
     }
@@ -526,11 +538,12 @@ int main(int argc, char *argv[])
         // gsMappedSpline<2,real_t> mspline(bb2,coefs);
         // geom = mspline.exportToPatches();
 
-        gsDebugVar(bb2.size());
-
         //mem-leak here
         assembler = new gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
-        assembler->options().setInt("Continuity",-1);
+        if (smoothing==1)
+            assembler->options().setInt("Continuity",-1);
+        else if (smoothing==2)
+            assembler->options().setInt("Continuity",1);
         assembler->setSpaceBasis(bb2);
         assembler->setPointLoads(pLoads);
         // gsOptionList options = assembler->options();

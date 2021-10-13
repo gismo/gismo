@@ -183,14 +183,17 @@ template<short_t d,class T>
 void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     gsMatrix<index_t> bact;
-    m_bases[patch]->active_into(u, bact);
-
     std::vector<index_t>  act, act0;
     gsMatrix<T> beval, map;//r:B,c:C
     const index_t shift=_getFirstLocalIndex(patch);
-    result.resizeLike(bact);
+
+    gsVector<index_t> numAct;
+    std::vector<gsMatrix<T>> result_tmp;
+    result_tmp.resize(u.cols());
+    numAct.resize(u.cols());
     for (index_t i = 0; i!=u.cols(); ++i)
     {
+        m_bases[patch]->active_into(u.col(i), bact);
         act0 = std::vector<index_t>(bact.col(i).data(), bact.col(i).data()+bact.col(i).rows());
         m_bases[patch]->eval_into(u.col(i), beval);
         std::transform(act0.begin(), act0.end(), act0.begin(),
@@ -198,8 +201,15 @@ void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, 
 
         m_mapper->fastSourceToTarget(act0,act);
         m_mapper->getLocalMap(act0, act, map);
-        result.col(i).noalias() = map.transpose() * beval; // todo: remove transpose()
+        result_tmp[i] = map.transpose() * beval; // todo: remove transpose()
+        numAct[i] = result_tmp[i].rows();
     }
+
+    result.setZero(numAct.maxCoeff(), u.cols());
+    for (index_t i = 0; i!=u.cols(); ++i)
+        for(index_t j = 0; j != result_tmp[i].rows(); j++) // result_tmp[i] == dim(rows,1)
+            result(j,i) = result_tmp[i](j,0);
+
 }
 
 template<short_t d,class T>
