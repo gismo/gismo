@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): P. Weinmueller & A. Farahat
 */
 
 /*
@@ -145,30 +145,29 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT(u.rows() == d, "Dimension of the points in active_into is wrong");
-        //if (u.cols() > 1)
-        //    gsInfo << "Active_into only for one point computed\n";
+        GISMO_ASSERT(u.cols() == 1, "Active_into is wrong");
 
-        result.resize(0,1);
-        for (index_t u_i = 0; u_i < u.cols(); ++u_i) // For each points
-        {
-            //index_t u_i = 0; // Check if the points are in the same element TODO
-            index_t shift = 0;
-            gsMatrix<index_t> result_single(0,1);
-            for (size_t i=0; i< basisG1Container.size(); ++i)
+        index_t nr = 0;
+        std::vector<gsMatrix<index_t>> result_temp;
+        result_temp.resize(basisG1Container.size());
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+            if (rowContainer[i] != 0)
             {
-                if (rowContainer[i] != 0)
-                {
-                    gsMatrix<index_t> result_temp(0,1);
-                    basisG1Container[i].active_into(u.col(u_i), result_temp);
-                    result_temp.array() += shift;
-                    result_single.conservativeResize(result_single.rows()+result_temp.rows(), 1 );
-                    result_single.bottomRows(result_temp.rows()) = result_temp;
-
-                    shift += basisG1Container[i].size();
-                }
+                basisG1Container[i].active_into(u, result_temp[i]);
+                nr += result_temp[i].rows();
             }
-            result.conservativeResize(result.rows()+result_single.rows(), u.cols() );
-            result.block(result.rows()-result_single.rows(),u_i, result_single.rows(), 1) = result_single;
+
+        result.resize(nr,u.cols());
+
+        index_t shift = 0;
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+        {
+            if (rowContainer[i] != 0)
+            {
+                result_temp[i].array() += shift;
+                result.block(shift, 0, result_temp[i].rows(), u.cols()) = result_temp[i];
+                shift += basisG1Container[i].size();
+            }
         }
     }
 
