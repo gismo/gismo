@@ -15,6 +15,7 @@
 
 #include<gsIO/gsParaviewCollection.h>
 #include<gsAssembler/gsQuadrature.h>
+#include <gsAssembler/gsRemapInterface.h>
 
 namespace gismo
 {
@@ -461,53 +462,65 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 {
     auto arg_tpl = expr.derived();//std::make_tuple(expr);//copying expression
     m_exprdata->parse(arg_tpl);
-    
+
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
     // Computed value
     T elVal;
     m_value = _op::init();
+    //if ( storeElWise )
+    m_elWise.reserve(m_exprdata->multiBasis().topology().nInterfaces());
     m_elWise.clear();
 
-    for (typename gsBoxTopology::const_iiterator iit = //!! not multipatch!
+    for (typename gsBoxTopology::const_iiterator iit =
              iFaces.begin(); iit != iFaces.end(); ++iit)
     {
         const boundaryInterface & iFace = *iit;
         const index_t patch1 = iFace.first().patch;
         const index_t patch2 = iFace.second().patch;
+
+        gsAffineFunction<T> interfaceMap( iFace.dirMap(iFace.first()),
+                            iFace.dirOrientation(iFace.first()),
+                            m_exprdata->multiBasis().basis(patch1).support(),
+                            m_exprdata->multiBasis().basis(patch2).support() );
+
+        //gsRemapInterface<T> interfaceMap(m_exprdata->multiPatch(),
+        //                                 m_exprdata->multiBasis(),
+        //                                 *iit);//,opt
+        //gsDebugVar(interfaceMap);
+
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
 
-        //m_exprdata->mapData.side = iFace.first().side();
-        // m_exprdata->setSide        ( iFace.first() .side() );
-        // m_exprdata->iface().setSide( iFace.second().side() );
-
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(patch1).makeDomainIterator(iFace.first().side());
+            //interfaceMap.makeDomainIterator();
+            m_exprdata->multiBasis().piece(patch1).makeDomainIterator();
         m_element.set(*domIt);
 
         // Start iteration over elements
+        elVal = _op::init();
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                           m_exprdata->points(), quWeights);
+            interfaceMap.eval_into(m_exprdata->points(),
+                                   m_exprdata->iface().points());
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(patch1);
             m_exprdata->iface().precompute(patch2);
 
             // Compute on element
-            elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(expr.val().eval(k), quWeights[k], elVal);
-
-            _op::acc(elVal, 1, m_value);
-            //if ( storeElWise ) m_elWise.push_back( elVal );
+            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes
+                _op::acc(arg_tpl.val().eval(k), quWeights[k], elVal);
         }
+        _op::acc(elVal, 1, m_value);
+        //if ( storeElWise )
+            m_elWise.push_back( elVal );
     }
 
     return m_value;

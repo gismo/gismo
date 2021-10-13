@@ -123,6 +123,8 @@ public:
 #if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
 #  define MatExprType  auto
 #  define AutoReturn_t auto
+#  define Temporary_t typename util::conditional<ScalarValued,Scalar,\
+          typename gsMatrix<Scalar>::Base >::type
 #  define GS_CONSTEXPR constexpr
 //note: in c++11 auto-return requires -> decltype(.)
 #else // 199711L, 201103L
@@ -531,8 +533,22 @@ class gsGeometryMap : public _expr<gsGeometryMap<T> >
     const gsMapData<T>     * m_fd; ///< Temporary variable storing flags and evaluation data
     //index_t d, n;
 
+    bool m_isAcross;
+
 public:
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+
+    bool isAcross() const { return m_isAcross; }
+
+    gsGeometryMap right() const
+    {
+        gsGeometryMap ac;
+        ac.m_fs = m_fs;
+        ac.m_isAcross = true;
+        return ac;
+    }
+
+    gsGeometryMap left() const { return gsGeometryMap(*this); }
 
     /// Returns the function source
     const gsFunctionSet<T> & source() const {return *m_fs;}
@@ -556,7 +572,7 @@ public:
 
 protected:
 
-    gsGeometryMap() : m_fs(NULL), m_fd(NULL) { }
+    gsGeometryMap() : m_fs(NULL), m_fd(NULL), m_isAcross(false) { }
 
     void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
     void setData(const gsMapData<Scalar> & val) { m_fd = &val;}
@@ -1209,10 +1225,10 @@ public:
     enum {ColBlocks = E::ColBlocks, ScalarValued=E::ScalarValued};
     enum {Space = (E::Space==0?0:(E::Space==1?2:1))};
 
-    mutable gsMatrix<Scalar> res;
+    mutable Temporary_t res;
 
     //MatExprType eval(const index_t k) const
-    const gsMatrix<Scalar> & eval(const index_t k) const
+    const Temporary_t & eval(const index_t k) const
     {
         //return _u.eval(k).transpose();
         // /*
@@ -1682,7 +1698,9 @@ flat_expr<E> const flat(E const & u)
     typedef typename E::Scalar Scalar;                                  \
     enum {Space= E::Space, ScalarValued= isSv, ColBlocks= E::ColBlocks};\
     name##_##expr(_expr<E> const& u) : _u(u) { }                        \
-    AutoReturn_t eval(const index_t k) const { return _u.eval(k).mname();} \
+    mutable Temporary_t tmp;                                            \
+    const Temporary_t & eval(const index_t k) const {                   \
+    tmp = _u.eval(k).mname(); return tmp; }                             \
     index_t rows() const { return isSv ? 0 : _u.rows(); }               \
     index_t cols() const { return isSv ? 0 : _u.cols(); }               \
     void parse(gsExprHelper<Scalar> & evList) const { _u.parse(evList); } \
@@ -3093,15 +3111,11 @@ public:
 
     typedef typename E1::Scalar Scalar;
 
-    typedef typename
-    util::conditional<ScalarValued,Scalar,typename gsMatrix<Scalar>::Base >::type Temporary_t;
-
-    mutable Temporary_t tmp;
-
     mult_expr(_expr<E1> const& u,
               _expr<E2> const& v)
     : _u(u), _v(v) { }
 
+    mutable Temporary_t tmp;
     const Temporary_t & eval(const index_t k) const
     {
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
@@ -3607,9 +3621,9 @@ public:
         //GISMO_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks,
         //             "Error: "<< E1::ColBlocks <<"!="<< E2::ColBlocks);
     }
-    mutable gsMatrix<Scalar> res;
+    mutable Temporary_t res;
 
-    const gsMatrix<Scalar> & eval(const index_t k) const
+    const Temporary_t & eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in + operation:\n"
@@ -3735,9 +3749,8 @@ public:
         //GISMO_STATIC_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Cannot subtract if the number of colums do not agree.");
     }
 
-    mutable gsMatrix<Scalar> res;
-    //AutoReturn_t
-    const gsMatrix<Scalar> & eval(const index_t k) const
+    mutable Temporary_t res;
+    const Temporary_t & eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
@@ -3864,12 +3877,14 @@ public:
 
     avg_expr(_expr<E> const& u) : _u1(u), _u2(u), _lr(true) { }
 
-    mutable gsMatrix<Scalar> res;
-    const gsMatrix<Scalar> & eval(const index_t k) const
+    mutable Temporary_t res;
+    const Temporary_t & eval(const index_t k) const
     {
         // avg(u) * jump(v)
         //= (uL + uR)/2 * (vL - vR)
         //= uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2
+        //= uL*(vL-vR)/2 + uR*(vL-vR)/2
+        //= (uL + uR)*vL/2  - (uL - uR)*vR/2
         //Left side
         // uL*vL/2 - uL*vR/2
         // Right
@@ -3877,6 +3892,9 @@ public:
         // push(*,*)
         //[ B11 B21 ]
         //[ B12 B22 ]
+
+
+        // avg(u)*n(G)
 
         // Trial/test: Space (=1/2)
         //to do: nv(G) should be lr-enabled
