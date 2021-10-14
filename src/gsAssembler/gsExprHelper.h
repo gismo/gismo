@@ -87,7 +87,7 @@ public:
         return *m_mirror;
     }
 
-    bool isMirrored() const { return m_mirror; }
+    bool isMirrored() const { return nullptr!=m_mirror; }
 
     static uPtr make() { return uPtr(new gsExprHelper()); }
 
@@ -117,6 +117,12 @@ public:
         GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
         GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first), "Multipatch geometry map not set.");
         return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
+    }
+
+    const gsMapData<T> & multiPatchData() const
+    {
+        GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
+        return m_mdata.begin()->second;
     }
 
     geometryMap getMap(const gsFunction<T> & mp)
@@ -203,6 +209,14 @@ public:
             m_fdata.clear();
             m_vdata.clear();
             m_cdata.clear();
+
+            if (isMirrored())
+            {
+                m_mirror->m_mdata.clear();
+                m_mirror->m_fdata.clear();
+                m_mirror->m_vdata.clear();
+                m_mirror->m_cdata.clear();
+            }
         }//implicit barrier
 
         _parse_tuple(tuple);

@@ -99,6 +99,8 @@ public:
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
 
+    const typename gsExprHelper<T>::Ptr exprData() const { return m_exprdata; }
+
     /// Registers \a mp as an isogeometric geometry map and return a handle to it
     geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
     { return m_exprdata->getMap(mp); }
@@ -193,6 +195,12 @@ public:
     template<class E> // note: elementwise integral not offered
     T maxInterface(const expr::_expr<E> & expr)
     { return computeInterface_impl<E,max_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+
+    /// Calculates the minimum of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
+    template<class E> // note: elementwise integral not offered
+    T minInterface(const expr::_expr<E> & expr)
+    { return computeInterface_impl<E,min_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
 
     /// Calculates the minimum value of the expression \a expr by
     /// sampling over a finite number of points
@@ -463,7 +471,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     auto arg_tpl = expr.derived();//std::make_tuple(expr);//copying expression
     m_exprdata->parse(arg_tpl);
 
-    gsQuadRule<T> QuRule;  // Quadrature rule
+    typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights; // quadrature weights
 
     // Computed value
@@ -480,10 +488,9 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         const index_t patch1 = iFace.first().patch;
         const index_t patch2 = iFace.second().patch;
 
-        gsAffineFunction<T> interfaceMap( iFace.dirMap(iFace.first()),
-                            iFace.dirOrientation(iFace.first()),
-                            m_exprdata->multiBasis().basis(patch1).support(),
-                            m_exprdata->multiBasis().basis(patch2).support() );
+        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
+                                          m_exprdata->multiBasis().basis(patch1).support(),
+                                          m_exprdata->multiBasis().basis(patch2).support() );
 
         //gsRemapInterface<T> interfaceMap(m_exprdata->multiPatch(),
         //                                 m_exprdata->multiBasis(),
@@ -491,13 +498,13 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         //gsDebugVar(interfaceMap);
 
         // Quadrature rule
-        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
-                                   m_options, iFace.first().side().direction());
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
+                                      m_options, iFace.first().side().direction());
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             //interfaceMap.makeDomainIterator();
-            m_exprdata->multiBasis().piece(patch1).makeDomainIterator();
+            m_exprdata->multiBasis().piece(patch1).makeDomainIterator(iFace.first().side());
         m_element.set(*domIt);
 
         // Start iteration over elements
@@ -505,14 +512,14 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
             interfaceMap.eval_into(m_exprdata->points(),
                                    m_exprdata->iface().points());
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patch1);
-            m_exprdata->iface().precompute(patch2);
+            m_exprdata->precompute(patch1, iFace.first().side());
+            m_exprdata->iface().precompute(patch2, iFace.second().side());
 
             // Compute on element
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes

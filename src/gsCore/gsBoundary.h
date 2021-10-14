@@ -648,7 +648,7 @@ public:
         directionOrientation.resize(2);
         directionMap(ps1.direction())=ps2.direction();
         directionMap(1-ps1.direction())=1-ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
         directionOrientation(1-ps1.direction())=o1;
     }
 
@@ -662,9 +662,6 @@ public:
         directionMap.resize(dim);
         directionOrientation.resize(dim);
 
-        directionMap(ps1.direction())=ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
-
         for (int i = 1 ; i < dim; ++i)
         {
             const index_t o = (ps1.direction()+i)%dim;
@@ -674,6 +671,9 @@ public:
             directionOrientation(o)=true;
             /// TODO: discuss and define default orientation
         }
+        directionMap(ps1.direction())=ps2.direction();
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
+
     }
 
     boundaryInterface(gsVector<short_t>     const & p,
@@ -684,6 +684,8 @@ public:
       directionOrientation(orient_flags)
     {
         GISMO_ASSERT(p.size() == 4, "Expecting four integers");
+        directionMap(ps1.direction())=ps2.direction();
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
     }
 
     boundaryInterface(patchSide const & _ps1,
@@ -691,7 +693,10 @@ public:
                       gsVector<index_t> const & map_info,
                       gsVector<bool>    const & orient_flags)
         : ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
-    {  }
+    {
+        directionMap(ps1.direction())=ps2.direction();
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
+    }
 
     GISMO_DEPRECATED boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
@@ -708,8 +713,8 @@ public:
 
     //DEPRECATED
     void init (patchSide const & _ps1,
-                      patchSide const & _ps2,
-                      gsVector<bool>    const & orient_flags)
+               patchSide const & _ps2,
+               gsVector<bool>    const & orient_flags)
     {
         ps1=_ps1;
         ps2=_ps2;
@@ -719,11 +724,10 @@ public:
         directionOrientation.resize(dim);
 
         directionMap(ps1.direction())=ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
 
         directionMap(1-ps1.direction())=1-ps2.direction();
         directionOrientation(1-ps1.direction())= orient_flags(0);
-
     }
 
 
