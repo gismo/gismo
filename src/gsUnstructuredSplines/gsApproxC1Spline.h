@@ -30,35 +30,10 @@ public:
 
     using Base = gsC1SplineBase<d,T>;
 
-    gsApproxC1Spline(gsMultiPatch<T> & patches, gsMultiBasis<T> & multiBasis, gsOptionList & optionList)
-    :
-    Base(patches, multiBasis)
-    {
-        //Base::m_patches(patches);
-        //Base::m_multiBasis = gsMultiBasis<T>(m_patches);
-
-        // if (Base::m_patches.targetDim() >2 )
-        //     Base::m_patches.embed(2);
-
-        Base::setOptions(optionList);
-
-        // p-refine
-        for (size_t np = 0; np < m_patches.nPatches(); ++np)
-            m_multiBasis.basis(np).setDegree(m_options.getInt("discreteDegree"));
-    };
-
-
     gsApproxC1Spline(gsMultiPatch<T> & patches, gsMultiBasis<T> & multiBasis)
     :
     Base(patches, multiBasis)
     {
-
-        // if (Base::m_patches.targetDim() >2 )
-        // {
-        //     Base::m_patches = patches;
-        //     Base::m_patches.embed(2);
-        // }
-
         this->defaultOptions();
     };
 

@@ -543,7 +543,7 @@ int main(int argc, char *argv[])
         if (smoothing==1)
             assembler->options().setInt("Continuity",-1);
         else if (smoothing==2)
-            assembler->options().setInt("Continuity",1);
+            assembler->options().setInt("Continuity",-1);
         assembler->setSpaceBasis(bb2);
         assembler->setPointLoads(pLoads);
         // gsOptionList options = assembler->options();
@@ -625,7 +625,7 @@ int main(int argc, char *argv[])
         // 4. Plot the mapped spline on the original geometry
         gsField<> solField(mp, mspline,true);
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( solField, "Deformation", 1000, true);
+        gsWriteParaview<>( solField, "Deformation", 1000, false);
 
         // 5. Plot the mapped spline on the deformed geometry
         gsField<> defField(mp, def,true);

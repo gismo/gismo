@@ -295,8 +295,6 @@ gsMatrix<int> gsC1Basis<d,T>::boundaryOffset(const boxSide &side, int offset) co
 {
     gsMatrix<int> result;
 
-
-
     // Edges
     short_t side_id = side.index();
     index_t shift = 0;
@@ -337,141 +335,7 @@ gsMatrix<int> gsC1Basis<d,T>::boundaryOffset(const boxSide &side, int offset) co
 
     }
 
-
     return result;
-
-    /*
-    if (offset > 1)
-        gsInfo << "Offset > 1 is not implemented! \n";
-
-    // Edges
-    short_t side_id = side.index();
-    index_t num = 0;
-
-    if (offset == 0)
-        num = basisPlusContainer[side_id - 1].size() - 6; // -6 is shifting, the same for bdy and interface
-    else if (offset == 1)
-        num = basisMinusContainer[side_id - 1].size() - 4; // Interface
-    else
-        gsInfo << "Offset > 1 is not implemented! \n";
-
-    num = num < 0 ? 0 : num; // if there are no bf at the interface
-
-    gsMatrix<index_t> indizes(num , 1); // to do: add vertex fcs
-    index_t start = rowBegin(side_id); // The first num basis functions
-
-    if (offset == 1)
-        start += basisPlusContainer[side_id - 1].size() - 6; // second row shift
-
-    index_t ii = 0;
-    for (index_t i = start; i < start + num; i++, ii++) // Single basis function
-    {
-        indizes(ii, 0) = i;
-    }
-
-    // Vertices:
-    std::vector<boxCorner> containedCorners;
-    side.getContainedCorners(d, containedCorners);
-
-    for (size_t nc = 0; nc < containedCorners.size(); nc++)
-    {
-        index_t corner_id = containedCorners[nc].m_index + 4; // + 4 included bcs of 4 sides!
-        start = rowBegin(corner_id); // The first 3 basis functions
-
-        index_t numDofs = numDofsVertex[corner_id - 4 - 1];
-        index_t valVer = valenceOfVertex[corner_id - 4 - 1];
-        indizes.conservativeResize(indizes.rows() + valVer-numDofs,1);
-
-        for (index_t i = start + numDofs; i < start + valVer; i++, ii++) // Single basis function
-            indizes(ii, 0) = i;
-    }
-     return indizes;
-*/
-
-
-    /*
-    if (side.index() < 5) // Edge
-    {
-        short_t side_id = side.index();
-        index_t num = 0;
-        if (offset == 0)
-        {
-            index_t bdy_shift = 6;
-            if (!kindOfEdge[side_id - 1])
-                num = basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
-            else
-                num = basisPlusContainer[side_id - 1].size() - 6; // Interface
-        }
-        else if (offset == 1)
-        {
-            index_t bdy_shift = 6;
-            if (!kindOfEdge[side_id - 1])
-                num = basisMinusContainer[side_id - 1].size() - bdy_shift; // Boundary might not used and wrong
-            else
-                num = basisMinusContainer[side_id - 1].size() - 4; // Interface
-        } else
-            gsInfo << "Offset > 1 is not implemented! \n";
-
-        num = num < 0 ? 0 : num; // if there are no bf at the interface
-
-        index_t ii = 0;
-        gsMatrix<index_t> indizes(num , 1);
-        //for(index_t of = 0;of<=offset;++of)
-        {
-            index_t start = rowBegin(side_id); // The first num basis functions
-
-            if (offset == 1) {
-                index_t bdy_shift = 6;
-                if (!kindOfEdge[side_id - 1])
-                    start += basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
-                else
-                    start += basisPlusContainer[side_id - 1].size() - 6; // Interface
-            }
-
-            for (index_t i = start; i < start + num; i++, ii++) // Single basis function
-                indizes(ii, 0) = i;
-        }
-        return indizes;
-    }
-    else if (side.index() > 4)
-    {
-        index_t corner_id = side.index(); // + 4 already included!
-        if (offset == 0 && rows(corner_id ) != 0) {
-
-            if (kindOfVertex[corner_id - 4 - 1] != 0)
-            {
-                index_t ii = 0;
-                gsMatrix<index_t> indizes(valenceOfVertex[corner_id - 4 - 1] - numDofsVertex[corner_id - 4 - 1], 1);
-                index_t corner_id = side.index(); // + 4 already included!
-                index_t start = rowBegin(corner_id); // The first 3 basis functions
-                for (index_t i = start + numDofsVertex[corner_id - 4 - 1];
-                     i < start + valenceOfVertex[corner_id - 4 - 1]; i++, ii++) // Single basis function
-                    indizes(ii, 0) = i;
-                return indizes;
-            }
-            else
-            {
-                gsMatrix<index_t> null(1, 1);
-                null(0, 0) = -1;
-                return null;
-            }
-        }
-        else if (offset == 1)
-        {
-            index_t ii = 0;
-            gsMatrix<index_t> indizes(valenceOfVertex[corner_id - 4 - 1], 1);
-            index_t start = rowBegin(corner_id); // The first 3 basis functions
-            for (index_t i = start;
-                 i < start + valenceOfVertex[corner_id - 4 - 1]; i++, ii++) // Single basis function
-                indizes(ii, 0) = i;
-            return indizes;
-        }
-    }
-    gsMatrix<index_t> null(1, 1);
-    null(0, 0) = -1;
-
-    return null;
-     */
 }
 
 template<short_t d,class T>
@@ -480,8 +344,6 @@ gsC1Basis<d,T>::gsC1Basis(  gsMultiPatch<T> & mp,
 :
 m_patches(mp), m_patchID(patchID)
 {
-    //defaultOptions();
-    //getOptions();
 
     // 9 Subspaces for the single patch
     basisG1Container.resize(9);
