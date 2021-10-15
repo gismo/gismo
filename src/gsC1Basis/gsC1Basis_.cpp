@@ -13,20 +13,22 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsUnstructuredSplines/gsC1SplineBase.h>
+#include <gsC1Basis/gsC1Basis.h>
+#include <gsC1Basis/gsC1Basis.hpp>
 
-#include <gsUnstructuredSplines/gsApproxC1Spline.h>
-#include <gsUnstructuredSplines/gsApproxC1Spline.hpp>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
-// #include <gsUnstructuredSplines/gsC1Andrea.h>
+// #include <gsUnstructuredSplines/gsC1Pascal.hpp>
+// #include <gsUnstructuredSplines/gsC1Pascal.hpp>
+
+// #include <gsUnstructuredSplines/gsC1Andrea.hpp>
 // #include <gsUnstructuredSplines/gsC1Andrea.hpp>
 
 namespace gismo
 {
 
 // CLASS_TEMPLATE_INST gsC1Basis<1,real_t> ;
-CLASS_TEMPLATE_INST gsC1SplineBase<2,real_t> ;
-CLASS_TEMPLATE_INST gsApproxC1Spline<2,real_t>;
+CLASS_TEMPLATE_INST gsC1Basis<2,real_t> ;
 // CLASS_TEMPLATE_INST gsC1Basis<3,real_t> ;
 
 } // end namespace gismo

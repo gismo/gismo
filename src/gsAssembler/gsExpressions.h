@@ -845,6 +845,12 @@ public:
 
         if (mb != nullptr)
         {
+            gsDebug << "I am here 1 \n";
+            gsDebugVar(this->interfaceCont());
+            if (const gsMappedBasis<2,T> * mapb =
+                    dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
+                gsInfo << "War hier \n";
+
             m_sd->mapper = gsDofMapper(*mb, this->dim() );
             //m_mapper.init(*mb, this->dim()); //bug
             if ( 0==this->interfaceCont() ) // Conforming boundaries ?
@@ -944,6 +950,9 @@ public:
         else if (const gsBasis<T> * b =
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
+
+            gsDebug << "I am here 2 \n";
+
             m_sd->mapper = gsDofMapper(*b);
             gsMatrix<index_t> bnd;
             for (typename gsBoundaryConditions<T>::const_iterator
@@ -984,6 +993,9 @@ public:
         else if (const gsMappedBasis<2,T> * mapb =
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
+            gsDebugVar(mapb->size());
+            gsDebugVar(this->interfaceCont());
+
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
 
             // Does this work for the D-Patch as well??
@@ -1011,13 +1023,13 @@ public:
                     // should work for all basis which have matchWith() implementeds
 
                     gsMatrix<index_t> b1, b2;
-/*                    b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 0);
+                    b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 0);
                     b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 0);
 
                     // Match the dofs on the interface
                     for (size_t i = 0; i!=m_sd->mapper.componentsSize(); ++i)
                         m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i );
-*/
+
                     b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 1);
                     b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 1);
 
@@ -1052,6 +1064,8 @@ public:
         }
 
         m_sd->mapper.finalize();
+        m_sd->mapper.print();
+
 
         // No more BCs
         //m_bcs = bc.get("Dirichlet");

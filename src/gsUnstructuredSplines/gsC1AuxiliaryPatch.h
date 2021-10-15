@@ -13,7 +13,7 @@
 #pragma once
 
 #include <gismo.h>
-#include <gsUnstructuredSplines/gsC1Basis.h>
+#include <gsUnstructuredSplines/gsContainerBasis.h>
 
 namespace gismo
 {
@@ -26,7 +26,7 @@ public:
     gsC1AuxiliaryPatch()
     {}
 
-    gsC1AuxiliaryPatch(const gsGeometry<> & patch, gsC1Basis<d,T> & singlePatch, const index_t side)
+    gsC1AuxiliaryPatch(const gsGeometry<> & patch, gsContainerBasis<d,T> & singlePatch, const index_t side)
     : m_patchRotated(patch), m_C1BasisRotated(singlePatch), m_side(side)
     {
         rotationNum = 0;
@@ -469,7 +469,7 @@ public:
         return rotationNum;
     }
 
-    gsC1Basis<d, T> getC1BasisRotated() const { return m_C1BasisRotated; }
+    gsContainerBasis<d, T> getC1BasisRotated() const { return m_C1BasisRotated; }
 
     void setSide(index_t side ) { m_side = side; }
     index_t side() { return m_side; }
@@ -480,7 +480,7 @@ protected:
 
     gsMultiPatch<> m_patchRotated;
 
-    gsC1Basis<d, T> m_C1BasisRotated;
+    gsContainerBasis<d, T> m_C1BasisRotated;
 
     // Global side/vertex index in the initial geometry
     index_t m_side;

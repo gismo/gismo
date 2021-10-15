@@ -18,17 +18,21 @@
 #pragma once
 
 #include<gsIO/gsOptionList.h>
-#include<gsUnstructuredSplines/gsC1SplineBase.h>
+#include<gsUnstructuredSplines/gsContainerBasisBase.h>
 
 namespace gismo
 {
 
 template<short_t d,class T>
-class gsApproxC1Spline : public gsC1SplineBase<d,T>
+class gsApproxC1Spline : public gsContainerBasisBase<d,T>
 {
 public:
 
-    using Base = gsC1SplineBase<d,T>;
+    // gsContainerBasisBase:
+    // - Interior space: [0] : inner,
+    // - Edge spaces:    [1] : west, [2] : east, [3] : south, [4] : north,
+    // - Vertex spaces:  [5] : southwest, [6] : southeast, [7] : northwest, [8] : northeast
+    using Base = gsContainerBasisBase<d,T>;
 
     gsApproxC1Spline(gsMultiPatch<T> & patches, gsMultiBasis<T> & multiBasis)
     :
@@ -75,6 +79,17 @@ private:
 
 protected:
     // Data members
+    index_t p_tilde, r_tilde;
+
+    // Container[patch][side]
+    std::vector<std::vector<index_t>> rowContainer;
+
+    // Container[patch][side/corner]
+    std::vector<std::vector<bool>> kindOfEdge;
+    std::vector<std::vector<index_t>> kindOfVertex;
+    std::vector<std::vector<index_t>> valenceOfVertex;
+
+    std::vector<std::vector<index_t>> numDofsVertex;
 
     // Put here the members of the shared functions
     using Base::m_patches;
@@ -82,8 +97,6 @@ protected:
     using Base::m_options;
     using Base::m_matrix;
     using Base::m_bases;
-
-    index_t p_tilde, r_tilde;
 };
 
 }

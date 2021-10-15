@@ -32,7 +32,8 @@ public:
 
     gsApproxGluingData(C1AuxPatchContainer const & auxPatchContainer,
                        gsOptionList const & optionList,
-                       std::vector<index_t> sidesContainer = std::vector<index_t>{})
+                       std::vector<index_t> sidesContainer = std::vector<index_t>{},
+                       std::vector<bool> isInterface = std::vector<bool>{})
         : m_auxPatches(auxPatchContainer), m_optionList(optionList)
     {
         alphaSContainer.resize(2);
@@ -49,7 +50,7 @@ public:
                 index_t localSide = auxPatchContainer[0].getMapIndex(sidesContainer[dir]);
                 //gsInfo << "Global: " << sidesContainer[dir] << " : " << localSide << "\n";
                 index_t localDir = localSide < 3 ? 1 : 0;
-                if(auxPatchContainer[0].getC1BasisRotated().isInterface(sidesContainer[dir])) // West
+                if(isInterface[dir]) // West
                     setGlobalGluingData(0, sidesContainer[dir], localDir);
                 else
                 {
@@ -85,10 +86,9 @@ template<short_t d, class T>
 void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t globalSide, index_t dir)
 {
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
-    gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getC1BasisRotated().getBasisGluingData(globalSide);
+    gsBSplineBasis<T> bsp_gD = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(globalSide-1, 3));
 
-    gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList,
-                                                             m_auxPatches[patchID].getC1BasisRotated().getPatchID());
+    gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList);
     alphaSContainer[dir] = approxGluingDataAssembler.getAlphaS();
     betaSContainer[dir] = approxGluingDataAssembler.getBetaS();
 /*

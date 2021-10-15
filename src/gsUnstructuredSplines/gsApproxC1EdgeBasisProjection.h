@@ -45,11 +45,11 @@ public:
         m_dir = patchID == 0 ? 1 : 0;
 
         // Collect the needed basis
-        m_basis_g1 = m_auxPatches[patchID].getC1BasisRotated().getEdgeBasis(m_side);
+        m_basis_g1 = dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[patchID].getC1BasisRotated().getBasis(m_side));
 
-        m_basis_plus = m_auxPatches[patchID].getC1BasisRotated().getBasisPlus(m_side);
-        m_basis_minus = m_auxPatches[patchID].getC1BasisRotated().getBasisMinus(m_side);
-        m_basis_geo = m_auxPatches[patchID].getC1BasisRotated().getBasisGeo(m_side);
+        m_basis_plus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(m_side-1, 0));
+        m_basis_minus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(m_side-1, 1));
+        m_basis_geo = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(m_side-1, 2));
     }
 
     gsApproxC1EdgeBasisProjection(C1AuxPatchContainer & auxPatches,
@@ -62,11 +62,11 @@ public:
         m_dir = patchID == 0 ? 1 : 0;
 
         // Collect the needed basis
-        m_basis_g1 = m_auxPatches[patchID].getC1BasisRotated().getEdgeBasis(m_side);
+        m_basis_g1 = dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[patchID].getC1BasisRotated().getBasis(m_side));
 
-        m_basis_plus = m_auxPatches[patchID].getC1BasisRotated().getBasisPlus(m_side);
-        m_basis_minus = m_auxPatches[patchID].getC1BasisRotated().getBasisMinus(m_side);
-        m_basis_geo = m_auxPatches[patchID].getC1BasisRotated().getBasisGeo(m_side);
+        m_basis_plus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(m_side-1, 0));
+        m_basis_minus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(m_side-1, 1));
+        m_basis_geo = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(m_side-1, 2));
     }
 
     // Computed the gluing data globally

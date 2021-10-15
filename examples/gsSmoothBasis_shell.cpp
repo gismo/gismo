@@ -503,7 +503,7 @@ int main(int argc, char *argv[])
             mp.embed(2);
             gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
             approxC1.options().setSwitch("info",info);
-            // approxC1.options().setSwitch("plot",plot);
+            approxC1.options().setSwitch("plot",plot);
             // approxC1.options().setInt("gluingDataDegree",)
             // approxC1.options().setInt("gluingDataRegularity",)
 

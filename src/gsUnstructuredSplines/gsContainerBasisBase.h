@@ -83,7 +83,7 @@ namespace gismo
         // Put here the members of the shared functions
         /// Multipatch
         gsMultiPatch<T> & m_patches;
-        gsMultiBasis<T> m_multiBasis;
+        gsMultiBasis<T> & m_multiBasis;
 
         /// Optionlist
         gsOptionList m_options;

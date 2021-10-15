@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsC1Basis.h>
+#include <gsC1Basis/gsC1Basis.h>
 #include <gsIO/gsFileData.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>

@@ -33,12 +33,13 @@ public:
                                      gsApproxGluingData<d, T> & approxGluingData,
                                      const index_t corner,
                                      const std::vector<index_t> & sideContainer,
+                                     std::vector<bool> & isInterface,
                                      const real_t sigma,
                                      const gsOptionList & optionList)
             : m_auxPatches(auxPatches), m_approxGluingData(approxGluingData), m_corner(corner), m_sigma(sigma), m_optionList(optionList)
     {
         // Collect the needed basis
-        m_basis_g1 = m_auxPatches[0].getC1BasisRotated().getVertexBasis(corner);
+        m_basis_g1 =  dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[0].getC1BasisRotated().getBasis(corner+4));
 
         m_basis_plus.resize(2);
         m_basis_minus.resize(2);
@@ -50,13 +51,13 @@ public:
         {
             index_t localdir = m_auxPatches[0].getMapIndex(sideContainer[dir]) < 3 ? 1 : 0;
 
-            m_basis_plus[localdir] = m_auxPatches[0].getC1BasisRotated().getBasisPlus(sideContainer[dir]);
-            m_basis_minus[localdir] = m_auxPatches[0].getC1BasisRotated().getBasisMinus(sideContainer[dir]);
-            m_basis_geo[localdir] = m_auxPatches[0].getC1BasisRotated().getBasisGeo(sideContainer[dir]);
+            m_basis_plus[localdir] = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[0].getC1BasisRotated().getHelperBasis(sideContainer[dir]-1, 0));
+            m_basis_minus[localdir] = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[0].getC1BasisRotated().getHelperBasis(sideContainer[dir]-1, 1));
+            m_basis_geo[localdir] = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[0].getC1BasisRotated().getHelperBasis(sideContainer[dir]-1, 2));
 
             //m_basis_geo[localdir].reduceContinuity(1);
-
-            kindOfEdge[localdir] = m_auxPatches[0].getC1BasisRotated().isInterface(sideContainer[dir]);
+            kindOfEdge[localdir] = isInterface[dir];
+            //kindOfEdge[localdir] = m_auxPatches[0].getC1BasisRotated().isInterface(sideContainer[dir]);
 
         }
 /*
@@ -70,6 +71,7 @@ public:
         gsInfo << "basis g1: " << m_basis_g1 << "\n";
         gsInfo << "kindOfEdge " << kindOfEdge[0] << " : " << kindOfEdge[1] << " : " << true << "\n";
 */
+
     }
 
 

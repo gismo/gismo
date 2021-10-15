@@ -29,9 +29,8 @@ public:
     gsApproxGluingDataAssembler(const gsGeometry<> & patch,
                                 gsBSplineBasis<T> & bsp_Gd,
                                 index_t uv,
-                                const gsOptionList & optionList,
-                                index_t patchID)
-        : m_patch(patch), m_bspGD(bsp_Gd), m_uv(uv), m_optionList(optionList), m_patchID(patchID)
+                                const gsOptionList & optionList)
+        : m_patch(patch), m_bspGD(bsp_Gd), m_uv(uv), m_optionList(optionList)
     {
         interpolation_value = false;
         interpolation_deriv = false;
@@ -64,8 +63,6 @@ protected:
     index_t m_uv;
 
     gsOptionList m_optionList;
-
-    index_t m_patchID;
 
     bool interpolation_value, interpolation_deriv;
 
@@ -293,7 +290,7 @@ inline void gsApproxGluingDataAssembler<T, bhVisitor>::apply(bhVisitor & visitor
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(m_patch, m_bspGD, quNodes, m_uv, m_optionList, m_patchID);
+            visitor_.evaluate(m_patch, m_bspGD, quNodes, m_uv, m_optionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);

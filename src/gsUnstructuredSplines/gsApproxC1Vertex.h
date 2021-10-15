@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsUnstructuredSplines/gsContainerBasis.h>
 #include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
 #include <gsUnstructuredSplines/gsApproxC1VertexBasisProjection.h>
 
@@ -24,7 +25,7 @@ class gsApproxC1Vertex
 {
 
 private:
-    typedef gsC1Basis<d, T> Basis;
+    typedef gsContainerBasis<d, T> Basis;
     typedef typename std::vector<Basis> C1BasisContainer;
     typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
 
@@ -40,7 +41,7 @@ public:
     ~gsApproxC1Vertex() { }
 
 
-    gsApproxC1Vertex(gsMultiPatch<T> const & mp,
+    gsApproxC1Vertex(gsMultiPatch<T> & mp,
                 C1BasisContainer & bases,
                 const std::vector<size_t> & patchesAroundVertex,
                 const std::vector<size_t> & vertexIndices,
@@ -125,14 +126,20 @@ public:
             }
 
             //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with index: " << m_vertexIndices[i] << "\n";
+            std::vector<bool> isInterface;
+            isInterface.resize(2);
+            isInterface[0] = m_mp.isBoundary(m_patchesAroundVertex[i],sideContainer[0]);
+            isInterface[1] = m_mp.isBoundary(m_patchesAroundVertex[i],sideContainer[1]);
+
 
             // Compute Gluing data
-            gsApproxGluingData<d, T> approxGluingData(auxPatchSingle, m_optionList, sideContainer);
+            gsApproxGluingData<d, T> approxGluingData(auxPatchSingle, m_optionList, sideContainer, isInterface);
 
             // Create Basis functions
             gsMultiPatch<> result_1;
+
             gsApproxC1VertexBasisProjection<d, T> approxC1VertexBasis(auxPatchSingle, approxGluingData,
-                                                                                m_vertexIndices[i], sideContainer, sigma, m_optionList);
+                                                                                m_vertexIndices[i], sideContainer, isInterface, sigma, m_optionList);
             approxC1VertexBasis.setBasisVertex(result_1);
 
 
@@ -142,8 +149,15 @@ public:
             gD.push_back(approxGluingData); // delete later
         }
 
-        if (m_auxPatches[0].getC1BasisRotated().getKindOfVertex(m_vertexIndices[0]) != 0) // No internal vertex
+        gsMultiPatch<T> temp_mp;
+        for (size_t j = 0; j < m_patchesAroundVertex.size(); j++)
+            temp_mp.addPatch(m_mp.patch(m_patchesAroundVertex[j]));
+
+        temp_mp.computeTopology();
+
+        if (m_patchesAroundVertex.size() != temp_mp.interfaces().size()) // No internal vertex
         {
+
 /*
             if (m_patchesAroundVertex.size() == 2 && m_vertexIndices[0] == 2)
             {
@@ -555,7 +569,7 @@ public:
         }
     }
 
-    void saveBasisVertex(gsSparseMatrix<T> & system)
+/*    void saveBasisVertex(gsSparseMatrix<T> & system)
     {
         for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
         {
@@ -578,7 +592,7 @@ public:
                         system.insert(shift_row+i,shift_col+j) = basisVertexResult[np].patch(ii).coef(jj,0);
             }
         }
-    }
+    }*/
 
     void reparametrizeVertexPatches()
     {
@@ -739,7 +753,7 @@ public:
     {
 
         // Collect the needed basis
-        gsTensorBSplineBasis<d, T> basis_vertex = m_auxPatches[i].getC1BasisRotated().getVertexBasis(corner);
+        gsTensorBSplineBasis<d, T> basis_vertex = dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[i].getC1BasisRotated().getBasis(corner+4));
 
         std::vector<gsBSplineBasis<T>> basis_plus(2);
         std::vector<gsBSplineBasis<T>> basis_minus(2);
@@ -1043,7 +1057,7 @@ public:
         real_t h_geo = 1;
         for(size_t i = 0; i < m_auxPatches.size(); i++)
         {
-            gsTensorBSplineBasis<2, real_t> bsp_temp = m_auxPatches[0].getC1BasisRotated().getVertexBasis(vertexIndices[i]);
+            gsTensorBSplineBasis<2, real_t> bsp_temp = dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[0].getC1BasisRotated().getBasis(vertexIndices[i]+4));
 
             real_t p_temp = math::max(bsp_temp.degree(0), bsp_temp.degree(1));
 
@@ -1110,8 +1124,8 @@ public:
         if (matrix_det.determinant()*matrix_det.determinant() > 1e-15) // There is (numerically) a kink
             dofsCorner = 1;
 
-        for(size_t np = 0; np < mp_vertex.nPatches(); np++)
-            m_bases[m_patchesAroundVertex[np]].setNumDofsVertex(dofsCorner, m_vertexIndices[np]);
+        //for(size_t np = 0; np < mp_vertex.nPatches(); np++)
+        //    m_bases[m_patchesAroundVertex[np]].setNumDofsVertex(dofsCorner, m_vertexIndices[np]);
 
         if (m_optionList.getSwitch("info"))
             gsInfo << "Det: " << matrix_det.determinant() << "\n";
@@ -1201,11 +1215,13 @@ public:
 
     }
 
+    std::vector<gsMultiPatch<T>> getVertexBasis() { return basisVertexResult; }
+
 
 protected:
 
     // Input
-    gsMultiPatch<T> const & m_mp;
+    gsMultiPatch<T> & m_mp;
     C1BasisContainer & m_bases;
 
     const std::vector<size_t> & m_patchesAroundVertex;

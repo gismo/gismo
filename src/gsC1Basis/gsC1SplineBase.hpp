@@ -11,7 +11,7 @@
     Author(s): F. Buchegger
 */
 
-#include<gsUnstructuredSplines/gsC1SplineBase.h>
+#include<gsC1Basis/gsC1SplineBase.h>
 
 namespace gismo
 {
