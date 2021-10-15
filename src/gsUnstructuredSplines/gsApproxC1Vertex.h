@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsUnstructuredSplines/gsContainerBasis.h>
-#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsPatchReparameterized.h>
 #include <gsUnstructuredSplines/gsApproxC1VertexBasisProjection.h>
 
 
@@ -27,7 +27,7 @@ class gsApproxC1Vertex
 private:
     typedef gsContainerBasis<d, T> Basis;
     typedef typename std::vector<Basis> C1BasisContainer;
-    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
+    typedef typename std::vector<gsPatchReparameterized<d,T>> C1AuxPatchContainer;
 
     /// Shared pointer for gsApproxC1Vertex
     typedef memory::shared_ptr<gsApproxC1Vertex> Ptr;
@@ -58,7 +58,7 @@ public:
             index_t vertex_1 = m_vertexIndices[i];
             index_t patch_1 = m_patchesAroundVertex[i];
 
-            m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
+            m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
         }
 
         reparametrizeVertexPatches();
@@ -128,9 +128,8 @@ public:
             //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with index: " << m_vertexIndices[i] << "\n";
             std::vector<bool> isInterface;
             isInterface.resize(2);
-            isInterface[0] = m_mp.isBoundary(m_patchesAroundVertex[i],sideContainer[0]);
-            isInterface[1] = m_mp.isBoundary(m_patchesAroundVertex[i],sideContainer[1]);
-
+            isInterface[0] = m_mp.isInterface(patchSide(m_patchesAroundVertex[i],sideContainer[0]));
+            isInterface[1] = m_mp.isInterface(patchSide(m_patchesAroundVertex[i],sideContainer[1]));
 
             // Compute Gluing data
             gsApproxGluingData<d, T> approxGluingData(auxPatchSingle, m_optionList, sideContainer, isInterface);
@@ -152,141 +151,20 @@ public:
         gsMultiPatch<T> temp_mp;
         for (size_t j = 0; j < m_patchesAroundVertex.size(); j++)
             temp_mp.addPatch(m_mp.patch(m_patchesAroundVertex[j]));
-
         temp_mp.computeTopology();
 
         if (m_patchesAroundVertex.size() != temp_mp.interfaces().size()) // No internal vertex
         {
-
-/*
-            if (m_patchesAroundVertex.size() == 2 && m_vertexIndices[0] == 2)
-            {
-                for (size_t np = 0; np<basisVertexResult[0].nPatches(); np++) {
-                    gsMatrix<> points_u, points_v;
-                    points_u.setZero(2, 10);
-                    points_v.setZero(2, 10);
-                    gsVector<> lin;
-                    lin.setLinSpaced(10, 0, 1);
-                    points_u.row(0) = lin.transpose();
-                    points_v.row(1) = lin.transpose();
-*/
-                    /*
-                    gsInfo << "points: " << points_u << "\n";
-
-                    gsInfo << "alphaS: " << gD[0].alphaS(0).eval(points_v.row(1)) << "\n";
-                    gsInfo << "alphaS: " << gD[1].alphaS(1).eval(points_v.row(1)) << "\n";
-                    gsInfo << "betaS: " << gD[0].betaS(0).eval(points_v.row(1)) << "\n";
-                    gsInfo << "betaS: " << gD[1].betaS(1).eval(points_v.row(1)) << "\n";
-
-                    gsInfo << "GLUINGDATA: " << gD[0].alphaS(0).eval(points_v.row(1)).cwiseProduct(
-                            gD[1].betaS(1).eval(points_v.row(1))) +
-                                                gD[1].alphaS(1).eval(points_v.row(1)).cwiseProduct(
-                                                        gD[0].betaS(0).eval(points_v.row(1))) << "\n";
-
-                    gsInfo << "DERIV: " << basisVertexResult[0].patch(np).deriv(points_u) << "\n";
-                    gsInfo << "DERIV 2: " << basisVertexResult[1].patch(np).deriv(points_v) << "\n";
-                    gsInfo << "part1: " << gD[0].alphaS(0).eval(points_v.row(1)).cwiseProduct(
-                            basisVertexResult[1].patch(np).deriv(points_v).row(0)) << "\n";
-                    gsInfo << "part2: " << gD[1].alphaS(1).eval(points_v.row(1)).cwiseProduct(
-                            basisVertexResult[0].patch(np).deriv(points_u).row(1)) << "\n";
-                    */
-/*
-                    gsInfo << "np: " << np << "\n";
-
-
-                    gsInfo << "DERIV: " << basisVertexResult[0].patch(np).deriv(points_u) << "\n";
-                    gsInfo << "DERIV 2: " << basisVertexResult[1].patch(np).deriv(points_v) << "\n";
-
-
-                    gsInfo << "alphaS: " << gD[0].alphaS(0).eval(points_v.row(1)) << "\n";
-                    gsInfo << "alphaS: " << gD[1].alphaS(1).eval(points_v.row(1)) << "\n";
-
-                    gsInfo << "GLUINGDATA: " << gD[0].alphaS(0).eval(points_v.row(1)).cwiseProduct(
-                            gD[1].betaS(1).eval(points_v.row(1))) +
-                                                gD[1].alphaS(1).eval(points_v.row(1)).cwiseProduct(
-                                                        gD[0].betaS(0).eval(points_v.row(1))) << "\n";
-
-                    gsInfo << "test: " << gD[0].alphaS(0).eval(points_v.row(1)).cwiseProduct(
-                            basisVertexResult[1].patch(np).deriv(points_v).row(0))
-                                          + gD[1].alphaS(1).eval(points_v.row(1)).cwiseProduct(
-                            basisVertexResult[0].patch(np).deriv(points_u).row(1)) << "\n";
-                }
-           }
-*/
             computeKernel();
-/*
-            gsMatrix<> points;
-            points.setZero(2,2);
-            points(0,1) = 1.0;
-
-            if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("noVertex"))
-                for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
-                    for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
-                        gsInfo << i << " : " << basisVertexResult[np].patch(i).deriv(points.col(0)) << "\n\n";
-*/
-
-
 
             for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
                 m_auxPatches[i].parametrizeBasisBack(basisVertexResult[i]); // parametrizeBasisBack
-
-/*
-            if (m_patchesAroundVertex.size() == 2 && m_vertexIndices[0] == 2)
-            {
-                gsWriteParaview(basisVertexResult[0].patch(0),"LeftPatch",2000);
-                gsWriteParaview(basisVertexResult[1].patch(0),"RightPatch",2000);
-
-                std::string fileName;
-                std::string basename = "VerticesBasisFunctions" + util::to_string(numVer);
-                gsParaviewCollection collection(basename);
-
-                for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
-                {
-                    if (basisVertexResult.size() != 0)
-                        for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
-                        {
-                            fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
-                            gsField<> temp_field(m_auxPatches[m_patchesAroundVertex[np]].getPatch(), basisVertexResult[np].patch(i));
-                            gsWriteParaview(temp_field, fileName, 5000);
-                            collection.addTimestep(fileName, i, "0.vts");
-
-                        }
-                }
-                collection.save();
-
-            }
-*/
-
-/*
-            gsInfo << "\n";
-
-            if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("noVertex"))
-                for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
-                    for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
-                        gsInfo << i << " : " << basisVertexResult[np].patch(i).deriv(points.col(1-np)) << "\n\n";
-*/
-
         }
         else // Internal vertex
         {
             for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
                 m_auxPatches[i].parametrizeBasisBack(basisVertexResult[i]); // parametrizeBasisBack
         }
-
-
-
-
-        /*
-        gsMatrix<> points;
-        points.setZero(2,2);
-        points(0,1) = 1.0;
-
-
-        if (m_patchesAroundVertex.size() == 2 && !m_optionList.getSwitch("noVertex"))
-            for (size_t np = 0; np < m_patchesAroundVertex.size(); ++np)
-                for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
-                    gsInfo << basisVertexResult[np].patch(i).deriv(points.col(1-np)) << "\n\n";
-        */
 
         if (m_optionList.getSwitch("plot"))
         {
@@ -328,7 +206,7 @@ public:
             index_t vertex_1 = m_vertexIndices[i];
             index_t patch_1 = m_patchesAroundVertex[i];
 
-            m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
+            m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
         }
 
         // 2 == u,v
@@ -747,307 +625,6 @@ public:
             //gsInfo << "Changed axis on patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i] << "\n";
         }
     }
-
-    void interpolateBasisVertex(size_t i, gsApproxGluingData<d, T> & approxGluingData, index_t corner,
-                                std::vector<index_t> & sideContainer, real_t & sigma, gsMultiPatch<> & result_1)
-    {
-
-        // Collect the needed basis
-        gsTensorBSplineBasis<d, T> basis_vertex = dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[i].getC1BasisRotated().getBasis(corner+4));
-
-        std::vector<gsBSplineBasis<T>> basis_plus(2);
-        std::vector<gsBSplineBasis<T>> basis_minus(2);
-        std::vector<gsBSplineBasis<T>> basis_geo(2);
-
-        std::vector<bool> kindOfEdge(2);
-
-        for (size_t dir = 0; dir < sideContainer.size(); ++dir)
-        {
-            index_t localdir = m_auxPatches[i].getMapIndex(sideContainer[dir]) < 3 ? 1 : 0;
-
-            basis_plus[localdir] = m_auxPatches[i].getC1BasisRotated().getBasisPlus(sideContainer[dir]);
-            basis_minus[localdir] = m_auxPatches[i].getC1BasisRotated().getBasisMinus(sideContainer[dir]);
-            basis_geo[localdir] = m_auxPatches[i].getC1BasisRotated().getBasisGeo(sideContainer[dir]);
-
-            kindOfEdge[localdir] = m_auxPatches[i].getC1BasisRotated().isInterface(sideContainer[dir]);
-
-        }
-
-        gsGeometry<T> & geo = m_auxPatches[i].getPatch();
-
-        // Points to interpolate at (Greville points):
-        gsMatrix<> points = basis_vertex.anchors();
-
-        // Computing the basis functions at the vertex
-        gsMatrix<> Phi(6,6);
-        Phi.setIdentity();
-
-        Phi.row(1) *= sigma;
-        Phi.row(2) *= sigma;
-        Phi.row(3) *= sigma * sigma;
-        Phi.row(4) *= sigma * sigma;
-        Phi.row(5) *= sigma * sigma;
-
-        // Computing c, c+ and c-
-        // Point zero
-        gsMatrix<> zero;
-        zero.setZero(2,1);
-
-        std::vector<gsMatrix<>> c_0, c_1;
-        std::vector<gsMatrix < >> c_0_plus, c_1_plus, c_2_plus;
-        std::vector<gsMatrix < >> c_0_plus_deriv, c_1_plus_deriv, c_2_plus_deriv;
-        std::vector<gsMatrix < >> c_0_minus, c_1_minus;
-        for (index_t i = 0; i < 2; i++) // i == 0 == u , i == 1 == v
-        {
-            gsMatrix<> b_0, b_1;
-            gsMatrix<> b_0_plus, b_1_plus, b_2_plus;
-            gsMatrix<> b_0_plus_deriv, b_1_plus_deriv, b_2_plus_deriv;
-            gsMatrix<> b_0_minus, b_1_minus;
-
-            gsBSplineBasis<T> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(basis_geo[1-i]);
-            real_t p = bsp_temp.degree();
-            real_t h_geo = bsp_temp.knots().at(p + 1);
-
-            basis_geo[1-i].evalSingle_into(0, points.row(i),b_0); // first
-            basis_geo[1-i].evalSingle_into(1, points.row(i),b_1); // second
-
-            basis_plus[i].evalSingle_into(0, points.row(i),b_0_plus);
-            basis_plus[i].evalSingle_into(1, points.row(i),b_1_plus);
-            basis_plus[i].evalSingle_into(2, points.row(i),b_2_plus);
-
-            basis_plus[i].derivSingle_into(0, points.row(i),b_0_plus_deriv);
-            basis_plus[i].derivSingle_into(1, points.row(i),b_1_plus_deriv);
-            basis_plus[i].derivSingle_into(2, points.row(i),b_2_plus_deriv);
-
-            basis_minus[i].evalSingle_into(0, points.row(i),b_0_minus);
-            basis_minus[i].evalSingle_into(1, points.row(i),b_1_minus);
-
-            c_0.push_back(b_0 + b_1);
-            c_1.push_back((h_geo / p) * b_1);
-
-            c_0_minus.push_back(b_0_minus + b_1_minus);
-            c_1_minus.push_back(h_geo/ (p-1) * b_1_minus);
-
-            gsMatrix<> der_b_1_plus_0, der2_b_1_plus_0, der2_b_2_plus_0;
-            basis_plus[i].derivSingle_into(1, zero.row(i), der_b_1_plus_0);
-            basis_plus[i].deriv2Single_into(1, zero.row(i), der2_b_1_plus_0);
-            basis_plus[i].deriv2Single_into(2, zero.row(i), der2_b_2_plus_0);
-
-            real_t factor_c_1_plus = 1/der_b_1_plus_0(0,0);
-            real_t factor2_c_1_plus = -der2_b_1_plus_0(0,0)/(der_b_1_plus_0(0,0)*der2_b_2_plus_0(0,0));
-            real_t factor_c_2_plus = 1/der2_b_2_plus_0(0,0);
-
-            c_0_plus.push_back(b_0_plus + b_1_plus + b_2_plus);
-            c_1_plus.push_back(factor_c_1_plus * b_1_plus + factor2_c_1_plus * b_2_plus);
-            c_2_plus.push_back(factor_c_2_plus * b_2_plus );
-
-            c_0_plus_deriv.push_back(b_0_plus_deriv + b_1_plus_deriv + b_2_plus_deriv);
-            c_1_plus_deriv.push_back(factor_c_1_plus * b_1_plus_deriv + factor2_c_1_plus * b_2_plus_deriv);
-            c_2_plus_deriv.push_back(factor_c_2_plus * b_2_plus_deriv);
-        }
-
-        std::vector<gsMatrix<>> alpha, beta, alpha_0, beta_0, alpha_deriv, beta_deriv;
-
-        gsMatrix < T > temp_mat;
-        if (kindOfEdge[0])
-        {
-            approxGluingData.alphaS(0).eval_into(points.row(0),temp_mat); // 1-dir == PatchID
-            alpha.push_back(temp_mat); // u
-
-            approxGluingData.alphaS(0).eval_into(zero.row(0),temp_mat); // 1-dir == PatchID
-            alpha_0.push_back(temp_mat); // u
-
-            approxGluingData.alphaS(0).deriv_into(zero.row(0),temp_mat); // 1-dir == PatchID
-            alpha_deriv.push_back(temp_mat); // u
-
-            approxGluingData.betaS(0).eval_into(points.row(0),temp_mat); // 1-dir == PatchID
-            beta.push_back(temp_mat); // u
-
-            approxGluingData.betaS(0).eval_into(zero.row(0),temp_mat); // 1-dir == PatchID
-            beta_0.push_back(temp_mat); // u
-
-            approxGluingData.betaS(0).deriv_into(zero.row(0),temp_mat); // 1-dir == PatchID
-            beta_deriv.push_back(temp_mat); // u
-        }
-        else
-        {
-            temp_mat.setOnes(1, points.cols());
-            alpha.push_back(temp_mat); // u
-
-            temp_mat.setOnes(1, zero.cols());
-            alpha_0.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, zero.cols());
-            alpha_deriv.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, points.cols());
-            beta.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, zero.cols());
-            beta_0.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, zero.cols());
-            beta_deriv.push_back(temp_mat); // u
-        }
-
-
-
-        if (kindOfEdge[1]) {
-            approxGluingData.alphaS(1).eval_into(points.row(1), temp_mat); // 1-dir == PatchID
-            alpha.push_back(temp_mat); // v
-
-            approxGluingData.alphaS(1).eval_into(zero.row(0), temp_mat); // 1-dir == PatchID
-            alpha_0.push_back(temp_mat); // v
-
-            approxGluingData.alphaS(1).deriv_into(zero.row(0), temp_mat); // 1-dir == PatchID
-            alpha_deriv.push_back(temp_mat); // v
-
-            approxGluingData.betaS(1).eval_into(points.row(1), temp_mat); // 1-dir == PatchID
-            beta.push_back(temp_mat); // v
-
-            approxGluingData.betaS(1).eval_into(zero.row(0), temp_mat); // 1-dir == PatchID
-            beta_0.push_back(temp_mat); // v
-
-            approxGluingData.betaS(1).deriv_into(zero.row(0), temp_mat); // 1-dir == PatchID
-            beta_deriv.push_back(temp_mat); // v
-        }
-        else
-        {
-            temp_mat.setOnes(1, points.cols());
-            alpha.push_back(temp_mat); // u
-
-            temp_mat.setOnes(1, zero.cols());
-            alpha_0.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, zero.cols());
-            alpha_deriv.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, points.cols());
-            beta.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, zero.cols());
-            beta_0.push_back(temp_mat); // u
-
-            temp_mat.setZero(1, zero.cols());
-            beta_deriv.push_back(temp_mat); // u
-        }
-
-        // Geo data:
-        gsMatrix<T> geo_jac = geo.jacobian(zero);
-        gsMatrix<T> geo_der2 = geo.deriv2(zero);
-
-        // Compute dd^^(i_k) and dd^^(i_k-1)
-        gsMatrix<> dd_ik_plus, dd_ik_minus;
-        gsMatrix<> dd_ik_minus_deriv, dd_ik_plus_deriv;
-        dd_ik_minus = -1/(alpha_0[0](0,0)) * (geo_jac.col(1) +
-                                              beta_0[0](0,0) * geo_jac.col(0));
-
-        dd_ik_plus = 1/(alpha_0[1](0,0)) * (geo_jac.col(0) +
-                                            beta_0[1](0,0) * geo_jac.col(1));
-
-        gsMatrix<> geo_deriv2_12(2,1), geo_deriv2_11(2,1), geo_deriv2_22(2,1);
-        geo_deriv2_12.row(0) = geo_der2.row(2);
-        geo_deriv2_12.row(1) = geo_der2.row(5);
-        geo_deriv2_11.row(0) = geo_der2.row(0);
-        geo_deriv2_11.row(1) = geo_der2.row(3);
-        geo_deriv2_22.row(0) = geo_der2.row(1);
-        geo_deriv2_22.row(1) = geo_der2.row(4);
-        gsMatrix<> alpha_squared_u = alpha_0[0]*alpha_0[0];
-        gsMatrix<> alpha_squared_v = alpha_0[1]*alpha_0[1];
-
-        dd_ik_minus_deriv = -1/(alpha_squared_u(0,0)) * // N^2
-                            ((geo_deriv2_12 + (beta_deriv[0](0,0) * geo_jac.col(0) +
-                                               beta_0[0](0,0) * geo_deriv2_11))*alpha_0[0](0,0) -
-                             (geo_jac.col(1) + beta_0[0](0,0) * geo_jac.col(0)) *
-                             alpha_deriv[0](0,0));
-
-        dd_ik_plus_deriv = 1/(alpha_squared_v(0,0)) *
-                           ((geo_deriv2_12 + (beta_deriv[1](0,0) * geo_jac.col(1) +
-                                              beta_0[1](0,0) * geo_deriv2_22))*alpha_0[1](0,0) -
-                            (geo_jac.col(0) + beta_0[1](0,0) * geo_jac.col(1)) *
-                            alpha_deriv[1](0,0));
-
-/*
-        gsInfo << "Transversal\n";
-        if (kindOfEdge[1])
-            gsInfo << "dd_ik_minus_deriv " << dd_ik_minus_deriv << "\n";
-        if (kindOfEdge[0])
-            gsInfo << "dd_ik_minus_deriv " << dd_ik_plus_deriv << "\n";
-
-        gsInfo << geo_jac.col(0) << " : " << geo_jac.col(1) << "\n";
-*/
-        // Comupute d_(0,0)^(i_k), d_(1,0)^(i_k), d_(0,1)^(i_k), d_(1,1)^(i_k) ; i_k == 2
-        std::vector<gsMatrix<>> d_ik;
-        d_ik.push_back(Phi.col(0));
-        d_ik.push_back(Phi.block(0,1,6,2) * geo_jac.col(0) ); // deriv into u
-        d_ik.push_back(Phi.block(0,1,6,2) * geo_jac.col(1) ); // deriv into v
-        d_ik.push_back((geo_jac(0,0) * Phi.col(3) + geo_jac(1,0) * Phi.col(4))*geo_jac(0,1) +
-                       (geo_jac(0,0) * Phi.col(4) + geo_jac(1,0) * Phi.col(5))*geo_jac(1,1) +
-                       Phi.block(0,1,6,1) * geo_der2.row(2) +
-                       Phi.block(0,2,6,1) * geo_der2.row(5)); // Hessian
-
-        // Compute d_(*,*)^(il,ik)
-        std::vector<gsMatrix<>> d_ilik_minus, d_ilik_plus;
-        d_ilik_minus.push_back(Phi.col(0));
-        d_ilik_minus.push_back(Phi.block(0,1,6,2) * geo_jac.col(0));
-        d_ilik_minus.push_back((geo_jac(0,0) * Phi.col(3) + geo_jac(1,0) * Phi.col(4))*geo_jac(0,0) +
-                               (geo_jac(0,0) * Phi.col(4) + geo_jac(1,0) * Phi.col(5))*geo_jac(1,0) +
-                               Phi.block(0,1,6,1) * geo_der2.row(0) +
-                               Phi.block(0,2,6,1) * geo_der2.row(3));
-        d_ilik_minus.push_back(Phi.block(0,1,6,2) * dd_ik_minus);
-        d_ilik_minus.push_back((geo_jac(0,0) * Phi.col(3) + geo_jac(1,0) * Phi.col(4))*dd_ik_minus(0,0) +
-                               (geo_jac(0,0) * Phi.col(4) + geo_jac(1,0) * Phi.col(5))*dd_ik_minus(1,0) +
-                               Phi.block(0,1,6,1) * dd_ik_minus_deriv.row(0) +
-                               Phi.block(0,2,6,1) * dd_ik_minus_deriv.row(1));
-
-        d_ilik_plus.push_back(Phi.col(0));
-        d_ilik_plus.push_back(Phi.block(0,1,6,2) * geo_jac.col(1));
-        d_ilik_plus.push_back((geo_jac(0,1) * Phi.col(3) + geo_jac(1,1) * Phi.col(4))*geo_jac(0,1) +
-                              (geo_jac(0,1) * Phi.col(4) + geo_jac(1,1) * Phi.col(5))*geo_jac(1,1) +
-                              Phi.block(0,1,6,1) * geo_der2.row(1) +
-                              Phi.block(0,2,6,1) * geo_der2.row(4));
-        d_ilik_plus.push_back(Phi.block(0,1,6,2) * dd_ik_plus);
-        d_ilik_plus.push_back((geo_jac(0,1) * Phi.col(3) + geo_jac(1,1) * Phi.col(4))*dd_ik_plus(0,0) +
-                              (geo_jac(0,1) * Phi.col(4) + geo_jac(1,1) * Phi.col(5))*dd_ik_plus(1,0) +
-                              Phi.block(0,1,6,1) * dd_ik_plus_deriv.row(0) +
-                              Phi.block(0,2,6,1) * dd_ik_plus_deriv.row(1));
-
-        for (index_t i = 0; i < 6; i++)
-        {
-
-            gsMatrix<> fValues = d_ilik_minus.at(0)(i,0) * (c_0_plus.at(0).cwiseProduct(c_0.at(1)) -
-                                                       beta[0].cwiseProduct(c_0_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) +
-                            d_ilik_minus.at(1)(i,0) * (c_1_plus.at(0).cwiseProduct(c_0.at(1)) -
-                                                       beta[0].cwiseProduct(c_1_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) +
-                            d_ilik_minus.at(2)(i,0) * (c_2_plus.at(0).cwiseProduct(c_0.at(1)) -
-                                                       beta[0].cwiseProduct(c_2_plus_deriv.at(0).cwiseProduct(c_1.at(1)))) -
-                            d_ilik_minus.at(3)(i,0) * alpha[0].cwiseProduct(c_0_minus.at(0).cwiseProduct(c_1.at(1))) -
-                            d_ilik_minus.at(4)(i,0) * alpha[0].cwiseProduct(c_1_minus.at(0).cwiseProduct(c_1.at(1))); // f*_(ik-1,ik)
-
-            //if (kindOfEdge[0])
-            //rhsVals.at(i).setZero();
-
-            //if (!kindOfEdge[1])
-            fValues += d_ilik_plus.at(0)(i,0) * (c_0_plus.at(1).cwiseProduct(c_0.at(0)) -
-                                                       beta[1].cwiseProduct(c_0_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
-                             d_ilik_plus.at(1)(i,0) * (c_1_plus.at(1).cwiseProduct(c_0.at(0)) -
-                                                       beta[1].cwiseProduct(c_1_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
-                             d_ilik_plus.at(2)(i,0) * (c_2_plus.at(1).cwiseProduct(c_0.at(0)) -
-                                                       beta[1].cwiseProduct(c_2_plus_deriv.at(1).cwiseProduct(c_1.at(0)))) +
-                             d_ilik_plus.at(3)(i,0) * alpha[1].cwiseProduct(c_0_minus.at(1).cwiseProduct(c_1.at(0))) +
-                             d_ilik_plus.at(4)(i,0) * alpha[1].cwiseProduct(c_1_minus.at(1).cwiseProduct(c_1.at(0))); // f*_(ik+1,ik)
-
-            fValues -= d_ik.at(0)(i,0) * c_0.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(2)(i,0) * c_0.at(0).cwiseProduct(c_1.at(1)) +
-                             d_ik.at(1)(i,0) * c_1.at(0).cwiseProduct(c_0.at(1)) + d_ik.at(3)(i,0) * c_1.at(0).cwiseProduct(c_1.at(1)); // f*_(ik)
-
-            // Returns a geometry with basis = tBasis
-            // and coefficients being
-            // computed as the interpolant of \a funct
-            gsGeometry<>::uPtr interpolant = basis_vertex.interpolateAtAnchors(fValues);
-            result_1.addPatch(*interpolant);
-        }
-
-    } // interpolateBasisVertex
 
     real_t computeSigma(const std::vector<size_t> & vertexIndices)
     {

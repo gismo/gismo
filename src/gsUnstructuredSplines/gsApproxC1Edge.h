@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsUnstructuredSplines/gsContainerBasis.h>
-#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsPatchReparameterized.h>
 
 #include <gsUnstructuredSplines/gsApproxGluingData.h>
 #include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjection.h>
@@ -28,7 +28,7 @@ class gsApproxC1Edge
 private:
     typedef gsContainerBasis<d, T> Basis;
     typedef typename std::vector<Basis> BasisContainer;
-    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
+    typedef typename std::vector<gsPatchReparameterized<d,T>> C1AuxPatchContainer;
 
     /// Shared pointer for gsApproxC1Edge
     typedef memory::shared_ptr<gsApproxC1Edge> Ptr;
@@ -59,8 +59,8 @@ public:
         //const index_t dir_2 = side_2 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
-        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_2), m_bases[patch_2], side_2));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_2), m_bases[patch_2], side_2));
 
         reparametrizeInterfacePatches();
 
@@ -120,7 +120,7 @@ public:
         //const index_t dir_1 = side_1 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
 
         reparametrizeSinglePatch(side_1);
 

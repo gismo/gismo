@@ -515,6 +515,7 @@ int main(int argc, char *argv[])
 
             global2local = approxC1.getSystem();
             global2local = global2local.transpose();
+            global2local.pruned(1,1e-10);
             geom = mp;
             approxC1.getMultiBasis(dbasis);
         }
@@ -530,8 +531,8 @@ int main(int argc, char *argv[])
         if (writeMatrix)
         {
             gsWrite(global2local,"mat");
-            gsWrite(geom,"geom");
-            gsWrite(dbasis,"dbasis");
+            //gsWrite(geom,"geom");
+            //gsWrite(dbasis,"dbasis");
         }
 
         bb2.init(dbasis,global2local);

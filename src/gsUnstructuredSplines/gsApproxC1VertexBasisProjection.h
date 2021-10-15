@@ -23,7 +23,7 @@ template<short_t d, class T, class bhVisitor = gsApproxC1VertexBasisProjectionVi
 class gsApproxC1VertexBasisProjection : public gsAssembler<T>
 {
 private:
-    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
+    typedef typename std::vector<gsPatchReparameterized<d,T>> C1AuxPatchContainer;
 
 public:
     typedef gsAssembler<T> Base;

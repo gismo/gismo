@@ -63,22 +63,6 @@ void gsApproxC1Spline<d,T>::init()
     // rowContainer[patch][9]: 9 == 9 subspaces
     rowContainer.resize(m_patches.nPatches(), std::vector<index_t>(9));
 
-    // For topology
-    kindOfEdge.resize(m_patches.nPatches(), std::vector<bool>(4));
-    kindOfVertex.resize(m_patches.nPatches(), std::vector<index_t>(4));
-
-    // For C1 Basis at vertex
-    valenceOfVertex.resize(m_patches.nPatches(), std::vector<index_t>(4));
-    for (size_t i = 0; i<valenceOfVertex.size(); i++)
-        for (size_t j = 0; j<valenceOfVertex[i].size(); j++)
-            valenceOfVertex[i][j] = 6; // to get for boundary vertex == 6
-
-    // For boundary
-    numDofsVertex.resize(m_patches.nPatches(), std::vector<index_t>(4));
-    for (size_t i = 0; i<numDofsVertex.size(); i++)
-        for (size_t j = 0; j<numDofsVertex[j].size(); j++)
-            numDofsVertex[i][j] = 1; // to get for boundary vertex == 1
-
     // Create interior spline space
     for (size_t np = 0; np < m_patches.nPatches(); np++)
     {
@@ -290,8 +274,6 @@ void gsApproxC1Spline<d,T>::init()
                 basis_vertex_1.reduceContinuity(1); // In the case for the max. smoothness
 
             m_bases[patch_1].setBasis(vertex_1+4, basis_vertex_1);
-            kindOfVertex[patch_1][vertex_1] = -1;
-
         }
         else if (patchIndex.size() > 1)
         {
@@ -334,7 +316,6 @@ void gsApproxC1Spline<d,T>::init()
                     }
 
                     m_bases[patch_1].setBasis(vertex_1+4, basis_vertex_1);
-                    kindOfVertex[patch_1][vertex_1] = 0;
                 }
             }
             else if (patchIndex.size() > temp_mp.interfaces().size())// Interface-Boundary vertex
@@ -383,24 +364,12 @@ void gsApproxC1Spline<d,T>::init()
                     }
 */
                     m_bases[patch_1].setBasis(vertex_1+4, basis_vertex_1);
-                    kindOfVertex[patch_1][vertex_1] = 1;
 
                 }
             }
         }
     }
 
-    // TODO maybe get rid of this:
-    for (size_t np = 0; np < m_patches.nPatches(); np++)
-        for (index_t i = 0; i<4; ++i)
-            if(m_patches.isBoundary(np,i+1))
-                kindOfEdge[np][i] = false; //bdy
-            else
-                kindOfEdge[np][i] = true; //interface
-
-    // Init local Basis
-    //for (size_t np = 0; np < m_patches.nPatches(); np++)
-    //    m_bases[np].init();
 
     index_t row_dofs = 0;
     // Inner basis
@@ -472,13 +441,16 @@ void gsApproxC1Spline<d,T>::init()
     m_matrix.resize(row_dofs, dim_col);
     const index_t nz = 7*row_dofs; // TODO
     m_matrix.reserve(nz);
+
 /*
     for (size_t np = 0; np < m_patches.nPatches(); np++)
     {
         for (index_t i = 0; i < 9; i++)
             gsInfo << np << " : " << i << " : " << rowContainer[np][i] << "\n";
     }
-    gsInfo << "Mat dim: (" << row_dofs  << " : " << dim_col << ")\n";*/
+    gsInfo << "Mat dim: (" << row_dofs  << " : " << dim_col << ")\n";
+*/
+
 /*
     if (m_options.getSwitch("info"))
         for (size_t np = 0; np < m_patches.nPatches(); np++)
@@ -560,6 +532,7 @@ void gsApproxC1Spline<d,T>::compute()
 
         shift_row += rowContainer[patch_1][side_1];
     }
+
     // Compute Edge Basis functions
     for (size_t numBdy = 0; numBdy < m_patches.boundaries().size(); numBdy++)
     {
@@ -583,12 +556,13 @@ void gsApproxC1Spline<d,T>::compute()
         {
             index_t jj = 0;
             for (index_t j = begin_col; j < end_col; ++j, ++jj) {
-                if (basisEdge[0].patch(ii).coef(jj, 0) * basisEdge[0].patch(ii).coef(jj, 0) > 1e-25)
+                if (basisEdge[0].patch(ii).coef(jj, 0) * basisEdge[0].patch(ii).coef(jj, 0) > 1e-20)
                     m_matrix.insert(shift_row + ii, shift_col + j) = basisEdge[0].patch(ii).coef(jj, 0);
             }
         }
         shift_row += rowContainer[patch_1][side_1];
     }
+
     // Compute Vertex Basis functions
     for (size_t numVer = 0; numVer < m_patches.vertices().size(); numVer++)
     {
@@ -622,17 +596,19 @@ void gsApproxC1Spline<d,T>::compute()
             {
                 index_t jj = 0;
                 for (index_t j = begin_col; j < end_col; ++j, ++jj) {
-                    if (basisVertex[np].patch(ii).coef(jj, 0) * basisVertex[np].patch(ii).coef(jj, 0) > 1e-25)
+                    if (basisVertex[np].patch(ii).coef(jj, 0) * basisVertex[np].patch(ii).coef(jj, 0) > 1e-20)
                         m_matrix.insert(shift_row + ii, shift_col + j) = basisVertex[np].patch(ii).coef(jj, 0);
+
+
                 }
             }
         }
-        shift_row += rowContainer[patchIndex[0]][vertIndex[0]+4];
+        shift_row += rowContainer[patchIndex[0]][vertIndex[0]+4]; // + 6
 
     }
-
     m_matrix.makeCompressed();
 
+/*
     if (m_options.getSwitch("info"))
     {
         gsInfo << "Dim for Patches: \n";
@@ -642,233 +618,8 @@ void gsApproxC1Spline<d,T>::compute()
         }
         gsInfo << "\n";
     }
-}
-/*
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::writeParaviewSinglePatch(int patchID, std::string type)
-{
-    std::string fileName;
-    std::string basename = "BasisFunctions_" + type + "_" + util::to_string(patchID);
-    gsParaviewCollection collection(basename);
-
-    index_t shift_row = 0, shift_col = 0;
-    for (index_t np = 0; np < patchID; ++np)
-    {
-        shift_row += m_bases[np].size_rows();
-        shift_col += m_bases[np].size_cols();
-    }
-
-    if (type == "inner")
-    {
-        index_t ii = 0;
-        for (index_t i = m_bases[patchID].rowBegin(0);
-             i < m_bases[patchID].rowEnd(0); i++, ii++) // Single basis function
-        {
-            index_t start_j = m_bases[patchID].colBegin(0);
-            index_t end_j = m_bases[patchID].colEnd(0);
-
-            gsMatrix<> coefs = m_matrix.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
-
-            typename gsGeometry<T>::uPtr geo_temp;
-            geo_temp = m_bases[patchID].getBasis(0).makeGeometry(coefs.transpose());
-
-            gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
-
-            fileName = basename + "_0_" + util::to_string(ii);
-            gsField<T> temp_field(m_patches.patch(patchID), patch_single);
-            gsWriteParaview(temp_field, fileName, 5000);
-            collection.addTimestep(fileName, ii, "0.vts");
-        }
-    }
-    else if (type == "edge" || type == "vertex")
-    {
-        index_t ii = 0;
-        for (index_t side = 1; side < 5; ++side) {
-            index_t side_shift = type == "edge" ? 0 : 4;
-            for (index_t i = m_bases[patchID].rowBegin(side + side_shift);
-                 i < m_bases[patchID].rowEnd(side + side_shift); i++, ii++) // Single basis function
-            {
-                index_t start_j = m_bases[patchID].colBegin(side + side_shift);
-                index_t end_j = m_bases[patchID].colEnd(side + side_shift);
-
-                gsMatrix<> coefs = m_matrix.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
-
-                typename gsGeometry<T>::uPtr geo_temp;
-                if (type == "edge")
-                    geo_temp = m_bases[patchID].getBasis(side).makeGeometry(coefs.transpose());
-                else if (type == "vertex")
-                    geo_temp = m_bases[patchID].getBasis(side+4).makeGeometry(coefs.transpose());
-
-                gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
-
-                fileName = basename + "_0_" + util::to_string(ii);
-                gsField<> temp_field(m_patches.patch(patchID), patch_single);
-                gsWriteParaview(temp_field, fileName, 5000);
-                collection.addTimestep(fileName, ii, "0.vts");
-            }
-        }
-    }
-    collection.save();   
-}
-
-
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::plotParaview(std::string fn, int npts) 
-{
-    gsParaviewCollection collection2(fn);
-    std::string fileName2;
-
-    for ( size_t pp = 0; pp < m_patches.nPatches(); ++pp ) // Patches
-    {
-        index_t shift_row = 0, shift_col = 0;
-        for (size_t np = 0; np < pp; ++np)
-        {
-            shift_row += m_bases[np].size_rows();
-            shift_col += m_bases[np].size_cols();
-        }
-
-        fileName2 = fn + util::to_string(pp);
-
-        const gsFunction<T> & geometry = m_patches.patch(pp);
-
-        const int n = geometry.targetDim();
-
-        gsMatrix<T> ab = geometry.support();
-        gsVector<T> a = ab.col(0);
-        gsVector<T> b = ab.col(1);
-
-        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
-        gsMatrix<T> pts = gsPointGrid(a, b, np);
-
-        gsMatrix<T> eval_geo = geometry.eval(pts);//pts
-        gsMatrix<T> eval_field;
-
-        // Here add g1 basis
-        eval_field.setZero(1, pts.cols());
-
-        index_t ii = 0;
-        for (index_t i = m_bases[pp].rowBegin(0);
-             i < m_bases[pp].rowEnd(0); i++, ii++) // Single basis function
-        {
-            index_t start_j = m_bases[pp].colBegin(0);
-            index_t end_j = m_bases[pp].colEnd(0);
-
-            gsMatrix<> coefs = m_matrix.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
-
-            typename gsGeometry<T>::uPtr geo_temp;
-            geo_temp = m_bases[pp].getBasis(0).makeGeometry(coefs.transpose());
-
-            gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
-            gsField<> temp_field(m_patches.patch(pp), patch_single);
-            eval_field += temp_field.value(pts);
-        }
-        std::string type = "edge";
-        ii = 0;
-        for (index_t side = 1; side < 5; ++side) {
-            for (index_t i = m_bases[pp].rowBegin(side);
-                 i < m_bases[pp].rowEnd(side); i++, ii++) // Single basis function
-            {
-                index_t start_j = m_bases[pp].colBegin(side);
-                index_t end_j = m_bases[pp].colEnd(side);
-
-                gsMatrix<> coefs = m_matrix.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
-
-                typename gsGeometry<T>::uPtr geo_temp;
-                if (type == "edge")
-                    geo_temp = m_bases[pp].getBasis(side).makeGeometry(coefs.transpose());
-                else if (type == "vertex")
-                    geo_temp = m_bases[pp].getBasis(side+4).makeGeometry(coefs.transpose());
-
-                gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
-                gsField<T> temp_field(m_patches.patch(pp), patch_single);
-                eval_field += temp_field.value(pts);
-            }
-        }
-
-        type = "vertex";
-        ii = 0;
-        for (index_t side = 1; side < 5; ++side) {
-            for (index_t i = m_bases[pp].rowBegin(side+4);
-                 i < m_bases[pp].rowEnd(side+4); i++, ii++) // Single basis function
-            {
-                index_t start_j = m_bases[pp].colBegin(side+4);
-                index_t end_j = m_bases[pp].colEnd(side+4);
-
-                gsMatrix<> coefs = m_matrix.block(shift_row + i, shift_col + start_j, 1, end_j - start_j);
-
-                gsGeometry<>::uPtr geo_temp;
-                if (type == "edge")
-                    geo_temp = m_bases[pp].getBasis(side).makeGeometry(coefs.transpose());
-                else if (type == "vertex")
-                    geo_temp = m_bases[pp].getBasis(side+4).makeGeometry(coefs.transpose());
-
-                gsTensorBSpline<d, T> patch_single = dynamic_cast<gsTensorBSpline<d, T> &> (*geo_temp);
-                gsField<T> temp_field(m_patches.patch(pp), patch_single);
-                eval_field += temp_field.value(pts);
-            }
-        }
-
-        //gsFunctionExpr<> solVal("x",2);
-        //gsFunctionExpr<> solVal("-1*cos(pi*x)*sin(pi*y)",2);
-        gsFunctionExpr<T> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-        //eval_field -= solVal.eval(eval_geo);
-
-        */
-/*
-        for (size_t numSpaces = 0; numSpaces < m_bases[pp].getBasisG1Container().size(); ++numSpaces)
-        {
-            gsTensorBSplineBasis<d, T> basis = m_bases[pp].getBasisG1Container()[numSpaces];
-            for (index_t i = 0; i < m_bases[pp].getRowContainer()[numSpaces]; ++i)
-            {
-                gsMatrix<> coefs = m_matrix.block(shift_row + i, shift_col, 1, basis.size());
-                gsMultiPatch<> geo;
-                geo.addPatch(basis.makeGeometry(coefs));
-                if (pp == 0 && i == 0 && numSpaces == 0)
-                    gsWriteParaview(geo.patch(0),"test_geo",1000);
-                gsField<> temp_field(m_patches.patch(pp), geo.patch(0));
-                eval_field += temp_field.value(pts);
-            }
-            shift_row += m_bases[pp].getRowContainer()[numSpaces];
-            shift_col += m_bases[pp].getColContainer()[numSpaces]; // == basis.size()
-        }
-        *//*
-
-        if ( 3 - d > 0 )
-        {
-            np.conservativeResize(3);
-            np.bottomRows(3-d).setOnes();
-        }
-        else if (d > 3)
-        {
-            gsWarn<< "Cannot plot 4D data.\n";
-            return;
-        }
-
-        if ( 3 - n > 0 )
-        {
-            eval_geo.conservativeResize(3,eval_geo.cols() );
-            eval_geo.bottomRows(3-n).setZero();
-        }
-        else if (n > 3)
-        {
-            gsWarn<< "Data is more than 3 dimensions.\n";
-        }
-
-        if ( eval_field.rows() == 2)
-        {
-            eval_field.conservativeResize(3,eval_geo.cols() );
-            eval_field.bottomRows(1).setZero(); // 3-field.dim()
-        }
-
-        gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fileName2);
-
-
-        collection2.addPart(fileName2, ".vts");
-    }
-    collection2.save();   
-}
 */
-
+}
 
 
 template<short_t d,class T>

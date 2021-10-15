@@ -845,12 +845,6 @@ public:
 
         if (mb != nullptr)
         {
-            gsDebug << "I am here 1 \n";
-            gsDebugVar(this->interfaceCont());
-            if (const gsMappedBasis<2,T> * mapb =
-                    dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
-                gsInfo << "War hier \n";
-
             m_sd->mapper = gsDofMapper(*mb, this->dim() );
             //m_mapper.init(*mb, this->dim()); //bug
             if ( 0==this->interfaceCont() ) // Conforming boundaries ?
@@ -950,9 +944,6 @@ public:
         else if (const gsBasis<T> * b =
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
-
-            gsDebug << "I am here 2 \n";
-
             m_sd->mapper = gsDofMapper(*b);
             gsMatrix<index_t> bnd;
             for (typename gsBoundaryConditions<T>::const_iterator
@@ -993,9 +984,6 @@ public:
         else if (const gsMappedBasis<2,T> * mapb =
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
-            gsDebugVar(mapb->size());
-            gsDebugVar(this->interfaceCont());
-
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
 
             // Does this work for the D-Patch as well??

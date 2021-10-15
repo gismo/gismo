@@ -84,13 +84,6 @@ protected:
     // Container[patch][side]
     std::vector<std::vector<index_t>> rowContainer;
 
-    // Container[patch][side/corner]
-    std::vector<std::vector<bool>> kindOfEdge;
-    std::vector<std::vector<index_t>> kindOfVertex;
-    std::vector<std::vector<index_t>> valenceOfVertex;
-
-    std::vector<std::vector<index_t>> numDofsVertex;
-
     // Put here the members of the shared functions
     using Base::m_patches;
     using Base::m_multiBasis;

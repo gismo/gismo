@@ -219,8 +219,9 @@ namespace gismo
                        gsMatrix<int> &bndOther) const {
             // First side
             // edge
-            gsDebug << "WHAR HIER HIASD \n";
-/*
+            gsDebug << "matchWith() function is not implemented yet \n";
+
+         /*
             gsMatrix<index_t> indizes1, indizes2;
             short_t side_id = bi.first().side().index();
             indizes1 = basisG1Container[side_id].boundaryOffset(boxSide(bi.first().side()), 0);
@@ -242,12 +243,12 @@ namespace gismo
         }
 
 
-        gsMatrix<int> boundaryOffset(const boxSide &side, int offset) const
+        gsMatrix<int> boundaryOffset(const boxSide & bside, int offset) const
         {
             gsMatrix<int> result;
 
             // Edges
-            short_t side_id = side.index();
+            short_t side_id = bside.index();
             index_t shift = 0;
             for (index_t i=0; i< side_id; ++i)
                 shift += basisContainer[i].size();
@@ -257,7 +258,7 @@ namespace gismo
 
             // Vertices:
             std::vector<boxCorner> containedCorners;
-            side.getContainedCorners(d, containedCorners);
+            bside.getContainedCorners(d, containedCorners);
 
             GISMO_ASSERT(containedCorners.size() != 0, "No contained corner");
 
@@ -277,15 +278,13 @@ namespace gismo
 
                 if (offset == 1) // DIRTY AND QUICK
                 {
-                    result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset+1); // TODO
+                    result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
                     result_temp.array() += shift;
 
                     result.conservativeResize(result.rows()+result_temp.rows(), 1 );
                     result.bottomRows(result_temp.rows()) = result_temp;
                 }
-
             }
-
             return result;
         }
 

@@ -15,7 +15,7 @@
 
 #include <gsUnstructuredSplines/gsApproxC1Edge.h>
 
-#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsPatchReparameterized.h>
 
 #include <gsUnstructuredSplines/gsApproxGluingData.h>
 #include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjection.h>

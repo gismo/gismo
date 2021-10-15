@@ -1,4 +1,4 @@
-/** @file gsG1AuxiliaryPatch.h
+/** @file gsPatchReparameterized.h
  *
     @brief Reparametrize one Patch
 
@@ -19,15 +19,15 @@ namespace gismo
 {
 
 template<short_t d, class T>
-class gsC1AuxiliaryPatch
+class gsPatchReparameterized
 {
 public:
 
-    gsC1AuxiliaryPatch()
+    gsPatchReparameterized()
     {}
 
-    gsC1AuxiliaryPatch(const gsGeometry<> & patch, gsContainerBasis<d,T> & singlePatch, const index_t side)
-    : m_patchRotated(patch), m_C1BasisRotated(singlePatch), m_side(side)
+    gsPatchReparameterized(const gsGeometry<> & patch, gsContainerBasis<d,T> & singlePatch, const index_t side)
+    : m_patchRotated(patch), m_basisRotated(singlePatch), m_side(side)
     {
         rotationNum = 0;
         axisOrientation = 0;
@@ -69,7 +69,7 @@ public:
         m_patchRotated.swap(newpatch);
 
         // BASES
-        m_C1BasisRotated.swapAxis();
+        m_basisRotated.swapAxis();
 
         // Map Index
         mapIndex[0] = 3;
@@ -108,17 +108,8 @@ public:
         m_patchRotated.swap(newpatch);
 
         // BASES
-        m_C1BasisRotated.swapAxis();
-/*
-        if (withBasis)
-        {
-            gsTensorBSplineBasis<2, real_t> & tempBasis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBasis.basis(0));
-            tempBasis.component(0).reverse();
-            gsTensorBSplineBasis<2, real_t> newTensorBasis(tempBasis.knots(1),tempBasis.knots(0));
-            gsMultiBasis<> newBasis(newTensorBasis);
-            auxBasis.swap(newBasis);
-        }
-*/
+        m_basisRotated.swapAxis();
+
         // Map Index
         if (getOrient() == 0)
         {
@@ -168,17 +159,8 @@ public:
         m_patchRotated.swap(newpatch);
 
         // BASES
-        m_C1BasisRotated.swapAxis();
-/*
-        if (withBasis)
-        {
-            gsTensorBSplineBasis<2, real_t> & tempBasis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBasis.basis(0));
-            tempBasis.component(1).reverse();
-            gsTensorBSplineBasis<2, real_t> newTensorBasis(tempBasis.knots(1),tempBasis.knots(0));
-            gsMultiBasis<> newBasis(newTensorBasis);
-            auxBasis.swap(newBasis);
-        }
-*/
+        m_basisRotated.swapAxis();
+
         // Map Index
         if (getOrient() == 0)
         {
@@ -226,15 +208,6 @@ public:
         gsMultiPatch<> newpatch(newgeom1);
         m_patchRotated.swap(newpatch);
 
-/*
-        if (withBasis)
-        {
-            gsTensorBSplineBasis<2, real_t> & tempBasis = dynamic_cast<gsTensorBSplineBasis<2, real_t> &>(auxBasis.basis(0));
-            gsTensorBSplineBasis<2, real_t> newTensorBasis(tempBasis.knots(0),tempBasis.knots(1));
-            gsMultiBasis<> newBasis(newTensorBasis);
-            auxBasis.swap(newBasis);
-        }
-*/
         // Map Index
         if (getOrient() == 0)
         {
@@ -250,7 +223,6 @@ public:
             mapIndex[2] = 2;
             mapIndex[3] = 1;
         }
-
 
         // Update the number of rotation of the axis (anti-clockwise)
         rotationNum+=2;
@@ -469,7 +441,7 @@ public:
         return rotationNum;
     }
 
-    gsContainerBasis<d, T> getC1BasisRotated() const { return m_C1BasisRotated; }
+    gsContainerBasis<d, T> getC1BasisRotated() const { return m_basisRotated; }
 
     void setSide(index_t side ) { m_side = side; }
     index_t side() { return m_side; }
@@ -480,7 +452,7 @@ protected:
 
     gsMultiPatch<> m_patchRotated;
 
-    gsContainerBasis<d, T> m_C1BasisRotated;
+    gsContainerBasis<d, T> m_basisRotated;
 
     // Global side/vertex index in the initial geometry
     index_t m_side;
