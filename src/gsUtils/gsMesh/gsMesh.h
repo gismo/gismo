@@ -74,10 +74,11 @@ public:
             m_edge = other.m_edge;
             for (size_t i = 0; i != other.m_edge.size(); ++i)
             {
-                GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
+                // The two GISMO_ASSERTS were removed as part of PR #448, which got integrated into PR #421.
+                //GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
                 m_edge[i].source = m_vertex[other.m_edge[i].source->getId()];
 
-                GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
+                //GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
                 m_edge[i].target = m_vertex[other.m_edge[i].target->getId()];
             }
         }
