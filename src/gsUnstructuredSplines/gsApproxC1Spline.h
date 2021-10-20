@@ -47,9 +47,6 @@ public:
     void init();
     void compute();
 
-    void writeParaviewSinglePatch( index_t patchID, std::string type );
-    void plotParaview( std::string fn, index_t npts = 1000 );
-
 private:
     void defaultOptions();
 
@@ -74,8 +71,6 @@ private:
     void createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
                               gsKnotVector<T> & kv_1,
                               gsKnotVector<T> & kv1_result);
-
-    void createLocalVertexSpace(gsTensorBSplineBasis<d,T> & basis_vertex_1, gsTensorBSplineBasis<d,T> & result_1);
 
 protected:
     // Data members

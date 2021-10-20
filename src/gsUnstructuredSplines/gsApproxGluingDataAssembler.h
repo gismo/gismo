@@ -304,6 +304,73 @@ inline void gsApproxGluingDataAssembler<T, bhVisitor>::apply(bhVisitor & visitor
     }//omp parallel
 }
 
+
+// Input is parametric coordinates of the surface \a mp
+template <class T>
+class gsAlpha : public gismo::gsFunction<T>
+{
+    // Computes the material matrix for different material models
+protected:
+    gsGeometry<T> & _geo;
+    mutable gsMapData<T> _tmp;
+    index_t m_uv;
+
+
+public:
+    /// Shared pointer for gsMaterialMatrix
+    typedef memory::shared_ptr< gsAlpha > Ptr;
+
+    /// Unique pointer for gsMaterialMatrix
+    typedef memory::unique_ptr< gsAlpha > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsAlpha(gsGeometry<T> & geo, index_t uv) :
+           _geo(geo), m_uv(uv), _alpha_piece(nullptr)
+    {
+        _tmp.flags = NEED_JACOBIAN;
+    }
+
+    ~gsAlpha() { delete _alpha_piece; }
+
+GISMO_CLONE_FUNCTION(gsAlpha)
+
+    short_t domainDim() const {return 1;}
+
+    short_t targetDim() const {return 1;}
+
+    mutable gsAlpha<T> * _alpha_piece; // todo: improve the way pieces are accessed
+
+    const gsFunction<T> & piece(const index_t k) const
+    {
+        delete _alpha_piece;
+        _alpha_piece = new gsAlpha(_geo, m_uv);
+        return *_alpha_piece;
+    }
+
+    // Input is parametric coordinates of the surface \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        result.resize( targetDim() , u.cols() );
+
+        gsMatrix<T> uv, ev, D0;
+        uv.setZero(2,u.cols());
+        uv.row(m_uv) = u; // u
+
+        T gamma = 1.0;
+
+        for (index_t i = 0; i < uv.cols(); i++)
+        {
+            _geo.jacobian_into(uv.col(i), ev);
+            uv(0, i) = gamma * ev.determinant();
+        }
+        result = uv.row(0);
+    }
+
+};
+
+
+
 template <class T, class bhVisitor>
 void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
 {
@@ -366,15 +433,57 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
     tilde_temp = m_bspGD.makeGeometry(beta_sol);
     beta_S = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
 
+     //! [Problem setup]
+    gsExprAssembler<> A(1,1);
+
+    typedef gsExprAssembler<>::variable    variable;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
+
+    // Elements used for numerical integration
+    gsMultiBasis<T> BsplineSpace(m_bspGD);
+    A.setIntegrationElements(BsplineSpace);
+    gsExprEvaluator<> ev(A);
+
+    // Set the discretization space
+    space u = A.getSpace(BsplineSpace);
+
+    gsBoundaryConditions<> bc_empty;
+    u.setup(bc_empty, dirichlet::homogeneous, 0);
+    A.initSystem();
+
+    gsFunctionExpr<T> f("x",1);
+    auto ff = A.getCoeff(f);
+
+    gsAlpha<real_t> alpha(m_patch.patch(0), m_uv);
+    auto aa = A.getCoeff(alpha);
+
+    A.assemble(u * u.tr(),u * aa);
+
+    solver.compute( A.matrix() );
+    gsMatrix<> solVector = solver.solve(A.rhs());
+
+    solution u_sol = A.getSolution(u, solVector);
+    gsMatrix<> sol;
+    u_sol.extract(sol);
+
+    gsDebugVar(alpha_sol);
+    gsDebugVar(sol);
+/*
+    gsGeometry<>::uPtr tilde_temp;
+    tilde_temp = m_bspGD.makeGeometry(sol);
+    alpha_S = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
+*/
+    /*
     gsMatrix<> points(1,2);
     points.setZero();
     points(0,1) = 1.0;
-    /*
+
     gsInfo << "Alpha: " << alpha_S.eval(points) << "\n";
     gsInfo << "Beta: " << beta_S.eval(points) << "\n";
     gsInfo << "Alpha deriv: " << alpha_S.deriv(points) << "\n";
     gsInfo << "Beta deriv: " << beta_S.deriv(points) << "\n";
-     */
+    */
 
 } // solve
 

@@ -663,53 +663,6 @@ void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVe
     kv2_result.degreeDecrease(1);
     if (m != 1)
         kv2_result.reduceMultiplicity(1);
-
-/*
-* TODO Add geometry inner knot regularity
-*
-index_t i_3 = 0, i_4 = 0;
-
-std::vector<real_t>::iterator it3 = patch_kv_unique_1.begin();
-std::vector<real_t>::iterator it4 = patch_kv_unique_2.begin();
-
-std::vector<real_t>::iterator it2 = knots_unique_2.begin();
-for(std::vector<real_t>::iterator it = knots_unique_1.begin(); it != knots_unique_1.end(); ++it)
-{
-if (*it == *it2)
-{
-    knot_vector_plus.push_back(*it);
-    knot_vector_minus.push_back(*it);
-    ++it2;
-}
-else if (*it < *it2)
-{
-    //knot_vector_plus.push_back(*it);
-    //knot_vector_minus.push_back(*it);
-}
-else if (*it > *it2)
-{
-    while (*it > *it2)
-    {
-        //knot_vector_plus.push_back(*it2);
-        //knot_vector_minus.push_back(*it2);
-        ++it2;
-    }
-    knot_vector_plus.push_back(*it2);
-    knot_vector_minus.push_back(*it2);
-    ++it2;
-}
-}
-
-// Repeat the first and the last vector p or p-1 times
-kv1_result = gsKnotVector<>(knot_vector_plus);
-kv1_result.degreeIncrease(p);
-if (kv1.multiplicities()[1] > p-2 && knots_unique_1[1] != 1) // TODO Check
-kv1_result.increaseMultiplicity(kv1.multiplicities()[1]-2);
-kv2_result = gsKnotVector<>(knot_vector_minus);
-kv2_result.degreeIncrease(p-1);
-if (kv2.multiplicities()[1] > p-2 && knots_unique_2[1] != 1) // TODO Check
-kv2_result.increaseMultiplicity(kv2.multiplicities()[1]-2);
-*/
 }
 
 
@@ -735,30 +688,6 @@ void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1,
     kv2_result.degreeDecrease(1);
     if (m != 1)
         kv2_result.reduceMultiplicity(1);
-
-
-    /*
-    * TODO Add geometry inner knot regularity
-    *
-    index_t i_3 = 0, i_4 = 0;
-
-    std::vector<real_t>::iterator it3 = patch_kv_unique_1.begin();
-    std::vector<real_t>::iterator it4 = patch_kv_unique_2.begin();
-
-    std::vector<real_t> knot_vector_plus, knot_vector_minus;
-
-    for(std::vector<real_t>::iterator it = knots_unique_1.begin(); it != knots_unique_1.end(); ++it)
-    {
-        knot_vector_plus.push_back(*it);
-        knot_vector_minus.push_back(*it);
-    }
-
-    // Repeat the first and the last vector p or p-1 times
-    kv1_result = gsKnotVector<>(knot_vector_plus);
-    kv1_result.degreeIncrease(p);
-    kv2_result = gsKnotVector<>(knot_vector_minus);
-    kv2_result.degreeIncrease(p-1);
-     */
 }
 
 template<short_t d,class T>
@@ -781,37 +710,10 @@ void gsApproxC1Spline<d,T>::createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotV
         gsInfo << "\n\n ERROR: Interfaces are not matching!!! \n\n";
 
     knot_vector = knots_unique_2; // = knots_unique_1
-/*
-std::vector<real_t>::iterator it2 = knots_unique_2.begin();
-for(std::vector<real_t>::iterator it = knots_unique_1.begin(); it != knots_unique_1.end(); ++it)
-{
-if (*it == *it2)
-{
-    knot_vector.push_back(*it);
-    ++it2;
-}
-else if (*it < *it2)
-{
-    //knot_vector.push_back(*it);
-}
-else if (*it > *it2)
-{
-    while (*it > *it2)
-    {
-        //knot_vector.push_back(*it2);
-        ++it2;
-    }
-    knot_vector.push_back(*it2);
-    ++it2;
-}
-}
-*/
 
     gsAsVector<real_t> ktnos(knot_vector);
     gsKnotVector<> new_knotvector(knot_vector, p_tilde, r_tilde);
     kv_result = new_knotvector;
-    //kv_result.degreeIncrease(p_tilde);
-    //kv_result.increaseMultiplicity(p_tilde-r_tilde-1);
 } // createGluingDataSpace
 
 
@@ -845,66 +747,6 @@ void gsApproxC1Spline<d,T>::createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKn
     kv1_result = gsKnotVector<>(knots_unique_plus, p_1, r);
     // ==
     kv2_result = kv1_result;
-
-/*
-index_t p_plus_diff = p_1 - kv_plus.degree();
-index_t p_gD_diff = p_1 - kv_gD_1.degree();
-index_t p_patch_diff = p_1 - kv_1.degree();
-
-std::vector<real_t> knots_unique_plus = kv_plus.unique();
-std::vector<real_t> knots_unique_gD = kv_gD_1.unique();
-
-std::vector<real_t> knots_unique_1 = kv_1.unique();
-
-knots_unique_1.erase(knots_unique_1.begin()); // First
-knots_unique_1.pop_back(); // Last
-
-std::vector<index_t> patch_kv_mult_plus = kv_plus.multiplicities();
-std::vector<index_t> patch_kv_mult_gD = kv_gD_1.multiplicities();
-
-std::vector<index_t> patch_kv_mult_1 = kv_1.multiplicities();
-
-if (knots_unique_plus != knots_unique_gD)
-gsInfo << "\n\nERROR: TODO \n\n";
-
-std::vector<real_t> knot_vector;
-
-index_t i_plus = 0;
-index_t i_1 = 1;
-std::vector<real_t>::iterator it_1 = knots_unique_1.begin();
-for(std::vector<real_t>::iterator it = knots_unique_plus.begin(); it != knots_unique_plus.end(); ++it, ++i_plus)
-{
-if (*it_1 == *it && it_1 != knots_unique_1.end())
-{
-    index_t i_temp = 0;
-    while(i_temp < math::max(patch_kv_mult_1[i_1]+p_patch_diff, math::max(patch_kv_mult_plus[i_plus]+p_plus_diff, patch_kv_mult_gD[i_plus]+p_gD_diff)))
-    {
-        knot_vector.push_back(*it);
-        ++i_temp;
-    }
-
-    ++it_1;
-    ++i_1;
-}
-else
-{
-    index_t i_temp = 0;
-    while(i_temp < math::max(patch_kv_mult_plus[i_plus]+p_plus_diff, patch_kv_mult_gD[i_plus]+p_gD_diff))
-    {
-        knot_vector.push_back(*it);
-        ++i_temp;
-    }
-}
-
-
-
-}
-
-
-kv1_result = gsKnotVector<>(knot_vector);
-// ==
-kv2_result = gsKnotVector<>(knot_vector);
-*/
 } // createLocalEdgeSpace
 
 template<short_t d,class T>
@@ -929,35 +771,5 @@ void gsApproxC1Spline<d,T>::createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKn
     }
     kv1_result = gsKnotVector<>(knots_unique_plus, p_1, r);
 } // createLocalEdgeSpace
-
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createLocalVertexSpace(gsTensorBSplineBasis<d, T> & basis_vertex, gsTensorBSplineBasis<d, T> & basis_vertex_result)
-{
-    index_t p_1 = basis_vertex.degree(0); // == basis_vertex.degree(1)
-    //index_t p_tilde = math::max(p_1 - 1, 3); // TODO more general
-
-
-    // todo: fix for general regularity
-    index_t r;
-    r = p_1 - basis_vertex.knots(0).multiplicityIndex(p_1);
-
-    if (basis_vertex.degree(0) != basis_vertex.degree(1))
-        gsInfo << "ERROR LOKAL Vertex SPACE \n";
-
-    basis_vertex_result = basis_vertex;
-
-    //gsInfo << "basis u " << basis_vertex_result.knots(0).asMatrix() << "\n";
-    //gsInfo << "basis v " << basis_vertex_result.knots(1).asMatrix() << "\n";
-
-    basis_vertex_result.degreeElevate(p_tilde, 0); // p + \tilde{p} - 1
-    basis_vertex_result.degreeElevate(p_tilde, 1); // p + \tilde{p} - 1
-    basis_vertex_result.reduceContinuity(r-1);
-
-
-
-} // createLocalVertexSpace
-
-
-
 
 } // namespace gismo
