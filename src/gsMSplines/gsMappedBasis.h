@@ -56,9 +56,21 @@ public:
     gsMappedBasis() : m_mapper(nullptr)
     { }
 
-    gsMappedBasis(gsMultiPatch<T> const & mp, std::string pathToMap );
+    gsMappedBasis(gsMultiPatch<T> const & mp, std::string pathToMap )
+    {
+        gsMultiBasis<T> mb(mp);
+        gsSparseMatrix<T> m;
+        gsFileData<T>(pathToMap).getFirst(m);
+        init(mb,m);
+    }
 
-    gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m): m_mapper(nullptr)
+    gsMappedBasis(gsMultiPatch<T> const & mp, const gsSparseMatrix<T> & m )
+    {
+        gsMultiBasis<T> mb(mp);
+        init(mb,m);
+    }
+
+    gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)
     {
         init(mb,m);
     }
@@ -71,7 +83,6 @@ public:
     {
         GISMO_ASSERT(mb.domainDim()==d, "Error in dimensions");
         m_topol  = mb.topology();
-        delete m_mapper;
         m_mapper = new gsWeightMapper<T>(m);
 
         freeAll(m_bases);

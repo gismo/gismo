@@ -621,6 +621,17 @@ int main(int argc, char *argv[])
         // 3. Make the mapped spline
         gsMappedSpline<2,real_t> mspline(bb2,solFull);
 
+        gsMappedBasis<2,real_t> testt(mp,global2local);
+        gsMappedSpline<2,real_t> testtt(mp,global2local);
+
+
+        gsMappedSingleSpline<2,real_t> msinglespline = mspline.piece(0);
+        gsFunction<real_t> * msinglesplinefun = dynamic_cast<gsFunction<real_t> * >(&msinglespline);
+        // gsGeometry<real_t> * test = dynamic_cast<gsGeometry<real_t> * >(msinglesplinefun);
+        gsGeometry<real_t> * test = (gsGeometry<real_t> *) msinglesplinefun; // downcast
+        GISMO_ASSERT(msinglesplinefun!=NULL,"Hello");
+        GISMO_ASSERT(test!=NULL,"Hello2");
+
         gsFunctionSum<real_t> def(&mp,&mspline);
 
         // 4. Plot the mapped spline on the original geometry

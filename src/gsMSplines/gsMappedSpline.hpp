@@ -56,6 +56,30 @@ namespace gismo
 // }
 
 template<short_t d,class T>
+gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m )
+{
+    GISMO_ASSERT(mp.nPatches()>0,"MultiPatch is empty?");
+    m_mbases = new gsMappedBasis<d,T>(mp,m);
+
+    // TRANSFORM COEFFICIENTS
+    index_t rows = 0;
+    index_t cols = mp.patch(0).coefs().cols();
+    for (size_t p=0; p!=mp.nPatches(); ++p)
+        rows += mp.patch(p).coefs().rows();
+
+    m_coefs.resize(rows,cols);
+
+    index_t offset = 0;
+    for (size_t p=0; p!=mp.nPatches(); ++p)
+    {
+        m_coefs.block(0,0,mp.patch(p).coefs().rows(),cols) = mp.patch(p).coefs();
+        offset += mp.patch(p).coefs().rows();
+    }
+
+    init(*m_mbases);
+}
+
+template<short_t d,class T>
 gsMappedSpline<d,T>::gsMappedSpline( const gsMappedBasis<d,T> & mbases, const gsMatrix<T> & coefs )
 :
 m_coefs(coefs)
