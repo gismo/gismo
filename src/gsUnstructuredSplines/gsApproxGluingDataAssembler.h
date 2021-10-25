@@ -433,6 +433,8 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
     tilde_temp = m_bspGD.makeGeometry(beta_sol);
     beta_S = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
 
+
+// USING EXPRESSION ASSEMBLER
      //! [Problem setup]
     gsExprAssembler<> A(1,1);
 
@@ -452,8 +454,8 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
     u.setup(bc_empty, dirichlet::homogeneous, 0);
     A.initSystem();
 
-    gsFunctionExpr<T> f("x",1);
-    auto ff = A.getCoeff(f);
+    //gsFunctionExpr<T> f("x",1);
+    //auto ff = A.getCoeff(f);
 
     gsAlpha<real_t> alpha(m_patch.patch(0), m_uv);
     auto aa = A.getCoeff(alpha);
@@ -467,8 +469,8 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
     gsMatrix<> sol;
     u_sol.extract(sol);
 
-    gsDebugVar(alpha_sol);
-    gsDebugVar(sol);
+    //gsDebugVar(alpha_sol);
+    //gsDebugVar(sol);
 /*
     gsGeometry<>::uPtr tilde_temp;
     tilde_temp = m_bspGD.makeGeometry(sol);
