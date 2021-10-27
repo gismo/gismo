@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsC1Basis.h>
+#include <gsC1Basis/gsC1Basis.h>
 #include <gsIO/gsFileData.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -155,8 +155,8 @@ void gsC1Basis<d,T>::init()
     // Interface basis functions
     for (index_t i = 0; i<4; ++i)
     {
-        index_t dim_u = basisG1Container[i+1].component(0).size();
-        index_t dim_v = basisG1Container[i+1].component(1).size();
+        //index_t dim_u = basisG1Container[i+1].component(0).size();
+        //index_t dim_v = basisG1Container[i+1].component(1).size();
 
         if (m_patches.isBoundary(m_patchID,i+1)) // +1 of side index
         {
@@ -198,127 +198,144 @@ template<short_t d, class T>
 void gsC1Basis<d,T>::matchWith(const boundaryInterface &bi, const gsBasis<T> &other, gsMatrix<int> &bndThis,
                                gsMatrix<int> &bndOther) const
 {
-    bndThis = this->boundaryOffset(bi.first().side(), 0);
-    bndOther = other.boundaryOffset(bi.second().side(), 0);
+    // First side
+    // edge
+    gsMatrix<index_t> indizes1, indizes2;
+    short_t side_id = bi.first().side().index();
+    indizes1 = basisG1Container[side_id].boundaryOffset(boxSide(bi.first().side()), 0);
+    indizes2 = basisG1Container[side_id].boundaryOffset(boxSide(bi.first().side()), 1);
+
+    bndThis = indizes1;
+    bndThis.resize(indizes1.rows() + indizes2.rows(), indizes1.cols());
+    bndThis.block(0,0,indizes1.rows(), indizes1.cols()) = indizes1;
+    bndThis.block(indizes1.rows(),0,indizes2.rows(), indizes1.cols()) = indizes2;
+
+    index_t shift = 0;
+    for (index_t i=0; i< side_id; ++i)
+        shift += basisG1Container[side_id].size();
+
+    bndOther.array() += shift;
+
+    bndOther = bndThis;
+
+    /*
+// FIRST SIDE
+    // Number of edges + vertices
+    short_t side_id = bi.first().side().index();
+    index_t num_edges = basisPlusContainer[side_id - 1].size() + basisMinusContainer[side_id - 1].size() - 10;
+    num_edges = num_edges < 0 ? 0 : num_edges; // if there are no bf at the interface
+
+    index_t num_vertices = 6 + 6;
+    bndThis.resize(num_edges + num_vertices, 1); // to do: add vertex fcs
+    index_t ii = 0; // global counter for bndThis
+
+    // Edges 1
+    index_t start = rowBegin(side_id); // The first num basis functions
+    for (index_t i = start; i < start + num_edges; i++, ii++) // Single basis function
+    {
+        bndThis(ii, 0) = i;
+    }
+
+    // Vertices 1
+    std::vector<boxCorner> containedCorners1;
+    bi.first().side().getContainedCorners(d, containedCorners1);
+
+    for (size_t nc = 0; nc < containedCorners1.size(); nc++)
+    {
+        index_t corner_id = containedCorners1[nc].m_index;
+        start = rowBegin(corner_id + 4);
+        for (index_t i = start; i < start + 6; i++, ii++) // Single basis function
+            bndThis(ii, 0) = i;
+    }
+
+// SECOND SIDE
+    const gsC1Basis<d, T> * basis2 = dynamic_cast<const gsC1Basis<d, T>*>(&other);
+    // Number of edges + vertices
+    short_t side_id2 = bi.second().side().index();
+    num_edges = basis2->getBasisPlusSize(side_id) + basis2->getBasisMinusSize(side_id) - 10;
+    num_edges = num_edges < 0 ? 0 : num_edges; // if there are no bf at the interface
+
+    num_vertices = 6 + 6;
+    bndOther.resize(num_edges + num_vertices, 1); // to do: add vertex fcs
+    ii = 0; // global counter for bndThis
+
+    // Edges 2
+    start = basis2->rowBegin(side_id2); // The first num basis functions
+    for (index_t i = start; i < start + num_edges; i++, ii++) // Single basis function
+    {
+        bndOther(ii, 0) = i;
+    }
+
+    // Vertices 2
+    for (size_t nc = 0; nc < containedCorners1.size(); nc++)
+    {
+        patchCorner corner2 = bi.mapCorner(patchCorner(bi.first().patch, containedCorners1[nc]));
+        index_t corner_id = corner2.m_index;
+        start = basis2->rowBegin(corner_id + 4);
+        for (index_t i = start; i < start + 6; i++, ii++) // Single basis function
+            bndOther(ii, 0) = i;
+    }
+     */
+/*
+    patchCorner corner2 = bi.mapCorner(patchCorner(bi.first().patch, containedCorners1[0]) );
+    mb->basis(it->first().patch).functionAtCorner(containedCorners1[0]);
+    mb->basis(it->second().patch).functionAtCorner(boxCorner(corner2.m_index));
+    // ...
+
+    //int1 =  mb->basis(it->first().patch).functionAtCorner(containedCorners1[0]); // 0 or 1 not clear
+    //int2 =  mb->basis(it->second().patch).functionAtCorner(containedCorners2[0]);
+    m_sd->mapper.matchDofs(it->first().patch, int1, it->second().patch, int2);
+*/
+
 }
 
 
 template<short_t d, class T>
 gsMatrix<int> gsC1Basis<d,T>::boundaryOffset(const boxSide &side, int offset) const
 {
-    if (offset > 1)
-        gsInfo << "Offset > 1 is not implemented! \n";
+    gsMatrix<int> result;
 
+    // Edges
+    short_t side_id = side.index();
+    index_t shift = 0;
+    for (index_t i=0; i< side_id; ++i)
+        shift += basisG1Container[i].size();
+
+    result = basisG1Container[side_id].boundaryOffset(boxSide(side_id), offset);
+    result.array() += shift;
+
+    // Vertices:
     std::vector<boxCorner> containedCorners;
     side.getContainedCorners(d, containedCorners);
 
-    short_t side_id = side.index();
-    index_t num = 0;
+    GISMO_ASSERT(containedCorners.size() != 0, "No contained corner");
 
-    if (offset == 0)
-        num = basisPlusContainer[side_id - 1].size() - 6; // -6 is shifting, the same for bdy and interface
-    else if (offset == 1)
-        num = basisMinusContainer[side_id - 1].size() - 4; // Interface
-    else
-        gsInfo << "Offset > 1 is not implemented! \n";
+    for (size_t nc = 0; nc < containedCorners.size(); nc++) {
+        index_t corner_id = containedCorners[nc].m_index + 4; // + 4 included bcs of 4 sides!
 
-    num = num < 0 ? 0 : num; // if there are no bf at the interface
+        index_t shift = 0;
+        for (index_t i=0; i< corner_id; ++i)
+            shift += basisG1Container[i].size();
 
-    gsMatrix<index_t> indizes(num , 1);
+        gsMatrix<int> result_temp;
+        result_temp = basisG1Container[corner_id].boundaryOffset(boxSide(side_id), offset);
+        result_temp.array() += shift;
 
-    index_t start = rowBegin(side_id); // The first num basis functions
-    if (offset == 1)
-        start += basisPlusContainer[side_id - 1].size() - 6; // second row shift
+        result.conservativeResize(result.rows()+result_temp.rows(), 1 );
+        result.bottomRows(result_temp.rows()) = result_temp;
 
-        index_t ii = 0;
-    for (index_t i = start; i < start + num; i++, ii++) // Single basis function
-        indizes(ii, 0) = i;
-
-    return indizes;
-
-    /*
-    if (side.index() < 5) // Edge
-    {
-        short_t side_id = side.index();
-        index_t num = 0;
-        if (offset == 0)
+        if (offset == 1) // DIRTY AND QUICK
         {
-            index_t bdy_shift = 6;
-            if (!kindOfEdge[side_id - 1])
-                num = basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
-            else
-                num = basisPlusContainer[side_id - 1].size() - 6; // Interface
+            result_temp = basisG1Container[corner_id].boundaryOffset(boxSide(side_id), offset+1); // TODO
+            result_temp.array() += shift;
+
+            result.conservativeResize(result.rows()+result_temp.rows(), 1 );
+            result.bottomRows(result_temp.rows()) = result_temp;
         }
-        else if (offset == 1)
-        {
-            index_t bdy_shift = 6;
-            if (!kindOfEdge[side_id - 1])
-                num = basisMinusContainer[side_id - 1].size() - bdy_shift; // Boundary might not used and wrong
-            else
-                num = basisMinusContainer[side_id - 1].size() - 4; // Interface
-        } else
-            gsInfo << "Offset > 1 is not implemented! \n";
 
-        num = num < 0 ? 0 : num; // if there are no bf at the interface
-
-        index_t ii = 0;
-        gsMatrix<index_t> indizes(num , 1);
-        //for(index_t of = 0;of<=offset;++of)
-        {
-            index_t start = rowBegin(side_id); // The first num basis functions
-
-            if (offset == 1) {
-                index_t bdy_shift = 6;
-                if (!kindOfEdge[side_id - 1])
-                    start += basisPlusContainer[side_id - 1].size() - bdy_shift; // Boundary
-                else
-                    start += basisPlusContainer[side_id - 1].size() - 6; // Interface
-            }
-
-            for (index_t i = start; i < start + num; i++, ii++) // Single basis function
-                indizes(ii, 0) = i;
-        }
-        return indizes;
     }
-    else if (side.index() > 4)
-    {
-        index_t corner_id = side.index(); // + 4 already included!
-        if (offset == 0 && rows(corner_id ) != 0) {
 
-            if (kindOfVertex[corner_id - 4 - 1] != 0)
-            {
-                index_t ii = 0;
-                gsMatrix<index_t> indizes(valenceOfVertex[corner_id - 4 - 1] - numDofsVertex[corner_id - 4 - 1], 1);
-                index_t corner_id = side.index(); // + 4 already included!
-                index_t start = rowBegin(corner_id); // The first 3 basis functions
-                for (index_t i = start + numDofsVertex[corner_id - 4 - 1];
-                     i < start + valenceOfVertex[corner_id - 4 - 1]; i++, ii++) // Single basis function
-                    indizes(ii, 0) = i;
-                return indizes;
-            }
-            else
-            {
-                gsMatrix<index_t> null(1, 1);
-                null(0, 0) = -1;
-                return null;
-            }
-        }
-        else if (offset == 1)
-        {
-            index_t ii = 0;
-            gsMatrix<index_t> indizes(valenceOfVertex[corner_id - 4 - 1], 1);
-            index_t start = rowBegin(corner_id); // The first 3 basis functions
-            for (index_t i = start;
-                 i < start + valenceOfVertex[corner_id - 4 - 1]; i++, ii++) // Single basis function
-                indizes(ii, 0) = i;
-            return indizes;
-        }
-    }
-    gsMatrix<index_t> null(1, 1);
-    null(0, 0) = -1;
-
-    return null;
-     */
+    return result;
 }
 
 template<short_t d,class T>
@@ -327,8 +344,6 @@ gsC1Basis<d,T>::gsC1Basis(  gsMultiPatch<T> & mp,
 :
 m_patches(mp), m_patchID(patchID)
 {
-    //defaultOptions();
-    //getOptions();
 
     // 9 Subspaces for the single patch
     basisG1Container.resize(9);

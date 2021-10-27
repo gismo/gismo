@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): P. Weinmueller & A. Farahat
 */
 
 /*
@@ -113,7 +113,12 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
         return sz;
     }
 
-    index_t size_cols() const { return size(); }
+    index_t size_cols() const {
+        index_t sz = 0;
+        for (size_t i = 0; i < colContainer.size(); ++i)
+            sz += colContainer[i];
+        return sz;
+    }
 
     index_t size() const {
         index_t sz = 0;
@@ -140,30 +145,31 @@ GISMO_CLONE_FUNCTION(gsC1Basis)
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT(u.rows() == d, "Dimension of the points in active_into is wrong");
-        //if (u.cols() > 1)
-        //    gsInfo << "Active_into only for one point computed\n";
+        //GISMO_ASSERT(u.cols() == 1, "Active_into is wrong");
 
-        result.resize(0,1);
-        //for (index_t u_i = 0; u_i < u.cols(); ++u_i) // For each points
-        {
-            index_t u_i = 0; // Check if the points are in the same element TODO
-            index_t shift = 0;
-            gsMatrix<index_t> result_single(0,1);
-            for (size_t i=0; i< basisG1Container.size(); ++i)
+        index_t nr = 0;
+        std::vector<gsMatrix<index_t>> result_temp;
+        result_temp.resize(basisG1Container.size());
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+            if (rowContainer[i] != 0)
             {
-                if (rowContainer[i] != 0)
-                {
-                    gsMatrix<index_t> result_temp(0,1);
-                    basisG1Container[i].active_into(u.col(u_i), result_temp);
-                    result_temp.array() += shift;
-                    result_single.conservativeResize(result_single.rows()+result_temp.rows(), 1 );
-                    result_single.bottomRows(result_temp.rows()) = result_temp;
-
-                    shift += basisG1Container[i].size();
-                }
+                basisG1Container[i].active_into(u, result_temp[i]);
+                nr += result_temp[i].rows();
             }
-            result.conservativeResize(result.rows()+result_single.rows(), 1 );
-            result.bottomRows(result_single.rows()) = result_single;
+
+        result.resize(nr,u.cols());
+
+        index_t shift = 0;
+        index_t shift_rows = 0;
+        for (size_t i=0; i< basisG1Container.size(); ++i)
+        {
+            if (rowContainer[i] != 0)
+            {
+                result_temp[i].array() += shift;
+                result.block(shift_rows, 0, result_temp[i].rows(), u.cols()) = result_temp[i];
+                shift += basisG1Container[i].size();
+                shift_rows += result_temp[i].rows();
+            }
         }
     }
 
@@ -234,9 +240,11 @@ public:
 
     void setBasisPlus(gsBSplineBasis<> & basisPlus, index_t side) { basisPlusContainer[side-1] = basisPlus; }
     gsBSplineBasis<> & getBasisPlus(index_t side) { return basisPlusContainer[side-1]; }
+    index_t getBasisPlusSize(index_t side) const { return basisPlusContainer[side-1].size(); }
 
     void setBasisMinus(gsBSplineBasis<> & basisMinus, index_t side) { basisMinusContainer[side-1] = basisMinus; }
     gsBSplineBasis<> & getBasisMinus(index_t side) { return basisMinusContainer[side-1]; }
+    index_t getBasisMinusSize(index_t side) const { return basisMinusContainer[side-1].size(); }
 
     void setBasisGeo(gsBSplineBasis<> & basisGeo, index_t side) { basisGeoContainer[side-1] = basisGeo; }
     gsBSplineBasis<> & getBasisGeo(index_t side) { return basisGeoContainer[side-1]; }
@@ -311,7 +319,7 @@ protected:
     gsMultiPatch<T> & m_patches;
 
     /// The ID of the single basis
-    index_t & m_patchID;
+    index_t m_patchID;
 
     // Collection of the subspaces
     std::vector<gsTensorBSplineBasis<d, T>> basisG1Container;

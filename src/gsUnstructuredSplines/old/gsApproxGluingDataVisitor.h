@@ -45,8 +45,7 @@ public:
                          gsBasis<T>      & basis,
                          gsMatrix<T>     & quNodes,
                          index_t m_uv,
-                         gsOptionList & optionList,
-                         index_t patchID)
+                         gsOptionList & optionList)
     {
         md.points = quNodes;
 

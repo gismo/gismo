@@ -17,17 +17,17 @@
 #include <gsCore/gsMultiPatch.h>
 
 #include <gsMSplines/gsMappedBasis.h>
-#include <gsMSplines/gsMappedSpline.h>
+#include <gsMSplines/gsCompositeGeom.h>
 
 namespace gismo
 {
 
 template<short_t d,class T>
-class gsDPatchGeom : public gsMappedSpline<d,T>
+class gsDPatchGeom : public gsCompositeGeom<d,T>
 {
     private:
         typedef gsMappedSingleBasis<d,T> Basis;
-        typedef gsMappedSpline<d,T> Base;
+        typedef gsCompositeGeom<d,T> Base;
 
     protected:
         const gsMultiPatch<T> & m_patches;

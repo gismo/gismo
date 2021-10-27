@@ -13,22 +13,113 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsC1Basis.h>
-#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsContainerBasis.h>
+#include <gsUnstructuredSplines/gsPatchReparameterized.h>
 
 #include <gsUnstructuredSplines/gsApproxGluingData.h>
 #include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjection.h>
 
+
 namespace gismo
 {
+
+template <class T>
+class gsTraceBasis : public gismo::gsFunction<T>
+{
+
+protected:
+    gsGeometry<T> & _geo;
+
+    gsBasis<T> & m_basis_plus;
+    gsBasis<T> & m_basis_geo;
+    gsBSpline<T> & _m_basis_beta;
+
+    mutable gsMapData<T> _tmp;
+
+    bool m_isboundary;
+    const index_t m_bfID, m_uv;
+
+
+public:
+    /// Shared pointer for gsTraceBasis
+    typedef memory::shared_ptr< gsTraceBasis > Ptr;
+
+    /// Unique pointer for gsTraceBasis
+    typedef memory::unique_ptr< gsTraceBasis > uPtr;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    gsTraceBasis(gsGeometry<T> & geo,
+                 gsBasis<T> & basis_plus,
+                 gsBasis<T> & basis_geo,
+                 gsBSpline<T> & basis_beta,
+                 bool isboundary,
+                 const index_t bfID,
+                 const index_t uv) :
+            _geo(geo), m_basis_plus(basis_plus), m_basis_geo(basis_geo), _m_basis_beta(basis_beta),
+            m_isboundary(isboundary), m_bfID(bfID), m_uv(uv), _traceBasis_piece(nullptr)
+    {
+        //_tmp.flags = NEED_JACOBIAN;
+    }
+
+    ~gsTraceBasis() { delete _traceBasis_piece; }
+
+GISMO_CLONE_FUNCTION(gsTraceBasis)
+
+    short_t domainDim() const {return 1;}
+
+    short_t targetDim() const {return 1;}
+
+    mutable gsTraceBasis<T> * _traceBasis_piece; // why do we need this?
+
+    const gsFunction<T> & piece(const index_t k) const
+    {
+        delete _traceBasis_piece;
+        _traceBasis_piece = new gsTraceBasis(_geo, m_basis_plus, m_basis_geo, _m_basis_beta,
+                                             m_isboundary, m_bfID, m_uv);
+        return *_traceBasis_piece;
+    }
+
+    // Input is parametric coordinates of 1-D \a mp
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        result.resize( targetDim() , u.cols() );
+
+        // tau/p
+        gsBSplineBasis<T> bsp_temp = dynamic_cast<gsBSplineBasis<> & >(m_basis_geo);
+
+        real_t p = bsp_temp.degree();
+        real_t tau_1 = bsp_temp.knots().at(p + 1); // p + 2
+
+        gsMatrix<T> beta, N_0, N_1, N_i_plus, der_N_i_plus;
+
+        if (!m_isboundary)
+            _m_basis_beta.eval_into(u.row(m_uv),beta); // 1-dir == PatchID
+        else
+            beta.setZero(1, u.cols());
+
+        m_basis_geo.evalSingle_into(0,u.row(1-m_uv),N_0); // u
+        m_basis_geo.evalSingle_into(1,u.row(1-m_uv),N_1); // u
+
+        m_basis_plus.evalSingle_into(m_bfID,u.row(m_uv),N_i_plus); // v
+        m_basis_plus.derivSingle_into(m_bfID,u.row(m_uv),der_N_i_plus);
+
+        gsMatrix<T> temp = beta.cwiseProduct(der_N_i_plus);
+        result = N_i_plus.cwiseProduct(N_0 + N_1) - temp.cwiseProduct(N_1) * tau_1 / p;
+    }
+
+};
+
+
+
 template<short_t d, class T>
 class gsApproxC1Edge
 {
 
 private:
-    typedef gsC1Basis<d, T> Basis;
-    typedef typename std::vector<Basis> C1BasisContainer;
-    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
+    typedef gsContainerBasis<d, T> Basis;
+    typedef typename std::vector<Basis> BasisContainer;
+    typedef typename std::vector<gsPatchReparameterized<d,T>> C1AuxPatchContainer;
 
     /// Shared pointer for gsApproxC1Edge
     typedef memory::shared_ptr<gsApproxC1Edge> Ptr;
@@ -43,7 +134,7 @@ public:
 
 
     gsApproxC1Edge(gsMultiPatch<T> const & mp,
-                C1BasisContainer & bases,
+                   BasisContainer & bases,
                 const boundaryInterface & item,
                 size_t & numInt,
                 const gsOptionList & optionList)
@@ -59,8 +150,8 @@ public:
         //const index_t dir_2 = side_2 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
-        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_2), m_bases[patch_2], side_2));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_2), m_bases[patch_2], side_2));
 
         reparametrizeInterfacePatches();
 
@@ -74,6 +165,64 @@ public:
 
         approxEdgeBasis.setG1BasisEdge(result_1);
         approxEdgeBasis2.setG1BasisEdge(result_2);
+
+
+
+        //! [Problem setup]
+        index_t bfID = 3;
+        index_t patchID = 0;
+        index_t side = m_auxPatches[patchID].side();
+        index_t dir = 0 == 0 ? 1 : 0;
+
+        gsSparseSolver<real_t>::LU solver;
+        gsExprAssembler<> A(1,1);
+
+        typedef gsExprAssembler<>::variable    variable;
+        typedef gsExprAssembler<>::space       space;
+        typedef gsExprAssembler<>::solution    solution;
+
+        // Elements used for numerical integration
+        gsMultiBasis<T> edgeSpace(m_auxPatches[patchID].getC1BasisRotated().getBasis(m_auxPatches[patchID].side()));
+        A.setIntegrationElements(edgeSpace);
+        gsExprEvaluator<> ev(A);
+
+        // Set the discretization space
+        space u = A.getSpace(edgeSpace);
+
+        gsBoundaryConditions<> bc_empty;
+        u.setup(bc_empty, dirichlet::homogeneous, 0);
+        A.initSystem();
+
+        gsBSplineBasis<T> basis_plus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(side-1, 0));
+        gsBSplineBasis<T> basis_minus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(side-1, 1));
+        gsBSplineBasis<T> basis_geo = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(side-1, 2));
+        gsGeometry<T> & geo = m_auxPatches[patchID].getPatch();
+
+        gsBSpline<T> basis_beta = approxGluingData.betaS(dir);
+
+        gsTraceBasis<real_t> traceBasis(geo, basis_plus, basis_geo, basis_beta, false, bfID, dir);
+
+        auto aa = A.getCoeff(traceBasis);
+
+        A.assemble(u * u.tr(),u * aa);
+
+        solver.compute( A.matrix() );
+        gsMatrix<> solVector = solver.solve(A.rhs());
+
+        solution u_sol = A.getSolution(u, solVector);
+        gsMatrix<> sol;
+        u_sol.extract(sol);
+
+        /*gsGeometry<>::uPtr tilde_temp;
+        tilde_temp = edgeSpace.makeGeometry(sol);
+        alphaSContainer[dir] = dynamic_cast<gsBSpline<T> &> (*tilde_temp);*/
+
+
+
+        //gsDebugVar(sol-result_1.patch(bfID-3).coefs());
+
+
+
 
 
         // parametrizeBasisBack
@@ -108,7 +257,7 @@ public:
     }
 
     gsApproxC1Edge(gsMultiPatch<T> const & mp,
-                C1BasisContainer & bases,
+                   BasisContainer & bases,
                 const patchSide & item,
                 size_t & numBdy,
                 const gsOptionList & optionList)
@@ -120,7 +269,7 @@ public:
         //const index_t dir_1 = side_1 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsC1AuxiliaryPatch<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
 
         reparametrizeSinglePatch(side_1);
 
@@ -150,6 +299,9 @@ public:
             collection.save();
         }
     }
+
+    std::vector<gsMultiPatch<T>> getEdgeBasis() { return basisEdgeResult; };
+/*
 
     void saveBasisInterface(gsSparseMatrix<T> & system)
     {
@@ -215,13 +367,15 @@ public:
             basis_2.addPatch(basisEdgeResult[i].patch(size_plus - 3));
             basis_2.addPatch(basisEdgeResult[i].patch(size_plus + size_minus - 1));
             basis_2.addPatch(basisEdgeResult[i].patch(size_plus + size_minus - 2));
+*/
 /*
             for (index_t ii = 0; ii < 5; ii++)
             {
                 vertex_bf[patch][(side-1)].addPatch(basis_1.patch(ii)); // -1 bcs of c++ counting
                 vertex_bf[patch][(side-1)].addPatch(basis_2.patch(ii));
             }
-*/
+*//*
+
 
 
             for (index_t ii = 0; ii < 5; ii++)
@@ -294,6 +448,7 @@ public:
         }
 
     }
+*/
 
     void interpolateBasisInterface(gsApproxGluingData<d, T> & approxGluingData, gsMultiPatch<> & result_1, gsMultiPatch<> & result_2)
     {
@@ -302,11 +457,11 @@ public:
             index_t dir = patchID == 0 ? 1 : 0;
             index_t side = m_auxPatches[patchID].side();
 
-            gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[patchID].getC1BasisRotated().getEdgeBasis(side); // 0 -> u, 1 -> v
+            gsTensorBSplineBasis<d, T> basis_edge = dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[patchID].getC1BasisRotated().getBasis(side)); // 0 -> u, 1 -> v
 
-            gsBSplineBasis<T> basis_plus = m_auxPatches[patchID].getC1BasisRotated().getBasisPlus(side);
-            gsBSplineBasis<T> basis_minus = m_auxPatches[patchID].getC1BasisRotated().getBasisMinus(side);
-            gsBSplineBasis<T> basis_geo = m_auxPatches[patchID].getC1BasisRotated().getBasisGeo(side);
+            gsBSplineBasis<T> basis_plus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(side-1,0));
+            gsBSplineBasis<T> basis_minus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(side-1,1));
+            gsBSplineBasis<T> basis_geo = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[patchID].getC1BasisRotated().getHelperBasis(side-1,2));
 
             index_t n_plus = basis_plus.size();
             index_t n_minus = basis_minus.size();
@@ -380,11 +535,11 @@ public:
         index_t side = m_auxPatches[0].side();
         index_t dir = 1;
 
-        gsTensorBSplineBasis<d, T> basis_edge = m_auxPatches[0].getC1BasisRotated().getEdgeBasis(m_auxPatches[0].side()); // 0 -> u, 1 -> v
+        gsTensorBSplineBasis<d, T> basis_edge = dynamic_cast<gsTensorBSplineBasis<d, T>&>(m_auxPatches[0].getC1BasisRotated().getBasis(m_auxPatches[0].side())); // 0 -> u, 1 -> v
 
-        gsBSplineBasis<T> basis_plus = m_auxPatches[0].getC1BasisRotated().getBasisPlus(side);
-        gsBSplineBasis<T> basis_minus = m_auxPatches[0].getC1BasisRotated().getBasisMinus(side);
-        gsBSplineBasis<T> basis_geo = m_auxPatches[0].getC1BasisRotated().getBasisGeo(side);
+        gsBSplineBasis<T> basis_plus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[0].getC1BasisRotated().getHelperBasis(side-1, 0));
+        gsBSplineBasis<T> basis_minus = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[0].getC1BasisRotated().getHelperBasis(side-1, 1));
+        gsBSplineBasis<T> basis_geo = dynamic_cast<gsBSplineBasis<T>&>(m_auxPatches[0].getC1BasisRotated().getHelperBasis(side-1, 2));
 
         index_t n_plus = basis_plus.size();
         index_t n_minus = basis_minus.size();
@@ -439,7 +594,7 @@ protected:
 
     // Input
     gsMultiPatch<T> const & m_mp;
-    C1BasisContainer & m_bases;
+    BasisContainer & m_bases;
 
     const gsOptionList & m_optionList;
 

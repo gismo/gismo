@@ -14,20 +14,25 @@
 #pragma once
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsMultiPatch.h>
+#include <gsMSplines/gsMappedSingleSpline.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsCore/gsDomainIterator.h>
 
 namespace gismo
 {
+
+// forward declarations of the mapper classes
+template<short_t d,class T> class gsMappedSingleSpline;
+
 template<short_t d,class T>
-class gsMappedSpline : public gsGeoTraits<d,T>::GeometryBase
+class gsMappedSpline : public gsFunctionSet<T>
 {
+    friend class gsMappedSingleSpline<d,T>;
 
 private:
-    typedef typename gsGeoTraits<d,T>::GeometryBase Base;
-
-    typedef gsMappedSingleBasis<d,T> Basis;
+    typedef typename gsGeoTraits<d,T>::GeometryBase GeoType;
+    typedef gsBasis<T> BasisType;
 
     /// Shared pointer for gsMappedSpline
     typedef memory::shared_ptr< gsMappedSpline > Ptr;
@@ -37,26 +42,62 @@ private:
 
 public:
     /// Default empty constructor
-    gsMappedSpline() : Base(), m_compBasis(nullptr) { }
+    gsMappedSpline() : m_mbases(nullptr) { }
 
-    gsMappedSpline( gsMultiPatch<T> const & mp,std::string pathToMap );
+    // gsMappedSpline( gsMultiPatch<T> const & mp,std::string pathToMap );
 
     /// Construct Geom by basis and coefficient matrix
-    gsMappedSpline( const gsMappedBasis<d,T> & basis, const gsMatrix<T> & coefs );
+    gsMappedSpline( const gsMappedBasis<d,T> & mbases, const gsMatrix<T> & coefs );
 
-    /// Construct Geom by (porjecting) a multipatch together with a coefficient matrix
-    gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & bmap );
+    // /// Construct Geom by (porjecting) a multipatch together with a coefficient matrix
+    // gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & bmap );
 
     gsMappedSpline( const gsMappedSpline& other );
 
     gsMappedSpline<d,T> & operator=( const gsMappedSpline& other );
 
     ~gsMappedSpline()
-    { delete m_compBasis; } //destructor
+    { delete m_mbases; } //destructor
 
-    GISMO_BASIS_ACCESSORS
+    void init(const gsMappedBasis<d,T> & mbasis)
+    {
+        GISMO_ASSERT(mbasis.domainDim()==d, "Error in dimensions");
+
+        m_ss.clear();
+        m_ss.reserve(mbasis.nPieces());
+        for ( index_t k=0; k!=mbasis.nPieces(); k++ )
+        {
+            m_ss.push_back( gsMappedSingleSpline<d,T>(this,k) );
+        }
+    }
 
 public:
+
+    index_t nPieces() const {return m_mbases->nPieces();}
+
+    /// getter for (const) m_bases[i]
+    BasisType const & getBase(int i) const
+    { return m_mbases->getBase(i); }
+
+    /// getter for m_bases[i]
+    BasisType & getBase(int i)
+    { return m_mbases->getBase(i); }
+
+     /// getter for m_bases
+    const std::vector<BasisType*> getBases() const
+    { return m_mbases->getBases(); }
+
+    /// getter for m_mapper
+    gsWeightMapper<T> const & getMapper() const
+    { return m_mbases->getMapper(); }
+
+    /// getter for m_mapper
+    gsWeightMapper<T> * getMapPointer() const
+    { return m_mbases->getMapPointer(); }
+
+    /// getter for m_topol
+    gsBoxTopology const & getTopol() const
+    { return m_mbases->getTopol(); }
 
 //////////////////////////////////////////////////
 // Virtual base members with a new implementation
@@ -68,42 +109,82 @@ public:
 
     GISMO_CLONE_FUNCTION(gsMappedSpline)
 
+    short_t domainDim() const
+    { return m_mbases->domainDim(); }
+
+    short_t targetDim() const
+    { return m_coefs.cols(); }
+
+    /// returns the amount of patches of the multi patch
+    size_t nPatches() const
+    { return m_mbases->nPatches(); }
+
+    const gsMappedSingleSpline<d,T> & piece(const index_t k) const { return m_ss[k]; }
+
+    index_t size() const {return nPieces();}
+
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-    {
-        m_compBasis->print(os);
-        return os;
-    }
+    { return m_mbases->print(os); }
 
-    const gsMappedBasis<d,T> & getCompBasis() const
-    { return *m_compBasis; }
+    const gsMappedBasis<d,T> & getMappedBasis() const
+    { return *m_mbases; }
 
-    gsMappedBasis<d,T> & getCompBasis()
-    { return *m_compBasis; }
+    const gsMatrix<T> & getMappedCoefs() const
+    { return m_coefs; }
 
-    /// The gsBasisFun points to the i-th basis function of m_basis
-    /// after calling this setter.
-    void setBasis( unsigned const & i ) const
-    { this->basis().setBasis(i); }
-
-
-    /// Point to the first basis function of the basis
-    void first()
-    { this->basis().first(); }
-
-    /// Points to the first basis function of the basis
-    /// or return false if this is the last basis function
-    bool next() const
-    {  return this->basis().next(); }
+    gsMappedBasis<d,T> & getMappedBasis()
+    { return *m_mbases; }
 
     gsMultiPatch<T> exportToPatches() const;
 
-    gsGeometry<T> * exportPatch(int i,gsMatrix<T> const & localCoef) const
-    { return m_compBasis->exportPatch(i,localCoef); }
+    /////// TO DO
+    gsGeometry<T> * exportPatch(int i,gsMatrix<T> const & localCoef) const;
+
+public:
+    //////////////////////////////////////////////////
+    // functions for evaluating and derivatives
+    //////////////////////////////////////////////////
+
+    /// \brief Evaluates nonzero basis functions of \a patch at point \a u into \a result.
+    ///
+    /// Let...\n
+    /// \a d denote the dimension of the parameter domain.\n
+    /// \a k denote the number of active (i.e., non-zero) basis functions (see active_into()).
+    /// \a n denote the number of evaluation points.\n
+    ///
+    /// The \a n <b>evaluation points \a u</b> are given in a gsMatrix of size <em>d</em> x <em>n</em>.
+    /// Each column of \a u represents one evaluation point.\n
+    /// \n
+    /// The gsMatrix <b>\a result</b> contains the computed function values in the following form:\n
+    /// Column \a j of \a result corresponds to one evaluation point (specified by the <em>j</em>-th column of \a u).
+    /// The column contains the values of all active functions "above" each other.\n
+    ///
+    /// For example, for scalar basis functions \a Bi : (x,y,z)-> R, a colum represents\n
+    /// (B1, B2, ... , Bn)^T,\n
+    /// where the order the basis functions \a Bi is as returned by active() and active_into().
+    ///
+    /// \param[in] u Evaluation points given as gsMatrix of size <em>d</em> x <em>n</em>.
+    /// See above for details.
+    /// \param[in,out] result gsMatrix of size <em>k</em> x <em>n</em>.
+    /// See above for details.
+    ///
+    void eval_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv2_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+
+    /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
+    /// to order \a n at points \a u into \a result.
+    void evalAllDers_into(const unsigned patch, const gsMatrix<T> & u,
+                          const int n, std::vector<gsMatrix<T> >& result ) const;
+
+
 
 // Data members
 protected:
-    gsMappedBasis<d,T> * m_compBasis;
+    gsMappedBasis<d,T> * m_mbases;
+    const gsMatrix<T> m_coefs;
+    std::vector<gsMappedSingleSpline<d,T> > m_ss;
 
 }; // class gsMappedSpline
 

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsApproxGluingDataVisitor.h>
+#include <gsUnstructuredSplines/old/gsApproxGluingDataVisitor.h>
 
 namespace gismo
 {
@@ -29,9 +29,8 @@ public:
     gsApproxGluingDataAssembler(const gsGeometry<> & patch,
                                 gsBSplineBasis<T> & bsp_Gd,
                                 index_t uv,
-                                const gsOptionList & optionList,
-                                index_t patchID)
-        : m_patch(patch), m_bspGD(bsp_Gd), m_uv(uv), m_optionList(optionList), m_patchID(patchID)
+                                const gsOptionList & optionList)
+        : m_patch(patch), m_bspGD(bsp_Gd), m_uv(uv), m_optionList(optionList)
     {
         interpolation_value = false;
         interpolation_deriv = false;
@@ -64,8 +63,6 @@ protected:
     index_t m_uv;
 
     gsOptionList m_optionList;
-
-    index_t m_patchID;
 
     bool interpolation_value, interpolation_deriv;
 
@@ -293,7 +290,7 @@ inline void gsApproxGluingDataAssembler<T, bhVisitor>::apply(bhVisitor & visitor
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
             // Perform required evaluations on the quadrature nodes
-            visitor_.evaluate(m_patch, m_bspGD, quNodes, m_uv, m_optionList, m_patchID);
+            visitor_.evaluate(m_patch, m_bspGD, quNodes, m_uv, m_optionList);
 
             // Assemble on element
             visitor_.assemble(*domIt, quWeights);
@@ -306,6 +303,8 @@ inline void gsApproxGluingDataAssembler<T, bhVisitor>::apply(bhVisitor & visitor
 
     }//omp parallel
 }
+
+
 
 template <class T, class bhVisitor>
 void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
@@ -369,15 +368,24 @@ void gsApproxGluingDataAssembler<T, bhVisitor>::solve()
     tilde_temp = m_bspGD.makeGeometry(beta_sol);
     beta_S = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
 
+    gsDebugVar(alpha_sol);
+    gsDebugVar(beta_sol);
+
+/*
+    gsGeometry<>::uPtr tilde_temp;
+    tilde_temp = m_bspGD.makeGeometry(sol);
+    alpha_S = dynamic_cast<gsBSpline<T> &> (*tilde_temp);
+*/
+    /*
     gsMatrix<> points(1,2);
     points.setZero();
     points(0,1) = 1.0;
-    /*
+
     gsInfo << "Alpha: " << alpha_S.eval(points) << "\n";
     gsInfo << "Beta: " << beta_S.eval(points) << "\n";
     gsInfo << "Alpha deriv: " << alpha_S.deriv(points) << "\n";
     gsInfo << "Beta deriv: " << beta_S.deriv(points) << "\n";
-     */
+    */
 
 } // solve
 

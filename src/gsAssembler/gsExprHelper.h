@@ -111,20 +111,19 @@ public:
         return *mesh_ptr;
     }
 
-    geometryMap getMap(const gsFunction<T> & mp)
+    geometryMap getMap(const gsFunctionSet<T> & mp)
     {
         expr::gsGeometryMap<T> gm;
         gm.setSource(mp);
-        gsDebugVar(gm.m_fs);
         return gm;
     }
 
-    geometryMap getMap(const gsMultiPatch<T> & mp)
-    {
-        expr::gsGeometryMap<T> gm;
-        gm.setSource(mp);
-        return gm;
-    }
+    // geometryMap getMap(const gsMultiPatch<T> & mp)
+    // {
+    //     expr::gsGeometryMap<T> gm;
+    //     gm.setSource(mp);
+    //     return gm;
+    // }
 
     expr::gsFeVariable<T> getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {

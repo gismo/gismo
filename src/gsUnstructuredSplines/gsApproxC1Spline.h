@@ -18,47 +18,26 @@
 #pragma once
 
 #include<gsIO/gsOptionList.h>
-#include<gsUnstructuredSplines/gsC1SplineBase.h>
+#include<gsUnstructuredSplines/gsContainerBasisBase.h>
 
 namespace gismo
 {
 
 template<short_t d,class T>
-class gsApproxC1Spline : public gsC1SplineBase<d,T>
+class gsApproxC1Spline : public gsContainerBasisBase<d,T>
 {
 public:
 
-    using Base = gsC1SplineBase<d,T>;
-
-    gsApproxC1Spline(gsMultiPatch<T> & patches, gsMultiBasis<T> & multiBasis, gsOptionList & optionList)
-    :
-    Base(patches, multiBasis)
-    {
-        //Base::m_patches(patches);
-        //Base::m_multiBasis = gsMultiBasis<T>(m_patches);
-
-        // if (Base::m_patches.targetDim() >2 )
-        //     Base::m_patches.embed(2);
-
-        Base::setOptions(optionList);
-
-        // p-refine
-        for (size_t np = 0; np < m_patches.nPatches(); ++np)
-            m_multiBasis.basis(np).setDegree(m_options.getInt("discreteDegree"));
-    };
-
+    // gsContainerBasisBase:
+    // - Interior space: [0] : inner,
+    // - Edge spaces:    [1] : west, [2] : east, [3] : south, [4] : north,
+    // - Vertex spaces:  [5] : southwest, [6] : southeast, [7] : northwest, [8] : northeast
+    using Base = gsContainerBasisBase<d,T>;
 
     gsApproxC1Spline(gsMultiPatch<T> & patches, gsMultiBasis<T> & multiBasis)
     :
     Base(patches, multiBasis)
     {
-
-        // if (Base::m_patches.targetDim() >2 )
-        // {
-        //     Base::m_patches = patches;
-        //     Base::m_patches.embed(2);
-        // }
-
         this->defaultOptions();
     };
 
@@ -67,9 +46,6 @@ public:
 
     void init();
     void compute();
-
-    void writeParaviewSinglePatch( index_t patchID, std::string type );
-    void plotParaview( std::string fn, index_t npts = 1000 );
 
 private:
     void defaultOptions();
@@ -96,10 +72,12 @@ private:
                               gsKnotVector<T> & kv_1,
                               gsKnotVector<T> & kv1_result);
 
-    void createLocalVertexSpace(gsTensorBSplineBasis<d,T> & basis_vertex_1, gsTensorBSplineBasis<d,T> & result_1);
-
 protected:
     // Data members
+    index_t p_tilde, r_tilde;
+
+    // Container[patch][side]
+    std::vector<std::vector<index_t>> rowContainer;
 
     // Put here the members of the shared functions
     using Base::m_patches;
@@ -107,8 +85,6 @@ protected:
     using Base::m_options;
     using Base::m_matrix;
     using Base::m_bases;
-
-    index_t p_tilde, r_tilde;
 };
 
 }

@@ -489,6 +489,11 @@ public:
         else return (m_offset[k1]-m_offset[k]);
     }
 
+    size_t totalSize(const index_t c = 0) const
+    {
+        return m_dofs[c].size();
+    }
+
     /// \brief For \a gl being a global index, this function returns a
     /// vector of pairs (patch,dof) that contains all the pairs which
     /// map to \a gl

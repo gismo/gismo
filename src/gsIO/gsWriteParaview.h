@@ -14,6 +14,7 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
+#include <gsMSplines/gsMappedSpline.h>
 
 #include <sstream>
 #include <fstream>
@@ -104,7 +105,7 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
 /// \param mesh if true, the parameter mesh is plotted as well
 /// \param ctrNet if true, the control net is plotted as well
 template<class T>
-void gsWriteParaview( gsCompositeGeom<2,T> const & Geo, 
+void gsWriteParaview( gsMappedSpline<2,T> const & Geo,
                       std::string const & fn, unsigned npts=NS, bool mesh = false, bool ctrNet = false );
 
 

@@ -15,13 +15,14 @@
 
 #include <gsUnstructuredSplines/gsApproxC1Edge.h>
 
-#include <gsUnstructuredSplines/gsC1AuxiliaryPatch.h>
+#include <gsUnstructuredSplines/gsPatchReparameterized.h>
 
 #include <gsUnstructuredSplines/gsApproxGluingData.h>
 #include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjection.h>
 
 namespace gismo
 {
+
 
     template<short_t d,class T>
     void gsApproxC1Edge<d,T>::computeAuxTopology()
@@ -141,8 +142,8 @@ namespace gismo
     template<short_t d,class T>
     void gsApproxC1Edge<d,T>::computeKernel(gsMultiPatch<> & result_0, gsMultiPatch<> & result_1, index_t side_0)
     {
-        index_t n_plus = m_auxPatches[0].getC1BasisRotated().getBasisPlus(side_0).size(); // == patch 1, side 1
-        index_t n_minus = m_auxPatches[0].getC1BasisRotated().getBasisMinus(side_0).size();
+        index_t n_plus = m_auxPatches[0].getC1BasisRotated().getHelperBasis(side_0-1, 0).size(); // == patch 1, side 1
+        index_t n_minus = m_auxPatches[0].getC1BasisRotated().getHelperBasis(side_0-1, 1).size();
 
         index_t dim_U_0 = result_0.basis(0).component(0).size();
         index_t dim_V_0 = result_0.basis(0).component(1).size();
@@ -258,6 +259,5 @@ namespace gismo
             }
         } //topBottom
     } // ComputeKernel
-
 
 } // namespace gismo

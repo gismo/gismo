@@ -767,7 +767,7 @@ public:
     index_t   interfaceCont() const {return m_sd->cont;}
     index_t & setInterfaceCont(const index_t _r) const
     {
-        GISMO_ASSERT(_r>-2 && _r<1, "Invalid or not implemented (r="<<_r<<").");
+        GISMO_ASSERT(_r>-2 && _r<2, "Invalid or not implemented (r="<<_r<<").");
         return m_sd->cont = _r;
     }
 
@@ -985,6 +985,49 @@ public:
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
+
+            // Does this work for the D-Patch as well??
+            if ( 0==this->interfaceCont() ) // C^0 matching interface
+            {
+                gsMatrix<index_t> int1, int2;
+                for ( gsBoxTopology::const_iiterator it = mapb->getTopol().iBegin();
+                      it != mapb->getTopol().iEnd(); ++it )
+                {
+                    int1 = mapb->basis(it->first().patch).boundaryOffset( it->first().side(), 0);
+                    int2 = mapb->basis(it->second().patch).boundaryOffset( it->second().side(), 0);
+
+                    m_sd->mapper.matchDofs(it->first().patch, int1, it->second().patch, int2);
+                }
+            }
+            if ( 1==this->interfaceCont() ) // C^1 matching interface
+            {
+
+                gsMatrix<index_t> int1, int2;
+                for ( gsBoxTopology::const_iiterator it = mapb->getTopol().iBegin();
+                      it != mapb->getTopol().iEnd(); ++it )
+                {
+                    //mapb->matchInterface(*it, m_sd->mapper);
+                    // copied from matchInterface to do add the function in gsMappedBasis
+                    // should work for all basis which have matchWith() implementeds
+
+                    gsMatrix<index_t> b1, b2;
+                    b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 0);
+                    b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 0);
+
+                    // Match the dofs on the interface
+                    for (size_t i = 0; i!=m_sd->mapper.componentsSize(); ++i)
+                        m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i );
+
+                    b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 1);
+                    b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 1);
+
+                    // Match the dofs on the interface
+                    for (size_t i = 0; i!=m_sd->mapper.componentsSize(); ++i)
+                        m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i );
+
+                }
+            }
+
             gsMatrix<index_t> bnd;
             for (typename gsBoundaryConditions<T>::const_iterator
                      it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
@@ -1009,6 +1052,8 @@ public:
         }
 
         m_sd->mapper.finalize();
+        m_sd->mapper.print();
+
 
         // No more BCs
         //m_bcs = bc.get("Dirichlet");
@@ -1119,23 +1164,41 @@ public:
     /// coupled and boundary DoFs
     void extractFull(gsMatrix<T> & result) const
     {
-        index_t offset, ii, bi;
-        result.resize(_u.mapper().mapSize(),1);
-        for (index_t c=0; c!=_u.dim(); c++)
-            for (size_t j=0; j!=_u.mapper().numPatches(); j++)
-                for (size_t i=0; i!=_u.mapper().patchSize(j); i++) // loop over all DoFs (free and eliminated)
-                {
-                    offset = _u.mapper().offset(j);
+        index_t offset;
 
-                    ii = _u.mapper().index(i,j,c); // global index
-                    if (_u.mapper().is_boundary(i,j,c))
+        const index_t dim = _u.dim();
+
+        size_t totalSz = 0;
+        for (index_t c = 0; c!=dim; c++) // for all components
+            totalSz += _u.mapper().totalSize(c);
+
+        //result.resize(_u.mapper().size(), 1); // (!)
+        result.resize(totalSz, 1); // (!)
+        for (size_t p=0; p!=_u.mapper().numPatches(); ++p)
+        {
+            offset = _u.mapper().offset(p);
+            // Reconstruct solution coefficients on patch p
+
+            for (index_t c = 0; c!=dim; c++) // for all components
+            {
+                const index_t sz  = _u.mapper().patchSize(p,c);
+
+                // loop over all basis functions (even the eliminated ones)
+                for (index_t i = 0; i < sz; ++i)
+                {
+                    //gsDebugVar(i);
+                    const int ii = _u.mapper().index(i, p, c);
+                    //gsDebugVar(ii);
+                    if ( _u.mapper().is_free_index(ii) ) // DoF value is in the solVector
                     {
-                        bi = _u.mapper().global_to_bindex(ii); // boundary index
-                        result(i+offset,0) = _u.fixedPart().at(bi);
-                    }
-                    else
                         result(i+offset,0) = _Sv->at(ii);
+                    }
+                    else // eliminated DoF: fill with Dirichlet data
+                        result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
                 }
+                offset += sz;
+            }
+        }
     }
 
     /// Extract this variable as a multipatch object
