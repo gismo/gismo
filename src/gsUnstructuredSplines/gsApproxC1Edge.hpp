@@ -23,6 +23,7 @@
 namespace gismo
 {
 
+
     template<short_t d,class T>
     void gsApproxC1Edge<d,T>::computeAuxTopology()
     {
@@ -258,6 +259,5 @@ namespace gismo
             }
         } //topBottom
     } // ComputeKernel
-
 
 } // namespace gismo
