@@ -19,7 +19,7 @@
 #include <gsMSplines/gsDPatch.h>
 
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
-// #include <gsUnstructuredSplines/gsC1Spline.h>
+#include <gsUnstructuredSplines/gsC1SurfSpline.h>
 
 #include <gsKLShell/gsThinShellAssembler.h>
 #include <gsKLShell/gsMaterialMatrixLinear.h>
@@ -423,9 +423,11 @@ int main(int argc, char *argv[])
 
     if (last)
     {
+        // TODO
+        gsMultiBasis<real_t> multiBasis(mp);
         // h-refine
         for (int r =0; r < numRefine; ++r)
-            mp.uniformRefine();
+            mp.uniformRefine(1,multiBasis.maxCwiseDegree()-1);
 
         numRefine = 0;
     }
@@ -521,7 +523,13 @@ int main(int argc, char *argv[])
         }
         else if (smoothing==3) // Andrea
         {
+            gsC1SurfSpline<2,real_t> smoothC1(mp,dbasis);
+            smoothC1.init();
+            smoothC1.compute();
 
+            global2local = smoothC1.getSystem();
+            global2local = global2local.transpose();
+            smoothC1.getMultiBasis(dbasis);
         }
         else
             GISMO_ERROR("Option "<<smoothing<<" for smoothing does not exist");

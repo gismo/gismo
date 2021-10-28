@@ -16,7 +16,6 @@
 
 #include <gsUnstructuredSplines/gsC1SurfGluingData.h>
 #include <gsUnstructuredSplines/gsC1SurfVisitorBasisVertex.h>
-#include <gsUnstructuredSplines/gsOptionList.h>
 
 
 
@@ -33,16 +32,15 @@ namespace gismo
                           gsMultiBasis<> basis, // Single Basis
                           std::vector<bool> isBoundary,
                           gsMatrix<T> &Phi,
-                          gsG1OptionList & g1OptionList,
                           gsMatrix<> gluingD)
-                : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_Phi(Phi), m_g1OptionList(g1OptionList), m_gD(gluingD)
+                : m_mp(mp), m_basis(basis), m_isBoundary(isBoundary), m_Phi(Phi), m_gD(gluingD)
         {
 
             for (index_t dir = 0; dir < m_mp.parDim(); dir++) // For the TWO directions
             {
                 // Computing the G1 - basis function at the edge
                 // Spaces for computing the g1 basis
-                index_t m_r = m_g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
+                index_t m_r = 1; // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
                 gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(dir)); // 0 -> u, 1 -> v
                 index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
@@ -117,10 +115,8 @@ namespace gismo
             }
             gsTensorBSplineBasis<2, T> bsp_geo_local(knots[0], knots[1]);
 
-            if (m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local)
-                m_geo = bsp_geo_local; // Basis for Integration
-            else
-                m_geo = m_basis_g1;
+
+            m_geo = m_basis_g1;
             refresh();
             assemble();
             solve();
@@ -137,7 +133,6 @@ namespace gismo
         gsMultiBasis<T> m_basis;
         std::vector<bool> m_isBoundary;
         gsMatrix<T> m_Phi;
-        gsG1OptionList m_g1OptionList;
 
         // Gluing data
         gsMatrix<> m_gD;
@@ -206,45 +201,6 @@ namespace gismo
         gsDofMapper map(m_basis.basis(0));
 
         // SET THE DOFS
-        if (m_g1OptionList.getInt("g1BasisVertex") == g1BasisVertex::local)
-        {
-            for (index_t dir = 0; dir < m_mp.parDim(); dir++) // For the TWO directions
-            {
-                gsMatrix<unsigned> act;
-                gsMatrix<T> ab = m_basis_plus[dir].support(2);
-
-                gsBSplineBasis<> temp_basis_first = dynamic_cast<gsBSplineBasis<> &>(m_mp.basis(0).component(dir)); // u
-                index_t degree = temp_basis_first.maxDegree();
-
-                gsMatrix<T> ab_temp = ab;
-                for (index_t pp = 0; pp < degree; pp++)
-                {
-                    for (index_t i = 0; i < temp_basis_first.size(); i++) // only the first two u/v-columns are Dofs (0/1)
-                    {
-                        gsMatrix<T> xy = temp_basis_first.support(i);
-                        if ((xy(0, 0) < ab(0, 0)) && (xy(0, 1) > ab(0, 0)))
-                            ab_temp(0, 0) = xy(0, 0);
-                        if ((xy(0, 0) < ab(0, 1)) && (xy(0, 1) > ab(0, 1)))
-                            ab_temp(0, 1) = xy(0, 1);
-                    }
-                    ab = ab_temp;
-                }
-
-
-                for (index_t i = 0; i < m_basis.basis(0).component(dir).size();
-                     i++) // only the first two u/v-columns are Dofs (0/1)
-                {
-                    gsMatrix<T> xy = m_basis.basis(0).component(dir).support(i);
-                    if ((xy(0, 0) < ab(0, 0) - 1e-10) || (xy(0, 1) > ab(0, 1) + 1e-10)) // only subsets
-                        //if ( (xy(0, 1) < ab(0, 0)+1e-10) || (xy(0, 0) > ab(0, 1)-1e-10) ) // all non-empty set
-                    {
-                        act = m_basis.basis(0).boundaryOffset(dir == 0 ? 1 : 3, i); // WEST
-                        map.markBoundary(0, act); // Patch 0
-                    }
-                }
-            }
-        }
-
 
         map.finalize();
 
@@ -324,7 +280,7 @@ namespace gismo
                 quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 #pragma omp critical(evaluate)
                 // Perform required evaluations on the quadrature nodes
-                visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_Phi, m_g1OptionList);
+                visitor_.evaluate(basis_g1, basis_geo, m_basis_plus, m_basis_minus, patch, quNodes, m_gD, m_isBoundary, m_Phi);
 
                 // Assemble on element
                 visitor_.assemble(*domIt, quWeights);

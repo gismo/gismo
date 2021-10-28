@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsUnstructuredSplines/gsC1SurfGluingDataAssembler.h>
-#include <gsIO/gsOptionList.h>
 
 
 namespace gismo {
@@ -31,9 +30,8 @@ namespace gismo {
         }
 
 
-        gsC1SurfGD(gsMultiPatch <T> const &mp, gsMultiBasis <T> const &mb, index_t uv, bool isBoundary,
-                     gsG1OptionList const &optionList)
-                : m_mp(mp), m_mb(mb), m_uv(uv), m_isBoundary(isBoundary), m_optionList(optionList) {
+        gsC1SurfGD(gsMultiPatch <T> const &mp, gsMultiBasis <T> const &mb, index_t uv, bool isBoundary)
+                : m_mp(mp), m_mb(mb), m_uv(uv), m_isBoundary(isBoundary) {
             m_gamma = 1.0;
         }
 
@@ -51,7 +49,6 @@ namespace gismo {
         gsMultiBasis <T> m_mb;
         index_t m_uv;
         bool m_isBoundary;
-        gsG1OptionList m_optionList;
 
         real_t m_gamma;
 

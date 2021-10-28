@@ -14,14 +14,16 @@
 #include <gsCore/gsTemplateTools.h>
 #include <gsCore/gsBoundary.h>
 
-#include <gsUnstructuredSplines/gsApproxC1Edge.h>
-#include <gsUnstructuredSplines/gsApproxC1Edge.hpp>
+#include <gsUnstructuredSplines/gsC1SurfEdge.h>
+#include <gsUnstructuredSplines/gsC1SurfEdge.hpp>
+
+
 
 namespace gismo
 {
 
 //CLASS_TEMPLATE_INST gsApproxC1Edge<1,real_t> ;
-CLASS_TEMPLATE_INST gsApproxC1Edge<2,real_t> ;
+CLASS_TEMPLATE_INST gsC1SurfEdge<2,real_t> ;
 //CLASS_TEMPLATE_INST gsApproxC1Edge<3,real_t> ;
 
 } // end namespace gismo

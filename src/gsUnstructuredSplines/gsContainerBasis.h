@@ -257,10 +257,17 @@ namespace gismo
             // Edges
             short_t side_id = bside.index();
             index_t shift = 0;
-            for (index_t i=0; i< side_id; ++i)
-                shift += basisContainer[i].size();
+            if (basisContainer.size() != 1)
+            {
+                for (index_t i=0; i< side_id; ++i)
+                    shift += basisContainer[i].size();
+                result = basisContainer[side_id].boundaryOffset(boxSide(side_id), offset);
+            }
+            else
+            {
+                result = basisContainer[0].boundaryOffset(boxSide(side_id), offset);
+            }
 
-            result = basisContainer[side_id].boundaryOffset(boxSide(side_id), offset);
             result.array() += shift;
 
             // Vertices:
@@ -272,20 +279,29 @@ namespace gismo
             for (size_t nc = 0; nc < containedCorners.size(); nc++) {
                 index_t corner_id = containedCorners[nc].m_index + 4; // + 4 included bcs of 4 sides!
 
-                index_t shift = 0;
-                for (index_t i=0; i< corner_id; ++i)
-                    shift += basisContainer[i].size();
-
                 gsMatrix<int> result_temp;
-                result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
+                index_t shift = 0;
+                if (basisContainer.size() != 1) {
+                    for (index_t i = 0; i < corner_id; ++i)
+                        shift += basisContainer[i].size();
+                    result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
+                }
+                else
+                {
+                    result_temp = basisContainer[0].boundaryOffset(boxSide(side_id), offset);
+                }
                 result_temp.array() += shift;
 
                 result.conservativeResize(result.rows()+result_temp.rows(), 1 );
                 result.bottomRows(result_temp.rows()) = result_temp;
 
-                if (offset == 1) // DIRTY AND QUICK
+                if (offset == 1)
                 {
-                    result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
+                    if (basisContainer.size() != 1)
+                        result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
+                    else
+                        result_temp = basisContainer[0].boundaryOffset(boxSide(side_id), offset);
+
                     result_temp.array() += shift;
 
                     result.conservativeResize(result.rows()+result_temp.rows(), 1 );

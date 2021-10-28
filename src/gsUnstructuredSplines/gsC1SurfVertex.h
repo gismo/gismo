@@ -13,24 +13,15 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsC1Basis.h>
 
 #include <gsUnstructuredSplines/gsG1AuxiliaryPatch.h>
 #include <gsUnstructuredSplines/gsC1SurfBasisVertex.h>
-
-#include <gsUnstructuredSplines/gsOptionList.h>
 
 
 namespace gismo {
 template<short_t d, class T>
 class gsC1SurfVertex
 {
-
-private:
-    typedef gsC1Basis<d, T> Basis;
-    typedef typename std::vector<Basis> C1BasisContainer;
-    typedef typename std::vector<gsC1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
-
     /// Shared pointer for gsC1SurfVertex
     typedef memory::shared_ptr<gsC1SurfVertex> Ptr;
 
@@ -42,7 +33,7 @@ public:
     /// Empty constructor
     ~gsC1SurfVertex() { }
 
-    gsC1SurfVertex(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
+    gsC1SurfVertex(gsMultiPatch<T> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
     {
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
         {
@@ -141,7 +132,7 @@ public:
         sigma = 1 / sigma;
     }
 
-    void checkBoundary(const gsMultiPatch<> & mpTmp, size_t  patchInd, size_t sideInd)
+    void checkBoundary(gsMultiPatch<T> & mpTmp, size_t  patchInd, size_t sideInd)
     {
         std::vector<bool> tmp;
         switch (sideInd)
@@ -389,7 +380,7 @@ public:
             basisV.col(basisV.cols() - 1) = vertBas.col(count);
 
             Eigen::FullPivLU<gsMatrix<>> ker(basisV);
-            ker.setThreshold(m_g1OptionList.getReal("threshold"));
+            ker.setThreshold(1e-5);
             if (ker.dimensionOfKernel() != 0)
             {
                 basisV = basisV.block(0, 0, basisV.rows(), basisV.cols() - 1);
@@ -406,7 +397,7 @@ public:
             basisV.col(basisV.cols()-1) = smallK.col(i);
 
             Eigen::FullPivLU<gsMatrix<>> ker(basisV);
-            ker.setThreshold(m_g1OptionList.getReal("threshold"));
+            ker.setThreshold(1e-5);
             if(ker.dimensionOfKernel() != 0)
             {
                 basisV = basisV.block(0, 0, basisV.rows(), basisV.cols()-1);
@@ -476,7 +467,7 @@ public:
 
                     aux.computeTopology();
                     gsMultiBasis<> auxB(aux);
-                    gsG1ASGluingData<real_t> ret(aux, auxB);
+                    gsC1SurfGluingData<real_t> ret(aux, auxB);
                     gsMatrix<> sol = ret.getSol();
                     gsMatrix<> solBeta = ret.getSolBeta();
 
@@ -562,7 +553,7 @@ public:
 
                     aux.computeTopology();
                     gsMultiBasis<> auxB(aux);
-                    gsG1ASGluingData<real_t> ret(aux, auxB);
+                    gsC1SurfGluingData<real_t> ret(aux, auxB);
                     gsMatrix<> sol = ret.getSol();
                     gsMatrix<> solBeta = ret.getSolBeta();
 
@@ -589,11 +580,10 @@ public:
         return coefs;
     }
 
-    void computeG1InternalVertexBasis(gsG1OptionList g1OptionList)
+    void computeG1InternalVertexBasis()
     {
-        m_g1OptionList = g1OptionList;
 
-        m_zero = g1OptionList.getReal("zero");
+        m_zero = 1e-10;
 
         this->reparametrizeG1Vertex();
         this->computeSigma();
@@ -626,83 +616,74 @@ public:
             gsMatrix<> geoMapDeriv2 = auxGeom[0].getPatch()
                     .deriv2(zero); // Second derivative of the geometric mapping with respect to the parameter coordinates
 
+            //Computing the normal vector to the tangent plane along the boundary curve
+            Eigen::Vector3d t1 = Jk.col(0);
+            Eigen::Vector3d t2 = Jk.col(1);
 
-            if (g1OptionList.getSwitch("rotVertexBF") == true)
-            {
-                //Computing the normal vector to the tangent plane along the boundary curve
-                Eigen::Vector3d t1 = Jk.col(0);
-                Eigen::Vector3d t2 = Jk.col(1);
+            Eigen::Vector3d n = t1.cross(t2);
 
-                Eigen::Vector3d n = t1.cross(t2);
+            gsVector<> normal = n.normalized();
+            n = n.normalized();
+            Eigen::Vector3d z(0, 0, 1);
 
-                gsVector<> normal = n.normalized();
-                n = n.normalized();
-                Eigen::Vector3d z(0, 0, 1);
+            Eigen::Vector3d rotVec = n.cross(z);
+            rotVec = rotVec.normalized();
 
-                Eigen::Vector3d rotVec = n.cross(z);
-                rotVec = rotVec.normalized();
-
-                real_t cos_t = n.dot(z) / (n.norm() * z.norm());
-                real_t sin_t = (n.cross(z)).norm() / (n.norm() * z.norm());
+            real_t cos_t = n.dot(z) / (n.norm() * z.norm());
+            real_t sin_t = (n.cross(z)).norm() / (n.norm() * z.norm());
 
 //                Rotation matrix
-                gsMatrix<> R(3, 3);
-                R.setZero();
+            gsMatrix<> R(3, 3);
+            R.setZero();
 //                Row 0
-                R(0, 0) = cos_t + rotVec.x() * rotVec.x() * (1 - cos_t);
-                R(0, 1) = rotVec.x() * rotVec.y() * (1 - cos_t) - rotVec.z() * sin_t;
-                R(0, 2) = rotVec.x() * rotVec.z() * (1 - cos_t) + rotVec.y() * sin_t;
+            R(0, 0) = cos_t + rotVec.x() * rotVec.x() * (1 - cos_t);
+            R(0, 1) = rotVec.x() * rotVec.y() * (1 - cos_t) - rotVec.z() * sin_t;
+            R(0, 2) = rotVec.x() * rotVec.z() * (1 - cos_t) + rotVec.y() * sin_t;
 //                Row 1
-                R(1, 0) = rotVec.x() * rotVec.y() * (1 - cos_t) + rotVec.z() * sin_t;
-                R(1, 1) = cos_t + rotVec.y() * rotVec.y() * (1 - cos_t);
-                R(1, 2) = rotVec.y() * rotVec.z() * (1 - cos_t) - rotVec.x() * sin_t;
+            R(1, 0) = rotVec.x() * rotVec.y() * (1 - cos_t) + rotVec.z() * sin_t;
+            R(1, 1) = cos_t + rotVec.y() * rotVec.y() * (1 - cos_t);
+            R(1, 2) = rotVec.y() * rotVec.z() * (1 - cos_t) - rotVec.x() * sin_t;
 //                Row 2
-                R(2, 0) = rotVec.x() * rotVec.z() * (1 - cos_t) - rotVec.y() * sin_t;
-                R(2, 1) = rotVec.y() * rotVec.z() * (1 - cos_t) + rotVec.x() * sin_t;
-                R(2, 2) = cos_t + rotVec.z() * rotVec.z() * (1 - cos_t);
+            R(2, 0) = rotVec.x() * rotVec.z() * (1 - cos_t) - rotVec.y() * sin_t;
+            R(2, 1) = rotVec.y() * rotVec.z() * (1 - cos_t) + rotVec.x() * sin_t;
+            R(2, 2) = cos_t + rotVec.z() * rotVec.z() * (1 - cos_t);
 
-                for (size_t np = 0; np < auxGeom.size(); np++)
+            for (size_t np = 0; np < auxGeom.size(); np++)
+            {
+                gsMatrix<> coeffPatch = auxGeom[np].getPatch().coefs();
+
+                for (index_t i = 0; i < coeffPatch.rows(); i++)
                 {
-                    gsMatrix<> coeffPatch = auxGeom[np].getPatch().coefs();
-
-                    for (index_t i = 0; i < coeffPatch.rows(); i++)
-                    {
-                        coeffPatch.row(i) =
-                                (coeffPatch.row(i) - coeffPatch.row(0)) * R.transpose() + coeffPatch.row(0);
-                    }
-
-                    rotPatch.addPatch(auxGeom[np].getPatch());
-                    rotPatch.patch(np).setCoefs(coeffPatch);
+                    coeffPatch.row(i) =
+                            (coeffPatch.row(i) - coeffPatch.row(0)) * R.transpose() + coeffPatch.row(0);
                 }
 
-                Phi.resize(13, 6);
-                Phi.setZero();
-                Phi(0, 0) = 1;
-                Phi(1, 1) = sigma;
-                Phi(2, 2) = sigma;
-                Phi(4, 3) = sigma * sigma;
-                Phi(5, 4) = sigma * sigma;
-                Phi(7, 4) = sigma * sigma;
-                Phi(8, 5) = sigma * sigma;
+                rotPatch.addPatch(auxGeom[np].getPatch());
+                rotPatch.patch(np).setCoefs(coeffPatch);
             }
 
-        }
-        if (g1OptionList.getSwitch("rotVertexBF") == true)
-        {
+            Phi.resize(13, 6);
+            Phi.setZero();
+            Phi(0, 0) = 1;
+            Phi(1, 1) = sigma;
+            Phi(2, 2) = sigma;
+            Phi(4, 3) = sigma * sigma;
+            Phi(5, 4) = sigma * sigma;
+            Phi(7, 4) = sigma * sigma;
+            Phi(8, 5) = sigma * sigma;
+
             for (size_t i = 0; i < auxGeom.size(); i++)
             {
                 gsMatrix<> gdCoefs(selectGD(i));
                 gsMultiPatch<> g1Basis;
 
-                gsG1ASBasisVertex<real_t> g1BasisVertex_0
-                        (rotPatch.patch(i), rotPatch.patch(i).basis(), isBdy[i], Phi, g1OptionList, gdCoefs);
+                gsC1SurfBasisVertex<real_t> g1BasisVertex_0(rotPatch.patch(i), rotPatch.patch(i).basis(), isBdy[i], Phi, gdCoefs);
 
                 g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
 
                 g1BasisVector.push_back(g1Basis);
                 auxGeom[i].setG1Basis(g1Basis);
             }
-
         }
         else
         {
@@ -711,8 +692,7 @@ public:
                 gsMatrix<> gdCoefs(selectGD(i));
                 gsMultiPatch<> g1Basis;
 
-                gsG1ASBasisVertex<real_t> g1BasisVertex_0
-                        (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], Phi, g1OptionList, gdCoefs);
+                gsC1SurfBasisVertex<real_t> g1BasisVertex_0(auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], Phi, gdCoefs);
 
                 g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
 
@@ -741,13 +721,13 @@ public:
 
             Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
             Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
-            SmallLU.setThreshold(g1OptionList.getReal("threshold"));
-            BigLU.setThreshold(g1OptionList.getReal("threshold"));
+            SmallLU.setThreshold(1e-5);
+            BigLU.setThreshold(1e-5);
 
-            if (!g1OptionList.getSwitch("neumann"))
-                dim_kernel = SmallLU.dimensionOfKernel();
-            else
-                dim_kernel = BigLU.dimensionOfKernel();
+//            if (!g1OptionList.getSwitch("neumann"))
+//                dim_kernel = SmallLU.dimensionOfKernel();
+//            else
+//                dim_kernel = BigLU.dimensionOfKernel();
 
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
 
@@ -756,13 +736,13 @@ public:
         {
             Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
             Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
-            SmallLU.setThreshold(g1OptionList.getReal("threshold"));
-            BigLU.setThreshold(g1OptionList.getReal("threshold"));
+            SmallLU.setThreshold(1e-5);
+            BigLU.setThreshold(1e-5);
 
-            if (!g1OptionList.getSwitch("neumann"))
-                dim_kernel = SmallLU.dimensionOfKernel();
-            else
-                dim_kernel = BigLU.dimensionOfKernel();
+//            if (!g1OptionList.getSwitch("neumann"))
+//                dim_kernel = SmallLU.dimensionOfKernel();
+//            else
+//                dim_kernel = BigLU.dimensionOfKernel();
 
             vertexBoundaryBasis = selectVertexBoundaryBasisFunction(BigLU.kernel(), BigLU.dimensionOfKernel(), SmallLU.kernel(), SmallLU.dimensionOfKernel());
 
@@ -787,36 +767,15 @@ public:
         else
             for (size_t i = 0; i < auxGeom.size(); i++)
                 auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
+
+        for (size_t i = 0; i < auxGeom.size(); i++)
+            basisVertexResult.push_back(auxGeom[i].getG1Basis());
     }
 
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){ return auxGeom[i]; }
 
-    size_t get_internalDofs() { return dim_kernel; }
-
-    void saveBasisVertex(gsSparseMatrix<T> & system)
-    {
-        for (size_t np = 0; np < auxGeom.size(); ++np)
-        {
-            index_t patch_1 = auxGeom[np].patch();
-            index_t corner = auxVertexIndices[np];
-
-            index_t shift_row = 0, shift_col = 0;
-            for (index_t np = 0; np < patch_1; ++np)
-            {
-                shift_row += m_bases[np].size_rows();
-                shift_col += m_bases[np].size_cols();
-            }
-
-            index_t ii = 0;
-            for (index_t i = m_bases[patch_1].rowBegin(corner+4); i < m_bases[patch_1].rowEnd(corner+4); ++i, ++ii)
-            {
-                index_t jj = 0;
-                for (index_t j = m_bases[patch_1].colBegin(corner+4); j < m_bases[patch_1].colEnd(corner+4); ++j, ++jj)
-                    if (basisVertexResult[np].patch(ii).coef(jj,0)*basisVertexResult[np].patch(ii).coef(jj,0)>1e-25)
-                        system.insert(shift_row+i,shift_col+j) = basisVertexResult[np].patch(ii).coef(jj,0);
-            }
-        }
-    }
+    std::vector<gsMultiPatch<T>> getBasis()
+    { return basisVertexResult; }
 
 protected:
 
@@ -828,10 +787,6 @@ protected:
     size_t dim_kernel;
 
     real_t m_zero;
-
-    const gsOptionList & m_g1OptionList;
-    C1BasisContainer & m_bases;
-
 
     // Store temp solution
     std::vector<gsMultiPatch<T>> basisVertexResult;

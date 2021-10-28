@@ -58,8 +58,7 @@ namespace gismo
                              gsMatrix<T>            & quNodes,
                              gsMatrix<>  & gluingData,
                              std::vector<bool> & isBoundary,
-                             gsMatrix<>  & Phi,
-                             gsG1OptionList g1OptionList)
+                             gsMatrix<>  & Phi)
         {
             md.points = quNodes;
 
@@ -439,7 +438,7 @@ namespace gismo
                                   const std::vector<gsMatrix<T> >    & eliminatedDofs,
                                   std::vector< gsSparseSystem<T> >     & system)
         {
-            gsMatrix<unsigned> actives_temp;
+            gsMatrix<index_t> actives_temp;
             for (unsigned i = 0; i < system.size(); i++) // 6
             {
                 // Map patch-local DoFs to global DoFs
@@ -450,7 +449,7 @@ namespace gismo
         }
 
     protected:
-        gsMatrix<unsigned> actives;
+        gsMatrix<index_t> actives;
         gsMatrix<T> basisData;
         index_t numActive;
 

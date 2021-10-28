@@ -15,16 +15,16 @@
 
 #include <gsUnstructuredSplines/gsC1SurfGD.h>
 #include <gsUnstructuredSplines/gsC1SurfGluingDataAssembler.h>
+#include <gsUnstructuredSplines/gsC1SurfGluingDataVisitor.h>
+#include <gsUnstructuredSplines/gsG1AuxiliaryPatch.h>
 
 
 namespace gismo
 {
 
-template<short_t d, class T>
-class gsC1SurfGluingData
+    template<class T, class Visitor = gsC1SurfGluingDataVisitor<T>>
+class gsC1SurfGluingData : public gsC1SurfGD<T>
 {
-private:
-    typedef typename std::vector<gsG1AuxiliaryPatch<d,T>> C1AuxPatchContainer;
 
 public:
     gsC1SurfGluingData()
@@ -32,9 +32,9 @@ public:
         setGDEdge();
     }
 
-    gsG1ASGluingData(gsMultiPatch<T> const & mp,
+    gsC1SurfGluingData(gsMultiPatch<T> const & mp,
     gsMultiBasis<T> & mb)
-    :  gsGluingData<T>(mp, mb)
+    :  gsC1SurfGD<T>(mp, mb)
     {
         // Solve the system for alpha_L and alpha_R and beta
         refresh();

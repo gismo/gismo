@@ -16,29 +16,26 @@
 #include <gsUnstructuredSplines/gsC1SurfGluingData.h>
 #include <gsUnstructuredSplines/gsC1SurfVisitorBasisEdge.h>
 
-#include <gsUnstructuredSplines/gsOptionList.h>
-
 namespace gismo
 {
-    template<class T, class bhVisitor = gsG1ASVisitorBasisEdge<T>>
-    class gsG1ASBasisEdge : public gsAssembler<T>
+    template<class T, class bhVisitor = gsC1SurfVisitorBasisEdge<T>>
+    class gsC1SurfBasisEdge : public gsAssembler<T>
     {
     public:
         typedef gsAssembler<T> Base;
 
     public:
-        gsG1ASBasisEdge(gsMultiPatch<> mp, // single patch
+        gsC1SurfBasisEdge(gsMultiPatch<> mp, // single patch
                         gsMultiBasis<> basis, // single basis
                         index_t uv, // !!! 0 == u; 1 == v !!!
                         bool isBoundary,
-                        gsG1OptionList & g1OptionList,
-                        gsG1ASGluingData<real_t> gluingD)
-                : m_mp(mp), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_g1OptionList(g1OptionList), m_gD(gluingD)
+                        gsC1SurfGluingData<real_t> gluingD)
+                : m_mp(mp), m_basis(basis), m_uv(uv), m_isBoundary(isBoundary), m_gD(gluingD)
         {
 
             // Computing the G1 - basis function at the edge
             // Spaces for computing the g1 basis
-            index_t m_r = m_g1OptionList.getInt("regularity"); // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
+            index_t m_r = 1; // TODO CHANGE IF DIFFERENT REGULARITY IS NECESSARY
 
             gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(m_basis.basis(0).component(m_uv)); // 0 -> v, 1 -> u
             index_t m_p = basis_edge.maxDegree(); // Minimum degree at the interface // TODO if interface basis are not the same
@@ -87,10 +84,9 @@ namespace gismo
         gsMultiBasis<T> m_basis;
         index_t m_uv;
         bool m_isBoundary;
-        gsG1OptionList m_g1OptionList;
 
         // Gluing data
-        gsG1ASGluingData<T> m_gD;
+        gsC1SurfGluingData<T> m_gD;
 
         // Basis for getting the G1 Basis
         gsBSplineBasis<> m_basis_plus;
@@ -110,7 +106,7 @@ namespace gismo
     }; // class gsG1BasisEdge
 
     template <class T, class bhVisitor>
-    void gsG1ASBasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
+    void gsC1SurfBasisEdge<T,bhVisitor>::setG1BasisEdge(gsMultiPatch<T> & result)
     {
         result.clear();
 
@@ -119,8 +115,6 @@ namespace gismo
 
         gsMultiPatch<> g1EdgeBasis;
         index_t bfID_init = 3;
-        if (m_g1OptionList.getSwitch("twoPatch"))
-            bfID_init = 0;
 
         for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
         {
@@ -139,8 +133,6 @@ namespace gismo
             constructSolution(sol,g1EdgeBasis);
         }
         bfID_init = 2;
-        if (m_g1OptionList.getSwitch("twoPatch"))
-            bfID_init = 0;
         for (index_t bfID = bfID_init; bfID < n_minus-bfID_init; bfID++)  // first 2 and last 2 bf are eliminated
         {
 
@@ -164,7 +156,7 @@ namespace gismo
     } // setG1BasisEdge
 
     template <class T, class bhVisitor>
-    void gsG1ASBasisEdge<T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result)
+    void gsC1SurfBasisEdge<T,bhVisitor>::constructSolution(const gsMatrix<> & solVector, gsMultiPatch<T> & result)
     {
         // Dim is the same for all basis functions
         const index_t dim = ( 0!=solVector.cols() ? solVector.cols() :  m_ddof[0].cols() );
@@ -195,7 +187,7 @@ namespace gismo
     }
 
     template <class T, class bhVisitor>
-    void gsG1ASBasisEdge<T,bhVisitor>::refresh()
+    void gsC1SurfBasisEdge<T,bhVisitor>::refresh()
     {
         // 1. Obtain a map from basis functions to matrix columns and rows
         gsDofMapper map(m_basis.basis(0));
@@ -216,7 +208,7 @@ namespace gismo
     } // refresh()
 
     template <class T, class bhVisitor>
-    void gsG1ASBasisEdge<T,bhVisitor>::assemble(index_t bfID, std::string typeBf)
+    void gsC1SurfBasisEdge<T,bhVisitor>::assemble(index_t bfID, std::string typeBf)
     {
         // Reserve sparse system
         const index_t nz = gsAssemblerOptions::numColNz(m_basis[0],2,1,0.333333);
@@ -238,7 +230,7 @@ namespace gismo
     } // assemble()
 
     template <class T, class bhVisitor>
-    void gsG1ASBasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, std::string typeBf)
+    void gsC1SurfBasisEdge<T,bhVisitor>::apply(bhVisitor & visitor, int bf_index, std::string typeBf)
     {
 #pragma omp parallel
         {
@@ -282,7 +274,7 @@ namespace gismo
                 quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
 
                 // Perform required evaluations on the quadrature nodes
-                visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD, m_isBoundary, m_g1OptionList);
+                visitor_.evaluate(bf_index, typeBf, basis_g1, basis_geo, basis_plus, basis_minus, patch, quNodes, m_uv, m_gD, m_isBoundary);
 
                 // Assemble on element
                 visitor_.assemble(*domIt, quWeights);

@@ -308,7 +308,7 @@ public:
     inline void localToGlobal(const gsMatrix<T>    & eliminatedDofs,
                               gsSparseSystem<T>     & system)
     {
-        gsMatrix<unsigned> actives_temp;
+        gsMatrix<index_t> actives_temp;
 
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, 0, actives_temp);
@@ -321,7 +321,7 @@ public:
     inline void localToGlobalBeta(const gsMatrix<T>    & eliminatedDofs,
                                   gsSparseSystem<T>     & system)
     {
-        gsMatrix<unsigned> actives_temp;
+        gsMatrix<index_t> actives_temp;
 
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(activesBeta, 0, actives_temp);
@@ -331,8 +331,8 @@ public:
     }
 
 protected:
-    gsMatrix<unsigned> actives;
-    gsMatrix<unsigned> activesBeta;
+    gsMatrix<index_t> actives;
+    gsMatrix<index_t> activesBeta;
     gsMatrix<T> basisData;
     gsMatrix<T> basisDataBeta;
     index_t numActive;

@@ -19,7 +19,7 @@
 namespace gismo
 {
 
-template <class T, class bhVisitor = gsApproxGluingDataVisitor<T> >
+template <class T, class bhVisitor = gsC1SurfGluingDataVisitor<T> >
 class gsC1SurfGluingDataAssembler : public gsAssembler<T>
 {
 public:

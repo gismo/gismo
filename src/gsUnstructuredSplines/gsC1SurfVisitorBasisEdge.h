@@ -15,16 +15,14 @@
 
 #include <gsUnstructuredSplines/gsC1SurfGluingData.h>
 
-#include <gsUnstructuredSplines/gsOptionList.h>
-
 namespace gismo
 {
     template <class T>
-    class gsG1ASVisitorBasisEdge
+    class gsC1SurfVisitorBasisEdge
     {
     public:
 
-        gsG1ASVisitorBasisEdge()
+        gsC1SurfVisitorBasisEdge()
         {
         }
 
@@ -52,9 +50,8 @@ namespace gismo
                              const gsGeometry<T>    & geo, // patch
                              gsMatrix<T>            & quNodes,
                              index_t & uv,
-                             gsG1ASGluingData<T>  & gluingData,
-                             bool & isBoundary,
-                             gsG1OptionList & g1OptionList)
+                             gsC1SurfGluingData<T>  & gluingData,
+                             bool & isBoundary)
         {
             md.points = quNodes;
 
@@ -191,7 +188,7 @@ namespace gismo
         }
 
     protected:
-        gsMatrix<unsigned> actives;
+        gsMatrix<index_t> actives;
         gsMatrix<T> basisData;
         index_t numActive;
 
