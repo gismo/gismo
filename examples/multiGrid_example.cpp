@@ -187,31 +187,6 @@ int main(int argc, char *argv[])
     gsMultiBasis<> mb(mp);
     //! [Define Basis]
 
-    //! [Define Non Matching]
-    if (nonMatching)
-    {
-        gsInfo << "Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
-        for (size_t i = 0; i < mb.nBases(); ++i)
-            if ( i%3 == 0 )
-                mb[i].uniformRefine();
-        gsInfo << "done.\n";
-        --refinements;
-
-        gsInfo << "Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
-        for (size_t i = 0; i < mb.nBases(); ++i)
-            if ( i%3 == 1 )
-                mb[i].setDegreePreservingMultiplicity(degree+1);
-        gsInfo << "done.\n";
-
-        if (!dg)
-        {
-            gsInfo << "\nThe option --NonMatching does not allow a conforming discretization. Thus, option --DG is required.\n";
-            return EXIT_FAILURE;
-        }
-
-    }
-    //! [Define Non Matching]
-
     if (xRefine)
     {
         if (mp.nPatches() > 1)
@@ -236,6 +211,31 @@ int main(int argc, char *argv[])
     //! [Set degree and refine]
 
     gsInfo << "done.\n";
+
+    //! [Define Non Matching]
+    if (nonMatching)
+    {
+        gsInfo << "Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 0 )
+                mb[i].uniformRefine();
+        gsInfo << "done.\n";
+        --refinements;
+
+        gsInfo << "Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 1 )
+                mb[i].setDegreePreservingMultiplicity(degree+1);
+        gsInfo << "done.\n";
+
+        if (!dg)
+        {
+            gsInfo << "\nThe option --NonMatching does not allow a conforming discretization. Thus, option --DG is required.\n";
+            return EXIT_FAILURE;
+        }
+
+    }
+    //! [Define Non Matching]
 
     /********* Setup assembler and assemble matrix **********/
 
