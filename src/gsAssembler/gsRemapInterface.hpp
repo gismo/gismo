@@ -1138,12 +1138,11 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     gsVector<bool> onGeo;
 
     // this is the case if there are no matching corners
+    gsMatrix<T> parLoc;
     for (int i = 1; i <= nCorners; i++) {
         c = m_g1.coefAtCorner(i).transpose();
 
         // Be aware of two matching vertices-> due to rounding errors on of the vertices can be on two sides maybe!
-        gsMatrix<T> parLoc;
-
         std::vector<boxSide> side = m_g2.locateOn(c, onGeo, parLoc, false); // gives an empty side
 
         //for(size_t i = 0; i < side.size(); i++)
@@ -1170,7 +1169,6 @@ void gsRemapInterface<T>::findInterface(const boundaryInterface& bi)
     for (int i = 1; i <= nCorners; i++) {
         c = m_g2.coefAtCorner(i).transpose();
 
-        gsMatrix<T> parLoc;
         std::vector<boxSide> side = m_g1.locateOn(c, onGeo, parLoc, false);
         //gsInfo << " onGeo: \n" << onGeo(0) << "\n";
         //for(size_t i = 0; i < side.size(); i++)
