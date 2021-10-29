@@ -127,6 +127,32 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
     return result;
 }
 
+template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr removeCornersFromInverse(
+    typename gsPatchPreconditionersCreator<T>::OpUPtr op,
+    const std::vector< gsSparseMatrix<T> >& local_mass,
+    const std::vector< gsSparseMatrix<T> >& local_stiff,
+    T alpha,
+    T beta,
+    T gamma,
+    const gsBoundaryConditions<T>& bc
+    const gsOptionList& opt
+    )
+{
+    dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
+    GISMO_ENSURE (ds == dirichlet::elimination, "Unknown Dirichlet strategy."));
+    
+    // Schritt 1: Checke corners
+    // Wenn keine Corners:
+    return op;
+    // Sonst: Anwendung der SMW...
+    
+    
+    
+    // TODO
+    return op; // In Wirklichkeit SMW
+}
+
 } // anonymous namespace
 
 template<typename T>
@@ -177,7 +203,16 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     for (index_t i=0; i<d; ++i)
         local_mass_op[i] = makeSparseCholeskySolver(local_mass[i]);
 
-    return gsKroneckerOp<T>::make(local_mass_op);
+    return removeCornersFromInverse(
+        gsKroneckerOp<T>::make(local_mass_op),
+        local_mass,
+        local_mass, // ignore
+        1,
+        0,
+        0,
+        bc,
+        opt
+    );
 }
 
 template<typename T>
@@ -354,10 +389,19 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
     memory::unique_ptr< Eigen::DiagonalMatrix<T,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<T,Dynamic>( give(diag) ) );
 
-    return gsProductOp<T>::make(
-        gsKroneckerOp<T>::make(QTop),
-        makeMatrixOp(give(diag_mat)),
-        gsKroneckerOp<T>::make(Qop)
+    return removeCornersFromInverse(
+        gsProductOp<T>::make(
+            gsKroneckerOp<T>::make(QTop),
+            makeMatrixOp(give(diag_mat)),
+            gsKroneckerOp<T>::make(Qop)
+        ),
+        local_mass,
+        local_stiff,
+        alpha,
+        beta,
+        gamma,
+        bc,
+        opt
         );
 }
 
