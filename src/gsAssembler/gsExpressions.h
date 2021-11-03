@@ -2112,7 +2112,7 @@ private:
 };
 
 template<class E>
-class abs_expr  : public _expr<value_expr<E> >
+class abs_expr  : public _expr<abs_expr<E> >
 {
     typename E::Nested_t _u;
 
@@ -2146,11 +2146,10 @@ public:
 private:
     template<class U> static inline
     typename util::enable_if<U::ScalarValued,Scalar>::type
-    eval_impl(const U & u, const index_t k) { return math::abs(u.eval(k)); }
-
+    eval_impl(const U & u, const index_t k) {return math::abs(u.eval(k)); }
     template<class U> static inline
     typename util::enable_if<!U::ScalarValued,Scalar>::type
-    eval_impl(const U & u, const index_t k) { return u.eval(k).abs(); }
+    eval_impl(const U & u, const index_t k) { return u.eval(k).cwiseAbs(); }
 };
 
 /*
