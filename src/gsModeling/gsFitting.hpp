@@ -17,6 +17,7 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsTensor/gsTensorDomainIterator.h>
+#include <gsUtils/gsStopwatch.h>
 
 
 namespace gismo
@@ -71,7 +72,11 @@ void gsFitting<T>::compute(T lambda)
     // building the matrix A and the vector b of the system of linear
     // equations A*x==b
 
+    gsStopwatch time;
+    time.restart();
     assembleSystem(A_mat, m_B);
+    time.stop();
+    gsInfo<<"Assembly time                     : "<< time <<"\n";
 
     // --- Smoothing matrix computation
     //test degree >=3
@@ -120,6 +125,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
     gsMatrix<T> value, curr_point;
     gsMatrix<index_t> actives;
 
+    index_t flops = 0;
     for(index_t k = 0; k != num_points; ++k)
     {
         curr_point = m_param_values.col(k);
@@ -137,9 +143,21 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
             const index_t ii = actives.at(i);
             m_B.row(ii) += value.at(i) * m_points.row(k);
             for (index_t j = 0; j != numActive; ++j)
+            {
                 A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
+                flops += 4; // since we consider both directions of the basis functions -- correct?
+            }
+
         }
     }
+    gsFileData<T> fd;
+    gsMatrix<T> C=A_mat.toDense();
+    fd << C;
+    fd.dump("SlowFittingMatrix");
+    gsFileData<> fb;
+    fb << m_B;
+    fb.dump("SlowFittingb");
+    gsInfo << "Counted flops slow fitting        : " << flops << std::endl;
 }
 
 template <class T>

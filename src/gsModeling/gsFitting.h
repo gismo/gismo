@@ -16,6 +16,7 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <vector>
+#include <gsIO/gsFileData.h>
 
 namespace gismo
 {
