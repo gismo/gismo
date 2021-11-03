@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsParasolid/gsWriteParasolid.h>
 
 using namespace gismo;
 
@@ -28,6 +29,10 @@ int main(int argc, char *argv[])
     real_t tolerance = 1e-02;
     index_t extension = 2;
     real_t refPercent = 0.1;
+    real_t u_min = 10;
+    real_t u_max = -10;
+    real_t v_min = 10;
+    real_t v_max = -10;
     std::string fn = "fitting/deepdrawingC.xml";
 
     // Reading options from the command line
@@ -46,6 +51,10 @@ int main(int argc, char *argv[])
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
+    cmd.addReal("u", "u_min", "u_min in uv box", u_min);
+    cmd.addReal("v", "v_min", "v_min in uv box", v_min);
+    cmd.addReal("w", "u_max", "u_max in uv box", u_max);
+    cmd.addReal("z", "v_max", "v_max in uv box", v_max);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -87,11 +96,15 @@ int main(int argc, char *argv[])
                   "Wrong input");
 
     // Determine the parameter domain by mi/max of parameter values
-    real_t u_min = uv.row(0).minCoeff(),
-        u_max = uv.row(0).maxCoeff(),
-        v_min = uv.row(1).minCoeff(),
-        v_max = uv.row(1).maxCoeff();
+    u_min = std::min( u_min, uv.row(0).minCoeff());
+    u_max = std::max( u_max, uv.row(0).maxCoeff());
+    v_min = std::min( v_min, uv.row(1).minCoeff());
+    v_max = std::max( v_max, uv.row(1).maxCoeff());
 
+    real_t x_min = xyz.row(0).minCoeff();
+    real_t x_max = xyz.row(0).maxCoeff();
+
+    gsInfo << "x goes from " << x_min << " to " << x_max << std::endl;
     // Create knot-vectors without interior knots
     gsKnotVector<> u_knots (u_min, u_max, 0, deg_x+1 ) ;
     gsKnotVector<> v_knots (v_min, v_max, 0, deg_y+1 ) ;
@@ -152,6 +165,7 @@ int main(int argc, char *argv[])
 
     gsInfo<<"----------------\n";
 
+    gsWriteParaview(*(ref.result()),"result_official");
     if ( save )
     {
         gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
@@ -159,6 +173,16 @@ int main(int argc, char *argv[])
 
         fd.dump("fitting_out");
     }
+
+    bool nx = true;
+    if(nx)
+    {
+        gsTHBSpline<2>* thb_result = static_cast<gsTHBSpline<2>*>(ref.result());
+        gsTensorBSpline<2> TP_spline;
+        thb_result->convertToBSpline(TP_spline);
+        extensions::gsWritePK_SHEET(TP_spline, "result_fitting_example");
+    }
+
     else
         gsInfo << "Done. No output created, re-run with --save to get a xml "
                   "file containing the solution.\n";
