@@ -523,7 +523,10 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 
             // Compute on element
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes
+            {
                 _op::acc(arg_tpl.val().eval(k), quWeights[k], elVal);
+                //gsDebugVar(arg_tpl.val().eval(k));
+            }
         }
         _op::acc(elVal, 1, m_value);
         //if ( storeElWise )
@@ -647,7 +650,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         for ( index_t i=0; i != n; ++i )
         {
             fileName = fn + util::to_string(i);
-            unsigned nPts = m_options.askInt("plot.npts", 3000);
+            unsigned nPts = m_options.askInt("plot.npts", 1000);
             ab = m_exprdata->multiBasis().piece(i).support();
             gsGridIterator<T,CUBE> pt(ab, nPts);
             eval(expr, pt, i);

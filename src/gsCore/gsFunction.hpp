@@ -17,6 +17,7 @@
 
 #pragma once
 
+
 namespace gismo
 {
 
@@ -464,6 +465,22 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
     }
 
+    // Normal curvature
+    if ( InOut.flags & NEED_CURVATURE)
+    {
+        //domDim=2, tarDim=3
+        const int dir = InOut.side.direction();
+        const index_t sz = domDim*(domDim+1)/2;
+        InOut.curvature.resize(1,numPts);
+        for (index_t p=0; p!=numPts; ++p)
+        {
+            const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+            const gsAsConstMatrix<T,-1,tarDim> ddT(InOut.values[2].col(p).data(), sz, n);
+            const T nrm = ddT.row(dir).norm(); // (d^2/dir^2)G
+            if (0!=nrm)
+                InOut.curvature.at(p) = jacT.row(dir).cross(ddT.row(dir)).norm() / (nrm*nrm*nrm);
+        }
+    }
 }
 
 
@@ -475,6 +492,8 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     if (InOut.flags & NEED_GRAD_TRANSFORM || InOut.flags & NEED_MEASURE    ||
             InOut.flags & NEED_NORMAL         || InOut.flags & NEED_OUTER_NORMAL)
         InOut.flags = InOut.flags | NEED_GRAD;
+    if (InOut.flags & NEED_CURVATURE)
+        InOut.flags = InOut.flags | NEED_DERIV | NEED_DERIV2;
 
     this->compute(InOut.points, InOut);
 

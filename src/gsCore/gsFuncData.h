@@ -244,7 +244,7 @@ public:
 
     gsMatrix<T> points;     ///< input (parametric) points
 
-    gsMatrix<T> measures;
+    gsMatrix<T> curvature, measures;
     gsMatrix<T> fundForms;  // First fundumental forms
     gsMatrix<T> normals;
     gsMatrix<T> outNormals; // only for the boundary

@@ -2111,6 +2111,48 @@ private:
     eval_impl(const U & u, const index_t k) { return u.eval(k).value(); }
 };
 
+template<class E>
+class abs_expr  : public _expr<value_expr<E> >
+{
+    typename E::Nested_t _u;
+
+public:
+    typedef typename E::Scalar Scalar;
+    abs_expr(_expr<E> const& u) : _u(u)
+    {
+        // rows/cols not known at construction time
+        //GISMO_ASSERT(u.rows()*u.cols()<=1, "Expression\n"<<u<<"is not a scalar.");
+    }
+
+public:
+    enum {Space= 0, ScalarValued= 1, ColBlocks= 0};
+
+    Scalar eval(const index_t k) const { return abs_expr::eval_impl(_u,k); }
+
+    index_t rows() const { return 0; }
+    index_t cols() const { return 0; }
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    static bool isScalar() { return true; }
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { _u.print(os); }
+
+    // Math functions. eg
+    // sqrt_mexpr<T> sqrt() { return sqrt_mexpr<T>(*this); }
+private:
+    template<class U> static inline
+    typename util::enable_if<U::ScalarValued,Scalar>::type
+    eval_impl(const U & u, const index_t k) { return math::abs(u.eval(k)); }
+
+    template<class U> static inline
+    typename util::enable_if<!U::ScalarValued,Scalar>::type
+    eval_impl(const U & u, const index_t k) { return u.eval(k).abs(); }
+};
+
 /*
   Expression for the gradient of a finite element variable
 
@@ -2700,12 +2742,16 @@ public:
     MatExprType eval(const index_t k) const
     {
         if (0!=Space)
-        // Dim x (numActive*Dim)
+        {
+            // Dim x (numActive*Dim)
             res = _u.data().values[1].col(k).transpose().blockDiag(_u.dim());
+        }
         else
+        {
             res = _u.data().values[1]
                 .reshapeCol(k, _u.parDim(), _u.targetDim()).transpose()
                 .blockDiag(_u.dim());
+        }
         return res;
     }
 
@@ -3039,6 +3085,40 @@ public:
     const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
 
     void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
+};
+
+/*
+  Expression for the normal curvature along a boundary edge
+*/
+template<class T>
+class ncurv_expr : public _expr<ncurv_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    enum {Space = 0, ScalarValued = 1, ColBlocks = 0};
+
+    typedef T Scalar;
+
+    ncurv_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    T eval(const index_t k) const
+    {
+        return _G.data().curvature.at(k);
+    }
+
+    index_t rows() const { return 0; }
+    index_t cols() const { return 0; }
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_G);
+        _G.data().flags |= NEED_CURVATURE;
+    }
+
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
+
+    void print(std::ostream &os) const { os << "ncurv("; _G.print(os); os <<")"; }
 };
 
 /*
@@ -3955,6 +4035,10 @@ avg_expr<E> avg(const E & u) { return avg_expr<E>(u); }
 /// The identity matrix of dimension \a dim
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
 
+/// Absolute value
+template<class E> EIGEN_STRONG_INLINE
+abs_expr<E> abs(const E & u) { return abs_expr<E>(u); }
+
 /// The gradient of a variable
 template<class E> EIGEN_STRONG_INLINE
 grad_expr<E> grad(const E & u) { return grad_expr<E>(u); }
@@ -4018,6 +4102,10 @@ dJacG_expr<T> dJac(const gsGeometryMap<T> & G) { return dJacG_expr<T>(G); }
 /// The measure of a geometry map
 template<class T> EIGEN_STRONG_INLINE
 meas_expr<T> meas(const gsGeometryMap<T> & G) { return meas_expr<T>(G); }
+
+/// The normal curvature of a geometry map at a boundary edge
+template<class T> EIGEN_STRONG_INLINE
+ncurv_expr<T> ncurv(const gsGeometryMap<T> & G) { return ncurv_expr<T>(G); }
 
 /// Multiplication operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
