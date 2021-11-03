@@ -146,7 +146,7 @@ void gsFastFitting<T>::BuildLookupTable(const gsMatrix<T>& ugrid, const gsMatrix
     Table.setZero(N1*N1,n2);
 
     // pre-evaluate ubasis in grid-points
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     gsMatrix<real_t> uvalues;
     ubasis.active_into(ugrid,actives);
     ubasis.eval_into(ugrid,uvalues);
@@ -209,7 +209,7 @@ void gsFastFitting<T>::assembleSystem(const gsMatrix<T>& ugrid, const gsMatrix<T
     A_mat.setZero();
 
     // pre-evaluate ubasis in grid-points
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     gsMatrix<real_t> vvalues;
     vbasis.active_into(vgrid,actives);
     vbasis.eval_into(vgrid,vvalues);
@@ -247,7 +247,7 @@ void gsFastFitting<T>::assembleSystem(const gsMatrix<T>& ugrid, const gsMatrix<T
     gsInfo << "Counted flops fast fitting--PART 2: " << flops << std::endl;
 
     gsMatrix<T> value, curr_point;
-    gsMatrix<unsigned> active;
+    gsMatrix<index_t> active;
     for(index_t k = 0; k < n1*n2; ++k)
     {
         curr_point = this->m_param_values.col(k);
