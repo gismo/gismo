@@ -150,13 +150,13 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
         }
     }
-    gsFileData<T> fd;
-    gsMatrix<T> C=A_mat.toDense();
-    fd << C;
-    fd.dump("SlowFittingMatrix");
-    gsFileData<> fb;
-    fb << m_B;
-    fb.dump("SlowFittingb");
+    //gsFileData<T> fd;
+    //gsMatrix<T> C=A_mat.toDense();
+    //fd << C;
+    //fd.dump("SlowFittingMatrix");
+    //gsFileData<> fb;
+    //fb << m_B;
+    //fb.dump("SlowFittingb");
     gsInfo << "Counted flops slow fitting        : " << flops << std::endl;
 }
 

@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
     int n          = 30;
     bool random    = false;
 
+    // String to the file in case the parameters should be read from the file
     std::string fn = "";
     // /ya/ya135/ya13515/x/gismo/filedata/fitting/deepdrawingC.xml
     // /ya/ya135/ya13515/x/Testing/Examples_MTU/Blade/blade.xml
@@ -79,7 +80,7 @@ int main(int argc, char *argv[])
         {
             x.push_back(uv(0,i));
             y.push_back(uv(1,i));
-            z.push_back(1.0/3*sin(4*M_PI*(uv(0,i)+0.1/8.0))*sin(4*M_PI*(uv(1,i)+0.1/8.0))+200);
+            z.push_back(1.0/3*sin(4*M_PI*(uv(0,i)+0.1/8.0))*sin(4*M_PI*(uv(1,i)+0.1/8.0)));
         }
     }
 
@@ -103,6 +104,17 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (example == 4) // Sinus times Sinus function, smaller, less sinuses
+    {
+        for (index_t i=0; i<uv.cols(); i++)
+        {
+            x.push_back(uv(0,i));
+            y.push_back(uv(1,i));
+            z.push_back(1.0/10*sin(4*M_PI*(uv(0,i)/2.0))*sin(4*M_PI*(uv(1,i)/2.0)));
+        }
+    }
+
+    // putting all values in matrix xyz
     gsMatrix<> xyz(3,uv.cols());
     for(index_t i=0; i<uv.cols();i++)
     {
@@ -111,11 +123,13 @@ int main(int argc, char *argv[])
         xyz(2,i) = z[i];
     }
 
+    // Writing XML file:
      gsFileData<> fd;
      fd << uv;
      fd << xyz;
      fd.dump("example_fastfitting");
 
+     // Writing points as a paraview file:
      gsWriteParaviewPoints(xyz, "xyz");
 
      return 0;

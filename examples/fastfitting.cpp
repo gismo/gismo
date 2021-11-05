@@ -12,10 +12,11 @@ int main(int argc, char *argv[])
     index_t numVknots = 0;
     index_t deg_x     = 3;
     index_t deg_y     = 3;
-    real_t u_min      = 1;
-    real_t u_max      = -1;
-    real_t v_min      = 1;
-    real_t v_max      = -1;
+    // Initialized parameter domain [0,1]x[0,1]
+    real_t u_min      = 0;   //1
+    real_t u_max      = 1;   //-1
+    real_t v_min      = 0;   //1
+    real_t v_max      = 1;   //-1
     index_t n_ugrid   = 11;
     index_t n_vgrid   = 11;
     bool borders      = false;
@@ -59,10 +60,11 @@ int main(int argc, char *argv[])
     fd_in.getId<gsMatrix<> >(1, xyz);
     //! [Read data]
 
+    /*
     // This is for outputing an XML file, if requested
     gsFileData<> fd;
     gsFileData<> fl;
-    gsFileData<> fe;
+    gsFileData<> fe;*/
 
     // Check if matrix sizes are OK
     GISMO_ASSERT( uv.cols() == xyz.cols() && uv.rows() == 2 && xyz.rows() == 3,

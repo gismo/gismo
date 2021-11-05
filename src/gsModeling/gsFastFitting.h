@@ -20,7 +20,7 @@ public:
     void FindGridPoint(const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid, const gsMatrix<T>& curr_param, index_t &k1, index_t &k2);
     void GridProjection(const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid, gsMatrix<index_t>& weights);
     void BuildLookupTable(const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid, gsMatrix<T>& Table, const gsMatrix<index_t>& weights);
-    void assembleSystem(const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid, gsMatrix<T>& Table, gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
+    void assembleSystem(const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid, gsMatrix<T>& Table, gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B, const gsMatrix<index_t>& weights);
     void compute(const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid, const bool condcheck);
     void computeAllProjectedErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz, const gsMatrix<T>& ugrid, const gsMatrix<T>& vgrid);
     void computeProjectedAverageErrors(const gsMatrix<index_t>& weights,const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid);
@@ -71,7 +71,7 @@ void gsFastFitting<T>::FindGridPoint(const gsMatrix<T> &ugrid, const gsMatrix<T>
 template<class T>
 void gsFastFitting<T>::GridProjection(const gsMatrix<T> &ugrid, const gsMatrix<T> &vgrid, gsMatrix<index_t>& weights)
 {
-    // For now the identity:
+    // Initializing some variables
     index_t n1,n2;
     n1 = weights.rows();
     n2 = weights.cols();
@@ -86,7 +86,6 @@ void gsFastFitting<T>::GridProjection(const gsMatrix<T> &ugrid, const gsMatrix<T
     points_temp.setZero(n1*n2,dimension);
     gsMatrix<T> curr_param,curr_point;
 
-    //gsTensorBSplineBasis<2,T> *tensorbasis = (static_cast<gsTensorBSplineBasis<2,T>*>(this->m_basis));
     for (index_t i=0; i<numpoints; i++)
     {
         // we have to check which points belong to which grid point. New variables:
@@ -99,23 +98,23 @@ void gsFastFitting<T>::GridProjection(const gsMatrix<T> &ugrid, const gsMatrix<T
         index_t k,k1=0,k2=0;
         FindGridPoint(ugrid,vgrid,curr_param,k1,k2);
         k = k2 * n1 + k1;
-        //k = tensorbasis->index(k1,k2);
 
         points_temp.row(k) += curr_point;
         weights(k1,k2) += 1;
     }
-    // For now, adjust m_param_values:+= curr_point;
+
+    // Build m_param as mesh of parameters
     for (index_t i2= 0; i2<n2; i2++)
     {
         for (index_t i1= 0; i1<n1; i1++)
         {
-            //index_t iglobal = tensorbasis->index(i1,i2);
             index_t iglobal = i2 * n1 + i1;
             params_temp(0,iglobal)=ugrid(i1);
             params_temp(1,iglobal)=vgrid(i2);
         }
     }
 
+    // Write new parameter and point data into member variables
     this -> m_param_values = params_temp;
     this -> m_points = points_temp;
 }
@@ -127,19 +126,18 @@ void gsFastFitting<T>::BuildLookupTable(const gsMatrix<T>& ugrid, const gsMatrix
     //const int num_basis=this->m_basis->size();
     //const int dimension=this->m_points.cols();
 
-    // Get 1D basis:
+    // Get 1D basis in u direction:
     gsBasis<T>* ubasis_tmp;
     ubasis_tmp = &(this->m_basis->component(0));
-    //vbasis = this->m_basis->component(1);
     gsBSplineBasis<T> ubasis = *(static_cast<gsBSplineBasis<T>*>(ubasis_tmp));
 
     index_t N1;
     //index_t N2;
-    N1 = ubasis.size();
+    N1 = ubasis.size();   // number of basis functions in u direction
     //N2 = num_basis/N1;
 
     int p;
-    p = this->m_basis->degree(0);
+    p = this->m_basis->degree(0);   // degree for u
     int n1,n2;
     n1 = vgrid.cols();  // gridpoints in u-direction
     n2 = ugrid.cols();  // gridpoints in v-direction
@@ -157,12 +155,14 @@ void gsFastFitting<T>::BuildLookupTable(const gsMatrix<T>& ugrid, const gsMatrix
     {
         for (index_t i=0; i<p+1; i++)
         {
+            real_t bi;
+            index_t i1;
+            bi = uvalues(i,k1);
+            i1 = actives(i,k1);
             for (index_t j=0; j<p+1; j++)
             {
-                real_t bi,bj;
-                index_t i1, j1;
-                bi = uvalues(i,k1);
-                i1 = actives(i,k1);
+                real_t bj;
+                index_t j1;
                 bj = uvalues(j,k1);
                 j1 = actives(j,k1);
                 index_t ind_temp = j1*N1+i1;   // lexicographical running index
@@ -180,40 +180,42 @@ void gsFastFitting<T>::BuildLookupTable(const gsMatrix<T>& ugrid, const gsMatrix
     }
     // Output number flops:
     gsInfo << "Counted flops fast fitting--PART 1: " << flops << std::endl;
+
+    // How can this be improved? -> parallelization?
 }
 
 template<class T>
-void gsFastFitting<T>::assembleSystem(const gsMatrix<T>& ugrid, const gsMatrix<T>& vgrid, gsMatrix<T>& Table,gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B)
+void gsFastFitting<T>::assembleSystem(const gsMatrix<T>& ugrid, const gsMatrix<T>& vgrid, gsMatrix<T>& Table,gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B, const gsMatrix<index_t>& weights)
 {
     //Initialize look-up Table
     const int num_basis=this->m_basis->size();
     //const int dimension=this->m_points.cols();
 
-    // Get 1D basis:
+    // Get 1D basis in v direction:
     gsBasis<T>* vbasis_tmp;
     vbasis_tmp = &(this->m_basis->component(1));
-    //ubasis = this->m_basis->component(0);
     gsBSplineBasis<T> vbasis = *(static_cast<gsBSplineBasis<T>*>(vbasis_tmp));
 
     index_t N1;
     index_t N2;
-    N2 = vbasis.size();
-    N1 = num_basis/N2;
+    N2 = vbasis.size();    // number basis v direction
+    N1 = num_basis/N2;    // number basis u direction
 
     int p;
-    p = this->m_basis->degree(1);
+    p = this->m_basis->degree(1);      // degree v direction
     int n1;
     n1 = vgrid.cols();  // gridpoints in u-direction
     int n2;
     n2 = ugrid.cols();  // gridpoints in v-direction
     A_mat.setZero();
 
-    // pre-evaluate ubasis in grid-points
+    // pre-evaluate vbasis in grid-points
     gsMatrix<index_t> actives;
     gsMatrix<real_t> vvalues;
     vbasis.active_into(vgrid,actives);
     vbasis.eval_into(vgrid,vvalues);
 
+    // tensorbasis used in order to find lexicographical running index in inner slope
     gsTensorBSplineBasis<2,T> *tensorbasis = (static_cast<gsTensorBSplineBasis<2,T>*>(this->m_basis));
     // Assemble matix A, right hand side b
     index_t flops = 0;
@@ -221,12 +223,14 @@ void gsFastFitting<T>::assembleSystem(const gsMatrix<T>& ugrid, const gsMatrix<T
     {
         for (index_t i2=0; i2<p+1; i2++)
         {
+            real_t bi;
+            index_t ui;
+            bi = vvalues(i2,k2);
+            ui = actives(i2,k2);
             for (index_t j2=0; j2<p+1; j2++)
             {
-                real_t bi,bj;
-                index_t ui, uj;
-                bi = vvalues(i2,k2);
-                ui = actives(i2,k2);
+                real_t bj;
+                index_t uj;
                 bj = vvalues(j2,k2);
                 uj = actives(j2,k2);
                 for (index_t i1=0; i1<N1; i1++)
@@ -236,8 +240,11 @@ void gsFastFitting<T>::assembleSystem(const gsMatrix<T>& ugrid, const gsMatrix<T
                         index_t i_lexiglobal = tensorbasis->index(i1,ui);
                         index_t j_lexiglobal = tensorbasis->index(j1,uj);
                         index_t ind_temp = j1*N1+i1;
-                        A_mat(i_lexiglobal,j_lexiglobal) += bi*bj*Table(ind_temp,k2);   // Symmetry of bi*bj -> could be done more efficiently?
-                        flops += 3;
+                        if (Table(ind_temp,k2) != 0)  // Check if Table is non-zero
+                        {
+                            A_mat(i_lexiglobal,j_lexiglobal) += bi*bj*Table(ind_temp,k2);   // Symmetry of bi*bj -> could be done more efficiently?
+                            flops += 3;
+                        }
                     }
                 }
             }
@@ -250,31 +257,38 @@ void gsFastFitting<T>::assembleSystem(const gsMatrix<T>& ugrid, const gsMatrix<T
     gsMatrix<index_t> active;
     for(index_t k = 0; k < n1*n2; ++k)
     {
-        curr_point = this->m_param_values.col(k);
+        // Check if weight(k) = 0: Find local k1,k2 from k
+        index_t k1 = k % n2;
+        index_t k2 = (k-k1)/n2;
 
-        //computing the values of the basis functions at the current point
-        this->m_basis->eval_into(curr_point, value);
-
-        // which functions have been computed i.e. which are active
-        this->m_basis->active_into(curr_point, active);
-
-        const index_t numActive = active.rows();
-
-        for (index_t i = 0; i != numActive; ++i)
+        if (weights(k1,k2)!=0)
         {
-            const int ii = active.at(i);
-            m_B.row(ii) += value.at(i) * this->m_points.row(k);
+            curr_point = this->m_param_values.col(k);
+
+            //computing the values of the basis functions at the current point
+            this->m_basis->eval_into(curr_point, value);
+
+            // which functions have been computed i.e. which are active 500, 500. 1.
+            this->m_basis->active_into(curr_point, active);
+
+            const index_t numActive = active.rows();
+
+            for (index_t i = 0; i != numActive; ++i)
+            {
+                const int ii = active.at(i);
+                m_B.row(ii) += value.at(i) * this->m_points.row(k);
+            }
         }
     }
 
-    // For testing purpose to compare A_mat:
+    /*// For testing purpose to compare A_mat:
     gsFileData<> fd;
     gsMatrix<T> C=A_mat.toDense();
     fd << C;
     fd.dump("FastFittingMatrix");
     gsFileData<> fb;
     fb << m_B;
-    fb.dump("FastFittingb");
+    fb.dump("FastFittingb");*/
 }
 
 
@@ -307,19 +321,19 @@ void gsFastFitting<T>::compute(const gsMatrix<T>& ugrid, const gsMatrix<T>& vgri
 
     // Initialize weights and look-up table
     gsMatrix<index_t> weights (ugrid.cols(),vgrid.cols());
-    //weights.setOnes(ugrid.rows(),vgrid.rows());
     gsMatrix<T> Table;
     GridProjection(ugrid,vgrid,weights);
     //weights.setOnes();
 
+    // stopping time for complete assembly (including right-hand side)
     gsStopwatch time;
     time.restart();
     BuildLookupTable(ugrid,vgrid,Table,weights);
 
-    assembleSystem( ugrid, vgrid, Table, A_mat, m_B);
+    assembleSystem( ugrid, vgrid, Table, A_mat, m_B, weights);
     time.stop();
     gsInfo<<"Assembly time                     : "<< time <<"\n";
-    // To do: include regularization later after projection step
+    // To do: include regularization later after projection step (not needed at this point)
     //applySmoothing(lambda, A_mat, dreg);
 
     //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
@@ -332,11 +346,6 @@ void gsFastFitting<T>::compute(const gsMatrix<T>& ugrid, const gsMatrix<T>& vgri
     gsMatrix<T> x;
     if (condcheck)
     {
-        //real_t cnum;
-        //cnum = gsSolverUtils<T>::conditionNumber(A_mat);
-        //gsInfo << "Condition number: " << cnum << std::endl;
-
-        //solver.compute(A_mat);
         Eigen::SparseMatrix<double> I(A_mat.rows(),A_mat.cols());
         I.setIdentity();
         auto A_inv = solver.solve(I);
@@ -351,15 +360,13 @@ void gsFastFitting<T>::compute(const gsMatrix<T>& ugrid, const gsMatrix<T>& vgri
         return;
     }
 
-    // Solves for many right hand side  columns
-    //else
-    //    x = solver.solve(m_B); //toDense()
+    // Solve for x
     x = solver.solve(m_B); //toDense()
-    //gsMatrix<T> x (m_B.rows(), m_B.cols());
-    //x=A_mat.fullPivHouseholderQr().solve( m_B);
-    // Solves for many right hand side  columns
-    // finally generate the B-spline curve
+
+    // Generate the B-spline curve / surface
     this->m_result = this->m_basis->makeGeometry( give(x) ).release();
+
+    // Compute average errors
     computeProjectedAverageErrors(weights,ugrid,vgrid);
 }
 
@@ -367,8 +374,10 @@ void gsFastFitting<T>::compute(const gsMatrix<T>& ugrid, const gsMatrix<T>& vgri
 template<class T>
 void gsFastFitting<T>::computeAllProjectedErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz, const gsMatrix<T>& ugrid, const gsMatrix<T>& vgrid)
 {
+    // since m_param_values and m_points were adjusted we need to look at the original values uv and xyz:
     this->m_pointErrors.clear();
 
+    // Leave xyz the same but project each uv to the grid:
     gsMatrix<T> uv_temp (2,uv.cols());
     index_t k1,k2;
     for (index_t k=0; k<uv.cols(); k++)
@@ -376,11 +385,9 @@ void gsFastFitting<T>::computeAllProjectedErrors(const gsMatrix<T>& uv, const gs
         FindGridPoint(ugrid,vgrid,uv.col(k),k1,k2);
         uv_temp(0,k) = ugrid(k1);
         uv_temp(1,k) = vgrid(k2);
-
-        if(xyz(0,k) == 0 && xyz(1,k)==0 && xyz(2,k)==0)
-            gsInfo << "zero at " << k << std::endl;
     }
 
+    // We change the member variables and compute the error:
     changeParam(uv_temp,xyz);
     this -> computeErrors();
 
@@ -394,8 +401,7 @@ void gsFastFitting<T>::computeProjectedAverageErrors(const gsMatrix<index_t>& we
     this->m_pointErrors.clear();
 
     gsMatrix<T> val_i;
-    bool c = false;
-    //index_t count = 0;
+    bool firsterrorfound = false;
     this->m_result->eval_into(this->m_param_values, val_i);
 
     index_t k1,k2;
@@ -404,27 +410,25 @@ void gsFastFitting<T>::computeProjectedAverageErrors(const gsMatrix<index_t>& we
     {
         this->m_pointErrors.push_back( (this->m_points.row(0)/weights(k1,k2) - val_i.col(0).transpose()).norm() );
         this->m_max_error = this->m_min_error = this->m_pointErrors.back();
-        c = true;
-        //count += 1;
+        firsterrorfound = true;
     }
 
     for (index_t i = 1; i < this->m_points.rows(); i++)
     {
-        FindGridPoint(ugrid,vgrid,this->m_param_values.col(i),k1,k2);
+        FindGridPoint(ugrid,vgrid,this->m_param_values.col(i),k1,k2);   // Find grid point for the current parameter
         if (weights(k1,k2) != 0)
         {
-            const T err = (this->m_points.row(i)/weights(k1,k2) - val_i.col(i).transpose()).norm() ;
+            const T err = (this->m_points.row(i)/weights(k1,k2) - val_i.col(i).transpose()).norm() ;    // this averages all point error contributions of the data projected to this grid point (k1,k2)
             this->m_pointErrors.push_back(err);
 
-            if (c==false)
+            if (firsterrorfound==false)
             {
                 this->m_max_error = this->m_min_error = this->m_pointErrors.back();
-                c = true;
+                firsterrorfound = true;
             }
 
             if ( err > this->m_max_error ) this->m_max_error = err;
             if ( err < this->m_min_error ) this->m_min_error = err;
-            //count += 1;
         }
     }
 }
