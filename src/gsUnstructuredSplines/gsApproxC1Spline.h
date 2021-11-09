@@ -76,9 +76,6 @@ protected:
     // Data members
     index_t p_tilde, r_tilde;
 
-    // Container[patch][side]
-    std::vector<std::vector<index_t>> rowContainer;
-
     // Put here the members of the shared functions
     using Base::m_patches;
     using Base::m_multiBasis;

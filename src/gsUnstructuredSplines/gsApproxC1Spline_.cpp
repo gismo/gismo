@@ -1,4 +1,4 @@
-/** @file gsApproxC1Edge.hpp
+/** @file gsApproxC1Spline.hpp
 
     @brief Creates the (approx) C1 space.
 
@@ -8,22 +8,22 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): P. Weinmueller & A. Farahat
+    Author(s): P. Weinmueller
 */
 
 #include <gsCore/gsTemplateTools.h>
 #include <gsCore/gsBoundary.h>
 
-#include <gsUnstructuredSplines/gsApproxC1Edge.h>
-#include <gsUnstructuredSplines/gsApproxC1Edge.hpp>
+#include <gsUnstructuredSplines/gsApproxC1Spline.h>
+#include <gsUnstructuredSplines/gsApproxC1Spline.hpp>
 
 
 
 namespace gismo
 {
 
-//CLASS_TEMPLATE_INST gsApproxC1Edge<1,real_t> ;
-CLASS_TEMPLATE_INST gsApproxC1Edge<2,real_t> ;
-//CLASS_TEMPLATE_INST gsApproxC1Edge<3,real_t> ;
+//CLASS_TEMPLATE_INST gsApproxC1Spline<1,real_t> ;
+CLASS_TEMPLATE_INST gsApproxC1Spline<2,real_t> ;
+//CLASS_TEMPLATE_INST gsApproxC1Spline<3,real_t> ;
 
 } // end namespace gismo
