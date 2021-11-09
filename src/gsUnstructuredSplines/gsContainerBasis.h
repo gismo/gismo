@@ -33,6 +33,13 @@ namespace gismo
 
         gsContainerBasis(index_t numSubspaces, index_t numHelperBasis = 0)
         {
+
+            /*
+             * for i
+             *      simple basis
+             *      add basis
+             */
+
             basisContainer.clear();
             for (index_t i = 0; i != numSubspaces; i++)
                 basisContainer.push_back(gsTensorBSplineBasis<d,T>());
@@ -302,7 +309,7 @@ namespace gismo
         gsBSplineBasis<T> & getHelperBasis(index_t row, index_t col) { return helperBasisContainer[row][col]; }
         // helperBasisContainer END
 
-        std::vector<gsTensorBSplineBasis<d,T>> & getBasisContainer() { return basisContainer; }
+        //std::vector<gsTensorBSplineBasis<d,T>> & getBasisContainer() { return basisContainer; }
 
         // Data members
     protected:

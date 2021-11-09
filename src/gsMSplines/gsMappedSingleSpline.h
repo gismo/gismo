@@ -79,7 +79,7 @@ public:
     }
 
     short_t targetDim() const
-    { return m_spline->m_coefs.cols(); }
+    { return m_spline->m_global.cols(); }
 
     /// Evaluates the non-zero spline functions at value u.
     void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const

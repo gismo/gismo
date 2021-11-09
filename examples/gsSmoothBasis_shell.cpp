@@ -580,8 +580,11 @@ int main(int argc, char *argv[])
         gsInfo<<"\tError computations:\t"<<time.stop()<<"\t[s]\n"; // This takes longer for the D-patch, probably because there are a lot of points being evaluated, all containing the linear combinations of the MSplines
 
         // TO DO: Refine the mb
-        mp.uniformRefine();
-        dbasis = gsMultiBasis<>(mp);
+        if (r < numRefine)
+        {
+            mp.uniformRefine();
+            dbasis = gsMultiBasis<>(mp);
+        }
     }
     //! [Solver loop]
 
@@ -624,13 +627,9 @@ int main(int argc, char *argv[])
         gsMappedBasis<2,real_t> testt(mp,global2local);
         gsMappedSpline<2,real_t> testtt(mp,global2local);
 
-
-        gsMappedSingleSpline<2,real_t> msinglespline = mspline.piece(0);
-        gsFunction<real_t> * msinglesplinefun = dynamic_cast<gsFunction<real_t> * >(&msinglespline);
-        // gsGeometry<real_t> * test = dynamic_cast<gsGeometry<real_t> * >(msinglesplinefun);
-        gsGeometry<real_t> * test = (gsGeometry<real_t> *) msinglesplinefun; // downcast
-        GISMO_ASSERT(msinglesplinefun!=NULL,"Hello");
-        GISMO_ASSERT(test!=NULL,"Hello2");
+        mspline.exportToPatches();
+        gsMultiPatch<> mp_test = testtt.exportToPatches();
+        gsWriteParaview<>( mp_test, "mp_test", 1000, true);
 
         gsFunctionSum<real_t> def(&mp,&mspline);
 
