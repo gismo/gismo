@@ -147,8 +147,6 @@ namespace gismo
             gsWriteParaview(basisEdge[0].patch(0),"test_1",2000);
 
             const boundaryInterface & item = m_patches.interfaces()[numInt];
-            index_t side_1 = item.first().side().index();
-            index_t side_2 = item.second().side().index();
 
             index_t patch_1 = item.first().patch;
             index_t patch_2 = item.second().patch;
@@ -158,7 +156,7 @@ namespace gismo
                 shift_col += m_bases[np].size();
 
             end_col += m_bases[patch_1].getBasis(0).size();
-            for (index_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
+            for (size_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
             {
                 index_t jj = 0;
                 for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -173,7 +171,7 @@ namespace gismo
 
             end_col += m_bases[patch_2].getBasis(0).size();
 
-            for (index_t ii = 0; ii < basisEdge[1].nPatches(); ++ii)
+            for (size_t ii = 0; ii < basisEdge[1].nPatches(); ++ii)
             {
                 index_t jj = 0;
                 for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -203,7 +201,7 @@ namespace gismo
                 shift_col += m_bases[np].size();
 
             end_col += m_bases[patch_1].getBasis(0).size();
-            for (index_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
+            for (size_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
             {
                 index_t jj = 0;
                 for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -233,11 +231,11 @@ namespace gismo
             for(size_t pInd=0; pInd < patchIndex.size(); pInd++)
             {
                 index_t begin_col = 0, end_col = 0, shift_col = 0;
-                for (index_t np = 0; np < patchIndex[pInd]; ++np)
+                for (size_t np = 0; np < patchIndex[pInd]; ++np)
                     shift_col += m_bases[np].size();
 
                 end_col += m_bases[patchIndex[pInd]].getBasis(0).size();
-                for (index_t ii = 0; ii < basisVertex[pInd].nPatches(); ++ii)
+                for (size_t ii = 0; ii < basisVertex[pInd].nPatches(); ++ii)
                 {
                     index_t jj = 0;
                     for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -249,8 +247,6 @@ namespace gismo
             shift_row += 6;
         }
         m_matrix.makeCompressed();
-
-        gsInfo << m_matrix << "\n";
     }
 
 
