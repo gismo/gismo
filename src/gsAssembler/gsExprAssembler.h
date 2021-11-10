@@ -245,6 +245,9 @@ public:
 
     variable getBdrFunction() const { return m_exprdata->getMutVar(); }
 
+    variable getBdrFunction(const gsBoundaryConditions<T> & bc, const std::string & tag) const
+    { return m_exprdata->getMutVar(); }
+
     element getElement() const { return m_element; }
 
     void setFixedDofVector(gsMatrix<T> & dof, short_t unk = 0);

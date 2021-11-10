@@ -114,6 +114,9 @@ public:
     
     gsHDomain(point const & upp)
     {
+        m_root = nullptr;
+        m_maxInsLevel = 0;
+        m_maxPath = 0;
         init(upp);
     }
 
@@ -225,7 +228,15 @@ public:
     {
         return m_upperIndex;
     }
-    
+
+    /// Return the upper corner of the tree in level 0
+    const point upperCornerIndex() const
+    {
+        point ind = m_upperIndex;
+        for (short_t i=0; i<d; ++i)
+            ind[i] = (ind[i] >> m_indexLevel);
+        return ind;
+    }
 
     /* \brief The insert function which insert box
     defined by points \em lower and \em upper to level \em lvl.
@@ -549,7 +560,7 @@ public:
         return m_maxInsLevel;
     }
 
-
+    void computeMaxInsLevel();
 
 private:
     
@@ -658,6 +669,18 @@ private:
     /// considered half-open, i.e. in 2D they are of the form
     /// [a_1,b_1) x [a_2,b_2)
     node * pointSearch(const point & p, int level, node  *_node) const;
+
+        // Decreases the level by 1 for all leaves
+    struct maxLevel_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+        
+        static void visitLeaf(kdnode<d,T> * leafNode, return_type &i)
+        {
+            if (leafNode->level>i) i=leafNode->level;
+        }
+    };
     
     // Increases the level by 1 for all leaves
     struct levelUp_visitor

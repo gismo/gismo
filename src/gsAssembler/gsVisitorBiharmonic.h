@@ -13,37 +13,43 @@
 
 #pragma once
 
+#include <gsAssembler/gsQuadrature.h>
+
 namespace gismo
 {
 
-/** \brief Visitor for the biharmonic equation.
- *
- * Assembles the bilinear terms
- * \f[ (\Delta u,\Delta v)_\Omega \text{ and } (f,v)_\Omega \f]
- * For \f[ u = g \quad on \quad \partial \Omega \f],
- *
- */
+   /** @brief Visitor for the biharmonic equation.
+     *
+     * Assembles the bilinear form
+     * \f[ (\Delta u,\Delta v)_\Omega \f]
+     * And the linear form
+     * \f[ (f,v)_\Omega. \f]
+     *
+     * @ingroup Assembler
+     */
 
 template <class T>
 class gsVisitorBiharmonic
 {
 public:
 
+    /// @brief Constructor
+    ///
+    /// @param pde     Reference to \a gsBiharmonicPde object
     gsVisitorBiharmonic(const gsPde<T> & pde)
-    { 
-        rhs_ptr = static_cast<const gsBiharmonicPde<T>&>(pde).rhs() ;
-    }
+       : rhs_ptr(static_cast<const gsBiharmonicPde<T>&>(pde).rhs())
+    {}
 
-    /** \brief Constructor for gsVisitorBiharmonic.
-     *
-     * \param[in] rhs Given right-hand-side function/source term that, for
-     */
-    gsVisitorBiharmonic(const gsFunction<T> & rhs) :
-        rhs_ptr(&rhs)
+    /// @brief Constructor
+    ///
+    /// @param rhs Right-hand-side function/source term
+    gsVisitorBiharmonic(const gsFunction<T> & rhs)
+        : rhs_ptr(&rhs)
     {
-        GISMO_ASSERT( rhs.targetDim() == 1 ,"Not yet tested for multiple right-hand-sides");
+        GISMO_ASSERT( rhs.targetDim() == 1, "Not yet tested for multiple right-hand-sides");
     }
 
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
                     gsQuadRule<T>    & rule)
     {
@@ -58,9 +64,10 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
-                    const gsOptionList & options, 
+                    const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
@@ -70,7 +77,7 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
                          const gsGeometry<T>    & geo,
                          gsMatrix<T>            & quNodes)
@@ -98,7 +105,7 @@ public:
         localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
 
-
+    /// Assemble on element
     inline void assemble(gsDomainIterator<T>    & ,
                          const gsVector<T>      & quWeights)
     {
@@ -121,6 +128,7 @@ public:
         }
     }
 
+    /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
                               gsSparseSystem<T>               & system)
@@ -195,4 +203,3 @@ protected:
 
 
 } // namespace gismo
-

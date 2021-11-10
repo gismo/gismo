@@ -53,6 +53,9 @@ public:
 
 public:
 
+    /// Returns the list of default options for assembly
+    static gsOptionList defaultOptions();
+
     /** @brief Main Constructor of the assembler object.
      *  \param[in] pde A boundary value Poisson problem
      *  \param[in] bases a multi-basis that contains patch-wise bases
@@ -66,6 +69,7 @@ public:
 
         // 0: no stabilization
         // 1: SUPG
+        m_options = defaultOptions();
         m_options.addInt("Stabilization", "Choice of stabilization method; 0 := no; 1 := SUPG;", flagStabilization);
         Base::initialize(pde, bases, m_options);
     }
@@ -83,6 +87,7 @@ public:
                    iFace::strategy            intStrategy = iFace::glue,
                    stabilizerCDR::method      flagStabilization = stabilizerCDR::none)
     {
+        m_options = defaultOptions();
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 
@@ -116,6 +121,7 @@ public:
                    iFace::strategy                 intStrategy = iFace::glue,
                    stabilizerCDR::method           flagStabilization = stabilizerCDR::none)
     {
+        m_options = defaultOptions();
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
 

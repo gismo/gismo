@@ -11,6 +11,8 @@
     Author(s): A. Mantzaflaris, H.M. Verhelst
 */
 
+#include <gsUtils/gsPointGrid.h>
+
 namespace gismo {
 
 namespace expr

@@ -122,6 +122,7 @@ protected:
     bool readAxelFile(String const & fn);
     bool readAxelSurface( gsXmlNode * node );
     bool readAxelCurve  ( gsXmlNode * node );
+    bool readAxelMesh   ( gsXmlNode * node );
 
     /// Reads GeoPDEs txt file
     bool readGeompFile( String const & fn );
