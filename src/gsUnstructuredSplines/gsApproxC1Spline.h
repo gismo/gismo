@@ -38,7 +38,7 @@ public:
     :
     Base(patches, multiBasis)
     {
-        this->defaultOptions();
+        defaultOptions();
     };
 
 public:
@@ -47,8 +47,9 @@ public:
     void init();
     void compute();
 
-private:
     void defaultOptions();
+
+private:
 
     // Helper functions
     void createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,

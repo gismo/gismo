@@ -622,6 +622,7 @@ namespace gismo
             {
                 for (size_t v =0; v!=cornerLists.size(); v++) // over EVs
                 {
+                    patches.clear();
                     index_t N = cornerLists[v].size();
 
                     allPatches.resize(m_patches.nPatches());
@@ -684,15 +685,10 @@ namespace gismo
                         side = otherSide;
                     }
 
-
                     for (index_t i = 0; i!=N; i++) // over corners in EVs
                     {
-                        //  gsDebugVar(corners[i].patch);
-                        // gsDebugVar(corners[i].corner());
 
                         otherCorner = interfaces[i].mapCorner(corners[i]);
-                        // gsDebugVar(otherCorner.patch);
-                        // gsDebugVar(otherCorner.corner());
 
                         if (interfaces[i].first().patch==corners[i].patch)
                         {
@@ -811,6 +807,8 @@ namespace gismo
 
                         }
                     }
+                    gsDebugVar("here");
+
                 }
             }
         }
