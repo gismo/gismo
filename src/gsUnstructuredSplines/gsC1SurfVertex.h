@@ -33,7 +33,7 @@ public:
     /// Empty constructor
     ~gsC1SurfVertex() { }
 
-    gsC1SurfVertex(gsMultiPatch<T> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
+    gsC1SurfVertex(gsMultiPatch<T> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices) : m_mp(mp)
     {
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
         {
@@ -380,13 +380,14 @@ public:
             basisV.col(basisV.cols() - 1) = vertBas.col(count);
 
             Eigen::FullPivLU<gsMatrix<>> ker(basisV);
-            ker.setThreshold(1e-5);
+            ker.setThreshold(1e-10);
             if (ker.dimensionOfKernel() != 0)
             {
                 basisV = basisV.block(0, 0, basisV.rows(), basisV.cols() - 1);
             }
             count++;
         }
+        gsDebugVar(vertBas);
     }
 
     void addSmallKerBasis(gsMatrix<> & basisV, gsMatrix<> & smallK, index_t smallKDim)
@@ -397,16 +398,19 @@ public:
             basisV.col(basisV.cols()-1) = smallK.col(i);
 
             Eigen::FullPivLU<gsMatrix<>> ker(basisV);
-            ker.setThreshold(1e-5);
+            ker.setThreshold(1e-10);
             if(ker.dimensionOfKernel() != 0)
             {
                 basisV = basisV.block(0, 0, basisV.rows(), basisV.cols()-1);
             }
         }
+
     }
 
     std::pair<gsMatrix<>, std::vector<index_t>> selectVertexBoundaryBasisFunction(gsMatrix<> bigKernel, index_t bigKerDim, gsMatrix<> smallKernel, index_t smallKerDim)
     {
+        gsDebugVar(bigKernel);
+
         gsMatrix<> basisVect;
         std::vector<index_t> numberPerType;
 
@@ -439,6 +443,7 @@ public:
                 basisVect = vertBas;
             }
         }
+        gsDebugVar(basisVect);
         return std::make_pair(basisVect, numberPerType);
     }
 
@@ -721,8 +726,8 @@ public:
 
             Eigen::FullPivLU<gsMatrix<>> BigLU(bigMatrix);
             Eigen::FullPivLU<gsMatrix<>> SmallLU(smallMatrix);
-            SmallLU.setThreshold(1e-5);
-            BigLU.setThreshold(1e-5);
+            SmallLU.setThreshold(1e-10);
+            BigLU.setThreshold(1e-10);
 
 //            if (!g1OptionList.getSwitch("neumann"))
 //                dim_kernel = SmallLU.dimensionOfKernel();
@@ -736,8 +741,8 @@ public:
         {
             Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
             Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
-            SmallLU.setThreshold(1e-5);
-            BigLU.setThreshold(1e-5);
+            SmallLU.setThreshold(1e-10);
+            BigLU.setThreshold(1e-10);
 
 //            if (!g1OptionList.getSwitch("neumann"))
 //                dim_kernel = SmallLU.dimensionOfKernel();
@@ -769,7 +774,40 @@ public:
                 auxGeom[i].parametrizeBasisBack(g1BasisVector[i]);
 
         for (size_t i = 0; i < auxGeom.size(); i++)
+        {
+            for (index_t ii = 0; ii < auxGeom[i].getG1Basis().nPatches(); ii++)
+            {
+                gsMatrix<> coefs_temp;
+                coefs_temp.setZero(auxGeom[i].getG1Basis().patch(ii).coefs().rows(),1);
+                for (index_t j = 0; j < auxGeom[i].getG1Basis().patch(ii).coefs().rows(); j++)
+                {
+                    if (auxGeom[i].getG1Basis().patch(ii).coefs().at(j)*auxGeom[i].getG1Basis().patch(ii).coefs().at(j) > 1e-10)
+                        coefs_temp(j,0) = auxGeom[i].getG1Basis().patch(ii).coefs()(j,0);
+                }
+                auxGeom[i].getG1Basis().patch(ii).setCoefs(coefs_temp);
+            }
             basisVertexResult.push_back(auxGeom[i].getG1Basis());
+        }
+
+
+        // just for plotting
+/*        std::string fileName;
+        std::string basename = "VerticesBasisFunctions" + util::to_string(auxGeom.size());
+        gsParaviewCollection collection(basename);
+
+        for (size_t np = 0; np < auxGeom.size(); ++np)
+        {
+            if (basisVertexResult.size() != 0)
+                for (size_t i = 0; i < basisVertexResult[np].nPatches(); ++i)
+                {
+                    fileName = basename + "_" + util::to_string(np) + "_" + util::to_string(i);
+                    gsField<> temp_field(m_mp.patch(auxGeom[np].getGlobalPatchIndex()), basisVertexResult[np].patch(i));
+                    gsWriteParaview(temp_field, fileName, 5000);
+                    collection.addTimestep(fileName, i, "0.vts");
+
+                }
+        }
+        collection.save();*/
     }
 
     gsG1AuxiliaryPatch & getSinglePatch(const unsigned i){ return auxGeom[i]; }
@@ -790,6 +828,9 @@ protected:
 
     // Store temp solution
     std::vector<gsMultiPatch<T>> basisVertexResult;
+
+    // only for plotting
+    gsMultiPatch<T> & m_mp;
 
 }; // gsC1SurfVertex
 

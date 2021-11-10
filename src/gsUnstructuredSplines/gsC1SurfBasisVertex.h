@@ -295,7 +295,7 @@ namespace gismo
     template <class T, class bhVisitor>
     void gsC1SurfBasisVertex<T,bhVisitor>::solve()
     {
-        gsSparseSolver<real_t>::CGDiagonal solver;
+        gsSparseSolver<real_t>::LU solver;
 //    gsSparseSolver<real_t>::LU solver;
 
 

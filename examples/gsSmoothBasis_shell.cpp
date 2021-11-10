@@ -411,6 +411,10 @@ int main(int argc, char *argv[])
         gsReadFile<>(input, mp);
         mp.clearTopology();
         mp.computeTopology();
+        for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+            for (index_t d = 0; d!=3; d++)
+                bc.addCondition(bit->patch, bit->side(), condition_type::dirichlet, 0, 0, false, d);
+
     }
 
     mp.embed(3);

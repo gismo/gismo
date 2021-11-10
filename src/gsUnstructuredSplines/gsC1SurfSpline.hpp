@@ -242,15 +242,16 @@ namespace gismo
                     index_t jj = 0;
                     for (index_t j = begin_col; j < end_col; ++j, ++jj) {
                         if (basisVertex[pInd].patch(ii).coef(jj, 0) * basisVertex[pInd].patch(ii).coef(jj, 0) > 1e-25)
+                        {
                             m_matrix.insert(shift_row + ii, shift_col + j) = basisVertex[pInd].patch(ii).coef(jj, 0);
+                        }
+
                     }
                 }
             }
             shift_row += 6;
         }
         m_matrix.makeCompressed();
-
-        gsInfo << m_matrix << "\n";
     }
 
 

@@ -192,7 +192,7 @@ namespace gismo
         // 1. Obtain a map from basis functions to matrix columns and rows
         gsDofMapper map(m_basis.basis(0));
 
-        gsMatrix<unsigned> act;
+        gsMatrix<index_t> act;
 
         for (index_t i = 2; i < m_basis.basis(0).component(1-m_uv).size(); i++) // only the first two u/v-columns are Dofs (0/1)
         {
