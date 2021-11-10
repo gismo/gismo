@@ -447,7 +447,7 @@ public:
         return std::make_pair(basisVect, numberPerType);
     }
 
-    gsMatrix<> selectGD(size_t i)
+    gsMatrix<> selectGD(index_t i)
     {
         gsMatrix<> coefs(4, 2);
 
