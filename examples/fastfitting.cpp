@@ -84,9 +84,6 @@ int main(int argc, char *argv[])
     gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );
     T_tbasis.uniformRefine( (1<<numURef)-1 );
 
-    // Create fast fitting object
-    gsFastFitting<real_t> ref( uv, xyz, T_tbasis);
-
     // Create grid which is used to compute solution:
     gsMatrix<real_t> ugrid(1,n_ugrid);
     gsMatrix<real_t> vgrid(1,n_vgrid);
@@ -105,6 +102,11 @@ int main(int argc, char *argv[])
             vgrid(0,i)= i/(n_vgrid*1.0) + 1/(2.0*n_vgrid);        // Grid without borders
     }
 
+    gsMatrix<index_t> weights(n_ugrid,n_vgrid);
+
+    // Create fast fitting object
+    gsFastFitting<real_t> ref( uv, xyz, T_tbasis, ugrid, vgrid, weights);
+
     // Print settings summary
     gsInfo<<"--------------------------------\n";
     gsInfo<<"Fast Fitting vs. Standard Fitting \n";
@@ -120,7 +122,7 @@ int main(int argc, char *argv[])
 
     gsStopwatch time;
     time.restart();
-    ref.compute(ugrid, vgrid, false);
+    ref.compute(false);
     time.stop();
     gsInfo<<"Fitting time                      : "<< time <<"\n";
     gsWriteParaview(*(ref.result()),"resultfast", 50000, false, true);
@@ -133,21 +135,26 @@ int main(int argc, char *argv[])
     ref2.computeErrors();
     gsWriteParaview(*(ref2.result()),"resultslow", 50000, false, true);
 
+    ref.computeProjectedAverageErrors();
     ref.plotErrors("errorplot_gk_average");
 
     gsInfo<<"--------------------------------\n";
     gsInfo<<"Max error fast fitting gk-average : "<< ref.maxPointError() <<".\n";
-    ref.computeAllProjectedErrors(uv,xyz,ugrid,vgrid);
+    ref.computeAllProjectedErrors(uv,xyz);
+    gsInfo<<"Max error fast fitting gk-all     : "<< ref.maxPointError() <<".\n";
 
+    ref.computeHaussdorfErrors(uv,xyz,true);
+    gsInfo<<"Max error fast fitting gk+        : "<< ref.maxPointError() <<".\n";
     ref.plotErrors("errorplot_gk_all");
 
-    gsInfo<<"Max error fast fitting gk-all     : "<< ref.maxPointError() <<".\n";
-    ref.changeParam(uv,xyz);
-    ref.computeErrors();
-
+    ref.computeErrors(uv,xyz.transpose());
+    gsInfo<<"Max error fast fitting uk         : "<< ref.maxPointError() <<".\n";
     ref.plotErrors("errorplot_uk");
 
-    gsInfo<<"Max error fast fitting uk         : "<< ref.maxPointError() <<".\n";
+    ref.computeHaussdorfErrors(uv,xyz,false);
+    gsInfo<<"Max error fast fitting uk+        : "<< ref.maxPointError() <<".\n";
+
     gsInfo<<"Max error slow fitting            : "<< ref2.maxPointError() <<".\n";
+
     return 0;
 }
