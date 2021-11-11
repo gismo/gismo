@@ -26,8 +26,8 @@ public:
     gsPatchReparameterized()
     {}
 
-    gsPatchReparameterized(const gsGeometry<> & patch, gsContainerBasis<d,T> & singlePatch, const index_t side)
-    : m_patchRotated(patch), m_basisRotated(singlePatch), m_side(side)
+    gsPatchReparameterized(const gsGeometry<> & patch, gsContainerBasis<d,T> & singlePatch)
+    : m_patchRotated(patch), m_basisRotated(singlePatch)
     {
         rotationNum = 0;
         axisOrientation = 0;
@@ -401,9 +401,6 @@ public:
     gsGeometry<T> & getPatchRotated() { return m_patchRotated.patch(0); }
     gsContainerBasis<d, T> getBasisRotated() const { return m_basisRotated; }
 
-//    void setSide(index_t side ) { m_side = side; }
-    index_t side() { return m_side; }
-
     index_t getMapIndex(index_t glSide) const { return mapIndex[glSide-1]; }
 
 protected:
@@ -411,9 +408,6 @@ protected:
     gsMultiPatch<T> m_patchRotated;
 
     gsContainerBasis<d, T> m_basisRotated;
-
-    // Global side/vertex index in the initial geometry
-    index_t m_side;
 
     // Referenz to initial geometry
     gsVector<index_t> mapIndex;

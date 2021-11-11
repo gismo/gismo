@@ -25,8 +25,9 @@ void gsApproxC1Vertex<d, T>::reparametrizeVertexPatches()
     {
         checkOrientation(i); // Check if the orientation is correct. If not, modifies vertex and edge vectors
 
+        index_t vertex_1 = m_vertexIndices[i];
         if(m_auxPatches[i].getOrient() == 0) // not switched
-            switch (m_auxPatches[i].side()) // == vertex
+            switch (vertex_1) // == vertex
             {
                 case 1:
                     //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " not rotated\n";
@@ -45,7 +46,7 @@ void gsApproxC1Vertex<d, T>::reparametrizeVertexPatches()
                     break;
             }
         else if (m_auxPatches[i].getOrient() == 1) // switched
-            switch (m_auxPatches[i].side()) // == vertex
+            switch (vertex_1) // == vertex
             {
                 case 1:
                     //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with side " << m_vertexIndices[i]  << " not rotated\n";

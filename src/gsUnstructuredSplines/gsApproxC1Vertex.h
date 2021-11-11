@@ -15,7 +15,7 @@
 
 #include <gsUnstructuredSplines/gsContainerBasis.h>
 #include <gsUnstructuredSplines/gsPatchReparameterized.h>
-#include <gsUnstructuredSplines/gsApproxC1VertexBasisProjection.h>
+#include <gsUnstructuredSplines/gsApproxGluingData.h>
 
 
 namespace gismo {
@@ -54,10 +54,9 @@ public:
 
         for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
         {
-            index_t vertex_1 = m_vertexIndices[i];
             index_t patch_1 = m_patchesAroundVertex[i];
 
-            m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], vertex_1));
+            m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1]));
         }
 
         reparametrizeVertexPatches();
@@ -65,17 +64,16 @@ public:
         // Compute Sigma
         real_t sigma = computeSigma(m_vertexIndices);
 
-        std::vector<gsApproxGluingData<d, T>> gD; // delete later
-
         for(size_t i = 0; i < m_patchesAroundVertex.size(); i++)
         {
             C1AuxPatchContainer auxPatchSingle;
             auxPatchSingle.push_back(m_auxPatches[i]);
 
+            index_t vertex_1 = m_vertexIndices[i];
             std::vector<index_t> sideContainer;
             if (auxPatchSingle[0].getOrient() == 0) // not rotated
             {
-                switch (auxPatchSingle[0].side()) // corner
+                switch (vertex_1) // corner
                 {
                     case 1:
                         sideContainer.push_back(3); // u
@@ -100,7 +98,7 @@ public:
             }
             else if (auxPatchSingle[0].getOrient() == 1) // rotated
             {
-                switch (auxPatchSingle[0].side()) // corner
+                switch (vertex_1) // corner
                 {
                     case 1:
                         sideContainer.push_back(1); // u
@@ -133,18 +131,86 @@ public:
             // Compute Gluing data
             gsApproxGluingData<d, T> approxGluingData(auxPatchSingle, m_optionList, sideContainer, isInterface);
 
+            //Problem setup
+            std::vector<gsBSplineBasis<T>> basis_plus;
+            std::vector<gsBSplineBasis<T>> basis_minus;
+            std::vector<gsBSplineBasis<T>> basis_geo;
+
+            std::vector<gsBSpline<T>> alpha;
+            std::vector<gsBSpline<T>> beta;
+
+            std::vector<bool> kindOfEdge;
+
+            basis_plus.resize(2);
+            basis_minus.resize(2);
+            basis_geo.resize(2);
+
+            alpha.resize(2);
+            beta.resize(2);
+
+            kindOfEdge.resize(2);
+
+            for (size_t dir = 0; dir < sideContainer.size(); ++dir)
+            {
+                index_t localdir = auxPatchSingle[0].getMapIndex(sideContainer[dir]) < 3 ? 1 : 0;
+
+                basis_plus[localdir] = dynamic_cast<gsBSplineBasis<T>&>(auxPatchSingle[0].getBasisRotated().getHelperBasis(sideContainer[dir]-1, 0));
+                basis_minus[localdir] = dynamic_cast<gsBSplineBasis<T>&>(auxPatchSingle[0].getBasisRotated().getHelperBasis(sideContainer[dir]-1, 1));
+                basis_geo[localdir] = dynamic_cast<gsBSplineBasis<T>&>(auxPatchSingle[0].getBasisRotated().getHelperBasis(sideContainer[dir]-1, 2));
+
+                if (isInterface[localdir])
+                {
+                    alpha[dir] = approxGluingData.alphaS(dir);
+                    beta[dir] = approxGluingData.betaS(dir);
+                }
+
+
+                kindOfEdge[localdir] = isInterface[dir];
+            }
+            gsGeometry<T> &geo = auxPatchSingle[0].getPatchRotated();
+
             // Create Basis functions
             gsMultiPatch<> result_1;
+            for (index_t bfID = 0; bfID < 6; bfID++) {
+                gsSparseSolver<real_t>::LU solver;
+                gsExprAssembler<> A(1, 1);
 
-            gsApproxC1VertexBasisProjection<d, T> approxC1VertexBasis(auxPatchSingle, approxGluingData,
-                                                                                m_vertexIndices[i], sideContainer, isInterface, sigma, m_optionList);
-            approxC1VertexBasis.setBasisVertex(result_1);
+                typedef gsExprAssembler<>::variable variable;
+                typedef gsExprAssembler<>::space space;
+                typedef gsExprAssembler<>::solution solution;
 
+                // Elements used for numerical integration
+                gsMultiBasis<T> vertexSpace(auxPatchSingle[0].getBasisRotated().getBasis(m_vertexIndices[i] + 4));
+                A.setIntegrationElements(vertexSpace);
+                gsExprEvaluator<> ev(A);
+
+                // Set the discretization space
+                space u = A.getSpace(vertexSpace);
+
+                gsBoundaryConditions<> bc_empty;
+                u.setup(bc_empty, dirichlet::homogeneous, 0);
+                A.initSystem();
+
+                gsVertexBasis<real_t> vertexBasis(geo, basis_plus, basis_minus, basis_geo, alpha, beta, sigma,
+                                                  kindOfEdge, bfID);
+                auto aa = A.getCoeff(vertexBasis);
+
+                A.assemble(u * u.tr(), u * aa);
+
+                solver.compute(A.matrix());
+                gsMatrix<> solVector = solver.solve(A.rhs());
+
+                solution u_sol = A.getSolution(u, solVector);
+                gsMatrix<> sol;
+                u_sol.extract(sol);
+
+                //gsDebugVar(sol - result_1.patch(bfID).coefs());
+                result_1.addPatch(vertexSpace.basis(0).makeGeometry(give(sol)));
+            }
+            //Problem setup end
 
             // Store temporary
             basisVertexResult.push_back(result_1);
-
-            gD.push_back(approxGluingData); // delete later
         }
 
         gsMultiPatch<T> temp_mp;

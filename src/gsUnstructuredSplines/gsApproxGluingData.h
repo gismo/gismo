@@ -38,7 +38,7 @@ public:
 
     gsApproxGluingData(C1AuxPatchContainer const & auxPatchContainer,
                        gsOptionList const & optionList,
-                       std::vector<index_t> sidesContainer = std::vector<index_t>{},
+                       std::vector<index_t> sidesContainer,
                        std::vector<bool> isInterface = std::vector<bool>{})
         : m_auxPatches(auxPatchContainer), m_optionList(optionList)
     {
@@ -46,8 +46,8 @@ public:
         betaSContainer.resize(2);
         if (m_auxPatches.size() == 2) // Interface
         {
-            setGlobalGluingData(1,m_auxPatches[1].side(), 0); // u
-            setGlobalGluingData(0,m_auxPatches[0].side(), 1); // v
+            setGlobalGluingData(1,sidesContainer[1], 0); // u
+            setGlobalGluingData(0,sidesContainer[0], 1); // v
         }
         else if (m_auxPatches.size() == 1) // Vertex
         {

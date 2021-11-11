@@ -60,13 +60,17 @@ public:
         //const index_t dir_2 = side_2 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
-        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_2), m_bases[patch_2], side_2));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1]));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_2), m_bases[patch_2]));
+
+        std::vector<index_t> sidesContainer(2);
+        sidesContainer[0] = side_1;
+        sidesContainer[1] = side_2;
 
         reparametrizeInterfacePatches();
 
         // Compute GLuing data
-        gsApproxGluingData<d, T> approxGluingData(m_auxPatches, m_optionList);
+        gsApproxGluingData<d, T> approxGluingData(m_auxPatches, m_optionList, sidesContainer);
 
         //! [Problem setup]
         basisEdgeResult.clear();
@@ -101,7 +105,7 @@ public:
 
                 // Elements used for numerical integration
                 gsMultiBasis<T> edgeSpace(
-                        m_auxPatches[patchID].getBasisRotated().getBasis(m_auxPatches[patchID].side()));
+                        m_auxPatches[patchID].getBasisRotated().getBasis(side_1));
                 A.setIntegrationElements(edgeSpace);
                 gsExprEvaluator<> ev(A);
 
@@ -141,7 +145,7 @@ public:
 
                 // Elements used for numerical integration
                 gsMultiBasis<T> edgeSpace(
-                        m_auxPatches[patchID].getBasisRotated().getBasis(m_auxPatches[patchID].side()));
+                        m_auxPatches[patchID].getBasisRotated().getBasis(side_1));
                 A.setIntegrationElements(edgeSpace);
                 gsExprEvaluator<> ev(A);
 
@@ -209,7 +213,7 @@ public:
         //const index_t dir_1 = side_1 > 2 ? 0 : 1;
 
         m_auxPatches.clear();
-        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1], side_1));
+        m_auxPatches.push_back(gsPatchReparameterized<d,T>(m_mp.patch(patch_1), m_bases[patch_1]));
 
         reparametrizeSinglePatch(side_1);
 
@@ -244,7 +248,7 @@ public:
 
             // Elements used for numerical integration
             gsMultiBasis<T> edgeSpace(
-                    m_auxPatches[patchID].getBasisRotated().getBasis(m_auxPatches[patchID].side()));
+                    m_auxPatches[patchID].getBasisRotated().getBasis(side_1));
             A.setIntegrationElements(edgeSpace);
             gsExprEvaluator<> ev(A);
 
@@ -284,7 +288,7 @@ public:
 
             // Elements used for numerical integration
             gsMultiBasis<T> edgeSpace(
-                    m_auxPatches[patchID].getBasisRotated().getBasis(m_auxPatches[patchID].side()));
+                    m_auxPatches[patchID].getBasisRotated().getBasis(side_1));
             A.setIntegrationElements(edgeSpace);
             gsExprEvaluator<> ev(A);
 

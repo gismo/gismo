@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     if (dbasis.maxCwiseDegree() + numElevate < 3)
-        numElevate = 3 - numElevate - dbasis.maxCwiseDegree();
+        numElevate = 3 - dbasis.maxCwiseDegree();
     dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
 
     // h-refine each basis
