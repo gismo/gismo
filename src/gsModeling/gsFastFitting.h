@@ -518,7 +518,7 @@ gsMatrix<T> gsFastFitting<T>::ParameterCorrection(const gsMatrix<T>& uv, const g
         A_sys(0,0) = derivs(0,i)*derivs(0,i)+derivs(2,i)*derivs(2,i)+derivs(4,i)*derivs(4,i);
         A_sys(1,0) = derivs(0,i)*derivs(1,i)+derivs(2,i)*derivs(3,i)+derivs(4,i)*derivs(5,i);
         A_sys(0,1) = A_sys(1,0);
-        A_sys(1,0) = derivs(1,i)*derivs(1,i)+derivs(3,i)*derivs(3,i)+derivs(5,i)*derivs(5,i);
+        A_sys(1,1) = derivs(1,i)*derivs(1,i)+derivs(3,i)*derivs(3,i)+derivs(5,i)*derivs(5,i);
 
         b_sys(0,0) = (xyz(i,0)-evals(0,i))*derivs(0,i)+(xyz(i,1)-evals(1,i))*derivs(2,i)+(xyz(i,2)-evals(2,i))*derivs(4,i);
         b_sys(1,0) = (xyz(i,0)-evals(0,i))*derivs(1,i)+(xyz(i,1)-evals(1,i))*derivs(3,i)+(xyz(i,2)-evals(2,i))*derivs(5,i);

@@ -57,8 +57,8 @@ int main(int argc, char *argv[])
             {
                 for (index_t j=0; j<n; j++)
                 {
-                    u.push_back((1.0*i)/n);
-                    v.push_back((1.0*j)/n);
+                    u.push_back((1.0*i)/(n-1));
+                    v.push_back((1.0*j)/(n-1));
                 }
             }
         }
