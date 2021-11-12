@@ -29,6 +29,7 @@ public:
     void plotErrors(const std::string & fname) const;
     void computeHaussdorfErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz, const bool grid);
     gsMatrix<T> ParameterCorrection(const gsMatrix<T>& uv, const gsMatrix<T>& xyz);
+    T getL2error() const;
     void computeErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz);
     using gsFitting<T>::computeErrors;
 protected:
@@ -549,7 +550,7 @@ void gsFastFitting<T>::computeHaussdorfErrors(const gsMatrix<T>& uv, const gsMat
 
     // Change Parameters:
     gsMatrix<T> new_param(2,uv.cols());
-    real_t damp = 0.1;
+    real_t damp = 0.5;
     for (index_t i = 0; i< uv.cols(); i++)
     {
         new_param(0,i) = std::min(1.0, std::max(uv_temp(0,i)+damp*delta_uv(0,i),0.0));
@@ -558,6 +559,21 @@ void gsFastFitting<T>::computeHaussdorfErrors(const gsMatrix<T>& uv, const gsMat
     //new_param = std::min(1.0, std::max( uv_temp + damp*delta_uv, 0.0));
 
     computeErrors(new_param, xyz.transpose());
+}
+
+
+template<class T>
+T gsFastFitting<T>::getL2error() const
+{
+    // TODO: gismo assert d = 2.
+    // type : L^2 error if h is uniform & the same in both directions
+    real_t result = 0;
+
+    for (size_t i=0; i < this->m_pointErrors.size(); i++)
+    {
+         result += this->m_pointErrors[i]*this->m_pointErrors[i];
+    }
+    return sqrt(result / this->m_pointErrors.size());
 }
 
 

@@ -142,6 +142,7 @@ int main(int argc, char *argv[])
     gsInfo<<"Max error fast fitting gk-average : "<< ref.maxPointError() <<".\n";
     ref.computeAllProjectedErrors(uv,xyz);
     gsInfo<<"Max error fast fitting gk-all     : "<< ref.maxPointError() <<".\n";
+    gsInfo<<"L2 error fast fitting gk-all      : "<< ref.getL2error() <<".\n";
 
     ref.computeHaussdorfErrors(uv,xyz,true);
     gsInfo<<"Max error fast fitting gk+        : "<< ref.maxPointError() <<".\n";
@@ -150,9 +151,13 @@ int main(int argc, char *argv[])
     ref.computeErrors(uv,xyz.transpose());
     gsInfo<<"Max error fast fitting uk         : "<< ref.maxPointError() <<".\n";
     ref.plotErrors("errorplot_uk");
+    gsInfo<<"L2 error fast fitting uk          : "<< ref.getL2error() <<".\n";
+
 
     ref.computeHaussdorfErrors(uv,xyz,false);
     gsInfo<<"Max error fast fitting uk+        : "<< ref.maxPointError() <<".\n";
+
+    //gsInfo<<"L2 error fast fitting uk+         : "<< ref.getL2error() <<".\n";
 
     gsInfo<<"Max error slow fitting            : "<< ref2.maxPointError() <<".\n";
 
