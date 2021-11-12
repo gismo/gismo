@@ -38,7 +38,7 @@ public:
     :
     Base(patches, multiBasis)
     {
-        this->defaultOptions();
+        defaultOptions();
     };
 
 public:
@@ -47,8 +47,9 @@ public:
     void init();
     void compute();
 
-private:
     void defaultOptions();
+
+private:
 
     // Helper functions
     void createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
@@ -75,9 +76,6 @@ private:
 protected:
     // Data members
     index_t p_tilde, r_tilde;
-
-    // Container[patch][side]
-    std::vector<std::vector<index_t>> rowContainer;
 
     // Put here the members of the shared functions
     using Base::m_patches;

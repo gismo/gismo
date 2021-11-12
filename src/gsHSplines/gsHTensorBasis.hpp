@@ -54,6 +54,8 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 
     const int maxLevel = m_tree.getMaxInsLevel();
 
+    needLevel(maxLevel);
+
     for( int i =0; i < Dim; i++)
         loIdx[i] = m_bases[maxLevel]->knots(i).uFind( Pt(i,0) ).uIndex();
 
@@ -492,7 +494,7 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
         // If the level is 0, we cannot coarsen
         if (refLevel < 0) continue;
 
-        refVector.resize(refVector.size() + 5);
+        refVector.resize(refVector.size() + offset);
 
         for(index_t j = 0; j < boxes.rows();j++)
         {
@@ -718,6 +720,21 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
         // needLevel( m_tree.getMaxInsLevel() );
     }
 
+    // /*
+    // reconstruct the whole tree to fix alignment
+    gsHDomain<d> newtree( m_tree.upperCornerIndex() );
+    auto leafIt = m_tree.beginLeafIterator();
+    for (; leafIt.good(); leafIt.next())
+    {
+        if ( leafIt.level()>0 )
+            newtree.insertBox(leafIt.lowerCorner(),
+                              leafIt.upperCorner(), leafIt.level() );
+    }
+    m_tree = newtree;
+    //*/
+
+    //recompute max-ins-level
+    m_tree.computeMaxInsLevel();
     update_structure();
 }
 

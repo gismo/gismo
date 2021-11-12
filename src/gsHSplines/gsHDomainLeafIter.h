@@ -102,7 +102,7 @@ public:
     }
 
     point upperCorner() const
-    { 
+    {
         point result = curNode->box->second;
         const int lvl = curNode->level;
 
@@ -113,6 +113,19 @@ public:
     }
 
     index_t indexLevel() const {return m_index_level;}
+
+    bool isAligned() const
+    {
+        const unsigned h = 1 << (m_index_level - curNode->level);
+
+        for ( index_t i = 0; i!=curNode->box->first.size(); ++i )
+        {
+            if (curNode->box->second[i] % h != 0 ||
+                curNode->box->first[i]  % h != 0 )
+                return false;
+        }
+        return true;
+    }
 
 private:
 

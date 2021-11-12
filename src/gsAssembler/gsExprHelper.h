@@ -50,7 +50,7 @@ private:
     CFuncData m_cdata;
     VarData   m_vdata;// for BCs etc. //do we need it interfaced?
 
-    gsExprHelper * m_mirror;
+    memory::shared_ptr<gsExprHelper> m_mirror;
 private:
 
     // mutable pair of variable and data,
@@ -58,7 +58,6 @@ private:
     expr::gsFeVariable<T> mutVar ; //ADD: symbol.setSource(.);
     gsFuncData<T>         mutData;
     bool mutParametric;
-
     const gsMultiBasis<T> * mesh_ptr;
 
 public:
@@ -74,19 +73,21 @@ public:
 
 private:
     explicit gsExprHelper(gsExprHelper * m)
-    : m_mirror(m), mesh_ptr(m->mesh_ptr) { }
+    : mesh_ptr(m->mesh_ptr) { m_mirror = memory::make_shared_not_owned(m); }
 
 public:
 
-    ~gsExprHelper() { delete m_mirror; }
+    ~gsExprHelper() { }
 
     gsMatrix<T> & points() { return m_points; }
     inline gsExprHelper & iface()
     {
-        if (nullptr==m_mirror)
-            m_mirror = new gsExprHelper(this);
+        if (nullptr==m_mirror )
+            m_mirror = memory::make_shared(new gsExprHelper(this));
         return *m_mirror;
     }
+
+    bool isMirrored() const { return nullptr!=m_mirror; }
 
     static uPtr make() { return uPtr(new gsExprHelper()); }
 
@@ -109,6 +110,19 @@ public:
     {
         GISMO_ASSERT(multiBasisSet(), "Integration elements not set.");
         return *mesh_ptr;
+    }
+
+    const gsMultiPatch<T> & multiPatch() const
+    {
+        GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
+        GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first), "Multipatch geometry map not set.");
+        return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
+    }
+
+    const gsMapData<T> & multiPatchData() const
+    {
+        GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
+        return m_mdata.begin()->second;
     }
 
     geometryMap getMap(const gsFunctionSet<T> & mp)
@@ -194,6 +208,14 @@ public:
             m_fdata.clear();
             m_vdata.clear();
             m_cdata.clear();
+
+            if (isMirrored())
+            {
+                m_mirror->m_mdata.clear();
+                m_mirror->m_fdata.clear();
+                m_mirror->m_vdata.clear();
+                m_mirror->m_cdata.clear();
+            }
         }//implicit barrier
 
         _parse_tuple(tuple);
@@ -219,6 +241,14 @@ public:
     void parse(const expr &... args)
     {
 #pragma omp single
+        {
+        m_mdata.clear();
+        m_fdata.clear();
+        m_vdata.clear();
+        m_cdata.clear();
+        }//implicit barrier
+
+        #pragma omp single
         {
         m_mdata.clear();
         m_fdata.clear();
@@ -258,8 +288,14 @@ public:
     {//TODO: inherit gsGeomatryMap from symbol_expr
         GISMO_ASSERT(NULL!=sym.m_fs, "Geometry map "<<&sym<<" is invalid");
 #       pragma omp critical (m_mdata_first_touch)
-        const_cast<expr::gsGeometryMap<T>&>(sym)
-            .setData(m_mdata[sym.m_fs]);
+        {
+            if (sym.isAcross())
+                const_cast<expr::gsGeometryMap<T>&>(sym)
+                    .setData(iface().m_mdata[sym.m_fs]);
+            else
+                const_cast<expr::gsGeometryMap<T>&>(sym)
+                    .setData(m_mdata[sym.m_fs]);
+        }
     }
 
     void add(const expr::gsComposition<T> & sym)
@@ -305,7 +341,7 @@ public:
         }
         else
         {
-            gsDebug<<"\ngsExprHelper: No source for ["<< sym <<"] (bc?)\n";
+            gsDebug<<"\ngsExprHelper: Boundary condition is NOT working yet for ["<< sym <<"] \n";
             // eg. mutable var?
         }
     }

@@ -83,32 +83,6 @@ public:
         const Matrix& fixedPart
     );
 
-    /// @brief Apply the required changes to a space object of the expression
-    /// assembler
-    ///
-    /// It is assumed that the space object is fully functioning, i.e., the
-    /// setup member has been called.
-    ///
-    /// This function exposes the \ref dofMapperLocal and the \ref fixedPart to
-    /// the space.
-    void initFeSpace(typename gsExprAssembler<T>::space u, index_t k)
-    {
-        GISMO_ASSERT( m_status&1,
-            "gsIetiMapper: The class has not been initialized." );
-        GISMO_ASSERT( u.mapper().size() ==  m_dofMapperLocal[k].size(),
-            "gsIetiMapper::initFeSpace: The sizes do not agree." );
-        const_cast<expr::gsFeSpace<T>&>(u).mapper() = m_dofMapperLocal[k];
-        const_cast<expr::gsFeSpace<T>&>(u).fixedPart() = m_fixedPart[k];
-    }
-
-    /// @brief This function computes the jump matrices
-    ///
-    /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
-    ///                        if false, then no redundancy
-    /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
-    ///                        if the corners are chosen as primal dofs
-    void computeJumpMatrices(bool fullyRedundant, bool excludeCorners);
-
     /// @brief Set up the corners as primal dofs
     void cornersAsPrimals();
 
@@ -123,7 +97,7 @@ public:
     /// patch averages. In this case, the requirement that it contributes to
     /// at least two patches does not apply. For corners, use \ref cornersAsPrimals
     /// instead.
-    void interfaceAveragesAsPrimals(const gsMultiPatch<T>& geo, short_t d);
+    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d );
 
     /// @brief With this function, the caller can register more primal constraints
     ///
@@ -132,15 +106,42 @@ public:
     /// index and the vector representing the primal constraint.
     void customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data );
 
-    /// @brief Construct the global solution from a vector of patch-local ones
-    Matrix constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs );
+    /// @brief This function computes the jump matrices
+    ///
+    /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
+    ///                        if false, then no redundancy
+    /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
+    ///                        if the corners are chosen as primal dofs
+    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners );
 
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
     /// @param patch   Number of the patch
     std::vector<index_t> skeletonDofs( index_t patch ) const;
 
+    /// @brief Apply the required changes to a space object of the expression
+    /// assembler
+    ///
+    /// It is assumed that the space object is fully functioning, i.e., the
+    /// setup member has been called.
+    ///
+    /// This function exposes the \ref dofMapperLocal and the \ref fixedPart to
+    /// the space.
+    void initFeSpace( typename gsExprAssembler<T>::space u, index_t k )
+    {
+        GISMO_ASSERT( m_status&1,
+            "gsIetiMapper: The class has not been initialized." );
+        GISMO_ASSERT( u.mapper().size() ==  m_dofMapperLocal[k].size(),
+            "gsIetiMapper::initFeSpace: The sizes do not agree." );
+        const_cast<expr::gsFeSpace<T>&>(u).mapper() = m_dofMapperLocal[k];
+        const_cast<expr::gsFeSpace<T>&>(u).fixedPart() = m_fixedPart[k];
+    }
+
+    /// @brief Construct the global solution from a vector of patch-local ones
+    Matrix constructGlobalSolutionFromLocalSolutions( const std::vector<Matrix>& localContribs );
+
 public:
+
     /// @brief Returns the number of Lagrange multipliers.
     index_t nLagrangeMultipliers()
     {
@@ -163,16 +164,22 @@ public:
     const std::vector<index_t> & primalDofIndices(index_t k) const         { return m_primalDofIndices[k];        }
 
     /// @brief Returns the jump matrix \f$ B_k \f$ for the given patch
+    /// Only available after \ref computeJumpMatrices has been called
     const JumpMatrix& jumpMatrix(index_t k) const                          { return m_jumpMatrices[k];            }
 
     /// @brief The global dof mapper
     const gsDofMapper& dofMapperGlobal() const                             { return m_dofMapperGlobal;            }
 
     /// @brief The dof mapper for the given patch
+    /// Only available after \ref computeJumpMatrices has been called
     const gsDofMapper& dofMapperLocal(index_t k) const                     { return m_dofMapperLocal[k];          }
 
     /// @brief The function values for the eliminated dofs on the given patch
+    /// Only available after \ref computeJumpMatrices has been called
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
+
+    /// @brief Reference to the multi basis object being passed to constructur or \ref init
+    const gsMultiBasis<T>& multiBasis() const                              { return *m_multiBasis;                }
 
 private:
 

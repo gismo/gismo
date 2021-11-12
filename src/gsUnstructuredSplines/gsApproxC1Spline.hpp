@@ -59,10 +59,6 @@ void gsApproxC1Spline<d,T>::init()
         m_bases.push_back(containerBasis);
     }
 
-    // For size
-    // rowContainer[patch][9]: 9 == 9 subspaces
-    rowContainer.resize(m_patches.nPatches(), std::vector<index_t>(9));
-
     // Create interior spline space
     for (size_t np = 0; np < m_patches.nPatches(); np++)
     {
@@ -377,7 +373,6 @@ void gsApproxC1Spline<d,T>::init()
     {
         index_t dim_u = m_bases[np].getBasis(0).component(0).size();
         index_t dim_v = m_bases[np].getBasis(0).component(1).size();
-        rowContainer[np][0] = (dim_u - 4) * (dim_v - 4); // inner
         row_dofs += (dim_u - 4) * (dim_v - 4);
     }
 
@@ -387,14 +382,10 @@ void gsApproxC1Spline<d,T>::init()
         const boundaryInterface &item = m_patches.interfaces()[numInt];
 
         const index_t side_1 = item.first().side().index();
-        const index_t side_2 = item.second().side().index();
         const index_t patch_1 = item.first().patch;
-        const index_t patch_2 = item.second().patch;
 
         index_t numDofs = math::max(m_bases[patch_1].getHelperBasis(side_1-1, 0).size() + m_bases[patch_1].getHelperBasis(side_1-1, 1).size() - 10, 0);
-        rowContainer[patch_1][side_1] = numDofs;
-        rowContainer[patch_2][side_2] = numDofs;
-        row_dofs += numDofs;
+        row_dofs += numDofs; // The same as side_2
     }
 
     // Boundary Edges
@@ -406,27 +397,12 @@ void gsApproxC1Spline<d,T>::init()
         index_t side_1 = bit.side().index();
 
         index_t numDofs = math::max(m_bases[patch_1].getHelperBasis(side_1-1, 0).size() + m_bases[patch_1].getHelperBasis(side_1-1, 1).size() - 10, 0);
-        rowContainer[patch_1][side_1] = numDofs;
         row_dofs += numDofs;
     }
 
     // Vertices
     for (size_t numVer = 0; numVer < m_patches.vertices().size(); numVer++)
     {
-        std::vector<patchCorner> allcornerLists = m_patches.vertices()[numVer];
-        std::vector<size_t> patchIndex;
-        std::vector<size_t> vertIndex;
-        for (size_t j = 0; j < allcornerLists.size(); j++) {
-            patchIndex.push_back(allcornerLists[j].patch);
-            vertIndex.push_back(allcornerLists[j].m_index);
-        }
-
-        for(size_t j = 0; j < patchIndex.size(); j++)
-        {
-            index_t patch_1 = patchIndex[j];
-            index_t side_1 = vertIndex[j];
-            rowContainer[patch_1][4+side_1] = 6;
-        }
         row_dofs += 6;
     }
 
@@ -441,21 +417,6 @@ void gsApproxC1Spline<d,T>::init()
     m_matrix.resize(row_dofs, dim_col);
     const index_t nz = 7*row_dofs; // TODO
     m_matrix.reserve(nz);
-
-/*
-    for (size_t np = 0; np < m_patches.nPatches(); np++)
-    {
-        for (index_t i = 0; i < 9; i++)
-            gsInfo << np << " : " << i << " : " << rowContainer[np][i] << "\n";
-    }
-    gsInfo << "Mat dim: (" << row_dofs  << " : " << dim_col << ")\n";
-*/
-
-/*
-    if (m_options.getSwitch("info"))
-        for (size_t np = 0; np < m_patches.nPatches(); np++)
-            m_bases[np].print_spaces();
-*/
 }   
 
 
@@ -477,7 +438,7 @@ void gsApproxC1Spline<d,T>::compute()
                 ++row_i;
             }
 
-        shift_row += rowContainer[np][0];
+        shift_row += row_i;
         shift_col += m_bases[np].size();
     }
 
@@ -503,7 +464,7 @@ void gsApproxC1Spline<d,T>::compute()
         for (index_t ns = 0; ns < side_1+1; ++ns)
             end_col += m_bases[patch_1].getBasis(ns).size();
 
-        for (index_t ii = 0; ii < rowContainer[patch_1][side_1]; ++ii)
+        for (size_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
         {
             index_t jj = 0;
             for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -521,7 +482,7 @@ void gsApproxC1Spline<d,T>::compute()
         for (index_t ns = 0; ns < side_2+1; ++ns)
             end_col += m_bases[patch_2].getBasis(ns).size();
 
-        for (index_t ii = 0; ii < rowContainer[patch_2][side_2]; ++ii)
+        for (size_t ii = 0; ii < basisEdge[1].nPatches(); ++ii)
         {
             index_t jj = 0;
             for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -530,7 +491,7 @@ void gsApproxC1Spline<d,T>::compute()
             }
         }
 
-        shift_row += rowContainer[patch_1][side_1];
+        shift_row += basisEdge[0].nPatches();
     }
 
     // Compute Edge Basis functions
@@ -552,7 +513,7 @@ void gsApproxC1Spline<d,T>::compute()
         for (index_t ns = 0; ns < side_1+1; ++ns)
             end_col += m_bases[patch_1].getBasis(ns).size();
 
-        for (index_t ii = 0; ii < rowContainer[patch_1][side_1]; ++ii)
+        for (size_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
         {
             index_t jj = 0;
             for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -560,7 +521,7 @@ void gsApproxC1Spline<d,T>::compute()
                     m_matrix.insert(shift_row + ii, shift_col + j) = basisEdge[0].patch(ii).coef(jj, 0);
             }
         }
-        shift_row += rowContainer[patch_1][side_1];
+        shift_row += basisEdge[0].nPatches();
     }
 
     // Compute Vertex Basis functions
@@ -592,7 +553,7 @@ void gsApproxC1Spline<d,T>::compute()
             for (index_t ns = 0; ns < corner+4+1; ++ns)
                 end_col += m_bases[patch_1].getBasis(ns).size();
 
-            for (index_t ii = 0; ii < rowContainer[patch_1][corner+4]; ++ii)
+            for (size_t ii = 0; ii < basisVertex[np].nPatches(); ++ii)
             {
                 index_t jj = 0;
                 for (index_t j = begin_col; j < end_col; ++j, ++jj) {
@@ -603,7 +564,7 @@ void gsApproxC1Spline<d,T>::compute()
                 }
             }
         }
-        shift_row += rowContainer[patchIndex[0]][vertIndex[0]+4]; // + 6
+        shift_row += basisVertex[0].nPatches(); // + 6
 
     }
     m_matrix.makeCompressed();

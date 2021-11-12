@@ -37,6 +37,12 @@ public:
         second = u;
     }
 
+    gsAabb(const point & u)
+    {
+        first.setZero();
+        second = u;
+    }
+
 public:
 
     //point lower;
@@ -186,6 +192,9 @@ struct kdnode
     bool isLeftChild()  const { return parent!=NULL && this==parent->left; }
 
     bool isRightChild() const { return parent!=NULL && this==parent->right; }
+
+    bool isDegenerate() const
+    { return (box->first.array() >= box->second.array()).any(); }
 
     kdnode * sibling() const 
     { 

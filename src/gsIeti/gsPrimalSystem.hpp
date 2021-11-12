@@ -155,7 +155,7 @@ gsPrimalSystem<T>::primalBasis(
 
     SparseMatrix result( localDofs, nPrimalDofs );
 
-    if (nPrimalDofs==0) return result;
+    if (nPrimalDofs==0||rhsForBasis.cols()==0) return result;
 
     Matrix tmp;
     localSaddlePointSolver->apply(rhsForBasis, tmp);
