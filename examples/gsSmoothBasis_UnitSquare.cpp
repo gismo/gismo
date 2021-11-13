@@ -55,6 +55,7 @@ void writeToCSVfile(std::string name, gsMatrix<> matrix)
 int main(int argc, char *argv[])
 {
     bool plot       = false;
+    bool clamped    = false;
     bool last       = false;
     bool info       = false;
     bool writeMatrix= false;
@@ -73,6 +74,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
     cmd.addInt( "g", "geometry", "which geometry",  geometry );
     cmd.addInt( "s", "smooth", "Smoothing method to use",  smoothing );
+    cmd.addSwitch("clamped", "clamped",clamped);
     cmd.addSwitch("plot", "plot",plot);
     cmd.addSwitch("last", "last case only",last);
     cmd.addSwitch("writeMat", "Write projection matrix",writeMatrix);
@@ -104,7 +106,13 @@ int main(int argc, char *argv[])
                 bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
             }
 
-            gsWrite(mp,"1p_square_geom.xml");
+            if (clamped)
+            {
+                bc.addCondition(0,boundary::north, condition_type::clamped, 0, 0, false, 2 );
+                bc.addCondition(0,boundary::south, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(0,boundary::west, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(0,boundary::east, condition_type::clamped, 0, 0, false, 2);
+            }
 
         }
         else if (geometry==1)
@@ -138,7 +146,16 @@ int main(int argc, char *argv[])
                 bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, 0, false, d);
             }
 
-            gsWrite(mp,"2p_square_geom.xml");
+            if (clamped)
+            {
+                bc.addCondition(0,boundary::north, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(0,boundary::south, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(0,boundary::west, condition_type::clamped, 0, 0, false, 2);
+
+                bc.addCondition(1,boundary::north, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(1,boundary::south, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(1,boundary::east, condition_type::clamped, 0, 0, false, 2);
+            }
         }
         else if (geometry==2)
         {
@@ -188,7 +205,20 @@ int main(int argc, char *argv[])
                 bc.addCondition(3,boundary::east, condition_type::dirichlet, 0, 0, false, d);
             }
 
-            gsWrite(mp,"4p_square_geom.xml");
+            if (clamped)
+            {
+                bc.addCondition(0,boundary::west, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(0,boundary::south, condition_type::clamped, 0, 0, false, 2);
+
+                bc.addCondition(1,boundary::south, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(1,boundary::east, condition_type::clamped, 0, 0, false, 2);
+
+                bc.addCondition(2,boundary::north, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(2,boundary::west, condition_type::clamped, 0, 0, false, 2);
+
+                bc.addCondition(3,boundary::north, condition_type::clamped, 0, 0, false, 2);
+                bc.addCondition(3,boundary::east, condition_type::clamped, 0, 0, false, 2);
+            }
         }
         else if (geometry==3)
         {
@@ -211,6 +241,8 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::west, condition_type::dirichlet, 0, 0, false, d);
                     }
+                    if (clamped)
+                        bc.addCondition(p,boundary::west, condition_type::clamped, 0, 0, false, 2);
                 }
                 if ( (bbox(0,1) - pbbox(0,1)) ==0 )
                 {
@@ -219,6 +251,8 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::east, condition_type::dirichlet, 0, 0, false, d);
                     }
+                    if (clamped)
+                        bc.addCondition(p,boundary::east, condition_type::clamped, 0, 0, false, 2);
                 }
                 if ( (bbox(1,0) - pbbox(1,0)) ==0 )
                 {
@@ -227,6 +261,8 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::south, condition_type::dirichlet, 0, 0, false, d);
                     }
+                    if (clamped)
+                        bc.addCondition(p,boundary::south, condition_type::clamped, 0, 0, false, 2);
                 }
                 if ( (bbox(1,1) - pbbox(1,1)) ==0 )
                 {
@@ -235,11 +271,12 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::north, condition_type::dirichlet, 0, 0, false, d);
                     }
+                    if (clamped)
+                        bc.addCondition(p,boundary::north, condition_type::clamped, 0, 0, false, 2);
                 }
                 // if ( (bbox(0,0) - pbbox(0,0)) * (bbox(0,1) - pbbox(0,1)) * (bbox(0,1) - pbbox(0,1)) * (bbox(1,1) - pbbox(1,1)) != 0 )
                 //     boundaryPatches[p] = 0;
             }
-            gsWrite(mp,"5x5p_square_geom.xml");
         }
         else if(geometry > 999)
         {
@@ -249,12 +286,11 @@ int main(int argc, char *argv[])
             mp.computeTopology();
             for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
             {
+                if (clamped)
+                    bc.addCondition(bit->patch, bit->side(), condition_type::clamped, 0, 0, false, 2);
                 for (index_t d = 0; d!=3; d++)
                     bc.addCondition(bit->patch, bit->side(), condition_type::dirichlet, 0, 0, false, d);
             }
-
-            if (geometry == 1021)
-               gsWrite(mp,"g1021_square_geom.xml");
         }
 
         else
@@ -301,17 +337,26 @@ int main(int argc, char *argv[])
     char buffer1[2000];
     char buffer2[2000];
 
-    real_t ampl = 1e2;
+    real_t ampl;
     // sprintf(buffer,"-%e^3*%e*%e*pi^4*sin(pi*x)*sin(pi*y)/(3*%e^2 - 3)",thickness,E_modulus,ampl,PoissonRatio);
     // // sprintf(buffer,"-2*%e^3*%e*%e/(3*%e^2 - 3)",thickness,E_modulus,ampl,PoissonRatio);
     // sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
 
-    // Clamped edges
-    // sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
-    // sprintf(buffer2,"%e*x^2*(x - 1)^2*y^2*(y - 1)^2",ampl);
-    // Simply supported edges
-    sprintf(buffer1,"4*%e*%e*pi*pi*pi*pi*sin(pi*x)*sin(pi*y)",ampl,D);
-    sprintf(buffer2,"%e*sin(pi*x)*sin(pi*y)",ampl);
+    if (clamped)
+    {
+        ampl = 1;
+        // Clamped edges
+        sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
+        sprintf(buffer2,"%e*x^2*(x - 1)^2*y^2*(y - 1)^2",ampl);
+    }
+    else
+    {
+        ampl = 1e2;
+        // Simply supported edges
+        sprintf(buffer1,"4*%e*%e*pi*pi*pi*pi*sin(pi*x)*sin(pi*y)",ampl,D);
+        sprintf(buffer2,"%e*sin(pi*x)*sin(pi*y)",ampl);
+    }
+
 
     std::string fz = buffer1;
     std::string uz = buffer2;
@@ -320,17 +365,6 @@ int main(int argc, char *argv[])
 
     gsField<> analytical(mp,u_man);
     gsWriteParaview(analytical,"analytical");
-
-    // gsFunctionExpr<> u_an(  "0","0",
-    //                         "w:= 0;                                                                         "
-    //                         "for (u := 1; u &lt; 10; u += 1)                                                "
-    //                         "{                                                                              "
-    //                         "  for (v := 1; v &lt; 10; v += 1)                                              "
-    //                         "  { w +=  1 / ( u*v*(u^2+v^2) )* sin( u * pi * x) * sin(v * pi * y)            "
-    //                         "  }                                                                            "
-    //                         "}                                                                              "
-    //                         "w *= 16 * " + std::to_string(fz) + " / (pi^6 * "  + std::to_string(D) + ");    ",3);
-
 
     gsPointLoads<real_t> pLoads = gsPointLoads<real_t>();
 
