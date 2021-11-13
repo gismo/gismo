@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     {
         if (geometry==0)
         {
-            mp.addPatch( gsNurbsCreator<>::BSplineSquare(1, 1, 1) ); // patch 0
+            mp.addPatch( gsNurbsCreator<>::BSplineSquare(1) ); // patch 0
             // mp.embed(3);
             mp.computeTopology();
 
@@ -104,10 +104,6 @@ int main(int argc, char *argv[])
                 bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
             }
 
-            bc.addCondition(0,boundary::north, condition_type::clamped, 0, 0, false, 2 );
-            bc.addCondition(0,boundary::south, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(0,boundary::west, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(0,boundary::east, condition_type::clamped, 0, 0, false, 2);
             gsWrite(mp,"1p_square_geom.xml");
 
         }
@@ -141,14 +137,6 @@ int main(int argc, char *argv[])
                 bc.addCondition(1,boundary::south, condition_type::dirichlet, 0, 0, false, d);
                 bc.addCondition(1,boundary::east, condition_type::dirichlet, 0, 0, false, d);
             }
-
-            bc.addCondition(0,boundary::north, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(0,boundary::south, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(0,boundary::west, condition_type::clamped, 0, 0, false, 2);
-
-            bc.addCondition(1,boundary::north, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(1,boundary::south, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(1,boundary::east, condition_type::clamped, 0, 0, false, 2);
 
             gsWrite(mp,"2p_square_geom.xml");
         }
@@ -200,17 +188,6 @@ int main(int argc, char *argv[])
                 bc.addCondition(3,boundary::east, condition_type::dirichlet, 0, 0, false, d);
             }
 
-            bc.addCondition(0,boundary::west, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(0,boundary::south, condition_type::clamped, 0, 0, false, 2);
-
-            bc.addCondition(1,boundary::south, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(1,boundary::east, condition_type::clamped, 0, 0, false, 2);
-
-            bc.addCondition(2,boundary::north, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(2,boundary::west, condition_type::clamped, 0, 0, false, 2);
-
-            bc.addCondition(3,boundary::north, condition_type::clamped, 0, 0, false, 2);
-            bc.addCondition(3,boundary::east, condition_type::clamped, 0, 0, false, 2);
             gsWrite(mp,"4p_square_geom.xml");
         }
         else if (geometry==3)
@@ -234,7 +211,6 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::west, condition_type::dirichlet, 0, 0, false, d);
                     }
-                    bc.addCondition(p,boundary::west, condition_type::clamped, 0, 0, false, 2);
                 }
                 if ( (bbox(0,1) - pbbox(0,1)) ==0 )
                 {
@@ -243,7 +219,6 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::east, condition_type::dirichlet, 0, 0, false, d);
                     }
-                    bc.addCondition(p,boundary::east, condition_type::clamped, 0, 0, false, 2);
                 }
                 if ( (bbox(1,0) - pbbox(1,0)) ==0 )
                 {
@@ -252,7 +227,6 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::south, condition_type::dirichlet, 0, 0, false, d);
                     }
-                    bc.addCondition(p,boundary::south, condition_type::clamped, 0, 0, false, 2);
                 }
                 if ( (bbox(1,1) - pbbox(1,1)) ==0 )
                 {
@@ -261,7 +235,6 @@ int main(int argc, char *argv[])
                     {
                         bc.addCondition(p,boundary::north, condition_type::dirichlet, 0, 0, false, d);
                     }
-                    bc.addCondition(p,boundary::north, condition_type::clamped, 0, 0, false, 2);
                 }
                 // if ( (bbox(0,0) - pbbox(0,0)) * (bbox(0,1) - pbbox(0,1)) * (bbox(0,1) - pbbox(0,1)) * (bbox(1,1) - pbbox(1,1)) != 0 )
                 //     boundaryPatches[p] = 0;
@@ -276,7 +249,6 @@ int main(int argc, char *argv[])
             mp.computeTopology();
             for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
             {
-                bc.addCondition(bit->patch, bit->side(), condition_type::clamped, 0, 0, false, 2);
                 for (index_t d = 0; d!=3; d++)
                     bc.addCondition(bit->patch, bit->side(), condition_type::dirichlet, 0, 0, false, d);
             }
@@ -316,26 +288,30 @@ int main(int argc, char *argv[])
     for (size_t p = 0; p!=mp.nPatches(); ++p)
         gsDebugVar(mp.patch(p));
 
-    real_t thickness = 1.0;
+    real_t thickness = 0.01;
     real_t E_modulus = 1.0;
-    real_t PoissonRatio = 0.0;
+    real_t PoissonRatio = 0.3;
 
     gsFunctionExpr<> t(std::to_string(thickness),3);
     gsFunctionExpr<> E(std::to_string(E_modulus),3);
     gsFunctionExpr<> nu(std::to_string(PoissonRatio),3);
 
-    real_t D = E_modulus * math::pow(thickness,3) / (12 * (1+PoissonRatio));
+    real_t D = E_modulus * math::pow(thickness,3) / (12 * (1-PoissonRatio*PoissonRatio));
 
     char buffer1[2000];
     char buffer2[2000];
 
-    real_t ampl = 1;
+    real_t ampl = 1e2;
+    // sprintf(buffer,"-%e^3*%e*%e*pi^4*sin(pi*x)*sin(pi*y)/(3*%e^2 - 3)",thickness,E_modulus,ampl,PoissonRatio);
+    // // sprintf(buffer,"-2*%e^3*%e*%e/(3*%e^2 - 3)",thickness,E_modulus,ampl,PoissonRatio);
+    // sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
+
     // Clamped edges
-    sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
-    sprintf(buffer2,"%e*x^2*(x - 1)^2*y^2*(y - 1)^2",ampl);
+    // sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
+    // sprintf(buffer2,"%e*x^2*(x - 1)^2*y^2*(y - 1)^2",ampl);
     // Simply supported edges
-    // sprintf(buffer1,"3*%e*pi*pi*pi*pi*sin(pi*x)*sin(pi*y)",D);
-    // sprintf(buffer2,"%e*sin(pi*x)*sin(pi*y)",ampl);
+    sprintf(buffer1,"4*%e*%e*pi*pi*pi*pi*sin(pi*x)*sin(pi*y)",ampl,D);
+    sprintf(buffer2,"%e*sin(pi*x)*sin(pi*y)",ampl);
 
     std::string fz = buffer1;
     std::string uz = buffer2;
@@ -367,7 +343,7 @@ int main(int argc, char *argv[])
     gsThinShellAssemblerBase<real_t> * assembler;
 
     //! [Solver loop]
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1), linferr(numRefine+1),
+    gsVector<> l2err(numRefine+1), h1err(numRefine+1), linferr(numRefine+1),interr(numRefine+1),
         b2err(numRefine+1), b1err(numRefine+1), binferr(numRefine+1);
 
     gsSparseSolver<>::CGDiagonal solver;
@@ -381,7 +357,7 @@ int main(int argc, char *argv[])
     gsStopwatch time;
 
     gsMultiBasis<> dbasis(mp);
-
+    gsMatrix<> solFull;
     for( index_t r = 0; r<=numRefine; ++r)
     {
 
@@ -477,10 +453,34 @@ int main(int argc, char *argv[])
         // h1err[r]= l2err[r] + math::sqrt(ev.integral( ( igrad(f) - grad(s)*jac(G).inv() ).sqNorm()*meas(G) )/ev.integral( igrad(f).sqNorm()*meas(G) ) );
         // linferr[r] = ev.max( f-s ) / ev.max(f);
 
-        l2err[r]= 0;
+
+        /// Make a gsMappedSpline to represent the solution
+        // 1. Get all the coefficients (including the ones from the eliminated BCs.)
+        solFull = assembler->fullSolutionVector(solVector);
+
+        // 2. Reshape all the coefficients to a Nx3 matrix
+        GISMO_ASSERT(solFull.rows() % 3==0,"Rows of the solution vector does not match the number of control points");
+        solFull.resize(solFull.rows()/3,3);
+
+        // 3. Make the mapped spline
+        gsMappedSpline<2,real_t> mspline(bb2,solFull);
+        gsField<> solField(geom, mspline,true);
+
+        gsMatrix<> result;
+        gsVector<> pt(2);
+        pt.setConstant(0.5);
+        gsDebugVar(mspline.piece(0).eval(pt));
+
+        gsVector<> pt2(3);
+        pt2<<0.5,0.5,0;
+        gsDebugVar(u_man.piece(0).eval(pt2));
+
+        l2err[r]= analytical.distanceL2(mspline);
         h1err[r]= 0;
         linferr[r] = 0;
+        interr[r] = 0;
 
+        gsDebugVar(analytical.distanceL2(mspline,true));
 
         gsInfo<<"\tError computations:\t"<<time.stop()<<"\t[s]\n"; // This takes longer for the D-patch, probably because there are a lot of points being evaluated, all containing the linear combinations of the MSplines
 
@@ -520,7 +520,7 @@ int main(int argc, char *argv[])
     {
         /// Make a gsMappedSpline to represent the solution
         // 1. Get all the coefficients (including the ones from the eliminated BCs.)
-        gsMatrix<real_t> solFull = assembler->fullSolutionVector(solVector);
+        solFull = assembler->fullSolutionVector(solVector);
 
         // 2. Reshape all the coefficients to a Nx3 matrix
         GISMO_ASSERT(solFull.rows() % 3==0,"Rows of the solution vector does not match the number of control points");

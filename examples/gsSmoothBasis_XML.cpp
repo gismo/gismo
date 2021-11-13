@@ -90,6 +90,11 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     gsBoundaryConditions<> bc;
 
+    /*
+        to do:
+        - remove hard-coded IDs from XML reader
+     */
+
     gsFileData<> fd;
     gsInfo<<"Reading geometry from "<<fn1<<"...";
     gsReadFile<>(fn1, mp);
