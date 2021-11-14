@@ -80,11 +80,11 @@ public:
             index_t dir = patchID == 0 ? 1 : 0;
 
             gsBSplineBasis<T> basis_plus = dynamic_cast<gsBSplineBasis<T> &>(m_auxPatches[patchID].getBasisRotated().getHelperBasis(
-                    side_1 - 1, 0));
+                    sidesContainer[patchID] - 1, 0));
             gsBSplineBasis<T> basis_minus = dynamic_cast<gsBSplineBasis<T> &>(m_auxPatches[patchID].getBasisRotated().getHelperBasis(
-                    side_1 - 1, 1));
+                    sidesContainer[patchID] - 1, 1));
             gsBSplineBasis<T> basis_geo = dynamic_cast<gsBSplineBasis<T> &>(m_auxPatches[patchID].getBasisRotated().getHelperBasis(
-                    side_1 - 1, 2));
+                    sidesContainer[patchID] - 1, 2));
             gsGeometry<T> &geo = m_auxPatches[patchID].getPatchRotated();
 
             gsBSpline<T> beta = approxGluingData.betaS(dir);
@@ -105,7 +105,7 @@ public:
 
                 // Elements used for numerical integration
                 gsMultiBasis<T> edgeSpace(
-                        m_auxPatches[patchID].getBasisRotated().getBasis(side_1));
+                        m_auxPatches[patchID].getBasisRotated().getBasis(sidesContainer[patchID]));
                 A.setIntegrationElements(edgeSpace);
                 gsExprEvaluator<> ev(A);
 
@@ -145,7 +145,7 @@ public:
 
                 // Elements used for numerical integration
                 gsMultiBasis<T> edgeSpace(
-                        m_auxPatches[patchID].getBasisRotated().getBasis(side_1));
+                        m_auxPatches[patchID].getBasisRotated().getBasis(sidesContainer[patchID]));
                 A.setIntegrationElements(edgeSpace);
                 gsExprEvaluator<> ev(A);
 
