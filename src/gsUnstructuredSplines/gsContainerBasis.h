@@ -261,40 +261,48 @@ namespace gismo
 
             // Edges
             short_t side_id = bside.index();
-            index_t shift = 0;
-            for (index_t i=0; i< side_id; ++i)
-                shift += basisContainer[i].size();
+            if (basisContainer.size() != 1)
+            {
+                index_t shift = 0;
+                for (index_t i=0; i< side_id; ++i)
+                    shift += basisContainer[i].size();
+                result = basisContainer[side_id].boundaryOffset(boxSide(side_id), offset);
+                result.array() += shift;
+            }
+            else if (basisContainer.size() == 1)
+                result = basisContainer[0].boundaryOffset(boxSide(side_id), offset);
 
-            result = basisContainer[side_id].boundaryOffset(boxSide(side_id), offset);
-            result.array() += shift;
 
             // Vertices:
-            std::vector<boxCorner> containedCorners;
-            bside.getContainedCorners(d, containedCorners);
+            if (basisContainer.size() != 1)
+            {
+                std::vector<boxCorner> containedCorners;
+                bside.getContainedCorners(d, containedCorners);
 
-            GISMO_ASSERT(containedCorners.size() != 0, "No contained corner");
+                GISMO_ASSERT(containedCorners.size() != 0, "No contained corner");
 
-            for (size_t nc = 0; nc < containedCorners.size(); nc++) {
-                index_t corner_id = containedCorners[nc].m_index + 4; // + 4 included bcs of 4 sides!
 
-                index_t shift = 0;
-                for (index_t i=0; i< corner_id; ++i)
-                    shift += basisContainer[i].size();
+                for (size_t nc = 0; nc < containedCorners.size(); nc++) {
+                    index_t corner_id = containedCorners[nc].m_index + 4; // + 4 included bcs of 4 sides!
 
-                gsMatrix<int> result_temp;
-                result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
-                result_temp.array() += shift;
+                    index_t shift = 0;
+                    for (index_t i = 0; i < corner_id; ++i)
+                        shift += basisContainer[i].size();
 
-                result.conservativeResize(result.rows()+result_temp.rows(), 1 );
-                result.bottomRows(result_temp.rows()) = result_temp;
-
-                if (offset == 1) // DIRTY AND QUICK
-                {
+                    gsMatrix<int> result_temp;
                     result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
                     result_temp.array() += shift;
 
-                    result.conservativeResize(result.rows()+result_temp.rows(), 1 );
+                    result.conservativeResize(result.rows() + result_temp.rows(), 1);
                     result.bottomRows(result_temp.rows()) = result_temp;
+
+                    if (offset == 1) {
+                        result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
+                        result_temp.array() += shift;
+
+                        result.conservativeResize(result.rows() + result_temp.rows(), 1);
+                        result.bottomRows(result_temp.rows()) = result_temp;
+                    }
                 }
             }
             return result;

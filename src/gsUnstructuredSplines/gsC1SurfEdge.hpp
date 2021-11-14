@@ -17,9 +17,6 @@
 
 #include <gsUnstructuredSplines/gsG1AuxiliaryPatch.h>
 
-#include <gsUnstructuredSplines/gsApproxGluingData.h>
-#include <gsUnstructuredSplines/gsApproxC1EdgeBasisProjection.h>
-
 namespace gismo
 {
 
