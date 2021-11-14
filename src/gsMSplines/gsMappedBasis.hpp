@@ -17,19 +17,19 @@
 namespace gismo
 {
 
-template<short_t d,class T>
-gsMappedBasis<d,T>::gsMappedBasis( gsMultiPatch<T> const & mp, std::string pathToMap )
-{
-    m_topol = mp.topology();
-    m_bases = mp.basesCopy();
-    gsSparseMatrix<T> m;
-    gsFileData<T>(pathToMap).getFirst(m);
-    m_mapper = new gsWeightMapper<T>(m);
+// template<short_t d,class T>
+// gsMappedBasis<d,T>::gsMappedBasis( gsMultiPatch<T> const & mp, std::string pathToMap )
+// {
+//     m_topol = mp.topology();
+//     m_bases = mp.basesCopy();
+//     gsSparseMatrix<T> m;
+//     gsFileData<T>(pathToMap).getFirst(m);
+//     m_mapper = new gsWeightMapper<T>(m);
 
-    m_sb.reserve(mp.nPatches());
-    for (size_t q = 0; q!=m_bases.size(); ++q)
-        m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-}
+//     m_sb.reserve(mp.nPatches());
+//     for (size_t q = 0; q!=m_bases.size(); ++q)
+//         m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
+// }
 
 template<short_t d,class T>
 gsMappedBasis<d,T>::gsMappedBasis( const gsMappedBasis& other )
@@ -183,18 +183,33 @@ template<short_t d,class T>
 void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     gsMatrix<index_t> bact;
-    m_bases[patch]->active_into(u, bact);
-    std::vector<index_t>  act, act0(bact.data(), bact.data()+bact.rows());
+    std::vector<index_t>  act, act0;
     gsMatrix<T> beval, map;//r:B,c:C
-    m_bases[patch]->eval_into(u, beval);
-
     const index_t shift=_getFirstLocalIndex(patch);
-    std::transform(act0.begin(), act0.end(), act0.begin(),
-                   GS_BIND2ND(std::plus<index_t>(), shift));
 
-    m_mapper->fastSourceToTarget(act0,act);
-    m_mapper->getLocalMap(act0, act, map);
-    result.noalias() = map.transpose() * beval; // todo: remove transpose()
+    gsVector<index_t> numAct;
+    std::vector<gsMatrix<T>> result_tmp;
+    result_tmp.resize(u.cols());
+    numAct.resize(u.cols());
+    for (index_t i = 0; i!=u.cols(); ++i)
+    {
+        m_bases[patch]->active_into(u.col(i), bact);
+        act0 = std::vector<index_t>(bact.col(i).data(), bact.col(i).data()+bact.col(i).rows());
+        m_bases[patch]->eval_into(u.col(i), beval);
+        std::transform(act0.begin(), act0.end(), act0.begin(),
+                       GS_BIND2ND(std::plus<index_t>(), shift));
+
+        m_mapper->fastSourceToTarget(act0,act);
+        m_mapper->getLocalMap(act0, act, map);
+        result_tmp[i] = map.transpose() * beval; // todo: remove transpose()
+        numAct[i] = result_tmp[i].rows();
+    }
+
+    result.setZero(numAct.maxCoeff(), u.cols());
+    for (index_t i = 0; i!=u.cols(); ++i)
+        for(index_t j = 0; j != result_tmp[i].rows(); j++) // result_tmp[i] == dim(rows,1)
+            result(j,i) = result_tmp[i](j,0);
+
 }
 
 template<short_t d,class T>
@@ -393,7 +408,7 @@ void gsMappedBasis<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<T
             result[2].swap(tmp);
         }
     }
-    GISMO_ASSERT( n<3, "gsMappedBasis::evalAllDers() not implemented for n > 2." );
+    GISMO_ASSERT( n < 3, "gsMappedBasis::evalAllDers() not implemented for n > 2." );
 }
 
 template<short_t d,class T>

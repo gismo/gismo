@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+   <Geometry type="TensorBSpline2" id="1">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 0.5 0.5 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">
+            -3. 4.
+            -2.505 4.165 
+            -2.25 4.5 
+            -1.75 4.5 
+            
+            -3. 3.
+            -2.51875 3.165 
+            -2.494370529 3.722725085 
+            -1.75 3.5 
+            
+            -2.25 2.5 
+             -1.7825 2.665
+            -1.563013359 3.209890016
+            -1.015391018 2.953516018 
+            
+               -1.25 1.5 
+             -0.81 1.665 
+            -0.339225963 1.656099305 
+             -0.01539101759 1.953516018 
+             
+                  -1. 1.
+              -0.57375 1.165 
+                    -0.06190641609 1.29359099  
+                  0.25 1.5 
+                  
+                    
+            -1. 0.    
+            -0.5875 0.165     
+               -0.1625 0.335
+            0.25 0.5         
+        </coefs>
+    </Geometry>
+    <Geometry type="TensorBSpline2" id="2">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="3">0 0 0 0 0.5 0.5 1 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="2">
+            
+            0.25 0.5 
+            0.8275 0.335 
+            1.4225 0.165 
+            2. 0. 
+            
+            0.25 1.5 
+            0.7233988778 1.669911052 
+            1.43625 1.165 
+            2. 1.
+            
+            -0.01539101759 1.953516018 
+0.4578019678 2.232821942
+         1.2 1.665    
+            1.75 1.5     
+            
+            -1.015391018 2.953516018
+            -0.3700412894 2.63316738 
+            0.2275 2.665 
+            0.75 2.5 
+            
+            -1.75 3.5 
+            -0.9781294714 3.277274915 
+            -0.50875 3.165 
+            0 3.
+            
+            -1.75 4.5
+            -1.25 4.5 
+            -0.495 4.165 
+            0. 4.
+        </coefs>
+    </Geometry>
+    <MultiPatch parDim="2" id="0">
+        <patches type="id_range">1 2</patches>
+    </MultiPatch>
+
+</xml>
