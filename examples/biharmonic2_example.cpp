@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     bool last = false;
     std::string fn;
 
-    index_t geometry = 0;
+    index_t geometry = 1000;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -42,23 +42,12 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    //! [Read input file]
+    //! [Read geometry]
     std::string string_geo;
     if (fn.empty())
-    {
-        switch(geometry)
-        {
-            case 0:
-                string_geo = "planar/one_square.xml";
-                break;
-            case 1:
-                string_geo = "planar/twoPatches/two_squares_linear.xml";
-                break;
-            default:
-                gsInfo << "No geometry is used! \n";
-                break;
-        }
-    }
+        string_geo = "planar/geometries/g" + util::to_string(geometry) + ".xml";
+    else
+        string_geo = fn;
 
     gsMultiPatch<> mp;
     gsInfo << "Filedata: " << string_geo << "\n";
@@ -66,16 +55,23 @@ int main(int argc, char *argv[])
     mp.clearTopology();
     mp.computeTopology();
 
-    gsFunctionExpr<> f("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    std::string string_file = "planar/biharmonic_pde/bvp1.xml";
+    gsFileData<> fd(string_file);
+    gsFunctionExpr<> f, laplace, ms;
+    fd.getId(0,f);
     gsInfo<<"Source function "<< f << "\n";
 
+    fd.getId(1,ms); // Exact solution
+    gsInfo<<"Exact function "<< ms << "\n";
+
+    fd.getId(2,laplace); // Laplace for the bcs
+    gsInfo<<"Finished\n";
+
     //! [Boundary condition]
-    gsFunctionExpr<> laplace("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
     gsBoundaryConditions<> bc, bc2;
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
     {
-        bc.addCondition(*bit, condition_type::dirichlet, &solVal);
+        bc.addCondition(*bit, condition_type::dirichlet, &ms);
         bc2.addCondition(*bit, condition_type::neumann, &laplace); // Is not the usually neumann condition
     }
     bc.setGeoMap(mp);
@@ -84,8 +80,9 @@ int main(int argc, char *argv[])
     gsInfo<<"First boundary conditions:\n"<< bc <<"\n";
     gsInfo<<"Second boundary conditions:\n"<< bc2 <<"\n";
 
-    // Exact solution
-    gsFunctionExpr<> ms("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsOptionList optionList;
+    fd.getId(100, optionList); // id=100: assembler options
+    gsInfo << "OptionList: " << optionList << "\n";
     //! [Read input file]
 
     //! [Refinement]

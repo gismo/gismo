@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+<!-- Right-hand side function -->
+<Function type="FunctionExpr" id="0" dim="2">256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))</Function>
+
+<!-- The manufactured exact solution (for reference) -->
+<Function type="FunctionExpr" id="1" dim="2">(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)</Function>
+
+<!-- Laplace boundary value (for bcs) -->
+<Function type="FunctionExpr" id="2" dim="2">-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))</Function>
+
+<!-- Assembler options -->
+<OptionList id="100">
+  <int label="numRefine" desc="Number of Uniform h-refinement loops" value="3"/>
+  <int label="discreteDegree" desc="Number of degree elevation steps to perform before solving (Degree 3 == 0)" value="0"/>
+  <int label="discreteRegularity" desc="Number of degree elevation steps to perform before solving (Degree 3 == 0)" value="0"/>
+  <int label="geometry" desc="Which geometry" value="1000"/>
+  <real label="ToleranceF" desc="Relative error tolerance for Newton iterations [double]" value="-1"/>
+  <bool label="plot" desc="Plot the solution" value="0"/>
+ </OptionList>
+
+
+
+</xml>
