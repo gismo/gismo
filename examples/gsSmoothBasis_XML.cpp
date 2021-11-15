@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
     std::string input;
 
     std::string fn1,fn2,fn3,fn4;
-    fn1 = "planar/unitplate.xml";
-    fn2 = "pde/kirchhoff_shell1.xml";
+    fn1 = "pde/1p_square_geom.xml";
+    fn2 = "pde/1p_square_bvp.xml";
     fn3 = "options/solver_options.xml";
 
     gsCmdLine cmd("Composite basis tests.");
