@@ -160,6 +160,29 @@ namespace gismo
                        gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
 */
 
+        gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
+        {
+            /*
+            if (basisContainer.size() != 1)
+            {
+                typename gsBSplineTraits<d-1, T>::Basis* bBasis = new typename gsBSplineTraits<d-1, T>::Basis(*basisContainer[s.index()].boundaryBasis(s));
+                return bBasis;
+            }
+            else {
+                typename gsBSplineTraits<d-1, T>::Basis* bBasis = new typename gsBSplineTraits<d-1, T>::Basis(*basisContainer[0].boundaryBasis(s));
+                return bBasis;
+            }
+             */
+
+
+            gsInfo << "I AM HERE 2 \n";
+            gsDebugVar(s.index());
+            // Maybe not working for approx C1 Basis functions
+            typename gsBSplineTraits<d-1, T>::Basis* bBasis = new typename gsBSplineTraits<d-1, T>::Basis(*basisContainer[0].boundaryBasis(s));
+            gsDebugVar(*bBasis);
+            return bBasis;
+        }
+
         void active_into(const gsMatrix<T> & u, gsMatrix<index_t> & result) const
         {
             GISMO_ASSERT(u.rows() == d, "Dimension of the points in active_into is wrong");

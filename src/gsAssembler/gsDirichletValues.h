@@ -12,6 +12,7 @@
 */
 
 #include <gsUtils/gsPointGrid.h>
+#include <gsMSplines/gsMappedBasis.h>
 
 namespace gismo {
 
@@ -127,7 +128,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 }
                 else
                 {
-                    rr.push_back( basis.component(i).anchors().transpose() );
+                    rr.push_back( basis.component(i).anchors().transpose() ); // Wrong for approx C1
                 }
             }
 
@@ -144,10 +145,28 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 fpts = it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  gsPointGrid<T>( rr ) )  );
             }
 
-            // Interpolate dirichlet boundary
-            typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
-            typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-            const gsMatrix<T> & dVals =  geo->coefs();
+
+            gsMatrix<T> dVals;
+            if (const gsMappedBasis<2,T> * mapb =
+                    dynamic_cast<const gsMappedBasis<2,T>*>(&u.source() ))
+            {
+                gsInfo << "I AM A GOD NOW \n";
+                // gsMappedSingleBasis.boundaryBasis(it->side()) == gsBSplineBasis
+                // Not Correct!
+                // typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
+
+                // We need here a basis trafo!
+
+                dVals.setZero(boundary.size(),1);
+            }
+            else
+            {
+                // Interpolate dirichlet boundary
+                typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
+
+                typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
+                dVals = geo->coefs();
+            }
 
             // Save corresponding boundary dofs
             for (index_t l=0; l!= boundary.size(); ++l)

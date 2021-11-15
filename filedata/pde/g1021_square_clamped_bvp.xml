@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+<!-- Material properties -->
+  <!-- Thickness -->
+  <Function type="FunctionExpr" id="10" tag="Material" dim="3">1</Function>
+  <!-- E modulus -->
+  <Function type="FunctionExpr" id="11" tag="Material" dim="3">1</Function>
+  <!-- Poisson ratio -->
+  <Function type="FunctionExpr" id="12" tag="Material" dim="3">0.0</Function>
+  <!-- Density -->
+  <Function type="FunctionExpr" id="13" tag="Material" dim="3">0.0</Function>
+
+  <!-- Mooney-Rivlin -->
+    <!-- Ratio -->
+    <Function type="FunctionExpr" id="14" tag="Material" dim="3">7</Function>
+
+  <!-- Ogden -->
+    <!-- Alpha1 -->
+    <Function type="FunctionExpr" id="15" tag="Material" dim="3">2.0</Function>
+    <!-- Mu1 -->
+    <Function type="FunctionExpr" id="16" tag="Material" dim="3">0.4375</Function>
+    <!-- Alpha2 -->
+    <Function type="FunctionExpr" id="17" tag="Material" dim="3">-2.0</Function>
+    <!-- Mu2 -->
+    <Function type="FunctionExpr" id="18" tag="Material" dim="3">-0.0625</Function>
+
+<!-- Boundary conditions and loads -->
+<boundaryConditions id="20" multipatch="1">
+  <Function type="FunctionExpr" dim="3" index="0">0</Function>
+  <Function type="FunctionExpr" dim="3" index="1">0</Function>
+  <bc type="Dirichlet" function="0" unknown="0" component="0">
+    0 1
+    0 3
+    1 3
+    2 2
+    2 3
+    3 1
+    3 4
+    4 4
+    5 2
+    5 4
+  </bc>
+  <bc type="Dirichlet" function="0" unknown="0" component="1">
+    0 1
+    0 3
+    1 3
+    2 2
+    2 3
+    3 1
+    3 4
+    4 4
+    5 2
+    5 4
+  </bc>
+  <bc type="Dirichlet" function="0" unknown="0" component="2">
+    0 1
+    0 3
+    1 3
+    2 2
+    2 3
+    3 1
+    3 4
+    4 4
+    5 2
+    5 4
+  </bc>
+  <bc type="Clamped" function="0" unknown="0" component="2">
+    0 1
+    0 3
+    1 3
+    2 2
+    2 3
+    3 1
+    3 4
+    4 4
+    5 2
+    5 4
+  </bc>
+
+  <bc type="Collapsed" function="0" unknown="0" component="2">
+  </bc>
+  <!-- Neumann conditions (patch,side)-->
+  <bc unknown="0" type="Neumann" function="1">
+  </bc>
+</boundaryConditions>
+
+<!-- Distributed load function -->
+<Function type="FunctionExpr" id="21" tag="Loads" dim="3">
+  <c> 0 </c>
+  <c> 0 </c>
+  <c> -1 </c>
+</Function>
+<!-- Distributed pressure function -->
+<!-- <Function type="FunctionExpr" id="22" tag="Loads" dim="3">0</Function> -->
+
+<!-- Point load coordinates -->
+<Matrix rows="2" cols="0" id="30" tag="Loads" >
+</Matrix>
+<!-- Point load forces -->
+<Matrix rows="3" cols="0" id="31" tag="Loads" >
+</Matrix>
+
+<!-- Assembler options -->
+<OptionList id="90">
+  <int label="Verbose" desc="Verbose for Newton iterations [0: off, 1: iterations, 2: full (matrix and vector output)" value="1"/>
+  <int label="MaxIterations" desc="Maximum number of Newton iterations [integer]" value="10"/>
+  <real label="ToleranceF" desc="Relative error tolerance for Newton iterations [double]" value="-1"/>
+  <real label="ToleranceU" desc="Relative error tolerance for Newton iterations [double]" value="-1"/>
+  <real label="Tolerance" desc="Relative error tolerance for Newton iterations [double]" value="1e-6"/>
+  <real label="Relaxation" desc="Relative error tolerance for Newton iterations [double]" value="1.0"/>
+ </OptionList>
+
+
+
+</xml>

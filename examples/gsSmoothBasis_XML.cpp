@@ -67,6 +67,10 @@ int main(int argc, char *argv[])
     std::string fn1,fn2,fn3,fn4;
     fn1 = "pde/1p_square_geom.xml";
     fn2 = "pde/1p_square_bvp.xml";
+    fn1 = "pde/g1021_square_geom.xml";
+    fn2 = "pde/g1021_square_bvp.xml";
+    fn1 = "pde/2p_square_geom.xml";
+    fn2 = "pde/2p_square_bvp.xml";
     fn3 = "options/solver_options.xml";
 
     gsCmdLine cmd("Composite basis tests.");
@@ -83,7 +87,6 @@ int main(int argc, char *argv[])
 
     // to do:
     // smoothing method add nitsche @Pascal
-
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -109,13 +112,17 @@ int main(int argc, char *argv[])
     // gsInfo<<"Finished\n";
 
     gsFunctionExpr<> hom("0",3);
-    for (index_t d = 0; d!=3; d++)
+/*    for (index_t d = 0; d!=3; d++)
     {
         bc.addCondition(0,boundary::north, condition_type::dirichlet, &hom, 0, false, d );
         bc.addCondition(0,boundary::south, condition_type::dirichlet, &hom, 0, false, d);
         bc.addCondition(0,boundary::west, condition_type::dirichlet, &hom, 0, false, d);
         bc.addCondition(0,boundary::east, condition_type::dirichlet, &hom, 0, false, d);
-    }
+    }*/
+    for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+        for (index_t d = 0; d!=3; d++)
+            bc.addCondition(bit->patch, bit->side(), condition_type::dirichlet, &hom, 0, false, d);
+
     bc.setGeoMap(mp);
 
     gsDebugVar(bc);
