@@ -909,8 +909,7 @@ public:
 
         const gsMultiBasis<T> * smb = static_cast<const gsMultiBasis<T>*>(&this->source());
 
-        if (!m_mapper.isFinalized()) // space has no mapper
-        {
+        if (!m_mapper.isFinalized()) { // space has no mapper
             if (const gsMultiBasis<T> * mb =
                 dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
             {
