@@ -210,7 +210,6 @@ int main(int argc, char *argv[])
 
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
-
     } //for loop
 
     //! [Solver loop]

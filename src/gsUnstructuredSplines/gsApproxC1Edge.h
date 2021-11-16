@@ -112,8 +112,19 @@ public:
                 // Set the discretization space
                 space u = A.getSpace(edgeSpace);
 
+                // Create Mapper
+                gsDofMapper map(edgeSpace);
+                gsMatrix<index_t> act;
+                for (index_t i = 2; i < edgeSpace[0].component(1 - dir).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    act = edgeSpace[0].boundaryOffset(dir == 0 ? 3 : 1, i); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
+                map.finalize();
+
                 gsBoundaryConditions<> bc_empty;
-                u.setup(bc_empty, dirichlet::homogeneous, 0);
+                u.setup(bc_empty, dirichlet::homogeneous, 0, map);
                 A.initSystem();
 
                 gsTraceBasis<real_t> traceBasis(geo, basis_plus, basis_geo, beta, false, bfID, dir);
@@ -152,8 +163,19 @@ public:
                 // Set the discretization space
                 space u = A.getSpace(edgeSpace);
 
+                // Create Mapper
+                gsDofMapper map(edgeSpace);
+                gsMatrix<index_t> act;
+                for (index_t i = 2; i < edgeSpace[0].component(1 - dir).size();
+                     i++) // only the first two u/v-columns are Dofs (0/1)
+                {
+                    act = edgeSpace[0].boundaryOffset(dir == 0 ? 3 : 1, i); // WEST
+                    map.markBoundary(0, act); // Patch 0
+                }
+                map.finalize();
+
                 gsBoundaryConditions<> bc_empty;
-                u.setup(bc_empty, dirichlet::homogeneous, 0);
+                u.setup(bc_empty, dirichlet::homogeneous, 0, map);
                 A.initSystem();
 
                 gsNormalDerivBasis<real_t> normalDerivBasis(geo, basis_minus, basis_geo, alpha, false, bfID, dir);
@@ -255,8 +277,19 @@ public:
             // Set the discretization space
             space u = A.getSpace(edgeSpace);
 
+            // Create Mapper
+            gsDofMapper map(edgeSpace);
+            gsMatrix<index_t> act;
+            for (index_t i = 2; i < edgeSpace[0].component(1 - dir).size();
+                 i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                act = edgeSpace[0].boundaryOffset(dir == 0 ? 3 : 1, i); // WEST
+                map.markBoundary(0, act); // Patch 0
+            }
+            map.finalize();
+
             gsBoundaryConditions<> bc_empty;
-            u.setup(bc_empty, dirichlet::homogeneous, 0);
+            u.setup(bc_empty, dirichlet::homogeneous, 0, map);
             A.initSystem();
 
             gsTraceBasis<real_t> traceBasis(geo, basis_plus, basis_geo, beta, true, bfID, dir);
