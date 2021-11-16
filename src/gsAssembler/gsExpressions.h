@@ -851,180 +851,165 @@ public:
     }
 
     void setup(const gsBoundaryConditions<T> & bc, const index_t dir_values,
-               const index_t _icont = -1) const
+               const index_t _icont = -1, gsDofMapper dofMapper = gsDofMapper() ) const
     {
         this->setInterfaceCont(_icont);
 
-        m_sd->mapper = gsDofMapper(); //reset ?
+        m_sd->mapper = dofMapper;
 
         const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&this->source());
 
-        if (mb != nullptr)
+        if (!m_sd->mapper.isFinalized()) // space has no mapper
         {
-            m_sd->mapper = gsDofMapper(*mb, this->dim() );
-            //m_mapper.init(*mb, this->dim()); //bug
-            if ( 0==this->interfaceCont() ) // Conforming boundaries ?
-            {
-                for ( gsBoxTopology::const_iiterator it = mb->topology().iBegin();
-                      it != mb->topology().iEnd(); ++it )
+            if (mb != nullptr) {
+                m_sd->mapper = gsDofMapper(*mb, this->dim());
+                //m_mapper.init(*mb, this->dim()); //bug
+                if (0 == this->interfaceCont()) // Conforming boundaries ?
                 {
-                    mb->matchInterface(*it, m_sd->mapper);
+                    for (gsBoxTopology::const_iiterator it = mb->topology().iBegin();
+                         it != mb->topology().iEnd(); ++it) {
+                        mb->matchInterface(*it, m_sd->mapper);
+                    }
                 }
-            }
 
-            // Strong Dirichlet conditions
-            gsMatrix<index_t> bnd;
-            for (typename gsBoundaryConditions<T>::const_iterator
-                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
-            {
-                const index_t cc = it->unkComponent();
-                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
-                             "Problem: a boundary condition is set on a patch id which does not exist.");
+                // Strong Dirichlet conditions
+                gsMatrix<index_t> bnd;
+                for (typename gsBoundaryConditions<T>::const_iterator
+                             it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it) {
+                    const index_t cc = it->unkComponent();
+                    GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                                 "Problem: a boundary condition is set on a patch id which does not exist.");
 
-                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
-                if (cc==-1)
-                    for (index_t c=0; c!= this->dim(); c++) // for all components
-                        m_sd->mapper.markBoundary(it->ps.patch, bnd, c);
-                else
-                    m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
-            }
-            // Clamped boundary condition (per DoF)
-            gsMatrix<index_t> bnd1;
-            for (typename gsBoundaryConditions<T>::const_iterator
-                     it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
-            {
-                const index_t cc = it->unkComponent();
-
-                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
-                             "Problem: a boundary condition is set on a patch id which does not exist.");
-
-                bnd  = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 0);
-                bnd1 = mb->basis(it->ps.patch).boundaryOffset( it->ps.side(), 1);
-                // Cast to tensor b-spline basis
-                if ( mb != NULL) // clamp adjacent dofs
-                {
-                    if ( ! it->ps.parameter() )
-                        bnd.swap(bnd1);
-                    if (cc==-1)
-                        for (index_t c=0; c!= this->dim(); c++) // for all components
-                            for ( index_t k=0; k<bnd.size(); ++k)
-                                m_sd->mapper.matchDof( it->ps.patch, (bnd)(k,0),
-                                                   it->ps.patch, (bnd1)(k,0) , c);
+                    bnd = mb->basis(it->ps.patch).boundary(it->ps.side());
+                    if (cc == -1)
+                        for (index_t c = 0; c != this->dim(); c++) // for all components
+                            m_sd->mapper.markBoundary(it->ps.patch, bnd, c);
                     else
-                        for ( index_t k=0; k<bnd.size(); ++k)
-                            m_sd->mapper.matchDof( it->ps.patch, (bnd)(k,0),
-                                               it->ps.patch, (bnd1)(k,0) , cc);
+                        m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
                 }
-                else
-                    gsWarn<<"Unable to apply clamped condition.\n";
-            }
+                // Clamped boundary condition (per DoF)
+                gsMatrix<index_t> bnd1;
+                for (typename gsBoundaryConditions<T>::const_iterator
+                             it = bc.begin("Clamped"); it != bc.end("Clamped"); ++it) {
+                    const index_t cc = it->unkComponent();
 
-            // COLLAPSED
-            for (typename gsBoundaryConditions<T>::const_iterator
-                     it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
-            {
-                const index_t cc = it->unkComponent();
+                    GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                                 "Problem: a boundary condition is set on a patch id which does not exist.");
 
-                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
-                             "Problem: a boundary condition is set on a patch id which does not exist.");
+                    bnd = mb->basis(it->ps.patch).boundaryOffset(it->ps.side(), 0);
+                    bnd1 = mb->basis(it->ps.patch).boundaryOffset(it->ps.side(), 1);
+                    // Cast to tensor b-spline basis
+                    if (mb != NULL) // clamp adjacent dofs
+                    {
+                        if (!it->ps.parameter())
+                            bnd.swap(bnd1);
+                        if (cc == -1)
+                            for (index_t c = 0; c != this->dim(); c++) // for all components
+                                for (index_t k = 0; k < bnd.size(); ++k)
+                                    m_sd->mapper.matchDof(it->ps.patch, (bnd)(k, 0),
+                                                          it->ps.patch, (bnd1)(k, 0), c);
+                        else
+                            for (index_t k = 0; k < bnd.size(); ++k)
+                                m_sd->mapper.matchDof(it->ps.patch, (bnd)(k, 0),
+                                                      it->ps.patch, (bnd1)(k, 0), cc);
+                    } else
+                        gsWarn << "Unable to apply clamped condition.\n";
+                }
 
-                bnd = mb->basis(it->ps.patch).boundary( it->ps.side() );
+                // COLLAPSED
+                for (typename gsBoundaryConditions<T>::const_iterator
+                             it = bc.begin("Collapsed"); it != bc.end("Collapsed"); ++it) {
+                    const index_t cc = it->unkComponent();
 
-                // Cast to tensor b-spline basis
-                if ( mb != NULL) // clamp adjacent dofs
-                {
-                    // match all DoFs to the first one of the side
-                    if (cc==-1)
-                        for (index_t c=0; c!= this->dim(); c++) // for all components
-                            for ( index_t k=0; k<bnd.size()-1; ++k)
-                                m_sd->mapper.matchDof( it->ps.patch, (bnd)(0,0),
-                                                   it->ps.patch, (bnd)(k+1,0) , c);
+                    GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                                 "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                    bnd = mb->basis(it->ps.patch).boundary(it->ps.side());
+
+                    // Cast to tensor b-spline basis
+                    if (mb != NULL) // clamp adjacent dofs
+                    {
+                        // match all DoFs to the first one of the side
+                        if (cc == -1)
+                            for (index_t c = 0; c != this->dim(); c++) // for all components
+                                for (index_t k = 0; k < bnd.size() - 1; ++k)
+                                    m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
+                                                          it->ps.patch, (bnd)(k + 1, 0), c);
+                        else
+                            for (index_t k = 0; k < bnd.size() - 1; ++k)
+                                m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
+                                                      it->ps.patch, (bnd)(k + 1, 0), cc);
+                    }
+                }
+
+                // corners
+                for (typename gsBoundaryConditions<T>::const_citerator
+                             it = bc.cornerBegin(); it != bc.cornerEnd(); ++it) {
+                    //assumes (unk == -1 || it->unknown == unk)
+                    GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
+                                 "Problem: a corner boundary condition is set on a patch id which does not exist.");
+                    m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner), it->patch);
+                }
+
+            } else if (const gsBasis<T> *b =
+                    dynamic_cast<const gsBasis<T> *>(&this->source())) {
+                m_sd->mapper = gsDofMapper(*b);
+                gsMatrix<index_t> bnd;
+                for (typename gsBoundaryConditions<T>::const_iterator
+                             it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it) {
+                    GISMO_ASSERT(it->ps.patch == 0,
+                                 "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                    bnd = b->boundary(it->ps.side());
+                    //const index_t cc = it->unkComponent();
+                    m_sd->mapper.markBoundary(0, bnd, 0);
+                }
+
+                m_sd->mapper = gsDofMapper(*b);
+                for (typename gsBoundaryConditions<T>::const_iterator
+                             it = bc.begin("Clamped"); it != bc.end("Clamped"); ++it) {
+                    GISMO_ASSERT(it->ps.patch == 0,
+                                 "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                    bnd = b->boundary(it->ps.side());
+                    //const index_t cc = it->unkComponent();
+                    // m_sd->mapper.markBoundary(0, bnd, 0);
+                }
+
+                m_sd->mapper = gsDofMapper(*b);
+                for (typename gsBoundaryConditions<T>::const_iterator
+                             it = bc.begin("Collapsed"); it != bc.end("Collapsed"); ++it) {
+                    GISMO_ASSERT(it->ps.patch == 0,
+                                 "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                    bnd = b->boundary(it->ps.side());
+                    //const index_t cc = it->unkComponent();
+                    // m_sd->mapper.markBoundary(0, bnd, 0);
+                }
+            } else if (const gsMappedBasis<2, T> *mapb =
+                    dynamic_cast<const gsMappedBasis<2, T> *>(&this->source())) {
+                m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size(), this->dim());
+                gsMatrix<index_t> bnd;
+                for (typename gsBoundaryConditions<T>::const_iterator
+                             it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it) {
+                    const index_t cc = it->unkComponent();
+                    GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
+                                 "Problem: a boundary condition is set on a patch id which does not exist.");
+
+                    bnd = mapb->basis(it->ps.patch).boundary(it->ps.side());
+                    if (cc == -1)
+                        for (index_t c = 0; c != this->dim(); c++) // for all components
+                            m_sd->mapper.markBoundary(it->ps.patch, bnd, c);
                     else
-                        for ( index_t k=0; k<bnd.size()-1; ++k)
-                            m_sd->mapper.matchDof( it->ps.patch, (bnd)(0,0),
-                                               it->ps.patch, (bnd)(k+1,0) , cc);
+                        m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
                 }
+            } else {
+                GISMO_ASSERT(0 == bc.size(), "Problem: BCs are ignored.");
+                m_sd->mapper.setIdentity(this->source().nPieces(), this->source().size());
             }
 
-            // corners
-            for (typename gsBoundaryConditions<T>::const_citerator
-                     it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
-            {
-                //assumes (unk == -1 || it->unknown == unk)
-                GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
-                             "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner), it->patch);
-            }
-
+            m_sd->mapper.finalize();
         }
-        else if (const gsBasis<T> * b =
-                 dynamic_cast<const gsBasis<T>*>(&this->source()) )
-        {
-            m_sd->mapper = gsDofMapper(*b);
-            gsMatrix<index_t> bnd;
-            for (typename gsBoundaryConditions<T>::const_iterator
-                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
-            {
-                GISMO_ASSERT( it->ps.patch == 0,
-                              "Problem: a boundary condition is set on a patch id which does not exist.");
-
-                bnd = b->boundary( it->ps.side() );
-                //const index_t cc = it->unkComponent();
-                m_sd->mapper.markBoundary(0, bnd, 0);
-            }
-
-            m_sd->mapper = gsDofMapper(*b);
-            for (typename gsBoundaryConditions<T>::const_iterator
-                     it = bc.begin("Clamped") ; it != bc.end("Clamped"); ++it )
-            {
-                GISMO_ASSERT( it->ps.patch == 0,
-                              "Problem: a boundary condition is set on a patch id which does not exist.");
-
-                bnd = b->boundary( it->ps.side() );
-                //const index_t cc = it->unkComponent();
-                // m_sd->mapper.markBoundary(0, bnd, 0);
-            }
-
-            m_sd->mapper = gsDofMapper(*b);
-            for (typename gsBoundaryConditions<T>::const_iterator
-                     it = bc.begin("Collapsed") ; it != bc.end("Collapsed"); ++it )
-            {
-                GISMO_ASSERT( it->ps.patch == 0,
-                              "Problem: a boundary condition is set on a patch id which does not exist.");
-
-                bnd = b->boundary( it->ps.side() );
-                //const index_t cc = it->unkComponent();
-                // m_sd->mapper.markBoundary(0, bnd, 0);
-            }
-        }
-        else if (const gsMappedBasis<2,T> * mapb =
-            dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
-        {
-            m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size() , this->dim());
-            gsMatrix<index_t> bnd;
-            for (typename gsBoundaryConditions<T>::const_iterator
-                     it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
-            {
-                const index_t cc = it->unkComponent();
-                GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < this->mapper().numPatches(),
-                             "Problem: a boundary condition is set on a patch id which does not exist.");
-
-                bnd = mapb->basis(it->ps.patch).boundary( it->ps.side() );
-                if (cc==-1)
-                    for (index_t c=0; c!= this->dim(); c++) // for all components
-                        m_sd->mapper.markBoundary(it->ps.patch, bnd, c);
-                else
-                    m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
-            }
-        }
-
-        else
-        {
-            GISMO_ASSERT( 0 == bc.size(), "Problem: BCs are ignored.");
-            m_sd->mapper.setIdentity(this->source().nPieces(), this->source().size());
-        }
-
-        m_sd->mapper.finalize();
 
         // No more BCs
         //m_bcs = bc.get("Dirichlet");
