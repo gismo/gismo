@@ -360,25 +360,6 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
 
-    // Gradient transformation
-    if (InOut.flags & NEED_GRAD_TRANSFORM)
-    {
-        // domDim<=tarDim makes sense
-
-        InOut.fundForms.resize(domDim*tarDim, numPts);
-        for (index_t p=0; p!=numPts; ++p)
-        {
-            const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-
-            if ( tarDim == domDim && tarDim!=-1 )
-                gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(), n, d)
-                        = jacT.inverse();
-            else
-                gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(), n, d)
-                        = jacT.transpose()*(jacT*jacT.transpose()).inverse();
-        }
-    }
-
     // Measure
     if (InOut.flags & NEED_MEASURE)
     {
@@ -413,6 +394,26 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
                 jacT.colMinor(i, minor);
                 InOut.normals(i,p) = alt_sgn * minor.determinant();
                 alt_sgn = -alt_sgn;
+            }
+        }
+    }
+
+    // Second Fundamantan form of surface
+    if (InOut.flags & NEED_2ND_FFORM)
+    {
+        //domDim=2, tarDim=3
+        InOut.fundForms.resize(domDim*domDim, numPts);
+        const index_t sz = domDim*(domDim+1)/2;
+        for (index_t p=0; p!=numPts; ++p)
+        {
+            const gsAsConstMatrix<T,-1,tarDim> ddT(InOut.values[2].col(p).data(), sz, n);
+            const T nrm = InOut.normals.col(p).norm();
+            if (0!=nrm)
+            {
+                InOut.fundForms(0,p) = ddT.row(0).dot(InOut.normals.col(p)) / nrm;
+                InOut.fundForms(3,p) = ddT.row(1).dot(InOut.normals.col(p)) / nrm;
+                InOut.fundForms(1,p) = InOut.fundForms(2,p) =
+                    ddT.row(2).dot(InOut.normals.col(p)) / nrm;
             }
         }
     }
@@ -465,7 +466,8 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
     }
 
-    // Normal curvature
+    /*
+    // Curvature of isoparametric curve
     if ( InOut.flags & NEED_CURVATURE)
     {
         //domDim=2, tarDim=3
@@ -481,6 +483,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
                 InOut.curvature.at(p) = jacT.row(dir).cross(ddT.row(dir)).norm() / (nrm*nrm*nrm);
         }
     }
+    */
 }
 
 
@@ -492,8 +495,8 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     if (InOut.flags & NEED_GRAD_TRANSFORM || InOut.flags & NEED_MEASURE    ||
             InOut.flags & NEED_NORMAL         || InOut.flags & NEED_OUTER_NORMAL)
         InOut.flags = InOut.flags | NEED_GRAD;
-    if (InOut.flags & NEED_CURVATURE)
-        InOut.flags = InOut.flags | NEED_DERIV | NEED_DERIV2;
+    if (InOut.flags & NEED_2ND_FFORM)
+        InOut.flags = InOut.flags | NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
 
     this->compute(InOut.points, InOut);
 

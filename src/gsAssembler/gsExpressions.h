@@ -1727,7 +1727,6 @@ GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
 //Determinant
 GISMO_EXPR_VECTOR_EXPRESSION(det,determinant,1);
 
-
 //GISMO_EXPR_VECTOR_EXPRESSION(replicate,replicate,0);
 
 #undef GISMO_EXPR_VECTOR_EXPRESSION
@@ -2649,37 +2648,37 @@ public:
 };
 
 /*
-  Expression for the (precomputed) first fundamental form of a geometry map
+  Expression for the (precomputed) second fundamental form of a surface
 */
 template<class T>
-class fform_expr  : public _expr<fform_expr<T> >
+class fform2nd_expr  : public _expr<fform2nd_expr<T> >
 {
     typename gsGeometryMap<T>::Nested_t _G;
 public:
     typedef T Scalar;
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 
-    fform_expr(const gsGeometryMap<T> & G) : _G(G) { }
+    fform2nd_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    MatExprType eval(const index_t k) const
-    {   // todo: fix funcdata
-        //return _G.data().fundForm(k).transpose() * _G.data().fundForm(k) ;
-        GISMO_NO_IMPLEMENTATION
-            }
 
-    index_t rows() const { return _G.data().dim.second; }
+    const gsAsConstMatrix<Scalar> eval(const index_t k) const
+    {
+        return gsAsConstMatrix<Scalar>(_G.data().fundForms.col(k).data(),rows(),cols());
+    }
+
+    index_t rows() const { return _G.data().dim.first ; }
     index_t cols() const { return _G.data().dim.first ; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        //GISMO_ASSERT(NULL!=m_fd, "FeVariable: FuncData member not registered");
-        //evList.push_sorted_unique(&_G.source());
-        _G.data().flags |= NEED_GRAD_TRANSFORM;
+        evList.add(_G);
+        _G.data().flags |= NEED_2ND_FFORM;
     }
 
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<T>::get();}
 
-    void print(std::ostream &os) const { os << "fform("; _G.print(os); os <<")"; }
+    void print(std::ostream &os) const { os << "fform2nd("; _G.print(os); os <<")"; }
 };
 
 /*
@@ -2700,7 +2699,7 @@ public:
         //GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
     }
 
-    MatExprType eval(const index_t k) const { return _G.data().fundForm(k).transpose(); }
+    MatExprType eval(const index_t k) const { return _G.data().jacInv.reshapeCol(k,cols(),rows()).transpose(); }
 
     index_t rows() const { return _G.data().dim.first;  }
     index_t cols() const { return _G.data().dim.second; }
@@ -3086,39 +3085,6 @@ public:
     void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
 };
 
-/*
-  Expression for the normal curvature along a boundary edge
-*/
-template<class T>
-class ncurv_expr : public _expr<ncurv_expr<T> >
-{
-    typename gsGeometryMap<T>::Nested_t _G;
-
-public:
-    enum {Space = 0, ScalarValued = 1, ColBlocks = 0};
-
-    typedef T Scalar;
-
-    ncurv_expr(const gsGeometryMap<T> & G) : _G(G) { }
-
-    T eval(const index_t k) const
-    {
-        return _G.data().curvature.at(k);
-    }
-
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
-    void parse(gsExprHelper<Scalar> & evList) const
-    {
-        evList.add(_G);
-        _G.data().flags |= NEED_CURVATURE;
-    }
-
-    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
-    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
-
-    void print(std::ostream &os) const { os << "ncurv("; _G.print(os); os <<")"; }
-};
 
 /*
   Expression for the curl
@@ -4072,8 +4038,9 @@ template<class T> EIGEN_STRONG_INLINE
 lapl_expr<gsFeSolution<T> > lapl(const gsFeSolution<T> & u)
 { return lapl_expr<gsFeSolution<T> >(u); }
 
-/// The first fundamental form of \a G //fform is buggy ?
-// template<class T> EIGEN_STRONG_INLINE fform_expr<T> fform(const gsGeometryMap<T> & G) { return fform_expr<T>(G); }
+/// The second fundamental form of \a G
+template<class T> EIGEN_STRONG_INLINE fform2nd_expr<T> fform2nd(const gsGeometryMap<T> & G)
+{ return fform2nd_expr<T>(G); }
 
 /// The Jacobian matrix of a FE variable
 template<class E> EIGEN_STRONG_INLINE
@@ -4101,10 +4068,6 @@ dJacG_expr<T> dJac(const gsGeometryMap<T> & G) { return dJacG_expr<T>(G); }
 /// The measure of a geometry map
 template<class T> EIGEN_STRONG_INLINE
 meas_expr<T> meas(const gsGeometryMap<T> & G) { return meas_expr<T>(G); }
-
-/// The normal curvature of a geometry map at a boundary edge
-template<class T> EIGEN_STRONG_INLINE
-ncurv_expr<T> ncurv(const gsGeometryMap<T> & G) { return ncurv_expr<T>(G); }
 
 /// Multiplication operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
