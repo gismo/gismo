@@ -377,6 +377,25 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
         }
     }
 
+    if (InOut.flags & NEED_GRAD_TRANSFORM)
+    {
+        // domDim<=tarDim makes sense
+
+        InOut.jacInv.resize(domDim*tarDim, numPts);
+        for (index_t p=0; p!=numPts; ++p)
+        {
+            const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+
+            if ( tarDim == domDim && tarDim!=-1 )
+                gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
+                        = jacT.inverse();
+            else
+                gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
+                        = jacT.transpose()*(jacT*jacT.transpose()).inverse();
+        }
+    }
+
+
     // Normal vector of hypersurface
     if (tarDim!=-1 && tarDim==domDim+1 && InOut.flags & NEED_NORMAL)
     {
