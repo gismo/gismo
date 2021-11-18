@@ -257,7 +257,7 @@ std::vector< gsSparseMatrix<T> > assembleTensorStiffness(
 
 template<typename T>
 typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
-    typename gsLinearOperator<T>::Ptr op,
+    typename gsLinearOperator<T>::uPtr op,
     const gsBasis<T>& basis,
     const std::vector< gsSparseMatrix<T> >& local_stiff,
     const std::vector< gsSparseMatrix<T> >& local_mass,
@@ -270,7 +270,7 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     GISMO_ENSURE (ds == dirichlet::elimination, "Unknown Dirichlet strategy.");
 
     if(bc.cornerValues().size() == 0)
-        return memory::make_unique<gsLinearOperator<T> >(op.get());
+        return op;
     // Sonst: Anwendung der SMW...
 
     gsMatrix<T> U, Vtrans, AinvU, x;
@@ -294,9 +294,9 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     typename gsMatrixOp< gsMatrix<T> >::Ptr matOp = makeMatrixOp(id.moveToPtr()); //TODO: Discuss memory leak in makeMatrixOp with matrix instead of pointer?
     return  gsProductOp<T>::make(
                 matOp,
-                gsProductOp<T>::make(op,
+                gsProductOp<T>::make(std::move(op),
                 gsSumOp<T>::make(
-                        gsIdentityOp<T>::make(op->rows()),
+                        gsIdentityOp<T>::make(matOp->rows()),
                                 gsProductOp<T>::make( makeMatrixOp(Vtrans.moveToPtr()), corrOp, makeMatrixOp(AinvU.moveToPtr()) )
                             )
                         ),
