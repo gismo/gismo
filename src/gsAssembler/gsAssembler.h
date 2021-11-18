@@ -506,30 +506,45 @@ public: /* Element visitors */
     /// @brief Iterates over all elements of interfaces and
     /// applies the \a InterfaceVisitor
     template<class InterfaceVisitor>
-    void pushInterface(gsVector<> & penalty)
+    void pushInterface(gsVector<T> & penalty)
     {
         InterfaceVisitor visitor(*m_pde_ptr);
 
         const gsMultiPatch<T> & mp = m_pde_ptr->domain();
 
-        penalty.resize(mp.nInterfaces());
-        penalty.setZero();
+        real_t mu_init = m_options.getReal("mu");
+
         index_t i = 0;
         for ( typename gsMultiPatch<T>::const_iiterator
                       it = mp.iBegin(); it != mp.iEnd(); ++it, ++i )
         {
+            if (mu_init == -2 || mu_init == -3)
+            {
+                T h1 = m_bases[0][it->first() .patch].getMinCellLength();
+                T h2 = m_bases[0][it->second() .patch].getMinCellLength();
+                penalty[i] = penalty[i] * 2 * (1./h1 + 1./h2);
+                m_options.setReal("mu", penalty[i]);
+            }
+            else if (mu_init == -1)
+            {
+                m_options.setReal("mu", penalty[i]);
+            }
+            else
+            {
+                T h1 = m_bases[0][it->first() .patch].getMinCellLength();
+                T h2 = m_bases[0][it->second() .patch].getMinCellLength();
+                penalty[i] = mu_init * 2*(1./h1 + 1./h2);
+                m_options.setReal("mu", penalty[i]);
+            }
+
             const boundaryInterface & iFace = //recover master elemen
                     ( m_bases[0][it->first() .patch].numElements(it->first() .side() ) <
                       m_bases[0][it->second().patch].numElements(it->second().side() ) ?
                       it->getInverse() : *it );
 
             this->apply(visitor, iFace);
-
-            T h1 = m_bases[0][it->first() .patch].getMinCellLength();
-            T h2 = m_bases[0][it->second() .patch].getMinCellLength();
-            T mu = m_options.getReal("mu");
-            penalty[i] = mu * 2*(1./h1 + 1./h2);
         }
+        m_options.setReal("mu", mu_init);
     }
 
 public:  /* Dirichlet degrees of freedom computation */

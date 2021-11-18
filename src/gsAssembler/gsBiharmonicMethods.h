@@ -36,6 +36,8 @@ public:
 
     //virtual ~gsBiharmonic();
 
+    virtual void setStabilityValues( gsVector<T> &) { GISMO_NO_IMPLEMENTATION }; // Only for Nitsche Method
+
     virtual void init() { GISMO_NO_IMPLEMENTATION };
     virtual void assemble(gsBoundaryConditions<T> const & bconditions,
                           gsBoundaryConditions<T> const & bconditions2,
@@ -89,7 +91,8 @@ public:
                   gsBoundaryConditions<T> const & bcInfo2,
                   const gsFunction<T>           & source)
     {
-        g1BiharmonicAssembler = new gsBiharmonicArgyrisAssembler<real_t>(m_mp, mappedBasis, bcInfo, bcInfo2, source, m_optionList.getSwitch("twoPatch"));
+        g1BiharmonicAssembler = new gsBiharmonicArgyrisAssembler<real_t>(m_mp, mappedBasis, bcInfo, bcInfo2, source,
+                                                                         m_optionList.getSwitch("twoPatch"), m_optionList.getSwitch("neumann"));
         g1BiharmonicAssembler->assemble();
     }
 
@@ -167,6 +170,8 @@ public:
     const gsSparseMatrix<T> & matrix() const { return biharmonicNitscheAssembler->matrix(); }
     gsMatrix<T> & rhs() { return biharmonicNitscheAssembler->rhs(); }
 
+    void setStabilityValues( gsVector<T> & vec) { penaltyValue = vec; }
+
     void init()
     {
 
@@ -177,6 +182,7 @@ public:
                   const gsFunction<T>           & source)
     {
         biharmonicNitscheAssembler = new gsBiharmonicNitscheAssembler<real_t>(m_mp, m_mb, bcInfo, bcInfo2, source, m_optionList);
+        biharmonicNitscheAssembler->set_valuePenalty(penaltyValue);
         biharmonicNitscheAssembler->assemble();
 
         // TODO

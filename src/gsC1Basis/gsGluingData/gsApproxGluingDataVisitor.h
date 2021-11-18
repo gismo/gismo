@@ -88,7 +88,7 @@ public:
             uv(0,i) = - gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
         }
         rhsVals_beta = uv.row(0);
-
+/*
         if (optionList.getInt("geometry") == 1501)
         {
             gsMatrix<> ones(md.points.rows(), md.points.cols());
@@ -103,6 +103,149 @@ public:
                 rhsVals_alpha = + 297.0/40.0 * ones + 63.0/40.0 * md.points;
                 rhsVals_beta = - 99.0/200.0 * ones + 99.0/200.0 * md.points;
             }
+        }
+*/
+        if (optionList.getInt("geometry") == 1600)
+        {
+            rhsVals_alpha.clear();
+            rhsVals_beta.clear();
+
+            gsMatrix<T> ones(md.points.rows(), md.points.cols());
+            ones.setOnes();
+
+            // INTERFACE 5
+            if (patchID == 0 && optionList.getInt("Side") == 3) // R
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 2)
+                    pp = ones - md.points;
+                rhsVals_alpha = 26.0 * ones - 69.0/4.0 * pp;
+                rhsVals_beta = - 782.0/875.0 * ones + 782.0/875.0 * pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+            else if (patchID == 1 && optionList.getInt("Side") == 1) // L
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 3)
+                    pp = ones - md.points;
+                rhsVals_alpha = 13.0 * ones - 17.0/4.0 * pp;
+                rhsVals_beta = + 391.0/875.0 * ones - 391.0/875.0 * pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+
+
+            // INTERFACE 4
+            if (patchID == 1 && optionList.getInt("Side") == 3) // R
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 2)
+                    pp = ones - md.points;
+                rhsVals_alpha = 13.0 * ones - 5.0/2.0 * pp;
+                rhsVals_beta = -14779.0/7600.0 * ones + 158.0/7600.0 * pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+            else if (patchID == 2 && optionList.getInt("Side") == 1) // L
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 3)
+                    pp = ones - md.points;
+                rhsVals_alpha = 12.0 * ones - 10.0 * pp;
+                rhsVals_beta = 5749.0/1900.0 * ones - 4148.0/1900.0 * pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+
+            // INTERFACE 3
+            if (patchID == 2 && optionList.getInt("Side") == 3) // R
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 2)
+                    pp = ones - md.points;
+                rhsVals_alpha = 12.0 * ones + 8.0 * pp;
+                rhsVals_beta = -319.0/300.0 * ones + 1069.0/300.0 * pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+            else if (patchID == 3 && optionList.getInt("Side") == 1) // L
+            {
+
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 3)
+                    pp = ones - md.points;
+                rhsVals_alpha = 6.0 * (2.0 * ones + pp);
+                rhsVals_beta = 469.0/300.0 * ones - 1369.0/300.0 * pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+
+
+            // INTERFACE 2
+            if (patchID == 3 && optionList.getInt("Side") == 3)
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 2)
+                    pp = ones - md.points;
+                rhsVals_alpha = -4.0 * (-3.0 * ones + pp);
+                rhsVals_beta = ones - pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+            else if (patchID == 4 && optionList.getInt("Side") == 1)
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 3)
+                    pp = ones - md.points;
+                rhsVals_alpha = -4.0 * (-3.0 * ones + pp);
+                rhsVals_beta = ones - pp;
+                if (optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+
+            // INTERFACE 1
+            if (patchID == 4 && optionList.getInt("Side") == 3) // R
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 2)
+                    pp = ones - md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                rhsVals_alpha = 12.0 * ones + 6.0 * pp;
+                rhsVals_beta = - 66472.0/84500.0 * ones + 77173.0/84500.0 * pp;
+                if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+            else if (patchID == 0 && optionList.getInt("Side") == 1) // L
+            {
+                gsMatrix<T> pp;
+                if (optionList.getInt("Vertex") == 3)
+                    pp = ones - md.points;
+                else if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 1)
+                    pp = md.points;
+                rhsVals_alpha = 26.0 * ones + 4.0 * pp;
+                rhsVals_beta = 179231.0/84500.0 * ones - 302691.0/84500.0 * pp;
+                if (optionList.getInt("Vertex") == -1 || optionList.getInt("Vertex") == 1)
+                    rhsVals_beta = - rhsVals_beta;
+            }
+
         }
 
         // Initialize local matrix/rhs

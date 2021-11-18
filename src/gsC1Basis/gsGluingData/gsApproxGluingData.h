@@ -31,7 +31,7 @@ public:
 
 
     gsApproxGluingData(ArgyrisAuxPatchContainer const & auxPatchContainer,
-                       gsOptionList const & optionList,
+                       gsOptionList & optionList,
                        std::vector<index_t> sidesContainer = std::vector<index_t>{})
         : m_auxPatches(auxPatchContainer), m_optionList(optionList)
     {
@@ -73,7 +73,7 @@ protected:
     // Spline space for the gluing data + multiPatch
     ArgyrisAuxPatchContainer m_auxPatches;
 
-    const gsOptionList m_optionList;
+    gsOptionList m_optionList;
 
     // Result
     std::vector<gsBSpline<T>> alphaSContainer, betaSContainer;
@@ -87,6 +87,7 @@ void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t glob
     // ======== Space for gluing data : S^(p_tilde, r_tilde) _k ========
     gsBSplineBasis<T> bsp_gD = m_auxPatches[patchID].getArygrisBasisRotated().getBasisGluingData(globalSide);
 
+    m_optionList.setInt("Side",globalSide);
     gsApproxGluingDataAssembler<T> approxGluingDataAssembler(m_auxPatches[patchID].getPatch(), bsp_gD, dir, m_optionList,
                                                              m_auxPatches[patchID].getArygrisBasisRotated().getPatchID());
     alphaSContainer[dir] = approxGluingDataAssembler.getAlphaS();
@@ -104,6 +105,16 @@ void gsApproxGluingData<d, T>::setGlobalGluingData(index_t patchID, index_t glob
     ones.setOnes();
     gsInfo << "Beta " << -29403.0/20000.0 * ones + 29403.0*points/10000.0 - 29403.0/20000.0 * points.cwiseProduct(points) << "\n";
 
+    gsMatrix<> points(1,6);
+    points << 0, 0.2, 0.4, 0.6, 0.8, 1;
+
+    gsMatrix<T> ones(points.rows(), points.cols());
+    ones.setOnes();
+    gsInfo << "Beta S " << approxGluingDataAssembler.getBetaS().eval(points) << "\n";
+    gsInfo << "Alpha S " << approxGluingDataAssembler.getAlphaS().eval(points) << "\n";
+    //gsMatrix<T> beta = 391.0/100.0 * (- ones + points).cwiseProduct(points);
+    gsMatrix<T> beta = 8.0 * (- 3.0 * ones + ones -points).cwiseProduct(- ones + ones -points);
+    gsInfo << "Beta " << beta << "\n";
     if (patchID == 0)
         gsWriteParaview(approxGluingDataAssembler.getAlphaS(), "alpha_R", 1000);
     if (patchID == 1)

@@ -64,12 +64,15 @@ public:
                            gsBoundaryConditions<T> const & bconditions2,
                            const gsFunction<T>           & rhs,
                            const bool                    & twoPatch,
+                           const bool                    & neumann,
                            dirichlet::strategy           dirStrategy = dirichlet::none,
                            iFace::strategy               intStrategy = iFace::none)
     : m_ppde(patches,bconditions,bconditions2,rhs), m_bases(bases), m_twoPatch(twoPatch)
     {
         m_options.setInt("DirichletStrategy", dirStrategy);
         m_options.setInt("InterfaceStrategy", intStrategy);
+
+        m_options.addSwitch("neumann", "Neumann", neumann);
 
         typename gsPde<T>::Ptr _pde = memory::make_shared_not_owned(&m_ppde);
         m_pde_ptr = _pde;
@@ -132,8 +135,15 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
     {
         gsMatrix<index_t> boundaryDofs;
         boundaryDofs = m_bases.getBase(iter->patch).boundaryOffset(*iter, 0);
-
         map.markBoundary(iter->patch, boundaryDofs);
+
+        if (m_options.getSwitch("neumann"))
+        {
+            boundaryDofs = m_bases.getBase(iter->patch).boundaryOffset(*iter, 1);
+            map.markBoundary(iter->patch, boundaryDofs);
+            gsDebugVar(boundaryDofs);
+        }
+
     }
 
     typedef std::vector<boundaryInterface>::const_iterator i_const_iter;
@@ -286,7 +296,9 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::refresh()
 
 
     map.finalize();
-    //map.print();
+    map.print();
+
+    gsInfo << map.asVector() << "\n";
 
     // 2. Create the sparse system
     m_system = gsSparseSystem<T>(map);
@@ -308,7 +320,13 @@ void gsBiharmonicArgyrisAssembler<T,bhVisitor>::assemble()
     //Base::computeDirichletDofs();
     //m_ddof.resize(m_system.numUnknowns());
     //m_ddof[0].setZero(m_system.colMapper(0).boundarySize(), m_system.unkSize(0) * m_system.rhs().cols());
-    computeDirichletDofsL2Proj();
+    if (m_options.getSwitch("neumann"))
+    {
+        m_ddof.resize(m_system.numUnknowns());
+        m_ddof[0].setZero(m_system.colMapper(0).boundarySize(), m_system.unkSize(0) * m_system.rhs().cols());
+    }
+    else
+        computeDirichletDofsL2Proj();
 
     // Assemble volume integrals
     push();

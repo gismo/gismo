@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
     index_t method = 0;
     real_t tol = 1e-4;
     //std::string fn = "rhino/test2.obj";
-    std::string fn = "rhino/turtle_15patches_g2.obj";
+    std::string fn = "rhino/turtle_15patches_g4.obj";
 
 
     // Read input from command line arguments

@@ -46,7 +46,7 @@ public:
                 ArgyrisBasisContainer & bases,
                 const boundaryInterface & item,
                 size_t & numInt,
-                const gsOptionList & optionList)
+                gsOptionList & optionList)
                 : m_mp(mp), m_bases(bases), m_optionList(optionList)
     {
         side_1 = item.first().side().index();
@@ -65,6 +65,7 @@ public:
         reparametrizeInterfacePatches();
 
         // Compute GLuing data
+        m_optionList.setInt("Vertex",-1);
         gsApproxGluingData<d, T> approxGluingData(m_auxPatches, m_optionList);
 
         gsMultiPatch<T> result_1, result_2;
@@ -120,7 +121,7 @@ public:
                 ArgyrisBasisContainer & bases,
                 const patchSide & item,
                 size_t & numBdy,
-                const gsOptionList & optionList)
+                gsOptionList & optionList)
                 : m_mp(mp), m_bases(bases), m_optionList(optionList)
     {
         side_1 = item.side().index();
@@ -574,7 +575,7 @@ protected:
     gsMultiPatch<T> const & m_mp;
     ArgyrisBasisContainer & m_bases;
 
-    const gsOptionList & m_optionList;
+    gsOptionList & m_optionList;
 
     index_t patch_1, patch_2, side_1, side_2;
 

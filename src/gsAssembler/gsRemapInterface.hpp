@@ -325,7 +325,6 @@ template <class T>
 void gsRemapInterface<T>::constructBreaks()
 {
     m_breakpoints.resize(domainDim());
-
     const typename gsBasis<T>::domainIter domIt1 = m_b1->makeDomainIterator(m_bi.first());
     addBreaks(m_breakpoints, m_parameterBounds1, m_parameterBounds1.col(0), m_equalityTolerance);
     for (; domIt1->good(); domIt1->next())

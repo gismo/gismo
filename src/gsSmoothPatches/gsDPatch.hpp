@@ -826,10 +826,10 @@ namespace gismo
         gsMatrix<T> P(valence,9);
         P.setZero();
 
-        T phi = 2*PI / valence;
-        std::complex<T> I(1,1);
-        T beta = 0.4;
-        T psi = std::arg( (1.0+I*beta*math::sin(phi) ) * math::exp( -I*phi / 2. ) );
+        double phi = 2*PI / valence;
+        std::complex<double> I(1,1);
+        double beta = 0.4;
+        double psi = std::arg( (1.0+I*beta*math::sin(phi) ) * math::exp( -I*phi / 2. ) );
 
         // for (index_t j=0; j!=valence; j++)
         // {

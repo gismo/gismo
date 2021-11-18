@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
     std::string method = "argyris";
 
     real_t mu = 10; // TODO replace to general
+    real_t wu = 1.0; // TODO replace to general
 
     gsCmdLine cmd("Solving biharmonic equation with Argyris space.");
     cmd.addPlainString("filename", "G+Smo input geometry file.", input);
@@ -121,6 +122,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch( "solution", "Save the solution to a csv file", csv_sol );
 
     cmd.addReal("y" , "mu", "Mu for Nitsche", mu); // TODO more general
+    cmd.addReal("w" , "wu", "Wu for Nitsche", wu); // TODO more general
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
@@ -146,6 +148,8 @@ int main(int argc, char *argv[])
     gsC1ArgyrisIO c1ArgyrisIO;
 
     gsOptionList optionList = cmd.getOptionList();
+    optionList.addInt("Vertex", "Vertex index", -1); // FOR SPECIAL AS GEOMETRY
+    optionList.addInt("Side", "Side index", -1); // FOR SPECIAL AS GEOMETRY
     gsInfo << optionList << "\n";
     //! [Problem setup]
 
@@ -234,8 +238,20 @@ int main(int argc, char *argv[])
     //! [Initialise the discrete space]
     mb = gsMultiBasis<>(mp);
     // p-refine
+    short_t deg = optionList.getInt("discreteDegree");
     for (size_t np = 0; np < mp.nPatches(); ++np)
+    {
         mb.basis(np).setDegree(optionList.getInt("discreteDegree"));
+
+        const short_t dm = mb.basis(np).dim();
+        for (short_t k = 0; k!=dm; ++k) {
+            const short_t p = mb.basis(np).degree(k);
+            if (deg > p) {
+                //mb.basis(np).degreeIncrease(deg - p, k);
+            }
+        }
+    }
+
 
     if (last)
     {
@@ -249,10 +265,10 @@ int main(int argc, char *argv[])
     {
         index_t p = mb.minCwiseDegree();
         index_t r = optionList.getInt("discreteRegularity");
-        mb.uniformRefine(1, p-r);
+        mb.uniformRefine(1, p-r); //1600
     }
     //! [Initialise the discrete space]
-
+    
     //! [Solver loop]
     gsMatrix<> jumperr(numRefine+1, mp.nInterfaces()), jumperrRate(numRefine+1, mp.nInterfaces()),
                nitschePen(numRefine+1, mp.nInterfaces());
@@ -268,12 +284,16 @@ int main(int argc, char *argv[])
         if (method == "argyris")
             biharmonic = new gsBiharmonicArgyris<real_t>(mp, mb, optionList);
         else if (method == "nitsche")
+        {
+            optionList.addInt("l","refineLevel",l);
             biharmonic = new gsBiharmonicNitsche<real_t>(mp, mb, optionList);
+            gsVector<real_t> vec = nitschePen.row(1);
+            biharmonic->setStabilityValues(vec);
+        }
         else if (method == "direct")
             biharmonic = new gsBiharmonicArgyrisDirect<real_t>(mp, mb, optionList);
         else
             biharmonic = new gsBiharmonicArgyris<real_t>(mp, mb, optionList); // Only for avoiding the warning
-
         gsInfo << "--------------------------------------------------------------\n";
 
         time.restart();
@@ -290,7 +310,9 @@ int main(int argc, char *argv[])
         gsInfo << "\tSystem assembly:\t" << time_mat(l, 1) << "\t[s]\n";
 
         time.restart();
-        gsSparseSolver<real_t>::CGDiagonal solver;
+        //gsSparseSolver<real_t>::CGDiagonal solver;
+        //gsSparseSolver<real_t>::LU solver;
+        gsSparseSolver<real_t>::SimplicialLDLT solver;
         solver.compute(biharmonic->matrix());
         gsMatrix<real_t> solVector = solver.solve(biharmonic->rhs());
         time_mat(l, 2) = time.stop();
@@ -377,7 +399,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Plotting in Paraview...\n";
         //c1Argyris.plotParaview("G1Biharmonic",10000);
-        mp.uniformRefine(3);
+        mp.uniformRefine(6);
         gsWriteParaview(mp,"Geometry_init",1000,true);
     }
     //! [Export visualization in ParaView]
@@ -414,8 +436,8 @@ int main(int argc, char *argv[])
             fullname += (std::string) argv[i] + " ";
 
         std::string smallNumber = "";
-        if (mu < 1)
-            while(mu < 1)
+        if (mu*mu < 1)
+            while(mu*mu < 1)
             {
                 mu *= 10;
                 smallNumber += "0";
@@ -429,9 +451,10 @@ int main(int argc, char *argv[])
                            "-p" + std::to_string(discrete_p) +
                            "-r" + std::to_string(discrete_r) +
                            "-l" + std::to_string(numRefine)
-                           + (method == "nitsche" ? "-y" + smallNumber + to_string_with_precision(mu,0) : "");
+                           + (method == "nitsche" ? "-y" + smallNumber + to_string_with_precision(mu,0) : "" )
+                           + (method == "nitsche" ? (mu == -1 || mu == -2 ? "-w" + to_string_with_precision(wu,1) : "") : "");
 
-        std::string path = "../../gismo_results/results/g" + std::to_string(geometry) + "/nitsche";
+        std::string path = "../../gismo_results/results/g" + std::to_string(geometry) + "/nitsche_LDLt";
 
         std::string command = "mkdir " + path;
         system(command.c_str());
@@ -470,7 +493,7 @@ int main(int argc, char *argv[])
         std::string command = "mkdir " + path;
         system(command.c_str());
 
-        c1ArgyrisIO.saveSolution(path, mp, mb, solVal, 50);
+        c1ArgyrisIO.saveSolution(path, mp, mb, solVal, 25);
     }
     //! [Save solution to csv file]
 

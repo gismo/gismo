@@ -146,10 +146,10 @@ namespace gismo
                 //const T h = element.getCellSize();
                 //const T mu_h = mu / (0 != h ? h : 1);
 
-                const T h1     = element1.getCellSize();
-                const T h2     = element2.getCellSize();
+                //const T h1     = element1.getCellSize();
+                //const T h2     = element2.getCellSize();
                 // Maybe, the h should be scaled with the patch diameter, since its the h from the parameterdomain.
-                const T c2     = weight * mu * 2*(1./h1 + 1./h2);
+                const T c2     = weight * mu; // * 2*(1./h1 + 1./h2);
 
                 E11.noalias() += c2 * ( N1 * N1.transpose() );
                 E12.noalias() += c2 * ( N1 * N2.transpose() );

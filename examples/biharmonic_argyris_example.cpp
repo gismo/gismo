@@ -16,11 +16,11 @@
 #include <gismo.h>
 
 # include <gsAssembler/gsBiharmonicArgyrisAssembler.h>
-# include <gsArgyris/gsC1Argyris.h>
-# include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisNorms.h>
-# include <gsArgyris/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
+# include <gsC1Basis/gsC1Argyris.h>
+# include <gsC1Basis/gsErrorAnalysis/gsC1ArgyrisNorms.h>
+# include <gsC1Basis/gsErrorAnalysis/gsC1ArgyrisJumpNorm.h>
 
-# include <gsArgyris/gsC1ArgyrisIO.h>
+# include <gsC1Basis/gsC1ArgyrisIO.h>
 
 # include <gsMSplines/gsMappedBasis.h>
 
@@ -152,6 +152,8 @@ int main(int argc, char *argv[])
     gsC1ArgyrisIO c1ArgyrisIO;
 
     gsOptionList optionList = cmd.getOptionList();
+    optionList.addInt("Vertex", "Vertex index", -1); // FOR SPECIAL AS GEOMETRY
+    optionList.addInt("Side", "Side index", -1); // FOR SPECIAL AS GEOMETRY
     gsInfo << optionList << "\n";
     //! [Problem setup]
 
@@ -299,7 +301,7 @@ int main(int argc, char *argv[])
         gsInfo<<"\tAssembly of mapping:\t"<< time_mat(l, 0) <<"\t[s]\n";
 
         time.restart();
-        gsBiharmonicArgyrisAssembler<real_t> biharmonicArgyrisAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch);
+        gsBiharmonicArgyrisAssembler<real_t> biharmonicArgyrisAssembler(mp, mappedBasis, bcInfo, bcInfo2, source, twoPatch, neumann);
         gsInfo<<"\tDegrees of freedom:\t"<< biharmonicArgyrisAssembler.numDofs() <<"\n";
         biharmonicArgyrisAssembler.assemble();
         gsInfo<< "." <<std::flush;// Assemblying done

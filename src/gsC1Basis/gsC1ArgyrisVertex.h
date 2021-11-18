@@ -45,10 +45,11 @@ public:
                 const std::vector<size_t> & patchesAroundVertex,
                 const std::vector<size_t> & vertexIndices,
                 const index_t & numVer,
-                const gsOptionList & optionList)
+                gsOptionList & optionList)
                 : m_mp(mp), m_bases(bases), m_patchesAroundVertex(patchesAroundVertex),
                 m_vertexIndices(vertexIndices), m_optionList(optionList)
     {
+
         m_auxPatches.clear();
         basisVertexResult.clear();
 
@@ -150,6 +151,7 @@ public:
                     }
                 }
 
+                m_optionList.setInt("Vertex",m_vertexIndices[i]);
                 //gsInfo << "Patch: " << m_patchesAroundVertex[i] << " with index: " << m_vertexIndices[i] << "\n";
 
                 // Compute Gluing data
@@ -334,7 +336,7 @@ public:
                       const std::vector<size_t> & vertexIndices,
                       const index_t & numVer,
                       std::vector<std::vector<gsMultiPatch<T>>> & vertex_bf,
-                      const gsOptionList & optionList)
+                      gsOptionList & optionList)
             : m_mp(mp), m_bases(bases), m_patchesAroundVertex(patchesAroundVertex),
               m_vertexIndices(vertexIndices), m_optionList(optionList)
     {
@@ -1243,7 +1245,7 @@ protected:
     const std::vector<size_t> & m_patchesAroundVertex;
     const std::vector<size_t> & m_vertexIndices;
 
-    const gsOptionList & m_optionList;
+    gsOptionList & m_optionList;
 
     // Need for rotation, etc.
     ArgyrisAuxPatchContainer m_auxPatches;

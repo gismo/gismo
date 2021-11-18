@@ -92,6 +92,9 @@ namespace gismo
             localMatrix12.setZero(numActive1, numActive2);
             localMatrix21.setZero(numActive2, numActive1);
 
+            B11.setZero(numActive1, numActive1); B12.setZero(numActive1, numActive2);
+            B22.setZero(numActive2, numActive2); B21.setZero(numActive2, numActive1);
+
             localRhs1.setZero(numActive1, 1);
             localRhs2.setZero(numActive2, 1);
         }
@@ -114,19 +117,25 @@ namespace gismo
                 const T weight = quWeights[k] * md1.measure(k);
 
                 //Get gradients of the physical space
+/*
                 transformGradients(md1, k, basisDers1, physBasisGrad1);
                 transformGradients(md2, k, basisDers2, physBasisGrad2);
+*/
 
                 // Compute physical laplacian at k as a 1 x numActive matrix
                 transformLaplaceHgrad(md1, k, basisDers1, basis2Ders1, physBasisLaplace1);
                 transformLaplaceHgrad(md2, k, basisDers2, basis2Ders2, physBasisLaplace2);
 
-                const T h = element.getCellSize();
-                const T mu_h = mu / (0 != h ? h : 1);
+                const T c1     = weight * T(0.25);
 
-                localMatrix1.noalias() += weight * (physBasisLaplace1.transpose() * physBasisLaplace1);
+                B11.noalias() += c1 * ( physBasisLaplace1.transpose() * physBasisLaplace1 );
+                B12.noalias() += c1 * ( physBasisLaplace1.transpose() * physBasisLaplace2 );
+                B22.noalias() += c1 * ( physBasisLaplace2.transpose() * physBasisLaplace2 );
+                B21.noalias() += c1 * ( physBasisLaplace2.transpose() * physBasisLaplace1 );
 
-                localMatrix2.noalias() += weight * (physBasisLaplace2.transpose() * physBasisLaplace2);
+                //localMatrix1.noalias() += weight * (physBasisLaplace1.transpose() * physBasisLaplace1);
+
+                //localMatrix2.noalias() += weight * (physBasisLaplace2.transpose() * physBasisLaplace2);
             }
         }
 
@@ -140,13 +149,17 @@ namespace gismo
             system.mapColIndices(actives1, patchIndex1, actives1);
 
             // Add contributions to the system matrix and right-hand side
-            system.push(localMatrix1, localRhs1, actives1, eliminatedDofs[0], 0, 0);
+            //system.push(localMatrix1, localRhs1, actives1, eliminatedDofs[0], 0, 0);
 
             // Map patch-local DoFs to global DoFs
             system.mapColIndices(actives2, patchIndex2, actives2);
 
             // Add contributions to the system matrix and right-hand side
-            system.push(localMatrix2, localRhs2, actives2, eliminatedDofs[0], 0, 0);
+            //system.push(localMatrix2, localRhs2, actives2, eliminatedDofs[0], 0, 0);
+            system.push(B11, localRhs1,actives1,actives1,eliminatedDofs.front(),0,0);
+            system.push(B21, localRhs2,actives2,actives1,eliminatedDofs.front(),0,0);
+            system.push(B12, localRhs1,actives1,actives2,eliminatedDofs.front(),0,0);
+            system.push(B22, localRhs2,actives2,actives2,eliminatedDofs.front(),0,0);
         }
 
     protected:
@@ -169,6 +182,10 @@ namespace gismo
         // Local matrix and rhs
         gsMatrix<T> localMatrix1, localMatrix2, localMatrix12, localMatrix21;
         gsMatrix<T> localRhs1, localRhs2;
+
+        // Auxiliary element matrices
+        gsMatrix<T> B11, B12,
+                B22, B21;
 
         gsMapData<T> md1, md2;
 
