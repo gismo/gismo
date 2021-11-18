@@ -1,4 +1,4 @@
-/** @file heatEquation_example.cpp
+/** @file heatEquation2_example.cpp
 
     @brief Solves the heat equation using time-stepping
 
