@@ -18,7 +18,8 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-  gsCmdLine cmd("Testing the heat equation.");
+    gsCmdLine cmd("Testing the heat equation.");
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
   
     // Source function
     gsConstantFunction<> f(1,2);
@@ -32,11 +33,13 @@ int main(int argc, char *argv[])
     gsBoundaryConditions<> bcInfo;
     gsConstantFunction<> g_N(1,2); // Neumann
     gsConstantFunction<> g_D(0,2); // Dirichlet
+    bcInfo.setGeoMap(patches);
     bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_N);
     bcInfo.addCondition(0, boundary::east,  condition_type::dirichlet, &g_D);
     bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &g_D);
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D);
-
+    gsInfo<<"Boundary conditions:\n"<< bcInfo <<"\n";
+    
     gsMultiBasis<> bases( patches );
 
     // Number for h-refinement of the computational (trial/test) basis.
@@ -64,6 +67,8 @@ int main(int argc, char *argv[])
     for (int i = 0; i < numRefine; ++i)
         bases.uniformRefine();
 
+    gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
+    
     real_t theta = 0.5;
     real_t endTime = 0.1;
     int numSteps = 40;
@@ -78,6 +83,9 @@ int main(int argc, char *argv[])
    
     gsExprAssembler<> K(1,1);
     gsExprAssembler<> M(1,1);
+
+    gsInfo<<"Active options:\n"<< K.options() <<"\n";
+    gsInfo<<"Active options:\n"<< M.options() <<"\n";
     
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -87,6 +95,9 @@ int main(int argc, char *argv[])
     K.setIntegrationElements(bases);
     M.setIntegrationElements(bases);   
 
+    gsExprEvaluator<> evK(K);
+    gsExprEvaluator<> evM(M);
+    
     // Set the geometry map
     geometryMap G_K = K.getMap(patches);
     geometryMap G_M = M.getMap(patches);
@@ -94,17 +105,20 @@ int main(int argc, char *argv[])
     // Set the discretization space
     space u_K = K.getSpace(bases);
     space u_M = M.getSpace(bases);
-    u_K.setInterfaceCont(0);
-    u_M.setInterfaceCont(0);
-    u_K.addBc( bcInfo.get("Dirichlet") );
-    u_M.addBc( bcInfo.get("Dirichlet") );
+    //    u_K.setInterfaceCont(0);
+    //    u_M.setInterfaceCont(0);
+    //    u_K.addBc( bcInfo.get("Dirichlet") );
+    //    u_M.addBc( bcInfo.get("Dirichlet") );
+
+    u_K.setup(bcInfo, dirichlet::interpolation, 0);
+    u_M.setup(bcInfo, dirichlet::interpolation, 0);
 
     // Set the source term
     variable ff_K = K.getCoeff(f, G_K);
     variable ff_M = M.getCoeff(f, G_M);
 
-    K.initSystem();
-    M.initSystem();
+    K.initSystem(false);
+    M.initSystem(false);
     K.assemble( igrad(u_K, G_K) * igrad(u_K, G_K).tr() * meas(G_K), u_K * ff_K * meas(G_K) );
     M.assemble( u_M * u_M.tr() * meas(G_M), u_M * ff_M * meas(G_M) );
 
