@@ -1,8 +1,10 @@
+#pragma once
+
 #include <gismo.h>
 #include <Eigen/Dense>
 #include <gsModeling/gsFitting.h>
 #include <gsModeling/gsFitting.hpp>
-
+#include <gsSolver/gsSolverUtils.h>
 
 namespace gismo {
 
@@ -14,16 +16,22 @@ public:
                   const gsMatrix<T> & points,
                   gsBasis<T> & basis,
                   const gsMatrix<T> & ugrid,
-                  const gsMatrix<T> & vgrid,
-                  const gsMatrix<index_t> & weights)
-        : gsFitting<T>(param_values, points, basis), m_ugrid(ugrid), m_vgrid(vgrid), m_weights(weights)
-    {}
+                  const gsMatrix<T> & vgrid)
+        : gsFitting<T>(param_values, points, basis), m_ugrid(ugrid), m_vgrid(vgrid), m_weights(ugrid.cols(),vgrid.cols())
+    {
+        m_weights.setZero();
+    }
+    index_t FindGridPoint1Dfast(const gsMatrix<T> &grid, const T& curr_param, index_t beg, index_t end);
     void FindGridPoint1D(const gsMatrix<T> &grid, const T& curr_param, index_t& k2) const;
     void FindGridPoint(const gsMatrix<T>& curr_param, index_t &k1, index_t &k2);
+    void FindGridPointfast(const gsMatrix<T>& curr_param, index_t& k1, index_t& k2);
     gsMatrix<T> ProjectParamToGrid(const gsMatrix<T> & uv);
     void GridProjection();
-    void assembleSystem( gsMatrix<T>& Table, gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
+    gsMatrix<index_t> GridProjectionNEW();
+    void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
+    void assembleSystemNEW(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B, gsMatrix<index_t>& gridindex);
     void compute(const bool condcheck);
+    void computeNEW(const bool condcheck);
     void computeAllProjectedErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz);
     void computeProjectedAverageErrors();
     void plotErrors(const std::string & fname) const;
@@ -34,7 +42,8 @@ public:
     using gsFitting<T>::computeErrors;
 protected:
     void changeParam(const gsMatrix<T> &uv, const gsMatrix<T> &xyz);
-    void BuildLookupTable(gsMatrix<T>& Table);
+    gsMatrix<T> BuildLookupTable(gsMatrix<index_t> & uactives, gsMatrix<T>& uvalues);
+    gsMatrix<T> BuildLookupTableNEW(gsMatrix<index_t> & uactives, gsMatrix<T>& uvalues, gsMatrix<index_t>& gridindex);
 protected:
     /// u parameter for grid in u-direction for grid projection / fast fitting
     gsMatrix<T> m_ugrid;
@@ -52,6 +61,33 @@ void gsFastFitting<T>::changeParam(const gsMatrix<T> &uv, const gsMatrix<T> &xyz
                   "Wrong input");
     this -> m_param_values = uv;
     this -> m_points = xyz.transpose();
+}
+
+
+template<class T>
+index_t gsFastFitting<T>::FindGridPoint1Dfast(const gsMatrix<T> &grid, const T& curr_param, index_t beg, index_t end)
+{
+    //if (beg == end)
+    if (end-beg == 1)
+    {
+        //return beg;
+        if (curr_param < (grid(beg)+grid(end))/2.0 )
+            return beg;
+        else
+            return end;
+    }
+    else
+    {
+        index_t mid = std::ceil(beg+(end-beg)/2.0);
+
+        if (curr_param < (grid(mid-1)+grid(mid))/2.0 )
+        {
+            return FindGridPoint1Dfast(grid,curr_param,beg,mid);
+        }
+        else
+            return FindGridPoint1Dfast(grid,curr_param,mid,end);
+
+    }
 }
 
 
@@ -83,6 +119,18 @@ void gsFastFitting<T>::FindGridPoint(const gsMatrix<T>& curr_param, index_t& k1,
     // Search function, k is the global index of the nearest neighbour of curr_param, with k=(k1,k2)
     FindGridPoint1D(m_ugrid,curr_param(0),k1);
     FindGridPoint1D(m_vgrid,curr_param(1),k2);
+
+//    index_t k1fast = FindGridPoint1Dfast(m_ugrid,curr_param(0),0,(m_ugrid.cols()));
+//    if (k1 != k1fast || k2 != FindGridPoint1Dfast(m_vgrid,curr_param(1),0,m_vgrid.cols()))
+//        gsInfo << "Wrong FindGridPoint1Dfast" << std::endl;
+}
+
+template<class T>
+void gsFastFitting<T>::FindGridPointfast(const gsMatrix<T>& curr_param, index_t& k1, index_t& k2)
+{
+    // Search function, k is the global index of the nearest neighbour of curr_param, with k=(k1,k2)
+    k1=FindGridPoint1Dfast(m_ugrid,curr_param(0),0,m_ugrid.cols()-1);
+    k2=FindGridPoint1Dfast(m_vgrid,curr_param(1),0,m_vgrid.cols()-1);
 }
 
 
@@ -93,7 +141,7 @@ gsMatrix<T> gsFastFitting<T>::ProjectParamToGrid(const gsMatrix<T> & uv)
     index_t k1,k2;
     for (index_t k=0; k<uv.cols(); k++)
     {
-        FindGridPoint(uv.col(k),k1,k2);
+        FindGridPointfast(uv.col(k),k1,k2);
         uv_temp(0,k) = m_ugrid(k1);
         uv_temp(1,k) = m_vgrid(k2);
     }
@@ -105,6 +153,7 @@ gsMatrix<T> gsFastFitting<T>::ProjectParamToGrid(const gsMatrix<T> & uv)
 template<class T>
 void gsFastFitting<T>::GridProjection()
 {
+    gsInfo << "Begin GridProjection" << std::endl;
     // Initializing some variables
     index_t n1,n2;
     n1 = m_weights.rows();
@@ -114,11 +163,23 @@ void gsFastFitting<T>::GridProjection()
     const int dimension = this->m_points.cols();
     const int numpoints = this->m_points.rows();
 
+    /*gsSparseMatrix<T> A_mat(num_basis, num_basis);
+    //To optimize sparse matrix an estimation of nonzero elements per
+    //column can be given here, to do: improve
+    int nonZerosPerCol = 1;
+    for (int i = 0; i < this->m_basis->dim(); ++i)
+        nonZerosPerCol *= ( 2 * this->m_basis->degree(i) + 1 ) * 4;
+    A_mat.reservePerColumn( nonZerosPerCol );*/
+
     // Initialize new m_params, m_points
-    gsMatrix<T> params_temp, points_temp;
+    /*gsMatrix<T> params_temp, points_temp;
     params_temp.setZero(2,n1*n2);
-    points_temp.setZero(n1*n2,dimension);
+    points_temp.setZero(n1*n2,dimension);*/
     gsMatrix<T> curr_param,curr_point;
+
+    //gsMatrix<T> params_temp(2,n1*n2);
+    gsSparseMatrix<T> points_temp(n1*n2,dimension);
+    points_temp.reservePerColumn(numpoints);
 
     for (index_t i=0; i<numpoints; i++)
     {
@@ -130,15 +191,25 @@ void gsFastFitting<T>::GridProjection()
         curr_param = this->m_param_values.col(i);
         curr_point = this->m_points.row(i);
         index_t k,k1=0,k2=0;
-        FindGridPoint(curr_param,k1,k2);
+        //FindGridPoint(curr_param,k1,k2);
+        //k = k2 * n1 + k1;
+
+        //index_t k1fast=0,k2fast=0;
+        FindGridPointfast(curr_param,k1,k2);
         k = k2 * n1 + k1;
 
-        points_temp.row(k) += curr_point;
+        //if (k1 != k1fast)
+        //    gsInfo << "Wrong fast gridprojection" << std::endl;
+
+        points_temp(k,0) += curr_point(0);
+        points_temp(k,1) += curr_point(1);
+        points_temp(k,2) += curr_point(2);
+
         m_weights(k1,k2) += 1;
     }
 
     // Build m_param as mesh of parameters
-    for (index_t i2= 0; i2<n2; i2++)
+    /*for (index_t i2= 0; i2<n2; i2++)
     {
         for (index_t i1= 0; i1<n1; i1++)
         {
@@ -146,66 +217,70 @@ void gsFastFitting<T>::GridProjection()
             params_temp(0,iglobal)=m_ugrid(i1);
             params_temp(1,iglobal)=m_vgrid(i2);
         }
-    }
+    }*/
 
     // Write new parameter and point data into member variables
-    this -> m_param_values = params_temp;
+    //this -> m_param_values = params_temp;
     this -> m_points = points_temp;
 }
 
 template<class T>
-void gsFastFitting<T>::BuildLookupTable(gsMatrix<T>& Table)
+gsMatrix<index_t> gsFastFitting<T>::GridProjectionNEW()
 {
-    //Initialize look-up Table
-    //const int num_basis=this->m_basis->size();
-    //const int dimension=this->m_points.cols();
+    index_t n1;
+    n1 = m_weights.rows();
+    const int numpoints = this->m_points.rows();
+    gsMatrix<T> curr_param;
+    gsMatrix<index_t> gridindex(numpoints,3);
 
-    // Get 1D basis in u direction:
-    gsBasis<T>* ubasis_tmp;
-    ubasis_tmp = &(this->m_basis->component(0));
-    gsBSplineBasis<T> ubasis = *(static_cast<gsBSplineBasis<T>*>(ubasis_tmp));
+    for (index_t i=0; i<numpoints; i++)
+    {
+        curr_param = this->m_param_values.col(i);
+        index_t k1=0,k2=0;
+        FindGridPointfast(curr_param,k1,k2);
 
-    index_t N1;
-    //index_t N2;
-    N1 = ubasis.size();   // number of basis functions in u direction
-    //N2 = num_basis/N1;
+        gridindex(i,0)= k2 * n1 + k1;
+        gridindex(i,1)= k1;
+        gridindex(i,2)= k2;
+    }
+    return gridindex;    // This now only contains the global index and u-, v-indices of the according grid point with respect to m_param_values
+}
 
-    int p;
-    p = this->m_basis->degree(0);   // degree for u
+template<class T>
+gsMatrix<T> gsFastFitting<T>::BuildLookupTable(gsMatrix<index_t> & uactives, gsMatrix<T>& uvalues)
+{
+    gsInfo<< "Begin Build Lookup Table" << std::endl;
+    index_t N1 = this->m_basis->component(0).size();    // number of basis functions in u direction
+    int p = this->m_basis->degree(0);   // degree for u
     int n1,n2;
     n1 = m_vgrid.cols();  // gridpoints in u-direction
     n2 = m_ugrid.cols();  // gridpoints in v-direction
+    gsMatrix<T> Table;
     Table.setZero(N1*N1,n2);
-
-    // pre-evaluate ubasis in grid-points
-    gsMatrix<index_t> actives;
-    gsMatrix<real_t> uvalues;
-    ubasis.active_into(m_ugrid,actives);
-    ubasis.eval_into(m_ugrid,uvalues);
+    gsInfo<< "SetZero Build Lookup Table" << std::endl;
 
     // Build look-up table, i.e. elements h_{k2,i2,j2} in Table
     index_t flops = 0;
     for (index_t k1=0; k1<n1; k1++)
     {
+        gsVector<T> bcol = uvalues.col(k1);
+        gsVector<index_t> icol = uactives.col(k1);
         for (index_t i=0; i<p+1; i++)
         {
-            real_t bi;
-            index_t i1;
-            bi = uvalues(i,k1);
-            i1 = actives(i,k1);
+            T bi = bcol(i);//uvalues(i,k1);
+            index_t i1 = icol(i);//uactives(i,k1);
             for (index_t j=0; j<p+1; j++)
             {
-                real_t bj;
-                index_t j1;
-                bj = uvalues(j,k1);
-                j1 = actives(j,k1);
+                T bj = bcol(j);//uvalues(j,k1);
+                index_t j1 = icol(j);//uactives(j,k1);
                 index_t ind_temp = j1*N1+i1;   // lexicographical running index
                 for (index_t k2=0; k2<n2; k2++)
                 {
-                    if(m_weights(k1,k2)!=0)
+                    index_t weight = m_weights(k1, k2);
+                    if(weight!=0)
                     {
                         // Judge i < j and use symmetry of bi*bj -> more efficiently?
-                        Table(ind_temp,k2) += bi*bj*m_weights(k1,k2);
+                        Table(ind_temp,k2) += bi*bj*weight;
                         flops += 3;
                     }
                 }
@@ -216,10 +291,46 @@ void gsFastFitting<T>::BuildLookupTable(gsMatrix<T>& Table)
     gsInfo << "Counted flops fast fitting--PART 1: " << flops << std::endl;
 
     // How can this be improved? -> parallelization?
+    return Table;
 }
 
 template<class T>
-void gsFastFitting<T>::assembleSystem( gsMatrix<T>& Table,gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B)
+gsMatrix<T> gsFastFitting<T>::BuildLookupTableNEW(gsMatrix<index_t> & uactives, gsMatrix<T>& uvalues, gsMatrix<index_t>& gridindex)
+{
+    index_t N1 = this->m_basis->component(0).size();    // number of basis functions in u direction
+    int p = this->m_basis->degree(0);                   // degree for u
+    int n2 = m_ugrid.cols();                            // gridpoints in v-direction
+    //gsSparseMatrix<T> Table(N1*N1,n2);
+    //Table.reservePerColumn((p+1)*(p+1));
+    gsMatrix<T> Table(N1*N1,n2);
+    index_t flops = 0;
+
+    for (index_t k=0; k<gridindex.rows(); k++)
+    {
+        index_t k1 = gridindex(k,1);
+        index_t k2 = gridindex(k,2);
+        for (index_t i=0; i<p+1; i++)
+        {
+            T bi = uvalues(i,k1);
+            index_t i1 = uactives(i,k1);
+            for (index_t j=0; j<p+1; j++)
+            {
+                T bj = uvalues(j,k1);
+                index_t j1 = uactives(j,k1);
+                index_t ind_temp = j1*N1+i1;   // lexicographical running index
+                Table(ind_temp,k2) += bi*bj;
+                flops += 3;
+            }
+        }
+    }
+
+    // Output number flops:
+    gsInfo << "Counted flops fast fitting--PART 1: " << flops << std::endl;
+    return Table;
+}
+
+template<class T>
+void gsFastFitting<T>::assembleSystem( gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B)
 {
     //Initialize look-up Table
     const int num_basis=this->m_basis->size();
@@ -241,35 +352,46 @@ void gsFastFitting<T>::assembleSystem( gsMatrix<T>& Table,gsSparseMatrix<T>& A_m
     n1 = m_ugrid.cols();  // gridpoints in v-direction
     int n2;
     n2 = m_vgrid.cols();  // gridpoints in u-direction
-    A_mat.setZero();
+    //A_mat.setZero();
 
     // pre-evaluate vbasis in grid-points
-    gsMatrix<index_t> actives;
-    gsMatrix<real_t> vvalues;
-    vbasis.active_into(m_vgrid,actives);
+    gsMatrix<index_t> vactives;
+    gsMatrix<T> vvalues;
+    vbasis.active_into(m_vgrid,vactives);
     vbasis.eval_into(m_vgrid,vvalues);
+
+    // Get 1D basis in u direction:
+    gsBasis<T>* ubasis_tmp;
+    ubasis_tmp = &(this->m_basis->component(0));
+    gsBSplineBasis<T> ubasis = *(static_cast<gsBSplineBasis<T>*>(ubasis_tmp));
+
+    // pre-evaluate ubasis in grid-points
+    gsMatrix<index_t> uactives;
+    gsMatrix<T> uvalues;
+    ubasis.active_into(m_ugrid,uactives);
+    ubasis.eval_into(m_ugrid,uvalues);
+
+    // Compute look-up table
+    gsMatrix<T> Table;
+    Table = BuildLookupTable(uactives,uvalues);
 
     // tensorbasis used in order to find lexicographical running index in inner slope
     //gsTensorBSplineBasis<2,T> *tensorbasis = (static_cast<gsTensorBSplineBasis<2,T>*>(this->m_basis));
     // Assemble matix A, right hand side b
     index_t flops = 0;
-    for (index_t k2=0; k2<n2; k2++)
+    for (index_t k2=0; k2<n2; k2++)    // grid points v
     {
-        for (index_t i2=0; i2<p+1; i2++)
+        for (index_t i2=0; i2<p+1; i2++)     // active basis functions of v basis at grid point, approximation
         {
-            real_t bi;
-            index_t ui;
-            bi = vvalues(i2,k2);
-            ui = actives(i2,k2);
-            for (index_t j2=0; j2<p+1; j2++)
+            T bi = vvalues(i2,k2);
+            index_t ui = vactives(i2,k2);
+            for (index_t j2=0; j2<p+1; j2++)      // active basis functions of v basis at grid point, test function
             {
-                real_t bj;
-                index_t uj;
-                bj = vvalues(j2,k2);
-                uj = actives(j2,k2);
-                for (index_t i1=0; i1<N1; i1++)
+                T bj = vvalues(j2,k2);
+                index_t uj = vactives(j2,k2);
+                for (index_t i1=0; i1<N1; i1++)       // all basis functions of u basis, approximation
                 {
-                    for (index_t j1=std::max(0,i1-p); j1<std::min(i1+p+1,N1); j1++)
+                    for (index_t j1=std::max(0,i1-p); j1<std::min(i1+p+1,N1); j1++)       // neighboring basis functions of u basis, test function
                     {
                         //index_t i_lexiglobal = tensorbasis->index(i1,ui);
                         index_t i_lexiglobal = ui * N1 + i1;
@@ -292,7 +414,31 @@ void gsFastFitting<T>::assembleSystem( gsMatrix<T>& Table,gsSparseMatrix<T>& A_m
     // Info for the flop count:
     gsInfo << "Counted flops fast fitting--PART 2: " << flops << std::endl;
 
-    gsMatrix<T> value, curr_point;
+    for(index_t k = 0; k < n1*n2; ++k)     // all grid points
+    {
+        // Check if weight(k) = 0: Find local k1,k2 from k
+        index_t k1 = k % n1;
+        index_t k2 = (k-k1)/n1;
+
+        if (m_weights(k1,k2)!=0)
+        {
+            for (index_t i1=0; i1<p+1; i1++)
+            {
+                index_t iu = uactives(i1,k1);
+                real_t bu = uvalues(i1,k1);
+                for (index_t i2=0; i2<p+1; i2++)
+                {
+                    index_t iv = vactives(i2,k2);
+                    real_t bv = vvalues(i2,k2);
+                    index_t ilexi = iv*N1+iu;
+                    m_B.row(ilexi) += bu*bv* this->m_points.row(k);
+                }
+            }
+        }
+    }
+
+    //Old version: new version is more efficient
+    /*gsMatrix<T> value, curr_point;
     gsMatrix<index_t> active;
     for(index_t k = 0; k < n1*n2; ++k)
     {
@@ -318,7 +464,7 @@ void gsFastFitting<T>::assembleSystem( gsMatrix<T>& Table,gsSparseMatrix<T>& A_m
                 m_B.row(ii) += value.at(i) * this->m_points.row(k);
             }
         }
-    }
+    }*/
 
     /*// For testing purpose to compare A_mat:
     gsFileData<> fd;
@@ -328,6 +474,100 @@ void gsFastFitting<T>::assembleSystem( gsMatrix<T>& Table,gsSparseMatrix<T>& A_m
     gsFileData<> fb;
     fb << m_B;
     fb.dump("FastFittingb");*/
+}
+
+template<class T>
+void gsFastFitting<T>::assembleSystemNEW( gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B, gsMatrix<index_t>& gridindex)
+{
+    //Initializing
+    const int num_basis=this->m_basis->size();
+    const int numpoints = this->m_points.rows();
+    // Get 1D basis in v direction:
+    gsBasis<T>* vbasis_tmp;
+    vbasis_tmp = &(this->m_basis->component(1));
+    gsBSplineBasis<T> vbasis = *(static_cast<gsBSplineBasis<T>*>(vbasis_tmp));
+    index_t N2 = vbasis.size();    // number basis v direction
+    index_t N1 = num_basis/N2;    // number basis u direction
+    int p = this->m_basis->degree(1);      // degree v direction
+    //A_mat.setZero();
+
+    // pre-evaluate vbasis in grid-points
+    gsMatrix<index_t> vactives;
+    gsMatrix<T> vvalues;
+    vbasis.active_into(m_vgrid,vactives);
+    vbasis.eval_into(m_vgrid,vvalues);
+
+    // Get 1D basis in u direction:
+    gsBasis<T>* ubasis_tmp;
+    ubasis_tmp = &(this->m_basis->component(0));
+    gsBSplineBasis<T> ubasis = *(static_cast<gsBSplineBasis<T>*>(ubasis_tmp));
+
+    // pre-evaluate ubasis in grid-points
+    gsMatrix<index_t> uactives;
+    gsMatrix<T> uvalues;
+    ubasis.active_into(m_ugrid,uactives);
+    ubasis.eval_into(m_ugrid,uvalues);
+
+    // Compute look-up table
+    gsMatrix<T> Table;//(N1*N1,n2);
+    //Table.reservePerColumn((p+1)*(p+1));
+    Table = BuildLookupTableNEW(uactives,uvalues,gridindex);
+    index_t flops = 0;
+
+    std::set<index_t> k2set;
+    for (index_t i=0; i< numpoints; i++)
+        k2set.insert(gridindex(i,2));
+
+    for ( std::set<index_t>::const_iterator k2=k2set.begin() ; k2!=k2set.end(); ++k2 )
+    {
+        for (index_t i2=0; i2<p+1; i2++)     // active basis functions of v basis at grid point, approximation
+        {
+            T bi = vvalues(i2,*k2);
+            index_t ui = vactives(i2,*k2);
+            for (index_t j2=0; j2<p+1; j2++)      // active basis functions of v basis at grid point, test function
+            {
+                T bj = vvalues(j2,*k2);
+                index_t uj = vactives(j2,*k2);
+                for (index_t i1=0; i1<N1; i1++)       // all basis functions of u basis, approximation
+                {
+                    for (index_t j1=std::max(0,i1-p); j1<std::min(i1+p+1,N1); j1++)       // neighboring basis functions of u basis, test function
+                    {
+                        index_t i_lexiglobal = ui * N1 + i1;
+                        index_t j_lexiglobal = uj * N1 + j1;
+                        index_t ind_temp = j1*N1+i1;
+                        real_t table = Table(ind_temp,*k2);
+                        if (table != 0)
+                        {
+                            A_mat(i_lexiglobal,j_lexiglobal) += bi*bj*table;   // could be done more efficiently?
+                            flops += 3;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Info for the flop count:
+    gsInfo << "Counted flops fast fitting--PART 2: " << flops << std::endl;
+
+    for(index_t k = 0; k < numpoints; ++k)     // all grid points
+    {
+        // Check if weight(k) = 0: Find local k1,k2 from k
+        index_t k1 = gridindex(k,1);
+        index_t k2 = gridindex(k,2);
+
+        for (index_t i1=0; i1<p+1; i1++)
+        {
+            index_t iu = uactives(i1,k1);
+            real_t bu = uvalues(i1,k1);
+            for (index_t i2=0; i2<p+1; i2++)
+            {
+                index_t iv = vactives(i2,k2);
+                real_t bv = vvalues(i2,k2);
+                index_t ilexi = iv*N1+iu;
+                m_B.row(ilexi) += bu*bv* this->m_points.row(k);
+            }
+        }
+    }
 }
 
 
@@ -360,16 +600,14 @@ void gsFastFitting<T>::compute(const bool condcheck)
 
     // Initialize weights and look-up table
     //gsMatrix<index_t> weights (m_ugrid.cols(),m_vgrid.cols());
-    gsMatrix<T> Table;
+    //gsMatrix<T> Table;
     GridProjection();
     //weights.setOnes();
 
     // stopping time for complete assembly (including right-hand side)
     gsStopwatch time;
     time.restart();
-    BuildLookupTable(Table);
-
-    assembleSystem( Table, A_mat, m_B);
+    assembleSystem( A_mat, m_B);
     time.stop();
     gsInfo<<"Assembly time                     : "<< time <<"\n";
     // To do: include regularization later after projection step (not needed at this point)
@@ -379,6 +617,70 @@ void gsFastFitting<T>::compute(const bool condcheck)
 
     //gsDebugVar( A_mat.nonZerosPerCol().maxCoeff() );
     //gsDebugVar( A_mat.nonZerosPerCol().minCoeff() );
+    A_mat.makeCompressed();
+
+    typename gsSparseSolver<T>:: BiCGSTABILUT solver( A_mat );
+    gsMatrix<T> x;
+    if (condcheck)
+    {
+        Eigen::SparseMatrix<double> I(A_mat.rows(),A_mat.cols());
+        I.setIdentity();
+        auto A_inv = solver.solve(I);
+        gsInfo << "Condition number: " << A_mat.norm() * A_inv.norm() << std::endl;
+        x = A_inv * m_B;
+    }
+
+    if ( solver.preconditioner().info() != Eigen::Success )
+    {
+        std::cerr<<  "The preconditioner failed. Aborting.";// << std::endl;
+        this->m_result = NULL;
+        return;
+    }
+
+    // Solve for x
+    x = solver.solve(m_B); //toDense()
+
+    // Generate the B-spline curve / surface
+    this->m_result = this->m_basis->makeGeometry( give(x) ).release();
+
+    // Compute average errors
+    //computeProjectedAverageErrors();
+}
+
+template<class T>
+void gsFastFitting<T>::computeNEW(const bool condcheck)
+{
+    // Wipe out previous result
+    if ( this->m_result )
+        delete this->m_result;
+
+    // Initialization of variables num_basis, dimension
+    const int num_basis=this->m_basis->size();
+    const int dimension=this->m_points.cols();
+    const int numpoints=this->m_points.rows();
+
+    //left side matrix
+    gsSparseMatrix<T> A_mat(num_basis, num_basis);
+    //To optimize sparse matrix an estimation of nonzero elements per
+    //column can be given here, to do: improve
+    int nonZerosPerCol = 1;
+    for (int i = 0; i < this->m_basis->dim(); ++i)
+        nonZerosPerCol *= ( 2 * this->m_basis->degree(i) + 1 ) * 4;
+    A_mat.reservePerColumn( nonZerosPerCol );
+
+    //right side vector (more dimensional!)
+    gsMatrix<T> m_B(num_basis, dimension);
+    m_B.setZero(); // ensure that all entries are zero in the beginning
+
+    gsMatrix<index_t> gridindex (numpoints,3);
+    gridindex = GridProjectionNEW();
+
+    // stopping time for complete assembly (including right-hand side)
+    gsStopwatch time;
+    time.restart();
+    assembleSystemNEW( A_mat, m_B, gridindex);
+    time.stop();
+    gsInfo<<"Assembly time NEW                 : "<< time <<"\n";
     A_mat.makeCompressed();
 
     typename gsSparseSolver<T>:: BiCGSTABILUT solver( A_mat );

@@ -102,10 +102,8 @@ int main(int argc, char *argv[])
             vgrid(0,i)= i/(n_vgrid*1.0) + 1/(2.0*n_vgrid);        // Grid without borders
     }
 
-    gsMatrix<index_t> weights(n_ugrid,n_vgrid);
-
     // Create fast fitting object
-    gsFastFitting<real_t> ref( uv, xyz, T_tbasis, ugrid, vgrid, weights);
+    //gsFastFitting<real_t> ref( uv, xyz, T_tbasis, ugrid, vgrid);
 
     // Print settings summary
     gsInfo<<"--------------------------------\n";
@@ -118,28 +116,35 @@ int main(int argc, char *argv[])
     gsInfo<<"Grid with/without borders  : "<< n_ugrid << ", " << n_vgrid << ". " << borders << ".\n";
     gsInfo<<"Delta (should be <1)       : "<< T_tbasis.size(0)*T_tbasis.size(1)/(1.0*xyz.cols()) <<".\n";
     gsInfo<<"delta (should be <1)       : "<< (1.0*xyz.cols())/(n_ugrid*n_vgrid)                 <<".\n";
-    gsInfo<<"--------------------------------\n";
+    gsInfo<<"--------------------------------" << std::endl;
 
-    gsStopwatch time;
+    /*gsStopwatch time;
     time.restart();
     ref.compute(false);
     time.stop();
-    gsInfo<<"Fitting time                      : "<< time <<"\n";
-    gsWriteParaview(*(ref.result()),"resultfast", 50000, false, true);
+    gsInfo<<"Fitting time                      : "<< time << std::endl;
+    gsWriteParaview(*(ref.result()),"resultfast", 50000, false, true);*/
 
+    gsStopwatch time;
     gsFitting<real_t> ref2(uv, xyz, T_tbasis);
     time.restart();
     ref2.compute();
     time.stop();
-    gsInfo<<"Fitting time                      : "<< time <<"\n";
+    gsInfo<<"Fitting time                      : "<< time << std::endl;
+
+    gsFastFitting<real_t> ref3( uv, xyz, T_tbasis, ugrid, vgrid);
+    //gsWriteParaview(*(ref2.result()),"resultfast", 50000, false, true);
+    time.restart();
+    ref3.computeNEW(false);
+    time.stop();
+    gsInfo<<"Fitting time NEW                  : "<< time << std::endl;
     ref2.computeErrors();
-    gsWriteParaview(*(ref2.result()),"resultslow", 50000, false, true);
+    //gsWriteParaview(*(ref2.result()),"resultslow", 50000, false, true);
 
-    ref.computeProjectedAverageErrors();
-    ref.plotErrors("errorplot_gk_average");
-
-    gsInfo<<"--------------------------------\n";
-    gsInfo<<"Max error fast fitting gk-average : "<< ref.maxPointError() <<".\n";
+    //ref.computeProjectedAverageErrors();
+    //ref.plotErrors("errorplot_gk_average");
+    /*gsInfo<<"--------------------------------\n";
+    //gsInfo<<"Max error fast fitting gk-average : "<< ref.maxPointError() << ".\n";
     ref.computeAllProjectedErrors(uv,xyz);
     gsInfo<<"Max error fast fitting gk-all     : "<< ref.maxPointError() <<".\n";
     gsInfo<<"L2 error fast fitting gk-all      : "<< ref.getL2error() <<".\n";
@@ -153,11 +158,23 @@ int main(int argc, char *argv[])
     ref.plotErrors("errorplot_uk");
     gsInfo<<"L2 error fast fitting uk          : "<< ref.getL2error() <<".\n";
 
+    //gsInfo<<"L2 error fast fitting uk+         : "<< ref.getL2error() <<".\n";*/
+    gsInfo<<"--------------------------------\n";
+    ref3.computeAllProjectedErrors(uv,xyz);
+    gsInfo<<"Max error fast fitting gk-all     : "<< ref3.maxPointError() <<".\n";
+    gsInfo<<"L2 error fast fitting gk-all      : "<< ref3.getL2error() <<".\n";
 
-    ref.computeHaussdorfErrors(uv,xyz,false);
-    gsInfo<<"Max error fast fitting uk+        : "<< ref.maxPointError() <<".\n";
+    ref3.computeHaussdorfErrors(uv,xyz,true);
+    gsInfo<<"Max error fast fitting gk+        : "<< ref3.maxPointError() <<".\n";
+    ref3.plotErrors("errorplot_gk_all");
+
+    ref3.computeErrors(uv,xyz.transpose());
+    gsInfo<<"Max error fast fitting uk         : "<< ref3.maxPointError() <<".\n";
+    ref3.plotErrors("errorplot_uk");
+    gsInfo<<"L2 error fast fitting uk          : "<< ref3.getL2error() <<".\n";
 
     //gsInfo<<"L2 error fast fitting uk+         : "<< ref.getL2error() <<".\n";
+
 
     gsInfo<<"Max error slow fitting            : "<< ref2.maxPointError() <<".\n";
 
