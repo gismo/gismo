@@ -45,7 +45,7 @@ benchmark_driver(const std::vector<int>& nthreads, int nruns, T& benchmark)
       bandwidth += 1e-9*nbytes/stopwatch.elapsed();       
     }
 
-    results.push_back( { *it, bandwidth/(double)nruns, stopwatch.elapsed() } );
+    results.push_back( { static_cast<double>(*it), bandwidth/(double)nruns, stopwatch.elapsed() } );
   }
 
   return results;
@@ -200,11 +200,14 @@ int main(int argc, char *argv[])
   //! [Parse command line]
   std::vector<int> nthreads;
   std::vector<double> bandwidths;
+  int n=1000000000;
   int nruns=1;
   
   gsCmdLine cmd("G+Smo performance benchmark.");
   cmd.addMultiInt("t", "threads",
                   "Number of OpenMP threads to be used for the benchmark", nthreads);
+  cmd.addInt("n", "nlength",
+              "Number of unknowns in vector-type benchmarks", n);
   cmd.addInt("r", "runs",
              "Number of runs over which the results are averaged", nruns);
   
@@ -217,7 +220,7 @@ int main(int argc, char *argv[])
 
   {
     gsInfo << "=== Native C array memcopy ===\n";
-    benchmark_c_array_memcopy<real_t> benchmark(1000000000);
+    benchmark_c_array_memcopy<real_t> benchmark(n);
     auto results = benchmark_driver(nthreads, nruns, benchmark);
     for (auto it=results.cbegin(); it!=results.cend(); ++it)     
       gsInfo << "[OMP=" << (*it)[0] << "] " << (*it)[1] << " GB/s\n";
@@ -225,7 +228,7 @@ int main(int argc, char *argv[])
 
   {
     gsInfo << "== gsVector memcopy ===\n";
-    benchmark_eigen_vector_memcopy<real_t> benchmark(1000000000);
+    benchmark_eigen_vector_memcopy<real_t> benchmark(n);
     auto results = benchmark_driver(nthreads, nruns, benchmark);
     for (auto it=results.cbegin(); it!=results.cend(); ++it)     
       gsInfo << "[OMP=" << (*it)[0] << "] " << (*it)[1] << " GB/s\n";
@@ -233,7 +236,7 @@ int main(int argc, char *argv[])
 
   {
     gsInfo << "=== Native C array dot-product ===\n";
-    benchmark_c_array_dotproduct<real_t> benchmark(1000000000);
+    benchmark_c_array_dotproduct<real_t> benchmark(n);
     auto results = benchmark_driver(nthreads, nruns, benchmark);
     for (auto it=results.cbegin(); it!=results.cend(); ++it)     
       gsInfo << "[OMP=" << (*it)[0] << "] " << (*it)[1] << " GB/s\n";
@@ -241,7 +244,7 @@ int main(int argc, char *argv[])
 
   {
     gsInfo << "== gsVector dot-product ===\n";
-    benchmark_eigen_vector_dotproduct<real_t> benchmark(1000000000);
+    benchmark_eigen_vector_dotproduct<real_t> benchmark(n);
     auto results = benchmark_driver(nthreads, nruns, benchmark);
     for (auto it=results.cbegin(); it!=results.cend(); ++it)     
       gsInfo << "[OMP=" << (*it)[0] << "] " << (*it)[1] << " GB/s\n";
