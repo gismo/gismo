@@ -282,22 +282,27 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
         op->apply(U.col(c), x);
         AinvU.col(c) = x;
     }
-    gsMatrix<T> tmp = (gsMatrix<T>::Identity(Vtrans.rows(), U.cols()) - Vtrans*AinvU);
-    typename gsLinearOperator<T>::Ptr corrOp = makePartialPivLUSolver(tmp);
-    gsMatrix<T> id = gsMatrix<T>::Identity(op->rows(), op->cols());
 
-    for(size_t e = 0; e < elCorner.size(); e++)
-        id.block(0, elCorner[e]-e, id.rows(), id.cols()-elCorner[e]-1) = id.block(0, elCorner[e]+1-e, id.rows(), id.cols()-elCorner[e]-1);
+    //gsMatrix<T> tmp = (gsMatrix<T>::Identity(Vtrans.rows(), U.cols()) - Vtrans*AinvU);
+    typename gsLinearOperator<T>::Ptr corrOp = makePartialPivLUSolver(gsMatrix<T>{(gsMatrix<T>::Identity(Vtrans.rows(), U.cols()) - Vtrans*AinvU)});
+    gsSparseMatrix<T> id(op->rows(), op->cols()-elCorner.size());
+    gsSparseEntries<T> seId; seId.reserve(op->cols());
 
-    id.conservativeResize(op->rows(), op->cols()-elCorner.size());
+    index_t r = 0;
+    for(index_t i = 0; i < op->rows(); i++)
+        if(std::find(elCorner.begin(), elCorner.end(), i) == elCorner.end()) {
+            seId.add(i, r, (T) 1);
+            r++;
+        }
+    id.setFrom(seId);
 
-    typename gsMatrixOp< gsMatrix<T> >::Ptr matOp = makeMatrixOp(id.moveToPtr()); //TODO: Discuss memory leak in makeMatrixOp with matrix instead of pointer?
+    typename gsMatrixOp< gsSparseMatrix<T> >::Ptr matOp = makeMatrixOp(id.moveToPtr()); //TODO: Discuss memory leak in makeMatrixOp with matrix instead of pointer?
     return  gsProductOp<T>::make(
                 matOp,
                 gsProductOp<T>::make(std::move(op),
                 gsSumOp<T>::make(
                         gsIdentityOp<T>::make(matOp->rows()),
-                                gsProductOp<T>::make( makeMatrixOp(Vtrans.moveToPtr()), corrOp, makeMatrixOp(AinvU.moveToPtr()) )
+                                gsProductOp<T>::make( makeMatrixOp((gsSparseMatrix<T>(Vtrans.sparseView())).moveToPtr()), corrOp, makeMatrixOp(AinvU.moveToPtr()) )
                             )
                         ),
                 makeMatrixOp(matOp->matrix().transpose())
