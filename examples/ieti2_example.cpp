@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     index_t refinements = 1;
     index_t degree = 2;
     std::string boundaryConditions("d");
-    real_t tolerance = 1.e-8;
+    real_t tolerance = 1.e-6;
     index_t maxIterations = 100;
     std::string out;
     bool plot = false;
@@ -96,10 +96,10 @@ int main(int argc, char *argv[])
     gsInfo << "Define right-hand-side and boundary conditions... " << std::flush;
 
     // Right-hand-side
-    gsFunctionExpr<> f( "2*sin(x)*cos(y)", mp.geoDim() );
+    gsFunctionExpr<> f( "2*pi^2*sin(pi * x)*sin(pi * y)", mp.geoDim() );
 
     // Dirichlet function
-    gsFunctionExpr<> gD( "sin(x)*cos(y)", mp.geoDim() );
+    gsFunctionExpr<> gD( "0.0", mp.geoDim() );
 
     // Neumann
     gsConstantFunction<> gN( 1.0, mp.geoDim() );
@@ -333,11 +333,15 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     gsMatrix<> errorHistory;
+    gsStopwatch time;
+    time.restart();
     gsMinimalResidual<>( ieti.saddlePointProblem(), bdPrec )
         .setOptions( opt.getGroup("Solver") )
         .solveDetailed( ieti.rhsForSaddlePoint(), x, errorHistory );
-
-    gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
+    time.stop();
+    gsInfo << "done.\n    ";
+    gsInfo << "Time to solve the system: " <<time<<"\n"<<std::flush;
+    gsInfo << "Reconstruct solution from Lagrange multipliers... " << std::flush;
 
     // Now, we want to have the global solution for u
     gsMatrix<> uVec = ietiMapper.constructGlobalSolutionFromLocalSolutions(
@@ -387,7 +391,8 @@ int main(int argc, char *argv[])
         gsMultiPatch<> mpsol;
         assembler.constructSolution(uVec, mpsol);
         gsField<> sol( assembler.patches(), mpsol );
-        gsWriteParaview<>(sol, "ieti_result", 1000);
+        gsWriteParaview<>(sol, "IETI", 1000);
+        system("paraview IETI.pvd &");
         //gsFileManager::open("ieti_result.pvd");
     }
     if (!plot&&out.empty())

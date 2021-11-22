@@ -31,7 +31,8 @@ void gsPrimalSystem<T>::incorporateConstraints(
         SparseMatrix& modifiedLocalMatrix,
         SparseMatrix& localEmbedding,
         SparseMatrix& embeddingForBasis,
-        Matrix& rhsForBasis
+        Matrix& rhsForBasis,
+        bool direct
     )
 {
     const index_t localDofs = localMatrix.rows();
@@ -95,16 +96,25 @@ void gsPrimalSystem<T>::incorporateConstraints(
     // Compute the embedding matrices
     {
         localEmbedding.clear();
-        localEmbedding.resize(localDofs+nrPrimalConstraints-nElimDofs,localDofs);
+        if(direct)
+            localEmbedding.resize(localDofs+nrPrimalConstraints-nElimDofs,localDofs);
+        else
+            localEmbedding.resize(localDofs+nrPrimalConstraints-nElimDofs, localDofs-nElimDofs);
         embeddingForBasis.clear();
         embeddingForBasis.resize(localDofs+nrPrimalConstraints-nElimDofs,localDofs);
         gsSparseEntries<T> seLocalEmbedding, seEmbeddingForBasis;
         seLocalEmbedding.reserve(localDofs-nElimDofs);
         seEmbeddingForBasis.reserve(localDofs);
+        index_t r = 0;
         for (index_t i=0; i!=localDofs; ++i)
         {
-            if ( !eliminatedDof[i] )
-                seLocalEmbedding.add(i,i,(T)1);
+            if ( !eliminatedDof[i] ) {
+                if(direct)
+                    seLocalEmbedding.add(i,i,(T)1);
+                else
+                    seLocalEmbedding.add(i,r,(T)1);
+                r++;
+            }
             seEmbeddingForBasis.add(i,i,(T)1);
         }
         localEmbedding.setFrom(seLocalEmbedding);
@@ -242,7 +252,7 @@ gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
 
     for (index_t i=0; i<sz; ++i)
     {
-        GISMO_ASSERT( sol[i].rows() >= this->m_primalBases[i].rows()
+        GISMO_ASSERT( sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols()) >= this->m_primalBases[i].rows()
             && this->m_primalBases[i].cols() == sol.back().rows()
             && sol.back().cols() == sol[i].cols(),
             "gsPrimalSystem::distributePrimalSolution: Dimensions do not agree: "

@@ -172,7 +172,8 @@ public:
         SparseMatrix& modifiedLocalMatrix,
         SparseMatrix& localEmbedding,
         SparseMatrix& embeddingForBasis,
-        Matrix& rhsForBasis
+        Matrix& rhsForBasis,
+        bool direct = true
     );
 
     /// @brief Returns the matrix representation of the energy minimizing primal basis
