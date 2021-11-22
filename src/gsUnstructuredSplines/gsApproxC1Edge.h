@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): P. Weinmueller & A. Farahat
+    Author(s): P. Weinmueller
 */
 
 #pragma once
@@ -50,11 +50,11 @@ public:
                 const gsOptionList & optionList)
                 : m_mp(mp), m_bases(bases), m_optionList(optionList)
     {
-        side_1 = item.first().side().index();
-        side_2 = item.second().side().index();
+        index_t side_1 = item.first().side().index();
+        index_t side_2 = item.second().side().index();
 
-        patch_1 = item.first().patch;
-        patch_2 = item.second().patch;
+        index_t patch_1 = item.first().patch;
+        index_t patch_2 = item.second().patch;
 
         //const index_t dir_1 = side_1 > 2 ? 0 : 1;
         //const index_t dir_2 = side_2 > 2 ? 0 : 1;
@@ -140,8 +140,6 @@ public:
                 u_sol.extract(sol);
 
                 result.addPatch(edgeSpace.basis(0).makeGeometry(give(sol)));
-
-                //gsDebugVar(sol-result_1.patch(bfID-3).coefs());
             }
 
             bfID_init = 2;
@@ -229,8 +227,8 @@ public:
                 const gsOptionList & optionList)
                 : m_mp(mp), m_bases(bases), m_optionList(optionList)
     {
-        side_1 = item.side().index();
-        patch_1 = item.patch;
+        index_t side_1 = item.side().index();
+        index_t patch_1 = item.patch;
 
         //const index_t dir_1 = side_1 > 2 ? 0 : 1;
 
@@ -261,7 +259,7 @@ public:
         index_t bfID_init = 3;
         for (index_t bfID = bfID_init; bfID < n_plus - bfID_init; bfID++) // first 3 and last 3 bf are eliminated
         {
-            gsSparseSolver<real_t>::LU solver;
+            gsSparseSolver<real_t>::SimplicialLDLT solver;
             gsExprAssembler<> A(1, 1);
 
             typedef gsExprAssembler<>::variable variable;
@@ -312,7 +310,7 @@ public:
         bfID_init = 2;
         for (index_t bfID = bfID_init; bfID < n_minus - bfID_init; bfID++)  // first 2 and last 2 bf are eliminated
         {
-            gsSparseSolver<real_t>::LU solver;
+            gsSparseSolver<real_t>::SimplicialLDLT solver;
             gsExprAssembler<> A(1, 1);
 
             typedef gsExprAssembler<>::variable variable;
@@ -328,8 +326,18 @@ public:
             // Set the discretization space
             space u = A.getSpace(edgeSpace);
 
+            // Create Mapper
+            gsDofMapper map(edgeSpace);
+            gsMatrix<index_t> act;
+            for (index_t i = 2; i < edgeSpace[0].component(1 - dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+            {
+                act = edgeSpace[0].boundaryOffset(dir == 0 ? 3 : 1, i); // WEST
+                map.markBoundary(0, act); // Patch 0
+            }
+            map.finalize();
+
             gsBoundaryConditions<> bc_empty;
-            u.setup(bc_empty, dirichlet::homogeneous, 0);
+            u.setup(bc_empty, dirichlet::homogeneous, 0, map);
             A.initSystem();
 
             gsNormalDerivBasis<real_t> normalDerivBasis(geo, basis_minus, basis_geo, alpha, true, bfID, dir);
@@ -376,8 +384,6 @@ protected:
     BasisContainer & m_bases;
 
     const gsOptionList & m_optionList;
-
-    index_t patch_1, patch_2, side_1, side_2;
 
     // Need for rotation, etc.
     C1AuxPatchContainer m_auxPatches;

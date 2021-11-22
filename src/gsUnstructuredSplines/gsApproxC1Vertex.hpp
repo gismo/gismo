@@ -95,7 +95,7 @@ real_t gsApproxC1Vertex<d, T>::computeSigma(const std::vector<size_t> &vertexInd
         sigma += gsMatrix<> (m_auxPatches[i].getPatchRotated().deriv(zero)).lpNorm<Eigen::Infinity>();
     sigma *= h_geo/(m_auxPatches.size()*p);
 
-    return (1 / sigma);
+    return (1.0 / sigma);
 }
 
 template<short_t d,class T>

@@ -1,6 +1,6 @@
 /** @file gsApproxC1Spline.h
 
-    @brief Provides declaration of Basis abstract interface.
+    @brief Construct the approx c1 spline space.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): P. Weinmueller
 */
 
 /*
@@ -50,28 +50,8 @@ public:
     void defaultOptions();
 
 private:
-
     // Helper functions
-    void createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
-                              gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
-                              gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
 
-    void createPlusMinusSpace(gsKnotVector<T> & kv1,
-                              gsKnotVector<T> & kv1_patch,
-                              gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
-
-    void createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
-                               gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
-                               gsKnotVector<T> & kv_result);
-
-    void createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
-                              gsKnotVector<T> & kv_gD_1, gsKnotVector<T> & kv_gD_2,
-                              gsKnotVector<T> & kv_1, gsKnotVector<T> & kv_2,
-                              gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result);
-
-    void createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
-                              gsKnotVector<T> & kv_1,
-                              gsKnotVector<T> & kv1_result);
 
 protected:
     // Data members

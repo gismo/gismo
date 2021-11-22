@@ -568,8 +568,8 @@ private:
                         }
                         else
                         {
-#                           pragma omp atomic
                             //The right-hand side can have more than one columns
+#                           pragma omp atomic
                             m_rhs.row(ii) += localMat.row(rls+i);
                         }
                     }

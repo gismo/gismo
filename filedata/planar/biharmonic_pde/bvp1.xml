@@ -10,6 +10,23 @@
 <!-- Laplace boundary value (for bcs) -->
 <Function type="FunctionExpr" id="2" dim="2">-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))</Function>
 
+<!-- The boundary conditions (multipatch=number of patches)-->
+<boundaryConditions id="3" multipatch="2">
+  <Function type="FunctionExpr" dim="2" index="0">-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)</Function>
+  <Function type="FunctionExpr" dim="2" index="1">-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)</Function>
+
+  <!-- Dirichlet conditions (patch,side) -->
+  <bc type="Dirichlet" function="0" unknown="0">
+    1 4 1 2
+    0 3 0 4
+  </bc>
+
+  <!-- Neumann conditions (patch,side)-->
+  <bc type="Neumann" function="1" unknown="0">
+    0 1 1 3
+  </bc>
+</boundaryConditions>
+
 <!-- Assembler options -->
 <OptionList id="100">
   <int label="numRefine" desc="Number of Uniform h-refinement loops" value="3"/>

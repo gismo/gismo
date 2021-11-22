@@ -1,6 +1,7 @@
 /** @file biharmonic2_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve the Poisson equation
+    @brief Tutorial on how to use expression assembler and the (approx.) C1 basis function
+                to solve the Biharmonic equation
 
     This file is part of the G+Smo library.
 
@@ -8,7 +9,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): P. Weinmueller
 */
 
 //! [Include namespace]
@@ -24,20 +25,26 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     index_t numRefine  = 3;
-    index_t numElevate = 0;
+    index_t discreteDegree = 3;
+    index_t discreteRegularity = 1;
     bool last = false;
+    bool info = false;
+    bool neumann = false;
     std::string fn;
 
     index_t geometry = 1000;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "p", "discreteDegree","Which discrete degree?", discreteDegree );
+    cmd.addInt( "r", "discreteRegularity", "Number of discreteRegularity",  discreteRegularity );
+    cmd.addInt( "l", "refinementLoop", "Number of refinementLoop",  numRefine );
     cmd.addString( "f", "file", "Input geometry file", fn );
     cmd.addInt( "g", "geometry", "Which geometry",  geometry );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("info", "Getting the information inside of Approximate C1 basis functions", info);
+
+    cmd.addSwitch("neumann", "Neumann", neumann);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -65,6 +72,11 @@ int main(int argc, char *argv[])
     gsInfo<<"Exact function "<< ms << "\n";
 
     fd.getId(2,laplace); // Laplace for the bcs
+
+    gsBoundaryConditions<> bc_test;
+    fd.getId(3, bc_test); // id=2: boundary conditions
+    bc_test.setGeoMap(mp);
+    gsInfo<<"Boundary conditions:\n"<< bc_test <<"\n";
     gsInfo<<"Finished\n";
 
     //! [Boundary condition]
@@ -72,7 +84,15 @@ int main(int argc, char *argv[])
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
     {
         bc.addCondition(*bit, condition_type::dirichlet, &ms);
-        bc2.addCondition(*bit, condition_type::neumann, &laplace); // Is not the usually neumann condition
+        if (neumann)
+        {
+            gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                                     "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+            bc2.addCondition(*bit, condition_type::neumann, &sol1der); // Is not the usually neumann condition
+        }
+
+        else
+            bc2.addCondition(*bit, condition_type::laplace, &laplace); // Is not the usually neumann condition
     }
     bc.setGeoMap(mp);
     bc2.setGeoMap(mp);
@@ -90,15 +110,13 @@ int main(int argc, char *argv[])
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    if (dbasis.maxCwiseDegree() + numElevate < 3)
-        numElevate = 3 - dbasis.maxCwiseDegree();
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    dbasis.setDegree( discreteDegree);
 
     // h-refine each basis
     if (last)
     {
         for (int r =0; r < numRefine; ++r)
-            dbasis.uniformRefine();
+            dbasis.uniformRefine(discreteDegree -discreteRegularity);
         numRefine = 0;
     }
 
@@ -140,20 +158,20 @@ int main(int argc, char *argv[])
     //! [Problem setup]
 
     //! [Solver loop]
-    gsSparseSolver<>::CGDiagonal solver;
+    gsSparseSolver<>::SimplicialLDLT solver;
 
     gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1);
-    gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
+    gsInfo<< "(dot1=approxC1construction, dot2=assembled, dot3=solved, dot4=got_error)\n"
         "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     gsStopwatch timer;
     for (int r=0; r<=numRefine; ++r)
     {
-        dbasis.uniformRefine();
+        dbasis.uniformRefine(discreteDegree -discreteRegularity);
 
         // Compute the approx C1 space
         gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
-        //approxC1.options().setSwitch("info",info);
+        approxC1.options().setSwitch("info",info);
         approxC1.options().setSwitch("plot",plot);
 
         approxC1.init();
@@ -165,9 +183,39 @@ int main(int argc, char *argv[])
         gsMultiBasis<> dbasis_temp;
         approxC1.getMultiBasis(dbasis_temp);
         bb2.init(dbasis_temp,global2local);
+        gsInfo<< "." <<std::flush; // Approx C1 construction done
+
+        // Setup Mapper
+        gsDofMapper map;
+        map.setIdentity(bb2.nPatches(), bb2.size(), 1);
+        gsMatrix<index_t> bnd;
+        for (typename gsBoundaryConditions<real_t>::const_iterator
+                     it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it) {
+            const index_t cc = it->unkComponent();
+
+            bnd = bb2.basis(it->ps.patch).boundary(it->ps.side());
+            if (cc == -1)
+                for (index_t c = 0; c != 1; c++) // for all components
+                    map.markBoundary(it->ps.patch, bnd, c);
+            else
+                map.markBoundary(it->ps.patch, bnd, cc);
+        }
+
+        for (typename gsBoundaryConditions<real_t>::const_iterator
+                     it = bc2.begin("Neumann"); it != bc2.end("Neumann"); ++it) {
+            const index_t cc = it->unkComponent();
+
+            bnd = bb2.basis(it->ps.patch).boundaryOffset(it->ps.side(),1);
+            if (cc == -1)
+                for (index_t c = 0; c != 1; c++) // for all components
+                    map.markBoundary(it->ps.patch, bnd, c);
+            else
+                map.markBoundary(it->ps.patch, bnd, cc);
+        }
+        map.finalize();
 
         // Setup the system
-        u.setup(bc, dirichlet::homogeneous, -1);
+        u.setup(bc, dirichlet::homogeneous, -1, map);
 
         // Initialize the system
         A.initSystem();
@@ -187,7 +235,7 @@ int main(int argc, char *argv[])
 
         // Enforce Laplace conditions to right-hand side
         auto g_L = A.getCoeff(laplace, G); // Set the laplace bdy value
-        A.assembleRhsBc( (igrad(u, G) * nv(G)) * g_L.tr(), bc2.neumannSides() );
+        A.assembleRhsBc( (igrad(u, G) * nv(G)) * g_L.tr(), bc2.laplaceSides() );
 
         ma_time += timer.stop();
         gsInfo<< "." <<std::flush;// Assemblying done

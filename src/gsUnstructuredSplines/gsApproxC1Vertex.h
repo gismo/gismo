@@ -172,7 +172,7 @@ public:
             // Create Basis functions
             gsMultiPatch<> result_1;
             for (index_t bfID = 0; bfID < 6; bfID++) {
-                gsSparseSolver<real_t>::LU solver;
+                gsSparseSolver<real_t>::SimplicialLDLT solver;
                 gsExprAssembler<> A(1, 1);
 
                 typedef gsExprAssembler<>::variable variable;
@@ -187,8 +187,19 @@ public:
                 // Set the discretization space
                 space u = A.getSpace(vertexSpace);
 
+                // Create Mapper
+                gsDofMapper map(vertexSpace);
+                gsMatrix<index_t> act;
+                for (index_t dir = 0; dir < vertexSpace.basis(0).domainDim(); dir++)
+                    for (index_t i = 2*vertexSpace.basis(0).degree(dir)+1; i < vertexSpace[0].component(dir).size(); i++) // only the first two u/v-columns are Dofs (0/1)
+                    {
+                        act = vertexSpace[0].boundaryOffset(dir == 0 ? 3 : 1, i); // WEST
+                        map.markBoundary(0, act); // Patch 0
+                    }
+                map.finalize();
+
                 gsBoundaryConditions<> bc_empty;
-                u.setup(bc_empty, dirichlet::homogeneous, 0);
+                u.setup(bc_empty, dirichlet::homogeneous, 0, map);
                 A.initSystem();
 
                 gsVertexBasis<real_t> vertexBasis(geo, basis_plus, basis_minus, basis_geo, alpha, beta, sigma,

@@ -1116,8 +1116,6 @@ public:
 
             m_sd->mapper.finalize();
         }
-        m_sd->mapper.print();
-
 
         // No more BCs
         //m_bcs = bc.get("Dirichlet");

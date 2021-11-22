@@ -1,6 +1,6 @@
 /** @file gsApproxC1Spline.hpp
 
-    @brief Provides declaration of Basis abstract interface.
+    @brief Construct the approx c1 spline space.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): P. Weinmueller
 */
 
 #pragma once
@@ -40,7 +40,6 @@ void gsApproxC1Spline<d,T>::defaultOptions()
     m_options.addInt("gluingDataRegularity","Regularity of the gluing data space",  p-2 );
     m_options.addSwitch("info","Print debug information",  false );
     m_options.addSwitch("plot","Print debug information",  false );
-
 }
 
 template<short_t d,class T>
@@ -111,65 +110,67 @@ void gsApproxC1Spline<d,T>::init()
         gsBSplineBasis<T> basis_geo_1 = dynamic_cast<gsBSplineBasis<T> &>(m_multiBasis.basis(patch_1).component(1-dir_1));
         gsBSplineBasis<T> basis_geo_2 = dynamic_cast<gsBSplineBasis<T> &>(m_multiBasis.basis(patch_2).component(1-dir_2));
 
-        gsKnotVector<T> kv_1 = basis_1.knots();
-        gsKnotVector<T> kv_2 = basis_2.knots();
+        // [!Plus Minus space]
+        index_t m, p;
+        p = basis_1.degree();
+        m = basis_1.knots().multiplicityIndex(p+1);
 
-        gsBSplineBasis<T> patch_basis_1 = dynamic_cast<gsBSplineBasis<T> &>(m_patches.patch(patch_1).basis().component(dir_1));
-        gsKnotVector<T> kv_patch_1 = patch_basis_1.knots();
+        gsBSplineBasis<T> basis_plus(basis_1);
+        gsBSplineBasis<T> basis_minus(basis_1);
+        if (m != 1)
+            basis_plus.elevateContinuity(1);
 
-        gsBSplineBasis<T> patch_basis_2 = dynamic_cast<gsBSplineBasis<T> &>(m_patches.patch(patch_2).basis().component(dir_2));
-        gsKnotVector<T> kv_patch_2 = patch_basis_1.knots();
-
-        gsKnotVector<T> kv_plus, kv_minus, kv_gluingData;
-        createPlusMinusSpace(kv_1, kv_2, kv_patch_1, kv_patch_2, kv_plus, kv_minus);
-
-        gsBSplineBasis<T> basis_plus(kv_plus); // S(p,r+1,h)
-        gsBSplineBasis<T> basis_minus(kv_minus); // S(p-1,r,h)
-
-        //\tilde{p} = max(p-1,2)
-        //\tilde{r} = \tilde{p}-1
-        createGluingDataSpace(kv_1, kv_2, kv_patch_1, kv_patch_2, kv_gluingData);
-        gsBSplineBasis<T> basis_gluingData(kv_gluingData); // S(\tilde{p},\tilde{r},h)
-/*
-        if (m_options.getSwitch("info"))
-        {
-            gsInfo << "Basis geo 1 : " << basis_geo_1.knots().asMatrix() << "\n";
-            gsInfo << "Basis geo 2 : " << basis_geo_2.knots().asMatrix() << "\n";
-            gsInfo << "Basis plus : " << basis_plus.knots().asMatrix() << "\n";
-            gsInfo << "Basis minus : " << basis_minus.knots().asMatrix() << "\n";
-
-            gsInfo << "Basis gluingData : " << basis_gluingData.knots().asMatrix() << "\n";
-        }
-*/
-
-        gsKnotVector<T> kv_geo_1 = basis_geo_1.knots();
-        gsKnotVector<T> kv_geo_2 = basis_geo_2.knots();
-
-        gsKnotVector<T> kv_edge_1, kv_edge_2;
-
-        createLocalEdgeSpace(kv_plus, kv_minus, kv_gluingData, kv_gluingData, kv_patch_1, kv_patch_2, kv_edge_1, kv_edge_2);
-        gsBSplineBasis<T> basis_edge(kv_edge_1);
-/*
-        if (m_options.getSwitch("info"))
-            gsInfo << "Basis edge : " << basis_edge.knots().asMatrix() << "\n";
-*/
-        gsTensorBSplineBasis<d, T> basis_edge_1(dir_1 == 0 ? kv_edge_1 : kv_geo_1, dir_1 == 0 ? kv_geo_1 : kv_edge_1);
-        gsTensorBSplineBasis<d, T> basis_edge_2(dir_2 == 0 ? kv_edge_2 : kv_geo_2, dir_2 == 0 ? kv_geo_2 : kv_edge_2);
+        basis_minus.degreeDecrease(1);
+        if (m != 1)
+            basis_minus.reduceContinuity(1);
 
         m_bases[patch_1].setHelperBasis(side_1-1, 0, basis_plus);
         m_bases[patch_2].setHelperBasis(side_2-1, 0, basis_plus);
 
         m_bases[patch_1].setHelperBasis(side_1-1, 1, basis_minus);
         m_bases[patch_2].setHelperBasis(side_2-1, 1, basis_minus);
+        // [!Plus Minus space]
+
+        // [!Gluing data space]
+        //\tilde{p} = max(p-1,2)
+        //\tilde{r} = \tilde{p}-1
+        if (basis_1.knots().unique() != basis_2.knots().unique())
+            gsInfo << "The patches are not matching!!! \n";
+        gsKnotVector<T> kv_gluingData(basis_1.knots().unique(), p_tilde, r_tilde);
+        gsBSplineBasis<T> basis_gluingData(kv_gluingData); // S(\tilde{p},\tilde{r},h)
+
+        m_bases[patch_1].setHelperBasis(side_1-1, 3, basis_gluingData);
+        m_bases[patch_2].setHelperBasis(side_2-1, 3, basis_gluingData);
+        // [!Gluing data space]
+
+        // [!Edge space]
+        gsBSplineBasis<T> basis_edge(basis_1);
+        basis_edge.setDegreePreservingMultiplicity(basis_plus.degree()+basis_gluingData.degree()-1);
+
+        index_t r_plus, r_minus, r_gD, r_edge, r;
+        r_plus = basis_plus.degree() - basis_plus.knots().multiplicityIndex(basis_plus.degree()+1); // p+1, since c++ starts at 0
+        r_minus = basis_minus.degree() - basis_minus.knots().multiplicityIndex(basis_minus.degree()+1);
+        r_gD = p_tilde - basis_gluingData.knots().multiplicityIndex(p_tilde+1);
+        r_edge = basis_edge.degree() - basis_edge.knots().multiplicityIndex(basis_edge.degree()+1);
+
+        r = math::min(r_gD, math::min(r_plus, r_minus));
+        if (r_edge > r)
+            basis_edge.reduceContinuity(r_edge - r);
+        else if (r_edge < r)
+            basis_edge.elevateContinuity(r - r_edge);
+
+        gsTensorBSplineBasis<d, T> basis_edge_1(dir_1 == 0 ? basis_edge.knots() : basis_geo_1.knots(),
+                                                dir_1 == 0 ? basis_geo_1.knots() : basis_edge.knots());
+        gsTensorBSplineBasis<d, T> basis_edge_2(dir_2 == 0 ? basis_edge.knots() : basis_geo_2.knots(),
+                                                dir_2 == 0 ? basis_geo_2.knots() : basis_edge.knots());
+        // [!Edge space]
 
         m_bases[patch_1].setHelperBasis(side_1-1, 2, basis_geo_1);
         m_bases[patch_2].setHelperBasis(side_2-1, 2, basis_geo_2);
 
-        m_bases[patch_1].setHelperBasis(side_1-1, 3, basis_gluingData);
-        m_bases[patch_2].setHelperBasis(side_2-1, 3, basis_gluingData);
-
         m_bases[patch_1].setBasis(side_1, basis_edge_1);
         m_bases[patch_2].setBasis(side_2, basis_edge_2);
+
     }
 
     // For loop over the Edge to construct the spaces
@@ -182,9 +183,6 @@ void gsApproxC1Spline<d,T>::init()
 
         index_t dir_1 = m_patches.boundaries()[numBdy].m_index < 3 ? 1 : 0;
 
-        // Using Standard Basis for boundary edges
-        gsTensorBSplineBasis<d, T> basis_edge_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(m_multiBasis.basis(patch_1));
-
         gsBSplineBasis<T> basis_1 = dynamic_cast<gsBSplineBasis<> &>(m_multiBasis.basis(patch_1).component(dir_1));
         gsBSplineBasis<T> basis_geo_1 = dynamic_cast<gsBSplineBasis<> &>(m_multiBasis.basis(patch_1).component(1-dir_1));
 
@@ -194,55 +192,45 @@ void gsApproxC1Spline<d,T>::init()
         gsBSplineBasis<T> patch_basis_1 = dynamic_cast<gsBSplineBasis<> &>(m_patches.patch(patch_1).basis().component(dir_1));
         gsKnotVector<T> kv_patch_1 = patch_basis_1.knots();
 
-        gsKnotVector<T> kv_plus, kv_minus;
-        createPlusMinusSpace(kv_1,  kv_patch_1,  kv_plus, kv_minus);
-
-        gsBSplineBasis<T> basis_plus = gsBSplineBasis<>(kv_plus);
-        gsBSplineBasis<T> basis_minus = gsBSplineBasis<>(kv_minus);
-
-
+        // [!Plus Minus space]
         index_t m, p;
         p = basis_1.degree();
         m = basis_1.knots().multiplicityIndex(p+1);
-        if (m == 1)
-        {
-/*
-            T knot_u = basis_edge_1.knot(0,basis_edge_1.degree(0)+1);
-            if (knot_u != 1)
-            {
-                basis_geo_1.insertKnot(knot_u,1); // the first
-                //basis_geo_1.insertKnot(knot_u+knot_u,1);
-            }
-            if (knot_u != 0.5)
-            {
-                basis_geo_1.insertKnot(1-knot_u,1); // the last
-                //basis_geo_1.insertKnot(1-knot_u-knot_u,1);
-            }
-*/
-            basis_geo_1.reduceContinuity(1);
-        }
 
+        gsBSplineBasis<T> basis_plus(basis_1);
+        gsBSplineBasis<T> basis_minus(basis_1);
+        if (m != 1)
+            basis_plus.elevateContinuity(1);
 
-        gsKnotVector<T> kv_edge_1;
-        createLocalEdgeSpace(kv_plus, kv_minus, kv_patch_1, kv_edge_1);
-
-        gsKnotVector<T> kv_geo_1 = basis_geo_1.knots();
-        gsTensorBSplineBasis<d, T> basis_edge_1_temp(dir_1 == 0 ? kv_edge_1 : kv_geo_1, dir_1 == 0 ? kv_geo_1 : kv_edge_1);
+        basis_minus.degreeDecrease(1);
+        if (m != 1)
+            basis_minus.reduceContinuity(1);
 
         m_bases[patch_1].setHelperBasis(side_1-1, 0, basis_plus);
         m_bases[patch_1].setHelperBasis(side_1-1, 1, basis_minus);
+        // [!Plus Minus space]
+
+        gsBSplineBasis<T> basis_edge(basis_1);
+        basis_edge.setDegreePreservingMultiplicity(basis_plus.degree()-1);
+
+        index_t r_plus, r_minus, r_edge, r;
+        r_plus = basis_plus.degree() - basis_plus.knots().multiplicityIndex(basis_plus.degree()+1); // p+1, since c++ starts at 0
+        r_minus = basis_minus.degree() - basis_minus.knots().multiplicityIndex(basis_minus.degree()+1);
+        r_edge = basis_edge.degree() - basis_edge.knots().multiplicityIndex(basis_edge.degree()+1);
+
+        r = math::min(r_plus, r_minus);
+        if (r_edge > r)
+            basis_edge.reduceContinuity(r_edge - r);
+        else if (r_edge < r)
+            basis_edge.elevateContinuity(r - r_edge);
+
+        gsTensorBSplineBasis<d, T> basis_edge_1(dir_1 == 0 ? basis_edge.knots() : basis_geo_1.knots(),
+                                                dir_1 == 0 ? basis_geo_1.knots() : basis_edge.knots());
 
         m_bases[patch_1].setHelperBasis(side_1-1, 2, basis_geo_1);
-
-        m_bases[patch_1].setBasis(side_1, basis_edge_1_temp);
-
-/*
-        if (m_options.getSwitch("info"))
-            gsInfo << "Basis boundary: " << basis_edge_1_temp << "\n";
-*/
-
-
+        m_bases[patch_1].setBasis(side_1, basis_edge_1);
     }
+
     // For loop over the Vertex to construct the spaces
     for (size_t numVer = 0; numVer < m_patches.vertices().size(); numVer++)
     {
@@ -262,9 +250,6 @@ void gsApproxC1Spline<d,T>::init()
 
             gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(m_multiBasis.basis(patch_1));
 
-            /*
-                to do: fix for general regularity.
-             */
             index_t m, p;
             p = basis_vertex_1.degree(0);
             m = basis_vertex_1.knots(0).multiplicityIndex(p+1);
@@ -289,11 +274,6 @@ void gsApproxC1Spline<d,T>::init()
 
                     gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(m_multiBasis.basis(
                             patch_1));
-
-                    //createLocalVertexSpace(basis_vertex_1, basis_vertex_result);
-
-                    //index_t p_tilde_1 = math::max(m_multiBasis.basis(patch_1).degree(0)-1,3);
-                    //index_t p_tilde_2 = math::max(m_multiBasis.basis(patch_1).degree(1)-1,3);
 
                     basis_vertex_1.degreeElevate(p_tilde-1,0); // Keep smoothness
                     basis_vertex_1.degreeElevate(p_tilde-1,1);
@@ -325,16 +305,6 @@ void gsApproxC1Spline<d,T>::init()
 
                     gsTensorBSplineBasis<d, T> basis_vertex_1 = dynamic_cast<gsTensorBSplineBasis<d, real_t> &>(m_multiBasis.basis(patch_1));
 
-                    //index_t p_tilde_1 = math::max(m_multiBasis.basis(patch_1).degree(0)-1,3);
-                    //index_t p_tilde_2 = math::max(m_multiBasis.basis(patch_1).degree(1)-1,3);
-/*
-                    gsBSplineBasis<> basis_1 = dynamic_cast<gsBSplineBasis<> &>(m_multiBasis.basis(patch_1).component(0));
-                    gsBSplineBasis<> basis_geo_1 = dynamic_cast<gsBSplineBasis<> &>(m_multiBasis.basis(0).component(1));
-
-                    gsKnotVector<T> kv_1 = basis_1.knots();
-                    gsKnotVector<T> kv_2 = basis_geo_1.knots();
-                    gsTensorBSplineBasis<d, T> basis_vertex_1(kv_1,kv_2);
-*/
                     basis_vertex_1.degreeElevate(p_tilde-1,0); // Keep smoothness
                     basis_vertex_1.degreeElevate(p_tilde-1,1);
 
@@ -352,15 +322,7 @@ void gsApproxC1Spline<d,T>::init()
                         if (r_tilde < r-1)
                             basis_vertex_1.reduceContinuity(r-r_tilde-1);
                     }
-/*
-                    if (m_options.getSwitch("info"))
-                    {
-                        gsBSplineBasis<> basis_geo_1 = dynamic_cast<gsBSplineBasis<> &>(basis_vertex_1.component(0));
-                        gsInfo << "Basis vertex 1: " << basis_geo_1.knots().asMatrix() << "\n";
-                        gsBSplineBasis<> basis_geo_2 = dynamic_cast<gsBSplineBasis<> &>(basis_vertex_1.component(1));
-                        gsInfo << "Basis vertex 2: " << basis_geo_2.knots().asMatrix() << "\n";
-                    }
-*/
+
                     m_bases[patch_1].setBasis(vertex_1+4, basis_vertex_1);
 
                 }
@@ -404,9 +366,8 @@ void gsApproxC1Spline<d,T>::init()
 
     // Vertices
     for (size_t numVer = 0; numVer < m_patches.vertices().size(); numVer++)
-    {
         row_dofs += 6;
-    }
+
 
 
     m_matrix.clear();
@@ -417,7 +378,7 @@ void gsApproxC1Spline<d,T>::init()
     }
 
     m_matrix.resize(row_dofs, dim_col);
-    const index_t nz = 7*row_dofs; // TODO
+    const index_t nz = (m_multiBasis.basis(0).degree(0)*2 + 1)*row_dofs; // TODO
     m_matrix.reserve(nz);
 }   
 
@@ -561,8 +522,6 @@ void gsApproxC1Spline<d,T>::compute()
                 for (index_t j = begin_col; j < end_col; ++j, ++jj) {
                     if (basisVertex[np].patch(ii).coef(jj, 0) * basisVertex[np].patch(ii).coef(jj, 0) > 1e-20)
                         m_matrix.insert(shift_row + ii, shift_col + j) = basisVertex[np].patch(ii).coef(jj, 0);
-
-
                 }
             }
         }
@@ -570,158 +529,7 @@ void gsApproxC1Spline<d,T>::compute()
 
     }
     m_matrix.makeCompressed();
-
-/*
-    if (m_options.getSwitch("info"))
-    {
-        gsInfo << "Dim for Patches: \n";
-        for(size_t np = 0; np < m_patches.nPatches(); ++np)
-        {
-            gsInfo << "(" << shift_row << "," << m_bases[np].size() << "), ";
-        }
-        gsInfo << "\n";
-    }
-*/
 }
 
-
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
-                                               gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
-                                               gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result)
-{
-    std::vector<real_t> knots_unique_1 = kv1.unique();
-    std::vector<real_t> knots_unique_2 = kv2.unique();
-
-    std::vector<index_t> knots_mult_1 = kv1.multiplicities();
-    std::vector<index_t> knots_mult_2 = kv2.multiplicities();
-
-    std::vector<real_t> patch_kv_unique_1 = kv1_patch.unique();
-    std::vector<index_t> patch_kv_mult_1 = kv1_patch.multiplicities();
-
-    std::vector<real_t> patch_kv_unique_2 = kv2_patch.unique();
-    std::vector<index_t> patch_kv_mult_2 = kv2_patch.multiplicities();
-
-    std::vector<real_t> knot_vector_plus, knot_vector_minus;
-
-    if (knots_unique_1 != knots_unique_2)
-        gsInfo << "NOT IMPLEMENTED YET 1: Plus, Minus space \n";
-
-    if (kv1.degree() != kv2.degree())
-        gsInfo << "NOT IMPLEMENTED YET 2: Plus, Minus space \n";
-
-    if (knots_mult_1 != knots_mult_2)
-        gsInfo << "NOT IMPLEMENTED YET 4: Plus, Minus space \n";
-
-    // todo: fix for general regularity
-    index_t m, p;
-    p = kv1.degree();
-    m = kv1.multiplicityIndex(p+1);
-
-    kv1_result = kv1; // == kv2
-    if (m != 1)
-        kv1_result.reduceMultiplicity(1);
-
-    kv2_result = kv1; // == kv2
-    kv2_result.degreeDecrease(1);
-    if (m != 1)
-        kv2_result.reduceMultiplicity(1);
-}
-
-
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createPlusMinusSpace(gsKnotVector<T> & kv1,
-                                               gsKnotVector<T> & kv1_patch,
-                                               gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result)
-{
-    std::vector<real_t> knots_unique_1 = kv1.unique();
-
-    std::vector<real_t> patch_kv_unique_1 = kv1_patch.unique();
-    std::vector<index_t> patch_kv_mult_1 = kv1_patch.multiplicities();
-
-    index_t m,p;
-    p = math::max(kv1.degree(), 0);
-    m = kv1.multiplicityIndex(p+1);
-
-    kv1_result = kv1;
-    if (m != 1)
-        kv1_result.reduceMultiplicity(1);
-
-    kv2_result = kv1;
-    kv2_result.degreeDecrease(1);
-    if (m != 1)
-        kv2_result.reduceMultiplicity(1);
-}
-
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createGluingDataSpace(gsKnotVector<T> & kv1, gsKnotVector<T> & kv2,
-                                                gsKnotVector<T> & kv1_patch, gsKnotVector<T> & kv2_patch,
-                                                gsKnotVector<T> & kv_result)
-{
-    std::vector<real_t> knots_unique_1 = kv1.unique();
-    std::vector<real_t> knots_unique_2 = kv2.unique();
-
-    std::vector<real_t> knot_vector;
-    knot_vector = knots_unique_2; // = knots_unique_1
-
-    gsKnotVector<> new_knotvector(knot_vector, p_tilde, r_tilde);
-    kv_result = new_knotvector;
-} // createGluingDataSpace
-
-
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
-                                               gsKnotVector<T> & kv_gD_1, gsKnotVector<T> & kv_gD_2,
-                                               gsKnotVector<T> & kv_patch_1, gsKnotVector<T> & kv_patch_2,
-                                               gsKnotVector<T> & kv1_result, gsKnotVector<T> & kv2_result)
-{
-    index_t p_1 = math::max(kv_plus.degree()+kv_gD_1.degree()-1, kv_minus.degree()+kv_gD_1.degree() );
-    //index_t p_2 = math::max(kv_plus.degree()+kv_gD_2.degree()-1, kv_minus.degree()+kv_gD_2.degree() ); == p_1
-
-    std::vector<real_t> knots_unique_plus = kv_plus.unique(); // == kv_minus.unique()
-
-    if (knots_unique_plus != kv_minus.unique())
-        gsInfo << "ERROR LOKAL EDGE SPACE \n";
-
-    index_t r = 1;
-    if (knots_unique_plus[1] != 1)
-    {
-        index_t r_plus = kv_plus.degree() - kv_plus.multiplicities()[1]; // The same for all
-        index_t r_minus = kv_minus.degree() - kv_minus.multiplicities()[1]; // The same for all
-        index_t r_tilde = kv_gD_1.degree() - kv_gD_1.multiplicities()[1]; // The same for all
-        //gsInfo << "R_tilde " << r_tilde << "\n";
-        //gsInfo << "r_plus " << r_plus << "\n";
-        //gsInfo << "r_minus " << r_minus << "\n";
-
-        r = math::min(r_tilde, math::min(r_plus, r_minus));
-        //gsInfo << "r " << r << "\n";
-    }
-    kv1_result = gsKnotVector<>(knots_unique_plus, p_1, r);
-    // ==
-    kv2_result = kv1_result;
-} // createLocalEdgeSpace
-
-template<short_t d,class T>
-void gsApproxC1Spline<d,T>::createLocalEdgeSpace(gsKnotVector<T> & kv_plus, gsKnotVector<T> & kv_minus,
-                                               gsKnotVector<T> & kv_patch_1,
-                                               gsKnotVector<T> & kv1_result)
-{
-    index_t p_1 = math::max(kv_plus.degree(), kv_minus.degree() );
-
-    std::vector<real_t> knots_unique_plus = kv_plus.unique(); // == kv_minus.unique()
-
-    if (knots_unique_plus != kv_minus.unique())
-        gsInfo << "ERROR LOKAL EDGE SPACE \n";
-
-    index_t r = 1;
-    if (knots_unique_plus[1] != 1)
-    {
-        index_t r_plus = kv_plus.degree() - kv_plus.multiplicities()[1]; // The same for all
-        index_t r_minus = kv_minus.degree() - kv_minus.multiplicities()[1]; // The same for all
-
-        r = math::min(r_plus, r_minus);
-    }
-    kv1_result = gsKnotVector<>(knots_unique_plus, p_1, r);
-} // createLocalEdgeSpace
 
 } // namespace gismo
