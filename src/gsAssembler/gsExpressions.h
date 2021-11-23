@@ -1045,6 +1045,18 @@ public:
                         m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
                 }
 
+                for (typename gsBoundaryConditions<real_t>::const_iterator
+                             it = bc.begin("Neumann"); it != bc.end("Neumann"); ++it) {
+                    const index_t cc = it->unkComponent();
+
+                    bnd = mapb->basis(it->ps.patch).boundaryOffset(it->ps.side(),1);
+                    if (cc == -1)
+                        for (index_t c = 0; c != this->dim(); c++) // for all components
+                            m_sd->mapper.markBoundary(it->ps.patch, bnd, c);
+                    else
+                        m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
+                }
+
                 // Clamped boundary condition (per DoF)
                 gsMatrix<index_t> bnd1;
                 for (typename gsBoundaryConditions<T>::const_iterator

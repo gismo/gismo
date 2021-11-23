@@ -55,7 +55,7 @@ public:
 
     const gsFunction<T> & piece(const index_t k) const
     {
-        delete _alpha_piece;
+        //delete _alpha_piece;
         _alpha_piece = new gsAlpha(_geo, m_uv);
         return *_alpha_piece;
     }
@@ -118,7 +118,7 @@ public:
 
     const gsFunction<T> & piece(const index_t k) const
     {
-        delete _beta_piece;
+        //delete _beta_piece;
         _beta_piece = new gsBeta(_geo, m_uv);
         return *_beta_piece;
     }
@@ -138,7 +138,7 @@ public:
         for(index_t i = 0; i < uv.cols(); i++)
         {
             _geo.jacobian_into(uv.col(i),ev);
-            D0 = ev.col(m_uv);
+            D0  = ev.col(m_uv);
             real_t D1 = 1/ D0.norm();
             uv(0,i) = - gamma * D1 * D1 * ev.col(1).transpose() * ev.col(0);
         }
@@ -198,7 +198,7 @@ GISMO_CLONE_FUNCTION(gsTraceBasis)
 
     const gsFunction<T> & piece(const index_t k) const
     {
-        delete _traceBasis_piece;
+        //delete _traceBasis_piece;
         _traceBasis_piece = new gsTraceBasis(_geo, m_basis_plus, m_basis_geo, _m_basis_beta,
                                              m_isboundary, m_bfID, m_uv);
         return *_traceBasis_piece;
@@ -286,7 +286,7 @@ GISMO_CLONE_FUNCTION(gsNormalDerivBasis)
 
     const gsFunction<T> & piece(const index_t k) const
     {
-        delete _normalDerivBasis_piece;
+        //delete _normalDerivBasis_piece;
         _normalDerivBasis_piece = new gsNormalDerivBasis(_geo, m_basis_minus, m_basis_geo, m_basis_alpha,
                                              m_isboundary, m_bfID, m_uv);
         return *_normalDerivBasis_piece;
@@ -379,7 +379,7 @@ GISMO_CLONE_FUNCTION(gsVertexBasis)
 
     const gsFunction<T> & piece(const index_t k) const
     {
-        delete _vertexBasis_piece;
+        //delete _vertexBasis_piece;
         _vertexBasis_piece = new gsVertexBasis(m_geo, m_basis_plus, m_basis_minus, m_basis_geo, m_alpha,
                                                m_beta, m_sigma, m_kindOfEdge, m_bfID);
         return *_vertexBasis_piece;

@@ -73,32 +73,30 @@ int main(int argc, char *argv[])
 
     fd.getId(2,laplace); // Laplace for the bcs
 
-    gsBoundaryConditions<> bc_test;
-    fd.getId(3, bc_test); // id=2: boundary conditions
-    bc_test.setGeoMap(mp);
-    gsInfo<<"Boundary conditions:\n"<< bc_test <<"\n";
-    gsInfo<<"Finished\n";
-
     //! [Boundary condition]
-    gsBoundaryConditions<> bc, bc2;
-    for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-    {
-        bc.addCondition(*bit, condition_type::dirichlet, &ms);
-        if (neumann)
+    gsBoundaryConditions<> bc;
+    if (geometry == 1000 || geometry == 1100)
+        fd.getId(3, bc); // id=2: boundary conditions
+    else
+        for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
         {
-            gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                                     "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-            bc2.addCondition(*bit, condition_type::neumann, &sol1der); // Is not the usually neumann condition
-        }
+            bc.addCondition(*bit, condition_type::dirichlet, &ms);
+            if (neumann)
+            {
+                gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                                         "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+                bc.addCondition(*bit, condition_type::neumann, &sol1der); // Is not the usually neumann condition
+            }
+            else
+            {
+                bc.addCondition(*bit, condition_type::laplace, &laplace); // Is not the usually neumann condition
+            }
 
-        else
-            bc2.addCondition(*bit, condition_type::laplace, &laplace); // Is not the usually neumann condition
-    }
+        }
     bc.setGeoMap(mp);
-    bc2.setGeoMap(mp);
     //! [Boundary condition]
-    gsInfo<<"First boundary conditions:\n"<< bc <<"\n";
-    gsInfo<<"Second boundary conditions:\n"<< bc2 <<"\n";
+    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    gsInfo<<"Finished\n";
 
     gsOptionList optionList;
     fd.getId(100, optionList); // id=100: assembler options
@@ -185,37 +183,8 @@ int main(int argc, char *argv[])
         bb2.init(dbasis_temp,global2local);
         gsInfo<< "." <<std::flush; // Approx C1 construction done
 
-        // Setup Mapper
-        gsDofMapper map;
-        map.setIdentity(bb2.nPatches(), bb2.size(), 1);
-        gsMatrix<index_t> bnd;
-        for (typename gsBoundaryConditions<real_t>::const_iterator
-                     it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it) {
-            const index_t cc = it->unkComponent();
-
-            bnd = bb2.basis(it->ps.patch).boundary(it->ps.side());
-            if (cc == -1)
-                for (index_t c = 0; c != 1; c++) // for all components
-                    map.markBoundary(it->ps.patch, bnd, c);
-            else
-                map.markBoundary(it->ps.patch, bnd, cc);
-        }
-
-        for (typename gsBoundaryConditions<real_t>::const_iterator
-                     it = bc2.begin("Neumann"); it != bc2.end("Neumann"); ++it) {
-            const index_t cc = it->unkComponent();
-
-            bnd = bb2.basis(it->ps.patch).boundaryOffset(it->ps.side(),1);
-            if (cc == -1)
-                for (index_t c = 0; c != 1; c++) // for all components
-                    map.markBoundary(it->ps.patch, bnd, c);
-            else
-                map.markBoundary(it->ps.patch, bnd, cc);
-        }
-        map.finalize();
-
         // Setup the system
-        u.setup(bc, dirichlet::homogeneous, -1, map);
+        u.setup(bc, dirichlet::homogeneous, -1);
 
         // Initialize the system
         A.initSystem();
@@ -235,7 +204,7 @@ int main(int argc, char *argv[])
 
         // Enforce Laplace conditions to right-hand side
         auto g_L = A.getCoeff(laplace, G); // Set the laplace bdy value
-        A.assembleRhsBc( (igrad(u, G) * nv(G)) * g_L.tr(), bc2.laplaceSides() );
+        A.assembleRhsBc( (igrad(u, G) * nv(G)) * g_L.tr(), bc.laplaceSides() );
 
         ma_time += timer.stop();
         gsInfo<< "." <<std::flush;// Assemblying done

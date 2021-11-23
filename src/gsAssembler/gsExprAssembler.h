@@ -569,7 +569,7 @@ private:
                         else
                         {
                             //The right-hand side can have more than one columns
-#                           pragma omp atomic
+#                           pragma omp critical (acc_m_rhs)
                             m_rhs.row(ii) += localMat.row(rls+i);
                         }
                     }
