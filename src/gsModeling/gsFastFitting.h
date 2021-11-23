@@ -37,7 +37,7 @@ public:
     void plotErrors(const std::string & fname) const;
     void computeHaussdorfErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz, const bool grid);
     gsMatrix<T> ParameterCorrection(const gsMatrix<T>& uv, const gsMatrix<T>& xyz);
-    T getL2error() const;
+    //T getL2error() const;
     void computeErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz);
     using gsFitting<T>::computeErrors;
 protected:
@@ -239,7 +239,7 @@ gsMatrix<index_t> gsFastFitting<T>::GridProjectionNEW()
         index_t k1=0,k2=0;
         FindGridPointfast(curr_param,k1,k2);
 
-        gridindex(i,0)= k2 * n1 + k1;
+        gridindex(i,0)= k2 * n1 + k1;    // Could be eliminated?
         gridindex(i,1)= k1;
         gridindex(i,2)= k2;
     }
@@ -302,24 +302,29 @@ gsMatrix<T> gsFastFitting<T>::BuildLookupTableNEW(gsMatrix<index_t> & uactives, 
     int n2 = m_ugrid.cols();                            // gridpoints in v-direction
     //gsSparseMatrix<T> Table(N1*N1,n2);
     //Table.reservePerColumn((p+1)*(p+1));
-    gsMatrix<T> Table(N1*N1,n2);
+    //gsMatrix<T> Table(N1*N1,n2);
+    gsMatrix<T> Table(N1*(2*p+1),n2);
+    Table.setZero();
+
     index_t flops = 0;
 
     for (index_t k=0; k<gridindex.rows(); k++)
     {
         index_t k1 = gridindex(k,1);
         index_t k2 = gridindex(k,2);
-        for (index_t i=0; i<p+1; i++)
+        for (index_t i=0; i<p+1; i++)     // active basis u direction, approximating function
         {
             T bi = uvalues(i,k1);
             index_t i1 = uactives(i,k1);
-            for (index_t j=0; j<p+1; j++)
+            for (index_t j=0; j<p+1; j++)      // active basis u direction, test function
             {
                 T bj = uvalues(j,k1);
                 index_t j1 = uactives(j,k1);
-                index_t ind_temp = j1*N1+i1;   // lexicographical running index
+                //index_t ind_temp = j1*N1+i1;   // lexicographical running index
+                index_t ind_temp = (j1-i1+p)*N1+i1;   // lexicographical running index
+                //index_t ind_temp = (j1-i1+p)+i1*(2*p+1);   // lexicographical running index
                 Table(ind_temp,k2) += bi*bj;
-                flops += 3;
+                flops += 2;      // eliminated weights, so only 2 flops now
             }
         }
     }
@@ -518,6 +523,41 @@ void gsFastFitting<T>::assembleSystemNEW( gsSparseMatrix<T>& A_mat, gsMatrix<T>&
     for (index_t i=0; i< numpoints; i++)
         k2set.insert(gridindex(i,2));
 
+    // New version, ordering of the for slopes as meeting 19.11.2021, version 3
+    /*for ( std::set<index_t>::const_iterator k2=k2set.begin() ; k2!=k2set.end(); ++k2 )
+    {
+        // Get uvalues col
+        gsVector<T> vvalcol = vvalues.col(*k2);
+        gsVector<index_t> vactcol = vactives.col(*k2);
+        for (index_t i1=0; i1<N1; i1++)       // all basis functions of u basis, approximation
+        {
+            for (index_t j1=std::max(0,i1-p); j1<std::min(i1+p+1,N1); j1++)       // neighboring basis functions of u basis, test function
+            {
+                index_t ind_temp = (j1-i1+p)*N1+i1;//j1*N1+i1;//(j1-i1+p)+i1*(2*p+1);//j1*(p+1)+i1;
+                real_t table = Table(ind_temp,*k2);
+                if (table != 0)
+                {
+                    for (index_t i2=0; i2<p+1; i2++)     // active basis functions of v basis at grid point, approximation
+                    {
+                        T bi = vvalcol(i2);
+                        index_t ui = vactcol(i2);
+                        index_t i_lexiglobal = ui * N1 + i1;
+                        for (index_t j2=0; j2<p+1; j2++)     // active basis functions of v basis at grid point, approximation
+                        {
+                            T bj = vvalcol(j2);
+                            index_t uj = vactcol(j2);
+                            index_t j_lexiglobal = uj * N1 + j1;
+
+                            A_mat(i_lexiglobal,j_lexiglobal) += bi*bj*table;   // could be done more efficiently?
+                            flops += 3;
+                        }
+                    }
+                }
+            }
+        }
+    }*/
+
+    // Old version, version 2
     for ( std::set<index_t>::const_iterator k2=k2set.begin() ; k2!=k2set.end(); ++k2 )
     {
         for (index_t i2=0; i2<p+1; i2++)     // active basis functions of v basis at grid point, approximation
@@ -534,7 +574,7 @@ void gsFastFitting<T>::assembleSystemNEW( gsSparseMatrix<T>& A_mat, gsMatrix<T>&
                     {
                         index_t i_lexiglobal = ui * N1 + i1;
                         index_t j_lexiglobal = uj * N1 + j1;
-                        index_t ind_temp = j1*N1+i1;
+                        index_t ind_temp = (j1-i1+p)*N1+i1;       //j1*N1+i1;//(j1-i1+p)+i1*(2*p+1);//j1*(p+1)+i1;
                         real_t table = Table(ind_temp,*k2);
                         if (table != 0)
                         {
@@ -673,7 +713,7 @@ void gsFastFitting<T>::computeNEW(const bool condcheck)
     m_B.setZero(); // ensure that all entries are zero in the beginning
 
     gsMatrix<index_t> gridindex (numpoints,3);
-    gridindex = GridProjectionNEW();
+    gridindex = GridProjectionNEW();            // gridindex als non-const input?
 
     // stopping time for complete assembly (including right-hand side)
     gsStopwatch time;
@@ -861,21 +901,6 @@ void gsFastFitting<T>::computeHaussdorfErrors(const gsMatrix<T>& uv, const gsMat
     //new_param = std::min(1.0, std::max( uv_temp + damp*delta_uv, 0.0));
 
     computeErrors(new_param, xyz.transpose());
-}
-
-
-template<class T>
-T gsFastFitting<T>::getL2error() const
-{
-    // TODO: gismo assert d = 2.
-    // type : L^2 error if h is uniform & the same in both directions
-    real_t result = 0;
-
-    for (size_t i=0; i < this->m_pointErrors.size(); i++)
-    {
-         result += this->m_pointErrors[i]*this->m_pointErrors[i];
-    }
-    return sqrt(result / this->m_pointErrors.size());
 }
 
 

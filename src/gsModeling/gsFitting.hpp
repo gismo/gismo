@@ -387,4 +387,19 @@ void gsFitting<T>::setConstraints(const std::vector<index_t>& indices,
 }
 
 
+template<class T>
+T gsFitting<T>::getL2error() const
+{
+    // TODO: gismo assert d = 2.
+    // type : L^2 error if h is uniform & the same in both directions
+    real_t result = 0;
+
+    for (size_t i=0; i < this->m_pointErrors.size(); i++)
+    {
+         result += this->m_pointErrors[i]*this->m_pointErrors[i];
+    }
+    return sqrt(result / this->m_pointErrors.size());
+}
+
+
 } // namespace gismo

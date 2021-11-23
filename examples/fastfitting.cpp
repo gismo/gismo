@@ -2,6 +2,7 @@
 #include <gismo.h>
 #include <gsModeling/gsFastFitting.h>
 #include <gsModeling/gsFitting.h>
+#include <bits/stdc++.h>
 
 using namespace gismo;
 
@@ -115,8 +116,14 @@ int main(int argc, char *argv[])
     gsInfo<<"DoFs in u/v direction      : "<< T_tbasis.size(0) <<  " " << T_tbasis.size(1) <<".\n";
     gsInfo<<"Grid with/without borders  : "<< n_ugrid << ", " << n_vgrid << ". " << borders << ".\n";
     gsInfo<<"Delta (should be <1)       : "<< T_tbasis.size(0)*T_tbasis.size(1)/(1.0*xyz.cols()) <<".\n";
-    gsInfo<<"delta (should be <1)       : "<< (1.0*xyz.cols())/(n_ugrid*n_vgrid)                 <<".\n";
+    gsInfo<<"delta (should be <1)       : "<< (1.0*xyz.cols())/((1.0*n_ugrid)*(1.0*n_vgrid))                 <<".\n";
     gsInfo<<"--------------------------------" << std::endl;
+
+    // for testing purposes:
+    //real_t NN = (1.0*n_ugrid)*(1.0*n_vgrid);
+    //real_t numcol = 1.0*xyz.cols();
+    //real_t delta = (1.0*xyz.cols())/(n_ugrid*n_vgrid);
+    //gsInfo << "Max int" << INT_MAX << std::endl;
 
     /*gsStopwatch time;
     time.restart();

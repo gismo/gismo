@@ -94,6 +94,7 @@ public:
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
 
+    T getL2error() const;
 
 public:
 
