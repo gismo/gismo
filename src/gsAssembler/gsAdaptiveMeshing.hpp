@@ -59,18 +59,20 @@ namespace gismo
  * \ingroup Assembler
  */
 template <class T>
-void gsAdaptiveMeshing<T>::_markElements( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
+void gsAdaptiveMeshing<T>::_markElements( gsFunctionSet<T> * input, const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, std::vector<bool> & elMarked, bool coarsen)
 {
+    std::vector<index_t> elLevels;
+    _getElLevels(input,elLevels);
     switch (refCriterion)
     {
     case GARU:
-        _markThreshold(elError,refParameter,elMarked);
+        _markThreshold(elError,refParameter,maxLevel,elLevels,elMarked,coarsen);
         break;
     case PUCA:
-        _markPercentage(elError,refParameter,elMarked);
+        _markPercentage(elError,refParameter,maxLevel,elLevels,elMarked,coarsen);
         break;
     case BULK:
-        _markFraction(elError,refParameter,elMarked);
+        _markFraction(elError,refParameter,maxLevel,elLevels,elMarked,coarsen);
         break;
     default:
         GISMO_ERROR("unknown marking strategy");
@@ -79,7 +81,7 @@ void gsAdaptiveMeshing<T>::_markElements( const std::vector<T> & elError, int re
 }
 
 template <class T>
-void gsAdaptiveMeshing<T>::_markFraction( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+void gsAdaptiveMeshing<T>::_markFraction( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen)
 {
     T Thr = T(0);
 
@@ -121,12 +123,17 @@ void gsAdaptiveMeshing<T>::_markFraction( const std::vector<T> & elError, T refP
     // Now just check for each element, whether the local error
     // is above the computed threshold or not, and mark accordingly.
     for( size_t i=0; i < elError.size(); i++)
-        ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
+    {
+        if (!coarsen) // for refinement, mark the contributions above the threshold, iff the current element level is smaller than the max level
+            ( (elError[i] >= Thr) && (elLevels[i] < maxLevel) ? elMarked[i] = true : elMarked[i] = false );
+        if (coarsen) // for coarsening, mark the contributions below the threshold. There is no use of the level, since it will be coarser
+            ( (elError[i] <= Thr) ? elMarked[i] = true : elMarked[i] = false );
+    }
 }
 
 
 template <class T>
-void gsAdaptiveMeshing<T>::_markPercentage( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+void gsAdaptiveMeshing<T>::_markPercentage( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen)
 {
     T Thr = T(0);
 
@@ -177,11 +184,16 @@ void gsAdaptiveMeshing<T>::_markPercentage( const std::vector<T> & elError, T re
     // Now just check for each element, whether the local error
     // is above the computed threshold or not, and mark accordingly.
     for( size_t i=0; i < elError.size(); i++)
-        ( elError[i] >= Thr ? elMarked[i] = true : elMarked[i] = false );
+    {
+        if (!coarsen) // for refinement, mark the contributions above the threshold, iff the current element level is smaller than the max level
+            ( (elError[i] >= Thr) && (elLevels[i] < maxLevel) ? elMarked[i] = true : elMarked[i] = false );
+        if (coarsen) // for coarsening, mark the contributions below the threshold. There is no use of the level, since it will be coarser
+            ( (elError[i] <= Thr) ? elMarked[i] = true : elMarked[i] = false );
+    }
 }
 
 template <class T>
-void gsAdaptiveMeshing<T>::_markThreshold( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+void gsAdaptiveMeshing<T>::_markThreshold( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen)
 {
     // First, conduct a brutal search for the maximum local error
     const T maxErr = *std::max_element(elError.begin(), elError.end() );
@@ -194,8 +206,69 @@ void gsAdaptiveMeshing<T>::_markThreshold( const std::vector<T> & elError, T ref
     // is above the computed threshold or not, and mark accordingly.
 
     typename std::vector<T>::const_iterator err = elError.begin();
-    for(std::vector<bool>::iterator i = elMarked.begin(); i!=  elMarked.end(); ++i, ++err)
-        *i = ( *err >= Thr );
+    typename std::vector<index_t>::const_iterator lvl = elLevels.begin();
+    for(std::vector<bool>::iterator i = elMarked.begin(); i!=  elMarked.end(); ++i, ++err, ++lvl)
+    {
+        if (!coarsen) // for refinement, mark the contributions above the threshold, iff the current element level is smaller than the max level
+            *i = ( (*err >= Thr) && (*lvl < maxLevel) );
+        if (coarsen) // for coarsening, mark the contributions below the threshold. There is no use of the level, since it will be coarser
+            *i = ( (*err <= Thr) );
+    }
+}
+
+template <class T>
+void gsAdaptiveMeshing<T>::_getElLevels( gsFunctionSet<T> * input, std::vector<index_t> & elLevels)
+{
+    // Now just check for each element, whether the level
+    // is above the target level or not, and mark accordingly.
+    //
+    index_t Nelements = 0;
+    if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) Nelements = gsMultiBasis<T>(*mp).totalElements();
+    if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) Nelements = mb->totalElements();
+    GISMO_ASSERT(Nelements!=0,"Number of elements is zero? It might be that the input is not a gsMultiBasis or gsMultiPatch");
+
+    elLevels.resize(Nelements);
+
+    gsBasis<T> * basis = nullptr;
+
+    #pragma omp parallel
+    {
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+        index_t patch_cnt = 0;
+#endif
+
+        index_t c = 0;
+        for (index_t patchInd=0; patchInd < input->nPieces(); ++patchInd)
+        {
+            // Initialize domain element iterator
+            if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(patchInd));
+            if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(patchInd));
+            GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+            // for all elements in patch pn
+            typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
+            gsHDomainIterator<T,2> * domHIt = nullptr;
+            domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
+            GISMO_ENSURE(domHIt!=nullptr,"Domain should be 2 dimensional for flattening");
+
+#ifdef _OPENMP
+            c = patch_cnt + tid;
+            patch_cnt += domHIt->numElements();// a bit costy
+            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+            for (; domIt->good(); domIt->next() )
+#endif
+            {
+#               ifdef _OPENMP
+                elLevels[c] = domHIt->getLevel();
+                c += nt;
+#               else
+                elLevels[c++] = domHIt->getLevel();
+#               endif
+            }
+        }
+    }
 }
 
 template <class T>
@@ -266,6 +339,9 @@ void gsAdaptiveMeshing<T>::defaultOptions()
     m_options.addInt("RefineExtension","Extension refinement",0);
 
     m_options.addInt("MaxLevel","Maximum refinement level",10);
+
+    m_options.addSwitch("Admissible","Mark the admissible region",false);
+    // m_options.addSwitch("Admissible","Mark the admissible region",false); // separate for coarsening?
 }
 
 template<class T>
@@ -296,56 +372,17 @@ void gsAdaptiveMeshing<T>::getOptions()
     m_refExt = m_options.getInt("RefineExtension");
 
     m_maxLvl = m_options.getInt("MaxLevel");
+
+    m_admissible = m_options.getSwitch("Admissible");
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::mark(const std::vector<T> & errors)
+void gsAdaptiveMeshing<T>::mark(gsFunctionSet<T> * input, const std::vector<T> & errors, index_t level)
 {
-    std::vector<T> refErrors(errors.size());
-    std::vector<T> crsErrors;
+    _markElements( input, errors, m_refRule, m_refParam, level, m_markedRef,false);//,flag [coarse]);
 
     if (m_crsParam!=-1)
-        crsErrors.resize(errors.size());
-
-    if (m_crsParam==-1)
-    {
-        #pragma omp parallel
-        {
-        #   ifdef _OPENMP
-            const int tid = omp_get_thread_num();
-            const int nt  = omp_get_num_threads();
-            for (size_t k = tid; k<errors.size(); k+=nt)
-        #   else
-            for (size_t k = 0; k<errors.size(); k++)
-        #   endif
-            {
-                crsErrors[k] = -std::abs(errors[k]);
-                refErrors[k] =  std::abs(errors[k]);
-            }
-        }
-    }
-    else
-    {
-        #pragma omp parallel
-        {
-        #   ifdef _OPENMP
-            const int tid = omp_get_thread_num();
-            const int nt  = omp_get_num_threads();
-            for (size_t k = tid; k<errors.size(); k+=nt)
-        #   else
-            for (size_t k = 0; k<errors.size(); k++)
-        #   endif
-            {
-                crsErrors[k] = -std::abs(errors[k]); // DO NOT TAKE ABS HERE BUT IN DWR
-                refErrors[k] =  std::abs(errors[k]);
-            }
-        }
-    }
-
-    _markElements( refErrors, m_refRule, m_refParam, m_markedRef);//,flag [coarse]);
-
-    if (m_crsParam!=-1)
-        _markElements( crsErrors, m_refRule, m_refParam, m_markedCrs);//,flag [coarse]);
+        _markElements( input, errors, m_refRule, m_refParam, level, m_markedCrs,true);//,flag [coarse]);
 
 }
 
@@ -377,7 +414,13 @@ void gsAdaptiveMeshing<T>::adapt(const std::vector<bool> & markedRef,const std::
 template<class T>
 void gsAdaptiveMeshing<T>::flatten(const index_t level)
 {
-    _flattenElements(m_input,level);
+    _flattenElementsToLevel(m_input,level);
+}
+
+template<class T>
+void gsAdaptiveMeshing<T>::unrefineThreshold(const index_t level)
+{
+    _unrefineElementsThreshold(m_input,level);
 }
 
 template<class T>
@@ -608,8 +651,15 @@ void gsAdaptiveMeshing<T>::_processMarkedElements(gsFunctionSet<T> * input,
     }
 }
 
+/**
+ * @brief      Flattens everything to \a level
+ *
+ * @param      input  The input structure (gsMultiBasis or gsMultiPatch)
+ * @param[in]  level  The target level
+ *
+ */
 template<class T>
-void gsAdaptiveMeshing<T>::_flattenElements(  gsFunctionSet<T> * input,
+void gsAdaptiveMeshing<T>::_flattenElementsToLevel(  gsFunctionSet<T> * input,
                                                 const index_t level)
 {
     // Get all the elements of which the level exceeds level
@@ -680,6 +730,114 @@ void gsAdaptiveMeshing<T>::_flattenElements(  gsFunctionSet<T> * input,
                 {
 
                     elements[offset*k+kk+1] = elements[offset*k+kk+1] >> diff;
+                    // Remove comment below
+                    // // yes, exactly: if   i is index in old level a and needs to become a level b box, b<a, then the new index j is (in c++ computation):
+                    // j = i >> a-b;
+                    // // this is division by 2^{a-b}  using bit-operations
+                }
+            }
+            // gsDebug<<"New Box:\n";
+            // for (index_t kk = 0; kk!=2*dim+1; kk++)
+            // {
+            //     gsDebug<<elements[offset*k+kk]<<",";
+            // }
+            // gsDebug<<"\n";
+        }
+        gsMultiPatch<T> * mp;
+        gsMultiBasis<T> * mb;
+        if ((mp = dynamic_cast<gsMultiPatch<T>*>(input)))
+        {
+            mp->patch(pn).unrefineElements( elements );
+        }
+        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(input)))
+        {
+            // Refine all of the found refBoxes in this patch
+            mb->unrefineElements(pn, elements );
+        }
+        else
+            GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+    }
+}
+
+/**
+ * @brief      Coarsens everything to that is lower than \a level
+ *
+ * @param      input  The input structure (gsMultiBasis or gsMultiPatch)
+ * @param[in]  level  The target level
+ *
+ */
+template<class T>
+void gsAdaptiveMeshing<T>::_unrefineElementsThreshold(  gsFunctionSet<T> * input,
+                                                const index_t level)
+{
+    // Get all the elements of which the level exceeds level
+    std::vector<bool> elMarked;
+    _markLevelThreshold(input,level,elMarked);
+
+    const int dim = input->domainDim();
+
+    // numMarked: Number of marked cells on current patch, also currently marked cell
+    // poffset  : offset index for the first element on a patch
+    // globalCount: counter for the current global element index
+    int numMarked, poffset = 0, globalCount = 0;
+
+    // crsBoxes: contains marked boxes on a given patch
+    gsMatrix<T> crsBoxes;
+
+    gsBasis<T> * basis = nullptr;
+
+    for (index_t pn=0; pn < input->nPieces(); ++pn )// for all patches
+    {
+        if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(pn));
+        if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(pn));
+        GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+        // Get number of elements to be refined on this patch
+        const int numEl = basis->numElements();
+        numMarked = std::count_if(elMarked.begin() + poffset,
+                                  elMarked.begin() + poffset + numEl,
+                                  GS_BIND2ND(std::equal_to<bool>(), true) );
+
+        poffset += numEl;
+        crsBoxes.resize(dim, 2*numMarked);
+        numMarked = 0;// counting current patch element to be refined
+
+        // for all elements in patch pn
+        typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
+        for (; domIt->good(); domIt->next())
+        {
+            if( elMarked[ globalCount++ ] ) // refine this element ?
+            {
+                // Construct degenerate box by setting both
+                // corners equal to the center
+                crsBoxes.col(2*numMarked  ) =
+                        crsBoxes.col(2*numMarked+1) = domIt->centerPoint();
+
+                // Advance marked cells counter
+                numMarked++;
+            }
+        }
+
+        std::vector<index_t> elements;
+        elements = basis->asElementsUnrefine(crsBoxes,0);
+        const int offset = 2*dim+1;
+        index_t diff = 0;
+        GISMO_ASSERT(elements.size()%offset==0,"Element boxes have wrong size. Boxes should have size "<<offset<<" per box");
+        for (size_t k = 0; k!=elements.size()/offset; k++)
+        {
+            // gsDebug<<"Old Box:\n";
+            // for (index_t kk = 0; kk!=2*dim+1; kk++)
+            // {
+            //     gsDebug<<elements[offset*k+kk]<<",";
+            // }
+            // gsDebug<<"\n";
+
+            if ((diff = elements[offset*k] - level) > 0)
+            {
+                elements[offset*k] = level;
+                for (index_t kk = 0; kk!=2*dim; kk++)
+                {
+
+                    elements[offset*k+kk+1] = elements[offset*k+kk+1] >> 1;
 
                     // // yes, exactly: if   i is index in old level a and needs to become a level b box, b<a, then the new index j is (in c++ computation):
                     // j = i >> a-b;
@@ -708,5 +866,6 @@ void gsAdaptiveMeshing<T>::_flattenElements(  gsFunctionSet<T> * input,
             GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
     }
 }
+
 
 } // namespace gismo

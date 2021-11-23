@@ -49,7 +49,9 @@ public:
 
     void getOptions();
 
-    void mark(const std::vector<T> & errors);
+    void mark(gsFunctionSet<T> * input, const std::vector<T> & errors, index_t level);
+    void mark(const std::vector<T> & errors) { mark(m_input,errors,m_maxLvl); }
+    void mark(const std::vector<T> & errors, index_t maxLvl) { mark(m_input,errors,maxLvl); };
 
     void refine(const std::vector<bool> & markedRef);
 
@@ -64,6 +66,10 @@ public:
     void adapt() { adapt(m_markedRef,m_markedCrs); }
 
     void flatten(const index_t level);
+    void flatten() { flatten(m_maxLvl); } ;
+
+    void unrefineThreshold(const index_t level);
+    void unrefineThreshold(){ unrefineThreshold(m_maxLvl); };
 
 private:
     void _refineMarkedElements( gsFunctionSet<T> * bases,
@@ -80,15 +86,20 @@ private:
                                 index_t refExtension = 0,
                                 index_t crsExtension = 0);
 
-    void _flattenElements(  gsFunctionSet<T> * bases,
+    void _flattenElementsToLevel(  gsFunctionSet<T> * bases,
                             const index_t level);
 
-    void _markElements( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked);
-    void _markFraction( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked);
-    void _markPercentage( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked);
-    void _markThreshold( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked);
+    void _unrefineElementsThreshold(  gsFunctionSet<T> * bases,
+                            const index_t level);
+
+    void _markElements( gsFunctionSet<T> * input, const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, std::vector<bool> & elMarked, bool coarsen=false);
+    void _markFraction( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);
+    void _markPercentage( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);
+    void _markThreshold( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);
 
     void _markLevelThreshold( gsFunctionSet<T> * input, index_t level, std::vector<bool> & elMarked);
+    void _getElLevels( gsFunctionSet<T> * input, std::vector<index_t> & elLevels);
+
 protected:
     // M & m_basis;
     gsFunctionSet<T> * m_input;
@@ -99,6 +110,9 @@ protected:
     MarkingStrategy m_crsRule, m_refRule;
     index_t         m_crsExt, m_refExt;
     index_t         m_maxLvl;
+
+    bool            m_admissible;
+
 
     std::vector<bool> m_markedRef, m_markedCrs;
 
