@@ -110,10 +110,6 @@ void gsFastFitting<T>::FindGridPoint(const gsMatrix<T>& curr_param, index_t& k1,
     // Search function, k is the global index of the nearest neighbour of curr_param, with k=(k1,k2)
     FindGridPoint1D(m_ugrid,curr_param(0),k1);
     FindGridPoint1D(m_vgrid,curr_param(1),k2);
-
-//    index_t k1fast = FindGridPoint1Dfast(m_ugrid,curr_param(0),0,(m_ugrid.cols()));
-//    if (k1 != k1fast || k2 != FindGridPoint1Dfast(m_vgrid,curr_param(1),0,m_vgrid.cols()))
-//        gsInfo << "Wrong FindGridPoint1Dfast" << std::endl;
 }
 
 template<class T>
@@ -144,10 +140,9 @@ gsMatrix<T> gsFastFitting<T>::ProjectParamToGrid(const gsMatrix<T> & uv)
 template<class T>
 gsMatrix<index_t> gsFastFitting<T>::GridProjection()
 {
-    index_t n1 = m_ugrid.cols();
     const int numpoints = this->m_points.rows();
     gsMatrix<T> curr_param;
-    gsMatrix<index_t> gridindex(numpoints,3);
+    gsMatrix<index_t> gridindex(numpoints,2);
 
     for (index_t i=0; i<numpoints; i++)
     {
@@ -155,9 +150,8 @@ gsMatrix<index_t> gsFastFitting<T>::GridProjection()
         index_t k1=0,k2=0;
         FindGridPointfast(curr_param,k1,k2);
 
-        gridindex(i,0)= k2 * n1 + k1;    // Could be eliminated?
-        gridindex(i,1)= k1;
-        gridindex(i,2)= k2;
+        gridindex(i,0)= k1;
+        gridindex(i,1)= k2;
     }
     return gridindex;    // This now only contains the global index and u-, v-indices of the according grid point with respect to m_param_values
 }
@@ -179,8 +173,8 @@ gsMatrix<T> gsFastFitting<T>::BuildLookupTable(gsMatrix<index_t> & uactives, gsM
 
     for (index_t k=0; k<gridindex.rows(); k++)
     {
-        index_t k1 = gridindex(k,1);
-        index_t k2 = gridindex(k,2);
+        index_t k1 = gridindex(k,0);
+        index_t k2 = gridindex(k,1);
         for (index_t i=0; i<p+1; i++)     // active basis u direction, approximating function
         {
             T bi = uvalues(i,k1);
@@ -244,10 +238,10 @@ void gsFastFitting<T>::assembleSystem( gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_
 
     std::set<index_t> k2set;
     for (index_t i=0; i< numpoints; i++)
-        k2set.insert(gridindex(i,2));
+        k2set.insert(gridindex(i,1));
 
     // New version, ordering of the for slopes as meeting 19.11.2021, version 3
-    /*for ( std::set<index_t>::const_iterator k2=k2set.begin() ; k2!=k2set.end(); ++k2 )
+    for ( std::set<index_t>::const_iterator k2=k2set.begin() ; k2!=k2set.end(); ++k2 )
     {
         // Get uvalues col
         gsVector<T> vvalcol = vvalues.col(*k2);
@@ -278,10 +272,10 @@ void gsFastFitting<T>::assembleSystem( gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_
                 }
             }
         }
-    }*/
+    }
 
     // Old version, version 2
-    for ( std::set<index_t>::const_iterator k2=k2set.begin() ; k2!=k2set.end(); ++k2 )
+    /*for ( std::set<index_t>::const_iterator k2=k2set.begin() ; k2!=k2set.end(); ++k2 )
     {
         for (index_t i2=0; i2<p+1; i2++)     // active basis functions of v basis at grid point, approximation
         {
@@ -308,15 +302,15 @@ void gsFastFitting<T>::assembleSystem( gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_
                 }
             }
         }
-    }
+    }*/
     // Info for the flop count:
     gsInfo << "Counted flops fast fitting--PART 2: " << flops << std::endl;
 
     for(index_t k = 0; k < numpoints; ++k)     // all grid points
     {
         // Check if weight(k) = 0: Find local k1,k2 from k
-        index_t k1 = gridindex(k,1);
-        index_t k2 = gridindex(k,2);
+        index_t k1 = gridindex(k,0);
+        index_t k2 = gridindex(k,1);
 
         for (index_t i1=0; i1<p+1; i1++)
         {
@@ -359,7 +353,7 @@ void gsFastFitting<T>::compute(const bool condcheck)
     gsMatrix<T> m_B(num_basis, dimension);
     m_B.setZero(); // ensure that all entries are zero in the beginning
 
-    gsMatrix<index_t> gridindex (numpoints,3);
+    gsMatrix<index_t> gridindex (numpoints,2);
     gridindex = GridProjection();            // gridindex als non-const input?
 
     // stopping time for complete assembly (including right-hand side)
@@ -393,9 +387,6 @@ void gsFastFitting<T>::compute(const bool condcheck)
 
     // Generate the B-spline curve / surface
     this->m_result = this->m_basis->makeGeometry( give(x) ).release();
-
-    // Compute average errors
-    //computeProjectedAverageErrors();
 }
 
 
