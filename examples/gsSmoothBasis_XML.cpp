@@ -13,13 +13,11 @@
 
 #include <gismo.h>
 
-// #include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-// #include <gsMSplines/gsCompositeIncrSmoothnessGeom.h>
-
-#include <gsMSplines/gsDPatch.h>
-
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESSpline.h>
+#include <gsUnstructuredSplines/gsDPatch.h>
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
-// #include <gsUnstructuredSplines/gsC1Spline.h>
+#include <gsUnstructuredSplines/gsC1SurfSpline.h>
 
 #include <gsKLShell/gsThinShellAssembler.h>
 #include <gsKLShell/gsMaterialMatrixLinear.h>
@@ -65,20 +63,17 @@ int main(int argc, char *argv[])
     std::string input;
 
     std::string fn1,fn2,fn3,fn4;
-    fn1 = "pde/1p_square_geom.xml";
-    fn2 = "pde/1p_square_bvp.xml";
-    fn1 = "pde/g1021_square_geom.xml";
-    fn2 = "pde/g1021_square_bvp.xml";
     fn1 = "pde/2p_square_geom.xml";
     fn2 = "pde/2p_square_bvp.xml";
     fn3 = "options/solver_options.xml";
 
     gsCmdLine cmd("Composite basis tests.");
-    cmd.addPlainString("filename", "G+Smo input geometry file.", input);
+    cmd.addString( "G", "geom","File containing the geometry",  fn1 );
+    cmd.addString( "B", "bvp", "File containing the Boundary Value Problem (BVP)",  fn2 );
+    cmd.addString( "O", "opt", "File containing solver options",  fn3 );
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
-    cmd.addInt( "g", "geometry", "which geometry",  geometry );
     cmd.addInt( "s", "smooth", "Smoothing method to use",  smoothing );
     cmd.addSwitch("plot", "plot",plot);
     cmd.addSwitch("last", "last case only",last);
@@ -112,13 +107,13 @@ int main(int argc, char *argv[])
     // gsInfo<<"Finished\n";
 
     gsFunctionExpr<> hom("0",3);
-/*    for (index_t d = 0; d!=3; d++)
-    {
-        bc.addCondition(0,boundary::north, condition_type::dirichlet, &hom, 0, false, d );
-        bc.addCondition(0,boundary::south, condition_type::dirichlet, &hom, 0, false, d);
-        bc.addCondition(0,boundary::west, condition_type::dirichlet, &hom, 0, false, d);
-        bc.addCondition(0,boundary::east, condition_type::dirichlet, &hom, 0, false, d);
-    }*/
+    // for (index_t d = 0; d!=3; d++)
+    // {
+    //     bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, 0, false, d );
+    //     bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
+    //     bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, 0, false, d);
+    //     bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
+    // }
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
         for (index_t d = 0; d!=3; d++)
             bc.addCondition(bit->patch, bit->side(), condition_type::dirichlet, &hom, 0, false, d);
@@ -165,7 +160,15 @@ int main(int argc, char *argv[])
     fd.getId(13,rho);
     gsInfo<<"Finished\n";
 
+    // Manufactured solution
+    gsFunctionExpr<> analytical;
+    gsInfo<<"Reading manufactured solutoon "<<fn2<<" (ID=41) ...";
+    fd.getId(41,analytical);
+    gsInfo<<"Finished\n";
     mp.embed(3);
+
+    gsField<> u_an(mp,analytical);
+    gsWriteParaview(u_an,"analytical");
 
     gsMultiPatch<> geom = mp;
 
@@ -192,7 +195,7 @@ int main(int argc, char *argv[])
 
     gsMaterialMatrixLinear<3,real_t> materialMatrix(mp,t,parameters,rho);
 
-    gsThinShellAssemblerBase<real_t> * assembler;
+    gsThinShellAssembler<3, real_t, true> assembler;
 
     //! [Solver loop]
     gsVector<> l2err(numRefine+1), h1err(numRefine+1), linferr(numRefine+1),
@@ -218,16 +221,19 @@ int main(int argc, char *argv[])
         time.restart();
         if (smoothing==0)
         {
-            // gsCompositeIncrSmoothnessGeom<2,real_t> cgeom(mp,3);
-            // gsCompositeIncrSmoothnessBasis<2,real_t> & basis = dynamic_cast<gsCompositeIncrSmoothnessBasis<2,real_t>&>(cgeom.getCompBasis());
+            gsMPBESSpline<2,real_t> cgeom(mp,3);
+            gsMappedBasis<2,real_t> basis = cgeom.getMappedBasis();
 
-            // global2local = basis.getMapper().asMatrix();
-            // geom = cgeom.exportToPatches();
+            global2local = basis.getMapper().asMatrix();
+            geom = cgeom.exportToPatches();
+            auto container = basis.getBasesCopy();
+            dbasis = gsMultiBasis<>(container,mp.topology());
         }
         else if (smoothing==1)
         {
             gsDPatch<2,real_t> dpatch(mp);
             dpatch.matrix_into(global2local);
+
             global2local = global2local.transpose();
             geom = dpatch.exportToPatches();
             dbasis = dpatch.localBasis();
@@ -255,7 +261,13 @@ int main(int argc, char *argv[])
         }
         else if (smoothing==3) // Andrea
         {
+            gsC1SurfSpline<2,real_t> smoothC1(mp,dbasis);
+            smoothC1.init();
+            smoothC1.compute();
 
+            global2local = smoothC1.getSystem();
+            global2local = global2local.transpose();
+            smoothC1.getMultiBasis(dbasis);
         }
         else
             GISMO_ERROR("Option "<<smoothing<<" for smoothing does not exist");
@@ -274,23 +286,24 @@ int main(int argc, char *argv[])
         // geom = mspline.exportToPatches();
 
         //mem-leak here
-        assembler = new gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
+        // assembler = new gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
+        assembler = gsThinShellAssembler<3, real_t, true>(geom,dbasis,bc,force,&materialMatrix);
         if (smoothing==1)
-            assembler->options().setInt("Continuity",-1);
+            assembler.options().setInt("Continuity",-1);
         else if (smoothing==2)
-            assembler->options().setInt("Continuity",-1);
-        assembler->setSpaceBasis(bb2);
-        assembler->setPointLoads(pLoads);
-        // gsOptionList options = assembler->options();
+            assembler.options().setInt("Continuity",-1);
+        assembler.setSpaceBasis(bb2);
+        assembler.setPointLoads(pLoads);
+        // gsOptionList options = assembler.options();
         // options.setInt("Continuity",1);
-        // assembler->setOptions(options);
+        // assembler.setOptions(options);
 
         time.restart();
         // Initialize the system
 
-        assembler->assemble();
-        gsSparseMatrix<> matrix = assembler->matrix();
-        gsVector<> vector = assembler->rhs();
+        assembler.assemble();
+        gsSparseMatrix<> matrix = assembler.matrix();
+        gsVector<> vector = assembler.rhs();
 
         gsInfo<<"\tSystem assembly:\t"<<time.stop()<<"\t[s]\n";
 
@@ -349,7 +362,7 @@ int main(int argc, char *argv[])
     {
         /// Make a gsMappedSpline to represent the solution
         // 1. Get all the coefficients (including the ones from the eliminated BCs.)
-        gsMatrix<real_t> solFull = assembler->fullSolutionVector(solVector);
+        gsMatrix<real_t> solFull = assembler.fullSolutionVector(solVector);
 
         // 2. Reshape all the coefficients to a Nx3 matrix
         GISMO_ASSERT(solFull.rows() % 3==0,"Rows of the solution vector does not match the number of control points");
@@ -529,16 +542,16 @@ int main(int argc, char *argv[])
         //     typename gsGeometry<>::uPtr patch = basis.interpolateAtAnchors(dbasis.basis(np).eval(points2D));
         // }
 
-        // assembler->plotSolution("solution", solVector);
+        // assembler.plotSolution("solution", solVector);
 
-        // gsMultiPatch<> deformation = assembler->constructDisplacement(solVector);
-        // // gsMultiPatch<> mp_def = assembler->constructSolution(solVector);
+        // gsMultiPatch<> deformation = assembler.constructDisplacement(solVector);
+        // // gsMultiPatch<> mp_def = assembler.constructSolution(solVector);
 
         // gsField<> solField(geom, deformation);
         // gsInfo<<"Plotting in Paraview...\n";
         // gsWriteParaview<>( solField, "Deformation", 1000, true);
 
-        // deformation = assembler->constructSolution(solVector);
+        // deformation = assembler.constructSolution(solVector);
         // gsWriteParaview<>( deformation, "deformed_geom", 1000, true);
 
 

@@ -1,4 +1,4 @@
-/** @file gsCompositeIncrSmoothnessBasis.hpp
+/** @file gsMPBESBasis.hpp
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -11,24 +11,24 @@
     Author(s): F. Buchegger
 */
 
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
+#include <gsMSplines/gsMPBESBasis.h>
 
 namespace gismo
 {
 
-template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::_setMapping()
-{
-    // * Initializer mapper
-    gsMapFactory * maker = _getMapFactory();
-    if(m_mapper)
-        delete m_mapper;
-    m_mapper = maker->makeMapper();
-    delete maker;
-}
+// template<short_t d, class T>
+// void gsMPBESBasis<d,T>::_setMapping()
+// {
+//     // * Initializer mapper
+//     gsMapFactory * maker = _getMapFactory();
+//     if(m_mapper)
+//         delete m_mapper;
+//     m_mapper = maker->makeMapper();
+//     delete maker;
+// }
 
 template<short_t d, class T>
-bool gsCompositeIncrSmoothnessBasis<d,T>::_check() const
+bool gsMPBESBasis<d,T>::_check() const
 {
     bool consistent = true;
     consistent = consistent && _checkTopologyWithBases();
@@ -36,7 +36,7 @@ bool gsCompositeIncrSmoothnessBasis<d,T>::_check() const
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::connectivity(const gsMatrix<T> & nodes,gsMesh<T> & mesh) const
+void gsMPBESBasis<d,T>::connectivity(const gsMatrix<T> & nodes,gsMesh<T> & mesh) const
 {
     const indexType sz  = size();
     GISMO_ASSERT( nodes.rows() == sz, "Invalid input.");
@@ -52,7 +52,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::connectivity(const gsMatrix<T> & nodes
 }
 
 template<short_t d, class T>
-bool gsCompositeIncrSmoothnessBasis<d,T>::isConnected(indexType i,indexType j) const
+bool gsMPBESBasis<d,T>::isConnected(indexType i,indexType j) const
 {
     std::vector<indexType> locals_i,locals_j;
     m_mapper->targetToSource(i,locals_i);
@@ -134,7 +134,7 @@ bool gsCompositeIncrSmoothnessBasis<d,T>::isConnected(indexType i,indexType j) c
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::uniformRefine(int numKnots, int mul,bool updateBasis)
+void gsMPBESBasis<d,T>::uniformRefine(int numKnots, int mul,bool updateBasis)
 {
     int start, end = -1;
     for (BasisIter it=m_bases.begin();it!=m_bases.end();++it)
@@ -148,7 +148,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::uniformRefine(int numKnots, int mul,bo
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, bool updateBasis)
+void gsMPBESBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, bool updateBasis)
 {
     int start, end = -1, geoDim=coefs.cols(), totalLength = 0;
     std::vector<gsMatrix<T> *> newCoefs;
@@ -177,7 +177,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& c
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::degreeElevate( index_t amount , bool updateBasis )
+void gsMPBESBasis<d,T>::degreeElevate( index_t amount , bool updateBasis )
 {
     for (size_t i = 0; i < nPatches(); ++i)
         m_bases[i]->degreeElevate(amount);  // TODO: must be something else then gsBasis::degreeElevate
@@ -186,7 +186,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::degreeElevate( index_t amount , bool u
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::degreeIncrease( index_t amount , index_t dir, bool updateBasis )
+void gsMPBESBasis<d,T>::degreeIncrease( index_t amount , index_t dir, bool updateBasis )
 {
     for (size_t i = 0; i < nPatches(); ++i)
         m_bases[i]->degreeElevate(amount, dir);
@@ -195,7 +195,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::degreeIncrease( index_t amount , index
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::repairPatches(index_t startFromPatch)
+void gsMPBESBasis<d,T>::repairPatches(index_t startFromPatch)
 {
     std::vector<gsMatrix<T> *> coefs;
     for (size_t i = 0; i < nPatches(); ++i)
@@ -204,7 +204,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::repairPatches(index_t startFromPatch)
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::smoothCornerEdge(const patchCorner&pc,const patchSide& ps,bool updateBasis)
+void gsMPBESBasis<d,T>::smoothCornerEdge(const patchCorner&pc,const patchSide& ps,bool updateBasis)
 {
     boundaryInterface interface;
     bool special = isSpecialVertex(pc);
@@ -219,7 +219,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::smoothCornerEdge(const patchCorner&pc,
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::smoothEverything()
+void gsMPBESBasis<d,T>::smoothEverything()
 {
     std::vector<std::vector<patchCorner> >cornerLists;
     std::vector<patchSide> psides;
@@ -236,7 +236,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::smoothEverything()
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::repairPatches(gsMatrix<T> & localCoef, index_t startFromPatch)
+void gsMPBESBasis<d,T>::repairPatches(gsMatrix<T> & localCoef, index_t startFromPatch)
 {
     std::vector<gsMatrix<T> *> patchCoefs;
     unsigned geoDim = localCoef.cols();
@@ -266,7 +266,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::repairPatches(gsMatrix<T> & localCoef,
 }
 
 template<short_t d, class T>
-T gsCompositeIncrSmoothnessBasis<d,T>::getWeight(const patchSide & ps) const
+T gsMPBESBasis<d,T>::getWeight(const patchSide & ps) const
 {
     typedef typename std::vector<std::pair<patchSide,T> >::const_iterator cWeightPairIter;
     for(cWeightPairIter it=m_patchSideWeights.begin();it!=m_patchSideWeights.end();++it)
@@ -276,7 +276,7 @@ T gsCompositeIncrSmoothnessBasis<d,T>::getWeight(const patchSide & ps) const
 }
 
 template<short_t d, class T>
-bool gsCompositeIncrSmoothnessBasis<d,T>::setWeight(const patchSide & ps, const T weight)
+bool gsMPBESBasis<d,T>::setWeight(const patchSide & ps, const T weight)
 {
     typedef typename std::vector<std::pair<patchSide,T> >::iterator weightPairIter;
     bool found = false;
@@ -295,7 +295,7 @@ bool gsCompositeIncrSmoothnessBasis<d,T>::setWeight(const patchSide & ps, const 
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::_initVertices()
+void gsMPBESBasis<d,T>::_initVertices()
 {
     m_vertices.clear();
     std::vector<std::vector<patchCorner> > vertexLists;
@@ -310,7 +310,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::_initVertices()
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::_setDistanceOfAllVertices()
+void gsMPBESBasis<d,T>::_setDistanceOfAllVertices()
 {
     m_distances.clear();
     for(std::vector<boundaryInterface>::const_iterator iter = m_topol.iBegin();
@@ -330,7 +330,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::_setDistanceOfAllVertices()
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::setC0(patchCorner pc)
+void gsMPBESBasis<d,T>::setC0(patchCorner pc)
 {
     std::vector<patchCorner> vertexList;
     m_topol.getCornerList(pc,vertexList);
@@ -359,7 +359,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::setC0(patchCorner pc)
 }
 
 template<short_t d, class T>
-bool gsCompositeIncrSmoothnessBasis<d,T>::isSpecialVertex(const patchCorner & pc) const
+bool gsMPBESBasis<d,T>::isSpecialVertex(const patchCorner & pc) const
 {
     typedef std::vector<std::pair<patchCorner,bool> >::const_iterator cvertices_iter;
     for(cvertices_iter iter=m_vertices.begin(); iter!=m_vertices.end();++iter)
@@ -369,7 +369,7 @@ bool gsCompositeIncrSmoothnessBasis<d,T>::isSpecialVertex(const patchCorner & pc
 }
 
 template<short_t d, class T>
-T gsCompositeIncrSmoothnessBasis<d,T>::getParametricDistanceOfVertex(const patchCorner& pc,const patchSide& ps) const
+T gsMPBESBasis<d,T>::getParametricDistanceOfVertex(const patchCorner& pc,const patchSide& ps) const
 {
     boundaryInterface interface;
     T param = 0.0;
@@ -394,8 +394,8 @@ T gsCompositeIncrSmoothnessBasis<d,T>::getParametricDistanceOfVertex(const patch
 }
 
 template<short_t d, class T>
-gsCompositeIncrSmoothnessBasis<d,T>::distances::distances(const boundaryInterface&  iface, const patchCorner& pc1,
-          const patchCorner& pc2,const gsCompositeIncrSmoothnessBasis<d,T>& basis) :
+gsMPBESBasis<d,T>::distances::distances(const boundaryInterface&  iface, const patchCorner& pc1,
+          const patchCorner& pc2,const gsMPBESBasis<d,T>& basis) :
     interface(iface),corner1(pc1),corner2(pc2)
 {
     const patchSide& ps = interface.first();
@@ -423,7 +423,7 @@ gsCompositeIncrSmoothnessBasis<d,T>::distances::distances(const boundaryInterfac
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::distances::setParamDist(unsigned absoluteVal,const patchCorner& pc,const gsCompositeIncrSmoothnessBasis<d,T>& basis)
+void gsMPBESBasis<d,T>::distances::setParamDist(unsigned absoluteVal,const patchCorner& pc,const gsMPBESBasis<d,T>& basis)
 {
     std::vector<patchCorner> cornerList;
     basis.getTopol().getCornerList(corner1,cornerList);
@@ -452,7 +452,7 @@ void gsCompositeIncrSmoothnessBasis<d,T>::distances::setParamDist(unsigned absol
 }
 
 template<short_t d, class T>
-T gsCompositeIncrSmoothnessBasis<d,T>::distances::getParamDist(const patchCorner& pc,const gsCompositeIncrSmoothnessBasis<d,T>& basis) const
+T gsMPBESBasis<d,T>::distances::getParamDist(const patchCorner& pc,const gsMPBESBasis<d,T>& basis) const
 {
     T param = -1.0;
     std::vector<patchCorner> cornerList;
@@ -469,8 +469,8 @@ T gsCompositeIncrSmoothnessBasis<d,T>::distances::getParamDist(const patchCorner
 }
 
 template<short_t d, class T>
-void gsCompositeIncrSmoothnessBasis<d,T>::distances::_determineValues(patchSide side,patchSide ls,patchSide rs,int dist,unsigned degree,unsigned max,
-                      unsigned& left,unsigned& right,const gsCompositeIncrSmoothnessBasis<d,T>& basis) const
+void gsMPBESBasis<d,T>::distances::_determineValues(patchSide side,patchSide ls,patchSide rs,int dist,unsigned degree,unsigned max,
+                      unsigned& left,unsigned& right,const gsMPBESBasis<d,T>& basis) const
 {
     gsVector<bool>pars(2);
     int dir = side.direction();

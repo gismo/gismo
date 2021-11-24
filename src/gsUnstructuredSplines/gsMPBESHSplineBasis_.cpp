@@ -1,4 +1,4 @@
-/** @file gsCompositeHBasis_.cpp
+/** @file gsMPBESHSplineBasis_.cpp
 
     @brief instantiation file
 
@@ -13,13 +13,13 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsMSplines/gsCompositeHBasis.h>
-#include <gsMSplines/gsCompositeHBasis.hpp>
+#include <gsMSplines/gsMPBESHSplineBasis.h>
+#include <gsMSplines/gsMPBESHSplineBasis.hpp>
 
 namespace gismo
 {
 
-    CLASS_TEMPLATE_INST gsCompositeHBasis<1,real_t> ;
-    CLASS_TEMPLATE_INST gsCompositeHBasis<2,real_t> ;
+    CLASS_TEMPLATE_INST gsMPBESHSplineBasis<1,real_t> ;
+    CLASS_TEMPLATE_INST gsMPBESHSplineBasis<2,real_t> ;
 
 } // end namespace gismo

@@ -1,6 +1,6 @@
-/** @file gsCompositeBasis_test.h
+/** @file gsSmoothBasis_shell.h
 
-    @brief File testing the gsCompositeBasis class.
+    @brief File testing the various gsUnstructuredSpline classes with a shell.
 
     This file is part of the G+Smo library.
 
@@ -13,11 +13,9 @@
 
 #include <gismo.h>
 
-// #include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-// #include <gsMSplines/gsCompositeIncrSmoothnessGeom.h>
-
-#include <gsMSplines/gsDPatch.h>
-
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESSpline.h>
+#include <gsUnstructuredSplines/gsDPatch.h>
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
 #include <gsUnstructuredSplines/gsC1SurfSpline.h>
 
@@ -491,11 +489,13 @@ int main(int argc, char *argv[])
         time.restart();
         if (smoothing==0)
         {
-            // gsCompositeIncrSmoothnessGeom<2,real_t> cgeom(mp,3);
-            // gsCompositeIncrSmoothnessBasis<2,real_t> & basis = dynamic_cast<gsCompositeIncrSmoothnessBasis<2,real_t>&>(cgeom.getCompBasis());
+            gsMPBESSpline<2,real_t> cgeom(mp,3);
+            gsMappedBasis<2,real_t> basis = cgeom.getMappedBasis();
 
-            // global2local = basis.getMapper().asMatrix();
-            // geom = cgeom.exportToPatches();
+            global2local = basis.getMapper().asMatrix();
+            geom = cgeom.exportToPatches();
+            auto container = basis.getBasesCopy();
+            dbasis = gsMultiBasis<>(container,mp.topology());
         }
         else if (smoothing==1)
         {

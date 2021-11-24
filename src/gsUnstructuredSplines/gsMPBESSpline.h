@@ -1,4 +1,4 @@
-/** @file gsCompositeIncrSmoothnessGeom.h
+/** @file gsMPBESSpline.h
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -15,33 +15,34 @@
 
 #include <gsCore/gsMultiPatch.h>
 
-#include <gsMSplines/gsCompositeGeom.h>
+#include <gsMSplines/gsMappedSpline.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
+#include <gsMSplines/gsMPBESBasis.h>
 
 namespace gismo
 {
 template<short_t d,class T>
-class gsCompositeIncrSmoothnessGeom : public gsCompositeGeom<d,T>
+class gsMPBESSpline : public gsMappedSpline<d,T>
 {
 
 private:
     typedef gsMappedSingleBasis<d,T> Basis;
-    typedef gsCompositeGeom<d,T> Base;
+    typedef gsMappedSpline<d,T> Base;
 public:
     /// Default empty constructor
-    gsCompositeIncrSmoothnessGeom() : Base() { }
+    gsMPBESSpline() : Base() { }
 
     /// Construct B-Spline by basis and coefficient matrix
-    gsCompositeIncrSmoothnessGeom( const gsCompositeIncrSmoothnessBasis<d,T> & basis, const gsMatrix<T> & coefs );
+    gsMPBESSpline( const gsMPBESBasis<d,T> & basis, const gsMatrix<T> & coefs );
 
-    gsCompositeIncrSmoothnessGeom( gsMultiPatch<T> const & mp,int incrSmoothness = -1,int minEVDistance = -1 );
+    gsMPBESSpline( gsMultiPatch<T> const & mp,int incrSmoothness = -1,int minEVDistance = -1 );
 
-    gsCompositeIncrSmoothnessGeom( gsMultiPatch<T> const & mp,std::vector<patchCorner> C0List,int incrSmoothness = -1,int minEVDistance = -1 );
+    gsMPBESSpline( gsMultiPatch<T> const & mp,std::vector<patchCorner> C0List,int incrSmoothness = -1,int minEVDistance = -1 );
 
-    ~gsCompositeIncrSmoothnessGeom() {   } //destructor
+    ~gsMPBESSpline() {   } //destructor
 
-    using Base::m_compBasis;
+    using Base::m_mbases;
+    using Base::m_global;
 
     void setCornerC0(patchCorner const & pc);
 
@@ -63,6 +64,6 @@ public:
 
     void refineElementsAndSmooth(const index_t patch, std::vector<index_t> const & boxes);
 
-}; // class gsCompositeIncrSmoothnessGeom
+}; // class gsMPBESSpline
 
 } // namespace gismo

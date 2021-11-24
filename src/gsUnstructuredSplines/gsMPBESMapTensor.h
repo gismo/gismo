@@ -1,4 +1,4 @@
-/** @file gsCompositeMapFactoryTensor.h
+/** @file gsMPBESMapTensor.h
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -11,17 +11,15 @@
     Author(s): F. Buchegger
 */
 
-// This class gsMapMaker has the sole purpose of creating a mapping of the type gsCompositeMapper
+// This class gsMPBESMapTensor has the sole purpose of creating a mapping of the type gsWeightMapper
 
 #pragma once
 
-#include <gsMSplines/gsMapFactory.h>
 #include <gsNurbs/gsBoehm.h>
 #include <gsCore/gsBoxTopology.h>
 
 namespace gismo
 {
-
 /** @brief
       A univariate Lagrange basis.
 
@@ -30,42 +28,8 @@ namespace gismo
       \ingroup basis
   */
 
-
-
-template<class T,class MapType>
-class gsCompositeMapFactoryMapInput : public gsMapFactory
-{
-public:
-
-    /// Constructor using a path to input file (full path is expected)
-    gsCompositeMapFactoryMapInput(gsSparseMatrix<real_t,Eigen::ColMajor,index_t>& mapAsMatrix,std::vector<index_t> offsets) :
-        m_mapAsMatrix(mapAsMatrix),m_offsets(offsets){}
-
-    MapType * makeMapper() const
-    {
-        MapType * mapper;
-        mapper = new MapType(m_mapAsMatrix,m_offsets);
-        mapper->finalize();
-        return mapper;
-    }
-
-private:
-    gsSparseMatrix<real_t,Eigen::ColMajor,index_t> m_mapAsMatrix;
-    std::vector<index_t> m_offsets;
-};
-
-
-
-/** @brief
-      A univariate Lagrange basis.
-
-      \tparam T coefficient type
-
-      \ingroup basis
-  */
-
-template<short_t d,class T,class MapType>
-class gsCompositeMapFactoryTensor : public gsMapFactory
+template<short_t d,class T>
+class gsMPBESMapTensor
 {
 private:
 
@@ -82,13 +46,13 @@ private:
     //int m_dim = 2;
 
 public:
-    gsCompositeMapFactoryTensor(int incrSmoothnessDegree, gsBoxTopology * topol, gsCompositeIncrSmoothnessBasis<d,T> * basis) :
+    gsMPBESMapTensor(int incrSmoothnessDegree, gsBoxTopology * topol, gsMPBESBasis<d,T> * basis) :
         m_incrSmoothnessDegree(incrSmoothnessDegree), m_topol(topol), m_basis(basis), m_global(0)
     {
         m_mapper=NULL;
     }
 
-    virtual ~gsCompositeMapFactoryTensor() { }
+    virtual ~gsMPBESMapTensor() { }
 
     //////////////////////////////////////////////////
     // Virtual member functions required by the base class
@@ -864,9 +828,9 @@ protected:
 
     short_t const m_incrSmoothnessDegree;
     gsBoxTopology const *m_topol;
-    gsCompositeIncrSmoothnessBasis<d,T> const *m_basis;
+    gsMPBESBasis<d,T> const *m_basis;
     mutable gsWeightMapper<T> *m_mapper;
     mutable unsigned m_global;
-};// class gsCompositeMapFactoryTensor
+};// class gsMPBESMapTensor
 
 }

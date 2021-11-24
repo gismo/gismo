@@ -1,4 +1,4 @@
-/** @file gsCompositeHBasis.hpp
+/** @file gsMPBESHSplineBasis.hpp
 
     @brief implementation file
 
@@ -11,14 +11,14 @@
     Author(s): F. Buchegger
 */
 
-#include <gsMSplines/gsCompositeHBasis.h>
+#include <gsMSplines/gsMPBESHSplineBasis.h>
 #include <gsCore/gsMultiBasis.h>
 
 namespace gismo
 {
 
 template<short_t d, class T>
-gsCompositeHBasis<d,T>::gsCompositeHBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
+gsMPBESHSplineBasis<d,T>::gsMPBESHSplineBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
                    int increaseSmoothnessLevel, int minEVDistance)
 {
     typedef typename std::vector<BasisType *>::const_iterator tempBasisIter;
@@ -35,18 +35,18 @@ gsCompositeHBasis<d,T>::gsCompositeHBasis (std::vector<BasisType *> const & base
 
     repairPatches();
 
-    _checkTopologyWithBases();
+    if(!_checkTopologyWithBases())
+        GISMO_ERROR("topology and bases not suitable for composite basis");
     _setMapping();
 }
 
 template<short_t d, class T>
-gsCompositeHBasis<d,T>::gsCompositeHBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
+gsMPBESHSplineBasis<d,T>::gsMPBESHSplineBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
                    std::vector<gsMatrix<T> * > & coefs,int increaseSmoothnessLevel, int minEVDistance)
 {
-    typedef typename std::vector<BasisType *>::const_iterator tempBasisIter;
     m_topol = topol;
-    for(tempBasisIter it = bases.begin();it!=bases.end();++it)
-        m_bases.push_back((BasisType*)(*it)->clone().release());
+    for(typename BasisContainer::const_iterator it = bases.begin();it!=bases.end();++it)
+        m_bases.push_back( (gsBasis<T>*)(*it)->clone().release());
     if(increaseSmoothnessLevel==-1)
         m_incrSmoothnessDegree=this->maxDegree()-1;
     else
@@ -54,14 +54,16 @@ gsCompositeHBasis<d,T>::gsCompositeHBasis (std::vector<BasisType *> const & base
     m_minDist=static_cast<unsigned>(std::max<int>(std::min<int>(m_incrSmoothnessDegree+1,maxDegree()),minEVDistance));
     _initVertices();
     _setDistanceOfAllVertices();
+
     repairPatches(coefs);
 
-    _checkTopologyWithBases();
+    if(!_checkTopologyWithBases())
+        GISMO_ERROR("topology and bases not suitable for composite basis");
     _setMapping();
 }
 
 template<short_t d, class T>
-gsCompositeHBasis<d,T>::gsCompositeHBasis (BasisType const & base, gsBoxTopology const & topol)
+gsMPBESHSplineBasis<d,T>::gsMPBESHSplineBasis (BasisType const & base, gsBoxTopology const & topol)
 {
     m_topol = topol;
     m_bases.push_back((BasisType *)base.clone().release());
@@ -77,7 +79,7 @@ gsCompositeHBasis<d,T>::gsCompositeHBasis (BasisType const & base, gsBoxTopology
 }
 
 template<short_t d, class T>
-gsCompositeHBasis<d,T>::gsCompositeHBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel,
+gsMPBESHSplineBasis<d,T>::gsMPBESHSplineBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel,
                    int minEVDistance)
 {
     //topol.computeAllVertices();
@@ -102,7 +104,7 @@ gsCompositeHBasis<d,T>::gsCompositeHBasis( gsMultiPatch<T> const & mp, int incre
 }
 
 template<short_t d, class T>
-gsCompositeHBasis<d,T>::gsCompositeHBasis( gsMultiBasis<T> const & mb,gsBoxTopology const & topol, int increaseSmoothnessLevel,
+gsMPBESHSplineBasis<d,T>::gsMPBESHSplineBasis( gsMultiBasis<T> const & mb,gsBoxTopology const & topol, int increaseSmoothnessLevel,
                    int minEVDistance)
 {
     //topol.computeAllVertices();
@@ -127,7 +129,7 @@ gsCompositeHBasis<d,T>::gsCompositeHBasis( gsMultiBasis<T> const & mb,gsBoxTopol
 }
 
 template<short_t d, class T>
-gsCompositeHBasis<d,T>::gsCompositeHBasis( const gsCompositeHBasis& other )
+gsMPBESHSplineBasis<d,T>::gsMPBESHSplineBasis( const gsMPBESHSplineBasis& other )
 {
     m_topol = other.m_topol;
     m_vertices=other.m_vertices;
@@ -146,7 +148,7 @@ gsCompositeHBasis<d,T>::gsCompositeHBasis( const gsCompositeHBasis& other )
 }
 
 template<short_t d, class T>
-gsCompositeHBasis<d,T>& gsCompositeHBasis<d,T>::operator=( const gsCompositeHBasis& other )
+gsMPBESHSplineBasis<d,T>& gsMPBESHSplineBasis<d,T>::operator=( const gsMPBESHSplineBasis& other )
 {
     m_topol=other.m_topol;
     m_vertices=other.m_vertices;
@@ -165,7 +167,17 @@ gsCompositeHBasis<d,T>& gsCompositeHBasis<d,T>::operator=( const gsCompositeHBas
 }
 
 template<short_t d, class T>
-unsigned gsCompositeHBasis<d,T>::basisFunctionsOnSide(const patchSide& ps) const
+void gsMPBESHSplineBasis<d,T>::_setMapping()
+{
+    // * Initializer mapper
+    gsMPBESMapHB2D<d,T> maker(m_incrSmoothnessDegree,& m_topol,this);
+    if(m_mapper)
+        delete m_mapper;
+    m_mapper = maker.makeMapper();
+}
+
+template<short_t d, class T>
+unsigned gsMPBESHSplineBasis<d,T>::basisFunctionsOnSide(const patchSide& ps) const
 {
     unsigned nr=0;
     std::vector<bool> actives;
@@ -180,7 +192,7 @@ unsigned gsCompositeHBasis<d,T>::basisFunctionsOnSide(const patchSide& ps) const
 }
 
 template<short_t d, class T>
-bool gsCompositeHBasis<d,T>::isLocallyConnected(indexType i,indexType j) const
+bool gsMPBESHSplineBasis<d,T>::isLocallyConnected(indexType i,indexType j) const
 {
     unsigned patch_i = _getPatch(i), patch_j = _getPatch(j);
     if( patch_i != patch_j )
@@ -202,7 +214,7 @@ bool gsCompositeHBasis<d,T>::isLocallyConnected(indexType i,indexType j) const
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::refine(const index_t patch, gsMatrix<T> const & boxes, bool updateBasis)
+void gsMPBESHSplineBasis<d,T>::refine(const index_t patch, gsMatrix<T> const & boxes, bool updateBasis)
 {
     basis(patch).refine(boxes);
     std::vector<gsMatrix<T> *> coefs;
@@ -216,7 +228,7 @@ void gsCompositeHBasis<d,T>::refine(const index_t patch, gsMatrix<T> const & box
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::refineElements(const index_t patch, std::vector<index_t> const & boxes, bool updateBasis)
+void gsMPBESHSplineBasis<d,T>::refineElements(const index_t patch, std::vector<index_t> const & boxes, bool updateBasis)
 {
     basis(patch).refineElements(boxes);
     std::vector<gsMatrix<T> *> coefs;
@@ -230,7 +242,7 @@ void gsCompositeHBasis<d,T>::refineElements(const index_t patch, std::vector<ind
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::refine_withCoefs(gsMatrix<T>& localCoef, const index_t patch, gsMatrix<T> const & boxes, bool updateBasis)
+void gsMPBESHSplineBasis<d,T>::refine_withCoefs(gsMatrix<T>& localCoef, const index_t patch, gsMatrix<T> const & boxes, bool updateBasis)
 {
     //std::cout << localCoef << std::endl << std::endl;
     std::vector<gsMatrix<T> *> coefs;
@@ -267,7 +279,7 @@ void gsCompositeHBasis<d,T>::refine_withCoefs(gsMatrix<T>& localCoef, const inde
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::refineElements_withCoefs(gsMatrix<T>& localCoef, const index_t patch, std::vector<index_t> const & boxes, bool updateBasis)
+void gsMPBESHSplineBasis<d,T>::refineElements_withCoefs(gsMatrix<T>& localCoef, const index_t patch, std::vector<index_t> const & boxes, bool updateBasis)
 {
     std::vector<gsMatrix<T> *> coefs;
     unsigned geoDim = localCoef.cols();
@@ -302,7 +314,7 @@ void gsCompositeHBasis<d,T>::refineElements_withCoefs(gsMatrix<T>& localCoef, co
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::refineWithExtension(const index_t patch,gsMatrix<T> const & boxes, int refExt,bool updateBasis)
+void gsMPBESHSplineBasis<d,T>::refineWithExtension(const index_t patch,gsMatrix<T> const & boxes, int refExt,bool updateBasis)
 {
     m_bases[patch]->refine( boxes, refExt);
     std::vector<gsMatrix<T> *> coefs;
@@ -316,7 +328,7 @@ void gsCompositeHBasis<d,T>::refineWithExtension(const index_t patch,gsMatrix<T>
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::repairPatches(std::vector<gsMatrix<T> *> & coefs, index_t startFromPatch)
+void gsMPBESHSplineBasis<d,T>::repairPatches(std::vector<gsMatrix<T> *> & coefs, index_t startFromPatch)
 {
     std::vector<size_t> toCheck; //set of all indizes of patches, which have to be checked
     if(startFromPatch==-1)
@@ -359,7 +371,7 @@ void gsCompositeHBasis<d,T>::repairPatches(std::vector<gsMatrix<T> *> & coefs, i
 }
 
 template<short_t d, class T>
-bool gsCompositeHBasis<d,T>::_innerBoxesAreSuitable(const index_t patch,
+bool gsMPBESHSplineBasis<d,T>::_innerBoxesAreSuitable(const index_t patch,
                             std::vector<index_t>& boxes)
 {
     size_t sz = boxes.size();
@@ -404,7 +416,7 @@ bool gsCompositeHBasis<d,T>::_innerBoxesAreSuitable(const index_t patch,
 }
 
 template<short_t d, class T>
-bool gsCompositeHBasis<d,T>::_boxesMatchNeighbours(const index_t patch,
+bool gsMPBESHSplineBasis<d,T>::_boxesMatchNeighbours(const index_t patch,
                            std::vector<index_t>& boxes, std::vector<index_t>& checkPatches)
 {
     unsigned sz = boxes.size();
@@ -467,7 +479,7 @@ bool gsCompositeHBasis<d,T>::_boxesMatchNeighbours(const index_t patch,
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::_addBoundaryBox(const index_t patch,const boxSide s,const int start, const int end,const unsigned level, std::vector<index_t> & boxes, std::vector<bool> & sideToCheck)
+void gsMPBESHSplineBasis<d,T>::_addBoundaryBox(const index_t patch,const boxSide s,const int start, const int end,const unsigned level, std::vector<index_t> & boxes, std::vector<bool> & sideToCheck)
 {
     short_t u_max = basis(patch).getBases()[level]->size(0)-1;
     short_t v_max = basis(patch).getBases()[level]->size(1)-1;
@@ -515,7 +527,7 @@ void gsCompositeHBasis<d,T>::_addBoundaryBox(const index_t patch,const boxSide s
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::_addFunBox(const index_t patch,const unsigned uMin,const unsigned vMin,const unsigned uMax,const unsigned vMax,const unsigned level, std::vector<index_t> & boxes)
+void gsMPBESHSplineBasis<d,T>::_addFunBox(const index_t patch,const unsigned uMin,const unsigned vMin,const unsigned uMax,const unsigned vMax,const unsigned level, std::vector<index_t> & boxes)
 {
     boxes.push_back(level);
     gsMatrix<index_t> supportIndex;
@@ -530,7 +542,7 @@ void gsCompositeHBasis<d,T>::_addFunBox(const index_t patch,const unsigned uMin,
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::_addBox(const index_t patch,const unsigned uMin,const unsigned vMin,const unsigned uMax,const unsigned vMax,const unsigned level, std::vector<index_t> & boxes)
+void gsMPBESHSplineBasis<d,T>::_addBox(const index_t patch,const unsigned uMin,const unsigned vMin,const unsigned uMax,const unsigned vMax,const unsigned level, std::vector<index_t> & boxes)
 {
     gsVector<index_t,d> lowerLeft;
     lowerLeft(0)=uMin;
@@ -549,7 +561,7 @@ void gsCompositeHBasis<d,T>::_addBox(const index_t patch,const unsigned uMin,con
 }
 
 template<short_t d, class T>
-void gsCompositeHBasis<d,T>::_endpointsOfActiveBoundaryFunctions(patchSide const & ps,bool orient,std::vector<T>& endpoints) const
+void gsMPBESHSplineBasis<d,T>::_endpointsOfActiveBoundaryFunctions(patchSide const & ps,bool orient,std::vector<T>& endpoints) const
 {
     int patch = ps.patch;
     unsigned deg = degree(patch,1-(ps.direction()));
@@ -571,7 +583,7 @@ void gsCompositeHBasis<d,T>::_endpointsOfActiveBoundaryFunctions(patchSide const
 }
 
 template<short_t d, class T>
-T gsCompositeHBasis<d,T>::findParameter(patchSide const & ps,patchCorner const & pc,unsigned nrBasisFuncs) const
+T gsMPBESHSplineBasis<d,T>::findParameter(patchSide const & ps,patchCorner const & pc,unsigned nrBasisFuncs) const
 {
     if(nrBasisFuncs==0)
         return 0.0;

@@ -194,7 +194,7 @@ void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, 
     for (index_t i = 0; i!=u.cols(); ++i)
     {
         m_bases[patch]->active_into(u.col(i), bact);
-        act0 = std::vector<index_t>(bact.col(i).data(), bact.col(i).data()+bact.col(i).rows());
+        act0 = std::vector<index_t>(bact.data(), bact.data()+bact.rows());
         m_bases[patch]->eval_into(u.col(i), beval);
         std::transform(act0.begin(), act0.end(), act0.begin(),
                        GS_BIND2ND(std::plus<index_t>(), shift));

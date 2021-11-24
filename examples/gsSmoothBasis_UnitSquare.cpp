@@ -1,6 +1,6 @@
-/** @file gsCompositeBasis_test.h
+/** @file gsSmoothBasis_UnitSquare.h
 
-    @brief File testing the gsCompositeBasis class.
+    @brief File testing the various gsUnstructuredSpline classes with a shell on a unit square.
 
     This file is part of the G+Smo library.
 
@@ -13,13 +13,11 @@
 
 #include <gismo.h>
 
-// #include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-// #include <gsMSplines/gsCompositeIncrSmoothnessGeom.h>
-
-#include <gsMSplines/gsDPatch.h>
-
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESSpline.h>
+#include <gsUnstructuredSplines/gsDPatch.h>
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
-// #include <gsUnstructuredSplines/gsC1Spline.h>
+#include <gsUnstructuredSplines/gsC1SurfSpline.h>
 
 #include <gsKLShell/gsThinShellAssembler.h>
 #include <gsKLShell/gsMaterialMatrixLinear.h>
@@ -307,6 +305,8 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> geom = mp;
 
+    bc.setGeoMap(mp);
+
     // p-refine
     if (numElevate!=0)
         mp.degreeElevate(numElevate);
@@ -346,7 +346,8 @@ int main(int argc, char *argv[])
     {
         ampl = 1;
         // Clamped edges
-        sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
+        // sprintf(buffer1,"-6*%e*%e^3*%e*(x^4 - 2*x^3 + 12*(-1/2 + y)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)/(3*%e^2 - 3)",ampl,thickness,E_modulus,PoissonRatio);
+        sprintf(buffer1,"24*%e*%e*(x^4 - 2*x^3 + 12*(y - 1/2)^2*x^2 + (-12*y^2 + 12*y - 2)*x + y^4 - 2*y^3 + 3*y^2 - 2*y + 1/3)",ampl,D);
         sprintf(buffer2,"%e*x^2*(x - 1)^2*y^2*(y - 1)^2",ampl);
     }
     else
@@ -399,11 +400,13 @@ int main(int argc, char *argv[])
         time.restart();
         if (smoothing==0)
         {
-            // gsCompositeIncrSmoothnessGeom<2,real_t> cgeom(mp,3);
-            // gsCompositeIncrSmoothnessBasis<2,real_t> & basis = dynamic_cast<gsCompositeIncrSmoothnessBasis<2,real_t>&>(cgeom.getCompBasis());
+            gsMPBESSpline<2,real_t> cgeom(mp,3);
+            gsMappedBasis<2,real_t> basis = cgeom.getMappedBasis();
 
-            // global2local = basis.getMapper().asMatrix();
-            // geom = cgeom.exportToPatches();
+            global2local = basis.getMapper().asMatrix();
+            geom = cgeom.exportToPatches();
+            auto container = basis.getBasesCopy();
+            dbasis = gsMultiBasis<>(container,mp.topology());
         }
         else if (smoothing==1)
         {
@@ -436,7 +439,13 @@ int main(int argc, char *argv[])
         }
         else if (smoothing==3) // Andrea
         {
+            gsC1SurfSpline<2,real_t> smoothC1(mp,dbasis);
+            smoothC1.init();
+            smoothC1.compute();
 
+            global2local = smoothC1.getSystem();
+            global2local = global2local.transpose();
+            smoothC1.getMultiBasis(dbasis);
         }
         else
             GISMO_ERROR("Option "<<smoothing<<" for smoothing does not exist");

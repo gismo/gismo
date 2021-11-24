@@ -1,4 +1,4 @@
-/** @file gsHB2DMapMaker.h
+/** @file gsMPBESMapHB2D.h
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -11,7 +11,7 @@
     Author(s): F. Buchegger
 */
 
-// This class gsMapMaker has the sole purpose of creating a mapping of the type gsCompositeMapper
+// This class gsMPBESMapHB2D has the sole purpose of creating a mapping of the type gsWeightMapper
 
 #pragma once
 
@@ -19,8 +19,8 @@
 #include <gsCore/gsBoxTopology.h>
 #include <gsNurbs/gsKnotVector.h>
 
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-#include <gsMSplines/gsCompositeMapFactoryTensor.h>
+#include <gsMSplines/gsMPBESBasis.h>
+#include <gsMSplines/gsMPBESMapTensor.h>
 
 #define TO_HTENSOR(x) static_cast<const gsHTensorBasis<d,T> *>(x)
 #define TO_BSPLINE(x) static_cast<const gsTensorBSplineBasis<d,T> *>(x)
@@ -36,19 +36,19 @@ namespace gismo
       \ingroup basis
   */
 
-template<short_t d,class T,class MapType>
-class gsCompositeMapFactoryHB2D : public gsCompositeMapFactoryTensor<d,T,MapType>
+template<short_t d,class T>
+class gsMPBESMapHB2D : public gsMPBESMapTensor<d,T>
 {
     //static const int d = 2;
 private:
     typedef gsBasis<T> BasisType;
-    typedef gsCompositeMapFactoryTensor<d,T,MapType> Base;
+    typedef gsMPBESMapTensor<d,T> Base;
 public:
-    gsCompositeMapFactoryHB2D(int incrSmoothnessDegree, gsBoxTopology * topol, gsCompositeIncrSmoothnessBasis<d,T> * basis) :
+    gsMPBESMapHB2D(int incrSmoothnessDegree, gsBoxTopology * topol, gsMPBESBasis<d,T> * basis) :
         Base(incrSmoothnessDegree,topol,basis)
     { }
 
-    ~gsCompositeMapFactoryHB2D() { }
+    ~gsMPBESMapHB2D() { }
 
 private:
     using Base::m_basis;

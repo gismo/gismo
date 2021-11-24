@@ -1,4 +1,4 @@
-/** @file gsCompositeBSplineBasis.h
+/** @file gsMPBESBSplineBasis.h
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-#include <gsMSplines/gsCompositeMapFactoryB2D.h>
+#include <gsMSplines/gsMPBESBasis.h>
+#include <gsMSplines/gsMPBESMapB2D.h>
 #include <gsNurbs/gsKnotVector.h>
 
 namespace gismo
@@ -29,20 +29,20 @@ namespace gismo
   */
 
 template<short_t d, class T>
-class gsCompositeBSplineBasis : public gsCompositeIncrSmoothnessBasis<d,T>
+class gsMPBESBSplineBasis : public gsMPBESBasis<d,T>
 {
 public:
-    /// Shared pointer for gsCompositeBSplineBasis
-    typedef memory::shared_ptr< gsCompositeBSplineBasis > Ptr;
+    /// Shared pointer for gsMPBESBSplineBasis
+    typedef memory::shared_ptr< gsMPBESBSplineBasis > Ptr;
 
-    /// Unique pointer for gsCompositeBSplineBasis
-    typedef memory::unique_ptr< gsCompositeBSplineBasis > uPtr;
+    /// Unique pointer for gsMPBESBSplineBasis
+    typedef memory::unique_ptr< gsMPBESBSplineBasis > uPtr;
 
     /// Dimension of the parameter domain
     static const short_t Dim = d;
 
     typedef index_t                                             indexType;
-    typedef gsCompositeIncrSmoothnessBasis<d,T>                 Base;
+    typedef gsMPBESBasis<d,T>                                   Base;
     typedef gsTensorBSplineBasis<d,T>                           BasisType;
     typedef typename std::vector<BasisType *>                   BasisContainer;
     typedef typename std::vector<gsBasis<T>* >::const_iterator  ConstBasisIter;
@@ -70,40 +70,34 @@ public:
 protected:
     using Base::_getPatch;
     using Base::_getPatchIndex;
-    using Base::_setMapping;
     using Base::_initVertices;
     using Base::_setDistanceOfAllVertices;
 
 public:
     /// Default empty constructor
-    gsCompositeBSplineBasis()
+    gsMPBESBSplineBasis()
     { }
 
-    gsCompositeBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,
+    gsMPBESBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,
                              int increaseSmoothnessLevel=-1, int minEVDistance=-1);
 
-    gsCompositeBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,std::vector<gsMatrix<T> * > coefs,
+    gsMPBESBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,std::vector<gsMatrix<T> * > coefs,
                              int increaseSmoothnessLevel=-1, int minEVDistance=-1);
 
-    gsCompositeBSplineBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel = -1,
+    gsMPBESBSplineBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel = -1,
                              int minEVDistance=-1);
 
-    gsCompositeBSplineBasis( const gsCompositeBSplineBasis& other );
+    gsMPBESBSplineBasis( const gsMPBESBSplineBasis& other );
 
-    gsCompositeBSplineBasis<d,T> & operator=( const gsCompositeBSplineBasis& other );
+    gsMPBESBSplineBasis<d,T> & operator=( const gsMPBESBSplineBasis& other );
 
-    ~gsCompositeBSplineBasis()
+    ~gsMPBESBSplineBasis()
     { } //destructor
 
 private:
     //////////////////////////////////////////////////
     // functions for initializing and updating
     //////////////////////////////////////////////////
-
-    gsCompositeMapFactoryB2D<d,T,gsCompositeMapperMatrix<T> > * _getMapFactory()
-    {
-        return new gsCompositeMapFactoryB2D<d,T,gsCompositeMapperMatrix<T> >(m_incrSmoothnessDegree,& m_topol,this);
-    }
 
     bool _checkTopologyWithBases() const
     {
@@ -160,13 +154,16 @@ private:
         return consistent;
     }
 
+protected:
+    void _setMapping();
+
 public:
     //////////////////////////////////////////////////
     // general functions for interacting with this class
     //////////////////////////////////////////////////
 
     /// Clone function. Used to make a copy of a derived basis
-    GISMO_CLONE_FUNCTION(gsCompositeBSplineBasis)
+    GISMO_CLONE_FUNCTION(gsMPBESBSplineBasis)
 
     gsTensorBSplineBasis<d,T> & basis(size_t i)
     { return static_cast<gsTensorBSplineBasis<d,T>&>(*m_bases[i]); }
@@ -235,7 +232,7 @@ protected:
 
     T findParameter(patchSide const & ps,patchCorner const & pc,unsigned nrBasisFuncs) const;
 
-}; // class gsCompositeBSplineBasis
+}; // class gsMPBESBSplineBasis
 
 }
 

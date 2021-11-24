@@ -1,4 +1,4 @@
-/** @file gsCompositeBasis_.cpp
+/** @file gsDPatch_.cpp
 
     @brief instantiation file
 
@@ -16,17 +16,9 @@
 #include <gsMSplines/gsDPatch.h>
 #include <gsMSplines/gsDPatch.hpp>
 
-#include <gsMSplines/gsDPatchGeom.h>
-#include <gsMSplines/gsDPatchGeom.hpp>
-
-#include <gsMSplines/gsDPatchBasis.h>
-#include <gsMSplines/gsDPatchBasis.hpp>
-
 namespace gismo
 {
 
     CLASS_TEMPLATE_INST gsDPatch<2,real_t> ;
-    CLASS_TEMPLATE_INST gsDPatchGeom<2,real_t> ;
-    CLASS_TEMPLATE_INST gsDPatchBasis<2,real_t> ;
 
 } // end namespace gismo

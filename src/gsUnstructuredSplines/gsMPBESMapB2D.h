@@ -1,4 +1,4 @@
-/** @file gsB2DMapMaker.h
+/** @file gsMPBESMapB2D.h
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -11,14 +11,16 @@
     Author(s): F. Buchegger
 */
 
+// This class gsMPBESMapB2D has the sole purpose of creating a mapping of the type gsWeightMapper
+
 #pragma once
 
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsBoxTopology.h>
 #include <gsNurbs/gsKnotVector.h>
 
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-#include <gsMSplines/gsCompositeMapFactoryTensor.h>
+#include <gsMSplines/gsMPBESBasis.h>
+#include <gsMSplines/gsMPBESMapTensor.h>
 
 #define TO_BSPLINE(x) static_cast<const gsTensorBSplineBasis<d,T> *>(x)
 
@@ -33,19 +35,19 @@ namespace gismo
       \ingroup basis
   */
 
-template<short_t d,class T,class MapType>
-class gsCompositeMapFactoryB2D : public gsCompositeMapFactoryTensor<d,T,MapType>
+template<short_t d,class T>
+class gsMPBESMapB2D : public gsMPBESMapTensor<d,T>
 {
     //static const int d = 2;
 private:
     typedef gsBasis<T> BasisType;
-    typedef gsCompositeMapFactoryTensor<d,T,MapType> Base;
+    typedef gsMPBESMapTensor<d,T> Base;
 public:
-    gsCompositeMapFactoryB2D(int incrSmoothnessDegree, gsBoxTopology * topol, gsCompositeIncrSmoothnessBasis<d,T> * basis) :
+    gsMPBESMapB2D(int incrSmoothnessDegree, gsBoxTopology * topol, gsMPBESBasis<d,T> * basis) :
         Base(incrSmoothnessDegree,topol,basis)
     { }
 
-    ~gsCompositeMapFactoryB2D() { }
+    ~gsMPBESMapB2D() { }
 
 private:
     using Base::m_incrSmoothnessDegree;

@@ -3,9 +3,9 @@
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-#include <gsMSplines/gsCompositeHBasis.h>
-#include <gsMSplines/gsCompositeBSplineBasis.h>
+#include <gsMSplines/gsMPBESBasis.h>
+#include <gsMSplines/gsMPBESHSplineBasis.h>
+#include <gsMSplines/gsMPBESBSplineBasis.h>
 
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsReadFile.h>
@@ -14,9 +14,9 @@ namespace gismo
 {
 
 template<short_t d, class T>
-gsCompositeIncrSmoothnessBasis<d,T> * getCompBasisFromMultiPatch(const gsMultiPatch<> & mp,int incrSmoothness = -1,int minEVDistance = -1 )
+gsMPBESBasis<d,T> * getCompBasisFromMultiPatch(const gsMultiPatch<> & mp,int incrSmoothness = -1,int minEVDistance = -1 )
 {
-    gsCompositeIncrSmoothnessBasis<d,T> * compBasis=NULL;
+    gsMPBESBasis<d,T> * compBasis=NULL;
     bool tensorBSpline= true;
     bool hTensor = true;
     std::vector<gsTensorBSplineBasis<d,T>* >tensorBases;
@@ -26,7 +26,7 @@ gsCompositeIncrSmoothnessBasis<d,T> * getCompBasisFromMultiPatch(const gsMultiPa
         tensorBSpline = tensorBSpline && tensorBases[i]!=NULL;
     }
     if(tensorBSpline)
-        compBasis = (new gsCompositeBSplineBasis<d,T>(tensorBases,mp,incrSmoothness,minEVDistance));
+        compBasis = (new gsMPBESBSplineBasis<d,T>(tensorBases,mp,incrSmoothness,minEVDistance));
     else
     {
         std::vector<gsHTensorBasis<d,T>* >hBases;
@@ -36,16 +36,16 @@ gsCompositeIncrSmoothnessBasis<d,T> * getCompBasisFromMultiPatch(const gsMultiPa
             hTensor = hTensor && hBases[i]!=NULL;
         }
         if(hTensor)
-            compBasis = (new gsCompositeHBasis<d,T>(hBases,mp,incrSmoothness,minEVDistance));
+            compBasis = (new gsMPBESHSplineBasis<d,T>(hBases,mp,incrSmoothness,minEVDistance));
     }
     GISMO_ASSERT(tensorBSpline||hTensor,"No suitable basis for gsMappedBasis found.");
     return compBasis;
 }
 
 template<short_t d, class T>
-gsCompositeIncrSmoothnessBasis<d,T> * getCompBasisFromMultiPatch_withCoefs(const gsMultiPatch<> & mp, std::vector<gsMatrix<T>* >&coefs,int incrSmoothness = -1,int minEVDistance = -1 )
+gsMPBESBasis<d,T> * getCompBasisFromMultiPatch_withCoefs(const gsMultiPatch<> & mp, std::vector<gsMatrix<T>* >&coefs,int incrSmoothness = -1,int minEVDistance = -1 )
 {
-    gsCompositeIncrSmoothnessBasis<d,T> * compBasis=NULL;
+    gsMPBESBasis<d,T> * compBasis=NULL;
     bool tensorBSpline= true;
     bool hTensor = true;
     std::vector<gsTensorBSplineBasis<d,T>* >tensorBases;
@@ -55,7 +55,7 @@ gsCompositeIncrSmoothnessBasis<d,T> * getCompBasisFromMultiPatch_withCoefs(const
         tensorBSpline = tensorBSpline && tensorBases[i]!=NULL;
     }
     if(tensorBSpline)
-        compBasis = (new gsCompositeBSplineBasis<d,T>(tensorBases,mp,coefs,incrSmoothness,minEVDistance));
+        compBasis = (new gsMPBESBSplineBasis<d,T>(tensorBases,mp,coefs,incrSmoothness,minEVDistance));
     else
     {
         std::vector<gsHTensorBasis<d,T>* >hBases;
@@ -65,7 +65,7 @@ gsCompositeIncrSmoothnessBasis<d,T> * getCompBasisFromMultiPatch_withCoefs(const
             hTensor = hTensor && hBases[i]!=NULL;
         }
         if(hTensor)
-            compBasis = (new gsCompositeHBasis<d,T>(hBases,mp,coefs,incrSmoothness,minEVDistance));
+            compBasis = (new gsMPBESHSplineBasis<d,T>(hBases,mp,coefs,incrSmoothness,minEVDistance));
     }
     GISMO_ASSERT(tensorBSpline||hTensor,"No suitable basis for gsMappedBasis found.");
     return compBasis;

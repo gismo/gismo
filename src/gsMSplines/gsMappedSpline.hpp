@@ -67,16 +67,17 @@ gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseM
     for (size_t p=0; p!=mp.nPatches(); ++p)
         rows += mp.patch(p).coefs().rows();
 
-    m_local.resize(rows,cols);
+    gsMatrix<T> local;
+    local.resize(rows,cols);
 
     index_t offset = 0;
     for (size_t p=0; p!=mp.nPatches(); ++p)
     {
-        m_local.block(offset,0,mp.patch(p).coefs().rows(),cols) = mp.patch(p).coefs();
+        local.block(offset,0,mp.patch(p).coefs().rows(),cols) = mp.patch(p).coefs();
         offset += mp.patch(p).coefs().rows();
     }
 
-    m_mbases->local_coef_to_global_coef(m_local,m_global);
+    m_mbases->local_coef_to_global_coef(local,m_global);
 
     init(*m_mbases);
 }
@@ -220,12 +221,9 @@ void gsMappedSpline<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<
 template<short_t d,class T>
 gsMultiPatch<T> gsMappedSpline<d,T>::exportToPatches() const
 {
-    gsMatrix<T> local = m_local;
-    if (m_local.rows()==0)
-        m_mbases->global_coef_to_local_coef(m_global,local);
+    gsMatrix<T> local;
+    m_mbases->global_coef_to_local_coef(m_global,local);
     return m_mbases->exportToPatches(local);
-
-
 
     // gsMultiPatch<T> mp;
     // gsFunction<T> * msinglesplinefun;

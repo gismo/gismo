@@ -1,4 +1,4 @@
-/** @file gsCompositeIncrSmoothnessGeom_.cpp
+/** @file gsMPBESBSplineBasis_.cpp
 
     @brief instantiation file
 
@@ -13,13 +13,13 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsMSplines/gsCompositeIncrSmoothnessGeom.h>
-#include <gsMSplines/gsCompositeIncrSmoothnessGeom.hpp>
+#include <gsMSplines/gsMPBESBSplineBasis.h>
+#include <gsMSplines/gsMPBESBSplineBasis.hpp>
 
 namespace gismo
 {
 
-    CLASS_TEMPLATE_INST gsCompositeIncrSmoothnessGeom<1,real_t> ;
-    CLASS_TEMPLATE_INST gsCompositeIncrSmoothnessGeom<2,real_t> ;
+    CLASS_TEMPLATE_INST gsMPBESBSplineBasis<1,real_t> ;
+    CLASS_TEMPLATE_INST gsMPBESBSplineBasis<2,real_t> ;
 
 } // end namespace gismo

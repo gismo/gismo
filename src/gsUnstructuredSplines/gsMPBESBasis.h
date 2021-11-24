@@ -1,4 +1,4 @@
-/** @file gsCompositeIncrSmoothnessBasis.h
+/** @file gsMPBESBasis.h
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -15,16 +15,9 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsMSplines/gsMappedBasis.h>
-#include <gsMSplines/gsMapFactory.h>
 
 namespace gismo
 {
-
-template<class T> class gsCompositeMapperMatrix
-{
-    // (!) this class does not exist (!)
-};
-
 /** \brief
     Purely abstract class gsMappedBasis, which gives means of combining basis functions to new, global ones.
 
@@ -50,7 +43,7 @@ template<class T> class gsCompositeMapperMatrix
   */
 
 template<short_t d, class T>
-class gsCompositeIncrSmoothnessBasis : public gsMappedBasis<d,T>
+class gsMPBESBasis : public gsMappedBasis<d,T>
 {
 private:
     /// Dimension of the parameter domains
@@ -76,11 +69,11 @@ protected:
     using gsMappedBasis<d,T>::m_topol;
     using gsMappedBasis<d,T>::m_bases;
 public:
-    /// Shared pointer for gsCompositeIncrSmoothnessBasis
-    typedef memory::shared_ptr< gsCompositeIncrSmoothnessBasis > Ptr;
+    /// Shared pointer for gsMPBESBasis
+    typedef memory::shared_ptr< gsMPBESBasis > Ptr;
 
-    /// Unique pointer for gsCompositeIncrSmoothnessBasis
-    typedef memory::unique_ptr< gsCompositeIncrSmoothnessBasis > uPtr;
+    /// Unique pointer for gsMPBESBasis
+    typedef memory::unique_ptr< gsMPBESBasis > uPtr;
 
     using gsMappedBasis<d,T>::size;
     using gsMappedBasis<d,T>::degree;
@@ -88,13 +81,13 @@ public:
 
 public:
     /// Default empty constructor
-    gsCompositeIncrSmoothnessBasis() : gsMappedBasis<d,T>()
+    gsMPBESBasis() : gsMappedBasis<d,T>()
     {
 //        m_mapper = NULL;
     }
 
     /// constructor, deletes all the bases and the mapper
-    virtual ~gsCompositeIncrSmoothnessBasis()
+    virtual ~gsMPBESBasis()
     {
 
     } //destructor
@@ -118,16 +111,13 @@ protected:
     { return m_bases[i]; }
 
     /// create a new mapping of the local basisfunctions
-    void _setMapping();
+    virtual void _setMapping() = 0;
 
     /// initializes the m_vertices field
     void _initVertices();
 
     /// initializes the m_distances field
     void _setDistanceOfAllVertices();
-
-    /// gives back a mapfactory, which will create the map
-    virtual gsMapFactory * _getMapFactory() = 0;
 
     /// Checks the gsMappedBasis for consistency
     bool _check() const;
@@ -144,7 +134,7 @@ public:
     short_t dim() const { return Dim; }
 
     /// Clone function. Used to make a copy of a derived basis
-    GISMO_UPTR_FUNCTION_PURE(gsCompositeIncrSmoothnessBasis, clone)
+    GISMO_UPTR_FUNCTION_PURE(gsMPBESBasis, clone)
 
     /// Prints the object as a string with extended details.
     std::string detail() const
@@ -359,7 +349,7 @@ private:
         /// Construct distances by a given interface, two patchCorners and the associated
         /// gsMappedBasis
         distances(const boundaryInterface&  iface, const patchCorner& pc1,
-                  const patchCorner& pc2,const gsCompositeIncrSmoothnessBasis<d,T>& basis);
+                  const patchCorner& pc2,const gsMPBESBasis<d,T>& basis);
 
         /// checks if this distances struct ressembles the interface given
         bool isDistancesOfInterface(const boundaryInterface& bi) const
@@ -369,14 +359,14 @@ private:
 
         /// sets the parametric distance of the edge starting from \a pc
         /// to get the c^0 distance from \a absoluteVal basisfunctions.
-        void setParamDist(unsigned absoluteVal,const patchCorner& pc,const gsCompositeIncrSmoothnessBasis<d,T>& basis);
+        void setParamDist(unsigned absoluteVal,const patchCorner& pc,const gsMPBESBasis<d,T>& basis);
 
         /// gets the parametric distance from the corner \a pc
-        T getParamDist(const patchCorner& pc,const gsCompositeIncrSmoothnessBasis<d,T>& basis) const;
+        T getParamDist(const patchCorner& pc,const gsMPBESBasis<d,T>& basis) const;
 
         /// determines the right values for the two distances, only used in the constructer
         void _determineValues(patchSide side,patchSide ls,patchSide rs,int dist,unsigned degree,unsigned max,
-                              unsigned& left,unsigned& right,const gsCompositeIncrSmoothnessBasis<d,T>& basis) const;
+                              unsigned& left,unsigned& right,const gsMPBESBasis<d,T>& basis) const;
     };
 
     // Data members
@@ -400,5 +390,5 @@ protected:
 //////////////////////////////////////////////////
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsCompositeIncrSmoothnessBasis.hpp)
+#include GISMO_HPP_HEADER(gsMPBESBasis.hpp)
 #endif

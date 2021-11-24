@@ -1,4 +1,4 @@
-/** @file gsCompositeBSplineBasis.hpp
+/** @file gsMPBESBSplineBasis.hpp
 
     @brief Provides implementation
 
@@ -11,8 +11,8 @@
     Author(s): F. Buchegger
 */
 
-#include <gsMSplines/gsCompositeBSplineBasis.h>
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
+#include <gsMSplines/gsMPBESBSplineBasis.h>
+#include <gsMSplines/gsMPBESBasis.h>
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
@@ -20,7 +20,7 @@ namespace gismo
 {
 
 template<short_t d, class T>
-gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,
+gsMPBESBSplineBasis<d,T>::gsMPBESBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,
                                                        int increaseSmoothnessLevel, int minEVDistance)
 {
     m_topol = topol;
@@ -42,7 +42,7 @@ gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis (const BasisContainer & ba
 }
 
 template<short_t d, class T>
-gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,std::vector<gsMatrix<T> * > coefs,
+gsMPBESBSplineBasis<d,T>::gsMPBESBSplineBasis (const BasisContainer & bases, gsBoxTopology const & topol,std::vector<gsMatrix<T> * > coefs,
                                                        int increaseSmoothnessLevel, int minEVDistance)
 {
     m_topol = topol;
@@ -64,7 +64,7 @@ gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis (const BasisContainer & ba
 }
 
 template<short_t d, class T>
-gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel,
+gsMPBESBSplineBasis<d,T>::gsMPBESBSplineBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel,
                                                        int minEVDistance)
 {
     //topol.computeAllVertices();
@@ -90,7 +90,7 @@ gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis( gsMultiPatch<T> const & m
 }
 
 template<short_t d, class T>
-gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis( const gsCompositeBSplineBasis& other )
+gsMPBESBSplineBasis<d,T>::gsMPBESBSplineBasis( const gsMPBESBSplineBasis& other )
 {
     m_topol = other.m_topol;
     m_vertices = other.m_vertices;
@@ -110,7 +110,7 @@ gsCompositeBSplineBasis<d,T>::gsCompositeBSplineBasis( const gsCompositeBSplineB
 }
 
 template<short_t d, class T>
-gsCompositeBSplineBasis<d,T> &gsCompositeBSplineBasis<d,T>::operator=( const gsCompositeBSplineBasis& other )
+gsMPBESBSplineBasis<d,T> &gsMPBESBSplineBasis<d,T>::operator=( const gsMPBESBSplineBasis& other )
 {
     m_topol=other.m_topol;
     m_vertices=other.m_vertices;
@@ -119,7 +119,7 @@ gsCompositeBSplineBasis<d,T> &gsCompositeBSplineBasis<d,T>::operator=( const gsC
     freeAll(m_bases);
     m_bases.clear();
     for(ConstBasisIter it = other.m_bases.begin();it!=other.m_bases.end();++it)
-        m_bases.push_back( (gsBasis<T>*)(*it)->clone().release() );
+        m_bases.push_back((BasisType*)(*it)->clone().release());
     if(m_mapper)
         delete m_mapper;
     m_mapper=NULL;//other.m_mapper->clone();
@@ -129,7 +129,17 @@ gsCompositeBSplineBasis<d,T> &gsCompositeBSplineBasis<d,T>::operator=( const gsC
 }
 
 template<short_t d, class T>
-unsigned gsCompositeBSplineBasis<d,T>::basisFunctionsOnSide(const patchSide& ps) const
+void gsMPBESBSplineBasis<d,T>::_setMapping()
+{
+    // * Initializer mapper
+    gsMPBESMapB2D<d,T> maker(m_incrSmoothnessDegree,& m_topol,this);
+    if(m_mapper)
+        delete m_mapper;
+    m_mapper = maker.makeMapper();
+}
+
+template<short_t d, class T>
+unsigned gsMPBESBSplineBasis<d,T>::basisFunctionsOnSide(const patchSide& ps) const
 {
     if(ps.side()==1||ps.side()==2)
         return basis(ps.patch).size(1);
@@ -138,7 +148,7 @@ unsigned gsCompositeBSplineBasis<d,T>::basisFunctionsOnSide(const patchSide& ps)
 }
 
 template<short_t d, class T>
-bool gsCompositeBSplineBasis<d,T>::isLocallyConnected(indexType i,indexType j) const
+bool gsMPBESBSplineBasis<d,T>::isLocallyConnected(indexType i,indexType j) const
 {
     unsigned patch_i = _getPatch(i), patch_j = _getPatch(j);
     if( patch_i != patch_j )
@@ -157,7 +167,7 @@ bool gsCompositeBSplineBasis<d,T>::isLocallyConnected(indexType i,indexType j) c
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::numActive_into(const index_t patch,const gsMatrix<T> & u, gsVector<index_t>& result) const
+void gsMPBESBSplineBasis<d,T>::numActive_into(const index_t patch,const gsMatrix<T> & u, gsVector<index_t>& result) const
 {
     result.resize(u.cols());
     for(int i = 0; i<u.cols();++i)
@@ -167,7 +177,7 @@ void gsCompositeBSplineBasis<d,T>::numActive_into(const index_t patch,const gsMa
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::refine(const index_t patch,const std::vector<T>& knots_u, const std::vector<T>& knots_v,bool updateBasis)
+void gsMPBESBSplineBasis<d,T>::refine(const index_t patch,const std::vector<T>& knots_u, const std::vector<T>& knots_v,bool updateBasis)
 {
     std::vector<std::vector<T> >refineKnots(2);
     refineKnots[0]=knots_u;
@@ -181,7 +191,7 @@ void gsCompositeBSplineBasis<d,T>::refine(const index_t patch,const std::vector<
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::refine(const index_t patch, gsMatrix<T> const & boxes, bool updateBasis)
+void gsMPBESBSplineBasis<d,T>::refine(const index_t patch, gsMatrix<T> const & boxes, bool updateBasis)
 {
     std::vector<std::vector<T> > refineKnots;
     _boxToRefineKnots(patch,boxes,refineKnots);
@@ -189,7 +199,7 @@ void gsCompositeBSplineBasis<d,T>::refine(const index_t patch, gsMatrix<T> const
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::refineElements(const index_t patch, std::vector<index_t> const & boxes, bool updateBasis)
+void gsMPBESBSplineBasis<d,T>::refineElements(const index_t patch, std::vector<index_t> const & boxes, bool updateBasis)
 {
     gsMatrix<T> mat_boxes;
     _boxesVectorToMatrix(boxes,mat_boxes);
@@ -197,7 +207,7 @@ void gsCompositeBSplineBasis<d,T>::refineElements(const index_t patch, std::vect
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::refine_withCoefs(gsMatrix<T>& localCoef, const index_t patch,const std::vector<T>& knots_u, const std::vector<T>& knots_v,
+void gsMPBESBSplineBasis<d,T>::refine_withCoefs(gsMatrix<T>& localCoef, const index_t patch,const std::vector<T>& knots_u, const std::vector<T>& knots_v,
                                                     bool updateBasis)
 {
     std::vector<std::vector<T> >refineKnots(2);
@@ -236,7 +246,7 @@ void gsCompositeBSplineBasis<d,T>::refine_withCoefs(gsMatrix<T>& localCoef, cons
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::refine_withCoefs(gsMatrix<T>& coefs, const index_t patch, gsMatrix<T> const & boxes,
+void gsMPBESBSplineBasis<d,T>::refine_withCoefs(gsMatrix<T>& coefs, const index_t patch, gsMatrix<T> const & boxes,
                                                     bool updateBasis)
 {
     std::vector<std::vector<T> > refineKnots;
@@ -245,7 +255,7 @@ void gsCompositeBSplineBasis<d,T>::refine_withCoefs(gsMatrix<T>& coefs, const in
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::refineElements_withCoefs(gsMatrix<T>& coefs, const index_t patch, std::vector<index_t> const & boxes,
+void gsMPBESBSplineBasis<d,T>::refineElements_withCoefs(gsMatrix<T>& coefs, const index_t patch, std::vector<index_t> const & boxes,
                                                             bool updateBasis)
 {
     gsMatrix<T> mat_boxes;
@@ -254,7 +264,7 @@ void gsCompositeBSplineBasis<d,T>::refineElements_withCoefs(gsMatrix<T>& coefs, 
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::_boxesVectorToMatrix(const std::vector<index_t> & boxes, gsMatrix<T> & mat_boxes)
+void gsMPBESBSplineBasis<d,T>::_boxesVectorToMatrix(const std::vector<index_t> & boxes, gsMatrix<T> & mat_boxes)
 {
     GISMO_ASSERT( boxes.size() % (2 * d + 1 ) == 0, "The points did not define boxes properly. The boxes were not added to the basis.");
     mat_boxes.resize(2,2*(boxes.size()/(2*d + 1)));
@@ -268,7 +278,7 @@ void gsCompositeBSplineBasis<d,T>::_boxesVectorToMatrix(const std::vector<index_
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::_boxToRefineKnots(const index_t patch,gsMatrix<T> const & boxes,std::vector<std::vector<T> > & refineKnots)
+void gsMPBESBSplineBasis<d,T>::_boxToRefineKnots(const index_t patch,gsMatrix<T> const & boxes,std::vector<std::vector<T> > & refineKnots)
 {
     gsTensorBSplineBasis<d,T> & this_base=basis(patch);
     GISMO_ASSERT( boxes.rows() == this_base.dim() , "Number of rows of refinement boxes must equal dimension of parameter space.");
@@ -305,7 +315,7 @@ void gsCompositeBSplineBasis<d,T>::_boxToRefineKnots(const index_t patch,gsMatri
 }
 
 template<short_t d, class T>
-unsigned gsCompositeBSplineBasis<d,T>::getNrOfSpecialKnots(const gsKnotVector<T> kv,const std::vector<T>& new_knots,bool par,int distance)
+unsigned gsMPBESBSplineBasis<d,T>::getNrOfSpecialKnots(const gsKnotVector<T> kv,const std::vector<T>& new_knots,bool par,int distance)
 {
     int specialKnots=0, index = 0, kv_index, nk_index;
     for(int i=0;i<=distance+kv.degree();++i)
@@ -325,7 +335,7 @@ unsigned gsCompositeBSplineBasis<d,T>::getNrOfSpecialKnots(const gsKnotVector<T>
 }
 
 template<short_t d, class T>
-void gsCompositeBSplineBasis<d,T>::repairPatches(std::vector<gsMatrix<T> *> & coefs,
+void gsMPBESBSplineBasis<d,T>::repairPatches(std::vector<gsMatrix<T> *> & coefs,
                                                  index_t startFromPatch)
 {
     std::set<index_t> toCheck; //set of all indizes of patches, which have to be checked
@@ -357,7 +367,7 @@ void gsCompositeBSplineBasis<d,T>::repairPatches(std::vector<gsMatrix<T> *> & co
 }
 
 template<short_t d, class T>
-bool gsCompositeBSplineBasis<d,T>::_knotsMatchNeighbours(index_t patch,std::vector<std::vector<T> >& knotsToInsert,
+bool gsMPBESBSplineBasis<d,T>::_knotsMatchNeighbours(index_t patch,std::vector<std::vector<T> >& knotsToInsert,
                                                          std::vector<index_t>& checkPatches,
                                                          T eps)
 {
@@ -423,7 +433,7 @@ bool gsCompositeBSplineBasis<d,T>::_knotsMatchNeighbours(index_t patch,std::vect
 }
 
 template<short_t d, class T>
-T gsCompositeBSplineBasis<d,T>::findParameter(patchSide const & ps,patchCorner const & pc,unsigned nrBasisFuncs) const
+T gsMPBESBSplineBasis<d,T>::findParameter(patchSide const & ps,patchCorner const & pc,unsigned nrBasisFuncs) const
 {
     if(nrBasisFuncs==0)
         return 0.0;

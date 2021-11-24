@@ -57,6 +57,7 @@ public:
     { }
 
     gsMappedBasis(gsMultiPatch<T> const & mp, std::string pathToMap )
+    : m_mapper(nullptr)
     {
         gsMultiBasis<T> mb(mp);
         gsSparseMatrix<T> m;
@@ -65,12 +66,14 @@ public:
     }
 
     gsMappedBasis(gsMultiPatch<T> const & mp, const gsSparseMatrix<T> & m )
+    : m_mapper(nullptr)
     {
         gsMultiBasis<T> mb(mp);
         init(mb,m);
     }
 
     gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)
+    : m_mapper(nullptr)
     {
         init(mb,m);
     }
@@ -83,6 +86,8 @@ public:
     {
         GISMO_ASSERT(mb.domainDim()==d, "Error in dimensions");
         m_topol  = mb.topology();
+
+        delete m_mapper;
         m_mapper = new gsWeightMapper<T>(m);
 
         freeAll(m_bases);
@@ -117,6 +122,14 @@ public:
 
      /// getter for m_bases
     const std::vector<BasisType*> getBases() const;
+
+     /// getter for m_bases
+    std::vector<BasisType*> getBasesCopy() const
+    {
+        std::vector<BasisType*> bases;
+        cloneAll(m_bases,bases);
+        return bases;
+    }
 
     /// getter for m_mapper
     gsWeightMapper<T> const & getMapper() const
@@ -364,17 +377,20 @@ protected:
 
     // Data members
 protected:
-    /// topology, specifying the relation (connections) between the patches
+    /// Topology, specifying the relation (connections) between the patches
     gsBoxTopology m_topol;
 
-    /// vector of patches (bases)
+    /// Vector of local bases
     std::vector<BasisType *> m_bases;
 
-    /// map between the local basis functions and the newly created ones
+    /// Map between the local basis functions and the newly created ones
     gsWeightMapper<T> * m_mapper;
     // gsSparseMatrix<T> r:C, c:B
 
+    /// Underlying bases per patch
     std::vector<gsMappedSingleBasis<d,T> > m_sb;
+
+    // Make gsMultiBasis a member instead of m_bases and m_topol?
 };
 
 }

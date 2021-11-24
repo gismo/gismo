@@ -46,7 +46,8 @@ public:
 
     // gsMappedSpline( gsMultiPatch<T> const & mp,std::string pathToMap );
 
-    /// Construct Geom by multipatch and transformation matrix
+    /// Construct Geom by multipatch and transformation matrix.
+    /// The original coefficients are projected in the gsMappedBasis
     gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m );
 
     /// Construct Geom by basis and coefficient matrix
@@ -185,8 +186,11 @@ public:
 
 // Data members
 protected:
+    /// Underlying gsMappedBasis
     gsMappedBasis<d,T> * m_mbases;
-    gsMatrix<T> m_global, m_local;
+    /// Coefficients on the mapped basis
+    gsMatrix<T> m_global;
+    /// Underlying gsMappedSpline per patch
     std::vector<gsMappedSingleSpline<d,T> > m_ss;
 
 }; // class gsMappedSpline

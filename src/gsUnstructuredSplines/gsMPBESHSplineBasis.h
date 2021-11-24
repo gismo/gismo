@@ -1,4 +1,4 @@
-/** @file gsCompositeHBasis.h
+/** @file gsMPBESHSplineBasis.h
 
     @brief Provides declaration of Basis abstract interface.
 
@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsMSplines/gsCompositeIncrSmoothnessBasis.h>
-#include <gsMSplines/gsCompositeMapFactoryHB2D.h>
+#include <gsMSplines/gsMPBESBasis.h>
+#include <gsMSplines/gsMPBESMapHB2D.h>
 #include <gsHSplines/gsHTensorBasis.h>
 
 namespace gismo
@@ -29,22 +29,23 @@ namespace gismo
   */
 
 template<short_t d, class T>
-class gsCompositeHBasis : public gsCompositeIncrSmoothnessBasis<d,T>
+class gsMPBESHSplineBasis : public gsMPBESBasis<d,T>
 {
 public:
-    /// Shared pointer for gsCompositeHBasis
-    typedef memory::shared_ptr< gsCompositeHBasis > Ptr;
+    /// Shared pointer for gsMPBESHSplineBasis
+    typedef memory::shared_ptr< gsMPBESHSplineBasis > Ptr;
 
-    /// Unique pointer for gsCompositeHBasis
-    typedef memory::unique_ptr< gsCompositeHBasis > uPtr;
+    /// Unique pointer for gsMPBESHSplineBasis
+    typedef memory::unique_ptr< gsMPBESHSplineBasis > uPtr;
 
     /// Dimension of the parameter domain
     static const int Dim = d;
 
-    typedef index_t indexType;
-    typedef gsCompositeIncrSmoothnessBasis<d,T> Base;
-    typedef gsHTensorBasis<d,T> BasisType;
-    typedef typename std::vector<gsBasis<T> *>::const_iterator ConstBasisIter;
+    typedef index_t                                             indexType;
+    typedef gsMPBESBasis<d,T>                                   Base;
+    typedef gsHTensorBasis<d,T>                                 BasisType;
+    typedef typename std::vector<BasisType *>                   BasisContainer;
+    typedef typename std::vector<gsBasis<T>* >::const_iterator  ConstBasisIter;
 
 protected:
     using Base::m_bases;
@@ -64,7 +65,6 @@ protected:
     using Base::_getPatch;
     using Base::_getPatchIndex;
     using Base::_setDistanceOfAllVertices;
-    using Base::_setMapping;
     using Base::_initVertices;
 
 //TODO: gsCompactKnotVector to gsKnotVector,
@@ -74,28 +74,28 @@ protected:
 
 public:
     /// Default empty constructor
-    gsCompositeHBasis()
+    gsMPBESHSplineBasis()
     { }
 
-    gsCompositeHBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
+    gsMPBESHSplineBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
                        int increaseSmoothnessLevel=-1, int minEVDistance=-1);
 
-    gsCompositeHBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
+    gsMPBESHSplineBasis (std::vector<BasisType *> const & bases, gsBoxTopology const & topol,
                        std::vector<gsMatrix<T> * > & coefs,int increaseSmoothnessLevel=-1, int minEVDistance=-1);
 
-    gsCompositeHBasis (BasisType const & base, gsBoxTopology const & topol);
+    gsMPBESHSplineBasis (BasisType const & base, gsBoxTopology const & topol);
 
-    gsCompositeHBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel = -1,
+    gsMPBESHSplineBasis( gsMultiPatch<T> const & mp, int increaseSmoothnessLevel = -1,
                        int minEVDistance=-1);
 
-    gsCompositeHBasis( gsMultiBasis<T> const & mb,gsBoxTopology const & topol, int increaseSmoothnessLevel = -1,
+    gsMPBESHSplineBasis( gsMultiBasis<T> const & mb,gsBoxTopology const & topol, int increaseSmoothnessLevel = -1,
                        int minEVDistance=-1);
 
-    gsCompositeHBasis( const gsCompositeHBasis& other );
+    gsMPBESHSplineBasis( const gsMPBESHSplineBasis& other );
 
-    gsCompositeHBasis<d,T>& operator=( const gsCompositeHBasis& other );
+    gsMPBESHSplineBasis<d,T>& operator=( const gsMPBESHSplineBasis& other );
 
-    ~gsCompositeHBasis()
+    ~gsMPBESHSplineBasis()
     { 
 
     } //destructor
@@ -105,13 +105,12 @@ private:
     // functions for initializing and updating
     //////////////////////////////////////////////////
 
-    gsCompositeMapFactoryHB2D<d,T,gsCompositeMapperMatrix<T> > * _getMapFactory()
-    {
-        return new gsCompositeMapFactoryHB2D<d,T,gsCompositeMapperMatrix<T> >(m_incrSmoothnessDegree,& m_topol,this);
-    }
-
     bool _checkTopologyWithBases() const
     { return true; }
+
+protected:
+    void _setMapping();
+
 
 public:
     //////////////////////////////////////////////////
@@ -119,7 +118,7 @@ public:
     //////////////////////////////////////////////////
 
     /// Clone function. Used to make a copy of a derived basis
-    GISMO_CLONE_FUNCTION(gsCompositeHBasis)
+    GISMO_CLONE_FUNCTION(gsMPBESHSplineBasis)
 
     gsHTensorBasis<d,T> & basis(size_t i)
     { return static_cast<gsHTensorBasis<d,T>&>(*m_bases[i]); }
@@ -190,6 +189,6 @@ protected:
 
     T findParameter(patchSide const & ps,patchCorner const & pc,unsigned nrBasisFuncs) const;
 
-}; // class gsCompositeHBasis
+}; // class gsMPBESHSplineBasis
 
 }
