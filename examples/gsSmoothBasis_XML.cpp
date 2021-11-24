@@ -96,31 +96,22 @@ int main(int argc, char *argv[])
     gsFileData<> fd;
     gsInfo<<"Reading geometry from "<<fn1<<"...";
     gsReadFile<>(fn1, mp);
+    if (mp.nInterfaces()==0 && mp.nBoundary()==0)
+    {
+        gsInfo<<"No topology found. Computing it...";
+        mp.computeTopology();
+    }
     gsInfo<<"Finished\n";
 
     fd.read(fn2);
-    // index_t num = 0;
-    // gsInfo<<"Reading BCs from "<<fn2<<"...";
-    // num = fd.template count<gsBoundaryConditions<>>();
-    // GISMO_ENSURE(num==1,"Number of boundary condition objects in XML should be 1, but is "<<num);
-    // fd.template getFirst<gsBoundaryConditions<>>(bc); // Multipatch domain
-    // gsInfo<<"Finished\n";
-
-    gsFunctionExpr<> hom("0",3);
-    // for (index_t d = 0; d!=3; d++)
-    // {
-    //     bc.addCondition(0,boundary::north, condition_type::dirichlet, 0, 0, false, d );
-    //     bc.addCondition(0,boundary::south, condition_type::dirichlet, 0, 0, false, d);
-    //     bc.addCondition(0,boundary::west, condition_type::dirichlet, 0, 0, false, d);
-    //     bc.addCondition(0,boundary::east, condition_type::dirichlet, 0, 0, false, d);
-    // }
-    for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-        for (index_t d = 0; d!=3; d++)
-            bc.addCondition(bit->patch, bit->side(), condition_type::dirichlet, &hom, 0, false, d);
+    index_t num = 0;
+    gsInfo<<"Reading BCs from "<<fn2<<"...";
+    num = fd.template count<gsBoundaryConditions<>>();
+    GISMO_ENSURE(num==1,"Number of boundary condition objects in XML should be 1, but is "<<num);
+    fd.template getFirst<gsBoundaryConditions<>>(bc); // Multipatch domain
+    gsInfo<<"Finished\n";
 
     bc.setGeoMap(mp);
-
-    gsDebugVar(bc);
 
     // Loads
     gsFunctionExpr<> force, pressure;
@@ -386,17 +377,17 @@ int main(int argc, char *argv[])
         // QUASI INTERPOLATION
         // /*
 
-            // gsMultiPatch<> mpatches = mbasis.exportToPatches(tmp);
-            gsMultiPatch<> mp2;
-            for (size_t p = 0; p!=mp.nPatches(); p++)
-            {
-                gsMatrix<> coefs;
-                gsQuasiInterpolate<real_t>::localIntpl(mp.basis(p), mspline.piece(p), coefs);
-                mp2.addPatch(mp.basis(p).makeGeometry( give(coefs) ));
-            }
+        // gsMultiPatch<> mpatches = mbasis.exportToPatches(tmp);
+        gsMultiPatch<> mp2;
+        for (size_t p = 0; p!=mp.nPatches(); p++)
+        {
+            gsMatrix<> coefs;
+            gsQuasiInterpolate<real_t>::localIntpl(mp.basis(p), mspline.piece(p), coefs);
+            mp2.addPatch(mp.basis(p).makeGeometry( give(coefs) ));
+        }
 
-            gsField<> solfield(mp,mp2,true);
-            gsWriteParaview(solfield,"solfield");
+        gsField<> solfield(mp,mp2,true);
+        gsWriteParaview(solfield,"solfield");
 
         // */
 
@@ -494,68 +485,6 @@ int main(int argc, char *argv[])
         // gsField<> solField(mp.patch(0),mspline,true);
 
         // gsWriteParaview(solField,"mspline");
-
-
-
-        return 0;
-
-        // solFull.resize(solFull.rows()/3,3);
-        // gsDebugVar(solFull);
-
-
-        index_t compSize = solFull.rows() / 3;
-        for (size_t d = 0; d!=3; d++)
-        {
-            gsDebugVar(global2local.rows());
-            gsDebugVar(global2local.cols());
-            gsDebugVar(coefs.rows());
-            gsDebugVar(coefs.cols());
-
-            gsMatrix<> coefs = solFull.block(d*compSize,0,compSize,1);
-            global2local = coefs.asDiagonal() * global2local;
-
-            gsMappedBasis<2,real_t> mbasis(dbasis,global2local);
-            gsMappedSpline<2,real_t> mspline(mbasis,coefs);
-            gsMultiPatch<> test = mspline.exportToPatches();
-            gsDebugVar(test);
-        }
-
-        gsDebugVar(global2local.rows());
-        gsDebugVar(global2local.cols());
-        global2local = solFull.asDiagonal() * global2local;
-        gsDebugVar(global2local);
-
-        // gsMappedSpline<2,real_t> mspline(dbasis,global2local);
-
-        // gsMultiPatch<> test = mspline.exportToPatches();
-        // gsWriteParaview("test",test,1000,true);
-
-
-
-
-        // gsMultiBasis<> multiBasis(mp);
-        // for (size_t np = 0; np < mp.nPatches(); np++)
-        // {
-        //     gsBasis<> & basis = multiBasis.basis(np);
-        //     gsMatrix<> points2D = basis.anchors();
-        //     // Update dbasis with solution
-        //     typename gsGeometry<>::uPtr patch = basis.interpolateAtAnchors(dbasis.basis(np).eval(points2D));
-        // }
-
-        // assembler.plotSolution("solution", solVector);
-
-        // gsMultiPatch<> deformation = assembler.constructDisplacement(solVector);
-        // // gsMultiPatch<> mp_def = assembler.constructSolution(solVector);
-
-        // gsField<> solField(geom, deformation);
-        // gsInfo<<"Plotting in Paraview...\n";
-        // gsWriteParaview<>( solField, "Deformation", 1000, true);
-
-        // deformation = assembler.constructSolution(solVector);
-        // gsWriteParaview<>( deformation, "deformed_geom", 1000, true);
-
-
-        // gsWriteParaview( geom, "geom",100,true);
     }
     //! [Export visualization in ParaView]
 

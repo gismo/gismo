@@ -222,8 +222,10 @@ int main(int argc, char *argv[])
         h1err[r]= l2err[r] +
             math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
 
-        //h2err[r]= l2err[r] + h1err[r] +
-        //          math::sqrt(ev.integral( ( ihess(u_ex) - ihess(u_sol,G) ).sqNorm() * meas(G) ));
+        // todo: remove temporary fix below (ihess_sol) and make ihess(u_sol,G) working.
+        auto ihess_sol = jac(G).ginv().tr()*( hess(u_sol) - summ(igrad(u_sol,G),hess(G)) ) * jac(G).ginv();
+        h2err[r]= l2err[r] + h1err[r] +
+                 math::sqrt(ev.integral( ( ihess(u_ex) - ihess_sol ).sqNorm() * meas(G) ));
 
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
