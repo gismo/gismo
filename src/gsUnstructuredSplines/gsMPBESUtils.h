@@ -3,9 +3,9 @@
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 
-#include <gsMSplines/gsMPBESBasis.h>
-#include <gsMSplines/gsMPBESHSplineBasis.h>
-#include <gsMSplines/gsMPBESBSplineBasis.h>
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESHSplineBasis.h>
+#include <gsUnstructuredSplines/gsMPBESBSplineBasis.h>
 
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsReadFile.h>

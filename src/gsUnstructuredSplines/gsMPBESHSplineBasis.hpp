@@ -11,7 +11,7 @@
     Author(s): F. Buchegger
 */
 
-#include <gsMSplines/gsMPBESHSplineBasis.h>
+#include <gsUnstructuredSplines/gsMPBESHSplineBasis.h>
 #include <gsCore/gsMultiBasis.h>
 
 namespace gismo

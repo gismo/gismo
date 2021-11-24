@@ -13,8 +13,8 @@
     Author(s): F. Buchegger
 */
 
-#include <gsMSplines/gsMPBESSpline.h>
-#include <gsMSplines/gsMPBESUtils.h>
+#include <gsUnstructuredSplines/gsMPBESSpline.h>
+#include <gsUnstructuredSplines/gsMPBESUtils.h>
 
 #define TO_INCRSMOOTHNESS(x) static_cast<gsMPBESBasis<d,T> *>(x)
 

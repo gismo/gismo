@@ -284,6 +284,7 @@ public:
 
     gsBasis<T>& component(short_t i)
     {
+        // return gsMappedSingleBasisComponent<d-1,T> (this, i);
         return m_basis->getBase(m_index).component(i);
     }
 

@@ -19,8 +19,8 @@
 #include <gsCore/gsBoxTopology.h>
 #include <gsNurbs/gsKnotVector.h>
 
-#include <gsMSplines/gsMPBESBasis.h>
-#include <gsMSplines/gsMPBESMapTensor.h>
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESMapTensor.h>
 
 #define TO_HTENSOR(x) static_cast<const gsHTensorBasis<d,T> *>(x)
 #define TO_BSPLINE(x) static_cast<const gsTensorBSplineBasis<d,T> *>(x)

@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsMSplines/gsMPBESBasis.h>
-#include <gsMSplines/gsMPBESMapHB2D.h>
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESMapHB2D.h>
 #include <gsHSplines/gsHTensorBasis.h>
 
 namespace gismo

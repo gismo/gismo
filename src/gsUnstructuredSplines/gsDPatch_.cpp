@@ -13,8 +13,8 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsMSplines/gsDPatch.h>
-#include <gsMSplines/gsDPatch.hpp>
+#include <gsUnstructuredSplines/gsDPatch.h>
+#include <gsUnstructuredSplines/gsDPatch.hpp>
 
 namespace gismo
 {

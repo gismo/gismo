@@ -11,8 +11,8 @@
     Author(s): F. Buchegger
 */
 
-#include <gsMSplines/gsMPBESBSplineBasis.h>
-#include <gsMSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESBSplineBasis.h>
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 

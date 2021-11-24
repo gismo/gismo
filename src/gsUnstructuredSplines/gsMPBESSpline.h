@@ -17,7 +17,7 @@
 
 #include <gsMSplines/gsMappedSpline.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
-#include <gsMSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
 
 namespace gismo
 {

@@ -13,8 +13,8 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsMSplines/gsMPBESHSplineBasis.h>
-#include <gsMSplines/gsMPBESHSplineBasis.hpp>
+#include <gsUnstructuredSplines/gsMPBESHSplineBasis.h>
+#include <gsUnstructuredSplines/gsMPBESHSplineBasis.hpp>
 
 namespace gismo
 {

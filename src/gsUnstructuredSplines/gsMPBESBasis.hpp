@@ -11,7 +11,7 @@
     Author(s): F. Buchegger
 */
 
-#include <gsMSplines/gsMPBESBasis.h>
+#include <gsUnstructuredSplines/gsMPBESBasis.h>
 
 namespace gismo
 {
