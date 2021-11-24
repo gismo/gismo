@@ -511,7 +511,7 @@ private:
             const gsMatrix<T> & fixedDofs = (isMatrix ? u.fixedPart() : gsMatrix<T>());
 
             gsMatrix<index_t> rowInd, colInd;
-            rowMap.localToGlobal(rowInd0, patchInd, rowInd);
+            rowMap.localToGlobal(rowInd0, patchInd, rowInd); // Why do we need this? Is not needed
 
             if (isMatrix)
             {
@@ -519,7 +519,7 @@ private:
                               "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
                                 
                 //if (&rowInd0!=&colInd0)
-                colMap.localToGlobal(colInd0, patchInd, colInd);
+                colMap.localToGlobal(colInd0, patchInd, colInd); // Why do we need this?
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
                               "Invalid values for fixed part");
                 // gsDebugVar(rowInd.transpose());
@@ -532,7 +532,7 @@ private:
                 const index_t rls = r * rowInd0.rows();     //local stride
                 for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-                    const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); //N_i
+                    const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); //N_i // Here is the same as global2local
                     if ( rowMap.is_free_index(ii) )
                     {
                         if (isMatrix)

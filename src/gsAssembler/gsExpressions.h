@@ -3065,7 +3065,7 @@ template<class T>
 class hess_expr<gsFeSolution<T> > : public _expr<hess_expr<gsFeSolution<T> > >
 {
 protected:
-    const gsFeSolution<T> & _u;
+    const gsFeSolution<T> _u;
 
 public:
     typedef T Scalar;
@@ -3100,35 +3100,43 @@ public:
             secDerToHessian(res, pdim, deriv2);
             res.swap(deriv2);
             res.resize(pdim,pdim);
-            return res;
+        }
+        else
+        {
+            res.setZero(rows(), numDers);
+            for (index_t c = 0; c != _u.dim(); c++)
+                for (index_t i = 0; i != numActs; ++i) {
+                    const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
+                    deriv2 = _u.space().data().values[2].block(i * numDers, k, numDers,
+                                                               1).transpose(); // start row, start col, rows, cols
+                    if (map.is_free_index(ii)) // DoF value is in the solVector
+                        res.row(c) += _u.coefs().at(ii) * deriv2;
+                    else
+                        res.row(c) += _u.fixedPart().at(map.global_to_bindex(ii)) * deriv2;
+                }
         }
 
-        res.setZero(rows(), numDers);
-        for (index_t c = 0; c!= _u.dim(); c++)
-            for (index_t i = 0; i!=numActs; ++i)
-            {
-                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId,c);
-                deriv2 = _u.space().data().values[2].block(i*numDers,k,numDers,1).transpose(); // start row, start col, rows, cols
-                if ( map.is_free_index(ii) ) // DoF value is in the solVector
-                    res.row(c) += _u.coefs().at(ii) * deriv2;
-                else
-                    res.row(c) +=_u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2;
-            }
         return res;
-
     }
 
     index_t rows() const
     {
-        return _u.dim(); //  number of components
+        if (1==_u.dim())
+            return _u.parDim();
+        else
+            return _u.dim(); //  number of components
     }
     index_t cols() const
     {// second derivatives in the columns; i.e. [d11, d22, d33, d12, d13, d23]
-        return _u.parDim() * (_u.parDim() + 1) / 2;
+        if (1==_u.dim())
+            return _u.parDim();
+        else
+            return _u.parDim() * (_u.parDim() + 1) / 2;
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
+        _u.parse(evList);                         // add symbol
         evList.add(_u.space());
         _u.data().flags |= NEED_ACTIVE | NEED_VALUE | NEED_DERIV2;
     }

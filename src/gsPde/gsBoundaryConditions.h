@@ -117,7 +117,6 @@ namespace gismo
                   m_unkcomp(unkcomp),
                   m_parametric(parametric)
         {
-            //GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
             if (m_label == "Dirichlet") m_type = condition_type::dirichlet;
             else if (m_label == "Weak Dirichlet") m_type = condition_type::weak_dirichlet;
             else if (m_label == "Neumann")   m_type = condition_type::neumann;
@@ -138,16 +137,17 @@ namespace gismo
                   m_unkcomp(-1),
                   m_parametric(parametric)
         {
-            //GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
             switch (t)
             {
                 case condition_type::dirichlet:
                 {
+                    GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
                     m_label = "Dirichlet";
                     break;
                 }
                 case condition_type::weak_dirichlet:
                 {
+                    GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
                     m_label = "Weak Dirichlet";
                     break;
                 }
@@ -196,16 +196,17 @@ namespace gismo
                   m_unkcomp(unkcomp),
                   m_parametric(parametric)
         {
-            //GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
             switch (t)
             {
                 case condition_type::dirichlet:
                 {
+                    GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
                     m_label = "Dirichlet";
                     break;
                 }
                 case condition_type::weak_dirichlet:
                 {
+                    GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
                     m_label = "Weak Dirichlet";
                     break;
                 }

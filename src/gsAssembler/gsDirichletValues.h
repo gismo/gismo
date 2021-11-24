@@ -279,7 +279,7 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
         const int unk = iter->unknown();
         if(unk != u.id()) continue;
 
-        const index_t com = iter->unkComponent();
+        const index_t com = iter->unkComponent() == -1 ? 0 : iter->unkComponent(); // TODO should loop
 
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = u.source().basis(patchIdx);
@@ -319,6 +319,7 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
             // active basis (first line) functions/DOFs:
             basis.active_into(md.points.col(0), globIdxAct);
             mapper.localToGlobal(globIdxAct, patchIdx, globIdxAct,com);
+
 
             // Out of the active functions/DOFs on this element, collect all those
             // which correspond to a boundary DOF.
@@ -397,7 +398,6 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     fixedDofs = solver.compute(globProjMat).solve(globProjRhs);
-
 } // computeDirichletDofsL2Proj
 
 
