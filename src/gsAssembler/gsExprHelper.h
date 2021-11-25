@@ -288,15 +288,10 @@ public:
     void add(const expr::gsGeometryMap<T> & sym)
     {//TODO: inherit gsGeomatryMap from symbol_expr
         GISMO_ASSERT(NULL!=sym.m_fs, "Geometry map "<<&sym<<" is invalid");
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
 #       pragma omp critical (m_mdata_first_touch)
-        {
-            if (sym.isAcross())
-                const_cast<expr::gsGeometryMap<T>&>(sym)
-                    .setData(iface().m_mdata[sym.m_fs]);
-            else
-                const_cast<expr::gsGeometryMap<T>&>(sym)
-                    .setData(m_mdata[sym.m_fs]);
-        }
+            const_cast<expr::gsGeometryMap<T>&>(sym)
+                .setData(eh.m_mdata[sym.m_fs]);
     }
 
     void add(const expr::gsComposition<T> & sym)
@@ -306,13 +301,16 @@ public:
         sym.inner().data().flags |= NEED_VALUE;
         auto k = std::make_pair(sym.m_fs,&m_mdata[sym.inner().m_fs]);
         auto it = m_cdata.find(k);
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
         if (m_cdata.end()==it)
+            // when the variable is added for the first time,
+            // we have to be thread-safe (atomic).
 #           pragma omp critical (m_cdata_first_touch)
             const_cast<expr::gsComposition<T>&>(sym)
-                .setData(m_cdata[ give(k) ]);
+                .setData(eh.m_cdata[ give(k) ]);
         else
-         const_cast<expr::gsComposition<T>&>(sym)
-             .setData(m_cdata[ give(k) ]);
+            const_cast<expr::gsComposition<T>&>(sym)
+                .setData(eh.m_cdata[ give(k) ]);
     }
 
     template <class E>
@@ -321,6 +319,7 @@ public:
         //parallel: variables become thread-local
         // for each variable we provide a gsFuncData pointer
         // in the same thread this can be the same ptr (as done now)
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
 
         if (NULL!=sym.m_fs)
         {
@@ -330,14 +329,14 @@ public:
                 //gsDebug<<"+ Map "<< sym.m_fs <<"\n";
 #               pragma omp critical (m_mdata_first_touch)
                 const_cast<expr::symbol_expr<E>&>(sym)
-                    .setData( m_mdata[sym.m_fs] );
+                    .setData( eh.m_mdata[sym.m_fs] );
             }
             else
             {
                 //gsDebug<<"+ Func "<< sym.m_fs <<"\n";
 #               pragma omp critical (m_fdata_first_touch)
                 const_cast<expr::symbol_expr<E>&>(sym)
-                    .setData( m_fdata[sym.m_fs] );
+                    .setData( eh.m_fdata[sym.m_fs] );
             }
         }
         else

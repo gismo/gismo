@@ -375,7 +375,22 @@ protected:
     const gsFuncData<Scalar>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
 
+    bool m_isAcross;
+
 public:
+
+    bool isAcross() const { return m_isAcross; }
+
+    E right() const
+    {
+        E ac;
+        ac.m_fs = m_fs;
+        ac.m_isAcross = true;
+        return ac;
+    }
+
+    E left() const { return E(*this); }
+
 
     /// Returns the function source
     const gsFunctionSet<Scalar> & source() const {return *m_fs;}
@@ -1062,9 +1077,23 @@ protected:
     const gsFeSpace<T> _u;
 
     gsMatrix<T> * _Sv; ///< Pointer to a coefficient vector
+
+    bool m_isAcross;
+
 public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
+
+    bool isAcross() const { return m_isAcross; }
+
+    gsFeSolution right() const
+    {
+        gsFeSolution ac(*this);
+        ac.m_isAcross = true;
+        return ac;
+    }
+
+    gsFeSolution left() const { return gsFeSolution(*this); }
 
     explicit gsFeSolution(const gsFeSpace<T> & u) : _u(u), _Sv(NULL) { }
 
@@ -3931,9 +3960,14 @@ public:
         //= uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2
         //= uL*(vL-vR)/2 + uR*(vL-vR)/2
         //= (uL + uR)*vL/2  - (uL - uR)*vR/2
+        //Therefore, avg(u) * jump(v) becomes
+        //4 individual expressions
+        //.assemble(u.left()*v.left()/2, - u.left()*v.right()/2, u.right()*v.left()/2, - u.right()*v.right()/2);
+        //(blocks seprated)
+
         //Left side
         // uL*vL/2 - uL*vR/2
-        // Right
+        //Right side
         // uR*vL/2 - uR*vR/2
         // push(*,*)
         //[ B11 B21 ]
