@@ -3085,6 +3085,7 @@ public:
         index_t numDers = pdim*(pdim+1)/2;
         gsMatrix<T> deriv2;
 
+        // In the scalar case, the hessian is returned as a pdim x pdim matrix
         if (1==_u.dim())
         {
             res.setZero(numDers,1);
@@ -3101,6 +3102,7 @@ public:
             res.swap(deriv2);
             res.resize(pdim,pdim);
         }
+        // In the vector case, the hessian is returned as a matrix where each row corresponds to the component of the solution and contains the derivatives in the columns
         else
         {
             res.setZero(rows(), numDers);
@@ -3115,7 +3117,6 @@ public:
                         res.row(c) += _u.fixedPart().at(map.global_to_bindex(ii)) * deriv2;
                 }
         }
-
         return res;
     }
 
@@ -3127,9 +3128,10 @@ public:
             return _u.dim(); //  number of components
     }
     index_t cols() const
-    {// second derivatives in the columns; i.e. [d11, d22, d33, d12, d13, d23]
+    {
         if (1==_u.dim())
             return _u.parDim();
+        // second derivatives in the columns; i.e. [d11, d22, d33, d12, d13, d23]
         else
             return _u.parDim() * (_u.parDim() + 1) / 2;
     }
@@ -4344,6 +4346,7 @@ GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u) ) // u is presumed to be defined ov
 
 GISMO_SHORTCUT_PHY_EXPRESSION( ijac, jac(u) * jac(G).ginv())
 
+// note and todo: does this work for non-scalar solutions?
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess,
                               jac(G).ginv().tr()*( hess(u) - summ(igrad(u,G),hess(G)) ) * jac(G).ginv() )
 GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
