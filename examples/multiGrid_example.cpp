@@ -187,31 +187,6 @@ int main(int argc, char *argv[])
     gsMultiBasis<> mb(mp);
     //! [Define Basis]
 
-    if (xRefine)
-    {
-        if (mp.nPatches() > 1)
-        {
-            gsInfo << "\nThe option --XRefine is only available for single-patch geometries..\n";
-            return EXIT_FAILURE;
-        }
-        gsInfo << "Option --XRefine: Refine the grid in x-direction by interting " << xRefine
-               << " knots in every knot span... " << std::flush;
-        mb[0].component(0).uniformRefine(xRefine,1);
-        gsInfo << "done.\n";
-    }
-
-    gsInfo << "Setup bases and adjust degree... " << std::flush;
-
-    //! [Set degree and refine]
-    for ( size_t i = 0; i < mb.nBases(); ++ i )
-        mb[i].setDegreePreservingMultiplicity(degree);
-
-    for ( index_t i = 0; i < refinements; ++i )
-        mb.uniformRefine();
-    //! [Set degree and refine]
-
-    gsInfo << "done.\n";
-
     //! [Define Non Matching]
     if (nonMatching)
     {
@@ -236,6 +211,31 @@ int main(int argc, char *argv[])
 
     }
     //! [Define Non Matching]
+
+    if (xRefine)
+    {
+        if (mp.nPatches() > 1)
+        {
+            gsInfo << "\nThe option --XRefine is only available for single-patch geometries..\n";
+            return EXIT_FAILURE;
+        }
+        gsInfo << "Option --XRefine: Refine the grid in x-direction by interting " << xRefine
+               << " knots in every knot span... " << std::flush;
+        mb[0].component(0).uniformRefine(xRefine,1);
+        gsInfo << "done.\n";
+    }
+
+    gsInfo << "Setup bases and adjust degree... " << std::flush;
+
+    //! [Set degree and refine]
+    for ( size_t i = 0; i < mb.nBases(); ++ i )
+        mb[i].setDegreePreservingMultiplicity(degree);
+
+    for ( index_t i = 0; i < refinements; ++i )
+        mb.uniformRefine();
+    //! [Set degree and refine]
+
+    gsInfo << "done.\n";
 
     /********* Setup assembler and assemble matrix **********/
 
