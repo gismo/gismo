@@ -905,12 +905,13 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
         const index_t patch2 = iFace.second().patch;
         //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
+        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
+                                          m_exprdata->multiBasis().basis(patch1).support(),
+                                          m_exprdata->multiBasis().basis(patch2).support() );
+
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
 
-        m_exprdata->setSide        ( iFace.first() .side() );
-        m_exprdata->iface().setSide( iFace.second().side() );
-                
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(patch1)
             .makeDomainIterator(iFace.first().side());
@@ -922,26 +923,22 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
+            interfaceMap.eval_into(m_exprdata->points(),
+                                   m_exprdata->iface().points());
 
             if (m_exprdata->points().cols()==0)
                 continue;
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patch1);
-            m_exprdata->iface().precompute(patch2);
-            
-            // interfaceMap.eval_into(m_exprdata->points(),
-            //                        m_exprdata->iface().points());
+            m_exprdata->precompute(patch1, iFace.first().side());
+            m_exprdata->iface().precompute(patch2, iFace.second().side());
 
             // uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2
             //[ B11 B21 ]
             //[ B12 B22 ]
-            // arg_lhs.setTestSide (true)
-            // arg_lhs.setTrialSide(true)
 
-            ee.setPatch(patch1);
-            ee(arg_lhs);
-            ee(arg_rhs);
+            op_tuple(ee, arg_lhs);
+            op_tuple(ee, arg_rhs);
         }
     }
 
