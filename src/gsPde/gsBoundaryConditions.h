@@ -241,6 +241,7 @@ namespace gismo
                     break;
                 }
                 default:
+                    gsWarn<<"gsBoundaryConditions: Unknown boundary condition.\n";
                     m_label = "Unknown";
                     break;
             };
@@ -277,6 +278,8 @@ namespace gismo
         /// is defined in parametric coordinates
         bool    parametric()  const { return m_parametric; }
 
+        /// Checks if \a this is the same as \other apart from the function data.
+        bool isSame(const boundary_condition & other) {return ((other.ps == ps) && (other.unknown() == unknown()) && (other.unkComponent() == unkComponent())) ;}
 
         patchSide ps;                ///< Side of a patch for this boundary condition
 
@@ -632,37 +635,14 @@ namespace gismo
                           const function_ptr & f_shptr, short_t unknown = 0,
                           bool parametric = false, int comp = -1)
         {
-            switch (t)
-            {
-                case condition_type::dirichlet :
-                    // this->add(p,s,f_shptr,"Dirichlet",unknown,comp,parametric);
-                    m_bc["Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                case condition_type::weak_dirichlet :
-                    // this->add(p,s,f_shptr,"Dirichlet",unknown,comp,parametric);
-                    m_bc["Weak Dirichlet"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                case condition_type::neumann :
-                    m_bc["Neumann"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                case condition_type::robin :
-                    m_bc["Robin"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                case condition_type::clamped :
-                    m_bc["Clamped"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                case condition_type::weak_clamped :
-                    m_bc["Weak Clamped"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                case condition_type::collapsed :
-                    m_bc["Collapsed"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                case condition_type::laplace :
-                    m_bc["Laplace"].push_back( boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric) );
-                    break;
-                default:
-                    gsWarn<<"gsBoundaryConditions: Unknown boundary condition.\n";
-            }
+            auto bc = boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric);
+            // Every condition type can only be applied once
+            const auto & c = m_bc[bc.ctype()];
+            auto it = std::find_if(c.begin(), c.end(), [&bc](const boundary_condition<T> & b){ return bc.isSame(b); });
+            if (it==c.end())
+                m_bc[bc.ctype()].push_back(bc);
+            else // bc of this type is already defined on patch p and side s
+                gsWarn<<"Condition of type "<<bc.ctype()<<" on patch "<<bc.patch()<<" side "<<bc.side()<<" of unknown "<<bc.unknown()<<" with component "<<bc.unkComponent()<<" ignored, because it has already been defined\n";
         }
 
         void addCondition(int p, boxSide s, condition_type::type t,
