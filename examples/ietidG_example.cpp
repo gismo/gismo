@@ -55,16 +55,6 @@ void printPrimalConstraints( std::vector< std::vector< gsSparseVector<real_t> > 
     }
 }
 
-void adddGInterfaceContributions(
-    const gsArtificialIfaces<>& ai,
-    const gsMultiPatch<>& mp,
-    const gsMultiBasis<>& mb,
-          gsOptionList options,
-    const index_t patch,
-    gsSparseMatrix<>& localMatrix,
-    gsMatrix<>& localRhs
-);
-
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/

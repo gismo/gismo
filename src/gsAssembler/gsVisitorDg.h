@@ -233,7 +233,6 @@ public:
 
         }
     }
-public:
 
     /// Adds the contributions to the sparse system
     inline void localToGlobal(const index_t                     patch1,
@@ -298,7 +297,7 @@ private:
     /// Parameter \f$\delta\f$ for the bilinear form
     T m_penalty;
 
-    /// Only compute bilinear form n.
+    /// Only compute bilinear form n
     bool m_oneSided;
 
     /// Side on first patch that corresponds to interface
