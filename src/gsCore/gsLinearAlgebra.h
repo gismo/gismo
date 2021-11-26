@@ -84,7 +84,7 @@ using Eigen::internal::cast; // from Core/MathFunctions.h
    and https://en.wikipedia.org/wiki/NaN
  */
 template<typename Derived>
-inline bool isnumber(const Eigen::MatrixBase<Derived>& x)
+inline bool (isnumber)(const Eigen::MatrixBase<Derived>& x)
 { return ((x.array() == x.array())).all(); }
 
 /**
