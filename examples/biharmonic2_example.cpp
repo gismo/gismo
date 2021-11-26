@@ -16,7 +16,7 @@
 #include <gismo.h>
 
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
-#include <gsUnstructuredSplines/gsDPatch.h>
+//#include <gsUnstructuredSplines/gsDPatch.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -171,35 +171,21 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine(1,discreteDegree -discreteRegularity);
 
-        gsDebugVar(dbasis.basis(0));
         gsSparseMatrix<real_t> global2local;
-        if (smoothing==1)
-        {
-            mp.embed(3);
-            gsDPatch<2,real_t> dpatch(mp);
-            dpatch.matrix_into(global2local);
-            global2local = global2local.transpose();
-            mp = dpatch.exportToPatches();
-            dbasis = dpatch.localBasis();
-            bb2.init(dbasis,global2local);
-            mp.embed(2);
-        }
-        else if (smoothing==2) // Pascal
-        {
-            gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
-            approxC1.options().setSwitch("info",info);
-            approxC1.options().setSwitch("plot",plot);
 
-            approxC1.init();
-            approxC1.compute();
+        gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
+        approxC1.options().setSwitch("info",info);
+        approxC1.options().setSwitch("plot",plot);
 
-            global2local = approxC1.getSystem();
-            global2local = global2local.transpose();
-            //global2local.pruned(1,1e-10);
-            gsMultiBasis<> dbasis_temp;
-            approxC1.getMultiBasis(dbasis_temp);
-            bb2.init(dbasis_temp,global2local);
-        }
+        approxC1.init();
+        approxC1.compute();
+
+        global2local = approxC1.getSystem();
+        global2local = global2local.transpose();
+        //global2local.pruned(1,1e-10);
+        gsMultiBasis<> dbasis_temp;
+        approxC1.getMultiBasis(dbasis_temp);
+        bb2.init(dbasis_temp,global2local);
         // Compute the approx C1 space
 
         gsInfo<< "." <<std::flush; // Approx C1 construction done

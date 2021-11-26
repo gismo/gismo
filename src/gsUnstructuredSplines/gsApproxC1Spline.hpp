@@ -211,7 +211,7 @@ void gsApproxC1Spline<d,T>::init()
         // [!Plus Minus space]
 
         gsBSplineBasis<T> basis_edge(basis_1);
-        basis_edge.setDegreePreservingMultiplicity(basis_plus.degree()-1);
+        basis_edge.setDegreePreservingMultiplicity(basis_plus.degree());
 
         index_t r_plus, r_minus, r_edge, r;
         r_plus = basis_plus.degree() - basis_plus.knots().multiplicityIndex(basis_plus.degree()+1); // p+1, since c++ starts at 0

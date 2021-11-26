@@ -289,11 +289,11 @@ namespace gismo
                 index_t shift = 0;
                 for (index_t i=0; i< side_id; ++i)
                     shift += basisContainer[i].size();
-                result = basisContainer[side_id].boundaryOffset(boxSide(side_id), offset);
+                result = basisContainer[side_id].boundaryOffset(bside, offset);
                 result.array() += shift;
             }
             else if (basisContainer.size() == 1)
-                result = basisContainer[0].boundaryOffset(boxSide(side_id), offset);
+                result = basisContainer[0].boundaryOffset(bside, offset);
 
 
             // Vertices:
@@ -313,19 +313,22 @@ namespace gismo
                         shift += basisContainer[i].size();
 
                     gsMatrix<int> result_temp;
-                    result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
+                    result_temp = basisContainer[corner_id].boundaryOffset(bside, offset);
                     result_temp.array() += shift;
 
-                    result.conservativeResize(result.rows() + result_temp.rows(), 1);
+                    index_t r_rows = result.rows() + result_temp.rows();
+                    result.conservativeResize(r_rows, 1);
                     result.bottomRows(result_temp.rows()) = result_temp;
-
+/*
                     if (offset == 1) {
-                        result_temp = basisContainer[corner_id].boundaryOffset(boxSide(side_id), offset);
+                        result_temp = basisContainer[corner_id].boundaryOffset(bside, offset);
                         result_temp.array() += shift;
 
-                        result.conservativeResize(result.rows() + result_temp.rows(), 1);
+                        index_t r_rows = result.rows() + result_temp.rows();
+                        result.conservativeResize(r_rows, 1);
                         result.bottomRows(result_temp.rows()) = result_temp;
                     }
+*/
                 }
             }
             return result;
