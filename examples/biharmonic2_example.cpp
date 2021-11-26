@@ -18,6 +18,8 @@
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
 //#include <gsUnstructuredSplines/gsDPatch.h>
 
+#include <gsIO/gsCSVWriter.h>
+
 using namespace gismo;
 //! [Include namespace]
 
@@ -293,6 +295,13 @@ int main(int argc, char *argv[])
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     //! [Export visualization in ParaView]
+
+    //! [Export data to CSV]
+    std::string cmdName = "-g1000-p3-r2-l5";
+    gsCSVOutput<2, real_t> csvOutput(mp, dbasis, cmdName);
+    csvOutput.flags = GEOMETRY | MESH | ERROR;
+    csvOutput.saveCSVFile(cmdName);
+    //! [Export data to CSV]
 
     return EXIT_SUCCESS;
 
