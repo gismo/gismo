@@ -45,15 +45,15 @@ void printPrimalConstraints( const gsIetiMapper<>& ietiMapper )
 //ii=ietiMapper.m_primalDofIndices
 
     std::vector<ctr> data;
-    for (index_t i=0; i<ietiMapper.nPrimalDofs(); ++i)
-         for (size_t j=0; j<ietiMapper.primalConstraints(i).size(); ++j)
-         {
-	     ctr d;
-	     d.c=ietiMapper.primalConstraints(i)[j];
-	     d.k=i;
-	     d.i=ietiMapper.primalDofIndices(i)[j];
-	     data.push_back(d);
-	 }
+    for (index_t i=0; i<ietiMapper.multiBasis().nPieces(); ++i)
+        for (size_t j=0; j<ietiMapper.primalConstraints(i).size(); ++j)
+        {
+            ctr d;
+            d.c=ietiMapper.primalConstraints(i)[j];
+            d.k=i;
+            d.i=ietiMapper.primalDofIndices(i)[j];
+            data.push_back(d);
+        }
     std::sort(data.begin(), data.end());
     for (size_t i=0; i<data.size(); ++i)
     {
