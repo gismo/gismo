@@ -245,8 +245,10 @@ public:
 
     variable getBdrFunction() const { return m_exprdata->getMutVar(); }
 
-    variable getBdrFunction(const gsBoundaryConditions<T> & bc, const std::string & tag) const
-    { return m_exprdata->getMutVar(); }
+    variable getBdrFunction(const gsBoundaryConditions<T> & bc) const
+    {
+        return m_exprdata->getMutVar();
+    }
 
     element getElement() const { return m_element; }
 
@@ -331,8 +333,8 @@ public:
     /// The arguments are considered as integrals over the boundary parts in \a BCs
     template<class... expr> void assemble(const bcRefList & BCs, expr&... args);
 
+    template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
     /*
-      template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
 #else
@@ -376,22 +378,6 @@ public:
         space var = static_cast<space>(exprRhs.rowVar());
         //GISMO_ASSERT(m_exprdata->exists(var), "Error - inexistent variable.");
         assembleLhsRhsBc_impl<false,true>(nullExpr(), exprRhs, var, var, BCs);
-    }
-
-    template<class E1>
-    void assembleInterface(const expr::_expr<E1> & exprInt)
-    {
-        space rvar = static_cast<space>(exprInt.rowVar());
-        space cvar = static_cast<space>(exprInt.colVar());
-        assembleInterface_impl<true,false>(exprInt, nullExpr(), rvar, rvar, m_exprdata->multiBasis().topology().interfaces() );
-    }
-
-    template<class E1>
-    void assembleRhsInterface(const expr::_expr<E1> & exprInt, const ifContainer & iFaces)
-    {
-        space rvar = static_cast<space>(exprInt.rowVar());
-        //GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
-        assembleInterface_impl<false,true>(nullExpr(), exprInt, rvar, rvar, iFaces);
     }
 
 private:
@@ -511,7 +497,7 @@ private:
             const gsMatrix<T> & fixedDofs = (isMatrix ? u.fixedPart() : gsMatrix<T>());
 
             gsMatrix<index_t> rowInd, colInd;
-            rowMap.localToGlobal(rowInd0, patchInd, rowInd);
+            rowMap.localToGlobal(rowInd0, v.data().patchId, rowInd);
 
             if (isMatrix)
             {
@@ -519,7 +505,7 @@ private:
                               "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
                                 
                 //if (&rowInd0!=&colInd0)
-                colMap.localToGlobal(colInd0, patchInd, colInd);
+                colMap.localToGlobal(colInd0, u.data().patchId, colInd);
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
                               "Invalid values for fixed part");
             }
@@ -759,7 +745,7 @@ template <class E1>
 void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> & a1)
 #endif
 {
-        GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
 // #pragma omp parallel
 // {
@@ -847,6 +833,8 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
         m_exprdata->setMutSource(*it->function(), it->parametric());
         //mutVar.registerVariable(func, mutData);
 
+        //The composition map
+        
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch())
             .makeDomainIterator(it->side());
@@ -876,25 +864,17 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
     //mutVar.clear();
 }
 
-template<class T>
-template<bool left, bool right, class E1, class E2>
-void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
-                                                const expr::_expr<E2> & exprRhs,
-                                                space rvar, space cvar,
-                                                const ifContainer & iFaces)
+template<class T> template<class... expr>
+void gsExprAssembler<T>::assemble(const ifContainer & iFaces, expr... args)
 {
-    // auto lhs11 = std::make_tuple(exprLhs);
-    // auto lhs12 = std::make_tuple(exprLhs);
-    // auto lhs21 = std::make_tuple(exprLhs);
-    // auto lhs22 = std::make_tuple(exprLhs);
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
-    auto arg_lhs = std::make_tuple(exprLhs);
-    auto arg_rhs = std::make_tuple(exprRhs);
-    if (left ) m_exprdata->parse(arg_lhs);
-    if (right) m_exprdata->parse(arg_rhs);
+    auto arg_tpl = std::make_tuple(args...);
 
-    gsVector<T> quWeights;// quadrature weights
+    m_exprdata->parse(arg_tpl);
+
     typename gsQuadRule<T>::uPtr QuRule;
+    gsVector<T> quWeights;// quadrature weights
     _eval ee(m_matrix, m_rhs, quWeights);
 
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
@@ -903,8 +883,8 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
         const boundaryInterface & iFace = *it;
         const index_t patch1 = iFace.first() .patch;
         const index_t patch2 = iFace.second().patch;
-        //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
 
+        //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
         gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
                                           m_exprdata->multiBasis().basis(patch1).support(),
                                           m_exprdata->multiBasis().basis(patch2).support() );
@@ -930,15 +910,15 @@ void gsExprAssembler<T>::assembleInterface_impl(const expr::_expr<E1> & exprLhs,
                 continue;
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patch1, iFace.first().side());
+            m_exprdata->        precompute(patch1, iFace.first ().side());
             m_exprdata->iface().precompute(patch2, iFace.second().side());
 
+            //eg.
             // uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2
             //[ B11 B21 ]
             //[ B12 B22 ]
 
-            op_tuple(ee, arg_lhs);
-            op_tuple(ee, arg_rhs);
+            op_tuple(ee, arg_tpl);
         }
     }
 

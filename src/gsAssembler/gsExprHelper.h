@@ -57,7 +57,8 @@ private:
     // ie. not uniquely assigned to a gsFunctionSet
     expr::gsFeVariable<T> mutVar ; //ADD: symbol.setSource(.);
     gsFuncData<T>         mutData;
-    bool mutParametric;
+    const gsFunction<T> * mutMap;
+
     const gsMultiBasis<T> * mesh_ptr;
 
 public:
@@ -168,8 +169,9 @@ public:
     void setMutSource(const gsFunction<T> & func, bool param)
     {
         mutVar.setSource(func);
-        mutParametric = param;
     }
+
+    void setMutMap(const gsFunction<T> & gmap) { mutMap = &gmap; }
 
 private:
     template <class E1>
@@ -390,6 +392,14 @@ public:
             it->first.first->piece(patchIndex)
                 .compute(it->first.second->mine().values[0], it->second);
             it->second.mine().patchId = patchIndex;
+        }
+
+        // Mutable variable to treat BCs
+        if ( mutVar.isValid() && 0!=mutData.flags)
+        {
+//            mutVar.source().piece(patchIndex)
+//                .compute( mutMap ? m_mdata[mutMap].points : m_mdata.values[0], mutData);
+            //...it->second.mine().patchId = patchIndex;
         }
     }
 
