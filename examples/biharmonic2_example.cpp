@@ -16,6 +16,7 @@
 #include <gismo.h>
 
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
+#include <gsUnstructuredSplines/gsDPatch.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -24,6 +25,8 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    index_t smoothing = 2;
+
     index_t numRefine  = 3;
     index_t discreteDegree = 3;
     index_t discreteRegularity = 1;
@@ -35,6 +38,7 @@ int main(int argc, char *argv[])
     index_t geometry = 1000;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    cmd.addInt( "s", "smoothing","Smoothing", smoothing );
     cmd.addInt( "p", "discreteDegree","Which discrete degree?", discreteDegree );
     cmd.addInt( "r", "discreteRegularity", "Number of discreteRegularity",  discreteRegularity );
     cmd.addInt( "l", "refinementLoop", "Number of refinementLoop",  numRefine );
@@ -114,7 +118,7 @@ int main(int argc, char *argv[])
     if (last)
     {
         for (int r =0; r < numRefine; ++r)
-            dbasis.uniformRefine(discreteDegree -discreteRegularity);
+            dbasis.uniformRefine(1, discreteDegree -discreteRegularity);
         numRefine = 0;
     }
 
@@ -165,22 +169,39 @@ int main(int argc, char *argv[])
     gsStopwatch timer;
     for (int r=0; r<=numRefine; ++r)
     {
-        dbasis.uniformRefine(discreteDegree -discreteRegularity);
+        dbasis.uniformRefine(1,discreteDegree -discreteRegularity);
 
+        gsDebugVar(dbasis.basis(0));
+        gsSparseMatrix<real_t> global2local;
+        if (smoothing==1)
+        {
+            mp.embed(3);
+            gsDPatch<2,real_t> dpatch(mp);
+            dpatch.matrix_into(global2local);
+            global2local = global2local.transpose();
+            mp = dpatch.exportToPatches();
+            dbasis = dpatch.localBasis();
+            bb2.init(dbasis,global2local);
+            mp.embed(2);
+        }
+        else if (smoothing==2) // Pascal
+        {
+            gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
+            approxC1.options().setSwitch("info",info);
+            approxC1.options().setSwitch("plot",plot);
+
+            approxC1.init();
+            approxC1.compute();
+
+            global2local = approxC1.getSystem();
+            global2local = global2local.transpose();
+            //global2local.pruned(1,1e-10);
+            gsMultiBasis<> dbasis_temp;
+            approxC1.getMultiBasis(dbasis_temp);
+            bb2.init(dbasis_temp,global2local);
+        }
         // Compute the approx C1 space
-        gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
-        approxC1.options().setSwitch("info",info);
-        approxC1.options().setSwitch("plot",plot);
 
-        approxC1.init();
-        approxC1.compute();
-
-        gsSparseMatrix<> global2local = approxC1.getSystem();
-        global2local = global2local.transpose();
-        global2local.pruned(1,1e-10);
-        gsMultiBasis<> dbasis_temp;
-        approxC1.getMultiBasis(dbasis_temp);
-        bb2.init(dbasis_temp,global2local);
         gsInfo<< "." <<std::flush; // Approx C1 construction done
 
         // Setup the system
@@ -268,7 +289,18 @@ int main(int argc, char *argv[])
         ev.writeParaview( u_sol   , G, "solution");
         //ev.writeParaview( u_ex    , G, "solution_ex");
         //ev.writeParaview( u, G, "aa");
+/*
+        gsMatrix<real_t> solFull;
+        u_sol.extractFull(solFull);
 
+        // 3. Make the mapped spline
+        gsMappedSpline<2,real_t> mspline(bb2,solFull);
+
+        // 4. Plot the mapped spline on the original geometry
+        gsField<> solField(mp, mspline,true);
+        gsInfo<<"Plotting in Paraview...\n";
+        gsWriteParaview<>( solField, "Deformation", 1000, false);
+*/
         //gsFileManager::open("solution.pvd");
     }
     else
