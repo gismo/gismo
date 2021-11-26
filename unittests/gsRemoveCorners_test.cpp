@@ -92,6 +92,50 @@ SUITE(gsRemoveCorners_test)
         CHECK(massInvWithoutCorners->rows() + (index_t)corners.size() == massWithCorners.rows() && massInvWithoutCorners->cols() + (index_t)corners.size() == massWithCorners.cols());
     }
 
+    TEST(MassOp2)
+    {
+        gsLinearOperator<>::uPtr massInvWithoutCorners;
+        gsSparseMatrix<> massWithCorners;
+        std::vector<index_t> corners;
+
+        index_t numRefine = 3;
+        index_t degree = 3;
+
+        gsFunctionExpr<> bc("0.0",2);
+
+        gsMultiPatch<> square(*gsNurbsCreator<>::BSplineSquare());
+        square.computeTopology();
+
+        gsMultiBasis<> mb(square);
+
+        for (index_t i = 0; i < numRefine; ++i) {
+            mb.uniformRefine();
+        }
+        mb[0].setDegreePreservingMultiplicity(degree);
+
+        gsBoundaryConditions<> bcInfo;
+        for (gsMultiPatch<real_t>::biterator it = square.bBegin();  it != square.bEnd(); ++it)
+            bcInfo.addCondition(*it, condition_type::dirichlet, bc);
+
+        gsOptionList opt = gsAssembler<>::defaultOptions();
+        massWithCorners = gsPatchPreconditionersCreator<>::massMatrix(mb.basis(0), bcInfo, opt);
+
+        for(index_t i = 1; i <= 1<<mb.dim(); i++)
+            bcInfo.addCornerValue(i, 0, 0);
+
+        massInvWithoutCorners = gsPatchPreconditionersCreator<>::massMatrixInvOp(mb.basis(0), bcInfo, opt);
+
+        gsMatrix<> result;
+        gsMatrix<> massInvMass(massWithCorners.rows(), massWithCorners.cols());
+        for (index_t i = 0; i < massWithCorners.cols(); ++i) {
+            massInvWithoutCorners->apply(massWithCorners.toDense().col(i), result);
+            massInvMass.col(i) = result;
+        }
+
+        CHECK((massInvMass-gsMatrix<>::Identity(massInvMass.rows(),massInvMass.cols())).norm() < 1.e-11);
+        CHECK(massInvWithoutCorners->rows() == massWithCorners.rows() && massInvWithoutCorners->cols() == massWithCorners.cols());
+    }
+
     TEST(StiffnessOp)
     {
         gsLinearOperator<>::uPtr stiffnessInvWithoutCorners;
