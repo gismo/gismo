@@ -182,18 +182,6 @@ public:
                          gsDomainIterator<T>    & element2,
                          gsVector<T>            & quWeights)
     {
-        if (m_oneSided)
-            assemble_impl<1>(element1, element2, quWeights);
-        else
-            assemble_impl<0>(element1, element2, quWeights);
-    }
-
-private:
-    template<bool oneSided>
-    inline void assemble_impl(gsDomainIterator<T>    & element1,
-                              gsDomainIterator<T>    & element2,
-                              gsVector<T>            & quWeights)
-    {
         const index_t numActive1 = actives1.rows();
         const index_t numActive2 = actives2.rows();
 
@@ -218,24 +206,25 @@ private:
 
             // Transform the basis gradients
             transformGradients(md1, k, grads1, phGrad1);
-            if (!oneSided)
+            if (!m_oneSided)
                 transformGradients(md2, k, grads2, phGrad2);
 
             // Compute element matrices
             const T c1     = weight / T(2);
             N1.noalias()   = unormal.transpose() * phGrad1;
-            if (!oneSided)
+            if (!m_oneSided)
                 N2.noalias()   = unormal.transpose() * phGrad2;
 
             B11.noalias() += c1 * ( val1 * N1 );
             B21.noalias() -= c1 * ( val2 * N1 );
-            if (!oneSided)
+            if (!m_oneSided)
             {
                 B12.noalias() += c1 * ( val1 * N2 );
                 B22.noalias() -= c1 * ( val2 * N2 );
             }
 
-            const T c2     = weight * m_penalty * (1./m_h1 + 1./m_h2) / (oneSided?2:1);
+            const T c2     = weight * m_penalty * (1./m_h1 + 1./m_h2)
+	                     * ( m_oneSided ? (T(1)/2) : T(1) );
 
             E11.noalias() += c2 * ( val1 * val1.transpose() );
             E12.noalias() += c2 * ( val1 * val2.transpose() );
