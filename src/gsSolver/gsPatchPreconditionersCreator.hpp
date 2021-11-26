@@ -117,7 +117,7 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             U(c, i+1) = 1.;
 
             for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
-                Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r2) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
+                Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r1) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
             Vtrans(i, c) = 1.;
             Vtrans(i+1, c) = 0.;
         }
