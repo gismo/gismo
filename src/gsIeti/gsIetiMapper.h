@@ -187,7 +187,7 @@ private:
         const gsBasis<T>& basis, const gsDofMapper& dm,
         boxComponent bc );   ///< Assembles for \ref interfaceAveragesAsPrimals
 
-public://TODO
+private://public://TODO
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper
     std::vector<gsDofMapper>                      m_dofMapperLocal;      ///< A vector of the patch-local dof mappers

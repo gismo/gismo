@@ -2,11 +2,8 @@
 
     @brief Provides an example for the ieti solver for a dG setting
 
-    Here, MINRES solves the saddle point formulation. For solving
-    the Schur complement formulation with CG, see ieti_example.cpp.
-
-    This class uses the gsPoissonAssembler, for the expression
-    assembler, see ieti_example.cpp.
+    This class uses the gsPoissonAssembler. We use CG to solve for the
+    Schur complement formulation.
 
     This file is part of the G+Smo library.
 
@@ -41,15 +38,24 @@ struct ctr {
    }
 };
 
-void printPrimalConstraints( std::vector< std::vector< gsSparseVector<real_t> > > & c,
-                             std::vector< std::vector< index_t > > & ii )
+void printPrimalConstraints( const gsIetiMapper<>& ietiMapper )
 {
+
+//c=ietiMapper.m_primalConstraints
+//ii=ietiMapper.m_primalDofIndices
+
     std::vector<ctr> data;
-    for (index_t i=0; i<c.size(); ++i)
-         for (index_t j=0; j<c[i].size(); ++j)
-         { ctr d; d.c=c[i][j]; d.k=i; d.i=ii[i][j]; data.push_back(d); }
+    for (index_t i=0; i<ietiMapper.nPrimalDofs(); ++i)
+         for (size_t j=0; j<ietiMapper.primalConstraints(i).size(); ++j)
+         {
+	     ctr d;
+	     d.c=ietiMapper.primalConstraints(i)[j];
+	     d.k=i;
+	     d.i=ietiMapper.primalDofIndices(i)[j];
+	     data.push_back(d);
+	 }
     std::sort(data.begin(), data.end());
-    for (index_t i=0; i<data.size(); ++i)
+    for (size_t i=0; i<data.size(); ++i)
     {
         std::cout << data[i].i << " [" << data[i].k << "]" << data[i].c.transpose() << "\n";
     }
@@ -69,9 +75,11 @@ int main(int argc, char *argv[])
     real_t penalty = -1;
     std::string boundaryConditions("d");
     std::string primals("c");
+    bool eliminateCorners = false;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
-    std::string fn;
+    bool calcEigenvalues = false;
+    std::string out;
     bool plot = false;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
@@ -85,9 +93,11 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "DG.Penalty",            "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.", penalty );
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
+    cmd.addSwitch("e", "EliminateCorners",      "Eliminate corners (if they are primals)", eliminateCorners);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum number of iterations for linear solver", maxIterations);
-    cmd.addString("" , "fn",                    "Write solution and used options to file", fn);
+    cmd.addSwitch("",  "Solver.CalcEigenvalues","Estimate eigenvalues based on Lanczos", calcEigenvalues);
+    cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -107,12 +117,15 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define geometry... " << std::flush;
 
+    //! [Define Geometry]
     gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
+    //! [Define Geometry]
     if (!mpPtr)
     {
         gsInfo << "No geometry found in file " << geometry << ".\n";
         return EXIT_FAILURE;
     }
+    //! [Define Geometry2]
     gsMultiPatch<>& mp = *mpPtr;
 
     for (index_t i=0; i<splitPatches; ++i)
@@ -120,6 +133,7 @@ int main(int argc, char *argv[])
         gsInfo << "split patches uniformly... " << std::flush;
         mp = mp.uniformSplit();
     }
+    //! [Define Geometry2]
 
     if (stretchGeometry!=1)
     {
@@ -127,7 +141,7 @@ int main(int argc, char *argv[])
        for (size_t i=0; i!=mp.nPatches(); ++i)
            const_cast<gsGeometry<>&>(mp[i]).scale(stretchGeometry,0);
        // Const cast is allowed since the object itself is not const. Stretching the
-       // overall mp keeps its topology.
+       // overall domain keeps its topology.
     }
 
     gsInfo << "done.\n";
@@ -136,6 +150,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define right-hand-side and boundary conditions... " << std::flush;
 
+    //! [Define Source]
     // Right-hand-side
     gsFunctionExpr<> f( "2*sin(x)*cos(y)", mp.geoDim() );
 
@@ -146,6 +161,7 @@ int main(int argc, char *argv[])
     gsConstantFunction<> gN( 1.0, mp.geoDim() );
 
     gsBoundaryConditions<> bc;
+    //! [Define Source]
     {
         const index_t len = boundaryConditions.length();
         index_t i = 0;
@@ -182,15 +198,19 @@ int main(int argc, char *argv[])
 
     /************ Setup bases and adjust degree *************/
 
+    //! [Define Basis]
     gsMultiBasis<> mb(mp);
+    //! [Define Basis]
 
     gsInfo << "Setup bases and adjust degree... " << std::flush;
 
+    //! [Set degree and refine]
     for ( size_t i = 0; i < mb.nBases(); ++ i )
         mb[i].setDegreePreservingMultiplicity(degree);
 
     for ( index_t i = 0; i < refinements; ++i )
         mb.uniformRefine();
+    //! [Set degree and refine]
 
     gsInfo << "done.\n";
 
@@ -235,6 +255,7 @@ int main(int argc, char *argv[])
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
+    //! [Define primals]
     if (cornersAsPrimals)
         ietiMapper.cornersAsPrimals();
 
@@ -243,18 +264,22 @@ int main(int argc, char *argv[])
 
     if (facesAsPrimals)
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
+    //! [Define primals]
 
 
-printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofIndices);
+printPrimalConstraints(ietiMapper);
 
     // TODO: Jump matrices before or after primals?
     // Compute the jump matrices
     bool fullyRedundant = true,
-         noLagrangeMultipliersForCorners = true;
+         noLagrangeMultipliersForCorners = eliminateCorners;
+    //! [Define jumps]
     ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
+    //! [Define jumps]
 
+    //! [Setup]
     // The ieti system does not have a special treatment for the
-    // primal dofs. They are just one more submp
+    // primal dofs. They are just one more subdomain
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
 
@@ -265,7 +290,9 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
 
     // Setup the primal system, which needs to know the number of primal dofs.
     gsPrimalSystem<> primal(ietiMapper.nPrimalDofs());
+    //! [Setup]
 
+    //! [Assemble]
     for (index_t k=0; k<nPatches; ++k)
     {
         // We use the local variants of everything
@@ -282,27 +309,30 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
 
         const std::vector<gsArtificialIfaces<>::ArtificialIface>& artIfaces = ai.artificialIfaces(k);
 
-        std::vector<gsGeometry<>* > mp2_;
-        std::vector<gsBasis<>* > mb2_;
-        mp2_.push_back(mp[k].clone().release());
-        mb2_.push_back(mb[k].clone().release());
-        for (index_t i=0; i<artIfaces.size(); ++i)
+        std::vector<gsGeometry<>* > mp_local_data;
+        mp_local_data.reserve(1+2*mp.geoDim());
+        std::vector<gsBasis<>* > mb_local_data;
+        mp_local_data.reserve(1+2*mp.geoDim());
+
+        mp_local_data.push_back(mp[k].clone().release());
+        mb_local_data.push_back(mb[k].clone().release());
+        for (size_t i=0; i<artIfaces.size(); ++i)
         {
-             mp2_.push_back(mp[artIfaces[i].artificialIface.patch].clone().release());
-             mb2_.push_back(mb[artIfaces[i].artificialIface.patch].clone().release());
+             mp_local_data.push_back(mp[artIfaces[i].artificialIface.patch].clone().release());
+             mb_local_data.push_back(mb[artIfaces[i].artificialIface.patch].clone().release());
         }
-        gsMultiPatch<> mp2(mp2_);
-        mp2.computeTopology();
-        gsMultiBasis<> mb2(mb2_,mp2);
+        gsMultiPatch<> mp_local(mp_local_data);
+        mp_local.computeTopology();
+        gsMultiBasis<> mb_local(mb_local_data,mp_local);
 
         gsGenericAssembler<> gAssembler(
-            mp2,
-            mb2,
+            mp_local,
+            mb_local,
             assemblerOptions,
             &bc_local
         );
 
-        // This provides a new dof mapper and the Dirichlet data
+        // This function provides a new dof mapper and the Dirichlet data
         // This is necessary since it might happen that a 2d-patch touches the
         // Dirichlet boundary just with a corner or that a 3d-patch touches the
         // Dirichlet boundary with a corner or an edge. These cases are not
@@ -312,7 +342,7 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
         fixedPart.setZero();
         fixedPart.topRows(ietiMapper.fixedPart(k).rows()) = ietiMapper.fixedPart(k); // TODO
         gAssembler.setFixedDofVector(fixedPart);
-        gAssembler.system().reserve(mb2, assemblerOptions, 1);
+        gAssembler.system().reserve(mb_local, assemblerOptions, 1);
 
         // Assemble
         gAssembler.assembleStiffness(0,false);
@@ -322,7 +352,7 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
                 it!= neumannSides.end(); ++it)
             gAssembler.assembleNeumann(*it,false);
 
-        for (index_t i=0; i<artIfaces.size(); ++i)
+        for (size_t i=0; i<artIfaces.size(); ++i)
         {
             patchSide side1(0,artIfaces[i].realIface.side());
             patchSide side2(i+1,artIfaces[i].artificialIface.side());
@@ -334,8 +364,10 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
         gsMatrix<>                       localRhs    = gAssembler.rhs();
         gsSparseMatrix<>                 localMatrix = gAssembler.matrix();
+        //! [Assemble]
 
         // Add the patch to the scaled Dirichlet preconditioner
+        //! [Patch to preconditioner]
         prec.addSubdomain(
             gsScaledDirichletPrec<>::restrictToSkeleton(
                 jumpMatrix,
@@ -343,8 +375,10 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
                 ietiMapper.skeletonDofs(k)
             )
         );
+        //! [Patch to preconditioner]
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
-        // so it must be called after prec.addSubmp().
+        // so it must be called after prec.addSubdomain().
+        //! [Patch to primals]
         primal.handleConstraints(
             ietiMapper.primalConstraints(k),
             ietiMapper.primalDofIndices(k),
@@ -352,57 +386,84 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
             localMatrix,
             localRhs
         );
-
+        //! [Patch to primals]
+DEBUGMAT(jumpMatrix);
         // Add the patch to the Ieti system
+        //! [Patch to system]
         ieti.addSubdomain(
             jumpMatrix.moveToPtr(),
             makeMatrixOp(localMatrix.moveToPtr()),
             give(localRhs)
         );
-    }
+        //! [Patch to system]
+    //! [End of assembling loop]
+    } // end for
+    //! [End of assembling loop]
+
     gsInfo << "All patches are assembled\nNow handle primal system..." << std::flush;
     // Add the primal problem if there are primal constraints
+    //! [Primal to system]
     if (ietiMapper.nPrimalDofs()>0)
     {
+        // It is not required to provide a local solver to .addSubdomain,
+        // since a sparse LU solver would be set up on the fly if required.
+        // Here, we make use of the fact that we can use a Cholesky solver
+        // because the primal problem is symmetric and positive definite:
+        gsLinearOperator<>::Ptr localSolver
+            = makeSparseCholeskySolver(primal.localMatrix());
+
         // Add to IETI system
         ieti.addSubdomain(
             primal.jumpMatrix().moveToPtr(),
             makeMatrixOp(primal.localMatrix().moveToPtr()),
-            give(primal.localRhs())
+            give(primal.localRhs()),
+            localSolver
         );
     }
+    //! [Primal to system]
 
     gsInfo << "done. " << ietiMapper.nPrimalDofs() << " primal dofs.\n";
 
     /**************** Setup solver and solve ****************/
+
     gsInfo << "Setup solver and solve... \n"
         "    Setup multiplicity scaling... " << std::flush;
 
     // Tell the preconditioner to set up the scaling
+    //! [Setup scaling]
     prec.setupMultiplicityScaling();
+    //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
     // Compute the Schur-complement contribution for the right-hand-side
+    //! [Setup rhs]
     gsMatrix<> rhsForSchur = ieti.rhsForSchurComplement();
+    //! [Setup rhs]
 
     gsInfo << "done.\n    Setup cg solver for Lagrange multipliers and solve... " << std::flush;
     // Initial guess
+    //! [Define initial guess]
     gsMatrix<> lambda;
     lambda.setRandom( ieti.nLagrangeMultipliers(), 1 );
+    //! [Define initial guess]
 
     gsMatrix<> errorHistory;
 
     // This is the main cg iteration
+    //! [Solve]
     gsConjugateGradient<> PCG( ieti.schurComplement(), prec.preconditioner() );
-    PCG.solveDetailed( rhsForSchur, lambda, errorHistory );
+    PCG.setOptions( opt.getGroup("Solver") ).solveDetailed( rhsForSchur, lambda, errorHistory );
+    //! [Solve]
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     // Now, we want to have the global solution for u
+    //! [Recover]
     gsMatrix<> uVec = ietiMapper.constructGlobalSolutionFromLocalSolutions(
         primal.distributePrimalSolution(
             ieti.constructSolutionFromLagrangeMultipliers(lambda)
         )
     );
+    //! [Recover]
     gsInfo << "done.\n\n";
 
     /******************** Print end Exit ********************/
@@ -419,7 +480,10 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-    if (!fn.empty())
+    if (calcEigenvalues)
+        gsInfo << "Estimated condition number: " << PCG.getConditionNumber() << "\n";
+
+    if (!out.empty())
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
@@ -427,18 +491,10 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
         fd.add(uVec);
         gsMatrix<> mat; ieti.saddlePointProblem()->toMatrix(mat); fd.add(mat);
         fd.addComment(std::string("ietidG_example   Timestamp:")+std::ctime(&time));
-        fd.save(fn);
-        gsInfo << "Write solution to file " << fn << "\n";
-
-        for (int i=0; i<mat.rows(); ++i)
-        {
-            for (int j=0; j<mat.cols(); ++j)
-                gsInfo << ( mat(i,j) > 1.e-4 ? '+' : mat(i,j) < -1.e-4 ? '-' : ' ' );
-            gsInfo << "\n"; 
-        }
-
+        fd.save(out);
+        gsInfo << "Write solution to file " << out << "\n";
     }
-    /*
+
     if (plot)
     {
         gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
@@ -457,11 +513,11 @@ printPrimalConstraints(ietiMapper.m_primalConstraints, ietiMapper.m_primalDofInd
         gsWriteParaview<>(sol, "ieti_result", 1000);
         //gsFileManager::open("ieti_result.pvd");
     }
-    */
-    if (!plot&&fn.empty())
+
+    if (!plot&&out.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution or --fn to write solution to xml file.\n";
+                  "file containing the solution or --out to write solution to xml file.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
