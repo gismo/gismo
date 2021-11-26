@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
 
         // Add contributions from Neumann conditions to right-hand side
         variable g_N = assembler.getBdrFunction();
-        assembler.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+        assembler.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc_local.neumannSides() );
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
