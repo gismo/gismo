@@ -113,12 +113,14 @@ public:
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support() const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).support();
     }
 
     /// Returns the boundary basis on side s
     gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).boundaryBasis(s).get(); // Wrong, Should return 1-D mappedSingleBasis
     }
 
@@ -126,7 +128,7 @@ public:
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support(const index_t & i) const
     {
-        return m_basis->getBase(m_index).support(i);
+        return m_basis->support(m_index,i); // Might work now
     }
 
     /// Evaluates the non-zero basis functions at value u.
@@ -227,18 +229,21 @@ public:
     /// Returns the polynomial degree.
     short_t maxDegree() const
     {
+        // TODO Not always working: make it more general
         return degree();
     }
 
     /// Returns the polynomial degree.
     short_t minDegree() const
     {
+        // TODO Not always working: make it more general
         return degree();
     }
 
     /// Returns the polynomial degree.
     short_t degree() const
     {
+        // TODO Not always working: make it more general
         return m_basis->maxDegree();                                   // must fix this (just took max_degree)
     }
 
@@ -279,22 +284,26 @@ public:
     /// Return the 1-d basis of the underlying tensor product basis for the \a i-th parameter component.
     const gsBasis<T>& component(short_t i) const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).component(i);
     }
 
     gsBasis<T>& component(short_t i)
     {
+        // TODO Not always working: make it more general
         // return gsMappedSingleBasisComponent<d-1,T> (this, i);
         return m_basis->getBase(m_index).component(i);
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator();
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator(s);
     }
 

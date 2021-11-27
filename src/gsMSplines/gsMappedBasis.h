@@ -243,6 +243,8 @@ public:
      */
     gsMultiPatch<T> exportToPatches(gsMatrix<T> const & localCoef) const;
 
+    gsMatrix<T> support(const index_t patch, const index_t & i) const; //global BF active on patch at point
+
 public:
     //////////////////////////////////////////////////
     // functions for evaluating and derivatives
