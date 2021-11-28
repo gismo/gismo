@@ -88,7 +88,7 @@ void gsMappedBasis<d,T>::addLocalIndizesOfPatchSide(const patchSide& ps,unsigned
     int side  = ps.side();
     int localOffset = _getFirstLocalIndex(patch);
     gsMatrix<index_t> indizes;
-    for(unsigned i = 0;i<=offset;++i)
+    //for(unsigned i = 0;i<=offset;++i)
     {
         indizes=m_bases[patch]->boundaryOffset(side,offset);
         for(int j=0;j<indizes.rows();++j)

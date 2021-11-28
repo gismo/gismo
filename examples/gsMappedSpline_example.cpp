@@ -1,6 +1,6 @@
-#/** @file gsMappedBasis_test.cpp
+#/** @file gsMappedSpline_example.cpp
 
-    @brief Example using the gsMappedBasis class
+    @brief Example using the gsMappedBasis and gsMappedSpline class
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, P. Weinmueller, H. Verhelst
 */
 
 //! [Include namespace]
@@ -69,27 +69,18 @@ GISMO_CLONE_FUNCTION(gsSingleBasis)
 };
 
 
-void createHBSpline(gsMultiBasis<> mb_coarser, std::string name)
+void createHBSpline(gsMultiPatch<> mp_coarser, gsMultiBasis<> mb_coarser, std::string name)
 {
     gsMultiBasis<> mb_finer = mb_coarser;
     mb_finer.uniformRefine();
 
     gsExprAssembler<> A(1,1);
     gsExprEvaluator<> ev(A);
-    //ev.options().setInt("quB", 2);// increase norm quadrature accuracy
-    //ev.options().addInt("quRule","",2); // 1:Gauss-Legendre, 2:Gauss-Lobatto
-    //A.options().addInt("quRule","", qRule); // 1:Gauss-Legendre, 2:Gauss-Lobatto
-    //A.options().addInt("quB","", 1);
+
     A.setIntegrationElements(mb_finer);
 
-    //gsInfo<<"Active options:\n"<< A.options() <<"\n";
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
     // Set the discretization space
-    space u = A.getSpace(mb_finer);
+    auto u = A.getSpace(mb_finer);
 
     gsMatrix<> mat_coarser, mat_finer;
     mat_coarser.setZero(mb_coarser.basis(0).size(),mb_finer.basis(0).size());
@@ -108,7 +99,7 @@ void createHBSpline(gsMultiBasis<> mb_coarser, std::string name)
         solver.compute(A.matrix());
         gsMatrix<> solVector = solver.solve(A.rhs());
 
-        solution u_sol = A.getSolution(u, solVector);
+        auto u_sol = A.getSolution(u, solVector);
         gsMatrix<> sol;
         u_sol.extract(sol);
         mat_coarser.row(bfID) = sol.transpose();
@@ -150,6 +141,16 @@ void createHBSpline(gsMultiBasis<> mb_coarser, std::string name)
     fd << mb_finer;
     fd << sparse_sol;
     fd.save(name + ".xml");
+
+    mat_coarser = mat_coarser.transpose();
+    gsSparseMatrix<> sparse_coarser = mat_coarser.sparseView(1,1e-10);
+    //gsInfo << sparse_sol << "\n";
+
+    fd.clear();
+    fd << mp_coarser;
+    fd << mb_finer;
+    fd << sparse_coarser;
+    fd.save( "spline_test.xml");
 }
 
 
@@ -159,7 +160,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
 
-    std::string fn("msplines/square_p3_2");
+    std::string fn("msplines/spline_test");
 
     gsCmdLine cmd("Example using mapped spline.");
     cmd.addString( "f", "file", "Input XML file prefix", fn );
@@ -189,7 +190,7 @@ int main(int argc, char *argv[])
 // TEMPORARLY TODO DELETE MAYBE
 
     //mb.uniformRefine();
-    //createHBSpline(mb, "hb_basis_2");
+    //createHBSpline(mp,mb, "hb_basis_2");
 
 // TEMPORARLY TODO DELETE MAYBE
 
@@ -197,37 +198,72 @@ int main(int argc, char *argv[])
 
     //! [Setup the Mapped Basis]
     gsMappedBasis<2,real_t> mbasis(mb,cf);
+
+    gsMultiBasis<> mbasis_exact(mp);
+
     gsInfo << "The MappedBasis has " << mbasis.size() << " basis functions for all patches! \n";
+    gsInfo << "The SplineBasis has " << mbasis_exact.size() << " basis functions for all patches! \n";
+
     //! [Setup the Mapped Basis]
 
     //! [Some computation on the basis]
     // Works only for Bspline and identity
-    if (cf.toDense().isIdentity(1e-10))
+    gsMatrix<> points(2,3), result_mspline, result_bspline;
+    points << 0,0, 0.2,0, 0.5,0.5;
+
+    result_mspline = mbasis.basis(0).eval(points);
+    result_bspline = mbasis_exact.basis(0).eval(points);
+    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+    result_mspline = mbasis.basis(0).deriv(points);
+    result_bspline = mbasis_exact.basis(0).deriv(points);
+    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+    result_mspline = mbasis.basis(0).deriv2(points);
+    result_bspline = mbasis_exact.basis(0).deriv2(points);
+    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+    index_t bfID = 0;
+    result_mspline = mbasis.basis(0).evalSingle(bfID, points);
+    result_bspline = mbasis_exact.basis(0).evalSingle(bfID, points);
+    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+    result_mspline = mbasis.basis(0).support(bfID);
+    result_bspline = mbasis_exact.basis(0).support(bfID);
+    gsInfo << result_mspline << "\n";
+    gsInfo << result_bspline << "\n";
+    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+    // TODO anchors_into() not implemented
+    //result_mspline = mbasis.basis(0).anchors();
+    //result_bspline = mbasis_exact.basis(0).anchors();
+    //gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+    bool failed = false;
+    gsMatrix<index_t> act, act_exact;
+    for (index_t i = 0; i < points.cols(); i++)
     {
-        gsMatrix<> points(2,3), result_mspline, result_bspline;
-        points << 0,0, 0.2,0, 0.5,0.5;
-
-        result_mspline = mbasis.getBase(0).eval(points);
-        result_bspline = mb.basis(0).eval(points);
-        gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-        result_mspline = mbasis.getBase(0).deriv(points);
-        result_bspline = mb.basis(0).deriv(points);
-        gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-        result_mspline = mbasis.getBase(0).deriv2(points);
-        result_bspline = mb.basis(0).deriv2(points);
-        gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-        index_t bfID = 0;
-        result_mspline = mbasis.getBase(0).evalSingle(bfID, points);
-        result_bspline = mb.basis(0).evalSingle(bfID, points);
-        gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-        result_mspline = mbasis.getBase(0).support(bfID);
-        result_bspline = mb.basis(0).support(bfID);
-        gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+        act = mbasis.basis(0).active(points.col(i));
+        act_exact = mbasis_exact.basis(0).active(points.col(i));
+        if ((act-act_exact).norm() > 1e-10)
+            failed = true;
     }
+    gsInfo<<( failed ? "failed" : "passed" )<<"\n";
+
+
+    act = mbasis.basis(0).boundaryOffset(boxSide(boundary::west), 0);
+    act_exact = mbasis_exact.basis(0).boundaryOffset(boxSide(boundary::west), 0);
+    if (act.rows() != act_exact.rows())
+        gsInfo << "failed: actives are different size \n";
+    else
+        gsInfo<<( (act-act_exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+
+    act = mbasis.basis(0).boundaryOffset(boxSide(boundary::south), 1);
+    act_exact = mbasis_exact.basis(0).boundaryOffset(boxSide(boundary::south), 1);
+    if (act.rows() != act_exact.rows())
+        gsInfo << "failed: actives are different size \n";
+    else
+        gsInfo<<( (act-act_exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
     //! [Some computation on the basis]
 
     //! [Setup the Mapped Spline]
@@ -241,7 +277,7 @@ int main(int argc, char *argv[])
     {
         gsFunctionExpr<> functionExpr("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
         gsMatrix<> coefs2, coefs3;
-        gsQuasiInterpolate<real_t>::localIntpl(mbasis.getBase(0), functionExpr, coefs2);
+        gsQuasiInterpolate<real_t>::localIntpl(mbasis.basis(0), functionExpr, coefs2);
         gsMappedSpline<2,real_t> mspline2(mbasis,coefs2);
         gsField<> solField2(mp, mspline2,true);
         gsWriteParaview<>( solField2, "MappedSpline_sol", 1000, false);
@@ -259,6 +295,8 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     gsInfo<<"Plotting in Paraview...\n";
     gsWriteParaview<>( mbasis.basis(0), "MappedBasis", 1000, false);
+
+    gsWriteParaview<>( mbasis_exact.basis(0), "SplineBasis", 1000, false);
     gsField<> solField(mp, mspline,true);
     gsWriteParaview<>( solField, "MappedSpline", 1000, false);
     //! [Export visualization in ParaView]
