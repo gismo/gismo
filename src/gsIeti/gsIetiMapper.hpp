@@ -17,10 +17,10 @@
 
 /*    Concerning the status flag m_status:
  *       (m_status&1)!=0    means that the object has been initialized by calling init or the value constructor
- *       (m_status&2)!=0    means that there are artificial dofs
- *       (m_status&4)!=0    means that the jump matrices have been computed
- *       (m_status&8)!=0    means that corners have been set up as primal constraints
- *       (m_status&flag)!=0 for flag = 16, 32,... means that edges, faces, ... have been set up as primal constraints
+ *       (m_status&2)!=0    means that the jump matrices have been computed
+ *       (m_status&4)!=0    means that corners have been set up as primal constraints
+ *       (m_status&flag)!=0 for flag = 8, 16,... means that edges, faces, ... have been set up as primal constraints
+ *        m_status&64!=0    means that there are artificial interfaces or other irregularities
  *
  *   This class allows that the dof mappers have more dofs than the bases.
  *   It is assumed the first N0 basis functions in the mapper are associated
@@ -29,9 +29,8 @@
  *     N  = m_dofMapperGlobal.patchSize(k);
  *     N0 = m_multiBasis->piece(k).size();
  *
- *   If for one match N!=N0, we set status flag 2.
+ *   If for one match N!=N0, we set status flag 64.
  */
-// TODO: go through the whole class and check for this
 
 namespace gismo
 {
@@ -74,7 +73,7 @@ void gsIetiMapper<T>::init(
             "The mapper for patch "<<k<<" has not as many dofs as the corresponding basis." );
 
         if (nDofs>m_multiBasis->piece(k).size())
-            m_status |= 2;
+            m_status |= 64;
 
         m_dofMapperLocal[k].setIdentity(1,nDofs);
 
@@ -101,7 +100,7 @@ void gsIetiMapper<T>::init(
         }
     }
 
-    if (m_status&2)
+    if (m_status&64)
     {
         // Populate m_artificialDofInfo
         const index_t nDofs = m_dofMapperGlobal.freeSize();
@@ -192,8 +191,8 @@ template <class T>
 void gsIetiMapper<T>::cornersAsPrimals()
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
-    GISMO_ASSERT( !(m_status&8), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
-    m_status |= 8;
+    GISMO_ASSERT( !(m_status&4), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
+    m_status |= 4;
 
     const index_t nPatches = m_dofMapperLocal.size();
 
@@ -213,7 +212,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
             dh.localIndex = m_dofMapperLocal[k].index( idx, 0 );
             if (m_dofMapperGlobal.is_free_index(dh.globalIndex))
             {
-                if (m_status&2)
+                if (m_status&64)
                 {
                     // If there artificial dofs, we have to find all pre-images, which are then mapped back
                     std::vector< std::pair<index_t,index_t> > preImages;
@@ -335,7 +334,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
     GISMO_ASSERT( geo.parDim() == m_multiBasis->dim(),
         "gsIetiMapper::interfaceAveragesAsPrimals: The given geometry does not fit.");
 
-    const unsigned flag = 1<<(3+d);
+    const unsigned flag = 1<<(2+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
         "already been called for d="<<d );
     m_status |= flag;
@@ -373,7 +372,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                     std::sort(constraint.globalIndices.begin(), constraint.globalIndices.end());
 
                     // Transfer constraint to artificial ifaces
-                    if (m_status&2)
+                    if (m_status&64)
                     {
                         for (std::map< index_t, gsVector<index_t> >::const_iterator it = m_artificialDofInfo[constraint.patch].begin();
                              it != m_artificialDofInfo[constraint.patch].end(); ++it)
@@ -475,8 +474,8 @@ template <class T>
 void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
-    GISMO_ASSERT( !(m_status&4), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
-    m_status |= 4;
+    GISMO_ASSERT( !(m_status&2), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
+    m_status |= 2;
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
