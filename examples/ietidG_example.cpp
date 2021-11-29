@@ -21,7 +21,7 @@
 
 #include <gismo.h>
 #include <gsAssembler/gsVisitorDg.h>
-#include <gsIeti/gsArtificialIfaces.h>
+#include <gsIeti/gsIetiDgMapper.h>
 
 using namespace gismo;
 
@@ -38,7 +38,7 @@ struct ctr {
    }
 };
 
-void printPrimalConstraints( const gsIetiMapper<>& ietiMapper )
+void printPrimalConstraints( const gsIetiDgMapper<>& ietiMapper )
 {
 
 //c=ietiMapper.m_primalConstraints
@@ -232,13 +232,14 @@ int main(int argc, char *argv[])
     );
     assembler.computeDirichletDofs();
 
+    gsIetiDgMapper<> ietiMapper( mp, mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
+
     gsInfo << "Register artificial interfaces ... "<< std::flush;
-    gsArtificialIfaces<> ai( mp, mb, assembler.system().rowMapper(0) );
-    ai.registerAllArtificialIfaces();
-    ai.finalize();
+    ietiMapper.registerAllArtificialIfaces();
+    ietiMapper.finalize();
     gsInfo << "done\n";
 
-    gsIetiMapper<> ietiMapper( mb, ai.dofMapperMod(), assembler.fixedDofs() );
+    //gsIetiMapper<> ietiMapper( mb, ai.dofMapperMod(), assembler.fixedDofs() );
 
     // Which primal dofs should we choose?
     bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
@@ -302,8 +303,8 @@ gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
         // We use the local variants of everything
         gsBoundaryConditions<> bc_local;
         bc.getConditionsForPatch(k,bc_local);
-        gsMultiPatch<> mp_local = ai.multiPatchLocal(k);
-        gsMultiBasis<> mb_local = ai.multiBasisLocal(k);
+        gsMultiPatch<> mp_local = ietiMapper.multiPatchLocal(k);
+        gsMultiBasis<> mb_local = ietiMapper.multiBasisLocal(k);
 
         // We set up the assembler
         gsOptionList assemblerOptions = gsGenericAssembler<>::defaultOptions();
@@ -326,8 +327,8 @@ gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
         // Dirichlet boundary just with a corner or that a 3d-patch touches the
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
-        gAssembler.refresh(ai.dofMapperLocal(k));
-        gsMatrix<> fixedPart(ai.dofMapperLocal(k).boundarySize(),1);
+        gAssembler.refresh(ietiMapper.dofMapperLocal(k));
+        gsMatrix<> fixedPart(ietiMapper.dofMapperLocal(k).boundarySize(),1);
         fixedPart.setZero();
         fixedPart.topRows(ietiMapper.fixedPart(k).rows()) = ietiMapper.fixedPart(k); // TODO
         gAssembler.setFixedDofVector(fixedPart);
@@ -341,10 +342,10 @@ gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
                 it!= neumannSides.end(); ++it)
             gAssembler.assembleNeumann(*it,false);
 
-        for (size_t i=0; i<ai.artificialIfaces(k).size(); ++i)
+        for (size_t i=0; i<ietiMapper.artificialIfaces(k).size(); ++i)
         {
-            patchSide side1(0,ai.artificialIfaces(k)[i].realIface.side());
-            patchSide side2(i+1,ai.artificialIfaces(k)[i].artificialIface.side());
+            patchSide side1(0,ietiMapper.artificialIfaces(k)[i].realIface.side());
+            patchSide side2(i+1,ietiMapper.artificialIfaces(k)[i].artificialIface.side());
             boundaryInterface bi(side1, side2, mp.geoDim());
             gAssembler.assembleDG(bi,false);
         }

@@ -1,4 +1,4 @@
-/** @file gsArttficialIfaces.h
+/** @file gsIetiDgMapper.h
 
     @brief TODO
 
@@ -16,11 +16,12 @@
 namespace gismo {
 
 template<class T=real_t>
-class gsArtificialIfaces {
+class gsIetiDgMapper : protected gsIetiMapper<T> {
+    typedef gsIetiMapper<T> Base;
 
 public:
-    gsArtificialIfaces( const gsMultiPatch<T>& mp, const gsMultiBasis<T>& mb, gsDofMapper dm )
-        : m_status(0), m_artificialIfaces(mb.nBases()), m_multiPatch(&mp), m_multiBasis(&mb), m_dofMapperOrig(give(dm)) {}
+    gsIetiDgMapper( const gsMultiPatch<T>& mp, const gsMultiBasis<T>& mb, gsDofMapper dm, const gsMatrix<T>& fixedPart )
+        : m_status(0), m_artificialIfaces(mb.nBases()), m_multiPatch(&mp), m_multiBasis(&mb), m_dofMapperOrig(give(dm)), m_fixedPart(fixedPart) {}
 
     /// Data structure for artificial interfaces, as used in dG settings
     struct ArtificialIface {
@@ -40,7 +41,7 @@ public:
     ///                         artificial interface taken+side)
     void registerArtificialIface(patchSide realIface, patchSide artificialIface)
     {
-        GISMO_ASSERT( m_status==0, "gsArtificialIfaces: Cannot register artificial interfaces after requesting data." );
+        GISMO_ASSERT( m_status==0, "gsIetiDgMapper: Cannot register artificial interfaces after requesting data." );
         ArtificialIface ai;
         ai.realIface = realIface;
         ai.artificialIface = artificialIface;
@@ -51,7 +52,7 @@ public:
     /// Calls \ref registerArtificialIface for all interface known to the underlying box topology
     void registerAllArtificialIfaces()
     {
-        GISMO_ASSERT( m_status==0, "gsArtificialIfaces: Cannot register artificial interfaces after requesting data." );
+        GISMO_ASSERT( m_status==0, "gsIetiDgMapper: Cannot register artificial interfaces after requesting data." );
         const gsBoxTopology& top = m_multiBasis->topology();
         const short_t dim        = m_multiBasis->domainDim();
         const index_t nPatches   = m_dofMapperOrig.numPatches();
@@ -77,7 +78,7 @@ public:
     /// Setup of the dof mappers
     void finalize()
     {
-        GISMO_ASSERT( m_status==0, "gsArtificialIfaces: Already finalized." );
+        GISMO_ASSERT( m_status==0, "gsIetiDgMapper: Already finalized." );
         m_status = 1;
 
         // TODO: we can get rid of this assumption if we incorporate dofs that
@@ -162,6 +163,9 @@ public:
             m_dofMapperLocal[k].finalize();
         }
         m_dofMapperMod.finalize();
+
+        gsIetiMapper<T>::init( *m_multiBasis, dofMapperMod(), m_fixedPart );
+
     }
 
     gsSparseMatrix<index_t> subdomainToPatch()
@@ -242,15 +246,43 @@ public:
         return m_dofMapperMod;
     }
 
+    gsMatrix<T> fixedPart(index_t k)
+    {
+        gsMatrix<T> result(dofMapperLocal(k).boundarySize(),1);
+        result.setZero();
+        result.topRows(Base::fixedPart(k).rows()) = Base::fixedPart(k); // TODO
+        return result;
+    }
+
+    using Base::cornersAsPrimals;
+    using Base::interfaceAveragesAsPrimals;
+    using Base::customPrimalConstraints;
+    using Base::computeJumpMatrices;
+    using Base::skeletonDofs;
+    using Base::initFeSpace;
+    using Base::constructGlobalSolutionFromLocalSolutions;
+    using Base::nLagrangeMultipliers;
+    using Base::nPrimalDofs;
+    using Base::primalConstraints;
+    using Base::primalDofIndices;
+    using Base::jumpMatrix;
+    //using Base::dofMapperGlobal;
+    //using Base::dofMapperLocal;
+    //using Base::fixedPart;
+    //using Base::multiBasis;
+
+    const gsMultiBasis<T>& multiBasis() const { return *m_multiBasis; }
+    const gsMultiBasis<T>& multiPatch() const { return *m_multiPatch; }
+
 private:
-    index_t                                       m_status;
+    index_t                                       m_status;              ///< TODO: docs
     std::vector< std::vector<ArtificialIface> >   m_artificialIfaces;    ///< TODO: docs
     const gsMultiPatch<T>*                        m_multiPatch;          ///< Pointer to the respective multipatch
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperOrig;       ///< The original dof mapper
     gsDofMapper                                   m_dofMapperMod;        ///< The modified dof mapper
     std::vector<gsDofMapper>                      m_dofMapperLocal;      ///< The modified dof mapper, including the dofs for the neighboring patches
-
+    gsMatrix<T>                                   m_fixedPart;           ///< TODO: docs
 };
 
 } // namespace gismo
