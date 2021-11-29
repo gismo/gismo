@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
     );
     assembler.computeDirichletDofs();
 
-    gsIetiDgMapper<> ietiMapper( mp, mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
+    gsIetiDgMapper<> ietiMapper( mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
 
     gsInfo << "Register artificial interfaces ... "<< std::flush;
     ietiMapper.registerAllArtificialIfaces();
@@ -300,8 +300,9 @@ int main(int argc, char *argv[])
         // We use the local variants of everything
         gsBoundaryConditions<> bc_local;
         bc.getConditionsForPatch(k,bc_local);
-        gsMultiPatch<> mp_local = ietiMapper.multiPatchLocal(k);
-        gsMultiBasis<> mb_local = ietiMapper.multiBasisLocal(k);
+        gsMultiPatch<> mp_local;
+        gsMultiBasis<> mb_local;
+        ietiMapper.localSpaces(mp,k,mp_local,mb_local);
 
         // We set up the assembler
         gsOptionList assemblerOptions = gsGenericAssembler<>::defaultOptions();
@@ -325,10 +326,7 @@ int main(int argc, char *argv[])
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
         gAssembler.refresh(ietiMapper.dofMapperLocal(k));
-        gsMatrix<> fixedPart(ietiMapper.dofMapperLocal(k).boundarySize(),1);
-        fixedPart.setZero();
-        fixedPart.topRows(ietiMapper.fixedPart(k).rows()) = ietiMapper.fixedPart(k); // TODO
-        gAssembler.setFixedDofVector(fixedPart);
+        gAssembler.setFixedDofVector(ietiMapper.fixedPart(k));
         gAssembler.system().reserve(mb_local, assemblerOptions, 1);
 
         // Assemble

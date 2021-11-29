@@ -20,8 +20,8 @@ class gsIetiDgMapper : protected gsIetiMapper<T> {
     typedef gsIetiMapper<T> Base;
 
 public:
-    gsIetiDgMapper( const gsMultiPatch<T>& mp, const gsMultiBasis<T>& mb, gsDofMapper dm, const gsMatrix<T>& fixedPart )
-        : m_status(0), m_artificialIfaces(mb.nBases()), m_multiPatch(&mp), m_multiBasis(&mb), m_dofMapperOrig(give(dm)), m_fixedPart(fixedPart) {}
+    gsIetiDgMapper( const gsMultiBasis<T>& mb, gsDofMapper dm, const gsMatrix<T>& fixedPart )
+        : m_status(0), m_artificialIfaces(mb.nBases()), m_multiBasis(&mb), m_dofMapperOrig(give(dm)), m_fixedPart(fixedPart) {}
 
     /// Data structure for artificial interfaces, as used in dG settings
     struct ArtificialIface {
@@ -166,48 +166,6 @@ public:
 
         Base::init( *m_multiBasis, dofMapperMod(), m_fixedPart );
 
-        // Populate Base::m_artificialDofInfo
-        /*const index_t nDofs = Base::m_dofMapperGlobal.freeSize();
-        gsMatrix<index_t> dofs(nDofs,2);   // Has information (patch, localIndex) for each global dof
-        dofs.setZero();
-
-        for (index_t k=0; k<nPatches; ++k)
-        {
-            // Here we only consider the real values
-            const index_t sz = Base::m_multiBasis->piece(k).size();
-            for (index_t i=0; i<sz; ++i)
-            {
-                const index_t globalIndex = Base::m_dofMapperGlobal.index(i,k);
-                if (Base::m_dofMapperGlobal.is_free_index(globalIndex))
-                {
-                    GISMO_ASSERT( dofs(globalIndex,0) == 0, "Internal error.");
-                    dofs(globalIndex,0) = k;
-                    dofs(globalIndex,1) = Base::m_dofMapperLocal2[k].index(i,0) + 1;
-                }
-            }
-        }
-
-        Base::m_artificialDofInfo.resize( nPatches );
-        for (index_t k=0; k<nPatches; ++k)
-        {
-            const index_t sz  = Base::m_multiBasis->piece(k).size();
-            const index_t sz2 = Base::m_dofMapperGlobal.patchSize(k);
-            for (index_t i=sz; i<sz2; ++i)
-            {
-                const index_t globalIndex       = Base::m_dofMapperGlobal.index(i,k);
-                if (Base::m_dofMapperGlobal.is_free_index(globalIndex))
-                {
-                    const index_t otherPatch        = dofs(globalIndex,0);
-                    const index_t indexOnOtherPatch = dofs(globalIndex,1) - 1;
-                    GISMO_ASSERT( indexOnOtherPatch>=0, "Internal error." );
-                    gsVector<index_t> & which = Base::m_artificialDofInfo[otherPatch][k];
-                    if (which.rows() == 0)
-                        which.setZero( Base::m_dofMapperLocal[otherPatch].freeSize(), 1 );
-                    which[indexOnOtherPatch] = i + 1;
-                }
-            }
-        }*/
-
     }
 
     /// @brief Returns artificial interfaces for given patch
@@ -230,34 +188,25 @@ public:
         return m_dofMapperLocal2[k];
     }
 
-
-    gsMultiPatch<T> multiPatchLocal(index_t patch)
+    void localSpaces(const gsMultiPatch<T>& mp, index_t patch, gsMultiPatch<T>& mp_local, gsMultiBasis<T>& mb_local)
     {
         if (!m_status) finalize();
 
         const std::vector<ArtificialIface>& artIfaces = m_artificialIfaces[patch];
         std::vector<gsGeometry<T>*> mp_local_data;
-        mp_local_data.reserve(1+2*m_multiPatch->geoDim());
-        mp_local_data.push_back((*m_multiPatch)[patch].clone().release());
-        for (size_t i=0; i<artIfaces.size(); ++i)
-             mp_local_data.push_back((*m_multiPatch)[artIfaces[i].artificialIface.patch].clone().release());
-        gsMultiPatch<T> mp_local(mp_local_data);
-        mp_local.computeTopology();
-        return mp_local;
-    }
-
-    gsMultiBasis<T> multiBasisLocal(index_t patch)
-    {
-        if (!m_status) finalize();
-
-        const std::vector<ArtificialIface>& artIfaces = m_artificialIfaces[patch];
         std::vector<gsBasis<T>*> mb_local_data;
-        mb_local_data.reserve(1+2*m_multiPatch->geoDim());
+        mp_local_data.reserve(1+2*mp.geoDim());
+        mb_local_data.reserve(1+2*mp.geoDim());
+        mp_local_data.push_back(mp[patch].clone().release());
         mb_local_data.push_back((*m_multiBasis)[patch].clone().release());
         for (size_t i=0; i<artIfaces.size(); ++i)
+    {
+             mp_local_data.push_back(mp[artIfaces[i].artificialIface.patch].clone().release());
              mb_local_data.push_back((*m_multiBasis)[artIfaces[i].artificialIface.patch].clone().release());
-        gsMultiBasis<T> mb_local(mb_local_data,multiPatchLocal(patch));
-        return mb_local;
+        }
+        mp_local = gsMultiPatch<T>(mp_local_data);
+        mp_local.computeTopology();
+        mb_local = gsMultiBasis<T>(mb_local_data,mp_local);
     }
 
     const gsDofMapper& dofMapperMod()
@@ -292,7 +241,6 @@ public:
     //using Base::multiBasis;
 
     const gsMultiBasis<T>& multiBasis() const { return *m_multiBasis; }
-    const gsMultiBasis<T>& multiPatch() const { return *m_multiPatch; }
 
     void cornersAsPrimals( bool includeIsolated=false )
     {
@@ -312,6 +260,7 @@ public:
         if (!includeIsolated) removeIsolated(primals_old,primals_new);
     }
 
+protected:
     void removeIsolated(index_t primals_old, index_t primals_new)
     {
         std::vector<index_t> count(primals_new);
@@ -359,13 +308,6 @@ protected:
             for (size_t i=0; i<m_artificialIfaces[k].size(); ++i)
             {
                 ArtificialIface& ai = m_artificialIfaces[k][i];
-                /// The real interface (local patch to which the artificial interface is assigned+side)
-                //ai.realIface;
-                /// The artificial interface (foreign patch from which the artificial interface taken+side)
-                //ai.artificialIface;
-                /// The indicies of the basis of the foreign patch that belong to artificial interface
-                /// Vector is assumed to be sorted
-                //ai.ifaceIndices; //gsVector<index_t>
                 const index_t patch = ai.artificialIface.patch;
                 for (size_t j=0; j<Base::m_primalDofIndices[patch].size(); ++j)
                 {
@@ -386,44 +328,25 @@ protected:
                         for (typename gsSparseVector<T>::InnerIterator it(Base::m_primalConstraints[patch][j],0);
                             it; ++it)
                         {
-                            bool contains = (std::find(ifaceIndicesMapped.begin(),ifaceIndicesMapped.end(),it.row()) != ifaceIndicesMapped.end());
-                            b &= contains;
+                            b &= (std::find(ifaceIndicesMapped.begin(),ifaceIndicesMapped.end(),it.row()) != ifaceIndicesMapped.end());
                         }
                         if (b)
                         {
                             gsInfo << "Yes it, should be added!\n";
-                            /*index_t OFFSET = Base::m_dofMapperLocal2[k].freeSize();
-                            for (size_t ii=i; ii<m_artificialIfaces[k].size(); ++ii)
-                            {
-                                OFFSET -= m_artificialIfaces[k][ii].ifaceIndices.rows();
-                            }*/
                             gsSparseVector<T> newConstraint(m_dofMapperLocal2[k].freeSize());
                             for (typename gsSparseVector<T>::InnerIterator it(Base::m_primalConstraints[patch][j],0);
                                 it; ++it)
                             {
-                                index_t idx = std::find(ifaceIndicesMapped.begin(),ifaceIndicesMapped.end(),it.row()) - ifaceIndicesMapped.begin();
-
+                                index_t idx;
                                 {
-                                std::vector<std::pair<index_t,index_t> >  result;
-                                m_dofMapperLocal2[patch].preImage(it.row(),result);
-                                GISMO_ASSERT(result.size()==1, "result.size()="<<result.size());
-                                GISMO_ASSERT(result[0].first == 0, "result[0].first="<<result[0].first);
-                                idx = result[0].second; ////////
+                                    std::vector<std::pair<index_t,index_t> > result;
+                                    m_dofMapperLocal2[patch].preImage(it.row(),result);
+                                    GISMO_ASSERT(result.size()==1, "result.size()="<<result.size());
+                                    GISMO_ASSERT(result[0].first == 0, "result[0].first="<<result[0].first);
+                                    idx = result[0].second;
                                 }
 
-                                index_t idx_transfered = /*Self::*/m_dofMapperLocal2[k].index(idx,i+1); //TODO: is this correct?
-/*   gsInfo<<"m_multiBasis->piece(k).size()="<<m_multiBasis->piece(k).size()<<"\n";
-   gsInfo<<"m_dofMapperOrig.patchSize(k)="<<m_dofMapperOrig.patchSize(k)<<"\n";
-   gsInfo<<"m_dofMapperMod.patchSize(k)="<<m_dofMapperMod.patchSize(k)<<"\n";
-   gsInfo<<"m_dofMapperLocal2[k].patchSize(0)="<<m_dofMapperLocal2[k].patchSize(0)<<"\n";
-   gsInfo<<"m_dofMapperLocal2[k].patchSize(1)="<<m_dofMapperLocal2[k].patchSize(1)<<"\n";
-   gsInfo<<"m_dofMapperLocal2[k].patchSize(2)="<<m_dofMapperLocal2[k].patchSize(2)<<"\n";
-   gsInfo<<"idx="<<idx<<"\n";
-   gsInfo<<"idx_transfered="<<idx_transfered<<"\n";
-   gsInfo<<"i="<<i<<"\n";
-   gsInfo<<"it.row()="<<it.row()<<"\n";
-   gsInfo<<"it.value()="<<it.value()<<"\n";
-   gsInfo<<"newConstraint:"<<newConstraint.rows()<<"x"<<newConstraint.cols()<<"\n";*/
+                                index_t idx_transfered = m_dofMapperLocal2[k].index(idx,i+1);
                                 newConstraint[idx_transfered]=it.value();
                             }
                             Base::m_primalConstraints[k].push_back( give(newConstraint) );
@@ -435,26 +358,11 @@ protected:
                     }
                 }
             }
-        /*
-                    // If there artificial dofs, we have to find all pre-images, which are then mapped back
-                    std::vector< std::pair<index_t,index_t> > preImages;
-                    m_dofMapperGlobal.preImage(dh.globalIndex, preImages);
-                    gsInfo << "Found " << preImages.size() << " pre-images.\n";
-                    for (size_t i=0; i<preImages.size(); ++i)
-                    {
-                        dof_helper dh2;
-                        dh2.globalIndex = dh.globalIndex;
-                        dh2.patch = preImages[i].first;
-                        dh2.localIndex = m_dofMapperLocal2[preImages[i].first].index( preImages[i].second, 0 );
-                        corners.push_back(give(dh2));
-                    }
-        */
     }
 
 private:
     index_t                                       m_status;              ///< TODO: docs
     std::vector< std::vector<ArtificialIface> >   m_artificialIfaces;    ///< TODO: docs
-    const gsMultiPatch<T>*                        m_multiPatch;          ///< Pointer to the respective multipatch
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperOrig;       ///< The original dof mapper
     gsDofMapper                                   m_dofMapperMod;        ///< The modified dof mapper

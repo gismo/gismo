@@ -288,7 +288,7 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
     result.reserve(2*dim*std::pow(patchSize,(1.0-dim)/dim));
     for (index_t i=0; i<patchSize; ++i)
         if ( m_dofMapperGlobal.is_coupled(i,patch) )
-            result.push_back(m_dofMapperLocal[patch].index(i,0));
+            result.push_back(m_dofMapperLocal[patch].index(i,0)); //TODO: there is a problem with this for dG, when its mapper is used
     return result;
 }
 
