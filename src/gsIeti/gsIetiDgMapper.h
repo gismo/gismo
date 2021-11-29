@@ -25,28 +25,28 @@ public:
 
     /// Data structure for artificial interfaces, as used in dG settings
     struct ArtificialIface {
-       /// The real interface (local patch to which the artificial interface is assigned+side)
-       patchSide           realIface;
        /// The artificial interface (foreign patch from which the artificial interface taken+side)
-       patchSide           artificialIface;
+       patchSide           takenFrom;
+       /// The real interface (local patch to which the artificial interface is assigned+side)
+       patchSide           assignedTo;
        /// The indicies of the basis of the foreign patch that belong to artificial interface
        /// Vector is assumed to be sorted
        gsVector<index_t>   ifaceIndices;
     };
 
     /// @brief Registers an artificial interface, as used in dG settings
-    /// @param realIface        The real interface (local patch to which the artificial
-    ///                         interface is assigned+side)
-    /// @param artificialIface  The artificial interface (foreign patch from which the
+    /// @param takenFrom        The artificial interface (foreign patch from which the
     ///                         artificial interface taken+side)
-    void registerArtificialIface(patchSide realIface, patchSide artificialIface)
+    /// @param assignedTo       The real interface (local patch to which the artificial
+    ///                         interface is assigned+side)
+    void registerArtificialIface(patchSide takenFrom, patchSide assignedTo)
     {
         GISMO_ASSERT( m_status==0, "gsIetiDgMapper: Cannot register artificial interfaces after requesting data." );
         ArtificialIface ai;
-        ai.realIface = realIface;
-        ai.artificialIface = artificialIface;
-        ai.ifaceIndices = (*m_multiBasis)[artificialIface.patch].boundary(artificialIface);
-        m_artificialIfaces[realIface.patch].push_back(give(ai));
+        ai.assignedTo = assignedTo;
+        ai.takenFrom = takenFrom;
+        ai.ifaceIndices = (*m_multiBasis)[takenFrom.patch].boundary(takenFrom);
+        m_artificialIfaces[assignedTo.patch].push_back(give(ai));
     }
 
     /// Calls \ref registerArtificialIface for all interface known to the underlying box topology
@@ -59,10 +59,10 @@ public:
         for (index_t k=0; k<nPatches; ++k)
         {
             for (boxSide it = boxSide::getFirst(dim); it!=boxSide::getEnd(dim); ++it) {
-                patchSide realIface(k,it);
-                patchSide artificialIface;
-                if(top.getNeighbour(realIface, artificialIface))
-                    registerArtificialIface(realIface, artificialIface);
+                patchSide assignedTo(k,it);
+                patchSide takenFrom;
+                if(top.getNeighbour(assignedTo, takenFrom))
+                    registerArtificialIface(takenFrom, assignedTo);
             }
         }
     }
@@ -101,7 +101,7 @@ public:
             subdomainSizes[k] = m_dofMapperOrig.patchSize(k);
             for (index_t l=0; l<nArtIf; ++l)
             {
-                sizes[k][l+1]      = m_dofMapperOrig.patchSize( m_artificialIfaces[k][l].artificialIface.patch );
+                sizes[k][l+1]      = m_dofMapperOrig.patchSize( m_artificialIfaces[k][l].takenFrom.patch );
                 subdomainSizes[k] += m_artificialIfaces[k][l].ifaceIndices.rows();
             }
             m_dofMapperLocal2.push_back( gsDofMapper(sizes[k]) );
@@ -130,7 +130,7 @@ public:
                 {
                     for (index_t i=0; i<m_artificialIfaces[k][l].ifaceIndices.rows(); ++i)
                     {
-                        const index_t kk = m_artificialIfaces[k][l].artificialIface.patch;
+                        const index_t kk = m_artificialIfaces[k][l].takenFrom.patch;
                         const index_t ii = m_artificialIfaces[k][l].ifaceIndices[i];
                         m_dofMapperMod.matchDof( k,idx, kk,ii );
 
@@ -201,8 +201,8 @@ public:
         mb_local_data.push_back((*m_multiBasis)[patch].clone().release());
         for (size_t i=0; i<artIfaces.size(); ++i)
     {
-             mp_local_data.push_back(mp[artIfaces[i].artificialIface.patch].clone().release());
-             mb_local_data.push_back((*m_multiBasis)[artIfaces[i].artificialIface.patch].clone().release());
+             mp_local_data.push_back(mp[artIfaces[i].takenFrom.patch].clone().release());
+             mb_local_data.push_back((*m_multiBasis)[artIfaces[i].takenFrom.patch].clone().release());
         }
         mp_local = gsMultiPatch<T>(mp_local_data);
         mp_local.computeTopology();
@@ -308,7 +308,7 @@ protected:
             for (size_t i=0; i<m_artificialIfaces[k].size(); ++i)
             {
                 ArtificialIface& ai = m_artificialIfaces[k][i];
-                const index_t patch = ai.artificialIface.patch;
+                const index_t patch = ai.takenFrom.patch;
                 for (size_t j=0; j<Base::m_primalDofIndices[patch].size(); ++j)
                 {
                     if (primals_old<=Base::m_primalDofIndices[patch][j]
@@ -316,7 +316,7 @@ protected:
                     {
                         gsInfo <<"Constraint #"<<j<<" of patch "<<patch<<" (global primal dof # "
                                 <<Base::m_primalDofIndices[patch][j]<<") might needed to be added to patch # "
-                                <<k<<"(=="<<ai.realIface.patch<<")\n";
+                                <<k<<"(=="<<ai.assignedTo.patch<<")\n";
 
                         std::vector<index_t> ifaceIndicesMapped(ai.ifaceIndices.size());
                         for (index_t ii=0; ii<ai.ifaceIndices.size(); ++ii)

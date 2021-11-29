@@ -339,8 +339,8 @@ int main(int argc, char *argv[])
 
         for (size_t i=0; i<ietiMapper.artificialIfaces(k).size(); ++i)
         {
-            patchSide side1(0,ietiMapper.artificialIfaces(k)[i].realIface.side());
-            patchSide side2(i+1,ietiMapper.artificialIfaces(k)[i].artificialIface.side());
+            patchSide side1(0,ietiMapper.artificialIfaces(k)[i].assignedTo.side());
+            patchSide side2(i+1,ietiMapper.artificialIfaces(k)[i].takenFrom.side());
             boundaryInterface bi(side1, side2, mp.geoDim());
             gAssembler.assembleDG(bi,false);
         }
