@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 
     const index_t nPatches = mp.nPatches();
 
-    // We start by setting up a global FeSpace that allows us to
+    // We start by setting up a global assembler that allows us to
     // obtain a dof mapper and the Dirichlet data
     gsPoissonAssembler<> assembler(
         mp,
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
     assembler.computeDirichletDofs();
 
     gsInfo << "Register artificial interfaces ... "<< std::flush;
-    gsArtificialIfaces<> ai( mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
+    gsArtificialIfaces<> ai( mp, mb, assembler.system().rowMapper(0) );
     ai.registerAllArtificialIfaces();
     ai.finalize();
     gsInfo << "done\n";
@@ -270,9 +270,10 @@ int main(int argc, char *argv[])
 printPrimalConstraints(ietiMapper);
 
     // TODO: Jump matrices before or after primals?
+
     // Compute the jump matrices
     bool fullyRedundant = true,
-         noLagrangeMultipliersForCorners = eliminateCorners;
+         noLagrangeMultipliersForCorners = cornersAsPrimals;
     //! [Define jumps]
     ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
     //! [Define jumps]
@@ -290,15 +291,21 @@ printPrimalConstraints(ietiMapper);
 
     // Setup the primal system, which needs to know the number of primal dofs.
     gsPrimalSystem<> primal(ietiMapper.nPrimalDofs());
+    if (eliminateCorners)
+        primal.setEliminatePointwiseConstraints(true);
     //! [Setup]
 
     //! [Assemble]
     for (index_t k=0; k<nPatches; ++k)
     {
+gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
         // We use the local variants of everything
         gsBoundaryConditions<> bc_local;
         bc.getConditionsForPatch(k,bc_local);
+        gsMultiPatch<> mp_local = ai.multiPatchLocal(k);
+        gsMultiBasis<> mb_local = ai.multiBasisLocal(k);
 
+        // We set up the assembler
         gsOptionList assemblerOptions = gsGenericAssembler<>::defaultOptions();
         assemblerOptions.setInt("DirichletStrategy", dirichlet::elimination);
         assemblerOptions.setInt("InterfaceStrategy", iFace::dg);
@@ -306,24 +313,6 @@ printPrimalConstraints(ietiMapper);
         assemblerOptions.setReal("DG.Alpha", alpha);
         assemblerOptions.setReal("DG.Beta", beta);
         assemblerOptions.setReal("DG.Penalty", penalty);
-
-        const std::vector<gsArtificialIfaces<>::ArtificialIface>& artIfaces = ai.artificialIfaces(k);
-
-        std::vector<gsGeometry<>* > mp_local_data;
-        mp_local_data.reserve(1+2*mp.geoDim());
-        std::vector<gsBasis<>* > mb_local_data;
-        mp_local_data.reserve(1+2*mp.geoDim());
-
-        mp_local_data.push_back(mp[k].clone().release());
-        mb_local_data.push_back(mb[k].clone().release());
-        for (size_t i=0; i<artIfaces.size(); ++i)
-        {
-             mp_local_data.push_back(mp[artIfaces[i].artificialIface.patch].clone().release());
-             mb_local_data.push_back(mb[artIfaces[i].artificialIface.patch].clone().release());
-        }
-        gsMultiPatch<> mp_local(mp_local_data);
-        mp_local.computeTopology();
-        gsMultiBasis<> mb_local(mb_local_data,mp_local);
 
         gsGenericAssembler<> gAssembler(
             mp_local,
@@ -338,7 +327,7 @@ printPrimalConstraints(ietiMapper);
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
         gAssembler.refresh(ai.dofMapperLocal(k));
-        gsMatrix<> fixedPart(ai.dofMapperLocal(k).boundarySize(), 1 );
+        gsMatrix<> fixedPart(ai.dofMapperLocal(k).boundarySize(),1);
         fixedPart.setZero();
         fixedPart.topRows(ietiMapper.fixedPart(k).rows()) = ietiMapper.fixedPart(k); // TODO
         gAssembler.setFixedDofVector(fixedPart);
@@ -352,10 +341,10 @@ printPrimalConstraints(ietiMapper);
                 it!= neumannSides.end(); ++it)
             gAssembler.assembleNeumann(*it,false);
 
-        for (size_t i=0; i<artIfaces.size(); ++i)
+        for (size_t i=0; i<ai.artificialIfaces(k).size(); ++i)
         {
-            patchSide side1(0,artIfaces[i].realIface.side());
-            patchSide side2(i+1,artIfaces[i].artificialIface.side());
+            patchSide side1(0,ai.artificialIfaces(k)[i].realIface.side());
+            patchSide side2(i+1,ai.artificialIfaces(k)[i].artificialIface.side());
             boundaryInterface bi(side1, side2, mp.geoDim());
             gAssembler.assembleDG(bi,false);
         }
@@ -387,7 +376,7 @@ printPrimalConstraints(ietiMapper);
             localRhs
         );
         //! [Patch to primals]
-DEBUGMAT(jumpMatrix);
+//DEBUGMAT(jumpMatrix);
         // Add the patch to the Ieti system
         //! [Patch to system]
         ieti.addSubdomain(
@@ -396,6 +385,7 @@ DEBUGMAT(jumpMatrix);
             give(localRhs)
         );
         //! [Patch to system]
+        gsInfo << "done.\n";
     //! [End of assembling loop]
     } // end for
     //! [End of assembling loop]

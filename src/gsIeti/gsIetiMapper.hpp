@@ -253,7 +253,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
         const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
         const index_t localIndex  = corners[i].localIndex;
-        
+
         SparseVector constr(m_dofMapperLocal[patch].freeSize());
         constr[localIndex] = 1;
 
@@ -549,10 +549,10 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
         const index_t maxIndex = fullyRedundant ? (n-1) : 1;
         for (index_t j1=0; j1<maxIndex; ++j1)
         {
+            const index_t patch1 = coupling[i][j1].first;
+            const index_t localIndex1 = coupling[i][j1].second;
             for (index_t j2=j1+1; j2<n; ++j2)
             {
-                const index_t patch1 = coupling[i][j1].first;
-                const index_t localIndex1 = coupling[i][j1].second;
                 const index_t patch2 = coupling[i][j2].first;
                 const index_t localIndex2 = coupling[i][j2].second;
                 jumpMatrices_se[patch1].add(multiplier,localIndex1,(T)1);
