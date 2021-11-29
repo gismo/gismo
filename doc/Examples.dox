@@ -40,6 +40,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage ieti2_example
 
+- \subpage ietidG_example
+
 - \subpage knotVector_example
 
 - \subpage kirchhoff-Love_example

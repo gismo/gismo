@@ -175,9 +175,9 @@ int main(int argc, char *argv[])
 
     const index_t nPatches = mp.nPatches();
 
-    //! [Define IetiMapper]
+    //! [Define Ieti Mapper]
     gsIetiMapper<> ietiMapper;
-    //! [Define IetiMapper]
+    //! [Define Ieti Mapper]
 
     // We start by setting up a global FeSpace that allows us to
     // obtain a dof mapper and the Dirichlet data
@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
     }
     //! [Primal to system]
 
-    gsInfo << "done.\n";
+    gsInfo << "done. " << ietiMapper.nPrimalDofs() << " primal dofs.\n";
 
     /**************** Setup solver and solve ****************/
 

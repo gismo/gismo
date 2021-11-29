@@ -21,45 +21,9 @@
 
 #include <gismo.h>
 #include <gsAssembler/gsVisitorDg.h>
-#include <gsIeti/gsIetiDgMapper.h>
+#include <gsIeti/gsIetidGMapper.h>
 
 using namespace gismo;
-
-
-struct ctr {
-   gsSparseVector<real_t> c;
-   index_t k;
-   index_t i;
-
-   bool operator <( const ctr& other ) const
-   {
-       if (i!=other.i) return i<other.i;
-       return k<other.k;
-   }
-};
-
-void printPrimalConstraints( const gsIetiDgMapper<>& ietiMapper )
-{
-
-//c=ietiMapper.m_primalConstraints
-//ii=ietiMapper.m_primalDofIndices
-
-    std::vector<ctr> data;
-    for (index_t i=0; i<ietiMapper.multiBasis().nPieces(); ++i)
-        for (size_t j=0; j<ietiMapper.primalConstraints(i).size(); ++j)
-        {
-            ctr d;
-            d.c=ietiMapper.primalConstraints(i)[j];
-            d.k=i;
-            d.i=ietiMapper.primalDofIndices(i)[j];
-            data.push_back(d);
-        }
-    std::sort(data.begin(), data.end());
-    for (size_t i=0; i<data.size(); ++i)
-    {
-        std::cout << data[i].i << " [" << data[i].k << "]" << data[i].c.transpose() << "\n";
-    }
-}
 
 int main(int argc, char *argv[])
 {
@@ -70,6 +34,7 @@ int main(int argc, char *argv[])
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
+    bool nonMatching = false;
     real_t alpha = 1;
     real_t beta = 1;
     real_t penalty = -1;
@@ -88,6 +53,7 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addSwitch("",  "NonMatching",           "Set up a non-matching multi-patch discretization", nonMatching);
     cmd.addReal  ("",  "DG.Alpha",              "Parameter alpha for dG scheme; use 1 for SIPG and NIPG.", alpha );
     cmd.addReal  ("",  "DG.Beta",               "Parameter beta for dG scheme; use 1 for SIPG and -1 for NIPG", beta );
     cmd.addReal  ("",  "DG.Penalty",            "Penalty parameter delta for dG scheme; if negative, default 4(p+d)(p+1) is used.", penalty );
@@ -198,11 +164,11 @@ int main(int argc, char *argv[])
 
     /************ Setup bases and adjust degree *************/
 
+    gsInfo << "Setup bases and adjust degree... " << std::flush;
+
     //! [Define Basis]
     gsMultiBasis<> mb(mp);
     //! [Define Basis]
-
-    gsInfo << "Setup bases and adjust degree... " << std::flush;
 
     //! [Set degree and refine]
     for ( size_t i = 0; i < mb.nBases(); ++ i )
@@ -210,6 +176,25 @@ int main(int argc, char *argv[])
 
     for ( index_t i = 0; i < refinements; ++i )
         mb.uniformRefine();
+
+    // We might want to create a non-matching setup such that we are not in the
+    // special case where the function spaces on the interfaces actually agree
+    // (as this would be the case for the Yeti footprint, the default domain.)
+    if (nonMatching)
+    {
+        gsInfo << "\n  Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 0 )
+                mb[i].uniformRefine();
+        gsInfo << "done.\n";
+        --refinements;
+
+        gsInfo << "  Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 1 )
+                mb[i].setDegreePreservingMultiplicity(degree+1);
+        gsInfo << "done.\n";
+    }
     //! [Set degree and refine]
 
     gsInfo << "done.\n";
@@ -219,7 +204,7 @@ int main(int argc, char *argv[])
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
 
     const index_t nPatches = mp.nPatches();
-
+    //! [Define global mapper]
     // We start by setting up a global assembler that allows us to
     // obtain a dof mapper and the Dirichlet data
     gsPoissonAssembler<> assembler(
@@ -231,15 +216,14 @@ int main(int argc, char *argv[])
         iFace::dg
     );
     assembler.computeDirichletDofs();
+    //! [Define global mapper]
 
-    gsIetiDgMapper<> ietiMapper( mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
+    //! [Register artificial interfaces]
+    gsIetidGMapper<> ietiMapper( mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
 
-    gsInfo << "Register artificial interfaces ... "<< std::flush;
     ietiMapper.registerAllArtificialIfaces();
     ietiMapper.finalize();
-    gsInfo << "done\n";
-
-    //gsIetiMapper<> ietiMapper( mb, ai.dofMapperMod(), assembler.fixedDofs() );
+    //! [Register artificial interfaces]
 
     // Which primal dofs should we choose?
     bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
@@ -266,8 +250,6 @@ int main(int argc, char *argv[])
     if (facesAsPrimals)
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
     //! [Define primals]
-
-//printPrimalConstraints(ietiMapper);
 
     // Compute the jump matrices
     bool fullyRedundant = true,
@@ -296,7 +278,6 @@ int main(int argc, char *argv[])
     //! [Assemble]
     for (index_t k=0; k<nPatches; ++k)
     {
-//gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
         // We use the local variants of everything
         gsBoundaryConditions<> bc_local;
         bc.getConditionsForPatch(k,bc_local);
@@ -372,7 +353,7 @@ int main(int argc, char *argv[])
             localRhs
         );
         //! [Patch to primals]
-//DEBUGMAT(jumpMatrix);
+
         // Add the patch to the Ieti system
         //! [Patch to system]
         ieti.addSubdomain(
@@ -381,12 +362,10 @@ int main(int argc, char *argv[])
             give(localRhs)
         );
         //! [Patch to system]
-//        gsInfo << "done.\n";
     //! [End of assembling loop]
     } // end for
     //! [End of assembling loop]
 
-    gsInfo << "All patches are assembled\nNow handle primal system..." << std::flush;
     // Add the primal problem if there are primal constraints
     //! [Primal to system]
     if (ietiMapper.nPrimalDofs()>0)

@@ -1,0 +1,238 @@
+namespace gismo {
+/**
+
+\page ietidG_example ietidG_example.cpp
+
+We consider the Poisson boundary value problem (for simplicity here
+only with Dirichlet conditions):
+\f{eqnarray*}{
+                    -\Delta u &=& f \quad \text{in} \quad \Omega,         \\
+                            u &=& g \quad \text{on} \quad \partial\Omega,
+\f}
+which we discretize using a symmetric interior penalty discontinuous Galerkin
+(SIPG) approach. Other approaches, like the non-symmetric interior penalty
+discontinuous Galerkin (NIPG) approach, can be obtained by setting the
+parameters DG.Alpha and DG.Beta.
+
+The computational domain is a non-overlapping multi-patch domain:
+\f[
+      \overline{ \Omega } = \bigcup_{k=1}^K \overline{ \Omega_k }
+\f]
+\f[
+      \Omega_k \cap \Omega_l = \emptyset
+      \quad \text{ for all } k\not=l.
+\f]
+As subdomain k for the IETI approach, we use the functions on the patch
+\f$ \Omega_k \f$ itself and the traces of those functions on the
+neighboring patches \f$ \Omega_l \f$ with \f$ l \in \mathcal N(k) \f$
+(sharing an edge in 2D, sharing a face in 3D) that are active on
+the interface \f$ I_{k,l} = \partial \Omega_k \cap \partial \Omega_l \f$.
+These trace spaces constitute the artificial interfaces.
+
+After reading the command line arguments, we read in the geometry file and
+modify the geometry as desired:
+
+\snippet ietidG_example.cpp Define Geometry
+\snippet ietidG_example.cpp Define Geometry2
+
+Then, we set up the right-hand-side f and a \a gsBoundaryConditions
+object based on the command line arguments.
+
+\snippet ietidG_example.cpp Define Source
+
+Then, we extract the basis from the multi patch object to obtain a
+multi basis.
+
+\snippet ietidG_example.cpp Define Basis
+
+We set the spline degree and the grid size as desired.
+
+\snippet ietidG_example.cpp Set degree and refine
+
+Now, we can discuss the IETI system.
+
+We are considering patch-wise formulations of the variational formulation:
+\f[
+    \int_{\Omega_k} \nabla u_k \nabla v_k d x
+    - \alpha \sum_{l\in \mathcal N(k)}
+       \int_{\Gamma_{k,l}} \nabla u_k \cdot \mathbf{n} (v_k-v_l) d x
+    - \beta \sum_{l\in \mathcal N(k)}
+       \int_{\Gamma_{k,l}} \nabla v_k \cdot \mathbf{n} (u_k-u_l) d x
+    + \delta \sum_{l\in \mathcal N(k)} 2^{-1} ( h_k^{-1} + h_\ell^{-1})
+       \int_{\Gamma_{k,l}} \nabla (u_k-u_l)(v_k-v_l) d x
+    = \int_{\Omega_k} f v_k dx,
+\f]
+which is realized using \a gsVisitorDg. The values of \f$ \alpha \f$ 
+and \f$ \beta \f$ are set via DG.Alpha (default: 1) and DG.Beta (default: 1).
+The parameter \f$ \delta \f$ is set via DG.Penalty (default: -1); if negative
+(as in default), \f$ \delta := 4(p+d)(p+1) \f$ is used.
+
+Each of these bilinear forms and linear forms lead to matrices and vectors
+\f[
+      A_k \qquad\text{and}\qquad \underline f_k.
+\f]
+
+Using the jump matrices \f$ B_k \f$, which are provided by the class
+\a gsIetidGMapper, we obtain the saddle point system as in *ieti_example.cpp*.
+Again, as in *ieti_example.cpp*, we introduce and handle the primal constraints.
+The class \a gsIetidGMapper takes care of transfering the primal constraints to
+the artificial interfaces.
+
+Instead of directly solving the IETI-saddle point system, we solve the
+corresponding Schur complement system
+\f[
+      F \underline \lambda = \underline g,
+\f]
+which is set up as in *ieti_example.cpp*. The Schur complement system is
+preconditioned with the scaled Dirichlet preconditioner
+\f[
+    M_{sD}
+    = \sum_{k=1}^{K} \hat B_k D_k^{-1} S_k D_k^{-1} \hat B_k^\top,
+\f]
+where \f$ S_k \f$ is the Schur complement of \f$ A_k \f$ (not: \f$\tilde A_k\f$)
+with respect to the dofs on the interfaces (here, interfaces refer to both, the
+parts of the boundary of \f$ \Omega_k \f$ facing neighboring patches [=real interfaces]
+and to the artificial interfaces). \f$ \hat B_k \f$ is the restriction of \f$ B_k \f$
+to the dofs on the interfaces. \f$ D_k \f$ is a scaling matrix, e.g.,
+based on multiplicity scaling. The class \a gsScaledDirichletPrec
+not only collects the contributions of the preconditioner; it also helps with
+restricting to the skeleton and computing the Schur complement.
+
+For initializing the IETI mapper, it is necessary to provide a \a gsDofMapper
+for the global problem and the function values for the eliminated dofs
+(typically the Dirichlet conditions). If systems are considered, the method
+it is expected to have one IETI mapper per variable.
+
+For obtaining a \a gsDofMapper, we use the assembler:
+
+\snippet ietidG_example.cpp Define global mapper
+
+Now we set up a \a gsIetidGMapper and register the artificial interfaces. It
+is possible to register them individually, e.g., if some pages are coupled
+strongly. Since this is not the case here, we use the function
+*registerAllArtificialIfaces* that applies the loop for us.
+
+\snippet ietidG_example.cpp Register artificial interfaces
+
+Now we set the primal degrees of freedom. The following commands compute the
+(vectors that make up the) constraint matrices \f$ C_k \f$ and store them in
+the \a gsIetidGMapper object.
+
+\snippet ietidG_example.cpp Define primals
+
+The following command computes the jump matrices \f$ B_k \f$ and stores
+them in the \a gsIetidGMapper object.
+
+\snippet ietidG_example.cpp Define jumps
+
+Now, we set up the classes for the IETI system, the primal system, and the
+scaled Dirichlet preconditioner.
+
+\snippet ietidG_example.cpp Setup
+
+Now, we assemble the linear system and the right-hand side on each patch using
+a for loop. We use local versions of the geometry (\a gsMultiPatch), the
+basis (\a gsMultiBasis) and the boundary conditions (\a gsBoundaryConditions).
+
+For local assembling, we use a specific setup. The local space only consists
+of the patch \f$ \Omega_k \f$, which now has index 0, and its neighbors,
+which have indices starting from 1. The latter are ordered as in the list
+of artificialInterfaces.
+
+We use the \a gsGenericAssembler to assemble the matrices. For assembling the
+interior, we only assemble on patch number 0, i.e., on \f$ \Omega_k \f$. For
+assembling the integrals over the interfaces, we use the specific setup. We
+use the option DG.OneSided since we do not want to have ingegrals containing
+the normal derivatives of \f$ u_l \f$ or \f$ v_l \f$. (These contributions
+are to be assembled when considering the patch \f$ \Omega_l \f$.)
+
+\snippet ietidG_example.cpp Assemble
+
+Now, we tell the preconditioner about the local matrix \f$ A_k \f$, the local
+vector \f$ \underline f_k \f$ and the matrix \f$ B_k \f$. This is done before
+the class \a gsPrimalSystem modifies these objects. The following command
+does all necessary steps:
+
+\snippet ietidG_example.cpp Patch to preconditioner
+
+This can also be done in a step-by-step way, for example if one does not want
+to use a sparse Cholesky solver (which requires symmetric positive definite
+problems and would be done by default).
+
+As next step, we treat the primal dofs. We first compute energy minimizing primal
+basis functions. Then the following commands amends the variables jumpMatrix,
+localMatrix, and localRhs, which hold \f$ B_k \f$, \f$ A_k \f$ and
+\f$ \underline f_k \f$ before calling the function and \f$ \tilde B_k \f$,
+\f$ \tilde A_k \f$, and \f$ \underline{\tilde f}_k \f$ thereafter. Finally, this
+function collects the contributions for \f$ \tilde B_{K+1} \f$,
+\f$ \tilde A_{K+1} \f$, and \f$ \underline{\tilde f}_{K+1} \f$ in the object.
+(See *ieti_example.cpp* for details.)
+
+\snippet ietidG_example.cpp Patch to primals
+
+This can also be done in a step-by-step way, for example if one does not want
+to use a sparse LU solver (which would be done by default).
+
+Now, we add \f$ \tilde B_k \f$, \f$ \tilde A_k \f$, and \f$ \underline{\tilde f}_k \f$
+to the IETI-system:
+
+\snippet ietidG_example.cpp Patch to system
+
+Additionally, one can also provide a solver object that realizes \f$ \tilde A_k^{-1} \f$,
+possibly the one which has already been used for the setup of the bases for the primal
+doefs. By default, again, a LU solver would be used.
+
+\snippet ietidG_example.cpp End of assembling loop
+
+Finally, we add \f$ \tilde B_{K+1} \f$, \f$ \tilde A_{K+1} \f$, and
+\f$ \underline{\tilde f}_{K+1} \f$ to the IETI-system:
+
+\snippet ietidG_example.cpp Primal to system
+
+The \a gsScaledDirichletPrec can automatically compute the multiplicity scaling. Other
+scaling matrices can be manually defined.
+
+\snippet ietidG_example.cpp Setup scaling
+
+Now, we compute the right-hand-side
+\f[
+    \underline g = \sum_{k=1}^{K+1} \tilde B_k \tilde A_k^{-1} \underline{\tilde f}_k.
+\f]
+
+\snippet ietidG_example.cpp Setup rhs
+
+We choose a random initial guess.
+
+\snippet ietidG_example.cpp Define initial guess
+
+As a next step, we solve the problem
+\f[
+      F \underline \lambda = \underline g
+\f]
+using the scaled Dirichlet preconditioner with a conjugate gradient solver.
+
+\snippet ietidG_example.cpp Solve
+
+So far, we have only computed the Lagrange multipliers \f$ \underline \lambda \f$,
+from which we want to recover the solution.
+
+Here, we first compute the solutions \f$ \underline{\tilde u}_k \f$ for 
+\f$ k=1,\ldots,K+1 \f$. Here, the first K solutions refer to the patches and have
+homogenous values for the primal dofs. So, we distribute the primal dof values from the
+primal problem (= last subdomain) to the patches (=first K subdomains) and
+obtain the solutions \f$ \underline u_k \f$ for \f$ k=1,\ldots,K \f$. Then, finally, the
+IETI mapper is able to combine everything into one solution vector \f$ \underline u \f$.
+
+\snippet ietidG_example.cpp Recover
+
+
+\section ietidG_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/ietidG_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include ietidG_example.cpp
+
+*/
+
+}

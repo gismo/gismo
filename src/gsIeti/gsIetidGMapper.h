@@ -1,4 +1,4 @@
-/** @file gsIetiDgMapper.h
+/** @file gsIetidGMapper.h
 
     @brief TODO
 
@@ -16,11 +16,11 @@
 namespace gismo {
 
 template<class T=real_t>
-class gsIetiDgMapper : protected gsIetiMapper<T> {
+class gsIetidGMapper : protected gsIetiMapper<T> {
     typedef gsIetiMapper<T> Base;
 
 public:
-    gsIetiDgMapper( const gsMultiBasis<T>& mb, gsDofMapper dm, const gsMatrix<T>& fixedPart )
+    gsIetidGMapper( const gsMultiBasis<T>& mb, gsDofMapper dm, const gsMatrix<T>& fixedPart )
         : m_status(0), m_artificialIfaces(mb.nBases()), m_multiBasis(&mb), m_dofMapperOrig(give(dm)), m_fixedPart(fixedPart) {}
 
     /// Data structure for artificial interfaces, as used in dG settings
@@ -41,7 +41,7 @@ public:
     ///                         interface is assigned+side)
     void registerArtificialIface(patchSide takenFrom, patchSide assignedTo)
     {
-        GISMO_ASSERT( m_status==0, "gsIetiDgMapper: Cannot register artificial interfaces after requesting data." );
+        GISMO_ASSERT( m_status==0, "gsIetidGMapper: Cannot register artificial interfaces after requesting data." );
         ArtificialIface ai;
         ai.assignedTo = assignedTo;
         ai.takenFrom = takenFrom;
@@ -52,7 +52,7 @@ public:
     /// Calls \ref registerArtificialIface for all interface known to the underlying box topology
     void registerAllArtificialIfaces()
     {
-        GISMO_ASSERT( m_status==0, "gsIetiDgMapper: Cannot register artificial interfaces after requesting data." );
+        GISMO_ASSERT( m_status==0, "gsIetidGMapper: Cannot register artificial interfaces after requesting data." );
         const gsBoxTopology& top = m_multiBasis->topology();
         const short_t dim        = m_multiBasis->domainDim();
         const index_t nPatches   = m_dofMapperOrig.numPatches();
@@ -78,7 +78,7 @@ public:
     /// Setup of the dof mappers
     void finalize()
     {
-        GISMO_ASSERT( m_status==0, "gsIetiDgMapper: Already finalized." );
+        GISMO_ASSERT( m_status==0, "gsIetidGMapper: Already finalized." );
         m_status = 1;
 
         // TODO: we can get rid of this assumption if we incorporate dofs that
