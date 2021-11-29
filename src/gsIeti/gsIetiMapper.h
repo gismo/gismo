@@ -84,20 +84,24 @@ public:
     );
 
     /// @brief Set up the corners as primal dofs
-    void cornersAsPrimals();
+    ///
+    /// @param includeIsolated  Include corner also iff only belonging to one patch
+    void cornersAsPrimals( bool includeIsolated=false );
 
     /// @brief Set up interface averages as primal dofs
     ///
     /// @param geo             \a gsMultiPatch object describing the geometry
     /// @param d               The dimension of the interfaces to be considered:
     ///                        d=1 yields edge averages, d=2 yields face averages
+    /// @param includeIsolated Include interface also iff only belonging to one
+    ///                        patch
     ///
     /// Adds contributions only iff the interface (edge, face,...) belongs to at
-    /// least two patches. This function also works if d=geo.dim(), i.e., for the
-    /// patch averages. In this case, the requirement that it contributes to
-    /// at least two patches does not apply. For corners, use \ref cornersAsPrimals
-    /// instead.
-    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d );
+    /// least two patches (unless includeIsolated is set). This function also works
+    /// if d=geo.dim(), i.e., for the patch averages. In this case, the requirement
+    /// that it contributes to at least two patches does not apply. For corners,
+    /// use \ref cornersAsPrimals instead.
+    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d, bool includeIsolated=false );
 
     /// @brief With this function, the caller can register more primal constraints
     ///
@@ -197,7 +201,6 @@ protected:
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
     std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
-    std::vector< std::map< index_t, gsVector<index_t> > >   m_artificialDofInfo;  ///< TODO: docs
 };
 
 } // namespace gismo

@@ -20,24 +20,10 @@
  *       (m_status&2)!=0    means that the jump matrices have been computed
  *       (m_status&4)!=0    means that corners have been set up as primal constraints
  *       (m_status&flag)!=0 for flag = 8, 16,... means that edges, faces, ... have been set up as primal constraints
- *        m_status&64!=0    means that there are artificial interfaces or other irregularities
- *
- *   This class allows that the dof mappers have more dofs than the bases.
- *   It is assumed the first N0 basis functions in the mapper are associated
- *   to the basis. The remaining N-N0 ones are artificial ones. We can only
- *   know where they belong, if we go through the global mapper
- *     N  = m_dofMapperGlobal.patchSize(k);
- *     N0 = m_multiBasis->piece(k).size();
- *
- *   If for one match N!=N0, we set status flag 64.
  */
 
 namespace gismo
 {
-
-#define DEBUGVAR(v) gsInfo << #v << ": " << (v) << "\n"
-#define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
-
 
 template <class T>
 void gsIetiMapper<T>::init(
@@ -71,9 +57,6 @@ void gsIetiMapper<T>::init(
         const index_t nDofs = m_dofMapperGlobal.patchSize(k);
         GISMO_ASSERT( nDofs>=m_multiBasis->piece(k).size(), "gsIetiMapper::init: "
             "The mapper for patch "<<k<<" has not as many dofs as the corresponding basis." );
-
-        if (nDofs>m_multiBasis->piece(k).size())
-            m_status |= 64;
 
         m_dofMapperLocal[k].setIdentity(1,nDofs);
 
@@ -140,7 +123,7 @@ struct dof_helper {
 }
 
 template <class T>
-void gsIetiMapper<T>::cornersAsPrimals()
+void gsIetiMapper<T>::cornersAsPrimals(bool includeIsolated)
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( !(m_status&4), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
@@ -163,28 +146,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
             dh.patch = k;
             dh.localIndex = m_dofMapperLocal[k].index( idx, 0 );
             if (m_dofMapperGlobal.is_free_index(dh.globalIndex))
-            {
-                if (m_status&64)
-                {
-                    // If there artificial dofs, we have to find all pre-images, which are then mapped back
-                    std::vector< std::pair<index_t,index_t> > preImages;
-                    m_dofMapperGlobal.preImage(dh.globalIndex, preImages);
-                    gsInfo << "Found " << preImages.size() << " pre-images.\n";
-                    for (size_t i=0; i<preImages.size(); ++i)
-                    {
-                        dof_helper dh2;
-                        dh2.globalIndex = dh.globalIndex;
-                        dh2.patch = preImages[i].first;
-                        dh2.localIndex = m_dofMapperLocal[preImages[i].first].index( preImages[i].second, 0 );
-                        corners.push_back(give(dh2));
-                    }
-                }
-                else
-                {
-                    // Store the corner
-                    corners.push_back(give(dh));
-                }
-            }
+                corners.push_back(give(dh));
         }
     }
 
@@ -199,7 +161,10 @@ void gsIetiMapper<T>::cornersAsPrimals()
         if (lastIndex!=corners[i].globalIndex)
         {
             lastIndex = corners[i].globalIndex;
-            ++m_nPrimalDofs;
+            if (includeIsolated || (i+1<sz&&corners[i+1].globalIndex==corners[i].globalIndex))
+                ++m_nPrimalDofs;
+            else
+                continue; // Ignore corners that are not shared
         }
         const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
@@ -207,7 +172,6 @@ void gsIetiMapper<T>::cornersAsPrimals()
 
         SparseVector constr(m_dofMapperLocal[patch].freeSize());
         constr[localIndex] = 1;
-
         m_primalConstraints[patch].push_back(give(constr));
         m_primalDofIndices[patch].push_back(cornerIndex);
     }
@@ -248,34 +212,9 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 
 }
 
-namespace {
-template <class T>
-struct constr_helper {
-    std::vector<index_t> globalIndices;
-    gsSparseVector<T> vector;
-    index_t patch;
-    bool operator<(const constr_helper& other) const
-    {
-        const size_t sz = globalIndices.size();
-        if (sz != other.globalIndices.size())
-        {
-            //gsInfo << "sz" << "<" << other.globalIndices.size() << "\n";
-            return sz < other.globalIndices.size();
-        }
-        for (size_t i=0; i<sz; ++i)
-            if (globalIndices[i] != other.globalIndices[i])
-            {
-                //gsInfo << "Diff in " << i << ": " << globalIndices[i] << "<" << other.globalIndices[i] << "\n";
-                return globalIndices[i] < other.globalIndices[i];
-            }
-        //gsInfo << "No diff\n";
-        return false;
-    }
-};
-}
 
 template <class T>
-void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d )
+void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d, bool includeIsolated )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
@@ -288,7 +227,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
 
     const unsigned flag = 1<<(2+d);
     GISMO_ASSERT( !(m_status&flag), "gsIetiMapper::interfaceAveragesAsPrimals: This function has "
-        "already been called for d="<<d );
+        " already been called for d="<<d );
     m_status |= flag;
 
     std::vector< std::vector<patchComponent> > components = geo.allComponents();
@@ -296,97 +235,28 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
     for (index_t n=0; n<nComponents; ++n)
     {
         const index_t sz = components[n].size();
-        if ( components[n][0].dim() == d )
+        if ( components[n][0].dim() == d && ( includeIsolated || sz > 1 || m_multiBasis->dim() == d ) )
         {
-            std::vector< constr_helper<T> > constraints;
-            constraints.reserve(sz);
-
+            index_t used = 0;
             for (index_t i=0; i<sz; ++i)
             {
-                constr_helper<T> constraint;
-                constraint.patch = components[n][i].patch();
-                constraint.vector = assembleAverage(
-                    geo[constraint.patch],
-                    (*m_multiBasis)[constraint.patch],
-                    m_dofMapperLocal[constraint.patch],
+                const index_t k = components[n][i].patch();
+                gsSparseVector<T> constr = assembleAverage(
+                    geo[k],
+                    (*m_multiBasis)[k],
+                    m_dofMapperLocal[k],
                     components[n][i]
                 );
-                if ( constraint.vector.nonZeros() > 0 )
+                if ( constr.nonZeros() > 0 )
                 {
-                    std::map<index_t,index_t> inverse = m_dofMapperLocal[constraint.patch].inverseOnPatch(0);
-                    // Store and sort global indices for constraint
-                    constraint.globalIndices.reserve( constraint.vector.nonZeros() );
-                    for (typename SparseVector::InnerIterator it(constraint.vector); it; ++it)
-                    {
-                        const index_t idx = m_dofMapperGlobal.index( inverse[it.row()], constraint.patch );
-                        constraint.globalIndices.push_back(idx);
-                    }
-                    std::sort(constraint.globalIndices.begin(), constraint.globalIndices.end());
-
-                    // Transfer constraint to artificial ifaces
-                    if (m_status&64)
-                    {
-                        for (std::map< index_t, gsVector<index_t> >::const_iterator it = m_artificialDofInfo[constraint.patch].begin();
-                             it != m_artificialDofInfo[constraint.patch].end(); ++it)
-                        {
-                            bool ok = true;
-                            for (typename SparseVector::InnerIterator v_it(constraint.vector); v_it; ++v_it)
-                                if (it->second[v_it.row()]==0)
-                                    ok = false;
-
-                            if (ok)
-                            {
-                                constr_helper<T> constraint2;
-                                constraint2.patch = it->first;
-
-                                constraint2.vector.resize( m_dofMapperLocal[constraint2.patch].freeSize(), 1 );
-                                for (typename SparseVector::InnerIterator v_it(constraint.vector); v_it; ++v_it)
-                                {
-                                    const index_t idx = m_dofMapperLocal[constraint2.patch].index( it->second[v_it.row()] - 1, 0 );
-                                    constraint2.vector[idx] = v_it.value();
-                                }
-
-                                constraint2.globalIndices = constraint.globalIndices;
-                                constraints.push_back(give(constraint2));
-                            }
-                        }
-                    }
-
-                    constraints.push_back(give(constraint));
-
+                    m_primalConstraints[k].push_back(give(constr));
+                    m_primalDofIndices[k].push_back(m_nPrimalDofs);
+                    ++used;
                 }
             }
-
-            // Sort constraints to collapse constraints with same global indices
-            std::sort(constraints.begin(), constraints.end());
-
-            // Construct data
-            const index_t nConstraints = constraints.size();
-            for (index_t i=0; i<nConstraints; ++i)
-            {
-                bool ignore = false;
-                if ( i==0 || constraints[i-1]<constraints[i] )
-                {
-                    if ( (i<nConstraints-1 && ! (constraints[i]<constraints[i+1])) || m_multiBasis->dim() == d )
-                        ++m_nPrimalDofs;
-                    else
-                        ignore = true; // Ignore constraints that are not shared between patches (except if it is the average in the interior)
-                }
-                DEBUGVAR(nConstraints);
-                DEBUGVAR(i);
-                DEBUGVAR(m_nPrimalDofs);
-                DEBUGVAR(ignore);
-                DEBUGVAR(constraints[i].vector.transpose());
-                if (!ignore)
-                {
-                    const index_t & k = constraints[i].patch;
-                    m_primalConstraints[k].push_back(give(constraints[i].vector));
-                    m_primalDofIndices[k].push_back(m_nPrimalDofs-1);
-                }
-            }
-
-            //TODO: GISMO_ASSERT( used==0 || used == sz, "Internal error: sz="<<sz<<", used="<<used );
-
+            GISMO_ASSERT( used==0 || used == sz, "Internal error." );
+            if (used)
+                ++m_nPrimalDofs;
         }
     }
 }
@@ -524,6 +394,5 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
     }
 
 }
-
 
 } // namespace gismo

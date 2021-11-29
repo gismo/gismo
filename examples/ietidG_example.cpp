@@ -267,10 +267,7 @@ int main(int argc, char *argv[])
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
     //! [Define primals]
 
-
-printPrimalConstraints(ietiMapper);
-
-    // TODO: Jump matrices before or after primals?
+//printPrimalConstraints(ietiMapper);
 
     // Compute the jump matrices
     bool fullyRedundant = true,
@@ -299,7 +296,7 @@ printPrimalConstraints(ietiMapper);
     //! [Assemble]
     for (index_t k=0; k<nPatches; ++k)
     {
-gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
+//gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
         // We use the local variants of everything
         gsBoundaryConditions<> bc_local;
         bc.getConditionsForPatch(k,bc_local);
@@ -386,7 +383,7 @@ gsInfo << "Assembling loop for k="<<k<<"... "<< std::flush;
             give(localRhs)
         );
         //! [Patch to system]
-        gsInfo << "done.\n";
+//        gsInfo << "done.\n";
     //! [End of assembling loop]
     } // end for
     //! [End of assembling loop]
