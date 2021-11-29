@@ -372,13 +372,13 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
         for (index_t j1=0; j1<maxIndex; ++j1)
         {
             const index_t patch1 = coupling[i][j1].first;
-            const index_t localIndex1 = coupling[i][j1].second;
+            const index_t localMappedIndex1 = coupling[i][j1].second;
             for (index_t j2=j1+1; j2<n; ++j2)
             {
                 const index_t patch2 = coupling[i][j2].first;
-                const index_t localIndex2 = coupling[i][j2].second;
-                jumpMatrices_se[patch1].add(multiplier,localIndex1,(T)1);
-                jumpMatrices_se[patch2].add(multiplier,localIndex2,(T)-1);
+                const index_t localMappedIndex2 = coupling[i][j2].second;
+                jumpMatrices_se[patch1].add(multiplier,localMappedIndex1,(T)1);
+                jumpMatrices_se[patch2].add(multiplier,localMappedIndex2,(T)-1);
                 ++multiplier;
             }
         }
