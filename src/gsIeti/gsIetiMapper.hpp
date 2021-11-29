@@ -99,51 +99,6 @@ void gsIetiMapper<T>::init(
             }
         }
     }
-
-    if (m_status&64)
-    {
-        // Populate m_artificialDofInfo
-        const index_t nDofs = m_dofMapperGlobal.freeSize();
-        gsMatrix<index_t> dofs(nDofs,2);   // Has information (patch, localIndex) for each global dof
-        dofs.setZero();
-
-        for (index_t k=0; k<nPatches; ++k)
-        {
-            // Here we only consider the real values
-            const index_t sz = m_multiBasis->piece(k).size();
-            for (index_t i=0; i<sz; ++i)
-            {
-                const index_t globalIndex = m_dofMapperGlobal.index(i,k);
-                if (m_dofMapperGlobal.is_free_index(globalIndex))
-                {
-                    GISMO_ASSERT( dofs(globalIndex,0) == 0, "Internal error.");
-                    dofs(globalIndex,0) = k;
-                    dofs(globalIndex,1) = m_dofMapperLocal[k].index(i,0) + 1;
-                }
-            }
-        }
-
-        m_artificialDofInfo.resize( nPatches );
-        for (index_t k=0; k<nPatches; ++k)
-        {
-            const index_t sz  = m_multiBasis->piece(k).size();
-            const index_t sz2 = m_dofMapperGlobal.patchSize(k);
-            for (index_t i=sz; i<sz2; ++i)
-            {
-                const index_t globalIndex       = m_dofMapperGlobal.index(i,k);
-                if (m_dofMapperGlobal.is_free_index(globalIndex))
-                {
-                    const index_t otherPatch        = dofs(globalIndex,0);
-                    const index_t indexOnOtherPatch = dofs(globalIndex,1) - 1;
-                    GISMO_ASSERT( indexOnOtherPatch>=0, "Internal error." );
-                    gsVector<index_t> & which = m_artificialDofInfo[otherPatch][k];
-                    if (which.rows() == 0)
-                        which.setZero( m_dofMapperLocal[otherPatch].freeSize(), 1 );
-                    which[indexOnOtherPatch] = i + 1;
-                }
-            }
-        }
-    }
 }
 
 
@@ -161,7 +116,6 @@ gsIetiMapper<T>::constructGlobalSolutionFromLocalSolutions( const std::vector<Ma
     Matrix result;
     result.setZero( m_dofMapperGlobal.freeSize(), localContribs[0].cols() );
 
-    // We are never extracting the solution from artificial dofs
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t sz=m_multiBasis->piece(k).size();
@@ -181,9 +135,7 @@ struct dof_helper {
     index_t patch;
     index_t localIndex;
     bool operator<(const dof_helper& other) const
-    {
-        return globalIndex < other.globalIndex;
-    }
+    { return globalIndex < other.globalIndex; }
 };
 }
 
@@ -474,16 +426,17 @@ template <class T>
 void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+
     GISMO_ASSERT( !(m_status&2), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
     m_status |= 2;
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
     const index_t coupledSize = m_dofMapperGlobal.coupledSize();
 
+    // Find the groups of to be coupled indices
     std::vector< std::vector< std::pair<index_t,index_t> > > coupling;
     coupling.resize(coupledSize);
 
-    // Find the groups of to be coupled indices in the global mapper
     for (index_t k=0; k<nPatches; ++k)
     {
         const index_t patchSize = m_dofMapperGlobal.patchSize(k);
