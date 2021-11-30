@@ -245,10 +245,8 @@ public:
 
     variable getBdrFunction() const { return m_exprdata->getMutVar(); }
 
-    variable getBdrFunction(const gsBoundaryConditions<T> & bc) const
-    {
-        return m_exprdata->getMutVar();
-    }
+    expr::gsComposition<T> getBdrFunction(geometryMap & G) const
+    { return m_exprdata->getMutVar(G); }
 
     element getElement() const { return m_element; }
 
@@ -763,6 +761,8 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
+    if ( BCs.empty() ) return;
+
 // #pragma omp parallel
 // {
 // #   ifdef _OPENMP
@@ -770,8 +770,9 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 //     const int nt  = omp_get_num_threads();
 // #   endif
     auto arg_tpl = std::make_tuple(args...);
-
     m_exprdata->parse(arg_tpl);
+
+//    m_exprdata->setBc(BCs);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
     gsVector<T> quWeights;               // quadrature weights
@@ -787,8 +788,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
         m_exprdata->mapData.side = it->side();
 
         // Update boundary function source
-        m_exprdata->setMutSource(*it->function(), it->parametric());
-        //mutVar.registerVariable(func, mutData);
+        m_exprdata->setMutSource(*it->function());
 
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
@@ -830,7 +830,9 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
                                                const bcContainer & BCs)
 {
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
-    
+
+    if ( BCs.empty() ) return;
+
     auto arg_lhs(exprLhs.derived());//copying expressions
     auto arg_rhs(exprRhs.derived());
 
@@ -846,8 +848,7 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
 
         // Update boundary function source
-        m_exprdata->setMutSource(*it->function(), it->parametric());
-        //mutVar.registerVariable(func, mutData);
+        m_exprdata->setMutSource(*it->function());
 
         //The composition map
         

@@ -418,9 +418,11 @@ public:
         return m_d * this->data().actives.rows();
     }
 
+    //public for now due to Bc
+    void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
+
 private:
 
-    void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
     void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
 //    void setMap(const gsMapData<Scalar> & val) { m_md = &val;}
     void setDim(index_t _d) { m_d = give(_d); }
@@ -430,7 +432,8 @@ private:
 
 protected:
 
-    explicit symbol_expr(index_t _d) : m_fs(NULL), m_fd(NULL), m_d(_d) { }
+    explicit symbol_expr(index_t _d)
+    : m_fs(NULL), m_fd(NULL), m_d(_d), m_isAcross(false) { }
 
 public:
 

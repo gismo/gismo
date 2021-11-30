@@ -28,38 +28,36 @@ class gsExprHelper
 private:
     gsExprHelper(const gsExprHelper &);
 
-    gsExprHelper() : m_mirror(nullptr), mesh_ptr(nullptr)
-    { mutVar.setData(mutData); }
+    gsExprHelper() : m_mirror(nullptr), mesh_ptr(nullptr),
+                     mutSrc(nullptr), mutMap(nullptr)
+    { }
 
 private:
-    typedef std::map<const gsFunctionSet<T>*,util::gsThreaded<gsFuncData<T> > >  FuncData;
-    typedef std::map<const gsFunctionSet<T>*,util::gsThreaded<gsMapData<T> > >  MapData;
-    typedef std::map<const expr::gsFeVariable<T>*,util::gsThreaded<gsFuncData<T> > >  VarData;
-
-    typedef std::pair<const gsFunctionSet<T>*,util::gsThreaded<gsMapData<T> >*> CFuncKey;
-    typedef std::map<CFuncKey,util::gsThreaded<gsFuncData<T> > >  CFuncData;
+    typedef util::gsThreaded<gsFuncData<T> > thFuncData;
+    typedef util::gsThreaded<gsMapData<T> >  thMapData;
+    typedef std::map<const gsFunctionSet<T>*,thFuncData>  FuncData;
+    typedef std::map<const gsFunctionSet<T>*,thMapData>  MapData;
+    typedef std::pair<const gsFunctionSet<T>*,thMapData*> CFuncKey;
+    typedef std::map<CFuncKey,thFuncData>  CFuncData;
 
     typedef typename FuncData::iterator FuncDataIt;
     typedef typename MapData ::iterator MapDataIt;
-    typedef typename VarData ::iterator VarDataIt;
     typedef typename CFuncData ::iterator CFuncDataIt;
 
     util::gsThreaded<gsMatrix<T> > m_points;
     FuncData  m_fdata;
     MapData   m_mdata;
     CFuncData m_cdata;
-    VarData   m_vdata;// for BCs etc. //do we need it interfaced?
 
     memory::shared_ptr<gsExprHelper> m_mirror;
 private:
 
+    const gsMultiBasis<T> * mesh_ptr;
+
     // mutable pair of variable and data,
     // ie. not uniquely assigned to a gsFunctionSet
-    expr::gsFeVariable<T> mutVar ; //ADD: symbol.setSource(.);
-    gsFuncData<T>         mutData;
-    const gsFunction<T> * mutMap;
-
-    const gsMultiBasis<T> * mesh_ptr;
+    const gsFunctionSet<T> * mutSrc;
+    const gsFunctionSet<T> * mutMap;
 
 public:
     typedef memory::unique_ptr<gsExprHelper> uPtr;
@@ -100,7 +98,20 @@ public:
 
     void cleanUp()
     {
-        mutData.clear();
+        #pragma omp single
+        {
+            m_mdata.clear();
+            m_fdata.clear();
+            m_cdata.clear();
+            mutSrc = mutMap = nullptr;
+            if (isMirrored())
+            {
+                m_mirror->m_mdata.clear();
+                m_mirror->m_fdata.clear();
+                m_mirror->m_cdata.clear();
+                m_mirror->mutSrc = m_mirror->mutMap = nullptr;
+            }
+        }//implicit barrier
     }
 
     void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
@@ -130,7 +141,6 @@ public:
     {
         expr::gsGeometryMap<T> gm;
         gm.setSource(mp);
-        gsDebugVar(gm.m_fs);
         return gm;
     }
 
@@ -164,14 +174,24 @@ public:
         return var;
     }
 
-    variable getMutVar() const { return mutVar; }
-
-    void setMutSource(const gsFunction<T> & func, bool param)
+    variable getMutVar() const
     {
-        mutVar.setSource(func);
+        expr::gsFeVariable<T> var;
+        return var;
     }
 
-    void setMutMap(const gsFunction<T> & gmap) { mutMap = &gmap; }
+    composition getMutVar(geometryMap & G)
+    {
+        expr::gsComposition<T> var(G);
+        return var;
+    }
+
+    void setMutSource(const gsFunction<T> & func)
+    {
+        mutSrc = &func;
+        m_fdata[mutSrc];
+        //gsDebugVar(m_fdata[mutSrc].mine().flags);
+    }
 
 private:
     template <class E1>
@@ -205,21 +225,7 @@ public:
     template<class... Ts>
     void parse(const std::tuple<Ts...> &tuple)
     {
-#pragma omp single
-        {
-            m_mdata.clear();
-            m_fdata.clear();
-            m_vdata.clear();
-            m_cdata.clear();
-
-            if (isMirrored())
-            {
-                m_mirror->m_mdata.clear();
-                m_mirror->m_fdata.clear();
-                m_mirror->m_vdata.clear();
-                m_mirror->m_cdata.clear();
-            }
-        }//implicit barrier
+        cleanUp();
 
         _parse_tuple(tuple);
 
@@ -228,37 +234,18 @@ public:
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-        for (VarDataIt it  = m_vdata.begin(); it != m_vdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
         // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
-        // gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
         // gsInfo<< "cdata: "<< m_cdata.size()<<std::endl;
     }
 
-//    #ifndef _OPENMP
     template<class... expr>
     void parse(const expr &... args)
     {
-#pragma omp single
-        {
-        m_mdata.clear();
-        m_fdata.clear();
-        m_vdata.clear();
-        m_cdata.clear();
-        }//implicit barrier
-
-        #pragma omp single
-        {
-        m_mdata.clear();
-        m_fdata.clear();
-        m_vdata.clear();
-        m_cdata.clear();
-        }//implicit barrier
-
+        cleanUp();
         _parse(args...);
 
         // Add initial evaluation flags
@@ -266,21 +253,17 @@ public:
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-        for (VarDataIt it  = m_vdata.begin(); it != m_vdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
         /*
         gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
-        gsInfo<< "vdata: "<< m_vdata.size()<<"\n";
         gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
         if (m_mirror)
         {
             gsInfo<< "\nfdata2: "<< iface().m_fdata.size()<<"\n";
             gsInfo<< "mdata2: "  << iface().m_mdata.size()<<"\n";
-            gsInfo<< "vdata2: "  << iface().m_vdata.size()<<"\n";
             gsInfo<< "cdata2: "  << iface().m_cdata.size()<<"\n";
         }
         */
@@ -298,9 +281,18 @@ public:
 
     void add(const expr::gsComposition<T> & sym)
     {
-        GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
+        //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
+        //register the map
         add(sym.inner());
         sym.inner().data().flags |= NEED_VALUE;
+        if (nullptr==sym.m_fs)
+        {
+            gsInfo<<"\nGot composition\n";
+            mutMap = &sym.inner().source();
+            return;
+        }
+
+        //register the function //if !=nullptr?
         auto k = std::make_pair(sym.m_fs,&m_mdata[sym.inner().m_fs]);
         auto it = m_cdata.find(k);
         gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
@@ -325,6 +317,7 @@ public:
 
         if (NULL!=sym.m_fs)
         {
+            /*
             if ( 1==sym.m_fs->size() &&
                  sym.m_fs->domainDim()<=sym.m_fs->targetDim() )// map?
             {
@@ -334,6 +327,7 @@ public:
                     .setData( eh.m_mdata[sym.m_fs] );
             }
             else
+            */
             {
                 //gsDebug<<"+ Func "<< sym.m_fs <<"\n";
 #               pragma omp critical (m_fdata_first_touch)
@@ -343,8 +337,7 @@ public:
         }
         else
         {
-            gsDebug<<"\ngsExprHelper: Boundary condition is NOT working yet for ["<< sym <<"] \n";
-            // eg. mutable var?
+            //gsDebug<<"\nGot a mutable variable.\n";
         }
     }
 
@@ -380,13 +373,6 @@ public:
             it->second.mine().patchId = patchIndex;
         }
 
-        for (VarDataIt it = m_vdata.begin(); it != m_vdata.end(); ++it)
-        {
-            it->first->source().piece(patchIndex)
-                .compute(m_points, it->second);
-            it->second.mine().patchId = patchIndex;
-        }
-
         for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
         {
             it->first.first->piece(patchIndex)
@@ -395,11 +381,14 @@ public:
         }
 
         // Mutable variable to treat BCs
-        if ( mutVar.isValid() && 0!=mutData.flags)
+        if (nullptr!=mutSrc && 0!=m_fdata[mutSrc].mine().flags)
+        //if (0!=mutData.mine().flags)
         {
-//            mutVar.source().piece(patchIndex)
-//                .compute( mutMap ? m_mdata[mutMap].points : m_mdata.values[0], mutData);
-            //...it->second.mine().patchId = patchIndex;
+            //GISMO_ASSERT(mutSrc, "Boundary function not set.");
+            mutSrc->piece(patchIndex)
+                .compute( mutMap ? m_mdata[mutMap].mine().values[0] : m_points,
+                          m_fdata[mutSrc] );
+            //gsDebugVar(m_fdata[mutSrc].mine().values[0].size());
         }
     }
 
