@@ -433,7 +433,11 @@ void gsCmdLine::printVersion()
 #elsif _MSC_VER >= 1600
     gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"201103L" <<", ";
 #elif defined(__clang__ )
+#if defined(__apple_build_version__)
+    gsInfo << "Apple Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
+#else
     gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
+#endif
 #elif defined(_INTEL_COMPILER)
     gsInfo << "Intel C++ "<<__INTEL_COMPILER<<" ("<<__cplusplus <<", ";
 #elif defined(__MINGW64__)
