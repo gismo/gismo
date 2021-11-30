@@ -107,12 +107,12 @@ For obtaining a \a gsDofMapper, we use the assembler:
 
 \snippet ietidG_example.cpp Define global mapper
 
-Now we set up a \a gsIetidGMapper and register the artificial interfaces. It
-is possible to register them individually, e.g., if some pages are coupled
-strongly. Since this is not the case here, we use the function
-*registerAllArtificialIfaces* that applies the loop for us.
+Now we set up a \a gsIetidGMapper and specify the artificial interfaces. It
+is possible to set up a std::vector or artificial interfaces individually,
+e.g., if some pages are coupled strongly. Since this is not the case here,
+we use the function *allArtificialIfaces* that does the work for us.
 
-\snippet ietidG_example.cpp Register artificial interfaces
+\snippet ietidG_example.cpp Define Ieti Mapper
 
 Now we set the primal degrees of freedom. The following commands compute the
 (vectors that make up the) constraint matrices \f$ C_k \f$ and store them in

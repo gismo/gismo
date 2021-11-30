@@ -205,25 +205,31 @@ int main(int argc, char *argv[])
 
     const index_t nPatches = mp.nPatches();
     //! [Define global mapper]
-    // We start by setting up a global assembler that allows us to
-    // obtain a dof mapper and the Dirichlet data
-    gsPoissonAssembler<> assembler(
-        mp,
-        mb,
-        bc,
-        f,
-        dirichlet::elimination,
-        iFace::dg
-    );
-    assembler.computeDirichletDofs();
-    //! [Define global mapper]
+    gsIetidGMapper<> ietiMapper;
+    {
+        // We start by setting up a global assembler that allows us to
+        // obtain a dof mapper and the Dirichlet data
+        gsOptionList assemblerOptions = gsGenericAssembler<>::defaultOptions();
+        assemblerOptions.setInt("DirichletStrategy", dirichlet::elimination);
+        assemblerOptions.setInt("InterfaceStrategy", iFace::dg);
+        gsGenericAssembler<> assembler(
+            mp,
+            mb,
+            assemblerOptions,
+            &bc
+        );
+        assembler.computeDirichletDofs();
+        //! [Define global mapper]
 
-    //! [Register artificial interfaces]
-    gsIetidGMapper<> ietiMapper( mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
-
-    ietiMapper.registerAllArtificialIfaces();
-    ietiMapper.finalize();
-    //! [Register artificial interfaces]
+        //! [Define Ieti Mapper]
+        ietiMapper.init(
+            mb,
+              assembler.system().rowMapper(0),
+              assembler.fixedDofs(),
+              gsIetidGMapper<>::allArtificialIfaces(mb)
+        );
+    }
+    //! [Define Ieti Mapper]
 
     // Which primal dofs should we choose?
     bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
@@ -294,7 +300,7 @@ int main(int argc, char *argv[])
         assemblerOptions.setReal("DG.Beta", beta);
         assemblerOptions.setReal("DG.Penalty", penalty);
 
-        gsGenericAssembler<> gAssembler(
+        gsGenericAssembler<> assembler(
             mp_local,
             mb_local,
             assemblerOptions,
@@ -306,30 +312,30 @@ int main(int argc, char *argv[])
         // Dirichlet boundary just with a corner or that a 3d-patch touches the
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
-        gAssembler.refresh(ietiMapper.dofMapperLocal(k));
-        gAssembler.setFixedDofVector(ietiMapper.fixedPart(k));
-        gAssembler.system().reserve(mb_local, assemblerOptions, 1);
+        assembler.refresh(ietiMapper.dofMapperLocal(k));
+        assembler.setFixedDofVector(ietiMapper.fixedPart(k));
+        assembler.system().reserve(mb_local, assemblerOptions, 1);
 
         // Assemble
-        gAssembler.assembleStiffness(0,false);
-        gAssembler.assembleMoments(f,0,false);
+        assembler.assembleStiffness(0,false);
+        assembler.assembleMoments(f,0,false);
         gsBoundaryConditions<>::bcContainer neumannSides = bc_local.neumannSides();
         for (gsBoundaryConditions<>::bcContainer::const_iterator it = neumannSides.begin();
                 it!= neumannSides.end(); ++it)
-            gAssembler.assembleNeumann(*it,false);
+            assembler.assembleNeumann(*it,false);
 
         for (size_t i=0; i<ietiMapper.artificialIfaces(k).size(); ++i)
         {
             patchSide side1(0,ietiMapper.artificialIfaces(k)[i].assignedTo.side());
             patchSide side2(i+1,ietiMapper.artificialIfaces(k)[i].takenFrom.side());
             boundaryInterface bi(side1, side2, mp.geoDim());
-            gAssembler.assembleDG(bi,false);
+            assembler.assembleDG(bi,false);
         }
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
-        gsMatrix<>                       localRhs    = gAssembler.rhs();
-        gsSparseMatrix<>                 localMatrix = gAssembler.matrix();
+        gsMatrix<>                       localRhs    = assembler.rhs();
+        gsSparseMatrix<>                 localMatrix = assembler.matrix();
         //! [Assemble]
 
         // Add the patch to the scaled Dirichlet preconditioner
@@ -462,14 +468,15 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
-        gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
-        gsPoissonAssembler<> assembler(
+        gsInfo << "Write Paraview data to file ieti_result.pvd\n";
+        gsOptionList assemblerOptions = gsGenericAssembler<>::defaultOptions();
+        assemblerOptions.setInt("DirichletStrategy", dirichlet::elimination);
+        assemblerOptions.setInt("InterfaceStrategy", iFace::dg);
+        gsGenericAssembler<> assembler(
             mp,
             mb,
-            bc,
-            f,
-            dirichlet::elimination,
-            iFace::glue
+            assemblerOptions,
+            &bc
         );
         assembler.computeDirichletDofs();
         gsMultiPatch<> mpsol;

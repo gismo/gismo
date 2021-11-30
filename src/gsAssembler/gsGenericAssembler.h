@@ -180,6 +180,14 @@ public:
         return m_system.matrix().template selfadjointView<Lower>();
     }
 
+    /// @brief Refresh and compute Dirichlet dofs
+    const void computeDirichletDofs()
+    {
+        gsGenericAssembler::refresh();
+        m_system.reserve(m_bases[0], m_options, 1);
+        Base::computeDirichletDofs();
+    }
+
 
 private:
 
