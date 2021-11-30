@@ -440,6 +440,20 @@ private:
         { v.print(gsInfo);gsInfo<<"\n"; }
     } _printExpr;
 
+    struct __checkExpr
+    {
+        template <typename E> void operator() (const gsExprAssembler & ea,
+                                               const gismo::expr::_expr<E> & ee)
+        {
+            auto u = ee.rowVar();
+            auto v = ee.colVar();
+            const bool m = E::isMatrix();
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(!m || u.isValid(), "The column space is not valid");
+            GISMO_ASSERT(m || (ea.numDofs()==ee.rhs().size()), "The right-hand side vector is not initialized");
+        }
+    } _checkExpr;
+
     struct _eval
     {
         gsSparseMatrix<T> & m_matrix;
@@ -486,26 +500,28 @@ private:
         {
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
-            GISMO_ASSERT(isMatrix || (0!=m_rhs.size()), "The right-hand side vector is not initialized");
+            //GISMO_ASSERT(isMatrix || (numDofs()==m_rhs.size()), "The right-hand side vector is not initialized");
 
-            const index_t cd            = u.dim();
-            const index_t rd            = v.dim();
+            const index_t rd            = v.dim();//row
+            const index_t cd            = u.dim();//col
+            //const index_t rp            = v.data().patchId;
+            //const index_t cp            = (isMatrix ? u.data().patchId : 0);
             const gsDofMapper  & rowMap = v.mapper();
             const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
             gsMatrix<index_t> & rowInd0 = const_cast<gsMatrix<index_t>&>(v.data().actives);
             gsMatrix<index_t> & colInd0 = (isMatrix ? const_cast<gsMatrix<index_t>&>(u.data().actives) : rowInd0);
             const gsMatrix<T> & fixedDofs = (isMatrix ? u.fixedPart() : gsMatrix<T>());
 
-            gsMatrix<index_t> rowInd, colInd;
-            rowMap.localToGlobal(rowInd0, v.data().patchId, rowInd);
+            // gsMatrix<index_t> rowInd, colInd;
+            // rowMap.localToGlobal(rowInd0, v.data().patchId, rowInd);
 
             if (isMatrix)
             {
                 GISMO_ASSERT( rowInd0.rows()*rd==localMat.rows() && colInd0.rows()*cd==localMat.cols(),
                               "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
-                                
+
                 //if (&rowInd0!=&colInd0)
-                colMap.localToGlobal(colInd0, u.data().patchId, colInd);
+                //colMap.localToGlobal(colInd0, u.data().patchId, colInd);
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
                               "Invalid values for fixed part");
             }
@@ -514,7 +530,7 @@ private:
                 const index_t rls = r * rowInd0.rows();     //local stride
                 for (index_t i = 0; i != rowInd0.rows(); ++i)
                 {
-                    const index_t ii = rowMap.index(rowInd0.at(i),patchInd,r); //N_i
+                    const index_t ii = rowMap.index(rowInd0.at(i),v.data().patchId,r); //N_i
                     if ( rowMap.is_free_index(ii) )
                     {
                         if (isMatrix)
@@ -527,7 +543,7 @@ private:
                                 {
                                     if ( 0 == localMat(rls+i,cls+j) ) continue;
 
-                                    const index_t jj = colMap.index(colInd0.at(j),patchInd,c); // N_j
+                                    const index_t jj = colMap.index(colInd0.at(j),u.data().patchId,c); // N_j
                                     if ( colMap.is_free_index(jj) )
                                     {
                                         // If matrix is symmetric, we could
@@ -872,6 +888,7 @@ void gsExprAssembler<T>::assemble(const ifContainer & iFaces, expr... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
+    m_exprdata->iface().parse(arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights;// quadrature weights

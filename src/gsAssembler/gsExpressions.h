@@ -361,7 +361,6 @@ public:
 };
 
 
-// SYMBOLS  u_L , u_R, u_B ??
 template<class E>
 class symbol_expr : public _expr<E>
 {
@@ -383,14 +382,19 @@ public:
 
     E right() const
     {
-        E ac;
+        E ac(this->derived());
         ac.m_fs = m_fs;
         ac.m_isAcross = true;
         return ac;
     }
 
-    E left() const { return E(*this); }
-
+    E left() const
+    {
+        E ac(this->derived());
+        ac.m_fs = m_fs;
+        ac.m_isAcross = false;
+        return ac;
+    }
 
     /// Returns the function source
     const gsFunctionSet<Scalar> & source() const {return *m_fs;}
@@ -1059,6 +1063,7 @@ public:
 
 protected:
     friend class gismo::gsExprHelper<Scalar>;
+    friend class symbol_expr<gsFeSpace>;
     explicit gsFeSpace(index_t _d = 1) : Base(_d), m_sd(nullptr) { }
 };
 
@@ -1108,6 +1113,7 @@ public:
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
+        GISMO_ASSERT(_Sv->size()==map.freeSize(), "The solution vector has wrong dimensions: "<<_Sv->size()<<" != "<<map.freeSize());
 
         for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
@@ -3196,6 +3202,7 @@ public:
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
+
         // Note: a * b * c --> (a*b).eval()*c
         tmp = _u.eval(k) * _v.eval(k);
         return tmp; // assumes result is not scalarvalued
