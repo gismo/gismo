@@ -526,7 +526,7 @@ int main(int argc, char *argv[])
   cmd.addMultiInt("t", "threads", "Number of OpenMP threads to be used for the benchmark", nthreads);
   cmd.addMultiInt("n", "nsizes", "Number of unknowns benchmarks", nsizes);
   cmd.addInt("r", "runs", "Number of runs over which the results are averaged", nruns);
-  cmd.add_String("o", "output", "Name of the file to write the output", filename)
+  cmd.addString("o", "output", "Name of the file to write the output", filename);
 
   try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
