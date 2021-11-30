@@ -69,24 +69,21 @@ GISMO_CLONE_FUNCTION(gsSingleBasis)
 };
 
 
-void createHBSpline(gsMultiPatch<> mp_coarser, gsMultiBasis<> mb_coarser, std::string name)
+void createSplineBasisL2Projection(gsMultiBasis<> & mb_level1, gsMultiBasis<> & mb_level2, gsSparseMatrix<> & cf)
 {
-    gsMultiBasis<> mb_finer = mb_coarser;
-    mb_finer.uniformRefine();
-
     gsExprAssembler<> A(1,1);
     gsExprEvaluator<> ev(A);
 
-    A.setIntegrationElements(mb_finer);
+    A.setIntegrationElements(mb_level2);
 
     // Set the discretization space
-    auto u = A.getSpace(mb_finer);
+    auto u = A.getSpace(mb_level2);
 
-    gsMatrix<> mat_coarser, mat_finer;
-    mat_coarser.setZero(mb_coarser.basis(0).size(),mb_finer.basis(0).size());
-    mat_finer.setIdentity(mb_finer.basis(0).size(),mb_finer.basis(0).size());
-    for (index_t bfID = 0; bfID < mb_coarser.basis(0).size(); bfID ++) {
-        gsSingleBasis<real_t> sb(mb_coarser.basis(0), bfID);
+    gsMatrix<> mat_lvl1, mat_lvl2;
+    mat_lvl1.setZero(mb_level1.basis(0).size(),mb_level2.basis(0).size());
+    //mat_lvl2.setIdentity(mb_level2.basis(0).size(),mb_level2.basis(0).size());
+    for (index_t bfID = 0; bfID < mb_level1.basis(0).size(); bfID ++) {
+        gsSingleBasis<real_t> sb(mb_level1.basis(0), bfID);
         auto aa = A.getCoeff(sb);
 
         gsBoundaryConditions<> bc_empty;
@@ -102,55 +99,11 @@ void createHBSpline(gsMultiPatch<> mp_coarser, gsMultiBasis<> mb_coarser, std::s
         auto u_sol = A.getSolution(u, solVector);
         gsMatrix<> sol;
         u_sol.extract(sol);
-        mat_coarser.row(bfID) = sol.transpose();
+        mat_lvl1.row(bfID) = sol.transpose();
     }
-    gsMatrix<real_t> point(2,1);
-    point << 0.1, 0.1;
-    gsMatrix<index_t> act = mb_finer.basis(0).active(point);
-    gsMatrix<index_t> act2 = mb_coarser.basis(0).active(point);
 
-    index_t rows = act.size() + mb_coarser.basis(0).size() - act2.size();
-    gsMatrix<real_t> mat_hb(rows,mb_finer.basis(0).size());
-
-    for (index_t j = 0; j < act.size(); j++) {
-        index_t jj = act.at(j);
-        mat_hb.row(j) = mat_finer.row(jj);
-    }
-    index_t row_shift = act.size();
-    for (index_t i = 0; i < mb_coarser.basis(0).size(); i++) {
-
-        bool not_active = true;
-        for (index_t j = 0; j < act2.size(); j++) {
-            index_t jj = act2.at(j);
-            if (jj == i)
-                not_active = false;
-        }
-        if (not_active)
-        {
-            mat_hb.row(row_shift) = mat_coarser.row(i);
-            ++row_shift;
-        }
-    }
-    //gsInfo << mat_hb << "\n";
-    //gsInfo << mat_coarser << "\n";
-    mat_hb = mat_hb.transpose();
-    gsSparseMatrix<> sparse_sol = mat_hb.sparseView(1,1e-10);
-    //gsInfo << sparse_sol << "\n";
-
-    gsFileData<> fd;
-    fd << mb_finer;
-    fd << sparse_sol;
-    fd.save(name + ".xml");
-
-    mat_coarser = mat_coarser.transpose();
-    gsSparseMatrix<> sparse_coarser = mat_coarser.sparseView(1,1e-10);
-    //gsInfo << sparse_sol << "\n";
-
-    fd.clear();
-    fd << mp_coarser;
-    fd << mb_finer;
-    fd << sparse_coarser;
-    fd.save( "spline_test.xml");
+    mat_lvl1 = mat_lvl1.transpose();
+    cf = mat_lvl1.sparseView(1,1e-10);
 }
 
 
@@ -158,13 +111,101 @@ void createHBSpline(gsMultiPatch<> mp_coarser, gsMultiBasis<> mb_coarser, std::s
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
-    bool plot = false;
+    index_t choice = 0;
 
-    std::string fn("msplines/spline_test");
+    bool plot = false;
+    bool xml = false;
+
+    index_t discreteDegree = 3;
+    index_t discreteRegularity = 2;
+    index_t numRefine = 1;
+
+    index_t discreteDegree2 = 3;
+    index_t discreteRegularity2 = 2;
+    index_t numRefine2 = 1;
+
+    index_t geoDim = 2;
+    index_t parDim = 2;
+
+    //std::string fn("msplines/spline_test");
+    std::string fn;
 
     gsCmdLine cmd("Example using mapped spline.");
+    cmd.addInt("c", "choice", "Which example/case/choice do you want to run?", choice);
+#/** EXAMPLE 0: Create a mapped spline from the geometry "-c 0" (default options)
+
+The example run with the (given) geometry and create a multi-basis from the geometry.
+Then the coeficient matrix is constructed with the identity matrix.
+
+User options:
+    -f  <string>    The filepath of the geometry.
+                    If it is empty, the geometry will be a unit interval/square/cube. To choose which one, call "-D":
+    -D  <int>       Define the dimension of the geometry domain: Interval(1), Square(2), Cube(3)
+
+    -p  <int>       Discrete polynomial degree. The basis functions will set to degree "p"
+    -r  <int>       Discrete regularity. The basis functions will set to regularity "r"
+    -l  <int>       Discrete refinement. The basis functions will be uniformed refined "l"-times
+
+    --xml           If you want to save the basis functions in a XML file.
+    --plot          Create a ParaView visualization file with the mapped basis
+**/
+
+#/** EXAMPLE 1: Read a mapped spline from the xml file "-c 1"
+
+The example read the basis function, coefficient sparse matrix and coordinates from the xml file. Use the flag "--plot"
+to visualize the basis functions and the resulting geometry.
+
+User options:
+    -f  <string>    The filepath of the xml file.
+
+    --plot          Create a ParaView visualization file with the mapped basis
+**/
+
+#/** EXAMPLE 2: Create the old basis functions as linear combination of the new basis "-c 2"
+
+The example run with the (given) geometry and create a multi-basis from the geometry. We call the "old" space of that
+basis functions as V(p,r,l). Then we set up the new space W(P,R,L) and do an L2-projection to obtain
+the linear combination to represent the basis functions from V(p,r,l) with the basis of W(P,R,L), e.g.
+
+v_j = \sum_i a_{i,j} w_i
+
+which gives us the coeficient matrix.
+
+Note: the transformation makes only sense iff V \subset W
+
+User options:
+    -f  <string>    The filepath of the geometry.
+                    If it is empty, the geometry will be a unit interval/square/cube. To choose which one, call "-D":
+    -D  <int>       Define the dimension of the geometry domain: Interval(1), Square(2), Cube(3)
+
+    -p  <int>       Discrete polynomial degree. The basis functions will set to degree "p"
+    -r  <int>       Discrete regularity. The basis functions will set to regularity "r"
+    -l  <int>       Discrete refinement. The basis functions will be uniformed refined "l"-times
+
+    -P  <int>       Discrete polynomial degree for space 2. The basis functions will set to degree "P"
+    -R  <int>       Discrete regularity for space 2. The basis functions will set to regularity "R"
+    -L  <int>       Discrete refinement for space 2. The basis functions will be uniformed refined "L"-times
+
+    --xml           If you want to save the new basis functions in a XML file.
+    --plot          Create a ParaView visualization file with the mapped basis
+**/
+
+
     cmd.addString( "f", "file", "Input XML file prefix", fn );
+
+    cmd.addInt("D", "geoDim", "Define the dimension of the geometry domain: Interval, Square, Cube.", geoDim);
+    cmd.addInt("d", "parDim", "Define the dimension of the parameter domain.", parDim);
+
+    cmd.addInt("p", "degree", "Set the degree for the basis", discreteDegree);
+    cmd.addInt("r", "regularity", "Set the regularity for the basis", discreteRegularity);
+    cmd.addInt("l", "loop", "Set the uniform refinement for the basis", numRefine);
+
+    cmd.addInt("P", "degree2", "Set the degree for the second basis", discreteDegree2);
+    cmd.addInt("R", "regularity2", "Set the regularity for the second basis", discreteRegularity2);
+    cmd.addInt("L", "loop2", "Set the uniform refinement for the second basis", numRefine2);
+
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("xml", "Save the XML file with the (special) basis functions", xml);
     cmd.getValues(argc,argv);
     //! [Parse command line]
 
@@ -172,132 +213,288 @@ int main(int argc, char *argv[])
     gsFileData<> fd;
     gsMultiPatch<real_t> mp;
     gsMultiBasis<real_t> mb;
+    gsMultiBasis<real_t> mb_level2;
     gsSparseMatrix<real_t> cf;
-
-    gsExprAssembler<> A(1,1);
-    gsExprEvaluator<> ev(A);
-    A.setIntegrationElements(mb);
+    gsMatrix<real_t> coefs;
     //! [Initialization]
 
-    //! [Read the input]
-    fd.read(fn + ".xml");
-    fd.getFirst(mp);
-    fd.getFirst(mb);
-    fd.getFirst(cf);
-    //! [Read the input]
+    //! [Set up the example]
+    switch (choice) {
+        // Example 0
+        case 0:
+            if (!fn.empty()) // Read geometry from XML file
+            {
+                fd.read(fn + ".xml");
+                fd.getFirst(mp);
+            }
+            else
+            {
+                if (geoDim == 1)
+                    mp.addPatch(gsNurbsCreator<>::BSplineUnitInterval(1));
+                else if (geoDim == 2)
+                    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1, 1, 1) );
+                else if (geoDim == 3)
+                    mp.addPatch( gsNurbsCreator<>::BSplineCube(1, 1, 1, 1) );
+                else
+                    gsInfo << "No geometry with dimension " << geoDim << "\n";
+                mp.computeTopology();
+            }
 
+            mb = gsMultiBasis<>(mp);
 
-// TEMPORARLY TODO DELETE MAYBE
+            // Set degree and refinement
+            mb.setDegree(discreteDegree);
+            mb.uniformRefine(numRefine, discreteDegree - discreteRegularity);
 
-    //mb.uniformRefine();
-    //createHBSpline(mp,mb, "hb_basis_2");
+            // Set Trafo Matrix to identity for the mappedBasis
+            cf.resize(mb.size(), mb.size());
+            cf.setIdentity();
 
-// TEMPORARLY TODO DELETE MAYBE
+            // Set Coefs to ones for the mappedSpline
+            coefs.setOnes(mb.size(),1);
+            break;
+        // Example 1
+        case 1:
+            if (!fn.empty()) // Read data from XML file
+            {
+                fd.read(fn + ".xml");
+                fd.getFirst(coefs); // Not really necessary
+                fd.getFirst(mb);
+                fd.getFirst(cf);
+            }
+            else
+            {
+                // replace it with default path/given example
+                gsInfo <<"Please add the filepath of the xml file!\n";
+            }
+            break;
 
+        case 2:
+            if (!fn.empty()) // Read geometry from XML file
+            {
+                fd.read(fn + ".xml");
+                fd.getFirst(mp);
+            }
+            else
+            {
+                if (geoDim == 1)
+                    mp.addPatch(gsNurbsCreator<>::BSplineUnitInterval(1));
+                else if (geoDim == 2)
+                    mp.addPatch( gsNurbsCreator<>::BSplineSquare(1, 1, 1) );
+                else if (geoDim == 3)
+                    mp.addPatch( gsNurbsCreator<>::BSplineCube(1, 1, 1, 1) );
+                else
+                    gsInfo << "No geometry with dimension " << geoDim << "\n";
+                mp.computeTopology();
+            }
+
+            mb = gsMultiBasis<>(mp);
+            // Set degree and refinement for the old basis functions
+            mb.setDegree(discreteDegree);
+            for (index_t i = 0; i < numRefine; i++)
+                mb.uniformRefine(1, discreteDegree - discreteRegularity);
+
+            mb_level2 = gsMultiBasis<>(mp);
+            // Set degree and refinement for the new basis functions
+            mb_level2.setDegree(discreteDegree2);
+            for (index_t i = 0; i < numRefine2; i++)
+                mb_level2.uniformRefine(1, discreteDegree2 - discreteRegularity2);
+
+            gsDebugVar(mb.basis(0));
+            gsDebugVar(mb_level2.basis(0));
+            createSplineBasisL2Projection(mb,mb_level2,cf);
+
+            mb = mb_level2; // For the new cf
+
+            // Set Coefs to ones for the mappedSpline
+            coefs.setOnes(mb.size(),1);
+            break;
+
+        default:
+            gsInfo << "The choice doesn't exist. Please choose another example! \n";
+            break;
+    }
+    //! [Set up the example]
 
 
     //! [Setup the Mapped Basis]
-    gsMappedBasis<2,real_t> mbasis(mb,cf);
+    gsMappedBasis<1,real_t> mbasis1;
+    gsMappedBasis<2,real_t> mbasis2;
+    gsMappedBasis<3,real_t> mbasis3;
 
-    gsMultiBasis<> mbasis_exact(mp);
-
-    gsInfo << "The MappedBasis has " << mbasis.size() << " basis functions for all patches! \n";
-    gsInfo << "The SplineBasis has " << mbasis_exact.size() << " basis functions for all patches! \n";
-
+    if (mb.dim() == 1) {
+        mbasis1.init(mb,cf);
+        gsInfo << "The MappedBasis has " << mbasis1.size() << " basis functions for all patches! \n";
+    }
+    else if (mb.dim() == 2) {
+        mbasis2.init(mb,cf);
+        gsInfo << "The MappedBasis has " << mbasis2.size() << " basis functions for all patches! \n";
+    }
+    else if (mb.dim() == 3) {
+        mbasis3.init(mb,cf);
+        gsInfo << "The MappedBasis has " << mbasis3.size() << " basis functions for all patches! \n";
+    }
     //! [Setup the Mapped Basis]
 
     //! [Some computation on the basis]
-    // Works only for Bspline and identity
-    gsMatrix<> points(2,3), result_mspline, result_bspline;
-    points << 0,0, 0.2,0, 0.5,0.5;
-
+/*
+    gsMatrix<> points(2, 4), result_mspline;
+    points << 0, 0, 0.2, 0, 0.5, 0.5, 1, 1;
     result_mspline = mbasis.basis(0).eval(points);
-    result_bspline = mbasis_exact.basis(0).eval(points);
-    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
     result_mspline = mbasis.basis(0).deriv(points);
-    result_bspline = mbasis_exact.basis(0).deriv(points);
-    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
     result_mspline = mbasis.basis(0).deriv2(points);
-    result_bspline = mbasis_exact.basis(0).deriv2(points);
-    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
     index_t bfID = 0;
     result_mspline = mbasis.basis(0).evalSingle(bfID, points);
-    result_bspline = mbasis_exact.basis(0).evalSingle(bfID, points);
-    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-    result_mspline = mbasis.basis(0).support(bfID);
-    result_bspline = mbasis_exact.basis(0).support(bfID);
-    gsInfo << result_mspline << "\n";
-    gsInfo << result_bspline << "\n";
-    gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-    // TODO anchors_into() not implemented
-    //result_mspline = mbasis.basis(0).anchors();
-    //result_bspline = mbasis_exact.basis(0).anchors();
-    //gsInfo<<( (result_mspline-result_bspline).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-    bool failed = false;
-    gsMatrix<index_t> act, act_exact;
-    for (index_t i = 0; i < points.cols(); i++)
-    {
-        act = mbasis.basis(0).active(points.col(i));
-        act_exact = mbasis_exact.basis(0).active(points.col(i));
-        if ((act-act_exact).norm() > 1e-10)
-            failed = true;
-    }
-    gsInfo<<( failed ? "failed" : "passed" )<<"\n";
-
-
-    act = mbasis.basis(0).boundaryOffset(boxSide(boundary::west), 0);
-    act_exact = mbasis_exact.basis(0).boundaryOffset(boxSide(boundary::west), 0);
-    if (act.rows() != act_exact.rows())
-        gsInfo << "failed: actives are different size \n";
-    else
-        gsInfo<<( (act-act_exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-    act = mbasis.basis(0).boundaryOffset(boxSide(boundary::south), 1);
-    act_exact = mbasis_exact.basis(0).boundaryOffset(boxSide(boundary::south), 1);
-    if (act.rows() != act_exact.rows())
-        gsInfo << "failed: actives are different size \n";
-    else
-        gsInfo<<( (act-act_exact).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
+ */
     //! [Some computation on the basis]
 
     //! [Setup the Mapped Spline]
-    gsMatrix<> coefs;
-    coefs.setOnes(mbasis.size(),1);
-    gsMappedSpline<2,real_t> mspline(mbasis,coefs);
+
+    gsMappedSpline<1,real_t> mspline1;
+    gsMappedSpline<2,real_t> mspline2;
+    gsMappedSpline<3,real_t> mspline3;
+    if (mb.dim() == 1)
+        mspline1.init(mbasis1,coefs);
+    if (mb.dim() == 2)
+        mspline2.init(mbasis2,coefs);
+    if (mb.dim() == 3)
+        mspline3.init(mbasis3,coefs);
     //! [Setup the Mapped Spline]
 
     //! [Simple L2 Projection example]
-    if (cf.toDense().isIdentity(1e-10))
-    {
-        gsFunctionExpr<> functionExpr("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-        gsMatrix<> coefs2, coefs3;
-        gsQuasiInterpolate<real_t>::localIntpl(mbasis.basis(0), functionExpr, coefs2);
-        gsMappedSpline<2,real_t> mspline2(mbasis,coefs2);
-        gsField<> solField2(mp, mspline2,true);
-        gsWriteParaview<>( solField2, "MappedSpline_sol", 1000, false);
-
-        gsQuasiInterpolate<real_t>::localIntpl(mb.basis(0), functionExpr, coefs3);
-        gsMultiPatch<> mp2;
-        mp2.addPatch(mb.basis(0).makeGeometry(coefs3));
-        gsField<> solField3(mp, mp2,true);
-        gsWriteParaview<>( solField3, "BSpline_sol", 1000, false);
-
-        gsInfo<<( (coefs2-coefs3).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-    }
+// function `elementInSupportOf` has not been implemented
+/*
+    gsFunctionExpr<> functionExpr("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsMatrix<> coefs2;
+    gsQuasiInterpolate<real_t>::localIntpl(mbasis.basis(0), functionExpr, coefs2);
+    gsMappedSpline<2,real_t> mspline2(mbasis,coefs2);
+    gsField<> solField2(mp, mspline2,true);
+    gsWriteParaview<>( solField2, "MappedSpline_l2Projection", 1000, false);
+ */
     //! [Simple L2 Projection example]
 
-    //! [Export visualization in ParaView]
-    gsInfo<<"Plotting in Paraview...\n";
-    gsWriteParaview<>( mbasis.basis(0), "MappedBasis", 1000, false);
+    //! [Export mapped spline to xml file]
+    if (xml)
+    {
+        fd.clear();
+        fd << coefs;
+        fd << mb;
+        fd << cf;
+        fd.save( "MappedSpline.xml");
+        gsInfo << "The mapped spline is export to MappedSpline.xml\n";
+    }
+    //! [Export mapped spline to xml file]
 
-    gsWriteParaview<>( mbasis_exact.basis(0), "SplineBasis", 1000, false);
-    gsField<> solField(mp, mspline,true);
-    gsWriteParaview<>( solField, "MappedSpline", 1000, false);
+    //! [Export visualization in ParaView]
+    if (plot && mb.dim() == 1)
+    {
+        gsInfo<<"Plotting in Paraview...\n";
+        gsWriteParaview<>( mbasis1.basis(0), "MappedBasis", 1000, false);
+
+        std::string fileName;
+        std::string basename = "MappedBasisSingle";
+
+        gsParaviewCollection collection(basename);
+        for (index_t i = 0; i < mbasis1.basis(0).size(); i++) {
+            fileName = basename + "_0_" + util::to_string(i);
+            gsWriteParaview_basisFnct(i, mbasis1.basis(0), fileName, 1000);
+            collection.addTimestep(fileName, i, ".vts");
+        }
+        collection.save();
+
+        if (mp.empty())
+            mp.addPatch(gsNurbsCreator<>::BSplineUnitInterval(1));
+        gsField<> solField(mp, mspline1,false);
+
+        gsMatrix<real_t> supp(1,2);
+        supp << 0.0, 1.0;
+
+        index_t numPts = 1000;
+        gsVector<real_t> a = supp.col(0);
+        gsVector<real_t> b = supp.col(1);
+        gsVector<unsigned> np = uniformSampleCount(a,b, numPts );
+        gsMatrix<real_t> pts = gsPointGrid(a,b,np);
+
+        gsMatrix<real_t> ev;
+        mspline1.function(0).eval_into(pts, ev);
+
+        //gsInfo << mspline1.eval(supp) << "\n";
+
+        if (ev.rows() == 1)
+        {
+            gsMatrix<real_t> X,Y;
+            X = ev.row(0);
+            Y.setOnes(1,X.cols());
+
+            gsWriteParaviewPoints<>( X,Y, "MappedSpline_Points");
+        }
+        else if (ev.rows() == 2)
+        {
+            gsMatrix<real_t> X,Y;
+            X = ev.row(0);
+            Y = ev.row(1);
+
+            gsWriteParaviewPoints<>( X,Y, "MappedSpline_Points");
+        }
+        else if (ev.rows() == 3)
+        {
+            gsMatrix<real_t> X,Y, Z;
+            X = ev.row(0);
+            Y = ev.row(1);
+            Z = ev.row(2);
+
+            gsWriteParaviewPoints<>( X,Y,Z, "MappedSpline_Points");
+        }
+
+        //gsWriteParaview(mspline1.function(0), supp, "MappedSpline_2", 1000);
+    }
+    else if (plot && mb.dim() == 2)
+    {
+        gsInfo<<"Plotting in Paraview...\n";
+        gsWriteParaview<>( mbasis2.basis(0), "MappedBasis", 1000, false);
+
+        std::string fileName;
+        std::string basename = "MappedBasisSingle";
+
+        gsParaviewCollection collection(basename);
+        for (index_t i = 0; i < mbasis2.basis(0).size(); i++) {
+            fileName = basename + "_0_" + util::to_string(i);
+            gsWriteParaview_basisFnct(i, mbasis2.basis(0), fileName, 1000);
+            collection.addTimestep(fileName, i, ".vts");
+        }
+        collection.save();
+
+        if (mp.empty())
+            mp.addPatch( gsNurbsCreator<>::BSplineSquare(1, 1, 1) );
+        gsField<> solField(mp, mspline2,true);
+
+        gsMatrix<real_t> supp(2,2);
+        supp.col(0).setZero();
+        supp.col(1).setOnes();
+
+        gsWriteParaview<>( mspline2.function(0), supp, "MappedSpline", 1000);
+    }
+    else if (plot && mb.dim() == 3)
+    {
+        gsInfo<<"Plotting in Paraview...\n";
+        gsWriteParaview<>( mbasis3.basis(0), "MappedBasis", 1000, false);
+
+        std::string fileName;
+        std::string basename = "MappedBasisSingle";
+
+        gsParaviewCollection collection(basename);
+        for (index_t i = 0; i < mbasis3.basis(0).size(); i++) {
+            fileName = basename + "_0_" + util::to_string(i);
+            gsWriteParaview_basisFnct(i, mbasis3.basis(0), fileName, 1000);
+            collection.addTimestep(fileName, i, ".vts");
+        }
+        collection.save();
+
+        if (mp.empty())
+            mp.addPatch( gsNurbsCreator<>::BSplineCube(1, 1, 1, 1) );
+        gsField<> solField(mp, mspline3,true);
+        gsWriteParaview<>( solField, "MappedSpline", 1000, false);
+    }
     //! [Export visualization in ParaView]
 }

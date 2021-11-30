@@ -1004,6 +1004,8 @@ public:
                 }
                 if (1 == this->interfaceCont()) // C^1 matching interface
                 {
+/*
+                    // Not always working bcs of boundaryOffset
 
                     gsMatrix<index_t> int1, int2;
                     for (gsBoxTopology::const_iiterator it = mapb->getTopol().iBegin();
@@ -1026,8 +1028,8 @@ public:
                         // Match the dofs on the interface
                         for (size_t i = 0; i != m_sd->mapper.componentsSize(); ++i)
                             m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i);
-
                     }
+*/
                 }
 
                 gsMatrix<index_t> bnd;
@@ -1044,6 +1046,9 @@ public:
                     else
                         m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
                 }
+/*
+                // Not always working bcs of boundaryOffset
+                // Enfore Neumann weakly!!!
 
                 for (typename gsBoundaryConditions<real_t>::const_iterator
                              it = bc.begin("Neumann"); it != bc.end("Neumann"); ++it) {
@@ -1056,7 +1061,7 @@ public:
                     else
                         m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
                 }
-
+*/
                 // Clamped boundary condition (per DoF)
                 gsMatrix<index_t> bnd1;
                 for (typename gsBoundaryConditions<T>::const_iterator

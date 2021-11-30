@@ -151,7 +151,7 @@ gsMatrix<T> gsMappedBasis<d,T>::support(const index_t patch, const index_t & i) 
 {
     gsMatrix<T> supp;
     supp = m_bases[patch]->support(i);
-
+/*
     gsMatrix<index_t> act0, act1;
     active_into(patch, supp.col(0), act0);
     active_into(patch, supp.col(1), act1);
@@ -180,6 +180,11 @@ gsMatrix<T> gsMappedBasis<d,T>::support(const index_t patch, const index_t & i) 
         if (supp_local(1, 1) > supp(1, 1))
             supp(1, 1) = supp_local(1, 1);
     }
+*/
+    // TODO small fix here
+    supp.col(0).setZero();
+    supp.col(1).setOnes();
+
     return supp;
 }
 

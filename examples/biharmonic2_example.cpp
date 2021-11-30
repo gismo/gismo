@@ -79,6 +79,10 @@ int main(int argc, char *argv[])
 
     fd.getId(2,laplace); // Laplace for the bcs
 
+    // Neumann
+    gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                                         "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
+
     //! [Boundary condition]
     gsBoundaryConditions<> bc;
     if (geometry == 1000 || geometry == 1100)
@@ -89,13 +93,11 @@ int main(int argc, char *argv[])
             bc.addCondition(*bit, condition_type::dirichlet, &ms);
             if (neumann)
             {
-                gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                                         "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-                bc.addCondition(*bit, condition_type::neumann, &sol1der); // Is not the usually neumann condition
+                bc.addCondition(*bit, condition_type::neumann, &sol1der);
             }
             else
             {
-                bc.addCondition(*bit, condition_type::laplace, &laplace); // Is not the usually neumann condition
+                bc.addCondition(*bit, condition_type::laplace, &laplace);
             }
 
         }
@@ -173,6 +175,8 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine(1,discreteDegree -discreteRegularity);
 
+        gsDebugVar(dbasis.basis(0));
+
         gsSparseMatrix<real_t> global2local;
 
         gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
@@ -214,6 +218,9 @@ int main(int argc, char *argv[])
         // Enforce Laplace conditions to right-hand side
         auto g_L = A.getCoeff(laplace, G); // Set the laplace bdy value
         A.assembleRhsBc( (igrad(u, G) * nv(G)) * g_L.tr(), bc.laplaceSides() );
+
+        // Enforce Neumann conditions to right-hand side
+        //A.assembleRhsBc(ilapl(u, G) * (igrad(u_ex) * nv(G)).tr(), bc.neumannSides() );
 
         ma_time += timer.stop();
         gsInfo<< "." <<std::flush;// Assemblying done

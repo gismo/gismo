@@ -38,13 +38,13 @@
 
   <!-- Laplace conditions (patch,side)-->
   <bc type="Laplace" function="1" unknown="0">
-    1 4 1 3 0 1 1 2
-    0 3 0 4
+
   </bc>
 
   <!-- Neumann conditions (patch,side)-->
   <bc type="Neumann" function="2" unknown="0">
-
+        1 4 1 3
+    0 3 0 4 0 1 1 2
   </bc>
 </boundaryConditions>
 

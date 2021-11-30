@@ -153,8 +153,9 @@ public:
     /// Evaluates the (partial)derivatives of the i-th basis function at (the columns of) u.
     void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
     {
-        GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(result);
-        GISMO_NO_IMPLEMENTATION;
+        //GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(result);
+        //GISMO_NO_IMPLEMENTATION;
+        m_basis->derivSingle_into(m_index,i,u,result);
     }
 
     /// Evaluates the (partial) derivatives of the nonzero basis functions at points \a u into \a result.
@@ -313,6 +314,22 @@ public:
         std::vector<index_t> temp, rtemp;
         m_basis->addLocalIndizesOfPatchSide(patchSide(m_index,s),offset,temp);
         m_basis->getMapper().sourceToTarget(temp,rtemp);
+/*
+        if (offset == 1)
+        {
+            GISMO_ASSERT(offset==1, "The indizes of boundaryOffset(s,1) "
+                                    "will be substract from boundaryOffset(s,0)");
+
+            std::vector<index_t> diff, temp2, rtemp2;
+
+            m_basis->addLocalIndizesOfPatchSide(patchSide(m_index,s),0,temp2);
+            m_basis->getMapper().sourceToTarget(temp2,rtemp2);
+            // Subtract the indizes of Offset = 0
+            std::set_difference(rtemp.begin(), rtemp.end(), rtemp2.begin(), rtemp2.end(),
+                        std::inserter(diff, diff.begin()));
+            rtemp = diff;
+        }
+*/
         return makeMatrix<index_t>(rtemp.begin(),rtemp.size(),1 );
     }
     

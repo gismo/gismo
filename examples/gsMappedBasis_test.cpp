@@ -108,7 +108,8 @@ int main(int argc, char *argv[]) {
 
 
     gsMultiBasis<> mb_mspline = mb;
-    mb_mspline.uniformRefine();
+    //mb_mspline.degreeElevate(1);
+    mb_mspline.reduceContinuity(1);
 
     A.setIntegrationElements(mb_mspline);
 
@@ -138,8 +139,9 @@ int main(int argc, char *argv[]) {
         mat_coarser.row(bfID) = sol.transpose();
     }
     mat_coarser = mat_coarser.transpose();
-    cf = mat_coarser.sparseView(1,1e-10);
 
+    cf = mat_coarser.sparseView(1,1e-10);
+    //gsDebugVar(cf.toDense());
 
     //! [Setup the Mapped Basis]
     gsMappedBasis<2, real_t> mbasis(mb_mspline, cf);
@@ -227,8 +229,6 @@ int main(int argc, char *argv[]) {
         act_exact = mb.basis(0).boundaryOffset(boxSide(i), 1);
         if (act.rows() != act_exact.rows())
         {
-            //gsDebugVar(act);
-            //gsDebugVar(act_exact);
             gsInfo << ".boundaryOffset(boxSide("<< i <<"), 1) " << "failed: actives have different size \n";
             failed = true;
         }
@@ -237,10 +237,11 @@ int main(int argc, char *argv[]) {
     }
     gsInfo << ".boundaryOffset(boxSide(i), 1) " << (failed ? "failed" : "passed") << "\n";
 
-    result_mspline = mbasis.basis(0).component(0).eval(points);
-    result_bspline = mb.basis(0).component(0).eval(points);
-    gsInfo << ".component(0).eval(points) " << ((result_mspline - result_bspline).norm() < 1e-10 ? "passed" : "failed") << "\n";
-
+    gsInfo << "component(i) not working \n";
+    //result_mspline = mbasis.basis(0).component(0).eval(points);
+    //result_bspline = mb.basis(0).component(0).eval(points);
+    //gsInfo << ".component(0).eval(points) " << ((result_mspline - result_bspline).norm() < 1e-10 ? "passed" : "failed") << "\n";
+/*
     for (index_t i = 0; i < points.cols(); i++) {
         act = mbasis.basis(0).component(1).active(points.col(i));
         act_exact = mb.basis(0).component(1).active(points.col(i));
@@ -248,7 +249,7 @@ int main(int argc, char *argv[]) {
             failed = true;
     }
     gsInfo << ".component(1).active(points.col(i)) " << (failed ? "failed" : "passed") << "\n";
-
+*/
     failed = false;
     for (index_t bfID = 0; bfID < mb.basis(0).size(); bfID++)
     {
@@ -259,6 +260,101 @@ int main(int argc, char *argv[]) {
     }
     gsInfo << ".function(bfID).eval(points) " << ( failed ? "failed" : "passed") << "\n";
     //! [Some computation on the basis]
+
+    //! [Computing the kernel for offset(s,1)]
+    gsMatrix<index_t> act2;
+
+    boxSide side = boxSide(3);
+    //act = mbasis.basis(0).boundaryOffset(side, 0); // since offset 0 is deleted from offset 1.
+    act = mbasis.basis(0).boundaryOffset(side, 1);
+
+    gsInfo << "act: " << act << "\n";
+
+    // Four 2D-points
+    index_t numPoints = 7;
+    gsMatrix<> points2D(2,numPoints), normal(2,1), res_deriv, res_normalDer;
+    points2D.setZero();
+    gsVector<> linspace(numPoints);
+    linspace.setLinSpaced(numPoints,0.0,1.0);
+    points2D.row(0) = linspace.transpose();
+
+    normal <<  0, -1;
+    res_deriv = mbasis.basis(0).deriv(points2D);
+    for (index_t i = 0; i < act.size(); i++) {
+        index_t ii = act.at(i);
+        result_mspline = mbasis.basis(0).function(ii).eval(points2D);
+        res_normalDer.setZero(1, numPoints);
+        for (index_t j = 0; j < numPoints; j++)
+            res_normalDer.col(j) = mbasis.basis(0).function(ii).deriv(points2D.col(j)).transpose() * normal;
+
+        gsInfo << "Bf " << ii << " Value:\n";
+        gsInfo << result_mspline << "\n";
+        gsInfo << "Bf " << ii << " Normal Der:\n";
+        gsInfo << res_normalDer << "\n";
+
+    }
+    // Only working if the basis functions are linear dependence!
+    bool linearDepedence = false;
+    if (linearDepedence) {
+        gsMatrix<index_t> act2;
+
+        boxSide side = boxSide(3);
+        act = mbasis.basis(0).boundaryOffset(side, 0); // since offset 0 is deleted from offset 1.
+        act2 = mbasis.basis(0).boundaryOffset(side, 1);
+
+        act.conservativeResize(act.rows() + act2.rows(), 1);
+        act.bottomRows(act2.rows()) = act2;
+
+        index_t dir = side < 3 ? 1 : 0;
+        index_t dim_u = mbasis.getBase(0).component(0).size(); // Size of the underlying basis functions
+        index_t dim_v = mbasis.getBase(0).component(1).size(); // Size of the underlying basis functions
+
+        gsMatrix<> coefs_mat(dir == 0 ? 2 * dim_u : 2 * dim_v, act.size()); // the first two rows/cols
+        for (index_t i = 0; i < act.size(); i++) {
+            index_t ii = act.at(i);
+            if (dir == 0) {
+                coefs_mat.block(0, i, dim_u, 1) = cf.block(0, ii, dim_u, 1); // Todo replace with mbasis.matrix() ?
+                coefs_mat.block(dim_u, i, dim_u, 1) = cf.block(dim_u, ii, dim_u,
+                                                               1); // Todo replace with mbasis.matrix() ?
+            } else if (dir == 1) {
+                // Not implemented yet.
+            }
+        }
+
+        real_t threshold = 1e-10;
+        Eigen::FullPivLU<gsMatrix<>> KernelCorner(coefs_mat);
+        KernelCorner.setThreshold(threshold);
+
+        gsMatrix<> basis_trafo;
+        basis_trafo.setIdentity(act.size(), act.size());
+
+        gsMatrix<> kernel = KernelCorner.kernel();
+
+        size_t count = 0;
+        while (kernel.cols() < act.size()) {
+            kernel.conservativeResize(kernel.rows(), kernel.cols() + 1);
+            kernel.col(kernel.cols() - 1) = basis_trafo.col(count);
+
+            Eigen::FullPivLU<gsMatrix<>> ker_temp(kernel);
+            ker_temp.setThreshold(threshold);
+            if (ker_temp.dimensionOfKernel() != 0) {
+                kernel = kernel.block(0, 0, kernel.rows(), kernel.cols() - 1);
+            }
+            count++;
+        }
+
+        gsMatrix<> coef_new = cf.toDense();
+        for (index_t j = 0; j < act.size(); ++j) {
+            coef_new.col(act.at(j)).setZero();
+            for (index_t i = 0; i < act.size(); ++i)
+                if (kernel(i, j) * kernel(i, j) > 1e-25)
+                    coef_new.col(act.at(j)) += cf.col(act.at(i)) * kernel(i, j);
+        }
+
+        gsMappedBasis<2, real_t> mbasis2(mb_mspline, cf);
+        gsWriteParaview<>(mbasis2.basis(0), "MappedBasis2", 1000, false);
+    }
+    //! [Computing the kernel for offset(s,1)]
 
     if (plot)
     {

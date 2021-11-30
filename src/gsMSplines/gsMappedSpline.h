@@ -75,6 +75,24 @@ public:
         }
     }
 
+    void init(const gsMappedBasis<d,T> & mbasis, const gsMatrix<T> & coefs)
+    {
+        GISMO_ASSERT(mbasis.domainDim()==d, "Error in dimensions");
+
+        m_global.clear();
+        m_global = coefs;
+
+        m_mbases=mbasis.clone().release();
+
+        m_ss.clear();
+        m_ss.reserve(mbasis.nPieces());
+        gsDebugVar(mbasis.nPieces());
+        for ( index_t k=0; k!=mbasis.nPieces(); k++ )
+        {
+            m_ss.push_back( gsMappedSingleSpline<d,T>(this,k) );
+        }
+    }
+
 public:
 
     index_t nPieces() const {return m_mbases->nPieces();}
