@@ -32,7 +32,7 @@ void gsIetiMapper<T>::init(
         const Matrix& fixedPart
     )
 {
-    GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper:init: "
+    GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper::init: "
         "Got only 1 multi basis, so a gsDofMapper with only 1 component is expected." );
     GISMO_ASSERT( dofMapperGlobal.numPatches() == multiBasis.nBases(), "gsIetiMapper::init: "
         "Number of patches does not agree." );
@@ -57,7 +57,10 @@ void gsIetiMapper<T>::init(
         const index_t nDofs = m_dofMapperGlobal.patchSize(k);
         GISMO_ASSERT( nDofs==m_multiBasis->piece(k).size(), "gsIetiMapper::init: "
             "The mapper for patch "<<k<<" has not as many dofs as the corresponding basis." );
+
         m_dofMapperLocal[k].setIdentity(1,nDofs);
+
+        // Eliminate boundary dofs (we do not consider the full floating case).
         for (index_t i=0; i<nDofs; ++i)
         {
             const index_t idx = m_dofMapperGlobal.index(i,k);
@@ -150,14 +153,17 @@ void gsIetiMapper<T>::cornersAsPrimals()
     std::sort(corners.begin(), corners.end());
 
     // Create data
-    index_t lastIndex=-1;
+    index_t lastIndex = -1;
     const index_t sz = corners.size();
     for (index_t i=0; i<sz; ++i)
     {
         if (lastIndex!=corners[i].globalIndex)
         {
             lastIndex = corners[i].globalIndex;
-            ++m_nPrimalDofs;
+            if (i+1<sz&&corners[i+1].globalIndex==corners[i].globalIndex)
+                ++m_nPrimalDofs;
+            else
+	        continue; // Ignore corners that are not shared
         }
         const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
@@ -310,8 +316,9 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
             if ( m_dofMapperGlobal.is_coupled_index(globalIndex) )
             {
                 const index_t coupledIndex = m_dofMapperGlobal.cindex(i,k);
+                const index_t localIndex = m_dofMapperLocal[k].index(i,0);
                 coupling[coupledIndex].push_back(
-                    std::pair<index_t,index_t>(k,i)
+                    std::pair<index_t,index_t>(k,localIndex)
                 );
             }
         }
@@ -365,13 +372,11 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
         for (index_t j1=0; j1<maxIndex; ++j1)
         {
             const index_t patch1 = coupling[i][j1].first;
-            const index_t localIndex1 = coupling[i][j1].second;
-            const index_t localMappedIndex1 = m_dofMapperLocal[patch1].index(localIndex1,0);
+            const index_t localMappedIndex1 = coupling[i][j1].second;
             for (index_t j2=j1+1; j2<n; ++j2)
             {
                 const index_t patch2 = coupling[i][j2].first;
-                const index_t localIndex2 = coupling[i][j2].second;
-                const index_t localMappedIndex2 = m_dofMapperLocal[patch2].index(localIndex2,0);
+                const index_t localMappedIndex2 = coupling[i][j2].second;
                 jumpMatrices_se[patch1].add(multiplier,localMappedIndex1,(T)1);
                 jumpMatrices_se[patch2].add(multiplier,localMappedIndex2,(T)-1);
                 ++multiplier;
