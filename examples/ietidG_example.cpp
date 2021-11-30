@@ -224,9 +224,9 @@ int main(int argc, char *argv[])
         //! [Define Ieti Mapper]
         ietiMapper.init(
             mb,
-              assembler.system().rowMapper(0),
-              assembler.fixedDofs(),
-              gsIetidGMapper<>::allArtificialIfaces(mb)
+            assembler.system().rowMapper(0),
+            assembler.fixedDofs(),
+            gsIetidGMapper<>::allArtificialIfaces(mb)
         );
     }
     //! [Define Ieti Mapper]

@@ -276,6 +276,7 @@ template <class T=real_t>                class gsGridHierarchy;
 
 // gsIeti
 
+template <class T=real_t>                class gsIetidGMapper;
 template <class T=real_t>                class gsIetiMapper;
 template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
