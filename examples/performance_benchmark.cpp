@@ -52,8 +52,8 @@ benchmark_driver(const std::vector<int>& nthreads, int nruns, T& benchmark)
     }
   }
   catch(...) {
-    std::exception_ptr p = std::current_exception();
-    std::clog <<(p ? p.__cxa_exception_type()->name() : "null") << std::endl;
+    // std::exception_ptr p = std::current_exception();
+    // std::clog <<(p ? p.__cxa_exception_type()->name() : "null") << std::endl;
   }
 
   return results;
@@ -523,6 +523,8 @@ int main(int argc, char *argv[])
   int nruns=1;
 
   gsCmdLine cmd("G+Smo performance benchmark.");
+  cmd.printVersion();
+  
   cmd.addMultiInt("t", "threads", "Number of OpenMP threads to be used for the benchmark", nthreads);
   cmd.addMultiInt("n", "nsizes", "Number of unknowns benchmarks", nsizes);
   cmd.addInt("r", "runs", "Number of runs over which the results are averaged", nruns);
