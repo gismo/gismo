@@ -163,7 +163,7 @@ void gsIetiMapper<T>::cornersAsPrimals()
             if (i+1<sz&&corners[i+1].globalIndex==corners[i].globalIndex)
                 ++m_nPrimalDofs;
             else
-	        continue; // Ignore corners that are not shared
+                continue; // Ignore corners that are not shared
         }
         const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
