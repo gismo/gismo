@@ -312,8 +312,8 @@ int main(int argc, char *argv[])
         // Dirichlet boundary just with a corner or that a 3d-patch touches the
         // Dirichlet boundary with a corner or an edge. These cases are not
         // covered by bc.getConditionsForPatch
-        assembler.refresh(ietiMapper.dofMapperLocal(k));
-        assembler.setFixedDofVector(ietiMapper.fixedPart(k));
+        assembler.refresh(ietiMapper.augmentedDofMapperLocal(k));
+        assembler.setFixedDofVector(ietiMapper.augmentedFixedPart(k));
         assembler.system().reserve(mb_local, assemblerOptions, 1);
 
         // Assemble

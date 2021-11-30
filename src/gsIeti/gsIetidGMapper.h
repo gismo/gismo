@@ -54,7 +54,8 @@ public:
     /// @brief Create the ieti mapper
     ///
     /// @param multiBasis       The corresponding \a gsMultiBasis
-    /// @param dofMapperGlobal  The dof mapper for the global problem
+    /// @param dofMapperOrig    The original dof mapper for the global problem; the class will
+    ///                         add the dofs associated to the artificial interfaces
     /// @param fixedPart        The function values for the eliminated dofs
     /// @param artIfaces        A vector of all artificial interfaces to be incorporated
     ///
@@ -70,7 +71,8 @@ public:
     /// @brief Init the ieti mapper after default construction
     ///
     /// @param multiBasis       The corresponding \a gsMultiBasis
-    /// @param dofMapperGlobal  The dof mapper for the global problem
+    /// @param dofMapperOrig    The original dof mapper for the global problem; the class will
+    ///                         add the dofs associated to the artificial interfaces
     /// @param fixedPart        The function values for the eliminated dofs
     /// @param artIfaces        A vector of all artificial interfaces to be incorporated
     ///
@@ -99,10 +101,10 @@ public:
     /// @brief Returns local dof mapper for given patch
     ///
     /// @param k      The coresponding patch number
-    const gsDofMapper& dofMapperLocal(index_t k) const
+    const gsDofMapper& augmentedDofMapperLocal(index_t k) const
     {
         GISMO_ASSERT( m_status, "gsIetidGMapper: After calling the default constructur, data must be given via member init." );
-        return m_dofMapperLocal2[k];
+        return m_augmentedDofMapperLocal[k];
     }
 
     void localSpaces(const gsMultiPatch<T>& mp, index_t patch, gsMultiPatch<T>& mp_local, gsMultiBasis<T>& mb_local) const
@@ -126,10 +128,10 @@ public:
         mb_local = gsMultiBasis<T>(mb_local_data,mp_local);
     }
 
-    gsMatrix<T> fixedPart(index_t k) const
+    gsMatrix<T> augmentedFixedPart(index_t k) const
     {
         GISMO_ASSERT( Base::m_status, "gsIetidGMapper: After calling the default constructur, data must be given via member init." );
-        gsMatrix<T> result(dofMapperLocal(k).boundarySize(),1);
+        gsMatrix<T> result(augmentedDofMapperLocal(k).boundarySize(),1);
         result.setZero();
         result.topRows(Base::fixedPart(k).rows()) = Base::fixedPart(k); // TODO: this is not correct for the artificial interfaces
         return result;
@@ -169,8 +171,8 @@ public:
     using Base::primalConstraints;
     using Base::primalDofIndices;
     using Base::jumpMatrix;
-    //using Base::dofMapperGlobal;
-    //using Base::dofMapperLocal;
+    using Base::dofMapperGlobal;
+    using Base::dofMapperLocal;
     //using Base::fixedPart;
     using Base::multiBasis;
 
@@ -189,9 +191,8 @@ private:
     /// The indicies of the basis of the foreign patch that belong to artificial interface
     /// Vector is assumed to be sorted. Same order as in m_artificialIfaces
     std::vector< std::vector< gsVector<index_t> > > m_ifaceIndices;      ///< TODO: docs
-    gsDofMapper                                   m_dofMapperOrig;       ///< The original dof mapper
     gsDofMapper                                   m_dofMapperMod;        ///< The modified dof mapper
-    std::vector<gsDofMapper>                      m_dofMapperLocal2;     ///< The modified dof mapper, including the dofs for the neighboring patches
+    std::vector<gsDofMapper>                      m_augmentedDofMapperLocal;     ///< The modified dof mapper, including the dofs for the neighboring patches
 };
 
 } // namespace gismo
@@ -222,14 +223,13 @@ std::vector<typename gsIetidGMapper<T>::ArtificialIface> gsIetidGMapper<T>::allA
 }
 
 template <class T>
-void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dm, const gsMatrix<T>& fixedPart, const std::vector<ArtificialIface>& artIfaces )
+void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOrig, const gsMatrix<T>& fixedPart, const std::vector<ArtificialIface>& artIfaces )
 {
     GISMO_ASSERT( !m_status,
         "gsIetidGMapper::init cannot be called after object was initialized by previous call or value constructor." );
 
     m_artificialIfaces.resize(mb.nBases());
     m_ifaceIndices.resize(mb.nBases());
-    m_dofMapperOrig = dm;
 
     // We store them ordered
     index_t sz = artIfaces.size();
@@ -242,13 +242,13 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dm, const g
     }
 
     // TODO: we can get rid of this assumption if we incorporate dofs that
-    // have been coupled into m_dofMapperOrig
-    GISMO_ASSERT( m_dofMapperOrig.coupledSize() == 0, "Not implemented." );
+    // have been coupled into dofMapperOrig
+    GISMO_ASSERT( dofMapperOrig.coupledSize() == 0, "Not implemented." );
 
-    const index_t nPatches = m_dofMapperOrig.numPatches();
+    const index_t nPatches = dofMapperOrig.numPatches();
 
-    m_dofMapperLocal2.clear();
-    m_dofMapperLocal2.reserve(nPatches);
+    m_augmentedDofMapperLocal.clear();
+    m_augmentedDofMapperLocal.reserve(nPatches);
 
     // Subdomain = patch + artificial ifaces
     gsVector<index_t> subdomainSizes(nPatches);
@@ -257,29 +257,29 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dm, const g
     {
         const index_t nArtIf = m_artificialIfaces[k].size();
         sizes[k].resize(1+nArtIf);
-        sizes[k][0]       = m_dofMapperOrig.patchSize(k);
-        subdomainSizes[k] = m_dofMapperOrig.patchSize(k);
+        sizes[k][0]       = dofMapperOrig.patchSize(k);
+        subdomainSizes[k] = dofMapperOrig.patchSize(k);
         for (index_t l=0; l<nArtIf; ++l)
         {
-            sizes[k][l+1]      = m_dofMapperOrig.patchSize( m_artificialIfaces[k][l].takenFrom.patch );
+            sizes[k][l+1]      = dofMapperOrig.patchSize( m_artificialIfaces[k][l].takenFrom.patch );
             subdomainSizes[k] += m_ifaceIndices[k][l].rows();
         }
-        m_dofMapperLocal2.push_back( gsDofMapper(sizes[k]) );
+        m_augmentedDofMapperLocal.push_back( gsDofMapper(sizes[k]) );
     }
 
     m_dofMapperMod = gsDofMapper(subdomainSizes);
 
     for (index_t k=0; k<nPatches; ++k)
     {
-        const index_t patchDofs = m_dofMapperOrig.patchSize(k);
+        const index_t patchDofs = dofMapperOrig.patchSize(k);
         // Eliminate boundary dofs
         for (index_t i=0; i<patchDofs; ++i)
         {
-            const index_t idx = m_dofMapperOrig.index(i,k);
-            if (m_dofMapperOrig.is_boundary_index(idx))
+            const index_t idx = dofMapperOrig.index(i,k);
+            if (dofMapperOrig.is_boundary_index(idx))
             {
                 m_dofMapperMod.eliminateDof(i,k);
-                m_dofMapperLocal2[k].eliminateDof(i,0);
+                m_augmentedDofMapperLocal[k].eliminateDof(i,0);
             }
         }
         // Match or eliminate dofs on artificial interfaces
@@ -294,17 +294,17 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dm, const g
                     const index_t ii = m_ifaceIndices[k][l][i];
                     m_dofMapperMod.matchDof( k,idx, kk,ii );
 
-                    const index_t global_idx = m_dofMapperOrig.index(ii,kk);
-                    if (m_dofMapperOrig.is_boundary_index(global_idx))
+                    const index_t global_idx = dofMapperOrig.index(ii,kk);
+                    if (dofMapperOrig.is_boundary_index(global_idx))
                     {
                         //m_dofMapperMod.eliminateDof(idx,k); // TODO: necessary?
-                        m_dofMapperLocal2[k].eliminateDof(ii,l+1);
+                        m_augmentedDofMapperLocal[k].eliminateDof(ii,l+1);
                     }
                     ++idx;
                 }
             }
         }
-        // Eliminate all dofs on m_dofMapperLocal2 that are not on the artificial interface
+        // Eliminate all dofs on m_augmentedDofMapperLocal that are not on the artificial interface
         for (index_t l=0; l<nArtIf; ++l)
         {
             index_t last_idx = -1;
@@ -313,14 +313,14 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dm, const g
                 const index_t idx = m_ifaceIndices[k][l][i];
                 GISMO_ASSERT (idx>last_idx, "Not sorted; k="<<k<<"; l="<<l);
                 for (index_t j=last_idx+1; j<idx; ++j)
-                    m_dofMapperLocal2[k].eliminateDof(j,l+1);
+                    m_augmentedDofMapperLocal[k].eliminateDof(j,l+1);
                 last_idx = idx;
             }
             GISMO_ASSERT (sizes[k][l+1]>last_idx, "Not sorted; k="<<k<<"; l="<<l);
             for (index_t j=last_idx+1; j<sizes[k][l+1]; ++j)
-                m_dofMapperLocal2[k].eliminateDof(j,l+1);
+                m_augmentedDofMapperLocal[k].eliminateDof(j,l+1);
         }
-        m_dofMapperLocal2[k].finalize();
+        m_augmentedDofMapperLocal[k].finalize();
     }
     m_dofMapperMod.finalize();
 
@@ -350,7 +350,7 @@ void gsIetidGMapper<T>::transferConstraintsToArtificialIfaces(index_t primals_ol
                     std::vector<index_t> ifaceIndicesMapped(m_ifaceIndices[k][i].size());
                     for (index_t ii=0; ii<m_ifaceIndices[k][i].size(); ++ii)
                     {
-                        ifaceIndicesMapped[ii] = m_dofMapperLocal2[patch].index(m_ifaceIndices[k][i][ii],0/**/);
+                        ifaceIndicesMapped[ii] = m_augmentedDofMapperLocal[patch].index(m_ifaceIndices[k][i][ii],0/**/);
                     }
 
                     bool b = true;
@@ -362,20 +362,20 @@ void gsIetidGMapper<T>::transferConstraintsToArtificialIfaces(index_t primals_ol
                     if (b)
                     {
                         //gsInfo << "Yes it, should be added!\n";
-                        gsSparseVector<T> newConstraint(m_dofMapperLocal2[k].freeSize());
+                        gsSparseVector<T> newConstraint(m_augmentedDofMapperLocal[k].freeSize());
                         for (typename gsSparseVector<T>::InnerIterator it(Base::m_primalConstraints[patch][j],0);
                             it; ++it)
                         {
                             index_t idx;
                             {
                                 std::vector<std::pair<index_t,index_t> > result;
-                                m_dofMapperLocal2[patch].preImage(it.row(),result);
+                                m_augmentedDofMapperLocal[patch].preImage(it.row(),result);
                                 GISMO_ASSERT(result.size()==1, "result.size()="<<result.size());
                                 GISMO_ASSERT(result[0].first == 0, "result[0].first="<<result[0].first);
                                 idx = result[0].second;
                             }
 
-                            index_t idx_transfered = m_dofMapperLocal2[k].index(idx,i+1);
+                            index_t idx_transfered = m_augmentedDofMapperLocal[k].index(idx,i+1);
                             newConstraint[idx_transfered]=it.value();
                         }
                         Base::m_primalConstraints[k].push_back( give(newConstraint) );
