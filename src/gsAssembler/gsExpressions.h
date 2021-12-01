@@ -120,11 +120,11 @@ public:
     typedef const E Nested_t;
 };
 
+#  define Temporary_t typename util::conditional<ScalarValued,Scalar,\
+          typename gsMatrix<Scalar>::Base >::type
 #if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
 #  define MatExprType  auto
 #  define AutoReturn_t auto
-#  define Temporary_t typename util::conditional<ScalarValued,Scalar,\
-          typename gsMatrix<Scalar>::Base >::type
 #  define GS_CONSTEXPR constexpr
 //note: in c++11 auto-return requires -> decltype(.)
 #else // 199711L, 201103L
