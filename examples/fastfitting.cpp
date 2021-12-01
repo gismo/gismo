@@ -118,19 +118,19 @@ int main(int argc, char *argv[])
     gsInfo<<"--------------------------------" << std::endl;
 
     gsStopwatch time;
-    gsStandardFitting<real_t> ref2(uv, xyz, T_tbasis);
+    gsStandardFitting<real_t> ref(uv, xyz, T_tbasis);
     time.restart();
-    ref2.computeStandard();
+    ref.computeStandard();
     time.stop();
     gsInfo<<"Fitting time                      : "<< time << std::endl;
-    //gsWriteParaview(*(ref2.result()),"resultslow", 50000, false, true);
+    //gsWriteParaview(*(ref.result()),"resultslow", 50000, false, true);
 
     gsFastFitting<real_t> ref3( uv, xyz, T_tbasis, ugrid, vgrid);
     time.restart();
     ref3.compute(false);
     time.stop();
     gsInfo<<"Fitting time                      : "<< time << std::endl;
-    ref2.computeErrors();
+    ref.computeErrors();
     //gsWriteParaview(*(ref3.result()),"resultfast", 50000, false, true);
 
     gsInfo<<"--------------------------------\n";
@@ -147,9 +147,9 @@ int main(int argc, char *argv[])
     ref3.plotErrors("errorplot_uk");
     gsInfo<<"L2 error fast fitting uk          : "<< ref3.getL2error() <<".\n";
 
-    gsInfo<<"Max error slow fitting            : "<< ref2.maxPointError() <<".\n";
+    gsInfo<<"Max error slow fitting            : "<< ref.maxPointError() <<".\n";
 
-    gsInfo<<"L2 error slow fitting             : "<< ref2.getL2error() <<".\n";
+    gsInfo<<"L2 error slow fitting             : "<< ref.getL2error() <<".\n";
 
     return 0;
 }

@@ -25,7 +25,6 @@ public:
     void FindGridPointfast(const gsMatrix<T>& curr_param, index_t& k1, index_t& k2);
     gsMatrix<T> ProjectParamToGrid(const gsMatrix<T> & uv);
     gsMatrix<index_t> GridProjection();
-    //void assembleSystemStandard(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B, gsMatrix<index_t>& gridindex);
     void compute(const bool condcheck);
     void computeAllProjectedErrors(const gsMatrix<T>& uv, const gsMatrix<T>& xyz);
@@ -197,78 +196,6 @@ gsMatrix<T> gsFastFitting<T>::BuildLookupTable(gsMatrix<index_t> & uactives, gsM
     gsInfo << "Counted flops fast fitting--PART 1: " << flops << std::endl;
     return Table;
 }
-
-
-// For comparism reasons, the standard assembly as done in the paper:
-/*template<class T>
-void gsFastFitting<T>::assembleSystemStandard(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B)
-{
-    index_t N1 = this->m_basis->component(0).size();    // number of basis functions in u direction
-    const int num_points = this->m_points.rows();       // number of data points
-
-    //for computing the value of the basis function
-    gsMatrix<T> uvalue, vvalue, curr_point;
-    gsMatrix<index_t> uactives, vactives;
-
-    // 1D basis -- u direction
-    gsBasis<T>* ubasis_tmp;
-    ubasis_tmp = &(this->m_basis->component(0));
-    gsBSplineBasis<T> ubasis = *(static_cast<gsBSplineBasis<T>*>(ubasis_tmp));
-    // 1D basis -- v direction
-    gsBasis<T>* vbasis_tmp;
-    vbasis_tmp = &(this->m_basis->component(1));
-    gsBSplineBasis<T> vbasis = *(static_cast<gsBSplineBasis<T>*>(vbasis_tmp));
-
-    index_t flops = 0;
-    for(index_t k = 0; k != num_points; ++k)
-    {
-        curr_point = this->m_param_values.col(k);
-
-        //computing the values of the u- and v-basis functions at the current point
-        ubasis.eval_into(curr_point(0), uvalue);
-        vbasis.eval_into(curr_point(1), vvalue);
-
-        // which functions have been computed i.e. which are active
-        ubasis.active_into(curr_point(0), uactives);
-        vbasis.active_into(curr_point(1), vactives);
-
-        const index_t numActive = uactives.rows();
-
-        for (index_t i1 = 0; i1 != numActive; ++i1)
-        {
-            const index_t ii1 = uactives.at(i1);
-            for (index_t i2 = 0; i2 != numActive; i2++)
-            {
-                const index_t ii2 = vactives.at(i2);
-                const index_t ii = ii2*N1+ii1;
-                const real_t val = uvalue.at(i1)*vvalue(i2);
-                flops += 1;
-                m_B.row(ii) += val * this->m_points.row(k);
-                for (index_t j1 = 0; j1 != numActive; ++j1)
-                {
-                    const index_t jj1 = uactives.at(j1);
-                    val *= uvalue(j1);
-                    flops += 1;
-                    for (index_t j2 = 0; j2 != numActive; j2++)
-                    {
-                        const index_t jj2 = vactives.at(j2);
-                        const index_t jj = jj2*N1+jj1;
-                        A_mat(ii, jj) += val*vvalue(j2);
-                        flops += 2;
-                    }
-                }
-            }
-        }
-    }
-    //gsFileData<T> fd;
-    //gsMatrix<T> C=A_mat.toDense();
-    //fd << C;
-    //fd.dump("SlowFittingMatrix");
-    //gsFileData<> fb;
-    //fb << m_B;
-    //fb.dump("SlowFittingb");
-    gsInfo << "Counted flops slow fitting        : " << flops << std::endl;
-}*/
 
 
 template<class T>
