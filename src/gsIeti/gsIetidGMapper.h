@@ -118,10 +118,10 @@ public:
         mb_local_data.reserve(1+2*mp.geoDim());
         mp_local_data.push_back(mp[patch].clone().release());
         mb_local_data.push_back((*m_multiBasis)[patch].clone().release());
-        for (size_t i=0; i<artIfaces.size(); ++i)
-    {
-             mp_local_data.push_back(mp[artIfaces[i].takenFrom.patch].clone().release());
-             mb_local_data.push_back((*m_multiBasis)[artIfaces[i].takenFrom.patch].clone().release());
+        for (size_t l=0; l<artIfaces.size(); ++l)
+        {
+             mp_local_data.push_back(mp[artIfaces[l].takenFrom.patch].clone().release());
+             mb_local_data.push_back((*m_multiBasis)[artIfaces[l].takenFrom.patch].clone().release());
         }
         mp_local = gsMultiPatch<T>(mp_local_data);
         mp_local.computeTopology();
@@ -131,9 +131,48 @@ public:
     gsMatrix<T> augmentedFixedPart(index_t k) const
     {
         GISMO_ASSERT( Base::m_status, "gsIetidGMapper: After calling the default constructur, data must be given via member init." );
-        gsMatrix<T> result(augmentedDofMapperLocal(k).boundarySize(),1);
+        const gsDofMapper& adm = augmentedDofMapperLocal(k);
+        gsMatrix<T> result(adm.boundarySize(),1);
         result.setZero();
-        result.topRows(Base::fixedPart(k).rows()) = Base::fixedPart(k); // TODO: this is not correct for the artificial interfaces
+
+        index_t offset = 0;
+
+        // Boundary data for patch itself
+        {
+            const index_t nDofs = adm.patchSize(0);
+            for (index_t i=0; i<nDofs; ++i)
+            {
+                const index_t idx = adm.index(i,0);
+                if (adm.is_boundary_index(idx))
+                {
+                    const index_t augmentedBoundaryIdx = adm.bindex(i,0);
+                    const index_t localBoundaryIdx = Base::m_dofMapperLocal[k].bindex(i,0);
+                    result(augmentedBoundaryIdx,0) = Base::m_fixedPart[k](localBoundaryIdx,0);
+                }
+
+            }
+            offset += nDofs;
+        }
+        // Boundary data for artficial interfaces
+        const std::vector<ArtificialIface>& artIfaces = m_artificialIfaces[k];
+        const std::vector< gsVector<index_t> >& ifaceIndices = m_ifaceIndices[k];
+        for (size_t l=0; l<artIfaces.size(); ++l)
+        {
+            const index_t nDofs = ifaceIndices[l].size();
+            for (index_t i=0; i<nDofs; ++i)
+            {
+                const index_t ii = ifaceIndices[l][i];
+                const index_t idx = adm.index(ii,1+l);
+                if (adm.is_boundary_index(idx))
+                {
+                    const index_t augmentedBoundaryIdx = adm.bindex(ii,1+l);
+                    const index_t localBoundaryIdx = Base::m_dofMapperLocal[k].bindex(offset+i,0);
+                    result(augmentedBoundaryIdx,0) = Base::m_fixedPart[k](localBoundaryIdx,0);
+                }
+
+            }
+            offset += nDofs;
+        }
         return result;
     }
 
@@ -173,7 +212,7 @@ public:
     using Base::jumpMatrix;
     using Base::dofMapperGlobal;
     using Base::dofMapperLocal;
-    //using Base::fixedPart;
+    using Base::fixedPart;
     using Base::multiBasis;
 
 private:
@@ -250,6 +289,7 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
     m_augmentedDofMapperLocal.clear();
     m_augmentedDofMapperLocal.reserve(nPatches);
 
+
     // Subdomain = patch + artificial ifaces
     gsVector<index_t> subdomainSizes(nPatches);
     std::vector< gsVector<index_t> > sizes(nPatches);
@@ -324,7 +364,27 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
     }
     m_dofMapperMod.finalize();
 
-    Base::init( mb, m_dofMapperMod, fixedPart );
+    gsMatrix<T> fixedPartMod(m_dofMapperMod.boundarySize(),1);
+    fixedPartMod.setZero();
+
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        const index_t nDofs = dofMapperOrig.patchSize(k);
+        for (index_t i=0; i<nDofs; ++i)
+        {
+            const index_t idx = dofMapperOrig.index(i,k);
+            if (dofMapperOrig.is_boundary_index(idx))
+            {
+                const index_t origBoundaryIdx = dofMapperOrig.bindex(i,k);
+                const index_t modBoundaryIdx = m_dofMapperMod.bindex(i,k);
+                GISMO_ENSURE(origBoundaryIdx<fixedPart.rows(), "I knew it");
+                GISMO_ENSURE(modBoundaryIdx<fixedPart.rows(), "I knew it");
+                fixedPartMod(modBoundaryIdx,0) = fixedPart(origBoundaryIdx,0);
+            }
+        }
+    }
+
+    Base::init( mb, m_dofMapperMod, fixedPartMod );
 
 }
 
@@ -343,10 +403,6 @@ void gsIetidGMapper<T>::transferConstraintsToArtificialIfaces(index_t primals_ol
                 if (primals_old<=Base::m_primalDofIndices[patch][j]
                     && Base::m_primalDofIndices[patch][j]<primals_new)
                 {
-                    //gsInfo <<"Constraint #"<<j<<" of patch "<<patch<<" (global primal dof # "
-                    //        <<Base::m_primalDofIndices[patch][j]<<") might needed to be added to patch # "
-                    //        <<k<<"(=="<<ai.assignedTo.patch<<")\n";
-
                     std::vector<index_t> ifaceIndicesMapped(m_ifaceIndices[k][i].size());
                     for (index_t ii=0; ii<m_ifaceIndices[k][i].size(); ++ii)
                     {
@@ -361,7 +417,6 @@ void gsIetidGMapper<T>::transferConstraintsToArtificialIfaces(index_t primals_ol
                     }
                     if (b)
                     {
-                        //gsInfo << "Yes it, should be added!\n";
                         gsSparseVector<T> newConstraint(m_augmentedDofMapperLocal[k].freeSize());
                         for (typename gsSparseVector<T>::InnerIterator it(Base::m_primalConstraints[patch][j],0);
                             it; ++it)
@@ -380,10 +435,7 @@ void gsIetidGMapper<T>::transferConstraintsToArtificialIfaces(index_t primals_ol
                         }
                         Base::m_primalConstraints[k].push_back( give(newConstraint) );
                         Base::m_primalDofIndices[k].push_back( Base::m_primalDofIndices[patch][j] );
-                        //gsInfo << "Yup, it now is added!\n";
                     }
-                    //else
-                        //gsInfo << "No problem.\n";
                 }
             }
         }
@@ -418,7 +470,6 @@ void gsIetidGMapper<T>::removeIsolatedPrimalConstraints(index_t primals_old, ind
             const index_t newIndex = newIndices[primalDofIndices[k][l]];
             if (newIndex==-1)
             {
-                gsInfo << "Removed a constraint from patch "<<k<<"\n";
                 primalDofIndices[k].erase(primalDofIndices[k].begin()+l);
                 Base::m_primalConstraints[k].erase(Base::m_primalConstraints[k].begin()+l);
                 --l;
