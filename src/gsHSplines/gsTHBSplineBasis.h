@@ -533,7 +533,7 @@ public:
    * @param[out] k2 knot vector of the B-spline patch (second dimension)
   */
     template<short_t dd = 2>
-    typename std::enable_if<dd==d,void>::type
+    typename util::enable_if<dd==d,void>::type
     getBsplinePatchGlobal(gsVector<index_t> b1,
                           gsVector<index_t> b2,
                           unsigned level,
@@ -542,7 +542,7 @@ public:
                           gsKnotVector<T>& k2) const;
 
     template<short_t dd= 2>
-    typename std::enable_if<dd!=d,void>::type
+    typename util::enable_if<dd!=d,void>::type
     getBsplinePatchGlobal(gsVector<index_t> b1,
                           gsVector<index_t> b2,
                           unsigned level,
@@ -616,13 +616,13 @@ public:
     /// The B-Spline patch knots are the same as the THB-Spline-Basis knots from the input
     /// level. Geometry of the patch is defined via input coefficients.
     template<short_t dd = 2>
-    typename std::enable_if<dd==d,gsTensorBSpline<d,T> >::type
+    typename util::enable_if<dd==d,gsTensorBSpline<d,T> >::type
     getBSplinePatch(const std::vector<index_t>& boundingBox,
                     const unsigned level,
                     const gsMatrix<T>& geomCoefs) const;
 
     template<short_t dd = 2>
-    typename std::enable_if<dd!=d,gsTensorBSpline<d,T> >::type
+    typename util::enable_if<dd!=d,gsTensorBSpline<d,T> >::type
     getBSplinePatch(const std::vector<index_t>& boundingBox,
                     const unsigned level,
                     const gsMatrix<T>& geomCoefs) const { }

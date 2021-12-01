@@ -446,7 +446,7 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
 // return the B-spline representation of a THB-spline subpatch
 template<short_t d, class T>
 template<short_t dd>
-typename std::enable_if<dd==d,void>::type
+typename util::enable_if<dd==d,void>::type
 gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<index_t> b1,
                                              gsVector<index_t> b2,
                                              unsigned level, 
@@ -1365,7 +1365,7 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 
 template<short_t d, class T>
 template<short_t dd>
-typename std::enable_if<dd==d,gsTensorBSpline<d,T> >::type
+typename util::enable_if<dd==d,gsTensorBSpline<d,T> >::type
 gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<index_t>& boundingBox,
                                        const unsigned level,
                                        const gsMatrix<T>& geomCoefs) const
