@@ -176,15 +176,6 @@ class IncompleteLUT : public SparseSolverBase<IncompleteLUT<_Scalar, _StorageInd
       x = m_P * x; 
     }
 
-    const FactorType factors() const
-    {return m_lu; }
-
-    const PermutationMatrix<Dynamic,Dynamic,StorageIndex> fillReducingPermutation() const
-    {return m_P; }
-
-    const PermutationMatrix<Dynamic,Dynamic,StorageIndex> inversePermutation() const
-    {return m_Pinv; }
-
 protected:
 
     /** keeps off-diagonal entries; drops diagonal entries */
@@ -195,18 +186,16 @@ protected:
       }
     };
 
-
 protected:
 
     FactorType m_lu;
-    PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_P;     // Fill-reducing permutation
-    PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_Pinv;  // Inverse permutation
     RealScalar m_droptol;
     int m_fillfactor;
     bool m_analysisIsOk;
     bool m_factorizationIsOk;
     ComputationInfo m_info;
-    
+    PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_P;     // Fill-reducing permutation
+    PermutationMatrix<Dynamic,Dynamic,StorageIndex> m_Pinv;  // Inverse permutation
 };
 
 /**
@@ -243,16 +232,13 @@ void IncompleteLUT<Scalar,StorageIndex>::analyzePattern(const _MatrixType& amat)
   // FIXME for a matrix with nearly symmetric pattern, mat2+mat1 is the appropriate choice.
   //       on the other hand for a really non-symmetric pattern, mat2*mat1 should be prefered...
   SparseMatrix<Scalar,ColMajor, StorageIndex> AtA = mat2 + mat1;
-  //NaturalOrdering<StorageIndex> ordering;
   AMDOrdering<StorageIndex> ordering;
   ordering(AtA,m_P);
   m_Pinv  = m_P.inverse(); // cache the inverse permutation
 #else
   // If AMD is not available, (MPL2-only), then let's use the slower COLAMD routine.
   SparseMatrix<Scalar,ColMajor, StorageIndex> mat1 = amat;
-  //NaturalOrdering<StorageIndex> ordering;
   COLAMDOrdering<StorageIndex> ordering;
-  
   ordering(mat1,m_Pinv);
   m_P = m_Pinv.inverse();
 #endif
@@ -445,7 +431,6 @@ void IncompleteLUT<Scalar,StorageIndex>::factorize(const _MatrixType& amat)
     // sort the U-part of the row
     // apply the dropping rule first
     len = 0;
-    
     for(Index k = 1; k < sizeu; k++)
     {
       if(abs(u(ii+k)) > m_droptol * rownorm )
@@ -455,7 +440,6 @@ void IncompleteLUT<Scalar,StorageIndex>::factorize(const _MatrixType& amat)
         ju(ii + len) = ju(ii + k);
       }
     }
-    
     sizeu = len + 1; // +1 to take into account the diagonal element
     len = (std::min)(sizeu, nnzU);
     typename Vector::SegmentReturnType uu(u.segment(ii+1, sizeu-1));

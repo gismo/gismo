@@ -664,7 +664,7 @@ void gsMultiPatch<T>::repairInterfaces()
 template<class T>
 void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
                                    gsVector<index_t> & pids,
-                                   gsMatrix<T> & preim, const T accuracy) const
+                                   gsMatrix<T> & preim) const
 {
     pids.resize(points.cols());
     pids.setConstant(-1); // -1 implies not in the domain
@@ -678,7 +678,7 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
         for (size_t k = 0; k!= m_patches.size(); ++k)
         {
             pr = m_patches[k]->parameterRange();
-            m_patches[k]->invertPoints(pt, tmp, accuracy);
+            m_patches[k]->invertPoints(pt, tmp);
             if ( (tmp.array() >= pr.col(0).array()).all()
                  && (tmp.array() <= pr.col(1).array()).all() )
             {
