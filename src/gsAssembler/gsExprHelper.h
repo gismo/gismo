@@ -32,6 +32,11 @@ private:
                      mutSrc(nullptr), mutMap(nullptr)
     { }
 
+    explicit gsExprHelper(gsExprHelper * m)
+    : m_mirror(memory::make_shared_not_owned(m)),
+      mesh_ptr(m->mesh_ptr), mutSrc(nullptr), mutMap(nullptr)
+    { }
+
 private:
     typedef util::gsThreaded<gsFuncData<T> > thFuncData;
     typedef util::gsThreaded<gsMapData<T> >  thMapData;
@@ -50,7 +55,6 @@ private:
     CFuncData m_cdata;
 
     memory::shared_ptr<gsExprHelper> m_mirror;
-private:
 
     const gsMultiBasis<T> * mesh_ptr;
 
@@ -69,10 +73,6 @@ public:
     typedef const expr::gsFeSpace<T>       space;
     typedef const expr::gsComposition<T>   composition;
     typedef const expr::gsNullExpr<T>      nullExpr;
-
-private:
-    explicit gsExprHelper(gsExprHelper * m)
-    : mesh_ptr(m->mesh_ptr) { m_mirror = memory::make_shared_not_owned(m); }
 
 public:
 
@@ -103,13 +103,15 @@ public:
             m_mdata.clear();
             m_fdata.clear();
             m_cdata.clear();
-            mutSrc = mutMap = nullptr;
+            //mutSrc = nullptr;
+            mutMap = nullptr;
             if (isMirrored())
             {
                 m_mirror->m_mdata.clear();
                 m_mirror->m_fdata.clear();
                 m_mirror->m_cdata.clear();
-                m_mirror->mutSrc = m_mirror->mutMap = nullptr;
+                //m_mirror->mutSrc = nullptr;
+                m_mirror->mutMap = nullptr;
             }
         }//implicit barrier
     }
@@ -183,14 +185,14 @@ public:
     composition getMutVar(geometryMap & G)
     {
         expr::gsComposition<T> var(G);
+        //mutMap = &G.source();
         return var;
     }
 
     void setMutSource(const gsFunction<T> & func)
     {
         mutSrc = &func;
-        m_fdata[mutSrc];
-        //gsDebugVar(m_fdata[mutSrc].mine().flags);
+        //m_fdata[mutSrc].mine().flags = 0; //fails
     }
 
 private:
@@ -237,6 +239,8 @@ public:
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
+        mutSrc = nullptr;
+
         // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
         // gsInfo<< "cdata: "<< m_cdata.size()<<std::endl;
@@ -256,6 +260,8 @@ public:
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
+        mutSrc = nullptr;
+
         /*
         gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
@@ -271,7 +277,7 @@ public:
 //#endif
 
     void add(const expr::gsGeometryMap<T> & sym)
-    {//TODO: inherit gsGeomatryMap from symbol_expr
+    {
         GISMO_ASSERT(NULL!=sym.m_fs, "Geometry map "<<&sym<<" is invalid");
         gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
 #       pragma omp critical (m_mdata_first_touch)
@@ -287,8 +293,19 @@ public:
         sym.inner().data().flags |= NEED_VALUE;
         if (nullptr==sym.m_fs)
         {
-            gsInfo<<"\nGot composition\n";
+            //gsInfo<<"\nGot BC composition\n";
             mutMap = &sym.inner().source();
+            if (nullptr!=mutSrc)
+            {
+#               pragma omp critical (m_fdata_first_touch)
+                const_cast<expr::gsComposition<T>&>(sym)
+                    .setData( m_fdata[mutSrc] );
+
+                const_cast<expr::gsComposition<T>&>(sym)
+                    .setSource(*mutSrc);
+            }
+            else
+                gsWarn<<"\nSomething went wrong here.\n";
             return;
         }
 
@@ -338,6 +355,17 @@ public:
         else
         {
             //gsDebug<<"\nGot a mutable variable.\n";
+            if (nullptr!=mutSrc)
+            {
+#               pragma omp critical (m_fdata_first_touch)
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setData( m_fdata[mutSrc] );
+
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setSource(*mutSrc);
+            }
+            else
+                gsWarn<<"\nSomething went wrong here.\n";
         }
     }
 
@@ -381,14 +409,13 @@ public:
         }
 
         // Mutable variable to treat BCs
-        if (nullptr!=mutSrc && 0!=m_fdata[mutSrc].mine().flags)
-        //if (0!=mutData.mine().flags)
+        if (nullptr!=mutSrc &&
+            0!=m_fdata[mutSrc].mine().flags)
         {
             //GISMO_ASSERT(mutSrc, "Boundary function not set.");
             mutSrc->piece(patchIndex)
                 .compute( mutMap ? m_mdata[mutMap].mine().values[0] : m_points,
                           m_fdata[mutSrc] );
-            //gsDebugVar(m_fdata[mutSrc].mine().values[0].size());
         }
     }
 

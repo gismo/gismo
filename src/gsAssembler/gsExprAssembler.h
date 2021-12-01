@@ -762,6 +762,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
     if ( BCs.empty() ) return;
+    m_exprdata->setMutSource(*BCs.front().function()); //initialize once
 
 // #pragma omp parallel
 // {
@@ -832,6 +833,7 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
     //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
 
     if ( BCs.empty() ) return;
+    m_exprdata->setMutSource(*BCs.front().function());//initialize once
 
     auto arg_lhs(exprLhs.derived());//copying expressions
     auto arg_rhs(exprRhs.derived());
