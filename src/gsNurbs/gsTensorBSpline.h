@@ -261,6 +261,9 @@ public:
     /// it is inserted p+1 times.
     void splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const;
 
+    typename gsGeometry<T>::uPtr iface(const boundaryInterface & bi,
+                                       const gsGeometry<T> & other) const;
+
 protected:
     // TODO Check function
     // check function: check the coefficient number, degree, knot vector ...
