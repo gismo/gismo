@@ -578,7 +578,7 @@ gsVector<index_t> gsDofMapper::findBoundary(const index_t k) const
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[0].begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
-    return find_impl(istart, iend, std::bind2nd(std::greater<index_t>(),s));
+    return find_impl(istart, iend, GS_BIND2ND(std::greater<index_t>(),s));
 }
 
 gsVector<index_t> gsDofMapper::findFree(const index_t k) const
@@ -589,7 +589,7 @@ gsVector<index_t> gsDofMapper::findFree(const index_t k) const
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[0].begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
-    return find_impl(istart, iend, std::bind2nd(std::less<index_t>(),s));
+    return find_impl(istart, iend, GS_BIND2ND(std::less<index_t>(),s));
 }
 
 namespace {

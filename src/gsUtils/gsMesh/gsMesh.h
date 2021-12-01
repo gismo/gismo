@@ -206,11 +206,12 @@ public:
     {
         const FaceHandle & f = face(i);
         gsVector<index_t> res(f->vertices.size());
-        for (size_t i = 0; i!=f->vertices.size(); ++i)
+        typename std::vector<VertexHandle >::const_iterator v;
+        for (size_t j = 0; j!=f->vertices.size(); ++j)
         {
-            auto v = std::find(m_vertex.begin(), m_vertex.end(), f->vertices[i] );
+            v = std::find(m_vertex.begin(), m_vertex.end(), f->vertices[j] );
             //
-            res[i] = std::distance(m_vertex.begin(),v);
+            res[j] = std::distance(m_vertex.begin(),v);
         }
         return res;
     }

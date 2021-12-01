@@ -578,8 +578,8 @@ gsTensorBSpline<d,T>:: iface(const boundaryInterface & bi,
     std::list<std::pair<const gsMatrix<T> *,index_t> > cv;//patch,cp-index
     //maybe: check if both ifaces are identical using a flag...
 
-    gsDebugVar(bdr0.size());
-    gsDebugVar(bdr1.size());
+    // gsDebugVar(bdr0.size());
+    // gsDebugVar(bdr1.size());
     cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
     do {
         T dist0=(cv.back().first->row(cv.back().second)-this->coef(bdr0.at(b[0]))).squaredNorm();
@@ -598,20 +598,21 @@ gsTensorBSpline<d,T>:: iface(const boundaryInterface & bi,
 
     } while ( b[0]!=bdr0.size() && b[1]!=bdr1.size() );
 
-    gsDebugVar(cv.size());
+    //gsDebugVar(cv.size());
     while ( b[0]<bdr0.size() )
         cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
 
-    gsDebugVar(cv.size());
+    //gsDebugVar(cv.size());
     while ( b[1]<bdr1.size() )
         cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
 
-    gsDebugVar(cv.size());
+    //gsDebugVar(cv.size());
 
     // Construct interface geometry using cv and uniform knots (polyline)
     gsMatrix<T> cf(cv.size(),this->geoDim());
     index_t c = 0;
-    for(auto it = cv.begin(); it!=cv.end(); ++it)
+    for(typename std::list<std::pair<const gsMatrix<T> *,index_t> >::iterator
+            it = cv.begin(); it!=cv.end(); ++it)
         cf.row(c++) = it->first->row(it->second);
     gsKnotVector<T> kv(0,1,c-2,2,1);
     gsBSplineBasis<T> bs(kv);
