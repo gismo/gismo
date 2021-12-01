@@ -556,6 +556,114 @@ index_t gsDofMapper::taggedSize() const
     return m_tagged.size();
 }
 
+template<class Predicate, class Iterator>
+gsVector<index_t> gsDofMapper::find_impl(Iterator istart, Iterator iend, Predicate pred)
+{
+    gsVector<index_t> rvo(std::count_if(istart, iend, pred));
+    index_t * c = rvo.data();
+    Iterator cur = std::find_if(istart, iend, pred);
+    while( cur!=iend )
+    {
+        *(c++) = std::distance(istart,cur);
+        cur = std::find_if(cur+1, iend, pred);
+    }
+    return rvo;
+}
+
+gsVector<index_t> gsDofMapper::findBoundary(const index_t k) const
+{
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    const index_t s = m_numFreeDofs.back() + m_shift - 1;
+    typedef std::vector<index_t>::const_iterator citer;
+    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer iend   = istart + patchSize(k);
+    return find_impl(istart, iend, std::bind2nd(std::greater<index_t>(),s));
+}
+
+gsVector<index_t> gsDofMapper::findFree(const index_t k) const
+{
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    const index_t s = m_numFreeDofs.back() + m_shift;
+    typedef std::vector<index_t>::const_iterator citer;
+    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer iend   = istart + patchSize(k);
+    return find_impl(istart, iend, std::bind2nd(std::less<index_t>(),s));
+}
+
+namespace {
+struct _isBetween
+{
+    _isBetween(const index_t l, const index_t u) : _l(l), _u(u) { }
+    index_t _l, _u;
+    bool operator()(const index_t i) { return  (i < _u) && (i > _l); }
+};
+} // end anonymous namespace
+
+gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) const
+{
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+
+    if (k==j) return gsVector<index_t>();
+
+    typedef std::vector<index_t>::const_iterator citer;
+    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer iend   = istart + patchSize(k);
+
+    const index_t l = m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()-1;
+    const index_t u = m_numFreeDofs.back()+m_shift;
+    if (-1==j)
+        return find_impl(istart, iend, _isBetween(l,u) );
+    else
+    {
+        citer istartj = m_dofs[0].begin() + m_offset[j];
+        citer iendj   = istartj + patchSize(j);
+        std::list<index_t> v;
+        citer cur = std::find_if(istart, iend, _isBetween(l,u));
+        while( cur!=iend )
+        {
+            if ( std::find(istartj,iendj,*cur)!=iendj )
+                v.push_back( std::distance(istart,cur) );
+            cur = std::find_if(cur+1, iend, _isBetween(l,u));
+        }
+
+        gsVector<index_t> res;
+        res.resize(v.size());
+        index_t * a = res.data();
+        for( std::list<index_t>::const_iterator it = v.begin();
+             it!=v.end(); ++it) *(a++) = *it;
+        return res;
+    }
+}
+
+gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k) const
+{
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    typedef std::vector<index_t>::const_iterator citer;
+    const citer istart = m_dofs[0].begin() + m_offset[k];
+    const citer iend   = istart + patchSize(k);
+    return find_impl(istart, iend,
+                     _isBetween(m_shift-1, m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()) );
+}
+
+gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
+{
+    GISMO_ASSERT(m_curElimId==0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    typedef std::vector<index_t>::const_iterator citer;
+    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer iend   = istart + patchSize(k);
+
+    std::vector<index_t> si;
+    //    std::set_intersection<index_t>(istart, iend,m_tagged.begin(), m_tagged.end(),
+    //                                   std::back_inserter(si));
+    gsVector<index_t> rvo;
+    //rvo.swap(si);
+    return rvo;
+}
 void gsDofMapper::setShift (index_t shift)
 {
     m_shift=shift;
