@@ -655,7 +655,7 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[0].begin() + m_offset[k];
-    citer iend   = istart + patchSize(k);
+    //citer iend   = istart + patchSize(k);
 
     std::vector<index_t> si;
     //    std::set_intersection<index_t>(istart, iend,m_tagged.begin(), m_tagged.end(),
