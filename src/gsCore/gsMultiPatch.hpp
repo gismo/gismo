@@ -526,13 +526,20 @@ void gsMultiPatch<T>::closeGaps(T tol)
         // Grab boundary control points in matching configuration
         p1.basis().matchWith(*it, p2.basis(), bdr1, bdr2);
 
+        bool warn = true;
         //mapper.matchDofs(it->first().patch, bdr1, it->second().patch, bdr2);
         for (index_t i = 0; i!= bdr1.size(); ++i )
         {
             if ( ( p1.coef(bdr1(i)) - p2.coef(bdr2(i)) ).squaredNorm() > tol2 )
-                gsWarn<<"Big gap detected between patches "<< it->first().patch
-                      <<" and "<<it->second().patch <<"\n";
-
+            {
+                if (warn)
+                {
+                    gsWarn<<"Big gap detected between patches "<< it->first().patch
+                          <<" and "<<it->second().patch <<"\n";
+                    warn = false;
+                }
+            }
+            else
             // Match the dofs on the interface
             mapper.matchDof(it->first().patch, bdr1(i,0), it->second().patch, bdr2(i,0) );
         }
@@ -706,7 +713,7 @@ bool gsMultiPatch<T>::repairInterface( const boundaryInterface & bi )
 template<class T>
 void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
                                    gsVector<index_t> & pids,
-                                   gsMatrix<T> & preim) const
+                                   gsMatrix<T> & preim, const T accuracy) const
 {
     pids.resize(points.cols());
     pids.setConstant(-1); // -1 implies not in the domain
@@ -720,7 +727,7 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points,
         for (size_t k = 0; k!= m_patches.size(); ++k)
         {
             pr = m_patches[k]->parameterRange();
-            m_patches[k]->invertPoints(pt, tmp);
+            m_patches[k]->invertPoints(pt, tmp, accuracy);
             if ( (tmp.array() >= pr.col(0).array()).all()
                  && (tmp.array() <= pr.col(1).array()).all() )
             {
@@ -761,6 +768,27 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
             }
         }
     }
+}
+
+template<class T>
+void gsMultiPatch<T>::constructInterfaceRep()
+{
+    for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        m_ifaces[*it] = p1.iface(*it,p2);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructBoundaryRep()
+{
+    for ( biterator it = bBegin(); it != bEnd(); ++it ) // for all boundaries
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->patch];
+        m_bdr[*it] = p1.boundary(*it);
+    }//end for
 }
 
 

@@ -175,9 +175,9 @@ int main(int argc, char *argv[])
 
     const index_t nPatches = mp.nPatches();
 
-    //! [Define IetiMapper]
+    //! [Define Ieti Mapper]
     gsIetiMapper<> ietiMapper;
-    //! [Define IetiMapper]
+    //! [Define Ieti Mapper]
 
     // We start by setting up a global FeSpace that allows us to
     // obtain a dof mapper and the Dirichlet data
@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
 
         // Add contributions from Neumann conditions to right-hand side
         variable g_N = assembler.getBdrFunction();
-        assembler.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
+        assembler.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc_local.neumannSides() );
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);
@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
     }
     //! [Primal to system]
 
-    gsInfo << "done.\n";
+    gsInfo << "done. " << ietiMapper.nPrimalDofs() << " primal dofs.\n";
 
     /**************** Setup solver and solve ****************/
 
