@@ -1282,12 +1282,39 @@ bool gsFileData<T>::readObjFile( String const & fn )
     GISMO_UNUSED(fn);
     //gsWarn<<"Assuming Linux file, please convert dos2unix first.\n";
 
-#if FALSE
-
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
+
+/*
+// -- mesh start
+    std::string s;
+    while(file>>s)
+   {
+         switch(*s.c_str())
+         {
+         case 'v':
+              {
+                    vertex v;
+                    file>>v.x>>v.y>>v.z;
+                    this->vertices.push_back(v);
+              }
+              break;
+         case 'f':
+              {
+                    face f;
+                    file>>f.v1>>f.v2>>f.v3;
+                    faces.push_back(f);
+              }
+              break;
+         default:
+             break;
+        }
+   }
+//-- mesh end
+//*/
+#if FALSE
 
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws);
@@ -1557,10 +1584,6 @@ enum entity_j_name{
     ELAYER= 3
 };
 
-int entity[MAXENTITY][4];
-int entity_sum=0,         /* A number of entities in array entity[] */
-    emark=0;              /* for cycling over entity[] */
-
 int read_iges_line(FILE *f, char *s)
 {
     /* read filerow from iges*/
@@ -1633,8 +1656,7 @@ void format_number(char *n_s)
     }
 }
 
-
-void parse_d_entry(char *ret1, char *ret2)
+void parse_d_entry(int entity[MAXENTITY][4], int & emark, int & entity_sum, char *ret1, char *ret2)
 {
     /* Parse single entry (pair of lines) in D section. */
     char fld[9];                   /* for reading the value of array */
@@ -1683,16 +1705,15 @@ void parse_d_entry(char *ret1, char *ret2)
   entity_sum++;
   emark++;
   break;
-  case 126:
-  if (o_extract_unblanked == 1 && ret1[65] == '1') break;
-  entity[emark][E_TYPE]=kod;
-  entity[emark][PD_PTR]=pd_ptr;
-  entity[emark][PD_CNT]=pd_count;
-  entity[emark][ELAYER]=layer;
-  entity_sum++;
-  emark++;
-  break;
 */
+    case 126:
+        entity[emark][E_TYPE]=kod;
+        entity[emark][PD_PTR]=pd_ptr;
+        entity[emark][PD_CNT]=pd_count;
+        entity[emark][ELAYER]=layer;
+        entity_sum++;
+        emark++;
+        break;
     case 128:
         //if (only_extract_unblanked == 1 && ret1[65] == '1') break;
         entity[emark][E_TYPE]=kod;
@@ -1713,6 +1734,7 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
     static int m;       /* marker in strings x, y, z */
     static int c, endknot;    /* counter of points */
     static int b[4]; /* b[0,1]-maxindex_of_ctrl_pts, b[2,3]-degree_of_Bspl */
+    //static int sw[5]; /* breaks: 10, +b[0]+b[2]+2, +b[1]+b[3]+2, +(b[0]+1)*(b[1]+1), +(b[0]+1)*(b[1]+1) */
     int i;  /* i-order of the character */
     static int j;  /* j-order of head. */
     if (begin == 1)
@@ -1721,6 +1743,7 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
         c=0;
         m=0;
         j=0;
+        //sw[0]=10;
     }
     for (i=0; i <= 64; i++)
     {
@@ -1805,8 +1828,8 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
                 format_number(t);
                 ss <<" "<< t;
                 m= 0;
-                if (c == b[0]+b[2]+1) ss<<","<<b[2]<<",";
                 c++;
+                if (c == b[0]+b[2]+2) ss<<","<<b[2]<<",";
             }
             else {                                  /* digit + - E e D d */
                 t[m]= s[i];
@@ -1984,6 +2007,10 @@ void read_iges_pd126(char *s, int begin, std::stringstream & ss)
     }
 }
 
+
+// todo: Write file
+
+
 }//namespace
 
 template<class T>
@@ -1991,6 +2018,10 @@ bool gsFileData<T>::readIgesFile( String const & fn )
 {
     //Input file
     FILE * fr = fopen(fn.c_str(), "rb");
+
+    int entity[MAXENTITY][4];
+    int entity_sum=0,         /* A number of entities in array entity[] */
+    emark=0;              /* for cycling over entity[] */
 
     if ( NULL==fr )
     {
@@ -2021,7 +2052,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
     }
     err_code=read_iges_line(fr, pairline);             /* (2) */
     if (err_code == -1) { gsWarn<<"IGES file empty.\n"; return false; }
-    parse_d_entry(line, pairline);                    /* (3) */
+    parse_d_entry(entity,emark,entity_sum,line, pairline);                    /* (3) */
 
     /* Repeat the same on subsequent entries in D section */
     while (line[72] == 'D')
@@ -2032,7 +2063,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
         {
             err_code=read_iges_line(fr, pairline);
             if (err_code == -1) { gsWarn<<"IGES file empty.\n"; return false; }
-            parse_d_entry(line, pairline);
+            parse_d_entry(entity,emark,entity_sum,line, pairline);
             if (entity_sum >= MAXENTITY) { gsWarn<<"Too many entities (more than "<<MAXENTITY<<" in the file.\n"; return false; }
         }
     }
@@ -2149,8 +2180,13 @@ bool gsFileData<T>::readIgesFile( String const & fn )
         }
     }
 
-    return true;
+    const bool fc = (fclose(fr) != EOF);
+    if (fc) gsWarn<< "File closing didn't succeeded!\n";
+    return fc;
 }
+
+#undef MAXENTITY
+#undef FIELD_L
 
 template<class T>
 void gsFileData<T>::addX3dShape(gsXmlNode * shape)

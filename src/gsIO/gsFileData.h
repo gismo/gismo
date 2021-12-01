@@ -69,6 +69,9 @@ public:
     /// \brief Save file contents to an xml file
     void save(String const & fname = "dump", bool compress = false) const;
 
+    /// \brief Save multipatch contents to an IGES file
+    void writeIges(String const & fname);
+
     /// \brief Save file contents to compressed xml file
     void saveCompressed(String const & fname = "dump") const;
 
