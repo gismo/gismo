@@ -357,27 +357,6 @@ public:
     template<class E1> void assemble(const bcRefList & BCs, const expr::_expr<E1> & a1);
 #   endif
 
-    template<class E1, class E2>
-    void assembleLhsRhsBc(const expr::_expr<E1> & exprLhs,
-                          const expr::_expr<E2> & exprRhs,
-                          const bcContainer & BCs)
-    {
-        space rvar = static_cast<space>(exprLhs.rowVar());
-        //GISMO_ASSERT(m_exprdata->exists(rvar), "Error - inexistent variable.");
-        space cvar = static_cast<space>(exprLhs.colVar());
-        //GISMO_ASSERT(m_exprdata->exists(cvar), "Error - inexistent variable.");
-        GISMO_ASSERT(rvar.id()==exprRhs.rowVar().id(), "Inconsistent left and right hand side"<<rvar.id() <<"!="<<exprRhs.rowVar().id() );
-        assembleLhsRhsBc_impl<true,true>(exprLhs, exprRhs, rvar, cvar, BCs);
-    }
-
-    template<class E1>
-    void assembleRhsBc(const expr::_expr<E1> & exprRhs, const bcContainer & BCs)
-    {
-        space var = static_cast<space>(exprRhs.rowVar());
-        //GISMO_ASSERT(m_exprdata->exists(var), "Error - inexistent variable.");
-        assembleLhsRhsBc_impl<false,true>(nullExpr(), exprRhs, var, var, BCs);
-    }
-
 private:
 
     void _blockDims(gsVector<index_t> & rowSizes,
@@ -406,23 +385,6 @@ private:
     /// \brief Reset the dimensions of all involved spaces.
     /// Called internally by the init* functions
     void resetDimensions();
-
-    // template<bool left, bool right, class E1, class E2>
-    // void assembleLhsRhs_impl(const expr::_expr<E1> & exprLhs,
-    //                          const expr::_expr<E2> & exprRhs,
-    //                          space rvar, space cvar);
-
-    template<bool left, bool right, class E1, class E2>
-    void assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
-                               const expr::_expr<E2> & exprRhs,
-                               space rvar, space cvar,
-                               const bcContainer & BCs);
-
-    template<bool left, bool right, class E1, class E2>
-    void assembleInterface_impl(const expr::_expr<E1> & exprLhs,
-                                const expr::_expr<E2> & exprRhs,
-                                space rvar, space cvar,
-                                const ifContainer & iFaces);
 
 // #if __cplusplus >= 201103L || _MSC_VER >= 1600 // c++11
 //     template <class op, class E1>
@@ -457,17 +419,14 @@ private:
         gsSparseMatrix<T> & m_matrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
-        index_t             m_patchInd;
         gsMatrix<T>         localMat;
 
         _eval(gsSparseMatrix<T> & _matrix,
               gsMatrix<T>       & _rhs,
               const gsVector<>  & _quWeights)
         : m_matrix(_matrix), m_rhs(_rhs),
-          m_quWeights(_quWeights), m_patchInd(0)
+          m_quWeights(_quWeights)
         { }
-
-        void setPatch(const index_t p) { m_patchInd=p; }
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
@@ -479,9 +438,9 @@ private:
 
             //  ------- Accumulate  -------
             if (E::isMatrix())
-                push<true>(ee.rowVar(), ee.colVar(), m_patchInd);
+                push<true>(ee.rowVar(), ee.colVar());
             else if (E::isVector())
-                push<false>(ee.rowVar(), ee.colVar(), m_patchInd);
+                push<false>(ee.rowVar(), ee.colVar());
             else
             {
                 GISMO_ERROR("Something went terribly wrong at this point");
@@ -493,8 +452,7 @@ private:
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
         template<bool isMatrix> void push(const expr::gsFeSpace<T> & v,
-                                          const expr::gsFeSpace<T> & u,
-                                          const index_t patchInd)
+                                          const expr::gsFeSpace<T> & u)
         {
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
@@ -710,7 +668,6 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     // elements, where Ep is the elements on the patch.
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //todo: distribute in parallel somehow?
     {
-        ee.setPatch(patchInd);
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
         // Initialize domain element iterator for current patch
@@ -761,8 +718,8 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
-    if ( BCs.empty() ) return;
-    m_exprdata->setMutSource(*BCs.front().function()); //initialize once
+    if ( BCs.empty() || 0==numDofs() ) return;
+    m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
 
 // #pragma omp parallel
 // {
@@ -786,77 +743,13 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, const expr::_expr<E1> &
         const boundary_condition<T> * it = &iit->get();
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
-        m_exprdata->mapData.side = it->side();
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
 
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
-        m_element.set(*domIt);
-
-        // Start iteration over elements
-        for (; domIt->good(); domIt->next() )
-        {
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           m_exprdata->points(), quWeights);
-
-            if (m_exprdata->points().cols()==0)
-                continue;
-
-            // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(it->patch());
-
-            // Assemble contributions of the element
-#           if __cplusplus >= 201103L || _MSC_VER >= 1600
-            _apply(ee, arg_tpl);
-#           else
-            ee(a1);
-#           endif
-        }
-    }
-
-//}//omp parallel
-
-    m_matrix.makeCompressed();
-}
-
-
-template<class T>
-template<bool left, bool right, class E1, class E2>
-void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
-                                               const expr::_expr<E2> & exprRhs,
-                                               space rvar, space cvar,//unused?
-                                               const bcContainer & BCs)
-{
-    //GISMO_ASSERT( exprRhs.isVector(), "Expecting vector expression");
-
-    if ( BCs.empty() ) return;
-    m_exprdata->setMutSource(*BCs.front().function());//initialize once
-
-    auto arg_lhs(exprLhs.derived());//copying expressions
-    auto arg_rhs(exprRhs.derived());
-
-    if (left ) m_exprdata->parse(arg_lhs);
-    if (right) m_exprdata->parse(arg_rhs);
-
-    gsVector<T> quWeights;// quadrature weights
-    typename gsQuadRule<T>::uPtr QuRule;
-    _eval ee(m_matrix, m_rhs, quWeights);
-
-    for (typename bcContainer::const_iterator it = BCs.begin(); it!= BCs.end(); ++it)
-    {
-        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
-
-        // Update boundary function source
-        m_exprdata->setMutSource(*it->function());
-
-        //The composition map
-        
-        typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(it->patch())
-            .makeDomainIterator(it->side());
+            m_exprdata->multiBasis().basis(it->patch()).
+            makeDomainIterator(it->side());
         m_element.set(*domIt);
 
         // Start iteration over elements
@@ -872,15 +765,18 @@ void gsExprAssembler<T>::assembleLhsRhsBc_impl(const expr::_expr<E1> & exprLhs,
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(it->patch(), it->side());
 
-            ee.setPatch(it->patch());
-            ee(arg_lhs);
-            ee(arg_rhs);
+            // Assemble contributions of the element
+#           if __cplusplus >= 201103L || _MSC_VER >= 1600
+            op_tuple(ee, arg_tpl);
+#           else
+            ee(a1);
+#           endif
         }
     }
 
+//}//omp parallel
+
     m_matrix.makeCompressed();
-    //g_bd.clear();
-    //mutVar.clear();
 }
 
 template<class T> template<class... expr>

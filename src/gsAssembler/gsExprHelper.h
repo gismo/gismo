@@ -195,6 +195,8 @@ public:
         //m_fdata[mutSrc].mine().flags = 0; //fails
     }
 
+    //void clearMutSource() ?
+
 private:
     template <class E1>
     void _parse(const expr::_expr<E1> & a1)
@@ -227,8 +229,7 @@ public:
     template<class... Ts>
     void parse(const std::tuple<Ts...> &tuple)
     {
-        cleanUp();
-
+//        cleanUp();
         _parse_tuple(tuple);
 
         // Additional evaluation flags
@@ -239,7 +240,7 @@ public:
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
-        mutSrc = nullptr;
+        //mutSrc = nullptr;//no.. we might be parsing more than 1 expression
 
         // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
@@ -249,7 +250,7 @@ public:
     template<class... expr>
     void parse(const expr &... args)
     {
-        cleanUp();
+//        cleanUp(); //assumes parse is called once.
         _parse(args...);
 
         // Add initial evaluation flags
@@ -260,7 +261,7 @@ public:
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
 
-        mutSrc = nullptr;
+        //mutSrc = nullptr;//no.. ne might be parsing more than 1 expression
 
         /*
         gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
@@ -305,7 +306,7 @@ public:
                     .setSource(*mutSrc);
             }
             else
-                gsWarn<<"\nSomething went wrong here.\n";
+                gsWarn<<"\nSomething went terribly wrong here (add gsComposition).\n";
             return;
         }
 
@@ -365,7 +366,7 @@ public:
                     .setSource(*mutSrc);
             }
             else
-                gsWarn<<"\nSomething went wrong here.\n";
+                gsWarn<<"\nSomething went wrong here (add symbol_expr).\n";
         }
     }
 
@@ -419,7 +420,7 @@ public:
         }
     }
 
-};//class
+};//class gsExprHelper
 
 
 } //namespace gismo

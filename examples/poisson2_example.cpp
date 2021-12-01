@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 
         // Compute the Neumann terms defined on physical space
         auto g_N = A.getBdrFunction(G);
-        A.assembleRhsBc(u * g_N.tr() * nv(G), bc.neumannSides() );
+        A.assemble(bc.get("Neumann"), u * g_N.tr() * nv(G) );
 
         ma_time += timer.stop();
 

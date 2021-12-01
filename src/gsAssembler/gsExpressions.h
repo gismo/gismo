@@ -3205,6 +3205,8 @@ public:
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
+        //gsDebugVar(_u.eval(k));
+        //gsDebugVar(_v.eval(k));
 
         // Note: a * b * c --> (a*b).eval()*c
         tmp = _u.eval(k) * _v.eval(k);
