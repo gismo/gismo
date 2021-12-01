@@ -2,6 +2,7 @@
 #include <gismo.h>
 #include <gsModeling/gsFastFitting.h>
 #include <gsModeling/gsFitting.h>
+#include <gsModeling/gsStandardFitting.h>
 #include <bits/stdc++.h>
 
 using namespace gismo;
@@ -117,9 +118,9 @@ int main(int argc, char *argv[])
     gsInfo<<"--------------------------------" << std::endl;
 
     gsStopwatch time;
-    gsFitting<real_t> ref2(uv, xyz, T_tbasis);
+    gsStandardFitting<real_t> ref2(uv, xyz, T_tbasis);
     time.restart();
-    ref2.compute();
+    ref2.computeStandard();
     time.stop();
     gsInfo<<"Fitting time                      : "<< time << std::endl;
     //gsWriteParaview(*(ref2.result()),"resultslow", 50000, false, true);
