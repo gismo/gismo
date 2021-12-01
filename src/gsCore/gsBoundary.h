@@ -730,6 +730,11 @@ public:
                 && directionOrientation==other.directionOrientation;
     }
 
+    inline bool operator< (const boundaryInterface& other) const
+    {
+        return ps1<other.ps1 || (ps1==other.ps1 && ps2<other.ps2);
+    }
+
     /**
      * @brief first, returns the first patchSide of this interface
     **/

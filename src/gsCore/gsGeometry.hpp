@@ -174,6 +174,14 @@ gsGeometry<T>::boundary(boxSide const& s) const
 
 template<class T>
 typename gsGeometry<T>::uPtr
+gsGeometry<T>::iface(const boundaryInterface & bi,
+                     const gsGeometry & other) const
+{
+    GISMO_NO_IMPLEMENTATION
+}
+
+template<class T>
+typename gsGeometry<T>::uPtr
 gsGeometry<T>::component(boxComponent const& bc) const
 {
     gsMatrix<index_t> ind;
