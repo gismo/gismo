@@ -69,6 +69,9 @@ public:
     /// \brief Save file contents to an xml file
     void save(String const & fname = "dump", bool compress = false) const;
 
+    /// \brief Save multipatch contents to an IGES file
+    void writeIges(String const & fname);
+
     /// \brief Save file contents to compressed xml file
     void saveCompressed(String const & fname = "dump") const;
 
@@ -122,6 +125,7 @@ protected:
     bool readAxelFile(String const & fn);
     bool readAxelSurface( gsXmlNode * node );
     bool readAxelCurve  ( gsXmlNode * node );
+    bool readAxelMesh   ( gsXmlNode * node );
 
     /// Reads GeoPDEs txt file
     bool readGeompFile( String const & fn );
