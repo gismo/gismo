@@ -62,6 +62,7 @@ private:
     // ie. not uniquely assigned to a gsFunctionSet
     const gsFunctionSet<T> * mutSrc;
     const gsFunctionSet<T> * mutMap;
+    thFuncData               mutData;
 
 public:
     typedef memory::unique_ptr<gsExprHelper> uPtr;
@@ -105,6 +106,7 @@ public:
             m_cdata.clear();
             //mutSrc = nullptr;
             mutMap = nullptr;
+            mutData.mine().flags = 0;
             if (isMirrored())
             {
                 m_mirror->m_mdata.clear();
@@ -112,6 +114,7 @@ public:
                 m_mirror->m_cdata.clear();
                 //m_mirror->mutSrc = nullptr;
                 m_mirror->mutMap = nullptr;
+                m_mirror->mutData.mine().flags = 0;
             }
         }//implicit barrier
     }
@@ -185,7 +188,6 @@ public:
     void setMutSource(const gsFunction<T> & func)
     {
         mutSrc = &func;
-        //m_fdata[mutSrc].mine().flags = 0; //fails
     }
 
     //void clearMutSource() ?
@@ -222,7 +224,7 @@ public:
     template<class... Ts>
     void parse(const std::tuple<Ts...> &tuple)
     {
-//        cleanUp();
+        cleanUp(); //assumes parse is called once.
         _parse_tuple(tuple);
 
         // Additional evaluation flags
@@ -232,9 +234,7 @@ public:
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-
-        //mutSrc = nullptr;//no.. we might be parsing more than 1 expression
-
+        
         // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
         // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
         // gsInfo<< "cdata: "<< m_cdata.size()<<std::endl;
@@ -243,7 +243,7 @@ public:
     template<class... expr>
     void parse(const expr &... args)
     {
-//        cleanUp(); //assumes parse is called once.
+        cleanUp(); //assumes parse is called once.
         _parse(args...);
 
         // Add initial evaluation flags
@@ -253,8 +253,6 @@ public:
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-
-        //mutSrc = nullptr;//no.. ne might be parsing more than 1 expression
 
         /*
         gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
@@ -293,7 +291,7 @@ public:
             {
 #               pragma omp critical (m_fdata_first_touch)
                 const_cast<expr::gsComposition<T>&>(sym)
-                    .setData( m_fdata[mutSrc] );
+                    .setData( mutData );
 
                 const_cast<expr::gsComposition<T>&>(sym)
                     .setSource(*mutSrc);
@@ -353,7 +351,7 @@ public:
             {
 #               pragma omp critical (m_fdata_first_touch)
                 const_cast<expr::symbol_expr<E>&>(sym)
-                    .setData( m_fdata[mutSrc] );
+                    .setData( mutData );
 
                 const_cast<expr::symbol_expr<E>&>(sym)
                     .setSource(*mutSrc);
@@ -403,13 +401,11 @@ public:
         }
 
         // Mutable variable to treat BCs
-        if (nullptr!=mutSrc &&
-            0!=m_fdata[mutSrc].mine().flags)
+        if (nullptr!=mutSrc && 0!=mutData.mine().flags)
         {
-            //GISMO_ASSERT(mutSrc, "Boundary function not set.");
             mutSrc->piece(patchIndex)
-                .compute( mutMap ? m_mdata[mutMap].mine().values[0] : m_points,
-                          m_fdata[mutSrc] );
+                .compute( mutMap ? m_mdata[mutMap].mine().values[0]
+                          : m_points, mutData );
         }
     }
 

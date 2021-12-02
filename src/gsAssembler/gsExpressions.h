@@ -746,10 +746,10 @@ public:
 
     void parse(gsExprHelper<T> & evList) const
     {
-        evList.add(_G);
+        //evList.add(_G); //done in gsExprHelper
         evList.add(*this);
         this->data().flags |= NEED_VALUE;
-        _G.data().flags  |= NEED_VALUE;
+        //_G.data().flags  |= NEED_VALUE; //done in gsExprHelper
         //gsDebug<<"With map values "<< &_G.data() <<"\n";
     }
 };
