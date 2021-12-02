@@ -2560,8 +2560,8 @@ public:
 
     tangent_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    mutable gsMatrix<Scalar> res;
-    const gsMatrix<Scalar> eval(const index_t k) const
+    mutable gsVector<Scalar> res;
+    const gsVector<Scalar> & eval(const index_t k) const
     {
         if (_G.targetDim()==2)
         {
@@ -2572,7 +2572,8 @@ public:
         }
         else if (_G.targetDim()==3)
         {
-            res = _G.data().normals.col(k).template head<3>()
+            res.template head<3>() =
+                _G.data().normals.col(k).template head<3>()
                 .cross( _G.data().outNormals.col(k).template head<3>() );
             return res;
         }

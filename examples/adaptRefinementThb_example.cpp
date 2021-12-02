@@ -187,12 +187,12 @@ int main(int argc, char *argv[])
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
 
        std::vector<bool> elCMarked( eltErrs.size() );
-       for (index_t k=0; k!=eltErrs.size(); k++)
+       for (size_t k=0; k!=eltErrs.size(); k++)
             eltErrs[k] = -eltErrs[k];
 
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
 
-       for (index_t k=0; k!=elMarked.size(); k++)
+       for (size_t k=0; k!=elMarked.size(); k++)
         gsInfo<<elMarked[k]<<"\t"<<elCMarked[k]<<"\n";
 
        // Refine the marked elements with a 1-ring of cells around marked elements
