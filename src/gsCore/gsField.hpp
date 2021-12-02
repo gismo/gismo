@@ -29,12 +29,15 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
     GISMO_UNUSED(numEvals);// todo: subdivided quadrature elements
     gsExprEvaluator<T> ev;
     ev.setIntegrationElements(B);
-    typename gsExprEvaluator<T>::geometryMap G = ev.getMap(this->patches());
-    auto f1   =
-        (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
-    typename gsExprEvaluator<T>::variable f2   =
-        (isFunc_param ? ev.getVariable(func) : ev.getVariable(func, G) );
-    return math::sqrt( ev.integral((f1 - f2).sqNorm() * meas(G)) );
+    auto G = ev.getMap(this->patches());
+    auto f1a = ev.getVariable(*m_fields);
+    auto f1b = ev.getVariable(*m_fields, G);
+    auto f2a = ev.getVariable(func);
+    auto f2b = ev.getVariable(func, G);
+    if (m_parametric && isFunc_param) return math::sqrt( ev.integral((f1a-f2a).sqNorm() * meas(G)) );
+    if (m_parametric) return math::sqrt( ev.integral((f1a-f2b).sqNorm() * meas(G)) );
+    if (isFunc_param) return math::sqrt( ev.integral((f1b-f2a).sqNorm() * meas(G)) );
+    return math::sqrt( ev.integral((f1b-f2b).sqNorm() * meas(G)) );
 }
 
 template <class T>
@@ -43,22 +46,20 @@ T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
                          bool isFunc_param,
                          int) const
 {
-    const gsMultiPatch<T> & mp = this->patches();
     gsExprEvaluator<T> ev;
     ev.setIntegrationElements(B);
-    typename gsExprEvaluator<T>::geometryMap G = ev.getMap(mp);
-    typename gsExprEvaluator<T>::variable f1   =
-        (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
-    typename gsExprEvaluator<T>::variable f2   =
-        (isFunc_param ? ev.getVariable(func) : ev.getVariable(func, G) );
-
+    auto G = ev.getMap(this->patches());
+    auto f1a = ev.getVariable(*m_fields);
+    auto f1b = ev.getVariable(*m_fields, G);
+    auto f2a = ev.getVariable(func);
+    auto f2b = ev.getVariable(func, G);
     if (m_parametric && isFunc_param)
-        return math::sqrt(ev.integral( ( igrad(f1,G) - igrad(f2,G)).sqNorm()*meas(G) ) );
+        return math::sqrt(ev.integral( ( igrad(f1a,G) - igrad(f2a,G)).sqNorm()*meas(G) ) );
     if (m_parametric)
-        return math::sqrt(ev.integral( ( igrad(f1,G) - igrad(f2)).sqNorm()*meas(G) ) );
+        return math::sqrt(ev.integral( ( igrad(f1a,G) - igrad(f2b)).sqNorm()*meas(G) ) );
     if (isFunc_param)
-        return math::sqrt(ev.integral( ( igrad(f1) - igrad(f2,G)).sqNorm()*meas(G) ) );
-    return math::sqrt(ev.integral( ( igrad(f1) - igrad(f2)).sqNorm()*meas(G) ) );
+        return math::sqrt(ev.integral( ( igrad(f1b) - igrad(f2a,G)).sqNorm()*meas(G) ) );
+    return math::sqrt(ev.integral( ( igrad(f1b) - igrad(f2b)).sqNorm()*meas(G) ) );
 }
 
 template <class T>
@@ -74,19 +75,19 @@ T gsField<T>::distanceH2(gsFunctionSet<T> const & func,
 
     gsExprEvaluator<T> ev;
     ev.setIntegrationElements(mb);
-    typename gsExprEvaluator<T>::geometryMap G = ev.getMap(mp);
-    typename gsExprEvaluator<T>::variable f1   =
-        (m_parametric ? ev.getVariable(*m_fields) : ev.getVariable(*m_fields, G) );
-    typename gsExprEvaluator<T>::variable f2   =
-        (isFunc_param ? ev.getVariable(func) : ev.getVariable(func, G) );
+    auto G = ev.getMap(this->patches());
+    auto f1a = ev.getVariable(*m_fields);
+    auto f1b = ev.getVariable(*m_fields, G);
+    auto f2a = ev.getVariable(func);
+    auto f2b = ev.getVariable(func, G);
 
     if (m_parametric && isFunc_param)
-        return math::sqrt(ev.integral( ( ihess(f1,G) - ihess(f2,G)).sqNorm()*meas(G) ) );
+        return math::sqrt(ev.integral( ( ihess(f1a,G) - ihess(f2a,G)).sqNorm()*meas(G) ) );
     if (m_parametric)
-        return math::sqrt(ev.integral( (ihess(f1,G) - ihess(f2)).sqNorm()*meas(G) ) );
+        return math::sqrt(ev.integral( (ihess(f1a,G) - ihess(f2b)).sqNorm()*meas(G) ) );
     if (isFunc_param)
-        return math::sqrt(ev.integral( ( ihess(f1) - ihess(f2,G)).sqNorm()*meas(G) ) );
-    return math::sqrt(ev.integral( ( ihess(f1) - ihess(f2)).sqNorm()*meas(G) ) );
+        return math::sqrt(ev.integral( ( ihess(f1b) - ihess(f2a,G)).sqNorm()*meas(G) ) );
+    return math::sqrt(ev.integral( ( ihess(f1b) - ihess(f2b)).sqNorm()*meas(G) ) );
 }
 
 template <class T>

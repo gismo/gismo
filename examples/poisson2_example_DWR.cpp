@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 
     // gsTensorBSpline<2,real_t> *geo;
     gsTHBSpline<2,real_t> thb;
-    for (index_t k=0; k!=mp.nPatches(); ++k)
+    for (size_t k=0; k!=mp.nPatches(); ++k)
     {
         gsTensorBSpline<2,real_t> *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&mp.patch(k));
         thb = gsTHBSpline<2,real_t>(*geo);
@@ -408,14 +408,14 @@ int main(int argc, char *argv[])
         const real_t adaptRefParam = 0.8;
         std::vector<bool> elMarked( errors.size() );
 
-        for(index_t k = 0; k < errors.size(); k++)
+        for(size_t k = 0; k < errors.size(); k++)
             if(errors[k] < 0)
                 errors[k] *= -1;
 
 
         gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, elMarked);
         gsInfo<<"index\terror\trefined?\n";
-        for (index_t k=0; k!= errors.size(); k++)
+        for (size_t k=0; k!= errors.size(); k++)
         {
             gsInfo << k<<"\t"<<errors[k] <<"\t"<<elMarked[k] << "\n";
 
@@ -458,14 +458,14 @@ int main(int argc, char *argv[])
         std::vector<real_t> errors( res.size() );
         gsVector<>::Map(&errors[0],res.size() ) = res;
 
-        for(index_t k = 0; k < errors.size(); k++)
+        for(size_t k = 0; k < errors.size(); k++)
             if(errors[k] < 0)
                 errors[k] *= -1;
 
 
         gsMarkElementsForRef( errors, adaptRefCrit, adaptRefParam, funMarked);
         gsInfo<<"index\terror\trefined?\n";
-        for (index_t k=0; k!= errors.size(); k++)
+        for (size_t k=0; k!= errors.size(); k++)
         {
             gsInfo << k<<"\t"<<errors[k] <<"\t"<<funMarked[k] << "\n";
 
