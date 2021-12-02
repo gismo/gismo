@@ -576,9 +576,9 @@ public:
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
     /// Computes and returns the interface with \a other as a new geometry
-    virtual gsGeometry::uPtr iface(const boundaryInterface & bi,
-                                   const gsGeometry & other) const;
-    
+    virtual typename gsGeometry::uPtr iface(const boundaryInterface & bi,
+                                            const gsGeometry & other) const;
+
     /// Get parametrization of box component \a bc as a new gsGeometry uPtr.
     typename gsGeometry::uPtr component(boxComponent const& bc) const;
 

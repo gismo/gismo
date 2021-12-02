@@ -446,14 +446,14 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
 // return the B-spline representation of a THB-spline subpatch
 template<short_t d, class T>
 template<short_t dd>
-typename util::enable_if<dd==d,void>::type
-gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<index_t> b1,
-                                             gsVector<index_t> b2,
-                                             unsigned level, 
-                                             const gsMatrix<T>& geom_coef,
-                                             gsMatrix<T>& cp,
-                                             gsKnotVector<T>& k1,
-                                             gsKnotVector<T>& k2) const
+typename util::enable_if<dd==2,void>::type
+gsTHBSplineBasis<d,T>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
+                                                  gsVector<index_t> b2,
+                                                  unsigned level, 
+                                                  const gsMatrix<T>& geom_coef,
+                                                  gsMatrix<T>& cp,
+                                                  gsKnotVector<T>& k1,
+                                                  gsKnotVector<T>& k2) const
 {
     // check if the indices in b1, and b2 are correct with respect to the given level
     const unsigned loc2glob = ( 1<< (this->maxLevel() - level) );
@@ -1365,10 +1365,10 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 
 template<short_t d, class T>
 template<short_t dd>
-typename util::enable_if<dd==d,gsTensorBSpline<d,T> >::type
-gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<index_t>& boundingBox,
-                                       const unsigned level,
-                                       const gsMatrix<T>& geomCoefs) const
+typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
+gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
+                                            const unsigned level,
+                                            const gsMatrix<T>& geomCoefs) const
 {
     gsVector<index_t, d> low, upp;
     for (unsigned dim = 0; dim != d; dim++)
