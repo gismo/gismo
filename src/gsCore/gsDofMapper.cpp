@@ -578,7 +578,7 @@ gsVector<index_t> gsDofMapper::findBoundary(const index_t k) const
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[0].begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
-    return find_impl(istart, iend, std::bind2nd(std::greater<index_t>(),s));
+    return find_impl(istart, iend, GS_BIND2ND(std::greater<index_t>(),s));
 }
 
 gsVector<index_t> gsDofMapper::findFree(const index_t k) const
@@ -589,7 +589,7 @@ gsVector<index_t> gsDofMapper::findFree(const index_t k) const
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[0].begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
-    return find_impl(istart, iend, std::bind2nd(std::less<index_t>(),s));
+    return find_impl(istart, iend, GS_BIND2ND(std::less<index_t>(),s));
 }
 
 namespace {
@@ -656,12 +656,11 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[0].begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
-
-    std::vector<index_t> si;
-    //    std::set_intersection<index_t>(istart, iend,m_tagged.begin(), m_tagged.end(),
-    //                                   std::back_inserter(si));
+    std::list<index_t> si;
+    std::set_intersection(istart, iend, m_tagged.begin(),
+                          m_tagged.end(), std::back_inserter(si));
     gsVector<index_t> rvo;
-    //rvo.swap(si);
+    si.assign(si.begin(),si.end());
     return rvo;
 }
 void gsDofMapper::setShift (index_t shift)

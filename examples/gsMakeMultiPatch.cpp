@@ -18,7 +18,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    std::string filename("");
+    std::string filename("planar/lshape2d_3patches_tens.xml");
     real_t tol = 1e-5;
     real_t gtol = 1e-6;
     bool reparam = false, gaps = true;

@@ -48,7 +48,7 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-set(gismo_VERSION_MAJOR 20) #year
+set(gismo_VERSION_MAJOR 21) #year
 set(gismo_VERSION_MINOR 12) #month
 set(gismo_VERSION_PATCH 0 ) #patch
 set(gismo_VERSION
