@@ -70,7 +70,7 @@ v21.12.0 (https://github.com/gismo/gismo/releases/tag/v21.12.0)
   - Added submodule system with automated download and deployment
   - New optional submodules: gsElasticity, gsExaStencils, gsCodiPack, gsCompFlow, gsStructuralAnalysis, gsKLShell, gsMultiPrecision, gsSpectra, gsOpenCascade, gsUnum
   - Added reader for IGES files
-  - New exmple files and codes: gsMakeMultiPatch, ieti_example, ieti2_example, kirchhoff-Love_example, quadrature_example, quasiInterpolation_example, constrained_fitting
+  - New example files and codes: gsMakeMultiPatch, ieti_example, ieti2_example, kirchhoff-Love_example, quadrature_example, quasiInterpolation_example, constrained_fitting
   - Few new assemblers and better patch interface computations
   - New modules included in the sources: gsIeti module, gsMsplines module
 * IMPROVED
