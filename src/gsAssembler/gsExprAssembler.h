@@ -152,12 +152,8 @@ public:
 
     const typename gsExprHelper<T>::Ptr exprData() const { return m_exprdata; }
 
-    /// Registers \a mp as an isogeometric geometry map and return a handle to it
-    geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
-    { return m_exprdata->getMap(mp); }
-
     /// Registers \a g as an isogeometric geometry map and return a handle to it
-    geometryMap getMap(const gsFunction<T> & g)
+    geometryMap getMap(const gsFunctionSet<T> & g)
     { return m_exprdata->getMap(g); }
 
     /// Registers \a mp as an isogeometric (both trial and test) space
