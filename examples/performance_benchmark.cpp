@@ -13,293 +13,16 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <gsCore/gsJITCompiler.h>
 
 #include <array>
+#include <iomanip>
 
 using namespace gismo;
 //! [Include namespace]
 
-enum class benchmark_metric {
-  bandwidth_kb_sec,
-  bandwidth_mb_sec,
-  bandwidth_gb_sec,
-  bandwidth_tb_sec,  
-  perf_kflop_sec,
-  perf_mflop_sec,
-  perf_gflop_sec,
-  perf_tflop_sec,  
-  runtime_sec,
-};
 
-/**
- *   Benchmark: driver function
- */
-template<typename T>
-std::vector< std::array<double,4> >
-benchmark_driver(const std::vector<int>& nthreads, int nruns, T& benchmark, benchmark_metric metric)
-{
-  gsStopwatch stopwatch;
-  std::size_t benchmark_result;
-  double benchmark_metric, benchmark_runtime;
-
-  std::vector< std::array<double,4> > results;
-
-  try {
-    for (auto it=nthreads.cbegin(); it!=nthreads.cend(); ++it) {
-
-      omp_set_num_threads(*it);
-      benchmark_runtime = 0.0;
-      benchmark_metric = 0.0;
-
-      for (int run=0; run<nruns; ++run) {
-        stopwatch.restart();
-        benchmark_result = benchmark();
-        stopwatch.stop();
-        benchmark_runtime += stopwatch.elapsed();
-        
-        switch(metric) {
-        case benchmark_metric::bandwidth_kb_sec: case benchmark_metric::perf_kflop_sec:
-          benchmark_metric += 1e-3*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::bandwidth_mb_sec: case benchmark_metric::perf_mflop_sec:
-          benchmark_metric += 1e-6*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::bandwidth_gb_sec: case benchmark_metric::perf_gflop_sec:
-          benchmark_metric += 1e-9*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::bandwidth_tb_sec: case benchmark_metric::perf_tflop_sec:
-          benchmark_metric += 1e-12*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::runtime_sec:
-          benchmark_metric += stopwatch.elapsed();
-          break;
-        default:
-          throw std::runtime_error("Unsupported metric");
-        }
-        
-      }
-
-      results.push_back( { static_cast<double>(*it)        /* number of OpenMP threads */,
-                           benchmark_runtime/(double)nruns /* averaged elapsed time in seconds */,
-                           benchmark_metric/(double)nruns  /* averaged benchmark metric */,
-                           (double)metric}                 /* benchmark metric */ );
-    }
-  } catch(...) {}
-
-  return results;
-}
-
-/**
- * Benchmark LaTeX output
- */
-class benchmark_latex
-{
-public:
-  /**
-   * Result set class
-   */
-  class result_set
-  {
-  public:
-    result_set(const std::string& label,
-               const std::string& title,
-               const std::vector< std::array<double,4> >& results)
-      : label(label),
-        title(title),
-        results(results)
-    {
-    }
-
-    const std::string& get_label() const
-    { return label; }
-    
-    const std::string& get_title() const
-    { return title; }
-
-    const std::vector< std::array<double,4> >& get_results() const
-    { return results; }
-
-    std::ostream &print(std::ostream &os) const
-    {
-      os << "\\pgfplotstableread[row sep=\\\\,col sep=&]{\n"
-         << "threads & " << label << " \\\\\n";
-
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << (*it)[0] << "&" << (*it)[2] << "\\\\\n";
-
-      os << "}\\data" << label << "\n";
-
-      return os;
-    }
-
-  private:
-    const std::string label, title;
-    std::vector< std::array<double,4> > results;
-  };
-
-  /**
-   * Benchmark set class
-   */
-  class benchmark_set
-  {
-  public:
-    benchmark_set(const std::string& label,
-                  const std::string& title)
-      : id('A'),
-        label(label),
-        title(title)
-    {}
-
-    ~benchmark_set()
-    {
-      for (auto it=results.begin(); it!=results.end(); ++it)
-        delete (*it);
-    }
-
-    void add_results(const std::string& label,
-                     const std::string& title,
-                     const std::vector< std::array<double,4> >& results)
-    {
-      this->results.emplace_back(new result_set(label+std::string(1,id++), title, results));
-    }
-
-    const std::string& get_label() const
-    { return label; }
-    
-    const std::string& get_title() const
-    { return title; }
-
-    const std::vector<result_set*>& get_results() const
-    { return results; }
-
-    std::ostream &print(std::ostream &os) const
-    {
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        (*it)->print(os);
-
-      os << "\\begin{tikzpicture}\n"
-         << "\\begin{axis}[\n"
-         << "name=MyAxis,\n"
-         << "width=\\textwidth,\n"
-         << "height=.5\\textwidth,\n"
-         << "legend pos=outer north east,\n"
-        
-         << "symbolic x coords={";
-      
-      for (auto it=(*results.cbegin())->get_results().cbegin();
-           it!=(*results.cbegin())->get_results().cend(); ++it)
-        os << (*it)[0] << (it!=(*results.cbegin())->get_results().cend()-1 ? "," : "");
-      os << "},\n"
-        
-         << "xlabel={OpenMP threads},\n";
-      
-      switch((benchmark_metric)(*(*results.cbegin())->get_results().cbegin())[4]) {        
-      case benchmark_metric::bandwidth_kb_sec:        
-        os << "ylabel={Bandwidth in KB/s},\n";
-        break;
-      case benchmark_metric::bandwidth_mb_sec:        
-        os << "ylabel={Bandwidth in MB/s},\n";
-        break;
-      case benchmark_metric::bandwidth_gb_sec:        
-        os << "ylabel={Bandwidth in GB/s},\n";
-        break;
-      case benchmark_metric::bandwidth_tb_sec:        
-        os << "ylabel={Bandwidth in TB/s},\n";
-        break;
-      case benchmark_metric::perf_kflop_sec:        
-        os << "ylabel={Berformance in kFLOP/s},\n";
-        break;
-      case benchmark_metric::perf_mflop_sec:        
-        os << "ylabel={Berformance in mFLOP/s},\n";
-        break;
-      case benchmark_metric::perf_gflop_sec:        
-        os << "ylabel={Berformance in gFLOP/s},\n";
-        break;
-      case benchmark_metric::perf_tflop_sec:        
-        os << "ylabel={Berformance in tFLOP/s},\n";
-        break;
-      case benchmark_metric::runtime_sec:
-        os << "ylabel={Runtime in seconds},\n";
-        break;
-      default:
-        throw std::runtime_error("Unsupported metric");
-      }
-      
-      os << "title={" << title << "},\n"
-         << "]";
-
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << "\\addplot table[x=threads,y="
-           << (*it)->get_label()
-           << "]{\\data"
-           << (*it)->get_label()
-           << "};\n";
-
-      os << "\\legend{";
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << (*it)->get_title() << (it!=results.cend()-1 ? "," : "");
-      os << "}\n"
-        
-         << "\\end{axis}\n"
-
-         << "\\node[below right, align=left, text=black]\n"
-         << "at ($(MyAxis.south west)+(0,-30pt)$) {%\n"
-         << "G+Smo " << GISMO_VERSION
-         << ", Eigen " << EIGEN_WORLD_VERSION
-         << "." << EIGEN_MAJOR_VERSION
-         << "." << EIGEN_MINOR_VERSION << "\\\\\n"
-         << "And another line of text here};\n"
-        
-         << "\\end{tikzpicture}\n";
-
-      return os;
-    }
-
-  private:
-    char id;
-    const std::string label,title;
-    std::vector< result_set* > results;
-  };
-
-public:
-  ~benchmark_latex()
-    {
-      for (auto it=benchmarks.begin(); it!=benchmarks.end(); ++it)
-        delete (*it);
-    }
-
-  benchmark_set* add_benchmark(const std::string& label,
-                               const std::string& title)
-  {
-    benchmarks.emplace_back(new benchmark_set(label, title));
-    return benchmarks.back();
-  }
-
-  const std::vector< benchmark_set* >& get_benchmarks() const
-  { return benchmarks; }
-
-  std::ostream &print(std::ostream &os) const
-  {
-    os << "\\documentclass[tikz]{standalone}\n"
-       << "\\usepackage{pgfplots}\n"
-       << "\\begin{document}\n"
-       << "\\usetikzlibrary{calc}\n";
-
-    for (auto it=benchmarks.cbegin(); it!=benchmarks.cend(); ++it)
-      (*it)->print(os);
-
-    os << "\\end{document}\n";
-    return os;
-  }
-
-private:
-  std::vector< benchmark_set* > benchmarks;
-};
-
-/// Print (as string) operator
-std::ostream &operator<<(std::ostream &os, const benchmark_latex& obj)
-{ return obj.print(os); }
-
+//! [Implement benchmarks]
 /**
  * Benchmark: native C array memcopy
  */
@@ -589,10 +312,321 @@ public:
     return sizeof(T) * (2*n*n + n);
   }
 };
+//! [Implement benchmarks]
+
+//! [Implement benchmark infrastructure]
+
+/**
+ * Benchmark metrics
+ */
+enum class benchmark_metric {
+  bandwidth_kb_sec,
+  bandwidth_mb_sec,
+  bandwidth_gb_sec,
+  bandwidth_tb_sec,  
+  perf_kflop_sec,
+  perf_mflop_sec,
+  perf_gflop_sec,
+  perf_tflop_sec,  
+  runtime_sec,
+};
+
+/**
+ *   Benchmark: driver function
+ */
+template<typename T>
+std::vector< std::array<double,4> >
+benchmark_driver(const std::vector<int>& nthreads, int nruns, T& benchmark, benchmark_metric metric)
+{
+  gsStopwatch stopwatch;
+  std::size_t benchmark_result;
+  double benchmark_metric, benchmark_runtime;
+
+  std::vector< std::array<double,4> > results;
+
+  try {
+    for (auto it=nthreads.cbegin(); it!=nthreads.cend(); ++it) {
+
+      omp_set_num_threads(*it);
+      benchmark_runtime = 0.0;
+      benchmark_metric = 0.0;
+
+      for (int run=0; run<nruns; ++run) {
+        stopwatch.restart();
+        benchmark_result = benchmark();
+        stopwatch.stop();
+        benchmark_runtime += stopwatch.elapsed();
+        
+        switch(metric) {
+        case benchmark_metric::bandwidth_kb_sec: case benchmark_metric::perf_kflop_sec:
+          benchmark_metric += 1e-3*benchmark_result/stopwatch.elapsed();
+          break;
+        case benchmark_metric::bandwidth_mb_sec: case benchmark_metric::perf_mflop_sec:
+          benchmark_metric += 1e-6*benchmark_result/stopwatch.elapsed();
+          break;
+        case benchmark_metric::bandwidth_gb_sec: case benchmark_metric::perf_gflop_sec:
+          benchmark_metric += 1e-9*benchmark_result/stopwatch.elapsed();
+          break;
+        case benchmark_metric::bandwidth_tb_sec: case benchmark_metric::perf_tflop_sec:
+          benchmark_metric += 1e-12*benchmark_result/stopwatch.elapsed();
+          break;
+        case benchmark_metric::runtime_sec:
+          benchmark_metric += stopwatch.elapsed();
+          break;
+        default:
+          throw std::runtime_error("Unsupported metric");
+        }
+        
+      }
+
+      results.push_back( { static_cast<double>(*it)        /* number of OpenMP threads */,
+                           benchmark_runtime/(double)nruns /* averaged elapsed time in seconds */,
+                           benchmark_metric/(double)nruns  /* averaged benchmark metric */,
+                           (double)metric}                 /* benchmark metric */ );
+    }
+  } catch(...) {}
+
+  return results;
+}
+
+/**
+ * Benchmark LaTeX output
+ */
+class benchmark_latex
+{
+public:
+  /**
+   * Result set class
+   */
+  class result_set
+  {
+  public:
+    result_set(const std::string& label,
+               const std::string& title,
+               const std::vector< std::array<double,4> >& results)
+      : label(label),
+        title(title),
+        results(results)
+    {
+    }
+
+    const std::string& get_label() const
+    { return label; }
+    
+    const std::string& get_title() const
+    { return title; }
+
+    const std::vector< std::array<double,4> >& get_results() const
+    { return results; }
+
+    std::ostream &print(std::ostream &os) const
+    {
+      os << "\\pgfplotstableread[row sep=\\\\,col sep=&]{\n"
+         << "threads & " << label << " \\\\\n";
+
+      for (auto it=results.cbegin(); it!=results.cend(); ++it)
+        os << (*it)[0] << "&" << (*it)[2] << "\\\\\n";
+
+      os << "}\\data" << label << "\n";
+
+      return os;
+    }
+
+  private:
+    const std::string label, title;
+    std::vector< std::array<double,4> > results;
+  };
+
+  /**
+   * Benchmark set class
+   */
+  class benchmark_set
+  {
+  public:
+    benchmark_set(const std::string& label,
+                  const std::string& title)
+      : id('A'),
+        label(label),
+        title(title)
+    {}
+
+    ~benchmark_set()
+    {
+      for (auto it=results.begin(); it!=results.end(); ++it)
+        delete (*it);
+    }
+
+    void add_results(const std::string& label,
+                     const std::string& title,
+                     const std::vector< std::array<double,4> >& results)
+    {
+      this->results.emplace_back(new result_set(label+std::string(1,id++), title, results));
+    }
+
+    const std::string& get_label() const
+    { return label; }
+    
+    const std::string& get_title() const
+    { return title; }
+
+    const std::vector<result_set*>& get_results() const
+    { return results; }
+
+    std::ostream &print(std::ostream &os) const
+    {
+      for (auto it=results.cbegin(); it!=results.cend(); ++it)
+        (*it)->print(os);
+
+      os << "\\begin{tikzpicture}\n"
+         << "\\begin{axis}[\n"
+         << "name=MyAxis,\n"
+         << "width=\\textwidth,\n"
+         << "height=.5\\textwidth,\n"
+         << "legend pos=outer north east,\n"
+        
+         << "symbolic x coords={";
+      
+      for (auto it=(*results.cbegin())->get_results().cbegin();
+           it!=(*results.cbegin())->get_results().cend(); ++it)
+        os << (*it)[0] << (it!=(*results.cbegin())->get_results().cend()-1 ? "," : "");
+      os << "},\n"
+        
+         << "xlabel={OpenMP threads},\n";
+      
+      switch((benchmark_metric)(*(*results.cbegin())->get_results().cbegin())[4]) {        
+      case benchmark_metric::bandwidth_kb_sec:        
+        os << "ylabel={Bandwidth in KB/s},\n";
+        break;
+      case benchmark_metric::bandwidth_mb_sec:        
+        os << "ylabel={Bandwidth in MB/s},\n";
+        break;
+      case benchmark_metric::bandwidth_gb_sec:        
+        os << "ylabel={Bandwidth in GB/s},\n";
+        break;
+      case benchmark_metric::bandwidth_tb_sec:        
+        os << "ylabel={Bandwidth in TB/s},\n";
+        break;
+      case benchmark_metric::perf_kflop_sec:        
+        os << "ylabel={Berformance in kFLOP/s},\n";
+        break;
+      case benchmark_metric::perf_mflop_sec:        
+        os << "ylabel={Berformance in mFLOP/s},\n";
+        break;
+      case benchmark_metric::perf_gflop_sec:        
+        os << "ylabel={Berformance in gFLOP/s},\n";
+        break;
+      case benchmark_metric::perf_tflop_sec:        
+        os << "ylabel={Berformance in tFLOP/s},\n";
+        break;
+      case benchmark_metric::runtime_sec:
+        os << "ylabel={Runtime in seconds},\n";
+        break;
+      default:
+        throw std::runtime_error("Unsupported metric");
+      }
+      
+      os << "title={" << title << "},\n"
+         << "]";
+
+      for (auto it=results.cbegin(); it!=results.cend(); ++it)
+        os << "\\addplot table[x=threads,y="
+           << (*it)->get_label()
+           << "]{\\data"
+           << (*it)->get_label()
+           << "};\n";
+
+      os << "\\legend{";
+      for (auto it=results.cbegin(); it!=results.cend(); ++it)
+        os << (*it)->get_title() << (it!=results.cend()-1 ? "," : "");
+      os << "}\n"
+        
+         << "\\end{axis}\n"
+
+         << "\\path let \\p1=(MyAxis.west), \\p2=(MyAxis.east) in "
+         << "node[below right, align=left, text=black, text width=\\x2-\\x1]\n"
+         << "at ($(MyAxis.south west)+(0,-30pt)$) {%\n"
+         << "G+Smo " << gsCmdLine::getGismoVersion()
+         << ", Eigen " << gsCmdLine::getEigenVersion()
+         << " (" << gsCmdLine::getCompilerVersion()
+         << ", " << gsCmdLine::getCppVersion()
+         << ", " << gsCmdLine::getStdLibVersion()
+         << (gsCmdLine::getExtraLibsVersion().empty()
+             ? "), \n"
+             : gsCmdLine::getExtraLibsVersion()+"), \n")
+
+         << "CPU " << gsCmdLine::getCpuInfo() << ", "
+         << "Memory " << gsCmdLine::getMemoryInfo()  << ", ";
+
+      gsJITCompilerConfig jit; jit.load("config/jit.xml");
+      std::string flags = jit.getFlags();
+      os << "Compiler flags ";
+      
+      for (auto token=strtok(&flags[0], " "); token!=NULL; token=strtok(NULL, " ")) {
+        if (token[0]=='-') {
+          if (token[1]=='I' || token[1]=='L' || token[1]=='l' || token[1]=='W')
+            continue;
+          os << "\\verb!" << token << "! ";
+        }
+      }
+      
+      os << "};\n"
+           << "\\end{tikzpicture}\n";
+
+      return os;
+    }
+
+  private:
+    char id;
+    const std::string label,title;
+    std::vector< result_set* > results;
+  };
+
+public:
+  ~benchmark_latex()
+    {
+      for (auto it=benchmarks.begin(); it!=benchmarks.end(); ++it)
+        delete (*it);
+    }
+
+  benchmark_set* add_benchmark(const std::string& label,
+                               const std::string& title)
+  {
+    benchmarks.emplace_back(new benchmark_set(label, title));
+    return benchmarks.back();
+  }
+
+  const std::vector< benchmark_set* >& get_benchmarks() const
+  { return benchmarks; }
+
+  std::ostream &print(std::ostream &os) const
+  {
+    os << "\\documentclass[tikz]{standalone}\n"
+       << "\\usepackage{pgfplots}\n"
+       << "\\usepackage{verbatim}\n"
+       << "\\begin{document}\n"
+       << "\\usetikzlibrary{calc}\n";
+
+    for (auto it=benchmarks.cbegin(); it!=benchmarks.cend(); ++it)
+      (*it)->print(os);
+
+    os << "\\end{document}\n";
+    return os;
+  }
+
+private:
+  std::vector< benchmark_set* > benchmarks;
+};
+
+/// Print (as string) operator
+std::ostream &operator<<(std::ostream &os, const benchmark_latex& obj)
+{ return obj.print(os); }
+//! [Implement benchmark infrastructure]
+
 
 int main(int argc, char *argv[])
 {
   //! [Parse command line]
+  benchmark_latex latex;
   std::vector<int> nthreads, ssizes, dsizes, vsizes;
   std::string fn;
   int nruns=1;
@@ -608,7 +642,9 @@ int main(int argc, char *argv[])
   cmd.addString("o", "output", "Name of the output file", fn);
 
   try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+  //! [Parse command line]
 
+  //! [Default configuration]
   // If empty fill with 1, 2, 4, ..., maximum number of OpenMP threads
   if (nthreads.empty()) {
     for(int i=1; i<=omp_get_max_threads(); i*=2)
@@ -640,9 +676,9 @@ int main(int argc, char *argv[])
     vsizes.push_back(1e5);
     vsizes.push_back(1e6);
   }
+  //! [Default configuration]
 
-  benchmark_latex latex;
-  
+  //! [Execute benchmarks]
   {
     auto bm = latex.add_benchmark("memcopy", "memory copy");
     {
@@ -653,7 +689,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_memcopy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativememcopy",
-                          "native("+std::to_string(*it)+")",
+                          "native("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -667,7 +703,7 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_memcopy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigenmemcopy",
-                          "eigen("+std::to_string(*it)+")",
+                          "eigen("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -684,7 +720,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_dotproduct<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativedotproduct",
-                          "native("+std::to_string(*it)+")",
+                          "native("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -698,7 +734,7 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_dotproduct<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigendotproduct",
-                          "eigen("+std::to_string(*it)+")",
+                          "eigen("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -715,7 +751,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_axpy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativeaxpy",
-                          "native("+std::to_string(*it)+")",
+                          "native("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -729,7 +765,7 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_axpy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigenaxpy",
-                          "eigen("+std::to_string(*it)+")",
+                          "eigen("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -746,7 +782,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_dense_matmul<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativdensemvmul",
-                          "native("+std::to_string(*it)+")",
+                          "native("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -760,18 +796,22 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_dense_matmul<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigenmvmul",
-                          "eigen("+std::to_string(*it)+")",
+                          "eigen("+util::to_string((double)*it,0)+")",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
   }
-
+  
   if (fn.empty())
     gsInfo << latex << "\n";
   else {
-    //gsFileData<> fd; fd << latex << "\n"; fd.save(fn);
+    std::ofstream file;
+    file.open(fn);
+    file << latex << "\n";
+    file.close();
   }
-  
+  //! [Execute benchmarks]
+
   return  EXIT_SUCCESS;
 }
