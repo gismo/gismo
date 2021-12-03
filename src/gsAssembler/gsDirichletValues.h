@@ -416,4 +416,5 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
 } // computeDirichletDofsL2Proj
 
 
+
 }; // namespace gismo

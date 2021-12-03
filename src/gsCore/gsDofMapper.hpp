@@ -20,6 +20,7 @@ template<class T>
 void gsDofMapper::init( const gsMultiBasis<T> & bases, index_t nComp)
 {
     GISMO_ASSERT(nComp>0,"Zero components");
+    m_shift = m_bshift = 0;
     m_curElimId   = -1;
     m_numCpldDofs.assign(nComp+1, 1); m_numCpldDofs.front()=0;
     m_numElimDofs.assign(nComp+1,0);
@@ -42,6 +43,7 @@ template<class T>
 void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
 {
     const index_t numComp = bases.size();
+    m_shift = m_bshift = 0;
     m_curElimId   = -1;
     m_numCpldDofs.assign(numComp+1,1); m_numCpldDofs.front()=0;
     m_offset.clear();
@@ -126,6 +128,7 @@ template<class T>
 void gsDofMapper::initSingle( const gsBasis<T> & basis, index_t nComp)
 {
     GISMO_ASSERT(nComp>0,"Zero components");
+    m_shift = m_bshift = 0;
     m_curElimId   = -1;
     m_numFreeDofs.assign(nComp+1,basis.size()); m_numFreeDofs.front()=0;
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;

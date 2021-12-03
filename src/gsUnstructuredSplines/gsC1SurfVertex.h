@@ -775,7 +775,7 @@ public:
 
         for (size_t i = 0; i < auxGeom.size(); i++)
         {
-            for (index_t ii = 0; ii < auxGeom[i].getG1Basis().nPatches(); ii++)
+            for (size_t ii = 0; ii < auxGeom[i].getG1Basis().nPatches(); ii++)
             {
                 gsMatrix<> coefs_temp;
                 coefs_temp.setZero(auxGeom[i].getG1Basis().patch(ii).coefs().rows(),1);

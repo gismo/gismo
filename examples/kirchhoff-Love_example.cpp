@@ -1378,40 +1378,21 @@ int main(int argc, char *argv[])
     auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde; //[checked]
 
     // // For Neumann (same for Dirichlet/Nitsche) conditions
-    // auto g_N = A.getBdrFunction();
-    auto g_N = ff;
+    auto g_N = A.getBdrFunction(G);
+    // auto g_N = ff;
 
     real_t alpha_d = 1e3;
-    A.assembleLhsRhsBc
+    A.assemble
     (
+        bc.get("Weak Dirichlet")
+        ,
         alpha_d * u * u.tr()
         ,
         alpha_d * (u * (defG - G) - u * (g_N) )
-        ,
-        bc.container("Weak Dirichlet")
-    );
-
-    // for weak clamped
-    real_t alpha_r = 1e3;
-    A.assembleLhsRhsBc
-    (
-//        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
-//        +
-
-        alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val()
-        *
-        ( var2(u,u,defG,nv(G).tr()) )
-
-        +
-        alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
-        ,
-        alpha_r * ( sn(defG).tr()*sn(G) - sn(G).tr()*sn(G) ).val() * ( var1(u,defG) * sn(G) )
-        ,
-        bc.container("Weak Clamped")
     );
 
     // For Neumann conditions
-    A.assembleRhsBc(u * g_N * tv(G).norm(), bc.neumannSides() );
+    A.assemble(bc.get("Neumann"), u * g_N * tv(G).norm() );
 
     A.assemble(
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
@@ -1468,35 +1449,26 @@ int main(int argc, char *argv[])
                   E_m_der2
                     +
                   M_der * E_f_der.tr()
-                    +
-                  E_f_der2
+                    // +
+                  // E_f_der2
                   ) * meas(G)
                     -
                   pressure * u * var1(u,defG) .tr() * meas(G)
                 , u * F * meas(G) + pressure * u * sn(defG).normalized() * meas(G) - ( ( N * E_m_der.tr() + M * E_f_der.tr() ) * meas(G) ).tr()
                 );
 
-            A.assembleRhsBc(u * g_N * tv(G).norm(), bc.neumannSides() );
+            // Neumann term
+            A.assemble(bc.get("Neumann"), u * g_N * tv(G).norm() );
 
-            A.assembleLhsRhsBc
+            // Weak Dirichlet term
+            A.assemble
             (
+                bc.get("Weak Dirichlet")
+                ,
                 alpha_d * u * u.tr()
                 ,
                 -alpha_d * (u * (defG - G) - u * (g_N) )
-                ,
-                bc.container("Weak Dirichlet")
             );
-            A.assembleLhsRhsBc
-            (
-//                alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var2(u,u,defG,nv(G).tr()) )
-//                +
-                alpha_r * ( ( var1(u,defG) * nv(G) ) * ( var1(u,defG) * nv(G) ).tr() )
-                ,
-                -alpha_r * ( sn(defG).tr()*nv(G) - sn(G).tr()*nv(G) ).val() * ( var1(u,defG) * nv(G) )
-                ,
-                bc.container("Weak Clamped")
-            );
-
 
             // solve system
             solver.compute( A.matrix() );

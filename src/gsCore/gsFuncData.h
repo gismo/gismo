@@ -244,8 +244,9 @@ public:
 
     gsMatrix<T> points;     ///< input (parametric) points
 
-    gsMatrix<T> curvature, measures;
-    gsMatrix<T> fundForms;  // First fundumental forms
+    gsMatrix<T> measures;
+    gsMatrix<T> fundForms;  ///< Second fundumental forms
+    gsMatrix<T> jacInv;     ///< Inverse of the Jacobian matrix (transposed)
     gsMatrix<T> normals;
     gsMatrix<T> outNormals; // only for the boundary
 
@@ -261,9 +262,9 @@ public:
 
     inline matrixView fundForm(const index_t point) const
     {
-        GISMO_ASSERT(flags & NEED_GRAD_TRANSFORM,
-                   "fundForms are not computed unless the NEED_GRAD_TRANSFORM flag is set.");
-        return fundForms.reshapeCol(point, dim.second, dim.first);
+        GISMO_ASSERT(flags & NEED_2ND_FFORM,
+                   "fundForms are not computed unless the NEED_2ND_FFORM flag is set.");
+        return fundForms.reshapeCol(point, dim.first, dim.first);
     }
 
     inline constColumn normal(const index_t point) const

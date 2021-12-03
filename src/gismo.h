@@ -29,7 +29,7 @@ namespace gismo
 /** @namespace gismo::internal
 
     @brief
-    This namespace contains functionalities that is internal to the library.
+    This namespace contains functionalities that are internal to the library.
 */
 namespace internal
 { }
