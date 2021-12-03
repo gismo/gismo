@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
-        gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
+        gsInfo << "Write Paraview data to file ieti_result.pvd\n";
         gsPoissonAssembler<> assembler(
             mp,
             mb,
