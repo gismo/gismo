@@ -478,7 +478,7 @@ public:
         (*it)->print(os);
 
       os << "\\begin{tikzpicture}\n"
-         << "\\begin{axis}[\n"
+         << "\\begin{semilogyaxis}[\n"
          << "name=MyAxis,\n"
          << "width=\\textwidth,\n"
          << "height=.5\\textwidth,\n"
@@ -540,7 +540,7 @@ public:
         os << (*it)->get_title() << (it!=results.cend()-1 ? "," : "");
       os << "}\n"
         
-         << "\\end{axis}\n"
+         << "\\end{semilogyaxis}\n"
 
          << "\\path let \\p1=(MyAxis.west), \\p2=(MyAxis.east) in "
          << "node[below right, align=left, text=black, text width=\\x2-\\x1]\n"
@@ -675,6 +675,8 @@ int main(int argc, char *argv[])
     vsizes.push_back(1e4);
     vsizes.push_back(1e5);
     vsizes.push_back(1e6);
+    vsizes.push_back(1e7);
+    vsizes.push_back(1e8);
   }
   //! [Default configuration]
 
@@ -689,7 +691,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_memcopy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativememcopy",
-                          "native("+util::to_string((double)*it,0)+")",
+                          "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -703,7 +705,7 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_memcopy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigenmemcopy",
-                          "eigen("+util::to_string((double)*it,0)+")",
+                          "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -720,7 +722,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_dotproduct<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativedotproduct",
-                          "native("+util::to_string((double)*it,0)+")",
+                          "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -734,7 +736,7 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_dotproduct<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigendotproduct",
-                          "eigen("+util::to_string((double)*it,0)+")",
+                          "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -751,7 +753,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_axpy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativeaxpy",
-                          "native("+util::to_string((double)*it,0)+")",
+                          "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -765,7 +767,7 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_axpy<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigenaxpy",
-                          "eigen("+util::to_string((double)*it,0)+")",
+                          "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -782,7 +784,7 @@ int main(int argc, char *argv[])
           benchmark_c_array_dense_matmul<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("nativdensemvmul",
-                          "native("+util::to_string((double)*it,0)+")",
+                          "native("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
@@ -796,7 +798,7 @@ int main(int argc, char *argv[])
           benchmark_eigen_vector_dense_matmul<real_t> benchmark(*it);
           auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
           bm->add_results("eigenmvmul",
-                          "eigen("+util::to_string((double)*it,0)+")",
+                          "eigen("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
                           results);
         } catch(...) { gsInfo << "failed!"; }
       }
