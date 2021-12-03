@@ -13,7 +13,20 @@
 
 #pragma once
 
+#if defined(_WIN32) || defined(_WIN64)
+#   include <windows.h>
+#elif __APPLE__
+#   include <sys/utsname.h>
+#   include <sys/sysctl.h>
+#elif __linux__
+#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) )
+#      include <cpuid.h>
+#   endif
+#elif __unix__
+#endif
+
 #include <gsCore/gsForwardDeclarations.h>
+#include <Eigen/Core>
 
 namespace gismo
 {
@@ -247,6 +260,30 @@ public:
     /// Prints the version information
     static void printVersion();
 
+    /// Returns the version of G+Smo
+    static std::string getGismoVersion();
+
+    /// Returns the version of Eigen
+    static std::string getEigenVersion();
+
+    /// Returns the version of the compiler
+    static std::string getCompilerVersion();
+
+    /// Returns the version of the C++ standard
+    static std::string getCppVersion();
+
+    /// Returns the version of the standard library
+    static std::string getStdLibVersion();
+
+    /// Returns the version of extra libraries
+    static std::string getExtraLibsVersion();
+
+    /// Returns CPU information
+    static std::string getCpuInfo();
+
+    /// Returns memory information
+    static std::string getMemoryInfo();
+    
     /// Returns the program's description (as specified in the constructor)
     std::string& getMessage();
 
