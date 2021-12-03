@@ -19,6 +19,7 @@
 #include <gsCore/gsExport.h>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
+#include <gsCore/gsOpenMP.h>
 
 #ifdef __GNUC__ 
 #include <cxxabi.h>
@@ -56,6 +57,16 @@ std::string to_string(const C & value)
 {
     std::ostringstream convert;
     convert << value;
+    return convert.str();
+}
+
+/// \brief Converts value to string, assuming "operator<<" defined on C
+/// \ingroup Utils
+template<typename C>
+std::string to_string(const C & value, int digits)
+{
+    std::ostringstream convert;
+    convert << std::scientific << std::setprecision(digits) << value;
     return convert.str();
 }
 
