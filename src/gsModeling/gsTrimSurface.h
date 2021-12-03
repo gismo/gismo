@@ -242,11 +242,11 @@ public:
     /// Compute the unit normal vector of the trimmed surface at a point in the parameter domain
     gsMatrix<T> unitNormal(gsMatrix<T> point) const
     {
-      gsMatrix<T> Jacobian = m_surface->jacobian(point);
-      return Jacobian.col(0).template head<3>().cross(
-          Jacobian.col(1).template head<3>() ).normalized();
+        gsMatrix<T,3> Jacobian = m_surface->jacobian(point);
+        gsMatrix<T,3> res = Jacobian.col(0).cross(Jacobian.col(1)).normalized();
+        return res;
     }
-    
+
     /// sample standard unit normals along a trimming curve
     gsMatrix<T> sampleNormal(int loopNumber, int curveNumber, size_t npoints) const
     {

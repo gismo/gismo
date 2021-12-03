@@ -24,6 +24,7 @@ class ON_NurbsCurve;
 class ON_NurbsCage;
 class ON_Brep;
 class ON_MorphControl;
+class ON_Mesh;
 
 namespace gismo {
 
@@ -52,7 +53,10 @@ namespace extensions {
 
   /// Extracts a morph control object from OpenNurbs
   bool readON_MorphControl( const ON_MorphControl * pbrep   , internal::gsXmlTree & data  );
-  
+
+  /// Extracts a mesh object from OpenNurbs
+  bool readON_Mesh( const ON_Mesh * pbrep   , internal::gsXmlTree & data  );
+
 }
 
 }

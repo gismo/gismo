@@ -43,6 +43,8 @@ public:
     typedef memory::unique_ptr< gsMultiPatch > uPtr;
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
+    typedef std::map<boundaryInterface,typename gsGeometry<T>::uPtr>  InterfaceRep;
+    typedef std::map<patchSide,typename gsGeometry<T>::uPtr>         BoundaryRep;
 
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
@@ -301,13 +303,19 @@ public:
     /// \param points
     /// \param pids vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
-    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim) const;
+    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim, const T accuracy = 1e-6) const;
 
     /// @brief For each point in \a points located on patch pid1, locates the parametric coordinates of the point
     ///
     /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+
+    void constructInterfaceRep();
+    void constructBoundaryRep();
+
+    const InterfaceRep & interfaceRep() const { return m_ifaces; }
+    const BoundaryRep & boundaryRep() const { return m_bdr; }
     
 protected:
 
@@ -317,6 +325,9 @@ protected:
 private:
 
     PatchContainer m_patches;
+
+    InterfaceRep m_ifaces;
+    BoundaryRep m_bdr;
 
 private:
     // implementation functions

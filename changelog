@@ -61,3 +61,22 @@ v0.8.4 (https://github.com/gismo/gismo/releases/tag/v0.8.4)
   - gsMesh, fixed gsMesh::cleanMesh, fixed copy constructor
   - -Wextra and -Wunused_parameter Warnings
   - Several bug-fixes
+
+v21.12.0 (https://github.com/gismo/gismo/releases/tag/v21.12.0)
+------
+* NEW
+  - Change versioning scheme to YEAR.MONTH
+  - New docker builders
+  - Added submodule system with automated download and deployment
+  - New optional submodules: gsElasticity, gsExaStencils, gsCodiPack, gsCompFlow, gsStructuralAnalysis, gsKLShell, gsMultiPrecision, gsSpectra, gsOpenCascade, gsUnum
+  - Added reader for IGES files
+  - New example files and codes: gsMakeMultiPatch, ieti_example, ieti2_example, kirchhoff-Love_example, quadrature_example, quasiInterpolation_example, constrained_fitting
+  - Few new assemblers and better patch interface computations
+  - New modules included in the sources: gsIeti module, gsMsplines module
+* IMPROVED
+  - Improved FindXX.cmake and other CMake scripts
+  - Better unit-tests
+  - Advanced Doxygen documentation
+  - Better CI testing on several platforms (added gitlab-ci, Jenkins, upgraded ctest_script.cmake)
+  - Removed deprecated classes (eg. gsGeometryEvaluator,gsNorms)
+  - Fix many warnings and other issues

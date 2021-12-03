@@ -132,6 +132,14 @@ public:
         return typename gsVector<T,3>::Base(x, y, z);
     }
 
+    template<class iterator> void
+    assign(iterator from, iterator to)
+    {
+        this->resize(std::distance(from,to));
+        T * a = this->data();
+        for(iterator it = from; it!=to; ++it) *(a++) = *it;
+    }
+
 /*
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
