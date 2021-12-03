@@ -217,7 +217,6 @@ private:
 
     template<typename... Ts>
     void _parse_tuple (const std::tuple<Ts...> &tuple) {_parse_tuple_i<0>(tuple);}
-    //template<> void _parse_tuple<> (const std::tuple<> &) { }
 
 public:
 
@@ -264,7 +263,7 @@ public:
             gsInfo<< "mdata2: "  << iface().m_mdata.size()<<"\n";
             gsInfo<< "cdata2: "  << iface().m_cdata.size()<<"\n";
         }
-        */
+        //*/
     }
 //#endif
 
@@ -280,8 +279,7 @@ public:
     void add(const expr::gsComposition<T> & sym)
     {
         //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
-        //register the map
-        add(sym.inner());
+        add(sym.inner());//the map
         sym.inner().data().flags |= NEED_VALUE;
         if (nullptr==sym.m_fs)
         {
@@ -360,18 +358,6 @@ public:
                 gsWarn<<"\nSomething went wrong here (add symbol_expr).\n";
         }
     }
-
-    // template <class E>
-    // void add(expr::avg_expr<E> & avg)
-    // {
-    //     // avg(u) * avg(g) // specialize * op ???
-    //     // how about nv(.)
-
-    //     // ??mode B11,B12,B21,B22
-    //     avg.parse(*this); // pass a state: now you are left/right
-    //     // OR
-    //     avg.parse(this->iface());
-    // }
 
     void precompute(const index_t patchIndex = 0,
                     boundary::side bs = boundary::none)
