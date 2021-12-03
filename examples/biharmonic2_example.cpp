@@ -233,13 +233,17 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush; // Linear solving done
 
         timer.restart();
-        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+        //linferr[r] = ev.max( f-s ) / ev.max(f);
+
+        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ); // / ev.integral(f.sqNorm()*meas(G)) );
         
         h1err[r]= l2err[r] +
-            math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+            math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( igrad(f).sqNorm()*meas(G) ) );
 
         h2err[r]= h1err[r] +
-                 math::sqrt(ev.integral( ( ihess(u_ex) - ihess(u_sol,G) ).sqNorm() * meas(G) ));
+                 math::sqrt(ev.integral( ( ihess(u_ex) - ihess(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( ihess(f).sqNorm()*meas(G) )
+
+
 
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
@@ -281,22 +285,12 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Plotting in Paraview...\n";
         ev.options().setSwitch("plot.elements", false);
+        ev.options().setInt   ("plot.npts"    , 1000);
         ev.writeParaview( u_sol   , G, "solution");
         //ev.writeParaview( u_ex    , G, "solution_ex");
-        //ev.writeParaview( u, G, "aa");
-/*
-        gsMatrix<real_t> solFull;
-        u_sol.extractFull(solFull);
-
-        // 3. Make the mapped spline
-        gsMappedSpline<2,real_t> mspline(bb2,solFull);
-
-        // 4. Plot the mapped spline on the original geometry
-        gsField<> solField(mp, mspline,true);
-        gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( solField, "Deformation", 1000, false);
-*/
-        //gsFileManager::open("solution.pvd");
+        //ev.writeParaview( grad(s), G, "solution_grad");
+        //ev.writeParaview( grad(f), G, "solution_ex_grad");
+        //ev.writeParaview( (f-s), G, "error_pointwise");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "

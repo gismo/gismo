@@ -314,8 +314,9 @@ public:
         std::vector<index_t> temp, rtemp;
         m_basis->addLocalIndizesOfPatchSide(patchSide(m_index,s),offset,temp);
         m_basis->getMapper().sourceToTarget(temp,rtemp);
-/*
-        if (offset == 1)
+
+        // Better way for offset one: compute (anchors()) the normal derivatives at the boundary and return the indices
+        if (offset == 1) // Small fix
         {
             GISMO_ASSERT(offset==1, "The indizes of boundaryOffset(s,1) "
                                     "will be substract from boundaryOffset(s,0)");
@@ -329,7 +330,7 @@ public:
                         std::inserter(diff, diff.begin()));
             rtemp = diff;
         }
-*/
+
         return makeMatrix<index_t>(rtemp.begin(),rtemp.size(),1 );
     }
     
