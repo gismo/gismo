@@ -388,10 +388,10 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
             if ( tarDim == domDim && tarDim!=-1 )
                 gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
-                        = jacT.inverse();
+                        = jacT.cramerInverse();
             else
                 gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
-                        = jacT.transpose()*(jacT*jacT.transpose()).inverse();
+                        = jacT.transpose()*(jacT*jacT.transpose()).cramerInverse();
         }
     }
 

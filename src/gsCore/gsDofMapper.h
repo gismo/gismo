@@ -99,9 +99,8 @@ public:
      */
     template<class T>
     gsDofMapper(const gsMultiBasis<T> & bases, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
-      init(bases, nComp);
+        init(bases, nComp);
     }
 
     /**
@@ -113,7 +112,7 @@ public:
     template<class T>
     gsDofMapper(
         std::vector<const gsMultiBasis<T> *> const & bases
-        ) : m_shift(0), m_bshift(0)
+        )
     {
         init(bases);
     }
@@ -127,7 +126,6 @@ public:
      */
     template<class T>
     gsDofMapper(const gsBasis<T> & basis, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
       initSingle(basis, nComp);
     }
@@ -139,7 +137,6 @@ public:
      * @param patchDofSizes
      */
     gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
         initPatchDofs(patchDofSizes, nComp);
     }

@@ -125,12 +125,10 @@ public:
 #if __cplusplus >= 201402L || _MSVC_LANG >= 201402L // c++14
 #  define MatExprType  auto
 #  define AutoReturn_t auto
-#  define GS_CONSTEXPR constexpr
 //note: in c++11 auto-return requires -> decltype(.)
 #else // 199711L, 201103L
 #  define MatExprType typename gsMatrix<real_t>::constRef
 #  define AutoReturn_t typename util::conditional<ScalarValued,real_t,MatExprType>::type
-#  define GS_CONSTEXPR
 #endif
 
 template <class E> struct is_arithmetic{enum{value=0};};
@@ -279,7 +277,6 @@ public:
     { return static_cast<E const&>(*this).cardinality_impl(); }
 
     static index_t cardinality_impl() { return 1; }
-    //static index_t cardinality_impl() { return static_cast<E const&>(*this).rowVar().cardinality_impl(); }
 
     ///\brief Returns true iff the expression is scalar-valued.
     /// \note This is a runtime check, for compile-time check use E::ScalarValued
@@ -369,21 +366,20 @@ public:
 
     friend class gismo::gsExprHelper<Scalar>;
 protected:
-    //const gsFuncData<Scalar>    * m_fd2; // more data when needed
     const gsFunctionSet<Scalar> * m_fs; ///< Evaluation source for this FE variable
     const gsFuncData<Scalar>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
-
-    bool m_isAcross;
+    bool m_isAcross; ///< true when this expression is evaluated across an interface
 
 public:
 
+    /// Returns whether this expression is evaluated across an interface
     bool isAcross() const { return m_isAcross; }
-
+    
     E right() const
     {
         E ac(this->derived());
-        ac.m_fs = m_fs;
+        ac.m_fs = m_fs;//needed?
         ac.m_isAcross = true;
         return ac;
     }
@@ -422,21 +418,15 @@ public:
     void setSource(const gsFunctionSet<Scalar> & fs) { m_fs = &fs;}
 
 private:
-
     void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
-//    void setMap(const gsMapData<Scalar> & val) { m_md = &val;}
     void setDim(index_t _d) { m_d = give(_d); }
     void clear() { m_fs = NULL; }
-    // gsFuncData<Scalar> & data() {return *m_fd;}
-    // gsMapData<Scalar> & mapData() {return *m_md;}
 
 protected:
-
     explicit symbol_expr(index_t _d)
     : m_fs(NULL), m_fd(NULL), m_d(_d), m_isAcross(false) { }
 
 public:
-
     bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }
 
     // component
@@ -472,11 +462,7 @@ public:
     index_t targetDim() const { return m_fs->targetDim(); }
 
     /// Returns the parameter domain dimension the FE variable
-    index_t parDim() const
-    {
-        return m_fs->domainDim();
-        //return m_fd->dim.first;
-    }
+    index_t parDim() const { return m_fs->domainDim(); }
 
     index_t cSize()  const
     {
@@ -555,7 +541,7 @@ class gsGeometryMap : public _expr<gsGeometryMap<T> >
     const gsMapData<T>     * m_fd; ///< Temporary variable storing flags and evaluation data
     //index_t d, n;
 
-    bool m_isAcross;
+    bool m_isAcross; ///< true when the patch evaluated is across an interface
 
 public:
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
@@ -570,7 +556,13 @@ public:
         return ac;
     }
 
-    gsGeometryMap left() const { return gsGeometryMap(*this); }
+    gsGeometryMap left() const
+    {
+        gsGeometryMap ac;
+        ac.m_fs = m_fs;
+        ac.m_isAcross = false;
+        return ac;
+    }
 
     /// Returns the function source
     const gsFunctionSet<T> & source() const {return *m_fs;}
@@ -590,7 +582,8 @@ public:
 
     void print(std::ostream &os) const { os << "G"; }
 
-    MatExprType eval(const index_t k) const { return m_fd->values[0].col(k); }
+    auto eval(const index_t k) const -> decltype(m_fd->values[0].col(k))
+    { return m_fd->values[0].col(k); }
 
 protected:
 
@@ -739,7 +732,7 @@ protected:
 public:
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    AutoReturn_t eval(const index_t k) const
+    auto eval(const index_t k) const ->decltype(this->m_fd->values[0].col(k))
     { return this->m_fd->values[0].col(k); }
 
     const gsGeometryMap<T> & inner() const { return _G;};
@@ -750,7 +743,6 @@ public:
         evList.add(*this);
         this->data().flags |= NEED_VALUE;
         //_G.data().flags  |= NEED_VALUE; //done in gsExprHelper
-        //gsDebug<<"With map values "<< &_G.data() <<"\n";
     }
 };
 
@@ -794,11 +786,6 @@ public:
     inline const gsMatrix<T> & fixedPart() const {return m_sd->fixedDofs;}
     gsMatrix<T> & fixedPart() {return m_sd->fixedDofs;}
 
-    //const bcRefList & bc() const { return m_bcs; }
-    //void addBc(bcRefList bc) const { m_bcs = bc; }
-    //void clearBc() const { m_bcs.clear(); }
-    //size_t bcSize() const { return m_bcs.size(); }
-
     index_t   id() const {return m_sd->id;}
     void setSpaceData(gsFeSpaceData<T>& sd) {m_sd = &sd;}
 
@@ -808,9 +795,9 @@ public:
         GISMO_ASSERT(_r>-2 && _r<1, "Invalid or not implemented (r="<<_r<<").");
         return m_sd->cont = _r;
     }
-
-    //void getFunction(const gsMatrix<T>& solVector, gsMultiPatch<T>& result);
-    //gsAsFunction<T> asFunction (const gsMatrix<T>& solVector);
+    
+    gsFeSolution<T> function(const gsMatrix<T>& solVector) const
+    { return gsFeSolution<T>(*this); }
 
     void getCoeffs(const gsMatrix<T>& solVector, gsMatrix<T> & result,
                    const index_t p = 0) const
@@ -1043,13 +1030,13 @@ public:
         else
         {
             GISMO_ASSERT( 0 == bc.size(), "Problem: BCs are ignored.");
-            m_sd->mapper.setIdentity(this->source().nPieces(), this->source().size());
+            m_sd->mapper.setIdentity(this->source().nPieces(),
+                                     this->source().size(), this->dim());
         }
 
         m_sd->mapper.finalize();
 
-        // No more BCs
-        //m_bcs = bc.get("Dirichlet");
+        // Compute Dirichlet node values
         gsDirichletValues(bc, dir_values, *this);
 
         // corner values (overrides edge BCs)
@@ -1083,10 +1070,8 @@ class gsFeSolution : public _expr<gsFeSolution<T> >
 {
 protected:
     const gsFeSpace<T> _u;
-
     gsMatrix<T> * _Sv; ///< Pointer to a coefficient vector
-
-    bool m_isAcross;
+    bool m_isAcross; ///< true when this expression is evaluated across an interface
 
 public:
     typedef T Scalar;
@@ -1133,7 +1118,12 @@ public:
         return res;
     }
 
+    //template<class U>
+    //linearComb(U & ie){ sum up ie[_u] times the _Sv  }
+    // ie.eval(k), _u.data().actives(), fixedPart() - see lapl_expr
+    
     index_t rows() const {return _u.dim(); }
+
     static index_t cols() {return 1; }
 
     void parse(gsExprHelper<Scalar> & evList) const
@@ -1165,7 +1155,7 @@ public:
     const gsMatrix<T> & coefs() const { return *_Sv; }
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
 
-    /// Extract the coefficients of piece piece \a p
+    /// Extract the coefficients of piece \a p
     void extract(gsMatrix<T> & result, const index_t p = 0) const
     { _u.getCoeffs(*_Sv, result, p); }
 
@@ -1264,12 +1254,9 @@ public:
     enum {Space = (E::Space==0?0:(E::Space==1?2:1))};
 
     mutable Temporary_t res;
-
-    //MatExprType eval(const index_t k) const
     const Temporary_t & eval(const index_t k) const
     {
         //return _u.eval(k).transpose();
-        // /*
         if (E::ColBlocks)
         {
             res = _u.eval(k).blockTranspose( _u.cardinality() ); return res;
@@ -1280,7 +1267,6 @@ public:
             res = _u.eval(k).transpose(); return res;
             //return _u.eval(k).blockTranspose(1); // buggy ?
         }
-        //*/
     }
 
     index_t rows() const { return _u.cols(); }
@@ -1329,7 +1315,6 @@ public:
 
     mutable gsMatrix<Scalar> ev, res;
 
-    //MatExprType eval(const index_t k) const
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         //return _u.eval(k).transpose();
@@ -1384,7 +1369,6 @@ public:
             GISMO_ERROR("Cardinality for cb_expr cannot be determined.");
 
         return cardinality;
-        // return _u.cardinality_impl();
     }
 
     void print(std::ostream &os) const { os<<"{"; _u.print(os); os <<"}"; }
@@ -1406,16 +1390,13 @@ public:
     : _u(u) { }
 
 public:
-    enum {ScalarValued = E::ScalarValued, ColBlocks = E::ColBlocks};
-    enum {Space = E::Space};
+    enum {Space = E::Space, ScalarValued = E::ScalarValued,
+        ColBlocks = E::ColBlocks};
 
     // template<bool S  = ColBlocks>
     // typename util::enable_if<S,MatExprType>::type
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        //GISMO_ERROR("NO!");
-        //If not printing then it inlines, otheriwise NOT
-        //gsInfo<<"* * * * * * * * * * * * * * * * Making tmp\n";
         tmp = _u.eval(k);
         return tmp;
     }
@@ -1453,10 +1434,8 @@ public:
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        // Assume mat ??
-        MatExprType tmp = _u.eval(k);
+        auto tmp = _u.eval(k);
         const index_t cb = _u.rows();
-        // const index_t r  = _u.cols() / cb;
         const index_t r  = _u.cardinality();
         res.resize(r, 1);
         for (index_t i = 0; i!=r; ++i)
@@ -1503,8 +1482,7 @@ public:
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        // Assume mat ??
-        MatExprType tmp = _u.eval(k);
+        auto tmp = _u.eval(k);
         const index_t cb = _u.rows();
         const index_t r  = _u.cols() / cb;
         res.resize(_u.rows(),_u.cols());
@@ -1593,7 +1571,7 @@ public:
     {
     }
 
-    MatExprType eval(const index_t k) const
+    auto eval(const index_t k) const -> decltype(tmp.replicate(_n,_m))
     {
         tmp = _u.eval(k);
         return tmp.replicate(_n,_m);
@@ -1756,7 +1734,7 @@ GISMO_EXPR_VECTOR_EXPRESSION(sqNorm,squaredNorm,1);
 /// Normalization of a vector to unit measure
 GISMO_EXPR_VECTOR_EXPRESSION(normalized,normalized,0); // (!) mem.
 /// Inverse of a matrix expression
-GISMO_EXPR_VECTOR_EXPRESSION(inv,inverse,0);
+GISMO_EXPR_VECTOR_EXPRESSION(inv,cramerInverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(cwSqr,array().square,0)
 // GISMO_EXPR_VECTOR_EXPRESSION(sum,array().sum,1)
 // GISMO_EXPR_VECTOR_EXPRESSION(sqrt,array().sqrt,0)
@@ -1788,9 +1766,9 @@ public:
 
 public:
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        MatExprType m = _u.eval(k);
+        auto m = _u.eval(k);
         const index_t r = m.rows();
         const index_t c = m.cols();
         res.resize(r,r*c);
@@ -2017,8 +1995,8 @@ public:
         const index_t r   = _u.rows();
         const index_t N  = _v.cols() / (r*r);
 
-        const MatExprType uEv        = _u.eval(k);
-        const MatExprType vEv  = _v.eval(k);
+        const auto uEv  = _u.eval(k);
+        const auto vEv  = _v.eval(k);
 
         res.resize(r, N*r*r);
         // gsDebugVar(res.cols());
@@ -2070,19 +2048,17 @@ public:
     // choose if ColBlocks
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        const index_t r   = _u.rows();
+        const index_t r  = _u.rows();
         const index_t N  = _v.cols() / (r*r);
 
-        const MatExprType uEv        = _u.eval(k);
-        const MatExprType vEv  = _v.eval(k);
+        const auto uEv  = _u.eval(k);
+        const auto vEv  = _v.eval(k);
 
         res.resize(r, N*r*r);
-        // gsDebugVar(res.cols());
         for (index_t s = 0; s!=r; ++s)
             for (index_t i = 0; i!=N; ++i)
             {
                 res.middleCols((s*N + i)*r,r).noalias() =
-                    //uEv.col(s) * vEv.middleCols((s*N + i)*r,r).row(s);
                     uEv.transpose()*vEv.middleCols((s*N + i)*r,r).transpose();
             }
         //meaning: [Jg Jg Jg] * Jb ..
@@ -2286,7 +2262,6 @@ public:
                     res.row(c) +=
                         _u.fixedPart().at( map.global_to_bindex(ii) ) *
                         _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
-                        // _u.data().values[1].col(k).segment(i*_u.parDim(), _u.parDim()).transpose();
                 }
             }
         }
@@ -2341,11 +2316,7 @@ public:
         return res;
     }
 
-    index_t rows() const
-    {
-        //return _u.data().values[0].rows();
-        return _u.source().domainDim();
-    }
+    index_t rows() const { return _u.source().domainDim(); }
 
     index_t cols() const { return _u.source().domainDim()*_u.rows(); }
 
@@ -2463,8 +2434,7 @@ public:
 
 /// The nabla2 (\f$\nabla^2\f$) of a finite element variable
 template<class T>
-nabla2_expr<T> nabla2(const gsFeVariable<T> & u)
-{ return nabla2_expr<T>(u); }
+nabla2_expr<T> nabla2(const gsFeVariable<T> & u) { return nabla2_expr<T>(u); }
 // #define lapl(x) nabla2(x).sum() // assume tarDim==1
 
 /**
@@ -2482,10 +2452,8 @@ public:
 
     onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    MatExprType eval(const index_t k) const
-    {
-        return _G.data().outNormals.col(k);
-    }
+    auto eval(const index_t k) const -> decltype(_G.data().outNormals.col(k))
+    { return _G.data().outNormals.col(k); }
 
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
@@ -2521,10 +2489,8 @@ public:
 
     normal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
-    MatExprType eval(const index_t k) const
-    {
-        return _G.data().normals.col(k);
-    }
+    auto eval(const index_t k) const -> decltype(_G.data().normals.col(k))
+    { return _G.data().normals.col(k); }
 
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
@@ -2613,7 +2579,7 @@ public:
 
     lapl_expr(const E & u) : _u(u) { }
 
-    MatExprType eval(const index_t k) const
+    auto eval(const index_t k) const -> decltype(_u.data().laplacians.col(k))
     {
         // numActive x 1
         return _u.data().laplacians.col(k);
@@ -2698,7 +2664,6 @@ public:
     enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
 
     fform2nd_expr(const gsGeometryMap<T> & G) : _G(G) { }
-
 
     const gsAsConstMatrix<Scalar> eval(const index_t k) const
     {
@@ -3142,7 +3107,7 @@ public:
     curl_expr(const gsFeVariable<T> & u) : _u(u)
     { GISMO_ASSERT(3==u.dim(),"curl(.) requires 3D variable."); }
 
-    MatExprType eval(const index_t k) const
+    const gsMatrix<T> & eval(const index_t k) const
     {
         res.setZero( rows(), _u.dim());
         const index_t na = _u.data().values[0].rows();
@@ -3270,8 +3235,8 @@ public:
         const index_t uc = _u.cols();
         const index_t ur = _u.rows();
         const index_t nb = _u.cardinality();
-        const MatExprType tmpA = _u.eval(k);
-        const MatExprType tmpB = _v.eval(k);
+        const auto tmpA = _u.eval(k);
+        const auto tmpB = _v.eval(k);
 
         const index_t vc = _v.cols();
 
@@ -3400,8 +3365,8 @@ public:
     eval(const index_t k) const
     {
         const index_t nb = rows();
-        const MatExprType tmpA = _u.eval(k);
-        const MatExprType tmpB = _v.eval(k);
+        const auto tmpA = _u.eval(k);
+        const auto tmpB = _v.eval(k);
 
         if (E1::ColBlocks)
         {
@@ -3490,8 +3455,8 @@ public:
         // assert _u.size()==_v.size()
         const index_t rb = _u.rows(); //==cb
         const index_t nb = _u.cols() / rb;
-        MatExprType A = _u.eval(k);
-        MatExprType B = _v.eval(k);
+        auto A = _u.eval(k);
+        auto B = _v.eval(k);
         res.resize(nb, nb);
         for (index_t i = 0; i!=nb; ++i) // all with all
             for (index_t j = 0; j!=nb; ++j)
@@ -3548,8 +3513,8 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
         // assert _u.size()==_v.size()
-        MatExprType A = _u.eval(k);
-        MatExprType B = _v.eval(k);
+        auto A = _u.eval(k);
+        auto B = _v.eval(k);
         const index_t rb = A.rows(); //==cb
         const index_t nb = A.cols() / rb;
         res.resize(nb, 1);
@@ -3774,9 +3739,9 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        MatExprType sl   = _u.eval(k);
+        auto sl   = _u.eval(k);
         const index_t sr = sl.rows();
-        MatExprType ml   = _M.eval(k);
+        auto ml   = _M.eval(k);
         const index_t mr = ml.rows();
         const index_t mb = ml.cols() / mr;
 
@@ -3948,98 +3913,9 @@ public:
    symm(_expr<E> const& u) { return symm_expr<E>(u);}
 */
 
-/*
-  Expression for computing average value on an interface
-*/
-template <typename E>
-class avg_expr : public _expr<avg_expr<E> >
-{
-    E _u1, _u2;
-    bool _lr; //true: first, false: second
-
-public:
-    enum {ScalarValued = E::ScalarValued, ColBlocks = E::ColBlocks};
-    enum {Space = E::Space};
-
-    typedef typename E::Scalar Scalar;
-
-    avg_expr(_expr<E> const& u) : _u1(u), _u2(u), _lr(true) { }
-
-    mutable Temporary_t res;
-    const Temporary_t & eval(const index_t k) const
-    {
-        // avg(u) * jump(v)
-        //= (uL + uR)/2 * (vL - vR)
-        //= uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2
-        //= uL*(vL-vR)/2 + uR*(vL-vR)/2
-        //= (uL + uR)*vL/2  - (uL - uR)*vR/2
-        //Therefore, avg(u) * jump(v) becomes
-        //4 individual expressions
-        //.assemble(u.left()*v.left()/2, - u.left()*v.right()/2, u.right()*v.left()/2, - u.right()*v.right()/2);
-        //(blocks seprated)
-
-        //Left side
-        // uL*vL/2 - uL*vR/2
-        //Right side
-        // uR*vL/2 - uR*vR/2
-        // push(*,*)
-        //[ B11 B21 ]
-        //[ B12 B22 ]
-
-
-        // avg(u)*n(G)
-
-        // Trial/test: Space (=1/2)
-        //to do: nv(G) should be lr-enabled
-
-        if (0==Space) // This is  an average of values
-            res= (_u1.eval(k)+_u2.eval(k)) / (Scalar)(2);
-        else//Space=1 or 2. lr: true=first, false=second(iface)
-            res= (_lr ? _u1.eval(k) : _u2.eval(k) ) / (Scalar)(2);
-        return res;
-    }
-
-    // testSide:T/F, trialSide: T/F
-    void setTestSide(bool lr)
-    {   //true: first, false: second
-        if (Space==1)
-            _lr = lr;
-    }
-    void setTrialSide(bool lr)
-    {   //true: first, false: second
-        if (Space==2)
-            _lr = lr;
-    }
-
-    index_t rows() const { return (_lr ? _u1.rows() : _u2.rows()); }
-    index_t cols() const { return (_lr ? _u1.cols() : _u2.cols()); }
-
-    void parse(gsExprHelper<Scalar> & evList) const
-    {
-        gsDebug<<"+ Add AVG\n";
-        // added on both sides
-        evList.add(_u1);
-        _u1.parse(evList);
-        evList.iface().add(_u2);
-        _u2.parse(evList.iface());
-    }
-
-    const gsFeSpace<Scalar> & rowVar() const
-    { return (_lr ? _u1.rowVar() : _u2.rowVar()); }
-    const gsFeSpace<Scalar> & colVar() const
-    { return (_lr ? _u1.colVar() : _u2.colVar()); }
-
-    void print(std::ostream &os) const
-    { os << "avg("; _u1.print(os); os << ")";}
-};
-
 #undef MatExprType
 #undef AutoReturn_t
 //----------------------------------------------------------------------------------
-
-/// The average
-template<class E> EIGEN_STRONG_INLINE
-avg_expr<E> avg(const E & u) { return avg_expr<E>(u); }
 
 // Returns the unit as an expression
 //EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t>(1); }
@@ -4201,17 +4077,14 @@ operator-(typename E2::Scalar const& s, _expr<E2> const& v)
 }
 
 
-//----------------------------------------------------------------------------------
-#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L
-
 // Shortcuts for common quantities, for instance function
 // transformations by the geometry map \a G
 #define GISMO_SHORTCUT_VAR_EXPRESSION(name,impl) template<class E> EIGEN_STRONG_INLINE \
-    auto name(const E & u) { return impl; }
+    auto name(const E & u) -> decltype(impl) { return impl; }
 #define GISMO_SHORTCUT_MAP_EXPRESSION(name,impl) template<class T> EIGEN_STRONG_INLINE \
-    auto name(const gsGeometryMap<T> & G) { return impl; }
+    auto name(const gsGeometryMap<T> & G)  -> decltype(impl) { return impl; }
 #define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) template<class E> EIGEN_STRONG_INLINE \
-    auto name(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return impl; }
+    auto name(const E & u, const gsGeometryMap<typename E::Scalar> & G)  -> decltype(impl) { return impl; }
 
 // Divergence
 GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace() )
@@ -4234,59 +4107,6 @@ GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
 
-#else
-// note for C++11 and older: to fix
-//error: could not convert .. from ‘A' to 'B'
-// we need to update the return type from B to A
-
-#define GISMO_SHORTCUT_VAR_EXPRESSION(name,impl)    \
-    name(const E & u) { return impl; }
-#define GISMO_SHORTCUT_MAP_EXPRESSION(name,impl)        \
-    name(const gsGeometryMap<T> & G) { return impl; }
-
-//#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl) name(const gsFeVariable<T> & u, const gsGeometryMap<T> & G) { return impl; }
-#define GISMO_SHORTCUT_PHY_EXPRESSION(name,impl)                        \
-    name(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return impl; }
-
-// Divergence
-template<class E> EIGEN_STRONG_INLINE trace_expr<jac_expr<E> >
-GISMO_SHORTCUT_VAR_EXPRESSION(div, jac(u).trace() )
-
-    template<class T> EIGEN_STRONG_INLINE normalized_expr<onormal_expr<T> >
-    GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized() )
-
-//template<class T> EIGEN_STRONG_INLINE
-    template<class E> EIGEN_STRONG_INLINE
-    mult_expr<grad_expr<E>,jacInv_expr<typename E::Scalar>, 0>
-    GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv())
-
-    template<class E> EIGEN_STRONG_INLINE grad_expr<E> // u is presumed to be defined over G
-    GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u))
-
-    template<class E> EIGEN_STRONG_INLINE
-mult_expr<jac_expr<E>,jacInv_expr<typename E::Scalar>, 1>
-    GISMO_SHORTCUT_PHY_EXPRESSION(ijac, jac(u) * jac(G).ginv() )
-
-template<class E> EIGEN_STRONG_INLINE
-    trace_expr<mult_expr<jac_expr<E>,jacInv_expr<typename E::Scalar>, 1> >
-GISMO_SHORTCUT_PHY_EXPRESSION(idiv, ijac(u,G).trace() )
-
-template<class E> EIGEN_STRONG_INLINE
-mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 1>
-GISMO_SHORTCUT_PHY_EXPRESSION(ihess, jac(G).ginv().tr()*(hess(u)-summ(igrad(u,G),hess(G)))*jac(G).ginv() )
-
-template<class E> EIGEN_STRONG_INLINE trace_expr<
-    mult_expr<mult_expr<tr_expr<jacInv_expr<typename E::Scalar> >,sub_expr<hess_expr<E>,summ_expr<mult_expr<grad_expr<E>, jacInv_expr<typename E::Scalar>, 0>, hess_expr<gsGeometryMap<typename E::Scalar> > > >, 0>, jacInv_expr<typename E::Scalar>, 1>
-    >
-GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace() )
-
-template<class E> EIGEN_STRONG_INLINE hess_expr<E>
-GISMO_SHORTCUT_VAR_EXPRESSION(ihess, hess(u) )
-
-    template<class E> EIGEN_STRONG_INLINE trace_expr<hess_expr<E> >
-    GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
-
-#endif
 #undef GISMO_SHORTCUT_PHY_EXPRESSION
 #undef GISMO_SHORTCUT_VAR_EXPRESSION
 #undef GISMO_SHORTCUT_MAP_EXPRESSION
