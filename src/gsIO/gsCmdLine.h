@@ -21,6 +21,7 @@
 #elif __linux__
 #   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) )
 #      include <cpuid.h>
+#      include <unistd.h>
 #   endif
 #elif __unix__
 #endif

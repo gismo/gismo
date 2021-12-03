@@ -429,6 +429,8 @@ void gsCmdLine::printVersion()
            << ", " << getStdLibVersion()
            << ", eigen " << getEigenVersion()
            << (getExtraLibsVersion().empty() ? ")\n" : getExtraLibsVersion()+")\n");
+    gsInfo << "Running on " << getCpuInfo()
+           << " (memory " << getMemoryInfo() << ")\n";
     gsInfo << "web: http://github.com/gismo\n";
 }
 
@@ -943,7 +945,7 @@ std::string gsCmdLine::getCpuInfo()
   }
   
 #elif __linux__
-#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
+#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) )
 
   char CPUBrandString[0x40];
   unsigned int CPUInfo[4] = {0,0,0,0};
