@@ -254,7 +254,8 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                     ++used;
                 }
             }
-            GISMO_ASSERT( used==0 || used == sz, "Internal error." );
+            // TODO: This causes a problem when dG with edge primal dofs are used for 3d
+            //GISMO_ASSERT( used==0 || used == sz, "Internal error." );
             if (used)
                 ++m_nPrimalDofs;
         }

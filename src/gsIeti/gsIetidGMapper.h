@@ -62,7 +62,7 @@ public:
     /// The multibasis object has to outlive the ieti mapper
     gsIetidGMapper(
         const gsMultiBasis<T>& multiBasis,
-        gsDofMapper dofMapperGlobal,
+        gsDofMapper dofMapperOrig,
         const gsMatrix<T>& fixedPart,
         const std::vector<ArtificialIface>& artIfaces
     )
@@ -79,7 +79,7 @@ public:
     /// The multibasis object has to outlive the ieti mapper
     void init(
         const gsMultiBasis<T>& multiBasis,
-        gsDofMapper dofMapperGlobal,
+        gsDofMapper dofMapperOrig,
         const gsMatrix<T>& fixedPart,
         const std::vector<ArtificialIface>& artIfaces
     );
@@ -194,6 +194,14 @@ public:
         if (!includeIsolated) removeIsolatedPrimalConstraints(primals_old,primals_new);
     }
 
+    gsMatrix<T> constructGlobalSolutionFromLocalSolutions( const std::vector< gsMatrix<T> >& localContribs )
+    {
+        std::swap( m_dofMapperOrig, Base::m_dofMapperGlobal );
+        gsMatrix<T> result = Base::constructGlobalSolutionFromLocalSolutions( localContribs );
+        std::swap( m_dofMapperOrig, Base::m_dofMapperGlobal );
+        return result;
+    }
+
 public:
     // Make members of base clase accessible
     // Functions that are overwritten here have been commented out.
@@ -204,7 +212,7 @@ public:
     using Base::computeJumpMatrices;
     using Base::skeletonDofs;
     using Base::initFeSpace;
-    using Base::constructGlobalSolutionFromLocalSolutions;
+    //using Base::constructGlobalSolutionFromLocalSolutions;
     using Base::nLagrangeMultipliers;
     using Base::nPrimalDofs;
     using Base::primalConstraints;
@@ -230,7 +238,7 @@ private:
     /// The indicies of the basis of the foreign patch that belong to artificial interface
     /// Vector is assumed to be sorted. Same order as in m_artificialIfaces
     std::vector< std::vector< gsVector<index_t> > > m_ifaceIndices;      ///< TODO: docs
-    gsDofMapper                                   m_dofMapperMod;        ///< The modified dof mapper
+    gsDofMapper                                   m_dofMapperOrig;        ///< The original dof mapper
     std::vector<gsDofMapper>                      m_augmentedDofMapperLocal;     ///< The modified dof mapper, including the dofs for the neighboring patches
 };
 
@@ -269,6 +277,7 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
 
     m_artificialIfaces.resize(mb.nBases());
     m_ifaceIndices.resize(mb.nBases());
+    m_dofMapperOrig = give(dofMapperOrig);
 
     // We store them ordered
     index_t sz = artIfaces.size();
@@ -281,10 +290,10 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
     }
 
     // TODO: we can get rid of this assumption if we incorporate dofs that
-    // have been coupled into dofMapperOrig
-    GISMO_ASSERT( dofMapperOrig.coupledSize() == 0, "Not implemented." );
+    // have been coupled into m_dofMapperOrig
+    GISMO_ASSERT( m_dofMapperOrig.coupledSize() == 0, "Not implemented." );
 
-    const index_t nPatches = dofMapperOrig.numPatches();
+    const index_t nPatches = m_dofMapperOrig.numPatches();
 
     m_augmentedDofMapperLocal.clear();
     m_augmentedDofMapperLocal.reserve(nPatches);
@@ -297,28 +306,28 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
     {
         const index_t nArtIf = m_artificialIfaces[k].size();
         sizes[k].resize(1+nArtIf);
-        sizes[k][0]       = dofMapperOrig.patchSize(k);
-        subdomainSizes[k] = dofMapperOrig.patchSize(k);
+        sizes[k][0]       = m_dofMapperOrig.patchSize(k);
+        subdomainSizes[k] = m_dofMapperOrig.patchSize(k);
         for (index_t l=0; l<nArtIf; ++l)
         {
-            sizes[k][l+1]      = dofMapperOrig.patchSize( m_artificialIfaces[k][l].takenFrom.patch );
+            sizes[k][l+1]      = m_dofMapperOrig.patchSize( m_artificialIfaces[k][l].takenFrom.patch );
             subdomainSizes[k] += m_ifaceIndices[k][l].rows();
         }
         m_augmentedDofMapperLocal.push_back( gsDofMapper(sizes[k]) );
     }
 
-    m_dofMapperMod = gsDofMapper(subdomainSizes);
+    gsDofMapper dofMapperMod(subdomainSizes);
 
     for (index_t k=0; k<nPatches; ++k)
     {
-        const index_t patchDofs = dofMapperOrig.patchSize(k);
+        const index_t patchDofs = m_dofMapperOrig.patchSize(k);
         // Eliminate boundary dofs
         for (index_t i=0; i<patchDofs; ++i)
         {
-            const index_t idx = dofMapperOrig.index(i,k);
-            if (dofMapperOrig.is_boundary_index(idx))
+            const index_t idx = m_dofMapperOrig.index(i,k);
+            if (m_dofMapperOrig.is_boundary_index(idx))
             {
-                m_dofMapperMod.eliminateDof(i,k);
+                dofMapperMod.eliminateDof(i,k);
                 m_augmentedDofMapperLocal[k].eliminateDof(i,0);
             }
         }
@@ -332,12 +341,12 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
                 {
                     const index_t kk = m_artificialIfaces[k][l].takenFrom.patch;
                     const index_t ii = m_ifaceIndices[k][l][i];
-                    m_dofMapperMod.matchDof( k,idx, kk,ii );
+                    dofMapperMod.matchDof( k,idx, kk,ii );
 
-                    const index_t global_idx = dofMapperOrig.index(ii,kk);
-                    if (dofMapperOrig.is_boundary_index(global_idx))
+                    const index_t global_idx = m_dofMapperOrig.index(ii,kk);
+                    if (m_dofMapperOrig.is_boundary_index(global_idx))
                     {
-                        //m_dofMapperMod.eliminateDof(idx,k); // TODO: necessary?
+                        //dofMapperMod.eliminateDof(idx,k); // TODO: necessary?
                         m_augmentedDofMapperLocal[k].eliminateDof(ii,l+1);
                     }
                     ++idx;
@@ -362,21 +371,21 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
         }
         m_augmentedDofMapperLocal[k].finalize();
     }
-    m_dofMapperMod.finalize();
+    dofMapperMod.finalize();
 
-    gsMatrix<T> fixedPartMod(m_dofMapperMod.boundarySize(),1);
+    gsMatrix<T> fixedPartMod(dofMapperMod.boundarySize(),1);
     fixedPartMod.setZero();
 
     for (index_t k=0; k<nPatches; ++k)
     {
-        const index_t nDofs = dofMapperOrig.patchSize(k);
+        const index_t nDofs = m_dofMapperOrig.patchSize(k);
         for (index_t i=0; i<nDofs; ++i)
         {
-            const index_t idx = dofMapperOrig.index(i,k);
-            if (dofMapperOrig.is_boundary_index(idx))
+            const index_t idx = m_dofMapperOrig.index(i,k);
+            if (m_dofMapperOrig.is_boundary_index(idx))
             {
-                const index_t origBoundaryIdx = dofMapperOrig.bindex(i,k);
-                const index_t modBoundaryIdx = m_dofMapperMod.bindex(i,k);
+                const index_t origBoundaryIdx = m_dofMapperOrig.bindex(i,k);
+                const index_t modBoundaryIdx = dofMapperMod.bindex(i,k);
                 GISMO_ENSURE(origBoundaryIdx<fixedPart.rows(), "I knew it");
                 GISMO_ENSURE(modBoundaryIdx<fixedPart.rows(), "I knew it");
                 fixedPartMod(modBoundaryIdx,0) = fixedPart(origBoundaryIdx,0);
@@ -384,7 +393,7 @@ void gsIetidGMapper<T>::init( const gsMultiBasis<T>& mb, gsDofMapper dofMapperOr
         }
     }
 
-    Base::init( mb, m_dofMapperMod, fixedPartMod );
+    Base::init( mb, dofMapperMod, fixedPartMod );
 
 }
 
