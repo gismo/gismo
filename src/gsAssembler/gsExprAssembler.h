@@ -569,16 +569,23 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
     }
 } // setFixedDofs
 
+
 template<class T> void gsExprAssembler<T>::resetDimensions()
 {
+    if (!m_vcol.front()->valid()) m_vcol.front()->init();
+    if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
+        if (!m_vcol.front()->valid()) m_vcol.front()->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                     m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
+                                   m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
         if ( m_vcol[i] != m_vrow[i] )
+        {
+            if (!m_vrow.front()->valid()) m_vrow.front()->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                         m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
+                                       m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
+        }
     }
 }
 

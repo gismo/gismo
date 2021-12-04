@@ -69,6 +69,26 @@ template<class T> struct gsFeSpaceData
     gsDofMapper mapper;
     gsMatrix<T> fixedDofs;
     index_t cont; //int. coupling
+
+    bool valid() const
+    {
+        GISMO_ASSERT(nullptr!=fs, "Invalid pointer.");
+        return static_cast<size_t>(fs->size()*dim)==mapper.mapSize();
+    }
+
+    void init()
+    {
+        GISMO_ASSERT(nullptr!=fs, "Invalid pointer.");
+        if (const gsMultiBasis<T> * mb =
+            dynamic_cast<const gsMultiBasis<T>*>(fs) )
+            mapper = gsDofMapper(*mb, dim );
+        else if (const gsBasis<T> * b =
+                 dynamic_cast<const gsBasis<T>*>(fs) )
+            mapper = gsDofMapper(*b, dim );
+        mapper.finalize();
+        fixedDofs.clear();
+        cont = -1;
+    }
 };
 
 // Forward declaration in gismo namespace
@@ -969,7 +989,7 @@ public:
         else if (const gsBasis<T> * b =
                  dynamic_cast<const gsBasis<T>*>(&this->source()) )
         {
-            m_sd->mapper = gsDofMapper(*b);
+            m_sd->mapper = gsDofMapper(*b,this->dim());
             gsMatrix<index_t> bnd;
             for (typename gsBoundaryConditions<T>::const_iterator
                      it = bc.begin("Dirichlet") ; it != bc.end("Dirichlet"); ++it )
@@ -978,8 +998,8 @@ public:
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
                 bnd = b->boundary( it->ps.side() );
-                //const index_t cc = it->unkComponent();
-                m_sd->mapper.markBoundary(0, bnd, 0);
+                const index_t cc = it->unkComponent();
+                m_sd->mapper.markBoundary(0, bnd, cc);
             }
 
             m_sd->mapper = gsDofMapper(*b);
@@ -988,10 +1008,9 @@ public:
             {
                 GISMO_ASSERT( it->ps.patch == 0,
                               "Problem: a boundary condition is set on a patch id which does not exist.");
-
                 bnd = b->boundary( it->ps.side() );
-                //const index_t cc = it->unkComponent();
-                // m_sd->mapper.markBoundary(0, bnd, 0);
+                const index_t cc = it->unkComponent();
+                m_sd->mapper.markBoundary(0, bnd, cc);
             }
 
             m_sd->mapper = gsDofMapper(*b);
@@ -1002,8 +1021,8 @@ public:
                               "Problem: a boundary condition is set on a patch id which does not exist.");
 
                 bnd = b->boundary( it->ps.side() );
-                //const index_t cc = it->unkComponent();
-                // m_sd->mapper.markBoundary(0, bnd, 0);
+                const index_t cc = it->unkComponent();
+                m_sd->mapper.markBoundary(0, bnd, cc);
             }
         }
         else if (const gsMappedBasis<2,T> * mapb =

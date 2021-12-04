@@ -50,9 +50,9 @@ private:
     typedef typename CFuncData ::iterator CFuncDataIt;
 
     util::gsThreaded<gsMatrix<T> > m_points;
-    FuncData  m_fdata;
-    MapData   m_mdata;
-    CFuncData m_cdata;
+    FuncData  m_fdata;///< functions
+    MapData   m_mdata;///< maps
+    CFuncData m_cdata;///< compositions
 
     memory::shared_ptr<gsExprHelper> m_mirror;
 

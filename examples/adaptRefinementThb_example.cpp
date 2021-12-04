@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 
        // Get the element-wise norms.
        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-       std::vector<real_t> eltErrs  = ev.elementwise();
+       const std::vector<real_t> & eltErrs = ev.elementwise();
        //! [errorComputation]
 
        // --------------- adaptive refinement ---------------
@@ -183,21 +183,19 @@ int main(int argc, char *argv[])
        //! [adaptRefinementPart]
        // Mark elements for refinement, based on the computed local errors and
        // the refinement-criterion and -parameter.
-       std::vector<bool> elMarked( eltErrs.size() );
+       std::vector<bool> elMarked;
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
-
-       std::vector<bool> elCMarked( eltErrs.size() );
-       for (size_t k=0; k!=eltErrs.size(); k++)
-            eltErrs[k] = -eltErrs[k];
-
-       gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
-
-       for (size_t k=0; k!=elMarked.size(); k++)
-        gsInfo<<elMarked[k]<<"\t"<<elCMarked[k]<<"\n";
+       for (size_t k=0; k!=elMarked.size(); k++)  gsInfo<<" "<<elMarked[k];
+       gsInfo<<"\n";
 
        // Refine the marked elements with a 1-ring of cells around marked elements
        gsRefineMarkedElements( bases, elMarked, 1 );
-       gsUnrefineMarkedElements( bases, elCMarked, 1 );
+
+       // std::vector<bool> elCMarked;
+       // for (size_t k=0; k!=eltErrs.size(); k++) eltErrs[k] = -eltErrs[k];
+       //gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
+       //gsUnrefineMarkedElements( bases, elCMarked, 1 );
+
        //! [adaptRefinementPart]
 
 

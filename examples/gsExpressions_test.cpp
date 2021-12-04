@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     auto O = ev.getVariable(O_);
     auto o = ev.getVariable(o_);
 
-    auto el= ev.getElement();
+    //auto el= ev.getElement();
 
     gsMatrix<> result, exact, tmp;
     gsVector<> physpoint, point(2);

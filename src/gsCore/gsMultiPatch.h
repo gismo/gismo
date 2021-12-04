@@ -128,6 +128,16 @@ public:
 
     index_t size() const { return 1; }
 
+    /// Return the number of coefficients (control points)
+    index_t coefsSize() const
+    {
+        index_t sz = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+            sz += (*it)->coefsSize();
+        return sz;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
