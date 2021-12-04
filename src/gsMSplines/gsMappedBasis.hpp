@@ -82,7 +82,7 @@ short_t gsMappedBasis<d,T>::maxDegree() const
 }
 
 template<short_t d,class T>
-void gsMappedBasis<d,T>::addLocalIndizesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const
+void gsMappedBasis<d,T>::addLocalIndicesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const
 {
     int patch = ps.patch;
     int side  = ps.side();
@@ -103,7 +103,7 @@ void gsMappedBasis<d,T>::boundary(std::vector<index_t> & indices,unsigned offset
     locals.reserve(this->size());
     typedef std::vector< patchSide >::const_iterator b_const_iter;
     for(b_const_iter iter = m_topol.bBegin();iter!=m_topol.bEnd();++iter)
-        addLocalIndizesOfPatchSide(*iter,offset,locals);
+        addLocalIndicesOfPatchSide(*iter,offset,locals);
     sort( locals.begin(), locals.end() );
     locals.erase( unique( locals.begin(), locals.end() ), locals.end() );
     m_mapper->sourceToTarget(locals,indices);
@@ -118,9 +118,9 @@ void gsMappedBasis<d,T>::innerBoundaries(std::vector<index_t> & indices,unsigned
     for(i_const_iter iter = m_topol.iBegin();iter!=m_topol.iEnd();++iter)
     {
         patchSide firstPs = iter->first();
-        addLocalIndizesOfPatchSide(firstPs,offset,locals);
+        addLocalIndicesOfPatchSide(firstPs,offset,locals);
         patchSide secondPs = iter->second();
-        addLocalIndizesOfPatchSide(secondPs,offset,locals);
+        addLocalIndicesOfPatchSide(secondPs,offset,locals);
     }
     sort( locals.begin(), locals.end() );
     locals.erase( unique( locals.begin(), locals.end() ), locals.end() );

@@ -323,7 +323,7 @@ public:
 
             std::vector<index_t> diff, temp2, rtemp2;
 
-            m_basis->addLocalIndizesOfPatchSide(patchSide(m_index,s),0,temp2);
+            m_basis->addLocalIndicesOfPatchSide(patchSide(m_index,s),0,temp2);
             m_basis->getMapper().sourceToTarget(temp2,rtemp2);
             // Subtract the indizes of Offset = 0
             std::set_difference(rtemp.begin(), rtemp.end(), rtemp2.begin(), rtemp2.end(),

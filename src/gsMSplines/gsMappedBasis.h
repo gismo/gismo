@@ -186,7 +186,7 @@ public:
 
 private:
     /// helper function for boundary and innerBoundaries
-    void addLocalIndizesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const;
+    void addLocalIndicesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const;
 
 public:
     void reorderDofs(const gsPermutationMatrix& permMatrix)
