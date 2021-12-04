@@ -151,19 +151,54 @@ public:
     { return m_exprdata->getMap(g); }
 
     /// Registers \a mp as an isogeometric (both trial and test) space
-    /// and return a handle to it
+    /// and returns a handle to it
     space getSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
         //if multiBasisSet() then check domainDom
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
+        GISMO_ASSERT(static_cast<size_t>(id)<m_vcol.size(),
+                     "Given ID "<<id<<" exceeds "<<m_vcol.size()-1 );
+
+        if (m_vcol[id]==nullptr)
+        {
+            m_sdata.emplace_back(mp,dim,id);
+            m_vcol[id] = &m_sdata.back();
+            if ((size_t)id<m_vrow.size() && nullptr==m_vrow[id]) m_vrow[id]=m_vcol[id];
+        }
+        else
+        {
+            m_vcol[id]->fs  = &mp;
+            m_vcol[id]->dim = dim;
+        }
+
+        expr::gsFeSpace<T> u = m_exprdata->getSpace(mp,dim);
+        u.setSpaceData(*m_vcol[id]);
+        return u;
+    }
+
+    /// Registers \a mp as an isogeometric test (row) space and returns
+    /// a handle to it
+    space getTestSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
+    {
+        GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
         GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
                      "Given ID "<<id<<" exceeds "<<m_vrow.size()-1 );
 
-        expr::gsFeSpace<T> u = m_exprdata->getSpace(mp,dim);
-        m_sdata.emplace_back(mp,dim,id);
-        u.setSpaceData(m_sdata.back());
-        m_vrow[id] = m_vcol[id] = &m_sdata.back();
-        return u;
+        if ( (m_vrow[id]==nullptr) ||
+             ((size_t)id<m_vcol.size() && m_vrow[id]==m_vcol[id]) )
+        {
+            m_sdata.emplace_back(mp,dim,id);
+            m_vrow[id] = &m_sdata.back();
+        }
+        else
+        {
+            m_vrow[id]->fs  = &mp;
+            m_vrow[id]->dim = dim;
+        }
+
+        expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,dim);
+        s.setSpaceData(m_sdata.back());
+        return s;
     }
 
     /// \brief Registers \a mp as an isogeometric test space
@@ -172,20 +207,14 @@ public:
     /// \note Both test and trial spaces are registered at once by
     /// gsExprAssembler::getSpace.
     ///
-    ///Use this function after calling gsExprAssembler::getSpace when
+    /// Use this function after calling gsExprAssembler::getSpace when
     /// a distinct test space is requred (eg. Petrov-Galerkin
     /// methods).
     ///
     /// \note The dimension is set to the same as \a u, unless the caller
     /// sets as a third argument a new value.
     space getTestSpace(space u, const gsFunctionSet<T> & mp, index_t dim = -1)
-    {
-        expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,(-1 == dim ? u.dim() : dim));
-        m_sdata.emplace_back(mp,s.dim(),u.id());
-        s.setSpaceData(m_sdata.back());
-        m_vrow[s.id()] = &m_sdata.back();
-        return s;
-    }
+    { return getTestSpace( mp,(-1 == dim ? u.dim() : dim), u.id() ); }
 
     /// Return a variable handle (previously created by getSpace) for
     /// unknown \a id
