@@ -349,9 +349,9 @@ public:
     /// \brief Adds the expressions \a args to the system matrix/rhs
     /// The arguments are considered as integrals over the boundary
     /// parts in \a BCs
-    template<class... expr> void assemble(const bcRefList & BCs, expr&... args);
+    template<class... expr> void assembleBdr(const bcRefList & BCs, expr&... args);
 
-    template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
+    template<class... expr> void assembleIf(const ifContainer & iFaces, expr... args);
     /*
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
@@ -693,7 +693,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
 template<class T>
 template<class... expr>
-void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr&... args)
+void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
@@ -753,7 +753,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr&... args)
 }
 
 template<class T> template<class... expr>
-void gsExprAssembler<T>::assemble(const ifContainer & iFaces, expr... args)
+void gsExprAssembler<T>::assembleIf(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
