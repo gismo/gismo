@@ -113,7 +113,7 @@ void gsMappedSpline<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u,
     gsMatrix<index_t> actives;
     gsMatrix<T> evals;
 
-    index_t n = targetDim();
+    index_t N = targetDim();
     // gsC1Basis<d,t> * basis = dynamic_cast<gsC1Basis<d,t> *>(this->getBase(patch));
     // if (basis==NULL)
     // {
@@ -124,7 +124,7 @@ void gsMappedSpline<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u,
     // else
     // {
         gsMatrix<T> tmp;
-        result.resize( n,u.cols());
+        result.resize( N,u.cols());
         // This loop enables that the number of actives can be different for each column in u
         for (index_t k = 0; k!=u.cols(); k++)
         {
@@ -142,9 +142,9 @@ void gsMappedSpline<d,T>::deriv_into(const unsigned patch, const gsMatrix<T> & u
     gsMatrix<index_t> actives;
     gsMatrix<T> evals;
 
-    index_t n = targetDim();
-    index_t m = domainDim();
-    result.resize( n * m,u.cols());
+    index_t N = targetDim();
+    index_t M = domainDim();
+    result.resize( N * M,u.cols());
 
     gsMatrix<T> tmp;
     // This loop enables that the number of actives can be different for each column in u
@@ -163,25 +163,19 @@ void gsMappedSpline<d,T>::deriv2_into(const unsigned patch, const gsMatrix<T> & 
     gsMatrix<index_t> actives;
     gsMatrix<T> evals;
 
-    index_t n = targetDim();
-    index_t m = domainDim();
-    index_t S = n*(n+1)/2;
-    result.resize( S * m,u.cols());
+    index_t N = targetDim();
+    index_t M = domainDim();
+    index_t S = M*(M+1)/2;
+    result.resize( S*N,u.cols());
     gsMatrix<T> tmp;
     // This loop enables that the number of actives can be different for each column in u
     for (index_t k = 0; k!=u.cols(); k++)
     {
         m_mbases->active_into(patch,u.col(k),actives);
-        m_mbases->deriv_into(patch,u.col(k),evals);
+        m_mbases->deriv2_into(patch,u.col(k),evals);
         m_mbases->getBase(patch).linearCombination_into(m_global,actives,evals,tmp);
         result.col(k) = tmp;
     }
-
-    // gsMatrix<index_t> actives;
-    // m_mbases->active_into(patch,u,actives);
-    // gsMatrix<T> evals;
-    // m_mbases->deriv2_into(patch,u,evals);
-    // m_mbases->getBase(patch).linearCombination_into(m_coefs,actives,evals,result);
 }
 
 template<short_t d,class T>
@@ -195,17 +189,18 @@ void gsMappedSpline<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<
 
     index_t N = targetDim();
     index_t m = domainDim();
-    index_t S = N*(N+1)/2;
+    index_t S = m*(m+1)/2;
 
     std::vector<index_t> blocksizes(3);
-    blocksizes[0] = 1;
-    blocksizes[1] = N;
-    blocksizes[2] = S;
+    blocksizes[0] = N;
+    blocksizes[1] = N*m;
+    blocksizes[2] = N*S;
 
     gsMatrix<T> tmp;
+    // todo: change the loop over i and the loop over k
     for( int i = 0; i <= n; i++)
     {
-        result[i].resize(blocksizes[i] * m,u.cols());
+        result[i].resize(blocksizes[i],u.cols());
         // This loop enables that the number of actives can be different for each column in u
         for (index_t k = 0; k!=u.cols(); k++)
         {
@@ -216,6 +211,22 @@ void gsMappedSpline<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<
 
         }
     }
+
+    // for( int i = 0; i <= n; i++)
+    //     result[i].resize(blocksizes[i],u.cols());
+
+    // // todo: change the loop over i and the loop over k
+    // for (index_t k = 0; k!=u.cols(); k++)
+    // {
+    //     // This loop enables that the number of actives can be different for each column in u
+    //     m_mbases->active_into(patch,u.col(k),actives);
+    //     m_mbases->evalAllDers_into(patch,u.col(k),n,evals);
+    //     for( int i = 0; i <= n; i++)
+    //     {
+    //         m_mbases->getBase(patch).linearCombination_into(m_global,actives,evals[i],tmp);
+    //         result[i].col(k) = tmp;
+    //     }
+    // }
 }
 
 template<short_t d,class T>

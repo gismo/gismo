@@ -312,7 +312,7 @@ public:
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const
     {
         std::vector<index_t> temp, rtemp;
-        m_basis->addLocalIndizesOfPatchSide(patchSide(m_index,s),offset,temp);
+        m_basis->addLocalIndicesOfPatchSide(patchSide(m_index,s),offset,temp);
         m_basis->getMapper().sourceToTarget(temp,rtemp);
 
         // Better way for offset one: compute (anchors()) the normal derivatives at the boundary and return the indices
