@@ -24,8 +24,12 @@ int main(int argc, char *argv[])
    //! [Parse command line]
    bool plot = false;
 
+   // Number of refinement loops to be done
+   int numRefinementLoops = 4;
+
    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+   cmd.addInt("r", "numLoop", "number of refinement loops", numRefinementLoops);
    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
    //! [Parse command line]
 
@@ -116,8 +120,7 @@ int main(int argc, char *argv[])
    // --------------- set up adaptive refinement loop ---------------
 
    //! [adaptRefSettings]
-   // Number of refinement loops to be done
-   int numRefinementLoops = 4;
+
 
    // Specify cell-marking strategy...
    MarkingStrategy adaptRefCrit = PUCA;
@@ -168,11 +171,11 @@ int main(int argc, char *argv[])
        ev.setIntegrationElements(PoissonAssembler.multiBasis());
        gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
        gsExprEvaluator<>::variable is = ev.getVariable(sol);
-       gsExprEvaluator<>::variable ms = ev.getVariable(g, Gm);
+       auto ms = ev.getVariable(g, Gm);
 
        // Get the element-wise norms.
        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-       const std::vector<real_t> & eltErrs  = ev.elementwise();
+       const std::vector<real_t> & eltErrs = ev.elementwise();
        //! [errorComputation]
 
        // --------------- adaptive refinement ---------------
@@ -180,11 +183,19 @@ int main(int argc, char *argv[])
        //! [adaptRefinementPart]
        // Mark elements for refinement, based on the computed local errors and
        // the refinement-criterion and -parameter.
-       std::vector<bool> elMarked( eltErrs.size() );
+       std::vector<bool> elMarked;
        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elMarked);
+       for (size_t k=0; k!=elMarked.size(); k++)  gsInfo<<" "<<elMarked[k];
+       gsInfo<<"\n";
 
        // Refine the marked elements with a 1-ring of cells around marked elements
        gsRefineMarkedElements( bases, elMarked, 1 );
+
+       // std::vector<bool> elCMarked;
+       // for (size_t k=0; k!=eltErrs.size(); k++) eltErrs[k] = -eltErrs[k];
+       //gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
+       //gsUnrefineMarkedElements( bases, elCMarked, 1 );
+
        //! [adaptRefinementPart]
 
 

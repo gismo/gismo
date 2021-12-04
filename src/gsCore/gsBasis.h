@@ -755,6 +755,10 @@ public:
     /// @brief Returns an index for the element which contains point \a u
     virtual size_t elementIndex(const gsVector<T> & u ) const;
 
+    /// @brief Returns (the coordinates of) an element in the support
+    /// of basis function \a j
+    virtual gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// @brief For a tensor product basis, return the (const) 1-d
     /// basis for the \a i-th parameter component.
     virtual const gsBasis<T> & component(short_t i) const;
@@ -784,8 +788,10 @@ public:
      * \param[in] refExt Extension to be applied to the refinement boxes
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt = 0);
+    virtual void unrefine(gsMatrix<T> const & boxes, int refExt = 0);
 
     virtual std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+    virtual std::vector<index_t> asElementsUnrefine(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     /** @brief Refinement function, with different sytax for different basis.
      *
@@ -795,6 +801,7 @@ public:
      *
      */
     virtual void refineElements(std::vector<index_t> const & boxes);
+    virtual void unrefineElements(std::vector<index_t> const & boxes);
 
     /** @brief Refine basis and geometry coefficients to levels.
      *
@@ -802,6 +809,7 @@ public:
      * input depend on the implementation of refineElements().
      */
     virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+    virtual void unrefineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span

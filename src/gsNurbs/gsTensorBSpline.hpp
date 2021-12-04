@@ -519,6 +519,107 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
 }
 
 
+template<short_t d, class T>
+std::vector<gsGeometry<T>* >
+gsTensorBSpline<d,T>::splitAtMult(index_t minMult, index_t dir) const
+{
+    GISMO_ASSERT( (dir >= -1) && (dir < static_cast<index_t>(d)),
+                  "Invalid basis component "<< dir <<" requested for splitting" );
+    std::vector<gsGeometry<T>* > result;
+
+    if (-1==dir)
+    {
+        std::vector<gsGeometry<T>* > tmpi, tmp;
+        result = this->splitAtMult(minMult,0);
+        for(short_t i=1; i<d;++i)
+        {
+            tmp.swap(result);
+            result.clear();
+            for(size_t j=0; j!=tmp.size();++j)
+            {
+                tmpi = static_cast<gsTensorBSpline<d,T>*>(tmp[j])
+                    ->splitAtMult(minMult,i);
+                delete tmp[j];
+                result.insert( result.end(), tmpi.begin(), tmpi.end() );
+            }
+        }
+        return result;
+    }
+
+    gsTensorBSpline<d,T> * tmp = new gsTensorBSpline<d,T>(*this);
+    //iterate over knots
+    for (typename KnotVectorType::uiterator it = knots(dir).ubegin()+1;
+         it!=knots(dir).uend()-1; ++it)
+    {
+        if (it.multiplicity()>=minMult)
+        {
+            gsTensorBSpline<d,T> * o = new gsTensorBSpline<d,T>();
+            tmp->splitAt(dir,*it,*o,*tmp);
+            result.push_back(o);
+        }
+    }
+    result.push_back(tmp);
+    return result;
+}
+
+
+template<short_t d, class T>
+typename gsGeometry<T>::uPtr
+gsTensorBSpline<d,T>:: iface(const boundaryInterface & bi,
+                             const gsGeometry<T> & other) const
+{
+    // Grab boundary control point indices in matching configuration
+    gsMatrix<index_t> bdr0, bdr1;
+    this->basis().matchWith(bi, other.basis(), bdr0, bdr1);
+
+    //from here: Assume linear curves, merge control points (todo: add option for this)
+    index_t b[2];
+    b[0]=b[1]=0;
+    std::list<std::pair<const gsMatrix<T> *,index_t> > cv;//patch,cp-index
+    //maybe: check if both ifaces are identical using a flag...
+
+    // gsDebugVar(bdr0.size());
+    // gsDebugVar(bdr1.size());
+    cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+    do {
+        T dist0=(cv.back().first->row(cv.back().second)-this->coef(bdr0.at(b[0]))).squaredNorm();
+        if ( 0 == dist0 ) { b[0]++; continue; } //skip double point
+        T dist1=(cv.back().first->row(cv.back().second)-other.coef(bdr1.at(b[1]))).squaredNorm();
+        if ( 0 == dist1 ) { b[1]++; continue; } //skip double point
+
+        // gsDebugVar(dist0);
+        // gsDebugVar(dist1);
+        // gsDebugVar( this->coef(bdr0.at(b[0]+1)) );
+        // gsDebugVar( other.coef(bdr1.at(b[1]))   );
+        if (dist0>dist1)
+            cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
+        else
+            cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+
+    } while ( b[0]!=bdr0.size() && b[1]!=bdr1.size() );
+
+    //gsDebugVar(cv.size());
+    while ( b[0]<bdr0.size() )
+        cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+
+    //gsDebugVar(cv.size());
+    while ( b[1]<bdr1.size() )
+        cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
+
+    //gsDebugVar(cv.size());
+
+    // Construct interface geometry using cv and uniform knots (polyline)
+    gsMatrix<T> cf(cv.size(),this->geoDim());
+    index_t c = 0;
+    for(typename std::list<std::pair<const gsMatrix<T> *,index_t> >::iterator
+            it = cv.begin(); it!=cv.end(); ++it)
+        cf.row(c++) = it->first->row(it->second);
+    gsKnotVector<T> kv(0,1,c-2,2,1);
+    gsBSplineBasis<T> bs(kv);
+    return bs.makeGeometry(cf);
+}
+
+
 namespace internal
 {
 

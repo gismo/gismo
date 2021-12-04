@@ -259,6 +259,7 @@ public:
     gsHTensorBasis & operator=(gsHTensorBasis&& other)
     {
         m_deg     = std::move(other.m_deg);
+        freeAll( m_bases );
         m_bases   = std::move(other.m_bases);
         m_xmatrix = std::move(other.m_xmatrix);
         m_tree    = std::move(other.m_tree);
@@ -399,6 +400,14 @@ public:
         }
     }
 
+    virtual void anchor_into(index_t i, gsMatrix<T> & result) const
+    {
+        index_t lvl = levelOf(i);
+        index_t ind = flatTensorIndexOf(i);
+
+        m_bases[lvl]->anchor_into(ind,result);
+    }
+
     virtual void connectivity(const gsMatrix<T> & nodes, gsMesh<T> & mesh) const;
     void connectivity(const gsMatrix<T> & nodes, int level, gsMesh<T> & mesh) const;
 
@@ -467,7 +476,7 @@ public:
     }
 
     // Look at gsBasis.h for the documentation of this function
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
+    virtual void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
 
     // Look at gsBasis.h for the documentation of this function
@@ -475,6 +484,14 @@ public:
 
     // Look at gsBasis.h for the documentation of this function
     virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
+
+    virtual gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset , index_t level) const;
+
+    virtual index_t levelAtCorner(boxCorner const & c) const;
+
+    virtual index_t functionAtCorner(boxCorner const & c) const;
+    virtual index_t functionAtCorner(boxCorner const & c, index_t level) const;
+
 
     // Look at gsBasis.h for the documentation of this function
     // /// \todo impl. evalAllDers_into
@@ -501,10 +518,25 @@ public:
 
     void elementSupport_into(const index_t i, gsMatrix<index_t, d, 2>& result) const
     {
-        unsigned lvl = levelOf(i);
-
+        index_t lvl = levelOf(i);
         m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ],
                                           result);
+    }
+
+    gsMatrix<T> elementInSupportOf(index_t j) const
+    {
+        index_t lvl = levelOf(j);
+        gsMatrix<index_t,d,2> sup;
+        m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][j-m_xmatrix_offset[lvl]], sup);
+        std::pair<point,point> box =  m_tree.queryLevelCell(sup.col(0),sup.col(1),lvl);
+        for ( short_t i = 0; i!=d; ++i) //get intersection
+        {
+            box.first[i]  = ( sup(i,0) >= box.first[i]  ? sup(i,0) : box.first[i] );
+            box.second[i] = ( sup(i,1) <= box.second[i] ? sup(i,1) : box.second[i]);
+        }
+        sup.col(0) = (box.first+box.second)/2;
+        sup.col(1) = sup.col(0).array() + 1;
+        return m_bases[lvl]->elementDom(sup);
     }
 
     GISMO_UPTR_FUNCTION_PURE(gsHTensorBasis, clone)
@@ -555,6 +587,7 @@ public:
 
     // Refine the basis and adjust the given matrix of coefficients accordingly
     void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
+    // void unrefine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
 
     /** Refine the basis and adjust the given matrix of coefficients accordingly.
      * @param coefs is a matrix of coefficients as given, e.g., by gsTHBSpline<>::coefs();
@@ -566,6 +599,9 @@ public:
     void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
     void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+
+    void unrefineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+    void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
@@ -686,8 +722,10 @@ public:
      *
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt);
+    virtual void unrefine(gsMatrix<T> const & boxes, int refExt);
 
     std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+    std::vector<index_t> asElementsUnrefine(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     // std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
 
@@ -699,6 +737,7 @@ public:
      * (See also documentation of refine() for the format of \em box)
      */
     virtual void refine(gsMatrix<T> const & boxes);
+    // virtual void unrefine(gsMatrix<T> const & boxes);
 
     /**
      * @brief Insert the given boxes into the quadtree.
@@ -726,6 +765,14 @@ public:
      * See description above for details on the format.
      */
     virtual void refineElements(std::vector<index_t> const & boxes);
+
+    /**
+     * @brief      Clear the given boxes into the quadtree.
+     *
+     * @param      boxes   See refineElements
+     * @param[in]  refExt  See refineElements
+     */
+    virtual void unrefineElements(std::vector<index_t> const & boxes);
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
@@ -761,7 +808,7 @@ public:
     index_t flatTensorIndexOf(const index_t i) const
     {
 
-        const int level = this->levelOf(i);
+        const index_t level = this->levelOf(i);
 
         const index_t offset = this->m_xmatrix_offset[level];
         const index_t ind_in_level = this->m_xmatrix[level][i - offset];

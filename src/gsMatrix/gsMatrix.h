@@ -236,6 +236,10 @@ public:
     gsAsVector<T, Dynamic> asVector()
     { return gsAsVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
 
+    /// \brief Returns column \a c as a fixed-size 3D vector
+    auto col3d(index_t c) -> decltype(this->col(c).template head<3>())
+    { return this->col(c).template head<3>(); }
+
     /// \brief Returns the entries of the matrix resized to a (const) n*m vector column-wise
     gsAsConstVector<T, Dynamic> asVector() const
     { return gsAsConstVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }

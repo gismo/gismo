@@ -532,6 +532,10 @@ size_t gsBasis<T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+gsMatrix<T> gsBasis<T>::elementInSupportOf(index_t j) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 const gsBasis<T>& gsBasis<T>::component(short_t) const
 { GISMO_NO_IMPLEMENTATION }
 
@@ -544,7 +548,15 @@ std::vector<index_t> gsBasis<T>::asElements(gsMatrix<T> const &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+std::vector<index_t> gsBasis<T>::asElementsUnrefine(gsMatrix<T> const &, int) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const &, int)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::unrefine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -552,7 +564,15 @@ void gsBasis<T>::refineElements(std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::unrefineElements(std::vector<index_t> const &)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
