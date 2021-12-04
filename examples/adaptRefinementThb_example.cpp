@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
    bool plot = false;
 
    // Number of refinement loops to be done
-   int numRefinementLoops = 4;
+   index_t numRefinementLoops = 4;
 
    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);

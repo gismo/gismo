@@ -319,8 +319,8 @@ void gsAdaptiveMeshing<T>::mark(const std::vector<T> & errors)
             for (size_t k = 0; k<errors.size(); k++)
         #   endif
             {
-                crsErrors[k] = -std::abs(errors[k]);
-                refErrors[k] =  std::abs(errors[k]);
+                crsErrors[k] = -math::abs(errors[k]);
+                refErrors[k] =  math::abs(errors[k]);
             }
         }
     }
@@ -336,8 +336,8 @@ void gsAdaptiveMeshing<T>::mark(const std::vector<T> & errors)
             for (size_t k = 0; k<errors.size(); k++)
         #   endif
             {
-                crsErrors[k] = -std::abs(errors[k]); // DO NOT TAKE ABS HERE BUT IN DWR
-                refErrors[k] =  std::abs(errors[k]);
+                crsErrors[k] = -math::abs(errors[k]); // DO NOT TAKE ABS HERE BUT IN DWR
+                refErrors[k] =  math::abs(errors[k]);
             }
         }
     }

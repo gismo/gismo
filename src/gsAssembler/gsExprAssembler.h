@@ -351,7 +351,7 @@ public:
     /// parts in \a BCs
     template<class... expr> void assembleBdr(const bcRefList & BCs, expr&... args);
 
-    template<class... expr> void assembleIf(const ifContainer & iFaces, expr... args);
+    template<class... expr> void assembleIfc(const ifContainer & iFaces, expr... args);
     /*
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
@@ -753,7 +753,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 }
 
 template<class T> template<class... expr>
-void gsExprAssembler<T>::assembleIf(const ifContainer & iFaces, expr... args)
+void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
