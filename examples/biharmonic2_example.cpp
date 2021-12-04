@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 
     index_t numRefine  = 3;
     index_t discreteDegree = 3;
-    index_t discreteRegularity = 1;
+    index_t discreteRegularity = 2;
     bool last = false;
     bool info = false;
     bool neumann = false;
@@ -54,6 +54,9 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
+
+    if (discreteDegree - discreteRegularity > 1)
+        gsInfo << "ERROR, does not work for C^1: Choose C^2 \n";
 
     //! [Read geometry]
     std::string string_geo;
@@ -92,14 +95,9 @@ int main(int argc, char *argv[])
         {
             bc.addCondition(*bit, condition_type::dirichlet, &ms);
             if (neumann)
-            {
                 bc.addCondition(*bit, condition_type::neumann, &sol1der);
-            }
             else
-            {
                 bc.addCondition(*bit, condition_type::laplace, &laplace);
-            }
-
         }
     bc.setGeoMap(mp);
     //! [Boundary condition]
@@ -122,9 +120,15 @@ int main(int argc, char *argv[])
     if (last)
     {
         for (int r =0; r < numRefine; ++r)
-            dbasis.uniformRefine(1, discreteDegree -discreteRegularity);
+            dbasis.uniformRefine(1, discreteDegree-discreteRegularity);
         numRefine = 0;
     }
+
+    // Assume that the condition holds for each patch TODO
+    // Refine once
+    if (dbasis.basis(0).numElements() < 4)
+        dbasis.uniformRefine(1, discreteDegree-discreteRegularity);
+
 
     gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 #ifdef _OPENMP
@@ -134,7 +138,7 @@ int main(int argc, char *argv[])
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    gsInfo<<"Active options:\n"<< A.options() <<"\n";
+    //gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     typedef gsExprAssembler<>::geometryMap geometryMap;
     typedef gsExprAssembler<>::variable    variable;
@@ -175,7 +179,7 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine(1,discreteDegree -discreteRegularity);
 
-        gsDebugVar(dbasis.basis(0));
+        //gsDebugVar(dbasis.basis(0));
 
         gsSparseMatrix<real_t> global2local;
 
@@ -217,7 +221,7 @@ int main(int argc, char *argv[])
 
         // Enforce Laplace conditions to right-hand side
         auto g_L = A.getCoeff(laplace, G); // Set the laplace bdy value
-        A.assembleRhsBc( (igrad(u, G) * nv(G)) * g_L.tr(), bc.laplaceSides() );
+        A.assemble(bc.get("Laplace"), (igrad(u, G) * nv(G)) * g_L.tr() );
 
         // Enforce Neumann conditions to right-hand side
         //A.assembleRhsBc(ilapl(u, G) * (igrad(u_ex) * nv(G)).tr(), bc.neumannSides() );

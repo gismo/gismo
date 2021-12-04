@@ -907,13 +907,31 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
     file.close();
 }
 
+// Export a functionSet mesh
+template<class T>
+void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts)
+{
+    // GISMO_ASSERT sizes
+
+    gsParaviewCollection collection(fn);
+
+    for (index_t i = 0; i != func.size(); ++i)
+    {
+        const std::string fileName = fn + util::to_string(i);
+        gsWriteParaview(func.function(i), func.support(i), fileName, npts);
+        collection.addPart(fileName, ".vts");
+    }
+
+    // Write out the collection file
+    collection.save();
+}
 
 /// Export a function
 template<class T>
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts)
 {
+
     int d = func.domainDim(); // tested for d==2
-    //int n= d+1;
 
     gsVector<T> a = supp.col(0);
     gsVector<T> b = supp.col(1);
@@ -940,9 +958,9 @@ void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::st
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
     file <<"<StructuredGrid WholeExtent=\"0 "<<np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
     file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
-    // Scalar information
+    // Scalar information (Not really used)
     file <<"<PointData "<< "Scalars"<<"=\"SolutionField\">\n";
-    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<<1<<"\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< 1 <<"\">\n";
     for ( index_t j=0; j<ev.cols(); ++j)
             file<< ev(0,j) <<" ";
     file <<"</DataArray>\n";
@@ -952,11 +970,10 @@ void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::st
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<3<<"\">\n";
     for ( index_t j=0; j<ev.cols(); ++j)
     {
-        for ( int i=0; i< d; ++i)
-            file<< pts(i,j) <<" ";
-        file<< ev(0,j) <<" ";
-//         for ( index_t i=d; i< pts.rows(); ++i)
-//             file<< pts(i,j) <<" ";
+        for ( index_t i=0; i!=ev.rows(); ++i)
+            file<< ev(i,j) <<" ";
+        for ( index_t i=ev.rows(); i<3; ++i)
+            file<<"0 ";
     }
     file <<"</DataArray>\n";
     file <<"</Points>\n";
