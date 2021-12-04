@@ -89,3 +89,26 @@
  
  echo " "
  echo "Done downloading the source code for BLAS."
+
+--- Ipopt/ThirdParty/Lapack/get.Lapack  2021-11-26 15:04:07.527512847 +0100
++++ Ipopt/ThirdParty/Lapack/get.Lapack  2021-11-26 15:02:16.655377252 +0100
+@@ -19,6 +19,7 @@
+   fi
+ fi
+ 
++DIR="$( cd "$( dirname $0 )" && pwd )"
+ echo " "
+ echo "Running script for downloading the source code for LAPACK"
+ echo " "
+@@ -45,9 +46,9 @@
+ gunzip -f lapack-${lapack_ver}.tgz
+ 
+ echo "Unpacking the source code..."
+-tar xf lapack-${lapack_ver}.tar lapack-${lapack_ver}/SRC lapack-${lapack_ver}/INSTALL/dlamch.f lapack-${lapack_ver}/INSTALL/slamch.f
++tar xf lapack-${lapack_ver}.tar -C ${DIR} lapack-${lapack_ver}/SRC lapack-${lapack_ver}/INSTALL/dlamch.f lapack-${lapack_ver}/INSTALL/slamch.f 
+ rm -rf LAPACK
+-mv lapack-${lapack_ver} LAPACK
++mv ${DIR}/lapack-${lapack_ver} ${DIR}/LAPACK
+ 
+ echo "Deleting the tar file..."
+ rm lapack-${lapack_ver}.tar

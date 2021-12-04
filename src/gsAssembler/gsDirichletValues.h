@@ -1,6 +1,6 @@
 /** @file gsDirichletValues.h
 
-    @brief
+    @brief The functions compute Dirichlet degrees of freedom using various methods.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, H.M. Verhelst
 */
 
 #include <gsUtils/gsPointGrid.h>
@@ -26,12 +26,8 @@ void gsDirichletValues(
     const index_t dir_values,
     const expr::gsFeSpace<T> & u)
 {
-    //if ( m_options.getInt("DirichletStrategy") == dirichlet::nitsche)
-    //    return; // Nothing to compute
+    if ( bc.container("Dirichlet").empty() ) return;
 
-    //const gsMultiBasis<T> & mbasis = dynamic_cast<const gsMultiBasis<T>&>(u.source());
-
-    // eg. not penalize
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
 
@@ -71,11 +67,9 @@ void gsDirichletValues(
 
 template<class T>
 void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
-                                      const gsBoundaryConditions<T> & bc)
+                                        const gsBoundaryConditions<T> & bc)
 {
     const index_t parDim = u.source().domainDim();
-    const gsMultiBasis<T> & mbasis =
-        *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
 
     std::vector< gsVector<T> > rr;
     gsMatrix<index_t> boundary;
@@ -100,7 +94,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             if (com!=-1 && r!=com) continue;
 
             const int k = it->patch();
-            const gsBasis<T> & basis = mbasis[k];
+            const gsBasis<T> & basis = u.source().basis(k);
 
             // Get dofs on this boundary
             boundary = basis.boundary(it->side());
@@ -173,8 +167,6 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
                                  gsMatrix<T> & values)
 {
     const index_t parDim = u.source().domainDim();
-    const gsMultiBasis<T> & mbasis =
-        *dynamic_cast<const gsMultiBasis<T>*>(&u.source());
 
     const gsFunctionSet<T> & gmap = bc.geoMap();
     std::vector< gsVector<T> > rr;
@@ -186,70 +178,70 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 
     if( bc.unknown()!=u.id() ) { boundary.clear(); values.clear(); return; }
 
-        const int k = bc.patch();
-        const gsBasis<T> & basis = mbasis[k];
+    const int k = bc.patch();
+    const gsBasis<T> & basis = u.source().basis(k);
 
-        // Get dofs on this boundary
-        boundary = basis.boundary(bc.side());
+    // Get dofs on this boundary
+    boundary = basis.boundary(bc.side());
 
-        // If the condition is homogeneous then fill with zeros
-        if ( bc.isHomogeneous() )
+    // If the condition is homogeneous then fill with zeros
+    if ( bc.isHomogeneous() )
+    {
+        const index_t com = bc.unkComponent();
+        values.setZero(boundary.size(), (-1==com ? u.dim():1) );
+        return;
+    }
+
+    // Get the side information
+    int dir = bc.side().direction( );
+    index_t param = (bc.side().parameter() ? 1 : 0);
+
+    // Compute grid of points on the face ("face anchors")
+    rr.clear();
+    rr.reserve( parDim );
+
+    for ( int i=0; i < parDim; ++i)
+    {
+        if ( i==dir )
         {
-            const index_t com = bc.unkComponent();
-            values.setZero(boundary.size(), (-1==com ? u.dim():1) );
-            return;
+            b[0] = ( basis.component(i).support() ) (0, param);
+            rr.push_back(b);
         }
-
-        // Get the side information
-        int dir = bc.side().direction( );
-        index_t param = (bc.side().parameter() ? 1 : 0);
-
-        // Compute grid of points on the face ("face anchors")
-        rr.clear();
-        rr.reserve( parDim );
-
-        for ( int i=0; i < parDim; ++i)
-        {
-            if ( i==dir )
-            {
-                b[0] = ( basis.component(i).support() ) (0, param);
-                rr.push_back(b);
-            }
-            else
-            {
-                rr.push_back( basis.component(i).anchors().transpose() );
-            }
-        }
-
-        // GISMO_ASSERT(bc.function()->targetDim() == u.dim(),
-        //              "Given Dirichlet boundary function does not match problem dimension."
-        //              <<bc.function()->targetDim()<<" != "<<u.dim()<<"\n");
-
-        // Compute dirichlet values
-        if ( bc.parametric() )
-            fpts = bc.function()->eval( gsPointGrid<T>( rr ) );
         else
         {
-            const gsFunctionSet<T> & gmap = bc.geoMap();
-            fpts = bc.function()->eval(  gmap.piece(bc.patch()).eval(  gsPointGrid<T>( rr ) )  );
+            rr.push_back( basis.component(i).anchors().transpose() );
         }
+    }
 
-        /*
-        if ( fpts.rows() != u.dim() )
-        {
-            // assume scalar
-            tmp.resize(u.dim(), fpts.cols());
-            tmp.setZero();
-            gsDebugVar(!dir);
-            tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
-            fpts.swap(tmp);
-        }
-        */
+    // GISMO_ASSERT(bc.function()->targetDim() == u.dim(),
+    //              "Given Dirichlet boundary function does not match problem dimension."
+    //              <<bc.function()->targetDim()<<" != "<<u.dim()<<"\n");
 
-        // Interpolate dirichlet boundary
-        typename gsBasis<T>::uPtr h = basis.boundaryBasis(bc.side());
-        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-        values = give( geo->coefs() );
+    // Compute dirichlet values
+    if ( bc.parametric() )
+        fpts = bc.function()->eval( gsPointGrid<T>( rr ) );
+    else
+    {
+        const gsFunctionSet<T> & gmap = bc.geoMap();
+        fpts = bc.function()->eval(  gmap.piece(bc.patch()).eval(  gsPointGrid<T>( rr ) )  );
+    }
+
+    /*
+      if ( fpts.rows() != u.dim() )
+      {
+      // assume scalar
+      tmp.resize(u.dim(), fpts.cols());
+      tmp.setZero();
+      gsDebugVar(!dir);
+      tmp.row(!dir) = (param ? 1 : -1) * fpts; // normal !
+      fpts.swap(tmp);
+      }
+    */
+
+    // Interpolate dirichlet boundary
+    typename gsBasis<T>::uPtr h = basis.boundaryBasis(bc.side());
+    typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
+    values = give( geo->coefs() );
 }
 
 
@@ -262,22 +254,24 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>& >(u).fixedPart();
 
-    const gsMultiBasis<T> & mbasis = *dynamic_cast<const gsMultiBasis<T>* >(&u.source());
-
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
     gsMatrix<T>        globProjRhs;
-    globProjRhs.setZero(mapper.boundarySize(), u.dim());
+    globProjRhs.setZero(u.mapper().boundarySize(), 1 );
 
     // Temporaries
     gsVector<T> quWeights;
     gsMatrix<T> basisVals, rhsVals;
-    gsMatrix<index_t> globIdxAct;
+    gsMatrix<index_t> globIdxAct, globBasisAct;
 
     gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
 
-    const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(gmap);
+    // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
+    // something like a "element-wise index"
+    std::vector<index_t> eltBdryFcts;
+
+    //const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T> &>(gmap);
 
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     typedef gsBoundaryConditions<T> bcList;
@@ -286,9 +280,12 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
     {
         const int unk = iter->unknown();
         if(unk != u.id()) continue;
+
+        const index_t com = iter->unkComponent();// == -1 ? 0 : iter->unkComponent(); // TODO should loop
+
         const int patchIdx   = iter->patch();
-        const gsBasis<T> & basis = mbasis[patchIdx];
-        const gsGeometry<T> & patch = mp.patch(patchIdx);
+        const gsBasis<T> & basis = u.source().basis(patchIdx);
+        const gsFunction<T> & patch = gmap.function(patchIdx);
 
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
@@ -298,22 +295,13 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
         // Create the iterator along the given part boundary.
         typename gsBasis<T>::domainIter bdryIter = basis.makeDomainIterator(iter->side());
 
+
         for (; bdryIter->good(); bdryIter->next())
         {
             bdQuRule.mapTo(bdryIter->lowerCorner(), bdryIter->upperCorner(),
                            md.points, quWeights);
 
             patch.computeMap(md);
-
-            // the values of the boundary condition are stored
-            // to rhsVals. Here, "rhs" refers to the right-hand-side
-            // of the L2-projection, not of the PDE.
-            if ( iter->parametric() )
-                rhsVals = iter->function()->piece(patchIdx).eval(md.points);
-            else
-                rhsVals = iter->function()->piece(patchIdx).eval(gmap.piece(patchIdx).eval(md.points));
-
-            basis.eval_into(md.points, basisVals);
 
             // Indices involved here:
             // --- Local index:
@@ -332,55 +320,83 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
 
             // Get the global indices (second line) of the local
             // active basis (first line) functions/DOFs:
-            basis.active_into(md.points.col(0), globIdxAct);
-            mapper.localToGlobal(globIdxAct, patchIdx, globIdxAct);
+            basis.active_into(md.points.col(0), globBasisAct);
 
-            // Out of the active functions/DOFs on this element, collect all those
-            // which correspond to a boundary DOF.
-            // This is checked by calling mapper.is_boundary_index( global Index )
+            // Compute the basis function values because they don't
+            // depend on the component
+            basis.eval_into(md.points, basisVals);
 
-            // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
-            // something like a "element-wise index"
-            std::vector<index_t> eltBdryFcts;
-            eltBdryFcts.reserve(mapper.boundarySize());
-            for (index_t i = 0; i < globIdxAct.rows(); i++)
+            for (index_t r = 0; r!=u.dim(); ++r)
             {
-                if (mapper.is_boundary_index(globIdxAct(i, 0)))
+                if (com!=-1 && r!=com) continue;
+
+                mapper.localToGlobal(globBasisAct, patchIdx, globIdxAct,r);
+
+
+                // Out of the active functions/DOFs on this element, collect all those
+                // which correspond to a boundary DOF.
+                // This is checked by calling mapper.is_boundary_index( global Index )
+
+                // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
+                // something like a "element-wise index"
+                eltBdryFcts.clear();
+                eltBdryFcts.reserve(mapper.boundarySize());
+                for (index_t i = 0; i < globIdxAct.rows(); i++)
                 {
-                    eltBdryFcts.push_back(i);
-                }
-            }
-
-            // Do the actual assembly:
-            for (index_t k = 0; k < md.points.cols(); k++)
-            {
-                const T weight_k = quWeights[k] * md.measure(k);
-
-                // Only run through the active boundary functions on the element:
-                for (size_t i0 = 0; i0 < eltBdryFcts.size(); i0++)
-                {
-                    // Each active boundary function/DOF in eltBdryFcts has...
-                    // ...the above-mentioned "element-wise index"
-                    const index_t i = eltBdryFcts[i0];
-                    // ...the boundary index.
-                    const index_t ii = mapper.global_to_bindex(globIdxAct(i));
-
-                    for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
+                    if (mapper.is_boundary_index(globIdxAct.at(i)))
                     {
-                        const index_t j = eltBdryFcts[j0];
-                        const index_t jj = mapper.global_to_bindex(globIdxAct(j));
+                        eltBdryFcts.push_back(i);
+                    }
+                }
 
-                        // Use the "element-wise index" to get the needed
-                        // function value.
-                        // Use the boundary index to put the value in the proper
-                        // place in the global projection matrix.
-                        projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
-                    } // for j
+                // the values of the boundary condition are stored
+                // to rhsVals. Here, "rhs" refers to the right-hand-side
+                // of the L2-projection, not of the PDE.
 
-                    globProjRhs.row(ii) += weight_k * basisVals(i, k) * rhsVals.col(k).transpose();
+                // If the condition is homogeneous then fill with zeros
+                if ( iter->isHomogeneous() )
+                {
+                    rhsVals.setZero(1,md.points.size());
+                }
+                else
+                {
+                    if ( iter->parametric() )
+                        rhsVals = iter->function()->piece(patchIdx).eval(md.points);
+                    else
+                        rhsVals = iter->function()->piece(patchIdx).eval(gmap.piece(patchIdx).eval(md.points));
+                }
 
-                } // for i
-            } // for k
+                // Do the actual assembly:
+                for (index_t k = 0; k < md.points.cols(); k++)
+                {
+                    const T weight_k = quWeights[k] * md.measure(k);
+
+                    // Only run through the active boundary functions on the element:
+                    for (size_t i0 = 0; i0 < eltBdryFcts.size(); i0++)
+                    {
+                        // Each active boundary function/DOF in eltBdryFcts has...
+                        // ...the above-mentioned "element-wise index"
+                        const index_t i = eltBdryFcts[i0];
+                        // ...the boundary index.
+                        const index_t ii = mapper.global_to_bindex(globIdxAct.at(i));
+
+                        for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
+                        {
+                            const index_t j = eltBdryFcts[j0];
+                            const index_t jj = mapper.global_to_bindex(globIdxAct.at(j));
+
+                            // Use the "element-wise index" to get the needed
+                            // function value.
+                            // Use the boundary index to put the value in the proper
+                            // place in the global projection matrix.
+                            projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
+                        } // for j
+
+                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals.at(k);
+
+                    } // for i
+                } // for k
+            }// for r
         } // bdryIter
     } // boundaryConditions-Iterator
 
@@ -394,8 +410,8 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
     // for the values of the eliminated Dirichlet DOFs.
     typename gsSparseSolver<T>::CGDiagonal solver;
     fixedDofs = solver.compute(globProjMat).solve(globProjRhs);
-
 } // computeDirichletDofsL2Proj
+
 
 
 }; // namespace gismo

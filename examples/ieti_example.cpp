@@ -282,17 +282,17 @@ int main(int argc, char *argv[])
         ietiMapper.initFeSpace(u,k);
 
         // Set the source term
-        variable ff = assembler.getCoeff(f, G);
+        auto ff = assembler.getCoeff(f, G);
 
         // Initialize the system
-        assembler.initSystem(false);
+        assembler.initSystem();
 
         // Compute the system matrix and right-hand side
         assembler.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Add contributions from Neumann conditions to right-hand side
         variable g_N = assembler.getBdrFunction();
-        assembler.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc_local.neumannSides() );
+        assembler.assembleBdr(bc_local.get("Neumann"),  u * g_N.val() * nv(G).norm() );
 
         // Fetch data
         gsSparseMatrix<real_t, RowMajor> jumpMatrix  = ietiMapper.jumpMatrix(k);

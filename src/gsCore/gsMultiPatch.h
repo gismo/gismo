@@ -128,6 +128,16 @@ public:
 
     index_t size() const { return 1; }
 
+    /// Return the number of coefficients (control points)
+    index_t coefsSize() const
+    {
+        index_t sz = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+            sz += (*it)->coefsSize();
+        return sz;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
@@ -208,7 +218,7 @@ public:
     void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    gsBasis<T> & basis( size_t i ) const;
+    gsBasis<T> & basis( const size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);
@@ -297,7 +307,36 @@ public:
     * Assumes that the meshes on all levels of the gsHTensorBasis
     * are fully matching.
     */
-    void repairInterfaces();
+    void repairInterfaces()
+    {
+        std::vector< boundaryInterface > bivec = interfaces();
+        size_t kmax = 2*bivec.size();
+        size_t k = 0;
+        bool sthChanged = false;
+        bool change = false;
+        do
+        {
+            sthChanged = false;
+            for( size_t i = 0; i < bivec.size(); i++ )
+            {
+                change = repairInterface( bivec[i] );
+                sthChanged = sthChanged || change;
+            }
+            k++; // just to be sure this cannot go on infinitely
+        }
+        while( sthChanged && k <= kmax );
+    }
+
+    /** @brief Checks if the interface is fully matching, and if not, repairs it.
+    *
+    * \remarks Designed for gsHTensorBasis and derived bases.
+    * Assumes that the respective meshes on all levels of the
+    * gsHTensorBasis are fully matching.
+    *
+    * \returns true, if something was repaired, i.e., if the mesh on the interface was changed.
+    */
+    bool repairInterface( const boundaryInterface & bi );
+
 
     /// @brief For each point in \a points, locates the parametric coordinates of the point
     /// \param points
