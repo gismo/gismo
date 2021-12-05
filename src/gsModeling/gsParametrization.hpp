@@ -200,7 +200,7 @@ gsMesh<T> gsParametrization<T>::createFlatMesh()
 template<class T>
 gsParametrization<T>& gsParametrization<T>::setOptions(const gsOptionList& list)
 {
-    m_options.update(list, gsOptionList::ignoreIfUnknwon);
+    m_options.update(list, gsOptionList::ignoreIfUnknown);
     return *this;
 }
 

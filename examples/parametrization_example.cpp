@@ -57,9 +57,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot","Plot with Paraview",paraview);
     cmd.getValues(argc, argv);
 
-    gsOptionList ol = cmd.getOptionList();
-
-    gsFileData<> fd(ol.getString("filenameIn"));
+    gsFileData<> fd(cmd.getString("filenameIn"));
 
     gsInfo << "Reading input into gsMesh<real_t>::uPtr: ";
     gsStopwatch stopwatch;
@@ -73,7 +71,7 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    pm.setOptions(ol);
+    pm.setOptions(cmd);
 
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
@@ -105,8 +103,8 @@ int main(int argc, char *argv[])
 
     if(paraview)
     {
-        gsWriteParaview(mesh, ol.getString("filenameOut"));
-        gsFileManager::open(ol.getString("filenameOut") + ".pvd");
+        gsWriteParaview(mesh, cmd.getString("filenameOut"));
+        gsFileManager::open(cmd.getString("filenameOut") + ".pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
