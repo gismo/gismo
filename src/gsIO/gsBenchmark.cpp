@@ -23,7 +23,7 @@ namespace gismo
        << "threads & " << label << " \\\\\n";
 
     for (auto it=results.cbegin(); it!=results.cend(); ++it)
-      os << (*it)[0] << "&" << (*it)[2] << "\\\\\n";
+        os << it->at(0) << "&" << it->at(2) << "\\\\\n";
 
     os << "}\\data" << label << "\n";
 
