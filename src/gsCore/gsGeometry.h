@@ -497,6 +497,11 @@ public:
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }
 
+    void unrefineElements( std::vector<index_t> const & boxes )
+    {
+        this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
+    }
+
     typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
     
     /// Embeds coefficients in 3D

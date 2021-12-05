@@ -86,6 +86,16 @@
 #cmakedefine GISMO_BUILD_LIB
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
+/* Determine if Python module should be built. */
+#cmakedefine GISMO_BUILD_PYBIND11
+
+#ifdef GISMO_BUILD_PYBIND11
+#include <pybind11/iostream.h>
+#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#endif
+
 /* Debug settings. */
 #cmakedefine GISMO_EXTRA_DEBUG
 #cmakedefine GISMO_WARNINGS

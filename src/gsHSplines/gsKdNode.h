@@ -193,6 +193,9 @@ struct kdnode
 
     bool isRightChild() const { return parent!=NULL && this==parent->right; }
 
+    bool isDegenerate() const
+    { return (box->first.array() >= box->second.array()).any(); }
+
     kdnode * sibling() const 
     { 
         GISMO_ASSERT( parent != 0, "Root does not have a sibling.");

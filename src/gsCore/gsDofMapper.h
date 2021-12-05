@@ -99,9 +99,8 @@ public:
      */
     template<class T>
     gsDofMapper(const gsMultiBasis<T> & bases, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
-      init(bases, nComp);
+        init(bases, nComp);
     }
 
     /**
@@ -113,7 +112,7 @@ public:
     template<class T>
     gsDofMapper(
         std::vector<const gsMultiBasis<T> *> const & bases
-        ) : m_shift(0), m_bshift(0)
+        )
     {
         init(bases);
     }
@@ -127,7 +126,6 @@ public:
      */
     template<class T>
     gsDofMapper(const gsBasis<T> & basis, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
       initSingle(basis, nComp);
     }
@@ -139,7 +137,6 @@ public:
      * @param patchDofSizes
      */
     gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
         initPatchDofs(patchDofSizes, nComp);
     }
@@ -416,6 +413,10 @@ public:
         return std::binary_search(m_tagged.begin(),m_tagged.end(),gl);
     }
 
+    /// Returns the number of components present in the mapper
+    inline index_t numComponents() const
+    { return static_cast<index_t>(m_dofs.size()); }
+
     /// Returns the total number of dofs (free and eliminated).
     inline index_t size() const
     {
@@ -470,7 +471,7 @@ public:
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
     size_t mapSize() const
-    {return m_dofs.size() * m_dofs.front().size();}
+    { return (m_dofs.empty()?0:m_dofs.size() * m_dofs.front().size()); }
 
     size_t componentsSize() const {return m_dofs.size();}
 

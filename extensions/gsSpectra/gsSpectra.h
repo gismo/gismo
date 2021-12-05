@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsCore/gsConfig.h>
+#include <gsCore/gsLinearAlgebra.h>
 
 #include <Spectra/Spectra/SymEigsSolver.h>
 #include <Spectra/Spectra/SymEigsShiftSolver.h>

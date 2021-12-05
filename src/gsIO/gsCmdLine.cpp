@@ -311,6 +311,8 @@ void gsCmdLine::getValues(int argc, char *argv[])
     for( size_t i=0; i!=my->multiStringVals.size(); ++i)
         if( my->multiStringVals[i]->isSet() )
             *my->multiStringRes[i] = my->multiStringVals[i]->getValue();
+
+    updateOptionList();
 }
 
 void gsCmdLine::setExceptionHandling(const bool state)
@@ -332,11 +334,11 @@ bool gsCmdLine::getExceptionHandling() const
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }
 
-gsOptionList gsCmdLine::getOptionList()
+void gsCmdLine::updateOptionList()
 {
     GISMO_ASSERT( my->didParseCmdLine, "gsCmdLine::getOptionList can be called only after gsCmdLine::getValues." );
 
-    gsOptionList result;
+    gsOptionList & result = *this;
     for( size_t i=0; i!=my->intVals.size(); ++i)
         result.addInt( my->intVals[i]->getName(), my->intVals[i]->getDescription(), *my->intRes[i] );
     for( size_t i=0; i!=my->realVals.size(); ++i)
@@ -345,6 +347,7 @@ gsOptionList gsCmdLine::getOptionList()
         result.addString( my->stringVals[i]->getName(), my->stringVals[i]->getDescription(), *my->stringRes[i] );
     for( size_t i=0; i!=my->switchVals.size(); ++i)
         result.addSwitch( my->switchVals[i]->getName(), my->switchVals[i]->getDescription(), *my->switchRes[i] );
+
     for( size_t i=0; i!=my->multiIntVals.size(); ++i)
         ADD_OPTION_LIST_ENTRY(*my->multiIntRes[i],my->multiIntVals[i],addInt)
     for( size_t i=0; i!=my->multiRealVals.size(); ++i)
@@ -353,7 +356,7 @@ gsOptionList gsCmdLine::getOptionList()
         ADD_OPTION_LIST_ENTRY(*my->multiStringRes[i],my->multiStringVals[i],addString)
     if ( my->plainStringVal )
         result.addString( my->plainStringVal->getName(), my->plainStringVal->getDescription(), *my->plainStringRes );
-    return result;
+
 }
 
 #undef ADD_OPTION_LIST_ENTRY
@@ -440,5 +443,73 @@ std::string & gsCmdLine::getMessage()
 {
     return my->cmd.getMessage();
 }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+namespace py = pybind11;
+void pybind11_init_gsCmdLine(py::module &m)
+{
+  using gsClass = gsCmdLine;
+
+  py::class_<gsClass>(m, "gsCmdLine")
+
+    // Constructors
+    .def(py::init<const std::string&>())
+
+    .def(py::init<const std::string&,
+         const char>())
+
+    .def(py::init<const std::string&,
+         const char,
+         bool>())
+
+    // Member functions
+    .def("addNewInt", &gsClass::addNewInt)
+    .def("getInt", &gsClass::getInt)
+
+     .def("addMultiInt", &gsClass::addMultiInt)
+
+    .def("addReal", &gsClass::addReal)
+    .def("addMultiReal", &gsClass::addMultiReal)
+
+    .def("addString", &gsClass::addString)
+    .def("addMultiString", &gsClass::addMultiString)
+
+    .def("addSwitch",
+         (void (gsClass::*)(const std::string&, const std::string&, const std::string&, bool&))
+         &gsClass::addSwitch)
+
+    .def("addSwitch",
+         (void (gsClass::*)(const std::string&, const std::string&, bool&))
+         &gsClass::addSwitch)
+
+    .def("addPlainString", &gsClass::addPlainString)
+
+    .def("getValues", [](gsClass& self,
+                         std::vector<std::string> args) {
+                        std::vector<char *> cstrs;
+                        cstrs.reserve(args.size());
+                        for (auto &s : args) cstrs.push_back(const_cast<char *>(s.c_str()));
+                        self.getValues(cstrs.size(), cstrs.data());
+                      })
+
+    .def_static("printVersion", &gsClass::printVersion)
+
+    .def("getMessage", &gsClass::getMessage)
+
+    .def("valid", [](gsClass self,
+                     std::vector<std::string> args) {
+                    std::vector<char *> cstrs;
+                    cstrs.reserve(args.size());
+                    for (auto &s : args) cstrs.push_back(const_cast<char *>(s.c_str()));
+                    return self.valid(cstrs.size(), cstrs.data());
+                  })
+
+    .def("setExceptionHandling", &gsClass::setExceptionHandling)
+    .def("getExceptionHandling", &gsClass::getExceptionHandling)
+    ;
+}
+
+#endif // GISMO_BUILD_PYBIND11
 
 } //namespace gismo
