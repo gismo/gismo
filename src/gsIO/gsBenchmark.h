@@ -194,9 +194,9 @@ public:
 
         Result res;
         res[0]= static_cast<double>(*it);        // number of OpenMP threads
-        res[0]= benchmark_runtime/(double)nruns; // averaged elapsed time in seconds
-        res[0]= benchmark_metric/(double)nruns;  // averaged benchmark metric
-        res[0]= (double)metric;                  // benchmark metric
+        res[1]= benchmark_runtime/(double)nruns; // averaged elapsed time in seconds
+        res[2]= benchmark_metric/(double)nruns;  // averaged benchmark metric
+        res[3]= (double)metric;                  // benchmark metric
         results.push_back( give(res) );
       }
     } catch(...) {}
