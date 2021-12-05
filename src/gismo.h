@@ -76,6 +76,8 @@ namespace internal
 
 #include <gsCore/gsDomainIterator.h>
 
+#include <gsCore/gsSysInfo.h>
+
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
 // Tensors
@@ -174,6 +176,7 @@ namespace internal
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
+#include <gsIO/gsBenchmark.h>
 #include <gsIO/gsCmdLine.h>
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>
