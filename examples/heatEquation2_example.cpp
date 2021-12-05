@@ -87,11 +87,6 @@ int main(int argc, char *argv[])
     gsInfo<<"Active options:\n"<< K.options() <<"\n";
     gsInfo<<"Active options:\n"<< M.options() <<"\n";
     
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
     K.setIntegrationElements(bases);
     M.setIntegrationElements(bases);   
 
@@ -99,32 +94,28 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> evM(M);
     
     // Set the geometry map
-    geometryMap G_K = K.getMap(patches);
-    geometryMap G_M = M.getMap(patches);
+    auto G_K = K.getMap(patches);
+    auto G_M = M.getMap(patches);
 
     // Set the discretization space
-    space u_K = K.getSpace(bases);
-    space u_M = M.getSpace(bases);
-    //    u_K.setInterfaceCont(0);
-    //    u_M.setInterfaceCont(0);
-    //    u_K.addBc( bcInfo.get("Dirichlet") );
-    //    u_M.addBc( bcInfo.get("Dirichlet") );
+    auto u_K = K.getSpace(bases);
+    auto u_M = M.getSpace(bases);
 
     u_K.setup(bcInfo, dirichlet::interpolation, 0);
     u_M.setup(bcInfo, dirichlet::interpolation, 0);
 
     // Set the source term
-    variable ff_K = K.getCoeff(f, G_K);
-    variable ff_M = M.getCoeff(f, G_M);
+    auto ff_K = K.getCoeff(f, G_K);
+    auto ff_M = M.getCoeff(f, G_M);
 
-    K.initSystem(false);
-    M.initSystem(false);
+    K.initSystem();
+    M.initSystem();
     K.assemble( igrad(u_K, G_K) * igrad(u_K, G_K).tr() * meas(G_K), u_K * ff_K * meas(G_K) );
     M.assemble( u_M * u_M.tr() * meas(G_M), u_M * ff_M * meas(G_M) );
 
     // Enforce Neumann conditions to right-hand side
-    variable g_Neumann = K.getBdrFunction();
-    K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bcInfo.neumannSides() );
+    auto g_Neumann = K.getBdrFunction(G_K);
+    K.assembleBdr(bcInfo.get("Neumann"), u_K * g_Neumann.val() * nv(G_K).norm() );
 
     // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
     gsSparseSolver<>::CGDiagonal solver;
