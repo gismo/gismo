@@ -471,7 +471,7 @@ public:
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
     size_t mapSize() const
-    {return m_dofs.size() * m_dofs.front().size();}
+    { return (m_dofs.empty()?0:m_dofs.size() * m_dofs.front().size()); }
 
     size_t componentsSize() const {return m_dofs.size();}
 

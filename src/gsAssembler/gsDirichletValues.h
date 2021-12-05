@@ -27,6 +27,8 @@ void gsDirichletValues(
     const index_t dir_values,
     const expr::gsFeSpace<T> & u)
 {
+    if ( bc.container("Dirichlet").empty() ) return;
+
     const gsDofMapper & mapper = u.mapper();
     if ( bc.container("Dirichlet").empty() && mapper.boundarySize() == 0) return;
 

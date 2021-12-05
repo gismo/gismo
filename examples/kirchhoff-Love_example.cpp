@@ -1382,7 +1382,7 @@ int main(int argc, char *argv[])
     // auto g_N = ff;
 
     real_t alpha_d = 1e3;
-    A.assemble
+    A.assembleBdr
     (
         bc.get("Weak Dirichlet")
         ,
@@ -1392,7 +1392,7 @@ int main(int argc, char *argv[])
     );
 
     // For Neumann conditions
-    A.assemble(bc.get("Neumann"), u * g_N * tv(G).norm() );
+    A.assembleBdr(bc.get("Neumann"), u * g_N * tv(G).norm() );
 
     A.assemble(
         (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
@@ -1458,10 +1458,10 @@ int main(int argc, char *argv[])
                 );
 
             // Neumann term
-            A.assemble(bc.get("Neumann"), u * g_N * tv(G).norm() );
+            A.assembleBdr(bc.get("Neumann"), u * g_N * tv(G).norm() );
 
             // Weak Dirichlet term
-            A.assemble
+            A.assembleBdr
             (
                 bc.get("Weak Dirichlet")
                 ,

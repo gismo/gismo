@@ -69,6 +69,26 @@ template<class T> struct gsFeSpaceData
     gsDofMapper mapper;
     gsMatrix<T> fixedDofs;
     index_t cont; //int. coupling
+
+    bool valid() const
+    {
+        GISMO_ASSERT(nullptr!=fs, "Invalid pointer.");
+        return static_cast<size_t>(fs->size()*dim)==mapper.mapSize();
+    }
+
+    void init()
+    {
+        GISMO_ASSERT(nullptr!=fs, "Invalid pointer.");
+        if (const gsMultiBasis<T> * mb =
+            dynamic_cast<const gsMultiBasis<T>*>(fs) )
+            mapper = gsDofMapper(*mb, dim );
+        else if (const gsBasis<T> * b =
+                 dynamic_cast<const gsBasis<T>*>(fs) )
+            mapper = gsDofMapper(*b, dim );
+        mapper.finalize();
+        fixedDofs.clear();
+        cont = -1;
+    }
 };
 
 // Forward declaration in gismo namespace
@@ -792,7 +812,7 @@ public:
     index_t   interfaceCont() const {return m_sd->cont;}
     index_t & setInterfaceCont(const index_t _r) const
     {
-        GISMO_ASSERT(_r>-2 && _r<2, "Invalid or not implemented (r="<<_r<<").");
+        GISMO_ASSERT(_r>-2 && _r<1, "Invalid or not implemented (r="<<_r<<").");
         return m_sd->cont = _r;
     }
     
@@ -3073,7 +3093,7 @@ template<class T>
 class hess_expr<gsFeSolution<T> > : public _expr<hess_expr<gsFeSolution<T> > >
 {
 protected:
-    const gsFeSolution<T> _u;
+    const gsFeSolution<T> & _u;
 
 public:
     typedef T Scalar;

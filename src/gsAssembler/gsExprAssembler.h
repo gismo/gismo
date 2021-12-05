@@ -151,19 +151,54 @@ public:
     { return m_exprdata->getMap(g); }
 
     /// Registers \a mp as an isogeometric (both trial and test) space
-    /// and return a handle to it
+    /// and returns a handle to it
     space getSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
     {
         //if multiBasisSet() then check domainDom
         GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
+        GISMO_ASSERT(static_cast<size_t>(id)<m_vcol.size(),
+                     "Given ID "<<id<<" exceeds "<<m_vcol.size()-1 );
+
+        if (m_vcol[id]==nullptr)
+        {
+            m_sdata.emplace_back(mp,dim,id);
+            m_vcol[id] = &m_sdata.back();
+            if ((size_t)id<m_vrow.size() && nullptr==m_vrow[id]) m_vrow[id]=m_vcol[id];
+        }
+        else
+        {
+            m_vcol[id]->fs  = &mp;
+            m_vcol[id]->dim = dim;
+        }
+
+        expr::gsFeSpace<T> u = m_exprdata->getSpace(mp,dim);
+        u.setSpaceData(*m_vcol[id]);
+        return u;
+    }
+
+    /// Registers \a mp as an isogeometric test (row) space and returns
+    /// a handle to it
+    space getTestSpace(const gsFunctionSet<T> & mp, index_t dim = 1, index_t id = 0)
+    {
+        GISMO_ASSERT(1==mp.targetDim(), "Expecting scalar source space");
         GISMO_ASSERT(static_cast<size_t>(id)<m_vrow.size(),
                      "Given ID "<<id<<" exceeds "<<m_vrow.size()-1 );
 
-        expr::gsFeSpace<T> u = m_exprdata->getSpace(mp,dim);
-        m_sdata.emplace_back(mp,dim,id);
-        u.setSpaceData(m_sdata.back());
-        m_vrow[id] = m_vcol[id] = &m_sdata.back();
-        return u;
+        if ( (m_vrow[id]==nullptr) ||
+             ((size_t)id<m_vcol.size() && m_vrow[id]==m_vcol[id]) )
+        {
+            m_sdata.emplace_back(mp,dim,id);
+            m_vrow[id] = &m_sdata.back();
+        }
+        else
+        {
+            m_vrow[id]->fs  = &mp;
+            m_vrow[id]->dim = dim;
+        }
+
+        expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,dim);
+        s.setSpaceData(m_sdata.back());
+        return s;
     }
 
     /// \brief Registers \a mp as an isogeometric test space
@@ -172,20 +207,14 @@ public:
     /// \note Both test and trial spaces are registered at once by
     /// gsExprAssembler::getSpace.
     ///
-    ///Use this function after calling gsExprAssembler::getSpace when
+    /// Use this function after calling gsExprAssembler::getSpace when
     /// a distinct test space is requred (eg. Petrov-Galerkin
     /// methods).
     ///
     /// \note The dimension is set to the same as \a u, unless the caller
     /// sets as a third argument a new value.
     space getTestSpace(space u, const gsFunctionSet<T> & mp, index_t dim = -1)
-    {
-        expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,(-1 == dim ? u.dim() : dim));
-        m_sdata.emplace_back(mp,s.dim(),u.id());
-        s.setSpaceData(m_sdata.back());
-        m_vrow[s.id()] = &m_sdata.back();
-        return s;
-    }
+    { return getTestSpace( mp,(-1 == dim ? u.dim() : dim), u.id() ); }
 
     /// Return a variable handle (previously created by getSpace) for
     /// unknown \a id
@@ -320,9 +349,9 @@ public:
     /// \brief Adds the expressions \a args to the system matrix/rhs
     /// The arguments are considered as integrals over the boundary
     /// parts in \a BCs
-    template<class... expr> void assemble(const bcRefList & BCs, expr&... args);
+    template<class... expr> void assembleBdr(const bcRefList & BCs, expr&... args);
 
-    template<class... expr> void assemble(const ifContainer & iFaces, expr... args);
+    template<class... expr> void assembleIfc(const ifContainer & iFaces, expr... args);
     /*
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
@@ -445,9 +474,6 @@ private:
                 //colMap.localToGlobal(colInd0, u.data().patchId, colInd);
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
                               "Invalid values for fixed part");
-                // gsDebugVar(rowInd.transpose());
-                // gsDebugVar(colInd.transpose());
-                // gsDebugVar(localMat);
             }
 
             for (index_t r = 0; r != rd; ++r)
@@ -480,8 +506,7 @@ private:
                                     else // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
-                                        GISMO_ASSERT(1==m_rhs.cols(),
-                                                     "The right-hnad side has more than one columns");
+                                        // GISMO_ASSERT(1==m_rhs.cols(), "-");
 #                                       pragma omp atomic
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
@@ -575,16 +600,23 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
     }
 } // setFixedDofs
 
+
 template<class T> void gsExprAssembler<T>::resetDimensions()
 {
+    if (!m_vcol.front()->valid()) m_vcol.front()->init();
+    if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
+        if (!m_vcol.front()->valid()) m_vcol.front()->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                     m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
+                                   m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
 
         if ( m_vcol[i] != m_vrow[i] )
+        {
+            if (!m_vrow.front()->valid()) m_vrow.front()->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                         m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
+                                       m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
+        }
     }
 }
 
@@ -663,7 +695,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
 template<class T>
 template<class... expr>
-void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr&... args)
+void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
@@ -723,7 +755,7 @@ void gsExprAssembler<T>::assemble(const bcRefList & BCs, expr&... args)
 }
 
 template<class T> template<class... expr>
-void gsExprAssembler<T>::assemble(const ifContainer & iFaces, expr... args)
+void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 

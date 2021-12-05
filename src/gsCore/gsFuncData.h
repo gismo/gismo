@@ -110,7 +110,17 @@ public:
     }
 
     /// \brief Clear the memory that this object uses
-    void clear() { /*to do*/}
+    void clear()
+    {
+        flags = 0;
+        patchId = -1;
+        actives.clear();
+        values.clear();
+        curls.clear();
+        divs.clear();
+        laplacians.clear();
+        //dim;
+    }
 
     /// \brief Swaps this object with \a other
     void swap(gsFuncData & other)

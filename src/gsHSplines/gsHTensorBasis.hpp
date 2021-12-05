@@ -517,8 +517,8 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
             const index_t maxKtIndexd = kv.uSize();
             ( k2 + refExt >= maxKtIndexd ? k2=maxKtIndexd-1 : k2+=refExt);
 
-            k1 = std::floor(static_cast<T>(k1) / 2);
-            k2 = std::ceil( static_cast<T>(k2) / 2);
+            k1 = math::floor(static_cast<T>(k1) / 2);
+            k2 = math::ceil (static_cast<T>(k2) / 2);
 
             // Store the data...
             refVector[I*offset]       = refLevel;
@@ -757,14 +757,11 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
 {
     if( const Self_t * _other = dynamic_cast<const Self_t*>( &other) )
     {
-        gsVector<index_t> N(d);
-
         // tens1 will store the tensor-index on side second(),...
-        gsVector<index_t> tens0(d), tens1(d);
+        gsVector<index_t,d> N, tens0, tens1;
 
         // see if the orientation is preserved on side second()
         const gsVector<bool> dirOrient = bi.dirOrientation();
-
         const gsVector<index_t> dirMap = bi.dirMap();
 
         // get the global indices of the basis functions which are

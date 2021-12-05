@@ -29,7 +29,8 @@ enum MarkingStrategy
 };
 
 template <class T>
-void gsMarkThreshold( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+void gsMarkThreshold( const std::vector<T> & elError, T refParameter,
+                      std::vector<bool> & elMarked)
 {
     // First, conduct a brutal search for the maximum local error
     const T maxErr = *std::max_element(elError.begin(), elError.end() );
@@ -47,7 +48,8 @@ void gsMarkThreshold( const std::vector<T> & elError, T refParameter, std::vecto
 }
 
 template <class T>
-void gsMarkPercentage( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+void gsMarkPercentage( const std::vector<T> & elError, T refParameter,
+                       std::vector<bool> & elMarked)
 {
     T Thr = T(0);
 
@@ -103,7 +105,8 @@ void gsMarkPercentage( const std::vector<T> & elError, T refParameter, std::vect
 
 
 template <class T>
-void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector<bool> & elMarked)
+void gsMarkFraction( const std::vector<T> & elError, T refParameter,
+                     std::vector<bool> & elMarked)
 {
     T Thr = T(0);
 
@@ -191,7 +194,8 @@ void gsMarkFraction( const std::vector<T> & elError, T refParameter, std::vector
  * \ingroup Assembler
  */
 template <class T>
-void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T refParameter, std::vector<bool> & elMarked)
+void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion,
+                           T refParameter, std::vector<bool> & elMarked)
 {
     switch (refCriterion)
     {
@@ -207,14 +211,16 @@ void gsMarkElementsForRef( const std::vector<T> & elError, int refCriterion, T r
     default:
         GISMO_ERROR("unknown marking strategy");
     }
-
 }
-
 
 template <class T>
 std::vector<gsMatrix<T>> gsGetRefinementBoxes(  gsMultiBasis<T> & basis,
                                                 const std::vector<bool> & elMarked)
 {
+    GISMO_ASSERT(basis.totalElements()==elMarked.size(),
+                 "Incorrect input, num_el="<<basis.totalElements()
+                 <<", mark_vec="<<elMarked.size() );
+
     std::vector<gsMatrix<T>> result(basis.nBases());
     const short_t dim = basis.dim();
 
@@ -290,6 +296,10 @@ void gsRefineMarkedElements(gsMultiBasis<T> & basis,
                             const std::vector<bool> & elMarked,
                             index_t refExtension = 0)
 {
+    GISMO_ASSERT(basis.totalElements()==elMarked.size(),
+                 "Incorrect input, num_el="<<basis.totalElements()
+                 <<", mark_vec="<<elMarked.size() );
+
     std::vector<gsMatrix<T>> boxes = gsGetRefinementBoxes(basis,elMarked);
     for (size_t pn=0; pn < basis.nBases(); ++pn )// for all patches
     {
@@ -429,6 +439,10 @@ void gsUnrefineMarkedElements(gsMultiBasis<T> & basis,
                             const std::vector<bool> & elMarked,
                             index_t refExtension = 0)
 {
+    GISMO_ASSERT(basis.numElements()==elMarked.size(),
+                 "Incorrect input, num_el="<<basis.numElements()
+                 <<", mark_vec="<<elMarked.size() );
+
     const short_t dim = basis.dim();
 
     // numMarked: Number of marked cells on current patch, also currently marked cell

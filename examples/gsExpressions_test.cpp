@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     auto O = ev.getVariable(O_);
     auto o = ev.getVariable(o_);
 
-    auto el= ev.getElement();
+    //auto el= ev.getElement();
 
     gsMatrix<> result, exact, tmp;
     gsVector<> physpoint, point(2);
@@ -873,40 +873,6 @@ int main(int argc, char *argv[])
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<2*exact<<"\n";
     gsInfo<<( (result-2*exact.transpose()).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
-
-    /*
-      Computes the Hessian of a variable
-      Assessment of:
-      - ihess(gsFeVariable,gsGeometryMap)
-    */
-    gsInfo<< "* iHessian:\t\t";
-    gsDebugVar(ev.eval((jac(G).ginv().tr()*( hess(u)-summ(igrad(u,G),hess(G)) ) * jac(G).ginv()),point));
-    gsDebugVar(ev.eval(hess(u),point));
-    gsDebugVar(ev.eval(summ(igrad(u,G),hess(G)),point));
-    gsDebugVar(ev.eval(hess(u)-summ(igrad(u,G),hess(G)),point));
-
-    gsDebugVar((jac(G).ginv().tr()).rows());
-    gsDebugVar((jac(G).ginv().tr()).cols());
-    gsDebugVar((hess(u)-summ(igrad(u,G),hess(G))).rows());
-    gsDebugVar((hess(u)-summ(igrad(u,G),hess(G))).cols());
-    gsDebugVar((jac(G).ginv()).rows());
-    gsDebugVar((jac(G).ginv()).cols());
-
-    gsDebugVar(ev.eval((jac(G).ginv().tr()*( hess(u) - summ(igrad(u,G),hess(G)) ) * jac(G).ginv()),point));
-    gsDebugVar(ev.eval(hess(u_sol),point));
-    gsDebugVar(ev.eval(ihess(u_sol,G),point));
-
-
-    result = ev.eval( ihess(u,G), point );
-    exact.resize(2,2);
-    exact<<2,0,0,2;
-    if (verbose)
-        gsInfo  <<"Result:\n"<<result<<"\n"
-                <<"Exact:\n"<<exact<<"\n"
-                <<"Diff:\n"<< (result-exact) <<"\n";
-    gsInfo<<( (result-exact).norm() < 1e-5 ? "passed" : "failed" );//<<"\n";
-    gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
 
 
     gsInfo<<"-------------------------------------------------------------------------"<<"\n";
