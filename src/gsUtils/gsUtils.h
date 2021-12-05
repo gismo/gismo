@@ -19,7 +19,7 @@
 #include <gsCore/gsExport.h>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
-#include <gsCore/gsOpenMP.h>
+#include <gsParallel/gsOpenMP.h>
 
 #ifdef __GNUC__ 
 #include <cxxabi.h>

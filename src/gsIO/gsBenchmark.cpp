@@ -12,6 +12,7 @@
 */
 
 #include <gsIO/gsBenchmark.h>
+#include <cstring>
 
 namespace gismo
 {

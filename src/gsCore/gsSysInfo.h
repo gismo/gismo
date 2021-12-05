@@ -13,21 +13,9 @@
 
 #pragma once
 
-#include <gsCore/gsForwardDeclarations.h>
-#include <Eigen/Core>
+#include <gsCore/gsExport.h>
 
-#if defined(_WIN32) || defined(_WIN64)
-#   include <windows.h>
-#elif __APPLE__
-#   include <sys/utsname.h>
-#   include <sys/sysctl.h>
-#elif __linux__
-#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) )
-#      include <cpuid.h>
-#      include <unistd.h>
-#   endif
-#elif __unix__
-#endif
+#include <string>
 
 namespace gismo
 {

@@ -18,9 +18,6 @@
 #include <gsCore/gsJITCompiler.h>
 #include <gsUtils/gsStopwatch.h>
 
-#include <array>
-#include <vector>
-
 namespace gismo
 {
   
@@ -52,7 +49,7 @@ typedef std::array<double,4> gsBenchmarkResult;
 /**
  * Benchmark class
  */
-class gsBenchmark
+class GISMO_EXPORT gsBenchmark
 {
 public:
   /**

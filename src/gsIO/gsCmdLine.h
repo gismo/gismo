@@ -246,7 +246,7 @@ public:
 
     /// Prints the version information
     static void printVersion();
-    
+
     /// Returns the program's description (as specified in the constructor)
     std::string& getMessage();
 

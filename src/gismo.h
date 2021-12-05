@@ -186,8 +186,8 @@ namespace internal
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
 
-/* ----------- MPI ----------- */
-#include <gsMpi/gsMpi.h>
+/* ----------- Parallel ----------- */
+#include <gsParallel/gsMpi.h>
 
 /* ----------- Utilities ----------- */
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
