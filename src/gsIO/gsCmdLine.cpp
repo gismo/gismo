@@ -333,7 +333,7 @@ bool gsCmdLine::getExceptionHandling() const
     result.addInt( nm+"Size", (vals)->getDescription(), sz );                       \
 }
 
-gsOptionList gsCmdLine::updateOptionList()
+void gsCmdLine::updateOptionList()
 {
     GISMO_ASSERT( my->didParseCmdLine, "gsCmdLine::getOptionList can be called only after gsCmdLine::getValues." );
 
@@ -355,7 +355,7 @@ gsOptionList gsCmdLine::updateOptionList()
         ADD_OPTION_LIST_ENTRY(*my->multiStringRes[i],my->multiStringVals[i],addString)
     if ( my->plainStringVal )
         result.addString( my->plainStringVal->getName(), my->plainStringVal->getDescription(), *my->plainStringRes );
-    return result;
+
 }
 
 #undef ADD_OPTION_LIST_ENTRY

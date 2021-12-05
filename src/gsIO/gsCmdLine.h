@@ -94,16 +94,16 @@ public:
     void addInt(const std::string& flag,
                 const std::string& name,
                 const std::string& desc,
-                intVal_t         & value); //TODO: rename as addIntArg
+                intVal_t         & value); //TODO: rename as argInt
 
     /// Second version: unbinded integer command-line argument
     void addNewInt(const std::string& flag,
                    const std::string& name,
                    const std::string& desc,
-                   intVal_t          value) //TODO: rename as addNewIntArg
+                   intVal_t          value) //TODO: rename as addInt
     {
-        addInt(name, desc, give(value));            //add new option
-        addInt(flag, name, desc, getIntRef(name) ); //bind cmd arg
+        gsOptionList::addInt(name, desc, give(value)); //add new option
+        addInt(flag, name, desc, getIntRef(name) );    //bind cmd arg
     }
 
     // Third (inherited) version: add int option which is NOT a
@@ -127,6 +127,8 @@ public:
                      const std::string    & desc,
                      std::vector<intVal_t>& value);
 
+    //using gsOptionList::addMultiInt;
+        
     /// @brief Register a real option for the command line
     ///
     /// @param flag       One character flag for using the option.
@@ -140,10 +142,12 @@ public:
     ///
     /// If the flag is "t", the user might call "-t .5" at the command line.
     /// It the name is "tau", the user might call "--tau .5" at the command line.
-     void addReal(const std::string& flag,
-                  const std::string& name,
-                  const std::string& desc,
-                  real_t           & value);
+    void addReal(const std::string& flag,
+                 const std::string& name,
+                 const std::string& desc,
+                 real_t           & value);
+    
+    //using gsOptionList::addReal;
 
     /// @brief Register a real option for the command line, which can be assigned more than once
     ///
@@ -161,6 +165,8 @@ public:
                       const std::string  & name,
                       const std::string  & desc,
                       std::vector<real_t>& value);
+
+    //using gsOptionList::addMultiReal;
 
     /// @brief Register a string option for the command line
     ///
@@ -180,6 +186,8 @@ public:
                    const std::string& desc,
                    std::string      & value);
 
+    //using gsOptionList::addString;
+
     /// @brief Register a string option for the command line, which can be assigned more than once
     ///
     /// @param flag       One character flag for using the option.
@@ -196,6 +204,8 @@ public:
                        const std::string       & name,
                        const std::string       & desc,
                        std::vector<std::string>& value);
+
+    //using gsOptionList::addMultiString;
 
     /// @brief Register a switch option for the command line
     ///
@@ -222,7 +232,11 @@ public:
     ///
     void addSwitch(const std::string& name,
                    const std::string& desc,
-                   bool             & value) { addSwitch("",name,desc,value); }
+                   bool             & value)
+    {
+        gsOptionList::addSwitch(name, desc, value); //add new option
+        addSwitch("",name,desc,value);
+    }
 
     /// @brief Register a string parameter that has to be given directly (not
     /// as an option, i.e., not after a flag starting with "-" or "--")
@@ -275,7 +289,7 @@ private:
     /// Writes all given options (as specified by \a addInt, \a addReal,
     /// \a addString or \a addSwitch or \a addPlainString) into the
     /// gsOptionList base object.
-    gsOptionList updateOptionList();
+    void updateOptionList();
 
 private:
 
@@ -291,5 +305,27 @@ private:
   void pybind11_init_gsCmdLine(pybind11::module &m);
 
 #endif // GISMO_BUILD_PYBIND11
+
+namespace internal
+{
+
+template<>
+class GISMO_EXPORT gsXml<gsCmdLine>
+{
+private:
+    gsXml();
+public:
+    GSXML_COMMON_FUNCTIONS(gsOptionList)
+    GSXML_GET_POINTER(gsOptionList)
+    static std::string tag () { return "OptionList"; }
+    static std::string type() { return ""; }
+
+    static void get_into(gsXmlNode * node, gsOptionList & result)
+    { gsXml<gsOptionList>::get_into(node,result); }
+    static gsXmlNode * put (const gsOptionList & obj, gsXmlTree & data)
+    { return gsXml<gsCmdLine>::put(obj,data); }
+};
+
+}
 
 } // namespace gismo
