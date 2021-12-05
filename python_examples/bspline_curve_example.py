@@ -69,3 +69,18 @@ print(f"Second derivatives of the Bspline on {u[0]}:\n", b.deriv2(u))
 deriv2val = np.empty(2)
 deriv2val = b.deriv2(u)
 print(f"Second derivatives of the Bspline on {u[0]} with void function:\n", deriv2val)
+
+#References to matrices can get invalidated
+print("--- Updating a referenced array works")
+c=b.coefs()
+c[0,0]= 2.0
+print("Matrix (g+smo):\n", b.coefs())
+print("Matrix (ndarray):\n", c)
+print("shape:", c.shape)
+print("type:", c.dtype)
+b.insertKnot(0.5,1) # knot, multiplicity
+print("--- Resizing a referenced matrix invalidates the python ndarray")
+print("Matrix (g+smo):\n", b.coefs())
+print("Matrix (ndarray):\n", c)
+print("shape:", c.shape)
+print("type:", c.dtype)
