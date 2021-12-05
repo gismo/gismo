@@ -12,6 +12,8 @@
 */
 
 #include <gsIO/gsBenchmark.h>
+#include <gsCore/gsJITCompiler.h>
+#include <gsCore/gsSysInfo.h>
 #include <cstring>
 
 namespace gismo
@@ -40,18 +42,20 @@ namespace gismo
        << "name=MyAxis,\n"
        << "width=\\textwidth,\n"
        << "height=.5\\textwidth,\n"
-       << "legend pos=outer north east,\n"
-        
+       << "legend pos=outer north east,\n"        
        << "symbolic x coords={";
-      
-    for (auto it=(*results.cbegin())->get().cbegin();
-         it!=(*results.cbegin())->get().cend(); ++it)
-      os << (*it)[0] << (it!=(*results.cbegin())->get().cend()-1 ? "," : "");
+
+    //std::vector<std::array<double, 4> >::const_iterator
+    auto it  = results.front()->get().cbegin();
+    auto ite = results.front()->get().cend();
+    for (;it!=ite; ++it)
+        os << it->at(0) << (it!=ite-1 ? "," : "");
     os << "},\n"
-        
        << "xlabel={OpenMP threads},\n";
-      
-    switch((metric)(*(*results.cbegin())->get().cbegin())[4]) {        
+
+    it = results.front()->get().cbegin();
+    switch( (metric)it->at(3) )
+    {
     case metric::bandwidth_kb_sec:        
       os << "ylabel={Bandwidth in KB/s},\n";
       break;

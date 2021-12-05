@@ -389,7 +389,7 @@ public:
         operator<
     */
     template<typename T>
-    static T min (T& in)
+    static T (min) (T& in)
     {
         return in;
     }
@@ -399,7 +399,7 @@ public:
         in every process. Assumes that T has an operator<
     */
     template<typename T>
-    static int min (T* inout, int len)
+    static int (min) (T* inout, int len)
     {
         return 0;
     }
@@ -409,7 +409,7 @@ public:
         operator<
     */
     template<typename T>
-    static T max (T& in)
+    static T (max) (T& in)
     {
         return in;
     }
@@ -419,7 +419,7 @@ public:
         process. Assumes that T has an operator<
     */
     template<typename T>
-    static int max (T* inout, int len)
+    static int (max) (T* inout, int len)
     {
         return 0;
     }

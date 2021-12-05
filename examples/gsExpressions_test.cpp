@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
   [V] symmetrize_expr
 */
 
-# define M_PI 3.14159265358979323846
 # define M_R  1.0
 
     bool verbose = false;
@@ -297,7 +296,7 @@ int main(int argc, char *argv[])
     /// NOTE: Tolerance is lower!
     gsInfo<< "* Area (integral):\t";
     real_t num = ev.integral( meas(G) );
-    real_t ref = 4*M_PI*M_R*M_R;
+    real_t ref = 4*EIGEN_PI*M_R*M_R;
     if (verbose)
         gsInfo  <<"Result:\n"<<num<<"\n"
                 <<"Exact:\n"<<ref<<"\n";

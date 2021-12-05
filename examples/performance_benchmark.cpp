@@ -13,7 +13,6 @@
 
 //! [Include namespace]
 #include <gismo.h>
-#include <gsCore/gsJITCompiler.h>
 
 #include <array>
 #include <iomanip>
@@ -132,6 +131,7 @@ public:
   {
     delete[] m_x;
     delete[] m_y;
+    delete[] m_z;
   }
 
   std::size_t operator()()

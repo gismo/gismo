@@ -14,8 +14,6 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsCore/gsSysInfo.h>
-#include <gsCore/gsJITCompiler.h>
 #include <gsUtils/gsStopwatch.h>
 
 namespace gismo
