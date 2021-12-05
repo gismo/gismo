@@ -251,6 +251,22 @@ public:
         }
     }
 
+    /// Add a string to the Xml tree
+    void addString (const std::string & s)
+    {
+        gsXmlNode* node = internal::makeNode("string",s,*data);
+        data->appendToRoot(node);
+    }
+
+    std::string getString () const
+    {
+
+        gsXmlNode * node = getFirstNode("string");
+        //node = getNextSibling(node, "string");
+        std::string res( node->value() );
+        return res;
+    }
+
     /// Returns the size of the data
     size_t bufferSize() const { return m_buffer.size(); };
 
