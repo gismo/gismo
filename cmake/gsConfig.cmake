@@ -55,15 +55,6 @@ if(NOT GISMO_INDEX_TYPE)
    "int" "int32_t" "int64_t" "long" "long long" )
 endif()
 
-# Set a default build type if none was specified
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
-   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
-   # Set the possible values of build type for cmake-gui
-   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-     "RelWithDebInfo" "MinSizeRel")
-endif()
-
 set(${PROJECT_NAME}_ARCHIVE_OUTPUT_DIRECTORY lib)
 set(${PROJECT_NAME}_RUNTIME_OUTPUT_DIRECTORY bin)
 set(${PROJECT_NAME}_LIBRARY_OUTPUT_DIRECTORY lib)
@@ -103,7 +94,7 @@ if(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
   APPEND_COVERAGE_COMPILER_FLAGS()
   #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ftest-coverage -fprofile-arcs")
   #set(CMAKE_EXE_LINKER_FLAGS "-fprofile-arcs -ftest-coverage")
-endif(GISMO_BUILD_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
+endif()
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
@@ -139,7 +130,7 @@ endif()
 
 if(GISMO_EXTRA_DEBUG)
   include(gsDebugExtra)
-endif(GISMO_EXTRA_DEBUG)
+endif()
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   # Force to always compile with W4
@@ -249,11 +240,10 @@ endif()
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
 if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
-  #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
   foreach (flag ${OFA_ARCHITECTURE_FLAGS})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
   endforeach()
-endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
+endif()

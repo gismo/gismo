@@ -39,14 +39,21 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 if(NOT CMAKE_BUILD_TYPE)
-   # Set default build type to Release
-   set(CMAKE_BUILD_TYPE Release CACHE STRING
-   "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
-   if(NOT CMAKE_CONFIGURATION_TYPES)
-   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-     "RelWithDebInfo" "MinSizeRel")
-   endif()
+  # Set default build type to Release
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
+  "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
+  if(NOT CMAKE_CONFIGURATION_TYPES)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+      "RelWithDebInfo" "MinSizeRel")
+  endif()
 endif()
+
+if(NOT CMAKE_CXX_STANDARD)
+  # Set default C++ standard to 11
+  set(CMAKE_CXX_STANDARD 11 CACHE STRING
+    "C++ standard (11 14 17 20)" FORCE)
+  set_property(CACHE CMAKE_CXX_STANDARD PROPERTY STRINGS "11" "14" "17" "20")
+endif() 
 
 set(gismo_VERSION_MAJOR 21) #year
 set(gismo_VERSION_MINOR 12) #month
@@ -59,9 +66,9 @@ if(CMAKE_QUIET)
   function(message)
     list(GET ARGV 0 MessageType)
     if(MessageType STREQUAL FATAL_ERROR OR
-	MessageType STREQUAL SEND_ERROR OR
-	MessageType STREQUAL WARNING OR
-	MessageType STREQUAL AUTHOR_WARNING)
+       MessageType STREQUAL SEND_ERROR OR
+       MessageType STREQUAL WARNING OR
+       MessageType STREQUAL AUTHOR_WARNING)
       list(REMOVE_AT ARGV 0)
       _message(${MessageType} "${ARGV}")
     endif()
