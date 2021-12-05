@@ -5,9 +5,10 @@
 
 namespace gismo
 {
-#ifdef GISMO_BUILD_PYBIND11
+
 CLASS_TEMPLATE_INST gsFunction<real_t> ;
-  
+
+#ifdef GISMO_BUILD_PYBIND11  
 void pybind11_init_gsFunction(py::module &m)
 {
   using Class = gsFunction<real_t>;

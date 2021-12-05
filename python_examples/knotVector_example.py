@@ -14,8 +14,10 @@
     Author(s): S. Imperatore
 """
 
-import sys
-sys.path.append('/Users/graziellacarboni/gismo/build/lib')
+import os, sys
+gismo_path=os.path.join(os.path.dirname(__file__), "../build/lib")
+print("G+Smo path:",gismo_path,"(change if needed).")
+sys.path.append(gismo_path)
 
 import pygismo as gs
 import numpy as np
