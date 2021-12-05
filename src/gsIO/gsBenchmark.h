@@ -209,7 +209,7 @@ private:
 };
 
 /// Print (as string) operator
-std::ostream &operator<<(std::ostream &os, const gsBenchmark& obj)
+inline std::ostream &operator<<(std::ostream &os, const gsBenchmark& obj)
 { return obj.print(os); }
 
 } // namespace gismo
