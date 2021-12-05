@@ -35,11 +35,6 @@ enum metric {
   perf_tflop_sec,  
   runtime_sec,
 };
-
-/**
- * Benchmark result
- */
-typedef std::array<double,4> gsBenchmarkResult;
   
 /**
  *   Benchmark: driver function
@@ -52,7 +47,13 @@ typedef std::array<double,4> gsBenchmarkResult;
 class GISMO_EXPORT gsBenchmark
 {
 public:
-  /**
+
+/**
+ * Benchmark result
+ */
+typedef std::array<double,4> Result;
+
+/**
    * Benchmark result set class
    */
   class gsBenchmarkResultSet
@@ -60,7 +61,7 @@ public:
   public:
     gsBenchmarkResultSet(const std::string& label,
                          const std::string& title,
-                         const std::vector<gsBenchmarkResult>& results)
+                         const std::vector<Result>& results)
       : label(label),
         title(title),
         results(results)
@@ -73,14 +74,14 @@ public:
     const std::string& get_title() const
     { return title; }
 
-    const std::vector<gsBenchmarkResult>& get() const
+    const std::vector<Result>& get() const
     { return results; }
 
     std::ostream &print(std::ostream &os) const;
 
   private:
     const std::string label, title;
-    std::vector<gsBenchmarkResult> results;
+    std::vector<Result> results;
   };
 
   /**
@@ -104,7 +105,7 @@ public:
 
     void add(const std::string& label,
              const std::string& title,
-             const std::vector<gsBenchmarkResult>& results)
+             const std::vector<Result>& results)
     {
       this->results.emplace_back(new gsBenchmarkResultSet(label+std::string(1,id++),
                                                           title, results));
@@ -147,14 +148,14 @@ public:
   std::ostream &print(std::ostream &os) const;
 
   template<typename T>
-  static std::vector<gsBenchmarkResult>
+  static std::vector<Result>
   run(const std::vector<int>& nthreads, int nruns, T& benchmark, metric metric)
   {
     gsStopwatch stopwatch;
     std::size_t benchmark_result;
     double benchmark_metric, benchmark_runtime;
     
-    std::vector<gsBenchmarkResult> results;
+    std::vector<Result> results;
     
     try {
       for (auto it=nthreads.cbegin(); it!=nthreads.cend(); ++it) {
@@ -190,13 +191,13 @@ public:
           }
           
         }
-        
-        results.push_back(
-                          { static_cast<double>(*it)        /* number of OpenMP threads */,
-                            benchmark_runtime/(double)nruns /* averaged elapsed time in seconds */,
-                            benchmark_metric/(double)nruns  /* averaged benchmark metric */,
-                            (double)metric                 /* benchmark metric */
-                          });
+
+        Result res;
+        res[0]= static_cast<double>(*it);        // number of OpenMP threads
+        res[0]= benchmark_runtime/(double)nruns; // averaged elapsed time in seconds
+        res[0]= benchmark_metric/(double)nruns;  // averaged benchmark metric
+        res[0]= (double)metric;                  // benchmark metric
+        results.push_back( give(res) );
       }
     } catch(...) {}
     
