@@ -48,12 +48,7 @@ if(NOT CMAKE_BUILD_TYPE)
   endif()
 endif()
 
-if(NOT CMAKE_CXX_STANDARD)
-  # Set default C++ standard to 11
-  set(CMAKE_CXX_STANDARD 11 CACHE STRING
-    "C++ standard (11 14 17 20)" FORCE)
-  set_property(CACHE CMAKE_CXX_STANDARD PROPERTY STRINGS "11" "14" "17" "20")
-endif() 
+set(CMAKE_CXX_STANDARD_DEFAULT 11)
 
 set(gismo_VERSION_MAJOR 21) #year
 set(gismo_VERSION_MINOR 12) #month
