@@ -314,319 +314,10 @@ public:
 };
 //! [Implement benchmarks]
 
-//! [Implement benchmark infrastructure]
-
-/**
- * Benchmark metrics
- */
-enum class benchmark_metric {
-  bandwidth_kb_sec,
-  bandwidth_mb_sec,
-  bandwidth_gb_sec,
-  bandwidth_tb_sec,  
-  perf_kflop_sec,
-  perf_mflop_sec,
-  perf_gflop_sec,
-  perf_tflop_sec,  
-  runtime_sec,
-};
-
-/**
- *   Benchmark: driver function
- */
-template<typename T>
-std::vector< std::array<double,4> >
-benchmark_driver(const std::vector<int>& nthreads, int nruns, T& benchmark, benchmark_metric metric)
-{
-  gsStopwatch stopwatch;
-  std::size_t benchmark_result;
-  double benchmark_metric, benchmark_runtime;
-
-  std::vector< std::array<double,4> > results;
-
-  try {
-    for (auto it=nthreads.cbegin(); it!=nthreads.cend(); ++it) {
-
-      omp_set_num_threads(*it);
-      benchmark_runtime = 0.0;
-      benchmark_metric = 0.0;
-
-      for (int run=0; run<nruns; ++run) {
-        stopwatch.restart();
-        benchmark_result = benchmark();
-        stopwatch.stop();
-        benchmark_runtime += stopwatch.elapsed();
-        
-        switch(metric) {
-        case benchmark_metric::bandwidth_kb_sec: case benchmark_metric::perf_kflop_sec:
-          benchmark_metric += 1e-3*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::bandwidth_mb_sec: case benchmark_metric::perf_mflop_sec:
-          benchmark_metric += 1e-6*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::bandwidth_gb_sec: case benchmark_metric::perf_gflop_sec:
-          benchmark_metric += 1e-9*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::bandwidth_tb_sec: case benchmark_metric::perf_tflop_sec:
-          benchmark_metric += 1e-12*benchmark_result/stopwatch.elapsed();
-          break;
-        case benchmark_metric::runtime_sec:
-          benchmark_metric += stopwatch.elapsed();
-          break;
-        default:
-          throw std::runtime_error("Unsupported metric");
-        }
-        
-      }
-
-      results.push_back( { static_cast<double>(*it)        /* number of OpenMP threads */,
-                           benchmark_runtime/(double)nruns /* averaged elapsed time in seconds */,
-                           benchmark_metric/(double)nruns  /* averaged benchmark metric */,
-                           (double)metric}                 /* benchmark metric */ );
-    }
-  } catch(...) {}
-
-  return results;
-}
-
-/**
- * Benchmark LaTeX output
- */
-class benchmark_latex
-{
-public:
-  /**
-   * Result set class
-   */
-  class result_set
-  {
-  public:
-    result_set(const std::string& label,
-               const std::string& title,
-               const std::vector< std::array<double,4> >& results)
-      : label(label),
-        title(title),
-        results(results)
-    {
-    }
-
-    const std::string& get_label() const
-    { return label; }
-    
-    const std::string& get_title() const
-    { return title; }
-
-    const std::vector< std::array<double,4> >& get_results() const
-    { return results; }
-
-    std::ostream &print(std::ostream &os) const
-    {
-      os << "\\pgfplotstableread[row sep=\\\\,col sep=&]{\n"
-         << "threads & " << label << " \\\\\n";
-
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << (*it)[0] << "&" << (*it)[2] << "\\\\\n";
-
-      os << "}\\data" << label << "\n";
-
-      return os;
-    }
-
-  private:
-    const std::string label, title;
-    std::vector< std::array<double,4> > results;
-  };
-
-  /**
-   * Benchmark set class
-   */
-  class benchmark_set
-  {
-  public:
-    benchmark_set(const std::string& label,
-                  const std::string& title)
-      : id('A'),
-        label(label),
-        title(title)
-    {}
-
-    ~benchmark_set()
-    {
-      for (auto it=results.begin(); it!=results.end(); ++it)
-        delete (*it);
-    }
-
-    void add_results(const std::string& label,
-                     const std::string& title,
-                     const std::vector< std::array<double,4> >& results)
-    {
-      this->results.emplace_back(new result_set(label+std::string(1,id++), title, results));
-    }
-
-    const std::string& get_label() const
-    { return label; }
-    
-    const std::string& get_title() const
-    { return title; }
-
-    const std::vector<result_set*>& get_results() const
-    { return results; }
-
-    std::ostream &print(std::ostream &os) const
-    {
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        (*it)->print(os);
-
-      os << "\\begin{tikzpicture}\n"
-         << "\\begin{semilogyaxis}[\n"
-         << "name=MyAxis,\n"
-         << "width=\\textwidth,\n"
-         << "height=.5\\textwidth,\n"
-         << "legend pos=outer north east,\n"
-        
-         << "symbolic x coords={";
-      
-      for (auto it=(*results.cbegin())->get_results().cbegin();
-           it!=(*results.cbegin())->get_results().cend(); ++it)
-        os << (*it)[0] << (it!=(*results.cbegin())->get_results().cend()-1 ? "," : "");
-      os << "},\n"
-        
-         << "xlabel={OpenMP threads},\n";
-      
-      switch((benchmark_metric)(*(*results.cbegin())->get_results().cbegin())[4]) {        
-      case benchmark_metric::bandwidth_kb_sec:        
-        os << "ylabel={Bandwidth in KB/s},\n";
-        break;
-      case benchmark_metric::bandwidth_mb_sec:        
-        os << "ylabel={Bandwidth in MB/s},\n";
-        break;
-      case benchmark_metric::bandwidth_gb_sec:        
-        os << "ylabel={Bandwidth in GB/s},\n";
-        break;
-      case benchmark_metric::bandwidth_tb_sec:        
-        os << "ylabel={Bandwidth in TB/s},\n";
-        break;
-      case benchmark_metric::perf_kflop_sec:        
-        os << "ylabel={Berformance in kFLOP/s},\n";
-        break;
-      case benchmark_metric::perf_mflop_sec:        
-        os << "ylabel={Berformance in mFLOP/s},\n";
-        break;
-      case benchmark_metric::perf_gflop_sec:        
-        os << "ylabel={Berformance in gFLOP/s},\n";
-        break;
-      case benchmark_metric::perf_tflop_sec:        
-        os << "ylabel={Berformance in tFLOP/s},\n";
-        break;
-      case benchmark_metric::runtime_sec:
-        os << "ylabel={Runtime in seconds},\n";
-        break;
-      default:
-        throw std::runtime_error("Unsupported metric");
-      }
-      
-      os << "title={" << title << "},\n"
-         << "]";
-
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << "\\addplot table[x=threads,y="
-           << (*it)->get_label()
-           << "]{\\data"
-           << (*it)->get_label()
-           << "};\n";
-
-      os << "\\legend{";
-      for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << (*it)->get_title() << (it!=results.cend()-1 ? "," : "");
-      os << "}\n"
-        
-         << "\\end{semilogyaxis}\n"
-
-         << "\\path let \\p1=(MyAxis.west), \\p2=(MyAxis.east) in "
-         << "node[below right, align=left, text=black, text width=\\x2-\\x1]\n"
-         << "at ($(MyAxis.south west)+(0,-30pt)$) {%\n"
-         << "G+Smo " << gsCmdLine::getGismoVersion()
-         << ", Eigen " << gsCmdLine::getEigenVersion()
-         << " (" << gsCmdLine::getCompilerVersion()
-         << ", " << gsCmdLine::getCppVersion()
-         << ", " << gsCmdLine::getStdLibVersion()
-         << (gsCmdLine::getExtraLibsVersion().empty()
-             ? "), \n"
-             : gsCmdLine::getExtraLibsVersion()+"), \n")
-
-         << "CPU " << gsCmdLine::getCpuInfo() << ", "
-         << "Memory " << gsCmdLine::getMemoryInfo()  << ", ";
-
-      gsJITCompilerConfig jit; jit.load("config/jit.xml");
-      std::string flags = jit.getFlags();
-      os << "Compiler flags ";
-      
-      for (auto token=strtok(&flags[0], " "); token!=NULL; token=strtok(NULL, " ")) {
-        if (token[0]=='-') {
-          if (token[1]=='I' || token[1]=='L' || token[1]=='l' || token[1]=='W')
-            continue;
-          os << "\\verb!" << token << "! ";
-        }
-      }
-      
-      os << "};\n"
-           << "\\end{tikzpicture}\n";
-
-      return os;
-    }
-
-  private:
-    char id;
-    const std::string label,title;
-    std::vector< result_set* > results;
-  };
-
-public:
-  ~benchmark_latex()
-    {
-      for (auto it=benchmarks.begin(); it!=benchmarks.end(); ++it)
-        delete (*it);
-    }
-
-  benchmark_set* add_benchmark(const std::string& label,
-                               const std::string& title)
-  {
-    benchmarks.emplace_back(new benchmark_set(label, title));
-    return benchmarks.back();
-  }
-
-  const std::vector< benchmark_set* >& get_benchmarks() const
-  { return benchmarks; }
-
-  std::ostream &print(std::ostream &os) const
-  {
-    os << "\\documentclass[tikz]{standalone}\n"
-       << "\\usepackage{pgfplots}\n"
-       << "\\usepackage{verbatim}\n"
-       << "\\begin{document}\n"
-       << "\\usetikzlibrary{calc}\n";
-
-    for (auto it=benchmarks.cbegin(); it!=benchmarks.cend(); ++it)
-      (*it)->print(os);
-
-    os << "\\end{document}\n";
-    return os;
-  }
-
-private:
-  std::vector< benchmark_set* > benchmarks;
-};
-
-/// Print (as string) operator
-std::ostream &operator<<(std::ostream &os, const benchmark_latex& obj)
-{ return obj.print(os); }
-//! [Implement benchmark infrastructure]
-
-
 int main(int argc, char *argv[])
 {
   //! [Parse command line]
-  benchmark_latex latex;
+  gsBenchmark benchmark;
   std::vector<int> nthreads, ssizes, dsizes, vsizes;
   std::string fn;
   int nruns=1;
@@ -682,17 +373,17 @@ int main(int argc, char *argv[])
 
   //! [Execute benchmarks]
   {
-    auto bm = latex.add_benchmark("memcopy", "memory copy");
+    auto bm = benchmark.add("memcopy", "memory copy");
     {
       gsInfo << "=== Native C array memcopy\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
         gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_c_array_memcopy<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("nativememcopy",
-                          "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("nativememcopy",
+                  "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
@@ -703,27 +394,27 @@ int main(int argc, char *argv[])
         gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_memcopy<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("eigenmemcopy",
-                          "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("eigenmemcopy",
+                  "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
   }
 
   {
-    auto bm = latex.add_benchmark("dotprod", "dot-product");
+    auto bm = benchmark.add("dotprod", "dot-product");
     {
       gsInfo << "=== Native C array dot-product\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
         gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_c_array_dotproduct<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("nativedotproduct",
-                          "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("nativedotproduct",
+                  "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
@@ -734,27 +425,27 @@ int main(int argc, char *argv[])
         gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_dotproduct<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("eigendotproduct",
-                          "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("eigendotproduct",
+                  "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
   }
 
   {
-    auto bm = latex.add_benchmark("axpy", "axpy");
+    auto bm = benchmark.add("axpy", "axpy");
     {
       gsInfo << "=== Native C array AXPY\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
         gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_c_array_axpy<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("nativeaxpy",
-                          "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("nativeaxpy",
+                  "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
@@ -765,27 +456,27 @@ int main(int argc, char *argv[])
         gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_axpy<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("eigenaxpy",
-                          "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("eigenaxpy",
+                  "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
   }
 
   {
-    auto bm = latex.add_benchmark("densemvmul", "Dense matrix-vector multiply");
+    auto bm = benchmark.add("densemvmul", "Dense matrix-vector multiply");
     {
       gsInfo << "=== Native C array dense matrix-vector multiplication\n";
       for (auto it=dsizes.cbegin(); it!=dsizes.cend(); ++it) {
         gsInfo << (*it) << (it!=dsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_c_array_dense_matmul<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("nativdensemvmul",
-                          "native("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("nativdensemvmul",
+                  "native("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
@@ -796,21 +487,21 @@ int main(int argc, char *argv[])
         gsInfo << (*it) << (it!=dsizes.cend()-1 ? "." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_dense_matmul<real_t> benchmark(*it);
-          auto results = benchmark_driver(nthreads, nruns, benchmark, benchmark_metric::bandwidth_gb_sec);
-          bm->add_results("eigenmvmul",
-                          "eigen("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
-                          results);
+          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
+          bm->add("eigenmvmul",
+                  "eigen("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
+                  results);
         } catch(...) { gsInfo << "failed!"; }
       }
     }
   }
   
   if (fn.empty())
-    gsInfo << latex << "\n";
+    gsInfo << benchmark << "\n";
   else {
     std::ofstream file;
     file.open(fn);
-    file << latex << "\n";
+    file << benchmark << "\n";
     file.close();
   }
   //! [Execute benchmarks]
