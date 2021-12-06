@@ -250,8 +250,6 @@ User options:
             cf.resize(mb.size(), mb.size());
             cf.setIdentity();
 
-            // Set Coefs to ones for the mappedSpline
-            coefs.setOnes(mb.size(),1);
             break;
         // Example 1
         case 1:
@@ -300,14 +298,9 @@ User options:
             for (index_t i = 0; i < numRefine2; i++)
                 mb_level2.uniformRefine(1, discreteDegree2 - discreteRegularity2);
 
-            gsDebugVar(mb.basis(0));
-            gsDebugVar(mb_level2.basis(0));
             createSplineBasisL2Projection(mb,mb_level2,cf);
 
             mb = mb_level2; // For the new cf
-
-            // Set Coefs to ones for the mappedSpline
-            coefs.setOnes(mb.size(),1);
             break;
 
         default:
@@ -315,7 +308,6 @@ User options:
             break;
     }
     //! [Set up the example]
-
 
     //! [Setup the Mapped Basis]
     gsMappedBasis<1,real_t> mbasis1;
@@ -349,7 +341,33 @@ User options:
  */
     //! [Some computation on the basis]
 
+
     //! [Setup the Mapped Spline]
+    if (choice!=1) // If it is not example 2
+    {
+        gsMatrix<real_t> supp;
+        if (mb.dim() == 1)
+            supp = mbasis1.basis(0).support();
+        if (mb.dim() == 2)
+            supp = mbasis2.basis(0).support();
+        if (mb.dim() == 3)
+            supp = mbasis3.basis(0).support();
+
+        gsVector<real_t> a = supp.col(0);
+        gsVector<real_t> b = supp.col(1);
+        unsigned npts = 0;
+        if (mb.dim() == 1)
+            npts = mbasis1.size();
+        if (mb.dim() == 2)
+            npts = mbasis2.size();
+        if (mb.dim() == 3)
+            npts = mbasis3.size();
+        // Assume that the sqrt of mbasis1.size() is solvable
+        gsVector<unsigned> np = uniformSampleCount(a,b, npts );
+        gsMatrix<real_t> pts = gsPointGrid(a,b,np);
+
+        coefs = pts.transpose();
+    }
 
     gsMappedSpline<1,real_t> mspline1;
     gsMappedSpline<2,real_t> mspline2;
@@ -403,51 +421,7 @@ User options:
         }
         collection.save();
 
-        if (mp.empty())
-            mp.addPatch(gsNurbsCreator<>::BSplineUnitInterval(1));
-        gsField<> solField(mp, mspline1,false);
-
-        gsMatrix<real_t> supp(1,2);
-        supp << 0.0, 1.0;
-
-        index_t numPts = 1000;
-        gsVector<real_t> a = supp.col(0);
-        gsVector<real_t> b = supp.col(1);
-        gsVector<unsigned> np = uniformSampleCount(a,b, numPts );
-        gsMatrix<real_t> pts = gsPointGrid(a,b,np);
-
-        gsMatrix<real_t> ev;
-        mspline1.function(0).eval_into(pts, ev);
-
-        //gsInfo << mspline1.eval(supp) << "\n";
-
-        if (ev.rows() == 1)
-        {
-            gsMatrix<real_t> X,Y;
-            X = ev.row(0);
-            Y.setOnes(1,X.cols());
-
-            gsWriteParaviewPoints<>( X,Y, "MappedSpline_Points");
-        }
-        else if (ev.rows() == 2)
-        {
-            gsMatrix<real_t> X,Y;
-            X = ev.row(0);
-            Y = ev.row(1);
-
-            gsWriteParaviewPoints<>( X,Y, "MappedSpline_Points");
-        }
-        else if (ev.rows() == 3)
-        {
-            gsMatrix<real_t> X,Y, Z;
-            X = ev.row(0);
-            Y = ev.row(1);
-            Z = ev.row(2);
-
-            gsWriteParaviewPoints<>( X,Y,Z, "MappedSpline_Points");
-        }
-
-        //gsWriteParaview(mspline1.function(0), supp, "MappedSpline_2", 1000);
+        gsWriteParaview<>( mspline1, "MappedSpline", 1000);
     }
     else if (plot && mb.dim() == 2)
     {
@@ -465,15 +439,7 @@ User options:
         }
         collection.save();
 
-        if (mp.empty())
-            mp.addPatch( gsNurbsCreator<>::BSplineSquare(1, 1, 1) );
-        gsField<> solField(mp, mspline2,true);
-
-        gsMatrix<real_t> supp(2,2);
-        supp.col(0).setZero();
-        supp.col(1).setOnes();
-
-        gsWriteParaview<>( mspline2.function(0), supp, "MappedSpline", 1000);
+        gsWriteParaview<>( mspline2, "MappedSpline", 1000);
     }
     else if (plot && mb.dim() == 3)
     {
@@ -491,10 +457,13 @@ User options:
         }
         collection.save();
 
-        if (mp.empty())
-            mp.addPatch( gsNurbsCreator<>::BSplineCube(1, 1, 1, 1) );
-        gsField<> solField(mp, mspline3,true);
-        gsWriteParaview<>( solField, "MappedSpline", 1000, false);
+        gsWriteParaview<>( mspline3, "MappedSpline", 1000);
     }
+    if (plot) {
+        gsInfo << "The mapped basis is plotted to MappedBasis.pvd\n";
+        gsInfo << "The single mapped basis is plotted to MappedBasisSingle.pvd\n";
+        gsInfo << "The mapped spline is plotted to MappedSpline.pvd\n";
+    }
+
     //! [Export visualization in ParaView]
 }

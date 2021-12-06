@@ -86,7 +86,6 @@ public:
 
         m_ss.clear();
         m_ss.reserve(mbasis.nPieces());
-        gsDebugVar(mbasis.nPieces());
         for ( index_t k=0; k!=mbasis.nPieces(); k++ )
         {
             m_ss.push_back( gsMappedSingleSpline<d,T>(this,k) );
@@ -159,6 +158,10 @@ public:
     { return *m_mbases; }
 
     gsMultiPatch<T> exportToPatches() const;
+
+    // support (domain of definition)
+    gsMatrix<T> support(index_t k) const
+    { return m_mbases->getBase(k).support(); }
 
     /////// TO DO
     gsGeometry<T> * exportPatch(int i,gsMatrix<T> const & localCoef) const;
