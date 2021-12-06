@@ -54,7 +54,7 @@ namespace gismo
        << "xlabel={OpenMP threads},\n";
 
     it = results.front()->get().cbegin();
-    switch( (metric)it->at(3) )
+    switch( (int)it->at(3) )
     {
     case metric::bandwidth_kb_sec:        
       os << "ylabel={Bandwidth in KB/s},\n";
@@ -90,16 +90,16 @@ namespace gismo
     os << "title={" << title << "},\n"
        << "]";
 
-    for (auto it=results.cbegin(); it!=results.cend(); ++it)
+    for (auto rit=results.cbegin(); rit!=results.cend(); ++rit)
       os << "\\addplot table[x=threads,y="
-         << (*it)->get_label()
+         << (*rit)->get_label()
          << "]{\\data"
-         << (*it)->get_label()
+         << (*rit)->get_label()
          << "};\n";
 
     os << "\\legend{";
-    for (auto it=results.cbegin(); it!=results.cend(); ++it)
-      os << (*it)->get_title() << (it!=results.cend()-1 ? "," : "");
+    for (auto rit=results.cbegin(); rit!=results.cend(); ++rit)
+      os << (*rit)->get_title() << (rit!=results.cend()-1 ? "," : "");
     os << "}\n"
         
        << "\\end{semilogyaxis}\n"
