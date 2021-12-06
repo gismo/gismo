@@ -119,7 +119,7 @@ namespace gismo
        << "CPU " << gsSysInfo::getCpuInfo() << ", "
        << "Memory " << gsSysInfo::getMemoryInfo()  << ", ";
 
-    gsJITCompilerConfig jit; jit.load("config/jit.xml");
+    gsJITCompilerConfig jit; jit.load(GISMO_CONFIG_DIR "jit.xml");
     std::string flags = jit.getFlags();
     os << "Compiler flags ";
       
