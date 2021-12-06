@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 
         // Enforce Laplace conditions to right-hand side
         auto g_L = A.getCoeff(laplace, G); // Set the laplace bdy value
-        A.assemble(bc.get("Laplace"), (igrad(u, G) * nv(G)) * g_L.tr() );
+        A.assembleBdr(bc.get("Laplace"), (igrad(u, G) * nv(G)) * g_L.tr() );
 
         // Enforce Neumann conditions to right-hand side
         //A.assembleRhsBc(ilapl(u, G) * (igrad(u_ex) * nv(G)).tr(), bc.neumannSides() );

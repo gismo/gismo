@@ -199,7 +199,9 @@ public:
                 map.finalize();
 
                 gsBoundaryConditions<> bc_empty;
+                bc_empty.addCondition(1, condition_type::dirichlet, 0); // Doesn't matter which side
                 u.setup(bc_empty, dirichlet::homogeneous, 0, map);
+
                 A.initSystem();
 
                 gsVertexBasis<real_t> vertexBasis(geo, basis_plus, basis_minus, basis_geo, alpha, beta, sigma,

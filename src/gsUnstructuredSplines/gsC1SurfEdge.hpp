@@ -13,8 +13,6 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsApproxC1Edge.h>
-
 #include <gsUnstructuredSplines/gsG1AuxiliaryPatch.h>
 
 namespace gismo

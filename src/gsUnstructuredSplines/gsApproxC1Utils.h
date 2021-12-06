@@ -188,7 +188,7 @@ public:
 
     ~gsTraceBasis() { delete _traceBasis_piece; }
 
-GISMO_CLONE_FUNCTION(gsTraceBasis)
+    GISMO_CLONE_FUNCTION(gsTraceBasis)
 
     short_t domainDim() const {return 2;}
 
@@ -276,7 +276,7 @@ public:
 
     ~gsNormalDerivBasis() { delete _normalDerivBasis_piece; }
 
-GISMO_CLONE_FUNCTION(gsNormalDerivBasis)
+    GISMO_CLONE_FUNCTION(gsNormalDerivBasis)
 
     short_t domainDim() const {return 2;}
 
@@ -369,7 +369,7 @@ public:
 
     ~gsVertexBasis() { delete _vertexBasis_piece; }
 
-GISMO_CLONE_FUNCTION(gsVertexBasis)
+    GISMO_CLONE_FUNCTION(gsVertexBasis)
 
     short_t domainDim() const {return 2;}
 

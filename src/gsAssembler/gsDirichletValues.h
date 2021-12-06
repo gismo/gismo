@@ -30,7 +30,6 @@ void gsDirichletValues(
     if ( bc.container("Dirichlet").empty() ) return;
 
     const gsDofMapper & mapper = u.mapper();
-    if ( bc.container("Dirichlet").empty() && mapper.boundarySize() == 0) return;
 
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
 

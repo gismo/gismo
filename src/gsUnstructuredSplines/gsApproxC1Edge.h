@@ -124,6 +124,7 @@ public:
                 map.finalize();
 
                 gsBoundaryConditions<> bc_empty;
+                bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
                 u.setup(bc_empty, dirichlet::homogeneous, 0, map);
                 A.initSystem();
 
@@ -173,6 +174,7 @@ public:
                 map.finalize();
 
                 gsBoundaryConditions<> bc_empty;
+                bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
                 u.setup(bc_empty, dirichlet::homogeneous, 0, map);
                 A.initSystem();
 
@@ -287,6 +289,7 @@ public:
             map.finalize();
 
             gsBoundaryConditions<> bc_empty;
+            bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
             u.setup(bc_empty, dirichlet::homogeneous, 0, map);
             A.initSystem();
 
@@ -337,6 +340,7 @@ public:
             map.finalize();
 
             gsBoundaryConditions<> bc_empty;
+            bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
             u.setup(bc_empty, dirichlet::homogeneous, 0, map);
             A.initSystem();
 
