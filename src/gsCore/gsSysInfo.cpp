@@ -586,7 +586,6 @@ namespace gismo
     long page_size = sysconf(_SC_PAGE_SIZE);
     return util::to_string(pages * page_size / 1024 / 1024)+" MB";
     
-#   endif
 #elif __unix__
 #endif
     

@@ -26,7 +26,7 @@
 #   include <sys/sysctl.h>
 #elif __linux__
 #   include <unistd.h>
-#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || define(__SUNCC_PRO))
+#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
 #      include <cpuid.h>
 #   else
 #      include <limits.h>

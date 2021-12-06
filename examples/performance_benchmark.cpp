@@ -377,7 +377,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== Native C array memcopy\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_c_array_memcopy<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
@@ -391,7 +391,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== gsVector memcopy\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_memcopy<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
@@ -408,7 +408,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== Native C array dot-product\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_c_array_dotproduct<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
@@ -422,7 +422,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== gsVector dot-product\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_dotproduct<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
@@ -439,7 +439,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== Native C array AXPY\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_c_array_axpy<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
@@ -453,7 +453,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== gsVector AXPY\n";
       for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_axpy<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
@@ -470,7 +470,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== Native C array dense matrix-vector multiplication\n";
       for (auto it=dsizes.cbegin(); it!=dsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=dsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=dsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_c_array_dense_matmul<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
@@ -484,7 +484,7 @@ int main(int argc, char *argv[])
     {
       gsInfo << "=== gsMatrix/gsVector dense matrix-vector multiplication\n";
       for (auto it=dsizes.cbegin(); it!=dsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=dsizes.cend()-1 ? "." : "\n") << std::flush;
+        gsInfo << (*it) << (it!=dsizes.cend()-1 ? "..." : "\n") << std::flush;
         try {
           benchmark_eigen_vector_dense_matmul<real_t> benchmark(*it);
           auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
