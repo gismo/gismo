@@ -49,13 +49,11 @@ set(CMAKE_CXX_STANDARD_DEFAULT 11)
       set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "-std=c++2a")
       set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std=gnu++2a")
     endif()
-    
-  elseif("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xARMClang" OR
-         "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang"    OR
-         "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xFujitsuClang")
-       
+
+  elseif("x${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang$")
+
     # ARMClang/Clang
-       
+    
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 2.1)
       set(CMAKE_CXX98_STANDARD_COMPILE_OPTION "-std=c++98")
       set(CMAKE_CXX98_EXTENSION_COMPILE_OPTION "-std=gnu++98")
