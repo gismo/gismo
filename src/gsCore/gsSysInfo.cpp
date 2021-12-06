@@ -12,21 +12,6 @@
 */
 
 #include <gsCore/gsSysInfo.h>
-#include <gsCore/gsForwardDeclarations.h>
-#include <gsCore/gsLinearAlgebra.h>
-
-#if defined(_WIN32) || defined(_WIN64)
-#   include <windows.h>
-#elif __APPLE__
-#   include <sys/utsname.h>
-#   include <sys/sysctl.h>
-#elif __linux__
-#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) )
-#      include <cpuid.h>
-#      include <unistd.h>
-#   endif
-#elif __unix__
-#endif
 
 namespace gismo
 {
@@ -542,7 +527,7 @@ namespace gismo
     }
   
 #elif __linux__
-#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) )
+#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
 
     char CPUBrandString[0x40];
     unsigned int CPUInfo[4] = {0,0,0,0};
@@ -565,7 +550,14 @@ namespace gismo
       }
   
     return CPUBrandString;
-  
+
+#   else
+
+    char hostname[HOST_NAME_MAX + 1];
+    gethostname(hostname, HOST_NAME_MAX + 1);
+
+    return "Unknown-CPU ["+hostname+"]";
+    
 #   endif
 #elif __unix__
 #endif
@@ -589,16 +581,15 @@ namespace gismo
     }
   
 #elif __linux__
-#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) )
-  
+    
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return util::to_string(pages * page_size / 1024 / 1024)+" MB";
-  
+    
 #   endif
 #elif __unix__
 #endif
-  
+    
     return "Unknown-Memory";
   }
   
