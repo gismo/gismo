@@ -88,11 +88,11 @@ typedef std::array<double,4> Result;
   class gsBenchmarkSet
   {
   public:
-    gsBenchmarkSet(const std::string& label,
-                   const std::string& title)
+    gsBenchmarkSet(const std::string& _label,
+                   const std::string& _title)
       : id('A'),
-        label(label),
-        title(title)
+        label(_label),
+        title(_title)
     {}
 
     ~gsBenchmarkSet()
@@ -101,12 +101,12 @@ typedef std::array<double,4> Result;
         delete (*it);
     }
 
-    void add(const std::string& label,
-             const std::string& title,
-             const std::vector<Result>& results)
+    void add(const std::string& _label,
+             const std::string& _title,
+             const std::vector<Result>& _results)
     {
-      this->results.emplace_back(new gsBenchmarkResultSet(label+std::string(1,id++),
-                                                          title, results));
+      this->results.emplace_back(new gsBenchmarkResultSet(_label+std::string(1,id++),
+                                                          _title, _results));
     }
 
     const std::string& get_label() const
@@ -133,10 +133,10 @@ public:
         delete (*it);
     }
 
-  gsBenchmarkSet* add(const std::string& label,
-                      const std::string& title)
+  gsBenchmarkSet* add(const std::string& _label,
+                      const std::string& _title)
   {
-    benchmarks.emplace_back(new gsBenchmarkSet(label, title));
+    benchmarks.emplace_back(new gsBenchmarkSet(_label, _title));
     return benchmarks.back();
   }
 
