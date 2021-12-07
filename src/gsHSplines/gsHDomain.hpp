@@ -782,7 +782,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
             }
         }
     }
-//*/
+*/
     return res;
 }
 
@@ -931,7 +931,7 @@ gsHDomain<d,T>::nodeSearch() const
     }
     return i;
 }
-//*/
+*/
 
 template<short_t d, class T>
 template<typename visitor>
@@ -997,7 +997,7 @@ gsHDomain<d,T>::leafSearch() const
     }
     return i;
 }
-//*/
+*/
 
 template<short_t d, class T >
 std::pair<int,int>

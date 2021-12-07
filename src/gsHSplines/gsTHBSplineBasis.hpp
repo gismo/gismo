@@ -689,7 +689,7 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 
 
 }
-//*/
+*/
 
 
 //return data for trimming in parasolid
@@ -1117,7 +1117,7 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
                 }
             }
             while( nextCubePoint(cur,low,upp) );
-            //*/
+            */
         }
 
         // update result size

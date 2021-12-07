@@ -243,7 +243,7 @@ public:
            symbol_t& symbol = symbol_list[i];
            // do something
            }
-        //*/
+        */
     }
 
     void init()
@@ -334,7 +334,7 @@ bool gsSymbolList<T>::hasSymbol(const std::string& symbol_name)
 {
 return true;
 }
-//*/
+*/
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t(0))

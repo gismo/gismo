@@ -1161,7 +1161,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   }
   }
   }
-//*/
+*/
 
 /*---------- OFF trinagular mesh .off file */
 
@@ -1337,7 +1337,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
         }
    }
 //-- mesh end
-//*/
+*/
 #if FALSE
 
     std::istringstream lnstream;

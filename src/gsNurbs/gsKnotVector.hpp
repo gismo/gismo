@@ -213,7 +213,7 @@ const gsKnotVector<T> & gsKnotVector<T>::trimDomain(const T dbegin, const T dend
 
     return *this;
 }
-//*/
+*/
 
 
 template<typename T>

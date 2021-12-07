@@ -316,7 +316,7 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
         }
     }
 }
-//*/
+*/
 
 template<class T>
 void gsGeometry<T>::merge(gsGeometry *)
