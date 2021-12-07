@@ -28,10 +28,14 @@ public:
     typedef gsVector<index_t,d> point;
     typedef typename Eigen::aligned_allocator<gsHBox<d,T>> aalloc;
 
-    typedef typename gsHBoxContainer<d,T>::Container    Container;
-    typedef typename gsHBoxContainer<d,T>::Iterator     Iterator;
-    typedef typename gsHBoxContainer<d,T>::HContainer   HContainer;
-    typedef typename gsHBoxContainer<d,T>::HIterator    HIterator;
+    typedef typename std::list<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>    Container;
+    typedef typename std::vector<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>  SortedContainer;
+    typedef typename std::vector<Container>                                 HContainer;
+    typedef typename Container::iterator        Iterator;
+    typedef typename Container::const_iterator  cIterator;
+    typedef typename HContainer::iterator       HIterator;
+    typedef typename HContainer::const_iterator cHIterator;
+
 
 public:
     ~gsHBox() {  }
@@ -146,9 +150,21 @@ std::ostream& operator<<( std::ostream& os, const gsHBox<d,T>& b )
 
 } // namespace gismo
 
-// ************************************************
-// ************************************************
-
+// *****************************************************************
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsHBox.hpp)
+#else
+#ifdef gsHBox_EXPORT
+#include GISMO_HPP_HEADER(gsHBox.hpp)
+#undef  EXTERN_CLASS_TEMPLATE
+#define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
+namespace gismo
+{
+EXTERN_CLASS_TEMPLATE gsHBox<1,real_t>;
+EXTERN_CLASS_TEMPLATE gsHBox<2,real_t>;
+EXTERN_CLASS_TEMPLATE gsHBox<3,real_t>;
+EXTERN_CLASS_TEMPLATE gsHBox<4,real_t>;
+}
+#endif
+// *****************************************************************

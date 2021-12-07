@@ -214,7 +214,7 @@ gsHBox<d,T> gsHBox<d, T>::getAncestor(index_t k) const
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::HContainer gsHBox<d, T>::toContainer()
+typename gsHBox<d,T>::HContainer gsHBox<d, T>::toContainer()
 {
     gsHBoxContainer<d,T> container(*this);
     return container.boxes();
@@ -233,7 +233,7 @@ gsHBoxContainer<d,T> gsHBox<d, T>::toHBoxContainer()
 // }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::HContainer gsHBox<d, T>::getSupportExtension()
+typename gsHBox<d, T>::HContainer gsHBox<d, T>::getSupportExtension()
 {
     GISMO_ENSURE(m_basis!=nullptr,"Basis is undefined");
     this->_computeCoordinates();
@@ -258,7 +258,7 @@ typename gsHBoxContainer<d,T>::HContainer gsHBox<d, T>::getSupportExtension()
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::HContainer gsHBox<d, T>::getMultiLevelSupportExtension(index_t k)
+typename gsHBox<d,T>::HContainer gsHBox<d, T>::getMultiLevelSupportExtension(index_t k)
 {
     index_t lvl = this->level();
     GISMO_ASSERT(k <= lvl,"Ancestor must be requested from a level lower than the current level (k <= l), but k="<<k<<" and lvl="<<lvl);
@@ -274,9 +274,9 @@ typename gsHBoxContainer<d,T>::HContainer gsHBox<d, T>::getMultiLevelSupportExte
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
+typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
 {
-    typename gsHBoxContainer<d,T>::Container neighborhood;
+    Container neighborhood;
     gsHBoxContainer<d,T>            extension;
 
     index_t lvl = this->level();
@@ -292,9 +292,9 @@ typename gsHBoxContainer<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t 
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
+typename gsHBox<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
 {
-    typename gsHBoxContainer<d,T>::Container    neighborhood;
+    Container    neighborhood;
     gsHBoxContainer<d,T>                        parents, extension;
 
     index_t lvl = this->level();

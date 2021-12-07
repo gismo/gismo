@@ -13,10 +13,10 @@
 
 #pragma once
 
+#include <gsHSplines/gsHBox.h>
+
 namespace gismo
 {
-
-template<short_t d, class T> class gsHBox;
 
 template<short_t d, class T>
 class gsHBoxContainer
@@ -93,9 +93,21 @@ std::ostream& operator<<( std::ostream& os, const gsHBoxContainer<d,T>& b )
 
 } // namespace gismo
 
-// ************************************************
-// ************************************************
-
+// *****************************************************************
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsHBoxContainer.hpp)
+#else
+#ifdef gsHBoxContainer_EXPORT
+#include GISMO_HPP_HEADER(gsHBoxContainer.hpp)
+#undef  EXTERN_CLASS_TEMPLATE
+#define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
+namespace gismo
+{
+EXTERN_CLASS_TEMPLATE gsHBoxContainer<1,real_t>;
+EXTERN_CLASS_TEMPLATE gsHBoxContainer<2,real_t>;
+EXTERN_CLASS_TEMPLATE gsHBoxContainer<3,real_t>;
+EXTERN_CLASS_TEMPLATE gsHBoxContainer<4,real_t>;
+}
+#endif
+// *****************************************************************
