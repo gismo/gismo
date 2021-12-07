@@ -3093,7 +3093,7 @@ template<class T>
 class hess_expr<gsFeSolution<T> > : public _expr<hess_expr<gsFeSolution<T> > >
 {
 protected:
-    const gsFeSolution<T> & _u;
+    const gsFeSolution<T> _u;
 
 public:
     typedef T Scalar;
