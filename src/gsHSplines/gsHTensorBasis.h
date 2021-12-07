@@ -668,6 +668,17 @@ public:
     index_t getLevelAtPoint(const  gsMatrix<T> & Pt ) const;
 
     // S.K.
+    /// @brief Returns the level(s) at indexes in the parameter domain.
+    ///
+                    /// \param[in] Pt gsMatrix of size <em>d</em> x <em>n</em>, where\n
+                    /// \em d is the dimension of the parameter domain and\n
+                    /// \em n is the number of evaluation points.\n
+                    /// Each column of \em Pts represents one evaluation point.
+                    /// \return levels gsMatrix of size <em>1</em> x <em>n</em>.\n
+                    /// <em>levels(0,i)</em> is the level of the point defined by the <em>i</em>-th column in \em Pts.
+    index_t getLevelAtIndex(const point & Pt ) const;
+
+    // S.K.
     /// @brief Returns the level(s) and knot span(s) at point(s) in the parameter domain.
     ///
     /// \param[in] Pt gsMatrix of size <em>d</em> x <em>n</em>, where\n

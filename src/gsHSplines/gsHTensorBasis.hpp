@@ -63,6 +63,16 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 }
 
 template<short_t d, class T> inline
+index_t gsHTensorBasis<d,T>::getLevelAtIndex(const point & Pt) const
+{
+    const int maxLevel = m_tree.getMaxInsLevel();
+
+    needLevel(maxLevel);
+
+    return m_tree.levelOf( Pt, maxLevel);
+}
+
+template<short_t d, class T> inline
 void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
                                                      gsVector<index_t> & lvl,
                                                      gsMatrix<index_t> & loIdx ) const
