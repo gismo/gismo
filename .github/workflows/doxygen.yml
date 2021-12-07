@@ -1,0 +1,24 @@
+name: Doxygen
+
+on:
+  push:
+    branches: [ master, ddoc ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2        
+    - name: make_doc
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: mkdir build; cd build; cmake ../ -DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11"; make -j4 doc
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./doc/html
