@@ -16,7 +16,7 @@ jobs:
     - name: make_doc
       shell: bash
       working-directory: ${{runner.workspace}}
-      run: mkdir build; cd build; cmake ../ -DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11"; make -j4 doc
+      run: mkdir build; cd build; cmake ../ -DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11; make -j4 doc
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       with:
