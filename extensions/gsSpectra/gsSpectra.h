@@ -142,7 +142,7 @@ public:
     gsInfo << slv.eigenvalues()  <<"\n";
     gsInfo << slv.eigenvectors() <<"\n";
     }
-    \code
+    \endcode
 */
 template <class MatrixType>
 class gsSpectraSolver : private SpectraMatProd<MatrixType>,
