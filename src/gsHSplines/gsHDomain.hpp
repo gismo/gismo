@@ -745,11 +745,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
                 break;
         }
     }
-
-// */
-
-// /* // implementation with stack
-
+*/
     std::vector<node*> stack;
     stack.reserve( 2 * m_maxPath );
     stack.push_back(_node);  //push(_node);
@@ -782,7 +778,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
             }
         }
     }
-*/
+
     return res;
 }
 
