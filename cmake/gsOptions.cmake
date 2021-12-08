@@ -53,6 +53,11 @@ if  (${GISMO_BUILD_PCH})
 message ("  GISMO_BUILD_PCH         ${GISMO_BUILD_PCH}")
 endif()
 
+option(GISMO_BUILD_PYBIND11      "Build Python module using pybind11" false  )
+if  (${GISMO_BUILD_PYBIND11})
+message ("  GISMO_BUILD_PYBIND11    ${GISMO_BUILD_PYBIND11}")
+endif()
+
 option(GISMO_BUILD_PVIEW         "Build Paraview Plugin"     false  )
 if  (${GISMO_BUILD_PVIEW})
 message ("  GISMO_BUILD_PVIEW        ${GISMO_BUILD_VIEW}")
