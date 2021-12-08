@@ -191,6 +191,9 @@ public:
     static TensorNurbs2Ptr NurbsDisk(T const & r=1, T const & x=0, T const & y = 0);
 
     static TensorBSpline2Ptr NurbsQrtPlateWHoleC0();
+
+    static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
+
 }; // struct
 
 } // namespace gismo

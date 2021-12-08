@@ -1222,5 +1222,18 @@ gsNurbsCreator<T>::NurbsQrtPlateWHoleC0()
 
 }
 
+/// Square of side \a r, with lower left corner at (x,y)
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::BSplineTriangle( T const & H,
+                                    T const & W)
+{
+    gsKnotVector<T> KV (0,1,0,2) ;
+    gsMatrix<T> C(4,2) ;
+
+    C.col(0) << 0 , 0 , 0.5*W, W;
+    C.col(1) << H , 0 , 0.5*H, 0 ;
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(C)));
+}
 
 } // namespace gismo
