@@ -244,7 +244,8 @@ User options:
 
             // Set degree and refinement
             mb.setDegree(discreteDegree);
-            mb.uniformRefine(numRefine, discreteDegree - discreteRegularity);
+            for (index_t i = 0; i < numRefine; i++)
+                mb.uniformRefine(1, discreteDegree - discreteRegularity);
 
             // Set Trafo Matrix to identity for the mappedBasis
             cf.resize(mb.size(), mb.size());
@@ -379,18 +380,6 @@ User options:
     if (mb.dim() == 3)
         mspline3.init(mbasis3,coefs);
     //! [Setup the Mapped Spline]
-
-    //! [Simple L2 Projection example]
-// function `elementInSupportOf` has not been implemented
-/*
-    gsFunctionExpr<> functionExpr("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-    gsMatrix<> coefs2;
-    gsQuasiInterpolate<real_t>::localIntpl(mbasis.basis(0), functionExpr, coefs2);
-    gsMappedSpline<2,real_t> mspline2(mbasis,coefs2);
-    gsField<> solField2(mp, mspline2,true);
-    gsWriteParaview<>( solField2, "MappedSpline_l2Projection", 1000, false);
- */
-    //! [Simple L2 Projection example]
 
     //! [Export mapped spline to xml file]
     if (xml)
