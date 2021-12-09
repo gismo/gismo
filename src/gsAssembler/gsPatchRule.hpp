@@ -37,7 +37,7 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
     // Initialize some stuff
     m_dim = m_basis->dim();
 
-    GISMO_ASSERT( m_fixDir < short_t(m_dim) && m_fixDir>-2, "Invalid input fixDir = "<<m_fixDir);
+    GISMO_ASSERT( m_fixDir < (short_t)(m_dim) && m_fixDir>-2, "Invalid input fixDir = "<<m_fixDir);
 
     m_nodes.resize(m_dim);
     m_weights.resize(m_dim);
@@ -52,7 +52,7 @@ gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
     for (size_t d = 0; d != m_dim; d++)
     {
         m_end = m_basis->support().col(1);
-        if (short_t(d)==m_fixDir && m_fixDir!=-1)
+        if ((short_t)(d)==m_fixDir && m_fixDir!=-1)
         {
             m_nodes[d].resize(2);
             m_nodes[d]<<0,1;

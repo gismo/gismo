@@ -39,7 +39,7 @@ void gsBoehm(
     if (r==1)
         return gsBoehmSingle(knots, coefs, val, update_knots);
 
-    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+    GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - knots.degree()-1),
                   "Incompatible coefficients("<<coefs.rows()
                   <<")/knots("<<knots.size()<<")/degree("<<knots.degree()<<")" ) ;
 
@@ -100,7 +100,7 @@ void gsBoehmSingle(
     )
 {
 
-    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+    GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - knots.degree()-1),
                   "Incompatible coefficients/knots" ) ;
 
     int k = knots.iFind(val)-knots.begin();
