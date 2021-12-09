@@ -1757,7 +1757,7 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
     static int phase; /* 0-header, 1-cps, 2-knots, 3-weights */
     static int m;       /* marker in strings x, y, z */
     static int c, endknot;    /* counter of points */
-    static int b[4]; /* b[0,1]-maxindex_of_ctrl_pts, b[2,3]-degree_of_Bspl */
+    static int q[5],b[4]; /* b[0,1]-maxindex_of_ctrl_pts, b[2,3]-degree_of_Bspl */
     //static int sw[5]; /* breaks: 10, +b[0]+b[2]+2, +b[1]+b[3]+2, +(b[0]+1)*(b[1]+1), +(b[0]+1)*(b[1]+1) */
     int i;  /* i-order of the character */
     static int j;  /* j-order of head. */
@@ -1776,10 +1776,7 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
         case 0:  // PHASE header
             switch (j)
             {
-            case 1:
-            case 2:
-            case 3:
-            case 4:
+            case 1 ... 4:
                 if (s[i] == ',')
                 {
                     t[m]='\0';
@@ -1808,6 +1805,8 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
                     t[m]= '\0';
                     m= 0;
                     //printf("%d: Got number: %s\n", j, t);
+                    if (0!=j) q[j-5]= atoi(t);
+                    if (7==j) ss<<q[0]<<",";
                     j++;
                 }
                 else
@@ -2148,11 +2147,6 @@ bool gsFileData<T>::readIgesFile( String const & fn )
                 copy_field(line,73,7,pd_seq_s);
                 pd_seq=atoi(pd_seq_s);
             }
-            //Debug
-            gsInfo<<"\n\n"; while(std::getline(ss, token, ',')) gsInfo << token << '\n'; break;
-
-            //todo: read in here..
-          
             break;
         case 128:
             for (int i=1; i <= entity[emark][PD_CNT]; i++)
@@ -2164,17 +2158,26 @@ bool gsFileData<T>::readIgesFile( String const & fn )
             }
 
             //Debug
-            //gsInfo<<"\n\n"; while(std::getline(ss, token, ',')) gsInfo << token << '\n'; break;
-          
+            //gsInfo<<"\nREAD\n"; while(std::getline(ss, token, ',')) gsInfo << token << '\n'; break;
+
+            std::getline(ss, token, ',');
+            bool rat = (token!="0");
             gsXmlNode* g = internal::makeNode("Geometry", *data);
-            g->append_attribute( internal::makeAttribute("type", "TensorNurbs2", *data) );
+            g->append_attribute( internal::makeAttribute("type",
+                               (rat?"TensorNurbs2":"TensorBSpline2"), *data) );
             data->appendToRoot(g);
-            gsXmlNode* rtb = internal::makeNode("Basis", *data);
-            rtb->append_attribute( internal::makeAttribute("type", "TensorNurbsBasis2", *data) );
-            g->append_node(rtb);
-            gsXmlNode* src = internal::makeNode("Basis", *data);
-            rtb->append_node(src);
-            src->append_attribute( internal::makeAttribute("type", "TensorBSplineBasis2", *data) );
+            gsXmlNode* rtb(nullptr), * src;
+            src = internal::makeNode("Basis", *data);
+            if (rat)
+            {
+                rtb = internal::makeNode("Basis", *data);
+                rtb->append_attribute( internal::makeAttribute("type", "TensorNurbsBasis2", *data) );
+                g->append_node(rtb);
+                rtb->append_node(src);
+            }
+            else
+                g->append_node(src);
+            src->append_attribute( internal::makeAttribute("type","TensorBSplineBasis2", *data) );
             gsXmlNode* b = internal::makeNode("Basis", *data);
             b->append_attribute( internal::makeAttribute("index", 0, *data) );
             b->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
@@ -2194,8 +2197,11 @@ bool gsFileData<T>::readIgesFile( String const & fn )
             k->append_attribute( internal::makeAttribute("degree", token, *data) ) ;
             b->append_node(k);
             std::getline(ss, token, ',');
-            k = internal::makeNode("weights", token, *data);
-            rtb->append_node(k);
+            if (rat)
+            {
+                k = internal::makeNode("weights", token, *data);
+                rtb->append_node(k);
+            }
             std::getline(ss, token, ',');
             k = internal::makeNode("coefs", token, *data);
             k->append_attribute( internal::makeAttribute("geoDim", 3, *data ) );

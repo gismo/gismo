@@ -782,7 +782,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
             }
         }
     }
-*/
+
     return res;
 }
 
