@@ -11,9 +11,10 @@
     Author(s): M. Moller
 */
 
-#include <gsIO/gsBenchmark.h>
 #include <gsCore/gsJITCompiler.h>
 #include <gsCore/gsSysInfo.h>
+#include <gsIO/gsBenchmark.h>
+
 #include <cstring>
 
 namespace gismo
@@ -21,11 +22,11 @@ namespace gismo
 
   std::ostream &gsBenchmark::gsBenchmarkResultSet::print(std::ostream &os) const
   {
-    os << "\\pgfplotstableread[row sep=\\\\,col sep=&]{\n"
-       << "threads & " << label << " \\\\\n";
+    os << "\\pgfplotstableread[col sep=space]{\n"
+       << label << "\n";
 
     for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << it->at(0) << "&" << it->at(2) << "\\\\\n";
+        os << it->at(2) << "\n";
 
     os << "}\\data" << label << "\n";
 
@@ -38,22 +39,24 @@ namespace gismo
       (*it)->print(os);
 
     os << "\\begin{tikzpicture}\n"
-       << "\\begin{semilogyaxis}[\n"
+       << "\\begin{axis}[\n"
        << "name=MyAxis,\n"
-       << "width=\\textwidth,\n"
-       << "height=.5\\textwidth,\n"
-       << "legend pos=outer north east,\n"        
-       << "symbolic x coords={";
+       << "width=2\\textwidth,\n"
+       << "height=.8\\textwidth,\n"
+       << "legend pos=outer north east,\n"
+       << "ybar = 0.05cm,\n"
+       << "bar width = 3pt,\n"
+       << "ymajorgrids=true,\n"
+       << "xticklabel style={rotate=45,anchor=east},\n"
+       << "xticklabels={";
 
-    //std::vector<std::array<double, 4> >::const_iterator
-    auto it  = results.front()->get().cbegin();
-    auto ite = results.front()->get().cend();
-    for (;it!=ite; ++it)
-        os << it->at(0) << (it!=ite-1 ? "," : "");
+    for (auto rit=results.cbegin(); rit!=results.cend(); ++rit)
+      os << (*rit)->get_title() << (rit!=results.cend()-1 ? "," : "");
+    
     os << "},\n"
-       << "xlabel={OpenMP threads},\n";
+       << "xtick=data,\n";
 
-    it = results.front()->get().cbegin();
+    auto it = results.front()->get().cbegin();
     switch( (int)it->at(3) )
     {
     case metric::bandwidth_kb_sec:        
@@ -88,25 +91,39 @@ namespace gismo
     }
       
     os << "title={" << title << "},\n"
-       << "]";
+       << "]\n";
 
-    for (auto rit=results.cbegin(); rit!=results.cend(); ++rit)
-      os << "\\addplot table[x=threads,y="
+    for (auto rit=results.cbegin()+1; rit!=results.cend(); ++rit)
+      os << "\\pgfplotstablecreatecol[copy column from "
+         << "table={\\data"
          << (*rit)->get_label()
-         << "]{\\data"
+         << "}{[index] 0}] {"
          << (*rit)->get_label()
-         << "};\n";
+         << "} {\\data"
+         << (*results.cbegin())->get_label()
+         << "}\n";
+
+    os << "\\pgfplotstabletranspose[rows/threads/.style={string type}]\\mytable{"
+       << "\\data"
+       << (*results.cbegin())->get_label()
+       << "}\n";
+
+    for (std::size_t i=1; i<=results.front()->get().size(); ++i)
+      os << "\\addplot table[x expr=\\coordindex, y index="
+         << util::to_string(i) << "]{\\mytable};\n";
 
     os << "\\legend{";
-    for (auto rit=results.cbegin(); rit!=results.cend(); ++rit)
-      os << (*rit)->get_title() << (rit!=results.cend()-1 ? "," : "");
+    it  = results.front()->get().cbegin();
+    auto ite = results.front()->get().cend();
+    for (;it!=ite; ++it)
+      os << "Threads=" << it->at(0) << (it!=ite-1 ? "," : "");    
     os << "}\n"
         
-       << "\\end{semilogyaxis}\n"
+       << "\\end{axis}\n"
 
        << "\\path let \\p1=(MyAxis.west), \\p2=(MyAxis.east) in "
        << "node[below right, align=left, text=black, text width=\\x2-\\x1]\n"
-       << "at ($(MyAxis.south west)+(0,-30pt)$) {%\n"
+       << "at ($(MyAxis.south west)+(0,-100pt)$) {%\n"
        << "G+Smo " << gsSysInfo::getGismoVersion()
        << ", Eigen " << gsSysInfo::getEigenVersion()
        << " (" << gsSysInfo::getCompilerVersion()
@@ -117,7 +134,7 @@ namespace gismo
            : gsSysInfo::getExtraLibsVersion()+"), \n")
 
        << "CPU " << gsSysInfo::getCpuInfo() << ", "
-       << "Memory " << gsSysInfo::getMemoryInfo()  << ", ";
+       << "Memory " << gsSysInfo::getMemoryInfo()  << "\\\\\n";
 
     gsJITCompilerConfig jit; jit.load(GISMO_CONFIG_DIR "jit.xml");
     std::string flags = jit.getFlags();
@@ -141,7 +158,9 @@ namespace gismo
   {
     os << "\\documentclass[tikz]{standalone}\n"
        << "\\usepackage{pgfplots}\n"
+       << "\\usepackage{pgfplotstable}\n"
        << "\\usepackage{verbatim}\n"
+       << "\\pgfplotsset{compat=1.18}\n"
        << "\\begin{document}\n"
        << "\\usetikzlibrary{calc}\n";
     

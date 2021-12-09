@@ -147,10 +147,10 @@ public:
 
   template<typename T>
   static std::vector<Result>
-  run(const std::vector<int>& nthreads, int nruns, T& benchmark, metric metric)
+  run(const std::vector<index_t>& nthreads, index_t nruns, T& benchmark, metric metric)
   {
     gsStopwatch stopwatch;
-    std::size_t benchmark_result;
+    uint64_t benchmark_result;
     double benchmark_metric, benchmark_runtime;
     
     std::vector<Result> results;
@@ -162,7 +162,7 @@ public:
         benchmark_runtime = 0.0;
         benchmark_metric = 0.0;
         
-        for (int run=0; run<nruns; ++run) {
+        for (index_t run=0; run<nruns; ++run) {
           stopwatch.restart();
           benchmark_result = benchmark();
           stopwatch.stop();
@@ -186,10 +186,15 @@ public:
             break;
           default:
             throw std::runtime_error("Unsupported metric");
-          }
-          
+          }          
         }
 
+        if (std::isinf(benchmark_runtime))
+          benchmark_runtime = 0.0;
+
+        if (std::isinf(benchmark_metric))
+          benchmark_metric = 0.0;
+        
         Result res;
         res[0]= static_cast<double>(*it);        // number of OpenMP threads
         res[1]= benchmark_runtime/(double)nruns; // averaged elapsed time in seconds

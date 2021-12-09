@@ -13,26 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsExport.h>
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsCore/gsLinearAlgebra.h>
-
-#include <string>
-
-#if defined(_WIN32) || defined(_WIN64)
-#   include <windows.h>
-#elif __APPLE__
-#   include <sys/utsname.h>
-#   include <sys/sysctl.h>
-#elif __linux__
-#   include <unistd.h>
-#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
-#      include <cpuid.h>
-#   else
-#      include <limits.h>
-#   endif
-#elif __unix__
-#endif
 
 namespace gismo
 {
@@ -64,6 +45,9 @@ namespace gismo
 
     /// Returns memory information
     static std::string getMemoryInfo();
+
+    /// Returns total system memory in bytes
+    static uint64_t getMemoryInBytes(); 
     }; // class gsSysInfo
   
 } // namespace gismo

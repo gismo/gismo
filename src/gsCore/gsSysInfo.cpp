@@ -12,6 +12,24 @@
 */
 
 #include <gsCore/gsSysInfo.h>
+#include <gsCore/gsLinearAlgebra.h>
+
+#include <string>
+
+#if defined(_WIN32) || defined(_WIN64)
+#   include <windows.h>
+#elif __APPLE__
+#   include <sys/utsname.h>
+#   include <sys/sysctl.h>
+#elif __linux__
+#   include <unistd.h>
+#   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
+#      include <cpuid.h>
+#   else
+#      include <limits.h>
+#   endif
+#elif __unix__
+#endif
 
 namespace gismo
 {
@@ -559,7 +577,11 @@ namespace gismo
     return "Unknown-CPU ["+hostname+"]";
     
 #   endif
+    
 #elif __unix__
+    
+    // No generic implementation yet
+    
 #endif
   
     return "Unknown-CPU";
@@ -567,29 +589,52 @@ namespace gismo
 
   std::string gsSysInfo::getMemoryInfo()
   {
-
+    uint64_t memsize = gsSysInfo::getMemoryInBytes();
+    if (memsize>0) {
+      if (memsize<1024)
+        return util::to_string(memsize)+" B";
+      else if (memsize<1024*1024)
+        return util::to_string(memsize/1024)+" KB";
+      else if (memsize<1024*1024*1024)
+        return util::to_string(memsize/(1024*1024))+" MB";
+      else
+        return util::to_string(memsize/(1024*1024*1024))+" GB";
+    }
+    else
+      return "Unknown-Memory";
+  }
+  
+  uint64_t gsSysInfo::getMemoryInBytes()
+  {
 #if defined(_WIN32) || defined(_WIN64)
 
+    MEMORYSTATUSEX status;
+    status.dwLength = sizeof(status);
+    GlobalMemoryStatusEx(&status);
+    return (uint64_t)status.ullTotalPhys;
   
 #elif __APPLE__
-  
+    
     int64_t memsize;
     std::size_t size = sizeof(memsize);
-  
+    
     if (sysctlbyname("hw.memsize", &memsize, &size, NULL, 0) == 0) {
-      return util::to_string(memsize / 1024 / 1024)+" MB";
+      return (uint64_t)memsize;
     }
   
 #elif __linux__
     
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
-    return util::to_string(pages * page_size / 1024 / 1024)+" MB";
+    return (uint64)(pages * page_size);
     
 #elif __unix__
+
+    // No generic implementation yet
+    
 #endif
     
-    return "Unknown-Memory";
+    return 0;
   }
   
 } // namespace gismo
