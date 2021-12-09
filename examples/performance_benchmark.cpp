@@ -49,7 +49,7 @@ class memory_safeguard
 public:
   memory_safeguard(index_t n)
   {
-    if (T::size(n) > 0.8*gsSysInfo::getMemoryInBytes())
+    if (T::size(n) > gsSysInfo::getMemoryInBytes())
       throw std::runtime_error("Insufficient memory");
   }
 };
@@ -119,7 +119,7 @@ class benchmark_c_array_dotproduct
 {
 private:
   memory_safeguard<benchmark_c_array_dotproduct> _msg;
-  index_t n;
+  constexpr index_t n;
   T *m_x, *m_y;
 
 public:
@@ -178,7 +178,7 @@ class benchmark_c_array_axpy
 {
 private:
   memory_safeguard<benchmark_c_array_axpy> _msg;
-  index_t n;
+  constexpr index_t n;
   T *m_x, *m_y, *m_z;
 
 public:
@@ -238,7 +238,7 @@ class benchmark_c_array_dense_matmul
 {
 private:
   memory_safeguard<benchmark_c_array_dense_matmul> _msg;
-  index_t n;
+  constexpr index_t n;
   T *m_A, *m_x, *m_y;
 
 public:
@@ -303,7 +303,7 @@ class benchmark_eigen_memcopy
 {
 private:
   memory_safeguard<benchmark_eigen_memcopy> _msg;
-  index_t n;
+  constexpr index_t n;
   gsVector<T> x,y;
 
 public:
@@ -348,7 +348,7 @@ class benchmark_eigen_dotproduct
 {
 private:
   memory_safeguard<benchmark_eigen_dotproduct> _msg;
-  index_t n;
+  constexpr index_t n;
   gsVector<T> x, y;
 
 public:
@@ -391,7 +391,7 @@ class benchmark_eigen_axpy
 {
 private:
   memory_safeguard<benchmark_eigen_axpy> _msg;
-  index_t n;
+  constexpr index_t n;
   gsVector<T> x, y, z;
 
 public:
@@ -437,7 +437,7 @@ class benchmark_eigen_dense_matmul
 {
 private:
   memory_safeguard<benchmark_eigen_dense_matmul> _msg;
-  index_t n;
+  constexpr index_t n;
   gsMatrix<T> A;
   gsVector<T> x, y;
 
