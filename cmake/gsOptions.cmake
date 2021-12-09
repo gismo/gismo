@@ -27,6 +27,7 @@ message ("  CMAKE_CXX_STANDARD      ${CMAKE_CXX_STANDARD}")
 
 message ("  GISMO_COEFF_TYPE        ${GISMO_COEFF_TYPE}")
 message ("  GISMO_INDEX_TYPE        ${GISMO_INDEX_TYPE}")
+message ("  GISMO_SHORT_TYPE        ${GISMO_SHORT_TYPE}")
 
 ## #################################################################
 ## Options list: Standard options
