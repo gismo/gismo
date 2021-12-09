@@ -14,12 +14,46 @@
 //! [Include namespace]
 #include <gismo.h>
 
-#include <array>
-#include <iomanip>
-
 using namespace gismo;
 //! [Include namespace]
 
+//! [Create benchmark macro]
+#define CREATE_BENCHMARK(_benchmark, _label, _sizes, _metric)           \
+  gsInfo << "=== " << _benchmark<real_t>::name() << "\n";               \
+  auto bmark = benchmark.add(_label, _benchmark<real_t>::name());       \
+  for (auto it=_sizes.cbegin(); it!=_sizes.cend(); ++it) {              \
+    gsInfo << "... " << (*it) << std::flush;                            \
+    try {                                                               \
+      _benchmark<real_t> benchmark(*it);                                \
+      auto results = gsBenchmark::run(nthreads, nruns, benchmark, _metric); \
+      std::string meminfo;                                              \
+      uint64_t memsize = benchmark.size();                              \
+      if (memsize<1024)                                                 \
+        meminfo = util::to_string(memsize)+" B";                        \
+      else if (memsize<1024*1024)                                       \
+        meminfo = util::to_string(memsize/1024)+" KB";                  \
+      else if (memsize<1024*1024*1024)                                  \
+        meminfo = util::to_string(memsize/(1024*1024))+" MB";           \
+      else                                                              \
+        meminfo = util::to_string(memsize/(1024*1024*1024))+" GB";      \
+      bmark->add(_label, meminfo, results);                             \
+    } catch(...) { gsInfo << "[failed!]"; }                             \
+    gsInfo << "\n";                                                     \
+  }
+//! [Create benchmark macro]
+
+//! [Implement memory safeguard]
+template<typename T>
+class memory_safeguard
+{
+public:
+  memory_safeguard(index_t n)
+  {
+    if (T::size(n) > 0.8*gsSysInfo::getMemoryInBytes())
+      throw std::runtime_error("Insufficient memory");
+  }
+};
+//! [Implement memory safeguard]
 
 //! [Implement benchmarks]
 /**
@@ -29,15 +63,16 @@ template<typename T>
 class benchmark_c_array_memcopy
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_c_array_memcopy> _msg;
+  index_t n;
   T *m_x, *m_y;
 
 public:
-  benchmark_c_array_memcopy(std::size_t n)
-    : n(n), m_x(new T[n]), m_y(new T[n])
+  benchmark_c_array_memcopy(index_t n)
+    : _msg(n), n(n), m_x(new T[n]), m_y(new T[n])
   {
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
   }
 
@@ -47,17 +82,32 @@ public:
     delete[] m_y;
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_y[i] = m_x[i];
 
     // Needed to make sure the compiler does not eliminate this code block
     T tmp = m_y[n-1];
     GISMO_UNUSED(tmp);
 
-    return sizeof(T) * 2 * n;
+    return size();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (2 * n * sizeof(T));
+  }
+
+  static std::string name()
+  {
+    return "Memory copy (native C array)";
   }
 };
 
@@ -68,19 +118,20 @@ template<typename T>
 class benchmark_c_array_dotproduct
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_c_array_dotproduct> _msg;
+  index_t n;
   T *m_x, *m_y;
 
 public:
-  benchmark_c_array_dotproduct(std::size_t n)
-    : n(n), m_x(new T[n]), m_y(new T[n])
+  benchmark_c_array_dotproduct(index_t n)
+    : _msg(n), n(n), m_x(new T[n]), m_y(new T[n])
   {
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
 
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_y[i] = (T)1.0;
   }
 
@@ -90,17 +141,32 @@ public:
     delete[] m_y;
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
     volatile T sum = 0.0;
 
 #pragma omp parallel for simd reduction(+:sum)
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       sum += m_x[i] * m_y[i];
 
     GISMO_UNUSED(sum);
 
-    return sizeof(T) * 2 * n;
+    return size();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (2 * n * sizeof(T));
+  }
+
+  static std::string name()
+  {
+    return "Dot-product (native C array)";
   }
 };
 
@@ -111,19 +177,20 @@ template<typename T>
 class benchmark_c_array_axpy
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_c_array_axpy> _msg;
+  index_t n;
   T *m_x, *m_y, *m_z;
 
 public:
-  benchmark_c_array_axpy(std::size_t n)
-    : n(n), m_x(new T[n]), m_y(new T[n]), m_z(new T[n])
+  benchmark_c_array_axpy(index_t n)
+    : _msg(n), n(n), m_x(new T[n]), m_y(new T[n]), m_z(new T[n])
   {
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
 
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_y[i] = (T)1.0;
   }
 
@@ -134,10 +201,10 @@ public:
     delete[] m_z;
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_z[i] = (T)3.414 * m_x[i] + m_y[i];
 
     // Needed to make sure the compiler does not eliminate this code block
@@ -145,6 +212,21 @@ public:
     GISMO_UNUSED(tmp);
 
     return sizeof(T) * 3 * n;
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (3 * n * sizeof(T));
+  }
+
+  static std::string name()
+  {
+    return "AXPY (native C array)";
   }
 };
 
@@ -155,19 +237,20 @@ template<typename T>
 class benchmark_c_array_dense_matmul
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_c_array_dense_matmul> _msg;
+  index_t n;
   T *m_A, *m_x, *m_y;
 
 public:
-  benchmark_c_array_dense_matmul(std::size_t n)
-    : n(n), m_A(new T[n*n]), m_x(new T[n]), m_y(new T[n])
+  benchmark_c_array_dense_matmul(index_t n)
+    : _msg(n), n(n), m_A(new T[n*n]), m_x(new T[n]), m_y(new T[n])
   {
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n*n; ++i)
+    for (index_t i=0; i<n*n; ++i)
       m_A[i] = (T)1.0;
 
 #pragma omp parallel for simd
-    for (std::size_t i=0; i<n; ++i)
+    for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
   }
 
@@ -178,13 +261,14 @@ public:
     delete[] m_y;
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
-    for (std::size_t i=0; i<n; ++i) {
+    for (index_t i=0; i<n; ++i) {
       T sum = (T)0.0;
 #pragma omp parallel for simd reduction(+:sum)
-      for (std::size_t j=0; j<n; ++j)
+      for (index_t j=0; j<n; ++j) {
         sum += m_A[n*i+j] * m_x[j];
+      }
       m_y[i] = sum;
     }
 
@@ -192,7 +276,22 @@ public:
     T tmp = m_y[n-1];
     GISMO_UNUSED(tmp);
 
-    return sizeof(T) * (2*n*n + n);
+    return size();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (2 * n * n + n) * sizeof(T);
+  }
+
+  static std::string name()
+  {
+    return "Dense matrix-vector multiplication (native C array)";
   }
 };
 
@@ -200,20 +299,21 @@ public:
  * Benchmark: Eigen vector memcopy
  */
 template<typename T>
-class benchmark_eigen_vector_memcopy
+class benchmark_eigen_memcopy
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_eigen_memcopy> _msg;
+  index_t n;
   gsVector<T> x,y;
 
 public:
-  benchmark_eigen_vector_memcopy(std::size_t n)
-    : n(n), x(n), y(n)
+  benchmark_eigen_memcopy(index_t n)
+    : _msg(n), n(n), x(n), y(n)
   {
     x.fill((T)0.0);
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
     y.noalias() = x;
 
@@ -221,7 +321,22 @@ public:
     T tmp = y[n-1];
     GISMO_UNUSED(tmp);
 
-    return sizeof(T) * 2 * n;
+    return size();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (2 * n * sizeof(T));
+  }
+
+  static std::string name()
+  {
+    return "Memory copy (gsVector)";
   }
 };
 
@@ -229,26 +344,42 @@ public:
  * Benchmark: Eigen vector dot-product
  */
 template<typename T>
-class benchmark_eigen_vector_dotproduct
+class benchmark_eigen_dotproduct
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_eigen_dotproduct> _msg;
+  index_t n;
   gsVector<T> x, y;
 
 public:
-  benchmark_eigen_vector_dotproduct(std::size_t n)
-    : n(n), x(n), y(n)
+  benchmark_eigen_dotproduct(index_t n)
+    : _msg(n), n(n), x(n), y(n)
   {
     x.fill((T)0.0);
     y.fill((T)0.0);
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
     volatile T sum = y.dot(x);
     GISMO_UNUSED(sum);
 
-    return sizeof(T) * 2 * n;
+    return size();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (2 * n * sizeof(T));
+  }
+
+  static std::string name()
+  {
+    return "Dot-product (gsVector)";
   }
 };
 
@@ -256,21 +387,22 @@ public:
  * Benchmark: Eigen vector AXPY
  */
 template<typename T>
-class benchmark_eigen_vector_axpy
+class benchmark_eigen_axpy
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_eigen_axpy> _msg;
+  index_t n;
   gsVector<T> x, y, z;
 
 public:
-  benchmark_eigen_vector_axpy(std::size_t n)
-    : n(n), x(n), y(n), z(n)
+  benchmark_eigen_axpy(index_t n)
+    : _msg(n), n(n), x(n), y(n), z(n)
   {
     x.fill((T)0.0);
     y.fill((T)0.0);
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
     z.noalias() = (T)3.141*x + y;
 
@@ -278,7 +410,22 @@ public:
     T tmp = z[n-1];
     GISMO_UNUSED(tmp);
 
-    return sizeof(T) * 3 * n;
+    return size();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (3 * n * sizeof(T));
+  }
+
+  static std::string name()
+  {
+    return "AXPY (gsVector)";
   }
 };
 
@@ -286,22 +433,23 @@ public:
  * Benchmark: Eigen dense matrix-vector multiplication
  */
 template<typename T>
-class benchmark_eigen_vector_dense_matmul
+class benchmark_eigen_dense_matmul
 {
 private:
-  std::size_t n;
+  memory_safeguard<benchmark_eigen_dense_matmul> _msg;
+  index_t n;
   gsMatrix<T> A;
   gsVector<T> x, y;
 
 public:
-  benchmark_eigen_vector_dense_matmul(std::size_t n)
-    : n(n), A(n,n), x(n), y(n)
+  benchmark_eigen_dense_matmul(index_t n)
+    : _msg(n), n(n), A(n,n), x(n), y(n)
   {
     A.fill(0.0);
     x.fill(0.0);
   }
 
-  std::size_t operator()()
+  index_t operator()()
   {
     y.noalias() = A*x;
 
@@ -309,25 +457,100 @@ public:
     T tmp = y[n-1];
     GISMO_UNUSED(tmp);
 
-    return sizeof(T) * (2*n*n + n);
+    return size();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(n);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return (2 * n * n + n) * sizeof(T);
+  }
+
+  static std::string name()
+  {
+    return "Dense matrix-vector multiplication (gsMatrix/gsVector)";
+  }
+};
+
+/**
+ * Benchmark: Poisson 2D
+ */
+template<typename T>
+class benchmark_poisson2d_visitor
+{
+private:
+  memory_safeguard<benchmark_poisson2d_visitor> _msg;
+  gsMultiPatch<T> geo;
+  gsMultiBasis<T> bases;
+  gsConstantFunction<T> f;
+  gsBoundaryConditions<T> bcInfo;
+  gsPoissonAssembler<T> assembler;
+
+public:
+  benchmark_poisson2d_visitor(int npatches, int refine=0, int degree=1)
+    : _msg(0), geo(gsNurbsCreator<>::BSplineSquareGrid(npatches, npatches, 1.0)),
+      bases(geo), f(0.0, 0.0, 2)
+  {
+    // h-refine each basis
+    for (int i = 0; i < refine; ++i)
+      bases.uniformRefine();
+
+    // k-refinement (set degree)
+    for (std::size_t i = 0; i < bases.nBases(); ++ i)
+      bases[i].setDegreePreservingMultiplicity(degree);
+
+    assembler = gsPoissonAssembler<T>(geo, bases, bcInfo, f, dirichlet::nitsche, iFace::glue);
+  }
+
+  index_t operator()()
+  {
+    assembler.assemble();
+
+    return sizeof(T) * assembler.numDofs();
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(0);
+  }
+
+  static constexpr uint64_t size(index_t n)
+  {
+    return sizeof(T);
+  }
+
+  static std::string name()
+  {
+    return "Visitor-based Poisson2d";
   }
 };
 //! [Implement benchmarks]
+
+
+
 
 int main(int argc, char *argv[])
 {
   //! [Parse command line]
   gsBenchmark benchmark;
-  std::vector<int> nthreads, ssizes, dsizes, vsizes;
+  std::vector<index_t>  benchmarks, nthreads, msizes, vsizes;
   std::string fn;
-  int nruns=1;
+  index_t nruns = 1,
+    msizesmax = (index_t) std::sqrt(real_t(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes()),
+    vsizesmax = (index_t)          (real_t(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes());
 
   gsCmdLine cmd("G+Smo performance benchmark.");
   cmd.printVersion();
 
   cmd.addInt("r", "runs", "Number of runs over which the results are averaged", nruns);
-  cmd.addMultiInt("d", "dsizes", "Number of unknowns in dense matrix benchmarks", dsizes);
-  cmd.addMultiInt("s", "ssizes", "Number of unknowns in sparse matrix benchmarks", ssizes);
+  cmd.addInt("M", "msizesmax", "Maximum number of unknowns in matrix/vector benchmarks (automated generation of sequence)", msizesmax);
+  cmd.addInt("V", "vsizesmax", "Maximum number of unknowns in vector benchmarks (automated generation of sequence)", vsizesmax);
+  cmd.addMultiInt("b", "benchmarks", "List of benchmarks to be run", benchmarks);
+  cmd.addMultiInt("m", "msizes", "Number of unknowns in matrix/vector benchmarks", msizes);
   cmd.addMultiInt("t", "threads", "Number of OpenMP threads to be used for the benchmark", nthreads);
   cmd.addMultiInt("v", "vsizes", "Number of unknowns in vector benchmarks", vsizes);
   cmd.addString("o", "output", "Name of the output file", fn);
@@ -336,166 +559,115 @@ int main(int argc, char *argv[])
   //! [Parse command line]
 
   //! [Default configuration]
+  // If empty fill with all benchmarks 1, ..., 5
+  if (benchmarks.empty()) {
+    for(index_t i=1; i<=9; ++i)
+      benchmarks.push_back(i);
+  }
+
   // If empty fill with 1, 2, 4, ..., maximum number of OpenMP threads
   if (nthreads.empty()) {
-    for(int i=1; i<=omp_get_max_threads(); i*=2)
+    for(index_t i=1; i<=omp_get_max_threads(); i*=2)
       nthreads.push_back(i);
   }
 
-  // If empty fill with 10, 100, 1.000, 10.000
-  if (dsizes.empty()) {
-    dsizes.push_back(1e1);
-    dsizes.push_back(1e2);
-    dsizes.push_back(1e3);
-    dsizes.push_back(1e4);
-  }
-  
-  // If empty fill with 100, 1.000, 10.000, 100.000, 1.000.000
-  if (ssizes.empty()) {
-    ssizes.push_back(1e2);
-    ssizes.push_back(1e3);
-    ssizes.push_back(1e4);
-    ssizes.push_back(1e5);
-    ssizes.push_back(1e6);
+  // If empty fill with 10, 100, 1.000, ..., 80% of Sqrt(total system memory)
+  if (msizes.empty()) {
+    for(index_t i=10;;) {
+      msizes.push_back(i);
+      if (i<=std::min(msizesmax, std::numeric_limits<index_t>::max()) / 64)
+        i*=8;
+      else
+        break;
+    }
   }
 
-  // If empty fill with 100, 1.000, 10.000, 100.000, 1.000.000
+  // If empty fill with 100, 1.000, 10.000, ... 80% of total system memory
   if (vsizes.empty()) {
-    vsizes.push_back(1e2);
-    vsizes.push_back(1e3);
-    vsizes.push_back(1e4);
-    vsizes.push_back(1e5);
-    vsizes.push_back(1e6);
-    vsizes.push_back(1e7);
-    vsizes.push_back(1e8);
+    for(index_t i=100;;) {
+      vsizes.push_back(i);
+      if (i<=std::min(vsizesmax, std::numeric_limits<index_t>::max()) / 8)
+        i*=8;
+      else
+        break;
+    }
   }
+
   //! [Default configuration]
 
   //! [Execute benchmarks]
-  {
-    auto bm = benchmark.add("memcopy", "memory copy");
-    {
-      gsInfo << "=== Native C array memcopy\n";
-      for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_c_array_memcopy<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("nativememcopy",
-                  "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
+  for (auto bit=benchmarks.cbegin(); bit!=benchmarks.cend(); ++bit) {
+    switch((index_t)(*bit)) {
+
+    case (1): {
+      // Benchmark: memcopy native C arrays
+      CREATE_BENCHMARK(benchmark_c_array_memcopy, "memcopyCarray",
+                       vsizes, metric::bandwidth_gb_sec);
+      break;
     }
 
-    {
-      gsInfo << "=== gsVector memcopy\n";
-      for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_eigen_vector_memcopy<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("eigenmemcopy",
-                  "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
-    }
-  }
-
-  {
-    auto bm = benchmark.add("dotprod", "dot-product");
-    {
-      gsInfo << "=== Native C array dot-product\n";
-      for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_c_array_dotproduct<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("nativedotproduct",
-                  "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
+    case (2): {
+      // Benchmark: memcopy gsVector
+      CREATE_BENCHMARK(benchmark_eigen_memcopy, "memcopyEigen",
+                       vsizes, metric::bandwidth_gb_sec);
+      break;
     }
 
-    {
-      gsInfo << "=== gsVector dot-product\n";
-      for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_eigen_vector_dotproduct<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("eigendotproduct",
-                  "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
-    }
-  }
-
-  {
-    auto bm = benchmark.add("axpy", "axpy");
-    {
-      gsInfo << "=== Native C array AXPY\n";
-      for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_c_array_axpy<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("nativeaxpy",
-                  "native("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
+    case (3): {
+      // Benchmark: dot-product native C array
+      CREATE_BENCHMARK(benchmark_c_array_dotproduct, "dotproductCarray",
+                       vsizes, metric::bandwidth_gb_sec);
+      break;
     }
 
-    {
-      gsInfo << "=== gsVector AXPY\n";
-      for (auto it=vsizes.cbegin(); it!=vsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=vsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_eigen_vector_axpy<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("eigenaxpy",
-                  "eigen("+util::to_string(sizeof(double)*(double)*it / 1024 / 1024, 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
-    }
-  }
-
-  {
-    auto bm = benchmark.add("densemvmul", "Dense matrix-vector multiply");
-    {
-      gsInfo << "=== Native C array dense matrix-vector multiplication\n";
-      for (auto it=dsizes.cbegin(); it!=dsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=dsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_c_array_dense_matmul<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("nativdensemvmul",
-                  "native("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
+    case (4): {
+      // Benchmark: dot-product gsVector
+      CREATE_BENCHMARK(benchmark_eigen_dotproduct, "dotproductEigen",
+                       vsizes, metric::bandwidth_gb_sec);
+      break;
     }
 
-    {
-      gsInfo << "=== gsMatrix/gsVector dense matrix-vector multiplication\n";
-      for (auto it=dsizes.cbegin(); it!=dsizes.cend(); ++it) {
-        gsInfo << (*it) << (it!=dsizes.cend()-1 ? "..." : "\n") << std::flush;
-        try {
-          benchmark_eigen_vector_dense_matmul<real_t> benchmark(*it);
-          auto results = gsBenchmark::run(nthreads, nruns, benchmark, metric::bandwidth_gb_sec);
-          bm->add("eigenmvmul",
-                  "eigen("+util::to_string(std::pow(sizeof(double)*(double)*it / 1024 / 1024, 2), 0)+" MB)",
-                  results);
-        } catch(...) { gsInfo << "failed!"; }
-      }
+    case (5): {
+      // Benchmark: axpy native C array
+      CREATE_BENCHMARK(benchmark_c_array_axpy, "axpyCarray",
+                       vsizes, metric::bandwidth_gb_sec);
+      break;
     }
-  }
-  
+
+    case (6): {
+      // Benchmark: axpy gsVector
+      CREATE_BENCHMARK(benchmark_eigen_axpy, "axpyEigen",
+                       vsizes, metric::bandwidth_gb_sec);
+      break;
+    }
+
+    case (7): {
+      // Benchmark: dense matrix-vector multiplication native C array
+      CREATE_BENCHMARK(benchmark_c_array_dense_matmul, "densematmulCarray",
+                       msizes, metric::bandwidth_gb_sec);
+      break;
+    }
+
+    case (8): {
+      // Benchmark: dense matrix-vector multiplication gsMatrix/gsVector
+      CREATE_BENCHMARK(benchmark_eigen_dense_matmul, "densematmulEigen",
+                       msizes, metric::bandwidth_gb_sec);
+      break;
+    }
+
+    case (9): {
+      // Benchmark: visitor-based Poisson 2D assembly
+      CREATE_BENCHMARK(benchmark_poisson2d_visitor, "assemblerVisitor",
+                       vsizes, metric::bandwidth_gb_sec);
+      break;
+    }
+
+    default:
+      throw std::runtime_error("Invalid benchmark");
+    }
+
+  } // benchmark loop
+
   if (fn.empty())
     gsInfo << benchmark << "\n";
   else {
