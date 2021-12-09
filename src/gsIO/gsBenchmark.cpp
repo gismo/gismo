@@ -87,7 +87,7 @@ namespace gismo
       os << "ylabel={Runtime in seconds},\n";
       break;
     default:
-      throw std::runtime_error("Unsupported metric");
+      GISMO_ERROR("Unsupported metric");
     }
       
     os << "title={" << title << "},\n"

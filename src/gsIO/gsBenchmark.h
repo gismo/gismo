@@ -148,7 +148,7 @@ public:
   template<typename T>
   static std::vector<Result>
   run(const std::vector<index_t>& nthreads, index_t nruns, T& benchmark, metric metric)
-  {
+{
     gsStopwatch stopwatch;
     uint64_t benchmark_result;
     double benchmark_metric, benchmark_runtime;
@@ -185,7 +185,7 @@ public:
             benchmark_metric += stopwatch.elapsed();
             break;
           default:
-            throw std::runtime_error("Unsupported metric");
+            GISMO_ERROR("Unsupported metric");
           }          
         }
 
