@@ -263,7 +263,7 @@ public:
             gsInfo<< "mdata2: "  << iface().m_mdata.size()<<"\n";
             gsInfo<< "cdata2: "  << iface().m_cdata.size()<<"\n";
         }
-        //*/
+        */
     }
 //#endif
 
