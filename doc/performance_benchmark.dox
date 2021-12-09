@@ -1,0 +1,196 @@
+namespace gismo {
+
+/**
+
+\page performance_benchmark performance_benchmark.cpp
+
+The aim of the performance benchmark is to provide a ready-to-run
+application to measure the computational performance of G+Smo and its
+underlying libraries on your computer with the specific compiler
+configuration. It implements a suite of benchmarks that measure the
+performance of certain low-level operations such as the computation of
+the dot-product between two vectors or the addition of two vectors
+(AXPY) as well as high-order operations such as the assembly of system
+matrices. The performance benchmark is particularly useful when you
+run G+Smo on a new computer architecture (e.g., Apple Silicon M1, IBM
+Power10, or Fujitsu's A64FX) or updated some of the underlying
+libraries (e.g., Eigen) and want to see if the changes have improved
+the performance.
+
+Though the performance benchmark can be run in sequential mode it is
+recommended to configure it with `GISMO_WITH_OPENMP=ON` enabled to
+take full advantage of G+Smo's OpenMP parallelization.
+
+A list of all available benchmarks can be printed by running
+`./bin/performance_benchmark --list` which yields
+
+~~~~~text
+                   G+Smo 
+      Geometry plus Simulation modules
+               version 21.12.0
+Compiled by GNU 8.5.0 (C++ 201103, glibc++ 20210514, eigen 3.3.4)
+Running on Intel(R) Xeon(R) CPU E5-2687W 0 @ 3.10GHz (memory 125 GB)
+web: http://github.com/gismo
+
+The following benchmarks are available:
+#1: Memory copy (native C array)
+#2: Memory copy (gsVector)
+#3: Dot-product (native C array)
+[...]
+~~~~~
+
+\section RunningTheBenchmark Running the performance benchmark
+
+To run the full performance benchmark with the default configuration simply type
+
+~~~~bash
+$> ./bin/performance_benchmark -o benchmark.tex
+[...]
+=== Memory copy (native C array)
+... 100(50)
+... 1000(33)
+... 10000(22)
+... 100000(14)
+... 1000000(9)
+... 10000000(6)
+... 100000000(4)
+... 1000000000(2)
+... 10000000000(1)[failed!]
+... 100000000000(1)[failed!]
+=== Memory copy (gsVector)
+... 100(50)
+... 1000(33)
+[...]
+~~~~
+
+By using the `-o` flag the output is written to the file
+`benchmark.tex`. If this flag is omitted, the output is written to
+\ref gsInfo.
+
+In default mode, the performance benchmark runs each benchmark for a
+sequence of increasing problem sizes starting at 100 and increasing
+the problem size by a factor of 10 until the total system memory is
+exceeded. The latter is indicated in the output above by the trailing
+`[failed!]`. We will explain below how this case is handled by a
+`memory_safeguard` mechanism that detects insufficient memory without
+trying to allocate the memory in the first place. The value in `()`
+indicates the number of runs the particular test is executed. For very
+small problem sizes it is advisable to run the same test multiple
+times and average the result over the number of runs to reduce the
+influence of inaccurate time measurements.
+
+The outputfile `benchmark.tex` is transformed into a PDF file using
+the command \c pdflatex (see https://www.latex-project.org):
+
+\image html figs/performance_benchmark_memcopy1.pdf
+
+\image html figs/performance_benchmark_memcopy2.pdf
+
+Each group represents a different problem size. By default, each
+problem size is run with 1, 2, 4, ..., `omp_get_max_threads()` OpenMP
+threads, which is represented by the different bars.
+
+A list of benchmark results for different computer architectures,
+compilers, and operating systems is mainted at the G+Smo <a
+href="https://github.com/gismo/gismo/wiki/Benchmarking">Wiki</a>.
+
+\section CustomizingTheBenchmark Customizing the performance benchmark
+
+The performance benchmark can be customized using various command-line
+arguments. One or a subset of all available benchmarks can be selected
+using the `-b` flag, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b1 -b 4 -o benchmark.tex
+~~~~
+
+will run *benchmark #1* (memory copy (native C array)) and *benchmark
+#4* (dot-product (\ref gsVector)).
+
+The problem sizes can be defined by either providing a list of values, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b1 -v 100 -v 500 -v 1000 -o benchmark.tex
+[...]
+=== Memory copy (native C array)
+... 100(50)
+... 500(33)
+... 1000(22)
+~~~~
+
+or by providing the smallest (`--vsizesmin`) and largest
+(`--vsizesmax`) problem size and, optionally, the factor (`-V`) by
+which the problem size should be increased, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b 1 --vsizesmin 100 --vsizesmax 1000 -V 1.2 -o result.tex
+[...]
+... 100(50)
+... 120(33)
+... 144(22)
+... 172(14)
+... 206(9)
+... 247(6)
+... 296(4)
+... 355(2)
+... 426(1)
+... 511(1)
+... 613(1)
+... 735(1)
+... 882(1)
+~~~~
+
+Here, the `vsizes`-family of flags refers to all vector-type
+benchmarks. Similarly, the `msizes`-family of flags (`--msizesmin`,
+`--msizesmax`, `-M`) refers to all matrix-type benchmarks.
+
+The sequence of runs can be specified in the same way, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b 1 --vsizesmin 100 --vsizesmax 1000 -V 1.2 --runsmin 4 --runsmax 80 -R 1.3 -o result.tex
+[...]
+=== Memory copy (native C array)
+... 100(80)
+... 120(61)
+... 144(46)
+... 172(35)
+... 206(26)
+... 247(20)
+... 296(15)
+... 355(11)
+... 426(8)
+... 511(6)
+... 613(4)
+... 735(4)
+... 882(4)
+~~~~
+
+Here, the smallest problem size is executed 80 times (`--runsmax`) and
+for each larger problem instance, the number of runs is successively
+reduced by the factor 1.3 (`-R`) but not below 4 (`--runsmin`).
+
+Finally, the number of OpenMP threads that should be used can be
+specified globally by providing an explicit list, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -t 1 -t 4 -t 8
+~~~~
+
+runs all benchmarks with 1, 4, and 6 OpenMP threads.
+
+\section ImplementingAdditionalBenchmarks Implementing additional benchmarks
+
+To implement additional benchmarks, copy one of the existing ones and
+adjust the constructors and member functions accordingly:
+
+\snippet performance_benchmark.cpp Implement benchmark eigen dense matrix-vector multiplication
+
+Here is the full file \c examples/performance_benchmark.cpp. Clicking
+on a function or class name will lead you to its reference
+documentation.
+
+\include performance_benchmark.cpp
+
+*/
+
+}

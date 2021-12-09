@@ -56,7 +56,7 @@ public:
 };
 //! [Implement memory safeguard]
 
-//! [Implement benchmarks]
+//! [Implement benchmark native C array memcopy]
 /**
  * Benchmark: native C array memcopy
  */
@@ -111,7 +111,9 @@ public:
     return "Memory copy (native C array)";
   }
 };
+//! [Implement benchmark native C array memcopy]
 
+//! [Implement benchmark native C array dot-product]
 /**
  * Benchmark: native C array dot-product
  */
@@ -170,7 +172,9 @@ public:
     return "Dot-product (native C array)";
   }
 };
+//! [Implement benchmark native C array dot-product]
 
+//! [Implement benchmark native C array AXPY]
 /**
  * Benchmark: native C array AXPY
  */
@@ -230,7 +234,9 @@ public:
     return "AXPY (native C array)";
   }
 };
+//! [Implement benchmark native C array AXPY]
 
+//! [Implement benchmark native C array dense matrix-vector multiplication]
 /**
  * Benchmark: native C array dense matrix-vector multiplication
  */
@@ -295,7 +301,9 @@ public:
     return "Dense matrix-vector multiplication (native C array)";
   }
 };
+//! [Implement benchmark native C array dense matrix-vector multiplication]
 
+//! [Implement benchmark eigen vector memcopy]
 /**
  * Benchmark: Eigen vector memcopy
  */
@@ -340,7 +348,9 @@ public:
     return "Memory copy (gsVector)";
   }
 };
+//! [Implement benchmark eigen vector memcopy]
 
+//! [Implement benchmark eigen vector dot-product]
 /**
  * Benchmark: Eigen vector dot-product
  */
@@ -383,7 +393,9 @@ public:
     return "Dot-product (gsVector)";
   }
 };
+//! [Implement benchmark eigen vector dot-product]
 
+//! [Implement benchmark eigen vector AXPY]
 /**
  * Benchmark: Eigen vector AXPY
  */
@@ -429,7 +441,9 @@ public:
     return "AXPY (gsVector)";
   }
 };
+//! [Implement benchmark eigen vector AXPY]
 
+//! [Implement benchmark eigen dense matrix-vector multiplication]
 /**
  * Benchmark: Eigen dense matrix-vector multiplication
  */
@@ -476,7 +490,9 @@ public:
     return "Dense matrix-vector multiplication (gsMatrix/gsVector)";
   }
 };
+//! [Implement benchmark eigen dense matrix-vector multiplication]
 
+//! [Implement benchmark Poisson 2d visitor]
 /**
  * Benchmark: Poisson 2D
  */
@@ -529,10 +545,7 @@ public:
     return "Visitor-based Poisson2d";
   }
 };
-//! [Implement benchmarks]
-
-
-
+//! [Implement benchmark Poisson 2d visitor]
 
 int main(int argc, char *argv[])
 {

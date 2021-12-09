@@ -32,6 +32,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage heatEquation_example
 
+- \subpage heatEquation2_example
+
 - \subpage inputOutput_example
 
 - \subpage gsInterpolateMap
@@ -51,6 +53,8 @@ In the gismo/examples sub-directory we find:
 - \subpage mpi_example
 
 - \subpage multiGrid_example
+
+- \subpage performance_benchmark
 
 - \subpage poisson_example
 
