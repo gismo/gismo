@@ -1,13 +1,24 @@
 ######################################################################
-## AddCXXConpileOptions.cmake
+## AddCXXCompileOptions.cmake
 ## This file is part of the G+Smo library. 
 ##
 ## Authors: M. Moeller and A. Mantzaflaris 
 ######################################################################
 
-set(CMAKE_CXX_STANDARD_DEFAULT 11)
+# We strongly recommend to use an up-to-date cmake version which
+# provides support for the most recent compiler version. We provide a
+# subset of compiler options copied from cmake 3.17.5.
+#
+# The options below are only used if
+# CMAKE_CXXvv_STANDARD_COMPILE_OPTIONS and
+# CMAKE_CXXvv_EXTENSION_COMPILE_OPTIONS are not yet set by the regular
+# cmake routines, where vv is the value of CMAKE_CXX_STANDARD.
 
-#if (CMAKE_VERSION VERSION_LESS "3.1")
+if(NOT CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION OR
+   NOT CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION)
+
+   message(WARNING "Update your CMake installation! We fall back to
+   compiler options back ported from CMake 3.17.5")
 
   if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang")
 
@@ -467,27 +478,10 @@ set(CMAKE_CXX_STANDARD_DEFAULT 11)
 
   endif()  
 
-#endif() # cmake 3.1
-
-if (NOT DEFINED CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD_DEFAULT} CACHE INTERNAL "")
 endif()
-
-# Apply for Cmake less than 3.1
-if (CMAKE_VERSION VERSION_LESS "3.1")
-
-  if ( NOT "x${CMAKE_CXX_STANDARD}" STREQUAL "x98" AND
-       ${CMAKE_CXX_STANDARD_DEFAULT} LESS ${CMAKE_CXX_STANDARD})
-     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} supports at most C++${CMAKE_CXX_STANDARD_DEFAULT}, CXX_STANDARD choice is changed.")
-     set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD_DEFAULT} CACHE INTERNAL "")
- endif()
-
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-endif()#cmake<3.1
-
 
 # Bugfix for windows/msvc systems
 if(NOT DEFINED CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION)
-      set(CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION  "")
-      set(CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION "")
+  set(CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION  "")
+  set(CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION "")
 endif()
