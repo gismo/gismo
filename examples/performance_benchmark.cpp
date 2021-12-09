@@ -17,15 +17,16 @@
 using namespace gismo;
 //! [Include namespace]
 
-//! [Create benchmark macro]
+//! [Implement benchmark macro]
 #define CREATE_BENCHMARK(_benchmark, _label, _sizes, _metric)           \
   gsInfo << "=== " << _benchmark<real_t>::name() << "\n";               \
   auto bmark = benchmark.add(_label, _benchmark<real_t>::name());       \
+  auto riter = nruns.cbegin();                                          \
   for (auto it=_sizes.cbegin(); it!=_sizes.cend(); ++it) {              \
-    gsInfo << "... " << (*it) << std::flush;                            \
+    gsInfo << "... " << (*it) << "(" << *riter << ")"<< std::flush;     \
     try {                                                               \
       _benchmark<real_t> benchmark(*it);                                \
-      auto results = gsBenchmark::run(nthreads, nruns, benchmark, _metric); \
+      auto results = gsBenchmark::run(nthreads, *riter++, benchmark, _metric); \
       std::string meminfo;                                              \
       uint64_t memsize = benchmark.size();                              \
       if (memsize<1024)                                                 \
@@ -40,7 +41,7 @@ using namespace gismo;
     } catch(...) { gsInfo << "[failed!]"; }                             \
     gsInfo << "\n";                                                     \
   }
-//! [Create benchmark macro]
+//! [Implement benchmark macro]
 
 //! [Implement memory safeguard]
 template<typename T>
@@ -50,7 +51,7 @@ public:
   memory_safeguard(index_t n)
   {
     if (T::size(n) > gsSysInfo::getMemoryInBytes())
-      throw std::runtime_error("Insufficient memory");
+      GISMO_ERROR("Insufficient memory");
   }
 };
 //! [Implement memory safeguard]
@@ -119,7 +120,7 @@ class benchmark_c_array_dotproduct
 {
 private:
   memory_safeguard<benchmark_c_array_dotproduct> _msg;
-  constexpr index_t n;
+  const index_t n;
   T *m_x, *m_y;
 
 public:
@@ -178,7 +179,7 @@ class benchmark_c_array_axpy
 {
 private:
   memory_safeguard<benchmark_c_array_axpy> _msg;
-  constexpr index_t n;
+  const index_t n;
   T *m_x, *m_y, *m_z;
 
 public:
@@ -238,7 +239,7 @@ class benchmark_c_array_dense_matmul
 {
 private:
   memory_safeguard<benchmark_c_array_dense_matmul> _msg;
-  constexpr index_t n;
+  const index_t n;
   T *m_A, *m_x, *m_y;
 
 public:
@@ -303,7 +304,7 @@ class benchmark_eigen_memcopy
 {
 private:
   memory_safeguard<benchmark_eigen_memcopy> _msg;
-  constexpr index_t n;
+  const index_t n;
   gsVector<T> x,y;
 
 public:
@@ -348,7 +349,7 @@ class benchmark_eigen_dotproduct
 {
 private:
   memory_safeguard<benchmark_eigen_dotproduct> _msg;
-  constexpr index_t n;
+  const index_t n;
   gsVector<T> x, y;
 
 public:
@@ -391,7 +392,7 @@ class benchmark_eigen_axpy
 {
 private:
   memory_safeguard<benchmark_eigen_axpy> _msg;
-  constexpr index_t n;
+  const index_t n;
   gsVector<T> x, y, z;
 
 public:
@@ -437,7 +438,7 @@ class benchmark_eigen_dense_matmul
 {
 private:
   memory_safeguard<benchmark_eigen_dense_matmul> _msg;
-  constexpr index_t n;
+  const index_t n;
   gsMatrix<T> A;
   gsVector<T> x, y;
 
@@ -537,9 +538,16 @@ int main(int argc, char *argv[])
 {
   //! [Parse command line]
   gsBenchmark benchmark;
-  std::vector<index_t>  benchmarks, nthreads, msizes, vsizes;
   std::string fn;
-  index_t nruns = 1;
+  bool list=false;
+  std::vector<index_t>  benchmarks, nruns, nthreads, msizes, vsizes;
+  real_t  nrunsfactor  = 1.5;
+  real_t  msizesfactor = 10;
+  real_t  vsizesfactor = 10;
+  index_t nrunsmax  = 50;
+  index_t nrunsmin  = 1;
+  index_t msizesmin = 10;
+  index_t vsizesmin = 100;
   index_t msizesmax = (index_t) std::min((real_t)std::numeric_limits<index_t>::max(),
                                          std::sqrt((real_t)(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes()));
   index_t vsizesmax = (index_t) std::min((real_t)std::numeric_limits<index_t>::max(),
@@ -548,53 +556,88 @@ int main(int argc, char *argv[])
   gsCmdLine cmd("G+Smo performance benchmark.");
   cmd.printVersion();
 
-  cmd.addInt("r", "runs", "Number of runs over which the results are averaged", nruns);
-  cmd.addInt("M", "msizesmax", "Maximum number of unknowns in matrix/vector benchmarks (automated generation of sequence)", msizesmax);
-  cmd.addInt("V", "vsizesmax", "Maximum number of unknowns in vector benchmarks (automated generation of sequence)", vsizesmax);
+  cmd.addReal("M", "msizesfactor", "Growth factor for the sequence of msizes (only used if '-m' is not given)", msizesfactor);
+  cmd.addReal("V", "vsizesfactor", "Growth factor for the sequence of vsizes (only used if '-v' is not given)", vsizesfactor);
+  cmd.addReal("R", "runsfactor", "Growth factor for the sequence of runs (only used if '-r' is not given)", nrunsfactor);
+  cmd.addInt("", "msizesmax", "Maximum number of unknowns in matrix/vector benchmarks (only used if '-m' is not given)", msizesmax);
+  cmd.addInt("", "msizesmin", "Minimum number of unknowns in matrix/vector benchmarks (only used if '-m'is not given)", msizesmin);
+  cmd.addInt("", "vsizesmax", "Maximum number of unknowns in vector benchmarks (only used if '-v' is not given)", vsizesmax);
+  cmd.addInt("", "vsizesmin", "Mminimum number of unknowns in vector benchmarks (only used if '-v' is not given)", vsizesmin);
+  cmd.addInt("", "runsmax", "Maximum number of runs (only used if '-r' is not given)", nrunsmax);
+  cmd.addInt("", "runsmin", "Mminimum number of runs (only used if '-r' is not given)", nrunsmin);
   cmd.addMultiInt("b", "benchmarks", "List of benchmarks to be run", benchmarks);
-  cmd.addMultiInt("m", "msizes", "Number of unknowns in matrix/vector benchmarks", msizes);
-  cmd.addMultiInt("t", "threads", "Number of OpenMP threads to be used for the benchmark", nthreads);
-  cmd.addMultiInt("v", "vsizes", "Number of unknowns in vector benchmarks", vsizes);
+  cmd.addMultiInt("m", "msizes", "Number of unknowns in matrix/vector benchmarks (auto-generated if not given)", msizes);
+  cmd.addMultiInt("r", "runs", "Number of runs over which the results are averaged (auto-generated if not given)", nruns);
+  cmd.addMultiInt("t", "threads", "Number of OpenMP threads to be used for the benchmark (auto-generated if not given)", nthreads);
+  cmd.addMultiInt("v", "vsizes", "Number of unknowns in vector benchmarks (auto-generated if not given)", vsizes);
   cmd.addString("o", "output", "Name of the output file", fn);
-
+  cmd.addSwitch("list", "List all benchmarks and exit", list);
+    
   try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
   //! [Parse command line]
 
+  //! [List benchmarks and exit]
+  if (list) {
+    gsInfo << "\nThe following benchmarks are available:\n"
+           << "#1: " << benchmark_c_array_memcopy<real_t>::name() << "\n"
+           << "#2: " << benchmark_eigen_memcopy<real_t>::name() << "\n"
+           << "#3: " << benchmark_c_array_dotproduct<real_t>::name() << "\n"
+           << "#4: " << benchmark_eigen_dotproduct<real_t>::name() << "\n"
+           << "#5: " << benchmark_c_array_axpy<real_t>::name() << "\n"
+           << "#6: " << benchmark_eigen_axpy<real_t>::name() << "\n"
+           << "#7: " << benchmark_c_array_dense_matmul<real_t>::name() << "\n"
+           << "#8: " << benchmark_eigen_dense_matmul<real_t>::name() << "\n"
+           << "#9: " << benchmark_poisson2d_visitor<real_t>::name() << "\n";
+    return EXIT_SUCCESS;
+  }
+  //! [List benchmarks and exit]
+  
   //! [Default configuration]
   // If empty fill with all benchmarks 1, ..., 5
   if (benchmarks.empty()) {
     for(index_t i=1; i<=9; ++i)
       benchmarks.push_back(i);
   }
-
+  
   // If empty fill with 1, 2, 4, ..., maximum number of OpenMP threads
   if (nthreads.empty()) {
     for(index_t i=1; i<=omp_get_max_threads(); i*=2)
       nthreads.push_back(i);
   }
 
-  // If empty fill with 10, 100, 1.000, ..., 80% of Sqrt(total system memory)
+  // If empty fill with msizesmin*msizesfactor^k, k=0, 1, 2, ..., msizesmax
   if (msizes.empty()) {
-    for(index_t i=10;;) {
+    for(index_t i=msizesmin;;) {
       msizes.push_back(i);
-      if (i<=std::min(msizesmax, std::numeric_limits<index_t>::max()) / 64)
-        i*=8;
+      if (i<=std::min(msizesmax, std::numeric_limits<index_t>::max()) / (msizesfactor*msizesfactor))
+        i*=msizesfactor;
       else
         break;
     }
   }
 
-  // If empty fill with 100, 1.000, 10.000, ... 80% of total system memory
+  // If empty fill with vsizesmin*vsizesfactor^k, k=0, 1, 2, ..., vsizesmax
   if (vsizes.empty()) {
-    for(index_t i=100;;) {
+    for(index_t i=vsizesmin;;) {
       vsizes.push_back(i);
-      if (i<=std::min(vsizesmax, std::numeric_limits<index_t>::max()) / 8)
-        i*=8;
+      if (i<=std::min(vsizesmax, std::numeric_limits<index_t>::max()) / vsizesfactor)
+        i*=vsizesfactor;
       else
         break;
     }
   }
 
+  // If empty fill with nrunsmax/nrunsfactor^k, k=0, 1, 2, ..., nrunsmin
+  if (nruns.empty()) {
+    index_t k = nrunsmax;
+    for(index_t i=0; i<(index_t)std::max(msizes.size(),vsizes.size()); ++i) {
+      nruns.push_back(k);
+      k = std::max(nrunsmin, (index_t)(k/nrunsfactor));
+    }
+  }
+
+  if (nruns.size()<std::max(msizes.size(),vsizes.size()))
+    GISMO_ERROR("|nruns| must have the same size as max(|msizes|,|vsizes|)");
   //! [Default configuration]
 
   //! [Execute benchmarks]
@@ -665,7 +708,7 @@ int main(int argc, char *argv[])
     }
 
     default:
-      throw std::runtime_error("Invalid benchmark");
+      GISMO_ERROR("Invalid benchmark");
     }
 
   } // benchmark loop
@@ -680,5 +723,5 @@ int main(int argc, char *argv[])
   }
   //! [Execute benchmarks]
 
-  return  EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
