@@ -49,7 +49,7 @@ class memory_safeguard
 public:
   memory_safeguard(index_t n)
   {
-    if (T::size(n) > 0.8*gsSysInfo::getMemoryInBytes())
+    if (T::size(n) > (real_t)(0.8)*gsSysInfo::getMemoryInBytes())
       throw std::runtime_error("Insufficient memory");
   }
 };
@@ -539,9 +539,11 @@ int main(int argc, char *argv[])
   gsBenchmark benchmark;
   std::vector<index_t>  benchmarks, nthreads, msizes, vsizes;
   std::string fn;
-  index_t nruns = 1,
-    msizesmax = (index_t) std::sqrt(real_t(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes()),
-    vsizesmax = (index_t)          (real_t(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes());
+  index_t nruns = 1;
+  index_t msizesmax = (index_t) std::min((real_t)std::numeric_limits<index_t>::max(),
+                                         std::sqrt((real_t)(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes()));
+  index_t vsizesmax = (index_t) std::min((real_t)std::numeric_limits<index_t>::max(),
+                                         (real_t)(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes());
 
   gsCmdLine cmd("G+Smo performance benchmark.");
   cmd.printVersion();
