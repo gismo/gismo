@@ -626,7 +626,7 @@ namespace gismo
     
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
-    return (uint64)(pages * page_size);
+    return (uint64_t)(pages * page_size);
     
 #elif __unix__
 

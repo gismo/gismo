@@ -36,7 +36,7 @@ void gsDeboor(
     )
 {
   GISMO_ASSERT( u.rows() == 1, "Waiting for 1D values" ) ;
-  GISMO_ASSERT( coefs.rows() == index_t(knots.size() - deg-1) ,
+  GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - deg-1) ,
                 "coefs.rows(): " << coefs.rows() << ", knots.size(): " << knots.size() << ", deg: " << deg ) ;
   
   result.resize( coefs.cols(), u.cols() ) ;
@@ -81,7 +81,7 @@ void gsDeboorDeriv(
     )
 {
   GISMO_ASSERT( u.rows() == 1, "Waiting for 1D values" ) ;
-  GISMO_ASSERT( coefs.rows() == index_t(knots.size() - deg-1) ,
+  GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - deg-1) ,
                 "coefs.rows(): " << coefs.rows() << ", knots.size(): " << knots.size() << ", deg: " << deg ) ;
 
   deg--;// Derivative has degree reduced by one

@@ -29,10 +29,16 @@
 #endif
 
 /** Define default index type. */
-#define index_t          @GISMO_INDEX_TYPE@
+#define GISMO_INDEX_TYPE @GISMO_INDEX_TYPE@
+#ifndef index_t
+#define index_t          GISMO_INDEX_TYPE
+#endif
 
 /** Define default dimension type. */
-#define short_t          @GISMO_INDEX_TYPE@ //short
+#define GISMO_SHORT_TYPE @GISMO_SHORT_TYPE@
+#ifndef short_t
+#define short_t          GISMO_INDEX_TYPE
+#endif
 
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
