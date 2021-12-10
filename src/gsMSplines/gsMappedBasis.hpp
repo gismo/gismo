@@ -147,6 +147,12 @@ gsMultiPatch<T> gsMappedBasis<d,T>::exportToPatches(gsMatrix<T> const & localCoe
 }
 
 template<short_t d,class T>
+gsMatrix<T> gsMappedBasis<d,T>::support(const index_t patch) const
+{
+    return m_bases[patch]->support();
+}
+
+template<short_t d,class T>
 gsMatrix<T> gsMappedBasis<d,T>::support(const index_t patch, const index_t & i) const
 {
     gsMatrix<T> supp;
