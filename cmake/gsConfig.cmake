@@ -82,7 +82,8 @@ endforeach()
 set( MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q" CACHE INTERNAL "") #note: empty defaults to "-q --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=50
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
-set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+#AppleClang 11 might skip flags or fail if this is off
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(AddCXXCompileOptions)
 

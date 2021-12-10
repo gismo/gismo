@@ -1,24 +1,6 @@
 version: 2.0
 
 jobs:
-  macos_x86_64_xcode10_cxx98_release:
-    macos:
-      xcode: "10.3.0"
-    working_directory: ~/gismo
-    environment:
-      MAKEJOBS: 4
-    steps:
-      - run:
-          name: Install dependencies
-          command: brew install cmake
-      - checkout
-      - run:
-          name: Configure G+Smo on MacOS
-          command: cmake . -DCMAKE_QUIET=ON -DCMAKE_QUIET=ON -DBUILDNAME="macos_x86_64_xcode10_cxx98_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=98 -DGISMO_WITH_ONURBS=ON
-      - run:
-          name: Build and test G+Smo on MacOS
-          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
-
   macos_x86_64_xcode10_cxx11_release:
     macos:
       xcode: "10.3.0"
