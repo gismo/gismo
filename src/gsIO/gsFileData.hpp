@@ -1776,7 +1776,10 @@ void read_iges_pd128(char *s, int begin, std::stringstream & ss)
         case 0:  // PHASE header
             switch (j)
             {
-            case 1 ... 4:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
                 if (s[i] == ',')
                 {
                     t[m]='\0';
