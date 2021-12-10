@@ -539,7 +539,7 @@ public:
     typedef T Scalar;
     typedef const _expr<T> Nested_t;
 
-    _expr(const Scalar & c) : _c(c) { }
+    _expr(Scalar c) : _c(give(c)) { }
 
 public:
     enum {Space = 0, ScalarValued = 1, ColBlocks= 0};
@@ -641,6 +641,41 @@ template <typename T>  struct expr_traits<gsGeometryMap<T> >
 };
 
 /*
+  Expression for the measure of a geometry map
+*/
+template<class T>
+class meas_expr : public _expr<meas_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    enum {Space = 0, ScalarValued = 1, ColBlocks = 0};
+
+    typedef T Scalar;
+
+    meas_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    T eval(const index_t k) const
+    {
+        return _G.data().measures.at(k);
+    }
+
+    index_t rows() const { return 0; }
+    index_t cols() const { return 0; }
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_G);
+        _G.data().flags |= NEED_MEASURE;
+    }
+
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
+
+    void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
+};
+
+
+/*
   An element object collecting relevant expressions
 */
 template<class T>
@@ -665,17 +700,17 @@ public:
     
     template<class E>
     integral_expr<E> integral(const _expr<E>& ff)
-    { return integral_expr<E>(ff); }
+    { return integral_expr<E>(*this,ff); }
 
     /// The diameter of the element (on parameter space)
-    auto diam() const //->decltype( ) //-> int(1)^(1/d)
+    auto diam() ->decltype( pow(this->integral(_expr<real_t,true>(1)),T(1)/2) ) const //-> int(1)^(1/d)
     {
-        return pow(integral(1),T(1)/2);
+        return pow(integral(_expr<real_t,true>(1)),T(1)/2);
     }
 
     /// The diameter of the element on the physical space
-    auto diam(const gsGeometryMap<Scalar> & _G) const
-    { return pow(integral(meas(_G)),T(1)/2); }
+    auto diam(const gsGeometryMap<Scalar> & _G) ->decltype(pow(integral(meas_expr<T>(_G)),T(1)/2)) const
+    { return pow(integral(meas_expr<T>(_G)),T(1)/2); }
 
     //index_t dim() { return di->
         
@@ -695,15 +730,16 @@ template<class E>
 class integral_expr : public _expr<integral_expr<E> >
 {
 public:
-    typedef typename E::Scalar Scalar;
+    //typedef typename E::Scalar Scalar;
+    typedef real_t Scalar;
     Scalar m_val;
 private:
     const gsFeElement<Scalar> & _e; ///<Reference to the element
-    typename E::Nested_t _ff;
+    typename _expr<E>::Nested_t _ff;
 public:
     enum {Space= 0, ScalarValued= 1, ColBlocks = 0};
 
-    integral_expr(const gsFeElement<Scalar> & el, const E & u)
+    integral_expr(const gsFeElement<Scalar> & el, const _expr<E> & u)
     : _e(el), _ff(u) { }
 
     Scalar eval(const index_t k) const
@@ -3104,41 +3140,6 @@ public:
 
 
 /*
-  Expression for the measure of a geometry map
-*/
-template<class T>
-class meas_expr : public _expr<meas_expr<T> >
-{
-    typename gsGeometryMap<T>::Nested_t _G;
-
-public:
-    enum {Space = 0, ScalarValued = 1, ColBlocks = 0};
-
-    typedef T Scalar;
-
-    meas_expr(const gsGeometryMap<T> & G) : _G(G) { }
-
-    T eval(const index_t k) const
-    {
-        return _G.data().measures.at(k);
-    }
-
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
-    void parse(gsExprHelper<Scalar> & evList) const
-    {
-        evList.add(_G);
-        _G.data().flags |= NEED_MEASURE;
-    }
-
-    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
-    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
-
-    void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
-};
-
-
-/*
   Expression for the curl
 */
 template<class T>
@@ -3965,11 +3966,12 @@ public:
 #undef AutoReturn_t
 //----------------------------------------------------------------------------------
 
-// Returns the unit as an expression
-//EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t>(1); }
-
 /// The identity matrix of dimension \a dim
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
+
+// Returns the unit as an expression
+//EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t,true>(1); }
+
 
 /// Absolute value
 template<class E> EIGEN_STRONG_INLINE
