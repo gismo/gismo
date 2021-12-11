@@ -1,3 +1,8 @@
+# Current status
+Dominik (@osmihran) will, with the help of Sofia, move the corresponding functionality from **unsupported** into this branch. It will then be split in a part that gets integrated into **stable** and thesis-relevant examples that will stay in a (rotting) branch.
+
+# The usual thing
+
 ```
      GGGGGGGGG      GGGG      GGGGGGGGG  GGGGGG   GGGGGG  GGGGGGGGGG
     GGGG            GGGG     GGGG        GGGGGG  GGGGGG  GGGG   GGGG
