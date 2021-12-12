@@ -39,7 +39,7 @@ jobs:
 
   macos_x86_64_xcode12_cxx17_release:
     macos:
-      xcode: "12.2.0"
+      xcode: "12.5.1"
     working_directory: ~/gismo
     environment:
       MAKEJOBS: 4
