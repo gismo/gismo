@@ -927,10 +927,11 @@ protected:
     const gsFunction<T> * _YoungsModulus;
     const gsFunction<T> * _PoissonRatio;
     mutable gsMapData<T> _tmp;
-    mutable gsMatrix<real_t,3,3> F0;
+    mutable gsMatrix<T,3,3> F0;
     mutable gsMatrix<T> Emat,Nmat;
-    mutable real_t lambda, mu, E, nu, C_constant;
+    mutable T lambda, mu, E, nu, C_constant;
 
+    mutable std::vector<gsMaterialMatrix> m_pieces;
 public:
     /// Shared pointer for gsMaterialMatrix
     typedef memory::shared_ptr< gsMaterialMatrix > Ptr;
@@ -940,14 +941,16 @@ public:
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+    gsMaterialMatrix() { }
+
     gsMaterialMatrix(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
                    const gsFunction<T> & PoissonRatio) :
-    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
+    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio)
     {
         _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
     }
 
-    ~gsMaterialMatrix() { delete _mm_piece; }
+    ~gsMaterialMatrix() { }
 
     GISMO_CLONE_FUNCTION(gsMaterialMatrix)
 
@@ -955,21 +958,25 @@ public:
 
     short_t targetDim() const {return 9;}
 
-    mutable gsMaterialMatrix<T> * _mm_piece; // todo: improve the way pieces are accessed
-
     const gsFunction<T> & piece(const index_t k) const
     {
-        delete _mm_piece;
-        _mm_piece = new gsMaterialMatrix(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
-        return *_mm_piece;
+#       pragma omp critical
+        if (m_pieces.empty())
+        {
+            m_pieces.resize(_mp->nPieces());
+            for (index_t k = 0; k!=_mp->nPieces(); ++k)
+                m_pieces[k] = gsMaterialMatrix(_mp->piece(k),
+                                               _YoungsModulus->piece(k),
+                                               _PoissonRatio->piece(k) );
+        }
+        return m_pieces[k];
     }
-
-    //class .. matMatrix_z
-    // should contain eval_into(thickness variable)
 
     // Input is parametric coordinates of the surface \a mp
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
+        #pragma omp critical
+        {
         // NOTE 1: if the input \a u is considered to be in physical coordinates
         // then we first need to invert the points to parameter space
         // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
@@ -1011,9 +1018,8 @@ public:
             C(0,2) = C_constant*F0(0,0)*F0(0,1) + 1*mu*(2*F0(0,0)*F0(0,1));
             C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 1*mu*(2*F0(0,1)*F0(1,1));
         }
+        }//end omp critical
     }
-
-    // piece(k) --> for patch k
 
 };
 
@@ -1221,7 +1227,7 @@ int main(int argc, char *argv[])
             bc.addCondition(boundary::east, condition_type::weak_dirichlet, &weakBC);
         }
 
-        // Surface forces
+        // Surface forcse
         tmp.setZero();
     }
     else if (testCase == 11)
@@ -1395,7 +1401,7 @@ int main(int argc, char *argv[])
     A.assembleBdr(bc.get("Neumann"), u * g_N * tv(G).norm() );
 
     A.assemble(
-        (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
+        (N_der * (E_m_der).tr() + M_der * (E_f_der).tr() ) * meas(G)
         ,
         u * F  * meas(G) + pressure * u * sn(defG).normalized() * meas(G)
         );
