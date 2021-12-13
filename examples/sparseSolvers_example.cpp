@@ -56,7 +56,6 @@ int main(int argc, char** argv)
 
     Q.makeCompressed(); // always call makeCompressed after sparse matrix has been filled
 
-//    /*
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
     x = solverCGI.solve(b);
@@ -104,8 +103,6 @@ int main(int argc, char** argv)
     x = solverLU.solve(b);
     gsInfo << "Solve Ax = b with Eigen's LU factorization.\n";
     report( x, x0, succeeded );
-
-//*/
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLU solverpLU;

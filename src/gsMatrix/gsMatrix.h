@@ -357,7 +357,7 @@ public:
         this->row(k+1) = this->row(k);
         return;
 
-        //*/
+        */
 
         for (index_t i = this->rows() - 1; i > k+1 ; --i)
             this->row(i).swap(this->row(i-1));
