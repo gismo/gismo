@@ -241,7 +241,7 @@ public:
            symbol_t& symbol = symbol_list[i];
            // do something
            }
-        //*/
+        */
     }
 
     void init()
@@ -332,7 +332,7 @@ bool gsSymbolList<T>::hasSymbol(const std::string& symbol_name)
 {
 return true;
 }
-//*/
+*/
 
 template<typename T>
 gsFunctionExpr<T>::gsFunctionExpr() : my(new PrivateData_t(0))
@@ -518,21 +518,16 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     const short_t n = targetDim();
     result.resize(n, u.cols());
 
-    const PrivateData_t & expr =
-#   ifdef _OPENMP
-        omp_in_parallel() ? PrivateData_t(*my) :
-#   endif
-        *my;
-
+#pragma omp critical (gsFunctionExpr_run)
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
-        copy_n(u.col(p).data(), expr.dim, expr.vars);
+        copy_n(u.col(p).data(), my->dim, my->vars);
 
         for (short_t c = 0; c!= n; ++c) // for all components
 #           ifdef GISMO_WITH_ADIFF
-            result(c,p) = expr.expression[c].value().getValue();
+            result(c,p) = my->expression[c].value().getValue();
 #           else
-            result(c,p) = expr.expression[c].value();
+            result(c,p) = my->expression[c].value();
 #           endif
     }
 }
@@ -547,6 +542,7 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
                   "Given component number is higher then number of components");
 
     result.resize(1, u.cols());
+#   pragma omp critical (gsFunctionExpr_run)
     for ( index_t p = 0; p!=u.cols(); ++p )
     {
         copy_n(u.col(p).data(), my->dim, my->vars);
@@ -569,27 +565,21 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
 
     const short_t n = targetDim();
     result.resize(d*n, u.cols());
-
-    const PrivateData_t & expr =
-#   ifdef _OPENMP
-        omp_in_parallel() ? PrivateData_t(*my) :
-#   endif
-        *my;
-
+#   pragma omp critical (gsFunctionExpr_run)
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
 #       ifdef GISMO_WITH_ADIFF
         for (short_t k = 0; k!=d; ++k)
-            expr.vars[k].setVariable(k,d,u(k,p));
+            my->vars[k].setVariable(k,d,u(k,p));
         for (short_t c = 0; c!= n; ++c) // for all components
-            expr.expression[c].value().gradient_into(result.block(c*d,p,d,1));
-            //result.block(c*d,p,d,1) = expr.expression[c].value().getGradient(); //fails on constants
+            my->expression[c].value().gradient_into(result.block(c*d,p,d,1));
+            //result.block(c*d,p,d,1) = my->expression[c].value().getGradient(); //fails on constants
 #       else
-        copy_n(u.col(p).data(), expr.dim, expr.vars);
+        copy_n(u.col(p).data(), my->dim, my->vars);
         for (short_t c = 0; c!= n; ++c) // for all components
             for ( short_t j = 0; j!=d; j++ ) // for all variables
                 result(c*d + j, p) =
-                    exprtk::derivative<T>(expr.expression[c], expr.vars[j], 0.00001 ) ;
+                    exprtk::derivative<T>(my->expression[c], my->vars[j], 0.00001 ) ;
 #       endif
     }
 }
@@ -604,25 +594,19 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
     const short_t n = targetDim();
     const index_t stride = d + d*(d-1)/2;
     result.resize(stride*n, u.cols() );
-
-    const PrivateData_t & expr =
-#   ifdef _OPENMP
-        omp_in_parallel() ? PrivateData_t(*my) :
-#   endif
-        *my;
-
+#   pragma omp critical (gsFunctionExpr_run)
     for ( index_t p = 0; p!=u.cols(); p++ ) // for all evaluation points
     {
 #       ifndef GISMO_WITH_ADIFF
-        copy_n(u.col(p).data(), expr.dim, expr.vars);
+        copy_n(u.col(p).data(), my->dim, my->vars);
 #       endif
 
         for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_WITH_ADIFF
             for (index_t v = 0; v!=d; ++v)
-                expr.vars[v].setVariable(v,d,u(v,p));
-            const DScalar &            ads  = expr.expression[c].value();
+                my->vars[v].setVariable(v,d,u(v,p));
+            const DScalar &            ads  = my->expression[c].value();
             const DScalar::Hessian_t & Hmat = ads.getHessian(); // note: can fail
 
             for ( index_t k=0; k!=d; ++k)
@@ -637,15 +621,15 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
             {
                 // H_{k,k}
                 result(k,p) = exprtk::
-                    second_derivative<T>(expr.expression[c], expr.vars[k], 0.00001);
+                    second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
 
                 short_t m = d;
                 for (short_t l=k+1; l<d; ++l)
                 {
                     // H_{k,l}
                     result(m++,p) =
-                        mixed_derivative<T>( expr.expression[c], expr.vars[k],
-                                             expr.vars[l], 0.00001 );
+                        mixed_derivative<T>( my->expression[c], my->vars[k],
+                                             my->vars[l], 0.00001 );
                 }
             }
 #           endif
@@ -666,30 +650,26 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
 
     gsMatrix<T> res(d, d);
 
-    const PrivateData_t & expr =
-#   ifdef _OPENMP
-        omp_in_parallel() ? PrivateData_t(*my) :
-#   endif
-        *my;
-
+#   pragma omp critical (gsFunctionExpr_run)
+{
 #   ifdef GISMO_WITH_ADIFF
     for (index_t v = 0; v!=d; ++v)
-        expr.vars[v].setVariable(v, d, u(v,0) );
-    expr.expression[coord].value().hessian_into(res);
+        my->vars[v].setVariable(v, d, u(v,0) );
+    my->expression[coord].value().hessian_into(res);
 #   else
-    copy_n(u.data(), expr.dim, expr.vars);
+    copy_n(u.data(), my->dim, my->vars);
     for( index_t j=0; j!=d; ++j )
     {
         res(j,j) = exprtk::
-            second_derivative<T>( expr.expression[coord], expr.vars[j], 0.00001);
+            second_derivative<T>( my->expression[coord], my->vars[j], 0.00001);
 
         for( index_t k = 0; k!=j; ++k )
             res(k,j) = res(j,k) =
-                mixed_derivative<T>( expr.expression[coord], expr.vars[k],
-                                     expr.vars[j], 0.00001 );
+                mixed_derivative<T>( my->expression[coord], my->vars[k],
+                                     my->vars[j], 0.00001 );
     }
 #   endif
-
+}
     return res;
 }
 
@@ -702,27 +682,22 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
     const short_t n = targetDim();
     gsMatrix<T> * res= new gsMatrix<T>(n,u.cols()) ;
 
-    const PrivateData_t & expr =
-#   ifdef _OPENMP
-        omp_in_parallel() ? PrivateData_t(*my) :
-#   endif
-        *my;
-
+#   pragma omp critical (gsFunctionExpr_run)
     for( index_t p=0; p!=res->cols(); ++p )
     {
 #       ifndef GISMO_WITH_ADIFF
-        copy_n(u.col(p).data(), expr.dim, expr.vars);
+        copy_n(u.col(p).data(), my->dim, my->vars);
 #       endif
 
         for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_WITH_ADIFF
-            for (index_t v = 0; v!=expr.dim; ++v)
-                expr.vars[v].setVariable(v, expr.dim, u(v,p) );
-            (*res)(c,p) = expr.expression[c].value().getHessian()(k,j); //note: can fail
+            for (index_t v = 0; v!=my->dim; ++v)
+                my->vars[v].setVariable(v, my->dim, u(v,p) );
+            (*res)(c,p) = my->expression[c].value().getHessian()(k,j); //note: can fail
 #           else
             (*res)(c,p) =
-                mixed_derivative<T>( expr.expression[c], expr.vars[k], expr.vars[j], 0.00001 ) ;
+                mixed_derivative<T>( my->expression[c], my->vars[k], my->vars[j], 0.00001 ) ;
 #           endif
         }
     }
@@ -737,29 +712,24 @@ gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
     const short_t n = targetDim();
     gsMatrix<T> res(n,u.cols());
 
-    const PrivateData_t & expr =
-#   ifdef _OPENMP
-        omp_in_parallel() ? PrivateData_t(*my) :
-#   endif
-        *my;
-
+    #   pragma omp critical (gsFunctionExpr_run)
     for( index_t p = 0; p != res.cols(); ++p )
     {
 #       ifndef GISMO_WITH_ADIFF
-        copy_n(u.col(p).data(), expr.dim, expr.vars);
+        copy_n(u.col(p).data(), my->dim, my->vars);
 #       endif
 
         for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           ifdef GISMO_WITH_ADIFF
-            for (index_t v = 0; v!=expr.dim; ++v)
-                expr.vars[v].setVariable(v, expr.dim, u(v,p) );
-            res(c,p) = expr.expression[c].value().getHessian().trace();
+            for (index_t v = 0; v!=my->dim; ++v)
+                my->vars[v].setVariable(v, my->dim, u(v,p) );
+            res(c,p) = my->expression[c].value().getHessian().trace();
 #           else
             T & val = res(c,p);
-            for ( index_t j = 0; j!=expr.dim; ++j )
+            for ( index_t j = 0; j!=my->dim; ++j )
                 val += exprtk::
-                    second_derivative<T>( expr.expression[c], expr.vars[j], 0.00001 );
+                    second_derivative<T>( my->expression[c], my->vars[j], 0.00001 );
 #           endif
         }
     }

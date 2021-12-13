@@ -114,6 +114,9 @@ public:
     
     gsHDomain(point const & upp)
     {
+        m_root = nullptr;
+        m_maxInsLevel = 0;
+        m_maxPath = 0;
         init(upp);
     }
 
@@ -225,7 +228,15 @@ public:
     {
         return m_upperIndex;
     }
-    
+
+    /// Return the upper corner of the tree in level 0
+    const point upperCornerIndex() const
+    {
+        point ind = m_upperIndex;
+        for (short_t i=0; i<d; ++i)
+            ind[i] = (ind[i] >> m_indexLevel);
+        return ind;
+    }
 
     /* \brief The insert function which insert box
     defined by points \em lower and \em upper to level \em lvl.
@@ -257,6 +268,19 @@ public:
     void insertBox (point const & lower, point const & upper, int lvl)
     { insertBox(lower, upper, m_root, lvl); }
 
+    /**
+     * @brief      The clear function which clears box
+    defined by points \em lower and \em upper to level \em lvl.
+
+    [\em lower, \em upper] are given by unique knot indices of level \em lvl.
+
+    \param lower the lower left corner of the box given in \em lvl representation
+    \param upper the upper right corner of the box given in \em lvl representation
+    \param lvl the desired level
+    */
+    void clearBox (point const & lower, point const & upper,
+                    int lvl);
+
     /** \brief Sinks the box defined by points \em lower and \em upper
     to one level higher.
 
@@ -267,6 +291,8 @@ public:
     \param lvl the level in which \a lower and \a upper are defined
     */
     void sinkBox (point const & lower, point const & upper, int lvl);
+
+    // void raiseBox (point const & lower, point const & upper, int lvl);
 
     /// Returns the internal coordinates of point \a point_idx of level \a lvl
     void internalIndex (point const & point_idx, int lvl, point & internal_idx)
@@ -374,7 +400,7 @@ public:
     // coresponding basis function is active or not.  it returns the
     // smallest level in which [k1,k2] is completely contained and not
     // completely overlaped by higher omega structure. The idea is
-    // the same as in case of query1 and query2 but insted of returning a
+    // the same as in case of query1 and query2 but instead of returning a
     // true or false value we remember the lowest level, which is returned
     // at the end.
     int query3(point const & k1, point const & k2, 
@@ -411,6 +437,10 @@ public:
      */
     int query4(point const & lower, point const & upper,
                int level) const;
+
+    std::pair<point,point> queryLevelCell(point const & lower,
+                                          point const & upper,
+                                          int level) const;
 
     /// Returns the level of the point \a p
     int levelOf(point const & p, int level) const
@@ -530,7 +560,7 @@ public:
         return m_maxInsLevel;
     }
 
-
+    void computeMaxInsLevel();
 
 private:
     
@@ -639,12 +669,24 @@ private:
     /// considered half-open, i.e. in 2D they are of the form
     /// [a_1,b_1) x [a_2,b_2)
     node * pointSearch(const point & p, int level, node  *_node) const;
+
+        // Decreases the level by 1 for all leaves
+    struct maxLevel_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+        
+        static void visitLeaf(kdnode<d,T> * leafNode, return_type &i)
+        {
+            if (leafNode->level>i) i=leafNode->level;
+        }
+    };
     
     // Increases the level by 1 for all leaves
     struct levelUp_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -656,7 +698,7 @@ private:
     struct levelDown_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -668,7 +710,7 @@ private:
     struct numLeaves_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * , return_type & i)
         {
@@ -680,7 +722,7 @@ private:
     struct numNodes_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitNode(kdnode<d,T> * , return_type & i)
         {
@@ -692,7 +734,7 @@ private:
     struct liftCoordsOneLevel_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitNode(kdnode<d,T> * leafNode, return_type &)
         {
@@ -704,7 +746,7 @@ private:
     struct printLeaves_visitor
     {
         typedef int return_type;
-        static const return_type init = 0;
+        static return_type init() {return 0;}
         
         static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
         {
@@ -727,6 +769,29 @@ private:
         T m_pow;
     };
     */
+
+    // Returns an cell/element box of a requested level
+    //(todo: stop traverse as soon as it is found for the first time..)
+    struct get_cell_visitor
+    {
+        typedef std::pair<point,point> return_type;
+
+        // initialize result
+        static return_type init()
+        {
+            return std::make_pair(point::Zero(),point::Zero());
+            //return return_type();//!does not properly initialize the points
+        }
+
+        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        {
+            if ( leafNode->level == level )
+            {
+                res.first  = leafNode->lowCorner();
+                res.second = leafNode->uppCorner();
+            }
+        }
+    };
 
 };
 

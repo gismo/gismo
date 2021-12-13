@@ -26,16 +26,19 @@ if (NOT IPOPT_FOUND)
 
   #fetch here!
 
+  # For Mumps: If using GFortran 10, add
+  # ADD_FCFLAGS=-fallow-argument-mismatch to compiler flags.
   include(ExternalProject)
   ExternalProject_Add(IpOpt
     SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
-    CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/configure --prefix=<INSTALL_DIR> #--libdir=${CMAKE_BINARY_DIR}/lib
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/configure --prefix=<INSTALL_DIR> #ADD_FCFLAGS=-fallow-argument-mismatch
     URL http://www.coin-or.org/download/source/Ipopt/Ipopt-${IPOPT_VER}.tgz
     PATCH_COMMAND      patch -t -s -p1 < ${gismo_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/mumps.patch ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/mumps.patch
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/get.Mumps
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Metis/get.Metis
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Blas/get.Blas
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Lapack/get.Lapack
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib64
     BUILD_COMMAND ${MAKE}

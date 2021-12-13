@@ -145,7 +145,7 @@ bool gsWriteParasolid( const gsMultiPatch<T> & gssurfs, std::string const & file
 PK_ASSEMBLY_create_empty(&part);
 err = PK_PART_add_geoms(part, count, geo);
 PARASOLID_ERROR(PK_PART_add_geoms, err);
-//*/
+*/
 
     // Make a sheet body out of each geometry
     PK_BODY_t  parts[count];

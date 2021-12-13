@@ -61,6 +61,29 @@ size_t gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
 }
 
 template <class T>
+gsMatrix<T> gsTensorBSplineBasis<1,T>::elementInSupportOf(index_t j) const
+{
+    typename KnotVectorType::smart_iterator it = m_knots.sbegin() + j;
+    index_t v = ( (it+m_knots.degree()+1).uIndex() - it.uIndex() ) / 2 ;
+    it.uAdd(v);
+    gsMatrix<T> rvo(1,2);
+    rvo(0,0) = it.value();
+    it.uNext();
+    rvo(0,1) = it.value();
+    // // take indexed support
+    // gsMatrix<index_t,1,2> isup(1,2);
+    // this->elementSupport_into(i, isup);
+    // // take the middle element
+    // isup.at(0) = (isup.at(0)+isup.at(1))/2;
+    // isup.at(1) =  isup.at(0)+1;
+    // // take coordinates
+    // gsMatrix<T> rvo(1,2);
+    // rvo(0,0) = m_knots.uValue(isup.at(0));
+    // rvo(0,1) = m_knots.uValue(isup.at(1));
+    return rvo;
+}
+
+template <class T>
 void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes,
                                              gsMesh<T> & mesh) const
 {

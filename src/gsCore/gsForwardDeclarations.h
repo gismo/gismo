@@ -60,6 +60,7 @@ enum gsNeedEnum
     NEED_ACTIVE            = 1U <<10, ///< Active function ids
     NEED_NORMAL            = 1U <<11, ///< Normal vector of the object
     NEED_OUTER_NORMAL      = 1U <<12, ///< Outward normal on the boundary
+    NEED_2ND_FFORM         = 1U <<13, ///< Second fundamental form
 
     SAME_ELEMENT           = 1U <<15  ///< Enable optimizations based on the assumption that all evaluation points are in the same bezier domain
 };
@@ -277,6 +278,13 @@ template <class T=real_t>                class gsPatchPreconditionersCreator;
 
 template <class T=real_t>                class gsMultiGridOp;
 template <class T=real_t>                class gsGridHierarchy;
+
+// gsIeti
+
+template <class T=real_t>                class gsIetiMapper;
+template <class T=real_t>                class gsIetiSystem;
+template <class T=real_t>                class gsPrimalSystem;
+template <class T=real_t>                class gsScaledDirichletPrec;
 
 /// @endcond
 

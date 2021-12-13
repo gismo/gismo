@@ -259,7 +259,7 @@ protected:
 };
 
 /// \brief Print (as string) operator for iterative solvers
-/// \ingroup Solver
+/// \relates gsIterativeSolver
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsIterativeSolver<T>& b)
 {return b.print(os); }

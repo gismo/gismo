@@ -47,6 +47,25 @@ public:
 
         typename gsKnotVector<T>::knotContainer knotValues;
 
+        gsXmlAttribute * mode = node->first_attribute("mode");
+        //mode: uniform, graded, ..
+        if (mode)
+        {
+            if ( !strcmp( mode->value(),"uniform") )
+            {
+                gsXmlAttribute * szc = node->first_attribute("csize");
+                GISMO_ENSURE(szc, "size of knot-vector coefficients is missing (csize attribute).");
+                index_t sz = atoi(szc->value());
+
+                //gsXmlAttribute * mlt = node->first_attribute("mult");
+                //if mlt
+
+                result = gsKnotVector<T>(0.0, 1.0, sz-p-1, p+1, 1, p);
+                return;
+            }
+        }
+
+        // Case: mode: none/default
         std::istringstream str;
         str.str( node->value() );
         for (T knot; gsGetReal(str, knot);)
@@ -194,7 +213,7 @@ const gsKnotVector<T> & gsKnotVector<T>::trimDomain(const T dbegin, const T dend
 
     return *this;
 }
-//*/
+*/
 
 
 template<typename T>

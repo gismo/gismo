@@ -29,7 +29,7 @@ namespace gismo
 /** @namespace gismo::internal
 
     @brief
-    This namespace contains functionalities that is internal to the library.
+    This namespace contains functionalities that are internal to the library.
 */
 namespace internal
 { }
@@ -103,6 +103,10 @@ namespace internal
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 
+/* ----------- MSplines ----------- */
+#include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
+
 /* ----------- Modeling ----------- */
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
@@ -166,6 +170,12 @@ namespace internal
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
 
+/* ----------- Ieti ----------- */
+#include <gsIeti/gsIetiMapper.h>
+#include <gsIeti/gsIetiSystem.h>
+#include <gsIeti/gsPrimalSystem.h>
+#include <gsIeti/gsScaledDirichletPrec.h>
+
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
 #include <gsIO/gsCmdLine.h>
@@ -184,6 +194,7 @@ namespace internal
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
+#include <gsUtils/gsQuasiInterpolate.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

@@ -11,6 +11,8 @@
     Author(s): C. Hofreither, S. Takacs
 */
 
+#include <ctime>
+
 #include <gismo.h>
 
 using namespace gismo;
@@ -42,8 +44,9 @@ int main(int argc, char *argv[])
     std::string iterativeSolver("cg");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
+    std::string boundaryConditions("d");
+    std::string out;
     bool plot = false;
-    std::string boundary_conditions("d");
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using a multigrid solver.");
     cmd.addString("g", "Geometry",              "Geometry file", geometry);
@@ -57,31 +60,31 @@ int main(int argc, char *argv[])
     cmd.addSwitch("",  "Nitsche",               "Use Nitsche method for Dirichlet boundary conditions", nitsche);
     cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles", cycles);
-    cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
-    cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
+    cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre-smoothing steps", presmooth);
+    cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post-smoothing steps", postsmooth);
     cmd.addSwitch("",  "MG.Extrasmooth",        "Doubles the number of smoothing steps for each coarser level", extrasmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
     cmd.addReal  ("",  "MG.Scaling",            "Scaling factor for the subspace corrected mass smoother", scaling);
-    cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for conjugate gradient (cg)", iterativeSolver);
+    cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for "
+                                                "conjugate gradient (cg)", iterativeSolver);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
-    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundary_conditions);
+    cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
+    cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     // Default case is levels:=refinements, so replace invalid default accordingly
-    if (levels <0) { levels = refinements; opt.setInt( "MG.Levels", levels ); }
+    if (levels <0) { levels = refinements; cmd.setInt( "MG.Levels", levels ); }
     // The smoothers know their defaults, so remove the invalid default
-    if (damping<0) { opt.remove( "MG.Damping" ); }
+    if (damping<0) { cmd.remove( "MG.Damping" ); }
 
     // Define assembler options
-    opt.remove( "DG" );
-    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
-    opt.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
+    cmd.remove( "DG" );
+    cmd.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
+    cmd.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -90,13 +93,15 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run multiGrid_example with options:\n" << opt << std::endl;
+    gsInfo << "Run multiGrid_example with options:\n" << cmd << "\n";
 
     /******************* Define geometry ********************/
 
     gsInfo << "Define geometry... " << std::flush;
 
+    //! [Define Geometry]
     gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
+    //! [Define Geometry]
     if (!mpPtr)
     {
         gsInfo << "No geometry found in file " << geometry << ".\n";
@@ -104,12 +109,15 @@ int main(int argc, char *argv[])
     }
     gsMultiPatch<>& mp = *mpPtr;
 
+    //! [Define Geometry2]
     for (index_t i=0; i<splitPatches; ++i)
     {
         gsInfo << "split patches uniformly... " << std::flush;
         mp = mp.uniformSplit();
     }
+    //! [Define Geometry2]
 
+    // This allows to strech a single-patch geometry in x-direction.
     if (stretchGeometry!=1)
     {
        gsInfo << "and stretch it... " << std::flush;
@@ -125,19 +133,28 @@ int main(int argc, char *argv[])
 
     gsInfo << "Define boundary conditions... " << std::flush;
 
-    gsConstantFunction<> one(1.0, mp.geoDim());
+    //! [Define Source]
+    // Right-hand-side
+    gsFunctionExpr<> f( "2*sin(x)*cos(y)", mp.geoDim() );
+
+    // Dirichlet function
+    gsFunctionExpr<> gD( "sin(x)*cos(y)", mp.geoDim() );
+
+    // Neumann
+    gsConstantFunction<> gN( 1.0, mp.geoDim() );
 
     gsBoundaryConditions<> bc;
+    //! [Define Source]
     {
-        const index_t len = boundary_conditions.length();
+        const index_t len = boundaryConditions.length();
         index_t i = 0;
         for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
         {
             char b_local;
             if ( len == 1 )
-                b_local = boundary_conditions[0];
+                b_local = boundaryConditions[0];
             else if ( i < len )
-                b_local = boundary_conditions[i];
+                b_local = boundaryConditions[i];
             else
             {
                 gsInfo << "\nNot enough boundary conditions given.\n";
@@ -145,9 +162,9 @@ int main(int argc, char *argv[])
             }
 
             if ( b_local == 'd' )
-                bc.addCondition( *it, condition_type::dirichlet, &one );
+                bc.addCondition( *it, condition_type::dirichlet, &gD );
             else if ( b_local == 'n' )
-                bc.addCondition( *it, condition_type::neumann, &one );
+                bc.addCondition( *it, condition_type::neumann, &gN );
             else
             {
                 gsInfo << "\nInvalid boundary condition given; only 'd' (Dirichlet) and 'n' (Neumann) are supported.\n";
@@ -157,15 +174,43 @@ int main(int argc, char *argv[])
             ++i;
         }
         if ( len > i )
-            gsInfo << "\nToo much boundary conditions have been specified. Ingnoring the remaining ones.\n";
+            gsInfo << "\nToo many boundary conditions have been specified. Ignoring the remaining ones.\n";
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
 
     /************ Setup bases and adjust degree *************/
 
+    //! [Define Basis]
     gsMultiBasis<> mb(mp);
+    //! [Define Basis]
 
+    if (xRefine)
+    {
+        if (mp.nPatches() > 1)
+        {
+            gsInfo << "\nThe option --XRefine is only available for single-patch geometries..\n";
+            return EXIT_FAILURE;
+        }
+        gsInfo << "Option --XRefine: Refine the grid in x-direction by interting " << xRefine
+               << " knots in every knot span... " << std::flush;
+        mb[0].component(0).uniformRefine(xRefine,1);
+        gsInfo << "done.\n";
+    }
+
+    gsInfo << "Setup bases and adjust degree... " << std::flush;
+
+    //! [Set degree and refine]
+    for ( size_t i = 0; i < mb.nBases(); ++ i )
+        mb[i].setDegreePreservingMultiplicity(degree);
+
+    for ( index_t i = 0; i < refinements; ++i )
+        mb.uniformRefine();
+    //! [Set degree and refine]
+
+    gsInfo << "done.\n";
+
+    //! [Define Non Matching]
     if (nonMatching)
     {
         gsInfo << "Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
@@ -188,43 +233,23 @@ int main(int argc, char *argv[])
         }
 
     }
-
-    if (xRefine)
-    {
-        if (mp.nPatches() > 1)
-        {
-            gsInfo << "\nThe option --XRefine is only available for single-patch geometries..\n";
-            return EXIT_FAILURE;
-        }
-        gsInfo << "Option --XRefine: Refine the grid in x-direction by interting " << xRefine
-               << " knots in every knot span... " << std::flush;
-        mb[0].component(0).uniformRefine(xRefine,1);
-        gsInfo << "done.\n";
-    }
-
-    gsInfo << "Setup bases and adjust degree... " << std::flush;
-
-    for ( size_t i = 0; i < mb.nBases(); ++ i )
-        mb[i].setDegreePreservingMultiplicity(degree);
-
-    for ( index_t i = 0; i < refinements; ++i )
-        mb.uniformRefine();
-
-    gsInfo << "done.\n";
+    //! [Define Non Matching]
 
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
 
+    //! [Assemble]
     gsPoissonAssembler<> assembler(
         mp,
         mb,
         bc,
-        gsConstantFunction<>(1,mp.geoDim()),
-        (dirichlet::strategy) opt.getInt("MG.DirichletStrategy"),
-        (iFace::strategy)     opt.getInt("MG.InterfaceStrategy")
+        f,
+        (dirichlet::strategy) cmd.getInt("MG.DirichletStrategy"),
+        (iFace::strategy)     cmd.getInt("MG.InterfaceStrategy")
     );
     assembler.assemble();
+    //! [Assemble]
 
     gsInfo << "done.\n";
 
@@ -232,19 +257,38 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup solver and solve... " << std::flush;
 
+    //! [Define vectors]
     std::vector< gsSparseMatrix<real_t,RowMajor> > transferMatrices;
-    std::vector< gsMultiBasis<real_t> > multiBases; // only needed for subspace corrected mass smoother
+    std::vector< gsMultiBasis<real_t> > multiBases;  // Needed for setupSubspaceCorrectedMassSmoother
+    std::vector<real_t> patchLocalDampingParameters; // Needed for setupSubspaceCorrectedMassSmoother
+    //! [Define vectors]
 
-    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, opt.getGroup("MG"))
+    // Setup grid hiearachy by coarsening of the given matrix
+    // We move the constructed hiearchy of multi bases into a variable (only required for the subspace smoother)
+    // Then we move the transfer matrices into a variable
+    //! [Setup grid hierarchy]
+    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, cmd.getGroup("MG"))
         .moveMultiBasesTo(multiBases)
-        .moveTransferMatricesTo(transferMatrices)
-        .clear();
+        .moveTransferMatricesTo(transferMatrices);
+    //! [Setup grid hierarchy]
 
+    // Setup the multigrid solver
+    //! [Setup multigrid]
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices );
-    mg->setOptions( opt.getGroup("MG") );
+    mg->setOptions( cmd.getGroup("MG") );
+    //! [Setup multigrid]
 
-    std::vector<real_t> patchLocalDampingParameters;
+    // Since we are solving a symmetric positive definite problem,we can use a Cholesky solver
+    // (instead of the LU solver that would be created by default).
+    //
+    // mg->matrix(0) gives the matrix for the coarsest grid level (=level 0).
+    //! [Define coarse solver]
+    mg->setCoarseSolver( makeSparseCholeskySolver( mg->matrix(0) ) );
+    //! [Define coarse solver]
 
+    // Set up of the smoothers
+    // This has to be done for each grid level separately
+    //! [Define smoothers]
     for (index_t i = 1; i < mg->numLevels(); ++i)
     {
         gsPreconditionerOp<>::Ptr smootherOp;
@@ -254,44 +298,56 @@ int main(int argc, char *argv[])
             smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
-        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" || smoother == "Hybrid" || smoother == "hyb" )
-        {
-            smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i), multiBases[i], bc,
-                opt.getGroup("MG"), patchLocalDampingParameters );
-
-            if ( smoother == "Hybrid" || smoother == "hyb" )
-            {
-                smootherOp->setOptions( opt.getGroup("MG") );
-                smootherOp = gsCompositePrecOp<>::make( makeGaussSeidelOp(mg->matrix(i)), smootherOp );
-            }
-        }
+        else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" )
+            smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
+                multiBases[i], bc, cmd.getGroup("MG"), patchLocalDampingParameters );
+        else if ( smoother == "Hybrid" || smoother == "hyb" )
+            smootherOp = gsCompositePrecOp<>::make(
+                makeGaussSeidelOp(mg->matrix(i)),
+                setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
+                    multiBases[i], bc, cmd.getGroup("MG"), patchLocalDampingParameters )
+                );
+        //! [Define smoothers]
         else
         {
             gsInfo << "\n\nThe chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
                       "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
-        smootherOp->setOptions( opt.getGroup("MG") );
+
+        //! [Define smoothers2]
+        smootherOp->setOptions( cmd.getGroup("MG") );
+        //! [Define smoothers2]
+
         // Handle the extra-smooth option. On the finest grid level, there is nothing to handle.
-        if (extrasmooth && i < mg->numLevels()-1 )
+        if (extrasmooth && i < mg->numLevels()-1)
         {
             smootherOp->setNumOfSweeps( 1 << (mg->numLevels()-1-i) );
             smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smootherOp);
         }
-        mg->setSmoother(i, smootherOp); // TODO: special treatment for scms
-    }
 
-    gsMatrix<> x, errorHistory;
+    //! [Define smoothers3]
+        mg->setSmoother(i, smootherOp);
+    } // end for
+    //! [Define smoothers3]
+
+    gsMatrix<> errorHistory;
+
+    //! [Initial guess]
+    gsMatrix<> x;
     x.setRandom( assembler.matrix().rows(), 1 );
+    //! [Initial guess]
 
+    //! [Solve]
     if (iterativeSolver=="cg")
         gsConjugateGradient<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else if (iterativeSolver=="d")
         gsGradientMethod<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
+    //! [Solve]
     else
     {
         gsInfo << "\n\nThe chosen iterative solver is unknown.\n\nKnown are:\n  conjugate gradient (cg)\n  direct (d)\n\n";
@@ -314,6 +370,17 @@ int main(int argc, char *argv[])
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
+    if (!out.empty())
+    {
+        gsFileData<> fd;
+        std::time_t time = std::time(NULL);
+        fd.add(cmd);
+        fd.add(x);
+        fd.addComment(std::string("multiGrid_example   Timestamp:")+std::ctime(&time));
+        fd.save(out);
+        gsInfo << "Write solution to file " << out << "\n";
+    }
+
     if (plot)
     {
         // Construct the solution as a scalar field
@@ -321,15 +388,15 @@ int main(int argc, char *argv[])
         assembler.constructSolution(x, mpsol);
         gsField<> sol( assembler.patches(), mpsol );
 
-        // Write approximate and exact solution to paraview files
-        gsInfo << "Plotting in Paraview.\n";
+        // Write solution to paraview files
+        gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
         gsWriteParaview<>(sol, "multiGrid_result", 1000);
         gsFileManager::open("multiGrid_result.pvd");
     }
-    else
+    if (!plot&&out.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
+                  "file containing the solution or --out to write solution to xml file.\n";
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -345,6 +412,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     std::vector<real_t>& patchLocalDampingParameters
 )
 {
+    // This function sets up a patchwise version of the subspace corrected mass smoother.
+
     const short_t dim = mb.topology().dim();
 
     const iFace::strategy iFaceStrategy = (iFace::strategy)opt.askInt("InterfaceStrategy", 1);
@@ -366,8 +435,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     std::vector< std::vector<patchComponent> > components = mb.topology().allComponents(true);
     const index_t nr_components = components.size();
 
-    if (patchLocalDampingParameters.size()==0)
-      patchLocalDampingParameters.resize(nr_components);
+    if (patchLocalDampingParameters.size() == 0)
+        patchLocalDampingParameters.resize(nr_components);
 
     // Setup Dirichlet boundary conditions
     gsBoundaryConditions<> dir_bc;
@@ -471,7 +540,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
 
                         // We store the local damping parameter if we can expect that it does not change
                         // too much any more. When the number of inner knots is p or smaller, the subspace
-                        // corrected mass smoother does an exact solver. Thus, these cases are not comparable.
+                        // corrected mass smoother is an exact solver. Thus, these cases are not comparable.
                         bool saveLambda = (level > nrLevels - 5);
                         for (index_t j=0; j!=bases[0]->dim(); ++j)
                             saveLambda &= bases[0]->component(j).numElements()
@@ -487,7 +556,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
             }
             else
             {
-                // If the component has dimension 0 or 1, we can just du direct solves
+                // If the component has dimension 0 or 1, we can just use direct solves
                 ops.push_back( makeSparseCholeskySolver(localMatrix) );
             }
 
@@ -495,8 +564,11 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         }
     }
 
-    return gsPreconditionerFromOp<>::make(
-        makeMatrixOp(matrix),
-        gsAdditiveOp<>::make(transfers, ops)
-    );
+    gsPreconditionerFromOp<>::Ptr result
+        = gsPreconditionerFromOp<>::make(
+            makeMatrixOp(matrix),
+            gsAdditiveOp<>::make(transfers, ops)
+        );
+    result->setOptions(opt);
+    return result;
 }

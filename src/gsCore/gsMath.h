@@ -300,7 +300,7 @@ using ::cos;
 using ::cosh;
 using ::exp;
 using ::floor;
-using ::log10;
+inline mpq_class log10(const mpq_class & a) { return log(a)/log(10); }
 using ::log;
 using ::pow;
 using ::sin;
