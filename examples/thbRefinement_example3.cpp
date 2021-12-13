@@ -896,7 +896,7 @@ int main(int argc, char *argv[])
 
     gsDebugVar(box0.contains(box1));
 
-    tmp = gsHBoxContainer<2,real_t>(box1.getSupportExtension();
+    tmp = gsHBoxContainer<2,real_t>(box1.getSupportExtension());
     gsDebugVar(tmp);
 
     tmp = gsHBoxContainer<2,real_t>(box1.getMultiLevelSupportExtension(1));
@@ -910,7 +910,7 @@ int main(int argc, char *argv[])
     gsDebugVar(tmp);
     tmp = gsHBoxContainer<2,real_t>(box1.getTneighborhood(2));
     gsDebugVar(tmp);
-    tmp = gsHBoxContainer<2,real_t>(box1.getContainer().markHrecursive(3,2));
+    tmp = gsHBoxContainer<2,real_t>(box1.toHBoxContainer().markHrecursive(3,2));
     gsDebugVar(tmp);
 
 
@@ -934,7 +934,8 @@ int main(int argc, char *argv[])
     gsHBoxContainer<2,real_t> HBContainer3 = HBContainer1.boxUnion(HBContainer2);
     gsDebugVar(HBContainer3);
 
-    gsDebugVar(HBContainer3.getParents());
+    gsHBoxContainer<2,real_t> HBContainer4(HBContainer3.getParents());
+    gsDebugVar(HBContainer4);
 
 
 
