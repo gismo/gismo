@@ -64,12 +64,15 @@ private:
     const gsFunctionSet<T> * mutMap;
     thFuncData               mutData;
 
+    // Represents the current element
+    expr::gsFeElement<T> m_element;
+
 public:
     typedef memory::unique_ptr<gsExprHelper> uPtr;
     typedef memory::shared_ptr<gsExprHelper>  Ptr;
 
     typedef const expr::gsGeometryMap<T>   geometryMap;
-    typedef const expr::gsFeElement<T>     element;
+    typedef       expr::gsFeElement<T> &   element;
     typedef const expr::gsFeVariable<T>    variable;
     typedef const expr::gsFeSpace<T>       space;
     typedef const expr::gsComposition<T>   composition;
@@ -177,6 +180,8 @@ public:
         expr::gsFeVariable<T> var;
         return var;
     }
+
+    element getElement() { return m_element; }
 
     composition getMutVar(geometryMap & G)
     {

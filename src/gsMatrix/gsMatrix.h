@@ -116,6 +116,9 @@ public:
     typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D>
         ColMinorMatrixType;
 
+    // block of fixed size 3
+    typedef Eigen::VectorBlock<Eigen::Block<Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> Col3DType;
+
 public:  // Solvers related to gsMatrix
     typedef typename Eigen::EigenSolver<Base> EigenSolver;
 
@@ -130,7 +133,7 @@ public:  // Solvers related to gsMatrix
     //typedef typename Eigen::BDCSVD<Base> BDCSVD;
 
     //typedef typename Eigen::CompleteOrthogonalDecomposition CODecomposition;
-
+    
 public:
 
     gsMatrix() { }
@@ -237,8 +240,7 @@ public:
     { return gsAsVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
 
     /// \brief Returns column \a c as a fixed-size 3D vector
-    auto col3d(index_t c) -> decltype(this->col(c).template head<3>())
-    { return this->col(c).template head<3>(); }
+    Col3DType col3d(index_t c) { return this->col(c).template head<3>(); }
 
     /// \brief Returns the entries of the matrix resized to a (const) n*m vector column-wise
     gsAsConstVector<T, Dynamic> asVector() const

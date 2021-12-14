@@ -688,6 +688,7 @@ class gsFeElement
     const gsVector<T> * m_weights;
     //const gsMatrix<T> * m_points;
 
+    gsFeElement(const gsFeElement &);
 public:
     typedef T Scalar;
 
@@ -696,21 +697,25 @@ public:
     void set(const gsDomainIterator<T> & di, const gsVector<T> & weights)
     { m_di = &di, m_weights = &weights; }
 
+    bool isValid() const { return nullptr!=m_weights; }
+
     const gsVector<T> & weights() const {return *m_weights;}
     
     template<class E>
-    integral_expr<E> integral(const _expr<E>& ff)
+    integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
 
+    typedef pow_expr<integral_expr<T> > DiamRetType;
     /// The diameter of the element (on parameter space)
-    auto diam() ->decltype( pow(this->integral(_expr<real_t,true>(1)),T(1)/2) ) const //-> int(1)^(1/d)
-    {
-        return pow(integral(_expr<real_t,true>(1)),T(1)/2);
-    }
+    DiamRetType diam() const //-> int(1)^(1/d)
+    { return pow(integral(_expr<T,true>(1)),(T)(1)/2); }
 
+    typedef pow_expr<integral_expr<meas_expr<T> > > PHDiamRetType;
     /// The diameter of the element on the physical space
-    auto diam(const gsGeometryMap<Scalar> & _G) ->decltype(pow(integral(meas_expr<T>(_G)),T(1)/2)) const
-    { return pow(integral(meas_expr<T>(_G)),T(1)/2); }
+    PHDiamRetType diam(const gsGeometryMap<Scalar> & _G) const
+    { return pow(integral(meas_expr<T>(_G)),(T)(1)/2); }
+
+    //const gsMatrix<T> points() const {return pts;}
 
     //index_t dim() { return di->
         
@@ -718,6 +723,7 @@ public:
 
     void parse(gsExprHelper<T> & evList) const
     {
+        GISMO_ERROR("EL");
         evList.add(*this);
         this->data().flags |= NEED_VALUE;
     }
@@ -732,7 +738,7 @@ class integral_expr : public _expr<integral_expr<E> >
 public:
     //typedef typename E::Scalar Scalar;
     typedef real_t Scalar;
-    Scalar m_val;
+    mutable Scalar m_val;
 private:
     const gsFeElement<Scalar> & _e; ///<Reference to the element
     typename _expr<E>::Nested_t _ff;
@@ -742,22 +748,26 @@ public:
     integral_expr(const gsFeElement<Scalar> & el, const _expr<E> & u)
     : _e(el), _ff(u) { }
 
-    Scalar eval(const index_t k) const
+    const Scalar & eval(const index_t k) const
     {
+        GISMO_ENSURE(_e.isValid(), "Element is valid within integrals only.");
         if (0==k)
         {
             const Scalar * w = _e.weights().data();
-            m_val = (*w) * _ff.eval(0);
+            m_val = (*w) * _ff.val().eval(0);
             for (index_t k = 1; k != _e.weights().rows(); ++k)
-                m_val += (*(++w)) * _ff.eval(k);
+                m_val += (*(++w)) * _ff.val().eval(k);
         }
         return m_val;
     }
 
-    inline integral_expr<Scalar> val() const { return *this; }
+    inline integral_expr<E> val() const { return *this; }
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
-    void parse(gsExprHelper<Scalar> & ) const { }
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        _ff.parse(evList);
+    }
 
     const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>(); }

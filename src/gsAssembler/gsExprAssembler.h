@@ -32,8 +32,6 @@ private:
 
     gsOptionList m_options;
 
-    expr::gsFeElement<T> m_element;//todo: move to gsExprAssembler. update in precompute(domIt)
-
     gsSparseMatrix<T> m_matrix;
     gsMatrix<T>       m_rhs;
 
@@ -268,7 +266,7 @@ public:
     expr::gsComposition<T> getBdrFunction(geometryMap & G) const
     { return m_exprdata->getMutVar(G); }
 
-    element getElement() const { return m_element; }
+    element getElement() const { return m_exprdata->getElement(); }
 
     // note: not used
     void setFixedDofVector(gsMatrix<T> & dof, short_t unk = 0);
@@ -662,7 +660,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
             m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-        m_element.set(*domIt,quWeights);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
@@ -727,7 +725,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).
             makeDomainIterator(it->side());
-        m_element.set(*domIt,quWeights);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
@@ -784,7 +782,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(patch1)
             .makeDomainIterator(iFace.first().side());
-        m_element.set(*domIt);
+        m_exprdata->getElement().set(*domIt, quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
