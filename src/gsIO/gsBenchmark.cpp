@@ -131,7 +131,7 @@ namespace gismo
        << ", " << gsSysInfo::getStdLibVersion()
        << (gsSysInfo::getExtraLibsVersion().empty()
            ? "), \n"
-           : gsSysInfo::getExtraLibsVersion()+"), \n")
+           : ", "+gsSysInfo::getExtraLibsVersion()+"), \n")
 
        << "CPU " << gsSysInfo::getCpuInfo() << ", "
        << "Memory " << gsSysInfo::getMemoryInfo()  << "\\\\\n";

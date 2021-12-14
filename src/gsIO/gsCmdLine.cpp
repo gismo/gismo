@@ -433,7 +433,7 @@ void gsCmdLine::printVersion()
            << ", " << gsSysInfo::getStdLibVersion()
            << ", eigen " << gsSysInfo::getEigenVersion()
            << (gsSysInfo::getExtraLibsVersion().empty() ? ")\n"
-               : gsSysInfo::getExtraLibsVersion()+")\n");
+               : ", "+gsSysInfo::getExtraLibsVersion()+")\n");
     gsInfo << "Running on " << gsSysInfo::getCpuInfo()
            << " (memory " << gsSysInfo::getMemoryInfo() << ")\n";
     gsInfo << "web: http://github.com/gismo\n";
