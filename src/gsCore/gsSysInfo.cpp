@@ -500,10 +500,90 @@ namespace gismo
   {
     std::string s("");
 
-#ifdef __INTEL_MKL__
-    s += "MKL "+INTEL_MKL_VERSION;
+    // CoDiPack extension
+#if defined(CODI_VERSION)
+    if (!s.empty()) s+= ", ";
+    s += "CoDiPack "+util::to_string(CODI_VERSION);
+#elif defined(CODI_MAJOR_VERSION) && \
+      defined(CODI_MINOR_VERSION) && \
+      defined(CODI_BUILD_VERSION)
+        if (!s.empty()) s+= ", ";
+    s += "CoDiPack "+util::to_string(CODI_MAJOR_VERSION)
+      +          "."+util::to_string(CODI_MINOR_VERSION)
+      +          "."+util::to_string(CODI_BUILD_VERSION);
 #endif
 
+    // GMP library
+#if defined(__GNU_MP_VERSION)       &&   \
+    defined(__GNU_MP_VERSION_MINOR) &&   \
+    defined(__GNU_MP_VERSION_PATCHLEVEL)
+    if (!s.empty()) s+= ", ";
+    s += "gmp "+util::to_string(__GNU_MP_VERSION)
+      +     "."+util::to_string(__GNU_MP_VERSION_MINOR)
+      +     "."+util::to_string(__GNU_MP_VERSION_PATCHLEVEL);
+#endif
+
+    // IpOpt library
+#if defined(IPOPT_VERSION)
+    if (!s.empty()) s+= ", ";
+    s += "IpOpt "+util::to_string(IPOPT_VERSION);
+#elif defined(IPOPT_VERSION_MAJOR) && \
+      defined(IPOPT_VERSION_MINOR) && \
+      defined(IPOPT_VERSION_RELEASE)
+    if (!s.empty()) s+= ", ";
+    s += "IpOpt "+util::to_string(IPOPT_VERSION_MAJOR)
+      +       "."+util::to_string(IPOPT_VERSION_MINOR)
+      +       "."+util::to_string(IPOPT_VERSION_RELEASE);
+#endif
+
+    // Intel MKL library
+#if defined(INTEL_MKL_VERSION)
+    if (!s.empty()) s+= ", ";
+    s += "MKL "+util::to_string(INTEL_MKL_VERSION);
+#endif
+
+    // MPFR library
+#if defined(MPFR_VERSION_STRING)
+    if (!s.empty()) s+= ", ";
+    s += "mpfr "+util::to_string(MPFR_VERSION_STRING);
+#elif defined(MPFR_VERSION_MAJOR) && \
+      defined(MPFR_VERSION_MINOR) && \
+      defined(MPFR_VERSION_PATCHLEVEL)
+    if (!s.empty()) s+= ", ";
+    s += "mpfr "+util::to_string(MPFR_VERSION_MAJOR)
+      +      "."+util::to_string(MPFR_VERSION_MINOR)
+      +      "."+util::to_string(MPFR_VERSION_PATCHLEVEL);
+#endif
+
+    // OpenCascade
+#if defined(OCC_VERSION_COMPLETE)
+    if (!s.empty()) s+= ", ";
+    s += "occ "+util::to_string(OCC_VERSION_COMPLETE);
+#elif defined(OCC_VERSION_MAJOR) && \
+      defined(OCC_VERSION_MINOR) && \
+      defined(OCC_VERSION_MAINTENANCE)
+    if (!s.empty()) s+= ", ";
+    s += "occ "+util::to_string(OCC_VERSION_MAJOR)
+      +     "."+util::to_string(OCC_VERSION_MINOR)
+      +     "."+util::to_string(OCC_VERSION_MAINTENANCE);
+#endif
+
+    // OpenNurbs
+#if defined(OPENNURBS_VERSION)
+    if (!s.empty()) s+= ", ";
+    s += "onurbs "+util::to_string(OPENNURBS_VERSION);
+#endif
+
+    // Spectra library
+#if defined(SPECTRA_MAJOR_VERSION) && \
+    defined(SPECTRA_MINOR_VERSION) && \
+    defined(SPECTRA_PATCH_VERSION)
+    if (!s.empty()) s+= ", ";
+    s += "spectra "+util::to_string(SPECTRA_MAJOR_VERSION)
+      +         "."+util::to_string(SPECTRA_MINOR_VERSION)
+      +         "."+util::to_string(SPECTRA_PATCH_VERSION);
+#endif
+    
     return s;
   }
 
