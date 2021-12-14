@@ -150,7 +150,7 @@ public:
   run(const std::vector<index_t>& nthreads, index_t nruns, T& benchmark, metric metric)
 {
     gsStopwatch stopwatch;
-    uint64_t benchmark_result;
+    uint64_t benchmark_result(0);
     double benchmark_metric, benchmark_runtime;
     
     std::vector<Result> results;
@@ -160,46 +160,47 @@ public:
         
         omp_set_num_threads(*it);
         benchmark_runtime = 0.0;
-        benchmark_metric = 0.0;
+        
+        stopwatch.restart();
         
         for (index_t run=0; run<nruns; ++run) {
-          stopwatch.restart();
           benchmark_result = benchmark();
-          stopwatch.stop();
-          benchmark_runtime += stopwatch.elapsed();
-          
-          switch(metric) {
-          case metric::bandwidth_kb_sec: case metric::perf_kflop_sec:
-            benchmark_metric += 1e-3*benchmark_result/stopwatch.elapsed();
-            break;
-          case metric::bandwidth_mb_sec: case metric::perf_mflop_sec:
-            benchmark_metric += 1e-6*benchmark_result/stopwatch.elapsed();
-            break;
-          case metric::bandwidth_gb_sec: case metric::perf_gflop_sec:
-            benchmark_metric += 1e-9*benchmark_result/stopwatch.elapsed();
-            break;
-          case metric::bandwidth_tb_sec: case metric::perf_tflop_sec:
-            benchmark_metric += 1e-12*benchmark_result/stopwatch.elapsed();
-            break;
-          case metric::runtime_sec:
-            benchmark_metric += stopwatch.elapsed();
-            break;
-          default:
-            GISMO_ERROR("Unsupported metric");
-          }          
+        }
+        
+        stopwatch.stop();
+        benchmark_runtime = stopwatch.elapsed()/(double)nruns;
+        
+        switch(metric) {
+        case metric::bandwidth_kb_sec: case metric::perf_kflop_sec:
+          benchmark_metric = 1e-3*benchmark_result/benchmark_runtime;
+          break;
+        case metric::bandwidth_mb_sec: case metric::perf_mflop_sec:
+          benchmark_metric = 1e-6*benchmark_result/benchmark_runtime;
+          break;
+        case metric::bandwidth_gb_sec: case metric::perf_gflop_sec:
+          benchmark_metric = 1e-9*benchmark_result/benchmark_runtime;
+          break;
+        case metric::bandwidth_tb_sec: case metric::perf_tflop_sec:
+          benchmark_metric = 1e-12*benchmark_result/benchmark_runtime;
+          break;
+        case metric::runtime_sec:
+          benchmark_metric = benchmark_runtime;
+          break;
+        default:
+          GISMO_ERROR("Unsupported metric");
         }
 
-        if (std::isinf(benchmark_runtime))
-          benchmark_runtime = 0.0;
+        // if (std::isinf(benchmark_runtime))
+        //   benchmark_runtime = 0.0;
 
-        if (std::isinf(benchmark_metric))
-          benchmark_metric = 0.0;
+        // if (std::isinf(benchmark_metric))
+        //   benchmark_metric = 0.0;
         
         Result res;
-        res[0]= static_cast<double>(*it);        // number of OpenMP threads
-        res[1]= benchmark_runtime/(double)nruns; // averaged elapsed time in seconds
-        res[2]= benchmark_metric/(double)nruns;  // averaged benchmark metric
-        res[3]= (double)metric;                  // benchmark metric
+        res[0]= static_cast<double>(*it); // number of OpenMP threads
+        res[1]= benchmark_runtime;        // averaged elapsed time in seconds
+        res[2]= benchmark_metric;         // averaged benchmark metric
+        res[3]= (double)metric;           // benchmark metric
         results.push_back( give(res) );
       }
     } catch(...) {}
