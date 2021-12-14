@@ -15,6 +15,9 @@
 
 #include <sstream>
 #include <numeric>
+#include <iterator>
+#include <tuple>
+#include <utility>
 
 #include <gsCore/gsExport.h>
 #include <gsCore/gsDebug.h>
@@ -293,6 +296,123 @@ size_t size(const T& t)
     return t.size();
 }
 #endif
+
+#if __cplusplus >= 201300L
+template<typename T, T... Ints>
+using integer_sequence = std::integer_sequence<T, Ints...>;
+
+template<std::size_t... Ints>
+using index_sequence = std::index_sequence<Ints...>;
+
+template<class T, T N>
+using make_integer_sequence = std::make_integer_sequence<T, N>;
+
+template<std::size_t N>
+using make_index_sequence = std::make_index_sequence<N>;
+
+template<typename... T>
+using index_sequence_for = std::index_sequence_for<T...>;
+
+#else
+
+/// \brief Backport of std::integer_sequence from C++14
+template<typename T, T... Ints>
+struct integer_sequence
+{
+  typedef T value_type;
+  static constexpr std::size_t size() { return sizeof...(Ints); }
+};
+
+/// \brief Backport of std::index_sequence from C++14
+template<std::size_t... Ints>
+using index_sequence = integer_sequence<std::size_t, Ints...>;
+
+/// \brief Backport of std::make_integer_sequence from C++14
+//@{
+template<typename T, std::size_t N, T... Is>
+struct make_integer_sequence : make_integer_sequence<T, N-1, N-1, Is...> {};
+  
+template<typename T, T... Is>
+struct make_integer_sequence<T, 0, Is...> : integer_sequence<T, Is...> {};
+  
+template<std::size_t N>
+using make_index_sequence = make_integer_sequence<std::size_t, N>;
+//@}
+
+/// \brief Backport of std::index_sequence_for from C++14
+template<typename... T>
+using index_sequence_for = make_index_sequence<sizeof...(T)>;
+#endif
+
+namespace
+{
+  
+template <typename... T>
+class zip_helper {
+public:
+  class iterator
+    : std::iterator<std::forward_iterator_tag,
+                    std::tuple<decltype(*std::declval<T>().begin())...>> {
+  private:
+    std::tuple<decltype(std::declval<T>().begin())...> iters_;
+
+    template <std::size_t... I>
+    auto deref(index_sequence<I...>)
+      -> decltype(typename iterator::value_type{*std::get<I>(iters_)...})
+      const {
+      return typename iterator::value_type{*std::get<I>(iters_)...};
+    }
+
+    template <std::size_t... I>
+    void increment(index_sequence<I...>) {
+      auto l = {(++std::get<I>(iters_), 0)...};
+      GISMO_UNUSED(l);
+    }
+
+  public:
+    explicit iterator(decltype(iters_) iters) : iters_{std::move(iters)} {}
+
+    iterator& operator++() {
+      increment(index_sequence_for<T...>{});
+      return *this;
+    }
+
+    iterator operator++(int) {
+      auto saved{*this};
+      increment(index_sequence_for<T...>{});
+      return saved;
+    }
+
+    bool operator!=(const iterator& other) const {
+      return iters_ != other.iters_;
+    }
+
+    auto operator*()
+      -> decltype(deref(index_sequence_for<T...>{}))
+      const { return deref(index_sequence_for<T...>{}); }
+  };
+
+  zip_helper(T&... seqs)
+    : begin_{std::make_tuple(seqs.begin()...)},
+      end_{std::make_tuple(seqs.end()...)} {}
+
+  iterator begin() const { return begin_; }
+  iterator end() const { return end_; }
+
+private:
+  iterator begin_;
+  iterator end_;
+};
+
+} // namespace
+  
+/// \brief Creates a zip iterator
+template <typename... T>
+auto zip(T&&... seqs)
+  -> zip_helper<T...>
+{
+  return zip_helper<T...>{seqs...};
+}
 
 } // end namespace util
 
