@@ -445,7 +445,7 @@ public:
 
 private:
     void setData(const gsFuncData<Scalar> & val) { m_fd = &val;}
-    void setDim(index_t _d) { m_d = give(_d); }
+    void setDim(index_t _d) { m_d = _d; }
     void clear() { m_fs = NULL; }
 
 protected:
@@ -836,8 +836,8 @@ protected:
 public:
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    auto eval(const index_t k) const ->decltype(this->m_fd->values[0].col(k))
-    { return this->m_fd->values[0].col(k); }
+    typename gsMatrix<T>::constColumn
+    eval(const index_t k) const { return this->m_fd->values[0].col(k); }
 
     const gsGeometryMap<T> & inner() const { return _G;};
 
