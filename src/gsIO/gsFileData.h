@@ -175,7 +175,10 @@ public:
     template<class Object>
     inline memory::unique_ptr<Object> getId( const int & id)  const
     {
-        return memory::make_unique( internal::gsXml<Object>::getId( getXmlRoot(), id ) );
+        if (internal::gsXml<Object>::getId( getXmlRoot(), id )!=NULL)
+            return memory::make_unique( internal::gsXml<Object>::getId( getXmlRoot(), id ) );
+        else
+            return nullptr;
     }
 
     /// Searches and fetches the Gismo object with a given id
