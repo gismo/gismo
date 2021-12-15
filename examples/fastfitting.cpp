@@ -123,15 +123,17 @@ int main(int argc, char *argv[])
     ref.computeStandard();
     time.stop();
     gsInfo<<"Fitting time                      : "<< time << std::endl;
-    //gsWriteParaview(*(ref.result()),"resultslow", 50000, false, true);
+    gsInfo<<"Flops evaluation algorithm slow   : "<< 2.0 * xyz.cols() * 5/2*(deg_x+1)*deg_x << std::endl;
+    gsWriteParaview(*(ref.result()),"resultslow", 50000, false, true);
 
     gsFastFitting<real_t> ref3( uv, xyz, T_tbasis, ugrid, vgrid);
     time.restart();
     ref3.compute(false);
     time.stop();
     gsInfo<<"Fitting time                      : "<< time << std::endl;
+    gsInfo<<"Flops evaluation algorithm fast   : "<< (n_ugrid + n_vgrid) * 5/2*(deg_x+1)*deg_x << std::endl;
     ref.computeErrors();
-    //gsWriteParaview(*(ref3.result()),"resultfast", 50000, false, true);
+    gsWriteParaview(*(ref3.result()),"resultfast", 50000, false, true);
 
     gsInfo<<"--------------------------------\n";
     ref3.computeAllProjectedErrors(uv,xyz);

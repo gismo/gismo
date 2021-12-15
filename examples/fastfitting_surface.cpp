@@ -80,7 +80,8 @@ int main(int argc, char *argv[])
         {
             x.push_back(uv(0,i));
             y.push_back(uv(1,i));
-            z.push_back(1.0/3*sin(4*M_PI*(uv(0,i)+0.1/8.0))*sin(4*M_PI*(uv(1,i)+0.1/8.0)));
+            //z.push_back(1.0/3.0*sin(4*M_PI*(uv(0,i)+0.1/8.0))*sin(4*M_PI*(uv(1,i)+0.1/8.0)));
+            z.push_back(1.0/3.0*sin(4*M_PI*uv(0,i))*sin(4*M_PI*uv(1,i)));
         }
     }
 
