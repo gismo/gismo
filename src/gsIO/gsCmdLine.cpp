@@ -435,7 +435,10 @@ void gsCmdLine::printVersion()
            << (gsSysInfo::getExtraLibsVersion().empty() ? ")\n"
                : ", "+gsSysInfo::getExtraLibsVersion()+")\n");
     gsInfo << "Running on " << gsSysInfo::getCpuInfo()
-           << " (memory " << gsSysInfo::getMemoryInfo() << ")\n";
+           << " (memory " << gsSysInfo::getMemoryInfo() << ")"
+           << " with real_t:" << util::type<real_t>::name()
+           << ", index_t:" << util::type<index_t>::name()
+           << ", short_t:" << util::type<short_t>::name() << "\n";
     gsInfo << "web: http://github.com/gismo\n";
 }
 
