@@ -263,37 +263,6 @@ private:
     const gsGeometry<T> & m_geo;
 };
 
-template<class T>
-class gsPatchIdField : public gsFunction<T>
-{
-public:
-    /// Shared pointer for gsPatchIdField
-    typedef memory::shared_ptr< gsPatchIdField > Ptr;
-
-    /// Unique pointer for gsPatchIdField
-    typedef memory::unique_ptr< gsPatchIdField > uPtr;
-
-    gsPatchIdField(gsGeometry<T> const & geo)
-    : m_dim(geo.domainDim()), m_id(geo.id())
-    { }
-
-    GISMO_CLONE_FUNCTION(gsPatchIdField)
-
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { result.resize(1,u.cols()); result.setConstant(m_id); }
-
-    short_t domainDim() const { return m_dim; }
-    short_t targetDim() const { return 1; }
-
-    /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
-    { os << "Parameter field.\n"; return os; };
-
-private:
-    index_t m_dim;
-    index_t m_id;
-};
-
 
 /**
    @brief Generates a field that indicates the boundary sides on the geometry
@@ -305,24 +274,25 @@ private:
    \ingroup Core
 */
 template<class T>
-class gsBoundaryField : public gsFunction<T> 
+class gsPatchIdField : public gsFunction<T>
 {
 public:
-    /// Shared pointer for gsBoundaryField
-    typedef memory::shared_ptr< gsBoundaryField > Ptr;
+    /// Shared pointer for gsPatchIdField
+    typedef memory::shared_ptr< gsPatchIdField > Ptr;
 
-    /// Unique pointer for gsBoundaryField
-    typedef memory::unique_ptr< gsBoundaryField > uPtr;
+    /// Unique pointer for gsPatchIdField
+    typedef memory::unique_ptr< gsPatchIdField > uPtr;
 
-    explicit gsBoundaryField(gsGeometry<T> const & geo_)
+    explicit gsPatchIdField(gsGeometry<T> const & geo_)
     : geo(geo_), m_supp(geo.support())
     { }
 
-    GISMO_CLONE_FUNCTION(gsBoundaryField)
+    GISMO_CLONE_FUNCTION(gsPatchIdField)
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { 
-        result.setZero(1, u.cols() );
+        result.setZero(2, u.cols() );
+        result.row(0).setConstant(geo.id());
 
         const int d = geo.parDim();
         for (boxSide c=boxSide::getFirst(d); c<boxSide::getEnd(d); ++c)
@@ -333,13 +303,13 @@ public:
             for (index_t v = 0; v != u.cols(); ++v) // for all columns of u
             {
                 if ( math::abs( u(dir,v) - par ) < 1e-2 )
-                    result(0,v) = static_cast<T>(c);
+                    result(1,v) = static_cast<T>(c);
             }
         }
     }
 
     short_t domainDim() const { return geo.domainDim(); }
-    short_t targetDim() const { return 1; }
+    short_t targetDim() const { return 2; }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -417,15 +387,6 @@ struct gsFieldCreator
         for (size_t k=0; k< mp.nPatches(); ++k)
             nFields->addPiecePointer( new gsParamField<T>(mp.patch(k)) );
 
-        return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
-    }
-
-    static gsField<T> boundarySides(gsMultiPatch<T> const & mp)
-    {
-        gsPiecewiseFunction<T> * nFields = new gsPiecewiseFunction<T>(mp.nPatches());
-        for (size_t k=0; k< mp.nPatches(); ++k)
-            nFields->addPiecePointer( new gsBoundaryField<T>(mp.patch(k)) );
-        
         return gsField<T>(mp, typename gsPiecewiseFunction<T>::Ptr(nFields), true );
     }
 
