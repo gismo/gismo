@@ -75,7 +75,7 @@ public:
     {
         this->m_basis = new Basis(give(KV));
         m_coefs.swap(coefs);
-            
+
         if( periodic )
         {
             const index_t sz = this->basis().size();
@@ -97,8 +97,8 @@ public:
         }
         else // non-periodic
         {
-            if( this->m_coefs.rows() + KV.degree() + 1 != static_cast<int>( KV.size() ) )
-                gsWarn << "gsBSpline Warning: #Knots="<< KV.size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
+            if( this->m_coefs.rows() + KV.degree() + 1 != static_cast<int>( this->knots().size() ) )
+                gsWarn << "gsBSpline Warning: #Knots="<< this->knots().size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
         }
     }
     

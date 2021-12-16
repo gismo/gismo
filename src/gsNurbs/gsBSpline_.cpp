@@ -24,6 +24,7 @@ void pybind11_init_gsBSpline(py::module &m)
 
     // Constructors
     .def(py::init<real_t,real_t,unsigned, int, gsMatrix<real_t>,unsigned,bool>())
+      .def(py::init<gsKnotVector<real_t>, gsMatrix<real_t> >() )
 
     // Member functions
     .def("degree", &Class::degree, "Returns the degree of the B-Spline") //needs default argument i=0
@@ -35,7 +36,13 @@ void pybind11_init_gsBSpline(py::module &m)
       .def("coefs", (gsMatrix<real_t>& (Class::*)())&Class::coefs,
            py::return_value_policy::reference_internal,
            "Returns the coeffcient matrix (as a reference)") //there are 2 versions of coefs()
-    .def("numCoefs", &Class::numCoefs, "Returns the number of coefficients")
+//      .def("knots", (gsKnotVector<real_t>& (Class::*)())&Class::knots,
+//           py::return_value_policy::reference_internal,
+//           "Returns the knots (as a reference)") //there are 2 versions of coefs()
+      //.def("knots", &Class::knots, "Returns a copy of the knots")
+   .def("knots", static_cast<gsKnotVector<real_t>& (Class::*)(int)> (&Class::knots), "Set the pet's age")
+      .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots), "Set the pet's age")
+      .def("numCoefs", &Class::numCoefs, "Returns the number of coefficients")
     .def("sample", &Class::sample, "Returns samples on the Bspline curve")
     .def("eval", &Class::eval, "Returns the evaluation of the Bspline curve at the input point")
     .def("eval_into", &Class::eval_into, "Evaluation of the Bspline curve at the input point")
