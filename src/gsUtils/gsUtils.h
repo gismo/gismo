@@ -13,9 +13,10 @@
 
 #pragma once
 
-#include <sstream>
-#include <numeric>
+#include <iomanip>
 #include <iterator>
+#include <numeric>
+#include <sstream>
 #include <tuple>
 #include <utility>
 
@@ -41,7 +42,7 @@ namespace gismo
 */
 namespace util
 {
-
+  
 #if __cplusplus >= 201103L || _MSC_VER >= 1600
 template <class C, size_t N> // we catch up char arrays
 std::string to_string(C (& value)[N])
@@ -72,7 +73,7 @@ std::string to_string(const C & value, int digits)
     convert << std::scientific << std::setprecision(digits) << value;
     return convert.str();
 }
-
+  
 /// \brief Checks if a string \a haystack begins with the string \a needle
 /// \ingroup Utils
 inline bool starts_with( const std::string & haystack, const std::string & needle )
@@ -344,7 +345,7 @@ template<typename... T>
 using index_sequence_for = make_index_sequence<sizeof...(T)>;
 #endif
 
-namespace
+namespace // anonymous namespace
 {
   
 template <typename... T>
@@ -404,7 +405,7 @@ private:
   iterator end_;
 };
 
-} // namespace
+} // end anonymous namespace
   
 /// \brief Creates a zip iterator
 template <typename... T>
@@ -413,6 +414,43 @@ auto zip(T&&... seqs)
 {
   return zip_helper<T...>{seqs...};
 }
+
+namespace // anonymous
+{
+template<class T>
+std::ostringstream& tuple_to_stream(std::ostringstream &oss, T &&arg) {
+  oss << arg;
+  return oss;
+}
+
+template<class First, class ...Rest>
+std::ostringstream& tuple_to_stream(std::ostringstream &oss, First &&firstArg, Rest &&... restArgs) {
+  oss << firstArg << ", ";
+  return tuple_to_stream(oss, std::forward<Rest &&>(restArgs)...);
+}
+
+template<class ...Types>
+std::string tuple_to_string(Types &&... args) {
+  std::ostringstream oss;
+  oss << '[';
+  tuple_to_stream(oss, std::forward<Types &&>(args)...);
+  oss << ']';
+  return oss.str();
+}
+
+template<class Tuple, size_t... Indices>
+std::string tuple_to_string_cxx11_compatibility(const Tuple &tuple, util::index_sequence<Indices...>) {
+  return tuple_to_string(std::get<Indices>(tuple)...);
+};
+  
+} // end anonymous namespace
+
+/// \brief Converts tuple to string, assuming "operator<<" defined on all items
+/// \ingroup Utils
+template<class ...Types>
+std::string to_string(const std::tuple<Types...> &tuple) {
+  return tuple_to_string_cxx11_compatibility(tuple, util::make_index_sequence<sizeof...(Types)>{});
+};
 
 } // end namespace util
 
