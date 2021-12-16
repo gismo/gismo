@@ -60,31 +60,31 @@ namespace gismo
     switch( (int)it->at(3) )
     {
     case metric::bandwidth_kb_sec:        
-      os << "ylabel={Bandwidth in KB/s},\n";
+      os << "ylabel={Bandwidth in KB/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::bandwidth_mb_sec:        
-      os << "ylabel={Bandwidth in MB/s},\n";
+      os << "ylabel={Bandwidth in MB/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::bandwidth_gb_sec:        
-      os << "ylabel={Bandwidth in GB/s},\n";
+      os << "ylabel={Bandwidth in GB/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::bandwidth_tb_sec:        
-      os << "ylabel={Bandwidth in TB/s},\n";
+      os << "ylabel={Bandwidth in TB/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::perf_kflop_sec:        
-      os << "ylabel={Berformance in kFLOP/s},\n";
+      os << "ylabel={Berformance in kFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::perf_mflop_sec:        
-      os << "ylabel={Berformance in mFLOP/s},\n";
+      os << "ylabel={Berformance in mFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::perf_gflop_sec:        
-      os << "ylabel={Berformance in gFLOP/s},\n";
+      os << "ylabel={Berformance in gFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::perf_tflop_sec:        
-      os << "ylabel={Berformance in tFLOP/s},\n";
+      os << "ylabel={Berformance in tFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
       break;
     case metric::runtime_sec:
-      os << "ylabel={Runtime in seconds},\n";
+      os << "ylabel={($\\longleftarrow$ \\textit{smaller is better}) Runtime in seconds},\n";
       break;
     default:
       GISMO_ERROR("Unsupported metric");
@@ -121,9 +121,12 @@ namespace gismo
         
        << "\\end{axis}\n"
 
+       << "\\gettikzxy{(MyAxis.south west)}{\\ax}{\\ay}\n"
+       << "\\gettikzxy{(MyAxis.outer south east)}{\\bx}{\\by}\n"
+      
        << "\\path let \\p1=(MyAxis.west), \\p2=(MyAxis.east) in "
-       << "node[below right, align=left, text=black, text width=\\x2-\\x1]\n"
-       << "at ($(MyAxis.south west)+(0,-100pt)$) {%\n"
+       << "node[draw,below right, align=left, text=black, text width=\\x2-\\x1-10pt, minimum width=\\x2-\\x1]\n"
+       << "at ($(\\ax, \\by-10pt)$) {%\n"
        << "G+Smo " << gsSysInfo::getGismoVersion()
        << ", Eigen " << gsSysInfo::getEigenVersion()
        << " (" << gsSysInfo::getCompilerVersion()
@@ -161,6 +164,13 @@ namespace gismo
        << "\\usepackage{pgfplotstable}\n"
        << "\\usepackage{verbatim}\n"
        << "\\pgfplotsset{compat=1.18}\n"
+       << "\\makeatletter\n"
+       << "\\newcommand{\\gettikzxy}[3]{%\n"
+       << "\\tikz@scan@one@point\\pgfutil@firstofone#1\\relax\n"
+       << "\\edef#2{\\the\\pgf@x}%\n"
+       << "\\edef#3{\\the\\pgf@y}%\n"
+       << "}\n"
+       << "\\makeatother\n"      
        << "\\begin{document}\n"
        << "\\usetikzlibrary{calc}\n";
     
