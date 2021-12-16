@@ -118,6 +118,7 @@ public:
 
     // block of fixed size 3
     typedef Eigen::VectorBlock<Eigen::Block<Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> Col3DType;
+    typedef Eigen::VectorBlock<const Eigen::Block<const Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> CCol3DType;
 
 public:  // Solvers related to gsMatrix
     typedef typename Eigen::EigenSolver<Base> EigenSolver;
@@ -240,7 +241,8 @@ public:
     { return gsAsVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
 
     /// \brief Returns column \a c as a fixed-size 3D vector
-    Col3DType col3d(index_t c) { return this->col(c).template head<3>(); }
+    Col3DType  col3d(index_t c) { return this->col(c).template head<3>(); }
+    CCol3DType col3d(index_t c) const { return this->col(c).template head<3>(); }
 
     /// \brief Returns the entries of the matrix resized to a (const) n*m vector column-wise
     gsAsConstVector<T, Dynamic> asVector() const
