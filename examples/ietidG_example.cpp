@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/yeti_mp2.xml");
+    std::string geometry("domain2d/square.xml");
     index_t splitPatches = 1;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
@@ -37,10 +37,10 @@ int main(int argc, char *argv[])
     bool nonMatching = false;
     real_t alpha = 1;
     real_t beta = 1;
-    real_t penalty = -1;
+    real_t penalty = 12;
     std::string boundaryConditions("d");
     std::string primals("c");
-    bool eliminateCorners = false;
+    bool eliminateCorners = true;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
     bool calcEigenvalues = false;
@@ -118,10 +118,10 @@ int main(int argc, char *argv[])
 
     //! [Define Source]
     // Right-hand-side
-    gsFunctionExpr<> f( "2*sin(x)*cos(y)", mp.geoDim() );
+    gsFunctionExpr<> f( "2*pi^2*sin(pi*x)*sin(pi*y)", mp.geoDim() );
 
     // Dirichlet function
-    gsFunctionExpr<> gD( "sin(x)*cos(y)", mp.geoDim() );
+    gsFunctionExpr<> gD( "0.0", mp.geoDim() );
 
     // Neumann
     gsConstantFunction<> gN( 1.0, mp.geoDim() );
@@ -482,8 +482,8 @@ int main(int argc, char *argv[])
         gsMultiPatch<> mpsol;
         assembler.constructSolution(uVec, mpsol);
         gsField<> sol( assembler.patches(), mpsol );
-        gsWriteParaview<>(sol, "ieti_result", 1000);
-        //gsFileManager::open("ieti_result.pvd");
+        gsWriteParaview<>(sol, "IETI", 1000);
+        system("paraview IETI.pvd  &");
     }
 
     if (!plot&&out.empty())
