@@ -122,7 +122,7 @@ public:
     delete[] m_y;
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
 #pragma omp parallel for simd
     for (index_t i=0; i<n; ++i)
@@ -142,7 +142,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (2 * n * sizeof(T));
+    return (2 * uint64_t(n) * sizeof(T));
   }
 
   static std::string name()
@@ -188,7 +188,7 @@ public:
     delete[] m_y;
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
     volatile T sum = 0.0;
 
@@ -208,7 +208,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (2 * n * sizeof(T));
+    return (2 * uint64_t(n) * sizeof(T));
   }
 
   static std::string name()
@@ -255,7 +255,7 @@ public:
     delete[] m_z;
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
 #pragma omp parallel for simd
     for (index_t i=0; i<n; ++i)
@@ -275,7 +275,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (3 * n * sizeof(T));
+    return (3 * uint64_t(n) * sizeof(T));
   }
 
   static std::string name()
@@ -322,7 +322,7 @@ public:
     delete[] m_y;
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
 #pragma omp parallel for
     for (index_t i=0; i<n; ++i) {
@@ -348,7 +348,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (2 * n * n + n) * sizeof(T);
+    return (2 * uint64_t(n) * uint64_t(n) + uint64_t(n)) * sizeof(T);
   }
 
   static std::string name()
@@ -379,10 +379,10 @@ public:
   benchmark_eigen_memcopy(index_t n)
     : _msg(n), n(n), x(n), y(n)
   {
-    x.fill((T)0.0);
+    x.fill((T)1.0);
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
     y.noalias() = x;
 
@@ -400,7 +400,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (2 * n * sizeof(T));
+    return (2 * uint64_t(n) * sizeof(T));
   }
 
   static std::string name()
@@ -431,11 +431,11 @@ public:
   benchmark_eigen_dotproduct(index_t n)
     : _msg(n), n(n), x(n), y(n)
   {
-    x.fill((T)0.0);
-    y.fill((T)0.0);
+    x.fill((T)1.0);
+    y.fill((T)1.0);
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
     volatile T sum = y.dot(x);
     GISMO_UNUSED(sum);
@@ -450,7 +450,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (2 * n * sizeof(T));
+    return (2 * uint64_t(n) * sizeof(T));
   }
 
   static std::string name()
@@ -481,11 +481,11 @@ public:
   benchmark_eigen_axpy(index_t n)
     : _msg(n), n(n), x(n), y(n), z(n)
   {
-    x.fill((T)0.0);
-    y.fill((T)0.0);
+    x.fill((T)1.0);
+    y.fill((T)1.0);
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
     z.noalias() = (T)3.141*x + y;
 
@@ -503,7 +503,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (3 * n * sizeof(T));
+    return (3 * uint64_t(n) * sizeof(T));
   }
 
   static std::string name()
@@ -539,7 +539,7 @@ public:
     x.fill(1.0);
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
     y.noalias() = A*x;
 
@@ -557,7 +557,7 @@ public:
 
   static constexpr uint64_t size(index_t n)
   {
-    return (2 * n * n + n) * sizeof(T);
+    return (2 * uint64_t(n) * uint64_t(n) + uint64_t(n)) * sizeof(T);
   }
 
   static std::string name()
@@ -612,7 +612,7 @@ public:
     assembler = gsPoissonAssembler<T>(geo, bases, bcInfo, f, dirichlet::nitsche, iFace::glue);
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
     assembler.assemble();
     gsInfo << numPatches << ":" << numRefine << ":" << degree << " = " << assembler.rhs().rows() << std::endl;
@@ -632,7 +632,7 @@ public:
     //
     // The factor 1.33 is used because Eigen shows better performance
     // if 33% more memory is allocated during the step-by-step assembly
-    return sizeof(T) * ( 1.33 * math::pow(2*degree+1,2) +1 ) *
+    return sizeof(T) * ( 1.33 * math::pow(2*degree+1,2) + 1 ) *
       (/* numPatches^2 * DOFs per patch */
        math::pow(numPatches,2) * math::pow((1<<numRefine)+degree,(T)2)
        /* remove duplicate DOFs at patch interfaces (2 directions) */
@@ -693,7 +693,7 @@ public:
     assembler = gsPoissonAssembler<T>(geo, bases, bcInfo, f, dirichlet::nitsche, iFace::glue);
   }
 
-  index_t operator()()
+  uint64_t operator()()
   {
     assembler.assemble();
     return sizeof(T) * assembler.numDofs();
