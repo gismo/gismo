@@ -73,7 +73,7 @@ public:
     : m_mat(makeMatrixOp(mat.derived())),
       m_precond(precond),
       m_max_iters(1000),
-      m_tol(1e-10),
+      m_tol(1e-8),
       m_num_iter(-1),
       m_rhs_norm(-1),
       m_error(-1)
@@ -293,7 +293,11 @@ public:
     void apply(const gsMatrix<T> & input, gsMatrix<T> & res) const
     {
         res.setZero(input.rows(), input.cols());
-        m_solver.solve(input, res);
+        gsMatrix<> tmp;
+        for (index_t i = 0; i < input.cols(); ++i) {
+            m_solver.solve(input.col(i), tmp);
+            res.col(i) = tmp;
+        }
         gsDebug << ( (m_solver.error() < m_solver.tolerance())
                      ? "gsIterativeSolverOp reached desired error bound after "
                      : "msIterativeSolverOp did not reach desired error bound within " )
