@@ -114,7 +114,7 @@ namespace gismo
     os << "title={" << title
        << " [real\\_t:" << util::type<real_t>::name()
            << ", index\\_t:" << util::type<index_t>::name()
-           << ", short\\_t:" << util::type<short_t>::name()<< "},\n"
+           << ", short\\_t:" << util::type<short_t>::name()<< "]},\n"
        << "]\n";
 
     for (auto rit=results.cbegin()+1; rit!=results.cend(); ++rit)
