@@ -50,7 +50,7 @@ public:
 /**
  * Benchmark result
  */
-typedef std::array<double,4> Result;
+typedef std::array<real_t,4> Result;
 
 /**
    * Benchmark result set class
@@ -152,7 +152,7 @@ public:
 {
     gsStopwatch stopwatch;
     uint64_t benchmark_result(0);
-    double benchmark_metric, benchmark_runtime;
+    real_t benchmark_metric, benchmark_runtime;
 
     std::vector<Result> results;
 
@@ -169,7 +169,7 @@ public:
         }
 
         stopwatch.stop();
-        benchmark_runtime = stopwatch.elapsed()/(double)nruns;
+        benchmark_runtime = stopwatch.elapsed()/(real_t)nruns;
 
         switch(metric & ~metric::speedup) {
         case metric::bandwidth_kb_sec: case metric::perf_kflop_sec:
@@ -192,10 +192,10 @@ public:
         }
 
         Result res;
-        res[0]= static_cast<double>(*it); // number of OpenMP threads
+        res[0]= static_cast<real_t>(*it); // number of OpenMP threads
         res[1]= benchmark_runtime;        // averaged elapsed time in seconds
         res[2]= benchmark_metric;         // averaged benchmark metric
-        res[3]= (double)metric;           // benchmark metric
+        res[3]= (real_t)metric;           // benchmark metric
         results.push_back( give(res) );
       }
     } catch(...) {}

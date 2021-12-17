@@ -238,6 +238,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // typedef locally defined but not used [-Wunused-local-typedefs]
 #if ( __GNUC__>4 || (__GNUC__==4 && __GNUC_MINOR__>7) )
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
 #endif
 
 #if (__cplusplus < 201703L && __GNUC__>6)
