@@ -44,6 +44,10 @@ PYBIND11_MODULE(pygismo, m) {
   core.doc() = "G+Smo (Geometry + Simulation Modules): Core module";
   
   gismo::pybind11_init_gsFunction( core );
+  gismo::pybind11_init_gsFunctionExpr( core );
+  gismo::pybind11_init_gsMultiPatch( core );
+
+  gismo::pybind11_enum_gsBoundary( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
@@ -94,8 +98,15 @@ PYBIND11_MODULE(pygismo, m) {
   nurbs.attr("__version__") = GISMO_VERSION;
   nurbs.doc() = "G+Smo (Geometry + Simulation Modules): NURBS module";
 
-  gismo::pybind11_init_gsBSpline( nurbs );
   gismo::pybind11_init_gsKnotVector( nurbs );
+  gismo::pybind11_init_gsBSpline( nurbs );
+  gismo::pybind11_init_gsBSplineBasis( nurbs );
+  gismo::pybind11_init_gsTensorBSpline2( nurbs );
+  gismo::pybind11_init_gsTensorBSpline3( nurbs );
+  gismo::pybind11_init_gsTensorBSpline4( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis2( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis3( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis4( nurbs );
 
   
   py::module pde = m.def_submodule("pde");
@@ -103,6 +114,9 @@ PYBIND11_MODULE(pygismo, m) {
   pde.attr("__name__") = "pygismo.pde";
   pde.attr("__version__") = GISMO_VERSION;
   pde.doc() = "G+Smo (Geometry + Simulation Modules): Pde module";
+
+  gismo::pybind11_enum_gsBoundaryConditions( core );
+  // gismo::pybind11_init_gsBoundaryConditions( pde );
 
   py::module solver = m.def_submodule("solver");
 
