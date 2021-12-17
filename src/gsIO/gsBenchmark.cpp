@@ -52,44 +52,65 @@ namespace gismo
 
     for (auto rit=results.cbegin(); rit!=results.cend(); ++rit)
       os << (*rit)->get_title() << (rit!=results.cend()-1 ? "," : "");
-    
+
     os << "},\n"
        << "xtick=data,\n";
 
     auto it = results.front()->get().cbegin();
-    switch( (int)it->at(3) )
-    {
-    case metric::bandwidth_kb_sec:        
-      os << "ylabel={Bandwidth in KB/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::bandwidth_mb_sec:        
-      os << "ylabel={Bandwidth in MB/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::bandwidth_gb_sec:        
-      os << "ylabel={Bandwidth in GB/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::bandwidth_tb_sec:        
-      os << "ylabel={Bandwidth in TB/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::perf_kflop_sec:        
-      os << "ylabel={Berformance in kFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::perf_mflop_sec:        
-      os << "ylabel={Berformance in mFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::perf_gflop_sec:        
-      os << "ylabel={Berformance in gFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::perf_tflop_sec:        
-      os << "ylabel={Berformance in tFLOP/s (\\textit{larger is better $\\longrightarrow$})},\n";
-      break;
-    case metric::runtime_sec:
-      os << "ylabel={($\\longleftarrow$ \\textit{smaller is better}) Runtime in seconds},\n";
-      break;
-    default:
-      GISMO_ERROR("Unsupported metric");
+    if ((metric)it->at(3) & metric::speedup) {
+      switch( (int)it->at(3) & ~metric::speedup ) {
+      case metric::bandwidth_kb_sec:
+      case metric::bandwidth_mb_sec:
+      case metric::bandwidth_gb_sec:
+      case metric::bandwidth_tb_sec:
+        os << "ylabel={Bandwidth [speedup]},\n";
+        break;
+      case metric::perf_kflop_sec:
+      case metric::perf_mflop_sec:
+      case metric::perf_gflop_sec:
+      case metric::perf_tflop_sec:
+        os << "ylabel={Performance [speedup]},\n";
+        break;
+      case metric::runtime_sec:
+        os << "ylabel={Runtime [speedup]},\n";
+        break;
+      default:
+        GISMO_ERROR("Unsupported metric");
+      }
+    } else {
+      switch( (int)it->at(3) & ~metric::speedup ) {
+      case metric::bandwidth_kb_sec:
+        os << "ylabel={Bandwidth in KB/s},\n";
+        break;
+      case metric::bandwidth_mb_sec:
+        os << "ylabel={Bandwidth in MB/s},\n";
+        break;
+      case metric::bandwidth_gb_sec:
+        os << "ylabel={Bandwidth in GB/s},\n";
+        break;
+      case metric::bandwidth_tb_sec:
+        os << "ylabel={Bandwidth in TB/s},\n";
+        break;
+      case metric::perf_kflop_sec:
+        os << "ylabel={Performance in kFLOP/s},\n";
+        break;
+      case metric::perf_mflop_sec:
+        os << "ylabel={Performance in mFLOP/s},\n";
+        break;
+      case metric::perf_gflop_sec:
+        os << "ylabel={Performance in gFLOP/s},\n";
+        break;
+      case metric::perf_tflop_sec:
+        os << "ylabel={Performance in tFLOP/s},\n";
+        break;
+      case metric::runtime_sec:
+        os << "ylabel={Runtime in seconds},\n";
+        break;
+      default:
+        GISMO_ERROR("Unsupported metric");
+      }
     }
-      
+
     os << "title={" << title << "},\n"
        << "]\n";
 
@@ -116,14 +137,14 @@ namespace gismo
     it  = results.front()->get().cbegin();
     auto ite = results.front()->get().cend();
     for (;it!=ite; ++it)
-      os << "Threads=" << it->at(0) << (it!=ite-1 ? "," : "");    
+      os << "Threads=" << it->at(0) << (it!=ite-1 ? "," : "");
     os << "}\n"
-        
+
        << "\\end{axis}\n"
 
        << "\\gettikzxy{(MyAxis.south west)}{\\ax}{\\ay}\n"
        << "\\gettikzxy{(MyAxis.outer south east)}{\\bx}{\\by}\n"
-      
+
        << "\\path let \\p1=(MyAxis.west), \\p2=(MyAxis.east) in "
        << "node[draw,below right, align=left, text=black, text width=\\x2-\\x1-10pt, minimum width=\\x2-\\x1]\n"
        << "at ($(\\ax, \\by-10pt)$) {%\n"
@@ -142,7 +163,7 @@ namespace gismo
     gsJITCompilerConfig jit; jit.load(GISMO_CONFIG_DIR "jit.xml");
     std::string flags = jit.getFlags();
     os << "Compiler flags ";
-      
+
     for (auto token=strtok(&flags[0], " "); token!=NULL; token=strtok(NULL, " ")) {
       if (token[0]=='-') {
         if (token[1]=='I' || token[1]=='L' || token[1]=='l' || token[1]=='W')
@@ -150,7 +171,7 @@ namespace gismo
         os << "\\verb!" << token << "! ";
       }
     }
-      
+
     os << "};\n"
        << "\\end{tikzpicture}\n";
 
@@ -170,15 +191,15 @@ namespace gismo
        << "\\edef#2{\\the\\pgf@x}%\n"
        << "\\edef#3{\\the\\pgf@y}%\n"
        << "}\n"
-       << "\\makeatother\n"      
+       << "\\makeatother\n"
        << "\\begin{document}\n"
        << "\\usetikzlibrary{calc}\n";
-    
+
     for (auto it=benchmarks.cbegin(); it!=benchmarks.cend(); ++it)
       (*it)->print(os);
-    
+
     os << "\\end{document}\n";
     return os;
   }
-  
+
 } // namespace gismo

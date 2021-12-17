@@ -18,22 +18,23 @@
 
 namespace gismo
 {
-  
+
 /**
  * Benchmark metrics
  */
-enum metric {
-  bandwidth_kb_sec,
-  bandwidth_mb_sec,
-  bandwidth_gb_sec,
-  bandwidth_tb_sec,  
-  perf_kflop_sec,
-  perf_mflop_sec,
-  perf_gflop_sec,
-  perf_tflop_sec,  
-  runtime_sec,
-};
-  
+  enum metric {
+    speedup          = 0x1,
+    bandwidth_kb_sec =  10,
+    bandwidth_mb_sec =  11,
+    bandwidth_gb_sec =  12,
+    bandwidth_tb_sec =  13,
+    perf_kflop_sec   =  14,
+    perf_mflop_sec   =  15,
+    perf_gflop_sec   =  16,
+    perf_tflop_sec   =  17,
+    runtime_sec      =  18
+  };
+
 /**
  *   Benchmark: driver function
  */
@@ -68,7 +69,7 @@ typedef std::array<double,4> Result;
 
     const std::string& get_label() const
     { return label; }
-    
+
     const std::string& get_title() const
     { return title; }
 
@@ -111,7 +112,7 @@ typedef std::array<double,4> Result;
 
     const std::string& get_label() const
     { return label; }
-    
+
     const std::string& get_title() const
     { return title; }
 
@@ -152,25 +153,25 @@ public:
     gsStopwatch stopwatch;
     uint64_t benchmark_result(0);
     double benchmark_metric, benchmark_runtime;
-    
+
     std::vector<Result> results;
-    
+
     try {
       for (auto it=nthreads.cbegin(); it!=nthreads.cend(); ++it) {
-        
+
         omp_set_num_threads(*it);
         benchmark_runtime = 0.0;
-        
+
         stopwatch.restart();
-        
+
         for (index_t run=0; run<nruns; ++run) {
           benchmark_result = benchmark();
         }
-        
+
         stopwatch.stop();
         benchmark_runtime = stopwatch.elapsed()/(double)nruns;
-        
-        switch(metric) {
+
+        switch(metric & ~metric::speedup) {
         case metric::bandwidth_kb_sec: case metric::perf_kflop_sec:
           benchmark_metric = 1e-3*benchmark_result/benchmark_runtime;
           break;
@@ -190,12 +191,6 @@ public:
           GISMO_ERROR("Unsupported metric");
         }
 
-        // if (std::isinf(benchmark_runtime))
-        //   benchmark_runtime = 0.0;
-
-        // if (std::isinf(benchmark_metric))
-        //   benchmark_metric = 0.0;
-        
         Result res;
         res[0]= static_cast<double>(*it); // number of OpenMP threads
         res[1]= benchmark_runtime;        // averaged elapsed time in seconds
@@ -204,10 +199,21 @@ public:
         results.push_back( give(res) );
       }
     } catch(...) {}
-    
+
+    // Convert to relative values (speedup relative to first entry)
+    if (metric & metric::speedup) {
+      benchmark_runtime = results.front().at(1);
+      benchmark_metric  = results.front().at(2);
+
+      for (auto &it : results) {
+        it.at(1) = benchmark_runtime / it.at(1);
+        it.at(2) = benchmark_metric  / it.at(2);
+      }
+    }
+
     return results;
   }
-  
+
 private:
   std::vector<gsBenchmarkSet*> benchmarks;
 };
