@@ -99,6 +99,8 @@ public:
 
     virtual bool      succeed ()                      const = 0;
 
+    virtual int info() const = 0;
+
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
@@ -172,9 +174,9 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
             return gsEigenAdaptor<T>::eigenName::solve(rhs);            \
         }                                                               \
         bool succeed() const                                            \
-        {                                                               \
-            return gsEigenAdaptor<T>::eigenName::info()==Eigen::Success;\
-        }                                                               \
+        { return gsEigenAdaptor<T>::eigenName::info()==Eigen::Success;} \
+        int info() const                                                \
+        { return gsEigenAdaptor<T>::eigenName::info();}                 \
         index_t rows() const {return m_rows;}                           \
         index_t cols() const {return m_cols;}                           \
         std::ostream &print(std::ostream &os) const                     \

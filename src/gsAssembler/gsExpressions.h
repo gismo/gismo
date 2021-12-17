@@ -2633,8 +2633,8 @@ public:
         else if (_G.targetDim()==3)
         {
             res.resize(3);
-            res.col(0).template head<3>() = _G.data().normals.col(k).template head<3>()
-                    .cross( _G.data().outNormals.col(k).template head<3>() );
+            res.col3d(0) = _G.data().normals.col3d(k)
+                    .cross( _G.data().outNormals.col3d(k) );
             return res;
         }
         else
