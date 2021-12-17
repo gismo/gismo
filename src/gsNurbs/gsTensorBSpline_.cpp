@@ -69,8 +69,16 @@ void pybind11_init_gsTensorBSpline2(py::module &m)
     .def("degree", &Class::degree, "Returns the degree")
 
     // Inherited from gsGeometry
+    .def("domainDim", &Class::domainDim, "Gives the domain dimension")
+    .def("targetDim", &Class::targetDim, "Gives the target dimension")
+    .def("parDim", &Class::targetDim, "Gives the parameter dimension")
+    .def("geoDim", &Class::targetDim, "Gives the geometry dimension")
+
     .def("eval", &Class::eval, "Evaluates points into a matrix")
     .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs), "Get the coefficients as a reference")
+    .def("coefs", static_cast<const gsMatrix<real_t>& (Class::*)() const> (&Class::coefs), "Get the coefficients as a const reference")
+
     ;
 }
 
@@ -93,8 +101,16 @@ void pybind11_init_gsTensorBSpline3(py::module &m)
     .def("degree", &Class::degree, "Returns the degree")
 
     // Inherited from gsGeometry
+    .def("domainDim", &Class::domainDim, "Gives the domain dimension")
+    .def("targetDim", &Class::targetDim, "Gives the target dimension")
+    .def("parDim", &Class::targetDim, "Gives the parameter dimension")
+    .def("geoDim", &Class::targetDim, "Gives the geometry dimension")
+
     .def("eval", &Class::eval, "Evaluates points into a matrix")
     .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs), "Get the coefficients as a reference")
+    .def("coefs", static_cast<const gsMatrix<real_t>& (Class::*)() const> (&Class::coefs), "Get the coefficients as a const reference")
+
     ;
 }
 
@@ -113,8 +129,16 @@ void pybind11_init_gsTensorBSpline4(py::module &m)
     .def("degree", &Class::degree, "Returns the degree")
 
     // Inherited from gsGeometry
+    .def("domainDim", &Class::domainDim, "Gives the domain dimension")
+    .def("targetDim", &Class::targetDim, "Gives the target dimension")
+    .def("parDim", &Class::targetDim, "Gives the parameter dimension")
+    .def("geoDim", &Class::targetDim, "Gives the geometry dimension")
+
     .def("eval", &Class::eval, "Evaluates points into a matrix")
-    // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs), "Get the coefficients as a reference")
+    .def("coefs", static_cast<const gsMatrix<real_t>& (Class::*)() const> (&Class::coefs), "Get the coefficients as a const reference")
+
     ;
 }
 
