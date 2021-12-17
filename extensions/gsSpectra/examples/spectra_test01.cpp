@@ -87,36 +87,36 @@ int main(int argc, char *argv[])
 
     gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::ShiftInvert> Ssolver(A,B,2,sz,1e-3);
     Ssolver.compute(Spectra::SortRule::LargestMagn,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (LM):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (LM sorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
     Ssolver.compute(Spectra::SortRule::LargestAlge,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (LA):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (LA sorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
     Ssolver.compute(Spectra::SortRule::SmallestMagn,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (SM):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (SM sorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
     Ssolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (SA):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (SA sorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
     Ssolver.compute(Spectra::SortRule::BothEnds,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (BE):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (BE sorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
 
     gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cayley> Csolver(A,B,math::floor(sz/2),sz,1e-3);
     Csolver.compute(Spectra::SortRule::LargestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (LA):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (LAsorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::LargestMagn,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (LM):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (LMsorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (SA):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (SAsorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::SmallestMagn,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (SM):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (SMsorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::BothEnds,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (BE):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (BEsorting):\n";
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
 
     gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Buckling> Bsolver(B,A,math::floor(sz/2),sz,1);

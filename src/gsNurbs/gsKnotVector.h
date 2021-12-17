@@ -565,7 +565,7 @@ public:
         m_repKnots.resize( k - m_repKnots.begin() );
         m_multSum .resize( m - m_multSum .begin() );
     }
-//*/
+*/
 
 
 

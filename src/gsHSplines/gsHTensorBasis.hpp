@@ -720,7 +720,6 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
         // needLevel( m_tree.getMaxInsLevel() );
     }
 
-    // /*
     // reconstruct the whole tree to fix alignment
     gsHDomain<d> newtree( m_tree.upperCornerIndex() );
     auto leafIt = m_tree.beginLeafIterator();
@@ -731,7 +730,6 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
                               leafIt.upperCorner(), leafIt.level() );
     }
     m_tree = newtree;
-    //*/
 
     //recompute max-ins-level
     m_tree.computeMaxInsLevel();
@@ -1241,9 +1239,8 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
               activesLvl.data(), activesLvl.data() + activesLvl.size(),
               std::back_inserter( temp_output[p] ) );
               +++ Renumbering to H-basis indexing
-            // */
+            */
 
-            // /*
             m_bases[i]->active_cwise(currPoint, low, upp);
             cur = low;
             do
@@ -1259,7 +1256,6 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
                 }
             }
             while( nextCubePoint(cur,low,upp) );
-            //*/
         }
 
         // update result size

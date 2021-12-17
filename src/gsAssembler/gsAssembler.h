@@ -108,7 +108,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
           alt_sgn = -alt_sgn;
           }
           gsDebugVar(result.transpose()); // result 2
-        //*/
+        */
     }
     else // planar case
     {

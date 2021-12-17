@@ -104,12 +104,18 @@ template<class T> class gsExprHelper;
 namespace expr
 {
 
+template <class E> struct is_arithmetic{enum{value=0};};
+template <> struct is_arithmetic<real_t>{enum{value=1};};
+template <typename E, bool = is_arithmetic<E>::value >
+class _expr {using E::GISMO_ERROR_expr;};
+
 template<class T> class gsFeSpace;
 template<class T> class gsFeVariable;
 template<class T> class gsFeSolution;
 template<class E> class symm_expr;
 template<class E> class symmetrize_expr;
 template<class E> class trace_expr;
+template<class E> class integral_expr;
 template<class E> class adjugate_expr;
 template<class E> class norm_expr;
 template<class E> class sqNorm_expr;
@@ -123,11 +129,17 @@ template<class T> class meas_expr;
 template<class E> class inv_expr;
 template<class E> class tr_expr;
 template<class E> class cb_expr;
+template<class E> class abs_expr;
+template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
 template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
+
+// Call as pow(a,b)
+template<class E> pow_expr<E>
+pow(_expr<E> const& u, real_t q) { return pow_expr<E>(u,q); }
 
 /*
   Traits class for expressions
@@ -150,12 +162,6 @@ public:
 #  define MatExprType typename gsMatrix<real_t>::constRef
 #  define AutoReturn_t typename util::conditional<ScalarValued,real_t,MatExprType>::type
 #endif
-
-template <class E> struct is_arithmetic{enum{value=0};};
-template <> struct is_arithmetic<real_t>{enum{value=1};};
-
-template <typename E, bool = is_arithmetic<E>::value >
-class _expr {using E::GISMO_ERROR_expr;};
 
 /**
    \brief Base class for all expressions
@@ -533,7 +539,7 @@ public:
     typedef T Scalar;
     typedef const _expr<T> Nested_t;
 
-    _expr(const Scalar & c) : _c(c) { }
+    _expr(Scalar c) : _c(give(c)) { }
 
 public:
     enum {Space = 0, ScalarValued = 1, ColBlocks= 0};
@@ -635,6 +641,41 @@ template <typename T>  struct expr_traits<gsGeometryMap<T> >
 };
 
 /*
+  Expression for the measure of a geometry map
+*/
+template<class T>
+class meas_expr : public _expr<meas_expr<T> >
+{
+    typename gsGeometryMap<T>::Nested_t _G;
+
+public:
+    enum {Space = 0, ScalarValued = 1, ColBlocks = 0};
+
+    typedef T Scalar;
+
+    meas_expr(const gsGeometryMap<T> & G) : _G(G) { }
+
+    T eval(const index_t k) const
+    {
+        return _G.data().measures.at(k);
+    }
+
+    index_t rows() const { return 0; }
+    index_t cols() const { return 0; }
+    void parse(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_G);
+        _G.data().flags |= NEED_MEASURE;
+    }
+
+    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
+    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
+
+    void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
+};
+
+
+/*
   An element object collecting relevant expressions
 */
 template<class T>
@@ -644,52 +685,85 @@ class gsFeElement
 
     const gsDomainIterator<T> * m_di; ///< Pointer to the domain iterator
 
-    cdiam_expr<T> cd;
+    const gsVector<T> * m_weights;
+    //const gsMatrix<T> * m_points;
+
 public:
     typedef T Scalar;
 
-    gsFeElement() : m_di(NULL), cd(*this) { }
+    gsFeElement() : m_di(NULL), m_weights(nullptr) { }
 
-    void set(const gsDomainIterator<T> & di)
-    { m_di = &di; }
+    void set(const gsDomainIterator<T> & di, const gsVector<T> & weights)
+    { m_di = &di, m_weights = &weights; }
 
-    /// The diameter of the element
-    const cdiam_expr<T> & diam() const
+    const gsVector<T> & weights() const {return *m_weights;}
+    
+    template<class E>
+    integral_expr<E> integral(const _expr<E>& ff)
+    { return integral_expr<E>(*this,ff); }
+
+    /// The diameter of the element (on parameter space)
+    auto diam() ->decltype( pow(this->integral(_expr<real_t,true>(1)),T(1)/2) ) const //-> int(1)^(1/d)
     {
-        return cd;
-        //return cdiam_expr<T>(*this);
-        // return cdiam_expr<T>(m_di); // bug ..
+        return pow(integral(_expr<real_t,true>(1)),T(1)/2);
     }
 
+    /// The diameter of the element on the physical space
+    auto diam(const gsGeometryMap<Scalar> & _G) ->decltype(pow(integral(meas_expr<T>(_G)),T(1)/2)) const
+    { return pow(integral(meas_expr<T>(_G)),T(1)/2); }
+
+    //index_t dim() { return di->
+        
     void print(std::ostream &os) const { os << "e"; }
+
+    void parse(gsExprHelper<T> & evList) const
+    {
+        evList.add(*this);
+        this->data().flags |= NEED_VALUE;
+    }
 };
 
 /**
    An expression of the element diameter
 */
-template<class T>
-class cdiam_expr : public _expr<cdiam_expr<T> >
+template<class E>
+class integral_expr : public _expr<integral_expr<E> >
 {
-    const gsFeElement<T> & _e; ///<Reference to the element
 public:
-    typedef T Scalar;
-
+    //typedef typename E::Scalar Scalar;
+    typedef real_t Scalar;
+    Scalar m_val;
+private:
+    const gsFeElement<Scalar> & _e; ///<Reference to the element
+    typename _expr<E>::Nested_t _ff;
+public:
     enum {Space= 0, ScalarValued= 1, ColBlocks = 0};
 
-    explicit cdiam_expr(const gsFeElement<T> & el) : _e(el) { }
+    integral_expr(const gsFeElement<Scalar> & el, const _expr<E> & u)
+    : _e(el), _ff(u) { }
 
-    T eval(const index_t ) const { return _e.m_di->getCellSize(); }
+    Scalar eval(const index_t k) const
+    {
+        if (0==k)
+        {
+            const Scalar * w = _e.weights().data();
+            m_val = (*w) * _ff.eval(0);
+            for (index_t k = 1; k != _e.weights().rows(); ++k)
+                m_val += (*(++w)) * _ff.eval(k);
+        }
+        return m_val;
+    }
 
-    inline cdiam_expr<T> val() const { return *this; }
+    inline integral_expr<Scalar> val() const { return *this; }
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     void parse(gsExprHelper<Scalar> & ) const { }
 
-    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>(); }
-    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>(); }
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>(); }
 
     void print(std::ostream &os) const
-    { os << "diam(e)"; }
+    { os << "integral(.)"; }
 };
 
 /*
@@ -1981,11 +2055,6 @@ public:
     void print(std::ostream &os) const { os<<"pow("; _u.print(os); os <<")"; }
 };
 
-// Call as pow(a,b)
-template<class E>
-pow_expr<E> pow(_expr<E> const& u, real_t q) { return pow_expr<E>(u,q); }
-
-
 /**
    computes outer products of a matrix by a space of dimension > 1
    [Jg Jg Jg] * Jb ..
@@ -2150,11 +2219,7 @@ class abs_expr  : public _expr<abs_expr<E> >
 
 public:
     typedef typename E::Scalar Scalar;
-    abs_expr(_expr<E> const& u) : _u(u)
-    {
-        // rows/cols not known at construction time
-        //GISMO_ASSERT(u.rows()*u.cols()<=1, "Expression\n"<<u<<"is not a scalar.");
-    }
+    explicit abs_expr(_expr<E> const& u) : _u(u) { }
 
 public:
     enum {Space= 0, ScalarValued= 1, ColBlocks= 0};
@@ -2557,9 +2622,9 @@ public:
         }
         else if (_G.targetDim()==3)
         {
-            res.template head<3>() =
-                _G.data().normals.col(k).template head<3>()
-                .cross( _G.data().outNormals.col(k).template head<3>() );
+            res.resize(3);
+            res.col(0).template head<3>() = _G.data().normals.col(k).template head<3>()
+                    .cross( _G.data().outNormals.col(k).template head<3>() );
             return res;
         }
         else
@@ -2757,8 +2822,8 @@ public:
 
     mutable gsMatrix<Scalar> res;
 
-    jac_expr(const E & _u)
-    : _u(_u) { }
+    jac_expr(const E & _u_)
+    : _u(_u_) { }
 
     MatExprType eval(const index_t k) const
     {
@@ -3071,41 +3136,6 @@ public:
         evList.add(_G);
         _G.data().flags |= NEED_2ND_DER;
     }
-};
-
-
-/*
-  Expression for the measure of a geometry map
-*/
-template<class T>
-class meas_expr : public _expr<meas_expr<T> >
-{
-    typename gsGeometryMap<T>::Nested_t _G;
-
-public:
-    enum {Space = 0, ScalarValued = 1, ColBlocks = 0};
-
-    typedef T Scalar;
-
-    meas_expr(const gsGeometryMap<T> & G) : _G(G) { }
-
-    T eval(const index_t k) const
-    {
-        return _G.data().measures.at(k);
-    }
-
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
-    void parse(gsExprHelper<Scalar> & evList) const
-    {
-        evList.add(_G);
-        _G.data().flags |= NEED_MEASURE;
-    }
-
-    const gsFeSpace<T> & rowVar() const { return gsNullExpr<T>::get(); }
-    const gsFeSpace<T> & colVar() const { return gsNullExpr<T>::get(); }
-
-    void print(std::ostream &os) const { os << "meas("; _G.print(os); os <<")"; }
 };
 
 
@@ -3936,11 +3966,12 @@ public:
 #undef AutoReturn_t
 //----------------------------------------------------------------------------------
 
-// Returns the unit as an expression
-//EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t>(1); }
-
 /// The identity matrix of dimension \a dim
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
+
+// Returns the unit as an expression
+//EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t,true>(1); }
+
 
 /// Absolute value
 template<class E> EIGEN_STRONG_INLINE

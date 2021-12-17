@@ -32,7 +32,7 @@ private:
 
     gsOptionList m_options;
 
-    expr::gsFeElement<T> m_element;
+    expr::gsFeElement<T> m_element;//todo: move to gsExprAssembler. update in precompute(domIt)
 
     gsSparseMatrix<T> m_matrix;
     gsMatrix<T>       m_rhs;
@@ -662,7 +662,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
             m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-//        m_element.set(*domIt);
+        m_element.set(*domIt,quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
@@ -727,7 +727,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).
             makeDomainIterator(it->side());
-        m_element.set(*domIt);
+        m_element.set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
