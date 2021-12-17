@@ -964,10 +964,10 @@ public:
         if (m_pieces.empty())
         {
             m_pieces.resize(_mp->nPieces());
-            for (index_t k = 0; k!=_mp->nPieces(); ++k)
-                m_pieces[k] = gsMaterialMatrix(_mp->piece(k),
-                                               _YoungsModulus->piece(k),
-                                               _PoissonRatio->piece(k) );
+            for (index_t j = 0; j!=_mp->nPieces(); ++j)
+                m_pieces[j] = gsMaterialMatrix(_mp->piece(j),
+                                               _YoungsModulus->piece(j),
+                                               _PoissonRatio->piece(j) );
         }
         return m_pieces[k];
     }

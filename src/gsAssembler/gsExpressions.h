@@ -1224,6 +1224,9 @@ public:
     //template<class U>
     //linearComb(U & ie){ sum up ie[_u] times the _Sv  }
     // ie.eval(k), _u.data().actives(), fixedPart() - see lapl_expr
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
     
     index_t rows() const {return _u.dim(); }
 
@@ -3216,7 +3219,7 @@ class mult_expr<E1,E2,false> : public _expr<mult_expr<E1, E2, false> >
 public:
     enum {ScalarValued = E1::ScalarValued && E2::ScalarValued,
           ColBlocks = E2::ColBlocks};
-    enum {Space = E1::Space + E2::Space };
+    enum {Space = (int)E1::Space + (int)E2::Space };
 
     typedef typename E1::Scalar Scalar;
 
@@ -3280,7 +3283,7 @@ private:
     mutable gsMatrix<Scalar> res;
 public:
     enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
-    enum {Space = E1::Space + E2::Space };
+    enum {Space = (int)E1::Space + (int)E2::Space };
 
     mult_expr(_expr<E1> const& u,
               _expr<E2> const& v)
@@ -3409,7 +3412,7 @@ class collapse_expr : public _expr<collapse_expr<E1, E2> >
 
 public:
     enum {ScalarValued = 0, ColBlocks = 0};
-    enum { Space = E1::Space + E2::Space };
+    enum { Space = (int)E1::Space + (int)E2::Space };
 
     typedef typename E1::Scalar Scalar;
 
@@ -3484,7 +3487,7 @@ class frprod_expr : public _expr<frprod_expr<E1, E2> >
 public:
     typedef typename E1::Scalar Scalar;
     enum {ScalarValued = 0, ColBlocks=E2::ColBlocks};
-    enum { Space = E1::Space + E2::Space };
+    enum { Space = (int)E1::Space + (int)E2::Space };
     // E1 E2 this (16 cases..)
     // 0  0  0
     // 1  1
