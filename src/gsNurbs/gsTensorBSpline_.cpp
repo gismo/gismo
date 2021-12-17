@@ -70,7 +70,7 @@ void pybind11_init_gsTensorBSpline2(py::module &m)
 
     // Inherited from gsGeometry
     .def("eval", &Class::eval, "Evaluates points into a matrix")
-    // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
     ;
 }
 
@@ -85,9 +85,7 @@ void pybind11_init_gsTensorBSpline3(py::module &m)
                   gsKnotVector<real_t>,
                   gsMatrix<real_t>
                   >())
-    // .def(py::init<gsTensorBSplineBasis<real_t> *,                                           ,   gsMatrix<real_t>>())
-    //               gsMatrix<real_t>
-    //               >())
+    .def(py::init<gsTensorBSplineBasis<3,real_t>, gsMatrix<real_t>>())
 
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
@@ -96,7 +94,7 @@ void pybind11_init_gsTensorBSpline3(py::module &m)
 
     // Inherited from gsGeometry
     .def("eval", &Class::eval, "Evaluates points into a matrix")
-    // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
     ;
 }
 
@@ -107,7 +105,7 @@ void pybind11_init_gsTensorBSpline4(py::module &m)
 
     // Constructors
     .def(py::init<gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>    ,   gsMatrix<real_t> >())
-    // .def(py::init<gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *,gsBSplineBasis<real_t> *>())
+    .def(py::init<gsTensorBSplineBasis<4,real_t>, gsMatrix<real_t>>())
 
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")

@@ -644,9 +644,10 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
     .def(py::init<>())
     .def(py::init<index_t, index_t>())
     // Member functions
-    .def("size",      &Class::size)
-    .def("rows",     &Class::rows)
-    .def("cols",    &Class::cols)
+    .def("size",       &Class::size)
+    .def("rows",       &Class::rows)
+    .def("cols",       &Class::cols)
+    // .def("transpose",  &Class::transpose)
     ;
   }
 

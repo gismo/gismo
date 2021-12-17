@@ -46,6 +46,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsFunction( core );
   gismo::pybind11_init_gsFunctionExpr( core );
   gismo::pybind11_init_gsMultiPatch( core );
+  gismo::pybind11_init_gsMultiBasis( core );
 
   gismo::pybind11_enum_gsBoundary( core );
 
@@ -73,6 +74,8 @@ PYBIND11_MODULE(pygismo, m) {
   
   gismo::pybind11_init_gsMatrix<real_t>(matrix,"Real"); //gsMatrixReal
   gismo::pybind11_init_gsMatrix<index_t>(matrix,"Int"); //gsMatrixInt
+  gismo::pybind11_init_gsSparseMatrix<real_t>(matrix,"Real"); //gsSparseMatrixReal
+  gismo::pybind11_init_gsSparseMatrix<index_t>(matrix,"Int"); //gsSparseMatrixInt
   
   py::module modelling = m.def_submodule("modelling");
 
@@ -116,7 +119,7 @@ PYBIND11_MODULE(pygismo, m) {
   pde.doc() = "G+Smo (Geometry + Simulation Modules): Pde module";
 
   gismo::pybind11_enum_gsBoundaryConditions( core );
-  // gismo::pybind11_init_gsBoundaryConditions( pde );
+  gismo::pybind11_init_gsBoundaryConditions( pde );
 
   py::module solver = m.def_submodule("solver");
 

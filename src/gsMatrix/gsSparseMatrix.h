@@ -533,6 +533,34 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         }
 }
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   */
+  namespace py = pybind11;
+
+  template<typename T>
+  void pybind11_init_gsSparseMatrix(pybind11::module &m, const std::string & typestr)
+  {
+    using Class = gsSparseMatrix<T>;
+    std::string pyclass_name = std::string("gsSparseMatrix") + typestr;
+    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    // Constructors
+    .def(py::init<>())
+    .def(py::init<index_t, index_t>())
+    // Member functions
+    .def("size",      &Class::size)
+    .def("rows",      &Class::rows)
+    .def("cols",      &Class::cols)
+    // .def("transpose", &Class::transpose)
+    // .def("addTo",     &Class::addTo)
+    // .def("insertTo",  &Class::insertTo)
+    .def("toDense",   &Class::toDense)
+    ;
+  }
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

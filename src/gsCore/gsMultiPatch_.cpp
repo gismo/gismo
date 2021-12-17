@@ -25,6 +25,9 @@ namespace gismo
       .def("targetDim", &Class::targetDim, "Returns the target dimension of the multipatch")
       .def("nPatches", &Class::nPatches, "Returns the number of patches stored in the multipatch")
       .def("patch", &Class::patch, "Access the a patch of the multipatch")
+      // Note: Bindings with unique pointers are not possible https://pybind11.readthedocs.io/en/stable/advanced/smart_ptrs.html
+      // .def("addPatch", static_cast<void (Class::*)(typename gsGeometry<real_t>::uPtr)> (&Class::addPatch), "Adds a patch")
+      .def("addPatch", static_cast<void (Class::*)(   const gsGeometry<real_t> &    )> (&Class::addPatch), "Adds a patch")
 
       ;
   }
