@@ -55,7 +55,7 @@ namespace gismo
     // return the compiler version in the specific CMake format
 #define DEC(n) n
 #define HEX(n) n
-  
+
     /* Version number components: V=Version, R=Revision, P=Patch
        Version date components:   YYYY=Year, MM=Month,   DD=Day  */
 
@@ -424,7 +424,7 @@ namespace gismo
 #else /* unknown compiler */
 # define COMPILER_ID "Unknown-Compiler"
 #endif
-  
+
     return util::to_string(COMPILER_ID)
 #ifdef COMPILER_VERSION
       +" "+util::to_string(COMPILER_VERSION);
@@ -583,21 +583,21 @@ namespace gismo
       +         "."+util::to_string(SPECTRA_MINOR_VERSION)
       +         "."+util::to_string(SPECTRA_PATCH_VERSION);
 #endif
-    
+
     return s;
   }
 
   std::string gsSysInfo::getCpuInfo()
   {
 #if defined(_WIN32) || defined(_WIN64)
-  
+
     int CPUInfo[4] = {-1};
     unsigned   nExIds, i =  0;
     char CPUBrandString[0x40];
-  
+
     __cpuid(CPUInfo, 0x80000000);
     nExIds = CPUInfo[0];
-  
+
     for (i=0x80000000; i<=nExIds; ++i) {
       __cpuid(CPUInfo, i);
       if  (i == 0x80000002)
@@ -607,38 +607,38 @@ namespace gismo
       else if  (i == 0x80000004)
         memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
     }
-  
+
     return CPUBrandString;
-  
+
 #elif __APPLE__
 
     std::string CPUBrandString;
     std::size_t size = 32;
-  
+
     // Supply an oversized buffer, and avoid an extra call to sysctlbyname.
     CPUBrandString.resize(size);
     if (sysctlbyname("machdep.cpu.brand_string", &CPUBrandString[0], &size, NULL, 0) == 0 && size > 0) {
       if (CPUBrandString[size-1] == '\0')
         size--;
       CPUBrandString.resize(size);
-      return CPUBrandString;  
+      return CPUBrandString;
     }
-  
+
 #elif __linux__
 #   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
 
     char CPUBrandString[0x40];
     unsigned int CPUInfo[4] = {0,0,0,0};
-  
+
     __cpuid(0x80000000, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
     unsigned int nExIds = CPUInfo[0];
-  
+
     memset(CPUBrandString, 0, sizeof(CPUBrandString));
-  
+
     for (unsigned int i = 0x80000000; i <= nExIds; ++i)
       {
         __cpuid(i, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
-      
+
         if (i == 0x80000002)
           memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
         else if (i == 0x80000003)
@@ -646,7 +646,7 @@ namespace gismo
         else if (i == 0x80000004)
           memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
       }
-  
+
     return CPUBrandString;
 
 #   else
@@ -655,15 +655,15 @@ namespace gismo
     gethostname(hostname, HOST_NAME_MAX + 1);
 
     return "Unknown-CPU ["+hostname+"]";
-    
+
 #   endif
-    
+
 #elif __unix__
-    
+
     // No generic implementation yet
-    
+
 #endif
-  
+
     return "Unknown-CPU";
   }
 
@@ -683,7 +683,7 @@ namespace gismo
     else
       return "Unknown-Memory";
   }
-  
+
   uint64_t gsSysInfo::getMemoryInBytes()
   {
 #if defined(_WIN32) || defined(_WIN64)
@@ -692,29 +692,29 @@ namespace gismo
     status.dwLength = sizeof(status);
     GlobalMemoryStatusEx(&status);
     return (uint64_t)status.ullTotalPhys;
-  
+
 #elif __APPLE__
-    
+
     int64_t memsize;
     std::size_t size = sizeof(memsize);
-    
+
     if (sysctlbyname("hw.memsize", &memsize, &size, NULL, 0) == 0) {
       return (uint64_t)memsize;
     }
-  
+
 #elif __linux__
-    
+
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return (uint64_t)(pages * page_size);
-    
+
 #elif __unix__
 
     // No generic implementation yet
-    
+
 #endif
-    
+
     return 0;
   }
-  
+
 } // namespace gismo

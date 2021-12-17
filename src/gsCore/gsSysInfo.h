@@ -21,7 +21,7 @@ namespace gismo
   class GISMO_EXPORT gsSysInfo
     {
     public:
-    
+
     /// Returns the version of G+Smo
     static std::string getGismoVersion();
 
@@ -47,7 +47,7 @@ namespace gismo
     static std::string getMemoryInfo();
 
     /// Returns total system memory in bytes
-    static uint64_t getMemoryInBytes(); 
+    static uint64_t getMemoryInBytes();
     }; // class gsSysInfo
-  
+
 } // namespace gismo
