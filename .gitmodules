@@ -17,3 +17,16 @@
 [submodule "extensions/gsExaStencils"]
 	path = extensions/gsExaStencils
 	url = ../gsExaStencils.git
+	branch = master
+[submodule "extensions/gsCompFlow"]
+	path = extensions/gsCompFlow
+	url = ../gsCompFlow.git
+	branch = master
+[submodule "extensions/gsStructuralAnalysis"]
+	path = extensions/gsStructuralAnalysis
+	url = ../gsStructuralAnalysis.git
+	branch = main
+[submodule "extensions/gsKLShell"]
+	path = extensions/gsKLShell
+	url = ../gsKLShell.git
+	branch = main

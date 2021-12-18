@@ -148,19 +148,19 @@ SUITE(gsPreconditioner_test)
 
         // Get stiffness matrix from gsPatchPreconditionersCreator
         gsSparseMatrix<> stiff1 = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb[0],bc,opt);
-        CHECK ( (stiff1-stiff0 ).norm() < 1/real_t(10000) );
+        CHECK ( (stiff1-stiff0 ).norm() < 1/(real_t)(10000) );
 
         // Get stiffness matrix operator from gsPatchPreconditionersCreator
         gsMatrix<> stiff2;
         gsPatchPreconditionersCreator<>::stiffnessMatrixOp(mb[0],bc,opt)->toMatrix(stiff2);
-        CHECK ( (stiff2-stiff0 ).norm() < 1/real_t(10000) );
+        CHECK ( (stiff2-stiff0 ).norm() < 1/(real_t)(10000) );
 
         // Get inverse of stiffness matrix from gsPatchPreconditionersCreator
         gsLinearOperator<>::Ptr stiffInv = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb[0],bc,opt);
         gsMatrix<> result;
         stiffInv->apply(stiff0,result);
         for (index_t i=0; i<result.rows(); ++i) result(i,i)-=1;
-        CHECK ( result.norm() < 1/real_t(10000) );
+        CHECK ( result.norm() < 1/(real_t)(10000) );
     }
 
     TEST(gsPatchPreconditioner_mass_test)
@@ -199,19 +199,19 @@ SUITE(gsPreconditioner_test)
 
         // Get mass matrix from gsPatchPreconditionersCreator
         gsSparseMatrix<> mass1 = gsPatchPreconditionersCreator<>::massMatrix(mb[0],bc,opt);
-        CHECK ( ( mass0-mass1 ).norm() < 1/real_t(10000) );
+        CHECK ( ( mass0-mass1 ).norm() < 1/(real_t)(10000) );
 
         // Get mass matrix operator from gsPatchPreconditionersCreator
         gsMatrix<> mass2;
         gsPatchPreconditionersCreator<>::massMatrixOp(mb[0],bc,opt)->toMatrix(mass2);
-        CHECK ( ( mass0-mass2 ).norm() < 1/real_t(10000) );
+        CHECK ( ( mass0-mass2 ).norm() < 1/(real_t)(10000) );
 
         // Get inverse of mass matrix from gsPatchPreconditionersCreator
         gsLinearOperator<>::Ptr massInv = gsPatchPreconditionersCreator<>::massMatrixInvOp(mb[0],bc,opt);
         gsMatrix<> result;
         massInv->apply(mass0,result);
         for (index_t i=0; i<result.rows(); ++i) result(i,i)-=1;
-        CHECK ( result.norm() < 1/real_t(10000) );
+        CHECK ( result.norm() < 1/(real_t)(10000) );
     }
 
     TEST(gsAdditiveOp_test)
@@ -255,14 +255,14 @@ SUITE(gsPreconditioner_test)
             );
             gsMatrix<> res;
             s.apply( in, res );
-            CHECK ( (res-out).norm() < 1/real_t(10000) );
+            CHECK ( (res-out).norm() < 1/(real_t)(10000) );
         }
 
         {
             gsAdditiveOp<> a(t,o);
             gsMatrix<> res;
             a.apply( in, res );
-            CHECK ( (res-out).norm() < 1/real_t(10000) );
+            CHECK ( (res-out).norm() < 1/(real_t)(10000) );
         }
     }
 

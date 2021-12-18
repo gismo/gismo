@@ -85,24 +85,24 @@ public:
     { return uPtr( new gsGradientMethod(mat, precond, step_size) ); }
 
     /// @brief Returns true iff adaptive step sizes are activated
-    bool adaptiveDamping() { return m_adapt_step_size; }
+    bool adaptiveStepSize() const { return m_adapt_step_size;                           }
 
     /// @brief Returns the chosen step size
-    T stepSize()           { return m_step_size;       }
+    T stepSize() const            { return m_step_size;                                 }
 
     /// @brief Activate adaptive step size. Then in each step, the step size
     /// is chosen such that the norm of the residual is minimized.
-    void setAdaptiveStepSize()    { m_adapt_step_size = false; m_step_size = 0;         }
+    void setAdaptiveStepSize()    { m_adapt_step_size = true;  m_step_size = 0;         }
 
     /// @brief Set the step size
-    void setStepSize(T step_size) { m_adapt_step_size = true;  m_step_size = step_size; }
+    void setStepSize(T step_size) { m_adapt_step_size = false; m_step_size = step_size; }
 
     /// @brief Returns a list of default options
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
         opt.addSwitch("AdaptiveStepSize", "Adaptive step sizes (to minimize residual)", true );
-        opt.addReal  ("StepSize", "Step size (requires AdaptiveStepSize to be false)" , 0    );
+        opt.addReal  ("StepSize", "Step size (requires AdaptiveStepSize to be false)" , (T)0    );
         return opt;
     }
 

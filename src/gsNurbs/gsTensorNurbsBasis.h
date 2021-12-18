@@ -34,7 +34,7 @@ namespace gismo
     \ingroup basis
     \ingroup Nurbs
 */
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTensorNurbsBasis : public gsRationalBasis<typename gsBSplineTraits<d,T>::Basis>
 {
 
@@ -60,7 +60,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::RatGeometry GeometryType;
 
     /// @brief Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::RatBasis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::RatBasis BoundaryBasisType;
 
     /// @brief Shared pointer for gsTensorNurbsBasis
     typedef memory::shared_ptr< gsTensorNurbsBasis > Ptr;
@@ -120,7 +120,7 @@ public:
         os << "\n";
         return os;
     }
-    
+
     gsKnotVector<T> & knots (int i)
     { return m_src->knots(i); }
 
@@ -161,10 +161,11 @@ public:
     /// @brief Gives back the boundary basis at boxSide s
     typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
 #endif
+
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
     {
         typename Src_t::BoundaryBasisType::uPtr bb = m_src->boundaryBasis(n1);
-        gsMatrix<unsigned> ind = m_src->boundary(n1);
+        gsMatrix<index_t> ind = m_src->boundary(n1);
         
         gsMatrix<T> ww( ind.size(),1);
         for ( index_t i=0; i<ind.size(); ++i)

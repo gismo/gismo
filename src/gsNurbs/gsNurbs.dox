@@ -1,7 +1,8 @@
 namespace gismo {
 
 /** 
-  \defgroup Nurbs NURBS module
+  \defgroup Nurbs Nurbs module
+\ingroup Modules
 
 This module contains the B-spline and NURBS basis functions.
 

@@ -9,84 +9,102 @@
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
-=====                      version 0.8.5 Alpha                   =====
+=====                     version 21.12 Alpha                    =====
 =====                   https://github.com/gismo                 =====
-=====          Copyright (C) JKU-RICAM-Linz, 2012 - 2018         =====
 ======================================================================
 ```
 
-
-|&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://cdash.ricam.oeaw.ac.at/index.php?project=Gismo-stable" target="_blank"> <img src="https://www.kitware.com/cdash/img/CDash-logo.png" width="30" height="30" /></a> |Linux|macOS|Windows|
-|--------------|--------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
-|Build Status|  [ ![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://app.codeship.com/projects/123289) [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://circleci.com/gh/gismo/gismo)| [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://travis-ci.org/gismo/gismo/branches) | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://ci.appveyor.com/project/gismo/gismo)
+# Continuous Integration status
+| **System** | **Status** | **More information** |
+|------------|------------|----------------------|
+| [CDash](https://cdash-ci.inria.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Report results from all builds |
+| [Appveyor](https://ci.appveyor.com/project/gismo/gismo)  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[appVeyor]) | Windows MSVC 14.0 |
+| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | MacOS XCode9-12 |
+| [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
+| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
+| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
+| [Jenkins](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable) | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[jenkins]) |VMs for Linux/MacOS/Windows |
+| GCC Farm | [Status](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
+| [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
+| [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
 
 
 This README file contains brief information. More details are found in
-the [Wiki pages](http://gs.jku.at/gismo).
+the [Wiki pages](https://github.com/gismo/gismo/wiki).
 
-The latest revision of the code can be obtained using subversion:
+The latest revision of the code can be obtained using git (via https):
+
+```git clone https://github.com/gismo/gismo.git```
+
+or using subversion:
 
 ```svn co https://github.com/gismo/gismo/trunk gismo```
 
-or using git:
+or as a tar.gz or zip file:
 
-```git clone git@github.com:gismo/gismo.git```
-
-or as a zip file:
-
-https://github.com/gismo/gismo/archive/stable.zip
+* https://github.com/gismo/gismo/archive/stable.tar.gz
+* https://github.com/gismo/gismo/archive/stable.zip
 
 # Prerequisites
 
 * Operating systems:
   - MS Windows
   - Linux
-  - MacOSX
+  - macOS
 
-* Configuration: [CMake 2.8.8](https://cmake.org) or newer.
+* Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
 * Compilers tested include recent versions of
-  - GNU GCC
-  - MS Visual C++
-  - Clang
-  - Intel C++ compiler
-  - Mingw64
+  - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)
+  - [AppleClang](https://developer.apple.com/documentation/xcode/) see [here](https://mac.r-project.org/openmp/) for OpenMP support
+  - [Clang](https://clang.llvm.org)
+  - [GNU GCC](https://gcc.gnu.org)
+  - [Intel C++ compiler](https://software.intel.com/content/www/us/en/develop/tools/compilers/c-compilers.html)
+  - [Mingw64](http://mingw-w64.org/)
+  - [MS Visual Studio C++](https://visualstudio.microsoft.com)
+  - [PGI C/C++](https://www.pgroup.com/index.htm) only with `GISMO_WITH_OPENMP=OFF`
+  
+* Compilers known to not work
+  - [Oracle Developer Studio](https://www.oracle.com/application-development/technologies/developerstudio.html) fails to compile Eigen
+  - [IBM XLC C/C++](https://www.ibm.com/products/xl-cpp-linux-compiler-power) fails to compile Eigen
 
 * Recommended:
+   - [Doxygen](https://www.doxygen.org) for generating documentation.
    - [Paraview](https://www.paraview.org) for visualization.
 
 # Compilation
 
-The compilation requires configuration using CMake at a new, empty
-folder (in-source builds are disabled).
+The compilation requires configuration using [CMake](https://cmake.org)
+at a new, empty folder (in-source builds are disabled).
 
-* On Linux/MacOSX: A Unix makefile exists in the root source
-  folder. Running "make" creates a sub folder named "build" and
+* On **Linux/macOS**: A Unix makefile exists in the root source
+  folder. Running `make` creates a sub folder named `build` and
   executes CMake and compilation inside that folder. Alternatively,
   choose your own build folder and execute CMake pointing to the
   sources.
 
-* On MS Windows: Run cmake-gui tool (from an environment that is
-  configured with your compiler) to generate makefiles (or Visual
-  Studio project). Then execute the make tool to launch
-  compilation. Alternatively, use the QtCreator GUI and open the
-  CMakeLists.txt file on the root folder to create a QtCreator
-  project.
+* On **MS Windows**: MS Visual Studio has [built-in CMake
+  support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
+  since version 2015. Alternatively, you can run the `cmake-gui` tool
+  (from an environment that is configured with your compiler) to
+  generate makefiles (or Visual Studio project files). Then execute
+  the make tool to launch compilation. Alternatively, use the
+  QtCreator GUI and open the CMakeLists.txt file on the root folder to
+  create a QtCreator project.
 
-After successful compilation a dynamic library is created in ./lib and
-executable example programs are output at the ./bin subdirectory of
+After successful compilation a dynamic library is created in `./lib` and
+executable example programs are output at the `./bin` subdirectory of
 the build folder.
 
-Additionally, if Doxygen is available on the system one can execute
-(eg. on Linux):
+Additionally, if [Doxygen](https://www.doxygen.org) is available on
+the system one can execute (eg. on Linux):
 
 ```make doc```
 
 to obtain the Doxygen documentation in HTML format. The main doxygen
-page is at ./doc/html/index.html.
+page is at `./doc/html/index.html`.
 
-More information at
-http://gs.jku.at/gismo
+More information at https://github.com/gismo/gismo/wiki
 
 # Configuration Options
 
@@ -102,6 +120,11 @@ Release, RelWithDebInfo, MinSizeRel.
 
   The arithmetic type to be used for all computations. Available options
 include double, long double, float.
+
+* GISMO_EXTRA_INSTANCE    *not set*
+
+  If set to one or more of the options available for GISMO_COEFF_TYPE
+  the G+Smo library is compiled with extra arithmetic types enabled.
 
 * GISMO_EXTRA_DEBUG       *OFF*
 
@@ -203,13 +226,7 @@ eleven modules are present as sub-folders:
 
 * Wiki pages:
 
-  https://gs.jku.at/gismo
-
-* Mailing list: gismo@ricam.oeaw.ac.at
-
-* Subscribe to the mailing list at:
-
-  https://list.ricam.oeaw.ac.at/lists/listinfo/gismo
+  https://github.com/gismo/gismo/wiki
 
 * Bug reports:
 
@@ -222,9 +239,7 @@ Coordinator and maintainer: Angelos Mantzaflaris
 
 See full list in [our wiki pages](https://github.com/gismo/gismo/wiki/About--G-Smo)
 
-# Acknowledgement and os-license
+# OS-license
 
-G+Smo library for isogeometric analysis is supported by the Research
-Network ''Geometry + Simulation'' (NFN S117), funded by the Austrian
-Science Fund, www.gs.jku.at.  It is distributed under the Mozilla
-Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
+The G+Smo library is distributed under the Mozilla Public License v2.0.  (see [LICENSE.txt](https://github.com/gismo/gismo/blob/stable/LICENSE.txt)).
+

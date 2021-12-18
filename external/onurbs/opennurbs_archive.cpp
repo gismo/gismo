@@ -13355,6 +13355,10 @@ size_t ON_BinaryFile::CurrentPosition() const
   return offset;
 }
 
+#if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) //G+Smo silence warning 
+    #pragma GCC diagnostic ignored "-Wunused-result"
+#       endif
+
 bool ON_BinaryFile::AtEnd() const
 {
   bool rc = true;
@@ -13367,13 +13371,7 @@ bool ON_BinaryFile::AtEnd() const
       else 
       {
         int buffer;
-#if defined(__GNUC__) && (!defined( __INTEL_COMPILER)) 
-	    #pragma GCC diagnostic ignored "-Wunused-result"//G+Smo silence warning 
         fread( &buffer, 1, 1, m_fp );
-#       pragma GCC diagnostic pop 
-#       else
-        fread( &buffer, 1, 1, m_fp ); 
-#       endif
         if ( feof( m_fp ) ) 
         {
           rc = true;

@@ -23,7 +23,7 @@ namespace gismo
 /// selects the row of coefficients from coefficients of geo that are suitable
 /// for the isoparametric slice in \a dir_fixed with \a par.
 /// Note that geo has to have already C^0 continuity at \a par in direction \a dir.
-template <unsigned d, class T>
+template <short_t d, class T>
 void constructCoefsForSlice(index_t dir_fixed, const index_t index,
                             const gsMatrix<T> & fullCoefs,
                             const gsVector<index_t, d> & sizes,
@@ -40,7 +40,7 @@ void constructCoefsForSlice(index_t dir_fixed, const index_t index,
     \ingroup geometry
     \ingroup Nurbs
 */
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsTensorBSpline GISMO_FINAL : public gsGeoTraits<d,T>::GeometryBase
 {
 public: 
@@ -62,10 +62,10 @@ public:
     typedef memory::unique_ptr< gsTensorBSpline > uPtr;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::Geometry BoundaryGeometryType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Geometry BoundaryGeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis BoundaryBasisType;
 
 public:
 
@@ -176,7 +176,7 @@ public:
 public:
 
     // Look at gsGeometry class for a description
-    void degreeElevate(int const i = 1, int const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1);
 
     /// Inserts knot \a knot at direction \a dir, \a i times
     void insertKnot( T knot, int dir, int i = 1);
@@ -195,7 +195,7 @@ public:
     /*** Additional members for tensor B-Splines ***/
 
     /// Returns the degree of the basis wrt direction i
-    unsigned degree(const unsigned & i) const
+    short_t degree(const unsigned & i) const
     { return this->basis().component(i).degree(); }
 
     /// Toggle orientation wrt coordinate k
@@ -242,7 +242,7 @@ public:
 
 public:
 
-    /// Constucts an isoparametric slice of this tensorBSpline by fixing
+    /// Constructs an isoparametric slice of this tensorBSpline by fixing
     /// \a par in direction \a dir_fixed. The resulting tensorBSpline has
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
@@ -252,10 +252,17 @@ public:
     /// The function automatically searches for the midpoint the corresponding knot vector.
     std::vector<gsGeometry<T>* > uniformSplit(index_t dir = -1) const;
 
+    /// Split the patch into smaller patches at the position of all
+    /// knots with multiplicity at least \a minMult
+    std::vector<gsGeometry<T>* > splitAtMult(index_t minMult = 1, index_t dir = -1) const;
+
     /// Splits the geometry into two pieces (\a left, \a right) along direction \a dir at \a xi. The splitting
     /// is performed by increasing the multiplicity of knot \a xi to p+1, or if \a xi does not exist as knot,
     /// it is inserted p+1 times.
     void splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const;
+
+    typename gsGeometry<T>::uPtr iface(const boundaryInterface & bi,
+                                       const gsGeometry<T> & other) const;
 
 protected:
     // TODO Check function

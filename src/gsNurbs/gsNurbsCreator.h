@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the NurbsCreator struct.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -28,7 +28,7 @@ namespace gismo
 
 /**
    @brief Class gsNurbsCreator provides some simple examples of Nurbs Geometries
-   
+
    \ingroup Nurbs
 */
 
@@ -46,9 +46,9 @@ struct gsNurbsCreator
     typedef typename gsTensorNurbs<4,T>::uPtr   TensorNurbs4Ptr;
 
 public:
-    
+
     static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
-    
+
     static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);
 
     static TensorNurbs3Ptr lift3D( gsTensorNurbs<2,T> const & geo, T z = 1);
@@ -70,7 +70,7 @@ public:
     const unsinged Segments = 1);
 */
 
-    static BSplinePtr BSplineUnitInterval(int deg);
+    static BSplinePtr BSplineUnitInterval(short_t deg);
 
 /// 2d-rectange [low_x,upp_x] x [low_y,upp_y], rotated by \a turndeg degrees.
     static TensorBSpline2Ptr BSplineRectangle( T const & low_x = 0,
@@ -80,9 +80,6 @@ public:
 
     // Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
     static TensorBSpline2Ptr BSplineRectangleWithPara( T low_x = 0, T low_y = 0, T upp_x = 1, T upp_y = 1);
-
-/// Square of side \a r, with lower left corner at (x,y)
-    static TensorBSpline2Ptr BSplineSquare( T const & r = 1, T const & x = 0, T const & y = 0  );
 
 /// Creates a \em n X \em m rectangle multipatch consisting of B-splines squares
 /// with lower left corner at at (lx,ly).
@@ -105,44 +102,51 @@ public:
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
     /// The unit square represented as a tensor B-spline of degree \a deg
-    static TensorBSpline2Ptr BSplineSquare(int deg, T scale = 1.0);
-    
+    static TensorBSpline2Ptr BSplineSquareDeg(short_t deg, T scale = 1.0);
+
+    /// Square of side \a r, with lower left corner at (x,y)
+    static TensorBSpline2Ptr BSplineSquare( T const & r = 1, T const & x = 0, T const & y = 0  );
+
+    /// Cube of side \a r, with lower left corner at (x,y,z)
     static TensorBSpline3Ptr BSplineCube( T const & r = 1, T const & x = 0,
                                                T const & y = 0, T const & z = 0  );
 
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
     /// The unit cube represented as a tensor B-spline of degree \a deg
-    static TensorBSpline3Ptr BSplineCube(int deg);
+    static TensorBSpline3Ptr BSplineCube(short_t deg);
 
     static gsMultiPatch<T> BSplineCubeGrid(int n, int m,int p, T const & r = 1,
                                            T const & lx = 0, T const & ly = 0, T const & lz = 0);
 
     static TensorBSpline3Ptr BSplineHalfCube( T const & r = 1, T const & x = 0,
                                                    T const & y = 0, T const & z = 0  );
-    
+
+    /// Cube of side \a r, with lower left corner at (x,y,z) using NURBS
     static TensorNurbs3Ptr NurbsCube( T const & r = 1, T const & x = 0,
                                            T const & y = 0, T const & z = 0 );
 
+    /// Exact annulus using NURBS
     static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 =1, T const & r1 =2);
     static TensorNurbs3Ptr BSplineSaddle();
     /// Inexact annulus using B-splines
-    static GeometryPtr BSplineQuarterAnnulus(int const & deg = 2);
+    static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
 
     //static TensorNurbs2Ptr NurbsQuarterAnnulusMixedWithLShape();
-    //static GeometryPtr BSplineQuarterAnnulusMixedWithLShape(int const & deg = 2);
+    //static GeometryPtr BSplineQuarterAnnulusMixedWithLShape(const short_t & deg = 2);
 
     /// Fat annulus using B-splines, discarding the weights of the exact NURBS
     ///  Analytical formulation (when r0 = 1 and r1 = 2):
     /// (x, y) = (1 + s - s*t*t - t*t, 2*s*t -s*t*t + 2*t - t*t)
     static TensorBSpline2Ptr BSplineFatQuarterAnnulus( T const & r0 =1, T const & r1 =2);
 
+    /// Sphere using NURBS
     static TensorNurbs2Ptr NurbsSphere( T const & r =1, T const & x = 0, T const & y = 0, T const & z = 0);
-
+    /// Circle using NURBS
     static NurbsPtr  NurbsCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
-
+    /// Inexact circle using B-splines
     static BSplinePtr BSplineFatCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
-
+    /// Inexact disk using B-splines
     static TensorBSpline2Ptr BSplineFatDisk (T const & r=1, T const & x=0, T const & y = 0);
 
     static NurbsPtr NurbsCurve1 (T const & r=1, T const & x=0, T const & y = 0);
@@ -187,6 +191,9 @@ public:
     static TensorNurbs2Ptr NurbsDisk(T const & r=1, T const & x=0, T const & y = 0);
 
     static TensorBSpline2Ptr NurbsQrtPlateWHoleC0();
+
+    static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
+
 }; // struct
 
 } // namespace gismo

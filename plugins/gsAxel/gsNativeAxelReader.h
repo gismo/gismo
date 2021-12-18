@@ -26,8 +26,8 @@ public:
 public:
     bool accept(const QDomNode& node);
     bool reject(const QDomNode& node);
-
-    dtkAbstractData *read(const QDomNode& node);
+    
+    axlAbstractData *read(const QDomNode& node);
 };
 
 dtkAbstractDataReader *creategsNativeAxelReader(void);

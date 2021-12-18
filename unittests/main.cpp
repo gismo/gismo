@@ -32,18 +32,44 @@
 // Tolerance for approximate comparisons
 const real_t EPSILON = std::pow(10.0, - REAL_DIG * 0.75);
 
-/// Selects tests by matching their names to the input prefix given by command line argument
-// TODO implement more complex queries
-class Selector
+// Macros for excluding some test name
+#define EXCLUDE_SUITE(name) if ( !strcmp(testCase->m_details.suiteName,#name) ) return false
+
+
+/// Selects tests by matching their names to the input prefix given by
+/// command line argument
+namespace gismo {
+
+template<class T>
+struct gsUTSelector
+{
+    bool operator()(const UnitTest::Test * const testCase) const
+    { return true; }
+};
+
+#ifdef GISMO_WITH_GMP
+template<>
+struct gsUTSelector<mpq_class>
+{
+    bool operator()(const UnitTest::Test * const testCase) const
+    {
+        EXCLUDE_SUITE(gsPoissonSolver_test);
+        EXCLUDE_SUITE(gsIterativeSolvers_test);
+        EXCLUDE_SUITE(gsPreconditioner_test);
+        return true;
+    }
+};
+#endif
+
+class gsUTSelectorCmd
 {
 private:
     int            m_argc;
     char        ** m_argv;
-    mutable bool   m_did_run;
 
 public:
-    Selector(int argc, char* argv[])
-    : m_argc(argc), m_argv(argv), m_did_run(false)
+    gsUTSelectorCmd(int argc, char* argv[])
+    : m_argc(argc), m_argv(argv)
     { }
 
     bool operator()(const UnitTest::Test * const testCase) const
@@ -56,33 +82,35 @@ public:
             toRun |= !strncmp(testCase->m_details.testName , m_argv[i], n);// prefix match
             toRun |= gsFileManager::pathEqual(testCase->m_details.filename, m_argv[i]);// exact match up to path sep.
         }
-        m_did_run |= toRun;
         return toRun;
     }
-
-    bool didRunAnyTests() { return m_did_run; }
 };
-
+} // namespace gismo
 
 int main(int argc, char* argv[])
 {
     gsCmdLine::printVersion();
 
+    UnitTest::TestReporterStdout reporter;
+    UnitTest::TestRunner runner(reporter);
+
     if (argc > 1)
     {
-        UnitTest::TestReporterStdout reporter;
-        UnitTest::TestRunner runner(reporter);
-        Selector sel(argc,argv);
+        gsUTSelectorCmd sel(argc,argv);
         int result = runner.RunTestsIf(UnitTest::Test::GetTestList(), NULL, sel, 0);
-        if (!sel.didRunAnyTests())
+        if ( 0 == runner.GetTestResults()->GetTotalTestCount() )
         {
             gsInfo << "Did not find any matching test.\n";
-            return 1;
+            return EXIT_FAILURE;
         }
         return result;
     }
     else
     {
-        return UnitTest::RunAllTests();
+        
+        gsUTSelector<real_t> sel;
+        int result = runner.RunTestsIf(UnitTest::Test::GetTestList(), NULL, sel, 0);
+        return result;
+        //return UnitTest::RunAllTests();
     }
 }

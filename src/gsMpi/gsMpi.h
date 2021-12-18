@@ -16,6 +16,7 @@
 #include <gsCore/gsForwardDeclarations.h>
 
 #ifdef GISMO_WITH_MPI
+#include <string.h>
 #include <mpi.h>
 // #if MPI_VERSION < 2
 // #  ifdef _MSC_VER
@@ -175,10 +176,38 @@ private:
 #   ifdef GISMO_WITH_MPI
         if( !initialized() )
         {
+#ifdef _OPENMP
+            // Initialize MPI with multi-threading support
+            char* thread_level = getenv("GISMO_MPI_THREAD_LEVEL");
+            const int req_level = ( NULL != thread_level ? atoi(getenv("GISMO_MPI_THREAD_LEVEL")) : 0);
+            int MPI_thread_required = MPI_THREAD_SINGLE, MPI_thread_provided;
+            switch(req_level)
+            {
+            case 0:
+                MPI_thread_required = MPI_THREAD_SINGLE;
+                break;
+            case 1:
+                MPI_thread_required = MPI_THREAD_FUNNELED;
+                break;
+            case 2:
+                MPI_thread_required = MPI_THREAD_SERIALIZED;
+                break;
+            case 3:
+                MPI_thread_required = MPI_THREAD_MULTIPLE;
+                break;
+            default:
+                GISMO_ERROR("Invalid value for environment variable GISMO_MPI_THREAD_LEVEL");
+            };
+
+            const int init = MPI_Init_thread(argc, &argv, MPI_thread_required, &MPI_thread_provided);
+            GISMO_ENSURE(MPI_SUCCESS==init &&
+                         MPI_thread_required <= MPI_thread_provided, "MPI failed to initialize");
+#else
             //Note: valgrind false positive here, see
             // https://www.open-mpi.org/faq/?category=debugging#valgrind_clean
             const int init = MPI_Init(argc, &argv);
             GISMO_ENSURE(MPI_SUCCESS==init, "MPI failed to initialize");
+#endif
         }
 #       ifndef NDEBUG
         MPI_Comm_create_errhandler(gsMpiComm::ErrCallBack, &gsMpiComm::ErrHandler);

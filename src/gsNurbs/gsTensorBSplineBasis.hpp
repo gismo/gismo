@@ -27,15 +27,15 @@ namespace gismo
 {
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 active_cwise(const gsMatrix<T> & u, 
-             gsVector<unsigned,d>& low, 
-             gsVector<unsigned,d>& upp ) const
+             gsVector<index_t,d>& low,
+             gsVector<index_t,d>& upp ) const
 {
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        for (unsigned i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
         {
             low[i] = component(i).firstActive( u(i,j) );
             upp[i] = low[i] + component(i).degree();
@@ -43,7 +43,7 @@ active_cwise(const gsMatrix<T> & u,
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, 
                     const std::vector< std::vector<T> >& refineKnots)
@@ -60,7 +60,7 @@ refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
     tensorCombineTransferMatrices<d, T>( B, transfer );
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
 refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots)
 {
@@ -84,7 +84,7 @@ refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refine
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
 {
     // Note: refExt parameter is ignored
@@ -143,9 +143,9 @@ void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
  * This is the case for all current component bases, so we only keep this version for now.
  * Above, commented out, is the generic version which is quite a bit slower.
  */
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
-active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
+active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
 {
     GISMO_ASSERT( u.rows() == static_cast<index_t>(d), "Invalid point dimension: "<<u.rows()<<", expected "<< d);
 
@@ -166,7 +166,7 @@ active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
     for (index_t j = 0; j < u.cols(); ++j)
     {
         // get the active basis indices for the component bases at u(:,j)
-        for (unsigned i = 0; i < d; ++i)
+        for (short_t i = 0; i < d; ++i)
         {
             firstAct[i] = component(i).firstActive( u(i,j) );
         }
@@ -176,8 +176,8 @@ active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const
         v.setZero();
         do
         {
-            int gidx = firstAct[d-1] + v(d-1);    //compute global index in the tensor product
-            for ( int i=d-2; i>=0; --i )
+            index_t gidx = firstAct[d-1] + v(d-1);    //compute global index in the tensor product
+            for ( short_t i=d-2; i>=0; --i )
                 gidx = gidx * this->size(i) + firstAct[i] + v(i);
 
             result(r, j) = gidx;
@@ -191,7 +191,7 @@ namespace internal
 {
 
 /// @brief Get a TensorBSplineBasis from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsTensorBSplineBasis<d,T> >
 {
 private:

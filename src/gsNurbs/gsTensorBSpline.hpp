@@ -28,7 +28,7 @@
 namespace gismo
 {
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void constructCoefsForSlice(index_t dir_fixed, index_t index,
                             const gsMatrix<T> & fullCoefs,
                             const gsVector<index_t,d> & sizes,
@@ -51,8 +51,7 @@ void constructCoefsForSlice(index_t dir_fixed, index_t index,
     } while ( nextLexicographic(cur, lowerCorner, upperCorner) );
 }
 
-
-template<unsigned d, class T>
+template<short_t d, class T>
 gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
                                       KnotVectorType KV1, KnotVectorType KV2)
 {
@@ -122,7 +121,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
 }
 
 // todo: move to hpp
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
                                  BoundaryGeometryType & result) const
 {
@@ -175,13 +174,13 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         }
 
         // construct the object
-        //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
+        //result = gsTensorBSpline<static_cast<short_t>(d-1),T>(*tbasis, give(coefs) );
         //result = BoundaryGeometry(*tbasis, give(coefs) );
         result = BoundaryGeometryType(*tbasis, coefs );
     }
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::reverse(unsigned k)
 {
     gsTensorBSplineBasis<d,T> & tbsbasis = this->basis();
@@ -192,7 +191,7 @@ void gsTensorBSpline<d,T>::reverse(unsigned k)
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::swapDirections(const unsigned i, const unsigned j)
 {
     gsVector<index_t,d> sz;
@@ -201,7 +200,7 @@ void gsTensorBSpline<d,T>::swapDirections(const unsigned i, const unsigned j)
     this->basis().swapDirections(i,j);
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 {
     gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
@@ -219,7 +218,7 @@ bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
     return false;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v,
                                       gsVector<index_t,d> & curr,
                                       T tol)
@@ -245,7 +244,7 @@ void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v,
     gsWarn<<"Point "<< v <<" is not an corner of the patch. (Call isPatchCorner() first!).\n";
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::setOriginCorner(gsMatrix<T> const &v)
 {
     gsVector<index_t,d> curr;
@@ -257,7 +256,7 @@ void gsTensorBSpline<d,T>::setOriginCorner(gsMatrix<T> const &v)
             this->reverse(k);
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::setFurthestCorner(gsMatrix<T> const &v)
 {
     gsVector<index_t,d> curr;
@@ -270,12 +269,12 @@ void gsTensorBSpline<d,T>::setFurthestCorner(gsMatrix<T> const &v)
 }
 
 
-template<unsigned d, class T>
-void gsTensorBSpline<d,T>::degreeElevate(int const i, int const dir)
+template<short_t d, class T>
+void gsTensorBSpline<d,T>::degreeElevate(short_t const i, short_t const dir)
 {
     if (dir == -1)
     {
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             degreeElevate(i, j);
         return;
     }
@@ -289,7 +288,7 @@ void gsTensorBSpline<d,T>::degreeElevate(int const i, int const dir)
     this->basis().size_cwise(sz);
 
     swapTensorDirection(0, dir, sz, this->m_coefs);
-    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+    this->m_coefs.resize( sz[0], n * sz.template tail<static_cast<short_t>(d-1)>().prod() );
 
     bspline::degreeElevateBSpline(this->basis().component(dir), this->m_coefs, i);
     sz[0] = this->m_coefs.rows();
@@ -298,7 +297,7 @@ void gsTensorBSpline<d,T>::degreeElevate(int const i, int const dir)
     swapTensorDirection(0, dir, sz, this->m_coefs);
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
 {
     GISMO_ASSERT( i>0, "multiplicity must be at least 1");
@@ -313,7 +312,7 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
     this->basis().size_cwise(sz);
 
     swapTensorDirection(0, dir, sz, this->m_coefs);
-    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+    this->m_coefs.resize( sz[0], n * sz.template tail<static_cast<short_t>(d-1)>().prod() );
 
     gsBoehm( this->basis().component(dir).knots(), this->coefs() , knot, i);
     sz[0] = this->m_coefs.rows();
@@ -323,7 +322,7 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 typename gsGeometry<T>::uPtr gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & u) const
 {
     std::vector<KnotVectorType> kv(d); // the local knot-vectors
@@ -357,7 +356,7 @@ typename gsGeometry<T>::uPtr gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & 
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 std::ostream & gsTensorBSpline<d,T>::print(std::ostream &os) const
 {
     os << "Tensor BSpline geometry "<< "R^"<< d <<
@@ -370,7 +369,7 @@ std::ostream & gsTensorBSpline<d,T>::print(std::ostream &os) const
     return os;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) const
 {
     // 1. insert p+1 in all directions
@@ -433,7 +432,7 @@ std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) con
 }
 
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const
 {
     GISMO_ASSERT( (dir >= 0) && (dir < static_cast<index_t>(d)),
@@ -520,13 +519,114 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
 }
 
 
+template<short_t d, class T>
+std::vector<gsGeometry<T>* >
+gsTensorBSpline<d,T>::splitAtMult(index_t minMult, index_t dir) const
+{
+    GISMO_ASSERT( (dir >= -1) && (dir < static_cast<index_t>(d)),
+                  "Invalid basis component "<< dir <<" requested for splitting" );
+    std::vector<gsGeometry<T>* > result;
+
+    if (-1==dir)
+    {
+        std::vector<gsGeometry<T>* > tmpi, tmp;
+        result = this->splitAtMult(minMult,0);
+        for(short_t i=1; i<d;++i)
+        {
+            tmp.swap(result);
+            result.clear();
+            for(size_t j=0; j!=tmp.size();++j)
+            {
+                tmpi = static_cast<gsTensorBSpline<d,T>*>(tmp[j])
+                    ->splitAtMult(minMult,i);
+                delete tmp[j];
+                result.insert( result.end(), tmpi.begin(), tmpi.end() );
+            }
+        }
+        return result;
+    }
+
+    gsTensorBSpline<d,T> * tmp = new gsTensorBSpline<d,T>(*this);
+    //iterate over knots
+    for (typename KnotVectorType::uiterator it = knots(dir).ubegin()+1;
+         it!=knots(dir).uend()-1; ++it)
+    {
+        if (it.multiplicity()>=minMult)
+        {
+            gsTensorBSpline<d,T> * o = new gsTensorBSpline<d,T>();
+            tmp->splitAt(dir,*it,*o,*tmp);
+            result.push_back(o);
+        }
+    }
+    result.push_back(tmp);
+    return result;
+}
+
+
+template<short_t d, class T>
+typename gsGeometry<T>::uPtr
+gsTensorBSpline<d,T>:: iface(const boundaryInterface & bi,
+                             const gsGeometry<T> & other) const
+{
+    // Grab boundary control point indices in matching configuration
+    gsMatrix<index_t> bdr0, bdr1;
+    this->basis().matchWith(bi, other.basis(), bdr0, bdr1);
+
+    //from here: Assume linear curves, merge control points (todo: add option for this)
+    index_t b[2];
+    b[0]=b[1]=0;
+    std::list<std::pair<const gsMatrix<T> *,index_t> > cv;//patch,cp-index
+    //maybe: check if both ifaces are identical using a flag...
+
+    // gsDebugVar(bdr0.size());
+    // gsDebugVar(bdr1.size());
+    cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+    do {
+        T dist0=(cv.back().first->row(cv.back().second)-this->coef(bdr0.at(b[0]))).squaredNorm();
+        if ( 0 == dist0 ) { b[0]++; continue; } //skip double point
+        T dist1=(cv.back().first->row(cv.back().second)-other.coef(bdr1.at(b[1]))).squaredNorm();
+        if ( 0 == dist1 ) { b[1]++; continue; } //skip double point
+
+        // gsDebugVar(dist0);
+        // gsDebugVar(dist1);
+        // gsDebugVar( this->coef(bdr0.at(b[0]+1)) );
+        // gsDebugVar( other.coef(bdr1.at(b[1]))   );
+        if (dist0>dist1)
+            cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
+        else
+            cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+
+    } while ( b[0]!=bdr0.size() && b[1]!=bdr1.size() );
+
+    //gsDebugVar(cv.size());
+    while ( b[0]<bdr0.size() )
+        cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+
+    //gsDebugVar(cv.size());
+    while ( b[1]<bdr1.size() )
+        cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
+
+    //gsDebugVar(cv.size());
+
+    // Construct interface geometry using cv and uniform knots (polyline)
+    gsMatrix<T> cf(cv.size(),this->geoDim());
+    index_t c = 0;
+    for(typename std::list<std::pair<const gsMatrix<T> *,index_t> >::iterator
+            it = cv.begin(); it!=cv.end(); ++it)
+        cf.row(c++) = it->first->row(it->second);
+    gsKnotVector<T> kv(0,1,c-2,2,1);
+    gsBSplineBasis<T> bs(kv);
+    return bs.makeGeometry(cf);
+}
+
+
 namespace internal
 {
 
 /// @brief Get a Tensor BSpline from XML data
 ///
 /// \ingroup Nurbs
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsTensorBSpline<d,T> >
 {
 private:

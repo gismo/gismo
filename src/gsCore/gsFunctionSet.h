@@ -217,7 +217,6 @@ public:
     /// Unique pointer for gsFunctionSet
     typedef memory::unique_ptr< gsFunctionSet > uPtr;
 
-    typedef std::pair<int,int> dim_t;
 public:
 
     gsFunctionSet();
@@ -267,7 +266,7 @@ public:
       @param u
       @param result
      */
-    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const;
+    virtual void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const;
     
 public:
     /**
@@ -426,9 +425,9 @@ public:
     /// @brief Returns the indices of active (nonzero) functions at
     /// points \a u, as a list of indices.
     /// \sa active_into()
-    gsMatrix<unsigned> active(const gsMatrix<T> & u) const
+    gsMatrix<index_t> active(const gsMatrix<T> & u) const
     {
-        gsMatrix<unsigned> rvo;
+        gsMatrix<index_t> rvo;
         this->active_into(u, rvo);
         return rvo;
     }
@@ -527,19 +526,19 @@ public:
        @brief Dimension of the (source) domain.
        @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$, returns \f$n\f$.
      */
-    virtual int domainDim () const = 0;
+    virtual short_t domainDim () const = 0;
 
     /**
        @brief Dimension of the target space.
        @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$, returns \f$m\f$.
      */
-    virtual int targetDim () const {return 1;}
+    virtual short_t targetDim () const {return 1;}
 
     /*
       @brief Dimension of domain and target
       @return the pair of integers domainDim() and targetDim()
     */
-    dim_t dimensions() const {return std::make_pair(domainDim(),targetDim());}
+    std::pair<short_t, short_t> dimensions() const {return std::make_pair(domainDim(),targetDim());}
     
     /**
       @brief size

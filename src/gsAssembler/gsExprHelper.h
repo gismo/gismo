@@ -14,9 +14,11 @@
 #pragma once
 
 #include <gsAssembler/gsExpressions.h>
+#include <gsUtils/gsThreaded.h>
 
 namespace gismo
 {
+
 /**
    Class holding an expression environment
  */
@@ -26,102 +28,98 @@ class gsExprHelper
 private:
     gsExprHelper(const gsExprHelper &);
 
-    gsExprHelper() : mesh_ptr(NULL)
-    { mutVar.setData(mutData); }
+    gsExprHelper() : m_mirror(nullptr), mesh_ptr(nullptr),
+                     mutSrc(nullptr), mutMap(nullptr)
+    { }
+
+    explicit gsExprHelper(gsExprHelper * m)
+    : m_mirror(memory::make_shared_not_owned(m)),
+      mesh_ptr(m->mesh_ptr), mutSrc(nullptr), mutMap(nullptr)
+    { }
 
 private:
-    typedef std::map<const gsFunctionSet<T>*,gsFuncData<T> > FunctionTable;
-    typedef typename FunctionTable::iterator ftIterator;
-    typedef typename FunctionTable::const_iterator const_ftIterator;
+    typedef util::gsThreaded<gsFuncData<T> > thFuncData;
+    typedef util::gsThreaded<gsMapData<T> >  thMapData;
+    typedef std::map<const gsFunctionSet<T>*,thFuncData>  FuncData;
+    typedef std::map<const gsFunctionSet<T>*,thMapData>  MapData;
+    typedef std::pair<const gsFunctionSet<T>*,thMapData*> CFuncKey;
+    typedef std::map<CFuncKey,thFuncData>  CFuncData;
 
-    // variable/space list
-    std::deque<expr::gsFeVariable<T> > m_vlist;
-    std::deque<expr::gsFeSpace<T> >    m_slist;
+    typedef typename FuncData::iterator FuncDataIt;
+    typedef typename MapData ::iterator MapDataIt;
+    typedef typename CFuncData ::iterator CFuncDataIt;
 
-    // background functions
-    FunctionTable m_itable;
-    FunctionTable m_ptable;
-    //FunctionTable i_map;
+    util::gsThreaded<gsMatrix<T> > m_points;
+    FuncData  m_fdata;///< functions
+    MapData   m_mdata;///< maps
+    CFuncData m_cdata;///< compositions
 
-    // geometry map
-    expr::gsGeometryMap<T> mapVar;
-public:
-    gsMapData<T> mapData;
-private:
-
-    // mutable pair of variable and data,
-    // ie. not uniquely assigned to a gsFunctionSet
-    expr::gsFeVariable<T> mutVar ;
-    gsFuncData<T>         mutData;
-    bool mutParametric;
-
-    gsSortedVector<const gsFunctionSet<T>*> evList;
+    memory::shared_ptr<gsExprHelper> m_mirror;
 
     const gsMultiBasis<T> * mesh_ptr;
 
+    // mutable pair of variable and data,
+    // ie. not uniquely assigned to a gsFunctionSet
+    const gsFunctionSet<T> * mutSrc;
+    const gsFunctionSet<T> * mutMap;
+    thFuncData               mutData;
+
+    // Represents the current element
+    expr::gsFeElement<T> m_element;
+
 public:
-    typedef const expr::gsGeometryMap<T> & geometryMap;
-    typedef const expr::gsFeElement<T>   & element;
-    typedef const expr::gsFeVariable<T>  & variable;
-    typedef const expr::gsFeSpace<T>     & space;
-    typedef const expr::gsNullExpr<T>      nullExpr;
-
-
-    typedef expr::gsFeVariable<T>  & nonConstVariable;
-    typedef expr::gsFeSpace<T>     & nonConstSpace;
-
     typedef memory::unique_ptr<gsExprHelper> uPtr;
     typedef memory::shared_ptr<gsExprHelper>  Ptr;
+
+    typedef const expr::gsGeometryMap<T>   geometryMap;
+    typedef       expr::gsFeElement<T> &   element;
+    typedef const expr::gsFeVariable<T>    variable;
+    typedef const expr::gsFeSpace<T>       space;
+    typedef const expr::gsComposition<T>   composition;
+    typedef const expr::gsNullExpr<T>      nullExpr;
+
 public:
 
-    gsMatrix<T> & points() { return mapData.points; }
+    ~gsExprHelper() { }
+
+    gsMatrix<T> & points() { return m_points; }
+    inline gsExprHelper & iface()
+    {
+        if (nullptr==m_mirror )
+            m_mirror = memory::make_shared(new gsExprHelper(this));
+        return *m_mirror;
+    }
+
+    bool isMirrored() const { return nullptr!=m_mirror; }
 
     static uPtr make() { return uPtr(new gsExprHelper()); }
 
     void reset()
     {
-        m_ptable.clear();
-        m_itable.clear();
         points().clear();
-        m_vlist .clear();
-        m_slist .clear();
         //mapVar.reset();
-    }
-
-    void print() const
-    {
-        //mapData.side
-        if ( mapVar.isValid() ) // list ?
-        {
-            gsInfo << "mapVar: "<< &mapData <<"\n";
-        }
-
-        if ( mutVar.isValid() && 0!=mutData.flags)
-        {
-            gsInfo << "mutVar: "<< &mutVar <<"\n";
-        }
-
-        gsInfo << "ptable:\n";
-        for (const_ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
-        {
-            gsInfo << " * "<< &it->first <<" --> "<< &it->second <<"\n";
-        }
-
-        gsInfo << "itable:\n";
-        for (const_ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
-        {
-            gsInfo << " * "<< &it->first <<" --> "<< &it->second <<"\n";
-        }
     }
 
     void cleanUp()
     {
-        mapData.clear();
-        mutData.clear();
-        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
-            it->second.clear();
-        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
-            it->second.clear();
+        #pragma omp single
+        {
+            m_mdata.clear();
+            m_fdata.clear();
+            m_cdata.clear();
+            //mutSrc = nullptr;
+            mutMap = nullptr;
+            mutData.mine().flags = 0;
+            if (isMirrored())
+            {
+                m_mirror->m_mdata.clear();
+                m_mirror->m_fdata.clear();
+                m_mirror->m_cdata.clear();
+                //m_mirror->mutSrc = nullptr;
+                m_mirror->mutMap = nullptr;
+                m_mirror->mutData.mine().flags = 0;
+            }
+        }//implicit barrier
     }
 
     void setMultiBasis(const gsMultiBasis<T> & mesh) { mesh_ptr = &mesh; }
@@ -134,190 +132,275 @@ public:
         return *mesh_ptr;
     }
 
-
-    geometryMap getMap(const gsFunction<T> & mp)
+    const gsMultiPatch<T> & multiPatch() const
     {
-        //mapData.clear();
-        mapVar.registerData(mp, mapData);
-        return mapVar;
+        GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
+        GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first), "Multipatch geometry map not set.");
+        return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
     }
 
-    geometryMap getMap(const gsMultiPatch<T> & mp)
+    const gsMapData<T> & multiPatchData() const
     {
-        //mapData.clear();
-        mapVar.registerData(mp, mapData);
-        return mapVar;
+        GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
+        return m_mdata.begin()->second;
     }
 
-    geometryMap getMap() const
+    geometryMap getMap(const gsFunctionSet<T> & mp)
     {
-        GISMO_ASSERT(mapVar.isValid(), "The Geometry map is not initialized)");
-        return mapVar;
+        expr::gsGeometryMap<T> gm;
+        gm.setSource(mp);
+        return gm;
     }
 
-    nonConstVariable getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
+    expr::gsFeVariable<T> getVar(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
-        m_vlist.push_back( expr::gsFeVariable<T>() );
-        expr::gsFeVariable<T> & var = m_vlist.back();
-        gsFuncData<T> & fd = m_ptable[&mp];
-        //fd.dim = mp.dimensions();
-        //gsDebugVar(&fd);
-        var.registerData(mp, fd, dim);
+        expr::gsFeVariable<T> var;
+        var.setSource(mp);
+        var.setDim(dim);
         return var;
     }
 
-    nonConstVariable getVar(const gsFunctionSet<T> & mp, geometryMap G)
+    composition getVar(const gsFunctionSet<T> & mp, geometryMap & G)
     {
-        GISMO_UNUSED(G);
-        GISMO_ASSERT(&G==&mapVar, "geometry map not known");
-        m_vlist.push_back( expr::gsFeVariable<T>() );
-        expr::gsFeVariable<T> & var = m_vlist.back();
-        gsFuncData<T> & fd = m_itable[&mp];
-        //fd.dim = mp.dimensions();
-        //gsDebugVar(&fd);
-        var.registerData(mp, fd, 1, mapData);
+        expr::gsComposition<T> var(G);
+        var.setSource(mp);
         return var;
     }
 
-    nonConstSpace getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
+    expr::gsFeSpace<T> getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
     {
-        m_slist.push_back( expr::gsFeSpace<T>() );
-        expr::gsFeSpace<T> & var = m_slist.back();
-        gsFuncData<T> & fd = m_ptable[&mp];
-        //fd.dim = mp.dimensions();
-        var.registerData(mp, fd, dim);
+        expr::gsFeSpace<T> var;
+        var.setSource(mp);
+        var.setDim(dim);
         return var;
     }
 
-    //void rmVar(
-
-    bool exists(variable a)
+    variable getMutVar() const
     {
-        typedef typename std::deque<expr::gsFeSpace<T> >::const_iterator siter;
-        for (siter it = m_slist.begin(); it!=m_slist.end(); ++it)
-            if ( &a == &(*it) ) return true;
-
-        typedef typename std::deque<expr::gsFeVariable<T> >::const_iterator viter;
-        for (viter it = m_vlist.begin(); it!=m_vlist.end(); ++it)
-            if ( &a == &(*it) ) return true;
-
-        return false;
+        expr::gsFeVariable<T> var;
+        return var;
     }
 
-    variable getMutVar() const { return mutVar; }
+    element getElement() { return m_element; }
 
-    void setMutSource(const gsFunction<T> & func, bool param)
+    composition getMutVar(geometryMap & G)
     {
-        mutVar.setSource(func);
-        mutParametric = param;
+        expr::gsComposition<T> var(G);
+        //mutMap = &G.source();
+        return var;
     }
 
-    template<class E>
-    void check(const expr::_expr<E> & testExpr) const
+    void setMutSource(const gsFunction<T> & func)
     {
-        if ( testExpr.isVector() )
-            GISMO_ENSURE(m_ptable.find(&testExpr.rowVar().source())!=m_ptable.end(), "Check failed");
-        if ( testExpr.isMatrix() )
-            GISMO_ENSURE(m_ptable.find(&testExpr.colVar().source())!=m_ptable.end(), "Check failed");
-
-        // todo: varlist ?
+        mutSrc = &func;
     }
 
-    void initFlags(const unsigned fflag = 0,
-                   const unsigned mflag = 0)
+    //void clearMutSource() ?
+
+private:
+    template <class E1>
+    void _parse(const expr::_expr<E1> & a1)
     {
-        mapData.flags = mflag;
-        mutData.flags = fflag;
-        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
-            it->second.flags = fflag;
-        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
-            it->second.flags = fflag;
+        a1.parse(*this);
+        //a1.print(gsInfo);
     }
 
-    template<class Expr> // to remove
-    void setFlags(const Expr & testExpr,
-                  const unsigned fflag = 0,
-                  const unsigned mflag = 0)
+    template <class E1, class... Rest>
+    void _parse(const expr::_expr<E1> & a1, Rest &... restArgs)
     {
-        // todo:
-        //testExpr.variables_into(m_ptable);
-        // plus auto-registration
-
-        initFlags(fflag, mflag);
-        testExpr.setFlag(); // protected ?
+        _parse(a1);
+        _parse(restArgs...);
     }
 
-    //void precompute(const gsMatrix<T> & points, const index_t patchIndex = 0)
-
-    void precompute(const index_t patchIndex = 0)
+    template<size_t I, typename... Ts>
+    void _parse_tuple_i (const std::tuple<Ts...> &tuple)
     {
-        GISMO_ASSERT(0!=points().size(), "No points");
+        std::get<I>(tuple).parse(*this);
+        if (I + 1 < sizeof... (Ts))
+            _parse_tuple_i<(I+1 < sizeof... (Ts) ? I+1 : I)> (tuple);
+    }
 
-        //mapData.side
-        if ( mapVar.isValid() ) // list ?
+    template<typename... Ts>
+    void _parse_tuple (const std::tuple<Ts...> &tuple) {_parse_tuple_i<0>(tuple);}
+
+public:
+
+    template<class... Ts>
+    void parse(const std::tuple<Ts...> &tuple)
+    {
+        cleanUp(); //assumes parse is called once.
+        _parse_tuple(tuple);
+
+        // Additional evaluation flags
+        for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        
+        // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
+        // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
+        // gsInfo<< "cdata: "<< m_cdata.size()<<std::endl;
+    }
+
+    template<class... expr>
+    void parse(const expr &... args)
+    {
+        cleanUp(); //assumes parse is called once.
+        _parse(args...);
+
+        // Add initial evaluation flags
+        for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
+            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+
+        /*
+        gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
+        gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
+        gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
+        if (m_mirror)
         {
-            //gsDebugVar("MAPDATA-------***************");
-            mapData.flags |= NEED_VALUE;
-            mapVar.source().function(patchIndex).computeMap(mapData);
-            mapData.patchId = patchIndex;
+            gsInfo<< "\nfdata2: "<< iface().m_fdata.size()<<"\n";
+            gsInfo<< "mdata2: "  << iface().m_mdata.size()<<"\n";
+            gsInfo<< "cdata2: "  << iface().m_cdata.size()<<"\n";
+        }
+        */
+    }
+//#endif
+
+    void add(const expr::gsGeometryMap<T> & sym)
+    {
+        GISMO_ASSERT(NULL!=sym.m_fs, "Geometry map "<<&sym<<" is invalid");
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
+#       pragma omp critical (m_mdata_first_touch)
+            const_cast<expr::gsGeometryMap<T>&>(sym)
+                .setData(eh.m_mdata[sym.m_fs]);
+    }
+
+    void add(const expr::gsComposition<T> & sym)
+    {
+        //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
+        add(sym.inner());//the map
+        sym.inner().data().flags |= NEED_VALUE;
+        if (nullptr==sym.m_fs)
+        {
+            //gsInfo<<"\nGot BC composition\n";
+            mutMap = &sym.inner().source();
+            if (nullptr!=mutSrc)
+            {
+#               pragma omp critical (m_fdata_first_touch)
+                const_cast<expr::gsComposition<T>&>(sym)
+                    .setData( mutData );
+
+                const_cast<expr::gsComposition<T>&>(sym)
+                    .setSource(*mutSrc);
+            }
+            else
+                gsWarn<<"\nSomething went terribly wrong here (add gsComposition).\n";
+            return;
         }
 
-        if ( mutVar.isValid() && 0!=mutData.flags)
-        {
-            GISMO_ASSERT( mutParametric || 0!=mapData.values.size(), "Map values not computed");
-            //mutVar.source().piece(patchIndex).compute(mapData.points, mutData);
-            mutVar.source().piece(patchIndex)
-                .compute( mutParametric ? mapData.points : mapData.values[0], mutData);
-        }
-
-        for (ftIterator it = m_ptable.begin(); it != m_ptable.end(); ++it)
-        {
-            //gsDebugVar("-------");
-            //gsDebugVar(&it->second);
-            //gsDebugVar(it->second.dim.first);
-            it->first->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-            //gsDebugVar(&it->second);
-            //gsDebugVar(it->second.dim.first);
-            //gsDebugVar("-------");
-            it->second.patchId = patchIndex;
-        }
-
-        GISMO_ASSERT( m_itable.empty() || 0!=mapData.values.size(), "Map values not computed");
-
-        if ( 0!=mapData.values.size() && 0!= mapData.values[0].rows() ) // avoid left-over from previous expr.
-        for (ftIterator it = m_itable.begin(); it != m_itable.end(); ++it)
-        {
-            //gsDebugVar(&it->second);
-            //gsDebugVar(it->second.dim.first);
-            it->first->piece(patchIndex).compute(mapData.values[0], it->second);
-            //gsDebugVar(it->second.dim.first);
-            it->second.patchId = patchIndex;
-        }
+        //register the function //if !=nullptr?
+        auto k = std::make_pair(sym.m_fs,&m_mdata[sym.inner().m_fs]);
+        auto it = m_cdata.find(k);
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
+        if (m_cdata.end()==it)
+            // when the variable is added for the first time,
+            // we have to be thread-safe (atomic).
+#           pragma omp critical (m_cdata_first_touch)
+            const_cast<expr::gsComposition<T>&>(sym)
+                .setData(eh.m_cdata[ give(k) ]);
+        else
+            const_cast<expr::gsComposition<T>&>(sym)
+                .setData(eh.m_cdata[ give(k) ]);
     }
 
-    template<class E>
-    void parse(const expr::_expr<E> & expr)
+    template <class E>
+    void add(const expr::symbol_expr<E> & sym)
     {
-        //evList.reserve(m_ptable.size()+m_itable.size());
-        evList.clear();
-        expr.parse(evList);
-    }
+        //parallel: variables become thread-local
+        // for each variable we provide a gsFuncData pointer
+        // in the same thread this can be the same ptr (as done now)
+        gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
 
-/*
-    void precompute(const index_t patch1, const index_t patch2);
-
-    void precompute(const index_t patch)
-    {
-        for (ftIterator it = evList.begin(); it != evList.end(); ++it)
+        if (NULL!=sym.m_fs)
         {
-            (*it)->piece(patchIndex).compute(mapData.points, it->second); // ! piece(.) ?
-            it->second.patchId = patchIndex;
+            /*
+            if ( 1==sym.m_fs->size() &&
+                 sym.m_fs->domainDim()<=sym.m_fs->targetDim() )// map?
+            {
+                //gsDebug<<"+ Map "<< sym.m_fs <<"\n";
+#               pragma omp critical (m_mdata_first_touch)
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setData( eh.m_mdata[sym.m_fs] );
+            }
+            else
+            */
+            {
+                //gsDebug<<"+ Func "<< sym.m_fs <<"\n";
+#               pragma omp critical (m_fdata_first_touch)
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setData( eh.m_fdata[sym.m_fs] );
+            }
+        }
+        else
+        {
+            //gsDebug<<"\nGot a mutable variable.\n";
+            if (nullptr!=mutSrc)
+            {
+#               pragma omp critical (m_fdata_first_touch)
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setData( mutData );
+
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setSource(*mutSrc);
+            }
+            else
+                gsWarn<<"\nSomething went wrong here (add symbol_expr).\n";
         }
     }
-//*/
 
+    void precompute(const index_t patchIndex = 0,
+                    boundary::side bs = boundary::none)
+    {
+        //First compute the maps
+        for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
+        {
+            it->second.mine().points.swap(m_points.mine());//swap
+            it->second.mine().side    = bs;
+            it->first->function(patchIndex).computeMap(it->second);
+            it->second.mine().patchId = patchIndex;
+            it->second.mine().points.swap(m_points.mine());
+        }
 
-};//class
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+        {
+            it->first->piece(patchIndex)
+                .compute(m_points, it->second);
+            it->second.mine().patchId = patchIndex;
+        }
+
+        for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
+        {
+            it->first.first->piece(patchIndex)
+                .compute(it->first.second->mine().values[0], it->second);
+            it->second.mine().patchId = patchIndex;
+        }
+
+        // Mutable variable to treat BCs
+        if (nullptr!=mutSrc && 0!=mutData.mine().flags)
+        {
+            mutSrc->piece(patchIndex)
+                .compute( mutMap ? m_mdata[mutMap].mine().values[0]
+                          : m_points, mutData );
+        }
+    }
+
+};//class gsExprHelper
 
 
 } //namespace gismo

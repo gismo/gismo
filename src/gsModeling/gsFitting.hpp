@@ -9,7 +9,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): M. Kapl, G. Kiss, A. Mantzaflaris
+    Author(s): M. Kapl, G. Kiss, A. Mantzaflaris, D. Mokris
 
 */
 
@@ -49,11 +49,11 @@ void gsFitting<T>::compute(T lambda)
         delete m_result;
 
     const int num_basis=m_basis->size();
-    const int dimension=m_points.cols();
+    const short_t dimension=m_points.cols();
 
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
-    gsSparseMatrix<T> A_mat(num_basis, num_basis);
+    gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
     //gsMatrix<T>A_mat(num_basis,num_basis);
     //To optimize sparse matrix an estimation of nonzero elements per
     //column can be given here
@@ -61,10 +61,11 @@ void gsFitting<T>::compute(T lambda)
     for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
         // nonZerosPerCol *= m_basis->degree(i) + 1;
         nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;
+    // TODO: improve by taking constraints nonzeros into account.
     A_mat.reservePerColumn( nonZerosPerCol );
 
     //right side vector (more dimensional!)
-    gsMatrix<T> m_B(num_basis, dimension);
+    gsMatrix<T> m_B(num_basis + m_constraintsRHS.rows(), dimension);
     m_B.setZero(); // enusure that all entries are zero in the beginning
 
     // building the matrix A and the vector b of the system of linear
@@ -76,6 +77,9 @@ void gsFitting<T>::compute(T lambda)
     //test degree >=3
     if(lambda > 0)
       applySmoothing(lambda, A_mat);
+
+    if(m_constraintsLHS.rows() > 0)
+	extendSystem(A_mat, m_B);
 
     //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
 
@@ -94,6 +98,10 @@ void gsFitting<T>::compute(T lambda)
     // Solves for many right hand side  columns
     gsMatrix<T> x;
     x = solver.solve(m_B); //toDense()
+
+    // If there were constraints, we obtained too many coefficients.
+    x.conservativeResize(num_basis, Eigen::NoChange);
+
     //gsMatrix<T> x (m_B.rows(), m_B.cols());
     //x=A_mat.fullPivHouseholderQr().solve( m_B);
     // Solves for many right hand side  columns
@@ -110,7 +118,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     for(index_t k = 0; k != num_points; ++k)
     {
@@ -126,7 +134,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
         for (index_t i = 0; i != numActive; ++i)
         {
-            const int ii = actives.at(i);
+            const index_t ii = actives.at(i);
             m_B.row(ii) += value.at(i) * m_points.row(k);
             for (index_t j = 0; j != numActive; ++j)
                 A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
@@ -134,20 +142,43 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
     }
 }
 
+template <class T>
+void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
+				gsMatrix<T>& m_B)
+{
+    index_t basisSize = m_basis->size();
+
+    // Idea: maybe we can resize here instead of doing it in compute().
+
+    // This way does not work, as these block operations are read-only for sparse matrices.
+    /*A_mat.topRightCorner(m_constraintsLHS.cols(), m_constraintsLHS.rows()) = m_constraintsLHS.transpose();
+      A_mat.bottomLeftCorner(m_constraintsLHS.rows(), m_constraintsLHS.cols()) = m_constraintsLHS;*/
+    m_B.bottomRows(m_constraintsRHS.rows()) = m_constraintsRHS;
+
+    for (index_t k=0; k<m_constraintsLHS.outerSize(); ++k)
+    {
+	for (typename gsSparseMatrix<T>::InnerIterator it(m_constraintsLHS,k); it; ++it)
+	{
+	    A_mat(basisSize + it.row(), it.col()) = it.value();
+	    A_mat(it.col(), basisSize + it.row()) = it.value();
+	}
+    }
+}
+
 
 template<class T>
 void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 {
-    const int dim = m_basis->dim();
-    const int stride = dim*(dim+1)/2;
+    const short_t dim = m_basis->dim();
+    const short_t stride = dim*(dim+1)/2;
 
-    gsVector<int> numNodes(dim);
-    for ( int i = 0; i!= dim; ++i )
+    gsVector<index_t> numNodes(dim);
+    for ( short_t i = 0; i!= dim; ++i )
         numNodes[i] = this->m_basis->degree(i);//+1;
     gsGaussRule<T> QuRule( numNodes ); // Reference Quadrature rule
     gsMatrix<T> quNodes, der2, localA;
     gsVector<T> quWeights;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     typename gsBasis<T>::domainIter domIt = m_basis->makeDomainIterator();
 
@@ -170,7 +201,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
                 {
                     T localAij = 0; // temporary variable
 
-                    for (int s = 0; s < stride; s++)
+                    for (short_t s = 0; s < stride; s++)
                     {
                         // The pure second derivatives
                         // d^2u N_i * d^2u N_j + ...
@@ -312,5 +343,30 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
         }
     }
 }
+
+template<class T>
+void gsFitting<T>::setConstraints(const std::vector<index_t>& indices,
+				  const std::vector<gsMatrix<T> >& coefs)
+{
+    if(coefs.size() == 0)
+	return;
+
+    GISMO_ASSERT(indices.size() == coefs.size(),
+		 "Prescribed indices and coefs must have the same length.");
+
+    gsSparseMatrix<T> lhs(indices.size(), m_basis->size());
+    gsMatrix<T> rhs(indices.size(), coefs[0].cols());
+
+    index_t duplicates = 0;
+    for(size_t r=0; r<indices.size(); r++)
+    {
+        index_t fix = indices[r];
+        lhs(r-duplicates, fix) = 1;
+        rhs.row(r-duplicates) = coefs[r];
+    }
+
+    setConstraints(lhs, rhs);
+}
+
 
 } // namespace gismo

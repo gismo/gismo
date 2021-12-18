@@ -173,7 +173,7 @@ int main(int argc, char**argv)
     r.setRandom(2,2); // SLE_11_SP4
     gsInfo <<"Set matrix to random entires setRandom():\n"<< r <<"\n";
 
-#ifndef GISMO_WITH_MPQ // eigenvalues will not work for rational arithmetic types
+#ifndef GISMO_WITH_GMP // eigenvalues will not work for rational arithmetic types
 
     gsInfo << " Eigenvalues of non-symmetric matrix: "<< A.eigenvalues().transpose() << "\n";
     gsInfo << " Eigenvectors of non-symmetric matrix: \n"

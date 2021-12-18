@@ -46,13 +46,13 @@ gsAffineFunction<T>::gsAffineFunction(const gsMatrix<T> mat, const gsVector<T> t
 }
 
 template <typename T>
-int gsAffineFunction<T>::domainDim() const
+short_t gsAffineFunction<T>::domainDim() const
 {
     return m_mat.cols();
 }
 
 template <typename T>
-int gsAffineFunction<T>::targetDim() const
+short_t gsAffineFunction<T>::targetDim() const
 {
     return m_mat.rows();
 }

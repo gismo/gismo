@@ -86,6 +86,12 @@ using codi::sinh;
 using codi::sqrt;
 using codi::tan;
 using codi::tanh;
+using codi::isnan;
+using codi::isfinite;
+using codi::isinf;
+//using codi::real;
+//using codi::imag;
+//using codi::conj;
 #endif
 
 #ifdef GISMO_WITH_UNUM
@@ -159,7 +165,7 @@ inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 }
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 template<>
 inline mpq_class nextafter(mpq_class x, mpq_class y)
 {
@@ -178,7 +184,7 @@ inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits,es> x,
 
 // inline real_t nextafter(real_t x, real_t y)
 // {
-// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
+// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_GMP)
 //     return x + ( y < x ? -1e-16 : 1e-16 );
 // #   elif defined(GISMO_WITH_UNUM)
 //     return sw::unum::nextafter(x,y);
@@ -265,6 +271,7 @@ using mpfr::cos;
 using mpfr::cosh;
 using mpfr::floor;
 using mpfr::log;
+using mpfr::log10;
 using mpfr::pow;
 using mpfr::sin;
 using mpfr::sinh;
@@ -282,7 +289,7 @@ using mpfr::isnan;
 
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 // Math functions for GMP/mpq_class
 using ::abs;
 using ::acos;
@@ -294,7 +301,7 @@ using ::cos;
 using ::cosh;
 using ::exp;
 using ::floor;
-using ::log10;
+inline mpq_class log10(const mpq_class & a) { return log(a)/log(10); }
 using ::log;
 using ::pow;
 using ::sin;
@@ -319,6 +326,15 @@ inline mpq_class ldexp(const mpq_class & a, int b ) {return  a;}
 template <typename T> int getSign(T val)
 {
     return (T(0) < val) - (val < T(0));
+}
+
+/// Return smallest difference between two (integer)T numbers as unsigned T
+/// especially the case abs_diff(INT32_MAX, INT32_MIN) := UINT32_MAX is correct
+template <typename T>
+inline typename util::make_unsigned<T>::type abs_diff(T a, T b)
+{
+    typedef typename util::make_unsigned<T>::type unsignedT;
+    return a > b ? unsignedT(a) - unsignedT(b) : unsignedT(b) - unsignedT(a);
 }
 
 /// integer power

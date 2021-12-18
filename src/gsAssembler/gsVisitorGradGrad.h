@@ -19,12 +19,16 @@
 namespace gismo
 {
 
+   /**
+     *  @brief The visitor computes element grad-grad integrals
+     *
+     *  This visitor assemble the element-wise bilinear form:
+     *  \f[ ( \nabla u, \nabla v )_\Omega, \f]
+     *  where \f$u\f$  is the trial function and \f$v\f$ is the test function.
+     *
+     *  @ingroup Assembler
+     */
 
-/** 
-    @brief The visitor computes element grad-grad integrals
-    
-    \ingroup Assembler
-*/
 template <class T>
 class gsVisitorGradGrad : public gsVisitorMass<T> // inherit to reuse functionality
 {
@@ -32,35 +36,17 @@ public:
     typedef gsVisitorMass<T> Base;
 
 public:
-/** @brief Visitor for stiffness (grad-grad) integrals
- * 
- * This visitor assemble the element-wise bilinear form:
- * \f[ ( \nabla u , \nabla v )_{K} \f].
- * Where \f[ v$ \f]  is the test function and \f[u \f] is trial function.
- */
+
+    /// Constructor
+    ///
+    /// @param pde     Reference to \a gsPde object (is ignored)
     gsVisitorGradGrad(const gsPde<T> & pde)
-    { }
+    { GISMO_UNUSED(pde); }
 
-    /*
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
-                           gsQuadRule<T> & rule)
-    {
-        gsVector<index_t> numQuadNodes( basis.dim() );
-        for (int i = 0; i < basis.dim(); ++i)
-            numQuadNodes[i] = basis.degree(i) + 1;
-        
-        // Setup Quadrature
-        rule = gsGaussRule<T>(numQuadNodes);// harmless slicing occurs here
-
-        // Set Geometry evaluation flags
-        md.flags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
-        // const gsGeometry<T> & patch = this->m_patches.patch(patchIndes); // -- TODO: Initialize inside visitor
-    }
-    */
-
-    void initialize(const gsBasis<T> & basis,
-                    const index_t patchIndex,
-                    const gsOptionList & options, 
+                    const index_t /*patchIndex*/,
+                    const gsOptionList & options,
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
@@ -70,8 +56,7 @@ public:
         md.flags = NEED_MEASURE|NEED_GRAD_TRANSFORM;
     }
 
-
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & basis,
                          const gsGeometry<T>    & geo,
                          // todo: add element here for efficiency
@@ -93,14 +78,15 @@ public:
         localMat.setZero(numActive, numActive);
     }
 
-    inline void assemble(gsDomainIterator<T>    & element,
+    /// Assemble on element
+    inline void assemble(gsDomainIterator<T>    & /*element*/,
                          gsVector<T> const      & quWeights)
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply quadrature weight by the geometry measure
             const T weight = quWeights[k] * md.measure(k);
-        
+
             // Compute physical gradients at k as a Dim x NumActive matrix
             transformGradients(md, k, basisData, basisPhGrads);
 
@@ -117,7 +103,7 @@ private:
     gsMatrix<T>  basisPhGrads;
     using Base:: basisData;
     using Base::actives;
-    
+
     // Local matrix
     using Base::localMat;
 
@@ -126,4 +112,3 @@ private:
 
 
 } // namespace gismo
-

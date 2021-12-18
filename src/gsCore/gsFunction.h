@@ -66,8 +66,6 @@ public:
 
     /// Unique pointer for gsFunction
     typedef memory::unique_ptr< gsFunction > uPtr;
-
-    typedef typename Base::dim_t dim_t;
     
     using Base::support;
     using Base::domainDim;
@@ -81,7 +79,10 @@ public:
         return *this; 
     }
 
-    void active_into (const gsMatrix<T>  & u, gsMatrix<unsigned> &result) const
+    /// Returns the scalar function giving the i-th coordinate of this function
+    gsFuncCoordinate<T> coord(const index_t c) const;
+
+    void active_into (const gsMatrix<T>  & u, gsMatrix<index_t> &result) const
     { result.setConstant(1,u.cols(),0); }
     
     /**
@@ -166,7 +167,7 @@ public:
     /** @brief Computes for each point \a u a block of \a result
      * containing the Jacobian matrix
      */
-    void jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    virtual void jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     /** @brief Computes for each point \a u a block of \a result
      * containing the divergence matrix
@@ -194,10 +195,18 @@ public:
      * classes to get proper results.
      */
     virtual void deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) const;
-  
+
+    virtual void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
+                              index_t coord = 0) const;
+
     /// Evaluates the Hessian (matrix of second partial derivatives) of
     /// coordinate \a coord at points \a u.
-    virtual gsMatrix<T> hess(const gsMatrix<T>& u, unsigned coord = 0) const;
+    virtual gsMatrix<T> hessian(const gsMatrix<T>& u, index_t coord = 0) const
+    {
+        gsMatrix<T> res;
+        hessian_into(u,res,coord);
+        return res;
+    }
 
     /// @brief Evaluate the Laplacian at points \a u.
     ///
@@ -221,6 +230,10 @@ public:
                       const T accuracy = 1e-6,
                       int max_loop = 100,
                       double damping_factor = 1) const;
+
+    gsMatrix<T> argMin(const T accuracy = 1e-6,//index_t coord = 0
+                       int max_loop = 100,
+                       double damping_factor = 1) const;
     
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
@@ -244,6 +257,15 @@ public:
 
     index_t size() const { return 1;}
 
+private:
+
+    template<int mode>
+    int newtonRaphson_impl(
+        const gsVector<T> & value,
+        gsVector<T> & arg, bool withSupport = true,
+        const T accuracy = 1e-6, int max_loop = 100,
+        double damping_factor = 1, T scale = 1.0) const;
+
 }; // class gsFunction
 
 
@@ -251,6 +273,15 @@ public:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunction<T>& b)
 {return b.print(os); }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsFunction
+   */
+  void pybind11_init_gsFunction(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 } // namespace gismo

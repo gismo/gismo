@@ -30,7 +30,7 @@ enum gsGridIteratorMode
 };
     
 // note: default arguments are found in gsForwardDeclarations.h
-template<typename Z, int mode, int d, bool> class gsGridIterator
+template<typename Z, int mode, short_t d, bool> class gsGridIterator
 {using Z::GISMO_ERROR_gsGridIterator_has_invalid_template_arguments;};
 
 /** 
@@ -66,7 +66,7 @@ template<typename Z, int mode, int d, bool> class gsGridIterator
 
     \ingroup Tensor
 */
-template<class Z, int mode, int d>
+template<class Z, int mode, short_t d>
 class gsGridIterator<Z,mode,d,true>
 {
 public:
@@ -304,7 +304,7 @@ private:
 
     \ingroup Tensor
 */
-template<class T, int mode, int d>
+template<class T, int mode, short_t d>
 class gsGridIterator<T,mode,d,false>
 {
 public:
@@ -535,7 +535,7 @@ private:
 
     \ingroup Tensor
 */
-template<class T, int d> // mode == 3 == CWISE
+template<class T, short_t d> // mode == 3 == CWISE
 class gsGridIterator<T,CWISE,d,false> 
 {
 public:

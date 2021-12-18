@@ -303,7 +303,7 @@ private:
          * ...........................................................................................................
          * @return vector of boundary corners
          */
-        const std::vector<int>
+        const std::vector<index_t>
         getBoundaryCorners(const size_t method, const T range = 0.1, const size_t number = 4) const;
 
         /**
@@ -315,10 +315,10 @@ private:
         std::vector<T> midpoints(const size_t numberOfCorners, const T length) const;
         void searchAreas(const T range,
                          std::vector<std::pair<T, size_t> > &sortedAngles,
-                         std::vector<int> &corners) const;
+                         std::vector<index_t> &corners) const;
         void takeCornersWithSmallestAngles(size_t number,
                                            std::vector<std::pair<T, size_t> > &sortedAngles,
-                                           std::vector<int> &corners) const;
+                                           std::vector<index_t> &corners) const;
 
         const gsHalfEdgeMesh<T> & m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
@@ -354,16 +354,16 @@ private:
 
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
-                   const std::vector<int> &cornersInput,
+                   const std::vector<index_t> &cornersInput,
                    const T rangeInput,
                    const size_t numberInput);
 
     T findLengthOfPositionPart(const size_t position,
                                     const size_t numberOfPositions,
-                                    const std::vector<int> &bounds,
+                                    const std::vector<index_t> &bounds,
                                     const std::vector<T> &lengths);
 
-    bool rangeCheck(const std::vector<int> &corners, const size_t minimum, const size_t maximum);
+    bool rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum);
 
 }; // class gsParametrization
 

@@ -104,7 +104,7 @@ public:
 
     inline int nVertices()	const { return vertex.size();}
 
-    inline std::size_t nHalfEdges()    const { return edge.size();}
+    inline size_t nHalfEdges()    const { return edge.size();}
 
     inline bool isFaceCCW()    const { return FaceCCW;}
 

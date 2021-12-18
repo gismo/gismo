@@ -32,15 +32,16 @@ namespace gismo
 class GISMO_EXPORT gsOptionList
 {
 public:
+    typedef GISMO_COEFF_TYPE Real;
 
     /// \brief Reads value for option \a label from options.
     ///
     /// If \a label is not found, the function throws.
     std::string getString(const std::string & label) const;
     /// @copydoc gsOptionList::getString()
-    int         getInt   (const std::string & label) const;
+    const index_t & getInt   (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
-    real_t      getReal  (const std::string & label) const;
+    Real      getReal  (const std::string & label) const;
     /// @copydoc gsOptionList::getString()
     bool        getSwitch(const std::string & label) const;
 
@@ -49,18 +50,18 @@ public:
     /// If \a gn is not found, the function throws.
     std::vector<std::string> getMultiString(const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
-    std::vector<int>         getMultiInt   (const std::string & gn) const;
+    std::vector<index_t>     getMultiInt   (const std::string & gn) const;
     /// @copydoc gsOptionList::getMultiString()
-    std::vector<real_t>      getMultiReal  (const std::string & gn) const;
+    std::vector<Real>      getMultiReal  (const std::string & gn) const;
 
     /// \brief Reads value for option \a label from options.
     ///
     /// If \a label is not found, it defaults to \a value (otherwise \a value is not used).
     std::string askString(const std::string & label, const std::string & value = ""    ) const;
     /// @copydoc gsOptionList::askString()
-    int         askInt   (const std::string & label, const int &         value = 0     ) const;
+    index_t     askInt   (const std::string & label, const index_t &     value = 0     ) const;
     /// @copydoc gsOptionList::askString()
-    real_t      askReal  (const std::string & label, const real_t &      value = 0     ) const;
+    Real      askReal  (const std::string & label, const Real &      value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     bool        askSwitch(const std::string & label, const bool &        value = false ) const;
 
@@ -69,18 +70,18 @@ public:
     /// If \a label is not found, it defaults to \a value (otherwise \a value is not used).
     //std::vector<std::string> askMultiString(const std::string & gn, const std::vector<std::string> & values = std::vector<std::string>()) const;
     /// @copydoc gsOptionList::askMultiString
-    //std::vector<int>         askMultiInt   (const std::string & gn, const std::vector<int> &         values = std::vector<int>()        ) const;
+    //std::vector<index_t>     askMultiInt   (const std::string & gn, const std::vector<index_t> &     values = std::vector<index_t>()    ) const;
     /// @copydoc gsOptionList::askMultiString
-    //std::vector<real_t>      askMultiReal  (const std::string & gn, const std::vector<real_t> &      values = std::vector<real_t>()     ) const;*/
+    //std::vector<Real>      askMultiReal  (const std::string & gn, const std::vector<Real> &      values = std::vector<Real>()     ) const;*/
 
     /// \brief Sets an existing option \a label to be equal to \a value.
     ///
     /// If \a label is not found, the function throws.
     void setString(const std::string & label, const std::string & value);
     /// @copydoc gsOptionList::setString()
-    void setInt   (const std::string & label, const int &         value);
+    void setInt   (const std::string & label, const index_t &     value);
     /// @copydoc gsOptionList::setString()
-    void setReal  (const std::string & label, const real_t &      value);
+    void setReal  (const std::string & label, const Real &      value);
     /// @copydoc gsOptionList::setString()
     void setSwitch(const std::string & label, const bool &        value);
 
@@ -89,9 +90,9 @@ public:
     /// If \a gn is not found, the function throws.
     //void setMultiString(const std::string & gn, const std::vector<std::string> & values );
     /// @copydoc gsOptionList::setMultiString
-    //void setMultiInt   (const std::string & gn, const std::vector<int> &         values );
+    //void setMultiInt   (const std::string & gn, const std::vector<index_t> &     values );
     /// @copydoc gsOptionList::setMultiString
-    //void setMultiReal  (const std::string & gn, const std::vector<real_t> &      values );*/
+    //void setMultiReal  (const std::string & gn, const std::vector<Real> &      values );*/
 
     /// \brief Adds a option named \a label, with description \a desc
     /// and value \a value.
@@ -101,9 +102,9 @@ public:
     /// throws.
     void addString(const std::string & label, const std::string & desc, const std::string & value );
     /// @copydoc gsOptionList::addString()
-    void addInt   (const std::string & label, const std::string & desc, const int &         value );
+    void addInt   (const std::string & label, const std::string & desc, const index_t &     value );
     /// @copydoc gsOptionList::addString()
-    void addReal  (const std::string & label, const std::string & desc, const real_t &      value );
+    void addReal  (const std::string & label, const std::string & desc, const Real &      value );
     /// @copydoc gsOptionList::addString()
     void addSwitch(const std::string & label, const std::string & desc, const bool &        value );
 
@@ -115,16 +116,16 @@ public:
     /// \brief Adds an option-group \a gn containing values of a std::vector.
     ///
     /// If \a gn is not found, the function throws.
-    void addMultiInt   (const std::string & label, const std::string & desc, const std::vector<int> &         values);
+    void addMultiInt(const std::string & label, const std::string & desc, const std::vector<index_t> &  values);
     /*/// @copydoc gsOptionList::addMultiString()
-    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<real_t> &      values);*/
+    //void addMultiReal  (const std::string & label, const std::string & desc, const std::vector<Real> & values);*/
 
     /// \brief Removes the option named \a label (if it exists).
     void remove(const std::string& label);
 
     /// \brief Options for gsOptionList::update
     enum updateType {
-        ignoreIfUnknwon = 0,
+        ignoreIfUnknown = 0,
         addIfUnknown = 1
     };
 
@@ -132,9 +133,9 @@ public:
     ///
     /// Options which do not exist in \a other, are kept unchanged.
     /// Options in \a other which do not exist in this, are kept unchanged if
-    /// \a type is set to gsOptionList::ignoreIfUnknwon (default) or are added
+    /// \a type is set to gsOptionList::ignoreIfUnknown (default) or are added
     /// if \a type is set to gsOptionList::addIfUnknown.
-    void update(const gsOptionList& other, updateType type = ignoreIfUnknwon);
+    void update(const gsOptionList& other, updateType type = ignoreIfUnknown);
 
     /// \brief Creates a new gsOptionList where all labels are wrapped into a groupname \a gn.
     ///
@@ -163,7 +164,7 @@ public:
     std::ostream & print(std::ostream & os) const;
 
     /// \brief Returns the length of this list of options
-    int size() const
+    size_t size() const
     {return m_strings.size()+m_ints.size()+m_reals.size()+m_switches.size();}
 
     /// getAllEntries() returns a vector of those. Contains the name of its type
@@ -174,7 +175,7 @@ public:
         std::string label;                              ///< Label
         std::string desc;                               ///< Description
         std::string val;                                ///< Value (as string)
-        std::ostream & print(std::ostream & os) const;
+        std::ostream & print(std::ostream & os, index_t label_slot = 19) const;
     };
 
     /// Provides a list of all entries as vector of gsOptionList::OptionListEntry structs
@@ -228,6 +229,9 @@ public:
         m_switches.swap(other.m_switches);
     }
 
+protected:
+    index_t & getIntRef(const std::string & label);
+    
 private:
 
     /// \brief Gives information regarding the option named \a label
@@ -250,8 +254,8 @@ private:
 
     // Format: std::pair<Value,Description>
     typedef std::pair<std::string,std::string> StringOpt;
-    typedef std::pair<int        ,std::string> IntOpt;
-    typedef std::pair<real_t     ,std::string> RealOpt;
+    typedef std::pair<index_t    ,std::string> IntOpt;
+    typedef std::pair<Real     ,std::string> RealOpt;
     typedef std::pair<bool       ,std::string> SwitchOpt;
 
     // Format: std::map<Label, std::pair<Value,Description> >
@@ -303,5 +307,13 @@ public:
 
 }
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsOptionList
+   */
+  void pybind11_init_gsOptionList(pybind11::module &m);
+  
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo

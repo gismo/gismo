@@ -256,7 +256,7 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
     {
         gsMatrix<T> anch = Geo.basis().anchors();
         // Lift vertices at anchor positions
-        for (std::size_t i = 0; i!= msh.numVertices(); ++i)
+        for (size_t i = 0; i!= msh.numVertices(); ++i)
         {
             msh.vertex(i)[d] = msh.vertex(i)[0];
             msh.vertex(i).topRows(d) = anch.col(i);
@@ -467,7 +467,7 @@ void writeSingleGeometry(gsFunction<T> const& func,
                          gsMatrix<T> const& supp,
                          std::string const & fn, unsigned npts)
 {
-    const int n = func.targetDim();
+    int n = func.targetDim();
     const int d = func.domainDim();
 
     gsVector<T> a = supp.col(0);
@@ -490,6 +490,12 @@ void writeSingleGeometry(gsFunction<T> const& func,
 
         if ( n == 1 )
         {
+            if (d==3)
+            {
+                n = 4;
+                eval_func.conservativeResize(4,eval_func.cols() );
+            }
+
             //std::swap( eval_geo.row(d),  eval_geo.row(0) );
             eval_func.row(d) = eval_func.row(0);
             eval_func.topRows(d) = pts;
@@ -636,7 +642,7 @@ void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsi
       Geo.toMesh(msh, npts);
       gsWriteParaview(msh, fn, false);
       return;
-    //*/
+    */
     gsMatrix<T> ab = Geo.parameterRange();
     writeSingleGeometry( Geo, ab, fn, npts);
 }
@@ -712,7 +718,27 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     if ( mesh ) // Output the underlying mesh
     {
         const std::string fileName = fn + "_mesh";
-        writeSingleCompMesh(Geo.basis(), Geo, fileName, npts);
+
+	int ptsPerEdge;
+
+	// If not using default, compute the resolution from npts.
+	if(npts!=8)
+	{
+	    const T evalPtsPerElem = npts * (1.0 / Geo.basis().numElements());
+
+	    // The following complicated formula should ensure similar
+	    // resolution of the mesh edges and the surface. The
+	    // additional multiplication by deg - 1 ensures quadratic
+	    // elements to be approximated by at least two lines etc.
+	    ptsPerEdge = cast<T,int>(
+            math::max(Geo.basis().maxDegree()-1, (index_t)1) * math::pow(evalPtsPerElem, T(1.0)/Geo.domainDim()) );
+	}
+	else
+	{
+	    ptsPerEdge = npts;
+	}
+
+        writeSingleCompMesh(Geo.basis(), Geo, fileName, ptsPerEdge);
         collection.addPart(fileName, ".vtp");
     }
 
@@ -736,7 +762,7 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
 
     gsParaviewCollection collection(fn);
 
-    for (index_t i = 0; i != domain.nPatches(); ++i)
+    for (size_t i = 0; i != domain.nPatches(); ++i)
     {
         const std::string fileName = fn + util::to_string(i) + "_mesh";
         writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts);
@@ -762,16 +788,18 @@ void gsWriteParaview(const gsGeometrySlice<T> & Geo,
 
 /// Export a multipatch Geometry without scalar information
 template<class T>
-void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string const & fn,
+void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
+                      std::string const & fn,
                       unsigned npts, bool mesh, bool ctrlNet)
 {
     const size_t n = Geo.size();
 
     gsParaviewCollection collection(fn);
+    std::string fnBase;
 
     for ( size_t i=0; i<n ; i++)
     {
-        std::string fnBase = fn + util::to_string(i);
+        fnBase = fn + "_" + util::to_string(i);
 
         if ( Geo.at(i)->domainDim() == 1 )
         {
@@ -1286,7 +1314,7 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
                 he = face->getHalfEdgeFromBoundaryOrder(iedge);
                 // search if he is in heSet
                 bool isMember(false);
-                for (std::size_t iheSet=0;iheSet<heSet.size();iheSet++)
+                for (size_t iheSet=0;iheSet<heSet.size();iheSet++)
                 {
                     if ( he->isEquiv(heSet.at(iheSet))==true || he->mate->isEquiv(heSet.at(iheSet))==true)
                     {isMember=true;

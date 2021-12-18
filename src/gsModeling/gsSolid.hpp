@@ -145,7 +145,6 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace(std::vector<gsSol
 template<class T>
 typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace(std::vector< std::vector<gsSolidHeVertexHandle> > loopV, gsTrimSurface<T> * tsurf)
 {
-    using std::size_t;
     gsSolidHalfFaceHandle f = new gsSolidHalfFace<T>();
     f->surf = tsurf;
     std::vector<gsSolidHalfEdgeHandle> H;
@@ -354,11 +353,11 @@ template<class T>
 std::vector< typename gsSolid<T>::gsSolidHalfEdgeHandle > gsSolid<T>::detectNonConvexEdges(std::vector<int> const & ncEdgeV1, std::vector<int> const & ncEdgeV2)
 {
   // Todo: detect nonconvex edges automatically
-  std::size_t nEdge = ncEdgeV1.size();
+  size_t nEdge = ncEdgeV1.size();
   gsSolidHalfEdgeHandle he;
   assert(nEdge==ncEdgeV2.size());
   std::vector<gsSolidHalfEdgeHandle> nce;
-  for (std::size_t i=0;i<nEdge;i++)
+  for (size_t i=0;i<nEdge;i++)
   {
       he = this->getVertexFromID(ncEdgeV1[i])->getHalfEdge( this->getVertexFromID(ncEdgeV2[i]) );
       he->is_convex = false;
@@ -800,7 +799,7 @@ gsSolidHalfFace<T> *gsSolid<T>::addFaceWithMate(const std::vector<gsSolidHeVerte
   gsSolidHalfEdge<T>* he0;
   he0 = frontFace->loop[0];
   he = he0;
-  for (std::size_t i=0;i<this->nHalfEdges();i++)
+  for (size_t i=0;i<this->nHalfEdges();i++)
   {
       he->is_convex = true;
       he->mate->is_convex = true;
@@ -810,7 +809,7 @@ gsSolidHalfFace<T> *gsSolid<T>::addFaceWithMate(const std::vector<gsSolidHeVerte
 
   he0 = frontFace->mate->loop[0];
   he = he0;
-  for (std::size_t i=0;i<this->nHalfEdges();i++)
+  for (size_t i=0;i<this->nHalfEdges();i++)
   {
       he->is_convex = true;
       he->mate->is_convex = true;
@@ -866,13 +865,12 @@ std::vector<typename gsSolid<T>::gsSolidHalfEdgeHandle > gsSolid<T>::impedingEdg
 template <class T>
 void gsSolid<T>::insertNewVertex(gsSolidHalfEdgeHandle he)
 {
-    using std::size_t;
     checkStructure();
     gsSolidHalfEdgeHandle hem = he->mate;
     gsSolidHalfFaceHandle face0,face1;
     face0 = he->face;
     face1 = he->mate->face;
-    std::size_t nFace = this->nHalfFaces();
+    size_t nFace = this->nHalfFaces();
     bool convex = he->is_convex;
     int heLoopN = he->loopN();
     int hemLoopN = hem->loopN();
@@ -948,13 +946,13 @@ void gsSolid<T>::insertNewVertex(gsSolidHalfEdgeHandle he)
     int idmin = he->getId();
     if (he->mate->getId()<idmin) idmin=he->mate->getId();
     // recalculate ID for HEs
-    for (std::size_t i = idmax+1; i < this->nHalfEdges(); i++)
+    for (size_t i = idmax+1; i < this->nHalfEdges(); i++)
     {
         this->edge[i]->setId(i-1);
     }
     this->edge.erase(this->edge.begin() + idmax);
     // remove the HE with smaller ID
-    for (std::size_t i = idmin+1; i < this->nHalfEdges(); i++)
+    for (size_t i = idmin+1; i < this->nHalfEdges(); i++)
     {
         this->edge[i]->setId(i-1);
     }

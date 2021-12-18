@@ -1,9 +1,8 @@
 ######################################################################
 ## FindMKL.cmake
-## This file is part of the G+Smo library. 
+## This file is part of the G+Smo library.
 ##
-## Author: Angelos Mantzaflaris 
-## Copyright (C) 2018 RICAM-Linz.
+## Author: Angelos Mantzaflaris
 ##
 ##
 ## Set INTEL_ROOT to the intel folder in your system
@@ -78,16 +77,16 @@ else()
     set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
 
-# intel64, ia32 # bad for MacOS
-if(CMAKE_SIZEOF_VOID_P EQUAL 8) 
+# intel64, ia32 # bad for macOS
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(MPL_ARCH intel64)
-else() 
-    set(MPL_ARCH ia32) 
+else()
+    set(MPL_ARCH ia32)
     # else: Intel MIC
-    # set(MPL_ARCH mic) 
-endif() 
+    # set(MPL_ARCH mic)
+endif()
 
-if(MKL_SDL) # Using The Single Dynamic Library (SDL) 
+if(MKL_SDL) # Using The Single Dynamic Library (SDL)
     find_library(MKL_LIBRARY mkl_rt PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
 
 else() # MKL is composed by four layers: Interface, Threading, Computational and RTL
@@ -124,7 +123,7 @@ else() # MKL is composed by four layers: Interface, Threading, Computational and
       message(STATUS "MKL multi-threading is DISABLED (use GISMO_WITH_OPENMP=ON to enable it)")
       find_library(MKL_THREADING_LIBRARY mkl_sequential PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
     endif(GISMO_WITH_OPENMP)
-      
+
     ####################### Cluster libraries #####################
     if(GISMO_WITH_MPI)
     find_library(MKL_FFT_LIBRARY mkl_cdft_core PATHS ${MKL_ROOT}/lib/${MPL_ARCH})
@@ -170,5 +169,5 @@ if(MKL_FOUND)
     else()
       set(MKL_LIBRARIES ${MKL_LIBRARY})
     endif()
-    mark_as_advanced (MKL_LIBRARY) 
+    mark_as_advanced (MKL_LIBRARY)
 endif()

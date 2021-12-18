@@ -59,11 +59,16 @@ int main(int argc, char* argv[])
                   string);
 
     // -----------------------------------------------------------------
-    // Adding a string argument, given by the "-i" (or "--num") flag
+    // Adding an integer argument, given by the "-i" (or "--num") flag
     // If set, number is updated to the input value, otherwise number remains untouched
     cmd.addInt   ("i", "num",
                   "Description of int command line argument",
                   number);
+
+    /// Add another integer, this time without a reference to a local variable
+    cmd.addNewInt ("j", "numj",
+                   "Description of another int command line argument",
+                   2);
 
     // -----------------------------------------------------------------
     // Adding a float argument, given by the "-r" (or "--real") flag
@@ -95,17 +100,30 @@ int main(int argc, char* argv[])
     // or the user invoked "--help" or "--version"
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsInfo << "Printing command line arguments:\n\n\n"
-           << "Plain string: " << plainString << "\n\n"
-           << "String:       " << string << "\n\n"
-           << "Float:        " << flNumber << "\n\n"
-           << "Integer:      " << number << "\n\n"
-           << "Switch:       " << boolean << "\n\n"
+    // Print out the version information
+    cmd.printVersion();
+            
+    gsInfo << "\nPrinting command line arguments:\n\n"
+           << "Plain string: " << plainString << "\n"
+           << "String:       " << string << "\n"
+           << "Float:        " << flNumber << "\n"
+           << "Integer:      " << number << "\n"
+           << "Switch:       " << boolean << "\n"
            << "MultiInt      {";
-
     std::copy(intvec.begin(), intvec.end(),
               std::ostream_iterator<int>(gsInfo,", "));
     gsInfo << "}\n\n";
+
+    gsInfo << "\nPrinting command line arguments again (using names):\n\n"
+    << "Plain string: " << cmd.getString("plain") << "\n"
+    << "String:       " << cmd.getString("stringArg") << "\n"
+    << "Float:        " << cmd.getReal("real") << "\n"
+    << "Integer:      " << cmd.getInt("num") << "\n"
+    << "Another one:  " << cmd.getInt("numj") << "\n"
+    << "Switch:       " << cmd.getSwitch("bool") << "\n"
+    ;
+
+    gsInfo<<"\nPrint out as an Option list. "<< cmd <<"\n";
 
     return 0;
 }

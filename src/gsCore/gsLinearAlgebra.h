@@ -34,7 +34,7 @@
 #include <unsupported/Eigen/MPRealSupport>
 #endif
 
-#if defined(GISMO_WITH_MPQ)
+#if defined(GISMO_WITH_GMP)
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 
@@ -71,6 +71,10 @@
 // PaStiX
 //#include <Eigen/PaStiXSupport>
 
+#ifdef GISMO_BUILD_PYBIND11
+#include <pybind11/eigen.h>
+#endif
+
 namespace gismo
 {
 
@@ -84,7 +88,7 @@ using Eigen::internal::cast; // from Core/MathFunctions.h
    and https://en.wikipedia.org/wiki/NaN
  */
 template<typename Derived>
-inline bool isnumber(const Eigen::MatrixBase<Derived>& x)
+inline bool (isnumber)(const Eigen::MatrixBase<Derived>& x)
 { return ((x.array() == x.array())).all(); }
 
 /**
@@ -150,7 +154,7 @@ public:
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
-                            Eigen::IncompleteLUT<T> > BiCGSTABILUT;
+                            Eigen::IncompleteLUT<T, index_t> > BiCGSTABILUT;
 
     /// BiCGSTAB with Diagonal (Jacobi) preconditioner
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,

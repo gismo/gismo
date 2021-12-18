@@ -54,12 +54,10 @@ int main(int argc, char *argv[])
     cmd.addReal("r", "range", "in case of restrict or opposite", range);
     cmd.addInt("n", "number", "number of corners, in case of corners", number);
     cmd.addMultiInt("c", "corners", "vector for corners, call it every time for an entry (-c 3 -c 1 -c 2 => {3,1,2})", corners);
-    cmd.addSwitch("","plot","Plot with paraview",paraview);
+    cmd.addSwitch("plot","Plot with Paraview",paraview);
     cmd.getValues(argc, argv);
 
-    gsOptionList ol = cmd.getOptionList();
-
-    gsFileData<> fd(ol.getString("filenameIn"));
+    gsFileData<> fd(cmd.getString("filenameIn"));
 
     gsInfo << "Reading input into gsMesh<real_t>::uPtr: ";
     gsStopwatch stopwatch;
@@ -73,7 +71,7 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    pm.setOptions(ol);
+    pm.setOptions(cmd);
 
     gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
@@ -105,9 +103,12 @@ int main(int argc, char *argv[])
 
     if(paraview)
     {
-        gsWriteParaview(mesh, ol.getString("filenameOut"));
-        gsFileManager::open(ol.getString("filenameOut") + ".pvd");
+        gsWriteParaview(mesh, cmd.getString("filenameOut"));
+        gsFileManager::open(cmd.getString("filenameOut") + ".pvd");
     }
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
 
     return 0;
 }

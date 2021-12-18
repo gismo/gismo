@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     gsWriteParaview(thb, "thb0_init" );
 
     //! [refViaStdVec]
-    std::vector<unsigned> box;
+    std::vector<index_t> box;
     box.push_back( 1 );
     box.push_back( 2 );
     box.push_back( 0 );
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     //! [refViaStdVec]
 
     // Export the refined basis to paraview files
-    gsWriteParaview(thb, "thb1_refined" );
+    gsWriteParaview(thb, "thb_refined_first" );
     gsInfo << "after refinement," << std::endl;
 
     //! [stdOpsCout]
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     u(0,2) = 0.6;
     u(1,2) = 0.9;
 
-    gsMatrix<unsigned> resActives;
+    gsMatrix<index_t> resActives;
     gsMatrix<real_t>   resEvals;
 
     thb.active_into( u, resActives);
@@ -137,8 +137,8 @@ int main(int argc, char *argv[])
 
     // --------------- some gsHTensorBasis-specific functions ---------------
     //! [stdOpsHTens]
-    gsVector<unsigned> resLevels;
-    gsMatrix<unsigned> resLowerCorner;
+    gsVector<index_t> resLevels;
+    gsMatrix<index_t> resLowerCorner;
 
     thb.getLevelUniqueSpanAtPoints(u, resLevels, resLowerCorner);
 
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 
     // print the underlying tree
     //! [stdOpsHTensTree]
-    gsMatrix<unsigned> resUpperCorner;
+    gsMatrix<index_t> resUpperCorner;
 
     thb.tree().getBoxes( resLowerCorner, resUpperCorner, resLevels);
 
@@ -178,7 +178,17 @@ int main(int argc, char *argv[])
     gsInfo << "after 2nd refinement, this basis is:\n" << thb << std::endl;
     //! [refViaStdVec2]
 
-    gsWriteParaview(thb, "thb2_refined" );
+    gsWriteParaview(thb, "thb_refined_second" );
+
+    boxSide side(1);
+    gsMatrix<index_t> result = thb.boundaryOffset(1,0);
+    gsInfo<<"Basis indices along side "<<side<<": "<<result.transpose()<<"\n";
+
+    for (index_t k=1; k<5; k++)
+    {
+        boxCorner corner(k);
+        gsInfo<<"Basis function index in corner "<<corner<<": "<<thb.functionAtCorner(corner)<<"\n";
+    }
 
     // --------------- plot basis after 1 refinement ---------------
     //! [Plot in Paraview]
@@ -190,8 +200,8 @@ int main(int argc, char *argv[])
     //! [Plot in Paraview]
     else
     {
-        gsInfo<<"Quitting.. No output created, re-run with --plot to get a ParaView "
-                "file containing Plotting image data.\n";
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
     }
     return EXIT_SUCCESS;
 }

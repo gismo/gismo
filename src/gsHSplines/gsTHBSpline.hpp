@@ -24,14 +24,14 @@ namespace gismo{
 // Public member functions
 // ************************************************
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
     GISMO_ASSERT(d==2,"Not implemented for d!=2");
 
     // Construct a box covering the whole parameter domain.
     const typename gsHDomain<d>::point & uCorner = this->basis().tree().upperCorner();
-    std::vector<unsigned> wholeDomainAsBox(2*d+1,0);
+    std::vector<index_t> wholeDomainAsBox(2*d+1,0);
 
     wholeDomainAsBox[0] = this->basis().tree().getMaxInsLevel();
 
@@ -53,13 +53,13 @@ void gsTHBSpline<d, T>::convertToBSpline( gsTensorBSpline<d,T>& result )
     delete newGeo;
 }
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTHBSpline<d, T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, int mult)
 {
     gsWarn<<"gsTHBSpline<d, T>::increaseMultiplicity: This code is not working properly!"<<std::endl;
     // Copy the current characteristic matrices
     gsDebug<<"in geo"<<std::endl;
-    std::vector<gsSortedVector<unsigned> > OX = this->basis().getXmatrix();
+    std::vector<gsSortedVector<index_t> > OX = this->basis().getXmatrix();
 
     // Insert the knot in the basis
     this->basis().increaseMultiplicity(lvl,dir,knotValue,mult);
@@ -77,10 +77,10 @@ void gsTHBSpline<d, T>::increaseMultiplicity(index_t lvl, int dir, T knotValue, 
 // \returns b2 top right corners of the box (vector of indices with respect to the gsCompactKnotVector of the highest possible level)
 // \returns level levels of the boxes (level[i]: level of the i-th box,)
 // \returns bpatches list of B-spline patches associated with the boxes
-template<unsigned d, class T>
-//void gsTHBSplineBasis<d,T>::getBsplinePatches(gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, gsMatrix<unsigned>& nvertices) const
-//void gsTHBSpline<d,T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level, std::vector< gsTensorBSpline<2> >& bpatches) const
-void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsigned>& b2, gsVector<unsigned>& level) const
+template<short_t d, class T>
+//void gsTHBSplineBasis<d,T>::getBsplinePatches(gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const
+//void gsTHBSpline<d,T>::getBsplinePatches(gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, std::vector< gsTensorBSpline<2> >& bpatches) const
+void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level) const
 {
     GISMO_UNUSED(b1);
     GISMO_UNUSED(b2);
@@ -140,7 +140,7 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
     //------------------------------------------------------------------------------------------------------------------------------
     // iteration on the boxes to call getBsplinePatchGlobal()
     //------------------------------------------------------------------------------------------------------------------------------
-    /*gsVector<unsigned> p1, p2;
+    /*gsVector<index_t> p1, p2;
     p1.resize(this->dim());
     p2.resize(this->dim());
     gsMatrix<T> temp1, temp2;
@@ -198,8 +198,8 @@ void gsTHBSpline<d, T>::getBsplinePatches(gsMatrix<unsigned>& b1, gsMatrix<unsig
 // \returns cp control control points of the B-spline patch
 // \returns k1 knot vector of the B-spline patch (first dimension)
 // \returns k2 knot vector of the B-spline patch (second dimension)
-/*template<unsigned d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVector<unsigned> b2, unsigned level, gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const
+/*template<short_t d, class T>
+void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned level, gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsCompactKnotVector<T>& k1, gsCompactKnotVector<T>& k2) const
 {
     // check if the indices in b1, and b2 are correct with respect to the given level
     if(b1[0]%Qlocal2global(1,0, level) != 0 ){
@@ -250,7 +250,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<unsigned> b1, gsVecto
 //
 // Function called by getBsplinePatchGlobal
 // \param level
-/*template<unsigned d, class T>
+/*template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs)const
 {
     //coeffs.resize(this->m_bases[0]->component(1).knots().size()-this->m_deg[1]-1,this->m_bases[0]->component(0).knots().size()-this->m_deg[0]-1);
@@ -304,11 +304,11 @@ void gsTHBSplineBasis<d,T>::globalRefinement(int level, gsMatrix<T>& coeffs)cons
 // Initializes the m_cmatrix up to given level with the coeffs of the geometry
 // \param col dimension (0, 1, 2 = x, y, z)
 // \param c_level level
-/*template<unsigned d, class T>
+/*template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::initialize_cmatrix(gsMatrix<T>&geom_coeff, int col, int c_level) const{
     int counter = 0;
     for(int i = 0; i <= c_level; i++){
-        this->m_cmatrix.push_back( std::map <unsigned, T>());
+        this->m_cmatrix.push_back( std::map <index_t, T>());
         for(typename CMatrix::const_iterator it =
                 this->m_xmatrix[i].begin(); it != this->m_xmatrix[i].end(); it++){
             this->m_cmatrix[i][ *it ] = geom_coeff(counter,col);
@@ -322,7 +322,7 @@ void gsTHBSplineBasis<d,T>::initialize_cmatrix(gsMatrix<T>&geom_coeff, int col, 
 // \param mat
 // \param direction dimension (0, 1, 2 = x, y, z)
 // \returns cp the column direction of cp is updated with the related coordinate of the control points
-/*template<unsigned d, class T>
+/*template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction, gsMatrix<T>& cp)const{
     GISMO_ASSERT((mat.cols()*mat.rows() == cp.rows()), "Wrong matrix dimension.");
     int counter = 0;
@@ -334,12 +334,12 @@ void gsTHBSplineBasis<d,T>::return_cp_1D(const gsMatrix<T> & mat, int direction,
     }
 }*/
 
-template<unsigned d, class T>
+template<short_t d, class T>
 void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,
                              typename gsTHBSpline<d,T>::BoundaryGeometryType & result) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
-    GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
+    GISMO_ASSERT(dir_fixed>=0 && static_cast<index_t>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
 
     typedef typename gsTHBSpline<d,T>::BoundaryBasisType    THBBoundaryBasis;
     typedef typename gsTHBSpline<d,T>::BoundaryGeometryType THBBoundary;
@@ -374,7 +374,7 @@ void gsTHBSpline<d,T>::slice(index_t dir_fixed,T par,
 namespace internal
 {
 /// Get a THBSpline from XML data
-template<unsigned d, class T>
+template<short_t d, class T>
 class gsXml< gsTHBSpline<d,T> >
 {
 private:

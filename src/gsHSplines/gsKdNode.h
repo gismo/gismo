@@ -25,7 +25,7 @@ namespace gismo {
     
     \ingroup HSplines
 */
-template<unsigned d, class Z = unsigned>
+template<short_t d, class Z = index_t>
 struct gsAabb
 {
 public:
@@ -34,6 +34,12 @@ public:
     gsAabb(const point & l, const point & u)
     {
         first  = l;
+        second = u;
+    }
+
+    gsAabb(const point & u)
+    {
+        first.setZero();
         second = u;
     }
 
@@ -64,7 +70,7 @@ public:
     
     \ingroup HSplines
 */
-template<unsigned d, class Z = unsigned>
+template<short_t d, class Z = index_t>
 struct kdnode
 {
     // Defines the type of the box
@@ -187,6 +193,9 @@ struct kdnode
 
     bool isRightChild() const { return parent!=NULL && this==parent->right; }
 
+    bool isDegenerate() const
+    { return (box->first.array() >= box->second.array()).any(); }
+
     kdnode * sibling() const 
     { 
         GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
@@ -305,11 +314,11 @@ struct kdnode
         const unsigned h = 1 << (index_level - level) ;
         //const unsigned mask = ~(h - 1);
         
-        for ( unsigned i = 0; i < d; ++i )
+        for ( short_t i = 0; i < d; ++i )
         {
-            const unsigned c1 = insBox. first[i] - insBox. first[i] % h;//floor
-            const unsigned cc = insBox.second[i] % h;
-            const unsigned c2 = insBox.second[i] + (cc ? h-cc : 0 ) ;// ceil
+            const index_t c1 = insBox. first[i] - insBox. first[i] % h;//floor
+            const index_t cc = insBox.second[i] % h;
+            const index_t c2 = insBox.second[i] + (cc ? h-cc : 0 ) ;// ceil
 
             //const unsigned c1 = (insBox. first[i] & mask)    ;
             //const unsigned c2 = (insBox.second[i] & mask) + ..;

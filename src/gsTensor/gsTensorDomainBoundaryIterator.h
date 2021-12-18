@@ -94,7 +94,7 @@ public:
         }
 
         // Set to one quadrature point by default
-        m_quadrature.setNodes( gsVector<int>::Ones(d) );
+        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
 
         if (m_isGood)
             update();
@@ -138,7 +138,7 @@ public:
             update();
     }
 
-    /// return the tensor index of the current element
+    /// Return the tensor index of the current element
     gsVector<unsigned, D> index() const
     {
         gsVector<unsigned, D> curr_index(d);  
@@ -162,12 +162,12 @@ public:
     }
 
     /// Returns the number of elements.
-    index_t numElements() const
+    size_t numElements() const
     {
-        index_t result = 1;
-        for (int i = 0; i < dir; ++i)
+        size_t result = 1;
+        for (short_t i = 0; i < dir; ++i)
             result *= breaks[i].size() - 1;
-        for (int i = dir+1; i < d; ++i)
+        for (short_t i = dir+1; i < d; ++i)
             result *= breaks[i].size() - 1;
         
         return result;
@@ -190,6 +190,14 @@ public:
         other_.update();
     }
 
+    /// Function to set the breakpoints in direction \a i manually
+    void setBreaks(std::vector<T> newBreaks, index_t i) // i: direction
+    {
+        breaks[i].swap(newBreaks);
+        meshEnd[i]   = breaks[i].end() - 1;
+        meshBegin[i] = curElement[i] = breaks[i].begin();
+        reset();
+    }
 
 private:
 
@@ -222,12 +230,15 @@ protected:
     using gsDomainIterator<T>::m_basis;
     using gsDomainIterator<T>::m_isGood;
     using gsDomainIterator<T>::center;
+    using gsDomainIterator<T>::m_side;
+
 private:
+
     // the dimension of the parameter space
-    int d;
+    short_t d;
 
     // Boundary parameters
-    int  dir;
+    short_t  dir;
     bool par;
     unsigned tindex;
 

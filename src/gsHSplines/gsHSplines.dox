@@ -1,7 +1,7 @@
 namespace gismo {
 
 /** \defgroup HSplines Hierarchical splines module
-
+\ingroup Modules
 
 This module implements hierarchical and truncated hierarchical tensor-product B-splines.
 

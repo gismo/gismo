@@ -1,9 +1,8 @@
 ######################################################################
-## CMakeLists.txt ---
+## gsLibrary.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 #include (GenerateExportHeader)
@@ -28,18 +27,36 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
+if (GISMO_EXTRA_DEBUG)
+  if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
+    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
+  endif()
+endif()
+
   add_library(${PROJECT_NAME} SHARED
     ${${PROJECT_NAME}_MODULES}
     ${${PROJECT_NAME}_SOURCES}
     ${${PROJECT_NAME}_EXTENSIONS}
     )
 
+  if (GISMO_BUILD_PYBIND11)
+    pybind11_add_module(py${PROJECT_NAME} MODULE
+      ${${PROJECT_NAME}_MODULES}
+      ${${PROJECT_NAME}_SOURCES}
+      ${${PROJECT_NAME}_EXTENSIONS}
+      "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
+      )
+    target_link_libraries(${PROJECT_NAME} ${Python_LIBRARIES})
+    #target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
+    target_link_libraries(py${PROJECT_NAME} PRIVATE "${${PROJECT_NAME}_LINKER}")
+  endif(GISMO_BUILD_PYBIND11)
+  
   #generate_export_header(${PROJECT_NAME})
 
   set_target_properties(${PROJECT_NAME} PROPERTIES
   #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
-  VERSION ${${PROJECT_NAME}_VERSION}
-  SOVERSION ${${PROJECT_NAME}_VERSION_MAJOR}
+  VERSION "${${PROJECT_NAME}_VERSION}"
+  SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}"
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
@@ -47,14 +64,14 @@ endif()
   FOLDER "G+Smo libraries"
   )
 
-if(GISMO_WITH_MPFR OR GISMO_WITH_MPQ)
-    find_package(GMP)
-    find_package(MPFR)
-
-    if (GMP_FOUND AND MPFR_FOUND)
-      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
-    endif()
-endif()
+#if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
+#    find_package(GMP)
+#    find_package(MPFR)
+#
+#    if (GMP_FOUND AND MPFR_FOUND)
+#      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
+#    endif()
+#endif()
 
 if (GISMO_WITH_SUPERLU)
   target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
@@ -129,8 +146,6 @@ endif(GISMO_BUILD_LIB)
   endif()
 
   if (EIGEN_USE_MKL_ALL)
-    # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
-    find_package(MKL REQUIRED)
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 

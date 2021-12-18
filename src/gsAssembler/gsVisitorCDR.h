@@ -16,41 +16,44 @@
 namespace gismo
 {
 
-/** \brief Visitor for the convection-diffusion-reaction equation.
- *
- * Visitor for PDEs of the form\n
- * Find \f$ u: \mathbb R^d \rightarrow \mathbb R^d\f$
- * \f[ -\mathrm{div}( A \nabla u ) + b\cdot \nabla u + c u = f \f]
- * (+ boundary conditions), where\n
- * \f$ A \f$ (diffusion coefficient) is a \f$d\times d\f$-matrix,\n
- * \f$ b \f$ (convection velocity) is a \f$d\times 1\f$-vector,\n
- * \f$ c \f$ (reaction coefficient) is a scalar
- *
- * The coefficients are given as gsFunction with vector-valued return.\n
- * See the constructor gsVisitorCDR() for details on their format!
- *
- * Obviously, setting \f$ A= I\f$, \f$ b= 0\f$, and \f$c = 0\f$ results
- * in the special case of the Poisson equation.
- *
- */
-
+   /** @brief Visitor for the convection-diffusion-reaction equation.
+     *
+     * Visitor for PDEs of the form\n
+     * Find \f$ u: \mathbb R^d \rightarrow \mathbb R^d\f$
+     * \f[ -\mathrm{div}( A \nabla u ) + b\cdot \nabla u + c u = f \f]
+     * (+ boundary conditions), where\n
+     * \f$ A \f$ (diffusion coefficient) is a \f$d\times d\f$-matrix,\n
+     * \f$ b \f$ (convection velocity) is a \f$d\times 1\f$-vector,\n
+     * \f$ c \f$ (reaction coefficient) is a scalar
+     *
+     * The coefficients are given as gsFunction with vector-valued return.\n
+     * See the constructor gsVisitorCDR() for details on their format!
+     *
+     * Obviously, setting \f$ A = I\f$, \f$ b = 0\f$, and \f$c = 0\f$ results
+     * in the special case of the Poisson equation.
+     *
+     * @ingroup Assembler
+     */
 template <class T>
 class gsVisitorCDR
 {
 public:
 
+    /// @brief Constructor
+    ///
+    /// @param pde  Reference to \a gsConvDiffRePde object
     gsVisitorCDR(const gsPde<T> & pde)
-    { 
+    {
         const gsConvDiffRePde<T>* cdr =
             static_cast<const gsConvDiffRePde<T>*>(&pde);
-        
+
         coeff_A_ptr = cdr->diffusion ();
         coeff_b_ptr = cdr->convection();
         coeff_c_ptr = cdr->reaction  ();
         rhs_ptr     = cdr->rhs       ();
 
-        flagStabType = 0;
-        
+        flagStabType = stabilizerCDR::none;
+
         GISMO_ASSERT( rhs_ptr->targetDim() == 1 ,
                       "Not yet tested for multiple right-hand-sides");
     }
@@ -76,15 +79,16 @@ public:
                  const gsFunction<T> & coeff_A,
                  const gsFunction<T> & coeff_b,
                  const gsFunction<T> & coeff_c,
-                 unsigned flagStabilization = 1) :
+                 stabilizerCDR::method flagStabilization = stabilizerCDR::SUPG) :
         rhs_ptr(&rhs),
         coeff_A_ptr( & coeff_A),coeff_b_ptr( & coeff_b),coeff_c_ptr( & coeff_c),
         flagStabType( flagStabilization )
     {
         GISMO_ASSERT( rhs.targetDim() == 1 ,"Not yet tested for multiple right-hand-sides");
-        GISMO_ASSERT( flagStabilization == 0 || flagStabilization == 1, "flagStabilization not known");
+        GISMO_ASSERT( flagStabilization == stabilizerCDR::none || flagStabilization == stabilizerCDR::SUPG, "flagStabilization not known");
     }
 
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
                     const gsOptionList & options,
@@ -94,13 +98,13 @@ public:
         rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         //flagStabType = static_cast<unsigned>(options.askSwitch("SUPG", false));
-        flagStabType = static_cast<unsigned>(options.askInt("Stabilization", 0));
+        flagStabType = static_cast<stabilizerCDR::method>(options.askInt("Stabilization", stabilizerCDR::none));
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
                          const gsGeometry<T>    & geo,
                          const gsMatrix<T>      & quNodes)
@@ -132,7 +136,7 @@ public:
         localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
 
-    
+    /// Assemble
     inline void assemble(gsDomainIterator<T>    & element,
                          const gsVector<T>      & quWeights)
     {
@@ -189,7 +193,7 @@ public:
             localMat.noalias() += weight * coeff_c_vals(0,k) * (basisVals.col(k) * basisVals.col(k).transpose());
 
 
-            if( flagStabType == 1 ) // 1: SUPG
+            if( flagStabType == stabilizerCDR::SUPG ) // 1: SUPG
             {
                 //const typename gsMatrix<T>::constColumns J = geoEval.jacobian(k); //todo: correct?
                 const typename gsFuncData<T>::matrixTransposeView J = md.jacobian(k);
@@ -240,7 +244,7 @@ public:
             }
         }
 
-        if( flagStabType == 1 ) // 1: SUPG
+        if( flagStabType == stabilizerCDR::SUPG ) // 1: SUPG
         {
             // Calling getSUPGParameter re-evaluates the (*base) geometry. // todo: is that correct so?
             // Thus, it has to be called AFTER geo (*base) has been used.
@@ -251,9 +255,9 @@ public:
         }
     }
 
-    inline void localToGlobal(const int patchIndex,
+    inline void localToGlobal(const index_t                     patchIndex,
                               const std::vector<gsMatrix<T> > & eliminatedDofs,
-                              gsSparseSystem<T>     & system)
+                              gsSparseSystem<T>               & system)
     {
         // Map patch-local DoFs to global DoFs
         system.mapColIndices(actives, patchIndex, actives);
@@ -262,10 +266,11 @@ public:
         system.push(localMat, localRhs, actives, eliminatedDofs.front(), 0, 0);
     }
 
+    /// Returns the parameter required for SUPG
     T getSUPGParameter( const gsVector<T> & lo,
                         const gsVector<T> & up)
     {
-        const int N = 2;
+        const index_t N = 2;
 
         const index_t d = lo.size();
 
@@ -279,7 +284,7 @@ public:
         coeff_b_ptr->eval_into( phys_pts, b_at_phys_pts );
         // ...and get it's norm.
         T b_norm = 0;
-        for( int i=0; i < d; i++)
+        for( index_t i=0; i < d; i++)
             b_norm += b_at_phys_pts(i,0) * b_at_phys_pts(i,0);
         b_norm = math::sqrt( b_norm );
 
@@ -290,11 +295,11 @@ public:
 
             if( d == 2 )
             {
-                int N1 = N+1;
+                index_t N1 = N+1;
                 md.points.resize( 2, 4*N1 );
                 aMat.resize( 2, 4*N1 );
 
-                for( int i = 0; i <= N; ++i )
+                for( index_t i = 0; i <= N; ++i )
                 {
                     T a = T(i)/T(N);
                     aMat(0,i) = a;
@@ -317,13 +322,13 @@ public:
                 md.points.resize( 3, 6*(N+1)*(N+1) );
                 aMat.resize( 3, 6*(N+1)*(N+1) );
 
-                int N1 = N+1;
+                index_t N1 = N+1;
                 md.points.resize( 2, 4*N1 );
                 aMat.resize( 2, 4*N1 );
 
-                int ij = 0;
-                for( int i = 0; i <= N; ++i )
-                    for( int j = 0; j <= N; ++j )
+                index_t ij = 0;
+                for( index_t i = 0; i <= N; ++i )
+                    for( index_t j = 0; j <= N; ++j )
                     {
                         T ai = T(i)/T(N);
                         T aj = T(j)/T(N);
@@ -378,13 +383,13 @@ protected:
     const gsFunction<T> * coeff_b_ptr;
     const gsFunction<T> * coeff_c_ptr;
     // flag for stabilization method
-    unsigned flagStabType;
+    stabilizerCDR::method flagStabType;
 
 protected:
     // Basis values
     std::vector<gsMatrix<T> > basisData;
     gsMatrix<T>        physBasisGrad, physBasisd2;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     index_t numActive;
 
     gsMatrix<T> coeff_A_vals;
@@ -406,4 +411,3 @@ protected:
 
 
 } // namespace gismo
-

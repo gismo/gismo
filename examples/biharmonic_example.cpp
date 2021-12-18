@@ -99,11 +99,14 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // Write approximate and exact solution to paraview files
-        gsInfo<<"Plotting in Paraview...\n";
+        gsInfo<<"Plotting in ParaView...\n";
         gsWriteParaview<>(solField, "Biharmonic2d", 5000);
         const gsField<> exact( geo, solution, false );
         gsWriteParaview<>( exact, "Biharmonic2d_exact", 5000);
     }
+    else
+        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                  "file containing the solution.\n";
 
     return  0;
 }

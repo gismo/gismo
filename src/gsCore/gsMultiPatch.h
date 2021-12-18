@@ -43,8 +43,9 @@ public:
     typedef memory::unique_ptr< gsMultiPatch > uPtr;
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
+    typedef std::map<boundaryInterface,typename gsGeometry<T>::uPtr>  InterfaceRep;
+    typedef std::map<patchSide,typename gsGeometry<T>::uPtr>         BoundaryRep;
 
-    typedef typename PatchContainer::size_type size_t;
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
 
@@ -121,9 +122,21 @@ public:
 
     const gsGeometry<T> & piece(const index_t i) const { return patch(i); }
 
+    gsMultiPatch<T> coord(const index_t c) const;
+
     index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
 
     index_t size() const { return 1; }
+
+    /// Return the number of coefficients (control points)
+    index_t coefsSize() const
+    {
+        index_t sz = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+            sz += (*it)->coefsSize();
+        return sz;
+    }
 
 public:
     /**
@@ -152,19 +165,19 @@ public:
     std::string detail() const;
 
     /// \brief Dimension of the parameter domain (must match for all patches).
-    int parDim() const
+    short_t parDim() const
     {
         //GISMO_ASSERT( m_patches.size() > 0 , "Empty multipatch object.");
         return m_dim;
     }
-    int domainDim () const {return parDim();}
+    short_t domainDim () const {return parDim();}
 
     /// \brief Dimension of the geometry (must match for all patches).
-    int geoDim() const;
-    int targetDim () const {return geoDim();}
+    short_t geoDim() const;
+    short_t targetDim () const {return geoDim();}
 
     /// \brief Co-dimension of the geometry (must match for all patches).
-    int coDim() const;
+    short_t coDim() const;
 
     /// \brief Returns true if the multipatch object is a closed
     /// manifold (ie. it has no boundaries)
@@ -177,7 +190,7 @@ public:
     gsMatrix<T> parameterRange(int i = 0) const;
 
     /// \brief Number of patches
-    index_t nPatches() const          { return m_patches.size(); }
+    size_t nPatches() const { return m_patches.size(); }
 
     /// \brief Returns a vector of patches // to do : replace by copies
     PatchContainer const& patches() const { return m_patches; }
@@ -195,17 +208,17 @@ public:
     std::vector<gsBasis<T> *> basesCopy(bool numeratorOnly = false) const;
 
     /// Return the \a i-th patch.
-    gsGeometry<T>& patch( std::size_t i ) const
+    gsGeometry<T>& patch( size_t i ) const
     {
         GISMO_ASSERT( i < m_patches.size(), "Invalid patch index "<<i<<" requested from gsMultiPatch" );
         return *m_patches[i];
     }
 
     ///\brief Permutes the patches according to \a perm
-    void permute(const std::vector<int> & perm);
+    void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    gsBasis<T> & basis( std::size_t i ) const;
+    gsBasis<T> & basis( const size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);
@@ -214,7 +227,7 @@ public:
     void addPatch(const gsGeometry<T> & g);
 
     /// \brief Search for the given geometry and return its patch index.
-    int findPatchIndex( gsGeometry<T>* g ) const;
+    size_t findPatchIndex( gsGeometry<T>* g ) const;
 
     /// @brief Add an interface joint between side \a s1 of geometry
     /// \a g1 side \a s2 of geometry \a g2.
@@ -227,7 +240,7 @@ public:
 
     /// Add side \a s of patch \a g to the outer boundary of the domain
     void addPatchBoundary( gsGeometry<T>* g, boxSide s ) {
-        int p = findPatchIndex( g );
+        size_t p = findPatchIndex( g );
         BaseA::addBoundary( patchSide( p, s ) );
     }
 
@@ -294,14 +307,55 @@ public:
     * Assumes that the meshes on all levels of the gsHTensorBasis
     * are fully matching.
     */
-    void repairInterfaces();
+    void repairInterfaces()
+    {
+        std::vector< boundaryInterface > bivec = interfaces();
+        size_t kmax = 2*bivec.size();
+        size_t k = 0;
+        bool sthChanged = false;
+        bool change = false;
+        do
+        {
+            sthChanged = false;
+            for( size_t i = 0; i < bivec.size(); i++ )
+            {
+                change = repairInterface( bivec[i] );
+                sthChanged = sthChanged || change;
+            }
+            k++; // just to be sure this cannot go on infinitely
+        }
+        while( sthChanged && k <= kmax );
+    }
+
+    /** @brief Checks if the interface is fully matching, and if not, repairs it.
+    *
+    * \remarks Designed for gsHTensorBasis and derived bases.
+    * Assumes that the respective meshes on all levels of the
+    * gsHTensorBasis are fully matching.
+    *
+    * \returns true, if something was repaired, i.e., if the mesh on the interface was changed.
+    */
+    bool repairInterface( const boundaryInterface & bi );
+
 
     /// @brief For each point in \a points, locates the parametric coordinates of the point
     /// \param points
     /// \param pids vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
-    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim) const;
+    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim, const T accuracy = 1e-6) const;
 
+    /// @brief For each point in \a points located on patch pid1, locates the parametric coordinates of the point
+    ///
+    /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
+    /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
+    void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+
+    void constructInterfaceRep();
+    void constructBoundaryRep();
+
+    const InterfaceRep & interfaceRep() const { return m_ifaces; }
+    const BoundaryRep & boundaryRep() const { return m_bdr; }
+    
 protected:
 
     void setIds();
@@ -310,6 +364,9 @@ protected:
 private:
 
     PatchContainer m_patches;
+
+    InterfaceRep m_ifaces;
+    BoundaryRep m_bdr;
 
 private:
     // implementation functions

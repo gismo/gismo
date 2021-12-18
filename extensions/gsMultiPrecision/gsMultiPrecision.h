@@ -1,7 +1,7 @@
 
 #pragma once
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 #include <gmpxx.h>
 #endif
 

@@ -1,14 +1,14 @@
 /** @file gsVisitorNitscheBiharmonic.h
 
-    @brief First-type Nitsche BC imposition visitor for 
+    @brief First-type Nitsche BC imposition visitor for
            the biharmonic problem.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): S. Moore
 */
 
@@ -16,34 +16,36 @@
 
 namespace gismo
 {
-/** @brief
-    Visitor for the first-type Nitsche BC of the biharmonic problem.
 
-    It sets up an assembler and assembles the system patch wise and
-    combines the patch-local stiffness matrices into a global system.
-    Dirichlet boundary can also be imposed weakly (i.e Nitsche ) 
-*/
+   /** \brief Visitor for the weak imposition of the first-type dirichlet
+     *         boundary condition.
+     *
+     * The visitor adds this term to the bilinear term
+     * \f[ (\Delta u, \nabla v)_{\partial \Omega} + (\nabla u, \Delta v )_{\partial \Omega}
+     *       + (\mu* \nabla u, \nabla v)_{\partial \Omega} \f]
+     *
+     * and the following term is also added to the linear term
+     * \f[ (g_1, \mu* \nabla v + \Delta v)_{\partial \Omega}  \f]
+     *
+     *  @ingroup Assembler
+     */
 
 template <class T>
 class gsVisitorNitscheBiharmonic
 {
 public:
-/** \brief Visitor for the weak imposition of the first-type dirichlet 
- *         boundary condition.
- *
- * The visitor adds this term to the bilinear term
- * \f[ (\Delta u, \nabla v)_{\partial \Omega} + (\nabla u, \Delta v )_{\partial \Omega} 
- *       + (\mu* \nabla u, \nabla v)_{\partial \Omega} \f]
- * 
- * and the following term is also added to the linear term
- * \f[ (g_1, \mu* \nabla v + \Delta v)_{\partial \Omega}  \f],
- *
- */
-    gsVisitorNitscheBiharmonic(const gsFunction<T> & dirdata, T _penalty, boxSide s) : 
-    dirdata_ptr(&dirdata),penalty(_penalty), side(s)
+
+    /// @brief Constructor
+    ///
+    /// @param dirdata Dirichlet boundary function
+    /// @param _penalty Penalty
+    /// @param s       Side of the geometry where Dirichlet BC is prescribed
+    gsVisitorNitscheBiharmonic(const gsFunction<T> & dirdata, T penalty, boxSide s)
+    : dirdata_ptr(&dirdata), m_penalty(penalty), side(s)
     { }
 
-    void initialize(const gsBasis<T> & basis, 
+    /// Initialize
+    void initialize(const gsBasis<T> & basis,
                     gsQuadRule<T>    & rule)
     {
         const int dir = side.direction();
@@ -59,7 +61,7 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>    & basis, // to do: more unknowns
                          const gsGeometry<T> & geo,
                          // todo: add element here for efficiency
@@ -85,6 +87,7 @@ public:
         localRhs.setZero(numActive, dirdata_ptr->targetDim());
     }
 
+    /// Assemble on element
     inline void assemble(gsDomainIterator<T> & element,
                          const gsVector<T>   & quWeights)
     {
@@ -116,7 +119,7 @@ public:
 
             // Get penalty parameter
             const T h = element.getCellSize();
-            const T mu = penalty / (0 != h ? h : 1);
+            const T mu = m_penalty / (0 != h ? h : 1);
 
             // Sum up quadrature point evaluations
             localRhs.noalias() += weight * ((physBasisLaplace.transpose() + mu * physBasisGrads.transpose() * unormal)
@@ -127,12 +130,13 @@ public:
                 - mu * physBasisGrads.transpose() * physBasisGrads);
         }
     }
-    
-    void localToGlobal(const gsDofMapper     & mapper,
-                       const gsMatrix<T>     & eliminatedDofs,
-                       const int               patchIndex,
-                       gsSparseMatrix<T>     & sysMatrix,
-                       gsMatrix<T>           & rhsMatrix )
+
+    /// Adds the contributions to the sparse system
+    void localToGlobal(const gsDofMapper & mapper,
+                       const gsMatrix<T> & eliminatedDofs,
+                       const index_t       patchIndex,
+                       gsSparseMatrix<T> & sysMatrix,
+                       gsMatrix<T>       & rhsMatrix )
     {
         // Local DoFs to global DoFs
         mapper.localToGlobal(actives, patchIndex, actives);
@@ -158,17 +162,17 @@ private:
     const gsFunction<T> * dirdata_ptr;
 
     // Penalty constant
-    T penalty;
+    T m_penalty;
 
     // Side
     boxSide side;
 
 private:
     // Basis values
-    gsMatrix<T>      basisData;
-    gsMatrix<T>      physBasisGrads;
-    gsMatrix<T>      physBasisLaplace;
-    gsMatrix<unsigned> actives;
+    gsMatrix<T>       basisData;
+    gsMatrix<T>       physBasisGrads;
+    gsMatrix<T>       physBasisLaplace;
+    gsMatrix<index_t> actives;
 
     // Normal and Neumann values
     gsVector<T> unormal;

@@ -1,14 +1,23 @@
 ######################################################################
-## CMakeLists.txt ---
+## gsOptions.cmake
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2016 RICAM-Linz.
 ######################################################################
 
 message ("Configuration (cmake ${CMAKE_VERSION}):")
 
 message ("  Source folder:          ${CMAKE_SOURCE_DIR}")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+  find_package(Git)
+  execute_process(COMMAND ${GIT_EXECUTABLE} log --pretty=format:%h -n 1
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    RESULT_VARIABLE isGit
+    OUTPUT_VARIABLE gitHash)
+  if(${isGit} EQUAL 0)
+    message("  Git commit:             ${gitHash}")
+  endif()
+endif()
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
 message ("  CMAKE_C_COMPILER        ${CMAKE_C_COMPILER}")
 message ("  CMAKE_CXX_COMPILER      ${CMAKE_CXX_COMPILER}")
@@ -44,6 +53,11 @@ if  (${GISMO_BUILD_PCH})
 message ("  GISMO_BUILD_PCH         ${GISMO_BUILD_PCH}")
 endif()
 
+option(GISMO_BUILD_PYBIND11      "Build Python module using pybind11" false  )
+if  (${GISMO_BUILD_PYBIND11})
+message ("  GISMO_BUILD_PYBIND11    ${GISMO_BUILD_PYBIND11}")
+endif()
+
 option(GISMO_BUILD_PVIEW         "Build Paraview Plugin"     false  )
 if  (${GISMO_BUILD_PVIEW})
 message ("  GISMO_BUILD_PVIEW        ${GISMO_BUILD_VIEW}")
@@ -74,11 +88,6 @@ if  (${GISMO_WITH_CODIPACK})
 message ("  GISMO_WITH_CODIPACK     ${GISMO_WITH_CODIPACK}")
 endif()
 
-option(GISMO_WITH_FDBB           "With FDBB"                 false  )
-if  (${GISMO_WITH_FDBB})
-message ("  GISMO_WITH_FDBB         ${GISMO_WITH_FDBB}")
-endif()
-
 option(GISMO_WITH_IPOPT          "With IpOpt"                false  )
 if  (${GISMO_WITH_IPOPT})
 message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
@@ -87,6 +96,11 @@ endif()
 #option(GISMO_WITH_METIS          "With METIS"                false )
 #if  (${GISMO_WITH_METIS})
 #message ("  GISMO_WITH_METIS        ${GISMO_WITH_METIS}")
+#endif()
+
+#option(GISMO_WITH_GMP            "With GMP"                  false  )
+#if  (${GISMO_WITH_GMP})
+#message ("  GISMO_WITH_GMP          ${GISMO_WITH_GMP}")
 #endif()
 
 option(GISMO_WITH_MPFR           "With MPFR"                  false  )
@@ -99,9 +113,9 @@ if  (${GISMO_WITH_MPI})
 message ("  GISMO_WITH_MPI          ${GISMO_WITH_MPI}")
 endif()
 
-option(GISMO_WITH_MPQ            "With MPQ"                  false  )
-if  (${GISMO_WITH_MPQ})
-message ("  GISMO_WITH_MPQ          ${GISMO_WITH_MPQ}")
+option(GISMO_WITH_GMP            "With GMP"                  false  )
+if  (${GISMO_WITH_GMP})
+message ("  GISMO_WITH_GMP          ${GISMO_WITH_GMP}")
 endif()
 
 option(GISMO_WITH_OCC            "With OpenCascade"          false  )
@@ -200,6 +214,9 @@ if (GISMO_WITH_VTK)
 message ("  GISMO_WITH_VTK          ${GISMO_WITH_VTK}")
 endif()
 
+if(DEFINED ${isGit} AND ${isGit} EQUAL 0)
+  message(STATUS "Type \"${GIT_EXECUTABLE} submodule\" to see the state of submodules")
+endif()
 
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")

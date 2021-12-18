@@ -1,0 +1,40 @@
+// Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
+
+// Gather builders , 'gismo-win7x64'
+def labels = ['gismo-ubuntu', 'gismo-mac1015', 'gismo-centos', 'gismo-fedora', 'gismo-win10']
+def builders = [:]
+for (x in labels)
+{
+    def label = x
+    builders[label] =
+    {
+        node(label)
+	{
+	        //for(e in env) {echo e + " is " + ${e}}
+   		dir('gismo_src') { checkout scm }
+	    	//buildGismo()
+		cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID-[jenkins] "
+		//-D CTEST_TEST_MODEL=Experimental
+		//-D CMAKE_ARGS='-DGISMO_BUILD_UNITTESTS=ON -DCMAKE_BUILD_TYPE=Release'
+	}
+    }
+}
+
+// Start all builders
+parallel builders
+
+// Building G+Smo
+void buildGismo()
+{
+    dir('build')
+    {
+        cmd 'cmake ../ -DCMAKE_BUILD_TYPE=Release -DGISMO_BUILD_UNITTESTS=ON -DSITE=$NODE_NAME-$BUILD_ID'
+        cmd 'ctest --output-on-failure -C RelWithDebinfo -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit'
+    }
+}
+
+// Cross-platform cmd
+def cmd (acmd)
+{
+    if (isUnix()) { sh acmd } else { bat acmd}
+}

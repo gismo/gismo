@@ -48,13 +48,11 @@ public:
     typedef gsAsConstMatrix<T, -1, -1>                  matrixView;
     typedef Eigen::Transpose<typename matrixView::Base> matrixTransposeView;
 
-    typedef typename gsFunctionSet<T>::dim_t dim_t;
-
 public:
     mutable unsigned flags;
-    int      patchId; // move to mapdata
+    index_t      patchId; // move to mapdata
 
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
 
     /// Stores values and derivatives
     /// values[0] for base
@@ -68,7 +66,7 @@ public:
     /// \brief Dimension of the (source) domain and the target (image) space.
     /// dim.first refers to ParDim, dim.second refers to GeoDim
     /// @return For \f$f:\mathbb{R}^n\rightarrow\mathbb{R}^m\f$ returns \f$n\f$.
-    dim_t dim;
+    std::pair<short_t, short_t> dim;
 
 public:
     /**
@@ -112,7 +110,17 @@ public:
     }
 
     /// \brief Clear the memory that this object uses
-    void clear() { /*to do*/}
+    void clear()
+    {
+        flags = 0;
+        patchId = -1;
+        actives.clear();
+        values.clear();
+        curls.clear();
+        divs.clear();
+        laplacians.clear();
+        //dim;
+    }
 
     /// \brief Swaps this object with \a other
     void swap(gsFuncData & other)
@@ -129,7 +137,7 @@ public:
 
 public:
 
-    inline const gsMatrix<unsigned> & allActives() const
+    inline const gsMatrix<index_t> & allActives() const
     {
         GISMO_ASSERT(flags & NEED_ACTIVE,
                    "actives are not computed unless the NEED_ACTIVE flag is set.");
@@ -145,7 +153,7 @@ public:
         return values.front();
     }
 
-    inline gsMatrix<unsigned>::constColumn active(index_t point = 0) const
+    inline gsMatrix<index_t>::constColumn active(index_t point = 0) const
     {
         GISMO_ASSERT(flags & NEED_ACTIVE,
                    "actives are not computed unless the NEED_ACTIVE flag is set.");
@@ -195,7 +203,7 @@ public:
     }
 
 
-    inline matrixTransposeView jacobian (index_t point, index_t func = 0) const
+    inline matrixTransposeView jacobian(index_t point, index_t func = 0) const
     {
        GISMO_ASSERT(flags & NEED_DERIV,
                   "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");
@@ -247,7 +255,8 @@ public:
     gsMatrix<T> points;     ///< input (parametric) points
 
     gsMatrix<T> measures;
-    gsMatrix<T> fundForms;  // First fundumental forms
+    gsMatrix<T> fundForms;  ///< Second fundumental forms
+    gsMatrix<T> jacInv;     ///< Inverse of the Jacobian matrix (transposed)
     gsMatrix<T> normals;
     gsMatrix<T> outNormals; // only for the boundary
 
@@ -263,9 +272,9 @@ public:
 
     inline matrixView fundForm(const index_t point) const
     {
-        GISMO_ASSERT(flags & NEED_GRAD_TRANSFORM,
-                   "fundForms are not computed unless the NEED_GRAD_TRANSFORM flag is set.");
-        return fundForms.reshapeCol(point, dim.second, dim.first);
+        GISMO_ASSERT(flags & NEED_2ND_FFORM,
+                   "fundForms are not computed unless the NEED_2ND_FFORM flag is set.");
+        return fundForms.reshapeCol(point, dim.first, dim.first);
     }
 
     inline constColumn normal(const index_t point) const
@@ -282,7 +291,7 @@ public:
         return outNormals.col(point);
     }
 
-    inline matrixTransposeView jacobians () const
+    inline matrixTransposeView jacobians() const
     {
        GISMO_ASSERT(flags & NEED_DERIV,
                   "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");

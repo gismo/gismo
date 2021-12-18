@@ -223,7 +223,7 @@ namespace bspline
 template<class Basis_t>
 void degreeElevateBSpline(Basis_t &basis, 
                           gsMatrix<typename Basis_t::Scalar_t> & coefs,
-                          int m)
+                          short_t m)
 {
     typedef typename Basis_t::Scalar_t T;
 
@@ -232,9 +232,9 @@ void degreeElevateBSpline(Basis_t &basis,
 
     if (m==0) return;
 
-    const int p      = basis.degree();
-    const int ncoefs = coefs.rows();
-    const int n      = coefs.cols();
+    const short_t p      = basis.degree();
+    const index_t ncoefs = coefs.rows();
+    const index_t n      = coefs.cols();
     const gsKnotVector<T> & knots = basis.knots();
 
     // compute original derivative coefficients P (recurrence)
@@ -244,14 +244,14 @@ void degreeElevateBSpline(Basis_t &basis,
 // #   else // Note: No non-POD VLAs in clang/MSVC compiler
     std::vector<gsMatrix<T> > P(p+1);
 // #   endif
-    for(int i=0;i<p+1;i++)
+    for(short_t i=0;i<p+1;i++)
         P[i].setZero(ncoefs - i, n);
 
     // insert first row
     P[0].swap(coefs);
     // fill table of derivative coefficients
-    for(int j=1; j<=p;j++)
-        for(int i=0; i<ncoefs-j; i++)
+    for(short_t j=1; j<=p;j++)
+        for(index_t i=0; i<ncoefs-j; i++)
         {
             if(knots[i+p+1]>knots[i+j])
                 P[j].row(i).noalias() = 
@@ -264,8 +264,8 @@ void degreeElevateBSpline(Basis_t &basis,
 
     // degree elevate basis
     basis.degreeElevate(m);
-    const int ncoefs_new = basis.size();
-    const int p_new      = basis.degree();
+    const index_t ncoefs_new = basis.size();
+    const short_t p_new      = basis.degree();
 
     // new (elevated) derivative coefficients
 // #   if defined(__GNUC__)
@@ -273,7 +273,7 @@ void degreeElevateBSpline(Basis_t &basis,
 // #   else // Note: No non-POD VLAs in clang/MSVC compiler
     std::vector<gsMatrix<T> > Q(p_new+1);
 // #   endif
-    for(int i=0; i<p_new+1; i++)
+    for(short_t i=0; i<p_new+1; i++)
         Q[i].setZero(ncoefs_new - i, n);
 
     // loop over knot intervals (with positive measure):
@@ -282,8 +282,8 @@ void degreeElevateBSpline(Basis_t &basis,
 
     // precompute factors
     gsVector<T> factor = gsVector<T>::Ones(p+1);
-    for(int j=0; j<=p; j++)
-        for(int l=1; l<=j; l++)
+    for(short_t j=0; j<=p; j++)
+        for(short_t l=1; l<=j; l++)
             factor[j] *= static_cast<T>((p+1-l)) / (p_new+1-l);
 
     //set known coefficients
@@ -291,16 +291,16 @@ void degreeElevateBSpline(Basis_t &basis,
     //     Q[j].row(0)=factor[j]*P[j].row(0);
 
     int betak = 0; // sum of interior mulitplicities
-    for(unsigned k=0; k<mult.size()-1; k++)
+    for(size_t k=0; k<mult.size()-1; k++)
     {
         //set known coefficients
-        for(int j=p+1-mult[k]; j<=p; ++j)
+        for(short_t j=p+1-mult[k]; j<=p; ++j)
             Q[j].row(betak+k*m) = factor[j] * P[j].row(betak);
 
-        for(int j=p_new-1; j>=0;j--)
+        for(short_t j=p_new-1; j>=0;j--)
         {
             // fill triangular table
-            for(int i=1; i<=p_new-j; i++)
+            for(short_t i=1; i<=p_new-j; i++)
             {
                 const int ik= i+betak+k*m; // update index i for the considered knot value
                 if(knots[ik+p_new]>knots[ik+j])

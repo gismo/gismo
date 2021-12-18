@@ -25,10 +25,10 @@ namespace gismo
 */
 
 template <class T>
-class gsPiecewiseFunction : public gsFunctionSet<T>
+class gsPiecewiseFunction : public gsFunction<T>
 {
 public:
-    typedef gsFunctionSet<T>                           Base;
+    typedef gsFunction<T>                           Base;
     typedef typename std::vector<gsFunction<T>*>       FunctionContainer;
     typedef typename FunctionContainer::iterator       fiterator;
     typedef typename FunctionContainer::const_iterator const_fiterator;
@@ -41,23 +41,23 @@ public:
 
 public:
 
-    explicit gsPiecewiseFunction(index_t npieces = 0) : gsFunctionSet<T>()
+    explicit gsPiecewiseFunction(index_t npieces = 0) : Base()
     { m_funcs.reserve(2+npieces); }
 
-    gsPiecewiseFunction(const gsFunction<T> & func) : gsFunctionSet<T>(func)
+    gsPiecewiseFunction(const gsFunction<T> & func) : Base()
     {
         m_funcs.push_back(func.clone().release());
         //m_funcs.resize(n, func.clone());
     }
 
-    gsPiecewiseFunction(const gsPiecewiseFunction & other) : gsFunctionSet<T>(other)
+    gsPiecewiseFunction(const gsPiecewiseFunction & other) : Base()
     {
         m_funcs.resize(other.m_funcs.size() );
         cloneAll( other.m_funcs.begin(), other.m_funcs.end(),
                   m_funcs.begin() );
     }
 
-    gsPiecewiseFunction(FunctionContainer & funcs) : gsFunctionSet<T>()
+    gsPiecewiseFunction(FunctionContainer & funcs) : Base()
     {
         m_funcs.swap(funcs); // funcs are consumed
     }
@@ -106,8 +106,8 @@ public:
 
     GISMO_CLONE_FUNCTION(gsPiecewiseFunction)
 
-    int domainDim () const {return m_funcs.front()->domainDim();};
-    int targetDim () const {return m_funcs.front()->targetDim();};
+    short_t domainDim () const {return m_funcs.front()->domainDim();};
+    short_t targetDim () const {return m_funcs.front()->targetDim();};
     
     /// Add a piece
     void addPiece(const gsFunction<T> & func)
@@ -152,6 +152,9 @@ public:
         freeAll(m_funcs);
         m_funcs.clear();
     }
+
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION }
 
 protected:
     

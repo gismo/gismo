@@ -7,16 +7,25 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsFuncCoordinate.h>
+
 #pragma once
+
 
 namespace gismo
 {
+
+template <class T>
+gsFuncCoordinate<T> gsFunction<T>::coord(const index_t c) const
+{
+    return gsFuncCoordinate<T>(*this,c);
+}
 
 template <class T>
 gsMatrix<T>
@@ -34,7 +43,7 @@ void gsFunction<T>::jacobian_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
     deriv_into(u, result);
 
     // Reshape the matrix to get one Jacobian block per evaluation point
-    const index_t d = domainDim();     // dimension of domain
+    const short_t d = domainDim();     // dimension of domain
     result.resize(d, result.size()/d); //transposed Jacobians
     result.blockTransposeInPlace( targetDim() );
 }
@@ -113,9 +122,10 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
     const int numPts = u.cols();                // number of points to compute at
     gsVector<T> tmp( d );
     gsMatrix<T> ev, uc( d, 3 ), ucm( d, 4 );
-    const int stride = d + d * ( d - 1 ) / 2;   // number of second derivatives per component
+    const int stride = d + d * ( d - 1 ) / 2;   // number of second derivatives per component [= d(d+1)/2]
     result.resize( n * stride , numPts );
-    for ( int thisPt = 0; thisPt < numPts; thisPt++ ) {
+    for ( int thisPt = 0; thisPt < numPts; thisPt++ )
+    {
         int r = d;
         for ( int j = 0; j < d; j++ )
         {
@@ -173,6 +183,79 @@ gsMatrix<T> gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
 }
 
 template <class T>
+template <int mode>
+int gsFunction<T>::newtonRaphson_impl(
+    const gsVector<T> & value,
+    gsVector<T> & arg,
+    bool withSupport,
+    const T accuracy,
+    int max_loop,
+    double damping_factor, T scale) const
+{
+    const index_t n = value.rows();
+    const bool squareJac = (n == domainDim());
+
+    gsMatrix<T> residual, delta, jac, supp, arg0;
+    if (withSupport)
+    {
+        supp = support();
+        GISMO_ASSERT( (arg.array()>=supp.col(0).array()).all() &&
+                      (arg.array()<=supp.col(1).array()).all(),
+                      "Initial point is outside the domain.");
+    }
+    int iter = 0;
+
+    //const T alpha=.5, beta=.5;
+
+    do {
+        // compute residual: value - f(arg)
+        if (0==mode)
+            this->eval_into(arg, residual);
+        if (1==mode)
+            this->deriv_into(arg, residual);
+        residual = value - scale*residual;
+
+        if(residual.norm() <= accuracy) // residual below threshold
+            return iter;
+
+        // compute Jacobian
+        if (0==mode)
+            jac.noalias() = scale * jacobian(arg);
+        if (1==mode)
+            jac.noalias() = scale * hessian(arg, 0);
+
+        // Solve for next update
+        if (squareJac)
+        {
+            // const T ddet = jac.determinant();
+            // if (math::abs(ddet)<1e-4)
+            //     gsWarn<< "Singular Jacobian: "<< ddet <<"\n";
+
+            delta.noalias() = jac.partialPivLu().solve( residual );
+        }
+        else// use pseudo-inverse
+            delta.noalias() = jac.colPivHouseholderQr().solve(
+                        gsMatrix<T>::Identity(n,n)) * residual;
+
+        // update arg
+        if ( withSupport )
+        {
+            arg0 = arg;
+            arg += damping_factor * delta;
+            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
+            if( (arg-arg0).norm() < accuracy ) // update below threshold
+                return iter;
+        }
+        else
+            arg += damping_factor * delta;
+
+    } while (++iter <= max_loop);
+
+    // no solution found within max_loop iterations
+    return -1;
+}
+
+template <class T>
 int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
                                  gsVector<T> & arg,
                                  bool withSupport,
@@ -180,46 +263,32 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
                                  int max_loop,
                                  double damping_factor) const
 {
-    const index_t n = targetDim();
-    GISMO_ASSERT( value.rows() == n, "Invalid input values");
-    const bool squareJac = (n == domainDim());
-
-    gsMatrix<T> delta, jac, supp;
-    if (withSupport)
-        supp = support();
-
-    int iter = 0;
-
-    do {
-        // clamp x to the support of the function
-        if (withSupport)
-            arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
-
-        // compute residual: value - f(arg)
-        eval_into (arg, delta);
-        delta = value - delta;
-
-        if(delta.norm() <= accuracy)
-            return iter;
-
-        // compute Jacobian
-        jacobian_into(arg, jac);
-
-        // Solve for next update
-        if (squareJac)
-            delta = jac.partialPivLu().solve( delta );
-        else// use pseudo-inverse
-            delta = jac.colPivHouseholderQr().solve(
-                        gsMatrix<T>::Identity(n,n)) * delta;
-
-        // update arg with damping factor
-        arg += damping_factor * delta;
-
-    } while (++iter <= max_loop);
-
-    // no solution found within max_loop iterations
-    return -1;
+    GISMO_ASSERT( value.rows() == targetDim(),
+                  "Invalid input values:"<< value.rows()<<"!="<<targetDim());
+    return newtonRaphson_impl<0>(value,arg,withSupport,accuracy,
+                                 max_loop,damping_factor);
 }
+
+template <class T>
+gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
+                                  int max_loop,
+                                  double damping_factor) const
+{
+    GISMO_ASSERT(1==targetDim(), "Currently argMin works for scalar functions");
+    const index_t dd = domainDim();
+    gsVector<T> result;
+    gsMatrix<T> supp = support();
+    // Initial point (todo: import as argument)
+    if (0!=supp.size())
+        result = 0.5 * ( supp.col(0) + supp.col(1) );
+    else
+        result.setZero(dd);
+    newtonRaphson_impl<1>(gsVector<T>::Zero(dd),result,true,
+                          accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
+    return result;
+}
+
+//argMax
 
 /*
 template <class T>
@@ -237,70 +306,59 @@ void gsFunction<T>::eval_component_into(const gsMatrix<T>&,
                                         gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
-template <class T> gsMatrix<T>
-gsFunction<T>::hess(const gsMatrix<T>& u, unsigned coord) const    
+template <class T> void
+gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
+                            index_t coord) const
 {
-    gsMatrix<T> hessian, secDers;
+    gsMatrix<T> secDers;
     this->deriv2_into(u, secDers);
 
     const index_t dim = this->domainDim();
-    const index_t sz  = dim*(dim+1)/2;
+    index_t sz  = dim*(dim+1)/2;
     typename gsMatrix<T>::Rows ders = secDers.middleRows(coord*sz, sz);
     //const gsAsConstMatrix<T> ders(secDers.data(), sz, secDers.size() / sz );
-    hessian.resize(dim*dim, ders.cols() );
+    result.resize(dim*dim, ders.cols() );
 
     switch ( dim )
     {
     case 1:
-        hessian = secDers; // ders
+        result = secDers; // ders
         break;
     case 2:
-        hessian.row(0)=ders.row(0);//0,0
-        hessian.row(1)=//1,0
-        hessian.row(2)=ders.row(2);//0,1
-        hessian.row(3)=ders.row(1);//1,1
+        result.row(0)=ders.row(0);//0,0
+        result.row(3)=ders.row(1);//1,1
+        result.row(1)=//1,0
+        result.row(2)=ders.row(2);//0,1
         break;
     case 3:
-        hessian.row(0)=ders.row(0);//0,0
-        hessian.row(3)=//0,1
-        hessian.row(1)=ders.row(3);//1,0
-        hessian.row(6)=//0,2
-        hessian.row(2)=ders.row(4);//2,0
-        hessian.row(4)=ders.row(1);//1,1
-        hessian.row(7)=//1,2
-        hessian.row(5)=ders.row(5);//2,1
-        hessian.row(8)=ders.row(2);//2,2
+        result.row(0)=ders.row(0);//0,0
+        result.row(1)=ders.row(3);//1,0
+        result.row(2)=ders.row(4);//2,0
+        result.row(3)=//0,1
+        result.row(6)=//0,2
+        result.row(4)=ders.row(1);//1,1
+        result.row(7)=//1,2
+        result.row(5)=ders.row(5);//2,1
+        result.row(8)=ders.row(2);//2,2
         break;
     default:
+        sz = 0;
+        for (index_t k=0; k!=dim; ++k ) // for all rows
+        {
+            result.row((dim+1)*k) = ders.row(k);
+            for (index_t l=k+1; l<dim; ++l ) // for all cols
+                result.row(dim*k+l) =
+                    result.row(dim*l+k) = ders.row(dim + sz++);
+        }
         break;
     }
-    return hessian;
 }
 
-template <typename T, int domDim, int tarDim>
+template <typename T, short_t domDim, short_t tarDim>
 inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
-
-    // Gradient transformation
-    if (InOut.flags & NEED_GRAD_TRANSFORM)
-    {
-        // domDim<=tarDim makes sense
-
-        InOut.fundForms.resize(domDim*tarDim, numPts);
-        for (index_t p=0; p!=numPts; ++p)
-        {
-            const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-
-            if ( tarDim == domDim && tarDim!=-1 )
-                gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(), n, d)
-                        = jacT.inverse();
-            else
-                gsAsMatrix<T,tarDim,domDim>(InOut.fundForms.col(p).data(), n, d)
-                        = jacT.transpose()*(jacT*jacT.transpose()).inverse();
-        }
-    }
 
     // Measure
     if (InOut.flags & NEED_MEASURE)
@@ -315,9 +373,28 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 			else
 				InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
 
-            
+
         }
     }
+
+    if (InOut.flags & NEED_GRAD_TRANSFORM)
+    {
+        // domDim<=tarDim makes sense
+
+        InOut.jacInv.resize(domDim*tarDim, numPts);
+        for (index_t p=0; p!=numPts; ++p)
+        {
+            const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+
+            if ( tarDim == domDim && tarDim!=-1 )
+                gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
+                        = jacT.cramerInverse();
+            else
+                gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
+                        = jacT.transpose()*(jacT*jacT.transpose()).cramerInverse();
+        }
+    }
+
 
     // Normal vector of hypersurface
     if (tarDim!=-1 && tarDim==domDim+1 && InOut.flags & NEED_NORMAL)
@@ -326,7 +403,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
         typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
         InOut.normals.resize(tarDim, numPts);
-        
+
         for (index_t p = 0; p != numPts; ++p) // for all points
         {
             const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
@@ -336,6 +413,26 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
                 jacT.colMinor(i, minor);
                 InOut.normals(i,p) = alt_sgn * minor.determinant();
                 alt_sgn = -alt_sgn;
+            }
+        }
+    }
+
+    // Second Fundamantan form of surface
+    if (InOut.flags & NEED_2ND_FFORM)
+    {
+        //domDim=2, tarDim=3
+        InOut.fundForms.resize(domDim*domDim, numPts);
+        const index_t sz = domDim*(domDim+1)/2;
+        for (index_t p=0; p!=numPts; ++p)
+        {
+            const gsAsConstMatrix<T,-1,tarDim> ddT(InOut.values[2].col(p).data(), sz, n);
+            const T nrm = InOut.normals.col(p).norm();
+            if (0!=nrm)
+            {
+                InOut.fundForms(0,p) = ddT.row(0).dot(InOut.normals.col(p)) / nrm;
+                InOut.fundForms(3,p) = ddT.row(1).dot(InOut.normals.col(p)) / nrm;
+                InOut.fundForms(1,p) = InOut.fundForms(2,p) =
+                    ddT.row(2).dot(InOut.normals.col(p)) / nrm;
             }
         }
     }
@@ -388,6 +485,24 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
     }
 
+    /*
+    // Curvature of isoparametric curve
+    if ( InOut.flags & NEED_CURVATURE)
+    {
+        //domDim=2, tarDim=3
+        const int dir = InOut.side.direction();
+        const index_t sz = domDim*(domDim+1)/2;
+        InOut.curvature.resize(1,numPts);
+        for (index_t p=0; p!=numPts; ++p)
+        {
+            const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+            const gsAsConstMatrix<T,-1,tarDim> ddT(InOut.values[2].col(p).data(), sz, n);
+            const T nrm = ddT.row(dir).norm(); // (d^2/dir^2)G
+            if (0!=nrm)
+                InOut.curvature.at(p) = jacT.row(dir).cross(ddT.row(dir)).norm() / (nrm*nrm*nrm);
+        }
+    }
+    */
 }
 
 
@@ -399,11 +514,13 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     if (InOut.flags & NEED_GRAD_TRANSFORM || InOut.flags & NEED_MEASURE    ||
             InOut.flags & NEED_NORMAL         || InOut.flags & NEED_OUTER_NORMAL)
         InOut.flags = InOut.flags | NEED_GRAD;
+    if (InOut.flags & NEED_2ND_FFORM)
+        InOut.flags = InOut.flags | NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
 
     this->compute(InOut.points, InOut);
-    
+
     // Fill extra data
-    typename gsFunctionSet<T>::dim_t Dim = this->dimensions();
+    std::pair<short_t, short_t> Dim = this->dimensions();
 
     GISMO_ASSERT(Dim.first<10,             "Domain dimension is too big");
     GISMO_ASSERT(Dim.first<=Dim.second, "Singular map: target dimension is lower then the domain dimension");
