@@ -430,6 +430,16 @@ bool almostEqual(const T a, const T b)
 // static const double _2_pi   =  0.636619772367581343076;
 // static const double _180_pi = 57.295779513082320876798;
 
+// Maximum over three or more arguments
+template<class T, class... Ts>
+typename std::common_type<T, Ts...>::type max(const T a, const T b, const T c, const Ts... args)
+{ return math::max(a, math::max(b,c,args...)); }
+
+// Minimum over three or more arguments
+template<class T, class... Ts>
+typename std::common_type<T, Ts...>::type min(const T a, const T b, const T c, const Ts... args)
+{ return math::min(a, math::min(b,c,args...)); }
+
 } //end namespace math
 
 /**
