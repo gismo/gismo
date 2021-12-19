@@ -15,6 +15,24 @@
 
 #ifdef _OPENMP
 
+#ifcc _OPENMP >= 202111
+#define GISMO_HAS_OPENMP52
+#elif _OPENMP >= 202011
+#define GISMO_HAS_OPENMP51
+#elif _OPENMP >= 201811
+#define GISMO_HAS_OPENMP50
+#elif _OPENMP >= 201511
+#define GISMO_HAS_OPENMP45
+#elif _OPENMP >= 201307
+#define GISMO_HAS_OPENMP40
+#elif _OPENMP >= 201107
+#define GISMO_HAS_OPENMP31
+#elif _OPENMP >= 200805
+#define GISMO_HAS_OPENMP30
+#elif _OPENMP >= 200505
+#define GISMO_HAS_OPENMP25
+#endif
+
 #include <omp.h>
 
 #else
