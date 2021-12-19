@@ -23,10 +23,11 @@ void create_test(const std::string& label,
                  const Iterator& sizes,
                  const std::vector<index_t>& nruns,
                  const std::vector<index_t>& nthreads,
-                 gsBenchmark& benchmark)
+                 gsBenchmark& benchmark,
+                 const std::string& extra_name="")
 {
-  gsInfo << "=== " << Test::name() << "\n";
-  auto bmark = benchmark.add(label, Test::name());
+  gsInfo << "=== " << Test::name() << extra_name << "\n";
+  auto bmark = benchmark.add(label, Test::name()+extra_name);
   auto riter = nruns.begin();
   for (auto it : sizes) {
     gsInfo << "... " << util::to_string(it) << "(" << *riter << ")"<< std::flush;
@@ -54,10 +55,11 @@ void create_test(const std::string& label,
                  const util::zip_helper<T...>& sizes,
                  const std::vector<index_t>& nruns,
                  const std::vector<index_t>& nthreads,
-                 gsBenchmark& benchmark)
+                 gsBenchmark& benchmark,
+                 const std::string& extra_name="")
 {
-  gsInfo << "=== " << Test::name() << "\n";
-  auto bmark = benchmark.add(label, Test::name());
+  gsInfo << "=== " << Test::name() << extra_name << "\n";
+  auto bmark = benchmark.add(label, Test::name()+extra_name);
   auto riter = nruns.begin();
   for (auto it : sizes) {
     gsInfo << "... " << util::to_string(it) << "(" << *riter << ")"<< std::flush;
@@ -585,7 +587,7 @@ private:
   gsMultiPatch<T> geo;
   gsMultiBasis<T> bases;
   gsConstantFunction<T> f;
-  gsBoundaryConditions<T> bcInfo;
+  gsBoundaryConditions<T> bc;
   gsPoissonAssembler<T> assembler;
 
 public:
@@ -609,13 +611,12 @@ public:
       bases[i].setDegreePreservingMultiplicity(degree);
 
     // create assembler
-    assembler = gsPoissonAssembler<T>(geo, bases, bcInfo, f, dirichlet::nitsche, iFace::glue);
+    assembler = gsPoissonAssembler<T>(geo, bases, bc, f, dirichlet::nitsche, iFace::glue);
   }
 
   uint64_t operator()()
   {
     assembler.assemble();
-    gsInfo << numPatches << ":" << numRefine << ":" << degree << " = " << assembler.rhs().rows() << std::endl;
     return sizeof(T) * (assembler.matrix().nonZeros() + assembler.rhs().rows());
   }
 
@@ -648,7 +649,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return (gismo::metric)(metric::runtime_sec + metric::speedup);
+    return (gismo::metric)(metric::runtime_sec + 0*metric::speedup);
   }
 };
 //! [Implement benchmark Poisson 2d visitor]
@@ -666,7 +667,7 @@ private:
   gsMultiPatch<T> geo;
   gsMultiBasis<T> bases;
   gsConstantFunction<T> f;
-  gsBoundaryConditions<T> bcInfo;
+  gsBoundaryConditions<T> bc;
   gsPoissonAssembler<T> assembler;
 
 public:
@@ -690,13 +691,13 @@ public:
       bases[i].setDegreePreservingMultiplicity(degree);
 
     // create assembler
-    assembler = gsPoissonAssembler<T>(geo, bases, bcInfo, f, dirichlet::nitsche, iFace::glue);
+    assembler = gsPoissonAssembler<T>(geo, bases, bc, f, dirichlet::nitsche, iFace::glue);
   }
 
   uint64_t operator()()
   {
     assembler.assemble();
-    return sizeof(T) * assembler.numDofs();
+    return sizeof(T) * (assembler.matrix().nonZeros() + assembler.rhs().rows());
   }
 
   constexpr uint64_t size() const
@@ -733,6 +734,116 @@ public:
 };
 //! [Implement benchmark Poisson 3d visitor]
 
+//! [Implement benchmark Poisson 2d expression assembler]
+/**
+ * Benchmark: Expression assembler-based Poisson 2d
+ */
+template<typename T>
+class benchmark_poisson2d_expression_assembler
+{
+private:
+  memory_safeguard<benchmark_poisson2d_expression_assembler> _msg;
+  int numPatches, numRefine, degree;
+  gsMultiPatch<T> geo;
+  gsMultiBasis<T> bases;
+  gsBoundaryConditions<T> bc;
+  
+  gsExprAssembler<T> A;
+  typename gsExprAssembler<>::geometryMap G;
+  typename gsExprAssembler<>::space u;
+
+  gsFunctionExpr<T> f;
+  expr::gsComposition<T> ff;
+  
+public:
+  template<typename... Args>
+  benchmark_poisson2d_expression_assembler(std::tuple<Args...> args)
+    : benchmark_poisson2d_expression_assembler(std::get<0>(args), std::get<1>(args), std::get<2>(args))
+  {}
+    
+  benchmark_poisson2d_expression_assembler(int numPatches, int numRefine=0, int degree=1)
+    : _msg(numPatches, numRefine, degree),
+      numPatches(numPatches), numRefine(numRefine), degree(degree),
+      geo(gsNurbsCreator<>::BSplineSquareGrid(numPatches, numPatches, 1.0)),
+      bases(geo, true), A(1,1), G(A.getMap(geo)), u(A.getSpace(bases)),
+      f("0.0", 2), ff(A.getCoeff(f, G))
+  {    
+    // h-refine each basis
+    for (int i = 0; i < numRefine; ++i)
+      bases.uniformRefine();
+    
+    // k-refinement (set degree)
+    for (std::size_t i = 0; i < bases.nBases(); ++ i)
+      bases[i].setDegreePreservingMultiplicity(degree);
+    
+    // set the geometry map to boundary conditions
+    bc.setGeoMap(geo);
+    
+    // setup boundary conditions
+    u.setup(bc, dirichlet::l2Projection, 0);
+
+    // set elements used for numerical integration
+    A.setIntegrationElements(bases);
+    
+    // initialize the system
+    A.initSystem();
+    
+    // set the geometry map
+    //G = A.getMap(geo);
+    
+    // set the discretization space
+    //u = A.getSpace(bases);
+
+    // set the source term
+    //auto ff = A.getCoeff(f, G);
+  }
+
+  uint64_t operator()()
+  {
+    // Compute the system matrix and right-hand side
+    A.assemble(
+               igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
+               ,
+               u * ff * meas(G) //rhs vector
+               );
+        
+    return sizeof(T) * (A.matrix().nonZeros() + A.rhs().rows());
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(numPatches, numRefine, degree);
+  }
+
+  static constexpr uint64_t size(index_t numPatches, index_t numRefine, index_t degree)
+  {
+    // Estimated memory
+    // system matrix : 1.33 * ndofs * (2*p+1)^2
+    // r.h.s. vector :        ndofs
+    //
+    // The factor 1.33 is used because Eigen shows better performance
+    // if 33% more memory is allocated during the step-by-step assembly
+    return sizeof(T) * ( 1.33 * math::pow(2*degree+1,2) + 1 ) *
+      (/* numPatches^2 * DOFs per patch */
+       math::pow(numPatches,2) * math::pow((1<<numRefine)+degree,(T)2)
+       /* remove duplicate DOFs at patch interfaces (2 directions) */
+       - 2 * (numPatches * (numPatches-1)) * math::pow( (1<<numRefine)+degree,(T)1)
+       /* add interior points at patch corners that have been removed before */
+       + math::pow(numPatches-1,2) );
+  }
+
+  static std::string name()
+  {
+    return "Expression assembler-based Poisson 2d assembler";
+  }
+
+  static constexpr gismo::metric metric()
+  {
+    return (gismo::metric)(metric::runtime_sec + 0*metric::speedup);
+  }
+};
+//! [Implement benchmark Poisson 2d expression assembler]
+
 template<typename T>
 std::vector<T> make_vector(T value, std::size_t size)
 {
@@ -748,39 +859,46 @@ int main(int argc, char *argv[])
   gsBenchmark benchmark;
   std::string fn;
   bool list=false;
-  std::vector<index_t>  benchmarks, nruns, nthreads, asizes, msizes, vsizes;
-  index_t asizesmin = 1;
-  index_t asizesmax = 8;
-  index_t msizesmin = 10;
-  index_t nrunsmin  = 1;
-  index_t nrunsmax  = 100;
-  index_t vsizesmin = 100;
-  real_t  msizesfactor = 2;
-  real_t  nrunsfactor  = 1.5;
-  real_t  vsizesfactor = 4;
-  index_t msizesmax = (index_t) std::min((real_t)std::numeric_limits<index_t>::max(),
+  std::vector<index_t>  benchmarks, msizes, nruns, nthreads, patches, subdivides, vsizes;
+  index_t msizemin      = 10;
+  index_t nrunsmax      = 100;
+  index_t nrunsmin      = 1;
+  index_t patchesmax    = 128;
+  index_t patchesmin    = 1;
+  index_t subdividemax  = 10;
+  index_t subdividemin  = 0;
+  index_t vsizemin      = 100;
+  real_t  patchesfactor = 2;
+  real_t  msizesfactor  = 2;
+  real_t  nrunsfactor   = 1.5;
+  real_t  vsizesfactor  = 4;
+  index_t msizemax = (index_t) math::min((real_t)std::numeric_limits<index_t>::max(),
                                          std::sqrt((real_t)(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes()));
-  index_t vsizesmax = (index_t) std::min((real_t)std::numeric_limits<index_t>::max(),
+  index_t vsizemax = (index_t) math::min((real_t)std::numeric_limits<index_t>::max(),
                                          (real_t)(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes());
 
   gsCmdLine cmd("G+Smo performance benchmark.");
   cmd.printVersion();
 
   cmd.addReal("M", "msizesfactor", "Growth factor for the sequence of msizes (only used if '-m' is not given)", msizesfactor);
-  cmd.addReal("V", "vsizesfactor", "Growth factor for the sequence of vsizes (only used if '-v' is not given)", vsizesfactor);
+  cmd.addReal("P", "patchesfactor", "Growth factor for the sequence of patches (only used if '-p' is not given)", patchesfactor);
   cmd.addReal("R", "runsfactor", "Growth factor for the sequence of runs (only used if '-r' is not given)", nrunsfactor);
-  cmd.addInt("", "asizesmax", "Maximum number of refinements (patch,refine,degree) in assembly benchmarks (only used if '-a' is not given)", asizesmax);
-  cmd.addInt("", "asizesmin", "Mminimum number of refinements (patch,refine,degree) in assembly benchmarks (only used if '-a' is not given)", asizesmin);
-  cmd.addInt("", "msizesmax", "Maximum number of unknowns in matrix/vector benchmarks (only used if '-m' is not given)", msizesmax);
-  cmd.addInt("", "msizesmin", "Minimum number of unknowns in matrix/vector benchmarks (only used if '-m'is not given)", msizesmin);
-  cmd.addInt("", "vsizesmax", "Maximum number of unknowns in vector benchmarks (only used if '-v' is not given)", vsizesmax);
-  cmd.addInt("", "vsizesmin", "Mminimum number of unknowns in vector benchmarks (only used if '-v' is not given)", vsizesmin);
+  cmd.addReal("V", "vsizesfactor", "Growth factor for the sequence of vsizes (only used if '-v' is not given)", vsizesfactor);
+  cmd.addInt("", "msizemax", "Maximum number of unknowns in matrix/vector benchmarks (only used if '-m' is not given)", msizemax);
+  cmd.addInt("", "msizemin", "Minimum number of unknowns in matrix/vector benchmarks (only used if '-m'is not given)", msizemin);
+  cmd.addInt("", "patchesmax", "Maximum number of patches in assembly benchmarks (only used if '-p' is not given)", patchesmax);
+  cmd.addInt("", "patchesmin", "Minimum number of patches in assembly benchmarks (only used if '-p' is not given)", patchesmin);
   cmd.addInt("", "runsmax", "Maximum number of runs (only used if '-r' is not given)", nrunsmax);
   cmd.addInt("", "runsmin", "Mminimum number of runs (only used if '-r' is not given)", nrunsmin);
-  cmd.addMultiInt("a", "asizes", "Number of refinements (patch,refine,degree) in assembly benchmarks (auto-generated if not given)", asizes);
+  cmd.addInt("", "subdividemax", "Maximum number of subdivisions (h-refinement) in assembly benchmarks (only used if '-r' is not given)", subdividemax);
+  cmd.addInt("", "subdividemin", "Minimum number of subdivisions (h-refinement) in assembly benchmarks (only used if '-r' is not given)", subdividemin);
+  cmd.addInt("", "vsizemax", "Maximum number of unknowns in vector benchmarks (only used if '-v' is not given)", vsizemax);
+  cmd.addInt("", "vsizemin", "Mminimum number of unknowns in vector benchmarks (only used if '-v' is not given)", vsizemin);
   cmd.addMultiInt("b", "benchmarks", "List of benchmarks to be run", benchmarks);
   cmd.addMultiInt("m", "msizes", "Number of unknowns in matrix/vector benchmarks (auto-generated if not given)", msizes);
+  cmd.addMultiInt("p", "patches", "Number of patches in assembly benchmarks (auto-generated if not given)", patches);
   cmd.addMultiInt("r", "runs", "Number of runs over which the results are averaged (auto-generated if not given)", nruns);
+  cmd.addMultiInt("s", "subdivide", "Number of subdivisions (h-refinement) in assembly benchmarks (auto-generated if not given)", subdivides);
   cmd.addMultiInt("t", "threads", "Number of OpenMP threads to be used for the benchmark (auto-generated if not given)", nthreads);
   cmd.addMultiInt("v", "vsizes", "Number of unknowns in vector benchmarks (auto-generated if not given)", vsizes);
   cmd.addString("o", "output", "Name of the output file", fn);
@@ -800,8 +918,19 @@ int main(int argc, char *argv[])
            << "#06: " << benchmark_eigen_axpy<real_t>::name() << "\n"
            << "#07: " << benchmark_c_array_dense_matmul<real_t>::name() << "\n"
            << "#08: " << benchmark_eigen_dense_matmul<real_t>::name() << "\n"
-           << "#09: " << benchmark_poisson2d_visitor<real_t>::name() << "\n"
-           << "#10: " << benchmark_poisson3d_visitor<real_t>::name() << "\n";
+           << "#09: " << benchmark_poisson2d_visitor<real_t>::name()
+           <<            " with increasing number of patches" << "\n"
+           << "#10: " << benchmark_poisson2d_visitor<real_t>::name()
+           <<            " with increasing number of subdivisions" << "\n"
+           << "#11: " << benchmark_poisson3d_visitor<real_t>::name()
+           <<            " with increasing number of patches" << "\n"
+           << "#12: " << benchmark_poisson3d_visitor<real_t>::name()
+           <<            " with increasing number of subdivisions" << "\n"
+           << "#13: " << benchmark_poisson2d_expression_assembler<real_t>::name()
+           <<            " with increasing number of patches" << "\n"
+           << "#14: " << benchmark_poisson2d_expression_assembler<real_t>::name()
+           <<            " with increasing number of subdivisions" << "\n";
+      
     return EXIT_SUCCESS;
   }
   //! [List benchmarks and exit]
@@ -812,35 +941,41 @@ int main(int argc, char *argv[])
     for(index_t i=1; i<=8; ++i)
       benchmarks.push_back(i);
   }
-
+  
   // If empty fill with 1, 2, 4, ..., maximum number of OpenMP threads
   if (nthreads.empty()) {
     for(index_t i=1; i<=omp_get_max_threads(); i*=2)
       nthreads.push_back(i);
   }
 
-  // If empty fill with asizesmin, ..., asizesmax
-  if (asizes.empty()) {
-    for(index_t i=asizesmin; i<asizesmax; ++i)
-      asizes.push_back(i);
-  }
-  
-  // If empty fill with msizesmin*msizesfactor^k, k=0, 1, 2, ..., msizesmax
+  // If empty fill with msizemin*msizesfactor^k, k=0, 1, 2, ..., msizemax
   if (msizes.empty()) {
-    for(index_t i=msizesmin;;) {
+    for(index_t i=msizemin;;) {
       msizes.push_back(i);
-      if (i<=std::min(msizesmax, std::numeric_limits<index_t>::max()) / (msizesfactor*msizesfactor))
+      if (i<=math::min(msizemax, std::numeric_limits<index_t>::max()) / (msizesfactor*msizesfactor))
         i*=msizesfactor;
       else
         break;
     }
   }
 
-  // If empty fill with vsizesmin*vsizesfactor^k, k=0, 1, 2, ..., vsizesmax
+  // If empty fill with patchesmin, ..., patchesmax
+  if (patches.empty()) {
+    for(index_t i=patchesmin; i<=patchesmax; i*=patchesfactor)
+      patches.push_back(i);
+  }
+
+  // If empty fill with subdividemin, ..., subdividemax
+  if (subdivides.empty()) {
+    for(index_t i=subdividemin; i<subdividemax; ++i)
+      subdivides.push_back(i);
+  }
+  
+  // If empty fill with vsizemin*vsizesfactor^k, k=0, 1, 2, ..., vsizemax
   if (vsizes.empty()) {
-    for(index_t i=vsizesmin;;) {
+    for(index_t i=vsizemin;;) {
       vsizes.push_back(i);
-      if (i<=std::min(vsizesmax, std::numeric_limits<index_t>::max()) / vsizesfactor)
+      if (i<=math::min(vsizemax, std::numeric_limits<index_t>::max()) / vsizesfactor)
         i*=vsizesfactor;
       else
         break;
@@ -850,13 +985,14 @@ int main(int argc, char *argv[])
   // If empty fill with nrunsmax/nrunsfactor^k, k=0, 1, 2, ..., nrunsmin
   if (nruns.empty()) {
     index_t k = nrunsmax;
-    for(index_t i=0; i<(index_t)std::max(msizes.size(),vsizes.size()); ++i) {
+    for(index_t i=0; i<(index_t)math::max(msizes.size(), patches.size(),
+                                         subdivides.size(), vsizes.size()); ++i) {
       nruns.push_back(k);
-      k = std::max(nrunsmin, (index_t)(k/nrunsfactor));
+      k = math::max(nrunsmin, (index_t)(k/nrunsfactor));
     }
   }
 
-  if (nruns.size()<std::max(msizes.size(),vsizes.size()))
+  if (nruns.size()<math::max(msizes.size(),vsizes.size()))
     GISMO_ERROR("|nruns| must have the same size as max(|msizes|,|vsizes|)");
   //! [Default configuration]
 
@@ -922,26 +1058,66 @@ int main(int argc, char *argv[])
     }
 
     case (9): {
-
-      std::vector<index_t> a = {0,3};//,4,7,8,5};
-      std::vector<index_t> b = {32,16};//,8,4,2,1};
-      
-      // Benchmark: visitor-based Poisson 2d assembler
+      // Benchmark: visitor-based Poisson 2d assembler with increasing number of patches
       create_test<benchmark_poisson2d_visitor<real_t> >
-        ("assemblerVisitor", util::zip(b,
-                                       //make_vector(index_t(4), asizes.size()),
-                                       a,
-                                       make_vector(index_t(5), a.size())),
-         nruns, nthreads, benchmark);
+        ("assemblerVisitor", util::zip(patches,
+                                       make_vector(index_t(1), patches.size()),
+                                       make_vector(index_t(3), patches.size())),
+         nruns, nthreads, benchmark, " with increasing number of patches");
+      break;
+    }
+
+    case (10): {
+      // Benchmark: visitor-based Poisson 2d assembler with increasing number of subdivisions
+      create_test<benchmark_poisson2d_visitor<real_t> >
+        ("assemblerVisitor", util::zip(make_vector(index_t(4), subdivides.size()),
+                                       subdivides,
+                                       make_vector(index_t(3), subdivides.size())),
+         nruns, nthreads, benchmark, " with increasing number of subdivisions");
+      break;
+    }
+
+    case (11): {
+      // Benchmark: visitor-based Poisson 3d assembler with increasing number of patches
+      create_test<benchmark_poisson3d_visitor<real_t> >
+        ("assemblerVisitor", util::zip(patches,
+                                       make_vector(index_t(0), patches.size()),
+                                       make_vector(index_t(1), patches.size())),
+         nruns, nthreads, benchmark, " with increasing number of patches");
+      break;
+    }
+
+    case (12): {
+      // Benchmark: visitor-based Poisson 3d assembler with increasing number of subdivisions
+      create_test<benchmark_poisson3d_visitor<real_t> >
+        ("assemblerVisitor", util::zip(make_vector(index_t(1), subdivides.size()),
+                                       subdivides,
+                                       make_vector(index_t(2), subdivides.size())),
+         nruns, nthreads, benchmark, " with increasing number of subdivisions");
       break;
     }
       
-    case (10): {
-      // Benchmark: visitor-based Poisson 3d assembler
-      create_test<benchmark_poisson3d_visitor<real_t> >
-        ("assemblerVisitor", vsizes, nruns, nthreads, benchmark);
+    case (13): {
+      // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of patches
+      create_test<benchmark_poisson2d_expression_assembler<real_t> >
+        ("assemblerExpressionAssembler", util::zip(patches,
+                                                   make_vector(index_t(1), patches.size()),
+                                                   make_vector(index_t(3), patches.size())),
+         nruns, nthreads, benchmark, " with increasing number of patches");
       break;
     }
+
+    case (14): {
+      // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of subdivision
+      create_test<benchmark_poisson2d_expression_assembler<real_t> >
+        ("assemblerExpressionAssembler", util::zip(make_vector(index_t(4), subdivides.size()),
+                                                   subdivides,
+                                                   make_vector(index_t(3), subdivides.size())),
+         nruns, nthreads, benchmark, " with increasing number of subdivisions");
+      break;
+    }
+
+      
     default:
       GISMO_ERROR("Invalid benchmark");
     }
