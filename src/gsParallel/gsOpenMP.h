@@ -15,7 +15,7 @@
 
 #ifdef _OPENMP
 
-#ifcc _OPENMP >= 202111
+#ifdef _OPENMP >= 202111
 #define GISMO_HAS_OPENMP52
 #elif _OPENMP >= 202011
 #define GISMO_HAS_OPENMP51
