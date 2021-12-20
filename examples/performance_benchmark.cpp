@@ -1061,8 +1061,8 @@ int main(int argc, char *argv[])
       // Benchmark: visitor-based Poisson 2d assembler with increasing number of patches
       create_test<benchmark_poisson2d_visitor<real_t> >
         ("assemblerVisitor", util::zip(patches,
-                                       make_vector(index_t(1), patches.size()),
-                                       make_vector(index_t(3), patches.size())),
+                                       make_vector((index_t)1, patches.size()),
+                                       make_vector((index_t)3, patches.size())),
          nruns, nthreads, benchmark, " with increasing number of patches");
       break;
     }
@@ -1070,9 +1070,9 @@ int main(int argc, char *argv[])
     case (10): {
       // Benchmark: visitor-based Poisson 2d assembler with increasing number of subdivisions
       create_test<benchmark_poisson2d_visitor<real_t> >
-        ("assemblerVisitor", util::zip(make_vector(index_t(4), subdivides.size()),
+        ("assemblerVisitor", util::zip(make_vector((index_t)4, subdivides.size()),
                                        subdivides,
-                                       make_vector(index_t(3), subdivides.size())),
+                                       make_vector((index_t)3, subdivides.size())),
          nruns, nthreads, benchmark, " with increasing number of subdivisions");
       break;
     }
@@ -1081,8 +1081,8 @@ int main(int argc, char *argv[])
       // Benchmark: visitor-based Poisson 3d assembler with increasing number of patches
       create_test<benchmark_poisson3d_visitor<real_t> >
         ("assemblerVisitor", util::zip(patches,
-                                       make_vector(index_t(0), patches.size()),
-                                       make_vector(index_t(1), patches.size())),
+                                       make_vector((index_t)0, patches.size()),
+                                       make_vector((index_t)1, patches.size())),
          nruns, nthreads, benchmark, " with increasing number of patches");
       break;
     }
@@ -1090,9 +1090,9 @@ int main(int argc, char *argv[])
     case (12): {
       // Benchmark: visitor-based Poisson 3d assembler with increasing number of subdivisions
       create_test<benchmark_poisson3d_visitor<real_t> >
-        ("assemblerVisitor", util::zip(make_vector(index_t(1), subdivides.size()),
+        ("assemblerVisitor", util::zip(make_vector((index_t)1, subdivides.size()),
                                        subdivides,
-                                       make_vector(index_t(2), subdivides.size())),
+                                       make_vector((index_t)2, subdivides.size())),
          nruns, nthreads, benchmark, " with increasing number of subdivisions");
       break;
     }
@@ -1101,8 +1101,8 @@ int main(int argc, char *argv[])
       // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of patches
       create_test<benchmark_poisson2d_expression_assembler<real_t> >
         ("assemblerExpressionAssembler", util::zip(patches,
-                                                   make_vector(index_t(1), patches.size()),
-                                                   make_vector(index_t(3), patches.size())),
+                                                   make_vector((index_t)1, patches.size()),
+                                                   make_vector((index_t)3, patches.size())),
          nruns, nthreads, benchmark, " with increasing number of patches");
       break;
     }
@@ -1110,9 +1110,9 @@ int main(int argc, char *argv[])
     case (14): {
       // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of subdivision
       create_test<benchmark_poisson2d_expression_assembler<real_t> >
-        ("assemblerExpressionAssembler", util::zip(make_vector(index_t(4), subdivides.size()),
+        ("assemblerExpressionAssembler", util::zip(make_vector((index_t)4, subdivides.size()),
                                                    subdivides,
-                                                   make_vector(index_t(3), subdivides.size())),
+                                                   make_vector((index_t)3, subdivides.size())),
          nruns, nthreads, benchmark, " with increasing number of subdivisions");
       break;
     }
