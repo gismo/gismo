@@ -536,7 +536,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
 #ifdef GISMO_BUILD_PYBIND11
 
   /**
-   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   * @brief Initializes the Python wrapper for the class: gsSparseMatrix
    */
   namespace py = pybind11;
 

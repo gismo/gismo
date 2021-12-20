@@ -217,7 +217,7 @@ private:
 #ifdef GISMO_BUILD_PYBIND11
 
   /**
-   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   * @brief Initializes the Python wrapper for the class: gsFunctionExpr
    */
   void pybind11_init_gsFunctionExpr(pybind11::module &m);
 

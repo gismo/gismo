@@ -506,7 +506,7 @@ protected:
 #ifdef GISMO_BUILD_PYBIND11
 
   /**
-   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   * @brief Initializes the Python wrapper for the class: gsTensorBSplineBasis
    */
   void pybind11_init_gsTensorBSplineBasis2(pybind11::module &m);
   void pybind11_init_gsTensorBSplineBasis3(pybind11::module &m);

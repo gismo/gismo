@@ -851,15 +851,6 @@ private: // Data members
     // Pointer to associated multipatch domain
     const gsFunctionSet<T> * m_patches;
 
-// #ifdef GISMO_BUILD_PYBIND11
-
-//   /**
-//    * @brief Initializes the Python wrapper for the class: gsCmdLine
-//    */
-//   void pybind11_init_gsBoundaryConditions(pybind11::module &m);
-
-// #endif // GISMO_BUILD_PYBIND11
-
 }; // class gsBoundaryConditions
 
 /// Print (as string)
@@ -870,7 +861,7 @@ std::ostream &operator<<(std::ostream &os, const gsBoundaryConditions<T>& bvp)
 #ifdef GISMO_BUILD_PYBIND11
 
     /**
-     * @brief Initializes the Python wrapper for the class: gsMultiPatch
+     * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
      */
     void pybind11_init_gsBoundaryConditions(pybind11::module &m);
     void pybind11_enum_gsBoundaryConditions(pybind11::module &m);

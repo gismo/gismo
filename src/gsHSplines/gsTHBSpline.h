@@ -133,7 +133,7 @@ public:
 #ifdef GISMO_BUILD_PYBIND11
 
   /**
-   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   * @brief Initializes the Python wrapper for the class: gsTHBSpline
    */
   void pybind11_init_gsTHBSpline2(pybind11::module &m);
   void pybind11_init_gsTHBSpline3(pybind11::module &m);
