@@ -512,12 +512,10 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(),
-                                   m_exprdata->iface().points());
+            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patch1, iFace.first().side());
-            m_exprdata->iface().precompute(patch2, iFace.second().side());
+            m_exprdata->precompute(iFace);
 
             // Compute on element
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes

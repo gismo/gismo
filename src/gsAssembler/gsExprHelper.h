@@ -82,13 +82,8 @@ public:
 
     ~gsExprHelper() { }
 
-    gsMatrix<T> & points() { return m_points; }
-    inline gsExprHelper & iface()
-    {
-        if (nullptr==m_mirror )
-            m_mirror = memory::make_shared(new gsExprHelper(this));
-        return *m_mirror;
-    }
+    gsMatrix<T> & points()    { return m_points; }
+    gsMatrix<T> & pointsIfc() { return this->iface().m_points; }
 
     bool isMirrored() const { return nullptr!=m_mirror; }
 
@@ -198,6 +193,14 @@ public:
     //void clearMutSource() ?
 
 private:
+
+    inline gsExprHelper & iface()
+    {
+        if (nullptr==m_mirror )
+            m_mirror = memory::make_shared(new gsExprHelper(this));
+        return *m_mirror;
+    }
+
     template <class E1>
     void _parse(const expr::_expr<E1> & a1)
     {
@@ -223,14 +226,8 @@ private:
     template<typename... Ts>
     void _parse_tuple (const std::tuple<Ts...> &tuple) {_parse_tuple_i<0>(tuple);}
 
-public:
-
-    template<class... Ts>
-    void parse(const std::tuple<Ts...> &tuple)
+    void setInitialFlags()
     {
-        cleanUp(); //assumes parse is called once.
-        _parse_tuple(tuple);
-
         // Additional evaluation flags
         for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
@@ -238,10 +235,32 @@ public:
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-        
-        // gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
-        // gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
-        // gsInfo<< "cdata: "<< m_cdata.size()<<std::endl;
+        // gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
+        // gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
+        // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
+
+        if (isMirrored())
+        {
+            for (MapDataIt it  = m_mirror->m_mdata.begin(); it != m_mirror->m_mdata.end(); ++it)
+                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+            for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
+                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+            for (CFuncDataIt it  = m_mirror->m_cdata.begin(); it != m_mirror->m_cdata.end(); ++it)
+                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+            // gsInfo<< "+fdata: "<< m_mirror->m_fdata.size()<<"\n";
+            // gsInfo<< "+mdata: "<< m_mirror->m_mdata.size()<<"\n";
+            // gsInfo<< "+cdata: "<< m_mirror->m_cdata.size()<<std::endl;
+        }
+    }
+
+public:
+
+    template<class... Ts>
+    void parse(const std::tuple<Ts...> &tuple)
+    {
+        cleanUp(); //assumes parse is called once.
+        _parse_tuple(tuple);
+        setInitialFlags();
     }
 
     template<class... expr>
@@ -249,28 +268,8 @@ public:
     {
         cleanUp(); //assumes parse is called once.
         _parse(args...);
-
-        // Add initial evaluation flags
-        for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-        for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-
-        /*
-        gsInfo<< "\nfdata: "<< m_fdata.size()<<"\n";
-        gsInfo<< "mdata: "<< m_mdata.size()<<"\n";
-        gsInfo<< "cdata: "<< m_cdata.size()<<"\n";
-        if (m_mirror)
-        {
-            gsInfo<< "\nfdata2: "<< iface().m_fdata.size()<<"\n";
-            gsInfo<< "mdata2: "  << iface().m_mdata.size()<<"\n";
-            gsInfo<< "cdata2: "  << iface().m_cdata.size()<<"\n";
-        }
-        */
+        setInitialFlags();
     }
-//#endif
 
     void add(const expr::gsGeometryMap<T> & sym)
     {
@@ -398,6 +397,12 @@ public:
                 .compute( mutMap ? m_mdata[mutMap].mine().values[0]
                           : m_points, mutData );
         }
+    }
+
+    void precompute(const boundaryInterface & iFace)
+    {
+        this->precompute    (iFace.first ().patch, iFace.first() .side());
+        m_mirror->precompute(iFace.second().patch, iFace.second().side());
     }
 
 };//class gsExprHelper
