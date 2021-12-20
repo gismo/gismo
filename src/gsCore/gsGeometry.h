@@ -265,11 +265,10 @@ public:
                           std::vector<gsMatrix<T> > & result) const
     { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
 
-    /// @}
-
-
     // Look at gsFunctionSet for documentation
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
+
+    /// @}
 
     /// \brief Evaluates if the geometry orientation coincide with the
     /// ambient orientation.
@@ -285,8 +284,6 @@ public:
         }
         return 1;
     }
-
-    /// @}
 
     /*************************************************************************/
 
@@ -497,6 +494,11 @@ public:
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }
 
+    void unrefineElements( std::vector<index_t> const & boxes )
+    {
+        this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
+    }
+
     typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
     
     /// Embeds coefficients in 3D
@@ -569,6 +571,10 @@ public:
 
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
+
+    /// Computes and returns the interface with \a other as a new geometry
+    virtual typename gsGeometry::uPtr iface(const boundaryInterface & bi,
+                                            const gsGeometry & other) const;
 
     /// Get parametrization of box component \a bc as a new gsGeometry uPtr.
     typename gsGeometry::uPtr component(boxComponent const& bc) const;

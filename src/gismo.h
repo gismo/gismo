@@ -29,7 +29,7 @@ namespace gismo
 /** @namespace gismo::internal
 
     @brief
-    This namespace contains functionalities that is internal to the library.
+    This namespace contains functionalities that are internal to the library.
 */
 namespace internal
 { }
@@ -102,6 +102,10 @@ namespace internal
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
+
+/* ----------- MSplines ----------- */
+#include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
 
 /* ----------- Modeling ----------- */
 #include <gsModeling/gsTrimSurface.h>

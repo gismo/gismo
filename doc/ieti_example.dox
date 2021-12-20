@@ -316,7 +316,7 @@ As a next step, we solve the problem
 \f]
 using the scaled Dirichlet preconditioner with a conjugate gradient solver.
 
-\snippet ieti_example.cpp Solver
+\snippet ieti_example.cpp Solve
 
 So far, we have only computed the Lagrange multipliers \f$ \underline \lambda \f$,
 from which we want to recover the solution.

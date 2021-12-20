@@ -48,7 +48,7 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 
-set(gismo_VERSION_MAJOR 20) #year
+set(gismo_VERSION_MAJOR 21) #year
 set(gismo_VERSION_MINOR 12) #month
 set(gismo_VERSION_PATCH 0 ) #patch
 set(gismo_VERSION
@@ -327,11 +327,13 @@ endif()
 
 option(GISMO_STRUCTURALANALYSIS "Enable Structural Analysis module" OFF)
 if(GISMO_STRUCTURALANALYSIS)
+  include(gsFetch)
   gismo_fetch_module(gsStructuralAnalysis)
 endif()
 
 option(GISMO_KLSHELL "Enable Kirchhoff-Love Shell" OFF)
 if(GISMO_KLSHELL)
+  include(gsFetch)
   gismo_fetch_module(gsKLShell)
 endif()
 

@@ -69,6 +69,9 @@ public:
     /// \brief Save file contents to an xml file
     void save(String const & fname = "dump", bool compress = false) const;
 
+    /// \brief Save multipatch contents to an IGES file
+    void writeIges(String const & fname);
+
     /// \brief Save file contents to compressed xml file
     void saveCompressed(String const & fname = "dump") const;
 
@@ -122,6 +125,7 @@ protected:
     bool readAxelFile(String const & fn);
     bool readAxelSurface( gsXmlNode * node );
     bool readAxelCurve  ( gsXmlNode * node );
+    bool readAxelMesh   ( gsXmlNode * node );
 
     /// Reads GeoPDEs txt file
     bool readGeompFile( String const & fn );
@@ -198,6 +202,21 @@ public:
     {
         return getFirstNode( internal::gsXml<Object>::tag(),
                              internal::gsXml<Object>::type() ) != 0 ;
+    }
+
+    /// Returns true if an Object exists in the filedata
+    inline bool hasId(int id) const
+    {
+        gsXmlNode * root = getXmlRoot();
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = root->first_node();
+             child; child = child->next_sibling())
+        {
+            id_at = child->first_attribute("id");
+            if (id_at && atoi(id_at->value()) == id )
+                return true;
+        }
+        return false;
     }
 
     /// Returns true if an Object exists in the filedata, even nested
@@ -443,6 +462,15 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 {return fd.print(os); }
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsFileData
+   */
+  void pybind11_init_gsFileData(pybind11::module &m);
+  
+#endif // GISMO_BUILD_PYBIND11
+  
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

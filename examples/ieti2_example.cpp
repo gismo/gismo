@@ -51,8 +51,6 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     if ( ! gsFileManager::fileExists(geometry) )
     {
         gsInfo << "Geometry file could not be found.\n";
@@ -60,7 +58,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run ieti_example with options:\n" << opt << std::endl;
+    gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
 
     /******************* Define geometry ********************/
 
@@ -334,7 +332,7 @@ int main(int argc, char *argv[])
     // This is the main cg iteration
     gsMatrix<> errorHistory;
     gsMinimalResidual<>( ieti.saddlePointProblem(), bdPrec )
-        .setOptions( opt.getGroup("Solver") )
+        .setOptions( cmd.getGroup("Solver") )
         .solveDetailed( ieti.rhsForSaddlePoint(), x, errorHistory );
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
@@ -365,7 +363,7 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(opt);
+        fd.add(cmd);
         fd.add(uVec);
         fd.addComment(std::string("ieti2_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
@@ -374,7 +372,7 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
-        gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
+        gsInfo << "Write Paraview data to file ieti_result.pvd\n";
         gsPoissonAssembler<> assembler(
             mp,
             mb,

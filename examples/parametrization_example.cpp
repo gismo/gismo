@@ -121,9 +121,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("fit", "Create an .xml file suitable for surface fitting with G+Smo.", fitting);
     cmd.getValues(argc, argv);
 
-    gsOptionList ol = cmd.getOptionList();
-
-    gsFileData<> fd(ol.getString("filenameIn"));
+    gsFileData<> fd(cmd.getString("filenameIn"));
 
     gsInfo << "Reading input into gsMesh<real_t>::uPtr: ";
     gsStopwatch stopwatch;
@@ -146,7 +144,7 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    pm->setOptions(ol);
+    pm->setOptions(cmd);
 
     gsInfo << "gsFloater::compute()             ";
     stopwatch.restart();
@@ -185,10 +183,11 @@ int main(int argc, char *argv[])
 
     if(paraview)
     {
-        gsInfo << "Writing to Paraview." << std::endl;
+        gsInfo << "Writing to Paraview.\n";
 
         // .pvd with the flat mesh
         gsWriteParaview(flatMesh, ol.getString("filenameOut"));
+        gsFileManager::open(cmd.getString("filenameOut") + ".pvd");
 
         // .vtk with the vertices coloured according to the parameters
         // Note: calling gsWriteParaview directly with the uv matrix
