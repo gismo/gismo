@@ -134,12 +134,12 @@ int main(int argc, char *argv[])
 
     gsFloater<real_t>::uPtr pm;
 
-    if(ol.askString("overlap", "").compare("") > 0)
-        pm = newPeriodicOverlap(*mm, filenameV0, filenameV1, filenameOverlap, ol);
-    else if(ol.askString("stitch", "").compare("") > 0)
-        pm = newPeriodicStitch(*mm, filenameV0, filenameV1, filenameStitch, ol);
+    if(cmd.askString("overlap", "").compare("") > 0)
+        pm = newPeriodicOverlap(*mm, filenameV0, filenameV1, filenameOverlap, cmd);
+    else if(cmd.askString("stitch", "").compare("") > 0)
+        pm = newPeriodicStitch(*mm, filenameV0, filenameV1, filenameStitch, cmd);
     else
-        pm = gsFloater<real_t>::uPtr(new gsFloater<real_t>(*mm, ol));
+        pm = gsFloater<real_t>::uPtr(new gsFloater<real_t>(*mm, cmd));
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
@@ -177,8 +177,8 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    if((ol.askString("overlap", "").compare("") > 0) ||
-       (ol.askString("stitch", "").compare("") > 0))
+    if((cmd.askString("overlap", "").compare("") > 0) ||
+       (cmd.askString("stitch", "").compare("") > 0))
         pm->restrictMatrices(uv, xyz);
 
     if(paraview)
@@ -186,13 +186,13 @@ int main(int argc, char *argv[])
         gsInfo << "Writing to Paraview.\n";
 
         // .pvd with the flat mesh
-        gsWriteParaview(flatMesh, ol.getString("filenameOut"));
+        gsWriteParaview(flatMesh, cmd.getString("filenameOut"));
         gsFileManager::open(cmd.getString("filenameOut") + ".pvd");
 
         // .vtk with the vertices coloured according to the parameters
         // Note: calling gsWriteParaview directly with the uv matrix
         // would not do, as the vertices are in different order than
-        pm->writeTexturedMesh(ol.getString("filenameOut"));
+        pm->writeTexturedMesh(cmd.getString("filenameOut"));
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
         gsFileData<> output;
         output << uv;
         output << xyz;
-        output.save(ol.getString("filenameOut"));
+        output.save(cmd.getString("filenameOut"));
     }
 
     return 0;
