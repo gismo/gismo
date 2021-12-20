@@ -437,6 +437,7 @@ public:
 
     index_t cardinality_impl() const
     {
+        GISMO_ASSERT(this->data().actives.rows()!=0,"Cardinality depends on the NEED_ACTIVE flag");
         return m_d * this->data().actives.rows();
     }
 
@@ -1838,7 +1839,7 @@ GISMO_EXPR_VECTOR_EXPRESSION(norm,norm,1);
 /// Squared Eucledian Norm
 GISMO_EXPR_VECTOR_EXPRESSION(sqNorm,squaredNorm,1);
 /// Normalization of a vector to unit measure
-GISMO_EXPR_VECTOR_EXPRESSION(normalized,normalized,0); // (!) mem.
+GISMO_EXPR_VECTOR_EXPRESSION(normalized,normalized,0);
 /// Inverse of a matrix expression
 GISMO_EXPR_VECTOR_EXPRESSION(inv,cramerInverse,0);
 // GISMO_EXPR_VECTOR_EXPRESSION(cwSqr,array().square,0)
@@ -3396,6 +3397,8 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     { _v.parse(evList); }
 
+    index_t cardinality_impl() const
+    { return _v.cardinality(); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
@@ -3861,12 +3864,17 @@ public:
     sub_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
+        // GISMO_ASSERT(&u.rowVar()==&v.rowVar() && &u.colVar()==&v.colVar(),"The (interface) terms are not split compatibly.");
         //GISMO_STATIC_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Cannot subtract if the number of colums do not agree.");
     }
 
     mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
     {
+        // GISMO_ASSERT(_u.rowVar().id()==_v.rowVar().id() && _u.rowVar().isAcross()==_v.rowVar().isAcross(),
+        //     "The row spaces are not split compatibly.");
+        // GISMO_ASSERT(_u.colVar().id()==_v.colVar().id() && _u.colVar().isAcross()==_v.colVar().isAcross(),
+        //     "The col spaces are not split compatibly.");
         GISMO_ASSERT(_u.rows() == _v.rows(),
                      "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in - operation:\n" << _u <<" minus \n" << _v );
         GISMO_ASSERT(_u.cols() == _v.cols(),
@@ -4154,7 +4162,9 @@ GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace() )
 GISMO_SHORTCUT_PHY_EXPRESSION( idiv, ijac(u,G).trace()    )
 
 // The unit (normalized) boundary (outer pointing) normal
-GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized()   ) //(!) bug + mem. leak
+GISMO_SHORTCUT_MAP_EXPRESSION(unv, nv(G).normalized()   )
+// The unit (normalized) boundary (surface) normal
+GISMO_SHORTCUT_MAP_EXPRESSION(usn, sn(G).normalized()   )
 
 GISMO_SHORTCUT_PHY_EXPRESSION(igrad, grad(u)*jac(G).ginv() ) // transpose() problem ??
 GISMO_SHORTCUT_VAR_EXPRESSION(igrad, grad(u) ) // u is presumed to be defined over G
