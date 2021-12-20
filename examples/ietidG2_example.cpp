@@ -56,33 +56,32 @@ public:
 
     gsInexactIETIPrec(const gsSparseMatrix <T> &K,
                       const BasePtr firstprecond,
-                      const gsGeometry <T> &geo1,
-                      const gsBasis <T> &b1,
-                      const gsBoundaryConditions <T> &bc1,
+                      const gsMultiBasis<T> &basis,
+                      //const gsBoundaryConditions <T> &bc1,
                       const std::vector<gsIetidGMapper<>::ArtificialIface> &iFacePairs,
                       const gsDofMapper& augmentedMapper,
-                      const std::vector<gsBasis < T> *>& iFaceBasis,
-                      const std::vector<gsBoundaryConditions<> > &Bc,
+                      //const std::vector<gsBoundaryConditions<> > &Bc,
                       const T delta,
                       const gsOptionList &opt = gsAssembler<T>::defaultOptions()) :
     m_underlyingOperator(K), m_fastDiag(firstprecond), m_originalSize(m_fastDiag->rows()),
-    m_g1(geo1), m_b1(b1), m_bc1(bc1), m_patchIFace(iFacePairs), m_mapper(augmentedMapper), iBasis(iFaceBasis), bc(Bc), m_delta(delta), m_options(opt), m_edgeSolver(NULL)
+    m_basis(basis), //m_bc1(bc1),
+    m_patchIFace(iFacePairs), m_mapper(augmentedMapper), //bc(Bc),
+    m_options(opt), m_edgeSolver(NULL)
     {
         m_R2T.resize(m_underlyingOperator.cols(), m_underlyingOperator.cols() - m_originalSize);
 
         gsSparseMatrix<> M;
-        for (std::vector<gsBoundaryConditions<> >::const_iterator bit = bc.begin(); bit != bc.end(); ++bit) {
-            index_t comp = iFacePairs[bit - bc.begin()].takenFrom.direction() == 1 ? 0 : 1;
-            M = gsPatchPreconditionersCreator<>::massMatrix(iBasis[bit - bc.begin()]->component(comp));
-            st_mass.push_back(M.block(1,1,M.rows()-2, M.cols()-2));
+        for (std::vector<gsIetidGMapper<>::ArtificialIface >::const_iterator bit = m_patchIFace.begin(); bit != m_patchIFace.end(); ++bit) {
+            index_t comp = iFacePairs[bit - m_patchIFace.begin()].takenFrom.direction() == 1 ? 0 : 1;
+            M = gsPatchPreconditionersCreator<>::massMatrix(m_basis[bit - m_patchIFace.begin()+1].component(comp));
+            m_mass.push_back(M.block(1,1,M.rows()-2, M.cols()-2));
         }
 
         constructRestrictionMatricesforL2();
         index_t colentry = 0;
-        for (index_t r = m_originalSize; r < m_underlyingOperator.rows(); r++)
+        for (index_t r = m_originalSize; r < m_underlyingOperator.rows(); r++, colentry++)
         {
             m_R2T.insert(r, colentry) = 1;
-            colentry++;
         }
         m_R2T.makeCompressed();
 
@@ -92,10 +91,10 @@ public:
         // do the interface part
         index_t r = 0, c = 0;
         std::vector<Eigen::Triplet<real_t> > tripletList;
-        for (typename std::vector<gsBasis < T>* >::const_iterator it = iBasis.begin(); it != iBasis.end(); ++it)
+        for (std::vector<gsIetidGMapper<>::ArtificialIface >::const_iterator it = m_patchIFace.begin(); it != m_patchIFace.end(); ++it)
         {
-            index_t deg = (*it)->maxDegree() > m_b1.maxDegree() ? (*it)->maxDegree() : m_b1.maxDegree();
-            gsSparseMatrix <T> iMass = ( (delta * deg * deg) * (1./(*it)->getMinCellLength() + 1./m_b1.getMinCellLength()) ) * st_mass[it - iBasis.begin()];
+            index_t deg = m_basis[it-m_patchIFace.begin()+1].maxDegree() > m_basis[0].maxDegree() ? m_basis[it - m_patchIFace.begin()+1].maxDegree() : m_basis[0].maxDegree();
+            gsSparseMatrix <T> iMass = ( (delta * deg * deg) * (1./m_basis[it - m_patchIFace.begin()+1].getMinCellLength() + 1./m_basis[0].getMinCellLength()) ) * m_mass[it - m_patchIFace.begin()];
             for (index_t k = 0; k < iMass.cols(); ++k) {
                 for (index_t i = 0; i < iMass.rows(); ++i)
                     tripletList.push_back(Eigen::Triplet<real_t>(r + i, c + k, iMass(i, k)));
@@ -111,17 +110,16 @@ public:
 
     static BasePtr make(const gsSparseMatrix <T> &K,
                         const BasePtr firstprecond,
-                        const gsGeometry <T> &geo1,
-                        const gsBasis <T> &b1,
-                        const gsBoundaryConditions<T>& bc1,
+                        const gsMultiBasis<T> &basis,
+                        //const gsBoundaryConditions<T>& bc1,
                         const std::vector<gsIetidGMapper<>::ArtificialIface> &patchIFace,
                         const gsDofMapper& augmentedMapper,
-                        const std::vector<gsBasis < T> *>& iFaceBasis,
-                        const std::vector<gsBoundaryConditions<> > &Bc,
+                        //const std::vector<gsBasis < T> *>& iFaceBasis,
+                        //const std::vector<gsBoundaryConditions<> > &Bc,
                         const T delta,
                         const gsOptionList &options = gsAssembler<T>::defaultOptions())
     {
-        return BasePtr(new gsInexactIETIPrec(K, firstprecond, geo1, b1, bc1, patchIFace, augmentedMapper, iFaceBasis, Bc, delta, options));
+        return BasePtr(new gsInexactIETIPrec(K, firstprecond, basis, patchIFace, augmentedMapper, delta, options));
     }
 
     ~gsInexactIETIPrec() { delete m_edgeSolver; }
@@ -132,11 +130,10 @@ public:
      * @param x   Current iterate vector
      */
     void step(const gsMatrix <T> &rhs, gsMatrix <T> &x) const {
-        gsMatrix <T> solExP1, solExP2;
+        gsMatrix <T> solExP1;
         ///just extracting the dofs
         m_fastDiag->apply(m_R1T.transpose() * rhs, solExP1);
-
-        x.noalias() = (m_R1T * solExP1 + m_R2T * m_edgeSolver->solve(m_R2T.transpose() * rhs));
+        x.noalias() = 0.1 * (m_R1T * solExP1 + m_R2T * m_edgeSolver->solve(m_R2T.transpose() * rhs));
     }
 
     /**
@@ -191,47 +188,43 @@ public:
 
 private:
     void constructRestrictionMatricesforL2() {
-        gsMultiBasis<real_t> multibase(*m_b1.clone());
-
         std::vector<Eigen::Triplet<real_t> > tripletList;
         m_R1T.resize(m_underlyingOperator.rows(), m_fastDiag->rows());
         for (int l = 0; l < m_fastDiag->rows(); ++l)
             tripletList.push_back(Eigen::Triplet<real_t>(l, l, 1));
 
-        const gsTensorBSplineBasis<2, T> &tb1 = dynamic_cast<const gsTensorBSplineBasis<2, T> & >(m_b1);
+        const gsTensorBSplineBasis<2, T> &tb1 = dynamic_cast<const gsTensorBSplineBasis<2, T> & >(m_basis[0]);
 
-        std::vector<index_t> neumannDofsonside;
+        std::vector<index_t> dofsPatchIFace;
         std::vector<gsMatrix <T> > values;
         index_t r = 0;
         for (size_t j = 0; j < m_patchIFace.size(); ++j) {
             values.clear();
-            neumannDofsonside.clear();
-            const gsTensorBSplineBasis<2, T> &tb2 = dynamic_cast<const gsTensorBSplineBasis<2, T> & >(*iBasis[j]);
+            dofsPatchIFace.clear();
+
             index_t comp1 = m_patchIFace[j].assignedTo.direction() == 1 ? 0 : 1;
             index_t comp2 = m_patchIFace[j].takenFrom.direction() == 1 ? 0 : 1;
-            const gsSparseMatrix<T>& M = st_mass[j];
 
-            for (int i = 1; i < multibase.basis(0).boundary(m_patchIFace[j].assignedTo).rows()-1; ++i) //without the corners
-                if (m_mapper.is_free(multibase.basis(0).boundary(m_patchIFace[j].assignedTo)(i, 0), 0))
+            const gsSparseMatrix<T>& M = m_mass[j];
+
+            for (index_t i = 1; i < tb1.boundary(m_patchIFace[j].assignedTo).rows()-1; ++i) //without the corners
+                if (m_mapper.is_free(tb1.boundary(m_patchIFace[j].assignedTo)(i, 0), 0))
                 {
                     // subtract for the corner values
-                    index_t idx = m_mapper.index(multibase.basis(0).boundary(m_patchIFace[j].assignedTo)(i, 0),0);
-                    for(size_t corner = 1; corner <= math::pow(2,multibase.dim()); corner++) {
-                        if (m_mapper.is_free(m_b1.functionAtCorner(corner), 0) && m_mapper.index(m_b1.functionAtCorner(corner)) < idx)
+                    index_t idx = m_mapper.index(tb1.boundary(m_patchIFace[j].assignedTo)(i, 0));
+                    for(size_t corner = 1; corner <= math::pow(2,tb1.dim()); corner++) {
+                        if (m_mapper.is_free(tb1.functionAtCorner(corner), 0) && m_mapper.index(tb1.functionAtCorner(corner)) < idx)
                         {
                             idx--;
                         }
                     }
-                    neumannDofsonside.push_back(idx);
+                    dofsPatchIFace.push_back(idx);
                 }
 
-            gsBSplineBasis <T> patchIFaceBasis = tb1.component(comp1);
-            gsBSplineBasis <T> extraBasis = tb2.component(comp2);
-            gsKnotVector <T> knot1 = patchIFaceBasis.knots(0);
-            gsKnotVector <T> knot2 = extraBasis.knots(0);
+            const gsBSplineBasis <T>& extraBasis = dynamic_cast<const gsBSplineBasis<T>& >(m_basis[j+1].component(comp2));
 
-            gsBSplineBasis <T> patchBasis(knot1);
-            gsBSplineBasis <T> boundaryBasis(knot2);
+            gsBSplineBasis <T> patchBasis(tb1.component(comp1).knots(0));
+            gsBSplineBasis <T> boundaryBasis(extraBasis.knots(0));
 
             gsExprAssembler <T> mass(1, 1);
             gsMultiBasis <T> mb2(patchBasis);
@@ -265,9 +258,10 @@ private:
             for (int i = 0; i < result.cols(); ++i)
                 values.push_back(solver.solve(result.col(i).toDense()));
 
-            for (size_t k = 0; k < neumannDofsonside.size(); ++k) {
-                for (int i = 0; i < values[k].rows(); ++i)
-                    tripletList.push_back(Eigen::Triplet<real_t>(m_originalSize+r+i, neumannDofsonside[k], values[k](i, 0)));
+            for (size_t k = 0; k < dofsPatchIFace.size(); ++k) {
+                for (int i = 0; i < values[k].rows(); ++i){
+                        tripletList.push_back(Eigen::Triplet<real_t>(m_originalSize+r+i, dofsPatchIFace[k], values[k](i, 0)));
+                }
             }
             r += values[0].rows();
         }
@@ -275,7 +269,6 @@ private:
         m_R1T.setFromTriplets(tripletList.begin(), tripletList.end());
         m_R1T.makeCompressed();
         //gsInfo << "matrix: \n"<<m_R1T.toDense()<<"\n";
-
     }
 
     /*
@@ -318,20 +311,17 @@ protected:
     BasePtr m_fastDiag;
     index_t m_originalSize;
 
-    const gsGeometry <T> &m_g1;
-    const gsBasis <T> &m_b1;
+    const gsMultiBasis<T> &m_basis;
 
-    gsBoundaryConditions <T> m_bc1;
+    //gsBoundaryConditions <T> m_bc1;
     const std::vector<gsIetidGMapper<>::ArtificialIface> m_patchIFace;
     const gsDofMapper& m_mapper;
-    const std::vector<gsBasis < T>* > iBasis;
-    const std::vector<gsBoundaryConditions<> > bc;
+    const std::vector<gsBasis < T>* > m_ArtiIBasis;
+    //const std::vector<gsBoundaryConditions<> > bc;
 
-    //std::vector<std::vector<gsSparseMatrix<T> >> mass;
-    const T m_delta;
     const gsOptionList &m_options;
 
-    std::vector<gsSparseMatrix <T> > st_mass;
+    std::vector<gsSparseMatrix <T> > m_mass;
 
     gsSparseMatrix <T> m_R1T, m_R2T;
 #if defined(GISMO_WITH_PARDISO)
@@ -368,13 +358,10 @@ public:
 
         // Initialize domain element iterators
         typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
-        //int count = 0;
 
         // iterate over all boundary grid cells on the "left"
         for (; domIt->good(); domIt->next() )
         {
-            //count++;
-
             // Compute the quadrature rule on both sides
             quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
             interfaceMap.eval_into(quNodes1,quNodes2);
@@ -518,7 +505,7 @@ int main(int argc, char *argv[])
     std::string primals("c");
     bool eliminatePointwiseDofs = true;
     real_t tolerance = 1.e-6;
-    index_t maxIterations = 1000;
+    index_t maxIterations = 100;
     std::string out;
     bool plot = false;
 
@@ -903,25 +890,14 @@ int main(int argc, char *argv[])
         for(index_t i = 1; i <= 1<<mb.dim(); i++)
             bc_local.addCornerValue(i, 0, 0);
 
-        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, opt, 0, 1, reg);
+        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, 0, 1, reg);
 
-        std::vector<gsBasis<>* > iFaceBases;
-        std::vector<gsBoundaryConditions<> > BCs;
-        gsBoundaryConditions<> tmp;
-        for (size_t i=0; i<ietiMapper.artificialIfaces(k).size(); ++i)
-        {
-            iFaceBases.push_back(&mb.basis(ietiMapper.artificialIfaces(k)[i].takenFrom.patch));
-            bc.getConditionsForPatch(ietiMapper.artificialIfaces(k)[i].takenFrom.patch, tmp);
-            BCs.push_back(tmp);
-        }
         gsLinearOperator<>::Ptr localPrec = gsInexactIETIPrec<real_t>::make(ADelDel, fastdiagOp,
-                                                                       mp_local[0],
-                                                                       mb_local[0],
-                                                                       bc_local,
+                                                                       mb_local,
+                                                                       //bc_local,
                                                                        ietiMapper.artificialIfaces(k),
                                                                        ietiMapper.augmentedDofMapperLocal(k),
-                                                                       iFaceBases,
-                                                                       BCs,
+                                                                       //BCs,
                                                                        penalty,
                                                                        assemblerOptions
                                                                        );
