@@ -13,9 +13,9 @@
 
 #include <gismo.h>
 
-#include <gsModeling/gsParametrization/gsFloater.h>
-#include <gsModeling/gsParametrization/gsPeriodicOverlap.h>
-#include <gsModeling/gsParametrization/gsPeriodicStitch.h>
+#include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 using namespace gismo;
 
@@ -41,8 +41,8 @@ void readPts(const std::string& filename,
 }
 
 template <class T>
-typename gsFloater<T>::uPtr newPeriodicOverlap(const gsMesh<T>& mm, const std::string& filenameV0, const std::string& filenameV1,
-                                               const std::string& filenameOverlap, const gsOptionList& ol)
+typename gsParametrization<T>::uPtr newPeriodicOverlap(const gsMesh<T>& mm, const std::string& filenameV0, const std::string& filenameV1,
+						       const std::string& filenameOverlap, const gsOptionList& ol)
 {
     gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1;
     readParsAndPts(filenameV0, paramsV0, verticesV0);
@@ -57,8 +57,8 @@ typename gsFloater<T>::uPtr newPeriodicOverlap(const gsMesh<T>& mm, const std::s
 }
 
 template <class T>
-typename gsFloater<T>::uPtr newPeriodicStitch(const gsMesh<T>& mm, const std::string& filenameV0, const std::string& filenameV1,
-                                              const std::string& filenameStitch, const gsOptionList& ol)
+typename gsParametrization<T>::uPtr newPeriodicStitch(const gsMesh<T>& mm, const std::string& filenameV0, const std::string& filenameV1,
+						      const std::string& filenameStitch, const gsOptionList& ol)
 {
     gsMatrix<real_t> verticesV0, paramsV0, verticesV1, paramsV1;
     readParsAndPts(filenameV0, paramsV0, verticesV0);
@@ -93,7 +93,14 @@ int main(int argc, char *argv[])
     index_t number = 4; // number of corners, in case of distributed
     std::vector<index_t> corners; // in case of corners
 
-    gsCmdLine cmd("parametrization_example Command line");
+    gsCmdLine cmd("Hi, this is the parametrization_example.\n"
+		  "Usage examples:\n"
+		  "0. The standard parametrization method:\n"
+		  "> ./bin/parametrization_example\n"
+		  "1. Periodic parametrization (overlap method):\n"
+		  "> ./bin/parametrization_example -f parametrization/powerplant-mesh.stl -m 1 -o powerplant -d parametrization/powerplant-bottom.xml -t parametrization/powerplant-top.xml -l parametrization/powerplant-overlap.stl --fit --plot\n"
+		  "2. Periodic parametrization (stitch method):\n"
+		  "> ./bin/parametrization_example -f parametrization/powerplant-mesh.stl -m 1 -o powerplant -d parametrization/powerplant-bottom.xml -t parametrization/powerplant-top.xml -s parametrization/powerplant-stitch.xml --fit --plot\n");
     cmd.addInt("m", "parametrizationMethod", "parametrization methods: {1: shape, 2: uniform, 3: distance}\n"
                                                 "shape: best method, shape of the mesh is preserved, smooth surface fitting\n"
                                                 "uniform: the lambdas according to Floater's algorithm are set to 1/d, where d is the number of neighbours\n"
@@ -129,24 +136,24 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    gsInfo << "creating gsFloater<real_t>       ";
+    gsInfo << "creating gsParametrization<real_t>       ";
     stopwatch.restart();
 
-    gsFloater<real_t>::uPtr pm;
+    gsParametrization<real_t>::uPtr pm;
 
     if(cmd.askString("overlap", "").compare("") > 0)
         pm = newPeriodicOverlap(*mm, filenameV0, filenameV1, filenameOverlap, cmd);
     else if(cmd.askString("stitch", "").compare("") > 0)
         pm = newPeriodicStitch(*mm, filenameV0, filenameV1, filenameStitch, cmd);
     else
-        pm = gsFloater<real_t>::uPtr(new gsFloater<real_t>(*mm, cmd));
+        pm = gsParametrization<real_t>::uPtr(new gsParametrization<real_t>(*mm, cmd));
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
     pm->setOptions(cmd);
 
-    gsInfo << "gsFloater::compute()             ";
+    gsInfo << "gsParametrization::compute()             ";
     stopwatch.restart();
 
     pm->compute();
@@ -154,7 +161,7 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    gsInfo << "gsFloater::createFlatMesh()      ";
+    gsInfo << "gsParametrization::createFlatMesh()      ";
     gsMesh<> flatMesh;
 
     stopwatch.restart();
@@ -163,14 +170,14 @@ int main(int argc, char *argv[])
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    gsInfo << "gsFloater::createUVmatrix()      ";
+    gsInfo << "gsParametrization::createUVmatrix()      ";
     stopwatch.restart();
     gsMatrix<> uv;
     uv=pm->createUVmatrix();
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
 
-    gsInfo << "gsFloater::createXYZmatrix()     ";
+    gsInfo << "gsParametrization::createXYZmatrix()     ";
     stopwatch.restart();
     gsMatrix<> xyz;
     xyz = pm->createXYZmatrix();

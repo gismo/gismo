@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gsIO/gsOptionList.h>
-#include <gsModeling/gsParametrization/gsPeriodic.h>
+#include <gsModeling/gsPeriodicParametrization.h>
 
 namespace gismo
 {
@@ -58,7 +58,7 @@ namespace gismo
  
  */
 template <class T>
-class GISMO_EXPORT gsPeriodicStitch : public gsPeriodic<T>
+class GISMO_EXPORT gsPeriodicStitch : public gsPeriodicParametrization<T>
 {
 
 public:
@@ -69,14 +69,14 @@ protected:
 
     /**
      * Modification of the corresponding class from
-     * gsFloater<T>. Given the indices of the stitch vertices,
+     * gsParametrization<T>. Given the indices of the stitch vertices,
      * a matrix of corrections is produced according to vertices being
      * neighbours across the interface.
      */
-    class Neighbourhood : public gsFloater<T>::Neighbourhood
+    class Neighbourhood : public gsParametrization<T>::Neighbourhood
     {
     public:
-        typedef typename gsFloater<T>::LocalNeighbourhood LocalNeighbourhood;
+        typedef typename gsParametrization<T>::LocalNeighbourhood LocalNeighbourhood;
 
         /** Constructor.
          * @param meshInfo: surface mesh (as in the parent class)
@@ -117,8 +117,8 @@ public:
                               const gsMatrix<T>& verticesV1,
                               const gsMatrix<T>& paramsV1,
                               const gsMatrix<T>& stitchVertices,
-                              const gsOptionList &list = gsFloater<T>::defaultOptions())
-        : gsPeriodic<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+                              const gsOptionList &list = gsParametrization<T>::defaultOptions())
+        : gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
         m_stitchIndices(this->indices(stitchVertices))
     {
         // Note: m_corrections gets filled later.
@@ -130,7 +130,7 @@ public:
 protected:
     /**
      * Calculation itself
-     * @param paraMethod parametrization method (cf. gsFloater<T>)
+     * @param paraMethod parametrization method (cf. gsParametrization<T>)
      */
     void calculate(const size_t paraMethod);
 
@@ -150,7 +150,7 @@ public:
     gsMesh<T> createFlatMesh() const
     {
         gsMesh<T> unfolded = createUnfoldedFlatMesh();
-        typename gsPeriodic<T>::FlatMesh display(unfolded);
+        typename gsPeriodicParametrization<T>::FlatMesh display(unfolded);
         return display.createRestrictedFlatMesh();
     }
 

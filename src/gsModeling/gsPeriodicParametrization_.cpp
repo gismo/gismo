@@ -1,6 +1,6 @@
-/** @file gsPeriodicStitch_.cpp
+/** @file gsPeriodicParametrization_.cpp
 
-    @brief Instatiation of the gsPeriodicStitch class.
+    @brief Instatiation of the gsPeriodicParametrization class.
 
     This file is part of the G+Smo library.
 
@@ -13,12 +13,13 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsModeling/gsParametrization/gsPeriodicStitch.h>
-#include <gsModeling/gsParametrization/gsPeriodicStitch.hpp>
+#include <gsModeling/gsPeriodicParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.hpp>
 
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsPeriodicStitch<real_t>;
+CLASS_TEMPLATE_INST gsPeriodicParametrization<real_t>;
 
 } // namespace gismo
+    

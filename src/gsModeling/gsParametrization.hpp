@@ -1,6 +1,6 @@
-/** @file gsFloater.hpp
+/** @file gsParametrization.hpp
 
-    @brief Provides implementation gsFloater class.
+    @brief Provides implementation gsParametrization class.
 
     This file is part of the G+Smo library.
 
@@ -16,13 +16,13 @@
 #include <gsModeling/gsLineSegment.h>
 #include <gismo.h>
 
-#include <gsModeling/gsParametrization/gsFloater.h>
+#include <gsModeling/gsParametrization.h>
 
 namespace gismo
 {
 
 template<class T>
-bool gsFloater<T>::rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum)
+bool gsParametrization<T>::rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum)
 {
     for (std::vector<index_t>::const_iterator it = corners.begin(); it != corners.end(); it++)
     {
@@ -33,7 +33,7 @@ bool gsFloater<T>::rangeCheck(const std::vector<index_t> &corners, const size_t 
 }
 
 template<class T>
-gsOptionList gsFloater<T>::defaultOptions()
+gsOptionList gsParametrization<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt("boundaryMethod", "boundary methodes: {1:chords, 2:corners, 3:smallest, 4:restrict, 5:opposite, 6:distributed}", 4);
@@ -47,13 +47,13 @@ gsOptionList gsFloater<T>::defaultOptions()
 }
 
 template<class T>
-gsFloater<T>::gsFloater(const gsMesh<T> &mesh, const gsOptionList & list) : m_mesh(mesh)
+gsParametrization<T>::gsParametrization(const gsMesh<T> &mesh, const gsOptionList & list) : m_mesh(mesh)
 {
     m_options.update(list, gsOptionList::addIfUnknown);
 }
 
 template<class T>
-void gsFloater<T>::calculate(const size_t boundaryMethod,
+void gsParametrization<T>::calculate(const size_t boundaryMethod,
                                      const size_t paraMethod,
                                      const std::vector<index_t> &cornersInput,
                                      const T rangeInput,
@@ -120,7 +120,7 @@ void gsFloater<T>::calculate(const size_t boundaryMethod,
 }
 
 template<class T>
-void gsFloater<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
+void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbourhood,
                                                            const size_t n,
                                                            const size_t N)
 {
@@ -155,13 +155,13 @@ void gsFloater<T>::constructAndSolveEquationSystem(const Neighbourhood &neighbou
 }
 
 template<class T>
-const typename gsFloater<T>::Point2D &gsFloater<T>::getParameterPoint(size_t vertexIndex) const
+const typename gsParametrization<T>::Point2D &gsParametrization<T>::getParameterPoint(size_t vertexIndex) const
 {
     return m_parameterPoints[vertexIndex - 1];
 }
 
 template<class T>
-gsMatrix<T> gsFloater<T>::createUVmatrix()
+gsMatrix<T> gsParametrization<T>::createUVmatrix()
 {
     gsMatrix<T> m(2, m_mesh.getNumberOfVertices());
     for (size_t i = 1; i <= m_mesh.getNumberOfVertices(); i++)
@@ -172,7 +172,7 @@ gsMatrix<T> gsFloater<T>::createUVmatrix()
 }
 
 template<class T>
-gsMatrix<T> gsFloater<T>::createXYZmatrix()
+gsMatrix<T> gsParametrization<T>::createXYZmatrix()
 {
     gsMatrix<T> m(3, m_mesh.getNumberOfVertices());
     for (size_t i = 1; i <= m_mesh.getNumberOfVertices(); i++)
@@ -183,7 +183,7 @@ gsMatrix<T> gsFloater<T>::createXYZmatrix()
 }
 
 template<class T>
-gsMesh<T> gsFloater<T>::createFlatMesh() const
+gsMesh<T> gsParametrization<T>::createFlatMesh() const
 {
     gsMesh<T> mesh;
     mesh.reserve(3 * m_mesh.getNumberOfTriangles(), m_mesh.getNumberOfTriangles(), 0);
@@ -202,7 +202,7 @@ gsMesh<T> gsFloater<T>::createFlatMesh() const
 
 
 template <class T>
-void gsFloater<T>::writeTexturedMesh(std::string filename) const
+void gsParametrization<T>::writeTexturedMesh(std::string filename) const
 {
     gsMatrix<T> params(m_mesh.numVertices(), 2);
 
@@ -215,14 +215,14 @@ void gsFloater<T>::writeTexturedMesh(std::string filename) const
 }
 
 template<class T>
-gsFloater<T>& gsFloater<T>::setOptions(const gsOptionList& list)
+gsParametrization<T>& gsParametrization<T>::setOptions(const gsOptionList& list)
 {
     m_options.update(list, gsOptionList::addIfUnknown);
     return *this;
 }
 
 template<class T>
-void gsFloater<T>::compute()
+void gsParametrization<T>::compute()
 {
     calculate(m_options.getInt("boundaryMethod"),
               m_options.getInt("parametrizationMethod"),
@@ -232,7 +232,7 @@ void gsFloater<T>::compute()
 }
 
 template<class T>
-T gsFloater<T>::findLengthOfPositionPart(const size_t position,
+T gsParametrization<T>::findLengthOfPositionPart(const size_t position,
                                                       const size_t numberOfPositions,
                                                       const std::vector<index_t> &bounds,
                                                       const std::vector<T> &lengths)
@@ -261,7 +261,7 @@ T gsFloater<T>::findLengthOfPositionPart(const size_t position,
 //******************************************************************************************
 
 template<class T>
-gsFloater<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo, const size_t parametrizationMethod) : m_basicInfos(meshInfo)
+gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo, const size_t parametrizationMethod) : m_basicInfos(meshInfo)
 {
     m_localParametrizations.reserve(meshInfo.getNumberOfInnerVertices());
     for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
@@ -277,13 +277,13 @@ gsFloater<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo, c
 }
 
 template<class T>
-const std::vector<T>& gsFloater<T>::Neighbourhood::getLambdas(const size_t i) const
+const std::vector<T>& gsParametrization<T>::Neighbourhood::getLambdas(const size_t i) const
 {
     return m_localParametrizations[i].getLambdas();
 }
 
 template<class T>
-const std::vector<index_t> gsFloater<T>::Neighbourhood::getBoundaryCorners(const size_t method, const T range, const size_t number) const
+const std::vector<index_t> gsParametrization<T>::Neighbourhood::getBoundaryCorners(const size_t method, const T range, const size_t number) const
 {
     std::vector<std::pair<T , size_t> > angles;
     std::vector<index_t> corners;
@@ -391,7 +391,7 @@ const std::vector<index_t> gsFloater<T>::Neighbourhood::getBoundaryCorners(const
 }
 
 template<class T>
-const typename gsFloater<T>::Point2D gsFloater<T>::Neighbourhood::findPointOnBoundary(const T w, size_t vertexIndex)
+const typename gsParametrization<T>::Point2D gsParametrization<T>::Neighbourhood::findPointOnBoundary(const T w, size_t vertexIndex)
 {
     GISMO_ASSERT(0 <= w && w <= 4, "Wrong value for w.");
     if(0 <= w && w <=1)
@@ -412,7 +412,7 @@ const typename gsFloater<T>::Point2D gsFloater<T>::Neighbourhood::findPointOnBou
 //*****************************************************************************************************
 
 template<class T>
-void gsFloater<T>::Neighbourhood::takeCornersWithSmallestAngles(size_t number, std::vector<std::pair<T , size_t> >& sortedAngles, std::vector<index_t>& corners) const
+void gsParametrization<T>::Neighbourhood::takeCornersWithSmallestAngles(size_t number, std::vector<std::pair<T , size_t> >& sortedAngles, std::vector<index_t>& corners) const
 {
     sortedAngles.erase(sortedAngles.begin()+number, sortedAngles.end());
 
@@ -423,7 +423,7 @@ void gsFloater<T>::Neighbourhood::takeCornersWithSmallestAngles(size_t number, s
 }
 
 template<class T>
-std::vector<T> gsFloater<T>::Neighbourhood::midpoints(const size_t numberOfCorners, const T length) const
+std::vector<T> gsParametrization<T>::Neighbourhood::midpoints(const size_t numberOfCorners, const T length) const
 {
     std::vector<T> midpoints;
     midpoints.reserve(numberOfCorners-1);
@@ -436,7 +436,7 @@ std::vector<T> gsFloater<T>::Neighbourhood::midpoints(const size_t numberOfCorne
 }
 
 template<class T>
-void gsFloater<T>::Neighbourhood::searchAreas(const T range, std::vector<std::pair<T, size_t> >& sortedAngles, std::vector<index_t>& corners) const
+void gsParametrization<T>::Neighbourhood::searchAreas(const T range, std::vector<std::pair<T, size_t> >& sortedAngles, std::vector<index_t>& corners) const
 {
     T l = m_basicInfos.getBoundaryLength();
     std::vector<T> h = m_basicInfos.getBoundaryChordLengths();
@@ -522,7 +522,7 @@ void gsFloater<T>::Neighbourhood::searchAreas(const T range, std::vector<std::pa
 //*******************************************************************************************
 
 template<class T>
-gsFloater<T>::LocalParametrization::LocalParametrization(const gsHalfEdgeMesh<T>& meshInfo, const LocalNeighbourhood& localNeighbourhood, const size_t parametrizationMethod)
+gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdgeMesh<T>& meshInfo, const LocalNeighbourhood& localNeighbourhood, const size_t parametrizationMethod)
 {
     m_vertexIndex = localNeighbourhood.getVertexIndex();
     std::list<size_t> indices = localNeighbourhood.getVertexIndicesOfNeighbours();
@@ -602,7 +602,7 @@ gsFloater<T>::LocalParametrization::LocalParametrization(const gsHalfEdgeMesh<T>
 }
 
 template<class T>
-const std::vector<T>& gsFloater<T>::LocalParametrization::getLambdas() const
+const std::vector<T>& gsParametrization<T>::LocalParametrization::getLambdas() const
 {
     return m_lambdas;
 }
@@ -614,7 +614,7 @@ const std::vector<T>& gsFloater<T>::LocalParametrization::getLambdas() const
 //*****************************************************************************************************
 
 template<class T>
-void gsFloater<T>::LocalParametrization::calculateLambdas(const size_t N, VectorType& points)
+void gsParametrization<T>::LocalParametrization::calculateLambdas(const size_t N, VectorType& points)
 {
     m_lambdas.reserve(N);
     for(size_t j=1; j <= N; j++)
@@ -679,7 +679,7 @@ void gsFloater<T>::LocalParametrization::calculateLambdas(const size_t N, Vector
 //*******************************************************************************************
 
 template<class T>
-gsFloater<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& meshInfo, const size_t vertexIndex, const bool innerVertex)
+gsParametrization<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& meshInfo, const size_t vertexIndex, const bool innerVertex)
 {
     GISMO_ASSERT(!((innerVertex && vertexIndex > meshInfo.getNumberOfInnerVertices()) || vertexIndex < 1),
                  "Vertex with index " << vertexIndex << " does either not exist (< 1) or is not an inner vertex (> "
@@ -737,31 +737,31 @@ gsFloater<T>::LocalNeighbourhood::LocalNeighbourhood(const gsHalfEdgeMesh<T>& me
 }
 
 template<class T>
-size_t gsFloater<T>::LocalNeighbourhood::getVertexIndex() const
+size_t gsParametrization<T>::LocalNeighbourhood::getVertexIndex() const
 {
     return m_vertexIndex;
 }
 
 template<class T>
-size_t gsFloater<T>::LocalNeighbourhood::getNumberOfNeighbours() const
+size_t gsParametrization<T>::LocalNeighbourhood::getNumberOfNeighbours() const
 {
     return m_neighbours.getNumberOfVertices();
 }
 
 template<class T>
-const std::list<size_t> gsFloater<T>::LocalNeighbourhood::getVertexIndicesOfNeighbours() const
+const std::list<size_t> gsParametrization<T>::LocalNeighbourhood::getVertexIndicesOfNeighbours() const
 {
     return m_neighbours.getVertexIndices();
 }
 
 template<class T>
-const std::list<T>& gsFloater<T>::LocalNeighbourhood::getAngles() const
+const std::list<T>& gsParametrization<T>::LocalNeighbourhood::getAngles() const
 {
     return m_angles;
 }
 
 template<class T>
-T gsFloater<T>::LocalNeighbourhood::getInnerAngle() const
+T gsParametrization<T>::LocalNeighbourhood::getInnerAngle() const
 {
     T angle = 0;
     for(typename std::list<T>::const_iterator it=m_angles.begin(); it!=m_angles.end(); it++)
@@ -772,7 +772,7 @@ T gsFloater<T>::LocalNeighbourhood::getInnerAngle() const
 }
 
 template<class T>
-std::list<T> gsFloater<T>::LocalNeighbourhood::getNeighbourDistances() const
+std::list<T> gsParametrization<T>::LocalNeighbourhood::getNeighbourDistances() const
 {
     return m_neighbourDistances;
 }

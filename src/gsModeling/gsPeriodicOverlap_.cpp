@@ -1,6 +1,6 @@
-/** @file gsPeriodic_.cpp
+/** @file gsPeriodicOverlap_.cpp
 
-    @brief Instatiation of the gsPeriodic class.
+    @brief Instatiation of the gsPeriodicOverlap class.
 
     This file is part of the G+Smo library.
 
@@ -13,13 +13,12 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsModeling/gsParametrization/gsPeriodic.h>
-#include <gsModeling/gsParametrization/gsPeriodic.hpp>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicOverlap.hpp>
 
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsPeriodic<real_t>;
+CLASS_TEMPLATE_INST gsPeriodicOverlap<real_t>;
 
 } // namespace gismo
-    

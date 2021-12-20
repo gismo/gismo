@@ -212,7 +212,7 @@ gsMesh<T> gsPeriodicOverlap<T>::createFlatMesh() const
             right.push_back(it->second);
     }
 
-    typename gsPeriodic<T>::FlatMesh display(createExtendedFlatMesh(left, right));
+    typename gsPeriodicParametrization<T>::FlatMesh display(createExtendedFlatMesh(left, right));
     return display.createRestrictedFlatMesh();
 }
 
@@ -220,7 +220,7 @@ template<class T>
 gsMesh<T> gsPeriodicOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>& right,
                                                        const std::vector<size_t>& left) const
 {
-    typedef typename gsFloater<T>::Point2D Point2D;
+    typedef typename gsParametrization<T>::Point2D Point2D;
 
     gsMesh<T> midMesh;
     midMesh.reserve(3 * this->m_mesh.getNumberOfTriangles(), this->m_mesh.getNumberOfTriangles(), 0);
@@ -248,7 +248,7 @@ gsMesh<T> gsPeriodicOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>
             
             for (size_t j=0; j<3; ++j)
             {
-                const Point2D vertex = gsFloater<T>::getParameterPoint(vInd[j]);
+                const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
                 if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
                 {
                     mvLft[j] = midMesh.addVertex(vertex[0],   vertex[1]);
@@ -269,7 +269,7 @@ gsMesh<T> gsPeriodicOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>
             typename gsMesh<T>::VertexHandle mv[3];
             for (size_t j=0; j<3; ++j)
             {
-                const Point2D vertex = gsFloater<T>::getParameterPoint(vInd[j]);
+                const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
                 mv[j] = midMesh.addVertex(vertex[0], vertex[1]);
             }
             midMesh.addFace(mv[0], mv[1], mv[2]);

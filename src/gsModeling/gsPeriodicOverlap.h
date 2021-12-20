@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsIO/gsOptionList.h>
-#include "gsPeriodic.h"
+#include "gsPeriodicParametrization.h"
 
 namespace gismo
 {
@@ -54,9 +54,9 @@ namespace gismo
  * @image latex gsPeriodicOverlap-scheme.pdf
  */
 template <class T>
-class GISMO_EXPORT gsPeriodicOverlap : public gsPeriodic<T>
+class GISMO_EXPORT gsPeriodicOverlap : public gsPeriodicParametrization<T>
 {
-    typedef typename gsFloater<T>::Neighbourhood Neighbourhood;
+    typedef typename gsParametrization<T>::Neighbourhood Neighbourhood;
     typedef typename gsMesh<T>::gsVertexHandle   gsVertexHandle;
 
 public:
@@ -79,8 +79,8 @@ public:
                                const gsMatrix<T>& verticesV1,
                                const gsMatrix<T>& paramsV1,
                                const gsMesh<T>& overlap,
-                               const gsOptionList &list = gsPeriodic<T>::defaultOptions())
-        : gsPeriodic<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
+                               const gsOptionList &list = gsPeriodicParametrization<T>::defaultOptions())
+        : gsPeriodicParametrization<T>(mesh, verticesV0, paramsV0, verticesV1, paramsV1, list),
         m_overlapHEM(overlap)
     {
         // Note: m_twins gets constructed later on.

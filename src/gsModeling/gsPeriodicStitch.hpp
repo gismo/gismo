@@ -12,7 +12,7 @@
 
 */
 
-#include <gsModeling/gsParametrization/gsPeriodicStitch.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 namespace gismo
 {
@@ -77,7 +77,7 @@ gsPeriodicStitch<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & mesh
                                                   const std::vector<size_t>& stitchIndices,
                                                   gsSparseMatrix<int>& corrections,
                                                   const size_t parametrizationMethod)
-    : gsFloater<T>::Neighbourhood(meshInfo, parametrizationMethod)
+    : gsParametrization<T>::Neighbourhood(meshInfo, parametrizationMethod)
 {
     // We re-do a little of the work done already in the constructor of the parent class.
     // Alternatively, we could provide a constructor of the parent class setting m_basicInfos
@@ -175,7 +175,7 @@ template<class T>
 gsMesh<T> gsPeriodicStitch<T>::createUnfoldedFlatMesh() const
 {
     typedef typename gsMesh<T>::VertexHandle       VertexHandle;
-    typedef typename gsFloater<T>::Point2D Point2D;
+    typedef typename gsParametrization<T>::Point2D Point2D;
 
     gsMesh<T> result;
     for(size_t i=0; i<this->m_mesh.getNumberOfTriangles(); i++)
@@ -192,7 +192,7 @@ gsMesh<T> gsPeriodicStitch<T>::createUnfoldedFlatMesh() const
         VertexHandle v[3];
         for (size_t j = 1; j <= 3; ++j)
         {               
-            const Point2D& point = gsFloater<T>::getParameterPoint(vertices[j-1]);
+            const Point2D& point = gsParametrization<T>::getParameterPoint(vertices[j-1]);
             // The near-stitch triangles get their stitch vertices shifted by 1 to the left.
             if( nearStitchTriangle && isOnStitch(vertices[j-1]) )
                 v[j - 1] = result.addVertex(point[0] + 1, point[1]);

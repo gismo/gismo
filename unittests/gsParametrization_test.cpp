@@ -22,7 +22,7 @@ SUITE(gsParametrization_test)
 
         real_t eps = 1e-5;
 
-        gsFloater<real_t> param(*mesh);
+        gsParametrization<real_t> param(*mesh);
         
         param.compute();
         gsMatrix<real_t> uv  = param.createUVmatrix();

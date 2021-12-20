@@ -124,10 +124,10 @@ namespace internal
 #include <gsModeling/gsCrossApPatch.h>
 
 #include <gsModeling/gsLineSegment.h>
-#include <gsModeling/gsParametrization/gsFloater.h>
-#include <gsModeling/gsParametrization/gsPeriodic.h>
-#include <gsModeling/gsParametrization/gsPeriodicOverlap.h>
-#include <gsModeling/gsParametrization/gsPeriodicStitch.h>
+#include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.h>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
