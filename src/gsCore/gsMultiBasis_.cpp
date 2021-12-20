@@ -39,7 +39,7 @@ repairInterfaceFindElements<3>(const boundaryInterface & bi,
       .def("basis", static_cast<      gsBasis<real_t> & (Class::*)(const size_t)       > (&Class::basis) , "Gets a const reference to basis with index i")
       // Note: Bindings with unique pointers are not possible https://pybind11.readthedocs.io/en/stable/advanced/smart_ptrs.html
       // .def("addPatch", static_cast<void (Class::*)(typename gsBasis<real_t>::uPtr)> (&Class::addBasis), "Adds a patch")
-      .def("addPatch", static_cast<void (Class::*)(         gsBasis<real_t> *    )> (&Class::addBasis), "Adds a patch")
+      .def("addBasis", static_cast<void (Class::*)(         gsBasis<real_t> *    )> (&Class::addBasis), "Adds a patch")
       ;
   }
 

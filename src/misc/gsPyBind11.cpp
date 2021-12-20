@@ -55,6 +55,19 @@ PYBIND11_MODULE(pygismo, m) {
   hsplines.attr("__name__") = "pygismo.hspline";
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
+
+  gismo::pybind11_init_gsHBSplineBasis2( core );
+  gismo::pybind11_init_gsHBSplineBasis3( core );
+  gismo::pybind11_init_gsHBSplineBasis4( core );
+  gismo::pybind11_init_gsHBSpline2( core );
+  gismo::pybind11_init_gsHBSpline3( core );
+  gismo::pybind11_init_gsHBSpline4( core );
+  gismo::pybind11_init_gsTHBSplineBasis2( core );
+  gismo::pybind11_init_gsTHBSplineBasis3( core );
+  gismo::pybind11_init_gsTHBSplineBasis4( core );
+  gismo::pybind11_init_gsTHBSpline2( core );
+  gismo::pybind11_init_gsTHBSpline3( core );
+  gismo::pybind11_init_gsTHBSpline4( core );
   
   py::module io = m.def_submodule("io");
 
