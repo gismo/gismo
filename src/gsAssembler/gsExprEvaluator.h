@@ -32,8 +32,6 @@ class gsExprEvaluator
 private:
     typename gsExprHelper<T>::Ptr m_exprdata;
 
-    expr::gsFeElement<T> m_element;
-
 private:
     std::vector<T> m_elWise;
     T              m_value;
@@ -118,7 +116,7 @@ public:
     { return m_exprdata->getVar(func, G); }
 
     /// Returns a handle to an isogeometric element
-    element getElement() const { return m_element; }
+    element getElement() { return m_exprdata->getElement(); }
 
     /// Calculates the square root of the lastly computed quantities (eg. integrals)
     void calcSqrt()
@@ -364,7 +362,7 @@ T gsExprEvaluator<T>::compute_impl(const E & expr)
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-        m_element.set(*domIt,quWeights);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
@@ -439,7 +437,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
-        m_element.set(*domIt,quWeights);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
@@ -505,7 +503,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         typename gsBasis<T>::domainIter domIt =
             //interfaceMap.makeDomainIterator();
             m_exprdata->multiBasis().piece(patch1).makeDomainIterator(iFace.first().side());
-        m_element.set(*domIt,quWeights);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         elVal = _op::init();
@@ -514,12 +512,10 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(),
-                                   m_exprdata->iface().points());
+            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patch1, iFace.first().side());
-            m_exprdata->iface().precompute(patch2, iFace.second().side());
+            m_exprdata->precompute(iFace);
 
             // Compute on element
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes

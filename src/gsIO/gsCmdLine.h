@@ -102,7 +102,7 @@ public:
                    const std::string& desc,
                    intVal_t          value) //TODO: rename as addInt
     {
-        gsOptionList::addInt(name, desc, give(value)); //add new option
+        gsOptionList::addInt(name, desc, value); //add new option
         addInt(flag, name, desc, getIntRef(name) );    //bind cmd arg
     }
 
