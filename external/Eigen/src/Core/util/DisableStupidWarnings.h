@@ -53,7 +53,7 @@
     #pragma clang diagnostic ignored "-Wc11-extensions"
   #endif
 
-#elif defined __GNUC__
+#elif defined __GNUC__ && !defined __FUJITSU
 
   #if (!defined(EIGEN_PERMANENTLY_DISABLE_STUPID_WARNINGS)) &&  (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))
     #pragma GCC diagnostic push
