@@ -390,7 +390,7 @@ template<> EIGEN_STRONG_INLINE Packet2cf psqrt<Packet2cf>(const Packet2cf& a) {
 #if EIGEN_ARCH_ARM64 && !EIGEN_APPLE_DOUBLE_NEON_BUG
 
 // See bug 1325, clang fails to call vld1q_u64.
-#if EIGEN_COMP_CLANG || EIGEN_COMP_CASTXML
+#if EIGEN_COMP_CLANG || EIGEN_COMP_CRAY || EIGEN_COMP_CASTXML
   static uint64x2_t p2ul_CONJ_XOR = {0x0, 0x8000000000000000};
 #else
   const uint64_t  p2ul_conj_XOR_DATA[] = { 0x0, 0x8000000000000000 };
