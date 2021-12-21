@@ -201,7 +201,7 @@
 #endif
 
 /// \internal EIGEN_COMP_CRAY set to CARY version if the compiler is Cray Compiler
-#if defined(__CRAYC)
+#if defined(_CRAYC)
   #define EIGEN_COMP_CRAY (_RELEASE_MAJOR*100+_RELEASE_MINOR*10+_RELEASE_PATCHLEVEL)
 #else
   #define EIGEN_COMP_CRAY 0
@@ -946,7 +946,7 @@
 #define EIGEN_ALWAYS_INLINE EIGEN_STRONG_INLINE
 #endif
 
-#if EIGEN_COMP_GNUC
+#if EIGEN_COMP_GNUC && !defined(EIGEN_COMP_CRAY)
 #define EIGEN_DONT_INLINE __attribute__((noinline))
 #elif EIGEN_COMP_MSVC
 #define EIGEN_DONT_INLINE __declspec(noinline)
