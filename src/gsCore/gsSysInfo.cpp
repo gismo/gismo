@@ -654,7 +654,11 @@ namespace gismo
     char hostname[HOST_NAME_MAX + 1];
     gethostname(hostname, HOST_NAME_MAX + 1);
 
-    return "Unknown-CPU ["+hostname+"]";
+    std::string str = "Unknown-CPU [";
+    str += hostname;
+    str += "]";
+
+    return str;
 
 #   endif
 
