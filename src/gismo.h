@@ -125,6 +125,9 @@ namespace internal
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.h>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>

@@ -8,12 +8,15 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Groiss, J. Vogl
+    Author(s): L. Groiss, J. Vogl, D. Mokris
 
 */
 
 #include <gsIO/gsOptionList.h>
 #include <gsModeling/gsLineSegment.h>
+#include <gismo.h>
+
+#include <gsModeling/gsParametrization.h>
 
 namespace gismo
 {
@@ -44,7 +47,7 @@ gsOptionList gsParametrization<T>::defaultOptions()
 }
 
 template<class T>
-gsParametrization<T>::gsParametrization(gsMesh<T> &mesh, const gsOptionList & list) : m_mesh(mesh)
+gsParametrization<T>::gsParametrization(const gsMesh<T> &mesh, const gsOptionList & list) : m_mesh(mesh)
 {
     m_options.update(list, gsOptionList::addIfUnknown);
 }
@@ -180,7 +183,7 @@ gsMatrix<T> gsParametrization<T>::createXYZmatrix()
 }
 
 template<class T>
-gsMesh<T> gsParametrization<T>::createFlatMesh()
+gsMesh<T> gsParametrization<T>::createFlatMesh() const
 {
     gsMesh<T> mesh;
     mesh.reserve(3 * m_mesh.getNumberOfTriangles(), m_mesh.getNumberOfTriangles(), 0);
@@ -197,23 +200,35 @@ gsMesh<T> gsParametrization<T>::createFlatMesh()
     return mesh.cleanMesh();
 }
 
+
+template <class T>
+void gsParametrization<T>::writeTexturedMesh(std::string filename) const
+{
+    gsMatrix<T> params(m_mesh.numVertices(), 2);
+
+    for(size_t i=0; i<m_mesh.numVertices(); i++)
+    {
+        size_t index = m_mesh.unsorted(i);
+        params.row(i) = getParameterPoint(index);
+    }
+    gsWriteParaview(m_mesh, filename, params);
+}
+
 template<class T>
 gsParametrization<T>& gsParametrization<T>::setOptions(const gsOptionList& list)
 {
-    m_options.update(list, gsOptionList::ignoreIfUnknown);
+    m_options.update(list, gsOptionList::addIfUnknown);
     return *this;
 }
 
 template<class T>
-gsParametrization<T>& gsParametrization<T>::compute()
+void gsParametrization<T>::compute()
 {
     calculate(m_options.getInt("boundaryMethod"),
               m_options.getInt("parametrizationMethod"),
               m_options.getMultiInt("corners"),
               m_options.getReal("range"),
               m_options.getInt("number"));
-
-    return *this;
 }
 
 template<class T>
@@ -244,8 +259,9 @@ T gsParametrization<T>::findLengthOfPositionPart(const size_t position,
 //******************************************************************************************
 //******************************* nested class Neighbourhood *******************************
 //******************************************************************************************
+
 template<class T>
-gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo, const size_t parametrizationMethod)  : m_basicInfos(meshInfo)
+gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & meshInfo, const size_t parametrizationMethod) : m_basicInfos(meshInfo)
 {
     m_localParametrizations.reserve(meshInfo.getNumberOfInnerVertices());
     for(size_t i=1; i <= meshInfo.getNumberOfInnerVertices(); i++)
@@ -256,7 +272,7 @@ gsParametrization<T>::Neighbourhood::Neighbourhood(const gsHalfEdgeMesh<T> & mes
     m_localBoundaryNeighbourhoods.reserve(meshInfo.getNumberOfVertices() - meshInfo.getNumberOfInnerVertices());
     for(size_t i=meshInfo.getNumberOfInnerVertices()+1; i<= meshInfo.getNumberOfVertices(); i++)
     {
-        m_localBoundaryNeighbourhoods.push_back(LocalNeighbourhood(meshInfo, i,0));
+        m_localBoundaryNeighbourhoods.push_back(LocalNeighbourhood(meshInfo, i, 0));
     }
 }
 
