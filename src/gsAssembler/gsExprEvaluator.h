@@ -196,11 +196,23 @@ public:
     T maxInterface(const expr::_expr<E> & expr)
     { return computeInterface_impl<E,max_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
 
+    /// Calculates the maximum of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
+    template<class E> // note: elementwise integral not offered
+    T maxInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
+    { return computeInterface_impl<E,max_op>(expr, iFaces); }
+
     /// Calculates the minimum of the expression \a expr on the
     /// interfaces of the (multi-basis) integration domain
     template<class E> // note: elementwise integral not offered
     T minInterface(const expr::_expr<E> & expr)
     { return computeInterface_impl<E,min_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+
+    /// Calculates the minimum of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
+    template<class E> // note: elementwise integral not offered
+    T minInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
+    { return computeInterface_impl<E,min_op>(expr, iFaces); }
 
     /// Calculates the minimum value of the expression \a expr by
     /// sampling over a finite number of points
