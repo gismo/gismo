@@ -930,7 +930,6 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
 template<class T>
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts)
 {
-
     int d = func.domainDim(); // tested for d==2
 
     gsVector<T> a = supp.col(0);

@@ -968,7 +968,6 @@ public:
                const index_t _icont = -1, gsDofMapper dofsMapper = gsDofMapper() ) const {
         this->setInterfaceCont(_icont);
 
-        //m_sd->mapper = gsDofMapper(); //reset ? YES!!!
         m_sd->mapper = dofsMapper;
 
         const gsMultiBasis<T> *mb = dynamic_cast<const gsMultiBasis<T> *>(&this->source());
@@ -1104,7 +1103,6 @@ public:
                     dynamic_cast<const gsMappedBasis<2, T> *>(&this->source())) {
                 m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size(), this->dim());
 
-                // Does this work for the D-Patch as well??
                 if (0 == this->interfaceCont()) // C^0 matching interface
                 {
                     gsMatrix<index_t> int1, int2;
@@ -1118,32 +1116,7 @@ public:
                 }
                 if (1 == this->interfaceCont()) // C^1 matching interface
                 {
-/*
-                    // Not always working bcs of boundaryOffset
-
-                    gsMatrix<index_t> int1, int2;
-                    for (gsBoxTopology::const_iiterator it = mapb->getTopol().iBegin();
-                         it != mapb->getTopol().iEnd(); ++it) {
-                        //mapb->matchInterface(*it, m_sd->mapper);
-                        // copied from matchInterface to do add the function in gsMappedBasis
-                        // should work for all basis which have matchWith() implementeds
-
-                        gsMatrix<index_t> b1, b2;
-                        b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 0);
-                        b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 0);
-
-                        // Match the dofs on the interface
-                        for (size_t i = 0; i != m_sd->mapper.componentsSize(); ++i)
-                            m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i);
-
-                        b1 = mapb->basis(it->first().patch).boundaryOffset(boxSide(it->first().side()), 1);
-                        b2 = mapb->basis(it->second().patch).boundaryOffset(boxSide(it->second().side()), 1);
-
-                        // Match the dofs on the interface
-                        for (size_t i = 0; i != m_sd->mapper.componentsSize(); ++i)
-                            m_sd->mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, i);
-                    }
-*/
+                    GISMO_ERROR("Boundary offset function is not implemented for gsMappedBasis in general.");
                 }
 
                 gsMatrix<index_t> bnd;
@@ -1160,22 +1133,7 @@ public:
                     else
                         m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
                 }
-/*
-                // Not always working bcs of boundaryOffset
-                // Enfore Neumann weakly!!!
 
-                for (typename gsBoundaryConditions<real_t>::const_iterator
-                             it = bc.begin("Neumann"); it != bc.end("Neumann"); ++it) {
-                    const index_t cc = it->unkComponent();
-
-                    bnd = mapb->basis(it->ps.patch).boundaryOffset(it->ps.side(),1);
-                    if (cc == -1)
-                        for (index_t c = 0; c != this->dim(); c++) // for all components
-                            m_sd->mapper.markBoundary(it->ps.patch, bnd, c);
-                    else
-                        m_sd->mapper.markBoundary(it->ps.patch, bnd, cc);
-                }
-*/
                 // Clamped boundary condition (per DoF)
                 gsMatrix<index_t> bnd1;
                 for (typename gsBoundaryConditions<T>::const_iterator

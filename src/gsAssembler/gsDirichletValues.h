@@ -12,7 +12,6 @@
 */
 
 #include <gsUtils/gsPointGrid.h>
-#include <gsMSplines/gsMappedBasis.h>
 
 namespace gismo {
 
@@ -30,7 +29,6 @@ void gsDirichletValues(
     if ( bc.container("Dirichlet").empty() ) return;
 
     const gsDofMapper & mapper = u.mapper();
-
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
 
     switch ( dir_values )
@@ -132,7 +130,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 }
                 else
                 {
-                    rr.push_back( basis.component(i).anchors().transpose() ); // Wrong for approx C1
+                    rr.push_back( basis.component(i).anchors().transpose() );
                 }
             }
 
