@@ -148,7 +148,9 @@ int main(int argc, char* argv[])
 
     // Save the result as an XML file
     gsFileData<> fd;
-    fd << *interpolant;
+    gsMultiPatch<> mp;
+    mp.addPatch(give(interpolant));
+    fd << mp;
     std::string remark("Made by interpolation from function: ( ");
     for (index_t i = 0; i<3; ++i)
     {

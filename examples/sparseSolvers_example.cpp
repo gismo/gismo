@@ -36,10 +36,11 @@ int main(int argc, char** argv)
         gsInfo << "EIGEN_USE_MKL=true.\n";
 #endif
 
+    std::string fn("");
     index_t mat_size = 10;
 
     gsCmdLine cmd("Testing the use of sparse linear solvers.");
-
+    cmd.addPlainString("try", "Name of the solver to try", fn);
     cmd.addInt("n", "size", "Size of the matrices", mat_size);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -56,7 +57,16 @@ int main(int argc, char** argv)
 
     Q.makeCompressed(); // always call makeCompressed after sparse matrix has been filled
 
-//    /*
+    if (!fn.empty())
+    {
+        gsSparseSolver<>::uPtr slv = gsSparseSolver<>::get(fn);
+        slv->compute(Q);
+        x = slv->solve(b);
+        gsInfo << "Solve Ax = b with "<< *slv <<" sparse linear solver.\n";
+        report( x, x0, succeeded );
+        return succeeded ? 0 : 1;
+    }
+
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);
     x = solverCGI.solve(b);
@@ -64,8 +74,7 @@ int main(int argc, char** argv)
     report( x, x0, succeeded );
 
     gsSparseSolver<>::CGDiagonal solverCGD;
-    solverCGD.compute(Q);
-    x = solverCGD.solve(b);
+    solverCGD.compute(Q);    x = solverCGD.solve(b);
     gsInfo << "Solve Ax = b with Eigen's CG diagonal preconditioner.\n";
     report( x, x0, succeeded );
 
@@ -104,8 +113,6 @@ int main(int argc, char** argv)
     x = solverLU.solve(b);
     gsInfo << "Solve Ax = b with Eigen's LU factorization.\n";
     report( x, x0, succeeded );
-
-//*/
 
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLU solverpLU;

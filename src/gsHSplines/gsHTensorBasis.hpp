@@ -500,9 +500,9 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
         {
             // Convert the parameter coordinates to (unique) knot indices
             const gsKnotVector<T> & kv = m_bases[refLevel+1]->knots(j);
-            int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+            index_t k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
                                        boxes(j,2*i  ) ) - 1).uIndex();
-            int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+            index_t k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
                                        boxes(j,2*i+1) ) - 1).uIndex();
 
             // Trivial boxes trigger some refinement
@@ -517,8 +517,9 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
             const index_t maxKtIndexd = kv.uSize();
             ( k2 + refExt >= maxKtIndexd ? k2=maxKtIndexd-1 : k2+=refExt);
 
-            k1 = math::floor(static_cast<T>(k1) / 2);
-            k2 = math::ceil (static_cast<T>(k2) / 2);
+            // go one level up;
+            k1 /= 2;
+            k2 =  k2/2 + (index_t)(k2%2 != 0);
 
             // Store the data...
             refVector[I*offset]       = refLevel;
@@ -720,7 +721,6 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
         // needLevel( m_tree.getMaxInsLevel() );
     }
 
-    // /*
     // reconstruct the whole tree to fix alignment
     gsHDomain<d> newtree( m_tree.upperCornerIndex() );
     auto leafIt = m_tree.beginLeafIterator();
@@ -731,7 +731,6 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
                               leafIt.upperCorner(), leafIt.level() );
     }
     m_tree = newtree;
-    //*/
 
     //recompute max-ins-level
     m_tree.computeMaxInsLevel();
@@ -1241,9 +1240,8 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
               activesLvl.data(), activesLvl.data() + activesLvl.size(),
               std::back_inserter( temp_output[p] ) );
               +++ Renumbering to H-basis indexing
-            // */
+            */
 
-            // /*
             m_bases[i]->active_cwise(currPoint, low, upp);
             cur = low;
             do
@@ -1259,7 +1257,6 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
                 }
             }
             while( nextCubePoint(cur,low,upp) );
-            //*/
         }
 
         // update result size

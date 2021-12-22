@@ -91,11 +91,9 @@ bool gsAssembler<T>::check()
     if ( m_pde_ptr->domain().nPatches() == 0)
         gsWarn<< "No domain given ! \n";
 
-    // /*
     const dirichlet::strategy dirStr = static_cast<dirichlet::strategy>(m_options.getInt("DirichletStrategy"));
     if ( 0 == m_pde_ptr->bc().size() && dirStr!=dirichlet::none && static_cast<dirichlet::values>(dirStr)==dirichlet::homogeneous )
         gsWarn<< "No boundary conditions given ! \n";
-    //*/
 
     return true;
 }

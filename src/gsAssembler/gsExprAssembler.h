@@ -32,8 +32,6 @@ private:
 
     gsOptionList m_options;
 
-    expr::gsFeElement<T> m_element;
-
     gsSparseMatrix<T> m_matrix;
     gsMatrix<T>       m_rhs;
 
@@ -268,7 +266,7 @@ public:
     expr::gsComposition<T> getBdrFunction(geometryMap & G) const
     { return m_exprdata->getMutVar(G); }
 
-    element getElement() const { return m_element; }
+    element getElement() const { return m_exprdata->getElement(); }
 
     // note: not used
     void setFixedDofVector(gsMatrix<T> & dof, short_t unk = 0);
@@ -664,7 +662,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
             m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
-//        m_element.set(*domIt);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
@@ -729,7 +727,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(it->patch()).
             makeDomainIterator(it->side());
-        m_element.set(*domIt);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
@@ -762,7 +760,6 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
-    m_exprdata->iface().parse(arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights;// quadrature weights
@@ -786,7 +783,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().basis(patch1)
             .makeDomainIterator(iFace.first().side());
-        m_element.set(*domIt);
+        m_exprdata->getElement().set(*domIt, quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
@@ -794,15 +791,13 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(),
-                                   m_exprdata->iface().points());
+            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             if (m_exprdata->points().cols()==0)
                 continue;
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->        precompute(patch1, iFace.first ().side());
-            m_exprdata->iface().precompute(patch2, iFace.second().side());
+            m_exprdata->precompute(iFace);
 
             //eg.
             // uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2

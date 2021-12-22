@@ -565,7 +565,7 @@ public:
         m_repKnots.resize( k - m_repKnots.begin() );
         m_multSum .resize( m - m_multSum .begin() );
     }
-//*/
+*/
 
 
 
@@ -926,6 +926,16 @@ std::ostream& operator << (std::ostream& out, const gsKnotVector<T> KV )
     KV.print(out);
     return out;
 }
+
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsKnotVector
+   */
+  void pybind11_init_gsKnotVector(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

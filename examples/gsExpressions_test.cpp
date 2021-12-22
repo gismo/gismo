@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
   [V] symmetrize_expr
 */
 
-# define M_PI 3.14159265358979323846
 # define M_R  1.0
 
     bool verbose = false;
@@ -117,16 +116,12 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
 
     // Define integrant variables
-    //element     e = ev.getElement();
     auto G = ev.getMap(mp);
     auto m = ev.getVariable(m_);
     auto M = ev.getVariable(M_);
     auto N = ev.getVariable(N_);
     auto O = ev.getVariable(O_);
     auto o = ev.getVariable(o_);
-
-    //auto el= ev.getElement();
-
     gsMatrix<> result, exact, tmp;
     gsVector<> physpoint, point(2);
     point.setConstant(0.5);
@@ -153,9 +148,6 @@ int main(int argc, char *argv[])
 
     gsInfo<<( (result-exact.col(0)).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
-
-    // gsDebug<<ev.eval(el.diam().val(),point);
-
     /*
       Computes trace(M^-1 - I) with M = diag([1,2,3])
       Assessment of:
@@ -169,14 +161,14 @@ int main(int argc, char *argv[])
     if (verbose)
         gsInfo  <<"Result:\n"<<ev.value()<<"\n"
                 <<"Exact:\n"<<( 0.0 - 1./2. - 2./3. )<<"\n";
-    gsInfo<<( std::abs(ev.value() - ( 0.0 - 1./2. - 2./3. ) ) < 1e-10 ? "passed" : "failed" )<<"\n";
+    gsInfo<<( math::abs(ev.value() - ( 0.0 - 1./2. - 2./3. ) ) < 1e-10 ? "passed" : "failed" )<<"\n";
 
     gsInfo<< "* Matrix expr sign:\t"; // - gismo::expr::id(3).temp()
     ev.eval(((reshape(M,3,3).inv()-gismo::expr::id(3)).trace()).sgn(),point);
     if (verbose)
         gsInfo  <<"Result:\n"<<ev.value()<<"\n"
                 <<"Exact:\n"<<-1<<"\n";
-    gsInfo<<( std::abs(ev.value() + 1) < 1e-10 ? "passed" : "failed" )<<"\n";
+    gsInfo<<( math::abs(ev.value() + 1) < 1e-10 ? "passed" : "failed" )<<"\n";
 
     /*
       XXXX
@@ -295,13 +287,20 @@ int main(int argc, char *argv[])
       - meas_expr
     */
     /// NOTE: Tolerance is lower!
+
+/*
+    auto & el = ev.getElement();
+    gsFunctionExpr<> one("1",2); auto z=ev.getVariable(one);
+    gsInfo<<"\nElement (par) : "<< ev.integral(el.integral(z) ) <<"\n";
+    gsInfo<<"\nDiameter (phs): "<< ev.integral(el.diam(G)) <<"\n";
+*/
     gsInfo<< "* Area (integral):\t";
     real_t num = ev.integral( meas(G) );
-    real_t ref = 4*M_PI*M_R*M_R;
+    real_t ref = 4*EIGEN_PI*M_R*M_R;
     if (verbose)
         gsInfo  <<"Result:\n"<<num<<"\n"
                 <<"Exact:\n"<<ref<<"\n";
-    gsInfo<<( std::abs( num-ref ) / ref < 1e-4 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<( math::abs( num-ref ) / ref < 1e-4 ? "passed" : "failed" );//<<"\n";
     gsInfo<<"\t\tnote: with lower tolerance"<<"\n";
 
     point.setConstant(0.5);
@@ -341,21 +340,21 @@ int main(int argc, char *argv[])
     gsInfo<< "* Plane normal:\t\t";
     resVec = ev.eval( nv(G).normalized(), point );
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
-    exVec<<math::cos(phi),math::sin(phi);
+    exVec<<-math::cos(phi),-math::sin(phi);
     if (verbose)
         gsInfo  <<"Result:\n"<<resVec<<"\n"
                 <<"Exact:\n"<<exVec<<"\n";
-    gsInfo<<( std::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<( math::abs(exVec.dot(resVec) - 1)  < 1e-10 ? "passed" : "failed" );//<<"\n";
     gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
 
     gsInfo<< "* Plane tangent:\t";
     resVec = ev.eval( tv(G).normalized(), point );
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
-    exVec<<-math::sin(phi),math::cos(phi);
+    exVec<<math::sin(phi),-math::cos(phi);
     if (verbose)
         gsInfo  <<"Result:\n"<<resVec<<"\n"
                 <<"Exact:\n"<<exVec<<"\n";
-    gsInfo<<( std::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<( math::abs( exVec.dot(resVec) - 1)  < 1e-10 ? "passed" : "failed" );//<<"\n";
     gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
 
     /*
@@ -367,10 +366,11 @@ int main(int argc, char *argv[])
     result = ev.eval( fform(G), point );
     exact.resize(2,2);
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
-    exact<<1.0,
-        -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
-        -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
-        2*(2*M_R*2*M_R);
+    // exact<<1.0,
+    //     -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
+    //     -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
+    //     2*(2*M_R*2*M_R);
+    exact<<M_R, 0, 0, M_R*math::cos(phi)*math::cos(phi);
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";
@@ -893,12 +893,12 @@ int main(int argc, char *argv[])
     result = solVec.transpose() * A.matrix() * solVec;
     GISMO_ENSURE(result.rows()==1,"Result must be scalar.");
     GISMO_ENSURE(result.cols()==1,"Result must be scalar.");
-    gsInfo<<( std::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed" )<<"\n";
-    gsInfo<<( std::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed, value = " + std::to_string(std::abs(result(0,0) - integral)) )<<"\n";
+    gsInfo<<( math::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed" )<<"\n";
+    gsInfo<<( math::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed, value = " + util::to_string(math::abs(result(0,0) - integral)) )<<"\n";
     GISMO_ENSURE(result.rows()==1,"Result must be scalar.");
     GISMO_ENSURE(result.cols()==1,"Result must be scalar.");
     result = A.rhs().transpose() * solVec;
-    gsInfo<<( std::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed, value = " + std::to_string(std::abs(result(0,0) - integral)) )<<"\n";
+    gsInfo<<( math::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed, value = " + util::to_string(math::abs(result(0,0) - integral)) )<<"\n";
 
     A.initSystem();
     auto lhs2 = u_sol.tr() * jac(u2) * jac(u2).tr() * u_sol;
@@ -915,11 +915,11 @@ int main(int argc, char *argv[])
     // result = solVec.transpose() * A.matrix() * solVec;
     // GISMO_ENSURE(result.rows()==1,"Result must be scalar.");
     // GISMO_ENSURE(result.cols()==1,"Result must be scalar.");
-    // gsInfo<<( std::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed" )<<"\n";
+    // gsInfo<<( math::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed" )<<"\n";
     // GISMO_ENSURE(result.rows()==1,"Result must be scalar.");
     // GISMO_ENSURE(result.cols()==1,"Result must be scalar.");
     // result = A.rhs().transpose() * solVec;
-    // gsInfo<<( std::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed" )<<"\n";
+    // gsInfo<<( math::abs(result(0,0) - integral) < 1e-10 ? "passed" : "failed" )<<"\n";
 
 
     return EXIT_SUCCESS;

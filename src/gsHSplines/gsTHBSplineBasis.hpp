@@ -580,7 +580,6 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
     return result;
 }
 
-// /*
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getConnectedComponents(
     std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const
@@ -689,8 +688,6 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 
 
 }
-//*/
-
 
 //return data for trimming in parasolid
 template<short_t d, class T>
@@ -1117,7 +1114,6 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
                 }
             }
             while( nextCubePoint(cur,low,upp) );
-            //*/
         }
 
         // update result size
