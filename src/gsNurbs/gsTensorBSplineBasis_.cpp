@@ -23,8 +23,9 @@ namespace py = pybind11;
 
 void pybind11_init_gsTensorBSplineBasis2(py::module &m)
 {
+  using Base = gsBasis<real_t>;
   using Class = gsTensorBSplineBasis<2,real_t>;
-  py::class_<Class>(m, "gsTensorBSplineBasis2")
+  py::class_<Class,Base>(m, "gsTensorBSplineBasis2")
 
     // Constructors
     .def(py::init<gsKnotVector<real_t>,    gsKnotVector<real_t>    >())
@@ -45,8 +46,9 @@ void pybind11_init_gsTensorBSplineBasis2(py::module &m)
 
 void pybind11_init_gsTensorBSplineBasis3(py::module &m)
 {
+  using Base = gsBasis<real_t>;
   using Class = gsTensorBSplineBasis<3,real_t>;
-  py::class_<Class>(m, "gsTensorBSplineBasis3")
+  py::class_<Class,Base>(m, "gsTensorBSplineBasis3")
 
     // Constructors
     .def(py::init<gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>    >())
@@ -67,8 +69,9 @@ void pybind11_init_gsTensorBSplineBasis3(py::module &m)
 
 void pybind11_init_gsTensorBSplineBasis4(py::module &m)
 {
+  using Base = gsBasis<real_t>;
   using Class = gsTensorBSplineBasis<4,real_t>;
-  py::class_<Class>(m, "gsTensorBSplineBasis4")
+  py::class_<Class,Base>(m, "gsTensorBSplineBasis4")
 
     // Constructors
     .def(py::init<gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>,    gsKnotVector<real_t>    >())

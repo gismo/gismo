@@ -651,9 +651,29 @@ public:
         addCondition(ps.patch, ps.side(), t, func, unknown,parametric,comp);
     }
 
+    void addCondition(int p, boundary::side s, condition_type::type t,
+                      const gsFunction<T> & func, short_t unknown = 0,
+                      bool parametric = false, int comp = -1)
+    {
+        function_ptr fun(func.clone().release());
+        addCondition(p,boxSide(s),t,fun,unknown,parametric,comp);
+    }
+
+    void addCondition(int p, boundary::side s, condition_type::type t,
+                      gsFunction<T> * func, short_t unknown = 0,
+                      bool parametric = false, int comp = -1)
+    {
+        addCondition(p,boxSide(s),t,func,unknown,parametric,comp);
+    }
+
     void addCornerValue(boxCorner c, T value, int p = 0, short_t unknown = 0)
     {
         corner_values.push_back( corner_value<T>(p,c,value,unknown) );
+    }
+
+    void addCornerValue(boundary::corner c, T value, int p = 0, short_t unknown = 0)
+    {
+        corner_values.push_back( corner_value<T>(p,boxCorner(c),value,unknown) );
     }
 
     /// Prints the object as a string.
@@ -818,6 +838,12 @@ public:
     void setGeoMap(const gsFunctionSet<T> & gm)
     {
       m_patches = &gm;
+    }
+
+    /// Checks if a geometry map is stored in the boundary conditions
+    bool hasGeoMap() const
+    {
+        return nullptr!=m_patches;
     }
 
     /// Returns the geometry map

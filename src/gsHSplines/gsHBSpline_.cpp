@@ -51,8 +51,9 @@ namespace py = pybind11;
 
 void pybind11_init_gsHBSplineBasis2(py::module &m)
 {
+  using Base  = gsBasis<real_t>;
   using Class = gsHBSplineBasis<2,real_t>;
-  py::class_<Class>(m, "gsHBSplineBasis2")
+  py::class_<Class,Base>(m, "gsHBSplineBasis2")
 
     // Constructors
     .def(py::init<>())
@@ -97,8 +98,10 @@ void pybind11_init_gsHBSplineBasis2(py::module &m)
 
 void pybind11_init_gsHBSplineBasis3(py::module &m)
 {
-  using Class = gsHBSplineBasis<3,real_t>;
-  py::class_<Class>(m, "gsHBSplineBasis3")
+	using Base  = gsBasis<real_t>;
+	using Class = gsHBSplineBasis<3,real_t>;
+	py::class_<Class,Base>(m, "gsHBSplineBasis3")
+
 
     // Constructors
     .def(py::init<>())
@@ -143,8 +146,9 @@ void pybind11_init_gsHBSplineBasis3(py::module &m)
 
 void pybind11_init_gsHBSplineBasis4(py::module &m)
 {
-  using Class = gsHBSplineBasis<4,real_t>;
-  py::class_<Class>(m, "gsHBSplineBasis4")
+	using Base  = gsBasis<real_t>;
+	using Class = gsHBSplineBasis<4,real_t>;
+	py::class_<Class,Base>(m, "gsHBSplineBasis4")
 
     // Constructors
     .def(py::init<>())
@@ -189,8 +193,10 @@ void pybind11_init_gsHBSplineBasis4(py::module &m)
 
 void pybind11_init_gsHBSpline2(py::module &m)
 {
+	using Base  = gsGeometry<real_t>;
 	using Class = gsHBSpline<2,real_t>;
-	py::class_<Class>(m, "gsHBSpline2")
+	py::class_<Class,Base>(m, "gsHBSpline2")
+
 
 	// Constructors
 	.def(py::init<>())
@@ -222,8 +228,9 @@ void pybind11_init_gsHBSpline2(py::module &m)
 
 void pybind11_init_gsHBSpline3(py::module &m)
 {
+	using Base  = gsGeometry<real_t>;
 	using Class = gsHBSpline<3,real_t>;
-	py::class_<Class>(m, "gsHBSpline3")
+	py::class_<Class,Base>(m, "gsHBSpline3")
 
 	// Constructors
 	.def(py::init<>())
@@ -255,8 +262,9 @@ void pybind11_init_gsHBSpline3(py::module &m)
 
 void pybind11_init_gsHBSpline4(py::module &m)
 {
+	using Base  = gsGeometry<real_t>;
 	using Class = gsHBSpline<4,real_t>;
-	py::class_<Class>(m, "gsHBSpline4")
+	py::class_<Class,Base>(m, "gsHBSpline4")
 
 	// Constructors
 	.def(py::init<>())

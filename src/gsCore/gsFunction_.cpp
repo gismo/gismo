@@ -10,6 +10,8 @@ CLASS_TEMPLATE_INST gsFunction<real_t> ;
 
 #ifdef GISMO_BUILD_PYBIND11  
 
+namespace py = pybind11;
+
 void pybind11_init_gsFunction(py::module &m)
 {
   using Class = gsFunction<real_t>;

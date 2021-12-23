@@ -25,11 +25,14 @@ repairInterfaceFindElements<3>(const boundaryInterface & bi,
 
   void pybind11_init_gsMultiBasis(py::module &m)
   {
+    using Base = gsFunctionSet<real_t>;
     using Class = gsMultiBasis<real_t>;
-    py::class_<Class>(m, "gsMultiBasis")
+    py::class_<Class,Base>(m, "gsMultiBasis")
 
       // Constructors
       .def(py::init<>())
+      .def(py::init<const gsMultiPatch<real_t> &>(),
+            py::arg("numeratorOnly") = false) //default arguments
 
       // Member functions
       .def("domainDim", &Class::domainDim, "Returns the domain dimension of the multipatch")

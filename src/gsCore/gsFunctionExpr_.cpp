@@ -16,8 +16,9 @@ namespace py = pybind11;
 
 void pybind11_init_gsFunctionExpr(py::module &m)
 {
+  using Base  = gsFunction<real_t>;
   using Class = gsFunctionExpr<real_t>;
-  py::class_<Class>(m, "gsFunctionExpr")
+  py::class_<Class,Base>(m, "gsFunctionExpr")
 
     // Constructors
     .def(py::init<std::string,short_t>())

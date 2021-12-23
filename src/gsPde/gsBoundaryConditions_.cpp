@@ -42,12 +42,25 @@ void pybind11_init_gsBoundaryConditions(py::module &m)
     .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &,       gsFunction<real_t>      *, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
     .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &, const gsFunction<real_t>      &, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
 
-    .def("addCondition", static_cast<void (Class::*)(int, boxSide, condition_type::type,       gsFunction<real_t> *     , short_t, bool, int)> (&Class::addCondition), "Adds a boundary condition")
-    .def("addCondition", static_cast<void (Class::*)(int, boxSide, condition_type::type, const gsFunction<real_t>::Ptr &, short_t, bool, int)> (&Class::addCondition), "Adds a boundary condition")
-    .def("addCondition", static_cast<void (Class::*)(int, boxSide, condition_type::type, const gsFunction<real_t> &     , short_t, bool, int)> (&Class::addCondition), "Adds a boundary condition")
-    .def("addCondition", static_cast<void (Class::*)(     boxSide, condition_type::type,       gsFunction<real_t> *     , short_t, bool, int)> (&Class::addCondition), "Adds a boundary condition")
 
-    .def("addCornerValue", &Class::addCornerValue, "Adds a boundary condition at a corner")
+    .def("addCondition", static_cast<void (Class::*)(int, boundary::side, condition_type::type, const gsFunction<real_t> &     , short_t, bool, int)> (&Class::addCondition),
+                            "Adds a boundary condition"//,
+                            // py::arg("unknown") = 0,
+                            // py::arg("parametric") = false,
+                            // py::arg("comp") = -1
+                            )
+    .def("addCondition", static_cast<void (Class::*)(int, boundary::side, condition_type::type,       gsFunction<real_t> *     , short_t, bool, int)> (&Class::addCondition),
+                            "Adds a boundary condition"//,
+                            // py::arg("unknown") = 0,
+                            // py::arg("parametric") = false,
+                            // py::arg("comp") = -1
+                            )
+
+    .def("addCornerValue", static_cast<void (Class::*)(boundary::corner, real_t, int, short_t)> (&Class::addCornerValue),
+                            "Adds a boundary condition"//,
+                            // py::arg("p") = 0,
+                            // py::arg("unknown") = 0
+                            )
 
     .def("setGeoMap", &Class::setGeoMap, "Sets the geometry map for the boundary computations")
     ;

@@ -16,6 +16,11 @@
 
 #include <gismo.h>
 
+#ifdef GISMO_KLSHELL
+#include <gsKLShell/gsKLShell.h>
+#include <gsKLShell/gsMaterialMatrixLinear.h>
+#endif
+
 #ifdef GISMO_BUILD_PYBIND11
 
 namespace py = pybind11;
@@ -43,12 +48,15 @@ PYBIND11_MODULE(pygismo, m) {
   core.attr("__version__") = GISMO_VERSION;
   core.doc() = "G+Smo (Geometry + Simulation Modules): Core module";
   
+  gismo::pybind11_enum_gsBoundary( core );
+
+  gismo::pybind11_init_gsBasis( core );
   gismo::pybind11_init_gsFunction( core );
+  gismo::pybind11_init_gsFunctionSet( core );
   gismo::pybind11_init_gsFunctionExpr( core );
+  gismo::pybind11_init_gsGeometry( core );
   gismo::pybind11_init_gsMultiPatch( core );
   gismo::pybind11_init_gsMultiBasis( core );
-
-  gismo::pybind11_enum_gsBoundary( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
@@ -85,6 +93,8 @@ PYBIND11_MODULE(pygismo, m) {
   matrix.attr("__version__") = GISMO_VERSION;
   matrix.doc() = "G+Smo (Geometry + Simulation Modules): Matrix module";
   
+  gismo::pybind11_init_gsVector<real_t>(matrix,"Real"); //gsVectorReal
+  gismo::pybind11_init_gsVector<index_t>(matrix,"Int"); //gsVectorInt
   gismo::pybind11_init_gsMatrix<real_t>(matrix,"Real"); //gsMatrixReal
   gismo::pybind11_init_gsMatrix<index_t>(matrix,"Int"); //gsMatrixInt
   gismo::pybind11_init_gsSparseMatrix<real_t>(matrix,"Real"); //gsSparseMatrixReal
@@ -131,8 +141,9 @@ PYBIND11_MODULE(pygismo, m) {
   pde.attr("__version__") = GISMO_VERSION;
   pde.doc() = "G+Smo (Geometry + Simulation Modules): Pde module";
 
-  gismo::pybind11_enum_gsBoundaryConditions( core );
+  gismo::pybind11_enum_gsBoundaryConditions( pde );
   gismo::pybind11_init_gsBoundaryConditions( pde );
+  gismo::pybind11_init_gsPointLoads( pde );
 
   py::module solver = m.def_submodule("solver");
 
@@ -151,6 +162,16 @@ PYBIND11_MODULE(pygismo, m) {
   utils.attr("__name__") = "pygismo.utils";
   utils.attr("__version__") = GISMO_VERSION;
   utils.doc() = "G+Smo (Geometry + Simulation Modules): Utils module";
+
+  py::module klshell = m.def_submodule("klshell");
+
+  klshell.attr("__name__") = "pygismo.klshell";
+  klshell.attr("__version__") = GISMO_VERSION;
+  klshell.doc() = "G+Smo (Geometry + Simulation Modules): KLShell module";
+
+#ifdef GISMO_KLSHELL
+  gismo::pybind11_init_gsKLShell( klshell );
+#endif
 }
 
 #endif // GISMO_BUILD_PYBIND11

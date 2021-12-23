@@ -78,3 +78,14 @@ print(f"Evaluation of the Bspline on {u[0],u[1]} with void function:\n", val)
 # val = np.empty(3)
 # tspline2.eval_into(u,val)
 # print(f"Evaluation of the Bspline on {u[0],u[1]} with void function:\n", val)
+
+# mb = gs.core.gsMultiBasis()
+# mb.addPatch(tbasis1)
+
+mp = gs.core.gsMultiPatch()
+mp.addPatch(tspline1)
+
+mp.patch(0).eval_into(u,val)
+print(f"Evaluation of the Bspline on {u[0],u[1]} with void function:\n", val)
+
+
