@@ -39,7 +39,7 @@ bool gsMinimalResidual<T>::initIteration( const typename gsMinimalResidual<T>::V
     m_precond->apply(v, z);
 
     gammaPrev = 1;
-    T ip = zNew.col(0).dot(vNew.col(0));
+    T ip = z.col(0).dot(v.col(0));
     GISMO_ASSERT(ip >= T(0), "gsMinimalResidual::initIteration(...), preconditioner not positive semi-definite");
     gamma = math::sqrt(ip);
     gammaNew = 1;
