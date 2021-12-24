@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
   [V] symmetrize_expr
 */
 
-# define M_PI 3.14159265358979323846
 # define M_R  1.0
 
     bool verbose = false;
@@ -297,7 +296,7 @@ int main(int argc, char *argv[])
 */
     gsInfo<< "* Area (integral):\t";
     real_t num = ev.integral( meas(G) );
-    real_t ref = 4*M_PI*M_R*M_R;
+    real_t ref = 4*EIGEN_PI*M_R*M_R;
     if (verbose)
         gsInfo  <<"Result:\n"<<num<<"\n"
                 <<"Exact:\n"<<ref<<"\n";
@@ -341,21 +340,21 @@ int main(int argc, char *argv[])
     gsInfo<< "* Plane normal:\t\t";
     resVec = ev.eval( nv(G).normalized(), point );
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
-    exVec<<math::cos(phi),math::sin(phi);
+    exVec<<-math::cos(phi),-math::sin(phi);
     if (verbose)
         gsInfo  <<"Result:\n"<<resVec<<"\n"
                 <<"Exact:\n"<<exVec<<"\n";
-    gsInfo<<( math::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<( math::abs(exVec.dot(resVec) - 1)  < 1e-10 ? "passed" : "failed" );//<<"\n";
     gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
 
     gsInfo<< "* Plane tangent:\t";
     resVec = ev.eval( tv(G).normalized(), point );
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
-    exVec<<-math::sin(phi),math::cos(phi);
+    exVec<<math::sin(phi),-math::cos(phi);
     if (verbose)
         gsInfo  <<"Result:\n"<<resVec<<"\n"
                 <<"Exact:\n"<<exVec<<"\n";
-    gsInfo<<( math::abs( (exVec.transpose()*resVec) ) - 1  < 1e-10 ? "passed" : "failed" );//<<"\n";
+    gsInfo<<( math::abs( exVec.dot(resVec) - 1)  < 1e-10 ? "passed" : "failed" );//<<"\n";
     gsInfo<<"\t\tnote: sign might be wrong"<<"\n";
 
     /*
@@ -367,10 +366,11 @@ int main(int argc, char *argv[])
     result = ev.eval( fform(G), point );
     exact.resize(2,2);
     phi = math::atan2(physpoint(1,0),physpoint(0,0));
-    exact<<1.0,
-        -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
-        -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
-        2*(2*M_R*2*M_R);
+    // exact<<1.0,
+    //     -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
+    //     -M_R*math::cos(phi)*math::sin(phi) + M_R*math::sin(phi)*math::cos(phi),
+    //     2*(2*M_R*2*M_R);
+    exact<<M_R, 0, 0, M_R*math::cos(phi)*math::cos(phi);
     if (verbose)
         gsInfo  <<"Result:\n"<<result<<"\n"
                 <<"Exact:\n"<<exact<<"\n";

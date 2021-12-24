@@ -758,7 +758,6 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
-    m_exprdata->iface().parse(arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights;// quadrature weights
@@ -790,15 +789,13 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(),
-                                   m_exprdata->iface().points());
+            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             if (m_exprdata->points().cols()==0)
                 continue;
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->        precompute(patch1, iFace.first ().side());
-            m_exprdata->iface().precompute(patch2, iFace.second().side());
+            m_exprdata->precompute(iFace);
 
             //eg.
             // uL*vL/2 + uR*vL/2  - uL*vR/2 - uR*vR/2

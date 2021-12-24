@@ -440,8 +440,7 @@ public:
         else if ( nr == colBlock )
         {
             for (index_t j = 0; j!= nc; j+=colBlock)
-                this->middleCols(j,colBlock).template triangularView<Eigen::StrictlyUpper>()
-                    .swap( this->middleCols(j,colBlock).transpose() );
+                this->middleCols(j,colBlock).transposeInPlace();
         }
         else
         {
