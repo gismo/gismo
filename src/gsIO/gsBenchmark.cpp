@@ -19,8 +19,7 @@
 
 namespace gismo
 {
-
-  std::ostream &gsBenchmark::gsBenchmarkResultSet::print(std::ostream &os) const
+  std::ostream &gsBenchmarkResultSet::to_tikz(std::ostream &os) const
   {
     os << "\\pgfplotstableread[col sep=space]{\n"
        << label << "\n";
@@ -33,10 +32,10 @@ namespace gismo
     return os;
   }
 
-  std::ostream &gsBenchmark::gsBenchmarkSet::print(std::ostream &os) const
+  std::ostream &gsBenchmarkSet::to_tikz(std::ostream &os) const
   {
     for (auto it=results.cbegin(); it!=results.cend(); ++it)
-      (*it)->print(os);
+      (*it)->to_tikz(os);
 
     os << "\\begin{tikzpicture}\n"
        << "\\begin{axis}[\n"
@@ -57,53 +56,53 @@ namespace gismo
        << "xtick=data,\n";
 
     auto it = results.front()->get().cbegin();
-    if ((metric)it->at(3) & metric::speedup) {
-      switch( (int)it->at(3) & ~metric::speedup ) {
-      case metric::bandwidth_kb_sec:
-      case metric::bandwidth_mb_sec:
-      case metric::bandwidth_gb_sec:
-      case metric::bandwidth_tb_sec:
+    if ((metric)it->at(3) & gismo::metric::speedup) {
+      switch( (int)it->at(3) & ~gismo::metric::speedup ) {
+      case gismo::metric::bandwidth_kb_sec:
+      case gismo::metric::bandwidth_mb_sec:
+      case gismo::metric::bandwidth_gb_sec:
+      case gismo::metric::bandwidth_tb_sec:
         os << "ylabel={Bandwidth [speedup]},\n";
         break;
-      case metric::perf_kflop_sec:
-      case metric::perf_mflop_sec:
-      case metric::perf_gflop_sec:
-      case metric::perf_tflop_sec:
+      case gismo::metric::perf_kflop_sec:
+      case gismo::metric::perf_mflop_sec:
+      case gismo::metric::perf_gflop_sec:
+      case gismo::metric::perf_tflop_sec:
         os << "ylabel={Performance [speedup]},\n";
         break;
-      case metric::runtime_sec:
+      case gismo::metric::runtime_sec:
         os << "ylabel={Runtime [speedup]},\n";
         break;
       default:
         GISMO_ERROR("Unsupported metric");
       }
     } else {
-      switch( (int)it->at(3) & ~metric::speedup ) {
-      case metric::bandwidth_kb_sec:
+      switch( (int)it->at(3) & ~gismo::metric::speedup ) {
+      case gismo::metric::bandwidth_kb_sec:
         os << "ylabel={Bandwidth in KB/s},\n";
         break;
-      case metric::bandwidth_mb_sec:
+      case gismo::metric::bandwidth_mb_sec:
         os << "ylabel={Bandwidth in MB/s},\n";
         break;
-      case metric::bandwidth_gb_sec:
+      case gismo::metric::bandwidth_gb_sec:
         os << "ylabel={Bandwidth in GB/s},\n";
         break;
-      case metric::bandwidth_tb_sec:
+      case gismo::metric::bandwidth_tb_sec:
         os << "ylabel={Bandwidth in TB/s},\n";
         break;
-      case metric::perf_kflop_sec:
+      case gismo::metric::perf_kflop_sec:
         os << "ylabel={Performance in kFLOP/s},\n";
         break;
-      case metric::perf_mflop_sec:
+      case gismo::metric::perf_mflop_sec:
         os << "ylabel={Performance in mFLOP/s},\n";
         break;
-      case metric::perf_gflop_sec:
+      case gismo::metric::perf_gflop_sec:
         os << "ylabel={Performance in gFLOP/s},\n";
         break;
-      case metric::perf_tflop_sec:
+      case gismo::metric::perf_tflop_sec:
         os << "ylabel={Performance in tFLOP/s},\n";
         break;
-      case metric::runtime_sec:
+      case gismo::metric::runtime_sec:
         os << "ylabel={Runtime in seconds},\n";
         break;
       default:
@@ -181,7 +180,7 @@ namespace gismo
     return os;
   }
 
-  std::ostream &gsBenchmark::print(std::ostream &os) const
+  std::ostream &gsBenchmark::to_tikz(std::ostream &os) const
   {
     os << "\\documentclass[tikz]{standalone}\n"
        << "\\usepackage{pgfplots}\n"
@@ -199,10 +198,25 @@ namespace gismo
        << "\\usetikzlibrary{calc}\n";
 
     for (auto it=benchmarks.cbegin(); it!=benchmarks.cend(); ++it)
-      (*it)->print(os);
+      (*it)->to_tikz(os);
 
     os << "\\end{document}\n";
     return os;
   }
 
+  std::ostream &gsBenchmarkResultSet::print(std::ostream &os) const
+  {
+    return os;
+  }
+
+  std::ostream &gsBenchmarkSet::print(std::ostream &os) const
+  {
+    return os;
+  }
+
+  std::ostream &gsBenchmark::print(std::ostream &os) const
+  {
+    return os;
+  }
+  
 } // namespace gismo

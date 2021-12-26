@@ -18,115 +18,126 @@
 
 namespace gismo
 {
+/**
+   @brief Enumerator that defines the benchmark metrics.
+   
+   These definitions are used to control the output of the benchmark framework
+*/
+enum metric : uint64_t {
+    speedup          = 1<<0,
+    bandwidth_kb_sec = 1<<1,
+    bandwidth_mb_sec = 1<<2,
+    bandwidth_gb_sec = 1<<3,
+    bandwidth_tb_sec = 1<<4,
+    perf_kflop_sec   = 1<<5,
+    perf_mflop_sec   = 1<<6,
+    perf_gflop_sec   = 1<<7,
+    perf_tflop_sec   = 1<<8,
+    runtime_sec      = 1<<9
+};
+  
+/**
+   @brief Struct that represents a single benchmark result
+*/
+class Result1
+{
+public:
+  int threads;
+  gismo::metric metric;
+  double value;
+  double runtime;   
+};
+  typedef std::array<real_t,4> Result;
 
 /**
- * Benchmark metrics
- */
-  enum metric {
-    speedup          = 0x1,
-    bandwidth_kb_sec =  10,
-    bandwidth_mb_sec =  11,
-    bandwidth_gb_sec =  12,
-    bandwidth_tb_sec =  13,
-    perf_kflop_sec   =  14,
-    perf_mflop_sec   =  15,
-    perf_gflop_sec   =  16,
-    perf_tflop_sec   =  17,
-    runtime_sec      =  18
-  };
+   @brief Struct that represents a collection of benchmark results for
+   a single benchmark instance
+
+   This struct can be used to hold a series of results of a single
+   benchmark instance (i.e. fixed problem size and problem
+   configuration) for different numbers of threads.
+*/
+class gsBenchmarkResultSet
+{
+public:
+  gsBenchmarkResultSet(const std::string& label,
+                       const std::string& title,
+                       const std::vector<Result>& results)
+    : label(label),
+      title(title),
+      results(results) {}
+  
+  const std::string& get_label() const
+  { return label; }
+  
+  const std::string& get_title() const
+  { return title; }
+  
+  const std::vector<Result>& get() const
+  { return results; }
+
+  std::ostream &to_tikz(std::ostream &os) const;
+  std::ostream &print(std::ostream &os) const;
+  
+private:
+  const std::string label, title;
+  std::vector<Result> results;
+};
 
 /**
- *   Benchmark: driver function
- */
+   @brief Struct that represents a collection of benchmark sets for a
+   series of benchmark instance
 
+   This struct can be used to hold a series of benchmark instances
+   (i.e. a series of problem sizes and configurations)
+*/
+class gsBenchmarkSet
+{
+public:
+  gsBenchmarkSet(const std::string& _label,
+                 const std::string& _title)
+    : id('A'),
+      label(_label),
+      title(_title)
+  {}
+  
+  ~gsBenchmarkSet()
+  {
+    for (auto it=results.begin(); it!=results.end(); ++it)
+      delete (*it);
+  }
+  
+  void add(const std::string& _label,
+           const std::string& _title,
+           const std::vector<Result>& _results)
+  {
+    this->results.emplace_back(new gsBenchmarkResultSet(_label+std::string(1,id++),
+                                                        _title, _results));
+  }
+  
+  const std::string& get_label() const
+  { return label; }
+  
+  const std::string& get_title() const
+  { return title; }
+  
+  const std::vector<gsBenchmarkResultSet*>& get() const
+  { return results; }
 
+  std::ostream &to_tikz(std::ostream &os) const;
+  std::ostream &print(std::ostream &os) const;
+  
+private:
+  char id;
+  const std::string label,title;
+  std::vector<gsBenchmarkResultSet*> results;
+};
+  
 /**
- * Benchmark class
+   @brief Class that collects all benchmark results
  */
 class GISMO_EXPORT gsBenchmark
 {
-public:
-
-/**
- * Benchmark result
- */
-typedef std::array<real_t,4> Result;
-
-/**
-   * Benchmark result set class
-   */
-  class gsBenchmarkResultSet
-  {
-  public:
-    gsBenchmarkResultSet(const std::string& label,
-                         const std::string& title,
-                         const std::vector<Result>& results)
-      : label(label),
-        title(title),
-        results(results)
-    {
-    }
-
-    const std::string& get_label() const
-    { return label; }
-
-    const std::string& get_title() const
-    { return title; }
-
-    const std::vector<Result>& get() const
-    { return results; }
-
-    std::ostream &print(std::ostream &os) const;
-
-  private:
-    const std::string label, title;
-    std::vector<Result> results;
-  };
-
-  /**
-   * Benchmark set class
-   */
-  class gsBenchmarkSet
-  {
-  public:
-    gsBenchmarkSet(const std::string& _label,
-                   const std::string& _title)
-      : id('A'),
-        label(_label),
-        title(_title)
-    {}
-
-    ~gsBenchmarkSet()
-    {
-      for (auto it=results.begin(); it!=results.end(); ++it)
-        delete (*it);
-    }
-
-    void add(const std::string& _label,
-             const std::string& _title,
-             const std::vector<Result>& _results)
-    {
-      this->results.emplace_back(new gsBenchmarkResultSet(_label+std::string(1,id++),
-                                                          _title, _results));
-    }
-
-    const std::string& get_label() const
-    { return label; }
-
-    const std::string& get_title() const
-    { return title; }
-
-    const std::vector<gsBenchmarkResultSet*>& get() const
-    { return results; }
-
-    std::ostream &print(std::ostream &os) const;
-
-  private:
-    char id;
-    const std::string label,title;
-    std::vector<gsBenchmarkResultSet*> results;
-  };
-
 public:
   ~gsBenchmark()
     {
@@ -144,11 +155,12 @@ public:
   const std::vector<gsBenchmarkSet*>& get() const
   { return benchmarks; }
 
+  std::ostream &to_tikz(std::ostream &os) const;
   std::ostream &print(std::ostream &os) const;
 
   template<typename T>
   static std::vector<Result>
-  run(const std::vector<index_t>& nthreads, index_t nruns, T& benchmark, metric metric)
+  run(const std::vector<index_t>& nthreads, index_t nruns, T& benchmark, gismo::metric metric)
 {
     gsStopwatch stopwatch;
     uint64_t benchmark_result(0);
@@ -171,20 +183,20 @@ public:
         stopwatch.stop();
         benchmark_runtime = stopwatch.elapsed()/(real_t)nruns;
 
-        switch(metric & ~metric::speedup) {
-        case metric::bandwidth_kb_sec: case metric::perf_kflop_sec:
+        switch(metric & ~gismo::metric::speedup) {
+        case gismo::metric::bandwidth_kb_sec: case gismo::metric::perf_kflop_sec:
           benchmark_metric = 1e-3*benchmark_result/benchmark_runtime;
           break;
-        case metric::bandwidth_mb_sec: case metric::perf_mflop_sec:
+        case gismo::metric::bandwidth_mb_sec: case gismo::metric::perf_mflop_sec:
           benchmark_metric = 1e-6*benchmark_result/benchmark_runtime;
           break;
-        case metric::bandwidth_gb_sec: case metric::perf_gflop_sec:
+        case gismo::metric::bandwidth_gb_sec: case gismo::metric::perf_gflop_sec:
           benchmark_metric = 1e-9*benchmark_result/benchmark_runtime;
           break;
-        case metric::bandwidth_tb_sec: case metric::perf_tflop_sec:
+        case gismo::metric::bandwidth_tb_sec: case gismo::metric::perf_tflop_sec:
           benchmark_metric = 1e-12*benchmark_result/benchmark_runtime;
           break;
-        case metric::runtime_sec:
+        case gismo::metric::runtime_sec:
           benchmark_metric = benchmark_runtime;
           break;
         default:
@@ -201,7 +213,7 @@ public:
     } catch(...) {}
 
     // Convert to relative values (speedup relative to first entry)
-    if (metric & metric::speedup) {
+    if (metric & gismo::metric::speedup) {
       benchmark_runtime = results.front().at(1);
       benchmark_metric  = results.front().at(2);
 
