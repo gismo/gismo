@@ -154,7 +154,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark native C array memcopy]
@@ -220,7 +220,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark native C array dot-product]
@@ -287,7 +287,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark native C array AXPY]
@@ -360,7 +360,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark native C array dense matrix-vector multiplication]
@@ -412,7 +412,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark eigen vector memcopy]
@@ -462,7 +462,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark eigen vector dot-product]
@@ -515,7 +515,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark eigen vector AXPY]
@@ -569,7 +569,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return metric::bandwidth_gb_sec;
+    return gismo::metric::bandwidth_gb_sec;
   }
 };
 //! [Implement benchmark eigen dense matrix-vector multiplication]
@@ -649,7 +649,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return (gismo::metric)(metric::runtime_sec + 0*metric::speedup);
+    return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
   }
 };
 //! [Implement benchmark Poisson 2d visitor]
@@ -729,7 +729,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return (gismo::metric)(metric::runtime_sec + metric::speedup);
+    return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
   }
 };
 //! [Implement benchmark Poisson 3d visitor]
@@ -839,7 +839,7 @@ public:
 
   static constexpr gismo::metric metric()
   {
-    return (gismo::metric)(metric::runtime_sec + 0*metric::speedup);
+    return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
   }
 };
 //! [Implement benchmark Poisson 2d expression assembler]
@@ -1129,7 +1129,7 @@ int main(int argc, char *argv[])
   else {
     std::ofstream file;
     file.open(fn);
-    file << benchmark << "\n";
+    benchmark.to_tikz(file);
     file.close();
   }
   //! [Execute benchmarks]
