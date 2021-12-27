@@ -93,7 +93,7 @@ public:
         std::vector<Eigen::Triplet<real_t> > tripletList;
         for (std::vector<gsIetidGMapper<>::ArtificialIface >::const_iterator it = m_patchIFace.begin(); it != m_patchIFace.end(); ++it)
         {
-            index_t deg = m_basis[it-m_patchIFace.begin()+1].maxDegree() > m_basis[0].maxDegree() ? m_basis[it - m_patchIFace.begin()+1].maxDegree() : m_basis[0].maxDegree();
+            index_t deg = math::max(m_basis[it-m_patchIFace.begin()+1].maxDegree(), m_basis[0].maxDegree());
             gsSparseMatrix <T> iMass = ( (delta * deg * deg) * (1./m_basis[it - m_patchIFace.begin()+1].getMinCellLength() + 1./m_basis[0].getMinCellLength()) ) * m_mass[it - m_patchIFace.begin()];
             for (index_t k = 0; k < iMass.cols(); ++k) {
                 for (index_t i = 0; i < iMass.rows(); ++i)
@@ -133,7 +133,7 @@ public:
         gsMatrix <T> solExP1;
         ///just extracting the dofs
         m_fastDiag->apply(m_R1T.transpose() * rhs, solExP1);
-        x.noalias() = 0.1 * (m_R1T * solExP1 + m_R2T * m_edgeSolver->solve(m_R2T.transpose() * rhs));
+        x.noalias() = (m_R1T * solExP1 + m_R2T * m_edgeSolver->solve(m_R2T.transpose() * rhs));
     }
 
     /**
@@ -441,16 +441,16 @@ public:
             switch (side1)
             {
                 case 1: // west
-                    unormal(0) = -1; unormal(1) = 0;
+                    unormal(0) = -1;
                     break;
                 case 2: //east
-                    unormal(0) = 1; unormal(1) = 0;
+                    unormal(0) = 1;
                     break;
                 case 3: //south
-                    unormal(0) = 0; unormal(1) = -1;
+                    unormal(1) = -1;
                     break;
                 case 4: //north
-                    unormal(0) = 0; unormal(1) = 1;
+                    unormal(1) = 1;
                     break;
                 default:
                     GISMO_ASSERT(B1.dim()==2, "The dimension is expected to be 2!");

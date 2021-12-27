@@ -45,7 +45,7 @@ public:
     template< typename OperatorType >
     explicit gsConjugateGradient( const OperatorType& mat,
                                   const LinOpPtr& precond = LinOpPtr() )
-    : Base(mat, precond), m_calcEigenvals(false) {}
+    : Base(mat, precond), m_calcEigenvals(true) {}
 
     /// @brief Make function using a matrix (operator) and optionally a preconditionner
     ///
