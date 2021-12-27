@@ -523,6 +523,6 @@ EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<2,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<3,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<4,real_t>;
 }
-//*/
+*/
 #endif
 // *****************************************************************

@@ -76,17 +76,15 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     // Default case is levels:=refinements, so replace invalid default accordingly
-    if (levels <0) { levels = refinements; opt.setInt( "MG.Levels", levels ); }
+    if (levels <0) { levels = refinements; cmd.setInt( "MG.Levels", levels ); }
     // The smoothers know their defaults, so remove the invalid default
-    if (damping<0) { opt.remove( "MG.Damping" ); }
+    if (damping<0) { cmd.remove( "MG.Damping" ); }
 
     // Define assembler options
-    opt.remove( "DG" );
-    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
-    opt.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
+    cmd.remove( "DG" );
+    cmd.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
+    cmd.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -95,7 +93,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run multiGrid_example with options:\n" << opt << "\n";
+    gsInfo << "Run multiGrid_example with options:\n" << cmd << "\n";
 
     /******************* Define geometry ********************/
 
@@ -247,8 +245,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         f,
-        (dirichlet::strategy) opt.getInt("MG.DirichletStrategy"),
-        (iFace::strategy)     opt.getInt("MG.InterfaceStrategy")
+        (dirichlet::strategy) cmd.getInt("MG.DirichletStrategy"),
+        (iFace::strategy)     cmd.getInt("MG.InterfaceStrategy")
     );
     assembler.assemble();
     //! [Assemble]
@@ -269,7 +267,7 @@ int main(int argc, char *argv[])
     // We move the constructed hiearchy of multi bases into a variable (only required for the subspace smoother)
     // Then we move the transfer matrices into a variable
     //! [Setup grid hierarchy]
-    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, opt.getGroup("MG"))
+    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, cmd.getGroup("MG"))
         .moveMultiBasesTo(multiBases)
         .moveTransferMatricesTo(transferMatrices);
     //! [Setup grid hierarchy]
@@ -277,7 +275,7 @@ int main(int argc, char *argv[])
     // Setup the multigrid solver
     //! [Setup multigrid]
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices );
-    mg->setOptions( opt.getGroup("MG") );
+    mg->setOptions( cmd.getGroup("MG") );
     //! [Setup multigrid]
 
     // Since we are solving a symmetric positive definite problem,we can use a Cholesky solver
@@ -302,12 +300,12 @@ int main(int argc, char *argv[])
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" )
             smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
-                multiBases[i], bc, opt.getGroup("MG"), patchLocalDampingParameters );
+                multiBases[i], bc, cmd.getGroup("MG"), patchLocalDampingParameters );
         else if ( smoother == "Hybrid" || smoother == "hyb" )
             smootherOp = gsCompositePrecOp<>::make(
                 makeGaussSeidelOp(mg->matrix(i)),
                 setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
-                    multiBases[i], bc, opt.getGroup("MG"), patchLocalDampingParameters )
+                    multiBases[i], bc, cmd.getGroup("MG"), patchLocalDampingParameters )
                 );
         //! [Define smoothers]
         else
@@ -318,7 +316,7 @@ int main(int argc, char *argv[])
         }
 
         //! [Define smoothers2]
-        smootherOp->setOptions( opt.getGroup("MG") );
+        smootherOp->setOptions( cmd.getGroup("MG") );
         //! [Define smoothers2]
 
         // Handle the extra-smooth option. On the finest grid level, there is nothing to handle.
@@ -343,11 +341,11 @@ int main(int argc, char *argv[])
     //! [Solve]
     if (iterativeSolver=="cg")
         gsConjugateGradient<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else if (iterativeSolver=="d")
         gsGradientMethod<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     //! [Solve]
     else
@@ -376,7 +374,7 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(opt);
+        fd.add(cmd);
         fd.add(x);
         fd.addComment(std::string("multiGrid_example   Timestamp:")+std::ctime(&time));
         fd.save(out);

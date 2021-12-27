@@ -29,6 +29,8 @@ template<short_t d,class T> class gsMappedSingleBasis;
 template<short_t d,class T>
 class gsMappedBasis  : public gsFunctionSet<T>
 {
+    friend class gsMappedSingleBasis<d,T>;
+
 private:
     typedef std::vector<std::pair<int,int> >::iterator step_iter;
     typedef gsBasis<T> BasisType;
