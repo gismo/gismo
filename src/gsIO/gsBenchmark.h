@@ -39,15 +39,15 @@ enum metric : uint64_t {
 /**
    @brief Struct that represents a single benchmark result
 */
-class Result1
+class Result
 {
 public:
-  int threads;
+  int           threads;
+  double        runtime;
+  double        value;
   gismo::metric metric;
-  double value;
-  double runtime;   
 };
-  typedef std::array<real_t,4> Result;
+  //typedef std::array<real_t,4> Result;
 
 /**
    @brief Struct that represents a collection of benchmark results for
@@ -163,8 +163,8 @@ public:
   run(const std::vector<index_t>& nthreads, index_t nruns, T& benchmark, gismo::metric metric)
 {
     gsStopwatch stopwatch;
-    uint64_t benchmark_result(0);
-    real_t benchmark_metric, benchmark_runtime;
+    uint64_t result(0);
+    real_t value, runtime;
 
     std::vector<Result> results;
 
@@ -172,54 +172,54 @@ public:
       for (auto it=nthreads.cbegin(); it!=nthreads.cend(); ++it) {
 
         omp_set_num_threads(*it);
-        benchmark_runtime = 0.0;
+        runtime = 0.0;
 
         stopwatch.restart();
 
         for (index_t run=0; run<nruns; ++run) {
-          benchmark_result = benchmark();
+          result = benchmark();
         }
 
         stopwatch.stop();
-        benchmark_runtime = stopwatch.elapsed()/(real_t)nruns;
+        runtime = stopwatch.elapsed()/(real_t)nruns;
 
         switch(metric & ~gismo::metric::speedup) {
         case gismo::metric::bandwidth_kb_sec: case gismo::metric::perf_kflop_sec:
-          benchmark_metric = 1e-3*benchmark_result/benchmark_runtime;
+          value = 1e-3*result/runtime;
           break;
         case gismo::metric::bandwidth_mb_sec: case gismo::metric::perf_mflop_sec:
-          benchmark_metric = 1e-6*benchmark_result/benchmark_runtime;
+          value = 1e-6*result/runtime;
           break;
         case gismo::metric::bandwidth_gb_sec: case gismo::metric::perf_gflop_sec:
-          benchmark_metric = 1e-9*benchmark_result/benchmark_runtime;
+          value = 1e-9*result/runtime;
           break;
         case gismo::metric::bandwidth_tb_sec: case gismo::metric::perf_tflop_sec:
-          benchmark_metric = 1e-12*benchmark_result/benchmark_runtime;
+          value = 1e-12*result/runtime;
           break;
         case gismo::metric::runtime_sec:
-          benchmark_metric = benchmark_runtime;
+          value = runtime;
           break;
         default:
           GISMO_ERROR("Unsupported metric");
         }
 
         Result res;
-        res[0]= static_cast<real_t>(*it); // number of OpenMP threads
-        res[1]= benchmark_runtime;        // averaged elapsed time in seconds
-        res[2]= benchmark_metric;         // averaged benchmark metric
-        res[3]= (real_t)metric;           // benchmark metric
+        res.threads = static_cast<int>(*it); // number of OpenMP threads
+        res.runtime = runtime;               // averaged elapsed time in seconds
+        res.value   = value;                 // averaged benchmark value
+        res.metric  = metric;                // benchmark metric
         results.push_back( give(res) );
       }
     } catch(...) {}
 
     // Convert to relative values (speedup relative to first entry)
     if (metric & gismo::metric::speedup) {
-      benchmark_runtime = results.front().at(1);
-      benchmark_metric  = results.front().at(2);
+      runtime = results.front().runtime;
+      value   = results.front().value;
 
       for (auto &it : results) {
-        it.at(1) = benchmark_runtime / it.at(1);
-        it.at(2) = benchmark_metric  / it.at(2);
+        it.runtime = runtime / it.runtime;
+        it.value   = value   / it.value;
       }
     }
 

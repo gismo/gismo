@@ -25,7 +25,7 @@ namespace gismo
        << label << "\n";
 
     for (auto it=results.cbegin(); it!=results.cend(); ++it)
-        os << it->at(2) << "\n";
+        os << it->value << "\n";
 
     os << "}\\data" << label << "\n";
 
@@ -43,8 +43,8 @@ namespace gismo
        << "width=2\\textwidth,\n"
        << "height=.8\\textwidth,\n"
        << "legend pos=outer north east,\n"
-       << "ybar = 0.05cm,\n"
-       << "bar width = 3pt,\n"
+       << "ybar=0.05cm,\n"
+       << "bar width=3pt,\n"
        << "ymajorgrids=true,\n"
        << "xticklabel style={rotate=45,anchor=east},\n"
        << "xticklabels={";
@@ -56,8 +56,8 @@ namespace gismo
        << "xtick=data,\n";
 
     auto it = results.front()->get().cbegin();
-    if ((metric)it->at(3) & gismo::metric::speedup) {
-      switch( (int)it->at(3) & ~gismo::metric::speedup ) {
+    if (it->metric & gismo::metric::speedup) {
+      switch(it->metric & ~gismo::metric::speedup) {
       case gismo::metric::bandwidth_kb_sec:
       case gismo::metric::bandwidth_mb_sec:
       case gismo::metric::bandwidth_gb_sec:
@@ -77,7 +77,7 @@ namespace gismo
         GISMO_ERROR("Unsupported metric");
       }
     } else {
-      switch( (int)it->at(3) & ~gismo::metric::speedup ) {
+      switch(it->metric & ~gismo::metric::speedup) {
       case gismo::metric::bandwidth_kb_sec:
         os << "ylabel={Bandwidth in KB/s},\n";
         break;
@@ -139,7 +139,7 @@ namespace gismo
     it  = results.front()->get().cbegin();
     auto ite = results.front()->get().cend();
     for (;it!=ite; ++it)
-      os << "Threads=" << it->at(0) << (it!=ite-1 ? "," : "");
+      os << "Threads=" << it->threads << (it!=ite-1 ? "," : "");
     os << "}\n"
 
        << "\\end{axis}\n"
@@ -206,16 +206,29 @@ namespace gismo
 
   std::ostream &gsBenchmarkResultSet::print(std::ostream &os) const
   {
+    os << "... " << std::setw(6) << title << " : ";
+    for (auto it=results.cbegin(); it!=results.cend(); ++it)
+      os << std::setw(4) << it->threads << " : "
+         << std::setw(6) << std::scientific << std::setprecision(2) << it->value;
+    os << "\n";
     return os;
   }
 
   std::ostream &gsBenchmarkSet::print(std::ostream &os) const
   {
+    os << "=== " << title << "\n"
+       << std::setw(10) << "size"
+       << std::setw(7)  << "omp"
+       << std::setw(12) << "bw\n";
+    for (auto it=results.cbegin(); it!=results.cend(); ++it)
+      (*it)->print(os);
     return os;
   }
 
   std::ostream &gsBenchmark::print(std::ostream &os) const
   {
+    for (auto it=benchmarks.cbegin(); it!=benchmarks.cend(); ++it)
+      (*it)->print(os);
     return os;
   }
   
