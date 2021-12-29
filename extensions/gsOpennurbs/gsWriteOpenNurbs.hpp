@@ -278,7 +278,7 @@ bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name)
     for (size_t i = 0; i < nv; i++)
     {
         const gsVertex<T> & v = msh.vertex(i);
-        mesh->SetVertex(i, ON_3fPoint(v.x(), v.y(), v.z()) );
+        mesh->SetVertex(i, ON_3fPoint(cast<T,double>(v.x()), cast<T,double>(v.y()), cast<T,double>(v.z())) );
     }
 
     gsVector<index_t> v;

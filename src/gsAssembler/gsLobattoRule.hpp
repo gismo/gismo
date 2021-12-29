@@ -270,7 +270,7 @@ gsLobattoRule<T>::lookupReference(index_t n,   // Number of points
     default:
     {
         //gsWarn << "  Illegal value of N = " << n << "\n";
-        gsWarn << "Precomputed Lobatto rule (1,..,20) not found.\n";
+        gsWarn << "Precomputed Lobatto rule (1,..,20) not found for N="<<n<<".\n";
         return false;
     }
 
