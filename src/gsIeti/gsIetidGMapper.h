@@ -196,9 +196,9 @@ public:
 
     gsMatrix<T> constructGlobalSolutionFromLocalSolutions( const std::vector< gsMatrix<T> >& localContribs )
     {
-        std::swap( m_dofMapperOrig, Base::m_dofMapperGlobal );
+        m_dofMapperOrig.swap(Base::m_dofMapperGlobal);
         gsMatrix<T> result = Base::constructGlobalSolutionFromLocalSolutions( localContribs );
-        std::swap( m_dofMapperOrig, Base::m_dofMapperGlobal );
+        m_dofMapperOrig.swap(Base::m_dofMapperGlobal);
         return result;
     }
 
