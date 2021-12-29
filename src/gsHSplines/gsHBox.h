@@ -19,8 +19,6 @@
 namespace gismo
 {
 
-template<short_t d, class T> class gsHBoxContainer;
-
 template<int d, class T>
 class gsHBox
 {
@@ -115,7 +113,6 @@ public:
     Container getTneighborhood(index_t m);
 
     HContainer           toContainer();
-    gsHBoxContainer<d,T> toHBoxContainer();
 
     std::ostream& print( std::ostream& os ) const;
 
@@ -128,6 +125,8 @@ protected:
     gsAabb<d,index_t> _computeIndices(const gsMatrix<T> & coords);
 
     gsAabb<d,index_t> _elevateBox(const gsAabb<d,index_t> & box) const;
+
+    HContainer _getParents(typename gsHBox<d,T>::HContainer & container);
 
 protected:
     gsAabb<d,index_t> m_indices;

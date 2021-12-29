@@ -216,21 +216,11 @@ gsHBox<d,T> gsHBox<d, T>::getAncestor(index_t k) const
 template <short_t d, class T>
 typename gsHBox<d,T>::HContainer gsHBox<d, T>::toContainer()
 {
-    gsHBoxContainer<d,T> container(*this);
-    return container.boxes();
+    HContainer container;
+    container.resize(this->level()+1);
+    container.at(this->level()).push_back(*this);
+    return container;
 }
-
-template <short_t d, class T>
-gsHBoxContainer<d,T> gsHBox<d, T>::toHBoxContainer()
-{
-    return gsHBoxContainer<d,T>(*this);
-}
-
-// template <short_t d, class T>
-// bool gsHBox<d, T>::isActiveOnLvl(index_t lvl)
-// {
-//     return gsHBoxContainer<d,T>(*this);
-// }
 
 template <short_t d, class T>
 typename gsHBox<d, T>::HContainer gsHBox<d, T>::getSupportExtension()
@@ -246,15 +236,15 @@ typename gsHBox<d, T>::HContainer gsHBox<d, T>::getSupportExtension()
     gsMatrix<T> cells(d,2*acts.rows());
     gsMatrix<T> support;
     gsAabb<d,index_t> aabb;
-    gsHBoxContainer<d,T> container;
+    HContainer container;
+    container.resize(lvl+1);
     for (index_t act = 0; act!=acts.rows(); act++)
     {
         support = m_basis->tensorLevel(lvl).support(acts(act,0));
         aabb    = _computeIndices(support,lvl);
-        container.add(gsHBox<d,T>(aabb,m_basis));
+        container[lvl].push_back(gsHBox<d,T>(aabb,m_basis));
     }
-
-    return container.boxes();
+    return container;
 }
 
 template <short_t d, class T>
@@ -276,17 +266,17 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::getMultiLevelSupportExtension(ind
 template <short_t d, class T>
 typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
 {
+    HContainer extension;
     Container neighborhood;
-    gsHBoxContainer<d,T>            extension;
 
     index_t lvl = this->level();
     index_t k = lvl - m + 1;
     if (k>=0)
     {
         // Get multi level support extension on level k
-        extension = gsHBoxContainer<d,T>(this->getMultiLevelSupportExtension(k));
+        extension = this->getMultiLevelSupportExtension(k);
         // Eliminate elements which are too low
-        neighborhood = extension.getActivesOnLevel(k);
+        neighborhood = extension.at(k);
     }
     return neighborhood;
 }
@@ -294,18 +284,18 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
 template <short_t d, class T>
 typename gsHBox<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
 {
-    Container    neighborhood;
-    gsHBoxContainer<d,T>                        parents, extension;
+    Container   neighborhood;
+    HContainer  parents, extension;
 
     index_t lvl = this->level();
     index_t k = lvl - m + 2;
     if (k>=0)
     {
         // Get multi level support extension on level k
-        extension = gsHBoxContainer<d,T>(this->getMultiLevelSupportExtension(k));
+        extension = this->getMultiLevelSupportExtension(k);
         // Eliminate elements which are too low
-        parents = gsHBoxContainer<d,T>(extension.getParents());
-        neighborhood = parents.getActivesOnLevel(k-1);
+        parents = _getParents(extension);
+        neighborhood = parents.at(k-1);
     }
     return neighborhood;
 }
@@ -399,9 +389,26 @@ gsAabb<d,index_t> gsHBox<d, T>::_elevateBox(const gsAabb<d,index_t> & box) const
     for (index_t i = 0; i!=d; i++)
     {
         low.at(i) = box.first .at(i) / 2;
-        upp.at(i) = box.second.at(i) / 2 + (box.second.at(i) % 2 != 0);
+        upp.at(i) = box.second.at(i) / 2 + (index_t)(box.second.at(i) % 2 != 0);
     }
     return gsAabb<d,index_t>(low,upp,box.level-1);
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::HContainer gsHBox<d, T>::_getParents(HContainer & container)
+{
+    HContainer result;
+    result.resize(container.size()-1);
+
+    // Handle level 0 separately (operation cannot be performed on level 0)
+    GISMO_ASSERT(container[0].size()==0,"Boxes at level 0 cannot have a parent. Did something go wrong? You can run check() to see if the boxes are allocated coorectly");
+
+    HIterator resIt = result.begin();
+    for (HIterator hit = std::next(container.begin()); hit!=container.end(); hit++, resIt++)
+        for (Iterator it=hit->begin(); it!=hit->end(); it++)
+            resIt->push_back(*it);
+
+    return result;
 }
 
 } // namespace gismo

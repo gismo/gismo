@@ -23,14 +23,13 @@ class gsHBoxContainer
 {
 public:
     // std::list does not provide .at(k) but it provides iterators
-    typedef typename std::list<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>    Container;
-    typedef typename std::vector<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>  SortedContainer;
-    typedef typename std::vector<Container>                                 HContainer;
-    typedef typename Container::iterator        Iterator;
-    typedef typename Container::const_iterator  cIterator;
-    typedef typename HContainer::iterator       HIterator;
-    typedef typename HContainer::const_iterator cHIterator;
-    // typedef typename Container::const_iterator citerator;
+    typedef typename gsHBox<d,T>::Container         Container;
+    typedef typename gsHBox<d,T>::SortedContainer   SortedContainer;
+    typedef typename gsHBox<d,T>::HContainer        HContainer;
+    typedef typename gsHBox<d,T>::Iterator          Iterator;
+    typedef typename gsHBox<d,T>::cIterator         cIterator;
+    typedef typename gsHBox<d,T>::HIterator         HIterator;
+    typedef typename gsHBox<d,T>::cHIterator        cHIterator;
 
 public:
     gsHBoxContainer();
@@ -53,15 +52,19 @@ public:
 
     std::ostream& print( std::ostream& os ) const;
 
+    HContainer           boxUnion(const HContainer & container1, const HContainer & container2) const;
     gsHBoxContainer<d,T> boxUnion(const gsHBoxContainer<d,T> & other) const;
+    gsHBoxContainer<d,T> boxUnion(const gsHBoxContainer<d,T> & container1, const gsHBoxContainer<d,T> & container2) const;
     void makeUnique();
 
     Container &  getActivesOnLevel(index_t lvl);
     const Container & getActivesOnLevel(index_t lvl) const;
     HContainer getParents() const;
 
-    gsHBoxContainer<d,T> markHrecursive(index_t lvl, index_t m) const;
-    gsHBoxContainer<d,T> markTrecursive(index_t lvl, index_t m) const;
+    HContainer  markHrecursive(HContainer & marked, index_t lvl, index_t m) const;
+    void        markHrecursive(index_t lvl, index_t m);
+    HContainer  markTrecursive(HContainer & marked, index_t lvl, index_t m) const;
+    void        markTrecursive(index_t lvl, index_t m);
 
 
     HContainer & boxes() { return m_boxes; }

@@ -113,9 +113,15 @@ void gsHBoxContainer<d, T>::add(const gsHBoxContainer<d,T> & boxes)
 template <short_t d, class T>
 gsHBoxContainer<d,T> gsHBoxContainer<d, T>::boxUnion(const gsHBoxContainer<d,T> & other) const
 {
+    return boxUnion(*this,other);
+}
+
+template <short_t d, class T>
+gsHBoxContainer<d,T> gsHBoxContainer<d, T>::boxUnion(const gsHBoxContainer<d,T> & container1, const gsHBoxContainer<d,T> & container2) const
+{
     HContainer result;
-    HContainer region1(this->boxes());
-    HContainer region2(other.boxes());
+    HContainer region1(container1.boxes());
+    HContainer region2(container2.boxes());
 
     index_t lmax = std::max(region1.size(),region2.size());
     region1.resize(lmax);
@@ -126,6 +132,25 @@ gsHBoxContainer<d,T> gsHBoxContainer<d, T>::boxUnion(const gsHBoxContainer<d,T> 
         result[l] = _boxUnion(region1[l],region2[l]);
 
     return gsHBoxContainer<d,T>(result);
+}
+
+template <short_t d, class T>
+typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::boxUnion(const HContainer & container1, const HContainer & container2) const
+{
+    HContainer result, region1, region2;
+
+    region1 = container1;
+    region2 = container2;
+
+    index_t lmax = std::max(region1.size(),region2.size());
+    region1.resize(lmax);
+    region2.resize(lmax);
+    result.resize(lmax);
+
+    for (index_t l = 0; l!=lmax; l++)
+        result[l] = _boxUnion(region1[l],region2[l]);
+
+    return result;
 }
 
 template <short_t d, class T>
@@ -222,34 +247,37 @@ typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::getParents() c
 }
 
 template <short_t d, class T>
-gsHBoxContainer<d, T> gsHBoxContainer<d, T>::markTrecursive(index_t lvl, index_t m) const
+typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markTrecursive(HContainer & marked, index_t lvl, index_t m) const
 {
-    gsHBoxContainer<d,T> marked   = *this;
-    Container marked_l = this->getActivesOnLevel(lvl);
-    Container marked_k;
+    Container   marked_l = marked[lvl];
+    Container   marked_k;
 
     gsHBoxContainer<d,T> neighbors;
     for (Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
         neighbors.add(it->getTneighborhood(m));
 
-    gsHBoxContainer<d, T>tmp(neighbors);
-    gsDebugVar(tmp);
     index_t k = lvl - m + 2;
     if (neighbors.size()!=0)
     {
-        marked_k = this->getActivesOnLevel(k);
-        // THIS LINE SHOULD BE THERE
-        // this->getActivesOnLevel(k) = _boxUnion(neighbors,marked_k);
-        marked = this->markTrecursive(k,m);
+        marked_k = marked[k];
+        gsHBoxContainer<d,T> boxunion = boxUnion(neighbors,gsHBoxContainer<d,T>(marked_k));
+
+        marked[k] = boxunion.getActivesOnLevel(k);
+        marked = this->markTrecursive(marked,k,m);
     }
     return marked;
 }
 
 template <short_t d, class T>
-gsHBoxContainer<d, T> gsHBoxContainer<d, T>::markHrecursive(index_t lvl, index_t m) const
+void gsHBoxContainer<d, T>::markTrecursive(index_t lvl, index_t m)
 {
-    gsHBoxContainer<d,T> marked   = *this;
-    Container marked_l = this->getActivesOnLevel(lvl);
+    m_boxes = this->markTrecursive(m_boxes,lvl,m);
+}
+
+template <short_t d, class T>
+typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markHrecursive(HContainer & marked, index_t lvl, index_t m) const
+{
+    Container marked_l = marked[lvl];
     Container marked_k;
 
     gsHBoxContainer<d,T> neighbors;
@@ -257,15 +285,26 @@ gsHBoxContainer<d, T> gsHBoxContainer<d, T>::markHrecursive(index_t lvl, index_t
         neighbors.add(it->getHneighborhood(m));
 
     gsDebugVar(neighbors);
+    gsHBoxContainer<d,T> tmp(marked);
+    gsDebugVar(tmp);
     index_t k = lvl - m + 1;
+    gsDebugVar(k);
+    gsDebugVar(lvl);
     if (neighbors.boxes().size()!=0)
     {
-        marked_k = this->getActivesOnLevel(k);
-        // THIS LINE SHOULD BE THERE
-        // this->getActivesOnLevel(k) = _boxUnion(neighbors,marked_k);
-        marked = this->markTrecursive(k,m);
+        marked_k = marked[k];
+        gsHBoxContainer<d,T> boxunion = boxUnion(neighbors,gsHBoxContainer<d,T>(marked_k));
+
+        marked[k] = boxunion.getActivesOnLevel(k);
+        marked = this->markHrecursive(marked,k,m);
     }
     return marked;
+}
+
+template <short_t d, class T>
+void gsHBoxContainer<d, T>::markHrecursive(index_t lvl, index_t m)
+{
+    m_boxes = this->markTrecursive(m_boxes,lvl,m);
 }
 
 template <short_t d, class T>
