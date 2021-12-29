@@ -14,7 +14,7 @@
 #include <gismo.h>
 #include <string>
 
-using namespace std;
+using namespace std; //TODO: Removeme
 using namespace gismo;
 
 gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
@@ -24,6 +24,143 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const gsOptionList&,
     const int&
 );
+
+class gsBlockILUT : public gsPreconditionerOp<real_t>
+{
+public:
+    typedef memory::unique_ptr<gsBlockILUT> uPtr;
+
+    gsBlockILUT( const gsSparseMatrix<>& op, const gsMultiPatch<>& mp, const gsMultiBasis<>& mb ) : m_op(op)
+    {
+        index_t numPatch = mp.nPatches();
+
+        index_t shift0 = 0;
+
+        // Use of partition functions
+        std::vector<gsVector<index_t> > interior, boundary;
+        std::vector<std::vector<gsVector<index_t> > > interface;
+        std::vector<gsMatrix<index_t> >  global_interior, global_boundary;
+        std::vector<std::vector<gsMatrix<index_t> > > global_interface;
+        mb.partition(interior,boundary,interface,global_interior,global_boundary,global_interface);
+        // Vector of vector of shift objects
+        std::vector<index_t> shift(numPatch+1);
+        for(index_t l=0; l< numPatch; l++)
+        {
+            shift[l] = global_interior[l].rows();
+        }
+        shift[numPatch] = 0;
+        shift[numPatch] = m_op.rows() - accumulate(shift.begin(),shift.end(),0);
+
+        // Vector of factorized operators
+        std::vector< gsSparseMatrix<> > ILUT(numPatch+1);
+        // Vector of factorized operators
+        std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > P(numPatch+1);
+        // Vector of factorized operators
+        std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > Pinv(numPatch+1);
+        for(index_t j = 0 ; j < numPatch ; j++)
+        {
+            const gsSparseMatrix<> block = m_op.block(shift0,shift0,shift[j],shift[j]);
+            Eigen::IncompleteLUT<real_t> ilu;
+            ilu.setFillfactor(1);
+            ilu.compute(block);
+            ILUT[j] = ilu.factors();
+            P[j] = ilu.fillReducingPermutation();
+            Pinv[j] = ilu.inversePermutation();
+            shift0 = shift0 + shift[j];
+        }
+
+        shift0 = 0;
+        // Obtain the blocks of the matrix
+        std::vector< gsSparseMatrix<> > ddB(numPatch+1);
+        std::vector< gsSparseMatrix<> > ddC(numPatch+1);
+
+        for(index_t j = 0 ; j < numPatch+1 ; j++)
+        {
+            ddB[j] = m_op.block(m_op.rows()-shift[numPatch],shift0,shift[numPatch],shift[j]);
+            ddC[j] = m_op.block(shift0,m_op.cols()-shift[numPatch],shift[j],shift[numPatch]);
+            shift0 = shift0 + shift[j];
+        }
+        shift0 = 0;
+
+        // Define the A_aprox matrix
+        m_A_aprox = gsSparseMatrix<>(m_op.rows(),m_op.cols());
+
+        // Retrieve a block of each patch
+        for(index_t k = 0; k < numPatch; k++)
+        {
+            m_A_aprox.block(shift0,shift0,shift[k],shift[k]) = ILUT[k];
+            shift0 = shift0 + shift[k];
+        }
+        shift0 = 0;
+        std::vector< gsMatrix<> > ddBtilde(numPatch);
+        std::vector< gsMatrix<> > ddCtilde(numPatch);
+
+        for(index_t j=0 ; j < numPatch ; j++)
+        {
+            ddBtilde[j] = gsSparseMatrix<>(shift[j],shift[numPatch]);
+            ddCtilde[j] = gsSparseMatrix<>(shift[j],shift[numPatch]);
+            for(index_t k=0 ; k < shift[numPatch]; k++)
+            {
+                gsMatrix<> Brhs = ddC[j].col(k);
+                gsMatrix<> Crhs = ddC[j].col(k);
+                ddBtilde[j].col(k) = ILUT[j].triangularView<Eigen::Upper>().transpose().solve(Brhs);
+                ddCtilde[j].col(k) = ILUT[j].triangularView<Eigen::UnitLower>().solve(Crhs);
+            }
+        }
+        // Define matrix S
+        gsSparseMatrix<> S = ddC[numPatch];
+        for(index_t l = 0 ; l < numPatch ; l++)
+        {
+            S -= ddBtilde[l].transpose()*ddCtilde[l];
+        }
+
+        // Fill matrix A_aprox
+        for(index_t m = 0 ; m < numPatch ; m++)
+        {
+          m_A_aprox.block(shift0,m_A_aprox.rows() - shift[numPatch],shift[m],shift[numPatch]) = ddCtilde[m];
+          m_A_aprox.block(m_A_aprox.rows() - shift[numPatch],shift0,shift[numPatch],shift[m]) = ddBtilde[m].transpose();
+          shift0 += shift[m];
+        }
+        shift0 = 0;
+
+        // Preform ILUT on the S-matrix!
+        Eigen::IncompleteLUT<real_t> ilu;
+        ilu.setFillfactor(1);
+        gsSparseMatrix<> II = S;
+        ilu.compute(II);
+        m_A_aprox.block(
+            m_A_aprox.rows() - shift[numPatch],
+            m_A_aprox.rows() - shift[numPatch],
+            shift[numPatch],
+            shift[numPatch]
+        ) = ilu.factors();
+    }
+
+    void step(const gsMatrix<>& rhs, gsMatrix<>& x) const
+    {
+        gsMatrix<> d = rhs-m_op*x;
+        gsMatrix<> e = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(d);
+        x += m_A_aprox.template triangularView<Eigen::Upper>().solve(e);
+    }
+
+    void stepT(const gsMatrix<>& rhs, gsMatrix<>& x) const
+    {
+        gsMatrix<> d = rhs-m_op*x;
+        gsMatrix<> e = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(d);
+        x += m_A_aprox.template triangularView<Eigen::Upper>().solve(e);
+    }
+
+    index_t rows() const { return m_op.rows(); }
+    index_t cols() const { return m_op.cols(); }
+    gsLinearOperator<real_t>::Ptr underlyingOp() const { return makeMatrixOp(m_op); }
+
+private:
+    /// Underlying matrix
+    gsSparseMatrix<> m_op;
+
+    /// Block operator object
+    gsMatrix<> m_A_aprox;
+};
 
 /** @brief The p-multigrid base class provides the basic
  *  methods (smoothing, prolongation, restriction) for
@@ -212,7 +349,7 @@ public:
                 ex2.setIntegrationElements(basisH);
                 ex2.initSystem();
                 ex2.assemble(w_n * meas(G2) * w_n.tr());
-    
+
                 // Prolongate Xcoarse to Xfine
                 gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
                 gsSparseMatrix<> M = ex2.matrix();
@@ -252,7 +389,7 @@ public:
                 typedef gsExprAssembler<real_t>::geometryMap geometryMap;
                 typedef gsExprAssembler<real_t>::variable variable;
                 typedef gsExprAssembler<real_t>::space space;
-        
+
                 // Determine matrix M (low_order * low_order)
                 gsExprAssembler<real_t> ex2(1,1);
                 geometryMap G2 = ex2.getMap(mp);
@@ -265,7 +402,7 @@ public:
                 ex2.setIntegrationElements(basisL);
                 ex2.initSystem();
                 ex2.assemble(w_n * meas(G2) * w_n.tr());
-        
+
                 // Restrict Xfine to Xcoarse
                 gsMatrix<> temp = m_restriction_P[numLevels-2]*Xfine;
                 gsSparseMatrix<> M = ex2.matrix();
@@ -321,44 +458,11 @@ private:
   /// Vector of restriction operators
   vector< gsSparseMatrix<T> > m_restriction_H;
 
-  /// Vector of factorized operators
-  vector< vector< gsSparseMatrix<T> > > m_ILUT;
-
-  /// Vector of factorized operators
-  vector< vector < Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > > m_P;
-
-  /// Vector of factorized operators
-  vector < vector < Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > > m_Pinv;
-
-  /// Vector of SCM smoother object
-  vector< gsPreconditionerOp<>::Ptr > m_SCMS;
+  /// Vector of smoother objects
+  vector< gsPreconditionerOp<>::Ptr > m_smoother;
 
   /// Vector of operator objects
   vector< gsSparseMatrix<T> > m_operator;
-
-  /// Vector of vector of block operator objects
-  vector < vector< gsSparseMatrix<T> > > m_block_operator;
-
-  /// Vector of vector of block operator objects
-  vector < vector  < gsSparseMatrix<T> > > m_ddB;
-
-  /// Vector of vector of block operator objects
-  vector < vector  < gsSparseMatrix<T> > > m_ddC;
-
-  /// Vector of vector of block operator objects
-  vector < vector <  gsMatrix<T>  > > m_ddBtilde;
-
-  /// Vector of vector of block operator objects
-  vector < vector <  gsMatrix<T>  > > m_ddCtilde;
-
-  /// Vector of vector of block operator objects
-  vector <  gsMatrix<T> > m_A_aprox;
-
-  /// Vector of vector of block operator objects
-  vector <  gsSparseMatrix<T> > m_S;
-
-  /// Vector of vector of shift objects
-  vector < std::vector< int > > m_shift;
 
   /// Vector of assembler objects
   vector<Assembler> m_assembler;
@@ -480,180 +584,68 @@ public:
     }
     real_t Time_Assembly_Galerkin = clock.stop();
 
-    // Setting up the subspace corrected mass smoother
-    clock.restart();
-    if(typeSmoother == 3)
-    {
-      // Generate sequence of SCM smoothers
-      m_SCMS.resize(numLevels);
-      gsOptionList opt;
-      opt.addReal("Scaling","",0.12);
-      for(int i = 0 ; i < numLevels ; i++)
-      {
-        m_SCMS[i] = setupSubspaceCorrectedMassSmoother(m_operator[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
-      }
-    }
-    real_t Time_SCMS = clock.stop();
+
+    // Setting up the all the smoothers
+    m_smoother.resize(numLevels);
 
     // Determine ILUT factorizations at each level
     clock.restart();
-    int numPatch = m_mp_ptr->nPatches();
 
     if(typeSmoother == 1)
     {
-      // Generate factorizations (ILUT)
-      m_ILUT.resize(numLevels);
-      m_P.resize(numLevels);
-      m_Pinv.resize(numLevels);
-      for(int i = 0; i < numLevels; i++)
-      {
-        m_ILUT[i].resize(1);
-        m_P[i].resize(1);
-        m_Pinv[i].resize(1);
-        if(typeProjection == 2)
+        // Generate factorizations (ILUT)
+        for(int i = 0; i < numLevels; i++)
         {
-            Eigen::IncompleteLUT<real_t> ilu;
-            ilu.setFillfactor(1);
-            ilu.compute(m_operator[i]);
-            m_ILUT[i][0] = ilu.factors();
-            m_P[i][0] = ilu.fillReducingPermutation();
-            m_Pinv[i][0] = ilu.inversePermutation();
-        }
-        else
-        {
-            if(i == numLevels-1) // Only at finest level
+            if(typeProjection == 2 || i == numLevels-1)
             {
-              Eigen::IncompleteLUT<real_t> ilu;
-              ilu.setFillfactor(1);
-              ilu.compute(m_operator[i]);
-              m_ILUT[i][0] = ilu.factors();
-              m_P[i][0] = ilu.fillReducingPermutation();
-              m_Pinv[i][0] = ilu.inversePermutation();
+                m_smoother[i] = makeIncompleteLUOp(m_operator[i]);
+            }
+            else
+            {
+                // Use Gauss-Seidel on all the other levels
+                m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
             }
         }
-      }
     }
     real_t Time_ILUT_Factorization = clock.stop();
+    if(typeSmoother == 2)
+    {
+        for(int i = 0; i < numLevels; i++)
+        {
+            m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+        }
+    }
+    clock.restart();
+    if(typeSmoother == 3)
+    {
+        // Generate sequence of SCM smoothers
+        gsOptionList opt;
+        opt.addReal("Scaling","",0.12);
+        for(int i = 0 ; i < numLevels ; i++)
+        {
+            m_smoother[i] = setupSubspaceCorrectedMassSmoother(m_operator[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
+        }
+    }
+    real_t Time_SCMS = clock.stop();
+
     clock.restart();
     if(typeSmoother == 5)
     {
-      int shift0 = 0;
-      m_ddB.resize(numLevels);
-      m_ddC.resize(numLevels);
-      m_ddBtilde.resize(numLevels);
-      m_ddCtilde.resize(numLevels);
-
-      m_ILUT.resize(numLevels);
-      m_P.resize(numLevels);
-      m_Pinv.resize(numLevels);
-      m_shift.resize(numLevels);
-      m_S.resize(numLevels);
-
-      for(int i = 0 ; i < numLevels ; i++)
-      {
-        m_shift[i].resize(numPatch+1);
-        m_ILUT[i].resize(numPatch+1);
-        m_P[i].resize(numPatch+1);
-        m_Pinv[i].resize(numPatch+1);
-
-        // Use of partition functions
-        std::vector<gsVector<index_t> > interior, boundary;
-        std::vector<std::vector<gsVector<index_t> > > interface;
-        std::vector<gsMatrix<index_t> >  global_interior, global_boundary;
-        std::vector<std::vector<gsMatrix<index_t> > > global_interface;
-        m_basis[i]->partition(interior,boundary,interface,global_interior,global_boundary,global_interface);
-        for(int l=0; l< numPatch; l++)
+        for(int i = 0; i < numLevels; i++)
         {
-          m_shift[i][l] = global_interior[l].rows();
+            if(typeProjection == 2 || i == numLevels-1)
+            {
+                m_smoother[i] = gsBlockILUT::uPtr(new gsBlockILUT(m_operator[i], *m_mp_ptr, *(m_basis[i])));
+            }
+            else
+            {
+                // Use Gauss-Seidel on all the other levels
+                m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+            }
         }
-        m_shift[i][numPatch] = 0;
-        m_shift[i][numPatch] = m_operator[i].rows() - accumulate(m_shift[i].begin(),m_shift[i].end(),0);
-
-        // Put shift on zero
-        shift0 = 0;
-        for(int j = 0 ; j < numPatch ; j++)
-        {
-          const gsSparseMatrix<> block = m_operator[i].block(shift0,shift0,m_shift[i][j],m_shift[i][j]);
-          Eigen::IncompleteLUT<real_t> ilu;
-          ilu.setFillfactor(1);
-          ilu.compute(block);
-          m_ILUT[i][j] = ilu.factors();
-
-          m_P[i][j] = ilu.fillReducingPermutation();
-          m_Pinv[i][j] = ilu.inversePermutation();
-         shift0 = shift0 + m_shift[i][j];
-
-        }
-
-        shift0 = 0;
-        // Obtain the blocks of the matrix
-        m_ddB[i].resize(numPatch+1);
-        m_ddC[i].resize(numPatch+1);
-
-        for(int j = 0 ; j < numPatch+1 ; j++)
-        {
-            m_ddB[i][j] = m_operator[i].block(m_operator[i].rows()-m_shift[i][numPatch],shift0,m_shift[i][numPatch],m_shift[i][j]);
-            m_ddC[i][j] = m_operator[i].block(shift0,m_operator[i].cols()-m_shift[i][numPatch],m_shift[i][j],m_shift[i][numPatch]);
-            shift0 = shift0 + m_shift[i][j];
-        }
-        shift0 = 0;
-      }
-
-      m_A_aprox.resize(numLevels);
-      for(int i = 0 ; i < numLevels ; i++)
-      {
-         // Define the A_aprox matrix
-        m_A_aprox[i] = gsSparseMatrix<>(m_operator[i].rows(),m_operator[i].cols());
-
-        // Retrieve a block of each patch
-        for(int k=0; k< numPatch; k++)
-        {
-          m_A_aprox[i].block(shift0,shift0,m_shift[i][k],m_shift[i][k]) = m_ILUT[i][k];
-          shift0 = shift0 + m_shift[i][k];
-        }
-        shift0 = 0;
-        m_ddBtilde[i].resize(numPatch);
-        m_ddCtilde[i].resize(numPatch);
-
-        for(int j=0 ; j < numPatch ; j ++)
-        {
-          m_ddBtilde[i][j] = gsSparseMatrix<>(m_shift[i][j],m_shift[i][numPatch]);
-          m_ddCtilde[i][j] = gsSparseMatrix<>(m_shift[i][j],m_shift[i][numPatch]);
-          for(int k=0 ; k < m_shift[i][numPatch]; k++)
-          {
-            gsMatrix<> Brhs = m_ddC[i][j].col(k);
-            gsMatrix<> Crhs = m_ddC[i][j].col(k);
-            m_ddBtilde[i][j].col(k) = m_ILUT[i][j].template triangularView<Eigen::Upper>().transpose().solve(Brhs);
-            m_ddCtilde[i][j].col(k) = m_ILUT[i][j].template triangularView<Eigen::UnitLower>().solve(Crhs);
-          }
-        }
-
-        // Define matrix S
-        m_S[i] = m_ddC[i][numPatch];
-        for(int l = 0 ; l < numPatch ; l++)
-        {
-          m_S[i] = m_S[i] - m_ddBtilde[i][l].transpose()*m_ddCtilde[i][l];
-        }
-
-        // Fill matrix A_aprox
-        for(int m = 0 ; m < numPatch ; m++)
-        {
-          m_A_aprox[i].block(shift0,m_A_aprox[i].rows() - m_shift[i][numPatch],m_shift[i][m],m_shift[i][numPatch]) = m_ddCtilde[i][m];
-          m_A_aprox[i].block(m_A_aprox[i].rows() - m_shift[i][numPatch],shift0,m_shift[i][numPatch],m_shift[i][m]) = m_ddBtilde[i][m].transpose();
-          shift0 = shift0 + m_shift[i][m];
-        }
-        shift0 = 0;
-
-        // Preform ILUT on the S-matrix!
-        Eigen::IncompleteLUT<real_t> ilu;
-        ilu.setFillfactor(1);
-        gsSparseMatrix<> II = m_S[i];
-        ilu.compute(II);
-        m_A_aprox[i].block(m_A_aprox[i].rows() - m_shift[i][numPatch],m_A_aprox[i].rows() - m_shift[i][numPatch],m_shift[i][numPatch],m_shift[i][numPatch]) = ilu.factors();
-      }
     }
-
     real_t Time_Block_ILUT_Factorization = clock.stop();
+
     gsInfo << "\n|| Setup Timings || " << endl;
     gsInfo << "Total Assembly time: " << Time_Assembly << endl;
     gsInfo << "Total Assembly time (Galerkin): " << Time_Assembly_Galerkin << endl;
@@ -841,48 +833,9 @@ private:
   /// @brief Apply fixed number of presmoothing steps
   virtual void presmoothing(const gsMatrix<T>& rhs,  gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, gsMatrix<T> & fineRes, const int& numRefine, const int& typeSmoother, const gsMatrix<>& hp)
   {
-    for(int i = 0 ; i < numSmoothing ; i++)
+    for(index_t i = 0 ; i < numSmoothing ; i++)
     {
-      if(typeSmoother == 1)
-      {
-        if(hp(numLevels-2,0) == 1 && hp(hp.rows()-1,0) == 0)
-        {
-          internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs);
-        }
-        else
-        {
-          gsMatrix<> e;
-          gsMatrix<> d = rhs-m_operator[numLevels-1]*x;
-          e = m_Pinv[numLevels-1][0]*d;
-          e = m_ILUT[numLevels-1][0].template triangularView<Eigen::UnitLower>().solve(e);
-          e = m_ILUT[numLevels-1][0].template triangularView<Eigen::Upper>().solve(e);
-          e = m_P[numLevels-1][0]*e;
-          x = x + e;
-        }
-      }
-      if(typeSmoother == 2)
-      {
-        internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs);
-      }
-      if(typeSmoother == 3)
-      {
-          m_SCMS[numLevels-1]->step(rhs,x);
-      }
-      if(typeSmoother == 5)
-      {
-        if(hp(numLevels-2,0) == 1 && hp(hp.rows()-1,0) == 0)
-        {
-          internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs);
-        }
-        else
-        {
-          gsMatrix<> e;
-          gsMatrix<> d = rhs-m_operator[numLevels-1]*x;
-          e = m_A_aprox[numLevels-1].template triangularView<Eigen::UnitLower>().solve(d);
-          e = m_A_aprox[numLevels-1].template triangularView<Eigen::Upper>().solve(e);
-          x = x + e;
-        }
-      }
+        m_smoother[numLevels-1]->step(rhs,x);
     }
     fineRes = m_operator[numLevels-1]*x - rhs;
   }
@@ -892,50 +845,14 @@ private:
   {
     real_t alpha = 1;
     x = x - alpha*fineCorr;
-    for(int i = 0 ; i < numSmoothing ; i++)
+    for(index_t i = 0 ; i < numSmoothing ; i++)
     {
-      if(typeSmoother == 1)
-      {
-        if(hp(numLevels-2,0) == 1 && hp(hp.rows()-1,0) == 0)
-        {
-         ( typeSolver == 3 ? internal::reverseGaussSeidelSweep(m_operator[numLevels-1],x,rhs) : internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs));
-        }
+        if(typeSolver==3)
+            m_smoother[numLevels-1]->stepT(rhs,x);
         else
-        {
-          gsMatrix<> e;
-          gsMatrix<> d = rhs-m_operator[numLevels-1]*x;
-          e = m_Pinv[numLevels-1][0]*d;
-          e = m_ILUT[numLevels-1][0].template triangularView<Eigen::UnitLower>().solve(e);
-          e = m_ILUT[numLevels-1][0].template triangularView<Eigen::Upper>().solve(e);
-          e = m_P[numLevels-1][0]*e;
-          x = x + e;
-        }
-      }
-      if(typeSmoother == 2)
-      {
-        ( typeSolver == 3 ? internal::reverseGaussSeidelSweep(m_operator[numLevels-1],x,rhs) : internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs));
-      }
-      if(typeSmoother == 3)
-      {
-         m_SCMS[numLevels-1]->step(rhs,x);
-      }
-      if(typeSmoother == 5)
-      {
-        if(hp(numLevels-2,0) == 1 && hp(hp.rows()-1,0) == 0)
-        {
-         ( typeSolver == 3 ? internal::reverseGaussSeidelSweep(m_operator[numLevels-1],x,rhs) : internal::gaussSeidelSweep(m_operator[numLevels-1],x,rhs));
-        }
-        else
-        {
-          gsMatrix<> e;
-          gsMatrix<> d = rhs-m_operator[numLevels-1]*x;
-          e = m_A_aprox[numLevels-1].template triangularView<Eigen::UnitLower>().solve(d);
-          e = m_A_aprox[numLevels-1].template triangularView<Eigen::Upper>().solve(e);
-          x = x + e;
-        }
-      }
-      postRes = rhs - m_operator[numLevels-1]*x;
+            m_smoother[numLevels-1]->step(rhs,x);
     }
+    postRes = rhs - m_operator[numLevels-1]*x;
   }
 };
 
@@ -994,7 +911,7 @@ int main(int argc, char* argv[])
     cmd.addInt("d", "BCHandling", "Handles Dirichlet BC's by elimination (1) or Nitsche's method (2)", typeBCHandling);
     cmd.addInt("L", "Lumping", "Restriction and Prolongation performed with the lumped (1) or consistent (2) mass matrix", typeLumping);
     cmd.addInt("D", "Projection", "Direct projection on coarsest level (1) or via all other levels (2)", typeProjection);
-    cmd.addInt("S", "Smoother", "Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS (5) Block Gauss-Seidel", typeSmoother);
+    cmd.addInt("S", "Smoother", "Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS or (5) Block Gauss-Seidel", typeSmoother);
     cmd.addInt("G", "CoarseOperator", "Type of coarse operator in h-multigrid: (1) Rediscretization (2) Galerkin Projection", typeCoarseOperator);
     cmd.addString("z", "Coarsening", "Expression that defines coarsening strategy", typeCoarsening);
 

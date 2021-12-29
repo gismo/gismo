@@ -705,7 +705,7 @@ public:
                    std::vector<std::vector<gsVector<index_t> > >& interface,
                    std::vector<gsMatrix<index_t> > & global_interior,
                    std::vector<gsMatrix<index_t> > & global_boundary,
-                   std::vector<std::vector<gsMatrix<index_t> > >& global_interface);
+                   std::vector<std::vector<gsMatrix<index_t> > >& global_interface) const;
 private:
 
     BasisContainer m_bases;
