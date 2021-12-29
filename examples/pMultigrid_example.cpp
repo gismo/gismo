@@ -712,25 +712,6 @@ private:
   }
 };
 
-/** @brief The p-multigrid class implements a generic p-multigrid solver
- *  that can be customized by passing assembler and coarse
- *  solver as template arguments.
- *
- *  @note: This implementation assumes that all required prolongation/
- *  restriction operators are generated externally and provided as
- *  constant references through the constructor. Therefore, no assembler
- *  is passed as template parameter.
- */
-template<class T, class CoarseSolver>
-struct pMultigrid<T, CoarseSolver, void> : public pMultigridBase<T>
-{
-    // Default constructor
-    pMultigrid()
-    {
-        gsInfo << "The specific case";
-    }
-};
-
 int main(int argc, char* argv[])
 {
     index_t numDegree = 2;
