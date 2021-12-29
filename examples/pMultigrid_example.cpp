@@ -321,6 +321,8 @@ private:
   /// Vector of assembler objects
   std::vector<Assembler> m_assembler;
 
+  /// The coarse solver
+  CoarseSolver m_csolver;
 public:
 
   // Constructor
@@ -500,13 +502,19 @@ public:
     }
     real_t Time_Block_ILUT_Factorization = clock.stop();
 
+    clock.restart();
+    m_csolver.analyzePattern(m_operator[0]);
+    m_csolver.factorize(m_operator[0]);
+    real_t Time_Coarse_Solver_Setup = clock.stop();
+
     gsInfo << "\n|| Setup Timings || \n";
     gsInfo << "Total Assembly time: " << Time_Assembly << "\n";
     gsInfo << "Total Assembly time (Galerkin): " << Time_Assembly_Galerkin << "\n";
     gsInfo << "Total ILUT factorization time: " << Time_ILUT_Factorization << "\n";
     gsInfo << "Total block ILUT factorization time: " << Time_Block_ILUT_Factorization << "\n";
     gsInfo << "Total SCMS time: " << Time_SCMS << "\n";
-    gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS << "\n";
+    gsInfo << "Total Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
+    gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS + Time_Coarse_Solver_Setup << "\n";
   }
 
   ///  @brief Apply p-multigrid solver to given right-hand side on level l
@@ -566,13 +574,7 @@ private:
   /// @brief Apply coarse solver
   virtual void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels)
   {
-      //gsInfo << "Coarse solver is applied! \n";
-
-      // Direct solver (LU factorization)
-      CoarseSolver solver;
-      solver.analyzePattern(m_operator[0]);
-      solver.factorize(m_operator[0]);
-      x = solver.solve(rhs);
+      x = m_csolver.solve(rhs);
   }
 
   /// @brief Construct prolongation operator at level numLevels
