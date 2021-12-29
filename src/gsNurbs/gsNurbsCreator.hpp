@@ -493,6 +493,61 @@ gsNurbsCreator<T>::BSplineSaddle()
     return TensorNurbs3Ptr(); //TODO
 }
 
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsAnnulus( T const & r0, T const & r1)
+{
+    gsKnotVector<T> KVx (0,1,3,3,2) ;
+    gsKnotVector<T> KVy (0,1,0,2) ;
+    gsMatrix<T> C(18,2) ;
+    // C <<    r0, 0,
+    //         r1, 0,
+    //         r0, r0,
+    //         r1, r1,
+    //         0, r0,
+    //         0, r1,
+    //         -r0, r0,
+    //         -r1, r1,
+    //         -r0, 0,
+    //         -r1, 0,
+    //         -r0,-r0,
+    //         -r1,-r1,
+    //         0,-r0,
+    //         0,-r1,
+    //         r0,-r0,
+    //         r1,-r1,
+    //         r0, 0,
+    //         r1, 0;
+
+    C <<    r0, 0,
+            r0, r0,
+            0, r0,
+            -r0, r0,
+            -r0, 0,
+            -r0,-r0,
+            0,-r0,
+            r0,-r0,
+            r0, 0,
+            r1, 0,
+            r1, r1,
+            0, r1,
+            -r1, r1,
+            -r1, 0,
+            -r1,-r1,
+            0,-r1,
+            r1,-r1,
+            r1, 0;
+    // C *= r;
+
+    // C.col(0).array() += x;
+    // C.col(1).array() += y;
+
+    gsMatrix<T> ww(18,1) ;
+    ww<< 1, 0.707106781186548, 1, 0.707106781186548,1, 0.707106781186548,1, 0.707106781186548, 1, 1, 0.707106781186548, 1, 0.707106781186548,1, 0.707106781186548,1, 0.707106781186548, 1  ;
+
+    return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx,KVy, give(C), give(ww)));
+}
+
+
 
 /*
 template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr

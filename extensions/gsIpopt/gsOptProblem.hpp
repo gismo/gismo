@@ -309,8 +309,8 @@ void gsOptProblem<T>::solve()
     }
 
     status = app->OptimizeTNLP(m_data->tnlp);
-    //if (status != Ipopt::Solve_Succeeded)
-    //   gsInfo << "Optimization did not succeed.\n";
+    if (status != Ipopt::Solve_Succeeded)
+      gsInfo << "Optimization did not succeed.\n";
     
     // Retrieve some statistics about the solve
     numIterations  = app->Statistics()->IterationCount();

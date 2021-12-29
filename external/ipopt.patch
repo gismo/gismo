@@ -105,7 +105,7 @@
  
  echo "Unpacking the source code..."
 -tar xf lapack-${lapack_ver}.tar lapack-${lapack_ver}/SRC lapack-${lapack_ver}/INSTALL/dlamch.f lapack-${lapack_ver}/INSTALL/slamch.f
-+tar xf lapack-${lapack_ver}.tar -C ${DIR} lapack-${lapack_ver}/SRC lapack-${lapack_ver}/INSTALL/dlamch.f lapack-${lapack_ver}/INSTALL/slamch.f 
++tar xf lapack-${lapack_ver}.tar lapack-${lapack_ver}/SRC lapack-${lapack_ver}/INSTALL/dlamch.f lapack-${lapack_ver}/INSTALL/slamch.f -C ${DIR}
  rm -rf LAPACK
 -mv lapack-${lapack_ver} LAPACK
 +mv ${DIR}/lapack-${lapack_ver} ${DIR}/LAPACK

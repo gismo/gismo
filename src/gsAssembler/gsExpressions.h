@@ -1459,7 +1459,7 @@ public:
         else if ( res.rows() / _u.rows() == 1 && res.cols() / _u.cols() >= 1 )
             cardinality = res.cols() / _u.cols();
         else
-            GISMO_ERROR("Cardinality for cb_expr cannot be determined.");
+            GISMO_ERROR("Cardinality for cb_expr cannot be determined. res.rows() / _u.rows() = "<<res.rows() / _u.rows()<<"; res.cols() / _u.cols() = "<<res.cols() / _u.cols());
 
         return cardinality;
     }
@@ -2852,13 +2852,14 @@ public:
 
     index_t cardinality_impl() const
     {
-        return _u.dim() * _u.data().actives.rows();
+        return _u.cardinality();
+        // return _u.dim() * _u.data().actives.rows();
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
-        _u.data().flags |= NEED_DERIV|NEED_ACTIVE;
+        _u.data().flags |= NEED_ACTIVE|NEED_DERIV;
         //note: cardinality() depends on actives
     }
 
@@ -3325,7 +3326,7 @@ public:
     index_t cols() const {
         // DEBUG changed by asgl, perhaps there was a bug here?
         //return _v.cols() * (_u.cols()/_u.rows());
-        return _u.cols();
+        return _v.cols();
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
@@ -3383,6 +3384,8 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     { _v.parse(evList); }
 
+    index_t cardinality_impl() const
+    { return _v.cardinality(); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }

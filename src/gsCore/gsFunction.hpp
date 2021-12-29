@@ -215,6 +215,7 @@ int gsFunction<T>::newtonRaphson_impl(
             this->deriv_into(arg, residual);
         residual = value - scale*residual;
 
+        gsDebugVar(residual.norm());
         if(residual.norm() <= accuracy) // residual below threshold
             return iter;
 

@@ -132,6 +132,8 @@ public:
     /// Inexact annulus using B-splines
     static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
 
+    static TensorNurbs2Ptr NurbsAnnulus( T const & r0 =1, T const & r1 =2);
+
     //static TensorNurbs2Ptr NurbsQuarterAnnulusMixedWithLShape();
     //static GeometryPtr BSplineQuarterAnnulusMixedWithLShape(const short_t & deg = 2);
 
