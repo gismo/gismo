@@ -79,54 +79,29 @@ public:
             return;
         }
 
-        if (hp(max(numLevels-2,0),0) == 0 )
-        {
-            gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
-            presmoothing(rhs, x, numLevels, numSmoothing);
-            residual(fineRes, rhs, x, numLevels);
-            restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
-                typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
-                m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            coarseCorr.setZero(coarseRes.rows(),1);
-            for ( int j = 0 ; j < (typeCycle_p == 2 ? 2 : 1) ; j++)
-            {
-                solve(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numRefine, numSmoothing,
-                    numCoarseCycles, typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
-                    typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,
-                    m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            }
-            prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
-                typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
-                m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
+        const index_t typeCycle = (hp(max(numLevels-2,0),0) == 0) ? typeCycle_p : typeCycle_h;
 
-            const real_t alpha = 1;
-            x -= alpha * fineCorr;
-            postsmoothing(rhs, x, numLevels, numSmoothing, typeSolver);
-        }
-
-        if (hp(max(numLevels-2,0),0) == 1 )
+        gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
+        presmoothing(rhs, x, numLevels, numSmoothing);
+        residual(fineRes, rhs, x, numLevels);
+        restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
+            typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
+            m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
+        coarseCorr.setZero(coarseRes.rows(),1);
+        for ( index_t j = 0 ; j < typeCycle ; j++)
         {
-            gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
-            presmoothing(rhs, x, numLevels, numSmoothing);
-            residual(fineRes, rhs, x, numLevels);
-            restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
-                typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
+            solve(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numRefine, numSmoothing,
+                numCoarseCycles, typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
+                typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,
                 m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            coarseCorr.setZero(coarseRes.rows(),1);
-            for ( int i = 0 ; i < (typeCycle_h == 2 ? 2 : 1) ; i++)
-            {
-                solve(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numRefine, numSmoothing,
-                    numCoarseCycles, typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
-                    typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,
-                    m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            }
-            prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
-                typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
-                m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            const real_t alpha = 1;
-            x -= alpha * fineCorr;
-            postsmoothing(rhs, x, numLevels, numSmoothing, typeSolver);
         }
+        prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
+            typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
+            m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
+
+        const real_t alpha = 1;
+        x -= alpha * fineCorr;
+        postsmoothing(rhs, x, numLevels, numSmoothing, typeSolver);
     }
 
     /// @brief Setup p-multigrid to given linear system
