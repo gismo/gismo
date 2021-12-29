@@ -265,11 +265,10 @@ public:
                           std::vector<gsMatrix<T> > & result) const
     { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
 
-    /// @}
-
-
     // Look at gsFunctionSet for documentation
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
+
+    /// @}
 
     /// \brief Evaluates if the geometry orientation coincide with the
     /// ambient orientation.
@@ -285,8 +284,6 @@ public:
         }
         return 1;
     }
-
-    /// @}
 
     /*************************************************************************/
 
@@ -495,6 +492,11 @@ public:
     void refineElements( std::vector<index_t> const & boxes )
     {
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
+    }
+
+    void unrefineElements( std::vector<index_t> const & boxes )
+    {
+        this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
     }
 
     typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }

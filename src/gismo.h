@@ -103,6 +103,10 @@ namespace internal
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 
+/* ----------- MSplines ----------- */
+#include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
+
 /* ----------- Modeling ----------- */
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
@@ -121,6 +125,9 @@ namespace internal
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.h>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
