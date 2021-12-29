@@ -81,29 +81,34 @@ public:
 
         if (hp(max(numLevels-2,0),0) == 0 )
         {
-            gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr, postRes;
-            presmoothing(rhs, x, numLevels, numSmoothing, fineRes, numRefine, typeSmoother,hp);
+            gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
+            presmoothing(rhs, x, numLevels, numSmoothing);
+            residual(fineRes, rhs, x, numLevels);
             restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
                 typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
                 m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
             coarseCorr.setZero(coarseRes.rows(),1);
             for ( int j = 0 ; j < (typeCycle_p == 2 ? 2 : 1) ; j++)
             {
-                  solve(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numRefine, numSmoothing,
-                      numCoarseCycles, typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
-                      typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P, m_prolongation_M,
-                      m_restriction_M,m_prolongation_H, m_restriction_H, hp);
+                solve(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numRefine, numSmoothing,
+                    numCoarseCycles, typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
+                    typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,
+                    m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
             }
             prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
                 typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
                 m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            postsmoothing(rhs,x, numLevels, numSmoothing, fineCorr, postRes, typeSolver, numRefine, typeSmoother,hp);
+
+            const real_t alpha = 1;
+            x -= alpha * fineCorr;
+            postsmoothing(rhs, x, numLevels, numSmoothing, typeSolver);
         }
 
         if (hp(max(numLevels-2,0),0) == 1 )
         {
-            gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr, postRes;
-            presmoothing(rhs, x, numLevels, numSmoothing, fineRes, numRefine, typeSmoother,hp);
+            gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
+            presmoothing(rhs, x, numLevels, numSmoothing);
+            residual(fineRes, rhs, x, numLevels);
             restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
                 typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
                 m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
@@ -118,7 +123,9 @@ public:
             prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
                 typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
                 m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            postsmoothing(rhs,x, numLevels, numSmoothing, fineCorr, postRes, typeSolver, numRefine, typeSmoother,hp);
+            const real_t alpha = 1;
+            x -= alpha * fineCorr;
+            postsmoothing(rhs, x, numLevels, numSmoothing, typeSolver);
         }
     }
 
@@ -150,15 +157,16 @@ public:
         const gsMatrix<>& hp)
     {}
 
+    /// @brief Get residual (pure virtual method)
+    virtual void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels) = 0;
+
     /// @brief Apply fixed number of smoothing steps (pure virtual method)
     virtual void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels,
-        const int& numSmoothing, gsMatrix<T> & fineRes , const int& numRefine, const int& typeSmoother,
-        const gsMatrix<>& hp) = 0;
+        const int& numSmoothing) = 0;
 
     /// @brief Apply fixed number of smoothing steps (pure virtual method)
     virtual void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels,
-        const int& numSmoothing, gsMatrix<T> & fineCorr, gsMatrix<T> & postRes, const int& typeSolver,
-        const int& numRefine, const int& typeSmoother, const gsMatrix<>& hp) = 0;
+        const int& numSmoothing, const int& typeSolver) = 0;
 
     /// @brief Apply coarse solver (pure virtual method)
     virtual void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels) = 0;
@@ -701,29 +709,31 @@ private:
       return P;
   }
 
-  /// @brief Apply fixed number of presmoothing steps
-  virtual void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, gsMatrix<T> & fineRes, const int& numRefine, const int& typeSmoother, const gsMatrix<>& hp)
+  /// @brief Get residual (pure virtual method)
+  virtual void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels)
   {
-    for (index_t i = 0 ; i < numSmoothing ; i++)
-    {
-        m_smoother[numLevels-1]->step(rhs,x);
-    }
-    fineRes = m_operator[numLevels-1]*x - rhs;
+      res = m_operator[numLevels-1]*x - rhs;
+  }
+
+  /// @brief Apply fixed number of presmoothing steps
+  virtual void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing)
+  {
+      for (index_t i = 0 ; i < numSmoothing ; i++)
+      {
+          m_smoother[numLevels-1]->step(rhs,x);
+      }
   }
 
   /// @brief Apply fixed number of postsmoothing steps
-  virtual void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, gsMatrix<T> & fineCorr, gsMatrix<T> & postRes, const int& typeSolver, const int& numRefine, const int& typeSmoother, const gsMatrix<>& hp)
+  virtual void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, const int& typeSolver)
   {
-    real_t alpha = 1;
-    x = x - alpha*fineCorr;
-    for (index_t i = 0 ; i < numSmoothing ; i++)
-    {
-        if (typeSolver==3)
-            m_smoother[numLevels-1]->stepT(rhs,x);
-        else
-            m_smoother[numLevels-1]->step(rhs,x);
-    }
-    postRes = rhs - m_operator[numLevels-1]*x;
+      for (index_t i = 0 ; i < numSmoothing ; i++)
+      {
+          if (typeSolver==3)
+              m_smoother[numLevels-1]->stepT(rhs,x);
+          else
+              m_smoother[numLevels-1]->step(rhs,x);
+      }
   }
 };
 
@@ -1122,7 +1132,7 @@ int main(int argc, char* argv[])
         r = r_new;
 
         // Print information about residual and L2 error
-        gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << r.norm() 
+        gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << r.norm()
                << "            reduction:  1 / " << std::setprecision(3) << (oldResNorm/r.norm()) <<  std::setprecision (6) << "\n";
         oldResNorm = r.norm();
         solKrylov = pa.constructSolution(x);
