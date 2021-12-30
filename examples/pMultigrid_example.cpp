@@ -282,436 +282,437 @@ struct pMultigrid : public pMultigridBase<T>
 {
 private:
 
-  /// Base class type
-  typedef pMultigridBase<T> Base;
+    /// Base class type
+    typedef pMultigridBase<T> Base;
 
-  /// Shared pointer to multi-patch geometry
-  memory::shared_ptr<gsMultiPatch<T> > m_mp_ptr;
+    /// Shared pointer to multi-patch geometry
+    memory::shared_ptr<gsMultiPatch<T> > m_mp_ptr;
 
-  /// Shared pointer to boundary conditions
-  memory::shared_ptr<gsBoundaryConditions<T> > m_bcInfo_ptr;
+    /// Shared pointer to boundary conditions
+    memory::shared_ptr<gsBoundaryConditions<T> > m_bcInfo_ptr;
 
-  /// Vector of multi-basis objects
-  std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis;
+    /// Vector of multi-basis objects
+    std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis;
 
-  /// Vector of prolongation operators
-  std::vector< gsSparseMatrix<T> > m_prolongation_P;
+    /// Vector of prolongation operators
+    std::vector< gsSparseMatrix<T> > m_prolongation_P;
 
-  /// Vector of restriction operators
-  std::vector< gsSparseMatrix<T> > m_restriction_P;
+    /// Vector of restriction operators
+    std::vector< gsSparseMatrix<T> > m_restriction_P;
 
-  /// Vector of prolongation operators
-  std::vector< gsMatrix<T> > m_prolongation_M;
+    /// Vector of prolongation operators
+    std::vector< gsMatrix<T> > m_prolongation_M;
 
-  /// Vector of restriction operators
-  std::vector< gsMatrix<T> > m_restriction_M;
+    /// Vector of restriction operators
+    std::vector< gsMatrix<T> > m_restriction_M;
 
-  /// Vector of prolongation operators
-  std::vector< gsSparseMatrix<T> > m_prolongation_H;
+    /// Vector of prolongation operators
+    std::vector< gsSparseMatrix<T> > m_prolongation_H;
 
-  /// Vector of restriction operators
-  std::vector< gsSparseMatrix<T> > m_restriction_H;
+    /// Vector of restriction operators
+    std::vector< gsSparseMatrix<T> > m_restriction_H;
 
-  /// Vector of smoother objects
-  std::vector< gsPreconditionerOp<>::Ptr > m_smoother;
+    /// Vector of smoother objects
+    std::vector< gsPreconditionerOp<>::Ptr > m_smoother;
 
-  /// Vector of operator objects
-  std::vector< gsSparseMatrix<T> > m_operator;
+    /// Vector of operator objects
+    std::vector< gsSparseMatrix<T> > m_operator;
 
-  /// Vector of assembler objects
-  std::vector<Assembler> m_assembler;
+    /// Vector of assembler objects
+    std::vector<Assembler> m_assembler;
 
-  /// The coarse solver
-  CoarseSolver m_csolver;
+    /// The coarse solver
+    CoarseSolver m_csolver;
 public:
 
-  // Constructor
-  pMultigrid(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const gsBoundaryConditions<T> & bcInfo)
-  {
-    m_mp_ptr = memory::make_shared_not_owned(&mp);
-    m_bcInfo_ptr = memory::make_shared_not_owned(&bcInfo);
-    m_basis.push_back(memory::make_shared_not_owned(&basis));
-  }
+    // Constructor
+    pMultigrid(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const gsBoundaryConditions<T> & bcInfo)
+    {
+        m_mp_ptr = memory::make_shared_not_owned(&mp);
+        m_bcInfo_ptr = memory::make_shared_not_owned(&bcInfo);
+        m_basis.push_back(memory::make_shared_not_owned(&basis));
+    }
 
 public:
 
-  ///  @brief Set-up p-multigrid solver
-  void setup(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& numBenchmark, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator, const gsFunctionExpr<> coeff_diff, const gsFunctionExpr<> coeff_conv,const gsFunctionExpr<> coeff_reac)
-  {
-    for (int i = 1; i < numLevels; i++)
+    ///  @brief Set-up p-multigrid solver
+    void setup(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& numBenchmark, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator, const gsFunctionExpr<> coeff_diff, const gsFunctionExpr<> coeff_conv,const gsFunctionExpr<> coeff_reac)
     {
-      m_basis.push_back(give(m_basis.back()->clone()));
-      switch((int) hp(i-1,0) )
-      {
-        case 0 : (typeProjection == 1 ? m_basis.back()->degreeIncrease(numDegree-1) : m_basis.back()->degreeIncrease()); break;
-
-        case 1 : m_basis.back()->uniformRefine();  break;
-
-        case 2:  m_basis.back()->uniformRefine();
-                 m_basis.back()->degreeIncrease(); break;
-      }
-    }
-
-    // Generate sequence of assembler objects and assemble
-    for (typename std::vector<memory::shared_ptr<gsMultiBasis<T> > >::iterator it = m_basis.begin();
-       it != m_basis.end(); ++it)
-    {
-      m_assembler.push_back(Assembler(*m_mp_ptr,*(*it).get(),*m_bcInfo_ptr,rhs, coeff_diff , coeff_conv , coeff_reac ,(typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche), iFace::glue));
-    }
-
-    // Resize vectors of operators
-    m_operator.resize(numLevels); m_prolongation_P.resize(numLevels-1); m_prolongation_M.resize(numLevels-1); m_prolongation_H.resize(numLevels-1); m_restriction_P.resize(numLevels-1); m_restriction_M.resize(numLevels-1); m_restriction_H.resize(numLevels-1);
-
-    // Assemble operators at finest level
-    gsStopwatch clock;
-    gsInfo << "|| Multigrid hierarchy ||\n";
-    for (int i = 0; i < numLevels; i++)
-    {
-      gsInfo << "Level " << i+1 << " " ;
-      if (typeCoarseOperator == 1)
-      {
-        m_assembler[i].assemble();
-        m_operator[i] = m_assembler[i].matrix();
-        gsInfo << "Degree: " << m_basis[i]->degree()  << ", Ndof: " << m_basis[i]->totalSize() << "\n";
-      }
-      else
-      {
-        if (hp(min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
+        for (int i = 1; i < numLevels; i++)
         {
-          m_assembler[i].assemble();
-          m_operator[i] = m_assembler[i].matrix();
-          gsInfo << "\nDegree of the basis: " << m_basis[i]->degree() << "\n";
-          gsInfo << "Size of the basis functions: " << m_basis[i]->totalSize() << "\n";
+            m_basis.push_back(give(m_basis.back()->clone()));
+            switch((int) hp(i-1,0) )
+            {
+                case 0 : (typeProjection == 1 ? m_basis.back()->degreeIncrease(numDegree-1) : m_basis.back()->degreeIncrease()); break;
+
+                case 1 : m_basis.back()->uniformRefine();  break;
+
+                case 2:  m_basis.back()->uniformRefine();
+                        m_basis.back()->degreeIncrease(); break;
+            }
         }
-      }
-    }
-    real_t Time_Assembly = clock.stop();
 
-    // Determine prolongation/restriction operators in p
-    clock.restart();
-    for (int i = 1; i < numLevels; i++)
-    {
-      if (hp(i-1,0) == 0)
-      {
-        m_prolongation_P[i-1] =  prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-        m_restriction_P[i-1] =  m_prolongation_P[i-1].transpose(); //restriction_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-        m_prolongation_M[i-1] =  prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-        m_restriction_M[i-1] = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-      }
-    }
-
-    // Determine prolongation/restriction operators in h
-    gsSparseMatrix<real_t, RowMajor> transferMatrix;
-    gsOptionList options;
-    typeBCHandling == 1 ? options.addInt("DirichletStrategy","",dirichlet::elimination) : options.addInt("DirichletStrategy","",dirichlet::nitsche);
-    for (int i = 1; i < numLevels; i++)
-    {
-      if (hp(i-1,0) == 1)
-      {
-        gsMultiBasis<T> m_basis_copy = *m_basis[i];
-        m_basis_copy.uniformCoarsen_withTransfer(transferMatrix,*m_bcInfo_ptr,options);
-        m_prolongation_H[i-1] = transferMatrix;
-        m_restriction_H[i-1] = m_prolongation_H[i-1].transpose();
-     }
-    }
-    real_t Time_Transfer = clock.stop();
-
-    // Obtain operators with Galerkin projection
-    clock.restart();
-    if (typeCoarseOperator == 2)
-    {
-      for (int i = numLevels-1; i > -1; i--)
-      {
-        if (hp(hp.rows()-1,0) == 0)
+        // Generate sequence of assembler objects and assemble
+        for (typename std::vector<memory::shared_ptr<gsMultiBasis<T> > >::iterator it = m_basis.begin();
+        it != m_basis.end(); ++it)
         {
-          if (hp(min(i,hp.rows()-1),0) == 1)
-          {
-            m_operator[i] = m_restriction_H[i]*m_operator[i+1]*m_prolongation_H[i];
-          }
+            m_assembler.push_back(Assembler(*m_mp_ptr,*(*it).get(),*m_bcInfo_ptr,rhs, coeff_diff , coeff_conv , coeff_reac ,(typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche), iFace::glue));
         }
-        else
-        {
-          if (hp(min(i,hp.rows()-1),0) == 1 && i > 0)
-          {
-            m_operator[i-1] = m_restriction_H[i-1]*m_operator[i]*m_prolongation_H[i-1];
-          }
-        }
-      }
-    }
-    real_t Time_Assembly_Galerkin = clock.stop();
 
+        // Resize vectors of operators
+        m_operator.resize(numLevels); m_prolongation_P.resize(numLevels-1); m_prolongation_M.resize(numLevels-1); m_prolongation_H.resize(numLevels-1); m_restriction_P.resize(numLevels-1); m_restriction_M.resize(numLevels-1); m_restriction_H.resize(numLevels-1);
 
-    // Setting up the all the smoothers
-    m_smoother.resize(numLevels);
-
-    // Determine ILUT factorizations at each level
-    clock.restart();
-
-    if (typeSmoother == 1)
-    {
-        // Generate factorizations (ILUT)
+        // Assemble operators at finest level
+        gsStopwatch clock;
+        gsInfo << "|| Multigrid hierarchy ||\n";
         for (int i = 0; i < numLevels; i++)
         {
-            if (typeProjection == 2 || i == numLevels-1)
+            gsInfo << "Level " << i+1 << " " ;
+            if (typeCoarseOperator == 1)
             {
-                m_smoother[i] = makeIncompleteLUOp(m_operator[i]);
+                m_assembler[i].assemble();
+                m_operator[i] = m_assembler[i].matrix();
+                gsInfo << "Degree: " << m_basis[i]->degree()  << ", Ndof: " << m_basis[i]->totalSize() << "\n";
             }
             else
             {
-                // Use Gauss-Seidel on all the other levels
+                if (hp(min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
+                {
+                m_assembler[i].assemble();
+                m_operator[i] = m_assembler[i].matrix();
+                gsInfo << "\nDegree of the basis: " << m_basis[i]->degree() << "\n";
+                gsInfo << "Size of the basis functions: " << m_basis[i]->totalSize() << "\n";
+                }
+            }
+        }
+        real_t Time_Assembly = clock.stop();
+
+        // Determine prolongation/restriction operators in p
+        clock.restart();
+        for (int i = 1; i < numLevels; i++)
+        {
+            if (hp(i-1,0) == 0)
+            {
+                m_prolongation_P[i-1] =  prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                m_restriction_P[i-1] =  m_prolongation_P[i-1].transpose(); //restriction_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                m_prolongation_M[i-1] =  prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                m_restriction_M[i-1] = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+            }
+        }
+
+        // Determine prolongation/restriction operators in h
+        gsSparseMatrix<real_t, RowMajor> transferMatrix;
+        gsOptionList options;
+        typeBCHandling == 1 ? options.addInt("DirichletStrategy","",dirichlet::elimination) : options.addInt("DirichletStrategy","",dirichlet::nitsche);
+        for (int i = 1; i < numLevels; i++)
+        {
+            if (hp(i-1,0) == 1)
+            {
+                gsMultiBasis<T> m_basis_copy = *m_basis[i];
+                m_basis_copy.uniformCoarsen_withTransfer(transferMatrix,*m_bcInfo_ptr,options);
+                m_prolongation_H[i-1] = transferMatrix;
+                m_restriction_H[i-1] = m_prolongation_H[i-1].transpose();
+            }
+        }
+        real_t Time_Transfer = clock.stop();
+
+        // Obtain operators with Galerkin projection
+        clock.restart();
+        if (typeCoarseOperator == 2)
+        {
+            for (int i = numLevels-1; i > -1; i--)
+            {
+                if (hp(hp.rows()-1,0) == 0)
+                {
+                    if (hp(min(i,hp.rows()-1),0) == 1)
+                    {
+                        m_operator[i] = m_restriction_H[i]*m_operator[i+1]*m_prolongation_H[i];
+                    }
+                }
+                else
+                {
+                    if (hp(min(i,hp.rows()-1),0) == 1 && i > 0)
+                    {
+                        m_operator[i-1] = m_restriction_H[i-1]*m_operator[i]*m_prolongation_H[i-1];
+                    }
+                }
+            }
+        }
+        real_t Time_Assembly_Galerkin = clock.stop();
+
+
+        // Setting up the all the smoothers
+        m_smoother.resize(numLevels);
+
+        // Determine ILUT factorizations at each level
+        clock.restart();
+
+        if (typeSmoother == 1)
+        {
+            // Generate factorizations (ILUT)
+            for (int i = 0; i < numLevels; i++)
+            {
+                if (typeProjection == 2 || i == numLevels-1)
+                {
+                    m_smoother[i] = makeIncompleteLUOp(m_operator[i]);
+                }
+                else
+                {
+                    // Use Gauss-Seidel on all the other levels
+                    m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+                }
+            }
+        }
+        real_t Time_ILUT_Factorization = clock.stop();
+        if (typeSmoother == 2)
+        {
+            for (int i = 0; i < numLevels; i++)
+            {
                 m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
             }
         }
-    }
-    real_t Time_ILUT_Factorization = clock.stop();
-    if (typeSmoother == 2)
-    {
-        for (int i = 0; i < numLevels; i++)
+        clock.restart();
+        if (typeSmoother == 3)
         {
-            m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
-        }
-    }
-    clock.restart();
-    if (typeSmoother == 3)
-    {
-        // Generate sequence of SCM smoothers
-        gsOptionList opt;
-        opt.addReal("Scaling","",0.12);
-        for (int i = 0 ; i < numLevels ; i++)
-        {
-            m_smoother[i] = setupSubspaceCorrectedMassSmoother(m_operator[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
-        }
-    }
-    real_t Time_SCMS = clock.stop();
-
-    clock.restart();
-    if (typeSmoother == 5)
-    {
-        for (int i = 0; i < numLevels; i++)
-        {
-            if (typeProjection == 2 || i == numLevels-1)
+            // Generate sequence of SCM smoothers
+            gsOptionList opt;
+            opt.addReal("Scaling","",0.12);
+            for (int i = 0 ; i < numLevels ; i++)
             {
-                m_smoother[i] = setupBlockILUT(m_operator[i], *m_mp_ptr, *(m_basis[i]));
-            }
-            else
-            {
-                // Use Gauss-Seidel on all the other levels
-                m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+                m_smoother[i] = setupSubspaceCorrectedMassSmoother(m_operator[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
             }
         }
+        real_t Time_SCMS = clock.stop();
+
+        clock.restart();
+        if (typeSmoother == 5)
+        {
+            for (int i = 0; i < numLevels; i++)
+            {
+                if (typeProjection == 2 || i == numLevels-1)
+                {
+                    m_smoother[i] = setupBlockILUT(m_operator[i], *m_mp_ptr, *(m_basis[i]));
+                }
+                else
+                {
+                    // Use Gauss-Seidel on all the other levels
+                    m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+                }
+            }
+        }
+        real_t Time_Block_ILUT_Factorization = clock.stop();
+
+        clock.restart();
+        m_csolver.analyzePattern(m_operator[0]);
+        m_csolver.factorize(m_operator[0]);
+        real_t Time_Coarse_Solver_Setup = clock.stop();
+
+        gsInfo << "\n|| Setup Timings || \n";
+        gsInfo << "Total Assembly time: " << Time_Assembly << "\n";
+        gsInfo << "Total Assembly time (Galerkin): " << Time_Assembly_Galerkin << "\n";
+        gsInfo << "Total ILUT factorization time: " << Time_ILUT_Factorization << "\n";
+        gsInfo << "Total block ILUT factorization time: " << Time_Block_ILUT_Factorization << "\n";
+        gsInfo << "Total SCMS time: " << Time_SCMS << "\n";
+        gsInfo << "Total Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
+        gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS + Time_Coarse_Solver_Setup << "\n";
     }
-    real_t Time_Block_ILUT_Factorization = clock.stop();
 
-    clock.restart();
-    m_csolver.analyzePattern(m_operator[0]);
-    m_csolver.factorize(m_operator[0]);
-    real_t Time_Coarse_Solver_Setup = clock.stop();
+    ///  @brief Apply p-multigrid solver to given right-hand side on level l
+    void solve(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& numBenchmark, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator)
+    {
+        gsStopwatch clock;
 
-    gsInfo << "\n|| Setup Timings || \n";
-    gsInfo << "Total Assembly time: " << Time_Assembly << "\n";
-    gsInfo << "Total Assembly time (Galerkin): " << Time_Assembly_Galerkin << "\n";
-    gsInfo << "Total ILUT factorization time: " << Time_ILUT_Factorization << "\n";
-    gsInfo << "Total block ILUT factorization time: " << Time_Block_ILUT_Factorization << "\n";
-    gsInfo << "Total SCMS time: " << Time_SCMS << "\n";
-    gsInfo << "Total Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
-    gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS + Time_Coarse_Solver_Setup << "\n";
-  }
+        if (typeSolver == 1)
+        {
+            x = gsMatrix<>::Random(m_operator[numLevels-1].rows(),1);
+        }
 
-  ///  @brief Apply p-multigrid solver to given right-hand side on level l
-  void solve(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& numBenchmark, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator)
-  {
-      gsStopwatch clock;
-
-      if (typeSolver == 1)
-      {
-        x = gsMatrix<>::Random(m_operator[numLevels-1].rows(),1);
-      }
-
-      gsMatrix<> b;
-      typeSolver == 1 ? b = m_assembler.back().rhs() : b = f;
+        gsMatrix<> b;
+        typeSolver == 1 ? b = m_assembler.back().rhs() : b = f;
 
 
-      // Determine residual and L2 error
-      real_t r0 = (m_operator[numLevels-1]*x - b).norm();
-      real_t r = r0;
-      real_t tol = 1e-8;
-      int iter = 1;
-      int numCoarseCycles = 0;
+        // Determine residual and L2 error
+        real_t r0 = (m_operator[numLevels-1]*x - b).norm();
+        real_t r = r0;
+        real_t tol = 1e-8;
+        int iter = 1;
+        int numCoarseCycles = 0;
 
-      // Solve with p-multigrid method
-      real_t r_old = r0;
-      clock.restart();
-      while( (typeSolver == 1 || typeSolver == 5) ? r/r0 > tol && iter < 100000 : iter < 2)
-      {
-          // Call solver from base class
-          Base::solve(b, m_basis,  x, numLevels, numCoarsening, numRefine, numSmoothing, numCoarseCycles, typeCycle_p, typeCycle_h
-            , typeSolver, typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,m_prolongation_M, m_restriction_M,m_prolongation_H, m_restriction_H, hp);
-          numCoarseCycles = 0;
-          r = (m_operator[numLevels-1]*x - b).norm();
-          if ( r_old < r)
-          {
-            gsInfo << "Residual increased during solving!!! \n";
-          }
-          r_old = r;
-          //gsInfo << "Residual after cycle " << iter << " equals: " << r << "\n";
-          iter++;
-          iterTot++;
-      }
-      real_t Time_Solve = clock.stop();
-      gsInfo << "\n|| Solver information || \n";
-      gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
-      gsInfo << "Solver converged in " << iter-1 << " iterations!\n";
+        // Solve with p-multigrid method
+        real_t r_old = r0;
+        clock.restart();
+        while( (typeSolver == 1 || typeSolver == 5) ? r/r0 > tol && iter < 100000 : iter < 2)
+        {
+            // Call solver from base class
+            Base::solve(b, m_basis,  x, numLevels, numCoarsening, numRefine, numSmoothing, numCoarseCycles, typeCycle_p, typeCycle_h,
+                typeSolver, typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,
+                m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
+            numCoarseCycles = 0;
+            r = (m_operator[numLevels-1]*x - b).norm();
+            if ( r_old < r)
+            {
+                gsInfo << "Residual increased during solving!!! \n";
+            }
+            r_old = r;
+            //gsInfo << "Residual after cycle " << iter << " equals: " << r << "\n";
+            iter++;
+            iterTot++;
+        }
+        real_t Time_Solve = clock.stop();
+        gsInfo << "\n|| Solver information || \n";
+        gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
+        gsInfo << "Solver converged in " << iter-1 << " iterations!\n";
 
-      if (typeSolver == 1)
-      {
-          // Determine residual and L2 errpr
-          gsInfo << "Residual after solving: "  << (b-m_operator[numLevels-1]*x).norm() << "\n";
-      }
-  }
+        if (typeSolver == 1)
+        {
+            // Determine residual and L2 errpr
+            gsInfo << "Residual after solving: "  << (b-m_operator[numLevels-1]*x).norm() << "\n";
+        }
+    }
 
 private:
 
-  /// @brief Apply coarse solver
-  virtual void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels)
-  {
-      x = m_csolver.solve(rhs);
-  }
+    /// @brief Apply coarse solver
+    virtual void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels)
+    {
+        x = m_csolver.solve(rhs);
+    }
 
-  /// @brief Construct prolongation operator at level numLevels
-  virtual gsMatrix<T> prolongation_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
-  {
-      // Define the low and high order basis
-      gsMultiBasis<> basisL = *m_basis[numLevels-2];
-      gsMultiBasis<> basisH = *m_basis[numLevels-1];
+    /// @brief Construct prolongation operator at level numLevels
+    virtual gsMatrix<T> prolongation_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    {
+        // Define the low and high order basis
+        gsMultiBasis<> basisL = *m_basis[numLevels-2];
+        gsMultiBasis<> basisH = *m_basis[numLevels-1];
 
-      // Determine matrix M (high_order * high_order)
-      typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-      typedef gsExprAssembler<real_t>::variable variable;
-      typedef gsExprAssembler<real_t>::space    space;
-      gsExprAssembler<real_t> ex2(1,1);
-      geometryMap G2 = ex2.getMap(*m_mp_ptr);
-      space w_n = ex2.getSpace(basisH ,1, 0);
-      w_n.setInterfaceCont(0);
-      if (typeBCHandling == 1)
-      {
-          w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-      }
-      ex2.setIntegrationElements(basisH);
-      ex2.initSystem();
-      ex2.assemble(w_n * meas(G2) );
-      return ex2.rhs();
-  }
+        // Determine matrix M (high_order * high_order)
+        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+        typedef gsExprAssembler<real_t>::variable variable;
+        typedef gsExprAssembler<real_t>::space    space;
+        gsExprAssembler<real_t> ex2(1,1);
+        geometryMap G2 = ex2.getMap(*m_mp_ptr);
+        space w_n = ex2.getSpace(basisH ,1, 0);
+        w_n.setInterfaceCont(0);
+        if (typeBCHandling == 1)
+        {
+            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+        }
+        ex2.setIntegrationElements(basisH);
+        ex2.initSystem();
+        ex2.assemble(w_n * meas(G2) );
+        return ex2.rhs();
+    }
 
-  /// @brief Construct prolongation operator at level numLevels
-  virtual gsSparseMatrix<T> prolongation_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
-  {
-      // Define the low and high order basis
-      gsMultiBasis<> basisL = *m_basis[numLevels-2];
-      gsMultiBasis<> basisH = *m_basis[numLevels-1];
+    /// @brief Construct prolongation operator at level numLevels
+    virtual gsSparseMatrix<T> prolongation_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    {
+        // Define the low and high order basis
+        gsMultiBasis<> basisL = *m_basis[numLevels-2];
+        gsMultiBasis<> basisH = *m_basis[numLevels-1];
 
-      // Determine matrix P (high_order * low_order)
-      typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-      gsExprAssembler<real_t> ex(1,1);
-      geometryMap G = ex.getMap(*m_mp_ptr);
-      typedef gsExprAssembler<real_t>::variable variable;
-      typedef gsExprAssembler<real_t>::space    space;
-      space v_n = ex.getSpace(basisH ,1, 0);
-      //v_n.setInterfaceCont(0);
-      space u_n = ex.getTestSpace(v_n , basisL);
-      //u_n.setInterfaceCont(0);
-      if (typeBCHandling == 1)
-      {
-          v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-          u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-      }
-      ex.setIntegrationElements(basisH);
-      ex.initSystem();
-      ex.assemble(u_n*meas(G) * v_n.tr());
-      gsSparseMatrix<> P = ex.matrix().transpose();
-      return P;
-  }
+        // Determine matrix P (high_order * low_order)
+        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+        gsExprAssembler<real_t> ex(1,1);
+        geometryMap G = ex.getMap(*m_mp_ptr);
+        typedef gsExprAssembler<real_t>::variable variable;
+        typedef gsExprAssembler<real_t>::space    space;
+        space v_n = ex.getSpace(basisH ,1, 0);
+        //v_n.setInterfaceCont(0);
+        space u_n = ex.getTestSpace(v_n , basisL);
+        //u_n.setInterfaceCont(0);
+        if (typeBCHandling == 1)
+        {
+            v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+            u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+        }
+        ex.setIntegrationElements(basisH);
+        ex.initSystem();
+        ex.assemble(u_n*meas(G) * v_n.tr());
+        gsSparseMatrix<> P = ex.matrix().transpose();
+        return P;
+    }
 
-  /// @brief Construct restriction operator at level numLevels
-  virtual gsMatrix<T> restriction_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
-  {
-      // Define the low and high order basis
-      gsMultiBasis<> basisL = *m_basis[numLevels-2];
-      gsMultiBasis<> basisH = *m_basis[numLevels-1];
+    /// @brief Construct restriction operator at level numLevels
+    virtual gsMatrix<T> restriction_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    {
+        // Define the low and high order basis
+        gsMultiBasis<> basisL = *m_basis[numLevels-2];
+        gsMultiBasis<> basisH = *m_basis[numLevels-1];
 
-      // Determine matrix M (low_order * low_order)
-      typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-      typedef gsExprAssembler<real_t>::variable variable;
-      typedef gsExprAssembler<real_t>::space    space;
-      gsExprAssembler<real_t> ex2(1,1);
-      geometryMap G2 = ex2.getMap(*m_mp_ptr);
-      space w_n = ex2.getSpace(basisL ,1, 0);
-      //w_n.setInterfaceCont(0);
-      if (typeBCHandling == 1)
-      {
-          w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-      }
-      ex2.setIntegrationElements(basisL);
-      ex2.initSystem();
-      ex2.assemble(w_n * meas(G2) );
-      return ex2.rhs();
-  }
+        // Determine matrix M (low_order * low_order)
+        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+        typedef gsExprAssembler<real_t>::variable variable;
+        typedef gsExprAssembler<real_t>::space    space;
+        gsExprAssembler<real_t> ex2(1,1);
+        geometryMap G2 = ex2.getMap(*m_mp_ptr);
+        space w_n = ex2.getSpace(basisL ,1, 0);
+        //w_n.setInterfaceCont(0);
+        if (typeBCHandling == 1)
+        {
+            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+        }
+        ex2.setIntegrationElements(basisL);
+        ex2.initSystem();
+        ex2.assemble(w_n * meas(G2) );
+        return ex2.rhs();
+    }
 
-  /// @brief Construct restriction operator at level numLevels
-  virtual gsSparseMatrix<T> restriction_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
-  {
-      // Define the low and high order basis
-      gsMultiBasis<> basisL = *m_basis[numLevels-2];
-      gsMultiBasis<> basisH = *m_basis[numLevels-1];
+    /// @brief Construct restriction operator at level numLevels
+    virtual gsSparseMatrix<T> restriction_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    {
+        // Define the low and high order basis
+        gsMultiBasis<> basisL = *m_basis[numLevels-2];
+        gsMultiBasis<> basisH = *m_basis[numLevels-1];
 
-      // Determine matrix P (high_order * low_order)
-      gsExprAssembler<real_t> ex(1,1);
-      typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-      geometryMap G = ex.getMap(*m_mp_ptr);
+        // Determine matrix P (high_order * low_order)
+        gsExprAssembler<real_t> ex(1,1);
+        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+        geometryMap G = ex.getMap(*m_mp_ptr);
 
-      typedef gsExprAssembler<real_t>::variable variable;
-      typedef gsExprAssembler<real_t>::space    space;
-      space v_n = ex.getSpace(basisH ,1, 0);
-      //v_n.setInterfaceCont(0);
-      space u_n = ex.getTestSpace(v_n , basisL);
-      //u_n.setInterfaceCont(0);
-      if ( typeBCHandling == 1)
-      {
-          u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-          v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-      }
-      ex.setIntegrationElements(basisH);
-      ex.initSystem();
-      ex.assemble(u_n * meas(G)* v_n.tr());
-      gsSparseMatrix<> P = ex.matrix();
-      return P;
-  }
+        typedef gsExprAssembler<real_t>::variable variable;
+        typedef gsExprAssembler<real_t>::space    space;
+        space v_n = ex.getSpace(basisH ,1, 0);
+        //v_n.setInterfaceCont(0);
+        space u_n = ex.getTestSpace(v_n , basisL);
+        //u_n.setInterfaceCont(0);
+        if ( typeBCHandling == 1)
+        {
+            u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+            v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+        }
+        ex.setIntegrationElements(basisH);
+        ex.initSystem();
+        ex.assemble(u_n * meas(G)* v_n.tr());
+        gsSparseMatrix<> P = ex.matrix();
+        return P;
+    }
 
-  /// @brief Get residual (pure virtual method)
-  virtual void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels)
-  {
-      res = m_operator[numLevels-1]*x - rhs;
-  }
+    /// @brief Get residual (pure virtual method)
+    virtual void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels)
+    {
+        res = m_operator[numLevels-1]*x - rhs;
+    }
 
-  /// @brief Apply fixed number of presmoothing steps
-  virtual void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing)
-  {
-      for (index_t i = 0 ; i < numSmoothing ; i++)
-      {
-          m_smoother[numLevels-1]->step(rhs,x);
-      }
-  }
+    /// @brief Apply fixed number of presmoothing steps
+    virtual void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing)
+    {
+        for (index_t i = 0 ; i < numSmoothing ; i++)
+        {
+            m_smoother[numLevels-1]->step(rhs,x);
+        }
+    }
 
-  /// @brief Apply fixed number of postsmoothing steps
-  virtual void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, const int& typeSolver)
-  {
-      for (index_t i = 0 ; i < numSmoothing ; i++)
-      {
-          if (typeSolver==3)
-              m_smoother[numLevels-1]->stepT(rhs,x);
-          else
-              m_smoother[numLevels-1]->step(rhs,x);
-      }
-  }
+    /// @brief Apply fixed number of postsmoothing steps
+    virtual void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, const int& typeSolver)
+    {
+        for (index_t i = 0 ; i < numSmoothing ; i++)
+        {
+            if (typeSolver==3)
+                m_smoother[numLevels-1]->stepT(rhs,x);
+            else
+                m_smoother[numLevels-1]->step(rhs,x);
+        }
+    }
 };
 
 int main(int argc, char* argv[])
