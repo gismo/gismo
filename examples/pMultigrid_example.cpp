@@ -773,36 +773,10 @@ int main(int argc, char* argv[])
     gsInfo << "Exact solution: " << solution_exact << "\n";
     gsInfo << "Right hand side: " << rhs_exact << "\n";
 
-    gsMultiPatch<> mp;
-    switch(numPatches)
+    gsMultiPatch<> mp(*geo);
+    for (index_t i=0; i<numPatches-1; ++i)
     {
-        case 1:
-        {
-            gsMultiPatch<> mp0(*geo);
-            mp = mp0;
-            break;
-        }
-        case 2:
-        {
-            gsMultiPatch<> mp1(*geo);
-            mp = mp1.uniformSplit();
-            break;
-        }
-        case 3:
-        {
-            gsMultiPatch<> mp2(*geo);
-            gsMultiPatch<> mp3 = mp2.uniformSplit();
-            mp = mp3.uniformSplit();
-            break;
-        }
-        case 4:
-        {
-            gsMultiPatch<> mp4(*geo);
-            gsMultiPatch<> mp5 = mp4.uniformSplit();
-            gsMultiPatch<> mp6 = mp5.uniformSplit();
-            mp = mp6.uniformSplit();
-            break;
-        }
+        mp = mp.uniformSplit();
     }
 
     // To read the entire Yeti footprint
