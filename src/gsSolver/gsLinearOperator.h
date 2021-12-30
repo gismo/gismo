@@ -156,7 +156,7 @@ public:
         : m_lambda(lambda), m_rows(rows), m_cols(cols) {}
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
-        m_lambda(x,input);
+        m_lambda(input, x);
     }
     index_t rows() const {return m_rows;}
     index_t cols() const {return m_cols;}
