@@ -935,13 +935,6 @@ int main(int argc, char* argv[])
               r = pa.rhs() - pa.matrix()*x;
               r0 = r;
               rho = r0_sqnorm = r.dot(r);
-              if (restarts++ == 0)
-              {
-                Eigen::IncompleteLUT<real_t> ilu;
-                ilu.setFillfactor(1);
-                ilu.compute(pa.matrix());
-                i=0;
-              }
         }
         real_t beta = (rho/rho_old)*(alp/w);
         p = r + beta*(p - w*v);
