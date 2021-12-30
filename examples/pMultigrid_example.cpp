@@ -308,7 +308,7 @@ public:
 public:
 
     ///  @brief Set-up p-multigrid solver
-    void setup(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& numBenchmark, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator, const gsFunctionExpr<> coeff_diff, const gsFunctionExpr<> coeff_conv,const gsFunctionExpr<> coeff_reac)
+    void setup(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator, const gsFunctionExpr<> coeff_diff, const gsFunctionExpr<> coeff_conv,const gsFunctionExpr<> coeff_reac)
     {
         for (int i = 1; i < numLevels; i++)
         {
@@ -490,7 +490,7 @@ public:
     }
 
     ///  @brief Apply p-multigrid solver to given right-hand side on level l
-    void solve(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& numBenchmark, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator)
+    void solve(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator)
     {
         gsStopwatch clock;
 
@@ -733,47 +733,84 @@ int main(int argc, char* argv[])
     GISMO_ENSURE(typeSmoother >= 1&&typeSmoother <= 4, "Unknown smoother chosen.");
 
     // Initialize solution, rhs and geometry
-    std::string solution_exact,rhs_exact;
+    std::string solution_exact, rhs_exact;
+    gsFunctionExpr<> coeff_diff, coeff_conv, coeff_reac;
     gsGeometry<>::Ptr geo;
     gsInfo << "|| Benchmark information ||\n";
     switch (numBenchmark)
     {
-      case 1 : gsInfo << "CDR-equation the unit square\n";
-               solution_exact = "sin(pi*x)*sin(pi*y)";
-               rhs_exact = "1.2*pi*pi*sin(pi*x)*sin(pi*y)+0.9*pi*pi*sin(pi*x)*sin(pi*y)+0.7*pi*pi*cos(pi*x)*cos(pi*y) + 0.4*pi*pi*cos(pi*x)*cos(pi*y) +0.4*pi*cos(pi*x)*sin(pi*y)-0.2*pi*sin(pi*x)*cos(pi*y)+0.3*sin(pi*x)*sin(pi*y)";
-               geo = gsNurbsCreator<>::BSplineSquare(1.0, 0.0, 0.0); break;
+        case 1:
+            gsInfo << "CDR-equation the unit square\n";
+            solution_exact = "sin(pi*x)*sin(pi*y)";
+            rhs_exact = "1.2*pi*pi*sin(pi*x)*sin(pi*y)+0.9*pi*pi*sin(pi*x)*sin(pi*y)+0.7*pi*pi*cos(pi*x)*cos(pi*y) + 0.4*pi*pi*cos(pi*x)*cos(pi*y) +0.4*pi*cos(pi*x)*sin(pi*y)-0.2*pi*sin(pi*x)*cos(pi*y)+0.3*sin(pi*x)*sin(pi*y)";
+            geo = gsNurbsCreator<>::BSplineSquare(1.0, 0.0, 0.0);
+            coeff_diff = gsFunctionExpr<>("1.2","-0.7","-0.4","0.9",2);
+            coeff_conv = gsFunctionExpr<>("0.4","-0.2",2);
+            coeff_reac = gsFunctionExpr<>("0.3",2);
+            break;
 
-      case 2:  gsInfo << "Poisson equation on the quarter annulus (1)\n";
-               solution_exact = "-(x*x+y*y-1)*(x*x+y*y-4)*x*y*y";
-               rhs_exact = "2*x*(22*x*x*y*y+21*y*y*y*y-45*y*y+x*x*x*x-5*x*x+4)";
-               geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0); break;
+        case 2:
+            gsInfo << "Poisson equation on the quarter annulus (1)\n";
+            solution_exact = "-(x*x+y*y-1)*(x*x+y*y-4)*x*y*y";
+            rhs_exact = "2*x*(22*x*x*y*y+21*y*y*y*y-45*y*y+x*x*x*x-5*x*x+4)";
+            geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0);
+            coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
+            coeff_conv = gsFunctionExpr<>("0","0",2);
+            coeff_reac = gsFunctionExpr<>("0",2);
+            break;
 
-      case 3:  gsInfo << "Poisson equation on the quarter annulus (2)\n";
-               solution_exact = "(x^2+y^2-3*sqrt(x^2+y^2)+2)*sin(2*atan(y/x))";
-               rhs_exact = "(8-9*sqrt(x^2 + y^2))*sin(2*atan(y/x))/(x^2+y^2)";
-               geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0); break;
+        case 3:
+            gsInfo << "Poisson equation on the quarter annulus (2)\n";
+            solution_exact = "(x^2+y^2-3*sqrt(x^2+y^2)+2)*sin(2*atan(y/x))";
+            rhs_exact = "(8-9*sqrt(x^2 + y^2))*sin(2*atan(y/x))/(x^2+y^2)";
+            geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0);
+            coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
+            coeff_conv = gsFunctionExpr<>("0","0",2);
+            coeff_reac = gsFunctionExpr<>("0",2);
+            break;
 
-      case 4:  gsInfo << "Poisson equation on an L-shaped domain\n";
-               solution_exact = "if ( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )";
-               rhs_exact = "0";
-               geo = gsNurbsCreator<>::BSplineLShape_p1(); break;
+        case 4:
+            gsInfo << "Poisson equation on an L-shaped domain\n";
+            solution_exact = "if ( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )";
+            rhs_exact = "0";
+            geo = gsNurbsCreator<>::BSplineLShape_p1();
+            coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
+            coeff_conv = gsFunctionExpr<>("0","0",2);
+            coeff_reac = gsFunctionExpr<>("0",2);
+            break;
 
-      case 5:  gsInfo << "Poisson equation on the unit cube\n";
-               solution_exact = "sin(pi*x)*sin(pi*y)*sin(pi*z)";
-               rhs_exact = "(3*pi^2 )*sin(pi*x)*sin(pi*y)*sin(pi*z)";
-               geo = gsNurbsCreator<>::BSplineCube(1); break;
+        case 5: 
+            gsInfo << "Poisson equation on the unit cube\n";
+            solution_exact = "sin(pi*x)*sin(pi*y)*sin(pi*z)";
+            rhs_exact = "(3*pi^2 )*sin(pi*x)*sin(pi*y)*sin(pi*z)";
+            geo = gsNurbsCreator<>::BSplineCube(1);
+            coeff_diff = gsFunctionExpr<>("1","0","0","0","1","0","0","0","1",3);
+            coeff_conv = gsFunctionExpr<>("0","0","0",3);
+            coeff_reac = gsFunctionExpr<>("0",3);
+            break;
 
-      case 6: gsInfo << "Poisson's equation on Yeti footprint\n";
-               solution_exact = "sin(5*pi*x)*sin(5*pi*y)";
-               rhs_exact = "(50*pi^2 )*sin(5*pi*x)*sin(5*pi*y)";
-               geo = gsReadFile<>("domain2d/yeti_mp2.xml"); break;
-      default: gsInfo << "Unknown benchmark case.\n"; return -1;
+        case 6:
+            gsInfo << "Poisson's equation on Yeti footprint\n";
+            solution_exact = "sin(5*pi*x)*sin(5*pi*y)";
+            rhs_exact = "(50*pi^2 )*sin(5*pi*x)*sin(5*pi*y)";
+            geo = gsReadFile<>("domain2d/yeti_mp2.xml");
+            coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
+            coeff_conv = gsFunctionExpr<>("0","0",2);
+            coeff_reac = gsFunctionExpr<>("0",2);
+            break;
+
+        default:
+            gsInfo << "Unknown benchmark case.\n";
+            return -1;
     }
 
     // Print information about benchmark
     gsInfo << "Exact solution: " << solution_exact << "\n";
     gsInfo << "Right hand side: " << rhs_exact << "\n";
+    gsFunctionExpr<> sol_exact(solution_exact,geo->geoDim());
+    gsFunctionExpr<> f(rhs_exact,geo->geoDim());
 
+    // Handle the uniform splitting
     gsMultiPatch<> mp(*geo);
     for (index_t i=0; i<numPatches-1; ++i)
     {
@@ -781,8 +818,6 @@ int main(int argc, char* argv[])
     }
 
     gsInfo << "Number of patches: " << mp.nPatches() << "\n\n";
-    gsFunctionExpr<> sol_exact(solution_exact,mp.geoDim());
-    gsFunctionExpr<> f(rhs_exact,mp.geoDim());
 
     // Construct two bases (coarse and fine level)
     gsMultiBasis<> basisL(mp);
@@ -859,33 +894,13 @@ int main(int argc, char* argv[])
         numLevels = numLevels - numDegree + 2;
     }
 
-    // Define coefficients CDR equation (= Poisson)
-    gsFunctionExpr<> coeff_diff, coeff_conv, coeff_reac;
-    switch(sol_exact.domainDim())
-    {
-      case 1: coeff_diff = gsFunctionExpr<>("1",1);
-              coeff_conv = gsFunctionExpr<>("0",1);
-              coeff_reac = gsFunctionExpr<>("0",1); break;
-      case 2: coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
-              coeff_conv = gsFunctionExpr<>("0","0",2);
-              coeff_reac = gsFunctionExpr<>("0",2); break;
-      case 3: coeff_diff = gsFunctionExpr<>("1","0","0","0","1","0","0","0","1",3);
-              coeff_conv = gsFunctionExpr<>("0","0","0",3);
-              coeff_reac = gsFunctionExpr<>("0",3);
-    }
-    if (numBenchmark == 1)
-    {
-        coeff_diff = gsFunctionExpr<>("1.2","-0.7","-0.4","0.9",2);
-        coeff_conv = gsFunctionExpr<>("0.4","-0.2",2);
-        coeff_reac = gsFunctionExpr<>("0.3",2);
-    }
 
     // Apply p-Multigrid as stand-alone solver
     if (typeSolver == 1)
     {
         gsInfo << "p-multigrid is applied as stand-alone solver\n\n";
-        My_MG.setup(f, sol_exact, x, numSmoothing, x, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
-        My_MG.solve(f, sol_exact, x, numSmoothing, x, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.setup(f, sol_exact, x, numSmoothing, x, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+        My_MG.solve(f, sol_exact, x, numSmoothing, x, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
         return 0;
     }
 
@@ -925,7 +940,7 @@ int main(int argc, char* argv[])
 
       // Construct P-Multigrid objects
       pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-      My_MG.setup(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+      My_MG.setup(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
       // Perform BiCGStab
       while(r.norm()/r0.norm() > tol && i < maxIter)
@@ -951,14 +966,14 @@ int main(int argc, char* argv[])
 
         // Apply preconditioning by solving Ay = p
         y.setZero();
-        My_MG.solve(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
         v = pa.matrix()*y;
         alp = rho/(r0.dot(v));
         s = r - alp*v;
 
         // Apply preconditioning by solving Az = s
         z.setZero();
-        My_MG.solve(f, sol_exact, z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid,typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(f, sol_exact, z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid,typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
         t = pa.matrix()*z;
         if (t.dot(t) > 0)
           w = t.dot(s)/t.dot(t);
@@ -983,9 +998,9 @@ int main(int argc, char* argv[])
       // Apply preconditioner
       pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
       gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-      My_MG.setup(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+      My_MG.setup(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
-      My_MG.solve(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+      My_MG.solve(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
       gsVector<> z = z1;
       gsVector<> p = z;
       real_t alpha, beta;
@@ -1004,7 +1019,7 @@ int main(int argc, char* argv[])
 
         // Obtain new values
         gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-        My_MG.solve(f, sol_exact, z2, numSmoothing,r_new, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo,typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(f, sol_exact, z2, numSmoothing,r_new, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo,typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
         gsVector<> z3 = z2;
 
         // Determine beta
