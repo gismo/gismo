@@ -874,7 +874,6 @@ int main(int argc, char* argv[])
     }
     bcInfo.setGeoMap(mp);
 
-    index_t iterTot = 1;
     index_t numCoarsening = numRefH+1;
 
     // Generate sequence of bases on all levels
@@ -951,7 +950,6 @@ int main(int argc, char* argv[])
         // Apply preconditioning by solving Ay = p
         y.setZero();
         My_MG.step(p, y, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        ++iterTot;
         v = pa.matrix()*y;
         alp = rho/(r0.dot(v));
         s = r - alp*v;
@@ -959,7 +957,6 @@ int main(int argc, char* argv[])
         // Apply preconditioning by solving Az = s
         z.setZero();
         My_MG.step(s, z, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        ++iterTot;
         t = pa.matrix()*z;
         if (t.dot(t) > 0)
           w = t.dot(s)/t.dot(t);
@@ -989,7 +986,6 @@ int main(int argc, char* argv[])
       gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
 
       My_MG.step(r0, z1, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-      ++iterTot;
       gsVector<> z = z1;
       gsVector<> p = z;
       real_t alpha, beta;
@@ -1009,7 +1005,6 @@ int main(int argc, char* argv[])
         // Obtain new values
         gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
         My_MG.step(r_new, z2, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        ++iterTot;
         gsVector<> z3 = z2;
 
         // Determine beta
