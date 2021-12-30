@@ -44,26 +44,23 @@ struct pMultigridBase
 
 public:
 
-    /// @brief Apply p-multigrid solver to given right-hand side on level l
-    virtual void solve(
+    /// @brief Apply one p-multigrid cycle to given right-hand side on level l
+    virtual void step(
         const gsMatrix<T> & rhs,
         std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis,
         gsMatrix<T>& x,
-        const int& numLevels,
-        const int& numCoarsening,
-        const int& numRefine,
-        const int& numSmoothing,
-        int& numCoarseCycles,
-        const int& typeCycle_p,
-        int& typeCycle_h,
-        const int& typeSolver,
-        const int& typeBCHandling,
+        int numLevels,
+        int numCoarsening,
+        int numSmoothing,
+        int typeCycle_p,
+        int typeCycle_h,
+        int typeSolver,
+        int typeBCHandling,
         gsBoundaryConditions<T> bcInfo,
         gsMultiPatch<> mp,
         gsGeometry<>::Ptr geo,
-        const int& typeLumping,
-        const int& typeProjection,
-        const int& typeSmoother,
+        int typeLumping,
+        int typeProjection,
         std::vector<gsSparseMatrix<T>>& m_prolongation_P,
         std::vector<gsSparseMatrix<T>>& m_restriction_P,
         std::vector<gsMatrix<T>>& m_prolongation_M,
@@ -90,9 +87,9 @@ public:
         coarseCorr.setZero(coarseRes.rows(),1);
         for ( index_t j = 0 ; j < typeCycle ; j++)
         {
-            solve(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numRefine, numSmoothing,
-                numCoarseCycles, typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
-                typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,
+            step(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numSmoothing,
+                typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
+                typeLumping, typeProjection, m_prolongation_P, m_restriction_P,
                 m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
         }
         prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
@@ -308,7 +305,7 @@ public:
 public:
 
     ///  @brief Set-up p-multigrid solver
-    void setup(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator, const gsFunctionExpr<> coeff_diff, const gsFunctionExpr<> coeff_conv,const gsFunctionExpr<> coeff_reac)
+    void setup(const gsFunctionExpr<T> & rhs, const int& numSmoothing, const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator, const gsFunctionExpr<> coeff_diff, const gsFunctionExpr<> coeff_conv,const gsFunctionExpr<> coeff_reac)
     {
         for (int i = 1; i < numLevels; i++)
         {
@@ -490,37 +487,28 @@ public:
     }
 
     ///  @brief Apply p-multigrid solver to given right-hand side on level l
-    void solve(const gsFunctionExpr<T> & rhs, const gsFunctionExpr<T> & sol_exact, gsMatrix<T>& x, const int& numSmoothing, gsMatrix<T> f,const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator)
+    void solve(gsMatrix<T>& x, int numSmoothing, const gsMatrix<T>& f, const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, int numCoarsening, int typeBCHandling, gsGeometry<>::Ptr geo, int typeLumping, const gsMatrix<>& hp, int typeProjection)
     {
         gsStopwatch clock;
 
-        if (typeSolver == 1)
-        {
-            x = gsMatrix<>::Random(m_operator[numLevels-1].rows(),1);
-        }
-
-        gsMatrix<> b;
-        typeSolver == 1 ? b = m_assembler.back().rhs() : b = f;
-
 
         // Determine residual and L2 error
-        real_t r0 = (m_operator[numLevels-1]*x - b).norm();
+        real_t r0 = (m_operator[numLevels-1]*x - f).norm();
         real_t r = r0;
         real_t tol = 1e-8;
         int iter = 1;
-        int numCoarseCycles = 0;
 
         // Solve with p-multigrid method
         real_t r_old = r0;
         clock.restart();
         while( (typeSolver == 1 || typeSolver == 5) ? r/r0 > tol && iter < 100000 : iter < 2)
         {
-            // Call solver from base class
-            Base::solve(b, m_basis,  x, numLevels, numCoarsening, numRefine, numSmoothing, numCoarseCycles, typeCycle_p, typeCycle_h,
-                typeSolver, typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeLumping, typeProjection, typeSmoother, m_prolongation_P, m_restriction_P,
+            // Call step from base class
+            Base::step(f, m_basis,  x, numLevels, numCoarsening, numSmoothing, typeCycle_p, typeCycle_h,
+                typeSolver, typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeLumping, typeProjection, m_prolongation_P, m_restriction_P,
                 m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-            numCoarseCycles = 0;
-            r = (m_operator[numLevels-1]*x - b).norm();
+
+            r = (m_operator[numLevels-1]*x - f).norm();
             if ( r_old < r)
             {
                 gsInfo << "Residual increased during solving!!! \n";
@@ -538,7 +526,7 @@ public:
         if (typeSolver == 1)
         {
             // Determine residual and L2 errpr
-            gsInfo << "Residual after solving: "  << (b-m_operator[numLevels-1]*x).norm() << "\n";
+            gsInfo << "Residual after solving: "  << (f-m_operator[numLevels-1]*x).norm() << "\n";
         }
     }
 
@@ -685,6 +673,9 @@ private:
                 m_smoother[numLevels-1]->step(rhs,x);
         }
     }
+public:
+    const gsSparseMatrix<T>& matrix(index_t levels) const { return m_operator[levels]; }
+    const Assembler& assembler(index_t levels) const { return m_assembler[levels]; }
 };
 
 int main(int argc, char* argv[])
@@ -778,7 +769,7 @@ int main(int argc, char* argv[])
             coeff_reac = gsFunctionExpr<>("0",2);
             break;
 
-        case 5: 
+        case 5:
             gsInfo << "Poisson equation on the unit cube\n";
             geo = gsNurbsCreator<>::BSplineCube(1);
             sol_exact = gsFunctionExpr<>( "sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
@@ -898,9 +889,9 @@ int main(int argc, char* argv[])
     {
         gsInfo << "p-multigrid is applied as stand-alone solver\n\n";
         pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-        gsMatrix<real_t> x;
-        My_MG.setup(rhs_exact, sol_exact, x, numSmoothing, x, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
-        My_MG.solve(rhs_exact, sol_exact, x, numSmoothing, x, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.setup(rhs_exact, numSmoothing, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+        gsMatrix<> x = gsMatrix<>::Random(My_MG.matrix(numLevels-1).rows(),1);
+        My_MG.solve(x, numSmoothing, My_MG.assembler(numLevels-1).rhs(), typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
         return 0;
     }
 
@@ -940,7 +931,7 @@ int main(int argc, char* argv[])
 
       // Construct P-Multigrid objects
       pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-      My_MG.setup(rhs_exact, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+      My_MG.setup(rhs_exact, numSmoothing, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
       // Perform BiCGStab
       while(r.norm()/r0.norm() > tol && i < maxIter)
@@ -966,14 +957,14 @@ int main(int argc, char* argv[])
 
         // Apply preconditioning by solving Ay = p
         y.setZero();
-        My_MG.solve(rhs_exact, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
         v = pa.matrix()*y;
         alp = rho/(r0.dot(v));
         s = r - alp*v;
 
         // Apply preconditioning by solving Az = s
         z.setZero();
-        My_MG.solve(rhs_exact, sol_exact, z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid,typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
         t = pa.matrix()*z;
         if (t.dot(t) > 0)
           w = t.dot(s)/t.dot(t);
@@ -998,9 +989,9 @@ int main(int argc, char* argv[])
       // Apply preconditioner
       pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
       gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-      My_MG.setup(rhs_exact, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+      My_MG.setup(sol_exact, numSmoothing, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
-      My_MG.solve(rhs_exact, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+      My_MG.solve(z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
       gsVector<> z = z1;
       gsVector<> p = z;
       real_t alpha, beta;
@@ -1019,7 +1010,7 @@ int main(int argc, char* argv[])
 
         // Obtain new values
         gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-        My_MG.solve(rhs_exact, sol_exact, z2, numSmoothing,r_new, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo,typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(z2, numSmoothing,r_new, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo,typeLumping, hp, typeProjection);
         gsVector<> z3 = z2;
 
         // Determine beta
