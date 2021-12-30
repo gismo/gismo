@@ -968,10 +968,8 @@ int main(int argc, char* argv[])
       index_t restarts = 0;
 
       // Construct P-Multigrid objects
-      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG1(mp, basisL, bcInfo);
-      My_MG1.setup(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
-      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG2(mp, basisL, bcInfo);
-      My_MG2.setup(f, sol_exact, z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid,typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
+      My_MG.setup(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
       // Perform BiCGStab
       while(r.norm()/r0.norm() > tol && i < maxIter)
@@ -997,14 +995,14 @@ int main(int argc, char* argv[])
 
         // Apply preconditioning by solving Ay = p
         y.setZero();
-        My_MG1.solve(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(f, sol_exact, y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
         v = pa.matrix()*y;
         alp = rho/(r0.dot(v));
         s = r - alp*v;
 
         // Apply preconditioning by solving Az = s
         z.setZero();
-        My_MG2.solve(f, sol_exact, z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid,typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(f, sol_exact, z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid,typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
         t = pa.matrix()*z;
         if (t.dot(t) > 0)
           w = t.dot(s)/t.dot(t);
@@ -1027,16 +1025,15 @@ int main(int argc, char* argv[])
       gsInfo << "CG is applied as solver, p-multigrid as a preconditioner\n\n";
 
       // Apply preconditioner
-      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG2(mp, basisL, bcInfo);
+      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
       gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-      My_MG2.setup(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
-      My_MG2.solve(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+      My_MG.setup(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+
+      My_MG.solve(f, sol_exact, z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
       gsVector<> z = z1;
       gsVector<> p = z;
       real_t alpha, beta;
-      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG3(mp, basisL, bcInfo);
       gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-      My_MG3.setup(f, sol_exact, z2, numSmoothing, z2, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo,typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
       while(r.norm()/r0.norm() >  tol && i < maxIter)
       {
@@ -1051,7 +1048,7 @@ int main(int argc, char* argv[])
 
         // Obtain new values
         gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-        My_MG3.solve(f, sol_exact, z2, numSmoothing,r_new, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo,typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
+        My_MG.solve(f, sol_exact, z2, numSmoothing,r_new, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, numBenchmark, typeMultigrid, typeBCHandling, geo,typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator);
         gsVector<> z3 = z2;
 
         // Determine beta
