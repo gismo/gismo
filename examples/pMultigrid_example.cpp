@@ -898,19 +898,18 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    // Apply BiCGStab or CG
-    gsVector <> r = pa.rhs() - pa.matrix() * x;
-    gsVector<> r0 = r;
-    real_t maxIter = pa.matrix().rows();
-    real_t tol = 1e-8;
-    index_t i = 1;
-
-    real_t oldResNorm = r0.norm();
-
     // Perform BiCGStab
     if (typeSolver == 2)
     {
       gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
+      // Apply BiCGStab or CG
+      gsVector <> r = pa.rhs() - pa.matrix() * x;
+      gsVector<> r0 = r;
+      real_t maxIter = pa.matrix().rows();
+      real_t tol = 1e-8;
+      index_t i = 1;
+
+      real_t oldResNorm = r0.norm();
       gsStopwatch clock;
       // Define vectors needed in BiCGStab
       gsVector<> t = gsVector<>::Zero(pa.matrix().rows());
@@ -982,48 +981,33 @@ int main(int argc, char* argv[])
   {
       gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
       gsStopwatch clock;
-      // Apply preconditioner
-      gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
 
-      My_MG.step(r0, z1, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-      gsVector<> z = z1;
-      gsVector<> p = z;
-      real_t alpha, beta;
-      gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
+      real_t maxIter = pa.matrix().rows();
+      real_t tol = 1e-8;
 
-      while (r.norm()/r0.norm() >  tol && i < maxIter)
-      {
-        // Determine alpha
-        alpha = r.transpose()*z;
-        alpha = alpha/(p.transpose()*pa.matrix()*p);
+      gsConjugateGradient<> cg(pa.matrix(), makeLinearOp(
+        [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
+        {
+            x = gsMatrix<>::Zero(pa.matrix().rows(),1);
+            My_MG.step(rhs, x, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        }, pa.matrix().rows(), pa.matrix().cols()
+      ));
 
-        // Update solution and residual
-        x = x + alpha*p;
-        gsVector<> r_new;
-        r_new = r - alpha*pa.matrix()*p;
-
-        // Obtain new values
-        gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-        My_MG.step(r_new, z2, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        gsVector<> z3 = z2;
-
-        // Determine beta
-        beta = z3.transpose()*r_new;
-        beta = beta/(z.transpose()*r) ;
-        p = z3 + beta*p;
-        z = z3;
-        r = r_new;
-
-        // Print information about residual and L2 error
-        gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << r.norm()
-               << "            reduction:  1 / " << std::setprecision(3) << (oldResNorm/r.norm()) <<  std::setprecision (6) << "\n";
-        oldResNorm = r.norm();
-
-        ++i;
-      }
+      // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
+      cg.setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm() );
+      cg.setMaxIterations(maxIter);
+      gsMatrix<> error_history;
+      cg.solveDetailed( pa.rhs(), x, error_history );
       real_t Time_Solve = clock.stop();
+
+      for (index_t i=1; i<error_history.rows(); ++i)
+      {
+          gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history[i]
+                 << "            reduction:  1 / " << std::setprecision(3) << (error_history[i-1]/error_history[i])
+                 <<  std::setprecision (6) << "\n";
+      }
       gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
-      gsInfo << "Solver converged in " << i-1 << " iterations!\n";
+      gsInfo << "Solver converged in " << cg.iterations() << " iterations!\n";
       // Determine residual and l2 error
       gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
   }
