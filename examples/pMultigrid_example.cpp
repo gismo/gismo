@@ -303,7 +303,7 @@ public:
         gsMatrix<T>& x,
         int level,
         int numSmoothing,
-        int typeSolver,
+        bool symmetricSmoothing,
         int typeCycle_p,
         int typeCycle_h,
         int numCoarsening,
@@ -330,7 +330,7 @@ public:
         coarseCorr.setZero(coarseRes.rows(),1);
         for ( index_t j = 0 ; j < typeCycle ; j++)
         {
-            step(coarseRes, coarseCorr, level-1, numSmoothing, typeSolver,
+            step(coarseRes, coarseCorr, level-1, numSmoothing, symmetricSmoothing,
                 typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo,
                 typeLumping, typeProjection, hp);
         }
@@ -339,7 +339,7 @@ public:
 
         const real_t alpha = 1;
         x -= alpha * fineCorr;
-        postsmoothing(res, x, level, numSmoothing, typeSolver);
+        postsmoothing(res, x, level, numSmoothing, symmetricSmoothing);
     }
 
     ///  @brief Apply p-multigrid solver to given right-hand side on level l
@@ -348,7 +348,7 @@ public:
         gsMatrix<T>& x,
         int level,
         int numSmoothing,
-        int typeSolver,
+        bool symmetricSmoothing,
         int typeCycle_p,
         int typeCycle_h,
         int numCoarsening,
@@ -370,31 +370,28 @@ public:
         // Solve with p-multigrid method
         real_t r_old = r0;
         clock.restart();
-        while ( (typeSolver == 1) ? r/r0 > tol && iter < 100000 : iter < 2)
+        while ( r/r0 > tol && iter < 100000 )
         {
             // Call step
             step(rhs, x, level, numCoarsening, numSmoothing, typeCycle_p, typeCycle_h,
-                typeSolver, typeBCHandling, geo, typeLumping, typeProjection, hp);
+                symmetricSmoothing, typeBCHandling, geo, typeLumping, typeProjection, hp);
 
             r = (m_operator[level-1]*x - rhs).norm();
             if ( r_old < r)
             {
                 gsInfo << "Residual increased during solving!!! \n";
             }
+            gsInfo << "pMultigrid iteration: " << iter << "      |   Residual norm: "   << std::left << std::setw(15) << r
+                    << "           reduction:  1 / " << std::setprecision(3) << (r_old/r) <<        std::setprecision  (6) << "\n";
             r_old = r;
-            //gsInfo << "Residual after cycle " << iter << " equals: " << r << "\n";
             iter++;
         }
         real_t Time_Solve = clock.stop();
-        gsInfo << "\n|| Solver information || \n";
         gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
         gsInfo << "Solver converged in " << iter-1 << " iterations!\n";
 
-        if (typeSolver == 1)
-        {
-            // Determine residual and L2 errpr
-            gsInfo << "Residual after solving: "  << (rhs-m_operator[level-1]*x).norm() << "\n";
-        }
+        // Determine residual and l2 error
+        gsInfo << "Residual after solving: "  << (rhs-m_operator[level-1]*x).norm() << "\n";
     }
 
 private:
@@ -530,11 +527,11 @@ private:
     }
 
     /// @brief Apply fixed number of postsmoothing steps
-    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, int numLevels, int numSmoothing, int typeSolver)
+    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, int numLevels, int numSmoothing, bool symmetricSmoothing)
     {
         for (index_t i = 0 ; i < numSmoothing ; i++)
         {
-            if (typeSolver==3)
+            if (symmetricSmoothing)
                 m_smoother[numLevels-1]->stepT(rhs,x);
             else
                 m_smoother[numLevels-1]->step(rhs,x);
@@ -897,8 +894,8 @@ int main(int argc, char* argv[])
     // Apply p-Multigrid as stand-alone solver
     if (typeSolver == 1)
     {
-        gsInfo << "p-multigrid is applied as stand-alone solver\n\n";
-        My_MG.solve(pa.rhs(), x, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        gsInfo << "\n|| Solver information ||\np-multigrid is applied as stand-alone solver\n";
+        My_MG.solve(pa.rhs(), x, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
         return 0;
     }
 
@@ -914,7 +911,8 @@ int main(int argc, char* argv[])
     // Perform BiCGStab
     if (typeSolver == 2)
     {
-      gsInfo << "BiCGStab is applied as solver, p-multigrid as a preconditioner\n\n";
+      gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
+      gsStopwatch clock;
       // Define vectors needed in BiCGStab
       gsVector<> t = gsVector<>::Zero(pa.matrix().rows());
       gsVector<> s = gsVector<>::Zero(pa.matrix().rows());
@@ -952,7 +950,7 @@ int main(int argc, char* argv[])
 
         // Apply preconditioning by solving Ay = p
         y.setZero();
-        My_MG.solve(p, y, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        My_MG.step(p, y, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
         ++iterTot;
         v = pa.matrix()*y;
         alp = rho/(r0.dot(v));
@@ -960,7 +958,7 @@ int main(int argc, char* argv[])
 
         // Apply preconditioning by solving Az = s
         z.setZero();
-        My_MG.solve(s, z, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        My_MG.step(s, z, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
         ++iterTot;
         t = pa.matrix()*z;
         if (t.dot(t) > 0)
@@ -977,15 +975,20 @@ int main(int argc, char* argv[])
 
         ++i;
       }
+      real_t Time_Solve = clock.stop();
+      gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
+      gsInfo << "Solver converged in " << i-1 << " iterations!\n";
+      // Determine residual and l2 error
+      gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
   }
   else if (typeSolver == 3)
   {
-      gsInfo << "CG is applied as solver, p-multigrid as a preconditioner\n\n";
-
+      gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
+      gsStopwatch clock;
       // Apply preconditioner
       gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
 
-      My_MG.solve(r0, z1, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+      My_MG.step(r0, z1, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
       ++iterTot;
       gsVector<> z = z1;
       gsVector<> p = z;
@@ -1005,7 +1008,7 @@ int main(int argc, char* argv[])
 
         // Obtain new values
         gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-        My_MG.solve(r_new, z2, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        My_MG.step(r_new, z2, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
         ++iterTot;
         gsVector<> z3 = z2;
 
@@ -1023,6 +1026,11 @@ int main(int argc, char* argv[])
 
         ++i;
       }
+      real_t Time_Solve = clock.stop();
+      gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
+      gsInfo << "Solver converged in " << i-1 << " iterations!\n";
+      // Determine residual and l2 error
+      gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
   }
   return 0;
 }
