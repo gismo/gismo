@@ -104,34 +104,6 @@ public:
         postsmoothing(rhs, x, numLevels, numSmoothing, typeSolver);
     }
 
-    /// @brief Setup p-multigrid to given linear system
-    virtual void setup(const gsMatrix<T> & rhs,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis ,
-        gsMatrix<T>& x,
-        const int& numLevels,
-        const int& numCoarsening,
-        const int& numRefine,
-        const int& numSmoothing,
-        int& numCoarseCycles,
-        const int& typeCycle_p,
-        const int& typeCycle_h,
-        const int& typeSolver,
-        const int& typeBCHandling,
-        gsBoundaryConditions<T> bcInfo,
-        gsMultiPatch<> mp,
-        gsGeometry<>::Ptr geo,
-        const int& typeLumping,
-        const int& typeProjection,
-        const int& typeSmoother,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_P,
-        std::vector<gsSparseMatrix<T>>& m_restriction_P,
-        std::vector<gsMatrix<T>>& m_prolongation_M,
-        std::vector<gsMatrix<T>>& m_restriction_M,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_H,
-        std::vector<gsSparseMatrix<T>>& m_restriction_H,
-        const gsMatrix<>& hp)
-    {}
-
     /// @brief Get residual (pure virtual method)
     virtual void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels) = 0;
 
