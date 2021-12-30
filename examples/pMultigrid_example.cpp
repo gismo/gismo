@@ -736,7 +736,7 @@ int main(int argc, char* argv[])
     std::string solution_exact,rhs_exact;
     gsGeometry<>::Ptr geo;
     gsInfo << "|| Benchmark information ||\n";
-    switch(numBenchmark)
+    switch (numBenchmark)
     {
       case 1 : gsInfo << "CDR-equation the unit square\n";
                solution_exact = "sin(pi*x)*sin(pi*y)";
@@ -767,6 +767,7 @@ int main(int argc, char* argv[])
                solution_exact = "sin(5*pi*x)*sin(5*pi*y)";
                rhs_exact = "(50*pi^2 )*sin(5*pi*x)*sin(5*pi*y)";
                geo = gsReadFile<>("domain2d/yeti_mp2.xml"); break;
+      default: gsInfo << "Unknown benchmark case.\n"; return -1;
     }
 
     // Print information about benchmark
@@ -779,13 +780,6 @@ int main(int argc, char* argv[])
         mp = mp.uniformSplit();
     }
 
-    // To read the entire Yeti footprint
-    if (numBenchmark == 10)
-    {
-        std::string geometry("domain2d/yeti_mp2.xml");
-        gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
-        mp = *mpPtr;
-    }
     gsInfo << "Number of patches: " << mp.nPatches() << "\n\n";
     gsFunctionExpr<> sol_exact(solution_exact,mp.geoDim());
     gsFunctionExpr<> f(rhs_exact,mp.geoDim());
@@ -794,18 +788,6 @@ int main(int argc, char* argv[])
     gsMultiBasis<> basisL(mp);
     gsMultiBasis<> basisH(mp);
 
-    // Geometry of benchmark 10 is describe by quadratic B-splines
-    if (numBenchmark == 10)
-    {
-        basisL.degreeReduce();
-        basisH.degreeReduce();
-    }
-    // Geometry of benchmark 7 is describe by quadratic B-splines
-    if (numBenchmark == 7)
-    {
-        basisL.degreeReduce(numDegree-1);
-        basisH.degreeReduce(numDegree-1);
-    }
     gsMatrix<> hp = gsMatrix<>::Zero(numLevels-1,1);
 
     // Read string from command line
