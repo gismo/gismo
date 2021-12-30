@@ -457,7 +457,7 @@ public:
         real_t Time_SCMS = clock.stop();
 
         clock.restart();
-        if (typeSmoother == 5)
+        if (typeSmoother == 4)
         {
             for (int i = 0; i < numLevels; i++)
             {
@@ -723,15 +723,14 @@ int main(int argc, char* argv[])
     cmd.addInt("d", "BCHandling", "Handles Dirichlet BC's by elimination (1) or Nitsche's method (2)", typeBCHandling);
     cmd.addInt("L", "Lumping", "Restriction and Prolongation performed with the lumped (1) or consistent (2) mass matrix", typeLumping);
     cmd.addInt("D", "Projection", "Direct projection on coarsest level (1) or via all other levels (2)", typeProjection);
-    cmd.addInt("S", "Smoother", "Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS or (5) Block Gauss-Seidel", typeSmoother);
+    cmd.addInt("S", "Smoother", "Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS or (4) Block ILUT", typeSmoother);
     cmd.addInt("G", "CoarseOperator", "Type of coarse operator in h-multigrid: (1) Rediscretization (2) Galerkin Projection", typeCoarseOperator);
     cmd.addString("z", "Coarsening", "Expression that defines coarsening strategy", typeCoarsening);
 
     // Read parameters from command line
     try { cmd.getValues(argc,argv);  } catch (int rv) { return rv; }
 
-    GISMO_ENSURE(typeSmoother == 1||typeSmoother == 2||typeSmoother == 3||typeSmoother == 5,
-        "Unknown smoother chosen.");
+    GISMO_ENSURE(typeSmoother >= 1&&typeSmoother <= 4, "Unknown smoother chosen.");
 
     // Initialize solution, rhs and geometry
     std::string solution_exact,rhs_exact;
