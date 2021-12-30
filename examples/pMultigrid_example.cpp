@@ -305,7 +305,20 @@ public:
 public:
 
     ///  @brief Set-up p-multigrid solver
-    void setup(const gsFunctionExpr<T> & rhs, const int& numSmoothing, const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, const int& numCoarsening, const int& numDegree, const int& numRefine, const int& typeMultigrid, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeLumping, const gsMatrix<>& hp, const int& typeProjection,const int& typeSmoother, const int& typeCoarseOperator, const gsFunctionExpr<> coeff_diff, const gsFunctionExpr<> coeff_conv,const gsFunctionExpr<> coeff_reac)
+    void setup(
+         const gsFunctionExpr<T> & rhs,
+         int numLevels,
+         int numDegree,
+         int typeBCHandling,
+         gsGeometry<>::Ptr geo,
+         int typeLumping,
+         const gsMatrix<>& hp,
+         int typeProjection,
+         int typeSmoother,
+         int typeCoarseOperator,
+         const gsFunctionExpr<> coeff_diff,
+         const gsFunctionExpr<> coeff_conv,
+         const gsFunctionExpr<> coeff_reac)
     {
         for (int i = 1; i < numLevels; i++)
         {
@@ -487,7 +500,7 @@ public:
     }
 
     ///  @brief Apply p-multigrid solver to given right-hand side on level l
-    void solve(gsMatrix<T>& x, int numSmoothing, const gsMatrix<T>& f, const int& typeSolver, int& iterTot, int& typeCycle_p, int& typeCycle_h, int numLevels, int numCoarsening, int typeBCHandling, gsGeometry<>::Ptr geo, int typeLumping, const gsMatrix<>& hp, int typeProjection)
+    void solve(gsMatrix<T>& x, int numSmoothing, const gsMatrix<T>& f, const int& typeSolver, int& iterTot, int typeCycle_p, int typeCycle_h, int numLevels, int numCoarsening, int typeBCHandling, gsGeometry<>::Ptr geo, int typeLumping, const gsMatrix<>& hp, int typeProjection)
     {
         gsStopwatch clock;
 
@@ -689,7 +702,6 @@ int main(int argc, char* argv[])
     index_t typeSolver = 1;
     index_t typeCycle_p = 1;
     index_t typeCycle_h = 2;
-    index_t typeMultigrid = 1;
     index_t typeBCHandling = 2;
     index_t typeLumping = 1;
     index_t typeProjection = 2;
@@ -706,9 +718,8 @@ int main(int argc, char* argv[])
     cmd.addInt("v", "Smoothing", "Number of pre/post smoothing steps", numSmoothing);
     cmd.addInt("l", "Levels", "Number of levels in multigrid method", numLevels);
     cmd.addInt("b", "Benchmark", "Number of the benchmark",numBenchmark);
-    cmd.addInt("P", "Patches", "Number of patches (1, 4, 16 or 64)", numPatches);
+    cmd.addInt("P", "Patches", "Number of patch splittings (1) no splitting, (2) split each patch into 2^d patches, (3) split each patch into 4^d patches, etc.", numPatches);
     cmd.addInt("s", "Solver", "Type of solver: (1) mg as stand-alone solver (2) BiCGStab prec. with mg (3) CG prec. with mg", typeSolver);
-    cmd.addInt("t", "Multigrid", "p-multigrid (1) or h-multigrid (2)", typeMultigrid);
     cmd.addInt("m", "Cycle_p", "Type of cycle, eather V-cycle (1) or W-cycle (2)", typeCycle_p);
     cmd.addInt("M", "Cycle_h", "Type of cycle, eather V-cycle (1) or W-cycle (2)", typeCycle_h);
     cmd.addInt("d", "BCHandling", "Handles Dirichlet BC's by elimination (1) or Nitsche's method (2)", typeBCHandling);
@@ -884,9 +895,8 @@ int main(int argc, char* argv[])
         numLevels = numLevels - numDegree + 2;
     }
 
-
     pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-    My_MG.setup(rhs_exact, numSmoothing, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+    My_MG.setup(rhs_exact, numLevels, numDegree, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
     // Apply p-Multigrid as stand-alone solver
     if (typeSolver == 1)
