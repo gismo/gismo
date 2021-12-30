@@ -831,6 +831,11 @@ int main(int argc, char* argv[])
     real_t numRefZ = 0;
 
     // Convert input string to array
+    if (typeCoarsening.size() != static_cast<size_t>(numLevels-1))
+    {
+        gsInfo << "The string provided to --Coarsening should have length " << numLevels-1 << "\n";
+        return -1;
+    }
     for ( index_t i = 0; i < numLevels-1 ; ++i)
     {
         if ( typeCoarsening[i] == 'h')
