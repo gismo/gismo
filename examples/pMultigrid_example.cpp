@@ -884,20 +884,21 @@ int main(int argc, char* argv[])
         numLevels = numLevels - numDegree + 2;
     }
 
+
+    pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
+    My_MG.setup(rhs_exact, numSmoothing, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+
     // Apply p-Multigrid as stand-alone solver
     if (typeSolver == 1)
     {
         gsInfo << "p-multigrid is applied as stand-alone solver\n\n";
-        pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-        My_MG.setup(rhs_exact, numSmoothing, typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
         gsMatrix<> x = gsMatrix<>::Random(My_MG.matrix(numLevels-1).rows(),1);
         My_MG.solve(x, numSmoothing, My_MG.assembler(numLevels-1).rhs(), typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
         return 0;
     }
 
-    // Assemble matrix fine level (p-mg as preconditioner)
-    gsCDRAssembler<real_t> pa(mp, basisH, bcInfo, sol_exact, coeff_diff, coeff_conv, coeff_reac, (typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche), iFace::glue);
-    pa.assemble();
+    // We have already assembled
+    const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
 
     // Apply BiCGStab or CG
     gsMatrix<real_t> x = gsMatrix<>::Random(pa.matrix().rows(),1);
@@ -907,9 +908,6 @@ int main(int argc, char* argv[])
     real_t tol = 1e-8;
     index_t i = 1;
 
-    // Set up, determine initial L2 error
-    gsField<> solKrylov;
-    gsField<> sol = pa.constructSolution(x);
     real_t oldResNorm = r0.norm();
 
     // Perform BiCGStab
@@ -928,10 +926,6 @@ int main(int argc, char* argv[])
       // Set residual norm and #restarts
       real_t r0_sqnorm = r0.dot(r0);
       index_t restarts = 0;
-
-      // Construct P-Multigrid objects
-      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-      My_MG.setup(rhs_exact, numSmoothing, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
       // Perform BiCGStab
       while(r.norm()/r0.norm() > tol && i < maxIter)
@@ -977,7 +971,6 @@ int main(int argc, char* argv[])
         gsInfo << "BiCGStab iteration: " << i << "      |   Residual norm: "   << std::left << std::setw(15) << r.norm()
                << "           reduction:  1 / " << std::setprecision(3) << (oldResNorm/r.norm()) <<        std::setprecision  (6) << "\n";
         oldResNorm = r.norm();
-        solKrylov = pa.constructSolution(x);
 
         ++i;
       }
@@ -987,9 +980,7 @@ int main(int argc, char* argv[])
       gsInfo << "CG is applied as solver, p-multigrid as a preconditioner\n\n";
 
       // Apply preconditioner
-      pMultigrid<real_t, gsSparseSolver<real_t>::LU,gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
       gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-      My_MG.setup(sol_exact, numSmoothing, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, numDegree, numRefine, typeMultigrid, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
       My_MG.solve(z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
       gsVector<> z = z1;
@@ -1024,7 +1015,7 @@ int main(int argc, char* argv[])
         gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << r.norm()
                << "            reduction:  1 / " << std::setprecision(3) << (oldResNorm/r.norm()) <<  std::setprecision (6) << "\n";
         oldResNorm = r.norm();
-        solKrylov = pa.constructSolution(x);
+
         ++i;
       }
   }
