@@ -373,8 +373,8 @@ public:
         while ( r/r0 > tol && iter < 100000 )
         {
             // Call step
-            step(rhs, x, level, numCoarsening, numSmoothing, typeCycle_p, typeCycle_h,
-                symmetricSmoothing, typeBCHandling, geo, typeLumping, typeProjection, hp);
+            step(rhs, x, level, numSmoothing, symmetricSmoothing, typeCycle_p, typeCycle_h,
+                numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
 
             r = (m_operator[level-1]*x - rhs).norm();
             if ( r_old < r)
