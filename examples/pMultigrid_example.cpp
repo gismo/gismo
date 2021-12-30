@@ -33,211 +33,6 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
 );
 
 
-/** @brief The p-multigrid base class provides the basic
- *  methods (smoothing, prolongation, restriction) for
- *  implementing p-multigrid methods
- */
-
-template<class T>
-struct pMultigridBase
-{
-
-public:
-
-    /// @brief Apply one p-multigrid cycle to given right-hand side on level l
-    virtual void step(
-        const gsMatrix<T> & rhs,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis,
-        gsMatrix<T>& x,
-        int numLevels,
-        int numCoarsening,
-        int numSmoothing,
-        int typeCycle_p,
-        int typeCycle_h,
-        int typeSolver,
-        int typeBCHandling,
-        gsBoundaryConditions<T> bcInfo,
-        gsMultiPatch<> mp,
-        gsGeometry<>::Ptr geo,
-        int typeLumping,
-        int typeProjection,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_P,
-        std::vector<gsSparseMatrix<T>>& m_restriction_P,
-        std::vector<gsMatrix<T>>& m_prolongation_M,
-        std::vector<gsMatrix<T>>& m_restriction_M,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_H,
-        std::vector<gsSparseMatrix<T>>& m_restriction_H,
-        const gsMatrix<>& hp
-        )
-    {
-        if ( numLevels == 1)
-        {
-            solvecoarse(rhs, x, numLevels);
-            return;
-        }
-
-        const index_t typeCycle = (hp(max(numLevels-2,0),0) == 0) ? typeCycle_p : typeCycle_h;
-
-        gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
-        presmoothing(rhs, x, numLevels, numSmoothing);
-        residual(fineRes, rhs, x, numLevels);
-        restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
-            typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
-            m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-        coarseCorr.setZero(coarseRes.rows(),1);
-        for ( index_t j = 0 ; j < typeCycle ; j++)
-        {
-            step(coarseRes, m_basis, coarseCorr, numLevels-1, numCoarsening, numSmoothing,
-                typeCycle_p, typeCycle_h, typeSolver, typeBCHandling, bcInfo, mp, geo,
-                typeLumping, typeProjection, m_prolongation_P, m_restriction_P,
-                m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-        }
-        prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
-            typeBCHandling, bcInfo, mp, geo, typeProjection, m_prolongation_P, m_restriction_P,
-            m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
-
-        const real_t alpha = 1;
-        x -= alpha * fineCorr;
-        postsmoothing(rhs, x, numLevels, numSmoothing, typeSolver);
-    }
-
-    /// @brief Get residual (pure virtual method)
-    virtual void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels) = 0;
-
-    /// @brief Apply fixed number of smoothing steps (pure virtual method)
-    virtual void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels,
-        const int& numSmoothing) = 0;
-
-    /// @brief Apply fixed number of smoothing steps (pure virtual method)
-    virtual void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels,
-        const int& numSmoothing, const int& typeSolver) = 0;
-
-    /// @brief Apply coarse solver (pure virtual method)
-    virtual void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels) = 0;
-
-    /// @brief Prolongate coarse space function to fine space
-    virtual gsSparseMatrix<T> prolongation_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis,
-        const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection) = 0;
-
-    /// @brief Prolongate coarse space function to fine space
-    virtual gsSparseMatrix<T> restriction_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis,
-        const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection) = 0;
-
-    /// @brief Prolongate coarse space function to fine space
-    virtual gsMatrix<T> prolongation_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis,
-        const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection) = 0;
-
-    /// @brief Prolongate coarse space function to fine space
-    virtual gsMatrix<T> restriction_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis,
-        const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection) = 0;
-
-    /// @brief Prolongate coarse space function to fine space
-    virtual void prolongation(const gsMatrix<T>& Xcoarse, gsMatrix<T>& Xfine, const int& numLevels, const int& numCoarsening,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling,
-        gsBoundaryConditions<T> bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_P, std::vector<gsSparseMatrix<T>>& m_restriction_P,
-        std::vector<gsMatrix<T>>& m_prolongation_M, std::vector<gsMatrix<T>>& m_restriction_M,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_H, std::vector<gsSparseMatrix<T>>& m_restriction_H,
-        const gsMatrix<>& hp)
-    {
-        if (hp(numLevels-2,0) == 1)
-        {
-            Xfine = m_prolongation_H[numLevels-2]*Xcoarse;
-        }
-        else
-        {
-            if (typeLumping == 1)
-            {
-                gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
-                gsMatrix<> M_L_inv = (m_prolongation_M[numLevels-2]).array().inverse();
-                Xfine = (M_L_inv).cwiseProduct(temp);
-            }
-            else
-            {
-                // Define the low and high order basis
-                gsMultiBasis<> basisL = *m_basis[numLevels-2];
-                gsMultiBasis<> basisH = *m_basis[numLevels-1];
-                typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-                typedef gsExprAssembler<real_t>::variable variable;
-                typedef gsExprAssembler<real_t>::space space;
-                // Determine matrix M (high_order * high_order)
-                gsExprAssembler<real_t> ex2(1,1);
-                geometryMap G2 = ex2.getMap(mp);
-                space w_n = ex2.getSpace(basisH ,1, 0);
-                //w_n.setInterfaceCont(0);
-                if (typeBCHandling == 1)
-                {
-                    w_n.setup(bcInfo, dirichlet::interpolation, 0);
-                }
-                ex2.setIntegrationElements(basisH);
-                ex2.initSystem();
-                ex2.assemble(w_n * meas(G2) * w_n.tr());
-
-                // Prolongate Xcoarse to Xfine
-                gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
-                gsSparseMatrix<> M = ex2.matrix();
-                gsConjugateGradient<> CGSolver(M);
-                CGSolver.setTolerance(1e-12);
-                CGSolver.solve(temp,Xfine);
-            }
-        }
-    }
-
-    /// @brief Restrict fine space function to coarse space
-    virtual void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, const int& numLevels, const int& numCoarsening,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling,
-        const gsBoundaryConditions<T> & bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_P, std::vector<gsSparseMatrix<T>>& m_restriction_P,
-        std::vector<gsMatrix<T>>& m_prolongation_M, std::vector<gsMatrix<T>>& m_restriction_M,
-        std::vector<gsSparseMatrix<T>>& m_prolongation_H, std::vector<gsSparseMatrix<T>>& m_restriction_H, const gsMatrix<>& hp)
-    {
-        if (hp(numLevels-2,0) == 1)
-        {
-            Xcoarse = m_restriction_H[numLevels-2]*Xfine;
-        }
-        else
-        {
-            if (typeLumping == 1)
-            {
-                // Standard way
-                gsVector<> temp = m_restriction_P[numLevels-2]*Xfine;
-                gsMatrix<> M_L_inv = (m_restriction_M[numLevels-2]).array().inverse();
-                Xcoarse = (M_L_inv).cwiseProduct(temp);
-            }
-            else
-            {
-                // Define the low and high order basis
-                gsMultiBasis<> basisL = *m_basis[numLevels-2];
-                gsMultiBasis<> basisH = *m_basis[numLevels-1];
-                typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-                typedef gsExprAssembler<real_t>::variable variable;
-                typedef gsExprAssembler<real_t>::space space;
-
-                // Determine matrix M (low_order * low_order)
-                gsExprAssembler<real_t> ex2(1,1);
-                geometryMap G2 = ex2.getMap(mp);
-                space w_n = ex2.getSpace(basisL ,1, 0);
-                //w_n.setInterfaceCont(0);
-                if (typeBCHandling == 1)
-                {
-                    w_n.setup(bcInfo, dirichlet::interpolation, 0);
-                }
-                ex2.setIntegrationElements(basisL);
-                ex2.initSystem();
-                ex2.assemble(w_n * meas(G2) * w_n.tr());
-
-                // Restrict Xfine to Xcoarse
-                gsMatrix<> temp = m_restriction_P[numLevels-2]*Xfine;
-                gsSparseMatrix<> M = ex2.matrix();
-                gsConjugateGradient<> CGSolver(M);
-                CGSolver.setTolerance(1e-12);
-                CGSolver.solve(temp,Xcoarse);
-            }
-        }
-    }
-};
-
-
 /** @brief The p-multigrid class implements a generic p-multigrid solver
  *  that can be customized by passing assembler and coarse
  *  solver as template arguments.
@@ -247,13 +42,9 @@ public:
  *  problem-specific assembler has to be passed as template argument.
  */
 template<class T, class CoarseSolver, class Assembler>
-struct pMultigrid : public pMultigridBase<T>
+struct pMultigrid
 {
 private:
-
-    /// Base class type
-    typedef pMultigridBase<T> Base;
-
     /// Shared pointer to multi-patch geometry
     memory::shared_ptr<gsMultiPatch<T> > m_mp_ptr;
 
@@ -318,7 +109,8 @@ public:
          int typeCoarseOperator,
          const gsFunctionExpr<> coeff_diff,
          const gsFunctionExpr<> coeff_conv,
-         const gsFunctionExpr<> coeff_reac)
+         const gsFunctionExpr<> coeff_reac
+        )
     {
         for (int i = 1; i < numLevels; i++)
         {
@@ -342,7 +134,13 @@ public:
         }
 
         // Resize vectors of operators
-        m_operator.resize(numLevels); m_prolongation_P.resize(numLevels-1); m_prolongation_M.resize(numLevels-1); m_prolongation_H.resize(numLevels-1); m_restriction_P.resize(numLevels-1); m_restriction_M.resize(numLevels-1); m_restriction_H.resize(numLevels-1);
+        m_operator.resize(numLevels);
+        m_prolongation_P.resize(numLevels-1);
+        m_prolongation_M.resize(numLevels-1);
+        m_prolongation_H.resize(numLevels-1);
+        m_restriction_P.resize(numLevels-1);
+        m_restriction_M.resize(numLevels-1);
+        m_restriction_H.resize(numLevels-1);
 
         // Assemble operators at finest level
         gsStopwatch clock;
@@ -360,10 +158,10 @@ public:
             {
                 if (hp(min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
                 {
-                m_assembler[i].assemble();
-                m_operator[i] = m_assembler[i].matrix();
-                gsInfo << "\nDegree of the basis: " << m_basis[i]->degree() << "\n";
-                gsInfo << "Size of the basis functions: " << m_basis[i]->totalSize() << "\n";
+                    m_assembler[i].assemble();
+                    m_operator[i] = m_assembler[i].matrix();
+                    gsInfo << "\nDegree of the basis: " << m_basis[i]->degree() << "\n";
+                    gsInfo << "Size of the basis functions: " << m_basis[i]->totalSize() << "\n";
                 }
             }
         }
@@ -499,14 +297,72 @@ public:
         gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS + Time_Coarse_Solver_Setup << "\n";
     }
 
+    /// @brief Apply one p-multigrid cycle to given right-hand side on level l
+    void step(
+        const gsMatrix<T> & res,
+        gsMatrix<T>& x,
+        int numLevels,
+        int numSmoothing,
+        int typeSolver,
+        int typeCycle_p,
+        int typeCycle_h,
+        int numCoarsening,
+        int typeBCHandling,
+        gsGeometry<>::Ptr geo,
+        int typeLumping,
+        int typeProjection,
+        const gsMatrix<>& hp
+        )
+    {
+        if ( numLevels == 1)
+        {
+            solvecoarse(res, x, numLevels);
+            return;
+        }
+
+        const index_t typeCycle = (hp(max(numLevels-2,0),0) == 0) ? typeCycle_p : typeCycle_h;
+
+        gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
+        presmoothing(res, x, numLevels, numSmoothing);
+        residual(fineRes, res, x, numLevels);
+        restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
+            typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeProjection, hp);
+        coarseCorr.setZero(coarseRes.rows(),1);
+        for ( index_t j = 0 ; j < typeCycle ; j++)
+        {
+            step(coarseRes, coarseCorr, numLevels-1, numSmoothing, typeSolver,
+                typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo,
+                typeLumping, typeProjection, hp);
+        }
+        prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
+            typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeProjection, hp);
+
+        const real_t alpha = 1;
+        x -= alpha * fineCorr;
+        postsmoothing(res, x, numLevels, numSmoothing, typeSolver);
+    }
+
     ///  @brief Apply p-multigrid solver to given right-hand side on level l
-    void solve(gsMatrix<T>& x, int numSmoothing, const gsMatrix<T>& f, const int& typeSolver, int& iterTot, int typeCycle_p, int typeCycle_h, int numLevels, int numCoarsening, int typeBCHandling, gsGeometry<>::Ptr geo, int typeLumping, const gsMatrix<>& hp, int typeProjection)
+    void solve(
+        const gsMatrix<T>& rhs,
+        gsMatrix<T>& x,
+        int numLevels,
+        int numSmoothing,
+        int typeSolver,
+        int typeCycle_p,
+        int typeCycle_h,
+        int numCoarsening,
+        int typeBCHandling,
+        gsGeometry<>::Ptr geo,
+        int typeLumping,
+        int typeProjection,
+        const gsMatrix<>& hp
+        )
     {
         gsStopwatch clock;
 
-
         // Determine residual and L2 error
-        real_t r0 = (m_operator[numLevels-1]*x - f).norm();
+        real_t r0 = (m_operator[numLevels-1]*x - rhs).norm();
         real_t r = r0;
         real_t tol = 1e-8;
         int iter = 1;
@@ -516,12 +372,11 @@ public:
         clock.restart();
         while( (typeSolver == 1 || typeSolver == 5) ? r/r0 > tol && iter < 100000 : iter < 2)
         {
-            // Call step from base class
-            Base::step(f, m_basis,  x, numLevels, numCoarsening, numSmoothing, typeCycle_p, typeCycle_h,
-                typeSolver, typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeLumping, typeProjection, m_prolongation_P, m_restriction_P,
-                m_prolongation_M, m_restriction_M, m_prolongation_H, m_restriction_H, hp);
+            // Call step
+            step(rhs, x, numLevels, numCoarsening, numSmoothing, typeCycle_p, typeCycle_h,
+                typeSolver, typeBCHandling, geo, typeLumping, typeProjection, hp);
 
-            r = (m_operator[numLevels-1]*x - f).norm();
+            r = (m_operator[numLevels-1]*x - rhs).norm();
             if ( r_old < r)
             {
                 gsInfo << "Residual increased during solving!!! \n";
@@ -529,7 +384,6 @@ public:
             r_old = r;
             //gsInfo << "Residual after cycle " << iter << " equals: " << r << "\n";
             iter++;
-            iterTot++;
         }
         real_t Time_Solve = clock.stop();
         gsInfo << "\n|| Solver information || \n";
@@ -539,20 +393,20 @@ public:
         if (typeSolver == 1)
         {
             // Determine residual and L2 errpr
-            gsInfo << "Residual after solving: "  << (f-m_operator[numLevels-1]*x).norm() << "\n";
+            gsInfo << "Residual after solving: "  << (rhs-m_operator[numLevels-1]*x).norm() << "\n";
         }
     }
 
 private:
 
     /// @brief Apply coarse solver
-    virtual void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels)
+    void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels)
     {
         x = m_csolver.solve(rhs);
     }
 
     /// @brief Construct prolongation operator at level numLevels
-    virtual gsMatrix<T> prolongation_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsMatrix<T> prolongation_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -577,7 +431,7 @@ private:
     }
 
     /// @brief Construct prolongation operator at level numLevels
-    virtual gsSparseMatrix<T> prolongation_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsSparseMatrix<T> prolongation_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -606,7 +460,7 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    virtual gsMatrix<T> restriction_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsMatrix<T> restriction_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -631,7 +485,7 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    virtual gsSparseMatrix<T> restriction_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsSparseMatrix<T> restriction_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -660,14 +514,14 @@ private:
         return P;
     }
 
-    /// @brief Get residual (pure virtual method)
-    virtual void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels)
+    /// @brief Get residual (pure method)
+    void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels)
     {
         res = m_operator[numLevels-1]*x - rhs;
     }
 
     /// @brief Apply fixed number of presmoothing steps
-    virtual void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing)
+    void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing)
     {
         for (index_t i = 0 ; i < numSmoothing ; i++)
         {
@@ -676,7 +530,7 @@ private:
     }
 
     /// @brief Apply fixed number of postsmoothing steps
-    virtual void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, const int& typeSolver)
+    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, const int& typeSolver)
     {
         for (index_t i = 0 ; i < numSmoothing ; i++)
         {
@@ -686,6 +540,109 @@ private:
                 m_smoother[numLevels-1]->step(rhs,x);
         }
     }
+
+
+
+    /// @brief Prolongate coarse space function to fine space
+    void prolongation(const gsMatrix<T>& Xcoarse, gsMatrix<T>& Xfine, const int& numLevels, const int& numCoarsening,
+        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling,
+        gsBoundaryConditions<T> bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection,
+        const gsMatrix<>& hp)
+    {
+        if (hp(numLevels-2,0) == 1)
+        {
+            Xfine = m_prolongation_H[numLevels-2]*Xcoarse;
+        }
+        else
+        {
+            if (typeLumping == 1)
+            {
+                gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
+                gsMatrix<> M_L_inv = (m_prolongation_M[numLevels-2]).array().inverse();
+                Xfine = (M_L_inv).cwiseProduct(temp);
+            }
+            else
+            {
+                // Define the low and high order basis
+                gsMultiBasis<> basisL = *m_basis[numLevels-2];
+                gsMultiBasis<> basisH = *m_basis[numLevels-1];
+                typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+                typedef gsExprAssembler<real_t>::variable variable;
+                typedef gsExprAssembler<real_t>::space space;
+                // Determine matrix M (high_order * high_order)
+                gsExprAssembler<real_t> ex2(1,1);
+                geometryMap G2 = ex2.getMap(mp);
+                space w_n = ex2.getSpace(basisH ,1, 0);
+                //w_n.setInterfaceCont(0);
+                if (typeBCHandling == 1)
+                {
+                    w_n.setup(bcInfo, dirichlet::interpolation, 0);
+                }
+                ex2.setIntegrationElements(basisH);
+                ex2.initSystem();
+                ex2.assemble(w_n * meas(G2) * w_n.tr());
+
+                // Prolongate Xcoarse to Xfine
+                gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
+                gsSparseMatrix<> M = ex2.matrix();
+                gsConjugateGradient<> CGSolver(M);
+                CGSolver.setTolerance(1e-12);
+                CGSolver.solve(temp,Xfine);
+            }
+        }
+    }
+
+    /// @brief Restrict fine space function to coarse space
+    void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, const int& numLevels, const int& numCoarsening,
+        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling,
+        const gsBoundaryConditions<T> & bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection,
+        const gsMatrix<>& hp)
+    {
+        if (hp(numLevels-2,0) == 1)
+        {
+            Xcoarse = m_restriction_H[numLevels-2]*Xfine;
+        }
+        else
+        {
+            if (typeLumping == 1)
+            {
+                // Standard way
+                gsVector<> temp = m_restriction_P[numLevels-2]*Xfine;
+                gsMatrix<> M_L_inv = (m_restriction_M[numLevels-2]).array().inverse();
+                Xcoarse = (M_L_inv).cwiseProduct(temp);
+            }
+            else
+            {
+                // Define the low and high order basis
+                gsMultiBasis<> basisL = *m_basis[numLevels-2];
+                gsMultiBasis<> basisH = *m_basis[numLevels-1];
+                typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+                typedef gsExprAssembler<real_t>::variable variable;
+                typedef gsExprAssembler<real_t>::space space;
+
+                // Determine matrix M (low_order * low_order)
+                gsExprAssembler<real_t> ex2(1,1);
+                geometryMap G2 = ex2.getMap(mp);
+                space w_n = ex2.getSpace(basisL ,1, 0);
+                //w_n.setInterfaceCont(0);
+                if (typeBCHandling == 1)
+                {
+                    w_n.setup(bcInfo, dirichlet::interpolation, 0);
+                }
+                ex2.setIntegrationElements(basisL);
+                ex2.initSystem();
+                ex2.assemble(w_n * meas(G2) * w_n.tr());
+
+                // Restrict Xfine to Xcoarse
+                gsMatrix<> temp = m_restriction_P[numLevels-2]*Xfine;
+                gsSparseMatrix<> M = ex2.matrix();
+                gsConjugateGradient<> CGSolver(M);
+                CGSolver.setTolerance(1e-12);
+                CGSolver.solve(temp,Xcoarse);
+            }
+        }
+    }
+
 public:
     const gsSparseMatrix<T>& matrix(index_t levels) const { return m_operator[levels]; }
     const Assembler& assembler(index_t levels) const { return m_assembler[levels]; }
@@ -895,23 +852,23 @@ int main(int argc, char* argv[])
         numLevels = numLevels - numDegree + 2;
     }
 
+    // Setup of p-mg object
     pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
     My_MG.setup(rhs_exact, numLevels, numDegree, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+
+    // Access the assembler on the finest grid
+    const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
+    gsMatrix<real_t> x = gsMatrix<>::Random(pa.matrix().rows(),1);
 
     // Apply p-Multigrid as stand-alone solver
     if (typeSolver == 1)
     {
         gsInfo << "p-multigrid is applied as stand-alone solver\n\n";
-        gsMatrix<> x = gsMatrix<>::Random(My_MG.matrix(numLevels-1).rows(),1);
-        My_MG.solve(x, numSmoothing, My_MG.assembler(numLevels-1).rhs(), typeSolver, iterTot, typeCycle_p,typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
+        My_MG.solve(pa.rhs(), x, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
         return 0;
     }
 
-    // We have already assembled
-    const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
-
     // Apply BiCGStab or CG
-    gsMatrix<real_t> x = gsMatrix<>::Random(pa.matrix().rows(),1);
     gsVector <> r = pa.rhs() - pa.matrix() * x;
     gsVector<> r0 = r;
     real_t maxIter = pa.matrix().rows();
@@ -961,14 +918,16 @@ int main(int argc, char* argv[])
 
         // Apply preconditioning by solving Ay = p
         y.setZero();
-        My_MG.solve(y, numSmoothing, p, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
+        My_MG.solve(p, y, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        ++iterTot;
         v = pa.matrix()*y;
         alp = rho/(r0.dot(v));
         s = r - alp*v;
 
         // Apply preconditioning by solving Az = s
         z.setZero();
-        My_MG.solve(z, numSmoothing, s, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
+        My_MG.solve(s, z, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        ++iterTot;
         t = pa.matrix()*z;
         if (t.dot(t) > 0)
           w = t.dot(s)/t.dot(t);
@@ -992,7 +951,8 @@ int main(int argc, char* argv[])
       // Apply preconditioner
       gsMatrix<> z1 = gsMatrix<>::Zero(pa.matrix().rows(),1);
 
-      My_MG.solve(z1, numSmoothing, r0, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo, typeLumping, hp, typeProjection);
+      My_MG.solve(r0, z1, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+      ++iterTot;
       gsVector<> z = z1;
       gsVector<> p = z;
       real_t alpha, beta;
@@ -1011,7 +971,8 @@ int main(int argc, char* argv[])
 
         // Obtain new values
         gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
-        My_MG.solve(z2, numSmoothing,r_new, typeSolver, iterTot, typeCycle_p, typeCycle_h, numLevels, numCoarsening, typeBCHandling, geo,typeLumping, hp, typeProjection);
+        My_MG.solve(r_new, z2, numLevels, numSmoothing, typeSolver, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        ++iterTot;
         gsVector<> z3 = z2;
 
         // Determine beta
