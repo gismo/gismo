@@ -301,7 +301,7 @@ public:
     void step(
         const gsMatrix<T> & res,
         gsMatrix<T>& x,
-        int numLevels,
+        int level,
         int numSmoothing,
         int typeSolver,
         int typeCycle_p,
@@ -314,39 +314,39 @@ public:
         const gsMatrix<>& hp
         )
     {
-        if ( numLevels == 1)
+        if ( level == 1)
         {
-            solvecoarse(res, x, numLevels);
+            solvecoarse(res, x);
             return;
         }
 
-        const index_t typeCycle = (hp(max(numLevels-2,0),0) == 0) ? typeCycle_p : typeCycle_h;
+        const index_t typeCycle = (hp(max(level-2,0),0) == 0) ? typeCycle_p : typeCycle_h;
 
         gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
-        presmoothing(res, x, numLevels, numSmoothing);
-        residual(fineRes, res, x, numLevels);
-        restriction(fineRes, coarseRes, numLevels, numCoarsening, m_basis, typeLumping,
+        presmoothing(res, x, level, numSmoothing);
+        residual(fineRes, res, x, level);
+        restriction(fineRes, coarseRes, level, numCoarsening, m_basis, typeLumping,
             typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeProjection, hp);
         coarseCorr.setZero(coarseRes.rows(),1);
         for ( index_t j = 0 ; j < typeCycle ; j++)
         {
-            step(coarseRes, coarseCorr, numLevels-1, numSmoothing, typeSolver,
+            step(coarseRes, coarseCorr, level-1, numSmoothing, typeSolver,
                 typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo,
                 typeLumping, typeProjection, hp);
         }
-        prolongation(coarseCorr, fineCorr, numLevels, numCoarsening, m_basis, typeLumping,
+        prolongation(coarseCorr, fineCorr, level, numCoarsening, m_basis, typeLumping,
             typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeProjection, hp);
 
         const real_t alpha = 1;
         x -= alpha * fineCorr;
-        postsmoothing(res, x, numLevels, numSmoothing, typeSolver);
+        postsmoothing(res, x, level, numSmoothing, typeSolver);
     }
 
     ///  @brief Apply p-multigrid solver to given right-hand side on level l
     void solve(
         const gsMatrix<T>& rhs,
         gsMatrix<T>& x,
-        int numLevels,
+        int level,
         int numSmoothing,
         int typeSolver,
         int typeCycle_p,
@@ -362,7 +362,7 @@ public:
         gsStopwatch clock;
 
         // Determine residual and L2 error
-        real_t r0 = (m_operator[numLevels-1]*x - rhs).norm();
+        real_t r0 = (m_operator[level-1]*x - rhs).norm();
         real_t r = r0;
         real_t tol = 1e-8;
         int iter = 1;
@@ -370,13 +370,13 @@ public:
         // Solve with p-multigrid method
         real_t r_old = r0;
         clock.restart();
-        while( (typeSolver == 1 || typeSolver == 5) ? r/r0 > tol && iter < 100000 : iter < 2)
+        while ( (typeSolver == 1) ? r/r0 > tol && iter < 100000 : iter < 2)
         {
             // Call step
-            step(rhs, x, numLevels, numCoarsening, numSmoothing, typeCycle_p, typeCycle_h,
+            step(rhs, x, level, numCoarsening, numSmoothing, typeCycle_p, typeCycle_h,
                 typeSolver, typeBCHandling, geo, typeLumping, typeProjection, hp);
 
-            r = (m_operator[numLevels-1]*x - rhs).norm();
+            r = (m_operator[level-1]*x - rhs).norm();
             if ( r_old < r)
             {
                 gsInfo << "Residual increased during solving!!! \n";
@@ -393,20 +393,20 @@ public:
         if (typeSolver == 1)
         {
             // Determine residual and L2 errpr
-            gsInfo << "Residual after solving: "  << (rhs-m_operator[numLevels-1]*x).norm() << "\n";
+            gsInfo << "Residual after solving: "  << (rhs-m_operator[level-1]*x).norm() << "\n";
         }
     }
 
 private:
 
     /// @brief Apply coarse solver
-    void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels)
+    void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x)
     {
         x = m_csolver.solve(rhs);
     }
 
     /// @brief Construct prolongation operator at level numLevels
-    gsMatrix<T> prolongation_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsMatrix<T> prolongation_M(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -431,7 +431,7 @@ private:
     }
 
     /// @brief Construct prolongation operator at level numLevels
-    gsSparseMatrix<T> prolongation_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsSparseMatrix<T> prolongation_P(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -460,7 +460,7 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    gsMatrix<T> restriction_M(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsMatrix<T> restriction_M(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -485,7 +485,7 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    gsSparseMatrix<T> restriction_P(const int& numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling, gsGeometry<>::Ptr geo, const int& typeProjection)
+    gsSparseMatrix<T> restriction_P(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
     {
         // Define the low and high order basis
         gsMultiBasis<> basisL = *m_basis[numLevels-2];
@@ -515,13 +515,13 @@ private:
     }
 
     /// @brief Get residual (pure method)
-    void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, const int& numLevels)
+    void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, int numLevels)
     {
         res = m_operator[numLevels-1]*x - rhs;
     }
 
     /// @brief Apply fixed number of presmoothing steps
-    void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing)
+    void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, int numLevels, int numSmoothing)
     {
         for (index_t i = 0 ; i < numSmoothing ; i++)
         {
@@ -530,7 +530,7 @@ private:
     }
 
     /// @brief Apply fixed number of postsmoothing steps
-    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, const int& numLevels, const int& numSmoothing, const int& typeSolver)
+    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, int numLevels, int numSmoothing, int typeSolver)
     {
         for (index_t i = 0 ; i < numSmoothing ; i++)
         {
@@ -544,9 +544,9 @@ private:
 
 
     /// @brief Prolongate coarse space function to fine space
-    void prolongation(const gsMatrix<T>& Xcoarse, gsMatrix<T>& Xfine, const int& numLevels, const int& numCoarsening,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling,
-        gsBoundaryConditions<T> bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection,
+    void prolongation(const gsMatrix<T>& Xcoarse, gsMatrix<T>& Xfine, int numLevels, int numCoarsening,
+        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling,
+        gsBoundaryConditions<T> bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, int typeProjection,
         const gsMatrix<>& hp)
     {
         if (hp(numLevels-2,0) == 1)
@@ -593,9 +593,9 @@ private:
     }
 
     /// @brief Restrict fine space function to coarse space
-    void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, const int& numLevels, const int& numCoarsening,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, const int& typeLumping, const int& typeBCHandling,
-        const gsBoundaryConditions<T> & bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, const int& typeProjection,
+    void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, int numLevels, int numCoarsening,
+        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling,
+        const gsBoundaryConditions<T> & bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, int typeProjection,
         const gsMatrix<>& hp)
     {
         if (hp(numLevels-2,0) == 1)
@@ -674,7 +674,7 @@ int main(int argc, char* argv[])
     cmd.addInt("r", "Refinement", "Number of global refinements", numRefine);
     cmd.addInt("v", "Smoothing", "Number of pre/post smoothing steps", numSmoothing);
     cmd.addInt("l", "Levels", "Number of levels in multigrid method", numLevels);
-    cmd.addInt("b", "Benchmark", "Number of the benchmark",numBenchmark);
+    cmd.addInt("b", "Benchmark", "Number of the benchmark", numBenchmark);
     cmd.addInt("P", "Patches", "Number of patch splittings (1) no splitting, (2) split each patch into 2^d patches, (3) split each patch into 4^d patches, etc.", numPatches);
     cmd.addInt("s", "Solver", "Type of solver: (1) mg as stand-alone solver (2) BiCGStab prec. with mg (3) CG prec. with mg", typeSolver);
     cmd.addInt("m", "Cycle_p", "Type of cycle, eather V-cycle (1) or W-cycle (2)", typeCycle_p);
@@ -689,7 +689,41 @@ int main(int argc, char* argv[])
     // Read parameters from command line
     try { cmd.getValues(argc,argv);  } catch (int rv) { return rv; }
 
-    GISMO_ENSURE(typeSmoother >= 1&&typeSmoother <= 4, "Unknown smoother chosen.");
+    if (typeSolver < 1 || typeSolver > 3)
+    {
+        gsInfo << "Unknown solver chosen.";
+        return -1;
+    }
+
+    if (typeBCHandling < 1 || typeBCHandling > 2)
+    {
+        gsInfo << "Unknown boundary condition handling type chosen.";
+        return -1;
+    }
+
+    if (typeLumping < 1 || typeLumping > 2)
+    {
+        gsInfo << "Unknown lumping type chosen.";
+        return -1;
+    }
+
+    if (typeProjection < 1 || typeProjection > 2)
+    {
+        gsInfo << "Unknown projection type chosen.";
+        return -1;
+    }
+
+    if (typeSmoother < 1 || typeSmoother > 4)
+    {
+        gsInfo << "Unknown smoother chosen.";
+        return -1;
+    }
+
+    if (typeCoarseOperator < 1 || typeCoarseOperator > 4)
+    {
+        gsInfo << "Unknown smoother chosen.";
+        return -1;
+    }
 
     // Initialize solution, rhs and geometry
     gsFunctionExpr<> sol_exact, rhs_exact, coeff_diff, coeff_conv, coeff_reac;
@@ -758,7 +792,7 @@ int main(int argc, char* argv[])
             break;
 
         default:
-            gsInfo << "Unknown benchmark case.\n";
+            gsInfo << "Unknown benchmark case chosen.\n";
             return -1;
     }
 
@@ -895,7 +929,7 @@ int main(int argc, char* argv[])
       index_t restarts = 0;
 
       // Perform BiCGStab
-      while(r.norm()/r0.norm() > tol && i < maxIter)
+      while (r.norm()/r0.norm() > tol && i < maxIter)
       {
         real_t rho_old = rho;
         rho = r0.dot(r);
@@ -958,7 +992,7 @@ int main(int argc, char* argv[])
       real_t alpha, beta;
       gsMatrix<> z2 = gsMatrix<>::Zero(pa.matrix().rows(),1);
 
-      while(r.norm()/r0.norm() >  tol && i < maxIter)
+      while (r.norm()/r0.norm() >  tol && i < maxIter)
       {
         // Determine alpha
         alpha = r.transpose()*z;
