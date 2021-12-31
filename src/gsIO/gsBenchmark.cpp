@@ -50,7 +50,7 @@ namespace gismo
        << "xticklabels={";
 
     for (auto rit=results.cbegin(); rit!=results.cend(); ++rit)
-      os << (*rit)->get_title() << (rit!=results.cend()-1 ? "," : "");
+      os << (*rit)->get_descr() << (rit!=results.cend()-1 ? "," : "");
 
     os << "},\n"
        << "xtick=data,\n";
@@ -110,7 +110,7 @@ namespace gismo
       }
     }
 
-    os << "title={" << title
+    os << "title={" << descr
        << " [real\\_t:" << util::type<real_t>::name()
            << ", index\\_t:" << util::type<index_t>::name()
            << ", short\\_t:" << util::type<short_t>::name()<< "]},\n"
@@ -206,7 +206,7 @@ namespace gismo
 
   std::ostream &gsBenchmarkResultSet::print(std::ostream &os) const
   {
-    os << "... " << std::setw(6) << title << " : ";
+    os << std::setw(8) << descr << " | ";
     for (auto it=results.cbegin(); it!=results.cend(); ++it)
       os << std::setw(4) << it->threads << " : "
          << std::setw(6) << std::scientific << std::setprecision(2) << it->value;
@@ -216,10 +216,66 @@ namespace gismo
 
   std::ostream &gsBenchmarkSet::print(std::ostream &os) const
   {
-    os << "=== " << title << "\n"
-       << std::setw(10) << "size"
-       << std::setw(7)  << "omp"
-       << std::setw(12) << "bw\n";
+    os << "[" << label << "] " << descr << "\n"
+       << std::setw(8) << "memsize"
+       << " | "
+       << util::to_string(results.front()->get().size())
+       << "x (#Threads : ";
+
+    if (results.front()->get().cbegin()->metric & gismo::metric::speedup) {
+      switch(results.front()->get().cbegin()->metric & ~gismo::metric::speedup) {
+      case gismo::metric::bandwidth_kb_sec:
+      case gismo::metric::bandwidth_mb_sec:
+      case gismo::metric::bandwidth_gb_sec:
+      case gismo::metric::bandwidth_tb_sec:
+        os << "Bandwidth [speedup])\n";
+        break;
+      case gismo::metric::perf_kflop_sec:
+      case gismo::metric::perf_mflop_sec:
+      case gismo::metric::perf_gflop_sec:
+      case gismo::metric::perf_tflop_sec:
+        os << "Performance [speedup])\n";
+        break;
+      case gismo::metric::runtime_sec:
+        os << "Runtime [speedup])\n";
+        break;
+      default:
+        GISMO_ERROR("Unsupported metric");
+      }
+    } else {
+      switch(results.front()->get().cbegin()->metric & ~gismo::metric::speedup) {
+      case gismo::metric::bandwidth_kb_sec:
+        os << "Bandwidth in KB/s)\n";
+        break;
+      case gismo::metric::bandwidth_mb_sec:
+        os << "Bandwidth in MB/s)\n";
+        break;
+      case gismo::metric::bandwidth_gb_sec:
+        os << "Bandwidth in GB/s)\n";
+        break;
+      case gismo::metric::bandwidth_tb_sec:
+        os << "Bandwidth in TB/s)\n";
+        break;
+      case gismo::metric::perf_kflop_sec:
+        os << "Performance in kFLOP/s)\n";
+        break;
+      case gismo::metric::perf_mflop_sec:
+        os << "Performance in mFLOP/s)\n";
+        break;
+      case gismo::metric::perf_gflop_sec:
+        os << "Performance in gFLOP/s)\n";
+        break;
+      case gismo::metric::perf_tflop_sec:
+        os << "Performance in tFLOP/s)\n";
+        break;
+      case gismo::metric::runtime_sec:
+        os << "Runtime in seconds)\n";
+        break;
+      default:
+        GISMO_ERROR("Unsupported metric");
+      }
+    }
+    
     for (auto it=results.cbegin(); it!=results.cend(); ++it)
       (*it)->print(os);
     return os;
