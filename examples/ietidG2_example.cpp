@@ -529,8 +529,6 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     if ( ! gsFileManager::fileExists(geometry) )
     {
         gsInfo << "Geometry file could not be found.\n";
@@ -538,7 +536,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run ieti_example with options:\n" << opt << std::endl;
+    gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
 
     /******************* Define geometry ********************/
 
@@ -1004,7 +1002,7 @@ int main(int argc, char *argv[])
     // This is the main cg iteration
     //! [Solve]
     gsMinimalResidual<>( ieti.saddlePointProblem(), bdPrec )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( ieti.rhsForSaddlePoint(), x, errorHistory );
     //! [Solve]
     //gsInfo << "solution: \n"<<lambda.transpose()<<"\n";
@@ -1038,7 +1036,7 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(opt);
+        fd.add(cmd);
         fd.add(uVec);
         gsMatrix<> mat; ieti.saddlePointProblem()->toMatrix(mat); fd.add(mat);
         fd.addComment(std::string("ietidG_example   Timestamp:")+std::ctime(&time));
