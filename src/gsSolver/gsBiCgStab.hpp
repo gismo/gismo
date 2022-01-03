@@ -48,7 +48,7 @@ bool gsBiCgStab<T>::step( typename gsBiCgStab<T>::VectorType& x )
     T rho_old = m_rho;
     m_rho = m_r0.col(0).dot(m_res.col(0));
 
-    if (abs(m_rho) < 1e-32 * m_r0.col(0).dot(m_r0.col(0)) ) // TODO
+    if (abs(m_rho) < m_restartThereshold * m_r0.col(0).dot(m_r0.col(0)) )
     {
         gsInfo << "Residual too orthogonal, restart with new r0 \n";
         m_r0 = m_res;
