@@ -31,8 +31,11 @@ int main(int argc, char *argv[])
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
+    std::string heterogeneousProblem("");
+    real_t heterogeneousCoef = 0;
     std::string boundaryConditions("d");
     std::string primals("c");
+    std::string scaling("mult");
     bool eliminateCorners = false;
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
@@ -46,8 +49,11 @@ int main(int argc, char *argv[])
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addString("",  "HeterogeneousProblem",   "Consider a heterogeneous problem (a: checkerboard, b: modify only patch #0)", heterogeneousProblem);
+    cmd.addReal  ("",  "HeterogeneousCoef",      "Coefficient to be considered for heterogeneous problem", heterogeneousCoef);
     cmd.addString("b", "BoundaryConditions",    "Boundary conditions", boundaryConditions);
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
+    cmd.addString("",  "Scaling",               "Choosen scaling (mult=multiplicity scaling, deluxe=deluxe scaling)", scaling);
     cmd.addSwitch("e", "EliminateCorners",      "Eliminate corners (if they are primals)", eliminateCorners);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
@@ -149,6 +155,55 @@ int main(int argc, char *argv[])
         gsInfo << "done. "<<i<<" boundary conditions set.\n";
     }
 
+    const index_t nPatches = mp.nPatches();
+
+    /***************** Setup of coefficients ****************/
+    gsVector<real_t> coef(nPatches);
+    coef.setOnes();
+    if (heterogeneousProblem == "a")
+    {
+        if (heterogeneousCoef <= 0)
+        {
+            gsInfo << "Set --HeterogeneousCoef to a non-negative value.\n";
+            return EXIT_FAILURE;
+        }
+        for( bool allCorrect = false; !allCorrect; )
+        {
+            allCorrect = true;
+            for (gsMultiPatch<>::iiterator it = mp.iBegin(); it<mp.iEnd(); ++it)
+            {
+                const index_t first  = it->first().patch;
+                const index_t second = it->second().patch;
+                if      (coef[first]  == 1  )               coef[second] = heterogeneousCoef;
+                else if (coef[first]  == heterogeneousCoef) coef[second] = 1;
+                else if (coef[second] == 1  )               coef[first]  = heterogeneousCoef;
+                else if (coef[second] == heterogeneousCoef) coef[first]  = 1;
+                else    allCorrect = false;
+            }
+        }
+    }
+    else if (heterogeneousProblem == "b")
+    {
+        if (heterogeneousCoef <= 0)
+        {
+            gsInfo << "Set --HeterogeneousCoef to a non-negative value.\n";
+            return EXIT_FAILURE;
+        }
+        coef[0] = heterogeneousCoef;
+    }
+    else if (heterogeneousProblem.empty())
+    {
+        if (heterogeneousCoef != 0)
+        {
+            gsInfo << "Option --HeterogeneousCoef has no effect if --HeterogeneousProblem is not set.\n";
+            return EXIT_FAILURE;
+        }
+    }
+    else
+    {
+        gsInfo << "Option --HeterogeneousProblem has invalid value; allowed are only a and b.\n";
+        return EXIT_FAILURE;
+    }
 
     /************ Setup bases and adjust degree *************/
 
@@ -171,8 +226,6 @@ int main(int argc, char *argv[])
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
-
-    const index_t nPatches = mp.nPatches();
 
     //! [Define Ieti Mapper]
     gsIetiMapper<> ietiMapper;
@@ -287,7 +340,7 @@ int main(int argc, char *argv[])
         assembler.initSystem();
 
         // Compute the system matrix and right-hand side
-        assembler.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
+        assembler.assemble( coef[k] * igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
 
         // Add contributions from Neumann conditions to right-hand side
         variable g_N = assembler.getBdrFunction();
@@ -363,7 +416,15 @@ int main(int argc, char *argv[])
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
-    prec.setupMultiplicityScaling();
+    if(scaling == "mult")
+        prec.setupMultiplicityScaling();
+    else if(scaling == "deluxe")
+        prec.setupDeluxeScaling(mp.interfaces());
+    else
+    {
+        gsInfo << "Unknown scaling choice!";
+        return EXIT_FAILURE;
+    }
     //! [Setup scaling]
 
     gsInfo << "done.\n    Setup rhs... " << std::flush;
