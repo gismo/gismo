@@ -55,7 +55,7 @@ private:
     std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis;
 
     /// Vector of prolongation operators
-    std::vector< gsSparseMatrix<T> > m_prolongation_P;
+    std::vector< gsSparseMatrix<T,RowMajor> > m_prolongation_P;
 
     /// Vector of restriction operators
     std::vector< gsSparseMatrix<T> > m_restriction_P;
@@ -67,7 +67,7 @@ private:
     std::vector< gsMatrix<T> > m_restriction_M;
 
     /// Vector of prolongation operators
-    std::vector< gsSparseMatrix<T> > m_prolongation_H;
+    std::vector< gsSparseMatrix<T,RowMajor> > m_prolongation_H;
 
     /// Vector of restriction operators
     std::vector< gsSparseMatrix<T> > m_restriction_H;
@@ -167,9 +167,11 @@ public:
         }
         real_t Time_Assembly = clock.stop();
 
-        // Determine prolongation/restriction operators in p
+        // Determine prolongation/restriction operators
         clock.restart();
-        for (int i = 1; i < numLevels; i++)
+        gsOptionList options;
+        options.addInt("DirichletStrategy","",typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche);
+        for (index_t i = 1; i < numLevels; i++)
         {
             if (hp(i-1,0) == 0)
             {
@@ -178,19 +180,10 @@ public:
                 m_prolongation_M[i-1] =  prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
                 m_restriction_M[i-1] = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
             }
-        }
-
-        // Determine prolongation/restriction operators in h
-        gsSparseMatrix<real_t, RowMajor> transferMatrix;
-        gsOptionList options;
-        typeBCHandling == 1 ? options.addInt("DirichletStrategy","",dirichlet::elimination) : options.addInt("DirichletStrategy","",dirichlet::nitsche);
-        for (int i = 1; i < numLevels; i++)
-        {
-            if (hp(i-1,0) == 1)
+            else if (hp(i-1,0) == 1)
             {
-                gsMultiBasis<T> m_basis_copy = *m_basis[i];
-                m_basis_copy.uniformCoarsen_withTransfer(transferMatrix,*m_bcInfo_ptr,options);
-                m_prolongation_H[i-1] = transferMatrix;
+                gsMultiBasis<T> basis_copy = *m_basis[i];
+                basis_copy.uniformCoarsen_withTransfer(m_prolongation_H[i-1],*m_bcInfo_ptr,options);
                 m_restriction_H[i-1] = m_prolongation_H[i-1].transpose();
             }
         }
