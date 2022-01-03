@@ -898,75 +898,38 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    // Perform BiCGStab
-    if (typeSolver == 2)
-    {
+  // Perform BiCGStab
+  if (typeSolver == 2)
+  {
       gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
-      // Apply BiCGStab or CG
-      gsVector <> r = pa.rhs() - pa.matrix() * x;
-      gsVector<> r0 = r;
+      gsStopwatch clock;
+
       real_t maxIter = pa.matrix().rows();
       real_t tol = 1e-8;
-      index_t i = 1;
 
-      real_t oldResNorm = r0.norm();
-      gsStopwatch clock;
-      // Define vectors needed in BiCGStab
-      gsVector<> t = gsVector<>::Zero(pa.matrix().rows());
-      gsVector<> s = gsVector<>::Zero(pa.matrix().rows());
-      gsVector<> p = gsVector<>::Zero(pa.matrix().rows());
-      gsVector<> v = gsVector<>::Zero(pa.matrix().rows());
-      gsMatrix<> y = gsMatrix<>::Zero(pa.matrix().rows(),1);
-      gsMatrix<> z = gsMatrix<>::Zero(pa.matrix().rows(),1);
-      real_t alp = 1; real_t rho = 1; real_t w = 1;
-
-      // Set residual norm and #restarts
-      real_t r0_sqnorm = r0.dot(r0);
-      index_t restarts = 0;
-
-      // Perform BiCGStab
-      while (r.norm()/r0.norm() > tol && i < maxIter)
-      {
-        real_t rho_old = rho;
-        rho = r0.dot(r);
-        if (abs(rho) < 1e-32*r0_sqnorm)
+      gsBiCgStab<> solver(pa.matrix(), makeLinearOp(
+        [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
         {
-              gsInfo << "Residual too orthogonal, restart with new r0 \n";
-              r = pa.rhs() - pa.matrix()*x;
-              r0 = r;
-              rho = r0_sqnorm = r.dot(r);
-        }
-        real_t beta = (rho/rho_old)*(alp/w);
-        p = r + beta*(p - w*v);
+            x = gsMatrix<>::Zero(pa.matrix().rows(),1);
+            My_MG.step(rhs, x, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+        }, pa.matrix().rows(), pa.matrix().cols()
+      ));
 
-        // Apply preconditioning by solving Ay = p
-        y.setZero();
-        My_MG.step(p, y, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        v = pa.matrix()*y;
-        alp = rho/(r0.dot(v));
-        s = r - alp*v;
-
-        // Apply preconditioning by solving Az = s
-        z.setZero();
-        My_MG.step(s, z, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        t = pa.matrix()*z;
-        if (t.dot(t) > 0)
-          w = t.dot(s)/t.dot(t);
-        else
-          w = 0;
-        x= x + alp*y + w*z;
-        r = s - w*t;
-
-        // Print information about residual and L2 error
-        gsInfo << "BiCGStab iteration: " << i << "      |   Residual norm: "   << std::left << std::setw(15) << r.norm()
-               << "           reduction:  1 / " << std::setprecision(3) << (oldResNorm/r.norm()) <<        std::setprecision  (6) << "\n";
-        oldResNorm = r.norm();
-
-        ++i;
-      }
+      // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
+      solver.setTolerance(tol*(pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm());
+      solver.setMaxIterations(maxIter);
+      gsMatrix<> error_history;
+      solver.solveDetailed( pa.rhs(), x, error_history );
       real_t Time_Solve = clock.stop();
+
+      for (index_t i=1; i<error_history.rows(); ++i)
+      {
+          gsInfo << "BiCGStab iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history(i,0)*pa.rhs().norm()
+                 << "            reduction:  1 / " << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
+                 <<  std::setprecision (6) << "\n";
+      }
       gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
-      gsInfo << "Solver converged in " << i-1 << " iterations!\n";
+      gsInfo << "Solver converged in " << solver.iterations() << " iterations!\n";
       // Determine residual and l2 error
       gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
   }
@@ -978,7 +941,7 @@ int main(int argc, char* argv[])
       real_t maxIter = pa.matrix().rows();
       real_t tol = 1e-8;
 
-      gsConjugateGradient<> cg(pa.matrix(), makeLinearOp(
+      gsConjugateGradient<> solver(pa.matrix(), makeLinearOp(
         [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
         {
             x = gsMatrix<>::Zero(pa.matrix().rows(),1);
@@ -987,20 +950,20 @@ int main(int argc, char* argv[])
       ));
 
       // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
-      cg.setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm() );
-      cg.setMaxIterations(maxIter);
+      solver.setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm() );
+      solver.setMaxIterations(maxIter);
       gsMatrix<> error_history;
-      cg.solveDetailed( pa.rhs(), x, error_history );
+      solver.solveDetailed( pa.rhs(), x, error_history );
       real_t Time_Solve = clock.stop();
 
       for (index_t i=1; i<error_history.rows(); ++i)
       {
-          gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history[i]
-                 << "            reduction:  1 / " << std::setprecision(3) << (error_history[i-1]/error_history[i])
+          gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history(i,0)*pa.rhs().norm()
+                 << "            reduction:  1 / " << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
                  <<  std::setprecision (6) << "\n";
       }
       gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
-      gsInfo << "Solver converged in " << cg.iterations() << " iterations!\n";
+      gsInfo << "Solver converged in " << solver.iterations() << " iterations!\n";
       // Determine residual and l2 error
       gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
   }
