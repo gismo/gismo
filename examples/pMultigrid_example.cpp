@@ -67,6 +67,12 @@ private:
     std::vector< gsMatrix<T> > m_restriction_M;
 
     /// Vector of prolongation operators
+    std::vector< gsSparseMatrix<T> > m_prolongation_M2;
+
+    /// Vector of restriction operators
+    std::vector< gsSparseMatrix<T> > m_restriction_M2;
+
+    /// Vector of prolongation operators
     std::vector< gsSparseMatrix<T,RowMajor> > m_prolongation_H;
 
     /// Vector of restriction operators
@@ -137,9 +143,11 @@ public:
         m_operator.resize(numLevels);
         m_prolongation_P.resize(numLevels-1);
         m_prolongation_M.resize(numLevels-1);
+        m_prolongation_M2.resize(numLevels-1);
         m_prolongation_H.resize(numLevels-1);
         m_restriction_P.resize(numLevels-1);
         m_restriction_M.resize(numLevels-1);
+        m_restriction_M2.resize(numLevels-1);
         m_restriction_H.resize(numLevels-1);
 
         // Assemble operators at finest level
@@ -177,8 +185,16 @@ public:
             {
                 m_prolongation_P[i-1] =  prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
                 m_restriction_P[i-1] =  m_prolongation_P[i-1].transpose(); //restriction_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-                m_prolongation_M[i-1] =  prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-                m_restriction_M[i-1] = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                if (typeLumping == 1)
+                {
+                    m_prolongation_M[i-1] =  prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    m_restriction_M[i-1] = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                }
+                else
+                {
+                    m_prolongation_M2[i-1] = prolongation_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    m_restriction_M2[i-1] = restriction_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                }
             }
             else if (hp(i-1,0) == 1)
             {
@@ -368,6 +384,31 @@ private:
         return ex2.rhs();
     }
 
+    gsSparseMatrix<T> prolongation_M2(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    {
+        // Define the low and high order basis
+        gsMultiBasis<> basisL = *m_basis[numLevels-2];
+        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+        typedef gsExprAssembler<real_t>::variable variable;
+        typedef gsExprAssembler<real_t>::space space;
+        // Determine matrix M (high_order * high_order)
+        gsExprAssembler<real_t> ex2(1,1);
+        geometryMap G2 = ex2.getMap(*m_mp_ptr);
+        space w_n = ex2.getSpace(basisH ,1, 0);
+        //w_n.setInterfaceCont(0);
+        if (typeBCHandling == 1)
+        {
+            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+        }
+        ex2.setIntegrationElements(basisH);
+        ex2.initSystem();
+        ex2.assemble(w_n * meas(G2) * w_n.tr());
+
+        // Prolongate Xcoarse to Xfine
+        return ex2.matrix();
+    }
+
     /// @brief Construct prolongation operator at level numLevels
     gsSparseMatrix<T> prolongation_P(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
     {
@@ -383,7 +424,7 @@ private:
         typedef gsExprAssembler<real_t>::space    space;
         space v_n = ex.getSpace(basisH ,1, 0);
         //v_n.setInterfaceCont(0);
-        space u_n = ex.getTestSpace(v_n , basisL);
+        space u_n = ex.getTestSpace(v_n, basisL);
         //u_n.setInterfaceCont(0);
         if (typeBCHandling == 1)
         {
@@ -420,6 +461,32 @@ private:
         ex2.initSystem();
         ex2.assemble(w_n * meas(G2) );
         return ex2.rhs();
+    }
+
+    /// @brief Construct restriction operator at level numLevels
+    gsSparseMatrix<T> restriction_M2(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    {
+        // Define the low and high order basis
+        gsMultiBasis<> basisL = *m_basis[numLevels-2];
+        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+        typedef gsExprAssembler<real_t>::variable variable;
+        typedef gsExprAssembler<real_t>::space space;
+
+        // Determine matrix M (low_order * low_order)
+        gsExprAssembler<real_t> ex2(1,1);
+        geometryMap G2 = ex2.getMap(*m_mp_ptr);
+        space w_n = ex2.getSpace(basisL ,1, 0);
+        //w_n.setInterfaceCont(0);
+        if (typeBCHandling == 1)
+        {
+            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+        }
+        ex2.setIntegrationElements(basisL);
+        ex2.initSystem();
+        ex2.assemble(w_n * meas(G2) * w_n.tr());
+
+        return ex2.matrix();
     }
 
     /// @brief Construct restriction operator at level numLevels
@@ -501,29 +568,8 @@ private:
             }
             else
             {
-                // Define the low and high order basis
-                gsMultiBasis<> basisL = *m_basis[numLevels-2];
-                gsMultiBasis<> basisH = *m_basis[numLevels-1];
-                typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-                typedef gsExprAssembler<real_t>::variable variable;
-                typedef gsExprAssembler<real_t>::space space;
-                // Determine matrix M (high_order * high_order)
-                gsExprAssembler<real_t> ex2(1,1);
-                geometryMap G2 = ex2.getMap(mp);
-                space w_n = ex2.getSpace(basisH ,1, 0);
-                //w_n.setInterfaceCont(0);
-                if (typeBCHandling == 1)
-                {
-                    w_n.setup(bcInfo, dirichlet::interpolation, 0);
-                }
-                ex2.setIntegrationElements(basisH);
-                ex2.initSystem();
-                ex2.assemble(w_n * meas(G2) * w_n.tr());
-
-                // Prolongate Xcoarse to Xfine
                 gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
-                gsSparseMatrix<> M = ex2.matrix();
-                gsConjugateGradient<> CGSolver(M);
+                gsConjugateGradient<> CGSolver(m_prolongation_M2[numLevels-2]);
                 CGSolver.setTolerance(1e-12);
                 CGSolver.solve(temp,Xfine);
             }
@@ -544,37 +590,16 @@ private:
         {
             if (typeLumping == 1)
             {
-                // Standard way
+                // Lumped way
                 gsVector<> temp = m_restriction_P[numLevels-2]*Xfine;
                 gsMatrix<> M_L_inv = (m_restriction_M[numLevels-2]).array().inverse();
                 Xcoarse = (M_L_inv).cwiseProduct(temp);
             }
             else
             {
-                // Define the low and high order basis
-                gsMultiBasis<> basisL = *m_basis[numLevels-2];
-                gsMultiBasis<> basisH = *m_basis[numLevels-1];
-                typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-                typedef gsExprAssembler<real_t>::variable variable;
-                typedef gsExprAssembler<real_t>::space space;
-
-                // Determine matrix M (low_order * low_order)
-                gsExprAssembler<real_t> ex2(1,1);
-                geometryMap G2 = ex2.getMap(mp);
-                space w_n = ex2.getSpace(basisL ,1, 0);
-                //w_n.setInterfaceCont(0);
-                if (typeBCHandling == 1)
-                {
-                    w_n.setup(bcInfo, dirichlet::interpolation, 0);
-                }
-                ex2.setIntegrationElements(basisL);
-                ex2.initSystem();
-                ex2.assemble(w_n * meas(G2) * w_n.tr());
-
-                // Restrict Xfine to Xcoarse
+                // Exact way
                 gsMatrix<> temp = m_restriction_P[numLevels-2]*Xfine;
-                gsSparseMatrix<> M = ex2.matrix();
-                gsConjugateGradient<> CGSolver(M);
+                gsConjugateGradient<> CGSolver(m_restriction_M2[numLevels-2]);
                 CGSolver.setTolerance(1e-12);
                 CGSolver.solve(temp,Xcoarse);
             }
