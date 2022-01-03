@@ -342,58 +342,6 @@ public:
         postsmoothing(res, x, level, numSmoothing, symmetricSmoothing);
     }
 
-    ///  @brief Apply p-multigrid solver to given right-hand side on level l
-    void solve(
-        const gsMatrix<T>& rhs,
-        gsMatrix<T>& x,
-        int level,
-        int numSmoothing,
-        bool symmetricSmoothing,
-        int typeCycle_p,
-        int typeCycle_h,
-        int numCoarsening,
-        int typeBCHandling,
-        gsGeometry<>::Ptr geo,
-        int typeLumping,
-        int typeProjection,
-        const gsMatrix<>& hp
-        )
-    {
-        gsStopwatch clock;
-
-        // Determine residual and L2 error
-        real_t r0 = (m_operator[level-1]*x - rhs).norm();
-        real_t r = r0;
-        real_t tol = 1e-8;
-        int iter = 1;
-
-        // Solve with p-multigrid method
-        real_t r_old = r0;
-        clock.restart();
-        while ( r/r0 > tol && iter < 100000 )
-        {
-            // Call step
-            step(rhs, x, level, numSmoothing, symmetricSmoothing, typeCycle_p, typeCycle_h,
-                numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-
-            r = (m_operator[level-1]*x - rhs).norm();
-            if ( r_old < r)
-            {
-                gsInfo << "Residual increased during solving!!! \n";
-            }
-            gsInfo << "pMultigrid iteration: " << iter << "      |   Residual norm: "   << std::left << std::setw(15) << r
-                    << "           reduction:  1 / " << std::setprecision(3) << (r_old/r) <<        std::setprecision  (6) << "\n";
-            r_old = r;
-            iter++;
-        }
-        real_t Time_Solve = clock.stop();
-        gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
-        gsInfo << "Solver converged in " << iter-1 << " iterations!\n";
-
-        // Determine residual and l2 error
-        gsInfo << "Residual after solving: "  << (rhs-m_operator[level-1]*x).norm() << "\n";
-    }
-
 private:
 
     /// @brief Apply coarse solver
@@ -688,37 +636,37 @@ int main(int argc, char* argv[])
 
     if (typeSolver < 1 || typeSolver > 3)
     {
-        gsInfo << "Unknown solver chosen.";
+        gsInfo << "Unknown solver chosen.\n";
         return -1;
     }
 
     if (typeBCHandling < 1 || typeBCHandling > 2)
     {
-        gsInfo << "Unknown boundary condition handling type chosen.";
+        gsInfo << "Unknown boundary condition handling type chosen.\n";
         return -1;
     }
 
     if (typeLumping < 1 || typeLumping > 2)
     {
-        gsInfo << "Unknown lumping type chosen.";
+        gsInfo << "Unknown lumping type chosen.\n";
         return -1;
     }
 
     if (typeProjection < 1 || typeProjection > 2)
     {
-        gsInfo << "Unknown projection type chosen.";
+        gsInfo << "Unknown projection type chosen.\n";
         return -1;
     }
 
     if (typeSmoother < 1 || typeSmoother > 4)
     {
-        gsInfo << "Unknown smoother chosen.";
+        gsInfo << "Unknown smoother chosen.\n";
         return -1;
     }
 
     if (typeCoarseOperator < 1 || typeCoarseOperator > 4)
     {
-        gsInfo << "Unknown smoother chosen.";
+        gsInfo << "Unknown smoother chosen.\n";
         return -1;
     }
 
@@ -890,84 +838,62 @@ int main(int argc, char* argv[])
     const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
     gsMatrix<real_t> x = gsMatrix<>::Random(pa.matrix().rows(),1);
 
-    // Apply p-Multigrid as stand-alone solver
+    // The p-multigrid class does not satisfy the conditions for a preconditioner
+    gsLinearOperator<>::Ptr preconditioner = makeLinearOp(
+        [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
+        {
+            x = gsMatrix<>::Zero(pa.matrix().rows(),1);
+            My_MG.step(rhs, x, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+         }, pa.matrix().rows(), pa.matrix().cols()
+    );
+
+    gsIterativeSolver<>::Ptr solver;
+
     if (typeSolver == 1)
     {
         gsInfo << "\n|| Solver information ||\np-multigrid is applied as stand-alone solver\n";
-        My_MG.solve(pa.rhs(), x, numLevels, numSmoothing, false, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        return 0;
+        // The preconditioned gradient method is noting but applying p-multigrid as a stand-alone solver.
+        // We have to set step size = 1 to deactivate automatic stepsize control.
+        solver = gsGradientMethod<>::make(pa.matrix(), preconditioner, 1);
+    }
+    else if (typeSolver == 2)
+    {
+        gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
+        solver = gsBiCgStab<>::make(pa.matrix(), preconditioner);
+    }
+    else if (typeSolver == 3)
+    {
+        gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
+        solver = gsConjugateGradient<>::make(pa.matrix(), preconditioner);
     }
 
-  // Perform BiCGStab
-  if (typeSolver == 2)
-  {
-      gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
-      gsStopwatch clock;
+    gsStopwatch clock;
 
-      real_t maxIter = pa.matrix().rows();
-      real_t tol = 1e-8;
+    real_t maxIter = pa.matrix().rows();
+    real_t tol = 1e-8;
 
-      gsBiCgStab<> solver(pa.matrix(), makeLinearOp(
-        [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
-        {
-            x = gsMatrix<>::Zero(pa.matrix().rows(),1);
-            My_MG.step(rhs, x, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        }, pa.matrix().rows(), pa.matrix().cols()
-      ));
+    // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
+    solver->setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm() );
+    solver->setMaxIterations(maxIter);
+    gsMatrix<> error_history;
+    solver->solveDetailed( pa.rhs(), x, error_history );
+    real_t Time_Solve = clock.stop();
 
-      // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
-      solver.setTolerance(tol*(pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm());
-      solver.setMaxIterations(maxIter);
-      gsMatrix<> error_history;
-      solver.solveDetailed( pa.rhs(), x, error_history );
-      real_t Time_Solve = clock.stop();
+    for (index_t i=1; i<error_history.rows(); ++i)
+    {
+        gsInfo << "Iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history(i,0) * pa.rhs().norm()
+               << "            reduction:  1 / " << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
+               <<  std::setprecision (6) << "\n";
+    }
+    if (solver->error() <= solver->tolerance())
+        gsInfo << "Solver reached accuracy goal after " << solver->iterations() << " iterations.\n";
+    else
+        gsInfo << "Solver did not reach accuracy goal within " << solver->iterations() << " iterations.\n";
+    gsInfo << "The iteration took " << Time_Solve << " seconds.\n";
+    // Determine residual and l2 error
+    gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
 
-      for (index_t i=1; i<error_history.rows(); ++i)
-      {
-          gsInfo << "BiCGStab iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history(i,0)*pa.rhs().norm()
-                 << "            reduction:  1 / " << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
-                 <<  std::setprecision (6) << "\n";
-      }
-      gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
-      gsInfo << "Solver converged in " << solver.iterations() << " iterations!\n";
-      // Determine residual and l2 error
-      gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
-  }
-  else if (typeSolver == 3)
-  {
-      gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
-      gsStopwatch clock;
-
-      real_t maxIter = pa.matrix().rows();
-      real_t tol = 1e-8;
-
-      gsConjugateGradient<> solver(pa.matrix(), makeLinearOp(
-        [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
-        {
-            x = gsMatrix<>::Zero(pa.matrix().rows(),1);
-            My_MG.step(rhs, x, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
-        }, pa.matrix().rows(), pa.matrix().cols()
-      ));
-
-      // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
-      solver.setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm() );
-      solver.setMaxIterations(maxIter);
-      gsMatrix<> error_history;
-      solver.solveDetailed( pa.rhs(), x, error_history );
-      real_t Time_Solve = clock.stop();
-
-      for (index_t i=1; i<error_history.rows(); ++i)
-      {
-          gsInfo << "CG iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history(i,0)*pa.rhs().norm()
-                 << "            reduction:  1 / " << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
-                 <<  std::setprecision (6) << "\n";
-      }
-      gsInfo << "Solver converged in " << Time_Solve << " seconds!\n";
-      gsInfo << "Solver converged in " << solver.iterations() << " iterations!\n";
-      // Determine residual and l2 error
-      gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
-  }
-  return 0;
+    return 0;
 }
 
 // Create the subspace corrected mass smoother
