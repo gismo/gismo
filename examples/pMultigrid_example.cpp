@@ -54,29 +54,17 @@ private:
     /// Vector of multi-basis objects
     std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis;
 
-    /// Vector of prolongation operators
-    std::vector< gsSparseMatrix<T,RowMajor> > m_prolongation_P;
-
-    /// Vector of restriction operators
-    std::vector< gsSparseMatrix<T> > m_restriction_P;
-
-    /// Vector of prolongation operators
-    std::vector< gsMatrix<T> > m_prolongation_M;
-
-    /// Vector of restriction operators
-    std::vector< gsMatrix<T> > m_restriction_M;
-
-    /// Vector of prolongation operators
-    std::vector< gsSparseMatrix<T> > m_prolongation_M2;
-
-    /// Vector of restriction operators
-    std::vector< gsSparseMatrix<T> > m_restriction_M2;
-
-    /// Vector of prolongation operators
+    /// Vector of prolongation matrices for h-refinement
     std::vector< gsSparseMatrix<T,RowMajor> > m_prolongation_H;
 
-    /// Vector of restriction operators
+    /// Vector of restriction matrices for h-refinement
     std::vector< gsSparseMatrix<T> > m_restriction_H;
+
+    /// Vector of restriction operators
+    std::vector< typename gsLinearOperator<T>::Ptr > m_restriction;
+
+    /// Vector of prolongation operators
+    std::vector< typename gsLinearOperator<T>::Ptr > m_prolongation;
 
     /// Vector of smoother objects
     std::vector< gsPreconditionerOp<>::Ptr > m_smoother;
@@ -141,19 +129,15 @@ public:
 
         // Resize vectors of operators
         m_operator.resize(numLevels);
-        m_prolongation_P.resize(numLevels-1);
-        m_prolongation_M.resize(numLevels-1);
-        m_prolongation_M2.resize(numLevels-1);
         m_prolongation_H.resize(numLevels-1);
-        m_restriction_P.resize(numLevels-1);
-        m_restriction_M.resize(numLevels-1);
-        m_restriction_M2.resize(numLevels-1);
         m_restriction_H.resize(numLevels-1);
+        m_restriction.resize(numLevels-1);
+        m_prolongation.resize(numLevels-1);
 
         // Assemble operators at finest level
         gsStopwatch clock;
         gsInfo << "|| Multigrid hierarchy ||\n";
-        for (int i = 0; i < numLevels; i++)
+        for (index_t i = 0; i < numLevels; i++)
         {
             gsInfo << "Level " << i+1 << " " ;
             if (typeCoarseOperator == 1)
@@ -183,17 +167,60 @@ public:
         {
             if (hp(i-1,0) == 0)
             {
-                m_prolongation_P[i-1] =  prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-                m_restriction_P[i-1] =  m_prolongation_P[i-1].transpose(); //restriction_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
                 if (typeLumping == 1)
                 {
-                    m_prolongation_M[i-1] =  prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-                    m_restriction_M[i-1] = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> prolongationP = prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> restrictionP = prolongationP.transpose();
+                    gsMatrix<> prolongationM = prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsMatrix<> restrictionM = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+
+                    m_prolongation[i-1] = makeLinearOp(
+                        [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
+                        {
+                            gsVector<> temp = prolongationP*Xcoarse;
+                            gsMatrix<> Minv = prolongationM.array().inverse();
+                            Xfine = Minv.cwiseProduct(temp);
+                        },
+                        prolongationP.rows(), prolongationP.cols()
+                    );
+                    m_restriction[i-1] = makeLinearOp(
+                        [=](const gsMatrix<>& Xfine, gsMatrix<>& Xcoarse)
+                        {
+                            gsVector<> temp = restrictionP*Xfine;
+                            gsMatrix<> Minv = restrictionM.array().inverse();
+                            Xcoarse = Minv.cwiseProduct(temp);
+                        },
+                        restrictionP.rows(), restrictionP.cols()
+                    );
                 }
                 else
                 {
-                    m_prolongation_M2[i-1] = prolongation_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-                    m_restriction_M2[i-1] = restriction_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> prolongationP =  prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> restrictionP =  prolongationP.transpose();
+                    gsSparseMatrix<> prolongationM2 = prolongation_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> restrictionM2 = restriction_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+
+                    m_prolongation[i-1] = makeLinearOp(
+                        [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
+                        {
+                            gsMatrix<> temp = prolongationP*Xcoarse;
+                            gsConjugateGradient<> CGSolver(prolongationM2);
+                            CGSolver.setTolerance(1e-12);
+                            CGSolver.solve(temp,Xfine);
+                        },
+                        prolongationP.rows(), prolongationP.cols()
+                    );
+                    m_restriction[i-1] = makeLinearOp(
+                        [=](const gsMatrix<>& Xfine, gsMatrix<>& Xcoarse)
+                        {
+                            gsMatrix<> temp = restrictionP*Xfine;
+                            gsConjugateGradient<> CGSolver(restrictionM2);
+                            CGSolver.setTolerance(1e-12);
+                            CGSolver.solve(temp,Xcoarse);
+                        },
+                        restrictionP.rows(), restrictionP.cols()
+                    );
+
                 }
             }
             else if (hp(i-1,0) == 1)
@@ -201,6 +228,10 @@ public:
                 gsMultiBasis<T> basis_copy = *m_basis[i];
                 basis_copy.uniformCoarsen_withTransfer(m_prolongation_H[i-1],*m_bcInfo_ptr,options);
                 m_restriction_H[i-1] = m_prolongation_H[i-1].transpose();
+
+                m_prolongation[i-1] = makeMatrixOp(m_prolongation_H[i-1]);
+                m_restriction[i-1] = makeMatrixOp(m_restriction_H[i-1]);
+
             }
         }
         real_t Time_Transfer = clock.stop();
@@ -315,11 +346,6 @@ public:
         bool symmetricSmoothing,
         int typeCycle_p,
         int typeCycle_h,
-        int numCoarsening,
-        int typeBCHandling,
-        gsGeometry<>::Ptr geo,
-        int typeLumping,
-        int typeProjection,
         const gsMatrix<>& hp
         )
     {
@@ -334,17 +360,13 @@ public:
         gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
         presmoothing(res, x, level, numSmoothing);
         residual(fineRes, res, x, level);
-        restriction(fineRes, coarseRes, level, numCoarsening, m_basis, typeLumping,
-            typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeProjection, hp);
+        restriction(fineRes, coarseRes, level);
         coarseCorr.setZero(coarseRes.rows(),1);
         for ( index_t j = 0 ; j < typeCycle ; j++)
         {
-            step(coarseRes, coarseCorr, level-1, numSmoothing, symmetricSmoothing,
-                typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo,
-                typeLumping, typeProjection, hp);
+            step(coarseRes, coarseCorr, level-1, numSmoothing, symmetricSmoothing, typeCycle_p, typeCycle_h, hp);
         }
-        prolongation(coarseCorr, fineCorr, level, numCoarsening, m_basis, typeLumping,
-            typeBCHandling, *m_bcInfo_ptr, *m_mp_ptr, geo, typeProjection, hp);
+        prolongation(coarseCorr, fineCorr, level);
 
         const real_t alpha = 1;
         x -= alpha * fineCorr;
@@ -549,61 +571,15 @@ private:
 
 
     /// @brief Prolongate coarse space function to fine space
-    void prolongation(const gsMatrix<T>& Xcoarse, gsMatrix<T>& Xfine, int numLevels, int numCoarsening,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling,
-        gsBoundaryConditions<T> bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, int typeProjection,
-        const gsMatrix<>& hp)
+    void prolongation(const gsMatrix<T>& Xcoarse, gsMatrix<T>& Xfine, index_t level)
     {
-        if (hp(numLevels-2,0) == 1)
-        {
-            Xfine = m_prolongation_H[numLevels-2]*Xcoarse;
-        }
-        else
-        {
-            if (typeLumping == 1)
-            {
-                gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
-                gsMatrix<> M_L_inv = (m_prolongation_M[numLevels-2]).array().inverse();
-                Xfine = (M_L_inv).cwiseProduct(temp);
-            }
-            else
-            {
-                gsVector<> temp = m_prolongation_P[numLevels-2]*Xcoarse;
-                gsConjugateGradient<> CGSolver(m_prolongation_M2[numLevels-2]);
-                CGSolver.setTolerance(1e-12);
-                CGSolver.solve(temp,Xfine);
-            }
-        }
+        m_prolongation[level-2]->apply(Xcoarse, Xfine);
     }
 
     /// @brief Restrict fine space function to coarse space
-    void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, int numLevels, int numCoarsening,
-        std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling,
-        const gsBoundaryConditions<T> & bcInfo, gsMultiPatch<> mp, gsGeometry<>::Ptr geo, int typeProjection,
-        const gsMatrix<>& hp)
+    void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, index_t level)
     {
-        if (hp(numLevels-2,0) == 1)
-        {
-            Xcoarse = m_restriction_H[numLevels-2]*Xfine;
-        }
-        else
-        {
-            if (typeLumping == 1)
-            {
-                // Lumped way
-                gsVector<> temp = m_restriction_P[numLevels-2]*Xfine;
-                gsMatrix<> M_L_inv = (m_restriction_M[numLevels-2]).array().inverse();
-                Xcoarse = (M_L_inv).cwiseProduct(temp);
-            }
-            else
-            {
-                // Exact way
-                gsMatrix<> temp = m_restriction_P[numLevels-2]*Xfine;
-                gsConjugateGradient<> CGSolver(m_restriction_M2[numLevels-2]);
-                CGSolver.setTolerance(1e-12);
-                CGSolver.solve(temp,Xcoarse);
-            }
-        }
+        m_restriction[level-2]->apply(Xfine, Xcoarse);
     }
 
 public:
@@ -840,8 +816,6 @@ int main(int argc, char* argv[])
     }
     bcInfo.setGeoMap(mp);
 
-    index_t numCoarsening = numRefH+1;
-
     // Generate sequence of bases on all levels
     if (typeProjection == 1)
     {
@@ -860,8 +834,9 @@ int main(int argc, char* argv[])
     gsLinearOperator<>::Ptr preconditioner = makeLinearOp(
         [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
         {
+            const bool symmSmoothing = typeSolver == 3;
             x = gsMatrix<>::Zero(pa.matrix().rows(),1);
-            My_MG.step(rhs, x, numLevels, numSmoothing, true, typeCycle_p, typeCycle_h, numCoarsening, typeBCHandling, geo, typeLumping, typeProjection, hp);
+            My_MG.step(rhs, x, numLevels, numSmoothing, symmSmoothing, typeCycle_p, typeCycle_h, hp);
          }, pa.matrix().rows(), pa.matrix().cols()
     );
 
