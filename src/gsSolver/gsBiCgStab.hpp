@@ -14,8 +14,6 @@
 namespace gismo
 {
 
-//#define DEBUGVAR( x ) gsInfo << #x " = " << x << "\n";
-
 template<class T>
 bool gsBiCgStab<T>::initIteration( const typename gsBiCgStab<T>::VectorType& rhs,
                                          typename gsBiCgStab<T>::VectorType& x )
@@ -45,9 +43,6 @@ bool gsBiCgStab<T>::initIteration( const typename gsBiCgStab<T>::VectorType& rhs
 }
 
 template<class T>
-const T& as_const(T&t) {return t;}
-
-template<class T>
 bool gsBiCgStab<T>::step( typename gsBiCgStab<T>::VectorType& x )
 {
     T rho_old = m_rho;
@@ -64,17 +59,17 @@ bool gsBiCgStab<T>::step( typename gsBiCgStab<T>::VectorType& x )
     m_p = m_res + beta*(m_p - m_w * m_v);
 
     // Apply preconditioning by solving Ahat m_y = m_p
-    m_precond->apply(as_const(m_p), m_y);
+    m_precond->apply(m_p, m_y);
     // m_v = A * m_y;
-    m_mat->apply(as_const(m_y), m_v);
+    m_mat->apply(m_y, m_v);
     m_alpha = m_rho/(m_r0.col(0).dot(m_v.col(0)));
 
     m_s = m_res - m_alpha * m_v;
     // Apply preconditioning by solving Ahat m_z = m_s
-    m_precond->apply(as_const(m_s), m_z);
+    m_precond->apply(m_s, m_z);
 
     // m_t = A * m_z;
-    m_mat->apply(as_const(m_z), m_t);
+    m_mat->apply(m_z, m_t);
 
     if (m_t.col(0).dot(m_t.col(0)) > 0)
         m_w = m_t.col(0).dot(m_s.col(0))/m_t.col(0).dot(m_t.col(0));
