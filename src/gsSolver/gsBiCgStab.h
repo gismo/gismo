@@ -40,7 +40,7 @@ public:
     /// @param precond The preconditioner, defaulted to the identity
     template< typename OperatorType >
     explicit gsBiCgStab( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
-    : Base(mat, precond) {}
+    : Base(mat, precond), m_restartThereshold(1e-32) {}
 
     /// @brief Make function using a matrix (operator) and optionally a preconditionner
     ///
@@ -49,6 +49,22 @@ public:
     template< typename OperatorType >
     static uPtr make( const OperatorType& mat, const LinOpPtr& precond = LinOpPtr() )
     { return uPtr( new gsBiCgStab(mat, precond) ); }
+
+    /// @brief Returns a list of default options
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt = Base::defaultOptions();
+        opt.addReal("RestartThereshold", "Thereshold for restarting gsBiCgStab solver.", 1e-32 );
+        return opt;
+    }
+
+    /// @brief Set the options based on a gsOptionList
+    gsBiCgStab& setOptions(const gsOptionList& opt)
+    {
+        Base::setOptions(opt);
+        m_restartThereshold = opt.askReal("RestartThereshold", m_restartThereshold);
+        return *this;
+    }
 
     bool initIteration( const VectorType& rhs, VectorType& x );
     bool step( VectorType& x );
@@ -83,7 +99,7 @@ private:
     T m_rho;
     T m_w;
 
-    T m_abs_new;
+    T m_restartThereshold;
 };
 
 } // namespace gismo
