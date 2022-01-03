@@ -91,7 +91,8 @@ public:
     {
         m_jumpMatrices.reserve(n);
         m_localSchurOps.reserve(n);
-        m_localScaling.reserve(n);
+        m_localScalingOps.reserve(n);
+        m_localScalingTransOps.reserve(n);
     }
 
     /// @briefs Adds a new subdomain
@@ -108,7 +109,8 @@ public:
     {
         m_jumpMatrices.push_back(give(jumpMatrix));
         m_localSchurOps.push_back(give(localSchurOp));
-        m_localScaling.push_back(Matrix());
+        m_localScalingOps.push_back(nullptr);
+        m_localScalingTransOps.push_back(nullptr);
     }
 
     // Adds a new subdomain
@@ -124,9 +126,9 @@ public:
     OpPtr&               localSchurOps(index_t k)        { return m_localSchurOps[k]; }
     const OpPtr&         localSchurOps(index_t k) const  { return m_localSchurOps[k]; }
 
-    /// Access the local scaling matrix (as row vector)
-    Matrix&              localScaling(index_t k)         { return m_localScaling[k];  }
-    const Matrix&        localScaling(index_t k) const   { return m_localScaling[k];  }
+    /// Access the local scaling operator
+    OpPtr&              localScaling(index_t k)         { return m_localScalingOps[k];  }
+    const OpPtr&        localScaling(index_t k) const   { return m_localScalingOps[k];  }
 
     /// @brief Extracts the skeleton dofs from the jump matrix
     ///
@@ -215,15 +217,22 @@ public:
     /// This requires that the subdomains have been defined first.
     void setupMultiplicityScaling();
 
+    /// @brief This sets up the member vector \a localScaling based on
+    ///        deluxe scaling
+    ///
+    /// This requires that the subdomains have been defined first.
+    void setupDeluxeScaling(const std::vector<boundaryInterface>& ifaces);
+
     /// @brief This returns the preconditioner as \a gsLinearOperator
     ///
     /// This requires that the subdomains have been defined first.
     OpPtr preconditioner() const;
 
-public:
-    std::vector<JumpMatrixPtr>  m_jumpMatrices;     ///< The jump matrices \f$ \hat B_k \f$
-    std::vector<OpPtr>          m_localSchurOps;    ///< The local Schur complements \f$ S_k \f$
-    std::vector<Matrix>         m_localScaling;     ///< The diagonal entries of \f$ D_k \f$ as vectors
+private:
+    std::vector<JumpMatrixPtr>  m_jumpMatrices;         ///< The jump matrices \f$ \hat B_k \f$
+    std::vector<OpPtr>          m_localSchurOps;        ///< The local Schur complements \f$ S_k \f$
+    std::vector<OpPtr>          m_localScalingOps;      ///< The local scaling operators representing \f$ D_k \f$ as operators
+    std::vector<OpPtr>          m_localScalingTransOps; ///< The local scaling operators representing \f$ D_k^\top \f$ as operators
 };
 
 } // namespace gismo

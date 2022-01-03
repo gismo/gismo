@@ -181,6 +181,12 @@ public:
         return m_transfers[0]->rows();
     }
 
+    /// Return a vector of shared pointers to all operators
+    const OpContainer & getOps() const { return m_ops; }
+
+    /// Return a vector of shared pointers to all transfer operators
+    const TransferPtrContainer & getTransfers() const { return m_transfers; }
+
 protected:
     TransferPtrContainer m_transfers;   ///< Transfer matrices
     OpContainer m_ops;                  ///< Operators to be applied in the subspaces
