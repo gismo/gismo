@@ -1032,8 +1032,8 @@ public:
 
         for (index_t j=0 ; j < numPatch ; j++)
         {
-            ddBtilde[j] = gsSparseMatrix<>(shift[j],shift[numPatch]);
-            ddCtilde[j] = gsSparseMatrix<>(shift[j],shift[numPatch]);
+            ddBtilde[j] = gsMatrix<>(shift[j],shift[numPatch]);
+            ddCtilde[j] = gsMatrix<>(shift[j],shift[numPatch]);
             for (index_t k=0 ; k < shift[numPatch]; k++)
             {
                 gsMatrix<> Brhs = ddC[j].col(k);
@@ -1046,7 +1046,7 @@ public:
         gsSparseMatrix<> S = ddC[numPatch];
         for (index_t l = 0 ; l < numPatch ; l++)
         {
-            S -= ddBtilde[l].transpose()*ddCtilde[l];
+            S -= (ddBtilde[l].transpose()*ddCtilde[l]).sparseView();
         }
 
         // Fill matrix A_aprox
@@ -1062,7 +1062,7 @@ public:
         Eigen::IncompleteLUT<real_t> ilu;
         ilu.setFillfactor(1);
         gsSparseMatrix<> II = S;
-        ilu.compute(II);
+        ilu.compute(II); // TODO: Fails in single patch case?
         m_A_aprox.block(
             m_A_aprox.rows() - shift[numPatch],
             m_A_aprox.rows() - shift[numPatch],
