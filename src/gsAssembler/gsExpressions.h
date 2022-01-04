@@ -208,10 +208,10 @@ public:
 
     std::ostream & printDetail(std::ostream &os) const
     {
-        os << (isScalar() ? "Scalar " :
+        os << (isVectorTr() ? "VectorTr " :
                (isVector() ? "Vector " :
                 (isMatrix() ? "Matrix " :
-                 "Unknown ") ) )
+                 "Scalar ") ) )
            <<"expression of size "<< rows() // bug: this might be invalid if unparsed
            << " x "<<cols()<<"\n";
         print(os);
@@ -359,7 +359,7 @@ public:
 
     operator const gsFeSpace<T> & () const
     {
-        static gsFeSpace<T> vv;
+        static gsFeSpace<T> vv(-1);
         return vv;
     }
 
@@ -770,8 +770,8 @@ public:
         _ff.parse(evList);
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>(); }
-    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>(); }
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void print(std::ostream &os) const
     { os << "integral(.)"; }
@@ -795,8 +795,8 @@ public:
   inline index_t rows() const { return 0; }
   inline index_t cols() const { return 0; }
   void parse(gsExprHelper<Scalar> &) const { }
-  const gsFeVariable<T> & rowVar() const { gsNullExpr<T>(); }
-  const gsFeVariable<T> & colVar() const { gsNullExpr<T>(); }
+  const gsFeVariable<T> & rowVar() const { gsNullExpr<Scalar>::get(); }
+  const gsFeVariable<T> & colVar() const { gsNullExpr<Scalar>::get(); }
 
   void print(std::ostream &os) const
   { os << "diam(e)"; }
@@ -1358,7 +1358,7 @@ public:
 
 public:
     enum {ColBlocks = E::ColBlocks, ScalarValued=E::ScalarValued};
-    enum {Space = (E::Space==0?0:(E::Space==1?2:1))};
+    enum {Space = (E::Space==1?2:(E::Space==2?1:E::Space))};
 
     mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
@@ -2479,7 +2479,7 @@ public:
 
     const gsFeSpace<T> & rowVar() const { return u.rowVar(); }
     const gsFeSpace<T> & colVar() const
-    {return gsNullExpr<T>();}
+    {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os << "nabla("; u.print(os); os <<")"; }
 };
