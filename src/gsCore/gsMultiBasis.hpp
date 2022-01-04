@@ -686,51 +686,6 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
 }
 
 template<class T>
-void gsMultiBasis<T>::partition(
-    std::vector<gsVector<index_t> > & interior,
-    std::vector<gsVector<index_t> > & boundary,
-    std::vector<std::vector<gsVector<index_t> > >& interface,
-    std::vector<gsMatrix<index_t> > & global_interior,
-    std::vector<gsMatrix<index_t> > & global_boundary,
-    std::vector<std::vector<gsMatrix<index_t> > >& global_interface
-    ) const
-{
-    gsDofMapper dm;
-    this->getMapper(true,dm,false);
-    dm.finalize();
-   
-    const index_t sz = this->nBases();
-    interior.resize(sz);
-    boundary.resize(sz);
-    interface.resize(sz);
-    for ( index_t k = 0; k!= sz; ++k ) // for all patches
-    {
-        interior[k] = dm.findFreeUncoupled(k);
-        boundary[k] = dm.findBoundary(k);  
-        interface[k].resize(sz);
-        for ( index_t j = 0; j!= sz; ++j )
-        {    
-            interface[k][j]= dm.findCoupled(k,j);
-        }
-    }
-
-    // Determine the global index of DOF
-    global_interior.resize(sz);
-    global_boundary.resize(sz);
-    global_interface.resize(sz);
-    for ( index_t k = 0; k!= sz; ++k ) // for all patches
-    {
-          dm.localToGlobal(interior[k].cast<index_t> (),k,global_interior[k]);
-          dm.localToGlobal(boundary[k].cast<index_t> (),k,global_boundary[k]);
-          global_interface[k].resize(sz);
-          for ( index_t j = 0; j!= sz; ++j )
-          {
-              dm.localToGlobal(interface[k][j].cast<index_t> (),k,global_interface[k][j]);
-          }    
-    }
-}
-
-template<class T>
 bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
 {
     // get direction and orientation maps

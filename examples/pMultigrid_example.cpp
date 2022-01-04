@@ -973,17 +973,15 @@ public:
 
         index_t shift0 = 0;
 
-        // Use of partition functions
-        std::vector<gsVector<index_t> > interior, boundary;
-        std::vector<std::vector<gsVector<index_t> > > interface;
-        std::vector<gsMatrix<index_t> >  global_interior, global_boundary;
-        std::vector<std::vector<gsMatrix<index_t> > > global_interface;
-        mb.partition(interior,boundary,interface,global_interior,global_boundary,global_interface);
+        gsDofMapper dm;
+        mb.getMapper(true,dm,false); // This is what partition would do; but what about the Nitsche case?
+        dm.finalize();
+
         // Vector of vector of shift objects
         std::vector<index_t> shift(numPatch+1);
         for (index_t l=0; l< numPatch; l++)
         {
-            shift[l] = global_interior[l].rows();
+            shift[l] = dm.findFreeUncoupled(l).rows();
         }
         shift[numPatch] = 0;
         shift[numPatch] = m_op.rows() - accumulate(shift.begin(),shift.end(),0);

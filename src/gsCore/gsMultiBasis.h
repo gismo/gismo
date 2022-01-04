@@ -691,21 +691,6 @@ public:
     /// topology
     void tileParameters();
 
-    /// @brief Gives a partition of all degrees of freedom
-    /// into interior dofs, boundary dofs and interface dofs
-    ///
-    /// @param interior The indices of the interior dofs of patch k will be
-    ///                 written to interior[k]
-    /// @param boundary The indices of the boundary dofs of patch k will be
-    ///                 written to boundary[k]
-    /// @param interface The indices of the interface dofs between patchs k
-    ///                  and l will be  written to boundary[k][l]
-    void partition(std::vector<gsVector<index_t> > & interior,
-                   std::vector<gsVector<index_t> > & boundary,
-                   std::vector<std::vector<gsVector<index_t> > >& interface,
-                   std::vector<gsMatrix<index_t> > & global_interior,
-                   std::vector<gsMatrix<index_t> > & global_boundary,
-                   std::vector<std::vector<gsMatrix<index_t> > >& global_interface) const;
 private:
 
     BasisContainer m_bases;
