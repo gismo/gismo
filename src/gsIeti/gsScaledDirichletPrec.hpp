@@ -232,7 +232,7 @@ void gsScaledDirichletPrec<T>::setupDeluxeScaling(const std::vector<boundaryInte
         localSchurRestriction1.setFrom(se1_restriction);
         localSchurRestriction2.setFrom(se2_restriction);
 
-        // Restrict the Schur complements S^k and S^l to the interface to obtain \Sum_i R_{iF}^T S^i R_{iF},
+        // Restrict the Schur complements S^k and S^l to the interface to obtain \Sum_i R_{iF} S^i R_{iF}^T,
         // where R_{iF} denotes the restriction to the interface F
         typename gsAdditiveOp<>::Ptr ifaceRestriction = gsAdditiveOp<>::make(std::vector<gsSparseMatrix<T, RowMajor>>{localSchurRestriction1, localSchurRestriction2},
                                                                 std::vector<OpPtr>{m_localSchurOps[side1.patch], m_localSchurOps[side2.patch]}
@@ -244,23 +244,24 @@ void gsScaledDirichletPrec<T>::setupDeluxeScaling(const std::vector<boundaryInte
 
         // Build the deluxe scaling matrices (S^k_F + S^l_F)^{-1}S^k_F and (S^k_F + S^l_F)^{-1}S^l_F, respectively
         // They sum up to the identity!
+        typename gsLinearOperator<T>::Ptr SkFSlFInv = makePartialPivLUSolver(result);
         typename gsProductOp<>::Ptr deluxeMatk = gsProductOp<>::make( gsProductOp<>::make(
                 makeMatrixOp(ifaceRestriction->getTransfers()[0]->transpose()), ifaceRestriction->getOps()[0], makeMatrixOp(ifaceRestriction->getTransfers()[0])
                         ),
-                                                                makeSparseLUSolver(gsSparseMatrix<>(result.sparseView()))
+                                                                SkFSlFInv
                                                                 );
         typename gsProductOp<>::Ptr deluxeMatl = gsProductOp<>::make( gsProductOp<>::make(
                 makeMatrixOp(ifaceRestriction->getTransfers()[1]->transpose()), ifaceRestriction->getOps()[1], makeMatrixOp(ifaceRestriction->getTransfers()[1])
                 ),
-                                                                 makeSparseLUSolver(gsSparseMatrix<>(result.sparseView()))
+                                                                      SkFSlFInv
                                                                  );
 
         // Build also the transposed deluxe scaling matrices
-        typename gsProductOp<>::Ptr deluxeMatTransk = gsProductOp<>::make(makeSparseLUSolver(gsSparseMatrix<>(result.sparseView())), gsProductOp<>::make(
+        typename gsProductOp<>::Ptr deluxeMatTransk = gsProductOp<>::make(SkFSlFInv, gsProductOp<>::make(
                 makeMatrixOp(ifaceRestriction->getTransfers()[0]->transpose()), ifaceRestriction->getOps()[0], makeMatrixOp(ifaceRestriction->getTransfers()[0])
                                                                       )
         );
-        typename gsProductOp<>::Ptr deluxeMatTransl = gsProductOp<>::make(makeSparseLUSolver(gsSparseMatrix<>(result.sparseView())), gsProductOp<>::make(
+        typename gsProductOp<>::Ptr deluxeMatTransl = gsProductOp<>::make(SkFSlFInv, gsProductOp<>::make(
                 makeMatrixOp(ifaceRestriction->getTransfers()[1]->transpose()), ifaceRestriction->getOps()[1], makeMatrixOp(ifaceRestriction->getTransfers()[1])
                                                                       )
         );
@@ -293,9 +294,6 @@ gsScaledDirichletPrec<T>::preconditioner() const
             "gsScaledDirichletPrec::preconditioner needs the local scaling operators given. "
             "Forgot to call setup...Scaling()?" );
     }
-
-    std::vector<OpPtr> scalingOps;
-    scalingOps.reserve(pnr);
 
     typename gsAdditiveOp<T>::Ptr result = gsAdditiveOp<T>::make();
 
