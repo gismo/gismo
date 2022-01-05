@@ -230,15 +230,19 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
 
         //gsInfo << "r: " << m_r << " : " << m_p << " : " << basis_1.knots().multiplicityIndex(p_1 + 1) << "\n";
 
-        index_t numInnerKnot = 0;
+        index_t numInnerKnotPlus = 0;
         if (innerKnotMulti > 0 && m_p-m_r < innerKnotMulti+1)
-            numInnerKnot = 3*(m_r-1);
+            numInnerKnotPlus = 3*(m_r-1);
+
+        index_t numInnerKnotMinus = 0;
+        if (innerKnotMulti > 0 && m_p-m_r < innerKnotMulti+1)
+            numInnerKnotMinus = 3*(m_r-1);
 
         //gsInfo << "Inner " << numInnerKnot << "\n";
         //gsInfo << "IFace: " << numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 + 2*numInnerKnot << "\n";
 
-        numBasisFunctions[0][i+1] = numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy +2*numInnerKnot; // 1+ and 1- times 2
-        sizePlusInt[i] = (m_p - m_r - 1) * (m_n - 1) + m_p + 1 + numInnerKnot;
+        numBasisFunctions[0][i+1] = numBasisFunctions[0][i] + 2 * (m_p - m_r - 1) * (m_n - 1) + 2 * m_p + 1 - numIntBdy +numInnerKnotPlus+numInnerKnotMinus; // 1+ and 1- times 2
+        sizePlusInt[i] = (m_p - m_r - 1) * (m_n - 1) + m_p + 1 + numInnerKnotPlus;
     }
     for (size_t i = 0; i < mp.boundaries().size(); i++)
     {
@@ -313,6 +317,11 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
             }
         }
     }
+
+    gsInfo << "Dofs " << numBasisFunctions[0].last() + numBasisFunctions[1].last() +numBasisFunctions[2].last()
+        + (mb[0].basis(0).component(0).size() - 4)*(mb[0].basis(0).component(1).size() - 4)
+        + (mb[0].basis(1).component(0).size() - 4)*(mb[0].basis(1).component(1).size() - 4) << "\n";
+
     numBasisFunctions[1] = numBasisFunctions[1].array() + numBasisFunctions[0].last();
     numBasisFunctions[2] = numBasisFunctions[2].array() + numBasisFunctions[1].last();
     numBasisFunctions[3] = numBasisFunctions[3].array() + numBasisFunctions[2].last();
@@ -331,6 +340,7 @@ void gsG1System<T>::initialize_twoPatch(gsMultiPatch<> & mp, std::vector<gsMulti
     gsInfo << "Kink bottom  " << kink[0] << "\n";
     gsInfo << "Kink top  " << kink[1] << "\n";
 */
+
 
     // Setting the final matrix
     dim_K = numBasisFunctions[6].last(); // interior basis + interface basis dimension

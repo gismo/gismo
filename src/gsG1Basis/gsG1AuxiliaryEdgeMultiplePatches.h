@@ -214,7 +214,6 @@ public:
                 gsInfo << "Basis_2 " << basis_2 << "\n";
             }
 
-
             index_t p_1 = basis_1.degree();
             index_t p_2 = basis_2.degree();
 
