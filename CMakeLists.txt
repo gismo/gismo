@@ -48,12 +48,26 @@ if(NOT CMAKE_BUILD_TYPE)
    endif()
 endif()
 add_definitions("-D_GLIBCXX_USE_CXX11_ABI=0")
-set(gismo_VERSION_MAJOR 20) #year
+set(gismo_VERSION_MAJOR 21) #year
 set(gismo_VERSION_MINOR 12) #month
 set(gismo_VERSION_PATCH 0 ) #patch
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
 set(GISMO_VERSION "${gismo_VERSION}" CACHE INTERNAL "G+Smo version number")
+
+if(CMAKE_QUIET)
+  function(message)
+    list(GET ARGV 0 MessageType)
+    if(MessageType STREQUAL FATAL_ERROR OR
+	MessageType STREQUAL SEND_ERROR OR
+	MessageType STREQUAL WARNING OR
+	MessageType STREQUAL AUTHOR_WARNING)
+      list(REMOVE_AT ARGV 0)
+      _message(${MessageType} "${ARGV}")
+    endif()
+  endfunction()
+  unset(CMAKE_QUIET CACHE)
+endif()
 
 if(POLICY CMP0048)# CMake 3.0
   project(gismo LANGUAGES C CXX  VERSION ${gismo_VERSION})
@@ -103,6 +117,7 @@ include( gsOptions )
 include(CTest)
 # Note: clean cache to reset to OFF
 set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
+file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY ${PROJECT_SOURCE_DIR})\nset(CTEST_BINARY_DIRECTORY   ${PROJECT_BINARY_DIR})\nset(CTEST_SITE         ${SITE})\nset(CTEST_BUILD_NAME   ${BUILDNAME})\n")
 
 ## #################################################################
 ## Preprocessor definitions
@@ -124,6 +139,7 @@ gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
 ## #################################################################
 
 # Clean previously set variables in the cache
+unset(GISMO_EXTRA_INSTANCE       CACHE)
 unset(${PROJECT_NAME}_HEADERS    CACHE)
 unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
@@ -294,12 +310,6 @@ endif(GISMO_BUILD_UNITTESTS)
 # Add main sources directory
 add_subdirectory(src)
 
-if(GISMO_BUILD_LIB)
-  if (GISMO_EXTRA_DEBUG)
-    set(gismo_SOURCES ${gismo_SOURCES} ${PROJECT_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
-  endif()
-endif()
-
 ## #################################################################
 ## Submodules
 ## #################################################################
@@ -324,11 +334,13 @@ endif()
 
 option(GISMO_STRUCTURALANALYSIS "Enable Structural Analysis module" OFF)
 if(GISMO_STRUCTURALANALYSIS)
+  include(gsFetch)
   gismo_fetch_module(gsStructuralAnalysis)
 endif()
 
 option(GISMO_KLSHELL "Enable Kirchhoff-Love Shell" OFF)
 if(GISMO_KLSHELL)
+  include(gsFetch)
   gismo_fetch_module(gsKLShell)
 endif()
 

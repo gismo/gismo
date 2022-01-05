@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the NurbsCreator struct.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -28,7 +28,7 @@ namespace gismo
 
 /**
    @brief Class gsNurbsCreator provides some simple examples of Nurbs Geometries
-   
+
    \ingroup Nurbs
 */
 
@@ -46,9 +46,9 @@ struct gsNurbsCreator
     typedef typename gsTensorNurbs<4,T>::uPtr   TensorNurbs4Ptr;
 
 public:
-    
+
     static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
-    
+
     static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);
 
     static TensorNurbs3Ptr lift3D( gsTensorNurbs<2,T> const & geo, T z = 1);
@@ -107,6 +107,7 @@ public:
     /// Square of side \a r, with lower left corner at (x,y)
     static TensorBSpline2Ptr BSplineSquare( T const & r = 1, T const & x = 0, T const & y = 0  );
 
+    /// Cube of side \a r, with lower left corner at (x,y,z)
     static TensorBSpline3Ptr BSplineCube( T const & r = 1, T const & x = 0,
                                                T const & y = 0, T const & z = 0  );
 
@@ -120,10 +121,12 @@ public:
 
     static TensorBSpline3Ptr BSplineHalfCube( T const & r = 1, T const & x = 0,
                                                    T const & y = 0, T const & z = 0  );
-    
+
+    /// Cube of side \a r, with lower left corner at (x,y,z) using NURBS
     static TensorNurbs3Ptr NurbsCube( T const & r = 1, T const & x = 0,
                                            T const & y = 0, T const & z = 0 );
 
+    /// Exact annulus using NURBS
     static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 =1, T const & r1 =2);
     static TensorNurbs3Ptr BSplineSaddle();
     /// Inexact annulus using B-splines
@@ -137,12 +140,13 @@ public:
     /// (x, y) = (1 + s - s*t*t - t*t, 2*s*t -s*t*t + 2*t - t*t)
     static TensorBSpline2Ptr BSplineFatQuarterAnnulus( T const & r0 =1, T const & r1 =2);
 
+    /// Sphere using NURBS
     static TensorNurbs2Ptr NurbsSphere( T const & r =1, T const & x = 0, T const & y = 0, T const & z = 0);
-
+    /// Circle using NURBS
     static NurbsPtr  NurbsCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
-
+    /// Inexact circle using B-splines
     static BSplinePtr BSplineFatCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
-
+    /// Inexact disk using B-splines
     static TensorBSpline2Ptr BSplineFatDisk (T const & r=1, T const & x=0, T const & y = 0);
 
     static NurbsPtr NurbsCurve1 (T const & r=1, T const & x=0, T const & y = 0);
@@ -187,6 +191,9 @@ public:
     static TensorNurbs2Ptr NurbsDisk(T const & r=1, T const & x=0, T const & y = 0);
 
     static TensorBSpline2Ptr NurbsQrtPlateWHoleC0();
+
+    static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
+
 }; // struct
 
 } // namespace gismo

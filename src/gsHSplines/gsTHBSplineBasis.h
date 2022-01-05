@@ -44,6 +44,8 @@ public:
     
     typedef typename gsHTensorBasis<d,T>::tensorBasis tensorBasis;
 
+    typedef typename gsHTensorBasis<d,T>::point point;
+
     /// @brief Shared pointer for gsTHBSplineBasis.
     typedef memory::shared_ptr< gsTHBSplineBasis > Ptr;
 
@@ -118,8 +120,15 @@ public:
     }
 
 public:
+
+    // Look at gsBasis.h for the documentation of this function
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset ) const;
+
     /// @brief Gives back the basis at a slice in \a dir_fixed at \a par
     BoundaryBasisType * basisSlice(index_t dir_fixed,T par ) const;
+
+    // Look at gsBasis class for documentation
+    void active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const;
 
     // Look at gsBasis class for documentation
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result)const;
@@ -523,7 +532,14 @@ public:
    * @param[out] k1 knot vector of the B-spline patch (first dimension)
    * @param[out] k2 knot vector of the B-spline patch (second dimension)
   */
-  void getBsplinePatchGlobal(gsVector<index_t> b1, gsVector<index_t> b2, unsigned level, const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsKnotVector<T>& k1, gsKnotVector<T>& k2) const;
+
+    void getBsplinePatchGlobal(gsVector<index_t> b1,
+                          gsVector<index_t> b2,
+                          unsigned level,
+                          const gsMatrix<T>& geom_coef,
+                          gsMatrix<T>& cp, gsKnotVector<T>& k1,
+                          gsKnotVector<T>& k2) const
+    { getBsplinePatchGlobal_impl<d>(b1,b2,level,geom_coef,cp,k1,k2); }
 
   /**
    * @brief Return the list of B-spline patches to represent a THB-spline geometry.
@@ -590,10 +606,10 @@ public:
     ///
     /// The B-Spline patch knots are the same as the THB-Spline-Basis knots from the input
     /// level. Geometry of the patch is defined via input coefficients.
-    gsTensorBSpline<d, T>
-    getBSplinePatch(const std::vector<index_t>& boundingBox,
-                    const unsigned level,
-                    const gsMatrix<T>& geomCoefs) const;
+    gsTensorBSpline<d,T> getBSplinePatch(const std::vector<index_t>& boundingBox,
+                                         const unsigned level,
+                                         const gsMatrix<T>& geomCoefs) const
+    { return getBSplinePatch_impl<d>(boundingBox, level, geomCoefs); }
 
 private:
     /**
@@ -701,8 +717,40 @@ private:
     void findNewAABB(const std::vector< std::vector<T> >& polyline,
 		     std::vector<index_t>& aabb) const;
 
-	
 
+private:
+
+    template<short_t dd>
+    typename util::enable_if<dd==2,void>::type
+    getBsplinePatchGlobal_impl(gsVector<index_t> b1,
+                               gsVector<index_t> b2,
+                               unsigned level,
+                               const gsMatrix<T>& geom_coef,
+                               gsMatrix<T>& cp, gsKnotVector<T>& k1,
+                               gsKnotVector<T>& k2) const;
+
+    template<short_t dd>
+    typename util::enable_if<dd!=2,void>::type
+    getBsplinePatchGlobal_impl(gsVector<index_t> b1,
+                               gsVector<index_t> b2,
+                               unsigned level,
+                               const gsMatrix<T>& geom_coef,
+                               gsMatrix<T>& cp, gsKnotVector<T>& k1,
+                               gsKnotVector<T>& k2) const { GISMO_NO_IMPLEMENTATION }
+
+    template<short_t dd>
+    typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
+    getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
+                         const unsigned level,
+                         const gsMatrix<T>& geomCoefs) const;
+
+    template<short_t dd>
+    typename util::enable_if<dd!=2,gsTensorBSpline<d,T> >::type
+    getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
+                    const unsigned level,
+                    const gsMatrix<T>& geomCoefs) const { GISMO_NO_IMPLEMENTATION }
+
+    
 private:
 
     // m_is_truncated(j)
@@ -727,6 +775,16 @@ private:
  * End of class gsTHBSplineBasis definition
  */
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsTHBSplineBasis
+   */
+  void pybind11_init_gsTHBSplineBasis2(pybind11::module &m);
+  void pybind11_init_gsTHBSplineBasis3(pybind11::module &m);
+  void pybind11_init_gsTHBSplineBasis4(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

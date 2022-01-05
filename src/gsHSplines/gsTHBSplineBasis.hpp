@@ -27,6 +27,51 @@ namespace gismo
 {
 
 template<short_t d, class T>
+gsMatrix<index_t>  gsTHBSplineBasis<d,T>::
+boundaryOffset(boxSide const & s,index_t offset) const
+{
+    if (1!=offset)
+        return gsHTensorBasis<d,T>::boundaryOffset(s,offset);
+    else
+    {
+        //get information on the side
+        const index_t k   = s.direction();
+        const bool par = s.parameter();
+
+        const index_t shift = ( par ? -1 : 1);
+
+        std::vector<index_t> temp;
+        gsVector<index_t,d>  ind;
+        index_t hi;
+        // i goes through all levels of the hierarchical basis
+        for(unsigned i = 0; i <= this->maxLevel(); i++)
+        {
+            GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
+                         "Offset cannot be bigger than the amount of basis"
+                         "functions orthogonal to Boxside s!");
+
+            index_t r = ( par ? this->m_bases[i]->size(k) - 1 : 0);
+            for (typename CMatrix::const_iterator it = m_xmatrix[i].begin();
+                 it != m_xmatrix[i].end(); it++)
+            {
+                ind = this->m_bases[i]->tensorIndex(*it);
+                if ( ind[k]==r )
+                {
+                    ind[k]+=shift;
+                    hi = this->flatTensorIndexToHierachicalIndex(this->m_bases[i]->index(ind),i);
+
+                    GISMO_ASSERT(hi!=-1,"Neightbouring basis function with coordinates "<<ind.transpose()<<" of level "<<i<<" does not exist.");
+
+                    temp.push_back(hi);
+                }
+            }
+        }
+        return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
+    }
+
+}
+
+template<short_t d, class T>
 typename gsTHBSplineBasis<d,T>::BoundaryBasisType * gsTHBSplineBasis<d,T>::basisSlice(index_t dir_fixed,T par ) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
@@ -53,24 +98,25 @@ void gsTHBSplineBasis<d,T>::representBasis()
     this->m_is_truncated.resize(this->size());
     m_presentation.clear();
 
+    gsMatrix<index_t, d, 2> element_ind(d, 2);
+    point low, high;
     for (index_t j = 0; j < this->size(); ++j)
     {
-        unsigned level = this->levelOf(j);
+        index_t level = this->levelOf(j);
         index_t tensor_index = this->flatTensorIndexOf(j, level);
 
         // element indices
-        gsMatrix<index_t, d, 2> element_ind(d, 2);
         this->m_bases[level]->elementSupport_into(tensor_index, element_ind);
 
         // I tried with block, I can not trick the compiler to use references
-        gsVector<index_t, d> low = element_ind.col(0); //block<d, 1>(0, 0);
-        gsVector<index_t, d> high = element_ind.col(1); //block<d, 1>(0, 1);gsMatrix<index_t> element_ind =
+        low = element_ind.col(0); //block<d, 1>(0, 0);
+        high = element_ind.col(1); //block<d, 1>(0, 1);
 
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
         // this is not the same as query 3
-        unsigned clevel = this->m_tree.query4(low, high, level);
+        index_t clevel = this->m_tree.query4(low, high, level);
 
         if (level != clevel) // we must compute its presentation
         {
@@ -104,11 +150,9 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
     unsigned nmb_of_coefs = _updateSizeOfCoefs(cur_level, pres_level,
                                                finest_low, finest_high,
                                                act_size_of_coefs);
-    gsVector<T> one(1);
-    one(0) = 1.0;
     gsMatrix<T> coefs(nmb_of_coefs, 1);
     coefs.fill(0);
-    coefs.row(0) = one;
+    coefs.row(0).setOnes();
 
     // vector of the numbers of the coefficients (in each dimension)
     // stored in coefs
@@ -401,7 +445,9 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
 
 // return the B-spline representation of a THB-spline subpatch
 template<short_t d, class T>
-void gsTHBSplineBasis<d,T>::getBsplinePatchGlobal(gsVector<index_t> b1,
+template<short_t dd>
+typename util::enable_if<dd==2,void>::type
+gsTHBSplineBasis<d,T>::getBsplinePatchGlobal_impl(gsVector<index_t> b1,
                                                   gsVector<index_t> b2,
                                                   unsigned level, 
                                                   const gsMatrix<T>& geom_coef,
@@ -534,7 +580,6 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch(const gsMat
     return result;
 }
 
-// /*
 template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::getConnectedComponents(
     std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const
@@ -643,8 +688,6 @@ void gsTHBSplineBasis<d,T>::getConnectedComponents(
 
 
 }
-//*/
-
 
 //return data for trimming in parasolid
 template<short_t d, class T>
@@ -1014,6 +1057,80 @@ void gsTHBSplineBasis<d,T>::globalRefinement(const gsMatrix<T> & thbCoefs,
 
 
 template<short_t d, class T>
+void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>& result) const
+{
+    gsMatrix<T> currPoint;
+    gsMatrix<index_t> ind;
+    point low, upp, cur;
+    const int maxLevel = this->m_tree.getMaxInsLevel();
+
+    std::vector<std::vector<index_t> > temp_output;//collects the outputs
+    temp_output.resize( u.cols() );
+    size_t sz = 0;
+
+    for(index_t p = 0; p < u.cols(); p++) //for all input points
+    {
+        currPoint = u.col(p); 
+        for(short_t i = 0; i != d; ++i)
+            low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
+
+        // Identify the level of the point
+        const int lvl = this->m_tree.levelOf(low, maxLevel);
+
+        for(int i = 0; i <= lvl; i++)
+        {
+            m_bases[i]->active_cwise(currPoint, low, upp);
+            cur = low;
+            do
+            {
+                typename CMatrix::const_iterator it =
+                    m_xmatrix[i].find_it_or_fail( m_bases[i]->index(cur) );
+
+                if( it != m_xmatrix[i].end() )// if index is found
+                {
+                    const index_t act = this->m_xmatrix_offset[i] + (it - m_xmatrix[i].begin());
+
+                    if (this->m_is_truncated[act] == -1) 
+                    {
+                        temp_output[p].push_back(act);
+                    }
+                    else 
+                    {
+                        const gsSparseVector<T>& coefs = getCoefs(act);
+                        const gsTensorBSplineBasis<d, T>& base =
+                            *this->m_bases[this->m_is_truncated[act]];
+
+                        base.active_into(currPoint, ind);
+
+                        for (index_t k = 0; k < ind.rows(); ++k) 
+                        {
+                            if (coefs(ind.at(k)) != 0)
+                            {
+                                temp_output[p].push_back(act);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            while( nextCubePoint(cur,low,upp) );
+        }
+
+        // update result size
+        if ( temp_output[p].size() > sz )
+            sz = temp_output[p].size();
+    }
+
+    result.resize(sz, u.cols() );
+    for(index_t i = 0; i < result.cols(); i++)
+    {
+        result.col(i).topRows(temp_output[i].size())
+            = gsAsConstVector<index_t>(temp_output[i]);
+        result.col(i).bottomRows(sz-temp_output[i].size()).setZero();
+    }
+}
+
+template<short_t d, class T>
 void gsTHBSplineBasis<d,T>::evalSingle_into(index_t i,
                                             const gsMatrix<T>& u,
                                             gsMatrix<T>& result) const
@@ -1243,10 +1360,11 @@ void gsTHBSplineBasis<d, T>::decomposeDomain(
 
 
 template<short_t d, class T>
-gsTensorBSpline<d, T> 
-gsTHBSplineBasis<d,T>::getBSplinePatch(const std::vector<index_t>& boundingBox,
-                                       const unsigned level,
-                                       const gsMatrix<T>& geomCoefs) const
+template<short_t dd>
+typename util::enable_if<dd==2,gsTensorBSpline<d,T> >::type
+gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& boundingBox,
+                                            const unsigned level,
+                                            const gsMatrix<T>& geomCoefs) const
 {
     gsVector<index_t, d> low, upp;
     for (unsigned dim = 0; dim != d; dim++)
@@ -1470,11 +1588,11 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
     aabb.resize(4);
     for (unsigned i = 0; i != kv0.uSize(); i++)
     {
-        if (kv0.uValue(i) <= minX)
+        if (kv0(i) <= minX)
         {
             aabb[0] = i;
         }
-        if (maxX <= kv0.uValue(i))
+        if (maxX <= kv0(i))
         {
             aabb[2] = i;
             break;
@@ -1483,11 +1601,11 @@ void gsTHBSplineBasis<d, T>::findNewAABB(const std::vector< std::vector<T> >& po
 
     for (unsigned i = 0; i != kv1.uSize(); i++)
     {
-        if (kv1.uValue(i) <= minY)
+        if (kv1(i) <= minY)
         {
             aabb[1] = i;
         }
-        if (maxY <= kv1.uValue(i))
+        if (maxY <= kv1(i))
         {
             aabb[3] = i;
             break;

@@ -1,7 +1,7 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 
 // Gather builders , 'gismo-win7x64'
-def labels = ['gismo-ubuntu', 'gismo-macos', 'gismo-centos', 'gismo-fedora']
+def labels = ['gismo-ubuntu', 'gismo-mac1015', 'gismo-centos', 'gismo-fedora', 'gismo-win10']
 def builders = [:]
 for (x in labels)
 {

@@ -174,13 +174,25 @@ public:
     // Same as gsBasis::elementIndex but argument is a value instead of a vector
     size_t elementIndex(T u ) const;
 
+    // Look at gsBasis class for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// @brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     void elementSupport_into(const index_t i, gsMatrix<index_t,1,2>& result) const
     {
         gsMatrix<index_t> tmp_vec;
         m_knots.supportIndex_into(i, tmp_vec);
-        result = tmp_vec;
+        result = tmp_vec.cwiseMax(0).cwiseMin(m_knots.numElements());
+    }
+
+    template <int _Rows>
+    gsMatrix<T> elementDom(const gsMatrix<index_t,_Rows,2> & box) const
+    {
+        gsMatrix<T> rvo(1,2);
+        rvo.at(0) = m_knots.uValue(box.at(0));
+        rvo.at(1) = m_knots.uValue(box.at(1));
+        return rvo;
     }
 
     // Look at gsBasis class for a description
@@ -775,6 +787,14 @@ private:
     using Base::m_periodic;
 };
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsBSplineBasis
+   */
+  void pybind11_init_gsBSplineBasis(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

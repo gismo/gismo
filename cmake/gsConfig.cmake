@@ -82,11 +82,12 @@ endforeach()
 set( MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q" CACHE INTERNAL "") #note: empty defaults to "-q --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=50
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
-set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+#AppleClang 11 might skip flags or fail if this is off
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(AddCXXCompileOptions)
 
-if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel" AND "x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
   # message(STATUS "Using Boost for smart pointers")
   find_package(Boost REQUIRED)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -200,18 +201,53 @@ elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
+if (GISMO_BUILD_PYBIND11)
+   find_package(pybind11 REQUIRED)
+   include_directories(${pybind11_INCLUDE_DIR})
+  
+   #find_package(PythonLibs REQUIRED)# deprecated since cmake 3.12
+   #PYTHON_LIBRARY
+   #PYTHON_INCLUDE_DIR
+
+   # New and better way:
+   find_package(Python REQUIRED COMPONENTS Development) #Python2 Python3
+   #Python_INCLUDE_DIRS
+   #Python_LIBRARIES
+
+   #find_package(PythonLibsNew ${PYBIND11_PYTHON_VERSION} MODULE REQUIRED) #pybind11
+
+   include_directories(${Python_INCLUDE_DIRS})
+endif()
+
 if (GISMO_WITH_OPENMP)
-   find_package(OpenMP REQUIRED)
-   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-   #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+   # Apple explicitly disabled OpenMP support in their compilers that
+   # are shipped with XCode but there is an easy workaround as
+   # described at https://mac.r-project.org/openmp/
+   if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
+       "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      find_path(OpenMP_C_INCLUDE_DIR
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+      find_path(OpenMP_CXX_INCLUDE_DIR
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+      find_library(OpenMP_libomp_LIBRARY
+        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES lib)
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fopenmp -I${OpenMP_C_INCLUDE_DIR}")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp -I${OpenMP_CXX_INCLUDE_DIR}")
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
+   else() 
+      find_package(OpenMP REQUIRED)
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+      #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+   endif()
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Intel" AND NOT GISMO_WITH_OPENMP)
+if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel" AND NOT GISMO_WITH_OPENMP)
    if ( CMAKE_SYSTEM_NAME MATCHES "Linux" )
      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -diag-disable 3180") #comma for more warns
    elseif ( CMAKE_SYSTEM_NAME MATCHES "Windows" )
@@ -231,7 +267,7 @@ endif()
 #string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
   #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
@@ -239,4 +275,4 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
   endforeach()
-endif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")

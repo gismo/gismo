@@ -50,6 +50,9 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
 template<class T>
 bool writeON_NurbsSurface( const gsSurface<T> & curve, ONX_Model & model, const std::string & name);
 
+template<class T>
+bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name);
+
 }
 
 } // namespace gismo

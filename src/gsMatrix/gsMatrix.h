@@ -116,6 +116,10 @@ public:
     typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D>
         ColMinorMatrixType;
 
+    // block of fixed size 3
+    typedef Eigen::VectorBlock<Eigen::Block<Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> Col3DType;
+    typedef Eigen::VectorBlock<const Eigen::Block<const Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> CCol3DType;
+
 public:  // Solvers related to gsMatrix
     typedef typename Eigen::EigenSolver<Base> EigenSolver;
 
@@ -130,7 +134,7 @@ public:  // Solvers related to gsMatrix
     //typedef typename Eigen::BDCSVD<Base> BDCSVD;
 
     //typedef typename Eigen::CompleteOrthogonalDecomposition CODecomposition;
-
+    
 public:
 
     gsMatrix() { }
@@ -235,6 +239,10 @@ public:
     /// \brief Returns the entries of the matrix resized to a n*m vector column-wise
     gsAsVector<T, Dynamic> asVector()
     { return gsAsVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
+
+    /// \brief Returns column \a c as a fixed-size 3D vector
+    Col3DType  col3d(index_t c) { return this->col(c).template head<3>(); }
+    CCol3DType col3d(index_t c) const { return this->col(c).template head<3>(); }
 
     /// \brief Returns the entries of the matrix resized to a (const) n*m vector column-wise
     gsAsConstVector<T, Dynamic> asVector() const
@@ -353,7 +361,7 @@ public:
         this->row(k+1) = this->row(k);
         return;
 
-        //*/
+        */
 
         for (index_t i = this->rows() - 1; i > k+1 ; --i)
             this->row(i).swap(this->row(i-1));
@@ -432,8 +440,7 @@ public:
         else if ( nr == colBlock )
         {
             for (index_t j = 0; j!= nc; j+=colBlock)
-                this->middleCols(j,colBlock).template triangularView<Eigen::StrictlyUpper>()
-                    .swap( this->middleCols(j,colBlock).transpose() );
+                this->middleCols(j,colBlock).transposeInPlace();
         }
         else
         {
@@ -617,6 +624,34 @@ template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone() const
 { return new gsMatrix<T,_Rows, _Cols, _Options>(*this); }
 */
+
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMatrix
+   */
+  namespace py = pybind11;
+  
+  template<typename T>
+  void pybind11_init_gsMatrix(pybind11::module &m, const std::string & typestr)
+  {
+    using Class = gsMatrix<T>;
+    std::string pyclass_name = std::string("gsMatrix") + typestr;
+    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    // Constructors
+    .def(py::init<>())
+    .def(py::init<index_t, index_t>())
+    // Member functions
+    .def("size",       &Class::size)
+    .def("rows",       &Class::rows)
+    .def("cols",       &Class::cols)
+    // .def("transpose",  &Class::transpose)
+    ;
+  }
+
+#endif // GISMO_BUILD_PYBIND11
+
 
 } // namespace gismo
 

@@ -328,6 +328,8 @@ public:
     typedef std::list<util::reference_wrapper<const boundary_condition<T> > > bcRefList;
 public:
 
+    gsBoundaryConditions() : m_patches(nullptr) { }
+
     /*
     gsBoundaryConditions & operator= (uPtr other)
     {
@@ -649,9 +651,29 @@ public:
         addCondition(ps.patch, ps.side(), t, func, unknown,parametric,comp);
     }
 
+    void addCondition(int p, boundary::side s, condition_type::type t,
+                      const gsFunction<T> & func, short_t unknown = 0,
+                      bool parametric = false, int comp = -1)
+    {
+        function_ptr fun(func.clone().release());
+        addCondition(p,boxSide(s),t,fun,unknown,parametric,comp);
+    }
+
+    void addCondition(int p, boundary::side s, condition_type::type t,
+                      gsFunction<T> * func, short_t unknown = 0,
+                      bool parametric = false, int comp = -1)
+    {
+        addCondition(p,boxSide(s),t,func,unknown,parametric,comp);
+    }
+
     void addCornerValue(boxCorner c, T value, int p = 0, short_t unknown = 0)
     {
         corner_values.push_back( corner_value<T>(p,c,value,unknown) );
+    }
+
+    void addCornerValue(boundary::corner c, T value, int p = 0, short_t unknown = 0)
+    {
+        corner_values.push_back( corner_value<T>(p,boxCorner(c),value,unknown) );
     }
 
     /// Prints the object as a string.
@@ -818,6 +840,12 @@ public:
       m_patches = &gm;
     }
 
+    /// Checks if a geometry map is stored in the boundary conditions
+    bool hasGeoMap() const
+    {
+        return nullptr!=m_patches;
+    }
+
     /// Returns the geometry map
     const gsFunctionSet<T> & geoMap() const
     {
@@ -855,6 +883,16 @@ private: // Data members
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsBoundaryConditions<T>& bvp)
 {return bvp.print(os); }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+    /**
+     * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
+     */
+    void pybind11_init_gsBoundaryConditions(pybind11::module &m);
+    void pybind11_enum_gsBoundaryConditions(pybind11::module &m);
+
+#endif
 
 } // namespace gismo
 

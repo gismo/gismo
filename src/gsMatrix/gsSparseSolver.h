@@ -65,7 +65,9 @@ template <typename T = real_t>
 class gsSparseSolver
 {
 public:
-    typedef gsEigenCGIdentity<T>           CGIdentity;
+    typedef memory::unique_ptr<gsSparseSolver> uPtr;
+
+    typedef gsEigenCGIdentity<T>           CGIdentity ;
     typedef gsEigenCGDiagonal<T>           CGDiagonal;
     typedef gsEigenBiCGSTABDiagonal<T>     BiCGSTABDiagonal;
     typedef gsEigenBiCGSTABIdentity<T>     BiCGSTABIdentity;
@@ -97,6 +99,8 @@ public:
 
     virtual bool      succeed ()                      const = 0;
 
+    virtual int info() const = 0;
+
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
@@ -112,6 +116,29 @@ public:
         return os.str();
     }
 
+    static uPtr get(const std::string & slv)
+    {
+        if (slv=="CGDiagonal")       return uPtr(new CGDiagonal());
+        if (slv=="SimplicialLDLT")   return uPtr(new SimplicialLDLT());
+#       ifdef GISMO_WITH_PARDISO
+        if (slv=="PardisoLU")        return uPtr(new PardisoLU());
+        if (slv=="PardisoLDLT")      return uPtr(new PardisoLDLT());
+        if (slv=="PardisoLLT")       return uPtr(new PardisoLLT());
+#       endif
+#       ifdef GISMO_WITH_SUPERLU
+        if (slv=="SuperLU")          return uPtr(new SuperLU());
+#       endif
+        if (slv=="BiCGSTABILUT")     return uPtr(new BiCGSTABILUT());
+        if (slv=="BiCGSTABDiagonal") return uPtr(new BiCGSTABDiagonal());
+        if (slv=="QR")               return uPtr(new QR());
+        if (slv=="LU")               return uPtr(new LU());
+        if (slv=="CGIdentity")       return uPtr(new CGIdentity());
+        if (slv=="BiCGSTABIdentity") return uPtr(new BiCGSTABIdentity());
+        // if (slv=="MINRES") return uPtr(new MINRES());
+        // if (slv=="GMRES")  return uPtr(new GMRES());
+        // if (slv=="DGMRES") return uPtr(new DGMRES());
+        GISMO_ERROR("Solver \'"<< slv << "\' not known to G+Smo");
+    }
 };
 
 /// \brief Print (as string) operator for sparse solvers
@@ -147,14 +174,14 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
             return gsEigenAdaptor<T>::eigenName::solve(rhs);            \
         }                                                               \
         bool succeed() const                                            \
-        {                                                               \
-            return gsEigenAdaptor<T>::eigenName::info()==Eigen::Success;\
-        }                                                               \
+        { return gsEigenAdaptor<T>::eigenName::info()==Eigen::Success;} \
+        int info() const                                                \
+        { return gsEigenAdaptor<T>::eigenName::info();}                 \
         index_t rows() const {return m_rows;}                           \
         index_t cols() const {return m_cols;}                           \
         std::ostream &print(std::ostream &os) const                     \
         {                                                               \
-            os <<STRINGIFY(gsname)<<"\n";                               \
+            os <<STRINGIFY(eigenName);                                  \
             return os;                                                  \
         }                                                               \
     };

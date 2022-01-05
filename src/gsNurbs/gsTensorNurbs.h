@@ -369,7 +369,36 @@ public:
         this->basis().swapDirections(i,j);
     }
 
-
+    /// Splits the geometry either two parts in direction \a dir, or if \a dir = -1
+    /// in 2^d parts, by calling splitAt() for each direction.
+    /// The function automatically searches for the midpoint the corresponding knot vector.
+    std::vector<gsGeometry<T>*> uniformSplit(index_t dir = -1) const
+    {
+        // We use the simple fact that a NURBS function in R^d is the central probjection
+        // of a spline function in R^{d+1} into R^d.
+        //
+        // Create a B-spline in R^{d+1} and split it
+        Basis& basis = static_cast<Basis&>(*m_basis); // Basis is here gsTensorNurbsBasis
+        std::vector<gsGeometry<T>*> result
+            = gsTensorBSpline<d,T>(basis.source(), basis.projectiveCoefs(m_coefs)).uniformSplit(dir);
+        // Turn the B-splines in R^{d+1} back into NURBS in R^d
+        for ( typename std::vector<gsGeometry<T>*>::iterator it = result.begin();
+            it != result.end(); ++it )
+        {
+            gsTensorBSpline<d,T>* spline = static_cast<gsTensorBSpline<d,T>*>(*it);
+            gsTensorNurbsBasis<d,T>* nurbsBasis = new gsTensorNurbsBasis<d,T>(spline->basis().clone().release());
+            gsTensorNurbs<d,T>* nurbs = new gsTensorNurbs<d,T>;
+            nurbs->m_basis = nurbsBasis;
+            gsTensorNurbsBasis<d,T>::setFromProjectiveCoefs(
+                spline->coefs(),
+                nurbs->m_coefs,
+                nurbsBasis->weights()
+            );
+            delete *it;
+            *it = nurbs;
+        }
+        return result;
+    }
 
 protected:
     // todo: check function: check the coefficient number, degree, knot vector ...
