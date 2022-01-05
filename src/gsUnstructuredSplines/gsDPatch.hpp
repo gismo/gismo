@@ -855,7 +855,7 @@ namespace gismo
             for (index_t j=0; j!=valence; j++ )
                 for (index_t k=0; k!=valence; k++ )
                 {
-                    T c = (j-k) % valence;
+                    index_t c = (j-k) % valence;
                     if (c < 0)
                         c += valence;
                     tmp(j,k) = P( c, i);
