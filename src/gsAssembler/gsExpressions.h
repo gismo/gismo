@@ -891,7 +891,7 @@ public:
     inline const gsMatrix<T> & fixedPart() const {return m_sd->fixedDofs;}
     gsMatrix<T> & fixedPart() {return m_sd->fixedDofs;}
 
-    index_t   id() const {return m_sd->id;}
+    index_t   id() const { return (m_sd ? m_sd->id : -1); }
     void setSpaceData(gsFeSpaceData<T>& sd) {m_sd = &sd;}
 
     index_t   interfaceCont() const {return m_sd->cont;}
@@ -1155,12 +1155,17 @@ public:
         }
     }
 
+    void print(std::ostream &os) const { os << "u"; }
+
 protected:
     friend class gismo::gsExprHelper<Scalar>;
     friend class symbol_expr<gsFeSpace>;
     explicit gsFeSpace(index_t _d = 1) : Base(_d), m_sd(nullptr) { }
 };
 
+template<class T> inline bool
+operator== (const gsFeSpace<T> & a, const gsFeSpace<T> & b)
+{ return a.id()== b.id() && a.isAcross()==b.isAcross(); }
 
 /*
   Expression representing a function given by a vector of
@@ -2367,8 +2372,12 @@ public:
     }
 
     index_t rows() const {return _u.dim();}
-
     index_t cols() const {return _u.parDim(); }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const
+    {return gsNullExpr<Scalar>::get();}
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3234,8 +3243,6 @@ public:
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
-        //gsDebugVar(_u.eval(k));
-        //gsDebugVar(_v.eval(k));
 
         // Note: a * b * c --> (a*b).eval()*c
         tmp = _u.eval(k) * _v.eval(k);
@@ -3736,11 +3743,13 @@ public:
     add_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        //GISMO_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks,
-        //             "Error: "<< E1::ColBlocks <<"!="<< E2::ColBlocks);
+        GISMO_ENSURE((int)E1::Space == (int)E2::Space &&
+                     _u.rowVar()==_v.rowVar() && _u.colVar()==_v.colVar(),
+                     "Error: adding apples and oranges (use comma instead),"
+                     " namely:\n" << _u <<"\n"<<_v);
     }
-    mutable Temporary_t res;
 
+    mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
@@ -3864,8 +3873,10 @@ public:
     sub_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        // GISMO_ASSERT(&u.rowVar()==&v.rowVar() && &u.colVar()==&v.colVar(),"The (interface) terms are not split compatibly.");
-        //GISMO_STATIC_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Cannot subtract if the number of colums do not agree.");
+        GISMO_ENSURE((int)E1::Space == (int)E2::Space &&
+                     _u.rowVar()==_v.rowVar() && _u.colVar()==_v.colVar(),
+                     "Error: substracting apples from oranges (use comma instead),"
+                     " namely:\n" << _u <<"\n"<<_v);
     }
 
     mutable Temporary_t res;
@@ -4072,19 +4083,16 @@ template <typename E2> EIGEN_STRONG_INLINE
 mult_expr<typename E2::Scalar,E2,false> const
 operator*(typename E2::Scalar const& u, _expr<E2> const& v)
 { return mult_expr<typename E2::Scalar, E2, false>(u, v); }
-//{ return mult_expr<_expr<typename E2::Scalar>,E2, false>(u, v); }
 
 template <typename E1> EIGEN_STRONG_INLINE
 mult_expr<typename E1::Scalar,E1,false> const
 operator*(_expr<E1> const& v, typename E1::Scalar const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(u, v); }
-//{ return mult_expr<_expr<typename E1::Scalar>,E1, false>(u, v); }
 
 template <typename E1> EIGEN_STRONG_INLINE
 mult_expr<typename E1::Scalar,E1,false> const
 operator-(_expr<E1> const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(-1, u); }
-//{ return mult_expr<_expr<typename E1::Scalar>,E1, false>(-1, u); }
 
 /*
   template <typename E1> mult_expr<gsMatrix<typename E1::Scalar>,E1,false> const
