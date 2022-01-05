@@ -135,6 +135,7 @@ namespace internal
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
+#include <gsPde/gsPointLoads.h>
 //#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- MultiGrid ----------- */

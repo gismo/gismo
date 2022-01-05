@@ -395,7 +395,7 @@ protected:
 #ifdef GISMO_BUILD_PYBIND11
 
   /**
-   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   * @brief Initializes the Python wrapper for the class: gsBSpline
    */
   void pybind11_init_gsBSpline(pybind11::module &m);
 
