@@ -3962,7 +3962,7 @@ class symmetrize_expr : public _expr<symmetrize_expr<E> >
 
     mutable gsMatrix<typename E::Scalar> tmp;
 public:
-    enum { Space = (0==E::Space ? 0 : E::Space), ScalarValued=E::ScalarValued, ColBlocks= E::ColBlocks };
+    enum { Space = (0==E::Space ? 0 : 3), ScalarValued=E::ScalarValued, ColBlocks= E::ColBlocks };
     typedef typename E::Scalar Scalar;
 
     symmetrize_expr(_expr<E> const& u)
