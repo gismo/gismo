@@ -17,71 +17,16 @@
 using namespace gismo;
 //! [Include namespace]
 
-//! [Implement test creator]
-template<typename Test, typename Iterator>
-void create_test(const std::string& label,
-                 const Iterator& sizes,
-                 const std::vector<index_t>& nruns,
-                 const std::vector<index_t>& nthreads,
-                 gsBenchmark& benchmark,
-                 const std::string& extra_name="")
+//! [Implement make_vector]
+template<typename T>
+std::vector<T> make_vector(T value, std::size_t size)
 {
-  gsInfo << "=== " << Test::name() << extra_name << "\n";
-  auto bmark = benchmark.add(label, Test::name()+extra_name);
-  auto riter = nruns.begin();
-  for (auto it : sizes) {
-    gsInfo << "... " << util::to_string(it) << "(" << *riter << ")"<< std::flush;
-    try {
-      Test test(it);
-      auto results = gsBenchmark::run(nthreads, *riter++, test, Test::metric());
-      std::string meminfo;
-      uint64_t memsize = test.size();
-      if (memsize<1024)
-        meminfo = util::to_string(memsize)+" B";
-      else if (memsize<1024*1024)
-        meminfo = util::to_string(memsize/1024)+" KB";
-      else if (memsize<1024*1024*1024)
-        meminfo = util::to_string(memsize/(1024*1024))+" MB";
-      else
-        meminfo = util::to_string(memsize/(1024*1024*1024))+" GB";
-      bmark->add(label, meminfo, results);
-    } catch(...) { gsInfo << "[failed!]"; }
-    gsInfo << "\n";
-  }
+  std::vector<T> v;
+  for (std::size_t i=0; i<size; ++i)
+    v.push_back(value);
+  return v;
 }
-
-template<typename Test, typename... T>
-void create_test(const std::string& label,
-                 const util::zip_helper<T...>& sizes,
-                 const std::vector<index_t>& nruns,
-                 const std::vector<index_t>& nthreads,
-                 gsBenchmark& benchmark,
-                 const std::string& extra_name="")
-{
-  gsInfo << "=== " << Test::name() << extra_name << "\n";
-  auto bmark = benchmark.add(label, Test::name()+extra_name);
-  auto riter = nruns.begin();
-  for (auto it : sizes) {
-    gsInfo << "... " << util::to_string(it) << "(" << *riter << ")"<< std::flush;
-    try {
-      Test test(it);
-      auto results = gsBenchmark::run(nthreads, *riter++, test, Test::metric());
-      std::string meminfo;
-      uint64_t memsize = test.size();
-      if (memsize<1024)
-        meminfo = util::to_string(memsize)+" B";
-      else if (memsize<1024*1024)
-        meminfo = util::to_string(memsize/1024)+" KB";
-      else if (memsize<1024*1024*1024)
-        meminfo = util::to_string(memsize/(1024*1024))+" MB";
-      else
-        meminfo = util::to_string(memsize/(1024*1024*1024))+" GB";
-      bmark->add(label, meminfo, results);
-    } catch(...) { gsInfo << "[failed!]"; }
-    gsInfo << "\n";
-  }
-}
-//! [Implement test creator]
+//! [Implement make_vector]
 
 //! [Implement memory safeguard]
 template<typename T>
@@ -113,7 +58,7 @@ public:
   benchmark_c_array_memcopy(index_t n)
     : _msg(n), n(n), m_x(new T[n]), m_y(new T[n])
   {
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
   }
@@ -126,7 +71,7 @@ public:
 
   uint64_t operator()()
   {
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_y[i] = m_x[i];
 
@@ -147,9 +92,14 @@ public:
     return (2 * uint64_t(n) * sizeof(T));
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "Memory copy (native C array)";
+  }
+
+  static std::string label()
+  {
+    return "memcopyCarray";
   }
 
   static constexpr gismo::metric metric()
@@ -175,11 +125,11 @@ public:
   benchmark_c_array_dotproduct(index_t n)
     : _msg(n), n(n), m_x(new T[n]), m_y(new T[n])
   {
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
 
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_y[i] = (T)1.0;
   }
@@ -194,7 +144,7 @@ public:
   {
     volatile T sum = 0.0;
 
-#pragma omp parallel for simd reduction(+:sum)
+#pragma omp parallel for simd reduction(+:sum) schedule(static)
     for (index_t i=0; i<n; ++i)
       sum += m_x[i] * m_y[i];
 
@@ -213,9 +163,14 @@ public:
     return (2 * uint64_t(n) * sizeof(T));
   }
 
-  static std::string name()
+  static std::string descr()
   {
-    return "Dot-product (native C array)";
+    return "Dot product (native C array)";
+  }
+
+  static std::string label()
+  {
+    return "dotproductCarray";
   }
 
   static constexpr gismo::metric metric()
@@ -241,11 +196,11 @@ public:
   benchmark_c_array_axpy(index_t n)
     : _msg(n), n(n), m_x(new T[n]), m_y(new T[n]), m_z(new T[n])
   {
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
 
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_y[i] = (T)1.0;
   }
@@ -259,7 +214,7 @@ public:
 
   uint64_t operator()()
   {
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_z[i] = (T)3.414 * m_x[i] + m_y[i];
 
@@ -280,9 +235,14 @@ public:
     return (3 * uint64_t(n) * sizeof(T));
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "AXPY (native C array)";
+  }
+
+  static std::string label()
+  {
+    return "axpyCarray";
   }
 
   static constexpr gismo::metric metric()
@@ -308,11 +268,11 @@ public:
   benchmark_c_array_dense_matmul(index_t n)
     : _msg(n), n(n), m_A(new T[n*n]), m_x(new T[n]), m_y(new T[n])
   {
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n*n; ++i)
       m_A[i] = (T)1.0;
 
-#pragma omp parallel for simd
+#pragma omp parallel for simd schedule(static)
     for (index_t i=0; i<n; ++i)
       m_x[i] = (T)1.0;
   }
@@ -326,7 +286,7 @@ public:
 
   uint64_t operator()()
   {
-#pragma omp parallel for
+#pragma omp parallel for schedule(static)
     for (index_t i=0; i<n; ++i) {
       T sum = (T)0.0;
 #pragma omp simd
@@ -353,11 +313,16 @@ public:
     return (2 * uint64_t(n) * uint64_t(n) + uint64_t(n)) * sizeof(T);
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "Dense matrix-vector multiplication (native C array)";
   }
 
+  static std::string label()
+  {
+    return "densematmulCarray";
+  }
+  
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -405,11 +370,16 @@ public:
     return (2 * uint64_t(n) * sizeof(T));
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "Memory copy (gsVector)";
   }
 
+  static std::string label()
+  {
+    return "memcopyEigen";
+  }
+  
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -455,9 +425,14 @@ public:
     return (2 * uint64_t(n) * sizeof(T));
   }
 
-  static std::string name()
+  static std::string descr()
   {
-    return "Dot-product (gsVector)";
+    return "Dot product (gsVector)";
+  }
+
+  static std::string label()
+  {
+    return "dotproductEigen";
   }
 
   static constexpr gismo::metric metric()
@@ -508,11 +483,16 @@ public:
     return (3 * uint64_t(n) * sizeof(T));
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "AXPY (gsVector)";
   }
 
+  static std::string label()
+  {
+    return "axpyEigen";
+  }
+  
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -562,11 +542,16 @@ public:
     return (2 * uint64_t(n) * uint64_t(n) + uint64_t(n)) * sizeof(T);
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "Dense matrix-vector multiplication (gsMatrix/gsVector)";
   }
 
+  static std::string label()
+  {
+    return "densematmulEigen";
+  }
+  
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -642,11 +627,16 @@ public:
        + math::pow(numPatches-1,2) );
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "Visitor-based Poisson 2d assembler";
   }
 
+  static std::string label()
+  {
+    return "assemble2dVisitorAssembler";
+  }
+  
   static constexpr gismo::metric metric()
   {
     return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
@@ -722,11 +712,16 @@ public:
        + math::pow(numPatches-1,2) );
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "Visitor-based Poisson 3d assembler";
   }
 
+  static std::string label()
+  {
+    return "assemble3dVisitorAssembler";
+  }
+  
   static constexpr gismo::metric metric()
   {
     return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
@@ -832,26 +827,22 @@ public:
        + math::pow(numPatches-1,2) );
   }
 
-  static std::string name()
+  static std::string descr()
   {
     return "Expression assembler-based Poisson 2d assembler";
   }
 
+  static std::string label()
+  {
+    return "assemble2dExpressionAssembler";
+  }
+  
   static constexpr gismo::metric metric()
   {
     return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
   }
 };
 //! [Implement benchmark Poisson 2d expression assembler]
-
-template<typename T>
-std::vector<T> make_vector(T value, std::size_t size)
-{
-  std::vector<T> v;
-  for (std::size_t i=0; i<size; ++i)
-    v.push_back(value);
-  return v;
-}
 
 int main(int argc, char *argv[])
 {
@@ -910,25 +901,25 @@ int main(int argc, char *argv[])
   //! [List benchmarks and exit]
   if (list) {
     gsInfo << "\nThe following benchmarks are available:\n"
-           << "#01: " << benchmark_c_array_memcopy<real_t>::name() << "\n"
-           << "#02: " << benchmark_eigen_memcopy<real_t>::name() << "\n"
-           << "#03: " << benchmark_c_array_dotproduct<real_t>::name() << "\n"
-           << "#04: " << benchmark_eigen_dotproduct<real_t>::name() << "\n"
-           << "#05: " << benchmark_c_array_axpy<real_t>::name() << "\n"
-           << "#06: " << benchmark_eigen_axpy<real_t>::name() << "\n"
-           << "#07: " << benchmark_c_array_dense_matmul<real_t>::name() << "\n"
-           << "#08: " << benchmark_eigen_dense_matmul<real_t>::name() << "\n"
-           << "#09: " << benchmark_poisson2d_visitor<real_t>::name()
+           << "#01: " << benchmark_c_array_memcopy<real_t>::descr() << "\n"
+           << "#02: " << benchmark_eigen_memcopy<real_t>::descr() << "\n"
+           << "#03: " << benchmark_c_array_dotproduct<real_t>::descr() << "\n"
+           << "#04: " << benchmark_eigen_dotproduct<real_t>::descr() << "\n"
+           << "#05: " << benchmark_c_array_axpy<real_t>::descr() << "\n"
+           << "#06: " << benchmark_eigen_axpy<real_t>::descr() << "\n"
+           << "#07: " << benchmark_c_array_dense_matmul<real_t>::descr() << "\n"
+           << "#08: " << benchmark_eigen_dense_matmul<real_t>::descr() << "\n"
+           << "#09: " << benchmark_poisson2d_visitor<real_t>::descr()
            <<            " with increasing number of patches" << "\n"
-           << "#10: " << benchmark_poisson2d_visitor<real_t>::name()
+           << "#10: " << benchmark_poisson2d_visitor<real_t>::descr()
            <<            " with increasing number of subdivisions" << "\n"
-           << "#11: " << benchmark_poisson3d_visitor<real_t>::name()
+           << "#11: " << benchmark_poisson3d_visitor<real_t>::descr()
            <<            " with increasing number of patches" << "\n"
-           << "#12: " << benchmark_poisson3d_visitor<real_t>::name()
+           << "#12: " << benchmark_poisson3d_visitor<real_t>::descr()
            <<            " with increasing number of subdivisions" << "\n"
-           << "#13: " << benchmark_poisson2d_expression_assembler<real_t>::name()
+           << "#13: " << benchmark_poisson2d_expression_assembler<real_t>::descr()
            <<            " with increasing number of patches" << "\n"
-           << "#14: " << benchmark_poisson2d_expression_assembler<real_t>::name()
+           << "#14: " << benchmark_poisson2d_expression_assembler<real_t>::descr()
            <<            " with increasing number of subdivisions" << "\n";
       
     return EXIT_SUCCESS;
@@ -1003,120 +994,119 @@ int main(int argc, char *argv[])
 
     case (1): {
       // Benchmark: memcopy native C arrays
-      create_test<benchmark_c_array_memcopy<real_t> >
-        ("memcopyCarray", vsizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_c_array_memcopy<real_t> >
+        (vsizes, nruns, nthreads);
       break;
     }
       
     case (2): {
       // Benchmark: memcopy gsVector
-      create_test<benchmark_eigen_memcopy<real_t> >
-        ("memcopyEigen", vsizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_eigen_memcopy<real_t> >
+        (vsizes, nruns, nthreads);
       break;
     }
 
     case (3): {
       // Benchmark: dot-product native C array
-      create_test<benchmark_c_array_dotproduct<real_t> >
-        ("dotproductCarray", vsizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_c_array_dotproduct<real_t> >
+        (vsizes, nruns, nthreads);
       break;
     }
 
     case (4): {
       // Benchmark: dot-product gsVector
-      create_test<benchmark_eigen_dotproduct<real_t> >
-        ("dotproductEigen", vsizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_eigen_dotproduct<real_t> >
+        (vsizes, nruns, nthreads);
       break;
     }
 
     case (5): {
       // Benchmark: axpy native C array
-      create_test<benchmark_c_array_axpy<real_t> >
-        ("axpyCarray", vsizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_c_array_axpy<real_t> >
+        (vsizes, nruns, nthreads);
       break;
     }
 
     case (6): {
       // Benchmark: axpy gsVector
-      create_test<benchmark_eigen_axpy<real_t> >
-        ("axpyEigen", vsizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_eigen_axpy<real_t> >
+        (vsizes, nruns, nthreads);
       break;
     }
 
     case (7): {
       // Benchmark: dense matrix-vector multiplication native C array
-      create_test<benchmark_c_array_dense_matmul<real_t> >
-        ("densematmulCarray", msizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_c_array_dense_matmul<real_t> >
+        (msizes, nruns, nthreads);
       break;
     }
 
     case (8): {
       // Benchmark: dense matrix-vector multiplication gsMatrix/gsVector
-      create_test<benchmark_eigen_dense_matmul<real_t> >
-        ("densematmulEigen", msizes, nruns, nthreads, benchmark);
+      benchmark.create<benchmark_eigen_dense_matmul<real_t> >
+        (msizes, nruns, nthreads);
       break;
     }
 
     case (9): {
       // Benchmark: visitor-based Poisson 2d assembler with increasing number of patches
-      create_test<benchmark_poisson2d_visitor<real_t> >
-        ("assemblerVisitor", util::zip(patches,
-                                       make_vector((index_t)1, patches.size()),
-                                       make_vector((index_t)3, patches.size())),
-         nruns, nthreads, benchmark, " with increasing number of patches");
+      benchmark.create<benchmark_poisson2d_visitor<real_t> >
+        (util::zip(patches,
+                   make_vector((index_t)1, patches.size()),
+                   make_vector((index_t)3, patches.size())),
+         nruns, nthreads, " with increasing number of patches");
       break;
     }
 
     case (10): {
       // Benchmark: visitor-based Poisson 2d assembler with increasing number of subdivisions
-      create_test<benchmark_poisson2d_visitor<real_t> >
-        ("assemblerVisitor", util::zip(make_vector((index_t)4, subdivides.size()),
-                                       subdivides,
-                                       make_vector((index_t)3, subdivides.size())),
-         nruns, nthreads, benchmark, " with increasing number of subdivisions");
+      benchmark.create<benchmark_poisson2d_visitor<real_t> >
+        (util::zip(make_vector((index_t)4, subdivides.size()),
+                   subdivides,
+                   make_vector((index_t)3, subdivides.size())),
+         nruns, nthreads, " with increasing number of subdivisions");
       break;
     }
 
     case (11): {
       // Benchmark: visitor-based Poisson 3d assembler with increasing number of patches
-      create_test<benchmark_poisson3d_visitor<real_t> >
-        ("assemblerVisitor", util::zip(patches,
-                                       make_vector((index_t)0, patches.size()),
-                                       make_vector((index_t)1, patches.size())),
-         nruns, nthreads, benchmark, " with increasing number of patches");
+      benchmark.create<benchmark_poisson3d_visitor<real_t> >
+        (util::zip(patches,
+                   make_vector((index_t)0, patches.size()),
+                   make_vector((index_t)1, patches.size())),
+         nruns, nthreads, " with increasing number of patches");
       break;
     }
 
     case (12): {
       // Benchmark: visitor-based Poisson 3d assembler with increasing number of subdivisions
-      create_test<benchmark_poisson3d_visitor<real_t> >
-        ("assemblerVisitor", util::zip(make_vector((index_t)1, subdivides.size()),
-                                       subdivides,
-                                       make_vector((index_t)2, subdivides.size())),
-         nruns, nthreads, benchmark, " with increasing number of subdivisions");
+      benchmark.create<benchmark_poisson3d_visitor<real_t> >
+        (util::zip(make_vector((index_t)1, subdivides.size()),
+                   subdivides,
+                   make_vector((index_t)2, subdivides.size())),
+         nruns, nthreads, " with increasing number of subdivisions");
       break;
     }
       
     case (13): {
       // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of patches
-      create_test<benchmark_poisson2d_expression_assembler<real_t> >
-        ("assemblerExpressionAssembler", util::zip(patches,
-                                                   make_vector((index_t)1, patches.size()),
-                                                   make_vector((index_t)3, patches.size())),
-         nruns, nthreads, benchmark, " with increasing number of patches");
+      benchmark.create<benchmark_poisson2d_expression_assembler<real_t> >
+        (util::zip(patches,
+                   make_vector((index_t)1, patches.size()),
+                   make_vector((index_t)3, patches.size())),
+         nruns, nthreads, " with increasing number of patches");
       break;
     }
 
     case (14): {
       // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of subdivision
-      create_test<benchmark_poisson2d_expression_assembler<real_t> >
-        ("assemblerExpressionAssembler", util::zip(make_vector((index_t)4, subdivides.size()),
-                                                   subdivides,
-                                                   make_vector((index_t)3, subdivides.size())),
-         nruns, nthreads, benchmark, " with increasing number of subdivisions");
+      benchmark.create<benchmark_poisson2d_expression_assembler<real_t> >
+        (util::zip(make_vector((index_t)4, subdivides.size()),
+                   subdivides,
+                   make_vector((index_t)3, subdivides.size())),
+         nruns, nthreads, " with increasing number of subdivisions");
       break;
     }
-
       
     default:
       GISMO_ERROR("Invalid benchmark");
@@ -1124,15 +1114,68 @@ int main(int argc, char *argv[])
 
   } // benchmark loop
 
+  { // Memory copy ratio
+    auto bmA = benchmark.find(benchmark_c_array_memcopy<real_t>::label());
+    auto bmB = benchmark.find(benchmark_eigen_memcopy<real_t>::label());
+    
+    if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
+      auto bm = benchmark::ratio("memcopyRatio",
+                                 "Memory copy (gsVector : native C array)", *bmB, *bmA);
+      benchmark.get().push_back( give(bm) );
+    }
+  }
+
+  { // Dot product ratio
+    auto bmA = benchmark.find(benchmark_c_array_dotproduct<real_t>::label());
+    auto bmB = benchmark.find(benchmark_eigen_dotproduct<real_t>::label());
+    
+    if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
+      auto bm = benchmark::ratio("dotproductRatio",
+                                 "Dot product (gsVector : native C array)", *bmB, *bmA);
+      benchmark.get().push_back( give(bm) );
+    }
+  }
+
+  { // AXPY ratio
+    auto bmA = benchmark.find(benchmark_c_array_axpy<real_t>::label());
+    auto bmB = benchmark.find(benchmark_eigen_axpy<real_t>::label());
+    
+    if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
+      auto bm = benchmark::ratio("axpyRatio",
+                                 "AXPY (gsVector : native C array)", *bmB, *bmA);
+      benchmark.get().push_back( give(bm) );
+    }
+  }
+
+  { // Dense matrix-vector multiplication ratio
+    auto bmA = benchmark.find(benchmark_c_array_dense_matmul<real_t>::label());
+    auto bmB = benchmark.find(benchmark_eigen_dense_matmul<real_t>::label());
+    
+    if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
+      auto bm = benchmark::ratio("densematmulRatio",
+                                 "Dense matrix-vector multiplication (gsMatrix/gsVector : native C array)",
+                                 *bmB, *bmA);
+      benchmark.get().push_back( give(bm) );
+    }
+  }  
+  
   if (fn.empty())
     gsInfo << benchmark << "\n";
-  else {
+  else if (gsFileManager::getExtension(fn) == "tex") {
     std::ofstream file;
     file.open(fn);
     benchmark.to_tikz(file);
     file.close();
   }
+  else if (gsFileManager::getExtension(fn) == "xml") {
+    gsFileData<> file;
+    file << benchmark;
+    file.save("result.xml");
+  }
+  else {
+    GISMO_ERROR("Unsupported file extension");
+  }
   //! [Execute benchmarks]
-
+  
   return EXIT_SUCCESS;
 }
