@@ -163,6 +163,7 @@ namespace internal
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
+#include <gsSolver/gsBiCgStab.h>
 #include <gsSolver/gsPreconditioner.h>
 #include <gsSolver/gsAdditiveOp.h>
 #include <gsSolver/gsBlockOp.h>
