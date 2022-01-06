@@ -62,9 +62,9 @@ destination is the variable that will have the value of the input argument
 Adding a string argument, given by the "-s" (or "--stringArg") flag
 If set, string is updated to the input value, otherwise string remains untouched
 """
-#cmd.addString("s", "stringArg",
-#              "Description of string command line argument.",
-#              string)
+# cmd.addString("s", "stringArg",
+#               "Description of string command line argument.",
+#               string)
 
 """
 -----------------------------------------------------------------
@@ -120,6 +120,9 @@ except:
     print("An error occured")
 
 number= cmd.getInt("num")
+
+print(cmd.getMessage())
+
 
 print('''
 Printing command line arguments:\n\n\n

@@ -70,6 +70,10 @@ deriv2val = np.empty(2)
 deriv2val = b.deriv2(u)
 print(f"Second derivatives of the Bspline on {u[0]} with void function:\n", deriv2val)
 
+u = np.array([0.5,0.25])
+f = gs.core.gsFunctionExpr("x^2","x","y^2",2)
+print(f"Evaluation of the Function on {u[0]}:\n", f.eval(u))
+
 #References to matrices can get invalidated
 print("--- Updating a referenced array works")
 c=b.coefs()
