@@ -514,7 +514,10 @@ void pybind11_init_gsCmdLine(py::module &m)
     .def("addMultiReal", &gsClass::addMultiReal)
 
     .def("addString", &gsClass::addString)
+    .def("getString", &gsClass::getString)
+
     .def("addMultiString", &gsClass::addMultiString)
+    .def("getMultiString", &gsClass::getMultiString)
 
     .def("addSwitch",
          (void (gsClass::*)(const std::string&, const std::string&, const std::string&, bool&))

@@ -440,6 +440,8 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
     // Outer normal vector
     if ( InOut.flags & NEED_OUTER_NORMAL)
     {
+        if (InOut.side==boundary::none)
+            gsWarn<< "Computing boundary normal without a valid side.\n";
         const T   sgn = sideOrientation(InOut.side);
         const int dir = InOut.side.direction();
         InOut.outNormals.resize(n,numPts);
