@@ -13,7 +13,11 @@
 
 #pragma once
 
+// Enable implicit conversion and disable compiler warnings
+#define CODI_ImplicitConversion 1
+#define CODI_ImplicitConversionWarning 0
 #include <codi.hpp>
+
 #include <gsCore/gsTemplateTools.h>
 
 #ifdef GISMO_BUILD_LIB
@@ -24,28 +28,60 @@
 
 namespace codi {
 template<class T>
-using codi_real = std::conditional<std::is_base_of<codi::Expression<typename codi::TypeTraits<T>::Real, T>, T>::value,
-                                   GISMO_COEFF_TYPE, T>;
+using codi_real = std::conditional<ExpressionTraits::IsExpression<T>::value, GISMO_COEFF_TYPE, T>;
 
-// RealReverseGen<real_t>
+// General forward AD type: RealForwardGen<real_t>
 EXTERN_CLASS_TEMPLATE
-ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<codi_real<real_t>::type, codi_real<real_t>::type, LinearIndexHandler<int> >, ChunkVector> > >;
+ActiveType<ForwardEvaluation<real_t, real_t> >;
 
-// RealForwardGen<real_t>
+// General vector forward AD type: RealForwardVec<real_t, 4>
 EXTERN_CLASS_TEMPLATE
-ActiveReal<ForwardEvaluation<ForwardTapeTypes<real_t, codi_real<real_t>::type> > >;
+ActiveType<ForwardEvaluation<real_t, Direction<real_t, 4> > >;  
+  
+// General reverse AD type: RealReverseGen<real_t>
+// Jacobian taping approach with linear index handling.
+EXTERN_CLASS_TEMPLATE
+ActiveType<JacobianLinearTape<JacobianTapeTypes<real_t, real_t,
+                                                LinearIndexManager<index_t>,
+                                                DefaultChunkedData> > >;
 
-// RealReverseIndexGen<real_t>
+// General vector reverse AD type: RealReverseVec<real_t, 4>
+// Jacobian taping approach with linear index handling.
 EXTERN_CLASS_TEMPLATE
-ActiveReal<JacobiIndexTape<JacobiIndexTapeTypes<ReverseTapeTypes<real_t, real_t, ReuseIndexHandlerUseCount<int> >, ChunkVector> > >;
+ActiveType<JacobianLinearTape<JacobianTapeTypes<real_t, Direction<real_t, 4>,
+                                                LinearIndexManager<index_t>,
+                                                DefaultChunkedData> > >;
 
-// RealReverseGen<real_t, Direction<real_t, 4> >
+// General unchecked reverse AD type: RealReverseUncheckedGen<real_t>
+// Requires preallocation of data. See DataManagementTapeInterface.
+// Jacobian taping approach with linear index handling.
 EXTERN_CLASS_TEMPLATE
-ActiveReal<JacobiTape<JacobiTapeTypes<ReverseTapeTypes<real_t, Direction<real_t, 4>, LinearIndexHandler<int> >, ChunkVector > > >;
+ActiveType<JacobianLinearTape<JacobianTapeTypes<real_t, real_t,
+                                                LinearIndexManager<index_t>,
+                                                DefaultBlockData> > >;
 
-// RealReverseIndexGen<real_t, Direction<real_t, 4> >
+// General reverse AD type: RealReverseIndexGen<real_t>
+// Jacobian taping approach with reuse index handling.
 EXTERN_CLASS_TEMPLATE
-ActiveReal<JacobiIndexTape<JacobiIndexTapeTypes<ReverseTapeTypes<real_t, Direction<real_t, 4>, ReuseIndexHandlerUseCount<int> >, ChunkVector> > >;
+ActiveType<JacobianReuseTape<JacobianTapeTypes<real_t, real_t,
+                                               MultiUseIndexManager<index_t>,
+                                               DefaultChunkedData> > >;
+
+// General reverse AD type: RealReversePrimalGen<real_t>
+// Primal value taping approach with linear index handling.
+EXTERN_CLASS_TEMPLATE
+ActiveType<PrimalValueLinearTape<
+             PrimalValueTapeTypes<real_t, real_t,
+                                  LinearIndexManager<index_t>,
+                                  InnerStatementEvaluator, DefaultChunkedData> > >;
+
+// General reverse AD type: RealReversePrimalIndexGen<real_t>
+// Primal value taping approach with reuse index handling.
+EXTERN_CLASS_TEMPLATE
+ActiveType<PrimalValueReuseTape<
+             PrimalValueTapeTypes<real_t, real_t,
+                                  MultiUseIndexManager<index_t>,
+                                  InnerStatementEvaluator, DefaultChunkedData> > >;
 
 } // namespace codi
 #endif

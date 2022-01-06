@@ -24,7 +24,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET default)# this is needed to get the CoDiPack tap
 # Download CoDiPack sources at configure time
 include(gsFetch)
 gismo_fetch_directory(CoDiPack
-    URL https://github.com/SciCompKL/CoDiPack/archive/numericExtension.zip
+    URL https://github.com/SciCompKL/CoDiPack/archive/refs/heads/master.zip
     DESTINATION    external
 )
 
