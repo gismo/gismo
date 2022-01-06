@@ -142,13 +142,16 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
     {
         const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
         const int degree = this->basis().degree(dir_fixed);
-
+        index_t index;
         gsMatrix<T> coefs;
         if( mult>=degree )
         {
             // no knot insertion needed, just extract the right coefficients
             const gsKnotVector<T>& knots = this->basis().knots(dir_fixed);
-            const index_t index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
+            if (par == *knots.domainEnd())
+                index = knots.size()-this->basis().degree(dir_fixed)-2;
+            else
+                index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
             gsVector<index_t,d> sizes;
             this->basis().size_cwise(sizes);
             constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
@@ -166,7 +169,10 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
 
             // extract right ceofficients
             const gsKnotVector<T>& knots = clone->basis().knots(dir_fixed);
-            const index_t index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
+            if (par == *knots.domainEnd())
+                index = knots.size()-clone->basis().degree(dir_fixed)-2;
+            else
+                index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
             gsVector<index_t,d> sizes;
             clone->basis().size_cwise(sizes);
             constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
