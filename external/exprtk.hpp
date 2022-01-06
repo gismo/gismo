@@ -1008,7 +1008,7 @@ namespace exprtk
                if ((v0 < T(0)) && (0 == (n % 2)))
                   return std::numeric_limits<T>::quiet_NaN();
 
-               return std::pow(v0, T(1) / n);
+               return std::pow(v0, T(1) / T(n));
             }
 
             template <typename T>
@@ -13788,7 +13788,7 @@ namespace exprtk
          {
             const std::size_t vec_size = v->vec()->vds().size();
 
-            return vec_add_op<T>::process(v) / vec_size;
+            return vec_add_op<T>::process(v) / T(vec_size);
          }
       };
 
