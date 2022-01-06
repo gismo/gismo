@@ -866,7 +866,8 @@ int main(int argc, char* argv[])
     real_t tol = 1e-8;
 
     // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
-    solver->setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / pa.rhs().norm() );
+    const real_t rhs_norm = pa.rhs().norm();
+    solver->setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / rhs_norm );
     solver->setMaxIterations(maxIter);
     gsMatrix<> error_history;
     solver->solveDetailed( pa.rhs(), x, error_history );
@@ -874,9 +875,12 @@ int main(int argc, char* argv[])
 
     for (index_t i=1; i<error_history.rows(); ++i)
     {
-        gsInfo << "Iteration: " << i << "       |  Residual norm: "   << std::left << std::setw(15) << error_history(i,0) * pa.rhs().norm()
-               << "            reduction:  1 / " << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
-               <<  std::setprecision (6) << "\n";
+        gsInfo << std::right << std::setw(4) << i
+	       << "  |  Residual norm: "
+               << std::setprecision(6) << std::left << std::setw(15) << (error_history(i,0) * rhs_norm)
+	       << "  reduction:  1 / "
+	       << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
+               << "\n";
     }
     if (solver->error() <= solver->tolerance())
         gsInfo << "Solver reached accuracy goal after " << solver->iterations() << " iterations.\n";
