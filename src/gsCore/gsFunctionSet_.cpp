@@ -29,6 +29,8 @@ void pybind11_init_gsFunctionSet(py::module &m)
   py::class_<Class>(m, "gsFunctionSet")
 
   //Constructor?
+  .def("eval_into", &Class::eval_into, "Evaluates the function set into a matrix")
+  .def("deriv_into", &Class::deriv_into, "Evaluates the derivative into a matrix")
   ;
 }
 #endif

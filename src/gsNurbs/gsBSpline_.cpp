@@ -37,8 +37,8 @@ void pybind11_init_gsBSpline(py::module &m)
     .def("coefs", (gsMatrix<real_t>& (Class::*)())&Class::coefs,
            py::return_value_policy::reference_internal,
            "Returns the coeffcient matrix (as a reference)") //there are 2 versions of coefs()
-    .def("knots", static_cast<gsKnotVector<real_t>& (Class::*)(int)> (&Class::knots), "Set the pet's age")
-    .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots), "Set the pet's age")
+    .def("knots", static_cast<gsKnotVector<real_t>& (Class::*)(int)> (&Class::knots), "Gets the knots")
+    .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots), "Gets the knots as a reference")
     .def("numCoefs", &Class::numCoefs, "Returns the number of coefficients")
     .def("sample", &Class::sample, "Returns samples on the Bspline curve")
     .def("eval", &Class::eval, "Returns the evaluation of the Bspline curve at the input point")
