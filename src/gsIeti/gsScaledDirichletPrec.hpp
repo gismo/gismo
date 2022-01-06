@@ -16,8 +16,6 @@
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsAdditiveOp.h>
-#include <gsCore/gsMultiBasis.h>
-#include <gsSolver/gsBlockOp.h>
 
 namespace gismo
 {
@@ -154,8 +152,7 @@ void gsScaledDirichletPrec<T>::setupMultiplicityScaling()
 
     for (index_t k=0; k<pnr; ++k)
     {
-        const index_t sz = m_localSchurOps[k]->rows();
-        //gsMatrix<T> & sc = m_localScaling[k];
+        const index_t sz = m_jumpMatrices[k]->cols();
         gsSparseMatrix<T> sc;
         sc.resize(sz, sz);
 
@@ -181,7 +178,7 @@ void gsScaledDirichletPrec<T>::setupMultiplicityScaling()
 }
 
 template <class T>
-void gsScaledDirichletPrec<T>::setupDeluxeScaling(const std::vector<boundaryInterface>& ifaces) // TODO: Consider entry != 0 for the corners
+void gsScaledDirichletPrec<T>::setupDeluxeScaling()
 {
     // Assert that the jumpmatrices are registered
     GISMO_ASSERT(m_jumpMatrices.size() != 0, "gsScaledDirichletPrec<T>::setupDeluxeScaling(...), Forgot to call addSubdomain(...)?");
@@ -195,15 +192,29 @@ void gsScaledDirichletPrec<T>::setupDeluxeScaling(const std::vector<boundaryInte
         scalingTransOps[k] = gsSumOp<>::make();
     }
 
-    for (std::vector<boundaryInterface>::const_iterator it = ifaces.begin(); it != ifaces.end(); it++)
+    // Always two patches are connected by one Lagrange multiplier
+    gsMatrix<index_t> lambda2Patches(2, m_jumpMatrices[0]->rows()); // Assume that all jump matrices have the same rows
+    for (index_t i=0; i<m_jumpMatrices[0]->outerSize(); ++i){
+        for (size_t k = 0; k < m_jumpMatrices.size(); ++k)
+        for (typename JumpMatrix::InnerIterator it(*m_jumpMatrices[k], i); it; ++it)
+        {
+            index_t c = it.col();
+            if((*m_jumpMatrices[k])(i, c) == 1)
+                lambda2Patches(0, i) = k;
+            else if((*m_jumpMatrices[k])(i, c) == -1)
+                lambda2Patches(1, i) = k;
+        }
+    }
+
+    for (index_t col = 0; col < lambda2Patches.cols(); ++col)
     {
-        patchSide side1 = it->first();
-        patchSide side2 = it->second();
+        index_t patch1 = lambda2Patches(0, col);
+        index_t patch2 = lambda2Patches(1, col);
 
         SparseMatrix localSchurRestriction1, localSchurRestriction2;
         gsSparseEntries<T> se1_restriction, se2_restriction;
-        JumpMatrix & jm1 = *(m_jumpMatrices[side1.patch]);
-        JumpMatrix & jm2 = *(m_jumpMatrices[side2.patch]);
+        JumpMatrix & jm1 = *(m_jumpMatrices[patch1]);
+        JumpMatrix & jm2 = *(m_jumpMatrices[patch2]);
         se1_restriction.reserve( jm1.cols() );
         se2_restriction.reserve( jm2.cols() );
 
@@ -227,51 +238,102 @@ void gsScaledDirichletPrec<T>::setupDeluxeScaling(const std::vector<boundaryInte
             }
         }
 
-        localSchurRestriction1.resize(r, m_localSchurOps[side1.patch]->cols());
-        localSchurRestriction2.resize(r, m_localSchurOps[side2.patch]->cols());
+        localSchurRestriction1.resize(r, m_localSchurOps[patch1]->cols());
+        localSchurRestriction2.resize(r, m_localSchurOps[patch2]->cols());
         localSchurRestriction1.setFrom(se1_restriction);
         localSchurRestriction2.setFrom(se2_restriction);
 
-        // Restrict the Schur complements S^k and S^l to the interface to obtain \Sum_i R_{iF} S^i R_{iF}^T,
+        // Restrict the A_{\Gamma\Gamma}^{k} and A_{\Gamma\Gamma}^{l} to the interface to obtain \Sum_i R_{iF} A_{\Gamma\Gamma}^{i} R_{iF}^T,
         // where R_{iF} denotes the restriction to the interface F
-        typename gsAdditiveOp<>::Ptr ifaceRestriction = gsAdditiveOp<>::make(std::vector<gsSparseMatrix<T, RowMajor>>{localSchurRestriction1, localSchurRestriction2},
-                                                                std::vector<OpPtr>{m_localSchurOps[side1.patch], m_localSchurOps[side2.patch]}
-                                                                );
+        SparseMatrix AFF = localSchurRestriction1 * m_blocks[patch1].A00 * localSchurRestriction1.transpose() + localSchurRestriction2 * m_blocks[patch2].A00 * localSchurRestriction2.transpose();
+        SparseMatrix AFI1 = localSchurRestriction1 * m_blocks[patch1].A10;
+        SparseMatrix AFI2 =  localSchurRestriction2 * m_blocks[patch2].A10;
+        SparseMatrix AIF1 = m_blocks[patch1].A01 * localSchurRestriction1.transpose();
+        SparseMatrix AIF2 = m_blocks[patch2].A01 * localSchurRestriction2.transpose();
 
-        // Build the Schur complement matrices restricted to the interface, i.e., S^k_F + S^l_F
-        gsMatrix<T> result;
-        ifaceRestriction->toMatrix(result); // TODO:Might be costly if matrix dofs on faces or edges grow, better solution??
+        gsSparseEntries<T> se_blockMat;
+        se_blockMat.reserve(m_blocks[patch1].A00.rows() + m_blocks[patch1].A11.rows() + m_blocks[patch1].A11.cols() + m_blocks[patch2].A11.cols());
+        for (index_t i=0; i<AFF.outerSize(); ++i){
+            for (typename SparseMatrix::InnerIterator it(AFF, i); it; ++it)
+            {
+                se_blockMat.add(i, it.col(), AFF(i, it.col()));
+            }
+        }
 
-        // Build the deluxe scaling matrices (S^k_F + S^l_F)^{-1}S^k_F and (S^k_F + S^l_F)^{-1}S^l_F, respectively
-        // They sum up to the identity!
-        typename gsLinearOperator<T>::Ptr SkFSlFInv = makePartialPivLUSolver(result);
-        typename gsProductOp<>::Ptr deluxeMatk = gsProductOp<>::make( gsProductOp<>::make(
-                makeMatrixOp(ifaceRestriction->getTransfers()[0]->transpose()), ifaceRestriction->getOps()[0], makeMatrixOp(ifaceRestriction->getTransfers()[0])
-                        ),
-                                                                SkFSlFInv
-                                                                );
-        typename gsProductOp<>::Ptr deluxeMatl = gsProductOp<>::make( gsProductOp<>::make(
-                makeMatrixOp(ifaceRestriction->getTransfers()[1]->transpose()), ifaceRestriction->getOps()[1], makeMatrixOp(ifaceRestriction->getTransfers()[1])
-                ),
-                                                                      SkFSlFInv
-                                                                 );
+        for (index_t i=0; i<AFI1.outerSize(); ++i){
+            for (typename SparseMatrix::InnerIterator it(AFI1, i); it; ++it)
+            {
+                se_blockMat.add(i, it.col() + AFF.cols(), AFI1(i, it.col()));
+            }
+        }
 
-        // Build also the transposed deluxe scaling matrices
-        typename gsProductOp<>::Ptr deluxeMatTransk = gsProductOp<>::make(SkFSlFInv, gsProductOp<>::make(
-                makeMatrixOp(ifaceRestriction->getTransfers()[0]->transpose()), ifaceRestriction->getOps()[0], makeMatrixOp(ifaceRestriction->getTransfers()[0])
-                                                                      )
-        );
-        typename gsProductOp<>::Ptr deluxeMatTransl = gsProductOp<>::make(SkFSlFInv, gsProductOp<>::make(
-                makeMatrixOp(ifaceRestriction->getTransfers()[1]->transpose()), ifaceRestriction->getOps()[1], makeMatrixOp(ifaceRestriction->getTransfers()[1])
-                                                                      )
-        );
+        for (index_t i=0; i<AFI2.outerSize(); ++i){
+            for (typename SparseMatrix::InnerIterator it(AFI2, i); it; ++it)
+            {
+                se_blockMat.add(i, it.col() + AFF.cols() + AFI1.cols(), AFI2(i, it.col()));
+            }
+        }
 
-        // Add the deluxe scaling matrices to a sum operator for each patch
-        scalingOps[side1.patch]->addOperator(gsAdditiveOp<>::make(std::vector<gsSparseMatrix<T, RowMajor>>{ifaceRestriction->getTransfers()[0]->transpose()}, std::vector<OpPtr>{deluxeMatk}));
-        scalingOps[side2.patch]->addOperator(gsAdditiveOp<>::make(std::vector<gsSparseMatrix<T, RowMajor>>{ifaceRestriction->getTransfers()[1]->transpose()}, std::vector<OpPtr>{deluxeMatl}));
+        for (index_t i=0; i<AIF1.outerSize(); ++i){
+            for (typename SparseMatrix::InnerIterator it(AIF1, i); it; ++it)
+            {
+                se_blockMat.add(i + AFF.rows(), it.col(), AIF1(i, it.col()));
+            }
+        }
 
-        scalingTransOps[side1.patch]->addOperator(gsAdditiveOp<>::make(std::vector<gsSparseMatrix<T, RowMajor>>{ifaceRestriction->getTransfers()[0]->transpose()}, std::vector<OpPtr>{deluxeMatTransk}));
-        scalingTransOps[side2.patch]->addOperator(gsAdditiveOp<>::make(std::vector<gsSparseMatrix<T, RowMajor>>{ifaceRestriction->getTransfers()[1]->transpose()}, std::vector<OpPtr>{deluxeMatTransl}));
+        for (index_t i=0; i<AIF2.outerSize(); ++i){
+            for (typename SparseMatrix::InnerIterator it(AIF2, i); it; ++it)
+            {
+                se_blockMat.add(i + AFF.rows() + AIF1.rows(), it.col(), AIF2(i, it.col()));
+            }
+        }
+
+        for (index_t i=0; i<m_blocks[patch1].A11.outerSize(); ++i){
+            for (typename SparseMatrix::InnerIterator it(m_blocks[patch1].A11, i); it; ++it)
+            {
+                se_blockMat.add(i + AFF.rows(), it.col() + AFF.cols(), m_blocks[patch1].A11(i, it.col()));
+            }
+        }
+
+        for (index_t i=0; i<m_blocks[patch2].A11.outerSize(); ++i){
+            for (typename SparseMatrix::InnerIterator it(m_blocks[patch2].A11, i); it; ++it)
+            {
+                se_blockMat.add(i + AFF.rows() + AIF1.rows(), it.col() + AFF.cols() + AFI1.cols(), m_blocks[patch2].A11(i, it.col()));
+            }
+        }
+
+        gsSparseEntries<T> se_I; se_I.reserve(AFF.cols());
+        for (index_t i=0; i<AFF.rows(); ++i) {
+            se_I.add(i, i, T(1));
+        }
+
+        SparseMatrix blockMat(AFF.rows() + AIF1.rows() + AIF2.rows(), AFF.cols() + AFI1.cols() + AFI2.cols());
+        blockMat.setFrom(se_blockMat);
+        SparseMatrix I(AFF.cols(), AFF.rows() + AIF1.rows() + AIF2.rows());
+        I.setFrom(se_I);
+
+        // Restrict the Schur complements on the patches to the interfaces
+        typename gsAdditiveOp<>::Ptr SFk = gsAdditiveOp<>::make(std::vector<SparseMatrix>{localSchurRestriction1},
+                                                                std::vector<OpPtr>{m_localSchurOps[patch1]});
+
+        typename gsAdditiveOp<>::Ptr SFl = gsAdditiveOp<>::make(std::vector<SparseMatrix>{localSchurRestriction2},
+                                                                 std::vector<OpPtr>{m_localSchurOps[patch2]});
+
+        // Build the inverse of the sum of Schur complements
+        typename gsAdditiveOp<>::Ptr embedding = gsAdditiveOp<>::make(std::vector<SparseMatrix>{I},
+                                                                 std::vector<OpPtr>{makeSparseCholeskySolver(blockMat)});
+
+        // Build the scaling matrices
+        typename gsProductOp<>::Ptr prod1 = gsProductOp<>::make(SFk, embedding);
+        typename gsProductOp<>::Ptr prod2 = gsProductOp<>::make(SFl, embedding);
+        typename gsProductOp<>::Ptr prod1trans = gsProductOp<>::make(embedding, SFk);
+        typename gsProductOp<>::Ptr prod2trans = gsProductOp<>::make(embedding, SFl);
+
+        scalingOps[patch1]->addOperator(gsAdditiveOp<>::make(std::vector<SparseMatrix>{SFk->getTransfers()[0]->transpose()}, std::vector<OpPtr>{prod1}));
+        scalingOps[patch2]->addOperator(gsAdditiveOp<>::make(std::vector<SparseMatrix>{SFl->getTransfers()[0]->transpose()}, std::vector<OpPtr>{prod2}));
+
+        scalingTransOps[patch1]->addOperator(gsAdditiveOp<>::make(std::vector<SparseMatrix>{SFk->getTransfers()[0]->transpose()}, std::vector<OpPtr>{prod1trans}));
+        scalingTransOps[patch2]->addOperator(gsAdditiveOp<>::make(std::vector<SparseMatrix>{SFl->getTransfers()[0]->transpose()}, std::vector<OpPtr>{prod2trans}));
     }
 
     for(index_t k = 0; k < (index_t)scalingOps.size(); ++k)

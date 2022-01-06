@@ -412,14 +412,14 @@ int main(int argc, char *argv[])
     /**************** Setup solver and solve ****************/
 
     gsInfo << "Setup solver and solve... \n"
-        "    Setup multiplicity scaling... " << std::flush;
+        "    Setup scaling matrices... " << std::flush;
 
     // Tell the preconditioner to set up the scaling
     //! [Setup scaling]
     if(scaling == "mult")
         prec.setupMultiplicityScaling();
     else if(scaling == "deluxe")
-        prec.setupDeluxeScaling(mp.interfaces());
+        prec.setupDeluxeScaling();
     else
     {
         gsInfo << "Unknown scaling choice!";

@@ -79,11 +79,15 @@ class gsScaledDirichletPrec
 {
     typedef gsLinearOperator<T>               Op;              ///< Linear operator
     typedef memory::shared_ptr<Op>            OpPtr;           ///< Shared pointer to linear operator
-    typedef gsSparseMatrix<T>                 SparseMatrix;    ///< Sparse matrix type
+    typedef gsSparseMatrix<T,RowMajor>        SparseMatrix;    ///< Sparse matrix type
     typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;      ///< Sparse matrix type for jumps
     typedef memory::shared_ptr<JumpMatrix>    JumpMatrixPtr;   ///< Shared pointer to sparse matrix type for jumps
     typedef gsMatrix<T>                       Matrix;          ///< Matrix type
 public:
+
+    /// Data type that contains four sparse matrices that make
+    /// up the blocks, stored in the members A00, A01, A10 and A11.
+    struct Blocks { SparseMatrix A00, A01, A10, A11; };
 
     /// @brief Reserves the memory required to store the given number of subdomain
     /// @param n Number of subdomains
@@ -91,6 +95,7 @@ public:
     {
         m_jumpMatrices.reserve(n);
         m_localSchurOps.reserve(n);
+        m_blocks.reserve(n);
         m_localScalingOps.reserve(n);
         m_localScalingTransOps.reserve(n);
     }
@@ -105,17 +110,18 @@ public:
     ///
     /// @note These two parameters can also be provided as \a std::pair as provided
     ///       by \ref restrictToSkeleton
-    void addSubdomain( JumpMatrixPtr jumpMatrix, OpPtr localSchurOp )
+    void addSubdomain( JumpMatrixPtr jumpMatrix, Blocks localSchurOp )
     {
         m_jumpMatrices.push_back(give(jumpMatrix));
-        m_localSchurOps.push_back(give(localSchurOp));
+        m_blocks.push_back(give(localSchurOp));
         m_localScalingOps.push_back(nullptr);
         m_localScalingTransOps.push_back(nullptr);
+        m_localSchurOps.push_back(schurComplement( m_blocks.back(), makeSparseCholeskySolver(m_blocks.back().A11) ));
     }
 
     // Adds a new subdomain
     // Documented in comment above
-    void addSubdomain( std::pair<JumpMatrix,OpPtr> data )
+    void addSubdomain( std::pair<JumpMatrix,Blocks> data )
     { addSubdomain(data.first.moveToPtr(), give(data.second)); }
 
     /// Access the jump matrix
@@ -144,10 +150,6 @@ public:
     /// @param jumpMatrix    The jump matrix
     /// @param dofs          The corresponding degrees of freedom (usually skeleton dofs)
     static JumpMatrix restrictJumpMatrix( const JumpMatrix& jumpMatrix, const std::vector<index_t> dofs );
-
-    /// Data type that contains four sparse matrices that make
-    /// up the blocks, stored in the members A00, A01, A10 and A11.
-    struct Blocks { SparseMatrix A00, A01, A10, A11; };
 
     /// @brief Computes the matrix blocks with respect to the given dofs
     ///
@@ -194,12 +196,12 @@ public:
     ///        gsScaledDirichletPrec<T>::schurComplement( localMatrix, dofs )
     ///     );
     /// @endcode
-    static std::pair<JumpMatrix,OpPtr> restrictToSkeleton(
+    static std::pair<JumpMatrix,Blocks> restrictToSkeleton(
         const JumpMatrix& jumpMatrix,
         const SparseMatrix& localMatrix,
         const std::vector<index_t>& dofs
     )
-    { return std::pair<JumpMatrix,OpPtr>(restrictJumpMatrix(jumpMatrix,dofs),schurComplement(localMatrix,dofs)); }
+    { return std::pair<JumpMatrix,Blocks>(restrictJumpMatrix(jumpMatrix,dofs),matrixBlocks(localMatrix,dofs)); }
 
     /// @brief Returns the number of Lagrange multipliers.
     ///
@@ -221,7 +223,7 @@ public:
     ///        deluxe scaling
     ///
     /// This requires that the subdomains have been defined first.
-    void setupDeluxeScaling(const std::vector<boundaryInterface>& ifaces);
+    void setupDeluxeScaling();
 
     /// @brief This returns the preconditioner as \a gsLinearOperator
     ///
@@ -231,6 +233,7 @@ public:
 private:
     std::vector<JumpMatrixPtr>  m_jumpMatrices;         ///< The jump matrices \f$ \hat B_k \f$
     std::vector<OpPtr>          m_localSchurOps;        ///< The local Schur complements \f$ S_k \f$
+    std::vector<Blocks>         m_blocks;               ///< The blocks to build the Schur complement \f$ S_k \f$
     std::vector<OpPtr>          m_localScalingOps;      ///< The local scaling operators representing \f$ D_k \f$ as operators
     std::vector<OpPtr>          m_localScalingTransOps; ///< The local scaling operators representing \f$ D_k^\top \f$ as operators
 };
