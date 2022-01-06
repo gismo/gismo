@@ -31,7 +31,7 @@ template<class T>
 using codi_real = std::conditional<ExpressionTraits::IsExpression<T>::value, GISMO_COEFF_TYPE, T>;
 
 // General forward AD type: RealForwardGen<real_t>
-EXTERN_CLASS_TEMPLATEOA
+EXTERN_CLASS_TEMPLATE
 ActiveType<ForwardEvaluation<real_t, real_t> >;
 
 // General vector forward AD type: RealForwardVec<real_t, 4>
