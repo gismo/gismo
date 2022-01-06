@@ -137,7 +137,7 @@ private:
     typename E3::Nested_t _Ef;
 
 public:
-    enum{ Space = 2, ScalarValued= 0, ColBlocks= 0 };
+    enum{ Space = 3, ScalarValued= 0, ColBlocks= 0 };
 
     var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G, _expr<E3> const& Ef) : _u(u),_v(v), _G(G), _Ef(Ef) { }
 
@@ -252,9 +252,10 @@ class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
     typename E2::Nested_t _v;
 
 public:
-    enum{ Space = E1::Space, ScalarValued= 0, ColBlocks= 0 };
-    // Note: what happens if E2 is a space? The following can fix it:
-    // enum{ Space = (E1::Space == 1 || E2::Space == 1) ? 1 : 0, ScalarValued= 0, ColBlocks= 0 };
+    enum{   Space = (E1::Space == 1 || E2::Space == 1) ? 1 : 0,
+            ScalarValued= 0,
+            ColBlocks= 0
+        };
 
     typedef typename E1::Scalar Scalar;
 
@@ -286,26 +287,22 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const
     {
-        // Note: what happens if E2 is a space? The following can fix it:
-        // if      (E1::Space == 1 && E2::Space == 0)
-        //     return _u.rowVar();
-        // else if (E1::Space == 0 && E2::Space == 1)
-        //     return _v.rowVar();
-        // else
-
-        return _u.rowVar();
+        if      (E1::Space == 1 && E2::Space == 0)
+            return _u.rowVar();
+        else if (E1::Space == 0 && E2::Space == 1)
+            return _v.rowVar();
+        else
+            return gsNullExpr<Scalar>::get();
     }
 
     const gsFeSpace<Scalar> & colVar() const
     {
-        // Note: what happens if E2 is a space? The following can fix it:
-        // if      (E1::Space == 1 && E2::Space == 0)
-        //     return _v.rowVar();
-        // else if (E1::Space == 0 && E2::Space == 1)
-        //     return _u.rowVar();
-        // else
-
-        return _v.rowVar();
+        if      (E1::Space == 1 && E2::Space == 0)
+            return _v.colVar();
+        else if (E1::Space == 0 && E2::Space == 1)
+            return _u.colVar();
+        else
+            return gsNullExpr<Scalar>::get();
     }
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
@@ -691,7 +688,7 @@ public:
         a2 = covBasis.col(1);
 
         result(0,0) = (e1.dot(a1))*(a1.dot(e1));
-        result(0,1) = (e1.dot(a2))*(a2.dot(e2));
+        result(0,1) = (e1.dot(a2))*(a2.dot(e1));
         result(0,2) = 2*(e1.dot(a1))*(a2.dot(e1));
         // Row 1
         result(1,0) = (e2.dot(a1))*(a1.dot(e2));

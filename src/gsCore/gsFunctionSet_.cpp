@@ -19,9 +19,22 @@ namespace gismo {
 
 CLASS_TEMPLATE_INST gsFunctionSet<real_t>;
 
+#ifdef GISMO_BUILD_PYBIND11
+
+namespace py = pybind11;
+
+void pybind11_init_gsFunctionSet(py::module &m)
+{
+  using Class = gsFunctionSet<real_t>;
+  py::class_<Class>(m, "gsFunctionSet")
+
+  //Constructor?
+  ;
 }
+#endif
 
 
+}
 
 namespace std {
 

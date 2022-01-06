@@ -27,8 +27,8 @@ bool gsBiCgStab<T>::initIteration( const typename gsBiCgStab<T>::VectorType& rhs
 
     m_r0 = m_res;
 
-    m_p.resize( m_mat->cols(), 1); m_p.setZero();
-    m_v.resize( m_mat->cols(), 1); m_v.setZero();
+    m_p.setZero(m_mat->cols(), 1);
+    m_v.setZero(m_mat->cols(), 1);
 
     m_alpha = 1;
     m_rho = 1;
@@ -36,10 +36,8 @@ bool gsBiCgStab<T>::initIteration( const typename gsBiCgStab<T>::VectorType& rhs
 
     m_error = m_res.norm() / m_rhs_norm;
 
-    if (m_error < m_tol)
-        return true;
+    return m_error < m_tol;
 
-    return false;
 }
 
 template<class T>
@@ -48,9 +46,9 @@ bool gsBiCgStab<T>::step( typename gsBiCgStab<T>::VectorType& x )
     T rho_old = m_rho;
     m_rho = m_r0.col(0).dot(m_res.col(0));
 
-    if (abs(m_rho) < m_restartThereshold * m_r0.col(0).dot(m_r0.col(0)) )
+    if (math::abs(m_rho) < m_restartThereshold * m_r0.col(0).dot(m_r0.col(0)) )
     {
-        gsInfo << "Residual too orthogonal, restart with new r0 \n";
+        gsInfo << "Residual almost orthogonal, restart with new r0 \n";
         m_r0 = m_res;
         m_rho = m_r0.col(0).dot(m_r0.col(0)); //= r0_sqnorm
     }
@@ -64,7 +62,7 @@ bool gsBiCgStab<T>::step( typename gsBiCgStab<T>::VectorType& x )
     m_mat->apply(m_y, m_v);
     m_alpha = m_rho/(m_r0.col(0).dot(m_v.col(0)));
 
-    m_s = m_res - m_alpha * m_v;
+    m_s.noalias() = m_res - m_alpha * m_v;
     // Apply preconditioning by solving Ahat m_z = m_s
     m_precond->apply(m_s, m_z);
 
@@ -77,14 +75,12 @@ bool gsBiCgStab<T>::step( typename gsBiCgStab<T>::VectorType& x )
         m_w = 0;
 
     // Update iterate and residual
-    x += m_alpha * m_y + m_w * m_z;
-    m_res -= m_alpha * m_v + m_w * m_t;
+    x.noalias() += m_alpha * m_y + m_w * m_z;
+    m_res.noalias() -= m_alpha * m_v + m_w * m_t;
 
     m_error = m_res.norm() / m_rhs_norm;
-    if (m_error < m_tol)
-        return true;
+    return m_error < m_tol;
 
-    return false;
 }
 
 } // end namespace gismo
