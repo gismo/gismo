@@ -1349,7 +1349,6 @@ public:
   Expression for the transpose of an expression
 */
 template<class E>
-//class tr_expr<E,false>  : public _expr<tr_expr<E,false> >
 class tr_expr : public _expr<tr_expr<E> >
 {
     typename E::Nested_t _u;
@@ -1368,17 +1367,11 @@ public:
     mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
     {
-        //return _u.eval(k).transpose();
         if (E::ColBlocks)
-        {
-            res = _u.eval(k).blockTranspose( _u.cardinality() ); return res;
-            //return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
-        }
+            res = _u.eval(k).blockTranspose( _u.cardinality() );
         else
-        {
-            res = _u.eval(k).transpose(); return res;
-            //return _u.eval(k).blockTranspose(1); // buggy ?
-        }
+            res = _u.eval(k).transpose();
+        return res;
     }
 
     index_t rows() const { return _u.cols(); }
