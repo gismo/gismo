@@ -402,7 +402,7 @@ void SparseQR<MatrixType,OrderingType>::factorize(const MatrixType& mat)
     for (int j = 0; j < n; j++) max2Norm = numext::maxi(max2Norm, m_pmat.col(j).norm());
     if(max2Norm==RealScalar(0))
       max2Norm = RealScalar(1);
-    pivotThreshold = 20 * (m + n) * max2Norm * NumTraits<RealScalar>::epsilon();
+    pivotThreshold = RealScalar(20 * (m + n)) * max2Norm * NumTraits<RealScalar>::epsilon();
   }
   
   // Initialize the numerical permutation

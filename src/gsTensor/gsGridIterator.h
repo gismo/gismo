@@ -504,7 +504,7 @@ private:
             else if ( ti[i] == m_iter.upper()[i] )
                 *(pt++) = m_upp[i]; // avoid numerical error at last val
             else
-                *(pt++) = m_low[i] + ti[i] * m_step[i];
+                *(pt++) = m_low[i] + static_cast<T>(ti[i]) * m_step[i];
     }
 
 private:

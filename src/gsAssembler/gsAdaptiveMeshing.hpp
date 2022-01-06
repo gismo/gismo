@@ -95,7 +95,7 @@ void gsAdaptiveMeshing<T>::_markFraction( const std::vector<T> & elError, T refP
     // We want to mark just enough cells such that their
     // cummulated errors add up to a certain fraction
     // of the total error.
-    T errorMarkSum = (1-refParameter) * totalError;
+    T errorMarkSum = ((T)1-refParameter) * totalError;
     T cummulErrMarked = 0;
 
     T tmp;

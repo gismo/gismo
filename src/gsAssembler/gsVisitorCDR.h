@@ -352,7 +352,7 @@ public:
             for( index_t di = 0; di < d; ++di )
                 for( index_t i = 0; i < aMat.cols(); ++i)
                 {
-                    md.points(di,i) = ( 1 - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
+                    md.points(di,i) = ( T(1) - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
                 }
 
             base->computeMap(md);
@@ -367,7 +367,7 @@ public:
                 if( b_proj_max < b_proj(i) )
                     b_proj_max = b_proj(i);
             }
-            SUPG_param = ( b_proj_max - b_proj_min ) / ( 2 * b_norm );
+            SUPG_param = ( b_proj_max - b_proj_min ) / ( T(2) * b_norm );
         }
 
         return SUPG_param;

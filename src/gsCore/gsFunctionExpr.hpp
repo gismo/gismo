@@ -140,7 +140,7 @@ T mixed_derivative(const exprtk::expression<T>& e,
     tmp += e.value();
     y = y_init + h;
     tmp -= e.value();
-    num += 64* tmp;
+    num += T(64.0) * tmp;
 
     x = x_init + T(2.0) * h;
     y = y_init - h;
@@ -161,7 +161,7 @@ T mixed_derivative(const exprtk::expression<T>& e,
     tmp += e.value();
     x = x_init - h;
     tmp -= e.value();
-    num += 8* tmp;
+    num += T(8.0) * tmp;
 
     x = x_init;
     y = y_init;

@@ -187,7 +187,7 @@ inline T logn_impl(const T& v0, const T& v1, CODI_TYPE_TAG)
 template <typename T>
 inline T sinc_impl(const T& v, CODI_TYPE_TAG)
 {
-    if (abs(v) >= epsilon_type<CODI_TYPE>::value())
+    if (abs(v) >= epsilon_type<T>::value())
         return(sin(v) / v);
     else
         return T(1);

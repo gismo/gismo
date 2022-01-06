@@ -53,10 +53,28 @@ static const double sqrt2   =  1.41421356237309504880168872420969807856967187537
 #include "exprtk_codi_adaptor.h"
 #undef CODI_TYPE
 
-#define CODI_TYPE codi_real_reverse_index_unchecked_t
+#define CODI_TYPE codi_real_reverse_primal_t
 #include "exprtk_codi_adaptor.h"
 #undef CODI_TYPE
 
-#define CODI_TYPE codi_real_reverse_unchecked_t
+#define CODI_TYPE codi_real_reverse_primal_index_t
 #include "exprtk_codi_adaptor.h"
 #undef CODI_TYPE
+
+// The unchecked versions lead to code redefinition
+
+// #define CODI_TYPE codi_real_reverse_unchecked_t
+// #include "exprtk_codi_adaptor.h"
+// #undef CODI_TYPE
+
+// #define CODI_TYPE codi_real_reverse_index_unchecked_t
+// #include "exprtk_codi_adaptor.h"
+// #undef CODI_TYPE
+
+// #define CODI_TYPE codi_real_reverse_primal_unchecked_t
+// #include "exprtk_codi_adaptor.h"
+// #undef CODI_TYPE
+
+// #define CODI_TYPE codi_real_reverse_primal_index_unchecked_t
+// #include "exprtk_codi_adaptor.h"
+// #undef CODI_TYPE

@@ -14,8 +14,8 @@
 #pragma once
 
 // Enable implicit conversion and disable compiler warnings
-#define CODI_ImplicitConversion 1
-#define CODI_ImplicitConversionWarning 0
+#define CODI_ImplicitConversion true
+#define CODI_ImplicitConversionWarning false
 #include <codi.hpp>
 
 #include <gsCore/gsTemplateTools.h>
@@ -31,7 +31,7 @@ template<class T>
 using codi_real = std::conditional<ExpressionTraits::IsExpression<T>::value, GISMO_COEFF_TYPE, T>;
 
 // General forward AD type: RealForwardGen<real_t>
-EXTERN_CLASS_TEMPLATE
+EXTERN_CLASS_TEMPLATEOA
 ActiveType<ForwardEvaluation<real_t, real_t> >;
 
 // General vector forward AD type: RealForwardVec<real_t, 4>

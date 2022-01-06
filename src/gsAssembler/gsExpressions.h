@@ -703,14 +703,14 @@ public:
     { return integral_expr<E>(*this,ff); }
 
     /// The diameter of the element (on parameter space)
-    auto diam() ->decltype( pow(this->integral(_expr<real_t,true>(1)),T(1)/2) ) const //-> int(1)^(1/d)
+    auto diam() ->decltype( pow(this->integral(_expr<real_t,true>(1)),static_cast<T>(1)/static_cast<T>(2)) ) const //-> int(1)^(1/d)
     {
-        return pow(integral(_expr<real_t,true>(1)),T(1)/2);
+        return pow(integral(_expr<real_t,true>(1)),static_cast<T>(1)/static_cast<T>(2));
     }
 
     /// The diameter of the element on the physical space
-    auto diam(const gsGeometryMap<Scalar> & _G) ->decltype(pow(integral(meas_expr<T>(_G)),T(1)/2)) const
-    { return pow(integral(meas_expr<T>(_G)),T(1)/2); }
+    auto diam(const gsGeometryMap<Scalar> & _G) ->decltype(pow(integral(meas_expr<T>(_G)),static_cast<T>(1)/static_cast<T>(2))) const
+    { return pow(integral(meas_expr<T>(_G)),static_cast<T>(1)/static_cast<T>(2)); }
 
     //index_t dim() { return di->
         

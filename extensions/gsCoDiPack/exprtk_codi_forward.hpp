@@ -17,11 +17,18 @@
 #include <string>
 #include <gsCoDiPack/gsCoDiPack.h>
 
-typedef codi::RealForwardGen<codi::codi_real<real_t>::type>                codi_real_forward_t;
-typedef codi::RealReverseGen<codi::codi_real<real_t>::type>                codi_real_reverse_t;
-typedef codi::RealReverseIndexGen<codi::codi_real<real_t>::type>           codi_real_reverse_index_t;
-typedef codi::RealReverseIndexUncheckedGen<codi::codi_real<real_t>::type>  codi_real_reverse_index_unchecked_t;
-typedef codi::RealReverseUncheckedGen<codi::codi_real<real_t>::type>       codi_real_reverse_unchecked_t;
+typedef codi::RealForwardGen<codi::codi_real<real_t>::type>                     codi_real_forward_t;
+typedef codi::RealReverseGen<codi::codi_real<real_t>::type>                     codi_real_reverse_t;
+typedef codi::RealReverseIndexGen<codi::codi_real<real_t>::type>                codi_real_reverse_index_t;
+typedef codi::RealReversePrimalGen<codi::codi_real<real_t>::type>               codi_real_reverse_primal_t;
+typedef codi::RealReversePrimalIndexGen<codi::codi_real<real_t>::type>          codi_real_reverse_primal_index_t;
+
+// The unchecked versions lead to code redefinition
+
+// typedef codi::RealReverseUncheckedGen<codi::codi_real<real_t>::type>            codi_real_reverse_unchecked_t;
+// typedef codi::RealReverseIndexUncheckedGen<codi::codi_real<real_t>::type>       codi_real_reverse_index_unchecked_t;
+// typedef codi::RealReversePrimalUncheckedGen<codi::codi_real<real_t>::type>      codi_real_reverse_primal_unchecked_t;
+// typedef codi::RealReversePrimalIndexUncheckedGen<codi::codi_real<real_t>::type> codi_real_reverse_primal_index_unchecked_t;
 
 #define CODI_TYPE codi_real_forward_t
 #include "exprtk_codi_forward.h"
@@ -35,10 +42,28 @@ typedef codi::RealReverseUncheckedGen<codi::codi_real<real_t>::type>       codi_
 #include "exprtk_codi_forward.h"
 #undef CODI_TYPE
 
-#define CODI_TYPE codi_real_reverse_index_unchecked_t
+#define CODI_TYPE codi_real_reverse_primal_t
 #include "exprtk_codi_forward.h"
 #undef CODI_TYPE
 
-#define CODI_TYPE codi_real_reverse_unchecked_t
+#define CODI_TYPE codi_real_reverse_primal_index_t
 #include "exprtk_codi_forward.h"
 #undef CODI_TYPE
+
+// The unchecked versions lead to code redefinition
+
+// #define CODI_TYPE codi_real_reverse_unchecked_t
+// #include "exprtk_codi_forward.h"
+// #undef CODI_TYPE
+
+// #define CODI_TYPE codi_real_reverse_index_unchecked_t
+// #include "exprtk_codi_forward.h"
+// #undef CODI_TYPE
+
+// #define CODI_TYPE codi_real_reverse_primal_unchecked_t
+// #include "exprtk_codi_forward.h"
+// #undef CODI_TYPE
+
+// #define CODI_TYPE codi_real_reverse_primal_index_unchecked_t
+// #include "exprtk_codi_forward.h"
+// #undef CODI_TYPE
