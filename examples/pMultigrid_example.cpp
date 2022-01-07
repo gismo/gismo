@@ -95,7 +95,6 @@ public:
          int numLevels,
          int numDegree,
          int typeBCHandling,
-         gsGeometry<>::Ptr geo,
          int typeLumping,
          const gsMatrix<>& hp,
          int typeProjection,
@@ -169,10 +168,10 @@ public:
             {
                 if (typeLumping == 1)
                 {
-                    gsSparseMatrix<> prolongationP = prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> prolongationP = prolongation_P(i+1, m_basis, typeBCHandling);
                     gsSparseMatrix<> restrictionP = prolongationP.transpose();
-                    gsMatrix<> prolongationM = prolongation_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-                    gsMatrix<> restrictionM = restriction_M(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsMatrix<> prolongationM = prolongation_M(i+1, m_basis, typeBCHandling);
+                    gsMatrix<> restrictionM = restriction_M(i+1, m_basis, typeBCHandling);
 
                     m_prolongation[i-1] = makeLinearOp(
                         [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
@@ -195,10 +194,10 @@ public:
                 }
                 else
                 {
-                    gsSparseMatrix<> prolongationP =  prolongation_P(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> prolongationP =  prolongation_P(i+1, m_basis, typeBCHandling);
                     gsSparseMatrix<> restrictionP =  prolongationP.transpose();
-                    gsSparseMatrix<> prolongationM2 = prolongation_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
-                    gsSparseMatrix<> restrictionM2 = restriction_M2(i+1, m_basis, typeLumping, typeBCHandling, geo, typeProjection);
+                    gsSparseMatrix<> prolongationM2 = prolongation_M2(i+1, m_basis, typeBCHandling);
+                    gsSparseMatrix<> restrictionM2 = restriction_M2(i+1, m_basis, typeBCHandling);
 
                     m_prolongation[i-1] = makeLinearOp(
                         [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
@@ -382,11 +381,11 @@ private:
     }
 
     /// @brief Construct prolongation operator at level numLevels
-    gsMatrix<T> prolongation_M(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    gsMatrix<T> prolongation_M(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
         // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[numLevels-2];
-        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
 
         // Determine matrix M (high_order * high_order)
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
@@ -406,11 +405,11 @@ private:
         return ex2.rhs();
     }
 
-    gsSparseMatrix<T> prolongation_M2(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    gsSparseMatrix<T> prolongation_M2(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
         // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[numLevels-2];
-        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
@@ -432,11 +431,11 @@ private:
     }
 
     /// @brief Construct prolongation operator at level numLevels
-    gsSparseMatrix<T> prolongation_P(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    gsSparseMatrix<T> prolongation_P(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
         // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[numLevels-2];
-        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
 
         // Determine matrix P (high_order * low_order)
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
@@ -461,11 +460,11 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    gsMatrix<T> restriction_M(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    gsMatrix<T> restriction_M(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
         // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[numLevels-2];
-        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
 
         // Determine matrix M (low_order * low_order)
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
@@ -486,11 +485,11 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    gsSparseMatrix<T> restriction_M2(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    gsSparseMatrix<T> restriction_M2(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
         // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[numLevels-2];
-        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
@@ -512,11 +511,11 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    gsSparseMatrix<T> restriction_P(int numLevels, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, int typeLumping, int typeBCHandling, gsGeometry<>::Ptr geo, int typeProjection)
+    gsSparseMatrix<T> restriction_P(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
         // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[numLevels-2];
-        gsMultiBasis<> basisH = *m_basis[numLevels-1];
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
 
         // Determine matrix P (high_order * low_order)
         gsExprAssembler<real_t> ex(1,1);
@@ -666,13 +665,13 @@ int main(int argc, char* argv[])
 
     // Initialize solution, rhs and geometry
     gsFunctionExpr<> sol_exact, rhs_exact, coeff_diff, coeff_conv, coeff_reac;
-    gsGeometry<>::Ptr geo;
+    gsMultiPatch<> mp;
     gsInfo << "|| Benchmark information ||\n";
     switch (numBenchmark)
     {
         case 1:
             gsInfo << "CDR-equation the unit square\n";
-            geo = gsNurbsCreator<>::BSplineSquare(1.0, 0.0, 0.0);
+            mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(1.0, 0.0, 0.0));
             sol_exact = gsFunctionExpr<>("sin(pi*x)*sin(pi*y)",2);
             rhs_exact = gsFunctionExpr<>("1.2*pi*pi*sin(pi*x)*sin(pi*y)+0.9*pi*pi*sin(pi*x)*sin(pi*y)+0.7*pi*pi*cos(pi*x)*cos(pi*y) + 0.4*pi*pi*cos(pi*x)*cos(pi*y) +0.4*pi*cos(pi*x)*sin(pi*y)-0.2*pi*sin(pi*x)*cos(pi*y)+0.3*sin(pi*x)*sin(pi*y)", 2);
             coeff_diff = gsFunctionExpr<>("1.2","-0.7","-0.4","0.9",2);
@@ -682,7 +681,7 @@ int main(int argc, char* argv[])
 
         case 2:
             gsInfo << "Poisson equation on the quarter annulus (1)\n";
-            geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0);
+            mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0));
             sol_exact = gsFunctionExpr<>( "-(x*x+y*y-1)*(x*x+y*y-4)*x*y*y", 2);
             rhs_exact = gsFunctionExpr<>( "2*x*(22*x*x*y*y+21*y*y*y*y-45*y*y+x*x*x*x-5*x*x+4)", 2);
             coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
@@ -692,7 +691,7 @@ int main(int argc, char* argv[])
 
         case 3:
             gsInfo << "Poisson equation on the quarter annulus (2)\n";
-            geo = gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0);
+            mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0));
             sol_exact = gsFunctionExpr<>( "(x^2+y^2-3*sqrt(x^2+y^2)+2)*sin(2*atan(y/x))", 2);
             rhs_exact = gsFunctionExpr<>( "(8-9*sqrt(x^2 + y^2))*sin(2*atan(y/x))/(x^2+y^2)", 2);
             coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
@@ -702,7 +701,7 @@ int main(int argc, char* argv[])
 
         case 4:
             gsInfo << "Poisson equation on an L-shaped domain\n";
-            geo = gsNurbsCreator<>::BSplineLShape_p1();
+            mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineLShape_p1());
             sol_exact = gsFunctionExpr<>( "if ( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )", 2);
             rhs_exact = gsFunctionExpr<>( "0", 2);
             coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
@@ -712,7 +711,7 @@ int main(int argc, char* argv[])
 
         case 5:
             gsInfo << "Poisson equation on the unit cube\n";
-            geo = gsNurbsCreator<>::BSplineCube(1);
+            mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineCube(1));
             sol_exact = gsFunctionExpr<>( "sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
             rhs_exact = gsFunctionExpr<>( "(3*pi^2 )*sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
             coeff_diff = gsFunctionExpr<>("1","0","0","0","1","0","0","0","1",3);
@@ -722,7 +721,7 @@ int main(int argc, char* argv[])
 
         case 6:
             gsInfo << "Poisson's equation on Yeti footprint\n";
-            geo = gsReadFile<>("domain2d/yeti_mp2.xml");
+            mp = *static_cast<gsMultiPatch<>::uPtr>(gsReadFile<>("domain2d/yeti_mp2.xml"));
             sol_exact = gsFunctionExpr<>( "sin(5*pi*x)*sin(5*pi*y)", 2);
             rhs_exact = gsFunctionExpr<>( "(50*pi^2 )*sin(5*pi*x)*sin(5*pi*y)", 2);
             coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
@@ -740,7 +739,6 @@ int main(int argc, char* argv[])
     gsInfo << "Right hand side: " << rhs_exact << "\n";
 
     // Handle the uniform splitting
-    gsMultiPatch<> mp(*geo);
     for (index_t i=0; i<numPatches-1; ++i)
     {
         mp = mp.uniformSplit();
@@ -824,7 +822,7 @@ int main(int argc, char* argv[])
 
     // Setup of p-mg object
     pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-    My_MG.setup(rhs_exact, numLevels, numDegree, typeBCHandling, geo, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+    My_MG.setup(rhs_exact, numLevels, numDegree, typeBCHandling, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
     // Access the assembler on the finest grid
     const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
@@ -973,105 +971,93 @@ public:
 
     gsBlockILUT( const gsSparseMatrix<>& op, const gsMultiPatch<>& mp, const gsMultiBasis<>& mb ) : m_op(op)
     {
-        index_t numPatch = mp.nPatches();
-
-        index_t shift0 = 0;
+        index_t numPatches = mp.nPatches();
 
         gsDofMapper dm;
         mb.getMapper(true,dm,false); // This is what partition would do; but what about the Nitsche case?
         dm.finalize();
 
-        // Vector of vector of shift objects
-        std::vector<index_t> shift(numPatch+1);
-        for (index_t l=0; l< numPatch; l++)
+        // Subdivide the overal dofs into
+        //   a) the patch-local dofs (l=0,...,numPatches-1)
+        //   b) the coupled dofs (l=numPatches)
+        std::vector<index_t> sizes(numPatches+1);
+        for (index_t k=0; k<numPatches; k++)
         {
-            shift[l] = dm.findFreeUncoupled(l).rows();
+            sizes[k] = dm.findFreeUncoupled(k).rows();
         }
-        shift[numPatch] = 0;
-        shift[numPatch] = m_op.rows() - accumulate(shift.begin(),shift.end(),0);
+        sizes[numPatches] = m_op.rows() - std::accumulate(sizes.begin(),sizes.end(),0);
 
         // Vector of factorized operators
-        std::vector< gsSparseMatrix<> > ILUT(numPatch+1);
+        std::vector< gsSparseMatrix<> > ILUT(numPatches+1);
         // Vector of factorized operators
-        std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > P(numPatch+1);
+        std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > P(numPatches+1);
         // Vector of factorized operators
-        std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > Pinv(numPatch+1);
-        for (index_t j = 0 ; j < numPatch ; j++)
+        std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > Pinv(numPatches+1);
+        // Obtain the blocks of the matrix
+        std::vector< gsSparseMatrix<> > ddB(numPatches);
+        std::vector< gsSparseMatrix<> > ddC(numPatches);
+        // Define the A_aprox matrix
+        m_A_aprox = gsSparseMatrix<>(m_op.rows(),m_op.cols());
+        std::vector< gsMatrix<> > ddBtilde(numPatches);
+        std::vector< gsMatrix<> > ddCtilde(numPatches);
+
+        gsSparseMatrix<> S = m_op.block(m_op.rows()-sizes[numPatches],m_op.cols()-sizes[numPatches],sizes[numPatches],sizes[numPatches]);
+
+        index_t shift = 0;
+        for (index_t k=0 ; k<numPatches; k++)
         {
-            const gsSparseMatrix<> block = m_op.block(shift0,shift0,shift[j],shift[j]);
+            const gsSparseMatrix<> block = m_op.block(shift,shift,sizes[k],sizes[k]);
             Eigen::IncompleteLUT<real_t> ilu;
             ilu.setFillfactor(1);
             ilu.compute(block);
-            ILUT[j] = ilu.factors();
-            P[j] = ilu.fillReducingPermutation();
-            Pinv[j] = ilu.inversePermutation();
-            shift0 = shift0 + shift[j];
-        }
+            ILUT[k] = ilu.factors();
+            P[k] = ilu.fillReducingPermutation();
+            Pinv[k] = ilu.inversePermutation();
+            ddB[k] = m_op.block(m_op.rows()-sizes[numPatches],shift,sizes[numPatches],sizes[k]);
+            ddC[k] = m_op.block(shift,m_op.cols()-sizes[numPatches],sizes[k],sizes[numPatches]);
+            m_A_aprox.block(shift,shift,sizes[k],sizes[k]) = ILUT[k];
 
-        shift0 = 0;
-        // Obtain the blocks of the matrix
-        std::vector< gsSparseMatrix<> > ddB(numPatch+1);
-        std::vector< gsSparseMatrix<> > ddC(numPatch+1);
-
-        for (index_t j = 0 ; j < numPatch+1 ; j++)
-        {
-            ddB[j] = m_op.block(m_op.rows()-shift[numPatch],shift0,shift[numPatch],shift[j]);
-            ddC[j] = m_op.block(shift0,m_op.cols()-shift[numPatch],shift[j],shift[numPatch]);
-            shift0 = shift0 + shift[j];
-        }
-        shift0 = 0;
-
-        // Define the A_aprox matrix
-        m_A_aprox = gsSparseMatrix<>(m_op.rows(),m_op.cols());
-
-        // Retrieve a block of each patch
-        for (index_t k = 0; k < numPatch; k++)
-        {
-            m_A_aprox.block(shift0,shift0,shift[k],shift[k]) = ILUT[k];
-            shift0 = shift0 + shift[k];
-        }
-        shift0 = 0;
-        std::vector< gsMatrix<> > ddBtilde(numPatch);
-        std::vector< gsMatrix<> > ddCtilde(numPatch);
-
-        for (index_t j=0 ; j < numPatch ; j++)
-        {
-            ddBtilde[j] = gsMatrix<>(shift[j],shift[numPatch]);
-            ddCtilde[j] = gsMatrix<>(shift[j],shift[numPatch]);
-            for (index_t k=0 ; k < shift[numPatch]; k++)
+            ddBtilde[k] = gsMatrix<>(sizes[k],sizes[numPatches]);
+            ddCtilde[k] = gsMatrix<>(sizes[k],sizes[numPatches]);
+            for (index_t j=0; j<sizes[numPatches]; j++)
             {
-                gsMatrix<> Brhs = ddC[j].col(k);
-                gsMatrix<> Crhs = ddC[j].col(k);
-                ddBtilde[j].col(k) = ILUT[j].triangularView<Eigen::Upper>().transpose().solve(Brhs);
-                ddCtilde[j].col(k) = ILUT[j].triangularView<Eigen::UnitLower>().solve(Crhs);
+                gsMatrix<> Brhs = ddC[k].col(j);
+                gsMatrix<> Crhs = ddC[k].col(j);
+                ddBtilde[k].col(j) = ILUT[k].triangularView<Eigen::Upper>().transpose().solve(Brhs);
+                ddCtilde[k].col(j) = ILUT[k].triangularView<Eigen::UnitLower>().solve(Crhs);
             }
-        }
-        // Define matrix S
-        gsSparseMatrix<> S = ddC[numPatch];
-        for (index_t l = 0 ; l < numPatch ; l++)
-        {
-            S -= (ddBtilde[l].transpose()*ddCtilde[l]).sparseView();
+            S -= (ddBtilde[k].transpose()*ddCtilde[k]).sparseView();
+
+            m_A_aprox.block(
+                shift,
+                m_A_aprox.rows() - sizes[numPatches],
+                sizes[k],
+                sizes[numPatches]
+            ) = ddCtilde[k];
+            m_A_aprox.block(
+                m_A_aprox.rows() - sizes[numPatches],
+                shift,
+                sizes[numPatches],
+                sizes[k]
+            ) = ddBtilde[k].transpose();
+
+            shift += sizes[k];
         }
 
-        // Fill matrix A_aprox
-        for (index_t m = 0 ; m < numPatch ; m++)
-        {
-          m_A_aprox.block(shift0,m_A_aprox.rows() - shift[numPatch],shift[m],shift[numPatch]) = ddCtilde[m];
-          m_A_aprox.block(m_A_aprox.rows() - shift[numPatch],shift0,shift[numPatch],shift[m]) = ddBtilde[m].transpose();
-          shift0 += shift[m];
-        }
-        shift0 = 0;
+        // If there is no coupling (for example if there is only one patch), the work
+        // is done. We should not try to compute the ilu factorization then.
+        if (S.rows()==0)
+          return;
 
         // Preform ILUT on the S-matrix!
         Eigen::IncompleteLUT<real_t> ilu;
         ilu.setFillfactor(1);
-        gsSparseMatrix<> II = S;
-        ilu.compute(II); // TODO: Fails in single patch case?
+        ilu.compute(S);
         m_A_aprox.block(
-            m_A_aprox.rows() - shift[numPatch],
-            m_A_aprox.rows() - shift[numPatch],
-            shift[numPatch],
-            shift[numPatch]
+            m_A_aprox.rows() - sizes[numPatches],
+            m_A_aprox.rows() - sizes[numPatches],
+            sizes[numPatches],
+            sizes[numPatches]
         ) = ilu.factors();
     }
 
