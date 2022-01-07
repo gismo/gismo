@@ -41,7 +41,7 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
  *  restriction operators are generated internally. Therefore, a
  *  problem-specific assembler has to be passed as template argument.
  */
-template<class T, class CoarseSolver, class Assembler>
+template<class T, class Assembler>
 struct pMultigrid
 {
 private:
@@ -69,19 +69,19 @@ private:
     /// Vector of smoother objects
     std::vector< gsPreconditionerOp<>::Ptr > m_smoother;
 
-    /// Vector of operator objects
-    std::vector< gsSparseMatrix<T> > m_operator;
+    /// Vector of stiffness matrices
+    std::vector< gsSparseMatrix<T> > m_matrices;
 
     /// Vector of assembler objects
     std::vector<Assembler> m_assembler;
 
-    /// The coarse solver
-    CoarseSolver m_csolver;
+    /// Coarse solver operator
+    gsLinearOperator<>::Ptr m_coarseSolver;
 
 public:
 
     ///  @brief Set-up p-multigrid solver
-    void setup(
+    gsMultiGridOp<>::uPtr setup(
          const gsMultiPatch<T> & mp,
          const gsMultiBasis<T> & basis,
          const gsBoundaryConditions<T> & bcInfo,
@@ -93,7 +93,11 @@ public:
          const gsMatrix<index_t>& hp,
          index_t typeProjection,
          index_t typeSmoother,
+         bool symmetricSmoothing,
+         index_t numSmoothing,
          index_t typeCoarseOperator,
+         index_t typeCycle_p,
+         index_t typeCycle_h,
          const gsFunctionExpr<> coeff_diff,
          const gsFunctionExpr<> coeff_conv,
          const gsFunctionExpr<> coeff_reac
@@ -124,7 +128,7 @@ public:
         }
 
         // Resize vectors of operators
-        m_operator.resize(numLevels);
+        m_matrices.resize(numLevels);
         m_prolongation_H.resize(numLevels-1);
         m_restriction_H.resize(numLevels-1);
         m_restriction.resize(numLevels-1);
@@ -139,7 +143,7 @@ public:
             if (typeCoarseOperator == 1)
             {
                 m_assembler[i].assemble();
-                m_operator[i] = m_assembler[i].matrix();
+                m_matrices[i] = m_assembler[i].matrix();
                 gsInfo << "Degree: " << m_basis[i]->degree()  << ", Ndof: " << m_basis[i]->totalSize() << "\n";
             }
             else
@@ -147,7 +151,7 @@ public:
                 if (hp(min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
                 {
                     m_assembler[i].assemble();
-                    m_operator[i] = m_assembler[i].matrix();
+                    m_matrices[i] = m_assembler[i].matrix();
                     gsInfo << "\nDegree of the basis: " << m_basis[i]->degree() << "\n";
                     gsInfo << "Size of the basis functions: " << m_basis[i]->totalSize() << "\n";
                 }
@@ -242,14 +246,14 @@ public:
                 {
                     if (hp(min(i,hp.rows()-1),0) == 1)
                     {
-                        m_operator[i] = m_restriction_H[i]*m_operator[i+1]*m_prolongation_H[i];
+                        m_matrices[i] = m_restriction_H[i]*m_matrices[i+1]*m_prolongation_H[i];
                     }
                 }
                 else
                 {
                     if (hp(min(i,hp.rows()-1),0) == 1 && i > 0)
                     {
-                        m_operator[i-1] = m_restriction_H[i-1]*m_operator[i]*m_prolongation_H[i-1];
+                        m_matrices[i-1] = m_restriction_H[i-1]*m_matrices[i]*m_prolongation_H[i-1];
                     }
                 }
             }
@@ -270,12 +274,12 @@ public:
             {
                 if (typeProjection == 2 || i == numLevels-1)
                 {
-                    m_smoother[i] = makeIncompleteLUOp(m_operator[i]);
+                    m_smoother[i] = makeIncompleteLUOp(m_matrices[i]);
                 }
                 else
                 {
                     // Use Gauss-Seidel on all the other levels
-                    m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+                    m_smoother[i] = makeGaussSeidelOp(m_matrices[i]);
                 }
             }
         }
@@ -284,7 +288,7 @@ public:
         {
             for (index_t i = 0; i < numLevels; i++)
             {
-                m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+                m_smoother[i] = makeGaussSeidelOp(m_matrices[i]);
             }
         }
         clock.restart();
@@ -295,7 +299,7 @@ public:
             opt.addReal("Scaling","",0.12);
             for (index_t i = 0 ; i < numLevels ; i++)
             {
-                m_smoother[i] = setupSubspaceCorrectedMassSmoother(m_operator[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
+                m_smoother[i] = setupSubspaceCorrectedMassSmoother(m_matrices[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
             }
         }
         real_t Time_SCMS = clock.stop();
@@ -307,20 +311,19 @@ public:
             {
                 if (typeProjection == 2 || i == numLevels-1)
                 {
-                    m_smoother[i] = setupBlockILUT(m_operator[i], *m_mp_ptr, *(m_basis[i]));
+                    m_smoother[i] = setupBlockILUT(m_matrices[i], *m_mp_ptr, *(m_basis[i]));
                 }
                 else
                 {
                     // Use Gauss-Seidel on all the other levels
-                    m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
+                    m_smoother[i] = makeGaussSeidelOp(m_matrices[i]);
                 }
             }
         }
         real_t Time_Block_ILUT_Factorization = clock.stop();
 
         clock.restart();
-        m_csolver.analyzePattern(m_operator[0]);
-        m_csolver.factorize(m_operator[0]);
+        m_coarseSolver = makeSparseLUSolver(m_matrices[0]);
         real_t Time_Coarse_Solver_Setup = clock.stop();
 
         gsInfo << "\n|| Setup Timings || \n";
@@ -331,51 +334,34 @@ public:
         gsInfo << "Total SCMS time: " << Time_SCMS << "\n";
         gsInfo << "Total Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
         gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS + Time_Coarse_Solver_Setup << "\n";
-    }
 
-    /// @brief Apply one p-multigrid cycle to given right-hand side on level l
-    void step(
-        const gsMatrix<T> & res,
-        gsMatrix<T>& x,
-        index_t level,
-        index_t numSmoothing,
-        bool symmetricSmoothing,
-        index_t typeCycle_p,
-        index_t typeCycle_h,
-        const gsMatrix<index_t>& hp
-        )
-    {
-        if ( level == 1)
+        std::vector<gsLinearOperator<>::Ptr> operators(m_matrices.size());
+        for (size_t i=0; i<m_matrices.size(); i++)
         {
-            solvecoarse(res, x);
-            return;
+            operators[i] = makeMatrixOp(m_matrices[i]);
         }
 
-        const index_t typeCycle = (hp(max(level-2,0),0) == 0) ? typeCycle_p : typeCycle_h;
-
-        gsMatrix<T> fineRes, coarseRes, fineCorr, coarseCorr;
-        presmoothing(res, x, level, numSmoothing);
-        residual(fineRes, res, x, level);
-        restriction(fineRes, coarseRes, level);
-        coarseCorr.setZero(coarseRes.rows(),1);
-        for ( index_t j = 0 ; j < typeCycle ; j++)
+        gsMultiGridOp<>::uPtr mg = gsMultiGridOp<>::make(operators, m_prolongation, m_restriction);
+        for (size_t i=0; i<m_smoother.size(); i++)
         {
-            step(coarseRes, coarseCorr, level-1, numSmoothing, symmetricSmoothing, typeCycle_p, typeCycle_h, hp);
+            mg->setSmoother(i,m_smoother[i]);
         }
-        prolongation(coarseCorr, fineCorr, level);
-
-        const real_t alpha = 1;
-        x -= alpha * fineCorr;
-        postsmoothing(res, x, level, numSmoothing, symmetricSmoothing);
+        mg->setCoarseSolver(m_coarseSolver);
+        mg->setNumPreSmooth(numSmoothing);
+        mg->setNumPostSmooth(numSmoothing);
+        mg->setSymmSmooth(symmetricSmoothing);
+        // For coarsest level, we stick to 1 in any case (exact solver is never cycled)
+        for (size_t i=1; i<m_prolongation.size(); i++)
+        {
+            if (hp(i,0) == 0) // offset?
+                mg->setNumCycles(i,typeCycle_p);
+            else
+                mg->setNumCycles(i,typeCycle_h);
+        }
+        return mg;
     }
 
 private:
-
-    /// @brief Apply coarse solver
-    void solvecoarse(const gsMatrix<T>& rhs, gsMatrix<T>& x)
-    {
-        x = m_csolver.solve(rhs);
-    }
 
     /// @brief Construct prolongation operator at level numLevels
     gsMatrix<T> prolongation_M(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
@@ -515,49 +501,7 @@ private:
         return ex.matrix();
     }
 
-    /// @brief Get residual (pure method)
-    void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, index_t level)
-    {
-        res = m_operator[level-1]*x - rhs;
-    }
-
-    /// @brief Apply fixed number of presmoothing steps
-    void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, index_t level, index_t numSmoothing)
-    {
-        for (index_t i = 0 ; i < numSmoothing ; i++)
-        {
-            m_smoother[level-1]->step(rhs,x);
-        }
-    }
-
-    /// @brief Apply fixed number of postsmoothing steps
-    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, index_t level, index_t numSmoothing, bool symmetricSmoothing)
-    {
-        for (index_t i = 0 ; i < numSmoothing ; i++)
-        {
-            if (symmetricSmoothing)
-                m_smoother[level-1]->stepT(rhs,x);
-            else
-                m_smoother[level-1]->step(rhs,x);
-        }
-    }
-
-
-
-    /// @brief Prolongate coarse space function to fine space
-    void prolongation(const gsMatrix<T>& Xcoarse, gsMatrix<T>& Xfine, index_t level)
-    {
-        m_prolongation[level-2]->apply(Xcoarse, Xfine);
-    }
-
-    /// @brief Restrict fine space function to coarse space
-    void restriction(const gsMatrix<T>& Xfine, gsMatrix<T>& Xcoarse, index_t level)
-    {
-        m_restriction[level-2]->apply(Xfine, Xcoarse);
-    }
-
 public:
-    const gsSparseMatrix<T>& matrix(index_t levels) const { return m_operator[levels]; }
     const Assembler& assembler(index_t levels) const { return m_assembler[levels]; }
 };
 
@@ -795,23 +739,34 @@ int main(int argc, char* argv[])
         numLevels = numLevels - numDegree + 2;
     }
 
+    const bool symmSmoothing = typeSolver == 3;
+
     // Setup of p-mg object
-    pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG;
-    My_MG.setup(mp, basisL, bcInfo, rhs_exact, numLevels, numDegree, typeBCHandling, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+    pMultigrid<real_t, gsCDRAssembler<real_t> > My_MG;
+    gsLinearOperator<>::Ptr preconditioner = My_MG.setup(
+        mp,
+        basisL,
+        bcInfo,
+        rhs_exact,
+        numLevels,
+        numDegree,
+        typeBCHandling,
+        typeLumping,
+        hp,
+        typeProjection,
+        typeSmoother,
+        symmSmoothing,
+        numSmoothing,
+        typeCoarseOperator,
+        typeCycle_p,
+        typeCycle_h,
+        coeff_diff,
+        coeff_conv,
+        coeff_reac
+    );
 
     // Access the assembler on the finest grid
     const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
-    gsMatrix<> x = gsMatrix<>::Random(pa.matrix().rows(),1);
-
-    // The p-multigrid class does not satisfy the conditions for a preconditioner
-    gsLinearOperator<>::Ptr preconditioner = makeLinearOp(
-        [&]( const gsMatrix<>& rhs, gsMatrix<>& x )
-        {
-            const bool symmSmoothing = typeSolver == 3;
-            x = gsMatrix<>::Zero(pa.matrix().rows(),1);
-            My_MG.step(rhs, x, numLevels, numSmoothing, symmSmoothing, typeCycle_p, typeCycle_h, hp);
-         }, pa.matrix().rows(), pa.matrix().cols()
-    );
 
     gsIterativeSolver<>::Ptr solver;
 
@@ -835,7 +790,9 @@ int main(int argc, char* argv[])
 
     gsStopwatch clock;
 
-    real_t maxIter = pa.matrix().rows();
+    gsMatrix<> x = gsMatrix<>::Random(pa.matrix().rows(),1);
+
+    real_t maxIter = 20; // pa.matrix().rows();
     real_t tol = 1e-8;
 
     // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
@@ -849,10 +806,10 @@ int main(int argc, char* argv[])
     for (index_t i=1; i<error_history.rows(); ++i)
     {
         gsInfo << std::right << std::setw(4) << i
-	       << "  |  Residual norm: "
+               << "  |  Residual norm: "
                << std::setprecision(6) << std::left << std::setw(15) << (error_history(i,0) * rhs_norm)
-	       << "  reduction:  1 / "
-	       << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
+               << "  reduction:  1 / "
+               << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
                << "\n";
     }
     if (solver->error() <= solver->tolerance())
