@@ -77,45 +77,42 @@ private:
 
     /// The coarse solver
     CoarseSolver m_csolver;
-public:
-
-    // Constructor
-    pMultigrid(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & basis, const gsBoundaryConditions<T> & bcInfo)
-    {
-        m_mp_ptr = memory::make_shared_not_owned(&mp);
-        m_bcInfo_ptr = memory::make_shared_not_owned(&bcInfo);
-        m_basis.push_back(memory::make_shared_not_owned(&basis));
-    }
 
 public:
 
     ///  @brief Set-up p-multigrid solver
     void setup(
+         const gsMultiPatch<T> & mp,
+         const gsMultiBasis<T> & basis,
+         const gsBoundaryConditions<T> & bcInfo,
          const gsFunctionExpr<T> & rhs,
-         int numLevels,
-         int numDegree,
-         int typeBCHandling,
-         int typeLumping,
-         const gsMatrix<>& hp,
-         int typeProjection,
-         int typeSmoother,
-         int typeCoarseOperator,
+         index_t numLevels,
+         index_t numDegree,
+         index_t typeBCHandling,
+         index_t typeLumping,
+         const gsMatrix<index_t>& hp,
+         index_t typeProjection,
+         index_t typeSmoother,
+         index_t typeCoarseOperator,
          const gsFunctionExpr<> coeff_diff,
          const gsFunctionExpr<> coeff_conv,
          const gsFunctionExpr<> coeff_reac
         )
     {
-        for (int i = 1; i < numLevels; i++)
+        m_mp_ptr = memory::make_shared_not_owned(&mp);
+        m_bcInfo_ptr = memory::make_shared_not_owned(&bcInfo);
+        m_basis.push_back(memory::make_shared_not_owned(&basis));
+
+        for (index_t i = 1; i < numLevels; i++)
         {
             m_basis.push_back(give(m_basis.back()->clone()));
-            switch((int) hp(i-1,0) )
+            switch ( hp(i-1,0) )
             {
                 case 0 : (typeProjection == 1 ? m_basis.back()->degreeIncrease(numDegree-1) : m_basis.back()->degreeIncrease()); break;
 
-                case 1 : m_basis.back()->uniformRefine();  break;
+                case 1 : m_basis.back()->uniformRefine(); break;
 
-                case 2:  m_basis.back()->uniformRefine();
-                        m_basis.back()->degreeIncrease(); break;
+                case 2 : m_basis.back()->uniformRefine(); m_basis.back()->degreeIncrease(); break;
             }
         }
 
@@ -239,7 +236,7 @@ public:
         clock.restart();
         if (typeCoarseOperator == 2)
         {
-            for (int i = numLevels-1; i > -1; i--)
+            for (index_t i = numLevels-1; i > -1; i--)
             {
                 if (hp(hp.rows()-1,0) == 0)
                 {
@@ -269,7 +266,7 @@ public:
         if (typeSmoother == 1)
         {
             // Generate factorizations (ILUT)
-            for (int i = 0; i < numLevels; i++)
+            for (index_t i = 0; i < numLevels; i++)
             {
                 if (typeProjection == 2 || i == numLevels-1)
                 {
@@ -285,7 +282,7 @@ public:
         real_t Time_ILUT_Factorization = clock.stop();
         if (typeSmoother == 2)
         {
-            for (int i = 0; i < numLevels; i++)
+            for (index_t i = 0; i < numLevels; i++)
             {
                 m_smoother[i] = makeGaussSeidelOp(m_operator[i]);
             }
@@ -296,7 +293,7 @@ public:
             // Generate sequence of SCM smoothers
             gsOptionList opt;
             opt.addReal("Scaling","",0.12);
-            for (int i = 0 ; i < numLevels ; i++)
+            for (index_t i = 0 ; i < numLevels ; i++)
             {
                 m_smoother[i] = setupSubspaceCorrectedMassSmoother(m_operator[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
             }
@@ -306,7 +303,7 @@ public:
         clock.restart();
         if (typeSmoother == 4)
         {
-            for (int i = 0; i < numLevels; i++)
+            for (index_t i = 0; i < numLevels; i++)
             {
                 if (typeProjection == 2 || i == numLevels-1)
                 {
@@ -340,12 +337,12 @@ public:
     void step(
         const gsMatrix<T> & res,
         gsMatrix<T>& x,
-        int level,
-        int numSmoothing,
+        index_t level,
+        index_t numSmoothing,
         bool symmetricSmoothing,
-        int typeCycle_p,
-        int typeCycle_h,
-        const gsMatrix<>& hp
+        index_t typeCycle_p,
+        index_t typeCycle_h,
+        const gsMatrix<index_t>& hp
         )
     {
         if ( level == 1)
@@ -519,29 +516,29 @@ private:
     }
 
     /// @brief Get residual (pure method)
-    void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, int numLevels)
+    void residual(gsMatrix<T>& res, const gsMatrix<T>& rhs, const gsMatrix<T>& x, index_t level)
     {
-        res = m_operator[numLevels-1]*x - rhs;
+        res = m_operator[level-1]*x - rhs;
     }
 
     /// @brief Apply fixed number of presmoothing steps
-    void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, int numLevels, int numSmoothing)
+    void presmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, index_t level, index_t numSmoothing)
     {
         for (index_t i = 0 ; i < numSmoothing ; i++)
         {
-            m_smoother[numLevels-1]->step(rhs,x);
+            m_smoother[level-1]->step(rhs,x);
         }
     }
 
     /// @brief Apply fixed number of postsmoothing steps
-    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, int numLevels, int numSmoothing, bool symmetricSmoothing)
+    void postsmoothing(const gsMatrix<T>& rhs, gsMatrix<T>& x, index_t level, index_t numSmoothing, bool symmetricSmoothing)
     {
         for (index_t i = 0 ; i < numSmoothing ; i++)
         {
             if (symmetricSmoothing)
-                m_smoother[numLevels-1]->stepT(rhs,x);
+                m_smoother[level-1]->stepT(rhs,x);
             else
-                m_smoother[numLevels-1]->step(rhs,x);
+                m_smoother[level-1]->step(rhs,x);
         }
     }
 
@@ -728,7 +725,7 @@ int main(int argc, char* argv[])
     gsMultiBasis<> basisL(mp);
     gsMultiBasis<> basisH(mp);
 
-    gsMatrix<> hp = gsMatrix<>::Zero(numLevels-1,1);
+    gsMatrix<index_t> hp = gsMatrix<index_t>::Zero(numLevels-1,1);
 
     // Read string from command line
     real_t numRefH = 0;
@@ -799,12 +796,12 @@ int main(int argc, char* argv[])
     }
 
     // Setup of p-mg object
-    pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG(mp, basisL, bcInfo);
-    My_MG.setup(rhs_exact, numLevels, numDegree, typeBCHandling, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
+    pMultigrid<real_t, gsSparseSolver<real_t>::LU , gsCDRAssembler<real_t> > My_MG;
+    My_MG.setup(mp, basisL, bcInfo, rhs_exact, numLevels, numDegree, typeBCHandling, typeLumping, hp, typeProjection, typeSmoother, typeCoarseOperator, coeff_diff, coeff_conv, coeff_reac);
 
     // Access the assembler on the finest grid
     const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
-    gsMatrix<real_t> x = gsMatrix<>::Random(pa.matrix().rows(),1);
+    gsMatrix<> x = gsMatrix<>::Random(pa.matrix().rows(),1);
 
     // The p-multigrid class does not satisfy the conditions for a preconditioner
     gsLinearOperator<>::Ptr preconditioner = makeLinearOp(
