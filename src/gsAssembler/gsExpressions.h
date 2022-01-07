@@ -3831,10 +3831,8 @@ public:
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
-    index_t cardinality_impl() const {
-        GISMO_ERROR("A");
-        return 0;
-    }
+    index_t cardinality_impl() const
+    { GISMO_ERROR("Something went terribly wrong"); }
 
     void print(std::ostream &os) const
     { os << "sum("; _M.print(os); os<<","; _u.print(os); os<<")"; }
