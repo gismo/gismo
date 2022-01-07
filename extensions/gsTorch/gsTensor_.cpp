@@ -4,7 +4,7 @@
 
 namespace gismo
 {
-  
-  CLASS_TEMPLATE_INST gsTensorOptions<real_t>;
+
+  CLASS_TEMPLATE_INST gsTensor<real_t>;
   
 }

@@ -1,34 +1,52 @@
 /** @file gsTensor.hpp
 
     @brief Provides implementation of the gsTensor class which is a
-    wrapper of the PyTorch torch::tensor class (https://pytorch.org)
+    wrapper of the LibTorch torch::Tensor class (https://pytorch.org)
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): M. Moller
 */
 
 namespace gismo
-{  
-  // Specializations for floating-point numbers
-  template<> gsTensorOptions<double>::gsTensorOptions() : torch::TensorOptions(torch::kFloat64) {}
-  template<> gsTensorOptions<float>::gsTensorOptions()  : torch::TensorOptions(torch::kFloat32) {}
+{
+  // Query functions
+  template<typename T> bool gsTensor<T>::isActive() const
+  { return this->requires_grad(); }
 
-  // Specializations for integers
-  template<> gsTensorOptions<long long>::gsTensorOptions()  : torch::TensorOptions(torch::kInt64) {}
-  template<> gsTensorOptions<long>::gsTensorOptions()       : torch::TensorOptions(sizeof(long)  == 32 ? torch::kInt32 : torch::kInt64) {}
-  template<> gsTensorOptions<int>::gsTensorOptions()        : torch::TensorOptions(sizeof(int)   == 16 ? torch::kInt16 : torch::kInt32) {}
-  template<> gsTensorOptions<short>::gsTensorOptions()      : torch::TensorOptions(sizeof(short) == 16 ? torch::kInt16 : torch::kInt32) {}
-  
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setActive()        { return this->requires_grad(true); }
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setPassive()       { return this->requires_grad(false); }
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setStrided()       { return this->layout(torch::kStrided); }
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setSparse()        { return this->layout(torch::kSparse); }
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setCPU()           { return this->device(torch::kCPU); }
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setGPU(int device) { return this->device(torch::kCUDA, device); }
-  
+  template<typename T> bool gsTensor<T>::isPassive() const
+  { return !this->requires_grad(); }
+
+  template<typename T> bool gsTensor<T>::isStrided() const
+  { return this->layout() == torch::kStrided; }
+
+  template<typename T> bool gsTensor<T>::isSparse() const
+  { return this->layout() == torch::kSparse; }
+
+  template<typename T> bool gsTensor<T>::isCPU() const
+  { return this->device().type() == torch::kCPU; }
+
+  template<typename T> bool gsTensor<T>::isCUDA(int index) const
+  { return this->device().type() == torch::kCUDA
+      &&   this->device().index() == index; }
+
+  template<typename T> bool gsTensor<T>::isPinnedMemory() const
+  { return this->is_pinned(); }
+
+  template<typename T> bool gsTensor<T>::isNonPinnedMemory() const
+  { return !this->is_pinned(); }
+
+  // Setter functions
+  template<typename T> gsTensor<T>& gsTensor<T>::setActive()
+  { this->requires_grad_(true);
+    return *this; }
+
+  template<typename T> gsTensor<T>& gsTensor<T>::setPassive()
+  { this->requires_grad_(false);
+    return *this; }
+
 } // end namespace gismo
