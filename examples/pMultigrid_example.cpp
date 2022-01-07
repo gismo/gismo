@@ -383,70 +383,61 @@ private:
     /// @brief Construct prolongation operator at level numLevels
     gsMatrix<T> prolongation_M(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
-        // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
-
-        // Determine matrix M (high_order * high_order)
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space    space;
-        gsExprAssembler<real_t> ex2(1,1);
-        geometryMap G2 = ex2.getMap(*m_mp_ptr);
-        space w_n = ex2.getSpace(basisH ,1, 0);
+        typedef gsExprAssembler<real_t>::space space;
+
+        // Determine matrix M (high_order * high_order)
+        gsMultiBasis<> basisH = *m_basis[level-1];
+        gsExprAssembler<real_t> ex(1,1);
+        geometryMap G = ex.getMap(*m_mp_ptr);
+        space w_n = ex.getSpace(basisH, 1, 0);
         w_n.setInterfaceCont(0);
         if (typeBCHandling == 1)
         {
             w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
         }
-        ex2.setIntegrationElements(basisH);
-        ex2.initSystem();
-        ex2.assemble(w_n * meas(G2) );
-        return ex2.rhs();
+        ex.setIntegrationElements(basisH);
+        ex.initSystem();
+        ex.assemble(w_n * meas(G) );
+        return ex.rhs();
     }
 
     gsSparseMatrix<T> prolongation_M2(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
-        // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
+
         // Determine matrix M (high_order * high_order)
-        gsExprAssembler<real_t> ex2(1,1);
-        geometryMap G2 = ex2.getMap(*m_mp_ptr);
-        space w_n = ex2.getSpace(basisH ,1, 0);
-        //w_n.setInterfaceCont(0);
+        gsMultiBasis<> basisH = *m_basis[level-1];
+        gsExprAssembler<real_t> ex(1,1);
+        geometryMap G = ex.getMap(*m_mp_ptr);
+        space w_n = ex.getSpace(basisH, 1, 0);
         if (typeBCHandling == 1)
         {
             w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
         }
-        ex2.setIntegrationElements(basisH);
-        ex2.initSystem();
-        ex2.assemble(w_n * meas(G2) * w_n.tr());
-
-        // Prolongate Xcoarse to Xfine
-        return ex2.matrix();
+        ex.setIntegrationElements(basisH);
+        ex.initSystem();
+        ex.assemble(w_n * meas(G) * w_n.tr());
+        return ex.matrix();
     }
 
     /// @brief Construct prolongation operator at level numLevels
     gsSparseMatrix<T> prolongation_P(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
-        // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
-
-        // Determine matrix P (high_order * low_order)
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-        gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(*m_mp_ptr);
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space    space;
-        space v_n = ex.getSpace(basisH ,1, 0);
-        //v_n.setInterfaceCont(0);
+
+        // Determine matrix P (high_order * low_order)
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
+        gsExprAssembler<real_t> ex(1,1);
+        geometryMap G = ex.getMap(*m_mp_ptr);
+        space v_n = ex.getSpace(basisH, 1, 0);
         space u_n = ex.getTestSpace(v_n, basisL);
-        //u_n.setInterfaceCont(0);
         if (typeBCHandling == 1)
         {
             v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
@@ -454,81 +445,69 @@ private:
         }
         ex.setIntegrationElements(basisH);
         ex.initSystem();
-        ex.assemble(u_n*meas(G) * v_n.tr());
-        gsSparseMatrix<> P = ex.matrix().transpose();
-        return P;
+        ex.assemble(u_n * meas(G) * v_n.tr());
+        return ex.matrix().transpose();
     }
 
     /// @brief Construct restriction operator at level numLevels
     gsMatrix<T> restriction_M(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
-        // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
-
-        // Determine matrix M (low_order * low_order)
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space    space;
-        gsExprAssembler<real_t> ex2(1,1);
-        geometryMap G2 = ex2.getMap(*m_mp_ptr);
-        space w_n = ex2.getSpace(basisL ,1, 0);
-        //w_n.setInterfaceCont(0);
+
+        // Determine matrix M (low_order * low_order)
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsExprAssembler<real_t> ex(1,1);
+        geometryMap G = ex.getMap(*m_mp_ptr);
+        space w_n = ex.getSpace(basisL ,1, 0);
         if (typeBCHandling == 1)
         {
             w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
         }
-        ex2.setIntegrationElements(basisL);
-        ex2.initSystem();
-        ex2.assemble(w_n * meas(G2) );
-        return ex2.rhs();
+        ex.setIntegrationElements(basisL);
+        ex.initSystem();
+        ex.assemble(w_n * meas(G) );
+        return ex.rhs();
     }
 
     /// @brief Construct restriction operator at level numLevels
     gsSparseMatrix<T> restriction_M2(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
-        // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
 
         // Determine matrix M (low_order * low_order)
-        gsExprAssembler<real_t> ex2(1,1);
-        geometryMap G2 = ex2.getMap(*m_mp_ptr);
-        space w_n = ex2.getSpace(basisL ,1, 0);
-        //w_n.setInterfaceCont(0);
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsExprAssembler<real_t> ex(1,1);
+        geometryMap G = ex.getMap(*m_mp_ptr);
+        space w_n = ex.getSpace(basisL, 1, 0);
         if (typeBCHandling == 1)
         {
             w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
         }
-        ex2.setIntegrationElements(basisL);
-        ex2.initSystem();
-        ex2.assemble(w_n * meas(G2) * w_n.tr());
-
-        return ex2.matrix();
+        ex.setIntegrationElements(basisL);
+        ex.initSystem();
+        ex.assemble(w_n * meas(G) * w_n.tr());
+        return ex.matrix();
     }
 
     /// @brief Construct restriction operator at level numLevels
     gsSparseMatrix<T> restriction_P(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
     {
-        // Define the low and high order basis
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
+        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+        typedef gsExprAssembler<real_t>::variable variable;
+        typedef gsExprAssembler<real_t>::space space;
 
         // Determine matrix P (high_order * low_order)
+        gsMultiBasis<> basisL = *m_basis[level-2];
+        gsMultiBasis<> basisH = *m_basis[level-1];
         gsExprAssembler<real_t> ex(1,1);
-        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         geometryMap G = ex.getMap(*m_mp_ptr);
-
-        typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space    space;
-        space v_n = ex.getSpace(basisH ,1, 0);
-        //v_n.setInterfaceCont(0);
-        space u_n = ex.getTestSpace(v_n , basisL);
-        //u_n.setInterfaceCont(0);
-        if ( typeBCHandling == 1)
+        space v_n = ex.getSpace(basisH, 1, 0);
+        space u_n = ex.getTestSpace(v_n, basisL);
+        if (typeBCHandling == 1)
         {
             u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
             v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
@@ -536,8 +515,7 @@ private:
         ex.setIntegrationElements(basisH);
         ex.initSystem();
         ex.assemble(u_n * meas(G)* v_n.tr());
-        gsSparseMatrix<> P = ex.matrix();
-        return P;
+        return ex.matrix();
     }
 
     /// @brief Get residual (pure method)
