@@ -22,9 +22,11 @@ gsMultiGridOp<T>::gsMultiGridOp(
     std::vector<SpMatrixRowMajor> transferMatrices,
     OpPtr coarseSolver
 )
-    : n_levels(transferMatrices.size()+1), m_ops(n_levels), m_smoother(n_levels), m_prolong(n_levels-1), m_restrict(n_levels-1),
-      m_coarseSolver(coarseSolver), m_numPreSmooth(1), m_numPostSmooth(1), m_numCycles(1), m_damping(1)
+    : n_levels(transferMatrices.size()+1), m_ops(n_levels), m_smoother(n_levels),
+      m_prolong(n_levels-1), m_restrict(n_levels-1), m_coarseSolver(coarseSolver),
+      m_numPreSmooth(1), m_numPostSmooth(1), m_symmSmooth(true), m_damping(1)
 {
+    m_numCycles.setConstant(n_levels-1,1);
     std::vector<SpMatrixRowMajorPtr> transferMatrixPtrs(n_levels);
     for (index_t i=0; i<n_levels-1; ++i)
         transferMatrixPtrs[i] = transferMatrices[i].moveToPtr();
@@ -38,9 +40,11 @@ gsMultiGridOp<T>::gsMultiGridOp(
     std::vector<SpMatrixRowMajorPtr> transferMatrices,
     OpPtr coarseSolver
 )
-    : n_levels(transferMatrices.size()+1), m_ops(n_levels), m_smoother(n_levels), m_prolong(n_levels-1), m_restrict(n_levels-1),
-      m_coarseSolver(coarseSolver), m_numPreSmooth(1), m_numPostSmooth(1), m_numCycles(1), m_damping(1)
+    : n_levels(transferMatrices.size()+1), m_ops(n_levels), m_smoother(n_levels),
+      m_prolong(n_levels-1), m_restrict(n_levels-1), m_coarseSolver(coarseSolver),
+      m_numPreSmooth(1), m_numPostSmooth(1), m_symmSmooth(true), m_damping(1)
 {
+    m_numCycles.setConstant(n_levels-1,1);
     init(give(fineMatrix),give(transferMatrices));
 }
 
@@ -51,9 +55,11 @@ gsMultiGridOp<T>::gsMultiGridOp(
     const std::vector<OpPtr>& restriction,
     OpPtr coarseSolver
 )
-    : n_levels(ops.size()), m_ops(ops), m_smoother(n_levels), m_prolong(prolongation), m_restrict(restriction),
-      m_coarseSolver(coarseSolver), m_numPreSmooth(1), m_numPostSmooth(1), m_numCycles(1), m_damping(1)
+    : n_levels(ops.size()), m_ops(ops), m_smoother(n_levels),
+      m_prolong(prolongation), m_restrict(restriction), m_coarseSolver(coarseSolver),
+      m_numPreSmooth(1), m_numPostSmooth(1), m_symmSmooth(true), m_damping(1)
 {
+    m_numCycles.setConstant(n_levels-1,1);
     GISMO_ASSERT (prolongation.size() == restriction.size(),
         "gsMultiGridOp: The number of prolongation and restriction operators differ.");
     GISMO_ASSERT (ops.size() == prolongation.size()+1,
@@ -80,10 +86,11 @@ void gsMultiGridOp<T>::init(SpMatrixPtr fineMatrix, std::vector<SpMatrixRowMajor
     for ( index_t i=0; i<n_levels-1; ++i )
     {
         m_prolong[i] = makeMatrixOp(transferMatrices[i]);
-        m_restrict[i] = makeMatrixOp(transferMatrices[i]->transpose()); // note that this works as we know that
-                                                           // m_prolong does not get destroyed before
-                                                           // m_restrict, so the shared pointer stored in m_prolong
-                                                           // will make sure that the matrix will not get destroyed
+	// Note that the following works since we know that m_prolong does not
+	// get destroyed beforem_restrict, so the shared pointer stored in
+	// m_prolong will make sure that the underlying matrix will not get
+	// destroyed. Thus, there will be no dangling pointer.
+        m_restrict[i] = makeMatrixOp(transferMatrices[i]->transpose());
     }
 }
 
@@ -129,7 +136,10 @@ void gsMultiGridOp<T>::smoothingStep(index_t level, const Matrix& rhs, Matrix& x
     // post-smooth
     for (index_t i = 0; i < m_numPostSmooth; ++i)
     {
-        m_smoother[level]->stepT( rhs, x );
+        if (m_symmSmooth)
+            m_smoother[level]->stepT( rhs, x );
+	else
+	    m_smoother[level]->step( rhs, x );
     }
 
 }
@@ -168,7 +178,7 @@ void gsMultiGridOp<T>::multiGridStep(index_t level, const Matrix& rhs, Matrix& x
 
         // obtain coarse-grid correction by recursing
         coarseCorr.setZero( nDofs(lc), coarseRes.cols() );
-        for (index_t i = 0; i < ((lc==0 && m_numCycles>0) ? 1 : m_numCycles); ++i)   // coarse solve is never cycled
+        for (index_t i = 0; i < m_numCycles[lc]; ++i)
         {
             multiGridStep( lc, coarseRes, coarseCorr );
         }
@@ -182,7 +192,10 @@ void gsMultiGridOp<T>::multiGridStep(index_t level, const Matrix& rhs, Matrix& x
         // post-smooth
         for (index_t i = 0; i < m_numPostSmooth; ++i)
         {
-            m_smoother[lf]->stepT( rhs, x );
+	    if (m_symmSmooth)
+	        m_smoother[lf]->stepT( rhs, x );
+	    else
+	        m_smoother[lf]->step( rhs, x );
         }
     }
 }
@@ -287,10 +300,11 @@ template<class T>
 gsOptionList gsMultiGridOp<T>::defaultOptions()
 {
     gsOptionList opt = Base::defaultOptions();
-    opt.addInt   ("NumPreSmooth"                , "Number of pre-smoothing steps",                             1      );
-    opt.addInt   ("NumPostSmooth"               , "Number of post-smoothing steps",                            1      );
-    opt.addInt   ("NumCycles"                   , "Number of cycles (usually 1 for V-cycle or 2 for W-cycle)", 1      );
-    opt.addReal  ("CorarseGridCorrectionDamping", "Damping of the coarse-grid correction (usually 1)",      (T)1      );
+    opt.addInt   ("NumPreSmooth"                , "Number of pre-smoothing steps",                             1 );
+    opt.addInt   ("NumPostSmooth"               , "Number of post-smoothing steps",                            1 );
+    opt.addInt   ("NumCycles"                   , "Number of cycles (usually 1 for V-cycle or 2 for W-cycle)", 1 );
+    opt.addReal  ("CorarseGridCorrectionDamping", "Damping of the coarse-grid correction (usually 1)",      (T)1 );
+    opt.addSwitch("SymmSmooth"                  , "Iff true, stepT is called for post-smoothing",           true );
     return opt;
 }
 
@@ -300,8 +314,16 @@ void gsMultiGridOp<T>::setOptions(const gsOptionList & opt)
     Base::setOptions(opt);
     m_numPreSmooth     = opt.askInt   ("NumPreSmooth"                , m_numPreSmooth    );
     m_numPostSmooth    = opt.askInt   ("NumPostSmooth"               , m_numPostSmooth   );
-    m_numCycles        = opt.askInt   ("NumCycles"                   , m_numCycles       );
     m_damping          = opt.askReal  ("CorarseGridCorrectionDamping", m_damping         );
+    m_symmSmooth       = opt.askSwitch("SymmSmooth"                  , m_symmSmooth      );
+
+    const index_t nc   = opt.askInt   ("NumCycles"                   , -1                );
+    if (nc > -1)
+    {
+        m_numCycles.setConstant(n_levels-1, nc);
+        // The direct solver on coarsest level is only invoked once
+        m_numCycles[0] = 1;
+    }
 }
 
 }
