@@ -564,7 +564,7 @@ std::string gsFileManager::getExtension(std::string const & fn)
     if(fn.find_last_of(".") != std::string::npos)
     {
         std::string ext = fn.substr(fn.rfind(".")+1);
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+        std::for_each(ext.begin(), ext.end(), [](char& a){ a = static_cast<char>(::tolower(a));} );
         return ext;
     }
     return "";
