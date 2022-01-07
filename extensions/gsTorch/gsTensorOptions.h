@@ -26,19 +26,55 @@ namespace gismo {
   class gsTensorOptions : public torch::TensorOptions
   {
   public:
-    // Constructors
+    // Default onstructor
     gsTensorOptions()
       : torch::TensorOptions(caffe2::TypeMeta::Make<T>()) {}
-    
+
+    // Copy constructor (from torch::TensorOptions)
     gsTensorOptions(const torch::TensorOptions& other)
       : torch::TensorOptions(other.dtype(caffe2::TypeMeta::Make<T>())) {}
-    
+
+    // Move constructor (from torch::TensorOptions)
     gsTensorOptions(torch::TensorOptions&& other)
       : torch::TensorOptions(other.dtype(caffe2::TypeMeta::Make<T>())) {}
-    
+
+    // Copy constructor (from gsTensorOptions)
     gsTensorOptions(const gsTensorOptions&) = default;
+
+    // Move constructor (from gsTensorOptions)
     gsTensorOptions(gsTensorOptions&&) = default;
 
+  public:
+    // Copy assignment operator (from torch::TensorOptions)
+    gsTensorOptions& operator=(const torch::TensorOptions& other)
+    {
+      torch::TensorOptions::operator=(other.dtype(caffe2::TypeMeta::Make<T>()));
+      return *this;
+    }
+
+    // Move assignment operator (from torch::TensorOptions)
+    gsTensorOptions& operator=(torch::TensorOptions&& other)
+    {
+      torch::TensorOptions::operator=(other.dtype(caffe2::TypeMeta::Make<T>()));
+      return *this;
+    }
+
+    // Copy assignment operator (from gsTensorOptions)
+    gsTensorOptions& operator=(const gsTensorOptions& other)
+    {
+      torch::TensorOptions::operator=(other);
+      return *this;
+    }
+
+    // Move assignment operator (from gsTensorOptions)
+    gsTensorOptions& operator=(gsTensorOptions&& other)
+    {
+      torch::TensorOptions::operator=(other);
+      return *this;
+    }
+    
+    
+  public:
     // Setter functions
     gsTensorOptions setActive();
     gsTensorOptions setPassive();

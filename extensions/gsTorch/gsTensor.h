@@ -59,14 +59,14 @@ namespace gismo {
       return *this;
     }
 
-    // Copy assignment operator (from torch::Tensor)
+    // Copy assignment operator (from gsTensor)
     gsTensor& operator=(const gsTensor& other)
     {
       torch::Tensor::operator=(other);
       return *this;
     }
 
-    // Move assignment operator (from torch::Tensor)
+    // Move assignment operator (from gsTensor)
     gsTensor& operator=(gsTensor&& other)
     {
       torch::Tensor::operator=(other);

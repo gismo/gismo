@@ -59,8 +59,8 @@ SUITE(gsTensorOptions_test)
     }
 
     {
-      // Check move constructor (from torch::TensorOptions)
-      gsTensorOptions<short> to_dst( gsTensorOptions<short>{} );
+      // Check move constructor (from gsTensorOptions)
+      gsTensorOptions<short> to_dst(gsTensorOptions<short>{});
       CHECK(to_dst.dtype() == caffe2::TypeMeta::Make<short>());
     }
   }
@@ -68,9 +68,28 @@ SUITE(gsTensorOptions_test)
   TEST(operator_test)
   {
     {
-      // Check copy assignment (from torch::TensorOptions)
+      // Check copy assignment operator (from torch::TensorOptions)
       torch::TensorOptions to_src(torch::kDouble);
       gsTensorOptions<short> to_dst; to_dst = to_src;
+      CHECK(to_dst.dtype() == caffe2::TypeMeta::Make<short>());
+    }
+
+    {
+      // Check move assignment operator (from torch::TensorOptions)
+      gsTensorOptions<short> to_dst; to_dst = torch::TensorOptions{}.dtype(torch::kDouble);
+      CHECK(to_dst.dtype() == caffe2::TypeMeta::Make<short>());
+    }
+
+    {
+      // Check copy assignment operator (from gsTensorOptions)
+      gsTensorOptions<short> to_src;
+      gsTensorOptions<short> to_dst; to_dst = to_src;
+      CHECK(to_dst.dtype() == caffe2::TypeMeta::Make<short>());
+    }
+
+    {
+      // Check move assignment operator (from gsTensorOptions)
+      gsTensorOptions<short> to_dst; to_dst = gsTensorOptions<short>{};
       CHECK(to_dst.dtype() == caffe2::TypeMeta::Make<short>());
     }
   }
