@@ -22,9 +22,9 @@ using namespace gismo;
 
 // Implementation of the system solver for CoDiPack
 template<class T>
-void solveSystem_b(typename codi::RealReverseGen<T>::TapeType *tape,
-                   codi::DataStore                     *data,
-                   codi::AdjointInterface<double, int> *interface)
+void solveSystem_b(typename codi::RealReverseGen<T>::Tape   *tape,
+                   codi::ExternalFunctionUserData           *data,
+                   codi::VectorAccessInterface<double, int> *interface)
 {
     gsSparseMatrix<codi::RealReverseGen<T>>* matrix;
     gsMatrix<codi::RealReverseGen<T>>* rhs;
@@ -46,7 +46,7 @@ void solveSystem_b(typename codi::RealReverseGen<T>::TapeType *tape,
     rhsAdj = solver.solve(solAdj);
 
     for(index_t i = 0; i < sol->size(); ++i) {
-        auto index = (*rhs)[i].getGradientData();
+        auto index = (*rhs)[i].getIdentifier();
         tape->gradient(index) += rhsAdj[i].getValue();
     }
     for (int e=0; e<matrix->outerSize(); ++e) {
@@ -54,26 +54,26 @@ void solveSystem_b(typename codi::RealReverseGen<T>::TapeType *tape,
             int k = it.row();
             int l = it.col();
             codi::RealReverseGen<T>& temp1 = matrix->at(k,l);
-            tape->gradient(temp1.getGradientData()) += -rhsAdj[l].getValue() * (*sol)[k].getValue();
+            tape->gradient(temp1.getIdentifier()) += -rhsAdj[l].getValue() * (*sol)[k].getValue();
         }
     }
 }
 
 // Implementation of the system deleter for CoDiPack
 template<class T>
-void solveSystem_delete(typename codi::RealReverseGen<T>::TapeType* tape, codi::DataStore* data) {}
+void solveSystem_delete(typename codi::RealReverseGen<T>::Tape* tape, codi::ExternalFunctionUserData* data) {}
 
 // Implementation of the system solver for CoDiPack
 template<class T>
 void solveSystem(typename gsSparseSolver<codi::RealReverseGen<T>>::LU   &solver,
-                 const gsSparseMatrix<codi::RealReverseGen<T>> &matrix,
-                 const gsMatrix<codi::RealReverseGen<T>>       &rhs,
-                 gsMatrix<codi::RealReverseGen<T>>             &sol) {
+                 const gsSparseMatrix<codi::RealReverseGen<T>>          &matrix,
+                 const gsMatrix<codi::RealReverseGen<T>>                &rhs,
+                 gsMatrix<codi::RealReverseGen<T>>                      &sol) {
 
-    typename codi::RealReverseGen<T>::TapeType& tape = codi::RealReverseGen<T>::getGlobalTape();
+    typename codi::RealReverseGen<T>::Tape& tape = codi::RealReverseGen<T>::getTape();
     tape.setPassive();
 
-    codi::DataStore* dataHandler = new codi::DataStore();
+    codi::ExternalFunctionUserData* dataHandler = new codi::ExternalFunctionUserData();
     dataHandler->addData(&matrix);
     dataHandler->addData(&rhs);
     solver.compute( matrix );
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
     cmd.addSwitch("effSolv", "Solve the system efficiently", EffSolv);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    codi::RealReverseGen<real_t>::TapeType& tape = codi::RealReverseGen<real_t>::getGlobalTape();
+    codi::RealReverseGen<real_t>::Tape& tape = codi::RealReverseGen<real_t>::getTape();
 
     codi::RealReverseGen<real_t> a = 3.0;
     codi::RealReverseGen<real_t> b = 2.0;
