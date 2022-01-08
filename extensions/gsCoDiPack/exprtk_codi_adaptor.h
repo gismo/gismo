@@ -125,7 +125,7 @@ inline T max_impl(const T& v0, const T& v1, CODI_TYPE_TAG)
 template <typename T>
 inline T nequal_impl(const T& v0, const T& v1, CODI_TYPE_TAG)
 {
-    const T epsilon  = epsilon_type<T>::value();
+    const T epsilon  = epsilon_type<CODI_TYPE_TAG>::value();
     const T eps_norm = (codi::max(T(1),codi::max(abs(v0),abs(v1))) * epsilon);
     return (abs(T(v0 - v1)) > eps_norm) ? T(1) : T(0);
 }
@@ -187,7 +187,7 @@ inline T logn_impl(const T& v0, const T& v1, CODI_TYPE_TAG)
 template <typename T>
 inline T sinc_impl(const T& v, CODI_TYPE_TAG)
 {
-    if (abs(v) >= epsilon_type<T>::value())
+    if (abs(v) >= epsilon_type<CODI_TYPE_TAG>::value())
         return(sin(v) / v);
     else
         return T(1);
@@ -213,7 +213,7 @@ inline T xnor_impl(const T& v0, const T& v1, CODI_TYPE_TAG)
 template <typename T>
 inline T equal_impl(const T& v0, const T& v1, CODI_TYPE_TAG)
 {
-    const T epsilon  = epsilon_type<T>::value();
+    const T epsilon  = epsilon_type<CODI_TYPE_TAG>::value();
     const T eps_norm = (codi::max(T(1),codi::max(abs(v0),abs(v1))) * epsilon);
     return (abs(T(v0-v1)) <= eps_norm) ? T(1) : T(0);
 }
