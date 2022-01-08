@@ -32,7 +32,7 @@ gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower,
     // TO do : phys. volume criterion
     gsVector<T> span = upper - lower;
     const T volume = span.prod();
-    const T h = math::pow(volume / numPoints, 1.0 / d);
+    const T h = math::pow(volume / T(numPoints), T(1) / T(d));
 
     gsVector<unsigned> np(d);
 
@@ -66,11 +66,11 @@ void uniformIntervals(const gsVector<T>& lower,
         if (numInt <= 1)
             numInt = 1;
 
-        const T h = T(1) / numInt;
+        const T h = T(1) / T(numInt);
 
         intervals[i].resize(numInt + 1);
         for (int j = 0; j <= numInt; ++j)
-            intervals[i][j] = j * h;
+            intervals[i][j] = T(j) * h;
     }
 }
 

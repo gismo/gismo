@@ -730,7 +730,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 	    // additional multiplication by deg - 1 ensures quadratic
 	    // elements to be approximated by at least two lines etc.
 	    ptsPerEdge = cast<T,int>(
-            math::max(Geo.basis().maxDegree()-1, (index_t)1) * math::pow(evalPtsPerElem, T(1.0)/Geo.domainDim()) );
+            static_cast<T>(math::max(Geo.basis().maxDegree()-1, (index_t)1)) * math::pow(evalPtsPerElem, T(1.0)/static_cast<T>(Geo.domainDim())) );
 	}
 	else
 	{

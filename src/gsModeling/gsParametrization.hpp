@@ -79,7 +79,7 @@ void gsParametrization<T>::calculate(const size_t boundaryMethod,
             }
             for (size_t i = 0; i < B - 1; i++)
             {
-                w += halfedgeLengths[i] * (1. / m_mesh.getBoundaryLength()) * 4;
+                w += halfedgeLengths[i] * (T(1) / m_mesh.getBoundaryLength()) * T(4);
                 m_parameterPoints.push_back(Neighbourhood::findPointOnBoundary(w, n + i + 2));
             }
             break;
@@ -381,11 +381,11 @@ const typename gsParametrization<T>::Point2D gsParametrization<T>::Neighbourhood
     if(0 <= w && w <=1)
         return Point2D(w,0, vertexIndex);
     else if(1<w && w<=2)
-        return Point2D(1,w-1, vertexIndex);
+        return Point2D(1,w-T(1), vertexIndex);
     else if(2<w && w<=3)
-        return Point2D(1-w+2,1, vertexIndex);
+        return Point2D(T(1)-w+T(2),1, vertexIndex);
     else if(3<w && w<=4)
-        return Point2D(0,1-w+3, vertexIndex);
+        return Point2D(0,T(1)-w+T(3), vertexIndex);
     return Point2D();
 }
 
@@ -414,7 +414,7 @@ std::vector<T> gsParametrization<T>::Neighbourhood::midpoints(const size_t numbe
     T n = 1./numberOfCorners;
     for(size_t i=1; i<numberOfCorners; i++)
     {
-        midpoints.push_back(i*length*n);
+        midpoints.push_back(T(i)*length*n);
     }
     return midpoints;
 }
@@ -536,7 +536,7 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
             {
                 length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
                 //length =  (meshInfo.getVertex(indices.front()) - meshInfo.getVertex(m_vertexIndex) ).norm();
-                nextAngle = angles.front()*thetaInv * 2 * EIGEN_PI;
+                nextAngle = angles.front()*thetaInv * T(2) * EIGEN_PI;
                 nextVector = (Eigen::Rotation2D<T>(nextAngle).operator*(actualVector).normalized()*length) + p;
                 nextPoint = Point2D(nextVector[0], nextVector[1], indices.front());
                 points.push_back(nextPoint);

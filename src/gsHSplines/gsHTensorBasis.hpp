@@ -517,8 +517,8 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
             const index_t maxKtIndexd = kv.uSize();
             ( k2 + refExt >= maxKtIndexd ? k2=maxKtIndexd-1 : k2+=refExt);
 
-            k1 = math::floor(static_cast<T>(k1) / 2);
-            k2 = math::ceil (static_cast<T>(k2) / 2);
+            k1 = math::floor(static_cast<T>(k1) / T(2));
+            k2 = math::ceil (static_cast<T>(k2) / T(2));
 
             // Store the data...
             refVector[I*offset]       = refLevel;

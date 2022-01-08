@@ -77,7 +77,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(0,xi) + i/((T)(n1-1))*( corner(1,xi) - corner(0,xi) );
+            pcp(i+j*n1,xi)=corner(0,xi) + T(i)/((T)(n1-1))*( corner(1,xi) - corner(0,xi) );
         }
     }
     j=n2-1; // boundary v=1
@@ -85,7 +85,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(3,xi) + i/((T)(n1-1))*( corner(2,xi) - corner(3,xi) );
+            pcp(i+j*n1,xi)=corner(3,xi) + T(i)/((T)(n1-1))*( corner(2,xi) - corner(3,xi) );
         }
     }
     int i=0; // boundary u=0;
@@ -93,7 +93,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(0,xi) + j/((T)(n2-1))*( corner(3,xi) - corner(0,xi) );
+            pcp(i+j*n1,xi)=corner(0,xi) + T(j)/((T)(n2-1))*( corner(3,xi) - corner(0,xi) );
         }
     }
     i=n1-1; // boundary u=1;
@@ -101,7 +101,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(1,xi) + j/((T)(n2-1))*( corner(2,xi) - corner(1,xi) );
+            pcp(i+j*n1,xi)=corner(1,xi) + T(j)/((T)(n2-1))*( corner(2,xi) - corner(1,xi) );
         }
     }
     // uniformly linear dependent in horizontal direction
@@ -111,7 +111,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
         {
             for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
             {
-                pcp(i+j*n1,xi)=pcp(0+j*n1,xi) + i/((T)(n1-1))*( pcp(n1-1+j*n1,xi)-pcp(0+j*n1,xi) );
+                pcp(i+j*n1,xi)=pcp(0+j*n1,xi) + T(i)/((T)(n1-1))*( pcp(n1-1+j*n1,xi)-pcp(0+j*n1,xi) );
             }
         }
     }

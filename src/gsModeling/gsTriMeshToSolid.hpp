@@ -161,7 +161,7 @@ void gsTriMeshToSolid<T>::getFeatures(T angleGrad,bool& bWarnNonManifold,bool& b
         else if(cosPhi < T(-1.0)) cosPhi = T(-1.0);
 
         const T PI_(3.14159);
-        T phiGrad(math::acos(cosPhi)/PI_*180);
+        T phiGrad(math::acos(cosPhi)/PI_*T(180));
         if(phiGrad>=angleGrad)
             iter->sharp=1;
         else
@@ -253,7 +253,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
         //gsDebug<<"area of ith patch: "<<areas[i]<<"\n";
         totalArea+=areas[i];
     }
-    T averageArea=totalArea/areas.size();
+    T averageArea=totalArea/static_cast<T>(areas.size());
     for(size_t j=0;j<edge.size();j++)
     {
         if(edge[j].numPatches.size()==1)
@@ -272,7 +272,7 @@ void gsTriMeshToSolid<T>::divideAndMergePatches(T innerAngle, T patchAreaWeight,
                 else if(cosPhi < T(-1.0)) cosPhi = T(-1.0);
 
                 const T PI_(3.14159);
-                T phiGrad(math::acos(cosPhi)/PI_*180);
+                T phiGrad(math::acos(cosPhi)/PI_*T(180));
                 if(phiGrad>=innerAngle)
                     edge[j].sharp=1;
                 else
@@ -717,7 +717,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                         distance=tempDist;
                 }
             }
-            if(diameterOut/4<distance&&diameterIn/4<distance) // Is this patch a cylinder ??
+            if(diameterOut/T(4)<distance&&diameterIn/T(4)<distance) // Is this patch a cylinder ??
             {
                 isCylinder.push_back(1);
                 improveCylinderParametrization.push_back(0.1);// scalar factor for Floater's weight for artificial vertex inside the hole
@@ -1036,21 +1036,21 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         {
             for(int k=0;k<closeBoundary;k++)
             {
-                EdgePts2d(0,edgNum)=oPoints2D[i][j].x()*(k+1)/(closeBoundary+1)+oPoints2D[i][j+1].x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts2d(1,edgNum)=oPoints2D[i][j].y()*(k+1)/(closeBoundary+1)+oPoints2D[i][j+1].y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(0,edgNum)=oPoints[i][j]->x()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(1,edgNum)=oPoints[i][j]->y()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(2,edgNum)=oPoints[i][j]->z()*(k+1)/(closeBoundary+1)+oPoints[i][j+1]->z()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts2d(0,edgNum)=oPoints2D[i][j].x()*T(k+1)/T(closeBoundary+1)+oPoints2D[i][j+1].x()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts2d(1,edgNum)=oPoints2D[i][j].y()*T(k+1)/T(closeBoundary+1)+oPoints2D[i][j+1].y()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts3d(0,edgNum)=oPoints[i][j]->x()*T(k+1)/T(closeBoundary+1)+oPoints[i][j+1]->x()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts3d(1,edgNum)=oPoints[i][j]->y()*T(k+1)/T(closeBoundary+1)+oPoints[i][j+1]->y()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts3d(2,edgNum)=oPoints[i][j]->z()*T(k+1)/T(closeBoundary+1)+oPoints[i][j+1]->z()*T(closeBoundary-k)/T(closeBoundary+1);
                 edgNum++;
             }
         }
         for(int k=0;k<closeBoundary;k++)
         {
-            EdgePts2d(0,edgNum)=oPoints2D[i][0].x()*(k+1)/(closeBoundary+1)+oPoints2D[i].back().x()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts2d(1,edgNum)=oPoints2D[i][0].y()*(k+1)/(closeBoundary+1)+oPoints2D[i].back().y()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts3d(0,edgNum)=oPoints[i][0]->x()*(k+1)/(closeBoundary+1)+oPoints[i].back()->x()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts3d(1,edgNum)=oPoints[i][0]->y()*(k+1)/(closeBoundary+1)+oPoints[i].back()->y()*(closeBoundary-k)/(closeBoundary+1);
-            EdgePts3d(2,edgNum)=oPoints[i][0]->z()*(k+1)/(closeBoundary+1)+oPoints[i].back()->z()*(closeBoundary-k)/(closeBoundary+1);
+            EdgePts2d(0,edgNum)=oPoints2D[i][0].x()*T(k+1)/T(closeBoundary+1)+oPoints2D[i].back().x()*T(closeBoundary-k)/T(closeBoundary+1);
+            EdgePts2d(1,edgNum)=oPoints2D[i][0].y()*T(k+1)/T(closeBoundary+1)+oPoints2D[i].back().y()*T(closeBoundary-k)/T(closeBoundary+1);
+            EdgePts3d(0,edgNum)=oPoints[i][0]->x()*T(k+1)/T(closeBoundary+1)+oPoints[i].back()->x()*T(closeBoundary-k)/T(closeBoundary+1);
+            EdgePts3d(1,edgNum)=oPoints[i][0]->y()*T(k+1)/T(closeBoundary+1)+oPoints[i].back()->y()*T(closeBoundary-k)/T(closeBoundary+1);
+            EdgePts3d(2,edgNum)=oPoints[i][0]->z()*T(k+1)/T(closeBoundary+1)+oPoints[i].back()->z()*T(closeBoundary-k)/T(closeBoundary+1);
             edgNum++;
         }
 
@@ -1151,16 +1151,16 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
                     GISMO_ASSERT(v1!=NULL&&v2!=NULL,"could not find source or target of the edge in the face");
                     for (int k=0;k<nAddIntPointsPerEdge[j];k++)
                     {
-                        interiorPts2d(0,intNum)=v1_2d->x()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2_2d->x()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts2d(1,intNum)=v1_2d->y()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2_2d->y()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts3d(0,intNum)=v1->x()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2->x()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts3d(1,intNum)=v1->y()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2->y()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
-                        interiorPts3d(2,intNum)=v1->z()*(k+1)/(nAddIntPointsPerEdge[j]+1)+
-                                v2->z()*(nAddIntPointsPerEdge[j]-k)/(nAddIntPointsPerEdge[j]+1);
+                        interiorPts2d(0,intNum)=v1_2d->x()*T(k+1)/T(nAddIntPointsPerEdge[j]+1)+
+                                v2_2d->x()*T(nAddIntPointsPerEdge[j]-k)/T(nAddIntPointsPerEdge[j]+1);
+                        interiorPts2d(1,intNum)=v1_2d->y()*T(k+1)/T(nAddIntPointsPerEdge[j]+1)+
+                                v2_2d->y()*T(nAddIntPointsPerEdge[j]-k)/T(nAddIntPointsPerEdge[j]+1);
+                        interiorPts3d(0,intNum)=v1->x()*T(k+1)/T(nAddIntPointsPerEdge[j]+1)+
+                                v2->x()*T(nAddIntPointsPerEdge[j]-k)/T(nAddIntPointsPerEdge[j]+1);
+                        interiorPts3d(1,intNum)=v1->y()*T(k+1)/T(nAddIntPointsPerEdge[j]+1)+
+                                v2->y()*T(nAddIntPointsPerEdge[j]-k)/T(nAddIntPointsPerEdge[j]+1);
+                        interiorPts3d(2,intNum)=v1->z()*T(k+1)/T(nAddIntPointsPerEdge[j]+1)+
+                                v2->z()*T(nAddIntPointsPerEdge[j]-k)/T(nAddIntPointsPerEdge[j]+1);
                         intNum++;
                     }
 
@@ -1197,21 +1197,21 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
             {
                 for(int k=0;k<closeBoundary;k++)
                 {
-                    EdgePts2d(0,edgNum)=innerBdrys2D[i][it][j].x()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it][j+1].x()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts2d(1,edgNum)=innerBdrys2D[i][it][j].y()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it][j+1].y()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts3d(0,edgNum)=innerBdrys[i][it][j]->x()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->x()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts3d(1,edgNum)=innerBdrys[i][it][j]->y()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->y()*(closeBoundary-k)/(closeBoundary+1);
-                    EdgePts3d(2,edgNum)=innerBdrys[i][it][j]->z()*(k+1)/(closeBoundary+1)+innerBdrys[i][it][j+1]->z()*(closeBoundary-k)/(closeBoundary+1);
+                    EdgePts2d(0,edgNum)=innerBdrys2D[i][it][j].x()*T(k+1)/T(closeBoundary+1)+innerBdrys2D[i][it][j+1].x()*T(closeBoundary-k)/T(closeBoundary+1);
+                    EdgePts2d(1,edgNum)=innerBdrys2D[i][it][j].y()*T(k+1)/T(closeBoundary+1)+innerBdrys2D[i][it][j+1].y()*T(closeBoundary-k)/T(closeBoundary+1);
+                    EdgePts3d(0,edgNum)=innerBdrys[i][it][j]->x()*T(k+1)/T(closeBoundary+1)+innerBdrys[i][it][j+1]->x()*T(closeBoundary-k)/T(closeBoundary+1);
+                    EdgePts3d(1,edgNum)=innerBdrys[i][it][j]->y()*T(k+1)/T(closeBoundary+1)+innerBdrys[i][it][j+1]->y()*T(closeBoundary-k)/T(closeBoundary+1);
+                    EdgePts3d(2,edgNum)=innerBdrys[i][it][j]->z()*T(k+1)/T(closeBoundary+1)+innerBdrys[i][it][j+1]->z()*T(closeBoundary-k)/T(closeBoundary+1);
                     edgNum++;
                 }
             }
             for(int k=0;k<closeBoundary;k++)
             {
-                EdgePts2d(0,edgNum)=innerBdrys2D[i][it][0].x()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it].back().x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts2d(1,edgNum)=innerBdrys2D[i][it][0].y()*(k+1)/(closeBoundary+1)+innerBdrys2D[i][it].back().y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(0,edgNum)=innerBdrys[i][it][0]->x()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->x()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(1,edgNum)=innerBdrys[i][it][0]->y()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->y()*(closeBoundary-k)/(closeBoundary+1);
-                EdgePts3d(2,edgNum)=innerBdrys[i][it][0]->z()*(k+1)/(closeBoundary+1)+innerBdrys[i][it].back()->z()*(closeBoundary-k)/(closeBoundary+1);
+                EdgePts2d(0,edgNum)=innerBdrys2D[i][it][0].x()*T(k+1)/T(closeBoundary+1)+innerBdrys2D[i][it].back().x()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts2d(1,edgNum)=innerBdrys2D[i][it][0].y()*T(k+1)/T(closeBoundary+1)+innerBdrys2D[i][it].back().y()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts3d(0,edgNum)=innerBdrys[i][it][0]->x()*T(k+1)/T(closeBoundary+1)+innerBdrys[i][it].back()->x()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts3d(1,edgNum)=innerBdrys[i][it][0]->y()*T(k+1)/T(closeBoundary+1)+innerBdrys[i][it].back()->y()*T(closeBoundary-k)/T(closeBoundary+1);
+                EdgePts3d(2,edgNum)=innerBdrys[i][it][0]->z()*T(k+1)/T(closeBoundary+1)+innerBdrys[i][it].back()->z()*T(closeBoundary-k)/T(closeBoundary+1);
                 edgNum++;
             }
         }
@@ -1252,7 +1252,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         {
             typename gsMesh<T>::uPtr m;
             int nPoints=cast<T,int>(
-                meshPoints*math::sqrt(math::sqrt(areas[i]/maxArea)));
+                T(meshPoints)*math::sqrt(math::sqrt(areas[i]/maxArea)));
             if (nPoints<10)
                 nPoints=10;
             m = cface->toMesh(nPoints);
@@ -1546,7 +1546,7 @@ T gsTriMeshToSolid<T>::calcWeight(VertexHandle v1,VertexHandle v2,
             {
 
                 const gsVector3d<T> vec2 = *v2->nVertices[j] - *v1;
-                weight+=math::tan(conditionedAngle( vec1,  vec2)/2);
+                weight+=math::tan(conditionedAngle( vec1,  vec2)/T(2));
             }
         }
     }
@@ -1582,7 +1582,7 @@ int gsTriMeshToSolid<T>::normalMult(gsVector3d<T> globalNormal,
         const gsVector3d<T> thisNormal = off1.cross(off2);
         // compare against n and record
         T thisResult = thisNormal.dot(globalNormal);
-        if((foundResult && thisResult * result <= 0) || thisResult == 0)
+        if((foundResult && thisResult * static_cast<T>(result) <= 0) || thisResult == 0)
         {
             result = 0;
         }
@@ -1746,9 +1746,9 @@ gsBSpline<T> * gsTriMeshToSolid<T>::calcTCurve(Vertex v1,Vertex v2,Vertex v3)
 template<class T>
 typename gsTriMeshToSolid<T>::Vertex gsTriMeshToSolid<T>::giveMidpoint(Vertex v1,Vertex v2)
 {
-    return gsVertex<T>((v1[0]+v2[0])/2,
-                       (v1[1]+v2[1])/2,
-                       (v1[2]+v2[2])/2);
+    return gsVertex<T>((v1[0]+v2[0])/T(2),
+                       (v1[1]+v2[1])/T(2),
+                       (v1[2]+v2[2])/T(2));
 }
 
 
@@ -1801,7 +1801,7 @@ T gsTriMeshToSolid<T>::calcArea(FaceHandle f1)
     T d2=calcDist(f1->vertices[0],f1->vertices[2]);
     T d3=calcDist(f1->vertices[1],f1->vertices[2]);
     //p=perimeter/2
-    T p=(d1+d2+d3)/2;
+    T p=(d1+d2+d3)/T(2);
     T area=math::sqrt(p*(p-d1)*(p-d2)*(p-d3));
     return area;
 }

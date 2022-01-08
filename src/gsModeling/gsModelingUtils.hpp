@@ -432,17 +432,17 @@ gsBSpline<T> gsInterpolate(gsKnotVector<T> & kv,const gsMatrix<T> & preImage,
     gsMatrix<T> Ass(nss,nss);
     gsMatrix<T> bss(nss,1);
     Ass.setZero(); bss.setZero();
-    gsMatrix<T> Hess = w_reg*2*(*Q) + w_app*2*(NuApp.transpose())* NuApp;
+    gsMatrix<T> Hess = w_reg*T(2)*(*Q) + w_app*T(2)*(NuApp.transpose())* NuApp;
     //--- row 0
     Ass.block(0,0,ntcp,ntcp) = Hess;
     Ass.block(0,2*ntcp,ntcp,nip) = Nu.transpose();
     Ass.block(0,2*ntcp+2*nip,ntcp,nn) = AdN.transpose();
-    bss.block(0,0,ntcp,1) = w_app*2*NuApp.transpose()*X0.transpose();
+    bss.block(0,0,ntcp,1) = w_app*T(2)*NuApp.transpose()*X0.transpose();
     //--- row 1
     Ass.block(ntcp,ntcp,ntcp,ntcp) = Hess;
     Ass.block(ntcp,2*ntcp+nip,ntcp,nip) = Nu.transpose();
     Ass.block(ntcp,2*ntcp+2*nip,ntcp,nn) = BdN.transpose();
-    bss.block(ntcp,0,ntcp,1) = w_app*2*NuApp.transpose()*Y0.transpose();
+    bss.block(ntcp,0,ntcp,1) = w_app*T(2)*NuApp.transpose()*Y0.transpose();
     //--- row 2
     Ass.block(2*ntcp,0,nip,ntcp) = Nu;
     bss.block(2*ntcp,0,nip,1) = (image.row(0)).transpose();
@@ -628,7 +628,7 @@ typename gsTensorBSpline<2,T>::Ptr gsInterpolateSurface(
 
     // now solve the cps
     gsMatrix<T> coefA = wEdge*(AappEdge.transpose())*AappEdge + wInt*(AappInt.transpose())*AappInt + wNormal*(Anor.transpose())*Anor + wReg*Q;
-    gsMatrix<T> coefb = (-2)*wEdge*(AappEdge.transpose())*bappEdge + (-2)*wInt*(AappInt.transpose())*bappInt + (-2)*wNormal*(Anor.transpose())*bnor;
+    gsMatrix<T> coefb = T(-2)*wEdge*(AappEdge.transpose())*bappEdge + T(-2)*wInt*(AappInt.transpose())*bappInt + T(-2)*wNormal*(Anor.transpose())*bnor;
 
     gsMatrix<T> cp = criticalPointOfQuadratic(
         coefA,

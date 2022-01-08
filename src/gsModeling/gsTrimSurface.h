@@ -350,7 +350,7 @@ public:
                 {
                     termFromSurfaceCurvature(idxJ, 0) = surfDeriv2(idxJ * 3) * curveDeriv(0, 0) * curveDeriv(0, 0) +
                             surfDeriv2(idxJ * 3 + 1) * curveDeriv(1, 0) * curveDeriv(1, 0) +
-                            2 * surfDeriv2(idxJ * 3 + 2) * curveDeriv(0, 0) * curveDeriv(1, 0);
+                            T(2) * surfDeriv2(idxJ * 3 + 2) * curveDeriv(0, 0) * curveDeriv(1, 0);
                 }
                 gsMatrix<T> sqDistDeriv2Term1 = (surfDeriv * curveDeriv).transpose();
                 sqDistDeriv2Term1 *= (surfDeriv * curveDeriv);

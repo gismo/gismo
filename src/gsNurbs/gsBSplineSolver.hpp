@@ -293,7 +293,7 @@ unsigned findHyperPlaneIntersections (
             // if we inserted the same knot degre times and still do not
             // satisfy the requirements then fallback to bisection
             // as this could be caused by approximations in the computation of newK
-            if (newK_rep>=deg) newK=(grevB+grevE)/2;
+            if (newK_rep>=deg) newK=(grevB+grevE)/T(2);
             // if the newK equals the previously added knot anyway then we
             // resolved the position of the zero up to numerical precision
             // in the domain, add the zero and warn that the image is outside the

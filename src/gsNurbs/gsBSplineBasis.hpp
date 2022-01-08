@@ -556,13 +556,13 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
                 Uright = m_knots[i+j+m_p-n+jj+1];
                 if( ND[j+1] == 0 )
                 {
-                    ND[j] = (m_p-n+jj)*saved;
+                    ND[j] = static_cast<T>(m_p-n+jj)*saved;
                     saved = 0;
                 }
                 else
                 {
                     temp = ND[j+1]/(Uright - Uleft);
-                    ND[j] = (m_p-n+jj)*(saved - temp);
+                    ND[j] = static_cast<T>(m_p-n+jj)*(saved - temp);
                     saved = temp;
                 }
             }
@@ -645,14 +645,14 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
 
         // Compute the first derivatives (using ndu[] and left+right)
         right[0] = right[1]+left[m_p] ;
-        result(0  , v) = - m_p * ndu[0]  /  right[0] ;
+        result(0  , v) = - static_cast<T>(m_p) * ndu[0]  /  right[0] ;
         for(int r = 1; r < m_p; r++)
         {
             // Compute knot difference r of distance m_p (overwrite right[])
             right[r] = right[r+1]+left[m_p-r] ;
-            result(r, v)  = m_p * (  ndu[r-1] / right[r-1] - ndu[r]  /  right[r] );
+            result(r, v)  = static_cast<T>(m_p) * (  ndu[r-1] / right[r-1] - ndu[r]  /  right[r] );
         }
-        result(m_p, v) =   m_p * ndu[pk] / right[pk];
+        result(m_p, v) = static_cast<T>(m_p) * ndu[pk] / right[pk];
 
     }// end for all columns v
 }
@@ -788,13 +788,13 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
                     Uright = m_knots[i+j+m_p-k+jj+1];
                     if( ND[j+1] == 0 )
                     {
-                        ND[j] = (m_p-k+jj)*saved;
+                        ND[j] = static_cast<T>(m_p-k+jj)*saved;
                         saved = 0;
                     }
                     else
                     {
                         temp = ND[j+1]/(Uright - Uleft);
-                        ND[j] = (m_p-k+jj)*(saved - temp);
+                        ND[j] = static_cast<T>(m_p-k+jj)*(saved - temp);
                         saved = temp;
                     }
                 }

@@ -138,7 +138,7 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
             this->eval_into( uc, ev );
             for ( int k = 0; k < n; k++ ) // for all coordinates
                 result( k * stride + j, thisPt ) =
-                        ( ev( k, 0 ) - 2 * ev( k, 1 ) + ev( k, 2 ) ) / T( 0.0000000001 ) ;
+                        ( ev( k, 0 ) - T(2) * ev( k, 1 ) + ev( k, 2 ) ) / T( 0.0000000001 ) ;
             // mixed 2nd derivs
             for ( int l = j + 1; l < d; l++ )
             {
@@ -452,7 +452,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
             for (index_t p=0;  p!=numPts; ++p)
             {
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                T alt_sgn = sgn * ( //jacT.rows()==jacT.cols() &&
+                T alt_sgn = sgn * T( //jacT.rows()==jacT.cols() &&
                                     jacT.determinant()<0 ? -1 : 1);
                 for (int i = 0; i != tarDim; ++i) //for all components of the normal
                 {

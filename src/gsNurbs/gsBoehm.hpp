@@ -118,7 +118,7 @@ void gsBoehmSingle(
     for( index_t i = k; i>=k-p+1; --i )
     {
         a = (val - knots[i]) / (knots[i+p] - knots[i]);
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1)-a) * coefs.row(i-1) + a * coefs.row(i);
     }
 
     // Update knot vector
@@ -152,7 +152,7 @@ void gsBoehmSingle( iter knot,   // Knot iterator
     for( index_t i = p ; i>=1; --i )
     {
         a = (val - *knot) / ( *(knot+p) - *knot );
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1)-a) * coefs.row(i-1) + a * coefs.row(i);
         knot++;
     }
 }

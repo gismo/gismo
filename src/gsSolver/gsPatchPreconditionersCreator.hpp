@@ -350,7 +350,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     diag(0,0) += avg_term;
 
     for ( index_t l=0; l<sz; ++l )
-        diag( l, 0 ) = 1/diag( l, 0 );
+        diag( l, 0 ) = T(1)/diag( l, 0 );
 
     memory::unique_ptr< Eigen::DiagonalMatrix<T,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<T,Dynamic>( give(diag) ) );
 
@@ -692,7 +692,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
         if ( numberInteriors == d )
-            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + beta*numberInteriors/(sigma*h*h) ) );
+            correction[0] = gsScaledOp<T>::make( correction[0], T(1)/( alpha + beta*T(numberInteriors)/(sigma*h*h) ) );
 
         // Setup of bondary correction
         if ( numberInteriors < d )
@@ -711,7 +711,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                             s = M_compl[d-1-k].kron(s);
                     }
                 }
-                bc_matrix = ( alpha + beta*numberInteriors/(sigma*h*h) ) * s;
+                bc_matrix = ( alpha + beta*T(numberInteriors)/(sigma*h*h) ) * s;
             }
 
             for ( index_t j = d-1; j>=0; --j )
