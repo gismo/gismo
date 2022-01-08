@@ -3,6 +3,10 @@
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileData.hpp>
 
+#ifdef GISMO_BUILD_PYBIND11
+#include <gsCore/gsMultiPatch.h>
+#endif
+
 namespace gismo
 {
 
@@ -37,7 +41,7 @@ namespace py = pybind11;
       .def("getFloatPrecision", &Class::getFloatPrecision)
 
       // .def("getId", static_cast<const gsBasis<real_t> & (Class::*)(const size_t) const > (&Class::getId))
-      // .def("getId", static_cast<void (Class::*)(const int &, gsMultiPatch<real_t>) const > (&Class::getId<gsMultiPatch<real_t>), "Gets a const reference to basis with index i")
+      .def("getId", static_cast<void (Class::*)(const int &, gsMultiPatch<real_t> &) const > (&Class::getId<gsMultiPatch<real_t>>), "Gets a const reference to basis with index i")
 
 
       .def("bufferSize", &Class::bufferSize)
