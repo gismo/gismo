@@ -55,7 +55,12 @@ void pybind11_init_gsBoundaryConditions(py::module &m)
                             // py::arg("parametric") = false,
                             // py::arg("comp") = -1
                             )
-
+    .def("addCondition", static_cast<void (Class::*)(const patchSide&, condition_type::type,       gsFunction<real_t> *     , short_t, bool, int)> (&Class::addCondition),
+        "Adds a boundary condition"//,
+        // py::arg("unknown") = 0,
+        // py::arg("parametric") = false,
+        // py::arg("comp") = -1
+        )
     .def("addCornerValue", static_cast<void (Class::*)(boundary::corner, real_t, int, short_t)> (&Class::addCornerValue),
                             "Adds a boundary condition"//,
                             // py::arg("p") = 0,

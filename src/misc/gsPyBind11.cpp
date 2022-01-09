@@ -54,6 +54,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsFunction( core );
   gismo::pybind11_init_gsFunctionSet( core );
   gismo::pybind11_init_gsFunctionExpr( core );
+  gismo::pybind11_init_gsBoxTopology( core );
   gismo::pybind11_init_gsGeometry( core );
   gismo::pybind11_init_gsMultiPatch( core );
   gismo::pybind11_init_gsMultiBasis( core );

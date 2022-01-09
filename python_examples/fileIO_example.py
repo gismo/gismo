@@ -48,6 +48,12 @@ print("Coefficients:\n", tspline1.coefs())
 
 mp = gs.core.gsMultiPatch()
 mp.addPatch(tspline1)
+mp.addPatch(tspline1)
+
+""" Other way: read geometry from given file """
+#mp = gs.core.gsMultiPatch()
+#file = gs.io.gsFileData("planar/square_with_disk.xml")
+#file.getAnyFirst(mp) # Assume that there exist only one gsMultiPatch
 # [!Geometry]
 
 # [!Right hand side]

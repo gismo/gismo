@@ -62,6 +62,8 @@ namespace py = pybind11;
       .def("add", static_cast<void (Class::*)(const gsOptionList &) > (&Class::add<gsOptionList>), "Add gsOptionList to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
 
+      .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Add gsMultiPatch to the filedata.")
+
       .def("bufferSize", &Class::bufferSize)
       .def("print", &Class::print)
       .def("contents", &Class::contents)

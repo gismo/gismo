@@ -307,6 +307,14 @@ protected:
 
 }; // class gsBoxTopology
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsBoxTopology
+   */
+  void pybind11_init_gsBoxTopology(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 
