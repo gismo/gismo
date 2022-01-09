@@ -31,7 +31,7 @@ linux_x86_64_clang8_cxx11_release_double_int32t:
   tags:
     - linux
   stage: test
-  image: gitlab.com/gismo-ci/dependency_proxy/containers/silkeh/clang:8
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/silkeh/clang:8
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
