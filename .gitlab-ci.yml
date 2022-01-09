@@ -23,7 +23,7 @@
 ################################################################################
 
 #-------------------------------------------------------------------------------
-# Clang 7-11, C++11,14,17,20
+# Clang 8-11, C++11,14,17,20
 #-------------------------------------------------------------------------------
     
 # Clang 8, C++11, Release
@@ -31,7 +31,7 @@ linux_x86_64_clang8_cxx11_release_double_int32t:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:8
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/silkeh/clang:8
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
@@ -46,7 +46,7 @@ linux_x86_64_clang9_cxx14_release_longdouble_int64t:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:9
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/silkeh/clang:9
   script:
     - apt-get update -y
     - apt-get install cmake -y
@@ -61,7 +61,7 @@ linux_x86_64_clang10_cxx17_release_mpreal_long:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:10
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/silkeh/clang:10
   script:
     - apt-get update -y
     - apt-get install cmake libmpfr-dev ninja-build -y
@@ -76,7 +76,7 @@ linux_x86_64_clang11_cxx20_release_mpq_long:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:11
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/silkeh/clang:11
   script:
     - apt-get update -y
     - apt-get install cmake libgmp-dev -y
@@ -91,12 +91,12 @@ linux_x86_64_clang11_cxx20_release_mpq_long:
 # GCC 6-10, C++11,14,17,20
 #-------------------------------------------------------------------------------
     
-# GCC 7, C++11, Release
+# GCC 8, C++11, Release
 linux_x86_64_gcc7_cxx11_release_mpreal_long:
   tags:
     - linux
   stage: test
-  image: gcc:7
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/gcc:8
   script:
     - apt-get update -y
     - apt-get install cmake libmpfr-dev -y
@@ -106,12 +106,12 @@ linux_x86_64_gcc7_cxx11_release_mpreal_long:
     - ci_test
     - coverity_scan
 
-# GCC 8, C++14, Release
+# GCC 9, C++14, Release
 linux_x86_64_gcc8_cxx14_release_longdouble_int64t:
   tags:
     - linux
   stage: test
-  image: gcc:8
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/gcc:9
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
@@ -121,13 +121,13 @@ linux_x86_64_gcc8_cxx14_release_longdouble_int64t:
     - ci_test
     - coverity_scan
     
-# GCC 9, C++17, Release
+# GCC 10, C++17, Release
 linux_x86_64_gcc9_cxx17_release_double_int32t:
   
   tags:
     - linux
   stage: test
-  image: gcc:9
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/gcc:10
   script:
     - apt-get update -y
     - apt-get install cmake -y
@@ -137,12 +137,12 @@ linux_x86_64_gcc9_cxx17_release_double_int32t:
     - ci_test
     - coverity_scan
 
-# GCC 10, C++20, Release
+# GCC 11, C++20, Release
 linux_x86_64_gcc10_cxx20_release_float_int:
   tags:
     - linux
   stage: test
-  image: gcc:10
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/gcc:11
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
@@ -173,7 +173,7 @@ install_and_deploy_linux:
   tags:
     - linux
   stage: test #deploy #(deploy will only run only when all test succeeds)
-  image: gcc:9
+  image: gitlab.com/gismo-ci/dependency_proxy/containers/gcc:9
   script:
     - apt-get update -y
     - apt-get install cmake -y
