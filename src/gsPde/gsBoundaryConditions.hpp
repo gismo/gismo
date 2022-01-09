@@ -287,20 +287,20 @@ private:
                 data);
         result->append_attribute(dim);
         // set value
-        std::ostringstream stream;
-        bool first = true;
-        for (short_t i = 0; i < obj.targetDim(); ++i)
+        const short_t tdim = obj.targetDim();
+        if ( tdim == 1)
         {
-            if (!first)
-            {
-                stream << ", ";
-            }
-            stream << obj.expression(i);
-            first = false;
+            result->value( makeValue(obj.expression(), data) );
         }
-        //val = stream.str();
-        char * value = data.allocate_string(stream.str().c_str());
-        result->value(value);
+        else
+        {
+            gsXmlNode * cnode;
+            for (short_t c = 0; c!=tdim; ++c)
+            {
+                cnode = makeNode("c", obj.expression(c), data);
+                result->append_node(cnode);
+            }
+        }
         return result;
     }
 

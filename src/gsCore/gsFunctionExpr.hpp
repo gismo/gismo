@@ -780,8 +780,9 @@ public:
     static gsXmlNode * put (const Object & obj,
                             gsXmlTree & data )
     {
-        gsXmlNode * func = makeNode("FunctionExpr", data);
+        gsXmlNode * func = makeNode("Function", data);
         func->append_attribute(makeAttribute("dim", obj.domainDim(), data));
+        func->append_attribute(makeAttribute("type", "FunctionExpr", data));
 
         const short_t tdim = obj.targetDim();
 
