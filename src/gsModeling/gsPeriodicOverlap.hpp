@@ -251,13 +251,13 @@ gsMesh<T> gsPeriodicOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>
                 const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
                 if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
                 {
-                    mvLft[j] = midMesh.addVertex(vertex[0],   vertex[1]);
-                    mvRgt[j] = midMesh.addVertex(vertex[0]+1, vertex[1]);
+                    mvLft[j] = midMesh.addVertex(vertex[0],        vertex[1]);
+                    mvRgt[j] = midMesh.addVertex(vertex[0]+(T)(1), vertex[1]);
                 }
                 else
                 {
-                    mvLft[j] = midMesh.addVertex(vertex[0]-1, vertex[1]);
-                    mvRgt[j] = midMesh.addVertex(vertex[0],   vertex[1]);
+                    mvLft[j] = midMesh.addVertex(vertex[0]-(T)(1), vertex[1]);
+                    mvRgt[j] = midMesh.addVertex(vertex[0],        vertex[1]);
                 }
             }
             midMesh.addFace(mvLft[0], mvLft[1], mvLft[2]);

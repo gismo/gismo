@@ -195,7 +195,7 @@ gsMesh<T> gsPeriodicStitch<T>::createUnfoldedFlatMesh() const
             const Point2D& point = gsParametrization<T>::getParameterPoint(vertices[j-1]);
             // The near-stitch triangles get their stitch vertices shifted by 1 to the left.
             if( nearStitchTriangle && isOnStitch(vertices[j-1]) )
-                v[j - 1] = result.addVertex(point[0] + 1, point[1]);
+                v[j - 1] = result.addVertex(point[0] + (T)(1), point[1]);
             else
                 v[j - 1] = result.addVertex(point[0],     point[1]);
         }

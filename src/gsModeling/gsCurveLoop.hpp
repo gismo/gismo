@@ -295,7 +295,7 @@ bool gsCurveLoop<T>::approximatingPolygon(const std::vector<T> &signedAngles, co
     }
     // Scale the turning angles so they add to 2 * pi. These will be the
     // angles we use at each vertex in the domain.
-    T angleScale = T(2.0 * EIGEN_PI / totalAngle);
+    T angleScale = (T)(2.0 * EIGEN_PI) / totalAngle;
     for(size_t i = 0; i < n; i++)
     {
         scaledAngles[i] *= angleScale;

@@ -79,7 +79,7 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
 
     // Initial estimate ( Chebyshev-Gauss-Lobatto nodes)
     for ( i = 0; i < n; i++ )
-      x[i] = math::cos ( (T)(EIGEN_PI) * ( i ) / ( n - 1 ) );
+      x[i] = math::cos ( (T)(EIGEN_PI) * (T)( i ) / (T)( n - 1 ) );
 
     gsVector<T> xold(n);
     gsVector<T> p(n*n);
