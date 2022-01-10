@@ -208,10 +208,10 @@ public:
 
     std::ostream & printDetail(std::ostream &os) const
     {
-        os << (isScalar() ? "Scalar " :
+        os << (isVectorTr() ? "VectorTr " :
                (isVector() ? "Vector " :
                 (isMatrix() ? "Matrix " :
-                 "Unknown ") ) )
+                 "Scalar ") ) )
            <<"expression of size "<< rows() // bug: this might be invalid if unparsed
            << " x "<<cols()<<"\n";
         print(os);
@@ -359,7 +359,7 @@ public:
 
     operator const gsFeSpace<T> & () const
     {
-        static gsFeSpace<T> vv;
+        static gsFeSpace<T> vv(-1);
         return vv;
     }
 
@@ -770,8 +770,8 @@ public:
         _ff.parse(evList);
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>(); }
-    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>(); }
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void print(std::ostream &os) const
     { os << "integral(.)"; }
@@ -795,8 +795,8 @@ public:
   inline index_t rows() const { return 0; }
   inline index_t cols() const { return 0; }
   void parse(gsExprHelper<Scalar> &) const { }
-  const gsFeVariable<T> & rowVar() const { gsNullExpr<T>(); }
-  const gsFeVariable<T> & colVar() const { gsNullExpr<T>(); }
+  const gsFeVariable<T> & rowVar() const { gsNullExpr<Scalar>::get(); }
+  const gsFeVariable<T> & colVar() const { gsNullExpr<Scalar>::get(); }
 
   void print(std::ostream &os) const
   { os << "diam(e)"; }
@@ -891,7 +891,7 @@ public:
     inline const gsMatrix<T> & fixedPart() const {return m_sd->fixedDofs;}
     gsMatrix<T> & fixedPart() {return m_sd->fixedDofs;}
 
-    index_t   id() const {return m_sd->id;}
+    index_t   id() const { return (m_sd ? m_sd->id : -1); }
     void setSpaceData(gsFeSpaceData<T>& sd) {m_sd = &sd;}
 
     index_t   interfaceCont() const {return m_sd->cont;}
@@ -1155,12 +1155,17 @@ public:
         }
     }
 
+    void print(std::ostream &os) const { os << "u"; }
+
 protected:
     friend class gismo::gsExprHelper<Scalar>;
     friend class symbol_expr<gsFeSpace>;
     explicit gsFeSpace(index_t _d = 1) : Base(_d), m_sd(nullptr) { }
 };
 
+template<class T> inline bool
+operator== (const gsFeSpace<T> & a, const gsFeSpace<T> & b)
+{ return a.id()== b.id() && a.isAcross()==b.isAcross(); }
 
 /*
   Expression representing a function given by a vector of
@@ -1344,7 +1349,6 @@ public:
   Expression for the transpose of an expression
 */
 template<class E>
-//class tr_expr<E,false>  : public _expr<tr_expr<E,false> >
 class tr_expr : public _expr<tr_expr<E> >
 {
     typename E::Nested_t _u;
@@ -1358,22 +1362,16 @@ public:
 
 public:
     enum {ColBlocks = E::ColBlocks, ScalarValued=E::ScalarValued};
-    enum {Space = (E::Space==0?0:(E::Space==1?2:1))};
+    enum {Space = (E::Space==1?2:(E::Space==2?1:E::Space))};
 
     mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
     {
-        //return _u.eval(k).transpose();
         if (E::ColBlocks)
-        {
-            res = _u.eval(k).blockTranspose( _u.cardinality() ); return res;
-            //return _u.eval(k).blockTranspose(_u.cols()/_u.rows());
-        }
+            res = _u.eval(k).blockTranspose( _u.cardinality() );
         else
-        {
-            res = _u.eval(k).transpose(); return res;
-            //return _u.eval(k).blockTranspose(1); // buggy ?
-        }
+            res = _u.eval(k).transpose();
+        return res;
     }
 
     index_t rows() const { return _u.cols(); }
@@ -2367,8 +2365,12 @@ public:
     }
 
     index_t rows() const {return _u.dim();}
-
     index_t cols() const {return _u.parDim(); }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const
+    {return gsNullExpr<Scalar>::get();}
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -2479,7 +2481,7 @@ public:
 
     const gsFeSpace<T> & rowVar() const { return u.rowVar(); }
     const gsFeSpace<T> & colVar() const
-    {return gsNullExpr<T>();}
+    {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os << "nabla("; u.print(os); os <<")"; }
 };
@@ -3234,8 +3236,6 @@ public:
         GISMO_ASSERT(0==_u.cols()*_v.rows() || _u.cols() == _v.rows(),
                      "Wrong dimensions "<<_u.cols()<<"!="<<_v.rows()<<" in * operation:\n"
                      << _u <<" times \n" << _v );
-        //gsDebugVar(_u.eval(k));
-        //gsDebugVar(_v.eval(k));
 
         // Note: a * b * c --> (a*b).eval()*c
         tmp = _u.eval(k) * _v.eval(k);
@@ -3736,11 +3736,13 @@ public:
     add_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        //GISMO_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks,
-        //             "Error: "<< E1::ColBlocks <<"!="<< E2::ColBlocks);
+        GISMO_ENSURE((int)E1::Space == (int)E2::Space &&
+                     _u.rowVar()==_v.rowVar() && _u.colVar()==_v.colVar(),
+                     "Error: adding apples and oranges (use comma instead),"
+                     " namely:\n" << _u <<"\n"<<_v);
     }
-    mutable Temporary_t res;
 
+    mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
     {
         GISMO_ASSERT(_u.rows() == _v.rows(),
@@ -3829,10 +3831,8 @@ public:
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
-    index_t cardinality_impl() const {
-        GISMO_ERROR("A");
-        return 0;
-    }
+    index_t cardinality_impl() const
+    { GISMO_ERROR("Something went terribly wrong"); }
 
     void print(std::ostream &os) const
     { os << "sum("; _M.print(os); os<<","; _u.print(os); os<<")"; }
@@ -3864,8 +3864,10 @@ public:
     sub_expr(_expr<E1> const& u, _expr<E2> const& v)
     : _u(u), _v(v)
     {
-        // GISMO_ASSERT(&u.rowVar()==&v.rowVar() && &u.colVar()==&v.colVar(),"The (interface) terms are not split compatibly.");
-        //GISMO_STATIC_ASSERT((int)E1::ColBlocks == (int)E2::ColBlocks, "Cannot subtract if the number of colums do not agree.");
+        GISMO_ENSURE((int)E1::Space == (int)E2::Space &&
+                     _u.rowVar()==_v.rowVar() && _u.colVar()==_v.colVar(),
+                     "Error: substracting apples from oranges (use comma instead),"
+                     " namely:\n" << _u <<"\n"<<_v);
     }
 
     mutable Temporary_t res;
@@ -3951,7 +3953,7 @@ class symmetrize_expr : public _expr<symmetrize_expr<E> >
 
     mutable gsMatrix<typename E::Scalar> tmp;
 public:
-    enum { Space = (0==E::Space ? 0 : E::Space), ScalarValued=E::ScalarValued, ColBlocks= E::ColBlocks };
+    enum { Space = (0==E::Space ? 0 : 3), ScalarValued=E::ScalarValued, ColBlocks= E::ColBlocks };
     typedef typename E::Scalar Scalar;
 
     symmetrize_expr(_expr<E> const& u)
@@ -4072,19 +4074,16 @@ template <typename E2> EIGEN_STRONG_INLINE
 mult_expr<typename E2::Scalar,E2,false> const
 operator*(typename E2::Scalar const& u, _expr<E2> const& v)
 { return mult_expr<typename E2::Scalar, E2, false>(u, v); }
-//{ return mult_expr<_expr<typename E2::Scalar>,E2, false>(u, v); }
 
 template <typename E1> EIGEN_STRONG_INLINE
 mult_expr<typename E1::Scalar,E1,false> const
 operator*(_expr<E1> const& v, typename E1::Scalar const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(u, v); }
-//{ return mult_expr<_expr<typename E1::Scalar>,E1, false>(u, v); }
 
 template <typename E1> EIGEN_STRONG_INLINE
 mult_expr<typename E1::Scalar,E1,false> const
 operator-(_expr<E1> const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(-1, u); }
-//{ return mult_expr<_expr<typename E1::Scalar>,E1, false>(-1, u); }
 
 /*
   template <typename E1> mult_expr<gsMatrix<typename E1::Scalar>,E1,false> const

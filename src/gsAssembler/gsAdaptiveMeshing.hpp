@@ -501,7 +501,7 @@ void gsAdaptiveMeshing<T>::_unrefineMarkedElements(   gsFunctionSet<T> * input,
             std::vector<index_t> elements = mp->patch(pn).basis().asElementsUnrefine(refBoxes, extension);
             mp->patch(pn).unrefineElements( elements );
         }
-        else if (gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) )
+        else if (gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input))
         {
             // Refine all of the found refBoxes in this patch
             mb->unrefine( pn, refBoxes, extension );
@@ -591,7 +591,7 @@ void gsAdaptiveMeshing<T>::_processMarkedElements(gsFunctionSet<T> * input,
             elements = mp->patch(pn).basis().asElements(refBoxes, refExtension);
             mp->patch(pn).refineElements( elements );
         }
-        else if (gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) )
+        else if (gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input))
         {
             // Refine all of the found refBoxes in this patch
             mb->unrefine( pn, crsBoxes, crsExtension);

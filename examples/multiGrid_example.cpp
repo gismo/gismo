@@ -298,6 +298,8 @@ int main(int argc, char *argv[])
             smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
+        else if ( smoother == "IncompleteLU" || smoother == "ilu" )
+            smootherOp = makeIncompleteLUOp(mg->matrix(i));
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" )
             smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
                 multiBases[i], bc, cmd.getGroup("MG"), patchLocalDampingParameters );
@@ -311,7 +313,7 @@ int main(int argc, char *argv[])
         else
         {
             gsInfo << "\n\nThe chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
-                      "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
+                      "\n  IncompleteLU (ilu)\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
 

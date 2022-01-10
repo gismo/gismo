@@ -165,7 +165,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         // Minimax approximations to the zeros of Pn(x) and
         // Gauss-Legendre quadrature, Volume 59,
         // Issue 2  (May 1995), p. 245-252, 1995 
-        x[i] = math::cos(EIGEN_PI*(i+0.75)/(n+0.5));
+      x[i] = math::cos( (T)(EIGEN_PI)*(i+0.75)/(n+0.5));
         
         // Newton loop iteration counter
         unsigned n_its = 0;

@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Groiss, J. Vogl
+    Author(s): L. Groiss, J. Vogl, D. Mokris
 */
 
 #pragma once
@@ -49,23 +49,27 @@ public:
     typedef gsPoint<2, T> Point2D;
 
     // if we use std::vector with static Eigen classes, the second template parameter is needed
-	typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
+    typedef std::vector<Point2D, typename Point2D::aalloc> VectorType;
 
-private:
-    gsHalfEdgeMesh<T> m_mesh;     ///< mesh information
-	VectorType m_parameterPoints; ///< parameter points
+    typedef memory::shared_ptr<gsParametrization<T> > uPtr;
+
+protected:
+    const gsHalfEdgeMesh<T> m_mesh; ///< mesh information
+    VectorType m_parameterPoints;   ///< parameter points
     gsOptionList m_options;
 
 public:
 
     /// Constructor using the input mesh and (possibly) options
-    explicit gsParametrization(gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
+    explicit gsParametrization(const gsMesh<T> &mesh, const gsOptionList & list = defaultOptions());
+
+    virtual ~gsParametrization() {} // Prevent -Wdelete-non-virtual-dtor warning.
 
     /// @brief Returns the list of default options for gsParametrization
     static gsOptionList defaultOptions();
 
     /// Main function which performs the computation
-    gsParametrization<T>& compute();
+    virtual void compute();
 
     /**
      * Parametric Coordinates u,v from 0..1
@@ -83,13 +87,25 @@ public:
      * Creates a flat mesh
      * @return
      */
-    gsMesh<T> createFlatMesh();
+    virtual gsMesh<T> createFlatMesh() const;
+
+    /**
+     * Writes m_mesh into @a filename.vtk with the vertices coloured
+     * according to the parameters.
+     * @param filename The name of the output file (without extension).
+     */
+    void writeTexturedMesh(std::string filename) const;
+
+    /// It might make sense in the derived classes to restrict the parameters to [0, 1]^2.
+    virtual void restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
+                                  real_t uMin = 0, real_t uMax = 1) const
+    {}
 
     gsOptionList& options() { return m_options; }
 
     gsParametrization<T>& setOptions(const gsOptionList& list);
 
-private:
+protected:
 
     /**
      * @brief Class that maintains the local neighbourhood properties.
@@ -320,13 +336,14 @@ private:
                                            std::vector<std::pair<T, size_t> > &sortedAngles,
                                            std::vector<index_t> &corners) const;
 
+    protected:
         const gsHalfEdgeMesh<T> & m_basicInfos;
         std::vector<LocalParametrization> m_localParametrizations;
         std::vector<LocalNeighbourhood> m_localBoundaryNeighbourhoods;
     };
 
 
-private:
+protected:
     /**
     * @brief Get parameter point
     * Returns the parameter point with given vertex index.
@@ -351,6 +368,17 @@ private:
     * @param[in] N const int - number of the vertices and therefore N-n is the size of the right-hand-side vector
     */
     void constructAndSolveEquationSystem(const Neighbourhood &neighbourhood, const size_t n, const size_t N);
+
+    std::vector<size_t> indices(const gsMatrix<T>& vertices) const
+    {
+        std::vector<size_t> result;
+        GISMO_ASSERT(vertices.rows() == 3, "three rows expected in vertices");
+        for(index_t c=0; c<vertices.cols(); c++)
+        {
+            result.push_back(m_mesh.findVertex(vertices(0, c), vertices(1, c), vertices(2, c), true));
+        }
+        return result;
+    }
 
     void calculate(const size_t boundaryMethod,
                    const size_t paraMethod,
