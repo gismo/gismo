@@ -706,7 +706,7 @@ void gsCurvatureSmoothing<T>::compute_ObjectiveFunction(gsBSplineBasis<T> *basis
                           (T)(2)*( (math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2)) * ((-1.0)*m_values1(1,i)*m_values3(0,i)+ m_values1(0,i)*m_values3(1,i))  )    )/
                 ((T)(2)*math::pow( math::pow(m_values1(0,i),2)+math::pow(m_values1(1,i),2) ,2.5)   );
     }
-    objective2=objective2/((T)(0)+m_param_values.rows());
+    objective2=objective2/((T)(0.0+m_param_values.rows()));
 
     // the objective function
     value=omega1*objective1+omega2*objective2;
