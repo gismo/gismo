@@ -137,7 +137,7 @@ private:
     typename E3::Nested_t _Ef;
 
 public:
-    enum{ Space = 2, ScalarValued= 0, ColBlocks= 0 };
+    enum{ Space = 3, ScalarValued= 0, ColBlocks= 0 };
 
     var2_expr( const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G, _expr<E3> const& Ef) : _u(u),_v(v), _G(G), _Ef(Ef) { }
 
@@ -252,9 +252,10 @@ class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
     typename E2::Nested_t _v;
 
 public:
-    enum{ Space = E1::Space, ScalarValued= 0, ColBlocks= 0 };
-    // Note: what happens if E2 is a space? The following can fix it:
-    // enum{ Space = (E1::Space == 1 || E2::Space == 1) ? 1 : 0, ScalarValued= 0, ColBlocks= 0 };
+    enum{   Space = (E1::Space == 1 || E2::Space == 1) ? 1 : 0,
+            ScalarValued= 0,
+            ColBlocks= 0
+        };
 
     typedef typename E1::Scalar Scalar;
 
@@ -286,26 +287,22 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const
     {
-        // Note: what happens if E2 is a space? The following can fix it:
-        // if      (E1::Space == 1 && E2::Space == 0)
-        //     return _u.rowVar();
-        // else if (E1::Space == 0 && E2::Space == 1)
-        //     return _v.rowVar();
-        // else
-
-        return _u.rowVar();
+        if      (E1::Space == 1 && E2::Space == 0)
+            return _u.rowVar();
+        else if (E1::Space == 0 && E2::Space == 1)
+            return _v.rowVar();
+        else
+            return gsNullExpr<Scalar>::get();
     }
 
     const gsFeSpace<Scalar> & colVar() const
     {
-        // Note: what happens if E2 is a space? The following can fix it:
-        // if      (E1::Space == 1 && E2::Space == 0)
-        //     return _v.rowVar();
-        // else if (E1::Space == 0 && E2::Space == 1)
-        //     return _u.rowVar();
-        // else
-
-        return _v.rowVar();
+        if      (E1::Space == 1 && E2::Space == 0)
+            return _v.colVar();
+        else if (E1::Space == 0 && E2::Space == 1)
+            return _u.colVar();
+        else
+            return gsNullExpr<Scalar>::get();
     }
 
     void print(std::ostream &os) const { os << "deriv2("; _u.print(os); _v.print(os); os <<")"; }
@@ -691,7 +688,7 @@ public:
         a2 = covBasis.col(1);
 
         result(0,0) = (e1.dot(a1))*(a1.dot(e1));
-        result(0,1) = (e1.dot(a2))*(a2.dot(e2));
+        result(0,1) = (e1.dot(a2))*(a2.dot(e1));
         result(0,2) = 2*(e1.dot(a1))*(a2.dot(e1));
         // Row 1
         result(1,0) = (e2.dot(a1))*(a1.dot(e2));
@@ -927,10 +924,11 @@ protected:
     const gsFunction<T> * _YoungsModulus;
     const gsFunction<T> * _PoissonRatio;
     mutable gsMapData<T> _tmp;
-    mutable gsMatrix<real_t,3,3> F0;
+    mutable gsMatrix<T,3,3> F0;
     mutable gsMatrix<T> Emat,Nmat;
-    mutable real_t lambda, mu, E, nu, C_constant;
+    mutable T lambda, mu, E, nu, C_constant;
 
+    mutable std::vector<gsMaterialMatrix> m_pieces;
 public:
     /// Shared pointer for gsMaterialMatrix
     typedef memory::shared_ptr< gsMaterialMatrix > Ptr;
@@ -940,14 +938,16 @@ public:
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+    gsMaterialMatrix() { }
+
     gsMaterialMatrix(const gsFunctionSet<T> & mp, const gsFunction<T> & YoungsModulus,
                    const gsFunction<T> & PoissonRatio) :
-    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio), _mm_piece(nullptr)
+    _mp(&mp), _YoungsModulus(&YoungsModulus), _PoissonRatio(&PoissonRatio)
     {
         _tmp.flags = NEED_JACOBIAN | NEED_NORMAL | NEED_VALUE;
     }
 
-    ~gsMaterialMatrix() { delete _mm_piece; }
+    ~gsMaterialMatrix() { }
 
     GISMO_CLONE_FUNCTION(gsMaterialMatrix)
 
@@ -955,21 +955,25 @@ public:
 
     short_t targetDim() const {return 9;}
 
-    mutable gsMaterialMatrix<T> * _mm_piece; // todo: improve the way pieces are accessed
-
     const gsFunction<T> & piece(const index_t k) const
     {
-        delete _mm_piece;
-        _mm_piece = new gsMaterialMatrix(_mp->piece(k), *_YoungsModulus, *_PoissonRatio);
-        return *_mm_piece;
+#       pragma omp critical
+        if (m_pieces.empty())
+        {
+            m_pieces.resize(_mp->nPieces());
+            for (index_t j = 0; j!=_mp->nPieces(); ++j)
+                m_pieces[j] = gsMaterialMatrix(_mp->piece(j),
+                                               _YoungsModulus->piece(j),
+                                               _PoissonRatio->piece(j) );
+        }
+        return m_pieces[k];
     }
-
-    //class .. matMatrix_z
-    // should contain eval_into(thickness variable)
 
     // Input is parametric coordinates of the surface \a mp
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
+        #pragma omp critical
+        {
         // NOTE 1: if the input \a u is considered to be in physical coordinates
         // then we first need to invert the points to parameter space
         // _mp.patch(0).invertPoints(u, _tmp.points, 1e-8)
@@ -1011,9 +1015,8 @@ public:
             C(0,2) = C_constant*F0(0,0)*F0(0,1) + 1*mu*(2*F0(0,0)*F0(0,1));
             C(2,1) = C(1,2) = C_constant*F0(0,1)*F0(1,1) + 1*mu*(2*F0(0,1)*F0(1,1));
         }
+        }//end omp critical
     }
-
-    // piece(k) --> for patch k
 
 };
 
@@ -1221,7 +1224,7 @@ int main(int argc, char *argv[])
             bc.addCondition(boundary::east, condition_type::weak_dirichlet, &weakBC);
         }
 
-        // Surface forces
+        // Surface forcse
         tmp.setZero();
     }
     else if (testCase == 11)
@@ -1332,13 +1335,13 @@ int main(int argc, char *argv[])
     gsInfo<<"Number of degrees of freedom: "<< A.numDofs() <<"\n"<<std::flush;
 
     /*
-        We provide the following functions:                         checked with previous assembler
-            E_m         membrane strain tensor.                             V
-            E_m_der     first variation of E_m.                             V
-            E_m_der2    second variation of E_m MULTIPLIED BY S_m.          V
-            E_f         flexural strain tensor.                             V
-            E_f_der     second variation of E_f.                            V
-            E_f_der2    second variation of E_f MULTIPLIED BY S_f.          X NOTE: var1 in E_f_der2 in previous assembler is computed with both G and defG
+        We provide the following functions:
+            E_m         membrane strain tensor.
+            E_m_der     first variation of E_m.
+            E_m_der2    second variation of E_m MULTIPLIED BY S_m.
+            E_f         flexural strain tensor.
+            E_f_der     second variation of E_f.
+            E_f_der2    second variation of E_f MULTIPLIED BY S_f.
 
         Where:
             G       the undeformed geometry,
@@ -1349,22 +1352,22 @@ int main(int argc, char *argv[])
 
 
     // Membrane components
-    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ; //[checked]
+    auto E_m = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) ;
     auto S_m = E_m * reshape(mm,3,3);
     auto N   = tt.val() * S_m;
 
-    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ; //[checked]
+    auto E_m_der = flat( jac(defG).tr() * jac(u) ) ;
     auto S_m_der = E_m_der * reshape(mm,3,3);
     auto N_der   = tt.val() * S_m_der;
 
-    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), N ); //[checked]
+    auto E_m_der2 = flatdot( jac(u),jac(u).tr(), N );
 
     // Flexural components
-    auto E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ; //[checked]
+    auto E_f = ( deriv2(G,sn(G).normalized().tr()) - deriv2(defG,sn(defG).normalized().tr()) ) * reshape(m2,3,3) ;
     auto S_f = E_f * reshape(mm,3,3);
     auto M   = tt.val() * tt.val() * tt.val() / 12.0 * S_f;
 
-    auto E_f_der = -( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3); //[checked]
+    auto E_f_der = -( deriv2(u,sn(defG).normalized().tr() ) + deriv2(defG,var1(u,defG) ) ) * reshape(m2,3,3);
     auto S_f_der = E_f_der * reshape(mm,3,3);
     auto M_der   = tt.val() * tt.val() * tt.val() / 12.0 * S_f_der;
 
@@ -1374,8 +1377,8 @@ int main(int argc, char *argv[])
 
     auto That   = cartcon(G);
     auto Ttilde = cartcov(G);
-    auto E_m_plot = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) * That; //[checked]
-    auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde; //[checked]
+    auto E_m_plot = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) * That;
+    auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde;
 
     // // For Neumann (same for Dirichlet/Nitsche) conditions
     auto g_N = A.getBdrFunction(G);
@@ -1395,7 +1398,7 @@ int main(int argc, char *argv[])
     A.assembleBdr(bc.get("Neumann"), u * g_N * tv(G).norm() );
 
     A.assemble(
-        (N_der * (E_m_der).tr() + M_der * (E_f_der).tr()) * meas(G)
+        (N_der * (E_m_der).tr() + M_der * (E_f_der).tr() ) * meas(G)
         ,
         u * F  * meas(G) + pressure * u * sn(defG).normalized() * meas(G)
         );
@@ -1449,8 +1452,8 @@ int main(int argc, char *argv[])
                   E_m_der2
                     +
                   M_der * E_f_der.tr()
-                    // +
-                  // E_f_der2
+                    +
+                  E_f_der2
                   ) * meas(G)
                     -
                   pressure * u * var1(u,defG) .tr() * meas(G)

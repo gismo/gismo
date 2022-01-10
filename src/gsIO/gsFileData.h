@@ -204,6 +204,21 @@ public:
                              internal::gsXml<Object>::type() ) != 0 ;
     }
 
+    /// Returns true if an Object exists in the filedata
+    inline bool hasId(int id) const
+    {
+        gsXmlNode * root = getXmlRoot();
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = root->first_node();
+             child; child = child->next_sibling())
+        {
+            id_at = child->first_attribute("id");
+            if (id_at && atoi(id_at->value()) == id )
+                return true;
+        }
+        return false;
+    }
+
     /// Returns true if an Object exists in the filedata, even nested
     /// inside other objects
     template<class Object>

@@ -47,6 +47,10 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
 
+/// \brief Exports a parametrized mesh.
+template <class T>
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
+
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///
 /// \param meshes vector of gsMesh objects

@@ -116,6 +116,10 @@ public:
     typedef gsMatrix< T, _Rows, ChangeDim<_Cols, -1>::D>
         ColMinorMatrixType;
 
+    // block of fixed size 3
+    typedef Eigen::VectorBlock<Eigen::Block<Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> Col3DType;
+    typedef Eigen::VectorBlock<const Eigen::Block<const Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> CCol3DType;
+
 public:  // Solvers related to gsMatrix
     typedef typename Eigen::EigenSolver<Base> EigenSolver;
 
@@ -130,7 +134,7 @@ public:  // Solvers related to gsMatrix
     //typedef typename Eigen::BDCSVD<Base> BDCSVD;
 
     //typedef typename Eigen::CompleteOrthogonalDecomposition CODecomposition;
-
+    
 public:
 
     gsMatrix() { }
@@ -237,8 +241,8 @@ public:
     { return gsAsVector<T, Dynamic>(this->data(), this->rows()*this->cols() ); }
 
     /// \brief Returns column \a c as a fixed-size 3D vector
-    auto col3d(index_t c) -> decltype(this->col(c).template head<3>())
-    { return this->col(c).template head<3>(); }
+    Col3DType  col3d(index_t c) { return this->col(c).template head<3>(); }
+    CCol3DType col3d(index_t c) const { return this->col(c).template head<3>(); }
 
     /// \brief Returns the entries of the matrix resized to a (const) n*m vector column-wise
     gsAsConstVector<T, Dynamic> asVector() const
@@ -436,8 +440,7 @@ public:
         else if ( nr == colBlock )
         {
             for (index_t j = 0; j!= nc; j+=colBlock)
-                this->middleCols(j,colBlock).template triangularView<Eigen::StrictlyUpper>()
-                    .swap( this->middleCols(j,colBlock).transpose() );
+                this->middleCols(j,colBlock).transposeInPlace();
         }
         else
         {
@@ -626,7 +629,7 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 #ifdef GISMO_BUILD_PYBIND11
 
   /**
-   * @brief Initializes the Python wrapper for the class: gsCmdLine
+   * @brief Initializes the Python wrapper for the class: gsMatrix
    */
   namespace py = pybind11;
   
@@ -640,9 +643,10 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
     .def(py::init<>())
     .def(py::init<index_t, index_t>())
     // Member functions
-    .def("size",      &Class::size)
-    .def("rows",     &Class::rows)
-    .def("cols",    &Class::cols)
+    .def("size",       &Class::size)
+    .def("rows",       &Class::rows)
+    .def("cols",       &Class::cols)
+    // .def("transpose",  &Class::transpose)
     ;
   }
 

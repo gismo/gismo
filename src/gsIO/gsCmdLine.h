@@ -102,7 +102,7 @@ public:
                    const std::string& desc,
                    intVal_t          value) //TODO: rename as addInt
     {
-        gsOptionList::addInt(name, desc, give(value)); //add new option
+        gsOptionList::addInt(name, desc, value); //add new option
         addInt(flag, name, desc, getIntRef(name) );    //bind cmd arg
     }
 
@@ -310,21 +310,7 @@ namespace internal
 {
 
 template<>
-class GISMO_EXPORT gsXml<gsCmdLine>
-{
-private:
-    gsXml();
-public:
-    GSXML_COMMON_FUNCTIONS(gsOptionList)
-    GSXML_GET_POINTER(gsOptionList)
-    static std::string tag () { return "OptionList"; }
-    static std::string type() { return ""; }
-
-    static void get_into(gsXmlNode * node, gsOptionList & result)
-    { gsXml<gsOptionList>::get_into(node,result); }
-    static gsXmlNode * put (const gsOptionList & obj, gsXmlTree & data)
-    { return gsXml<gsCmdLine>::put(obj,data); }
-};
+class GISMO_EXPORT gsXml<gsCmdLine> : public gsXml<gsOptionList> { };
 
 }
 

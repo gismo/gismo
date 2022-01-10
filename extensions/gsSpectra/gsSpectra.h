@@ -45,6 +45,7 @@ public:
     typedef typename MatrixType::Nested NestedMatrix;
     NestedMatrix m_mat;
 public:
+    SpectraMatProd(const MatrixType&&   ) = delete;
     SpectraMatProd(const MatrixType& mat) : m_mat(mat) { }
     int rows() const { return m_mat.rows(); }
     int cols() const { return m_mat.cols(); }
@@ -68,6 +69,7 @@ public:
     typename gsSparseSolver<Scalar>::LU m_solver;
 
 public:
+    SpectraMatShiftSolve(const MatrixType&&   ) = delete;
     SpectraMatShiftSolve(const MatrixType& mat)
     :
     m_mat(mat), m_n(mat.rows())

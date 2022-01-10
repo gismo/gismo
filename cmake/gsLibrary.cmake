@@ -49,6 +49,14 @@ endif()
     target_link_libraries(${PROJECT_NAME} ${Python_LIBRARIES})
     #target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
     target_link_libraries(py${PROJECT_NAME} PRIVATE "${${PROJECT_NAME}_LINKER}")
+
+    set_target_properties(py${PROJECT_NAME} PROPERTIES
+      VERSION "${${PROJECT_NAME}_VERSION}"
+      SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}" )
+
+    if (GISMO_KLSHELL)
+      target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
+    endif()# To fix
   endif(GISMO_BUILD_PYBIND11)
   
   #generate_export_header(${PROJECT_NAME})
