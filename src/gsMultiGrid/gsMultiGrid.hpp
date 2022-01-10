@@ -27,7 +27,7 @@ gsMultiGridOp<T>::gsMultiGridOp(
       m_numPreSmooth(1), m_numPostSmooth(1), m_symmSmooth(true), m_damping(1)
 {
     m_numCycles.setConstant(n_levels-1,1);
-    std::vector<SpMatrixRowMajorPtr> transferMatrixPtrs(n_levels);
+    std::vector<SpMatrixRowMajorPtr> transferMatrixPtrs(n_levels-1);
     for (index_t i=0; i<n_levels-1; ++i)
         transferMatrixPtrs[i] = transferMatrices[i].moveToPtr();
 

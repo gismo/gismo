@@ -66,18 +66,13 @@ private:
     /// Vector of prolongation operators
     std::vector< typename gsLinearOperator<T>::Ptr > m_prolongation;
 
-    /// Vector of smoother objects
-    std::vector< gsPreconditionerOp<>::Ptr > m_smoother;
-
     /// Vector of stiffness matrices
     std::vector< gsSparseMatrix<T> > m_matrices;
 
     /// Vector of assembler objects
     std::vector<Assembler> m_assembler;
 
-    /// Coarse solver operator
-    gsLinearOperator<>::Ptr m_coarseSolver;
-
+    double m_Time_Assembly, m_Time_Transfer, m_Time_Assembly_Galerkin;
 public:
 
     ///  @brief Set-up p-multigrid solver
@@ -92,12 +87,7 @@ public:
          index_t typeLumping,
          const gsMatrix<index_t>& hp,
          index_t typeProjection,
-         index_t typeSmoother,
-         bool symmetricSmoothing,
-         index_t numSmoothing,
          index_t typeCoarseOperator,
-         index_t typeCycle_p,
-         index_t typeCycle_h,
          const gsFunctionExpr<> coeff_diff,
          const gsFunctionExpr<> coeff_conv,
          const gsFunctionExpr<> coeff_reac
@@ -157,7 +147,7 @@ public:
                 }
             }
         }
-        real_t Time_Assembly = clock.stop();
+        m_Time_Assembly = clock.stop();
 
         // Determine prolongation/restriction operators
         clock.restart();
@@ -234,7 +224,7 @@ public:
 
             }
         }
-        real_t Time_Transfer = clock.stop();
+        m_Time_Transfer = clock.stop();
 
         // Obtain operators with Galerkin projection
         clock.restart();
@@ -258,107 +248,15 @@ public:
                 }
             }
         }
-        real_t Time_Assembly_Galerkin = clock.stop();
-
-
-        // Setting up the all the smoothers
-        m_smoother.resize(numLevels);
-
-        // Determine ILUT factorizations at each level
-        clock.restart();
-
-        if (typeSmoother == 1)
-        {
-            // Generate factorizations (ILUT)
-            for (index_t i = 0; i < numLevels; i++)
-            {
-                if (typeProjection == 2 || i == numLevels-1)
-                {
-                    m_smoother[i] = makeIncompleteLUOp(m_matrices[i]);
-                }
-                else
-                {
-                    // Use Gauss-Seidel on all the other levels
-                    m_smoother[i] = makeGaussSeidelOp(m_matrices[i]);
-                }
-            }
-        }
-        real_t Time_ILUT_Factorization = clock.stop();
-        if (typeSmoother == 2)
-        {
-            for (index_t i = 0; i < numLevels; i++)
-            {
-                m_smoother[i] = makeGaussSeidelOp(m_matrices[i]);
-            }
-        }
-        clock.restart();
-        if (typeSmoother == 3)
-        {
-            // Generate sequence of SCM smoothers
-            gsOptionList opt;
-            opt.addReal("Scaling","",0.12);
-            for (index_t i = 0 ; i < numLevels ; i++)
-            {
-                m_smoother[i] = setupSubspaceCorrectedMassSmoother(m_matrices[i], *m_basis[i], *m_bcInfo_ptr, opt, typeBCHandling);
-            }
-        }
-        real_t Time_SCMS = clock.stop();
-
-        clock.restart();
-        if (typeSmoother == 4)
-        {
-            for (index_t i = 0; i < numLevels; i++)
-            {
-                if (typeProjection == 2 || i == numLevels-1)
-                {
-                    m_smoother[i] = setupBlockILUT(m_matrices[i], *m_mp_ptr, *(m_basis[i]));
-                }
-                else
-                {
-                    // Use Gauss-Seidel on all the other levels
-                    m_smoother[i] = makeGaussSeidelOp(m_matrices[i]);
-                }
-            }
-        }
-        real_t Time_Block_ILUT_Factorization = clock.stop();
-
-        clock.restart();
-        m_coarseSolver = makeSparseLUSolver(m_matrices[0]);
-        real_t Time_Coarse_Solver_Setup = clock.stop();
-
-        gsInfo << "\n|| Setup Timings || \n";
-        gsInfo << "Total Assembly time: " << Time_Assembly << "\n";
-        gsInfo << "Total Assembly time (Galerkin): " << Time_Assembly_Galerkin << "\n";
-        gsInfo << "Total ILUT factorization time: " << Time_ILUT_Factorization << "\n";
-        gsInfo << "Total block ILUT factorization time: " << Time_Block_ILUT_Factorization << "\n";
-        gsInfo << "Total SCMS time: " << Time_SCMS << "\n";
-        gsInfo << "Total Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
-        gsInfo << "Total setup time: " << Time_Assembly_Galerkin + Time_Assembly + Time_Transfer + Time_ILUT_Factorization + Time_SCMS + Time_Coarse_Solver_Setup << "\n";
+        m_Time_Assembly_Galerkin = clock.stop();
 
         std::vector<gsLinearOperator<>::Ptr> operators(m_matrices.size());
         for (size_t i=0; i<m_matrices.size(); i++)
         {
-            operators[i] = makeMatrixOp(m_matrices[i]);
+            operators[i] = makeMatrixOp(m_matrices[i].moveToPtr());
         }
 
-        gsMultiGridOp<>::uPtr mg = gsMultiGridOp<>::make(operators, m_prolongation, m_restriction);
-        for (size_t i=0; i<m_smoother.size(); i++)
-        {
-            mg->setSmoother(i,m_smoother[i]);
-        }
-        mg->setCoarseSolver(m_coarseSolver);
-        mg->setNumPreSmooth(numSmoothing);
-        mg->setNumPostSmooth(numSmoothing);
-        mg->setSymmSmooth(symmetricSmoothing);
-        // For coarsest level, we stick to 1 in any case (exact solver is never cycled)
-        for (size_t i=1; i<m_prolongation.size(); i++)
-        {
-            if (hp(i,0) == 0) // offset?
-                mg->setNumCycles(i,typeCycle_p);
-            else
-                mg->setNumCycles(i,typeCycle_h);
-        }
-        return mg;
+        return gsMultiGridOp<>::make(operators, m_prolongation, m_restriction);
     }
 
 private:
@@ -502,7 +400,14 @@ private:
     }
 
 public:
-    const Assembler& assembler(index_t levels) const { return m_assembler[levels]; }
+    const gsMatrix<T>& rhs(index_t level) const { return m_assembler[level].rhs(); }
+    const gsSparseMatrix<T>& matrix(index_t level) const { return m_assembler[level].matrix(); }
+    const gsMultiBasis<T>& basis(index_t level) const { return *(m_basis[level]); }
+
+    double TimeAssembly() const { return m_Time_Assembly; }
+    double TimeAssemblyGalerkin() const { return m_Time_Assembly_Galerkin; }
+    double TimeTransfer() const { return m_Time_Transfer; }
+
 };
 
 int main(int argc, char* argv[])
@@ -743,7 +648,7 @@ int main(int argc, char* argv[])
 
     // Setup of p-mg object
     pMultigrid<real_t, gsCDRAssembler<real_t> > My_MG;
-    gsLinearOperator<>::Ptr preconditioner = My_MG.setup(
+    gsMultiGridOp<>::Ptr mg = My_MG.setup(
         mp,
         basisL,
         bcInfo,
@@ -754,53 +659,108 @@ int main(int argc, char* argv[])
         typeLumping,
         hp,
         typeProjection,
-        typeSmoother,
-        symmSmoothing,
-        numSmoothing,
         typeCoarseOperator,
-        typeCycle_p,
-        typeCycle_h,
         coeff_diff,
         coeff_conv,
         coeff_reac
     );
 
-    // Access the assembler on the finest grid
-    const gsCDRAssembler<real_t>& pa = My_MG.assembler(numLevels-1);
+    gsStopwatch clock;
+    clock.restart();
+    mg->setCoarseSolver(makeSparseLUSolver(mg->matrix(0)));
+    double Time_Coarse_Solver_Setup = clock.stop();
 
+    // Setup of smoothers
+    clock.restart();
+    for (index_t i = 0; i < numLevels; i++)
+    {
+        switch (typeSmoother)
+        {
+            case 1:
+            {
+                if (typeProjection == 2 || i == numLevels-1)
+                    mg->setSmoother(i,makeIncompleteLUOp(mg->matrix(i)));
+                else
+                    mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
+                break;
+            }
+            case 2:
+            {
+                mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
+                break;
+            }
+            case 3:
+            {
+                gsOptionList opt;
+                opt.addReal("Scaling","",0.12);
+                mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(mg->matrix(i), My_MG.basis(i), bcInfo, opt, typeBCHandling));
+                break;
+            }
+            case 4:
+            {
+                if (typeProjection == 2 || i == numLevels-1)
+                    mg->setSmoother(i,setupBlockILUT(mg->matrix(i), mp, My_MG.basis(i)));
+                else
+                    mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
+                break;
+            }
+            default:;
+        }
+    }
+    double Time_Smoother_Setup = clock.stop();
+
+    mg->setNumPreSmooth(numSmoothing);
+    mg->setNumPostSmooth(numSmoothing);
+    mg->setSymmSmooth(symmSmoothing);
+    // For coarsest level, we stick to 1 in any case (exact solver is never cycled)
+    for (index_t i=1; i<numLevels-1; i++)
+    {
+        if (hp(i,0) == 0) // offset?
+            mg->setNumCycles(i,typeCycle_p);
+        else
+            mg->setNumCycles(i,typeCycle_h);
+    }
+
+    gsInfo << "\n|| Setup Timings || \n";
+    gsInfo << "Total Assembly time: " << My_MG.TimeAssembly() << "\n";
+    gsInfo << "Total Assembly time (Galerkin): " << My_MG.TimeAssemblyGalerkin() << "\n";
+    gsInfo << "Total transfer setup time: " << My_MG.TimeTransfer() << "\n";
+    gsInfo << "Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
+    gsInfo << "Smoother setup time: " << Time_Smoother_Setup << "\n";
+    gsInfo << "Total setup time: " << My_MG.TimeAssembly() + My_MG.TimeAssemblyGalerkin() + My_MG.TimeTransfer() + Time_Coarse_Solver_Setup + Time_Smoother_Setup << "\n";
+
+    // Setup of solver
     gsIterativeSolver<>::Ptr solver;
-
     if (typeSolver == 1)
     {
         gsInfo << "\n|| Solver information ||\np-multigrid is applied as stand-alone solver\n";
         // The preconditioned gradient method is noting but applying p-multigrid as a stand-alone solver.
         // We have to set step size = 1 to deactivate automatic stepsize control.
-        solver = gsGradientMethod<>::make(pa.matrix(), preconditioner, 1);
+        solver = gsGradientMethod<>::make(mg->underlyingOp(), mg, 1);
     }
     else if (typeSolver == 2)
     {
         gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
-        solver = gsBiCgStab<>::make(pa.matrix(), preconditioner);
+        solver = gsBiCgStab<>::make(mg->underlyingOp(), mg);
     }
     else if (typeSolver == 3)
     {
         gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
-        solver = gsConjugateGradient<>::make(pa.matrix(), preconditioner);
+        solver = gsConjugateGradient<>::make(mg->underlyingOp(), mg);
     }
 
-    gsStopwatch clock;
+    gsMatrix<> x = gsMatrix<>::Random(mg->underlyingOp()->rows(),1);
 
-    gsMatrix<> x = gsMatrix<>::Random(pa.matrix().rows(),1);
-
-    real_t maxIter = 20; // pa.matrix().rows();
+    real_t maxIter = 20; // mg->underlyingOp()->rows();
     real_t tol = 1e-8;
 
     // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
-    const real_t rhs_norm = pa.rhs().norm();
-    solver->setTolerance(tol * (pa.rhs()-pa.matrix()*x).norm() / rhs_norm );
+    const real_t rhs_norm = My_MG.rhs(numLevels-1).norm();
+    solver->setTolerance(tol * (My_MG.rhs(numLevels-1)-My_MG.matrix(numLevels-1)*x).norm() / rhs_norm );
     solver->setMaxIterations(maxIter);
     gsMatrix<> error_history;
-    solver->solveDetailed( pa.rhs(), x, error_history );
+    clock.restart();
+    solver->solveDetailed( My_MG.rhs(numLevels-1), x, error_history );
     real_t Time_Solve = clock.stop();
 
     for (index_t i=1; i<error_history.rows(); ++i)
@@ -818,7 +778,7 @@ int main(int argc, char* argv[])
         gsInfo << "Solver did not reach accuracy goal within " << solver->iterations() << " iterations.\n";
     gsInfo << "The iteration took " << Time_Solve << " seconds.\n";
     // Determine residual and l2 error
-    gsInfo << "Residual after solving: "  << (pa.rhs()-pa.matrix()*x).norm() << "\n";
+    gsInfo << "Residual after solving: "  << (My_MG.rhs(numLevels-1)-My_MG.matrix(numLevels-1)*x).norm() << "\n";
 
     return 0;
 }
