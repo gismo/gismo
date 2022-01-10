@@ -82,7 +82,7 @@ void solveSystem(typename gsSparseSolver<Real<T>>::LU &solver,
                  const gsMatrix<Real<T>>              &rhs,
                  gsMatrix<Real<T>>                    &sol) {
 
-    typename Real<T>::Tape& tape = Real<T>::getTape();
+    Tape<T>& tape = Real<T>::getTape();
     tape.setPassive();
 
     // Step 1: Create the data object
@@ -97,7 +97,7 @@ void solveSystem(typename gsSparseSolver<Real<T>>::LU &solver,
     data->addData(&sol);
 
     // Step 3: Add the external function with the data
-    tape.pushExternalFunction(codi::ExternalFunction<codi::ExternalFunction<Tape<T>>>::create(solveSystem_rev<T>, data, solveSystem_del<T>));
+    tape.pushExternalFunction(codi::ExternalFunction<Tape<T>>::create(solveSystem_rev<T>, data, solveSystem_del<T>));
     tape.setActive();
     for(index_t i = 0; i < sol.size(); ++i) {
         tape.registerInput(sol[i]);
@@ -108,21 +108,21 @@ int main(int argc, char* argv[])
 {
     // Input options
     int numElevate  = 0;
-    int numHref     = 0;
+    int numRefine   = 0;
     int basisDegree = 0;
-    bool EffSolv    = false;
+    bool effSolve   = false;
 
-    gsCmdLine cmd("Testing compressible Euler problem.");
-    cmd.addInt("r","hRefine",
+    gsCmdLine cmd("Testing the CoDiPack extension.");
+    cmd.addInt("r","refine",
                "Number of dyadic h-refinement (bisection) steps to perform before solving",
-               numHref);
+               numRefine);
     cmd.addInt("p","degree",
                "Degree of the basis functions to use for solving (will elevate or reduce the input)",
                basisDegree);
-    cmd.addInt("e","degreeElevation",
-               "Number of degree elevation steps to perform on the Geometry's basis before solving",
+    cmd.addInt("e","elevate",
+               "Number of degree elevation steps to perform on the geometry's basis before solving",
                numElevate);
-    cmd.addSwitch("effSolv", "Solve the system efficiently", EffSolv);
+    cmd.addSwitch("effSolve", "Solve the system efficiently", effSolve);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     Real<real_t>::Tape& tape = Real<real_t>::getTape();
@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
         bases.setDegree(basisDegree);
     else if (numElevate)
         bases.degreeElevate(numElevate);
-    for (int i=0; i<numHref ; i++)
+    for (int i=0; i<numRefine ; i++)
         bases.uniformRefine();
 
     gsSparseSolver<Real<real_t>>::LU solver;
@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
     std::cout << "\n\nTape statistics before solving the system:\n\n";
     tape.printStatistics();
 
-    if (EffSolv)
+    if (effSolve)
     {
         // Efficient way of solving the system
         solveSystem(solver, galerkin.matrix(), galerkin.rhs(), solVector);
