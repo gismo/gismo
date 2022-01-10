@@ -16,28 +16,35 @@
 #include <iostream>
 
 #include <gismo.h>
-//#include <gsCoDiPack/gsCoDiPack.h>
+#include <gsCoDiPack/gsCoDiPack.h>
 
 using namespace gismo;
 
+template<typename T> using Real       = codi::RealReverseGen<T>;
+template<typename T> using Tape       = typename Real<T>::Tape;
+template<typename T> using Identifier = typename Real<T>::Identifier;
+template<typename T> using RealBase   = typename Real<T>::Real;
+
 // Implementation of the system solver for CoDiPack
 template<class T>
-void solveSystem_b(typename codi::RealReverseGen<T>::Tape   *tape,
-                   codi::ExternalFunctionUserData           *data,
-                   codi::VectorAccessInterface<double, int> *interface)
+void solveSystem_rev(Tape<T>                                                            *tape,
+                     void                                                               *d,
+                     codi::VectorAccessInterface<typename Tape<T>::Real, Identifier<T>> *va)
 {
-    gsSparseMatrix<codi::RealReverseGen<T>>* matrix;
-    gsMatrix<codi::RealReverseGen<T>>* rhs;
-    gsMatrix<codi::RealReverseGen<T>>* sol;
+    codi::ExternalFunctionUserData* data = (codi::ExternalFunctionUserData*)d;
+    gsSparseMatrix<Real<T>>* matrix;
+    gsMatrix<Real<T>>* rhs;
+    gsMatrix<Real<T>>* sol;
 
+    // Step 4: Get data in the same order as it was added.
     data->getData(matrix);
     data->getData(rhs);
     data->getData(sol);
 
-    typename gsSparseSolver<codi::RealReverseGen<T>>::LU solver;
+    typename gsSparseSolver<Real<T>>::LU solver;
 
-    gsMatrix<codi::RealReverseGen<T>> solAdj(*sol);
-    gsMatrix<codi::RealReverseGen<T>> rhsAdj(*sol);
+    gsMatrix<Real<T>> solAdj(*sol);
+    gsMatrix<Real<T>> rhsAdj(*sol);
     for(index_t i = 0; i < sol->size(); ++i) {
         solAdj[i] = (*sol)[i].getGradient();
     }
@@ -50,10 +57,10 @@ void solveSystem_b(typename codi::RealReverseGen<T>::Tape   *tape,
         tape->gradient(index) += rhsAdj[i].getValue();
     }
     for (int e=0; e<matrix->outerSize(); ++e) {
-        for (typename gsSparseMatrix<codi::RealReverseGen<T>>::InnerIterator it(*matrix,e); it; ++it) {
-            int k = it.row();
-            int l = it.col();
-            codi::RealReverseGen<T>& temp1 = matrix->at(k,l);
+        for (typename gsSparseMatrix<Real<T>>::InnerIterator it(*matrix,e); it; ++it) {
+            index_t k = it.row();
+            index_t l = it.col();
+            Real<T>& temp1 = matrix->at(k,l);
             tape->gradient(temp1.getIdentifier()) += -rhsAdj[l].getValue() * (*sol)[k].getValue();
         }
     }
@@ -61,27 +68,36 @@ void solveSystem_b(typename codi::RealReverseGen<T>::Tape   *tape,
 
 // Implementation of the system deleter for CoDiPack
 template<class T>
-void solveSystem_delete(typename codi::RealReverseGen<T>::Tape* tape, codi::ExternalFunctionUserData* data) {}
+void solveSystem_del(Tape<T>* tape, void* d) {
+  codi::ExternalFunctionUserData* data = (codi::ExternalFunctionUserData*)d;
+  
+  // Step 5: Delete the data
+  delete data;
+}
 
 // Implementation of the system solver for CoDiPack
 template<class T>
-void solveSystem(typename gsSparseSolver<codi::RealReverseGen<T>>::LU   &solver,
-                 const gsSparseMatrix<codi::RealReverseGen<T>>          &matrix,
-                 const gsMatrix<codi::RealReverseGen<T>>                &rhs,
-                 gsMatrix<codi::RealReverseGen<T>>                      &sol) {
+void solveSystem(typename gsSparseSolver<Real<T>>::LU &solver,
+                 const gsSparseMatrix<Real<T>>        &matrix,
+                 const gsMatrix<Real<T>>              &rhs,
+                 gsMatrix<Real<T>>                    &sol) {
 
-    typename codi::RealReverseGen<T>::Tape& tape = codi::RealReverseGen<T>::getTape();
+    typename Real<T>::Tape& tape = Real<T>::getTape();
     tape.setPassive();
 
-    codi::ExternalFunctionUserData* dataHandler = new codi::ExternalFunctionUserData();
-    dataHandler->addData(&matrix);
-    dataHandler->addData(&rhs);
+    // Step 1: Create the data object
+    codi::ExternalFunctionUserData* data = new codi::ExternalFunctionUserData();
+
+    // Step 2: Add data
+    data->addData(&matrix);
+    data->addData(&rhs);
+    
     solver.compute( matrix );
     sol = solver.solve( rhs );
+    data->addData(&sol);
 
-    dataHandler->addData(&sol);
-
-    tape.pushExternalFunction(&solveSystem_b<T>, dataHandler, &solveSystem_delete<T>);
+    // Step 3: Add the external function with the data
+    tape.pushExternalFunction(codi::ExternalFunction<codi::ExternalFunction<Tape<T>>>::create(solveSystem_rev<T>, data, solveSystem_del<T>));
     tape.setActive();
     for(index_t i = 0; i < sol.size(); ++i) {
         tape.registerInput(sol[i]);
@@ -109,30 +125,30 @@ int main(int argc, char* argv[])
     cmd.addSwitch("effSolv", "Solve the system efficiently", EffSolv);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    codi::RealReverseGen<real_t>::Tape& tape = codi::RealReverseGen<real_t>::getTape();
+    Real<real_t>::Tape& tape = Real<real_t>::getTape();
 
-    codi::RealReverseGen<real_t> a = 3.0;
-    codi::RealReverseGen<real_t> b = 2.0;
+    Real<real_t> a = 3.0;
+    Real<real_t> b = 2.0;
 
     tape.setActive();
     tape.registerInput(a);
     tape.registerInput(b);
 
-    gsMultiPatch<codi::RealReverseGen<real_t>> mp( *gsNurbsCreator<codi::RealReverseGen<real_t>>::BSplineRectangle(0.0,0.0,a,b) );
+    gsMultiPatch<Real<real_t>> mp( *gsNurbsCreator<Real<real_t>>::BSplineRectangle(0.0,0.0,a,b) );
 
-    gsFunctionExpr<codi::RealReverseGen<real_t>>  f("0.0", 2);
-    gsFunctionExpr<codi::RealReverseGen<real_t>>  g("1.0", 2);
-    gsFunctionExpr<codi::RealReverseGen<real_t>>  coeff_A("1.0","0","0","1.0", 2);
-    gsFunctionExpr<codi::RealReverseGen<real_t>>  coeff_b("0.2","0.4", 2);
-    gsFunctionExpr<codi::RealReverseGen<real_t>>  coeff_c("0", 2);
+    gsFunctionExpr<Real<real_t>>  f("0.0", 2);
+    gsFunctionExpr<Real<real_t>>  g("1.0", 2);
+    gsFunctionExpr<Real<real_t>>  coeff_A("1.0","0","0","1.0", 2);
+    gsFunctionExpr<Real<real_t>>  coeff_b("0.2","0.4", 2);
+    gsFunctionExpr<Real<real_t>>  coeff_c("0", 2);
 
-    gsBoundaryConditions<codi::RealReverseGen<real_t>> BCs;
-    for (gsMultiPatch<codi::RealReverseGen<real_t>>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+    gsBoundaryConditions<Real<real_t>> BCs;
+    for (gsMultiPatch<Real<real_t>>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
     {
         BCs.addCondition( *bit, condition_type::dirichlet, &g);
     }
 
-    gsMultiBasis<codi::RealReverseGen<real_t>> bases(mp);
+    gsMultiBasis<Real<real_t>> bases(mp);
     if (basisDegree)
         bases.setDegree(basisDegree);
     else if (numElevate)
@@ -140,11 +156,11 @@ int main(int argc, char* argv[])
     for (int i=0; i<numHref ; i++)
         bases.uniformRefine();
 
-    gsSparseSolver<codi::RealReverseGen<real_t>>::LU solver;
-    gsCDRAssembler<codi::RealReverseGen<real_t>> galerkin(mp, bases, BCs, f, coeff_A, coeff_b, coeff_c,
-                                               dirichlet::elimination, iFace::glue, stabilizerCDR::none);
+    gsSparseSolver<Real<real_t>>::LU solver;
+    gsCDRAssembler<Real<real_t>> galerkin(mp, bases, BCs, f, coeff_A, coeff_b, coeff_c,
+                                          dirichlet::elimination, iFace::glue, stabilizerCDR::none);
     galerkin.assemble();
-    gsMatrix<codi::RealReverseGen<real_t>> solVector;
+    gsMatrix<Real<real_t>> solVector;
 
     std::cout << "\n\nTape statistics before solving the system:\n\n";
     tape.printStatistics();
@@ -164,10 +180,10 @@ int main(int argc, char* argv[])
     std::cout << "\n\nTape statistics after solving the system:\n\n";
     tape.printStatistics();
 
-    gsField<codi::RealReverseGen<real_t>> sol = galerkin.constructSolution(solVector);
+    gsField<Real<real_t>> sol = galerkin.constructSolution(solVector);
 
-    gsConstantFunction<codi::RealReverseGen<real_t>> zero (0.0,2);
-    codi::RealReverseGen<real_t> result = sol.distanceL2(zero,true);
+    gsConstantFunction<Real<real_t>> zero (0.0,2);
+    Real<real_t> result = sol.distanceL2(zero,true);
 
     result = result * result;
     tape.registerOutput(result);
