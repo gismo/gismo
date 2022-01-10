@@ -703,7 +703,7 @@ public:
     //
     // The factor 1.33 is used because Eigen shows better performance
     // if 33% more memory is allocated during the step-by-step assembly
-    return sizeof(T) * (numPatches * ((1<<numRefine)+degree-1)+1) *
+    return sizeof(T) * 1.33 * (numPatches * ((1<<numRefine)+degree-1)+1) *
       (/* numPatches^2 * DOFs per patch */
        math::pow(numPatches,2) * math::pow((1<<numRefine)+degree,(T)2)
        /* remove duplicate DOFs at patch interfaces (2 directions) */
@@ -781,16 +781,7 @@ public:
     A.setIntegrationElements(bases);
     
     // initialize the system
-    A.initSystem();
-    
-    // set the geometry map
-    //G = A.getMap(geo);
-    
-    // set the discretization space
-    //u = A.getSpace(bases);
-
-    // set the source term
-    //auto ff = A.getCoeff(f, G);
+    A.initSystem();   
   }
 
   uint64_t operator()()
@@ -844,12 +835,118 @@ public:
 };
 //! [Implement benchmark Poisson 2d expression assembler]
 
+//! [Implement benchmark Poisson 3d expression assembler]
+/**
+ * Benchmark: Expression assembler-based Poisson 3d
+ */
+template<typename T>
+class benchmark_poisson3d_expression_assembler
+{
+private:
+  memory_safeguard<benchmark_poisson3d_expression_assembler> _msg;
+  int numPatches, numRefine, degree;
+  gsMultiPatch<T> geo;
+  gsMultiBasis<T> bases;
+  gsBoundaryConditions<T> bc;
+  
+  gsExprAssembler<T> A;
+  typename gsExprAssembler<>::geometryMap G;
+  typename gsExprAssembler<>::space u;
+
+  gsFunctionExpr<T> f;
+  expr::gsComposition<T> ff;
+  
+public:
+  template<typename... Args>
+  benchmark_poisson3d_expression_assembler(std::tuple<Args...> args)
+    : benchmark_poisson3d_expression_assembler(std::get<0>(args), std::get<1>(args), std::get<2>(args))
+  {}
+    
+  benchmark_poisson3d_expression_assembler(int numPatches, int numRefine=0, int degree=1)
+    : _msg(numPatches, numRefine, degree),
+      numPatches(numPatches), numRefine(numRefine), degree(degree),
+      geo(gsNurbsCreator<>::BSplineCubeGrid(numPatches, numPatches, numPatches, 1.0)),
+      bases(geo, true), A(1,1), G(A.getMap(geo)), u(A.getSpace(bases)),
+      f("0.0", 3), ff(A.getCoeff(f, G))
+  {    
+    // h-refine each basis
+    for (int i = 0; i < numRefine; ++i)
+      bases.uniformRefine();
+    
+    // k-refinement (set degree)
+    for (std::size_t i = 0; i < bases.nBases(); ++ i)
+      bases[i].setDegreePreservingMultiplicity(degree);
+    
+    // set the geometry map to boundary conditions
+    bc.setGeoMap(geo);
+    
+    // setup boundary conditions
+    u.setup(bc, dirichlet::l2Projection, 0);
+
+    // set elements used for numerical integration
+    A.setIntegrationElements(bases);
+    
+    // initialize the system
+    A.initSystem();    
+  }
+
+  uint64_t operator()()
+  {
+    // Compute the system matrix and right-hand side
+    A.assemble(
+               igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
+               ,
+               u * ff * meas(G) //rhs vector
+               );
+        
+    return sizeof(T) * (A.matrix().nonZeros() + A.rhs().rows());
+  }
+
+  constexpr uint64_t size() const
+  {
+    return size(numPatches, numRefine, degree);
+  }
+
+  static constexpr uint64_t size(index_t numPatches, index_t numRefine, index_t degree)
+  {
+    // Estimated memory
+    // system matrix : 1.33 * ndofs * (2*p+1)^3
+    // r.h.s. vector :        ndofs
+    //
+    // The factor 1.33 is used because Eigen shows better performance
+    // if 33% more memory is allocated during the step-by-step assembly
+    return sizeof(T) * 1.33 * (numPatches * ((1<<numRefine)+degree-1)+1) *
+      (/* numPatches^2 * DOFs per patch */
+       math::pow(numPatches,2) * math::pow((1<<numRefine)+degree,(T)2)
+       /* remove duplicate DOFs at patch interfaces (2 directions) */
+       - 2 * (numPatches * (numPatches-1)) * math::pow( (1<<numRefine)+degree,(T)1)
+       /* add interior points at patch corners that have been removed before */
+       + math::pow(numPatches-1,2) );
+  }
+
+  static std::string descr()
+  {
+    return "Expression assembler-based Poisson 3d assembler";
+  }
+
+  static std::string label()
+  {
+    return "assemble3dExpressionAssembler";
+  }
+  
+  static constexpr gismo::metric metric()
+  {
+    return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
+  }
+};
+//! [Implement benchmark Poisson 3d expression assembler]
+
 int main(int argc, char *argv[])
 {
   //! [Parse command line]
   gsBenchmark benchmark;
   std::string fn;
-  bool list=false;
+  bool list=false, all=false;
   std::vector<index_t>  benchmarks, msizes, nruns, nthreads, patches, subdivides, vsizes;
   index_t msizemin      = 10;
   index_t nrunsmax      = 100;
@@ -894,7 +991,8 @@ int main(int argc, char *argv[])
   cmd.addMultiInt("v", "vsizes", "Number of unknowns in vector benchmarks (auto-generated if not given)", vsizes);
   cmd.addString("o", "output", "Name of the output file", fn);
   cmd.addSwitch("list", "List all benchmarks and exit", list);
-
+  cmd.addSwitch("all", "Run all benchmarks", all);
+  
   try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
   //! [Parse command line]
 
@@ -920,6 +1018,10 @@ int main(int argc, char *argv[])
            << "#13: " << benchmark_poisson2d_expression_assembler<real_t>::descr()
            <<            " with increasing number of patches" << "\n"
            << "#14: " << benchmark_poisson2d_expression_assembler<real_t>::descr()
+           <<            " with increasing number of subdivisions" << "\n"
+           << "#15: " << benchmark_poisson3d_expression_assembler<real_t>::descr()
+           <<            " with increasing number of patches" << "\n"
+           << "#16: " << benchmark_poisson3d_expression_assembler<real_t>::descr()
            <<            " with increasing number of subdivisions" << "\n";
       
     return EXIT_SUCCESS;
@@ -928,8 +1030,9 @@ int main(int argc, char *argv[])
 
   //! [Default configuration]
   // If empty fill with all benchmarks 1, 2, ...
-  if (benchmarks.empty()) {
-    for(index_t i=1; i<=8; ++i)
+  if (all) {
+    benchmarks.clear();
+    for(index_t i=1; i<=16; ++i)
       benchmarks.push_back(i);
   }
   
@@ -1052,19 +1155,19 @@ int main(int argc, char *argv[])
       // Benchmark: visitor-based Poisson 2d assembler with increasing number of patches
       benchmark.create<benchmark_poisson2d_visitor<real_t> >
         (util::zip(patches,
-                   make_vector((index_t)1, patches.size()),
-                   make_vector((index_t)3, patches.size())),
-         nruns, nthreads, " with increasing number of patches");
+                   make_vector((index_t)0, patches.size()),  // subdivisions : 0
+                   make_vector((index_t)3, patches.size())), // degree       : 3
+         nruns, nthreads, " with increasing number of patches (#subdivisions=0, degree=3)");
       break;
     }
 
     case (10): {
       // Benchmark: visitor-based Poisson 2d assembler with increasing number of subdivisions
       benchmark.create<benchmark_poisson2d_visitor<real_t> >
-        (util::zip(make_vector((index_t)4, subdivides.size()),
+        (util::zip(make_vector((index_t)1, subdivides.size()),  // patches : 1
                    subdivides,
-                   make_vector((index_t)3, subdivides.size())),
-         nruns, nthreads, " with increasing number of subdivisions");
+                   make_vector((index_t)3, subdivides.size())), // degree  : 3
+         nruns, nthreads, " with increasing number of subdivisions (#patches=1, degree=3)");
       break;
     }
 
@@ -1072,19 +1175,19 @@ int main(int argc, char *argv[])
       // Benchmark: visitor-based Poisson 3d assembler with increasing number of patches
       benchmark.create<benchmark_poisson3d_visitor<real_t> >
         (util::zip(patches,
-                   make_vector((index_t)0, patches.size()),
-                   make_vector((index_t)1, patches.size())),
-         nruns, nthreads, " with increasing number of patches");
+                   make_vector((index_t)0, patches.size()),  // subdivisions : 0
+                   make_vector((index_t)2, patches.size())), // degree       : 2
+         nruns, nthreads, " with increasing number of patches (#subdivisions=0, degree=2)");
       break;
     }
 
     case (12): {
       // Benchmark: visitor-based Poisson 3d assembler with increasing number of subdivisions
       benchmark.create<benchmark_poisson3d_visitor<real_t> >
-        (util::zip(make_vector((index_t)1, subdivides.size()),
+        (util::zip(make_vector((index_t)1, subdivides.size()),  // patches : 1
                    subdivides,
-                   make_vector((index_t)2, subdivides.size())),
-         nruns, nthreads, " with increasing number of subdivisions");
+                   make_vector((index_t)2, subdivides.size())), // degree  : 2
+         nruns, nthreads, " with increasing number of subdivisions (#patches=1, degree=2)");
       break;
     }
       
@@ -1092,19 +1195,39 @@ int main(int argc, char *argv[])
       // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of patches
       benchmark.create<benchmark_poisson2d_expression_assembler<real_t> >
         (util::zip(patches,
-                   make_vector((index_t)1, patches.size()),
-                   make_vector((index_t)3, patches.size())),
-         nruns, nthreads, " with increasing number of patches");
+                   make_vector((index_t)0, patches.size()),  // subdivisions : 0
+                   make_vector((index_t)3, patches.size())), // degree       : 3
+         nruns, nthreads, " with increasing number of patches (#subdivisions=0, degree=3)");
       break;
     }
 
     case (14): {
       // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of subdivision
       benchmark.create<benchmark_poisson2d_expression_assembler<real_t> >
-        (util::zip(make_vector((index_t)4, subdivides.size()),
+        (util::zip(make_vector((index_t)1, subdivides.size()),  // patches : 1
                    subdivides,
-                   make_vector((index_t)3, subdivides.size())),
-         nruns, nthreads, " with increasing number of subdivisions");
+                   make_vector((index_t)3, subdivides.size())), // degree  : 3
+         nruns, nthreads, " with increasing number of subdivisions (#patches=1, degree=3)");
+      break;
+    }
+
+    case (15): {
+      // Benchmark: expression assembler-based Poisson 3d assembler with increasing number of patches
+      benchmark.create<benchmark_poisson3d_expression_assembler<real_t> >
+        (util::zip(patches,
+                   make_vector((index_t)0, patches.size()),  // subdivisions : 0
+                   make_vector((index_t)2, patches.size())), // degree       : 2
+         nruns, nthreads, " with increasing number of patches (#subdivisions=0, degree=2)");
+      break;
+    }
+
+    case (16): {
+      // Benchmark: expression assembler-based Poisson 3d assembler with increasing number of subdivision
+      benchmark.create<benchmark_poisson3d_expression_assembler<real_t> >
+        (util::zip(make_vector((index_t)1, subdivides.size()),  // patches : 1
+                   subdivides,
+                   make_vector((index_t)2, subdivides.size())), // degree  : 2
+         nruns, nthreads, " with increasing number of subdivisions (#patches=1, degree=2)");
       break;
     }
       
