@@ -127,6 +127,9 @@ namespace internal
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.h>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
@@ -134,6 +137,7 @@ namespace internal
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
+#include <gsPde/gsPointLoads.h>
 //#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- MultiGrid ----------- */
@@ -161,6 +165,7 @@ namespace internal
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
+#include <gsSolver/gsBiCgStab.h>
 #include <gsSolver/gsPreconditioner.h>
 #include <gsSolver/gsAdditiveOp.h>
 #include <gsSolver/gsBlockOp.h>

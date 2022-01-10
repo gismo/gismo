@@ -104,6 +104,13 @@ public:
 
     explicit gsVector(index_t dimension) ;
 
+    // To enable pybind11 in gsPointLoads
+    explicit gsVector(index_t _rows, index_t _cols)
+    : gsVector(_rows)
+    {
+        GISMO_ASSERT(1==_cols,"Columns should be 1");
+    }
+
     inline operator Ref () { return Ref(*this); }
 
     inline operator const ConstRef () { return ConstRef(*this); }
@@ -312,6 +319,30 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 // template<class T> inline
 //     inline T & gsVector3d<T>::z () { return (*this)(2); }
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsVector
+   */
+  namespace py = pybind11;
+
+  template<typename T>
+  void pybind11_init_gsVector(pybind11::module &m, const std::string & typestr)
+  {
+    using Class = gsVector<T>;
+    std::string pyclass_name = std::string("gsVector") + typestr;
+    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    // Constructors
+    .def(py::init<>())
+    .def(py::init<index_t, index_t>())
+    // Member functions
+    .def("size",       &Class::size)
+    .def("rows",       &Class::rows)
+    // .def("transpose",  &Class::transpose)
+    ;
+  }
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 

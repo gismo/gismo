@@ -310,20 +310,7 @@ namespace internal
 {
 
 template<>
-class GISMO_EXPORT gsXml<gsCmdLine>
-{
-private:
-    gsXml();
-public:
-    GSXML_COMMON_FUNCTIONS(gsCmdLine)
-    static std::string tag () { return "OptionList"; }
-    static gsCmdLine * get (gsXmlNode * node) {GISMO_ERROR("no get");}
-
-    static void get_into(gsXmlNode * node, gsCmdLine & result)
-    { gsXml<gsOptionList>::get_into(node,result); }
-    static gsXmlNode * put (const gsCmdLine & obj, gsXmlTree & data)
-    { return gsXml<gsOptionList>::put(obj,data); }
-};
+class GISMO_EXPORT gsXml<gsCmdLine> : public gsXml<gsOptionList> { };
 
 }
 
