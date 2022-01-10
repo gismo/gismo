@@ -31,8 +31,8 @@ bool gsMinimalResidual<T>::initIteration( const typename gsMinimalResidual<T>::V
     m_mat->apply(x,negResidual);
     negResidual -= rhs;
 
-    m_error = negResidual.norm() / m_rhs_norm;
-    if (m_error < m_tol)
+    m_current_error = negResidual.norm();
+    if (m_current_error < m_tol*m_initial_error)
         return true;
 
     v = -negResidual;
@@ -76,14 +76,14 @@ bool gsMinimalResidual<T>::step( typename gsMinimalResidual<T>::VectorType& x )
         negResidual += cNew*eta*AwNew;
 
     if (m_inexact_residual)
-        m_error *= math::abs(sNew); // see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
+        m_current_error *= math::abs(sNew); // see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
     else
-        m_error = negResidual.norm() / m_rhs_norm;
+        m_current_error = negResidual.norm();
 
     eta = -sNew*eta;
 
     // Test for convergence
-    if (m_error < m_tol)
+    if (m_current_error < m_tol*m_initial_error)
         return true;
 
     //Update variables

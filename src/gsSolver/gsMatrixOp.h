@@ -345,7 +345,7 @@ typename gsSolverOp< typename gsSparseSolver<T>::QR >::uPtr  makeSparseQRSolver(
     return memory::make_unique( new gsSolverOp< typename gsSparseSolver<T>::QR >(mat) );
 }
 
- 
+
 /// @brief Convenience function to create a sparse Cholesky
 /// (simplicial LDL^T) solver as a gsLinearOperator.
 ///

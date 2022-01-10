@@ -41,8 +41,8 @@ bool gsConjugateGradient<T>::initIteration( const typename gsConjugateGradient<T
     m_mat->apply(x,m_tmp);                                              // apply the system matrix
     m_res = rhs - m_tmp;                                                // initial residual
 
-    m_error = m_res.norm() / m_rhs_norm;
-    if (m_error < m_tol)
+    m_current_error = m_res.norm();
+    if (m_current_error < m_tol*m_initial_error)
         return true;
 
     m_precond->apply(m_res,m_update);                                   // initial search direction
@@ -63,8 +63,8 @@ bool gsConjugateGradient<T>::step( typename gsConjugateGradient<T>::VectorType& 
     x += alpha * m_update;                                             // update solution
     m_res -= alpha * m_tmp;                                            // update residual
 
-    m_error = m_res.norm() / m_rhs_norm;
-    if (m_error < m_tol)
+    m_current_error = m_res.norm();
+    if (m_current_error < m_tol*m_initial_error)
         return true;
 
     m_precond->apply(m_res, m_tmp);                                    // approximately solve for "A tmp = residual"
@@ -94,7 +94,7 @@ T gsConjugateGradient<T>::getConditionNumber()
     }
     // If the condition number is calculated before the solver has ended,
     // then we need to scale the last entry
-    if (m_error < m_tol)
+    if (m_current_error < m_tol*m_initial_error)
     {
         gsLanczosMatrix<T> L(m_gamma,m_delta);
         return L.maxEigenvalue()/L.minEigenvalue();

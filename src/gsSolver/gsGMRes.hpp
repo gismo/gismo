@@ -28,8 +28,8 @@ bool gsGMRes<T>::initIteration( const typename gsGMRes<T>::VectorType& rhs,
     m_precond->apply(tmp, residual);
     beta = residual.norm(); // This is  ||r||
 
-    m_error = beta/m_rhs_norm;
-    if(m_error < m_tol)
+    m_current_error = beta;
+    if(m_current_error < m_tol*m_initial_error)
         return true;
 
     v.push_back(residual/beta);
@@ -128,8 +128,8 @@ bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& )
     g.noalias() = Omega * g_tmp;
 
     T residualNorm2 = g(k+1,0)*g(k+1,0);
-    m_error = math::sqrt(residualNorm2) / m_rhs_norm;
-    if(m_error < m_tol)
+    m_current_error = math::sqrt(residualNorm2);
+    if(m_current_error < m_tol*m_initial_error)
         return true;
 
     //Resize rotation product

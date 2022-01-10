@@ -75,9 +75,8 @@ private:
     using Base::m_max_iters;
     using Base::m_tol;
     using Base::m_num_iter;
-    using Base::m_rhs_norm;
-    using Base::m_error;
-
+    using Base::m_initial_error;
+    using Base::m_current_error;
 
     gsMatrix<T> tmp, g, g_tmp, h_tmp, y, w;
     gsMatrix<T> residual;
