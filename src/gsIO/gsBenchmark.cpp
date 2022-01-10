@@ -309,4 +309,50 @@ namespace gismo
     return os;
   }
 
+namespace benchmark {
+
+  gsBenchmarkResultSet ratio(const std::string& label,
+                             const std::string& descr,
+                             const gsBenchmarkResultSet objA,
+                             const gsBenchmarkResultSet objB)
+  {
+    GISMO_ASSERT(objA.get().size() == objB.get().size(),
+                 "Benchmark result sets must have the same size");
+
+    std::vector<gsBenchmarkResult> results;
+    for (const auto& it : util::zip(objA.get(), objB.get())) {
+      gsBenchmarkResult result;
+      result.threads = std::get<0>(it).threads;
+      result.runtime = std::get<0>(it).runtime / std::get<1>(it).runtime;
+      result.value   = std::get<0>(it).value   / std::get<1>(it).value;
+      result.metric  = (gismo::metric)(std::get<0>(it).metric + gismo::metric::ratio);
+      results.push_back( give(result) );
+    }
+
+    return gsBenchmarkResultSet(label, descr, give(results) );
+  }
+
+  gsBenchmarkSet ratio(const std::string& label,
+                       const std::string& descr,
+                       const gsBenchmarkSet objA,
+                       const gsBenchmarkSet objB)
+  {
+    GISMO_ASSERT(objA.get().size() == objB.get().size(),
+                 "Benchmark sets must have the same size");
+
+    std::vector<gsBenchmarkResultSet> results;
+    char id('A');
+
+    for (const auto& it : util::zip(objA.get(), objB.get())) {
+      results.push_back( give(benchmark::ratio(std::get<0>(it).get_label()+std::string(1,id++),
+                                               std::get<0>(it).get_descr(),
+                                               std::get<0>(it),
+                                               std::get<1>(it))) );
+    }
+
+    gsBenchmarkSet benchmark(label, descr, give(results) );
+    return benchmark;
+  }
+} // namespace benchmark
+  
 } // namespace gismo
