@@ -117,18 +117,18 @@ T mixed_derivative(const exprtk::expression<T>& e,
                      T& x, T& y,
                      const double& h = 0.00001)
 {
-    T num = T(0.0), tmp;
+    T num = (T)(0.0), tmp;
     T x_init = x;
     T y_init = y;
 
-    x = x_init + T(2.0) * h;
-    y = y_init + T(2.0) * h;
+    x = x_init + (T)(2.0) * h;
+    y = y_init + (T)(2.0) * h;
     num += e.value();
-    y = y_init - T(2.0) * h;
+    y = y_init - (T)(2.0) * h;
     num -= e.value();
-    x = x_init - T(2.0) * h;
+    x = x_init - (T)(2.0) * h;
     num += e.value();
-    y = y_init + T(2.0) * h;
+    y = y_init + (T)(2.0) * h;
     num -= e.value();
 
     x = x_init + h;
@@ -140,32 +140,32 @@ T mixed_derivative(const exprtk::expression<T>& e,
     tmp += e.value();
     y = y_init + h;
     tmp -= e.value();
-    num += T(64.0) * tmp;
+    num += (T)(64.0) * tmp;
 
-    x = x_init + T(2.0) * h;
+    x = x_init + (T)(2.0) * h;
     y = y_init - h;
     tmp = e.value();
     y = y_init + h;
     tmp -= e.value();
-    x = x_init - T(2.0) * h;
+    x = x_init - (T)(2.0) * h;
     tmp += e.value();
     y = y_init - h;
     tmp -= e.value();
 
-    y = y_init + T(2.0) * h;
+    y = y_init + (T)(2.0) * h;
     x = x_init - h;
     tmp += e.value();
     x = x_init + h;
     tmp -= e.value();
-    y = y_init - T(2.0) * h;
+    y = y_init - (T)(2.0) * h;
     tmp += e.value();
     x = x_init - h;
     tmp -= e.value();
-    num += T(8.0) * tmp;
+    num += (T)(8.0) * tmp;
 
     x = x_init;
     y = y_init;
-    return num / ( T(144.0)*h*h );
+    return num / ( (T)(144.0)*h*h );
 }
 
 } //namespace

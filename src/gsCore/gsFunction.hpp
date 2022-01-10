@@ -96,15 +96,15 @@ void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
         for ( index_t j = 0; j<parDim; j++ ) // for all variables
         {
             delta.setZero();
-            delta(j)  = T(0.00001);
+            delta(j)  = (T)(0.00001);
             uc.col(0) = u.col(p)+delta;
             uc.col(1) = u.col(p)-delta;
-            delta(j)  = T(0.00002);
+            delta(j)  = (T)(0.00002);
             uc.col(2) = u.col(p)+delta;
             uc.col(3) = u.col(p)-delta;
             //m_geo.eval_into(u, tmp);
             this->eval_into(uc, ev );
-            tmp=(8*( ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / T(0.00012);
+            tmp=(8*( ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / (T)(0.00012);
 
             for (index_t c=0; c<tarDim; ++c)  // for all components
                 result(c*parDim+j,p)=tmp(c);
@@ -131,28 +131,28 @@ void gsFunction<T>::deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) con
         {
             // pure 2nd derivs
             tmp.setZero();
-            tmp( j )    = T( 0.00001 );
+            tmp( j )    = (T)( 0.00001 );
             uc.col( 0 ) = u.col( thisPt ) + tmp;
             uc.col( 1 ) = u.col( thisPt )    ;
             uc.col( 2 ) = u.col( thisPt ) - tmp;
             this->eval_into( uc, ev );
             for ( int k = 0; k < n; k++ ) // for all coordinates
                 result( k * stride + j, thisPt ) =
-                        ( ev( k, 0 ) - T(2) * ev( k, 1 ) + ev( k, 2 ) ) / T( 0.0000000001 ) ;
+                        ( ev( k, 0 ) - (T)(2) * ev( k, 1 ) + ev( k, 2 ) ) / (T)( 0.0000000001 ) ;
             // mixed 2nd derivs
             for ( int l = j + 1; l < d; l++ )
             {
-                tmp( l )     = T( 0.00001 );
+                tmp( l )     = (T)( 0.00001 );
                 ucm.col( 0 ) = u.col( thisPt ) + tmp;
                 ucm.col( 3 ) = u.col( thisPt ) - tmp;
-                tmp( l )     = -T( 0.00001 );
+                tmp( l )     = (T)( -0.00001 );
                 ucm.col( 1 ) = u.col( thisPt ) + tmp;
                 ucm.col( 2 ) = u.col( thisPt ) - tmp;
-                tmp( l ) = T( 0 );
+                tmp( l ) = (T)( 0 );
                 this->eval_into( ucm, ev );
                 for ( int k = 0; k < n; k++ ) // for all coordinates
                     result( k * stride + r, thisPt ) =
-                            ( ev( k, 0 ) - ev( k, 1 ) - ev( k, 2 ) + ev( k, 3 ) ) / T( 0.0000000004 ) ;
+                            ( ev( k, 0 ) - ev( k, 1 ) - ev( k, 2 ) + ev( k, 3 ) ) / (T)( 0.0000000004 ) ;
                 r++;
             }
         }
@@ -170,14 +170,14 @@ gsMatrix<T> gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
     for ( int j = 0; j < d; j++ )
     {
         tmp.setZero();
-        tmp( j, 0 )    = T( 0.0000000001 );
+        tmp( j, 0 )    = (T)( 0.0000000001 );
         res.row( j )  = 16 * ( this->eval(u.colwise() + tmp ) +
                                 this->eval(u.colwise() - tmp ) ) -
                 30 * ( this->eval( u ) );
-        tmp( j, 0 )    = T( 0.0000000002 );
+        tmp( j, 0 )    = (T)( 0.0000000002 );
         res.row( j ) -=  ( this->eval( u.colwise() - tmp ) +
                             this->eval( u.colwise() + tmp ) ) ;
-        res.row( j ) /= T( 0.0000000012 ) ;
+        res.row( j ) /= (T)( 0.0000000012 ) ;
     }
     return res;
 }
@@ -369,9 +369,9 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
             typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
                     gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
             if (tarDim == domDim && tarDim!=-1)
-				InOut.measures(0,p) = math::abs(jac.determinant());
-			else
-				InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
+                InOut.measures(0,p) = math::abs(jac.determinant());
+            else
+                InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
 
 
         }
@@ -454,7 +454,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
             for (index_t p=0;  p!=numPts; ++p)
             {
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                T alt_sgn = sgn * T( //jacT.rows()==jacT.cols() &&
+                T alt_sgn = sgn * (T)( //jacT.rows()==jacT.cols() &&
                                     jacT.determinant()<0 ? -1 : 1);
                 for (int i = 0; i != tarDim; ++i) //for all components of the normal
                 {

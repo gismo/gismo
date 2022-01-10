@@ -590,7 +590,7 @@ public:  /* Solution reconstruction */
     ///                   coefficients of result.
     /// \param[in] theta damping factor for update, theta = 1 corresponds to a full step.
     virtual void updateSolution(const gsMatrix<T>& solVector,
-                                gsMultiPatch<T>& result, T theta = T(1)) const;
+                                gsMultiPatch<T>& result, T theta = (T)(1)) const;
 
 public: // *** Accessors ***
 

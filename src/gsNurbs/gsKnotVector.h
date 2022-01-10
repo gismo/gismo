@@ -512,7 +512,7 @@ public:
         m_repKnots.reserve( 2*(m_deg+1) + interior*mult_interior );
         m_multSum .reserve(interior+2);
 
-        const T h = (u1-u0) / T(interior+1);
+        const T h = (u1-u0) / (T)(interior+1);
 
         m_repKnots.insert(m_repKnots.begin(), m_deg+1, u0);
         m_multSum .push_back(m_deg+1);
@@ -656,7 +656,7 @@ public:
             {
                 spanBegin =*(this->ubegin()+*it);
                 spanEnd  =*(this->ubegin()+*it+1);
-                newKnot = ( (segmentsPerSpan-T(k)) * spanBegin + T(k) * spanEnd ) / segmentsPerSpan;
+                newKnot = ( (segmentsPerSpan-(T)(k)) * spanBegin + (T)(k) * spanEnd ) / segmentsPerSpan;
                 newKnots.push_back( newKnot );
             }
 
@@ -853,7 +853,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
     {
         const T df = *(ubegin() + 1) - *ubegin();
         for( uiterator uit = ubegin() + 1; uit != uend(); ++uit )
-            if( math::abs(*uit - (*uit-T(1)) - df) > tol )
+            if( math::abs(*uit - (*uit-(T)(1)) - df) > tol )
                 return false;
         return true;
     }

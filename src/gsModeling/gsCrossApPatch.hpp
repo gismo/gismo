@@ -85,7 +85,7 @@ void gsCrossApPatch<T>::compute_impl()
         cross(0,1) = tmp0(0      ,1);
         cross(1,1) = tmp0(sz[0]-1,1);
 
-        if ( math::abs(cross.determinant()) < T(1e-11) )
+        if ( math::abs(cross.determinant()) < (T)(1e-11) )
         {
             gsWarn <<"Corner data is rank-deficient ("<<i<<")\n";
             //gsDebugVar(cross);

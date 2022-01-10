@@ -343,14 +343,14 @@ void gsTensorBSplineBasis<1,T>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& re
         // Get span of absissae
         unsigned span = m_knots.iFind( u(0,v) ) - m_knots.begin() ;
 
-        //ndu[0]   = T(1);  // 0-th degree function value
-        result(0,v)= T(1);  // 0-th degree function value
+        //ndu[0]   = (T)(1);  // 0-th degree function value
+        result(0,v)= (T)(1);  // 0-th degree function value
 
         for(int j=1; j<= m_p; ++j) // For all degrees ( ndu column)
         {
             left[j]  = u(0,v) - m_knots[span+1-j];
             right[j] = m_knots[span+j] - u(0,v);
-            T saved = T(0) ;
+            T saved = (T)(0) ;
 
             for(int r=0; r!=j ; ++r) // For all (except the last)  basis functions of degree j ( ndu row)
             {
@@ -404,14 +404,14 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
         if ( (static_cast<size_t>(i) == m_knots.size()-m_p-2) &&
              (u(0,s) == m_knots.last()) &&  (u(0,s)== m_knots[m_knots.size()-m_p-1]) )
         {
-            result(0,s)= T(1.0);
+            result(0,s)= (T)(1.0);
             continue;
         }
 
         // Locality property
         if ( (u(0,s) < m_knots[i]) || (u(0,s) >= m_knots[i+m_p+1]) )
         {
-            result(0,s)= T(0.0);
+            result(0,s)= (T)(0.0);
             continue;
         }
 
@@ -421,25 +421,25 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
         // Initialize zeroth degree functions
         for (int j=0;j<=m_p; ++j)
             if ( u(0,s) >= m_knots[i+j] && u(0,s) < m_knots[i+j+1] )
-                N[j] = T(1.0);
+                N[j] = (T)(1.0);
             else
-                N[j] = T(0.0);
+                N[j] = (T)(0.0);
         // Compute according to the trangular table
         for (int k=1;k<=m_p; ++k)
         {
             T saved;
-            if (N[0] == T(0.0))
-              saved = T(0.0);
+            if (N[0] == (T)(0.0))
+              saved = (T)(0.0);
             else
                 saved= ((u(0,s) - m_knots[i] )* N[0]) / (m_knots[k+i] - m_knots[i]);
             for (int j=0;j<m_p-k+1; ++j)
             {
                 const T kleft  = m_knots[i+j+1];
                 const T kright = m_knots[i+j+k+1];
-                if ( N[j+1] == T(0.0) )
+                if ( N[j+1] == (T)(0.0) )
                 {
                     N[j] = saved;
-                    saved = T(0.0);
+                    saved = (T)(0.0);
                 }
                 else
                 {
@@ -619,7 +619,7 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
         // Get span of absissae
         typename KnotVectorType::iterator span = m_knots.iFind( u(0,v) );
 
-        ndu[0]  = T(1); // 0-th degree function value
+        ndu[0]  = (T)(1); // 0-th degree function value
         left[0] = 0;
 
         for(int j=1; j<m_p ; j++) // For all degrees
@@ -629,7 +629,7 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
             right[j] = *(span+j) - u(0,v);
 
             // Compute Basis functions of degree m_p-1 ( ndu[] )
-            T saved = T(0) ;
+            T saved = (T)(0) ;
             for(int r=0; r<j ; r++) // For all (except the last) basis functions of degree 1..j
             {
                 const T temp = ndu[r] / ( right[r+1] + left[j-r] ) ;
@@ -682,7 +682,7 @@ void gsTensorBSplineBasis<1,T>::derivSingle_into(index_t i,
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
-            result(0,j) = T(0.0);
+            result(0,j) = (T)(0.0);
     }
 }
 
@@ -853,7 +853,7 @@ void gsTensorBSplineBasis<1,T>::deriv2Single_into(index_t i, const gsMatrix<T> &
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
-            result(0,j) = T(0.0);
+            result(0,j) = (T)(0.0);
     }
 }
 
@@ -932,8 +932,8 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
             right[j] = m_knots[span+j] - u(0,v);
         }
 
-        ndu[0] = T(1) ; // 0-th degree function value
-        T saved = T(0) ;
+        ndu[0] = (T)(1) ; // 0-th degree function value
+        T saved = (T)(0) ;
         // Compute Basis functions of degree m_p-n ( ndu[] )
         for(int r=0; r<pn ; r++) // For all (except the last) basis functions of degree m_p-n
         {
@@ -975,14 +975,14 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
         // Run evaluation algorithm and keep the function values triangle & the knot differences
         typename KnotVectorType::iterator span = m_knots.iFind( u(0,v) );
 
-        ndu[0] = T(1) ; // 0-th degree function value
+        ndu[0] = (T)(1) ; // 0-th degree function value
         for(int j=1; j<= m_p; j++) // For all degrees ( ndu column)
         {
             // Compute knot splits
             left[j] = u(0,v) - *(span+1-j);
             right[j] = *(span+j) - u(0,v);
 
-            T saved = T(0) ;
+            T saved = (T)(0) ;
 
             for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
             {
@@ -1009,7 +1009,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
             T* a1 = &a[0];
             T* a2 = &a[p1];
 
-            a1[0] = T(1) ;
+            a1[0] = (T)(1) ;
 
             // Compute the k-th derivative of the r-th basis function
             for(int k=1; k<=n; k++)
@@ -1050,7 +1050,7 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
     int r = m_p ;
     for(int k=1; k<=n; k++)
     {
-        result[k].array() *= T(r) ;
+        result[k].array() *= (T)(r) ;
         r *= m_p - k ;
     }
 }
@@ -1176,7 +1176,7 @@ void gsTensorBSplineBasis<1,T>::_convertToPeriodic()
             // Compare the knot intervals in the beginning with the corresponding knot intervals at the end.
             i1 = m_knots[i] - m_knots[i-1];
             i2 = m_knots[m_knots.size() - (2*m_p) + i - 2 + borderKnotMult] - m_knots[m_knots.size() - (2*m_p) + i - 3 + borderKnotMult];
-            if( math::abs( i1 - i2 ) > T(1e-8) )
+            if( math::abs( i1 - i2 ) > (T)(1e-8) )
             {
                 gsWarn << "Your basis cannot be changed into periodic:\n Trouble stretching interior knots.\n";
                 //std::cerr << "i: " << i << ", i1: " << i1 << ", i2: " << i2 << std::endl;

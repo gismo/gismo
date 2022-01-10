@@ -190,7 +190,7 @@ public:
             transformGradients(md2, k, grads2, phGrad2);
 
             // Compute element matrices
-            const T c1     = weight / T(2);
+            const T c1     = weight / (T)(2);
             N1.noalias()   = unormal.transpose() * phGrad1;
             N2.noalias()   = unormal.transpose() * phGrad2;
 

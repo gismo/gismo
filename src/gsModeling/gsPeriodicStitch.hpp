@@ -143,7 +143,7 @@ void gsPeriodicStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &n
         lambdas = neighbourhood.getLambdas(i);
         for (size_t j = 0; j < N; j++)
         {
-            LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
+            LHS(i, j) = ( i==j ? (T)(1) : -lambdas[j] );
 
             // If your neighbour is across the stitch, its contributions appear
             // on the right hand-side multiplied by +1 or -1. Write the equations
@@ -158,7 +158,7 @@ void gsPeriodicStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &n
     // points on the lower and upper boundary
     for (size_t i=n; i<N; i++)
     {
-        LHS(i, i) = T(1);
+        LHS(i, i) = (T)(1);
         RHS.row(i) = this->m_parameterPoints[i];
     }
 

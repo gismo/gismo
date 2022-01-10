@@ -280,7 +280,7 @@ public:
         if ( parDim() == geoDim() )
         {
             const T val = gsFunction<T>::jacobian( parameterCenter() ).determinant();
-            return (T(0) < val) - (val < T(0));
+            return (T(0) < val) - (val < (T)(0));
         }
         return 1;
     }
@@ -329,7 +329,7 @@ public:
     { 
         // default impl. assumes convex support
         gsMatrix<T> S = this->basis().support();
-        return ( S.col(0) + S.col(1) ) * T(0.5);
+        return ( S.col(0) + S.col(1) ) * (T)(0.5);
     }
 
     /// Get coordinates of the boxCorner \a bc in the parameter domain

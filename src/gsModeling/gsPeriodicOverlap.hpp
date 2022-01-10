@@ -120,13 +120,13 @@ void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &
         updateLambdasWithTwins(lambdas, i+1);
 
         for (size_t j = 0; j < N + numTwins; j++)
-            LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
+            LHS(i, j) = ( i==j ? (T)(1) : -lambdas[j] );
     }
 
     // points on the lower and upper boundary
     for (size_t i=n; i<N; i++)
     {
-        LHS(i, i)  = T(1);
+        LHS(i, i)  = (T)(1);
         RHS.row(i) = this->m_parameterPoints[i];
     }
 
@@ -136,11 +136,11 @@ void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &
         size_t first   = m_twins[i-N].first-1;
         size_t second  = m_twins[i-N].second-1;
 
-        LHS(i, first)  = T( 1);
-        LHS(i, second) = T(-1);
+        LHS(i, first)  = (T)( 1);
+        LHS(i, second) = (T)(-1);
 
-        RHS(i, 0)      = T(-1);
-        RHS(i, 1)      = T( 0);
+        RHS(i, 0)      = (T)(-1);
+        RHS(i, 1)      = (T)( 0);
     }
 
     Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();

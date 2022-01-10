@@ -263,8 +263,8 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
   T miny = DomCor.col(1).minCoeff();
   T maxy = DomCor.col(1).maxCoeff();
   T rangex = maxx - minx, rangey = maxy - miny;
-  T midx = (minx + maxx) / T(2), midy = (miny + maxy) / T(2);
-  T halfMaxRange = std::max(rangex, rangey) * (margin * T(2) + T(1)) / T(2);
+  T midx = (minx + maxx) / (T)(2), midy = (miny + maxy) / (T)(2);
+  T halfMaxRange = std::max(rangex, rangey) * (margin * (T)(2) + (T)(1)) / (T)(2);
   minx -= rangex * margin;
   maxx += rangex * margin;
   miny -= rangey * margin;

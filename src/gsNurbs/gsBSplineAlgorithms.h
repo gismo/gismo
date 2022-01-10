@@ -50,13 +50,13 @@ namespace bspline
     {
         Eigen::MatrixBase<Derived>& res = const_cast<Eigen::MatrixBase<Derived>&>(result);
         
-        res(0,0)= T(1.0);  // 0-th degree function value
+        res(0,0)= (T)(1.0);  // 0-th degree function value
         
         for(int j=1; j<= deg; j++) // For all degrees ( ndu column)
         {
             left[j]  = u - *(knot+1-j);
             right[j] = *(knot+j) - u;
-            T saved = T(0) ;
+            T saved = (T)(0) ;
             for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
             {
                 const T temp = res(r,0) / ( right[r+1] + left[j-r] );

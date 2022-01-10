@@ -113,7 +113,7 @@ void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
         for( size_t i=1; i < kold_di.size(); i++ ) // loop over spans
             if( kold_di[i]-kold_di[i-1] > tol)  // check for empty spans
             {
-                const T midpt = (kold_di[i] + kold_di[i-1])/T(2); // midpoint of knot span
+                const T midpt = (kold_di[i] + kold_di[i-1])/(T)(2); // midpoint of knot span
                 for( index_t j=0; j < boxes.cols(); j+=2 )        // loop over all boxes
                 {
                     // if the box contains the midpoint, mark it
@@ -126,7 +126,7 @@ void gsTensorBSplineBasis<d,T>::refine(gsMatrix<T> const & boxes, int)
         for( size_t i=1; i < kold_di.size(); i++ )
             if( flagInsertKt[i] )
             {
-                T midpt = (kold_di[i] + kold_di[i-1])/T(2);
+                T midpt = (kold_di[i] + kold_di[i-1])/(T)(2);
                 Self_t::component(di).insertKnot( midpt );
             }
 

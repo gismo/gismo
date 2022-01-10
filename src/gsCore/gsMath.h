@@ -324,7 +324,7 @@ inline mpq_class ldexp(const mpq_class & a, int b ) {return  a;}
 /// Returns the sign of \a val
 template <typename T> int getSign(T val)
 {
-    return (T(0) < val) - (val < T(0));
+    return (T(0) < val) - (val < (T)(0));
 }
 
 /// Return smallest difference between two (integer)T numbers as unsigned T
