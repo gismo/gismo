@@ -84,7 +84,7 @@ namespace gismo
         break;
       default:
         GISMO_ERROR("Unsupported metric");
-      }    
+      }
     } else {
       switch(metric & ~gismo::metric::speedup & ~gismo::metric::ratio) {
       case gismo::metric::bandwidth_kb_sec:
@@ -227,7 +227,7 @@ namespace gismo
 
     if (results.size() == 0)
       return os;
-    
+
     os << std::setw(8) << "memsize"
        << " | "
        << util::to_string(results.front().get().size())
@@ -296,7 +296,7 @@ namespace gismo
         GISMO_ERROR("Unsupported metric");
       }
     }
-    
+
     for (const auto& it : results)
       it.print(os);
     return os;
@@ -308,5 +308,5 @@ namespace gismo
       it.print(os);
     return os;
   }
-  
+
 } // namespace gismo

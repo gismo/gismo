@@ -21,7 +21,7 @@ namespace gismo
 {
 /**
    @brief Enumerator that defines the benchmark metrics.
-   
+
    These definitions are used to control the output of the benchmark framework
 */
 enum metric : uint64_t {
@@ -37,7 +37,7 @@ enum metric : uint64_t {
   perf_tflop_sec   = 1 <<  9,
   runtime_sec      = 1 << 10
 };
-  
+
 /**
    @brief Class that represents a single benchmark result
 
@@ -59,7 +59,7 @@ public:
 namespace internal
 {
 /// @brief Get a gsBenchmarkResult from XML data
-template<>  
+template<>
 class gsXml< gsBenchmarkResult >
 {
 private:
@@ -69,16 +69,16 @@ public:
   GSXML_COMMON_FUNCTIONS(Object);
   static std::string tag ()  { return "BenchmarkResult"; }
   static std::string type () { return "BenchmarkResult"; }
-  
+
   GSXML_GET_POINTER(Object);
-  
+
   static void get_into (gsXmlNode * node, Object & obj)
   {
     gsXmlNode * child;
 
     child = node->first_node("threads");
     if (child != NULL) obj.threads = atoi(child->value());
-    
+
     child = node->first_node("runtime");
     if (child != NULL) obj.runtime = atof(child->value());
 
@@ -88,7 +88,7 @@ public:
     child = node->first_node("metric");
     if (child != NULL) obj.metric = (gismo::metric)atol(child->value());
   }
-  
+
   static gsXmlNode * put (const Object & obj, gsXmlTree & data )
   {
     gsXmlNode * result = makeNode("BenchmarkResult", data);
@@ -97,12 +97,12 @@ public:
     result->append_node( makeNode("runtime", util::to_string(obj.runtime), data) );
     result->append_node( makeNode("value",   util::to_string(obj.value),   data) );
     result->append_node( makeNode("metric",  util::to_string(obj.metric),  data) );
-        
+
     return result;
   }
 };
 } // namespace internal
-  
+
 /**
    @brief Class that represents a set of benchmark results
 
@@ -115,7 +115,7 @@ class gsBenchmarkResultSet
 public:
   /// \brief Default constructor
   gsBenchmarkResultSet() = default;
-  
+
   /// \brief Constructor
   gsBenchmarkResultSet(const std::string& label,
                        const std::string& descr,
@@ -123,7 +123,7 @@ public:
     : label(label),
       descr(descr),
       results( give(std::vector<gsBenchmarkResult>(results)) ) {}
-  
+
   /// \brief Constructor
   gsBenchmarkResultSet(const std::string& label,
                        const std::string& descr,
@@ -131,7 +131,7 @@ public:
     : label(label),
       descr(descr),
       results( give(results) ) {}
-  
+
   /// \brief Returns the label
   const std::string& get_label() const
   { return label; }
@@ -153,7 +153,7 @@ public:
 
   /// \brief Pretty-prints the content
   std::ostream &print(std::ostream &os) const;
-  
+
 private:
   std::string label, descr;
   std::vector<gsBenchmarkResult> results;
@@ -166,7 +166,7 @@ inline std::ostream &operator<<(std::ostream &os, const gsBenchmarkResultSet& ob
 namespace internal
 {
 /// @brief Get a gsBenchmarkResultSet from XML data
-template<>  
+template<>
 class gsXml< gsBenchmarkResultSet >
 {
 private:
@@ -176,9 +176,9 @@ public:
   GSXML_COMMON_FUNCTIONS(Object);
   static std::string tag ()  { return "BenchmarkResultSet"; }
   static std::string type () { return "BenchmarkResultSet"; }
-  
+
   GSXML_GET_POINTER(Object);
-  
+
   static void get_into (gsXmlNode * node, Object & obj)
   {
     gsXmlNode * child;
@@ -186,7 +186,7 @@ public:
 
     child = node->first_node("label");
     if (child != NULL) label = child->value();
-    
+
     child = node->first_node("descr");
     if (child != NULL) descr = child->value();
 
@@ -201,23 +201,23 @@ public:
 
     obj = gsBenchmarkResultSet(label, descr, give(results));
   }
-  
+
   static gsXmlNode * put (const Object & obj, gsXmlTree & data )
   {
     gsXmlNode * results = makeNode("BenchmarkResultSet", data);
 
     results->append_node( makeNode("label", obj.get_label(), data) );
     results->append_node( makeNode("descr", obj.get_descr(), data) );
-    
+
     for (const auto& it : obj.get()) {
       results->append_node( gsXml< gsBenchmarkResult >::put(it, data) );
     }
-    
+
     return results;
   }
 };
 } // namespace internal
-  
+
 /**
    @brief Class that represents a collection of benchmark sets for a
    series of benchmark instances
@@ -230,7 +230,7 @@ class gsBenchmarkSet
 public:
   /// \brief Default Constructor
   gsBenchmarkSet() = default;
-  
+
   /// \brief Constructor
   gsBenchmarkSet(const std::string& label,
                  const std::string& descr,
@@ -246,7 +246,7 @@ public:
     : label(label),
       descr(descr),
       results( give(results) ) {}
-  
+
   /// \brief Returns the label
   const std::string& get_label() const
   { return label; }
@@ -268,7 +268,7 @@ public:
 
   /// \brief Pretty-prints the content
   std::ostream &print(std::ostream &os) const;
-  
+
 private:
   std::string label, descr;
   std::vector<gsBenchmarkResultSet> results;
@@ -281,7 +281,7 @@ inline std::ostream &operator<<(std::ostream &os, const gsBenchmarkSet& obj)
 namespace internal
 {
 /// @brief Get a gsBenchmarkSet from XML data
-template<>  
+template<>
 class gsXml< gsBenchmarkSet >
 {
 private:
@@ -291,22 +291,22 @@ public:
   GSXML_COMMON_FUNCTIONS(Object);
   static std::string tag ()  { return "BenchmarkSet"; }
   static std::string type () { return "BenchmarkSet"; }
-  
+
   GSXML_GET_POINTER(Object);
-  
+
   static void get_into (gsXmlNode * node, Object & obj)
   {
     gsXmlNode * child;
     std::string label, descr;
-    
+
     child = node->first_node("label");
     if (child != NULL) label = child->value();
-    
+
     child = node->first_node("descr");
     if (child != NULL) descr = child->value();
 
     std::vector<gsBenchmarkResultSet> results;
-    
+
     child = node->first_node(gsXml< gsBenchmarkResultSet >::tag().c_str());
     for (; child; child = child->next_sibling() ) {
       gsBenchmarkResultSet _results;
@@ -316,18 +316,18 @@ public:
 
     obj = gsBenchmarkSet(label, descr, give(results) );
   }
-  
+
   static gsXmlNode * put (const Object & obj, gsXmlTree & data )
   {
     gsXmlNode * results = makeNode("BenchmarkSet", data);
 
     results->append_node( makeNode("label", obj.get_label(), data) );
     results->append_node( makeNode("descr", obj.get_descr(), data) );
-    
+
     for (const auto& it : obj.get()) {
       results->append_node( gsXml< gsBenchmarkResultSet >::put(it, data) );
     }
-    
+
     return results;
   }
 };
@@ -364,7 +364,7 @@ public:
         return it;
     return benchmarks.cend();
   }
-  
+
   /// \brief Creates a new benchmark set, adds it to the benchmark and
   /// returns a pointer to the benchmark set to the calling routine
   template<typename Test, typename Iterator>
@@ -377,10 +377,10 @@ public:
 
     gsInfo << "[" << Test::label() << "] "
            << Test::descr()+extra_descr << "\n";
-    
-    std::vector<gsBenchmarkResultSet> results;    
+
+    std::vector<gsBenchmarkResultSet> results;
     char id('A');
-    
+
     auto riter = runs.begin();
     for (const auto& it : sizes) {
       gsInfo << util::to_string(it) << "(" << *riter << ")"<< std::flush;
@@ -404,11 +404,11 @@ public:
     }
     gsInfo << "\n";
 
-    gsBenchmarkSet benchmark(Test::label(), Test::descr()+extra_descr, give(results) );    
+    gsBenchmarkSet benchmark(Test::label(), Test::descr()+extra_descr, give(results) );
     benchmarks.push_back( give(benchmark) );
     return benchmarks.back();
   }
-  
+
 private:
   /// \brief Runs the benchmark instance \a benchmark for the
   /// specified number of \a threads and \a runs and returns an \a
@@ -422,7 +422,7 @@ private:
     gsStopwatch stopwatch;
     uint64_t result(0);
     real_t value, runtime;
-    
+
     try {
       for (const auto& it : threads) {
 
@@ -492,7 +492,7 @@ inline std::ostream &operator<<(std::ostream &os, const gsBenchmark& obj)
 namespace internal
 {
 /// @brief Get a gsBenchmark from XML data
-template<>  
+template<>
 class gsXml< gsBenchmark >
 {
 private:
@@ -502,13 +502,13 @@ public:
   GSXML_COMMON_FUNCTIONS(Object);
   static std::string tag ()  { return "Benchmark"; }
   static std::string type () { return "Benchmark"; }
-  
+
   GSXML_GET_POINTER(Object);
-  
+
   static void get_into (gsXmlNode * node, Object & obj)
   {
     gsXmlNode * child;
-    
+
     child = node->first_node(gsXml< gsBenchmarkSet >::tag().c_str());
     for (; child; child = child->next_sibling() ) {
       gsBenchmarkSet benchmark;
@@ -516,7 +516,7 @@ public:
       obj.get().push_back( give(benchmark) );
     }
   }
-  
+
   static gsXmlNode * put (const Object & obj, gsXmlTree & data )
   {
     gsXmlNode * results = makeNode("Benchmark", data);
@@ -524,7 +524,7 @@ public:
     for (const auto& it : obj.get()) {
       results->append_node( gsXml< gsBenchmarkSet >::put(it, data) );
     }
-    
+
     return results;
   }
 };
@@ -540,7 +540,7 @@ namespace benchmark {
   {
     GISMO_ASSERT(objA.get().size() == objB.get().size(),
                  "Benchmark result sets must have the same size");
-    
+
     std::vector<gsBenchmarkResult> results;
     for (const auto& it : util::zip(objA.get(), objB.get())) {
       gsBenchmarkResult result;
@@ -550,7 +550,7 @@ namespace benchmark {
       result.metric  = (gismo::metric)(std::get<0>(it).metric + gismo::metric::ratio);
       results.push_back( give(result) );
     }
-    
+
     return gsBenchmarkResultSet(label, descr, give(results) );
   }
 
@@ -562,20 +562,20 @@ namespace benchmark {
   {
     GISMO_ASSERT(objA.get().size() == objB.get().size(),
                  "Benchmark sets must have the same size");
-    
+
     std::vector<gsBenchmarkResultSet> results;
     char id('A');
-    
+
     for (const auto& it : util::zip(objA.get(), objB.get())) {
       results.push_back( give(benchmark::ratio(std::get<0>(it).get_label()+std::string(1,id++),
                                                std::get<0>(it).get_descr(),
                                                std::get<0>(it),
                                                std::get<1>(it))) );
     }
-    
+
     gsBenchmarkSet benchmark(label, descr, give(results) );
     return benchmark;
-  }  
+  }
 }
 
 } // namespace gismo
