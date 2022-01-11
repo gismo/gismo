@@ -6,7 +6,7 @@ jobs:
   ### XCode 10.3.0, macOS 10.14.4 (Mojave), x86_64
   ###
   
-  x86_64:macos:xcode-10.3:cxx11:release:
+  x86_64_macos_xcode-103_cxx11_release:
     macos:
       xcode: "10.3.0"
     working_directory: ~/gismo
@@ -28,7 +28,7 @@ jobs:
   ### XCode 11.7.0, macOS 10.15.5 (Catalina), x86_64
   ###
           
-  x86_64:macos:xcode-11.7:cxx14:release:
+  x86_64_macos_xcode-117_cxx14_release:
     macos:
       xcode: "11.7.0"
     working_directory: ~/gismo
@@ -50,7 +50,7 @@ jobs:
   ### XCode 12.5.1, macOS 11.4.0 (Big Sur), x86_64
   ###
           
-  x86_64:macos:xcode-12.5:cxx17:release:
+  x86_64_macos_xcode-125_cxx17_release:
     macos:
       xcode: "12.5.1"
     working_directory: ~/gismo
@@ -72,7 +72,7 @@ jobs:
   ### XCode 13.2.1, macOS 11.6.2 (Big Sur), x86_64
   ###
           
-  x86_64:macos:xcode-13.2:cxx20:release:
+  x86_64_macos_xcode-132_cxx20_release:
     macos:
       xcode: "13.2.1"
     working_directory: ~/gismo
@@ -94,7 +94,7 @@ jobs:
   ### GCC-latest, linux Ubuntu 20.04, aarch64
   ###
 
-  aarch64:linux:gcc-latest:cxx11:release:
+  aarch64_linux_gcc-latest_cxx11_release:
     machine:
       image: ubuntu-2004:202101-01
     resource_class: arm.medium
@@ -117,7 +117,7 @@ workflows:
   version: 2
   build:
     jobs:
-      - aarch64:linux:gcc-latest:cxx11:release      
+      - aarch64_linux_gcc-latest_cxx11_release      
 #      - x86_64:macos:xcode-10.3:cxx11:release
 #      - x86_64:macos:xcode-11.7:cxx14:release
 #      - x86_64:macos:xcode-12.5:cxx17:release
