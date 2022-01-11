@@ -41,33 +41,33 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
  *  restriction operators are generated internally. Therefore, a
  *  problem-specific assembler has to be passed as template argument.
  */
-template<class T, class Assembler>
+template<class Assembler>
 struct pMultigrid
 {
 private:
     /// Shared pointer to multi-patch geometry
-    memory::shared_ptr<gsMultiPatch<T> > m_mp_ptr;
+    memory::shared_ptr<gsMultiPatch<>> m_mp_ptr;
 
     /// Shared pointer to boundary conditions
-    memory::shared_ptr<gsBoundaryConditions<T> > m_bcInfo_ptr;
+    memory::shared_ptr<gsBoundaryConditions<>> m_bcInfo_ptr;
 
     /// Vector of multi-basis objects
-    std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis;
+    std::vector<memory::shared_ptr<gsMultiBasis<>>> m_basis;
 
     /// Vector of prolongation matrices for h-refinement
-    std::vector< gsSparseMatrix<T,RowMajor> > m_prolongation_H;
+    std::vector<gsSparseMatrix<real_t,RowMajor>> m_prolongation_H;
 
     /// Vector of restriction matrices for h-refinement
-    std::vector< gsSparseMatrix<T> > m_restriction_H;
+    std::vector<gsSparseMatrix<>> m_restriction_H;
 
     /// Vector of restriction operators
-    std::vector< typename gsLinearOperator<T>::Ptr > m_restriction;
+    std::vector<gsLinearOperator<>::Ptr> m_restriction;
 
     /// Vector of prolongation operators
-    std::vector< typename gsLinearOperator<T>::Ptr > m_prolongation;
+    std::vector<gsLinearOperator<>::Ptr> m_prolongation;
 
     /// Vector of stiffness matrices
-    std::vector< gsSparseMatrix<T> > m_matrices;
+    std::vector<gsSparseMatrix<>> m_matrices;
 
     /// Vector of assembler objects
     std::vector<Assembler> m_assembler;
@@ -77,10 +77,10 @@ public:
 
     ///  @brief Set-up p-multigrid solver
     gsMultiGridOp<>::uPtr setup(
-         const gsMultiPatch<T> & mp,
-         const gsMultiBasis<T> & basis,
-         const gsBoundaryConditions<T> & bcInfo,
-         const gsFunctionExpr<T> & rhs,
+         const gsMultiPatch<> & mp,
+         const gsMultiBasis<> & basis,
+         const gsBoundaryConditions<> & bcInfo,
+         const gsFunctionExpr<> & rhs,
          index_t numLevels,
          index_t numDegree,
          index_t typeBCHandling,
@@ -111,7 +111,7 @@ public:
         }
 
         // Generate sequence of assembler objects and assemble
-        for (typename std::vector<memory::shared_ptr<gsMultiBasis<T> > >::iterator it = m_basis.begin();
+        for (std::vector<memory::shared_ptr<gsMultiBasis<>>>::iterator it = m_basis.begin();
         it != m_basis.end(); ++it)
         {
             m_assembler.push_back(Assembler(*m_mp_ptr,*(*it).get(),*m_bcInfo_ptr,rhs, coeff_diff , coeff_conv , coeff_reac ,(typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche), iFace::glue));
@@ -159,10 +159,10 @@ public:
             {
                 if (typeLumping == 1)
                 {
-                    gsSparseMatrix<> prolongationP = prolongation_P(i+1, m_basis, typeBCHandling);
+                    gsSparseMatrix<> prolongationP = prolongation_P(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
                     gsSparseMatrix<> restrictionP = prolongationP.transpose();
-                    gsMatrix<> prolongationM = prolongation_M(i+1, m_basis, typeBCHandling);
-                    gsMatrix<> restrictionM = restriction_M(i+1, m_basis, typeBCHandling);
+                    gsMatrix<> prolongationM = prolongation_M(mp, *m_basis[i], bcInfo, typeBCHandling);
+                    gsMatrix<> restrictionM = restriction_M(mp, *m_basis[i-1], bcInfo, typeBCHandling);
 
                     m_prolongation[i-1] = makeLinearOp(
                         [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
@@ -185,10 +185,10 @@ public:
                 }
                 else
                 {
-                    gsSparseMatrix<> prolongationP =  prolongation_P(i+1, m_basis, typeBCHandling);
+                    gsSparseMatrix<> prolongationP =  prolongation_P(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
                     gsSparseMatrix<> restrictionP =  prolongationP.transpose();
-                    gsSparseMatrix<> prolongationM2 = prolongation_M2(i+1, m_basis, typeBCHandling);
-                    gsSparseMatrix<> restrictionM2 = restriction_M2(i+1, m_basis, typeBCHandling);
+                    gsSparseMatrix<> prolongationM2 = prolongation_M2(mp, *m_basis[i], bcInfo, typeBCHandling);
+                    gsSparseMatrix<> restrictionM2 = restriction_M2(mp, *m_basis[i-1], bcInfo, typeBCHandling);
 
                     m_prolongation[i-1] = makeLinearOp(
                         [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
@@ -215,7 +215,7 @@ public:
             }
             else if (hp(i-1,0) == 1)
             {
-                gsMultiBasis<T> basis_copy = *m_basis[i];
+                gsMultiBasis<> basis_copy = *m_basis[i];
                 basis_copy.uniformCoarsen_withTransfer(m_prolongation_H[i-1],*m_bcInfo_ptr,options);
                 m_restriction_H[i-1] = m_prolongation_H[i-1].transpose();
 
@@ -262,42 +262,40 @@ public:
 private:
 
     /// @brief Construct prolongation operator at level numLevels
-    gsMatrix<T> prolongation_M(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
+    static gsMatrix<> prolongation_M(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisH, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
 
         // Determine matrix M (high_order * high_order)
-        gsMultiBasis<> basisH = *m_basis[level-1];
         gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(*m_mp_ptr);
+        geometryMap G = ex.getMap(mp);
         space w_n = ex.getSpace(basisH, 1, 0);
         w_n.setInterfaceCont(0);
         if (typeBCHandling == 1)
         {
-            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+            w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
         ex.setIntegrationElements(basisH);
         ex.initSystem();
-        ex.assemble(w_n * meas(G) );
+        ex.assemble(w_n * meas(G));
         return ex.rhs();
     }
 
-    gsSparseMatrix<T> prolongation_M2(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
+    static gsSparseMatrix<> prolongation_M2(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisH, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
 
         // Determine matrix M (high_order * high_order)
-        gsMultiBasis<> basisH = *m_basis[level-1];
         gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(*m_mp_ptr);
+        geometryMap G = ex.getMap(mp);
         space w_n = ex.getSpace(basisH, 1, 0);
         if (typeBCHandling == 1)
         {
-            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+            w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
         ex.setIntegrationElements(basisH);
         ex.initSystem();
@@ -306,23 +304,21 @@ private:
     }
 
     /// @brief Construct prolongation operator at level numLevels
-    gsSparseMatrix<T> prolongation_P(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
+    static gsSparseMatrix<> prolongation_P(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisH, const gsMultiBasis<>& basisL, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space    space;
+        typedef gsExprAssembler<real_t>::space space;
 
         // Determine matrix P (high_order * low_order)
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
         gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(*m_mp_ptr);
+        geometryMap G = ex.getMap(mp);
         space v_n = ex.getSpace(basisH, 1, 0);
         space u_n = ex.getTestSpace(v_n, basisL);
         if (typeBCHandling == 1)
         {
-            v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-            u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+            v_n.setup(bcInfo, dirichlet::interpolation, 0);
+            u_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
         ex.setIntegrationElements(basisH);
         ex.initSystem();
@@ -331,42 +327,40 @@ private:
     }
 
     /// @brief Construct restriction operator at level numLevels
-    gsMatrix<T> restriction_M(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
+    static gsMatrix<> restriction_M(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisL, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space    space;
 
         // Determine matrix M (low_order * low_order)
-        gsMultiBasis<> basisL = *m_basis[level-2];
         gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(*m_mp_ptr);
+        geometryMap G = ex.getMap(mp);
         space w_n = ex.getSpace(basisL ,1, 0);
         if (typeBCHandling == 1)
         {
-            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+            w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
         ex.setIntegrationElements(basisL);
         ex.initSystem();
-        ex.assemble(w_n * meas(G) );
+        ex.assemble(w_n * meas(G));
         return ex.rhs();
     }
 
     /// @brief Construct restriction operator at level numLevels
-    gsSparseMatrix<T> restriction_M2(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
+    static gsSparseMatrix<> restriction_M2(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisL, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
 
         // Determine matrix M (low_order * low_order)
-        gsMultiBasis<> basisL = *m_basis[level-2];
         gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(*m_mp_ptr);
+        geometryMap G = ex.getMap(mp);
         space w_n = ex.getSpace(basisL, 1, 0);
         if (typeBCHandling == 1)
         {
-            w_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
+            w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
         ex.setIntegrationElements(basisL);
         ex.initSystem();
@@ -374,35 +368,10 @@ private:
         return ex.matrix();
     }
 
-    /// @brief Construct restriction operator at level numLevels
-    gsSparseMatrix<T> restriction_P(index_t level, std::vector<memory::shared_ptr<gsMultiBasis<T> > > m_basis, index_t typeBCHandling)
-    {
-        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-        typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space space;
-
-        // Determine matrix P (high_order * low_order)
-        gsMultiBasis<> basisL = *m_basis[level-2];
-        gsMultiBasis<> basisH = *m_basis[level-1];
-        gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(*m_mp_ptr);
-        space v_n = ex.getSpace(basisH, 1, 0);
-        space u_n = ex.getTestSpace(v_n, basisL);
-        if (typeBCHandling == 1)
-        {
-            u_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-            v_n.setup(*m_bcInfo_ptr, dirichlet::interpolation, 0);
-        }
-        ex.setIntegrationElements(basisH);
-        ex.initSystem();
-        ex.assemble(u_n * meas(G)* v_n.tr());
-        return ex.matrix();
-    }
-
 public:
-    const gsMatrix<T>& rhs(index_t level) const { return m_assembler[level].rhs(); }
-    const gsSparseMatrix<T>& matrix(index_t level) const { return m_assembler[level].matrix(); }
-    const gsMultiBasis<T>& basis(index_t level) const { return *(m_basis[level]); }
+    const gsMatrix<>& rhs(index_t level) const { return m_assembler[level].rhs(); }
+    const gsSparseMatrix<>& matrix(index_t level) const { return m_assembler[level].matrix(); }
+    const gsMultiBasis<>& basis(index_t level) const { return *(m_basis[level]); }
 
     double TimeAssembly() const { return m_Time_Assembly; }
     double TimeAssemblyGalerkin() const { return m_Time_Assembly_Galerkin; }
@@ -647,7 +616,7 @@ int main(int argc, char* argv[])
     const bool symmSmoothing = typeSolver == 3;
 
     // Setup of p-mg object
-    pMultigrid<real_t, gsCDRAssembler<real_t> > My_MG;
+    pMultigrid< gsCDRAssembler<real_t> > My_MG;
     gsMultiGridOp<>::Ptr mg = My_MG.setup(
         mp,
         basisL,
