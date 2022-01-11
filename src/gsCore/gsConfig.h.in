@@ -37,7 +37,7 @@
 /** Define default dimension type. */
 #define GISMO_SHORT_TYPE @GISMO_SHORT_TYPE@
 #ifndef short_t
-#define short_t          GISMO_INDEX_TYPE
+#define short_t          GISMO_SHORT_TYPE
 #endif
 
 /** Define the file data directory. */
