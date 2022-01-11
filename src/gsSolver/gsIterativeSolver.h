@@ -20,11 +20,35 @@
 namespace gismo
 {
 
-struct relativeErrorType {
+/// @brief Decide on relative/absolute error for \a gsIterativeSolver
+///
+/// The option \ref relativeRhs is the default.
+///
+/// \ingroup Solver
+struct relErrorReference {
     enum type {
-        absolute = 0,
-        relativeRhs = 1,
-        relativeInitialResidual = 2
+        absolute = 0,                  ///< Consider absolute errors
+        relativeRhs = 1,               ///< Errors absolute to right-hand-side
+        relativeInitialResidual = 2    ///< Errors absolute to residual
+    };
+};
+
+/// @brief Norm to be used for measuring the error in \a gsIterativeSolver
+///
+/// The option \ref resNorm is the default (\f$ \ell^2 \f$-norm of residual). If the preconditioner
+/// approximates the matrix, the \f$ \ell^2 \f$-norm of the preconditioned residual (option
+/// \ref precResNorm) might approximate the \f$ \ell^2 \f$-norm of the error. If the preconditioner
+/// is symmetric and positive definite (SPD) and approximates the matrix, then the scalar product
+/// of the residual and the preconditioned residual (option \ref resDotPrecRes) approximates the
+/// energy norm.
+///
+/// \ingroup Solver
+struct errorNorm {
+    enum type {
+        resNorm = 0,                   ///< Norm of the residual
+        resDotPrecRes = 1,             ///< Square root of inner product of residual and
+                                       ///< preconditioned residual (requires SPD preconditioner)
+        precResNorm = 2                ///< Norm of preconditoned residual
     };
 };
 
@@ -34,6 +58,9 @@ struct relativeErrorType {
 template<class T=real_t>
 class gsIterativeSolver
 {
+private:
+    typedef gismo::relErrorReference::type        relErrorReferenceT;
+    typedef gismo::errorNorm::type                errorNormT;
 public:
     typedef memory::shared_ptr<gsIterativeSolver> Ptr;
     typedef memory::unique_ptr<gsIterativeSolver> uPtr;
@@ -56,7 +83,8 @@ public:
       m_num_iter(-1),
       m_initial_error(-1),
       m_current_error(-1),
-      m_error_type(relativeErrorType::relativeRhs)
+      m_rel_error_reference(gismo::relErrorReference::relativeRhs),
+      m_error_norm(gismo::errorNorm::resNorm)
     {
         GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The matrix is not square."                     );
 
@@ -87,7 +115,8 @@ public:
       m_num_iter(-1),
       m_initial_error(-1),
       m_current_error(-1),
-      m_error_type(relativeErrorType::relativeRhs)
+      m_rel_error_reference(gismo::relErrorReference::relativeRhs),
+      m_error_norm(gismo::errorNorm::resNorm)
     {
         GISMO_ASSERT(m_mat->rows()     == m_mat->cols(),     "The matrix is not square."                     );
 
@@ -103,18 +132,25 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList opt;
-        opt.addInt   ("MaxIterations"    , "Maximum number of iterations", 1000       );
+        opt.addInt   ("MaxIterations"    , "Maximum number of iterations", 1000        );
         opt.addReal  ("Tolerance"        , "Tolerance for the error criteria on the "
-                                           "relative residual error",      1e-10      );
-        // TODO: m_initial_error_type config
+                                           "relative residual error",      1e-10       );
+        opt.addInt   ("RelErrorReference", "Relative or absolute error for solver",
+                                                gismo::relErrorReference::relativeRhs  );
+        opt.addInt   ("ErrorNorm"        , "Norm used for measuring the error",
+                                                gismo::errorNorm::resNorm              );
         return opt;
     }
 
     /// @brief Set the options based on a gsOptionList
     virtual gsIterativeSolver& setOptions(const gsOptionList & opt)
     {
-        m_max_iters        = opt.askInt   ("MaxIterations"    , m_max_iters        );
-        m_tol              = opt.askReal  ("Tolerance"        , m_tol              );
+        m_max_iters           = opt.askInt ("MaxIterations"    , m_max_iters           );
+        m_tol                 = opt.askReal("Tolerance"        , m_tol                 );
+        m_rel_error_reference = (relErrorReferenceT)
+                                opt.askInt ("RelErrorReference", m_rel_error_reference );
+        m_error_norm          = (errorNormT)
+                                opt.askInt ("ErrorNorm"        , m_error_norm          );
         return *this;
     }
 
@@ -180,6 +216,30 @@ public:
         error_history = gsAsVector<T>(tmp_error_hist);
     }
 
+    T computeNorm( const VectorType& res ) const
+    {
+        switch (m_error_norm)
+        {
+            case errorNormT::resNorm:
+                return res.norm();
+            case errorNormT::resDotPrecRes:
+            {
+                // TODO: Do that without doing extra work!
+                VectorType z;
+                m_precond->apply(res,z);
+                return math::sqrt(z.col(0).dot(res.col(0)));
+            }
+            case errorNormT::precResNorm:
+            {
+                // TODO: Do that without doing extra work!
+                VectorType z;
+                m_precond->apply(res,z);
+                return z.norm();
+            }
+        }
+        GISMO_ASSERT(0, "gsIterativeSolver: Unknown errorNorm given.");
+    }
+
     /// Init the iteration
     virtual bool initIteration( const VectorType& rhs, VectorType& x )
     {
@@ -191,21 +251,22 @@ public:
 
         m_num_iter = 0;
 
-        if (m_error_type == relativeErrorType::absolute)
-            m_initial_error = (T)1;
-        else if (m_error_type == relativeErrorType::relativeRhs)
-            m_initial_error = rhs.norm();
-        else if (m_error_type == relativeErrorType::relativeInitialResidual)
+        switch (m_rel_error_reference)
         {
-            // TODO: can we do that without too extra work?
-            VectorType res; m_mat->apply(x,res); res -= rhs;
-            m_initial_error = res.norm();
+            case relErrorReferenceT::absolute:
+                m_initial_error = (T)1; break;
+            case relErrorReferenceT::relativeRhs:
+                m_initial_error = computeNorm(rhs); break;
+            case relErrorReferenceT::relativeInitialResidual:
+            {
+                // TODO: Do that without doing extra work!
+                VectorType res; m_mat->apply(x,res); res -= rhs;
+                m_initial_error = computeNorm(res);
+                break;
+            }
+            default:
+                GISMO_ASSERT(0, "gsIterativeSolver: Unknown relErrorReference given.");
         }
-        else
-        {
-            GISMO_ASSERT(0, "gsIterativeSolver: Unknown relativeErrorType given.");
-        }
-
 
         if (0 == m_initial_error) // special case of zero rhs
         {
@@ -230,8 +291,7 @@ public:
     virtual bool step( VectorType& x ) = 0;                   ///< Perform one step, requires initIteration
     virtual void finalizeIteration( VectorType& ) {}          ///< Some post-processing might be required
 
-    /// Returns the size of the linear system
-    index_t size() const                                       { return m_mat->rows(); }
+public: // Settings
 
     /// Set the preconditionner
     void setPreconditioner(const LinOpPtr & precond)           { m_precond = precond; }
@@ -239,29 +299,44 @@ public:
     /// Get the preconditioner
     LinOpPtr preconditioner() const                            { return m_precond; }
 
-    /// Get the underlying matrix/operator to be solved for
-    LinOpPtr underlying() const                                { return m_mat; }
-
     /// Set the maximum number of iterations (default: 1000)
     void setMaxIterations(index_t max_iters)                   { m_max_iters = max_iters; }
+
+    /// Get the maximum number of iterations
+    index_t maxIterations() const                              { return m_max_iters; }
 
     /// Set the tolerance for the error criteria on the relative residual error (default: 1e-10)
     void setTolerance(T tol)                                   { m_tol = tol; }
 
+    /// Get the tolerance for the error criteria on the relative residual error
+    T tolerance() const                                        { return m_tol; }
+
+    /// Set the relative/absolute error settings (default: relErrorReference::relRhs)
+    void setRelErrorReference(relErrorReferenceT r)            { m_rel_error_reference = r; }
+
+    /// Get the relative/absolute error settings
+    relErrorReferenceT relErrorReference() const               { return m_rel_error_reference; }
+
+    /// Set the norm to be used for measuring the error (default: errorNorm::resNorm)
+    void setErrorNorm(errorNormT error_norm)                   { m_error_norm = error_norm; }
+
+    /// Get the norm to be used for measuring the error
+    errorNormT errorNorm() const                               { return m_error_norm; }
+
+public: // Monitoring
+
+    /// Get the underlying matrix/operator to be solved for
+    LinOpPtr underlying() const                                { return m_mat; }
+
     /// The number of iterations needed to reach the error criteria
     index_t iterations() const                                 { return m_num_iter; }
 
-    /// @brief The relative residual error of the current iterate
-    ///
-    /// This is the Euclidean norm of the residual, devided by the Euclidean
-    /// norm of the right-hand side.
+    /// @brief The residual error of the current iterate.
+    /// The error is relative or absolute depending on \a relErrorReference
     T error() const                                            { return m_current_error/m_initial_error; }
 
     /// @brief The residual error of the current iterate
     T absoluteError() const                                    { return m_current_error; }
-
-    /// The chosen tolerance for the error criteria on the relative residual error
-    T tolerance() const                                        { return m_tol; }
 
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const = 0;
@@ -277,15 +352,19 @@ public:
         return os.str();
     }
 
+    /// Returns the size of the linear system
+    index_t size() const                                       { return m_mat->rows(); }
+
 protected:
-    const LinOpPtr m_mat;             ///< The matrix/operator to be solved for
-    LinOpPtr       m_precond;         ///< The preconditioner
-    index_t        m_max_iters;       ///< The upper bound for the number of iterations
-    T              m_tol;             ///< The tolerance for m_error to be reached
-    index_t        m_num_iter;        ///< The number of iterations performed
-    T              m_initial_error;   ///< The initial error: either right-hand-side or initial residual
-    T              m_current_error;   ///< The current error
-    relativeErrorType::type m_error_type;
+    const LinOpPtr       m_mat;                 ///< The matrix/operator to be solved for
+    LinOpPtr             m_precond;             ///< The preconditioner
+    index_t              m_max_iters;           ///< The upper bound for the number of iterations
+    T                    m_tol;                 ///< The tolerance for m_error to be reached
+    index_t              m_num_iter;            ///< The number of iterations performed
+    T                    m_initial_error;       ///< The initial error: either right-hand-side or initial residual
+    T                    m_current_error;       ///< The current error
+    relErrorReferenceT   m_rel_error_reference; ///< Specify reference for relative error
+    errorNormT           m_error_norm;          ///< Specify the norm to use for measuring the error
 };
 
 /// \brief Print (as string) operator for iterative solvers

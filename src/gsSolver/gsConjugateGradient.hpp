@@ -41,7 +41,7 @@ bool gsConjugateGradient<T>::initIteration( const typename gsConjugateGradient<T
     m_mat->apply(x,m_tmp);                                              // apply the system matrix
     m_res = rhs - m_tmp;                                                // initial residual
 
-    m_current_error = m_res.norm();
+    m_current_error = Base::computeNorm(m_res);
     if (m_current_error < m_tol*m_initial_error)
         return true;
 
@@ -63,7 +63,7 @@ bool gsConjugateGradient<T>::step( typename gsConjugateGradient<T>::VectorType& 
     x += alpha * m_update;                                             // update solution
     m_res -= alpha * m_tmp;                                            // update residual
 
-    m_current_error = m_res.norm();
+    m_current_error = Base::computeNorm(m_res);
     if (m_current_error < m_tol*m_initial_error)
         return true;
 

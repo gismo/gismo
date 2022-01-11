@@ -24,7 +24,7 @@ bool gsGradientMethod<T>::initIteration( const typename gsGradientMethod<T>::Vec
     m_mat->apply(x,m_tmp);
     m_res = rhs - m_tmp;
 
-    m_current_error = m_res.norm();
+    m_current_error = Base::computeNorm(m_res);
     return m_current_error < m_tol*m_initial_error;
 
 }
@@ -43,7 +43,7 @@ bool gsGradientMethod<T>::step( typename gsGradientMethod<T>::VectorType& x )
 
     x += step_size * m_update;
     m_res -= step_size * m_tmp;
-    m_current_error = m_res.norm();
+    m_current_error = Base::computeNorm(m_res);
     return m_current_error < m_tol*m_initial_error;
 }
 

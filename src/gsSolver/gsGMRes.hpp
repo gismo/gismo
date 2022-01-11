@@ -28,7 +28,7 @@ bool gsGMRes<T>::initIteration( const typename gsGMRes<T>::VectorType& rhs,
     m_precond->apply(tmp, residual);
     beta = residual.norm(); // This is  ||r||
 
-    m_current_error = beta;
+    m_current_error = Base::computeNorm(residual);
     if(m_current_error < m_tol*m_initial_error)
         return true;
 
@@ -103,8 +103,8 @@ bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& )
     }
     h_tmp(k+1,0) = w.norm();
 
-  //  if (math::abs(h_tmp(k+1,0)) < 1e-16) //If exact solution
-  //      return true;
+    //  if (math::abs(h_tmp(k+1,0)) < 1e-16) //If exact solution
+    //      return true;
 
     v.push_back(w/h_tmp(k+1,0));
 
@@ -128,6 +128,8 @@ bool gsGMRes<T>::step( typename gsGMRes<T>::VectorType& )
     g.noalias() = Omega * g_tmp;
 
     T residualNorm2 = g(k+1,0)*g(k+1,0);
+    GISMO_ASSERT( Base::m_error_norm == errorNorm::resNorm,
+            "gsGMRes: The option inexact residual is only appropriate for the residual norm."); // TODO: Is that actually true? Which norm does this compute?
     m_current_error = math::sqrt(residualNorm2);
     if(m_current_error < m_tol*m_initial_error)
         return true;

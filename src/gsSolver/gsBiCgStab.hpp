@@ -34,7 +34,7 @@ bool gsBiCgStab<T>::initIteration( const typename gsBiCgStab<T>::VectorType& rhs
     m_rho = 1;
     m_w = 1;
 
-    m_current_error = m_res.norm();
+    m_current_error = Base::computeNorm(m_res);
 
     return m_current_error < m_tol*m_initial_error;
 
@@ -78,7 +78,7 @@ bool gsBiCgStab<T>::step( typename gsBiCgStab<T>::VectorType& x )
     x.noalias() += m_alpha * m_y + m_w * m_z;
     m_res.noalias() -= m_alpha * m_v + m_w * m_t;
 
-    m_current_error = m_res.norm();
+    m_current_error = Base::computeNorm(m_res);
     return m_current_error < m_tol*m_initial_error;
 
 }

@@ -31,7 +31,7 @@ bool gsMinimalResidual<T>::initIteration( const typename gsMinimalResidual<T>::V
     m_mat->apply(x,negResidual);
     negResidual -= rhs;
 
-    m_current_error = negResidual.norm();
+    m_current_error = Base::computeNorm(negResidual);
     if (m_current_error < m_tol*m_initial_error)
         return true;
 
@@ -76,9 +76,13 @@ bool gsMinimalResidual<T>::step( typename gsMinimalResidual<T>::VectorType& x )
         negResidual += cNew*eta*AwNew;
 
     if (m_inexact_residual)
+    {
+        GISMO_ASSERT( Base::m_error_norm == errorNorm::resNorm,
+            "gsMinimalResidual: The option inexact residual is only appropriate for the residual norm.");
         m_current_error *= math::abs(sNew); // see https://eigen.tuxfamily.org/dox-devel/unsupported/MINRES_8h_source.html
+    }
     else
-        m_current_error = negResidual.norm();
+        m_current_error = Base::computeNorm(negResidual);
 
     eta = -sNew*eta;
 
