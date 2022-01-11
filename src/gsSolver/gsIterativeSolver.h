@@ -184,7 +184,7 @@ public:
         if (initIteration(rhs, x))
         {
             error_history.resize(1,1); //VectorType is actually gsMatrix
-            error_history(0,0) = m_current_error;
+            error_history(0,0) = m_current_error / m_initial_error;
             //gsDebug<<"Solution reached at iteration 0, err="<<m_error<<"\n";
             return;
         }
@@ -201,12 +201,12 @@ public:
 
             if (step(x))
             {
-                tmp_error_hist.push_back(m_current_error);
+                tmp_error_hist.push_back(m_current_error / m_initial_error);
                 //gsDebug<<"            err = "<<m_current_error<<" --> Solution reached.\n";
                 break;
             }
 
-            tmp_error_hist.push_back(m_current_error);
+            tmp_error_hist.push_back(m_current_error / m_initial_error);
             //gsDebug<<"            err = "<<m_current_error<<"\n";
         }
 
