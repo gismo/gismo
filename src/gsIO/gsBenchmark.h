@@ -373,7 +373,7 @@ public:
                                const std::vector<index_t> & threads,
                                const std::string          & extra_descr="")
   {
-    GISMO_ASSERT(sizes.size()==runs.size(), "Problem sizes and number of runs must have the same length");
+      //GISMO_ASSERT(sizes.size()==runs.size(), "Problem sizes and number of runs must have the same length");
 
     gsInfo << "[" << Test::label() << "] "
            << Test::descr()+extra_descr << "\n";
@@ -533,16 +533,16 @@ public:
 namespace benchmark {
 
   /// \brief Returns the ratio of the two given benchmark result sets
-  gsBenchmarkResultSet ratio(const std::string& label,
-                             const std::string& descr,
-                             const gsBenchmarkResultSet objA,
-                             const gsBenchmarkResultSet objB);
+  GISMO_EXPORT gsBenchmarkResultSet ratio(const std::string& label,
+                                          const std::string& descr,
+                                          const gsBenchmarkResultSet objA,
+                                          const gsBenchmarkResultSet objB);
 
   /// \brief Returns the ratio of the two given benchmark sets
-  gsBenchmarkSet ratio(const std::string& label,
-                       const std::string& descr,
-                       const gsBenchmarkSet objA,
-                       const gsBenchmarkSet objB);
+  GISMO_EXPORT gsBenchmarkSet ratio(const std::string& label,
+                                    const std::string& descr,
+                                    const gsBenchmarkSet objA,
+                                    const gsBenchmarkSet objB);
 } // namespace benchmark
 
 } // namespace gismo
