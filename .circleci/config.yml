@@ -1,6 +1,11 @@
-version: 2.0
+version: 2.1
 
 jobs:
+
+  ###
+  ### XCode 10.3.0, macOS 10.14.4 (Mojave), x86_64
+  ###
+  
   x86_64:macos:xcode-10.3:cxx11:release:
     macos:
       xcode: "10.3.0"
@@ -19,6 +24,10 @@ jobs:
           name: Build and test G+Smo on MacOS
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
+  ###
+  ### XCode 11.7.0, macOS 10.15.5 (Catalina), x86_64
+  ###
+          
   x86_64:macos:xcode-11.7:cxx14:release:
     macos:
       xcode: "11.7.0"
@@ -37,6 +46,10 @@ jobs:
           name: Build and test G+Smo on MacOS
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
+  ###
+  ### XCode 12.5.1, macOS 11.4.0 (Big Sur), x86_64
+  ###
+          
   x86_64:macos:xcode-12.5:cxx17:release:
     macos:
       xcode: "12.5.1"
@@ -55,6 +68,10 @@ jobs:
           name: Build and test G+Smo on MacOS
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
+  ###
+  ### XCode 13.2.1, macOS 11.6.2 (Big Sur), x86_64
+  ###
+          
   x86_64:macos:xcode-13.2:cxx20:release:
     macos:
       xcode: "13.2.1"
@@ -73,11 +90,35 @@ jobs:
           name: Build and test G+Smo on MacOS
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS          
 
+  ###
+  ### GCC-latest, linux Ubuntu 20.04, aarch64
+  ###
+
+  aarch64:linux:gcc-latest:cxx11:release:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    working_directory: ~/gismo
+    environment:
+      MAKEJOBS: 4
+    steps:
+      - run:
+          name: Install dependencies
+          command: apt-get update -y && apt-get install cmake gcc g++
+      - checkout
+      - run:
+          name: Configure G+Smo on Linux
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="aarch64:linux:gcc-latest:cxx11:release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on Linux
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
+          
 workflows:
   version: 2
   build:
     jobs:
-      - x86_64:macos:xcode-10.3:cxx11:release
-      - x86_64:macos:xcode-11.7:cxx14:release
-      - x86_64:macos:xcode-12.5:cxx17:release
-      - x86_64:macos:xcode-13.2:cxx20:release
+      - aarch64:linux:gcc-latest:cxx11:release      
+#      - x86_64:macos:xcode-10.3:cxx11:release
+#      - x86_64:macos:xcode-11.7:cxx14:release
+#      - x86_64:macos:xcode-12.5:cxx17:release
+#      - x86_64:macos:xcode-13.2:cxx20:release
