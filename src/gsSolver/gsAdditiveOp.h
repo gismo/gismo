@@ -91,7 +91,7 @@ public:
         }
 #endif
     }
-
+    
     /// @brief Constructor
     ///
     /// The operator realizes \f$ \sum_{i=1}^n T_i A_i T_i^T \f$
@@ -152,7 +152,7 @@ public:
                        && m_ops.back()->cols() == m_ops.back()->rows(),
                        "Dimensions of the operators do not fit." );
     }
-
+    
     /// Add another entry to the sum
     ///
     /// @param transfer   the additional transfer matrix \f$ T_i \f$
