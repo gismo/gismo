@@ -104,7 +104,7 @@ jobs:
     steps:
       - run:
           name: Install dependencies
-          command: apt-get update -y && apt-get install cmake gcc g++ -y
+          command: sudo apt-get update -y && sudo apt-get install cmake gcc g++ -y
       - checkout
       - run:
           name: Configure G+Smo on Linux
