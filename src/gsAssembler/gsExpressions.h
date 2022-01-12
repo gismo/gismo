@@ -1343,15 +1343,9 @@ public:
     void extractFull(gsMatrix<T> & result) const
     {
         index_t offset;
-
         const index_t dim = _u.dim();
-
-        size_t totalSz = 0;
-        for (index_t c = 0; c!=dim; c++) // for all components
-            totalSz += _u.mapper().totalSize(c);
-
-        //result.resize(_u.mapper().size(), 1); // (!)
-        result.resize(totalSz, 1); // (!)
+        const size_t totalSz = _u.mapper().mapSize();
+        result.resize(totalSz, 1);
         for (size_t p=0; p!=_u.mapper().numPatches(); ++p)
         {
             offset = _u.mapper().offset(p);

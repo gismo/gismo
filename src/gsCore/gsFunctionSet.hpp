@@ -50,12 +50,6 @@ gsMatrix<T> gsFunctionSet<T>::support() const
     return gsMatrix<T>();
 }
 
-template <class T>
-gsMatrix<T> gsFunctionSet<T>::support(index_t i) const
-{
-    GISMO_NO_IMPLEMENTATION
-}
-
 // actives
 
 template <typename T>

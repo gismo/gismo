@@ -918,7 +918,7 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
     for (index_t i = 0; i != func.size(); ++i)
     {
         const std::string fileName = fn + util::to_string(i);
-        gsWriteParaview(func.function(i), func.support(i), fileName, npts);
+        gsWriteParaview(func.function(i), func.function(i).support(), fileName, npts);
         collection.addPart(fileName, ".vts");
     }
 

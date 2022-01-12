@@ -56,22 +56,6 @@ public:
     gsMappedBasis() : m_mapper(nullptr)
     { }
 
-    gsMappedBasis(gsMultiPatch<T> const & mp, std::string pathToMap )
-    : m_mapper(nullptr)
-    {
-        gsMultiBasis<T> mb(mp);
-        gsSparseMatrix<T> m;
-        gsFileData<T>(pathToMap).getFirst(m);
-        init(mb,m);
-    }
-
-    gsMappedBasis(gsMultiPatch<T> const & mp, const gsSparseMatrix<T> & m )
-    : m_mapper(nullptr)
-    {
-        gsMultiBasis<T> mb(mp);
-        init(mb,m);
-    }
-
     gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)
     : m_mapper(nullptr)
     {
@@ -242,9 +226,6 @@ public:
      * \param[in] localCoef : the coefficients to the local basis functions
      */
     gsMultiPatch<T> exportToPatches(gsMatrix<T> const & localCoef) const;
-
-    gsMatrix<T> support(index_t patch) const; //global BF active on patch at point
-    gsMatrix<T> support(const index_t patch, const index_t & i) const; //global BF active on patch at point
 
 public:
     //////////////////////////////////////////////////

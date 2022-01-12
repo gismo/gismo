@@ -34,7 +34,7 @@ struct condition_type
         robin     = 2, ///< Robin type
         clamped   = 3, ///< Robin type
         weak_clamped = 30,
-        collapsed = 4,  ///< Robin type
+        collapsed = 4, 
         laplace = 5 ///< Laplace type, e.g. \Delta u = g
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
@@ -418,9 +418,6 @@ public:
     /// Return a reference to the Robin sides
     const bcContainer & robinSides()     const {return m_bc["Robin"]; }
 
-    /// Return a reference to the Laplace sides
-    const bcContainer & laplaceSides()     const {return m_bc["Laplace"]; }
-
     const cornerContainer & cornerValues() const  {return corner_values;  }
 
     /// Extracts the BC, comming from a certain component.
@@ -563,26 +560,6 @@ public:
     /// \return an iterator to the end of the corner values
     citerator cornerEnd()
     { return corner_values.end(); }
-
-    /// Get a const-iterator to the beginning of the Laplace sides
-    /// \return an iterator to the beginning of the Laplace sides
-    const_iterator laplaceBegin() const
-    { return m_bc["Laplace"].begin(); }
-
-    /// Get a const-iterator to the end of the Laplace sides
-    /// \return an iterator to the end of the Laplace sides
-    const_iterator laplaceEnd() const
-    { return m_bc["Laplace"].end(); }
-
-    /// Get an iterator to the beginning of the Laplace sides
-    /// \return an iterator to the beginning of the Laplace sides
-    iterator laplaceBegin()
-    { return m_bc["Laplace"].begin(); }
-
-    /// Get an iterator to the end of the Laplace sides
-    /// \return an iterator to the end of the Laplace sides
-    iterator laplaceEnd()
-    { return m_bc["Laplace"].end(); }
 
     void add(int p, boxSide s, const std::string & label,
              const function_ptr & f_ptr, short_t unknown = 0,
@@ -734,28 +711,15 @@ public:
     {
         const_iterator beg, end, cur;
         patchSideComparison psRef(ps);
-        beg = dirichletBegin();
-        end = dirichletEnd();
-        cur=std::find_if(beg,end,psRef);
-        if (cur != end)
-            return &(*cur);
-        beg = neumannBegin();
-        end = neumannEnd();
-        cur=std::find_if(beg,end,psRef);
-        if (cur != end)
-            return &(*cur);
-        beg = robinBegin();
-        end = robinEnd();
-        cur = std::find_if(beg,end,psRef);
-        if (cur != end)
-            return &(*cur);
-        beg = laplaceBegin();
-        end = laplaceEnd();
-        cur = std::find_if(beg,end,psRef);
-        if (cur != end)
-            return &(*cur);
-
-        return NULL;
+        for (auto & bcc : m_bc)
+        {
+            beg = bcc.second.begin();
+            end = bcc.second.end();
+            cur = std::find_if(beg,end,psRef);
+            if (cur != end)
+                return &(*cur);
+        }
+        return nullptr;
     }
 
     /**
@@ -768,32 +732,15 @@ public:
     {
         result.clear();
         const_iterator beg, end, cur;
-
-        beg = dirichletBegin();
-        end = dirichletEnd();
-        for(cur=beg; cur!=end; cur++)
-            if(cur->ps == ps)
+        for (auto & bcc : m_bc)
+        {
+            beg = bcc.second.begin();
+            end = bcc.second.end();
+            for(cur=beg; cur!=end; ++cur)
+            if (cur->ps == ps)
                 result.push_back(*cur);
-
-        beg = neumannBegin();
-        end = neumannEnd();
-        for(cur=beg; cur!=end; cur++)
-            if(cur->ps == ps)
-                result.push_back(*cur);
-
-        beg = robinBegin();
-        end = robinEnd();
-        for(cur=beg; cur!=end; cur++)
-            if(cur->ps == ps)
-                result.push_back(*cur);
-
-        beg = laplaceBegin();
-        end = laplaceEnd();
-        for(cur=beg; cur!=end; cur++)
-            if(cur->ps == ps)
-                result.push_back(*cur);
+        }
     }
-
 
     /**
      * @brief returns the set of all boundary conditions which refer to patch \a np
@@ -807,12 +754,7 @@ public:
         for(const_iterator it = bc_all.begin(); it!= bc_all.end();it++)
         {
             if((*it).patch()==np)
-            {
-                if(it->type() == condition_type::dirichlet || it->type() == condition_type::neumann || it->type() == condition_type::robin || it->type() == condition_type::laplace)
-                    result.addCondition(0,(*it).side(),(*it).type(),(*it).function(),(*it).unknown());
-                else
-                    result.add(0,(*it).side(),it->ctype(),(*it).function(),(*it).unknown());
-            }
+                result.add(0,(*it).side(),it->ctype(),(*it).function(),(*it).unknown());
         }
 
         for(const_citerator it = cornerBegin(); it!= cornerEnd();it++)

@@ -59,7 +59,8 @@ template<short_t d,class T>
 gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m )
 {
     GISMO_ASSERT(mp.nPatches()>0,"MultiPatch is empty?");
-    m_mbases = new gsMappedBasis<d,T>(mp,m);
+    gsMultiBasis<T> mb(mp);
+    m_mbases = new gsMappedBasis<d,T>(mb,m);
 
     // TRANSFORM COEFFICIENTS
     index_t rows = 0;
