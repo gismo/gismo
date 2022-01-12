@@ -37,8 +37,6 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     if ( ! gsFileManager::fileExists(geometry) )
     {
         gsInfo << "Geometry file could not be found.\n";
@@ -46,7 +44,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run ieti_example with options:\n" << opt << std::endl;
+    gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
 
     /******************* Define geometry ********************/
 
@@ -132,7 +130,6 @@ int main(int argc, char *argv[])
 
     // The usual stuff for the expression assembler
     typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
@@ -140,7 +137,7 @@ int main(int argc, char *argv[])
     gsExprAssembler<> assembler(3,3);
 
     // Elements used for numerical integration
-    assembler.setIntegrationElements(mbU);  // All grid are the same, so we can choose any
+    assembler.setIntegrationElements(mbU);  // All grids are the same, so we can choose any
     gsExprEvaluator<> ev(assembler);
 
     // Set the geometry map
@@ -149,9 +146,9 @@ int main(int argc, char *argv[])
     // Set the discretization spaces
     // We define different spaces for the two velocity components since we want
     // to be able to have different spaces (like for Nedelec elements) in future.
-    space u = assembler.getSpace(mbU);
-    space v = assembler.getSpace(mbV);
-    space p = assembler.getSpace(mbP);
+    space u = assembler.getSpace(mbU,1,0);
+    space v = assembler.getSpace(mbV,1,1);
+    space p = assembler.getSpace(mbP,1,2);
 
     // Incorporate Dirichlet BC
     bc1.setGeoMap(mp);
@@ -162,29 +159,39 @@ int main(int argc, char *argv[])
     p.setup(bc0, dirichlet::interpolation, 0);
 
     // Set the source term
-    variable ff1 = assembler.getCoeff(f1, G);
-    variable ff2 = assembler.getCoeff(f2, G);
+    auto ff1 = assembler.getCoeff(f1, G);
+    auto ff2 = assembler.getCoeff(f2, G);
 
     // Initialize the system
-    assembler.initSystem(false);
+    assembler.initSystem();
 
     // Compute the system matrix and right-hand side
-    assembler.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G)
-        + igrad(v, G) * igrad(v, G).tr() * meas(G)
-        + igrad(u, G)[0] * p.tr() * meas(G)
-        + igrad(v, G)[1] * p.tr() * meas(G)
-        + p * igrad(u, G)[0].tr() * meas(G)
-        + p * igrad(v, G)[1].tr() * meas(G)
-    , u * ff1 * meas(G) + v * ff2 * meas(G) );
+    assembler.assemble(
+        igrad(u, G) * igrad(u, G).tr() * meas(G),
+        igrad(v, G) * igrad(v, G).tr() * meas(G),
+        igrad(u, G)[0] * p.tr() * meas(G),
+        igrad(v, G)[1] * p.tr() * meas(G),
+        p * igrad(u, G)[0].tr() * meas(G),
+        p * igrad(v, G)[1].tr() * meas(G),
+        u * ff1 * meas(G),
+        v * ff2 * meas(G)
+    );
 
     gsInfo << "done.\n";
 
     /************ Solve resulting linear system *************/
 
+    index_t size = assembler.matrix().rows();
+    gsInfo << size << " dofs.\n";
+    gsSparseMatrix<> mat = assembler.matrix();
+    mat(size-1,size-1)=1;
+    
+    gsInfo << mat << "\n\n";
+
     gsInfo << "Solve resulting linear system... " << std::flush;
 
     // Solve
-    gsSparseSolver<>::LU solver( assembler.matrix() );
+    gsSparseSolver<>::LU solver( mat );
     gsMatrix<> sol = solver.solve( assembler.rhs() );
 
     gsInfo << "done.\n\n";
