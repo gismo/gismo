@@ -121,9 +121,8 @@ public:
     gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
     {
         // TODO Not always working: make it more general
-        return m_basis->getBase(m_index).boundaryBasis(s).get(); // Wrong, Should return 1-D mappedSingleBasis
+        return m_basis->getBase(m_index).boundaryBasis(s).release(); // Wrong, Should return 1-D mappedSingleBasis
     }
-
 
     /// Returns a bounding box for the basis' domain
     gsMatrix<T> support(const index_t & i) const

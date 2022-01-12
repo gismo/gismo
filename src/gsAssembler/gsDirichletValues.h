@@ -42,7 +42,7 @@ void gsDirichletValues(
         gsDirichletValuesByTPInterpolation(u,bc);
         break;
     case dirichlet::l2Projection:
-        gsDirichletValuesL2Projection(u,bc);
+        gsDirichletValuesByL2Projection(u,bc);
         break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values: "<< dir_values);
@@ -149,7 +149,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 
             // Interpolate dirichlet boundary
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-            gsMatrix<T> dVals = geo->coefs();
+            const gsMatrix<T> & dVals = geo->coefs();
 
             // Save corresponding boundary dofs
             for (index_t l=0; l!= boundary.size(); ++l)
@@ -248,8 +248,8 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 
 
 template<class T>
-void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
-                                    const gsBoundaryConditions<T> & bc)
+void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
+                                      const gsBoundaryConditions<T> & bc)
 {
     const gsFunctionSet<T> & gmap = bc.geoMap();
 
