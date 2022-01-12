@@ -79,7 +79,7 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
 
     // Initial estimate ( Chebyshev-Gauss-Lobatto nodes)
     for ( i = 0; i < n; i++ )
-        x[i] = math::cos ( EIGEN_PI * ( i ) / ( n - 1 ) );
+      x[i] = math::cos ( (T)(EIGEN_PI) * ( i ) / ( n - 1 ) );
 
     gsVector<T> xold(n);
     gsVector<T> p(n*n);
@@ -270,7 +270,7 @@ gsLobattoRule<T>::lookupReference(index_t n,   // Number of points
     default:
     {
         //gsWarn << "  Illegal value of N = " << n << "\n";
-        gsWarn << "Precomputed Lobatto rule (1,..,20) not found.\n";
+        gsWarn << "Precomputed Lobatto rule (1,..,20) not found for N="<<n<<".\n";
         return false;
     }
 

@@ -95,9 +95,7 @@ bool readPK_SURF( const PK_SURF_t & surf, internal::gsXmlTree & data  )
         if ( ! exact )
             gsWarn<< "(!) Surface was approximated.\n";
 
-        //*/
-
-         /*
+        /*
         // Args v2: surface, bounds, force_cubic, force_non_rational, tolerance, 
         // created_BSURF, b_surf_is_exact
         PK_SURF_make_bsurf_o_s cr_opts;
@@ -107,7 +105,7 @@ bool readPK_SURF( const PK_SURF_t & surf, internal::gsXmlTree & data  )
         double tol;
         err = PK_SURF_make_bsurf_2(surf, uvbox, &cr_opts, &cr_stat, &bsurf, &tol, &cr_cont );
         PARASOLID_ERROR(PK_SURF_make_bsurf_2, err);
-        //*/
+        */
         
         // Read in surface to XML
         return readPK_BSURF(bsurf, data);
@@ -148,7 +146,7 @@ bool readPK_BSURF( const PK_BSURF_t & bsurf, internal::gsXmlTree & data  )
     gsInfo <<"is_v_closed: "<< static_cast<bool>(sf.is_v_closed) <<"\n";
     gsInfo <<"self_intersecting: "<< static_cast<bool>(sf.self_intersecting) <<"\n";
     gsInfo <<"convexity: "<< sf.convexity <<"\n";
-//*/
+*/
 
     std::stringstream str;
     str << std::setprecision(16);

@@ -106,8 +106,8 @@ Returns:
     }
     else if ( ON_Mesh::Cast(pGeometry) ) 
     {
-      gsInfo<< "Found an ON_Mesh Object.\n";
-      //const ON_Mesh* pMesh = ON_Mesh::Cast(pGeometry);
+        const ON_Mesh* pMesh = ON_Mesh::Cast(pGeometry);
+        rc = rc & readON_Mesh(pMesh, data );
     }
     else if ( ON_Extrusion::Cast(pGeometry) ) 
       {
@@ -663,6 +663,36 @@ bool readON_NurbsCage( const ON_NurbsCage * pcage, internal::gsXmlTree & data  )
   return true;
 }
 
+
+bool readON_Mesh( const ON_Mesh * msh, internal::gsXmlTree & data  )
+{
+  //ON_TextLog dump; msh->Dump(dump);
+  const int nv = msh->VertexCount(), nf = msh->FaceCount();
+  std::ostringstream str;
+  ON_3dPoint v;
+  str<<"\n";
+  for (int i = 0; i!=nv;++i)
+  {
+      v = msh->Vertex(i);
+      str<<v.x<<" "<<v.y<<" "<<v.z<<"\n";
+  }
+
+  for (int i = 0; i!=nf;++i)
+  {
+      const ON_MeshFace & f = msh->m_F[i];
+      str<<(f.IsTriangle()?3:4)<<" "<< f.vi[0]<<" "<<f.vi[1]<<" "<<f.vi[2];
+      if (f.IsQuad()) str <<" "<< f.vi[3];
+      str<<"\n";
+  }
+
+  internal::gsXmlNode* g = internal::makeNode("Mesh", str.str(), data);
+  g->append_attribute(internal::makeAttribute("type", "off", data ) );
+  g->append_attribute(internal::makeAttribute("vertices", nv, data ) );
+  g->append_attribute( internal::makeAttribute("faces", nf, data ) );
+  internal::gsXmlNode* parent = data.first_node("xml") ;
+  parent->append_node(g);
+  return true;
+}
 
 
 }// namespace extensions

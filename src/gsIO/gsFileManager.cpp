@@ -424,7 +424,14 @@ std::string gsFileManager::getExePath()
     GISMO_ASSERT(_fileExistsWithoutSearching(_temp),
         "The executable cannot be found where it is expected." );
     return getPath(std::string(_temp));
-#elif defined __linux__ // GCC, Clang
+#elif defined __linux__
+    char exePath[PATH_MAX];
+    ssize_t len = ::readlink("/proc/self/exe", exePath, sizeof(exePath));
+    if (len == -1 || len == sizeof(exePath))
+        len = 0;
+    exePath[len] = '\0';
+    return getPath(std::string(exePath));
+#elif defined __FreeBSD__ //https://stackoverflow.com/questions/1023306/finding-current-executables-path-without-proc-self-exe
     char exePath[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", exePath, sizeof(exePath));
     if (len == -1 || len == sizeof(exePath))
@@ -557,7 +564,7 @@ std::string gsFileManager::getExtension(std::string const & fn)
     if(fn.find_last_of(".") != std::string::npos)
     {
         std::string ext = fn.substr(fn.rfind(".")+1);
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+        std::for_each(ext.begin(), ext.end(), [](char& a){ a = static_cast<char>(::tolower(a));} );
         return ext;
     }
     return "";

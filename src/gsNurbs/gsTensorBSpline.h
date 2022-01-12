@@ -242,7 +242,7 @@ public:
 
 public:
 
-    /// Constucts an isoparametric slice of this tensorBSpline by fixing
+    /// Constructs an isoparametric slice of this tensorBSpline by fixing
     /// \a par in direction \a dir_fixed. The resulting tensorBSpline has
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
@@ -252,10 +252,17 @@ public:
     /// The function automatically searches for the midpoint the corresponding knot vector.
     std::vector<gsGeometry<T>* > uniformSplit(index_t dir = -1) const;
 
+    /// Split the patch into smaller patches at the position of all
+    /// knots with multiplicity at least \a minMult
+    std::vector<gsGeometry<T>* > splitAtMult(index_t minMult = 1, index_t dir = -1) const;
+
     /// Splits the geometry into two pieces (\a left, \a right) along direction \a dir at \a xi. The splitting
     /// is performed by increasing the multiplicity of knot \a xi to p+1, or if \a xi does not exist as knot,
     /// it is inserted p+1 times.
     void splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const;
+
+    typename gsGeometry<T>::uPtr iface(const boundaryInterface & bi,
+                                       const gsGeometry<T> & other) const;
 
 protected:
     // TODO Check function
@@ -264,7 +271,18 @@ protected:
     using Base::m_basis;
     using Base::m_coefs;
 
-}; // class gsBSpline
+}; // class gsTensorBSpline
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsTensorBSpline
+   */
+  void pybind11_init_gsTensorBSpline2(pybind11::module &m);
+  void pybind11_init_gsTensorBSpline3(pybind11::module &m);
+  void pybind11_init_gsTensorBSpline4(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

@@ -46,6 +46,8 @@ int main(int argc, char**argv)
     gsVector<> c (3);
     E << 2,2,3 ;
 
+    gsInfo<< "Cross Product (for 3D columns): "<< E.col3d(0).cross(c.col3d(0)) <<"\n";
+
     // Even if two matrices do not have the same size we can assign one
     // to the other and the result will be two identical matrices
     c = E ;

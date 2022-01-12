@@ -271,7 +271,7 @@ void gsPatchGenerator<T>::preparePatch(gsTensorBSplineBasis<d,T> & resultBasis, 
         gsDebugVar( input[2*k  ]->basis() );
         gsDebugVar( input[2*k+1]->basis() );
     }
-//*/
+*/
 
     // Create the final tensor basis
     resultBasis = gsTensorBSplineBasis<d,T>(cBases); //Note: constructor consumes pointers

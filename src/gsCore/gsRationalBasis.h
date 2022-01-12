@@ -450,7 +450,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
             ev(k,i) *= m_weights( act(k,i), 0 ) ;
     }
 }
-//*/
+*/
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,

@@ -350,7 +350,7 @@ void gsTensorBasis<d,T>::boundary_into(boxSide const & s, gsMatrix<int> & bstruc
 
     return this->slice(k, (r ? size(k) - 1 : 0) ).release();
 }
-//*/
+*/
 
 /*
 template <short_t d, class BB, class B>
@@ -370,7 +370,7 @@ struct MakeBoundaryBasis<2, BB, B>
         return bases[0];
     }
 };
-//*/
+*/
 
 template<short_t d, class T>
 void

@@ -172,7 +172,7 @@ struct gsQuasiInterpolate
     static void compute(const gsTensorBSplineBasis<T,2> & tbsp,
                         const gsFunction<T> & fun,
                         gsTensorBSpline<T> & res);
-    //*/
+    */
 
 protected:
 

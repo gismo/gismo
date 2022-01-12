@@ -72,6 +72,9 @@ TEMPLATE_INST
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd);
 
 TEMPLATE_INST
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
+
+TEMPLATE_INST
 void gsWriteParaview(const std::vector<gsMesh<T> >& sl, std::string const & fn);
 
 //TEMPLATE_INST

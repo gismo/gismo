@@ -60,8 +60,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("",  "Nitsche",               "Use Nitsche method for Dirichlet boundary conditions", nitsche);
     cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
     cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles", cycles);
-    cmd.addInt   ("",  "MG.Presmooth",          "Number of pre-smoothing steps", presmooth);
-    cmd.addInt   ("",  "MG.Postsmooth",         "Number of post-smoothing steps", postsmooth);
+    cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre-smoothing steps", presmooth);
+    cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post-smoothing steps", postsmooth);
     cmd.addSwitch("",  "MG.Extrasmooth",        "Doubles the number of smoothing steps for each coarser level", extrasmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
@@ -76,17 +76,15 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     // Default case is levels:=refinements, so replace invalid default accordingly
-    if (levels <0) { levels = refinements; opt.setInt( "MG.Levels", levels ); }
+    if (levels <0) { levels = refinements; cmd.setInt( "MG.Levels", levels ); }
     // The smoothers know their defaults, so remove the invalid default
-    if (damping<0) { opt.remove( "MG.Damping" ); }
+    if (damping<0) { cmd.remove( "MG.Damping" ); }
 
     // Define assembler options
-    opt.remove( "DG" );
-    opt.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
-    opt.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
+    cmd.remove( "DG" );
+    cmd.addInt( "MG.InterfaceStrategy", "", (index_t)( dg      ? iFace::dg          : iFace::conforming      ) );
+    cmd.addInt( "MG.DirichletStrategy", "", (index_t)( nitsche ? dirichlet::nitsche : dirichlet::elimination ) );
 
     if ( ! gsFileManager::fileExists(geometry) )
     {
@@ -95,7 +93,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run multiGrid_example with options:\n" << opt << "\n";
+    gsInfo << "Run multiGrid_example with options:\n" << cmd << "\n";
 
     /******************* Define geometry ********************/
 
@@ -187,31 +185,6 @@ int main(int argc, char *argv[])
     gsMultiBasis<> mb(mp);
     //! [Define Basis]
 
-    //! [Define Non Matching]
-    if (nonMatching)
-    {
-        gsInfo << "Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
-        for (size_t i = 0; i < mb.nBases(); ++i)
-            if ( i%3 == 0 )
-                mb[i].uniformRefine();
-        gsInfo << "done.\n";
-        --refinements;
-
-        gsInfo << "Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
-        for (size_t i = 0; i < mb.nBases(); ++i)
-            if ( i%3 == 1 )
-                mb[i].setDegreePreservingMultiplicity(degree+1);
-        gsInfo << "done.\n";
-
-        if (!dg)
-        {
-            gsInfo << "\nThe option --NonMatching does not allow a conforming discretization. Thus, option --DG is required.\n";
-            return EXIT_FAILURE;
-        }
-
-    }
-    //! [Define Non Matching]
-
     if (xRefine)
     {
         if (mp.nPatches() > 1)
@@ -237,6 +210,31 @@ int main(int argc, char *argv[])
 
     gsInfo << "done.\n";
 
+    //! [Define Non Matching]
+    if (nonMatching)
+    {
+        gsInfo << "Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 0 )
+                mb[i].uniformRefine();
+        gsInfo << "done.\n";
+        --refinements;
+
+        gsInfo << "Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 1 )
+                mb[i].setDegreePreservingMultiplicity(degree+1);
+        gsInfo << "done.\n";
+
+        if (!dg)
+        {
+            gsInfo << "\nThe option --NonMatching does not allow a conforming discretization. Thus, option --DG is required.\n";
+            return EXIT_FAILURE;
+        }
+
+    }
+    //! [Define Non Matching]
+
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
@@ -247,8 +245,8 @@ int main(int argc, char *argv[])
         mb,
         bc,
         f,
-        (dirichlet::strategy) opt.getInt("MG.DirichletStrategy"),
-        (iFace::strategy)     opt.getInt("MG.InterfaceStrategy")
+        (dirichlet::strategy) cmd.getInt("MG.DirichletStrategy"),
+        (iFace::strategy)     cmd.getInt("MG.InterfaceStrategy")
     );
     assembler.assemble();
     //! [Assemble]
@@ -269,7 +267,7 @@ int main(int argc, char *argv[])
     // We move the constructed hiearchy of multi bases into a variable (only required for the subspace smoother)
     // Then we move the transfer matrices into a variable
     //! [Setup grid hierarchy]
-    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, opt.getGroup("MG"))
+    gsGridHierarchy<>::buildByCoarsening(give(mb), bc, cmd.getGroup("MG"))
         .moveMultiBasesTo(multiBases)
         .moveTransferMatricesTo(transferMatrices);
     //! [Setup grid hierarchy]
@@ -277,7 +275,7 @@ int main(int argc, char *argv[])
     // Setup the multigrid solver
     //! [Setup multigrid]
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( assembler.matrix(), transferMatrices );
-    mg->setOptions( opt.getGroup("MG") );
+    mg->setOptions( cmd.getGroup("MG") );
     //! [Setup multigrid]
 
     // Since we are solving a symmetric positive definite problem,we can use a Cholesky solver
@@ -300,25 +298,27 @@ int main(int argc, char *argv[])
             smootherOp = makeJacobiOp(mg->matrix(i));
         else if ( smoother == "GaussSeidel" || smoother == "gs" )
             smootherOp = makeGaussSeidelOp(mg->matrix(i));
+        else if ( smoother == "IncompleteLU" || smoother == "ilu" )
+            smootherOp = makeIncompleteLUOp(mg->matrix(i));
         else if ( smoother == "SubspaceCorrectedMassSmoother" || smoother == "scms" )
             smootherOp = setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
-                multiBases[i], bc, opt, patchLocalDampingParameters );
+                multiBases[i], bc, cmd.getGroup("MG"), patchLocalDampingParameters );
         else if ( smoother == "Hybrid" || smoother == "hyb" )
             smootherOp = gsCompositePrecOp<>::make(
                 makeGaussSeidelOp(mg->matrix(i)),
                 setupSubspaceCorrectedMassSmoother( i, mg->numLevels(), mg->matrix(i),
-                    multiBases[i], bc, opt.getGroup("MG"), patchLocalDampingParameters )
+                    multiBases[i], bc, cmd.getGroup("MG"), patchLocalDampingParameters )
                 );
         //! [Define smoothers]
         else
         {
             gsInfo << "\n\nThe chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
-                      "\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
+                      "\n  IncompleteLU (ilu)\n  SubspaceCorrectedMassSmoother (scms)\n  Hybrid (hyb)\n\n";
             return EXIT_FAILURE;
         }
 
         //! [Define smoothers2]
-        smootherOp->setOptions( opt.getGroup("MG") );
+        smootherOp->setOptions( cmd.getGroup("MG") );
         //! [Define smoothers2]
 
         // Handle the extra-smooth option. On the finest grid level, there is nothing to handle.
@@ -343,11 +343,11 @@ int main(int argc, char *argv[])
     //! [Solve]
     if (iterativeSolver=="cg")
         gsConjugateGradient<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else if (iterativeSolver=="d")
         gsGradientMethod<>( assembler.matrix(), mg )
-            .setOptions( opt.getGroup("Solver") )
+            .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     //! [Solve]
     else
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(opt);
+        fd.add(cmd);
         fd.add(x);
         fd.addComment(std::string("multiGrid_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
