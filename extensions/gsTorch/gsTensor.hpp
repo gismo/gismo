@@ -15,17 +15,14 @@
 namespace gismo
 {
   // Query functions
-  template<typename T> bool gsTensor<T>::isActive() const
-  { return this->requires_grad(); }
-
-  template<typename T> bool gsTensor<T>::isPassive() const
-  { return !this->requires_grad(); }
-
   template<typename T> bool gsTensor<T>::isStrided() const
   { return this->layout() == torch::kStrided; }
 
   template<typename T> bool gsTensor<T>::isSparse() const
   { return this->layout() == torch::kSparse; }
+
+  template<typename T> bool gsTensor<T>::isSparseCsr() const
+  { return this->layout() == torch::kSparseCsr; }
 
   template<typename T> bool gsTensor<T>::isCPU() const
   { return this->device().type() == torch::kCPU; }
@@ -36,16 +33,13 @@ namespace gismo
 
   template<typename T> bool gsTensor<T>::isPinnedMemory() const
   { return this->is_pinned(); }
-
-  template<typename T> bool gsTensor<T>::isNonPinnedMemory() const
-  { return !this->is_pinned(); }
-
+  
   // Setter functions
-  template<typename T> gsTensor<T>& gsTensor<T>::setActive()
+  template<typename T> gsTensor<T>& gsTensor<T>::setRequiresGrad()
   { this->requires_grad_(true);
     return *this; }
 
-  template<typename T> gsTensor<T>& gsTensor<T>::setPassive()
+  template<typename T> gsTensor<T>& gsTensor<T>::unsetRequiresGrad()
   { this->requires_grad_(false);
     return *this; }
 

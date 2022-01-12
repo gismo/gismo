@@ -29,7 +29,13 @@ endif()
 
 # Compile LibTorch from source
 macro(pytorch_compile_from_source)
-  message(FATAL_ERROR "No binary distribution of Torch available for your operating  system")
+  message(STATUS "No binary distribution of LibTorch available for your operating system. Building LibTorch from source.")
+  include(gsFetch)
+  gismo_fetch_directory(torch-src
+    URL            https://github.com/pytorch/pytorch/releases/download/v${TORCH_VER}/pytorch-v${TORCH_VER}.tar.gz
+    DESTINATION    external
+    )
+  set(TORCH_INSTALL_PREFIX ${gismo_SOURCE_DIR}/external/torch-src CACHE INTERNAL "")  
 endmacro()
 
 # Look for pre-installed LibTorch libraries

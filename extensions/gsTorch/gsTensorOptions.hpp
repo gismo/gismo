@@ -17,28 +17,105 @@
 namespace gismo
 {
   // Setter functions
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setActive()
-  { return this->requires_grad(true); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setRequiresGrad()
+  {
+    *this = requires_grad(true);
+    return *this;
+  }
 
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setPassive()
-  { return this->requires_grad(false); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::unsetRequiresGrad()
+  {
+    *this = requires_grad(false);
+    return *this;
+  }
   
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setStrided()
-  { return this->layout(torch::kStrided); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setStrided()
+  {
+    *this = layout(torch::kStrided);
+    return *this;
+  }
 
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setSparse()
-  { return this->layout(torch::kSparse); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setSparse()
+  {
+    *this = layout(torch::kSparse);
+    return *this;
+  }
 
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setCPU()
-  { return this->device(torch::kCPU); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setSparseCsr()
+  {
+    *this = layout(torch::kSparseCsr);
+    return *this;
+  }
 
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setCUDA(int device)
-  { return this->device(torch::kCUDA, device); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setCPU()
+  {
+    *this = device(torch::kCPU);
+    return *this;
+  }
 
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setPinnedMemory()
-  { return this->pinned_memory(true); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setCUDA(int index)
+  {
+    *this = device(torch::kCUDA, index);
+    return *this;
+  }
 
-  template<typename T> gsTensorOptions<T> gsTensorOptions<T>::setNonPinnedMemory()
-  { return this->pinned_memory(false); }
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setPinnedMemory()
+  {
+    *this = pinned_memory(true);
+    return *this;
+  }
+
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::unsetPinnedMemory()
+  {
+    *this = pinned_memory(false);
+    return *this;
+  }
+
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setMemoryFormatPreserve()
+  {
+    *this = memory_format(at::MemoryFormat::Preserve);
+    return *this;
+  }
+  
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setMemoryFormatContiguous()
+  {
+    *this = memory_format(at::MemoryFormat::Contiguous);
+    return *this;
+  }
+  
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setMemoryFormatChannelsLast()
+  {
+    *this = memory_format(at::MemoryFormat::ChannelsLast);
+    return *this;
+  }
+  
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::setMemoryFormatChannelsLast3d()
+  {
+    *this = memory_format(at::MemoryFormat::ChannelsLast3d);
+    return *this;
+  }
+
+  template<typename T> gsTensorOptions<T>& gsTensorOptions<T>::unsetMemoryFormat()
+  {
+    *this = memory_format(c10::nullopt);
+    return *this;
+  }
+
+  // Comparison operators
+  template<typename T> bool gsTensorOptions<T>::operator==(const gsTensorOptions& other) const
+  {
+    return (
+            (dtype() == other.dtype()) &&
+            (requires_grad() == other.requires_grad()) &&
+            (device() == other.device()) &&
+            (layout() == other.layout()) &&
+            (pinned_memory() == other.pinned_memory())
+            );
+  }
+
+  template<typename T> bool gsTensorOptions<T>::operator!=(const gsTensorOptions& other) const
+  {
+    return !(*this==other);
+  }  
   
 } // end namespace gismo
