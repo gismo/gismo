@@ -1,6 +1,6 @@
 /** @file gsMultiGrid.h
 
-    @brief Multigrid solver for isogeometric discretizations.
+    @brief Multigrid preconditioner
 
     This file is part of the G+Smo library.
 
@@ -20,18 +20,23 @@
 namespace gismo
 {
 
-/** @brief Multigrid solver isogeometric problems.
+/** @brief Multigrid preconditioner
  *
- *  This class implements geometric multigrid for isogeometric patches.
+ *  This class implements an generic geometric multigrid framework. This class
+ *  implements a preconditioner which can be used, e.g., in an iterative solver,
+ *  like \a gsConjugateGradient. If a simple multigrid iteration is required,
+ *  use this class as a preconditioner in \a gsGradientMethod with step size 1.
  *
  *  The class expects transfer matrices, which can be constructed with the
  *  class \a gsGridHierarchy.
  *
- *  The matrix to be solved for is stored as \a gsLinearOperator, which means
- *  that also matrix-free variants are possible. In this case the linear
- *  operators representing the siffness matrix have to be provided for all
- *  grid levles; if a sparse matrix is provided, the matrices for the coarser
- *  levels are computed automatically based on the Galerkin principle.
+ *  The intergrid transfers (restriction and prolongation) and the stiffness
+ *  matrix are stored as \a gsLinearOperator, which means that also matrix-free
+ *  variants are possible. If linear operators are provided, operators
+ *  representing the siffness matrix have to be provided for all grid levles.
+ *  If the integrid transfers and the stiffness matrix are provided as a sparse
+ *  matrix, the matrices for the coarser levels are computed automatically based
+ *  on the Galerkin principle.
  *
  *  For all levels, a smoother has to be provided by defining setSmoother().
  *
@@ -164,9 +169,9 @@ public:
     { return uPtr( new gsMultiGridOp( ops, prolongation, restriction, give(coarseSolver) ) ); }
 
 private:
-    // Init function that is used by matrix based constructors
+    /// Init function that is used by matrix based constructors
     void init(SpMatrixPtr fineMatrix, std::vector<SpMatrixRowMajorPtr> transferMatrices);
-    // Init solver on coarsest grid level
+    /// Init solver on coarsest grid level
     void initCoarseSolver() const;
 public:
 
@@ -195,7 +200,7 @@ public:
     ///
     /// @param[in]     rhs     Right-hand side
     /// @param[in,out] x       Current iterate vector
-    void step(const Matrix& rhs, Matrix& x) const
+    void step(const Matrix& rhs, Matrix& x) const override
     { multiGridStep(finestLevel(), rhs, x); }
 
     /// @brief Perform one transposed multigrid cycle
@@ -205,7 +210,7 @@ public:
     ///
     /// This assumes that the stiffness matrix is symmetric, that SymmSmooth is true
     /// and that the smoothers implement stepT correctly.
-    void stepT(const Matrix& rhs, Matrix& x) const
+    void stepT(const Matrix& rhs, Matrix& x) const override
     {
         std::swap(m_numPreSmooth,m_numPostSmooth);
         step(rhs,x);
@@ -248,38 +253,41 @@ public:
     }
 
     /// Number of levels in the multigrid construction
-    index_t numLevels() const               { return n_levels;                 }
+    index_t numLevels() const                         { return m_nLevels;                 }
 
     /// The index of the finest level (0-based)
-    index_t finestLevel() const             { return n_levels - 1;             }
-
-    /// Underlying operator (=stiffness matrix) for given level
-    OpPtr underlyingOp(index_t lvl) const   { return m_ops[lvl];               }
-
-    /// Underlying operator (=stiffness matrix) for finest level
-    OpPtr underlyingOp() const              { return m_ops[finestLevel()];     }
+    index_t finestLevel() const                       { return m_nLevels - 1;             }
 
     /// Set underlying operator (=stiffness matrix) for certain level
     void setUnderlyingOp(index_t lvl, OpPtr op)
     {
-        GISMO_ASSERT ( lvl >= 0 && lvl < n_levels, "gsMultiGridOp: The given level "<<lvl<<" is not feasible." );
+        GISMO_ASSERT ( lvl >= 0 && lvl < m_nLevels, "gsMultiGridOp: The given level "<<lvl<<" is not feasible." );
         m_ops[lvl] = op;
     }
+
+    /// Underlying operator (=stiffness matrix) for given level
+    OpPtr underlyingOp(index_t lvl) const             { return m_ops[lvl];               }
+
+    /// Underlying operator (=stiffness matrix) for finest level
+    OpPtr underlyingOp() const override               { return m_ops[finestLevel()];     }
 
     /// Stiffness matrix for given level
     const SpMatrix& matrix(index_t lvl) const;
 
     /// Stiffness matrix for finest level
-    const SpMatrix& matrix() const          { return matrix(finestLevel());     }
+    const SpMatrix& matrix() const                    { return matrix(finestLevel());     }
 
     /// Number of dofs for the given level
-    index_t nDofs(index_t lvl) const        { return underlyingOp(lvl)->cols(); }
+    index_t nDofs(index_t lvl) const                  { return underlyingOp(lvl)->cols(); }
 
     /// Number of dofs for the finest level
-    index_t nDofs() const                   { return nDofs( finestLevel() );    }
+    index_t nDofs() const                             { return nDofs( finestLevel() );    }
 
-    index_t rows() const                    { return underlyingOp()->rows();    }
-    index_t cols() const                    { return underlyingOp()->cols();    }
+    // For docs, see base class
+    index_t rows() const                              { return underlyingOp()->rows();    }
+
+    // For docs, see base class
+    index_t cols() const                              { return underlyingOp()->cols();    }
 
     /// Set the smoother
     /// @param lvl  The corresponding level
@@ -288,29 +296,38 @@ public:
 
     /// Get the smoother
     /// @param lvl  The corresponding level
-    PrecondPtr smoother(index_t lvl) const  { return m_smoother[lvl]; }
+    PrecondPtr smoother(index_t lvl) const            { return m_smoother[lvl];           }
 
     /// Set the solver for the coarsest problem (level 0)
-    void setCoarseSolver(const OpPtr& sol)  { m_coarseSolver = sol;   }
+    void setCoarseSolver(const OpPtr& sol)            { m_coarseSolver = sol;             }
 
     /// Get the solver for the coarsest problem (level 0)
-    OpPtr coarseSolver() const              { return m_coarseSolver;  }
+    OpPtr coarseSolver() const                        { return m_coarseSolver;            }
 
     /// Set number of pre-smoothing steps to perform
-    void setNumPreSmooth(index_t n)         { m_numPreSmooth = n;     }
+    void setNumPreSmooth(index_t n)                   { m_numPreSmooth = n;               }
+
+    /// Get number of pre-smoothing steps to perform
+    index_t setNumPreSmooth() const                   { return m_numPreSmooth;            }
 
     /// Set number of post-smoothing steps to perform
-    void setNumPostSmooth(index_t n)        { m_numPostSmooth = n;    }
+    void setNumPostSmooth(index_t n)                  { m_numPostSmooth = n;              }
+
+    /// Get number of post-smoothing steps to perform
+    index_t setNumPostSmooth() const                  { return m_numPostSmooth;           }
 
     /// Set symmetric post-smoothing option
     /// @param s       Iff true (default), stepT is called for post-smoothing
-    void setSymmSmooth(bool s)              { m_symmSmooth = s;       }
+    void setSymmSmooth(bool s)                        { m_symmSmooth = s;                 }
+
+    /// Get symmetric post-smoothing option
+    bool symmSmooth() const                           { return m_symmSmooth;              }
 
     /// Set number of coarse grid steps to be applied
     /// @param n       Number of levels (1 for V-cycle, 2 for W-cycle)
     void setNumCycles(index_t n)
     {
-        m_numCycles.setConstant(n_levels-1,n);
+        m_numCycles.setConstant(m_nLevels-1,n);
         // The direct solver on coarsest level is only invoked once
         m_numCycles[0] = 1;
     }
@@ -321,23 +338,29 @@ public:
     /// @param n     Number of calls (1 for V-cycle, 2 for W-cycle)
     void setNumCycles(index_t lvl, index_t n)
     {
-        GISMO_ASSERT(lvl>=0&&lvl<n_levels-1, "gsMultiGrid::setNumCycles: Givel level out of bounds.");
+        GISMO_ASSERT(lvl>=0&&lvl<m_nLevels-1, "gsMultiGrid::setNumCycles: Givel level out of bounds.");
         m_numCycles[lvl] = n;
     }
 
+    /// Get number of coarse grid steps to be applied
+    index_t numCycles(index_t lvl) const              { return m_numCycles[lvl];           }
+
     /// Set the damping of for the coarse-grid correction
-    void setCorarseGridCorrectionDamping(T damping) { m_damping = damping;    }
+    void setCorarseGridCorrectionDamping(T damping)   { m_damping = damping;               }
+
+    /// Get the damping of for the coarse-grid correction
+    T corarseGridCorrectionDamping() const            { return m_damping;                  }
 
     /// Returns a list of default options
     static gsOptionList defaultOptions();
 
     /// Set the options based on a gsOptionList
-    virtual void setOptions(const gsOptionList & opt);
+    void setOptions(const gsOptionList& opt) override;
 
 private:
 
     /// Number of levels
-    index_t n_levels;
+    index_t m_nLevels;
 
     /// Underlying operators (=stiffness matrix) on each level
     std::vector<OpPtr> m_ops;
