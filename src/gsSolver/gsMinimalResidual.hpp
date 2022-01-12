@@ -20,8 +20,8 @@ bool gsMinimalResidual<T>::initIteration( const typename gsMinimalResidual<T>::V
     Base::initIteration(rhs,x);
     //if (Base::initIteration(rhs,x)) return true; // z will not be initialized!
 
-    int n = m_mat->cols();
-    int m = 1; // = rhs.cols();
+    index_t n = m_mat->cols();
+    index_t m = 1; // = rhs.cols();
 
     vPrev.setZero(n,m); vNew.setZero(n,m);
     wPrev.setZero(n,m); w.setZero(n,m); wNew.setZero(n,m);

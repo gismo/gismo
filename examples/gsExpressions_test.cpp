@@ -865,15 +865,20 @@ int main(int argc, char *argv[])
                 <<"Exact:\n"<<exact<<"\n";
     gsInfo<<( (result-exact.transpose()).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
 
+/*
     gsInfo<<"* s grad(u) + u grad(s):\t";
     //space=1,cb=1
+    gsDebugVar( ev.eval(jac(u2) * u_sol, point) );
+    gsDebugVar( ev.eval(u2 * grad(u_sol).tr(), point) );
+    result = ev.eval( jac(u2) * u_sol +  u2 * grad(u_sol).tr(), point );
+
     result = ev.eval( e1.tr() + e2, point );
     result *= solVec;
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<2*exact<<"\n";
     gsInfo<<( (result-2*exact.transpose()).norm() < 1e-10 ? "passed" : "failed" )<<"\n";
-
+*/
 
     gsInfo<<"-------------------------------------------------------------------------"<<"\n";
     gsInfo<<"---------------------------------Assemblers------------------------------"<<"\n";

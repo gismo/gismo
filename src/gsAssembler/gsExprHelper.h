@@ -402,7 +402,8 @@ public:
     void precompute(const boundaryInterface & iFace)
     {
         this->precompute    (iFace.first ().patch, iFace.first() .side());
-        m_mirror->precompute(iFace.second().patch, iFace.second().side());
+        if ( isMirrored() )
+            m_mirror->precompute(iFace.second().patch, iFace.second().side());
     }
 
 };//class gsExprHelper

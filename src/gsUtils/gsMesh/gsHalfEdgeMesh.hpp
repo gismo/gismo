@@ -241,9 +241,9 @@ size_t gsHalfEdgeMesh<T>::findVertex(T x, T y, T z, bool sorted, real_t tol) con
         if((math::abs(x - handle->x()) < tol) &&
            (math::abs(y - handle->y()) < tol) &&
            (math::abs(z - handle->z()) < tol))
-            return sorted == true ? i+1 : i;
+            return sorted ? i+1 : i;
     }
-    return -1;
+    return std::numeric_limits<size_t>::max();
 }
 
 template<class T>

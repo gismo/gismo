@@ -33,8 +33,8 @@ bool gsConjugateGradient<T>::initIteration( const typename gsConjugateGradient<T
     if (Base::initIteration(rhs,x))
         return true;
 
-    int n = m_mat->cols();
-    int m = 1;                                                          // == rhs.cols();
+    index_t n = m_mat->cols();
+    index_t m = 1;                                                      // == rhs.cols();
     m_tmp.resize(n,m);
     m_update.resize(n,m);
 
