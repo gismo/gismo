@@ -17,20 +17,6 @@
 namespace gismo
 {
 
-// template<short_t d,class T>
-// gsMappedBasis<d,T>::gsMappedBasis( gsMultiPatch<T> const & mp, std::string pathToMap )
-// {
-//     m_topol = mp.topology();
-//     m_bases = mp.basesCopy();
-//     gsSparseMatrix<T> m;
-//     gsFileData<T>(pathToMap).getFirst(m);
-//     m_mapper = new gsWeightMapper<T>(m);
-
-//     m_sb.reserve(mp.nPatches());
-//     for (size_t q = 0; q!=m_bases.size(); ++q)
-//         m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-// }
-
 template<short_t d,class T>
 gsMappedBasis<d,T>::gsMappedBasis( const gsMappedBasis& other )
 {

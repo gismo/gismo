@@ -918,7 +918,7 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
     for (index_t i = 0; i != func.size(); ++i)
     {
         const std::string fileName = fn + util::to_string(i);
-        gsWriteParaview(func.function(i), func.function(i).support(), fileName, npts);
+        gsWriteParaview(func.function(i), func.function(i).support(), fileName, npts,false);
         collection.addPart(fileName, ".vts");
     }
 
@@ -928,7 +928,7 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
 
 /// Export a function
 template<class T>
-void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts)
+void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph)
 {
     int d = func.domainDim(); // tested for d==2
 
@@ -967,12 +967,24 @@ void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::st
     //
     file <<"<Points>\n";
     file <<"<DataArray type=\"Float32\" NumberOfComponents=\""<<3<<"\">\n";
-    for ( index_t j=0; j<ev.cols(); ++j)
+    if (graph)
     {
-        for ( index_t i=0; i!=ev.rows(); ++i)
-            file<< ev(i,j) <<" ";
-        for ( index_t i=ev.rows(); i<3; ++i)
-            file<<"0 ";
+        for ( index_t j=0; j<ev.cols(); ++j)
+        {
+            for ( int i=0; i< d; ++i)
+                file<< pts(i,j) <<" ";
+            file<< ev(0,j) <<" ";
+        }
+    }
+    else
+    {
+        for ( index_t j=0; j<ev.cols(); ++j)
+        {
+            for ( index_t i=0; i!=ev.rows(); ++i)
+                file<< ev(i,j) <<" ";
+            for ( index_t i=ev.rows(); i<3; ++i)
+                file<<"0 ";
+        }
     }
     file <<"</DataArray>\n";
     file <<"</Points>\n";

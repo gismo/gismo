@@ -142,8 +142,8 @@ template<class T>
 void gsWriteParaview(gsFunction<T> const& func, 
                      gsMatrix<T> const& supp, 
                      std::string const & fn, 
-                     unsigned npts =NS);
-
+                     unsigned npts =NS,
+                     bool graph = true);
 
 /// \brief Export Basis functions to paraview files
 ///
