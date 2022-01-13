@@ -203,11 +203,11 @@ void gsDofMapper::markCoupledAsTagged()
 void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
 {
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
-    GISMO_ASSERT(static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
+    GISMO_ASSERT(static_cast<size_t>(comp)<componentsSize() || comp == -1, "Invalid component index "<< comp <<" >= "<< componentsSize() );
 
     if (-1==comp)
     {
-        for (index_t c = 0; static_cast<size_t>(comp) != componentsSize(); ++c)
+        for (index_t c = 0; static_cast<size_t>(c) != componentsSize(); ++c)
             eliminateDof(i,k,c);
         return;
     }
