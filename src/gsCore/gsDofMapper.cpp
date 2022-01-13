@@ -205,6 +205,13 @@ void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     GISMO_ASSERT(static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
 
+    if (-1==comp)
+    {
+        for (index_t c = 0; static_cast<size_t>(comp) != componentsSize(); ++c)
+            eliminateDof(i,k,comp);
+        return;
+    }
+
     const index_t old = MAPPER_PATCH_DOF(i,k,comp);
     if (old == 0)       // regular free dof
     {

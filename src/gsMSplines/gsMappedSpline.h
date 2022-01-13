@@ -44,17 +44,12 @@ public:
     /// Default empty constructor
     gsMappedSpline() : m_mbases(nullptr) { }
 
-    // gsMappedSpline( gsMultiPatch<T> const & mp,std::string pathToMap );
-
     /// Construct Geom by multipatch and transformation matrix.
     /// The original coefficients are projected in the gsMappedBasis
     gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m );
 
     /// Construct Geom by basis and coefficient matrix
     gsMappedSpline( const gsMappedBasis<d,T> & mbases, const gsMatrix<T> & coefs );
-
-    // /// Construct Geom by (porjecting) a multipatch together with a coefficient matrix
-    // gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & bmap );
 
     gsMappedSpline( const gsMappedSpline& other );
 
@@ -163,7 +158,6 @@ public:
     gsMatrix<T> support(index_t k) const
     { return m_mbases->getBase(k).support(); }
 
-    /////// TO DO
     gsGeometry<T> * exportPatch(int i,gsMatrix<T> const & localCoef) const;
 
 public:
