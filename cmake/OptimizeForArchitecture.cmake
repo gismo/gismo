@@ -92,6 +92,7 @@ macro(OFA_AutodetectX86)
   set(_cpu_family)
   set(_cpu_model)
   set(_cpu_stepping)
+  
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     file(READ "/proc/cpuinfo" _cpuinfo)
     string(REGEX REPLACE ".*vendor_id[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _vendor_id "${_cpuinfo}")
@@ -111,6 +112,57 @@ macro(OFA_AutodetectX86)
       list(GET _sysctl_output 4 _cpu_flags)
       string(TOLOWER "${_cpu_flags}" _cpu_flags)
       string(REPLACE "." "_" _cpu_flags "${_cpu_flags}")
+    else()
+      # Apple Silicon (ARM64) running in Rosetta 2 mode
+      exec_program("/usr/sbin/sysctl -n hw.cputype machdep.cpu.family hw.cpufamily machdep.cpu.features"        
+        OUTPUT_VARIABLE _sysctl_output_string RETURN_VALUE _error)
+      if(NOT _error)
+        string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
+        list(GET _sysctl_output 0 _cpu_implementer)
+        list(GET _sysctl_output 1 _cpu_family)
+        list(GET _sysctl_output 2 _cpu_model)
+        list(GET _sysctl_output 3 _cpu_flags)
+        string(TOLOWER "${_cpu_flags}" _cpu_flags)
+        string(REPLACE "." "_" _cpu_flags "${_cpu_flags}")
+
+        # Fake vendor
+        if(_cpu_implementer STREQUAL "0x7" OR _cpu_implementer STREQUAL "7")
+          set(_vendor_id "GenuineIntel")
+        else()
+          set(_vendor_id "Unknown")
+        endif()
+
+        # Fake stepping
+        set(_cpu_stepping "Unknown")
+        
+        # Fake model
+        # Taken from /Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk/System/Library/Frameworks/Kernel.framework/Versions/A/Headers/mach/machine.h
+        if(    _cpu_model STREQUAL "0x78ea4fbc" OR _cpu_model STREQUAL "2028621756") # Penryn
+          set(_cpu_model    "23")
+        elseif(_cpu_model STREQUAL "0x6b5a4cd2" OR _cpu_model STREQUAL "1801080018") # Nehalem
+          set(_cpu_model    "26")
+        elseif(_cpu_model STREQUAL "0x573b5eec" OR _cpu_model STREQUAL "1463508716") # Westmere
+          set(_cpu_model    "37")
+        elseif(_cpu_model STREQUAL "0x5490b78c" OR _cpu_model STREQUAL "1418770316") # Sandybridge
+          set(_cpu_model    "42")
+        elseif(_cpu_model STREQUAL "0x1f65e835" OR _cpu_model STREQUAL "526772277")  # Ivybridge
+          set(_cpu_model    "58")
+        elseif(_cpu_model STREQUAL "0x10b282dc" OR _cpu_model STREQUAL "280134364")  # Haswell
+          set(_cpu_model    "60")
+        elseif(_cpu_model STREQUAL "0x582ed09c" OR _cpu_model STREQUAL "1479463068") # Broadwell
+          set(_cpu_model    "61")
+        elseif(_cpu_model STREQUAL "0x37fc219f" OR _cpu_model STREQUAL "939270559")  # Skylake
+          set(_cpu_model    "78")
+        elseif(_cpu_model STREQUAL "0x0f817246" OR _cpu_model STREQUAL "260141638")  # Kabylake
+          set(_cpu_model    "142")
+        elseif(_cpu_model STREQUAL "0x38435547" OR _cpu_model STREQUAL "943936839")  # Icelake
+          set(_cpu_model    "125")
+        elseif(_cpu_model STREQUAL "0x1cf8a03e" OR _cpu_model STREQUAL "486055998")  # Cometlake
+          set(_cpu_model    "142")
+        else()
+          set(_cpu_model    "Unknown")
+        endif()
+      endif()
     endif()
     if(_error)
       message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
@@ -193,7 +245,10 @@ macro(OFA_AutodetectX86)
       elseif(_cpu_model EQUAL 28 OR _cpu_model EQUAL 38 OR _cpu_model EQUAL 39 OR _cpu_model EQUAL 53 OR _cpu_model EQUAL 54)
         set(TARGET_ARCHITECTURE "bonnell")
 
-        # Big cores
+      # Big cores
+      elseif(_cpu_model EQUAL 167)
+        set(TARGET_ARCHITECTURE "rocketlake")
+                
       elseif(_cpu_model EQUAL 151 OR _cpu_model EQUAL 154)
         set(TARGET_ARCHITECTURE "alderlake")
 
@@ -359,8 +414,9 @@ macro(OFA_AutodetectArm)
     string(REGEX REPLACE ".*CPU revision[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_revision "${_cpuinfo}")
     string(REGEX REPLACE ".*Features[ \t]*:[ \t]+([^\n]+).*" "\\1" _cpu_flags "${_cpuinfo}")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    exec_program("/usr/sbin/sysctl -n -n hw.cputype hw.cputype hw.cpusubtype hw.cpufamily hw.cpusubfamily"
+    exec_program("/usr/sbin/sysctl -n hw.cputype hw.cputype hw.cpusubtype hw.cpufamily hw.cpusubfamily"
       OUTPUT_VARIABLE _sysctl_output_string RETURN_VALUE _error)
+    message(${_sysctl_output_string})
     if(NOT _error)
       string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
       list(GET _sysctl_output 0 _cpu_implementer)
@@ -658,9 +714,9 @@ macro(OFA_AutodetectArm)
 
   elseif(_cpu_implementer STREQUAL "0xc0") # Ampere
 
-    # Taken from /Library/Developer/CommandLineTools/SDKs/MacOSX11.1.sdk/System/Library/Frameworks/Kernel.framework/Versions/A/Headers/mach/machine.h
+    # Taken from /Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk/System/Library/Frameworks/Kernel.framework/Versions/A/Headers/mach/machine.h
   elseif(_cpu_implementer STREQUAL "16777228" OR _cpu_implementer STREQUAL "0x100000C")    # Apple ARM64
-    if(_cpu_part STREQUAL "0x1e2d6381"     OR _cpu_part STREQUAL "506291073")              # Swift (A6)
+    if(    _cpu_part STREQUAL "0x1e2d6381" OR _cpu_part STREQUAL "506291073")              # Swift (A6)
       set(TARGET_ARCHITECTURE "apple-a6")
     elseif(_cpu_part STREQUAL "0x37a09642" OR _cpu_part STREQUAL "933271106")              # Cyclone (A7)
       set(TARGET_ARCHITECTURE "apple-a7")
@@ -676,8 +732,9 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "apple-a12")
     elseif(_cpu_part STREQUAL "0x462504d2" OR _cpu_part STREQUAL "1176831186")             # Lightning Thunder (A13)
       set(TARGET_ARCHITECTURE "apple-a13")
-    elseif(_cpu_part STREQUAL "0x1b588bb3" OR _cpu_part STREQUAL "458787763")              # Firestorm Icestorm (M1)
+    elseif(_cpu_part STREQUAL "0x1b588bb3" OR _cpu_part STREQUAL "458787763")              # Firestorm Icestorm (A14 / M1 / M1 Pro / M1 Max)
       set(TARGET_ARCHITECTURE "apple-m1")
+    elseif(_cpu_part STREQUAL "0xda33d83d" OR _cpu_part STREQUAL "3660830781")             # Blizzard Avalanche (A15)
     endif()
   endif()
 endmacro(OFA_AutodetectArm)
@@ -796,6 +853,10 @@ macro(OFA_HandleX86Options)
   endmacro()
   macro(_sapphirerapids)
     list(APPEND _march_flag_list "sapphirerapids")
+    _icelake_avx512()
+  endmacro()
+  macro(_rocketlake)
+    list(APPEND _march_flag_list "rocketlake")
     _icelake_avx512()
   endmacro()
   macro(_knightslanding)
