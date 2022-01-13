@@ -830,7 +830,7 @@ class gsBlockILUT : public gsPreconditionerOp<real_t>
 public:
     typedef memory::unique_ptr<gsBlockILUT> uPtr;
 
-    gsBlockILUT( const gsSparseMatrix<>& op, const gsMultiPatch<>& mp, const gsMultiBasis<>& mb ) : m_op(op)
+    gsBlockILUT( const gsSparseMatrix<>& A, const gsMultiPatch<>& mp, const gsMultiBasis<>& mb ) : m_A(A)
     {
         index_t numPatches = mp.nPatches();
 
@@ -849,54 +849,46 @@ public:
             m_sizes[k] = dm.findFreeUncoupled(k).rows();
             m_shifts[k+1] = m_shifts[k] + m_sizes[k];
         }
-        m_sizes[numPatches] = m_op.rows() - m_shifts[numPatches];
+        m_sizes[numPatches] = m_A.rows() - m_shifts[numPatches];
 
-        // Vector of factorized operators
-        std::vector< gsSparseMatrix<> > ILUT(numPatches+1);
         // Vector of factorized operators
         m_P.resize(numPatches+1);
         // Vector of factorized operators
         m_Pinv.resize(numPatches+1);
-        // Obtain the blocks of the matrix
-        std::vector< gsSparseMatrix<real_t,RowMajor> > ddB(numPatches);
-        std::vector< gsSparseMatrix<> > ddC(numPatches);
         // Define the A_aprox matrix
-        m_A_aprox = gsSparseMatrix<>(m_op.rows(),m_op.cols());
-        std::vector< gsMatrix<> > ddBtilde(numPatches);
-        std::vector< gsMatrix<> > ddCtilde(numPatches);
+        m_A_aprox = gsSparseMatrix<>(m_A.rows(),m_A.cols());
 
-        gsSparseMatrix<> S = m_op.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]);
+        gsSparseMatrix<> S = m_A.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]);
 
         for (index_t k=0 ; k<numPatches; k++)
         {
             // Diagonal entries
-            const gsSparseMatrix<> block = m_op.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]);
+            const gsSparseMatrix<> block = m_A.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]);
             Eigen::IncompleteLUT<real_t> ilu;
             ilu.setFillfactor(1);
             ilu.compute(block);
-            ILUT[k] = ilu.factors();
             m_P[k] = ilu.fillReducingPermutation();
             m_Pinv[k] = ilu.inversePermutation();
-            m_A_aprox.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]) = ILUT[k];
+            m_A_aprox.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]) = ilu.factors();
 
             // Schur complement and off-diagonal contributions
             if (m_sizes[numPatches]>0)
             {
-                ddB[k] = m_op.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]);
-                ddC[k] = m_op.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]);
-                ddBtilde[k] = gsMatrix<>(m_sizes[k],m_sizes[numPatches]);
-                ddCtilde[k] = gsMatrix<>(m_sizes[k],m_sizes[numPatches]);
+                gsSparseMatrix<real_t,RowMajor> ddB = m_A.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]);
+                gsSparseMatrix<real_t> ddC = m_A.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]);
+                gsMatrix<> ddBtilde(m_sizes[k],m_sizes[numPatches]);
+                gsMatrix<> ddCtilde(m_sizes[k],m_sizes[numPatches]);
                 for (index_t j=0; j<m_sizes[numPatches]; j++)
                 {
-                    gsMatrix<> Brhs = ddB[k].row(j)*m_P[k];
-                    gsMatrix<> Crhs = m_Pinv[k]*ddC[k].col(j);
-                    ddBtilde[k].col(j) = ILUT[k].triangularView<Eigen::Upper>().transpose().solve(Brhs.transpose());
-                    ddCtilde[k].col(j) = ILUT[k].triangularView<Eigen::UnitLower>().solve(Crhs);
+                    gsMatrix<> Brhs = ddB.row(j)*m_P[k];
+                    gsMatrix<> Crhs = m_Pinv[k]*ddC.col(j);
+                    ddBtilde.col(j) = ilu.factors().triangularView<Eigen::Upper>().transpose().solve(Brhs.transpose());
+                    ddCtilde.col(j) = ilu.factors().triangularView<Eigen::UnitLower>().solve(Crhs);
                 }
-                S -= (ddBtilde[k].transpose()*ddCtilde[k]).sparseView();
+                S -= (ddBtilde.transpose()*ddCtilde).sparseView();
 
-                m_A_aprox.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]) = ddCtilde[k];
-                m_A_aprox.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]) = ddBtilde[k].transpose();
+                m_A_aprox.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]) = ddCtilde;
+                m_A_aprox.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]) = ddBtilde.transpose();
             }
         }
 
@@ -917,7 +909,7 @@ public:
     void step(const gsMatrix<>& rhs, gsMatrix<>& x) const
     {
         const index_t sz = m_shifts.size();
-        gsMatrix<> d = rhs-m_op*x;
+        gsMatrix<> d = rhs-m_A*x;
         for (index_t k=0; k<sz; ++k)
             d.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*d.block(m_shifts[k],0,m_sizes[k],1);
         d = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(d);
@@ -930,7 +922,7 @@ public:
     void stepT(const gsMatrix<>& rhs, gsMatrix<>& x) const
     {
         const index_t sz = m_shifts.size();
-        gsMatrix<> d = rhs-m_op*x;
+        gsMatrix<> d = rhs-m_A*x;
         for (index_t k=0; k<sz; ++k)
             d.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*d.block(m_shifts[k],0,m_sizes[k],1);
         d = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(d);
@@ -940,13 +932,13 @@ public:
         x += d;
     }
 
-    index_t rows() const { return m_op.rows(); }
-    index_t cols() const { return m_op.cols(); }
-    gsLinearOperator<real_t>::Ptr underlyingOp() const { return makeMatrixOp(m_op); }
+    index_t rows() const { return m_A.rows(); }
+    index_t cols() const { return m_A.cols(); }
+    gsLinearOperator<real_t>::Ptr underlyingOp() const { return makeMatrixOp(m_A); }
 
 private:
     /// Underlying matrix
-    gsSparseMatrix<> m_op;
+    gsSparseMatrix<> m_A;
 
     /// Block operator object
     gsMatrix<> m_A_aprox;
