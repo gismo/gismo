@@ -208,7 +208,7 @@ void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
     if (-1==comp)
     {
         for (index_t c = 0; static_cast<size_t>(comp) != componentsSize(); ++c)
-            eliminateDof(i,k,comp);
+            eliminateDof(i,k,c);
         return;
     }
 
