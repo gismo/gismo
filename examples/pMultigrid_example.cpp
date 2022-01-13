@@ -824,116 +824,95 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     return gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsAdditiveOp<>::make(transfers, ops));
 }
 
-class gsBlockILUT : public gsLinearOperator<real_t>
-{
-public:
-    typedef memory::unique_ptr<gsBlockILUT> uPtr;
-
-    gsBlockILUT( const gsSparseMatrix<>& A, const gsMultiBasis<>& mb )
-    {
-        index_t numPatches = mb.nPieces();
-
-        gsDofMapper dm;
-        mb.getMapper(true,dm,false); // This is what partition would do; but what about the Nitsche case?
-        dm.finalize();
-
-        // Subdivide the overal dofs into
-        //   a) the patch-local dofs (l=0,...,numPatches-1)
-        //   b) the coupled dofs (l=numPatches)
-        m_sizes.resize(numPatches+1);
-        m_shifts.resize(numPatches+1);
-        m_shifts[0] = 0;
-        for (index_t k=0; k<numPatches; k++)
-        {
-            m_sizes[k] = dm.findFreeUncoupled(k).rows();
-            m_shifts[k+1] = m_shifts[k] + m_sizes[k];
-        }
-        m_sizes[numPatches] = A.rows() - m_shifts[numPatches];
-
-        // Vector of factorized operators
-        m_P.resize(numPatches+1);
-        // Vector of factorized operators
-        m_Pinv.resize(numPatches+1);
-        // Define the A_aprox matrix
-        m_A_aprox.setZero(A.rows(),A.cols());
-
-        gsSparseMatrix<> S = A.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]);
-
-        for (index_t k=0 ; k<numPatches; k++)
-        {
-            // Diagonal entries
-            const gsSparseMatrix<> block = A.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]);
-            Eigen::IncompleteLUT<real_t> ilu;
-            ilu.setFillfactor(1);
-            ilu.compute(block);
-            m_P[k] = ilu.fillReducingPermutation();
-            m_Pinv[k] = ilu.inversePermutation();
-            m_A_aprox.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]) = ilu.factors();
-
-            // Schur complement and off-diagonal contributions
-            if (m_sizes[numPatches]>0)
-            {
-                gsMatrix<> ddB = A.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]);
-                gsMatrix<> ddC = A.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]);
-                gsMatrix<> ddBtilde = ilu.factors().triangularView<Eigen::Upper>().transpose().solve((ddB*m_P[k]).transpose()).transpose();
-                gsMatrix<> ddCtilde = ilu.factors().triangularView<Eigen::UnitLower>().solve(m_Pinv[k]*ddC);
-
-                S -= (ddBtilde*ddCtilde).sparseView();
-                m_A_aprox.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]) = ddCtilde;
-                m_A_aprox.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]) = ddBtilde;
-            }
-        }
-
-        // If there is no coupling (for example if there is only one patch), the work
-        // is done. We should not try to compute the ilu factorization then.
-        if (m_sizes[numPatches]>0)
-        {
-            // Preform ILUT on the S-matrix.
-            Eigen::IncompleteLUT<real_t> ilu;
-            ilu.setFillfactor(1);
-            ilu.compute(S);
-            m_P[numPatches] = ilu.fillReducingPermutation();
-            m_Pinv[numPatches] = ilu.inversePermutation();
-            m_A_aprox.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]) = ilu.factors();
-        }
-    }
-
-    void apply(const gsMatrix<>& rhs, gsMatrix<>& x) const
-    {
-        const index_t sz = m_shifts.size();
-        x.setZero(rhs.rows(),rhs.cols());
-        for (index_t k=0; k<sz; ++k)
-            x.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*rhs.block(m_shifts[k],0,m_sizes[k],1);
-        x = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(x);
-        x = m_A_aprox.template triangularView<Eigen::Upper>().solve(x);
-        for (index_t k=0; k<sz-1; ++k)
-            x.block(m_shifts[k],0,m_sizes[k],1) = m_P[k]*x.block(m_shifts[k],0,m_sizes[k],1);
-    }
-
-    index_t rows() const { return m_A_aprox.rows(); }
-    index_t cols() const { return m_A_aprox.cols(); }
-
-private:
-    /// Block operator object
-    // Inefficient since it does not use a sparse matrix
-    gsMatrix<> m_A_aprox;
-
-    /// Vector of factorized operators
-    std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > m_P;
-
-    /// Vector of factorized operators
-    std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > m_Pinv;
-
-    std::vector<index_t> m_sizes;
-    std::vector<index_t> m_shifts;
-
-
-};
-
 gsPreconditionerOp<>::Ptr setupBlockILUT(
-    const gsSparseMatrix<>& matrix,
+    const gsSparseMatrix<>& A,
     const gsMultiBasis<>& mb
 )
 {
-    return gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsBlockILUT::uPtr(new gsBlockILUT(matrix, mb)));
+    index_t nPatches = mb.nPieces();
+
+    gsDofMapper dm;
+    mb.getMapper(true,dm,false); // This is what partition would do; but what about the Nitsche case?
+    dm.finalize();
+
+    // Subdivide the overal dofs into
+    //   a) the patch-local dofs (l=0,...,numPatches-1)
+    //   b) the coupled dofs (l=nPatches)
+    std::vector<index_t> sizes(nPatches+1);
+    std::vector<index_t> shifts(nPatches+1);
+    shifts[0] = 0;
+    for (index_t k=0; k<nPatches; k++)
+    {
+        sizes[k] = dm.findFreeUncoupled(k).rows();
+        shifts[k+1] = shifts[k] + sizes[k];
+    }
+    sizes[nPatches] = A.rows() - shifts[nPatches];
+
+    // Vector of factorized operators
+    std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > P(nPatches+1);
+    // Vector of factorized operators
+    std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > Pinv(nPatches+1);
+    // Define the A_aprox matrix
+    // Inefficient since it does not use a sparse matrix
+    gsMatrix<> A_aprox(A.rows(),A.cols());
+    A_aprox.setZero();
+
+    gsSparseMatrix<> S = A.block(shifts[nPatches],shifts[nPatches],sizes[nPatches],sizes[nPatches]);
+
+    for (index_t k=0 ; k<nPatches; k++)
+    {
+        // Diagonal entries
+        gsSparseMatrix<> block = A.block(shifts[k],shifts[k],sizes[k],sizes[k]);
+        Eigen::IncompleteLUT<real_t> ilu;
+        ilu.setFillfactor(1);
+        ilu.compute(block);
+        P[k] = ilu.fillReducingPermutation();
+        Pinv[k] = ilu.inversePermutation();
+        A_aprox.block(shifts[k],shifts[k],sizes[k],sizes[k]) = ilu.factors();
+
+        // Schur complement and off-diagonal contributions
+        if (sizes[nPatches]>0)
+        {
+            gsMatrix<> ddB = A.block(shifts[nPatches],shifts[k],sizes[nPatches],sizes[k]);
+            gsMatrix<> ddC = A.block(shifts[k],shifts[nPatches],sizes[k],sizes[nPatches]);
+            gsMatrix<> ddBtilde = ilu.factors().triangularView<Eigen::Upper>().transpose().solve((ddB*P[k]).transpose()).transpose();
+            gsMatrix<> ddCtilde = ilu.factors().triangularView<Eigen::UnitLower>().solve(Pinv[k]*ddC);
+
+            S -= (ddBtilde*ddCtilde).sparseView();
+            A_aprox.block(shifts[k],shifts[nPatches],sizes[k],sizes[nPatches]) = ddCtilde;
+            A_aprox.block(shifts[nPatches],shifts[k],sizes[nPatches],sizes[k]) = ddBtilde;
+        }
+    }
+
+    // If there is no coupling (for example if there is only one patch), the work
+    // is done. We should not try to compute the ilu factorization then.
+    if (sizes[nPatches]>0)
+    {
+        // Preform ILUT on the S-matrix.
+        Eigen::IncompleteLUT<real_t> ilu;
+        ilu.setFillfactor(1);
+        ilu.compute(S);
+        P[nPatches] = ilu.fillReducingPermutation();
+        Pinv[nPatches] = ilu.inversePermutation();
+        A_aprox.block(shifts[nPatches],shifts[nPatches],sizes[nPatches],sizes[nPatches]) = ilu.factors();
+    }
+
+    return gsPreconditionerFromOp<>::make(
+        makeMatrixOp(A),
+        makeLinearOp(
+            [m_A_aprox=give(A_aprox), m_P=give(P), m_Pinv=give(Pinv),m_shifts=give(shifts),m_sizes=give(sizes),
+                m_nPatches=nPatches](const gsMatrix<>& rhs, gsMatrix<>& x)
+            {
+                x.setZero(rhs.rows(),rhs.cols());
+                for (index_t k=0; k<=m_nPatches; ++k)
+                    x.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*rhs.block(m_shifts[k],0,m_sizes[k],1);
+                x = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(x);
+                x = m_A_aprox.template triangularView<Eigen::Upper>().solve(x);
+                for (index_t k=0; k<=m_nPatches; ++k)
+                    x.block(m_shifts[k],0,m_sizes[k],1) = m_P[k]*x.block(m_shifts[k],0,m_sizes[k],1);
+            },
+            A.rows(),
+            A.cols()
+        )
+    );
 }
