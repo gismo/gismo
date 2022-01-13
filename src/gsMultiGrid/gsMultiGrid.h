@@ -284,10 +284,10 @@ public:
     index_t nDofs() const                             { return nDofs( finestLevel() );    }
 
     // For docs, see base class
-    index_t rows() override const                     { return underlyingOp()->rows();    }
+    index_t rows() const override                     { return underlyingOp()->rows();    }
 
     // For docs, see base class
-    index_t cols() override const                     { return underlyingOp()->cols();    }
+    index_t cols() const override                     { return underlyingOp()->cols();    }
 
     /// Set the smoother
     /// @param lvl  The corresponding level
