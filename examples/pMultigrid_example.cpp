@@ -824,12 +824,12 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     return gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsAdditiveOp<>::make(transfers, ops));
 }
 
-class gsBlockILUT : public gsPreconditionerOp<real_t>
+class gsBlockILUT : public gsLinearOperator<real_t>
 {
 public:
     typedef memory::unique_ptr<gsBlockILUT> uPtr;
 
-    gsBlockILUT( const gsSparseMatrix<>& A, const gsMultiBasis<>& mb ) : m_A(A)
+    gsBlockILUT( const gsSparseMatrix<>& A, const gsMultiBasis<>& mb )
     {
         index_t numPatches = mb.nPieces();
 
@@ -848,21 +848,21 @@ public:
             m_sizes[k] = dm.findFreeUncoupled(k).rows();
             m_shifts[k+1] = m_shifts[k] + m_sizes[k];
         }
-        m_sizes[numPatches] = m_A.rows() - m_shifts[numPatches];
+        m_sizes[numPatches] = A.rows() - m_shifts[numPatches];
 
         // Vector of factorized operators
         m_P.resize(numPatches+1);
         // Vector of factorized operators
         m_Pinv.resize(numPatches+1);
         // Define the A_aprox matrix
-        m_A_aprox = gsSparseMatrix<>(m_A.rows(),m_A.cols());
+        m_A_aprox.setZero(A.rows(),A.cols());
 
-        gsSparseMatrix<> S = m_A.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]);
+        gsSparseMatrix<> S = A.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]);
 
         for (index_t k=0 ; k<numPatches; k++)
         {
             // Diagonal entries
-            const gsSparseMatrix<> block = m_A.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]);
+            const gsSparseMatrix<> block = A.block(m_shifts[k],m_shifts[k],m_sizes[k],m_sizes[k]);
             Eigen::IncompleteLUT<real_t> ilu;
             ilu.setFillfactor(1);
             ilu.compute(block);
@@ -873,8 +873,8 @@ public:
             // Schur complement and off-diagonal contributions
             if (m_sizes[numPatches]>0)
             {
-                gsMatrix<> ddB = m_A.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]);
-                gsMatrix<> ddC = m_A.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]);
+                gsMatrix<> ddB = A.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]);
+                gsMatrix<> ddC = A.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]);
                 gsMatrix<> ddBtilde = ilu.factors().triangularView<Eigen::Upper>().transpose().solve((ddB*m_P[k]).transpose()).transpose();
                 gsMatrix<> ddCtilde = ilu.factors().triangularView<Eigen::UnitLower>().solve(m_Pinv[k]*ddC);
 
@@ -898,41 +898,24 @@ public:
         }
     }
 
-    void step(const gsMatrix<>& rhs, gsMatrix<>& x) const
+    void apply(const gsMatrix<>& rhs, gsMatrix<>& x) const
     {
         const index_t sz = m_shifts.size();
-        gsMatrix<> d = rhs-m_A*x;
+        x.setZero(rhs.rows(),rhs.cols());
         for (index_t k=0; k<sz; ++k)
-            d.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*d.block(m_shifts[k],0,m_sizes[k],1);
-        d = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(d);
-        d = m_A_aprox.template triangularView<Eigen::Upper>().solve(d);
+            x.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*rhs.block(m_shifts[k],0,m_sizes[k],1);
+        x = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(x);
+        x = m_A_aprox.template triangularView<Eigen::Upper>().solve(x);
         for (index_t k=0; k<sz-1; ++k)
-            d.block(m_shifts[k],0,m_sizes[k],1) = m_P[k]*d.block(m_shifts[k],0,m_sizes[k],1);
-        x += d;
+            x.block(m_shifts[k],0,m_sizes[k],1) = m_P[k]*x.block(m_shifts[k],0,m_sizes[k],1);
     }
 
-    void stepT(const gsMatrix<>& rhs, gsMatrix<>& x) const
-    {
-        const index_t sz = m_shifts.size();
-        gsMatrix<> d = rhs-m_A*x;
-        for (index_t k=0; k<sz; ++k)
-            d.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*d.block(m_shifts[k],0,m_sizes[k],1);
-        d = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(d);
-        d = m_A_aprox.template triangularView<Eigen::Upper>().solve(d);
-        for (index_t k=0; k<sz-1; ++k)
-            d.block(m_shifts[k],0,m_sizes[k],1) = m_P[k]*d.block(m_shifts[k],0,m_sizes[k],1);
-        x += d;
-    }
-
-    index_t rows() const { return m_A.rows(); }
-    index_t cols() const { return m_A.cols(); }
-    gsLinearOperator<real_t>::Ptr underlyingOp() const { return makeMatrixOp(m_A); }
+    index_t rows() const { return m_A_aprox.rows(); }
+    index_t cols() const { return m_A_aprox.cols(); }
 
 private:
-    /// Underlying matrix
-    gsSparseMatrix<> m_A;
-
     /// Block operator object
+    // Inefficient since it does not use a sparse matrix
     gsMatrix<> m_A_aprox;
 
     /// Vector of factorized operators
@@ -948,9 +931,9 @@ private:
 };
 
 gsPreconditionerOp<>::Ptr setupBlockILUT(
-    const gsSparseMatrix<>& op,
+    const gsSparseMatrix<>& matrix,
     const gsMultiBasis<>& mb
 )
 {
-    return gsBlockILUT::uPtr(new gsBlockILUT(op, mb));
+    return gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsBlockILUT::uPtr(new gsBlockILUT(matrix, mb)));
 }
