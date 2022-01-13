@@ -15,8 +15,6 @@
 #include <string>
 
 using namespace gismo;
-using std::max;
-using std::min;
 
 gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const gsSparseMatrix<>&,
@@ -68,14 +66,17 @@ private:
     /// Vector of stiffness matrices
     std::vector<gsSparseMatrix<>> m_matrices;
 
+    /// Vector of linear operators
+    std::vector<gsLinearOperator<>::Ptr> m_operators;
+
     /// Vector of assembler objects
     std::vector<Assembler> m_assembler;
 
     double m_Time_Assembly, m_Time_Transfer, m_Time_Assembly_Galerkin;
 public:
 
-    ///  @brief Set-up p-multigrid solver
-    gsMultiGridOp<>::uPtr setup(
+    /// @brief Set-up
+    pMultigrid(
          const gsMultiPatch<> & mp,
          const gsMultiBasis<> & basis,
          const gsBoundaryConditions<> & bcInfo,
@@ -137,7 +138,7 @@ public:
             }
             else
             {
-                if (hp(min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
+                if (hp(std::min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
                 {
                     m_assembler[i].assemble();
                     m_matrices[i] = m_assembler[i].matrix();
@@ -233,14 +234,14 @@ public:
             {
                 if (hp(hp.rows()-1,0) == 0)
                 {
-                    if (hp(min(i,hp.rows()-1),0) == 1)
+                    if (hp(std::min(i,hp.rows()-1),0) == 1)
                     {
                         m_matrices[i] = m_restriction_H[i]*m_matrices[i+1]*m_prolongation_H[i];
                     }
                 }
                 else
                 {
-                    if (hp(min(i,hp.rows()-1),0) == 1 && i > 0)
+                    if (hp(std::min(i,hp.rows()-1),0) == 1 && i > 0)
                     {
                         m_matrices[i-1] = m_restriction_H[i-1]*m_matrices[i]*m_prolongation_H[i-1];
                     }
@@ -249,13 +250,10 @@ public:
         }
         m_Time_Assembly_Galerkin = clock.stop();
 
-        std::vector<gsLinearOperator<>::Ptr> operators(m_matrices.size());
+        m_operators.resize(m_matrices.size());
         for (size_t i=0; i<m_matrices.size(); i++)
-        {
-            operators[i] = makeMatrixOp(m_matrices[i].moveToPtr());
-        }
+            m_operators[i] = makeMatrixOp(m_matrices[i].moveToPtr());
 
-        return gsMultiGridOp<>::make(operators, m_prolongation, m_restriction);
     }
 
 private:
@@ -371,6 +369,10 @@ public:
     const gsMatrix<>& rhs(index_t level) const { return m_assembler[level].rhs(); }
     const gsSparseMatrix<>& matrix(index_t level) const { return m_assembler[level].matrix(); }
     const gsMultiBasis<>& basis(index_t level) const { return *(m_basis[level]); }
+
+    const std::vector<gsLinearOperator<>::Ptr>& restriction() const { return m_restriction; }
+    const std::vector<gsLinearOperator<>::Ptr>& prolongation() const { return m_prolongation; }
+    const std::vector<gsLinearOperator<>::Ptr>& operators() const { return m_operators; }
 
     double TimeAssembly() const { return m_Time_Assembly; }
     double TimeAssemblyGalerkin() const { return m_Time_Assembly_Galerkin; }
@@ -615,8 +617,7 @@ int main(int argc, char* argv[])
     const bool symmSmoothing = typeSolver == 3;
 
     // Setup of p-mg object
-    pMultigrid< gsCDRAssembler<real_t> > My_MG;
-    gsMultiGridOp<>::Ptr mg = My_MG.setup(
+    pMultigrid< gsCDRAssembler<real_t> > My_MG(
         mp,
         basisL,
         bcInfo,
@@ -632,6 +633,8 @@ int main(int argc, char* argv[])
         coeff_conv,
         coeff_reac
     );
+
+    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make(My_MG.operators(), My_MG.prolongation(), My_MG.restriction());
 
     gsStopwatch clock;
     clock.restart();
