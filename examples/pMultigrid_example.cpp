@@ -28,7 +28,6 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
 
 gsPreconditionerOp<>::Ptr setupBlockILUT(
     const gsSparseMatrix<>&,
-    const gsMultiPatch<>&,
     const gsMultiBasis<>&
 );
 
@@ -668,7 +667,7 @@ int main(int argc, char* argv[])
             case 4:
             {
                 if (typeProjection == 2 || i == numLevels-1)
-                    mg->setSmoother(i,setupBlockILUT(mg->matrix(i), mp, My_MG.basis(i)));
+                    mg->setSmoother(i,setupBlockILUT(mg->matrix(i), My_MG.basis(i)));
                 else
                     mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
                 break;
@@ -830,9 +829,9 @@ class gsBlockILUT : public gsPreconditionerOp<real_t>
 public:
     typedef memory::unique_ptr<gsBlockILUT> uPtr;
 
-    gsBlockILUT( const gsSparseMatrix<>& A, const gsMultiPatch<>& mp, const gsMultiBasis<>& mb ) : m_A(A)
+    gsBlockILUT( const gsSparseMatrix<>& A, const gsMultiBasis<>& mb ) : m_A(A)
     {
-        index_t numPatches = mp.nPatches();
+        index_t numPatches = mb.nPieces();
 
         gsDofMapper dm;
         mb.getMapper(true,dm,false); // This is what partition would do; but what about the Nitsche case?
@@ -874,36 +873,29 @@ public:
             // Schur complement and off-diagonal contributions
             if (m_sizes[numPatches]>0)
             {
-                gsSparseMatrix<real_t,RowMajor> ddB = m_A.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]);
-                gsSparseMatrix<real_t> ddC = m_A.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]);
-                gsMatrix<> ddBtilde(m_sizes[k],m_sizes[numPatches]);
-                gsMatrix<> ddCtilde(m_sizes[k],m_sizes[numPatches]);
-                for (index_t j=0; j<m_sizes[numPatches]; j++)
-                {
-                    gsMatrix<> Brhs = ddB.row(j)*m_P[k];
-                    gsMatrix<> Crhs = m_Pinv[k]*ddC.col(j);
-                    ddBtilde.col(j) = ilu.factors().triangularView<Eigen::Upper>().transpose().solve(Brhs.transpose());
-                    ddCtilde.col(j) = ilu.factors().triangularView<Eigen::UnitLower>().solve(Crhs);
-                }
-                S -= (ddBtilde.transpose()*ddCtilde).sparseView();
+                gsMatrix<> ddB = m_A.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]);
+                gsMatrix<> ddC = m_A.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]);
+                gsMatrix<> ddBtilde = ilu.factors().triangularView<Eigen::Upper>().transpose().solve((ddB*m_P[k]).transpose()).transpose();
+                gsMatrix<> ddCtilde = ilu.factors().triangularView<Eigen::UnitLower>().solve(m_Pinv[k]*ddC);
 
+                S -= (ddBtilde*ddCtilde).sparseView();
                 m_A_aprox.block(m_shifts[k],m_shifts[numPatches],m_sizes[k],m_sizes[numPatches]) = ddCtilde;
-                m_A_aprox.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]) = ddBtilde.transpose();
+                m_A_aprox.block(m_shifts[numPatches],m_shifts[k],m_sizes[numPatches],m_sizes[k]) = ddBtilde;
             }
         }
 
         // If there is no coupling (for example if there is only one patch), the work
         // is done. We should not try to compute the ilu factorization then.
-        if (m_sizes[numPatches]==0)
-          return;
-
-        // Preform ILUT on the S-matrix!
-        Eigen::IncompleteLUT<real_t> ilu;
-        ilu.setFillfactor(1);
-        ilu.compute(S);
-        m_P[numPatches] = ilu.fillReducingPermutation();
-        m_Pinv[numPatches] = ilu.inversePermutation();
-        m_A_aprox.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]) = ilu.factors();
+        if (m_sizes[numPatches]>0)
+        {
+            // Preform ILUT on the S-matrix.
+            Eigen::IncompleteLUT<real_t> ilu;
+            ilu.setFillfactor(1);
+            ilu.compute(S);
+            m_P[numPatches] = ilu.fillReducingPermutation();
+            m_Pinv[numPatches] = ilu.inversePermutation();
+            m_A_aprox.block(m_shifts[numPatches],m_shifts[numPatches],m_sizes[numPatches],m_sizes[numPatches]) = ilu.factors();
+        }
     }
 
     void step(const gsMatrix<>& rhs, gsMatrix<>& x) const
@@ -957,9 +949,8 @@ private:
 
 gsPreconditionerOp<>::Ptr setupBlockILUT(
     const gsSparseMatrix<>& op,
-    const gsMultiPatch<>& mp,
     const gsMultiBasis<>& mb
 )
 {
-    return gsBlockILUT::uPtr(new gsBlockILUT(op, mp, mb));
+    return gsBlockILUT::uPtr(new gsBlockILUT(op, mb));
 }
