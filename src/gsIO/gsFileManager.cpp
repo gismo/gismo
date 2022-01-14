@@ -465,9 +465,9 @@ std::string gsFileManager::getHomePath()
 	char _temp[MAX_PATH];
 	if (SHGetKnownFolderPath(FOLDERID_Profile, KF_FLAG_DEFAULT, NULL, wbuffer) == S_OK)
 	{
-		wcsrtombs_s(NULL, _temp,
-			const_cast<const wchar_t**>(reinterpret_cast<wchar_t**>(wbuffer)),
-			MAX_PATH, NULL);
+		wcsrtombs_s(NULL, _temp, MAX_PATH,
+                    const_cast<const wchar_t**>(reinterpret_cast<wchar_t**>(wbuffer)),
+                    MAX_PATH, NULL);
 	}
 #else
     char* _temp = getenv("HOME");
