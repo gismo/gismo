@@ -40,6 +40,10 @@
 #include <limits.h>
 #endif
 
+#if defined __FreeBSD__
+#include <sys/syslimits.h>
+#endif
+
 namespace gismo
 {
 
