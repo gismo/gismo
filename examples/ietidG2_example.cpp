@@ -81,7 +81,7 @@ public:
         index_t colentry = 0;
         for (index_t r = m_originalSize; r < m_underlyingOperator.rows(); r++, colentry++)
         {
-            m_R2T.insert(r, colentry) = 1;
+            m_R2T.insert(r, colentry) = T(1);
         }
         m_R2T.makeCompressed();
 
@@ -191,7 +191,7 @@ private:
         std::vector<Eigen::Triplet<real_t> > tripletList;
         m_R1T.resize(m_underlyingOperator.rows(), m_fastDiag->rows());
         for (int l = 0; l < m_fastDiag->rows(); ++l)
-            tripletList.push_back(Eigen::Triplet<real_t>(l, l, 1));
+            tripletList.push_back(Eigen::Triplet<real_t>(l, l, T(1)));
 
         const gsTensorBSplineBasis<2, T> &tb1 = dynamic_cast<const gsTensorBSplineBasis<2, T> & >(m_basis[0]);
 
@@ -505,7 +505,7 @@ int main(int argc, char *argv[])
     std::string primals("c");
     bool eliminatePointwiseDofs = true;
     real_t tolerance = 1.e-6;
-    index_t maxIterations = 100;
+    index_t maxIterations = 1000;
     std::string out;
     bool plot = false;
 
@@ -888,7 +888,7 @@ int main(int argc, char *argv[])
         for(index_t i = 1; i <= 1<<mb.dim(); i++)
             bc_local.addCornerValue(i, 0, 0);
 
-        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, 0, 1, reg);
+        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, (real_t)0, (real_t)1, reg);
 
         gsLinearOperator<>::Ptr localPrec = gsInexactIETIPrec<real_t>::make(ADelDel, fastdiagOp,
                                                                        mb_local,
@@ -899,6 +899,13 @@ int main(int argc, char *argv[])
                                                                        penalty,
                                                                        assemblerOptions
                                                                        );
+
+        gsMatrix<> result;
+        fastdiagOp->toMatrix(result);
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix<real_t,Dynamic,Dynamic> > eiP(result);
+        gsInfo<<"eigenvalues P: "<<eiP.eigenvalues().transpose()<<"\n";
+
+
         gsLinearOperator<>::Ptr localSolver = gsIterativeSolverOp<gsConjugateGradient<> >::make(ADelDel, localPrec);
         //gsLinearOperator<>::Ptr localSolver2 = makeSparseLUSolver(ADelDel);
 
