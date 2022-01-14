@@ -240,16 +240,16 @@ SUITE(gsRemoveCorners_test)
         mb[0].component(1).setDegreePreservingMultiplicity(degree+1);
 
         gsBoundaryConditions<> bcInfo;
-        bcInfo.addCondition(0, 1, condition_type::neumann, bc);
+        bcInfo.addCondition(0, 1, condition_type::dirichlet, bc);
         bcInfo.addCondition(0, 2, condition_type::neumann, bc);
-        bcInfo.addCondition(0, 3, condition_type::neumann, bc);
-        bcInfo.addCondition(0, 4, condition_type::dirichlet, bc);
+        bcInfo.addCondition(0, 3, condition_type::dirichlet, bc);
+        bcInfo.addCondition(0, 4, condition_type::neumann, bc);
 
         gsOptionList opt = gsAssembler<>::defaultOptions();
         stiffnessWithCorners = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb.basis(0), bcInfo, opt);
 
         corners.resize(1);
-        corners[0] = mb[0].functionAtCorner(2);
+        corners[0] = stiffnessWithCorners.rows()-1;
 
         index_t row = 0, col = 0;
         for (index_t i = 0; i < stiffnessWithCorners.rows(); i++)

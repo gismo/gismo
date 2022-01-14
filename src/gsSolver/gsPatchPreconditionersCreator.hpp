@@ -60,6 +60,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
         gsMatrix<index_t> bnd;
         std::vector<boxCorner> corners;
+        gsSortedVector<T> boundaryDofs;
+        // delete the dofs on the dirichlet boundary
         for (typename gsBoundaryConditions<T>::const_iterator cit = bc.dirichletSides().begin(); cit != bc.dirichletSides().end(); ++cit) {
             bnd = basis.boundary(cit->side());
             cit->side().getContainedCorners(dim, corners);
@@ -67,15 +69,19 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             for (size_t i = 0; i < corners.size(); ++i)
                 offset.erase(corners[i]);
 
-
-            for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit) {
-                index_t corner = basis.functionAtCorner(mit->first);
-                for (index_t row = 0; row < bnd.rows(); row++) {
-                    if (bnd(row, 0) < corner)
-                        offset[mit->first] += 1;
-                }
+            for (index_t row = 0; row < bnd.rows(); row++) {
+                boundaryDofs.push_sorted_unique(bnd(row, 0));
             }
         }
+
+        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit) {
+            index_t corner = basis.functionAtCorner(mit->first);
+            for (index_t row = 0; row < boundaryDofs.size(); row++) {
+                if (boundaryDofs[row] < corner)
+                    offset[mit->first] += 1;
+            }
+        }
+
 
         U.resize(stiffness[0].rows()*stiffness[1].rows(), 2*offset.size());
         Vtrans.resize(2*offset.size(), stiffness[0].cols()*stiffness[1].cols());
@@ -113,13 +119,13 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
             for(index_t r = 0; r < stiffness[0].rows(); r++) // TODO: Bandwidth (2p + 1)^d
                 U.block(r * mass[1].rows(), i, mass[1].rows(), 1) = stiffness[0](r, c2) * mass[1].col(c1) + isFastDiag * mass[0](r, c2) * stiffness[1].col(c1);
-            U(c, i) = 0;
-            U(c, i+1) = 1.;
+            U(c, i) = T(0);
+            U(c, i+1) = T(1);
 
             for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
                 Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r1) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
-            Vtrans(i, c) = 1.;
-            Vtrans(i+1, c) = 0.;
+            Vtrans(i, c) = T(1);
+            Vtrans(i+1, c) = T(0);
         }
 
         // Set the entries to zero that are already dealt with
@@ -129,8 +135,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             for(; i < U.cols(); i +=2 )
             {
                 for (size_t j = 1; j < elCorner.size(); ++j) {
-                    U(elCorner[j], i) = 0;
-                    Vtrans(i+1, elCorner[j]) = 0;
+                    U(elCorner[j], i) = T(0);
+                    Vtrans(i+1, elCorner[j]) = T(0);
                 }
             }
 
