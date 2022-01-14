@@ -1,7 +1,7 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 
 // Gather builders , 'gismo-win7x64'
-def labels = ['gismo-ubuntu', 'gismo-mac1015', 'gismo-centos', 'gismo-fedora', 'gismo-win10']
+def labels = ['gismo-ubuntu', 'gismo-mac1015', 'gismo-fedora', 'gismo-win10'] //'gismo-centos',
 def builders = [:]
 for (x in labels)
 {
@@ -10,6 +10,9 @@ for (x in labels)
     {
         node(label)
 	{
+		if (label == "gismo-mac1015")
+		   cmd "export PATH=/usr/local/bin:$PATH"
+
 	        //for(e in env) {echo e + " is " + ${e}}
    		dir('gismo_src') { checkout scm }
 	    	//buildGismo()
