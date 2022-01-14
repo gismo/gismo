@@ -30,289 +30,27 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     const gsOptionList&
 );
 
+gsMatrix<> assembleLumpedMass(
+    const gsMultiPatch<>& mp,
+    const gsMultiBasis<>& basis,
+    const gsBoundaryConditions<>& bcInfo,
+    const gsOptionList&
+);
 
-/** @brief The p-multigrid class implements a generic p-multigrid solver
- *  that can be customized by passing assembler and coarse
- *  solver as template arguments.
- *
- *  @note: This implementation assumes that all required prolongation/
- *  restriction operators are generated internally. Therefore, a
- *  problem-specific assembler has to be passed as template argument.
- */
-struct pMultigrid
-{
-private:
+gsSparseMatrix<> assembleMass(
+    const gsMultiPatch<>& mp,
+    const gsMultiBasis<>& basis,
+    const gsBoundaryConditions<>& bcInfo,
+    const gsOptionList&
+);
 
-    /// Vector of multi-basis objects
-    std::vector<memory::shared_ptr<gsMultiBasis<>>> m_basis;
-
-    /// Vector of prolongation matrices for h-refinement
-    std::vector<gsSparseMatrix<real_t,RowMajor>> m_prolongation_H;
-
-    /// Vector of restriction matrices for h-refinement
-    std::vector<gsSparseMatrix<>> m_restriction_H;
-
-    /// Vector of restriction operators
-    std::vector<gsLinearOperator<>::Ptr> m_restriction;
-
-    /// Vector of prolongation operators
-    std::vector<gsLinearOperator<>::Ptr> m_prolongation;
-
-    /// Vector of stiffness matrices
-    std::vector<memory::shared_ptr<gsSparseMatrix<>>> m_matrices;
-
-    /// Vector of linear operators
-    std::vector<gsLinearOperator<>::Ptr> m_operators;
-
-    /// Right-hand-side for finest grid
-    gsMatrix<> m_rhs;
-
-    double m_Time_Assembly, m_Time_Transfer, m_Time_Assembly_Galerkin;
-public:
-
-    /// @brief Set-up
-    pMultigrid(
-         const gsMultiPatch<> & mp,
-         const gsMultiBasis<> & basis,
-         const gsBoundaryConditions<> & bcInfo,
-         const gsFunctionExpr<> & rhs,
-         index_t numLevels,
-         index_t numDegree,
-         index_t typeBCHandling,
-         index_t typeLumping,
-         const gsMatrix<index_t>& hp,
-         index_t typeProjection,
-         index_t typeCoarseOperator,
-         const gsFunctionExpr<> coeff_diff,
-         const gsFunctionExpr<> coeff_conv,
-         const gsFunctionExpr<> coeff_reac
-        )
-    {
-        m_basis.push_back(memory::make_shared_not_owned(&basis));
-
-        for (index_t i = 1; i < numLevels; i++)
-        {
-            m_basis.push_back(give(m_basis.back()->clone()));
-            switch ( hp(i-1,0) )
-            {
-                case 0 : (typeProjection == 1 ? m_basis.back()->degreeIncrease(numDegree-1) : m_basis.back()->degreeIncrease()); break;
-
-                case 1 : m_basis.back()->uniformRefine(); break;
-
-                case 2 : m_basis.back()->uniformRefine(); m_basis.back()->degreeIncrease(); break;
-            }
-        }
-
-        // Resize vectors of operators
-        m_prolongation_H.resize(numLevels-1);
-        m_restriction_H.resize(numLevels-1);
-        m_restriction.resize(numLevels-1);
-        m_prolongation.resize(numLevels-1);
-
-        // Assemble operators at finest level
-        gsStopwatch clock;
-
-        // Determine prolongation/restriction operators
-        clock.restart();
-        gsOptionList options;
-        options.addInt("DirichletStrategy","",typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche);
-        for (index_t i = 1; i < numLevels; i++)
-        {
-            if (hp(i-1,0) != 1)
-            {
-                if (typeLumping == 1)
-                {
-                    gsSparseMatrix<> mixedMass = assembleMixedMass(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
-                    gsSparseMatrix<real_t> prolongation
-                          = assembleLumpedMass(mp, *m_basis[i], bcInfo, typeBCHandling).asDiagonal().inverse()
-                          * mixedMass;
-                    gsSparseMatrix<real_t> restriction
-                          = assembleLumpedMass(mp, *m_basis[i-1], bcInfo, typeBCHandling).asDiagonal().inverse()
-                          * mixedMass.transpose();
-                    m_prolongation[i-1] = makeMatrixOp(prolongation.moveToPtr());
-                    m_restriction[i-1] = makeMatrixOp(restriction.moveToPtr());
-                }
-                else
-                {
-                    gsSparseMatrix<> prolongationP =  assembleMixedMass(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
-                    gsSparseMatrix<> restrictionP =  prolongationP.transpose();
-                    gsSparseMatrix<> prolongationM = assembleMass(mp, *m_basis[i], bcInfo, typeBCHandling);
-                    gsSparseMatrix<> restrictionM = assembleMass(mp, *m_basis[i-1], bcInfo, typeBCHandling);
-
-                    m_prolongation[i-1] = makeLinearOp(
-                        [m_prolongationP=give(prolongationP),m_prolongationM=give(prolongationM)]
-                        (const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
-                        {
-                            gsConjugateGradient<> CGSolver(m_prolongationM);
-                            CGSolver.setTolerance(1e-12);
-                            CGSolver.solve(m_prolongationP*Xcoarse,Xfine);
-                        },
-                        prolongationP.rows(), prolongationP.cols()
-                    );
-                    m_restriction[i-1] = makeLinearOp(
-                        [m_restrictionP=give(restrictionP),m_restrictionM=give(restrictionM)]
-                        (const gsMatrix<>& Xfine, gsMatrix<>& Xcoarse)
-                        {
-                            gsConjugateGradient<> CGSolver(m_restrictionM);
-                            CGSolver.setTolerance(1e-12);
-                            CGSolver.solve(m_restrictionP*Xfine,Xcoarse);
-                        },
-                        restrictionP.rows(), restrictionP.cols()
-                    );
-
-                }
-            }
-            else //if (hp(i-1,0) == 1)
-            {
-                gsMultiBasis<> basis_copy = *m_basis[i];
-                basis_copy.uniformCoarsen_withTransfer(m_prolongation_H[i-1],bcInfo,options);
-                m_restriction_H[i-1] = m_prolongation_H[i-1].transpose();
-
-                m_prolongation[i-1] = makeMatrixOp(m_prolongation_H[i-1]);
-                m_restriction[i-1] = makeMatrixOp(m_restriction_H[i-1]);
-
-            }
-        }
-        m_Time_Transfer = clock.stop();
-
-        gsInfo << "|| Multigrid hierarchy ||\n";
-        m_matrices.resize(numLevels);
-        m_operators.resize(m_matrices.size());
-        m_Time_Assembly = 0;
-        m_Time_Assembly_Galerkin = 0;
-        for (index_t i = numLevels-1; i >= 0; --i)
-        {
-            if (typeCoarseOperator == 1 || i == numLevels-1 || hp(i,0) != 1)
-            {
-                gsInfo << "Assemble on level " << i << ": ";
-                clock.restart();
-                gsCDRAssembler<real_t> assembler(
-                    mp,
-                    *(m_basis[i]),
-                    bcInfo,
-                    rhs,
-                    coeff_diff, coeff_conv, coeff_reac,
-                    (typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche),
-                    iFace::glue
-                );
-                assembler.assemble();
-                m_matrices[i] = gsSparseMatrix<>(assembler.matrix()).moveToPtr();
-                if (i==numLevels-1)
-                    m_rhs = give(assembler.rhs());
-                m_Time_Assembly += clock.stop();
-                gsInfo << "Degree: " << m_basis[i]->degree()  << ", Ndof: " << m_matrices[i]->rows() << "\n";
-            }
-            else
-            {
-                gsInfo << "Apply Galerkin projection on level " << i << ": ";
-                clock.restart();
-                m_matrices[i] = gsSparseMatrix<>(m_restriction_H[i] * *(m_matrices[i+1]) * m_prolongation_H[i]).moveToPtr();
-                m_Time_Assembly_Galerkin += clock.stop();
-                gsInfo << "Ndof: " << m_matrices[i]->rows() << "\n";
-            }
-            m_operators[i] = makeMatrixOp(m_matrices[i]);
-        }
-
-    }
-
-private:
-
-    /// @brief Determine \f$ \int_\Omega p_i dx \f$ with basis functions \f$ p_i \f$ as vector
-    /// The entries of this vector are the row-sums of the mass matrix
-    static gsMatrix<> assembleLumpedMass(
-        const gsMultiPatch<>& mp,
-        const gsMultiBasis<>& basis,
-        const gsBoundaryConditions<>& bcInfo,
-        index_t typeBCHandling
-    )
-    {
-        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-        typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space space;
-
-        gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(mp);
-        space w_n = ex.getSpace(basis, 1, 0);
-        w_n.setInterfaceCont(0);
-        if (typeBCHandling == 1)
-        {
-            w_n.setup(bcInfo, dirichlet::interpolation, 0);
-        }
-        ex.setIntegrationElements(basis);
-        ex.initSystem();
-        ex.assemble(w_n * meas(G));
-        return ex.rhs();
-    }
-
-    /// @brief Determines the mass matrix
-    static gsSparseMatrix<> assembleMass(
-        const gsMultiPatch<>& mp,
-        const gsMultiBasis<>& basis,
-        const gsBoundaryConditions<>& bcInfo,
-        index_t typeBCHandling
-    )
-    {
-        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-        typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space space;
-
-        gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(mp);
-        space w_n = ex.getSpace(basis, 1, 0);
-        if (typeBCHandling == 1)
-        {
-            w_n.setup(bcInfo, dirichlet::interpolation, 0);
-        }
-        ex.setIntegrationElements(basis);
-        ex.initSystem();
-        ex.assemble(w_n * meas(G) * w_n.tr());
-        return ex.matrix();
-    }
-
-    /// @brief Determines the mass matrix with different bases for trial and test functions
-    /// The evaluation of the integrals is baed on the trial space (basisU)
-    static gsSparseMatrix<> assembleMixedMass(
-        const gsMultiPatch<>& mp,
-        const gsMultiBasis<>& basisU,
-        const gsMultiBasis<>& basisV,
-        const gsBoundaryConditions<>& bcInfo,
-        index_t typeBCHandling
-    )
-    {
-        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-        typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space space;
-
-        gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(mp);
-        space v_n = ex.getSpace(basisU, 1, 0);
-        space u_n = ex.getTestSpace(v_n, basisV);
-        if (typeBCHandling == 1)
-        {
-            v_n.setup(bcInfo, dirichlet::interpolation, 0);
-            u_n.setup(bcInfo, dirichlet::interpolation, 0);
-        }
-        ex.setIntegrationElements(basisU);
-        ex.initSystem();
-        ex.assemble(u_n * meas(G) * v_n.tr());
-        return ex.matrix().transpose();
-    }
-
-public:
-    const gsMatrix<>& rhs() const { return m_rhs; }
-    const gsSparseMatrix<>& matrix(index_t level) const { return *(m_matrices[level]); }
-    const gsSparseMatrix<>& matrix() const { return *(m_matrices.back()); }
-    const gsMultiBasis<>& basis(index_t level) const { return *(m_basis[level]); }
-
-    const std::vector<gsLinearOperator<>::Ptr>& restriction() const { return m_restriction; }
-    const std::vector<gsLinearOperator<>::Ptr>& prolongation() const { return m_prolongation; }
-    const std::vector<gsLinearOperator<>::Ptr>& operators() const { return m_operators; }
-
-    double TimeAssembly() const { return m_Time_Assembly; }
-    double TimeAssemblyGalerkin() const { return m_Time_Assembly_Galerkin; }
-    double TimeTransfer() const { return m_Time_Transfer; }
-
-};
+gsSparseMatrix<> assembleMixedMass(
+    const gsMultiPatch<>& mp,
+    const gsMultiBasis<>& basisU,
+    const gsMultiBasis<>& basisV,
+    const gsBoundaryConditions<>& bcInfo,
+    const gsOptionList&
+);
 
 int main(int argc, char* argv[])
 {
@@ -363,12 +101,16 @@ int main(int argc, char* argv[])
 
     gsOptionList opt;
 
-    if (typeBCHandling < 1 || typeBCHandling > 2)
+    switch (typeBCHandling)
     {
-        gsInfo << "Unknown boundary condition handling type chosen.\n";
-        return -1;
+        case 1:
+            opt.addInt("DirichletStrategy","",dirichlet::elimination); break;
+        case 2:
+            opt.addInt("DirichletStrategy","",dirichlet::nitsche    ); break;
+        default:
+            gsInfo << "Unknown boundary condition handling type chosen.\n";
+            return EXIT_FAILURE;
     }
-    opt.addInt("DirichletStrategy","",typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche);
 
     if (typeLumping < 1 || typeLumping > 2)
     {
@@ -382,9 +124,9 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (typeCoarseOperator < 1 || typeCoarseOperator > 4)
+    if (typeCoarseOperator < 1 || typeCoarseOperator > 2)
     {
-        gsInfo << "Unknown smoother chosen.\n";
+        gsInfo << "Unknown coarse operator chosen.\n";
         return -1;
     }
 
@@ -469,17 +211,23 @@ int main(int argc, char* argv[])
 
     gsInfo << "Number of patches: " << mp.nPatches() << "\n\n";
 
+    // Define boundary conditions
+    gsBoundaryConditions<> bcInfo;
+    gsFunctionExpr<> zero("0", mp.geoDim());
+    for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+    {
+        bcInfo.addCondition(*bit, condition_type::dirichlet, &sol_exact);
+    }
+    bcInfo.setGeoMap(mp);
+
     // Multi basis
     gsMultiBasis<> basis(mp);
-
-    gsMatrix<index_t> hp = gsMatrix<index_t>::Zero(numLevels-1,1);
 
     // Read string from command line
     index_t numRefH = 0;
     index_t numRefP = 0;
     index_t numRefZ = 0;
 
-    // Convert input string to array
     if (typeCoarsening.size() != static_cast<size_t>(numLevels-1))
     {
         gsInfo << "The string provided to --Coarsening should have length " << numLevels-1 << "\n";
@@ -488,20 +236,11 @@ int main(int argc, char* argv[])
     for ( index_t i = 0; i < numLevels-1 ; ++i)
     {
         if ( typeCoarsening[i] == 'h')
-        {
-            hp(i,0) = 1;
-            numRefH = numRefH + 1;
-        }
+            numRefH++;
         else if ( typeCoarsening[i] == 'p')
-        {
-            hp(i,0) = 0;
-            numRefP = numRefP + 1;
-        }
+            numRefP++;
         else if ( typeCoarsening[i] == 'z')
-        {
-            hp(i,0) = 2;
-            numRefZ = numRefZ + 1;
-        }
+            numRefZ++;
         else
         {
             gsInfo << "Unknown coarsening type given.\n";
@@ -525,47 +264,162 @@ int main(int argc, char* argv[])
         basis.uniformRefine();
     }
 
-    // Define boundary conditions
-    gsBoundaryConditions<> bcInfo;
-    gsFunctionExpr<> zero("0", mp.geoDim());
-    for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-    {
-        bcInfo.addCondition(*bit, condition_type::dirichlet, &sol_exact);
-    }
-    bcInfo.setGeoMap(mp);
-
     // Generate sequence of bases on all levels
     if (typeProjection == 1)
     {
         numLevels = numLevels - numDegree + 2;
     }
 
-    const bool symmSmoothing = typeSolver == 3;
+    std::vector<memory::shared_ptr<gsMultiBasis<>>> bases;
+    bases.push_back(memory::make_shared_not_owned(&basis));
 
-    // Setup of p-mg object
-    pMultigrid My_MG(
-        mp,
-        basis,
-        bcInfo,
-        rhs_exact,
-        numLevels,
-        numDegree,
-        typeBCHandling,
-        typeLumping,
-        hp,
-        typeProjection,
-        typeCoarseOperator,
-        coeff_diff,
-        coeff_conv,
-        coeff_reac
-    );
-
-    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make(My_MG.operators(), My_MG.prolongation(), My_MG.restriction());
+    for (index_t i = 1; i < numLevels; i++)
+    {
+        bases.push_back(give(bases.back()->clone()));
+        if ( typeCoarsening[i-1] == 'p' )
+        {
+            if (typeProjection == 1)
+                bases.back()->degreeIncrease(numDegree-1);
+            else
+                bases.back()->degreeIncrease();
+        }
+        else if ( typeCoarsening[i-1] == 'h' )
+        {
+            bases.back()->uniformRefine();
+        }
+        else //if ( typeCoarsening[i-1] == 'z' )
+        {
+            bases.back()->uniformRefine();
+            bases.back()->degreeIncrease();
+        }
+    }
 
     gsStopwatch clock;
+
+    // Determine prolongation/restriction operators
+    std::vector<gsSparseMatrix<real_t,RowMajor>> prolongation_H(numLevels-1);
+    std::vector<gsLinearOperator<>::Ptr> restriction(numLevels-1);
+    std::vector<gsLinearOperator<>::Ptr> prolongation(numLevels-1);
+
     clock.restart();
-    mg->setCoarseSolver(makeSparseLUSolver(mg->matrix(0)));
+    for (index_t i = 1; i < numLevels; i++)
+    {
+        if (typeCoarsening[i-1] != 'h')
+        {
+            if (typeLumping == 1)
+            {
+                gsSparseMatrix<> mixedMass = assembleMixedMass(mp, *bases[i], *bases[i-1], bcInfo, opt);
+                gsSparseMatrix<real_t> prolongationMatrix
+                      = assembleLumpedMass(mp, *bases[i], bcInfo, opt).asDiagonal().inverse()
+                      * mixedMass;
+                gsSparseMatrix<real_t> restrictionMatrix
+                      = assembleLumpedMass(mp, *bases[i-1], bcInfo, opt).asDiagonal().inverse()
+                      * mixedMass.transpose();
+                prolongation[i-1] = makeMatrixOp(prolongationMatrix.moveToPtr());
+                restriction[i-1] = makeMatrixOp(restrictionMatrix.moveToPtr());
+            }
+            else
+            {
+                gsSparseMatrix<> prolongationP =  assembleMixedMass(mp, *bases[i], *bases[i-1], bcInfo, opt);
+                gsSparseMatrix<> restrictionP =  prolongationP.transpose();
+                gsSparseMatrix<> prolongationM = assembleMass(mp, *bases[i], bcInfo, opt);
+                gsSparseMatrix<> restrictionM = assembleMass(mp, *bases[i-1], bcInfo, opt);
+
+                prolongation[i-1] = makeLinearOp(
+                    [prolongationP=give(prolongationP),prolongationM=give(prolongationM)]
+                    (const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
+                    {
+                        gsConjugateGradient<> CGSolver(prolongationM);
+                        CGSolver.setTolerance(1e-12);
+                        CGSolver.solve(prolongationP*Xcoarse,Xfine);
+                    },
+                    prolongationP.rows(), prolongationP.cols()
+                );
+                restriction[i-1] = makeLinearOp(
+                    [restrictionP=give(restrictionP),restrictionM=give(restrictionM)]
+                    (const gsMatrix<>& Xfine, gsMatrix<>& Xcoarse)
+                    {
+                        gsConjugateGradient<> CGSolver(restrictionM);
+                        CGSolver.setTolerance(1e-12);
+                        CGSolver.solve(restrictionP*Xfine,Xcoarse);
+                    },
+                    restrictionP.rows(), restrictionP.cols()
+                );
+
+            }
+        }
+        else //if (typeCoarsening[i-1] == 'h')
+        {
+            bases[i]->clone()->uniformCoarsen_withTransfer(prolongation_H[i-1],bcInfo,opt);
+            prolongation[i-1] = makeMatrixOp(prolongation_H[i-1]);
+            restriction[i-1] = makeMatrixOp(prolongation_H[i-1].transpose());
+
+        }
+    }
+    double Time_Transfer = clock.stop();
+
+    // Determine stiffness matrices (assembling or Galerkin projection)
+    gsInfo << "|| Multigrid hierarchy ||\n";
+    std::vector<gsSparseMatrix<>> matrices(numLevels);
+    std::vector<gsLinearOperator<>::Ptr> operators(numLevels);
+    gsMatrix<> rhs;
+    double Time_Assembly = 0, Time_Galerkin = 0;
+    for (index_t i = numLevels-1; i >= 0; --i)
+    {
+        if (typeCoarseOperator == 1 || i == numLevels-1 || typeCoarsening[i] != 'h')
+        {
+            gsInfo << "Assemble on level " << i << ": ";
+            clock.restart();
+            gsCDRAssembler<real_t> assembler(
+                mp,
+                *(bases[i]),
+                bcInfo,
+                rhs_exact,
+                coeff_diff, coeff_conv, coeff_reac,
+                (dirichlet::strategy)opt.getInt("DirichletStrategy"),
+                iFace::glue
+            );
+            assembler.assemble();
+            matrices[i] = assembler.matrix();
+            if (i==numLevels-1)
+                rhs = assembler.rhs();
+            Time_Assembly += clock.stop();
+            gsInfo << "Degree: " << bases[i]->degree()  << ", Ndof: " << matrices[i].rows() << "\n";
+        }
+        else
+        {
+            gsInfo << "Apply Galerkin projection on level " << i << ": ";
+            clock.restart();
+            matrices[i] = prolongation_H[i].transpose() * matrices[i+1] * prolongation_H[i];
+            Time_Galerkin += clock.stop();
+            gsInfo << "Ndof: " << matrices[i].rows() << "\n";
+        }
+        operators[i] = makeMatrixOp(matrices[i]);
+    }
+    gsSparseMatrix<>& matrix = matrices.back();
+    gsInfo << "\n|| Setup Timings || \n";
+    gsInfo << "Total transfer setup time: " << Time_Transfer << "\n";
+    gsInfo << "Total Assembly time: " << Time_Assembly << "\n";
+    gsInfo << "Total Galerkin projections: " << Time_Galerkin << "\n";
+
+    // Setup of multigrid object
+    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make(operators, prolongation, restriction);
+
+    // Setup of solver for coarsest grid level
+    clock.restart();
+    mg->setCoarseSolver(makeSparseLUSolver(matrices[0]));
     double Time_Coarse_Solver_Setup = clock.stop();
+    gsInfo << "Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
+
+    // Specify the number of cycles
+    // For coarsest level, we stick to 1 in any case (exact solver is never cycled)
+    for (index_t i=1; i<numLevels-1; i++)
+    {
+        if (typeCoarsening[i] != 'h') // offset?
+            mg->setNumCycles(i,typeCycle_p);
+        else
+            mg->setNumCycles(i,typeCycle_h);
+    }
 
     // Setup of smoothers
     opt.addReal("Scaling","",0.12);           // only used for SCMS
@@ -577,48 +431,37 @@ int main(int argc, char* argv[])
         {
             case 1:
                 if (typeProjection == 2 || i == numLevels-1)
-                    mg->setSmoother(i,makeIncompleteLUOp(mg->matrix(i)));
+                    mg->setSmoother(i,makeIncompleteLUOp(matrices[i]));
                 else
-                    mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
+                    mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
                 break;
             case 2:
-                mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
+                mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
                 break;
             case 3:
-                mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(mg->matrix(i), My_MG.basis(i), bcInfo, opt));
+                mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(matrices[i], *(bases[i]), bcInfo, opt));
                 break;
             case 4:
                 if (typeProjection == 2 || i == numLevels-1)
-                    mg->setSmoother(i,setupBlockILUT(mg->matrix(i), My_MG.basis(i), bcInfo, opt));
+                    mg->setSmoother(i,setupBlockILUT(matrices[i], *(bases[i]), bcInfo, opt));
                 else
-                    mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
+                    mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
                 break;
             default:
                 gsInfo << "Unknown smoother chosen.\n";
                 return EXIT_FAILURE;
         }
     }
-    double Time_Smoother_Setup = clock.stop();
-
     mg->setNumPreSmooth(numSmoothing);
     mg->setNumPostSmooth(numSmoothing);
-    mg->setSymmSmooth(symmSmoothing);
-    // For coarsest level, we stick to 1 in any case (exact solver is never cycled)
-    for (index_t i=1; i<numLevels-1; i++)
-    {
-        if (hp(i,0) == 0) // offset?
-            mg->setNumCycles(i,typeCycle_p);
-        else
-            mg->setNumCycles(i,typeCycle_h);
-    }
-
-    gsInfo << "\n|| Setup Timings || \n";
-    gsInfo << "Total Assembly time: " << My_MG.TimeAssembly() << "\n";
-    gsInfo << "Total Assembly time (Galerkin): " << My_MG.TimeAssemblyGalerkin() << "\n";
-    gsInfo << "Total transfer setup time: " << My_MG.TimeTransfer() << "\n";
-    gsInfo << "Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
+    // For the conjugate Gradient solver, the post smoother needs to be the transpose of the
+    // pre smoother. For all other iterative solvers, it does not matter. So, we choose
+    // pre smoothing and post smoothing to be the same.
+    mg->setSymmSmooth(typeSolver == 3);
+    double Time_Smoother_Setup = clock.stop();
     gsInfo << "Smoother setup time: " << Time_Smoother_Setup << "\n";
-    gsInfo << "Total setup time: " << My_MG.TimeAssembly() + My_MG.TimeAssemblyGalerkin() + My_MG.TimeTransfer() 
+
+    gsInfo << "Total setup time: " << Time_Assembly + Time_Galerkin + Time_Transfer 
         + Time_Coarse_Solver_Setup + Time_Smoother_Setup << "\n";
 
     // Setup of iterative solver
@@ -629,31 +472,31 @@ int main(int argc, char* argv[])
             gsInfo << "\n|| Solver information ||\np-multigrid is applied as stand-alone solver\n";
             // The preconditioned gradient method is noting but applying p-multigrid as a stand-alone solver.
             // We have to set step size = 1 to deactivate automatic stepsize control.
-            solver = gsGradientMethod<>::make(mg->underlyingOp(), mg, 1);
+            solver = gsGradientMethod<>::make(matrix, mg, 1);
             break;
         case 2:
             gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
-            solver = gsBiCgStab<>::make(mg->underlyingOp(), mg);
+            solver = gsBiCgStab<>::make(matrix, mg);
             break;
         case 3:
             gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
-            solver = gsConjugateGradient<>::make(mg->underlyingOp(), mg);
+            solver = gsConjugateGradient<>::make(matrix, mg);
             break;
         default:
             gsInfo << "Unknown iterative solver chosen.\n";
             return EXIT_FAILURE;
     }
 
-    gsMatrix<> x = gsMatrix<>::Random(mg->underlyingOp()->rows(),1);
+    gsMatrix<> x = gsMatrix<>::Random(matrix.rows(),1);
 
     // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
-    const real_t rhs_norm = My_MG.rhs().norm();
-    solver->setTolerance(tol * (My_MG.rhs()-My_MG.matrix()*x).norm() / rhs_norm );
+    const real_t rhs_norm = rhs.norm();
+    solver->setTolerance( tol * (rhs-matrix*x).norm() / rhs_norm );
     solver->setMaxIterations(maxIter);
     gsMatrix<> error_history;
     clock.restart();
-    solver->solveDetailed( My_MG.rhs(), x, error_history );
-    real_t Time_Solve = clock.stop();
+    solver->solveDetailed( rhs, x, error_history );
+    double Time_Solve = clock.stop();
 
     for (index_t i=1; i<error_history.rows(); ++i)
     {
@@ -670,9 +513,9 @@ int main(int argc, char* argv[])
         gsInfo << "Solver did not reach accuracy goal within " << solver->iterations() << " iterations.\n";
     gsInfo << "The iteration took " << Time_Solve << " seconds.\n";
     // Determine residual and l2 error
-    gsInfo << "Residual after solving: "  << (My_MG.rhs()-My_MG.matrix()*x).norm() << "\n";
+    gsInfo << "Residual after solving: "  << (rhs-matrix*x).norm() << "\n";
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 // Create the subspace corrected mass smoother
@@ -688,8 +531,8 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     // Setup dof mapper
     gsDofMapper dm;
     mb.getMapper(
-       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
-       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       (dirichlet::strategy)opt.getInt("DirichletStrategy"),
+       iFace::glue,
        bc,
        dm,
        0
@@ -761,8 +604,8 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     // Setup dof mapper
     gsDofMapper dm;
     mb.getMapper(
-       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
-       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       (dirichlet::strategy)opt.getInt("DirichletStrategy"),
+       iFace::glue,
        bc,
        dm,
        0
@@ -847,4 +690,85 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
             A.cols()
         )
     );
+}
+
+/// @brief Determine \f$ \int_\Omega p_i dx \f$ with basis functions \f$ p_i \f$ as vector
+/// The entries of this vector are the row-sums of the mass matrix
+gsMatrix<> assembleLumpedMass(
+    const gsMultiPatch<>& mp,
+    const gsMultiBasis<>& basis,
+    const gsBoundaryConditions<>& bcInfo,
+    const gsOptionList& opt
+)
+{
+    typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+    typedef gsExprAssembler<real_t>::variable variable;
+    typedef gsExprAssembler<real_t>::space space;
+
+    gsExprAssembler<real_t> ex(1,1);
+    geometryMap G = ex.getMap(mp);
+    space w_n = ex.getSpace(basis, 1, 0);
+    w_n.setInterfaceCont(0);
+    if ((dirichlet::strategy)opt.getInt("DirichletStrategy") == dirichlet::elimination)
+    {
+        w_n.setup(bcInfo, dirichlet::interpolation, 0);
+    }
+    ex.setIntegrationElements(basis);
+    ex.initSystem();
+    ex.assemble(w_n * meas(G));
+    return ex.rhs();
+}
+
+/// @brief Determines the mass matrix
+gsSparseMatrix<> assembleMass(
+    const gsMultiPatch<>& mp,
+    const gsMultiBasis<>& basis,
+    const gsBoundaryConditions<>& bcInfo,
+    const gsOptionList& opt
+)
+{
+    typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+    typedef gsExprAssembler<real_t>::variable variable;
+    typedef gsExprAssembler<real_t>::space space;
+
+    gsExprAssembler<real_t> ex(1,1);
+    geometryMap G = ex.getMap(mp);
+    space w_n = ex.getSpace(basis, 1, 0);
+    if ((dirichlet::strategy)opt.getInt("DirichletStrategy") == dirichlet::elimination)
+    {
+        w_n.setup(bcInfo, dirichlet::interpolation, 0);
+    }
+    ex.setIntegrationElements(basis);
+    ex.initSystem();
+    ex.assemble(w_n * meas(G) * w_n.tr());
+    return ex.matrix();
+}
+
+/// @brief Determines the mass matrix with different bases for trial and test functions
+/// The evaluation of the integrals is baed on the trial space (basisU)
+gsSparseMatrix<> assembleMixedMass(
+    const gsMultiPatch<>& mp,
+    const gsMultiBasis<>& basisU,
+    const gsMultiBasis<>& basisV,
+    const gsBoundaryConditions<>& bcInfo,
+    const gsOptionList& opt
+)
+{
+    typedef gsExprAssembler<real_t>::geometryMap geometryMap;
+    typedef gsExprAssembler<real_t>::variable variable;
+    typedef gsExprAssembler<real_t>::space space;
+
+    gsExprAssembler<real_t> ex(1,1);
+    geometryMap G = ex.getMap(mp);
+    space v_n = ex.getSpace(basisU, 1, 0);
+    space u_n = ex.getTestSpace(v_n, basisV);
+    if ((dirichlet::strategy)opt.getInt("DirichletStrategy") == dirichlet::elimination)
+    {
+        v_n.setup(bcInfo, dirichlet::interpolation, 0);
+        u_n.setup(bcInfo, dirichlet::interpolation, 0);
+    }
+    ex.setIntegrationElements(basisU);
+    ex.initSystem();
+    ex.assemble(u_n * meas(G) * v_n.tr());
+    return ex.matrix().transpose();
 }
