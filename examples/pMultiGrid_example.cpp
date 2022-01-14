@@ -469,9 +469,8 @@ int main(int argc, char* argv[])
 
     gsInfo << "Number of patches: " << mp.nPatches() << "\n\n";
 
-    // Construct two bases (coarse and fine level)
-    gsMultiBasis<> basisL(mp);
-    gsMultiBasis<> basisH(mp);
+    // Multi basis
+    gsMultiBasis<> basis(mp);
 
     gsMatrix<index_t> hp = gsMatrix<index_t>::Zero(numLevels-1,1);
 
@@ -513,25 +512,18 @@ int main(int argc, char* argv[])
     // Apply refinement in p for coarse level
     if (numRefP + numRefZ == numDegree)
     {
-        basisL.degreeReduce(1);
+        basis.degreeReduce(1);
     }
     else
     {
-        basisL.degreeIncrease(numDegree-numRefP-numRefZ-1);
+        basis.degreeIncrease(numDegree-numRefP-numRefZ-1);
     }
 
     // Apply refinement in h for coarse and fine level
     for (index_t i = 0; i < numRefine - numRefH - numRefZ; ++i)
     {
-        basisL.uniformRefine();
+        basis.uniformRefine();
     }
-    for (index_t i = 0; i < numRefine ; ++i)
-    {
-        basisH.uniformRefine();
-    }
-
-    // Apply refinement in p for fine level
-    basisH.degreeIncrease(numDegree-1);
 
     // Define boundary conditions
     gsBoundaryConditions<> bcInfo;
@@ -553,7 +545,7 @@ int main(int argc, char* argv[])
     // Setup of p-mg object
     pMultigrid My_MG(
         mp,
-        basisL,
+        basis,
         bcInfo,
         rhs_exact,
         numLevels,
@@ -626,7 +618,8 @@ int main(int argc, char* argv[])
     gsInfo << "Total transfer setup time: " << My_MG.TimeTransfer() << "\n";
     gsInfo << "Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
     gsInfo << "Smoother setup time: " << Time_Smoother_Setup << "\n";
-    gsInfo << "Total setup time: " << My_MG.TimeAssembly() + My_MG.TimeAssemblyGalerkin() + My_MG.TimeTransfer() + Time_Coarse_Solver_Setup + Time_Smoother_Setup << "\n";
+    gsInfo << "Total setup time: " << My_MG.TimeAssembly() + My_MG.TimeAssemblyGalerkin() + My_MG.TimeTransfer() 
+        + Time_Coarse_Solver_Setup + Time_Smoother_Setup << "\n";
 
     // Setup of iterative solver
     gsIterativeSolver<>::Ptr solver;
