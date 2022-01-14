@@ -160,54 +160,40 @@ public:
             {
                 if (typeLumping == 1)
                 {
-                    gsSparseMatrix<> prolongationP = prolongation_P(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
-                    gsSparseMatrix<> restrictionP = prolongationP.transpose();
-                    gsMatrix<> prolongationM = prolongation_M(mp, *m_basis[i], bcInfo, typeBCHandling);
-                    gsMatrix<> restrictionM = restriction_M(mp, *m_basis[i-1], bcInfo, typeBCHandling);
-
-                    m_prolongation[i-1] = makeLinearOp(
-                        [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
-                        {
-                            gsVector<> temp = prolongationP*Xcoarse;
-                            gsMatrix<> Minv = prolongationM.array().inverse();
-                            Xfine = Minv.cwiseProduct(temp);
-                        },
-                        prolongationP.rows(), prolongationP.cols()
-                    );
-                    m_restriction[i-1] = makeLinearOp(
-                        [=](const gsMatrix<>& Xfine, gsMatrix<>& Xcoarse)
-                        {
-                            gsVector<> temp = restrictionP*Xfine;
-                            gsMatrix<> Minv = restrictionM.array().inverse();
-                            Xcoarse = Minv.cwiseProduct(temp);
-                        },
-                        restrictionP.rows(), restrictionP.cols()
-                    );
+                    gsSparseMatrix<> mixedMass = assembleMixedMass(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
+                    gsSparseMatrix<real_t> prolongation
+                          = assembleLumpedMass(mp, *m_basis[i], bcInfo, typeBCHandling).asDiagonal().inverse()
+                          * mixedMass;
+                    gsSparseMatrix<real_t> restriction
+                          = assembleLumpedMass(mp, *m_basis[i-1], bcInfo, typeBCHandling).asDiagonal().inverse()
+                          * mixedMass.transpose();
+                    m_prolongation[i-1] = makeMatrixOp(prolongation.moveToPtr());
+                    m_restriction[i-1] = makeMatrixOp(restriction.moveToPtr());
                 }
                 else
                 {
-                    gsSparseMatrix<> prolongationP =  prolongation_P(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
+                    gsSparseMatrix<> prolongationP =  assembleMixedMass(mp, *m_basis[i], *m_basis[i-1], bcInfo, typeBCHandling);
                     gsSparseMatrix<> restrictionP =  prolongationP.transpose();
-                    gsSparseMatrix<> prolongationM2 = prolongation_M2(mp, *m_basis[i], bcInfo, typeBCHandling);
-                    gsSparseMatrix<> restrictionM2 = restriction_M2(mp, *m_basis[i-1], bcInfo, typeBCHandling);
+                    gsSparseMatrix<> prolongationM = assembleMass(mp, *m_basis[i], bcInfo, typeBCHandling);
+                    gsSparseMatrix<> restrictionM = assembleMass(mp, *m_basis[i-1], bcInfo, typeBCHandling);
 
                     m_prolongation[i-1] = makeLinearOp(
-                        [=](const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
+                        [m_prolongationP=give(prolongationP),m_prolongationM=give(prolongationM)]
+                        (const gsMatrix<>& Xcoarse, gsMatrix<>& Xfine)
                         {
-                            gsMatrix<> temp = prolongationP*Xcoarse;
-                            gsConjugateGradient<> CGSolver(prolongationM2);
+                            gsConjugateGradient<> CGSolver(m_prolongationM);
                             CGSolver.setTolerance(1e-12);
-                            CGSolver.solve(temp,Xfine);
+                            CGSolver.solve(m_prolongationP*Xcoarse,Xfine);
                         },
                         prolongationP.rows(), prolongationP.cols()
                     );
                     m_restriction[i-1] = makeLinearOp(
-                        [=](const gsMatrix<>& Xfine, gsMatrix<>& Xcoarse)
+                        [m_restrictionP=give(restrictionP),m_restrictionM=give(restrictionM)]
+                        (const gsMatrix<>& Xfine, gsMatrix<>& Xcoarse)
                         {
-                            gsMatrix<> temp = restrictionP*Xfine;
-                            gsConjugateGradient<> CGSolver(restrictionM2);
+                            gsConjugateGradient<> CGSolver(m_restrictionM);
                             CGSolver.setTolerance(1e-12);
-                            CGSolver.solve(temp,Xcoarse);
+                            CGSolver.solve(m_restrictionP*Xfine,Xcoarse);
                         },
                         restrictionP.rows(), restrictionP.cols()
                     );
@@ -259,111 +245,85 @@ public:
 
 private:
 
-    /// @brief Construct prolongation operator at level numLevels
-    static gsMatrix<> prolongation_M(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisH, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
+    /// @brief Determine \f$ \int_\Omega p_i dx \f$ with basis functions \f$ p_i \f$ as vector
+    /// The entries of this vector are the row-sums of the mass matrix
+    static gsMatrix<> assembleLumpedMass(
+        const gsMultiPatch<>& mp,
+        const gsMultiBasis<>& basis,
+        const gsBoundaryConditions<>& bcInfo,
+        index_t typeBCHandling
+    )
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
 
-        // Determine matrix M (high_order * high_order)
         gsExprAssembler<real_t> ex(1,1);
         geometryMap G = ex.getMap(mp);
-        space w_n = ex.getSpace(basisH, 1, 0);
+        space w_n = ex.getSpace(basis, 1, 0);
         w_n.setInterfaceCont(0);
         if (typeBCHandling == 1)
         {
             w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
-        ex.setIntegrationElements(basisH);
+        ex.setIntegrationElements(basis);
         ex.initSystem();
         ex.assemble(w_n * meas(G));
         return ex.rhs();
     }
 
-    static gsSparseMatrix<> prolongation_M2(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisH, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
+    /// @brief Determines the mass matrix
+    static gsSparseMatrix<> assembleMass(
+        const gsMultiPatch<>& mp,
+        const gsMultiBasis<>& basis,
+        const gsBoundaryConditions<>& bcInfo,
+        index_t typeBCHandling
+    )
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
 
-        // Determine matrix M (high_order * high_order)
         gsExprAssembler<real_t> ex(1,1);
         geometryMap G = ex.getMap(mp);
-        space w_n = ex.getSpace(basisH, 1, 0);
+        space w_n = ex.getSpace(basis, 1, 0);
         if (typeBCHandling == 1)
         {
             w_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
-        ex.setIntegrationElements(basisH);
+        ex.setIntegrationElements(basis);
         ex.initSystem();
         ex.assemble(w_n * meas(G) * w_n.tr());
         return ex.matrix();
     }
 
-    /// @brief Construct prolongation operator at level numLevels
-    static gsSparseMatrix<> prolongation_P(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisH, const gsMultiBasis<>& basisL, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
+    /// @brief Determines the mass matrix with different bases for trial and test functions
+    /// The evaluation of the integrals is baed on the trial space (basisU)
+    static gsSparseMatrix<> assembleMixedMass(
+        const gsMultiPatch<>& mp,
+        const gsMultiBasis<>& basisU,
+        const gsMultiBasis<>& basisV,
+        const gsBoundaryConditions<>& bcInfo,
+        index_t typeBCHandling
+    )
     {
         typedef gsExprAssembler<real_t>::geometryMap geometryMap;
         typedef gsExprAssembler<real_t>::variable variable;
         typedef gsExprAssembler<real_t>::space space;
 
-        // Determine matrix P (high_order * low_order)
         gsExprAssembler<real_t> ex(1,1);
         geometryMap G = ex.getMap(mp);
-        space v_n = ex.getSpace(basisH, 1, 0);
-        space u_n = ex.getTestSpace(v_n, basisL);
+        space v_n = ex.getSpace(basisU, 1, 0);
+        space u_n = ex.getTestSpace(v_n, basisV);
         if (typeBCHandling == 1)
         {
             v_n.setup(bcInfo, dirichlet::interpolation, 0);
             u_n.setup(bcInfo, dirichlet::interpolation, 0);
         }
-        ex.setIntegrationElements(basisH);
+        ex.setIntegrationElements(basisU);
         ex.initSystem();
         ex.assemble(u_n * meas(G) * v_n.tr());
         return ex.matrix().transpose();
-    }
-
-    /// @brief Construct restriction operator at level numLevels
-    static gsMatrix<> restriction_M(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisL, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
-    {
-        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-        typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space    space;
-
-        // Determine matrix M (low_order * low_order)
-        gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(mp);
-        space w_n = ex.getSpace(basisL ,1, 0);
-        if (typeBCHandling == 1)
-        {
-            w_n.setup(bcInfo, dirichlet::interpolation, 0);
-        }
-        ex.setIntegrationElements(basisL);
-        ex.initSystem();
-        ex.assemble(w_n * meas(G));
-        return ex.rhs();
-    }
-
-    /// @brief Construct restriction operator at level numLevels
-    static gsSparseMatrix<> restriction_M2(const gsMultiPatch<>& mp, const gsMultiBasis<>& basisL, const gsBoundaryConditions<>& bcInfo, index_t typeBCHandling)
-    {
-        typedef gsExprAssembler<real_t>::geometryMap geometryMap;
-        typedef gsExprAssembler<real_t>::variable variable;
-        typedef gsExprAssembler<real_t>::space space;
-
-        // Determine matrix M (low_order * low_order)
-        gsExprAssembler<real_t> ex(1,1);
-        geometryMap G = ex.getMap(mp);
-        space w_n = ex.getSpace(basisL, 1, 0);
-        if (typeBCHandling == 1)
-        {
-            w_n.setup(bcInfo, dirichlet::interpolation, 0);
-        }
-        ex.setIntegrationElements(basisL);
-        ex.initSystem();
-        ex.assemble(w_n * meas(G) * w_n.tr());
-        return ex.matrix();
     }
 
 public:
