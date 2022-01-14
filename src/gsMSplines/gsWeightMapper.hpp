@@ -1,4 +1,4 @@
-/** @file gsWeightMapper.cpp
+/** @file gsWeightMapper.hpp
 
     @brief Provides implementation of gsWeightMapper class.
 

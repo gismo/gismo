@@ -98,7 +98,7 @@ public:
         m_alpha     = options.askReal("Nitsche.Alpha", 1);
         m_beta      = options.askReal("Nitsche.Beta" , 1);
 
-        if (options.getSwitch("DG.ParameterGridSize"))
+        if (options.getSwitch("Nitsche.ParameterGridSize"))
         {
             m_h     = basis.getMinCellLength();
         }

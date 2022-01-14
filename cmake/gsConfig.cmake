@@ -82,7 +82,8 @@ endforeach()
 set( MEMORYCHECK_COMMAND_OPTIONS "--error-exitcode=1 --leak-check=yes -q" CACHE INTERNAL "") #note: empty defaults to "-q --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=50
 set( MEMORYCHECK_SUPPRESSIONS_FILE "${gismo_SOURCE_DIR}/cmake/valgrind_supp.txt" CACHE INTERNAL "")
 
-set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+#AppleClang 11 might skip flags or fail if this is off
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(AddCXXCompileOptions)
 
@@ -198,6 +199,24 @@ elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Dar
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden")
     endif()
+endif()
+
+if (GISMO_BUILD_PYBIND11)
+   find_package(pybind11 REQUIRED)
+   include_directories(${pybind11_INCLUDE_DIR})
+  
+   #find_package(PythonLibs REQUIRED)# deprecated since cmake 3.12
+   #PYTHON_LIBRARY
+   #PYTHON_INCLUDE_DIR
+
+   # New and better way:
+   find_package(Python REQUIRED COMPONENTS Development) #Python2 Python3
+   #Python_INCLUDE_DIRS
+   #Python_LIBRARIES
+
+   #find_package(PythonLibsNew ${PYBIND11_PYTHON_VERSION} MODULE REQUIRED) #pybind11
+
+   include_directories(${Python_INCLUDE_DIRS})
 endif()
 
 if (GISMO_WITH_OPENMP)

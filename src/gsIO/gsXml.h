@@ -197,7 +197,7 @@ public:
         Object::Object_does_not_exist_ERROR;
         return "";
     }
-//*/
+*/
     static std::string type ();
     static Object * get      (gsXmlNode * node);
     static void     get_into (gsXmlNode * node, Object & result);

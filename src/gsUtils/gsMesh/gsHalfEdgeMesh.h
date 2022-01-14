@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Groiss, J. Vogl
+    Author(s): L. Groiss, J. Vogl, D. Mokris
 */
 
 #pragma once
@@ -354,7 +354,7 @@ public:
          * @param[in] nextHalfedge halfedge that should be appended at end
          * \note will be append to m_chainedHalfedges
          */
-        void appendNextHalfedge(const Halfedge &nextHalfedge);
+        void appendNextHalfedge(const Halfedge &nextHalfedge, bool ignoreWarning = false);
 
     private:
         std::list<Halfedge> m_chainedHalfedges; ///< list of halfedges
@@ -364,8 +364,8 @@ private:
     /**
      * @brief Class that maintains boundary of triangle mesh.
      *
-     * A Boundary class object is given by a chain of the boundary
-     * halfedges.  The halfedges are ordered counter clockwise.
+     * A Boundary class object is given by one or more chains of the boundary
+     * halfedges. The halfedges are ordered counter clockwise.
      *
      * An object of the class can be constructed by a vector of all
      * unordered halfedges of the mesh.
@@ -404,7 +404,13 @@ private:
          *
          * @return number of vertices
          */
-        size_t getNumberOfVertices() const { return m_boundary.getNumberOfVertices(); }
+        size_t getNumberOfVertices() const
+        {
+            size_t result = 0;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+                result += it->getNumberOfVertices();
+            return result;
+        }
 
         /**
          * @brief Get length
@@ -413,7 +419,13 @@ private:
          *
          * @return length
          */
-        T getLength() const { return m_boundary.getLength(); }
+        T getLength() const
+        {
+            T result = 0;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+                result += it->getLength();         
+            return result;
+        }
 
         /**
          * @brief Get halfedge lengths
@@ -422,7 +434,16 @@ private:
          *
          * @return vector of halfedges
          */
-        const std::vector<T> getHalfedgeLengths() const { return m_boundary.getHalfedgeLengths(); }
+        const std::vector<T> getHalfedgeLengths() const
+        {
+            std::vector<T> result;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                const std::vector<T> lengthsOneComp = it->getHalfedgeLengths();
+                result.insert(result.end(), lengthsOneComp.begin(), lengthsOneComp.end());
+            }
+            return result;
+        }
 
         /**
          * @brief Get list of vertex indices in the chain.
@@ -431,7 +452,16 @@ private:
          *
          * @return list of vertex indices
          */
-        const std::list<size_t > getVertexIndices() const { return m_boundary.getVertexIndices(); }
+        const std::list<size_t > getVertexIndices() const
+        {
+            std::list<size_t> result;
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                const std::list<size_t>& indicesOneComp = it->getVertexIndices();
+                result.insert(result.end(), indicesOneComp.begin(), indicesOneComp.end());
+            }       
+            return result;
+        }
 
         /**
          * @brief Get distance between vertices
@@ -444,7 +474,16 @@ private:
          * @param[in] precision tolerance
          * @return (shortest) distance between vertices
          */
-        T getShortestDistanceBetween(const size_t &i, const size_t &j, T precision) const { return m_boundary.getShortestDistanceBetween(i, j, precision); }
+        T getShortestDistanceBetween(const size_t &i, const size_t &j, T precision) const
+        {
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                T dist = it->getShortestDistanceBetween(i, j, precision);
+                if(dist > 0)
+                    return dist;
+            }
+            return 0;
+        }
 
         /**
          * @brief Get distance between vertices
@@ -458,7 +497,16 @@ private:
          *
          * @return (shortest) distance between i-th and j-th vertex
          */
-        T getDistanceBetween(const size_t &i, const size_t &j) const { return m_boundary.getDistanceBetween(i, j); }
+        T getDistanceBetween(const size_t &i, const size_t &j) const
+        {
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+            {
+                T dist = it->getDistanceBetween(i, j);
+                if(dist > 0)
+                    return dist;
+            }
+            return 0;
+        }
 
         /**
          * @brief Tells if vertex is contained in boundary chain.
@@ -467,7 +515,13 @@ private:
          *
          * @return TRUE if it is contained and FALSE otherwise
          */
-        bool isVertexContained(const size_t &internVertexIndex) const { return m_boundary.isVertexContained(internVertexIndex); }
+        bool isVertexContained(const size_t &internVertexIndex) const
+        {
+            for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
+                if(it->isVertexContained(internVertexIndex))
+                    return true;
+            return false;
+        }
 
     private:
         /**
@@ -481,7 +535,7 @@ private:
          */
         const std::list<Halfedge> findNonTwinHalfedges(const std::vector<Halfedge> &allHalfedges);
 
-        Chain m_boundary; ///< boundary chain
+        std::vector<Chain> m_boundary; ///< boundary chains
     };
 
 public:
@@ -496,7 +550,7 @@ public:
      * @param[in] mesh gsMesh object.
      * @param[in] precision tolerance
      */
-    explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision = 1e-8);
+    explicit gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision = 1e-8, bool periodic = false);
 
     virtual ~gsHalfEdgeMesh() { }
 
@@ -547,7 +601,7 @@ public:
      *
      * @param[in] vertex const ESS_IO::IO_Vertex& - three-dimensional vertex from the triangle mesh
      */
-    //size_t getVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const;*/
+    size_t getVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const;
 
     /**
      * @brief Get vertex index for firts, second or third vertex of triangle
@@ -643,6 +697,32 @@ public:
      */
     short_t isTriangleVertex(size_t vertexIndex, size_t triangleIndex) const;
 
+    /// Returns the vertex indices of the boundary.
+    std::list<size_t> getBoundaryVertexIndices() const
+    {
+        return m_boundary.getVertexIndices();
+    }
+
+    /// Finds the vertex that has the same coordinates (up to a tolerance) as @a vertex.
+    size_t findVertex(const typename gsMesh<T>::gsVertexHandle& vertex) const
+    {
+        return findVertex(vertex->x(), vertex->y(), vertex->z());
+    }
+
+    /// Finds the vertex that has the coordinates @a x, @a by and @a z (up to a tolerance @a tol).
+    size_t findVertex(T x, T y, T z, bool sorted = false, real_t tol = 1e-6) const;
+
+    /// Returns the handle to the vertex with index @a globIndex.
+    const typename gsMesh<T>::gsVertexHandle &getVertexUnsorted(const size_t globIndex) const
+    {
+        return this->m_vertex[globIndex];
+    }
+
+    size_t unsorted(const size_t index) const
+    {
+        return m_inverseSorting[index];
+    }
+
 private:
     /**
      * @brief Tells whether a vertex is a boundary vertex or not.
@@ -654,6 +734,7 @@ private:
      */
     bool isBoundaryVertex(const size_t internVertexIndex) const;
 
+    public:
     /**
      * @brief Get intern index of the vertex stored in disordered vertex vector
      * The index i of the intern vector of vertices, s. t. vertices[i] = vertex, is returned.
@@ -664,6 +745,7 @@ private:
      */
     size_t getInternVertexIndex(const typename gsMesh<T>::gsVertexHandle &vertex) const;
 
+    private:
     /**
      * @brief Returns halfedge of triangle
      * For a given triangle the first, second or third halfedge are constructed and returned.

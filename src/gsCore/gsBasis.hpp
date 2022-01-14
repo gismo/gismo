@@ -160,7 +160,7 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     const index_t stride = values.rows() / actives.rows();
 
     GISMO_ASSERT( actives.rows() * stride == values.rows(),
-                  "Number of values and actives does not fit together");
+                  "Number of values "<<values.rows()<< " and actives "<<actives.rows()<<" does not fit together");
 
     result.resize( tarDim * stride, numPts );
     result.setZero();
@@ -548,7 +548,15 @@ std::vector<index_t> gsBasis<T>::asElements(gsMatrix<T> const &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+std::vector<index_t> gsBasis<T>::asElementsUnrefine(gsMatrix<T> const &, int) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const &, int)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::unrefine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -556,7 +564,15 @@ void gsBasis<T>::refineElements(std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::unrefineElements(std::vector<index_t> const &)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

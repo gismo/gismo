@@ -192,6 +192,7 @@ gsHDomain<d,T>::isDegenerate(box const & someBox)
 */
 }
 
+//use "surface area heuristic" (SAH) ?
 template<short_t d, class T > void
 gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
                             node *_node, int lvl) // CONSTRAINT: lvl is "minimum level"
@@ -294,6 +295,105 @@ gsHDomain<d,T>::insertBox ( point const & k1, point const & k2,
 }
 
 template<short_t d, class T > void
+gsHDomain<d,T>::clearBox ( point const & k1, point const & k2,
+                            int lvl) // CONSTRAINT: lvl is "minimum level"
+{
+    GISMO_ENSURE( lvl <= static_cast<int>(m_indexLevel), "Max index level reached..");
+
+    // Make a box
+    box iBox(k1,k2);
+    if( isDegenerate(iBox) )
+        return;
+
+    // Represent box in the index level
+    // iBox.first .unaryExpr(toGlobalIndex(lvl, m_index_level) );
+    // iBox.second.unaryExpr(toGlobalIndex(lvl, m_index_level) );
+    local2globalIndex( iBox.first , static_cast<unsigned>(lvl), iBox.first );
+    local2globalIndex( iBox.second, static_cast<unsigned>(lvl), iBox.second);
+
+    // Ensure that the box is within the valid limits
+    if ( ( iBox.first.array() >= m_upperIndex.array() ).any() )
+    {
+        gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
+        return;
+    }
+
+    // Initialize stack
+    std::vector<node*> stack;
+    stack.reserve( 2 * (m_maxPath + d) );
+    stack.push_back(m_root);  //push(m_root);
+
+    node * curNode;
+    while ( ! stack.empty() )
+    {
+        curNode = stack.back(); //top();
+        stack.pop_back();       //pop();
+
+ /*
+        if ( curNode->is_Node() ) // reached a leaf
+        {
+            if ( isDegenerate(*curNode->box) )
+                continue;
+
+            if ( isContained(*curNode->box, iBox) )
+            {
+                if ( lvl > curNode->level )
+                    curNode->level = lvl;
+            }
+            else if ( haveOverlap(*curNode->box, iBox) )
+            {
+                curNode->nextMidSplit();
+                stack.push_back(curNode);
+            }
+        }
+        //else..
+*/
+        if ( curNode->isLeaf() ) // reached a leaf
+        {
+            // Since we reached a leaf, it should overlap with iBox
+
+            // If this leaf is already in level lvl, then we have nothing to do
+            if ( curNode->level <= lvl )
+                continue;
+
+            // Split the leaf (if possible)
+            //node * newLeaf = curNode->adaptiveSplit(iBox);
+            node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
+
+            // If curNode is still a leaf, its domain is almost
+            // contained in iBox
+            if ( !newLeaf ) //  curNode->isLeaf()
+            {
+                // Decrease level and reccurse
+                if ( --curNode->level != lvl)
+                    stack.push_back(curNode);
+            }
+            else // treat new child
+            {
+                stack.push_back(newLeaf);
+            }
+        }
+        else // roll down the tree
+        {
+            if ( iBox.second[curNode->axis] <= curNode->pos)
+                // iBox overlaps only left child of this split-node
+                stack.push_back(curNode->left);
+            else if  ( iBox.first[curNode->axis] >= curNode->pos)
+                // iBox overlaps only right child of this split-node
+                stack.push_back(curNode->right);
+            else
+            {
+                // iBox overlaps both children of this split-node
+                stack.push_back(curNode->left );
+                stack.push_back(curNode->right);
+            }
+        }
+    }
+
+    computeMaxInsLevel(); // compute again globally
+}
+
+template<short_t d, class T > void
 gsHDomain<d,T>::sinkBox ( point const & k1,
                           point const & k2, int lvl)
 {
@@ -363,6 +463,79 @@ gsHDomain<d,T>::sinkBox ( point const & k1,
         }
     }
 }
+
+// template<short_t d, class T > void
+// gsHDomain<d,T>::raiseBox ( point const & k1,
+//                            point const & k2, int lvl)
+// {
+//     // GISMO_ENSURE( m_maxInsLevel+1 <= m_indexLevel,
+//     //               "Max index level might be reached..");
+
+//     // Make a box
+//     box iBox(k1,k2);
+//     if( isDegenerate(iBox) )
+//         return;
+
+//     // Represent box in the index level
+//     local2globalIndex( iBox.first , static_cast<unsigned>(lvl), iBox.first );
+//     local2globalIndex( iBox.second, static_cast<unsigned>(lvl), iBox.second);
+
+//     // Ensure that the box is within the valid limits
+//     if ( ( iBox.first.array() >= m_upperIndex.array() ).any() )
+//     {
+//         //gsWarn<<" Invalid box coordinate "<<  k1.transpose() <<" at level" <<lvl<<".\n";
+//         return;
+//     }
+
+//     // Initialize stack
+//     std::stack<node*, std::vector<node*> > stack;
+//     //stack.reserve( 2 * m_maxPath );
+//     stack.push(m_root);
+
+//     node * curNode;
+//     while ( ! stack.empty() )
+//     {
+//         curNode = stack.top();
+//         stack.pop();
+
+//         if ( curNode->isLeaf() ) // reached a leaf
+//         {
+//             // Since we reached a leaf, it should overlap with iBox.
+//             // Split the leaf (if possible)
+//             node * newLeaf = curNode->adaptiveAlignedSplit(iBox, m_indexLevel);
+
+//             // If curNode is still a leaf, its domain is almost
+//             // contained in iBox
+//             if ( !newLeaf ) //  implies curNode was a leaf
+//             {
+//                 // Increase level
+//                 // --curNode->level;
+//                 // gsDebugVar(curNode->level);
+//                 if ( --curNode->level < static_cast<int>(m_maxInsLevel) )
+//                     m_maxInsLevel = curNode->level;
+//             }
+//             else // treat new child
+//             {
+//                 stack.push(newLeaf);
+//             }
+//         }
+//         else // walk down the tree
+//         {
+//             if ( iBox.second[curNode->axis] <= curNode->pos)
+//                 // iBox overlaps only left child of this split-node
+//                 stack.push(curNode->left);
+//             else if  ( iBox.first[curNode->axis] >= curNode->pos)
+//                 // iBox overlaps only right child of this split-node
+//                 stack.push(curNode->right);
+//             else
+//             {
+//                 // iBox overlaps both children of this split-node
+//                 stack.push(curNode->left );
+//                 stack.push(curNode->right);
+//             }
+//         }
+//     }
+// }
 
 template<short_t d, class T > void
 gsHDomain<d,T>::makeCompressed()
@@ -572,11 +745,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
                 break;
         }
     }
-
-// */
-
-// /* // implementation with stack
-
+*/
     std::vector<node*> stack;
     stack.reserve( 2 * m_maxPath );
     stack.push_back(_node);  //push(_node);
@@ -609,7 +778,7 @@ gsHDomain<d,T>::boxSearch(point const & k1, point const & k2,
             }
         }
     }
-//*/
+
     return res;
 }
 
@@ -758,7 +927,7 @@ gsHDomain<d,T>::nodeSearch() const
     }
     return i;
 }
-//*/
+*/
 
 template<short_t d, class T>
 template<typename visitor>
@@ -824,7 +993,7 @@ gsHDomain<d,T>::leafSearch() const
     }
     return i;
 }
-//*/
+*/
 
 template<short_t d, class T >
 std::pair<int,int>
@@ -1596,5 +1765,11 @@ gsHDomain<d,T>::leafSize() const
 template<short_t d, class T> inline void
 gsHDomain<d,T>::printLeaves() const
     { leafSearch< printLeaves_visitor >(); }
+
+template<short_t d, class T>
+void gsHDomain<d,T>::computeMaxInsLevel()
+{
+    m_maxInsLevel = leafSearch< maxLevel_visitor >();
+}
 
 }// end namespace gismo

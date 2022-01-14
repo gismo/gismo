@@ -23,30 +23,15 @@
 ################################################################################
 
 #-------------------------------------------------------------------------------
-# Clang 7-11, C++98,11,14,17,20
+# Clang 8-13, C++11,14,17,20,23
 #-------------------------------------------------------------------------------
-
-# Clang 7, C++98, Release
-linux_x86_64_clang7_cxx98_release_float_int:
-  tags:
-    - linux
-  stage: test
-  image: silkeh/clang:7
-  script:
-    - apt-get update -y
-    - apt-get install cmake libmpfr-dev subversion -y #for Spectra
-    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=98;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int;-DGISMO_WITH_GMP=ON;-DGISMO_WITH_MPFR=ON;-DGISMO_WITH_GMP=ON;-DGISMO_WITH_IPOPT=ON;-DGISMO_WITH_OCC=OFF;-DGISMO_WITH_ONURBS=ON;-DGISMO_WITH_SPECTRA=ON;-DGISMO_WITH_SUPERLU=OFF;-DGISMO_WITH_UMFPACK=ON' -Q
-  except:
-    - external_pull_requests
-    - ci_test
-    - coverity_scan
     
 # Clang 8, C++11, Release
 linux_x86_64_clang8_cxx11_release_double_int32t:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:8
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/silkeh/clang:8
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
@@ -61,7 +46,7 @@ linux_x86_64_clang9_cxx14_release_longdouble_int64t:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:9
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/silkeh/clang:9
   script:
     - apt-get update -y
     - apt-get install cmake -y
@@ -76,7 +61,7 @@ linux_x86_64_clang10_cxx17_release_mpreal_long:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:10
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/silkeh/clang:10
   script:
     - apt-get update -y
     - apt-get install cmake libmpfr-dev ninja-build -y
@@ -91,7 +76,7 @@ linux_x86_64_clang11_cxx20_release_mpq_long:
   tags:
     - linux
   stage: test
-  image: silkeh/clang:11
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/silkeh/clang:11
   script:
     - apt-get update -y
     - apt-get install cmake libgmp-dev -y
@@ -101,33 +86,31 @@ linux_x86_64_clang11_cxx20_release_mpq_long:
     - ci_test
     - coverity_scan
 
-
-#-------------------------------------------------------------------------------
-# GCC 6-10, C++98,11,14,17,20
-#-------------------------------------------------------------------------------
-
-# GCC 6, C++98, Release
-linux_x86_64_gcc6_cxx98_release_mpq_long:
+# Clang 13 (latest), C++23, Release
+linux_x86_64_clang13_cxx23_release_float_int:
   tags:
     - linux
   stage: test
-  image: gcc:6
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/silkeh/clang:latest
   script:
     - apt-get update -y
-    - apt-get install cmake ninja-build libgmp-dev -y
-    - apt-get install cmake libmpfr-dev -y #should not be needed but there is a bug in CMakeLists.txt when using ninja
-    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=98;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long;-DGISMO_WITH_ONURBS=ON' -Q #-VV
+    - apt-get install cmake -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=/usr/local/bin/clang -D CXXNAME=/usr/local/bin/clang++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int;-DGISMO_WITH_ONURBS=ON' -Q
   except:
     - external_pull_requests
     - ci_test
     - coverity_scan
+
+#-------------------------------------------------------------------------------
+# GCC 8-12, C++11,14,17,20
+#-------------------------------------------------------------------------------
     
-# GCC 7, C++11, Release
-linux_x86_64_gcc7_cxx11_release_mpreal_long:
+# GCC 8, C++11, Release
+linux_x86_64_gcc8_cxx11_release_mpreal_long:
   tags:
     - linux
   stage: test
-  image: gcc:7
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/gcc:8
   script:
     - apt-get update -y
     - apt-get install cmake libmpfr-dev -y
@@ -137,12 +120,12 @@ linux_x86_64_gcc7_cxx11_release_mpreal_long:
     - ci_test
     - coverity_scan
 
-# GCC 8, C++14, Release
-linux_x86_64_gcc8_cxx14_release_longdouble_int64t:
+# GCC 9, C++14, Release
+linux_x86_64_gcc9_cxx14_release_longdouble_int64t:
   tags:
     - linux
   stage: test
-  image: gcc:8
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/gcc:9
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
@@ -152,13 +135,13 @@ linux_x86_64_gcc8_cxx14_release_longdouble_int64t:
     - ci_test
     - coverity_scan
     
-# GCC 9, C++17, Release
-linux_x86_64_gcc9_cxx17_release_double_int32t:
+# GCC 10, C++17, Release
+linux_x86_64_gcc10_cxx17_release_double_int32t:
   
   tags:
     - linux
   stage: test
-  image: gcc:9
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/gcc:10
   script:
     - apt-get update -y
     - apt-get install cmake -y
@@ -168,12 +151,27 @@ linux_x86_64_gcc9_cxx17_release_double_int32t:
     - ci_test
     - coverity_scan
 
-# GCC 10, C++20, Release
-linux_x86_64_gcc10_cxx20_release_float_int:
+# GCC 11, C++20, Release
+linux_x86_64_gcc11_cxx20_release_float_int:
   tags:
     - linux
   stage: test
-  image: gcc:10
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/gcc:11
+  script:
+    - apt-get update -y
+    - apt-get install cmake ninja-build -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE=Release -D UPDATE_REPO=OFF -D CTEST_CMAKE_GENERATOR=Ninja -D CNAME=/usr/local/bin/gcc -D CXXNAME=/usr/local/bin/g++ -D CTEST_TEST_TIMEOUT=150 -D GISMO_SUBMODULES='' -D LABELS_FOR_SUBPROJECTS='gismo;examples;unittests;doc-snippets' -D CMAKE_ARGS='-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int;-DGISMO_WITH_ONURBS=ON' -Q
+  except:
+    - external_pull_requests
+    - ci_test
+    - coverity_scan
+    
+# GCC 12 (latest), C++23, Release
+linux_x86_64_gcc12_cxx23_release_float_int:
+  tags:
+    - linux
+  stage: test
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/gcc:latest
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
@@ -204,7 +202,7 @@ install_and_deploy_linux:
   tags:
     - linux
   stage: test #deploy #(deploy will only run only when all test succeeds)
-  image: gcc:9
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/gcc:9
   script:
     - apt-get update -y
     - apt-get install cmake -y
@@ -229,7 +227,7 @@ install_and_deploy_linux:
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest || true #continues in case of failure
     # III. Test direct use of -lgismo
     - rm -rf ./poisson_example.out
-    - g++ -v /builds/gismo-ci/gismo/deploy/poisson_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
     - ctest --output-on-failure -A compile.log -M Experimental -T Submit
     - if [ ! -f "poisson_example.out" ]; then cat compile.log; fi
     - ./poisson_example.out

@@ -122,7 +122,7 @@ public:
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
 
     /// Returns parameter dimension of the domains
-    virtual short_t domainDim() const { return m_g1->geoDim(); }
+    virtual short_t domainDim() const { return m_g1->domainDim(); }
 
     /// @brief Returns a domain iterator
     ///

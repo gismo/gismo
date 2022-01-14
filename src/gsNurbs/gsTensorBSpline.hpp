@@ -142,13 +142,16 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
     {
         const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
         const int degree = this->basis().degree(dir_fixed);
-
+        index_t index;
         gsMatrix<T> coefs;
         if( mult>=degree )
         {
             // no knot insertion needed, just extract the right coefficients
             const gsKnotVector<T>& knots = this->basis().knots(dir_fixed);
-            const index_t index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
+            if (par == *knots.domainEnd())
+                index = knots.size()-this->basis().degree(dir_fixed)-2;
+            else
+                index = (knots.iFind(par) - knots.begin()) - this->basis().degree(dir_fixed);
             gsVector<index_t,d> sizes;
             this->basis().size_cwise(sizes);
             constructCoefsForSlice<d, T>(dir_fixed, index, this->coefs(), sizes, coefs);
@@ -166,7 +169,10 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
 
             // extract right ceofficients
             const gsKnotVector<T>& knots = clone->basis().knots(dir_fixed);
-            const index_t index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
+            if (par == *knots.domainEnd())
+                index = knots.size()-clone->basis().degree(dir_fixed)-2;
+            else
+                index = (knots.iFind(par) - knots.begin()) - clone->basis().degree(dir_fixed);
             gsVector<index_t,d> sizes;
             clone->basis().size_cwise(sizes);
             constructCoefsForSlice<d, T>(dir_fixed, index, clone->coefs(), sizes, coefs);
@@ -560,6 +566,63 @@ gsTensorBSpline<d,T>::splitAtMult(index_t minMult, index_t dir) const
     }
     result.push_back(tmp);
     return result;
+}
+
+
+template<short_t d, class T>
+typename gsGeometry<T>::uPtr
+gsTensorBSpline<d,T>:: iface(const boundaryInterface & bi,
+                             const gsGeometry<T> & other) const
+{
+    // Grab boundary control point indices in matching configuration
+    gsMatrix<index_t> bdr0, bdr1;
+    this->basis().matchWith(bi, other.basis(), bdr0, bdr1);
+
+    //from here: Assume linear curves, merge control points (todo: add option for this)
+    index_t b[2];
+    b[0]=b[1]=0;
+    std::list<std::pair<const gsMatrix<T> *,index_t> > cv;//patch,cp-index
+    //maybe: check if both ifaces are identical using a flag...
+
+    // gsDebugVar(bdr0.size());
+    // gsDebugVar(bdr1.size());
+    cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+    do {
+        T dist0=(cv.back().first->row(cv.back().second)-this->coef(bdr0.at(b[0]))).squaredNorm();
+        if ( 0 == dist0 ) { b[0]++; continue; } //skip double point
+        T dist1=(cv.back().first->row(cv.back().second)-other.coef(bdr1.at(b[1]))).squaredNorm();
+        if ( 0 == dist1 ) { b[1]++; continue; } //skip double point
+
+        // gsDebugVar(dist0);
+        // gsDebugVar(dist1);
+        // gsDebugVar( this->coef(bdr0.at(b[0]+1)) );
+        // gsDebugVar( other.coef(bdr1.at(b[1]))   );
+        if (dist0>dist1)
+            cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
+        else
+            cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+
+    } while ( b[0]!=bdr0.size() && b[1]!=bdr1.size() );
+
+    //gsDebugVar(cv.size());
+    while ( b[0]<bdr0.size() )
+        cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
+
+    //gsDebugVar(cv.size());
+    while ( b[1]<bdr1.size() )
+        cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
+
+    //gsDebugVar(cv.size());
+
+    // Construct interface geometry using cv and uniform knots (polyline)
+    gsMatrix<T> cf(cv.size(),this->geoDim());
+    index_t c = 0;
+    for(typename std::list<std::pair<const gsMatrix<T> *,index_t> >::iterator
+            it = cv.begin(); it!=cv.end(); ++it)
+        cf.row(c++) = it->first->row(it->second);
+    gsKnotVector<T> kv(0,1,c-2,2,1);
+    gsBSplineBasis<T> bs(kv);
+    return bs.makeGeometry(cf);
 }
 
 

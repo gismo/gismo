@@ -503,6 +503,16 @@ protected:
 
 };
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsTensorBSplineBasis
+   */
+  void pybind11_init_gsTensorBSplineBasis2(pybind11::module &m);
+  void pybind11_init_gsTensorBSplineBasis3(pybind11::module &m);
+  void pybind11_init_gsTensorBSplineBasis4(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 
@@ -523,6 +533,6 @@ EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<2,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<3,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<4,real_t>;
 }
-//*/
+*/
 #endif
 // *****************************************************************

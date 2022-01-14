@@ -74,10 +74,11 @@ public:
             m_edge = other.m_edge;
             for (size_t i = 0; i != other.m_edge.size(); ++i)
             {
-                GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
+                // The two GISMO_ASSERTS were removed as part of PR #448, which got integrated into PR #421.
+                //GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.source don't match");
                 m_edge[i].source = m_vertex[other.m_edge[i].source->getId()];
 
-                GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
+                //GISMO_ASSERT(other.m_edge[i].source->getId() == m_vertex[i]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and edge.target don't match");
                 m_edge[i].target = m_vertex[other.m_edge[i].target->getId()];
             }
         }
@@ -198,6 +199,23 @@ public:
 
     const Vertex & vertex(size_t i) const { return *m_vertex[i]; }
     Vertex & vertex(size_t i) { return *m_vertex[i]; }
+
+    const FaceHandle & face(size_t i) const { return m_face[i]; }
+    FaceHandle & face(size_t i) { return m_face[i]; }
+
+    gsVector<index_t> faceIndices(size_t i) const
+    {
+        const FaceHandle & f = face(i);
+        gsVector<index_t> res(f->vertices.size());
+        typename std::vector<VertexHandle >::const_iterator v;
+        for (size_t j = 0; j!=f->vertices.size(); ++j)
+        {
+            v = std::find(m_vertex.begin(), m_vertex.end(), f->vertices[j] );
+            //
+            res[j] = std::distance(m_vertex.begin(),v);
+        }
+        return res;
+    }
 
 public: //protected: -- todo
 
