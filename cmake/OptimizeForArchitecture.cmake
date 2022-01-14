@@ -70,8 +70,8 @@
 #
 # Changelog:
 # - Update of CPUIDs for latest Intel and AMD processors
-# - Support for PPC64 (Clang, GCC, IBM XLC)
-# - Support for ARM (Clang, GCC, ARM Clang)
+# - Added support for PPC64 (Clang, GCC, IBM XLC)
+# - Added Support for ARM (Clang, GCC, ARM Clang, Cray, Fujitsu)
 #=============================================================================
 
 get_filename_component(_currentDir "${CMAKE_CURRENT_LIST_FILE}" PATH)
@@ -87,20 +87,38 @@ macro(_my_find _list _value _ret)
   endif()
 endmacro(_my_find)
 
+#=============================================================================
+# Autodetection of CPUs
+#
+# This is a two-step process:
+#
+# 1. Get the CPUID from the system by reading /proc/cpuconfig (on
+# Linux), the system registry (on Windows), or executing an
+# OS-specific command (macOS, BSD, AIX, SunOS, ...)
+#
+# 2. Determine the specific CPU from the CPUID
+#=============================================================================
+
 macro(OFA_AutodetectX86)
   set(_vendor_id)
   set(_cpu_family)
   set(_cpu_model)
   set(_cpu_stepping)
 
+  # Get CPUID from system
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    # Linux
     file(READ "/proc/cpuinfo" _cpuinfo)
     string(REGEX REPLACE ".*vendor_id[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _vendor_id "${_cpuinfo}")
     string(REGEX REPLACE ".*cpu family[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_family "${_cpuinfo}")
     string(REGEX REPLACE ".*model[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_model "${_cpuinfo}")
     string(REGEX REPLACE ".*stepping[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_stepping "${_cpuinfo}")
     string(REGEX REPLACE ".*flags[ \t]*:[ \t]+([^\n]+).*" "\\1" _cpu_flags "${_cpuinfo}")
+
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+
+    # macOS
     exec_program("/usr/sbin/sysctl -n machdep.cpu.vendor machdep.cpu.family machdep.cpu.model machdep.cpu.stepping machdep.cpu.features"
       OUTPUT_VARIABLE _sysctl_output_string RETURN_VALUE _error)
     if(NOT _error)
@@ -114,6 +132,12 @@ macro(OFA_AutodetectX86)
       string(REPLACE "." "_" _cpu_flags "${_cpu_flags}")
     else()
       # Apple Silicon (ARM64) running in Rosetta 2 mode
+      #
+      # The regular detection mechanism for macOS-x64_86 does not work
+      # because the emulated CPU does not provide the required
+      # information via the sysctl command. We therefore generate fake
+      # vendor, model, and stepping information based on the
+      # macOS-specific CPU codes.
       exec_program("/usr/sbin/sysctl -n hw.cputype machdep.cpu.family hw.cpufamily machdep.cpu.features"
         OUTPUT_VARIABLE _sysctl_output_string RETURN_VALUE _error)
       if(NOT _error)
@@ -167,14 +191,24 @@ macro(OFA_AutodetectX86)
     if(_error)
       message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
+    
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+    # Windows
     get_filename_component(_vendor_id "[HKEY_LOCAL_MACHINE\\Hardware\\Description\\System\\CentralProcessor\\0;VendorIdentifier]" NAME CACHE)
     get_filename_component(_cpu_id "[HKEY_LOCAL_MACHINE\\Hardware\\Description\\System\\CentralProcessor\\0;Identifier]" NAME CACHE)
     mark_as_advanced(_vendor_id _cpu_id)
     string(REGEX REPLACE ".* Family ([0-9]+) .*" "\\1" _cpu_family "${_cpu_id}")
     string(REGEX REPLACE ".* Model ([0-9]+) .*" "\\1" _cpu_model "${_cpu_id}")
     string(REGEX REPLACE ".* Stepping ([0-9]+) .*" "\\1" _cpu_mstepping "${_cpu_id}")
-  endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    
+    # TODO: BSD, Android, QNX, ...
+    
+  else()
+    message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+  endif()
+
+  # Determine CPU from CPUID
   if(_vendor_id STREQUAL "GenuineIntel")
     if(_cpu_family EQUAL 6)
       # taken from the Intel ORM
@@ -396,6 +430,9 @@ macro(OFA_AutodetectX86)
     elseif(_cpu_family EQUAL 5) # 05h (K6)
 
     endif()
+
+  else()
+    message(WARNING "Auto-detection of optimization flags failed and will use the generic CPU settings.")
   endif()
 endmacro(OFA_AutodetectX86)
 
@@ -405,7 +442,11 @@ macro(OFA_AutodetectArm)
   set(_cpu_variant)
   set(_cpu_part)
   set(_cpu_revision)
+
+  # Get CPUID from system
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    # Linux
     file(READ "/proc/cpuinfo" _cpuinfo)
     string(REGEX REPLACE ".*CPU implementer[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_implementer "${_cpuinfo}")
     string(REGEX REPLACE ".*CPU architecture[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_architecture "${_cpuinfo}")
@@ -416,7 +457,6 @@ macro(OFA_AutodetectArm)
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     exec_program("/usr/sbin/sysctl -n hw.cputype hw.cputype hw.cpusubtype hw.cpufamily hw.cpusubfamily"
       OUTPUT_VARIABLE _sysctl_output_string RETURN_VALUE _error)
-    message(${_sysctl_output_string})
     if(NOT _error)
       string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
       list(GET _sysctl_output 0 _cpu_implementer)
@@ -426,14 +466,21 @@ macro(OFA_AutodetectArm)
       list(GET _sysctl_output 4 _cpu_revision)
     endif()
     if(_error)
-      message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
+      message(WARNING "Auto-detection of optimization flags failed and will use the generic CPU settings.")
     endif()
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
+    # TODO: Windows, FreeBSD, ...
+    
+  else()
+    message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+  endif()
+
+  # Determine CPU from CPUID
   # Taken from https://github.com/karelzak/util-linux/blob/master/sys-utils/lscpu-arm.c
   # and https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html
-  if(_cpu_implementer STREQUAL "0x41")     # ARM
+
+  # ARM
+  if(_cpu_implementer STREQUAL "0x41")
     if(_cpu_part STREQUAL "0x810")
       set(TARGET_ARCHITECTURE "arm810")
     elseif(_cpu_part STREQUAL "0x920")
@@ -550,7 +597,8 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "cortex-a78c")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x42") # Broadcom
+  # Broadcom
+  elseif(_cpu_implementer STREQUAL "0x42")
     if(_cpu_part STREQUAL "0x0f")
       set(TARGET_ARCHITECTURE "brahma-b15")
     elseif(_cpu_part STREQUAL "0x100")
@@ -559,7 +607,8 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "thunderx2")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x43") # Cavium
+  # Cavium
+  elseif(_cpu_implementer STREQUAL "0x43")
     if(_cpu_part STREQUAL "0x0a0")
       set(TARGET_ARCHITECTURE "thunderx")
     elseif(_cpu_part STREQUAL "0x0a1")
@@ -572,28 +621,34 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "thunderx2t99")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x44") # DEC
+  # DEC
+  elseif(_cpu_implementer STREQUAL "0x44")
     if(_cpu_part STREQUAL "0xa10")
       set(TARGET_ARCHITECTURE "strongarm110")
     elseif(_cpu_part STREQUAL "0xa11")
       set(TARGET_ARCHITECTURE "strongarm1100")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x46") # FUJITSU
+  # FUJITSU
+  elseif(_cpu_implementer STREQUAL "0x46")
     if(_cpu_part STREQUAL "0x001")
       set(TARGET_ARCHITECTURE "a64fx")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x48") # HiSilicon
+  # HiSilicon
+  elseif(_cpu_implementer STREQUAL "0x48")
     if(_cpu_part STREQUAL "0xd01")
       set(TARGET_ARCHITECTURE "tsv110")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x49") # Infineon
+  # Infineon
+  elseif(_cpu_implementer STREQUAL "0x49")
 
-  elseif(_cpu_implementer STREQUAL "0x4d") # Motorola/Freescale
+  # Motorola/Freescale
+  elseif(_cpu_implementer STREQUAL "0x4d")
 
-  elseif(_cpu_implementer STREQUAL "0x4e") # Nvidia
+  # Nvidia
+  elseif(_cpu_implementer STREQUAL "0x4e")
     if(_cpu_part STREQUAL "0x000")
       set(TARGET_ARCHITECTURE "denver")
     elseif(_cpu_part STREQUAL "0x003")
@@ -602,12 +657,14 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "carmel")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x50") # APM
+  # APM
+  elseif(_cpu_implementer STREQUAL "0x50")
     if(_cpu_part STREQUAL "0x000")
       set(TARGET_ARCHITECTURE "xgene1")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x51") # Qualcomm
+  # Qualcomm
+  elseif(_cpu_implementer STREQUAL "0x51")
     if(_cpu_part STREQUAL "0x00f")
       set(TARGET_ARCHITECTURE "scorpion")
     elseif(_cpu_part STREQUAL "0x02d")
@@ -632,12 +689,14 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "saphira")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x53") # Samsung
+  # Samsung
+  elseif(_cpu_implementer STREQUAL "0x53")
     if(_cpu_part STREQUAL "0x001")
       set(TARGET_ARCHITECTURE "exynos-m1")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x56") # Marvell
+  # Marvell
+  elseif(_cpu_implementer STREQUAL "0x56")
     if(_cpu_part STREQUAL "0x131")
       set(TARGET_ARCHITECTURE "marvell-f")
     elseif(_cpu_part STREQUAL "0x581")
@@ -646,21 +705,24 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "marvell-pj4")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x61") # Apple
+  # Apple
+  elseif(_cpu_implementer STREQUAL "0x61")
     if(_cpu_part STREQUAL "0x022")
       set(TARGET_ARCHITECTURE "icestorm")
     elseif(_cpu_part STREQUAL "0x023")
       set(TARGET_ARCHITECTURE "firestorm")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x66") # Faraday
+  # Faraday
+  elseif(_cpu_implementer STREQUAL "0x66")
     if(_cpu_part STREQUAL "0x526")
       set(TARGET_ARCHITECTURE "fa526")
     elseif(_cpu_part STREQUAL "0x626")
       set(TARGET_ARCHITECTURE "fa626")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x69") # Intel
+  # Intel
+  elseif(_cpu_implementer STREQUAL "0x69")
     if(_cpu_part STREQUAL "0x200")
       set(TARGET_ARCHITECTURE "i80200")
     elseif(_cpu_part STREQUAL "0x210")
@@ -705,16 +767,18 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "ipx1200")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0x70") # Phytium
+  # Phytium
+  elseif(_cpu_implementer STREQUAL "0x70")
     if(_cpu_part STREQUAL "0x662")
       set(TARGET_ARCHITECTURE "ftc662")
     elseif(_cpu_part STREQUAL "0x663")
       set(TARGET_ARCHITECTURE "ftc663")
     endif()
 
-  elseif(_cpu_implementer STREQUAL "0xc0") # Ampere
+  # Ampere
+  elseif(_cpu_implementer STREQUAL "0xc0")
 
-    # Taken from /Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk/System/Library/Frameworks/Kernel.framework/Versions/A/Headers/mach/machine.h
+  # Taken from /Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk/System/Library/Frameworks/Kernel.framework/Versions/A/Headers/mach/machine.h
   elseif(_cpu_implementer STREQUAL "16777228" OR _cpu_implementer STREQUAL "0x100000C")    # Apple ARM64
     if(    _cpu_part STREQUAL "0x1e2d6381" OR _cpu_part STREQUAL "506291073")              # Swift (A6)
       set(TARGET_ARCHITECTURE "apple-a6")
@@ -736,6 +800,9 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "apple-m1")
     elseif(_cpu_part STREQUAL "0xda33d83d" OR _cpu_part STREQUAL "3660830781")             # Blizzard Avalanche (A15)
     endif()
+
+  else()
+    message(WARNING "Auto-detection of optimization flags failed and will use the generic CPU settings.")
   endif()
 endmacro(OFA_AutodetectArm)
 
@@ -743,16 +810,38 @@ macro(OFA_AutodetectPpc)
   set(_cpu)
 
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    # Linux
     file(READ "/proc/cpuinfo" _cpuinfo)
     string(REGEX REPLACE ".*cpu[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu "${_cpuinfo}")
-    if(_cpu STREQUAL "POWER8" OR _cpu STREQUAL "POWER8NVL")
+    if(_cpu STREQUAL "POWER3")
+      set(TARGET_ARCHITECTURE "power3")
+    elseif(_cpu STREQUAL "POWER4")
+      set(TARGET_ARCHITECTURE "power4")
+    elseif(_cpu STREQUAL "POWER5")
+      set(TARGET_ARCHITECTURE "power5")
+    elseif(_cpu STREQUAL "POWER5+")      
+      set(TARGET_ARCHITECTURE "power5+")
+    elseif(_cpu STREQUAL "POWER6")      
+      set(TARGET_ARCHITECTURE "power6")
+    elseif(_cpu STREQUAL "POWER6X")      
+      set(TARGET_ARCHITECTURE "power6x")
+    elseif(_cpu STREQUAL "POWER7")      
+      set(TARGET_ARCHITECTURE "power7")
+    elseif(_cpu STREQUAL "POWER8" OR _cpu STREQUAL "POWER8NVL")
       set(TARGET_ARCHITECTURE "power8")
     elseif(_cpu STREQUAL "POWER9" OR _cpu STREQUAL "POWER9NVL")
       set(TARGET_ARCHITECTURE "power9")
     elseif(_cpu STREQUAL "POWER10" OR _cpu STREQUAL "POWER10NVL")
       set(TARGET_ARCHITECTURE "power10")
+    else()
+      message(WARNING "Auto-detection of optimization flags failed and will use the generic CPU settings.")
     endif()
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+
+    # TODO: AIX, FreeBSD, ...
+    
+  else()
+    message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
   endif()
 endmacro(OFA_AutodetectPpc)
 
@@ -971,7 +1060,7 @@ macro(OFA_HandleX86Options)
     list(APPEND _march_flag_list "core2")
     list(APPEND _available_vector_units_list "sse" "sse2" "sse3" "ssse3")
 
-    # AMD
+  # AMD
   elseif(TARGET_ARCHITECTURE STREQUAL "k8")
     list(APPEND _march_flag_list "k8")
     list(APPEND _available_vector_units_list "sse" "sse2")
@@ -1049,7 +1138,7 @@ macro(OFA_HandleX86Options)
     list(APPEND _march_flag_list "core2")
     list(APPEND _available_vector_units_list "sse" "sse2" "sse3" "sse4a")
 
-    # Others
+  # Others
   elseif(TARGET_ARCHITECTURE STREQUAL "generic")
     list(APPEND _march_flag_list "generic")
   elseif(TARGET_ARCHITECTURE STREQUAL "native")
@@ -1061,6 +1150,7 @@ macro(OFA_HandleX86Options)
     message(FATAL_ERROR "Unknown target architecture: \"${TARGET_ARCHITECTURE}\". Please set TARGET_ARCHITECTURE to a supported value.")
   endif()
 
+  # Special treatment for "native"
   if(TARGET_ARCHITECTURE STREQUAL "native")
     if(MSVC)
       # MSVC (on Windows)
@@ -1089,7 +1179,9 @@ macro(OFA_HandleX86Options)
       AddCompilerFlag("-march=native" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
     endif()
 
+  # Apply architecture flags
   elseif(NOT TARGET_ARCHITECTURE STREQUAL "none")
+    
     set(_disable_vector_unit_list)
     set(_enable_vector_unit_list)
     if(DEFINED OFA_SSE_INTRINSICS_BROKEN AND OFA_SSE_INTRINSICS_BROKEN)
@@ -1285,7 +1377,7 @@ macro(OFA_HandleX86Options)
         endif()
       endif()
 
-      # TEST PGI/Cray/SunPro ...
+      # TODO PGI/Cray/SunPro ...
 
     else()
       # Others: GNU, Clang and variants
@@ -1833,7 +1925,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "bf16" "fp16" "i8mm")
 
-    # Broadcom
+  # Broadcom
   elseif(TARGET_ARCHITECTURE STREQUAL "brahma-b15")
     list(APPEND _mtune_flag_list "brahma-b15")
   elseif(TARGET_ARCHITECTURE STREQUAL "brahma-b53")
@@ -1845,7 +1937,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "crypto")
 
-    # Cavium
+  # Cavium
   elseif(TARGET_ARCHITECTURE STREQUAL "thunderx")
     list(APPEND _mtune_flag_list "thunderx")
     list(APPEND _march_flag_list "armv8-a")
@@ -1873,7 +1965,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "crc" "crypto")
 
-    # DEC
+  # DEC
   elseif(TARGET_ARCHITECTURE STREQUAL "strongarm110")
     list(APPEND _mtune_flag_list "strongarm110")
     list(APPEND _march_flag_list "armv4")
@@ -1881,7 +1973,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _mtune_flag_list "strongarm1100")
     list(APPEND _march_flag_list "armv4")
 
-    # FUJITSU
+  # FUJITSU
   elseif(TARGET_ARCHITECTURE STREQUAL "a64fx")
     list(APPEND _mtune_flag_list "a64fx")
     list(APPEND _march_flag_list "armv8.2-a")
@@ -1890,7 +1982,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "fp16" "sve")
 
-    # HiSilicon
+  # HiSilicon
   elseif(TARGET_ARCHITECTURE STREQUAL "tsv110")
     list(APPEND _mtune_flag_list "tsv110")
     list(APPEND _march_flag_list "armv8.2-a")
@@ -1899,7 +1991,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "aes" "crypto" "fp16" "sha2")
 
-    # Nvidia
+  # Nvidia
   elseif(TARGET_ARCHITECTURE STREQUAL "denver")
     list(APPEND _mtune_flag_list "denver")
     list(APPEND _march_flag_list "armv8-a")
@@ -1918,13 +2010,13 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "crc" "crypto" "simd" "vfpv3" "vfpv4")
 
-    # APM
+  # APM
   elseif(TARGET_ARCHITECTURE STREQUAL "xgene1")
     list(APPEND _mtune_flag_list "xgene1")
     list(APPEND _march_flag_list "armv8-a")
     list(APPEND _march_flag_list "armv7-a")
 
-    # Qualcomm
+  # Qualcomm
   elseif(TARGET_ARCHITECTURE STREQUAL "scorpion")
     list(APPEND _mtune_flag_list "scorpion")
     list(APPEND _march_flag_list "armv7-a")
@@ -1956,14 +2048,14 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "crc" "crypto" "simd" "vfpv3" "vfpv4")
 
-    # Samsung
+  # Samsung
   elseif(TARGET_ARCHITECTURE STREQUAL "exynos-m1")
     list(APPEND _mtune_flag_list "exynos-m1")
     list(APPEND _march_flag_list "armv8-a")
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "crypto" "simd")
 
-    # Marvell
+  # Marvell
   elseif(TARGET_ARCHITECTURE STREQUAL "marvell-f")
     list(APPEND _mtune_flag_list "marvell-f")
     list(APPEND _march_flag_list "armv5te")
@@ -1972,7 +2064,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv7-a")
     list(APPEND _available_vector_units_list "mp" "sec" "fp")
 
-    # Intel
+  # Intel
   elseif(TARGET_ARCHITECTURE STREQUAL "i80200")
     list(APPEND _mtune_flag_list "i80200")
   elseif(TARGET_ARCHITECTURE STREQUAL "pxa250a")
@@ -2016,7 +2108,7 @@ macro(OFA_HandleArmOptions)
   elseif(TARGET_ARCHITECTURE STREQUAL "ipx1200")
     list(APPEND _mtune_flag_list "ipx1200")
 
-    # Apple
+  # Apple
   elseif(TARGET_ARCHITECTURE STREQUAL "apple-a6")
     list(APPEND _mtune_flag_list "apple-a6")
     list(APPEND _march_flag_list "armv7-a")
@@ -2066,7 +2158,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv8-a")
     list(APPEND _available_vector_units_list "aes" "crc" "crypto" "fp" "fp16" "lse" "neon" "ras" "rcpc" "rdm" "sha2" "zcm" "zcz")
 
-    # Others
+  # Others
   elseif(TARGET_ARCHITECTURE STREQUAL "generic")
     list(APPEND _march_flag_list "generic")
   elseif(TARGET_ARCHITECTURE STREQUAL "native")
@@ -2084,6 +2176,7 @@ macro(OFA_HandleArmOptions)
   # the compiler does not yet support the specified target, we try to
   # set the -march and -mtune flags as fallback option.
 
+  # Special treatment for "native"
   if(TARGET_ARCHITECTURE STREQUAL "native")
     if(MSVC)
       # MSVC (on Windows)
@@ -2100,6 +2193,7 @@ macro(OFA_HandleArmOptions)
       AddCompilerFlag("-mcpu=native" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
     endif()
 
+  # Apply architecture flags
   elseif(NOT TARGET_ARCHITECTURE STREQUAL "none")
 
     if(MSVC)
@@ -2243,6 +2337,20 @@ endmacro(OFA_HandleArmOptions)
 
 macro(OFA_HandlePpcOptions)
   set(_march_flag_list)
+  if(TARGET_ARCHITECTURE STREQUAL "power3")
+    list(APPEND _march_flag_list "power3")
+  elseif(TARGET_ARCHITECTURE STREQUAL "power4")
+    list(APPEND _march_flag_list "power4")
+  elseif(TARGET_ARCHITECTURE STREQUAL "power5")
+    list(APPEND _march_flag_list "power5")
+  elseif(TARGET_ARCHITECTURE STREQUAL "power5+")
+    list(APPEND _march_flag_list "power5+")
+  elseif(TARGET_ARCHITECTURE STREQUAL "power6")
+    list(APPEND _march_flag_list "power6")
+  elseif(TARGET_ARCHITECTURE STREQUAL "power6x")
+    list(APPEND _march_flag_list "power6x")
+  elseif(TARGET_ARCHITECTURE STREQUAL "power7")
+    list(APPEND _march_flag_list "power7")
   if(TARGET_ARCHITECTURE STREQUAL "power8")
     list(APPEND _march_flag_list "power8")
     list(APPEND _march_flag_list "pwr8")
