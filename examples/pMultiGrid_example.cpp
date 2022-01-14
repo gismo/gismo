@@ -39,15 +39,9 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
  *  restriction operators are generated internally. Therefore, a
  *  problem-specific assembler has to be passed as template argument.
  */
-template<class Assembler>
 struct pMultigrid
 {
 private:
-    /// Shared pointer to multi-patch geometry
-    memory::shared_ptr<gsMultiPatch<>> m_mp_ptr;
-
-    /// Shared pointer to boundary conditions
-    memory::shared_ptr<gsBoundaryConditions<>> m_bcInfo_ptr;
 
     /// Vector of multi-basis objects
     std::vector<memory::shared_ptr<gsMultiBasis<>>> m_basis;
@@ -65,13 +59,13 @@ private:
     std::vector<gsLinearOperator<>::Ptr> m_prolongation;
 
     /// Vector of stiffness matrices
-    std::vector<gsSparseMatrix<>> m_matrices;
+    std::vector<memory::shared_ptr<gsSparseMatrix<>>> m_matrices;
 
     /// Vector of linear operators
     std::vector<gsLinearOperator<>::Ptr> m_operators;
 
-    /// Vector of assembler objects
-    std::vector<Assembler> m_assembler;
+    /// Right-hand-side for finest grid
+    gsMatrix<> m_rhs;
 
     double m_Time_Assembly, m_Time_Transfer, m_Time_Assembly_Galerkin;
 public:
@@ -94,8 +88,6 @@ public:
          const gsFunctionExpr<> coeff_reac
         )
     {
-        m_mp_ptr = memory::make_shared_not_owned(&mp);
-        m_bcInfo_ptr = memory::make_shared_not_owned(&bcInfo);
         m_basis.push_back(memory::make_shared_not_owned(&basis));
 
         for (index_t i = 1; i < numLevels; i++)
@@ -111,15 +103,7 @@ public:
             }
         }
 
-        // Generate sequence of assembler objects and assemble
-        for (std::vector<memory::shared_ptr<gsMultiBasis<>>>::iterator it = m_basis.begin();
-        it != m_basis.end(); ++it)
-        {
-            m_assembler.push_back(Assembler(*m_mp_ptr,*(*it).get(),*m_bcInfo_ptr,rhs, coeff_diff , coeff_conv , coeff_reac ,(typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche), iFace::glue));
-        }
-
         // Resize vectors of operators
-        m_matrices.resize(numLevels);
         m_prolongation_H.resize(numLevels-1);
         m_restriction_H.resize(numLevels-1);
         m_restriction.resize(numLevels-1);
@@ -127,28 +111,6 @@ public:
 
         // Assemble operators at finest level
         gsStopwatch clock;
-        gsInfo << "|| Multigrid hierarchy ||\n";
-        for (index_t i = 0; i < numLevels; i++)
-        {
-            gsInfo << "Level " << i+1 << " " ;
-            if (typeCoarseOperator == 1)
-            {
-                m_assembler[i].assemble();
-                m_matrices[i] = m_assembler[i].matrix();
-                gsInfo << "Degree: " << m_basis[i]->degree()  << ", Ndof: " << m_basis[i]->totalSize() << "\n";
-            }
-            else
-            {
-                if (hp(std::min(i,hp.rows()-1),0) == 0 || i == numLevels-1)
-                {
-                    m_assembler[i].assemble();
-                    m_matrices[i] = m_assembler[i].matrix();
-                    gsInfo << "\nDegree of the basis: " << m_basis[i]->degree() << "\n";
-                    gsInfo << "Size of the basis functions: " << m_basis[i]->totalSize() << "\n";
-                }
-            }
-        }
-        m_Time_Assembly = clock.stop();
 
         // Determine prolongation/restriction operators
         clock.restart();
@@ -156,7 +118,7 @@ public:
         options.addInt("DirichletStrategy","",typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche);
         for (index_t i = 1; i < numLevels; i++)
         {
-            if (hp(i-1,0) == 0)
+            if (hp(i-1,0) != 1)
             {
                 if (typeLumping == 1)
                 {
@@ -200,10 +162,10 @@ public:
 
                 }
             }
-            else if (hp(i-1,0) == 1)
+            else //if (hp(i-1,0) == 1)
             {
                 gsMultiBasis<> basis_copy = *m_basis[i];
-                basis_copy.uniformCoarsen_withTransfer(m_prolongation_H[i-1],*m_bcInfo_ptr,options);
+                basis_copy.uniformCoarsen_withTransfer(m_prolongation_H[i-1],bcInfo,options);
                 m_restriction_H[i-1] = m_prolongation_H[i-1].transpose();
 
                 m_prolongation[i-1] = makeMatrixOp(m_prolongation_H[i-1]);
@@ -213,33 +175,43 @@ public:
         }
         m_Time_Transfer = clock.stop();
 
-        // Obtain operators with Galerkin projection
-        clock.restart();
-        if (typeCoarseOperator == 2)
-        {
-            for (index_t i = numLevels-1; i > -1; i--)
-            {
-                if (hp(hp.rows()-1,0) == 0)
-                {
-                    if (hp(std::min(i,hp.rows()-1),0) == 1)
-                    {
-                        m_matrices[i] = m_restriction_H[i]*m_matrices[i+1]*m_prolongation_H[i];
-                    }
-                }
-                else
-                {
-                    if (hp(std::min(i,hp.rows()-1),0) == 1 && i > 0)
-                    {
-                        m_matrices[i-1] = m_restriction_H[i-1]*m_matrices[i]*m_prolongation_H[i-1];
-                    }
-                }
-            }
-        }
-        m_Time_Assembly_Galerkin = clock.stop();
-
+        gsInfo << "|| Multigrid hierarchy ||\n";
+        m_matrices.resize(numLevels);
         m_operators.resize(m_matrices.size());
-        for (size_t i=0; i<m_matrices.size(); i++)
-            m_operators[i] = makeMatrixOp(m_matrices[i].moveToPtr());
+        m_Time_Assembly = 0;
+        m_Time_Assembly_Galerkin = 0;
+        for (index_t i = numLevels-1; i >= 0; --i)
+        {
+            if (typeCoarseOperator == 1 || i == numLevels-1 || hp(i,0) != 1)
+            {
+                gsInfo << "Assemble on level " << i << ": ";
+                clock.restart();
+                gsCDRAssembler<real_t> assembler(
+                    mp,
+                    *(m_basis[i]),
+                    bcInfo,
+                    rhs,
+                    coeff_diff, coeff_conv, coeff_reac,
+                    (typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche),
+                    iFace::glue
+                );
+                assembler.assemble();
+                m_matrices[i] = gsSparseMatrix<>(assembler.matrix()).moveToPtr();
+                if (i==numLevels-1)
+                    m_rhs = give(assembler.rhs());
+                m_Time_Assembly += clock.stop();
+                gsInfo << "Degree: " << m_basis[i]->degree()  << ", Ndof: " << m_matrices[i]->rows() << "\n";
+            }
+            else
+            {
+                gsInfo << "Apply Galerkin projection on level " << i << ": ";
+                clock.restart();
+                m_matrices[i] = gsSparseMatrix<>(m_restriction_H[i] * *(m_matrices[i+1]) * m_prolongation_H[i]).moveToPtr();
+                m_Time_Assembly_Galerkin += clock.stop();
+                gsInfo << "Ndof: " << m_matrices[i]->rows() << "\n";
+            }
+            m_operators[i] = makeMatrixOp(m_matrices[i]);
+        }
 
     }
 
@@ -327,8 +299,9 @@ private:
     }
 
 public:
-    const gsMatrix<>& rhs(index_t level) const { return m_assembler[level].rhs(); }
-    const gsSparseMatrix<>& matrix(index_t level) const { return m_assembler[level].matrix(); }
+    const gsMatrix<>& rhs() const { return m_rhs; }
+    const gsSparseMatrix<>& matrix(index_t level) const { return *(m_matrices[level]); }
+    const gsSparseMatrix<>& matrix() const { return *(m_matrices.back()); }
     const gsMultiBasis<>& basis(index_t level) const { return *(m_basis[level]); }
 
     const std::vector<gsLinearOperator<>::Ptr>& restriction() const { return m_restriction; }
@@ -578,7 +551,7 @@ int main(int argc, char* argv[])
     const bool symmSmoothing = typeSolver == 3;
 
     // Setup of p-mg object
-    pMultigrid< gsCDRAssembler<real_t> > My_MG(
+    pMultigrid My_MG(
         mp,
         basisL,
         bcInfo,
@@ -681,12 +654,12 @@ int main(int argc, char* argv[])
     gsMatrix<> x = gsMatrix<>::Random(mg->underlyingOp()->rows(),1);
 
     // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
-    const real_t rhs_norm = My_MG.rhs(numLevels-1).norm();
-    solver->setTolerance(tol * (My_MG.rhs(numLevels-1)-My_MG.matrix(numLevels-1)*x).norm() / rhs_norm );
+    const real_t rhs_norm = My_MG.rhs().norm();
+    solver->setTolerance(tol * (My_MG.rhs()-My_MG.matrix()*x).norm() / rhs_norm );
     solver->setMaxIterations(maxIter);
     gsMatrix<> error_history;
     clock.restart();
-    solver->solveDetailed( My_MG.rhs(numLevels-1), x, error_history );
+    solver->solveDetailed( My_MG.rhs(), x, error_history );
     real_t Time_Solve = clock.stop();
 
     for (index_t i=1; i<error_history.rows(); ++i)
@@ -704,7 +677,7 @@ int main(int argc, char* argv[])
         gsInfo << "Solver did not reach accuracy goal within " << solver->iterations() << " iterations.\n";
     gsInfo << "The iteration took " << Time_Solve << " seconds.\n";
     // Determine residual and l2 error
-    gsInfo << "Residual after solving: "  << (My_MG.rhs(numLevels-1)-My_MG.matrix(numLevels-1)*x).norm() << "\n";
+    gsInfo << "Residual after solving: "  << (My_MG.rhs()-My_MG.matrix()*x).norm() << "\n";
 
     return 0;
 }
