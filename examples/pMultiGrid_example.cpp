@@ -1,4 +1,4 @@
-/** @file pMultigrid_example.cpp
+/** @file pMultiGrid_example.cpp
 
     @brief The p-multigrid shows use of p-multigrid methods
 
