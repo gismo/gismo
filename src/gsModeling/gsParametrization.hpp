@@ -13,9 +13,8 @@
 */
 
 #include <gsIO/gsOptionList.h>
+#include <gsIO/gsWriteParaview.h>
 #include <gsModeling/gsLineSegment.h>
-#include <gismo.h>
-
 #include <gsModeling/gsParametrization.h>
 
 namespace gismo

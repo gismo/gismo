@@ -41,7 +41,7 @@
 using namespace gismo;
 
 
-void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrategy )
+void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrategy, index_t runCase)
 {
     int numRefine = 2;
     int maxIterations = 3;
@@ -54,12 +54,14 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
     std::vector <real_t> error_list;
 
     // Source function
-    gsFunctionExpr<> f("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
+    gsFunctionExpr<> f2("((pi*1)^2 + (pi*2)^2)*sin(pi*x*1)*sin(pi*y*2)",
                               "((pi*3)^2 + (pi*4)^2)*sin(pi*x*3)*sin(pi*y*4)",2);
+    auto f = f2.coord(runCase);
 
     // Exact solution
-    gsFunctionExpr<> g("sin(pi*x*1)*sin(pi*y*2)+pi/10",
+    gsFunctionExpr<> g2("sin(pi*x*1)*sin(pi*y*2)+pi/10",
                               "sin(pi*x*3)*sin(pi*y*4)-pi/10",2);
+    auto g = g2.coord(runCase);
 
     // Define Geometry (Unit square with 4 patches)
     gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(2, 2, 0.5);
@@ -74,8 +76,10 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
     bcInfo.addCondition(3, boundary::north, condition_type::dirichlet, &g);
 
     // Neumann BCs
-    gsFunctionExpr<> gEast ("1*pi*cos(pi*1)*sin(pi*2*y)", "3*pi*cos(pi*3)*sin(pi*4*y)",2);
-    gsFunctionExpr<> gSouth("-pi*2*sin(pi*x*1)","-pi*4*sin(pi*x*3)",2);
+    gsFunctionExpr<> gEast2 ("1*pi*cos(pi*1)*sin(pi*2*y)", "3*pi*cos(pi*3)*sin(pi*4*y)",2);
+    gsFunctionExpr<> gSouth2("-pi*2*sin(pi*x*1)","-pi*4*sin(pi*x*3)",2);
+    auto gEast = gEast2.coord(runCase);
+    auto gSouth = gSouth2.coord(runCase);
 
     bcInfo.addCondition(3, boundary::east,  condition_type::neumann, &gEast);
     bcInfo.addCondition(2, boundary::east,  condition_type::neumann, &gEast);
@@ -122,7 +126,7 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
 
     }
 
-    // Finding convergence rate in to differnt ways
+    // Finding convergence rate in two differnt ways
 
     // Convergence rate found by last to errors are elemet sizes
     real_t convratelast = math::log(error_list[error_list.size()-2]/error_list[error_list.size()-1])/
@@ -148,17 +152,20 @@ SUITE(gsPoissonSolver_test)
 
     TEST(Galerkin_test)
     {
-        runPoissonSolverTest(dirichlet::elimination, iFace::glue);
+        runPoissonSolverTest(dirichlet::elimination, iFace::glue, 0);
+        runPoissonSolverTest(dirichlet::elimination, iFace::glue, 1);
     }
 
     TEST(dG_test)
     {
-        runPoissonSolverTest(dirichlet::elimination, iFace::dg);
+        runPoissonSolverTest(dirichlet::elimination, iFace::dg, 0);
+        runPoissonSolverTest(dirichlet::elimination, iFace::dg, 1);
     }
 
     TEST(Nitsche_dG_test)
     {
-        runPoissonSolverTest(dirichlet::nitsche, iFace::dg);
+        runPoissonSolverTest(dirichlet::nitsche, iFace::dg, 0);
+        runPoissonSolverTest(dirichlet::nitsche, iFace::dg, 1);
     }
     
 }

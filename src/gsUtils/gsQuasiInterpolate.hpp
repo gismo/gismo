@@ -396,6 +396,7 @@ void gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &b,
                                        const gsFunction<T> &fun,
                                        gsMatrix<T> & result)
 {
+    GISMO_ASSERT(b.domainDim()==fun.domainDim(),"Domain dimensions should be equal");
     //assert b.domainDim()==fun.domainDim()
     gsMatrix<T> cf;
     index_t n = b.size();

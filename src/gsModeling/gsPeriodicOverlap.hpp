@@ -12,8 +12,6 @@
 
 */
 
-#include <gismo.h>
-
 namespace gismo
 {
 

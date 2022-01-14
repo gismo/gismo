@@ -609,7 +609,7 @@ void poissonDiscretization(gsSparseMatrix<> &mat, gsVector<> &rhs, index_t N)
     }
 
     const real_t meshSize = (real_t)1/(N+1);
-    constexpr real_t pi2 = EIGEN_PI*EIGEN_PI;
+    const real_t pi2 = EIGEN_PI*EIGEN_PI;
     for (index_t k = 0; k < N; ++k)
       rhs(k) = pi2*meshSize*meshSize*math::cos(meshSize*(1+k)*EIGEN_PI);
 
