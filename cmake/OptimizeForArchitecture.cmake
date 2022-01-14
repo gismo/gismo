@@ -853,11 +853,25 @@ macro(OFA_AutodetectHostArchitecture)
   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "^(arm.*|ARM.*|aarch64.*|AARCH64.*)")
     OFA_AutodetectArm()
   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "^(powerpc|ppc)64.*")
-    OFA_AutodetectPpc()
+#    OFA_AutodetectPpc()
   else()
     message(WARNING "The CMAKE_SYSTEM_PROCESSOR '${CMAKE_SYSTEM_PROCESSOR}' is not supported by OptimizeForArchitecture.cmake")
   endif()
 endmacro(OFA_AutodetectHostArchitecture)
+
+#=============================================================================
+# Handling of CPUs
+#
+# This is a two-step process:
+#
+# 1. Generate a list of compiler flags for the specific CPU
+#
+# 2. Special compiler-specific treatment of "native" flag
+#
+# 3. Disabling of "broken" features based on OFA_xxx_INTRINSICS_BROKEN options
+#
+# 4. Set compiler-specific flags
+#=============================================================================
 
 macro(OFA_HandleX86Options)
   set(_march_flag_list)
@@ -982,6 +996,8 @@ macro(OFA_HandleX86Options)
     list(APPEND _march_flag_list "tremont")
     _goldmont_plus()
   endmacro()
+
+  # TODO: Define similar macros for AMD
 
   # Intel
   if(TARGET_ARCHITECTURE STREQUAL "core")
@@ -1181,9 +1197,11 @@ macro(OFA_HandleX86Options)
 
   # Apply architecture flags
   elseif(NOT TARGET_ARCHITECTURE STREQUAL "none")
-    
+
+    # Disable "broken" features based on OFA_xxx_INTRINSICS_BROKEN options
     set(_disable_vector_unit_list)
     set(_enable_vector_unit_list)
+    
     if(DEFINED OFA_SSE_INTRINSICS_BROKEN AND OFA_SSE_INTRINSICS_BROKEN)
       message(STATUS "SSE disabled because of old/broken toolchain")
       set(_sse_broken true)
@@ -1229,6 +1247,7 @@ macro(OFA_HandleX86Options)
       endif()
     endif()
 
+    # Enable/disable macro
     macro(_enable_or_disable _name _flag _documentation _broken)
       if(_broken)
         set(_found false)
@@ -1243,6 +1262,8 @@ macro(OFA_HandleX86Options)
         list(APPEND _disable_vector_unit_list "${_flag}")
       endif()
     endmacro()
+
+    # Enable/disable features
     _enable_or_disable(AVX "avx" "Use AVX. This will all floating-point vector sizes relative to SSE." _avx_broken)
     _enable_or_disable(AVX2 "avx2" "Use AVX2. This will double all of the vector sizes relative to SSE." _avx2_broken)
     _enable_or_disable(AVX512BF16 "avx512bf16" "Use AVX512BF16." _avx512_broken)
@@ -1272,12 +1293,17 @@ macro(OFA_HandleX86Options)
     _enable_or_disable(SSSE3 "ssse3" "Use SSSE3. If SSSE3 instructions are not enabled they will be emulated." _sse_broken)
     _enable_or_disable(XOP "xop" "Use XOP." _xop_broken)
 
+    # Add compiler flags
     if(MSVC AND MSVC_VERSION GREATER 1700)
-      # MSVC on 32 bit can select /arch:SSE2 (since 2010 also /arch:AVX)
-      # MSVC on 64 bit cannot select anything (should have changed with MSVC 2010)
-      _my_find(_enable_vector_unit_list "avx2" _found)
+      _my_find(_enable_vector_unit_list "avx512f" _found)
       if(_found)
-        AddCompilerFlag("/arch:AVX2" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
+        AddCompilerFlag("/arch:AVX512" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
+      endif()
+      if(NOT _found)
+        _my_find(_enable_vector_unit_list "avx2" _found)
+        if(_found)
+          AddCompilerFlag("/arch:AVX2" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
+        endif()
       endif()
       if(NOT _found)
         _my_find(_enable_vector_unit_list "avx" _found)
@@ -1289,6 +1315,12 @@ macro(OFA_HandleX86Options)
         _my_find(_enable_vector_unit_list "sse2" _found)
         if(_found)
           AddCompilerFlag("/arch:SSE2" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
+        endif()
+      endif()
+      if(NOT _found)
+        _my_find(_enable_vector_unit_list "sse" _found)
+        if(_found)
+          AddCompilerFlag("/arch:SSE" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
         endif()
       endif()
       foreach(_flag ${_enable_vector_unit_list})
@@ -1381,12 +1413,16 @@ macro(OFA_HandleX86Options)
 
     else()
       # Others: GNU, Clang and variants
+
+      # Set -march flag
       foreach(_flag ${_march_flag_list})
         AddCompilerFlag("-march=${_flag}" CXX_RESULT _good CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
         if(_good)
           break()
         endif(_good)
       endforeach(_flag)
+
+      # Set -mfeature flag for enabled features
       foreach(_flag ${_enable_vector_unit_list})
         AddCompilerFlag("-m${_flag}" CXX_RESULT _result)
         if(_result)
@@ -1440,6 +1476,8 @@ macro(OFA_HandleX86Options)
           endif()
         endif()
       endforeach(_flag)
+
+      # Set -mno-feature flag for disabled features
       foreach(_flag ${_disable_vector_unit_list})
         AddCompilerFlag("-mno-${_flag}" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
       endforeach(_flag)
@@ -2170,12 +2208,6 @@ macro(OFA_HandleArmOptions)
     message(FATAL_ERROR "Unknown target architecture: \"${TARGET_ARCHITECTURE}\". Please set TARGET_ARCHITECTURE to a supported value.")
   endif()
 
-  # Following the recommendation from
-  # https://community.arm.com/developer/tools-software/tools/b/tools-software-ides-blog/posts/compiler-flags-across-architectures-march-mtune-and-mcpu
-  # we first try to only use the -mcpu flag. If that fails, e.g., of
-  # the compiler does not yet support the specified target, we try to
-  # set the -march and -mtune flags as fallback option.
-
   # Special treatment for "native"
   if(TARGET_ARCHITECTURE STREQUAL "native")
     if(MSVC)
@@ -2192,15 +2224,146 @@ macro(OFA_HandleArmOptions)
       # Others: GNU, Clang and variants
       AddCompilerFlag("-mcpu=native" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
     endif()
-
+    
   # Apply architecture flags
   elseif(NOT TARGET_ARCHITECTURE STREQUAL "none")
 
-    if(MSVC)
-      # MSVC on ARM64 needs to be done
+    # Disable "broken" features based on OFA_xxx_INTRINSICS_BROKEN options
+    set(_disable_vector_unit_list)
+    set(_enable_vector_unit_list)
+    
+    # TODO: Add OFA_xxx_INTRINSICS_BROKEN rules
+    set(_aes_broken false)
+    set(_bf16_broken false)
+    set(_crc_broken false)
+    set(_crypto_broken false)
+    set(_dotprod_broken false)
+    set(_dsp_broken false)
+    set(_fp16_broken false)
+    set(_fp16fml_broken false)
+    set(_fp_broken false)
+    set(_fp_dp_broken false)
+    set(_fp_sp_broken false)
+    set(_i8mm_broken false)
+    set(_idiv_broken false)
+    set(_lse_broken false)
+    set(_mve_broken false)
+    set(_mve_fp_broken false)
+    set(_neon_broken false)
+    set(_neon_fp16_broken false)
+    set(_neon_vfpv4_broken false)
+    set(_ras_broken false)
+    set(_rcpc_broken false)
+    set(_rdm_broken false)
+    set(_rdma_broken false)
+    set(_sec_broken false)
+    set(_sha2_broken false)
+    set(_sha3_broken false)
+    set(_simd_broken false)
+    set(_sm4_broken false)
+    set(_sve_broken false)
+    set(_vfpv3_broken false)
+    set(_vfpv3_d16_broken false)
+    set(_vfpv3_d16_fp16_broken false)
+    set(_vfpv3_fp16_broken false)
+    set(_vfpv4_broken false)
+    set(_vfpv4_d16_broken false)
+    set(_zcm_broken false)
+    set(_zcz_broken false)
 
+    # Enable/disable macro
+    macro(_enable_or_disable _name _flag _documentation _broken)
+      if(_broken)
+        set(_found false)
+      else()
+        _my_find(_available_vector_units_list "${_flag}" _found)
+      endif()
+      set(USE_${_name} ${_found} CACHE BOOL "${documentation}" ${_force})
+      mark_as_advanced(USE_${_name})
+      if(USE_${_name})
+        list(APPEND _enable_vector_unit_list "${_flag}")
+      else()
+        list(APPEND _disable_vector_unit_list "${_flag}")
+      endif()
+    endmacro()
+    
+    # Enable/disable features
+    _enable_or_disable(AES "aes" "Use AES. This will enable the aes and pmull crypto extension." _aes_broken)
+    _enable_or_disable(BF16 "bf16" "Use BF16. This will enable the brain half-precision floating-point instructions." _bf16_broken)
+    _enable_or_disable(CRC "crc" "Use CRC. This will enable the Cyclic Redundancy Check (CRC) instructions." _crc_broken)
+    _enable_or_disable(CRYPTO "crypto" "Use CRYPTO. This will enable the cryptographic instructions." _crypto_broken)
+    _enable_or_disable(DOTPROD "dotprod" "Use DOTPROD. This will enable the Dot Product extension. This also enables Advanced SIMD instructions." _dotprod_broken)
+    _enable_or_disable(DSP "dsp" "Use DSP. This will enable the DSP instruction." _dsp_broken)
+    _enable_or_disable(FP "fp" "Use FP. This will enable the floating-point data processing instructions." _fp_broken)
+    _enable_or_disable(FP16 "fp16" "Use FP16. This will enable the half-precision floating-point data processing instructions." _fp16_broken)
+    _enable_or_disable(FP16FML "fp16fml" "Use FP16FML. This will enable the FP16 fmla extension." _fp16fml_broken)
+    _enable_or_disable(FP_DP "fp.dp" "Use FP.DP. This will enable the single- and double-precision floating-point instructions." _fp_dp_broken)
+    _enable_or_disable(FP_SP "fp.sp" "Use FP.SP. This will enable the single-precision floating-point instructions." _fp_sp_broken)
+    _enable_or_disable(I8MM "i8mm" "Use I8MM. This will enable the 8-bit Integer Matrix Multiply instructions." _i8mm_broken)
+    _enable_or_disable(IDIV "idiv" "Use IDIV. This will enable the ARM-state integer division instructions." _idiv_broken)
+    _enable_or_disable(LSE "lse" "Use LSE. This will enable the Large System Extension instructions." _lse_broken)
+    _enable_or_disable(MVE "mve" "Use MVE. This will enable the M-Profile Vector Extension (MVE) integer instructions." _mve_broken)
+    _enable_or_disable(MVE_FP "mve.fp" "Use MVE.FP. This will enable the M-Profile Vector Extension (MVE) integer and single precision floating-point instructions." _mve_fp_broken)
+    _enable_or_disable(NEON "neon" "Use NEON. This will enable the Advanced SIMD (Neon) v1." _neon_broken)
+    _enable_or_disable(NEON_FP16 "neon-fp16" "Use NEON-FP16. This will enable the Advanced SIMD (Neon) v1 and the VFPv3 floating-point instructions, with the half-precision floating-point conversion operations." _neon_fp16_broken)
+    _enable_or_disable(NEON_VFPV4 "neon-vfpv4" "Use NEON-VFPV4. This will enable the Advanced SIMD (Neon) v2 and the VFPv4 floating-point instructions." _neon_vfpv4_broken)
+    _enable_or_disable(RAS "ras" "Use RAS. This will enable the Reliability, Availability, and Serviceability extension." _ras_broken)
+    _enable_or_disable(RCPC "rcpc" "Use RCPC. This will enable the RcPc extension." _rcpc_broken)
+    _enable_or_disable(RDM "rdm" "Use RDM. This will enable the RDM extension." _rdm_broken)
+    _enable_or_disable(RDMA "rdma" "Use RDMA. This will enable the Round Double Multiply Accumulate instructions." _rdma_broken)
+    _enable_or_disable(SEC "sec" "Use SEC. This will enable the security extension." _sec_broken)
+    _enable_or_disable(SHA2 "sha2" "Use SHA2. This will enable the sha2 crypto extension." _sha2_broken)
+    _enable_or_disable(SHA3 "sha3" "Use SHA3. This will enable the sha512 and sha3 crypto extension." _sha3_broken)
+    _enable_or_disable(SIMD "simd" "Use SIMD. This will enable the Advanced SIMD (Neon) v1 and the VFPv3 floating-point instructions." _simd_broken)
+    _enable_or_disable(SM4 "sm4" "Use SM4. This will enable the the sm3 and sm4 crypto extension." _sm4_broken)
+    _enable_or_disable(SVE "sve" "Use SVE. This will enable the Scalable Vector Extension instructions." _sve_broken)
+    _enable_or_disable(VFPV3 "vfpv3" "Use VPFV3. This will enable the VFPv3 floating-point instructions, with 32 double-precision registers." _vfpv3_broken)
+    _enable_or_disable(VFPV3_D16 "vfpv3-d16" "Use VPFV3-16. This will enable the VFPv3 floating-point instructions, with 32 double-precision registers and the half-precision floating-point conversion operations." _vfpv3_d16_broken)
+    _enable_or_disable(VFPV3_D16_FP16 "vfpv3-d16-fp16" "Use VPFV3-D16-FP16. This will enable VFPv3 floating-point instructions, with 16 double-precision registers and the half-precision floating-point conversion operations." _vfpv3_d16_fp16_broken)
+    _enable_or_disable(VFPV3_FP16 "vfpv3-fp16" "Use VPFV3-FP16. This will enable the VFPv3 floating-point instructions, with 32 double-precision registers and the half-precision floating-point conversion operations." _vfpv3_fp16_broken)
+    _enable_or_disable(VFPV4 "vfpv4" "Use VPFV4. This will enable the VFPv4 floating-point instructions, with 32 double-precision registers." _vfpv4_broken)
+    _enable_or_disable(VFPV4_D16 "vfpv4-d16" "Use VPFV4-D16. This will enable the VFPv4 floating-point instructions, with 16 double-precision registers." _vfpv4_dp16_broken)
+    _enable_or_disable(ZCM "zcm" "Use ZCM. This will enable the ZCM extension." _zcm_broken)
+    _enable_or_disable(ZCZ "zcz" "Use ZCZ. This will enable the ZCZ extension." _zcz_broken)
+        
+    # Add compiler flags
+    if(MSVC AND MSVC_VERSION GREATER 1900)
+      _my_find(_enable_vector_unit_list "vfpv4" _found)
+      if(_found)
+        AddCompilerFlag("/arch:VFPv4" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
+      endif()
+      if(NOT _found)
+        _my_find(_enable_vector_unit_list "simd" _found)
+        if(_found)
+          AddCompilerFlag("/arch:ARMv7VE" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
+        endif()
+      endif()
+      foreach(_flag ${_enable_vector_unit_list})
+        string(TOUPPER "${_flag}" _flag)
+        string(REPLACE "." "_" _flag "__${_flag}__")
+        add_definitions("-D${_flag}")
+      endforeach(_flag)
+      
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Cray")
+      
+      # TODO: Add Cray flags
+      
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Fujitsu")
+      
+      # TODO: Add Fujitsu flags
+      
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
+      
+      # TODO: Add NVHPC flags
+      
     else()
       # Others: GNU, Clang and variants
+
+      # Following the recommendation from
+      # https://community.arm.com/developer/tools-software/tools/b/tools-software-ides-blog/posts/compiler-flags-across-architectures-march-mtune-and-mcpu
+      # we first try to only use the -mcpu flag. If that fails, e.g., if
+      # the compiler does not yet support the specified target, we try to
+      # set the -march and -mtune flags as fallback option.
       foreach(_flag ${_mtune_flag_list})
         AddCompilerFlag("-mcpu=${_flag}" CXX_RESULT _good CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
         if(_good)
@@ -2208,103 +2371,10 @@ macro(OFA_HandleArmOptions)
         endif(_good)
       endforeach(_flag)
 
+      # Fallback: set -march, -mtune flags
       if(NOT _good)
-        set(_disable_vector_unit_list)
-        set(_enable_vector_unit_list)
-
-        set(_aes_broken false)
-        set(_bf16_broken false)
-        set(_crc_broken false)
-        set(_crypto_broken false)
-        set(_dotprod_broken false)
-        set(_dsp_broken false)
-        set(_fp16_broken false)
-        set(_fp16fml_broken false)
-        set(_fp_broken false)
-        set(_fp_dp_broken false)
-        set(_fp_sp_broken false)
-        set(_i8mm_broken false)
-        set(_idiv_broken false)
-        set(_lse_broken false)
-        set(_mve_broken false)
-        set(_mve_fp_broken false)
-        set(_neon_broken false)
-        set(_neon_fp16_broken false)
-        set(_neon_vfpv4_broken false)
-        set(_ras_broken false)
-        set(_rcpc_broken false)
-        set(_rdm_broken false)
-        set(_rdma_broken false)
-        set(_sec_broken false)
-        set(_sha2_broken false)
-        set(_sha3_broken false)
-        set(_simd_broken false)
-        set(_sm4_broken false)
-        set(_sve_broken false)
-        set(_vfpv3_broken false)
-        set(_vfpv3_d16_broken false)
-        set(_vfpv3_d16_fp16_broken false)
-        set(_vfpv3_fp16_broken false)
-        set(_vfpv4_broken false)
-        set(_vfpv4_d16_broken false)
-        set(_zcm_broken false)
-        set(_zcz_broken false)
-
-        macro(_enable_or_disable _name _flag _documentation _broken)
-
-          if(_broken)
-            set(_found false)
-          else()
-            _my_find(_available_vector_units_list "${_flag}" _found)
-          endif()
-          set(USE_${_name} ${_found} CACHE BOOL "${documentation}" ${_force})
-          mark_as_advanced(USE_${_name})
-          if(USE_${_name})
-            list(APPEND _enable_vector_unit_list "${_flag}")
-          else()
-            list(APPEND _disable_vector_unit_list "${_flag}")
-          endif()
-        endmacro()
-
-        _enable_or_disable(AES "aes" "Use AES. This will enable the aes and pmull crypto extension." _aes_broken)
-        _enable_or_disable(BF16 "bf16" "Use BF16. This will enable the brain half-precision floating-point instructions." _bf16_broken)
-        _enable_or_disable(CRC "crc" "Use CRC. This will enable the Cyclic Redundancy Check (CRC) instructions." _crc_broken)
-        _enable_or_disable(CRYPTO "crypto" "Use CRYPTO. This will enable the cryptographic instructions." _crypto_broken)
-        _enable_or_disable(DOTPROD "dotprod" "Use DOTPROD. This will enable the Dot Product extension. This also enables Advanced SIMD instructions." _dotprod_broken)
-        _enable_or_disable(DSP "dsp" "Use DSP. This will enable the DSP instruction." _dsp_broken)
-        _enable_or_disable(FP "fp" "Use FP. This will enable the floating-point data processing instructions." _fp_broken)
-        _enable_or_disable(FP16 "fp16" "Use FP16. This will enable the half-precision floating-point data processing instructions." _fp16_broken)
-        _enable_or_disable(FP16FML "fp16fml" "Use FP16FML. This will enable the FP16 fmla extension." _fp16fml_broken)
-        _enable_or_disable(FP_DP "fp.dp" "Use FP.DP. This will enable the single- and double-precision floating-point instructions." _fp_dp_broken)
-        _enable_or_disable(FP_SP "fp.sp" "Use FP.SP. This will enable the single-precision floating-point instructions." _fp_sp_broken)
-        _enable_or_disable(I8MM "i8mm" "Use I8MM. This will enable the 8-bit Integer Matrix Multiply instructions." _i8mm_broken)
-        _enable_or_disable(IDIV "idiv" "Use IDIV. This will enable the ARM-state integer division instructions." _idiv_broken)
-        _enable_or_disable(LSE "lse" "Use LSE. This will enable the Large System Extension instructions." _lse_broken)
-        _enable_or_disable(MVE "mve" "Use MVE. This will enable the M-Profile Vector Extension (MVE) integer instructions." _mve_broken)
-        _enable_or_disable(MVE_FP "mve.fp" "Use MVE.FP. This will enable the M-Profile Vector Extension (MVE) integer and single precision floating-point instructions." _mve_fp_broken)
-        _enable_or_disable(NEON "neon" "Use NEON. This will enable the Advanced SIMD (Neon) v1." _neon_broken)
-        _enable_or_disable(NEON_FP16 "neon-fp16" "Use NEON-FP16. This will enable the Advanced SIMD (Neon) v1 and the VFPv3 floating-point instructions, with the half-precision floating-point conversion operations." _neon_fp16_broken)
-        _enable_or_disable(NEON_VFPV4 "neon-vfpv4" "Use NEON-VFPV4. This will enable the Advanced SIMD (Neon) v2 and the VFPv4 floating-point instructions." _neon_vfpv4_broken)
-        _enable_or_disable(RAS "ras" "Use RAS. This will enable the Reliability, Availability, and Serviceability extension." _ras_broken)
-        _enable_or_disable(RCPC "rcpc" "Use RCPC. This will enable the RcPc extension." _rcpc_broken)
-        _enable_or_disable(RDM "rdm" "Use RDM. This will enable the RDM extension." _rdm_broken)
-        _enable_or_disable(RDMA "rdma" "Use RDMA. This will enable the Round Double Multiply Accumulate instructions." _rdma_broken)
-        _enable_or_disable(SEC "sec" "Use SEC. This will enable the security extension." _sec_broken)
-        _enable_or_disable(SHA2 "sha2" "Use SHA2. This will enable the sha2 crypto extension." _sha2_broken)
-        _enable_or_disable(SHA3 "sha3" "Use SHA3. This will enable the sha512 and sha3 crypto extension." _sha3_broken)
-        _enable_or_disable(SIMD "simd" "Use SIMD. This will enable the Advanced SIMD (Neon) v1 and the VFPv3 floating-point instructions." _simd_broken)
-        _enable_or_disable(SM4 "sm4" "Use SM4. This will enable the the sm3 and sm4 crypto extension." _sm4_broken)
-        _enable_or_disable(SVE "sve" "Use SVE. This will enable the Scalable Vector Extension instructions." _sve_broken)
-        _enable_or_disable(VFPV3 "vfpv3" "Use VPFV3. This will enable the VFPv3 floating-point instructions, with 32 double-precision registers." _vfpv3_broken)
-        _enable_or_disable(VFPV3_D16 "vfpv3-d16" "Use VPFV3-16. This will enable the VFPv3 floating-point instructions, with 32 double-precision registers and the half-precision floating-point conversion operations." _vfpv3_d16_broken)
-        _enable_or_disable(VFPV3_D16_FP16 "vfpv3-d16-fp16" "Use VPFV3-D16-FP16. This will enable VFPv3 floating-point instructions, with 16 double-precision registers and the half-precision floating-point conversion operations." _vfpv3_d16_fp16_broken)
-        _enable_or_disable(VFPV3_FP16 "vfpv3-fp16" "Use VPFV3-FP16. This will enable the VFPv3 floating-point instructions, with 32 double-precision registers and the half-precision floating-point conversion operations." _vfpv3_fp16_broken)
-        _enable_or_disable(VFPV4 "vfpv4" "Use VPFV4. This will enable the VFPv4 floating-point instructions, with 32 double-precision registers." _vfpv4_broken)
-        _enable_or_disable(VFPV4_D16 "vfpv4-d16" "Use VPFV4-D16. This will enable the VFPv4 floating-point instructions, with 16 double-precision registers." _vfpv4_dp16_broken)
-        _enable_or_disable(ZCM "zcm" "Use ZCM. This will enable the ZCM extension." _zcm_broken)
-        _enable_or_disable(ZCZ "zcz" "Use ZCZ. This will enable the ZCZ extension." _zcz_broken)
-        foreach(_march ${_march_flag_list})
-
+        # Set -march flag
+        foreach(_march ${_march_flag_list})          
           AddCompilerFlag("-march=${_march}" CXX_RESULT _good CXX_FLAGS DUMMY_FLAGS)
           if(_good)
             set(_march_plus_extensions "${_march}")
@@ -2319,6 +2389,7 @@ macro(OFA_HandleArmOptions)
           endif(_good)
         endforeach(_march)
 
+        # Set -mtune flag
         foreach(_mtune ${_mtune_flag_list})
           AddCompilerFlag("-mtune=${_mtune}" CXX_RESULT _good CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
           if(_good)
@@ -2326,6 +2397,11 @@ macro(OFA_HandleArmOptions)
           endif(_good)
         endforeach(_mtune)
       endif(NOT _good)
+
+      # Note that ARM does not support -mfeature and -mno-feature to
+      # enable and disable specific features. Hence, there are no
+      # loops over the _enable_vector_unit_list and
+      # _disable_vector_unit_list lists here(!)
     endif()
   endif()
 
@@ -2337,51 +2413,124 @@ endmacro(OFA_HandleArmOptions)
 
 macro(OFA_HandlePpcOptions)
   set(_march_flag_list)
-  if(TARGET_ARCHITECTURE STREQUAL "power3")
+  set(_available_vector_units_list)
+    
+  # Define macros for PowerPC64
+  macro(_power3)
     list(APPEND _march_flag_list "power3")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power4")
+  endmacro()
+  macro(_power4)
     list(APPEND _march_flag_list "power4")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power5")
+    _power3()
+  endmacro()
+  macro(_power5)
     list(APPEND _march_flag_list "power5")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power5+")
+    _power4()
+  endmacro()
+  macro(_power5plus)
     list(APPEND _march_flag_list "power5+")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power6")
+    _power5()
+  endmacro()
+  macro(_power6)
     list(APPEND _march_flag_list "power6")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power6x")
+    _power5()
+  endmacro()
+  macro(_power6x)
     list(APPEND _march_flag_list "power6x")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power7")
+    _power6()
+  endmacro()
+  macro(_power7)
     list(APPEND _march_flag_list "power7")
-  if(TARGET_ARCHITECTURE STREQUAL "power8")
+    _power6()
+  endmacro()
+  macro(_power8)
     list(APPEND _march_flag_list "power8")
     list(APPEND _march_flag_list "pwr8")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power9")
+    _power7()
+  endmacro()
+  macro(_power9)
     list(APPEND _march_flag_list "power9")
-    list(APPEND _march_flag_list "power8")
     list(APPEND _march_flag_list "pwr9")
-    list(APPEND _march_flag_list "pwr8")
-  elseif(TARGET_ARCHITECTURE STREQUAL "power10")
+    _power8()
+  endmacro()
+  macro(_power10)
     list(APPEND _march_flag_list "power10")
-    list(APPEND _march_flag_list "power9")
-    list(APPEND _march_flag_list "power8")
     list(APPEND _march_flag_list "pwr10")
-    list(APPEND _march_flag_list "pwr9")
-    list(APPEND _march_flag_list "pwr8")
+    _power9()
+  endmacro()
+  
+  # PowerPC64
+  if(TARGET_ARCHITECTURE STREQUAL "power3")
+    _power3()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power4")
+    _power4()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power5")
+    _power5()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power5+")
+    _power5plus()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power6")
+    _power6()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power6x")
+    _power6x()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power7")
+    _power7()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power8")
+    _power8()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power9")
+    _power9()
+  elseif(TARGET_ARCHITECTURE STREQUAL "power10")
+    _power10()
+
+  # Others
+  elseif(TARGET_ARCHITECTURE STREQUAL "generic")
+    list(APPEND _march_flag_list "generic")
+  elseif(TARGET_ARCHITECTURE STREQUAL "native")
+    list(APPEND _march_flag_list "native")
+  elseif(TARGET_ARCHITECTURE STREQUAL "none")
+    # add this clause to remove it from the else clause
+
+  else()
+    message(FATAL_ERROR "Unknown target architecture: \"${TARGET_ARCHITECTURE}\". Please set TARGET_ARCHITECTURE to a supported value.")
   endif()
 
-  foreach(_flag ${_march_flag_list})
-    if(CMAKE_CXX_COMPILER MATCHES "/(pgcc|pgc\\+\\+)$")
-      # PGI (on Linux)
-      AddCompilerFlag("-tp=${_flag}" CXX_RESULT _good CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
-    else()
-      AddCompilerFlag("-mcpu=${_mcpu}" CXX_RESULT _good CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
-    endif()
-    if(_good)
-      break()
-    endif(_good)
-  endforeach(_flag)
+  # Special treatment for "native"
+  if(TARGET_ARCHITECTURE STREQUAL "native")
 
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    AddCompilerFlag("-target powerpcle-unknown-linux-gnu" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
+  # Apply architecture flags
+  elseif(NOT TARGET_ARCHITECTURE STREQUAL "none")
+
+    # Disable "broken" features based on OFA_xxx_INTRINSICS_BROKEN options
+    set(_disable_vector_unit_list)
+    set(_enable_vector_unit_list)
+
+    # Enable/disable macro
+    macro(_enable_or_disable _name _flag _documentation _broken)
+      if(_broken)
+        set(_found false)
+      else()
+        _my_find(_available_vector_units_list "${_flag}" _found)
+      endif()
+      set(USE_${_name} ${_found} CACHE BOOL "${documentation}" ${_force})
+      mark_as_advanced(USE_${_name})
+      if(USE_${_name})
+        list(APPEND _enable_vector_unit_list "${_flag}")
+      else()
+        list(APPEND _disable_vector_unit_list "${_flag}")
+      endif()
+    endmacro()
+
+    # Enable/disable features
+    
+    # Add compiler flags
+    if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC")
+
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "XL")
+
+    else()
+      # Others: GNU, Clang and variants
+      
+      
+    endif()
   endif()
 endmacro(OFA_HandlePpcOptions)
 
