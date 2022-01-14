@@ -1697,7 +1697,7 @@ int main(int argc, char* argv[]){
 //    real_t epsilon_g = 0.004, epsilon_f = 0.004;
 //    real_t epsilon_g = 0.0114, epsilon_f = 0.0114195;
 //    real_t epsilon_g = 1e+6, epsilon_f = 0.003;
-    real_t epsilon_g = 1e+6, epsilon_f = 0.01;
+    real_t epsilon_g = 1e+6, epsilon_f = 0.00001;
 //    real_t epsilon_g = 1e+6, epsilon_f = 1e+6;
 //    ofstream myfile;
 //    myfile.open ("/home/turing/theydarov/october/example.txt",  fstream::app);
