@@ -20,13 +20,14 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const gsSparseMatrix<>&,
     const gsMultiBasis<>&,
     const gsBoundaryConditions<>&,
-    const gsOptionList&,
-    const index_t&
+    const gsOptionList&
 );
 
 gsPreconditionerOp<>::Ptr setupBlockILUT(
     const gsSparseMatrix<>&,
-    const gsMultiBasis<>&
+    const gsMultiBasis<>&,
+    const gsBoundaryConditions<>&,
+    const gsOptionList&
 );
 
 
@@ -387,7 +388,7 @@ int main(int argc, char* argv[])
     index_t numSmoothing = 1;
     index_t numLevels = 2;
     index_t numBenchmark = 3;
-    index_t numPatches = 1;
+    index_t numSplits = 0;
     index_t typeSolver = 1;
     index_t typeCycle_p = 1;
     index_t typeCycle_h = 2;
@@ -397,6 +398,9 @@ int main(int argc, char* argv[])
     index_t typeSmoother = 1;
     index_t typeCoarseOperator = 1;
     std::string typeCoarsening = "h";
+    index_t maxIter = 20;
+    real_t tol = 1e-8;
+    real_t dampingSCMS = 1;
 
     // Command line argument parser
     gsCmdLine cmd("This programm solves the CDR-equation with a p-multigrid or h-multigrid method");
@@ -407,31 +411,31 @@ int main(int argc, char* argv[])
     cmd.addInt("v", "Smoothing", "Number of pre/post smoothing steps", numSmoothing);
     cmd.addInt("l", "Levels", "Number of levels in multigrid method", numLevels);
     cmd.addInt("b", "Benchmark", "Number of the benchmark", numBenchmark);
-    cmd.addInt("P", "Patches", "Number of patch splittings (1) no splitting, (2) split each patch into 2^d patches, (3) split each patch into 4^d patches, etc.", numPatches);
+    cmd.addInt("P", "PatchSplits", "Number of patch splittings: split each pach that many times into 2^d patches", numSplits);
     cmd.addInt("s", "Solver", "Type of solver: (1) mg as stand-alone solver (2) BiCGStab prec. with mg (3) CG prec. with mg", typeSolver);
-    cmd.addInt("m", "Cycle_p", "Type of cycle, eather V-cycle (1) or W-cycle (2)", typeCycle_p);
-    cmd.addInt("M", "Cycle_h", "Type of cycle, eather V-cycle (1) or W-cycle (2)", typeCycle_h);
-    cmd.addInt("d", "BCHandling", "Handles Dirichlet BC's by elimination (1) or Nitsche's method (2)", typeBCHandling);
-    cmd.addInt("L", "Lumping", "Restriction and Prolongation performed with the lumped (1) or consistent (2) mass matrix", typeLumping);
-    cmd.addInt("D", "Projection", "Direct projection on coarsest level (1) or via all other levels (2)", typeProjection);
+    cmd.addInt("m", "Cycle_p", "Type of cycle where p or hp-refinement is applied: (1) V-cycle or (2) W-cycle", typeCycle_p);
+    cmd.addInt("M", "Cycle_h", "Type of cycle where h-refinement is applied: (1) V-cycle or (2) W-cycle", typeCycle_h);
+    cmd.addInt("d", "BCHandling", "Handles Dirichlet BC's by (1) elimination or (2) Nitsche's method", typeBCHandling);
+    cmd.addInt("L", "Lumping", "Restriction and Prolongation performed with the (1) lumped or (2) consistent mass matrix", typeLumping);
+    cmd.addInt("D", "Projection", "Direct projection on (1) coarsest level or (2) via all other levels", typeProjection);
     cmd.addInt("S", "Smoother", "Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS or (4) Block ILUT", typeSmoother);
     cmd.addInt("G", "CoarseOperator", "Type of coarse operator in h-multigrid: (1) Rediscretization (2) Galerkin Projection", typeCoarseOperator);
     cmd.addString("z", "Coarsening", "Expression that defines coarsening strategy", typeCoarsening);
+    cmd.addInt("", "MaxIter", "Maximum number of iterations for iterative solver", maxIter);
+    cmd.addReal("", "Tolerance", "Threshold for iterative solver", tol);
+    cmd.addReal("", "DampingSCMS", "Damping for subspace corrected mass smoother (otherwise ignored)", dampingSCMS);
 
     // Read parameters from command line
     try { cmd.getValues(argc,argv);  } catch (int rv) { return rv; }
 
-    if (typeSolver < 1 || typeSolver > 3)
-    {
-        gsInfo << "Unknown solver chosen.\n";
-        return -1;
-    }
+    gsOptionList opt;
 
     if (typeBCHandling < 1 || typeBCHandling > 2)
     {
         gsInfo << "Unknown boundary condition handling type chosen.\n";
         return -1;
     }
+    opt.addInt("DirichletStrategy","",typeBCHandling == 1 ? dirichlet::elimination : dirichlet::nitsche);
 
     if (typeLumping < 1 || typeLumping > 2)
     {
@@ -442,12 +446,6 @@ int main(int argc, char* argv[])
     if (typeProjection < 1 || typeProjection > 2)
     {
         gsInfo << "Unknown projection type chosen.\n";
-        return -1;
-    }
-
-    if (typeSmoother < 1 || typeSmoother > 4)
-    {
-        gsInfo << "Unknown smoother chosen.\n";
         return -1;
     }
 
@@ -525,7 +523,7 @@ int main(int argc, char* argv[])
 
         default:
             gsInfo << "Unknown benchmark case chosen.\n";
-            return -1;
+            return EXIT_FAILURE;
     }
 
     // Print information about benchmark
@@ -533,10 +531,8 @@ int main(int argc, char* argv[])
     gsInfo << "Right hand side: " << rhs_exact << "\n";
 
     // Handle the uniform splitting
-    for (index_t i=0; i<numPatches-1; ++i)
-    {
+    for (index_t i=0; i<numSplits; ++i)
         mp = mp.uniformSplit();
-    }
 
     gsInfo << "Number of patches: " << mp.nPatches() << "\n\n";
 
@@ -547,15 +543,15 @@ int main(int argc, char* argv[])
     gsMatrix<index_t> hp = gsMatrix<index_t>::Zero(numLevels-1,1);
 
     // Read string from command line
-    real_t numRefH = 0;
-    real_t numRefP = 0;
-    real_t numRefZ = 0;
+    index_t numRefH = 0;
+    index_t numRefP = 0;
+    index_t numRefZ = 0;
 
     // Convert input string to array
     if (typeCoarsening.size() != static_cast<size_t>(numLevels-1))
     {
         gsInfo << "The string provided to --Coarsening should have length " << numLevels-1 << "\n";
-        return -1;
+        return EXIT_FAILURE;
     }
     for ( index_t i = 0; i < numLevels-1 ; ++i)
     {
@@ -569,10 +565,15 @@ int main(int argc, char* argv[])
             hp(i,0) = 0;
             numRefP = numRefP + 1;
         }
-        else
+        else if ( typeCoarsening[i] == 'z')
         {
             hp(i,0) = 2;
             numRefZ = numRefZ + 1;
+        }
+        else
+        {
+            gsInfo << "Unknown coarsening type given.\n";
+            return EXIT_FAILURE;
         }
     }
 
@@ -604,7 +605,7 @@ int main(int argc, char* argv[])
     gsFunctionExpr<> zero("0", mp.geoDim());
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
     {
-        bcInfo.addCondition( *bit, condition_type::dirichlet, &sol_exact);
+        bcInfo.addCondition(*bit, condition_type::dirichlet, &sol_exact);
     }
     bcInfo.setGeoMap(mp);
 
@@ -642,40 +643,34 @@ int main(int argc, char* argv[])
     double Time_Coarse_Solver_Setup = clock.stop();
 
     // Setup of smoothers
+    opt.addReal("Scaling","",0.12);           // only used for SCMS
+    opt.addReal("Damping","",dampingSCMS);    // only used for SCMS
     clock.restart();
     for (index_t i = 0; i < numLevels; i++)
     {
         switch (typeSmoother)
         {
             case 1:
-            {
                 if (typeProjection == 2 || i == numLevels-1)
                     mg->setSmoother(i,makeIncompleteLUOp(mg->matrix(i)));
                 else
                     mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
                 break;
-            }
             case 2:
-            {
                 mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
                 break;
-            }
             case 3:
-            {
-                gsOptionList opt;
-                opt.addReal("Scaling","",0.12);
-                mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(mg->matrix(i), My_MG.basis(i), bcInfo, opt, typeBCHandling));
+                mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(mg->matrix(i), My_MG.basis(i), bcInfo, opt));
                 break;
-            }
             case 4:
-            {
                 if (typeProjection == 2 || i == numLevels-1)
-                    mg->setSmoother(i,setupBlockILUT(mg->matrix(i), My_MG.basis(i)));
+                    mg->setSmoother(i,setupBlockILUT(mg->matrix(i), My_MG.basis(i), bcInfo, opt));
                 else
                     mg->setSmoother(i,makeGaussSeidelOp(mg->matrix(i)));
                 break;
-            }
-            default:;
+            default:
+                gsInfo << "Unknown smoother chosen.\n";
+                return EXIT_FAILURE;
         }
     }
     double Time_Smoother_Setup = clock.stop();
@@ -700,30 +695,30 @@ int main(int argc, char* argv[])
     gsInfo << "Smoother setup time: " << Time_Smoother_Setup << "\n";
     gsInfo << "Total setup time: " << My_MG.TimeAssembly() + My_MG.TimeAssemblyGalerkin() + My_MG.TimeTransfer() + Time_Coarse_Solver_Setup + Time_Smoother_Setup << "\n";
 
-    // Setup of solver
+    // Setup of iterative solver
     gsIterativeSolver<>::Ptr solver;
-    if (typeSolver == 1)
+    switch (typeSolver)
     {
-        gsInfo << "\n|| Solver information ||\np-multigrid is applied as stand-alone solver\n";
-        // The preconditioned gradient method is noting but applying p-multigrid as a stand-alone solver.
-        // We have to set step size = 1 to deactivate automatic stepsize control.
-        solver = gsGradientMethod<>::make(mg->underlyingOp(), mg, 1);
-    }
-    else if (typeSolver == 2)
-    {
-        gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
-        solver = gsBiCgStab<>::make(mg->underlyingOp(), mg);
-    }
-    else if (typeSolver == 3)
-    {
-        gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
-        solver = gsConjugateGradient<>::make(mg->underlyingOp(), mg);
+        case 1:
+            gsInfo << "\n|| Solver information ||\np-multigrid is applied as stand-alone solver\n";
+            // The preconditioned gradient method is noting but applying p-multigrid as a stand-alone solver.
+            // We have to set step size = 1 to deactivate automatic stepsize control.
+            solver = gsGradientMethod<>::make(mg->underlyingOp(), mg, 1);
+            break;
+        case 2:
+            gsInfo << "\n|| Solver information ||\nBiCGStab is applied as solver, p-multigrid as a preconditioner\n";
+            solver = gsBiCgStab<>::make(mg->underlyingOp(), mg);
+            break;
+        case 3:
+            gsInfo << "\n|| Solver information ||\nCG is applied as solver, p-multigrid as a preconditioner\n";
+            solver = gsConjugateGradient<>::make(mg->underlyingOp(), mg);
+            break;
+        default:
+            gsInfo << "Unknown iterative solver chosen.\n";
+            return EXIT_FAILURE;
     }
 
     gsMatrix<> x = gsMatrix<>::Random(mg->underlyingOp()->rows(),1);
-
-    real_t maxIter = 20; // mg->underlyingOp()->rows();
-    real_t tol = 1e-8;
 
     // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
     const real_t rhs_norm = My_MG.rhs(numLevels-1).norm();
@@ -759,8 +754,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const gsSparseMatrix<>& matrix,
     const gsMultiBasis<>& mb,
     const gsBoundaryConditions<>& bc,
-    const gsOptionList& opt,
-    const index_t &typeBCHandling
+    const gsOptionList& opt
 )
 {
     const short_t dim = mb.topology().dim();
@@ -768,7 +762,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     // Setup dof mapper
     gsDofMapper dm;
     mb.getMapper(
-       typeBCHandling == 1 ? (dirichlet::strategy)opt.askInt("DirichletStrategy",11) : (dirichlet::strategy)opt.askInt("DirichletStrategy",14),
+       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
        (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
        bc,
        dm,
@@ -824,22 +818,31 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
             transfers.push_back(give(transfer));
         }
     }
-    return gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsAdditiveOp<>::make(transfers, ops));
+    gsPreconditionerOp<>::uPtr result = gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsAdditiveOp<>::make(transfers, ops));
+    result->setOptions(opt);
+    return result;
 }
 
 gsPreconditionerOp<>::Ptr setupBlockILUT(
     const gsSparseMatrix<>& A,
-    const gsMultiBasis<>& mb
+    const gsMultiBasis<>& mb,
+    const gsBoundaryConditions<>& bc,
+    const gsOptionList& opt
 )
 {
-    index_t nPatches = mb.nPieces();
+    const index_t nPatches = mb.nPieces();
 
+    // Setup dof mapper
     gsDofMapper dm;
-    mb.getMapper(true,dm,false); // This is what partition would do; but what about the Nitsche case?
-    dm.finalize();
-
+    mb.getMapper(
+       (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
+       (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
+       bc,
+       dm,
+       0
+    );
     // Subdivide the overal dofs into
-    //   a) the patch-local dofs (l=0,...,numPatches-1)
+    //   a) the patch-local dofs (l=0,...,nPatches-1)
     //   b) the coupled dofs (l=nPatches)
     std::vector<index_t> sizes(nPatches+1);
     std::vector<index_t> shifts(nPatches+1);
