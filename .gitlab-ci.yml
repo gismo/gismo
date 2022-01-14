@@ -227,7 +227,7 @@ install_and_deploy_linux:
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest || true #continues in case of failure
     # III. Test direct use of -lgismo
     - rm -rf ./poisson_example.out
-    - g++ -v /builds/gismo-ci/gismo/deploy/poisson_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
     - ctest --output-on-failure -A compile.log -M Experimental -T Submit
     - if [ ! -f "poisson_example.out" ]; then cat compile.log; fi
     - ./poisson_example.out
