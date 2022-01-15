@@ -41,6 +41,7 @@ if (NOT OpenCascade_FOUND)
                  -DCMAKE_INSTALL_MESSAGE=NEVER
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+		 -DBUILD_MODULE_Draw:BOOL=FALSE
       DOWNLOAD_COMMAND  ""
       UPDATE_COMMAND    ""
       )
