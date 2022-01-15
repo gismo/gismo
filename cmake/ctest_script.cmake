@@ -74,11 +74,9 @@
 ##   DROP_SITE
 ##   EMPTY_BINARY_DIRECTORY
 ##   GISMO_BRANCH
-##   GISMO_SUBMODULES
 ##   LABELS_FOR_SUBPROJECTS
 ##   PROJECT_NAME
 ##   UPDATE_REPO
-##   UPDATE_MODULES
 ##   UPDATE_TYPE
 ##
 ## Environment
@@ -317,12 +315,6 @@ if (NOT DEFINED GISMO_BRANCH) #for initial checkout
   set(GISMO_BRANCH stable)
 endif()
 
-# Update modules with fetch HEAD commits for all initialized
-# submodules
-if (NOT DEFINED UPDATE_MODULES)
-  set(UPDATE_MODULES OFF)
-endif()
-
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
 
@@ -375,42 +367,14 @@ endif()
 if("x${UPDATE_TYPE}" STREQUAL "xgit")
 
   if (NOT "x${GISMO_SUBMODULES}" STREQUAL "x")
-    foreach (submod ${GISMO_SUBMODULES})
-      #string(TOUPPER ${submod} csubmod)
-      #set(SUBM_ARGS ${SUBM_ARGS} -D${csubmod}=ON)
-      if ("x${submod}" STREQUAL "xunsupported")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_UNSUPPORTED=ON)
-      endif()
-      if ("x${submod}" STREQUAL "xmotor")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_MOTOR=ON)
-      endif()
-      if ("x${submod}" STREQUAL "xgsElasticity")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_ELASTICITY=ON)#GSELASTICITY=ON
-      endif()
-      if ("x${submod}" STREQUAL "xgsExastencils")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_EXASTENCILS=ON)
-      endif()
-    endforeach()
+    message(SEND_ERROR "GISMO_SUBMODULES should be given as cmake argument instead")
   endif()
 
-  foreach (submodule ${GISMO_SUBMODULES})
-    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule update --init extensions/${submodule}
-	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
-    endif()
-    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
-      message(SEND_ERROR "Problem fetching ${submodule}")
-    endif()
-
-    if(${UPDATE_MODULES})
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
-	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-    endif()
   endforeach()
-  if(${UPDATE_MODULES})
-    set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
-    unset(CTEST_GIT_UPDATE_OPTIONS)
-  endif()
+  #if(${UPDATE_MODULES})
+  #  set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
+  #  unset(CTEST_GIT_UPDATE_OPTIONS)
+  #endif()
 endif()
 
 if("${CTEST_CMAKE_GENERATOR}" MATCHES "Make" OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
@@ -447,9 +411,6 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   #  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
   #  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
   #  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
-  if(${UPDATE_MODULES})
-    set(smHead "(head)")
-  endif()
   get_filename_component(cxxnamewe "${CXXNAME}" NAME_WE)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
 endif()
@@ -541,20 +502,6 @@ macro(update_gismo ug_ucount)
   endif()
   set(ug_updlog " ${${ug_ucount}} gismo\n")    
 
-  if(${UPDATE_MODULES})
-    foreach (submodule ${GISMO_SUBMODULES})
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
-	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-      ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
-      set(ug_updlog "${ug_updlog} ${ug_upd_sm} extensions/${submodule}\n")
-      if (${ug_upd_sm} GREATER 0)
-	math(EXPR ${ug_ucount} "${${ug_ucount}} + ${ug_upd_sm}")
-      endif()
-      if(${ug_upd_sm} LESS 0)
-        message(SEND_ERROR "Git update submodule error")
-      endif()
-    endforeach()
-  endif()
   get_git_status(gitstatus)
   file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt "Revision:\n${gitstatus}\nUpdates:\n${ug_updlog}")
 endmacro(update_gismo)

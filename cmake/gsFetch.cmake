@@ -9,6 +9,7 @@ include(CMakeParseArguments)
 
 #latest CMake has FetchContent
 function(gismo_fetch_directory)
+  #use: gismo_fetch_directory(name GIT_REPOSITORY  ${git_repo} DESTINATION  extensions)
   set(GF_NAME "${ARGV0}")
   set(oneValueArgs
     # Protect the following options
@@ -76,57 +77,7 @@ function(gismo_fetch_directory)
 
 endfunction()
 
-# called to fetch/download a submodule form git (working) and svn (in progress)
-# (ARGV0) SUBMODULE:  name of submodule
-# (ARGVN)             Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
-function(gismo_fetch_module SUBMODULE)
-
-# TODO: online/offline mode
-
-  get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
-
-  #if (NOT DEFINED GISMO_FETCH_PROT)
-  #  set(GISMO_FETCH_PROT https) #ssh
-  #endif()
-
-  #message("Fetch ${SUBMODULE} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
-
-  if("x${GISMO_REPO}" STREQUAL "xgit")
-    #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
-    #  set(git_repo git@github.com:gismo/${SUBMODULE}.git)
-    #elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
-    #  set(git_repo https://github.com/gismo/${SUBMODULE}.git)
-    #endif()
-    # gismo_fetch_directory(${ARGN} GIT_REPOSITORY  ${git_repo} DESTINATION  extensions)
-    
-    if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
-      message(STATUS "Initializing remote submodule ${SUBMODULE}")
-      find_package(Git REQUIRED)
-
-      # init SUBMODULE
-      execute_process(COMMAND "${GIT_EXECUTABLE}" "submodule" "update" "--init" "extensions/${SUBMODULE}"
-        WORKING_DIRECTORY ${gismo_SOURCE_DIR}
-        #RESULT_VARIABLE gresult
-        #OUTPUT_QUIET
-        )
-    endif()
-
-  elseif("x${GISMO_REPO}" STREQUAL "xsvn")
-    #if("x${GISMO_FETCH_PROT}" STREQUAL "xssh") message(ERROR "GitHub does not support svn+ssh") endif()
-    gismo_fetch_directory(${SUBMODULE}
-      SVN_REPOSITORY https://github.com/gismo/${SUBMODULE}/trunk
-      SVN_USERNAME ${GISMO_UNAME} # Username for Subversion checkout and update
-      SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
-      SVN_TRUST_CERT 1            # Trust the Subversion server site certificate
-      DESTINATION  extensions
-      )
-  else()
-    gismo_fetch_directory(${SUBMODULE}
-      URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
-      DESTINATION  extensions
-      )
-  endif()
-
+function(gismo_add_submodule SUBMODULE)
   # get list of programs to compile
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
     add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
@@ -140,4 +91,74 @@ function(gismo_fetch_module SUBMODULE)
     #WARNING
   endif()
 
+endfunction()
+
+# called to fetch/download a submodule form git (working) and svn (in progress)
+# (ARGV0) SUBMODULE:  name of submodule
+# (ARGVN)             Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
+function(gismo_fetch_module SUBMODULE)
+
+  if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
+    if(UPDATE_SUBMODULES) #online mode
+      get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
+      execute_process(COMMAND "${GIT_EXECUTABLE}" pull
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+	RESULT_VARIABLE gitclone_res)
+    endif()
+    gismo_add_submodule(${SUBMODULE})
+    return()
+  endif()
+
+  get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
+
+  if (NOT DEFINED GISMO_FETCH_PROT)
+    if(EXISTS "${gismo_SOURCE_DIR}/.git")
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "remote" "-v" OUTPUT_QUIET RESULT_VARIABLE git_remote_res)
+      string(REGEX MATCH "git@github.com" fmatch ${git_remote_res})
+      if(fmatch)
+	set(GISMO_FETCH_PROT "ssh")
+      else()
+	set(GISMO_FETCH_PROT "https")
+      endif()
+    endif()
+  endif()
+
+  #message("Fetch ${SUBMODULE} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
+
+  if("x${GISMO_REPO}" STREQUAL "xgit")
+    if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
+      set(git_repo git@github.com:gismo/${SUBMODULE}.git)
+    elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
+      set(git_repo https://github.com/gismo/${SUBMODULE}.git)
+    endif()
+
+    if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
+      message(STATUS "Initializing remote submodule ${SUBMODULE}")
+      find_package(Git REQUIRED)
+
+      # init SUBMODULE
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "clone" "--depth" "1" ${git_repo}
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions
+	RESULT_VARIABLE gitclone_res)
+      if(gitclone_res AND NOT gitclone_res EQUAL 0)
+	message(FATAL_ERROR "Unable to fetch module ${SUBMODULE} (${git_repo})")
+      endif()
+    endif()
+
+  elseif("x${GISMO_REPO}" STREQUAL "xsvn")
+    if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
+      message(ERROR "GitHub does not support svn+ssh")
+    endif()
+    gismo_fetch_directory(${SUBMODULE}
+      SVN_REPOSITORY https://github.com/gismo/${SUBMODULE}/trunk
+      SVN_USERNAME ${GISMO_UNAME} # Username for Subversion checkout and update
+      SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
+      SVN_TRUST_CERT 1            # Trust the Subversion server site certificate
+      DESTINATION  extensions )
+  else()
+    gismo_fetch_directory(${SUBMODULE}
+      URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
+      DESTINATION  extensions )
+  endif()
+  gismo_add_submodule(${SUBMODULE})
 endfunction()
