@@ -99,12 +99,17 @@ endfunction()
 function(gismo_fetch_module SUBMODULE)
 
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
-    if(UPDATE_SUBMODULES) #online mode
+    if(UPDATE_SUBMODULES) #Update to current HEAD
       get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
-      execute_process(COMMAND "${GIT_EXECUTABLE}" pull
-	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
-	RESULT_VARIABLE gitclone_res)
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth" "1"
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "reset" "--hard"
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
     endif()
+    # note: specific commits are reachable as, eg,
+    # https://github.com/gismo/gismo/archive/<full-hash>.zip
     gismo_add_submodule(${SUBMODULE})
     return()
   endif()
@@ -136,7 +141,7 @@ function(gismo_fetch_module SUBMODULE)
       message(STATUS "Initializing remote submodule ${SUBMODULE}")
       find_package(Git REQUIRED)
 
-      # init SUBMODULE
+      # init SUBMODULE (note: git fetch --unshallow to get full clone)
       execute_process(COMMAND "${GIT_EXECUTABLE}" "clone" "--depth" "1" ${git_repo}
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions
 	RESULT_VARIABLE gitclone_res)
