@@ -15,10 +15,9 @@ endif()
 # Apply same configuration as G+Smo
 include(gsConfig)
 
-##
 ## OpenCascade library
-##
-find_package(OpenCascade 7.3.0 QUIET)
+## (needs FindOpenCascade.cmake)
+#find_package(OpenCascade 7.3.0 QUIET)
 
 if (NOT OpenCascade_FOUND)
   # Set OpenCascade version
@@ -32,6 +31,15 @@ if (NOT OpenCascade_FOUND)
       DESTINATION    external
       )
 
+    # Set OpenCascade include directory
+    set(OCC_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/include/opencascade CACHE INTERNAL "")
+
+    # Set OpenCascade libraries
+    set(OCC_LIBNAMES TKBO TKBool TKBRep TKernel TKFeat TKFillet TKG2d TKG3d TKGeomAlgo TKGeomBase TKHLR TKIGES TKMath TKMesh TKOffset TKPrim TKShHealing TKSTEP TKSTEPAttr TKSTEPBase TKSTEP209 TKSTL TKTopAlgo TKXSBase TKVRML TKV3d TKService )
+    foreach(OCC_LIB ${OCC_LIBNAMES})
+      list(APPEND OCC_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${OCC_LIB}${CMAKE_SHARED_LIBRARY_SUFFIX})
+    endforeach()
+
   # Build OpenCascade library at compile time
   include(ExternalProject)
   ExternalProject_Add(OCC
@@ -42,18 +50,10 @@ if (NOT OpenCascade_FOUND)
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
 		 -DBUILD_MODULE_Draw:BOOL=FALSE
+      BUILD_BYPRODUCTS "${OCC_LIBRARIES}"
       DOWNLOAD_COMMAND  ""
       UPDATE_COMMAND    ""
       )
-
-  # Set OpenCascade include directory
-  set(OCC_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/include/opencascade CACHE INTERNAL "")
-
-  # Set OpenCascade libraries
-  set(OCC_LIBNAMES TKBO TKBool TKBRep TKernel TKFeat TKFillet TKG2d TKG3d TKGeomAlgo TKGeomBase TKHLR TKIGES TKMath TKMesh TKOffset TKPrim TKShHealing TKSTEP TKSTEPAttr TKSTEPBase TKSTEP209 TKSTL TKTopAlgo TKXSBase TKVRML TKV3d TKService )
-  foreach(OCC_LIB ${OCC_LIBNAMES})
-    list(APPEND OCC_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${OCC_LIB}${CMAKE_SHARED_LIBRARY_SUFFIX})
-  endforeach()
 
   # Install OpenCascade header files
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/include/opencascade
@@ -67,7 +67,7 @@ endif()
 include_directories(SYSTEM ${OCC_INCLUDE_DIR})
 set(OCC_SOURCES gsReadBrep.cpp)
 
-# Compile gsMultiPrecision extension as part of the G+Smo library
+# Compile the extension as part of the G+Smo library
 add_library(${PROJECT_NAME} OBJECT ${OCC_SOURCES})
 
 if (NOT OpenCascade_FOUND)
@@ -82,6 +82,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
     FOLDER "G+Smo extensions" )
+
+#  add_library(TKBO SHARED IMPORTED)
+#  add_dependencies(TKBO OCC)
+#  set_target_properties(TKBO
+#    PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/lib/libTKBO.so)
 
 # Add gsOpenCascade extension to the list of G+Smo extensions
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>

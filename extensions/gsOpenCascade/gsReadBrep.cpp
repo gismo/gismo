@@ -545,6 +545,7 @@ bool readGeom_BSplineSurface( const opencascade::handle<Geom_BSplineSurface> & S
     if(S->IsURational() || S->IsVRational() )
     {
         const TColStd_Array2OfReal & w = *S->Weights();
+        gsInfo <<"weights="<< w.Size() <<"\n";
     }
 
     const TColgp_Array2OfPnt   & cf = S->Poles(); // control points
