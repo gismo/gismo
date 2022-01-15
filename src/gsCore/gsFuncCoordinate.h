@@ -84,10 +84,13 @@ public:
     // // temporary hack
     virtual const gsFuncCoordinate & piece(const index_t k) const
     {
-        m_pieces[k] = gsFuncCoordinate(m_function->piece(k),m_index);
-        return m_pieces[k];
+        auto it = m_pieces.find(k);
+        if (m_pieces.end()!=it) return it->second;
+        std::pair<typename std::map<index_t,gsFuncCoordinate>::iterator,bool> ins;            
+#       pragma omp critical (m_pieces_touch)
+        ins = m_pieces.emplace(k, gsFuncCoordinate(m_function->piece(k),m_index));
+        return ins.first->second;
     }
-
 
 // Data members
 private:

@@ -160,7 +160,7 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     const index_t stride = values.rows() / actives.rows();
 
     GISMO_ASSERT( actives.rows() * stride == values.rows(),
-                  "Number of values and actives does not fit together");
+                  "Number of values "<<values.rows()<< " and actives "<<actives.rows()<<" does not fit together");
 
     result.resize( tarDim * stride, numPts );
     result.setZero();
