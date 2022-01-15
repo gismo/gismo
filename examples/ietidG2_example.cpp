@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/square.xml");
+    std::string geometry("domain2d/yeti_mp2.xml");
     index_t splitPatches = 1;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
@@ -765,7 +765,7 @@ int main(int argc, char *argv[])
         gsMultiPatch<> mp_local;
         gsMultiBasis<> mb_local;
         ietiMapper.localSpaces(mp,k,mp_local,mb_local);
-/*
+
         if(k == 4 || k == 12 || k == 36 || k == 60)
         {
             bc_local.addCornerValue(1,0,0);
@@ -780,7 +780,7 @@ int main(int argc, char *argv[])
         {
             bc_local.addCornerValue(4, 0, 0);
         }
-*/
+
         gsGenericAssembler<> assembler(
             mp_local,
             mb_local,
@@ -879,7 +879,7 @@ int main(int argc, char *argv[])
 
         real_t reg;
         if(bc_local.dirichletSides().size() == 0)
-            reg = (real_t)1;
+            reg = (real_t)0.01;
         else
             reg = (real_t)0;
 
@@ -888,23 +888,15 @@ int main(int argc, char *argv[])
         for(index_t i = 1; i <= 1<<mb.dim(); i++)
             bc_local.addCornerValue(i, 0, 0);
 
-        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, (real_t)0, (real_t)1, reg);
+        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, (real_t)reg, (real_t)1, 0);
 
         gsLinearOperator<>::Ptr localPrec = gsInexactIETIPrec<real_t>::make(ADelDel, fastdiagOp,
                                                                        mb_local,
-                                                                       //bc_local,
                                                                        ietiMapper.artificialIfaces(k),
                                                                        ietiMapper.augmentedDofMapperLocal(k),
-                                                                       //BCs,
                                                                        penalty,
                                                                        assemblerOptions
                                                                        );
-
-        gsMatrix<> result;
-        fastdiagOp->toMatrix(result);
-        Eigen::SelfAdjointEigenSolver<Eigen::Matrix<real_t,Dynamic,Dynamic> > eiP(result);
-        gsInfo<<"eigenvalues P: "<<eiP.eigenvalues().transpose()<<"\n";
-
 
         gsLinearOperator<>::Ptr localSolver = gsIterativeSolverOp<gsConjugateGradient<> >::make(ADelDel, localPrec);
         //gsLinearOperator<>::Ptr localSolver2 = makeSparseLUSolver(ADelDel);

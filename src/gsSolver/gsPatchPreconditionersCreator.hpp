@@ -15,6 +15,7 @@
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
+#include <unsupported/src/gsSolver/gsKronecker.h> //TODO: move to stable? Write similar function here?
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -60,6 +61,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
         gsMatrix<index_t> bnd;
         std::vector<boxCorner> corners;
+        gsSortedVector<T> boundaryDofs;
+        // delete the dofs on the dirichlet boundary
         for (typename gsBoundaryConditions<T>::const_iterator cit = bc.dirichletSides().begin(); cit != bc.dirichletSides().end(); ++cit) {
             bnd = basis.boundary(cit->side());
             cit->side().getContainedCorners(dim, corners);
@@ -67,24 +70,27 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             for (size_t i = 0; i < corners.size(); ++i)
                 offset.erase(corners[i]);
 
-
-            for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit) {
-                index_t corner = basis.functionAtCorner(mit->first);
-                for (index_t row = 0; row < bnd.rows(); row++) {
-                    if (bnd(row, 0) < corner)
-                        offset[mit->first] += 1;
-                }
+            for (index_t row = 0; row < bnd.rows(); row++) {
+                boundaryDofs.push_sorted_unique(bnd(row, 0));
             }
         }
 
+        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit) {
+            index_t corner = basis.functionAtCorner(mit->first);
+            for (index_t row = 0; row < boundaryDofs.size(); row++) {
+                if (boundaryDofs[row] < corner)
+                    offset[mit->first] += 1;
+            }
+        }
+
+
         U.resize(stiffness[0].rows()*stiffness[1].rows(), 2*offset.size());
         Vtrans.resize(2*offset.size(), stiffness[0].cols()*stiffness[1].cols());
-        U.setZero();
-        Vtrans.setZero();
+        U.setZero(), Vtrans.setZero();
 
-        index_t i = 0;
-        index_t r1, c1, r2, c2;
-        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit) {
+        index_t i(0);
+        index_t r1(0), c1(0), r2(0), c2(0);
+        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit, i+=2) {
             index_t c = basis.functionAtCorner(mit->first) - mit->second;
             elCorner.push_sorted_unique(c);
 
@@ -93,57 +99,38 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                 case 1:
                 {
                     r1 = 0, c1 = 0, r2 = 0, c2 = 0;
-                    for(index_t r = 0; r < stiffness[0].rows(); r++) // TODO: Bandwidth (2p + 1)^d
-                        U.block(r * mass[1].rows(), i, mass[1].rows(), 1) = stiffness[0](r, c2) * mass[1].col(c1) + isFastDiag * mass[0](r, c2) * stiffness[1].col(c1);
-                    U(c, i) = 0;
-                    U(c, i+1) = 1.;
-                    for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
-                        Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r2) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
-                    Vtrans(i, c) = 1.;
-                    Vtrans(i+1, c) = 0.;
                     break;
                 }
                 case 2:
                 {
                     r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = 0, c2 = 0;
-                    for(index_t r = 0; r < stiffness[0].rows(); r++) // TODO: Bandwidth (2p + 1)^d
-                        U.block(r * mass[1].rows(), i, mass[1].rows(), 1) = stiffness[0](r, c2) * mass[1].col(c1) + isFastDiag * mass[0](r, c2) * stiffness[1].col(c1);
-                    U(c, i+1) = 1.;
-                    U(c, i) = 0.;
-                    for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
-                        Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r1) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
-                    Vtrans(i, c) = 1.;
-                    Vtrans(i+1, c) = 0.;
                     break;
                 }
                 case 3:
                 {
                     r1 = 0, c1 = 0, r2 = mass[0].rows()-1, c2 = mass[0].cols()-1;
-                    for(index_t r = 0; r < stiffness[0].rows(); r++) // TODO: Bandwidth (2p + 1)^d
-                        U.block(r * mass[1].rows(), i, mass[1].rows(), 1) = stiffness[0](r, c2) * mass[1].col(c1) + isFastDiag * mass[0](r, c2) * stiffness[1].col(c1);
-                    U(c, i + 1) = 1.;
-                    U(c, i) = 0.;
-                    for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
-                        Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r1) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
-                    Vtrans(i, c) = 1.;
-                    Vtrans(i+1, c) = 0.;
                     break;
                 }
                 case 4:
                 {
                     r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = stiffness[0].rows()-1, c2 = stiffness[0].cols()-1;
-                    for(index_t r = 0; r < stiffness[0].rows(); r++) // TODO: Bandwidth (2p + 1)^d
-                        U.block(r * mass[1].rows(), i, mass[1].rows(), 1) = stiffness[0](r, c2) * mass[1].col(c1) + isFastDiag * mass[0](r, c2) * stiffness[1].col(c1);
-                    U(c, i + 1) = 1.;
-                    U(c, i) = 0.;
-                    for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
-                        Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r1) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
-                    Vtrans(i, c) = 1.;
-                    Vtrans(i+1, c) = 0.;
                     break;
                 }
             }
-            i += 2;
+
+            U.col(i) = kroneckerProduct(std::vector<gsMatrix<T> >{stiffness[0].col(c2), mass[1].col(c1)}) + isFastDiag *
+                                                                                                                    kroneckerProduct(std::vector<gsMatrix<T> >{mass[0].col(c2), stiffness[1].col(c1)});
+            //for(index_t r = 0; r < stiffness[0].rows(); r++) // TODO: Bandwidth (2p + 1)^d
+            //    U.block(r * mass[1].rows(), i, mass[1].rows(), 1) = stiffness[0](r, c2) * mass[1].col(c1) + isFastDiag * mass[0](r, c2) * stiffness[1].col(c1);
+            U(c, i) = T(0);
+            U(c, i+1) = T(1);
+
+            Vtrans.row(i+1) = kroneckerProduct(std::vector<gsMatrix<T> >{stiffness[0].row(r2), mass[1].row(r1)}) + isFastDiag *
+                                                                                                            kroneckerProduct(std::vector<gsMatrix<T> >{mass[0].row(r2), stiffness[1].row(r1)});
+            //for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
+            //    Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r1) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
+            Vtrans(i, c) = T(1);
+            Vtrans(i+1, c) = T(0);
         }
 
         // Set the entries to zero that are already dealt with
@@ -153,8 +140,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             for(; i < U.cols(); i +=2 )
             {
                 for (size_t j = 1; j < elCorner.size(); ++j) {
-                    U(elCorner[j], i) = 0;
-                    Vtrans(i+1, elCorner[j]) = 0;
+                    U(elCorner[j], i) = T(0);
+                    Vtrans(i+1, elCorner[j]) = T(0);
                 }
             }
 
@@ -271,11 +258,16 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
 
     if(bc.cornerValues().size() == 0)
         return op;
-    // Sonst: Anwendung der SMW...
 
+    GISMO_ASSERT(basis.dim() == 2, "gsPatchPreconditionersCreator<>::removeCornersFromInverse, The method is only implemented for 2D!");
+
+    // Sonst: Anwendung der SMW...
     gsMatrix<T> U, Vtrans, AinvU, x;
     gsSortedVector<index_t> elCorner;
     getUVtrans(basis, bc, opt, local_stiff, local_mass, U, Vtrans, elCorner, isFastDiag);
+
+    if(elCorner.empty())
+        return op;
 
     AinvU.resize(U.rows(), U.cols());
     for (index_t c = 0; c < U.cols(); ++c) {
@@ -283,7 +275,6 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
         AinvU.col(c) = x;
     }
 
-    //gsMatrix<T> tmp = (gsMatrix<T>::Identity(Vtrans.rows(), U.cols()) - Vtrans*AinvU);
     typename gsLinearOperator<T>::Ptr corrOp = makePartialPivLUSolver(gsMatrix<T>{(gsMatrix<T>::Identity(Vtrans.rows(), U.cols()) - Vtrans*AinvU)});
     gsSparseMatrix<T> id(op->rows(), op->cols()-elCorner.size());
     gsSparseEntries<T> seId; seId.reserve(op->cols());
@@ -297,7 +288,6 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     id.setFrom(seId);
 
     typename gsMatrixOp< gsSparseMatrix<T> >::Ptr matOp = makeMatrixOp(id.moveToPtr()); //TODO: Discuss memory leak in makeMatrixOp with matrix instead of pointer?
-    // TODO: choice matrix of normal size and reduced matrix
     return  gsProductOp<T>::make(
                 matOp,
                 gsProductOp<T>::make(std::move(op),
