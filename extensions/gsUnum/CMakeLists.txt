@@ -23,6 +23,7 @@ include(gsConfig)
 include(gsFetch)
 gismo_fetch_directory(unum
     GIT_REPOSITORY https://github.com/stillwater-sc/universal.git
+    GIT_TAG main
     DESTINATION    external
 )
 

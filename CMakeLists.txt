@@ -119,6 +119,9 @@ include(CTest)
 set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
 file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY ${PROJECT_SOURCE_DIR})\nset(CTEST_BINARY_DIRECTORY   ${PROJECT_BINARY_DIR})\nset(CTEST_SITE         ${SITE})\nset(CTEST_BUILD_NAME   ${BUILDNAME})\n")
 
+include(submodules.txt)
+set(GISMO_SUBMODULES ${SUBMODULES_TXT} ${GISMO_SUBMODULES} CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+
 ## #################################################################
 ## Preprocessor definitions
 ## #################################################################
@@ -163,6 +166,8 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 ## Extensions
 ## #################################################################
 
+include(gsFetch)
+
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
   find_package(MKL REQUIRED)
@@ -184,7 +189,8 @@ if(GISMO_WITH_CODIPACK)
 endif(GISMO_WITH_CODIPACK)
 
 if(GISMO_WITH_IPOPT)
-  add_subdirectory(extensions/gsIpopt)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsIpOpt"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
   #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
   #CACHE INTERNAL "${PROJECT_NAME} include directories")
   #include_directories(${IPOPT_INCLUDE_DIR})
@@ -206,11 +212,13 @@ if(GISMO_WITH_MPI)
 endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
-  add_subdirectory(extensions/gsMultiPrecision)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsMultiPrecision"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
 if(GISMO_WITH_ONURBS)
-  add_subdirectory(extensions/gsOpennurbs)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsOpennurbs"
+  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_ONURBS)
 
 #if(GISMO_WITH_PARDISO)
@@ -220,11 +228,14 @@ endif(GISMO_WITH_ONURBS)
 #endif(GISMO_WITH_PASTIX)
 
 if(GISMO_WITH_PSOLID)
-  add_subdirectory(extensions/gsParasolid)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsParasolid"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_PSOLID)
 
 if(GISMO_WITH_SPECTRA)
-  add_subdirectory(extensions/gsSpectra)
+  #  add_subdirectory(extensions/gsSpectra)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsSpectra"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_SPECTRA)
 
 if(GISMO_WITH_SUPERLU)
@@ -255,11 +266,13 @@ if(GISMO_WITH_UMFPACK)
 endif(GISMO_WITH_UMFPACK)
 
 if(GISMO_WITH_UNUM)
-  add_subdirectory(extensions/gsUnum)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsUnum"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_OCC)
-  add_subdirectory(extensions/gsOpenCascade)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsOpenCascade"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_OCC)
 
 if(GISMO_WITH_SMESH)
@@ -307,49 +320,55 @@ add_subdirectory(src)
 ## Submodules
 ## #################################################################
 
+list(REMOVE_DUPLICATES GISMO_SUBMODULES)
+set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
+  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+foreach(gssm ${GISMO_SUBMODULES})
+  #message("Fetch ${gssm}")
+  gismo_fetch_module(${gssm})
+endforeach()
+
 option(GISMO_COMPFLOW "Enable compflow module" OFF)
 if(GISMO_COMPFLOW)
-  include(gsFetch)
-  gismo_fetch_module(gsCompFlow)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsCompFlow"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
-option(GISMO_ELASTICITY "Enable elasticity module" OFF)
 if(GISMO_ELASTICITY)
-  include(gsFetch)
-  gismo_fetch_module(gsElasticity)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsElasticity"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
-option(GISMO_EXASTENCILS "Enable exastenciles module" OFF)
 if(GISMO_EXASTENCILS)
-  include(gsFetch)
-  gismo_fetch_module(gsExaStencils)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsExaStencils"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
-option(GISMO_STRUCTURALANALYSIS "Enable Structural Analysis module" OFF)
 if(GISMO_STRUCTURALANALYSIS)
-  include(gsFetch)
-  gismo_fetch_module(gsStructuralAnalysis)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsStructuralAnalysis"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
-option(GISMO_KLSHELL "Enable Kirchhoff-Love Shell" OFF)
 if(GISMO_KLSHELL)
-  include(gsFetch)
-  gismo_fetch_module(gsKLShell)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsKLShell"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
 option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
-option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)
-  include(gsFetch)
   gismo_fetch_module(unsupported)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GISMO_DEV_INCLUDE_DIRS}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
+    CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
+option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_MOTOR)
-  include(gsFetch)
-  gismo_fetch_module(motor)
+  #gismo_fetch_module(motor)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "motor"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
+
+message("  GISMO_SUBMODULES        ${GISMO_SUBMODULES}")
 
 ## #################################################################
 ## Shared and static library
@@ -428,5 +447,6 @@ endif()
 
 unset(GISMO_UNAME CACHE)
 unset(GISMO_PASS CACHE)
+unset(RESTORE_SUBMODULES CACHE)
 
 #message("GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}")

@@ -24,8 +24,6 @@ gismo_fetch_directory(Spectra
 	  SVN_TRUST_CERT 1
 	  DESTINATION external
 )
-#endif(NOT SPECTRA_FOUND)
-
 
 # move the files in place ?? -- is a bit buggy
 #file(COPY ${gismo_SOURCE_DIR}/external/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})

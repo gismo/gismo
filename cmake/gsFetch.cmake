@@ -7,7 +7,7 @@
 
 include(CMakeParseArguments)
 
-#latest CMake has FetchContent
+#note: latest CMake has FetchContent
 function(gismo_fetch_directory)
   #use: gismo_fetch_directory(name GIT_REPOSITORY  ${git_repo} DESTINATION  extensions)
   set(GF_NAME "${ARGV0}")
@@ -26,11 +26,11 @@ function(gismo_fetch_directory)
   file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME})
   list(LENGTH RESULT RESULT_LENGTH)
   if(NOT RESULT_LENGTH EQUAL 0)
-    message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - found")
+    #message(STATUS "Fetch ${GF_DESTINATION} module ${GF_NAME} - found")
     return()
   endif()
 
-  message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION})")
+  message(STATUS "Fetch ${GF_DESTINATION} module ${GF_NAME}")
   set(GF_SOURCE_DIR   "${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME}")
   set(GF_BINARY_DIR   "${gismo_BINARY_DIR}/${GF_DESTINATION}/${GF_NAME}_fetch")
   set(GF_DOWNLOAD_DIR "${gismo_BINARY_DIR}/${GF_DESTINATION}/${GF_NAME}_fetch")
@@ -70,9 +70,9 @@ function(gismo_fetch_directory)
   file(GLOB RESULT ${gismo_SOURCE_DIR}/${GF_DESTINATION}/${GF_NAME})
   list(LENGTH RESULT RESULT_LENGTH)
   if(RESULT_LENGTH EQUAL 0)
-    message(SEND_ERROR "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - not found")
+    message(SEND_ERROR "Fetch ${GF_DESTINATION} module ${GF_NAME} - not found")
   else()
-    message(STATUS "Enabling remote module ${GF_NAME} (${GF_DESTINATION}) - downloaded")
+    message(STATUS "Fetch ${GF_DESTINATION} module ${GF_NAME} - downloaded")
   endif()
 
 endfunction()
@@ -93,41 +93,67 @@ function(gismo_add_submodule SUBMODULE)
 
 endfunction()
 
-# called to fetch/download a submodule form git (working) and svn (in progress)
+# called to fetch/download a submodule form git (working) and svn
 # (ARGV0) SUBMODULE:  name of submodule
-# (ARGVN)             Used to give Update Command, unittests/CMakeLists.txt-15-#07.08.18
 function(gismo_fetch_module SUBMODULE)
 
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
-    if(UPDATE_SUBMODULES) #Update to current HEAD
-      get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
+    #Update to current HEAD
+    if(GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/.git")
+      message("Git fetch ${SUBMODULE}")
       execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth" "1"
+	ERROR_QUIET
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
       execute_process(COMMAND "${GIT_EXECUTABLE}" "reset" "--hard"
+	ERROR_QUIET
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
       execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
     endif()
-    # note: specific commits are reachable as, eg,
-    # https://github.com/gismo/gismo/archive/<full-hash>.zip
+
+    # Restore submodules to their proper hash
+    # (!)Any local modifications will be LOST.)
+    if(RESTORE_SUBMODULES AND NOT GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/.git")
+      message("Git restore ${SUBMODULE}")
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "restore"
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+	ERROR_QUIET)
+      if(${SUBMODULE}_HASH) # can be defined in submodules.txt
+	execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth=1" origin ${${SUBMODULE}_HASH}
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+	  ERROR_QUIET
+	  RESULT_VARIABLE gitfetch_res)
+	if(gitfetch_res AND NOT gitfetch_res EQUAL 0)
+	  message(FATAL_ERROR "Unable to fetch commit hash ${${SUBMODULE}_HASH} in ${SUBMODULE} (${git_repo})")
+	endif()
+	execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" ${${SUBMODULE}_HASH}
+	  OUTPUT_QUIET
+	  ERROR_QUIET
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+      endif()
+      message("Hash is now ${${SUBMODULE}_HASH}")
+    endif()
+
     gismo_add_submodule(${SUBMODULE})
     return()
   endif()
 
-  get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
-
   if (NOT DEFINED GISMO_FETCH_PROT)
     if(EXISTS "${gismo_SOURCE_DIR}/.git")
-      execute_process(COMMAND "${GIT_EXECUTABLE}" "remote" "-v" OUTPUT_QUIET RESULT_VARIABLE git_remote_res)
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "remote" "-v" OUTPUT_VARIABLE git_remote_res)
       string(REGEX MATCH "git@github.com" fmatch ${git_remote_res})
       if(fmatch)
-	set(GISMO_FETCH_PROT "ssh")
+	set(GISMO_FETCH_PROT "ssh" CACHE INTERNAL "")
       else()
-	set(GISMO_FETCH_PROT "https")
+	set(GISMO_FETCH_PROT "https" CACHE INTERNAL "")
       endif()
     endif()
+    message(STATUS "Using ${GISMO_FETCH_PROT} git protocol")
   endif()
 
+  get_repo_info(GISMO_REPO GISMO_REPO_REV) # or set manually
   #message("Fetch ${SUBMODULE} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
@@ -138,15 +164,34 @@ function(gismo_fetch_module SUBMODULE)
     endif()
 
     if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
-      message(STATUS "Initializing remote submodule ${SUBMODULE}")
+      message(STATUS "Cloning into ${SUBMODULE}")
       find_package(Git REQUIRED)
 
-      # init SUBMODULE (note: git fetch --unshallow to get full clone)
+      # Fetch SUBMODULE (note: git fetch --unshallow to get full clone)
       execute_process(COMMAND "${GIT_EXECUTABLE}" "clone" "--depth" "1" ${git_repo}
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions
+	ERROR_QUIET
 	RESULT_VARIABLE gitclone_res)
       if(gitclone_res AND NOT gitclone_res EQUAL 0)
-	message(FATAL_ERROR "Unable to fetch module ${SUBMODULE} (${git_repo})")
+	message(FATAL_ERROR "Unable to clone module ${SUBMODULE} (${git_repo})")
+      endif()
+
+      if(NOT GISMO_SUBMODULES_HEAD AND ${SUBMODULE}_HASH)# hash in submodules.txt
+	execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth=1" origin ${${SUBMODULE}_HASH}
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+	  ERROR_QUIET
+	  RESULT_VARIABLE gitfetch_res)
+	if(gitfetch_res AND NOT gitfetch_res EQUAL 0)
+	  message(FATAL_ERROR "Unable to fetch commit hash ${${SUBMODULE}_HASH} in ${SUBMODULE} (${git_repo})")
+	endif()
+	execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" ${${SUBMODULE}_HASH}
+	  OUTPUT_QUIET
+	  ERROR_QUIET
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	# note: specific commits are also reachable as, eg,
+	# https://github.com/gismo/gismo/archive/<full-hash>.zip
       endif()
     endif()
 
@@ -160,6 +205,7 @@ function(gismo_fetch_module SUBMODULE)
       SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
       SVN_TRUST_CERT 1            # Trust the Subversion server site certificate
       DESTINATION  extensions )
+
   else()
     gismo_fetch_directory(${SUBMODULE}
       URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
@@ -167,3 +213,5 @@ function(gismo_fetch_module SUBMODULE)
   endif()
   gismo_add_submodule(${SUBMODULE})
 endfunction()
+
+#function(gismo_add_plugin PLUGIN)
