@@ -77,7 +77,7 @@ function(gismo_fetch_directory)
 
 endfunction()
 
-function(gismo_add_submodule SUBMODULE)
+function(gismo_add_extension SUBMODULE)
   # get list of programs to compile
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
     add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
@@ -136,7 +136,7 @@ function(gismo_fetch_module SUBMODULE)
       message("Hash is now ${${SUBMODULE}_HASH}")
     endif()
 
-    gismo_add_submodule(${SUBMODULE})
+    gismo_add_extension(${SUBMODULE})
     return()
   endif()
 
@@ -211,7 +211,7 @@ function(gismo_fetch_module SUBMODULE)
       URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
       DESTINATION  extensions )
   endif()
-  gismo_add_submodule(${SUBMODULE})
+  gismo_add_extension(${SUBMODULE})
 endfunction()
 
 #function(gismo_add_plugin PLUGIN)

@@ -192,9 +192,6 @@ endif(GISMO_WITH_CODIPACK)
 if(GISMO_WITH_IPOPT)
   set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsIpOpt"
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-  #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
-  #CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${IPOPT_INCLUDE_DIR})
 endif(GISMO_WITH_IPOPT)
 
 #if(GISMO_WITH_METIS)
@@ -206,10 +203,9 @@ endif(GISMO_WITH_IPOPT)
 if(GISMO_WITH_MPI)
   find_package(MPI REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPI_INCLUDE_PATH}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  CACHE INTERNAL "${PROJECT_NAME} include directories)" FORCE)
   set(gismo_LINKER ${gismo_LINKER} ${MPI_CXX_LIBRARIES}
-  CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-  #include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+  CACHE INTERNAL "${PROJECT_NAME} extra linker objects" FORCE)
 endif(GISMO_WITH_MPI)
 
 if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
@@ -234,7 +230,6 @@ if(GISMO_WITH_PSOLID)
 endif(GISMO_WITH_PSOLID)
 
 if(GISMO_WITH_SPECTRA)
-  #  add_subdirectory(extensions/gsSpectra)
   set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsSpectra"
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_SPECTRA)
@@ -290,7 +285,7 @@ if(GISMO_WITH_TRILINOS)
   add_subdirectory(extensions/gsTrilinos)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
   CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${TRILINOS_INCLUDE_DIR})
+  #include_directories(SYSTEM ${TRILINOS_INCLUDE_DIR})
 endif(GISMO_WITH_TRILINOS)
 
 #third time
