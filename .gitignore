@@ -1,5 +1,6 @@
-# Submodule file
+# Submodule files
 submodules.txt
+src/gsCore/gsConfigExt.h
 
 # CLion user-specific files
 .idea

@@ -44,6 +44,7 @@
 #define GISMO_CONFIG_DIR "@GISMO_CONFIG_DIR@"
 
 /* Enabled Extensions */
+#include <gsCore/gsConfigExt.h>
 #cmakedefine GISMO_WITH_ADIFF
 #cmakedefine GISMO_WITH_CODIPACK
 #cmakedefine GISMO_WITH_IPOPT

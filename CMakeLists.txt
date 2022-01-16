@@ -316,16 +316,6 @@ add_subdirectory(src)
 ## Submodules
 ## #################################################################
 
-list(TRANSFORM GISMO_SUBMODULES STRIP)
-list(REMOVE_DUPLICATES GISMO_SUBMODULES)
-set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
-  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-foreach(gssm ${GISMO_SUBMODULES})
-  string(STRIP ${gssm} SUBMODULE)
-  #message("Fetch ${gssm}")
-  gismo_fetch_module(${gssm})
-endforeach()
-
 option(GISMO_COMPFLOW "Enable compflow module" OFF)
 if(GISMO_COMPFLOW)
   set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsCompFlow"
@@ -366,6 +356,17 @@ if(GISMO_MOTOR)
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
+list(TRANSFORM GISMO_SUBMODULES STRIP)
+list(REMOVE_DUPLICATES GISMO_SUBMODULES)
+set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
+  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+foreach(gssm ${GISMO_SUBMODULES})
+  string(STRIP ${gssm} SUBMODULE)
+  #message("Fetch ${gssm}")
+  gismo_fetch_module(${gssm})
+  set(CONFIG_SUBMOD "${CONFIG_SUBMOD}\n #define ${gssm}_ENABLED")
+endforeach()
+file(WRITE ${gismo_SOURCE_DIR}/src/gsCore/gsConfigExt.h "${CONFIG_SUBMOD}\n")
 message("  GISMO_SUBMODULES        ${GISMO_SUBMODULES}")
 
 ## #################################################################
