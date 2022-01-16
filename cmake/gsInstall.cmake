@@ -120,7 +120,9 @@ set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/gismodata/)
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h" )
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
-        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
+  DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
+install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfigExt.h
+  DESTINATION include/${PROJECT_NAME}/gsCore/)
 
 # Install cmake files
 install(FILES

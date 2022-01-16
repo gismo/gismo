@@ -158,10 +158,9 @@ executable is created in build-folder/bin.
   If enabled the extensions using functionalities of Parasolid geometric
 kernel are compiled (requires Parasolid).
 
-* GISMO_WITH_ONURBS       *OFF*
+* gsOpennurbs
 
-  If enabled the extension for reading and writing of Rhinoceros' 3DM is
-compiled.
+  Extension for reading and writing of Rhinoceros' 3DM.
 
 * CMAKE_INSTALL_PREFIX   (system dependent)
 

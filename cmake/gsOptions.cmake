@@ -128,11 +128,6 @@ if  (${GISMO_WITH_OCC})
 message ("  GISMO_WITH_OCC          ${GISMO_WITH_OCC}")
 endif()
 
-option(GISMO_WITH_ONURBS         "With OpenNurbs"            false  )
-if  (${GISMO_WITH_ONURBS})
-message ("  GISMO_WITH_ONURBS       ${GISMO_WITH_ONURBS}")
-endif()
-
 option(GISMO_WITH_OPENMP         "With OpenMP"               false  )
 if  (${GISMO_WITH_OPENMP})
 message ("  GISMO_WITH_OPENMP       ${GISMO_WITH_OPENMP}")

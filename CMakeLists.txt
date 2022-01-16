@@ -121,6 +121,9 @@ file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY
 
 include(submodules.txt)
 set(GISMO_SUBMODULES ${SUBMODULES_TXT} ${GISMO_SUBMODULES} CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+list(TRANSFORM GISMO_SUBMODULES STRIP)
+set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
+  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 #message(STATUS "Submodules ${GISMO_SUBMODULES}")
 
 ## #################################################################
@@ -358,16 +361,26 @@ endif()
 
 list(TRANSFORM GISMO_SUBMODULES STRIP)
 list(REMOVE_DUPLICATES GISMO_SUBMODULES)
+list(SORT GISMO_SUBMODULES)
 set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
   CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 foreach(gssm ${GISMO_SUBMODULES})
   string(STRIP ${gssm} SUBMODULE)
   #message("Fetch ${gssm}")
   gismo_fetch_module(${gssm})
-  set(CONFIG_SUBMOD "${CONFIG_SUBMOD}\n #define ${gssm}_ENABLED")
+  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${gssm}_ENABLED\n")
 endforeach()
-file(WRITE ${gismo_SOURCE_DIR}/src/gsCore/gsConfigExt.h "${CONFIG_SUBMOD}\n")
+file(WRITE ${gismo_BINARY_DIR}/gsCore/gsConfigExt.txt "${CONFIGEXT_H}")
+execute_process( COMMAND ${CMAKE_COMMAND} -E compare_files gsConfigExt.txt gsConfigExt.h
+  RESULT_VARIABLE comp_res
+  WORKING_DIRECTORY ${gismo_BINARY_DIR}/gsCore)
+if(NOT comp_res EQUAL 0)
+  file(WRITE ${gismo_BINARY_DIR}/gsCore/gsConfigExt.h "${CONFIGEXT_H}")
+endif()
+
 message("  GISMO_SUBMODULES        ${GISMO_SUBMODULES}")
+set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
+  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 
 ## #################################################################
 ## Shared and static library
