@@ -14,7 +14,7 @@
 ##   			     (!)Any local modifications will be LOST.
 ##
 ######################################################################
-set(SUBMODULES_TXT "gsOpennurbs	")
+set(SUBMODULES_TXT "gsOpennurbs")
 
 ##
 ## The following lines allow to specify a commit instead of HEAD

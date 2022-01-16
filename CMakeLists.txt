@@ -121,6 +121,7 @@ file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY
 
 include(submodules.txt)
 set(GISMO_SUBMODULES ${SUBMODULES_TXT} ${GISMO_SUBMODULES} CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+#message(STATUS "Submodules ${GISMO_SUBMODULES}")
 
 ## #################################################################
 ## Preprocessor definitions
@@ -320,10 +321,12 @@ add_subdirectory(src)
 ## Submodules
 ## #################################################################
 
+list(TRANSFORM GISMO_SUBMODULES STRIP)
 list(REMOVE_DUPLICATES GISMO_SUBMODULES)
 set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
   CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 foreach(gssm ${GISMO_SUBMODULES})
+  string(STRIP ${gssm} SUBMODULE)
   #message("Fetch ${gssm}")
   gismo_fetch_module(${gssm})
 endforeach()
