@@ -193,6 +193,7 @@ if(NOT DEFINED CMAKE_ARGS)
     #-DGISMO_WITH_IPOPT=ON -DIpOpt_DIR=/path/to/ipopt
     #-DGISMO_WITH_PSOLID=ON -DParasolid_DIR=/path/to/parasolid
     #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
+    -DGISMO_SUBMODULES='gsOpennurbs;gsSpectra'
     -DGISMO_WITH_ONURBS=ON
     -DGISMO_WITH_TRILINOS=OFF
     -DGISMO_WITH_SPECTRA=OFF
@@ -370,7 +371,6 @@ if("x${UPDATE_TYPE}" STREQUAL "xgit")
     message(SEND_ERROR "GISMO_SUBMODULES should be given as cmake argument instead")
   endif()
 
-  endforeach()
   #if(${UPDATE_MODULES})
   #  set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
   #  unset(CTEST_GIT_UPDATE_OPTIONS)
