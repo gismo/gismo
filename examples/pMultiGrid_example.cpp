@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
     index_t typeProjection = 2;
     index_t typeSmoother = 1;
     index_t typeCoarseOperator = 1;
-    std::string typeCoarsening = "h";
+    std::string typeCoarsening;
     index_t maxIter = 20;
     real_t tol = 1e-8;
     real_t dampingSCMS = 1;
@@ -88,10 +88,10 @@ int main(int argc, char* argv[])
     cmd.addInt("M", "Cycle_h", "Type of cycle where h-refinement is applied: (1) V-cycle or (2) W-cycle", typeCycle_h);
     cmd.addInt("d", "BCHandling", "Handles Dirichlet BC's by (1) elimination or (2) Nitsche's method", typeBCHandling);
     cmd.addInt("L", "Lumping", "Restriction and Prolongation performed with the (1) lumped or (2) consistent mass matrix", typeLumping);
-    cmd.addInt("D", "Projection", "Direct projection on (1) coarsest level or (2) via all other levels", typeProjection);
+    cmd.addInt("D", "Projection", "A p or z coarsening refers to (1) changing the degree directly to 1 or (2) reducing the degree by 1", typeProjection);
     cmd.addInt("S", "Smoother", "Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS or (4) Block ILUT", typeSmoother);
-    cmd.addInt("G", "CoarseOperator", "Type of coarse operator in h-multigrid: (1) Rediscretization (2) Galerkin Projection", typeCoarseOperator);
-    cmd.addString("z", "Coarsening", "Expression that defines coarsening strategy", typeCoarsening);
+    cmd.addInt("G", "CoarseOperator", "Type of coarse operator in h-multigrid: (1) rediscretization (2) Galerkin projection", typeCoarseOperator);
+    cmd.addString("z", "Coarsening", "Coarsening strategy for each of the levels: (h) h-refinement, (p) p-refinement or (z) both", typeCoarsening);
     cmd.addInt("", "MaxIter", "Maximum number of iterations for iterative solver", maxIter);
     cmd.addReal("", "Tolerance", "Threshold for iterative solver", tol);
     cmd.addReal("", "DampingSCMS", "Damping for subspace corrected mass smoother (otherwise ignored)", dampingSCMS);
@@ -208,7 +208,6 @@ int main(int argc, char* argv[])
     // Handle the uniform splitting
     for (index_t i=0; i<numSplits; ++i)
         mp = mp.uniformSplit();
-
     gsInfo << "Number of patches: " << mp.nPatches() << "\n\n";
 
     // Define boundary conditions
@@ -220,15 +219,35 @@ int main(int argc, char* argv[])
     }
     bcInfo.setGeoMap(mp);
 
-    // Multi basis
-    gsMultiBasis<> basis(mp);
+    // Setup of vector of bases
 
-    // Read string from command line
-    index_t numRefH = 0;
-    index_t numRefP = 0;
-    index_t numRefZ = 0;
+    // First, we count the coarsening type informations
+    index_t numRefH = 0, numRefP = 0, numRefZ = 0;
+    if (typeCoarsening.empty())
+    {
+        // Just setup some defaults
+        if (typeProjection==1)
+        {
+            // If we have a transition from degree p to degree 1, we only need
+            // a single refinement where the degree is changed. We apply this
+            // between the finest and the second finest levels.
+            typeCoarsening = std::string(numLevels-2, 'h') + "z";
+        }
+        else //if (typeProjection==2)
+        {
+            // If we have a transition where the degree is changed by only one,
+            // we need up to p-1 transitions. The remainder needs to by of type h.
+            if (numLevels>numDegree)
+                typeCoarsening = std::string(numLevels-numDegree, 'h') + std::string(numDegree-1, 'z');
+            else
+                // It can happen that the coarsest problem does not have degree 1 (if there
+                // are not enough levels).
+                typeCoarsening = std::string(numLevels-1, 'z');
+        }
+    }
+    gsInfo << "Chosen coarsening strategy: " << typeCoarsening << "\n";
 
-    if (typeCoarsening.size() != static_cast<size_t>(numLevels-1))
+    if (typeCoarsening.size() != (size_t)numLevels-1)
     {
         gsInfo << "The string provided to --Coarsening should have length " << numLevels-1 << "\n";
         return EXIT_FAILURE;
@@ -243,54 +262,62 @@ int main(int argc, char* argv[])
             numRefZ++;
         else
         {
-            gsInfo << "Unknown coarsening type given.\n";
+            gsInfo << "Unknown type given in --Coarsening.\n";
             return EXIT_FAILURE;
         }
     }
 
-    // Apply refinement in p for coarse level
-    if (numRefP + numRefZ == numDegree)
+    if (typeProjection==1 && numRefP+numRefZ > 1)
     {
-        basis.degreeReduce(1);
-    }
-    else
-    {
-        basis.degreeIncrease(numDegree-numRefP-numRefZ-1);
+        gsInfo << "If --Projection 1, there should be only one coarsening of type p or z in --Coarsening.\n";
+        return EXIT_FAILURE;
     }
 
-    // Apply refinement in h for coarse and fine level
+    if (numRefine - numRefH - numRefZ<0)
+    {
+        gsInfo << "Cannot have more h or z refinements in --Coarsening than overall number of refinement steps.\n";
+        return EXIT_FAILURE;
+    }
+
+    // Vector of multibasis objects
+    // Index 0 refers to coarsest level; we first setup that basis
+    std::vector<gsMultiBasis<>> bases;
+    bases.emplace_back(mp);
+
+    // Adjust spline degree for coarsest level
+    const index_t degreeOffset = numDegree - (numRefP+numRefZ) * (typeProjection==1?(numDegree-1):1) - bases[0].degree();
+    if (degreeOffset>0)
+        bases[0].degreeIncrease(degreeOffset);
+    else if (degreeOffset<0)
+        bases[0].degreeReduce(degreeOffset);
+
+    // Apply refinement in h for the coarses level
     for (index_t i = 0; i < numRefine - numRefH - numRefZ; ++i)
-    {
-        basis.uniformRefine();
-    }
+        bases[0].uniformRefine();
 
-    // Generate sequence of bases on all levels
-    if (typeProjection == 1)
-    {
-        numLevels = numLevels - numDegree + 2;
-    }
-
-    std::vector<memory::shared_ptr<gsMultiBasis<>>> bases;
-    bases.push_back(memory::make_shared_not_owned(&basis));
-
+    // Now, we setup the remaining levels
     for (index_t i = 1; i < numLevels; i++)
     {
-        bases.push_back(give(bases.back()->clone()));
+        // New basis object, which is just a copy
+        bases.push_back(bases.back());
         if ( typeCoarsening[i-1] == 'p' )
         {
             if (typeProjection == 1)
-                bases.back()->degreeIncrease(numDegree-1);
+                bases.back().degreeIncrease(numDegree-1);
             else
-                bases.back()->degreeIncrease();
+                bases.back().degreeIncrease();
         }
         else if ( typeCoarsening[i-1] == 'h' )
         {
-            bases.back()->uniformRefine();
+            bases.back().uniformRefine();
         }
         else //if ( typeCoarsening[i-1] == 'z' )
         {
-            bases.back()->uniformRefine();
-            bases.back()->degreeIncrease();
+            bases.back().uniformRefine();
+            if (typeProjection == 1)
+                bases.back().degreeIncrease(numDegree-1);
+            else
+                bases.back().degreeIncrease();
         }
     }
 
@@ -308,22 +335,22 @@ int main(int argc, char* argv[])
         {
             if (typeLumping == 1)
             {
-                gsSparseMatrix<> mixedMass = assembleMixedMass(mp, *bases[i], *bases[i-1], bcInfo, opt);
+                gsSparseMatrix<> mixedMass = assembleMixedMass(mp, bases[i], bases[i-1], bcInfo, opt);
                 gsSparseMatrix<real_t> prolongationMatrix
-                      = assembleLumpedMass(mp, *bases[i], bcInfo, opt).asDiagonal().inverse()
+                      = assembleLumpedMass(mp, bases[i], bcInfo, opt).asDiagonal().inverse()
                       * mixedMass;
                 gsSparseMatrix<real_t> restrictionMatrix
-                      = assembleLumpedMass(mp, *bases[i-1], bcInfo, opt).asDiagonal().inverse()
+                      = assembleLumpedMass(mp, bases[i-1], bcInfo, opt).asDiagonal().inverse()
                       * mixedMass.transpose();
                 prolongation[i-1] = makeMatrixOp(prolongationMatrix.moveToPtr());
                 restriction[i-1] = makeMatrixOp(restrictionMatrix.moveToPtr());
             }
             else
             {
-                gsSparseMatrix<> prolongationP =  assembleMixedMass(mp, *bases[i], *bases[i-1], bcInfo, opt);
+                gsSparseMatrix<> prolongationP =  assembleMixedMass(mp, bases[i], bases[i-1], bcInfo, opt);
                 gsSparseMatrix<> restrictionP =  prolongationP.transpose();
-                gsSparseMatrix<> prolongationM = assembleMass(mp, *bases[i], bcInfo, opt);
-                gsSparseMatrix<> restrictionM = assembleMass(mp, *bases[i-1], bcInfo, opt);
+                gsSparseMatrix<> prolongationM = assembleMass(mp, bases[i], bcInfo, opt);
+                gsSparseMatrix<> restrictionM = assembleMass(mp, bases[i-1], bcInfo, opt);
 
                 prolongation[i-1] = makeLinearOp(
                     [prolongationP=give(prolongationP),prolongationM=give(prolongationM)]
@@ -350,7 +377,7 @@ int main(int argc, char* argv[])
         }
         else //if (typeCoarsening[i-1] == 'h')
         {
-            bases[i]->clone()->uniformCoarsen_withTransfer(prolongation_H[i-1],bcInfo,opt);
+            bases[i].clone()->uniformCoarsen_withTransfer(prolongation_H[i-1],bcInfo,opt);
             prolongation[i-1] = makeMatrixOp(prolongation_H[i-1]);
             restriction[i-1] = makeMatrixOp(prolongation_H[i-1].transpose());
 
@@ -372,7 +399,7 @@ int main(int argc, char* argv[])
             clock.restart();
             gsCDRAssembler<real_t> assembler(
                 mp,
-                *(bases[i]),
+                bases[i],
                 bcInfo,
                 rhs_exact,
                 coeff_diff, coeff_conv, coeff_reac,
@@ -384,7 +411,7 @@ int main(int argc, char* argv[])
             if (i==numLevels-1)
                 rhs = assembler.rhs();
             Time_Assembly += clock.stop();
-            gsInfo << "Degree: " << bases[i]->degree()  << ", Ndof: " << matrices[i].rows() << "\n";
+            gsInfo << "Degree: " << bases[i].degree()  << ", Ndof: " << matrices[i].rows() << "\n";
         }
         else
         {
@@ -439,11 +466,11 @@ int main(int argc, char* argv[])
                 mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
                 break;
             case 3:
-                mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(matrices[i], *(bases[i]), bcInfo, opt));
+                mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(matrices[i], bases[i], bcInfo, opt));
                 break;
             case 4:
                 if (typeProjection == 2 || i == numLevels-1)
-                    mg->setSmoother(i,setupBlockILUT(matrices[i], *(bases[i]), bcInfo, opt));
+                    mg->setSmoother(i,setupBlockILUT(matrices[i], bases[i], bcInfo, opt));
                 else
                     mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
                 break;
@@ -461,7 +488,7 @@ int main(int argc, char* argv[])
     double Time_Smoother_Setup = clock.stop();
     gsInfo << "Smoother setup time: " << Time_Smoother_Setup << "\n";
 
-    gsInfo << "Total setup time: " << Time_Assembly + Time_Galerkin + Time_Transfer 
+    gsInfo << "Total setup time: " << Time_Assembly + Time_Galerkin + Time_Transfer
         + Time_Coarse_Solver_Setup + Time_Smoother_Setup << "\n";
 
     // Setup of iterative solver
