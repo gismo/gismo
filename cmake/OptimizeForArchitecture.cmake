@@ -61,14 +61,6 @@
 # - Added Support for ARM (Clang, GCC, ARM Clang, Cray, Fujitsu)
 #=============================================================================
 
-include(ofa/AutodetectX86)
-include(ofa/AutodetectArm)
-include(ofa/AutodetectPpc)
-
-include(ofa/HandleX86Options)
-include(ofa/HandleArmOptions)
-include(ofa/HandlePpcOptions)
-
 macro(_my_find _list _value _ret)
   list(FIND ${_list} "${_value}" _found)
   if(_found EQUAL -1)
@@ -81,6 +73,10 @@ endmacro(_my_find)
 #=============================================================================
 # Autodetection of CPU
 #=============================================================================
+
+include(ofa/AutodetectX86)
+include(ofa/AutodetectArm)
+include(ofa/AutodetectPpc)
 
 macro(OFA_AutodetectHostArchitecture)
   set(TARGET_ARCHITECTURE "generic")
@@ -100,6 +96,10 @@ endmacro(OFA_AutodetectHostArchitecture)
 #=============================================================================
 # Handling of CPU options
 #=============================================================================
+
+include(ofa/HandleX86Options)
+include(ofa/HandleArmOptions)
+include(ofa/HandlePpcOptions)
 
 macro(OptimizeForArchitecture)
   message(STATUS "Optimizing for target architecture")
