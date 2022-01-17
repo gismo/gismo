@@ -34,11 +34,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #=============================================================================
 
-get_filename_component(_currentDir "${CMAKE_CURRENT_LIST_FILE}" PATH)
-include("${_currentDir}/CheckCCompilerFlag.cmake")
-include("${_currentDir}/CheckCXXCompilerFlag.cmake")
-include("${_currentDir}/CheckMicCCompilerFlag.cmake")
-include("${_currentDir}/CheckMicCXXCompilerFlag.cmake")
+include(ofa/CheckCCompilerFlag)
+include(ofa/CheckCXXCompilerFlag)
+include(ofa/CheckMicCCompilerFlag)
+include(ofa/CheckMicCXXCompilerFlag)
 
 macro(AddCompilerFlag _flag)
    string(REGEX REPLACE "[-.+/:= ]" "_" _flag_esc "${_flag}")
