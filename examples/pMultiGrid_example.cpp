@@ -60,14 +60,14 @@ int main(int argc, char* argv[])
     index_t numLevels = 2;
     index_t numBenchmark = 3;
     index_t numSplits = 0;
-    index_t typeSolver = 1;
+    index_t typeSolver = 2;
     index_t typeCycle_p = 1;
     index_t typeCycle_h = 2;
     index_t typeBCHandling = 2;
     index_t typeLumping = 1;
     index_t typeProjection = 2;
     index_t typeSmoother = 1;
-    index_t typeCoarseOperator = 1;
+    index_t typeCoarseOperator = 2;
     std::string typeCoarsening;
     index_t maxIter = 20;
     real_t tol = 1e-8;
@@ -77,8 +77,8 @@ int main(int argc, char* argv[])
     gsCmdLine cmd("This programm solves the CDR-equation with a p-multigrid or h-multigrid method");
 
     // Add command line arguments
-    cmd.addInt("p", "Degree", "Number of order elevation steps", numDegree);
-    cmd.addInt("r", "Refinement", "Number of global refinements", numRefine);
+    cmd.addInt("p", "Degree", "Spline degree for finest grid", numDegree);
+    cmd.addInt("r", "Refinement", "Number of global refinements to obtain finest grid", numRefine);
     cmd.addInt("v", "Smoothing", "Number of pre/post smoothing steps", numSmoothing);
     cmd.addInt("l", "Levels", "Number of levels in multigrid method", numLevels);
     cmd.addInt("b", "Benchmark", "Number of the benchmark", numBenchmark);
@@ -100,6 +100,43 @@ int main(int argc, char* argv[])
     try { cmd.getValues(argc,argv);  } catch (int rv) { return rv; }
 
     gsOptionList opt;
+
+    // Check validity of input
+    if (numDegree<=0)
+    {
+        gsInfo << "--Degree has to be a positive value.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (numRefine<0)
+    {
+        gsInfo << "--Refinement has to be a non-negative value.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (numSmoothing<0)
+    {
+        gsInfo << "--Smoothing has to be a non-negative value.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (numLevels<=0)
+    {
+        gsInfo << "--Levels has to be a positive value.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (numSplits<0)
+    {
+        gsInfo << "--PatchSplits has to be a non-negative value.\n";
+        return EXIT_FAILURE;
+    }
+
+    if (typeCycle_p<=0 || typeCycle_h<=0)
+    {
+        gsInfo << "--Cycle_p and Cycle_h have to be a positvie value.\n";
+        return EXIT_FAILURE;
+    }
 
     switch (typeBCHandling)
     {
@@ -131,23 +168,25 @@ int main(int argc, char* argv[])
     }
 
     // Initialize solution, rhs and geometry
+    //! [Define benchmark problem]
     gsFunctionExpr<> sol_exact, rhs_exact, coeff_diff, coeff_conv, coeff_reac;
     gsMultiPatch<> mp;
     gsInfo << "|| Benchmark information ||\n";
     switch (numBenchmark)
     {
         case 1:
-            gsInfo << "CDR-equation the unit square\n";
+            gsInfo << "1) CDR-equation the unit square\n";
             mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare(1.0, 0.0, 0.0));
             sol_exact = gsFunctionExpr<>("sin(pi*x)*sin(pi*y)",2);
-            rhs_exact = gsFunctionExpr<>("1.2*pi*pi*sin(pi*x)*sin(pi*y)+0.9*pi*pi*sin(pi*x)*sin(pi*y)+0.7*pi*pi*cos(pi*x)*cos(pi*y) + 0.4*pi*pi*cos(pi*x)*cos(pi*y) +0.4*pi*cos(pi*x)*sin(pi*y)-0.2*pi*sin(pi*x)*cos(pi*y)+0.3*sin(pi*x)*sin(pi*y)", 2);
+            rhs_exact = gsFunctionExpr<>("1.2*pi*pi*sin(pi*x)*sin(pi*y)+0.9*pi*pi*sin(pi*x)*sin(pi*y)+0.7*pi*pi*cos(pi*x)*cos(pi*y)"
+                            " + 0.4*pi*pi*cos(pi*x)*cos(pi*y) +0.4*pi*cos(pi*x)*sin(pi*y)-0.2*pi*sin(pi*x)*cos(pi*y)+0.3*sin(pi*x)*sin(pi*y)", 2);
             coeff_diff = gsFunctionExpr<>("1.2","-0.7","-0.4","0.9",2);
             coeff_conv = gsFunctionExpr<>("0.4","-0.2",2);
             coeff_reac = gsFunctionExpr<>("0.3",2);
             break;
 
         case 2:
-            gsInfo << "Poisson equation on the quarter annulus (1)\n";
+            gsInfo << "2) Poisson equation on the quarter annulus\n";
             mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0));
             sol_exact = gsFunctionExpr<>( "-(x*x+y*y-1)*(x*x+y*y-4)*x*y*y", 2);
             rhs_exact = gsFunctionExpr<>( "2*x*(22*x*x*y*y+21*y*y*y*y-45*y*y+x*x*x*x-5*x*x+4)", 2);
@@ -157,7 +196,7 @@ int main(int argc, char* argv[])
             break;
 
         case 3:
-            gsInfo << "Poisson equation on the quarter annulus (2)\n";
+            gsInfo << "3) Poisson equation on the quarter annulus\n";
             mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineFatQuarterAnnulus(1.0, 2.0));
             sol_exact = gsFunctionExpr<>( "(x^2+y^2-3*sqrt(x^2+y^2)+2)*sin(2*atan(y/x))", 2);
             rhs_exact = gsFunctionExpr<>( "(8-9*sqrt(x^2 + y^2))*sin(2*atan(y/x))/(x^2+y^2)", 2);
@@ -167,7 +206,7 @@ int main(int argc, char* argv[])
             break;
 
         case 4:
-            gsInfo << "Poisson equation on an L-shaped domain\n";
+            gsInfo << "4) Poisson equation on an L-shaped domain\n";
             mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineLShape_p1());
             sol_exact = gsFunctionExpr<>( "if ( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) +3*pi)/3.0 ) )", 2);
             rhs_exact = gsFunctionExpr<>( "0", 2);
@@ -177,20 +216,20 @@ int main(int argc, char* argv[])
             break;
 
         case 5:
-            gsInfo << "Poisson equation on the unit cube\n";
+            gsInfo << "5) Poisson equation on the unit cube\n";
             mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineCube(1));
             sol_exact = gsFunctionExpr<>( "sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
-            rhs_exact = gsFunctionExpr<>( "(3*pi^2 )*sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
+            rhs_exact = gsFunctionExpr<>( "(3*pi^2)*sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
             coeff_diff = gsFunctionExpr<>("1","0","0","0","1","0","0","0","1",3);
             coeff_conv = gsFunctionExpr<>("0","0","0",3);
             coeff_reac = gsFunctionExpr<>("0",3);
             break;
 
         case 6:
-            gsInfo << "Poisson's equation on Yeti footprint\n";
+            gsInfo << "6) Poisson's equation on Yeti footprint\n";
             mp = *static_cast<gsMultiPatch<>::uPtr>(gsReadFile<>("domain2d/yeti_mp2.xml"));
             sol_exact = gsFunctionExpr<>( "sin(5*pi*x)*sin(5*pi*y)", 2);
-            rhs_exact = gsFunctionExpr<>( "(50*pi^2 )*sin(5*pi*x)*sin(5*pi*y)", 2);
+            rhs_exact = gsFunctionExpr<>( "(50*pi^2)*sin(5*pi*x)*sin(5*pi*y)", 2);
             coeff_diff = gsFunctionExpr<>("1","0","0","1",2);
             coeff_conv = gsFunctionExpr<>("0","0",2);
             coeff_reac = gsFunctionExpr<>("0",2);
@@ -200,17 +239,22 @@ int main(int argc, char* argv[])
             gsInfo << "Unknown benchmark case chosen.\n";
             return EXIT_FAILURE;
     }
+    //! [Define benchmark problem]
 
     // Print information about benchmark
     gsInfo << "Exact solution: " << sol_exact << "\n";
     gsInfo << "Right hand side: " << rhs_exact << "\n";
+    gsInfo << "Handling of boundary conditions: " << (typeBCHandling==1 ? "elimination" : "Nitsche") << "\n";
 
     // Handle the uniform splitting
+    //! [Splitting of patches]
     for (index_t i=0; i<numSplits; ++i)
         mp = mp.uniformSplit();
+    //! [Splitting of patches]
     gsInfo << "Number of patches: " << mp.nPatches() << "\n\n";
 
     // Define boundary conditions
+    //! [Boundary conditions]
     gsBoundaryConditions<> bcInfo;
     gsFunctionExpr<> zero("0", mp.geoDim());
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
@@ -218,11 +262,10 @@ int main(int argc, char* argv[])
         bcInfo.addCondition(*bit, condition_type::dirichlet, &sol_exact);
     }
     bcInfo.setGeoMap(mp);
+    //! [Boundary conditions]
 
     // Setup of vector of bases
-
-    // First, we count the coarsening type informations
-    index_t numRefH = 0, numRefP = 0, numRefZ = 0;
+    //! [Default coarsening]
     if (typeCoarsening.empty())
     {
         // Just setup some defaults
@@ -245,13 +288,14 @@ int main(int argc, char* argv[])
                 typeCoarsening = std::string(numLevels-1, 'z');
         }
     }
-    gsInfo << "Chosen coarsening strategy: " << typeCoarsening << "\n";
-
+    //! [Default coarsening]
     if (typeCoarsening.size() != (size_t)numLevels-1)
     {
         gsInfo << "The string provided to --Coarsening should have length " << numLevels-1 << "\n";
         return EXIT_FAILURE;
     }
+    // Now, we count the coarsening type informations
+    index_t numRefH = 0, numRefP = 0, numRefZ = 0;
     for ( index_t i = 0; i < numLevels-1 ; ++i)
     {
         if ( typeCoarsening[i] == 'h')
@@ -280,6 +324,7 @@ int main(int argc, char* argv[])
     }
 
     // Vector of multibasis objects
+    //! [Coarsest grid]
     // Index 0 refers to coarsest level; we first setup that basis
     std::vector<gsMultiBasis<>> bases;
     bases.emplace_back(mp);
@@ -289,13 +334,15 @@ int main(int argc, char* argv[])
     if (degreeOffset>0)
         bases[0].degreeIncrease(degreeOffset);
     else if (degreeOffset<0)
-        bases[0].degreeReduce(degreeOffset);
+        bases[0].degreeReduce(-degreeOffset);
 
     // Apply refinement in h for the coarses level
     for (index_t i = 0; i < numRefine - numRefH - numRefZ; ++i)
         bases[0].uniformRefine();
+    //! [Coarsest grid]
 
     // Now, we setup the remaining levels
+    //! [Finer grids]
     for (index_t i = 1; i < numLevels; i++)
     {
         // New basis object, which is just a copy
@@ -320,6 +367,7 @@ int main(int argc, char* argv[])
                 bases.back().degreeIncrease();
         }
     }
+    //! [Finer grids]
 
     gsStopwatch clock;
 
@@ -329,12 +377,15 @@ int main(int argc, char* argv[])
     std::vector<gsLinearOperator<>::Ptr> prolongation(numLevels-1);
 
     clock.restart();
+    //! [Intergrid]
+    gsInfo << "|| Multigrid hierarchy ||\n";
     for (index_t i = 1; i < numLevels; i++)
     {
         if (typeCoarsening[i-1] != 'h')
         {
             if (typeLumping == 1)
             {
+                gsInfo << "Restriction and prolongation between levels " << i << " and " << i-1 << ": L2-projection with lumped mass.\n";
                 gsSparseMatrix<> mixedMass = assembleMixedMass(mp, bases[i], bases[i-1], bcInfo, opt);
                 gsSparseMatrix<real_t> prolongationMatrix
                       = assembleLumpedMass(mp, bases[i], bcInfo, opt).asDiagonal().inverse()
@@ -347,6 +398,7 @@ int main(int argc, char* argv[])
             }
             else
             {
+                gsInfo << "Restriction and prolongation between levels " << i << " and " << i-1 << ": exact L2-projection.\n";
                 gsSparseMatrix<> prolongationP =  assembleMixedMass(mp, bases[i], bases[i-1], bcInfo, opt);
                 gsSparseMatrix<> restrictionP =  prolongationP.transpose();
                 gsSparseMatrix<> prolongationM = assembleMass(mp, bases[i], bcInfo, opt);
@@ -377,20 +429,23 @@ int main(int argc, char* argv[])
         }
         else //if (typeCoarsening[i-1] == 'h')
         {
+            gsInfo << "Restriction and prolongation between levels " << i << " and " << i-1 << ": canonical embedding and its transpose.\n";
             bases[i].clone()->uniformCoarsen_withTransfer(prolongation_H[i-1],bcInfo,opt);
             prolongation[i-1] = makeMatrixOp(prolongation_H[i-1]);
             restriction[i-1] = makeMatrixOp(prolongation_H[i-1].transpose());
 
         }
     }
+    //! [Intergrid]
     double Time_Transfer = clock.stop();
 
     // Determine stiffness matrices (assembling or Galerkin projection)
-    gsInfo << "|| Multigrid hierarchy ||\n";
+    gsInfo << "\n|| Assembling ||\n";
     std::vector<gsSparseMatrix<>> matrices(numLevels);
     std::vector<gsLinearOperator<>::Ptr> operators(numLevels);
     gsMatrix<> rhs;
     double Time_Assembly = 0, Time_Galerkin = 0;
+    //! [Assembling]
     for (index_t i = numLevels-1; i >= 0; --i)
     {
         if (typeCoarseOperator == 1 || i == numLevels-1 || typeCoarsening[i] != 'h')
@@ -424,74 +479,94 @@ int main(int argc, char* argv[])
         operators[i] = makeMatrixOp(matrices[i]);
     }
     gsSparseMatrix<>& matrix = matrices.back();
-    gsInfo << "\n|| Setup Timings || \n";
-    gsInfo << "Total transfer setup time: " << Time_Transfer << "\n";
-    gsInfo << "Total Assembly time: " << Time_Assembly << "\n";
-    gsInfo << "Total Galerkin projections: " << Time_Galerkin << "\n";
+    //! [Assembling]
 
     // Setup of multigrid object
+    //! [Setup]
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make(operators, prolongation, restriction);
+    //! [Setup]
 
     // Setup of solver for coarsest grid level
     clock.restart();
+    //! [Coarse solver]
     mg->setCoarseSolver(makeSparseLUSolver(matrices[0]));
+    //! [Coarse solver]
     double Time_Coarse_Solver_Setup = clock.stop();
-    gsInfo << "Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
 
     // Specify the number of cycles
     // For coarsest level, we stick to 1 in any case (exact solver is never cycled)
+    //! [Set cycle]
+    if (typeCycle_p==typeCycle_h)
+        gsInfo << "Multigrid cycle type: " << typeCycle_h << "\n";
+    else
+        gsInfo << "Multigrid cycle type: " << typeCycle_h << " for h-refinement and " << typeCycle_p << " for p- and z-refinement\n";
     for (index_t i=1; i<numLevels-1; i++)
     {
-        if (typeCoarsening[i] != 'h') // offset?
+        if (typeCoarsening[i] != 'h')
             mg->setNumCycles(i,typeCycle_p);
         else
             mg->setNumCycles(i,typeCycle_h);
     }
+    //! [Set cycle]
 
     // Setup of smoothers
+    gsInfo << "\n|| Smoother ||\n";
     opt.addReal("Scaling","",0.12);           // only used for SCMS
     opt.addReal("Damping","",dampingSCMS);    // only used for SCMS
     clock.restart();
-    for (index_t i = 0; i < numLevels; i++)
+    //! [Smoother]
+    for (index_t i = 1; i < numLevels; i++)
     {
-        switch (typeSmoother)
+        if (bases[i].degree()==1)
+        {
+            mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
+            gsInfo << "Smoother for level " << i << ": Gauss-Seidel\n";
+        }
+        else switch (typeSmoother)
         {
             case 1:
-                if (typeProjection == 2 || i == numLevels-1)
-                    mg->setSmoother(i,makeIncompleteLUOp(matrices[i]));
-                else
-                    mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
+                mg->setSmoother(i,makeIncompleteLUOp(matrices[i]));
+                gsInfo << "Smoother for level " << i << ": Incomplete LU\n";
                 break;
             case 2:
                 mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
+                gsInfo << "Smoother for level " << i << ": Gauss-Seidel\n";
                 break;
             case 3:
                 mg->setSmoother(i,setupSubspaceCorrectedMassSmoother(matrices[i], bases[i], bcInfo, opt));
+                gsInfo << "Smoother for level " << i << ": Subspace corrected mass smoother (damping = "<<dampingSCMS<<")\n";
                 break;
             case 4:
-                if (typeProjection == 2 || i == numLevels-1)
-                    mg->setSmoother(i,setupBlockILUT(matrices[i], bases[i], bcInfo, opt));
-                else
-                    mg->setSmoother(i,makeGaussSeidelOp(matrices[i]));
+                mg->setSmoother(i,setupBlockILUT(matrices[i], bases[i], bcInfo, opt));
+                gsInfo << "Smoother for level " << i << ": Blockwise Incomplete LU\n";
                 break;
             default:
                 gsInfo << "Unknown smoother chosen.\n";
                 return EXIT_FAILURE;
         }
     }
+    gsInfo << "Number of smoothing steps: " << numSmoothing << "\n";
     mg->setNumPreSmooth(numSmoothing);
     mg->setNumPostSmooth(numSmoothing);
     // For the conjugate Gradient solver, the post smoother needs to be the transpose of the
     // pre smoother. For all other iterative solvers, it does not matter. So, we choose
     // pre smoothing and post smoothing to be the same.
+    gsInfo << "Post smoothing is transpose of pre smoothing: " << (typeSolver == 3?"yes":"no") << "\n";
     mg->setSymmSmooth(typeSolver == 3);
+    //! [Smoother]
     double Time_Smoother_Setup = clock.stop();
-    gsInfo << "Smoother setup time: " << Time_Smoother_Setup << "\n";
 
+    gsInfo << "\n|| Setup Timings || \n";
+    gsInfo << "Total transfer setup time: " << Time_Transfer << "\n";
+    gsInfo << "Total Assembly time: " << Time_Assembly << "\n";
+    gsInfo << "Total Galerkin projections: " << Time_Galerkin << "\n";
+    gsInfo << "Coarse solver setup time: " << Time_Coarse_Solver_Setup << "\n";
+    gsInfo << "Smoother setup time: " << Time_Smoother_Setup << "\n";
     gsInfo << "Total setup time: " << Time_Assembly + Time_Galerkin + Time_Transfer
         + Time_Coarse_Solver_Setup + Time_Smoother_Setup << "\n";
 
     // Setup of iterative solver
+    //! [Solver]
     gsIterativeSolver<>::Ptr solver;
     switch (typeSolver)
     {
@@ -513,8 +588,11 @@ int main(int argc, char* argv[])
             gsInfo << "Unknown iterative solver chosen.\n";
             return EXIT_FAILURE;
     }
+    //! [Solver]
 
+    //! [Initial guess]
     gsMatrix<> x = gsMatrix<>::Random(matrix.rows(),1);
+    //! [Initial guess]
 
     // Unfortunately, the stopping criterion is relative to the rhs not to the initial residual (not yet configurable)
     const real_t rhs_norm = rhs.norm();
@@ -522,7 +600,9 @@ int main(int argc, char* argv[])
     solver->setMaxIterations(maxIter);
     gsMatrix<> error_history;
     clock.restart();
+    //! [Solve]
     solver->solveDetailed( rhs, x, error_history );
+    //! [Solve]
     double Time_Solve = clock.stop();
 
     for (index_t i=1; i<error_history.rows(); ++i)
@@ -534,7 +614,8 @@ int main(int argc, char* argv[])
                << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
                << "\n";
     }
-    if (solver->error() <= solver->tolerance())
+    const bool success = solver->error() <= solver->tolerance();
+    if (success)
         gsInfo << "Solver reached accuracy goal after " << solver->iterations() << " iterations.\n";
     else
         gsInfo << "Solver did not reach accuracy goal within " << solver->iterations() << " iterations.\n";
@@ -542,7 +623,7 @@ int main(int argc, char* argv[])
     // Determine residual and l2 error
     gsInfo << "Residual after solving: "  << (rhs-matrix*x).norm() << "\n";
 
-    return EXIT_SUCCESS;
+    return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 // Create the subspace corrected mass smoother
