@@ -25,6 +25,9 @@ if (NOT IPOPT_FOUND)
   message("Will attempt to download and compile IpOpt ${IPOPT_VER} (do: make IpOpt; cmake .")
 
   #fetch here!
+  set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin CACHE INTERNAL "")
+  set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
+    CACHE INTERNAL "")
 
   # For Mumps: If using GFortran 10, add
   # ADD_FCFLAGS=-fallow-argument-mismatch to compiler flags.
@@ -43,11 +46,9 @@ if (NOT IPOPT_FOUND)
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib64
     BUILD_COMMAND ${MAKE}
     UPDATE_COMMAND     ""
+    BUILD_BYPRODUCTS "${IPOPT_LIBRARY}"
     #DOWNLOAD_NO_PROGRESS 0
     )
-  set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin CACHE INTERNAL "")
-  set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
-    CACHE INTERNAL "")
 else()
   #add_custom_target (IpOpt)
 endif(NOT IPOPT_FOUND)

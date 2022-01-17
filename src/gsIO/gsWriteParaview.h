@@ -14,7 +14,6 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
-#include <gsMSplines/gsMappedSpline.h>
 
 #include <sstream>
 #include <fstream>
@@ -101,18 +100,6 @@ template<class T>
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
                      std::string const & fn, unsigned npts);
 
-/// \brief Export a composite Geometry to paraview file
-///
-/// \param Geo a composite geometry
-/// \param fn filename where paraview file is written
-/// \param npts number of points used for sampling each curve
-/// \param mesh if true, the parameter mesh is plotted as well
-/// \param ctrNet if true, the control net is plotted as well
-//template<class T>
-//void gsWriteParaview( gsMappedSpline<2,T> const & Geo,
-//                      std::string const & fn, unsigned npts=NS, bool mesh = false, bool ctrNet = false );
-
-
 /// \brief Export i-th Basis function to paraview file
 ///
 /// \param i index of a basis function
@@ -155,8 +142,8 @@ template<class T>
 void gsWriteParaview(gsFunction<T> const& func, 
                      gsMatrix<T> const& supp, 
                      std::string const & fn, 
-                     unsigned npts =NS);
-
+                     unsigned npts =NS,
+                     bool graph = true);
 
 /// \brief Export Basis functions to paraview files
 ///

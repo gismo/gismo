@@ -74,7 +74,7 @@ int main()
 
     typedef mpfr::mpreal Real;
     typedef mpfr::mpreal NonInteger;
-    
+
     static inline Real highest  (long Precision = mpfr::mpreal::get_default_prec()) { return  mpfr::maxval(Precision); }
     static inline Real lowest   (long Precision = mpfr::mpreal::get_default_prec()) { return -mpfr::maxval(Precision); }
 
@@ -90,6 +90,9 @@ int main()
 #ifdef MPREAL_HAVE_DYNAMIC_STD_NUMERIC_LIMITS
     static inline int digits10 (long Precision = mpfr::mpreal::get_default_prec())  { return std::numeric_limits<Real>::digits10(Precision); }
     static inline int digits10 (const Real& x)                                      { return std::numeric_limits<Real>::digits10(x); }
+
+    static inline int digits ()               { return std::numeric_limits<Real>::digits(); }
+    static inline int digits (const Real& x)  { return std::numeric_limits<Real>::digits(x); }
 #endif
 
     static inline Real dummy_precision()
@@ -101,22 +104,15 @@ int main()
 
   namespace internal {
 
-/*
-template<>
-struct random_impl<mpq_class>
-{
-  typedef mpfr::mpreal Scalar;
-  static inline Scalar run(const Scalar& x, const Scalar& y)
+  template<> inline mpfr::mpreal random<mpfr::mpreal>()
   {
-    return x + (y-x) * Scalar(std::rand()) / Scalar(RAND_MAX);
+    return mpfr::random();
   }
-  static inline Scalar run()
+
+  template<> inline mpfr::mpreal random<mpfr::mpreal>(const mpfr::mpreal& a, const mpfr::mpreal& b)
   {
-    return run(Scalar(NumTraits<Scalar>::IsSigned ? -1 : 0), Scalar(1));
-    //return mpfr::random();
+    return a + (b-a) * random<mpfr::mpreal>();
   }
-};
-//*/
 
   inline bool isMuchSmallerThan(const mpfr::mpreal& a, const mpfr::mpreal& b, const mpfr::mpreal& eps)
   {
@@ -173,6 +169,7 @@ struct random_impl<mpq_class>
       typedef ResScalar LhsPacket;
       typedef ResScalar RhsPacket;
       typedef ResScalar ResPacket;
+      typedef LhsPacket LhsPacket4Packing;
       
     };
 

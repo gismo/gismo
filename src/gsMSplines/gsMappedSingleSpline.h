@@ -127,12 +127,15 @@ public:
 
     /// The gsBasisFun points to the i-th spline function of m_spline
     /// after calling this setter.
-    void setPiece( unsigned const & i ) const
+    void setPiece( unsigned const & i )
     {
         GISMO_ASSERT( i<unsigned(m_spline->nPatches()),"Invalid spline index" );
         m_index = i;
     }
-    
+
+    void setSource(gsMappedSpline<d,T> & s)
+    { m_spline = &s; }
+
 // Data members
 private:
     gsMappedSpline<d,T> * m_spline;

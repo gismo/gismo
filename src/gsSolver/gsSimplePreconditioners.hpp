@@ -26,7 +26,7 @@ void gaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const gsMatri
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
-    for (int i = 0; i < A.outerSize(); ++i)
+    for (index_t i = 0; i < A.outerSize(); ++i)
     {
         T diag = 0;
         T sum  = 0;
@@ -51,7 +51,7 @@ void reverseGaussSeidelSweep(const gsSparseMatrix<T> & A, gsMatrix<T>& x, const 
     GISMO_ASSERT( f.cols() == 1, "This operator is only implemented for a single right-hand side." );
 
     // A is supposed to be symmetric, so it doesn't matter if it's stored in row- or column-major order
-    for (int i = A.outerSize() - 1; i >= 0; --i)
+    for (index_t i = A.outerSize() - 1; i >= 0; --i)
     {
         T diag = 0;
         T sum = 0;

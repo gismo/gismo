@@ -16,60 +16,15 @@
 namespace gismo
 {
 
-// template<short_t d,class T>
-// gsMappedSpline<d,T>::gsMappedSpline( gsMultiPatch<T> const & mp,std::string pathToMap ) : Base()
-// {
-//     short_t geoDim = mp.geoDim();
-//     std::vector<gsMatrix<T> * > coefs;
-//     for(int i = 0;i<mp.size();++i)
-//         coefs.push_back( new gsMatrix<T>(mp.patch(i).coefs() ) );
-//     m_compBasis = new gsMappedBasis<d,T>(mp,pathToMap);
-//     Base::m_basis=new gsMappedSingleBasis<d,T>(m_compBasis->getMappedSingleBasis(0));
-//     int start = 0, end = -1;
-//     gsMatrix<T> localCoefs;
-//     localCoefs.resize(m_compBasis->localSize(),geoDim);
-//     for(size_t i = 0;i<mp.nPatches();i++)
-//     {
-//         start=end+1;
-//         end+=m_compBasis->localSize(i);
-//         localCoefs.block(start,0,end-start+1,geoDim) << *(coefs[i]);
-//     }
-//     m_compBasis->local_coef_to_global_coef(localCoefs,Base::m_coefs);
-//     freeAll(coefs);
-// }
-
-// template<short_t d,class T>
-// gsMappedSpline<d,T>::gsMappedSpline(const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & bmap ) : Base()
-// {
-//     m_compBasis = new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),bmap);
-//     Base::m_basis=new gsMappedSingleBasis<d,T>(m_compBasis->getMappedSingleBasis(0));
-//     int start = 0, end = -1;
-//     short_t geoDim = mp.geoDim();
-//     gsMatrix<T> localCoefs(m_compBasis->localSize(),geoDim);
-//     for(size_t i = 0;i<mp.nPatches();i++)
-//     {
-//         start=end+1;
-//         end+=m_compBasis->localSize(i);
-//         localCoefs.block(start,0,end-start+1,geoDim) << mp.patch(i).coefs();
-//     }
-//     m_compBasis->local_coef_to_global_coef(localCoefs,Base::m_coefs);
-// }
-
 template<short_t d,class T>
 gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m )
 {
     GISMO_ASSERT(mp.nPatches()>0,"MultiPatch is empty?");
-    m_mbases = new gsMappedBasis<d,T>(mp,m);
+    m_mbases = new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m);
 
-    // TRANSFORM COEFFICIENTS
-    index_t rows = 0;
-    index_t cols = mp.patch(0).coefs().cols();
-    for (size_t p=0; p!=mp.nPatches(); ++p)
-        rows += mp.patch(p).coefs().rows();
-
-    gsMatrix<T> local;
-    local.resize(rows,cols);
-
+    // collect and transform the coefficients
+    const index_t cols = mp.geoDim();
+    gsMatrix<T> local(mp.coefsSize(), cols);
     index_t offset = 0;
     for (size_t p=0; p!=mp.nPatches(); ++p)
     {
@@ -78,7 +33,6 @@ gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseM
     }
 
     m_mbases->local_coef_to_global_coef(local,m_global);
-
     init(*m_mbases);
 }
 
@@ -93,8 +47,7 @@ m_global(coefs)
 
 template<short_t d,class T>
 gsMappedSpline<d,T>::gsMappedSpline( const gsMappedSpline& other )
-:
-m_global(other.m_global)
+: m_global(other.m_global)
 {
     m_mbases=other.m_mbases->clone().release();
 }
@@ -104,6 +57,9 @@ gsMappedSpline<d,T> & gsMappedSpline<d,T>::operator=( const gsMappedSpline& othe
 {
     delete m_mbases;
     m_mbases=other.m_mbases->clone().release();
+    m_global = other.m_global;
+    m_ss = other.m_ss;
+    for (auto & s : m_ss) s.setSource(*this);
     return *this;
 }
 
@@ -235,56 +191,12 @@ gsMultiPatch<T> gsMappedSpline<d,T>::exportToPatches() const
     gsMatrix<T> local;
     m_mbases->global_coef_to_local_coef(m_global,local);
     return m_mbases->exportToPatches(local);
-
-    // gsMultiPatch<T> mp;
-    // gsFunction<T> * msinglesplinefun;
-    // for (size_t p=0; p!=this->nPatches(); ++p)
-    // {
-    //     msinglesplinefun = const_cast<gsFunction<real_t> *>(dynamic_cast<const gsFunction<real_t> * >(&(m_ss[p])));
-    //     typename gsGeometry<T>::uPtr geom = dynamic_cast<typename gsGeometry<T>::uPtr>(msinglesplinefun);
-    //     // mp.addPatch((gsGeometry<T>::uPtr) msinglesplinefun.clone());
-    // }
-
-    // return mp;
-
-    // GISMO_NO_IMPLEMENTATION;
-    //
-    // gsMatrix<T> localCoef;
-    // m_compBasis->global_coef_to_local_coef(Base::m_coefs,localCoef);
-    // return m_compBasis->exportToPatches(localCoef);
-
-    /*
-     template<short_t d,class T>
-     gsMultiPatch<T> gsMappedBasis<d,T>::exportToPatches(gsMatrix<T> const & localCoef) const
-     {
-         std::vector<gsGeometry<T> *> patches(nPatches());
-         for(size_t i = 0; i<nPatches() ; ++i)
-             patches[i]= exportPatch(i,localCoef);
-         return gsMultiPatch<T>(patches,m_topol.boundaries(),m_topol.interfaces());
-     }
-     */
 }
 
 template<short_t d,class T>
 gsGeometry<T> * gsMappedSpline<d,T>::exportPatch(int i,gsMatrix<T> const & localCoef) const
 {
     return m_mbases->exportPatch(i,localCoef);
-
-    /*
-
-template<short_t d,class T>
-gsGeometry<T>* gsMappedBasis<d,T>::exportPatch(const int i,gsMatrix<T> const & localCoef) const
-{
-    const short_t geoDim=localCoef.cols();
-    const int start = _getFirstLocalIndex(i);
-    const int end   = _getLastLocalIndex(i);
-    gsMatrix<T> coefs = localCoef.block(start,0,end-start+1,geoDim);
-    return getBase(i).makeGeometry( give(coefs) ).release();
-}
-
-
-     */
-
 }
 
 }

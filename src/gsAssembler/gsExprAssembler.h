@@ -460,18 +460,16 @@ private:
             gsMatrix<index_t> & colInd0 = (isMatrix ? const_cast<gsMatrix<index_t>&>(u.data().actives) : rowInd0);
             const gsMatrix<T> & fixedDofs = (isMatrix ? u.fixedPart() : gsMatrix<T>());
 
-            // gsMatrix<index_t> rowInd, colInd;
-            // rowMap.localToGlobal(rowInd0, v.data().patchId, rowInd);
-
             if (isMatrix)
             {
                 GISMO_ASSERT( rowInd0.rows()*rd==localMat.rows() && colInd0.rows()*cd==localMat.cols(),
                               "Invalid local matrix (expected "<<rowInd0.rows()*rd <<"x"<< colInd0.rows()*cd <<"), got\n" << localMat );
 
-                //if (&rowInd0!=&colInd0)
-                //colMap.localToGlobal(colInd0, u.data().patchId, colInd);
                 GISMO_ASSERT( colMap.boundarySize()==fixedDofs.size(),
                               "Invalid values for fixed part");
+
+                //GISMO_ASSERT( colMap.boundarySize()==0 || m_rhs.cols()==1,
+                //              "Invalid values for fixed part");
             }
 
             for (index_t r = 0; r != rd; ++r)

@@ -16,6 +16,11 @@
 
 #include <gismo.h>
 
+#ifdef GISMO_KLSHELL
+#include <gsKLShell/gsKLShell.h>
+#include <gsKLShell/gsMaterialMatrixLinear.h>
+#endif
+
 #ifdef GISMO_BUILD_PYBIND11
 
 namespace py = pybind11;
@@ -43,13 +48,34 @@ PYBIND11_MODULE(pygismo, m) {
   core.attr("__version__") = GISMO_VERSION;
   core.doc() = "G+Smo (Geometry + Simulation Modules): Core module";
   
+  gismo::pybind11_enum_gsBoundary( core );
+
+  gismo::pybind11_init_gsBasis( core );
   gismo::pybind11_init_gsFunction( core );
+  gismo::pybind11_init_gsFunctionSet( core );
+  gismo::pybind11_init_gsFunctionExpr( core );
+  gismo::pybind11_init_gsGeometry( core );
+  gismo::pybind11_init_gsMultiPatch( core );
+  gismo::pybind11_init_gsMultiBasis( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
   hsplines.attr("__name__") = "pygismo.hspline";
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
+
+  gismo::pybind11_init_gsHBSplineBasis2( core );
+  gismo::pybind11_init_gsHBSplineBasis3( core );
+  gismo::pybind11_init_gsHBSplineBasis4( core );
+  gismo::pybind11_init_gsHBSpline2( core );
+  gismo::pybind11_init_gsHBSpline3( core );
+  gismo::pybind11_init_gsHBSpline4( core );
+  gismo::pybind11_init_gsTHBSplineBasis2( core );
+  gismo::pybind11_init_gsTHBSplineBasis3( core );
+  gismo::pybind11_init_gsTHBSplineBasis4( core );
+  gismo::pybind11_init_gsTHBSpline2( core );
+  gismo::pybind11_init_gsTHBSpline3( core );
+  gismo::pybind11_init_gsTHBSpline4( core );
   
   py::module io = m.def_submodule("io");
 
@@ -67,8 +93,12 @@ PYBIND11_MODULE(pygismo, m) {
   matrix.attr("__version__") = GISMO_VERSION;
   matrix.doc() = "G+Smo (Geometry + Simulation Modules): Matrix module";
   
+  gismo::pybind11_init_gsVector<real_t>(matrix,"Real"); //gsVectorReal
+  gismo::pybind11_init_gsVector<index_t>(matrix,"Int"); //gsVectorInt
   gismo::pybind11_init_gsMatrix<real_t>(matrix,"Real"); //gsMatrixReal
   gismo::pybind11_init_gsMatrix<index_t>(matrix,"Int"); //gsMatrixInt
+  gismo::pybind11_init_gsSparseMatrix<real_t>(matrix,"Real"); //gsSparseMatrixReal
+  gismo::pybind11_init_gsSparseMatrix<index_t>(matrix,"Int"); //gsSparseMatrixInt
   
   py::module modelling = m.def_submodule("modelling");
 
@@ -94,8 +124,15 @@ PYBIND11_MODULE(pygismo, m) {
   nurbs.attr("__version__") = GISMO_VERSION;
   nurbs.doc() = "G+Smo (Geometry + Simulation Modules): NURBS module";
 
-  gismo::pybind11_init_gsBSpline( nurbs );
   gismo::pybind11_init_gsKnotVector( nurbs );
+  gismo::pybind11_init_gsBSpline( nurbs );
+  gismo::pybind11_init_gsBSplineBasis( nurbs );
+  gismo::pybind11_init_gsTensorBSpline2( nurbs );
+  gismo::pybind11_init_gsTensorBSpline3( nurbs );
+  gismo::pybind11_init_gsTensorBSpline4( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis2( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis3( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis4( nurbs );
 
   
   py::module pde = m.def_submodule("pde");
@@ -103,6 +140,10 @@ PYBIND11_MODULE(pygismo, m) {
   pde.attr("__name__") = "pygismo.pde";
   pde.attr("__version__") = GISMO_VERSION;
   pde.doc() = "G+Smo (Geometry + Simulation Modules): Pde module";
+
+  gismo::pybind11_enum_gsBoundaryConditions( pde );
+  gismo::pybind11_init_gsBoundaryConditions( pde );
+  gismo::pybind11_init_gsPointLoads( pde );
 
   py::module solver = m.def_submodule("solver");
 
@@ -121,6 +162,16 @@ PYBIND11_MODULE(pygismo, m) {
   utils.attr("__name__") = "pygismo.utils";
   utils.attr("__version__") = GISMO_VERSION;
   utils.doc() = "G+Smo (Geometry + Simulation Modules): Utils module";
+
+  py::module klshell = m.def_submodule("klshell");
+
+  klshell.attr("__name__") = "pygismo.klshell";
+  klshell.attr("__version__") = GISMO_VERSION;
+  klshell.doc() = "G+Smo (Geometry + Simulation Modules): KLShell module";
+
+#ifdef GISMO_KLSHELL
+  gismo::pybind11_init_gsKLShell( klshell );
+#endif
 }
 
 #endif // GISMO_BUILD_PYBIND11

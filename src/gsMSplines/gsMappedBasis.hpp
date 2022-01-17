@@ -17,20 +17,6 @@
 namespace gismo
 {
 
-// template<short_t d,class T>
-// gsMappedBasis<d,T>::gsMappedBasis( gsMultiPatch<T> const & mp, std::string pathToMap )
-// {
-//     m_topol = mp.topology();
-//     m_bases = mp.basesCopy();
-//     gsSparseMatrix<T> m;
-//     gsFileData<T>(pathToMap).getFirst(m);
-//     m_mapper = new gsWeightMapper<T>(m);
-
-//     m_sb.reserve(mp.nPatches());
-//     for (size_t q = 0; q!=m_bases.size(); ++q)
-//         m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-// }
-
 template<short_t d,class T>
 gsMappedBasis<d,T>::gsMappedBasis( const gsMappedBasis& other )
 {
@@ -144,54 +130,6 @@ gsMultiPatch<T> gsMappedBasis<d,T>::exportToPatches(gsMatrix<T> const & localCoe
     for(size_t i = 0; i<nPatches() ; ++i)
         patches[i]= exportPatch(i,localCoef);
     return gsMultiPatch<T>(patches,m_topol.boundaries(),m_topol.interfaces());
-}
-
-template<short_t d,class T>
-gsMatrix<T> gsMappedBasis<d,T>::support(const index_t patch) const
-{
-    return m_bases[patch]->support();
-}
-
-template<short_t d,class T>
-gsMatrix<T> gsMappedBasis<d,T>::support(const index_t patch, const index_t & i) const
-{
-    gsMatrix<T> supp;
-    supp = m_bases[patch]->support(i);
-/*
-    gsMatrix<index_t> act0, act1;
-    active_into(patch, supp.col(0), act0);
-    active_into(patch, supp.col(1), act1);
-
-    for (index_t i = 0; i < act0.rows(); i++)
-    {
-        gsMatrix<T> supp_local = m_bases[patch]->support(act0.at(i));
-        if (supp_local(0, 0) < supp(0, 0))
-            supp(0, 0) = supp_local(0, 0);
-        if (supp_local(1, 0) < supp(1, 0))
-            supp(1, 0) = supp_local(1, 0);
-        if (supp_local(0, 1) > supp(0, 1))
-            supp(0, 1) = supp_local(0, 1);
-        if (supp_local(1, 1) > supp(1, 1))
-            supp(1, 1) = supp_local(1, 1);
-    }
-    for (index_t i = 0; i < act1.rows(); i++)
-    {
-        gsMatrix<T> supp_local = m_bases[patch]->support(act1.at(i));
-        if (supp_local(0, 0) < supp(0, 0))
-            supp(0, 0) = supp_local(0, 0);
-        if (supp_local(1, 0) < supp(1, 0))
-            supp(1, 0) = supp_local(1, 0);
-        if (supp_local(0, 1) > supp(0, 1))
-            supp(0, 1) = supp_local(0, 1);
-        if (supp_local(1, 1) > supp(1, 1))
-            supp(1, 1) = supp_local(1, 1);
-    }
-*/
-    // TODO small fix here
-    supp.col(0).setZero();
-    supp.col(1).setOnes();
-
-    return supp;
 }
 
 template<short_t d,class T>
