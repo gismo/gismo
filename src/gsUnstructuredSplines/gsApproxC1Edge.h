@@ -125,7 +125,7 @@ public:
 
                 gsBoundaryConditions<> bc_empty;
                 bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
-                u.setup(bc_empty, dirichlet::homogeneous, 0, map);
+                u.setupMapper(map);
                 A.initSystem();
 
                 gsTraceBasis<real_t> traceBasis(geo, basis_plus, basis_geo, beta, false, bfID, dir);
@@ -175,7 +175,7 @@ public:
 
                 gsBoundaryConditions<> bc_empty;
                 bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
-                u.setup(bc_empty, dirichlet::homogeneous, 0, map);
+                u.setupMapper(map);
                 A.initSystem();
 
                 gsNormalDerivBasis<real_t> normalDerivBasis(geo, basis_minus, basis_geo, alpha, false, bfID, dir);
@@ -290,7 +290,7 @@ public:
 
             gsBoundaryConditions<> bc_empty;
             bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
-            u.setup(bc_empty, dirichlet::homogeneous, 0, map);
+            u.setupMapper(map);
             A.initSystem();
 
             gsTraceBasis<real_t> traceBasis(geo, basis_plus, basis_geo, beta, true, bfID, dir);
@@ -341,7 +341,7 @@ public:
 
             gsBoundaryConditions<> bc_empty;
             bc_empty.addCondition(dir == 0 ? 1 : 3, condition_type::dirichlet, 0); // Doesn't matter which side
-            u.setup(bc_empty, dirichlet::homogeneous, 0, map);
+            u.setupMapper(map);
             A.initSystem();
 
             gsNormalDerivBasis<real_t> normalDerivBasis(geo, basis_minus, basis_geo, alpha, true, bfID, dir);

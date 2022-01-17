@@ -200,7 +200,7 @@ public:
 
                 gsBoundaryConditions<> bc_empty;
                 bc_empty.addCondition(1, condition_type::dirichlet, 0); // Doesn't matter which side
-                u.setup(bc_empty, dirichlet::homogeneous, 0, map);
+                u.setupMapper(map);
 
                 A.initSystem();
 
