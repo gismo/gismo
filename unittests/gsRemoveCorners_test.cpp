@@ -289,4 +289,84 @@ SUITE(gsRemoveCorners_test)
         CHECK((stiffnessInvStiffness-gsMatrix<>::Identity(stiffnessInvStiffness.rows(),stiffnessInvStiffness.cols())).norm() < 1.e-11);
         CHECK(stiffnessInvWithoutCorners->rows() + (index_t)corners.size() == stiffnessWithCorners.rows() && stiffnessInvWithoutCorners->cols() + (index_t)corners.size() == stiffnessWithCorners.cols());
     }
+
+    TEST(StiffnessOp3)
+    {
+        gsLinearOperator<>::uPtr matrixInvWithoutCorners;
+        gsSparseMatrix<> stiffnessWithCorners, massWithCorners;
+        std::vector<index_t> corners;
+        real_t alpha = 1.0;
+
+        index_t numRefine = 3;
+        index_t degree = 5;
+
+        gsFunctionExpr<> bc("0.0",2);
+
+        gsMultiPatch<> square(*gsNurbsCreator<>::BSplineSquare());
+        square.computeTopology();
+
+        gsMultiBasis<> mb(square);
+
+        gsSparseEntries<> seReducedMatrix;
+        gsSparseMatrix<> reducedMatrix;
+
+        for (index_t i = 0; i < numRefine; ++i)
+            mb.uniformRefine();
+
+        mb[0].component(0).uniformRefine();
+
+        mb[0].component(0).setDegreePreservingMultiplicity(degree);
+        mb[0].component(1).setDegreePreservingMultiplicity(degree+1);
+
+        gsBoundaryConditions<> bcInfo;
+        bcInfo.addCondition(0, 1, condition_type::dirichlet, bc);
+        bcInfo.addCondition(0, 2, condition_type::neumann, bc);
+        bcInfo.addCondition(0, 3, condition_type::dirichlet, bc);
+        bcInfo.addCondition(0, 4, condition_type::neumann, bc);
+
+        gsOptionList opt = gsAssembler<>::defaultOptions();
+        stiffnessWithCorners = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb.basis(0), bcInfo, opt);
+        massWithCorners = gsPatchPreconditionersCreator<>::massMatrix(mb.basis(0), bcInfo, opt);
+
+        corners.resize(1);
+        corners[0] = stiffnessWithCorners.rows()-1;
+
+        index_t row = 0, col = 0;
+        for (index_t i = 0; i < stiffnessWithCorners.rows(); i++)
+        {
+            if ( std::find(corners.begin(), corners.end(), i) == corners.end() )
+            {
+                for (index_t j = 0; j < stiffnessWithCorners.cols(); j++)
+                {
+                    if( std::find(corners.begin(), corners.end(), j) == corners.end() )
+                    {
+                        seReducedMatrix.add(row, col, stiffnessWithCorners(i,j) + alpha * massWithCorners(i,j));
+                        col++;                    }
+                }
+                col=0;
+                row++;
+            }
+        }
+
+        // reduce the stiffness matrix
+        reducedMatrix.resize(stiffnessWithCorners.rows()-corners.size(), stiffnessWithCorners.cols()-corners.size());
+        reducedMatrix.setFrom(seReducedMatrix);
+        reducedMatrix.makeCompressed();
+
+        bcInfo.addCornerValue(2, 0, 0);
+        bcInfo.addCornerValue(3, 0, 0);
+        bcInfo.addCornerValue(4, 0, 0);
+
+        matrixInvWithoutCorners = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb.basis(0), bcInfo, opt, alpha);
+
+        gsMatrix<> result;
+        gsMatrix<> matrixInvMatrix(reducedMatrix.rows(), reducedMatrix.cols());
+        for (index_t i = 0; i < reducedMatrix.cols(); ++i) {
+            matrixInvWithoutCorners->apply(reducedMatrix.toDense().col(i), result);
+            matrixInvMatrix.col(i) = result;
+        }
+
+        CHECK((matrixInvMatrix-gsMatrix<>::Identity(matrixInvMatrix.rows(),matrixInvMatrix.cols())).norm() < 1.e-11);
+        CHECK(matrixInvWithoutCorners->rows() + (index_t)corners.size() == stiffnessWithCorners.rows() && matrixInvWithoutCorners->cols() + (index_t)corners.size() == stiffnessWithCorners.cols());
+    }
 }
