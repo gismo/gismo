@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): R. Tielen
+    Author(s): R. Tielen, S. Takacs
 */
 
 #include <gismo.h>
@@ -605,15 +605,15 @@ int main(int argc, char* argv[])
     //! [Solve]
     double Time_Solve = clock.stop();
 
+    gsInfo << "   0  |  Residual norm: " << std::setprecision(6) << (error_history(0,0) * rhs_norm) << "\n";
     for (index_t i=1; i<error_history.rows(); ++i)
-    {
         gsInfo << std::right << std::setw(4) << i
                << "  |  Residual norm: "
                << std::setprecision(6) << std::left << std::setw(15) << (error_history(i,0) * rhs_norm)
                << "  reduction:  1 / "
                << std::setprecision(3) << (error_history(i-1,0)/error_history(i,0))
                << "\n";
-    }
+
     const bool success = solver->error() <= solver->tolerance();
     if (success)
         gsInfo << "Solver reached accuracy goal after " << solver->iterations() << " iterations.\n";
