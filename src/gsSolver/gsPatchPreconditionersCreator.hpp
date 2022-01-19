@@ -314,10 +314,10 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
 
-        if (gamma != T(0))
+        if (gamma != (T)(0))
         {
             gsMatrix<T> etrans = ges.eigenvectors().transpose()*local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
-            GISMO_ASSERT((etrans.block(1, 0, etrans.rows()-1, 1).array() < T(1)/100000000).all(),
+            GISMO_ASSERT((etrans.block(1, 0, etrans.rows()-1, 1).array() < (T)(1)/100000000).all(),
                 "gsPatchPreconditionerCreator::fastDiagonalizationOp: gamma!=0 only allowed for pure Neumann.");
             avg_term *= etrans(0,0) * etrans(0,0);
         }
@@ -350,7 +350,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     diag(0,0) += avg_term;
 
     for ( index_t l=0; l<sz; ++l )
-        diag( l, 0 ) = 1/diag( l, 0 );
+        diag( l, 0 ) = (T)(1)/diag( l, 0 );
 
     memory::unique_ptr< Eigen::DiagonalMatrix<T,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<T,Dynamic>( give(diag) ) );
 
@@ -692,7 +692,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
         if ( numberInteriors == d )
-            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + beta*numberInteriors/(sigma*h*h) ) );
+            correction[0] = gsScaledOp<T>::make( correction[0], (T)(1)/( alpha + beta*(T)(numberInteriors)/(sigma*h*h) ) );
 
         // Setup of bondary correction
         if ( numberInteriors < d )
@@ -711,7 +711,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                             s = M_compl[d-1-k].kron(s);
                     }
                 }
-                bc_matrix = ( alpha + beta*numberInteriors/(sigma*h*h) ) * s;
+                bc_matrix = ( alpha + beta*(T)(numberInteriors)/(sigma*h*h) ) * s;
             }
 
             for ( index_t j = d-1; j>=0; --j )

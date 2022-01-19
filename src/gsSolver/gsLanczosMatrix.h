@@ -57,8 +57,8 @@ public:
         for (size_t i=0;i<m_n;++i)
         {
             const T tmp = math::abs(m_delta[i])
-                        + ( i<m_n-1 ? math::abs(m_gamma[i])   : T(0) )
-                        + ( i>0     ? math::abs(m_gamma[i-1]) : T(0) );
+                        + ( i<m_n-1 ? math::abs(m_gamma[i])   : (T)(0) )
+                        + ( i>0     ? math::abs(m_gamma[i-1]) : (T)(0) );
             if (tmp>x0) x0 = tmp;
         }
 
@@ -115,10 +115,10 @@ private:
         std::vector<T> value(m_n+1);
         std::vector<T> deriv(m_n+1);
 
-        value[0] = T(1);
+        value[0] = (T)(1);
         value[1] = m_delta[0]-lambda;
-        deriv[0] = T(0);
-        deriv[1] = T(-1);
+        deriv[0] = (T)(0);
+        deriv[1] = (T)(-1);
         for (size_t k=2; k<m_n+1; ++k)
         {
             value[k] = (m_delta[k-1]-lambda) * value[k-1] - m_gamma[k-2]*m_gamma[k-2]*value[k-2];
