@@ -16,6 +16,7 @@
 # Optional inputs:
 # TARGET_ARCHITECTURE=<name> specifies the target architecture (default=auto)
 # TARGET_PROFILER=<name>     specifies the target profiler     (default=none)
+# OFA_VERBOSE=<bool>         prints verbose output             (default=off)
 #
 # If any of the <feature>_broken flags are defined and set to true,
 # the OptimizeForArchitecture macro will consequently disable the
@@ -23,6 +24,10 @@
 #
 # Output:
 # OFA_ARCHITECTURE_FLAGS compiler flags optimized for the target architecture
+#
+# Internal variables:
+# USE_<feature>          boolean variable holding the status of <feature>
+# HAVE_<feature>         boolean variable holding the compiler;s capability
 
 #=============================================================================
 # Copyright 2010-2016 Matthias Kretz <kretz@kde.org>
@@ -122,6 +127,7 @@ macro(OptimizeForArchitecture)
     message(STATUS "Detected Host CPU: ${TARGET_ARCHITECTURE}")
   endif()
 
+  message(STATUS "Checking Host CPU features. This can take some time ...")
   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "i686.*|i386.*|x86.*|amd64.*|x86_64.*|AMD64.*")
     OFA_HandleX86Options()
   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "^(arm.*|ARM.*|aarch64.*|AARCH64.*)")

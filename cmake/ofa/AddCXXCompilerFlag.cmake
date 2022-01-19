@@ -123,17 +123,17 @@ macro(AddCXXCompilerFlag _flag)
     endif()
   endforeach()
 
-  set(_check_include_file_cxx true)
-  set(_check_cxx_source_compiles true)
+  set(_check_include_file_cxx TRUE)
+  set(_check_cxx_source_compiles TRUE)
   
   # Check availability of header file(s)
   foreach(_header ${_headers})
-    set(_resultVar "check_include_file_cxx_${_header}")
+    set(_resultVar "HAVE_${_header}")
     string(REGEX REPLACE "[-.+/:= ]" "_" _resultVar "${_resultVar}")
     check_include_file_cxx(${_header} ${_resultVar} "${_flag} ${_extra_flags}")
     
     if(NOT ${_resultVar})
-      set(_check_include_file_cxx false)
+      set(_check_include_file_cxx FALSE)
     endif()
   endforeach()
   
@@ -154,11 +154,10 @@ macro(AddCXXCompilerFlag _flag)
   else()
     set(_cxx_code "${_cxx_code}\nint main() { return 0; }")
   endif() 
-  string(MD5 _hash "${_cxx_code}")
   
   set(_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
   set(CMAKE_REQUIRED_FLAGS "${_flag} ${_extra_flags}")
-  set(_resultVar "check_cxx_source_compiles_${_flag}_${_hash}")
+  set(_resultVar "HAVE_${_flag}")
   string(REGEX REPLACE "[-.+/:= ]" "_" _resultVar "${_resultVar}")
   check_cxx_source_compiles("${_cxx_code}" ${_resultVar}
     # Some compilers do not fail with a bad flag
@@ -182,14 +181,14 @@ macro(AddCXXCompilerFlag _flag)
   set(CMAKE_REQUIRED_FLAGS "${_CMAKE_REQUIRED_FLAGS}")
 
   if(NOT ${_resultVar})
-    set(_check_cxx_source_compiles false)
+    set(_check_cxx_source_compiles FALSE)
   endif()
 
   if (DEFINED _result)
     if (${_check_include_file_cxx} AND ${_check_cxx_source_compiles})
-      set(${_result} true)
+      set(${_result} TRUE)
     else()
-      set(${_result} false)
+      set(${_result} FALSE)
     endif()
   endif()
   

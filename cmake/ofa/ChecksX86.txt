@@ -1,6 +1,22 @@
-# List of x86 intrisics to check
+# List of x86 checks
 # Format: <extension>[,<list of auxiliary extensions>];<header>;<name>;<list of parameters>
 # line starting with # are comments
+
+# For each line of this file, OFA_HandleX86Options generates the code
+#
+# #include<header>
+# int main {
+#   name(list of parameters);
+#   return 0;
+# }
+#
+# and compiles it with
+#
+# CXX -m<extension> -m<auxiliary extensions...>
+#
+# or
+#
+# CXX -m-no<extension> -m-no<auxiliary extensions...>
 
 # MMX
 mmx;mmintrin.h;_mm_add_pi16;__m64(),__m64()
