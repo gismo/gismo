@@ -13,6 +13,7 @@
 #=============================================================================
 
 include(ofa/AddCompilerFlag)
+include(ofa/CommonMacros)
 include(CheckIncludeFileCXX)
 
 macro(OFA_HandleArmOptions)
@@ -790,7 +791,7 @@ macro(OFA_HandleArmOptions)
       if(_broken)
         set(_found false)
       else()
-        _my_find(_available_vector_units_list "${_flag}" _found)
+        _ofa_find(_available_vector_units_list "${_flag}" _found)
       endif()
       set(USE_${_name} ${_found} CACHE BOOL "${documentation}" ${_force})
       mark_as_advanced(USE_${_name})
@@ -842,12 +843,12 @@ macro(OFA_HandleArmOptions)
         
     # Add compiler flags
     if(MSVC AND MSVC_VERSION GREATER 1900)
-      _my_find(_enable_vector_unit_list "vfpv4" _found)
+      _ofa_find(_enable_vector_unit_list "vfpv4" _found)
       if(_found)
         AddCompilerFlag("/arch:VFPv4" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
       endif()
       if(NOT _found)
-        _my_find(_enable_vector_unit_list "simd" _found)
+        _ofa_find(_enable_vector_unit_list "simd" _found)
         if(_found)
           AddCompilerFlag("/arch:ARMv7VE" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
         endif()

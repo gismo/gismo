@@ -48,7 +48,7 @@ MACRO (CHECK_CXX_COMPILER_FLAG _FLAG _RESULT)
       SET(TEST_SOURCE "${ARGV2}")
    else()
       SET(TEST_SOURCE "int main() { return 0; }")
-   endif()
+    endif()
    CHECK_CXX_SOURCE_COMPILES("${TEST_SOURCE}" ${_RESULT}
      # Some compilers do not fail with a bad flag
      FAIL_REGEX "error: bad value (.*) for .* switch"       # GNU

@@ -13,6 +13,7 @@
 #=============================================================================
 
 include(ofa/AddCompilerFlag)
+include(ofa/CommonMacros)
 include(CheckIncludeFileCXX)
 
 macro(OFA_HandlePpcOptions)
@@ -112,7 +113,7 @@ macro(OFA_HandlePpcOptions)
       if(_broken)
         set(_found false)
       else()
-        _my_find(_available_vector_units_list "${_flag}" _found)
+        _ofa_find(_available_vector_units_list "${_flag}" _found)
       endif()
       set(USE_${_name} ${_found} CACHE BOOL "${documentation}" ${_force})
       mark_as_advanced(USE_${_name})

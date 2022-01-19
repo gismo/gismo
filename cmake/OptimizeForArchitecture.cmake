@@ -59,16 +59,8 @@
 # - Update of CPUIDs for latest Intel and AMD processors
 # - Added support for PPC64 (Clang, GCC, IBM XLC)
 # - Added Support for ARM (Clang, GCC, ARM Clang, Cray, Fujitsu)
+# - Restructuring and splitting into multiple files
 #=============================================================================
-
-macro(_my_find _list _value _ret)
-  list(FIND ${_list} "${_value}" _found)
-  if(_found EQUAL -1)
-    set(${_ret} FALSE)
-  else()
-    set(${_ret} TRUE)
-  endif()
-endmacro(_my_find)
 
 #=============================================================================
 # Autodetection of CPU
@@ -102,7 +94,6 @@ include(ofa/HandleArmOptions)
 include(ofa/HandlePpcOptions)
 
 macro(OptimizeForArchitecture)
-  message(STATUS "Optimizing for target architecture")
   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "i686.*|i386.*|x86.*|amd64.*|x86_64.*|AMD64.*")
     set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. Setting the value to \"native\" bypasses all checks and uses \"-march=native\" or the compiler equivalent flag. Other supported values are: \"none\", \"generic\", \"core\", \"core2\", \"merom\" (65nm Core2), \"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandybridge\", \"ivybridge\", \"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kabylake\", \"cannonlake\", \"cascadelake\", \"cooperlake\", \"icelake\", \"icelake-xeon\", \"tigerlake\", \"alderlake\", \"sapphirerapids\", \"bonnell\", \"silvermont\", \"goldmont\", \"goldmont-plus\", \"tremont\", \"knl\" (Knights Landing), \"knm\" (Knights Mill), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \"steamroller\", \"excavator\", \"amd14h\", \"amd16h\", \"zen\", \"zen2\", \"zen3\"." )
   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "^(arm.*|ARM.*|aarch64.*|AARCH64.*)")
@@ -138,6 +129,4 @@ macro(OptimizeForArchitecture)
   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "^(powerpc|ppc)64.*")
     OFA_HandlePpcOptions()
   endif()
-
-  message(STATUS "Optimizing for target architecture - done")
 endmacro(OptimizeForArchitecture)
