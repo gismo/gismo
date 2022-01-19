@@ -31,7 +31,7 @@ real_t gsPeriodicParametrization<T>::FlatMesh::correspondingV(const VertexHandle
 
     real_t t = (u - u0) / (u1 - u0);
 
-    return (1 - t) * v0 + t * v1;
+    return ((T)(1) - t) * v0 + t * v1;
 }
 
 template<class T>
@@ -57,7 +57,7 @@ void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<
         // One triangle on the right.
         typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(1, correspondingV(v0, v1, 0));
         typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(1, correspondingV(v1, v2, 0));
-        typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() + 1, v1->y());
+        typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() + (T)(1), v1->y());
         mesh.addFace(vvv01, v1copy, vvv12);
     }
     else if(v1->x() > 1)
@@ -72,7 +72,7 @@ void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesOneOut(gsMesh<
         // One triangle on the right.
         typename gsMesh<T>::VertexHandle vvv01 = mesh.addVertex(0, correspondingV(v0, v1, 1));
         typename gsMesh<T>::VertexHandle vvv12 = mesh.addVertex(0, correspondingV(v1, v2, 1));
-        typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() - 1, v1->y());
+        typename gsMesh<T>::VertexHandle v1copy = mesh.addVertex(v1->x() - (T)(1), v1->y());
         mesh.addFace(vvv01, v1copy, vvv12);
     }
     else
@@ -88,16 +88,16 @@ void gsPeriodicParametrization<T>::FlatMesh::addThreeFlatTrianglesTwoOut(gsMesh<
 {
     if(v0->x() < 0 && v2->x() < 0)
     {
-        typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() + 1, v0->y());
-        typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() + 1, v1->y());
-        typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() + 1, v2->y());
+        typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() + (T)(1), v0->y());
+        typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() + (T)(1), v1->y());
+        typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() + (T)(1), v2->y());
         addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
     }
     else if(v0->x() > 1 && v2->x() > 1)
     {
-        typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() - 1, v0->y());
-        typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() - 1, v1->y());
-        typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() - 1, v2->y());
+        typename gsMesh<T>::VertexHandle w0 = mesh.addVertex(v0->x() - (T)(1), v0->y());
+        typename gsMesh<T>::VertexHandle w1 = mesh.addVertex(v1->x() - (T)(1), v1->y());
+        typename gsMesh<T>::VertexHandle w2 = mesh.addVertex(v2->x() - (T)(1), v2->y());
         addThreeFlatTrianglesOneOut(mesh, w0, w1, w2);
     }
     else

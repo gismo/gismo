@@ -709,12 +709,12 @@ public:
     typedef pow_expr<integral_expr<T> > DiamRetType;
     /// The diameter of the element (on parameter space)
     DiamRetType diam() const //-> int(1)^(1/d)
-    { return pow(integral(_expr<T,true>(1)),(T)(1)/2); }
+    { return pow(integral(_expr<T,true>(1)),(T)(1)/(T)(2)); }
 
     typedef pow_expr<integral_expr<meas_expr<T> > > PHDiamRetType;
     /// The diameter of the element on the physical space
     PHDiamRetType diam(const gsGeometryMap<Scalar> & _G) const
-    { return pow(integral(meas_expr<T>(_G)),(T)(1)/2); }
+    { return pow(integral(meas_expr<T>(_G)),(T)(1)/(T)(2)); }
 
     //const gsMatrix<T> points() const {return pts;}
 

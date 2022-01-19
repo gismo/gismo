@@ -243,7 +243,7 @@ private:
         {
             m_lower[i]  = *m_curElement[i];
             m_upper[i]  = *(m_curElement[i]+1);
-            center[i] = T(0.5) * (m_lower[i] + m_upper[i]);
+            center[i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
         }
         m_lower[dir] = 
         m_upper[dir] =
@@ -252,7 +252,7 @@ private:
         {
             m_lower[i] = *m_curElement[i];
             m_upper[i] = *(m_curElement[i]+1);
-            center [i] = T(0.5) * (m_lower[i] + m_upper[i]);
+            center [i] = (T)(0.5) * (m_lower[i] + m_upper[i]);
         }
     }
 

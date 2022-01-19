@@ -29,6 +29,10 @@
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
 
+#ifdef GISMO_WITH_CODIPACK
+#include <gsCoDiPack/gsCoDiPack.h>
+#endif
+
 namespace gismo
 {
 

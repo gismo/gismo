@@ -334,11 +334,11 @@ void gsMesh<T>::addLine(gsMatrix<T> const & points)
         const bool zzero = ( points.rows()==2 );
 
         VertexHandle v1,
-            v0 = addVertex( points(0,0), points(1,0), zzero ? 0 : points(2,0) );
+            v0 = addVertex( points(0,0), points(1,0), zzero ? (T)0 : points(2,0) );
 
         for ( index_t i = 1; i<cols; ++i)
         {
-            v1 = addVertex( points(0, i), points(1, i), zzero ? 0 : points(2,0) );
+            v1 = addVertex( points(0, i), points(1, i), zzero ? (T)0 : points(2,0) );
             addEdge(v0 , v1);
             v0 = v1;
         }
@@ -348,14 +348,14 @@ template <class T>
 void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int midPts)
 {
     const gsVector3d<T> & start = *dynamic_cast<gsVector3d<T>* >(v0);
-    const T h = (*v1 - start).norm() / (midPts + 1);
+    const T h = (*v1 - start).norm() / (T)(midPts + 1);
     const gsVector3d<T> step = (*v1 - start).normalized();
 
     VertexHandle last = v0;
     VertexHandle next;
     for ( int i = 0; i<midPts; ++i )
     {
-        next = addVertex(start + i*h*step);
+        next = addVertex(start + (T)i*h*step);
         addEdge(last, next);
         last = next;
     }

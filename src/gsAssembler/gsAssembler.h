@@ -393,7 +393,7 @@ public:
     T penalty(index_t k) const
     {
         const short_t deg = m_bases[0][k].maxDegree();
-        return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
+        return (deg + m_bases[0][k].dim()) * (deg + 1) * 2;
     }
 
     /// @brief Provides an estimation of the number of non-zero matrix
@@ -590,7 +590,7 @@ public:  /* Solution reconstruction */
     ///                   coefficients of result.
     /// \param[in] theta damping factor for update, theta = 1 corresponds to a full step.
     virtual void updateSolution(const gsMatrix<T>& solVector,
-                                gsMultiPatch<T>& result, T theta = T(1)) const;
+                                gsMultiPatch<T>& result, T theta = (T)(1)) const;
 
 public: // *** Accessors ***
 
