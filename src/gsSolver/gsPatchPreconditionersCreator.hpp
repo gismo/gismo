@@ -15,7 +15,6 @@
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
-#include <unsupported/src/gsSolver/gsKronecker.h> //TODO: move to stable? Write similar function here?
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -48,7 +47,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                           gsMatrix<T> & U,
                           gsMatrix<T> &Vtrans,
                           gsSortedVector<index_t>& elCorner,
-                          const bool isFastDiag)
+                          const bool isFastDiag,
+                          T alpha)
 {
     // stiffness[dir: z,y,x]
     dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
@@ -118,17 +118,13 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                 }
             }
 
-            U.col(i) = kroneckerProduct(std::vector<gsMatrix<T> >{stiffness[0].col(c2), mass[1].col(c1)}) + isFastDiag *
-                                                                                                                    kroneckerProduct(std::vector<gsMatrix<T> >{mass[0].col(c2), stiffness[1].col(c1)});
-            //for(index_t r = 0; r < stiffness[0].rows(); r++) // TODO: Bandwidth (2p + 1)^d
-            //    U.block(r * mass[1].rows(), i, mass[1].rows(), 1) = stiffness[0](r, c2) * mass[1].col(c1) + isFastDiag * mass[0](r, c2) * stiffness[1].col(c1);
+            U.col(i) = gsSparseMatrix<T>(stiffness[0].col(c2)).kron(gsSparseMatrix<T>(mass[1].col(c1))) + isFastDiag * gsSparseMatrix<>(mass[0].col(c2)).kron(stiffness[1].col(c1))
+                                                                                                                + alpha * gsSparseMatrix<T>(mass[0].col(c2)).kron(mass[1].col(c1));
             U(c, i) = T(0);
             U(c, i+1) = T(1);
 
-            Vtrans.row(i+1) = kroneckerProduct(std::vector<gsMatrix<T> >{stiffness[0].row(r2), mass[1].row(r1)}) + isFastDiag *
-                                                                                                            kroneckerProduct(std::vector<gsMatrix<T> >{mass[0].row(r2), stiffness[1].row(r1)});
-            //for(index_t col = 0; col < stiffness[0].cols(); col++) // TODO: Bandwidth (2p + 1)^d
-            //    Vtrans.block(i+1, col * stiffness[1].cols(), 1, mass[1].cols()) = stiffness[0](r2, col) * mass[1].row(r1) + isFastDiag * mass[0](r2, col) * stiffness[1].row(r1);
+            Vtrans.row(i+1) = gsSparseMatrix<T>(stiffness[0].row(r2)).kron(mass[1].row(r1)) + isFastDiag * gsSparseMatrix<T>(mass[0].row(r2)).kron(stiffness[1].row(r1))
+                                                                                                                   + alpha * gsSparseMatrix<T>(mass[0].row(r2)).kron(mass[1].row(r1));
             Vtrans(i, c) = T(1);
             Vtrans(i+1, c) = T(0);
         }
@@ -146,9 +142,6 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             }
 
         }
-
-        //gsInfo << "U:\n"<<U<<"\n";
-        //gsInfo << "Vtrans:\n"<<Vtrans<<"\n";
     }
     else
         GISMO_ERROR("Unknown Dirichlet strategy.");
@@ -250,11 +243,14 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     const std::vector< gsSparseMatrix<T> >& local_mass,
     const gsBoundaryConditions<T>& bc,
     const gsOptionList& opt,
-    const bool isFastDiag = false
+    const bool isFastDiag = false,
+    T alpha = 0,
+    T gamma = 0
     )
 {
     dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
     GISMO_ENSURE (ds == dirichlet::elimination, "Unknown Dirichlet strategy.");
+    GISMO_ENSURE (gamma == 0, "Gamma is not allowed to be non zero");
 
     if(bc.cornerValues().size() == 0)
         return op;
@@ -263,8 +259,10 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
 
     // Sonst: Anwendung der SMW...
     gsMatrix<T> U, Vtrans, AinvU, x;
+    //gsSparseMatrix<T> Vtrans; // TODO: Cannot check column with sparse matrix
+    //gsSparseMatrix<T, ColMajor> AinvU;
     gsSortedVector<index_t> elCorner;
-    getUVtrans(basis, bc, opt, local_stiff, local_mass, U, Vtrans, elCorner, isFastDiag);
+    getUVtrans(basis, bc, opt, local_stiff, local_mass, U, Vtrans, elCorner, isFastDiag, alpha);
 
     if(elCorner.empty())
         return op;
@@ -293,7 +291,7 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
                 gsProductOp<T>::make(std::move(op),
                 gsSumOp<T>::make(
                         gsIdentityOp<T>::make(matOp->rows()),
-                                gsProductOp<T>::make( makeMatrixOp((gsSparseMatrix<T>(Vtrans.sparseView())).moveToPtr()), corrOp, makeMatrixOp(AinvU.moveToPtr()) )
+                                gsProductOp<T>::make( makeMatrixOp((gsSparseMatrix<T>(Vtrans.sparseView())).moveToPtr()), corrOp, makeMatrixOp(gsSparseMatrix<T>(AinvU.sparseView()).moveToPtr()) )
                             )
                         ),
                 makeMatrixOp(matOp->matrix().transpose())
@@ -545,7 +543,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         local_mass,
         bc,
         opt,
-        true
+        true,
+        alpha
         );
 }
 

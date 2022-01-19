@@ -505,7 +505,7 @@ int main(int argc, char *argv[])
     std::string primals("c");
     bool eliminatePointwiseDofs = true;
     real_t tolerance = 1.e-6;
-    index_t maxIterations = 1000;
+    index_t maxIterations = 5000;
     std::string out;
     bool plot = false;
 
@@ -888,7 +888,7 @@ int main(int argc, char *argv[])
         for(index_t i = 1; i <= 1<<mb.dim(); i++)
             bc_local.addCornerValue(i, 0, 0);
 
-        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, (real_t)reg, (real_t)1, 0);
+        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, reg, (real_t)1, (real_t)0);
 
         gsLinearOperator<>::Ptr localPrec = gsInexactIETIPrec<real_t>::make(ADelDel, fastdiagOp,
                                                                        mb_local,
