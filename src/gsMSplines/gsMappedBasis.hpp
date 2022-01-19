@@ -18,20 +18,6 @@ namespace gismo
 {
 
 template<short_t d,class T>
-gsMappedBasis<d,T>::gsMappedBasis( gsMultiPatch<T> const & mp, std::string pathToMap )
-{
-    m_topol = mp.topology();
-    m_bases = mp.basesCopy();
-    gsSparseMatrix<T> m;
-    gsFileData<T>(pathToMap).getFirst(m);
-    m_mapper = new gsWeightMapper<T>(m);
-
-    m_sb.reserve(mp.nPatches());
-    for (size_t q = 0; q!=m_bases.size(); ++q)
-        m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-}
-
-template<short_t d,class T>
 gsMappedBasis<d,T>::gsMappedBasis( const gsMappedBasis& other )
 {
     m_topol = other.m_topol;
@@ -82,13 +68,13 @@ short_t gsMappedBasis<d,T>::maxDegree() const
 }
 
 template<short_t d,class T>
-void gsMappedBasis<d,T>::addLocalIndizesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const
+void gsMappedBasis<d,T>::addLocalIndicesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const
 {
     int patch = ps.patch;
     int side  = ps.side();
     int localOffset = _getFirstLocalIndex(patch);
     gsMatrix<index_t> indizes;
-    for(unsigned i = 0;i<=offset;++i)
+    //for(unsigned i = 0;i<=offset;++i)
     {
         indizes=m_bases[patch]->boundaryOffset(side,offset);
         for(int j=0;j<indizes.rows();++j)
@@ -103,7 +89,7 @@ void gsMappedBasis<d,T>::boundary(std::vector<index_t> & indices,unsigned offset
     locals.reserve(this->size());
     typedef std::vector< patchSide >::const_iterator b_const_iter;
     for(b_const_iter iter = m_topol.bBegin();iter!=m_topol.bEnd();++iter)
-        addLocalIndizesOfPatchSide(*iter,offset,locals);
+        addLocalIndicesOfPatchSide(*iter,offset,locals);
     sort( locals.begin(), locals.end() );
     locals.erase( unique( locals.begin(), locals.end() ), locals.end() );
     m_mapper->sourceToTarget(locals,indices);
@@ -118,9 +104,9 @@ void gsMappedBasis<d,T>::innerBoundaries(std::vector<index_t> & indices,unsigned
     for(i_const_iter iter = m_topol.iBegin();iter!=m_topol.iEnd();++iter)
     {
         patchSide firstPs = iter->first();
-        addLocalIndizesOfPatchSide(firstPs,offset,locals);
+        addLocalIndicesOfPatchSide(firstPs,offset,locals);
         patchSide secondPs = iter->second();
-        addLocalIndizesOfPatchSide(secondPs,offset,locals);
+        addLocalIndicesOfPatchSide(secondPs,offset,locals);
     }
     sort( locals.begin(), locals.end() );
     locals.erase( unique( locals.begin(), locals.end() ), locals.end() );
@@ -183,18 +169,33 @@ template<short_t d,class T>
 void gsMappedBasis<d,T>::eval_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     gsMatrix<index_t> bact;
-    m_bases[patch]->active_into(u, bact);
-    std::vector<index_t>  act, act0(bact.data(), bact.data()+bact.rows());
+    std::vector<index_t>  act, act0;
     gsMatrix<T> beval, map;//r:B,c:C
-    m_bases[patch]->eval_into(u, beval);
-
     const index_t shift=_getFirstLocalIndex(patch);
-    std::transform(act0.begin(), act0.end(), act0.begin(),
-                   GS_BIND2ND(std::plus<index_t>(), shift));
 
-    m_mapper->fastSourceToTarget(act0,act);
-    m_mapper->getLocalMap(act0, act, map);
-    result.noalias() = map.transpose() * beval; // todo: remove transpose()
+    gsVector<index_t> numAct;
+    std::vector<gsMatrix<T>> result_tmp;
+    result_tmp.resize(u.cols());
+    numAct.resize(u.cols());
+    for (index_t i = 0; i!=u.cols(); ++i)
+    {
+        m_bases[patch]->active_into(u.col(i), bact);
+        act0 = std::vector<index_t>(bact.data(), bact.data()+bact.rows());
+        m_bases[patch]->eval_into(u.col(i), beval);
+        std::transform(act0.begin(), act0.end(), act0.begin(),
+                       GS_BIND2ND(std::plus<index_t>(), shift));
+
+        m_mapper->fastSourceToTarget(act0,act);
+        m_mapper->getLocalMap(act0, act, map);
+        result_tmp[i] = map.transpose() * beval; // todo: remove transpose()
+        numAct[i] = result_tmp[i].rows();
+    }
+
+    result.setZero(numAct.maxCoeff(), u.cols());
+    for (index_t i = 0; i!=u.cols(); ++i)
+        for(index_t j = 0; j != result_tmp[i].rows(); j++) // result_tmp[i] == dim(rows,1)
+            result(j,i) = result_tmp[i](j,0);
+
 }
 
 template<short_t d,class T>
@@ -393,7 +394,7 @@ void gsMappedBasis<d,T>::evalAllDers_into(const unsigned patch, const gsMatrix<T
             result[2].swap(tmp);
         }
     }
-    GISMO_ASSERT( n<3, "gsMappedBasis::evalAllDers() not implemented for n > 2." );
+    GISMO_ASSERT( n < 3, "gsMappedBasis::evalAllDers() not implemented for n > 2." );
 }
 
 template<short_t d,class T>

@@ -60,24 +60,17 @@ namespace Eigen
 
   namespace internal {
 
-/*
-template<>
-struct random_impl<mpq_class>
-{
-  typedef maq_class Scalar;
-  static inline Scalar run(const Scalar& x, const Scalar& y)
+  template<> inline mpq_class random<mpq_class>()
   {
-    return x + (y-x) * Scalar(std::rand()) / Scalar(RAND_MAX);
-    //gmp_randclass rr(gmp_randinit_default);
-    //rr.seed(1234);
-    //return mpq_class(rr.get_z_bits(125),rr.get_z_bits(125));
+    gmp_randclass rr(gmp_randinit_default);
+    rr.seed(1234);
+    return mpq_class(rr.get_z_bits(125),rr.get_z_bits(125));
   }
-  static inline Scalar run()
+
+  template<> inline mpq_class random<mpq_class>(const mpq_class& a, const mpq_class& b)
   {
-    return run(Scalar(NumTraits<Scalar>::IsSigned ? -1 : 0), Scalar(1));
+    return a + (b-a) * random<mpq_class>();
   }
-};
-//*/
 
   inline bool isMuchSmallerThan(const mpq_class& a, const mpq_class& b, const mpq_class& eps)
   {
@@ -132,7 +125,7 @@ struct random_impl<mpq_class>
       typedef ResScalar LhsPacket;
       typedef ResScalar RhsPacket;
       typedef ResScalar ResPacket;
-
+      typedef LhsPacket LhsPacket4Packing;
     };
 
     template<typename Index, typename DataMapper, bool ConjugateLhs, bool ConjugateRhs>

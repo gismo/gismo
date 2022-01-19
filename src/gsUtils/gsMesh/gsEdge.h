@@ -33,7 +33,7 @@ public:
   gsEdge() { } // : MeshElement()
 
   gsEdge(gsVertexHandle const & v0, gsVertexHandle const & v1 ):
-    source(v0), target(v1)
+  source(v0), target(v1), sharp(false)
     {
 //      faceId1=0;
 //      faceId2=0;

@@ -42,7 +42,7 @@ void gsDirichletValues(
         gsDirichletValuesByTPInterpolation(u,bc);
         break;
     case dirichlet::l2Projection:
-        gsDirichletValuesL2Projection(u,bc);
+        gsDirichletValuesByL2Projection(u,bc);
         break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values: "<< dir_values);
@@ -77,8 +77,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     gsMatrix<T> fpts, tmp;
 
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
-    fixedDofs.resize(u.mapper().boundarySize(), 1 );
-    fixedDofs.setZero();
+    fixedDofs.setZero(u.mapper().boundarySize(), 1 );
 
     // Iterate over all patch-sides with Boundary conditions
     typedef gsBoundaryConditions<T> bcList;
@@ -88,16 +87,24 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
         if( it->unknown()!=u.id() ) continue;
 
         const index_t com = it->unkComponent();
+
+        const int k = it->patch();
+        const gsBasis<T> & basis = u.source().basis(k);
+
+        // Get dofs on this boundary
+        boundary = basis.boundary(it->side());
+
+        // Get the side information
+        const int dir = it->side().direction( );
+        const index_t param = (it->side().parameter() ? 1 : 0);
+
+        // Get basis on the boundary
+        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
+
         //
         for (index_t r = 0; r!=u.dim(); ++r)
         {
             if (com!=-1 && r!=com) continue;
-
-            const int k = it->patch();
-            const gsBasis<T> & basis = u.source().basis(k);
-
-            // Get dofs on this boundary
-            boundary = basis.boundary(it->side());
 
             // If the condition is homogeneous then fill with zeros
             if ( it->isHomogeneous() )
@@ -109,10 +116,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 }
                 continue;
             }
-
-            // Get the side information
-            const int dir = it->side().direction( );
-            const index_t param = (it->side().parameter() ? 1 : 0);
 
             // Compute grid of points on the face ("face anchors")
             rr.clear();
@@ -145,9 +148,8 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             }
 
             // Interpolate dirichlet boundary
-            typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-            const gsMatrix<T> & dVals =  geo->coefs();
+            const gsMatrix<T> & dVals = geo->coefs();
 
             // Save corresponding boundary dofs
             for (index_t l=0; l!= boundary.size(); ++l)
@@ -159,7 +161,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     }
 }
 
-
+// Not called and used, todo
 template<class T> void
 gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
                                  const boundary_condition<T> & bc,
@@ -246,8 +248,8 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 
 
 template<class T>
-void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
-                                    const gsBoundaryConditions<T> & bc)
+void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
+                                      const gsBoundaryConditions<T> & bc)
 {
     const gsFunctionSet<T> & gmap = bc.geoMap();
 
