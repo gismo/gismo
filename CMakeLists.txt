@@ -216,11 +216,6 @@ if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
-if(GISMO_WITH_ONURBS)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsOpennurbs"
-  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif(GISMO_WITH_ONURBS)
-
 #if(GISMO_WITH_PARDISO)
 #endif(GISMO_WITH_PARDISO)
 
