@@ -297,8 +297,8 @@ SUITE(gsRemoveCorners_test)
         std::vector<index_t> corners;
         real_t alpha = 1.0;
 
-        index_t numRefine = 3;
-        index_t degree = 5;
+        index_t numRefine = 1;
+        index_t degree = 2;
 
         gsFunctionExpr<> bc("0.0",2);
 
@@ -313,23 +313,23 @@ SUITE(gsRemoveCorners_test)
         for (index_t i = 0; i < numRefine; ++i)
             mb.uniformRefine();
 
-        mb[0].component(0).uniformRefine();
+        //mb[0].component(0).uniformRefine();
 
         mb[0].component(0).setDegreePreservingMultiplicity(degree);
         mb[0].component(1).setDegreePreservingMultiplicity(degree+1);
 
         gsBoundaryConditions<> bcInfo;
-        bcInfo.addCondition(0, 1, condition_type::dirichlet, bc);
-        bcInfo.addCondition(0, 2, condition_type::neumann, bc);
-        bcInfo.addCondition(0, 3, condition_type::dirichlet, bc);
-        bcInfo.addCondition(0, 4, condition_type::neumann, bc);
+        bcInfo.addCondition(0, 1, condition_type::neumann, bc);
+        bcInfo.addCondition(0, 2, condition_type::dirichlet, bc);
+        bcInfo.addCondition(0, 3, condition_type::neumann, bc);
+        bcInfo.addCondition(0, 4, condition_type::dirichlet, bc);
 
         gsOptionList opt = gsAssembler<>::defaultOptions();
         stiffnessWithCorners = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb.basis(0), bcInfo, opt);
         massWithCorners = gsPatchPreconditionersCreator<>::massMatrix(mb.basis(0), bcInfo, opt);
 
         corners.resize(1);
-        corners[0] = stiffnessWithCorners.rows()-1;
+        corners[0] = 0;
 
         index_t row = 0, col = 0;
         for (index_t i = 0; i < stiffnessWithCorners.rows(); i++)
@@ -353,6 +353,9 @@ SUITE(gsRemoveCorners_test)
         reducedMatrix.setFrom(seReducedMatrix);
         reducedMatrix.makeCompressed();
 
+        gsInfo << "reduced: \n"<<(stiffnessWithCorners + alpha * massWithCorners).toDense()<<"\n";
+
+        bcInfo.addCornerValue(1, 0, 0);
         bcInfo.addCornerValue(2, 0, 0);
         bcInfo.addCornerValue(3, 0, 0);
         bcInfo.addCornerValue(4, 0, 0);

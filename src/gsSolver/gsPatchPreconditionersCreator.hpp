@@ -44,8 +44,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                           const gsOptionList& opt,
                           const std::vector<gsSparseMatrix<T> > &stiffness,
                           const std::vector<gsSparseMatrix<T> > &mass,
-                          gsMatrix<T> & U,
-                          gsMatrix<T> &Vtrans,
+                          gsSparseMatrix<T> & U,
+                          gsSparseMatrix<T> &Vtrans,
                           gsSortedVector<index_t>& elCorner,
                           const bool isFastDiag,
                           T alpha)
@@ -86,7 +86,7 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
         U.resize(stiffness[0].rows()*stiffness[1].rows(), 2*offset.size());
         Vtrans.resize(2*offset.size(), stiffness[0].cols()*stiffness[1].cols());
-        U.setZero(), Vtrans.setZero();
+        //U.setZero(), Vtrans.setZero();
 
         index_t i(0);
         index_t r1(0), c1(0), r2(0), c2(0);
@@ -118,13 +118,18 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                 }
             }
 
-            U.col(i) = gsSparseMatrix<T>(stiffness[0].col(c2)).kron(gsSparseMatrix<T>(mass[1].col(c1))) + isFastDiag * gsSparseMatrix<>(mass[0].col(c2)).kron(stiffness[1].col(c1))
-                                                                                                                + alpha * gsSparseMatrix<T>(mass[0].col(c2)).kron(mass[1].col(c1));
+            //gsInfo << "Kronecker\n"<<(mass[0].kron(stiffness[1]) + stiffness[0].kron(mass[1]) + alpha * mass[0].kron(mass[1])).toDense()<<"\n";
+            gsSparseMatrix<> emb(1, U.cols());
+            emb(0,i) = T(1);
+            U += (gsSparseMatrix<T>(mass[0].col(c2)).kron(gsSparseMatrix<T>(stiffness[1].col(c1))) + isFastDiag * gsSparseMatrix<T>(stiffness[0].col(c2)).kron(mass[1].col(c1))
+                                                                                                                + alpha * gsSparseMatrix<T>(mass[0].col(c2)).kron(mass[1].col(c1))) * emb;
             U(c, i) = T(0);
             U(c, i+1) = T(1);
 
-            Vtrans.row(i+1) = gsSparseMatrix<T>(stiffness[0].row(r2)).kron(mass[1].row(r1)) + isFastDiag * gsSparseMatrix<T>(mass[0].row(r2)).kron(stiffness[1].row(r1))
-                                                                                                                   + alpha * gsSparseMatrix<T>(mass[0].row(r2)).kron(mass[1].row(r1));
+            gsSparseMatrix<> embtrans(1, Vtrans.rows());
+            embtrans(0,i+1) = T(1);
+            Vtrans += embtrans.transpose() * (gsSparseMatrix<T>(mass[0].row(r2)).kron(stiffness[1].row(r1)) + isFastDiag * gsSparseMatrix<T>(stiffness[0].row(r2)).kron(mass[1].row(r1))
+                                                                                                                   + alpha * gsSparseMatrix<T>(mass[0].row(r2)).kron(mass[1].row(r1)));
             Vtrans(i, c) = T(1);
             Vtrans(i+1, c) = T(0);
         }
@@ -142,6 +147,10 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             }
 
         }
+
+        gsInfo << "U\n"<<U.toDense()<<"\n";
+        gsInfo << "Vtrans\n"<<Vtrans.toDense()<<"\n";
+
     }
     else
         GISMO_ERROR("Unknown Dirichlet strategy.");
@@ -258,9 +267,8 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     GISMO_ASSERT(basis.dim() == 2, "gsPatchPreconditionersCreator<>::removeCornersFromInverse, The method is only implemented for 2D!");
 
     // Sonst: Anwendung der SMW...
-    gsMatrix<T> U, Vtrans, AinvU, x;
-    //gsSparseMatrix<T> Vtrans; // TODO: Cannot check column with sparse matrix
-    //gsSparseMatrix<T, ColMajor> AinvU;
+    gsMatrix<T> AinvU, x;
+    gsSparseMatrix<T> U, Vtrans;
     gsSortedVector<index_t> elCorner;
     getUVtrans(basis, bc, opt, local_stiff, local_mass, U, Vtrans, elCorner, isFastDiag, alpha);
 
@@ -269,7 +277,7 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
 
     AinvU.resize(U.rows(), U.cols());
     for (index_t c = 0; c < U.cols(); ++c) {
-        op->apply(U.col(c), x);
+        op->apply(U.col(c).toDense(), x);
         AinvU.col(c) = x;
     }
 
@@ -291,7 +299,7 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
                 gsProductOp<T>::make(std::move(op),
                 gsSumOp<T>::make(
                         gsIdentityOp<T>::make(matOp->rows()),
-                                gsProductOp<T>::make( makeMatrixOp((gsSparseMatrix<T>(Vtrans.sparseView())).moveToPtr()), corrOp, makeMatrixOp(gsSparseMatrix<T>(AinvU.sparseView()).moveToPtr()) )
+                                gsProductOp<T>::make( makeMatrixOp((Vtrans).moveToPtr()), corrOp, makeMatrixOp(gsSparseMatrix<T>(AinvU.sparseView()).moveToPtr()) )
                             )
                         ),
                 makeMatrixOp(matOp->matrix().transpose())
