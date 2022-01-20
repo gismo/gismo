@@ -88,7 +88,7 @@ function(gismo_add_extension SUBMODULE)
       endif()
     endif()
   else()
-    #WARNING
+    message(WARNING "${SUBMODULE} does not contain CMakeLists.txt.")
   endif()
 
 endfunction()
