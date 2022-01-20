@@ -13,6 +13,10 @@
 
 #include <cmath>
 
+inline bool isfinite(const mpq_class&) { return true; }
+inline bool isinf(const mpq_class&)    { return false; }
+inline bool isnan(const mpq_class&)    { return false; }
+
 template <class U, class V>
 inline mpq_class (max)(const __gmp_expr<mpq_t, U> & a,
                        const __gmp_expr<mpq_t, V> & b)
