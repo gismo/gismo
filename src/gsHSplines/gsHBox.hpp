@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsUtils/gsCombinatorics.h>
+
 namespace gismo
 {
 
@@ -201,16 +203,21 @@ gsHBox<d,T> gsHBox<d, T>::getAncestor(index_t k) const
 {
     index_t lvl = this->level();
     GISMO_ASSERT(lvl > k,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
-    GISMO_ASSERT(k > 0,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
+    // GISMO_ASSERT(k > 0,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
     gsHBox<d,T> parent = this->getParent();
     gsHBox<d,T> ancestor;
     if (k < lvl - 1)
     {
         ancestor = parent.getAncestor(k);
+        gsDebugVar(parent.level());
+        gsDebugVar(ancestor.level());
         return ancestor;
     }
     else
+    {
+        gsDebugVar(parent.level());
         return parent;
+    }
 }
 
 template <short_t d, class T>
@@ -223,7 +230,7 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::toContainer()
 }
 
 template <short_t d, class T>
-typename gsHBox<d, T>::HContainer gsHBox<d, T>::getSupportExtension()
+typename gsHBox<d, T>::Container gsHBox<d, T>::getSupportExtension()
 {
     GISMO_ENSURE(m_basis!=nullptr,"Basis is undefined");
     this->_computeCoordinates();
@@ -235,20 +242,35 @@ typename gsHBox<d, T>::HContainer gsHBox<d, T>::getSupportExtension()
     // Support extension
     gsMatrix<T> cells(d,2*acts.rows());
     gsMatrix<T> support;
+    gsHBox<d,T> supportBox;
     gsAabb<d,index_t> aabb;
-    HContainer container;
-    container.resize(lvl+1);
+    Container container;
+    Container tmpContainer;
     for (index_t act = 0; act!=acts.rows(); act++)
     {
         support = m_basis->tensorLevel(lvl).support(acts(act,0));
         aabb    = _computeIndices(support,lvl);
-        container[lvl].push_back(gsHBox<d,T>(aabb,m_basis));
+
+        supportBox = gsHBox<d,T>(aabb,m_basis);
+
+        // Split the boxes into index interval with coordinate delta 1
+        tmpContainer = supportBox._toUnitBoxes();
+        for (cIterator it = tmpContainer.begin(); it!=tmpContainer.end(); it++)
+            container.push_back(*it);
     }
-    return container;
+    // Remove duplicates
+    gsDebugVar(container.size());
+
+    for (cIterator it = container.begin(); it!=container.end(); it++)
+        gsDebugVar(*it);
+
+    Container container2 = _makeUnique(container);
+    gsDebugVar(container.size());
+    return container2;
 }
 
 template <short_t d, class T>
-typename gsHBox<d,T>::HContainer gsHBox<d, T>::getMultiLevelSupportExtension(index_t k)
+typename gsHBox<d,T>::Container gsHBox<d, T>::getMultiLevelSupportExtension(index_t k)
 {
     index_t lvl = this->level();
     GISMO_ASSERT(k <= lvl,"Ancestor must be requested from a level lower than the current level (k <= l), but k="<<k<<" and lvl="<<lvl);
@@ -259,6 +281,7 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::getMultiLevelSupportExtension(ind
     else
     {
         gsHBox<d,T> ancestor = this->getAncestor(k);
+        gsDebugVar(ancestor.level());
         return ancestor.getSupportExtension();
     }
 }
@@ -266,17 +289,29 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::getMultiLevelSupportExtension(ind
 template <short_t d, class T>
 typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
 {
-    HContainer extension;
+    Container extension;
     Container neighborhood;
 
     index_t lvl = this->level();
     index_t k = lvl - m + 1;
     if (k>=0)
     {
+        gsDebugVar(k);
         // Get multi level support extension on level k
         extension = this->getMultiLevelSupportExtension(k);
+
+        // for (HIterator hit = extension.begin(); hit!=extension.end(); hit++)
+        //     for (Iterator it = hit->begin(); it!=hit->end(); it++)
+        //         gsDebugVar(*it);
+
         // Eliminate elements which are too low
-        neighborhood = extension.at(k);
+        for (Iterator it = extension.begin(); it!=extension.end(); it++)
+            if (it->isActive())
+                neighborhood.push_back(*it);
+        // neighborhood = extension.at(k);
+
+        // for (Iterator it = neighborhood.begin(); it!=neighborhood.end(); it++)
+        //     gsDebugVar(*it);
     }
     return neighborhood;
 }
@@ -284,18 +319,20 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
 template <short_t d, class T>
 typename gsHBox<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
 {
+    // Everything is in the same level so we can use normal Container
     Container   neighborhood;
-    HContainer  parents, extension;
+    Container  parents, extension;
 
     index_t lvl = this->level();
     index_t k = lvl - m + 2;
+    gsDebugVar(k);
     if (k>=0)
     {
         // Get multi level support extension on level k
         extension = this->getMultiLevelSupportExtension(k);
         // Eliminate elements which are too low
         parents = _getParents(extension);
-        neighborhood = parents.at(k-1);
+        neighborhood = parents;
     }
     return neighborhood;
 }
@@ -304,10 +341,18 @@ template <short_t d, class T>
 std::ostream& gsHBox<d, T>::print( std::ostream& os ) const
 {
     os  <<"Cell with dimension "<<d
-        <<" on level "<<m_indices.level<<"; "
+        <<" on level "<<m_indices.level<<". "
+        <<"\nIndices:\n"
         <<"("<<m_indices.first.transpose()<<")"
         <<" -- "
         <<"("<<m_indices.second.transpose()<<")";
+    if (m_basis!=nullptr && m_coords.cols()!=0)
+    {
+        os  <<"\nKnot values:\n"
+            <<"("<<m_coords.col(0).transpose()<<")"
+            <<" -- "
+            <<"("<<m_coords.col(1).transpose()<<")";
+    }
     return os;
 }
 
@@ -395,7 +440,7 @@ gsAabb<d,index_t> gsHBox<d, T>::_elevateBox(const gsAabb<d,index_t> & box) const
 }
 
 template <short_t d, class T>
-typename gsHBox<d,T>::HContainer gsHBox<d, T>::_getParents(HContainer & container)
+typename gsHBox<d,T>::HContainer gsHBox<d, T>::_getParents(HContainer & container) const
 {
     HContainer result;
     result.resize(container.size()-1);
@@ -406,8 +451,175 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::_getParents(HContainer & containe
     HIterator resIt = result.begin();
     for (HIterator hit = std::next(container.begin()); hit!=container.end(); hit++, resIt++)
         for (Iterator it=hit->begin(); it!=hit->end(); it++)
-            resIt->push_back(*it);
+            resIt->push_back(it->getParent());
 
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::_getParents(Container & container) const
+{
+    Container result;
+    for (Iterator it=container.begin(); it!=container.end(); it++)
+        result.push_back(it->getParent());
+
+    return result;
+}
+
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::_toUnitBoxes()
+{
+    point low, upp, cur, curupp, ones;
+    ones = gsVector<index_t,d>::Ones();
+    cur = low = this->lowerIndex();
+    upp       = this->upperIndex();
+    // index_t nboxes = (upp-low).prod();
+    Container result;
+
+    bool next = true;
+    while (next)
+    {
+        curupp = cur + ones;
+        result.push_back(gsHBox<d,T>(cur,curupp,this->level(),m_basis));
+        next = nextLexicographic(cur,low,upp);
+    }
+
+    return result;
+}
+
+template <short_t d, class T>
+std::vector<index_t> gsHBox<d, T>::toRefBox() const
+{
+    std::vector<index_t> result(5);
+    result[0] = this->level();
+    result[1] = this->lowerIndex()[0];
+    result[2] = this->lowerIndex()[1];
+    result[3] = this->upperIndex()[0];
+    result[4] = this->upperIndex()[1];
+    return result;
+}
+
+
+template <short_t d, class T>
+typename gsHBox<d,T>::HContainer gsHBox<d, T>::boxUnion(const HContainer & container1, const HContainer & container2) const
+{
+    HContainer result, region1, region2;
+
+    region1 = container1;
+    region2 = container2;
+
+    index_t lmax = std::max(region1.size(),region2.size());
+    region1.resize(lmax);
+    region2.resize(lmax);
+    result.resize(lmax);
+
+    for (index_t l = 0; l!=lmax; l++)
+        result[l] = _boxUnion(region1[l],region2[l]);
+
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBox<d, T>::Container gsHBox<d, T>::_boxUnion(const Container & container1, const Container & container2) const
+{
+    SortedContainer sortedResult;
+
+    SortedContainer scontainer1(container1.begin(), container1.end());
+    SortedContainer scontainer2(container2.begin(), container2.end());
+
+    auto comp = [](auto & a, auto & b)
+                    {
+                        return
+                        (a.level() < b.level())
+                        ||
+                        ((a.level() == b.level()) &&
+                        std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+                                                    b.lowerIndex().begin(), b.lowerIndex().end())   )
+                        ||
+                        ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
+                        std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+                                                    b.upperIndex().begin(), b.upperIndex().end())    );
+                    };
+
+    sortedResult.reserve(scontainer1.size() + scontainer2.size());
+    if (scontainer1.size()!=0 && scontainer2.size()!=0)
+    {
+        // First sort (otherwise union is wrong)
+        std::sort(scontainer1.begin(),scontainer1.end(),comp);
+        std::sort(scontainer2.begin(),scontainer2.end(),comp);
+
+        std::set_union( scontainer1.begin(),scontainer1.end(),
+                        scontainer2.begin(),scontainer2.end(),
+                        std::inserter(sortedResult,sortedResult.begin()),
+                        comp);
+    }
+    else if (scontainer1.size()!=0 && container2.size()==0)
+        sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
+    else if (scontainer1.size()==0 && container2.size()!=0)
+        sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
+    else    { /* Do nothing */ }
+
+    Container result(sortedResult.begin(),sortedResult.end());
+
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & container) const
+{
+    SortedContainer scontainer(container.begin(), container.end());
+
+    auto comp = [](auto & a, auto & b)
+                    {
+                        gsDebugVar(a.lowerIndex());
+                        gsDebugVar(a.upperIndex());
+                        gsDebugVar(b.lowerIndex());
+                        gsDebugVar(b.upperIndex());
+                        gsDebugVar(a.hasBasis());
+                        gsDebugVar(b.hasBasis());
+                        gsDebugVar(a.getCoordinates());
+                        gsDebugVar(b.getCoordinates());
+                        bool test =
+                        (a.level() < b.level())
+                        ||
+                        ((a.level() == b.level()) &&
+                        std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+                                                    b.lowerIndex().begin(), b.lowerIndex().end())   )
+                        ||
+                        ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
+                        std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+                                                    b.upperIndex().begin(), b.upperIndex().end())    );
+
+                        gsDebugVar(test);
+
+                        gsDebugVar(a.level());
+                        gsDebugVar(b.level());
+                        return test;
+                    };
+
+    // auto pred = [](auto & a, auto & b)
+    //                 {
+    //                     return a.isSame(b);
+    //                 };
+
+    for (index_t k=0; k!=scontainer.size(); k++)
+        gsDebugVar(scontainer.at(k));
+
+    gsDebugVar("-------------------------------------------------");
+
+    // First sort (otherwise unique is wrong)
+    std::sort(scontainer.begin(),scontainer.end(),comp);
+
+    for (index_t k=0; k!=scontainer.size(); k++)
+        gsDebugVar(scontainer.at(k));
+
+    // typename SortedContainer::iterator it = std::unique(scontainer.begin(),scontainer.end(),pred);
+    // scontainer.resize(distance(scontainer.begin(), it));
+    // for (index_t k=0; k!=scontainer.size(); k++)
+    //     gsDebugVar(scontainer.at(k));
+
+    Container result(scontainer.begin(),scontainer.end());
     return result;
 }
 

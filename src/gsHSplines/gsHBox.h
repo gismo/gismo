@@ -23,6 +23,9 @@ template<int d, class T>
 class gsHBox
 {
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+public:
     typedef gsVector<index_t,d> point;
     typedef typename Eigen::aligned_allocator<gsHBox<d,T>> aalloc;
 
@@ -102,11 +105,9 @@ public:
 
     gsHBox<d,T> getAncestor(index_t k) const;
 
-    bool isActiveOnLvl(index_t lvl) const;
+    Container getSupportExtension();
 
-    HContainer getSupportExtension();
-
-    HContainer getMultiLevelSupportExtension(index_t k);
+    Container getMultiLevelSupportExtension(index_t k);
 
     Container getHneighborhood(index_t m);
 
@@ -115,6 +116,13 @@ public:
     HContainer           toContainer();
 
     std::ostream& print( std::ostream& os ) const;
+
+    std::vector<index_t> toRefBox() const;
+
+    // Helper functions
+    HContainer           boxUnion(const HContainer & container1, const HContainer & container2) const;
+
+    bool hasBasis() {return m_basis!=nullptr;}
 
 protected:
     void _computeCoordinates();
@@ -126,7 +134,13 @@ protected:
 
     gsAabb<d,index_t> _elevateBox(const gsAabb<d,index_t> & box) const;
 
-    HContainer _getParents(typename gsHBox<d,T>::HContainer & container);
+    Container  _getParents(typename gsHBox<d,T>::Container  & container) const;
+    HContainer _getParents(typename gsHBox<d,T>::HContainer & container) const;
+
+    Container _toUnitBoxes();
+
+    Container _boxUnion(const Container & container1, const Container & container2) const;
+    Container _makeUnique(const Container & container) const;
 
 protected:
     gsAabb<d,index_t> m_indices;
@@ -135,9 +149,6 @@ protected:
     gsMatrix<T> m_center;
     const gsHTensorBasis<d,T> * m_basis;
 
-
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 }; // class gsHBox
 
 

@@ -208,7 +208,35 @@ typename gsHBoxContainer<d, T>::Container gsHBoxContainer<d, T>::_boxUnion(const
 
 //     std::unique( this->begin(),this->end(),comp);
 // }
-//
+
+
+// template <short_t d, class T>
+// typename gsHBoxContainer<d, T>::Container & gsHBoxContainer<d, T>::getActives() const
+// {
+//     HContainer boxes(m_boxes.size());
+//     for (index_t lvl = 0; lvl != m_boxes.size(); lvl++)
+//         boxes[lvl] = this->getActivesOnLevel(lvl);
+
+//     return boxes;
+// }
+
+// template <short_t d, class T>
+// void gsHBoxContainer<d, T>::filterActives()
+// {
+//     m_boxes = getActives();
+// }
+
+// template <short_t d, class T>
+// typename gsHBoxContainer<d, T>::Container & gsHBoxContainer<d, T>::getActivesOnLevel(index_t lvl) const
+// {
+//     Container boxes;
+//     for (cIterator it=m_boxes[lvl].begin(); it!=m_boxes[lvl].end(); it++)
+//         if (it->isActive())
+//             boxes.push_back(*it);
+
+//     return boxes;
+// }
+
 
 template <short_t d, class T>
 typename gsHBoxContainer<d, T>::Container & gsHBoxContainer<d, T>::getActivesOnLevel(index_t lvl)
@@ -232,7 +260,7 @@ typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::getParents() c
     GISMO_ASSERT(m_boxes[0].size()==0,"Boxes at level 0 cannot have a parent. Did something go wrong? You can run check() to see if the boxes are allocated coorectly");
 
     HIterator resIt = result.begin();
-    for (cHIterator hit = std::next(m_boxes.begin()); hit!=m_boxes.end(); hit++, resIt++)
+    for (cHIterator hit = std::next(m_boxes.begin()); hit!=m_boxes.end(); hit++)
         for (cIterator it=hit->begin(); it!=hit->end(); it++)
             resIt->push_back(*it);
 
@@ -284,18 +312,40 @@ typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markHrecursive
     for (Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
         neighbors.add(it->getHneighborhood(m));
 
-    gsDebugVar(neighbors);
+    // gsDebugVar(marked.size());
+    // gsDebugVar(marked_l.size());
+
+    // for (typename gsHBoxContainer<d,T>::HIterator hit = marked.begin(); hit!=marked.end(); hit++)
+    //     for (typename gsHBoxContainer<d,T>::Iterator it = hit->begin(); it!=hit->end(); it++)
+    //         gsDebugVar(*it);
+
+    // for (typename gsHBoxContainer<d,T>::Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
+    //     gsDebugVar(it->getCoordinates());
+
+
     gsHBoxContainer<d,T> tmp(marked);
-    gsDebugVar(tmp);
     index_t k = lvl - m + 1;
-    gsDebugVar(k);
-    gsDebugVar(lvl);
     if (neighbors.boxes().size()!=0)
     {
+        gsDebugVar(k);
         marked_k = marked[k];
+
+        // gsDebugVar(marked_k.size());
+        // for (typename gsHBoxContainer<d,T>::Iterator it = marked_k.begin(); it!=marked_k.end(); it++)
+        //     gsDebugVar(it->getCoordinates());
+
         gsHBoxContainer<d,T> boxunion = boxUnion(neighbors,gsHBoxContainer<d,T>(marked_k));
 
+        gsDebugVar(neighbors);
+        gsHBoxContainer<d,T> marked_kNH(marked_k);
+        gsDebugVar(marked_kNH);
+        gsDebugVar(boxunion);
+
         marked[k] = boxunion.getActivesOnLevel(k);
+
+        gsHBoxContainer<d,T> markedNH(marked);
+        gsDebugVar(markedNH);
+
         marked = this->markHrecursive(marked,k,m);
     }
     return marked;
@@ -304,7 +354,7 @@ typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markHrecursive
 template <short_t d, class T>
 void gsHBoxContainer<d, T>::markHrecursive(index_t lvl, index_t m)
 {
-    m_boxes = this->markTrecursive(m_boxes,lvl,m);
+    m_boxes = this->markHrecursive(m_boxes,lvl,m);
 }
 
 template <short_t d, class T>
