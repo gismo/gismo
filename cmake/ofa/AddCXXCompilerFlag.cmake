@@ -170,6 +170,7 @@ macro(AddCXXCompilerFlag _flag)
     FAIL_REGEX "warning D9002"                             # MSVC
     FAIL_REGEX "[Uu]nknown option"                         # HP
     FAIL_REGEX "[Ww]arning: [Oo]ption"                     # SunPro
+    FAIL_REGEX "[Ww]arning: illegal use of -xarch option"  # SunPro
     FAIL_REGEX "command option .* is not recognized"       # XL
     FAIL_REGEX "WARNING: unknown flag:"                    # Open64
     FAIL_REGEX "command line error"                        # ICC
@@ -177,9 +178,10 @@ macro(AddCXXCompilerFlag _flag)
     FAIL_REGEX "#10236:"                                   # ICC: File not found
     FAIL_REGEX " #10159: "                                 # ICC
     FAIL_REGEX " #10353: "                                 # ICC: option '-mfma' ignored, suggest using '-march=core-avx2'
-    )
+    FAIL_REGEX " #10006: "                                 # ICC: ignoring unknown option '-mavx512fp16'
+    )  
   set(CMAKE_REQUIRED_FLAGS "${_CMAKE_REQUIRED_FLAGS}")
-
+  
   if(NOT ${_resultVar})
     set(_check_cxx_source_compiles FALSE)
   endif()
