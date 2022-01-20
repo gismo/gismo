@@ -935,11 +935,11 @@ public:
     // space restrictTo(boundaries);
     // space restrictTo(bcRefList domain);
 
-    void setupMapper(gsDofMapper dofsMapper)
+    void setupMapper(gsDofMapper dofsMapper) const
     {
         GISMO_ASSERT( m_sd->mapper.isFinalized(), "The provided dof-mapper is not finalized.");
-        GISMO_ASSERT( m_sd->mapper.mapSize()==this->source().totalSize(), "The dof-mapper is not consistent.");
-        m_sd->mapper.swap(dofsMapper);
+        GISMO_ASSERT( m_sd->mapper.mapSize()==static_cast<size_t>(this->source().size()), "The dof-mapper is not consistent.");
+        m_sd->mapper = give(dofsMapper);
     }
 
     void setup(const index_t _icont = -1) const
