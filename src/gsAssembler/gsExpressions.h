@@ -3164,6 +3164,9 @@ public:
             return _u.parDim() * (_u.parDim() + 1) / 2;
     }
 
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     {
         _u.parse(evList);                         // add symbol
