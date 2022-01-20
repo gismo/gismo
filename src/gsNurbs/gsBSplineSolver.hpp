@@ -91,9 +91,9 @@ bool gsBSplineSolver<T>::nextRoot()
         const T lambda = m_c[m_k-1] / cdiff ;
 
         // compute intersection
-        x = (std::accumulate(m_t.begin()+m_k, m_t.begin()+m_k+m_d, T(0.0) )
-             + lambda*diff ) / T(m_d);
-        //x = ( m_t.segment(m_k, m_d).sum() + lambda*diff ) / T(m_d);
+        x = (std::accumulate(m_t.begin()+m_k, m_t.begin()+m_k+m_d, (T)(0.0) )
+             + lambda*diff ) / (T)(m_d);
+        //x = ( m_t.segment(m_k, m_d).sum() + lambda*diff ) / (T)(m_d);
 
         // Stopping criterion
         const T e = math::max(x, m_t[m_k+m_d-1]) - math::min(x, m_t[m_k+1] );
@@ -293,7 +293,7 @@ unsigned findHyperPlaneIntersections (
             // if we inserted the same knot degre times and still do not
             // satisfy the requirements then fallback to bisection
             // as this could be caused by approximations in the computation of newK
-            if (newK_rep>=deg) newK=(grevB+grevE)/2;
+            if (newK_rep>=deg) newK=(grevB+grevE)/(T)(2);
             // if the newK equals the previously added knot anyway then we
             // resolved the position of the zero up to numerical precision
             // in the domain, add the zero and warn that the image is outside the

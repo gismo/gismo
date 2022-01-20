@@ -456,7 +456,7 @@ ValueType gsKDTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size_t
   // used to exclude data elements that are close to the given key but
   // on the 'wrong' side of the hyperplane. This allows to exclude
   // nearest neighbours that are, e.g., smaller than the given key.
-  if (!std::isfinite(bpq.best()))
+  if (!math::isfinite(bpq.best()))
       throw std::out_of_range("gsKDTree does not contain finite value");
   
   // Count occurrences of all ValueType in the kNN set
@@ -492,7 +492,7 @@ ValueType& gsKDTree<KeyType, ValueType>::kNNValue(const KeyType& key, std::size_
   // used to exclude data elements that are close to the given key but
   // on the 'wrong' side of the hyperplane. This allows to exclude
   // nearest neighbours that are, e.g., smaller than the given key.
-  if (!std::isfinite(bpq.best()))
+  if (!math::isfinite(bpq.best()))
       throw std::out_of_range("gsKDTree does not contain finite value");
   
   // Count occurrences of all ValueType in the kNN set

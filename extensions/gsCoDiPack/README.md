@@ -20,7 +20,7 @@ __Table of content__
 
 __Introdution__
 
-The CoDiPack extension builds on the open-source
+The gsCoDiPack extension builds on the open-source
 [CoDiPack](https://github.com/SciCompKL/CoDiPack) (Code
 Differentiation Package) library developed by the [Scientific
 Computing Group](http://www.scicomp.uni-kl.de/) at the TU

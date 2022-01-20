@@ -51,7 +51,7 @@ template <class T>
 void gsMarkPercentage( const std::vector<T> & elError, T refParameter,
                        std::vector<bool> & elMarked)
 {
-    T Thr = T(0);
+    T Thr = (T)(0);
 
     // Total number of elements:
     size_t NE = elError.size();
@@ -61,7 +61,7 @@ void gsMarkPercentage( const std::vector<T> & elError, T refParameter,
 
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
-    size_t idxRefineStart = cast<T,size_t>( math::floor( refParameter * T(NE) ) );
+    size_t idxRefineStart = cast<T,size_t>( math::floor( refParameter * (T)(NE) ) );
     // ...and just to be sure we are in range:
     if( idxRefineStart == elErrCopy.size() )
     {
@@ -108,14 +108,14 @@ template <class T>
 void gsMarkFraction( const std::vector<T> & elError, T refParameter,
                      std::vector<bool> & elMarked)
 {
-    T Thr = T(0);
+    T Thr = (T)(0);
 
     // The vector of local errors will need to be sorted,
     // which will be done on a copy:
     std::vector<T> elErrCopy = elError;
 
     // Compute the sum, i.e., the global/total error
-    T totalError = T(0);
+    T totalError = (T)(0);
     for( size_t i = 0; i < elErrCopy.size(); ++i)
         totalError += elErrCopy[i];
 

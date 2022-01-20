@@ -709,12 +709,12 @@ public:
     typedef pow_expr<integral_expr<T> > DiamRetType;
     /// The diameter of the element (on parameter space)
     DiamRetType diam() const //-> int(1)^(1/d)
-    { return pow(integral(_expr<T,true>(1)),(T)(1)/2); }
+    { return pow(integral(_expr<T,true>(1)),(T)(1)/(T)(2)); }
 
     typedef pow_expr<integral_expr<meas_expr<T> > > PHDiamRetType;
     /// The diameter of the element on the physical space
     PHDiamRetType diam(const gsGeometryMap<Scalar> & _G) const
-    { return pow(integral(meas_expr<T>(_G)),(T)(1)/2); }
+    { return pow(integral(meas_expr<T>(_G)),(T)(1)/(T)(2)); }
 
     //const gsMatrix<T> points() const {return pts;}
 
@@ -935,11 +935,11 @@ public:
     // space restrictTo(boundaries);
     // space restrictTo(bcRefList domain);
 
-    void setupMapper(gsDofMapper dofsMapper)
+    void setupMapper(gsDofMapper dofsMapper) const
     {
         GISMO_ASSERT( m_sd->mapper.isFinalized(), "The provided dof-mapper is not finalized.");
-        GISMO_ASSERT( m_sd->mapper.mapSize()==this->source().totalSize(), "The dof-mapper is not consistent.");
-        m_sd->mapper.swap(dofsMapper);
+        GISMO_ASSERT( m_sd->mapper.mapSize()==static_cast<size_t>(this->source().size()), "The dof-mapper is not consistent.");
+        m_sd->mapper = give(dofsMapper);
     }
 
     void setup(const index_t _icont = -1) const

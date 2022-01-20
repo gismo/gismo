@@ -185,7 +185,7 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
     nodes.setZero();
     weights.setZero();
 
-    const gsVector<T> h = (upper-lower) / T(2) ;
+    const gsVector<T> h = (upper-lower) / (T)(2) ;
     // Linear map from [-1,1]^d to [lower,upper]
     nodes.noalias() = ( h.asDiagonal() * (m_nodes.array()+1).matrix() ).colwise() + lower;
 
@@ -193,7 +193,7 @@ gsQuadRule<T>::mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
     for ( index_t i = 0; i!=d; ++i)
     {
         // the factor 0.5 is due to the reference interval is [-1,1].
-        hprod *= ( 0 == h[i] ? T(0.5) : h[i] );
+        hprod *= ( 0 == h[i] ? (T)(0.5) : h[i] );
     }
 
     // Adjust the weights (multiply by the Jacobian of the linear map)
