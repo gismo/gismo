@@ -10,8 +10,8 @@ Options:
 imagename: An image name following the naming convention
            os-compiler-cxx-buildtype-cpu[-option0][-option1]...[:arch]
            where
-                   os : is the operating system, e.g. ubuntu16.04
-             compiler : is the compiler, e.g. gcc5
+                   os : is the operating system, e.g. ubuntu20.04
+             compiler : is the compiler, e.g. gcc10
                   cxx : is the C++ standard, e.g. cxx11
            buildstype : is the build type, e.g. release
                   cpu : is the cpu type, e.g. skylake

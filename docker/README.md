@@ -11,7 +11,7 @@ Scripts for building G+Smo Docker images
 |Status|completed|
 |Developer|Matthias Möller|
 |Maintainer|M.Moller@tudelft.nl|
-|Last checked|09-12-2020|
+|Last checked|21-01-2022|
 
 ***
 __Table of content__
@@ -35,13 +35,13 @@ image run
 | | Mandatory configuration |
 |-|-|
 | `os` | _Name of the operating system including specific version number._ Supported values are: `ubuntu16.04`, `ubuntu18.04`, and `ubuntu20.04` |
-| `compiler` | _Name of the compiler including a specific version number._ Supported values are: `clang3.5`-`clang10` and `gcc4.7`-`gcc10`. Note that not all compiler versions are available on all operating systems. Newer compiler versions typically require also newer operating systems. |
-| `cxx` | _C++ standard._ Supported values are: `cxx98`, `cxx11`, `cxx14`, `cxx17`, and `cxx20` |
+| `compiler` | _Name of the compiler including a specific version number._ Supported values are: `clang3.5` to `clang10` and `gcc4.7` to `gcc10`. Note that not all compiler versions are available on all operating systems. Newer compiler versions typically require also newer operating systems. |
+| `cxx` | _C++ standard._ Supported values are: `cxx11`, `cxx14`, `cxx17`, and `cxx20` |
 | `buildtype` | _Build type._ Supported values are: `debug`, `release`, `debinfo`, and `minsize` |
 
 | | Optional configuration |
 |-|-|
-| `cpu`| _Name of the cpu architecture._ Supported values are `auto`, `none`, `generic`, `core`, `merom`, `penryn`, `nehalem`, `westmere`, `sandybridge`, `ivybridge`, `haswell`, `broadwell`, `skylake`, `skylake-xeon`, `kabylake`, `cannonlake`, `scacadelake`, `cooperlake`, `icelake`, `icelake-xeon`, `tigerlake`, `alderlake`, `sapphirerapids`, `bonnell`, `silvermont`, `goldmont`, `goldmont-plus`, `tremont`, `knl`, `knm`, `atom`, `k8`, `k8-sse3`, `barcelona`, `istanbul`, `magny-cours`, `bulldozer`, `interlagos`, `piledriver`, `steamroller`, `excavator`, `amd14h`, `amd16h`, `zen`, `zen2`, and `zen3`. If not given then `generic` is used as default. |
+| `cpu`| _Name of the cpu architecture._ Supported values are `auto`, `none`, `generic`, `core`, `merom`, `penryn`, `nehalem`, `westmere`, `sandybridge`, `ivybridge`, `haswell`, `broadwell`, `skylake`, `skylake-xeon`, `kabylake`, `cannonlake`, `cacadelake`, `cooperlake`, `icelake`, `icelake-xeon`, `tigerlake`, `alderlake`, `sapphirerapids`, `bonnell`, `silvermont`, `goldmont`, `goldmont-plus`, `tremont`, `knl`, `knm`, `atom`, `k8`, `k8-sse3`, `barcelona`, `istanbul`, `magny-cours`, `bulldozer`, `interlagos`, `piledriver`, `steamroller`, `excavator`, `amd14h`, `amd16h`, `zen`, `zen2`, and `zen3`. If not given then `generic` is used as default. |
 | `coeff_type`| _Global coefficient type._ Supported values are: `float`, `double`, `longdouble`, `mpfr::mpreal`, `mpq_class`, `posit_2_0`, `posit_3_0`, `posit_3_1`, `posit_4_0`, `posit_4_1`, `posit_8_0`, `posit_8_1`, `posit_16_1`, `posit_32_2`, `posit_64_3`, `posit_128_4`, and `posit_256_5`. If not given then `double` is used as default. |
 | `index_type` | _Global index type._ Supported values are: `int`, `int32_t`, `int64_t`, `long`, and `longlong`. If not given then `int` is used as default. |
 
@@ -75,9 +75,8 @@ __Disclaimer__: Optional features are not yet fully supported.
 ## Prebuilt Docker images
 The following Docker images are built automatically for commits to the G+Smo stable branch:
 
-- `ubuntu16.04-gcc5-cxx98-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu16.04-gcc5-cxx98-release) ([GCC](https://gcc.gnu.org/) 5.x, C++98, Release mode with OpenMP)
-- `ubuntu18.04-gcc7-cxx11-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu18.04-gcc7-cxx11-release) ([GCC](https://gcc.gnu.org/) 7.x, C++11, Release mode with OpenMP)
-- `ubuntu20.04-gcc10-cxx14-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu20.04-gcc10-cxx14-release) ([GCC](https://gcc.gnu.org/) 10.x, C++14, Release mode with OpenMP)
+- `ubuntu20.04-gcc10-cxx11-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu20.04-gcc10-cxx11-release) ([GCC](https://gcc.gnu.org/) 10.x, C++11, Release mode with OpenMP)
+- `ubuntu20.04-clang10-cxx11-release` ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/mmoelle1/gismo/ubuntu20.04-clang10-cxx11-release) ([Clang](https://gcc.gnu.org/) 10.x, C++11, Release mode with OpenMP)
 
 &nbsp;
 The directory structure of the G+Smo library is as follows:
@@ -94,23 +93,23 @@ To install Docker for your platform (Windows, macOS, Linux, cloud platforms, etc
 
 Once you have Docker installed, you can run one of the above images by executing the following command:
 ```
-docker run --rm -ti mmoelle1/gismo:ubuntu18.04-gcc7-cxx11-release
+docker run --rm -ti mmoelle1/gismo:ubuntu20.04-gcc10-cxx11-release
 ```
 &nbsp;
 You will be logged in under username `gismo` with standard password `gismo`. The `--rm` flag to the `docker run` command ensures that the container is removed upon termination. The directory `$HOME/gismo/build/bin` is added to the `PATH` variable so that example and tutorial applications can be run directly, e.g.:
 ```
-docker run --rm -ti mmoelle1/gismo:ubuntu18.04-gcc7-cxx11-release geometry_example
+docker run --rm -ti mmoelle1/gismo:ubuntu20.04-gcc10-cxx11-release geometry_example
 ```
 
 &nbsp;
 If you want to access data that is stored in a directory on your host computer from within your Docker container you need to mount (`-v`) the directory on your host computer when starting the Docker container. Assume that you want to make your current working directory on your host computer (`$(pwd)`) accessible under `/home/gismo/shared` in the docker container you need start the docker image as follows:
 ```
-docker run --rm -ti -v $(pwd):/home/gismo/shared mmoelle1/gismo:ubuntu18.04-gcc7-cxx11-release
+docker run --rm -ti -v $(pwd):/home/gismo/shared mmoelle1/gismo:ubuntu20.04-gcc10-cxx11-release
 ```
 &nbsp;
 It is also possible to mount a directory on your host computer to a directory of the Docker container and make it the working (`-w`) so that files generated inside the Docker container are accessible on your host computer:
 ```
-docker run --rm -ti -w/home/gismo/shared -v $(pwd):/home/gismo/shared mmoelle1/gismo:ubuntu18.04-gcc7-cxx11-release
+docker run --rm -ti -w/home/gismo/shared -v $(pwd):/home/gismo/shared mmoelle1/gismo:ubuntu20.04-gcc10-cxx11-release
 ```
 &nbsp;
 A good starting point for learning the G+Smo library is to walk through the [example](https://www.gs.jku.at/trac/gismo/wiki/public/Doxygen/Examples) and [tutorial](https://www.gs.jku.at/trac/gismo/wiki/public/Doxygen/Tutorials) applications.

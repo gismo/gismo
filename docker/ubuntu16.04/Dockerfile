@@ -10,7 +10,6 @@
 # The docker containers provide all prerequisite software tools,
 # compilers and libraries and a complete build of the G+Smo library.
 FROM ubuntu:16.04
-MAINTAINER Matthias Moller <m.moller@tudelft.nl>
 
 ARG BUILD_RFC3339="1970-01-01T00:00:00Z"
 ARG COMMIT="local"
@@ -43,8 +42,8 @@ ARG CXX=g++-5
 # Fortran compiler        : {gfortran-4.7,gfortran-4.8,gfortran-4.9,gfortran-5}
 ARG FC=na
 
-# CMAKE_CXX_STANDARD      : {98,11,14,17,20}
-ARG CMAKE_CXX_STANDARD=98
+# CMAKE_CXX_STANDARD      : {11,14,17,20,23}
+ARG CMAKE_CXX_STANDARD=11
 
 # CMAKE_BUILD_TYPE        : {Release,Debug,RelWithDebInfo,MinSizeRel}
 ARG CMAKE_BUILD_TYPE=Release

@@ -160,8 +160,8 @@ case "$IMAGE_NAME" in
     ?(*\-)cxx20?(\-*))
         CMAKE_CXX_STANDARD=20
         ;;
-    ?(*\-)cxx98?(\-*))
-        CMAKE_CXX_STANDARD=98
+    ?(*\-)cxx23?(\-*))
+        CMAKE_CXX_STANDARD=23
         ;;
     *)
         echo "[***] Unsupported C++ standard"

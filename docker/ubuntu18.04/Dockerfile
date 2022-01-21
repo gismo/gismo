@@ -10,7 +10,6 @@
 # The docker containers provide all prerequisite software tools,
 # compilers and libraries and a complete build of the G+Smo library.
 FROM ubuntu:18.04
-MAINTAINER Matthias Moller <m.moller@tudelft.nl>
 
 ARG BUILD_RFC3339="1970-01-01T00:00:00Z"
 ARG COMMIT="local"
@@ -36,15 +35,15 @@ ENV VERSION "$VERSION"
 # This file accepts the following build-time arguments:
 
 # C compiler              : {clang-3.9,clang-4.0,clang-5.0,clang-6.0,clang-7,clang-8,clang-9,gcc-4.8,gcc-5,gcc-6,gcc-7,gcc-8}
-ARG CC=gcc-7
+ARG CC=gcc-8
 # C++ compiler            : {clang++-3.9,clang++-4.0,clang++-5.0,clang++-6.0,clang++-7,clang++-8,clang++-9,g++-4.8,g++-5,g++-6,g++-7,g++-8}
-ARG CXX=g++-7
+ARG CXX=g++-8
 
 # Fortran compiler        : {gfortran-4.8,gfortran-5,gfortran-5,gfortran-6,gfortran-7,gfortran-8}
 ARG FC=na
 
-# CMAKE_CXX_STANDARD      : {98,11,14,17,20}
-ARG CMAKE_CXX_STANDARD=98
+# CMAKE_CXX_STANDARD      : {11,14,17,20}
+ARG CMAKE_CXX_STANDARD=11
 
 # CMAKE_BUILD_TYPE        : {Release,Debug,RelWithDebInfo,MinSizeRel}
 ARG CMAKE_BUILD_TYPE=Release
