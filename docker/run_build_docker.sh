@@ -19,7 +19,7 @@ imagename: An image name following the naming convention
 
 shift $((OPTIND-1))
 IMAGE_NAME=$1
-BASE_PATH=$(dirname $(readlink -f $0))
+BASE_DIR=$(dirname $(readlink -f $0))
 
 if [ -z "${IMAGE_NAME}" ]; then
     usage
@@ -29,18 +29,18 @@ shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*:)?(*\-)ubuntu16.04?(\-*))
         (DOCKER_REPO="mmoelle1/gismo"
-         DOCKERFILE_PATH="${BASE_PATH}/ubuntu16.04/Dockerfile"
-         source ${BASE_PATH}/ubuntu16.04/hooks/build)
+         DOCKERFILE="${BASE_DIR}/ubuntu16.04/Dockerfile"
+         source ${BASE_DIR}/ubuntu16.04/hooks/build)
         ;;
     ?(*:)?(*\-)ubuntu18.04?(\-*))
         (DOCKER_REPO="mmoelle1/gismo"
-         DOCKERFILE_PATH="${BASE_PATH}/ubuntu18.04/Dockerfile"
-         source ${BASE_PATH}/ubuntu18.04/hooks/build)
+         DOCKERFILE="${BASE_DIR}/ubuntu18.04/Dockerfile"
+         source ${BASE_DIR}/ubuntu18.04/hooks/build)
         ;;
     ?(*:)?(*\-)ubuntu20.04?(\-*))
         (DOCKER_REPO="mmoelle1/gismo"
-         DOCKERFILE_PATH="${BASE_PATH}/ubuntu20.04/Dockerfile"
-         source ${BASE_PATH}/ubuntu20.04/hooks/build)
+         DOCKERFILE="${BASE_DIR}/ubuntu20.04/Dockerfile"
+         source ${BASE_DIR}/ubuntu20.04/hooks/build)
         ;;
     *)
         echo "Unsupported OS"
