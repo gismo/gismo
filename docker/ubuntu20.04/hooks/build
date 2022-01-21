@@ -2,9 +2,12 @@
 # hooks/build
 # https://docs.docker.com/docker-cloud/builds/advanced/
 
-## $IMAGE_NAME var is injected into the build so the tag is correct.
 echo "[***] Build hook starting..."
 
+# Get docker command
+DOCKER_CMD=$(command -v docker || command -v podman)
+
+## $IMAGE_NAME var is injected into the build so the tag is correct.
 echo "[---] DOCKERFILE_PATH:        ${DOCKERFILE_PATH}"
 echo "[---] DOCKER_REPO:            ${DOCKER_REPO}"
 echo "[---] IMAGE_NAME:             ${IMAGE_NAME}"
@@ -41,34 +44,9 @@ echo "[---] BUILD_PATH:             ${BUILD_PATH}"
 # Compiler setting
 shopt -s extglob;
 case "$IMAGE_NAME" in
-    # ?(*\-)clang3.5?(\-*))
-    #     CC=clang-3.5
-    #     CXX=clang++-3.5
-    #     ;;
-    # ?(*\-)clang3.6?(\-*))
-    #     CC=clang-3.6
-    #     CXX=clang++-3.6
-    #     ;;
-    # ?(*\-)clang3.7?(\-*))
-    #     CC=clang-3.7
-    #     CXX=clang++-3.7
-    #     ;;
-    # ?(*\-)clang3.8?(\-*))
-    #     CC=clang-3.8
-    #     CXX=clang++-3.8
-    #     ;;
-    # ?(*\-)clang3.9?(\-*))
-    #     CC=clang-3.9
-    #     CXX=clang++-3.9
-    #     ;;
-    # ?(*\-)clang4.0?(\-*))
-    #     CC=clang-4.0
-    #     CXX=clang++-4.0
-    #     ;;
-    # ?(*\-)clang5.0?(\-*))
-    #     CC=clang-5.0
-    #     CXX=clang++-5.0
-    #     ;;
+
+    # Clang
+    
     ?(*\-)clang6.0?(\-*))
         CC=clang-6.0
         CXX=clang++-6.0
@@ -89,31 +67,13 @@ case "$IMAGE_NAME" in
         CC=clang-10
         CXX=clang++-10
         ;;
-    # ?(*\-)gcc4.7?(\-*))
-    #     CC=gcc-4.7
-    #     CXX=g++-4.7
-    #     FC=gfortran-4.7
-    #     ;;
-    # ?(*\-)gcc4.8?(\-*))
-    #     CC=gcc-4.8
-    #     CXX=g++-4.8
-    #     FC=gfortran-4.8
-    #     ;;
-    # ?(*\-)gcc4.9?(\-*))
-    #     CC=gcc-4.9
-    #     CXX=g++-4.9
-    #     FC=gfortran-4.9
-    #     ;;
-    # ?(*\-)gcc5?(\-*))
-    #     CC=gcc-5
-    #     CXX=g++-5
-    #     FC=gfortran-5
-    #     ;;
-    # ?(*\-)gcc6?(\-*))
-    #     CC=gcc-6
-    #     CXX=g++-6
-    #     FC=gfortran-6
-    #     ;;
+    ?(*\-)clang11?(\-*))
+        CC=clang-11
+        CXX=clang++-11
+        ;;
+
+    # GCC
+
     ?(*\-)gcc7?(\-*))
         CC=gcc-7
         CXX=g++-7
@@ -448,7 +408,10 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
+GISMO_SHORT_TYPE=${GISMO_INDEX_TYPE}
+
 echo "[---] GISMO_INDEX_TYPE:       ${GISMO_INDEX_TYPE}"
+echo "[---] GISMO_SHORT_TYPE:       ${GISMO_SHORT_TYPE}"
 
 # Build G+Smo examples
 shopt -s extglob;
@@ -784,13 +747,14 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
+echo "[---] GISMO_SUBMODULES:       ${GISMO_SUBMODULES}"
+echo "[---] GISMO_VERSION:          ${GISMO_VERSION}"
 echo "[---] GISMO_WITH_CODIPACK:    ${GISMO_WITH_CODIPACK}"
 echo "[---] GISMO_WITH_GMP:         ${GISMO_WITH_GMP}"
 echo "[---] GISMO_WITH_IPOPT:       ${GISMO_WITH_IPOPT}"
 echo "[---] GISMO_WITH_MPFR:        ${GISMO_WITH_MPFR}"
 echo "[---] GISMO_WITH_MPI:         ${GISMO_WITH_MPI}"
 echo "[---] GISMO_WITH_OCC:         ${GISMO_WITH_OCC}"
-echo "[---] GISMO_WITH_ONURBS:      ${GISMO_WITH_ONURBS}"
 echo "[---] GISMO_WITH_OPENMP:      ${GISMO_WITH_OPENMP}"
 echo "[---] GISMO_WITH_PARDISO:     ${GISMO_WITH_PARDISO}"
 echo "[---] GISMO_WITH_PASTIX:      ${GISMO_WITH_PASTIX}"
@@ -809,7 +773,7 @@ if [[ "${GISMO_WITH_TRILINOS}" == "ON" && ("${GISMO_WITH_MPI}" != "ON" || -z "$F
 fi
 
 ## Build the prime image at the end.
-docker build \
+${DOCKER_CMD} build \
     --file "${DOCKERFILE_PATH}" \
     --build-arg APPLICATION=${APPLICATION} \
     --build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
@@ -827,6 +791,8 @@ docker build \
     --build-arg GISMO_BUILD_UNITTESTS=${GISMO_BUILD_UNITTESTS} \
     --build-arg GISMO_COEFF_TYPE=${GISMO_COEFF_TYPE} \
     --build-arg GISMO_INDEX_TYPE=${GISMO_INDEX_TYPE} \
+    --build-arg GISMO_SHORT_TYPE=${GISMO_SHORT_TYPE} \
+    --build-arg GISMO_SUBMODULES=${GISMO_SUBMODULES} \
     --build-arg GISMO_VERSION=${SOURCE_BRANCH} \
     --build-arg GISMO_WITH_CODIPACK=${GISMO_WITH_CODIPACK} \
     --build-arg GISMO_WITH_GMP=${GISMO_WITH_GMP} \
@@ -834,7 +800,6 @@ docker build \
     --build-arg GISMO_WITH_MPFR=${GISMO_WITH_MPFR} \
     --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
     --build-arg GISMO_WITH_OCC=${GISMO_WITH_OCC} \
-    --build-arg GISMO_WITH_ONURBS=${GISMO_WITH_ONURBS} \
     --build-arg GISMO_WITH_OPENMP=${GISMO_WITH_OPENMP} \
     --build-arg GISMO_WITH_PARDISO=${GISMO_WITH_PARDISO} \
     --build-arg GISMO_WITH_PASTIX=${GISMO_WITH_PASTIX} \
@@ -849,8 +814,17 @@ docker build \
     --build-arg TARGET_ARCHITECTURE=${TARGET_ARCHITECTURE} \
     -t ${IMAGE_NAME} \
     .
+if [ $? -ne 0 ]; then
+    echo "[***] ...build hook failed. Aborting!"
+    exit 1
+fi
 
 ## Push image
-docker push ${IMAGE_NAME}
+${DOCKER_CMD} push ${IMAGE_NAME}
 
-echo "[***] ...build hook complete."
+if [ $? -ne 0 ]; then
+    echo "[***] ...build hook failed. Aborting!"
+    exit 1
+fi
+
+exit 0

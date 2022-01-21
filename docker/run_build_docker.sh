@@ -8,14 +8,14 @@ An open-source script to facilitate the building of G+Smo docker images
 Options:
 
 imagename: An image name following the naming convention
-           os-compiler-cxx-buildtype-cpu[-option0][-option1]...[:arch]
+           os-compiler-cxx-buildtype-cpu[-option0][-option1]...
            where
                    os : is the operating system, e.g. ubuntu20.04
              compiler : is the compiler, e.g. gcc10
                   cxx : is the C++ standard, e.g. cxx11
            buildstype : is the build type, e.g. release
                   cpu : is the cpu type, e.g. skylake
-                 arch : is the architectore, e.g. amd64" 1>&2; exit 1; }
+              optionX : is an optional option, e.g. openmp" 1>&2; exit 1; }
 
 shift $((OPTIND-1))
 IMAGE_NAME=$1

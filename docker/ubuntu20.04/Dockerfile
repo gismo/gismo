@@ -75,7 +75,7 @@ ARG GISMO_SHORT_TYPE=int
 # GISMO_SUBMODULES        : {gsCompFlow,gsExaStencils,gsElasticity,gsKLShell,gsStructuralAnalysis,unsupported,motor}
 ARG GISMO_SUBMODULES=''
 
-# GISMO_VERSION           : {v0.8.1,v0.8.2,v0.8.3,v0.8.4,v21.12.0,HEAD}
+# GISMO_VERSION           : {v0.8.1,v0.8.2,v0.8.3,v0.8.4,v21.12.0,HEAD,or specific hash}
 ARG GISMO_VERSION=HEAD
 
 # GISMO_WITH_CODIPACK     : {ON,OFF}
