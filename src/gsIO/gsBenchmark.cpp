@@ -344,10 +344,10 @@ namespace benchmark {
     char id('A');
 
     for (const auto& it : util::zip(objA.get(), objB.get())) {
-      results.push_back( give(benchmark::ratio(std::get<0>(it).get_label()+std::string(1,id++),
-                                               std::get<0>(it).get_descr(),
-                                               std::get<0>(it),
-                                               std::get<1>(it))) );
+      results.push_back( give(utils::ratio(std::get<0>(it).get_label()+std::string(1,id++),
+                                           std::get<0>(it).get_descr(),
+                                           std::get<0>(it),
+                                           std::get<1>(it))) );
     }
 
     gsBenchmarkSet benchmark(label, descr, give(results) );
