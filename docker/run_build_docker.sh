@@ -17,9 +17,13 @@ imagename: An image name following the naming convention
                   cpu : is the cpu type, e.g. skylake
               optionX : is an optional option, e.g. openmp" 1>&2; exit 1; }
 
+realpath() {
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
 shift $((OPTIND-1))
 IMAGE_NAME=$1
-BASE_DIR=$(dirname $(readlink -f $0))
+BASE_DIR=$(dirname $(realpath $0))
 
 if [ -z "${IMAGE_NAME}" ]; then
     usage
