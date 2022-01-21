@@ -1,0 +1,99 @@
+# List of arm/arm64 checks
+
+# FORMAT:
+# <extension flag >[,<list of extra extension flags>];<list of headers>;<name>;<list of parameters>;[<extension alias>]
+#
+# lines starting with # are comments
+# lines starting with push_enable: start a block of tests enabled for the given compilers only
+# lines starting with pop_enable: ends a block of tests enabled for the given compilers only
+# lines starting with push_disable: start a block of tests disabled for the given compilers
+# lines starting with pop_disable: ends a block of tests disabled for the given compilers
+
+# DESCRIPTION:
+# For each line of this file, HandleArmOptions generates the code snipped
+#
+# #include<header0>
+# #include<header1>
+# ...
+# int main {
+#   name(parameter0, parameter1, ...);
+#   return 0;
+# }
+#
+# and compiles it with, e.g.
+#
+# gcc -m<extension> -m<extra extensions...>
+#
+# if the extension should be enabled and
+#
+# gcc -m-no<extension> -m-no<extra extensions...>
+#
+# if the extension should be disabled. In the above example, the
+# compiler name 'gcc' and the flag prefixes '-m' and '-mno-' will be
+# set properly by HandleX86Options.
+#
+# EXTENSION ALIAS:
+# By default, it is assumed that the name of the extension, e.g.,
+# avx512f coinsides with the name of the compiler flag to be used to
+# enable/disable it, e.g., -mno-avx512f. Some compilers like Oracle's
+# SunPro have non-canonical naming conventions,
+# cf. https://docs.oracle.com/cd/E77782_01/html/E77792/gqexw.html.
+#
+# In this case, the optional <extension alias> parameter can be used
+# to specify the name of the extension as reported by the system,
+# whereas the compiler-specific extension flag(s) are given in
+# <extension flag> and [<list of extra extension flags>], respectively.
+#
+# ENABLING/DISABLING OF CHECKS:
+# Checks can be explicitly disabled for particular compilers by placing
+# them inside a push_disable/pop_disable block, e.g.
+#
+# push_disable:SunPro,IntelLLVM
+# <checks, one per line>
+# pop_disable:SunPro
+#
+# Similarly, checks can be explicitly enabled for particular compilers
+# by placing them inside a push_disable/pop_disable block, e.g.
+#
+# push_enable:SunPro
+# <checks, one per line>
+# pop_enable:SunPro
+
+aes;cstdlib;exit;0
+bf16;cstdlib;exit;0
+crc;cstdlib;exit;0
+crypto;cstdlib;exit;0
+dotprod;cstdlib;exit;0
+dsp;cstdlib;exit;0
+fp;cstdlib;exit;0
+fp16;cstdlib;exit;0
+fp16fml;cstdlib;exit;0
+fd_dp;cstdlib;exit;0
+fp_sp;cstdlib;exit;0
+i8mm;cstdlib;exit;0
+idiv;cstdlib;exit;0
+lse;cstdlib;exit;0
+mve;cstdlib;exit;0
+mve_fp;cstdlib;exit;0
+neon;cstdlib;exit;0
+neon_fp16;cstdlib;exit;0
+neon_vfpv4;cstdlib;exit;0
+ras;cstdlib;exit;0
+rcpc;cstdlib;exit;0
+rdm;cstdlib;exit;0
+rdma;cstdlib;exit;0
+sec;cstdlib;exit;0
+sha2;cstdlib;exit;0
+sha3;cstdlib;exit;0
+simd;cstdlib;exit;0
+sm4;cstdlib;exit;0
+sve;cstdlib;exit;0
+sve2;cstdlib;exit;0
+vfpv3;cstdlib;exit;0
+vfpv3_d16;cstdlib;exit;0
+vfpv3_d16_fp16;cstdlib;exit;0
+vfpv3_fp16;cstdlib;exit;0
+vfpv4;cstdlib;exit;0
+vfpv4_d16;cstdlib;exit;0
+zcm;cstdlib;exit;0
+zcz;cstdlib;exit;0

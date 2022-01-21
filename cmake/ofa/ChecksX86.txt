@@ -1,4 +1,4 @@
-# List of x86 checks
+# List of x86/x86_64 checks
 
 # FORMAT:
 # <extension flag >[,<list of extra extension flags>];<list of headers>;<name>;<list of parameters>;[<extension alias>]
@@ -48,9 +48,9 @@
 # Checks can be explicitly disabled for particular compilers by placing
 # them inside a push_disable/pop_disable block, e.g.
 #
-# push_disable:SunPro,IntelLLVM
+# push_disable:MSVC,SunPro
 # <checks, one per line>
-# pop_disable:SunPro
+# pop_disable:MSVC,SunPro
 #
 # Similarly, checks can be explicitly enabled for particular compilers
 # by placing them inside a push_disable/pop_disable block, e.g.
@@ -59,8 +59,8 @@
 # <checks, one per line>
 # pop_enable:SunPro
 
-# Oracle's SunPro compiler fails these checks
-push_disable:SunPro
+# MSVC and Oracle's SunPro compiler fails these checks
+push_disable:MSVC,SunPro
 
 # MMX
 mmx;mmintrin.h;_mm_add_pi16;__m64(),__m64()
@@ -154,7 +154,21 @@ xsaveopt,xsave;immintrin.h;xsaveopt;(void*)NULL,(unsigned __m256i)0
 xsaves;immintrin.h;_xgetbv;(unsigned int)1
 xss,xsave;immintrin.h;_xrstors;(const void*)NULL,(unsigned __m256i)0
 
-pop_disable:SunPro
+pop_disable:MSVC,SunPro
+
+# Special checks for the MSVC compiler
+push_enable:MSVC
+
+# SSE/SSE2/SSE3/SSE4.1/SSE4.2/SSE4A/AVX/AVX2/FMA
+SSE;xmmintrin.h;_mm_add_ps;_mm_setzero_ps(),_mm_setzero_ps();sse
+SSE2;emmintrin.h;_mm_add_epi16;_mm_setzero_si128(),_mm_setzero_si128();sse2
+AVX;immintrin.h;_mm256_add_pd;_mm256_setzero_pd(),_mm256_setzero_pd();avx
+AVX2;immintrin.h;_mm256_hadd_epi16;_mm256_setzero_si256(),_mm256_setzero_si256();avx2
+
+# AVX-512
+AVX512;immintrin.h;_mm512_abs_epi32;_mm512_setzero_si512();avx512f
+
+pop_enable:MSVC
 
 # Special checks for Oracle's SunPro compiler
 # https://docs.oracle.com/cd/E77782_01/html/E77792/gqexw.html

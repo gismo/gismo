@@ -22,32 +22,33 @@ macro(OFA_HandleX86Options)
   if(TARGET_ARCHITECTURE STREQUAL "native")
     if(MSVC)
       # MSVC (on Windows)
-      message(FATAL_ERROR, "[OFA] MSVC does not support \"native\" flag.")
+      message(FATAL_ERROR "[OFA] MSVC does not support \"native\" flag.")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel"
         OR CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
       if(WIN32)
         # Intel (on Windows)
-        AddCXXCompilerFlag("/QxHOST" FLAGS OFA_ARCHITECTURE_FLAGS)
+        AddCXXCompilerFlag("/QxHOST" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
       else()
         # Intel (on Linux)
-        AddCXXCompilerFlag("-xHOST" FLAGS OFA_ARCHITECTURE_FLAGS)
+        AddCXXCompilerFlag("-xHOST" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
       endif()
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC"
         OR CMAKE_CXX_COMPILER_ID MATCHES "PGI")
-      # NVidia HPC / PGI (on Linux/Windows
-      AddCXXCompilerFlag("-tp=native" FLAGS OFA_ARCHITECTURE_FLAGS)
+      # NVidia HPC / PGI (on Linux/Windows)
+      AddCXXCompilerFlag("-tp=native" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "SunPro")
       # Sun/Oracle Studio (on Linux/Sun OS)
-      AddCXXCompilerFlag("-native" FLAGS OFA_ARCHITECTURE_FLAGS)
+      AddCXXCompilerFlag("-native" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Cray")
       # Cray (on Linux)
       message(FATAL_ERROR, "[OFA] Cray compiler does not support \"native\" flag.")
     else()
       # Others: GNU, Clang and variants
-      _ofa_find(OFA_ARCHITECTURE_FLAGS "-march=native" _found)
-      if(NOT _found)
-        AddCXXCompilerFlag("-march=native" FLAGS OFA_ARCHITECTURE_FLAGS)
-      endif()
+      AddCXXCompilerFlag("-march=native" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+    endif()
+
+    if(NOT _ok)
+      message(FATAL_ERROR "[OFA] An error occured while setting the \"native\" flag.")
     endif()
 
   elseif(NOT TARGET_ARCHITECTURE STREQUAL "none")
@@ -344,6 +345,7 @@ macro(OFA_HandleX86Options)
       message(FATAL_ERROR "[OFA] Unknown target architecture: \"${TARGET_ARCHITECTURE}\". Please set TARGET_ARCHITECTURE to a supported value.")
     endif()
 
+    # Clean list of available extensions
     list(SORT _available_extension_list)
     list(REMOVE_DUPLICATES _available_extension_list)
 
@@ -360,364 +362,366 @@ macro(OFA_HandleX86Options)
       endif()
     endif()
 
-    if(NOT TARGET_ARCHITECTURE STREQUAL "none")
-      set(_check_extension_list)
-      set(_check_extension_flag_list)
-      set(_disable_extension_flag_list)
-      set(_enable_extension_flag_list)
+    set(_check_extension_list)
+    set(_check_extension_flag_list)
+    set(_disable_extension_flag_list)
+    set(_enable_extension_flag_list)
 
-      # Set enable/disable compiler flag prefixes
-      if(CMAKE_CXX_COMPILER_ID MATCHES "SunPro")
-        set(_enable "-xarch=")
-        set(_disable "-xarch=no-")
-      else()
-        set(_enable "-m")
-        set(_disable "-mno-")
-      endif()
-      
-      # Step 2: Enable/disable feature flags based on available CPU
-      #         features, used-defined USE_<feature> variables and
-      #         the capabilities of the host system's compiler and linker
-      file(READ ${CMAKE_SOURCE_DIR}/cmake/ofa/ChecksX86.txt _checks)
-      string(REGEX REPLACE "[:;]" "|" _checks "${_checks}")
-      string(REPLACE "\n" ";" _checks "${_checks}")
+    # Set compiler-specific option names
+    if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+      set(_enable_flag "/arch:")
+      unset(_disable)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "SunPro")
+      set(_enable_flag "-xarch=")
+      unset(_disable_flag)
+    else()
+      set(_enable_flag "-m")
+      set(_disable_flag "-mno-")
+    endif()
 
-      set(_skip_check FALSE)
-      
-      # Iterate over the list of checks line by line
-      foreach (_check ${_checks})
-        string(REPLACE "|" ";" _check "${_check}")
-        
-        # Parse for special lines
-        if ("${_check}" MATCHES "^#" ) # Skip comment
-          continue()
-          
-        elseif ("${_check}" MATCHES "^push_enable" ) # Start enable block
-          list(GET _check 1 _push_enable_list)
-          _ofa_find(_push_enable_list "${CMAKE_CXX_COMPILER_ID}" _found)
-          if(_found)
-            list(PREPEND _skip_check FALSE)
-          else()
-            list(PREPEND _skip_check TRUE)
-          endif()
-          continue()
-          
-        elseif ("${_check}" MATCHES "^pop_enable" ) # End enable block
-            list(POP_FRONT _skip_check)
-          continue()
-          
-        elseif ("${_check}" MATCHES "^push_disable" ) # Start disable block
-          list(GET _check 1 _push_disable_list)
-          _ofa_find(_push_disable_list "${CMAKE_CXX_COMPILER_ID}" _found)
-          if(_found)
-            list(PREPEND _skip_check TRUE)
-          else()
-            list(PREPEND _skip_check FALSE)
-          endif()
-          continue()
-          
-        elseif ("${_check}" MATCHES "^pop_disable" ) # End disable block
-          list(POP_FRONT _skip_check)
-          continue()
-        endif()
+    # Step 2: Enable/disable feature flags based on available CPU
+    #         features, used-defined USE_<feature> variables and
+    #         the capabilities of the host system's compiler and linker
+    file(READ ${CMAKE_SOURCE_DIR}/cmake/ofa/ChecksX86.txt _checks)
+    string(REGEX REPLACE "[:;]" "|" _checks "${_checks}")
+    string(REPLACE "\n" ";" _checks "${_checks}")
 
-        # Skip test?
-        list(GET _skip_check 0 _skip)
-        if(_skip)
-          continue()
-        endif()
+    set(_skip_check FALSE)
 
-        # Extract extra CPU extensions, header files, function name, and parameters        
-        list(GET _check 0 _check_extension_flags)
-        list(GET _check 1 _check_headers)
-        list(GET _check 2 _check_function)
-        list(GET _check 3 _check_params)
-        
-        # Convert list of extensions into compiler flags
-        string(REPLACE "," ";" _check_extension_flags "${_check_extension_flags}")
-        list(GET _check_extension_flags 0 _extension_flag)
-        string(REPLACE ";" " ${_enable}" _check_flags "${_enable}${_check_extension_flags}")
-        list(APPEND _check_extension_flag_list "${_extension_flag}")
+    # Iterate over the list of checks line by line
+    foreach (_check ${_checks})
+      string(REPLACE "|" ";" _check "${_check}")
 
-        # Extract optional extension alias
-        list(LENGTH _check _len)
-        if(${_len} EQUAL 5)
-          list(GET _check 4 _extension)
-        else()
-          set(_extension "${_extension_flag}")
-        endif()
+      # Parse for special lines
+      if ("${_check}" MATCHES "^#" ) # Skip comment
+        continue()
 
-        list(APPEND _check_extension_list "${_extension}")       
-        
-        # Define USE_<_extension_flag> variable
-        set(_useVar "USE_${_extension_flag}")
-        string(TOUPPER "${_useVar}" _useVar)
-        string(REPLACE "." "_" _useVar "${_useVar}")
-
-        # If not specified externally, set the value of the
-        # USE_<_extension_flag> variable to TRUE if it is found in the list
-        # of available extensions and FALSE otherwise
-        if(NOT DEFINED ${_useVar})
-          _ofa_find(_available_extension_list "${_extension}" _found)
-          set(${_useVar} ${_found})
-        endif()
-        
-        if(${_useVar})
-          # Check if the compiler supports the -m<_extension_flag>
-          # flag and can compile the provided test code with it
-          set(_code "\nint main() { ${_check_function}(${_check_params})\; return 0\; }")
-          AddCXXCompilerFlag("${_enable}${_extension_flag}"
-            EXTRA_FLAGS ${_check_flags}
-            HEADERS     ${_check_headers}
-            CODE        "${_code}"
-            RESULT      _ok)
-          if(NOT ${_ok})
-            # Test failed
-            set(${_useVar} FALSE CACHE BOOL "Use ${_extension} extension.")
-          else()
-            # Test succeeded
-            set(${_useVar} TRUE CACHE BOOL "Use ${_extension} extension.")
-          endif()
-        else()
-          # Disable extension without running tests
-          set(${_useVar} FALSE CACHE BOOL "Use ${_extension} extension.")
-        endif()
-        mark_as_advanced(${_useVar})
-      endforeach()
-
-      # Generate lists of enabled/disabled flags
-      list(REMOVE_DUPLICATES _check_extension_flag_list)
-      foreach(_extension_flag ${_check_extension_flag_list})
-        _ofa_find(_available_extension_list "${_extension_flag}" _found)
-        set(_useVar "USE_${_extension_flag}")
-        string(TOUPPER "${_useVar}" _useVar)
-        string(REPLACE "." "_" _useVar "${_useVar}")
-        
-        if(${_useVar})
-          # Add <_extension_flag> to list of enabled extensions (if supported)
-          set(_haveVar "HAVE_${_enable}${_extension_flag}")
-          string(REGEX REPLACE "[-.+/:= ]" "_" _haveVar "${_haveVar}")
-          if(NOT ${_haveVar})
-            if(OFA_VERBOSE)
-              message(STATUS "[OFA] Ignoring flag ${_enable}${_extension_flag} because checks failed")
-            endif()
-            continue()
-          endif()
-          list(APPEND _enable_extension_flag_list "${_extension_flag}")
-        else()
-          # Add <_extension_flag> to list of disabled extensions (if supported)
-          AddCXXCompilerFlag("${_disable}${_extension_flag}")
-          set(_haveVar "HAVE_${_disable}${_extension_flag}")
-          string(REGEX REPLACE "[-.+/:= ]" "_" _haveVar "${_haveVar}")
-          if(NOT ${_haveVar})
-            if(OFA_VERBOSE)
-              message(STATUS "[OFA] Ignoring flag ${_disable}${_extension_flag} because checks failed")
-            endif()
-            continue()
-          endif()
-          list(APPEND _disable_extension_flag_list "${_extension_flag}")
-        endif()
-      endforeach()
-
-      if(OFA_VERBOSE)
-        # Print enabled extension flags
-        if(_enable_extension_flag_list)
-          list(SORT _enable_extension_flag_list)
-          string(REPLACE ";"  ", " _str "${_enable_extension_flag_list}")
-          string(TOUPPER ${_str} _str)
-          message(STATUS "[OFA] Extensions (enabled): ${_str}")
-        endif()
-        # Print disabled extension flags
-        if(_disable_extension_flag_list)
-          list(SORT _disable_extension_flag_list)
-          string(REPLACE ";"  ", " _str "${_disable_extension_flag_list}")
-          string(TOUPPER ${_str} _str)
-          message(STATUS "[OFA] Extensions (disabled): ${_str}")
-        endif()
-        # Print unhandled extension flags
-        set(_unhandled_extension_list)
-        foreach(_extension ${_available_extension_list})
-          _ofa_find(_check_extension_list "${_extension}" _found)
-          if(NOT _found)
-            list(APPEND _unhandled_extension_list ${_extension})
-          endif()
-        endforeach()
-        if(_unhandled_extension_list)
-          list(SORT _unhandled_extension_list)
-          string(REPLACE ";"  ", " _str "${_unhandled_extension_list}")
-          string(TOUPPER ${_str} _str)
-          message(STATUS "[OFA] Extensions (unhandled): ${_str}")
-        endif()
-      endif()
-
-      # Step 3: Set compiler-specific flags (e.g., -m<feature>/-mno-<feature>)
-      if(MSVC AND MSVC_VERSION GREATER 1700)
-        _ofa_find(_enable_extension_flag_list "avx512f" _found)
+      elseif ("${_check}" MATCHES "^push_enable" ) # Start enable block
+        list(GET _check 1 _push_enable_list)
+        _ofa_find(_push_enable_list "${CMAKE_CXX_COMPILER_ID}" _found)
         if(_found)
-          AddCXXCompilerFlag("/arch:AVX512" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _found)
-        endif()
-        if(NOT _found)
-          _ofa_find(_enable_extension_flag_list "avx2" _found)
-          if(_found)
-            AddCXXCompilerFlag("/arch:AVX2" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _found)
-          endif()
-        endif()
-        if(NOT _found)
-          _ofa_find(_enable_extension_flag_list "avx" _found)
-          if(_found)
-            AddCXXCompilerFlag("/arch:AVX" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _found)
-          endif()
-        endif()
-        if(NOT _found)
-          _ofa_find(_enable_extension_flag_list "sse2" _found)
-          if(_found)
-            AddCXXCompilerFlag("/arch:SSE2" FLAGS OFA_ARCHITECTURE_FLAGS)
-          endif()
-        endif()
-        if(NOT _found)
-          _ofa_find(_enable_extension_flag_list "sse" _found)
-          if(_found)
-            AddCXXCompilerFlag("/arch:SSE" FLAGS OFA_ARCHITECTURE_FLAGS)
-          endif()
-        endif()
-        foreach(_extension ${_enable_extension_flag_list})
-          string(TOUPPER "${_extension}" _extension)
-          string(REPLACE "." "_" _extension "__${_extension}__")
-          add_definitions("-D${_extension}")
-        endforeach(_extension)
-
-      elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel"
-          OR CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
-
-        if(WIN32)
-          # Intel (on Windows)
-          set(OFA_map_knl "-QxKNL;-QxMIC-AVX512")
-          set(OFA_map_knm "-QxKNM;-QxMIC-AVX512")
-          set(OFA_map_rocketlake "-QxROCKETLAKE;-QxCORE-AVX512")
-          set(OFA_map_sapphirerapids "-QxSAPPHIRERAPIDS;-QxCORE-AVX512")
-          set(OFA_map_alderlake "-QxALDERLAKE;-QxCORE-AVX512")
-          set(OFA_map_tigerlake "-QxTIGERLAKE;-QxCORE-AVX512")
-          set(OFA_map_icelake-server "-QxICELAKE-SERVER;-QxCORE-AVX512")
-          set(OFA_map_icelake-avx512 "-QxICELAKE-SERVER;-QxCORE-AVX512")
-          set(OFA_map_icelake-client "-QxICELAKE-CLIENT;-QxCORE-AVX512")
-          set(OFA_map_icelake "-QxICELAKE-CLIENT;-QxCORE-AVX512")
-          set(OFA_map_cannonlake "-QxCANNONLAKE;-QxCORE-AVX512")
-          set(OFA_map_cooperlake "-QxCOOPERLAKE;-QxCORE-AVX512")
-          set(OFA_map_cascadelake "-QxCASCADELAKE;-QxCORE-AVX512")
-          set(OFA_map_skylake-avx512 "-QxSKYLAKE-AVX512;-QxCORE-AVX512")
-          set(OFA_map_skylake "-QxSKYLAKE;-QxCORE-AVX2")
-          set(OFA_map_broadwell "-QxBROADWELL;-QxCORE-AVX2")
-          set(OFA_map_haswell "-QxHASWELL;-QxCORE-AVX2")
-          set(OFA_map_ivybridge "-QxIVYBRIDGE;-QxCORE-AVX-I")
-          set(OFA_map_sandybridge "-QxSANDYBRIDGE;-QxAVX")
-          set(OFA_map_westmere "-QxSSE4.2")
-          set(OFA_map_nehalem "-QxSSE4.2")
-          set(OFA_map_penryn "-QxSSSE3")
-          set(OFA_map_merom "-QxSSSE3")
-          set(OFA_map_core2 "-QxSSE3")
-          set(_ok FALSE)
+          list(PREPEND _skip_check FALSE)
         else()
-          # Intel (in Linux)
-          set(OFA_map_knl "-xKNL;-xMIC-AVX512")
-          set(OFA_map_knm "-xKNM;-xMIC-AVX512")
-          set(OFA_map_rocketlake "-xROCKETLAKE;-xCORE-AVX512")
-          set(OFA_map_sapphirerapids "-xSAPPHIRERAPIDS;-xCORE-AVX512")
-          set(OFA_map_alderlake "-xALDERLAKE;-xCORE-AVX512")
-          set(OFA_map_tigerlake "-xTIGERLAKE;-xCORE-AVX512")
-          set(OFA_map_icelake-server "-xICELAKE-SERVER;-xCORE-AVX512")
-          set(OFA_map_icelake-avx512 "-xICELAKE-SERVER;-xCORE-AVX512")
-          set(OFA_map_icelake-client "-xICELAKE-CLIENT;-xCORE-AVX512")
-          set(OFA_map_icelake "-xICELAKE-CLIENT;-xCORE-AVX512")
-          set(OFA_map_cannonlake "-xCANNONLAKE;-xCORE-AVX512")
-          set(OFA_map_cooperlake "-xCOOPERLAKE;-xCORE-AVX512")
-          set(OFA_map_cascadelake "-xCASCADELAKE;-xCORE-AVX512")
-          set(OFA_map_skylake-avx512 "-xSKYLAKE-AVX512;-xCORE-AVX512")
-          set(OFA_map_skylake "-xSKYLAKE;-xCORE-AVX2")
-          set(OFA_map_broadwell "-xBROADWELL;-xCORE-AVX2")
-          set(OFA_map_haswell "-xHASWELL;-xCORE-AVX2")
-          set(OFA_map_ivybridge "-xIVYBRIDGE;-xCORE-AVX-I")
-          set(OFA_map_sandybridge "-xSANDYBRIDGE;-xAVX")
-          set(OFA_map_westmere "-xSSE4.2")
-          set(OFA_map_nehalem "-xSSE4.2")
-          set(OFA_map_penryn "-xSSSE3")
-          set(OFA_map_merom "-xSSSE3")
-          set(OFA_map_core2 "-xSSE3")
-          set(_ok FALSE)
+          list(PREPEND _skip_check TRUE)
         endif()
+        continue()
 
-        foreach(_arch ${_march_flag_list})
-          if(DEFINED OFA_map_${_arch})
-            foreach(_flag ${OFA_map_${_arch}})
-              AddCXXCompilerFlag(${_flag} FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
-              if(_ok)
-                break()
-              endif()
-            endforeach()
-            if(_ok)
-              break()
-            endif()
-          endif()
-        endforeach()
-        if(NOT _ok)
-          # This is the Intel compiler, so SSE2 is a very reasonable baseline.
-          message(STATUS "[OFA] Did not recognize the requested architecture flag ${_arch}, falling back to SSE2")
-          if(WIN32)
-            AddCXXCompilerFlag("-QxSSE2" FLAGS OFA_ARCHITECTURE_FLAGS)
-          else()
-            AddCXXCompilerFlag("-xSSE2" FLAGS OFA_ARCHITECTURE_FLAGS)
-          endif()
+      elseif ("${_check}" MATCHES "^pop_enable" ) # End enable block
+        list(POP_FRONT _skip_check)
+        continue()
+
+      elseif ("${_check}" MATCHES "^push_disable" ) # Start disable block
+        list(GET _check 1 _push_disable_list)
+        _ofa_find(_push_disable_list "${CMAKE_CXX_COMPILER_ID}" _found)
+        if(_found)
+          list(PREPEND _skip_check TRUE)
+        else()
+          list(PREPEND _skip_check FALSE)
         endif()
+        continue()
 
-        # Set -m<_extension> flag for enabled features
-        foreach(_extension ${_enable_extension_flag_list})
-          AddCXXCompilerFlag("${_enable}${_extension}" FLAGS OFA_ARCHITECTURE_FLAGS)
-        endforeach(_extension)
+      elseif ("${_check}" MATCHES "^pop_disable" ) # End disable block
+        list(POP_FRONT _skip_check)
+        continue()
+      endif()
 
-        # Set -mno-<_extension> flag for disabled features
-        foreach(_extension ${_disable_extension_flag_list})
-          AddCXXCompilerFlag("${_disable}${_extension}" FLAGS OFA_ARCHITECTURE_FLAGS)
-        endforeach(_extension)
+      # Skip test?
+      list(GET _skip_check 0 _skip)
+      if(_skip)
+        continue()
+      endif()
 
-      elseif(CMAKE_CXX_COMPILER_ID MATCHES "SunPro")
+      # Extract extra CPU extensions, header files, function name, and parameters
+      list(GET _check 0 _check_extension_flags)
+      list(GET _check 1 _check_headers)
+      list(GET _check 2 _check_function)
+      list(GET _check 3 _check_params)
 
-        # Set -xtarget flag
-        foreach(_flag ${_march_flag_list})
-          AddCXXCompilerFlag("-xtarget=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
-          if(_good)
-            break()
-          endif(_good)
-        endforeach(_flag)
+      # Convert list of extensions into compiler flags
+      string(REPLACE "," ";" _check_extension_flags "${_check_extension_flags}")
+      list(GET _check_extension_flags 0 _extension_flag)
+      string(REPLACE ";" " ${_enable_flag}" _check_flags "${_enable_flag}${_check_extension_flags}")
+      list(APPEND _check_extension_flag_list "${_extension_flag}")
 
-        # Set -xarch=<feature> flag for enabled features
-        foreach(_flag ${_enable_extension_flag_list})
-          AddCXXCompilerFlag("-xarch=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS)
-        endforeach(_flag)
-        
-        # TODO PGI/Cray ..
-        
+      # Extract optional extension alias
+      list(LENGTH _check _len)
+      if(${_len} EQUAL 5)
+        list(GET _check 4 _extension)
       else()
-        # Others: GNU, Clang and variants
+        set(_extension "${_extension_flag}")
+      endif()
 
-        # Set -march flag
-        foreach(_flag ${_march_flag_list})
-          AddCXXCompilerFlag("-march=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
-          if(_good)
-            break()
-          endif(_good)
-        endforeach(_flag)
+      list(APPEND _check_extension_list "${_extension}")
 
-        # Set -m<feature> flag for enabled features
-        foreach(_flag ${_enable_extension_flag_list})
-          AddCXXCompilerFlag("-m${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS)
-        endforeach(_flag)
+      # Define USE_<_extension_flag> variable
+      set(_useVar "USE_${_extension_flag}")
+      string(TOUPPER "${_useVar}" _useVar)
+      string(REPLACE "." "_" _useVar "${_useVar}")
 
-        # Set -mno-feature flag for disabled features
-        foreach(_flag ${_disable_extension_flag_list})
-          AddCXXCompilerFlag("-mno-${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS)
-        endforeach(_flag)
+      # If not specified externally, set the value of the
+      # USE_<_extension_flag> variable to TRUE if it is found in the list
+      # of available extensions and FALSE otherwise
+      if(NOT DEFINED ${_useVar})
+        _ofa_find(_available_extension_list "${_extension}" _found)
+        set(${_useVar} ${_found})
+      endif()
+
+      if(${_useVar})
+        # Check if the compiler supports the -m<_extension_flag>
+        # flag and can compile the provided test code with it
+        set(_code "\nint main() { ${_check_function}(${_check_params})\; return 0\; }")
+        AddCXXCompilerFlag("${_enable_flag}${_extension_flag}"
+          EXTRA_FLAGS ${_check_flags}
+          HEADERS     ${_check_headers}
+          CODE        "${_code}"
+          RESULT      _ok)
+        if(NOT ${_ok})
+          # Test failed
+          set(${_useVar} FALSE CACHE BOOL "Use ${_extension} extension.")
+        else()
+          # Test succeeded
+          set(${_useVar} TRUE CACHE BOOL "Use ${_extension} extension.")
+        endif()
+      else()
+        # Disable extension without running tests
+        set(${_useVar} FALSE CACHE BOOL "Use ${_extension} extension.")
+      endif()
+      mark_as_advanced(${_useVar})
+    endforeach()
+
+    # Generate lists of enabled/disabled flags
+    list(REMOVE_DUPLICATES _check_extension_flag_list)
+    foreach(_extension_flag ${_check_extension_flag_list})
+      _ofa_find(_available_extension_list "${_extension_flag}" _found)
+      set(_useVar "USE_${_extension_flag}")
+      string(TOUPPER "${_useVar}" _useVar)
+      string(REPLACE "." "_" _useVar "${_useVar}")
+
+      if(${_useVar})
+        # Add <_extension_flag> to list of enabled extensions (if supported)
+        set(_haveVar "HAVE_${_enable_flag}${_extension_flag}")
+        string(REGEX REPLACE "[-.+/:= ]" "_" _haveVar "${_haveVar}")
+        if(NOT ${_haveVar})
+          if(OFA_VERBOSE)
+            message(STATUS "[OFA] Ignoring flag ${_enable_flag}${_extension_flag} because checks failed")
+          endif()
+          continue()
+        endif()
+        list(APPEND _enable_extension_flag_list "${_extension_flag}")
+      elseif(DEFINED _disable_flag)
+        # Add <_extension_flag> to list of disabled extensions (if supported)
+        AddCXXCompilerFlag("${_disable_flag}${_extension_flag}")
+        set(_haveVar "HAVE_${_disable_flag}${_extension_flag}")
+        string(REGEX REPLACE "[-.+/:= ]" "_" _haveVar "${_haveVar}")
+        if(NOT ${_haveVar})
+          if(OFA_VERBOSE)
+            message(STATUS "[OFA] Ignoring flag ${_disable_flag}${_extension_flag} because checks failed")
+          endif()
+          continue()
+        endif()
+        list(APPEND _disable_extension_flag_list "${_extension_flag}")
+      endif()
+    endforeach()
+
+    if(OFA_VERBOSE)
+      # Print enabled extension flags
+      if(_enable_extension_flag_list)
+        list(SORT _enable_extension_flag_list)
+        string(REPLACE ";"  ", " _str "${_enable_extension_flag_list}")
+        string(TOUPPER ${_str} _str)
+        message(STATUS "[OFA] Extensions (enabled): ${_str}")
+      endif()
+      # Print disabled extension flags
+      if(_disable_extension_flag_list)
+        list(SORT _disable_extension_flag_list)
+        string(REPLACE ";"  ", " _str "${_disable_extension_flag_list}")
+        string(TOUPPER ${_str} _str)
+        message(STATUS "[OFA] Extensions (disabled): ${_str}")
+      endif()
+      # Print unhandled extension flags
+      set(_unhandled_extension_list)
+      foreach(_extension ${_available_extension_list})
+        _ofa_find(_check_extension_list "${_extension}" _found)
+        if(NOT _found)
+          list(APPEND _unhandled_extension_list ${_extension})
+        endif()
+      endforeach()
+      if(_unhandled_extension_list)
+        list(SORT _unhandled_extension_list)
+        string(REPLACE ";"  ", " _str "${_unhandled_extension_list}")
+        string(TOUPPER ${_str} _str)
+        message(STATUS "[OFA] Extensions (unhandled): ${_str}")
       endif()
     endif()
 
+    # Step 3: Set compiler-specific flags (e.g., -m<feature>/-mno-<feature>)
+    if(MSVC AND MSVC_VERSION GREATER 1700)
+      _ofa_find(_enable_extension_flag_list "avx512f" _found)
+      if(_found)
+        AddCXXCompilerFlag("/arch:AVX512" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _found)
+      endif()
+      if(NOT _found)
+        _ofa_find(_enable_extension_flag_list "avx2" _found)
+        if(_found)
+          AddCXXCompilerFlag("/arch:AVX2" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _found)
+        endif()
+      endif()
+      if(NOT _found)
+        _ofa_find(_enable_extension_flag_list "avx" _found)
+        if(_found)
+          AddCXXCompilerFlag("/arch:AVX" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _found)
+        endif()
+      endif()
+      if(NOT _found)
+        _ofa_find(_enable_extension_flag_list "sse2" _found)
+        if(_found)
+          AddCXXCompilerFlag("/arch:SSE2" FLAGS OFA_ARCHITECTURE_FLAGS)
+        endif()
+      endif()
+      if(NOT _found)
+        _ofa_find(_enable_extension_flag_list "sse" _found)
+        if(_found)
+          AddCXXCompilerFlag("/arch:SSE" FLAGS OFA_ARCHITECTURE_FLAGS)
+        endif()
+      endif()
+      foreach(_extension ${_enable_extension_flag_list})
+        string(TOUPPER "${_extension}" _extension)
+        string(REPLACE "." "_" _extension "__${_extension}__")
+        add_definitions("-D${_extension}")
+      endforeach(_extension)
+
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel"
+        OR CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+
+      if(WIN32)
+        # Intel (on Windows)
+        set(OFA_map_knl "-QxKNL;-QxMIC-AVX512")
+        set(OFA_map_knm "-QxKNM;-QxMIC-AVX512")
+        set(OFA_map_rocketlake "-QxROCKETLAKE;-QxCORE-AVX512")
+        set(OFA_map_sapphirerapids "-QxSAPPHIRERAPIDS;-QxCORE-AVX512")
+        set(OFA_map_alderlake "-QxALDERLAKE;-QxCORE-AVX512")
+        set(OFA_map_tigerlake "-QxTIGERLAKE;-QxCORE-AVX512")
+        set(OFA_map_icelake-server "-QxICELAKE-SERVER;-QxCORE-AVX512")
+        set(OFA_map_icelake-avx512 "-QxICELAKE-SERVER;-QxCORE-AVX512")
+        set(OFA_map_icelake-client "-QxICELAKE-CLIENT;-QxCORE-AVX512")
+        set(OFA_map_icelake "-QxICELAKE-CLIENT;-QxCORE-AVX512")
+        set(OFA_map_cannonlake "-QxCANNONLAKE;-QxCORE-AVX512")
+        set(OFA_map_cooperlake "-QxCOOPERLAKE;-QxCORE-AVX512")
+        set(OFA_map_cascadelake "-QxCASCADELAKE;-QxCORE-AVX512")
+        set(OFA_map_skylake-avx512 "-QxSKYLAKE-AVX512;-QxCORE-AVX512")
+        set(OFA_map_skylake "-QxSKYLAKE;-QxCORE-AVX2")
+        set(OFA_map_broadwell "-QxBROADWELL;-QxCORE-AVX2")
+        set(OFA_map_haswell "-QxHASWELL;-QxCORE-AVX2")
+        set(OFA_map_ivybridge "-QxIVYBRIDGE;-QxCORE-AVX-I")
+        set(OFA_map_sandybridge "-QxSANDYBRIDGE;-QxAVX")
+        set(OFA_map_westmere "-QxSSE4.2")
+        set(OFA_map_nehalem "-QxSSE4.2")
+        set(OFA_map_penryn "-QxSSSE3")
+        set(OFA_map_merom "-QxSSSE3")
+        set(OFA_map_core2 "-QxSSE3")
+        set(_ok FALSE)
+      else()
+        # Intel (in Linux)
+        set(OFA_map_knl "-xKNL;-xMIC-AVX512")
+        set(OFA_map_knm "-xKNM;-xMIC-AVX512")
+        set(OFA_map_rocketlake "-xROCKETLAKE;-xCORE-AVX512")
+        set(OFA_map_sapphirerapids "-xSAPPHIRERAPIDS;-xCORE-AVX512")
+        set(OFA_map_alderlake "-xALDERLAKE;-xCORE-AVX512")
+        set(OFA_map_tigerlake "-xTIGERLAKE;-xCORE-AVX512")
+        set(OFA_map_icelake-server "-xICELAKE-SERVER;-xCORE-AVX512")
+        set(OFA_map_icelake-avx512 "-xICELAKE-SERVER;-xCORE-AVX512")
+        set(OFA_map_icelake-client "-xICELAKE-CLIENT;-xCORE-AVX512")
+        set(OFA_map_icelake "-xICELAKE-CLIENT;-xCORE-AVX512")
+        set(OFA_map_cannonlake "-xCANNONLAKE;-xCORE-AVX512")
+        set(OFA_map_cooperlake "-xCOOPERLAKE;-xCORE-AVX512")
+        set(OFA_map_cascadelake "-xCASCADELAKE;-xCORE-AVX512")
+        set(OFA_map_skylake-avx512 "-xSKYLAKE-AVX512;-xCORE-AVX512")
+        set(OFA_map_skylake "-xSKYLAKE;-xCORE-AVX2")
+        set(OFA_map_broadwell "-xBROADWELL;-xCORE-AVX2")
+        set(OFA_map_haswell "-xHASWELL;-xCORE-AVX2")
+        set(OFA_map_ivybridge "-xIVYBRIDGE;-xCORE-AVX-I")
+        set(OFA_map_sandybridge "-xSANDYBRIDGE;-xAVX")
+        set(OFA_map_westmere "-xSSE4.2")
+        set(OFA_map_nehalem "-xSSE4.2")
+        set(OFA_map_penryn "-xSSSE3")
+        set(OFA_map_merom "-xSSSE3")
+        set(OFA_map_core2 "-xSSE3")
+        set(_ok FALSE)
+      endif()
+
+      foreach(_arch ${_march_flag_list})
+        if(DEFINED OFA_map_${_arch})
+          foreach(_flag ${OFA_map_${_arch}})
+            AddCXXCompilerFlag(${_flag} FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+            if(_ok)
+              break()
+            endif()
+          endforeach()
+          if(_ok)
+            break()
+          endif()
+        endif()
+      endforeach()
+      if(NOT _ok)
+        # This is the Intel compiler, so SSE2 is a very reasonable baseline.
+        message(STATUS "[OFA] Did not recognize the requested architecture flag ${_arch}, falling back to SSE2")
+        if(WIN32)
+          AddCXXCompilerFlag("-QxSSE2" FLAGS OFA_ARCHITECTURE_FLAGS)
+        else()
+          AddCXXCompilerFlag("-xSSE2" FLAGS OFA_ARCHITECTURE_FLAGS)
+        endif()
+      endif()
+
+      # Set -m<_extension> flag for enabled features
+      foreach(_extension ${_enable_extension_flag_list})
+        AddCXXCompilerFlag("${_enable_flag}${_extension}" FLAGS OFA_ARCHITECTURE_FLAGS)
+      endforeach(_extension)
+
+      # Set -mno-<_extension> flag for disabled features
+      if(DEFINED _disable_flag)
+        foreach(_extension ${_disable_extension_flag_list})
+          AddCXXCompilerFlag("${_disable_flag}${_extension}" FLAGS OFA_ARCHITECTURE_FLAGS)
+        endforeach(_extension)
+      endif()
+
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "SunPro")
+
+      # Set -xtarget flag
+      foreach(_flag ${_march_flag_list})
+        AddCXXCompilerFlag("-xtarget=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
+        if(_good)
+          break()
+        endif(_good)
+      endforeach(_flag)
+
+      # Set -xarch=<feature> flag for enabled features
+      foreach(_flag ${_enable_extension_flag_list})
+        AddCXXCompilerFlag("-xarch=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS)
+      endforeach(_flag)
+
+      # TODO PGI/Cray ...
+
+    else()
+      # Others: GNU, Clang and variants
+
+      # Set -march flag
+      foreach(_flag ${_march_flag_list})
+        AddCXXCompilerFlag("-march=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
+        if(_good)
+          break()
+        endif(_good)
+      endforeach(_flag)
+
+      # Set -m<feature> flag for enabled features
+      foreach(_flag ${_enable_extension_flag_list})
+        AddCXXCompilerFlag("-m${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS)
+      endforeach(_flag)
+
+      # Set -mno-feature flag for disabled features
+      foreach(_flag ${_disable_extension_flag_list})
+        AddCXXCompilerFlag("-mno-${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS)
+      endforeach(_flag)
+    endif()
   endif()
 
   # Compile code with profiling instrumentation
@@ -736,6 +740,7 @@ macro(OFA_HandleX86Options)
     endif()
   endif()
 
+  # Remove duplicate flags
   list(REMOVE_DUPLICATES OFA_ARCHITECTURE_FLAGS)
 
   if(OFA_VERBOSE)
