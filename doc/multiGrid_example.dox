@@ -140,15 +140,16 @@ on the command line options, we use
  - a Richardson smoother,
  - a Jacobi smoother,
  - a Gauss-Seidel smoother,
+ - an incomplete LU smoother,
  - a subspace corrected mass smoother, or
  - a hybrid smoother (subspace corrected mass smoother + Gauss-Seidel smoother).
 
 The subspace corrected mass smoother is a multi-patch version as introduced in
 
- - S. Takacs. Robust approximation error estimates and multigrid solvers for isogeometric multi-patch discretizations.
-Mathematical Models and Methods in Applied Sciences, vol. 28 (10), p. 1899 -- 1928, 2018.
  - C. Hofreither and S. Takacs. Robust multigrid for Isogeometric Analysis based on stable splittings of spline spaces.
 SIAM J. on Numerical Analysis, vol. 55 (4), p. 2004 -- 2024, 2017.
+ - S. Takacs. Robust approximation error estimates and multigrid solvers for isogeometric multi-patch discretizations.
+Mathematical Models and Methods in Applied Sciences, vol. 28 (10), p. 1899 -- 1928, 2018.
 
 \snippet multiGrid_example.cpp Define smoothers
 

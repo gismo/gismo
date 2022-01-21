@@ -160,6 +160,8 @@ public:
         return false;
     }
 
+    index_t domainDim() const {return d;}
+
 private:
 
     /// Computes lower, upper and center point of the current element, maps the reference
@@ -171,7 +173,7 @@ private:
         {
             lower[i]  = *curElement[i];
             upper[i]  = *(curElement[i]+1);
-            center[i] = T(0.5) * (lower[i] + upper[i]);
+            center[i] = (T)(0.5) * (lower[i] + upper[i]);
         }
     }
 

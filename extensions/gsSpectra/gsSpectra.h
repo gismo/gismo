@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsCore/gsConfig.h>
+#include <gsCore/gsLinearAlgebra.h>
 
 #include <Spectra/Spectra/SymEigsSolver.h>
 #include <Spectra/Spectra/SymEigsShiftSolver.h>
@@ -44,6 +45,7 @@ public:
     typedef typename MatrixType::Nested NestedMatrix;
     NestedMatrix m_mat;
 public:
+    SpectraMatProd(const MatrixType&&   ) = delete;
     SpectraMatProd(const MatrixType& mat) : m_mat(mat) { }
     int rows() const { return m_mat.rows(); }
     int cols() const { return m_mat.cols(); }
@@ -67,6 +69,7 @@ public:
     typename gsSparseSolver<Scalar>::LU m_solver;
 
 public:
+    SpectraMatShiftSolve(const MatrixType&&   ) = delete;
     SpectraMatShiftSolve(const MatrixType& mat)
     :
     m_mat(mat), m_n(mat.rows())
@@ -141,7 +144,7 @@ public:
     gsInfo << slv.eigenvalues()  <<"\n";
     gsInfo << slv.eigenvectors() <<"\n";
     }
-    \code
+    \endcode
 */
 template <class MatrixType>
 class gsSpectraSolver : private SpectraMatProd<MatrixType>,

@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     //! [refViaStdVec]
 
     // Export the refined basis to paraview files
-    gsWriteParaview(thb, "thb1_refined" );
+    gsWriteParaview(thb, "thb_refined_first" );
     gsInfo << "after refinement," << std::endl;
 
     //! [stdOpsCout]
@@ -178,7 +178,17 @@ int main(int argc, char *argv[])
     gsInfo << "after 2nd refinement, this basis is:\n" << thb << std::endl;
     //! [refViaStdVec2]
 
-    gsWriteParaview(thb, "thb2_refined" );
+    gsWriteParaview(thb, "thb_refined_second" );
+
+    boxSide side(1);
+    gsMatrix<index_t> result = thb.boundaryOffset(1,0);
+    gsInfo<<"Basis indices along side "<<side<<": "<<result.transpose()<<"\n";
+
+    for (index_t k=1; k<5; k++)
+    {
+        boxCorner corner(k);
+        gsInfo<<"Basis function index in corner "<<corner<<": "<<thb.functionAtCorner(corner)<<"\n";
+    }
 
     // --------------- plot basis after 1 refinement ---------------
     //! [Plot in Paraview]

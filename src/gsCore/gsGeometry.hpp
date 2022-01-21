@@ -104,7 +104,7 @@ gsMatrix<T> gsGeometry<T>::parameterCenter( const boxSide& bc )
     for (index_t d=0; d<dim;++d)
     {
         if (d != dir)
-            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / T(2);
+            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / (T)(2);
         else if (bc.parameter())
             coordinates(d,0) = supp(d,1);
         else
@@ -170,6 +170,14 @@ gsGeometry<T>::boundary(boxSide const& s) const
 
     typename gsBasis<T>::uPtr Bs = this->basis().boundaryBasis(s);  // Basis for boundary side s
     return Bs->makeGeometry( give(coeffs) );
+}
+
+template<class T>
+typename gsGeometry<T>::uPtr
+gsGeometry<T>::iface(const boundaryInterface & bi,
+                     const gsGeometry & other) const
+{
+    GISMO_NO_IMPLEMENTATION
 }
 
 template<class T>
@@ -308,7 +316,7 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
         }
     }
 }
-//*/
+*/
 
 template<class T>
 void gsGeometry<T>::merge(gsGeometry *)
