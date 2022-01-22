@@ -11,10 +11,6 @@ if(GISMO_WITH_CODIPACK)
   include_directories(${CODIPACK_INCLUDE_DIR})
 endif()
 
-if(GISMO_WITH_UNUM)
-  include_directories(${UNUM_INCLUDE_DIR})
-endif()
-
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 #LIST( REMOVE_ITEM SUBDIRS misc)
 LIST( APPEND SUBDIRS gsUtils/gsMesh)
@@ -72,10 +68,6 @@ FOREACH(subdir ${SUBDIRS})
       CACHE INTERNAL "G+Smo modules" )
     math(EXPR ii "${ii}+1")
   endforeach()
-
-  if(GISMO_BUILD_MULTIPRECISION)
-    add_dependencies(${GM_NAME} gsMultiPrecisionExtension)
-  endif()
 
   if (GISMO_BUILD_PCH)
     target_precompiled_header(${GM_NAME} gsPrecompiledHeader)

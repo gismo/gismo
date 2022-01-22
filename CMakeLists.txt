@@ -179,6 +179,10 @@ if (EIGEN_USE_MKL_ALL)
     CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
+if (";${GISMO_SUBMODULES};" MATCHES ";gsUniversal;")
+  gismo_fetch_module(gsUniversal)
+endif()
+
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -258,11 +262,6 @@ if(GISMO_WITH_UMFPACK)
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   #include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
-
-if(GISMO_WITH_UNUM)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsUnum"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif(GISMO_WITH_UNUM)
 
 if(GISMO_WITH_OCC)
   set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsOpenCascade"

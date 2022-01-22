@@ -41,7 +41,8 @@ elseif(${GISMO_COEFF_TYPE} STREQUAL "posit_2_0"   OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_64_3"  OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_128_4" OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_256_5")
-  set(GISMO_WITH_UNUM ON CACHE BOOL "Use UNUM" FORCE)
+  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsUniversal"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
 "float" "double" "long double" "mpfr::mpreal" "mpq_class" "posit_2_0" "posit_3_0" "posit_3_1" "posit_4_0" "posit_8_0" "posit_8_1" "posit_16_1" "posit_32_2" "posit_64_3" "posit_128_4" "posit_256_5")

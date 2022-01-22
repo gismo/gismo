@@ -78,8 +78,8 @@
 #include <gsCoDiPack/exprtk_codi_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_UNUM)
-#include <gsUnum/exprtk_unum_posit_forward.hpp>
+#if defined(gsUniversal_ENABLED)
+#include <gsUniversal/exprtk_unum_posit_forward.hpp>
 #endif
 
 #include <exprtk.hpp>
@@ -100,8 +100,8 @@
 #include <gsCoDiPack/exprtk_codi_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_UNUM)
-#include <gsUnum/exprtk_unum_posit_adaptor.hpp>
+#if defined(gsUniversal_ENABLED)
+#include <gsUniversal/exprtk_unum_posit_adaptor.hpp>
 #endif
 
 

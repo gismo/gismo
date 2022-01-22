@@ -386,7 +386,7 @@ struct is_complex : integral_constant<bool,
 #ifdef GISMO_WITH_GMP
                     is_same<T,std::complex<mpq_class> >::value         ||
 #endif
-#ifdef GISMO_WITH_UNUM
+#ifdef gsUniversal_ENABLED
                     is_same<T,std::complex<posit_32_2> >::value        ||
 #endif
                     is_same<T,std::complex<real_t> >::value

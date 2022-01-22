@@ -15,7 +15,7 @@
 #pragma once
 
 #include <string>
-#include <gsUnum/gsUnum.h>
+#include <gsUniversal/gsUniversal.h>
 
 #include "exprtk_unum_posit_forward.hpp"
 #include "exprtk.hpp"

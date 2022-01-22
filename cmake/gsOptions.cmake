@@ -173,11 +173,6 @@ if  (${GISMO_WITH_UMFPACK})
 message ("  GISMO_WITH_UMFPACK      ${GISMO_WITH_UMFPACK}")
 endif()
 
-option(GISMO_WITH_UNUM           "With Universal NUMber"     false  )
-if  (${GISMO_WITH_UNUM})
-message ("  GISMO_WITH_UNUM         ${GISMO_WITH_UNUM}")
-endif()
-
 ## #################################################################
 ## Options list: Extra options
 ## #################################################################

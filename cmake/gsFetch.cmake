@@ -78,7 +78,9 @@ function(gismo_fetch_directory)
 endfunction()
 
 function(gismo_add_extension SUBMODULE)
-  # get list of programs to compile
+  if(TARGET ${SUBMODULE})
+    return()
+  endif()
   if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
     add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
     if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata")

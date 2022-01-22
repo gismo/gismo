@@ -60,7 +60,6 @@
 #cmakedefine GISMO_WITH_TAUCS
 #cmakedefine GISMO_WITH_TRILINOS
 #cmakedefine GISMO_WITH_UMFPACK
-#cmakedefine GISMO_WITH_UNUM
 
 /* Only include new types here that can be set as real_t */
 
@@ -73,8 +72,8 @@
 #include <unsupported/Eigen/MPQClassExtra>
 #endif
 
-#ifdef GISMO_WITH_UNUM
-#include <gsUnum/gsUnum.h>
+#ifdef gsUniversal_ENABLED
+#include <gsUniversal/gsUniversal.h>
 #endif
 
 /* Determine if only header files should be used. */
