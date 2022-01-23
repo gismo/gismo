@@ -58,7 +58,7 @@ __Disclaimer__: Optional features are not yet fully supported.
 | `mpi`/<br>`nompi` | _Enable/disable building G+Smo with MPI support._ Default is disabled. Not that Trilinos requires MPI to be enabled and will overwrite this setting. |
 | `occ`/<br>`noocc` | _Enable/disable building G+Smo with OpenCascade support._ Default is disabled. |
 | `omp`/<br>`noomp` | _Enable/disable building G+Smo with OpenMP support._ Default is disabled for Clang compiler and enabled for all other compilers. |
-| `onurbs`/<br>`noonurbs` | _Enable/disable building G+Smo with OpenNURBS support._ Default is disabled. |
+| `onurbs`/<br>`noonurbs` | _Enable/disable building G+Smo with gsOpennurbs extension enabled._ Default is disabled. |
 | `pardiso`/<br>`nopardiso` | _Enable/disable building G+Smo with Pardiso support._ Default is disabled. |
 | `pastix`/<br>`nopastix` | _Enable/disable building G+Smo with Pastix support._ Default is disabled. |
 | `pch`/<br>`nopch` | _Enable/disable building G+Smo with support for pre-compiled headers._ Default is disabled. |
@@ -70,7 +70,7 @@ __Disclaimer__: Optional features are not yet fully supported.
 | `trilinos`/<br>`notrilinos` | _Enable/disable building G+Smo with Trilinos support._ Default is disabled. |
 | `umfpack`/<br>`noumfpack` | _Enable/disable building G+Smo with UMFPACK support._ Default is disabled. |
 | `unittests`/<br>`nounittests` | _Enable/disable building G+Smo unittests._ Default is disabled. |
-| `unum`/<br>`nounum` | _Enable/disable building G+Smo with UNUM support._ Default is disabled. |
+| `universal`/<br>`nouniversal` | _Enable/disable building G+Smo with gsUniversal extension enabled._ Default is disabled. |
 
 ## Prebuilt Docker images
 The following Docker images are built automatically for commits to the G+Smo stable branch:

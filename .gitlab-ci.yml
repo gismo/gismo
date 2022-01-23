@@ -70,7 +70,7 @@ linux_x86_64_clang9_cxx14_release_longdouble_int64t:
 
 # Clang 10, C++17, Release
 linux_x86_64_clang10_cxx17_release_mpreal_long:
-    extends: .test:linux:base
+  extends: .test:linux:base
   variables:
     IMAGE:            "silkeh/clang:10"
     CNAME:            "/usr/local/bin/clang"
@@ -79,7 +79,7 @@ linux_x86_64_clang10_cxx17_release_mpreal_long:
 
 # Clang 11, C++20, Release
 linux_x86_64_clang11_cxx20_release_mpq_long:
-    extends: .test:linux:base
+  extends: .test:linux:base
   variables:
     IMAGE:            "silkeh/clang:11"
     CNAME:            "/usr/local/bin/clang"

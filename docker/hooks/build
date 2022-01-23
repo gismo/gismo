@@ -533,7 +533,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with OpenNURBS support
+# Build G+Smo with gsOpennurbs extension enabled
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noonurbs?(\-*))
@@ -653,14 +653,17 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with UNUM support
+# Build G+Smo with gsUniversal extension enabled
 shopt -s extglob;
 case "$IMAGE_NAME" in
-    ?(*\-)nounum?(\-*))
-        GISMO_WITH_UNUM=OFF
+    ?(*\-)nouniversal?(\-*))
         ;;
-    ?(*\-)unum?(\-*))
-        GISMO_WITH_UNUM=ON
+    ?(*\-)universal?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsUniversal
+        else
+            GISMO_SUBMODULES=gsOpennurbs
+        fi
         ;;
     *)
         GISMO_WITH_UNUM=OFF
