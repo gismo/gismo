@@ -29,14 +29,14 @@ gismo_fetch_directory(universal
 )
 
 # Set Unum include directory
-set(UNUM_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/universal/include CACHE INTERNAL "")
+set(UNIVERSAL_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/universal/include CACHE INTERNAL "")
 
 # Add Unum include directory to G+Smo standard include directories
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNUM_INCLUDE_DIR}
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${UNIVERSAL_INCLUDE_DIR}
   CACHE INTERNAL "gismo include directories")
 
 # Install Unum header files
-install(DIRECTORY ${UNUM_INCLUDE_DIR}/universal
+install(DIRECTORY ${UNIVERSAL_INCLUDE_DIR}/universal
         DESTINATION include/gismo/)
 
 # Install gsUniversal extension header files

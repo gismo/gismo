@@ -79,7 +79,7 @@
 #endif
 
 #if defined(gsUniversal_ENABLED)
-#include <gsUniversal/exprtk_unum_posit_forward.hpp>
+#include <gsUniversal/exprtk_universal_forward.hpp>
 #endif
 
 #include <exprtk.hpp>
@@ -101,7 +101,7 @@
 #endif
 
 #if defined(gsUniversal_ENABLED)
-#include <gsUniversal/exprtk_unum_posit_adaptor.hpp>
+#include <gsUniversal/exprtk_universal_adaptor.hpp>
 #endif
 
 

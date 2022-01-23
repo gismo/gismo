@@ -1,4 +1,4 @@
-/** @file exprtk_unum_posit_adaptor.hpp
+/** @file exprtk_universal_adaptor.hpp
 
     @brief Provides an exprtk adaptor for the Unum Posit arithmetic
     type
@@ -17,7 +17,7 @@
 #include <string>
 #include <gsUniversal/gsUniversal.h>
 
-#include "exprtk_unum_posit_forward.hpp"
+#include "exprtk_universal_forward.hpp"
 #include "exprtk.hpp"
 
 
@@ -26,7 +26,7 @@ namespace exprtk
 namespace details
 {
 
-namespace constant_unum_posit
+namespace constant_universal
 {
 static const double e       =  2.71828182845904523536028747135266249775724709369996;
 static const double pi      =  3.14159265358979323846264338327950288419716939937510;
@@ -38,51 +38,51 @@ static const double _2_pi   =  0.63661977236758134307553505349005744813783858296
 static const double _180_pi = 57.29577951308232087679815481410517033240547246656443;
 static const double log2    =  0.69314718055994530941723212145817656807550013436026;
 static const double sqrt2   =  1.41421356237309504880168872420969807856967187537695;
-} // namespace constant_unum_posit  
+} // namespace constant_universal  
 }
 }
 
 
-#define UNUM_TYPE posit_256_5
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_256_5
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_128_4
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_128_4
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_64_3
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_64_3
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_32_2
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_32_2
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_16_1
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_16_1
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_8_1
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_8_1
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_8_0
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_8_0
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_4_0
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_4_0
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_3_1
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_3_1
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_3_0
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_3_0
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE
 
-#define UNUM_TYPE posit_2_0
-#include "exprtk_unum_posit_adaptor.h"
-#undef UNUM_TYPE
+#define UNIVERSAL_TYPE posit_2_0
+#include "exprtk_universal_adaptor.h"
+#undef UNIVERSAL_TYPE

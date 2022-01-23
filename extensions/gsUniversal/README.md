@@ -1,8 +1,8 @@
-# Unum extension
+# Universal extension
 
 G+Smo extension for the [Universal Number Arithmetic](https://github.com/stillwater-sc/universal) library.
 
-|CMake flags|```-DGISMO_WITH_UNUM=ON``` (default ```OFF```)|
+|CMake flags|```-DGISMO_SUBMODULES="gsUniversal``` (included automatically if `GISMO_COEFF_TYPE` is a posit)|
 |--:|---|
 |Required additional CMake flags|```-DCMAKE_CXX_STANDARD=14``` (or better)|
 |License|[MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)|
@@ -25,7 +25,7 @@ The Universal Number Arithmetic extension builds on the open-source header-only 
 
 ## Posits
 
-G+Smo's Unum extension currently supports the following Posit number systems:
+G+Smo's Universal extension currently supports the following Posit number systems:
 
 -  `posit_2_0`
 -  `posit_3_0`
