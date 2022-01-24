@@ -39,29 +39,28 @@ public:
 
 
 public:
-    ~gsHBox() {  }
 
     gsHBox() { }
 
-    // gsHBox(const gsHDomainIterator<T,d> * domHIt);
+    gsHBox(const gsHDomainIterator<T,d> * domHIt);
 
-    gsHBox(const point & low,const point & upp, index_t level, const gsHTensorBasis<d,T> * basis);
+    gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis);
 
     gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis);
 
     gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis);
 
-    /// Copy constructor (makes deep copy)
-    gsHBox( const gsHBox<d,T> & other );
+    // /// Copy constructor (makes deep copy)
+    // gsHBox( const gsHBox<d,T> & other );
 
-    /// Move constructor
-    gsHBox( gsHBox<d,T> && other );
+    // /// Move constructor
+    // gsHBox( gsHBox<d,T> && other );
 
-    /// Assignment operator
-    gsHBox<d,T> & operator= ( const gsHBox<d,T> & other );
+    // /// Assignment operator
+    // gsHBox<d,T> & operator= ( const gsHBox<d,T> & other );
 
-    /// Move assignment operator
-    gsHBox<d,T> & operator= ( gsHBox<d,T> && other );
+    // /// Move assignment operator
+    // gsHBox<d,T> & operator= ( gsHBox<d,T> && other );
 
     /**
      * @brief      Checks if the \a other cell is contained in \a this cell

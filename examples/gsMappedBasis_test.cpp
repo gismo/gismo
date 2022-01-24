@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
         // Biharmonic
         A.assemble(  ilapl(u,G) * ilapl(u,G).tr() * meas(G), u * blf * meas(G) );
         auto g_N = f;// A.getBdrFunction(); // Neumann term
-        A.assembleRhsBc( igrad(u,G) * nv(G) * ilapl(g_N), bc.dirichletSides() );
+        A.assembleBdr(  bc.get("Dirichlet"), igrad(u,G) * nv(G) * ilapl(g_N) );
 
         gsInfo<< "." <<std::flush;// Assemblying done
 

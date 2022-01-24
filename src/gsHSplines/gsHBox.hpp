@@ -67,40 +67,40 @@ gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<
     m_basis = basis;
 }
 
-template <short_t d, class T>
-gsHBox<d, T>::gsHBox( const gsHBox<d,T> & other )
-{
-    operator=(other);
-}
+// template <short_t d, class T>
+// gsHBox<d, T>::gsHBox( const gsHBox<d,T> & other )
+// {
+//     operator=(other);
+// }
 
-template <short_t d, class T>
-gsHBox<d, T>::gsHBox( gsHBox<d,T> && other )
-{
-    operator=(give(other));
-}
+// template <short_t d, class T>
+// gsHBox<d, T>::gsHBox( gsHBox<d,T> && other )
+// {
+//     operator=(give(other));
+// }
 
-template <short_t d, class T>
-gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
-{
-    if (this!=&other)
-    {
-        m_indices = other.m_indices;
-        m_coords  = other.m_coords;
-        m_center  = other.m_center;
-        m_basis   = other.m_basis;
-    }
-    return *this;
-}
+// template <short_t d, class T>
+// gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
+// {
+//     if (this!=&other)
+//     {
+//         m_indices = other.m_indices;
+//         m_coords  = other.m_coords;
+//         m_center  = other.m_center;
+//         m_basis   = other.m_basis;
+//     }
+//     return *this;
+// }
 
-template <short_t d, class T>
-gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
-{
-    m_indices = give(other.m_indices);
-    m_coords  = give(other.m_coords);
-    m_center  = give(other.m_center);
-    m_basis   = give(other.m_basis);
-    return *this;
-}
+// template <short_t d, class T>
+// gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
+// {
+//     m_indices = give(other.m_indices);
+//     m_coords  = give(other.m_coords);
+//     m_center  = give(other.m_center);
+//     m_basis   = give(other.m_basis);
+//     return *this;
+// }
 
 template <short_t d, class T>
 bool gsHBox<d, T>::isContained(const gsHBox<d,T> & other) const
@@ -561,7 +561,6 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
 {
     SortedContainer scontainer(container.begin(), container.end());
 
-
     struct
     {
         bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
@@ -579,7 +578,6 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
         };
     }
     comp;
-
 
     struct
     {
@@ -602,11 +600,14 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
         gsDebugVar(scontainer.at(k));
 
     typename SortedContainer::iterator it = std::unique(scontainer.begin(),scontainer.end(),pred);
+    gsDebugVar(scontainer.size());
     scontainer.resize(distance(scontainer.begin(), it));
     for (size_t k=0; k!=scontainer.size(); k++)
         gsDebugVar(scontainer.at(k));
+    gsDebugVar(scontainer.size());
 
     Container result(scontainer.begin(),scontainer.end());
+    gsDebugVar("Finished");
     return result;
 }
 
