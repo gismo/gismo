@@ -97,7 +97,7 @@ public:
         if (m_penalty<0)
         {
             const index_t deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
-            m_penalty = T(4) * (deg + basis1.dim()) * (deg + 1);
+            m_penalty = static_cast<T>(4) * static_cast<T>((deg + basis1.dim()) * (deg + 1));
         }
 
         m_alpha     = options.askReal("DG.Alpha", 1);
@@ -190,7 +190,7 @@ public:
             transformGradients(md2, k, grads2, phGrad2);
 
             // Compute element matrices
-            const T c1     = weight / T(2);
+            const T c1     = weight / (T)(2);
             N1.noalias()   = unormal.transpose() * phGrad1;
             N2.noalias()   = unormal.transpose() * phGrad2;
 
@@ -242,7 +242,7 @@ public:
             gsVector<T> parameterCenter = element.centerPoint();
             const gsMatrix<T> center1 = geo.eval(parameterCenter);
 
-            parameterCenter(side.direction()) += ( side.parameter() == 0 ? 1 : -1 )
+            parameterCenter(side.direction()) += static_cast<T>( side.parameter() == 0 ? 1 : -1 )
                                                  * element.getPerpendicularCellSize();
             const gsMatrix<T> center2 = geo.eval(parameterCenter);
 

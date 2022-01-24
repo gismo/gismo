@@ -339,9 +339,7 @@ set(test_runtime 43200) #12h by default
 
 #message(STATUS "Preserve full output (CTEST_FULL_OUTPUT)")
 
-if (NOT DEFINED KEEPCONFIG)
-  find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
-endif()
+find_program(CTEST_UPDATE_COMMAND NAMES ${UPDATE_TYPE} ${UPDATE_TYPE}.exe)
 
 # Initial checkout
 if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}" AND NOT DEFINED KEEPCONFIG)

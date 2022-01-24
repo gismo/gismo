@@ -99,9 +99,8 @@ public:
      */
     template<class T>
     gsDofMapper(const gsMultiBasis<T> & bases, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
-      init(bases, nComp);
+        init(bases, nComp);
     }
 
     /**
@@ -113,7 +112,7 @@ public:
     template<class T>
     gsDofMapper(
         std::vector<const gsMultiBasis<T> *> const & bases
-        ) : m_shift(0), m_bshift(0)
+        )
     {
         init(bases);
     }
@@ -127,7 +126,6 @@ public:
      */
     template<class T>
     gsDofMapper(const gsBasis<T> & basis, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
       initSingle(basis, nComp);
     }
@@ -139,7 +137,6 @@ public:
      * @param patchDofSizes
      */
     gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1)
-      : m_shift(0), m_bshift(0)
     {
         initPatchDofs(patchDofSizes, nComp);
     }
@@ -474,7 +471,7 @@ public:
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
     size_t mapSize() const
-    {return m_dofs.size() * m_dofs.front().size();}
+    { return (m_dofs.empty()?0:m_dofs.size() * m_dofs.front().size()); }
 
     size_t componentsSize() const {return m_dofs.size();}
 
@@ -510,7 +507,26 @@ public:
         return m_dofs[n/m_dofs.front().size()]
             [n%m_dofs.front().size()] + m_shift;
     }
+
+      /// \brief Returns all boundary dofs on patch k (local dof indices)
+     gsVector<index_t> findBoundary(const index_t k) const;
+
+     /// \brief Returns all free dofs on patch k (local dof indices)
+     gsVector<index_t> findFree(const index_t k) const;
+
+     /// \brief Returns all coupled dofs on patch k (local dof indices)
+     gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
+
+     /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
+     gsVector<index_t> findFreeUncoupled(const index_t k) const;
+
+     /// \brief Returns all tagged dofs on patch k (local dof indices)
+     gsVector<index_t> findTagged(const index_t k) const;
+
 private:
+
+    template<class Predicate, class Iterator>
+      static gsVector<index_t> find_impl(Iterator istart, Iterator iend, Predicate pred);
 
     void finalizeComp(const index_t comp);
 

@@ -43,6 +43,8 @@ public:
     typedef memory::unique_ptr< gsMultiPatch > uPtr;
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
+    typedef std::map<boundaryInterface,typename gsGeometry<T>::uPtr>  InterfaceRep;
+    typedef std::map<patchSide,typename gsGeometry<T>::uPtr>         BoundaryRep;
 
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
@@ -125,6 +127,16 @@ public:
     index_t nPieces() const { return static_cast<index_t>(m_patches.size()); }
 
     index_t size() const { return 1; }
+
+    /// Return the number of coefficients (control points)
+    index_t coefsSize() const
+    {
+        index_t sz = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+            sz += (*it)->coefsSize();
+        return sz;
+    }
 
 public:
     /**
@@ -330,13 +342,19 @@ public:
     /// \param points
     /// \param pids vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
-    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim) const;
+    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim, const T accuracy = 1e-6) const;
 
     /// @brief For each point in \a points located on patch pid1, locates the parametric coordinates of the point
     ///
     /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+
+    void constructInterfaceRep();
+    void constructBoundaryRep();
+
+    const InterfaceRep & interfaceRep() const { return m_ifaces; }
+    const BoundaryRep & boundaryRep() const { return m_bdr; }
     
 protected:
 
@@ -346,6 +364,9 @@ protected:
 private:
 
     PatchContainer m_patches;
+
+    InterfaceRep m_ifaces;
+    BoundaryRep m_bdr;
 
 private:
     // implementation functions
@@ -376,6 +397,15 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
 {
     return b.print( os );
 }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMultiPatch
+   */
+  void pybind11_init_gsMultiPatch(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 } // namespace gismo

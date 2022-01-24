@@ -58,9 +58,9 @@ public:
 
     /// @brief Create the ieti mapper
     ///
-    /// @param multiBasis     The corresponding \a gsMultiBasis
-    /// @param gsDofMapper    The dof mapper for the global problem
-    /// @param fixedPart      The function values for the eliminated dofs
+    /// @param multiBasis       The corresponding \a gsMultiBasis
+    /// @param dofMapperGlobal  The dof mapper for the global problem
+    /// @param fixedPart        The function values for the eliminated dofs
     ///
     /// The multibasis object has to outlive the ieti mapper.
     gsIetiMapper(
@@ -72,9 +72,9 @@ public:
 
     /// @brief Init the ieti mapper after default construction
     ///
-    /// @param multiBasis     The corresponding \a gsMultiBasis
-    /// @param gsDofMapper    The dof mapper for the global problem
-    /// @param fixedPart      The function values for the eliminated dofs
+    /// @param multiBasis       The corresponding \a gsMultiBasis
+    /// @param dofMapperGlobal  The dof mapper for the global problem
+    /// @param fixedPart        The function values for the eliminated dofs
     ///
     /// Instances of the class can be reused using this member function.
     void init(

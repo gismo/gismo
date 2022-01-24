@@ -21,5 +21,6 @@ namespace gismo
 
     CLASS_TEMPLATE_INST gsMappedSpline<1,real_t> ;
     CLASS_TEMPLATE_INST gsMappedSpline<2,real_t> ;
+    CLASS_TEMPLATE_INST gsMappedSpline<3,real_t> ;
 
 } // end namespace gismo

@@ -288,7 +288,7 @@ public:
             b_norm += b_at_phys_pts(i,0) * b_at_phys_pts(i,0);
         b_norm = math::sqrt( b_norm );
 
-        T SUPG_param = T(0.0);
+        T SUPG_param = (T)(0.0);
         if( b_norm > 0 )
         {
             gsMatrix<T> aMat;
@@ -301,15 +301,15 @@ public:
 
                 for( index_t i = 0; i <= N; ++i )
                 {
-                    T a = T(i)/T(N);
+                    T a = (T)(i)/(T)(N);
                     aMat(0,i) = a;
-                    aMat(1,i) = T(0.0);
+                    aMat(1,i) = (T)(0.0);
                     aMat(0,i+N1) = a;
-                    aMat(1,i+N1) = T(1.0);
+                    aMat(1,i+N1) = (T)(1.0);
 
-                    aMat(0,i+2*N1) = T(0.0);
+                    aMat(0,i+2*N1) = (T)(0.0);
                     aMat(1,i+2*N1) = a;
-                    aMat(0,i+3*N1) = T(1.0);
+                    aMat(0,i+3*N1) = (T)(1.0);
                     aMat(1,i+3*N1) = a;
                 }
             }
@@ -330,14 +330,14 @@ public:
                 for( index_t i = 0; i <= N; ++i )
                     for( index_t j = 0; j <= N; ++j )
                     {
-                        T ai = T(i)/T(N);
-                        T aj = T(j)/T(N);
-                        aMat(0,ij) = T(0.0);
-                        aMat(1,ij) = T(0.0);
-                        aMat(2,ij) = T(0.0);
-                        aMat(0,ij+N1) = T(1.0);
-                        aMat(1,ij+N1) = T(1.0);
-                        aMat(1,ij+N1) = T(1.0);
+                        T ai = (T)(i)/(T)(N);
+                        T aj = (T)(j)/(T)(N);
+                        aMat(0,ij) = (T)(0.0);
+                        aMat(1,ij) = (T)(0.0);
+                        aMat(2,ij) = (T)(0.0);
+                        aMat(0,ij+N1) = (T)(1.0);
+                        aMat(1,ij+N1) = (T)(1.0);
+                        aMat(1,ij+N1) = (T)(1.0);
 
                     }
                 */
@@ -352,7 +352,7 @@ public:
             for( index_t di = 0; di < d; ++di )
                 for( index_t i = 0; i < aMat.cols(); ++i)
                 {
-                    md.points(di,i) = ( 1 - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
+                    md.points(di,i) = ( (T)(1) - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
                 }
 
             base->computeMap(md);
@@ -367,7 +367,7 @@ public:
                 if( b_proj_max < b_proj(i) )
                     b_proj_max = b_proj(i);
             }
-            SUPG_param = ( b_proj_max - b_proj_min ) / ( 2 * b_norm );
+            SUPG_param = ( b_proj_max - b_proj_min ) / ( (T)(2) * b_norm );
         }
 
         return SUPG_param;

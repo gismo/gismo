@@ -1008,7 +1008,7 @@ namespace exprtk
                if ((v0 < T(0)) && (0 == (n % 2)))
                   return std::numeric_limits<T>::quiet_NaN();
 
-               return std::pow(v0, T(1) / n);
+               return std::pow(v0, T(1) / T(n));
             }
 
             template <typename T>
@@ -13127,7 +13127,7 @@ namespace exprtk
                case 3  : return process_3(arg_list);
                case 4  : return process_4(arg_list);
                case 5  : return process_5(arg_list);
-               default : return vararg_add_op<T>::process(arg_list) / arg_list.size();
+               default : return vararg_add_op<T>::process(arg_list) / static_cast<T>(arg_list.size());
             }
          }
 
@@ -13788,7 +13788,7 @@ namespace exprtk
          {
             const std::size_t vec_size = v->vec()->vds().size();
 
-            return vec_add_op<T>::process(v) / vec_size;
+            return vec_add_op<T>::process(v) / T(vec_size);
          }
       };
 

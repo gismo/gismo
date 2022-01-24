@@ -128,7 +128,8 @@ int main(int argc, char *argv[])
     {
         dbasis.uniformRefine();
 
-        u.setup(bc, dirichlet::interpolation, 0);
+//        u.setup(bc, dirichlet::interpolation, 0);
+        u.setup(bc, dirichlet::l2Projection, 0);
 
         // Initialize the system
         A.initSystem();
@@ -139,17 +140,16 @@ int main(int argc, char *argv[])
         timer.restart();
         // Compute the system matrix and right-hand side
         A.assemble(
-            igrad(u, G) * igrad(u, G).tr()
-            * meas(G)
+            igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
             ,
-            u * ff
-            * meas(G)
+            u * ff * meas(G) //rhs vector
             );
+
+        // Compute the Neumann terms defined on physical space
+        auto g_N = A.getBdrFunction(G);
+        A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
+
         ma_time += timer.stop();
-        
-        // Enforce Neumann conditions to right-hand side
-        // auto g_N = A.getBdrFunction();
-        // A.assembleRhsBc(u * g_N.val() * nv(G).norm(), bc.neumannSides() );
 
         // gsDebugVar(A.matrix().toDense());
         // gsDebugVar(A.rhs().transpose()   );

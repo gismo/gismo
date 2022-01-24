@@ -194,7 +194,7 @@ tmp = putMatrixToXml( box, data, "box" );
 tmp->append_attribute( makeAttribute("level", to_string(boxes[i].level), data ) );
 tp_node->append_node(tmp);
 }
-//*/
+*/
 
     // All set, return the basis
     return tp_node;

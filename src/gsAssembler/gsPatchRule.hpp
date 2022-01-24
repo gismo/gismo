@@ -237,12 +237,12 @@ gsKnotVector<T> gsPatchRule<T>::_init(const gsBSplineBasis<T> * Bbasis) const
     {
         index_t numOver = knots.degree()-1;
 
-        T lowerLength = (knots(1)-knots.first())/(numOver+1);
-        T upperLength = (knots.last()-knots(knots.uSize()-2))/(numOver+1);
+        T lowerLength = (knots(1)-knots.first())/static_cast<T>(numOver+1);
+        T upperLength = (knots.last()-knots(knots.uSize()-2))/static_cast<T>(numOver+1);
         for (index_t k=0; k!=numOver; k++)
         {
-            knots.insert(knots.first()+(k+1)*lowerLength);
-            knots.insert(knots.last()-(k+1)*upperLength);
+            knots.insert(knots.first()+static_cast<T>(k+1)*lowerLength);
+            knots.insert(knots.last()-static_cast<T>(k+1)*upperLength);
         }
 
         size += 2*numOver;

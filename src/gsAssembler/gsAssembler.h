@@ -86,12 +86,14 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
 
     // assumes points u on boundary "s"
     result.resize(md.dim.second);
+    gsMatrix<T,3> tmp;
     if (md.dim.first + 1 == md.dim.second) // surface case GeoDim == 3
     {
         const gsMatrix<T,3,1> Jk = md.jacobian(k).col(!dir);
         // fixme: generalize to nD
         normal(md, k, result);
-        result = result.template head<3>().normalized().cross(sgn * Jk);
+        tmp = result;
+        result = tmp.normalized().cross(sgn * Jk);
 
         /*
           gsDebugVar(result.transpose()); // result 1
@@ -106,7 +108,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
           alt_sgn = -alt_sgn;
           }
           gsDebugVar(result.transpose()); // result 2
-        //*/
+        */
     }
     else // planar case
     {
@@ -391,7 +393,7 @@ public:
     T penalty(index_t k) const
     {
         const short_t deg = m_bases[0][k].maxDegree();
-        return (deg + m_bases[0][k].dim()) * (deg + 1) * T(2.0);
+        return (deg + m_bases[0][k].dim()) * (deg + 1) * 2;
     }
 
     /// @brief Provides an estimation of the number of non-zero matrix
@@ -588,7 +590,7 @@ public:  /* Solution reconstruction */
     ///                   coefficients of result.
     /// \param[in] theta damping factor for update, theta = 1 corresponds to a full step.
     virtual void updateSolution(const gsMatrix<T>& solVector,
-                                gsMultiPatch<T>& result, T theta = T(1)) const;
+                                gsMultiPatch<T>& result, T theta = (T)(1)) const;
 
 public: // *** Accessors ***
 

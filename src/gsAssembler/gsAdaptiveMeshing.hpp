@@ -867,5 +867,4 @@ void gsAdaptiveMeshing<T>::_unrefineElementsThreshold(  gsFunctionSet<T> * input
     }
 }
 
-
 } // namespace gismo

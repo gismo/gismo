@@ -261,6 +261,9 @@ public:
     /// it is inserted p+1 times.
     void splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const;
 
+    typename gsGeometry<T>::uPtr iface(const boundaryInterface & bi,
+                                       const gsGeometry<T> & other) const;
+
 protected:
     // TODO Check function
     // check function: check the coefficient number, degree, knot vector ...
@@ -268,7 +271,18 @@ protected:
     using Base::m_basis;
     using Base::m_coefs;
 
-}; // class gsBSpline
+}; // class gsTensorBSpline
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsTensorBSpline
+   */
+  void pybind11_init_gsTensorBSpline2(pybind11::module &m);
+  void pybind11_init_gsTensorBSpline3(pybind11::module &m);
+  void pybind11_init_gsTensorBSpline4(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

@@ -265,11 +265,10 @@ public:
                           std::vector<gsMatrix<T> > & result) const
     { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
 
-    /// @}
-
-
     // Look at gsFunctionSet for documentation
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
+
+    /// @}
 
     /// \brief Evaluates if the geometry orientation coincide with the
     /// ambient orientation.
@@ -281,12 +280,10 @@ public:
         if ( parDim() == geoDim() )
         {
             const T val = gsFunction<T>::jacobian( parameterCenter() ).determinant();
-            return (T(0) < val) - (val < T(0));
+            return (T(0) < val) - (val < (T)(0));
         }
         return 1;
     }
-
-    /// @}
 
     /*************************************************************************/
 
@@ -332,7 +329,7 @@ public:
     { 
         // default impl. assumes convex support
         gsMatrix<T> S = this->basis().support();
-        return ( S.col(0) + S.col(1) ) * T(0.5);
+        return ( S.col(0) + S.col(1) ) * (T)(0.5);
     }
 
     /// Get coordinates of the boxCorner \a bc in the parameter domain
@@ -575,6 +572,10 @@ public:
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
+    /// Computes and returns the interface with \a other as a new geometry
+    virtual typename gsGeometry::uPtr iface(const boundaryInterface & bi,
+                                            const gsGeometry & other) const;
+
     /// Get parametrization of box component \a bc as a new gsGeometry uPtr.
     typename gsGeometry::uPtr component(boxComponent const& bc) const;
 
@@ -707,6 +708,15 @@ struct gsGeoTraits<4,T>
 {
     typedef gsBulk<T> GeometryBase;
 };
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsGeometry
+   */
+  void pybind11_init_gsGeometry(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

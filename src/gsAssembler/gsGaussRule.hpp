@@ -44,7 +44,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, s
     for(i=0; i!=fixDir; ++i )
     {
         //note: +0.5 for rounding
-        const index_t numNodes = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(basis.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
         //const bool found = 
         lookupReference(numNodes, nodes[i], weights[i]);
         //if (!found)
@@ -53,7 +53,7 @@ gsGaussRule<T>::init(const gsBasis<T> & basis, const T quA, const index_t quB, s
     ++i;// skip fixed direction
     for(; i<d; ++i )
     {
-        const index_t numNodes = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+        const index_t numNodes = cast<T,index_t>(quA * static_cast<T>(basis.degree(i)) + static_cast<T>(quB) + static_cast<T>(0.5));
         lookupReference(numNodes, nodes[i], weights[i]);
     }
 
@@ -129,7 +129,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
     w.resize(n);
 
     const unsigned max_its = digits;
-    const T tolerance = math::pow( T(0.1), static_cast<int>(digits) );
+    const T tolerance = math::pow( static_cast<T>(0.1), static_cast<int>(digits) );
     
     // Find only half the roots because of symmetry
     const unsigned m = n / 2 ;
@@ -143,17 +143,17 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
     // If n is odd, the rule always contains the point x==0.
     if ( n%2 )
     {
-        x[m] = T(0.0);
+        x[m] = static_cast<T>(0.0);
         pn=1.0; pnm1=0.0;
         // Compute P'_n(0)
         for (index_t j=0; j<n-1; ++j)
         {
             pnm2 = pnm1;
             pnm1 = pn;
-            pn   = -j*pnm2/static_cast<T>(j+1);
+            pn   = -static_cast<T>(j)*pnm2/static_cast<T>(j+1);
         }
-        dpn  = n*pn;
-        w[m] = T(2.0) / ( dpn*dpn );
+        dpn  = static_cast<T>(n)*pn;
+        w[m] = static_cast<T>(2.0) / ( dpn*dpn );
     }
     
     for (unsigned i=0; i<m; ++i)
@@ -165,7 +165,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
         // Minimax approximations to the zeros of Pn(x) and
         // Gauss-Legendre quadrature, Volume 59,
         // Issue 2  (May 1995), p. 245-252, 1995 
-        x[i] = math::cos(EIGEN_PI*(i+0.75)/(n+0.5));
+      x[i] = math::cos( (T)(EIGEN_PI)*(i+0.75)/(n+0.5));
         
         // Newton loop iteration counter
         unsigned n_its = 0;
@@ -181,11 +181,11 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
             {
                 pnm2 = pnm1; 
                 pnm1 = pn;            
-                pn   = ((2.0*j+1.0)*x[i]*pnm1 - j*pnm2)/static_cast<T>(j+1);
+                pn   = (static_cast<T>(2.0*j+1.0)*x[i]*pnm1 - static_cast<T>(j)*pnm2)/static_cast<T>(j+1);
             }
             
             // A recurrence relation also gives the derivative.
-            dpn=n*(x[i]*pn-pnm1)/(x[i]*x[i]-1.0);
+            dpn=static_cast<T>(n)*(x[i]*pn-pnm1)/(x[i]*x[i]-static_cast<T>(1));
             
             // Compute Newton update
             x[i] -= pn/dpn;
@@ -207,7 +207,7 @@ gsGaussRule<T>::computeReference(index_t n,       // Number of points
 
         // Compute the weight w[i], its mirror is the same value
         w[i]     =
-            w[n-1-i] = T(2.0) / ( (1.0-x[i]*x[i])*dpn*dpn );
+            w[n-1-i] = static_cast<T>(2.0) / ( (1.0-x[i]*x[i])*dpn*dpn );
     } // end for
 
     // gsDebug << "Sum of weights=" << w.sum() << std::endl;

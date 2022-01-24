@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     index_t choice(0);
     bool plot_mesh = false;
     bool plot_net = false;
-    bool plot_boundary = false;
+    bool plot_patchid = false;
     bool get_basis = false;
     bool get_mesh = false;
     bool get_geo = false;
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("s", "samples", "Number of samples to use for viewing", numSamples);
     cmd.addSwitch("element"   , "Plot the element mesh (when applicable)", plot_mesh);
     cmd.addSwitch("controlNet", "Plot the control net (when applicable)", plot_net);
-    cmd.addSwitch("boundary"  , "Plot the boundaries and interfaces of patches with colors", plot_boundary);
+    cmd.addSwitch("pid"  , "Plot the ID of each patch and boudanries as color", plot_patchid);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -108,15 +108,13 @@ int main(int argc, char *argv[])
     default:
         if ( filedata.has< gsMultiPatch<> >() )
         {
-            //gsMultiPatch<>* mp = filedata.getFirst< gsMultiPatch<> >();
             gsMultiPatch<> mp;
             filedata.getFirst(mp);
-            //gsReadFile<>(fn,mp);// reloads file
             gsInfo<< "Got "<< mp <<"\n";
 
-            if (plot_boundary)
+            if (plot_patchid)
             {
-                gsField<> nfield = gsFieldCreator<>::boundarySides(mp);
+                gsField<> nfield = gsFieldCreator<>::patchIds(mp);
                 gsWriteParaview(nfield, "gsview", numSamples);
             }
             else
