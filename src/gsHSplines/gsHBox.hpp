@@ -21,6 +21,7 @@ namespace gismo
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
 {
+    m_basis = nullptr;
     m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
     GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
 
@@ -32,41 +33,24 @@ gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
 }
 
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level)
-:
-m_indices(low,upp,level),
-m_basis(nullptr)
-{}
-
-template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis)
 :
-gsHBox(low,upp,level)
+m_indices(low,upp,level),
 {
     m_basis = basis;
-}
-
-template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box)
-:
-m_indices(box),
-m_basis(nullptr)
-{
-
 }
 
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis)
 :
-gsHBox(box)
+m_indices(box),
 {
     m_basis = basis;
 }
 
+
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices)
-:
-m_basis(nullptr)
+gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis)
 {
     GISMO_ENSURE(indices.size()==2*d+1,"Index size is wrong");
     typename gsHBox<d,T>::point low, upp;
@@ -79,6 +63,8 @@ m_basis(nullptr)
     m_indices = gsAabb<d,index_t>(low,upp,indices[0]);
     //  = gsAsVector<index_t,d>()
     // upp;
+
+    m_basis = basis;
 }
 
 template <short_t d, class T>
