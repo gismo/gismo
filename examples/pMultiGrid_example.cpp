@@ -54,47 +54,47 @@ gsSparseMatrix<> assembleMixedMass(
 
 int main(int argc, char* argv[])
 {
-    index_t numDegree = 2;
-    index_t numRefine = 6;
-    index_t numSmoothing = 1;
-    index_t numLevels = 2;
     index_t numBenchmark = 3;
     index_t numSplits = 0;
-    index_t typeSolver = 2;
+    index_t numDegree = 2;
+    index_t numRefine = 6;
+    index_t typeBCHandling = 2;
+    index_t numLevels = 2;
+    index_t typeProjection = 2;
+    std::string typeCoarsening;
+    index_t typeLumping = 1;
+    index_t typeCoarseOperator = 2;
     index_t typeCycle_p = 1;
     index_t typeCycle_h = 2;
-    index_t typeBCHandling = 2;
-    index_t typeLumping = 1;
-    index_t typeProjection = 2;
     index_t typeSmoother = 1;
-    index_t typeCoarseOperator = 2;
-    std::string typeCoarsening;
-    index_t maxIter = 20;
-    real_t tol = 1e-8;
+    index_t numSmoothing = 1;
     real_t dampingSCMS = 1;
+    index_t typeSolver = 2;
+    real_t tol = 1e-8;
+    index_t maxIter = 20;
 
     // Command line argument parser
-    gsCmdLine cmd("This programm solves the CDR-equation with a p-multigrid or h-multigrid method");
+    gsCmdLine cmd("This program solves the CDR-equation with a p-multigrid or h-multigrid method");
 
     // Add command line arguments
+    cmd.addInt("b", "Benchmark", "Number of the benchmark problem", numBenchmark);
+    cmd.addInt("P", "PatchSplits", "Number of patch splittings: split each patch that many times into 2^d patches", numSplits);
     cmd.addInt("p", "Degree", "Spline degree for finest grid", numDegree);
     cmd.addInt("r", "Refinement", "Number of global refinements to obtain finest grid", numRefine);
-    cmd.addInt("v", "Smoothing", "Number of pre/post smoothing steps", numSmoothing);
-    cmd.addInt("l", "Levels", "Number of levels in multigrid method", numLevels);
-    cmd.addInt("b", "Benchmark", "Number of the benchmark", numBenchmark);
-    cmd.addInt("P", "PatchSplits", "Number of patch splittings: split each pach that many times into 2^d patches", numSplits);
-    cmd.addInt("s", "Solver", "Type of solver: (1) mg as stand-alone solver (2) BiCGStab prec. with mg (3) CG prec. with mg", typeSolver);
-    cmd.addInt("m", "Cycle_p", "Type of cycle where p or hp-refinement is applied: (1) V-cycle or (2) W-cycle", typeCycle_p);
-    cmd.addInt("M", "Cycle_h", "Type of cycle where h-refinement is applied: (1) V-cycle or (2) W-cycle", typeCycle_h);
-    cmd.addInt("d", "BCHandling", "Handles Dirichlet BC's by (1) elimination or (2) Nitsche's method", typeBCHandling);
-    cmd.addInt("L", "Lumping", "Restriction and Prolongation performed with the (1) lumped or (2) consistent mass matrix", typeLumping);
+    cmd.addInt("d", "BCHandling", "Handle Dirichlet BC's by (1) elimination or (2) Nitsche's method", typeBCHandling);
+    cmd.addInt("l", "Levels", "Number of levels for multigrid", numLevels);
     cmd.addInt("D", "Projection", "A p or z coarsening refers to (1) changing the degree directly to 1 or (2) reducing the degree by 1", typeProjection);
-    cmd.addInt("S", "Smoother", "Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS or (4) Block ILUT", typeSmoother);
-    cmd.addInt("G", "CoarseOperator", "Type of coarse operator in h-multigrid: (1) rediscretization (2) Galerkin projection", typeCoarseOperator);
-    cmd.addString("z", "Coarsening", "Coarsening strategy for each of the levels: (h) h-refinement, (p) p-refinement or (z) both", typeCoarsening);
-    cmd.addInt("", "MaxIter", "Maximum number of iterations for iterative solver", maxIter);
-    cmd.addReal("", "Tolerance", "Threshold for iterative solver", tol);
+    cmd.addString("z", "Coarsening", "Coarsening strategy for each of the levels: (h) coarser grid, (p) reduced spline degree or (z) both", typeCoarsening);
+    cmd.addInt("L", "Lumping", "Restriction and prolongation performed with the (1) lumped or (2) full mass matrix", typeLumping);
+    cmd.addInt("G", "CoarseOperator", "Derive coarse stiffness matrix (1) by rediscretization or (2) using Galerkin projection if possible", typeCoarseOperator);
+    cmd.addInt("m", "Cycle_p", "Type of cycle where p or z-coarsening is applied: (1) V-cycle or (2) W-cycle", typeCycle_p);
+    cmd.addInt("M", "Cycle_h", "Type of cycle where h-coarsening is applied: (1) V-cycle or (2) W-cycle", typeCycle_h);
+    cmd.addInt("S", "Smoother", "Smoother: (1) ILUT, (2) Gauss-Seidel, (3) subspace corrected mass smoother or (4) Block ILUT", typeSmoother);
+    cmd.addInt("v", "Smoothing", "Number of pre and post smoothing steps", numSmoothing);
     cmd.addReal("", "DampingSCMS", "Damping for subspace corrected mass smoother (otherwise ignored)", dampingSCMS);
+    cmd.addInt("s", "Solver", "Solver: (1) mg as stand-alone solver, (2) BiCGStab prec. with mg or (3) CG prec. with mg", typeSolver);
+    cmd.addReal("", "Tolerance", "Threshold for iterative solver", tol);
+    cmd.addInt("", "MaxIter", "Maximum number of iterations for iterative solver", maxIter);
 
     // Read parameters from command line
     try { cmd.getValues(argc,argv);  } catch (int rv) { return rv; }
@@ -258,9 +258,7 @@ int main(int argc, char* argv[])
     gsBoundaryConditions<> bcInfo;
     gsFunctionExpr<> zero("0", mp.geoDim());
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-    {
         bcInfo.addCondition(*bit, condition_type::dirichlet, &sol_exact);
-    }
     bcInfo.setGeoMap(mp);
     //! [Boundary conditions]
 
@@ -296,7 +294,7 @@ int main(int argc, char* argv[])
     }
     // Now, we count the coarsening type informations
     index_t numRefH = 0, numRefP = 0, numRefZ = 0;
-    for ( index_t i = 0; i < numLevels-1 ; ++i)
+    for (index_t i = 0; i < numLevels-1; ++i)
     {
         if ( typeCoarsening[i] == 'h')
             numRefH++;
@@ -347,18 +345,18 @@ int main(int argc, char* argv[])
     {
         // New basis object, which is just a copy
         bases.push_back(bases.back());
-        if ( typeCoarsening[i-1] == 'p' )
+        if (typeCoarsening[i-1] == 'p')
         {
             if (typeProjection == 1)
                 bases.back().degreeIncrease(numDegree-1);
             else
                 bases.back().degreeIncrease();
         }
-        else if ( typeCoarsening[i-1] == 'h' )
+        else if (typeCoarsening[i-1] == 'h')
         {
             bases.back().uniformRefine();
         }
-        else //if ( typeCoarsening[i-1] == 'z' )
+        else //if (typeCoarsening[i-1] == 'z')
         {
             bases.back().uniformRefine();
             if (typeProjection == 1)
@@ -379,7 +377,7 @@ int main(int argc, char* argv[])
     clock.restart();
     //! [Intergrid]
     gsInfo << "|| Multigrid hierarchy ||\n";
-    for (index_t i = 1; i < numLevels; i++)
+    for (index_t i=1; i<numLevels; i++)
     {
         if (typeCoarsening[i-1] != 'h')
         {
@@ -399,8 +397,8 @@ int main(int argc, char* argv[])
             else
             {
                 gsInfo << "Restriction and prolongation between levels " << i << " and " << i-1 << ": exact L2-projection.\n";
-                gsSparseMatrix<> prolongationP =  assembleMixedMass(mp, bases[i], bases[i-1], bcInfo, opt);
-                gsSparseMatrix<> restrictionP =  prolongationP.transpose();
+                gsSparseMatrix<> prolongationP = assembleMixedMass(mp, bases[i], bases[i-1], bcInfo, opt);
+                gsSparseMatrix<> restrictionP = prolongationP.transpose();
                 gsSparseMatrix<> prolongationM = assembleMass(mp, bases[i], bcInfo, opt);
                 gsSparseMatrix<> restrictionM = assembleMass(mp, bases[i-1], bcInfo, opt);
 
@@ -446,7 +444,7 @@ int main(int argc, char* argv[])
     gsMatrix<> rhs;
     double Time_Assembly = 0, Time_Galerkin = 0;
     //! [Assembling]
-    for (index_t i = numLevels-1; i >= 0; --i)
+    for (index_t i=numLevels-1; i>=0; --i)
     {
         if (typeCoarseOperator == 1 || i == numLevels-1 || typeCoarsening[i] != 'h')
         {
@@ -496,7 +494,7 @@ int main(int argc, char* argv[])
     // Specify the number of cycles
     // For coarsest level, we stick to 1 in any case (exact solver is never cycled)
     //! [Set cycle]
-    if (typeCycle_p==typeCycle_h)
+    if (typeCycle_p == typeCycle_h)
         gsInfo << "Multigrid cycle type: " << typeCycle_h << "\n";
     else
         gsInfo << "Multigrid cycle type: " << typeCycle_h << " for h-refinement and " << typeCycle_p << " for p- and z-refinement\n";
@@ -515,7 +513,7 @@ int main(int argc, char* argv[])
     opt.addReal("Damping","",dampingSCMS);    // only used for SCMS
     clock.restart();
     //! [Smoother]
-    for (index_t i = 1; i < numLevels; i++)
+    for (index_t i=1; i<numLevels; i++)
     {
         if (bases[i].degree()==1)
         {
