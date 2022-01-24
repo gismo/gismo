@@ -5,7 +5,7 @@
 #define POSIT_THROW_ARITHMETIC_EXCEPTION 1
 #endif
 
-#include <universal/utility/directives.hpp>
+//#include <universal/utility/directives.hpp>
 #include <universal/number/posit/posit.hpp>
 
 typedef sw::universal::posit<256,5> posit_256_5;
