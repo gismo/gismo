@@ -18,6 +18,7 @@
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsUtils/gsStopwatch.h>
 
 namespace gismo
 {
@@ -89,11 +90,31 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
         //U.setZero(), Vtrans.setZero();
 
         index_t i(0);
-        index_t r1(0), c1(0), r2(0), c2(0);
+        index_t r1(0), c1(0), r2(0), c2(0), r3(0), c3(0);
         for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit, i+=2) {
+            r1 = 0; c1 = 0; r2 = 0; c2 = 0; r3 = 0; c3 = 0;
             index_t c = basis.functionAtCorner(mit->first) - mit->second;
             elCorner.push_sorted_unique(c);
 
+            for(index_t k = 0; k < basis.dim(); ++k)
+            {
+                if( ((mit->first-1) & (1<<k)) >> k )
+                {
+                    if(k == 0) // 0th- component
+                    {
+                        r1 = stiffness[basis.dim() - 1].rows() - 1; c1 = stiffness[basis.dim() - 1].cols() - 1;
+                    }
+                    else if (k == 1) //1st- component
+                    {
+                        r2 = stiffness[basis.dim() - 2].rows() - 1; c2 = stiffness[basis.dim() - 2].cols() - 1;
+                    }
+                    else if (k == 2) //2st- component
+                    {
+                        r3 = stiffness[basis.dim() - 3].rows() - 1; c3 = stiffness[basis.dim() - 3].cols() - 1;
+                    }
+                }
+            }
+/*
             switch ( mit->first ) //TODO: 3D case
             {
                 case 1:
@@ -103,7 +124,7 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                 }
                 case 2:
                 {
-                    r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = 0, c2 = 0;
+                    r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = 0, c2 = 0; // r1, c1 ... component 0
                     break;
                 }
                 case 3:
@@ -117,10 +138,13 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                     break;
                 }
             }
+*/
+
 
             //gsInfo << "Kronecker\n"<<(mass[0].kron(stiffness[1]) + stiffness[0].kron(mass[1]) + alpha * mass[0].kron(mass[1])).toDense()<<"\n";
             gsSparseMatrix<> emb(1, U.cols());
             emb(0,i) = T(1);
+            // TODO: eliminate bool variable isFastDiag
             U += (gsSparseMatrix<T>(mass[0].col(c2)).kron(gsSparseMatrix<T>(stiffness[1].col(c1))) + isFastDiag * gsSparseMatrix<T>(stiffness[0].col(c2)).kron(mass[1].col(c1))
                                                                                                                 + alpha * gsSparseMatrix<T>(mass[0].col(c2)).kron(mass[1].col(c1))) * emb;
             U(c, i) = T(0);
@@ -128,6 +152,7 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
             gsSparseMatrix<> embtrans(1, Vtrans.rows());
             embtrans(0,i+1) = T(1);
+            // TODO: eliminate bool variable isFastDiag
             Vtrans += embtrans.transpose() * (gsSparseMatrix<T>(mass[0].row(r2)).kron(stiffness[1].row(r1)) + isFastDiag * gsSparseMatrix<T>(stiffness[0].row(r2)).kron(mass[1].row(r1))
                                                                                                                    + alpha * gsSparseMatrix<T>(mass[0].row(r2)).kron(mass[1].row(r1)));
             Vtrans(i, c) = T(1);
@@ -148,8 +173,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
         }
 
-        gsInfo << "U\n"<<U.toDense()<<"\n";
-        gsInfo << "Vtrans\n"<<Vtrans.toDense()<<"\n";
+        //gsInfo << "U\n"<<U.toDense()<<"\n";
+        //gsInfo << "Vtrans\n"<<Vtrans.toDense()<<"\n";
 
     }
     else
