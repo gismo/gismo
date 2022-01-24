@@ -67,40 +67,40 @@ gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<
     m_basis = basis;
 }
 
-// template <short_t d, class T>
-// gsHBox<d, T>::gsHBox( const gsHBox<d,T> & other )
-// {
-//     operator=(other);
-// }
+template <short_t d, class T>
+gsHBox<d, T>::gsHBox( const gsHBox<d,T> & other )
+{
+    operator=(other);
+}
 
-// template <short_t d, class T>
-// gsHBox<d, T>::gsHBox( gsHBox<d,T> && other )
-// {
-//     operator=(give(other));
-// }
+template <short_t d, class T>
+gsHBox<d, T>::gsHBox( gsHBox<d,T> && other )
+{
+    operator=(give(other));
+}
 
-// template <short_t d, class T>
-// gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
-// {
-//     if (this!=&other)
-//     {
-//         m_indices = other.m_indices;
-//         m_coords  = other.m_coords;
-//         m_center  = other.m_center;
-//         m_basis   = other.m_basis;
-//     }
-//     return *this;
-// }
+template <short_t d, class T>
+gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
+{
+    if (this!=&other)
+    {
+        m_indices = other.m_indices;
+        m_coords  = other.m_coords;
+        m_center  = other.m_center;
+        m_basis   = other.m_basis;
+    }
+    return *this;
+}
 
-// template <short_t d, class T>
-// gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
-// {
-//     m_indices = give(other.m_indices);
-//     m_coords  = give(other.m_coords);
-//     m_center  = give(other.m_center);
-//     m_basis   = give(other.m_basis);
-//     return *this;
-// }
+template <short_t d, class T>
+gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
+{
+    m_indices = give(other.m_indices);
+    m_coords  = give(other.m_coords);
+    m_center  = give(other.m_center);
+    m_basis   = give(other.m_basis);
+    return *this;
+}
 
 template <short_t d, class T>
 bool gsHBox<d, T>::isContained(const gsHBox<d,T> & other) const
@@ -169,9 +169,9 @@ template <short_t d, class T>
 gsVector<T,d>  gsHBox<d, T>::upperCorner() const { return m_coords.col(1); }
 
 template <short_t d, class T>
-typename gsHBox<d,T>::point gsHBox<d, T>::lowerIndex() const { return m_indices.first;  }
+const typename gsHBox<d,T>::point & gsHBox<d, T>::lowerIndex() const { return m_indices.first;  }
 template <short_t d, class T>
-typename gsHBox<d,T>::point gsHBox<d, T>::upperIndex() const { return m_indices.second; }
+const typename gsHBox<d,T>::point & gsHBox<d, T>::upperIndex() const { return m_indices.second; }
 
 template <short_t d, class T>
 index_t gsHBox<d, T>::level() const { return m_indices.level; }
@@ -245,13 +245,7 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::getSupportExtension()
             container.push_back(*it);
     }
     // Remove duplicates
-    gsDebugVar(container.size());
-
-    for (cIterator it = container.begin(); it!=container.end(); it++)
-        gsDebugVar(*it);
-
     Container container2 = _makeUnique(container);
-    gsDebugVar(container.size());
     return container2;
 }
 
@@ -588,26 +582,13 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
     }
     pred;
 
-    for (size_t k=0; k!=scontainer.size(); k++)
-        gsDebugVar(scontainer.at(k));
-
-    gsDebugVar("-------------------------------------------------");
-
     // First sort (otherwise unique is wrong)
     std::sort(scontainer.begin(),scontainer.end(),comp);
 
-    for (size_t k=0; k!=scontainer.size(); k++)
-        gsDebugVar(scontainer.at(k));
-
+    // Get unique entries
     typename SortedContainer::iterator it = std::unique(scontainer.begin(),scontainer.end(),pred);
-    gsDebugVar(scontainer.size());
     scontainer.resize(distance(scontainer.begin(), it));
-    for (size_t k=0; k!=scontainer.size(); k++)
-        gsDebugVar(scontainer.at(k));
-    gsDebugVar(scontainer.size());
-
     Container result(scontainer.begin(),scontainer.end());
-    gsDebugVar("Finished");
     return result;
 }
 

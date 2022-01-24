@@ -50,17 +50,17 @@ public:
 
     gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis);
 
-    // /// Copy constructor (makes deep copy)
-    // gsHBox( const gsHBox<d,T> & other );
+    /// Copy constructor (makes deep copy)
+    gsHBox( const gsHBox<d,T> & other );
 
-    // /// Move constructor
-    // gsHBox( gsHBox<d,T> && other );
+    /// Move constructor
+    gsHBox( gsHBox<d,T> && other );
 
-    // /// Assignment operator
-    // gsHBox<d,T> & operator= ( const gsHBox<d,T> & other );
+    /// Assignment operator
+    gsHBox<d,T> & operator= ( const gsHBox<d,T> & other );
 
-    // /// Move assignment operator
-    // gsHBox<d,T> & operator= ( gsHBox<d,T> && other );
+    /// Move assignment operator
+    gsHBox<d,T> & operator= ( gsHBox<d,T> && other );
 
     /**
      * @brief      Checks if the \a other cell is contained in \a this cell
@@ -91,8 +91,8 @@ public:
     gsVector<T,d> lowerCorner() const;
     gsVector<T,d> upperCorner() const;
 
-    point lowerIndex() const;
-    point upperIndex() const;
+    const point & lowerIndex() const;
+    const point & upperIndex() const;
 
     index_t level() const;
 
