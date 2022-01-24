@@ -21,6 +21,7 @@ namespace gismo
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
 {
+    m_basis = nullptr;
     m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
     GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
 
@@ -32,41 +33,24 @@ gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
 }
 
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level)
-:
-m_indices(low,upp,level),
-m_basis(nullptr)
-{}
-
-template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis)
 :
-gsHBox(low,upp,level)
+m_indices(low,upp,level),
 {
     m_basis = basis;
-}
-
-template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box)
-:
-m_indices(box),
-m_basis(nullptr)
-{
-
 }
 
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis)
 :
-gsHBox(box)
+m_indices(box),
 {
     m_basis = basis;
 }
 
+
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices)
-:
-m_basis(nullptr)
+gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis)
 {
     GISMO_ENSURE(indices.size()==2*d+1,"Index size is wrong");
     typename gsHBox<d,T>::point low, upp;
@@ -79,6 +63,8 @@ m_basis(nullptr)
     m_indices = gsAabb<d,index_t>(low,upp,indices[0]);
     //  = gsAsVector<index_t,d>()
     // upp;
+
+    m_basis = basis;
 }
 
 template <short_t d, class T>
@@ -232,7 +218,6 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::toContainer()
 template <short_t d, class T>
 typename gsHBox<d, T>::Container gsHBox<d, T>::getSupportExtension()
 {
-    GISMO_ENSURE(m_basis!=nullptr,"Basis is undefined");
     this->_computeCoordinates();
     index_t lvl = this->level();
     // Compute actives
@@ -346,7 +331,7 @@ std::ostream& gsHBox<d, T>::print( std::ostream& os ) const
         <<"("<<m_indices.first.transpose()<<")"
         <<" -- "
         <<"("<<m_indices.second.transpose()<<")";
-    if (m_basis!=nullptr && m_coords.cols()!=0)
+    if (m_coords.cols()!=0)
     {
         os  <<"\nKnot values:\n"
             <<"("<<m_coords.col(0).transpose()<<")"
@@ -359,7 +344,6 @@ std::ostream& gsHBox<d, T>::print( std::ostream& os ) const
 template <short_t d, class T>
 void gsHBox<d, T>::_computeCoordinates()
 {
-    GISMO_ENSURE(m_basis!=nullptr,"Basis is not provided");
     m_coords.resize(d,2);
     gsVector<T> low(d), upp(d);
 
@@ -378,14 +362,12 @@ void gsHBox<d, T>::_computeCoordinates()
 template <short_t d, class T>
 void gsHBox<d, T>::_computeIndices()
 {
-    GISMO_ENSURE(m_basis!=nullptr,"Basis is not provided");
     m_indices = _computeIndices(m_coords);
 }
 
 template <short_t d, class T>
 gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, index_t level)
 {
-    GISMO_ENSURE(m_basis!=nullptr,"Basis is not provided");
     typename gsHBox<d,T>::point low,upp;
     for(index_t j = 0; j < d;j++)
     {
@@ -413,7 +395,6 @@ gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, inde
 template <short_t d, class T>
 gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords)
 {
-    GISMO_ENSURE(m_basis!=nullptr,"Basis is not provided");
     gsMatrix<T> center = (coords.col(0) + coords.col(1))/2;
     index_t level = m_basis->getLevelAtPoint(center);
     return _computeIndices(coords,level);
@@ -422,7 +403,6 @@ gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords)
 template <short_t d, class T>
 gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, const gsMatrix<T> & center)
 {
-    GISMO_ENSURE(m_basis!=nullptr,"Basis is not provided");
     index_t level = m_basis->getLevelAtPoint(center);
     return _computeIndices(coords,level);
 }

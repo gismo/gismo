@@ -45,15 +45,11 @@ public:
 
     gsHBox(const gsHDomainIterator<T,d> * domHIt);
 
-    gsHBox(const point & low,const point & upp, index_t level);
-
     gsHBox(const point & low,const point & upp, index_t level, const gsHTensorBasis<d,T> * basis);
-
-    gsHBox(const gsAabb<d,index_t> & box);
 
     gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis);
 
-    gsHBox(const std::vector<index_t> & indices);
+    gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis);
 
     /// Copy constructor (makes deep copy)
     gsHBox( const gsHBox<d,T> & other );
