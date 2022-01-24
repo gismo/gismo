@@ -143,7 +143,7 @@ public:
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
-        T sigma = T(12)/T(100),
+        T sigma = (T)(12) / (T)(100),
         T alpha = 0,
         T beta = 1
     );

@@ -47,7 +47,7 @@ void gsDeboor(
   for ( index_t j=0; j< u.cols(); j++ ) // for all points (entries of u)
   {
     //De Boor's algorithm for parameter u(0,j)
-    GISMO_ASSERT( (u(0,j)>knots[deg]-T(1e-4) ) && (u(0,j) < *(knots.end()-deg-1)+T(1e-4) ), 
+    GISMO_ASSERT( (u(0,j)>knots[deg]-(T)(1e-4) ) && (u(0,j) < *(knots.end()-deg-1)+(T)(1e-4) ), 
                   "Parametric point "<< u(0,j) <<" outside knot domain ["
                   << knots[deg]<<","<<*(knots.end()-deg-1) <<"]."); 
 
@@ -94,7 +94,7 @@ void gsDeboorDeriv(
   for ( index_t j=0; j< u.cols(); j++ ) // for all points (entries of u)
   {
       //De Boor's algorithm for parameter u(0,j)
-      GISMO_ASSERT( (u(0,j)>knots[deg]-T(1e-4) ) && (u(0,j) < *(knots.end()-deg-2)+T(1e-4) ), 
+      GISMO_ASSERT( (u(0,j)>knots[deg]-(T)(1e-4) ) && (u(0,j) < *(knots.end()-deg-2)+(T)(1e-4) ), 
                     "Parametric point "<< u(0,j) <<" outside knot domain ["
                     << knots[deg]<<","<<*(knots.end()-deg-2) <<"]."); 
       

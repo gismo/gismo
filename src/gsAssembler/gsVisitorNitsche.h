@@ -92,7 +92,7 @@ public:
         if (m_penalty<0)
         {
             const index_t deg = basis.maxDegree();
-            m_penalty = T(2.5) * (deg + basis.dim()) * (deg + 1);
+            m_penalty = (T)(2.5) * (T)(deg + basis.dim()) * (T)(deg + 1);
         }
 
         m_alpha     = options.askReal("Nitsche.Alpha", 1);
