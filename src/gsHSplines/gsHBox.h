@@ -39,13 +39,12 @@ public:
 
 
 public:
-    ~gsHBox() {  }
 
     gsHBox() { }
 
     gsHBox(const gsHDomainIterator<T,d> * domHIt);
 
-    gsHBox(const point & low,const point & upp, index_t level, const gsHTensorBasis<d,T> * basis);
+    gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis);
 
     gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis);
 
@@ -92,8 +91,8 @@ public:
     gsVector<T,d> lowerCorner() const;
     gsVector<T,d> upperCorner() const;
 
-    point lowerIndex() const;
-    point upperIndex() const;
+    const point & lowerIndex() const;
+    const point & upperIndex() const;
 
     index_t level() const;
 

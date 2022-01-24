@@ -161,19 +161,23 @@ typename gsHBoxContainer<d, T>::Container gsHBoxContainer<d, T>::_boxUnion(const
     SortedContainer scontainer1(container1.begin(), container1.end());
     SortedContainer scontainer2(container2.begin(), container2.end());
 
-    auto comp = [](auto & a, auto & b)
-                    {
-                        return
-                        (a.level() < b.level())
-                        ||
-                        ((a.level() == b.level()) &&
-                        std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-                                                    b.lowerIndex().begin(), b.lowerIndex().end())   )
-                        ||
-                        ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
-                        std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-                                                    b.upperIndex().begin(), b.upperIndex().end())    );
-                    };
+    struct
+    {
+        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
+        {
+            return
+            (a.level() < b.level())
+            ||
+            ((a.level() == b.level()) &&
+            std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+                                        b.lowerIndex().begin(), b.lowerIndex().end())   )
+            ||
+            ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
+            std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+                                        b.upperIndex().begin(), b.upperIndex().end())    );
+        };
+    }
+    comp;
 
     sortedResult.reserve(scontainer1.size() + scontainer2.size());
     if (scontainer1.size()!=0 && scontainer2.size()!=0)

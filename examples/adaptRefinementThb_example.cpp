@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 
        // Get the element-wise norms.
        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-       const std::vector<real_t> & eltErrs = ev.elementwise();
+       std::vector<real_t> & eltErrs = ev.elementwise();
        //! [errorComputation]
 
        // --------------- adaptive refinement ---------------
