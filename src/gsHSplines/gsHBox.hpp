@@ -18,19 +18,19 @@
 namespace gismo
 {
 
-template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
-{
-    m_basis = nullptr;
-    m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
-    GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
+// template <short_t d, class T>
+// gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
+// {
+//     m_basis = nullptr;
+//     m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
+//     GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
 
-    m_coords.resize(d,2);
-    m_coords.col(0) = domHIt->lowerCorner();
-    m_coords.col(1) = domHIt->upperCorner();
-    m_center = (m_coords.col(1) + m_coords.col(0))/2;
-    _computeIndices();
-}
+//     m_coords.resize(d,2);
+//     m_coords.col(0) = domHIt->lowerCorner();
+//     m_coords.col(1) = domHIt->upperCorner();
+//     m_center = (m_coords.col(1) + m_coords.col(0))/2;
+//     _computeIndices();
+// }
 
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis)
@@ -514,19 +514,24 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_boxUnion(const Container & conta
     SortedContainer scontainer1(container1.begin(), container1.end());
     SortedContainer scontainer2(container2.begin(), container2.end());
 
-    auto comp = [](auto & a, auto & b)
-                    {
-                        return
-                        (a.level() < b.level())
-                        ||
-                        ((a.level() == b.level()) &&
-                        std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-                                                    b.lowerIndex().begin(), b.lowerIndex().end())   )
-                        ||
-                        ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
-                        std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-                                                    b.upperIndex().begin(), b.upperIndex().end())    );
-                    };
+
+    struct
+    {
+        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
+        {
+            return
+            (a.level() < b.level())
+            ||
+            ((a.level() == b.level()) &&
+            std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+                                        b.lowerIndex().begin(), b.lowerIndex().end())   )
+            ||
+            ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
+            std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+                                        b.upperIndex().begin(), b.upperIndex().end())    );
+        };
+    }
+    comp;
 
     sortedResult.reserve(scontainer1.size() + scontainer2.size());
     if (scontainer1.size()!=0 && scontainer2.size()!=0)
@@ -556,40 +561,36 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
 {
     SortedContainer scontainer(container.begin(), container.end());
 
-    auto comp = [](auto & a, auto & b)
-                    {
-                        gsDebugVar(a.lowerIndex());
-                        gsDebugVar(a.upperIndex());
-                        gsDebugVar(b.lowerIndex());
-                        gsDebugVar(b.upperIndex());
-                        gsDebugVar(a.hasBasis());
-                        gsDebugVar(b.hasBasis());
-                        gsDebugVar(a.getCoordinates());
-                        gsDebugVar(b.getCoordinates());
-                        bool test =
-                        (a.level() < b.level())
-                        ||
-                        ((a.level() == b.level()) &&
-                        std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-                                                    b.lowerIndex().begin(), b.lowerIndex().end())   )
-                        ||
-                        ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
-                        std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-                                                    b.upperIndex().begin(), b.upperIndex().end())    );
 
-                        gsDebugVar(test);
+    struct
+    {
+        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
+        {
+            return
+            (a.level() < b.level())
+            ||
+            ((a.level() == b.level()) &&
+            std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+                                        b.lowerIndex().begin(), b.lowerIndex().end())   )
+            ||
+            ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
+            std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+                                        b.upperIndex().begin(), b.upperIndex().end())    );
+        };
+    }
+    comp;
 
-                        gsDebugVar(a.level());
-                        gsDebugVar(b.level());
-                        return test;
-                    };
 
-    // auto pred = [](auto & a, auto & b)
-    //                 {
-    //                     return a.isSame(b);
-    //                 };
+    struct
+    {
+        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
+        {
+            return a.isSame(b);
+        };
+    }
+    pred;
 
-    for (index_t k=0; k!=scontainer.size(); k++)
+    for (size_t k=0; k!=scontainer.size(); k++)
         gsDebugVar(scontainer.at(k));
 
     gsDebugVar("-------------------------------------------------");
@@ -597,13 +598,13 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
     // First sort (otherwise unique is wrong)
     std::sort(scontainer.begin(),scontainer.end(),comp);
 
-    for (index_t k=0; k!=scontainer.size(); k++)
+    for (size_t k=0; k!=scontainer.size(); k++)
         gsDebugVar(scontainer.at(k));
 
-    // typename SortedContainer::iterator it = std::unique(scontainer.begin(),scontainer.end(),pred);
-    // scontainer.resize(distance(scontainer.begin(), it));
-    // for (index_t k=0; k!=scontainer.size(); k++)
-    //     gsDebugVar(scontainer.at(k));
+    typename SortedContainer::iterator it = std::unique(scontainer.begin(),scontainer.end(),pred);
+    scontainer.resize(distance(scontainer.begin(), it));
+    for (size_t k=0; k!=scontainer.size(); k++)
+        gsDebugVar(scontainer.at(k));
 
     Container result(scontainer.begin(),scontainer.end());
     return result;

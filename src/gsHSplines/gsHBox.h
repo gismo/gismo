@@ -43,7 +43,7 @@ public:
 
     gsHBox() { }
 
-    gsHBox(const gsHDomainIterator<T,d> * domHIt);
+    // gsHBox(const gsHDomainIterator<T,d> * domHIt);
 
     gsHBox(const point & low,const point & upp, index_t level, const gsHTensorBasis<d,T> * basis);
 
