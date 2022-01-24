@@ -35,7 +35,7 @@ gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis)
 :
-m_indices(low,upp,level),
+m_indices(low,upp,level)
 {
     m_basis = basis;
 }
@@ -43,7 +43,7 @@ m_indices(low,upp,level),
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis)
 :
-m_indices(box),
+m_indices(box)
 {
     m_basis = basis;
 }
