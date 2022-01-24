@@ -268,32 +268,24 @@ typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::getParents() c
         for (cIterator it=hit->begin(); it!=hit->end(); it++)
             resIt->push_back(*it);
 
-
-    // for (size_t l = 1; l!=m_boxes.size(); l++)
-    // {
-    //     // result[l-1].reserve(m_boxes[l].size());
-    //     for (cIterator it=m_boxes[l].begin(); it!=m_boxes[l].end(); it++)
-    //         result[l-1].push_back(it->getParent());
-    // }
     return result;
 }
 
 template <short_t d, class T>
 typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markTrecursive(HContainer & marked, index_t lvl, index_t m) const
 {
-    Container   marked_l = marked[lvl];
-    Container   marked_k;
+    Container marked_l = marked[lvl];
+    Container marked_k;
 
     gsHBoxContainer<d,T> neighbors;
     for (Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
         neighbors.add(it->getTneighborhood(m));
 
-    index_t k = lvl - m + 2;
-    if (neighbors.size()!=0)
+    index_t k = lvl - m + 1;
+    if (neighbors.boxes().size()!=0)
     {
         marked_k = marked[k];
         gsHBoxContainer<d,T> boxunion = boxUnion(neighbors,gsHBoxContainer<d,T>(marked_k));
-
         marked[k] = boxunion.getActivesOnLevel(k);
         marked = this->markTrecursive(marked,k,m);
     }
@@ -316,40 +308,12 @@ typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markHrecursive
     for (Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
         neighbors.add(it->getHneighborhood(m));
 
-    // gsDebugVar(marked.size());
-    // gsDebugVar(marked_l.size());
-
-    // for (typename gsHBoxContainer<d,T>::HIterator hit = marked.begin(); hit!=marked.end(); hit++)
-    //     for (typename gsHBoxContainer<d,T>::Iterator it = hit->begin(); it!=hit->end(); it++)
-    //         gsDebugVar(*it);
-
-    // for (typename gsHBoxContainer<d,T>::Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
-    //     gsDebugVar(it->getCoordinates());
-
-
-    gsHBoxContainer<d,T> tmp(marked);
     index_t k = lvl - m + 1;
     if (neighbors.boxes().size()!=0)
     {
-        gsDebugVar(k);
         marked_k = marked[k];
-
-        // gsDebugVar(marked_k.size());
-        // for (typename gsHBoxContainer<d,T>::Iterator it = marked_k.begin(); it!=marked_k.end(); it++)
-        //     gsDebugVar(it->getCoordinates());
-
         gsHBoxContainer<d,T> boxunion = boxUnion(neighbors,gsHBoxContainer<d,T>(marked_k));
-
-        gsDebugVar(neighbors);
-        gsHBoxContainer<d,T> marked_kNH(marked_k);
-        gsDebugVar(marked_kNH);
-        gsDebugVar(boxunion);
-
         marked[k] = boxunion.getActivesOnLevel(k);
-
-        gsHBoxContainer<d,T> markedNH(marked);
-        gsDebugVar(markedNH);
-
         marked = this->markHrecursive(marked,k,m);
     }
     return marked;

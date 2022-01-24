@@ -274,7 +274,6 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
     index_t k = lvl - m + 1;
     if (k>=0)
     {
-        gsDebugVar(k);
         // Get multi level support extension on level k
         extension = this->getMultiLevelSupportExtension(k);
 
@@ -303,14 +302,17 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
 
     index_t lvl = this->level();
     index_t k = lvl - m + 2;
-    gsDebugVar(k);
-    if (k>=0)
+    if (k-1>=0)
     {
         // Get multi level support extension on level k
         extension = this->getMultiLevelSupportExtension(k);
         // Eliminate elements which are too low
         parents = _getParents(extension);
-        neighborhood = parents;
+
+        for (Iterator it = extension.begin(); it!=extension.end(); it++)
+            if (it->isActive())
+                neighborhood.push_back(*it);
+        // neighborhood = parents;
     }
     return neighborhood;
 }

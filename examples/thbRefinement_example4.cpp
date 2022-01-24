@@ -212,15 +212,24 @@ int main(int argc, char *argv[])
             for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
                 gsDebugVar(it->getCoordinates());
 
-        gsHBoxContainer<2,real_t> marked(cell);
+        gsHBoxContainer<2,real_t> markedH(cell);
         for (index_t l = 0; l!=basis->maxLevel()+1; l++)
         {
             gsDebugVar(l);
-            marked.markHrecursive(l,m);
+            markedH.markHrecursive(l,m);
         }
-
         gsDebugVar(basis->maxLevel());
-        gsDebugVar(marked);
+        gsDebugVar(markedH);
+
+        gsHBoxContainer<2,real_t> markedT(cell);
+        for (index_t l = 0; l!=basis->maxLevel()+1; l++)
+        {
+            gsDebugVar(l);
+            markedT.markTrecursive(l,m);
+        }
+        gsDebugVar(basis->maxLevel());
+        gsDebugVar(markedT);
+
 
         mp.patch(0).refineElements(cell.toRefBox());
 
