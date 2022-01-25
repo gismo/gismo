@@ -59,7 +59,7 @@
 # <checks, one per line>
 # pop_enable:SunPro
 
-# MSVC and Oracle's SunPro compiler fails these checks
+# MSVC and Oracle's SunPro compiler fail these checks
 push_disable:MSVC,SunPro
 
 # MMX
@@ -106,15 +106,11 @@ amx-int8;immintrin.h;_tile_dpbssd;0,1,2
 amx-tile;immintrin.h;_tile_zero;0
 
 # Other
-adx;immintrin.h;_addcarryx_u32;(unsigned char)0,(unsigned int)1,(unsigned int)1,new unsigned int[1];adcx
+adx;immintrin.h;_addcarryx_u32;(unsigned char)0,(unsigned int)1,(unsigned int)1,new unsigned int[1]
 aes;wmmintrin.h;_mm_aesdec_si128;_mm_setzero_si128(),_mm_setzero_si128()
 bmi2;immintrin.h;_bzhi_u32;(unsigned int)1,(unsigned int)1
-bmi;immintrin.h;_andn_u32;(unsigned int)1,(unsigned int)1
-cldemote;immintrin.h;_mm_cldemote;(void const*)NULL
-clflushopt;immintrin.h;_mm_clflushopt;(void const*)NULL
-clwb;immintrin.h;_mm_clwb;(void const*)NULL
 enqcmd;immintrin.h;_enqcmd;(void*)NULL,(void const*)NULL
-f16c;emmintrin.h;_mm_cvtph_ps;_mm_setzero_si128()
+f16c;immintrin.h;_mm_cvtph_ps;_mm_setzero_si128()
 fsgsbase;immintrin.h;_readfsbase_u32;
 fxsr;immintrin.h;_fxrstor;(void*)NULL
 gfni,avx512vl;immintrin.h;_mm_gf2p8mul_epi8;_mm_setzero_si128(),_mm_setzero_si128()
@@ -128,11 +124,11 @@ movbe;immintrin.h;_loadbe_i16;(void const*)NULL
 movdir64b;immintrin.h;_movdir64b;(void*)NULL,(const void*)NULL
 movdiri;immintrin.h;_directstoreu_u32;(void*)NULL,(unsigned int)1
 mpx;immintrin.h;_bnd_chk_ptr_lbounds;(const void*)NULL
-pclmulqdq;wmmintrin.h;_mm_clmulepi64_si128;_mm_setzero_si128(),_mm_setzero_si128(),(const int)0;pclmul
+pclmul;wmmintrin.h;_mm_clmulepi64_si128;_mm_setzero_si128(),_mm_setzero_si128(),(const int)0;pclmul
 pconfig;immintrin.h;_pconfig_u32;(const int)1,new size_t[1]
-pku;;exit;0
+pku;cstdlib;exit;0
 popcnt;immintrin.h;_mm_popcnt_u32;(unsigned int)1
-prefetchw;;_m_prefetchw;(void*)NULL;prfchw
+prfchw;immintrin.h;_m_prefetchw;(void*)NULL
 prefetchwt1;xmmintrin.h;_mm_prefetch;(char const*)NULL,(int)1
 ptwrite;immintrin.h;_ptwrite32;(unsigned int)0
 rdpid;immintrin.h;_rdpid_u32;
@@ -149,17 +145,37 @@ vaes,avx512vl;immintrin.h;_mm256_aesdec_epi128;_mm256_setzero_si256(),_mm256_set
 vpclmulqdq,avx512vl;immintrin.h;_mm256_clmulepi64_epi128;_mm256_setzero_si256(),_mm256_setzero_si256(),(const int)1
 waitpkg;immintrin.h;_umonitor;(void*)NULL
 wbnoinvd;immintrin.h;_wbnoinvd;
-xsavec,xsave;immintrin.h;_xsavec;(void*)NULL,(unsigned __m256i)0
-xsaveopt,xsave;immintrin.h;xsaveopt;(void*)NULL,(unsigned __m256i)0
+xsavec,xsave;immintrin.h;_xsavec;(void*)NULL,(unsigned long long)0
+xsaveopt,xsave;immintrin.h;_xsaveopt;(void*)NULL,(unsigned long long)0
 xsaves;immintrin.h;_xgetbv;(unsigned int)1
-xss,xsave;immintrin.h;_xrstors;(const void*)NULL,(unsigned __m256i)0
+xss,xsave;immintrin.h;_xrstors;(const void*)NULL,(unsigned long long)0
+
+# GNU GCC fails the following tests ...
+push_disable:GNU
+abm;x86intrin.h;_bextri_u32;(unsigned int)0,(unsigned int)0
+bmi;immintrin.h;_andn_u32;(unsigned int)1,(unsigned int)1
+cldemote;immintrin.h;_mm_cldemote;(void const*)NULL
+clflushopt;immintrin.h;_mm_clflushopt;(void const*)NULL
+clwb;immintrin.h;_mm_clwb;(void const*)NULL
+pop_disable:GNU
+
+# ... and needs a slightly modified implementation
+push_enable:GNU
+abm;x86intrin.h;__bextri_u32;(unsigned int)0,(unsigned int)0
+bmi;immintrin.h;__andn_u32;(unsigned int)1,(unsigned int)1
+cldemote;immintrin.h;_cldemote;(void*)NULL
+clflushopt;immintrin.h;_mm_clflushopt;(void*)NULL
+clwb;immintrin.h;_mm_clwb;(void*)NULL
+pop_enable:GNU
 
 pop_disable:MSVC,SunPro
+
 
 # Special checks for the MSVC compiler
 push_enable:MSVC
 
 # SSE/SSE2/SSE3/SSE4.1/SSE4.2/SSE4A/AVX/AVX2/FMA
+abm;ammintrin.h;_bextri_u32;(unsigned int)0,(unsigned int)0
 SSE;xmmintrin.h;_mm_add_ps;_mm_setzero_ps(),_mm_setzero_ps();sse
 SSE2;emmintrin.h;_mm_add_epi16;_mm_setzero_si128(),_mm_setzero_si128();sse2
 AVX;immintrin.h;_mm256_add_pd;_mm256_setzero_pd(),_mm256_setzero_pd();avx
@@ -169,6 +185,7 @@ AVX2;immintrin.h;_mm256_hadd_epi16;_mm256_setzero_si256(),_mm256_setzero_si256()
 AVX512;immintrin.h;_mm512_abs_epi32;_mm512_setzero_si512();avx512f
 
 pop_enable:MSVC
+
 
 # Special checks for Oracle's SunPro compiler
 # https://docs.oracle.com/cd/E77782_01/html/E77792/gqexw.html
