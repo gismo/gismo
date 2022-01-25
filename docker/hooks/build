@@ -773,12 +773,4 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-## Push image
-${DOCKER_CMD} push ${IMAGE_NAME}
-
-if [ $? -ne 0 ]; then
-    echo "[***] ...build hook failed. Aborting!"
-    exit 1
-fi
-
 exit 0

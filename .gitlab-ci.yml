@@ -226,4 +226,4 @@ install_and_deploy_linux:
 docker:ubuntu20.04-gcc10-cxx11-release-generic-double-int:
   extends: .docker:linux:base
   script:
-    - cd /builds/gismo-ci/gismo/docker && ./run_build_docker.sh ubuntu20.04-gcc10-cxx11-release-generic-double-int
+    - cd /builds/gismo-ci/gismo/docker && pwd && ls && sh run_build_docker.sh ubuntu20.04-gcc10-cxx11-release-generic-double-int
