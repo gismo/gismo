@@ -219,8 +219,8 @@ install_and_deploy_linux:
     DOCKER_DRIVER: overlay
   before_script:
     - docker login --username=$DOCKERHUB_USERNAME --password=$DOCKERHUB_PASSWORD
-  only:
-    - master
+#  only:
+#    - stable
 
 # GCC 11, C++11, Release
 docker:ubuntu20.04-gcc10-cxx11-release-generic-double-int:
