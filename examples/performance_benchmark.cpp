@@ -1242,8 +1242,8 @@ int main(int argc, char *argv[])
     auto bmB = benchmark.find(benchmark_eigen_memcopy<real_t>::label());
     
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
-      auto bm = utils::ratio("memcopyRatio",
-                             "Memory copy (gsVector : native C array)", *bmB, *bmA);
+      auto bm = util::ratio("memcopyRatio",
+                            "Memory copy (gsVector : native C array)", *bmB, *bmA);
       benchmark.get().push_back( give(bm) );
     }
   }
@@ -1253,8 +1253,8 @@ int main(int argc, char *argv[])
     auto bmB = benchmark.find(benchmark_eigen_dotproduct<real_t>::label());
     
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
-      auto bm = utils::ratio("dotproductRatio",
-                             "Dot product (gsVector : native C array)", *bmB, *bmA);
+      auto bm = util::ratio("dotproductRatio",
+                            "Dot product (gsVector : native C array)", *bmB, *bmA);
       benchmark.get().push_back( give(bm) );
     }
   }
@@ -1264,8 +1264,8 @@ int main(int argc, char *argv[])
     auto bmB = benchmark.find(benchmark_eigen_axpy<real_t>::label());
     
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
-      auto bm = utils::ratio("axpyRatio",
-                             "AXPY (gsVector : native C array)", *bmB, *bmA);
+      auto bm = util::ratio("axpyRatio",
+                            "AXPY (gsVector : native C array)", *bmB, *bmA);
       benchmark.get().push_back( give(bm) );
     }
   }
@@ -1275,9 +1275,9 @@ int main(int argc, char *argv[])
     auto bmB = benchmark.find(benchmark_eigen_dense_matmul<real_t>::label());
     
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
-      auto bm = utils::ratio("densematmulRatio",
-                             "Dense matrix-vector multiplication (gsMatrix/gsVector : native C array)",
-                             *bmB, *bmA);
+      auto bm = util::ratio("densematmulRatio",
+                            "Dense matrix-vector multiplication (gsMatrix/gsVector : native C array)",
+                            *bmB, *bmA);
       benchmark.get().push_back( give(bm) );
     }
   }  

@@ -530,7 +530,7 @@ public:
 };
 } // namespace internal
 
-namespace utils {
+namespace util {
 
   /// \brief Returns the ratio of the two given benchmark result sets
   GISMO_EXPORT gsBenchmarkResultSet ratio(const std::string& label,
@@ -543,6 +543,6 @@ namespace utils {
                                     const std::string& descr,
                                     const gsBenchmarkSet objA,
                                     const gsBenchmarkSet objB);
-} // namespace utils
+} // namespace util
 
 } // namespace gismo
