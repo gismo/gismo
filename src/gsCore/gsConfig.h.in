@@ -48,9 +48,7 @@
 #cmakedefine GISMO_WITH_ADIFF
 #cmakedefine GISMO_WITH_CODIPACK
 #cmakedefine GISMO_WITH_IPOPT
-#cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI
-#cmakedefine GISMO_WITH_GMP
 #cmakedefine GISMO_WITH_OCC
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_PASTIX
@@ -63,11 +61,11 @@
 
 /* Only include new types here that can be set as real_t */
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 #include <mpreal.h>
 #endif
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 #include <gmpxx.h>
 #include <unsupported/Eigen/MPQClassExtra>
 #endif

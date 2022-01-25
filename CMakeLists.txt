@@ -147,6 +147,7 @@ gsJITConfigXml(${CMAKE_CURRENT_SOURCE_DIR}/cmake/jit.xml.in
 
 # Clean previously set variables in the cache
 unset(GISMO_EXTRA_INSTANCE       CACHE)
+unset(GISMO_EXTERNALS            CACHE)
 unset(${PROJECT_NAME}_HEADERS    CACHE)
 unset(${PROJECT_NAME}_SOURCES    CACHE)
 unset(${PROJECT_NAME}_EXTENSIONS CACHE)
@@ -215,9 +216,13 @@ if(GISMO_WITH_MPI)
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects" FORCE)
 endif(GISMO_WITH_MPI)
 
-if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsMultiPrecision"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+if(${GISMO_COEFF_TYPE} STREQUAL "mpq_class")
+  include(external/gsGmp.cmake)
+endif()
+
+if(${GISMO_COEFF_TYPE} STREQUAL "mpfr::mpreal")
+  include(external/gsGmp.cmake)
+  include(external/gsMpfr.cmake)
 endif()
 
 #if(GISMO_WITH_PARDISO)
@@ -360,9 +365,14 @@ set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
   CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 foreach(gssm ${GISMO_SUBMODULES})
   string(STRIP ${gssm} SUBMODULE)
-  #message("Fetch ${gssm}")
-  gismo_fetch_module(${gssm})
-  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${gssm}_ENABLED\n")
+  #message("Fetch ${SUBMODULE}")
+  gismo_fetch_module(${SUBMODULE})
+  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE}_ENABLED\n")
+endforeach()
+foreach(gssm ${GISMO_EXTERNALS})
+  string(STRIP ${gssm} EXTMOD)
+  #message("Fetch ext: ${EXTMOD}")
+  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${EXTMOD}_ENABLED\n")
 endforeach()
 file(WRITE ${gismo_BINARY_DIR}/gsCore/gsConfigExt.txt "${CONFIGEXT_H}")
 execute_process( COMMAND ${CMAKE_COMMAND} -E compare_files gsConfigExt.txt gsConfigExt.h
