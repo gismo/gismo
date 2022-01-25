@@ -211,7 +211,7 @@ install_and_deploy_linux:
 ################################################################################
 
 .docker:linux:base:
-  stage: build
+  stage: test # make build
   image: docker:git
   services:
     - docker:dind
