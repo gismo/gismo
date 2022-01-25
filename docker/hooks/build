@@ -117,6 +117,8 @@ case "$IMAGE_NAME" in
     ?(*\-)generic?(\-*))
         TARGET_ARCHITECTURE="generic"
         ;;
+
+    # Intel x86_64 CPUs
     ?(*\-)core?(\-*))
         TARGET_ARCHITECTURE="core"
         ;;
@@ -201,6 +203,8 @@ case "$IMAGE_NAME" in
     ?(*\-)atom?(\-*))
         TARGET_ARCHITECTURE="atom"
         ;;
+
+    # AMD x86_64 CPUs
     ?(*\-)k8?(\-*))
         TARGET_ARCHITECTURE="k8"
         ;;
@@ -258,6 +262,17 @@ case "$IMAGE_NAME" in
     ?(*\-)zen?(\-*))
         TARGET_ARCHITECTURE="zen"
         ;;
+
+    # Apple M1 CPU
+    ?(*\-)apple-m1?(\-*))
+        TARGET_ARCHITECTURE="apple-m1"
+        ;;
+
+    # Fujitsu A64FX CPU
+    ?(*\-)a64fx?(\-*))
+        TARGET_ARCHITECTURE="a64fx"
+        ;;
+
     *)
         TARGET_ARCHITECTURE="generic"
         ;;
