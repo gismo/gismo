@@ -194,13 +194,10 @@ gsHBox<d,T> gsHBox<d, T>::getAncestor(index_t k) const
     if (k < lvl - 1)
     {
         ancestor = parent.getAncestor(k);
-        gsDebugVar(parent.level());
-        gsDebugVar(ancestor.level());
         return ancestor;
     }
     else
     {
-        gsDebugVar(parent.level());
         return parent;
     }
 }
@@ -238,7 +235,7 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::getSupportExtension()
         supportBox = gsHBox<d,T>(aabb,m_basis);
 
         // Split the boxes into index interval with coordinate delta 1
-        tmpContainer = supportBox._toUnitBoxes();
+        tmpContainer = supportBox.toUnitBoxes();
         for (cIterator it = tmpContainer.begin(); it!=tmpContainer.end(); it++)
             container.push_back(*it);
     }
@@ -259,7 +256,6 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getMultiLevelSupportExtension(inde
     else
     {
         gsHBox<d,T> ancestor = this->getAncestor(k);
-        gsDebugVar(ancestor.level());
         return ancestor.getSupportExtension();
     }
 }
@@ -277,18 +273,10 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
         // Get multi level support extension on level k
         extension = this->getMultiLevelSupportExtension(k);
 
-        // for (HIterator hit = extension.begin(); hit!=extension.end(); hit++)
-        //     for (Iterator it = hit->begin(); it!=hit->end(); it++)
-        //         gsDebugVar(*it);
-
         // Eliminate elements which are too low
         for (Iterator it = extension.begin(); it!=extension.end(); it++)
             if (it->isActive())
                 neighborhood.push_back(*it);
-        // neighborhood = extension.at(k);
-
-        // for (Iterator it = neighborhood.begin(); it!=neighborhood.end(); it++)
-        //     gsDebugVar(*it);
     }
     return neighborhood;
 }
@@ -309,7 +297,7 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
         // Eliminate elements which are too low
         parents = _getParents(extension);
 
-        for (Iterator it = extension.begin(); it!=extension.end(); it++)
+        for (Iterator it = parents.begin(); it!=parents.end(); it++)
             if (it->isActive())
                 neighborhood.push_back(*it);
         // neighborhood = parents;
@@ -443,7 +431,7 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::_getParents(Container & container)
 
 
 template <short_t d, class T>
-typename gsHBox<d,T>::Container gsHBox<d, T>::_toUnitBoxes()
+typename gsHBox<d,T>::Container gsHBox<d, T>::toUnitBoxes() const
 {
     point low, upp, cur, curupp, ones;
     ones = gsVector<index_t,d>::Ones();
@@ -459,12 +447,11 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::_toUnitBoxes()
         result.push_back(gsHBox<d,T>(cur,curupp,this->level(),m_basis));
         next = nextLexicographic(cur,low,upp);
     }
-
     return result;
 }
 
 template <short_t d, class T>
-std::vector<index_t> gsHBox<d, T>::toRefBox() const
+typename gsHBox<d,T>::RefBox gsHBox<d, T>::toBox() const
 {
     std::vector<index_t> result(5);
     result[0] = this->level();
@@ -472,6 +459,18 @@ std::vector<index_t> gsHBox<d, T>::toRefBox() const
     result[2] = this->lowerIndex()[1];
     result[3] = this->upperIndex()[0];
     result[4] = this->upperIndex()[1];
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
+{
+    std::vector<index_t> result(5);
+    result[0] = this->level()+1;
+    result[1] = this->lowerIndex()[0]*2;
+    result[2] = this->lowerIndex()[1]*2;
+    result[3] = this->upperIndex()[0]*2;
+    result[4] = this->upperIndex()[1]*2;
     return result;
 }
 
@@ -585,6 +584,20 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
     scontainer.resize(distance(scontainer.begin(), it));
     Container result(scontainer.begin(),scontainer.end());
     return result;
+}
+
+template <short_t d, class T>
+bool gsHBox<d, T>::good() const
+{
+    return (m_indices.first.array() >=0).any() && (m_indices.second.array() >=0).any();
+}
+
+template <short_t d, class T>
+void gsHBox<d, T>::clean(Container & container) const
+{
+    std::function<bool(const gsHBox<d,T> &)> pred = [](const gsHBox<d,T> & box) { return !(box.good()); };
+    cIterator beg = std::remove_if(container.begin(),container.end(),pred);
+    container.erase(beg,container.end());
 }
 
 } // namespace gismo

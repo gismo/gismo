@@ -23,6 +23,7 @@ class gsHBoxContainer
 {
 public:
     // std::list does not provide .at(k) but it provides iterators
+    typedef typename gsHBox<d,T>::RefBox            RefBox;
     typedef typename gsHBox<d,T>::Container         Container;
     typedef typename gsHBox<d,T>::SortedContainer   SortedContainer;
     typedef typename gsHBox<d,T>::HContainer        HContainer;
@@ -38,45 +39,168 @@ public:
     gsHBoxContainer(const Container   & boxes);
     gsHBoxContainer(const HContainer  & boxes);
 
-    index_t size() const { return m_boxes.size(); }
+    /// Returns the size of the container on \a level
+    size_t size(index_t level)  const { return m_boxes[level].size(); }
+    /// Returns the number of levels stored in the container
+    size_t nLevels()            const { return m_boxes.size(); }
+    /// Returns the total number of boxes
+    size_t totalSize()          const;
 
-    // iterator begin() const {return m_boxes.begin();}
-    // iterator end()   const {return m_boxes.end();}
-
+    /// Checks if the hierarchical container is correctly defined
     bool check() { return _check(this->boxes()); };
 
+    /// Adds a single box
     void add(const gsHBox<d,T>          & box  );
+    /// Adds boxes stored in a container
     void add(const Container            & boxes);
+    /// Adds boxes stored in a hierarchical container
     void add(const HContainer           & boxes);
+    /// Adds boxes stored in a \ref gsHBoxContainer
     void add(const gsHBoxContainer<d,T> & boxes);
 
+    /// Prints the container
     std::ostream& print( std::ostream& os ) const;
 
+
+    /**
+     * @brief      Takes the union of two hierarchical containers
+     *
+     * @param[in]  container1  The container 1
+     * @param[in]  container2  The container 2
+     *
+     * @return     The hierarchical container with the union.
+     */
     HContainer           boxUnion(const HContainer & container1, const HContainer & container2) const;
+    /**
+     * @brief      Takes the union of \a this and the \a other \ref gsHBoxContainer
+     *
+     * @param[in]  other  The other gsHBoxContainer
+     *
+     * @return     The gsHBoxContainer with the union.
+     */
     gsHBoxContainer<d,T> boxUnion(const gsHBoxContainer<d,T> & other) const;
+    /**
+     * @brief      Takes the union of two \ref gsHBoxContainer
+     *
+     * @param[in]  container1  The container 1
+     * @param[in]  container2  The container 2
+     *
+     * @return     The gsHBoxContainer with the union.
+     */
     gsHBoxContainer<d,T> boxUnion(const gsHBoxContainer<d,T> & container1, const gsHBoxContainer<d,T> & container2) const;
+
+    /// Removes duplicate boxes
     void makeUnique();
 
+    /// Returns the actives on \a level
     Container &  getActivesOnLevel(index_t lvl);
+    /// Returns the actives on \a level
     const Container & getActivesOnLevel(index_t lvl) const;
+    /// Gives a hierarchical container with all the parents of the boxes stored in \a this
     HContainer getParents() const;
 
+
+    /**
+     * @brief      Marks H-recursively
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  lvl     The level
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
     HContainer  markHrecursive(HContainer & marked, index_t lvl, index_t m) const;
+    /// Applies \ref markHrecursive on \a this
     void        markHrecursive(index_t lvl, index_t m);
+    /**
+     * @brief      Marks T-recursively
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  lvl     The level
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
     HContainer  markTrecursive(HContainer & marked, index_t lvl, index_t m) const;
+    /// Applies \ref markTrecursive on \a this
     void        markTrecursive(index_t lvl, index_t m);
 
+    /**
+     * @brief      Performs H-admissible refinement
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    void        markHadmissible(HContainer & marked, index_t m) const;
+    /// Applies \ref markHadmissible on \a this
+    void        markHadmissible(index_t m);
+    /**
+     * @brief      Performs T-admissible refinement
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    void        markTadmissible(HContainer & marked, index_t m) const;
+    /// Applies \ref markTadmissible on \a this
+    void        markTadmissible(index_t m);
 
+    /// Returns a heirarchical container with the boxes stored in the container
     HContainer & boxes() { return m_boxes; }
+    /// Returns a heirarchical container with the boxes stored in the container
     const HContainer & boxes() const { return m_boxes; }
 
-    // getBoundingBox()
+    /// Returns the maximum level in the container
+    index_t maxLevel() {return m_boxes.size()-1; }
+
+    /**
+     * @brief      Returns boxes representation of the object.
+     *
+     * @return     Boxes representation of the object.
+     */
+    RefBox toBoxes()    const;
+
+    /**
+     * @brief      Returns reference boxes representation of the object.
+     *
+     * @return     Reference boxes representation of the object.
+     */
+    RefBox toRefBoxes() const;
+
+    /**
+     * @brief      Transforms the boxes in \a container as unit boxes
+     *
+     * @param[in]  container  A hierarchical container of boxes
+     *
+     * @return     A hierarchical container containing the unit boxes.
+     */
+    HContainer toUnitBoxes(const HContainer & container) const;
+
+    /**
+     * @brief      Returns the boxes inside as unit boxes
+     *
+     * @return     A hierarchical container containing the unit boxes.
+     */
+    HContainer toUnitBoxes() const;
+
+
+    /**
+     * @brief      Transforms/splits the boxes inside the container to unit boxes
+     */
+    void makeUnitBoxes();
+
 
 protected:
+    /// Helper to take the box union
     Container _boxUnion(const Container & container1, const Container & container2) const;
 
+    /// Constructs a new level
     void _makeLevel(index_t lvl);
 
+    /// Checks the container
     bool _check(const HContainer & boxes);
 
 

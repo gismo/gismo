@@ -66,6 +66,16 @@ gsHBoxContainer<d, T>::gsHBoxContainer(const HContainer & boxes)
     }
 }
 
+template <short_t d, class T>
+size_t gsHBoxContainer<d, T>::totalSize() const
+{
+    std::function<size_t(const size_t &, const Container &)> size_sum = [](const size_t & sum, const Container & a)
+    {
+        return sum+a.size();
+    };
+    return std::accumulate(m_boxes.begin(), m_boxes.end(), 0, size_sum);
+}
+
 /**
  * @brief      Checks if the level of the boxes in the container matches the container level
  *
@@ -76,9 +86,9 @@ template <short_t d, class T>
 bool gsHBoxContainer<d, T>::_check(const HContainer & boxes)
 {
     bool result = true;
-    for (index_t l = 0; l!=boxes.size(); l++)
+    for (size_t l = 0; l!=boxes.size(); l++)
         for (cIterator it = boxes[l].begin(); it!=boxes[l].end(); it++)
-            result &= (it->level()==l);
+            result &= ( (size_t) it->level()==l);
     return result;
 }
 
@@ -293,6 +303,21 @@ typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markTrecursive
 }
 
 template <short_t d, class T>
+void gsHBoxContainer<d, T>::markTadmissible(HContainer & marked, index_t m) const
+{
+    HContainer unitBoxes = this->toUnitBoxes(marked);
+    for (size_t l = 0; l!=unitBoxes.size(); l++)
+        this->markTrecursive(unitBoxes,l,m);
+    marked = unitBoxes;
+}
+
+template <short_t d, class T>
+void gsHBoxContainer<d, T>::markTadmissible(index_t m)
+{
+    this->markTadmissible(this->boxes(),m);
+}
+
+template <short_t d, class T>
 void gsHBoxContainer<d, T>::markTrecursive(index_t lvl, index_t m)
 {
     m_boxes = this->markTrecursive(m_boxes,lvl,m);
@@ -326,12 +351,26 @@ void gsHBoxContainer<d, T>::markHrecursive(index_t lvl, index_t m)
 }
 
 template <short_t d, class T>
+void gsHBoxContainer<d, T>::markHadmissible(HContainer & marked, index_t m) const
+{
+    HContainer unitBoxes = this->toUnitBoxes(marked);
+    for (size_t l = 0; l!=unitBoxes.size(); l++)
+        this->markHrecursive(unitBoxes,l,m);
+    marked = unitBoxes;
+}
+
+template <short_t d, class T>
+void gsHBoxContainer<d, T>::markHadmissible(index_t m)
+{
+    this->markHadmissible(this->boxes(),m);
+}
+
+template <short_t d, class T>
 void gsHBoxContainer<d, T>::_makeLevel( index_t lvl )
 {
     if (m_boxes.size() < static_cast<unsigned>(lvl + 1))
         m_boxes.resize(lvl+1);
 }
-
 
 template <short_t d, class T>
 std::ostream& gsHBoxContainer<d, T>::print( std::ostream& os ) const
@@ -340,6 +379,72 @@ std::ostream& gsHBoxContainer<d, T>::print( std::ostream& os ) const
         for (cIterator it = hit->begin(); it!=hit->end(); it++)
             os<<*it<<"\n";
     return os;
+}
+
+template <short_t d, class T>
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toBoxes() const
+{
+    size_t N = this->totalSize();
+    RefBox result;
+    result.reserve(( N * (2*d+1) ));
+    RefBox box;
+    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+        for (cIterator it = hit->begin(); it!=hit->end(); it++)
+        {
+            box = it->toBox();
+            for (typename RefBox::const_iterator boxIt = box.begin(); boxIt != box.end(); boxIt++)
+                result.push_back(*boxIt);
+        }
+
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes() const
+{
+    size_t N = this->totalSize();
+    RefBox result;
+    result.reserve(( N * (2*d+1) ));
+    RefBox box;
+    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+        for (cIterator it = hit->begin(); it!=hit->end(); it++)
+        {
+            box = it->toRefBox();
+            for (typename RefBox::const_iterator boxIt = box.begin(); boxIt != box.end(); boxIt++)
+                result.push_back(*boxIt);
+        }
+
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::toUnitBoxes(const HContainer & container) const
+{
+    HContainer result(container.size());
+    HIterator  resIt  = result.begin();
+    Container  boxes;
+
+    for (cHIterator hit = container.begin(); hit!=container.end(); hit++, resIt++)
+        for (cIterator it = hit->begin(); it!=hit->end(); it++)
+        {
+            boxes = it->toUnitBoxes();
+            for (cIterator boxIt = boxes.begin(); boxIt != boxes.end(); boxIt++)
+                resIt->push_back(*boxIt);
+        }
+
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::toUnitBoxes() const
+{
+    return this->toUnitBoxes(this->m_boxes);
+}
+
+template <short_t d, class T>
+void gsHBoxContainer<d, T>::makeUnitBoxes()
+{
+    this->m_boxes = this->toUnitBoxes();
 }
 
 } // namespace gismo

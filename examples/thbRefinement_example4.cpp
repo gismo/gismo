@@ -41,20 +41,22 @@ void writeCells(const std::string name, const gsMatrix<real_t> corners)
 
 int main(int argc, char *argv[])
 {
-    index_t refmode   = 0;
-    index_t degree    = 2;
+    index_t degree    = 1;
+    index_t m         = 2;
 
     index_t numHref   = 2;
 
     index_t testCase  = 0;
+    index_t verbose   = 0;
 
     index_t steps     = 1;
 
     bool plot     = false;
+    bool Hneigh   = false;
 
     gsCmdLine cmd("Create standard refined THB meshes.");
-    cmd.addInt("m","mode",
-               "Refinement mode (0, 1, 2 3 4)", refmode);
+    cmd.addInt("m","jump",
+               "parameter m", m);
     cmd.addInt("p","degree",
                "Spline degree", degree);
     cmd.addInt("r","numHref",
@@ -65,14 +67,18 @@ int main(int argc, char *argv[])
     cmd.addInt("t","testCase",
                "Test configuration", testCase);
 
+    cmd.addInt("v","verbose",
+               "Verbose output", verbose);
+
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
+    cmd.addSwitch("Hneigh", "H-neighborhood if true, T-neighborhood if false (default)", Hneigh);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsMultiPatch<> mpBspline, mp;
 
     gsTensorBSpline<2,real_t> bspline = *gsNurbsCreator<>::BSplineSquare(1,0,0);
-    bspline.degreeElevate(degree);
+    if (degree>1) bspline.degreeElevate(degree-1);
 
     gsVector<> coords;
     if (testCase==0)
@@ -89,6 +95,12 @@ int main(int argc, char *argv[])
 
     mpBspline.addPatch(bspline);
 
+    if (testCase==1)
+    {
+        mpBspline.uniformRefine();
+        mpBspline.uniformRefine();
+    }
+
     gsInfo<<"mpBspline.patch(0) = \n";
     gsInfo<<mpBspline.patch(0)<<"\n";
 
@@ -102,7 +114,6 @@ int main(int argc, char *argv[])
     }
 
 
-    index_t m;
     std::vector<index_t> boxes(5), marked(5);
 
     // Initial refinement
@@ -113,125 +124,98 @@ int main(int argc, char *argv[])
         boxes[2] = 0;
         boxes[3] = 1;
         boxes[4] = 1;
+        mp.patch(0).refineElements(boxes);
     }
-    mp.patch(0).refineElements(boxes);
 
     gsHTensorBasis<2,real_t> * basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
     for (index_t s = 0; s!=steps; s++)
     {
-        gsInfo<<"-----------------step "<<s<<"-----------------\n";
+        gsHBoxContainer<2,real_t> marked;
+        gsHBox<2,real_t> cell;
+        basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
+
+        if (verbose>0) gsInfo<<"-----------------step "<<s<<"-----------------\n";
         gsVector<index_t,2> low,upp;
         index_t lvl = -1;
         if (testCase==0)
         {
-            m = 2;
             lvl = s+1;
             low<<0,0;
             upp<<1,1;
+            cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+            marked.add(cell);
         }
+        else if (testCase==1)
+        {
+            lvl = s;
+            index_t nb = basis->tensorLevel(basis->maxLevel()).knots(0).uSize()-1;
+            index_t extent = 2*math::ceil((degree+1)/2.)-1;
+            for ( index_t i = 0; i!= nb; ++i)
+            {
+                low<<std::max(i-extent/2,0),   std::max(i,0);
+                upp<<std::min(i+1+extent/2,nb),std::min(i+1,nb);
 
-        basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
-
-        // /// Write the cells
-
-        // for (index_t l=0; l!=basis->maxLevel()+1; l++)
-        // {
-        //     typename gsBasis<real_t>::domainIter domIt = basis->tensorLevel(l).makeDomainIterator();
-        //     gsMatrix<real_t> cells(2,2*domIt->numElements());
-        //     index_t c = 0;
-        //     for (; domIt->good(); domIt->next() )
-        //     {
-        //         cells.col(2*c)   = domIt->lowerCorner();
-        //         cells.col(2*c+1) = domIt->upperCorner();
-        //         c++;
-        //     }
-        //     writeCells("level" + std::to_string(l) + ".csv",cells);
-        // }
-
-        // typename gsBasis<real_t>::domainIter domIt = basis->makeDomainIterator();
-        // gsHDomainIterator<real_t,2> * domHIt = nullptr;
-        // domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
-        // GISMO_ENSURE(domHIt!=nullptr,"Domain should be 2 dimensional for flattening");
-
-        // gsMatrix<real_t> hcells(2,2*domHIt->numElements());
-        // index_t c = 0;
-
-        // gsVector<index_t> idx;
-        // std::vector<index_t> parent;
-        // std::vector<std::vector<index_t>> suppext;
-        // for (; domHIt->good(); domHIt->next() )
-        // {
-        //     hcells.col(2*c)   = domHIt->lowerCorner();
-        //     hcells.col(2*c+1) = domHIt->upperCorner();
-        //     c++;
-        // }
-        // writeCells("hcells.csv",hcells);
+                cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+                marked.add(cell);
+            }
+            marked.makeUnitBoxes();
+        }
 
         // Create a gsHBox for the marked cell
-        gsHBox<2,real_t> cell(low,upp,lvl,basis);
-        gsMatrix<> cellCoords = cell.getCoordinates();
-        // writeCells("selected.csv",cellCoords);
-        gsDebugVar(cellCoords);
-        gsDebugVar(cell);
-
-        gsHBoxContainer<2,real_t> tmp;
-        gsHBoxContainer<2,real_t>::HContainer container;
-
-        gsDebugVar("------------------------Support Extension");
-        tmp = gsHBoxContainer<2,real_t>(cell.getSupportExtension());
-        container = tmp.boxes();
-        for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
-            for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
-                gsDebugVar(it->getCoordinates());
-
-        gsDebugVar("------------------------Multi-Level Support Extension 0");
-        tmp = gsHBoxContainer<2,real_t>(cell.getMultiLevelSupportExtension(0));
-        container = tmp.boxes();
-        for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
-            for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
-                gsDebugVar(it->getCoordinates());
-
-        gsDebugVar("------------------------Multi-Level Support Extension 1");
-        tmp = gsHBoxContainer<2,real_t>(cell.getMultiLevelSupportExtension(1));
-        container = tmp.boxes();
-        for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
-            for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
-                gsDebugVar(it->getCoordinates());
-
-        gsDebugVar("------------------------H-Neighborhood 2");
-        tmp = gsHBoxContainer<2,real_t>(cell.getHneighborhood(m));
-        container = tmp.boxes();
-        for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
-            for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
-                gsDebugVar(it->getCoordinates());
-
-        gsDebugVar("------------------------T-Neighborhood 2");
-        tmp = gsHBoxContainer<2,real_t>(cell.getTneighborhood(m));
-        container = tmp.boxes();
-        for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
-            for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
-                gsDebugVar(it->getCoordinates());
-
-        gsHBoxContainer<2,real_t> markedH(cell);
-        for (index_t l = 0; l!=basis->maxLevel()+1; l++)
+        if (verbose>0)
         {
-            gsDebugVar(l);
-            markedH.markHrecursive(l,m);
+            gsInfo<<"Cells marked for refinement:\n";
+            gsInfo<<marked<<"\n";
         }
-        gsDebugVar(basis->maxLevel());
-        gsDebugVar(markedH);
 
-        gsHBoxContainer<2,real_t> markedT(cell);
-        for (index_t l = 0; l!=basis->maxLevel()+1; l++)
+        // gsHBoxContainer<2,real_t> tmp;
+        // gsHBoxContainer<2,real_t>::HContainer container;
+        // if (verbose>1 &&   Hneigh  )
+        // {
+        //     gsInfo<<"------------------------H-Neighborhood m\n";
+        //     tmp = gsHBoxContainer<2,real_t>(cell.getHneighborhood(m));
+        //     container = tmp.boxes();
+        //     for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
+        //         for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+        //             gsInfo<<it->getCoordinates()<<"\n";
+
+        // }
+
+        // if (verbose>1 && !(Hneigh) )
+        // {
+        //     gsInfo<<"------------------------T-Neighborhood m\n";
+        //     tmp = gsHBoxContainer<2,real_t>(cell.getTneighborhood(m));
+        //     container = tmp.boxes();
+        //     for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
+        //         for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+        //             gsInfo<<it->getCoordinates()<<"\n";
+        // }
+
+        if (Hneigh)
+            marked.markHadmissible(m);
+        else
+            marked.markTadmissible(m);
+
+        if (verbose>1)
         {
-            gsDebugVar(l);
-            markedT.markTrecursive(l,m);
+            if (Hneigh)
+            {
+                gsInfo<<"------------------------Marked H-neighborhood\n";
+                gsInfo<<marked;
+            }
+            else
+            {
+                gsInfo<<"------------------------Marked T-neighborhood\n";
+                gsInfo<<marked;
+            }
         }
-        gsDebugVar(basis->maxLevel());
-        gsDebugVar(markedT);
 
 
-        mp.patch(0).refineElements(cell.toRefBox());
+        gsHBoxContainer<2,real_t> container(marked.toUnitBoxes());
+        // gsDebugVar(container);
+
+        mp.patch(0).refineElements(container.toRefBoxes());
+        gsInfo<<"Mesh has "<<mp.patch(0).coefs().rows()<<" DoFs\n";
 
     }
 
@@ -240,16 +224,16 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting geometry...";
         gsWriteParaview(mp,"mp",1000,true);
         gsInfo<<"done\n";
-        gsInfo<<"Plotting hierarchical basis...";
-        gsWriteParaview(*basis,"basis",1000,true);
-        gsInfo<<"done\n";
-        gsInfo<<"Plotting individual levels...";
-        for (index_t k=0; k!=numHref+1; k++)
-        {
-            gsInfo<<" "<<k;
-            gsWriteParaview((basis->tensorLevel(k)),"basis_" + std::to_string(k),1000);
-        }
-        gsInfo<<"done\n";
+        // gsInfo<<"Plotting hierarchical basis...";
+        // gsWriteParaview(*basis,"basis",1000,true);
+        // gsInfo<<"done\n";
+        // gsInfo<<"Plotting individual levels...";
+        // for (index_t k=0; k!=numHref+1; k++)
+        // {
+        //     gsInfo<<" "<<k;
+        //     gsWriteParaview((basis->tensorLevel(k)),"basis_" + std::to_string(k),1000);
+        // }
+        // gsInfo<<"done\n";
 
     }
 
