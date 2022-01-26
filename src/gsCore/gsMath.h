@@ -18,7 +18,7 @@
 #include <cmath>
 #include <complex>
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
@@ -62,7 +62,7 @@ using std::real;
 using std::imag;
 using std::conj;
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
 using codi::abs;
 using codi::acos;
 using codi::asin;
@@ -156,7 +156,7 @@ inline T nextafter(T x, T y)
 #   endif
 }
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 template<>
 inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 {
@@ -164,7 +164,7 @@ inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 }
 #endif
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 template<>
 inline mpq_class nextafter(mpq_class x, mpq_class y)
 {
@@ -208,7 +208,7 @@ struct numeric_limits
     { return std::numeric_limits<T>::digits10; }
 };
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 template <>
 struct numeric_limits<mpfr::mpreal>
 {
@@ -258,7 +258,7 @@ using std::isinf;
 #endif
 #endif
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 // Math functions for MPFR
 using mpfr::abs;
 using mpfr::acos;
@@ -288,7 +288,7 @@ using mpfr::isnan;
 
 #endif
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 // Math functions for GMP/mpq_class
 using ::abs;
 using ::acos;

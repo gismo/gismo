@@ -30,11 +30,11 @@
 
 #include <Eigen/Core>
 
-#if defined(GISMO_WITH_MPFR)
+#if defined(gsMpfr_ENABLED)
 #include <unsupported/Eigen/MPRealSupport>
 #endif
 
-#if defined(GISMO_WITH_GMP)
+#if defined(gsGmp_ENABLED)
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 

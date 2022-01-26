@@ -66,15 +66,15 @@
 #include <exprtk_ad_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPFR)
+#if defined(gsMpfr_ENABLED)
 #include <exprtk_mpfr_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_GMP)
+#if defined(gsGmp_ENABLED)
 #include <exprtk_gmp_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_CODIPACK)
+#if defined(gsCoDiPack_ENABLED)
 #include <gsCoDiPack/exprtk_codi_forward.hpp>
 #endif
 
@@ -88,15 +88,15 @@
 #include <exprtk_ad_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPFR)
+#if defined(gsMpfr_ENABLED)
 #include <exprtk_mpfr_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_GMP)
+#if defined(gsGmp_ENABLED)
 #include <exprtk_gmp_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_CODIPACK)
+#if defined(gsCoDiPack_ENABLED)
 #include <gsCoDiPack/exprtk_codi_adaptor.hpp>
 #endif
 

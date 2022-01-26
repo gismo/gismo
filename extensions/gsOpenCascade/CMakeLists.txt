@@ -44,7 +44,7 @@ if (NOT OpenCascade_FOUND)
   include(ExternalProject)
   ExternalProject_Add(OCC
       BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/OCC
-      SOURCE_DIR        ${gismo_externals}/OCC    
+      SOURCE_DIR        ${gismo_externals}/OCC
       CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                  -DCMAKE_INSTALL_MESSAGE=NEVER
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
