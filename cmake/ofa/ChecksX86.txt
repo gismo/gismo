@@ -175,7 +175,6 @@ pop_disable:MSVC,SunPro
 push_enable:MSVC
 
 # SSE/SSE2/SSE3/SSE4.1/SSE4.2/SSE4A/AVX/AVX2/FMA
-abm;ammintrin.h;_bextri_u32;(unsigned int)0,(unsigned int)0
 SSE;xmmintrin.h;_mm_add_ps;_mm_setzero_ps(),_mm_setzero_ps();sse
 SSE2;emmintrin.h;_mm_add_epi16;_mm_setzero_si128(),_mm_setzero_si128();sse2
 AVX;immintrin.h;_mm256_add_pd;_mm256_setzero_pd(),_mm256_setzero_pd();avx
