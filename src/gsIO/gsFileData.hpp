@@ -28,7 +28,7 @@
 #include <gsOpennurbs/gsReadOpenNurbs.h>
 #endif
 
-#ifdef GISMO_WITH_OCC                  // Extension files
+#ifdef gsOpenCascade_ENABLED
 #include <gsOpenCascade/gsReadBrep.h>
 #endif
 
@@ -184,7 +184,7 @@ bool gsFileData<T>::read(String const & fn)
     else if (ext== "3dm")
         return read3dmFile(m_lastPath);
 #endif
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     else if (ext== "brep")
         return readBrepFile(m_lastPath);
     //else if (ext== "iges")
@@ -1587,7 +1587,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
 template<class T>
 bool gsFileData<T>::readBrepFile( String const & fn )
 {
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     return extensions::gsReadBrep( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);
