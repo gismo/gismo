@@ -37,7 +37,7 @@ if (NOT GMP_FOUND)
 
   # Set GMP library and include directories
   ExternalProject_Get_Property(gmp install_dir)
-  message("Install dir: ${install_dir}")
+  message("GMP directory: ${install_dir}")
   set(GMP_LIBRARY_DIR ${install_dir}/lib CACHE INTERNAL "")
   set(GMP_INCLUDE_DIR ${install_dir}/include CACHE INTERNAL "")
   include_directories(${GMP_INCLUDE_DIR})
@@ -52,7 +52,7 @@ endif (NOT GMP_FOUND)
 
 # Add GMP and MPFR include directories to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
-  CACHE INTERNAL "Gismo include directories")
+  CACHE INTERNAL "Gismo include directories" FORCE)
 
 # Link G+Smo to GMP, GMPXX and MPFR libraries (either dynamically or statically)
 set(gismo_LINKER ${gismo_LINKER} ${GMPXX_LIBRARY} ${GMP_LIBRARY}

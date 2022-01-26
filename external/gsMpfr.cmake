@@ -6,7 +6,7 @@
 ######################################################################
 
 # Look for pre-installed MPFR library
-find_package(MPFR) #QUIET
+#find_package(MPFR) #QUIET
 
 if (NOT MPFR_FOUND)
   # Set MPFR version
@@ -40,7 +40,7 @@ if (NOT MPFR_FOUND)
 
   # Set MPFR library and include directories
   ExternalProject_Get_Property(mpfr install_dir)
-  message("Install dir: ${install_dir}")
+  message("MPFR directory: ${install_dir}")
   set(MPFR_LIBRARY_DIR ${install_dir}/lib CACHE INTERNAL "")
   set(MPFR_INCLUDE_DIR ${install_dir}/include CACHE INTERNAL "")
   include_directories(${MPFR_INCLUDE_DIR})
@@ -50,12 +50,12 @@ if (NOT MPFR_FOUND)
     DESTINATION include/gismo/
     FILES_MATCHING PATTERN "*.h")
 
-  add_dependencies(mpfr gmp)
+#  add_dependencies(mpfr gmp)
 endif(NOT MPFR_FOUND)
 
 # Add GMP and MPFR include directories to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
-  CACHE INTERNAL "Gismo include directories")
+  CACHE INTERNAL "Gismo include directories" FORCE)
 
 # Link G+Smo to GMP, GMPXX and MPFR libraries (either dynamically or statically)
 set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}

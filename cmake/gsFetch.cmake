@@ -144,7 +144,8 @@ function(gismo_fetch_module SUBMODULE)
 
   if (NOT DEFINED GISMO_FETCH_PROT)
     if(EXISTS "${gismo_SOURCE_DIR}/.git")
-      execute_process(COMMAND "${GIT_EXECUTABLE}" "remote" "-v" OUTPUT_VARIABLE git_remote_res)
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "remote" "-v" OUTPUT_VARIABLE git_remote_res
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR})
       string(REGEX MATCH "git@github.com" fmatch "${git_remote_res}")
       if(fmatch)
 	set(GISMO_FETCH_PROT "ssh" CACHE INTERNAL "")
