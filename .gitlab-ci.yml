@@ -222,8 +222,8 @@ install_and_deploy_linux:
     - apk update
     - apk add bash
     - docker login --username=$DOCKERHUB_USERNAME --password=$DOCKERHUB_PASSWORD
-    - cd /builds/gismo-ci/gismo/docker && bash run_build_docker.sh $DOCKER_IMAGE
-    - docker push $DOCKERHUB_USERNAME/$DOCKER_IMAGE
+    - cd /builds/gismo-ci/gismo/docker && bash run_build_docker.sh $DOCKERHUB_USERNAME/gismo:$DOCKER_TAG
+    - docker push $DOCKERHUB_USERNAME/gismo:$DOCKER_TAG
 #  only:
 #    - stable
 
