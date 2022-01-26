@@ -163,10 +163,10 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::plotParaview(gsField<> &solField_inte
         }
 
 
-//        gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+//        gsFunctionExpr<> solVal("cos(3 * pi * x / 4)",3);
 //        //gsFunctionExpr<> solVal("y",2);
 //        gsField<> exact(m_pde_ptr->domain().patch(pp), solVal, false );
-        //eval_field -= exact.value(pts);
+//        eval_field -= exact.value(pts);
 
         if ( 3 - d > 0 )
         {
@@ -578,7 +578,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
             index_t dim_u = m_bases[0].basis(pID).component(0).size();
             index_t dim_v = m_bases[0].basis(pID).component(1).size();
 
-            index_t supp_size = 3; // TODO FIX SUPPORT SIZE
+            index_t supp_size = 7; // TODO FIX SUPPORT SIZE
 
             index_t start_u = 0, start_v = 0, end_u = 0, end_v = 0;
             switch (vID)
@@ -647,7 +647,7 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
 
     gsVector<T> unormal;
 
-    real_t lambda = 0.01;
+    real_t lambda = 0.000000001;
 
     gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_JACOBIAN | NEED_NORMAL);
 

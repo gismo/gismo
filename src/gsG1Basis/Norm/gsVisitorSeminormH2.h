@@ -75,7 +75,6 @@ public:
                 f1ders2 += sol_sparse->at(i,numBasisFunctions[geoEval.id()] + actives.at(j)) * deriv2Data.block(3*j,0,3,f1ders.dim().second);
             }
 
-
         // get the gradients to columns
 //        f1ders.resize(quNodes.rows(), quNodes.cols() );
 
@@ -130,9 +129,11 @@ public:
                                 geoMapDeriv1(2, k) * (geoMapDeriv1(3, k)) +
                                 geoMapDeriv1(4, k) * (geoMapDeriv1(5, k)));
 
+
                 real_t G22 = (  geoMapDeriv1(1, k) * (geoMapDeriv1(1, k)) +
                                 geoMapDeriv1(3, k) * (geoMapDeriv1(3, k)) +
                                 geoMapDeriv1(5, k) * (geoMapDeriv1(5, k)));
+
 
                 // Derivative of the first fundamental form
                 real_t DuG11 = 2 * (  geoMapDeriv2(0, k) * (geoMapDeriv1(0, k)) +
@@ -140,9 +141,11 @@ public:
                                       geoMapDeriv2(6, k) * (geoMapDeriv1(4, k)) );
 
 
+
                 real_t DvG11 = 2 * (  geoMapDeriv2(2, k) * (geoMapDeriv1(0, k)) +
                                       geoMapDeriv2(5, k) * (geoMapDeriv1(2, k)) +
                                       geoMapDeriv2(8, k) * (geoMapDeriv1(4, k)) );
+
 
 //          DuG12 = DuG21
                 real_t DuG12 = (  geoMapDeriv2(0, k) * (geoMapDeriv1(1, k)) +
@@ -170,10 +173,15 @@ public:
                                      geoMapDeriv2(7, k) * (geoMapDeriv1(5, k)) );
 
 
+
+
+
                 gsMatrix<T> G = Jk.transpose() * Jk;
                 gsMatrix<T> G_inv = G.cramerInverse();
 
                 real_t detG = G11 * (G22) - G12 * (G12);
+
+//                gsInfo << "DvG21: " << DvG21 << "\n";
 //                real_t detG_inv = 1 / ( detG );
 
 //                real_t Du_detG_Inv = detG_inv * detG_inv * ( 2 * G12 * DuG12 -
@@ -296,10 +304,13 @@ public:
                 surfParametricLaplace *= sqrtDetG_inv;
                 weight *= sqrt(detG);
 
+
+                //Difference of the laplacian in L2 norm
                 sum += weight * ( (surfParametricLaplace - f2ders2.col(k)).squaredNorm()
 //                                +  (surfParametricLaplace.bottomRows(6) - f2ders2.col(k).bottomRows(6)).squaredNorm());
 //                                +  2 * (surfParametricLaplace.bottomRows(3) - f2ders2.col(k).bottomRows(3)).squaredNorm()
                                 );
+//                gsInfo << "DiffLap: " << (surfParametricLaplace ) << "\n";
 
 
             }
@@ -326,6 +337,7 @@ public:
             }
         }
         accumulated += sum;
+
 
 
         return sum;

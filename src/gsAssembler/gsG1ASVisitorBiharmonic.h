@@ -289,6 +289,7 @@ public:
                 {
                     gsMatrix<> L2approximation = basisVals.col(k) * basisVals.col(k).transpose() * sqrt(G.determinant());
 
+                    //Term to add for closed surfaces biharmonic problem
 //                    localMat.noalias() += weight * ( L2approximation );
 
                     localMat.noalias() += weight * ( surfParametricLaplace.col(k) * surfParametricLaplace.col(k).transpose() );

@@ -546,7 +546,7 @@ public:
                     }
                 }
             }
-            gsInfo << "Coeffs boundary interface:" << coefs << "\n";
+            //gsInfo << "Coeffs boundary interface:" << coefs << "\n";
         }
 
         else
@@ -635,9 +635,6 @@ public:
                 Phi.col(5) *= sigma * sigma;
 
                 gsMultiPatch<> rotPatch;
-
-                gsInfo << "Hi 0 \n";
-
 
                 if (auxGeom[0].getPatch().parDim() + 1 == auxGeom[0].getPatch().targetDim())
                 {
@@ -746,11 +743,8 @@ public:
                     }
                 }
 
-                gsInfo << "Hi 1 \n";
-
         if (this->kindOfVertex() == 1) // Interface-Boundary vertex
         {
-            gsInfo << "Hi 2 \n";
 
             gsMatrix<> bigMatrix(0,0);
             gsMatrix<> smallMatrix(0,0);
@@ -783,7 +777,6 @@ public:
         }
         else if(this->kindOfVertex() == -1) // Boundary vertex
         {
-            gsInfo << "Hi 3 \n";
 
             Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
             Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
