@@ -528,6 +528,8 @@ macro(OFA_HandleX86Options)
           continue()
         endif()
         list(APPEND _disable_extension_flag_list "${_extension_flag}")
+      else()
+        list(APPEND _ignore_extension_flag_list "${_extension_flag}")
       endif()
     endforeach()
 
