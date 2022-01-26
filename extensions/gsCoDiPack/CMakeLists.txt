@@ -6,7 +6,7 @@
 ######################################################################
 
 ## CoDiPack extension
-project(gsCoDiPackExtension)
+project(gsCoDiPack)
 
 if(CMAKE_CXX_STANDARD EQUAL "98" )
   message(FATAL_ERROR "CMAKE_CXX_STANDARD must be 11 or better for CoDiPack extensions to compile.")
@@ -33,7 +33,7 @@ set(CODIPACK_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/CoDiPack/include CACHE INT
 
 # Add CoDiPack include directory to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
-  CACHE INTERNAL "Gismo include directories")
+  CACHE INTERNAL "Gismo include directories" FORCE)
 
 # Add needed instantiations to the precompiled library
 foreach(instance ${GISMO_COEFF_TYPE} ${GISMO_EXTRA_COEFF_TYPE})
@@ -41,6 +41,9 @@ foreach(instance ${GISMO_COEFF_TYPE} ${GISMO_EXTRA_COEFF_TYPE})
     "codi::RealForwardGen<${instance}>;codi::RealReverseGen<${instance}>;codi::RealReverseIndexGen<${instance}>"
     CACHE INTERNAL "Additional instantiations")
 endforeach()
+
+include_directories(${GISMO_INCLUDE_DIRS})
+
 add_library(${PROJECT_NAME} OBJECT gsCoDiPack_.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -64,7 +67,6 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 # Add example files
-include_directories(${CODIPACK_INCLUDE_DIR})
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
 foreach(file ${FILES})
   add_gismo_executable(${file})

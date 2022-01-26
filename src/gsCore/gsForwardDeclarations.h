@@ -29,7 +29,7 @@
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
 #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 

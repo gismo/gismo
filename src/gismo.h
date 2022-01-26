@@ -206,7 +206,7 @@ namespace internal
 #include <gsAutoDiff.h>
 #endif
 
-#ifdef GISMO_WITH_TRILINOS
+#ifdef gsTrilinos_ENABLED
 #include <gsTrilinos/gsTrilinos.h>
 #endif
 

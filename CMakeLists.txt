@@ -184,23 +184,15 @@ if (";${GISMO_SUBMODULES};" MATCHES ";gsUniversal;")
   gismo_fetch_module(gsUniversal)
 endif()
 
+if (";${GISMO_SUBMODULES};" MATCHES ";gsCoDiPack;")
+  gismo_fetch_module(gsCoDiPack)
+endif()
+
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
 
 # Add externals directory
 add_subdirectory(external)
-
-if(GISMO_WITH_CODIPACK)
-  add_subdirectory(extensions/gsCoDiPack)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${CODIPACK_INCLUDE_DIR})
-endif(GISMO_WITH_CODIPACK)
-
-if(GISMO_WITH_IPOPT)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsIpOpt"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif(GISMO_WITH_IPOPT)
 
 #if(GISMO_WITH_METIS)
 #include_directories(${METIS_INCLUDE_DIR})
@@ -268,11 +260,6 @@ if(GISMO_WITH_UMFPACK)
   #include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
 
-if(GISMO_WITH_OCC)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsOpenCascade"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif(GISMO_WITH_OCC)
-
 if(GISMO_WITH_SMESH)
   include(external/surface_mesh.cmake)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SMESH_INCLUDE_DIRS}
@@ -281,16 +268,6 @@ if(GISMO_WITH_SMESH)
 endif()
 
 #second time
-include_directories(${GISMO_INCLUDE_DIRS})
-
-if(GISMO_WITH_TRILINOS)
-  add_subdirectory(extensions/gsTrilinos)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(SYSTEM ${TRILINOS_INCLUDE_DIR})
-endif(GISMO_WITH_TRILINOS)
-
-#third time
 include_directories(${GISMO_INCLUDE_DIRS})
 
 # external inclusion paths
@@ -317,32 +294,6 @@ add_subdirectory(src)
 ## #################################################################
 ## Submodules
 ## #################################################################
-
-option(GISMO_COMPFLOW "Enable compflow module" OFF)
-if(GISMO_COMPFLOW)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsCompFlow"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif()
-
-if(GISMO_ELASTICITY)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsElasticity"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif()
-
-if(GISMO_EXASTENCILS)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsExaStencils"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif()
-
-if(GISMO_STRUCTURALANALYSIS)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsStructuralAnalysis"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif()
-
-if(GISMO_KLSHELL)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsKLShell"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif()
 
 option(GISMO_UNSUPPORTED "Enable unsupported module" OFF)
 if(GISMO_UNSUPPORTED OR GISMO_MOTOR)

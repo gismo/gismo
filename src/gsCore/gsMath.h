@@ -18,7 +18,7 @@
 #include <cmath>
 #include <complex>
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
@@ -62,7 +62,7 @@ using std::real;
 using std::imag;
 using std::conj;
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
 using codi::abs;
 using codi::acos;
 using codi::asin;

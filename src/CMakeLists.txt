@@ -7,10 +7,6 @@
 
 include_directories(${GISMO_INCLUDE_DIRS})
 
-if(GISMO_WITH_CODIPACK)
-  include_directories(${CODIPACK_INCLUDE_DIR})
-endif()
-
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 #LIST( REMOVE_ITEM SUBDIRS misc)
 LIST( APPEND SUBDIRS gsUtils/gsMesh)

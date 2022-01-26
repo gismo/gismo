@@ -74,7 +74,7 @@
 #include <exprtk_gmp_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_CODIPACK)
+#if defined(gsCoDiPack_ENABLED)
 #include <gsCoDiPack/exprtk_codi_forward.hpp>
 #endif
 
@@ -96,7 +96,7 @@
 #include <exprtk_gmp_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_CODIPACK)
+#if defined(gsCoDiPack_ENABLED)
 #include <gsCoDiPack/exprtk_codi_adaptor.hpp>
 #endif
 

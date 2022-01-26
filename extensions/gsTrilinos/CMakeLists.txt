@@ -26,7 +26,7 @@ cmake_policy(SET CMP0063 NEW)
 endif()
 
 ## Trilinos extension
-project(gsTrilinosExtension)
+project(gsTrilinos)
 
 # Collect file names
 aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HEADERS)
@@ -57,13 +57,38 @@ if (NOT TRILINOS_FOUND)
   set(TRILINOS_VER "12-14-1")
   set(TRILINOS_MD5 "de912cca43c2ca3b74aa08528ac39dbd")
   message(STATUS "Using Trilinos version ${TRILINOS_VER} as an external package.")
-  
+
+  include(gsFetch)
+  gismo_fetch_directory(Trilinos
+      URL_MD5 "${TRILINOS_MD5}"
+      URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
+      DESTINATION    external
+      )
+    
   include(ExternalProject)
+  set(TRILINOS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/include CACHE INTERNAL "")
+  set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetra${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosnumerics${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}kokkoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosparameterlist${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscompat${CMAKE_SHARED_LIBRARY_SUFFIX};
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosremainder${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}amesos${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}aztecoo${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetraext${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belos${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}anasazi${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belosepetra${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ifpack${CMAKE_SHARED_LIBRARY_SUFFIX}
+      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ml${CMAKE_SHARED_LIBRARY_SUFFIX}
+      CACHE INTERNAL "")
   ExternalProject_Add(Trilinos
-          SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
-          URL_MD5 ${TRILINOS_MD5}
-          URL https://github.com/trilinos/Trilinos/archive/trilinos-release-${TRILINOS_VER}.tar.gz
-          CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release
+    SOURCE_DIR   ${gismo_externals}/Trilinos
+    BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/Trilinos
+    CMAKE_ARGS   -DCMAKE_BUILD_TYPE=Release
                        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -137,26 +162,10 @@ if (NOT TRILINOS_FOUND)
 
                        #-DTPL_ENABLE_Pthread=OFF # Note: MS Win might not have Pthread
                        UPDATE_COMMAND ""
+		       DOWNLOAD_COMMAND  ""
+		       BUILD_BYPRODUCTS "${TRILINOS_LIBRARIES}"
       )
-      set(TRILINOS_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/include CACHE INTERNAL "")
-      set(TRILINOS_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetra${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosnumerics${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}kokkoscore${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosparameterlist${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoscomm${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchoskokkoscompat${CMAKE_SHARED_LIBRARY_SUFFIX};
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}teuchosremainder${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}amesos${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}aztecoo${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}epetraext${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belos${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}anasazi${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}belosepetra${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ifpack${CMAKE_SHARED_LIBRARY_SUFFIX}
-      ${CMAKE_CURRENT_BINARY_DIR}/Trilinos-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ml${CMAKE_SHARED_LIBRARY_SUFFIX}
-      CACHE INTERNAL "")
+
 endif(NOT TRILINOS_FOUND)
 
 include_directories(${TRILINOS_INCLUDE_DIR} ${TPL_MPI_INCLUDE_DIRS})
@@ -185,8 +194,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
+
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TRILINOS_INCLUDE_DIR}
+  CACHE INTERNAL "Gismo include directories")
 
 set(gismo_LINKER ${gismo_LINKER} ${LAPACK_LIBRARIES} ${TRILINOS_LIBRARIES}
     CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
