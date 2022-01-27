@@ -31,18 +31,17 @@ if (NOT MPFR_FOUND)
   ExternalProject_Add(mpfr
     BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/mpfr
     SOURCE_DIR           ${gismo_externals}/mpfr
-    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --with-pic --prefix=<INSTALL_DIR>
-    INSTALL_DIR=<INSTALL_DIR>
+    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix
     DOWNLOAD_COMMAND     ""
     UPDATE_COMMAND       ""
     BUILD_BYPRODUCTS     "${MPFR_LIBRARY}"
     )
 
   # Set MPFR library and include directories
-  ExternalProject_Get_Property(mpfr install_dir)
-  message("MPFR directory: ${install_dir}")
-  set(MPFR_LIBRARY_DIR ${install_dir}/lib CACHE INTERNAL "")
-  set(MPFR_INCLUDE_DIR ${install_dir}/include CACHE INTERNAL "")
+  #ExternalProject_Get_Property(mpfr install_dir)
+  #message("MPFR directory: ${install_dir}")
+  set(MPFR_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/lib CACHE INTERNAL "")
+  set(MPFR_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/include CACHE INTERNAL "")
   include_directories(${MPFR_INCLUDE_DIR})
   
   # Install MPFR header files

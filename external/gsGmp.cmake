@@ -6,7 +6,7 @@
 ######################################################################
 
 # Look for pre-installed GMP library
-find_package(GMP) #QUIET
+#find_package(GMP) #QUIET
 
 if (NOT GMP_FOUND)
   # Set GMP version
@@ -28,18 +28,17 @@ if (NOT GMP_FOUND)
   ExternalProject_Add(gmp
     BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/gmp
     SOURCE_DIR           ${gismo_externals}/gmp
-    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --with-pic --prefix=<INSTALL_DIR>
-    INSTALL_DIR=<INSTALL_DIR>
+    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix
     DOWNLOAD_COMMAND     ""
     UPDATE_COMMAND       ""
     BUILD_BYPRODUCTS     "${GMP_LIBRARY};${GMPXX_LIBRARY}"
     )
 
   # Set GMP library and include directories
-  ExternalProject_Get_Property(gmp install_dir)
-  message("GMP directory: ${install_dir}")
-  set(GMP_LIBRARY_DIR ${install_dir}/lib CACHE INTERNAL "")
-  set(GMP_INCLUDE_DIR ${install_dir}/include CACHE INTERNAL "")
+  #ExternalProject_Get_Property(gmp install_dir)
+  #message("GMP directory: ${install_dir}")
+  set(GMP_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/lib CACHE INTERNAL "")
+  set(GMP_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/include CACHE INTERNAL "")
   include_directories(${GMP_INCLUDE_DIR})
 
   # Install GMP header files
