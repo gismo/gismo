@@ -24,14 +24,14 @@ if (NOT MPFR_FOUND)
   endif()
 
   # Set MPFR libraries
-  set(MPFR_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}mpfr${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
+  set(MPFR_LIBRARY ${CMAKE_BINARY_DIR}/mpfr-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}mpfr${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
 
   # Build MPFR library at compile time
   include(ExternalProject)
   ExternalProject_Add(mpfr
-    BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/mpfr
+    BINARY_DIR           ${CMAKE_BINARY_DIR}/mpfr
     SOURCE_DIR           ${PROJECT_SOURCE_DIR}/external/mpfr
-    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${PROJECT_SOURCE_DIR}/external/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix
+    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${PROJECT_SOURCE_DIR}/external/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --with-pic --prefix=${CMAKE_BINARY_DIR}/mpfr-prefix
     DOWNLOAD_COMMAND     ""
     UPDATE_COMMAND       ""
     BUILD_BYPRODUCTS     "${MPFR_LIBRARY}"
@@ -40,12 +40,12 @@ if (NOT MPFR_FOUND)
   # Set MPFR library and include directories
   #ExternalProject_Get_Property(mpfr install_dir)
   #message("MPFR directory: ${install_dir}")
-  set(MPFR_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/lib CACHE INTERNAL "")
-  set(MPFR_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/include CACHE INTERNAL "")
+  set(MPFR_LIBRARY_DIR ${CMAKE_BINARY_DIR}/mpfr-prefix/lib CACHE INTERNAL "")
+  set(MPFR_INCLUDE_DIR ${CMAKE_BINARY_DIR}/mpfr-prefix/include CACHE INTERNAL "")
   include_directories(${MPFR_INCLUDE_DIR})
   
   # Install MPFR header files
-  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix/include
+  install(DIRECTORY ${CMAKE_BINARY_DIR}/mpfr-prefix/include
     DESTINATION include/gismo/
     FILES_MATCHING PATTERN "*.h")
 

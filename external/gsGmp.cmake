@@ -20,15 +20,15 @@ if (NOT GMP_FOUND)
     )
 
     # Set GMP libraries
-  set(GMP_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gmp${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
-  set(GMPXX_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gmpxx${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
+  set(GMP_LIBRARY ${CMAKE_BINARY_DIR}/gmp-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gmp${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
+  set(GMPXX_LIBRARY ${CMAKE_BINARY_DIR}/gmp-prefix/lib/${CMAKE_STATIC_LIBRARY_PREFIX}gmpxx${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE INTERNAL "")
 
   # Build GMP library at compile time
   include(ExternalProject)
   ExternalProject_Add(gmp
-    BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/gmp
+    BINARY_DIR           ${CMAKE_BINARY_DIR}/gmp
     SOURCE_DIR           ${PROJECT_SOURCE_DIR}/external/gmp
-    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${PROJECT_SOURCE_DIR}/external/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix
+    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${PROJECT_SOURCE_DIR}/external/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --with-pic --prefix=${CMAKE_BINARY_DIR}/gmp-prefix
     DOWNLOAD_COMMAND     ""
     UPDATE_COMMAND       ""
     BUILD_BYPRODUCTS     "${GMP_LIBRARY};${GMPXX_LIBRARY}"
@@ -37,12 +37,12 @@ if (NOT GMP_FOUND)
   # Set GMP library and include directories
   #ExternalProject_Get_Property(gmp install_dir)
   #message("GMP directory: ${install_dir}")
-  set(GMP_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/lib CACHE INTERNAL "")
-  set(GMP_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/include CACHE INTERNAL "")
+  set(GMP_LIBRARY_DIR ${CMAKE_BINARY_DIR}/gmp-prefix/lib CACHE INTERNAL "")
+  set(GMP_INCLUDE_DIR ${CMAKE_BINARY_DIR}/gmp-prefix/include CACHE INTERNAL "")
   include_directories(${GMP_INCLUDE_DIR})
 
   # Install GMP header files
-  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix/include
+  install(DIRECTORY ${CMAKE_BINARY_DIR}/gmp-prefix/include
     DESTINATION include/gismo/
     FILES_MATCHING PATTERN "*.h")
 
