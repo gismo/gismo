@@ -30,8 +30,8 @@ if (NOT MPFR_FOUND)
   include(ExternalProject)
   ExternalProject_Add(mpfr
     BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/mpfr
-    SOURCE_DIR           ${gismo_externals}/mpfr
-    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix
+    SOURCE_DIR           ${PROJECT_SOURCE_DIR}/external/mpfr
+    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${PROJECT_SOURCE_DIR}/external/mpfr/configure --with-gmp-include=${GMP_INCLUDE_DIR} --with-gmp-lib=${GMP_LIBRARY_DIR} --enable-shared=no --enable-static=yes  --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/mpfr-prefix
     DOWNLOAD_COMMAND     ""
     UPDATE_COMMAND       ""
     BUILD_BYPRODUCTS     "${MPFR_LIBRARY}"

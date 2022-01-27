@@ -27,8 +27,8 @@ if (NOT GMP_FOUND)
   include(ExternalProject)
   ExternalProject_Add(gmp
     BINARY_DIR           ${CMAKE_CURRENT_BINARY_DIR}/gmp
-    SOURCE_DIR           ${gismo_externals}/gmp
-    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${gismo_externals}/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix
+    SOURCE_DIR           ${PROJECT_SOURCE_DIR}/external/gmp
+    CONFIGURE_COMMAND    CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} ${PROJECT_SOURCE_DIR}/external/gmp/configure --enable-cxx --enable-shared=no --enable-static=yes --with-pic --prefix=${CMAKE_CURRENT_BINARY_DIR}/gmp-prefix
     DOWNLOAD_COMMAND     ""
     UPDATE_COMMAND       ""
     BUILD_BYPRODUCTS     "${GMP_LIBRARY};${GMPXX_LIBRARY}"
