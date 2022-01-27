@@ -106,6 +106,13 @@ int main(int argc, char *argv[])
 
     gsInfo << "Setup bases and adjust degree... " << std::flush;
 
+    for ( index_t i = 0; i < refinements; ++i )
+    {
+        mbU.uniformRefine();
+        mbV.uniformRefine();
+        mbP.uniformRefine();
+    }
+    
     for ( size_t i = 0; i < mbU.nBases(); ++ i )
     {
         mbU[i].setDegreePreservingMultiplicity(degree+1);
@@ -115,12 +122,7 @@ int main(int argc, char *argv[])
         mbV[i].reduceContinuity(1);
     }
 
-    for ( index_t i = 0; i < refinements; ++i )
-    {
-        mbU.uniformRefine();
-        mbV.uniformRefine();
-        mbP.uniformRefine();
-    }
+
 
     gsInfo << "done.\n";
 
@@ -184,7 +186,7 @@ int main(int argc, char *argv[])
     index_t size = assembler.matrix().rows();
     gsInfo << size << " dofs.\n";
     gsSparseMatrix<> mat = assembler.matrix();
-    mat(size-1,size-1)=1;
+    mat(size-1,size-1)= -1;
     
     gsInfo << mat << "\n\n";
 
