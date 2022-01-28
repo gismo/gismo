@@ -110,14 +110,12 @@ public:
         rule = gsQuadrature::get(basis1, options, m_side1.direction());
 
         m_penalty     = options.askReal("DG.Penalty",-1);
-        const index_t deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
         // If not given, use default
         if (m_penalty<0)
         {
+            const index_t deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
             m_penalty = T(4) * (deg + basis1.dim()) * (deg + 1);
         }
-        else
-            m_penalty *= deg * deg;
 
         m_alpha     = options.askReal("DG.Alpha", 1);
         m_beta      = options.askReal("DG.Beta" , 1);

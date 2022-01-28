@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/square.xml");
+    std::string geometry("domain2d/yeti_mp2.xml");
     index_t splitPatches = 1;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
@@ -37,11 +37,11 @@ int main(int argc, char *argv[])
     bool nonMatching = false;
     real_t alpha = 1;
     real_t beta = 1;
-    real_t penalty = 12;
+    real_t penalty = -1;
     std::string boundaryConditions("d");
     std::string primals("c");
-    bool eliminateCorners = true;
-    real_t tolerance = 1.e-8;
+    bool eliminateCorners = false;
+    real_t tolerance = 1.e-6;
     index_t maxIterations = 100;
     bool calcEigenvalues = false;
     std::string out;
@@ -68,8 +68,6 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsOptionList opt = cmd.getOptionList();
-
     if ( ! gsFileManager::fileExists(geometry) )
     {
         gsInfo << "Geometry file could not be found.\n";
@@ -77,7 +75,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    gsInfo << "Run ieti_example with options:\n" << opt << std::endl;
+    gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
 
     /******************* Define geometry ********************/
 
@@ -111,6 +109,11 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "done.\n";
+
+    /************** Compute penalty parameter **************/
+    if(penalty < 0)
+        penalty *= degree * degree;
+
 
     /************** Define boundary conditions **************/
 
@@ -422,9 +425,13 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
+    gsStopwatch time;
+    time.restart();
     gsConjugateGradient<> PCG( ieti.schurComplement(), prec.preconditioner() );
-    PCG.setOptions( opt.getGroup("Solver") ).solveDetailed( rhsForSchur, lambda, errorHistory );
+    PCG.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhsForSchur, lambda, errorHistory );
+    real_t solving_time = time.stop();
     //! [Solve]
+    gsInfo <<"\nSolved problem in: "<<solving_time<<" seconds."<<"\n";
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     // Now, we want to have the global solution for u
@@ -458,7 +465,7 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(opt);
+        fd.add(cmd);
         fd.add(uVec);
         gsMatrix<> mat; ieti.saddlePointProblem()->toMatrix(mat); fd.add(mat);
         fd.addComment(std::string("ietidG_example   Timestamp:")+std::ctime(&time));
@@ -482,8 +489,8 @@ int main(int argc, char *argv[])
         gsMultiPatch<> mpsol;
         assembler.constructSolution(uVec, mpsol);
         gsField<> sol( assembler.patches(), mpsol );
-        gsWriteParaview<>(sol, "IETI", 1000);
-        system("paraview IETI.pvd  &");
+        gsWriteParaview<>(sol, "ieti_result", 1000);
+        //gsFileManager::open("ieti_result.pvd");
     }
 
     if (!plot&&out.empty())

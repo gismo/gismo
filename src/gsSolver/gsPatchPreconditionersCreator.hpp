@@ -18,6 +18,7 @@
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsUtils/gsStopwatch.h>
 
 namespace gismo
 {
@@ -44,8 +45,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                           const gsOptionList& opt,
                           const std::vector<gsSparseMatrix<T> > &stiffness,
                           const std::vector<gsSparseMatrix<T> > &mass,
-                          gsMatrix<T> & U,
-                          gsMatrix<T> &Vtrans,
+                          gsSparseMatrix<T> & U,
+                          gsSparseMatrix<T> &Vtrans,
                           gsSortedVector<index_t>& elCorner,
                           const bool isFastDiag,
                           T alpha)
@@ -86,14 +87,34 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
         U.resize(stiffness[0].rows()*stiffness[1].rows(), 2*offset.size());
         Vtrans.resize(2*offset.size(), stiffness[0].cols()*stiffness[1].cols());
-        U.setZero(), Vtrans.setZero();
+        //U.setZero(), Vtrans.setZero();
 
         index_t i(0);
-        index_t r1(0), c1(0), r2(0), c2(0);
+        index_t r1(0), c1(0), r2(0), c2(0), r3(0), c3(0);
         for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit, i+=2) {
+            r1 = 0; c1 = 0; r2 = 0; c2 = 0; r3 = 0; c3 = 0;
             index_t c = basis.functionAtCorner(mit->first) - mit->second;
             elCorner.push_sorted_unique(c);
 
+            for(index_t k = 0; k < basis.dim(); ++k)
+            {
+                if( ((mit->first-1) & (1<<k)) >> k )
+                {
+                    if(k == 0) // 0th- component
+                    {
+                        r1 = stiffness[basis.dim() - 1].rows() - 1; c1 = stiffness[basis.dim() - 1].cols() - 1;
+                    }
+                    else if (k == 1) //1st- component
+                    {
+                        r2 = stiffness[basis.dim() - 2].rows() - 1; c2 = stiffness[basis.dim() - 2].cols() - 1;
+                    }
+                    else if (k == 2) //2st- component
+                    {
+                        r3 = stiffness[basis.dim() - 3].rows() - 1; c3 = stiffness[basis.dim() - 3].cols() - 1;
+                    }
+                }
+            }
+/*
             switch ( mit->first ) //TODO: 3D case
             {
                 case 1:
@@ -103,7 +124,7 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                 }
                 case 2:
                 {
-                    r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = 0, c2 = 0;
+                    r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = 0, c2 = 0; // r1, c1 ... component 0
                     break;
                 }
                 case 3:
@@ -117,14 +138,23 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                     break;
                 }
             }
+*/
 
-            U.col(i) = gsSparseMatrix<T>(stiffness[0].col(c2)).kron(gsSparseMatrix<T>(mass[1].col(c1))) + isFastDiag * gsSparseMatrix<>(mass[0].col(c2)).kron(stiffness[1].col(c1))
-                                                                                                                + alpha * gsSparseMatrix<T>(mass[0].col(c2)).kron(mass[1].col(c1));
+
+            //gsInfo << "Kronecker\n"<<(mass[0].kron(stiffness[1]) + stiffness[0].kron(mass[1]) + alpha * mass[0].kron(mass[1])).toDense()<<"\n";
+            gsSparseMatrix<> emb(1, U.cols());
+            emb(0,i) = T(1);
+            // TODO: eliminate bool variable isFastDiag
+            U += (gsSparseMatrix<T>(mass[0].col(c2)).kron(gsSparseMatrix<T>(stiffness[1].col(c1))) + isFastDiag * gsSparseMatrix<T>(stiffness[0].col(c2)).kron(mass[1].col(c1))
+                                                                                                                + alpha * gsSparseMatrix<T>(mass[0].col(c2)).kron(mass[1].col(c1))) * emb;
             U(c, i) = T(0);
             U(c, i+1) = T(1);
 
-            Vtrans.row(i+1) = gsSparseMatrix<T>(stiffness[0].row(r2)).kron(mass[1].row(r1)) + isFastDiag * gsSparseMatrix<T>(mass[0].row(r2)).kron(stiffness[1].row(r1))
-                                                                                                                   + alpha * gsSparseMatrix<T>(mass[0].row(r2)).kron(mass[1].row(r1));
+            gsSparseMatrix<> embtrans(1, Vtrans.rows());
+            embtrans(0,i+1) = T(1);
+            // TODO: eliminate bool variable isFastDiag
+            Vtrans += embtrans.transpose() * (gsSparseMatrix<T>(mass[0].row(r2)).kron(stiffness[1].row(r1)) + isFastDiag * gsSparseMatrix<T>(stiffness[0].row(r2)).kron(mass[1].row(r1))
+                                                                                                                   + alpha * gsSparseMatrix<T>(mass[0].row(r2)).kron(mass[1].row(r1)));
             Vtrans(i, c) = T(1);
             Vtrans(i+1, c) = T(0);
         }
@@ -142,6 +172,10 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             }
 
         }
+
+        //gsInfo << "U\n"<<U.toDense()<<"\n";
+        //gsInfo << "Vtrans\n"<<Vtrans.toDense()<<"\n";
+
     }
     else
         GISMO_ERROR("Unknown Dirichlet strategy.");
@@ -258,9 +292,8 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     GISMO_ASSERT(basis.dim() == 2, "gsPatchPreconditionersCreator<>::removeCornersFromInverse, The method is only implemented for 2D!");
 
     // Sonst: Anwendung der SMW...
-    gsMatrix<T> U, Vtrans, AinvU, x;
-    //gsSparseMatrix<T> Vtrans; // TODO: Cannot check column with sparse matrix
-    //gsSparseMatrix<T, ColMajor> AinvU;
+    gsMatrix<T> AinvU, x;
+    gsSparseMatrix<T> U, Vtrans;
     gsSortedVector<index_t> elCorner;
     getUVtrans(basis, bc, opt, local_stiff, local_mass, U, Vtrans, elCorner, isFastDiag, alpha);
 
@@ -269,7 +302,7 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
 
     AinvU.resize(U.rows(), U.cols());
     for (index_t c = 0; c < U.cols(); ++c) {
-        op->apply(U.col(c), x);
+        op->apply(U.col(c).toDense(), x);
         AinvU.col(c) = x;
     }
 
@@ -291,7 +324,7 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
                 gsProductOp<T>::make(std::move(op),
                 gsSumOp<T>::make(
                         gsIdentityOp<T>::make(matOp->rows()),
-                                gsProductOp<T>::make( makeMatrixOp((gsSparseMatrix<T>(Vtrans.sparseView())).moveToPtr()), corrOp, makeMatrixOp(gsSparseMatrix<T>(AinvU.sparseView()).moveToPtr()) )
+                                gsProductOp<T>::make( makeMatrixOp((Vtrans).moveToPtr()), corrOp, makeMatrixOp(gsSparseMatrix<T>(AinvU.sparseView()).moveToPtr()) )
                             )
                         ),
                 makeMatrixOp(matOp->matrix().transpose())
@@ -492,10 +525,10 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
 
-        if (gamma != T(0))
+        if (gamma != (T)(0))
         {
             gsMatrix<T> etrans = ges.eigenvectors().transpose()*local_mass[i]*gsMatrix<T>::Ones(local_mass[i].rows(),1);
-            GISMO_ASSERT((etrans.block(1, 0, etrans.rows()-1, 1).array() < T(1)/100000000).all(),
+            GISMO_ASSERT((etrans.block(1, 0, etrans.rows()-1, 1).array() < (T)(1)/100000000).all(),
                 "gsPatchPreconditionerCreator::fastDiagonalizationOp: gamma!=0 only allowed for pure Neumann.");
             avg_term *= etrans(0,0) * etrans(0,0);
         }
@@ -528,7 +561,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     diag(0,0) += avg_term;
 
     for ( index_t l=0; l<sz; ++l )
-        diag( l, 0 ) = 1/diag( l, 0 );
+        diag( l, 0 ) = (T)(1)/diag( l, 0 );
 
     memory::unique_ptr< Eigen::DiagonalMatrix<T,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<T,Dynamic>( give(diag) ) );
 
@@ -879,7 +912,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 
         // If we are in the interior, we have to do the scaling here as there is no boundary correction.
         if ( numberInteriors == d )
-            correction[0] = gsScaledOp<T>::make( correction[0], 1./( alpha + beta*numberInteriors/(sigma*h*h) ) );
+            correction[0] = gsScaledOp<T>::make( correction[0], (T)(1)/( alpha + beta*(T)(numberInteriors)/(sigma*h*h) ) );
 
         // Setup of bondary correction
         if ( numberInteriors < d )
@@ -898,7 +931,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
                             s = M_compl[d-1-k].kron(s);
                     }
                 }
-                bc_matrix = ( alpha + beta*numberInteriors/(sigma*h*h) ) * s;
+                bc_matrix = ( alpha + beta*(T)(numberInteriors)/(sigma*h*h) ) * s;
             }
 
             for ( index_t j = d-1; j>=0; --j )

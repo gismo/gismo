@@ -25,7 +25,42 @@
 
 using namespace gismo;
 
+template <typename T>
+inline T powerIteration( const typename gsLinearOperator<T>::Ptr& A, const gsPreconditionerOp<T>* B, index_t N = 10)
+{
+    GISMO_ASSERT( A->rows() == A->cols() && B->rows() == B->cols() && A->rows() == B->rows(), "Dimensions do not argee");
 
+    gsMatrix<T> x, y, z;
+    z.setRandom(A->rows(),1);
+
+    for (index_t i = 0; i < N; ++i)
+    {
+        z.swap(x);
+        x /= math::sqrt( x.col(0).dot(x.col(0)) );
+        A->apply(x, y);
+        B->apply(y, z);
+    }
+
+    return y.col(0).dot(z.col(0)) / x.col(0).dot(y.col(0));
+
+}
+
+gsMultiPatch<real_t> approximateQuarterAnnulus(index_t deg)
+{
+    gsGeometry<>::uPtr quann = gsNurbsCreator<>::NurbsQuarterAnnulus();
+
+    gsKnotVector<> KV1(0,1, 0, deg+1);        // no interior knots in x direction
+    gsKnotVector<> KV2(0,1, 0, deg+1);        // no interior knot in y direction
+
+    gsTensorBSplineBasis<2> tbsp (give(KV1), give(KV2));
+    gsMatrix<real_t> eval = quann->eval(tbsp.anchors());
+    gsGeometry<>::uPtr approxGeom = tbsp.interpolateAtAnchors( eval );
+    gsMultiPatch<real_t> mp(*approxGeom);
+
+    //gsMultiPatch<real_t> res = mp.uniformSplit();
+    return mp;
+
+}
 
 /// A preconditioner class for IETI-DP with local inexact preconditioners
 template<class T>
@@ -57,10 +92,8 @@ public:
     gsInexactIETIPrec(const gsSparseMatrix <T> &K,
                       const BasePtr firstprecond,
                       const gsMultiBasis<T> &basis,
-                      //const gsBoundaryConditions <T> &bc1,
                       const std::vector<gsIetidGMapper<>::ArtificialIface> &iFacePairs,
                       const gsDofMapper& augmentedMapper,
-                      //const std::vector<gsBoundaryConditions<> > &Bc,
                       const T delta,
                       const gsOptionList &opt = gsAssembler<T>::defaultOptions()) :
     m_underlyingOperator(K), m_fastDiag(firstprecond), m_originalSize(m_fastDiag->rows()),
@@ -85,8 +118,8 @@ public:
         }
         m_R2T.makeCompressed();
 
-        //m_R1T *= 0.3;
-        //m_R2T *= 3.0;
+        m_R1T *= 0.4;
+        m_R2T *= 1.5;
 
         // do the interface part
         index_t r = 0, c = 0;
@@ -94,7 +127,7 @@ public:
         for (std::vector<gsIetidGMapper<>::ArtificialIface >::const_iterator it = m_patchIFace.begin(); it != m_patchIFace.end(); ++it)
         {
             index_t deg = math::max(m_basis[it-m_patchIFace.begin()+1].maxDegree(), m_basis[0].maxDegree());
-            gsSparseMatrix <T> iMass = ( (delta * deg * deg) * (1./m_basis[it - m_patchIFace.begin()+1].getMinCellLength() + 1./m_basis[0].getMinCellLength()) ) * m_mass[it - m_patchIFace.begin()];
+            gsSparseMatrix <T> iMass = 0.5 * ( delta * (1./m_basis[it - m_patchIFace.begin()+1].getMinCellLength() + 1./m_basis[0].getMinCellLength()) ) * m_mass[it - m_patchIFace.begin()];
             for (index_t k = 0; k < iMass.cols(); ++k) {
                 for (index_t i = 0; i < iMass.rows(); ++i)
                     tripletList.push_back(Eigen::Triplet<real_t>(r + i, c + k, iMass(i, k)));
@@ -571,6 +604,11 @@ int main(int argc, char *argv[])
 
     gsInfo << "done.\n";
 
+    /************** Compute penalty parameter **************/
+    if(penalty < 0)
+        penalty *= degree * degree;
+
+
     /************** Define boundary conditions **************/
 
     gsInfo << "Define right-hand-side and boundary conditions... " << std::flush;
@@ -766,6 +804,7 @@ int main(int argc, char *argv[])
         gsMultiBasis<> mb_local;
         ietiMapper.localSpaces(mp,k,mp_local,mb_local);
 
+        // only required for the yeti footprint
         if(k == 4 || k == 12 || k == 36 || k == 60)
         {
             bc_local.addCornerValue(1,0,0);
@@ -1000,11 +1039,14 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
+    gsStopwatch time;
+    time.restart();
     gsMinimalResidual<>( ieti.saddlePointProblem(), bdPrec )
             .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( ieti.rhsForSaddlePoint(), x, errorHistory );
+    real_t solving_time = time.stop();
     //! [Solve]
-    //gsInfo << "solution: \n"<<lambda.transpose()<<"\n";
+    gsInfo << "\nSolved problem in: "<<solving_time<<" seconds."<<"\n";
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     // Now, we want to have the global solution for u
