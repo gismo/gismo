@@ -39,6 +39,8 @@ private:
     gsOptionList m_options;
 
 public:
+    typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
+
     typedef std::vector< boundaryInterface > intContainer;
     typedef std::vector< patchSide > bContainer;
 
@@ -162,6 +164,12 @@ public:
     template<class E> // note: integralBdrElWise not offered
     T integralBdr(const expr::_expr<E> & expr, const bContainer & bdrlist)
     { return computeBdr_impl<E,plus_op>(expr,bdrlist); }
+
+    /// Calculates the integral of the expression \a expr on the
+    /// boundaries contained in \a BCs taking into account boundary functions
+    template<class E> // note: integralBdrElWise not offered
+    T integralBdrBc(const bcRefList & BCs, const expr::_expr<E> & expr)
+    { return computeBdrBc_impl<E,plus_op>(BCs,expr); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces of the (multi-basis) integration domain
@@ -314,6 +322,9 @@ private:
     T computeBdr_impl(const expr::_expr<E> & expr, const bContainer & bdrlist);
 
     template<class E, class _op>
+    T computeBdrBc_impl(const bcRefList & BCs, const expr::_expr<E> & expr);
+
+    template<class E, class _op>
     T computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces);
 
     template<class E>
@@ -460,6 +471,71 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(bit->patch, bit->side() );
+
+            // Compute on element
+            elVal = _op::init();
+            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
+                _op::acc(expr.val().eval(k), quWeights[k], elVal);
+
+            _op::acc(elVal, 1, m_value);
+            //if ( storeElWise ) m_elWise.push_back( elVal );
+        }
+    }
+
+    return m_value;
+}
+
+template<class T>
+template<class E, class _op>
+T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
+                                      const expr::_expr<E> & expr)
+{
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
+
+    //expr.print(gsInfo);
+
+    if ( BCs.empty() ) return 0;
+    m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
+
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    gsVector<T> quWeights; // quadrature weights
+
+    m_exprdata->parse(expr);
+
+    // Computed value
+    T elVal;
+    m_value = _op::init();
+    m_elWise.clear();
+
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
+    {
+        const boundary_condition<T> * it = &iit->get();
+
+        // Quadrature rule
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
+
+        // Update boundary function source
+        m_exprdata->setMutSource(*it->function());
+
+        // Initialize domain element iterator
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
+        m_exprdata->getElement().set(*domIt,quWeights);
+
+        // Start iteration over elements
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                          m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(it->patch(), it->side() );
 
             // Compute on element
             elVal = _op::init();
