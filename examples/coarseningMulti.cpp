@@ -21,7 +21,7 @@
 using namespace gismo;
 using namespace std;
 
-int numRed, fineLevel = 3, coarseLevel = 2, theLev;
+int numRed, fineLevel = 2, coarseLevel = 1, theLev;
 //int numCells = 4 * (int) pow(2, coarseLevel) * 4 * (int) pow(2, coarseLevel);
 int redBox[4096][5]; //LAZY SOLUTION
 ofstream outfile;
@@ -567,11 +567,15 @@ int rebuildTheHierarchy(int boxMat[][5], int row, int x1U, int x1Bi, int x2U, in
                 outfile << "CREATE E BOX:\n";
                 boxMat[lastNonzeroRow + 1][0] = levNow + 1;
                 int a = x2U * pow(2, boxMat[row][0] - levNow);//boxMat[lastNonzeroRow + 1][1];
+                gsInfo << x2U << " * pow(2, " << boxMat[row][0] << " - " << levNow << ") = " << a << "\n";
                 boxMat[lastNonzeroRow + 1][1] = a;//x2U * pow(2, boxMat[row][0] - levNow);
-                int b = y1U * pow(2, boxMat[row][0] - levNow);;
+                int b = y1U * pow(2, boxMat[row][0] - levNow);
+                gsInfo << y1U << " * pow(2, " << boxMat[row][0] << " - " << levNow << ") = " << b << "\n";
                 boxMat[lastNonzeroRow + 1][2] = b;//y1U * pow(2, boxMat[row][0] - levNow);
-                int c = x2Bi;boxMat[lastNonzeroRow + 1][3];
+                int c = x2Bi;
+                //boxMat[lastNonzeroRow + 1][3];
                 gsInfo << "c: " << c << "\n";
+                gsInfo << x2Bi  << " = " << c << "\n";
                 boxMat[lastNonzeroRow + 1][3] = c;//x2Bi; //*pow(2, boxMat[row][0] - 3);
                 gsInfo << "boxMat[lastNonzeroRow + 1][3]: " << boxMat[lastNonzeroRow + 1][3] << "\n";
                 int d = y2U * pow(2, boxMat[row][0] - levNow);//boxMat[lastNonzeroRow + 1][4];
@@ -674,8 +678,8 @@ int main(int argc, char * argv[]){
     std::string pvdFile = "/home/turing/theydarov/pvdFiles/resultLocalMulti";
     int los = 0, nlos = 0, proj = 0;
     //DON'T FORGET ABOUT GLOBAL VARIABLES!
-//    int numCells = 4 * (int) pow(2, coarseLevel) * 4 * (int) pow(2, coarseLevel);
-    int numCells = 1 * (int) pow(2, coarseLevel) * 1 * (int) pow(2, coarseLevel);
+    int numCells = 4 * (int) pow(2, coarseLevel) * 4 * (int) pow(2, coarseLevel);
+//    int numCells = 1 * (int) pow(2, coarseLevel) * 1 * (int) pow(2, coarseLevel);
     std::string givenGeo;
     int gradingExtent;
     //    real_t epsilon_g = 0.003, epsilon_f = 0.001;
@@ -708,7 +712,9 @@ int main(int argc, char * argv[]){
 //    std::string inputInitial("/home/turing/theydarov/geometries/WigglyCoonsPatchIntDist.xml");
 //    std::string inputInitial("/home/turing/theydarov/gismoMP/gismo/filedata/planar/square_and_puzzle.xml");
 //    std::string inputInitial("/home/turing/theydarov/gismoMP/gismo/filedata/planar/two_squares_THB.xml");
-    std::string inputInitial("/home/turing/theydarov/gismoMP/gismo/filedata/planar/square_and_puzzle.xml");
+//    std::string inputInitial("/home/turing/theydarov/gismoMP/gismo/filedata/planar/square_and_puzzle.xml");
+//    std::string inputInitial("/home/turing/theydarov/gismoMP/gismo/filedata/domain2d/yeti_mp2THB.xml");
+    std::string inputInitial("/home/turing/theydarov/geometries/footTHBLevel2.xml");
 //    std::string inputInitial("/home/turing/theydarov/geometries/indiana_thb.xml");
 //    std::string inputInitial("/home/turing/theydarov/auxiliary/resultLocalMulti.xml");
 //    std::string inputInitial("/home/turing/theydarov/auxiliary/resultLocalMulti_Map_0.xml");
