@@ -112,11 +112,23 @@ macro(OFA_AutodetectX86)
     string(REGEX REPLACE ".* Family ([0-9]+) .*" "\\1" _cpu_family "${_cpu_id}")
     string(REGEX REPLACE ".* Model ([0-9]+) .*" "\\1" _cpu_model "${_cpu_id}")
     string(REGEX REPLACE ".* Stepping ([0-9]+) .*" "\\1" _cpu_mstepping "${_cpu_id}")
-    
-    # TODO: BSD, Android, QNX, ...
-    
+
   else()
-    message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+    # Try to retrieve CPUID directly
+    try_run(_exit _ok
+      ${CMAKE_CURRENT_BINARY_DIR}
+      ${CMAKE_SOURCE_DIR}/cmake/ofa/cpuinfo_x86.cxx
+      RUN_OUTPUT_VARIABLE _cpuinfo)
+
+    if(_ok AND ${_exit} EQUAL 0)    
+      string(REGEX REPLACE ".*vendor_id[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _vendor_id "${_cpuinfo}")
+      string(REGEX REPLACE ".*cpu family[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_family "${_cpuinfo}")
+      string(REGEX REPLACE ".*model[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_model "${_cpuinfo}")
+      string(REGEX REPLACE ".*stepping[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_stepping "${_cpuinfo}")
+      string(REGEX REPLACE ".*flags[ \t]*:[ \t]+([^\n]+).*" "\\1" _cpu_flags "${_cpuinfo}")
+    else()
+      message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+    endif()
   endif()
 
   # Determine CPU from CPUID
