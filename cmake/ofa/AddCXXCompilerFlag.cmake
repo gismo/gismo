@@ -130,7 +130,7 @@ macro(AddCXXCompilerFlag _flag)
   foreach(_header ${_headers})
     set(_resultVar "HAVE_${_header}")
     string(REGEX REPLACE "[-.+/:= ]" "_" _resultVar "${_resultVar}")
-    check_include_file_cxx(${_header} ${_resultVar} "${_flag} ${_extra_flags}")
+    check_include_file_cxx(${_header} ${_resultVar} "${_flag}${_extra_flags}")
     
     if(NOT ${_resultVar})
       set(_check_include_file_cxx FALSE)
@@ -156,7 +156,7 @@ macro(AddCXXCompilerFlag _flag)
   endif() 
   
   set(_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
-  set(CMAKE_REQUIRED_FLAGS "${_flag} ${_extra_flags}")
+  set(CMAKE_REQUIRED_FLAGS "${_flag}${_extra_flags}")
   set(_resultVar "HAVE_${_flag}")
   string(REGEX REPLACE "[-.+/:= ]" "_" _resultVar "${_resultVar}")
   check_cxx_source_compiles("${_cxx_code}" ${_resultVar}

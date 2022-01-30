@@ -868,8 +868,8 @@ macro(OFA_HandleArmOptions)
         # Convert list of extensions into compiler flags
         string(REPLACE "," ";" _check_extension_flags "${_check_extension_flags}")
         list(GET _check_extension_flags 0 _extension_flag)
-        string(REPLACE ";" "+" _check_flags "${_check_extension_flags}")
         list(APPEND _check_extension_flag_list "${_extension_flag}")
+        string(REPLACE ";" "+" _check_extra_flags "+${_check_extension_flags}")
 
         # Extract optional extension alias
         list(LENGTH _check _len)
@@ -899,6 +899,7 @@ macro(OFA_HandleArmOptions)
           # flag and can compile the provided test code with it
           set(_code "\nint main() { ${_check_function}(${_check_params})\; return 0\; }")
           AddCXXCompilerFlag("${_march_flag}${_march}+${_extension_flag}"
+            EXTRA_FLAGS ${_check_extra_flags}
             HEADERS     ${_check_headers}
             CODE        "${_code}"
             RESULT      _ok)

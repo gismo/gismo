@@ -60,26 +60,25 @@
 # pop_enable:SunPro
 
 aes;cstdlib;exit;0
-bf16;cstdlib;exit;0
+bf16,sve;arm_sve.h;svbfdot;svfloat32_t(),svbfloat16_t(),svbfloat16_t()
 crc;cstdlib;exit;0
-crypto;cstdlib;exit;0
-dotprod;cstdlib;exit;0
-dsp;cstdlib;exit;0
-f32mm;cstdlib;exit;0
-f64mm;cstdlib;exit;0
+crypto;arm_neon.h;vaesdq_u8;uint8x16_t(), uint8x16_t()
+dotprod;arm_neon.h;svdot;svint32_t(),svint8_t(),svint8_t()
+dsp,sve;arm_sve.h;svqadd_z;svbool_t(),svint8_t(),svint8_t()
+f32mm,sve;arm_sve.h;svmmla;svfloat32_t(),svfloat32_t(),svfloat32_t()
+f64mm,sve;arm_sve.h;svmmla;svfloat64_t(),svfloat64_t(),svfloat64_t()
 flagm;cstdlib;exit;0
-fp;cstdlib;exit;0
-fp16;cstdlib;exit;0
-fp16fml;cstdlib;exit;0
+fp;arm_neon.h;vcvt_f16_f32;float32x4_t()
+fp16;arm_neon.h;vabdq_f16;float16x8_t(),float16x8_t()
+fp16fml;arm_neon.h;vfmlalq_high_f16;float32x4_t(),float16x8_t(),float16x8_t()
 fd_dp;cstdlib;exit;0
 fp_sp;cstdlib;exit;0
-i8mm;cstdlib;exit;0
+i8mm,sve;arm_sve.h;svmmla;svint32_t(),svint8_t(),svint8_t()
 idiv;cstdlib;exit;0
 lse;cstdlib;exit;0
 memtag;cstdlib;exit;0
 mve;cstdlib;exit;0
 mve_fp;cstdlib;exit;0
-neon;arm_neon.h;vaddq_u32;uint32x4_t(),uint32x4_t()
 neon_fp16;cstdlib;exit;0
 neon_vfpv4;cstdlib;exit;0
 pauth;cstdlib;exit;0
@@ -94,15 +93,19 @@ sb;cstdlib;exit;0
 sec;cstdlib;exit;0
 sha2;cstdlib;exit;0
 sha3;cstdlib;exit;0
-simd;cstdlib;exit;0
-sm4;cstdlib;exit;0
+simd;arm_neon.h;vaddq_u32;uint32x4_t(),uint32x4_t()
 ssbs;cstdlib;exit;0
-sve;cstdlib;exit;0
-sve2;cstdlib;exit;0
-sve2-aes;cstdlib;exit;0
-sve2-bitperm;cstdlib;exit;0
-sve2-sha3;cstdlib;exit;0
-sve2-sm4;cstdlib;exit;0
+
+# SVE
+sve;arm_sve.h;svwhilelt_b64;0,1
+
+# SVE2
+sve2;arm_sve.h;svaba;svint8_t(),svint8_t(),svint8_t()
+sve2-aes;arm_sve.h;svaesd;svuint8_t(),svuint8_t()
+sve2-bitperm;arm_sve.h;svbdep;svuint8_t(),svuint8_t()
+sve2-sha3;arm_sve.h;svrax1;svint64_t(),svint64_t()
+sve2-sm4;arm_sve.h;svsm4e;svuint32_t(),svuint32_t()
+
 tme;cstdlib;exit;0
 vfpv3;cstdlib;exit;0
 vfpv3_d16;cstdlib;exit;0
