@@ -21,14 +21,13 @@
 #elif __APPLE__
 #   include <sys/utsname.h>
 #   include <sys/sysctl.h>
-#elif __linux__
+#elif __linux__ || __unix__
 #   include <unistd.h>
 #   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
 #      include <cpuid.h>
 #   else
 #      include <limits.h>
 #   endif
-#elif __unix__
 #endif
 
 namespace gismo
@@ -624,7 +623,7 @@ namespace gismo
       return CPUBrandString;
     }
 
-#elif __linux__
+#elif __linux__ || __unix__
 #   if defined(__x86_64__) && ( defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) || defined(__SUNCC_PRO))
 
     char CPUBrandString[0x40];
@@ -661,10 +660,6 @@ namespace gismo
     return str;
 
 #   endif
-
-#elif __unix__
-
-    // No generic implementation yet
 
 #endif
 
@@ -706,15 +701,11 @@ namespace gismo
       return (uint64_t)memsize;
     }
 
-#elif __linux__
+#elif __linux__ || __unix__
 
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return (uint64_t)(pages * page_size);
-
-#elif __unix__
-
-    // No generic implementation yet
 
 #endif
 
