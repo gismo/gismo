@@ -6,7 +6,7 @@
 ######################################################################
 
 # Look for pre-installed GMP library
-#find_package(GMP) #QUIET
+find_package(GMP) #QUIET
 
 if (NOT GMP_FOUND)
   # Set GMP version
@@ -38,8 +38,7 @@ if (NOT GMP_FOUND)
   #ExternalProject_Get_Property(gmp install_dir)
   #message("GMP directory: ${install_dir}")
   set(GMP_LIBRARY_DIR "${CMAKE_BINARY_DIR}/gmp-prefix/lib" CACHE INTERNAL "")
-  set(GMP_INCLUDE_DIR "${CMAKE_BINARY_DIR}/gmp-prefix/include" CACHE INTERNAL "")
-  message("GMP include dir: ${GMP_INCLUDE_DIR}")
+  set(GMP_INCLUDE_DIR "/.${CMAKE_BINARY_DIR}/gmp-prefix/include" CACHE INTERNAL "") #note: prefix is to gix a bug with relative paths for ninja
   include_directories(${GMP_INCLUDE_DIR})
 
   # Install GMP header files
