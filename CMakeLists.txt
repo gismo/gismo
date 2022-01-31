@@ -210,6 +210,7 @@ endif(GISMO_WITH_MPI)
 
 if(${GISMO_COEFF_TYPE} STREQUAL "mpq_class")
   include(external/gsGmp.cmake)
+  message("INCLUDE DIRS: ${GISMO_INCLUDE_DIRS}")
 endif()
 
 if(${GISMO_COEFF_TYPE} STREQUAL "mpfr::mpreal")

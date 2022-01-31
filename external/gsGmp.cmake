@@ -52,7 +52,7 @@ endif (NOT GMP_FOUND)
 
 # Add GMP and MPFR include directories to G+Smo standard include directories
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
-  CACHE INTERNAL "Gismo include directories" FORCE)
+  CACHE INTERNAL "gismo include directories" FORCE)
 
 # Link G+Smo to GMP, GMPXX and MPFR libraries (either dynamically or statically)
 set(gismo_LINKER ${gismo_LINKER} ${GMPXX_LIBRARY} ${GMP_LIBRARY}
