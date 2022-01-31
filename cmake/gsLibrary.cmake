@@ -68,7 +68,7 @@ endif()
   FOLDER "G+Smo libraries"
   )
 
-#if(GISMO_WITH_MPFR OR GISMO_WITH_GMP)
+#if(gsMpfr_ENABLED OR gsGmp_ENABLED)
 #    find_package(GMP)
 #    find_package(MPFR)
 #

@@ -93,24 +93,9 @@ endif()
 #message ("  GISMO_WITH_METIS        ${GISMO_WITH_METIS}")
 #endif()
 
-#option(GISMO_WITH_GMP            "With GMP"                  false  )
-#if  (${GISMO_WITH_GMP})
-#message ("  GISMO_WITH_GMP          ${GISMO_WITH_GMP}")
-#endif()
-
-option(GISMO_WITH_MPFR           "With MPFR"                  false  )
-if  (${GISMO_WITH_MPFR})
-message ("  GISMO_WITH_MPFR         ${GISMO_WITH_MPFR}")
-endif()
-
 option(GISMO_WITH_MPI            "With MPI"                  false  )
 if  (${GISMO_WITH_MPI})
 message ("  GISMO_WITH_MPI          ${GISMO_WITH_MPI}")
-endif()
-
-option(GISMO_WITH_GMP            "With GMP"                  false  )
-if  (${GISMO_WITH_GMP})
-message ("  GISMO_WITH_GMP          ${GISMO_WITH_GMP}")
 endif()
 
 option(GISMO_WITH_OCC            "With OpenCascade"          false  )
