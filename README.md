@@ -114,6 +114,9 @@ There is a number of optional modules that may be enabled.
 |----------|-----------------|
 |[gsOpenCascade](https://github.com/gismo/gismo/tree/stable/extensions/gsOpenCascade)| Extends functionality using OpenCascade|
 
+To enable e.g. gsSpectra and gsOpenCascade set the following option in CMake:
+
+  -D GISMO_SUBMODULES="gsSpectra;gsOpenCascade"
 
 # Configuration Options
 
