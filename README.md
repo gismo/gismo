@@ -116,7 +116,7 @@ There is a number of optional modules that may be enabled.
 
 To enable e.g. gsSpectra and gsOpenCascade set the following option in CMake:
 
-  -D GISMO_SUBMODULES="gsSpectra;gsOpenCascade"
+ ``` -D GISMO_SUBMODULES="gsSpectra;gsOpenCascade" ```
 
 # Configuration Options
 
