@@ -50,4 +50,4 @@ _Debian/Ubuntu_
 
 __macOS__
 
-_Windows_
+__Windows__
