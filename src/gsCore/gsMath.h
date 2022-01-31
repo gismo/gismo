@@ -220,7 +220,7 @@ struct numeric_limits<mpfr::mpreal>
 };
 #endif
 
-//#ifdef GISMO_WITH_MPFR
+//#ifdef gsMpfr_ENABLED
 //#  define REAL_DIG std::numeric_limits<real_t>::digits10()
 //#else
 //#  define REAL_DIG std::numeric_limits<real_t>::digits10
