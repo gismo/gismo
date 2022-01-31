@@ -492,13 +492,13 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nocodipack?(\-*))
-        GISMO_WITH_CODIPACK=OFF
         ;;
     ?(*\-)codipack?(\-*))
-        GISMO_WITH_CODIPACK=ON
-        ;;
-    *)
-        GISMO_WITH_CODIPACK=OFF
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsCoDiPack
+        else
+            GISMO_SUBMODULES=gsCoDiPack
+        fi
         ;;
 esac
 shopt -u extglob;
@@ -507,13 +507,13 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nogmp?(\-*))
-        GISMO_WITH_GMP=OFF
         ;;
     ?(*\-)gmp?(\-*))
-        GISMO_WITH_GMP=ON
-        ;;
-    *)
-        GISMO_WITH_GMP=OFF
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsGmp
+        else
+            GISMO_SUBMODULES=gsGmp
+        fi
         ;;
 esac
 shopt -u extglob;
@@ -522,13 +522,13 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noipopt?(\-*))
-        GISMO_WITH_IPOPT=OFF
         ;;
     ?(*\-)ipopt?(\-*))
-        GISMO_WITH_IPOPT=ON
-        ;;
-    *)
-        GISMO_WITH_IPOPT=OFF
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsIpOpt
+        else
+            GISMO_SUBMODULES=gsIpOpt
+        fi
         ;;
 esac
 shopt -u extglob;
@@ -537,13 +537,13 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nompfr?(\-*))
-        GISMO_WITH_MPFR=OFF
         ;;
     ?(*\-)mpfr?(\-*))
-        GISMO_WITH_MPFR=ON
-        ;;
-    *)
-        GISMO_WITH_MPFR=OFF
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsMpfr
+        else
+            GISMO_SUBMODULES=gsMpfr
+        fi
         ;;
 esac
 shopt -u extglob;
@@ -718,10 +718,7 @@ shopt -u extglob;
 
 echo "[---] GISMO_SUBMODULES:       ${GISMO_SUBMODULES}"
 echo "[---] GISMO_VERSION:          ${GISMO_VERSION}"
-echo "[---] GISMO_WITH_CODIPACK:    ${GISMO_WITH_CODIPACK}"
-echo "[---] GISMO_WITH_GMP:         ${GISMO_WITH_GMP}"
 echo "[---] GISMO_WITH_IPOPT:       ${GISMO_WITH_IPOPT}"
-echo "[---] GISMO_WITH_MPFR:        ${GISMO_WITH_MPFR}"
 echo "[---] GISMO_WITH_MPI:         ${GISMO_WITH_MPI}"
 echo "[---] GISMO_WITH_OCC:         ${GISMO_WITH_OCC}"
 echo "[---] GISMO_WITH_OPENMP:      ${GISMO_WITH_OPENMP}"
@@ -763,10 +760,7 @@ ${DOCKER_CMD} build \
     --build-arg GISMO_SHORT_TYPE=${GISMO_SHORT_TYPE} \
     --build-arg GISMO_SUBMODULES=${GISMO_SUBMODULES} \
     --build-arg GISMO_VERSION=${GISMO_VERSION} \
-    --build-arg GISMO_WITH_CODIPACK=${GISMO_WITH_CODIPACK} \
-    --build-arg GISMO_WITH_GMP=${GISMO_WITH_GMP} \
     --build-arg GISMO_WITH_IPOPT=${GISMO_WITH_IPOPT} \
-    --build-arg GISMO_WITH_MPFR=${GISMO_WITH_MPFR} \
     --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
     --build-arg GISMO_WITH_OCC=${GISMO_WITH_OCC} \
     --build-arg GISMO_WITH_OPENMP=${GISMO_WITH_OPENMP} \
