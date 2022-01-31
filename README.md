@@ -112,7 +112,10 @@ There is a number of optional modules that may be enabled.
 
 | **Name** | **Description** |
 |----------|-----------------|
-|[gsOpenCascade](https://github.com/gismo/gismo/tree/stable/extensions/gsOpenCascade)| Extends functionality using OpenCascade|
+|[gsOpenCascade](https://github.com/gismo/gismo/tree/stable/extensions/gsOpenCascade#readme)| Extends functionality using OpenCascade|
+|[gsElasticity](https://github.com/gismo/gsElasticity#readme)|  |
+|[gsKLShell](https://github.com/gismo/gsKLShell#readme)|  |
+|[gsStructuralAnalysis](https://github.com/gismo/gsStructuralAnalysis#readme)|  |
 
 To enable e.g. gsSpectra and gsOpenCascade set the following option in CMake:
 
