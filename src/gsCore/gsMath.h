@@ -183,7 +183,7 @@ inline sw::universal::posit<nbits,es> nextafter(sw::universal::posit<nbits,es> x
 
 // inline real_t nextafter(real_t x, real_t y)
 // {
-// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_GMP)
+// #   if defined(gsMpfr_ENABLED) || defined(gsGmp_ENABLED)
 //     return x + ( y < x ? -1e-16 : 1e-16 );
 // #   elif defined(gsUniversal_ENABLED)
 //     return sw::universal::nextafter(x,y);
