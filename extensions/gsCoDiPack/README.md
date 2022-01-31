@@ -2,7 +2,7 @@
 
 G+Smo extension for the [CoDiPack - Code Differentiation Package](https://www.scicomp.uni-kl.de/software/codi/).
 
-|CMake flags|```-DGISMO_WITH_CODIPACK=ON``` (default ```OFF```)|
+|CMake module name|```gsCoDiPack|
 |--:|---|
 |Required additional CMake flags|```-DCMAKE_CXX_STANDARD=11``` (or better)<br>```-DGISMO_BUILD_LIB=OFF```|
 |License|[MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)|
@@ -60,7 +60,7 @@ The file ```codipack_example.cpp``` illustrates the basic usage of the CoDiPack 
     ```bash
     mkdir build
     cd build
-    cmake .. -DCMAKE_CXX_STANDARD=11 -DGISMO_BUILD_LIB=OFF -DGISMO_WITH_CODIPACK=ON
+    cmake .. -DCMAKE_CXX_STANDARD=11 -DGISMO_BUILD_LIB=OFF -DGISMO_SUBMODULES="gsCoDiPack"
     make codipack_example -j4
     ```
 2.  Execution

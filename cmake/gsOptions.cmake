@@ -88,11 +88,6 @@ if  (${GISMO_WITH_ADIFF})
 message ("  GISMO_WITH_ADIFF        ${GISMO_WITH_ADIFF}")
 endif()
 
-option(GISMO_WITH_CODIPACK       "With CoDiPack"             false  )
-if  (${GISMO_WITH_CODIPACK})
-message ("  GISMO_WITH_CODIPACK     ${GISMO_WITH_CODIPACK}")
-endif()
-
 option(GISMO_WITH_IPOPT          "With IpOpt"                false  )
 if  (${GISMO_WITH_IPOPT})
 message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
