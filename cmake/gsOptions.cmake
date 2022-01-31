@@ -88,11 +88,6 @@ if  (${GISMO_WITH_ADIFF})
 message ("  GISMO_WITH_ADIFF        ${GISMO_WITH_ADIFF}")
 endif()
 
-option(GISMO_WITH_IPOPT          "With IpOpt"                false  )
-if  (${GISMO_WITH_IPOPT})
-message ("  GISMO_WITH_IPOPT        ${GISMO_WITH_IPOPT}")
-endif()
-
 #option(GISMO_WITH_METIS          "With METIS"                false )
 #if  (${GISMO_WITH_METIS})
 #message ("  GISMO_WITH_METIS        ${GISMO_WITH_METIS}")
