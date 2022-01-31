@@ -44,6 +44,13 @@ FOREACH(subdir ${SUBDIRS})
     FOLDER "G+Smo modules"
     )
 
+  if(TARGET gmp)
+    add_dependencies(${GM_NAME} gmp)
+  endif()
+  if(TARGET mpfr)
+    add_dependencies(${GM_NAME} mpfr)
+  endif()
+
   ## Add extra instances (template instantiations)
   # NOTE: The static/non templated part of the library is
   # compiled above only for GISMO_COEFF_TYPE

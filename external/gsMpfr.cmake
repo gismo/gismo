@@ -6,7 +6,7 @@
 ######################################################################
 
 # Look for pre-installed MPFR library
-find_package(MPFR) #QUIET
+#find_package(MPFR) #QUIET
 
 if (NOT MPFR_FOUND)
   # Set MPFR version
@@ -41,7 +41,7 @@ if (NOT MPFR_FOUND)
   #ExternalProject_Get_Property(mpfr install_dir)
   #message("MPFR directory: ${install_dir}")
   set(MPFR_LIBRARY_DIR ${CMAKE_BINARY_DIR}/mpfr-prefix/lib CACHE INTERNAL "")
-  set(MPFR_INCLUDE_DIR "/.${CMAKE_BINARY_DIR}/mpfr-prefix/include" CACHE INTERNAL "")
+  set(MPFR_INCLUDE_DIR "${CMAKE_BINARY_DIR}/mpfr-prefix/include" CACHE INTERNAL "")
   include_directories(${MPFR_INCLUDE_DIR})
   
   # Install MPFR header files
@@ -49,7 +49,7 @@ if (NOT MPFR_FOUND)
     DESTINATION include/gismo/
     FILES_MATCHING PATTERN "*.h")
 
-#  add_dependencies(mpfr gmp)
+  add_dependencies(mpfr gmp)
 endif(NOT MPFR_FOUND)
 
 # Add GMP and MPFR include directories to G+Smo standard include directories

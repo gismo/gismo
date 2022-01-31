@@ -6,7 +6,7 @@
 ######################################################################
 
 # Look for pre-installed GMP library
-find_package(GMP) #QUIET
+#find_package(GMP) #QUIET
 
 if (NOT GMP_FOUND)
   # Set GMP version
@@ -36,9 +36,8 @@ if (NOT GMP_FOUND)
 
   # Set GMP library and include directories
   #ExternalProject_Get_Property(gmp install_dir)
-  #message("GMP directory: ${install_dir}")
   set(GMP_LIBRARY_DIR "${CMAKE_BINARY_DIR}/gmp-prefix/lib" CACHE INTERNAL "")
-  set(GMP_INCLUDE_DIR "/.${CMAKE_BINARY_DIR}/gmp-prefix/include" CACHE INTERNAL "") #note: prefix is to gix a bug with relative paths for ninja
+  set(GMP_INCLUDE_DIR "${CMAKE_BINARY_DIR}/gmp-prefix/include" CACHE INTERNAL "")
   include_directories(${GMP_INCLUDE_DIR})
 
   # Install GMP header files
@@ -46,7 +45,6 @@ if (NOT GMP_FOUND)
     DESTINATION include/gismo/
     FILES_MATCHING PATTERN "*.h")
 
-  #add_dependencies(gismo mpfr)
 endif (NOT GMP_FOUND)
 
 # Add GMP and MPFR include directories to G+Smo standard include directories
@@ -57,8 +55,7 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${GMP_INCLUDE_DIR}
 set(gismo_LINKER ${gismo_LINKER} ${GMPXX_LIBRARY} ${GMP_LIBRARY}
     CACHE INTERNAL "Gismo extra linker objects")
 
-set(GISMO_EXTERNALS ${GISMO_EXTERNALS} "gsGmp"
-  CACHE INTERNAL "List of externals" FORCE)
+set(GISMO_EXTERNALS ${GISMO_EXTERNALS} "gsGmp" CACHE INTERNAL "List of externals" FORCE)
 
 # Install gsGmp header files
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}
