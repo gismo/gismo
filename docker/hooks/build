@@ -718,7 +718,6 @@ shopt -u extglob;
 
 echo "[---] GISMO_SUBMODULES:       ${GISMO_SUBMODULES}"
 echo "[---] GISMO_VERSION:          ${GISMO_VERSION}"
-echo "[---] GISMO_WITH_IPOPT:       ${GISMO_WITH_IPOPT}"
 echo "[---] GISMO_WITH_MPI:         ${GISMO_WITH_MPI}"
 echo "[---] GISMO_WITH_OCC:         ${GISMO_WITH_OCC}"
 echo "[---] GISMO_WITH_OPENMP:      ${GISMO_WITH_OPENMP}"
@@ -760,7 +759,6 @@ ${DOCKER_CMD} build \
     --build-arg GISMO_SHORT_TYPE=${GISMO_SHORT_TYPE} \
     --build-arg GISMO_SUBMODULES=${GISMO_SUBMODULES} \
     --build-arg GISMO_VERSION=${GISMO_VERSION} \
-    --build-arg GISMO_WITH_IPOPT=${GISMO_WITH_IPOPT} \
     --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
     --build-arg GISMO_WITH_OCC=${GISMO_WITH_OCC} \
     --build-arg GISMO_WITH_OPENMP=${GISMO_WITH_OPENMP} \
