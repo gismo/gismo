@@ -37,8 +37,9 @@ if (NOT GMP_FOUND)
   # Set GMP library and include directories
   #ExternalProject_Get_Property(gmp install_dir)
   #message("GMP directory: ${install_dir}")
-  set(GMP_LIBRARY_DIR ${CMAKE_BINARY_DIR}/gmp-prefix/lib CACHE INTERNAL "")
-  set(GMP_INCLUDE_DIR ${CMAKE_BINARY_DIR}/gmp-prefix/include CACHE INTERNAL "")
+  set(GMP_LIBRARY_DIR "${CMAKE_BINARY_DIR}/gmp-prefix/lib" CACHE INTERNAL "")
+  set(GMP_INCLUDE_DIR "${CMAKE_BINARY_DIR}/gmp-prefix/include" CACHE INTERNAL "")
+  message("GMP include dir: ${GMP_INCLUDE_DIR}")
   include_directories(${GMP_INCLUDE_DIR})
 
   # Install GMP header files
