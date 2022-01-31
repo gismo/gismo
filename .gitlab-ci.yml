@@ -173,6 +173,7 @@ linux_x86_64_gcc10_cxx14_release_mpq_long:
     IMAGE:            "gcc:10"
     CNAME:            "/usr/local/bin/gcc"
     CXXNAME:          "/usr/local/bin/g++"
+    GENERATOR:        "Unix Makefiles"
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int64_t'"
   except:
     - ci_test
