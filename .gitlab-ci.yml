@@ -153,6 +153,30 @@ linux_x86_64_gcc12_cxx23_release_float_int:
 # 2. Building and testing of external pull requests (PRs)
 ################################################################################
 
+# Clang 10, C++17, Release
+linux_x86_64_clang10_cxx17_release_mpreal_long:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:10"
+    CNAME:            "/usr/local/bin/clang"
+    CXXNAME:          "/usr/local/bin/clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+  except:
+    - ci_test
+    - coverity_scan
+
+# GCC 10, C++14, Release
+linux_x86_64_gcc10_cxx14_release_mpq_long:
+ extends: .test:linux:base
+ variables:
+   IMAGE:            "gcc:10"
+   CNAME:            "/usr/local/bin/gcc"
+   CXXNAME:          "/usr/local/bin/g++"
+   CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int64_t'"
+  except:
+    - ci_test
+    - coverity_scan   
+    
 ################################################################################
 # 3. Building and extensive testing of commits to branch 'ci_test'
 ################################################################################
