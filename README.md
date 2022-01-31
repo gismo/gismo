@@ -111,7 +111,7 @@ More information at https://github.com/gismo/gismo/wiki
 There is a number of optional modules that may be enabled.
 
 | **Name** | **Description** |
-|------------|------------|----------------------|
+|----------|-----------------|
 |[gsOpenCascade](https://github.com/gismo/gismo/tree/stable/extensions/gsOpenCascade)| Extends functionality using OpenCascade|
 
 
