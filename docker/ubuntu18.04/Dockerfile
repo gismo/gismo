@@ -42,7 +42,7 @@ ARG CXX=g++-8
 # Fortran compiler        : {gfortran-4.8,gfortran-5,gfortran-5,gfortran-6,gfortran-7,gfortran-8}
 ARG FC=na
 
-# CMAKE_CXX_STANDARD      : {11,14,17,20}
+# CMAKE_CXX_STANDARD      : {11,14,17,20,23}
 ARG CMAKE_CXX_STANDARD=11
 
 # CMAKE_BUILD_TYPE        : {Release,Debug,RelWithDebInfo,MinSizeRel}
@@ -63,20 +63,26 @@ ARG GISMO_BUILD_PCH=OFF
 # GISMO_BUILD_UNITTESTS   : {ON,OFF}
 ARG GISMO_BUILD_UNITTESTS=OFF
 
-# GISMO_COEFF_TYPE        : {float,double,long double,mpfr::mpreal,mpq_class,posit_32_2}
+# GISMO_COEFF_TYPE        : {float,double,long double,mpfr::mpreal,mpq_class,posit_2_0,posit_3_0,posit_3_1,posit_4_0,posit_8_0,posit_8_1,posit_16_1,posit_32_2,posit_64_3,posit_128_4,posit_256_5}
 ARG GISMO_COEFF_TYPE=double
 
-# GISMO_INDEX_TYPE        : {int,int32_t,int64_t,long,long long}
+# GISMO_INDEX_TYPE        : {int,int8_t,int16_t,int32_t,int64_t,long,long long}
 ARG GISMO_INDEX_TYPE=int
 
-# GISMO_VERSION           : {v0.8.1,v0.8.2,v0.8.3,v0.8.4,HEAD}
+# GISMO_SHORT_TYPE        : {int,int8_t,int16_t,int32_t,int64_t,long,long long}
+ARG GISMO_SHORT_TYPE=int
+
+# GISMO_SUBMODULES        : {gsCoDiPack,gsCompFlow,gsElasticity,gsExaStencils,gsGmp,gsIpOpt,gsKLShell,gsMpfr,gsOpenCascade,gsOpennurbs,gsStructuralAnalysis,gsTrilinos,motor,unsupported}
+ARG GISMO_SUBMODULES=''
+
+# GISMO_VERSION           : {v0.8.1,v0.8.2,v0.8.3,v0.8.4,v21.12.0,HEAD,specific hash}
 ARG GISMO_VERSION=HEAD
+
+# GISMO_WITH_ADIFF        : {ON,OFF}
+ARG GISMO_WITH_ADIFF=OFF
 
 # GISMO_WITH_MPI          : {ON,OFF}
 ARG GISMO_WITH_MPI=OFF
-
-# GISMO_WITH_OCC          : {ON,OFF}
-ARG GISMO_WITH_OCC=OFF
 
 # GISMO_WITH_OPENMP       : {ON,OFF}
 ARG GISMO_WITH_OPENMP=ON
@@ -102,14 +108,8 @@ ARG GISMO_WITH_SUPERLU=ON
 # GISMO_WITH_TAUCS        : {ON,OFF}
 ARG GISMO_WITH_TAUCS=OFF
 
-# GISMO_WITH_TRILINOS     : {ON,OFF}
-ARG GISMO_WITH_TRILINOS=OFF
-
 # GISMO_WITH_UMFPACK      : {ON,OFF}
 ARG GISMO_WITH_UMFPACK=ON
-
-# GISMO_WITH_UNUM         : {ON,OFF}
-ARG GISMO_WITH_UNUM=OFF
 
 # Target architecture     : auto by default
 ARG TARGET_ARCHITECTURE=auto
@@ -356,8 +356,8 @@ RUN if [ "$GISMO_WITH_MPI" = "ON" ] ; then \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
 
-# Install prerequisites for OCC
-RUN if [ "$GISMO_WITH_OCC" = "ON" ] ; then \
+# Install prerequisites for gsOpenCascade extension
+RUN if [ ${GISMO_SUBMODULES} =~ "gsOpenCascade" ] ; then \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         libgl-dev \
@@ -369,8 +369,8 @@ RUN if [ "$GISMO_WITH_OCC" = "ON" ] ; then \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
 
-# Install prerequisites for SUPERLU, TRILINOS and UMFPACK
-RUN if [ "$GISMO_WITH_SUPERLU" = "ON" ] || [ "$GISMO_WITH_TRILINOS" = "ON" ] || [ "$GISMO_WITH_UMFPACK" = "ON" ] ; then \
+# Install prerequisites for SUPERLU, UMFPACK, and gsTrilinos extension
+RUN if [ "$GISMO_WITH_SUPERLU" = "ON" ] || [ ${GISMO_SUBMODULES} =~ "gsTrilinos" ] || [ "$GISMO_WITH_UMFPACK" = "ON" ] ; then \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         bc \
@@ -423,8 +423,10 @@ RUN cd gismo    && \
         -DGISMO_BUILD_UNITTESTS=$GISMO_BUILD_UNITTESTS \
         -DGISMO_COEFF_TYPE=$GISMO_COEFF_TYPE \
         -DGISMO_INDEX_TYPE=$GISMO_INDEX_TYPE \
+        -DGISMO_SHORT_TYPE=$GISMO_SHORT_TYPE \
+        -DGISMO_SUBMODULES=$GISMO_SUBMODULES \
+        -DGISMO_WITH_ADIFF=$GISMO_WITH_ADIFF \
         -DGISMO_WITH_MPI=$GISMO_WITH_MPI \
-        -DGISMO_WITH_OCC=$GISMO_WITH_OCC \
         -DGISMO_WITH_OPENMP=$GISMO_WITH_OPENMP \
         -DGISMO_WITH_PARDISO=$GISMO_WITH_PARDISO \
         -DGISMO_WITH_PASTIX=$GISMO_WITH_PASTIX \
@@ -433,9 +435,7 @@ RUN cd gismo    && \
         -DGISMO_WITH_SPECTRA=$GISMO_WITH_SPECTRA \
         -DGISMO_WITH_SUPERLU=$GISMO_WITH_SUPERLU \
         -DGISMO_WITH_TAUCS=$GISMO_WITH_TAUCS \
-        -DGISMO_WITH_TRILINOS=$GISMO_WITH_TRILINOS \
         -DGISMO_WITH_UMFPACK=$GISMO_WITH_UMFPACK \
-        -DGISMO_WITH_UNUM=$GISMO_WITH_UNUM \
         -DTARGET_ARCHITECTURE=$TARGET_ARCHITECTURE && \
     make
 

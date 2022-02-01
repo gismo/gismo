@@ -443,20 +443,26 @@ echo "[---] GISMO_BUILD_UNITTESTS:  ${GISMO_BUILD_UNITTESTS}"
 # Build G+Smo with submodules
 GISMO_SUBMODULES=${GISMO_SUBMODULES}
 
-# Build G+Smo with Trilinos support (must be before checking for MPI support)
+# gsTrilinos extension (must be before checking for MPI support)
 shopt -s extglob;
 case "$IMAGE_NAME" in
-    ?(*\-)trilinos?(\-*))
-        GISMO_WITH_TRILINOS=ON
-        GISMO_WITH_MPI=ON
+    ?(*\-)notrilinos?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsTrilinos" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsTrilinos/}"
+        fi
         ;;
-    *)
-        GISMO_WITH_TRILINOS=OFF
+    ?(*\-)trilinos?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsTrilinos"
+        else
+            GISMO_SUBMODULES="gsTrilinos"
+        fi
+        GISMO_WITH_MPI=ON
         ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with OpenMP support
+# OpenMP support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)clang?(\-*)|?(*\-)noomp?(\-*))
@@ -471,7 +477,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with MPI support
+# MPI support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nompi?(\-*))
@@ -488,82 +494,220 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with CoDiPack support
+# Adiff support
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)noadiff?(\-*))
+        GISMO_WITH_ADIFF=OFF
+        ;;
+    ?(*\-)adiff?(\-*))
+        GISMO_WITH_ADIFF=ON
+        ;;
+    *)
+        GISMO_WITH_ADIFF=OFF
+        ;;
+esac
+shopt -u extglob;
+
+# gsCoDiPack extension
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nocodipack?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsCoDiPack" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsCoDiPack/}"
+        fi
         ;;
     ?(*\-)codipack?(\-*))
         if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsCoDiPack
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsCoDiPack"
         else
-            GISMO_SUBMODULES=gsCoDiPack
+            GISMO_SUBMODULES="gsCoDiPack"
         fi
         ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with GMP support
+# gsCompFlow extension
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)nocompflow?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsCompFlow" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsCompFlow/}"
+        fi
+        ;;
+    ?(*\-)compflow?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsCompFlow"
+        else
+            GISMO_SUBMODULES="gsCompFlow"
+        fi
+        ;;
+esac
+shopt -u extglob;
+
+# gsElasticity extension
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)noelasticity?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsElasticity" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsElasticity/}"
+        fi
+        ;;
+    ?(*\-)elasticity?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsElasticity"
+        else
+            GISMO_SUBMODULES="gsElasticity"
+        fi
+        ;;
+esac
+shopt -u extglob;
+
+# gsExaStencils extension
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)noexastencils?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsExaStencils" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsExastencils/}"
+        fi
+        ;;
+    ?(*\-)exastencils?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsExaStencils"
+        else
+            GISMO_SUBMODULES="gsExaStencils"
+        fi
+        ;;
+esac
+shopt -u extglob;
+
+# gsGmp extension
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nogmp?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsGmp" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsGmp/}"
+        fi
         ;;
     ?(*\-)gmp?(\-*))
         if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsGmp
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsGmp"
         else
-            GISMO_SUBMODULES=gsGmp
+            GISMO_SUBMODULES="gsGmp"
         fi
         ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with IPOpt support
+# gsIpOpt extension
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noipopt?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsIpOpt" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsIpOpt/}"
+        fi
         ;;
     ?(*\-)ipopt?(\-*))
         if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsIpOpt
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsIpOpt"
         else
-            GISMO_SUBMODULES=gsIpOpt
+            GISMO_SUBMODULES="gsIpOpt"
         fi
         ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with MPFR support
+# gsKLShell extension
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)noklshell?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsKLShell" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsKLShell/}"
+        fi
+        ;;
+    ?(*\-)klshell?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsKLShell"
+        else
+            GISMO_SUBMODULES="gsKLShell"
+        fi
+        ;;
+esac
+shopt -u extglob;
+
+# gsMpfr extension
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nompfr?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsMpfr" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsMpfr/}"
+        fi
         ;;
     ?(*\-)mpfr?(\-*))
         if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsMpfr
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsMpfr"
         else
-            GISMO_SUBMODULES=gsMpfr
+            GISMO_SUBMODULES="gsMpfr"
         fi
         ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with gsOpennurbs extension enabled
+# motor extension
 shopt -s extglob;
 case "$IMAGE_NAME" in
-    ?(*\-)noonurbs?(\-*))
+    ?(*\-)nomotor?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "motor" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//motor/}"
+        fi
         ;;
-    ?(*\-)onurbs?(\-*))
+    ?(*\-)motor?(\-*))
         if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsOpennurbs
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};motor"
         else
-            GISMO_SUBMODULES=gsOpennurbs
+            GISMO_SUBMODULES="motor"
         fi
         ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with Pardiso support
+# gsOpenCascade extension
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)noopencascade?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsOpenCascade" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsOpenCascade/}"
+        fi
+        ;;
+    ?(*\-)opencascade?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsOpenCascade"
+        else
+            GISMO_SUBMODULES="gsOpenCascade"
+        fi
+        ;;
+esac
+shopt -u extglob;
+
+# gsOpennurbs extension
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)noopennurbs?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsOpennurbs" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsOpennurbs/}"
+        fi
+        ;;
+    ?(*\-)opennurbs?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsOpennurbs"
+        else
+            GISMO_SUBMODULES="gsOpennurbs"
+        fi
+        ;;
+esac
+shopt -u extglob;
+
+# Pardiso support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nopardiso?(\-*))
@@ -578,7 +722,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with Pastix support
+# Pastix support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nopastix?(\-*))
@@ -593,7 +737,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with PSOLID support
+# PSOLID support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nopsolid?(\-*))
@@ -608,7 +752,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with Spectra support
+# Spectra support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nospectra?(\-*))
@@ -623,7 +767,25 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with SuperLU support
+# gsStructuralAnalysis extension
+shopt -s extglob;
+case "$IMAGE_NAME" in
+    ?(*\-)nostructuralanalysis?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsStructuralAnalysis" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsStructuralAnalysis/}"
+        fi
+        ;;
+    ?(*\-)structuralanalysis?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsStructuralAnalysis"
+        else
+            GISMO_SUBMODULES="gsStructuralAnalysis"
+        fi
+        ;;
+esac
+shopt -u extglob;
+
+# SuperLU support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nosuperlu?(\-*))
@@ -638,7 +800,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with TAUCS support
+# TAUCS support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)notaucs?(\-*))
@@ -653,7 +815,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with UMFPACK support
+# UMFPACK support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noumfpack?(\-*))
@@ -668,40 +830,43 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-# Build G+Smo with gsUniversal extension enabled
+# gsUniversal extension
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nouniversal?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "gsUniversal" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsUniversal/}"
+        fi
         ;;
     ?(*\-)universal?(\-*))
         if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES=${GISMO_SUBMODULES},gsUniversal
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsUniversal"
         else
-            GISMO_SUBMODULES=gsOpennurbs
+            GISMO_SUBMODULES="gsUniversal"
         fi
         ;;
-    *)
-        GISMO_WITH_UNUM=OFF
-        ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with OpenCascade support
+# unsupported extension
 shopt -s extglob;
 case "$IMAGE_NAME" in
-    ?(*\-)noocc?(\-*))
-        GISMO_WITH_OCC=OFF
+    ?(*\-)nounsupported?(\-*))
+        if [[ ${GISMO_SUBMODULES} =~ "unsupported" ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES//unsupported/}"
+        fi
         ;;
-    ?(*\-)occ?(\-*))
-        GISMO_WITH_OCC=ON
-        ;;
-    *)
-        GISMO_WITH_OCC=OFF
+    ?(*\-)unsupported?(\-*))
+        if [[ ${GISMO_SUBMODULES} ]]; then
+            GISMO_SUBMODULES="${GISMO_SUBMODULES};unsupported"
+        else
+            GISMO_SUBMODULES="unsupported"
+        fi
         ;;
 esac
 shopt -u extglob;
 
-# Build G+Smo with Surface Mesh support
+# Surface Mesh support
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nosmesh?(\-*))
@@ -718,8 +883,8 @@ shopt -u extglob;
 
 echo "[---] GISMO_SUBMODULES:       ${GISMO_SUBMODULES}"
 echo "[---] GISMO_VERSION:          ${GISMO_VERSION}"
+echo "[---] GISMO_WITH_ADIFF:       ${GISMO_WITH_ADIFF}"
 echo "[---] GISMO_WITH_MPI:         ${GISMO_WITH_MPI}"
-echo "[---] GISMO_WITH_OCC:         ${GISMO_WITH_OCC}"
 echo "[---] GISMO_WITH_OPENMP:      ${GISMO_WITH_OPENMP}"
 echo "[---] GISMO_WITH_PARDISO:     ${GISMO_WITH_PARDISO}"
 echo "[---] GISMO_WITH_PASTIX:      ${GISMO_WITH_PASTIX}"
@@ -728,12 +893,10 @@ echo "[---] GISMO_WITH_SMESH:       ${GISMO_WITH_SMESH}"
 echo "[---] GISMO_WITH_SPECTRA:     ${GISMO_WITH_SPECTRA}"
 echo "[---] GISMO_WITH_SUPERLU:     ${GISMO_WITH_SUPERLU}"
 echo "[---] GISMO_WITH_TAUCS:       ${GISMO_WITH_TAUCS}"
-echo "[---] GISMO_WITH_TRILINOS:    ${GISMO_WITH_TRILINOS}"
 echo "[---] GISMO_WITH_UMFPACK:     ${GISMO_WITH_UMFPACK}"
-echo "[---] GISMO_WITH_UNUM:        ${GISMO_WITH_UNUM}"
 
-if [[ "${GISMO_WITH_TRILINOS}" == "ON" && ("${GISMO_WITH_MPI}" != "ON" || -z "$FC") ]]; then
-    echo "[***] Compiling G+Smo with Trilinos support enabled requires GISMO_WITH_MPI=ON and the Fortran compiler FC to be set"
+if [[ ${GISMO_SUBMODULES} =~ "gsTrilinos" && ("${GISMO_WITH_MPI}" != "ON" || -z "$FC") ]]; then
+    echo "[***] Compiling G+Smo with gsTrilinos extension enabled requires GISMO_WITH_MPI=ON and the Fortran compiler FC to be set"
     exit 1
 fi
 
@@ -759,8 +922,8 @@ ${DOCKER_CMD} build \
     --build-arg GISMO_SHORT_TYPE=${GISMO_SHORT_TYPE} \
     --build-arg GISMO_SUBMODULES=${GISMO_SUBMODULES} \
     --build-arg GISMO_VERSION=${GISMO_VERSION} \
+    --build-arg GISMO_WITH_ADIFF=${GISMO_WITH_ADIFF} \
     --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \
-    --build-arg GISMO_WITH_OCC=${GISMO_WITH_OCC} \
     --build-arg GISMO_WITH_OPENMP=${GISMO_WITH_OPENMP} \
     --build-arg GISMO_WITH_PARDISO=${GISMO_WITH_PARDISO} \
     --build-arg GISMO_WITH_PASTIX=${GISMO_WITH_PASTIX} \
@@ -769,7 +932,6 @@ ${DOCKER_CMD} build \
     --build-arg GISMO_WITH_SPECTRA=${GISMO_WITH_SPECTRA} \
     --build-arg GISMO_WITH_SUPERLU=${GISMO_WITH_SUPERLU} \
     --build-arg GISMO_WITH_TAUCS=${GISMO_WITH_TAUCS} \
-    --build-arg GISMO_WITH_TRILINOS=${GISMO_WITH_TRILINOS} \
     --build-arg GISMO_WITH_UMFPACK=${GISMO_WITH_UMFPACK} \
     --build-arg GISMO_WITH_UNUM=${GISMO_WITH_UNUM} \
     --build-arg TARGET_ARCHITECTURE=${TARGET_ARCHITECTURE} \
