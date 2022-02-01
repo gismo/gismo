@@ -221,14 +221,40 @@ int main(int argc, char *argv[])
 
     // ======= 3D Solution =========
 
-//    gsFunctionExpr<> source  ("81 * pi^4 * cos(3 * pi * x / 4) / 256",3);
-////    gsFunctionExpr<> source  ("cos(3 * pi * x / 4)",3);
+//    gsFunctionExpr<> source  ("cos(pi * x / 4)",3);
+//    gsFunctionExpr<> laplace ("-pi^2 * cos(pi * x / 4) / 16",3);
+//    gsFunctionExpr<> solVal("cos(pi * x / 4)",3);
+//    gsFunctionExpr<>sol1der ("-pi * sin(pi * x / 4) / 4",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("-pi^2 * cos(pi * x / 4) / 16",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+////    gsFunctionExpr<> source  ("81 * pi^4 * cos(3 * pi * x / 4) / 256",3);
+//    gsFunctionExpr<> source  ("cos(3 * pi * x / 4)",3);
 //    gsFunctionExpr<> laplace ("-9 * pi^2 * cos(3 * pi * x / 4) / 16",3);
 //    gsFunctionExpr<> solVal("cos(3 * pi * x / 4)",3);
 //    gsFunctionExpr<>sol1der ("-3 * pi * sin(3 * pi * x / 4) / 4",
 //                             "0",
 //                             "0",3);
 //    gsFunctionExpr<>sol2der ("-9 * pi^2 * cos(3 * pi * x / 4) / 16",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+//    gsFunctionExpr<> source  ("sin(pi * x / 4)",3);
+//    gsFunctionExpr<> laplace ("-pi^2 * sin(pi * x / 4) / 16",3);
+//    gsFunctionExpr<> solVal("sin(pi * x / 4)",3);
+//    gsFunctionExpr<>sol1der ("pi * cos(pi * x / 4) / 4",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("-pi^2 * sin(pi * x / 4) / 16",
 //                             "0",
 //                             "0",
 //                             "0",
@@ -1064,6 +1090,18 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/cilinderOneHole.xml";
             numDegree = 0; // 2 == degree 3
             break;
+        case 53:
+            string_geo = "KirchhoffLoveGeo/planarThreeSquareHoles.xml";
+            numDegree = 2; // 2 == degree 3
+            break;
+        case 54:
+            string_geo = "KirchhoffLoveGeo/cilinderThreeHolesSurf.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+        case 55:
+            string_geo = "KirchhoffLoveGeo/cilinderThreeHolesSurf1.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -1299,7 +1337,7 @@ int main(int argc, char *argv[])
 //            if(refinement_level == 1)
 //            {
 //                gsMultiPatch<> mp_letsee;
-//                gsFileData<> fd("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/cilinderOneHole.xml");
+//                gsFileData<> fd("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/cilinderThreeHolesSurf1.xml");
 //                gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 //
 //                gsMultiPatch<> fitMP;
@@ -1325,7 +1363,7 @@ int main(int argc, char *argv[])
 //
 //                gsFileData<> xml;
 //                xml << mp_letsee;
-//                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/cilinderOneHole");
+//                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/cilinderThreeHolesSurf1");
 //            }
 //             End
         }
