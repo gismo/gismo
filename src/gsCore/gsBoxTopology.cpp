@@ -18,6 +18,23 @@
 namespace gismo
 {
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  namespace py = pybind11;
+
+  void pybind11_init_gsBoxTopology(py::module &m)
+  {
+    using Class = gsBoxTopology;
+    py::class_<Class>(m, "gsBoxTopology")
+
+      // Constructors
+      .def(py::init<>())
+      .def("boundaries", static_cast<std::vector< patchSide >& (Class::*)()> (&Class::boundaries));
+  }
+
+#endif
+
+
 std::ostream & gsBoxTopology::print(std::ostream &os) const
 {
     if ( nboxes > 0 )

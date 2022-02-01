@@ -2,10 +2,10 @@
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiPatch.hpp>
+#include <gsCore/gsBoxTopology.h>
 
 namespace gismo
 {
-
   CLASS_TEMPLATE_INST gsMultiPatch<real_t> ;
 
 #ifdef GISMO_BUILD_PYBIND11
@@ -15,8 +15,9 @@ namespace gismo
   void pybind11_init_gsMultiPatch(py::module &m)
   {
     using Base = gsFunctionSet<real_t>;
+    using BaseB = gsBoxTopology;
     using Class = gsMultiPatch<real_t>;
-    py::class_<Class,Base>(m, "gsMultiPatch")
+    py::class_<Class,Base, BaseB>(m, "gsMultiPatch")
 
       // Constructors
       .def(py::init<>())
