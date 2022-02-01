@@ -418,6 +418,40 @@ typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes() const
 }
 
 template <short_t d, class T>
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toCrsBoxes() const
+{
+    size_t N = this->totalSize();
+    RefBox result;
+    result.reserve(( N * (2*d+1) ));
+    RefBox box;
+    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+        for (cIterator it = hit->begin(); it!=hit->end(); it++)
+        {
+            box = it->toCrsBox();
+            for (typename RefBox::const_iterator boxIt = box.begin(); boxIt != box.end(); boxIt++)
+                result.push_back(*boxIt);
+        }
+
+    return result;
+}
+
+template <short_t d, class T>
+gsMatrix<T> gsHBoxContainer<d, T>::toCoords()
+{
+    size_t N = this->totalSize();
+    gsMatrix<T> boxes(d,2*N);
+    index_t boxCount = 0;
+    for (HIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+        for (Iterator it = hit->begin(); it!=hit->end(); it++)
+        {
+            boxes.block(0,2*boxCount,d,2) = it->getCoordinates();
+            boxCount++;
+        }
+
+    return boxes;
+}
+
+template <short_t d, class T>
 typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::toUnitBoxes(const HContainer & container) const
 {
     HContainer result(container.size());

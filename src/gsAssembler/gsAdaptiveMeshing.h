@@ -19,6 +19,8 @@
 #include <gsIO/gsOptionList.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
+#include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHBoxContainer.h>
 
 namespace gismo
 {
@@ -33,6 +35,9 @@ namespace gismo
 template <class T>
 class gsAdaptiveMeshing
 {
+public:
+    typedef typename std::vector<gsHBoxContainer<2,T>> patchHContainer;
+
 public:
 
     gsAdaptiveMeshing(gsFunctionSet<T> & input)
@@ -49,21 +54,21 @@ public:
 
     void getOptions();
 
-    void mark(gsFunctionSet<T> * input, const std::vector<T> & errors, index_t level);
-    void mark(const std::vector<T> & errors) { mark(m_input,errors,m_maxLvl); }
-    void mark(const std::vector<T> & errors, index_t maxLvl) { mark(m_input,errors,maxLvl); };
+    void mark(const std::vector<T> & errors) { mark(errors,m_maxLvl); }
+    void mark(const std::vector<T> & errors, index_t maxLvl);
 
-    void refine(const std::vector<bool> & markedRef);
+    void refine(const patchHContainer & markedRef);
+    void unrefine(const patchHContainer & markedCrs);
+    void adapt(const patchHContainer & markedRef, const patchHContainer & markedCrs);
 
-    void unrefine(const std::vector<bool> & markedCrs);
+    void refine(const std::vector<bool> & markedRef) { refine(_toContainer(markedRef)); }
+    void unrefine(const std::vector<bool> & markedCrs) { unrefine(_toContainer(markedCrs)); };
+    void adapt(const std::vector<bool> & markedRef,const std::vector<bool> & markedCrs) { adapt(_toContainer(markedRef),_toContainer(markedCrs)); }
 
-    void adapt(const std::vector<bool> & markedRef,const std::vector<bool> & markedCrs);
-
-    void refine(){ refine(m_markedRef); }
-
-    void unrefine() { unrefine(m_markedRef); }
-
+    void refine() { refine(m_markedRef); }
+    void unrefine() { unrefine(m_markedRef); };
     void adapt() { adapt(m_markedRef,m_markedCrs); }
+
 
     void flatten(const index_t level);
     void flatten() { flatten(m_maxLvl); } ;
@@ -72,33 +77,31 @@ public:
     void unrefineThreshold(){ unrefineThreshold(m_maxLvl); };
 
 private:
-    void _refineMarkedElements( gsFunctionSet<T> * bases,
-                                const std::vector<bool> & elMarked,
-                                index_t refExtension = 0);
-
-    void _unrefineMarkedElements(gsFunctionSet<T> * bases,
-                                    const std::vector<bool> & elMarked,
+    void _refineMarkedElements(     const patchHContainer & container,
                                     index_t refExtension = 0);
 
-    void _processMarkedElements(gsFunctionSet<T> * bases,
-                                const std::vector<bool> & elRefined,
-                                const std::vector<bool> & elCoarsened,
+    void _unrefineMarkedElements(   const patchHContainer & container,
+                                    index_t refExtension = 0);
+
+    void _processMarkedElements(const patchHContainer & elRefined,
+                                const patchHContainer & elCoarsened,
                                 index_t refExtension = 0,
                                 index_t crsExtension = 0);
 
-    void _flattenElementsToLevel(  gsFunctionSet<T> * bases,
-                            const index_t level);
+    void _flattenElementsToLevel(   const index_t level);
 
-    void _unrefineElementsThreshold(  gsFunctionSet<T> * bases,
-                            const index_t level);
+    void _unrefineElementsThreshold(const index_t level);
 
-    void _markElements( gsFunctionSet<T> * input, const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, std::vector<bool> & elMarked, bool coarsen=false);
+    void _markElements( const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, patchHContainer & container, bool coarsen=false);
     void _markFraction( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);
     void _markPercentage( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);
     void _markThreshold( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);
 
-    void _markLevelThreshold( gsFunctionSet<T> * input, index_t level, std::vector<bool> & elMarked);
-    void _getElLevels( gsFunctionSet<T> * input, std::vector<index_t> & elLevels);
+    void _markLevelThreshold( index_t level, std::vector<bool> & elMarked);
+    void _getElLevels( std::vector<index_t> & elLevels);
+
+    patchHContainer _toContainer(const std::vector<bool> & bools);
+
 
 protected:
     // M & m_basis;
@@ -111,10 +114,11 @@ protected:
     index_t         m_crsExt, m_refExt;
     index_t         m_maxLvl;
 
+    index_t m_m;
+
     bool            m_admissible;
 
-
-    std::vector<bool> m_markedRef, m_markedCrs;
+    patchHContainer m_markedRef, m_markedCrs;
 
 };
 

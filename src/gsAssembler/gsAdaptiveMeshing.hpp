@@ -13,6 +13,10 @@
 
 #pragma once
 
+
+#include <gsHSplines/gsHBSplineBasis.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
+
 namespace gismo
 {
 
@@ -29,7 +33,7 @@ namespace gismo
  * holds.
  * Three criteria for computing \f$\Theta\f$ are currently (26.Nov.2014) implemented:
  *
- * Let \f$\rho\f$ denote the input parameter \em refParameter.
+ * Let \f$\rho\f$ denote the m_input parameter \em refParameter.
  *
  * <b>refCriterion = 1 = treshold, GARU-criterion</b> (greatest appearing eRror utilization):\n
  * Threshold computed based on the largest of all appearing local errors:
@@ -59,10 +63,15 @@ namespace gismo
  * \ingroup Assembler
  */
 template <class T>
-void gsAdaptiveMeshing<T>::_markElements( gsFunctionSet<T> * input, const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, std::vector<bool> & elMarked, bool coarsen)
+void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, patchHContainer & container, bool coarsen)
 {
+    std::vector<bool> elMarked;
+
+
     std::vector<index_t> elLevels;
-    _getElLevels(input,elLevels);
+    _getElLevels(elLevels);
+
+
     switch (refCriterion)
     {
     case GARU:
@@ -78,6 +87,7 @@ void gsAdaptiveMeshing<T>::_markElements( gsFunctionSet<T> * input, const std::v
         GISMO_ERROR("unknown marking strategy");
     }
 
+    container = _toContainer(elMarked);
 }
 
 template <class T>
@@ -217,15 +227,15 @@ void gsAdaptiveMeshing<T>::_markThreshold( const std::vector<T> & elError, T ref
 }
 
 template <class T>
-void gsAdaptiveMeshing<T>::_getElLevels( gsFunctionSet<T> * input, std::vector<index_t> & elLevels)
+void gsAdaptiveMeshing<T>::_getElLevels(  std::vector<index_t> & elLevels)
 {
     // Now just check for each element, whether the level
     // is above the target level or not, and mark accordingly.
     //
     index_t Nelements = 0;
-    if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) Nelements = gsMultiBasis<T>(*mp).totalElements();
-    if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) Nelements = mb->totalElements();
-    GISMO_ASSERT(Nelements!=0,"Number of elements is zero? It might be that the input is not a gsMultiBasis or gsMultiPatch");
+    if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(m_input) ) Nelements = gsMultiBasis<T>(*mp).totalElements();
+    if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(m_input) ) Nelements = mb->totalElements();
+    GISMO_ASSERT(Nelements!=0,"Number of elements is zero? It might be that the m_input is not a gsMultiBasis or gsMultiPatch");
 
     elLevels.resize(Nelements);
 
@@ -240,11 +250,11 @@ void gsAdaptiveMeshing<T>::_getElLevels( gsFunctionSet<T> * input, std::vector<i
 #endif
 
         index_t c = 0;
-        for (index_t patchInd=0; patchInd < input->nPieces(); ++patchInd)
+        for (index_t patchInd=0; patchInd < m_input->nPieces(); ++patchInd)
         {
             // Initialize domain element iterator
-            if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(patchInd));
-            if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(patchInd));
+            if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(m_input) ) basis = &(mp->basis(patchInd));
+            if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(m_input) ) basis = &(mb->basis(patchInd));
             GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
@@ -255,9 +265,9 @@ void gsAdaptiveMeshing<T>::_getElLevels( gsFunctionSet<T> * input, std::vector<i
 #ifdef _OPENMP
             c = patch_cnt + tid;
             patch_cnt += domHIt->numElements();// a bit costy
-            for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+            for ( domHIt->next(tid); domHIt->good(); domHIt->next(nt) )
 #else
-            for (; domIt->good(); domIt->next() )
+            for (; domHIt->good(); domHIt->next() )
 #endif
             {
 #               ifdef _OPENMP
@@ -272,15 +282,15 @@ void gsAdaptiveMeshing<T>::_getElLevels( gsFunctionSet<T> * input, std::vector<i
 }
 
 template <class T>
-void gsAdaptiveMeshing<T>::_markLevelThreshold( gsFunctionSet<T> * input, index_t level, std::vector<bool> & elMarked)
+void gsAdaptiveMeshing<T>::_markLevelThreshold(  index_t level, std::vector<bool> & elMarked)
 {
     // Now just check for each element, whether the level
     // is above the target level or not, and mark accordingly.
     //
     index_t Nelements = 0;
-    if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) Nelements = gsMultiBasis<T>(*mp).totalElements();
-    if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) Nelements = mb->totalElements();
-    GISMO_ASSERT(Nelements!=0,"Number of elements is zero? It might be that the input is not a gsMultiBasis or gsMultiPatch");
+    if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(m_input) ) Nelements = gsMultiBasis<T>(*mp).totalElements();
+    if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(m_input) ) Nelements = mb->totalElements();
+    GISMO_ASSERT(Nelements!=0,"Number of elements is zero? It might be that the m_input is not a gsMultiBasis or gsMultiPatch");
 
     elMarked.resize(Nelements);
 
@@ -295,11 +305,11 @@ void gsAdaptiveMeshing<T>::_markLevelThreshold( gsFunctionSet<T> * input, index_
 #endif
 
         index_t c = 0;
-        for (index_t patchInd=0; patchInd < input->nPieces(); ++patchInd)
+        for (index_t patchInd=0; patchInd < m_input->nPieces(); ++patchInd)
         {
             // Initialize domain element iterator
-            if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(patchInd));
-            if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(patchInd));
+            if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(m_input) ) basis = &(mp->basis(patchInd));
+            if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(m_input) ) basis = &(mb->basis(patchInd));
             GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
@@ -340,7 +350,9 @@ void gsAdaptiveMeshing<T>::defaultOptions()
 
     m_options.addInt("MaxLevel","Maximum refinement level",10);
 
-    m_options.addSwitch("Admissible","Mark the admissible region",false);
+    m_options.addInt("Admissibility","Admissibility region, 0=T-admissibility (default), 1=H-admissibility",0);
+    m_options.addSwitch("Admissible","Mark the admissible region",true);
+    m_options.addInt("Jump","Jump parameter m",2);
     // m_options.addSwitch("Admissible","Mark the admissible region",false); // separate for coarsening?
 }
 
@@ -374,299 +386,289 @@ void gsAdaptiveMeshing<T>::getOptions()
     m_maxLvl = m_options.getInt("MaxLevel");
 
     m_admissible = m_options.getSwitch("Admissible");
+    m_m = m_options.getInt("Jump");
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::mark(gsFunctionSet<T> * input, const std::vector<T> & errors, index_t level)
+void gsAdaptiveMeshing<T>::mark(const std::vector<T> & errors, index_t level)
 {
-    _markElements( input, errors, m_refRule, m_refParam, level, m_markedRef,false);//,flag [coarse]);
+    _markElements( errors, m_refRule, m_refParam, level, m_markedRef,false);//,flag [coarse]);
 
     if (m_crsParam!=-1)
-        _markElements( input, errors, m_refRule, m_refParam, level, m_markedCrs,true);//,flag [coarse]);
+        _markElements( errors, m_refRule, m_refParam, level, m_markedCrs,true);//,flag [coarse]);
 
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::refine(const std::vector<bool> & markedRef)
+void gsAdaptiveMeshing<T>::refine(const patchHContainer & markedRef)
 {
     GISMO_ASSERT(markedRef.size()!=0,"Mark vector is empty!");
 
-    _refineMarkedElements(m_input,markedRef,m_refExt);
+    _refineMarkedElements(markedRef,m_refExt);
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::unrefine(const std::vector<bool> & markedCrs)
+void gsAdaptiveMeshing<T>::unrefine(const patchHContainer & markedCrs)
 {
     GISMO_ASSERT(markedCrs.size()!=0,"Mark vector is empty!");
 
-    _unrefineMarkedElements(m_input,markedCrs,m_crsExt);
+    if (m_admissible)
+
+    _unrefineMarkedElements(markedCrs,m_crsExt);
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::adapt(const std::vector<bool> & markedRef,const std::vector<bool> & markedCrs)
+void gsAdaptiveMeshing<T>::adapt(const patchHContainer & markedRef, const patchHContainer & markedCrs)
 {
     GISMO_ASSERT(markedRef.size()!=0,"Mark vector is empty!");
     GISMO_ASSERT(markedCrs.size()!=0,"Mark vector is empty!");
 
-    _processMarkedElements(m_input,markedRef,markedCrs,m_refExt,m_crsExt);
+    _processMarkedElements(markedRef,markedCrs,m_refExt,m_crsExt);
 }
 
 template<class T>
 void gsAdaptiveMeshing<T>::flatten(const index_t level)
 {
-    _flattenElementsToLevel(m_input,level);
+    _flattenElementsToLevel(level);
 }
 
 template<class T>
 void gsAdaptiveMeshing<T>::unrefineThreshold(const index_t level)
 {
-    _unrefineElementsThreshold(m_input,level);
+    _unrefineElementsThreshold(level);
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::_refineMarkedElements( gsFunctionSet<T> * input,
-                                                    const std::vector<bool> & elMarked,
+void gsAdaptiveMeshing<T>::_refineMarkedElements(   const patchHContainer & markedRef,
                                                     index_t refExtension)
 {
-    // gsMultiPatch<T> * mp;
-    // GISMO_ASSERT(mp = dynamic_cast<gsMultiPatch<T>*>(&bases),"No gsMultiBasis!");
-    const int dim = input->domainDim();
-
-    // numMarked: Number of marked cells on current patch, also currently marked cell
-    // poffset  : offset index for the first element on a patch
-    // globalCount: counter for the current global element index
-    int numMarked, poffset = 0, globalCount = 0;
-
-    // refBoxes: contains marked boxes on a given patch
-    gsMatrix<T> refBoxes;
-
     gsBasis<T> * basis = nullptr;
+    patchHContainer marked = markedRef;
 
-    for (index_t pn=0; pn < input->nPieces(); ++pn )// for all patches
+    gsMultiPatch<T> * mp;
+    gsMultiBasis<T> * mb;
+
+    for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(pn));
-        if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(pn));
+        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
+        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
         GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
-        // Get number of elements to be refined on this patch
-        const int numEl = basis->numElements();
-        numMarked = std::count_if(elMarked.begin() + poffset,
-                                  elMarked.begin() + poffset + numEl,
-                                  GS_BIND2ND(std::equal_to<bool>(), true) );
 
-        poffset += numEl;
-        refBoxes.resize(dim, 2*numMarked);
-        numMarked = 0;// counting current patch element to be refined
-
-        // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        if (m_options.getSwitch("Admissible"))
         {
-            if( elMarked[ globalCount++ ] ) // refine this element ?
+            if (m_options.getInt("Admissibility")==0)
             {
-                // Construct degenerate box by setting both
-                // corners equal to the center
-                refBoxes.col(2*numMarked  ) =
-                        refBoxes.col(2*numMarked+1) = domIt->centerPoint();
-
-                // Advance marked cells counter
-                numMarked++;
+                if      ( gsTHBSplineBasis<2,T>  * g = dynamic_cast<gsTHBSplineBasis<2,T> *>( basis ) )
+                    marked.at(pn).markTadmissible(m_m);
+                else if (  gsHBSplineBasis<2,T>  * g = dynamic_cast< gsHBSplineBasis<2,T> *>( basis ) )
+                    marked.at(pn).markHadmissible(m_m);
+                else // if basis type unknown
+                    marked.at(pn).markHadmissible(m_m);
             }
-        }
+            else if (m_options.getInt("Admissibility")==1)
+                    marked.at(pn).markTadmissible(m_m);
+            else if (m_options.getInt("Admissibility")==2)
+                    marked.at(pn).markHadmissible(m_m);
+            else // if basis type unknown
+                GISMO_ERROR("Admissibility type unknown or basis type not recognized");
 
-        gsMultiPatch<T> * mp;
-        gsMultiBasis<T> * mb;
-        if ((mp = dynamic_cast<gsMultiPatch<T>*>(input)))
-        {
-            std::vector<index_t> elements = mp->patch(pn).basis().asElements(refBoxes, refExtension);
-            mp->patch(pn).refineElements( elements );
-        }
-        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(input)))
-        {
-            mb->refine( pn, refBoxes, refExtension );
+            gsHBoxContainer<2,real_t> container(marked.at(pn).toUnitBoxes());
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+                mp->patch(pn).refineElements(container.toRefBoxes());
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+                mb->basis(pn).refineElements(container.toRefBoxes());
+            else
+                GISMO_ERROR("No gsMultiPatch or gsMultiBasis found; don't know what to refine");
         }
         else
-            GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+        {
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+            {
+                // Refine all of the found refBoxes in this patch
+                std::vector<index_t> elements = mp->patch(pn).basis().asElements(marked.at(pn).toCoords(), refExtension);
+                mp->patch(pn).refineElements( elements );
+            }
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+            {
+                // Refine all of the found refBoxes in this patch
+                mb->refine( pn, marked.at(pn).toCoords(), refExtension );
+            }
+            else
+                GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+        }
 
-        // GISMO_ASSERT(mp = dynamic_cast<gsMultiPatch<T>*>(&bases),"No gsMultiBasis!");
-        // // Refine all of the found refBoxes in this patch
-        // std::vector<index_t> elements = mp->patch(pn).basis().asElements(refBoxes, refExtension);
-        // mp->patch(pn).refineElements( elements );
     }
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::_unrefineMarkedElements(   gsFunctionSet<T> * input,
-                                                        const std::vector<bool> & elMarked,
+void gsAdaptiveMeshing<T>::_unrefineMarkedElements(     const patchHContainer & markedCrs,
                                                         index_t extension)
 {
-    const short_t dim = input->domainDim();
-
-    // numMarked: Number of marked cells on current patch, also currently marked cell
-    // poffset  : offset index for the first element on a patch
-    // globalCount: counter for the current global element index
-    index_t numMarked, poffset = 0, globalCount = 0;
-
-    // refBoxes: contains marked boxes on a given patch
-    gsMatrix<T> refBoxes;
-
     gsBasis<T> * basis = nullptr;
-    for (index_t pn=0; pn < input->nPieces(); ++pn )// for all patches
+    patchHContainer marked = markedCrs;
+
+    gsMultiPatch<T> * mp;
+    gsMultiBasis<T> * mb;
+
+    for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(pn));
-        if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(pn));
+        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
+        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
         GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
-        // Get number of elements to be refined on this patch
-        const size_t numEl = basis->numElements();
-        numMarked = std::count_if(elMarked.begin() + poffset,
-                                  elMarked.begin() + poffset + numEl,
-                                  GS_BIND2ND(std::equal_to<bool>(), true) );
-        poffset += numEl;
-        refBoxes.resize(dim, 2*numMarked);
-        numMarked = 0;// counting current patch element to be refined
 
-        // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        if (m_options.getSwitch("Admissible"))
         {
-            if( elMarked[ globalCount++ ] ) // refine this element ?
+            if (m_options.getInt("Admissibility")==0)
             {
-                // Construct degenerate box by setting both
-                // corners equal to the center
-                refBoxes.col(2*numMarked  ) = domIt->lowerCorner();
-                refBoxes.col(2*numMarked+1) = domIt->upperCorner();
-
-                // Advance marked cells counter
-                numMarked++;
+                if      ( gsTHBSplineBasis<2,T>  * g = dynamic_cast<gsTHBSplineBasis<2,T> *>( basis ) )
+                    marked.at(pn).markTadmissible(m_m);
+                else if (  gsHBSplineBasis<2,T>  * g = dynamic_cast< gsHBSplineBasis<2,T> *>( basis ) )
+                    marked.at(pn).markHadmissible(m_m);
+                else // if basis type unknown
+                    marked.at(pn).markHadmissible(m_m);
             }
-        }
+            else if (m_options.getInt("Admissibility")==1)
+                    marked.at(pn).markTadmissible(m_m);
+            else if (m_options.getInt("Admissibility")==2)
+                    marked.at(pn).markHadmissible(m_m);
+            else // if basis type unknown
+                GISMO_ERROR("Admissibility type unknown or basis type not recognized");
 
-        gsMultiPatch<T> * mp;
-        gsMultiBasis<T> * mb;
-        if ((mp = dynamic_cast<gsMultiPatch<T>*>(input)))
-        {
-            // Refine all of the found refBoxes in this patch
-            std::vector<index_t> elements = mp->patch(pn).basis().asElementsUnrefine(refBoxes, extension);
-            mp->patch(pn).unrefineElements( elements );
-        }
-        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(input)))
-        {
-            // Refine all of the found refBoxes in this patch
-            mb->unrefine( pn, refBoxes, extension );
+            gsHBoxContainer<2,real_t> container(marked.at(pn).toUnitBoxes());
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+                mp->patch(pn).unrefineElements(container.toCrsBoxes());
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+                mb->basis(pn).unrefineElements(container.toCrsBoxes());
+            else
+                GISMO_ERROR("No gsMultiPatch or gsMultiBasis found; don't know what to refine");
         }
         else
-            GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+        {
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+            {
+                // Unrefine all of the found refBoxes in this patch
+                std::vector<index_t> elements = mp->patch(pn).basis().asElementsUnrefine(marked.at(pn).toCoords(), extension);
+                mp->patch(pn).unrefineElements( elements );
+            }
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+            {
+                // Unrefine all of the found refBoxes in this patch
+                mb->unrefine( pn, marked.at(pn).toCoords(), extension );
+            }
+            else
+                GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+        }
+
     }
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::_processMarkedElements(gsFunctionSet<T> * input,
-                                                    const std::vector<bool> & elRefined,
-                                                    const std::vector<bool> & elCoarsened,
+void gsAdaptiveMeshing<T>::_processMarkedElements(  const patchHContainer & elRefined,
+                                                    const patchHContainer & elCoarsened,
                                                     index_t refExtension,
                                                     index_t crsExtension)
 {
-    const short_t dim = input->domainDim();
-
-    // numMarked: Number of marked cells on current patch, also currently marked cell
-    // poffset  : offset index for the first element on a patch
-    // globalCount: counter for the current global element index
-    index_t numRefined, numCoarsened, poffset = 0, globalCount = 0;
-
-    // refBoxes: contains marked boxes on a given patch
-    gsMatrix<T> refBoxes, crsBoxes;
-
     gsBasis<T> * basis = nullptr;
-    for (index_t pn=0; pn < input->nPieces(); ++pn )// for all patches
+    patchHContainer markedRef = elRefined;
+    patchHContainer markedCrs = elCoarsened;
+
+    gsMultiPatch<T> * mp;
+    gsMultiBasis<T> * mb;
+
+    for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(pn));
-        if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(pn));
+        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
+        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
         GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
-        // Get number of elements to be refined on this patch
-        const size_t numEl = basis->numElements();
-        numRefined = std::count_if(elRefined.begin() + poffset,
-                                  elRefined.begin() + poffset + numEl,
-                                  GS_BIND2ND(std::equal_to<bool>(), true) );
 
-        numCoarsened = std::count_if(elCoarsened.begin() + poffset,
-                                  elCoarsened.begin() + poffset + numEl,
-                                  GS_BIND2ND(std::equal_to<bool>(), true) );
-
-
-        poffset += numEl;
-
-        refBoxes.resize(dim, 2*numRefined);
-        crsBoxes.resize(dim, 2*numCoarsened);
-        numRefined = 0;// counting current patch element to be refined
-        numCoarsened = 0;// counting current patch element to be refined
-
-        // for all elements in patch pn
-        typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
-        for (; domIt->good(); domIt->next())
+        if (m_options.getSwitch("Admissible"))
         {
-            if( elRefined[ globalCount ] ) // refine this element ?
+            if (m_options.getInt("Admissibility")==0)
             {
-                // Construct degenerate box by setting both
-                // corners equal to the center
-                refBoxes.col(2*numRefined  ) = domIt->lowerCorner();
-                refBoxes.col(2*numRefined+1) = domIt->upperCorner();
-
-                // Advance marked cells counter
-                numRefined++;
+                if      ( gsTHBSplineBasis<2,T>  * g = dynamic_cast<gsTHBSplineBasis<2,T> *>( basis ) )
+                {
+                    markedRef.at(pn).markTadmissible(m_m);
+                    markedCrs.at(pn).markTadmissible(m_m);
+                }
+                else if (  gsHBSplineBasis<2,T>  * g = dynamic_cast< gsHBSplineBasis<2,T> *>( basis ) )
+                {
+                    markedRef.at(pn).markHadmissible(m_m);
+                    markedCrs.at(pn).markHadmissible(m_m);
+                }
+                else // if basis type unknown
+                {
+                    markedRef.at(pn).markHadmissible(m_m);
+                    markedCrs.at(pn).markHadmissible(m_m);
+                }
             }
-            if( elCoarsened[ globalCount ] ) // refine this element ?
+            else if (m_options.getInt("Admissibility")==1)
             {
-                // Construct degenerate box by setting both
-                // corners equal to the center
-                crsBoxes.col(2*numCoarsened  ) = domIt->lowerCorner();
-                crsBoxes.col(2*numCoarsened+1) = domIt->upperCorner();
-
-                // Advance marked cells counter
-                numCoarsened++;
+                    markedRef.at(pn).markTadmissible(m_m);
+                    markedCrs.at(pn).markTadmissible(m_m);
             }
+            else if (m_options.getInt("Admissibility")==2)
+            {
+                    markedRef.at(pn).markHadmissible(m_m);
+                    markedCrs.at(pn).markHadmissible(m_m);
+            }
+            else // if basis type unknown
+                GISMO_ERROR("Admissibility type unknown or basis type not recognized");
 
-            globalCount++;
-        }
-
-        gsMultiPatch<T> * mp;
-        gsMultiBasis<T> * mb;
-        if ((mp = dynamic_cast<gsMultiPatch<T>*>(input)))
-        {
-            std::vector<index_t> elements;
-            // Unrefine all of the found refBoxes in this patch
-            elements = mp->patch(pn).basis().asElementsUnrefine(crsBoxes, crsExtension);
-            mp->patch(pn).unrefineElements( elements );
-
-            // Refine all of the found refBoxes in this patch
-            elements = mp->patch(pn).basis().asElements(refBoxes, refExtension);
-            mp->patch(pn).refineElements( elements );
-        }
-        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(input)))
-        {
-            // Refine all of the found refBoxes in this patch
-            mb->unrefine( pn, crsBoxes, crsExtension);
-            mb->refine( pn, refBoxes, refExtension );
+            gsHBoxContainer<2,real_t> containerRef(markedRef.at(pn).toUnitBoxes());
+            gsHBoxContainer<2,real_t> containerCrs(markedCrs.at(pn).toUnitBoxes());
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+            {
+                mp->patch(pn).unrefineElements(containerRef.toRefBoxes());
+                mp->patch(pn).unrefineElements(containerCrs.toCrsBoxes());
+            }
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+            {
+                mb->basis(pn).unrefineElements(containerRef.toRefBoxes());
+                mb->basis(pn).unrefineElements(containerCrs.toCrsBoxes());
+            }
+            else
+                GISMO_ERROR("No gsMultiPatch or gsMultiBasis found; don't know what to refine");
         }
         else
-            GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+        {
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+            {
+                // Refine all of the found refBoxes in this patch
+                std::vector<index_t> elementsRef = mp->patch(pn).basis().asElements(markedRef.at(pn).toCoords(), refExtension);
+                mp->patch(pn).unrefineElements( elementsRef );
+                // Unrefine all of the found refBoxes in this patch
+                std::vector<index_t> elementsCrs = mp->patch(pn).basis().asElementsUnrefine(markedCrs.at(pn).toCoords(), crsExtension);
+                mp->patch(pn).unrefineElements( elementsCrs );
+            }
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+            {
+                // Refine all of the found refBoxes in this patch
+                mb->unrefine( pn, markedRef.at(pn).toCoords(), refExtension );
+                // Unrefine all of the found refBoxes in this patch
+                mb->unrefine( pn, markedCrs.at(pn).toCoords(), crsExtension );
+            }
+            else
+                GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+        }
+
     }
 }
 
 /**
  * @brief      Flattens everything to \a level
  *
- * @param      input  The input structure (gsMultiBasis or gsMultiPatch)
+ * @param      m_input  The m_input structure (gsMultiBasis or gsMultiPatch)
  * @param[in]  level  The target level
  *
  */
 template<class T>
-void gsAdaptiveMeshing<T>::_flattenElementsToLevel(  gsFunctionSet<T> * input,
-                                                const index_t level)
+void gsAdaptiveMeshing<T>::_flattenElementsToLevel(const index_t level)
 {
     // Get all the elements of which the level exceeds level
     std::vector<bool> elMarked;
-    _markLevelThreshold(input,level,elMarked);
+    _markLevelThreshold(level,elMarked);
 
-    const int dim = input->domainDim();
+    const int dim = m_input->domainDim();
 
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
@@ -678,10 +680,12 @@ void gsAdaptiveMeshing<T>::_flattenElementsToLevel(  gsFunctionSet<T> * input,
 
     gsBasis<T> * basis = nullptr;
 
-    for (index_t pn=0; pn < input->nPieces(); ++pn )// for all patches
+    gsMultiPatch<T> * mp;
+    gsMultiBasis<T> * mb;
+    for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(pn));
-        if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(pn));
+        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
+        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
         GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
         // Get number of elements to be refined on this patch
         const int numEl = basis->numElements();
@@ -743,13 +747,12 @@ void gsAdaptiveMeshing<T>::_flattenElementsToLevel(  gsFunctionSet<T> * input,
             // }
             // gsDebug<<"\n";
         }
-        gsMultiPatch<T> * mp;
-        gsMultiBasis<T> * mb;
-        if ((mp = dynamic_cast<gsMultiPatch<T>*>(input)))
+
+        if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
         {
             mp->patch(pn).unrefineElements( elements );
         }
-        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(input)))
+        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
         {
             // Refine all of the found refBoxes in this patch
             mb->unrefineElements(pn, elements );
@@ -762,19 +765,21 @@ void gsAdaptiveMeshing<T>::_flattenElementsToLevel(  gsFunctionSet<T> * input,
 /**
  * @brief      Coarsens everything to that is lower than \a level
  *
- * @param      input  The input structure (gsMultiBasis or gsMultiPatch)
+ * note: DOES NOT TAKE INTO ACCOUNT SUITABLE GRADING
+ *
+ * @param      m_input  The m_input structure (gsMultiBasis or gsMultiPatch)
  * @param[in]  level  The target level
  *
  */
 template<class T>
-void gsAdaptiveMeshing<T>::_unrefineElementsThreshold(  gsFunctionSet<T> * input,
+void gsAdaptiveMeshing<T>::_unrefineElementsThreshold(
                                                 const index_t level)
 {
     // Get all the elements of which the level exceeds level
     std::vector<bool> elMarked;
-    _markLevelThreshold(input,level,elMarked);
+    _markLevelThreshold(level,elMarked);
 
-    const int dim = input->domainDim();
+    const int dim = m_input->domainDim();
 
     // numMarked: Number of marked cells on current patch, also currently marked cell
     // poffset  : offset index for the first element on a patch
@@ -786,10 +791,12 @@ void gsAdaptiveMeshing<T>::_unrefineElementsThreshold(  gsFunctionSet<T> * input
 
     gsBasis<T> * basis = nullptr;
 
-    for (index_t pn=0; pn < input->nPieces(); ++pn )// for all patches
+    gsMultiPatch<T> * mp;
+    gsMultiBasis<T> * mb;
+    for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( gsMultiPatch<T> * mp = dynamic_cast<gsMultiPatch<T>*>(input) ) basis = &(mp->basis(pn));
-        if ( gsMultiBasis<T> * mb = dynamic_cast<gsMultiBasis<T>*>(input) ) basis = &(mb->basis(pn));
+        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
+        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
         GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
         // Get number of elements to be refined on this patch
         const int numEl = basis->numElements();
@@ -851,13 +858,12 @@ void gsAdaptiveMeshing<T>::_unrefineElementsThreshold(  gsFunctionSet<T> * input
             // }
             // gsDebug<<"\n";
         }
-        gsMultiPatch<T> * mp;
-        gsMultiBasis<T> * mb;
-        if ((mp = dynamic_cast<gsMultiPatch<T>*>(input)))
+
+        if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
         {
             mp->patch(pn).unrefineElements( elements );
         }
-        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(input)))
+        else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
         {
             // Refine all of the found refBoxes in this patch
             mb->unrefineElements(pn, elements );
@@ -865,6 +871,61 @@ void gsAdaptiveMeshing<T>::_unrefineElementsThreshold(  gsFunctionSet<T> * input
         else
             GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
     }
+}
+
+template<class T>
+typename gsAdaptiveMeshing<T>::patchHContainer gsAdaptiveMeshing<T>::_toContainer( const std::vector<bool> & bools)
+{
+    patchHContainer container(m_input->nPieces());
+
+    #pragma omp parallel
+    {
+#ifdef _OPENMP
+        const int tid = omp_get_thread_num();
+        const int nt  = omp_get_num_threads();
+        index_t patch_cnt = 0;
+#endif
+
+        index_t c = 0;
+        gsBasis<T> * basis = nullptr;
+
+        gsMultiPatch<T> * mp;
+        gsMultiBasis<T> * mb;
+        typename gsBasis<T>::domainIter domIt;
+        gsHDomainIterator<T,2> * domHIt = nullptr;
+        for (index_t patchInd=0; patchInd < m_input->nPieces(); ++patchInd)
+        {
+            // Initialize domain element iterator
+            if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(patchInd));
+            if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(patchInd));
+            GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+            // for all elements in patch pn
+            domIt  = basis->makeDomainIterator();
+            domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
+            GISMO_ENSURE(domHIt!=nullptr,"Domain should be 2 dimensional for flattening");
+
+#ifdef _OPENMP
+            c = patch_cnt + tid;
+            patch_cnt += domHIt->numElements();// a bit costy
+            for ( domHIt->next(tid); domHIt->good(); domHIt->next(nt) )
+#else
+            for (; domHIt->good(); domHIt->next() )
+#endif
+            {
+                if (bools[c])
+#pragma omp critical (gsAdaptiveMeshing_toContainer)
+                    container.at(patchInd).add(gsHBox<2,T>(domHIt,patchInd));
+
+#               ifdef _OPENMP
+                c += nt;
+#               else
+                c++
+#               endif
+            }
+        }
+    }
+
+    return container;
 }
 
 } // namespace gismo

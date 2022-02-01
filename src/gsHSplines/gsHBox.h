@@ -32,24 +32,24 @@ public:
     typedef typename std::vector<index_t>                                   RefBox;
     typedef typename std::list<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>    Container;
     typedef typename std::vector<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>  SortedContainer;
-    typedef typename std::vector<Container>                                 HContainer;
-    typedef typename Container::iterator        Iterator;
-    typedef typename Container::const_iterator  cIterator;
-    typedef typename HContainer::iterator       HIterator;
-    typedef typename HContainer::const_iterator cHIterator;
+    typedef typename std::vector<Container>                                 HContainer; // container[level]
+    typedef typename Container::iterator            Iterator;
+    typedef typename Container::const_iterator      cIterator;
+    typedef typename HContainer::iterator           HIterator;
+    typedef typename HContainer::const_iterator     cHIterator;
 
 
 public:
 
     gsHBox() { }
 
-    gsHBox(const gsHDomainIterator<T,d> * domHIt);
+    gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid = 0);
 
-    gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis);
+    gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis, const index_t pid = 0);
 
-    gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis);
+    gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid = 0);
 
-    gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis);
+    gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis, const index_t pid = 0);
 
     /// Copy constructor (makes deep copy)
     gsHBox( const gsHBox<d,T> & other );
@@ -139,6 +139,13 @@ public:
     const point & upperIndex() const;
 
     /**
+     * @brief      Gets the patch ID of the object
+     *
+     * @return     The patch ID of the object
+     */
+    index_t patch() const;
+
+    /**
      * @brief      Gets the level of the object
      *
      * @return     The level of the object
@@ -222,6 +229,13 @@ public:
      */
     RefBox toRefBox() const;
 
+    /**
+     * @brief      Returns a box representation of the object on the higher level (needed for coarsening).
+     *
+     * @return     Coarsening box representation of the object.
+     */
+    RefBox toCrsBox() const;
+
     // Helper functions
     HContainer           boxUnion(const HContainer & container1, const HContainer & container2) const;
 
@@ -264,6 +278,7 @@ protected:
 protected:
     gsAabb<d,index_t> m_indices;
 
+    index_t m_pid;
     gsMatrix<T> m_coords;
     gsMatrix<T> m_center;
     const gsHTensorBasis<d,T> * m_basis;

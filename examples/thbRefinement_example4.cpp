@@ -113,7 +113,6 @@ int main(int argc, char *argv[])
         mp.addPatch(thb);
     }
 
-
     std::vector<index_t> boxes(5), marked(5);
 
     // Initial refinement

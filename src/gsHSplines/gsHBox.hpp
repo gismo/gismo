@@ -18,38 +18,44 @@
 namespace gismo
 {
 
-// template <short_t d, class T>
-// gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
-// {
-//     m_basis = nullptr;
-//     m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
-//     GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
+template <short_t d, class T>
+gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid)
+:
+m_pid(pid)
+{
+    m_basis = nullptr;
+    m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
+    GISMO_ASSERT(m_basis!=nullptr,"basis is not a gsHTensorBasis");
 
-//     m_coords.resize(d,2);
-//     m_coords.col(0) = domHIt->lowerCorner();
-//     m_coords.col(1) = domHIt->upperCorner();
-//     m_center = (m_coords.col(1) + m_coords.col(0))/2;
-//     _computeIndices();
-// }
+    m_coords.resize(d,2);
+    m_coords.col(0) = domHIt->lowerCorner();
+    m_coords.col(1) = domHIt->upperCorner();
+    m_center = (m_coords.col(1) + m_coords.col(0))/2;
+    _computeIndices();
+}
 
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis)
+gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis, const index_t pid)
 :
-m_indices(low,upp,level)
+m_indices(low,upp,level),
+m_pid(pid)
 {
     m_basis = basis;
 }
 
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis)
+gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid)
 :
-m_indices(box)
+m_indices(box),
+m_pid(pid)
 {
     m_basis = basis;
 }
 
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis)
+gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis, const index_t pid)
+:
+m_pid(pid)
 {
     GISMO_ENSURE(indices.size()==2*d+1,"Index size is wrong");
     typename gsHBox<d,T>::point low, upp;
@@ -87,6 +93,7 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
         m_coords  = other.m_coords;
         m_center  = other.m_center;
         m_basis   = other.m_basis;
+        m_pid     = other.m_pid;
     }
     return *this;
 }
@@ -98,6 +105,7 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
     m_coords  = give(other.m_coords);
     m_center  = give(other.m_center);
     m_basis   = give(other.m_basis);
+    m_pid     = give(other.m_pid);
     return *this;
 }
 
@@ -131,6 +139,7 @@ template <short_t d, class T>
 bool gsHBox<d, T>::isSame(const gsHBox<d,T> & other) const
 {
     bool res = true;
+    res &= this->patch() == other.patch();
     res &= this->level() == other.level();
     for (index_t i=0; i!=d && res; i++)
     {
@@ -173,6 +182,9 @@ template <short_t d, class T>
 const typename gsHBox<d,T>::point & gsHBox<d, T>::upperIndex() const { return m_indices.second; }
 
 template <short_t d, class T>
+index_t gsHBox<d, T>::patch() const { return m_pid; }
+
+template <short_t d, class T>
 index_t gsHBox<d, T>::level() const { return m_indices.level; }
 
 template <short_t d, class T>
@@ -180,7 +192,7 @@ gsHBox<d,T> gsHBox<d, T>::getParent() const
 {
     GISMO_ENSURE(this->level()>0,"Box is at ground level and has no parent");
     gsAabb<d,index_t> box = _elevateBox(m_indices);
-    return gsHBox<d,T>(box,m_basis);
+    return gsHBox<d,T>(box,m_basis,m_pid);
 }
 
 template <short_t d, class T>
@@ -232,7 +244,7 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::getSupportExtension()
         support = m_basis->tensorLevel(lvl).support(acts(act,0));
         aabb    = _computeIndices(support,lvl);
 
-        supportBox = gsHBox<d,T>(aabb,m_basis);
+        supportBox = gsHBox<d,T>(aabb,m_basis,m_pid);
 
         // Split the boxes into index interval with coordinate delta 1
         tmpContainer = supportBox.toUnitBoxes();
@@ -308,7 +320,7 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
 template <short_t d, class T>
 std::ostream& gsHBox<d, T>::print( std::ostream& os ) const
 {
-    os  <<"Cell with dimension "<<d
+    os  <<"Cell on patch "<<m_pid
         <<" on level "<<m_indices.level<<". "
         <<"\nIndices:\n"
         <<"("<<m_indices.first.transpose()<<")"
@@ -444,7 +456,7 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::toUnitBoxes() const
     while (next)
     {
         curupp = cur + ones;
-        result.push_back(gsHBox<d,T>(cur,curupp,this->level(),m_basis));
+        result.push_back(gsHBox<d,T>(cur,curupp,this->level(),m_basis,m_pid));
         next = nextLexicographic(cur,low,upp);
     }
     return result;
@@ -467,6 +479,18 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
 {
     std::vector<index_t> result(5);
     result[0] = this->level()+1;
+    result[1] = this->lowerIndex()[0]*2;
+    result[2] = this->lowerIndex()[1]*2;
+    result[3] = this->upperIndex()[0]*2;
+    result[4] = this->upperIndex()[1]*2;
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::RefBox gsHBox<d, T>::toCrsBox() const
+{
+    std::vector<index_t> result(5);
+    result[0] = this->level()-1;
     result[1] = this->lowerIndex()[0]*2;
     result[2] = this->lowerIndex()[1]*2;
     result[3] = this->upperIndex()[0]*2;
@@ -508,14 +532,20 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_boxUnion(const Container & conta
         bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
         {
             return
-            (a.level() < b.level())
+             (a.patch() < b.patch())
             ||
-            ((a.level() == b.level()) &&
-            std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+            ((a.patch() == b.patch()) &&
+             (a.level() < b.level())     )
+            ||
+            ((a.patch() == b.patch()) &&
+             (a.level() == b.level()) &&
+             std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
                                         b.lowerIndex().begin(), b.lowerIndex().end())   )
             ||
-            ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
-            std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+            ((a.patch() == b.patch()) &&
+             (a.level() == b.level()) &&
+             (a.lowerIndex() == b.lowerIndex()) &&
+             std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
                                         b.upperIndex().begin(), b.upperIndex().end())    );
         };
     }
@@ -554,15 +584,21 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
         bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
         {
             return
-            (a.level() < b.level())
+             (a.patch() < b.patch())
             ||
-            ((a.level() == b.level()) &&
-            std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-                                        b.lowerIndex().begin(), b.lowerIndex().end())   )
+            ((a.patch() == b.patch()) &&
+             (a.level() < b.level())     )
             ||
-            ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
-            std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-                                        b.upperIndex().begin(), b.upperIndex().end())    );
+            ((a.patch() == b.patch()) &&
+             (a.level() == b.level()) &&
+             std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+                                            b.lowerIndex().begin(), b.lowerIndex().end())   )
+            ||
+            ((a.patch() == b.patch()) &&
+             (a.level() == b.level()) &&
+             (a.lowerIndex() == b.lowerIndex()) &&
+             std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+                                            b.upperIndex().begin(), b.upperIndex().end())    );
         };
     }
     comp;

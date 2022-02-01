@@ -164,11 +164,25 @@ public:
     RefBox toBoxes()    const;
 
     /**
-     * @brief      Returns reference boxes representation of the object.
+     * @brief      Returns refinement box representation of the object.
      *
-     * @return     Reference boxes representation of the object.
+     * @return     Refinement box representation of the object.
      */
     RefBox toRefBoxes() const;
+
+    /**
+     * @brief      Returns coarsening box representation of the object.
+     *
+     * @return     Coarsening box representation of the object.
+     */
+    RefBox toCrsBoxes() const;
+
+    /**
+     * @brief      Returns box coordinate represenation of the object
+     *
+     * @return     Box coordinate representation of the object
+     */
+    gsMatrix<T> toCoords();
 
     /**
      * @brief      Transforms the boxes in \a container as unit boxes
