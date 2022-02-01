@@ -22,21 +22,15 @@ class gsG1AuxiliaryVertexMultiplePatches
 public:
 
 // Constructor for n patches around a common vertex
-    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const gsMultiPatch<> & mpPlanar, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
+    gsG1AuxiliaryVertexMultiplePatches(const gsMultiPatch<> & mp, const std::vector<size_t> patchesAroundVertex, const std::vector<size_t> vertexIndices)
     {
         for(size_t i = 0; i < patchesAroundVertex.size(); i++)
         {
             auxGeom.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
-            auxGeomPlanar.push_back(gsG1AuxiliaryPatch(mp.patch(patchesAroundVertex[i]), patchesAroundVertex[i]));
-
             auxVertexIndices.push_back(vertexIndices[i]);
-            auxVertexIndicesPlanar.push_back(vertexIndices[i]);
-
             checkBoundary(mp, patchesAroundVertex[i], vertexIndices[i]);
-            checkBoundaryPlanar(mpPlanar, patchesAroundVertex[i], vertexIndices[i]);
 
         }
-//        gsInfo <<  patchesAroundVertex.size() << " patch constructed \n";
         sigma = 0.0;
     }
 
@@ -50,16 +44,6 @@ public:
         for(unsigned i = 0; i <  auxGeom.size(); i++)
         {
             auxTop.addPatch(auxGeom[i].getPatch());
-        }
-        auxTop.computeTopology();
-        return auxTop;
-    }
-
-    gsMultiPatch<> computeAuxTopologyPlanar(){
-        gsMultiPatch<> auxTop;
-        for(unsigned i = 0; i <  auxGeomPlanar.size(); i++)
-        {
-            auxTop.addPatch(auxGeomPlanar[i].getPatch());
         }
         auxTop.computeTopology();
         return auxTop;
@@ -91,34 +75,6 @@ public:
             }
         }
     }
-
-    void reparametrizeG1VertexPlanar()
-    {
-        for(size_t i = 0; i < auxGeomPlanar.size(); i++)
-        {
-            checkOrientationPlanar(i); // Check if the orientation is correct. If not, modifies vertex and edge vectors
-
-            switch (auxVertexIndices[i])
-            {
-                case 1:
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " not rotated\n";
-                    break;
-                case 4:
-                    auxGeomPlanar[i].rotateParamAntiClockTwice();
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated twice anticlockwise\n";
-                    break;
-                case 2:
-                    auxGeomPlanar[i].rotateParamAntiClock();
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated anticlockwise\n";
-                    break;
-                case 3:
-                    auxGeomPlanar[i].rotateParamClock();
-//                    gsInfo << "Patch: " << auxGeom[i].getGlobalPatchIndex() << " rotated clockwise\n";
-                    break;
-            }
-        }
-    }
-
 
     index_t kindOfVertex()
     {
@@ -153,23 +109,6 @@ public:
     }
 
 
-    void checkOrientationPlanar(size_t i)
-    {
-        if (auxGeomPlanar[i].getPatch().orientation() == -1)
-        {
-            auxGeomPlanar[i].swapAxis();
-//            gsInfo << "Changed axis on patch: " << auxGeom[i].getGlobalPatchIndex() << "\n";
-
-            this->swapBdy(i); //Swap boundary edge bool-value
-
-            // Swap vertices index after swapping axis
-            if(auxVertexIndicesPlanar[i] == 2)
-                auxVertexIndicesPlanar[i] = 3;
-            else
-            if(auxVertexIndicesPlanar[i] == 3)
-                auxVertexIndicesPlanar[i] = 2;
-        }
-    }
     void computeSigma()
     {
         real_t p = 0;
@@ -226,48 +165,12 @@ public:
         isBdy.push_back(tmp);
     }
 
-
-    void checkBoundaryPlanar(const gsMultiPatch<> & mpTmp, size_t  patchInd, size_t sideInd)
-    {
-        std::vector<bool> tmp;
-        switch (sideInd)
-        {
-            case 1: tmp.push_back(mpTmp.isBoundary(patchInd,3));
-                tmp.push_back(mpTmp.isBoundary(patchInd,1));
-//                    gsInfo << "Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\t Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\n";
-                break;
-            case 2: tmp.push_back(mpTmp.isBoundary(patchInd, 2));
-                tmp.push_back(mpTmp.isBoundary(patchInd, 3));
-//                    gsInfo << "Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\t Edge 3: " << mpTmp.isBoundary(patchInd, 3) << "\n";
-                break;
-            case 3: tmp.push_back(mpTmp.isBoundary(patchInd, 1));
-                tmp.push_back(mpTmp.isBoundary(patchInd, 4));
-//                    gsInfo << "Edge 1: " << mpTmp.isBoundary(patchInd, 1) << "\t Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\n";
-                break;
-            case 4: tmp.push_back(mpTmp.isBoundary(patchInd, 4));
-                tmp.push_back(mpTmp.isBoundary(patchInd, 2));
-//                    gsInfo << "Edge 4: " << mpTmp.isBoundary(patchInd, 4) << "\t Edge 2: " << mpTmp.isBoundary(patchInd, 2) << "\n";
-                break;
-            default:
-                break;
-        }
-        isBdyPlanar.push_back(tmp);
-    }
-
     void swapBdy(size_t i)
     {
         bool tmp = isBdy[i][0];
         isBdy[i][0] = isBdy[i][1];
         isBdy[i][1] = tmp;
     }
-
-    void swapBdyPlanar(size_t i)
-    {
-        bool tmp = isBdyPlanar[i][0];
-        isBdyPlanar[i][0] = isBdyPlanar[i][1];
-        isBdyPlanar[i][1] = tmp;
-    }
-
 
     gsMatrix<> computeBigSystemMatrix( index_t np)
     {
@@ -561,16 +464,6 @@ public:
             }
 
         }
-
-//        gsInfo << "Big kernel:\n";
-//        gsInfo << bigKernel << "\n ";
-//
-//        gsInfo << "Small kernel:\n";
-//        gsInfo << smallKernel << "\n ";
-//
-//        gsInfo << "Basis:\n";
-//        gsInfo << basisVect << "\n";
-
         return std::make_pair(basisVect, numberPerType);
     }
 
@@ -581,7 +474,7 @@ public:
 
         if( kindOfVertex() == 1 ) // If the boundary it´s along u and along v there is an interface (Right Patch) or viceversa
         {
-            gsMultiPatch<> tmp(this->computeAuxTopologyPlanar());
+            gsMultiPatch<> tmp(this->computeAuxTopology());
             for(auto iter : tmp.interfaces())
             {
                 if( i == iter.first().patch || i == iter.second().patch )
@@ -653,7 +546,7 @@ public:
                     }
                 }
             }
-//            gsInfo << "Coeffs boundary interface:" << coefs << "\n";
+            //gsInfo << "Coeffs boundary interface:" << coefs << "\n";
         }
 
         else
@@ -671,7 +564,7 @@ public:
         else
         if( kindOfVertex() == 0 ) // Internal vertex -> Two interfaces
         {
-            gsMultiPatch<> tmp(this->computeAuxTopologyPlanar());
+            gsMultiPatch<> tmp(this->computeAuxTopology());
             for(auto iter : tmp.interfaces())
             {
                 if( (i == iter.first().patch) || (i == iter.second().patch) )
@@ -729,64 +622,9 @@ public:
         this->reparametrizeG1Vertex();
         this->computeSigma();
 
-        this->reparametrizeG1VertexPlanar();
-
         std::vector<gsMultiPatch<>> g1BasisVector;
         std::pair<gsMatrix<>, std::vector<index_t>> vertexBoundaryBasis;
 
-        if(g1OptionList.getInt("user") == user::pascal)
-        {
-            //g1OptionList.setInt("gluingData",gluingData::global);
-            //g1OptionList.setInt("p_tilde",2);
-
-            if (g1OptionList.getSwitch("twoPatch"))
-            {
-                gsMultiPatch<> test_mp(auxGeom[0].getPatch());
-                gsMultiBasis<> test_mb(auxGeom[0].getPatch().basis());
-
-                gsMultiPatch<> g1Basis;
-                gsBSplineBasis<> basis_edge = dynamic_cast<gsBSplineBasis<> &>(test_mp.basis(0).component(1)); // 0 -> u, 1 -> v
-
-                for (index_t j = 0; j < 2; j++) // u
-                {
-                    for (index_t i = 0; i < 2; i++) // v
-                    {
-                        gsMatrix<> coefs;
-                        coefs.setZero(test_mb.basis(0).size(),1);
-
-                        coefs(j*(test_mb.basis(0).size()/basis_edge.size()) + i,0) = 1;
-
-                        g1Basis.addPatch(test_mb.basis(0).makeGeometry(coefs));
-                    }
-                }
-
-                g1BasisVector.push_back(g1Basis);
-                auxGeom[0].setG1Basis(g1Basis);
-            }
-            else
-            {
-                for(size_t i = 0; i < auxGeom.size(); i++)
-                {
-                    gsMultiPatch<> g1Basis;
-
-                    gsApproxG1BasisVertex<real_t> g1BasisVertex_0
-                        (auxGeom[i].getPatch(), auxGeom[i].getPatch().basis(), isBdy[i], sigma, g1OptionList);
-
-                    g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
-
-                    g1BasisVector.push_back(g1Basis);
-                    auxGeom[i].setG1Basis(g1Basis);
-
-//                    if (this->kindOfVertex() == 1)
-//                    {
-//                        gsInfo << "coefs: " << g1Basis.patch(5).coefs().reshape(auxGeom[i].getPatch().basis().component(0).size(), auxGeom[i].getPatch().basis().component(1).size()) << "\n";
-//                    }
-                }
-            }
-        }
-        else if(g1OptionList.getInt("user") == user::andrea)
-        {
-            {
                 gsMatrix<> Phi(6, 6);
                 Phi.setIdentity();
 
@@ -872,190 +710,19 @@ public:
                         Phi(8, 5) = sigma * sigma;
 //
 //                        gsInfo << "JK: " << rotPatch.patch(0).jacobian(zero) << "\n";
-                    }
-                    else
-                    {
-//                  FIRST FUNDAMENTAL FORM: G = J^T * J
-//
-//                  G = | G11   G12|
-//                      | G21   G22|
-//
-//                  INVERSE OF THE FIRST FUNDAMENTAL FORM
-//
-//                              1    | G22  -G12|      1
-//                    G^-1 = ------- |          | = ------- G* ^-1
-//                            det(G) | -G21  G11|    det(G)
+                        for (size_t i = 0; i < auxGeom.size(); i++)
+                        {
+                            gsMatrix<> gdCoefs(selectGD(i));
+                            gsMultiPatch<> g1Basis;
 
-                        // First fundamental form
-                        real_t G11 = (geoMapDeriv1(0, 0) * (geoMapDeriv1(0, 0)) +
-                                      geoMapDeriv1(2, 0) * (geoMapDeriv1(2, 0)) +
-                                      geoMapDeriv1(4, 0) * (geoMapDeriv1(4, 0)));
+                            gsG1ASBasisVertex<real_t> g1BasisVertex_0
+                            (rotPatch.patch(i), rotPatch.patch(i).basis(), isBdy[i], Phi, g1OptionList, gdCoefs);
 
-//          G12 = G21
-                        real_t G12 = (geoMapDeriv1(0, 0) * (geoMapDeriv1(1, 0)) +
-                                      geoMapDeriv1(2, 0) * (geoMapDeriv1(3, 0)) +
-                                      geoMapDeriv1(4, 0) * (geoMapDeriv1(5, 0)));
+                            g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
 
-                        real_t G22 = (geoMapDeriv1(1, 0) * (geoMapDeriv1(1, 0)) +
-                                      geoMapDeriv1(3, 0) * (geoMapDeriv1(3, 0)) +
-                                      geoMapDeriv1(5, 0) * (geoMapDeriv1(5, 0)));
-
-                        // Derivative of the first fundamental form
-                        real_t DuG11 = 2 * (geoMapDeriv2(0, 0) * (geoMapDeriv1(0, 0)) +
-                                            geoMapDeriv2(3, 0) * (geoMapDeriv1(2, 0)) +
-                                            geoMapDeriv2(6, 0) * (geoMapDeriv1(4, 0)));
-
-                        real_t DvG11 = 2 * (geoMapDeriv2(2, 0) * (geoMapDeriv1(0, 0)) +
-                                            geoMapDeriv2(5, 0) * (geoMapDeriv1(2, 0)) +
-                                            geoMapDeriv2(8, 0) * (geoMapDeriv1(4, 0)));
-
-//          DuG12 = DuG21
-                        real_t DuG12 = (geoMapDeriv2(0, 0) * (geoMapDeriv1(1, 0)) +
-                                        geoMapDeriv2(2, 0) * (geoMapDeriv1(0, 0)) +
-                                        geoMapDeriv2(3, 0) * (geoMapDeriv1(3, 0)) +
-                                        geoMapDeriv2(5, 0) * (geoMapDeriv1(2, 0)) +
-                                        geoMapDeriv2(6, 0) * (geoMapDeriv1(5, 0)) +
-                                        geoMapDeriv2(8, 0) * (geoMapDeriv1(4, 0)));
-
-//          DvG12 = DvG21
-                        real_t DvG21 = (geoMapDeriv2(2, 0) * (geoMapDeriv1(1, 0)) +
-                                        geoMapDeriv2(1, 0) * (geoMapDeriv1(0, 0)) +
-                                        geoMapDeriv2(5, 0) * (geoMapDeriv1(3, 0)) +
-                                        geoMapDeriv2(4, 0) * (geoMapDeriv1(2, 0)) +
-                                        geoMapDeriv2(8, 0) * (geoMapDeriv1(5, 0)) +
-                                        geoMapDeriv2(7, 0) * (geoMapDeriv1(4, 0)));
-
-                        real_t DuG22 = 2 * (geoMapDeriv2(2, 0) * (geoMapDeriv1(1, 0)) +
-                                            geoMapDeriv2(5, 0) * (geoMapDeriv1(3, 0)) +
-                                            geoMapDeriv2(8, 0) * (geoMapDeriv1(5, 0)));
-
-                        real_t DvG22 = 2 * (geoMapDeriv2(1, 0) * (geoMapDeriv1(1, 0)) +
-                                            geoMapDeriv2(4, 0) * (geoMapDeriv1(3, 0)) +
-                                            geoMapDeriv2(7, 0) * (geoMapDeriv1(5, 0)));
-
-                        real_t detG = G.determinant();
-                        real_t detG_inv = 1 / (detG);
-
-                        real_t Du_detG_Inv = detG_inv * detG_inv * (2 * G12 * DuG12 -
-                            G22 * DuG11 -
-                            G11 * DuG22);
-
-                        real_t Dv_detG_Inv = detG_inv * detG_inv * (2 * G12 * DvG21 -
-                            G22 * DvG11 -
-                            G11 * DvG22);
-
-
-//          Computing the divergence of the first fundamental form
-                        gsMatrix<> div_G_inv(1, 2);
-                        div_G_inv.setZero();
-
-                        div_G_inv(0, 0) = Du_detG_Inv * G22 - Dv_detG_Inv * G12;
-                        div_G_inv(0, 0) += ((DuG22 - DvG21) / detG);
-
-                        div_G_inv(0, 1) = Dv_detG_Inv * G11 - Du_detG_Inv * G12;
-                        div_G_inv(0, 1) += ((DvG11 - DuG12) / detG);
-
-
-//          Computing the divergence of the jacobian
-                        gsMatrix<> div_Jk_transpose(1, 3);
-                        div_G_inv.setZero();
-
-                        div_Jk_transpose(0, 0) = geoMapDeriv2(0, 0) + geoMapDeriv2(1, 0);
-                        div_Jk_transpose(0, 1) = geoMapDeriv2(3, 0) + geoMapDeriv2(4, 0);
-                        div_Jk_transpose(0, 2) = geoMapDeriv2(6, 0) + geoMapDeriv2(7, 0);
-
-
-//          Computing the transformation of the hessian matrix from parameter to surface
-                        gsMatrix<> grad_par_first = Phi.block(1, 1, 2, 1);
-                        gsMatrix<> grad_par_second = Phi.block(1, 2, 2, 1);
-
-                        gsMatrix<> hessian_par_first(2, 2);
-                        hessian_par_first.setZero();
-                        hessian_par_first(0, 0) = sigma * sigma;
-
-                        gsMatrix<> hessian_par_second(2, 2);
-                        hessian_par_second.setZero();
-                        hessian_par_second(0, 1) = sigma * sigma;
-                        hessian_par_second(1, 0) = sigma * sigma;
-
-                        gsMatrix<> hessian_par_third(2, 2);
-                        hessian_par_third.setZero();
-                        hessian_par_third(1, 1) = sigma * sigma;
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-//          Computing the tranformartion of the gradient basis functions
-                        gsMatrix<> grad_phys_first = Jk * G_inv * grad_par_first;
-                        gsMatrix<> hessian_fromGrad_first = Jk * G_inv * grad_par_first * div_G_inv * Jk.transpose();
-                        hessian_fromGrad_first +=
-                            Jk * G_inv * (grad_par_first.transpose() * G_inv).transpose() * div_Jk_transpose;
-
-                        gsMatrix<> grad_phys_second = Jk * G_inv * grad_par_second;
-                        gsMatrix<> hessian_fromGrad_second = Jk * G_inv * grad_par_second * div_G_inv * Jk.transpose();
-                        hessian_fromGrad_second +=
-                            Jk * G_inv * (grad_par_second.transpose() * G_inv).transpose() * div_Jk_transpose;
-
-//          Computing the tranformation of the hessian basis functions
-                        gsMatrix<> hessian_phys_first = Jk * G_inv * hessian_par_first * G_inv * Jk.transpose();
-
-                        gsMatrix<> hessian_phys_second = Jk * G_inv * hessian_par_second * G_inv * Jk.transpose();
-
-                        gsMatrix<> hessian_phys_third = Jk * G_inv * hessian_par_third * G_inv * Jk.transpose();
-
-                        gsMatrix<> hess_firstGrad_col(9, 1);
-                        gsMatrix<> hess_secondGrad_col(9, 1);
-                        gsMatrix<> hess_first_col(9, 1);
-                        gsMatrix<> hess_second_col(9, 1);
-                        gsMatrix<> hess_third_col(9, 1);
-
-                        int kk = 0;
-                        for (index_t i = 0; i < 3; i++)
-//                        If hessian is simmetric j starts from i
-                            for (index_t j = 0; j < 3; j++)
-                            {
-
-                                hess_firstGrad_col(kk, 0) = hessian_fromGrad_first(i, j);
-                                hess_secondGrad_col(kk, 0) = hessian_fromGrad_second(i, j);
-
-                                hess_first_col(kk, 0) = hessian_phys_first(i, j);
-                                hess_second_col(kk, 0) = hessian_phys_second(i, j);
-                                hess_third_col(kk, 0) = hessian_phys_third(i, j);
-
-                                kk++;
-                            }
-
-//                  Supposing that the hessian matrix is not symmetric
-                        Phi.resize(13, 6);
-                        Phi.setZero();
-
-                        Phi(0, 0) = 1;
-//                  If the hessian matrix is symmetric I just need 6 (not 9) components for the hessian part
-                        Phi.block(1, 1, 3, 1) = grad_phys_first;
-                        Phi.block(4, 1, 9, 1) = hess_firstGrad_col;
-
-                        Phi.block(1, 2, 3, 1) = grad_phys_second;
-                        Phi.block(4, 2, 9, 1) = hess_secondGrad_col;
-
-                        Phi.block(4, 3, 9, 1) = hess_first_col;
-                        Phi.block(4, 4, 9, 1) = hess_second_col;
-                        Phi.block(4, 5, 9, 1) = hess_third_col;
-
-                    }
-                }
-                if (g1OptionList.getSwitch("rotVertexBF") == true)
-                {
-                    for (size_t i = 0; i < auxGeom.size(); i++)
-                    {
-                        gsMatrix<> gdCoefs(selectGD(i));
-                        gsMultiPatch<> g1Basis;
-
-                    gsG1ASBasisVertex<real_t> g1BasisVertex_0
-                        (rotPatch.patch(i), rotPatch.patch(i).basis(), isBdy[i], Phi, g1OptionList, gdCoefs);
-
-                        g1BasisVertex_0.setG1BasisVertex(g1Basis, this->kindOfVertex());
-
-                        g1BasisVector.push_back(g1Basis);
-                        auxGeom[i].setG1Basis(g1Basis);
+                            g1BasisVector.push_back(g1Basis);
+                            auxGeom[i].setG1Basis(g1Basis);
+                        }
                     }
 
                 }
@@ -1075,11 +742,10 @@ public:
                         auxGeom[i].setG1Basis(g1Basis);
                     }
                 }
-            }
-        }
 
         if (this->kindOfVertex() == 1) // Interface-Boundary vertex
         {
+
             gsMatrix<> bigMatrix(0,0);
             gsMatrix<> smallMatrix(0,0);
             for (size_t i = 0; i < auxGeom.size(); i++)
@@ -1111,6 +777,7 @@ public:
         }
         else if(this->kindOfVertex() == -1) // Boundary vertex
         {
+
             Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
             Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
             SmallLU.setThreshold(g1OptionList.getReal("threshold"));
@@ -1171,12 +838,9 @@ public:
 
 protected:
     std::vector<gsG1AuxiliaryPatch> auxGeom;
-    std::vector<gsG1AuxiliaryPatch> auxGeomPlanar;
     std::vector<size_t> auxVertexIndices;
-    std::vector<size_t> auxVertexIndicesPlanar;
 
     std::vector< std::vector<bool>> isBdy;
-    std::vector< std::vector<bool>> isBdyPlanar;
 
     real_t sigma;
     size_t dim_kernel;

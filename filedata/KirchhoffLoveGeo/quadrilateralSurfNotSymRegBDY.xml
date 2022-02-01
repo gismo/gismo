@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <!-- Geometry input: two planar 2D-Patches-->    
+    <Geometry type="TensorBSpline2" id="1">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="3">
+        0.0 0.0 1.0
+        0.5 0.05 1.0
+        1.0 0.1 -0.01
+        0.05 0.5 1.0
+        0.525 0.525 0.9
+        1.0 0.55 -0.1
+        0.1 1.0 -0.01
+        0.55 1.0 -0.1
+        1.0 1.0 -1.0
+        </coefs>
+    </Geometry>
+        <Geometry type="TensorBSpline2" id="2">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="3">
+        0.0 0.0 1.0
+        0.05 0.5 1.0
+        0.1 1.0 -0.01
+        -0.5 -0.1 1.0
+        -0.475 0.45 1.15
+        -0.45 1.0 0.1
+        -1.0 -0.2 -0.04
+        -1.0 0.4 0.2
+        -1.0 1.0 -1.0
+        </coefs>
+    </Geometry>
+        <Geometry type="TensorBSpline2" id="3">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="3">
+        0.0 0.0 1.0
+        -0.5 -0.1 1.0
+        -1.0 -0.2 -0.04
+        0.125 -0.5 1.0
+        -0.4375 -0.55 1.025
+        -1.0 -0.6 -0.2
+        0.25 -1.0 -0.0625
+        -0.375 -1.0 0.25
+        -1.0 -1.0 -1.0
+        </coefs>
+    </Geometry>
+        <Geometry type="TensorBSpline2" id="4">
+        <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+            <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+        </Basis>
+        </Basis>
+        <coefs geoDim="3">
+0.0 0.0 1.0
+0.125 -0.5 1.0
+   0.25 -1.0 -0.0625
+   0.5 0.05 1.0
+   0.5625 -0.475 0.925
+   0.625 -1.0 -0.25
+   1.0 0.1 -0.01
+   1.0 -0.45 0.1
+   1.0 -1.0 -1.0
+        </coefs>
+    </Geometry>
+    <MultiPatch parDim="2" id="0">
+        <patches type="id_range">1 4</patches>
+ </MultiPatch>
+</xml>

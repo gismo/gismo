@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
 //                             "pi*pi*sin(pi*x/2)*sin(pi*y/2)/4", 2);
 
 
-////    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos(4 - (pi * y)/4) + cos(4 - (pi * x)/4) * (-1 + 4 * cos(4 - (pi * y)/4)))",2);
-//    gsFunctionExpr<> source  ("(cos(pi*x/4 -4) - 1) * (cos(pi*y/4 -4) - 1)",2);
+//    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos(4 - (pi * y)/4) + cos(4 - (pi * x)/4) * (-1 + 4 * cos(4 - (pi * y)/4)))",2);
+////    gsFunctionExpr<> source  ("(cos(pi*x/4 -4) - 1) * (cos(pi*y/4 -4) - 1)",2);
 //
 //    gsFunctionExpr<> laplace ("1/16 * pi^2 *(cos(4 - (pi * x)/4) * (1 - 2 * cos(4 - (pi * y)/4)) + cos(4 - (pi * y)/4))",2);
 //    gsFunctionExpr<> solVal("(cos(pi*x/4 -4) - 1) * (cos(pi*y/4 -4) - 1)",2);
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 //                             "1/16 * pi^2 * sin(4 - (pi * x)/4) * sin(4 - (pi * y)/4)", 2);
 
 //    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos( - (pi * y)/4) + cos( - (pi * x)/4) * (-1 + 4 * cos( - (pi * y)/4)))",2);
-//    gsFunctionExpr<> source  ("(cos(pi*x/4) - 1) * (cos(pi*y/4 ) - 1)",2);
+////    gsFunctionExpr<> source  ("(cos(pi*x/4) - 1) * (cos(pi*y/4 ) - 1)",2);
 //
 //    gsFunctionExpr<> laplace ("1/16 * pi^2 *(cos( - (pi * x)/4) * (1 - 2 * cos( - (pi * y)/4)) + cos( - (pi * y)/4))",2);
 //    gsFunctionExpr<> solVal("(cos(pi*x/4 ) - 1) * (cos(pi*y/4 ) - 1)",2);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 //                             " 5/729 * pi^2 * sin((pi * x)/27) * sin((pi * y)/27)", 2);
 
 //    gsFunctionExpr<> source  ("1/256 * pi^4 (-cos(4 - (pi * y)/4) + cos(4 - (pi * x)/4) * (-1 + 4 * cos(4 - (pi * y)/4)))",2);
-//    gsFunctionExpr<> source  ("(cos(pi*x/4 -3.5) - 1) * (cos(pi*y/4 -3.5) - 1)",2);
+////    gsFunctionExpr<> source  ("(cos(pi*x/4 -3.5) - 1) * (cos(pi*y/4 -3.5) - 1)",2);
 //
 //    gsFunctionExpr<> laplace ("-1/16  * pi^2 ( -cos(3.5 - (pi * y) / 4) + cos(3.5 - pi * x / 4) * (-1 + 2 * cos(3.5 - (pi * y) / 4)))",2);
 //    gsFunctionExpr<> solVal("(cos( pi*x/4 -3.5 ) - 1) * (cos( pi*y/4 -3.5 ) - 1)",2);
@@ -138,15 +138,27 @@ int main(int argc, char *argv[])
 //                             "0", 2);
 
 
-//    gsFunctionExpr<> source  ("(155 - x^2 - y^2)^0.5",2);
-//    gsFunctionExpr<> laplace ("(y^2 - 155) / (155 - x^2 - y^2)^1.5 + (x^2 - 155) / (155 - x^2 - y^2)^1.5",2);
-//    gsFunctionExpr<> solVal("(155 - x^2 - y^2)^(1/2)",2);
-//    gsFunctionExpr<>sol1der ("-x / (155 - x^2 - y^2)^0.5",
-//                             "- y / (155 - x^2 - y^2)^0.5",2);
-//    gsFunctionExpr<>sol2der ("(y^2 - 155) / (155 - x^2 - y^2)^1.5",
-//                             "(x^2 - 155) / (155 - x^2 - y^2)^1.5",
-//                             "- x * y / (155 - x^2 - y^2)^1.5", 2);
+//    gsFunctionExpr<> source  ("(6 - x^2 - y^2)^0.5",3);
+//    gsFunctionExpr<> laplace ("(y^2 - 6) / (6 - x^2 - y^2)^1.5 + (x^2 - 6) / (6 - x^2 - y^2)^1.5",3);
+//    gsFunctionExpr<> solVal("(6 - x^2 - y^2)^(1/2)",3);
+//    gsFunctionExpr<>sol1der ("-x / (6 - x^2 - y^2)^0.5",
+//                             "- y / (6 - x^2 - y^2)^0.5",
+//                            "0",3);
+//    gsFunctionExpr<>sol2der ("(y^2 - 6) / (6 - x^2 - y^2)^1.5",
+//                             "(x^2 - 6) / (6 - x^2 - y^2)^1.5",
+//                             "0",
+//                             "- x * y / (6 - x^2 - y^2)^1.5",
+//                            "0",
+//                            "0",3);
 
+//    gsFunctionExpr<> source  ("(6 - x^2 - y^2)^0.5",2);
+//    gsFunctionExpr<> laplace ("(y^2 - 6) / (6 - x^2 - y^2)^1.5 + (x^2 - 6) / (6 - x^2 - y^2)^1.5",2);
+//    gsFunctionExpr<> solVal("(6 - x^2 - y^2)^(1/2)",2);
+//    gsFunctionExpr<>sol1der ("-x / (6 - x^2 - y^2)^0.5",
+//                             "- y / (6 - x^2 - y^2)^0.5",2);
+//    gsFunctionExpr<>sol2der ("(y^2 - 6) / (6 - x^2 - y^2)^1.5",
+//                             "(x^2 - 6) / (6 - x^2 - y^2)^1.5",
+//                             "- x * y / (6 - x^2 - y^2)^1.5", 2);
 
 //    gsFunctionExpr<> source  ("16 * (1 - x) * x * (1 - y) * y",2);
 //
@@ -209,8 +221,48 @@ int main(int argc, char *argv[])
 
     // ======= 3D Solution =========
 
+//    gsFunctionExpr<> source  ("81 * pi^4 * cos(3 * pi * x / 4) / 256",3);
+////    gsFunctionExpr<> source  ("cos(3 * pi * x / 4)",3);
+//    gsFunctionExpr<> laplace ("-9 * pi^2 * cos(3 * pi * x / 4) / 16",3);
+//    gsFunctionExpr<> solVal("cos(3 * pi * x / 4)",3);
+//    gsFunctionExpr<>sol1der ("-3 * pi * sin(3 * pi * x / 4) / 4",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("-9 * pi^2 * cos(3 * pi * x / 4) / 16",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+//    gsFunctionExpr<> source  ("sin(3 * pi * x / 4)",3);
+//    gsFunctionExpr<> laplace ("-9 * pi^2 * sin(3 * pi * x / 4) / 16",3);
+//    gsFunctionExpr<> solVal("sin(3 * pi * x / 4)",3);
+//    gsFunctionExpr<>sol1der ("3 * pi * cos(3 * pi * x / 4) / 4",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("-9 * pi^2 * sin(3 * pi * x / 4) / 16",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
+//    gsFunctionExpr<> source  ("y",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("y",3);
+//    gsFunctionExpr<>sol1der ("0",
+//                             "1",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
+
 //    gsFunctionExpr<> source  ("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
-//    gsFunctionExpr<> source  ("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3); // L2 approximation RHS
+////    gsFunctionExpr<> source  ("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3); // L2 approximation RHS
 //
 //    gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",3);
 //    gsFunctionExpr<> solVal("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",3);
@@ -221,21 +273,6 @@ int main(int argc, char *argv[])
 //                             "-16*pi^2*(cos(4*pi*x) - 1)*cos(4*pi*y)",
 //                             "0",
 //                             "16*pi^2*sin(4*pi*x)*sin(4*pi*y)",
-//                             "0",
-//                             "0", 3);
-
-
-//    gsFunctionExpr<> source  ("(cos(2*pi*x) - 1) * (cos(2*pi*y) - 1)",3); // L2 approximation RHS
-//
-//    gsFunctionExpr<> laplace ("-4*pi*pi*(2*cos(2*pi*x)*cos(2*pi*y) - cos(2*pi*x) - cos(2*pi*y))",3);
-//    gsFunctionExpr<> solVal("(cos(2*pi*x) - 1) * (cos(2*pi*y) - 1)",3);
-//    gsFunctionExpr<>sol1der ("-2*pi*(cos(2*pi*y) - 1)*sin(2*pi*x)",
-//                             "-2*pi*(cos(2*pi*x) - 1)*sin(2*pi*y)",
-//                             "0",3);
-//    gsFunctionExpr<>sol2der ("-4*pi^2*(cos(2*pi*y) - 1)*cos(2*pi*x)",
-//                             "-4*pi^2*(cos(2*pi*x) - 1)*cos(2*pi*y)",
-//                             "0",
-//                             "4*pi^2*sin(2*pi*x)*sin(2*pi*y)",
 //                             "0",
 //                             "0", 3);
 
@@ -332,20 +369,20 @@ int main(int argc, char *argv[])
 //                             "0", 3);
 
 
-// PLANAR SOLUTION
+// Residual
 
-//    gsFunctionExpr<> source  ("5",3);
-//    gsFunctionExpr<> laplace ("0",3);
-//    gsFunctionExpr<> solVal("0",3);
-//    gsFunctionExpr<>sol1der ("0",
-//                             "0",
-//                             "0",3);
-//    gsFunctionExpr<>sol2der ("0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0",
-//                             "0", 3);
+    gsFunctionExpr<> source  ("5",3);
+    gsFunctionExpr<> laplace ("0",3);
+    gsFunctionExpr<> solVal("0",3);
+    gsFunctionExpr<>sol1der ("0",
+                             "0",
+                             "0",3);
+    gsFunctionExpr<>sol2der ("0",
+                             "0",
+                             "0",
+                             "0",
+                             "0",
+                             "0", 3);
 
 
 //    gsFunctionExpr<> source  ("12 ",3);
@@ -643,13 +680,13 @@ int main(int argc, char *argv[])
 //                              "        4 * y^2 * (1 + y^2) * (-3 + 24 * y^2 + 16 * y^4) + x^4 * (84 + 608 * y^2 + 896 * y^4) + \n"
 //                              "        4 * x^2 * (-3 + 46 * y^2 + 152 * y^4 + 128 * y^6) ) * cos(y) - 32 * y * (4 + 3 * x^4 - 48 * x^8 + 7 * y^2 + 33 * y^4 + 64 * y^6 + 48 * y^8 - \n"
 //                              "        32 * x^6 * (1 + 3 * y^2) + 4 * x^2 * (1 + 3 * y^2 * (3 + 8 * (y^2 + y^4) ) ) ) * sin(y)))",3);
-////    gsFunctionExpr<> source  ("2 * cos(x) * cos(y)",3);
+//gsFunctionExpr<> source  ("cos(pi * x / 2) * cos(pi * y / 2) * cos(pi * z / 2)",3);
 //
 //    gsFunctionExpr<> laplace ("-(1 / ( (1 + 4 * x^2 + 4 * y^2)^2) ) * 4 * ( (1 + 2 * x^2 + 2 * y^2) * cos(x) * ( (1 + "
 //                              "4 * x^2 + 4 * y^2) * cos(y) - 4 * y * sin(y)) + 4 * x * sin(x) * (-(1 + 2 * x^2 + 2 * y^2) * cos(y) + \n"
 //                              "       y * (1 + 4 * x^2 + 4 * y^2) * sin(y)))",3);
 //
-//    gsFunctionExpr<> solVal("2 * cos(x) * cos(y)",3);
+//    gsFunctionExpr<> solVal("cos(x) * cos(y)",3);
 //
 //    gsFunctionExpr<>sol1der ("(-2 * (1 + 4 * y^2) * cos(y) * sin(x) + 8 * x * y * cos(x) * sin(y)) / (1 + 4 * x^2 + 4 * y^2)",
 //                             "(8 * x * y * cos(y) * sin(x) - 2 * (1 + 4 * x^2) * cos(x) * sin(y)) / (1 + 4 * x^2 + 4 * y^2)",
@@ -718,34 +755,65 @@ int main(int argc, char *argv[])
 //                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
 
 
-    gsFunctionExpr<> source  ("(1/((1 + 4 * x^2 + 4 * y^2)^5) ) * 32 * (-32 * x * sin(8 * x) * ( (57 + 428 * y^2 + \n"
-                              "         4 * (864 * x^8 + 12 * x^6 * (89 + 200 * y^2) + 3 * y^4 * (81 + 4 * y^2 - 64 * y^4) + \n"
-                              "            3 * x^4 * (191 + 716 * y^2 + 672 * y^4) + 4 * x^2 * (35 + 204 * y^2 + 273 * y^4 + 72 * y^6) ) ) * cos(1 - 6 * y)+ \n"
-                              "      24 * y * (1 + 4 * x^2 + 4 * y^2) * (11 + 144 * x^6 + 79 * y^2 + 242 * y^4 + 256 * y^6 + 2 * x^4 * (93 + 272 * y^2) + \n"
-                              "         x^2 * (72 + 428 * y^2 + 656 * y^4) ) * sin(1 - 6 * y) ) + cos(8 * x) * ( (1 + 4 * x^2 + 4 * y^2) * (775 + 8432 * y^2 + \n"
-                              "         16 * (1296 * x^8 + 96 * x^6 * (25 + 171 * y^2) + y^4 * (2597 + 5396 * y^2 + 4096 * y^4) + \n"
-                              "            4 * x^4 * (385 + 3603 * y^2 + 8260 * y^4) + x^2 * (373 + 8 * y^2 * (583 + 64 * y^2 * (34 + 43 * y^2) ) ) ) ) * cos(1 - 6 * y) + \n"
-                              "      24 * y * (57 - 8832 * x^8 + 644 * y^2 + 3132 * y^4 + 6960 * y^6 + 6144 * y^8 - 48 * x^6 * (167 + 424 * y^2) + \n"
-                              "         16 * x^2 * (11 + 99 * y^2 + 369 * y^4 + 600 * y^6) - 36 * x^4 * (43 + 28 * y^2 * (9 + 8 * y^2) ) ) * sin(1 - 6 * y)))",3);
-//    gsFunctionExpr<> source  ("2 * cos(8 * x) * cos(8 * y)",3);
+//    gsFunctionExpr<> source  ("(1/((1 + 4 * x^2 + 4 * y^2)^5) ) * 32 * (-32 * x * sin(8 * x) * ( (57 + 428 * y^2 + \n"
+//                              "         4 * (864 * x^8 + 12 * x^6 * (89 + 200 * y^2) + 3 * y^4 * (81 + 4 * y^2 - 64 * y^4) + \n"
+//                              "            3 * x^4 * (191 + 716 * y^2 + 672 * y^4) + 4 * x^2 * (35 + 204 * y^2 + 273 * y^4 + 72 * y^6) ) ) * cos(1 - 6 * y)+ \n"
+//                              "      24 * y * (1 + 4 * x^2 + 4 * y^2) * (11 + 144 * x^6 + 79 * y^2 + 242 * y^4 + 256 * y^6 + 2 * x^4 * (93 + 272 * y^2) + \n"
+//                              "         x^2 * (72 + 428 * y^2 + 656 * y^4) ) * sin(1 - 6 * y) ) + cos(8 * x) * ( (1 + 4 * x^2 + 4 * y^2) * (775 + 8432 * y^2 + \n"
+//                              "         16 * (1296 * x^8 + 96 * x^6 * (25 + 171 * y^2) + y^4 * (2597 + 5396 * y^2 + 4096 * y^4) + \n"
+//                              "            4 * x^4 * (385 + 3603 * y^2 + 8260 * y^4) + x^2 * (373 + 8 * y^2 * (583 + 64 * y^2 * (34 + 43 * y^2) ) ) ) ) * cos(1 - 6 * y) + \n"
+//                              "      24 * y * (57 - 8832 * x^8 + 644 * y^2 + 3132 * y^4 + 6960 * y^6 + 6144 * y^8 - 48 * x^6 * (167 + 424 * y^2) + \n"
+//                              "         16 * x^2 * (11 + 99 * y^2 + 369 * y^4 + 600 * y^6) - 36 * x^4 * (43 + 28 * y^2 * (9 + 8 * y^2) ) ) * sin(1 - 6 * y)))",3);
+////    gsFunctionExpr<> source  ("2 * cos(8 * x) * cos(1 - 6 * y)",3);
+//
+//    gsFunctionExpr<> laplace ("(1/((1 + 4 * x^2 + 4 * y^2)^2) ) * (-8 * cos(8 * x) * ( (25 + 144 * x^4 + 164 * y^2 + 256 * y^4 + \n"
+//                              "        8 * x^2 * (17 + 50 * y^2) ) * cos(1 - 6 * y) + 12 * y * (1 + 2 * x^2 + 2 * y^2) * sin(1 - 6 * y)) + \n"
+//                              "  128 * x * sin(8 * x) * ( (1 + 2 * x^2 + 2 * y^2) * cos(1 - 6 * y) + 6 * y * (1 + 4 * x^2 + 4 * y^2) * sin(1 - 6 * y)))",3);
+//
+//    gsFunctionExpr<> solVal("2 * cos(8 * x) * cos(1 - 6 * y)",3);
+//
+//    gsFunctionExpr<>sol1der ("-((16 * ( (1 + 4 * y^2) * cos(1 - 6 * y) * sin(8 * x) + 3 * x * y * cos(8 * x) * sin(1 - 6 * y) ) ) / (1 + 4 * x^2 + 4 * y^2))",
+//                             "(64 * x * y * cos(1 - 6 * y) * sin(8 * x) + 12 * (1 + 4 * x^2) * cos(8 * x) * sin(1 - 6 * y) ) / (1 + 4 * x^2 + 4 * y^2)",
+//                             "(8 * (4 * x * cos(1 - 6 * y) * sin(8 * x) - 3 * y * cos(8 * x) * sin(1 - 6 * y) ) ) / (1 + 4 * x^2 + 4 * y^2)",3);
+//
+//
+//    gsFunctionExpr<>sol2der ("-( ( 2 * x * (1 + x^2) * y ) / (1 + x^2 + y^2)^2)",
+//                             "-( ( 2 * x * y * (1 + y^2) ) / (1 + x^2 + y^2)^2)",
+//                             "(2 * x * y ) / (1 + x^2 + y^2)^2",
+//                             "(1 + y^2 + x^2 * (1 + 2 * y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(x * (1 + x^2 - y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
 
-    gsFunctionExpr<> laplace ("(1/((1 + 4 * x^2 + 4 * y^2)^2) ) * (-8 * cos(8 * x) * ( (25 + 144 * x^4 + 164 * y^2 + 256 * y^4 + \n"
-                              "        8 * x^2 * (17 + 50 * y^2) ) * cos(1 - 6 * y) + 12 * y * (1 + 2 * x^2 + 2 * y^2) * sin(1 - 6 * y)) + \n"
-                              "  128 * x * sin(8 * x) * ( (1 + 2 * x^2 + 2 * y^2) * cos(1 - 6 * y) + 6 * y * (1 + 4 * x^2 + 4 * y^2) * sin(1 - 6 * y)))",3);
 
-    gsFunctionExpr<> solVal("2 * cos(8 * x) * cos(1 - 6 * y)",3);
+//    gsFunctionExpr<> source  ("(1 / ( (1 + 4 * x^2 + 4 * y^2)^5) ) * 8 * ( (1 + 4 * x^2 + 4 * y^2) * (5005 + 55732 * y^2 + \n"
+//                              "      4 * (38416 * x^8 + 67765 * y^4 + 24 * y^6 * (5815 + 4374 * y^2) + 8 * x^6 * (8677 + 57232 * y^2) + \n"
+//                              "         x^4 * (43637 + 397208 * y^2 + 905440 * y^4) + x^2 * (10637 + 126254 * y^2 + 467352 * y^4 + 590976 * y^6) ) ) * cos(9 * x) * cos(1 - 7 * y) - \n"
+//                              "   288 * x * (36 + 367 * x^2 + 1521 * x^4 + 2880 * x^6 + 2352 * x^8 + 4 * (67 + 513 * x^2 + 1368 * x^4 + 1560 * x^6) * y^2 + \n"
+//                              "      9 * (59 + 256 * (x^2 + 2 * x^4) ) * y^4 - 96 * (3 + x^2) * y^6 - 816 * y^8) * cos(1 - 7 * y) * sin(9 * x) + \n"
+//                              "   56 * y * (4 * (36 - 5424 * x^8 + 415 * y^2 + 2001 * y^4 + 4416 * y^6 + 3888 * y^8 - 288 * x^6 * (17 + 43 * y^2) + \n"
+//                              "         4 * x^2 * (31 + 273 * y^2 + 984 * y^4 + 1560 * y^6) - 3 * x^4 * (303 + 256 * y^2 * (7 + 6 * y^2) ) ) * cos(9 * x) - \n"
+//                              "      9 * x * (1 + 4 * x^2 + 4 * y^2) * (103 + 1568 * x^6 + 786 * y^2 + 2448 * y^4 + 2592 * y^6 + 16 * x^4 * (121 + 358 * y^2) + \n"
+//                              "         x^2 * (722 + 4384 * y^2 + 6752 * y^4) ) * sin(9 * x) ) * sin(1 - 7 * y) )",3);
+////    gsFunctionExpr<> source  ("2 * cos(8 * x) * cos(1 - 6 * y)",3);
+//
+//    gsFunctionExpr<> laplace ("(1 / ( (1 + 4 * x^2 + 4 * y^2)^2) ) * (-4 * cos(9 * x) * ( (65 + 392 * x^4 + 422 * y^2 + 648 * y^4 + \n"
+//                              "        2 * x^2 * (179 + 520 * y^2) ) * cos(1 - 7 * y) + 28 * y * (1 + 2 * x^2 + 2 * y^2) * sin(1 - 7 * y) ) + \n"
+//                              "  144 * x * sin(9 * x) * ( (1 + 2 * x^2 + 2 * y^2) * cos(1 - 7 * y) + 7 * y * (1 + 4 * x^2 + 4 * y^2) * sin(1 - 7 * y) ) )",3);
+//
+//    gsFunctionExpr<> solVal("2 * cos(9 * x) * cos(1 - 7 * y)",3);
+//
+//    gsFunctionExpr<>sol1der ("-( (2 * (9 * (1 + 4 * y^2) * cos(1 - 7 * y) * sin(9 * x) + 28 * x * y * cos(9 * x) * sin(1 - 7 * y) ) ) / (1 + 4 * x^2 + 4 * y^2))",
+//                             "(72 * x * y * cos(1 - 7 * y) * sin(9 * x) + 14 * (1 + 4 * x^2) * cos(9 * x) * sin(1 - 7 * y) ) / (1 + 4 * x^2 + 4 * y^2)",
+//                             "(4 * (9 * x * cos(1 - 7 * y) * sin(9 * x) - 7 * y * cos(9 * x) * sin(1 - 7 * y) ) ) / (1 + 4 * x^2 + 4 * y^2)",3);
+//
+//
+//    gsFunctionExpr<>sol2der ("-( ( 2 * x * (1 + x^2) * y ) / (1 + x^2 + y^2)^2)",
+//                             "-( ( 2 * x * y * (1 + y^2) ) / (1 + x^2 + y^2)^2)",
+//                             "(2 * x * y ) / (1 + x^2 + y^2)^2",
+//                             "(1 + y^2 + x^2 * (1 + 2 * y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(x * (1 + x^2 - y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
 
-    gsFunctionExpr<>sol1der ("-((16 * ( (1 + 4 * y^2) * cos(1 - 6 * y) * sin(8 * x) + 3 * x * y * cos(8 * x) * sin(1 - 6 * y) ) ) / (1 + 4 * x^2 + 4 * y^2))",
-                             "(64 * x * y * cos(1 - 6 * y) * sin(8 * x) + 12 * (1 + 4 * x^2) * cos(8 * x) * sin(1 - 6 * y) ) / (1 + 4 * x^2 + 4 * y^2)",
-                             "(8 * (4 * x * cos(1 - 6 * y) * sin(8 * x) - 3 * y * cos(8 * x) * sin(1 - 6 * y) ) ) / (1 + 4 * x^2 + 4 * y^2)",3);
-
-
-    gsFunctionExpr<>sol2der ("-( ( 2 * x * (1 + x^2) * y ) / (1 + x^2 + y^2)^2)",
-                             "-( ( 2 * x * y * (1 + y^2) ) / (1 + x^2 + y^2)^2)",
-                             "(2 * x * y ) / (1 + x^2 + y^2)^2",
-                             "(1 + y^2 + x^2 * (1 + 2 * y^2) ) / (1 + x^2 + y^2)^2",
-                             "(x * (1 + x^2 - y^2) ) / (1 + x^2 + y^2)^2",
-                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
 
 //    gsFunctionExpr<> source  ("(1 / ( (1 + 4 * x^2 + 4 * y^2)^5) ) * 1280 * (cos(10 * x) * (5 * (1 + 4 * x^2 + 4 * y^2) * (14 + 147 * x^2 + 654 * x^4 + \n"
 //                              "         1208 * x^6 + 800 * x^8 + (147 + 1508 * x^2 + 5224 * x^4 + 6400 * x^6) * y^2 + \n"
@@ -972,6 +1040,31 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/exampleCompleteSphere.xml";
             numDegree = 0; // 2 == degree 3
             break;
+        case 47:
+            string_geo = "KirchhoffLoveGeo/triangularSurfNotSymRegBDY.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 48:
+            string_geo = "KirchhoffLoveGeo/quadrilateralSurfNotSymRegBDY.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 49:
+            string_geo = "KirchhoffLoveGeo/quadrilateralFourPatchDisturbed.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 50:
+            string_geo = "KirchhoffLoveGeo/pentagonalFivePatchDisturbed.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 51:
+            string_geo = "KirchhoffLoveGeo/12p_3holes_planarDom.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 52:
+            string_geo = "KirchhoffLoveGeo/cilinderOneHole.xml";
+            numDegree = 0; // 2 == degree 3
+            break;
+
         default:
             gsInfo << "No geometry is used! \n";
             break;
@@ -985,26 +1078,6 @@ int main(int argc, char *argv[])
     gsMultiPatch<> multiPatch_init;
     fd.getId(0, multiPatch_init); // id=0: Multipatch domain
     multiPatch_init.computeTopology();
-
-    std::string string_geo_planar = "KirchhoffLoveGeo/singlePatch_quadraticParamSurf.xml";
-    gsFileData<> fdPlanar(string_geo_planar);
-    gsMultiPatch<> multiPatchPlanar;
-    fdPlanar.getId(0, multiPatchPlanar); // id=0: Multipatch domain
-    multiPatchPlanar.computeTopology();
-    multiPatchPlanar.degreeElevate(1 + g1OptionList.getInt("q_tilde"));
-
-
-//    std::vector<int> mul={0, 3};
-//    for(size_t i = 0; i < multiPatch_init.nPatches(); i++)
-//    {
-//        multiPatch_init.patch(i).uniformRefine(3, mul);
-////        multiPatch_init.patch(i).degreeElevate(2, 1);
-//        multiPatchPlanar.patch(i).uniformRefine(3, mul);
-////        multiPatchPlanar.patch(i).degreeElevate(2, 1);
-//        gsInfo << "KV: " << multiPatch_init.patch(i).basis() << "\n";
-//
-//    }
-
 
     gsWriteParaview(multiPatch_init,"geoemtry_init",2000,true);
 
@@ -1033,7 +1106,10 @@ int main(int argc, char *argv[])
     std::vector<gsG1System<real_t>> sol_vec_sys;
 
     gsVector<> numBF;
+    multiPatch_init.embed(3);
 
+
+    //Embedding planar geometries into R3 by adding the third component =0
 
     for (index_t refinement_level = 0; refinement_level < g1OptionList.getInt("loop"); refinement_level++)
     {
@@ -1070,7 +1146,7 @@ int main(int argc, char *argv[])
             std::string basename = "InterfaceBasisFunctions" + util::to_string(numInt);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatchSurf, multiPatchPlanar, item.first().patch, item.second().patch);
+            gsG1AuxiliaryEdgeMultiplePatches singleInt(multiPatchSurf, item.first().patch, item.second().patch);
                 singleInt.computeG1InterfaceBasis(g1OptionList);
 
 
@@ -1110,7 +1186,7 @@ int main(int argc, char *argv[])
             std::string basename = "BoundaryBasisFunctions" + util::to_string(numBdy);
             gsParaviewCollection collection(basename);
 
-            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatchSurf, multiPatchPlanar, bit.patch);
+            gsG1AuxiliaryEdgeMultiplePatches singleBdy(multiPatchSurf, bit.patch);
              singleBdy.computeG1BoundaryBasis(g1OptionList, bit.m_index);
 
 
@@ -1153,7 +1229,7 @@ int main(int argc, char *argv[])
                 vertIndex.push_back(allcornerList.m_index);
             }
 
-                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatchSurf, multiPatchPlanar, patchIndex, vertIndex);
+                gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatchSurf, patchIndex, vertIndex);
                 singleVertex.computeG1InternalVertexBasis(g1OptionList);
 
                 for (index_t i = 0; i < 6; i++)
@@ -1220,9 +1296,16 @@ int main(int argc, char *argv[])
             g1BiharmonicAssembler.plotParaview(solField, g1Basis);
 
             // Pascal
-//            if(multiPatchSurf.patch(0).targetDim() == 2)
+//            if(refinement_level == 1)
 //            {
 //                gsMultiPatch<> mp_letsee;
+//                gsFileData<> fd("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/cilinderOneHole.xml");
+//                gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+//
+//                gsMultiPatch<> fitMP;
+//                fd.getId(0, fitMP); // id=0: Multipatch domain
+//                fitMP.computeTopology();
+//
 //                for (size_t numP = 0; numP < multiPatchSurf.nPatches(); numP++)
 //                {
 //                    gsMatrix<> coefsnew(multiPatchSurf.patch(numP).coefs().dim().first, 1);
@@ -1233,18 +1316,18 @@ int main(int argc, char *argv[])
 //                    }
 //
 //                    gsMatrix<> newcontrolpoints(multiPatchSurf.patch(numP).coefs().dim().first, 3);
-//                    newcontrolpoints.leftCols(2) = multiPatchSurf.patch(numP).coefs();
+//                    newcontrolpoints.leftCols(2) = fitMP.patch(numP).coefs();
 //                    newcontrolpoints.col(2) = coefsnew;
 //                    mp_letsee.addPatch(multiPatchSurf.patch(numP));
 //                    mp_letsee.patch(numP).setCoefs(newcontrolpoints);
 //                }
-//                gsWriteParaview(mp_letsee, "mp_letsee", 15000);
+//                gsWriteParaview(mp_letsee, "mp_surfFitting", 15000);
 //
 //                gsFileData<> xml;
 //                xml << mp_letsee;
-//                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/testPortionSphere");
+//                xml.save("/home/afarahat/Desktop/gismo/filedata/KirchhoffLoveGeo/cilinderOneHole");
 //            }
-            // End
+//             End
         }
 
         // construct solution: G1 Basis
@@ -1259,9 +1342,11 @@ int main(int argc, char *argv[])
                 sol_vector.push_back(Sol_sparse);
                 sol_vec_basis.push_back(mb);
                 sol_vec_sys.push_back(g1System);
+                gsInfo << "SolVec size " << sol_vector.size() << "\n";
             }
             else
             {
+
                 sol_vector.at(0) = sol_vector.at(1);
                 sol_vector.at(1) = Sol_sparse;
 
@@ -1270,6 +1355,7 @@ int main(int argc, char *argv[])
 
                 sol_vec_sys.at(0) = sol_vec_sys.at(1);
                 sol_vec_sys.at(1) = g1System;
+                gsInfo << "SolVec size " << sol_vector.size() << "\n";
             }
         }
 
@@ -1311,6 +1397,7 @@ int main(int argc, char *argv[])
                         gsG1ASResidualNormL2<real_t> errorL2(multiPatchSurf, sol_vector, sol_vec_basis);
                         errorL2.compute(sol_vec_sys);
                         l2Error_vec[refinement_level] = errorL2.value();
+                        gsInfo << "L2 error vec: " << l2Error_vec << "\n";
                     }
                 }
                 else
@@ -1333,6 +1420,8 @@ int main(int argc, char *argv[])
                         gsG1ASResidualSeminormH1<real_t> errorSemiH1(multiPatchSurf, sol_vector, sol_vec_basis);
                         errorSemiH1.compute(sol_vec_sys);
                         h1SemiError_vec[refinement_level] = errorSemiH1.value();
+
+                        gsInfo << "Ref lev: " << refinement_level << "\n";
                     }
 
                 }
