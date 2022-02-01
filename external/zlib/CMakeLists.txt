@@ -58,7 +58,7 @@ endif()
 #endif()
 
 add_definitions(-DZ_PREFIX)   # use prefixed symbols
-if (";${GISMO_SUBMODULES};" MATCHES ";gsOpennurbs;") # previously GISMO_WITH_ONURBS
+if (";${GISMO_SUBMODULES};" MATCHES ";gsOpennurbs;")
   add_definitions(-DMY_ZCALLOC) # use oncalloc() and onfree()
 endif()
 
