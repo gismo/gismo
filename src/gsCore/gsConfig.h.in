@@ -46,7 +46,6 @@
 /* Enabled Extensions */
 #include <gsCore/gsConfigExt.h>
 #cmakedefine GISMO_WITH_ADIFF
-#cmakedefine GISMO_WITH_IPOPT
 #cmakedefine GISMO_WITH_MPI
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_PASTIX

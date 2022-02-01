@@ -98,11 +98,6 @@ if  (${GISMO_WITH_MPI})
 message ("  GISMO_WITH_MPI          ${GISMO_WITH_MPI}")
 endif()
 
-option(GISMO_WITH_OCC            "With OpenCascade"          false  )
-if  (${GISMO_WITH_OCC})
-message ("  GISMO_WITH_OCC          ${GISMO_WITH_OCC}")
-endif()
-
 option(GISMO_WITH_OPENMP         "With OpenMP"               false  )
 if  (${GISMO_WITH_OPENMP})
 message ("  GISMO_WITH_OPENMP       ${GISMO_WITH_OPENMP}")
@@ -136,11 +131,6 @@ endif()
 option(GISMO_WITH_TAUCS          "With Taucs"                false  )
 if  (${GISMO_WITH_TAUCS})
 message ("  GISMO_WITH_TAUCS        ${GISMO_WITH_TAUCS}")
-endif()
-
-option(GISMO_WITH_TRILINOS       "With TRILINOS"             false  )
-if  (${GISMO_WITH_TRILINOS})
-message ("  GISMO_WITH_TRILINOS     ${GISMO_WITH_TRILINOS}")
 endif()
 
 option(GISMO_WITH_UMFPACK        "With Umfpack"              false  )
