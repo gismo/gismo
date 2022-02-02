@@ -825,14 +825,14 @@ macro(OFA_HandleArmOptions)
           string(REPLACE "," ";" _push_enable_list "${_push_enable_list}")
           _ofa_find(_push_enable_list "${CMAKE_CXX_COMPILER_ID}" _found)
           if(_found)
-            list(PREPEND _skip_check FALSE)
+            list(INSERT _skip_check 0 FALSE)
           else()
-            list(PREPEND _skip_check TRUE)
+            list(INSERT _skip_check 0 TRUE)
           endif()
           continue()
 
         elseif ("${_check}" MATCHES "^pop_enable" ) # End enable block
-          list(POP_FRONT _skip_check)
+          list(REMOVE_AT _skip_check 0)
           continue()
 
         elseif ("${_check}" MATCHES "^push_disable" ) # Start disable block
@@ -840,16 +840,16 @@ macro(OFA_HandleArmOptions)
           string(REPLACE "," ";" _push_disable_list "${_push_disable_list}")
           _ofa_find(_push_disable_list "${CMAKE_CXX_COMPILER_ID}" _found)
           if(_found)
-            list(PREPEND _skip_check TRUE)
+            list(INSERT _skip_check 0 TRUE)
           else()
             # Compiler was not found in the list, so we keep its previous status
             list(GET _skip_check 0 _skip)
-            list(PREPEND _skip_check ${_skip})
+            list(INSERT _skip_check 0 ${_skip})
           endif()
           continue()
 
         elseif ("${_check}" MATCHES "^pop_disable" ) # End disable block
-          list(POP_FRONT _skip_check)
+          list(REMOVE_AT _skip_check 0)
           continue()
         endif()
 
