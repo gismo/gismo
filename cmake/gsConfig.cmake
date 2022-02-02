@@ -267,7 +267,7 @@ endif()
 #string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
-if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease" AND ${CMAKE_VERSION} VERSION_GREATER "3.1.0")
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
   foreach (flag ${OFA_ARCHITECTURE_FLAGS})
