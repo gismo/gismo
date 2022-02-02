@@ -183,10 +183,23 @@ Linux systems.
 
 * TARGET_ARCHITECTURE     *auto*
 
-  If G+Smo is built in release mode optimized compiler flags for the
-  selected target architecture are used. *auto* determines the
-  architecture of the host system automatically. Available options are auto, generic, none, native and any value CPUID, e.g., skylake or apple-m1.
-  
+  If G+Smo is built in Release mode optimized compiler flags for the
+selected target architecture are used. *auto* determines the
+architecture of the host system automatically. Available options are
+auto, generic, none, native and any value CPUID, e.g., skylake or
+apple-m1.
+
+* TARGET_PROFILER         *none*
+
+  If G+Smo is build in Release mode compiler flags for the selected
+target profiler are used. Available options are gprof and vtune (on
+x86/x86_64 systems).
+
+* OFA_VERBOSE             *OFF*
+
+  If enabled the OptimizeForArchitecture script will produce verbose
+output which might be helpful for debugging purposes.
+
 # Directory structure
 
 
