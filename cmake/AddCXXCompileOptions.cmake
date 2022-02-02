@@ -17,8 +17,7 @@
 if(NOT DEFINED CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION OR
    NOT DEFINED CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION)
 
-   message(WARNING "Update your CMake installation! We fall back to
-   compiler options back ported from CMake 3.17.5")
+   message(WARNING "Update your CMake installation! We fall back to compiler options back ported from CMake 3.17.5")
 
   if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang")
 
