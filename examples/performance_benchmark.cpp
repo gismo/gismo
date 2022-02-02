@@ -508,12 +508,19 @@ template<typename T>
 class benchmark_eigen_dense_matmul
 {
 private:
+  // The memory safeguard will ensure that the benchmark fails
+  // gracefully (i.e. without trying to actually allocate memory) if
+  // the estimated amount of memory exceeds the system's total memory
   memory_safeguard<benchmark_eigen_dense_matmul> _msg;
   const index_t n;
   gsMatrix<T> A;
   gsVector<T> x, y;
 
 public:
+  // All tasks that should not be included in the time measurement
+  // must be performed in the constructor. Make sure to instanciate
+  // _msg(n) first as it will let the benchmark fail gracefully if the
+  // estimated amount of memory exceeds the system's total memory
   benchmark_eigen_dense_matmul(index_t n)
     : _msg(n), n(n), A(n,n), x(n), y(n)
   {
@@ -537,6 +544,8 @@ public:
     return size(n);
   }
 
+  // This function will be called by the memory_safeguard to determine
+  // whether the benchmark will exceed the system's total memory
   static constexpr uint64_t size(index_t n)
   {
     return (2 * uint64_t(n) * uint64_t(n) + uint64_t(n)) * sizeof(T);
@@ -957,9 +966,9 @@ int main(int argc, char *argv[])
   index_t subdividemin  = 0;
   index_t vsizemin      = 100;
   real_t  patchesfactor = 2;
-  real_t  msizesfactor  = 2;
+  real_t  msizefactor   = 2;
   real_t  nrunsfactor   = 1.5;
-  real_t  vsizesfactor  = 4;
+  real_t  vsizefactor   = 4;
   index_t msizemax = (index_t) math::min((real_t)std::numeric_limits<index_t>::max(),
                                          std::sqrt((real_t)(0.8) * sizeof(real_t)*gsSysInfo::getMemoryInBytes()));
   index_t vsizemax = (index_t) math::min((real_t)std::numeric_limits<index_t>::max(),
@@ -968,10 +977,10 @@ int main(int argc, char *argv[])
   gsCmdLine cmd("G+Smo performance benchmark.");
   cmd.printVersion();
 
-  cmd.addReal("M", "msizesfactor", "Growth factor for the sequence of msizes (only used if '-m' is not given)", msizesfactor);
+  cmd.addReal("M", "msizefactor", "Growth factor for the sequence of msizes (only used if '-m' is not given)", msizefactor);
   cmd.addReal("P", "patchesfactor", "Growth factor for the sequence of patches (only used if '-p' is not given)", patchesfactor);
   cmd.addReal("R", "runsfactor", "Growth factor for the sequence of runs (only used if '-r' is not given)", nrunsfactor);
-  cmd.addReal("V", "vsizesfactor", "Growth factor for the sequence of vsizes (only used if '-v' is not given)", vsizesfactor);
+  cmd.addReal("V", "vsizefactor", "Growth factor for the sequence of vsizes (only used if '-v' is not given)", vsizefactor);
   cmd.addInt("", "msizemax", "Maximum number of unknowns in matrix/vector benchmarks (only used if '-m' is not given)", msizemax);
   cmd.addInt("", "msizemin", "Minimum number of unknowns in matrix/vector benchmarks (only used if '-m'is not given)", msizemin);
   cmd.addInt("", "patchesmax", "Maximum number of patches in assembly benchmarks (only used if '-p' is not given)", patchesmax);
@@ -1042,12 +1051,12 @@ int main(int argc, char *argv[])
       nthreads.push_back(i);
   }
 
-  // If empty fill with msizemin*msizesfactor^k, k=0, 1, 2, ..., msizemax
+  // If empty fill with msizemin*msizefactor^k, k=0, 1, 2, ..., msizemax
   if (msizes.empty()) {
     for(index_t i=msizemin;;) {
       msizes.push_back(i);
-      if (i<=math::min(msizemax, std::numeric_limits<index_t>::max()) / (msizesfactor*msizesfactor))
-        i*=msizesfactor;
+      if (i<=math::min(msizemax, std::numeric_limits<index_t>::max()) / (msizefactor*msizefactor))
+        i*=msizefactor;
       else
         break;
     }
@@ -1065,12 +1074,12 @@ int main(int argc, char *argv[])
       subdivides.push_back(i);
   }
   
-  // If empty fill with vsizemin*vsizesfactor^k, k=0, 1, 2, ..., vsizemax
+  // If empty fill with vsizemin*vsizefactor^k, k=0, 1, 2, ..., vsizemax
   if (vsizes.empty()) {
     for(index_t i=vsizemin;;) {
       vsizes.push_back(i);
-      if (i<=math::min(vsizemax, std::numeric_limits<index_t>::max()) / vsizesfactor)
-        i*=vsizesfactor;
+      if (i<=math::min(vsizemax, std::numeric_limits<index_t>::max()) / vsizefactor)
+        i*=vsizefactor;
       else
         break;
     }
@@ -1293,12 +1302,19 @@ int main(int argc, char *argv[])
   else if (gsFileManager::getExtension(fn) == "xml") {
     gsFileData<> file;
     file << benchmark;
-    file.save("result.xml");
+    file.save(fn);
   }
   else {
     GISMO_ERROR("Unsupported file extension");
   }
   //! [Execute benchmarks]
+
+  {
+    gsBenchmark bm;
+    gsFileData<> fd(fn);
+    fd.getId(0, bm);
+    gsInfo << bm;
+  }
   
   return EXIT_SUCCESS;
 }
