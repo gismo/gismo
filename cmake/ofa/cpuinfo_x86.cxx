@@ -9,12 +9,12 @@
 
 // Get the vendor ID
 void getVendorID() {
-  int32_t a[3];
+  int a[3];
   for(int i=0; i<3; ++i)
     a[i] = 0;
-  
-  // EAX=0: Vendor ID
-  __asm__("mov $0x0, %eax\n\t");
+
+  // EAX=0x00000000: Vendor ID
+  __asm__("mov $0x00000000, %eax\n\t");
   __asm__("cpuid\n\t");
   __asm__("mov %%ebx, %0\n\t":"=r" (a[0]));
   __asm__("mov %%edx, %0\n\t":"=r" (a[1]));
@@ -24,22 +24,22 @@ void getVendorID() {
   memcpy(&vendorID[0],&a[0],4);
   memcpy(&vendorID[4],&a[1],4);
   memcpy(&vendorID[8],&a[2],4);
-  
+
   printf ("vendor_id       : %s\n", vendorID);
 }
 
 // Get processor information
 void getProcInfo() {
-  int32_t eax = 0;
+  int eax = 0;
 
-  // EAX=1: Processor Info
-  __asm__("mov $0x1 , %eax\n\t");
+  // EAX=0x00000001: Processor Info
+  __asm__("mov $0x00000001 , %eax\n\t");
   __asm__("cpuid\n\t");
   __asm__("mov %%eax, %0\n\t":"=r" (eax)); //gives model and family
 
-  int32_t stepping = eax>>0 & 0xF;
-  int32_t model    = eax>>4 & 0xF;
-  int32_t family   = eax>>8 & 0xF;
+  int stepping = eax>>0 & 0xF;
+  int model    = eax>>4 & 0xF;
+  int family   = eax>>8 & 0xF;
   if(family == 6 || family == 15)
     model += (eax>>16 & 0xF)<<4;
 
@@ -50,26 +50,28 @@ void getProcInfo() {
 
 // Get processor features
 void getFeatures() {
-  int32_t eax_max,ecx_max,eax,ebx,ecx,edx;
+  int eax_max,ecx_max,eax,ebx,ecx,edx;
+
+  // Note: If the comment begins with a quoted string, that string is
+  // used in /proc/cpuinfo instead of the macro name. If the string is
+  // "", this feature bit is not displayed in /proc/cpuinfo at all.
 
   // CPU flags
   printf ("flags           : ");
-  
-  // EAX=0: largest value that EAX can be set to before calling CPUID
-  __asm__("mov $0x0, %eax\n\t");
+
+  // EAX=0x00000000: largest value that EAX can be set to before calling CPUID
+  __asm__("mov $0x00000000, %eax\n\t");
   __asm__("cpuid\n\t");
   __asm__("mov %%eax, %0\n\t":"=r" (eax_max));
 
-  printf("\neax_max:%d\n", eax_max);
-  
-  if (eax_max >= 1) {
-      
-    // EAX=1: Processor Info and Feature Bits
-    __asm__("mov $0x1 , %eax\n\t");
+  if (eax_max >= 0x00000001) {
+
+    // EAX=0x00000001: Processor Info and Feature Bits
+    __asm__("mov $0x00000001 , %eax\n\t");
     __asm__("cpuid\n\t");
     __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //feature flags
-    __asm__("mov %%edx, %0\n\t":"=r" (edx)); //feature flags   
-      
+    __asm__("mov %%edx, %0\n\t":"=r" (edx)); //feature flags
+
     // Intel-defined CPU features, CPUID level 0x00000001 (EDX), word 0
     {
       std::string features[] = { "fpu",     /* Onboard FPU */
@@ -105,10 +107,9 @@ void getFeatures() {
                                  "ia64",    /* IA-64 processor */
                                  "pbe"      /* Pending Break Enable */
       };
-      printf("INTEL 0x00000001 (EDX)");
       print_features(edx, features, 32);
     }
-    
+
     // Intel-defined CPU features, CPUID level 0x00000001 (ECX), word 4
     {
       std::string features[] = { "sse3",      /* "pni" SSE-3 */
@@ -144,21 +145,69 @@ void getFeatures() {
                                  "rdrand",    /* RDRAND instruction */
                                  "hypervisor" /* Running on a hypervisor */
       };
-      printf("INTEL 0x00000001 (ECX)");
       print_features(ecx, features, 32);
     }
-  } // EAX=1
-  
-  if (eax_max >= 7) {      
-    // EAX=7, ECX=0: Extended Features
-    __asm__("mov $0x7 , %eax\n\t");
-    __asm__("mov $0x0 , %ecx\n\t");
+  } // EAX=0x00000001
+
+  // if (eax_max >=0x00000006) {
+  //   // EAX=0x00000006: Extended Features
+  //   __asm__("mov $0x00000006 , %eax\n\t");
+  //   __asm__("cpuid\n\t");
+  //   __asm__("mov %%eax, %0\n\t":"=r" (eax)); //extended feature flags
+  //   __asm__("mov %%ebx, %0\n\t":"=r" (ebx)); //extended feature flags
+  //   __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //extended feature flags
+  //   __asm__("mov %%edx, %0\n\t":"=r" (edx)); //extended feature flags
+
+  //   // Intel-defined CPU features, CPUID level 0x00000001 (ECX), word 4
+
+  //   {
+  //     std::string features[] = { "cxmmx",          /* Cyrix MMX extensions */
+  //                                "k6_mtrr",        /* AMD K6 nonstandard MTRRs */
+  //                                "cyrix_arr",      /* Cyrix ARRs (= MTRRs) */
+  //                                "centaur_mcr",    /* Centaur MCRs (= MTRRs) */
+  //                                "k8",             /* "" Opteron, Athlon64 */
+  //                                "",               /* "" Athlon */
+  //                                "",               /* "" P3 */
+  //                                "",               /* "" P4 */
+  //                                "constant_tsc",   /* TSC ticks at a constant rate */
+  //                                "up",             /* SMP kernel running on UP */
+  //                                "art",            /* Always running timer (ART) */
+  //                                "arch_perfmon",   /* Intel Architectural PerfMon */
+  //                                "pebs",           /* Precise-Event Based Sampling */
+  //                                "bts",            /* Branch Trace Store */
+  //                                "",               /* "" syscall in IA32 userspace */
+  //                                "",               /* "" sysenter in IA32 userspace */
+  //                                "rep_good",       /* REP microcode works well */
+  //                                "",               /* Reserved */
+  //                                "",               /* "" LFENCE synchronizes RDTSC */
+  //                                "acc_power",      /* AMD Accumulated Power Mechanism */
+  //                                "nopl",           /* The NOPL (0F 1F) instructions */
+  //                                "",               /* "" Always-present feature */
+  //                                "xtopology",      /* CPU topology enum extensions */
+  //                                "tsc_reliable",   /* TSC is known to be reliable */
+  //                                "nonstop_tsc",    /* TSC does not stop in C states */
+  //                                "cpuid",          /* CPU has CPUID instruction itself */
+  //                                "extd_apicid",    /* Extended APICID (8 bits) */
+  //                                "amd_dcm",        /* AMD multi-node processor */
+  //                                "aperfmperf",     /* P-State hardware coordination feedback capability (APERF/MPERF MSRs) */
+  //                                "rapl",           /* AMD/Hygon RAPL interface */
+  //                                "nonstop_tsc_s3", /* TSC doesn't stop in S3 state */
+  //                                "tsc_known_freq"  /* TSC has known frequency */
+  //     };
+  //     print_features(ecx, features, 32);
+  //   }
+  // } // EAX=0x00000006
+
+  if (eax_max >= 0x00000007) {
+    // EAX=0x00000007, ECX=0x00000000: Extended Features
+    __asm__("mov $0x00000007 , %eax\n\t");
+    __asm__("mov $0x00000000 , %ecx\n\t");
     __asm__("cpuid\n\t");
     __asm__("mov %%eax, %0\n\t":"=r" (ecx_max)); //gives maximum ECX value
     __asm__("mov %%ebx, %0\n\t":"=r" (ebx)); //extended feature flags
     __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //extended feature flags
     __asm__("mov %%edx, %0\n\t":"=r" (edx)); //extended feature flags
-      
+
     // Intel-defined CPU features, CPUID level 0x00000007:0 (EBX), word 9
     {
       std::string features[] = { "fsgsbase",   /* RDFSBASE, WRFSBASE, RDGSBASE, WRGSBASE instructions*/
@@ -194,13 +243,12 @@ void getFeatures() {
                                  "avx512bw",   /* AVX-512 BW (Byte/Word granular) Instructions */
                                  "avx512vl"    /* AVX-512 VL (128/256 Vector Length) Extensions */
       };
-      printf("INTEL 0x00000007:0 (EBX)");
       print_features(ebx, features, 32);
     }
-      
+
     // Intel-defined CPU features, CPUID level 0x00000007:0 (ECX), word 16
     {
-      std::string features[] = { "prefetchwt1", 
+      std::string features[] = { "prefetchwt1",
                                  "avx512vbmi",      /* AVX512 Vector Bit Manipulation instructions*/
                                  "umip",            /* User Mode Instruction Protection */
                                  "pku",             /* Protection Keys for Userspace */
@@ -223,7 +271,7 @@ void getFeatures() {
                                  "",                /* Reserved */
                                  "",                /* Reserved */
                                  "rdpid",           /* RDPID instruction */
-                                 "keylocker", 
+                                 "keylocker",
                                  "bus_lock_detect", /* Bus Lock detect */
                                  "cldemote",        /* CLDEMOTE instruction */
                                  "",                /* Reserved */
@@ -233,10 +281,9 @@ void getFeatures() {
                                  "sgx_lc",          /* Software Guard Extensions Launch Control */
                                  "pks"
       };
-      printf("INTEL 0x00000007:0 (ECX)");
       print_features(ecx, features, 32);
     }
-      
+
     // Intel-defined CPU features, CPUID level 0x00000007:0 (EDX), word 18
     {
       std::string features[] = { "",                   /* Reserved */
@@ -272,19 +319,16 @@ void getFeatures() {
                                  "",                   /* "" IA32_CORE_CAPABILITIES MSR */
                                  "ssbd"                /* "" Speculative Store Bypass Disable */
       };
-      printf("INTEL 0x00000007:0 (EDX)");
       print_features(edx, features, 32);
     }
 
-    printf("\necx_max:%d\n", ecx_max);
-    
-    if (ecx_max >= 1) {
-      // EAX=7, ECX=1: Extended Features
-      __asm__("mov $0x7 , %eax\n\t");
-      __asm__("mov $0x1 , %ecx\n\t");
+    if (ecx_max >= 0x00000001) {
+      // EAX=0x00000007, ECX=0x00000001: Extended Features
+      __asm__("mov $0x00000007 , %eax\n\t");
+      __asm__("mov $0x00000001 , %ecx\n\t");
       __asm__("cpuid\n\t");
       __asm__("mov %%eax, %0\n\t":"=r" (eax)); //extended feature flags
-      
+
       // Intel-defined CPU features, CPUID level 0x00000007:1 (EAX), word 12
       {
         std::string features[] = { "",           /* Reserved */
@@ -320,27 +364,71 @@ void getFeatures() {
                                    "",           /* Reserved */
                                    ""            /* Reserved */
         };
-        printf("INTEL 0x00000007:1 (EAX)");
         print_features(eax, features, 32);
-      }      
-    } // ECX=1
-  } // EAX=7
+      }
+    } // ECX=0x00000001
+  } // EAX=0x00000007
 
-  // EAX=0: largest value that EAX can be set to before calling CPUID
+  if (eax_max >= 0x0000000d) {
+    // EAX=0x0000000d, ECX=0x00000001: Extended Features
+    __asm__("mov $0x0000000d , %eax\n\t");
+    __asm__("mov $0x00000001 , %ecx\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%eax, %0\n\t":"=r" (eax)); //extended feature flags
+
+    // Intel-defined CPU features, CPUID level 0x0000000d:1 (EAX), word 10
+    {
+      std::string features[] = { "xsaveopt",  /* XSAVEOPT instruction */
+				 "xsavec",    /* XSAVEC instruction */
+				 "xgetbv1",   /* XGETBV with ECX = 1 instruction */
+				 "xsaves",    /* XSAVES/XRSTORS instructions */
+				 "xfd",       /* "" eXtended Feature Disabling */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 "",          /* Reserved */
+				 ""           /* Reserved */
+      };
+      print_features(eax, features, 32);
+    }
+  } // EAX=0x0000000d
+
+  // EAX=0x80000000: largest value that EAX can be set to before calling CPUID
   __asm__("mov $0x80000000, %eax\n\t");
   __asm__("cpuid\n\t");
   __asm__("mov %%eax, %0\n\t":"=r" (eax_max));
 
-  printf("\neax_max:%d\n", eax_max);
-  
-  if (eax_max >= 1) {
-    
-    // EAX=80000001h: Processor Info and Feature Bits
+  if (eax_max >= 0x80000001) {
+
+    // EAX=80000001: Processor Info and Feature Bits
     __asm__("mov $0x80000001 , %eax\n\t");
     __asm__("cpuid\n\t");
     __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //feature flags
     __asm__("mov %%edx, %0\n\t":"=r" (edx)); //feature flags
-    
+
     // AMD-defined CPU features, CPUID level 0x80000001 (EDX), word 1
     // Don't duplicate feature flags which are redundant with Intel!
     {
@@ -379,7 +467,7 @@ void getFeatures() {
       };
       print_features(edx, features, 32);
     }
-    
+
     // AMD-defined CPU features, CPUID level 0x80000001 (ECX), word 6
     {
       std::string features[] = { "lahf_lm",       /* LAHF/SAHF in long mode */
@@ -410,65 +498,207 @@ void getFeatures() {
                                  "",              /* Reserved */
                                  "bpext",         /* Data breakpoint extension */
                                  "ptsc",          /* Performance time-stamp counter */
-                                 "perfctr_llc",   /* Last Level Cache performance counter extensions */
+                                 "perfctr_l2",    /* Last Level Cache performance counter extensions */
                                  "mwaitx",        /* MWAIT extension (MONITORX/MWAITX instructions) */
                                  "",              /* Reserved */
                                  ""               /* Reserved */
-                                
+
       };
       print_features(ecx, features, 32);
     }
-  } // EAX=1
+  } // EAX=0x80000001
 
-  if (eax_max >=7) {      
-    // EAX=7, ECX=0: Extended Features
-    __asm__("mov $0x7 , %eax\n\t");
-    __asm__("mov $0x0 , %ecx\n\t");
+  if (eax_max >=0x80000007) {
+    // EAX=0x80000007: Extended Features
+    __asm__("mov $0x80000007 , %eax\n\t");
     __asm__("cpuid\n\t");
-    __asm__("mov %%eax, %0\n\t":"=r" (ecx_max)); //gives maximum ECX value
+    __asm__("mov %%eax, %0\n\t":"=r" (eax)); //extended feature flags
     __asm__("mov %%ebx, %0\n\t":"=r" (ebx)); //extended feature flags
     __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //extended feature flags
     __asm__("mov %%edx, %0\n\t":"=r" (edx)); //extended feature flags
-    
-    //THIS IS NOT YET WORKING
-    
+
+    // AMD-defined CPU features, CPUID level 0x80000007 (EBX), word 17
     {
-      std::string features[] = { "cxmmx",          /* Cyrix MMX extensions */
-                                 "k6_mtrr",        /* AMD K6 nonstandard MTRRs */
-                                 "cyrix_arr",      /* Cyrix ARRs (= MTRRs) */
-                                 "centaur_mcr",    /* Centaur MCRs (= MTRRs) */
-                                 "k8",             /* "" Opteron, Athlon64 */
-                                 "",               /* "" Athlon */
-                                 "",               /* "" P3 */
-                                 "",               /* "" P4 */
-                                 "constant_tsc",   /* TSC ticks at a constant rate */
-                                 "up",             /* SMP kernel running on UP */
-                                 "art",            /* Always running timer (ART) */
-                                 "arch_perfmon",   /* Intel Architectural PerfMon */
-                                 "pebs",           /* Precise-Event Based Sampling */
-                                 "bts",            /* Branch Trace Store */
-                                 "",               /* "" syscall in IA32 userspace */
-                                 "",               /* "" sysenter in IA32 userspace */
-                                 "rep_good",       /* REP microcode works well */
-                                 "",               /* Reserved */
-                                 "",               /* "" LFENCE synchronizes RDTSC */
-                                 "acc_power",      /* AMD Accumulated Power Mechanism */
-                                 "nopl",           /* The NOPL (0F 1F) instructions */
-                                 "",               /* "" Always-present feature */
-                                 "xtopology",      /* CPU topology enum extensions */
-                                 "tsc_reliable",   /* TSC is known to be reliable */
-                                 "nonstop_tsc",    /* TSC does not stop in C states */
-                                 "cpuid",          /* CPU has CPUID instruction itself */
-                                 "extd_apicid",    /* Extended APICID (8 bits) */
-                                 "amd_dcm",        /* AMD multi-node processor */
-                                 "aperfmperf",     /* P-State hardware coordination feedback capability (APERF/MPERF MSRs) */
-                                 "rapl",           /* AMD/Hygon RAPL interface */
-                                 "nonstop_tsc_s3", /* TSC doesn't stop in S3 state */
-                                 "tsc_known_freq"  /* TSC has known frequency */                               
+      std::string features[] = { "overflow_recov", /* MCA overflow recovery support */
+				 "succor",         /* Uncorrectable error containment and recovery */
+				 "",               /* Reserved */
+				 "smca",           /* Scalable MCA */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 "",               /* Reserved */
+				 ""                /* Reserved */
       };
-      //print_features(eax, features, 32);
+      print_features(ebx, features, 32);
     }
-  } // EAX=7
+  } // EAX=0x80000007
+
+  if (eax_max >=0x80000008) {
+    // EAX=0x80000008: Extended Features
+    __asm__("mov $0x80000008 , %eax\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%eax, %0\n\t":"=r" (eax)); //extended feature flags
+    __asm__("mov %%ebx, %0\n\t":"=r" (ebx)); //extended feature flags
+    __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //extended feature flags
+    __asm__("mov %%edx, %0\n\t":"=r" (edx)); //extended feature flags
+
+    // AMD-defined CPU features, CPUID level 0x80000008 (EBX), word 18
+    {
+      std::string features[] = { "clzero",     /* CLZERO instruction */
+				 "irperf",     /* Instructions Retired Count */
+				 "xsaveerptr", /* Always save/restore FP error pointers */
+				 "",           /* Reserved */
+				 "rdpru",      /* Read processor register at user level */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "wbnoinvd",   /* WBNOINVD instruction */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* "" Indirect Branch Prediction Barrier */
+				 "",           /* Reserved */
+				 "",           /* "" Indirect Branch Restricted Speculation */
+				 "",           /* "" Single Thread Indirect Branch Predictors */
+				 "",           /* Reserved */
+				 "",           /* "" Single Thread Indirect Branch Predictors always-on preferred */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "amd_ppin",   /* Protected Processor Inventory Number */
+				 "",           /* "" Speculative Store Bypass Disable */
+				 "virt_ssbd",  /* Virtualized Speculative Store Bypass Disable */
+				 "",           /* "" Speculative Store Bypass is fixed in hardware. */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 "",           /* Reserved */
+				 ""            /* Reserved */
+      };
+      print_features(ebx, features, 32);
+    }
+  } // EAX=0x80000008
+
+  if (eax_max >=0x8000000a) {
+    // EAX=0x8000000a: Extended Features
+    __asm__("mov $0x8000000a , %eax\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%eax, %0\n\t":"=r" (eax)); //extended feature flags
+    __asm__("mov %%ebx, %0\n\t":"=r" (ebx)); //extended feature flags
+    __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //extended feature flags
+    __asm__("mov %%edx, %0\n\t":"=r" (edx)); //extended feature flags
+
+    // AMD-defined CPU features, CPUID level 0x8000000a (EDX), word 15
+    {
+      std::string features[] = { "npt",             /* Nested Page Table support */
+				 "lbrv",            /* LBR Virtualization support */
+				 "svm_lock",        /* "svm_lock" SVM locking MSR */
+				 "nrip_save",       /* "nrip_save" SVM next_rip save */
+				 "tsc_scale",       /* "tsc_scale" TSC scaling support */
+				 "vmcb_clean",      /* "vmcb_clean" VMCB clean bits support */
+				 "flushbyasid",     /* flush-by-ASID support */
+				 "decodeassists",   /* Decode Assists support */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "pausefilter",     /* filtered pause intercept */
+				 "",                /* Reserved */
+				 "pfthreshold",     /* pause filter threshold */
+				 "avic",            /* Virtual Interrupt Controller */
+				 "",                /* Reserved */
+				 "v_vmsave_vmload", /* Virtual VMSAVE VMLOAD */
+				 "vgif",            /* Virtual GIF */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "v_spec_ctrl",     /* Virtual SPEC_CTRL */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 "",                /* "" SVME addr check */
+				 "",                /* Reserved */
+				 "",                /* Reserved */
+				 ""                 /* Reserved */
+      };
+      print_features(edx, features, 32);
+    }
+  } // EAX=0x8000000a
+  
+  if (eax_max >=0x8000001f) {
+    // EAX=0x8000001f: Extended Features
+    __asm__("mov $0x8000001f , %eax\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%eax, %0\n\t":"=r" (eax)); //extended feature flags
+    __asm__("mov %%ebx, %0\n\t":"=r" (ebx)); //extended feature flags
+    __asm__("mov %%ecx, %0\n\t":"=r" (ecx)); //extended feature flags
+    __asm__("mov %%edx, %0\n\t":"=r" (edx)); //extended feature flags
+
+    // AMD-defined CPU features, CPUID level 0x8000001f (EAX), word 19
+    {
+      std::string features[] = { "sme",    /* AMD Secure Memory Encryption */
+				 "sev",    /* AMD Secure Encrypted Virtualization */
+				 "",       /* "" VM Page Flush MSR is supported */
+				 "sev_es", /* AMD Secure Encrypted Virtualization - Encrypted State */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* "" AMD hardware-enforced cache coherency */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 "",       /* Reserved */
+				 ""        /* Reserved */
+      };
+      print_features(eax, features, 32);
+    }
+  } // EAX=0x8000001f
   
   printf("\n");
 }
@@ -476,6 +706,6 @@ void getFeatures() {
 int main(){
   getVendorID();
   getProcInfo();
-  getFeatures();    
+  getFeatures();
   return 0;
 }
