@@ -322,7 +322,7 @@ public:
   {
     return "densematmulCarray";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -379,7 +379,7 @@ public:
   {
     return "memcopyEigen";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -492,7 +492,7 @@ public:
   {
     return "axpyEigen";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -560,7 +560,7 @@ public:
   {
     return "densematmulEigen";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return gismo::metric::bandwidth_gb_sec;
@@ -589,7 +589,7 @@ public:
   benchmark_poisson2d_visitor(std::tuple<Args...> args)
     : benchmark_poisson2d_visitor(std::get<0>(args), std::get<1>(args), std::get<2>(args))
   {}
-    
+
   benchmark_poisson2d_visitor(int numPatches, int numRefine=0, int degree=1)
     : _msg(numPatches, numRefine, degree),
       numPatches(numPatches), numRefine(numRefine), degree(degree),
@@ -645,7 +645,7 @@ public:
   {
     return "assemble2dVisitorAssembler";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
@@ -674,7 +674,7 @@ public:
   benchmark_poisson3d_visitor(std::tuple<Args...> args)
     : benchmark_poisson3d_visitor(std::get<0>(args), std::get<1>(args), std::get<2>(args))
   {}
-  
+
   benchmark_poisson3d_visitor(int numPatches, int numRefine=0, int degree=1)
     : _msg(numPatches, numRefine, degree),
       numPatches(numPatches), numRefine(numRefine), degree(degree),
@@ -730,7 +730,7 @@ public:
   {
     return "assemble3dVisitorAssembler";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
@@ -751,46 +751,46 @@ private:
   gsMultiPatch<T> geo;
   gsMultiBasis<T> bases;
   gsBoundaryConditions<T> bc;
-  
+
   gsExprAssembler<T> A;
   typename gsExprAssembler<>::geometryMap G;
   typename gsExprAssembler<>::space u;
 
   gsFunctionExpr<T> f;
   expr::gsComposition<T> ff;
-  
+
 public:
   template<typename... Args>
   benchmark_poisson2d_expression_assembler(std::tuple<Args...> args)
     : benchmark_poisson2d_expression_assembler(std::get<0>(args), std::get<1>(args), std::get<2>(args))
   {}
-    
+
   benchmark_poisson2d_expression_assembler(int numPatches, int numRefine=0, int degree=1)
     : _msg(numPatches, numRefine, degree),
       numPatches(numPatches), numRefine(numRefine), degree(degree),
       geo(gsNurbsCreator<>::BSplineSquareGrid(numPatches, numPatches, 1.0)),
       bases(geo, true), A(1,1), G(A.getMap(geo)), u(A.getSpace(bases)),
       f("0.0", 2), ff(A.getCoeff(f, G))
-  {    
+  {
     // h-refine each basis
     for (int i = 0; i < numRefine; ++i)
       bases.uniformRefine();
-    
+
     // k-refinement (set degree)
     for (std::size_t i = 0; i < bases.nBases(); ++ i)
       bases[i].setDegreePreservingMultiplicity(degree);
-    
+
     // set the geometry map to boundary conditions
     bc.setGeoMap(geo);
-    
+
     // setup boundary conditions
     u.setup(bc, dirichlet::l2Projection, 0);
 
     // set elements used for numerical integration
     A.setIntegrationElements(bases);
-    
+
     // initialize the system
-    A.initSystem();   
+    A.initSystem();
   }
 
   uint64_t operator()()
@@ -801,7 +801,7 @@ public:
                ,
                u * ff * meas(G) //rhs vector
                );
-        
+
     return sizeof(T) * (A.matrix().nonZeros() + A.rhs().rows());
   }
 
@@ -836,7 +836,7 @@ public:
   {
     return "assemble2dExpressionAssembler";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
@@ -857,46 +857,46 @@ private:
   gsMultiPatch<T> geo;
   gsMultiBasis<T> bases;
   gsBoundaryConditions<T> bc;
-  
+
   gsExprAssembler<T> A;
   typename gsExprAssembler<>::geometryMap G;
   typename gsExprAssembler<>::space u;
 
   gsFunctionExpr<T> f;
   expr::gsComposition<T> ff;
-  
+
 public:
   template<typename... Args>
   benchmark_poisson3d_expression_assembler(std::tuple<Args...> args)
     : benchmark_poisson3d_expression_assembler(std::get<0>(args), std::get<1>(args), std::get<2>(args))
   {}
-    
+
   benchmark_poisson3d_expression_assembler(int numPatches, int numRefine=0, int degree=1)
     : _msg(numPatches, numRefine, degree),
       numPatches(numPatches), numRefine(numRefine), degree(degree),
       geo(gsNurbsCreator<>::BSplineCubeGrid(numPatches, numPatches, numPatches, 1.0)),
       bases(geo, true), A(1,1), G(A.getMap(geo)), u(A.getSpace(bases)),
       f("0.0", 3), ff(A.getCoeff(f, G))
-  {    
+  {
     // h-refine each basis
     for (int i = 0; i < numRefine; ++i)
       bases.uniformRefine();
-    
+
     // k-refinement (set degree)
     for (std::size_t i = 0; i < bases.nBases(); ++ i)
       bases[i].setDegreePreservingMultiplicity(degree);
-    
+
     // set the geometry map to boundary conditions
     bc.setGeoMap(geo);
-    
+
     // setup boundary conditions
     u.setup(bc, dirichlet::l2Projection, 0);
 
     // set elements used for numerical integration
     A.setIntegrationElements(bases);
-    
+
     // initialize the system
-    A.initSystem();    
+    A.initSystem();
   }
 
   uint64_t operator()()
@@ -907,7 +907,7 @@ public:
                ,
                u * ff * meas(G) //rhs vector
                );
-        
+
     return sizeof(T) * (A.matrix().nonZeros() + A.rhs().rows());
   }
 
@@ -942,7 +942,7 @@ public:
   {
     return "assemble3dExpressionAssembler";
   }
-  
+
   static constexpr gismo::metric metric()
   {
     return (gismo::metric)(gismo::metric::runtime_sec + gismo::metric::speedup);
@@ -1001,7 +1001,7 @@ int main(int argc, char *argv[])
   cmd.addString("o", "output", "Name of the output file", fn);
   cmd.addSwitch("list", "List all benchmarks and exit", list);
   cmd.addSwitch("all", "Run all benchmarks", all);
-  
+
   try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
   //! [Parse command line]
 
@@ -1032,7 +1032,7 @@ int main(int argc, char *argv[])
            <<            " with increasing number of patches" << "\n"
            << "#16: " << benchmark_poisson3d_expression_assembler<real_t>::descr()
            <<            " with increasing number of subdivisions" << "\n";
-      
+
     return EXIT_SUCCESS;
   }
   //! [List benchmarks and exit]
@@ -1044,7 +1044,7 @@ int main(int argc, char *argv[])
     for(index_t i=1; i<=16; ++i)
       benchmarks.push_back(i);
   }
-  
+
   // If empty fill with 1, 2, 4, ..., maximum number of OpenMP threads
   if (nthreads.empty()) {
     for(index_t i=1; i<=omp_get_max_threads(); i*=2)
@@ -1073,7 +1073,7 @@ int main(int argc, char *argv[])
     for(index_t i=subdividemin; i<subdividemax; ++i)
       subdivides.push_back(i);
   }
-  
+
   // If empty fill with vsizemin*vsizefactor^k, k=0, 1, 2, ..., vsizemax
   if (vsizes.empty()) {
     for(index_t i=vsizemin;;) {
@@ -1110,7 +1110,7 @@ int main(int argc, char *argv[])
         (vsizes, nruns, nthreads);
       break;
     }
-      
+
     case (2): {
       // Benchmark: memcopy gsVector
       benchmark.create<benchmark_eigen_memcopy<real_t> >
@@ -1199,7 +1199,7 @@ int main(int argc, char *argv[])
          nruns, nthreads, " with increasing number of subdivisions (#patches=1, degree=2)");
       break;
     }
-      
+
     case (13): {
       // Benchmark: expression assembler-based Poisson 2d assembler with increasing number of patches
       benchmark.create<benchmark_poisson2d_expression_assembler<real_t> >
@@ -1239,7 +1239,7 @@ int main(int argc, char *argv[])
          nruns, nthreads, " with increasing number of subdivisions (#patches=1, degree=2)");
       break;
     }
-      
+
     default:
       GISMO_ERROR("Invalid benchmark");
     }
@@ -1249,7 +1249,7 @@ int main(int argc, char *argv[])
   { // Memory copy ratio
     auto bmA = benchmark.find(benchmark_c_array_memcopy<real_t>::label());
     auto bmB = benchmark.find(benchmark_eigen_memcopy<real_t>::label());
-    
+
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
       auto bm = util::ratio("memcopyRatio",
                             "Memory copy (gsVector : native C array)", *bmB, *bmA);
@@ -1260,7 +1260,7 @@ int main(int argc, char *argv[])
   { // Dot product ratio
     auto bmA = benchmark.find(benchmark_c_array_dotproduct<real_t>::label());
     auto bmB = benchmark.find(benchmark_eigen_dotproduct<real_t>::label());
-    
+
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
       auto bm = util::ratio("dotproductRatio",
                             "Dot product (gsVector : native C array)", *bmB, *bmA);
@@ -1271,7 +1271,7 @@ int main(int argc, char *argv[])
   { // AXPY ratio
     auto bmA = benchmark.find(benchmark_c_array_axpy<real_t>::label());
     auto bmB = benchmark.find(benchmark_eigen_axpy<real_t>::label());
-    
+
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
       auto bm = util::ratio("axpyRatio",
                             "AXPY (gsVector : native C array)", *bmB, *bmA);
@@ -1282,15 +1282,15 @@ int main(int argc, char *argv[])
   { // Dense matrix-vector multiplication ratio
     auto bmA = benchmark.find(benchmark_c_array_dense_matmul<real_t>::label());
     auto bmB = benchmark.find(benchmark_eigen_dense_matmul<real_t>::label());
-    
+
     if (bmA != std::end(benchmark.get()) && bmB != std::end(benchmark.get())) {
       auto bm = util::ratio("densematmulRatio",
                             "Dense matrix-vector multiplication (gsMatrix/gsVector : native C array)",
                             *bmB, *bmA);
       benchmark.get().push_back( give(bm) );
     }
-  }  
-  
+  }
+
   if (fn.empty())
     gsInfo << benchmark << "\n";
   else if (gsFileManager::getExtension(fn) == "tex") {
@@ -1309,12 +1309,5 @@ int main(int argc, char *argv[])
   }
   //! [Execute benchmarks]
 
-  {
-    gsBenchmark bm;
-    gsFileData<> fd(fn);
-    fd.getId(0, bm);
-    gsInfo << bm;
-  }
-  
   return EXIT_SUCCESS;
 }
