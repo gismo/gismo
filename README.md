@@ -118,13 +118,26 @@ Release, RelWithDebInfo, MinSizeRel.
 
 * GISMO_COEFF_TYPE        *double*
 
-  The arithmetic type to be used for all computations. Available options
-include double, long double, float.
+  The arithmetic type to be used for all computations. Available
+options are float, double, long double, mpfr::mpreal, mpq_class,
+posit_2_0, posit_3_0, posit_3_1, posit_4_0, posit_8_0, posit_8_1,
+posit_16_1, posit_32_2, posit_64_3, posit_128_4, posit_256_5
 
 * GISMO_EXTRA_INSTANCE    *not set*
 
   If set to one or more of the options available for GISMO_COEFF_TYPE
   the G+Smo library is compiled with extra arithmetic types enabled.
+
+* GISMO_INDEX_TYPE        *int*
+
+  The integer type to be used for all indices. Available options are
+int, int8_t, int16_t, int32_t, int64_t, long, long long
+
+* GISMO_SHORT_TYPE        *int*
+
+  The integer type to be used for all non-index integers, e.g., the
+spatial dimension. Available options are int, int8_t, int16_t,
+int32_t, int64_t, long, long long
 
 * GISMO_EXTRA_DEBUG       *OFF*
 
@@ -168,7 +181,12 @@ compiled.
   The location for installation of the library, e.g. /usr/local on some
 Linux systems.
 
+* TARGET_ARCHITECTURE     *auto*
 
+  If G+Smo is built in release mode optimized compiler flags for the
+  selected target architecture are used. *auto* determines the
+  architecture of the host system automatically. Available options are auto, generic, none, native and any value CPUID, e.g., skylake or apple-m1.
+  
 # Directory structure
 
 
