@@ -18,7 +18,7 @@ include(CheckIncludeFileCXX)
 
 macro(OFA_HandleArmOptions)
 
-  # Special treatment for "native"
+  # Special treatment for "native" flag
   if(TARGET_ARCHITECTURE STREQUAL "native")
     if(MSVC)
       # MSVC (on Windows)
@@ -761,9 +761,10 @@ macro(OFA_HandleArmOptions)
         message(STATUS "[OFA] CPU microarchitectures (-mtune): " ${_str})
       endif()
       if(_available_extension_list)
+        list(LENGTH _available_extension_list _len)
         string(REPLACE ";"  ", " _str "${_available_extension_list}")
         string(TOUPPER ${_str} _str)
-        message(STATUS "[OFA] Extensions (available): ${_str}")
+        message(STATUS "[OFA] Extensions (${_len} available): ${_str}")
       endif()
     endif()
 
@@ -782,7 +783,7 @@ macro(OFA_HandleArmOptions)
     set(_mtune_flag "-mtune")
 
     foreach(_flag ${_mtune_flag_list})
-      AddCXXCompilerFlag("${_mcpu_flag}${_flag}"  FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+      AddCXXCompilerFlag("${_mcpu_flag}${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
       if(_ok)
         break()
       endif()
