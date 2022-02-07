@@ -14,10 +14,10 @@ namespace gismo
 
   void pybind11_init_gsMultiPatch(py::module &m)
   {
-    using Base = gsFunctionSet<real_t>;
-    using BaseB = gsBoxTopology;
+    using Base1 = gsFunctionSet<real_t>;
+    using Base2 = gsBoxTopology;
     using Class = gsMultiPatch<real_t>;
-    py::class_<Class,Base, BaseB>(m, "gsMultiPatch")
+    py::class_<Class,Base1, Base2>(m, "gsMultiPatch")
 
       // Constructors
       .def(py::init<>())
