@@ -472,7 +472,7 @@ macro(OFA_HandleX86Options)
       # Define USE_<_extension_flag> variable
       set(_useVar "USE_${_extension_flag}")
       string(TOUPPER "${_useVar}" _useVar)
-      string(REPLACE "." "_" _useVar "${_useVar}")
+      string(REPLACE "[-.+/:= ]" "_" _useVar "${_useVar}")
 
       # If not specified externally, set the value of the
       # USE_<_extension_flag> variable to TRUE if it is found in the list
@@ -511,7 +511,7 @@ macro(OFA_HandleX86Options)
       _ofa_find(_available_extension_list "${_extension_flag}" _found)
       set(_useVar "USE_${_extension_flag}")
       string(TOUPPER "${_useVar}" _useVar)
-      string(REPLACE "." "_" _useVar "${_useVar}")
+      string(REPLACE "[-.+/:= ]" "_" _useVar "${_useVar}")
 
       if(${_useVar})
         # Add <_extension_flag> to list of enabled extensions (if supported)
@@ -625,7 +625,7 @@ macro(OFA_HandleX86Options)
       endif()
       foreach(_extension ${_enable_extension_flag_list})
         string(TOUPPER "${_extension}" _extension)
-        string(REPLACE "." "_" _extension "__${_extension}__")
+        string(REPLACE "[-.+/:= ]" "_" _extension "__${_extension}__")
         add_definitions("-D${_extension}")
       endforeach(_extension)
 
