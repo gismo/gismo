@@ -15,12 +15,13 @@ namespace py = pybind11;
 
 void pybind11_init_gsBasis(py::module &m)
 {
-  using Class = gsBasis<real_t>;
-  py::class_<Class>(m, "gsBasis")
-
-  // Member functions
-  .def("eval", &Class::eval, "Evaluates points into a matrix")
-  ;
+    using Class = gsBasis<real_t>;
+    py::class_<Class>(m, "gsBasis")
+        // Member functions
+        .def("eval", &Class::eval, "Evaluates points into a matrix")
+        .def("anchors", &Class::anchors, "Returns the anchor points of the basis")
+        .def("collocationMatrix", &Class::collocationMatrix, "Computes a (sparse) collocation matrix")
+        ;
 }
 
 #endif
