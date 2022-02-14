@@ -2,7 +2,6 @@
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiPatch.hpp>
-#include <gsCore/gsBoxTopology.h>
 
 namespace gismo
 {
