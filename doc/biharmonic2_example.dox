@@ -1,0 +1,51 @@
+namespace gismo {
+/**
+
+\page biharmonic2_example biharmonic2_example.cpp
+
+
+The boundary value problem for the first biharmonic equation is defined as follows:
+\f{eqnarray*}{
+                     \Delta^2 u &=& f \quad \text{in} \quad \Omega,         \\
+                              u &=& g_1 \quad \text{on} \quad \partial \Omega,       \\
+      \mathbf{n} \cdot \nabla u &=& g_2 \quad \text{on} \quad \partial \Omega,
+\f}
+where \f$\mathbf{n}\f$ is the outward pointing unit normal vector.
+The boundary value problem for the second biharmonic equation is defined as follows:
+\f{eqnarray*}{
+                     \Delta^2 u &=& f \quad \text{in} \quad \Omega,         \\
+                              u &=& g_1 \quad \text{on} \quad \partial \Omega,       \\
+                     \Delta u &=& g_2 \quad \text{on} \quad \partial \Omega.
+\f}
+
+
+The system to assemble a system of equations based on this weak formulation is
+constructed in \ref biharmonic2_example using the \ref gsExprAssembler. The biharmonic problem
+is only solvable on domains with a single patch.
+
+Then we define our command line options.
+For example, we use the option \c -f or \c --file to set the path to the file that contains
+our geometry. If we wish to use the second biharmonic problem, then we use the option
+\c --second to run the biharmonic problem with \f$u=g_1\f$ and \f$\Delta u=g_2\f$
+
+\snippet biharmonic2_example.cpp Parse command line
+
+\snippet biharmonic2_example.cpp Read geometry
+
+\snippet biharmonic2_example.cpp Refinement
+
+\snippet biharmonic2_example.cpp Boundary condition
+
+\snippet biharmonic2_example.cpp Problem setup
+
+\snippet biharmonic2_example.cpp Solver loop
+
+\snippet biharmonic2_example.cpp Error and convergence rates
+
+\snippet biharmonic2_example.cpp Export visualization in ParaView
+
+
+
+*/
+
+}

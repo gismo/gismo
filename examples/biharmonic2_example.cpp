@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Sogn
+    Author(s): P. Weinmueller
 */
 
 # include <gismo.h>
@@ -45,7 +45,7 @@ void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMultiBasis<> & basis,
 
 void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> & basis, gsBoundaryConditions<> & bc, const expr::gsFeSpace<real_t> & u)
 {
-    gsDofMapper mapper = u.mapper();
+    const gsDofMapper & mapper = u.mapper();
     gsDofMapper mapperBdy(basis, u.dim());
     for (gsBoxTopology::const_iiterator it = basis.topology().iBegin();
          it != basis.topology().iEnd(); ++it) // C^0 at the interface
@@ -104,31 +104,34 @@ void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> &
 
 int main(int argc, char *argv[])
 {
+    //! [Parse command line]
     bool plot = false;
 
     index_t numRefine  = 3;
-    index_t discreteDegree = 3;
-    index_t discreteRegularity = 2;
+    index_t degree = 3;
+    index_t smoothness = 2;
     bool last = false;
-    bool neumann = false;
+    bool second = false;
 
     std::string fn;
 
     gsCmdLine cmd("Example for solving the biharmonic problem (single patch only).");
-    cmd.addInt( "p", "discreteDegree","Discrete polynomial degree", discreteDegree );
-    cmd.addInt( "r", "discreteRegularity", "Discrete regularity",  discreteRegularity );
+    cmd.addInt( "p", "degree","Set discrete polynomial degree", degree );
+    cmd.addInt( "s", "smoothness", "Set discrete regularity",  smoothness );
     cmd.addInt( "l", "refinementLoop", "Number of refinement steps",  numRefine );
     cmd.addString( "f", "file", "Input geometry file (with .xml)", fn );
 
-    cmd.addSwitch("last", "Solve solution for the last level of h-refinement", last);
+    cmd.addSwitch("last", "Solve problem only on the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
-    cmd.addSwitch("neumann", "Compute problem with Neumann condition (default Laplace condition)", neumann);
+    cmd.addSwitch("second", "Compute second biharmonic problem with u = g1 and Delta u = g2 "
+                            "(default first biharmonic problem: u = g1 and partial_n u = g2)", second);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    //! [Parse command line]
 
     gsMultiPatch<> mp;
     gsBoundaryConditions<> bc;
-    gsFunctionExpr<> f, ms;
+    gsFunctionExpr<> f;
     gsOptionList optionList;
 
     //! [Read geometry]
@@ -149,13 +152,13 @@ int main(int argc, char *argv[])
         gsInfo << "The geometry has more than one patch. Run the code with a single Patch!\n";
         return 0;
     }
+    //! [Read geometry]
 
     gsFunctionExpr<>source("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     f.swap(source);
     gsInfo << "Source function " << f << "\n";
 
-    gsFunctionExpr<> solution("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
-    ms.swap(solution);
+    gsFunctionExpr<> ms("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
     gsInfo << "Exact function " << ms << "\n";
 
     //! [Refinement]
@@ -163,15 +166,16 @@ int main(int argc, char *argv[])
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    basis.setDegree( discreteDegree); // preserve smoothness
+    basis.setDegree(degree); // preserve smoothness
 
     // h-refine each basis
     if (last)
     {
-        for (int r =0; r < numRefine; ++r)
-            basis.uniformRefine(1, discreteDegree-discreteRegularity);
+        for (index_t r =0; r < numRefine; ++r)
+            basis.uniformRefine(1, degree-smoothness);
         numRefine = 0;
     }
+    //! [Refinement]
 
     //! [Boundary condition]
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
@@ -184,10 +188,10 @@ int main(int argc, char *argv[])
                                  "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)", 2);
 
         bc.addCondition(*bit, condition_type::dirichlet, ms);
-        if (neumann)
-            bc.addCondition(*bit, condition_type::neumann, sol1der);
-        else
+        if (second)
             bc.addCondition(*bit, condition_type::laplace, laplace);
+        else
+            bc.addCondition(*bit, condition_type::neumann, sol1der);
     }
     bc.setGeoMap(mp);
     gsInfo << "Boundary conditions:\n" << bc << "\n";
@@ -218,6 +222,10 @@ int main(int argc, char *argv[])
     auto u_ex = ev.getVariable(ms, G);
     //! [Problem setup]
 
+#ifdef _OPENMP
+    gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
+#endif
+
     //! [Solver loop]
     gsSparseSolver<real_t>::SimplicialLDLT solver;
 
@@ -227,9 +235,9 @@ int main(int argc, char *argv[])
              "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     gsStopwatch timer;
-    for (int r=0; r<=numRefine; ++r)
+    for (index_t r=0; r<=numRefine; ++r)
     {
-        basis.uniformRefine(1,discreteDegree -discreteRegularity);
+        basis.uniformRefine(1,degree -smoothness);
         meshsize[r] = basis.basis(0).getMaxCellLength();
 
         // Setup the Mapper
@@ -279,6 +287,7 @@ int main(int argc, char *argv[])
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
     } //for loop
+    //! [Solver loop]
 
     timer.stop();
     gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
@@ -311,7 +320,7 @@ int main(int argc, char *argv[])
     }
     //! [Error and convergence rates]
 
-    // Plot solution in paraview
+    //! [Export visualization in ParaView]
     if (plot)
     {
         // Write approximate and exact solution to paraview files
@@ -323,6 +332,7 @@ int main(int argc, char *argv[])
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
+    //! [Export visualization in ParaView]
 
-    return  0;
+    return  EXIT_SUCCESS;
 }
