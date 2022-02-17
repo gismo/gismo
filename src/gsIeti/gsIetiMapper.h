@@ -198,8 +198,10 @@ protected:
     std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs
     std::vector<JumpMatrix>                       m_jumpMatrices;        ///< The jump matrices
     index_t                                       m_nPrimalDofs;         ///< The number of primal dofs already created
-    std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
-    std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
+    std::vector<std::vector<SparseVector>>        m_primalConstraints;   ///< The primal constraints
+    std::vector<std::vector<index_t>>             m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
+    std::vector<std::vector<std::pair<index_t,index_t>>>
+                                                  m_primalConstrIndices; ///< The patch indices + constraint indices for each of the primal dofs
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
 };
 

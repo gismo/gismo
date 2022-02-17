@@ -442,8 +442,10 @@ void gsIetidGMapper<T>::transferConstraintsToArtificialIfaces(index_t primals_ol
                             index_t idx_transfered = m_augmentedDofMapperLocal[k].index(idx,i+1);
                             newConstraint[idx_transfered]=it.value();
                         }
+                        const index_t primalDofIndex = Base::m_primalDofIndices[patch][j];
                         Base::m_primalConstraints[k].push_back( give(newConstraint) );
-                        Base::m_primalDofIndices[k].push_back( Base::m_primalDofIndices[patch][j] );
+                        Base::m_primalDofIndices[k].push_back( primalDofIndex );
+                        Base::m_primalConstrIndices[primalDofIndex].emplace_back( k, Base::m_primalConstraints[k].size()-1 );
                     }
                 }
             }
@@ -454,17 +456,11 @@ void gsIetidGMapper<T>::transferConstraintsToArtificialIfaces(index_t primals_ol
 template <class T>
 void gsIetidGMapper<T>::removeIsolatedPrimalConstraints(index_t primals_old, index_t primals_new)
 {
-    std::vector<index_t> count(primals_new);
-    std::vector< std::vector<index_t> >& primalDofIndices = Base::m_primalDofIndices;
-    for (size_t k=0; k<primalDofIndices.size(); ++k)
-        for (size_t l=0; l<primalDofIndices[k].size(); ++l)
-            if (primalDofIndices[k][l]<primals_new)
-                count[primalDofIndices[k][l]]++;
-
+    GISMO_ASSERT( Base::m_nPrimalDofs == Base::m_primalConstrIndices.size(), "");
     std::vector<index_t> newIndices(primals_new);
     for (index_t i=0, j=0; i<primals_new; ++i)
     {
-        if (i>=primals_old && count[i]==1)
+        if (i>=primals_old && Base::m_primalConstrIndices[i].size()<2)
             newIndices[i] = -1;
         else
         {
@@ -473,21 +469,31 @@ void gsIetidGMapper<T>::removeIsolatedPrimalConstraints(index_t primals_old, ind
         }
     }
 
-    for (size_t k=0; k<primalDofIndices.size(); ++k)
-        for (size_t l=0; l<primalDofIndices[k].size(); ++l)
+    for (index_t i=primals_new-1; i>=0; --i)
+    {
+        if (newIndices[i] == -1)
         {
-            const index_t newIndex = newIndices[primalDofIndices[k][l]];
+            Base::m_primalConstrIndices.erase(Base::m_primalConstrIndices.begin()+i);
+            Base::m_nPrimalDofs--;
+        }
+    }
+
+    for (size_t k=0; k<Base::m_primalDofIndices.size(); ++k)
+        for (size_t l=0; l<Base::m_primalDofIndices[k].size(); ++l)
+        {
+            const index_t newIndex = newIndices[Base::m_primalDofIndices[k][l]];
             if (newIndex==-1)
             {
-                primalDofIndices[k].erase(primalDofIndices[k].begin()+l);
+                Base::m_primalDofIndices[k].erase(Base::m_primalDofIndices[k].begin()+l);
                 Base::m_primalConstraints[k].erase(Base::m_primalConstraints[k].begin()+l);
                 --l;
             }
             else
             {
-                primalDofIndices[k][l] = newIndex;
+                Base::m_primalDofIndices[k][l] = newIndex;
             }
         }
+    GISMO_ASSERT( Base::m_nPrimalDofs == Base::m_primalConstrIndices.size(), "");
 }
 
 

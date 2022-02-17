@@ -50,6 +50,7 @@ void gsIetiMapper<T>::init(
     m_primalConstraints.resize(nPatches);
     m_primalDofIndices.clear();
     m_primalDofIndices.resize(nPatches);
+    m_primalConstrIndices.clear();
     m_status = 1;
 
     for (index_t k=0; k<nPatches; ++k)
@@ -156,24 +157,29 @@ void gsIetiMapper<T>::cornersAsPrimals(bool includeIsolated)
     // Create data
     index_t lastIndex = -1;
     const index_t sz = corners.size();
+    std::vector<std::pair<index_t,index_t>> * pci = nullptr;
     for (index_t i=0; i<sz; ++i)
     {
         if (lastIndex!=corners[i].globalIndex)
         {
             lastIndex = corners[i].globalIndex;
             if (includeIsolated || (i+1<sz&&corners[i+1].globalIndex==corners[i].globalIndex))
+            {
                 ++m_nPrimalDofs;
+                m_primalConstrIndices.emplace_back();
+                pci = &(m_primalConstrIndices.back());
+            }
             else
                 continue; // Ignore corners that are not shared
         }
-        const index_t cornerIndex = m_nPrimalDofs - 1;
         const index_t patch       = corners[i].patch;
         const index_t localIndex  = corners[i].localIndex;
 
         SparseVector constr(m_dofMapperLocal[patch].freeSize());
         constr[localIndex] = 1;
         m_primalConstraints[patch].push_back(give(constr));
-        m_primalDofIndices[patch].push_back(cornerIndex);
+        m_primalDofIndices[patch].push_back(m_nPrimalDofs - 1);
+        pci->emplace_back(patch,m_primalConstraints[patch].size()-1);
     }
 
 }
@@ -237,7 +243,8 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
         const index_t sz = components[n].size();
         if ( components[n][0].dim() == d && ( includeIsolated || sz > 1 || m_multiBasis->dim() == d ) )
         {
-            index_t used = 0;
+            std::vector<std::pair<index_t,index_t>> pci;
+            pci.reserve(sz);
             for (index_t i=0; i<sz; ++i)
             {
                 const index_t k = components[n][i].patch();
@@ -251,13 +258,14 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                 {
                     m_primalConstraints[k].push_back(give(constr));
                     m_primalDofIndices[k].push_back(m_nPrimalDofs);
-                    ++used;
+                    pci.emplace_back(k,m_primalConstraints[k].size()-1);
                 }
             }
-            // TODO: This causes a problem when dG with edge primal dofs are used for 3d
-            //GISMO_ASSERT( used==0 || used == sz, "Internal error." );
-            if (used)
+            if (!pci.empty())
+            {
+                m_primalConstrIndices.push_back(give(pci));
                 ++m_nPrimalDofs;
+            }
         }
     }
 }
@@ -269,12 +277,16 @@ void gsIetiMapper<T>::customPrimalConstraints( std::vector< std::pair<index_t,Sp
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
     const index_t sz = data.size();
+    std::vector<std::pair<index_t,index_t>> pci;
+    pci.reserve(sz);
     for (index_t i=0; i<sz; ++i)
     {
         const index_t patch = data[i].first;
         m_primalConstraints[patch].push_back(give(data[i].second));
         m_primalDofIndices[patch].push_back(m_nPrimalDofs);
+        pci.emplace_back(patch,m_primalConstraints[patch].size()-1);
     }
+    m_primalConstrIndices.push_back(give(pci));
     ++m_nPrimalDofs;
 }
 
