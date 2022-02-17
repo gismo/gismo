@@ -192,7 +192,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
         fun.eval_into(knots, TmpCoefs);
         gsMatrix<T> knotsAvg(1, kv.size()-1);
         for(unsigned int i=0; i<kv.size()-1; i++)
-            knotsAvg(i) = (kv[i]+kv[i+1])/2;
+            knotsAvg(i) = (kv[i]+kv[i+1]) / (T)(2);
         gsMatrix<T> TmpCoefsAvg;
         fun.eval_into(knotsAvg, TmpCoefsAvg);
 
@@ -203,7 +203,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
             coefs.row(i).noalias() =
                 ( - TmpCoefs.col(i+1)
                   + 4 * TmpCoefsAvg.col(i+1)
-                  - TmpCoefs.col(i+2) ) / 2;
+                  - TmpCoefs.col(i+2) ) / (T)(2);
         }
         coefs.row(n-1) = TmpCoefs.col(n);
         break;
@@ -213,7 +213,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
         fun.eval_into(knots, TmpCoefs);
         gsMatrix<T> knotsAvg(1, kv.size()-1);
         for(unsigned int i=0; i<kv.size()-1; i++)
-            knotsAvg(i) = (kv[i]+kv[i+1])/2;
+            knotsAvg(i) = (kv[i]+kv[i+1]) / (T)(2);
         gsMatrix<T> TmpCoefsAvg;
         fun.eval_into(knotsAvg, TmpCoefsAvg);
 
@@ -225,7 +225,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
                   + 40 * TmpCoefsAvg.col(3)
                   - 24 * TmpCoefs.col(4)
                   +  8 * TmpCoefsAvg.col(4)
-                  - TmpCoefs.col(5) ) / 18;
+                  - TmpCoefs.col(5) ) / (T)(18);
 
         for(int i=2; i<n-2; i++)
         {
@@ -235,7 +235,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
                       -  8 * TmpCoefsAvg.col(i+1)
                       + 20 * TmpCoefs.col(i+2)
                       -  8 * TmpCoefsAvg.col(i+2)
-                      + TmpCoefs.col(i+3) ) / 6;
+                      + TmpCoefs.col(i+3) ) / (T)(6);
         }
 
         // formula: (- a + 8b - 24c + 40d - 5e)/18
@@ -244,7 +244,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
                   +  8 * TmpCoefsAvg.col(n-2)
                   - 24 * TmpCoefs.col(n-1)
                   + 40 * TmpCoefsAvg.col(n-1)
-                  -  5 * TmpCoefs.col(n) ) / 18;
+                  -  5 * TmpCoefs.col(n) ) / (T)(18);
 
         coefs.row(n-1) = TmpCoefs.col(n);
 
@@ -312,7 +312,7 @@ void gsQuasiInterpolate<T>::distributePoints(T a, T b, int n, gsMatrix<T> &point
 {
     points.resize(1,n);
     for(int k=0; k<n; k++)
-        points.at(k) = a + (T)k/(n-1) * (b-a);
+        points.at(k) = a + (T)k/(T)(n-1) * (b-a);
 }
 
 

@@ -28,7 +28,6 @@
 | [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
 | [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
 
-
 This README file contains brief information. More details are found in
 the [Wiki pages](https://github.com/gismo/gismo/wiki).
 
@@ -51,6 +50,7 @@ or as a tar.gz or zip file:
   - MS Windows
   - Linux
   - macOS
+  - FreeBSD
 
 * Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
@@ -221,6 +221,12 @@ eleven modules are present as sub-folders:
 * **doc**
 
   Files related to doxygen documentation.
+
+# Third-party repository distribution
+
+- openSUSE Science Project: https://en.opensuse.org/openSUSE:Science_Math
+- FreeBSD port: https://www.freshports.org/math/gismo/
+- Ubuntu upstream packages: https://launchpad.net/~g+smo/+archive/ubuntu/upstream
 
 # Contact and support
 

@@ -104,7 +104,7 @@ gsMatrix<T> gsGeometry<T>::parameterCenter( const boxSide& bc )
     for (index_t d=0; d<dim;++d)
     {
         if (d != dir)
-            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / T(2);
+            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / (T)(2);
         else if (bc.parameter())
             coordinates(d,0) = supp(d,1);
         else
