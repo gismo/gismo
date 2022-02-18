@@ -27,14 +27,13 @@ gismo_fetch_directory(Spectra
 )
 #endif(NOT SPECTRA_FOUND)
 
-
 # move the files in place ?? -- is a bit buggy
 #file(COPY ${gismo_SOURCE_DIR}/external/Spectra/Spectra/  DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 #file(REMOVE_RECURSE ${gismo_SOURCE_DIR}/external/Spectra)
 
-#set(SPECTRA_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Spectra/Spectra CACHE INTERNAL "")
-#set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
-#    CACHE INTERNAL "Gismo include directories")
+set(SPECTRA_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Spectra/include CACHE INTERNAL "")
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
+    CACHE INTERNAL "Gismo include directories")
   
 add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
