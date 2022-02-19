@@ -1131,6 +1131,7 @@ public:
                 {
                     if (!it->ps.parameter())
                         bnd.swap(bnd1);
+                    GISMO_ASSERT(bnd.size()==bnd1.size(),"The vectors with boundary offset have different sizes!\n bnd (size="<<bnd.size()<<") = "<<bnd<<"\nbnd1 (size1="<<bnd1.size()<<") = "<<bnd1<<"\n");
                     for (index_t k = 0; k < bnd.size(); ++k)
                         m_sd->mapper.matchDof(it->ps.patch, (bnd)(k, 0),
                                               it->ps.patch, (bnd1)(k, 0), cc);
