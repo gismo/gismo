@@ -30,21 +30,86 @@ our geometry. If we wish to use the second biharmonic problem, then we use the o
 
 \snippet biharmonic2_example.cpp Parse command line
 
+Then we read the geometry: Either it can be from a file that contains the geometry or we
+use the default one.
+
 \snippet biharmonic2_example.cpp Read geometry
+
+Before we run the problem, we set the degree and/or refine the basis. This is done in the following snippet:
 
 \snippet biharmonic2_example.cpp Refinement
 
+Then we set the boundary conditions. Depending on which biharmonic problem we choose,
+each boundary will be is set to the corresponding functions.
+
 \snippet biharmonic2_example.cpp Boundary condition
+
+Now it is time to look at the setup of our boundary value problem.
+In the code snippet below, we first define our \ref gsExprAssembler.
+The inputs (1,1) here mean that we have 1 test function space and 1 trial function space.
+Furthermore, few \c typedef s can be seen. These are just there to prevent lengthy types.
+The assembler is fed with the basis using the gsExprAssembler::setIntegrationElements() function.
+When the basis is defined, a \ref gsExprEvaluator is constructed for later use.
+The geometry is connected to the \ref gsExprAssembler via the gsExprAssembler::getMap() function
+and we create an expression for the space via gsExprAssembler::getSpace().
+Functions for the right-hand side and the manufactured solution are constructed
+via gsExprAssembler::getCoef() and gsExprEvaluator::getVariable() functions, respectively.
+Note that the manufactured solution is defined in the \ref gsExprEvaluator
+because it will not be used in assembly of the system.
+The problem setup finishes by defining the solution object,
+which is constructed via gsExprAssembler::getSolution() which requires a space
+and a reference to a vector that will contain the solution coefficients later.
 
 \snippet biharmonic2_example.cpp Problem setup
 
+The next step is to actually solve the system at hand.
+In this particular example, this is done within a loop of uniform refinement
+(unless the \c last option is selected) in order to study convergence behaviour of the method.
+
+As seen in the snippet below, we first define the solver that we will use
+(based on the Eigen-library) and we define the vectors to store the errors.
+
+Then, within the loop, we first refine the basis uniformly.
+
+For the biharmonic problem, we fix the dofs in the function setMapperForBiharmonic(),
+which is defined in the beginning of the file (see the full file at the end).
+
+Then the gsExprAssembler<>::space::setupMapper() function is used.
+This function initialize the matrix and the rhs depending on the mapper.
+
+Then we compute the eliminated boundary values with the L2-projection where we call
+setDirichletNeumannValuesL2Projection(). Again this function is defined
+at the beginning of the file.
+
+Then the \ref gsExprAssembler is initialized using gsExprAssembler::initSystem()
+and using gsExprAssembler::assemble() the matrix expression (first argument)
+and the rhs expression (second argument) are assembled to a system.
+
+When the System is assembled,
+the system is factorized using gsSparseSolver::compute()
+and solved via gsSparseSolver::solve().
+The errors are then computed via the \ref gsExprEvaluator,
+where it should be noted that the solution object is appearing,
+which uses the solution vector and the space as defined earlier.
+
 \snippet biharmonic2_example.cpp Solver loop
+
+When the loop is runnig several times, we can compute the
+L2-error, H1-error and H2-error. The expected rates
+should be p+1 for the L2-error, p for the H1-error
+and p-1 for the H2-error.
 
 \snippet biharmonic2_example.cpp Error and convergence rates
 
+If we set the flag \c --plot then the export to ParaView is done in the snipped below.
+The output file is solution.pvd.
+
 \snippet biharmonic2_example.cpp Export visualization in ParaView
 
+Here is the full file \c examples/biharmonic2_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
 
+\include biharmonic2_example.cpp
 
 */
 
