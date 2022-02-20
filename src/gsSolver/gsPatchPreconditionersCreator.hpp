@@ -78,7 +78,7 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
         for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit) {
             index_t corner = basis.functionAtCorner(mit->first);
-            for (index_t row = 0; row < boundaryDofs.size(); row++) {
+            for (size_t row = 0; row < boundaryDofs.size(); row++) {
                 if (boundaryDofs[row] < corner)
                     offset[mit->first] += 1;
             }
@@ -114,32 +114,6 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
                     }
                 }
             }
-/*
-            switch ( mit->first ) //TODO: 3D case
-            {
-                case 1:
-                {
-                    r1 = 0, c1 = 0, r2 = 0, c2 = 0;
-                    break;
-                }
-                case 2:
-                {
-                    r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = 0, c2 = 0; // r1, c1 ... component 0
-                    break;
-                }
-                case 3:
-                {
-                    r1 = 0, c1 = 0, r2 = mass[0].rows()-1, c2 = mass[0].cols()-1;
-                    break;
-                }
-                case 4:
-                {
-                    r1 = stiffness[1].rows()-1, c1 = stiffness[1].cols()-1, r2 = stiffness[0].rows()-1, c2 = stiffness[0].cols()-1;
-                    break;
-                }
-            }
-*/
-
 
             //gsInfo << "Kronecker\n"<<(mass[0].kron(stiffness[1]) + stiffness[0].kron(mass[1]) + alpha * mass[0].kron(mass[1])).toDense()<<"\n";
             gsSparseMatrix<> emb(1, U.cols());
@@ -577,7 +551,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         bc,
         opt,
         true,
-        alpha
+        alpha,
+        gamma
         );
 }
 

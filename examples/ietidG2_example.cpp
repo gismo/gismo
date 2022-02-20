@@ -67,9 +67,9 @@ template<class T>
 class gsInexactIETIPrec : public gsPreconditionerOp<T> {
 private:
 #if defined(GISMO_WITH_PARDISO)
-    typedef typename gsSparseSolver<T>::PardisoLU LUfac;
+    typedef typename gsSparseSolver<T>::PardisoLLT Choleskyfac;
 #else
-    typedef typename gsSparseSolver<T>::LU LUfac;
+    typedef typename gsSparseSolver<T>::SimplicialLDLT Choleskyfac;
 #endif
 
 public:
@@ -118,15 +118,15 @@ public:
         }
         m_R2T.makeCompressed();
 
-        m_R1T *= 0.4;
-        m_R2T *= 1.5;
+        m_R1T *= 0.5;
+        m_R2T *= 1.;
 
         // do the interface part
         index_t r = 0, c = 0;
         std::vector<Eigen::Triplet<real_t> > tripletList;
         for (std::vector<gsIetidGMapper<>::ArtificialIface >::const_iterator it = m_patchIFace.begin(); it != m_patchIFace.end(); ++it)
         {
-            index_t deg = math::max(m_basis[it-m_patchIFace.begin()+1].maxDegree(), m_basis[0].maxDegree());
+            //index_t deg = math::max(m_basis[it-m_patchIFace.begin()+1].maxDegree(), m_basis[0].maxDegree());
             gsSparseMatrix <T> iMass = 0.5 * ( delta * (1./m_basis[it - m_patchIFace.begin()+1].getMinCellLength() + 1./m_basis[0].getMinCellLength()) ) * m_mass[it - m_patchIFace.begin()];
             for (index_t k = 0; k < iMass.cols(); ++k) {
                 for (index_t i = 0; i < iMass.rows(); ++i)
@@ -138,7 +138,7 @@ public:
         gsSparseMatrix <T> edgeMass(m_underlyingOperator.cols() - m_originalSize,
                                     m_underlyingOperator.cols() - m_originalSize);
         edgeMass.setFromTriplets(tripletList.begin(), tripletList.end());
-        m_edgeSolver = (new LUfac(edgeMass));
+        m_edgeSolver = (new Choleskyfac(edgeMass));
     }
 
     static BasePtr make(const gsSparseMatrix <T> &K,
@@ -280,9 +280,9 @@ private:
             result = result.block(1,1,result.rows()-2, result.cols()-2);
 
 #if defined(GISMO_WITH_PARDISO)
-            gsSparseSolver<>::PardisoLU solver;
+            gsSparseSolver<>::PardisoLLT solver;
 #else
-            gsSparseSolver<>::LU solver;
+            gsSparseSolver<>::SimplicialLDLT solver;
 #endif
             solver.compute(M);
             //gsInfo << "M: \n" << M.toDense() << "\n";;
@@ -358,9 +358,9 @@ protected:
 
     gsSparseMatrix <T> m_R1T, m_R2T;
 #if defined(GISMO_WITH_PARDISO)
-    typename gsSparseSolver<T>::PardisoLU* m_edgeSolver;
+    typename gsSparseSolver<T>::PardisoLLT* m_edgeSolver;
 #else
-    typename gsSparseSolver<T>::LU *m_edgeSolver;
+    typename gsSparseSolver<T>::SimplicialLDLT *m_edgeSolver;
 #endif
 
 }; // gsInexactIETIPrec
@@ -526,7 +526,7 @@ int main(int argc, char *argv[])
     /************** Define command line options *************/
 
     std::string geometry("domain2d/yeti_mp2.xml");
-    index_t splitPatches = 1;
+    index_t splitPatches = 2;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
@@ -584,12 +584,24 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     //! [Define Geometry2]
-    gsMultiPatch<>& mp = *mpPtr;
-
-    for (index_t i=0; i<splitPatches; ++i)
+    //gsMultiPatch<>& mp = *mpPtr;
+    gsMultiPatch<> mp = approximateQuarterAnnulus(2);
     {
-        gsInfo << "split patches uniformly... " << std::flush;
-        mp = mp.uniformSplit();
+
+        std::vector<gsGeometry<>*> ptch;
+        for(size_t np = 0; np< mp.nPatches(); ++np)
+        {
+            std::vector<gsGeometry<>* >  ptch_ =  mp.patch(np).uniformSplit(1);
+            ptch.insert(ptch.end(),ptch_.begin(),ptch_.end());
+        }
+        mp = gsMultiPatch<real_t>(ptch);
+
+        for (index_t i=0; i<splitPatches; ++i)
+        {
+            gsInfo << "split patches uniformly... " << std::flush;
+            mp = mp.uniformSplit();
+        }
+        mp.computeTopology();
     }
     //! [Define Geometry2]
 
@@ -603,11 +615,6 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "done.\n";
-
-    /************** Compute penalty parameter **************/
-    if(penalty < 0)
-        penalty *= degree * degree;
-
 
     /************** Define boundary conditions **************/
 
@@ -695,6 +702,10 @@ int main(int argc, char *argv[])
     //! [Set degree and refine]
 
     gsInfo << "done.\n";
+
+    /************** Compute penalty parameter **************/
+    if(penalty < 0)
+        penalty *= mb.maxCwiseDegree();
 
     /********* Setup assembler and assemble matrix **********/
 
@@ -803,7 +814,7 @@ int main(int argc, char *argv[])
         gsMultiPatch<> mp_local;
         gsMultiBasis<> mb_local;
         ietiMapper.localSpaces(mp,k,mp_local,mb_local);
-
+/*
         // only required for the yeti footprint
         if(k == 4 || k == 12 || k == 36 || k == 60)
         {
@@ -819,7 +830,7 @@ int main(int argc, char *argv[])
         {
             bc_local.addCornerValue(4, 0, 0);
         }
-
+*/
         gsGenericAssembler<> assembler(
             mp_local,
             mb_local,
@@ -918,7 +929,7 @@ int main(int argc, char *argv[])
 
         real_t reg;
         if(bc_local.dirichletSides().size() == 0)
-            reg = (real_t)0.01;
+            reg = (real_t)1;
         else
             reg = (real_t)0;
 
