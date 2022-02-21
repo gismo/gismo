@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
 
-    index_t numRefine  = 3;
+    index_t numRefine  = 5;
     index_t degree = 3;
     index_t smoothness = 2;
     bool last = false;
@@ -129,20 +129,14 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    gsMultiPatch<> mp;
-    gsBoundaryConditions<> bc;
-    gsFunctionExpr<> f;
-    gsOptionList optionList;
-
     //! [Read geometry]
-    std::string string_geo;
+    gsMultiPatch<> mp;
     if (fn.empty())
         mp = gsMultiPatch<>( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
     else
     {
-        string_geo = fn;
-        gsInfo << "Filedata: " << string_geo << "\n";
-        gsReadFile<>(string_geo, mp);
+        gsInfo << "Filedata: " << fn << "\n";
+        gsReadFile<>(fn, mp);
     }
     mp.clearTopology();
     mp.computeTopology();
@@ -150,12 +144,11 @@ int main(int argc, char *argv[])
     if (mp.nPatches() != 1)
     {
         gsInfo << "The geometry has more than one patch. Run the code with a single Patch!\n";
-        return 0;
+        return EXIT_FAILURE;
     }
     //! [Read geometry]
 
-    gsFunctionExpr<>source("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-    f.swap(source);
+    gsFunctionExpr<>f("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
     gsInfo << "Source function " << f << "\n";
 
     gsFunctionExpr<> ms("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
@@ -178,6 +171,7 @@ int main(int argc, char *argv[])
     //! [Refinement]
 
     //! [Boundary condition]
+    gsBoundaryConditions<> bc;
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
     {
         // Laplace
@@ -237,6 +231,7 @@ int main(int argc, char *argv[])
     gsStopwatch timer;
     for (index_t r=0; r<=numRefine; ++r)
     {
+        // Refine uniform once
         basis.uniformRefine(1,degree -smoothness);
         meshsize[r] = basis.basis(0).getMaxCellLength();
 
