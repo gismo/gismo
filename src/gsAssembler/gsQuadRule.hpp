@@ -26,7 +26,7 @@ gsQuadRule<T>::mapTo( T startVal, T endVal,
 {
     GISMO_ASSERT( 1 == m_nodes.rows(), "Inconsistent quadrature mapping");
 
-    const T h = (endVal-startVal) / T(2);
+    const T h = (endVal-startVal) / (T)(2);
 
     // Linear map from [-1,1]^d to [startVal,endVal]
     nodes = (h * (m_nodes.array()+1)) + startVal;
@@ -43,7 +43,7 @@ gsQuadRule<T>::mapTo( const gsMatrix<T>& ab,
     GISMO_ASSERT( ab.rows() == m_nodes.rows(), "Inconsistent quadrature mapping");
     nodes.resize( m_nodes.rows(), m_nodes.cols() );
     nodes.setZero();
-    const gsVector<T> h = (ab.col(1)-ab.col(0)) / T(2) ;
+    const gsVector<T> h = (ab.col(1)-ab.col(0)) / (T)(2) ;
     nodes.noalias() = ( h.asDiagonal() * (m_nodes.array()+1).matrix() ).colwise() + ab.col(0);
 }
 
@@ -65,7 +65,7 @@ gsQuadRule<T>::mapToAll( const std::vector<T> & breaks,
     {
         const T startVal = breaks[i ];
         const T endVal   = breaks[i+1];
-        const T h = (endVal-startVal) / T(2);
+        const T h = (endVal-startVal) / (T)(2);
 
         // Linear map from [-1,1]^d to [startVal,endVal]
         nodes.middleCols(i*nnodes,nnodes) = (h * (m_nodes.array()+1)) + startVal;

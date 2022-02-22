@@ -143,7 +143,7 @@ void gsPeriodicStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &n
         lambdas = neighbourhood.getLambdas(i);
         for (size_t j = 0; j < N; j++)
         {
-            LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
+            LHS(i, j) = ( i==j ? (T)(1) : -lambdas[j] );
 
             // If your neighbour is across the stitch, its contributions appear
             // on the right hand-side multiplied by +1 or -1. Write the equations
@@ -158,7 +158,7 @@ void gsPeriodicStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &n
     // points on the lower and upper boundary
     for (size_t i=n; i<N; i++)
     {
-        LHS(i, i) = T(1);
+        LHS(i, i) = (T)(1);
         RHS.row(i) = this->m_parameterPoints[i];
     }
 
@@ -195,7 +195,7 @@ gsMesh<T> gsPeriodicStitch<T>::createUnfoldedFlatMesh() const
             const Point2D& point = gsParametrization<T>::getParameterPoint(vertices[j-1]);
             // The near-stitch triangles get their stitch vertices shifted by 1 to the left.
             if( nearStitchTriangle && isOnStitch(vertices[j-1]) )
-                v[j - 1] = result.addVertex(point[0] + 1, point[1]);
+                v[j - 1] = result.addVertex(point[0] + (T)(1), point[1]);
             else
                 v[j - 1] = result.addVertex(point[0],     point[1]);
         }

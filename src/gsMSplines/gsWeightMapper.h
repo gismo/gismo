@@ -395,14 +395,14 @@ public:
         flags = flags & ~getOptimizationFlags();
         if(flags & optSourceToTarget)
         {
-            m_matrix.prune(1,10*std::numeric_limits<weightType>::epsilon());
+            m_matrix.prune(1,T(10)*std::numeric_limits<weightType>::epsilon());
             m_matrix.makeCompressed();
         }
         if(flags & optTargetToSource)
         {
             this->m_optimizationMatrix=new GToLMatrix();
             *m_optimizationMatrix=m_matrix;
-            m_optimizationMatrix->prune(1,10*std::numeric_limits<weightType>::epsilon());
+            m_optimizationMatrix->prune(1,T(10)*std::numeric_limits<weightType>::epsilon());
             m_optimizationMatrix->makeCompressed();
         }
     }

@@ -298,7 +298,7 @@ public:
             T nz = 1;
             const short_t dim = m_exprdata->multiBasis().domainDim();
             for (short_t i = 0; i != dim; ++i)
-                nz *= bdA * m_exprdata->multiBasis().maxDegree(i) + bdB;
+                nz *= bdA * static_cast<T>(m_exprdata->multiBasis().maxDegree(i)) + static_cast<T>(bdB);
 
             m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );
         }
@@ -503,7 +503,7 @@ private:
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp atomic
+#                                       pragma omp critical (acc_m_rhs)
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }

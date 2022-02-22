@@ -95,7 +95,7 @@ public:
         resize(n, n);
 
         for (index_t i = 0; i < n; ++i)
-          m_rows[i]->insert(i) = T(1.0);
+          m_rows[i]->insert(i) = (T)(1.0);
       }
 
     void resize(index_t rows, index_t cols)

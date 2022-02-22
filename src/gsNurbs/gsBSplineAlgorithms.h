@@ -50,13 +50,13 @@ namespace bspline
     {
         Eigen::MatrixBase<Derived>& res = const_cast<Eigen::MatrixBase<Derived>&>(result);
         
-        res(0,0)= T(1.0);  // 0-th degree function value
+        res(0,0)= (T)(1.0);  // 0-th degree function value
         
         for(int j=1; j<= deg; j++) // For all degrees ( ndu column)
         {
             left[j]  = u - *(knot+1-j);
             right[j] = *(knot+j) - u;
-            T saved = T(0) ;
+            T saved = (T)(0) ;
             for(int r=0; r<j ; r++) // For all (except the last)  basis functions of degree j ( ndu row)
             {
                 const T temp = res(r,0) / ( right[r+1] + left[j-r] );
@@ -284,7 +284,7 @@ void degreeElevateBSpline(Basis_t &basis,
     gsVector<T> factor = gsVector<T>::Ones(p+1);
     for(short_t j=0; j<=p; j++)
         for(short_t l=1; l<=j; l++)
-            factor[j] *= static_cast<T>((p+1-l)) / (p_new+1-l);
+            factor[j] *= static_cast<T>(p+1-l) / static_cast<T>(p_new+1-l);
 
     //set known coefficients
     // for(int j=0; j<=p; ++j)

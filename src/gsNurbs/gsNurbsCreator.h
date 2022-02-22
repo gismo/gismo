@@ -159,7 +159,7 @@ public:
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
     /// The unit square represented as a tensor B-spline of degree \a deg
-    static TensorBSpline2Ptr BSplineSquareDeg(short_t deg, T scale = 1.0);
+    static TensorBSpline2Ptr BSplineSquareDeg(short_t deg, T scale = (T)(1));
 
     /// Square of side \a r, with lower left corner at (x,y)
     static TensorBSpline2Ptr BSplineSquare( T const & r = 1, T const & x = 0, T const & y = 0  );
@@ -184,7 +184,7 @@ public:
                                            T const & y = 0, T const & z = 0 );
 
     /// Exact annulus using NURBS
-    static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 =1, T const & r1 =2);
+    static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 = 1, T const & r1 = 2);
     static TensorNurbs3Ptr BSplineSaddle();
     /// Inexact annulus using B-splines
     static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
@@ -195,33 +195,33 @@ public:
     /// Fat annulus using B-splines, discarding the weights of the exact NURBS
     ///  Analytical formulation (when r0 = 1 and r1 = 2):
     /// (x, y) = (1 + s - s*t*t - t*t, 2*s*t -s*t*t + 2*t - t*t)
-    static TensorBSpline2Ptr BSplineFatQuarterAnnulus( T const & r0 =1, T const & r1 =2);
+    static TensorBSpline2Ptr BSplineFatQuarterAnnulus( T const & r0 = 1, T const & r1 = 2);
 
     /// Sphere using NURBS
-    static TensorNurbs2Ptr NurbsSphere( T const & r =1, T const & x = 0, T const & y = 0, T const & z = 0);
+    static TensorNurbs2Ptr NurbsSphere( T const & r = 1, T const & x = 0, T const & y = 0, T const & z = 0);
     /// Circle using NURBS
-    static NurbsPtr  NurbsCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
+    static NurbsPtr  NurbsCircle( T const & r = (T)(1), T const & x = 0, T const & y = 0);
     /// Inexact circle using B-splines
-    static BSplinePtr BSplineFatCircle( T const & r =T(1), T const & x = 0, T const & y = 0);
+    static BSplinePtr BSplineFatCircle( T const & r = (T)(1), T const & x = 0, T const & y = 0);
     /// Inexact disk using B-splines
-    static TensorBSpline2Ptr BSplineFatDisk (T const & r=1, T const & x=0, T const & y = 0);
+    static TensorBSpline2Ptr BSplineFatDisk (T const & r = 1, T const & x = 0, T const & y = 0);
 
-    static NurbsPtr NurbsCurve1 (T const & r=1, T const & x=0, T const & y = 0);
+    static NurbsPtr NurbsCurve1 (T const & r = 1, T const & x = 0, T const & y = 0);
 
-    static NurbsPtr NurbsCurve2 (T const & r=1, T const & x=0, T const & y = 0);
+    static NurbsPtr NurbsCurve2 (T const & r = 1, T const & x = 0, T const & y = 0);
 
-    static NurbsPtr NurbsBean(T const & r=1, T const & x=0, T const & y = 0);
+    static NurbsPtr NurbsBean(T const & r = 1, T const & x = 0, T const & y = 0);
 
-    static BSplinePtr BSplineE (T const & r=1, T const & x=0, T const & y = 0);
+    static BSplinePtr BSplineE (T const & r = 1, T const & x = 0, T const & y = 0);
 
-    static NurbsPtr NurbsAmoebaFull(T const & r=1, T const & x=0, T const & y = 0);
+    static NurbsPtr NurbsAmoebaFull(T const & r = 1, T const & x = 0, T const & y = 0);
 
     static BSplinePtr BSplineLineSegment(gsMatrix<T> const & p0, gsMatrix<T> const & p1 );
 
     static BSplinePtr BSplineSegment(T const u0 = 0, T const u1 = 1);
 
     /// L-Shaped domain represented as a tensor B-spline of degree 1
-    static TensorBSpline2Ptr BSplineLShape_p1(T r = 1.0);
+    static TensorBSpline2Ptr BSplineLShape_p1(T r = (T)(1));
 
     /// L-Shaped domain represented as a tensor B-spline of degree 2
     /// with C0-continuity across the diagonal.
