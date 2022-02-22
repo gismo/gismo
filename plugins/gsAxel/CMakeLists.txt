@@ -86,8 +86,8 @@ set(${PROJECT_NAME}_HEADERS_MOC # All except from PluginExport.h
   gsGeometryCreator.h # Dialog
   gsGeometryConverter.h # not used
   gsReaderXml.h
+  gsReaderAxl.h
   gsWriter.h
-  gsNativeAxelReader.h
 )
 
 set(${PROJECT_NAME}_HEADERS 
@@ -108,8 +108,8 @@ set(${PROJECT_NAME}_SOURCES
   gsGeometryCreator.cpp
   gsGeometryConverter.cpp
   gsReaderXml.cpp
+  gsReaderAxl.cpp
   gsWriter.cpp
-  gsNativeAxelReader.cpp
   QDialogEditCP.cpp
 )
 

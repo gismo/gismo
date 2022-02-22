@@ -177,7 +177,7 @@ public:
         typedef typename std::vector<typename gsFunction<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionFromXml(*fit, data, count);
+            gsXmlNode * ff = putFunctionToXml(*fit, data, count);
             BCs->append_node(ff);
             ++count;
         }
@@ -259,7 +259,7 @@ public:
     }
 
 private:
-    static gsXmlNode * putFunctionFromXml(
+    static gsXmlNode * putFunctionToXml(
             const typename gsFunction<T>::Ptr & obj, gsXmlTree & data,
             int index)
     {
@@ -268,8 +268,7 @@ private:
         {
             gsFunctionExpr<T> * ptr2 =
                     dynamic_cast<gsFunctionExpr<T> *>(obj.get());
-            gsFunctionExpr<T> expr = *ptr2;
-            result = putFunctionExprFromXml(expr, result, data);
+            result = putFunctionExprToXml(*ptr2, result, data);
         }
         gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
                 data);
@@ -277,7 +276,7 @@ private:
         return result;
     }
 
-    static gsXmlNode * putFunctionExprFromXml(const gsFunctionExpr<T> & obj,
+    static gsXmlNode * putFunctionExprToXml(const gsFunctionExpr<T> & obj,
             gsXmlNode * result, gsXmlTree & data)
     {
         std::string typeStr = gsXml<gsFunctionExpr<T> >::type();
@@ -287,20 +286,20 @@ private:
                 data);
         result->append_attribute(dim);
         // set value
-        std::ostringstream stream;
-        bool first = true;
-        for (short_t i = 0; i < obj.targetDim(); ++i)
+        const short_t tdim = obj.targetDim();
+        if ( tdim == 1)
         {
-            if (!first)
-            {
-                stream << ", ";
-            }
-            stream << obj.expression(i);
-            first = false;
+            result->value( makeValue(obj.expression(), data) );
         }
-        //val = stream.str();
-        char * value = data.allocate_string(stream.str().c_str());
-        result->value(value);
+        else
+        {
+            gsXmlNode * cnode;
+            for (short_t c = 0; c!=tdim; ++c)
+            {
+                cnode = makeNode("c", obj.expression(c), data);
+                result->append_node(cnode);
+            }
+        }
         return result;
     }
 
