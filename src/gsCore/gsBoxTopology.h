@@ -281,7 +281,7 @@ public:
     /// all the vectors are put in the vector \a cornerLists. It will only find vertices on
     /// the inside.
     /// CAREFUL: works only for 2D
-    void getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const;
+    void getEVs(std::vector<std::vector<patchCorner> > & cornerLists, bool boundaries = false) const;
 
     /// gives back all the ordinary vertices (4 faces) of the topology
     /// each OV is represented by a vector of patchCorners, which represent the same vertex

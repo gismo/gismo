@@ -16,6 +16,7 @@
 #include <gsUnstructuredSplines/gsMPBESBasis.h>
 #include <gsUnstructuredSplines/gsMPBESSpline.h>
 #include <gsUnstructuredSplines/gsDPatch.h>
+#include <gsUnstructuredSplines/gsAlmostC1.h>
 #include <gsUnstructuredSplines/gsApproxC1Spline.h>
 #include <gsUnstructuredSplines/gsC1SurfSpline.h>
 
@@ -224,7 +225,7 @@ int main(int argc, char *argv[])
             mp.clearTopology();
             mp.computeTopology();
 
-            mp.degreeElevate(numElevate);
+            // mp.degreeElevate(numElevate);
 
             for (index_t d = 0; d!=3; d++)
             {
@@ -244,7 +245,7 @@ int main(int argc, char *argv[])
             // mp.embed(3);
             mp.clearTopology();
             mp.computeTopology();
-            mp.degreeElevate(numElevate);
+            // mp.degreeElevate(numElevate);
 
             for (index_t d = 0; d!=3; d++)
             {
@@ -416,6 +417,8 @@ int main(int argc, char *argv[])
 
     }
 
+    bc.setGeoMap(mp);
+
     mp.embed(3);
 
     gsMultiPatch<> geom = mp;
@@ -536,6 +539,16 @@ int main(int argc, char *argv[])
             global2local = global2local.transpose();
             smoothC1.getMultiBasis(dbasis);
         }
+        else if (smoothing==4) // Andrea
+        {
+            gsAlmostC1<2,real_t> almostC1(mp);
+            almostC1.matrix_into(global2local);
+            writeToCSVfile("matrix.csv",global2local.toDense());
+            global2local = global2local.transpose();
+            geom = almostC1.exportToPatches();
+            dbasis = almostC1.localBasis();
+
+        }
         else
             GISMO_ERROR("Option "<<smoothing<<" for smoothing does not exist");
 
@@ -642,7 +655,7 @@ int main(int argc, char *argv[])
         // 4. Plot the mapped spline on the original geometry
         gsField<> solField(geom, mspline,true);
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( solField, "Deformation", 1000, false);
+        gsWriteParaview<>( solField, "Deformation", 1000, true);
 
         // 5. Plot the mapped spline on the deformed geometry
         gsField<> defField(mp, def,true);
