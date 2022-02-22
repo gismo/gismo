@@ -23,6 +23,15 @@ namespace gismo
 
 #ifdef GISMO_BUILD_PYBIND11
 
+gsMatrix<real_t> getMatrix(std::string & filename)
+{
+    gsFileData<> file;
+    file.read(filename);
+    gsMatrix<real_t> result;
+    file.getAnyFirst(result);
+    return result;
+}
+
 namespace py = pybind11;
   void pybind11_init_gsFileData(py::module &m) {
 
@@ -67,6 +76,10 @@ namespace py = pybind11;
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
       
       .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Add gsMultiPatch to the filedata.")
+
+      // Work around to obtain the matrix from Filedata. Standard way is not working!
+      .def("getMatrix", &getMatrix, "Get any first gsMatrix.")
+
 
       .def("bufferSize", &Class::bufferSize)
       .def("print", &Class::print)
