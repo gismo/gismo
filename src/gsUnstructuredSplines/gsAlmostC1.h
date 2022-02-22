@@ -375,7 +375,7 @@ class gsAlmostC1  //: public gsMappedGeom<d,T>
          *
          * Given a basis with THB refinement around the EVs, this function computes the D-Patch smoothing
          */
-        void _computeDPatch();
+        void _computeEVs();
 
         /**
          * @brief      Makes the Pi matrix

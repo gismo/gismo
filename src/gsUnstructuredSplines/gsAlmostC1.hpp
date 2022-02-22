@@ -1347,10 +1347,6 @@ namespace gismo
             // Furthermore, if the corner is one of the three DoFs that is preserved, we mark the 0,0 DoF as handled (should be a zero-row)
             tmpBasis = &m_bases.basis(pcorner.patch);
             index = tmpBasis->functionAtCorner(pcorner.corner());
-            gsDebugVar(index);
-            gsDebugVar(pcorner.patch);
-            gsDebugVar(m_mapModified.index(index,pcorner.patch));
-            gsDebugVar(m_mapModified.is_free(index,pcorner.patch));
             if (m_mapModified.is_free(index,pcorner.patch))
             {
                 rowIdx = m_mapModified.index(index,pcorner.patch);
