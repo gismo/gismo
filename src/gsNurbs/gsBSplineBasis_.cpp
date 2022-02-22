@@ -38,6 +38,7 @@ void pybind11_init_gsBSplineBasis(py::module &m)
     // Inherited from gsBasis
     .def("eval", &Class::eval, "Evaluates points into a matrix")
     // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("numElements", static_cast<size_t (Class::*)() const> (&Class::numElements), "Returns the number of Elements")
     ;
 }
 

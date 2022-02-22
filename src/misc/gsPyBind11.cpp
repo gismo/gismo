@@ -22,6 +22,7 @@
 #endif
 
 #ifdef GISMO_BUILD_PYBIND11
+#include <gsIO/gsXmlCollection.h>
 
 namespace py = pybind11;
 
@@ -54,6 +55,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsFunction( core );
   gismo::pybind11_init_gsFunctionSet( core );
   gismo::pybind11_init_gsFunctionExpr( core );
+  gismo::pybind11_init_gsBoxTopology( core );
   gismo::pybind11_init_gsGeometry( core );
   gismo::pybind11_init_gsMultiPatch( core );
   gismo::pybind11_init_gsMultiBasis( core );
@@ -85,6 +87,7 @@ PYBIND11_MODULE(pygismo, m) {
 
   gismo::pybind11_init_gsCmdLine( io );
   gismo::pybind11_init_gsFileData( io );
+  gismo::pybind11_init_gsXmlCollection( io );
   gismo::pybind11_init_gsOptionList (io );  
 
   py::module matrix = m.def_submodule("matrix");

@@ -21,6 +21,7 @@ void pybind11_init_gsFunction(py::module &m)
   
   //Member functions
   .def("deriv_into", &Class::deriv_into, "Returns the first derivatives")
+  .def("jacobian", &Class::jacobian, "Returns the jacobian")
   ;
 }
 #endif

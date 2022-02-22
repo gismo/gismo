@@ -14,9 +14,10 @@ namespace gismo
 
   void pybind11_init_gsMultiPatch(py::module &m)
   {
-    using Base = gsFunctionSet<real_t>;
+    using BaseA = gsFunctionSet<real_t>;
+    using BaseB = gsBoxTopology;
     using Class = gsMultiPatch<real_t>;
-    py::class_<Class,Base>(m, "gsMultiPatch")
+    py::class_<Class, BaseA, BaseB>(m, "gsMultiPatch")
 
       // Constructors
       .def(py::init<>())
@@ -33,6 +34,9 @@ namespace gismo
       .def("degreeElevate", &Class::degreeElevate, "Elevates the degree", py::arg("elevationSteps")=1)
       .def("uniformRefine", &Class::uniformRefine, "Refines uniformly"  , py::arg("numKnots")=1 , py::arg("mul")=1)
 
+      .def("basis", static_cast<gsBasis<real_t> & (Class::*)(const size_t) const> ( &Class::basis), "Access the i-th basis of the multipatch",py::return_value_policy::reference)
+
+      .def("computeTopology", static_cast<bool (Class::*)(real_t, bool)> ( &Class::computeTopology), "Compute Topology")
       ;
   }
 

@@ -240,6 +240,8 @@ public:
     // Accessors
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
+    
+    index_t patchIndex() {return patch;}
 
     /**
      * @brief returns the vector of the corners contained in the side

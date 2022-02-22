@@ -20,6 +20,10 @@ void pybind11_init_gsBasis(py::module &m)
 
   // Member functions
   .def("eval", &Class::eval, "Evaluates points into a matrix")
+  .def("numElements", static_cast<size_t (Class::*)(boxSide const & ) const> ( &Class::numElements), "Number of elements")
+  .def("numElements", static_cast<size_t (Class::*)() const> ( &Class::numElements), "Number of elements")
+  .def("component", static_cast<gsBasis<real_t> & (Class::*)(short_t ) > ( &Class::component), "Number of elements",py::return_value_policy::reference)
+
   ;
 }
 
