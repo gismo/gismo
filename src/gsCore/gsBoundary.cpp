@@ -292,9 +292,13 @@ void boundaryInterface::reorderCorners(gsMatrix<index_t> & boundary) const
 
         py::class_<patchSide, boxSide>(m, "patchSide")
             .def(py::init<index_t, boxSide>())
-            .def("patchIndex", &patchSide::patchIndex, "Return the patch index.")
+            .def("patch", &patchSide::patchIndex, "Return the box side.")
             .def("side", static_cast<boxSide& (patchSide::*)()> (&patchSide::side), "Return the box side.");
 
+        py::class_<boundaryInterface>(m, "boundaryInterface")
+            .def(py::init<patchSide, patchSide, short_t>())
+            .def("first", static_cast<patchSide& (boundaryInterface::*)()> (&boundaryInterface::first), "Return the first box side.")
+            .def("second", static_cast<patchSide& (boundaryInterface::*)()> (&boundaryInterface::second), "Return the second box side.");
     }
 #endif
 
