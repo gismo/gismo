@@ -243,8 +243,6 @@ public:
     
     index_t patchIndex() {return patch;}
 
-    index_t patchIndex() {return patch;}
-
     /**
      * @brief returns the vector of the corners contained in the side
      * @param dim is the ambient dimension
