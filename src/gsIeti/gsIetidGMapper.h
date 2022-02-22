@@ -493,6 +493,7 @@ void gsIetidGMapper<T>::removeIsolatedPrimalConstraints(index_t primals_old, ind
                 Base::m_primalDofIndices[k][l] = newIndex;
             }
         }
+    // TODO: Does this algo break m_primalConstrIndices??
     GISMO_ASSERT( Base::m_nPrimalDofs == Base::m_primalConstrIndices.size(), "");
 }
 

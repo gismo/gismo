@@ -110,6 +110,37 @@ public:
     /// index and the vector representing the primal constraint.
     void customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data );
 
+    // Transfer primal constraint to neightbor => do we want that!?
+
+    void removeConstraint( index_t index ) //TODO: should we have this?
+    {
+        GISMO_ENSURE (index == m_nPrimalDofs, "");
+
+        const index_t sz = m_primalConstrIndices[index].size();
+        for (index_t i=0; i<sz; ++i)
+        {
+            const index_t patch = m_primalConstrIndices[index][i].first;
+            const index_t constrIdx = m_primalConstrIndices[index][i].second;
+            m_primalConstraints[patch].erase(m_primalConstraints[patch].begin()+constrIdx);
+            m_primalDofIndices[patch].erase(m_primalDofIndices[patch].begin()+constrIdx);
+
+            // Now, we have to fix m_primalConstrIndices
+            const index_t nrConstrIdx = m_primalConstraints[patch].size();
+            for (index_t j=constrIdx; j<nrConstrIdx; ++j)
+            {
+                const index_t primalDof = m_primalDofIndices[patch][j];
+                const index_t sz = m_primalConstrIndices[primalDof].size();
+                for (index_t l=0; l<sz; ++l)
+                {
+                    if (m_primalConstrIndices[primalDof][l].first==patch && m_primalConstrIndices[primalDof][l].second==j+1)
+                        m_primalConstrIndices[primalDof][l].second--;
+                }
+            }
+        }
+        m_primalConstrIndices.erase(m_primalConstrIndices.begin()+m_nPrimalDofs-1);
+        --m_nPrimalDofs;
+    }
+
     /// @brief This function computes the jump matrices
     ///
     /// @param fullyRedundant  Compute the jump matrices in a fullyRedundant way;
