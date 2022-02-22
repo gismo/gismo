@@ -240,8 +240,6 @@ public:
     // Accessors
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
-    
-    index_t patchIndex() {return patch;}
 
     index_t patchIndex() {return patch;}
 
