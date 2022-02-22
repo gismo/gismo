@@ -24,11 +24,11 @@
 #include <rapidxml/rapidxml.hpp>       // External file
 #include <rapidxml/rapidxml_print.hpp> // External file
 
-#ifdef GISMO_WITH_ONURBS               // Extension files
+#ifdef gsOpennurbs_ENABLED
 #include <gsOpennurbs/gsReadOpenNurbs.h>
 #endif
 
-#ifdef GISMO_WITH_OCC                  // Extension files
+#ifdef gsOpenCascade_ENABLED
 #include <gsOpenCascade/gsReadBrep.h>
 #endif
 
@@ -180,11 +180,11 @@ bool gsFileData<T>::read(String const & fn)
         return readAxelFile(m_lastPath);
     else if (ext== "off")
         return readOffFile(m_lastPath);
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     else if (ext== "3dm")
         return read3dmFile(m_lastPath);
 #endif
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     else if (ext== "brep")
         return readBrepFile(m_lastPath);
     //else if (ext== "iges")
@@ -1587,7 +1587,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
 template<class T>
 bool gsFileData<T>::readBrepFile( String const & fn )
 {
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     return extensions::gsReadBrep( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);
@@ -2420,7 +2420,7 @@ bool gsFileData<T>::readX3dFile( String const & fn )
 template<class T>
 bool gsFileData<T>::read3dmFile( String const & fn )
 {
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     return extensions::gsReadOpenNurbs( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);
