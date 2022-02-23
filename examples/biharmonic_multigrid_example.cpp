@@ -77,6 +77,66 @@ void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> &
 }
 
 
+template <typename BasisType>
+void buildByCoarsening(
+    BasisType mBasis,
+    const gsBoundaryConditions<real_t>& boundaryConditions,
+    const gsOptionList& options,
+    index_t levels,
+    index_t degreesOfFreedom,
+    index_t unk,
+    std::vector<gsSparseMatrix<real_t, RowMajor>> & transferMatrices
+    )
+{
+    index_t lastSize = mBasis.totalSize();
+
+    for (index_t i = 0; i < levels-1 && lastSize > degreesOfFreedom; ++i)
+    {
+        gsSparseMatrix<real_t, RowMajor> transferMatrix;
+        mBasis.uniformCoarsen_withTransfer(
+            transferMatrix,
+            boundaryConditions,
+            options,
+            1,
+            unk
+        );
+
+        index_t newSize = mBasis.totalSize();
+        // If the number of dofs could not be decreased, then cancel. However, if only the number
+        // of levels was specified, then this should be ignored (the caller might need to have a
+        // fixed number of levels).
+        if (lastSize <= newSize && degreesOfFreedom > 0)
+             break;
+        lastSize = newSize;
+
+        transferMatrices.push_back(give(transferMatrix));
+    }
+
+    std::reverse( transferMatrices.begin(), transferMatrices.end() );
+
+}
+
+
+template <typename BasisType>
+void buildByCoarsening(
+    BasisType mBasis,
+    const gsBoundaryConditions<real_t>& boundaryConditions,
+    const gsOptionList& options,
+        std::vector<gsSparseMatrix<real_t, RowMajor>> & transferMatrices
+)
+{
+    return buildByCoarsening(
+        give(mBasis),
+        boundaryConditions,
+        options,
+        options.askInt( "Levels", 3 ),
+        options.askInt( "DegreesOfFreedom", 0 ),
+        0,
+        transferMatrices
+    );
+}
+
+
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
@@ -85,22 +145,46 @@ int main(int argc, char *argv[])
     index_t numRefine  = 5;
     index_t degree = 3;
     index_t smoothness = 2;
-    bool last = false;
+    bool last = true;
     bool second = false;
-
     std::string fn;
+
+    index_t levels = -1;
+    index_t cycles = 1;
+    index_t presmooth = 1;
+    index_t postsmooth = 1;
+    std::string smoother("GaussSeidel");
+    real_t damping = -1;
+
+    std::string iterativeSolver("cg");
+    real_t tolerance = 1.e-8;
+    index_t maxIterations = 100;
+
 
     gsCmdLine cmd("Example for solving the biharmonic problem (single patch only).");
     cmd.addInt("p", "degree","Set discrete polynomial degree", degree);
-    cmd.addInt("s", "smoothness", "Set discrete regularity",  smoothness);
-    cmd.addInt("l", "refinementLoop", "Number of refinement steps",  numRefine);
+    cmd.addInt("", "smoothness", "Set discrete regularity",  smoothness);
+    cmd.addInt("r", "refinementLoop", "Number of refinement steps",  numRefine);
     cmd.addString("f", "file", "Input geometry file (with .xml)", fn);
-
-    cmd.addSwitch("last", "Solve problem only on the last level of h-refinement", last);
+    //cmd.addSwitch("last", "Solve problem only on the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
 
     cmd.addSwitch("second", "Compute second biharmonic problem with u = g1 and Delta u = g2 "
                             "(default first biharmonic problem: u = g1 and partial_n u = g2)", second);
+
+    cmd.addInt   ("l", "MG.Levels",             "Number of levels to use for multigrid iteration", levels);
+    cmd.addInt   ("c", "MG.NumCycles",          "Number of multi-grid cycles", cycles);
+    cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre-smoothing steps", presmooth);
+    cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post-smoothing steps", postsmooth);
+    cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
+    cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
+
+    cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for "
+                                                "conjugate gradient (cg)", iterativeSolver);
+    cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
+    cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
+
+
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
@@ -206,63 +290,152 @@ int main(int argc, char *argv[])
              "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     gsStopwatch timer;
-    for (index_t r=0; r<=numRefine; ++r)
+
+    // Refine uniform once
+    basis.uniformRefine(1,degree -smoothness);
+
+    const index_t r=0;
+
+    meshsize[r] = basis.basis(0).getMaxCellLength();
+
+    global2local.resize(basis.size(), basis.size());
+    global2local.setIdentity();
+    mappedBasis.init(basis,global2local);
+
+    // Setup the Mapper
+    gsDofMapper map;
+    setMapperForBiharmonic(bc, mappedBasis, map);
+
+    // Setup the system
+    u.setupMapper(map);
+    setDirichletNeumannValuesL2Projection(mp, basis, mappedBasis, bc, u);
+
+    // Initialize the system
+    A.initSystem();
+    setup_time += timer.stop();
+
+    gsInfo<< A.numDofs() <<std::flush;
+
+    timer.restart();
+    // Compute the system matrix and right-hand side
+    A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G),u * ff * meas(G));
+
+    // Enforce Laplace conditions to right-hand side
+    auto g_L = A.getBdrFunction(G); // Set the laplace bdy value
+    //auto g_L = A.getCoeff(laplace, G);
+    A.assembleBdr(bc.get("Laplace"), (igrad(u, G) * nv(G)) * g_L.tr() );
+
+    dofs[r] = A.numDofs();
+    ma_time += timer.stop();
+    gsInfo << "." << std::flush;// Assemblying done
+
+    timer.restart();
+
+    /**************** Setup solver and solve ****************/
+
+    gsInfo << "Setup solver and solve... " << std::flush;
+
+    std::vector< gsSparseMatrix<real_t,RowMajor> > transferMatrices;
+
+    // Setup grid hiearachy by coarsening of the given matrix
+    // We move the constructed hiearchy of multi bases into a variable (only required for the subspace smoother)
+    // Then we move the transfer matrices into a variable
+    //! [Setup grid hierarchy]
+    buildByCoarsening(mappedBasis, bc, cmd.getGroup("MG"), transferMatrices);
+    //! [Setup grid hierarchy]
+
+    // Setup the multigrid solver
+    //! [Setup multigrid]
+    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( A.matrix(), transferMatrices );
+    mg->setOptions( cmd.getGroup("MG") );
+    //! [Setup multigrid]
+
+    // Since we are solving a symmetric positive definite problem, we can use a Cholesky solver
+    // (instead of the LU solver that would be created by default).
+    //
+    // mg->matrix(0) gives the matrix for the coarsest grid level (=level 0).
+    //! [Define coarse solver]
+    //mg->setCoarseSolver( makeSparseCholeskySolver( mg->matrix(0) ) );
+    //! [Define coarse solver]
+
+    // Set up of the smoothers
+    // This has to be done for each grid level separately
+    //! [Define smoothers
+    for (index_t i = 1; i < mg->numLevels(); ++i)
     {
-        // Refine uniform once
-        basis.uniformRefine(1,degree -smoothness);
-        meshsize[r] = basis.basis(0).getMaxCellLength();
+        gsPreconditionerOp<>::Ptr smootherOp;
+        if ( smoother == "Richardson" || smoother == "r" )
+            smootherOp = makeRichardsonOp(mg->matrix(i));
+        else if ( smoother == "Jacobi" || smoother == "j" )
+            smootherOp = makeJacobiOp(mg->matrix(i));
+        else if ( smoother == "GaussSeidel" || smoother == "gs" )
+            smootherOp = makeGaussSeidelOp(mg->matrix(i));
+        else if ( smoother == "IncompleteLU" || smoother == "ilu" )
+            smootherOp = makeIncompleteLUOp(mg->matrix(i));
+        else
+        {
+            gsInfo << "\n\nThe chosen smoother is unknown.\n\nKnown are:\n  Richardson (r)\n  Jacobi (j)\n  GaussSeidel (gs)"
+                      "\n  IncompleteLU (ilu)\n\n";
+            return EXIT_FAILURE;
+        }
 
-        global2local.resize(basis.size(), basis.size());
-        global2local.setIdentity();
-        mappedBasis.init(basis,global2local);
+        smootherOp->setOptions( cmd.getGroup("MG") );
 
-        // Setup the Mapper
-        gsDofMapper map;
-        setMapperForBiharmonic(bc, mappedBasis, map);
+        mg->setSmoother(i, smootherOp);
+    } // end for
+    //! [Define smoothers]
 
-        // Setup the system
-        u.setupMapper(map);
-        setDirichletNeumannValuesL2Projection(mp, basis, mappedBasis, bc, u);
+    gsMatrix<> errorHistory;
 
-        // Initialize the system
-        A.initSystem();
-        setup_time += timer.stop();
+    //! [Initial guess]
+    gsMatrix<> x;
+    x.setRandom( A.matrix().rows(), 1 );
+    //! [Initial guess]
 
-        gsInfo<< A.numDofs() <<std::flush;
+    //! [Solve]
+    if (iterativeSolver=="cg")
+        gsConjugateGradient<>( A.matrix(), mg )
+            .setOptions( cmd.getGroup("Solver") )
+            .solveDetailed( A.rhs(), x, errorHistory );
+    else if (iterativeSolver=="d")
+        gsGradientMethod<>( A.matrix(), mg )
+            .setOptions( cmd.getGroup("Solver") )
+            .solveDetailed( A.rhs(), x, errorHistory );
+    //! [Solve]
+    else
+    {
+        gsInfo << "\n\nThe chosen iterative solver is unknown.\n\nKnown are:\n  conjugate gradient (cg)\n  direct (d)\n\n";
+        return EXIT_FAILURE;
+    }
 
-        timer.restart();
-        // Compute the system matrix and right-hand side
-        A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G),u * ff * meas(G));
+    gsInfo << "done.\n\n";
 
-        // Enforce Laplace conditions to right-hand side
-        auto g_L = A.getBdrFunction(G); // Set the laplace bdy value
-        //auto g_L = A.getCoeff(laplace, G);
-        A.assembleBdr(bc.get("Laplace"), (igrad(u, G) * nv(G)) * g_L.tr() );
+    /******************** Print end Exit ********************/
 
-        dofs[r] = A.numDofs();
-        ma_time += timer.stop();
-        gsInfo << "." << std::flush;// Assemblying done
+    const index_t iter = errorHistory.rows()-1;
+    const bool success = errorHistory(iter,0) < tolerance;
+    if (success)
+        gsInfo << "Reached desired tolerance after " << iter << " iterations:\n";
+    else
+        gsInfo << "Did not reach desired tolerance after " << iter << " iterations:\n";
 
-        timer.restart();
-        solver.compute( A.matrix() );
-        solVector = solver.solve(A.rhs());
+    if (errorHistory.rows() < 20)
+        gsInfo << errorHistory.transpose() << "\n\n";
+    else
+        gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
 
-        slv_time += timer.stop();
-        gsInfo << "." << std::flush; // Linear solving done
 
-        timer.restart();
-        //linferr[r] = ev.max( f-s ) / ev.max(f);
+    //linferr[r] = ev.max( f-s ) / ev.max(f);
 
-        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
-        h1err[r]= l2err[r] +
-                  math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( igrad(ff).sqNorm()*meas(G) ) );
+    //l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
+    //h1err[r]= l2err[r] +
+    //          math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( igrad(ff).sqNorm()*meas(G) ) );
 
-        h2err[r]= h1err[r] +
-                  math::sqrt(ev.integral( ( ihess(u_ex) - ihess(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( ihess(ff).sqNorm()*meas(G) )
+    //h2err[r]= h1err[r] +
+    //          math::sqrt(ev.integral( ( ihess(u_ex) - ihess(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( ihess(ff).sqNorm()*meas(G) )
 
-        err_time += timer.stop();
-        gsInfo << ". " << std::flush; // Error computations done
-    } //for loop
+    /*err_time += timer.stop();
+    gsInfo << ". " << std::flush; // Error computations done
     //! [Solver loop]
 
     timer.stop();
@@ -309,6 +482,6 @@ int main(int argc, char *argv[])
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     //! [Export visualization in ParaView]
-
+    */
     return  EXIT_SUCCESS;
 }
