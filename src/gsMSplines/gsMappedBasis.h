@@ -227,12 +227,6 @@ public:
      */
     gsMultiPatch<T> exportToPatches(gsMatrix<T> const & localCoef) const;
 
-    // Look at gsBasis class for a description
-    void uniformCoarsen_withTransfer(const unsigned patch, gsSparseMatrix<T,RowMajor> & transfer, int numKnots)
-    {
-        m_bases[patch]->uniformCoarsen_withTransfer(transfer, numKnots);
-    }
-
 public:
     //////////////////////////////////////////////////
     // functions for evaluating and derivatives

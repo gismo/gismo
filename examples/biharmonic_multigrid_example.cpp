@@ -145,7 +145,8 @@ void uniformCoarsen_withTransfer(
     std::vector< gsSparseMatrix<real_t, RowMajor> > localTransferMatrices(1);
     for (size_t k = 0; k < mBasis.nPatches(); ++k)
     {
-        mBasis.uniformCoarsen_withTransfer(k, localTransferMatrices[k], numKnots);
+        // TODO: Make projection
+        mBasis.getBase(k).uniformCoarsen_withTransfer(localTransferMatrices[k], numKnots);
     }
     // Get coarse mapper
     gsDofMapper coarseMapper;
