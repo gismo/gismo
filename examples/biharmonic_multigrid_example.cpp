@@ -16,10 +16,9 @@
 using namespace gismo;
 
 
-void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMappedBasis<2, real_t> & mappedBasis, gsDofMapper & mapper)
+void setMapperForBiharmonic(const gsBoundaryConditions<> & bc, gsMappedBasis<2, real_t> & mappedBasis, gsDofMapper & mapper)
 {
     mapper.setIdentity(mappedBasis.nPatches(), mappedBasis.size(), 1);
-
     gsMatrix<index_t> bnd;
     for (typename gsBoundaryConditions<real_t>::const_iterator
                  it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it)
@@ -39,17 +38,16 @@ void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMappedBasis<2, real_t
 
 void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> & mb,
                                            gsMappedBasis<2, real_t> & mappedBasis,
-                                           gsBoundaryConditions<> & bc, const expr::gsFeSpace<real_t> & u)
-{
-    const gsDofMapper & mapper = u.mapper();
+                                           gsBoundaryConditions<> & bc, const expr::gsFeSpace<real_t> & u) {
+    const gsDofMapper &mapper = u.mapper();
 
-    gsMatrix<index_t> bnd = mapper.findFree(mapper.numPatches()-1);
+    gsMatrix<index_t> bnd = mapper.findFree(mapper.numPatches() - 1);
     gsDofMapper mapperBdy;
     mapperBdy.setIdentity(mappedBasis.nPatches(), mappedBasis.size(), 1);  // bb2.nPatches() == 1
     mapperBdy.markBoundary(0, bnd, 0);
     mapperBdy.finalize();
 
-    gsExprAssembler<real_t> A(1,1);
+    gsExprAssembler<real_t> A(1, 1);
     A.setIntegrationElements(mb);
 
     auto G = A.getMap(mp);
@@ -57,8 +55,8 @@ void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> &
     auto g_bdy = A.getBdrFunction(G);
 
     uu.setupMapper(mapperBdy);
-    gsMatrix<real_t> & fixedDofs_A = const_cast<expr::gsFeSpace<real_t>&>(uu).fixedPart();
-    fixedDofs_A.setZero( uu.mapper().boundarySize(), 1 );
+    gsMatrix<real_t> &fixedDofs_A = const_cast<expr::gsFeSpace<real_t> &>(uu).fixedPart();
+    fixedDofs_A.setZero(uu.mapper().boundarySize(), 1);
 
     real_t lambda = 1e-5;
 
@@ -68,18 +66,98 @@ void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> &
     A.assembleBdr(bc.get("Neumann"),
                   lambda * (igrad(uu, G) * nv(G).normalized()) * (igrad(uu, G) * nv(G).normalized()).tr() * meas(G));
     A.assembleBdr(bc.get("Neumann"),
-                  lambda *  (igrad(uu, G) * nv(G).normalized()) * (g_bdy.tr() * nv(G).normalized()) * meas(G));
+                  lambda * (igrad(uu, G) * nv(G).normalized()) * (g_bdy.tr() * nv(G).normalized()) * meas(G));
 
     gsSparseSolver<real_t>::SimplicialLDLT solver;
-    solver.compute( A.matrix() );
-    gsMatrix<real_t> & fixedDofs = const_cast<expr::gsFeSpace<real_t>& >(u).fixedPart();
+    solver.compute(A.matrix());
+    gsMatrix<real_t> &fixedDofs = const_cast<expr::gsFeSpace<real_t> & >(u).fixedPart();
     fixedDofs = solver.solve(A.rhs());
 }
 
 
+namespace {
+    template <typename T>
+    struct take_first {
+        T operator() (const T& a, const T&) { return a; }
+    };
+}
+
+// Copied from gsMultiBasis (not changed yet)
+void combineTransferMatrices(
+        const std::vector< gsSparseMatrix<real_t, RowMajor> >& localTransferMatrices,
+        const gsDofMapper& coarseMapper,
+        const gsDofMapper& fineMapper,
+        gsSparseMatrix<real_t, RowMajor>& transferMatrix
+)
+{
+    const index_t nBases = localTransferMatrices.size();
+
+    index_t nonzeros = 0;
+    index_t trRows = 0;
+    index_t trCols = 0;
+
+    for (index_t j=0; j<nBases; ++j)
+    {
+        nonzeros += localTransferMatrices[j].nonZeros();
+        trRows += localTransferMatrices[j].rows();
+        trCols += localTransferMatrices[j].cols();
+    }
+
+    gsSparseEntries<real_t> entries;
+    entries.reserve( nonzeros );
+
+    for (index_t j=0; j<nBases; ++j)
+    {
+        for (index_t k=0; k < localTransferMatrices[j].outerSize(); ++k)
+        {
+            for (typename gsSparseMatrix<real_t, RowMajor>::iterator it(localTransferMatrices[j],k); it; ++it)
+            {
+                const index_t coarse_dof_idx = coarseMapper.index(it.col(),j);
+                const index_t   fine_dof_idx = fineMapper.index(it.row(),j);
+
+                if (coarseMapper.is_free_index(coarse_dof_idx) && fineMapper.is_free_index(fine_dof_idx))
+                    entries.add(fine_dof_idx, coarse_dof_idx, it.value());
+            }
+        }
+    }
+
+    transferMatrix.resize(fineMapper.freeSize(), coarseMapper.freeSize());
+    transferMatrix.setFromTriplets(entries.begin(), entries.end(), take_first<real_t>());
+    transferMatrix.makeCompressed();
+}
+
+
+template <typename BasisType>
+void uniformCoarsen_withTransfer(
+        BasisType & mBasis,
+        gsSparseMatrix<real_t, RowMajor>& transferMatrix,
+        const gsBoundaryConditions<real_t>& boundaryConditions,
+        const gsOptionList & assemblerOptions,
+        int numKnots = 1,
+        index_t unk = 0
+)
+{
+    // Get fine mapper
+    gsDofMapper fineMapper;
+    setMapperForBiharmonic(boundaryConditions, mBasis, fineMapper);
+
+    // Refine
+    std::vector< gsSparseMatrix<real_t, RowMajor> > localTransferMatrices(1);
+    for (size_t k = 0; k < mBasis.nPatches(); ++k)
+    {
+        mBasis.uniformCoarsen_withTransfer(k, localTransferMatrices[k], numKnots);
+    }
+    // Get coarse mapper
+    gsDofMapper coarseMapper;
+    setMapperForBiharmonic(boundaryConditions, mBasis, coarseMapper);
+
+    // restrict to free dofs
+    combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
+}
+
 template <typename BasisType>
 void buildByCoarsening(
-    BasisType mBasis,
+    BasisType & mBasis,
     const gsBoundaryConditions<real_t>& boundaryConditions,
     const gsOptionList& options,
     index_t levels,
@@ -88,20 +166,14 @@ void buildByCoarsening(
     std::vector<gsSparseMatrix<real_t, RowMajor>> & transferMatrices
     )
 {
-    index_t lastSize = mBasis.totalSize();
+    index_t lastSize = mBasis.size();
 
     for (index_t i = 0; i < levels-1 && lastSize > degreesOfFreedom; ++i)
     {
         gsSparseMatrix<real_t, RowMajor> transferMatrix;
-        mBasis.uniformCoarsen_withTransfer(
-            transferMatrix,
-            boundaryConditions,
-            options,
-            1,
-            unk
-        );
+        uniformCoarsen_withTransfer(mBasis, transferMatrix, boundaryConditions, options, 1, unk);
 
-        index_t newSize = mBasis.totalSize();
+        index_t newSize = mBasis.size();
         // If the number of dofs could not be decreased, then cancel. However, if only the number
         // of levels was specified, then this should be ignored (the caller might need to have a
         // fixed number of levels).
@@ -119,14 +191,14 @@ void buildByCoarsening(
 
 template <typename BasisType>
 void buildByCoarsening(
-    BasisType mBasis,
+    BasisType & mBasis,
     const gsBoundaryConditions<real_t>& boundaryConditions,
     const gsOptionList& options,
         std::vector<gsSparseMatrix<real_t, RowMajor>> & transferMatrices
 )
 {
     return buildByCoarsening(
-        give(mBasis),
+        mBasis,
         boundaryConditions,
         options,
         options.askInt( "Levels", 3 ),
@@ -150,7 +222,7 @@ int main(int argc, char *argv[])
     std::string fn;
 
     index_t levels = -1;
-    index_t cycles = 1;
+    index_t cycles = 2;
     index_t presmooth = 1;
     index_t postsmooth = 1;
     std::string smoother("GaussSeidel");
@@ -188,10 +260,16 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
+    // Default case is levels:=refinements, so replace invalid default accordingly
+    if (levels <0) { levels = numRefine; cmd.setInt( "MG.Levels", levels ); }
+    // The smoothers know their defaults, so remove the invalid default
+    if (damping<0) { cmd.remove( "MG.Damping" ); }
+
+
     //! [Read geometry]
     gsMultiPatch<> mp;
     if (fn.empty())
-        mp = gsMultiPatch<>( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
+        mp = gsMultiPatch<>( *gsNurbsCreator<>::BSplineSquare(1,1,1) );
     else
     {
         gsInfo << "Filedata: " << fn << "\n";
@@ -355,7 +433,7 @@ int main(int argc, char *argv[])
     //
     // mg->matrix(0) gives the matrix for the coarsest grid level (=level 0).
     //! [Define coarse solver]
-    //mg->setCoarseSolver( makeSparseCholeskySolver( mg->matrix(0) ) );
+    mg->setCoarseSolver( makeSparseCholeskySolver( mg->matrix(0) ) );
     //! [Define coarse solver]
 
     // Set up of the smoothers

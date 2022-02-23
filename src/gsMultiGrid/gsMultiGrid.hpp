@@ -323,7 +323,7 @@ void gsMultiGridOp<T>::setOptions(const gsOptionList & opt)
     {
         m_numCycles.setConstant(m_nLevels-1, nc);
         // The direct solver on coarsest level is only invoked once
-        m_numCycles[0] = 1;
+        //m_numCycles[0] = 1;
     }
 }
 
