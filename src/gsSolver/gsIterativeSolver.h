@@ -296,7 +296,7 @@ public:
         gsMatrix<> tmp;
         for (index_t i = 0; i < input.cols(); ++i) {
             m_solver.solve(input.col(i), tmp);
-            gsInfo << "cond: " << m_solver.getConditionNumber() <<"\n";
+            //gsInfo << "cond: " << m_solver.getConditionNumber() <<"\n";
             res.col(i) = tmp;
         }
         gsDebug << ( (m_solver.error() < m_solver.tolerance())

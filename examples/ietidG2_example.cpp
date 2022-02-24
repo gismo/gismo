@@ -19,9 +19,10 @@
 #define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
 
 #include <gismo.h>
-#include <gsAssembler/gsVisitorDg.h>
+//#include <gsAssembler/gsVisitorDg.h>
 #include <gsIeti/gsIetidGMapper.h>
 #include <gsSolver/gsPreconditioner.h>
+#include <unsupported/src/gsSolver/gsTimedOp.h>
 
 using namespace gismo;
 
@@ -61,6 +62,47 @@ gsMultiPatch<real_t> approximateQuarterAnnulus(index_t deg)
     return mp;
 
 }
+
+/// struct to measure timings related to the setup of and solving with the IETI method
+struct timings
+{
+    timings() {}
+
+    timings(size_t nPatches): setupInverseInMsD(nPatches), applyMsD(nPatches), setupPk(nPatches), PApplication(nPatches+2),
+                              PkApplication(nPatches), assemblePrimalBasis(nPatches), totalAssemble(1), totalSolving(1)
+    {
+        setupInverseInMsD.setZero(); applyMsD.setZero(); setupPk.setZero(); PApplication.setZero(); PkApplication.setZero(); assemblePrimalBasis.setZero(); totalAssemble.setZero(); totalSolving.setZero();
+    }
+
+    gsVector<real_t> setupInverseInMsD;
+    gsVector<real_t> applyMsD;
+    gsVector<real_t> setupPk;
+    gsVector<real_t> PkApplication;
+    gsVector<real_t> PApplication;
+    gsVector<real_t> assemblePrimalBasis;
+    gsVector<real_t> totalAssemble;
+    gsVector<real_t> totalSolving;
+
+
+    void print(std::ostream& out)
+    {
+        std::ios  state(NULL);
+        state.copyfmt(std::cout);
+
+        //out<<std::setprecision(4)<<"\n\n";
+        out<<std::setw(12)<<"Assembling time: "<<totalAssemble<<"\n";
+        out<<std::setw(12)<<"Setup inverse in scaled Dirichlet Preconditioner: "<<setupInverseInMsD.sum()<<"\n";
+        //out<<std::setw(12)<<"Apply scaled Dirichlet Preconditioner: "<<applyMsD.sum()<<"\n";
+        out<<std::setw(12)<<"Setup of P^(k): "<<setupPk.sum()<<"\n";
+        //out<<std::setw(12)<<"Application of P^(k): "<<PkApplication.sum()<<"\n";
+        //out<<std::setw(12)<<"Application of P: " << PApplication.sum() <<"\n";
+        out<<std::setw(12)<<"Setup of Psi: " << assemblePrimalBasis.sum() <<"\n";
+        out<<std::setw(12)<<"Solving time: "<<totalSolving<<"\n";
+
+        out<<"\n";
+        std::cout.copyfmt(state);
+    }
+};
 
 /// A preconditioner class for IETI-DP with local inexact preconditioners
 template<class T>
@@ -603,6 +645,7 @@ int main(int argc, char *argv[])
         }
         mp.computeTopology();
     }
+    timings times(mp.nPatches());
     //! [Define Geometry2]
 
     if (stretchGeometry!=1)
@@ -805,6 +848,11 @@ int main(int argc, char *argv[])
     assemblerOptions.setReal("DG.Alpha", alpha);
     assemblerOptions.setReal("DG.Beta", beta);
     assemblerOptions.setReal("DG.Penalty", penalty);
+
+    gsStopwatch timer;
+    gsStopwatch assemblingTimer;
+    assemblingTimer.restart();
+
     //! [Assemble]
     for (index_t k=0; k<nPatches; ++k)
     {
@@ -904,9 +952,14 @@ int main(int argc, char *argv[])
                 = gsScaledDirichletPrec<>::matrixBlocks(hatassembler.matrix(), skeletonDofs);
 
         //gsInfo << "hatmatrix: \n" << blocks.A00.toDense() << "\n";
+
+        timer.restart();
+        gsLinearOperator<>::Ptr A11 = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions);
+        times.setupInverseInMsD(k) += timer.stop();
+
         prec.addSubdomain(
                 prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
-                gsScaledDirichletPrec<>::schurComplement( blocks, gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions) )
+                gsScaledDirichletPrec<>::schurComplement( blocks,  gsTimedOp<>::make("A hat inv in MsD", A11))
         );
 
         //! [Patch to preconditioner]
@@ -938,6 +991,7 @@ int main(int argc, char *argv[])
         for(index_t i = 1; i <= 1<<mb.dim(); i++)
             bc_local.addCornerValue(i, 0, 0);
 
+        timer.restart();
         gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, reg, (real_t)1, (real_t)0);
 
         gsLinearOperator<>::Ptr localPrec = gsInexactIETIPrec<real_t>::make(ADelDel, fastdiagOp,
@@ -948,6 +1002,8 @@ int main(int argc, char *argv[])
                                                                        assemblerOptions
                                                                        );
 
+        times.setupPk(k) += timer.stop();
+
         gsLinearOperator<>::Ptr localSolver = gsIterativeSolverOp<gsConjugateGradient<> >::make(ADelDel, localPrec);
         //gsLinearOperator<>::Ptr localSolver2 = makeSparseLUSolver(ADelDel);
 
@@ -955,10 +1011,12 @@ int main(int argc, char *argv[])
         gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
 
         /// "real" elimination
+        timer.restart();
         gsSparseMatrix<> basisDel = localEmbedding * gsPrimalSystem<>::primalBasis(
                 localSolver,
                 localEmbedding.transpose() * embeddingForBasis * localEmbedding, localEmbedding.transpose() * rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
         );
+        times.assemblePrimalBasis(k) += timer.stop();
 
         // TODO: this has to go into gsPrimalSystem<>::primalBasis ?
         if(eliminatePointwiseDofs) {
@@ -989,7 +1047,7 @@ int main(int argc, char *argv[])
         // Register the local solver to the block preconditioner. We use
         // a sparse LU solver since the local saddle point problem is not
         // positive definite.
-        bdPrec->addOperator(k,k,localPrec);
+        bdPrec->addOperator(k,k, gsTimedOp<>::make("P "+std::to_string(k), localPrec));
 
 
         // Add the patch to the Ieti system
@@ -1003,6 +1061,7 @@ int main(int argc, char *argv[])
     //! [End of assembling loop]
     } // end for
     //! [End of assembling loop]
+    times.totalAssemble(0) += assemblingTimer.stop();
 
     // Add the primal problem if there are primal constraints
     //! [Primal to system]
@@ -1036,10 +1095,10 @@ int main(int argc, char *argv[])
 
     // The scaled Dirichlet preconditioner is in the last block
     gsLinearOperator<>::Ptr sdPrec = prec.preconditioner();
-    bdPrec->addOperator(bdPrecSz-1,bdPrecSz-1,sdPrec);
+    bdPrec->addOperator(bdPrecSz-1,bdPrecSz-1, sdPrec);
     //! [Setup scaling]
 
-    gsInfo << "done.\n    Setup minres solver and solve... " << std::flush;
+    gsInfo << "done.\n    Setup minres solver and solve... \n" << std::flush;
     // Initial guess
     //! [Define initial guess]
     gsMatrix<> x;
@@ -1050,14 +1109,12 @@ int main(int argc, char *argv[])
 
     // This is the main cg iteration
     //! [Solve]
-    gsStopwatch time;
-    time.restart();
-    gsMinimalResidual<>( ieti.saddlePointProblem(), bdPrec )
+    timer.restart();
+    gsMinimalResidual<>( ieti.saddlePointProblem(), gsTimedOp<>::make("Preconditioner", bdPrec) )
             .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( ieti.rhsForSaddlePoint(), x, errorHistory );
-    real_t solving_time = time.stop();
+    times.totalSolving(0) = timer.stop();
     //! [Solve]
-    gsInfo << "\nSolved problem in: "<<solving_time<<" seconds."<<"\n";
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     // Now, we want to have the global solution for u
@@ -1071,6 +1128,9 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n\n";
 
     /******************** Print end Exit ********************/
+
+    gsInfo << "Print timings ... \n";
+    times.print(gsInfo);
 
     const index_t iter = errorHistory.rows()-1;
     const bool success = errorHistory(iter,0) < tolerance;
