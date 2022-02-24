@@ -34,7 +34,7 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
     switch ( dim )
     {
     case 1:
-        hessian = secDers; // ders
+        hessian = secDers.transpose(); //==ders
         break;
     case 2:
         hessian.row(0)=ders.row(0);//0,0
