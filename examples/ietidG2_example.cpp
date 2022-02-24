@@ -58,7 +58,6 @@ gsMultiPatch<real_t> approximateQuarterAnnulus(index_t deg)
     gsGeometry<>::uPtr approxGeom = tbsp.interpolateAtAnchors( eval );
     gsMultiPatch<real_t> mp(*approxGeom);
 
-    //gsMultiPatch<real_t> res = mp.uniformSplit();
     return mp;
 
 }
@@ -68,17 +67,17 @@ struct timings
 {
     timings() {}
 
-    timings(size_t nPatches): setupInverseInMsD(nPatches), applyMsD(nPatches), setupPk(nPatches), PApplication(nPatches+2),
-                              PkApplication(nPatches), assemblePrimalBasis(nPatches), totalAssemble(1), totalSolving(1)
+    timings(size_t nPatches): setupInverseInMsD(nPatches), setupPk(nPatches),
+                              assemblePrimalBasis(nPatches), totalAssemble(1), totalSolving(1)
     {
-        setupInverseInMsD.setZero(); applyMsD.setZero(); setupPk.setZero(); PApplication.setZero(); PkApplication.setZero(); assemblePrimalBasis.setZero(); totalAssemble.setZero(); totalSolving.setZero();
+        setupInverseInMsD.setZero(); setupPk.setZero(); assemblePrimalBasis.setZero(); totalAssemble.setZero(); totalSolving.setZero();
     }
 
     gsVector<real_t> setupInverseInMsD;
-    gsVector<real_t> applyMsD;
+    //gsVector<real_t> applyMsD;
     gsVector<real_t> setupPk;
-    gsVector<real_t> PkApplication;
-    gsVector<real_t> PApplication;
+    //gsVector<real_t> PkApplication;
+    //gsVector<real_t> PApplication;
     gsVector<real_t> assemblePrimalBasis;
     gsVector<real_t> totalAssemble;
     gsVector<real_t> totalSolving;
@@ -92,10 +91,7 @@ struct timings
         //out<<std::setprecision(4)<<"\n\n";
         out<<std::setw(12)<<"Assembling time: "<<totalAssemble<<"\n";
         out<<std::setw(12)<<"Setup inverse in scaled Dirichlet Preconditioner: "<<setupInverseInMsD.sum()<<"\n";
-        //out<<std::setw(12)<<"Apply scaled Dirichlet Preconditioner: "<<applyMsD.sum()<<"\n";
         out<<std::setw(12)<<"Setup of P^(k): "<<setupPk.sum()<<"\n";
-        //out<<std::setw(12)<<"Application of P^(k): "<<PkApplication.sum()<<"\n";
-        //out<<std::setw(12)<<"Application of P: " << PApplication.sum() <<"\n";
         out<<std::setw(12)<<"Setup of Psi: " << assemblePrimalBasis.sum() <<"\n";
         out<<std::setw(12)<<"Solving time: "<<totalSolving<<"\n";
 
@@ -160,8 +156,8 @@ public:
         }
         m_R2T.makeCompressed();
 
-        m_R1T *= 0.5;
-        m_R2T *= 1.;
+        m_R1T *= 0.7;
+        m_R2T *= 3.;
 
         // do the interface part
         index_t r = 0, c = 0;
@@ -459,14 +455,12 @@ public:
         rule = gsQuadrature::get(basis1, options, side1.direction());
 
         penalty     = options.askReal("DG.Penalty",-1);
-        const index_t deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
         // If not given, use default
         if (penalty<0)
         {
+            const index_t deg = math::max( basis1.maxDegree(), basis2.maxDegree() );
             penalty = T(4) * (deg + basis1.dim()) * (deg + 1);
         }
-        else
-            penalty *= deg * deg;
 
     }
 
@@ -580,7 +574,7 @@ int main(int argc, char *argv[])
     std::string primals("c");
     bool eliminatePointwiseDofs = true;
     real_t tolerance = 1.e-6;
-    index_t maxIterations = 5000;
+    index_t maxIterations = 20000;
     std::string out;
     bool plot = false;
 
