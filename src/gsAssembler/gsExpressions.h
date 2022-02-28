@@ -706,6 +706,15 @@ public:
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
 
+    typedef integral_expr<T> AreaRetType;
+    AreaRetType area() const
+    { return integral(_expr<T,true>(1)); }
+
+    typedef integral_expr<meas_expr<T> > PHAreaRetType;
+    /// The diameter of the element on the physical space
+    PHAreaRetType area(const gsGeometryMap<Scalar> & _G) const
+    { return integral(meas_expr<T>(_G)); }
+
     typedef pow_expr<integral_expr<T> > DiamRetType;
     /// The diameter of the element (on parameter space)
     DiamRetType diam() const //-> int(1)^(1/d)
@@ -747,22 +756,22 @@ public:
     enum {Space= 0, ScalarValued= 1, ColBlocks = 0};
 
     integral_expr(const gsFeElement<Scalar> & el, const _expr<E> & u)
-    : _e(el), _ff(u) { }
+    : m_val(-1), _e(el), _ff(u) { }
 
     const Scalar & eval(const index_t k) const
     {
         GISMO_ENSURE(_e.isValid(), "Element is valid within integrals only.");
-        if (0==k)
+        // if (0==k)
         {
             const Scalar * w = _e.weights().data();
             m_val = (*w) * _ff.val().eval(0);
-            for (index_t k = 1; k != _e.weights().rows(); ++k)
-                m_val += (*(++w)) * _ff.val().eval(k);
+            for (index_t j = 1; j != _e.weights().rows(); ++j)
+                m_val += (*(++w)) * _ff.val().eval(j);
         }
         return m_val;
     }
 
-    inline integral_expr<E> val() const { return *this; }
+    inline const integral_expr<E> & val() const { return *this; }
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     void parse(gsExprHelper<Scalar> & evList) const
