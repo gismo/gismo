@@ -34,7 +34,7 @@ void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
     switch ( dim )
     {
     case 1:
-        hessian = secDers; // ders
+        hessian = secDers.transpose(); //==ders
         break;
     case 2:
         hessian.row(0)=ders.row(0);//0,0
@@ -937,8 +937,8 @@ public:
 
     void setupMapper(gsDofMapper dofsMapper) const
     {
-        GISMO_ASSERT( m_sd->mapper.isFinalized(), "The provided dof-mapper is not finalized.");
-        GISMO_ASSERT( m_sd->mapper.mapSize()==static_cast<size_t>(this->source().size()), "The dof-mapper is not consistent.");
+        GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
+        GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()), "The dof-mapper is not consistent.");
         m_sd->mapper = give(dofsMapper);
     }
 

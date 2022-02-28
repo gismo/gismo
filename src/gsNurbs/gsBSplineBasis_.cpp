@@ -21,12 +21,15 @@ namespace py = pybind11;
 void pybind11_init_gsBSplineBasis(py::module &m)
 {
   using Class = gsBSplineBasis<real_t>;
-  py::class_<Class>(m, "gsBSplineBasis")
+  py::class_<Class,gsBasis<real_t> >(m, "gsBSplineBasis")
 
-    // Constructors
-    .def(py::init<gsKnotVector<real_t>      >())
-    .def(py::init<gsKnotVector<real_t>, bool>())
-    .def(py::init<real_t,real_t,unsigned, int,unsigned,bool>())
+      // Constructors
+      .def(py::init<gsKnotVector<real_t>      >())
+      .def(py::init<gsKnotVector<real_t>, bool>())
+      .def(py::init<real_t,real_t,unsigned, int,unsigned,bool>()
+           //,py::optional<unsigned,bool> >()
+          )
+      .def(py::init<real_t,real_t,unsigned, int>())
 
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
@@ -38,6 +41,7 @@ void pybind11_init_gsBSplineBasis(py::module &m)
     // Inherited from gsBasis
     .def("eval", &Class::eval, "Evaluates points into a matrix")
     // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    .def("numElements", static_cast<size_t (Class::*)() const> (&Class::numElements), "Returns the number of Elements")
     ;
 }
 

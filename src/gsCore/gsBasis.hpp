@@ -184,9 +184,9 @@ inline gsMatrix<T> gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 }
 
 template<class T> inline
-void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const
+gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 {
-    result.resize( u.cols(), this->size() );
+    gsSparseMatrix<T> result( u.cols(), this->size() );
     gsMatrix<T> ev;
     gsMatrix<index_t> act;
 
@@ -205,6 +205,7 @@ void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & re
     }
 
     result.makeCompressed();
+    return result;
 }
 
 template<class T> inline
@@ -216,8 +217,7 @@ memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> cons
     GISMO_ASSERT (this->size() == pts.cols() , "Expecting as many points as the basis functions." );
     GISMO_ASSERT (this->size() == vals.cols(), "Expecting as many values as the number of points." );
 
-    gsSparseMatrix<T>  Cmat;
-    collocationMatrix(pts, Cmat);
+    gsSparseMatrix<T>  Cmat = collocationMatrix(pts);
     gsMatrix<T> x ( this->size(), vals.rows());
 
     // typename gsSparseSolver<T>::BiCGSTABIdentity solver( Cmat );

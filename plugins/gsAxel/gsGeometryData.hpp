@@ -1,6 +1,6 @@
 /** @file gsGeometryData.hpp
 
-    @brief This file Provides implemetation of G+Smo geometry data for Axel modeler.
+    @brief This file Provides implemetation of G+Smo geometry data for Axl modeler.
 
     This file is part of the G+Smo library. 
 
@@ -53,6 +53,30 @@ gsGeometryData<axlObj>::~gsGeometryData(void)
 
 }
 */
+
+template <class axlObj> void
+gsGeometryData<axlObj>::setSurface(int pointsCount_u, int pointsCount_v,
+                                   int order_u, int order_v, int dimension,
+                                   double *knots_u, double *knots_v,
+                                   double *points, bool rational)
+{
+    if (rational) dimension++;
+    gismo::gsAsConstMatrix<double> _points(points, dimension, pointsCount_u*pointsCount_v);
+
+    gismo::gsKnotVector<double> ku(order_u-1,knots_u,knots_u+pointsCount_u+order_u);
+    gismo::gsKnotVector<double> kv(order_v-1,knots_v,knots_v+pointsCount_v+order_v);
+
+    if (rational)
+        m_geometry = nullptr;
+    else
+        m_geometry =  gsGeometryPointer(new gismo::gsTensorBSpline<2>(ku,kv,_points.transpose()));
+
+    sampling_u = 
+        sampling_v =
+        sampling_w = DEFAULT_SAMPLES;
+
+    updateControlGrid();
+}
 
 template <class axlObj>
 bool gsGeometryData<axlObj>::registered(void)
@@ -448,7 +472,7 @@ void gsGeometryData<axlObj>::updateControlGrid()
         gismo::gsMesh<double> msh;
         m_geometry->controlNet(msh);
 
-        // Pass it to axel
+        // Pass it to axl
         for (typename std::vector< gismo::gsEdge<double> >::const_iterator 
                  it=msh.edges().begin(); it!=msh.edges().end(); ++it)
         {    
