@@ -1317,8 +1317,8 @@ boundaryOffset(boxSide const & s,index_t offset) const
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
         GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
-                     "Offset cannot be bigger than the amount of basis"
-                     "functions orthogonal to Boxside s!");
+                     "Offset ("<<offset<<") cannot be bigger than the amount of basis"
+                     "functions orthogonal to Boxside s! ("<<this->m_bases[i]->size(k)<<")");
 
         index_t r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();

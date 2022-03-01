@@ -477,12 +477,33 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toBox() const
 template <short_t d, class T>
 typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
 {
-    std::vector<index_t> result(5);
+    std::vector<index_t> result(2*d+1);
     result[0] = this->level()+1;
-    result[1] = this->lowerIndex()[0]*2;
-    result[2] = this->lowerIndex()[1]*2;
-    result[3] = this->upperIndex()[0]*2;
-    result[4] = this->upperIndex()[1]*2;
+    index_t lowerIndex, upperIndex, degree, maxKtIndex, ext;
+    for (index_t i = 0; i!=d; i++)
+    {
+        degree = m_basis->degree(i);
+        maxKtIndex = m_basis->tensorLevel(this->level()).knots(i).size();
+
+        if (degree % 2 == 1 && degree>1)
+        {
+            lowerIndex = this->lowerIndex()[i]*2;
+            ( lowerIndex < (degree-1)/2-1 ? lowerIndex=0 : lowerIndex-=(degree-1)/2-1 );
+            result[i+1] = lowerIndex;
+            upperIndex = this->upperIndex()[i]*2;
+            ( upperIndex + (degree)/2+1 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2+1);
+            result[d+i+1] = upperIndex;
+        }
+        else
+        {
+            lowerIndex = this->lowerIndex()[i]*2;
+            ( lowerIndex < (degree-1)/2 ? lowerIndex=0 : lowerIndex-=(degree-1)/2 );
+            result[i+1] = lowerIndex;
+            upperIndex = this->upperIndex()[i]*2;
+            ( upperIndex + (degree)/2 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2);
+            result[d+i+1] = upperIndex;
+        }
+    }
     return result;
 }
 
