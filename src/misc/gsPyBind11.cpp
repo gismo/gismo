@@ -51,6 +51,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_enum_gsBoundary( core );
 
   gismo::pybind11_init_gsBasis( core );
+  gismo::pybind11_init_gsBasisFun( core );
   gismo::pybind11_init_gsFunction( core );
   gismo::pybind11_init_gsFunctionSet( core );
   gismo::pybind11_init_gsFunctionExpr( core );
@@ -86,6 +87,7 @@ PYBIND11_MODULE(pygismo, m) {
 
   gismo::pybind11_init_gsCmdLine( io );
   gismo::pybind11_init_gsFileData( io );
+  gismo::pybind11_init_gsReadFile( io );
   gismo::pybind11_init_gsOptionList (io );  
 
   py::module matrix = m.def_submodule("matrix");

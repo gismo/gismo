@@ -60,6 +60,7 @@ namespace py = pybind11;
 
       // .def("getId", static_cast<const gsBasis<real_t> & (Class::*)(const size_t) const > (&Class::getId))
       .def("getId", static_cast<void (Class::*)(const int &, gsMultiPatch<real_t> &) const > (&Class::getId<gsMultiPatch<real_t>>), "Gets a const reference to basis with index i")
+      .def("getId", static_cast<void (Class::*)(const int &, gsGeometry<real_t> &) const > (&Class::getId<gsGeometry<real_t>>), "Gets a const reference to basis with index i")
 
 
       .def("add", static_cast<void (Class::*)(const gsMultiPatch<real_t> &) > (&Class::add<gsMultiPatch<real_t>>), "Add gsMultiPatch to the filedata.")
