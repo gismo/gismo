@@ -324,7 +324,7 @@ gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
   side and thus it implicitly assumes that the patch faces match
 */
 template<class T>
-bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
+bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly)
 {
     BaseA::clearTopology();
 
@@ -392,11 +392,54 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
     cId1.reserve(nCorS);
     cId2.reserve(nCorS);
 
+    //auto it = pSide.begin();
+    //while (it != pSide.end())
+    std::map<index_t,bool> found;
+    for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+    {
+        const patchSide & side = pSide[sideind];
+        //bool done = false;
+        for (size_t other=sideind+1; other<pSide.size(); ++other)
+        {
+            side        .getContainedCorners(m_dim,cId1);
+            pSide[other].getContainedCorners(m_dim,cId2);
+            matched.setConstant(false);
+
+            // Check whether the side center matches
+            if (!cornersOnly)
+                if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
+                       pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
+                         ).norm() >= tol )
+                    continue;
+
+            // Check whether the vertices match and compute direction map and orientation
+            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
+                                      pCorners[pSide[other].patch], cId2,
+                                      matched, dirMap, dirOr, tol ) )
+            {
+                dirMap(side.direction()) = pSide[other].direction();
+                dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
+                BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
+                //done=true;
+                found[sideind] = found[other] = true;
+            }
+        }
+    }
+
+    index_t k = 0;
+    for (const auto & s : found)
+    {
+        for (;k<s.first && k<(index_t)pSide.size();++k)
+            BaseA::addBoundary( pSide[k] );
+        ++k;
+    }
+
+/*
     while ( pSide.size() != 0 )
     {
         bool done = false;
         const patchSide side = pSide.back();
-        pSide.pop_back();
+        pSide.pop_back();// pop first
         for (size_t other=0; other<pSide.size(); ++other)
         {
             side        .getContainedCorners(m_dim,cId1);
@@ -420,15 +463,15 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
                 BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
                 // done with pSide[other], remove it from candidate list
                 std::swap( pSide[other], pSide.back() );
-                pSide.pop_back();
+                pSide.pop_back();// pop matched (bijective match)
                 done=true;
-                break;//for (size_t other=0..)
+                break; // stop searching (bijective match)
             }
         }
         if (!done) // not an interface ?
             BaseA::addBoundary( side );
     }
-
+*/
     return true;
 }
 
