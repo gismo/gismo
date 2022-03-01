@@ -318,7 +318,7 @@ SUITE(gsRemapInterface_test)
         mp = mp.uniformSplit();
 
         CHECK ( mp.nInterfaces() == 4 );
-        const boundaryInterface &bi = *(mp.iBegin());
+        const boundaryInterface &bi = *(--mp.iEnd());
 
         gsMultiBasis<> mb(mp); // extract basis
 
