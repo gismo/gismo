@@ -1051,11 +1051,16 @@ public:
             for (typename gsBoundaryConditions<T>::const_citerator
                      it = bc.cornerBegin(); it != bc.cornerEnd(); ++it)
             {
-                //assumes (unk == -1 || it->unknown == unk)
-                GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
-                             "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner),
-                                          it->patch, it->unknown);
+                for (index_t r = 0; r!=this->dim(); ++r)
+                {
+                    if (it->component!=-1 && r!=it->component) continue;
+
+                    //assumes (unk == -1 || it->unknown == unk)
+                    GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
+                                 "Problem: a corner boundary condition is set on a patch id which does not exist.");
+                    m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner),
+                                              it->patch, it->component);
+                }
             }
 
         } else if (const gsBasis<T> *b =
@@ -1193,7 +1198,7 @@ public:
         {
             GISMO_ASSERT(nullptr!=mb, "Assumes a multibasis at this point");
             const int i  = mb->basis(it->patch).functionAtCorner(it->corner);
-            const int ii = m_sd->mapper.bindex( i , it->patch, 0 );//component=0 for now! Todo.
+            const int ii = m_sd->mapper.bindex( i , it->patch, it->unknown );//component=0 for now! Todo.
             fixedDofs.at(ii) = it->value;
         }
     }

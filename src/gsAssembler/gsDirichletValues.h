@@ -26,17 +26,17 @@ void gsDirichletValues(
     const index_t dir_values,
     const expr::gsFeSpace<T> & u)
 {
-    if ( bc.container("Dirichlet").empty() ) return;
+    if ( bc.container("Dirichlet").empty() && bc.cornerValues().empty()) return;
 
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
+    fixedDofs.setZero(u.mapper().boundarySize(), 1 );
 
     switch ( dir_values )
     {
     case dirichlet::homogeneous :
     case dirichlet::user :
         // If we have a homogeneous problem then fill with zeros
-        fixedDofs.setZero( mapper.boundarySize(), 1 );
         break;
     case dirichlet::interpolation:
         gsDirichletValuesByTPInterpolation(u,bc);
@@ -48,21 +48,24 @@ void gsDirichletValues(
         GISMO_ERROR("Something went wrong with Dirichlet values: "<< dir_values);
     }
 
-    /* Corner values -- todo
-       for ( typename gsBoundaryConditions<T>::const_citerator
-       it = bbc.cornerBegin();
-       it != bbc.cornerEnd(); ++it )
-       {
-       if(it->unknown == unk)
-       {
-       const int i  = mbasis[it->patch].functionAtCorner(it->corner);
-       const int ii = mapper.bindex( i , it->patch );
-       u.fixedPart().row(ii).setConstant(it->value);
-       }
-       else
-       continue;
-       }
-    */
+     // Corner values -- todo
+    for ( typename gsBoundaryConditions<T>::const_citerator it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
+    {
+        if(it->unknown != u.id())
+            continue;
+
+        const int k = it->patch;
+        const gsBasis<T> & basis = u.source().basis(k);
+        const int i  = basis.functionAtCorner(it->corner);
+        const index_t com = it->component;
+
+        for (index_t r = 0; r!=u.dim(); ++r)
+        {
+            if (com!=-1 && r!=com) continue;
+            const int ii = mapper.bindex( i , k, r );
+            fixedDofs.at(ii) = it->value;
+        }
+    }
 }
 
 template<class T>
