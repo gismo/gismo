@@ -4,14 +4,6 @@
 
 #ifdef GISMO_BUILD_PYBIND11
 #include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiBasis.h>
-#include <gsNurbs/gsBSpline.h>
-#include <gsNurbs/gsTensorBSpline.h>
-
-#include <gsPde/gsBoundaryConditions.h>
-#include <gsCore/gsFunctionExpr.h>
-#include <gsIO/gsOptionList.h>
-#include <gsMatrix/gsSparseMatrix.h>
 #endif
 
 
