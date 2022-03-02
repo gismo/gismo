@@ -22,13 +22,14 @@ namespace gismo
 {
 
 // Adaptor to compute Hessian
-template<typename T>
-void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
+template <typename Derived>
+void secDerToHessian(const Eigen::DenseBase<Derived> &  secDers,
                      const index_t dim,
-                     Eigen::Matrix<T,Dynamic,Dynamic> & hessian)
+                     gsMatrix<typename Derived::Scalar> & hessian)
 {
     const index_t sz = dim*(dim+1)/2;
-    const gsAsConstMatrix<T> ders(secDers.data(), sz, secDers.size() / sz );
+    const gsAsConstMatrix<typename Derived::Scalar>
+        ders(secDers.derived().data(), sz, secDers.size() / sz );
     hessian.resize(dim*dim, ders.cols() );
 
     switch ( dim )
@@ -783,7 +784,11 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void print(std::ostream &os) const
-    { os << "integral(.)"; }
+    {
+        os << "integral(";
+        _ff.print(os);
+        os <<")";
+    }
 };
 
 /*
@@ -3111,7 +3116,7 @@ public:
     hess_expr(const gsFeSolution<T> & u) : _u(u) { }
 
     mutable gsMatrix<T> res;
-    const gsMatrix<T> eval(const index_t k) const
+    const gsMatrix<T> & eval(const index_t k) const
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected. Actives: \n"<<_u.data().actives);
 
