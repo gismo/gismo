@@ -324,7 +324,7 @@ gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
   side and thus it implicitly assumes that the patch faces match
 */
 template<class T>
-bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly)
+bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
 {
     BaseA::clearTopology();
 
@@ -394,7 +394,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly)
 
     //auto it = pSide.begin();
     //while (it != pSide.end())
-    std::map<index_t,bool> found;
+    std::set<index_t> found;
     for (size_t sideind=0; sideind<pSide.size(); ++sideind)
     {
         const patchSide & side = pSide[sideind];
@@ -412,7 +412,13 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly)
                          ).norm() >= tol )
                     continue;
 
-            // Check whether the vertices match and compute direction map and orientation
+            //t-junction
+            // check for matching vertices else
+            // invert the vertices of first side on the second and vise-versa
+            // if at least one vertex is found (at most 2^(d-1)), mark as interface
+
+            // Check whether the vertices match and compute direction
+            // map and orientation
             if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
                                       pCorners[pSide[other].patch], cId2,
                                       matched, dirMap, dirOr, tol ) )
@@ -421,7 +427,8 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly)
                 dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
                 BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
                 //done=true;
-                found[sideind] = found[other] = true;
+                found.insert(sideind);
+                found.insert(other);
             }
         }
     }
@@ -429,7 +436,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly)
     index_t k = 0;
     for (const auto & s : found)
     {
-        for (;k<s.first && k<(index_t)pSide.size();++k)
+        for (;k<s && k<(index_t)pSide.size();++k)
             BaseA::addBoundary( pSide[k] );
         ++k;
     }
@@ -479,10 +486,9 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly)
 template <class T>
 bool gsMultiPatch<T>::matchVerticesOnSide (
     const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
-    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
-    gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
-    T tol,
-    index_t reference)
+    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2,
+    const gsVector<bool> &matched, gsVector<index_t> &dirMap,
+    gsVector<bool> &dirO, T tol, index_t reference)
 {
     const bool computeOrientation = !(start&(start-1)) && (start != 0); // true if start is a power of 2
     const bool setReference       = start==0;          // if we search for the first point then we set the reference
