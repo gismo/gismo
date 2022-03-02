@@ -1198,7 +1198,7 @@ public:
         {
             GISMO_ASSERT(nullptr!=mb, "Assumes a multibasis at this point");
             const int i  = mb->basis(it->patch).functionAtCorner(it->corner);
-            const int ii = m_sd->mapper.bindex( i , it->patch, it->unknown );//component=0 for now! Todo.
+            const int ii = m_sd->mapper.bindex( i , it->patch, it->unknown ,it->component );
             fixedDofs.at(ii) = it->value;
         }
     }
