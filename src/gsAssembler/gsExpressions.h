@@ -1190,17 +1190,6 @@ public:
 
         // Compute Dirichlet node values
         gsDirichletValues(bc, dir_values, *this);
-
-        // corner values (overrides edge BCs)
-        gsMatrix<T> & fixedDofs = const_cast<gsMatrix<T> &>(m_sd->fixedDofs);
-        for ( typename gsBoundaryConditions<T>::const_citerator
-                  it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
-        {
-            GISMO_ASSERT(nullptr!=mb, "Assumes a multibasis at this point");
-            const int i  = mb->basis(it->patch).functionAtCorner(it->corner);
-            const int ii = m_sd->mapper.bindex( i , it->patch ,it->component );
-            fixedDofs.at(ii) = it->value;
-        }
     }
 
     void print(std::ostream &os) const { os << "u"; }

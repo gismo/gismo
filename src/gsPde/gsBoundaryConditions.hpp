@@ -116,8 +116,19 @@ public:
             str.clear();
             str.str(child->value());
             GISMO_ENSURE(gsGetReal(str, val), "No value");
-            const int uIndex = atoi(child->first_attribute("unknown")->value());
-            const int cIndex = atoi(child->first_attribute("component")->value());
+
+            // Unknown is optional, otherwise 0
+            const gsXmlAttribute * unk = child->first_attribute("unknown");
+            int uIndex = 0;
+            if (NULL != unk)
+                uIndex = atoi( unk->value() );
+
+            // Component is optional, otherwise -1
+            const gsXmlAttribute * comp = child->first_attribute("component");
+            int cIndex = -1;
+            if (NULL != comp)
+                cIndex = atoi( comp->value() );
+
             const int cornIndex = atoi(child->first_attribute("corner")->value());
             int pIndex = atoi(child->first_attribute("patch")->value());
             pIndex = ids[pIndex];
