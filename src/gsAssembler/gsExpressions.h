@@ -1178,7 +1178,7 @@ public:
                 //assumes (unk == -1 || it->unknown == unk)
                 GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
                              "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                m_sd->mapper.eliminateDof(mapb->basis(it->patch).functionAtCorner(it->corner), it->patch);
+                m_sd->mapper.eliminateDof(mapb->basis(it->patch).functionAtCorner(it->corner), it->patch, it->component);
             }
         } else
         {
@@ -1198,7 +1198,7 @@ public:
         {
             GISMO_ASSERT(nullptr!=mb, "Assumes a multibasis at this point");
             const int i  = mb->basis(it->patch).functionAtCorner(it->corner);
-            const int ii = m_sd->mapper.bindex( i , it->patch, it->unknown ,it->component );
+            const int ii = m_sd->mapper.bindex( i , it->patch ,it->component );
             fixedDofs.at(ii) = it->value;
         }
     }
