@@ -28,6 +28,15 @@ gsMappedBasis<d,T>::gsMappedBasis( const gsMappedBasis& other )
     }
     m_mapper=new gsWeightMapper<T>(*other.m_mapper);
 
+    m_sb.clear();
+    m_sb.reserve(m_bases.size());
+    unsigned q = 0;
+    for ( typename std::vector<BasisType*>::const_iterator
+                  it = m_bases.begin(); it != m_bases.end(); ++it, ++q )
+    {
+        //m_bases.push_back( (*it)->clone().release() );
+        m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
+    }
     //m_sb = other.m_sb; //no: other.m_sb refers to other
 }
 
@@ -246,6 +255,7 @@ void gsMappedBasis<d,T>::deriv2_into(const unsigned patch, const gsMatrix<T> & u
 template<short_t d,class T>
 void gsMappedBasis<d,T>::evalSingle_into(const unsigned patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
+    /*
     BasisType * this_patch = m_bases[patch];
     index_t start = _getFirstLocalIndex(patch), end = _getLastLocalIndex(patch);
     if ( m_mapper->targetIsId(global_BF) )
@@ -272,6 +282,39 @@ void gsMappedBasis<d,T>::evalSingle_into(const unsigned patch, const int global_
         gsSparseMatrix<T> temp = L*(m_mapper->asMatrix())*Coefs;
         result = temp.transpose().toDense();
     }
+    */
+
+
+    // BAD FIX
+    gsMatrix<index_t> bact;
+    std::vector<index_t>  act, act0;
+    gsMatrix<T> beval, map;//r:B,c:C
+    const index_t shift=_getFirstLocalIndex(patch);
+
+    gsVector<index_t> numAct;
+    std::vector<gsMatrix<T>> result_tmp;
+    result_tmp.resize(u.cols());
+    numAct.resize(u.cols());
+    for (index_t i = 0; i!=u.cols(); ++i)
+    {
+        m_bases[patch]->active_into(u.col(i), bact);
+        act0 = std::vector<index_t>(bact.data(), bact.data()+bact.rows());
+        m_bases[patch]->eval_into(u.col(i), beval);
+        std::transform(act0.begin(), act0.end(), act0.begin(),
+                       GS_BIND2ND(std::plus<index_t>(), shift));
+
+        m_mapper->fastSourceToTarget(act0,act);
+        act.clear();
+        act.push_back(global_BF);
+        m_mapper->getLocalMap(act0, act, map);
+        result_tmp[i] = map.transpose() * beval; // todo: remove transpose()
+        numAct[i] = result_tmp[i].rows();
+    }
+
+    result.setZero(numAct.maxCoeff(), u.cols());
+    for (index_t i = 0; i!=u.cols(); ++i)
+        for(index_t j = 0; j != result_tmp[i].rows(); j++) // result_tmp[i] == dim(rows,1)
+            result(j,i) = result_tmp[i](j,0);
 }
 
 template<short_t d,class T>

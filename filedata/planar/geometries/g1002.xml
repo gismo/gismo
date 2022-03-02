@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This is a simple example of two squares, parametrized by linear 
+B-splines meeting along one side
+-->
+<xml>
+  <!-- Patch 0 -->
+  <Geometry type="TensorBSpline2" id="0">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="3">0 0 0 0 0.5 1 1 1 1 </KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="2">
+      0 0
+      0.2 0
+      0.4 0
+      0.5 0
+
+      0 0.25
+      0.2 0.25
+      0.4 0.25
+      0.5 0.25
+      
+      0 0.5
+      0.2 0.5
+      0.4 0.5
+      0.5 0.5
+      
+      0 0.75
+      0.2 0.75
+      0.4 0.75
+      0.5 0.75
+      
+      0 1
+      0.2 1
+      0.4 1
+      0.5 1
+    </coefs>
+  </Geometry>
+
+  <!-- Patch 1 -->
+  <Geometry type="TensorBSpline2" id="1">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+	<KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+	<KnotVector degree="3">0 0 0 0 0.5 1 1 1 1 </KnotVector>
+    </Basis>
+    </Basis>
+    <coefs geoDim="2">
+      0.5 0
+      0.7 0
+      0.9 0
+      1 0
+
+      0.5 0.25
+      0.7 0.25
+      0.9 0.25
+      1 0.25
+      
+      0.5 0.5
+      0.7 0.5
+      0.9 0.5
+      1 0.5
+      
+      0.5 0.75
+      0.7 0.75
+      0.9 0.75
+      1 0.75
+      
+      0.5 1
+      0.7 1
+      0.9 1
+      1 1
+    </coefs>
+  </Geometry>
+
+  <!-- A multipatch section describes the configuration
+       of the two patches above -->
+  <MultiPatch parDim="2" id="2">
+    <patches type="id_range">0 1</patches>
+  </MultiPatch>
+
+</xml>
