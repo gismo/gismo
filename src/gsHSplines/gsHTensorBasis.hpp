@@ -1314,6 +1314,7 @@ boundaryOffset(boxSide const & s,index_t offset) const
     std::vector<index_t> temp;
     gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
+    GISMO_ASSERT(this->maxLevel() < m_bases.size(),"Something went wrong: maxLevel() < m_bases.size(), "<<this->maxLevel()<<" < "<<m_bases.size());
     for(unsigned i = 0; i <= this->maxLevel(); i++)
     {
         GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
