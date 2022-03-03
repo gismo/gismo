@@ -15,6 +15,7 @@
 
 #include <gsSolver/gsMatrixOp.h>
 #include <gsUtils/gsSortedVector.h>
+#include <gsUtils/gsStopwatch.h>
 
 namespace gismo
 {
@@ -173,10 +174,14 @@ public:
     ///    auto blocks = gsScaledDirichletPrec<T>::matrixBlocks(mat, dofs);
     ///    return gsScaledDirichletPrec<T>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) );
     /// @endcode
-    static OpPtr schurComplement( const SparseMatrix& localMatrix, const std::vector<index_t> dofs )
+    static OpPtr schurComplement( const SparseMatrix& localMatrix, const std::vector<index_t> dofs, real_t& time )
     {
         Blocks blocks = matrixBlocks(localMatrix, dofs);
-        return schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) );
+        gsStopwatch timer;
+        timer.restart();
+        gsLinearOperator<>::Ptr cholesky = makeSparseCholeskySolver(blocks.A11);
+        time += timer.stop();
+        return schurComplement( blocks, cholesky );
     }
 
     /// Restricts the jump matrix and the local stiffness matrix to the skeleton
@@ -195,9 +200,10 @@ public:
     static std::pair<JumpMatrix,OpPtr> restrictToSkeleton(
         const JumpMatrix& jumpMatrix,
         const SparseMatrix& localMatrix,
-        const std::vector<index_t>& dofs
+        const std::vector<index_t>& dofs,
+        real_t& time
     )
-    { return std::pair<JumpMatrix,OpPtr>(restrictJumpMatrix(jumpMatrix,dofs),schurComplement(localMatrix,dofs)); }
+    { return std::pair<JumpMatrix,OpPtr>(restrictJumpMatrix(jumpMatrix,dofs),schurComplement(localMatrix,dofs,time)); }
 
     /// @brief Returns the number of Lagrange multipliers.
     ///

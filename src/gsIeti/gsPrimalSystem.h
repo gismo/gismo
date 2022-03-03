@@ -253,7 +253,8 @@ public:
         const std::vector<index_t>& primalDofIndices,
         JumpMatrix& jumpMatrix,
         SparseMatrix& localMatrix,
-        Matrix& localRhs
+        Matrix& localRhs,
+        real_t& time
     );
 
     /// @brief  Distributes the given solution for K+1 subdomains to the K patches

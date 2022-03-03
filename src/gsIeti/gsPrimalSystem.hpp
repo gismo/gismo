@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsUtils/gsStopwatch.h>
+
 namespace gismo
 {
 
@@ -214,7 +216,8 @@ void gsPrimalSystem<T>::handleConstraints(
         const std::vector<index_t>& primalDofIndices,
         JumpMatrix& jumpMatrix,
         SparseMatrix& localMatrix,
-        Matrix& localRhs
+        Matrix& localRhs,
+        real_t& time
     )
 {
     SparseMatrix modifiedLocalMatrix, localEmbedding, embeddingForBasis;
@@ -224,15 +227,20 @@ void gsPrimalSystem<T>::handleConstraints(
         localMatrix,
         modifiedLocalMatrix,localEmbedding,embeddingForBasis,rhsForBasis);
 
+    gsLinearOperator<>::Ptr basisSolver = makeSparseLUSolver(modifiedLocalMatrix);
+
+    gsStopwatch timer;
+    timer.restart();
     gsSparseMatrix<T> basis = primalBasis(
-            makeSparseLUSolver(modifiedLocalMatrix),
+            basisSolver,
             embeddingForBasis, rhsForBasis, primalDofIndices, nPrimalDofs()
     );
+    time += timer.stop();
 
     addContribution(
         jumpMatrix, localMatrix, localRhs,
         basis,
-        gsLinearOperator<>::Ptr(makeMatrixOp(localEmbedding))
+        gsLinearOperator<>::Ptr(makeMatrixOp(localEmbedding)) //TODO: FixMe: .moveToPtr()
     );
 
     localMatrix  = give(modifiedLocalMatrix);
@@ -259,7 +267,7 @@ gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
             && this->m_primalBases[i].cols() == sol.back().rows()
             && sol.back().cols() == sol[i].cols(),
             "gsPrimalSystem::distributePrimalSolution: Dimensions do not agree: "
-            << sol[i].rows() << ">=" << this->m_primalBases[i].rows() << "&&"
+            << sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols())<< ">=" << this->m_primalBases[i].rows() << "&&"
             << this->m_primalBases[i].cols() << "==" << sol.back().rows() << "&&"
             << sol.back().cols() << "==" << sol[i].cols() << " ( i=" << i << "). "
             << "This method assumes the primal subspace to be the last one." );

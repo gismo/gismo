@@ -953,7 +953,7 @@ int main(int argc, char *argv[])
 
         prec.addSubdomain(
                 prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
-                gsScaledDirichletPrec<>::schurComplement( blocks,  gsTimedOp<>::make("A hat inv in MsD", A11))
+                gsScaledDirichletPrec<>::schurComplement( blocks,A11)
         );
 
         //! [Patch to preconditioner]

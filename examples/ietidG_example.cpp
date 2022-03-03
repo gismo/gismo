@@ -20,17 +20,70 @@
 #define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
 
 #include <gismo.h>
-#include <gsAssembler/gsVisitorDg.h>
 #include <gsIeti/gsIetidGMapper.h>
+#include <unsupported/src/gsSolver/gsTimedOp.h>
 
 using namespace gismo;
+
+gsMultiPatch<real_t> approximateQuarterAnnulus(index_t deg)
+{
+    gsGeometry<>::uPtr quann = gsNurbsCreator<>::NurbsQuarterAnnulus();
+
+    gsKnotVector<> KV1(0,1, 0, deg+1);        // no interior knots in x direction
+    gsKnotVector<> KV2(0,1, 0, deg+1);        // no interior knot in y direction
+
+    gsTensorBSplineBasis<2> tbsp (give(KV1), give(KV2));
+    gsMatrix<real_t> eval = quann->eval(tbsp.anchors());
+    gsGeometry<>::uPtr approxGeom = tbsp.interpolateAtAnchors( eval );
+    gsMultiPatch<real_t> mp(*approxGeom);
+
+    return mp;
+
+}
+
+struct timings
+{
+    timings() {}
+
+    timings(size_t nPatches): setupInverseInMsD(nPatches), setupPk(nPatches),
+                              assemblePrimalBasis(nPatches), totalAssemble(1), totalSolving(1)
+    {
+        setupInverseInMsD.setZero(); setupPk.setZero(); assemblePrimalBasis.setZero(); totalAssemble.setZero(); totalSolving.setZero();
+    }
+
+    gsVector<real_t> setupInverseInMsD;
+    //gsVector<real_t> applyMsD;
+    gsVector<real_t> setupPk;
+    //gsVector<real_t> PkApplication;
+    //gsVector<real_t> PApplication;
+    gsVector<real_t> assemblePrimalBasis;
+    gsVector<real_t> totalAssemble;
+    gsVector<real_t> totalSolving;
+
+
+    void print(std::ostream& out)
+    {
+        std::ios  state(NULL);
+        state.copyfmt(std::cout);
+
+        //out<<std::setprecision(4)<<"\n\n";
+        out<<std::setw(12)<<"Assembling time: "<<totalAssemble<<"\n";
+        out<<std::setw(12)<<"Setup inverse in scaled Dirichlet Preconditioner: "<<setupInverseInMsD.sum()<<"\n";
+        out<<std::setw(12)<<"Setup of P^(k): "<<setupPk.sum()<<"\n";
+        out<<std::setw(12)<<"Setup of Psi: " << assemblePrimalBasis.sum() <<"\n";
+        out<<std::setw(12)<<"Solving time: "<<totalSolving<<"\n";
+
+        out<<"\n";
+        std::cout.copyfmt(state);
+    }
+};
 
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
     std::string geometry("domain2d/yeti_mp2.xml");
-    index_t splitPatches = 1;
+    index_t splitPatches = 2;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
     index_t degree = 2;
@@ -90,13 +143,27 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     //! [Define Geometry2]
-    gsMultiPatch<>& mp = *mpPtr;
-
-    for (index_t i=0; i<splitPatches; ++i)
+    //gsMultiPatch<>& mp = *mpPtr;
+    gsMultiPatch<> mp = approximateQuarterAnnulus(2);
     {
-        gsInfo << "split patches uniformly... " << std::flush;
-        mp = mp.uniformSplit();
+
+        std::vector<gsGeometry<>*> ptch;
+        for(size_t np = 0; np< mp.nPatches(); ++np)
+        {
+            std::vector<gsGeometry<>* >  ptch_ =  mp.patch(np).uniformSplit(1);
+            ptch.insert(ptch.end(),ptch_.begin(),ptch_.end());
+        }
+        mp = gsMultiPatch<real_t>(ptch);
+
+        for (index_t i=0; i<splitPatches; ++i)
+        {
+            gsInfo << "split patches uniformly... " << std::flush;
+            mp = mp.uniformSplit();
+        }
+        mp.computeTopology();
     }
+    timings times(mp.nPatches());
+    //! [Define Geometry2]
     //! [Define Geometry2]
 
     if (stretchGeometry!=1)
@@ -202,6 +269,10 @@ int main(int argc, char *argv[])
 
     gsInfo << "done.\n";
 
+    /************** Compute penalty parameter **************/
+    if(penalty < 0)
+        penalty *= mb.maxCwiseDegree();
+
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix... " << std::flush;
@@ -284,6 +355,10 @@ int main(int argc, char *argv[])
         primal.setEliminatePointwiseConstraints(true);
     //! [Setup]
 
+    gsStopwatch timer;
+    gsStopwatch assemblingTimer;
+    assemblingTimer.restart();
+
     //! [Assemble]
     for (index_t k=0; k<nPatches; ++k)
     {
@@ -347,7 +422,8 @@ int main(int argc, char *argv[])
             gsScaledDirichletPrec<>::restrictToSkeleton(
                 jumpMatrix,
                 localMatrix,
-                ietiMapper.skeletonDofs(k)
+                ietiMapper.skeletonDofs(k),
+                times.setupInverseInMsD(k)
             )
         );
         //! [Patch to preconditioner]
@@ -359,21 +435,28 @@ int main(int argc, char *argv[])
             ietiMapper.primalDofIndices(k),
             jumpMatrix,
             localMatrix,
-            localRhs
+            localRhs,
+            times.assemblePrimalBasis(k)
         );
         //! [Patch to primals]
 
         // Add the patch to the Ieti system
         //! [Patch to system]
+        timer.restart();
+        gsLinearOperator<>::Ptr LU = makeSparseLUSolver(localMatrix);
+        times.setupPk(k) += timer.stop();
+
         ieti.addSubdomain(
             jumpMatrix.moveToPtr(),
             makeMatrixOp(localMatrix.moveToPtr()),
-            give(localRhs)
+            give(localRhs),
+            gsTimedOp<>::make("Application of A_DelDel "+std::to_string(k),LU)
         );
         //! [Patch to system]
     //! [End of assembling loop]
     } // end for
     //! [End of assembling loop]
+    times.totalAssemble(0) += assemblingTimer.stop();
 
     // Add the primal problem if there are primal constraints
     //! [Primal to system]
@@ -418,7 +501,7 @@ int main(int argc, char *argv[])
     // Initial guess
     //! [Define initial guess]
     gsMatrix<> lambda;
-    lambda.setRandom( ieti.nLagrangeMultipliers(), 1 );
+    lambda.setRandom( rhsForSchur.rows(), 1 );
     //! [Define initial guess]
 
     gsMatrix<> errorHistory;
@@ -427,11 +510,10 @@ int main(int argc, char *argv[])
     //! [Solve]
     gsStopwatch time;
     time.restart();
-    gsConjugateGradient<> PCG( ieti.schurComplement(), prec.preconditioner() );
+    gsConjugateGradient<> PCG( ieti.schurComplement(), gsTimedOp<>::make("Preconditioner MsD application:", prec.preconditioner()) );
     PCG.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhsForSchur, lambda, errorHistory );
-    real_t solving_time = time.stop();
+    times.totalSolving(0) += time.stop();
     //! [Solve]
-    gsInfo <<"\nSolved problem in: "<<solving_time<<" seconds."<<"\n";
 
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
     // Now, we want to have the global solution for u
@@ -445,6 +527,9 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n\n";
 
     /******************** Print end Exit ********************/
+
+    gsInfo << "Print timings ... \n";
+    times.print(gsInfo);
 
     const index_t iter = errorHistory.rows()-1;
     const bool success = errorHistory(iter,0) < tolerance;

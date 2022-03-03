@@ -16,6 +16,7 @@
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsAdditiveOp.h>
+#include <unsupported/src/gsSolver/gsTimedOp.h>
 
 namespace gismo
 {
@@ -139,7 +140,7 @@ gsScaledDirichletPrec<T>::schurComplement( Blocks matrixBlocks, OpPtr solver )
         makeMatrixOp(matrixBlocks.A00.moveToPtr()),
         gsProductOp<T>::make(
             makeMatrixOp(matrixBlocks.A01.moveToPtr()),
-            give(solver),
+            give(gsTimedOp<>::make("Apply Ainv in MsD: ", solver)),
             makeMatrixOp(matrixBlocks.A10.moveToPtr())
         )
     );
