@@ -919,7 +919,7 @@ typename gsAdaptiveMeshing<T>::patchHContainer gsAdaptiveMeshing<T>::_toContaine
 #               ifdef _OPENMP
                 c += nt;
 #               else
-                c++
+                c++;
 #               endif
             }
         }
