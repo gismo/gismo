@@ -319,7 +319,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
     return result;
 }
 
-void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const
+void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists, bool boundaries) const
 {
     GISMO_ASSERT(m_dim==2,"works only for 2D");
     cornerLists.clear();
@@ -335,11 +335,12 @@ void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists)
             for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
-            if(isCycle&&cornerList.size()!=4&&!alreadyReached)
+            if(((isCycle&&cornerList.size()!=4)||(boundaries&&cornerList.size()>2))&&!alreadyReached)
                 cornerLists.push_back(cornerList);
         }
     }
 }
+
 
 void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists) const
 {
