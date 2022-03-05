@@ -335,7 +335,8 @@ void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists,
             for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
-            if(((isCycle&&cornerList.size()!=4)||(boundaries&&cornerList.size()>2))&&!alreadyReached)
+
+            if(((isCycle&&cornerList.size()!=4)||(boundaries&&(!isCycle)&&cornerList.size()>2))&&!alreadyReached)
                 cornerLists.push_back(cornerList);
         }
     }
