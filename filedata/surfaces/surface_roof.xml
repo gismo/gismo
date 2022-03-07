@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 21.12.0-->
+<xml>
+ <Geometry type="TensorNurbs2" id="0">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1
+1
+1
+1
+1
+1
+1
+1
+1
+</weights>
+  </Basis>
+  <coefs geoDim="3">0 0 0
+0.5 0 0
+1 0 0
+0 -0.321394 0.269682
+0.5 -0.321394 0.269682
+1 -0.321394 0.269682
+0 -0.642788 0
+0.5 -0.642788 0
+1 -0.642788 0
+</coefs>
+ </Geometry>
+ <MultiPatch parDim="2" id="1">
+  <patches type="id_range">0 0</patches>
+  <boundary>0 4
+0 3
+0 2
+0 1
+</boundary>
+ </MultiPatch>
+</xml>
+
