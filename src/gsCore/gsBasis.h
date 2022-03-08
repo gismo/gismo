@@ -949,6 +949,16 @@ public:
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                            gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
 
+    /// \brief Computes the indices of DoFs that match on the
+    /// interface \a bi. The interface is assumed to be a common face
+    /// between this patch and \a other, with an offset \a offset.
+    /// The output is two lists of indices \a bndThis and \a bndOther,
+    /// with indices that match one-to-one on the boundary \a bi.
+    ///
+    /// NOTE: bndThis will have \a offset but bndOther will NOT have an offset (hence offset 0)
+    virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
+
 
     /// Get the minimum mesh size, as expected for inverse inequalities
     virtual T getMinCellLength() const;
