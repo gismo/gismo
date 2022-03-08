@@ -681,6 +681,11 @@ void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
+               gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 T gsBasis<T>::getMinCellLength() const
 {
     const domainIter it = this->makeDomainIterator();
