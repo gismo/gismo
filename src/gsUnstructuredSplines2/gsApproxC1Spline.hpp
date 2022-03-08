@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include<gsUnstructuredSplines/gsApproxC1Edge.h>
-#include<gsUnstructuredSplines/gsApproxC1Vertex.h>
+#include<gsUnstructuredSplines2/gsApproxC1Edge.h>
+#include<gsUnstructuredSplines2/gsApproxC1Vertex.h>
 
-#include <gsUnstructuredSplines/gsApproxC1Utils.h>
+#include <gsUnstructuredSplines2/gsApproxC1Utils.h>
 
 namespace gismo
 {
@@ -61,7 +61,7 @@ void gsApproxC1Spline<d,T>::init()
         // - Edge spaces:    [1] : west, [2] : east, [3] : south, [4] : north,
         // - Vertex spaces:  [5] : southwest, [6] : southeast, [7] : northwest, [8] : northeast
         // [9] For the initial space, maybe delete later
-        gsContainerBasis<d,T> containerBasis(9); // for 9 subspaces
+        gsContainerBasis<d,T> containerBasis(1); // for 9 subspaces
         m_bases.push_back(containerBasis);
     }
 
@@ -142,8 +142,8 @@ void gsApproxC1Spline<d,T>::init()
         createEdgeSpace(m_patches.patch(item.second().patch), basis_22, dir_2, basis_plus, basis_minus, basis_gluingData, basis_edge_22);
 
         // [!Edge space]
-        m_bases[item.first().patch].setBasis(item.first().side().index(), basis_edge_11);
-        m_bases[item.second().patch].setBasis(item.second().side().index(), basis_edge_22);
+        //m_bases[item.first().patch].setBasis(item.first().side().index(), basis_edge_11);
+        //m_bases[item.second().patch].setBasis(item.second().side().index(), basis_edge_22);
 
         index_t numDofs = math::max(basis_plus.size() + basis_minus.size() - 10, 0);
         row_dofs += numDofs; // The same as side_2
@@ -168,7 +168,7 @@ void gsApproxC1Spline<d,T>::init()
         gsTensorBSplineBasis<d, T> basis_edge_11;
         createEdgeSpace(m_patches.patch(bit.patch), basis, dir_1, basis_plus, basis_minus, basis_edge_11);
 
-        m_bases[bit.patch].setBasis(bit.side().index(), basis_edge_11);
+        //m_bases[bit.patch].setBasis(bit.side().index(), basis_edge_11);
 
         index_t numDofs = math::max(basis_plus.size() + basis_minus.size() - 10, 0);
         row_dofs += numDofs;
@@ -197,7 +197,7 @@ void gsApproxC1Spline<d,T>::init()
                               isInterface_1, isInterface_2, basis_vertex_11, m_options.getInt("gluingDataDegree"),
                               m_options.getInt("gluingDataSmoothness"));
 
-            m_bases[allcornerLists[j].patch].setBasis(allcornerLists[j].m_index + 4, basis_vertex_11);
+            //m_bases[allcornerLists[j].patch].setBasis(allcornerLists[j].m_index + 4, basis_vertex_11);
         }
         row_dofs += 6;
     }
@@ -275,11 +275,12 @@ void gsApproxC1Spline<d,T>::compute()
         index_t begin_col = 0, end_col = 0, shift_col = 0;
         for (index_t np = 0; np < patch_1; ++np)
             shift_col += m_bases[np].size();
-
-        for (index_t ns = 0; ns < side_1; ++ns)
-            begin_col += m_bases[patch_1].piece(ns).size();
-        for (index_t ns = 0; ns < side_1+1; ++ns)
-            end_col += m_bases[patch_1].piece(ns).size();
+//
+//        for (index_t ns = 0; ns < side_1; ++ns)
+//            begin_col += m_bases[patch_1].piece(ns).size();
+//        for (index_t ns = 0; ns < side_1+1; ++ns)
+//            end_col += m_bases[patch_1].piece(ns).size();
+        end_col = m_bases[patch_1].piece(0).size();
 
         for (size_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
         {
@@ -294,10 +295,11 @@ void gsApproxC1Spline<d,T>::compute()
         for (index_t np = 0; np < patch_2; ++np)
             shift_col += m_bases[np].size();
 
-        for (index_t ns = 0; ns < side_2; ++ns)
-            begin_col += m_bases[patch_2].piece(ns).size();
-        for (index_t ns = 0; ns < side_2+1; ++ns)
-            end_col += m_bases[patch_2].piece(ns).size();
+//        for (index_t ns = 0; ns < side_2; ++ns)
+//            begin_col += m_bases[patch_2].piece(ns).size();
+//        for (index_t ns = 0; ns < side_2+1; ++ns)
+//            end_col += m_bases[patch_2].piece(ns).size();
+        end_col = m_bases[patch_1].piece(0).size();
 
         for (size_t ii = 0; ii < basisEdge[1].nPatches(); ++ii)
         {
@@ -325,10 +327,11 @@ void gsApproxC1Spline<d,T>::compute()
         for (index_t np = 0; np < patch_1; ++np)
             shift_col += m_bases[np].size();
 
-        for (index_t ns = 0; ns < side_1; ++ns)
-            begin_col += m_bases[patch_1].piece(ns).size();
-        for (index_t ns = 0; ns < side_1+1; ++ns)
-            end_col += m_bases[patch_1].piece(ns).size();
+//        for (index_t ns = 0; ns < side_1; ++ns)
+//            begin_col += m_bases[patch_1].piece(ns).size();
+//        for (index_t ns = 0; ns < side_1+1; ++ns)
+//            end_col += m_bases[patch_1].piece(ns).size();
+        end_col = m_bases[patch_1].piece(0).size();
 
         for (size_t ii = 0; ii < basisEdge[0].nPatches(); ++ii)
         {
@@ -365,10 +368,11 @@ void gsApproxC1Spline<d,T>::compute()
             for (index_t np = 0; np < patch_1; ++np)
                 shift_col += m_bases[np].size();
 
-            for (index_t ns = 0; ns < corner+4; ++ns)
-                begin_col += m_bases[patch_1].piece(ns).size();
-            for (index_t ns = 0; ns < corner+4+1; ++ns)
-                end_col += m_bases[patch_1].piece(ns).size();
+//            for (index_t ns = 0; ns < corner+4; ++ns)
+//                begin_col += m_bases[patch_1].piece(ns).size();
+//            for (index_t ns = 0; ns < corner+4+1; ++ns)
+//                end_col += m_bases[patch_1].piece(ns).size();
+            end_col = m_bases[patch_1].piece(0).size();
 
             for (size_t ii = 0; ii < basisVertex[np].nPatches(); ++ii)
             {

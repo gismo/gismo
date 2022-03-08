@@ -13,12 +13,12 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsContainerBasis.h>
-#include <gsUnstructuredSplines/gsPatchReparameterized.h>
+#include <gsUnstructuredSplines2/gsContainerBasis.h>
+#include <gsUnstructuredSplines2/gsPatchReparameterized.h>
 
-#include <gsUnstructuredSplines/gsApproxGluingData.h>
+#include <gsUnstructuredSplines2/gsApproxGluingData.h>
 
-#include <gsUnstructuredSplines/gsApproxC1Utils.h>
+#include <gsUnstructuredSplines2/gsApproxC1Utils.h>
 
 namespace gismo
 {

@@ -18,7 +18,7 @@
 #pragma once
 
 #include<gsIO/gsOptionList.h>
-#include<gsUnstructuredSplines/gsContainerBasis.h>
+#include<gsUnstructuredSplines2/gsContainerBasis.h>
 
 namespace gismo
 {

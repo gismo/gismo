@@ -16,6 +16,8 @@
 #pragma once
 
 #include<gsCore/gsBasis.h>
+#include<gsSolver/gsBlockOp.h>
+
 
 namespace gismo
 {
@@ -151,6 +153,7 @@ namespace gismo
                        gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
 */
 
+
         gsMatrix<T> support() const
         {
             return basisContainer[0].support();
@@ -158,15 +161,41 @@ namespace gismo
 
         void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots)
         {
-            gsMatrix<T> matrix(0,0);
-            for (size_t i=0; i< basisContainer.size(); ++i)
-            {
-                gsSparseMatrix<T,RowMajor> mat_temp;
-                basisContainer[i].uniformCoarsen_withTransfer(mat_temp, numKnots);
-                matrix.conservativeResize(matrix.rows()+mat_temp.rows(), matrix.cols() + mat_temp.cols());
-                matrix.bottomRightCorner(mat_temp.rows(), mat_temp.cols()) = mat_temp;
-            }
-            transfer = matrix.sparseView();
+//            gsMatrix<T> matrix(0,0);
+//            gsDebugVar(basisContainer.size());
+//            for (size_t i=0; i< basisContainer.size(); ++i)
+//            {
+//                gsDebugVar(i);
+//                gsSparseMatrix<T,RowMajor> mat_temp;
+//                basisContainer[i].uniformCoarsen_withTransfer(mat_temp, numKnots);
+//                matrix.conservativeResize(matrix.rows()+mat_temp.rows(), matrix.cols() + mat_temp.cols());
+//                matrix.bottomRightCorner(mat_temp.rows(), mat_temp.cols()) = mat_temp;
+//                gsDebugVar(matrix.size());
+//            }
+//            transfer = matrix.sparseView();
+
+
+//            index_t sz = basisContainer.size();
+//            typename gsBlockOp<T>::Ptr block = gsBlockOp<T>::make(sz,sz);
+//
+//            for (size_t i=0; i< basisContainer.size(); ++i)
+//            {
+//                gsDebugVar(i);
+//                gsSparseMatrix<T,RowMajor> mat_temp;
+//                basisContainer[i].uniformCoarsen_withTransfer(mat_temp, numKnots);
+//                block->addOperator(i,i,makeMatrixOp(mat_temp.moveToPtr()));
+//            }
+//            gsDebugVar(block->cols());
+//            gsDebugVar(block->rows());
+//            gsMatrix<> matrix;
+//            block->toMatrix(matrix);
+//            gsDebugVar(matrix.rows());
+//            gsDebugVar(matrix.cols());
+//            transfer = matrix.sparseView();
+
+            basisContainer[0].uniformCoarsen_withTransfer(transfer, numKnots);
+            gsDebugVar(transfer.rows());
+            gsDebugVar(transfer.cols());
         }
 
         gsBasis<T>* boundaryBasis_impl(boxSide const & s) const

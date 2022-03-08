@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsApproxC1Vertex.h>
+#include <gsUnstructuredSplines2/gsApproxC1Vertex.h>
 
 namespace gismo
 {
@@ -76,7 +76,7 @@ real_t gsApproxC1Vertex<d, T>::computeSigma(const std::vector<size_t> &vertexInd
     real_t h_geo = 1;
     for(size_t i = 0; i < m_auxPatches.size(); i++)
     {
-        const gsTensorBSplineBasis<2, real_t> bsp_temp = dynamic_cast<const gsTensorBSplineBasis<d, T>&>(m_auxPatches[0].getBasisRotated().piece(vertexIndices[i]+4));
+        const gsTensorBSplineBasis<2, real_t> bsp_temp = dynamic_cast<const gsTensorBSplineBasis<d, T>&>(m_auxPatches[0].getBasisRotated().piece(0));
 
         real_t p_temp = math::max(bsp_temp.degree(0), bsp_temp.degree(1));
 

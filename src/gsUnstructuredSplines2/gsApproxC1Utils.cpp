@@ -13,7 +13,7 @@
 
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
-#include <gsUnstructuredSplines/gsApproxC1Utils.h>
+#include <gsUnstructuredSplines2/gsApproxC1Utils.h>
 
 
 namespace gismo

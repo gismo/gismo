@@ -14,8 +14,8 @@
 #include <gsCore/gsTemplateTools.h>
 #include <gsCore/gsBoundary.h>
 
-#include <gsUnstructuredSplines/gsApproxC1Vertex.h>
-#include <gsUnstructuredSplines/gsApproxC1Vertex.hpp>
+#include <gsUnstructuredSplines2/gsApproxC1Vertex.h>
+#include <gsUnstructuredSplines2/gsApproxC1Vertex.hpp>
 
 
 

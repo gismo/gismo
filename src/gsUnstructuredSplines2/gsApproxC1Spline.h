@@ -16,7 +16,7 @@
 #include<gsIO/gsOptionList.h>
 
 #include <gsMSplines/gsMappedBasis.h>
-#include<gsUnstructuredSplines/gsContainerBasisBase.h>
+#include<gsUnstructuredSplines2/gsContainerBasisBase.h>
 
 //#include <gsUnstructuredSplines/gsApproxC1Utils.h>
 

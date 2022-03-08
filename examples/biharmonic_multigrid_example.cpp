@@ -13,7 +13,7 @@
 
 # include <gismo.h>
 
-#include <gsUnstructuredSplines/gsApproxC1Spline.h>
+#include <gsUnstructuredSplines2/gsApproxC1Spline.h>
 
 using namespace gismo;
 
@@ -145,108 +145,108 @@ void combineTransferMatrices(
     transferMatrix.makeCompressed();
 }
 
-void createSplineBasisL2Projection(gsMappedBasis<2, real_t> & mBasisCoarse, gsMappedBasis<2, real_t> & mBasisFine,
-                                   gsMultiBasis<real_t> basisFine, gsSparseMatrix<real_t, RowMajor> & cf)
-{
-    bool interpolation = false;
+//void createSplineBasisL2Projection(gsMappedBasis<2, real_t> & mBasisCoarse, gsMappedBasis<2, real_t> & mBasisFine,
+//                                   gsMultiBasis<real_t> basisFine, gsSparseMatrix<real_t, RowMajor> & cf)
+//{
+//    bool interpolation = false;
+//
+//
+//    gsMatrix<> mat_lvl1;
+//    mat_lvl1.setZero(mBasisCoarse.size(),mBasisFine.size());
+//    if (interpolation)
+//    {
+//        index_t shift_row = 0;
+//        for (size_t np = 0; np < mBasisCoarse.nPatches(); np++)
+//        {
+//            for (index_t bfID = 0; bfID < mBasisCoarse.basis(np).size(); bfID++)
+//            {
+//                auto sb = mBasisCoarse.basis(np).function(bfID);
+//                gsMatrix<> anchors = mBasisFine.basis(np).anchors();
+//                gsMatrix<> values = sb.eval(anchors);
+//                mat_lvl1.row(shift_row + bfID) = values;
+//            }
+//            shift_row += mBasisCoarse.basis(np).size();
+//        }
+//    }
+//    else
+//    {
+//        index_t shift_row = 0;
+//        for (size_t np = 0; np < mBasisCoarse.nPatches(); np++)
+//        {
+//            gsExprAssembler<> A(1, 1);
+//            gsExprEvaluator<> ev(A);
+//
+//            gsMultiBasis<> mb_single(basisFine);
+//            A.setIntegrationElements(mb_single);
+//
+//            // Set the discretization space
+//            auto u = A.getSpace(mBasisFine);
+//
+//            gsBoundaryConditions<> bc_empty;
+//            u.setup(bc_empty, dirichlet::homogeneous, -1);
+//            A.initSystem();
+//
+//            A.assemble(u * u.tr());
+//
+//            gsSparseSolver<>::CGDiagonal solver;
+//            solver.compute(A.matrix());
+//            for (index_t bfID = 0; bfID < mBasisCoarse.basis(np).size(); bfID++)
+//            {
+//                auto sb = mBasisCoarse.basis(np).function(bfID);
+//                auto aa = A.getCoeff(sb);
+//
+//                A.initVector();
+//                A.assemble(u * aa);
+//
+//                gsMatrix<> solVector = solver.solve(A.rhs());
+//                auto u_sol = A.getSolution(u, solVector);
+//                gsMatrix<> sol;
+//                u_sol.extractFull(sol);
+//                mat_lvl1.row(shift_row + bfID) = sol.transpose();
+//            }
+//            shift_row += mBasisCoarse.basis(np).size();
+//        }
+//    }
+//    mat_lvl1 = mat_lvl1.transpose();
+//    cf = mat_lvl1.sparseView(1,1e-10);
+//}
 
-
-    gsMatrix<> mat_lvl1;
-    mat_lvl1.setZero(mBasisCoarse.size(),mBasisFine.size());
-    if (interpolation)
-    {
-        index_t shift_row = 0;
-        for (size_t np = 0; np < mBasisCoarse.nPatches(); np++)
-        {
-            for (index_t bfID = 0; bfID < mBasisCoarse.basis(np).size(); bfID++)
-            {
-                auto sb = mBasisCoarse.basis(np).function(bfID);
-                gsMatrix<> anchors = mBasisFine.basis(np).anchors();
-                gsMatrix<> values = sb.eval(anchors);
-                mat_lvl1.row(shift_row + bfID) = values;
-            }
-            shift_row += mBasisCoarse.basis(np).size();
-        }
-    }
-    else
-    {
-        index_t shift_row = 0;
-        for (size_t np = 0; np < mBasisCoarse.nPatches(); np++)
-        {
-            gsExprAssembler<> A(1, 1);
-            gsExprEvaluator<> ev(A);
-
-            gsMultiBasis<> mb_single(basisFine);
-            A.setIntegrationElements(mb_single);
-
-            // Set the discretization space
-            auto u = A.getSpace(mBasisFine);
-
-            gsBoundaryConditions<> bc_empty;
-            u.setup(bc_empty, dirichlet::homogeneous, -1);
-            A.initSystem();
-
-            A.assemble(u * u.tr());
-
-            gsSparseSolver<>::CGDiagonal solver;
-            solver.compute(A.matrix());
-            for (index_t bfID = 0; bfID < mBasisCoarse.basis(np).size(); bfID++)
-            {
-                auto sb = mBasisCoarse.basis(np).function(bfID);
-                auto aa = A.getCoeff(sb);
-
-                A.initVector();
-                A.assemble(u * aa);
-
-                gsMatrix<> solVector = solver.solve(A.rhs());
-                auto u_sol = A.getSolution(u, solVector);
-                gsMatrix<> sol;
-                u_sol.extractFull(sol);
-                mat_lvl1.row(shift_row + bfID) = sol.transpose();
-            }
-            shift_row += mBasisCoarse.basis(np).size();
-        }
-    }
-    mat_lvl1 = mat_lvl1.transpose();
-    cf = mat_lvl1.sparseView(1,1e-10);
-}
-
-void uniformCoarsen_withTransfer(gsMappedBasis<2, real_t> & mbasisFine, gsMultiBasis<real_t> basisFine, gsMultiPatch<real_t> & mp,
-                                 std::vector< gsSparseMatrix<real_t, RowMajor> > & localTransferMatrices, index_t numKnots)
-{
-    gsMultiBasis<real_t> mbCoarse;
-    mbCoarse = *basisFine.clone().release();
-    mbCoarse.uniformCoarsen(1);
-
-    gsApproxC1Spline<2,real_t> approxC1(mp, mbCoarse);
-    approxC1.options().setSwitch("plot",true);
-    approxC1.options().setSwitch("interpolation",true);
-    approxC1.options().setSwitch("second",false);
-    approxC1.options().setSwitch("info",false);
-
-    gsMappedBasis<2,real_t> mBasisCoarse;
-    approxC1.update(mBasisCoarse);
-
-    gsBoundaryConditions<> bc;
-    gsSparseMatrix<real_t, RowMajor> transfer;
-    gsOptionList assemblerOptions;
-    mbasisFine.getBase(0).uniformCoarsen_withTransfer(transfer, 1);
-
-    //createSplineBasisL2Projection(mBasisCoarse, mbasisFine, basisFine, localTransferMatrices[0]);
-
-    // mbasisFine.init(mbCoarse,global2local);
-    //if (method == MethodFlags::APPROXC1)
-    //mbasisFine = *mBasisCoarse.clone().release();
-    //approxC1.update(mbasisFine, true);
-    //basisFine.swap(mbCoarse);
-}
+//void uniformCoarsen_withTransfer(gsMappedBasis<2, real_t> & mbasisFine, gsMultiBasis<real_t> basisFine, gsMultiPatch<real_t> & mp,
+//                                 std::vector< gsSparseMatrix<real_t, RowMajor> > & localTransferMatrices, index_t numKnots)
+//{
+//    gsMultiBasis<real_t> mbCoarse;
+//    mbCoarse = *basisFine.clone().release();
+//    mbCoarse.uniformCoarsen(1);
+//
+//    gsApproxC1Spline<2,real_t> approxC1(mp, mbCoarse);
+//    approxC1.options().setSwitch("plot",true);
+//    approxC1.options().setSwitch("interpolation",true);
+//    approxC1.options().setSwitch("second",false);
+//    approxC1.options().setSwitch("info",false);
+//
+//    gsMappedBasis<2,real_t> mBasisCoarse;
+//    approxC1.update(mBasisCoarse);
+//
+//    gsBoundaryConditions<> bc;
+//    gsSparseMatrix<real_t, RowMajor> transfer;
+//    gsOptionList assemblerOptions;
+//    mbasisFine.getBase(0).uniformCoarsen_withTransfer(transfer, 1);
+//
+//    //createSplineBasisL2Projection(mBasisCoarse, mbasisFine, basisFine, localTransferMatrices[0]);
+//
+//    // mbasisFine.init(mbCoarse,global2local);
+//    //if (method == MethodFlags::APPROXC1)
+//    //mbasisFine = *mBasisCoarse.clone().release();
+//    //approxC1.update(mbasisFine, true);
+//    //basisFine.swap(mbCoarse);
+//}
 
 
 template <typename BasisType>
 void uniformCoarsen_withTransfer(
         BasisType & mBasis,
-        //gsMultiBasis<real_t> & basis,
-        //const gsMultiPatch<real_t> & mp,
+        gsMultiBasis<real_t> & mb,
+        gsMultiPatch<real_t> mp,
         gsSparseMatrix<real_t, RowMajor>& transferMatrix,
         const gsBoundaryConditions<real_t>& boundaryConditions,
         const gsOptionList & assemblerOptions,
@@ -263,6 +263,7 @@ void uniformCoarsen_withTransfer(
     if (const gsTensorBSplineBasis<2, real_t> *b =
                 dynamic_cast<const gsTensorBSplineBasis<2, real_t> *>(&mBasis.getBase(0)))
     {
+        gsInfo << "TensorBSplineBasis is used\n";
         // Getter for gsMultiBasis from gsMappedBasis
         std::vector<gsBasis<real_t> *> basis_temp = std::vector<gsBasis<real_t> *>(mBasis.nPatches());
         for (size_t np = 0; np < mBasis.nPatches(); np++) {
@@ -288,40 +289,58 @@ void uniformCoarsen_withTransfer(
 
         mBasis.init(basis,global2local_coarse);
     }
-    else
+    else if (const gsContainerBasis<2, real_t> *mapb =
+                   dynamic_cast<const gsContainerBasis<2, real_t> *>(&mBasis.getBase(0)))
     {
-//        gsMultiBasis<> basis_fine = basis;  //
-//
-//        gsSparseMatrix<real_t, RowMajor> transfer;
-//        gsBoundaryConditions<real_t> bc_empty;
-//        basis_fine.uniformCoarsen_withTransfer(transfer, bc_empty, assemblerOptions);
-//
-//        gsMultiBasis<> basis_coarse = basis_fine;
-//        gsSparseMatrix<real_t> global2local;
-//        global2local.resize(basis_coarse.size(), basis_coarse.size());
-//        global2local.setIdentity();
-//
-//        mappedBasis_coarse.init(basis_coarse,global2local);
-//
-//        gsDebugVar(mBasis.getMapper().asMatrix().dim());  // C
-//        gsDebugVar(transfer.dim());  // B
-//        gsDebugVar(mappedBasis_coarse.getMapper().asMatrix().dim());  // A
-//
-//        gsMatrix<real_t> AAt_inverse = (mappedBasis_coarse.getMapper().asMatrix() * mappedBasis_coarse.getMapper().asMatrix().transpose()).toDense().inverse();
-//        gsSparseMatrix<real_t, RowMajor> AAt = AAt_inverse.sparseView();
-//        gsDebugVar(AAt_inverse.dim());
-//        localTransferMatrices[0] = mBasis.getMapper().asMatrix() * transfer * AAt;
-//        gsDebugVar(localTransferMatrices[0].dim());
-//
-//        //mBasis = mappedBasis_coarse;
-//        mBasis.init(basis_coarse,global2local);
-//        basis.swap(basis_coarse);
+        gsInfo << "MappedBasis is used\n";
+
+        // Getter for gsMultiBasis from gsMappedBasis
+        std::vector<gsBasis<real_t> *> basis_temp = std::vector<gsBasis<real_t> *>(mBasis.nPatches());
+        for (size_t np = 0; np < mBasis.nPatches(); np++) {
+            gsContainerBasis<2, real_t> * basis = dynamic_cast<gsContainerBasis<2, real_t> *>(&mBasis.getBase(np));
+            basis_temp[np] = static_cast<gsBasis<> *>(basis->clone().release());
+        }
+        gsMultiBasis<> basis(basis_temp, mBasis.getTopol());
+
+        gsSparseMatrix<real_t, RowMajor> transfer;
+        gsBoundaryConditions<real_t> bc_empty;
+
+        basis.uniformCoarsen_withTransfer(transfer, bc_empty, assemblerOptions);
+        mb.uniformCoarsen();
+
+         // Construct the coarse MSpline
+        gsSparseMatrix<real_t> global2local_coarse;
+        gsMappedBasis<2, real_t> mappedBasis_coarse;
+        gsApproxC1Spline<2, real_t> approxC1(mp, mb);
+        //approxC1.options().setSwitch("info",info);
+        approxC1.options().setSwitch("plot",false);
+        approxC1.options().setSwitch("interpolation",true);
+        approxC1.options().setSwitch("second", false);
+
+        approxC1.update(mappedBasis_coarse);
+        global2local_coarse = mappedBasis_coarse.getMapper().asMatrix();
+
+        gsDebugVar(transfer.dim());  // B
+        gsDebugVar(mBasis.getMapper().asMatrix().dim());  // A
+        gsDebugVar(mappedBasis_coarse.getMapper().asMatrix().dim());  // C
+
+        gsMatrix<real_t> AAt_inverse = (global2local_coarse * global2local_coarse.transpose()).toDense().inverse();
+        gsSparseMatrix<real_t, RowMajor> AAt_inv = AAt_inverse.sparseView();
+        gsDebugVar(AAt_inv.dim());
+        localTransferMatrices[0] = mBasis.getMapper().asMatrix().transpose() * transfer * global2local_coarse;
+
+        gsMultiBasis<> dbasis_temp;
+        approxC1.getMultiBasis(dbasis_temp);
+        mBasis.init(dbasis_temp, global2local_coarse);
 
     }
-
     // Get coarse mapper
     gsDofMapper coarseMapper;
     setMapperForBiharmonic(boundaryConditions, mBasis, coarseMapper);
+
+    gsDebugVar(localTransferMatrices[0].dim());
+    fineMapper.print();
+    coarseMapper.print();
 
     // restrict to free dofs
     combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
@@ -330,8 +349,8 @@ void uniformCoarsen_withTransfer(
 template <typename BasisType>
 void buildByCoarsening(
     BasisType mBasis,
-    //gsMultiBasis<real_t> basis,
-    //const gsMultiPatch<real_t> & mp,
+    gsMultiBasis<real_t> basis,
+    gsMultiPatch<real_t> & mp,
     const gsBoundaryConditions<real_t>& boundaryConditions,
     const gsOptionList& options,
     index_t levels,
@@ -345,7 +364,7 @@ void buildByCoarsening(
     for (index_t i = 0; i < levels-1 && lastSize > degreesOfFreedom; ++i)
     {
         gsSparseMatrix<real_t, RowMajor> transferMatrix;
-        uniformCoarsen_withTransfer(mBasis, /*basis, mp,*/ transferMatrix, boundaryConditions, options, 1, unk);
+        uniformCoarsen_withTransfer(mBasis, basis, mp, transferMatrix, boundaryConditions, options, 1, unk);
 
         index_t newSize = mBasis.size();
         // If the number of dofs could not be decreased, then cancel. However, if only the number
@@ -367,8 +386,8 @@ void buildByCoarsening(
 template <typename BasisType>
 void buildByCoarsening(
     BasisType mBasis,
-    //gsMultiBasis<real_t> basis,
-    //const gsMultiPatch<real_t> & mp,
+    gsMultiBasis<real_t> basis,
+    gsMultiPatch<real_t> & mp,
     const gsBoundaryConditions<real_t>& boundaryConditions,
     const gsOptionList& options,
         std::vector<gsSparseMatrix<real_t, RowMajor>> & transferMatrices
@@ -376,8 +395,8 @@ void buildByCoarsening(
 {
     return buildByCoarsening(
         mBasis,
-        //basis,
-        //mp,
+        basis,
+        mp,
         boundaryConditions,
         options,
         options.askInt( "Levels", 3 ),
@@ -568,7 +587,15 @@ int main(int argc, char *argv[])
     meshsize[r] = basis.basis(0).getMaxCellLength();
 
     if (method == MethodFlags::APPROXC1)
+    {
         approxC1.update(mappedBasis);
+        //approxC1.update(mappedBasis2, false);
+        gsMultiBasis<> dbasis_temp;
+        approxC1.getMultiBasis(dbasis_temp);
+        global2local = approxC1.getSystem();
+        mappedBasis2.init(dbasis_temp, global2local);
+    }
+
     else if (method == MethodFlags::BSPLINE)
     {
         global2local.resize(basis.size(), basis.size());
@@ -616,7 +643,7 @@ int main(int argc, char *argv[])
     // We move the constructed hiearchy of multi bases into a variable (only required for the subspace smoother)
     // Then we move the transfer matrices into a variable
     //! [Setup grid hierarchy]
-    buildByCoarsening(mappedBasis2, /*basis, mp,*/ bc, cmd.getGroup("MG"), transferMatrices);
+    buildByCoarsening(mappedBasis2, basis, mp, bc, cmd.getGroup("MG"), transferMatrices);
     //! [Setup grid hierarchy]
     gsDebugVar(transferMatrices.size());
 

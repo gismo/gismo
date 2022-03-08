@@ -13,11 +13,11 @@
 
 #pragma once
 
-#include <gsUnstructuredSplines/gsApproxC1Utils.h>
+#include <gsUnstructuredSplines2/gsApproxC1Utils.h>
 
-#include <gsUnstructuredSplines/gsContainerBasis.h>
-#include <gsUnstructuredSplines/gsPatchReparameterized.h>
-#include <gsUnstructuredSplines/gsApproxGluingData.h>
+#include <gsUnstructuredSplines2/gsContainerBasis.h>
+#include <gsUnstructuredSplines2/gsPatchReparameterized.h>
+#include <gsUnstructuredSplines2/gsApproxGluingData.h>
 
 
 namespace gismo {
@@ -125,7 +125,7 @@ public:
             gsExprAssembler<> A(1, 1);
 
             // Elements used for numerical integration
-            gsMultiBasis<T> vertexSpace(auxPatchSingle[0].getBasisRotated().piece(m_vertexIndices[i] + 4));
+            gsMultiBasis<T> vertexSpace(auxPatchSingle[0].getBasisRotated().piece(0));
             A.setIntegrationElements(vertexSpace);
             gsExprEvaluator<T> ev(A);
 
