@@ -26,26 +26,6 @@
 
 using namespace gismo;
 
-template <typename T>
-inline T powerIteration( const typename gsLinearOperator<T>::Ptr& A, const gsPreconditionerOp<T>* B, index_t N = 10)
-{
-    GISMO_ASSERT( A->rows() == A->cols() && B->rows() == B->cols() && A->rows() == B->rows(), "Dimensions do not argee");
-
-    gsMatrix<T> x, y, z;
-    z.setRandom(A->rows(),1);
-
-    for (index_t i = 0; i < N; ++i)
-    {
-        z.swap(x);
-        x /= math::sqrt( x.col(0).dot(x.col(0)) );
-        A->apply(x, y);
-        B->apply(y, z);
-    }
-
-    return y.col(0).dot(z.col(0)) / x.col(0).dot(y.col(0));
-
-}
-
 gsMultiPatch<real_t> approximateQuarterAnnulus(index_t deg)
 {
     gsGeometry<>::uPtr quann = gsNurbsCreator<>::NurbsQuarterAnnulus();
@@ -177,6 +157,8 @@ public:
                                     m_underlyingOperator.cols() - m_originalSize);
         edgeMass.setFromTriplets(tripletList.begin(), tripletList.end());
         m_edgeSolver = (new Choleskyfac(edgeMass));
+
+        m_eig = powerIteration();
     }
 
     static BasePtr make(const gsSparseMatrix <T> &K,
@@ -220,8 +202,15 @@ public:
 
     void apply(const gsMatrix <T> &input, gsMatrix <T> &x) const {
         x.setZero(this->rows(), input.cols()); // we assume quadratic matrices
+        step(input, x);
         for (index_t i = 0; i < m_num_of_sweeps; ++i)
-            step(input, x);
+        {
+            //x *= (real_t)1./(m_eig);
+            gsMatrix<T> update, residual;
+            residual = input - m_underlyingOperator*x;
+            step(residual,update);
+            x += (real_t)0.5/m_eig*update;
+        }
     }
 
     virtual index_t rows() const { return m_underlyingOperator.rows(); }
@@ -342,6 +331,25 @@ private:
         //gsInfo << "matrix: \n"<<m_R1T.toDense()<<"\n";
     }
 
+    inline T powerIteration(index_t N = 10)
+    {
+        GISMO_ASSERT( m_underlyingOperator.rows() == m_underlyingOperator.cols(), "Dimensions do not argee");
+
+        gsMatrix<T> x, y, z;
+        z.setRandom(m_underlyingOperator.rows(),1);
+
+        for (index_t i = 0; i < N; ++i)
+        {
+            z.swap(x);
+            x /= math::sqrt( x.col(0).dot(x.col(0)) );
+            y = m_underlyingOperator*x;
+            step(y, z);
+        }
+
+        return y.col(0).dot(z.col(0)) / x.col(0).dot(y.col(0));
+
+    }
+
     /*
     void eliminateDirichlet1D(const gsBoundaryConditions<T>& bc, gsSparseMatrix<T> & result) const
     {
@@ -400,6 +408,8 @@ protected:
 #else
     typename gsSparseSolver<T>::SimplicialLDLT *m_edgeSolver;
 #endif
+
+    real_t m_eig;
 
 }; // gsInexactIETIPrec
 
