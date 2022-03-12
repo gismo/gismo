@@ -209,7 +209,7 @@ public:
             gsMatrix<T> update, residual;
             residual = input - m_underlyingOperator*x;
             step(residual,update);
-            x += (real_t)0.5/m_eig*update;
+            x += (real_t)1.0/m_eig*update;
         }
     }
 
@@ -582,7 +582,7 @@ int main(int argc, char *argv[])
     real_t penalty = 5;
     std::string boundaryConditions("d");
     std::string primals("c");
-    bool eliminatePointwiseDofs = true;
+    bool eliminatePointwiseDofs = false; // true for MFD
     real_t tolerance = 1.e-6;
     index_t maxIterations = 20000;
     std::string out;
@@ -927,6 +927,8 @@ int main(int argc, char *argv[])
         // Add the patch to the scaled Dirichlet preconditioner
         std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
 
+//! inexact stuff
+/*
         gsGenericAssembler<> hatassembler(
                 *gsNurbsCreator<>::BSplineSquare(),
                 mb_local,
@@ -947,24 +949,36 @@ int main(int argc, char *argv[])
             ParameterdomainAssembler<real_t>::apply(hatassembler, mp_local, bi);
         }
 
+
         gsBoundaryConditions<> bc_A11;
         for (index_t i = 1; i <= 2*mb.dim(); ++i) {
             bc_A11.addCondition(0, i, condition_type::dirichlet, &gD);
         }
 
         gsScaledDirichletPrec<>::Blocks blocks
-                = gsScaledDirichletPrec<>::matrixBlocks(hatassembler.matrix(), skeletonDofs);
+                = gsScaledDirichletPrec<>::matrixBlocks(assembler.matrix(), skeletonDofs);
 
         //gsInfo << "hatmatrix: \n" << blocks.A00.toDense() << "\n";
 
         timer.restart();
-        gsLinearOperator<>::Ptr A11 = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions);
+        //gsLinearOperator<>::Ptr A11 = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions);
         times.setupInverseInMsD(k) += timer.stop();
+
 
         prec.addSubdomain(
                 prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
                 gsScaledDirichletPrec<>::schurComplement( blocks,A11)
         );
+*/
+
+        prec.addSubdomain(
+                gsScaledDirichletPrec<>::restrictToSkeleton(
+                        jumpMatrix,
+                        localMatrix,
+                        ietiMapper.skeletonDofs(k),
+                        times.setupInverseInMsD(k)
+                    )
+                );
 
         //! [Patch to preconditioner]
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
@@ -980,10 +994,10 @@ int main(int argc, char *argv[])
                 localEmbedding,
                 embeddingForBasis,
                 rhsForBasis,
-                false
+                true
         );
         //! [Patch to primals]
-
+/*
         real_t reg;
         if(bc_local.dirichletSides().size() == 0)
             reg = (real_t)1;
@@ -1009,20 +1023,33 @@ int main(int argc, char *argv[])
         times.setupPk(k) += timer.stop();
 
         gsLinearOperator<>::Ptr localSolver = gsIterativeSolverOp<gsConjugateGradient<> >::make(ADelDel, localPrec);
-        //gsLinearOperator<>::Ptr localSolver2 = makeSparseLUSolver(ADelDel);
+*/
+        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(modifiedLocalMatrix);
 
-        gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
-        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
+        //gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
+        //gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
 
         /// "real" elimination
         timer.restart();
+        /*
         gsSparseMatrix<> basisDel = localEmbedding * gsPrimalSystem<>::primalBasis(
                 localSolver,
                 localEmbedding.transpose() * embeddingForBasis * localEmbedding, localEmbedding.transpose() * rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
         );
+         */
+        //gsInfo << "rows: "<<localEmbedding.rows()<<" and cols: "<< localEmbedding.cols()<<"\n";
+        primal.handleConstraints(
+                ietiMapper.primalConstraints(k),
+                ietiMapper.primalDofIndices(k),
+                jumpMatrix,
+                localMatrix,
+                localRhs,
+                times.assemblePrimalBasis(k)
+        );
         times.assemblePrimalBasis(k) += timer.stop();
 
         // TODO: this has to go into gsPrimalSystem<>::primalBasis ?
+        /*
         if(eliminatePointwiseDofs) {
             for (size_t i = 0; i < ietiMapper.primalConstraints(k).size(); ++i) {
                 gsSparseVector<> constraint = ietiMapper.primalConstraints(k)[i];
@@ -1034,32 +1061,27 @@ int main(int argc, char *argv[])
                 }
             }
         }
+
         //gsInfo << "primal basis: \n"<< rhsForBasis<<"\n";
         primal.addContribution(
                 jumpMatrix, localMatrix, localRhs,
                 basisDel,
                 makeMatrixOp(localEmbedding.moveToPtr())
         );
-/*
-        if(k==0)
-        {
-            gsMatrix<> result;
-            localPrec->toMatrix(result);
-            //gsInfo << "localPrec: \n" << result * ADelDel <<"\n";
-        }
 */
+
         // Register the local solver to the block preconditioner. We use
         // a sparse LU solver since the local saddle point problem is not
         // positive definite.
-        bdPrec->addOperator(k,k, gsTimedOp<>::make("P "+std::to_string(k), localPrec));
+        bdPrec->addOperator(k,k, gsTimedOp<>::make("P "+std::to_string(k), localSolver));
 
 
         // Add the patch to the Ieti system
         //! [Patch to system]
         ieti.addSubdomain(
-            modifiedJumpMatrix.moveToPtr(),
-            makeMatrixOp(ADelDel.moveToPtr()),
-            give(modifiedLocalRhs)
+            jumpMatrix.moveToPtr(),
+            makeMatrixOp(localMatrix.moveToPtr()),
+            give(localRhs)
         );
         //! [Patch to system]
     //! [End of assembling loop]
