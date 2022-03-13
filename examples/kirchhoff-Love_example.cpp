@@ -28,15 +28,14 @@ private:
     typename E::Nested_t _u;
     typename gsGeometryMap<Scalar>::Nested_t _G;
 
+    mutable gsMatrix<Scalar> res;
+    mutable gsMatrix<Scalar> bGrads, cJac;
+    mutable gsVector<Scalar,3> m_v, normal;
 public:
     enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
 
     var1_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G) { }
 
-    mutable gsMatrix<Scalar> res;
-
-    mutable gsMatrix<Scalar> bGrads, cJac;
-    mutable gsVector<Scalar,3> m_v, normal;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // helper function
@@ -47,20 +46,14 @@ public:
         return result;
     }
 
-    const gsMatrix<Scalar> & eval(const index_t k) const
-    {return eval_impl(_u,k); }
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
 
     index_t rows() const { return 1; }
-
     index_t cols() const { return _u.dim(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);
-        _u.data().flags |= NEED_GRAD;
-
-        evList.add(_G);
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+        parse_impl<E>(evList);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -70,6 +63,28 @@ public:
     void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
 
 private:
+    template<class U> inline
+    typename util::enable_if< !util::is_same<U,gsFeSolution<Scalar> >::value,void>::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_ACTIVE | NEED_GRAD; // need actives for cardinality
+        evList.add(_G);
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+    }
+
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value,void>::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_G);
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+
+        grad(_u).parse(evList); //
+
+        _u.parse(evList);
+    }
+
     template<class U> inline
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
@@ -89,8 +104,8 @@ private:
             for (index_t j = 0; j!= A; ++j) // for all actives
             {
                 // Jac(u) ~ Jac(G) with alternating signs ?..
-                m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() )) / measure;
+                m_v.noalias() = (vecFun(d, bGrads.at(2*j  ) ).cross( cJac.col3d(1) )
+                              - vecFun(d, bGrads.at(2*j+1) ).cross( cJac.col3d(0) )) / measure;
 
                 // ---------------  First variation of the normal
                 // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
@@ -114,8 +129,8 @@ private:
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
         const Scalar measure =  _G.data().measures.at(k);
 
-        m_v.noalias() = ( ( bGrads.col(0).template head<3>() ).cross( cJac.col(1).template head<3>() )
-                      -   ( bGrads.col(1).template head<3>() ).cross( cJac.col(0).template head<3>() ) ) / measure;
+        m_v.noalias() = ( ( bGrads.col3d(0) ).cross( cJac.col3d(1) )
+                      -   ( bGrads.col3d(1) ).cross( cJac.col3d(0) ) ) / measure;
 
         // ---------------  First variation of the normal
         // res.row(s+j).noalias() = (m_v - ( normal.dot(m_v) ) * normal).transpose();
@@ -178,8 +193,8 @@ public:
             {
                 for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (2)
                 {
-                    m_u.noalias() = ( vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col(1).template head<3>() )
-                                     -vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col(0).template head<3>() ))
+                    m_u.noalias() = ( vecFun(d, uGrads.at(2*j  ) ).cross( cJac.col3d(1) )
+                                     -vecFun(d, uGrads.at(2*j+1) ).cross( cJac.col3d(0) ))
                                     / measure;
 
                     const short_t s = d*cardU;
@@ -187,8 +202,8 @@ public:
                     for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (2)
                     {
                         const short_t r = c*cardV;
-                        m_v.noalias() = ( vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col(1).template head<3>() )
-                                         -vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col(0).template head<3>() ))
+                        m_v.noalias() = ( vecFun(c, vGrads.at(2*i  ) ).cross( cJac.col3d(1) )
+                                         -vecFun(c, vGrads.at(2*i+1) ).cross( cJac.col3d(0) ))
                                         / measure;
 
                         // n_der.noalias() = (m_v - ( normal.dot(m_v) ) * normal);
@@ -231,8 +246,9 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
-        _u.data().flags |= NEED_GRAD;
-
+        _u.data().flags |= NEED_ACTIVE | NEED_VALUE | NEED_GRAD;
+        evList.add(_v);
+        _v.data().flags |= NEED_ACTIVE | NEED_VALUE | NEED_GRAD;
         evList.add(_G);
         _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
         _Ef.parse(evList);
@@ -244,7 +260,6 @@ public:
     void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
 };
 
-// vector v should be a row vector
 template<class E1, class E2>
 class deriv2dot_expr : public _expr<deriv2dot_expr<E1, E2> >
 {
@@ -277,12 +292,7 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);   // We manage the flags of _u "manually" here (sets data)
-        _u.data().flags |= NEED_DERIV2; // define flags
-
-        _v.parse(evList); // We need to evaluate _v (_v.eval(.) is called)
-
-        // Note: evList.parse(.) is called only in exprAssembler for the global expression
+        parse_impl<E1>(evList);
     }
 
     const gsFeSpace<Scalar> & rowVar() const
@@ -309,6 +319,29 @@ public:
 
 private:
     template<class U> inline
+    typename util::enable_if< !util::is_same<U,gsFeSolution<Scalar> >::value,void>::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);   // We manage the flags of _u "manually" here (sets data)
+        _u.data().flags |= NEED_DERIV2; // define flags
+
+        _v.parse(evList); // We need to evaluate _v (_v.eval(.) is called)
+
+        // Note: evList.parse(.) is called only in exprAssembler for the global expression
+    }
+
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value,void>::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        _u.parse(evList); //
+        hess(_u).parse(evList); //
+
+        // evList.add(_u);   // We manage the flags of _u "manually" here (sets data)
+        _v.parse(evList); // We need to evaluate _v (_v.eval(.) is called)
+    }
+
+    template<class U> inline
     typename util::enable_if< util::is_same<U,gsGeometryMap<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
@@ -324,7 +357,6 @@ private:
         // evaluate the geometry map of U
         tmp =_u.data().values[2].reshapeCol(k, cols(), _u.data().dim.second );
         vEv = _v.eval(k);
-        
         res = vEv * tmp.transpose();
         return res;
     }
@@ -365,7 +397,7 @@ private:
             So we simply evaluate for every active basis function v_k the product hess(c).v_k
         */
 
-        hess_expr<gsFeSolution<Scalar>> sHess = hess_expr<gsFeSolution<Scalar>>(_u);
+        hess_expr<gsFeSolution<Scalar>> sHess = hess_expr<gsFeSolution<Scalar>>(_u); // NOTE: This does not parse automatically!
         tmp = sHess.eval(k);
         vEv = _v.eval(k);
         res = vEv * tmp;
@@ -380,21 +412,20 @@ private:
     }
 
     template<class U> inline
-    typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, index_t >::type
+    typename util::enable_if< !util::is_same<U,gsGeometryMap<Scalar>  >::value, index_t >::type
     cols_impl(const U & u) const
     {
         return _u.dim();
     }
 
-    template<class U> inline
-    typename util::enable_if<util::is_same<U,gsFeSolution<Scalar> >::value, index_t >::type
-    cols_impl(const U & u) const
-    {
-        return _u.dim();
-    }
+    // template<class U> inline
+    // typename util::enable_if<util::is_same<U,gsFeSolution<Scalar> >::value, index_t >::type
+    // cols_impl(const U & u) const
+    // {
+    //     return _u.dim();
+    // }
 
 };
-
 
 /*
     The deriv2_expr computes the hessian of a basis.
@@ -477,6 +508,47 @@ public:
         }
 
         template<class U> inline
+        typename util::enable_if< util::is_same<U,gsFeVariable<Scalar> >::value, const gsMatrix<Scalar> & >::type
+        eval_impl(const U & u, const index_t k)  const
+        {
+            /*
+                Here, we compute the hessian of the geometry map.
+                The hessian of the geometry map c has the form: hess(c)
+                [d11 c1, d11 c2, d11 c3]
+                [d22 c1, d22 c2, d22 c3]
+                [d12 c1, d12 c2, d12 c3]
+
+                The geometry map has components c=[c1,c2,c3]
+            */
+            // evaluate the geometry map of U
+            tmp =  _u.data().values[2];
+            res.resize(rows(),cols());
+            for (index_t comp = 0; comp != _u.source().targetDim(); comp++)
+                res.col(comp) = tmp.block(comp*rows(),0,rows(),1); //star,length
+            return res;
+        }
+
+        template<class U> inline
+        typename util::enable_if< util::is_same<U,gsFeSolution<Scalar> >::value, const gsMatrix<Scalar> & >::type
+        eval_impl(const U & u, const index_t k)  const
+        {
+            /*
+                Here, we compute the hessian of the geometry map.
+                The hessian of the geometry map c has the form: hess(c)
+                [d11 c1, d11 c2, d11 c3]
+                [d22 c1, d22 c2, d22 c3]
+                [d12 c1, d12 c2, d12 c3]
+
+                The geometry map has components c=[c1,c2,c3]
+            */
+            // evaluate the geometry map of U
+            hess_expr<gsFeSolution<Scalar>> sHess = hess_expr<gsFeSolution<Scalar>>(_u);
+            res = sHess.eval(k).transpose();
+            return res;
+        }
+
+        /// Spexialization for a space
+        template<class U> inline
         typename util::enable_if<util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
         eval_impl(const U & u, const index_t k) const
         {
@@ -516,7 +588,6 @@ public:
 
 };
 
-
 template<class E1, class E2, class E3>
 class flatdot_expr  : public _expr<flatdot_expr<E1,E2,E3> >
 {
@@ -530,7 +601,7 @@ private:
     mutable gsMatrix<Scalar> eA, eB, eC, tmp, res;
 
 public:
-    enum {Space = E1::Space, ScalarValued = 1, ColBlocks= 0};
+    enum {Space = 3, ScalarValued = 0, ColBlocks = 0};
 
 public:
 
@@ -572,7 +643,6 @@ public:
 
     index_t rows() const { return 1; }
     index_t cols() const { return 1; }
-    void setFlag() const { _A.setFlag();_B.setFlag();_C.setFlag(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _A.parse(evList);_B.parse(evList);_C.parse(evList); }
@@ -601,7 +671,7 @@ private:
     mutable gsMatrix<Scalar> eA, eB, eC, res, tmp;
 
 public:
-    enum {Space = E1::Space, ScalarValued = 1, ColBlocks = 0};
+    enum {Space = E1::Space, ScalarValued = 0, ColBlocks = 0};
 
     flatdot2_expr(_expr<E1> const& A, _expr<E2> const& B, _expr<E3> const& C) : _A(A),_B(B),_C(C)
     {
@@ -1043,7 +1113,12 @@ int main(int argc, char *argv[])
     real_t PoissonRatio = 0.0;
     real_t thickness = 1.0;
 
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    real_t alpha_d = 1e3;
+    real_t alpha_r = 1e0;
+
+    gsCmdLine cmd("Tutorial on solving a Kirchhoff-Love shell problem.");
+    cmd.addReal("D", "alphaD","alphaD",alpha_d);
+    cmd.addReal("R", "alphaR","alphaR",alpha_r);
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement steps to perform before solving",  numRefine );
@@ -1083,7 +1158,7 @@ int main(int argc, char *argv[])
         mp.addAutoBoundaries();
         mp.embed(3);
         E_modulus = 1e0;
-        thickness = 1e0;
+        thickness = 1e-2;
         PoissonRatio = 0.0;
     }
     //! [set test case data]
@@ -1125,12 +1200,25 @@ int main(int argc, char *argv[])
     //! [Boundary condition case 1]
     if (testCase == 1)
     {
-        for (index_t i=0; i!=3; ++i)
+        if (weak)
         {
-            bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
-            bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
-            bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
-            bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            for (index_t i=0; i!=3; ++i)
+            {
+                bc.addCondition(boundary::north, condition_type::weak_dirichlet, 0, 0, false, i ); // unknown 0 - x
+                bc.addCondition(boundary::east, condition_type::weak_dirichlet, 0, 0, false, i ); // unknown 1 - y
+                bc.addCondition(boundary::south, condition_type::weak_dirichlet, 0, 0, false, i ); // unknown 2 - z
+                bc.addCondition(boundary::west, condition_type::weak_dirichlet, 0, 0, false, i ); // unknown 2 - z
+            }
+        }
+        else
+        {
+            for (index_t i=0; i!=3; ++i)
+            {
+                bc.addCondition(boundary::north, condition_type::dirichlet, 0, 0, false, i ); // unknown 0 - x
+                bc.addCondition(boundary::east, condition_type::dirichlet, 0, 0, false, i ); // unknown 1 - y
+                bc.addCondition(boundary::south, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+                bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
+            }
         }
         tmp << 0,0,-1;
     }
@@ -1235,8 +1323,16 @@ int main(int argc, char *argv[])
             bc.addCondition(boundary::west, condition_type::dirichlet, 0, 0, false, i ); // unknown 2 - z
         }
 
-        bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
-        bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+        if (weak)
+        {
+            bc.addCondition(boundary::east, condition_type::weak_clamped, 0, 0 ,false,2);
+            bc.addCondition(boundary::west, condition_type::weak_clamped, 0, 0 ,false,2);
+        }
+        else
+        {
+            bc.addCondition(boundary::east, condition_type::clamped, 0, 0 ,false,2);
+            bc.addCondition(boundary::west, condition_type::clamped, 0, 0 ,false,2);
+        }
 
         tmp<<0,0,-1;
     }
@@ -1280,7 +1376,7 @@ int main(int argc, char *argv[])
         }
 
 
-        tmp << 0,0,-1;
+        tmp << 0,0,-0.1;
     }
 
     //! [Assembler setup]
@@ -1377,14 +1473,11 @@ int main(int argc, char *argv[])
 
     auto That   = cartcon(G);
     auto Ttilde = cartcov(G);
-    auto E_m_plot = 0.5 * ( flat(jac(defG).tr()*jac(defG)) - flat(jac(G).tr()* jac(G)) ) * That;
-    auto S_m_plot = E_m_plot * reshape(mm,3,3) * Ttilde;
 
-    // // For Neumann (same for Dirichlet/Nitsche) conditions
+    // For Neumann (same for Dirichlet/Nitsche) conditions
     auto g_N = A.getBdrFunction(G);
     // auto g_N = ff;
 
-    real_t alpha_d = 1e3;
     A.assembleBdr
     (
         bc.get("Weak Dirichlet")
@@ -1393,6 +1486,18 @@ int main(int argc, char *argv[])
         ,
         alpha_d * (u * (defG - G) - u * (g_N) )
     );
+
+    // RHS is minussed, why?
+    A.assembleBdr(
+        bc.get("Weak Clamped")
+        ,
+        // alpha_r * (usn(defG).tr() * nv(G) - usn(G).tr() * nv(G)).val() * var2(u,u,defG,nv(G).tr()) * tv(G).norm()
+        // +
+        alpha_r * (var1(u,defG) * nv(G)) * (var1(u,defG) * nv(G)).tr() * meas(G)
+        // ,
+        // alpha_r * (usn(defG).tr() * nv(G) - usn(G).tr() * nv(G)).val() * var1(u,defG) * nv(G) * tv(G).norm()
+    );
+
 
     // For Neumann conditions
     A.assembleBdr(bc.get("Neumann"), u * g_N * tv(G).norm() );
@@ -1424,11 +1529,6 @@ int main(int argc, char *argv[])
     gsMatrix<> result;
     u_sol.extractFull(result);
 
-    gsVector<> pt(2);
-    pt.setConstant(0.25);
-    ev.options().setInt("plot.npts", 5000);
-    ev.writeParaview(S_m_plot,defG,"stress");
-    gsInfo<<"Stresses\n"<<ev.eval(E_m_plot,pt)<<"\n";
     //! [Linear solve]
 
     //! [Nonlinear solve]
@@ -1471,6 +1571,18 @@ int main(int argc, char *argv[])
                 alpha_d * u * u.tr()
                 ,
                 -alpha_d * (u * (defG - G) - u * (g_N) )
+            );
+
+            // Weak Clamping term
+            // RHS is minussed!
+            A.assembleBdr(
+                bc.get("Weak Clamped")
+                ,
+                alpha_r * (usn(defG).tr() * nv(G) - usn(G).tr() * nv(G)).val() * var2(u,u,defG,nv(G).tr()) * tv(G).norm()
+                +
+                alpha_r * (var1(u,defG) * nv(G)) * (var1(u,defG) * nv(G)).tr() * tv(G).norm()
+                ,
+                -alpha_r * (usn(defG).tr() * nv(G) - usn(G).tr() * nv(G)).val() * var1(u,defG) * nv(G) * tv(G).norm()
             );
 
             // solve system
