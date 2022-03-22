@@ -1,5 +1,6 @@
 # Submodule files
 submodules.txt
+extensions/
 
 # CLion user-specific files
 .idea
@@ -26,3 +27,6 @@ CMakeFiles/
 # Patch Files
 *.patch
 *.rej
+
+# Data
+data-private/
