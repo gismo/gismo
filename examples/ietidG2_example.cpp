@@ -203,13 +203,13 @@ public:
     void apply(const gsMatrix <T> &input, gsMatrix <T> &x) const {
         x.setZero(this->rows(), input.cols()); // we assume quadratic matrices
         step(input, x);
-        for (index_t i = 0; i < m_num_of_sweeps; ++i)
+        for (index_t i = 0; i < 0; ++i)
         {
             //x *= (real_t)1./(m_eig);
             gsMatrix<T> update, residual;
             residual = input - m_underlyingOperator*x;
             step(residual,update);
-            x += (real_t)1.0/m_eig*update;
+            x += (real_t)0.5/m_eig*update;
         }
     }
 
@@ -582,7 +582,7 @@ int main(int argc, char *argv[])
     real_t penalty = 5;
     std::string boundaryConditions("d");
     std::string primals("c");
-    bool eliminatePointwiseDofs = false; // true for MFD
+    bool eliminatePointwiseDofs = true; // true for MFD
     real_t tolerance = 1.e-6;
     index_t maxIterations = 20000;
     std::string out;
@@ -731,20 +731,33 @@ int main(int argc, char *argv[])
     // We might want to create a non-matching setup such that we are not in the
     // special case where the function spaces on the interfaces actually agree
     // (as this would be the case for the Yeti footprint, the default domain.)
+    //gsPiecewiseFunction<> piece(mb.size());
+    //gsFunctionExpr<> one("1.0", 2);
+    //gsFunctionExpr<> two("2.0", 2);
+    //gsFunctionExpr<> zero("0.0", 2);
     if (nonMatching)
     {
         gsInfo << "\n  Option NonMatching: Make uniform refinement for every third patch... " << std::flush;
         for (size_t i = 0; i < mb.nBases(); ++i)
-            if ( i%3 == 0 )
+            if ( i%3 == 0 ) {
                 mb[i].uniformRefine();
+                //piece.addPiece(zero);
+            }
         gsInfo << "done.\n";
         --refinements;
 
         gsInfo << "  Option NonMatching: Increase spline degree for every other third patch... " << std::flush;
         for (size_t i = 0; i < mb.nBases(); ++i)
-            if ( i%3 == 1 )
+            if ( i%3 == 1 ) {
                 mb[i].setDegreePreservingMultiplicity(degree+1);
+                //piece.addPiece(one);
+            }
         gsInfo << "done.\n";
+
+        for (size_t i = 0; i < mb.nBases(); ++i)
+            if ( i%3 == 2 ) {
+                //piece.addPiece(two);
+            }
     }
     //! [Set degree and refine]
 
@@ -928,7 +941,7 @@ int main(int argc, char *argv[])
         std::vector<index_t> skeletonDofs = ietiMapper.skeletonDofs(k);
 
 //! inexact stuff
-/*
+
         gsGenericAssembler<> hatassembler(
                 *gsNurbsCreator<>::BSplineSquare(),
                 mb_local,
@@ -956,21 +969,21 @@ int main(int argc, char *argv[])
         }
 
         gsScaledDirichletPrec<>::Blocks blocks
-                = gsScaledDirichletPrec<>::matrixBlocks(assembler.matrix(), skeletonDofs);
+                = gsScaledDirichletPrec<>::matrixBlocks(hatassembler.matrix(), skeletonDofs);
 
         //gsInfo << "hatmatrix: \n" << blocks.A00.toDense() << "\n";
 
         timer.restart();
-        //gsLinearOperator<>::Ptr A11 = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions);
+        gsLinearOperator<>::Ptr A11 = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions);
         times.setupInverseInMsD(k) += timer.stop();
 
 
         prec.addSubdomain(
                 prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
-                gsScaledDirichletPrec<>::schurComplement( blocks,A11)
+                gsScaledDirichletPrec<>::schurComplement( blocks, A11)
         );
-*/
 
+/*
         prec.addSubdomain(
                 gsScaledDirichletPrec<>::restrictToSkeleton(
                         jumpMatrix,
@@ -979,8 +992,9 @@ int main(int argc, char *argv[])
                         times.setupInverseInMsD(k)
                     )
                 );
-
+*/
         //! [Patch to preconditioner]
+
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
         //! [Patch to primals]
@@ -994,10 +1008,9 @@ int main(int argc, char *argv[])
                 localEmbedding,
                 embeddingForBasis,
                 rhsForBasis,
-                true
+                false
         );
         //! [Patch to primals]
-/*
         real_t reg;
         if(bc_local.dirichletSides().size() == 0)
             reg = (real_t)1;
@@ -1023,22 +1036,21 @@ int main(int argc, char *argv[])
         times.setupPk(k) += timer.stop();
 
         gsLinearOperator<>::Ptr localSolver = gsIterativeSolverOp<gsConjugateGradient<> >::make(ADelDel, localPrec);
-*/
-        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(modifiedLocalMatrix);
 
-        //gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
-        //gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
+
+        gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
+        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
 
         /// "real" elimination
         timer.restart();
-        /*
+
         gsSparseMatrix<> basisDel = localEmbedding * gsPrimalSystem<>::primalBasis(
                 localSolver,
                 localEmbedding.transpose() * embeddingForBasis * localEmbedding, localEmbedding.transpose() * rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
         );
-         */
+
         //gsInfo << "rows: "<<localEmbedding.rows()<<" and cols: "<< localEmbedding.cols()<<"\n";
-        primal.handleConstraints(
+        /*primal.handleConstraints(
                 ietiMapper.primalConstraints(k),
                 ietiMapper.primalDofIndices(k),
                 jumpMatrix,
@@ -1046,10 +1058,11 @@ int main(int argc, char *argv[])
                 localRhs,
                 times.assemblePrimalBasis(k)
         );
+         */
         times.assemblePrimalBasis(k) += timer.stop();
 
         // TODO: this has to go into gsPrimalSystem<>::primalBasis ?
-        /*
+
         if(eliminatePointwiseDofs) {
             for (size_t i = 0; i < ietiMapper.primalConstraints(k).size(); ++i) {
                 gsSparseVector<> constraint = ietiMapper.primalConstraints(k)[i];
@@ -1068,20 +1081,23 @@ int main(int argc, char *argv[])
                 basisDel,
                 makeMatrixOp(localEmbedding.moveToPtr())
         );
+/*
+        timer.restart();
+        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(localMatrix);
+        times.setupPk(k) += timer.stop();
 */
-
         // Register the local solver to the block preconditioner. We use
         // a sparse LU solver since the local saddle point problem is not
         // positive definite.
-        bdPrec->addOperator(k,k, gsTimedOp<>::make("P "+std::to_string(k), localSolver));
+        bdPrec->addOperator(k,k, gsTimedOp<>::make("P "+std::to_string(k), localPrec));
 
 
         // Add the patch to the Ieti system
         //! [Patch to system]
         ieti.addSubdomain(
-            jumpMatrix.moveToPtr(),
-            makeMatrixOp(localMatrix.moveToPtr()),
-            give(localRhs)
+            modifiedJumpMatrix.moveToPtr(),
+            makeMatrixOp(ADelDel.moveToPtr()),
+            give(modifiedLocalRhs)
         );
         //! [Patch to system]
     //! [End of assembling loop]
@@ -1197,8 +1213,8 @@ int main(int argc, char *argv[])
         assembler.computeDirichletDofs();
         gsMultiPatch<> mpsol;
         assembler.constructSolution(uVec, mpsol);
-        gsField<> sol( assembler.patches(), mpsol );
-        gsWriteParaview<>(sol, "IETI", 1000);
+        //gsField<> sol( assembler.patches(), piece );
+        //gsWriteParaview<>(sol, "IETI", 1000);
         system("paraview IETI.pvd  &");
 
         //gsFileManager::open("ieti_result.pvd");

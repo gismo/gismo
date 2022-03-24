@@ -263,12 +263,12 @@ gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
 
     for (index_t i=0; i<sz; ++i)
     {
-        GISMO_ASSERT( sol[i].rows()//+(m_embeddings[i]->rows() - m_embeddings[i]->cols()) //TODO: connected to the TODO above with .moveToPtr
+        GISMO_ASSERT( sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols()) //TODO: connected to the TODO above with .moveToPtr
         >= this->m_primalBases[i].rows()
             && this->m_primalBases[i].cols() == sol.back().rows()
             && sol.back().cols() == sol[i].cols(),
             "gsPrimalSystem::distributePrimalSolution: Dimensions do not agree: "
-            << sol[i].rows()//+(m_embeddings[i]->rows() - m_embeddings[i]->cols()) //TODO: connected to the TODO above with .moveToPtr
+            << sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols()) //TODO: connected to the TODO above with .moveToPtr
             << ">=" << this->m_primalBases[i].rows() << "&&"
             << this->m_primalBases[i].cols() << "==" << sol.back().rows() << "&&"
             << sol.back().cols() << "==" << sol[i].cols() << " ( i=" << i << "). "
