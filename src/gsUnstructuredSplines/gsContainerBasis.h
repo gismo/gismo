@@ -334,6 +334,14 @@ namespace gismo
             return result;
         }
 
+        /// Returns a bounding box for the basis' domain
+        /// NOTE: it assumes that the 0th basis is representative
+        gsMatrix<T> support() const
+        {
+            GISMO_ASSERT(basisContainer.size()>0,"Container is empty");
+            return basisContainer[0].support();
+        }
+
 
 // implementations of gsContainerBasis
     public:
