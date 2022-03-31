@@ -30,8 +30,9 @@ namespace py = pybind11;
 
 void pybind11_init_gsGeometry(py::module &m)
 {
+  using Base = gsFunction<real_t>;
   using Class = gsGeometry<real_t>;
-  py::class_<Class>(m, "gsGeometry")
+  py::class_<Class, Base>(m, "gsGeometry")
 
   // Member functions
   .def("domainDim", &Class::domainDim, "Gives the domain dimension")
@@ -41,6 +42,8 @@ void pybind11_init_gsGeometry(py::module &m)
 
   .def("eval", &Class::eval, "Evaluates points into a matrix")
   .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+  .def("deriv", &Class::deriv, "Evaluates points into a matrix")
+  .def("deriv_into", &Class::deriv_into, "Evaluates points into a matrix")
   .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs), "Get the coefficients as a reference")
   .def("coefs", static_cast<const gsMatrix<real_t>& (Class::*)() const> (&Class::coefs), "Get the coefficients as a const reference")
   ;

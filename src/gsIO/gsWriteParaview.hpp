@@ -289,12 +289,15 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
     file << std::fixed; // no exponents
     file << std::setprecision (PLOT_PRECISION);
 
+    index_t np1 = (np.size()>1 ? np(1)-1 : 0);
+    index_t np2 = (np.size()>2 ? np(2)-1 : 0);
+    
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
-    file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "
-         << (np.size()>2 ? np(2)-1 : 0) <<"\">\n";
-    file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np(1)-1<<" 0 "
-         << (np.size()>2 ? np(2)-1 : 0) <<"\">\n";
+    file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<< np1 <<" 0 "
+         << np2 <<"\">\n";
+    file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np1<<" 0 "
+         << np2 <<"\">\n";
     file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":"Vectors")<<"=\"SolutionField\">\n";
     file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< ( eval_field.rows()==1 ? 1 : 3) <<"\">\n";
     if ( eval_field.rows()==1 )

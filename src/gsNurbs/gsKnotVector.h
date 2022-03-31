@@ -529,11 +529,10 @@ public:
 
     /// Returns the greville points of the B-splines defined on this
     /// knot vector.
-    gsMatrix<T> * greville() const
+    gsMatrix<T> greville() const
     {
-        gsMatrix<T> * gr;
-        gr = new gsMatrix<T>( 1,this->size() - m_deg - 1 );
-        this->greville_into(*gr);
+        gsMatrix<T> gr( 1,this->size() - m_deg - 1 );
+        this->greville_into(gr);
         return gr;
     }
 
