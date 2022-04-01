@@ -54,6 +54,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage multiGrid_example
 
+- \subpage pMultiGrid_example
+
 @cond DOXYGEN_EXCLUDE
 - \subpage poisson_example
 @endcond
