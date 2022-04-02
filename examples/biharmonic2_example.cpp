@@ -1,7 +1,6 @@
-/** @file biharmonic2_example.cpp
+/** @file biharmonic_example.cpp
 
-    @brief Tutorial on how to use expression assembler and the (approx.) C1 basis function
-                to solve the Biharmonic equation
+    @brief A Biharmonic example for a single patch.
 
     This file is part of the G+Smo library.
 
@@ -12,196 +11,237 @@
     Author(s): P. Weinmueller
 */
 
-//! [Include namespace]
-#include <gismo.h>
-
-#include <gsUnstructuredSplines/gsApproxC1Spline.h>
-//#include <gsUnstructuredSplines/gsDPatch.h>
-
-#include <gsIO/gsCSVWriter.h>
+# include <gismo.h>
 
 using namespace gismo;
-//! [Include namespace]
+
+
+void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMultiBasis<> & basis, gsDofMapper & mapper)
+{
+    mapper.init(basis);
+
+    for (gsBoxTopology::const_iiterator it = basis.topology().iBegin();
+         it != basis.topology().iEnd(); ++it) // C^0 at the interface
+    {
+        basis.matchInterface(*it, mapper);
+    }
+
+    gsMatrix<index_t> bnd;
+    for (typename gsBoundaryConditions<real_t>::const_iterator
+                 it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it)
+    {
+        bnd = basis.basis(it->ps.patch).boundary(it->ps.side());
+        mapper.markBoundary(it->ps.patch, bnd, 0);
+    }
+
+    for (typename gsBoundaryConditions<real_t>::const_iterator
+                 it = bc.begin("Neumann"); it != bc.end("Neumann"); ++it)
+    {
+        bnd = basis.basis(it->ps.patch).boundaryOffset(it->ps.side(),1);
+        mapper.markBoundary(it->ps.patch, bnd, 0);
+    }
+    mapper.finalize();
+}
+
+void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> & basis, gsBoundaryConditions<> & bc, const expr::gsFeSpace<real_t> & u)
+{
+    const gsDofMapper & mapper = u.mapper();
+    gsDofMapper mapperBdy(basis, u.dim());
+    for (gsBoxTopology::const_iiterator it = basis.topology().iBegin();
+         it != basis.topology().iEnd(); ++it) // C^0 at the interface
+    {
+        basis.matchInterface(*it, mapperBdy);
+    }
+    for (size_t np = 0; np < mp.nPatches(); np++)
+    {
+        gsMatrix<index_t> bnd = mapper.findFree(np);
+        mapperBdy.markBoundary(np, bnd, 0);
+    }
+    mapperBdy.finalize();
+
+    gsExprAssembler<real_t> A(1,1);
+    A.setIntegrationElements(basis);
+
+    auto G = A.getMap(mp);
+    auto uu = A.getSpace(basis);
+    auto g_bdy = A.getBdrFunction(G);
+
+    uu.setupMapper(mapperBdy);
+    gsMatrix<real_t> & fixedDofs_A = const_cast<expr::gsFeSpace<real_t>&>(uu).fixedPart();
+    fixedDofs_A.setZero( uu.mapper().boundarySize(), 1 );
+
+    real_t lambda = 1e-5;
+
+    A.initSystem();
+    A.assembleBdr(bc.get("Dirichlet"), uu * uu.tr() * meas(G));
+    A.assembleBdr(bc.get("Dirichlet"), uu * g_bdy * meas(G));
+    A.assembleBdr(bc.get("Neumann"),
+                  lambda * (igrad(uu, G) * nv(G).normalized()) * (igrad(uu, G) * nv(G).normalized()).tr() * meas(G));
+    A.assembleBdr(bc.get("Neumann"),
+                  lambda *  (igrad(uu, G) * nv(G).normalized()) * (g_bdy.tr() * nv(G).normalized()) * meas(G));
+
+    gsSparseSolver<real_t>::SimplicialLDLT solver;
+    solver.compute( A.matrix() );
+    gsMatrix<real_t> & fixedDofs = const_cast<expr::gsFeSpace<real_t>& >(u).fixedPart();
+    gsMatrix<real_t> fixedDofs_temp = solver.solve(A.rhs());
+
+    // Reordering the dofs of the boundary
+    fixedDofs.setZero(mapper.boundarySize(),1);
+    index_t sz = 0;
+    for (size_t np = 0; np < mp.nPatches(); np++)
+    {
+        gsMatrix<index_t> bnd = mapperBdy.findFree(np);
+        bnd.array() += sz;
+        for (index_t i = 0; i < bnd.rows(); i++)
+        {
+            index_t ii = mapperBdy.asVector()(bnd(i,0));
+            fixedDofs(mapper.global_to_bindex(mapper.asVector()(bnd(i,0))),0) = fixedDofs_temp(ii,0);
+        }
+        sz += mapperBdy.patchSize(np,0);
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t smoothing = 2;
 
     index_t numRefine  = 3;
-    index_t discreteDegree = 3;
-    index_t discreteRegularity = 2;
+    index_t degree = 3;
+    index_t smoothness = 2;
     bool last = false;
-    bool info = false;
-    bool neumann = false;
+    bool second = false;
+
     std::string fn;
 
-    index_t geometry = 1000;
+    gsCmdLine cmd("Example for solving the biharmonic problem (single patch only).");
+    cmd.addInt("p", "degree","Set discrete polynomial degree", degree);
+    cmd.addInt("s", "smoothness", "Set discrete regularity",  smoothness);
+    cmd.addInt("l", "refinementLoop", "Number of refinement steps",  numRefine);
+    cmd.addString("f", "file", "Input geometry file (with .xml)", fn);
 
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addInt( "s", "smoothing","Smoothing", smoothing );
-    cmd.addInt( "p", "discreteDegree","Which discrete degree?", discreteDegree );
-    cmd.addInt( "r", "discreteRegularity", "Number of discreteRegularity",  discreteRegularity );
-    cmd.addInt( "l", "refinementLoop", "Number of refinementLoop",  numRefine );
-    cmd.addString( "f", "file", "Input geometry file", fn );
-    cmd.addInt( "g", "geometry", "Which geometry",  geometry );
-    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
+    cmd.addSwitch("last", "Solve problem only on the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("info", "Getting the information inside of Approximate C1 basis functions", info);
 
-    cmd.addSwitch("neumann", "Neumann", neumann);
-
+    cmd.addSwitch("second", "Compute second biharmonic problem with u = g1 and Delta u = g2 "
+                            "(default first biharmonic problem: u = g1 and partial_n u = g2)", second);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    if (discreteDegree - discreteRegularity > 1)
-        gsInfo << "ERROR, does not work for C^1: Choose C^2 \n";
-
     //! [Read geometry]
-    std::string string_geo;
-    if (fn.empty())
-        string_geo = "planar/geometries/g" + util::to_string(geometry) + ".xml";
-    else
-        string_geo = fn;
-
     gsMultiPatch<> mp;
-    gsInfo << "Filedata: " << string_geo << "\n";
-    gsReadFile<>(string_geo, mp);
+    if (fn.empty())
+        mp = gsMultiPatch<>( *gsNurbsCreator<>::BSplineFatQuarterAnnulus() );
+    else
+    {
+        gsInfo << "Filedata: " << fn << "\n";
+        gsReadFile<>(fn, mp);
+    }
     mp.clearTopology();
     mp.computeTopology();
 
-    std::string string_file = "planar/biharmonic_pde/bvp1.xml";
-    gsFileData<> fd(string_file);
-    gsFunctionExpr<> f, laplace, ms;
-    fd.getId(0,f);
-    gsInfo<<"Source function "<< f << "\n";
+    if (mp.nPatches() != 1)
+    {
+        gsInfo << "The geometry has more than one patch. Run the code with a single patch!\n";
+        return EXIT_FAILURE;
+    }
+    //! [Read geometry]
 
-    fd.getId(1,ms); // Exact solution
-    gsInfo<<"Exact function "<< ms << "\n";
+    gsFunctionExpr<>f("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsInfo << "Source function: " << f << "\n";
 
-    fd.getId(2,laplace); // Laplace for the bcs
-
-    // Neumann
-    gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                                         "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)",2);
-
-    //! [Boundary condition]
-    gsBoundaryConditions<> bc;
-    if (geometry == 1000 || geometry == 1100)
-        fd.getId(3, bc); // id=2: boundary conditions
-    else
-        for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-        {
-            bc.addCondition(*bit, condition_type::dirichlet, &ms);
-            if (neumann)
-                bc.addCondition(*bit, condition_type::neumann, &sol1der);
-            else
-                bc.addCondition(*bit, condition_type::laplace, &laplace);
-        }
-    bc.setGeoMap(mp);
-    //! [Boundary condition]
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-    gsInfo<<"Finished\n";
-
-    gsOptionList optionList;
-    fd.getId(100, optionList); // id=100: assembler options
-    gsInfo << "OptionList: " << optionList << "\n";
-    //! [Read input file]
+    gsFunctionExpr<> ms("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsInfo << "Exact function: " << ms << "\n";
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(mp, false);//true: poly-splines (not NURBS)
+    gsMultiBasis<> basis(mp, false);//true: poly-splines (not NURBS)
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    dbasis.setDegree( discreteDegree);
+    basis.setDegree(degree); // preserve smoothness
 
     // h-refine each basis
     if (last)
     {
-        for (int r =0; r < numRefine; ++r)
-            dbasis.uniformRefine(1, discreteDegree-discreteRegularity);
+        for (index_t r =0; r < numRefine; ++r)
+            basis.uniformRefine(1, degree-smoothness);
         numRefine = 0;
     }
-
-    // Assume that the condition holds for each patch TODO
-    // Refine once
-    if (dbasis.basis(0).numElements() < 4)
-        dbasis.uniformRefine(1, discreteDegree-discreteRegularity);
-
-
-    gsInfo << "Patches: "<< mp.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
-#ifdef _OPENMP
-    gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
-#endif
     //! [Refinement]
 
+    //! [Boundary condition]
+    gsBoundaryConditions<> bc;
+    for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+    {
+        // Laplace
+        gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+
+        // Neumann
+        gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+                                 "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)", 2);
+
+        bc.addCondition(*bit, condition_type::dirichlet, ms);
+        if (second)
+            bc.addCondition(*bit, condition_type::laplace, laplace);
+        else
+            bc.addCondition(*bit, condition_type::neumann, sol1der);
+    }
+    bc.setGeoMap(mp);
+    gsInfo << "Boundary conditions:\n" << bc << "\n";
+    //! [Boundary condition]
+
     //! [Problem setup]
-    gsExprAssembler<> A(1,1);
+    gsExprAssembler<real_t> A(1,1);
     //gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
+    A.setIntegrationElements(basis);
+    gsExprEvaluator<real_t> ev(A);
 
     // Set the geometry map
-    geometryMap G = A.getMap(mp);
+    auto G = A.getMap(mp);
 
     // Set the source term
     auto ff = A.getCoeff(f, G); // Laplace example
 
     // Set the discretization space
-    gsMappedBasis<2,real_t> bb2;
-    space u = A.getSpace(bb2);
+    auto u = A.getSpace(basis);
 
     // Solution vector and solution variable
-    gsMatrix<> solVector;
-    solution u_sol = A.getSolution(u, solVector);
+    gsMatrix<real_t> solVector;
+    auto u_sol = A.getSolution(u, solVector);
 
     // Recover manufactured solution
     auto u_ex = ev.getVariable(ms, G);
     //! [Problem setup]
 
-    //! [Solver loop]
-    gsSparseSolver<>::SimplicialLDLT solver;
+#ifdef _OPENMP
+    gsInfo << "Available threads: "<< omp_get_max_threads() <<"\n";
+#endif
 
-    gsVector<> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1);
-    gsInfo<< "(dot1=approxC1construction, dot2=assembled, dot3=solved, dot4=got_error)\n"
-        "\nDoFs: ";
+    //! [Solver loop]
+    gsSparseSolver<real_t>::SimplicialLDLT solver;
+
+    gsVector<real_t> l2err(numRefine+1), h1err(numRefine+1), h2err(numRefine+1),
+            dofs(numRefine+1), meshsize(numRefine+1);
+    gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
+             "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     gsStopwatch timer;
-    for (int r=0; r<=numRefine; ++r)
+    for (index_t r=0; r<=numRefine; ++r)
     {
-        dbasis.uniformRefine(1,discreteDegree -discreteRegularity);
+        // Refine uniform once
+        basis.uniformRefine(1,degree -smoothness);
+        meshsize[r] = basis.basis(0).getMaxCellLength();
 
-        //gsDebugVar(dbasis.basis(0));
-
-        gsSparseMatrix<real_t> global2local;
-
-        gsApproxC1Spline<2,real_t> approxC1(mp,dbasis);
-        approxC1.options().setSwitch("info",info);
-        approxC1.options().setSwitch("plot",plot);
-
-        approxC1.init();
-        approxC1.compute();
-
-        global2local = approxC1.getSystem();
-        global2local = global2local.transpose();
-        //global2local.pruned(1,1e-10);
-        gsMultiBasis<> dbasis_temp;
-        approxC1.getMultiBasis(dbasis_temp);
-        bb2.init(dbasis_temp,global2local);
-        // Compute the approx C1 space
-
-        gsInfo<< "." <<std::flush; // Approx C1 construction done
+        // Setup the Mapper
+        gsDofMapper map;
+        setMapperForBiharmonic(bc, basis,map);
 
         // Setup the system
-        u.setup(bc, dirichlet::l2Projection, -1);
+        u.setupMapper(map);
+        setDirichletNeumannValuesL2Projection(mp, basis, bc, u);
 
         // Initialize the system
         A.initSystem();
@@ -211,68 +251,59 @@ int main(int argc, char *argv[])
 
         timer.restart();
         // Compute the system matrix and right-hand side
-        A.assemble(
-                ilapl(u, G) * ilapl(u, G).tr()
-                * meas(G)
-                ,
-                u * ff
-                * meas(G)
-        );
+        A.assemble(ilapl(u, G) * ilapl(u, G).tr() * meas(G),u * ff * meas(G));
 
         // Enforce Laplace conditions to right-hand side
-        auto g_L = A.getCoeff(laplace, G); // Set the laplace bdy value
+        auto g_L = A.getBdrFunction(G); // Set the laplace bdy value
+        //auto g_L = A.getCoeff(laplace, G);
         A.assembleBdr(bc.get("Laplace"), (igrad(u, G) * nv(G)) * g_L.tr() );
 
-        // Enforce Neumann conditions to right-hand side
-        //A.assembleRhsBc(ilapl(u, G) * (igrad(u_ex) * nv(G)).tr(), bc.neumannSides() );
-
+        dofs[r] = A.numDofs();
         ma_time += timer.stop();
-        gsInfo<< "." <<std::flush;// Assemblying done
+        gsInfo << "." << std::flush;// Assemblying done
 
         timer.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
 
         slv_time += timer.stop();
-        gsInfo<< "." <<std::flush; // Linear solving done
+        gsInfo << "." << std::flush; // Linear solving done
 
         timer.restart();
         //linferr[r] = ev.max( f-s ) / ev.max(f);
 
-        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ); // / ev.integral(f.sqNorm()*meas(G)) );
-        
+        l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) ); // / ev.integral(ff.sqNorm()*meas(G)) );
         h1err[r]= l2err[r] +
-            math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( igrad(f).sqNorm()*meas(G) ) );
+                  math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( igrad(ff).sqNorm()*meas(G) ) );
 
         h2err[r]= h1err[r] +
-                 math::sqrt(ev.integral( ( ihess(u_ex) - ihess(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( ihess(f).sqNorm()*meas(G) )
-
-
+                  math::sqrt(ev.integral( ( ihess(u_ex) - ihess(u_sol,G) ).sqNorm() * meas(G) )); // /ev.integral( ihess(ff).sqNorm()*meas(G) )
 
         err_time += timer.stop();
-        gsInfo<< ". " <<std::flush; // Error computations done
+        gsInfo << ". " << std::flush; // Error computations done
     } //for loop
-
     //! [Solver loop]
 
     timer.stop();
-    gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
-    gsInfo<<"     Setup: "<< setup_time <<"\n";
-    gsInfo<<"  Assembly: "<< ma_time    <<"\n";
-    gsInfo<<"   Solving: "<< slv_time   <<"\n";
-    gsInfo<<"     Norms: "<< err_time   <<"\n";
+    gsInfo << "\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
+    gsInfo << "     Setup: "<< setup_time <<"\n";
+    gsInfo << "  Assembly: "<< ma_time    <<"\n";
+    gsInfo << "   Solving: "<< slv_time   <<"\n";
+    gsInfo << "     Norms: "<< err_time   <<"\n";
+    gsInfo << " Mesh-size: "<< meshsize.transpose() << "\n";
+    gsInfo << "      Dofs: "<<dofs.transpose() << "\n";
 
     //! [Error and convergence rates]
-    gsInfo<< "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
-    gsInfo<< "H2 error: "<<std::scientific<<h2err.transpose()<<"\n";
+    gsInfo << "\nL2 error: "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
+    gsInfo << "H1 error: "<<std::scientific<<h1err.transpose()<<"\n";
+    gsInfo << "H2 error: "<<std::scientific<<h2err.transpose()<<"\n";
 
-    if (!last && numRefine>0)
+    if (numRefine>0)
     {
         gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
               <<  ( l2err.head(numRefine).array()  /
-                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
-                   <<"\n";
+                    l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
+              <<"\n";
 
         gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
               <<( h1err.head(numRefine).array() /
@@ -287,27 +318,16 @@ int main(int argc, char *argv[])
     //! [Export visualization in ParaView]
     if (plot)
     {
-        gsInfo<<"Plotting in Paraview...\n";
-        ev.options().setSwitch("plot.elements", false);
-        ev.options().setInt   ("plot.npts"    , 1000);
+        // Write approximate and exact solution to paraview files
+        gsInfo << "Plotting in Paraview...\n";
+        ev.options().setSwitch("plot.elements", true);
         ev.writeParaview( u_sol   , G, "solution");
-        //ev.writeParaview( u_ex    , G, "solution_ex");
-        //ev.writeParaview( grad(s), G, "solution_grad");
-        //ev.writeParaview( grad(f), G, "solution_ex_grad");
-        //ev.writeParaview( (f-s), G, "error_pointwise");
+        gsInfo << "Saved with solution.pvd \n";
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     //! [Export visualization in ParaView]
 
-    //! [Export data to CSV]
-    std::string cmdName = "-g1000-p3-r2-l5";
-    gsCSVOutput<2, real_t> csvOutput(mp, dbasis, cmdName);
-    csvOutput.flags = GEOMETRY | MESH | ERROR;
-    csvOutput.saveCSVFile(cmdName);
-    //! [Export data to CSV]
-
-    return EXIT_SUCCESS;
-
-}// end main
+    return  EXIT_SUCCESS;
+}
