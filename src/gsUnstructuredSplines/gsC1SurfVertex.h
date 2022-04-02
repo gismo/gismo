@@ -387,7 +387,6 @@ public:
             }
             count++;
         }
-        gsDebugVar(vertBas);
     }
 
     void addSmallKerBasis(gsMatrix<> & basisV, gsMatrix<> & smallK, index_t smallKDim)
@@ -409,8 +408,6 @@ public:
 
     std::pair<gsMatrix<>, std::vector<index_t>> selectVertexBoundaryBasisFunction(gsMatrix<> bigKernel, index_t bigKerDim, gsMatrix<> smallKernel, index_t smallKerDim)
     {
-        gsDebugVar(bigKernel);
-
         gsMatrix<> basisVect;
         std::vector<index_t> numberPerType;
 
@@ -443,7 +440,6 @@ public:
                 basisVect = vertBas;
             }
         }
-        gsDebugVar(basisVect);
         return std::make_pair(basisVect, numberPerType);
     }
 
