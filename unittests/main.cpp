@@ -21,6 +21,8 @@
     ...
     (gdb) bt
     ...     see backtrack to find error
+    (gdb) bt
+    (gdb) bt full
     (gdb) quit
 
     Author(s): A. Mantzaflaris,  H. Weiner, J. Vogl

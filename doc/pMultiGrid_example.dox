@@ -1,0 +1,156 @@
+namespace gismo {
+/**
+
+\page pMultiGrid_example pMultiGrid_example.cpp
+
+After reading the command line arguments, we define the problem specification (domain, right-hand side,
+function for boundary conditions, functions for CDR equation) for the chosen benchmark problem
+(option <tt>--Benchmark</tt>).
+
+\snippet pMultiGrid_example.cpp Define benchmark problem
+
+The command line option <tt>--PatchSplits</tt> \f$i\f$ allows to apply \f$i\f$ uniform splits of each
+patch into \f$ 2^d \f$ sub-patches.
+
+\snippet pMultiGrid_example.cpp Splitting of patches
+
+We define the boundary conditions object with the function containing the corresponding Dirichlet data.
+
+\snippet pMultiGrid_example.cpp Boundary conditions
+
+The setup of the multigrid hierarchy is given by the command line parameters <tt>--Levels</tt>,
+<tt>--Projection</tt> and <tt>--Coarsening</tt>.
+
+With <tt>--Levels</tt>, the number of levels \f$L\f$ is specified.
+
+Using <tt>--Coarsening</tt>, one can specify \f$L-1\f$ values for the coarsening (the leftmost entry
+corresponds to the coarsest level):
+* <tt>h</tt>: standard grid coarsening (as by uniform grid refinement; increase grid size by factor 2)
+* <tt>p</tt>: reduce spline degree and smoothness (keep grid as-is)
+* <tt>z</tt>: reduce spline degree and smoothness and grid coarsening
+
+The choice <tt>--Projection 1</tt> means that <tt>p</tt> and <tt>z</tt> refer to a direct coarsening
+from degree \f$p\f$ to degree 1. The choice <tt>--Projection 2</tt> means that <tt>p</tt> and
+<tt>z</tt> refer to a reduction of the spline degree by 1, like from \f$p\f$ to \f$p-1\f$.
+
+If <tt>--Projection 1</tt>, there can only be one single <tt>p</tt> or <tt>z</tt> coarsening.
+
+If <tt>--Coarsening</tt> is not specified:
+* in case of <tt>--Projection 1</tt>, the default is <tt>h...hz</tt>, meaning that we have degree
+  1 for the levels \f$\ell=1,\ldots,L-1\f$ and the degree specified by <tt>--Degree</tt> for the
+  finest level \f$L\f$. All levels refer to different grid sizes.
+* in case of <tt>--Projection 2</tt>, the default is <tt>h...hz...z</tt>, meaning that we have the
+  degree specified by <tt>--Degree</tt> for the finest level \f$L\f$. On each next coarser level,
+  the degree is reduced by 1. After reaching degree 1, further coarsening (if still necessary) is
+  only of type <tt>h</tt>. All levels refer to different grid sizes.
+
+\snippet pMultiGrid_example.cpp Default coarsening
+
+We now compute the parameters for the coarsest grid such that the finest grid is as prescribed using
+the parameters <tt>--Degree</tt> and <tt>--Refinement</tt>.
+
+\snippet pMultiGrid_example.cpp Coarsest grid
+
+The finer grids are then constructed as indicated using the parameters <tt>--Coarsening</tt> and
+<tt>--Projection</tt>.
+
+\snippet pMultiGrid_example.cpp Finer grids
+
+The next step is the setup of the refinement and prolongation operators. In case of h-coarsening, the
+prolongation is the canonical embedding matrix and the restriction is its transpose.
+
+In case of p- and z-coarsening, the method depends on the lumping type specified by <tt>--Lumping</tt>.
+
+In case of lumping type 1, the restriction and the prolongation are the corresponding
+\f$L_2\f$-orthogonal projectors, given by
+\f[
+  M_{\ell-1}^{-1} M_{\ell-1,\ell}
+  \quad\mbox{and}\quad
+  M_{\ell}^{-1} M_{\ell,\ell-1}
+\f]
+respectively. Here, \f$ M_{\ell} \f$ and \f$ M_{\ell-1} \f$ are the mass matrices on those
+grid levels (\ref assembleMass). \f$ M_{\ell-1,\ell} = M_{\ell,\ell-1}^\top \f$ is obtained
+by deriving a mass matrix with the basis functions for the level \f$\ell-1\f$ as trial functions
+and the basis functions for the level \f$\ell\f$ as test functions (\ref assembleMixedMass).
+The realization of the inverses is done by applying a conjugate gradient solver.
+
+In case of lumping type 2, the matrices \f$ M_{\ell} \f$ and \f$ M_{\ell-1} \f$ are replaced by
+diagonal matrices, where the diagonal entries coincide with the row-sum of the \f$ M_{\ell} \f$
+or \f$ M_{\ell-1} \f$, respectively. Using the partition-of-unity property, these diagonal entries
+are obtained by evaluating \f$ (\cdot,1)_{L_2(\Omega)} \f$ for the basis functions
+(\ref assembleLumpedMass).
+
+\snippet pMultiGrid_example.cpp Intergrid
+
+For a p-multigrid method, one has to assemble the problem for the individual levels. The assembler
+is used to derive the stiffness matrix
+* for the finest level,
+* the spline degree on the corresponding level is different to the level on the next finer level, or
+* rediscretization is explicitly requested (using <tt>--CoarseOperator 1</tt>).
+Otherwise, Galerkin projections are used.
+
+\snippet pMultiGrid_example.cpp Assembling
+
+Now, we are able to setup the \a gsMultiGrid object. This class has two kinds of constructors:
+* stiffness matrix on the finest grid and vector of prolongation matrices (all as \a gsSparseMatrix)
+* vectors of all the stiffness matrices, the restriction operators and the prolongation operators
+  (all as \a gsLinearOperator::Ptr).
+
+In the first case, the stiffness matrices on the finer grids are derived automatically using a Galerkin
+projection.
+
+Since we have a vector of stiffness matrices and since our restrictions and prolongations might not
+be just matrices, we need to use the second option.
+
+\snippet pMultiGrid_example.cpp Setup
+
+We setup the coarse solver exactly since the "matrix-free" version of \a gsMultiGridOp does not setup
+the coarse solver automatically.
+
+\snippet pMultiGrid_example.cpp Coarse solver
+
+Next, we choose the type of the cycle (1=V-cycle, 2=W-cycle). Here, we can use different options, depending
+if the coarsening is a h-coarsening or a coarsening which involves a change of the degree (p- or z-coarsening).
+
+\snippet pMultiGrid_example.cpp Set cycle
+
+The next step is the setup of the smoothers. As smoothers, one can choose
+* an incomplete LU smoother (<tt>--Smoother 1</tt>),
+* a blockwise incomplete LU smoother (<tt>--Smoother 4</tt>),
+* the subspace corrected mass smoother (<tt>--Smoother 3</tt>; see multiGrid_example.cpp)
+* the Gauss-Seidel smoother (<tt>--Smoother 2</tt>).
+For the levels with spline degree 1, always the Gauss-Seidel smoother is used. For the setup, we use a for
+loop over the levels 1,...,numLevels. On level 0, we use a direct solver.
+
+Moreover, we specify the number of pre and post smoothing steps (default: 1), as given via command
+<tt>--Smoothing</tt>.
+
+If a conjugate gradient solver (<tt>--Solver 3</tt>) is used, the post smoothing operator is the transpose
+of the pre smoothing. Otherwise, we choose the post smoothing to be equal to the pre smoothing. This is
+obtained with by setting setSymmSmooth to false.
+
+\snippet pMultiGrid_example.cpp Smoother
+
+Next, we initialize the chosen iterative solver.
+
+\snippet pMultiGrid_example.cpp Solver
+
+We choose a random initial guess.
+
+\snippet pMultiGrid_example.cpp Initial guess
+
+Finally, we use the iterative solver to solve the problem. We use solveDetailed with an <tt>errorHistory</tt>
+in order to be able to give the convergence behavior.
+
+\snippet pMultiGrid_example.cpp Solve
+
+\section pMultiGrid_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/pMultiGrid_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include pMultiGrid_example.cpp
+
+*/
+
+}
