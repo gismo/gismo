@@ -397,23 +397,23 @@ int main(int argc, char *argv[])
 
 // Residual
 
-    gsFunctionExpr<> source  ("5",3);
-    gsFunctionExpr<> laplace ("0",3);
-    gsFunctionExpr<> solVal("0",3);
-    gsFunctionExpr<>sol1der ("0",
-                             "0",
-                             "0",3);
-    gsFunctionExpr<>sol2der ("0",
-                             "0",
-                             "0",
-                             "0",
-                             "0",
-                             "0", 3);
+//    gsFunctionExpr<> source  ("5",3);
+//    gsFunctionExpr<> laplace ("0",3);
+//    gsFunctionExpr<> solVal("0",3);
+//    gsFunctionExpr<>sol1der ("0",
+//                             "0",
+//                             "0",3);
+//    gsFunctionExpr<>sol2der ("0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0",
+//                             "0", 3);
 
 
-//    gsFunctionExpr<> source  ("12 ",3);
+//    gsFunctionExpr<> source  ("z",3);
 //    gsFunctionExpr<> laplace ("6 * x",3);
-//    gsFunctionExpr<> solVal("x^3",3);
+//    gsFunctionExpr<> solVal("z",3);
 //    gsFunctionExpr<>sol1der ("3 * x^2",
 //                             "0",
 //                             "0",3);
@@ -645,6 +645,58 @@ int main(int argc, char *argv[])
 //                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
 
 
+// HYPERBOLOID
+
+//    gsFunctionExpr<> source  ("(1 / ( (1 + 4 * x^2 + 4 * y^2)^5) ) * 4 * ( (1 + 4 * x^2 + 4 * y^2) * (357 + 5184 * x^8 + 4308 * y^2 + \n"
+//                              "      24724 * y^4 + 51872 * y^6 + 40000 * y^8 + 96 * x^6 * (103 + 1008 * y^2) + 4 * x^4 * (2821 + 31704 * y^2 + 54496 * y^4) + \n"
+//                              "      4 * x^2 * (453 + 4206 * y^2 + 22744 * y^4 + 41600 * y^6) ) * cos(5*x) * cos(1 - 3* y) - \n"
+//                              "   80 * x * (5 - 864 * x^8 + 141 * y^2 + 782 * y^4 + 1808 * y^6 + 672 * y^8 - 48 * x^6 * (23 + 32 * y^2) + 6 * x^4 * (-51 + 168 * y^2 + 32 * y^4) + \n"
+//                              "      x^2 * (-29 + 4 * y^2 * (89 + 84 * y^2 + 384 * y^4) ) ) * cos(1 - 3 * y) * sin(5 * x) - 24 * y * (2 * (3 + 3936 * x^8 + 125 * y^2 + 786 * y^4 + 2384 * y^6 + \n"
+//                              "         2400 * y^8 + 48 * x^6 * (21 + 32 * y^2) - 2 * x^4 * (55 + 72 * y^2 * (-3 + 44 * y^2) ) - \n"
+//                              "         x^2 * (45 + 4 * y^2 * (-7 + 444 * y^2 + 384 * y^4) ) ) * cos(5 * x) - 5 * x * (1 + 4 * x^2 + 4 * y^2) * (31 + 288 * x^6 + 242 * y^2 + 976 * y^4 + \n"
+//                              "         800 * y^6 + 16 * x^4 * (45 + 86 * y^2) + 2 * x^2 * (105 + 240 * y^2 + 944 * y^4) ) * sin(5 * x) ) * sin(1 - 3 * y))",3);
+////    gsFunctionExpr<> source  ("cos(5 * x) * cos(1 - 3 * y)",3);
+//
+//    gsFunctionExpr<> laplace ("-(1 / ( (1 + 4 * x^2 + 4 * y^2)^2 ) ) * 2 * ( cos(5 * x) * ( (17 + 72 * x^4 + 118 * y^2 + 200 * y^4 + \n"
+//                              "          x^2 * (86 + 272 * y^2) ) * cos(1 - 3 * y) + 24 * y * (x^2 - y^2) * sin(1 - 3 * y) ) + \n"
+//                              "          20 * x * sin(5 * x) * (2 * (x^2 - y^2) * cos(1 - 3 * y) + 3 * y * (1 + 4 * x^2 + 4 * y^2) * sin(1 - 3 * y) ) )",3);
+//
+//    gsFunctionExpr<> solVal("cos(5 * x) * cos(1 - 3 * y)",3);
+//
+//    gsFunctionExpr<>sol1der ("(-5 * (1 + 4 * y^2) * cos(1 - 3 * y) * sin(5 * x) + 12 * x * y * cos(5 * x) * sin(1 - 3 * y) ) / (1 + 4 * x^2 + 4 * y^2)",
+//                             "(-20 * x * y * cos(1 - 3 * y) * sin(5 * x) + 3 * (1 + 4 * x^2) * cos(5 * x) * sin(1 - 3 * y) ) / (1 + 4 * x^2 + 4 * y^2)",
+//                             "(10 * x * (1 + 8 * y^2) * cos(1 - 3 * y) * sin(5 * x) - 6 * (1 + 8 * x^2) * y * cos(5 * x) * sin(1 - 3 * y) ) / (1 + 4 * x^2 + 4 * y^2)",3);
+////
+////
+//    gsFunctionExpr<>sol2der ("-( ( 2 * x * (1 + x^2) * y ) / (1 + x^2 + y^2)^2)",
+//                             "-( ( 2 * x * y * (1 + y^2) ) / (1 + x^2 + y^2)^2)",
+//                             "(2 * x * y ) / (1 + x^2 + y^2)^2",
+//                             "(1 + y^2 + x^2 * (1 + 2 * y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(x * (1 + x^2 - y^2) ) / (1 + x^2 + y^2)^2",
+//                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
+
+
+    gsFunctionExpr<> source  ("(64 * (x - y) * (x + y) * (13 + 64 * x^4 + 12 * y^2 + 64 * y^4 + x^2 * (12 - 768 * y^2)))/(1 + 4 * x^2 + 4 * y^2)^5",3);
+//    gsFunctionExpr<> source  ("z",3);
+
+    gsFunctionExpr<> laplace ("-((8 * (x^2 - y^2))/(1 + 4 * x^2 + 4 * y^2)^2)",3);
+
+    gsFunctionExpr<> solVal("z",3);
+
+    gsFunctionExpr<>sol1der ("(2 * x)/(1 + 4 * x^2 + 4 * y^2)",
+                             "-((2 * y)/(1 + 4 * x^2 + 4 * y^2))",
+                             "((4 * (x^2 + y^2))/(1 + 4 * x^2 + 4 * y^2))",3);
+//
+//
+    gsFunctionExpr<>sol2der ("-( ( 2 * x * (1 + x^2) * y ) / (1 + x^2 + y^2)^2)",
+                             "-( ( 2 * x * y * (1 + y^2) ) / (1 + x^2 + y^2)^2)",
+                             "(2 * x * y ) / (1 + x^2 + y^2)^2",
+                             "(1 + y^2 + x^2 * (1 + 2 * y^2) ) / (1 + x^2 + y^2)^2",
+                             "(x * (1 + x^2 - y^2) ) / (1 + x^2 + y^2)^2",
+                             "(y * (1 - x^2 + y^2) ) / (1 + x^2 + y^2)^2", 3);
+
+
+
 
 //    gsFunctionExpr<> source  ("0.001 * (1 / ( (1 + 4 * x^2 + 4 * y^2)^5) ) * 24 * (3072 * x^16 * (-4 + 5 * y^2) - \n"
 //                              "   256 * x^14 * (124 - 1611 * y^2 + 620 * y^4) - 128 * x^12 * (-4564 + 9877 * y^2 - 2823 * y^4 + 968 * y^6) + \n"
@@ -801,8 +853,8 @@ int main(int argc, char *argv[])
 //    gsFunctionExpr<>sol1der ("-((16 * ( (1 + 4 * y^2) * cos(1 - 6 * y) * sin(8 * x) + 3 * x * y * cos(8 * x) * sin(1 - 6 * y) ) ) / (1 + 4 * x^2 + 4 * y^2))",
 //                             "(64 * x * y * cos(1 - 6 * y) * sin(8 * x) + 12 * (1 + 4 * x^2) * cos(8 * x) * sin(1 - 6 * y) ) / (1 + 4 * x^2 + 4 * y^2)",
 //                             "(8 * (4 * x * cos(1 - 6 * y) * sin(8 * x) - 3 * y * cos(8 * x) * sin(1 - 6 * y) ) ) / (1 + 4 * x^2 + 4 * y^2)",3);
-//
-//
+////
+////
 //    gsFunctionExpr<>sol2der ("-( ( 2 * x * (1 + x^2) * y ) / (1 + x^2 + y^2)^2)",
 //                             "-( ( 2 * x * y * (1 + y^2) ) / (1 + x^2 + y^2)^2)",
 //                             "(2 * x * y ) / (1 + x^2 + y^2)^2",
@@ -820,7 +872,7 @@ int main(int argc, char *argv[])
 //                              "         4 * x^2 * (31 + 273 * y^2 + 984 * y^4 + 1560 * y^6) - 3 * x^4 * (303 + 256 * y^2 * (7 + 6 * y^2) ) ) * cos(9 * x) - \n"
 //                              "      9 * x * (1 + 4 * x^2 + 4 * y^2) * (103 + 1568 * x^6 + 786 * y^2 + 2448 * y^4 + 2592 * y^6 + 16 * x^4 * (121 + 358 * y^2) + \n"
 //                              "         x^2 * (722 + 4384 * y^2 + 6752 * y^4) ) * sin(9 * x) ) * sin(1 - 7 * y) )",3);
-////    gsFunctionExpr<> source  ("2 * cos(8 * x) * cos(1 - 6 * y)",3);
+////    gsFunctionExpr<> source  ("2 * cos(9 * x) * cos(1 - 7 * y)",3);
 //
 //    gsFunctionExpr<> laplace ("(1 / ( (1 + 4 * x^2 + 4 * y^2)^2) ) * (-4 * cos(9 * x) * ( (65 + 392 * x^4 + 422 * y^2 + 648 * y^4 + \n"
 //                              "        2 * x^2 * (179 + 520 * y^2) ) * cos(1 - 7 * y) + 28 * y * (1 + 2 * x^2 + 2 * y^2) * sin(1 - 7 * y) ) + \n"
@@ -1102,6 +1154,18 @@ int main(int argc, char *argv[])
             string_geo = "KirchhoffLoveGeo/cilinderThreeHolesSurf1.xml";
             numDegree = 0; // 2 == degree 3
             break;
+        case 56:
+            string_geo = "KirchhoffLoveGeo/4p_hyperboloid_geom.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 57:
+            string_geo = "KirchhoffLoveGeo/1p_hyperboloid_geom.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
+        case 58:
+            string_geo = "KirchhoffLoveGeo/4p_hyperboloid_disturbed.xml";
+            numDegree = 1; // 2 == degree 3
+            break;
 
         default:
             gsInfo << "No geometry is used! \n";
@@ -1268,7 +1332,7 @@ int main(int argc, char *argv[])
             }
 
                 gsG1AuxiliaryVertexMultiplePatches singleVertex(multiPatchSurf, patchIndex, vertIndex);
-                singleVertex.computeG1InternalVertexBasis(g1OptionList);
+            singleVertex.computeG1InternalVertexBasis(g1OptionList);
 
                 for (index_t i = 0; i < 6; i++)
                 {

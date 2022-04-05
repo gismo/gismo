@@ -300,7 +300,6 @@ public:
                 {
     //              L2 approximation
                     gsMatrix<> L2approximation = basisVals.col(k) * basisVals.col(k).transpose() * sqrt(G.determinant());
-
                     localMat.noalias() += weight * ( L2approximation );
                     localRhs.noalias() += weight * sqrt(G.determinant()) * ( basisVals.col(k) * rhsVals.col(k).transpose() ) ;
                 }

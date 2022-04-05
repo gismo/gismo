@@ -660,6 +660,11 @@ public:
                         Eigen::Vector3d n = t1.cross(t2);
 
                         gsVector<> normal = n.normalized();
+
+//                        gsInfo << "t1: \n" << t1 << "\n";
+//                        gsInfo << "t2: \n" << t2 << "\n";
+//                        gsInfo << "n: \n" << n << "\n";
+
                         n = n.normalized();
                         Eigen::Vector3d z(0, 0, 1);
 
@@ -777,7 +782,6 @@ public:
         }
         else if(this->kindOfVertex() == -1) // Boundary vertex
         {
-
             Eigen::FullPivLU<gsMatrix<>> BigLU(computeBigSystemMatrix(0));
             Eigen::FullPivLU<gsMatrix<>> SmallLU(computeSmallSystemMatrix(0));
             SmallLU.setThreshold(g1OptionList.getReal("threshold"));

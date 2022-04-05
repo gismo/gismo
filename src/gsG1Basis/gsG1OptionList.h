@@ -117,7 +117,7 @@ void gsG1OptionList::initialize(int argc, char *argv[])
 
 
     real_t threshold = 1e-5; // For computing the kernel
-    real_t zero = 1e-12; // For setting the matrix for the kernel
+    real_t zero = 1e-8; // For setting the matrix for the kernel
 
     real_t lambda = 1e-12; // lambda value
 

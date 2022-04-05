@@ -660,9 +660,10 @@ void gsG1BiharmonicAssembler<T,bhVisitor>::computeDirichletAndNeumannDofsL2Proj(
           iter != m_ppde.bcSecondKind().neumannEnd(); ++iter )
     {
 
-        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(0)*m_system.rhs().cols(),
-                     "Given Dirichlet boundary function does not match problem dimension."
-                         <<iter->function()->targetDim()<<" != "<<m_system.unkSize(0)<<"\n");
+//        gsInfo << "fun: " << iter->function() << "\n";
+//        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(0)*m_system.rhs().cols(),
+//                     "Given Dirichlet boundary function does not match problem dimension."
+//                         <<iter->function()->targetDim()<<" != "<<m_system.unkSize(0)<<"\n");
 
         const int unk = iter->unknown();
 
