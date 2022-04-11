@@ -30,14 +30,14 @@ class gsSquaredDistance GISMO_FINAL : public gsFunction<T>
 {
 public:
     gsSquaredDistance(const gsGeometry<T> & g, const gsVector<T> & pt)
-    : m_g(g), m_pt(pt) { }
+    : m_g(&g), m_pt(&pt) { }
 
     // f  = (1/2)*||x-pt||^2
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_g.eval_into(u,value);
+        m_g->eval_into(u,value);
         result.resize(1, u.cols());
-        result.at(0) = 0.5 * (value-m_pt).squaredNorm();
+        result.at(0) = 0.5 * (value-*m_pt).squaredNorm();
     }
 
     // f' = x'*(x-pt)
@@ -47,9 +47,9 @@ public:
         for ( index_t i=0; i != u.cols(); i++ )
         {
             tmp = u.col(i);
-            m_g.eval_into(tmp,value);
-            m_g.jacobian_into(tmp,jac);
-            result.col(i).noalias() = jac.transpose() * (value - m_pt);
+            m_g->eval_into(tmp,value);
+            m_g->jacobian_into(tmp,jac);
+            result.col(i).noalias() = jac.transpose() * (value - *m_pt);
         }
     }
 
@@ -57,23 +57,23 @@ public:
     void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
                       index_t) const
     {
-        m_g.eval_into(u,value);
-        m_g.jacobian_into(u,jac);
+        m_g->eval_into(u,value);
+        m_g->jacobian_into(u,jac);
         result.noalias() = jac.transpose() * jac;
-        for ( index_t k=0; k < m_g.coefs().cols(); ++k )
+        for ( index_t k=0; k < m_g->coefs().cols(); ++k )
         {
-            tmp = m_g.hessian(u,k);
-            result.noalias() += (value.at(k)-m_pt.at(k))*tmp;
+            tmp = m_g->hessian(u,k);
+            result.noalias() += (value.at(k)-m_pt->at(k))*tmp;
         }
     }
 
-    gsMatrix<T> support() const {return m_g.support()  ;}
-    short_t domainDim ()  const {return m_g.domainDim();}
+    gsMatrix<T> support() const {return m_g->support()  ;}
+    short_t domainDim ()  const {return m_g->domainDim();}
     short_t targetDim ()  const {return 1;}
 
 private:
-    const gsGeometry<T> & m_g;
-    const gsVector<T> & m_pt;
+    const gsGeometry<T> * m_g;
+    const gsVector<T> * m_pt;
     mutable gsMatrix<T> tmp, value, jac;
 };
 
