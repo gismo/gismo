@@ -722,7 +722,8 @@ compute_face_normal(Face f) const
 
     if (next_halfedge(h) == hend) // face is a triangle
     {
-        return cross(p2-=p1, p0-=p1).normalize();
+        p2-=p1; p0-=p1;
+        return p2.cross(p1).normalized();
     }
 
     else // face is a general polygon
@@ -732,7 +733,7 @@ compute_face_normal(Face f) const
         hend = h;
         do
         {
-            n += cross(p2-p1, p0-p1);
+            n += (p2-p1).cross(p0-p1);
             h  = next_halfedge(h);
             p0 = p1;
             p1 = p2;
@@ -740,7 +741,7 @@ compute_face_normal(Face f) const
         }
         while (h != hend);
 
-        return n.normalize();
+        return n.normalized();
     }
 }
 
@@ -791,18 +792,18 @@ compute_vertex_normal(Vertex v) const
                 p2 -= p0;
 
                 // check whether we can robustly compute angle
-                denom = sqrt(dot(p1,p1)*dot(p2,p2));
+                denom = sqrt(p1.squaredNorm()*p2.squaredNorm());
                 if (denom > std::numeric_limits<Scalar>::min())
                 {
-                    cosine = dot(p1,p2) / denom;
+                    cosine = p1.dot(p2) / denom;
                     if      (cosine < -1.0) cosine = -1.0;
                     else if (cosine >  1.0) cosine =  1.0;
                     angle = acos(cosine);
 
-                    n   = cross(p1,p2);
+                    n   = p1.cross(p2);
 
                     // check whether normal is != 0
-                    denom = norm(n);
+                    denom = n.norm();
                     if (denom > std::numeric_limits<Scalar>::min())
                     {
                         n  *= angle/denom;
@@ -825,11 +826,11 @@ compute_vertex_normal(Vertex v) const
 //-----------------------------------------------------------------------------
 
 
-Scalar
+gsSurfMesh::Scalar
 gsSurfMesh::
 edge_length(Edge e) const
 {
-    return norm(vpoint_[vertex(e,0)] - vpoint_[vertex(e,1)]);
+    return (vpoint_[vertex(e,0)] - vpoint_[vertex(e,1)]).norm();
 }
 
 
