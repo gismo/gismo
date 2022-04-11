@@ -1,6 +1,5 @@
-#pragma once
 
-//== INCLUDES =================================================================
+#pragma once
 
 
 #include <gsCore/gsLinearAlgebra.h>
@@ -11,18 +10,18 @@ typedef Eigen::Vector<real_t,3> Point;
 typedef Eigen::Vector<float,2> Vec2f;
 typedef Eigen::Vector<float,3> Vec3f;
 /// Normal type
-typedef Eigen::Vector<real_t,3> Normal;
+typedef Point Normal;
 /// Color type
-typedef Eigen::Vector<real_t,3> Color;
+typedef Point Color;
 /// Texture coordinate type
-typedef Eigen::Vector<real_t,3> Texture_coordinate;
-
+typedef Point Texture_coordinate;
 }
 
-#include <gsCore/gsConfig.h>
-#include <gsMesh2/gsProperty.h>
-//#include <gsCore/gsExport.h>
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Vec2f)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Vec3f)
 
+#include <gsMesh2/gsProperty.h>
 
 
 namespace gismo {
