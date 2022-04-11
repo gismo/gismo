@@ -32,9 +32,11 @@ namespace gismo {
 /// A halfedge data structure for polygonal meshes.
 class GISMO_EXPORT gsSurfMesh
 {
+public:
 /// Scalar type
 typedef real_t Scalar;
 
+private:
 /// 3D vector type
 typedef Eigen::Vector<Scalar,3> Vec3;
 
@@ -300,6 +302,21 @@ public: //------------------------------------------------------ iterator types
 
         /// get the vertex the iterator refers to
         Vertex operator*()  const { return  hnd_; }
+
+        // (!)
+        size_t operator-(const Vertex_iterator& rhs) const
+        {
+            //assumes no deleted vertices..
+            return (hnd_.idx_ - rhs.hnd_.idx_);
+        }
+
+        // (!)
+        Vertex_iterator& operator+=(const size_t i)
+        {
+            //assumes no deleted vertices..
+            hnd_.idx_+= i;
+            return *this;
+        }
 
         /// are two iterators equal?
         bool operator==(const Vertex_iterator& rhs) const
