@@ -24,6 +24,8 @@ int main(int argc, char *argv[])
     // Enable floating point exceptions
     //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
+    gsDebugVar( omp_get_max_threads() );
+    
     std::string fn("cube");
     index_t numSamples(1000);
 

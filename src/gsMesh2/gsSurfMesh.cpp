@@ -898,12 +898,9 @@ quad_split(Face f, Vertex v, Halfedge s)
      - the halfedge handles of the new triangles will point to the old halfeges
      */
 
-
     //assert: number of vertices is even (4,6,..)
     //assert: vertex s is on face
     //assert: vertex is isolated
-
-    // (!) hend must be a corner (eg. s)
 
     //std::cout<< "s: "<< from_vertex(s) <<"->"<<to_vertex(s) <<std::endl;
     set_halfedge(f,s);
@@ -916,7 +913,8 @@ quad_split(Face f, Vertex v, Halfedge s)
     set_halfedge(v, e0);
     set_face(e0, f);
     set_next_halfedge(e0, h);//sets next(e0) and also prev(h)
-        
+
+    // ---------------
     Halfedge e = new_edge(from_vertex(hnext),v);
     set_next_halfedge(prev_halfedge(hnext),e);//sets next(h) and also prev(last)
     set_next_halfedge(e,e0);//sets next(h) and also prev(last)
@@ -928,25 +926,24 @@ quad_split(Face f, Vertex v, Halfedge s)
     h = hnext;
     hnext  = next_halfedge(next_halfedge(hnext));
 
-    //fnew = f; ?
     while (h != s) // face containing h2
     {
         //std::cout<< "e0: "<< from_vertex(e0) <<"->"<<to_vertex(e0) <<std::endl;
         //std::cout<< "h: "<< from_vertex(h) <<"->"<<to_vertex(h) <<std::endl;
-        Face fnew = new_face();
+        f = new_face();
         e = ( hnext!=s ? new_edge(from_vertex(hnext),v) : 
               opposite_halfedge(halfedge(v)) );
         //std::cout<< "e: "<< from_vertex(e) <<"->"<<to_vertex(e) <<std::endl;
-        set_halfedge(fnew, e0);
-        set_face(e0, fnew); // 1
+        set_halfedge(f, e0);
+        set_face(e0, f); // 1
         set_next_halfedge(e0,h);
-        set_face(h, fnew); // 2
-        set_face(next_halfedge(h), fnew); // 3
+        set_face(h, f); // 2
+        set_face(next_halfedge(h), f); // 3
         set_next_halfedge(next_halfedge(h),e);
-        set_face(e, fnew); //4
+        set_face(e, f); //4
         set_next_halfedge(e,e0);
 
-        //std::cout <<"face: ";for (auto fv : vertices(fnew)) std::cout <<" "<< fv.idx(); std::cout <<"\n";
+        //std::cout <<"face: ";for (auto fv : vertices(f)) std::cout <<" "<< fv.idx(); std::cout <<"\n";
 
         e0 = opposite_halfedge(e);
         h = hnext;

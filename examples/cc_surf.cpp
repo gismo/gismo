@@ -12,6 +12,10 @@ void cc_subdivide(gsSurfMesh & mesh)
     gsSurfMesh::Vertex v;
     gsSurfMesh::Halfedge he;
 
+    mesh.reserve( 4*mesh.n_vertices(),
+                  2*mesh.n_edges(),
+                  4*mesh.n_faces() );
+                  
     auto points = mesh.get_vertex_property<Point>("v:point");
 
     index_t env = mesh.n_vertices(); // edge vertices start here
@@ -45,21 +49,12 @@ void cc_subdivide(gsSurfMesh & mesh)
     int i = 0;
     for (auto fit : mesh.faces())
     {
-        
-        //gsInfo << "face "<< fit <<"\n"; for (auto fv : mesh.vertices(fit)) gsInfo <<" "<< fv.idx(); gsInfo <<"\n";
-
         v = gsSurfMesh::Vertex(fnv+(i++));//face vertex id ?
         //Start from an original vertex
         auto fv = mesh.vertices(fit).begin();
-        //gsInfo <<"before "<< (*fv).idx() <<"\n";
-        // [! points to to_vertex().idx()]
         if ( (*fv).idx() >= env) ++fv; //todo: add -> operator
-        //++fv INF LOOP
         //assert ( (*fv).idx() < nv )
-        //gsInfo <<"after "<< (*fv).idx() <<"\n";
-        
         mesh.quad_split(fit,v,fv.he());
-        //mesh.split(fit,v);
     }
 
     //mesh.write("out2.off");
@@ -70,41 +65,34 @@ void cc_subdivide(gsSurfMesh & mesh)
         auto vit = mesh.vertices(v);
         auto vcp = vit;
         Point pt(0,0,0);
-        //std::cout << "e-Vertex "<< v <<"\n";
         if (vit) do
                  {
-                     //std::cout << "   v: "<< *vit <<"\n";
                      pt += points[*vit];
                  } while (++vit != vcp);
-        pt /= 4 ; // ==mesh.valence(v);
+        pt /= 4 ; // =mesh.valence(v);
         points[v] = pt;
     }
     mesh.write("out3.off");
 
-    // avg(F) + avg( P)
     for (i = 0; i!=env;++i)
     {
         v = gsSurfMesh::Vertex(i); // original vertices
         auto vit = mesh.halfedges(v);
         auto vcp = vit;
-        Point E(0,0,0);// 2*E = sum(avg(f) + avg(e) = F + R [=> R=2*E-F ]
+        Point E(0,0,0);// 2*E = avg(f) + avg(e) = F + R [=> R=2*E-F ]
         Point F(0,0,0);// F
-        //Point R(0,0,0);// R
-        //std::cout << "o-Vertex "<< v <<"\n";
-        if (vit) do
-                 {
-                     //std::cout << "   Edge pt "<< mesh.to_vertex(*vit) <<"\n";
-                     E += points[ mesh.to_vertex(*vit) ];
-                     F += points[ mesh.to_vertex(mesh.next_halfedge(*vit)) ];
-                     //R += points[ mesh.to_vertex( mesh.next_halfedge(mesh.opposite_halfedge(mesh.next_halfedge(*vit))) ) ];
-                     //std::cout << "   Face pt "<< mesh.to_vertex(mesh.next_halfedge(*vit)) <<"\n";
-                 } while (++vit != vcp);
+        if (vit)
+            do
+            {
+                E += points[ mesh.to_vertex(*vit) ];
+                F += points[ mesh.to_vertex(mesh.next_halfedge(*vit)) ];
+            } while (++vit != vcp);
         auto n = mesh.valence(v);
-        points[v] = ( (F/n) + (2.0*(2*E-F)/n) + (n-3)* points[v] ) / n ;
+        //points[v] = ( (F/n) + (2*(2*E-F)/n) + (n-3) * points[v] ) / n ;
+        points[v] = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
     }
 
     //mesh.write("out4.off");
-
 }
 
 gsMatrix<> mesh_property_to_matrix(const gsSurfMesh & mesh, const std::string & prop)
@@ -113,11 +101,7 @@ gsMatrix<> mesh_property_to_matrix(const gsSurfMesh & mesh, const std::string & 
     gsMatrix<> res(3,pv.size());
     index_t i = 0;
     for( auto & pt : pv)
-    {
-        res(0,i)   = pt[0];
-        res(1,i)   = pt[1];
-        res(2,i++) = pt[2];
-    }
+        res.col(i++) = pt;
     return res;
 }
 
@@ -130,37 +114,51 @@ void cc_limit_points(gsSurfMesh & mesh)
     auto points = mesh.get_vertex_property<Point>("v:point");
     auto limits = mesh.add_vertex_property<Point>("v:limit");
     Point pt;
+    real_t n;
     for (auto vit : mesh.vertices())
     {
-        const int n = mesh.valence(vit);
+        n = mesh.valence(vit);
         pt = n*n*points[vit];
         for ( auto he : mesh.halfedges(vit) )
         {
             pt += 4 * points[ mesh.to_vertex(he) ] + 
                 points[ mesh.to_vertex(mesh.next_halfedge(he)) ];
         }
-        limits[vit] = pt /( n*(n+5) );
+        limits[vit] = pt / (n*(n+5));
     }
 }
 
-void cc_limit_unormal(gsSurfMesh & mesh)
+void cc_limit_unormals(gsSurfMesh & mesh)
 {
     gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge he;
+    gsSurfMesh::Halfedge he, h2;
 
     auto points = mesh.get_vertex_property<Point>("v:point");
     auto limits = mesh.add_vertex_property<Point>("v:unormal");
-    Point pt;
+    Point t1, t2;
+    real_t c1, c2, cc1, cc2;
+    index_t i;
     for (auto vit : mesh.vertices())
     {
-        const int n = mesh.valence(vit);
-        pt = n*n*points[vit];
+        const real_t n = mesh.valence(vit);
+        const real_t cospin = math::cos(EIGEN_PI/n);
+        cc2 = 1 / ( n * math::sqrt(4+cospin*cospin) );
+        cc1 = 1/n + cospin*cc1;
+        t1.setZero();
+        t2.setZero();
+        i = 0;
         for ( auto he : mesh.halfedges(vit) )
-        {// TODO
-            pt += 4 * points[ mesh.to_vertex(he) ] + 
-                points[ mesh.to_vertex(mesh.next_halfedge(he)) ];
+        {
+            h2 = mesh.ccw_rotated_halfedge(he);
+            c1  = math::cos( 2*i   *EIGEN_PI/n)*cc1;
+            c2  = math::cos((2*i+1)*EIGEN_PI/n)*cc2;
+            t1 += c1 * points[ mesh.to_vertex(he ) ]
+                + c2 * points[ mesh.to_vertex(mesh.next_halfedge(he)) ];
+            t2 += c1 * points[ mesh.to_vertex(h2 ) ]
+                + c2 * points[ mesh.to_vertex(mesh.next_halfedge(h2)) ];
+            ++i;
         }
-        limits[vit] = pt /( n*(n+5) );
+        limits[vit] = t1.cross(t2).normalized();
     }
 }
 
@@ -178,25 +176,33 @@ int main(int argc, char** argv)
 
     gsSurfMesh mesh;
     mesh.read(fn);
-    std::cout << "Input:" << std::endl;
-    std::cout << "  vertices: " << mesh.n_vertices() << std::endl;
-    std::cout << "  edges:    " << mesh.n_edges()    << std::endl;
-    std::cout << "  faces:    " << mesh.n_faces()    << std::endl;
+    gsInfo << "Input:" << "\n";
+    gsInfo << "  vertices: " << mesh.n_vertices() << "\n";
+    gsInfo << "  edges:    " << mesh.n_edges()    << "\n";
+    gsInfo << "  faces:    " << mesh.n_faces()    << "\n";
 
     for( index_t i = 0; i<r; ++i)
         cc_subdivide(mesh);
 
-    std::cout << "Output:" << std::endl;
-    std::cout << "  vertices: " << mesh.n_vertices() << std::endl;
-    std::cout << "  edges:    " << mesh.n_edges()    << std::endl;
-    std::cout << "  faces:    " << mesh.n_faces()    << std::endl;
+    gsInfo << "Output:" << "\n";
+    gsInfo << "  vertices: " << mesh.n_vertices() << "\n";
+    gsInfo << "  edges:    " << mesh.n_edges()    << "\n";
+    gsInfo << "  faces:    " << mesh.n_faces()    << "\n";
 
-    cc_limit_points(mesh);
+    gsInfo << "Getting limit points..\n";
+    cc_limit_points  (mesh);
+    gsInfo << "Getting limit normals..\n";
+    cc_limit_unormals(mesh);
+
+    gsInfo << "Writing to files..\n";
+
+    mesh.write("out_mesh.off");
 
     gsMatrix<> lp = mesh_property_to_matrix(mesh,"v:limit");
     gsWrite(lp,"out_values");
-    
-    mesh.write("out_mesh.off");
+    gsMatrix<> ln = mesh_property_to_matrix(mesh,"v:unormal");
+    gsWrite(ln,"out_normals");
+
 
     return 0;
 }
