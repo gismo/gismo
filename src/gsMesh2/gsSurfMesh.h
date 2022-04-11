@@ -3,16 +3,29 @@
 //== INCLUDES =================================================================
 
 
-#include <gsMesh2/types.h>
+#include <gsCore/gsLinearAlgebra.h>
+
+namespace gismo // typedefs
+{
+typedef Eigen::Vector<real_t,3> Point;
+typedef Eigen::Vector<float,2> Vec2f;
+typedef Eigen::Vector<float,3> Vec3f;
+/// Normal type
+typedef Eigen::Vector<real_t,3> Normal;
+/// Color type
+typedef Eigen::Vector<real_t,3> Color;
+/// Texture coordinate type
+typedef Eigen::Vector<real_t,3> Texture_coordinate;
+
+}
+
+#include <gsCore/gsConfig.h>
 #include <gsMesh2/gsProperty.h>
-#include <gsCore/gsExport.h>
+//#include <gsCore/gsExport.h>
 
-
-//== NAMESPACE ================================================================
 
 
 namespace gismo {
-
 
 //== CLASS DEFINITION =========================================================
 
@@ -20,6 +33,11 @@ namespace gismo {
 /// A halfedge data structure for polygonal meshes.
 class GISMO_EXPORT gsSurfMesh
 {
+/// Scalar type
+typedef real_t Scalar;
+
+/// 3D vector type
+typedef Eigen::Vector<Scalar,3> Vec3;
 
 public: //------------------------------------------------------ topology types
 
