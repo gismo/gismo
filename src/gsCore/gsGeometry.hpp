@@ -248,10 +248,10 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 }
 
 template<class T>
-void gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
-                                   gsVector<T> & result,
-                                   const T accuracy,
-                                   const bool useInitialPoint) const
+T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
+                                gsVector<T> & result,
+                                const T accuracy,
+                                const bool useInitialPoint) const
 {
     GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
                   pt.rows() <<"!="<< targetDim() );
@@ -260,11 +260,12 @@ void gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
     gsMinimizer<T> fmin(dist2);
     fmin.solve();
     result = fmin.currentDesign();
-    return;
 #else
     gsSquaredDistance<T> dist2(*this, pt);
-    result = dist2.argMin(accuracy*accuracy, 10);
+    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 100, result)
+    : dist2.argMin(accuracy*accuracy, 100) ;
 #endif
+    return math::sqrt( dist2.eval(result).value() );
 }
 
 template<class T>
