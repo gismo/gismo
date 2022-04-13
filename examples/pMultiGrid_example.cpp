@@ -695,7 +695,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     }
     gsPreconditionerOp<>::uPtr result = gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsAdditiveOp<>::make(transfers, ops));
     result->setOptions(opt);
-    return result;
+    return give(result);
 }
 
 gsPreconditionerOp<>::Ptr setupBlockILUT(
