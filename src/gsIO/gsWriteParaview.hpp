@@ -25,10 +25,8 @@
 
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
-//#include <gsUtils/gsMesh/gsHeMesh.h>
 
-
-#define PLOT_PRECISION 5
+#define PLOT_PRECISION 12
 
 namespace gismo
 {
@@ -1625,7 +1623,6 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
 
     file.close();
 }
-
 
 template <typename T>
 void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,

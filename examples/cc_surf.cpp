@@ -1,11 +1,9 @@
 
 #include <gismo.h>
 
-#include <gsMesh2/gsSurfMesh.cpp>
+#include <gsMesh2/gsSurfMesh.h>
 
 using namespace gismo;
-
-
 
 void cc_subdivide(gsSurfMesh & mesh)
 {
@@ -21,11 +19,12 @@ void cc_subdivide(gsSurfMesh & mesh)
     index_t env = mesh.n_vertices(); // edge vertices start here
 
     // loop over all edges, add edge points
+    Point ept;
     for (auto eit : mesh.edges())
     {
-        he = mesh.halfedge(eit,0);
-        Point pt( (points[mesh.from_vertex(he)]+points[mesh.to_vertex(he)]) / 2 );
-        v = mesh.add_vertex(pt);
+        he  = mesh.halfedge(eit,0);
+        ept = (points[mesh.from_vertex(he)]+points[mesh.to_vertex(he)]) / 2;
+        v   = mesh.add_vertex(ept);
         mesh.insert_vertex(he,v);
     }
 
@@ -60,19 +59,19 @@ void cc_subdivide(gsSurfMesh & mesh)
     //mesh.write("out2.off");
 
     //parallel
-#   pragma omp parallel for private(v)
+#   pragma omp parallel for private(v,ept)
     for (i = env; i!=fnv;++i)
     {
         v = gsSurfMesh::Vertex(i); //edge points
         auto vit = mesh.vertices(v);
         auto vcp = vit;
-        Point pt(0,0,0);
+        ept.setZero();
         if (vit) do
                  {
-                     pt += points[*vit];
+                     ept += points[*vit];
                  } while (++vit != vcp);
-        pt /= 4 ; // =mesh.valence(v);
-        points[v] = pt;
+        ept /= 4 ; // =mesh.valence(v);
+        points[v] = ept;
     }
 
     //mesh.write("out3.off");
@@ -85,21 +84,26 @@ void cc_subdivide(gsSurfMesh & mesh)
         auto vcp = vit;
         Point E(0,0,0);// 2*E = avg(f) + avg(e) = F + R [=> R=2*E-F ]
         Point F(0,0,0);// F
+        //todo: compute in place
+        //auto & pt = points[v];
+        //pt *= n*(n-3);
         if (vit)
             do
             {
+                //pt += 4*E-F
                 E += points[ mesh.to_vertex(*vit) ];
                 F += points[ mesh.to_vertex(mesh.next_halfedge(*vit)) ];
             } while (++vit != vcp);
         auto n = mesh.valence(v);
         //points[v] = ( (F/n) + (2*(2*E-F)/n) + (n-3) * points[v] ) / n ;
         points[v] = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
+        //pt /= n*n;
     }
 
     //mesh.write("out4.off");
 }
 
-void cc_limit_points(gsSurfMesh & mesh)
+void cc_limit_points(gsSurfMesh & mesh, bool replace_pts = false)
 {
     auto points = mesh.get_vertex_property<Point>("v:point");
     auto limits = mesh.add_vertex_property<Point>("v:limit");
@@ -117,15 +121,21 @@ void cc_limit_points(gsSurfMesh & mesh)
         }
         limits[*vit] = pt / (n*(n+5));
     }
+
+    if (replace_pts)//vertices are moved to their limit positions
+    {
+        mesh.remove_vertex_property(points);
+        mesh.rename_vertex_property(limits,"v:point");
+    }
 }
 
-void cc_limit_unormals(gsSurfMesh & mesh)
+void cc_limit_normals(gsSurfMesh & mesh)
 {
     gsSurfMesh::Vertex v;
     gsSurfMesh::Halfedge he, h2;
 
     auto points = mesh.get_vertex_property<Point>("v:point");
-    auto limits = mesh.add_vertex_property<Point>("v:unormal");
+    auto limits = mesh.add_vertex_property<Point>("v:normal");
     Point t1, t2;
     real_t c1, c2, cc1, cc2;
     index_t i;
@@ -175,7 +185,7 @@ gsMultiPatch<real_t> cc_acc3(gsSurfMesh & mesh)
 {
     auto points = mesh.get_vertex_property<Point>("v:point");
     gsMultiPatch<real_t> mp;
-    gsKnotVector<> kv(0,1,0,4);
+    gsKnotVector<> kv(0,1,0,4);//cubic degree
     gsTensorBSplineBasis<2> bb(kv,kv);
     gsMatrix<> coefs(16,3); coefs.setZero();
     gsSurfMesh::Halfedge h2;
@@ -228,7 +238,8 @@ gsMultiPatch<real_t> cc_acc3(gsSurfMesh & mesh)
     return mp;
 }
 
-gsMatrix<> mesh_property_to_matrix(const gsSurfMesh & mesh, const std::string & prop)
+gsMatrix<> mesh_property_to_matrix(const gsSurfMesh & mesh,
+                                   const std::string & prop)
 {
     auto & pv = mesh.get_vertex_property<Point>(prop).vector();
     gsMatrix<> res(3,pv.size());
@@ -238,46 +249,48 @@ gsMatrix<> mesh_property_to_matrix(const gsSurfMesh & mesh, const std::string & 
     return res;
 }
 
-void error_mesh_multipatch(const gsSurfMesh & mesh,
+void error_mesh_multipatch(gsSurfMesh & mesh,
                            const gsMultiPatch<> & mp)
 {
-    index_t np = mesh.n_vertices();
-    auto limits = mesh.get_vertex_property<Point>("v:limit");
-    auto unv    = mesh.get_vertex_property<Point>("v:unormal");
+    auto limit = mesh.get_vertex_property<Point>("v:limit");//v:limit
+    auto unv    = mesh.get_vertex_property<Point>("v:normal");
+    auto gerr    = mesh.add_vertex_property<real_t>("v:geometry_error");
+    auto nerr    = mesh.add_vertex_property<real_t>("v:normal_error");
 
     gsMapData<> gdata;
     gdata.addFlags( NEED_VALUE|NEED_NORMAL );
     std::pair<index_t,gsVector<> > cp;
-    gsMatrix<> pt, err(1,np), nerr(1,np);
-
+    gsMatrix<> pt;
+    real_t tge = 0, tne = 0;
     index_t i = 0;
     for (auto v : mesh.vertices())
     {
         gsInfo << "\r"<< i << std::flush;
-        pt = limits[v];
+        pt = limit[v];
         cp = mp.closestPointTo(pt, 1e-15 );
         gdata.points = cp.second;
         gdata.patchId = cp.first;
         mp.patch(cp.first).computeMap(gdata);
-        err.at(i) = (pt-gdata.eval(0)).norm();
-        nerr.at(i) = (unv[v]-gdata.normal(0).normalized()).norm();
+        tge += gerr[v] = (pt-gdata.eval(0)).norm();
+        tne += nerr[v] = (unv[v]-gdata.normal(0).normalized()).norm();
         ++i;
     }
-    gsInfo <<"\nGeometry error   : "<< err.norm() <<"\n";
-    gsInfo <<  "Unit normal error: "<< nerr.norm() <<"\n";
-    //gsWriteParaview( *msh, "ccmesh", err);
+    gsInfo <<"\nTotal geometry error   : "<< tge <<"\n";
+    gsInfo <<  "Total unit-normal error: "<< tne <<"\n";
 }
 
 int main(int argc, char** argv)
 {
     index_t r(0), s(0);
     std::string fn("");
+    std::string fn_patch("");
 
     //! [Parse Command line]
-    gsCmdLine cmd("Hi, give me a mesh");
-    cmd.addInt   ("r", "ref", "Number of refinement steps", r);
-    cmd.addInt   ("s", "sam", "Number of sampling steps",   s);
-    cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
+    gsCmdLine cmd("Hi, give me a CC mesh");
+    cmd.addInt   ("c", "ref", "Number of refinement steps", r);
+    cmd.addInt   ("s", "sam", "Number of sampling refinement steps",   s);
+    cmd.addPlainString("filename", "File containing mesh", fn);
+    cmd.addString("g","geometry", "File containing multipatch geometry to compare)", fn_patch);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsSurfMesh mesh;
@@ -285,38 +298,42 @@ int main(int argc, char** argv)
     gsInfo << "Input: "<<mesh.n_vertices()<< " vertices, "
            << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
 
+    //subdivision before creating ACC3 patches
     for( index_t i = 0; i<r; ++i)
         cc_subdivide(mesh);
 
-    gsInfo << "Extracting "<<mesh.n_faces()<<" Bezier patches..\n";
-    gsMultiPatch<> mp = cc_acc3(mesh);
-    gsWrite(mp,"out_acc3");
+    gsMultiPatch<> mp;
+    if (!fn_patch.empty())
+    {   //read patches from file
+        gsReadFile<>(fn_patch,mp);
+        gsInfo << "Input: "<<mp.nPatches()<<" spline patches.\n";
+    }
+    else //if geometry is not given then use ACC3
+    {
+        gsInfo << "Extracting "<<mesh.n_faces()<<" Bezier patches (ACC3)..\n";
+        mp = cc_acc3(mesh);
+    }
 
     for( index_t i = 0; i<s; ++i)
         cc_subdivide(mesh);
-
     gsInfo << "Sampled at "<<mesh.n_vertices()<< " points. \n";
 
     gsInfo << "Getting limit points..\n";
-    cc_limit_points  (mesh);
+    cc_limit_points(mesh, false); //(!)overwriting points spoils error comp.
+
     gsInfo << "Getting limit normals..\n";
-    cc_limit_unormals(mesh);
-
-    /*
-    gsInfo << "Writing to files..\n";
-
-    mesh.write("out_mesh.off");
-
-    gsMatrix<> lp = mesh_property_to_matrix(mesh,"v:limit");
-    gsWrite(lp,"out_values");
-    gsMatrix<> ln = mesh_property_to_matrix(mesh,"v:unormal");
-    gsWrite(ln,"out_normals");
-    */
+    cc_limit_normals(mesh);
 
     gsInfo << "Computing errors..\n";
     error_mesh_multipatch(mesh,mp);
 
-    return 0;
+    //replace vertices by their limit positions
+    mesh.swap_vertex_property("v:point","v:limit");
+    gsWriteParaview(mesh,"mesh", {"v:geometry_error","v:normal_error","v:normal"});
+    gsFileManager::open("mesh.vtk");
+    //mesh.property_stats();
+
+    return EXIT_SUCCESS;
 }
 
 
