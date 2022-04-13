@@ -458,13 +458,6 @@ template <class T>
 void
 gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 {
-    if (out.flags & NEED_GRAD_TRANSFORM || out.flags & NEED_MEASURE    ||
-        out.flags & NEED_JACOBIAN ||
-        out.flags & NEED_NORMAL  || out.flags & NEED_OUTER_NORMAL)
-        out.flags = out.flags | NEED_GRAD;
-    if (out.flags & NEED_2ND_FFORM || out.flags & NEED_HESSIAN)
-        out.flags = out.flags | NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
-
     const unsigned flags = out.flags | NEED_ACTIVE;
     const index_t  numPt = in.cols();
     const index_t  numCo = m_coefs.cols();
@@ -481,20 +474,20 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
         extractRows(m_coefs,tmp.active(0),coefM);
 
         if (flags & NEED_VALUE)
-            out.values[0]=coefM.transpose()*tmp.values[0];
+            out.values[0].noalias()=coefM.transpose()*tmp.values[0];
         if (flags & NEED_DERIV)
         {
             const index_t derS = tmp.derivSize();
             out.values[1].resize(derS*numCo,numPt);
             for (index_t p=0; p< numPt; ++p)
-                out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
+                out.values[1].reshapeCol(p, derS, numCo).noalias() = tmp.deriv(p)*coefM;
         }
         if (flags & NEED_DERIV2)
         {
             const index_t derS = tmp.deriv2Size();
             out.values[2].resize(derS*numCo,numPt);
             for (index_t p=0; p< numPt; ++p)
-                out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
+                out.values[2].reshapeCol(p, derS, numCo).noalias() = tmp.deriv2(p)*coefM;
         }
         if (flags & NEED_ACTIVE)
             this->active_into(in.col(0), out.actives);
@@ -514,11 +507,11 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
         {
             extractRows(m_coefs,tmp.active(p),coefM);
             if (flags & NEED_VALUE)
-                out.values[0].reshapeCol(p,1,numCo) = tmp.eval(p)*coefM;
+                out.values[0].reshapeCol(p,1,numCo).noalias() = tmp.eval(p)*coefM;
             if (flags & NEED_DERIV)
-                out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
+                out.values[1].reshapeCol(p, derS, numCo).noalias() = tmp.deriv(p)*coefM;
             if (flags & NEED_DERIV2)
-                out.values[2].reshapeCol(p, der2S, numCo) = tmp.deriv2(p)*coefM;
+                out.values[2].reshapeCol(p, der2S, numCo).noalias() = tmp.deriv2(p)*coefM;
         }
     }
 }
