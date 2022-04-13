@@ -62,10 +62,10 @@ namespace gismo {
 
     #define gsDebugVar(variable) gsDebug << (strrchr(__FILE__, '/') ?          \
                              strrchr(__FILE__, '/') + 1 : __FILE__) <<":"<<    \
-                              __LINE__<< ", "#variable": \n"<<(variable)<<"\n"
+    __LINE__<< ", "#variable": \n"<<(variable)<<std::endl
 #define gsDebugIf(cond,variable) if (cond) gsDebug <<"[ "#cond" ] -- "<<       \
               (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__) \
-               <<":"<<__LINE__<< ", "#variable": \n"<<(variable)<<"\n"
+               <<":"<<__LINE__<< ", "#variable": \n"<<(variable)<<std::endl
 #else
     #define gsDebug if (0) std::cout
     #define gsDebugVar(variable)
