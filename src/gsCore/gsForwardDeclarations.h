@@ -48,14 +48,14 @@ enum gsNeedEnum
     NEED_VALUE             = 1U << 0, ///< Value of the object
     NEED_DERIV             = 1U << 1, ///< Gradient of the object
     NEED_GRAD              = NEED_DERIV,
-    NEED_JACOBIAN          = 1U << 2, ///< Jacobian of the object
+    NEED_JACOBIAN          = NEED_DERIV, ///< Jacobian of the object
     NEED_MEASURE           = 1U << 3, ///< The density of the measure pull back
     NEED_GRAD_TRANSFORM    = 1U << 4, ///< Gradient transformation matrix
     NEED_DIV               = 1U << 5, ///< Div operator
     NEED_CURL              = 1U << 6, ///< Curl operator
     NEED_DERIV2            = 1U << 7, ///< Second derivatives
     NEED_2ND_DER           = NEED_DERIV2,
-    NEED_HESSIAN           = 1U << 8, ///< Hessian matrix
+    NEED_HESSIAN           = NEED_DERIV2, ///< Hessian matrix
     NEED_LAPLACIAN         = 1U << 9, ///< Laplacian
     NEED_ACTIVE            = 1U <<10, ///< Active function ids
     NEED_NORMAL            = 1U <<11, ///< Normal vector of the object

@@ -212,8 +212,7 @@ int gsFunction<T>::newtonRaphson_impl(
     int iter = 0;
     T rnorm[2]; rnorm[1]=1;
     //T alpha=.5, beta=.5;
-
-    gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_JACOBIAN):(NEED_DERIV|NEED_HESSIAN));
+    gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
 
     do {
         this->compute(arg,fd);
@@ -412,17 +411,17 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
     {
         // domDim<=tarDim makes sense
 
-        InOut.jacInv.resize(domDim*tarDim, numPts);
+        InOut.jacInvTr.resize(domDim*tarDim, numPts);
         for (index_t p=0; p!=numPts; ++p)
         {
             const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
 
             if ( tarDim == domDim && tarDim!=-1 )
-                gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
+                gsAsMatrix<T,tarDim,domDim>(InOut.jacInvTr.col(p).data(), n, d)
                         = jacT.cramerInverse();
             else
             {
-                gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
+                gsAsMatrix<T,tarDim,domDim>(InOut.jacInvTr.col(p).data(), n, d)
                         = jacT.transpose()*(jacT*jacT.transpose()).cramerInverse();
             }
         }
@@ -546,12 +545,10 @@ template <class T>
 void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
 {
     // Fill function data
-    if (InOut.flags & NEED_GRAD_TRANSFORM || InOut.flags & NEED_MEASURE    ||
-        InOut.flags & NEED_JACOBIAN ||
-        InOut.flags & NEED_NORMAL  || InOut.flags & NEED_OUTER_NORMAL)
-        InOut.flags = InOut.flags | NEED_GRAD;
-    if (InOut.flags & NEED_2ND_FFORM || InOut.flags & NEED_HESSIAN)
-        InOut.flags = InOut.flags | NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
+    if ( InOut.flags & (NEED_GRAD_TRANSFORM|NEED_MEASURE|NEED_NORMAL|NEED_OUTER_NORMAL) ) //NEED_JACOBIAN
+        InOut.flags |= NEED_DERIV;
+    if ( InOut.flags & (NEED_2ND_FFORM) ) //NEED_HESSIAN
+        InOut.flags |= NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
 
     this->compute(InOut.points, InOut);
 

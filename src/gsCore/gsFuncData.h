@@ -175,7 +175,7 @@ public:
     {
         if (flags & (NEED_LAPLACIAN|NEED_DERIV2|NEED_HESSIAN) )
             return 2;
-        else if (flags & (NEED_DERIV|NEED_JACOBIAN|NEED_CURL|NEED_DIV) )
+        else if (flags & (NEED_DERIV|NEED_GRAD_TRANSFORM|NEED_CURL|NEED_DIV) )
             return 1;
         else if (flags & (NEED_VALUE) )
             return 0;
@@ -287,10 +287,9 @@ public:
 
     inline matrixTransposeView jacobian(index_t point, index_t func = 0) const
     {
-        gsDebugVar(values[1]);
-       GISMO_ASSERT(flags & NEED_JACOBIAN,
-                  "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");
-       return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(func*derivSize(),point),dim.first,dim.second).transpose();
+        GISMO_ASSERT(flags & (NEED_DERIV),
+                  "jacobian access needs the computation of derivs: set the NEED_JACOBIAN flag.");
+        return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(func*derivSize(),point),dim.first,dim.second).transpose();
     }
 
     inline gsMatrix<T> hessian(index_t point, index_t func = 0) const
@@ -350,7 +349,7 @@ public:
 
     gsMatrix<T> measures;
     gsMatrix<T> fundForms;  ///< Second fundumental forms
-    gsMatrix<T> jacInv;     ///< Inverse of the Jacobian matrix (transposed)
+    gsMatrix<T> jacInvTr;   ///< Inverse of the Jacobian matrix (transposed)
     gsMatrix<T> normals;
     gsMatrix<T> outNormals; // only for the boundary
 
@@ -388,7 +387,7 @@ public:
     inline matrixTransposeView jacobians() const
     {
        GISMO_ASSERT(flags & NEED_DERIV,
-                  "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");
+                    "jacobian access needs the computation of derivs: set the NEED_DERIV flag." << this->maxDeriv() );
        return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(0,0), dim.first,dim.second*values[1].cols()).transpose();
     }
 };
