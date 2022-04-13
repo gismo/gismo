@@ -35,6 +35,7 @@ class GISMO_EXPORT gsSurfMesh
 public:
 /// Scalar type
 typedef real_t Scalar;
+typedef gismo::Point Point;
 
 private:
 /// 3D vector type
@@ -1313,7 +1314,6 @@ public: //--------------------------------------------------- property handling
         return Mesh_property<T>(mprops_.add<T>(name, t));
     }
 
-
     /** get the vertex property named \c name of type \c T. returns an invalid
      Vertex_property if the property does not exist or if the type does not match. */
     template <class T> Vertex_property<T> get_vertex_property(const std::string& name) const
@@ -1378,6 +1378,19 @@ public: //--------------------------------------------------- property handling
         return Mesh_property<T>(mprops_.get_or_add<T>(name, t));
     }
 
+    /// rename the vertex property \c p
+    template <class T> void rename_vertex_property(Vertex_property<T>& p,
+                                                   std::string newname)
+    {
+        vprops_.rename(p, give(newname));
+    }
+
+    /// swaps (the values of) two vertex properties of the same type
+    void swap_vertex_property(const std::string & name1,
+                              const std::string & name2)
+    {
+        vprops_.swap(name1,name2);
+    }
 
     /// remove the vertex property \c p
     template <class T> void remove_vertex_property(Vertex_property<T>& p)
@@ -1458,7 +1471,7 @@ public: //--------------------------------------------------- property handling
     {
         return fprops_.properties();
     }
-    /// returns the names of all face properties
+    /// returns the names of all mesh properties
     std::vector<std::string> mesh_properties() const
     {
         return mprops_.properties();

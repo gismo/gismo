@@ -8,13 +8,14 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): G. Kiss
+    Author(s): G. Kiss, A. Mantzaflaris
 */
 
-#include <gsCore/gsTemplateTools.h>
-#include <gsCore/gsLinearAlgebra.h>
+#include <gsIO/gsWriteParaview.h>
+#include <gsMesh2/gsSurfMesh.h>
 
 #include <fstream>
+#include <initializer_list>
 
 namespace gismo
 {
@@ -92,14 +93,93 @@ void plot_errors(const gsMatrix<T> & orig,
 
 }
 
-
 TEMPLATE_INST 
 void plot_errors<real_t>(const gsMatrix<real_t>&,  
                          const gsMatrix<real_t>&, 
                          const std::vector<real_t>&,
                          std::string const&); 
 
+
+
+#define PLOT_PRECISION 12
+
+void gsWriteParaview(gsSurfMesh const & sm,
+                     std::string const & fn,
+                     std::initializer_list<std::string> props)
+{
+    std::string mfn(fn);
+    mfn.append(".vtk");
+    std::ofstream file(mfn.c_str());
+    if ( ! file.is_open() )
+        gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
+    file << std::fixed; // no exponents
+    file << std::setprecision (PLOT_PRECISION);
+
+    //https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf
+    file << "# vtk DataFile Version 4.2\n";
+    file << "vtk output\n";
+    file << "ASCII\n";
+    file << "DATASET POLYDATA\n";
+
+    // Vertices
+    auto vpt = sm.get_vertex_property<gsSurfMesh::Point>("v:point");
+    file << "POINTS " << sm.n_vertices() << " float\n";
+    for (auto v : sm.vertices() )
+        file << vpt[v].transpose() <<"\n";
+    file << "\n";
+
+    // Triangles or quads
+    file << "POLYGONS " << sm.n_faces() << " " <<
+        (sm.valence(*sm.faces_begin())+1) * sm.n_faces() << "\n";
+    for (auto f : sm.faces())
+    {
+        file << sm.valence(f) <<" "; //3: triangles, 4: quads
+        for (auto v : sm.vertices(f))
+            file << v.idx() << " ";
+        file << "\n";
+    }
+    file << "\n";
+
+    //todo: count props starting with v:, f:, e:
+    if (0!=props.size())
+        file << "POINT_DATA " << sm.n_vertices() << "\n";//once
+    for( auto & pr : props )
+    {
+        if (pr == "v:normal")
+        {
+            auto vn = sm.get_vertex_property<gsSurfMesh::Point>(pr);
+            GISMO_ASSERT(vn,"No normals found");
+            file << "NORMALS "<<pr<<" float\n";
+            for (auto v : sm.vertices() )
+                file << vn[v].transpose() <<"\n";
+            file << "\n";
+            continue;
+        }
+
+        auto vp = sm.get_vertex_property<gsSurfMesh::Point>(pr);
+        if (vp)
+        {
+            file << "VECTORS "<<pr<<" float\n";
+            for (auto v : sm.vertices() )
+                file << vp[v].transpose() <<"\n";
+            file << "\n";
+            continue;
+        }
+
+        auto vs = sm.get_vertex_property<gsSurfMesh::Scalar>(pr);
+        if (vs)
+        {
+            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
+            for (auto v : sm.vertices() )
+                file << vs[v] <<" ";
+            file << "\n";
+            continue;
+        }
+
+        gsWarn<< "gsWriteParaview: Property "<< pr << " ignored.\n";
+    }
+
+    file.close();
 }
 
-
-
+}//namespace gismo

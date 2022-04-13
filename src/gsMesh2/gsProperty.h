@@ -52,6 +52,9 @@ public:
     /// Return the name of the property
     const std::string& name() const { return name_; }
 
+    /// Rename the property
+    void rename(std::string newname)
+    { name_ = give(newname) ; }
 
 protected:
 
@@ -326,8 +329,17 @@ public:
         return p;
     }
 
+    // Returns true if a property labeled \a name exists.
+    bool has(const std::string& name) const
+    {
+        for (unsigned int i=0; i<parrays_.size(); ++i)
+            if (parrays_[i]->name() == name)
+                return true;
+        return false;
+    }
 
-    // get the type of property by its name. returns typeid(void) if it does not exist.
+    // get the type of property by its name. returns typeid(void) if
+    // it does not exist.
     const std::type_info& get_type(const std::string& name)
     {
         for (unsigned int i=0; i<parrays_.size(); ++i)
@@ -336,11 +348,35 @@ public:
         return typeid(void);
     }
 
+    // Returns true if a property labeled \a name exists.
+    void swap(const std::string& name1, const std::string& name2) const
+    {
+        std::pair<int,int> spair(-1,-1);
+        for (unsigned int i=0; i<parrays_.size(); ++i)
+        {
+            if (parrays_[i]->name() == name1)
+                spair.first = i;
+            if (parrays_[i]->name() == name2)
+                spair.second = i;
+        }
+        GISMO_ASSERT(spair.first!=-1 && spair.second!=-1,"error");
+        parrays_[spair.first ]->rename(name2);
+        parrays_[spair.second]->rename(name1);
+    }
+
+    // rename a property (the name should not exist already)
+    template <class T> void rename(gsProperty<T>& h, std::string newname)
+    {
+        GISMO_ASSERT( !has(newname), "There is already a property with this name.");
+        h.parray_->rename(give(newname));
+    }
 
     // delete a property
     template <class T> void remove(gsProperty<T>& h)
     {
-        std::vector<Base_property_array*>::iterator it=parrays_.begin(), end=parrays_.end();
+        std::vector<Base_property_array*>::iterator
+            it=parrays_.begin(),
+            end=parrays_.end();
         for (; it!=end; ++it)
         {
             if (*it == h.parray_)
@@ -352,7 +388,6 @@ public:
             }
         }
     }
-
 
     // delete all properties
     void clear()
