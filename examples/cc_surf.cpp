@@ -202,16 +202,19 @@ gsMultiPatch<real_t> cc_acc3(gsSurfMesh & mesh)
             for (auto h : mesh.halfedges(v))
                 c00 += 4 * points[ mesh.to_vertex(h) ] +
                     points[ mesh.to_vertex(mesh.next_halfedge(h)) ] ;
+            c00 /= n*(n+5);
 
             c11 += 2 * points[mesh.to_vertex(he)] +
                 points[mesh.to_vertex(mesh.next_halfedge(he))] +
                 2 * points[mesh.to_vertex(mesh.ccw_rotated_halfedge(he))];
+            c11 /= n+5;
 
             c10 += 2 * points[mesh.to_vertex(he)] +
                 0.5 * points[mesh.to_vertex(mesh.next_halfedge(he))] +
                 points[mesh.to_vertex(mesh.ccw_rotated_halfedge(he))]+
                 points[mesh.to_vertex(mesh.cw_rotated_halfedge(he)) ]+
                 0.5 * points[mesh.to_vertex(mesh.next_halfedge(mesh.cw_rotated_halfedge(he))) ];
+            c10 /= n+5;
 
             h2 = mesh.ccw_rotated_halfedge(he);
             c01 += 2 * points[mesh.to_vertex(h2)] +
@@ -219,11 +222,8 @@ gsMultiPatch<real_t> cc_acc3(gsSurfMesh & mesh)
                 points[mesh.to_vertex(mesh.ccw_rotated_halfedge(h2))]+
                 points[mesh.to_vertex(mesh.cw_rotated_halfedge(h2)) ]+
                 0.5 * points[mesh.to_vertex(mesh.next_halfedge(mesh.cw_rotated_halfedge(h2))) ];
-
-            c00 /= n*(n+5);
-            c10 /= n+5;
             c01 /= n+5;
-            c11 /= n+5;
+
             ++s;
         }
         mp.addPatch( bb.makeGeometry(coefs) );
