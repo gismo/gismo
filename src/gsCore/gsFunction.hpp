@@ -250,7 +250,7 @@ int gsFunction<T>::newtonRaphson_impl(
             if (-1==_Dim)
                 delta.noalias() = jac.partialPivLu().solve( residual );
             else
-                delta.noalias() = jac.template topLeftCorner<_Dim,_Dim>().inverse() * residual;
+                delta.noalias() = jac.inverse() * residual;
         }
         else// use pseudo-inverse
             delta.noalias() = jac.colPivHouseholderQr().solve(
