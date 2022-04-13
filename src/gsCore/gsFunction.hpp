@@ -198,8 +198,8 @@ int gsFunction<T>::newtonRaphson_impl(
     GISMO_ASSERT( arg.size() == domainDim(),
                   "Input argument has wrong dimensions: "<< arg.transpose() );
 
-    gsMatrix<T> residual, supp;
-    gsMatrix<T,_Dim,(_Dim==-1?-1:1)> delta;
+    gsMatrix<T> supp;
+    gsMatrix<T,_Dim,(_Dim==-1?-1:1)> delta , residual;
     gsMatrix<T,_Dim,_Dim> jac;
 
     if (withSupport)
@@ -213,12 +213,11 @@ int gsFunction<T>::newtonRaphson_impl(
     T rnorm[2]; rnorm[1]=1;
     //T alpha=.5, beta=.5;
 
+    gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_JACOBIAN):(NEED_DERIV|NEED_HESSIAN));
+
     do {
-        // compute residual: value - f(arg)
-        if (0==mode)
-            this->eval_into(arg, residual);
-        if (1==mode)
-            this->deriv_into(arg, residual);
+        this->compute(arg,fd);
+        residual = (0==mode?fd.values[0]:fd.values[1]);
 
         residual.noalias() = value - scale*residual;
         rnorm[iter%2] = residual.norm();
@@ -237,9 +236,9 @@ int gsFunction<T>::newtonRaphson_impl(
 
         // compute Jacobian
         if (0==mode)
-            jac.noalias() = scale * jacobian(arg);
-        if (1==mode)
-            jac.noalias() = scale * hessian(arg, 0).reshaped(n,n);
+            jac = scale * fd.jacobian(0);
+        else // (1==mode)
+            jac = scale * fd.hessian(0);
 
         // Solve for next update
         if (squareJac)
@@ -250,9 +249,8 @@ int gsFunction<T>::newtonRaphson_impl(
 
             if (-1==_Dim)
                 delta.noalias() = jac.partialPivLu().solve( residual );
-                //delta.noalias() = jac.fullPivLu().solve( residual );
             else
-                delta.noalias() = jac.inverse() * residual;
+                delta.noalias() = jac.template topLeftCorner<_Dim,_Dim>().inverse() * residual;
         }
         else// use pseudo-inverse
             delta.noalias() = jac.colPivHouseholderQr().solve(
