@@ -458,6 +458,13 @@ template <class T>
 void
 gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 {
+    if (out.flags & NEED_GRAD_TRANSFORM || out.flags & NEED_MEASURE    ||
+        out.flags & NEED_JACOBIAN ||
+        out.flags & NEED_NORMAL  || out.flags & NEED_OUTER_NORMAL)
+        out.flags = out.flags | NEED_GRAD;
+    if (out.flags & NEED_2ND_FFORM || out.flags & NEED_HESSIAN)
+        out.flags = out.flags | NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
+
     const unsigned flags = out.flags | NEED_ACTIVE;
     const index_t  numPt = in.cols();
     const index_t  numCo = m_coefs.cols();
