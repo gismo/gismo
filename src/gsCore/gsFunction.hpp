@@ -421,8 +421,10 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
                 gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
                         = jacT.cramerInverse();
             else
+            {
                 gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
                         = jacT.transpose()*(jacT*jacT.transpose()).cramerInverse();
+            }
         }
     }
 
@@ -545,9 +547,10 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
 {
     // Fill function data
     if (InOut.flags & NEED_GRAD_TRANSFORM || InOut.flags & NEED_MEASURE    ||
-            InOut.flags & NEED_NORMAL         || InOut.flags & NEED_OUTER_NORMAL)
+        InOut.flags & NEED_JACOBIAN ||
+        InOut.flags & NEED_NORMAL  || InOut.flags & NEED_OUTER_NORMAL)
         InOut.flags = InOut.flags | NEED_GRAD;
-    if (InOut.flags & NEED_2ND_FFORM)
+    if (InOut.flags & NEED_2ND_FFORM || InOut.flags & NEED_HESSIAN)
         InOut.flags = InOut.flags | NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
 
     this->compute(InOut.points, InOut);

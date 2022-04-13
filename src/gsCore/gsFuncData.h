@@ -175,7 +175,7 @@ public:
     {
         if (flags & (NEED_LAPLACIAN|NEED_DERIV2|NEED_HESSIAN) )
             return 2;
-        else if (flags & (NEED_DERIV|NEED_CURL|NEED_DIV) )
+        else if (flags & (NEED_DERIV|NEED_JACOBIAN|NEED_CURL|NEED_DIV) )
             return 1;
         else if (flags & (NEED_VALUE) )
             return 0;
@@ -287,9 +287,10 @@ public:
 
     inline matrixTransposeView jacobian(index_t point, index_t func = 0) const
     {
-       GISMO_ASSERT(flags & NEED_DERIV,
+        gsDebugVar(values[1]);
+       GISMO_ASSERT(flags & NEED_JACOBIAN,
                   "jacobian access needs the computation of derivs: set the NEED_DERIV flag.");
-       return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(func*derivSize(),point), dim.first,dim.second).transpose();
+       return gsAsConstMatrix<T, Dynamic, Dynamic>(&values[1].coeffRef(func*derivSize(),point),dim.first,dim.second).transpose();
     }
 
     inline gsMatrix<T> hessian(index_t point, index_t func = 0) const
