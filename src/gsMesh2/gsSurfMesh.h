@@ -1,14 +1,12 @@
 
 #pragma once
 
-
 #include <gsCore/gsLinearAlgebra.h>
 
 namespace gismo // typedefs
 {
 typedef Eigen::Vector<real_t,3> Point;
 typedef Eigen::Vector<float,2> Vec2f;
-typedef Eigen::Vector<float,3> Vec3f;
 /// Normal type
 typedef Point Normal;
 /// Color type
@@ -19,7 +17,6 @@ typedef Point Texture_coordinate;
 
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Vec2f)
-EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Vec3f)
 
 #include <gsMesh2/gsProperty.h>
 
@@ -1281,21 +1278,21 @@ public: //--------------------------------------------------- property handling
     /** add a vertex property of type \c T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Vertex_property<T> add_vertex_property(const std::string& name, const T t=T())
+    template <class T> Vertex_property<T> add_vertex_property(const std::string& name, T t=T())
     {
-        return Vertex_property<T>(vprops_.add<T>(name, t));
+        return Vertex_property<T>(vprops_.add<T>(name, give(t)));
     }
     /** add a halfedge property of type \c T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Halfedge_property<T> add_halfedge_property(const std::string& name, const T t=T())
+    template <class T> Halfedge_property<T> add_halfedge_property(const std::string& name, T t=T())
     {
-        return Halfedge_property<T>(hprops_.add<T>(name, t));
+        return Halfedge_property<T>(hprops_.add<T>(name, give(t)));
     }
     /** add a edge property of type \c T with name \c name and default value \c t.
      fails if a property named \c name exists already, since the name has to be unique.
      in this case it returns an invalid property */
-    template <class T> Edge_property<T> add_edge_property(const std::string& name, const T t=T())
+    template <class T> Edge_property<T> add_edge_property(const std::string& name, T t=T())
     {
         return Edge_property<T>(eprops_.add<T>(name, t));
     }
@@ -1350,13 +1347,13 @@ public: //--------------------------------------------------- property handling
      otherwise this property is added (with default value \c t) */
     template <class T> Vertex_property<T> vertex_property(const std::string& name, const T t=T())
     {
-        return Vertex_property<T>(vprops_.get_or_add<T>(name, t));
+        return Vertex_property<T>(vprops_.get_or_add<T>(name, give(t)));
     }
     /** if a halfedge property of type \c T with name \c name exists, it is returned.
      otherwise this property is added (with default value \c t) */
-    template <class T> Halfedge_property<T> halfedge_property(const std::string& name, const T t=T())
+    template <class T> Halfedge_property<T> halfedge_property(const std::string& name, T t=T())
     {
-        return Halfedge_property<T>(hprops_.get_or_add<T>(name, t));
+        return Halfedge_property<T>(hprops_.get_or_add<T>(name, give(t)));
     }
     /** if an edge property of type \c T with name \c name exists, it is returned.
      otherwise this property is added (with default value \c t) */

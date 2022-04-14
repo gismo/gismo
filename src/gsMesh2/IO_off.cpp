@@ -35,7 +35,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
     int                  nc;
     unsigned int         i, j, items, idx;
     unsigned int         nV, nF, nE;
-    Vec3f                p, n, c;
+    Point                p, n, c;
     Vec2f                t;
     gsSurfMesh::Vertex v;
 
@@ -64,7 +64,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         lp = line;
 
         // position
-        items = sscanf(lp, "%f %f %f%n", &p[0], &p[1], &p[2], &nc);
+        items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
         assert(items==3);
         v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
         lp += nc;
@@ -72,7 +72,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         // normal
         if (has_normals)
         {
-            if (sscanf(lp, "%f %f %f%n", &n[0], &n[1], &n[2], &nc) == 3)
+            if (sscanf(lp, "%f %f %f%n", (float*)&n[0], (float*)&n[1], (float*)&n[2], &nc) == 3)
             {
                 normals[v] = n;
             }
@@ -82,7 +82,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         // color
         if (has_colors)
         {
-            if (sscanf(lp, "%f %f %f%n", &c[0], &c[1], &c[2], &nc) == 3)
+            if (sscanf(lp, "%f %f %f%n", (float*)&c[0], (float*)&c[1], (float*)&c[2], &nc) == 3)
             {
                 if (c[0]>1.0f || c[1]>1.0f || c[2]>1.0f) c *= (1.0/255.0);
                 colors[v] = c;
@@ -93,7 +93,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         // tex coord
         if (has_texcoords)
         {
-            items = sscanf(lp, "%f %f%n", &t[0], &t[1], &nc);
+            items = sscanf(lp, "%f %f%n", (float*)&t[0], (float*)&t[1], &nc);
             assert(items == 2);
             texcoords[v][0] = t[0];
             texcoords[v][1] = t[1];
@@ -144,7 +144,7 @@ bool read_off_binary(gsSurfMesh& mesh,
 {
     unsigned int       i, j, idx;
     unsigned int       nV, nF, nE;
-    Vec3f              p, n, c;
+    Point              p, n, c;
     Vec2f              t;
     gsSurfMesh::Vertex  v;
 

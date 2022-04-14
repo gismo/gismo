@@ -38,7 +38,7 @@ public:
 
     CmpVec(float _eps=FLT_MIN) : eps_(_eps) {}
 
-    bool operator()(const Vec3f& v0, const Vec3f& v1) const
+    bool operator()(const Point& v0, const Point& v1) const
     {
         if (fabs(v0[0] - v1[0]) <= eps_)
         {
@@ -61,17 +61,17 @@ private:
 
 bool read_stl(gsSurfMesh& mesh, const std::string& filename)
 {
-    char                            line[100], *c;
-    unsigned int                    i, nT;
-    Vec3f                           p;
+    char                             line[100], *c;
+    unsigned int                     i, nT;
+    Point                            p;
     gsSurfMesh::Vertex               v;
     std::vector<gsSurfMesh::Vertex>  vertices(3);
     size_t n_items(0);
     (void)n_items;
     
     CmpVec comp(FLT_MIN);
-    std::map<Vec3f, gsSurfMesh::Vertex, CmpVec>            vMap(comp);
-    std::map<Vec3f, gsSurfMesh::Vertex, CmpVec>::iterator  vMapIt;
+    std::map<Point, gsSurfMesh::Vertex, CmpVec>            vMap(comp);
+    std::map<Point, gsSurfMesh::Vertex, CmpVec>::iterator  vMapIt;
 
 
     // clear mesh
@@ -168,7 +168,7 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
                     for (c=line; isspace(*c) && *c!='\0'; ++c) {};
 
                     // read x, y, z
-                    sscanf(c+6, "%f %f %f", &p[0], &p[1], &p[2]);
+                    sscanf(c+6, "%f %f %f", (float*)&p[0], (float*)&p[1], (float*)&p[2]);
 
                     // has vector been referenced before?
                     if ((vMapIt=vMap.find(p)) == vMap.end())

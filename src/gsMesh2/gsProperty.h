@@ -76,8 +76,8 @@ public:
     typedef typename vector_type::reference         reference;
     typedef typename vector_type::const_reference   const_reference;
 
-    gsProperty_array(const std::string& name, T t=T()) : Base_property_array(name), value_(t) {}
-
+    gsProperty_array(const std::string& name, T t=T()) :
+    Base_property_array(name), value_(give(t)) {}
 
 public: // virtual interface of Base_property_array
 
@@ -290,7 +290,7 @@ public:
 
 
     // add a property with name \c name and default value \c t
-    template <class T> gsProperty<T> add(const std::string& name, const T t=T())
+    template <class T> gsProperty<T> add(const std::string& name, T t=T())
     {
         // if a property with this name already exists, return an invalid property
         for (unsigned int i=0; i<parrays_.size(); ++i)
@@ -304,7 +304,11 @@ public:
         }
 
         // otherwise add the property
-        gsProperty_array<T>* p = new gsProperty_array<T>(name, t);
+// #pragma GCC diagnostic push
+// #pragma GCC diagnostic ignored "-Wuninitialized"
+        gsProperty_array<T>* p = new gsProperty_array<T>(name, give(t));//warn unin.
+// #pragma GCC diagnostic pop
+// #pragma GCC diagnostic pop //restores cmdline options
         p->resize(size_);
         parrays_.push_back(p);
         return gsProperty<T>(p);
@@ -325,7 +329,7 @@ public:
     template <class T> gsProperty<T> get_or_add(const std::string& name, const T t=T())
     {
         gsProperty<T> p = get<T>(name);
-        if (!p) p = add<T>(name, t);
+        if (!p) p = add<T>(name, give(t));
         return p;
     }
 
