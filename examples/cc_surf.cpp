@@ -97,7 +97,7 @@ void cc_subdivide(gsSurfMesh & mesh)
     }
 }
 
-void cc_limit_points(gsSurfMesh & mesh, bool replace_pts = false)
+void cc_limit_points(gsSurfMesh & mesh, bool swap_pts = false)
 {
     auto points = mesh.get_vertex_property<Point>("v:point");
     auto limits = mesh.add_vertex_property<Point>("v:limit");
@@ -116,10 +116,10 @@ void cc_limit_points(gsSurfMesh & mesh, bool replace_pts = false)
         pt /= (n*(n+5));
     }
 
-    if (replace_pts)//vertices are moved to their limit positions
+    if (swap_pts)//vertices are moved to their limit positions
     {
-        mesh.remove_vertex_property(points);
-        mesh.rename_vertex_property(limits,"v:point");
+        mesh.swap_vertex_property("v:point","v:limit");
+        mesh.rename_vertex_property(points,"v:original_point");
     }
 }
 
@@ -158,7 +158,7 @@ void cc_limit_normals(gsSurfMesh & mesh)
     }
 }
 
-inline index_t idx(index_t i, index_t j, index_t s, index_t sz)
+inline index_t face_pt_idx(index_t i, index_t j, index_t s, index_t sz)
 {
     switch (s)
     {
@@ -191,10 +191,10 @@ gsMultiPatch<real_t> cc_acc3(gsSurfMesh & mesh)
         index_t s = 0;
         for ( auto he : mesh.halfedges(*fit) )
         {
-            auto c00 = coefs.row(idx(0,0,s,4)).transpose();
-            auto c10 = coefs.row(idx(1,0,s,4)).transpose();
-            auto c01 = coefs.row(idx(0,1,s,4)).transpose();
-            auto c11 = coefs.row(idx(1,1,s,4)).transpose();
+            auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
+            auto c10 = coefs.row(face_pt_idx(1,0,s,4)).transpose();
+            auto c01 = coefs.row(face_pt_idx(0,1,s,4)).transpose();
+            auto c11 = coefs.row(face_pt_idx(1,1,s,4)).transpose();
             v = mesh.from_vertex(he);
             n = mesh.valence(v);
             c00 = n*n*points[v];
@@ -276,19 +276,23 @@ void error_mesh_multipatch(gsSurfMesh & mesh,
 int main(int argc, char** argv)
 {
     index_t r(0), s(0);
-    std::string fn("");
+    std::string fn("off/octtorus.off");
     std::string fn_patch("");
-
+    bool plot = false;
+    
     //! [Parse Command line]
     gsCmdLine cmd("Hi, give me a CC mesh");
     cmd.addInt   ("c", "ref", "Number of refinement steps", r);
     cmd.addInt   ("s", "sam", "Number of sampling refinement steps",   s);
     cmd.addPlainString("filename", "File containing mesh", fn);
     cmd.addString("g","geometry", "File containing multipatch geometry to compare)", fn_patch);
+    cmd.addSwitch("plot", "Plot the results", plot);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsSurfMesh mesh;
-    mesh.read(fn);
+    //mesh.read(fn);
+    gsReadFile<>(fn,mesh);
+
     gsInfo << "Input: "<<mesh.n_vertices()<< " vertices, "
            << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
 
@@ -320,12 +324,15 @@ int main(int argc, char** argv)
 
     gsInfo << "Computing errors..\n";
     error_mesh_multipatch(mesh,mp);
-
-    //replace vertices by their limit positions
-    mesh.swap_vertex_property("v:point","v:limit");
-    gsWriteParaview(mesh,"mesh", {"v:geometry_error","v:normal_error","v:normal"});
-    gsFileManager::open("mesh.vtk");
     //mesh.property_stats();
+
+    if (plot)
+    {
+        //replace vertices by their limit positions
+        mesh.swap_vertex_property("v:point","v:limit");
+        gsWriteParaview(mesh,"mesh", {"v:geometry_error","v:normal_error","v:normal"});
+        gsFileManager::open("mesh.vtk");
+    }
 
     return EXIT_SUCCESS;
 }
