@@ -23,6 +23,7 @@ CMakeLists.txt.user
 # CMake
 CMakeCache.txt
 CMakeFiles/
+/.cmake/
 
 # Patch Files
 *.patch
@@ -30,3 +31,4 @@ CMakeFiles/
 
 # Data
 data-private/
+data/
