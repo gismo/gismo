@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
 
-    index_t numRefine  = 5;
+    index_t numRefine  = 3;
     index_t degree = 3;
     index_t smoothness = 2;
     bool last = false;
