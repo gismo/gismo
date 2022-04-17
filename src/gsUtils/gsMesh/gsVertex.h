@@ -74,12 +74,6 @@ public:
 
     virtual ~gsVertex() { };
 
-
-    void setCoords(gsVector<T> const & coord)
-    {
-        this->gsVector3d<T>::operator=(coord);
-    }
-
     gsVertex & operator=(const gsVertex & other)
     {
         this->gsVector3d<T>::operator=(other);

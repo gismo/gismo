@@ -203,9 +203,6 @@ public:
     const FaceHandle & face(size_t i) const { return m_face[i]; }
     FaceHandle & face(size_t i) { return m_face[i]; }
 
-    const Edge & edge(size_t i) const { return m_edge[i]; }
-    Edge & edge(size_t i) { return m_edge[i]; }
-
     gsVector<index_t> faceIndices(size_t i) const
     {
         const FaceHandle & f = face(i);

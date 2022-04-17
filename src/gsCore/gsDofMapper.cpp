@@ -40,7 +40,6 @@ void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
     return;
     */
 
-    GISMO_ASSERT(comp>-1,"Component is invalid");
     for (index_t i = 0; i < numActive; ++i)
         globals(i,0) = index(locals(i,0), patchIndex, comp);
 }
@@ -51,7 +50,6 @@ void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
                                  index_t & numFree,
                                  index_t comp) const
 {
-    GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT( locals.cols() == 1, "localToGlobal: Expecting one column of locals");
     GISMO_ASSERT( &locals != &globals, "localToGlobal: Inplace not supported");
     const index_t numActive = locals.rows();
@@ -79,7 +77,6 @@ void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
 
 gsVector<index_t> gsDofMapper::asVector(index_t comp) const
 {
-    GISMO_ASSERT(comp>-1,"Component is invalid");
   gsVector<index_t> v(m_dofs[comp].size());
   for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
     v[j] = m_dofs[comp][j] + m_shift;
@@ -102,13 +99,6 @@ void gsDofMapper::matchDof(index_t u, index_t i,
     //GISMO_ASSERT(u < m_offset.size() && i< m_offset[u+1] - m_offset[u] ,"Invalid patch-local dof "<<i<<" in matchDof.");
     //GISMO_ASSERT(v < m_offset.size() && j< m_offset[v+1] - m_offset[v] ,"Invalid patch-local dof "<<i<<" in matchDof.");
     //TODO: add check for correct range [by adding a last offset = number of total dofs]
-
-    if (-1==comp)
-    {
-        for (index_t c = 0; static_cast<size_t>(c) != componentsSize(); ++c)
-            matchDof(u,i,v,j,c);
-        return;
-    }
 
     GISMO_ASSERT(static_cast<size_t>(u)<numPatches(), "Invalid patch index "<< u <<" >= "<< numPatches() );
     GISMO_ASSERT(static_cast<size_t>(v)<numPatches(), "Invalid patch index "<< v <<" >= "<< numPatches() );
@@ -173,7 +163,6 @@ void gsDofMapper::markCoupled(index_t i, index_t k, index_t comp)
 
 void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
 {
-    GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
     //see gsSortedVector::push_sorted_unique
@@ -378,7 +367,6 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 
   void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
 {
-    GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs[comp+1] == permutation.size(), "permutation size does not match number of free dofs");
     //GISMO_ASSERT(m_tagged.empty(), "you cannot permute the dofVector twice, combine the permutation");
@@ -450,7 +438,6 @@ void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx)
 
   void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx, index_t comp)
 {
-    GISMO_ASSERT(comp>-1,"Component is invalid");
     std::vector<index_t> & dofs = m_dofs[comp];
     std::replace(dofs.begin(), dofs.end(), oldIdx, newIdx );
 }
@@ -502,7 +489,6 @@ void gsDofMapper::preImage(const index_t gl,
 
 gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
 {
-    GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
     gsVector<index_t> v(size());
       for(size_t j = 0; j!= m_dofs[comp].size(); ++j)

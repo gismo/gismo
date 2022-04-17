@@ -179,7 +179,10 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
             delete clone;
         }
 
-        result = BoundaryGeometryType(*tbasis, give(coefs) );
+        // construct the object
+        //result = gsTensorBSpline<static_cast<short_t>(d-1),T>(*tbasis, give(coefs) );
+        //result = BoundaryGeometry(*tbasis, give(coefs) );
+        result = BoundaryGeometryType(*tbasis, coefs );
     }
 }
 

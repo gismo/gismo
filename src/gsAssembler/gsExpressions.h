@@ -22,20 +22,19 @@ namespace gismo
 {
 
 // Adaptor to compute Hessian
-template <typename Derived>
-void secDerToHessian(const Eigen::DenseBase<Derived> &  secDers,
+template<typename T>
+void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
                      const index_t dim,
-                     gsMatrix<typename Derived::Scalar> & hessian)
+                     Eigen::Matrix<T,Dynamic,Dynamic> & hessian)
 {
     const index_t sz = dim*(dim+1)/2;
-    const gsAsConstMatrix<typename Derived::Scalar>
-        ders(secDers.derived().data(), sz, secDers.size() / sz );
+    const gsAsConstMatrix<T> ders(secDers.data(), sz, secDers.size() / sz );
     hessian.resize(dim*dim, ders.cols() );
 
     switch ( dim )
     {
     case 1:
-        hessian = secDers.transpose(); //==ders
+        hessian = secDers; // ders
         break;
     case 2:
         hessian.row(0)=ders.row(0);//0,0
@@ -707,15 +706,6 @@ public:
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
 
-    typedef integral_expr<T> AreaRetType;
-    AreaRetType area() const
-    { return integral(_expr<T,true>(1)); }
-
-    typedef integral_expr<meas_expr<T> > PHAreaRetType;
-    /// The diameter of the element on the physical space
-    PHAreaRetType area(const gsGeometryMap<Scalar> & _G) const
-    { return integral(meas_expr<T>(_G)); }
-
     typedef pow_expr<integral_expr<T> > DiamRetType;
     /// The diameter of the element (on parameter space)
     DiamRetType diam() const //-> int(1)^(1/d)
@@ -757,22 +747,22 @@ public:
     enum {Space= 0, ScalarValued= 1, ColBlocks = 0};
 
     integral_expr(const gsFeElement<Scalar> & el, const _expr<E> & u)
-    : m_val(-1), _e(el), _ff(u) { }
+    : _e(el), _ff(u) { }
 
     const Scalar & eval(const index_t k) const
     {
         GISMO_ENSURE(_e.isValid(), "Element is valid within integrals only.");
-        // if (0==k)
+        if (0==k)
         {
             const Scalar * w = _e.weights().data();
             m_val = (*w) * _ff.val().eval(0);
-            for (index_t j = 1; j != _e.weights().rows(); ++j)
-                m_val += (*(++w)) * _ff.val().eval(j);
+            for (index_t k = 1; k != _e.weights().rows(); ++k)
+                m_val += (*(++w)) * _ff.val().eval(k);
         }
         return m_val;
     }
 
-    inline const integral_expr<E> & val() const { return *this; }
+    inline integral_expr<E> val() const { return *this; }
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     void parse(gsExprHelper<Scalar> & evList) const
@@ -784,11 +774,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void print(std::ostream &os) const
-    {
-        os << "integral(";
-        _ff.print(os);
-        os <<")";
-    }
+    { os << "integral(.)"; }
 };
 
 /*
@@ -1056,16 +1042,11 @@ public:
             for (typename gsBoundaryConditions<T>::const_citerator
                      it = bc.cornerBegin(); it != bc.cornerEnd(); ++it)
             {
-                for (index_t r = 0; r!=this->dim(); ++r)
-                {
-                    if (it->component!=-1 && r!=it->component) continue;
-
-                    //assumes (unk == -1 || it->unknown == unk)
-                    GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
-                                 "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                    m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner),
-                                              it->patch, it->component);
-                }
+                //assumes (unk == -1 || it->unknown == unk)
+                GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
+                             "Problem: a corner boundary condition is set on a patch id which does not exist.");
+                m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner),
+                                          it->patch, it->unknown);
             }
 
         } else if (const gsBasis<T> *b =
@@ -1183,7 +1164,7 @@ public:
                 //assumes (unk == -1 || it->unknown == unk)
                 GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
                              "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                m_sd->mapper.eliminateDof(mapb->basis(it->patch).functionAtCorner(it->corner), it->patch, it->component);
+                m_sd->mapper.eliminateDof(mapb->basis(it->patch).functionAtCorner(it->corner), it->patch);
             }
         } else
         {
@@ -1195,6 +1176,17 @@ public:
 
         // Compute Dirichlet node values
         gsDirichletValues(bc, dir_values, *this);
+
+        // corner values (overrides edge BCs)
+        gsMatrix<T> & fixedDofs = const_cast<gsMatrix<T> &>(m_sd->fixedDofs);
+        for ( typename gsBoundaryConditions<T>::const_citerator
+                  it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
+        {
+            GISMO_ASSERT(nullptr!=mb, "Assumes a multibasis at this point");
+            const int i  = mb->basis(it->patch).functionAtCorner(it->corner);
+            const int ii = m_sd->mapper.bindex( i , it->patch, 0 );//component=0 for now! Todo.
+            fixedDofs.at(ii) = it->value;
+        }
     }
 
     void print(std::ostream &os) const { os << "u"; }
@@ -2857,7 +2849,7 @@ public:
         //GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
     }
 
-    MatExprType eval(const index_t k) const { return _G.data().jacInvTr.reshapeCol(k,cols(),rows()).transpose(); }
+    MatExprType eval(const index_t k) const { return _G.data().jacInv.reshapeCol(k,cols(),rows()).transpose(); }
 
     index_t rows() const { return _G.data().dim.first;  }
     index_t cols() const { return _G.data().dim.second; }
@@ -3110,7 +3102,7 @@ public:
     hess_expr(const gsFeSolution<T> & u) : _u(u) { }
 
     mutable gsMatrix<T> res;
-    const gsMatrix<T> & eval(const index_t k) const
+    const gsMatrix<T> eval(const index_t k) const
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected. Actives: \n"<<_u.data().actives);
 

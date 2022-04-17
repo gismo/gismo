@@ -395,16 +395,13 @@ bool gsFileData<T>::readAxelMesh(gsXmlNode * node )
 {
     std::ostringstream str;
     gsXmlNode * tmp = node->first_node("points");
-    GISMO_ASSERT(tmp,"No points in mesh.");
     str<< tmp->value();
     tmp = node->first_node("faces");
-    if (tmp)
-        str<< tmp->value();
+    str<< tmp->value();
     internal::gsXmlNode* g = internal::makeNode("Mesh", str.str(), *data);
     g->append_attribute(internal::makeAttribute("type", "off", *data ) );
 
     tmp = node->first_node("count");
-    GISMO_ASSERT(tmp,"No point count in mesh.");
     std::istringstream iss(tmp->value());
     int n;
     iss >> n;
@@ -413,10 +410,6 @@ bool gsFileData<T>::readAxelMesh(gsXmlNode * node )
     g->append_attribute( internal::makeAttribute("faces", n, *data ) );
     internal::gsXmlNode* parent = data->first_node("xml") ;
     parent->append_node(g);
-
-    tmp =  node->first_node("edges");
-    if (tmp)
-        gsWarn <<"Skipping edges in axl file.\n";
     return true;
 }
 

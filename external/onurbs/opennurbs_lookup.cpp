@@ -666,7 +666,6 @@ size_t ON_SerialNumberMap::ActiveIdCount() const
   return m_active_id_count;
 }
 
-#if 0
 struct ON_SerialNumberMap::SN_ELEMENT* ON_SerialNumberMap::FirstElement() const
 {
   struct SN_ELEMENT* e=0;
@@ -718,7 +717,6 @@ struct ON_SerialNumberMap::SN_ELEMENT* ON_SerialNumberMap::FirstElement() const
   }
   return e;
 }
-#endif
 
 struct ON_SerialNumberMap::SN_ELEMENT* ON_SerialNumberMap::LastElement() const
 {

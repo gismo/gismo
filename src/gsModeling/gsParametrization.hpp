@@ -203,12 +203,12 @@ gsMesh<T> gsParametrization<T>::createFlatMesh() const
 template <class T>
 void gsParametrization<T>::writeTexturedMesh(std::string filename) const
 {
-    gsMatrix<T> params(2, m_mesh.numVertices());
+    gsMatrix<T> params(m_mesh.numVertices(), 2);
 
     for(size_t i=0; i<m_mesh.numVertices(); i++)
     {
         size_t index = m_mesh.unsorted(i);
-        params.col(i) = getParameterPoint(index).transpose();
+        params.row(i) = getParameterPoint(index);
     }
     gsWriteParaview(m_mesh, filename, params);
 }

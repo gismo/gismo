@@ -1565,9 +1565,6 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params)
 {
-    GISMO_ASSERT((index_t)sl.numVertices()==params.cols(),
-                 "Incorrect number of data: "<< params.cols() <<" != "<< sl.numVertices() );
-
     std::string mfn(fn);
     mfn.append(".vtk");
     std::ofstream file(mfn.c_str());
@@ -1592,15 +1589,14 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     }
     file << "\n";
 
-    // Triangles or quads
-    file << "POLYGONS " << sl.numFaces() << " " <<
-        (sl.faces().front()->vertices.size()+1) * sl.numFaces() << std::endl;
+    // Triangles
+    file << "POLYGONS " << sl.numFaces() << " " << 4 * sl.numFaces() << std::endl;
     for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
          it!=sl.faces().end(); ++it)
     {
-        file << (*it)->vertices.size() <<" "; //3: triangles, 4: quads
-        for (typename std::vector< gsVertex<T>* >::const_iterator vit=
-                 (*it)->vertices.begin(); vit!=(*it)->vertices.end(); ++vit)
+        file << "3 ";
+        for (typename std::vector< gsVertex<T>* >::const_iterator vit= (*it)->vertices.begin();
+             vit!=(*it)->vertices.end(); ++vit)
         {
             file << (*vit)->getId() << " ";
         }
@@ -1608,21 +1604,16 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     }
     file << "\n";
 
-    // Data
+    // Parameters
     file << "POINT_DATA " << sl.numVertices() << std::endl;
-    //file << "TEXTURE_COORDINATES parameters "<<params.rows()<<" float\n";
-    if ( 3 == params.rows() )
-        file << "VECTORS Data float\n";
-    else
-        file << "SCALARS Data float "<<params.rows()<<"\nLOOKUP_TABLE default\n";
-
-    for(index_t j=0; j<params.cols(); j++)
+    file << "TEXTURE_COORDINATES parameters 2 float\n";
+    for(index_t i=0; i<params.rows(); i++)
     {
-        for(index_t i=0; i<params.rows(); i++)
+        for(index_t j=0; j<params.cols(); j++)
             file << params(i,j) << " ";
         file << "\n";
     }
-
+     
     file.close();
 }
 

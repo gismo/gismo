@@ -116,24 +116,12 @@ public:
             str.clear();
             str.str(child->value());
             GISMO_ENSURE(gsGetReal(str, val), "No value");
-
-            // Unknown is optional, otherwise 0
-            const gsXmlAttribute * unk = child->first_attribute("unknown");
-            int uIndex = 0;
-            if (NULL != unk)
-                uIndex = atoi( unk->value() );
-
-            // Component is optional, otherwise -1
-            const gsXmlAttribute * comp = child->first_attribute("component");
-            int cIndex = -1;
-            if (NULL != comp)
-                cIndex = atoi( comp->value() );
-
-            const int cornIndex = atoi(child->first_attribute("corner")->value());
+            const int uIndex = atoi(child->first_attribute("unknown")->value());
+            const int cIndex = atoi(child->first_attribute("corner")->value());
             int pIndex = atoi(child->first_attribute("patch")->value());
             pIndex = ids[pIndex];
 
-            result.addCornerValue(cornIndex, val, pIndex, uIndex, cIndex);
+            result.addCornerValue(cIndex, val, pIndex, uIndex);
         }
     }
 
@@ -253,14 +241,11 @@ public:
             gsXmlNode * cvNode = internal::makeNode("cv", data);
             gsXmlAttribute * unknownNode = internal::makeAttribute("unknown",
                     c.unknown, data);
-            gsXmlAttribute * componentNode = internal::makeAttribute("component",
-                    c.component, data);
             gsXmlAttribute * patchNode = internal::makeAttribute("patch",
                     c.patch, data);
             gsXmlAttribute * cornerNode = internal::makeAttribute("corner",
                     c.corner.m_index, data);
             cvNode->append_attribute(unknownNode);
-            cvNode->append_attribute(componentNode);
             cvNode->append_attribute(patchNode);
             cvNode->append_attribute(cornerNode);
             std::ostringstream oss;

@@ -324,7 +324,7 @@ gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
   side and thus it implicitly assumes that the patch faces match
 */
 template<class T>
-bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
+bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
 {
     BaseA::clearTopology();
 
@@ -392,11 +392,12 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
     cId1.reserve(nCorS);
     cId2.reserve(nCorS);
 
-    std::set<index_t> found;
-    for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+    while ( pSide.size() != 0 )
     {
-        const patchSide & side = pSide[sideind];
-        for (size_t other=sideind+1; other<pSide.size(); ++other)
+        bool done = false;
+        const patchSide side = pSide.back();
+        pSide.pop_back();
+        for (size_t other=0; other<pSide.size(); ++other)
         {
             side        .getContainedCorners(m_dim,cId1);
             pSide[other].getContainedCorners(m_dim,cId2);
@@ -409,13 +410,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
                          ).norm() >= tol )
                     continue;
 
-            //t-junction
-            // check for matching vertices else
-            // invert the vertices of first side on the second and vise-versa
-            // if at least one vertex is found (at most 2^(d-1)), mark as interface
-
-            // Check whether the vertices match and compute direction
-            // map and orientation
+            // Check whether the vertices match and compute direction map and orientation
             if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
                                       pCorners[pSide[other].patch], cId2,
                                       matched, dirMap, dirOr, tol ) )
@@ -423,19 +418,15 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
                 dirMap(side.direction()) = pSide[other].direction();
                 dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
                 BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
-                found.insert(sideind);
-                found.insert(other);
+                // done with pSide[other], remove it from candidate list
+                std::swap( pSide[other], pSide.back() );
+                pSide.pop_back();
+                done=true;
+                break;//for (size_t other=0..)
             }
         }
-    }
-
-    index_t k = 0;
-    found.insert(found.end(), pSide.size());
-    for (const auto & s : found)
-    {
-        for (;k<s;++k)
-            BaseA::addBoundary( pSide[k] );
-        ++k;
+        if (!done) // not an interface ?
+            BaseA::addBoundary( side );
     }
 
     return true;
@@ -445,9 +436,10 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
 template <class T>
 bool gsMultiPatch<T>::matchVerticesOnSide (
     const gsMatrix<T> &cc1, const std::vector<boxCorner> &ci1, index_t start,
-    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2,
-    const gsVector<bool> &matched, gsVector<index_t> &dirMap,
-    gsVector<bool> &dirO, T tol, index_t reference)
+    const gsMatrix<T> &cc2, const std::vector<boxCorner> &ci2, const gsVector<bool> &matched,
+    gsVector<index_t> &dirMap, gsVector<bool>    &dirO,
+    T tol,
+    index_t reference)
 {
     const bool computeOrientation = !(start&(start-1)) && (start != 0); // true if start is a power of 2
     const bool setReference       = start==0;          // if we search for the first point then we set the reference
@@ -705,46 +697,6 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
             }
         }
     }
-}
-
-namespace
-{
-struct __closestPointHelper
-{
-    __closestPointHelper() : dist(math::limits::max()), pid(-1) { }
-    real_t dist;
-    size_t pid;
-    gsVector<> preim;
-};
-}
-
-template<class T> std::pair<index_t,gsVector<T> >
-gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
-                                const T accuracy) const
-{
-    GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
-                  pt.rows() <<"!="<< targetDim() );
-
-    gsVector<T> tmp;
-
-#   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = omp_in.dist < omp_out.dist ? omp_in : omp_out)
-    struct __closestPointHelper cph;
-#   pragma omp parallel for default(none) shared(pt,accuracy) private(tmp) reduction(minimum:cph) //OpenMP 4.0
-    for (size_t k = 0; k!= m_patches.size(); ++k)
-    {
-        // possible improvement: approximate dist: eval patch on a
-        // grid. find min distance between grid and pt
-
-        const T val = this->patch(k).closestPointTo(pt, tmp, accuracy);
-        if (val<cph.dist)
-        {
-            cph.dist = val; //need to be all in one struct for OMP
-            cph.pid = k;
-            cph.preim = tmp;
-        }
-    }
-    //gsInfo <<"--Pid="<<pid<<", Dist("<<pt.transpose()<<"): "<< dist <<"\n";
-    return std::make_pair(cph.pid, give(cph.preim));
 }
 
 template<class T>

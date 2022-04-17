@@ -19,7 +19,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    std::string pname("gsview"), fn("");
+    std::string fn("");
     index_t numSamples(1000);
     index_t choice(0);
     bool plot_mesh = false;
@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
     cmd.addSwitch("controlNet", "Plot the control net (when applicable)", plot_net);
     cmd.addSwitch("pid"  , "Plot the ID of each patch and boudanries as color", plot_patchid);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
-    cmd.addString("o", "oname", "Filename to use for the ParaView output", pname);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse Command line]
@@ -74,7 +73,7 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        gsWriteParaview( *bb , pname, numSamples, true);
+        gsWriteParaview( *bb , "gsview", numSamples, true);
 
         break;
     }
@@ -88,7 +87,7 @@ int main(int argc, char *argv[])
             gsInfo<< "Did not find any mesh to plot in "<<fn<<", quitting."<<"\n";
             return 0;
         }
-        gsWriteParaview( *msh, pname);
+        gsWriteParaview( *msh, "gsview");
 
         break;
     }
@@ -103,7 +102,7 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        gsWriteParaview( *geo , pname, numSamples, plot_mesh, plot_net);
+        gsWriteParaview( *geo , "gsview", numSamples, plot_mesh, plot_net);
         break;
     }
     default:
@@ -116,11 +115,11 @@ int main(int argc, char *argv[])
             if (plot_patchid)
             {
                 gsField<> nfield = gsFieldCreator<>::patchIds(mp);
-                gsWriteParaview(nfield, pname, numSamples);
+                gsWriteParaview(nfield, "gsview", numSamples);
             }
             else
             {
-                gsWriteParaview(mp, pname, numSamples, plot_mesh, plot_net);
+                gsWriteParaview(mp, "gsview", numSamples, plot_mesh, plot_net);
             }
 
             break;
@@ -136,7 +135,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaview(memory::get_raw(geo), pname, numSamples, plot_mesh, plot_net);
+            gsWriteParaview(memory::get_raw(geo), "gsview", numSamples, plot_mesh, plot_net);
             break;
         }
 
@@ -151,7 +150,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaview( *msh, pname);
+            gsWriteParaview( *msh, "gsview");
             break;
         }
 
@@ -168,7 +167,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaview( *bb , pname, numSamples, plot_mesh);
+            gsWriteParaview( *bb , "gsview", numSamples, plot_mesh);
 
             break;
         }
@@ -185,8 +184,8 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaviewSolid( *bb, pname, numSamples);
-            //gsWriteParaview( *bb, pname, numSamples, 0, 0.02);
+            gsWriteParaviewSolid( *bb, "gsview", numSamples);
+            //gsWriteParaview( *bb, "gsview", numSamples, 0, 0.02);
 
             break;
         }
@@ -204,7 +203,7 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            gsWriteParaview( *bb, pname, numSamples);
+            gsWriteParaview( *bb, "gsview", numSamples);
 
             break;
         }
@@ -224,7 +223,7 @@ int main(int argc, char *argv[])
 
             gsMesh<>::uPtr msh = bb->toMesh(numSamples);
 
-            gsWriteParaview( *msh , pname);
+            gsWriteParaview( *msh , "gsview");
 
             break;
         }
@@ -235,14 +234,14 @@ int main(int argc, char *argv[])
             filedata.getFirst(bb);
             gsInfo<< "Got Matrix with "<< bb.cols() <<" points.\n";
             gsInfo<< "Plot "<< bb.rows() <<"D points.\n";
-            gsWriteParaviewPoints<real_t>( bb, pname);
+            gsWriteParaviewPoints<real_t>( bb, "gsview");
             break;
         }
         gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
         return 0;
     }
 
-    gsFileManager::open(pname+".pvd");
+    gsFileManager::open("gsview.pvd");
 
     return EXIT_SUCCESS;
 }
