@@ -416,7 +416,7 @@ public:
     void printCharMatrix(std::ostream &os = gsInfo) const
     {
         os<<"Characteristic matrix:\n";
-        for(unsigned i = 0; i<= maxLevel(); i++)
+        for(size_t i = 0; i!= m_xmatrix.size(); i++)
         {
             if ( m_xmatrix[i].size() )
             {
@@ -441,7 +441,7 @@ public:
     void printSpaces(std::ostream &os = gsInfo) const
     {
         os<<"Spline-space hierarchy:\n";
-        for(unsigned i = 0; i<= maxLevel(); i++)
+        for(size_t i = 0; i!= m_xmatrix.size(); i++)
         {
             if ( m_xmatrix[i].size() )
             {
@@ -470,7 +470,7 @@ public:
         os << "Domain: ["<< supp.col(0).transpose()<< "]..["<<
             supp.col(1).transpose()<< "].\n";
         os <<"Size per level: ";
-        for(unsigned i = 0; i<= this->m_tree.getMaxInsLevel(); i++)
+        for(size_t i = 0; i!= m_xmatrix.size(); i++)
             os << this->m_xmatrix[i].size()<< " ";
         os<<"\n";
     }
@@ -986,7 +986,7 @@ private:
 
     //D
 public:
-    /// \brief Returns transfer matrix betweend the hirarchycal spline given
+    /// \brief Returns transfer matrix between the hirarchical spline given
     /// by the characteristic matrix "old" and this
     void transfer (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
 

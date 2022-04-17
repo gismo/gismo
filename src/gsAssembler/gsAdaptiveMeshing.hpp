@@ -454,6 +454,7 @@ void gsAdaptiveMeshing<T>::_refineMarkedElements(   const patchHContainer & mark
         if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
         GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
 
+        gsDebugVar(m_options.getSwitch("Admissible"));
         if (m_options.getSwitch("Admissible"))
         {
             if (m_options.getInt("Admissibility")==0)
@@ -473,6 +474,9 @@ void gsAdaptiveMeshing<T>::_refineMarkedElements(   const patchHContainer & mark
                 GISMO_ERROR("Admissibility type unknown or basis type not recognized");
 
             gsHBoxContainer<2,real_t> container(marked.at(pn).toUnitBoxes());
+            gsDebugVar(container);
+            std::vector<index_t> boxes = container.toRefBoxes();
+            gsDebugVar(gsAsVector<index_t>(boxes));
             if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
                 mp->patch(pn).refineElements(container.toRefBoxes());
             else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))

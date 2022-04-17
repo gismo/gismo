@@ -213,6 +213,14 @@ int main(int argc, char *argv[])
         gsHBoxContainer<2,real_t> container(marked.toUnitBoxes());
         // gsDebugVar(container);
 
+        std::vector<index_t> refboxes = container.toRefBoxes();
+        for (index_t k=0; k!=refboxes.size()/5; k++)
+        {
+            for (index_t b=0; b!=5; b++)
+                gsDebug<<refboxes[5*k+b]<<",";
+            gsDebug<<"\n";
+        }
+
         mp.patch(0).refineElements(container.toRefBoxes());
         gsInfo<<"Mesh has "<<mp.patch(0).coefs().rows()<<" DoFs\n";
 

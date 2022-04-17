@@ -1053,14 +1053,14 @@ void gsHTensorBasis<d,T>::makeCompressed()
     // Compress the tree
     // m_tree.makeCompressed();
 
-    while ( ! m_xmatrix_offset[1] )
-    {
-        delete m_bases.front();
-        m_bases.erase( m_bases.begin() );
-        m_tree.decrementLevel();
-        m_xmatrix.erase( m_xmatrix.begin() );
-        m_xmatrix_offset.erase( m_xmatrix_offset.begin() );
-    }
+    // while ( ! m_xmatrix_offset[1] )
+    // {
+    //     delete m_bases.front();
+    //     m_bases.erase( m_bases.begin() );
+    //     m_tree.decrementLevel();
+    //     m_xmatrix.erase( m_xmatrix.begin() );
+    //     m_xmatrix_offset.erase( m_xmatrix_offset.begin() );
+    // }
     // Note/to do: cleaning up empty levels at the end as well.
 }
 
@@ -1171,7 +1171,6 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
     // +1 for the initial basis in m_bases
     const int extraLevels = maxLevel + 1 - m_bases.size();
-
     for ( int i = 0; i < extraLevels; ++i )
     {
         tensorBasis * next_basis = m_bases.back()->clone().release();
@@ -1207,14 +1206,16 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 
     m_tree.init(upp);
 
-    // Produce a couple of tensor-product spaces by dyadic refinement
-    m_bases.reserve(3);
-    for(index_t i = 1; i <= 2; i++)
-    {
-        tensorBasis* next_basis = m_bases[i-1]->clone().release();
-        next_basis->uniformRefine(1);
-        m_bases.push_back( next_basis );
-    }
+        // this->needLevel(3);
+
+    // // Produce a couple of tensor-product spaces by dyadic refinement
+    // m_bases.reserve(3);
+    // for(index_t i = 1; i <= 2; i++)
+    // {
+    //     tensorBasis* next_basis = m_bases[i-1]->clone().release();
+    //     next_basis->uniformRefine(1);
+    //     m_bases.push_back( next_basis );
+    // }
 
 }
 
@@ -1288,7 +1289,7 @@ gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
 {
     std::vector<index_t> temp;
     gsVector<index_t, d>  ind;
-    for(unsigned i = 0; i <= this->maxLevel(); i++)
+    for(size_t i = 0; i != m_xmatrix[i].size(); i++)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
@@ -1314,8 +1315,10 @@ boundaryOffset(boxSide const & s,index_t offset) const
     std::vector<index_t> temp;
     gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
-    GISMO_ASSERT(this->maxLevel() < m_bases.size(),"Something went wrong: maxLevel() < m_bases.size(), "<<this->maxLevel()<<" < "<<m_bases.size());
-    for(unsigned i = 0; i <= this->maxLevel(); i++)
+    GISMO_ASSERT(this->maxLevel() < this->m_bases.size(),"Something went wrong: maxLevel() < m_bases.size(), "<<this->maxLevel()<<" < "<<m_bases.size());
+    needLevel(m_xmatrix.size());
+
+    for(size_t i = 0; i != m_xmatrix.size(); i++)
     {
         GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
                      "Offset ("<<offset<<") cannot be bigger than the amount of basis"
@@ -1401,14 +1404,14 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
                   "Problem with max inserted levels: "<< m_tree.getMaxInsLevel()
                   <<"<" << m_bases.size() <<"\n");
 
-    // Delete the first level
-    delete m_bases.front();
-    m_bases.erase( m_bases.begin() );
-
     // Keep consistency of finest level
     tensorBasis * last_basis = m_bases.back()->clone().release();
     last_basis->uniformRefine(1,mul);
     m_bases.push_back( last_basis );
+
+    // Delete the first level
+    delete m_bases.front();
+    m_bases.erase( m_bases.begin() );
 
     // Lift all indices in the tree by one level
     m_tree.multiplyByTwo();
@@ -1584,13 +1587,14 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >&
     while( m_xmatrix.back().size() == 0 )
         m_xmatrix.pop_back();
 
-    // ...similarly, erase all those fine bases which are actually not used.
-    const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
-    if( sizeDiff > 0 )
-    {
-        freeAll(m_bases.end() - sizeDiff, m_bases.end());
-        m_bases.resize(m_xmatrix.size());
-    }
+    // // ...similarly, erase all those fine bases which are actually not used.
+    // const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
+    // if( sizeDiff > 0 )
+    // {
+    //     gsDebugVar("size difference!");
+    //     freeAll(m_bases.end() - sizeDiff, m_bases.end());
+    //     m_bases.resize(m_xmatrix.size());
+    // }
 
     result.makeCompressed();
 }

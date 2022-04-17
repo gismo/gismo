@@ -1,4 +1,4 @@
-/** @file gsHTensorBasis.hpp
+/** @file gsHBox.hpp
 
     @brief Provides implementation of HTensorBasis common operations.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): G. Kiss, A. Mantzaflaris, J. Speh
+    Author(s): H.M.Verhelst (TU Delft 2019-...)
 */
 
 #pragma once
@@ -483,7 +483,7 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
     for (index_t i = 0; i!=d; i++)
     {
         degree = m_basis->degree(i);
-        maxKtIndex = m_basis->tensorLevel(this->level()).knots(i).size();
+        maxKtIndex = m_basis->tensorLevel(this->level()+1).knots(i).size();
 
         if (degree % 2 == 1 && degree>1)
         {
@@ -491,7 +491,7 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
             ( lowerIndex < (degree-1)/2-1 ? lowerIndex=0 : lowerIndex-=(degree-1)/2-1 );
             result[i+1] = lowerIndex;
             upperIndex = this->upperIndex()[i]*2;
-            ( upperIndex + (degree)/2+1 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2+1);
+            // ( upperIndex + (degree)/2+1 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2+1);
             result[d+i+1] = upperIndex;
         }
         else
@@ -500,7 +500,7 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
             ( lowerIndex < (degree-1)/2 ? lowerIndex=0 : lowerIndex-=(degree-1)/2 );
             result[i+1] = lowerIndex;
             upperIndex = this->upperIndex()[i]*2;
-            ( upperIndex + (degree)/2 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2);
+            // ( upperIndex + (degree)/2 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2);
             result[d+i+1] = upperIndex;
         }
     }

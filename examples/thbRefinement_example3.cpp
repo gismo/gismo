@@ -232,9 +232,9 @@ int main(int argc, char *argv[])
     index_t lvl;
     if (testCase==0)
     {
-        lvl = 1;
+        lvl = 2;
         low<<0,0;
-        upp<<1,1;
+        upp<<4,4;
     }
     else if (testCase==1)
     {
@@ -259,10 +259,13 @@ int main(int argc, char *argv[])
 
 
     gsDebugVar(cell);
+    gsHBoxContainer<2,real_t> ksjdsd(cell.toUnitBoxes());
+    gsDebugVar(ksjdsd);
     gsDebugVar(cell.getCoordinates());
     gsDebugVar(cell.getParent().getCoordinates());
     if (testCase==1) gsDebugVar(cell.getParent().getParent().getCoordinates());
     if (testCase==1) gsDebugVar(cell.getAncestor(1).getCoordinates());
+
 
     gsHBoxContainer<2,real_t> tmp;
     gsHBoxContainer<2,real_t>::HContainer container;
@@ -273,6 +276,7 @@ int main(int argc, char *argv[])
     for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
         for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
             gsDebugVar(it->getCoordinates());
+    return 0;
 
     gsDebugVar("------------------------Multi-Level Support Extension 0");
     tmp = gsHBoxContainer<2,real_t>(cell.getMultiLevelSupportExtension(0));
