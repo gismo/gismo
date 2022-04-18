@@ -275,7 +275,7 @@ public:
     /// \param cornersOnly When set to true an interface is accepted
     /// if the patch corners match, even if the parameterization does
     /// not agree
-    bool computeTopology( T tol = 1e-4, bool cornersOnly = false, bool tjunctions = false);
+    bool computeTopology( T tol = 1e-4, bool cornersOnly = false);
 
     /// \brief Attempt to close gaps between the interfaces. Assumes
     /// that the topology is computed, ie. computeTopology() has been
