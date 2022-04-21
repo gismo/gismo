@@ -342,50 +342,12 @@ gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
 {
     gsMatrix<T> secDers;
     this->deriv2_into(u, secDers);
-
     const index_t dim = this->domainDim();
-    index_t sz  = dim*(dim+1)/2;
-    typename gsMatrix<T>::Rows ders = secDers.middleRows(coord*sz, sz);
-    //const gsAsConstMatrix<T> ders(secDers.data(), sz, secDers.size() / sz );
-    result.resize(dim*dim, ders.cols() );
-
-    switch ( dim )
-    {
-    case 1:
-        result = secDers.transpose(); // ders
-        break;
-    case 2:
-        result.row(0)=ders.row(0);//0,0
-        result.row(3)=ders.row(1);//1,1
-        result.row(1)=//1,0
-        result.row(2)=ders.row(2);//0,1
-        break;
-    case 3:
-        result.row(0)=ders.row(0);//0,0
-        result.row(1)=ders.row(3);//1,0
-        result.row(2)=ders.row(4);//2,0
-        result.row(3)=//0,1
-        result.row(6)=//0,2
-        result.row(4)=ders.row(1);//1,1
-        result.row(7)=//1,2
-        result.row(5)=ders.row(5);//2,1
-        result.row(8)=ders.row(2);//2,2
-        break;
-    default:
-        sz = 0;
-        for (index_t k=0; k!=dim; ++k ) // for all rows
-        {
-            result.row((dim+1)*k) = ders.row(k);
-            for (index_t l=k+1; l<dim; ++l ) // for all cols
-                result.row(dim*k+l) =
-                    result.row(dim*l+k) = ders.row(dim + sz++);
-        }
-        break;
-    }
+    result = util::secDerToHessian(secDers, dim);
 }
 
 template <typename T, short_t domDim, short_t tarDim>
-inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
+inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
@@ -398,12 +360,12 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
         {
             typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
                     gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
-            if (tarDim == domDim && tarDim!=-1)
+//            if (tarDim == domDim && tarDim!=-1)
+            if ( tarDim!=-1 ? tarDim == domDim : n==d )
                 InOut.measures(0,p) = math::abs(jac.determinant());
             else
-                InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  ).determinant() );
-
-
+                InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  )
+                                                  .determinant() );
         }
     }
 
@@ -411,12 +373,12 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
     {
         // domDim<=tarDim makes sense
 
-        InOut.jacInvTr.resize(domDim*tarDim, numPts);
+        InOut.jacInvTr.resize(d*n, numPts);
         for (index_t p=0; p!=numPts; ++p)
         {
             const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
 
-            if ( tarDim == domDim && tarDim!=-1 )
+            if ( tarDim!=-1 ? tarDim == domDim : n==d )
                 gsAsMatrix<T,tarDim,domDim>(InOut.jacInvTr.col(p).data(), n, d)
                         = jacT.cramerInverse();
             else
@@ -429,12 +391,12 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
 
 
     // Normal vector of hypersurface
-    if (tarDim!=-1 && tarDim==domDim+1 && InOut.flags & NEED_NORMAL)
+    if (n==d+1 && InOut.flags & NEED_NORMAL)
     {
         GISMO_ASSERT( n == d + 1, "Codimension should be equal to one");
 
         typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
-        InOut.normals.resize(tarDim, numPts);
+        InOut.normals.resize(n, numPts);
 
         for (index_t p = 0; p != numPts; ++p) // for all points
         {
@@ -453,8 +415,8 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
     if (InOut.flags & NEED_2ND_FFORM)
     {
         //domDim=2, tarDim=3
-        InOut.fundForms.resize(domDim*domDim, numPts);
-        const index_t sz = domDim*(domDim+1)/2;
+        InOut.fundForms.resize(d*d, numPts);
+        const index_t sz = d*(d+1)/2;
         for (index_t p=0; p!=numPts; ++p)
         {
             const gsAsConstMatrix<T,-1,tarDim> ddT(InOut.values[2].col(p).data(), sz, n);
@@ -478,9 +440,9 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
         const int dir = InOut.side.direction();
         InOut.outNormals.resize(n,numPts);
 
-        if (tarDim!=-1 && tarDim==domDim)
+        if (tarDim!=-1 ? tarDim == domDim : n==d)
         {
-            if ( 1==tarDim ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
+            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
 
             typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
             for (index_t p=0;  p!=numPts; ++p)
@@ -488,7 +450,7 @@ inline void computeAuxiliaryData (gsMapData<T> & InOut, int d, int n)
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
                 T alt_sgn = sgn * (T)( //jacT.rows()==jacT.cols() &&
                                     jacT.determinant()<0 ? -1 : 1);
-                for (int i = 0; i != tarDim; ++i) //for all components of the normal
+                for (int i = 0; i != n; ++i) //for all components of the normal
                 {
                     jacT.firstMinor(dir, i, minor);
                     InOut.outNormals(i,p) = alt_sgn * minor.determinant();
