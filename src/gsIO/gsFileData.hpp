@@ -1170,7 +1170,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   }
 */
 
-/*---------- OFF trinagular mesh .off file */
+/*---------- OFF mesh from .off file */
 
 template<class T>
 bool gsFileData<T>::readOffFile( String const & fn )
@@ -1180,7 +1180,7 @@ bool gsFileData<T>::readOffFile( String const & fn )
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("Mesh", *data);
+    gsXmlNode* g = internal::makeNode("SurfMesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 
