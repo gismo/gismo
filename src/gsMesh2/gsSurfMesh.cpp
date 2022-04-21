@@ -4,7 +4,6 @@
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsMesh2/IO.h>
 
-
 //== NAMESPACE ================================================================
 
 
@@ -1751,6 +1750,66 @@ garbage_collection()
     garbage_ = false;
 }
 
+
+
+namespace internal {
+
+
+void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
+{
+    assert( ( !strcmp( node->name(),"SurfMesh") )
+            &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
+
+    result = gsSurfMesh();
+
+    // if ( !strcmp(node->first_attribute("type")->value(),"off") )
+    //     read_off_ascii(result,node->value());
+
+    // !strcmp(node->first_attribute("type")->value(),"poly")
+    // !strcmp(node->first_attribute("type")->value(),"stl")
+    //!strcmp(node->first_attribute("type")->value(),"obj")
+    //!strcmp(node->first_attribute("type")->value(),"vtk")
+
+
+    std::istringstream str;
+    str.str( node->value() );
+
+    unsigned nv  = atoi ( node->first_attribute("vertices")->value() ) ;
+    unsigned nf  = atoi ( node->first_attribute("faces")->value() ) ;
+    unsigned ne  = atoi ( node->first_attribute("edges")->value() ) ;
+    result.reserve(nv, std::max(3*nv, ne), nf);
+    real_t x, y, z; // T?
+    for (unsigned i=0; i<nv; ++i)
+    {
+        gsGetReal(str, x);
+        gsGetReal(str, y);
+        gsGetReal(str, z);
+        result.add_vertex(Point(x,y,z));
+    }
+
+    unsigned k, c = 0;
+    std::vector<gsSurfMesh::Vertex> face;
+    for (unsigned i=0; i<nf; ++i)
+    {
+        gsGetInt(str, c);
+        face.resize(c);
+        for (unsigned j=0; j<c; ++j)
+        {
+            gsGetInt(str, k);
+            face[j] = gsSurfMesh::Vertex(k);
+        }
+        result.add_face(face);
+    }
+}
+
+gsXmlNode *
+gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
+{
+
+    return nullptr;
+};
+
+}//namespace internal
 
 //=============================================================================
 } // namespace gismo

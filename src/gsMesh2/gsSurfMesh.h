@@ -2,6 +2,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsIO/gsXml.h>
 
 namespace gismo // typedefs
 {
@@ -1902,6 +1903,27 @@ inline std::ostream& operator<<(std::ostream& os, gsSurfMesh::Face f)
     return (os << 'f' << f.idx());
 }
 
+
+
+namespace internal
+{
+
+template<>
+class GISMO_EXPORT gsXml<gsSurfMesh>
+{
+private:
+    gsXml();
+public:
+    GSXML_COMMON_FUNCTIONS(gsSurfMesh)
+    GSXML_GET_POINTER(gsSurfMesh)
+    static std::string tag () { return "SurfMesh"; }
+    static std::string type() { return "off"; }
+
+    static void get_into(gsXmlNode * node, gsSurfMesh & result);
+    static gsXmlNode * put (const gsSurfMesh & obj, gsXmlTree & data);
+};
+
+}//namespace internal
 
 //=============================================================================
 } // namespace gismo
