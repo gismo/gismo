@@ -1841,6 +1841,16 @@ private: //--------------------------------------------------- helper functions
     bool garbage() const { return garbage_; }
 
 
+    /// Catmull-Clark subdivision
+    void cc_subdivide();
+
+    Vertex_property<Point> cc_limit_points(std::string label = "v:limit",
+                                           bool swap_pts = false);
+
+    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal");
+
+    gsMultiPatch<real_t> cc_acc3() const;
+
 
 private: //------------------------------------------------------- private data
 
