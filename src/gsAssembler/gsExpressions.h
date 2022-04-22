@@ -2922,7 +2922,7 @@ public:
         //GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
     }
 
-    MatExprType eval(const index_t k) const { return _G.data().jacInv.reshapeCol(k,cols(),rows()).transpose(); }
+    MatExprType eval(const index_t k) const { return _G.data().jacInvTr.reshapeCol(k,cols(),rows()).transpose(); }
 
     index_t rows() const { return _G.data().dim.first;  }
     index_t cols() const { return _G.data().dim.second; }

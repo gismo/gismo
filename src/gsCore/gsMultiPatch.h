@@ -350,6 +350,9 @@ public:
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
 
+    std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
+                                                   const T accuracy = 1e-6) const;
+
     void constructInterfaceRep();
     void constructBoundaryRep();
 
