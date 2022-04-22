@@ -46,6 +46,7 @@ void pybind11_init_gsGeometry(py::module &m)
   .def("deriv_into", &Class::deriv_into, "Evaluates points into a matrix")
   .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs), "Get the coefficients as a reference")
   .def("coefs", static_cast<const gsMatrix<real_t>& (Class::*)() const> (&Class::coefs), "Get the coefficients as a const reference")
+  .def("setCoefs", &Class::setCoefs, "Sets the coefficients")
   ;
 }
 

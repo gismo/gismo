@@ -123,6 +123,7 @@ template<class E> class sqNorm_expr;
 template<class E> class det_expr;
 template<class E> class value_expr;
 template<class E> class asdiag_expr;
+template<class E> class max_expr;
 template<class E> class rowsum_expr;
 template<class E> class colsum_expr;
 template<class E> class col_expr;
@@ -280,6 +281,10 @@ public:
     /// Returns a diagonal matrix expression of the vector expression
     asdiag_expr<E> asDiag() const
     { return asdiag_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the rowSum of a matrix
+    max_expr<E> max() const
+    { return max_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the rowSum of a matrix
     rowsum_expr<E> rowSum() const
@@ -1947,6 +1952,66 @@ public:
     { _u.parse(evList); }
 
     void print(std::ostream &os) const { os << "diag("; _u.print(os); os <<")";}
+};
+
+// Takes the max of a vector
+template<class E>
+class max_expr  : public _expr<max_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks = 1};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> tmp;
+    mutable gsMatrix<Scalar> res;
+
+public:
+
+    max_expr(_expr<E> const& u) : _u(u)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    void print(std::ostream &os) const { os << "max("; _u.print(os); os<<")"; }
+private:
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        tmp = u.eval(k);
+
+        res.resize(1,u.cardinality());
+        if (E::ColBlocks)
+            for (index_t c=0; c!=_u.cardinality(); c++)
+                res(0,c) = tmp.block(0,c*u.cols(),u.rows(),u.cols()).maxCoeff();
+        else
+            for (index_t c=0; c!=_u.rows(); c++)
+                res(0,c) = tmp.block(c*u.rows(),0,u.rows(),u.cols()).maxCoeff();
+        return res;
+    }
+
+
+    template<class U> inline
+    typename util::enable_if< !util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        res = u.eval(k).colwise().maxCoeff();
+        return res;
+    }
 };
 
 template<class E>

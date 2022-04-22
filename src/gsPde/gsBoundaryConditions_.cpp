@@ -24,6 +24,7 @@ void pybind11_enum_gsBoundaryConditions(py::module &m)
         .value("clamped"       , condition_type::clamped )
         .value("weak_clamped"  , condition_type::weak_clamped)
         .value("collapsed"     , condition_type::collapsed)
+        .value("laplace"       , condition_type::laplace)
         .export_values();
 }
 

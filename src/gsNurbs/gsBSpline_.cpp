@@ -25,8 +25,9 @@ void pybind11_init_gsBSpline(py::module &m)
 
     // Constructors
     .def(py::init<real_t,real_t,unsigned, int, gsMatrix<real_t>,unsigned,bool>())
-      .def(py::init<real_t,real_t,unsigned, int, gsMatrix<real_t>,unsigned>())
-      .def(py::init<real_t,real_t,unsigned, int, gsMatrix<real_t>>())
+    .def(py::init<real_t,real_t,unsigned, int, gsMatrix<real_t>,unsigned>())
+    .def(py::init<real_t,real_t,unsigned, int, gsMatrix<real_t>>())
+    .def(py::init<gsBSplineBasis<real_t>, gsMatrix<real_t>>())
     .def(py::init<gsKnotVector<real_t>, gsMatrix<real_t> >() )
 
     // Member functions
