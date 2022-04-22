@@ -1830,8 +1830,7 @@ public: // Catmull-Clark functions
     void cc_subdivide();
 
     /// Compute CC vertex limit positions
-    Vertex_property<Point> cc_limit_points(std::string label = "v:limit",
-                                           bool swap_pts = false);
+    Vertex_property<Point> cc_limit_points(std::string label = "v:limit");
 
     /// Compute CC vertex limit normals
     Vertex_property<Point> cc_limit_normals(std::string label = "v:normal");
