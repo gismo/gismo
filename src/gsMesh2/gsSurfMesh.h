@@ -1824,6 +1824,20 @@ private: //---------------------------------------------- allocate new elements
 
 
 
+public: // Catmull-Clark functions
+
+    /// Catmull-Clark subdivision
+    void cc_subdivide();
+
+    /// Compute CC vertex limit positions
+    Vertex_property<Point> cc_limit_points(std::string label = "v:limit",
+                                           bool swap_pts = false);
+
+    /// Compute CC vertex limit normals
+    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal");
+
+    /// Generate ACC3 biqubic Bezier patches
+    gsMultiPatch<real_t> cc_acc3() const;
 
 private: //--------------------------------------------------- helper functions
 
@@ -1839,18 +1853,6 @@ private: //--------------------------------------------------- helper functions
 
     /// are there deleted vertices, edges or faces?
     bool garbage() const { return garbage_; }
-
-
-    /// Catmull-Clark subdivision
-    void cc_subdivide();
-
-    Vertex_property<Point> cc_limit_points(std::string label = "v:limit",
-                                           bool swap_pts = false);
-
-    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal");
-
-    gsMultiPatch<real_t> cc_acc3() const;
-
 
 private: //------------------------------------------------------- private data
 
