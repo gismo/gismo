@@ -1837,10 +1837,11 @@ void gsSurfMesh::cc_subdivide()
 }
 
 gsSurfMesh::Vertex_property<Point>
-gsSurfMesh::cc_limit_points(std::string label, bool swap_pts)
+gsSurfMesh::cc_limit_points(std::string label)
 {
     auto points = get_vertex_property<Point>("v:point");
-    auto limits = add_vertex_property<Point>(label,Point(0,0,0));
+    auto limits = add_vertex_property<Point>(
+        (label == "v:point" ? "v:limit_points_2022" : label),Point(0,0,0));
     real_t n;
 #   pragma omp parallel for private(n)
     for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
@@ -1856,10 +1857,10 @@ gsSurfMesh::cc_limit_points(std::string label, bool swap_pts)
         pt /= (n*(n+5));
     }
 
-    if (swap_pts)//vertices are moved to their limit positions
+    if (label == "v:point") //vertices are replaced by their limit positions
     {
-        swap_vertex_property("v:point",label);
-        rename_vertex_property(points,"v:original_point");
+        rename_vertex_property(points,"v:point_original");
+        rename_vertex_property(limits,"v:point");
     }
     return limits;
 }
@@ -1872,6 +1873,7 @@ gsSurfMesh::cc_limit_normals(std::string label)
     gsSurfMesh::Halfedge h2;
 
     auto points = get_vertex_property<Point>("v:point");
+    //todo: check if label exists
     auto limits = add_vertex_property<Point>(label,Point(0,0,0));
     Point t1, t2;
     real_t c1, c2, cc1, cc2;
