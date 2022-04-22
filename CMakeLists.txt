@@ -176,7 +176,7 @@ include(gsFetch)
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
   find_package(MKL REQUIRED)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MKL_INCLUDE_DIR}
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MKL_INCLUDE_DIR} ${MKL_INCLUDE}
     CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
