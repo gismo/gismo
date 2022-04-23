@@ -35,18 +35,13 @@ void pybind11_init_gsGeometry(py::module &m)
   py::class_<Class, Base>(m, "gsGeometry")
 
   // Member functions
-  .def("domainDim", &Class::domainDim, "Gives the domain dimension")
-  .def("targetDim", &Class::targetDim, "Gives the target dimension")
   .def("parDim", &Class::targetDim, "Gives the parameter dimension")
   .def("geoDim", &Class::targetDim, "Gives the geometry dimension")
-
-  .def("eval", &Class::eval, "Evaluates points into a matrix")
-  .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
-  .def("deriv", &Class::deriv, "Evaluates points into a matrix")
-  .def("deriv_into", &Class::deriv_into, "Evaluates points into a matrix")
   .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs), "Get the coefficients as a reference")
   .def("coefs", static_cast<const gsMatrix<real_t>& (Class::*)() const> (&Class::coefs), "Get the coefficients as a const reference")
   .def("setCoefs", &Class::setCoefs, "Sets the coefficients")
+  .def("basis", static_cast<const gsBasis<real_t>& (Class::*)() const>(&Class::basis), "Returns the bspline basis")
+  .def("basis", static_cast<gsBasis<real_t>& (Class::*)()>(&Class::basis), "Returns the bspline basis as a reference")
   ;
 }
 
