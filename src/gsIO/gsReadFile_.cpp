@@ -1,5 +1,6 @@
 #include <gsCore/gsTemplateTools.h>
 
+#include <gsIO/gsFileData.h>
 #include <gsIO/gsReadFile.h>
 
 #ifdef GISMO_BUILD_PYBIND11
