@@ -23,6 +23,8 @@
 
 #ifdef GISMO_BUILD_PYBIND11
 
+void pybind11_init_PPN(pybind11::module &m);
+
 namespace py = pybind11;
 
 /**
@@ -182,6 +184,9 @@ PYBIND11_MODULE(pygismo, m) {
   klshell.attr("__name__") = "pygismo.klshell";
   klshell.attr("__version__") = GISMO_VERSION;
   klshell.doc() = "G+Smo (Geometry + Simulation Modules): KLShell module";
+
+
+   pybind11_init_PPN( m );
 
 #ifdef GISMO_KLSHELL
   gismo::pybind11_init_gsKLShell( klshell );
