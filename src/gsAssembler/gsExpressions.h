@@ -710,6 +710,15 @@ public:
     template<class E>
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
+    
+    typedef integral_expr<T> AreaRetType;
+    AreaRetType area() const
+    { return integral(_expr<T,true>(1)); }
+
+    typedef integral_expr<meas_expr<T> > PHAreaRetType;
+    /// The diameter of the element on the physical space
+    PHAreaRetType area(const gsGeometryMap<Scalar> & _G) const
+    { return integral(meas_expr<T>(_G)); }
 
     typedef pow_expr<integral_expr<T> > DiamRetType;
     /// The diameter of the element (on parameter space)
