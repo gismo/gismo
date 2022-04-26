@@ -254,6 +254,7 @@ public:
      of definition is the whole of \f$R^{domainDim}\f$
     */
     virtual gsMatrix<T> support() const;
+    virtual gsMatrix<T> support(index_t i) const;
 
     /**
       @brief Indices of active (non-zero) function(s) for each point.

@@ -154,6 +154,9 @@ public:
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { GISMO_NO_IMPLEMENTATION }
 
+    index_t nPieces() const {return m_funcs.size();}
+
+
 protected:
     
     FunctionContainer m_funcs;

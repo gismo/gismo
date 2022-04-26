@@ -107,6 +107,11 @@ public:
         m_spline->evalAllDers_into(m_index,u,n,result);
     }
 
+    // support (domain of definition)
+    gsMatrix<T> support() const
+    { return m_spline->support(m_index); }
+
+
     GISMO_CLONE_FUNCTION(gsMappedSingleSpline)
 
     std::ostream &print(std::ostream &os) const

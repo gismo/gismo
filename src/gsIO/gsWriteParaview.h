@@ -69,6 +69,16 @@ template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
                      unsigned npts=NS, bool mesh = false);
 
+/// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
+///
+/// \param func a \a gsFunctionSet representing the function to be plotted
+/// \param geo  a \a gsFunctionSet representing the geometry to be plotted
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each patch
+template<class T>
+void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
+                     std::string const & fn, unsigned npts = NS);
+
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
 /// \param Geo a multipatch object

@@ -74,10 +74,10 @@ namespace py = pybind11;
 
       .def("addMatrix", static_cast<void (Class::*)(const gsMatrix<real_t> &) > (&Class::add<gsMatrix<real_t>>), "Add gsMatrix to the filedata.")
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
-      
-      .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Get any first gsMultiPatch.")
 
-       // Work around to obtain the matrix from Filedata. Standard way is not working!
+      .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Add gsMultiPatch to the filedata.")
+
+      // Work around to obtain the matrix from Filedata. Standard way is not working!
       .def("getMatrix", &getMatrix, "Get any first gsMatrix.")
 
       .def("bufferSize", &Class::bufferSize)
