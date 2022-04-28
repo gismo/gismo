@@ -34,6 +34,8 @@ void error_mesh_multipatch(gsSurfMesh & mesh,
     auto gerr    = mesh.add_vertex_property<real_t>("v:geometry_error");
     auto nerr    = mesh.add_vertex_property<real_t>("v:normal_error");
 
+    //auto tgv    = mesh.get_vertex_property<Point>("v:tanvec");
+
     gsMapData<> gdata;
     gdata.addFlags( NEED_VALUE|NEED_NORMAL );
     std::pair<index_t,gsVector<> > cp;
@@ -49,7 +51,7 @@ void error_mesh_multipatch(gsSurfMesh & mesh,
         gdata.patchId = cp.first;
         mp.patch(cp.first).computeMap(gdata);
         tge = math::max(tge, gerr[v] = (pt-gdata.eval(0)).norm() );
-        tne = math::max(tne, nerr[v] = (unv[v]-gdata.normal(0).normalized()).norm() );
+        tne = math::max(tne, nerr[v] = (unv[v]-gdata.normal(0).normalized()/*unit*/).norm() );
         ++i;
     }
     gsInfo <<"\nMax geometry error   : "<< tge <<"\n";
@@ -100,10 +102,10 @@ int main(int argc, char** argv)
     gsInfo << "Sampled at "<<mesh.n_vertices()<< " points. \n";
 
     gsInfo << "Getting limit points..\n";
-    mesh.cc_limit_points("v:limit", false); //(!)overwriting points spoils error comp.
+    mesh.cc_limit_points("v:limit"); //(!)overwriting points spoils error comp.
 
     gsInfo << "Getting limit normals..\n";
-    mesh.cc_limit_normals("v:normal");
+    mesh.cc_limit_normals("v:normal", /*normalize?*/ true);
 
     gsInfo << "Computing errors..\n";
     error_mesh_multipatch(mesh,mp);
