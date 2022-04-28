@@ -20,7 +20,7 @@ bool read_obj(gsSurfMesh& mesh, const std::string& filename)
     std::vector<gsSurfMesh::Vertex>  vertices;
     std::vector<Texture_coordinate> all_tex_coords;   //individual texture coordinates
     std::vector<int> halfedge_tex_idx; //texture coordinates sorted for halfedges
-    gsSurfMesh::Halfedge_property <Texture_coordinate> tex_coords = mesh.halfedge_property<Texture_coordinate>("h:texcoord");
+    gsSurfMesh::Halfedge_property <Texture_coordinate> tex_coords = mesh.halfedge_property<Texture_coordinate>("h:texcoord", Texture_coordinate(0,0,0));
     bool with_tex_coord=false;
 
     // clear mesh

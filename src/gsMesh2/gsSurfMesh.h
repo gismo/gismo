@@ -473,6 +473,21 @@ public: //------------------------------------------------------ iterator types
         /// get the face the iterator refers to
         Face operator*()  const { return  hnd_; }
 
+        // (!)
+        size_t operator-(const Face_iterator& rhs) const
+        {
+            //assumes no deleted faces..
+            return (hnd_.idx_ - rhs.hnd_.idx_);
+        }
+
+        // (!)
+        Face_iterator& operator+=(const size_t i)
+        {
+            //assumes no deleted faces..
+            hnd_.idx_+= i;
+            return *this;
+        }
+
         /// are two iterators equal?
         bool operator==(const Face_iterator& rhs) const
         {
@@ -1736,6 +1751,9 @@ public: //--------------------------------------------- higher-level operations
     /// returns the valence of face \c f (its number of vertices)
     unsigned int valence(Face f) const;
 
+    /// returns the sum of all valences of faces in the mesh
+    unsigned int face_valence_sum() const;
+
     /// find the halfedge from start to end
     Halfedge find_halfedge(Vertex start, Vertex end) const;
 
@@ -1822,7 +1840,12 @@ private: //---------------------------------------------- allocate new elements
         return Face(faces_size()-1);
     }
 
-
+    friend std::ostream& operator<<(std::ostream& os, const gsSurfMesh & sm)
+    {
+        os<<"gsSurfMesh with "<<sm.n_vertices()<<" vertices, "<<sm.n_edges()<<
+            " edges and "<<sm.n_faces()<<" faces.\n";
+        return os;
+    }
 
 public: // Catmull-Clark functions
 
@@ -1833,10 +1856,15 @@ public: // Catmull-Clark functions
     Vertex_property<Point> cc_limit_points(std::string label = "v:limit");
 
     /// Compute CC vertex limit normals
-    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal");
+    Vertex_property<Point> cc_limit_normals(std::string label = "v:normal",
+                                            bool normalize = true);
+
+    /// Compute CC vertex limit tangent
+    Vertex_property<Point> cc_limit_tangent_vec(std::string label = "v:tanvec",
+                                                bool normalize = true);
 
     /// Generate ACC3 biqubic Bezier patches
-    gsMultiPatch<real_t> cc_acc3() const;
+    gsMultiPatch<real_t> cc_acc3(bool comp_topology = false) const;
 
 private: //--------------------------------------------------- helper functions
 

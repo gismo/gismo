@@ -590,6 +590,17 @@ valence(Face f) const
 }
 
 
+unsigned int
+gsSurfMesh::
+face_valence_sum() const
+{
+    unsigned int count = 0;
+#   pragma omp parallel for reduction(+:count)
+    for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
+        count += valence(*fit);
+    return count;
+}
+
 //-----------------------------------------------------------------------------
 
 
@@ -1867,18 +1878,16 @@ gsSurfMesh::cc_limit_points(std::string label)
 
 
 gsSurfMesh::Vertex_property<Point>
-gsSurfMesh::cc_limit_normals(std::string label)
+gsSurfMesh::cc_limit_normals(std::string label, bool normalize)
 {
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge h2;
-
     auto points = get_vertex_property<Point>("v:point");
     //todo: check if label exists
     auto limits = add_vertex_property<Point>(label,Point(0,0,0));
     Point t1, t2;
     real_t c1, c2, cc1, cc2;
     index_t i;
-#   pragma omp parallel for private(t1,t2,c1,c2,cc1,cc2,i)
+    gsSurfMesh::Halfedge h2;
+#   pragma omp parallel for private(h2,t1,t2,c1,c2,cc1,cc2,i)
     for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
     {
         const real_t n = valence(*vit);
@@ -1899,13 +1908,58 @@ gsSurfMesh::cc_limit_normals(std::string label)
                 + c2 * points[ to_vertex(next_halfedge(h2)) ];
             ++i;
         }
-        limits[*vit] = t1.cross(t2).normalized();
+        if (normalize)
+            limits[*vit] = t1.cross(t2).normalized();
+        else
+            limits[*vit] = t1.cross(t2);
+    }
+    return limits;
+}
+
+gsSurfMesh::Vertex_property<Point>
+gsSurfMesh::cc_limit_tangent_vec(std::string label, bool normalize)
+{
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Halfedge h2;
+
+    auto points = get_vertex_property<Point>("v:point");
+    //todo: check if label exists
+    auto limits = add_vertex_property<Point>(label,Point(0,0,0));
+    Point t1, t2;
+    real_t c1, c2, cc1, cc2;
+    index_t i;
+#   pragma omp parallel for private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
+    for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
+    {
+        const real_t n = valence(*vit);
+        const real_t cospin = math::cos(EIGEN_PI/n);
+        cc2 = 1 / ( n * math::sqrt(4+cospin*cospin) );
+        cc1 = 1/n + cospin*cc2;
+        t1.setZero();
+        t2.setZero();
+        i = 0;
+        for ( auto he : halfedges(*vit) )
+        {
+            h2 = ccw_rotated_halfedge(he);
+            c1  = math::cos( 2*i   *EIGEN_PI/n)*cc1;
+            c2  = math::cos((2*i+1)*EIGEN_PI/n)*cc2;
+            t1 += c1 * points[ to_vertex(he ) ]
+                + c2 * points[ to_vertex(next_halfedge(he)) ];
+            ++i;
+        }
+        if (normalize)
+            limits[*vit] = t1.normalized();
+        else
+            limits[*vit] = t1;
     }
     return limits;
 }
 
 
 namespace {
+// Flat index of a tensor index (\a i,\a a j) of a gir of size \a sz
+// per direction, where (i,j) is given in coordinates rotated by \a s
+// quadrants (ie. s=0 are the original coordinates)
 inline index_t face_pt_idx(index_t i, index_t j, index_t s, index_t sz)
 {
     switch (s)
@@ -1924,20 +1978,33 @@ inline index_t face_pt_idx(index_t i, index_t j, index_t s, index_t sz)
 }
 }
 
-gsMultiPatch<real_t> gsSurfMesh::cc_acc3() const
+gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
 {
     auto points = get_vertex_property<Point>("v:point");
     gsMultiPatch<real_t> mp;
     gsKnotVector<> kv(0,1,0,4);//cubic degree
     gsTensorBSplineBasis<2> bb(kv,kv);
-    gsMatrix<> coefs(16,3); coefs.setZero();
+    gsMatrix<real_t> coefs;
     gsSurfMesh::Halfedge h2;
     gsSurfMesh::Vertex v;
     real_t n;
-//#   pragma omp parallel for private(pt,n,he)
+    bool warn = true;
+#   pragma omp parallel for private(n,v,h2,coefs)
     for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
     {
+        coefs.resize(16,3);//thread privates must be initialized for each thread
         index_t s = 0;
+
+        if (is_boundary(*fit))
+        {
+            if (warn)
+            {
+                gsWarn<< "Boundary faces are ignored.\n";
+                warn = false;
+            }
+            continue;
+        }
+        
         for ( auto he : halfedges(*fit) )
         {
             auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
@@ -1975,9 +2042,11 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3() const
 
             ++s;
         }
-        mp.addPatch( bb.makeGeometry(coefs) );
+#       pragma omp critical (mp_addPatch)
+        mp.addPatch( bb.makeGeometry(give(coefs)) );
     }
-    mp.computeTopology();
+    if (comp_topology)
+        mp.computeTopology();
     return mp;
 }
 
@@ -1993,8 +2062,13 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 
     result = gsSurfMesh();
 
-    // if ( !strcmp(node->first_attribute("type")->value(),"off") )
-    //     read_off_ascii(result,node->value());
+    /*
+    if ( !strcmp(node->first_attribute("type")->value(),"off") )
+    {
+        read_off_ascii(result,node->value());
+        return;
+    }
+    */
 
     // !strcmp(node->first_attribute("type")->value(),"poly")
     // !strcmp(node->first_attribute("type")->value(),"stl")

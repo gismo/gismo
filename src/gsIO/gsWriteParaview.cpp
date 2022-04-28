@@ -13,6 +13,7 @@
 
 #include <gsIO/gsWriteParaview.h>
 #include <gsMesh2/gsSurfMesh.h>
+#include <gsIO/gsParaviewCollection.h>
 
 #include <fstream>
 #include <initializer_list>
@@ -130,7 +131,7 @@ void gsWriteParaview(gsSurfMesh const & sm,
 
     // Triangles or quads
     file << "POLYGONS " << sm.n_faces() << " " <<
-        (sm.valence(*sm.faces_begin())+1) * sm.n_faces() << "\n";
+        sm.face_valence_sum() + sm.n_faces() << "\n";
     for (auto f : sm.faces())
     {
         file << sm.valence(f) <<" "; //3: triangles, 4: quads
@@ -180,6 +181,7 @@ void gsWriteParaview(gsSurfMesh const & sm,
     }
 
     file.close();
+    //makeCollection(fn, ".vtk"); // legacy inside pvd seems to not work
 }
 
 }//namespace gismo
