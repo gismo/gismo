@@ -16,6 +16,7 @@ namespace gismo {
 
 //=============================================================================
 
+bool GISMO_EXPORT read_off_ascii(gsSurfMesh& mesh, char * node);
 
 bool GISMO_EXPORT read_mesh(gsSurfMesh& mesh, const std::string& filename);
 bool GISMO_EXPORT read_off(gsSurfMesh& mesh, const std::string& filename);

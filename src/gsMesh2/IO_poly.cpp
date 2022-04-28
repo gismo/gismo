@@ -60,7 +60,7 @@ bool read_poly(gsSurfMesh& mesh, const std::string& filename)
     gsSurfMesh::Vertex_property<gsSurfMesh::Vertex_connectivity>      vconn = mesh.vertex_property<gsSurfMesh::Vertex_connectivity>("v:connectivity");
     gsSurfMesh::Halfedge_property<gsSurfMesh::Halfedge_connectivity>  hconn = mesh.halfedge_property<gsSurfMesh::Halfedge_connectivity>("h:connectivity");
     gsSurfMesh::Face_property<gsSurfMesh::Face_connectivity>          fconn = mesh.face_property<gsSurfMesh::Face_connectivity>("f:connectivity");
-    gsSurfMesh::Vertex_property<Point>                                  point = mesh.vertex_property<Point>("v:point");
+    gsSurfMesh::Vertex_property<Point>                                  point = mesh.vertex_property<Point>("v:point",Point(0,0,0));
 
     // read properties from file
     fread((char*)vconn.data(), sizeof(gsSurfMesh::Vertex_connectivity),   nv, in);
