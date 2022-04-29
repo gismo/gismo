@@ -67,10 +67,8 @@ void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, int r
 {
     std::vector<bool> elMarked;
 
-
     std::vector<index_t> elLevels;
     _getElLevels(elLevels);
-
 
     switch (refCriterion)
     {
@@ -88,6 +86,9 @@ void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, int r
     }
 
     container = _toContainer(elMarked);
+
+    if (m_verbose==1)
+        _printMarking(elError,elLevels,elMarked);
 }
 
 template <class T>
@@ -98,6 +99,10 @@ void gsAdaptiveMeshing<T>::_markFraction( const std::vector<T> & elError, T refP
     // The vector of local errors will need to be sorted,
     // which will be done on a copy:
     std::vector<T> elErrCopy = elError;
+
+    gsDebugVar("-----------------------------------------------");
+    gsDebugVar(std::numeric_limits<float>::min());
+    gsDebugVar("-----------------------------------------------");
 
     // Compute the sum, i.e., the global/total error
     T totalError = T(0);
@@ -110,6 +115,7 @@ void gsAdaptiveMeshing<T>::_markFraction( const std::vector<T> & elError, T refP
     T errorMarkSum = (1-refParameter) * totalError;
     T cummulErrMarked = 0;
 
+    //////// MODIFY SOMETHING IN THIS LOOP
     T tmp;
     GISMO_ASSERT(elErrCopy.size() >= 1, "elErrCopy needs at least 1 element");
     size_t lastSwapDone = elErrCopy.size() - 1;
@@ -152,6 +158,15 @@ void gsAdaptiveMeshing<T>::_markPercentage( const std::vector<T> & elError, T re
     // The vector of local errors will need to be sorted,
     // which will be done on a copy:
     std::vector<T> elErrCopy = elError;
+
+    if (!coarsen)
+    {
+        // Set all elements which are on the max level to the lowest error possible.
+        GISMO_ASSERT(elLevels.size()==elErrCopy.size(),"Levels and errors should have the same size! But elLevels.size()="<<elLevels.size()<<" and elErrCopy.size()="<<elErrCopy.size());
+        for (index_t k=0; k!=elLevels.size(); k++)
+            if (elLevels[k] >= maxLevel)
+                elErrCopy[k] = std::numeric_limits<float>::min();
+    }
 
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
@@ -205,17 +220,32 @@ void gsAdaptiveMeshing<T>::_markPercentage( const std::vector<T> & elError, T re
 template <class T>
 void gsAdaptiveMeshing<T>::_markThreshold( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen)
 {
+    // The vector of local errors will need to be sorted,
+    // which will be done on a copy:
+    std::vector<T> elErrCopy = elError;
+    if (!coarsen)
+    {
+        // Set all elements which are on the max level to the lowest error possible.
+        GISMO_ASSERT(elLevels.size()==elErrCopy.size(),"Levels and errors should have the same size!");
+        for (index_t k=0; k!=elLevels.size(); k++)
+            if (elLevels[k] >= maxLevel)
+                elErrCopy[k] = std::numeric_limits<float>::min();
+    }
+
+    for (typename std::vector<T>::iterator it = elErrCopy.begin(); it!=elErrCopy.end(); it++)
+        gsDebugVar(*it);
+
     // First, conduct a brutal search for the maximum local error
-    const T maxErr = *std::max_element(elError.begin(), elError.end() );
+    const T maxErr = *std::max_element(elErrCopy.begin(), elErrCopy.end() );
 
     // Compute the threshold:
     const T Thr = refParameter * maxErr;
 
-    elMarked.resize( elError.size() );
+    elMarked.resize( elErrCopy.size() );
     // Now just check for each element, whether the local error
     // is above the computed threshold or not, and mark accordingly.
 
-    typename std::vector<T>::const_iterator err = elError.begin();
+    typename std::vector<T>::const_iterator err = elErrCopy.begin();
     typename std::vector<index_t>::const_iterator lvl = elLevels.begin();
     for(std::vector<bool>::iterator i = elMarked.begin(); i!=  elMarked.end(); ++i, ++err, ++lvl)
     {
@@ -353,7 +383,10 @@ void gsAdaptiveMeshing<T>::defaultOptions()
     m_options.addInt("Admissibility","Admissibility region, 0=T-admissibility (default), 1=H-admissibility",0);
     m_options.addSwitch("Admissible","Mark the admissible region",true);
     m_options.addInt("Jump","Jump parameter m",2);
+
     // m_options.addSwitch("Admissible","Mark the admissible region",false); // separate for coarsening?
+
+    m_options.addInt("Verbose","Verbosity: 0: none, 1: on",0);
 }
 
 template<class T>
@@ -387,6 +420,8 @@ void gsAdaptiveMeshing<T>::getOptions()
 
     m_admissible = m_options.getSwitch("Admissible");
     m_m = m_options.getInt("Jump");
+
+    m_verbose = m_options.getInt("Verbose");
 }
 
 template<class T>
@@ -400,30 +435,46 @@ void gsAdaptiveMeshing<T>::mark(const std::vector<T> & errors, index_t level)
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::refine(const patchHContainer & markedRef)
+bool gsAdaptiveMeshing<T>::refine(const patchHContainer & markedRef)
 {
-    GISMO_ASSERT(markedRef.size()!=0,"Mark vector is empty!");
+    bool refined = true;
+    for (size_t p=0; p!=markedRef.size(); p++)
+        refined &= markedRef[p].totalSize()>0;
 
-    _refineMarkedElements(markedRef,m_refExt);
+    if (refined)
+        _refineMarkedElements(markedRef,m_refExt);
+
+    gsDebugVar(markedRef[0].totalSize());
+    return refined;
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::unrefine(const patchHContainer & markedCrs)
+bool gsAdaptiveMeshing<T>::unrefine(const patchHContainer & markedCrs)
 {
-    GISMO_ASSERT(markedCrs.size()!=0,"Mark vector is empty!");
+    bool coarsened = true;
+    for (size_t p=0; p!=markedCrs.size(); p++)
+        coarsened &= markedCrs[p].totalSize()>0;
 
-    if (m_admissible)
-
-    _unrefineMarkedElements(markedCrs,m_crsExt);
+    if (coarsened)
+        _unrefineMarkedElements(markedCrs,m_crsExt);
+    return coarsened;
 }
 
 template<class T>
-void gsAdaptiveMeshing<T>::adapt(const patchHContainer & markedRef, const patchHContainer & markedCrs)
+bool gsAdaptiveMeshing<T>::adapt(const patchHContainer & markedRef, const patchHContainer & markedCrs)
 {
-    GISMO_ASSERT(markedRef.size()!=0,"Mark vector is empty!");
-    GISMO_ASSERT(markedCrs.size()!=0,"Mark vector is empty!");
+    bool refined = true;
+    for (size_t p=0; p!=markedRef.size(); p++)
+        refined &= markedRef[p].totalSize()>0;
 
-    _processMarkedElements(markedRef,markedCrs,m_refExt,m_crsExt);
+    bool coarsened = true;
+    for (size_t p=0; p!=markedRef.size(); p++)
+        coarsened &= markedCrs[p].totalSize()>0;
+
+    if (refined || coarsened)
+        _processMarkedElements(markedRef,markedCrs,m_refExt,m_crsExt);
+
+    return refined || coarsened;
 }
 
 template<class T>
@@ -928,5 +979,17 @@ typename gsAdaptiveMeshing<T>::patchHContainer gsAdaptiveMeshing<T>::_toContaine
 
     return container;
 }
+
+template<class T>
+void gsAdaptiveMeshing<T>::_printMarking(const std::vector<T> & elError, const std::vector<index_t> & elLevels, const std::vector<bool> & elMarked)
+{
+    GISMO_ASSERT(elError.size()==elMarked.size(),"Size of error and marking arrays are not consistent");
+    gsInfo<<"Element number\t Element level\t Element error \t Marked?\n";
+    for (index_t k=0; k!=elError.size(); k++)
+    {
+        gsInfo<<k<<"\t"<<elLevels[k]<<"\t"<<elError[k]<<"\t"<<elMarked[k]<<"\n";
+    }
+}
+
 
 } // namespace gismo

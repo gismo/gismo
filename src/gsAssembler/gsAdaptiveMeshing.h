@@ -57,17 +57,17 @@ public:
     void mark(const std::vector<T> & errors) { mark(errors,m_maxLvl); }
     void mark(const std::vector<T> & errors, index_t maxLvl);
 
-    void refine(const patchHContainer & markedRef);
-    void unrefine(const patchHContainer & markedCrs);
-    void adapt(const patchHContainer & markedRef, const patchHContainer & markedCrs);
+    bool refine(const patchHContainer & markedRef);
+    bool unrefine(const patchHContainer & markedCrs);
+    bool adapt(const patchHContainer & markedRef, const patchHContainer & markedCrs);
 
-    void refine(const std::vector<bool> & markedRef) { refine(_toContainer(markedRef)); }
-    void unrefine(const std::vector<bool> & markedCrs) { unrefine(_toContainer(markedCrs)); };
-    void adapt(const std::vector<bool> & markedRef,const std::vector<bool> & markedCrs) { adapt(_toContainer(markedRef),_toContainer(markedCrs)); }
+    bool refine(const std::vector<bool> & markedRef) { return refine(_toContainer(markedRef)); }
+    bool unrefine(const std::vector<bool> & markedCrs) { return unrefine(_toContainer(markedCrs)); };
+    bool adapt(const std::vector<bool> & markedRef,const std::vector<bool> & markedCrs) { return adapt(_toContainer(markedRef),_toContainer(markedCrs)); }
 
-    void refine() { refine(m_markedRef); }
-    void unrefine() { unrefine(m_markedRef); };
-    void adapt() { adapt(m_markedRef,m_markedCrs); }
+    bool refine() { return refine(m_markedRef); }
+    bool unrefine() { return unrefine(m_markedRef); };
+    bool adapt() { return adapt(m_markedRef,m_markedCrs); }
 
 
     void flatten(const index_t level);
@@ -102,6 +102,7 @@ private:
 
     patchHContainer _toContainer(const std::vector<bool> & bools);
 
+    void _printMarking(const std::vector<T> & elError, const std::vector<index_t> & elLevels, const std::vector<bool> & elMarked);
 
 protected:
     // M & m_basis;
@@ -117,6 +118,8 @@ protected:
     index_t m_m;
 
     bool            m_admissible;
+
+    index_t         m_verbose;
 
     patchHContainer m_markedRef, m_markedCrs;
 
