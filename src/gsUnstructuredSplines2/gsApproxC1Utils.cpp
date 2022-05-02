@@ -81,7 +81,6 @@ namespace gismo
             else if (r_basis < r_geo)
                 kv_basis.remove(knot_geo, r_geo-r_basis);
         }
-
         result = gsBSplineBasis<real_t>(kv_basis);
     }
 
@@ -118,7 +117,6 @@ namespace gismo
             else if (r_basis < r_geo)
                 kv_basis.remove(knot_geo, r_geo-r_basis);
         }
-
         result = gsBSplineBasis<real_t>(kv_basis);
     }
 

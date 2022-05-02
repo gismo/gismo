@@ -194,8 +194,6 @@ namespace gismo
 //            transfer = matrix.sparseView();
 
             basisContainer[0].uniformCoarsen_withTransfer(transfer, numKnots);
-            gsDebugVar(transfer.rows());
-            gsDebugVar(transfer.cols());
         }
 
         gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
@@ -302,6 +300,9 @@ namespace gismo
             // First side
             // edge
             gsDebug << "matchWith() function is not implemented yet \n";
+            const gsBasis<> *tb =
+                    dynamic_cast<const gsBasis<>* >(&basisContainer[0]);
+            tb->matchWith(bi, other, bndThis, bndOther);
 
          /*
             gsMatrix<index_t> indizes1, indizes2;
