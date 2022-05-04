@@ -301,6 +301,7 @@ public: //------------------------------------------------------ iterator types
 
         /// get the vertex the iterator refers to
         Vertex operator*()  const { return  hnd_; }
+        const Vertex * operator->()  const { return  &hnd_; }
 
         // (!)
         size_t operator-(const Vertex_iterator& rhs) const
@@ -368,6 +369,7 @@ public: //------------------------------------------------------ iterator types
 
         /// get the halfedge the iterator refers to
         Halfedge operator*()  const { return  hnd_; }
+        const Halfedge * operator->()  const { return  &hnd_; }
 
         /// are two iterators equal?
         bool operator==(const Halfedge_iterator& rhs) const
@@ -420,6 +422,7 @@ public: //------------------------------------------------------ iterator types
 
         /// get the edge the iterator refers to
         Edge operator*()  const { return  hnd_; }
+        const Edge * operator->()  const { return  &hnd_; }
 
         /// are two iterators equal?
         bool operator==(const Edge_iterator& rhs) const
@@ -472,6 +475,7 @@ public: //------------------------------------------------------ iterator types
 
         /// get the face the iterator refers to
         Face operator*()  const { return  hnd_; }
+        const Face * operator->()  const { return  &hnd_; }
 
         // (!)
         size_t operator-(const Face_iterator& rhs) const
@@ -707,6 +711,7 @@ public: //---------------------------------------------------- circulator types
 
         /// get the halfedge the circulator refers to
         Halfedge operator*() const { return halfedge_; }
+        const Halfedge * operator->()  const { return  &halfedge_; }
 
         /// cast to bool: true if vertex is not isolated
         operator bool() const { return halfedge_.is_valid(); }
@@ -917,6 +922,7 @@ public: //---------------------------------------------------- circulator types
 
         /// get the halfedge the circulator refers to
         Halfedge operator*() const { return halfedge_; }
+        const Halfedge * operator->()  const { return  &halfedge_; }
 
         // helper for C++11 range-based for-loops
         Halfedge_around_face_circulator& begin() { active_=false; return *this; }
