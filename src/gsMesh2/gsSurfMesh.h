@@ -130,7 +130,7 @@ public: //-------------------------------------------------- connectivity types
     /// \sa Halfedge_connectivity, Face_connectivity
     struct Vertex_connectivity
     {
-        /// an outgoing halfedge per vertex (it will be a boundary halfedge for boundary vertices)
+        /// an outgoing halfedge per vertex (it will be a bounday halfedge for boundary vertices)
         Halfedge  halfedge_;
     };
 
