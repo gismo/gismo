@@ -3415,7 +3415,7 @@ private:
 
     mutable gsMatrix<Scalar> res;
 public:
-    enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
+    enum {ScalarValued = 0, ColBlocks = E1::ColBlocks}; //(!)
     enum {Space = (int)E1::Space + (int)E2::Space };
 
     mult_expr(_expr<E1> const& u,
