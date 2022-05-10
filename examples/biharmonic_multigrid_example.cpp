@@ -343,6 +343,7 @@ int main(int argc, char *argv[])
     index_t postsmooth = 1;
     std::string smoother("GaussSeidel");
     real_t damping = -1;
+    real_t corarseGridCorrectionDamping = 1;
 
     std::string iterativeSolver("cg");
     real_t tolerance = 1.e-8;
@@ -368,6 +369,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post-smoothing steps", postsmooth);
     cmd.addString("s", "MG.Smoother",           "Smoothing method", smoother);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
+    cmd.addReal  ("",  "MG.CorarseGridCorrectionDamping",            "Damping factor for the coarse grid correction", corarseGridCorrectionDamping);
 
     cmd.addString("i", "IterativeSolver",       "Iterative solver: apply multigrid directly (d) or as a preconditioner for "
                                                 "conjugate gradient (cg)", iterativeSolver);
@@ -584,6 +586,7 @@ int main(int argc, char *argv[])
     //! [Define smoothers
     for (index_t i = 1; i < mg->numLevels(); ++i)
     {
+        gsInfo << "Setup smoother for level " << i << ". " << std::flush;
         gsPreconditionerOp<>::Ptr smootherOp;
         if ( smoother == "Richardson" || smoother == "r" )
             smootherOp = makeRichardsonOp(mg->matrix(i));
@@ -618,7 +621,7 @@ int main(int argc, char *argv[])
             .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( A.rhs(), solVector, errorHistory );
     else if (iterativeSolver=="d")
-        gsGradientMethod<>( A.matrix(), mg )
+        gsGradientMethod<>( A.matrix(), mg, /* stepSize= */ 1 )
             .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( A.rhs(), solVector, errorHistory );
     //! [Solve]

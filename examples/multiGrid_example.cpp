@@ -346,7 +346,7 @@ int main(int argc, char *argv[])
             .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     else if (iterativeSolver=="d")
-        gsGradientMethod<>( assembler.matrix(), mg )
+        gsGradientMethod<>( assembler.matrix(), mg, /* stepSize= */ 1 )
             .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( assembler.rhs(), x, errorHistory );
     //! [Solve]

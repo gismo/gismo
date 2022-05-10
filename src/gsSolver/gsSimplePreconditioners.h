@@ -412,30 +412,51 @@ public:
     typedef gsPreconditionerOp<T> Base;
 
     /// Constructor with given matrix
-    explicit gsIncompleteLUOp(const MatrixType& mat, index_t fillfactor = 1)
-    : m_mat(), m_expr(mat.derived())
+    explicit gsIncompleteLUOp(const MatrixType& mat, index_t fillfactor = 1, T tau = 1)
+    : m_mat(), m_expr(mat.derived()), m_tau(tau)
     {
         m_ilu.setFillfactor(fillfactor);
         m_ilu.compute(m_expr);
     }
 
     /// Constructor with shared pointer to matrix
-    explicit gsIncompleteLUOp(const MatrixPtr& mat, index_t fillfactor = 1)
-    : m_mat(mat), m_expr(m_mat->derived())
+    explicit gsIncompleteLUOp(const MatrixPtr& mat, index_t fillfactor = 1, T tau = 1)
+    : m_mat(mat), m_expr(m_mat->derived()), m_tau(tau)
     {
         m_ilu.setFillfactor(fillfactor);
         m_ilu.compute(m_expr);
     }
 
-    static uPtr make(const MatrixType& mat, index_t fillfactor = 1)
-    { return memory::make_unique( new gsIncompleteLUOp(mat,fillfactor) ); }
+    static uPtr make(const MatrixType& mat, index_t fillfactor = 1, T tau = 1)
+    { return memory::make_unique( new gsIncompleteLUOp(mat,fillfactor,tau) ); }
 
-    static uPtr make(const MatrixPtr& mat, index_t fillfactor = 1)
-    { return memory::make_unique( new gsIncompleteLUOp(mat,fillfactor) ); }
+    static uPtr make(const MatrixPtr& mat, index_t fillfactor = 1, T tau = 1)
+    { return memory::make_unique( new gsIncompleteLUOp(mat,fillfactor,tau) ); }
+
+    /// Set damping parameter
+    void setDamping(const T tau) { m_tau = tau;  }
+
+    /// Get damping parameter
+    void getDamping()            { return m_tau; }
+
+    /// Get the default options as gsOptionList object
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt = Base::defaultOptions();
+        opt.addReal( "Damping", "Damping parameter of the ILU iteration", 1 );
+        return opt;
+    }
+
+    /// Set options based on a gsOptionList object
+    virtual void setOptions(const gsOptionList & opt)
+    {
+        Base::setOptions(opt);
+        m_tau = opt.askReal( "Damping", m_tau );
+    }
 
     void step(const gsMatrix<T> & rhs, gsMatrix<T> & x) const
     {
-        x += m_ilu.solve( rhs - m_expr * x ).eval();
+        x += m_tau * m_ilu.solve( rhs - m_expr * x ).eval();
     }
 
     // We use our own apply implementation as we can save one multiplication. This is important if the number
@@ -443,10 +464,10 @@ public:
     void apply(const gsMatrix<T> & input, gsMatrix<T> & x) const
     {
         // For the first sweep, we do not need to multiply with the matrix
-        x = m_ilu.solve( input ).eval();
+        x = m_tau * m_ilu.solve( input ).eval();
 
         for (index_t k = 1; k < Base::m_num_of_sweeps; ++k)
-            x += m_ilu.solve( input - m_expr * x ).eval();
+            x += m_tau * m_ilu.solve( input - m_expr * x ).eval();
 
     }
 
@@ -468,6 +489,7 @@ private:
     const MatrixPtr         m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix            m_expr; ///< Nested Eigen expression
     Eigen::IncompleteLUT<T> m_ilu;  ///< The decomposition itself
+    T                       m_tau;  ///< The damping parameter
     using Base::m_num_of_sweeps;
 };
 
