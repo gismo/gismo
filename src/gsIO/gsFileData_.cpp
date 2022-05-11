@@ -60,6 +60,7 @@ namespace py = pybind11;
 
       // .def("getId", static_cast<const gsBasis<real_t> & (Class::*)(const size_t) const > (&Class::getId))
       .def("getId", static_cast<void (Class::*)(const int &, gsMultiPatch<real_t> &) const > (&Class::getId<gsMultiPatch<real_t>>), "Gets a const reference to basis with index i")
+      .def("getId", static_cast<void (Class::*)(const int &, gsGeometry<real_t> &) const > (&Class::getId<gsGeometry<real_t>>), "Gets a const reference to basis with index i")
 
 
       .def("add", static_cast<void (Class::*)(const gsMultiPatch<real_t> &) > (&Class::add<gsMultiPatch<real_t>>), "Add gsMultiPatch to the filedata.")
@@ -70,12 +71,13 @@ namespace py = pybind11;
       .def("add", static_cast<void (Class::*)(const gsBoundaryConditions<real_t> &) > (&Class::add<gsBoundaryConditions<real_t>>), "Add gsBoundaryConditions to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsFunctionExpr<real_t> &) > (&Class::add<gsFunctionExpr<real_t>>), "Add gsFunctionExpr to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsOptionList &) > (&Class::add<gsOptionList>), "Add gsOptionList to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsMatrix<real_t> &) > (&Class::add<gsMatrix<real_t>>), "Add gsMatrix to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
 
-      .def("addMatrix", static_cast<void (Class::*)(const gsMatrix<real_t> &) > (&Class::add<gsMatrix<real_t>>), "Add gsMatrix to the filedata.")
+
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
       
-      .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Add gsMultiPatch to the filedata.")
+      .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Get gsMultiPatch to the filedata.")
 
       // Work around to obtain the matrix from Filedata. Standard way is not working!
       .def("getMatrix", &getMatrix, "Get any first gsMatrix.")
