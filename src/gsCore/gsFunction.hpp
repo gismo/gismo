@@ -184,7 +184,7 @@ gsMatrix<T> gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
 }
 
 template <class T>
-template <int mode>
+template <int mode,int _Dim>
 int gsFunction<T>::newtonRaphson_impl(
     const gsVector<T> & value,
     gsVector<T> & arg,
@@ -194,9 +194,15 @@ int gsFunction<T>::newtonRaphson_impl(
     double damping_factor, T scale) const
 {
     const index_t n = value.rows();
-    const bool squareJac = (n == domainDim());
+    const bool squareJac = (n == domainDim());//assumed for _Dim!=-1
 
-    gsMatrix<T> residual, delta, jac, supp, arg0;
+    GISMO_ASSERT( arg.size() == domainDim(),
+                  "Input argument has wrong dimensions: "<< arg.transpose() );
+
+    gsMatrix<T> supp;
+    gsMatrix<T,_Dim,(_Dim==-1?-1:1)> delta , residual;
+    gsMatrix<T,_Dim,_Dim> jac;
+
     if (withSupport)
     {
         supp = support();
@@ -205,15 +211,21 @@ int gsFunction<T>::newtonRaphson_impl(
                       "Initial point is outside the domain.");
     }
     int iter = 0;
-
-    //const T alpha=.5, beta=.5;
+    T rnorm[2]; rnorm[1]=1;
+    //T alpha=.5, beta=.5;
+    gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
 
     do {
         //gsInfo <<"Newton it: "<< arg.transpose()<<"\n";
         this->compute(arg,fd);
         residual = (0==mode?fd.values[0]:fd.values[1]);
 
-        if(residual.norm() <= accuracy) // residual below threshold
+        residual.noalias() = value - scale*residual;
+        rnorm[iter%2] = residual.norm();
+
+        if(rnorm[iter%2] <= accuracy) // residual below threshold
+        {
+            //gsInfo <<"--- OK: Accuracy "<<rnorm[iter%2]<<" reached.\n";
             return iter;
         }
 
@@ -225,38 +237,36 @@ int gsFunction<T>::newtonRaphson_impl(
 
         // compute Jacobian
         if (0==mode)
-            jac.noalias() = scale * jacobian(arg);
-        if (1==mode)
-            jac.noalias() = scale * hessian(arg, 0);
+            jac = scale * fd.jacobian(0);
+        else // (1==mode)
+            jac = scale * fd.hessian(0);
 
         // Solve for next update
         if (squareJac)
         {
-            // const T ddet = jac.determinant();
-            // if (math::abs(ddet)<1e-4)
-            //     gsWarn<< "Singular Jacobian: "<< ddet <<"\n";
+            //const T ddet = jac.determinant();
+            //if (math::abs(ddet)<1e-4)
+            //    gsWarn<< "Singular Jacobian: "<< ddet <<"\n";
 
-            delta.noalias() = jac.partialPivLu().solve( residual );
+            if (-1==_Dim)
+                delta.noalias() = jac.partialPivLu().solve( residual );
+            else
+                delta.noalias() = jac.inverse() * residual;
         }
         else// use pseudo-inverse
             delta.noalias() = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
         // update arg
+        arg += damping_factor * delta;
+
         if ( withSupport )
-        {
-            arg0 = arg;
-            arg += damping_factor * delta;
             arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
-            if( (arg-arg0).norm() < accuracy ) // update below threshold
-                return iter;
-        }
-        else
-            arg += damping_factor * delta;
 
     } while (++iter <= max_loop);
 
-    // no solution found within max_loop iterations
+    gsWarn <<"--- Newton method did not converge after "<< max_loop
+           <<" iterations. Residual norm: "<< rnorm[max_loop%2]<<".\n";
     return -1;
 }
 
@@ -277,15 +287,16 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
 template <class T>
 gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
                                   int max_loop,
+                                  gsMatrix<T> init,
                                   double damping_factor) const
 {
     GISMO_ASSERT(1==targetDim(), "Currently argMin works for scalar functions");
     const index_t dd = domainDim();
     gsVector<T> result;
-    gsMatrix<T> supp = support();
-    // Initial point (todo: import as argument)
-    if (0!=supp.size())
-        result = 0.5 * ( supp.col(0) + supp.col(1) );
+
+    // Initial point
+    if ( 0 != init.size() )
+        result = give(init);
     else
     {
         gsMatrix<T,2> supp = support();
@@ -385,8 +396,10 @@ inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
                 gsAsMatrix<T,tarDim,domDim>(InOut.jacInvTr.col(p).data(), n, d)
                         = jacT.cramerInverse();
             else
-                gsAsMatrix<T,tarDim,domDim>(InOut.jacInv.col(p).data(), n, d)
+            {
+                gsAsMatrix<T,tarDim,domDim>(InOut.jacInvTr.col(p).data(), n, d)
                         = jacT.transpose()*(jacT*jacT.transpose()).cramerInverse();
+            }
         }
     }
 
@@ -508,11 +521,10 @@ template <class T>
 void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
 {
     // Fill function data
-    if (InOut.flags & NEED_GRAD_TRANSFORM || InOut.flags & NEED_MEASURE    ||
-            InOut.flags & NEED_NORMAL         || InOut.flags & NEED_OUTER_NORMAL)
-        InOut.flags = InOut.flags | NEED_GRAD;
-    if (InOut.flags & NEED_2ND_FFORM)
-        InOut.flags = InOut.flags | NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
+    if ( InOut.flags & (NEED_GRAD_TRANSFORM|NEED_MEASURE|NEED_NORMAL|NEED_OUTER_NORMAL) ) //NEED_JACOBIAN
+        InOut.flags |= NEED_DERIV;
+    if ( InOut.flags & (NEED_2ND_FFORM) ) //NEED_HESSIAN
+        InOut.flags |= NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
 
     this->compute(InOut.points, InOut);
 
