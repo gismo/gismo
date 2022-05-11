@@ -275,7 +275,7 @@ public:
     /// \param cornersOnly When set to true an interface is accepted
     /// if the patch corners match, even if the parameterization does
     /// not agree
-    bool computeTopology( T tol = 1e-4, bool cornersOnly = false);
+    bool computeTopology( T tol = 1e-4, bool cornersOnly = false /*, bool tjunctions = false */);
 
     /// \brief Attempt to close gaps between the interfaces. Assumes
     /// that the topology is computed, ie. computeTopology() has been
@@ -349,6 +349,9 @@ public:
     /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+
+    std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
+                                                   const T accuracy = 1e-6) const;
 
     void constructInterfaceRep();
     void constructBoundaryRep();
