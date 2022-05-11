@@ -1586,7 +1586,7 @@ class trace_expr  : public _expr<trace_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0, Space = 1 /*E::Space*/, ColBlocks= 0};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0};
 
 private:
     typename E::Nested_t _u;
@@ -1605,10 +1605,13 @@ public:
         auto tmp = _u.eval(k);
         const index_t cb = _u.rows();
         const index_t r  = _u.cardinality();
-        //if Space==0,1,2.. adjust size
-        res.resize(r, 1);//note: size incomp. to ColBlocks
+        if (Space==2)
+            res.resize(r, 1);
+        else
+            res.resize(1, r);
+        res.resize(r, 1);
         for (index_t i = 0; i!=r; ++i)
-            res(i,0) = tmp.middleCols(i*cb,cb).trace();
+            res.at(i) = tmp.middleCols(i*cb,cb).trace();
         return res;
     }
 
