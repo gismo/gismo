@@ -129,13 +129,14 @@ template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
 template<class E> class tr_expr;
+template<class E> class cwisetr_expr;
 template<class E> class cb_expr;
 template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
-template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
+template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::ScalarValued> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
 
 // Call as pow(a,b)
@@ -226,6 +227,10 @@ public:
     /// Returns the transpose of the expression
     tr_expr<E> tr() const
     { return tr_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the coordinate-wise transpose of the expression
+    cwisetr_expr<E> cwisetr() const
+    { return cwisetr_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the puts the expression to colBlocks
     cb_expr<E> cb() const
@@ -1460,6 +1465,22 @@ private:
 */
 };
 
+// Transposition without changing the Space attributes of the expression
+template<class E>
+class cwisetr_expr : public tr_expr<E>
+{
+    typedef tr_expr<E> V;
+public:
+    typedef typename V::Scalar Scalar;
+    cwisetr_expr(_expr<E> const& u) : V(u) {}
+public:
+    enum {ColBlocks = E::ColBlocks, ScalarValued=E::ScalarValued};
+    enum {Space = E::Space};
+//    const gsMatrix<Scalar> & eval(const index_t k) const { return _u.eval;}
+    inline const gsFeSpace<Scalar> & rowVar() const { return V::colVar(); }
+    inline const gsFeSpace<Scalar> & colVar() const { return V::rowVar(); }
+};
+
 /*
   Expression to make an expression colblocks
 */
@@ -1488,7 +1509,7 @@ public:
         ev = _u.eval(k);
         if (E::ColBlocks)
         {
-            return res;
+            return ev;
         }
         else
         {
@@ -1584,7 +1605,7 @@ class trace_expr  : public _expr<trace_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0, Space = E::Space, ColBlocks= E::ColBlocks};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0};
 
 private:
     typename E::Nested_t _u;
@@ -1603,7 +1624,8 @@ public:
         auto tmp = _u.eval(k);
         const index_t cb = _u.rows();
         const index_t r  = _u.cardinality();
-        res.resize(r, 1);
+        //if Space==0,1,2.. adjust size
+        res.resize(r, 1);//note: size incomp. to ColBlocks
         for (index_t i = 0; i!=r; ++i)
             res(i,0) = tmp.middleCols(i*cb,cb).trace();
         return res;
@@ -1614,6 +1636,8 @@ public:
 
     index_t rows() const { return _u.cols() / _u.rows(); }
     index_t cols() const { return 1; }
+
+    index_t cardinality_impl() const { return _u.cardinality(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -2812,6 +2836,8 @@ public:
     index_t rows() const { return _u.data().laplacians.rows(); }
     index_t cols() const { return 1; }
 
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
@@ -3403,8 +3429,9 @@ public:
 
   as well as
 
-  [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
-
+  both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
+                                                [A2*B1 ..           ]
+                                                [                   ]
 */
 template <typename E1, typename E2>
 class mult_expr<E1, E2, true> : public _expr<mult_expr<E1, E2, true> >
@@ -3417,7 +3444,7 @@ private:
 
     mutable gsMatrix<Scalar> res;
 public:
-    enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
+    enum {ScalarValued = 0, ColBlocks = E1::ColBlocks}; //(!)
     enum {Space = (int)E1::Space + (int)E2::Space };
 
     mult_expr(_expr<E1> const& u,
@@ -3540,7 +3567,6 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
-
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
 {
@@ -3616,7 +3642,11 @@ collapse_expr<E1,E2> collapse( _expr<E1> const& u, _expr<E2> const& v)
   Expression for the Frobenius matrix (or double dot) product (first
   version) Also block-wise
 
-  [A1 A2 A3] . [B1 B2 B3] = [A1.B1  A2.B2  A3.B3]
+  [A1 A2 A3] . [B1 B2 B3]
+  =
+  [ A1.B1  A1.B2  A1.B3 ]
+  [ A2.B1  A2.B2  A2.B3 ]
+  [ A3.B1  A3.B2  A3.B3 ]
 */
 template <typename E1, typename E2, bool = E2::ColBlocks>
 class frprod_expr : public _expr<frprod_expr<E1, E2> >
@@ -3652,8 +3682,8 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
         // assert _u.size()==_v.size()
-        const index_t rb = _u.rows(); //==cb
-        const index_t nb = _u.cols() / rb;
+        const index_t rb = _u.rows();
+        const index_t nb = _u.cardinality();
         auto A = _u.eval(k);
         auto B = _v.eval(k);
         res.resize(nb, nb);
@@ -3715,7 +3745,7 @@ public:
         auto A = _u.eval(k);
         auto B = _v.eval(k);
         const index_t rb = A.rows(); //==cb
-        const index_t nb = A.cols() / rb;
+        const index_t nb = _u.cardinality();
         res.resize(nb, 1);
         for (index_t i = 0; i!=nb; ++i) // all with all
             res(i,0) =
@@ -3934,7 +3964,7 @@ class summ_expr : public _expr<summ_expr<E1,E2> >
 public:
     typedef typename E1::Scalar Scalar;
 
-    enum {Space = E1::Space, ScalarValued= 0, ColBlocks= 1};
+    enum {Space = E1::Space, ScalarValued= 0, ColBlocks= E2::ColBlocks};
 
     summ_expr(E1 const& u, E2 const& M) : _u(u), _M(M) { }
 
@@ -3944,10 +3974,10 @@ public:
         const index_t sr = sl.rows();
         auto ml   = _M.eval(k);
         const index_t mr = ml.rows();
-        const index_t mb = ml.cols() / mr;
+        const index_t mb = _M.cardinality();
 
         GISMO_ASSERT(_M.cols()==_M.rows(),"Matrix must be square: "<< _M.rows()<<" x "<< _M.cols() << " expr: "<< _M );
-        GISMO_ASSERT(_M.cardinality()==_u.cols(),"cardinality must match vector, but card(M)="<<_M.cardinality()<<" and cols(u)="<<_u.cols());
+        GISMO_ASSERT(mb==_u.cols(),"cardinality must match vector, but card(M)="<<_M.cardinality()<<" and cols(u)="<<_u.cols());
 
         res.setZero(mr, sr * mr);
         for (index_t i = 0; i!=sr; ++i)

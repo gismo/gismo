@@ -403,6 +403,9 @@ public:
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> > & result) const;
 
+    /// Evaluate all derivatives upto order \a n, \see evalAllDers_into
+    std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n) const;
+
     /// Evaluate the function, \see eval_into()
     gsMatrix<T> eval(const gsMatrix<T>& u) const;
 

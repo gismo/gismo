@@ -272,8 +272,8 @@ public:
     testEval(const expr::_expr<E> & expr,
              const gsVector<T> & pt, const index_t patchInd = 0)
     {
-        // expr.printDetail(gsInfo);
-        gsInfo << "Result:\n"<< eval(expr,pt,patchInd) <<"\n";
+        expr.print(gsInfo);
+        gsInfo << "\nResult:\n"<< eval(expr,pt,patchInd) <<"\n";
     }
 
     void info() const { m_exprdata->print(); }

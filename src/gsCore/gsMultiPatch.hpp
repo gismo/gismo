@@ -350,6 +350,7 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly )
     std::vector<patchSide> pSide; // list of all candidate patchSides to compare
     pSide.reserve(np * 2 * m_dim);
 
+//#   pragma omp parallel for private(supp, boxPar, !coor)
     for (size_t p=0; p<np; ++p)
     {
         supp = m_patches[p]->parameterRange(); // the parameter domain of patch i
@@ -697,6 +698,50 @@ void gsMultiPatch<T>::locatePoints(const gsMatrix<T> & points, index_t pid1,
             }
         }
     }
+}
+
+namespace
+{
+struct __closestPointHelper
+{
+    __closestPointHelper() : dist(math::limits::max()), pid(-1) { }
+    real_t dist;
+    size_t pid;
+    gsVector<> preim;
+};
+}
+
+template<class T> std::pair<index_t,gsVector<T> >
+gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
+                                const T accuracy) const
+{
+    GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
+                  pt.rows() <<"!="<< targetDim() );
+
+    gsVector<T> tmp;
+
+#ifndef _MSC_VER
+#   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
+    struct __closestPointHelper cph;
+#   pragma omp parallel for default(none) shared(accuracy,pt) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
+#else
+    struct __closestPointHelper cph;
+#endif
+    for (size_t k = 0; k!= m_patches.size(); ++k)
+    {
+        // possible improvement: approximate dist: eval patch on a
+        // grid. find min distance between grid and pt
+
+        const T val = this->patch(k).closestPointTo(pt, tmp, accuracy);
+        if (cph.dist>val)
+        {
+            cph.dist = val; //need to be all in one struct for OMP
+            cph.pid = k;
+            cph.preim = tmp;
+        }
+    }
+    //gsInfo <<"--Pid="<<cph.pid<<", Dist("<<pt.transpose()<<"): "<< cph.dist <<"\n";
+    return std::make_pair(cph.pid, give(cph.preim));
 }
 
 template<class T>

@@ -2,6 +2,7 @@
 
 //#define gsTensorBSplineBasis_EXPORT
 
+#include <gsCore/gsBasisFun.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.hpp>
 
@@ -34,13 +35,22 @@ void pybind11_init_gsTensorBSplineBasis2(py::module &m)
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
     .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots), "Get the knot vector as a const reference")
-	.def("component", static_cast<      gsBSplineBasis<real_t>& (Class::*)(int)      > (&Class::component), "Returns the basis component as a reference")
+    .def("component", static_cast<      gsBSplineBasis<real_t>& (Class::*)(int)      > (&Class::component), "Returns the basis component as a reference")
     .def("component", static_cast<const gsBSplineBasis<real_t>& (Class::*)(int) const> (&Class::component), "Returns the basis component as a const reference")
+    .def("size", static_cast<index_t (Class::*)() const> (&Class::size), "Returns the size")
     // Inherited from gsTensorBasis
     .def("dim", &Class::dim, "Returns the dimension")
     // Inherited from gsBasis
     .def("eval", &Class::eval, "Evaluates points into a matrix")
-    // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    // Inherited from gsBasis
+    .def("function", &Class::function, "Returns the basis function i")
+    .def("evalSingle", static_cast<gsMatrix<real_t> (Class::*)(index_t, const gsMatrix<real_t> &                   ) const> (&Class::evalSingle     ), "Evaluates the basis function i")
+    .def("evalSingle_into", static_cast<void        (Class::*)(index_t, const gsMatrix<real_t> &, gsMatrix<real_t>&) const> (&Class::evalSingle_into), "Evaluates the basis function i")
+    // .def("evalSingle", &Class::dim, "Evaluates the basis function i")
+
+    // Member functions
+    .def("degree", &Class::degree, "Returns the degree")
+
     ;
 }
 
@@ -57,13 +67,22 @@ void pybind11_init_gsTensorBSplineBasis3(py::module &m)
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
     .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots), "Get the knot vector as a const reference")
-	.def("component", static_cast<      gsBSplineBasis<real_t>& (Class::*)(int)      > (&Class::component), "Returns the basis component as a reference")
+    .def("component", static_cast<      gsBSplineBasis<real_t>& (Class::*)(int)      > (&Class::component), "Returns the basis component as a reference")
     .def("component", static_cast<const gsBSplineBasis<real_t>& (Class::*)(int) const> (&Class::component), "Returns the basis component as a const reference")
+    .def("size", static_cast<index_t (Class::*)() const> (&Class::size), "Returns the size")
     // Inherited from gsTensorBasis
     .def("dim", &Class::dim, "Returns the dimension")
     // Inherited from gsBasis
     .def("eval", &Class::eval, "Evaluates points into a matrix")
-    // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    // Inherited from gsBasis
+    .def("function", &Class::function, "Returns the basis function i")
+    .def("evalSingle", static_cast<gsMatrix<real_t> (Class::*)(index_t, const gsMatrix<real_t> &                   ) const> (&Class::evalSingle     ), "Evaluates the basis function i")
+    .def("evalSingle_into", static_cast<void        (Class::*)(index_t, const gsMatrix<real_t> &, gsMatrix<real_t>&) const> (&Class::evalSingle_into), "Evaluates the basis function i")
+    // .def("evalSingle", &Class::dim, "Evaluates the basis function i")
+
+    // Member functions
+    .def("degree", &Class::degree, "Returns the degree")
+
     ;
 }
 
@@ -80,13 +99,22 @@ void pybind11_init_gsTensorBSplineBasis4(py::module &m)
     // Member functions
     .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
     .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots), "Get the knot vector as a const reference")
-	.def("component", static_cast<      gsBSplineBasis<real_t>& (Class::*)(int)      > (&Class::component), "Returns the basis component as a reference")
+    .def("component", static_cast<      gsBSplineBasis<real_t>& (Class::*)(int)      > (&Class::component), "Returns the basis component as a reference")
     .def("component", static_cast<const gsBSplineBasis<real_t>& (Class::*)(int) const> (&Class::component), "Returns the basis component as a const reference")
+    .def("size", static_cast<index_t (Class::*)() const> (&Class::size), "Returns the size")
     // Inherited from gsTensorBasis
     .def("dim", &Class::dim, "Returns the dimension")
     // Inherited from gsBasis
     .def("eval", &Class::eval, "Evaluates points into a matrix")
-    // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
+    // Inherited from gsBasis
+    .def("function", &Class::function, "Returns the basis function i")
+    .def("evalSingle", static_cast<gsMatrix<real_t> (Class::*)(index_t, const gsMatrix<real_t> &                   ) const> (&Class::evalSingle     ), "Evaluates the basis function i")
+    .def("evalSingle_into", static_cast<void        (Class::*)(index_t, const gsMatrix<real_t> &, gsMatrix<real_t>&) const> (&Class::evalSingle_into), "Evaluates the basis function i")
+    // .def("evalSingle", &Class::dim, "Evaluates the basis function i")
+
+    // Member functions
+    .def("degree", &Class::degree, "Returns the degree")
+
     ;
 }
 
