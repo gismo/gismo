@@ -129,14 +129,14 @@ template<class E> class colsum_expr;
 template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
-template<class E> class tr_expr;
+template<class E, bool cw = false> class tr_expr;
 template<class E> class cb_expr;
 template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
-template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
+template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::ScalarValued> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
 
 // Call as pow(a,b)
@@ -226,7 +226,11 @@ public:
 
     /// Returns the transpose of the expression
     tr_expr<E> tr() const
-    { return tr_expr<E>(static_cast<E const&>(*this)); }
+    { return tr_expr<E,false>(static_cast<E const&>(*this)); }
+
+    /// Returns the coordinate-wise transpose of the expression
+    tr_expr<E,true> cwisetr() const
+    { return tr_expr<E,true>(static_cast<E const&>(*this)); }
 
     /// Returns the puts the expression to colBlocks
     cb_expr<E> cb() const
@@ -865,7 +869,7 @@ public:
     {
         //evList.add(_G); //done in gsExprHelper
         evList.add(*this);
-        this->data().flags |= NEED_VALUE;
+        this->data().flags |= NEED_VALUE|NEED_ACTIVE;
         //_G.data().flags  |= NEED_VALUE; //done in gsExprHelper
     }
 };
@@ -910,7 +914,7 @@ public:
     inline const gsMatrix<T> & fixedPart() const {return m_sd->fixedDofs;}
     gsMatrix<T> & fixedPart() {return m_sd->fixedDofs;}
 
-    index_t   id() const { return (m_sd ? m_sd->id : -1); }
+    index_t   id() const { return (m_sd ? m_sd->id : -101); }
     void setSpaceData(gsFeSpaceData<T>& sd) {m_sd = &sd;}
 
     index_t   interfaceCont() const {return m_sd->cont;}
@@ -1407,8 +1411,8 @@ public:
 /*
   Expression for the transpose of an expression
 */
-template<class E>
-class tr_expr : public _expr<tr_expr<E> >
+template<class E, bool cw>
+class tr_expr : public _expr<tr_expr<E,cw> >
 {
     typename E::Nested_t _u;
 
@@ -1421,7 +1425,7 @@ public:
 
 public:
     enum {ColBlocks = E::ColBlocks, ScalarValued=E::ScalarValued};
-    enum {Space = (E::Space==1?2:(E::Space==2?1:E::Space))};
+    enum {Space = cw?E::Space:(E::Space==1?2:(E::Space==2?1:E::Space))};
 
     mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
@@ -1440,8 +1444,8 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u.colVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return cw?_u.rowVar():_u.colVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return cw?_u.colVar():_u.rowVar(); }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
@@ -1582,7 +1586,7 @@ class trace_expr  : public _expr<trace_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0, Space = E::Space, ColBlocks= E::ColBlocks};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0};
 
 private:
     typename E::Nested_t _u;
@@ -1601,17 +1605,23 @@ public:
         auto tmp = _u.eval(k);
         const index_t cb = _u.rows();
         const index_t r  = _u.cardinality();
-        res.resize(r, 1);
+        if (Space==1)
+            res.resize(r, 1);
+        else
+            res.resize(1, r);
+
         for (index_t i = 0; i!=r; ++i)
-            res(i,0) = tmp.middleCols(i*cb,cb).trace();
+            res.at(i) = tmp.middleCols(i*cb,cb).trace();
         return res;
     }
 
     // choose if !ColBlocks
     //todo: Scalar eval(const index_t k) const
 
-    index_t rows() const { return _u.cols() / _u.rows(); }
+    index_t rows() const { return _u.cols() / _u.rows(); } //_u.cardinality()?
     index_t cols() const { return 1; }
+
+    index_t cardinality_impl() const { return _u.cardinality(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -2810,6 +2820,8 @@ public:
     index_t rows() const { return _u.data().laplacians.rows(); }
     index_t cols() const { return 1; }
 
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
@@ -2976,7 +2988,8 @@ public:
         return res;
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return rowVar_impl<E>(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    //const gsFeSpace<Scalar> & rowVar() const { return rowVar_impl<E>(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     index_t rows() const { return rows_impl(_u); }
@@ -3401,8 +3414,9 @@ public:
 
   as well as
 
-  [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
-
+  both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
+                                                [A2*B1 ..           ]
+                                                [                   ]
 */
 template <typename E1, typename E2>
 class mult_expr<E1, E2, true> : public _expr<mult_expr<E1, E2, true> >
@@ -3538,7 +3552,6 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
-
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
 {
@@ -3673,7 +3686,7 @@ public:
     { _u.parse(evList); _v.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os); os<<" % "; _v.print(os); os<<")";}
@@ -3875,7 +3888,10 @@ public:
         GISMO_ENSURE((int)E1::Space == (int)E2::Space &&
                      _u.rowVar()==_v.rowVar() && _u.colVar()==_v.colVar(),
                      "Error: adding apples and oranges (use comma instead),"
-                     " namely:\n" << _u <<"\n"<<_v);
+                     " namely:\n" << _u <<"\n"<<_v<<
+                     " \nvars:\n" << _u.rowVar().id()<<"!="<<_v.rowVar().id() <<", "<< _u.colVar().id()<<"!="<<_v.colVar().id()<<
+                     " \nspaces:\n" << (int)E1::Space<< "!="<< (int)E2::Space
+            );
     }
 
     mutable Temporary_t res;
