@@ -111,6 +111,9 @@ PYBIND11_MODULE(pygismo, m) {
   modelling.attr("__version__") = GISMO_VERSION;
   modelling.doc() = "G+Smo (Geometry + Simulation Modules): Modelling module";
 
+
+  gismo::pybind11_init_gsFitting( modelling );
+
   py::module msplines = m.def_submodule("msplines");
 
   hsplines.attr("__name__") = "pygismo.msplines";
