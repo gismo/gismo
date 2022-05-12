@@ -1609,7 +1609,7 @@ public:
             res.resize(r, 1);
         else
             res.resize(1, r);
-        res.resize(r, 1);
+
         for (index_t i = 0; i!=r; ++i)
             res.at(i) = tmp.middleCols(i*cb,cb).trace();
         return res;
