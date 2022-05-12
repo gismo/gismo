@@ -14,6 +14,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFuncCoordinate.h>
+#include <gsTensor/gsGridIterator.h>
 
 #pragma once
 
@@ -215,6 +216,7 @@ int gsFunction<T>::newtonRaphson_impl(
     gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
 
     do {
+        //gsInfo <<"Newton it: "<< arg.transpose()<<"\n";
         this->compute(arg,fd);
         residual = (0==mode?fd.values[0]:fd.values[1]);
 
@@ -227,9 +229,9 @@ int gsFunction<T>::newtonRaphson_impl(
             return iter;
         }
 
-        if( iter>4 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <1.5 )
+        if( iter>4 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <1.1)
         {
-            //gsInfo <<"--- OK: Converged to residual "<<rnorm[iter%2]<<".\n";
+            //gsInfo <<"--- OK: Converged to residual "<<rnorm[iter%2]<<"("<<rnorm[(iter-1)%2]/rnorm[iter%2]<<"), niter"<<iter<<".\n";
             return iter; //std::pair<iter,rnorm>
         }
 
@@ -297,9 +299,21 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         result = give(init);
     else
     {
-        gsMatrix<T> supp = support();
+        gsMatrix<T,2> supp = support();
         if (0!=supp.size())
-            result = 0.5 * ( supp.col(0) + supp.col(1) );
+        {
+            gsGridIterator<T,CUBE> pt(supp, 5);//per direction
+            T val, mval = std::numeric_limits<T>::max();
+            for(;pt; ++pt)
+            {
+                if ( (val = this->eval(*pt).value())<mval )
+                {
+                    mval   = val;
+                    result = *pt;
+                }
+            }
+            //result = 0.5 * ( supp.col(0) + supp.col(1) );
+        }
         else
             result.setZero( dd );
     }

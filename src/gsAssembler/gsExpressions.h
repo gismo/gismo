@@ -1486,7 +1486,7 @@ public:
         ev = _u.eval(k);
         if (E::ColBlocks)
         {
-            return res;
+            return ev;
         }
         else
         {
@@ -3415,7 +3415,7 @@ private:
 
     mutable gsMatrix<Scalar> res;
 public:
-    enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
+    enum {ScalarValued = 0, ColBlocks = E1::ColBlocks}; //(!)
     enum {Space = (int)E1::Space + (int)E2::Space };
 
     mult_expr(_expr<E1> const& u,
@@ -3614,7 +3614,11 @@ collapse_expr<E1,E2> collapse( _expr<E1> const& u, _expr<E2> const& v)
   Expression for the Frobenius matrix (or double dot) product (first
   version) Also block-wise
 
-  [A1 A2 A3] . [B1 B2 B3] = [A1.B1  A2.B2  A3.B3]
+  [A1 A2 A3] . [B1 B2 B3]
+  =
+  [ A1.B1  A1.B2  A1.B3 ]
+  [ A2.B1  A2.B2  A2.B3 ]
+  [ A3.B1  A3.B2  A3.B3 ]
 */
 template <typename E1, typename E2, bool = E2::ColBlocks>
 class frprod_expr : public _expr<frprod_expr<E1, E2> >
@@ -3650,8 +3654,8 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
         // assert _u.size()==_v.size()
-        const index_t rb = _u.rows(); //==cb
-        const index_t nb = _u.cols() / rb;
+        const index_t rb = _u.rows();
+        const index_t nb = _u.cardinality();
         auto A = _u.eval(k);
         auto B = _v.eval(k);
         res.resize(nb, nb);
@@ -3713,7 +3717,7 @@ public:
         auto A = _u.eval(k);
         auto B = _v.eval(k);
         const index_t rb = A.rows(); //==cb
-        const index_t nb = A.cols() / rb;
+        const index_t nb = _u.cardinality();
         res.resize(nb, 1);
         for (index_t i = 0; i!=nb; ++i) // all with all
             res(i,0) =
@@ -3932,7 +3936,7 @@ class summ_expr : public _expr<summ_expr<E1,E2> >
 public:
     typedef typename E1::Scalar Scalar;
 
-    enum {Space = E1::Space, ScalarValued= 0, ColBlocks= 1};
+    enum {Space = E1::Space, ScalarValued= 0, ColBlocks= E2::ColBlocks};
 
     summ_expr(E1 const& u, E2 const& M) : _u(u), _M(M) { }
 
@@ -3942,10 +3946,10 @@ public:
         const index_t sr = sl.rows();
         auto ml   = _M.eval(k);
         const index_t mr = ml.rows();
-        const index_t mb = ml.cols() / mr;
+        const index_t mb = _M.cardinality();
 
         GISMO_ASSERT(_M.cols()==_M.rows(),"Matrix must be square: "<< _M.rows()<<" x "<< _M.cols() << " expr: "<< _M );
-        GISMO_ASSERT(_M.cardinality()==_u.cols(),"cardinality must match vector, but card(M)="<<_M.cardinality()<<" and cols(u)="<<_u.cols());
+        GISMO_ASSERT(mb==_u.cols(),"cardinality must match vector, but card(M)="<<_M.cardinality()<<" and cols(u)="<<_u.cols());
 
         res.setZero(mr, sr * mr);
         for (index_t i = 0; i!=sr; ++i)
