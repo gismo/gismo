@@ -1173,6 +1173,7 @@ real_t getSupports(int i, int j, int k, gsMatrix<> supps){
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char * argv[]) {
+    //Geletini ele, ofisden ishle
     gsStopwatch clock;
     const int dim =2;
     int row, acceptedsize, attempt = 0, fineLevel, coarseLevel;
