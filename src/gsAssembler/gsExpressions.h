@@ -1605,7 +1605,7 @@ public:
         auto tmp = _u.eval(k);
         const index_t cb = _u.rows();
         const index_t r  = _u.cardinality();
-        if (Space==2)
+        if (Space==1)
             res.resize(r, 1);
         else
             res.resize(1, r);
