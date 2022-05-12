@@ -1889,7 +1889,7 @@ private: //--------------------------------------------------- helper functions
 
 private: //------------------------------------------------------- private data
 
-    friend bool read_poly(gsSurfMesh& mesh, const std::string& filename);
+    friend bool GISMO_EXPORT read_poly(gsSurfMesh& mesh, const std::string& filename);
 
     gsProperty_container vprops_;
     gsProperty_container hprops_;
