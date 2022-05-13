@@ -2018,7 +2018,7 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
     gsSurfMesh::Halfedge h2;
     gsSurfMesh::Vertex v;
     real_t n;
-#   pragma omp parallel for default(none) shared(std::cout,points,warn,bb) private(n,v,h2,coefs) shared(mp)
+#   pragma omp parallel for default(none) shared(std::cout,points,bb) private(n,v,h2,coefs) shared(mp)
     for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
     {
         coefs.resize(16,3);//thread privates must be initialized for each thread
