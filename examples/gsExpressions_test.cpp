@@ -702,7 +702,7 @@ int main(int argc, char *argv[])
     */
     gsInfo<< "* frprod (space * matrix):\t";
     result = ev.eval(jac(u2).tr()%gismo::expr::id(2),point);
-    exact  = ev.eval(jac(u2).tr().trace(),point);
+    exact  = ev.eval(jac(u2).trace(),point);
     if (verbose)
         gsInfo  <<"Result:\n"<<result.transpose()<<"\n"
                 <<"Exact:\n"<<exact.transpose()<<"\n";
