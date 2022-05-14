@@ -1,12 +1,12 @@
-// #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsTemplateTools.h>
 
-// //Prerequisits
-// #include <gsUtils/gsL2Projection.h>
-// #include <gsUtils/gsL2Projection.hpp>
+//Prerequisits
+#include <gsUtils/gsL2Projection.h>
+#include <gsUtils/gsL2Projection.hpp>
 
-// namespace gismo
-// {
+namespace gismo
+{
 
-// STRUCT_TEMPLATE_INST gsL2Projection<real_t>;
+STRUCT_TEMPLATE_INST gsL2Projection<real_t>;
 
-// }
+}
