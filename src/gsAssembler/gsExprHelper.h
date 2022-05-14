@@ -185,7 +185,7 @@ public:
         return var;
     }
 
-    void setMutSource(const gsFunction<T> & func)
+    void setMutSource(const gsFunctionSet<T> & func)
     {
         mutSrc = &func;
     }
