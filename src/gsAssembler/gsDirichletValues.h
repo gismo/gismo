@@ -12,6 +12,9 @@
 */
 
 #include <gsUtils/gsPointGrid.h>
+#include <gsCore/gsDofMapper.h>
+#include <gsAssembler/gsAssemblerOptions.h>
+#include <gsPde/gsBoundaryConditions.h>
 
 namespace gismo {
 
