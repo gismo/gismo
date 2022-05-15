@@ -1,6 +1,15 @@
-/** @file gsNewton_test.cpp
+/** @file gsKLShell_test.cpp
 
-    @brief Tests the newton iteration
+    @brief Tests the gsKLShell assembler
+
+    The unittest has three tests:
+    - Modal analysis of a square plate (tests mass matrix as well)
+    - Uniaxial tension test (see sec. 5.1 in [1])
+    - Inflation of a balloon (see sec. 5.2 in [1])
+
+    [1] Verhelst, H. M., Möller, M., Den Besten, J. H., Mantzaflaris, A. & Kaminski, M. L.
+        Stretch-Based Hyperelastic Material Formulations for Isogeometric Kirchhoff–Love Shells with Application to Wrinkling.
+        Comput. Des. 139, 103075 (2021).
 
     This file is part of the G+Smo library.
 
