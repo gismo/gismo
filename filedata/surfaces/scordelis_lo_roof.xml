@@ -10,7 +10,7 @@
      <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
     </Basis>
    </Basis>
-   <weights>1 1 1 1 1 1 1 1 1</weights>
+   <weights>1 1 1 0.7660 0.7660 0.7660 1 1 1</weights>
   </Basis>
   <coefs geoDim="3">
     0 0 0
