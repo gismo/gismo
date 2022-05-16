@@ -51,6 +51,10 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = tru
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
 
+GISMO_EXPORT void gsWriteParaview(const gsSurfMesh & sm,
+                                  std::string const & fn,
+                                  std::initializer_list<std::string> props = {});
+    
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///
 /// \param meshes vector of gsMesh objects

@@ -103,6 +103,9 @@ namespace internal
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 
+/* ----------- Mesh ----------- */
+#include <gsMesh2/gsSurfMesh.h>
+
 /* ----------- MSplines ----------- */
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsMappedSpline.h>

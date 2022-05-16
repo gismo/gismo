@@ -1163,17 +1163,33 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   }
 */
 
-/*---------- OFF trinagular mesh .off file */
+/*---------- OFF mesh from .off file */
 
 template<class T>
 bool gsFileData<T>::readOffFile( String const & fn )
 {
+    //https://stackoverflow.com/questions/47125387/stringstream-and-binary-data
+    //std::istringstream buffer;
+    //buffer << file.rdbuf();
+
+    //https://stackoverflow.com/questions/38874200/trying-to-replace-scanf-with-sstream
+
+    /* //verb-read
+    std::ifstream buffer(fn);
+    std::ostringstream bb; bb << buffer.rdbuf();    
+    gsXmlNode* m = internal::makeNode("SurfMesh", *data);
+    m->append_attribute( internal::makeAttribute("type", "off", *data) );        
+    m->value( internal::makeValue( bb.str(), *data) );
+    data->appendToRoot(m);
+    return true;
+    */
+
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("Mesh", *data);
+    gsXmlNode* g = internal::makeNode("SurfMesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 
