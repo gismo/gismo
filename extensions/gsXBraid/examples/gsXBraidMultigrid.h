@@ -309,7 +309,8 @@ namespace gismo {
               w_n.setInterfaceCont(0);
               if (typeBCHandling == 1)
                 {
-                  w_n.addBc(bcInfo.get("Dirichlet"));
+		  w_n.setup(bcInfo, dirichlet::l2Projection, 0);
+                  //#w_n.addBc(bcInfo.get("Dirichlet"));
                 }
               ex2.setIntegrationElements(basesH);
               ex2.initSystem();
@@ -369,7 +370,8 @@ namespace gismo {
               w_n.setInterfaceCont(0);
               if (typeBCHandling == 1)
                 {
-                  w_n.addBc(bcInfo.get("Dirichlet"));
+		  w_n.setup(bcInfo, dirichlet::l2Projection, 0);
+                  //#w_n.addBc(bcInfo.get("Dirichlet"));
                 }
               ex2.setIntegrationElements(basesL);
               ex2.initSystem();
@@ -543,12 +545,14 @@ namespace gismo {
         space u_M = M.getSpace(*m_bases[i]);
         u_K.setInterfaceCont(0);
         u_M.setInterfaceCont(0);
-        u_K.addBc( m_bcInfo_ptr->get("Dirichlet") );
-        u_M.addBc( m_bcInfo_ptr->get("Dirichlet") );
+	u_K.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+	u_M.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+        //#u_K.addBc( m_bcInfo_ptr->get("Dirichlet") );
+        //#u_M.addBc( m_bcInfo_ptr->get("Dirichlet") );
 
         // Set the source term
-        variable ff_K = K.getCoeff(rhs, G_K);
-        variable ff_M = M.getCoeff(rhs, G_M);
+        auto ff_K = K.getCoeff(rhs, G_K);
+        auto ff_M = M.getCoeff(rhs, G_M);
 
         // Initialize and assemble the system matrix
         K.initSystem();
@@ -569,6 +573,7 @@ namespace gismo {
 
       }
       real_t Time_Assembly = clock.stop();
+      GISMO_UNUSED(Time_Assembly);
  
 
       // Resize vector of operators
@@ -607,6 +612,7 @@ namespace gismo {
             }  
         }
       real_t Time_Transfer = clock.stop();
+      GISMO_UNUSED(Time_Transfer);
     
       // Obtain operators with Galerkin projection (TO DO)
       clock.restart();
@@ -631,7 +637,7 @@ namespace gismo {
             }
         }
       real_t Time_Assembly_Galerkin = clock.stop();
-
+      GISMO_UNUSED(Time_Assembly_Galerkin);
 
       // Setting up the subspace corrected mass smoother
       clock.restart();
@@ -647,6 +653,7 @@ namespace gismo {
             }
         }
       real_t Time_SCMS = clock.stop();
+      GISMO_UNUSED(Time_SCMS);
 
       // Determine ILUT factorizations at each level
       clock.restart();  
@@ -686,7 +693,9 @@ namespace gismo {
                 } 
             }
         } 
-      real_t Time_ILUT_Factorization = clock.stop();    
+      real_t Time_ILUT_Factorization = clock.stop();
+      GISMO_UNUSED(Time_ILUT_Factorization);
+      
       clock.restart();   
       if (Base::typeSmoother == 5)
         {
@@ -807,6 +816,8 @@ namespace gismo {
         }
       
       real_t Time_Block_ILUT_Factorization = clock.stop();
+      GISMO_UNUSED(Time_Block_ILUT_Factorization);
+      
       // gsInfo << "\n|| Setup Timings || " <<std::endl;
       // gsInfo << "Total Assembly time: " << Time_Assembly <<std::endl;
       // gsInfo << "Total ILUT factorization time: " << Time_ILUT_Factorization <<std::endl;
@@ -856,6 +867,7 @@ namespace gismo {
           iter++;
         }
       real_t Time_Solve = clock.stop();
+      GISMO_UNUSED(Time_Solve);
 
     // gsInfo << "\n|| Solver information || " <<std::endl;
     // gsInfo << "Solver converged in " << Time_Solve << " seconds!" <<std::endl;
@@ -894,7 +906,8 @@ namespace gismo {
       w_n.setInterfaceCont(0);
       if (Base::typeBCHandling == 1)
         {
-          w_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+	  w_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+          //#w_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
         }
       ex2.setIntegrationElements(basesH);
       ex2.initSystem();
@@ -922,8 +935,10 @@ namespace gismo {
       u_n.setInterfaceCont(0);
       if (Base::typeBCHandling == 1)
         {
-          v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
-          u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+	  v_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+	  u_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+          //#v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+          //#u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
         }
       ex.setIntegrationElements(basesH);
       ex.initSystem();
@@ -950,7 +965,8 @@ namespace gismo {
       w_n.setInterfaceCont(0);
       if (Base::typeBCHandling == 1)
         {
-          w_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+	  w_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+          //#w_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
         }
       ex2.setIntegrationElements(basesL);
       ex2.initSystem();
@@ -979,8 +995,10 @@ namespace gismo {
       u_n.setInterfaceCont(0);
       if (Base::typeBCHandling == 1)
         {
-          u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
-          v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+	  u_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+	  v_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+          //#u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+          //#v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
         }
       ex.setIntegrationElements(basesH);
       ex.initSystem();

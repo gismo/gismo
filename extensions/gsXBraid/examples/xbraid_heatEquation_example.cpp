@@ -213,12 +213,16 @@ private:
     space u_M = M.getSpace(basesH);
     u_K.setInterfaceCont(0);
     u_M.setInterfaceCont(0);
-    u_K.addBc( bc.get("Dirichlet") );
-    u_M.addBc( bc.get("Dirichlet") );
+
+    bc.setGeoMap(mp);
+    u_K.setup(bc, dirichlet::l2Projection, 0);
+    u_M.setup(bc, dirichlet::l2Projection, 0);
+    //#u_K.addBc( bc.get("Dirichlet") );
+    //#u_M.addBc( bc.get("Dirichlet") );
 
     // Set the source term
-    variable ff_K = K.getCoeff(f, G_K);
-    variable ff_M = M.getCoeff(f, G_M);
+    auto ff_K = K.getCoeff(f, G_K);
+    auto ff_M = M.getCoeff(f, G_M);
 
     // Initialize and assemble the system matrix
     K.initSystem();
@@ -230,7 +234,8 @@ private:
 
     // Enforce Neumann conditions to right-hand side
     variable g_Neumann = K.getBdrFunction();
-    K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bc.neumannSides() );
+    K.assembleBdr(bc.get("Neumann"), u_K * g_Neumann.val() * nv(G_K).norm() );
+    //#K.assembleRhsBc(u_K * g_Neumann.val() * nv(G_K).norm(), bc.neumannSides() );
 
     // Determine MGRIT levels a priori
     int numMGRITLevels = 1;
@@ -276,7 +281,7 @@ private:
       gsStopwatch clock;
       clock.restart();
 
-      sol.setZero(M.numDofs());
+      sol.setZero(M.numDofs(),1);
 
       switch((gsXBraid_typeMethod)typeMethod) {
       case gsXBraid_typeMethod::FE_FE:
