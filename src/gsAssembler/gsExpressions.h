@@ -134,6 +134,7 @@ template<class E> class cb_expr;
 template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
+template<class E> class ramp_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
 template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::ScalarValued> class mult_expr
@@ -239,6 +240,10 @@ public:
     /// Returns the sign of the expression
     sign_expr<E> sgn() const
     { return sign_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the expression's positive part
+    ramp_expr<E> ramp() const
+    { return ramp_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns an evaluation of the (sub-)expression in temporary memory
     temp_expr<E> temp() const
@@ -2160,6 +2165,38 @@ public:
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os<<"sgn("; _u.print(os); os <<")"; }
+};
+
+/**
+   Expression for the sign of another expression
+*/
+template<class E>
+class ramp_expr : public _expr<ramp_expr<E> >
+{
+    typename E::Nested_t _u;
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = E::ScalarValued, Space = E::Space, ColBlocks= E::ColBlocks};
+
+    ramp_expr(_expr<E> const& u) : _u(u) { }
+
+    auto eval(const index_t k) const -> decltype( _u.eval(k).cwiseMax(0) )
+    {   
+        return _u.eval(k).cwiseMax(0.0); // component-wise maximum with zero
+    }
+
+    const index_t rows() const { return 0;}//_u.rows(); }
+    const index_t cols() const { return 0;}//_u.cols(); }
+
+    void parse(gsExprHelper<Scalar> & el) const
+    { _u.parse(el); }
+
+    static bool isScalar() { return true; }
+
+    const gsFeSpace<Scalar> & rowVar() const {return _u.rowVar();}
+    const gsFeSpace<Scalar> & colVar() const {return _u.colVar();}
+
+    void print(std::ostream &os) const { os<<"ramp("; _u.print(os); os <<")"; }
 };
 
 
