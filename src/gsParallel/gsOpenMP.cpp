@@ -189,7 +189,7 @@ int omp_get_max_task_priority(void)
 
 void omp_init_lock(omp_lock_t *arg)
 {
-    arg->lock = UNLOCKED;
+    arg->lock = OMP_UNLOCKED;
 }
 
 void omp_init_lock_with_hint(omp_lock_t *arg, omp_lock_hint_t hint)
@@ -199,16 +199,16 @@ void omp_init_lock_with_hint(omp_lock_t *arg, omp_lock_hint_t hint)
 
 void omp_destroy_lock(omp_lock_t *arg)
 {
-    arg->lock = INIT;
+    arg->lock = OMP_INIT;
 }
 
 void omp_set_lock(omp_lock_t *arg)
 {
-    if (arg->lock == UNLOCKED)
+    if (arg->lock == OMP_UNLOCKED)
     {
-        arg->lock = LOCKED;
+        arg->lock = OMP_LOCKED;
     }
-    else if (arg->lock == LOCKED)
+    else if (arg->lock == OMP_LOCKED)
     {
         fprintf(stderr, "error: deadlock in using lock variable\n");
         exit(1);
@@ -221,11 +221,11 @@ void omp_set_lock(omp_lock_t *arg)
 
 void omp_unset_lock(omp_lock_t *arg)
 {
-    if (arg->lock == LOCKED)
+    if (arg->lock == OMP_LOCKED)
     {
-        arg->lock = UNLOCKED;
+        arg->lock = OMP_UNLOCKED;
     }
-    else if (arg->lock == UNLOCKED)
+    else if (arg->lock == OMP_UNLOCKED)
     {
         fprintf(stderr, "error: lock not set\n");
         exit(1);
@@ -239,12 +239,12 @@ void omp_unset_lock(omp_lock_t *arg)
 
 int omp_test_lock(omp_lock_t *arg)
 {
-    if (arg->lock == UNLOCKED)
+    if (arg->lock == OMP_UNLOCKED)
     {
-        arg->lock = LOCKED;
+        arg->lock = OMP_LOCKED;
         return 1;
     }
-    else if (arg->lock == LOCKED)
+    else if (arg->lock == OMP_LOCKED)
     {
         return 0;
     }
@@ -256,7 +256,7 @@ int omp_test_lock(omp_lock_t *arg)
 
 void omp_init_nest_lock(omp_nest_lock_t *arg)
 {
-    arg->owner = NOOWNER;
+    arg->owner = OMP_NOOWNER;
     arg->count = 0;
 }
 
@@ -268,19 +268,19 @@ void omp_init_nest_lock_with_hint(omp_nest_lock_t *arg,
 
 void omp_destroy_nest_lock(omp_nest_lock_t *arg)
 {
-    arg->owner = NOOWNER;
-    arg->count = UNLOCKED;
+    arg->owner = OMP_NOOWNER;
+    arg->count = OMP_UNLOCKED;
 }
 
 void omp_set_nest_lock(omp_nest_lock_t *arg)
 {
-    if (arg->owner == MASTER && arg->count >= 1)
+    if (arg->owner == OMP_MASTER && arg->count >= 1)
     {
         arg->count++;
     }
-    else if (arg->owner == NOOWNER && arg->count == 0)
+    else if (arg->owner == OMP_NOOWNER && arg->count == 0)
     {
-        arg->owner = MASTER;
+        arg->owner = OMP_MASTER;
         arg->count = 1;
     }
     else
@@ -292,15 +292,15 @@ void omp_set_nest_lock(omp_nest_lock_t *arg)
 
 void omp_unset_nest_lock(omp_nest_lock_t *arg)
 {
-    if (arg->owner == MASTER && arg->count >= 1)
+    if (arg->owner == OMP_MASTER && arg->count >= 1)
     {
         arg->count--;
         if (arg->count == 0)
         {
-            arg->owner = NOOWNER;
+            arg->owner = OMP_NOOWNER;
         }
     }
-    else if (arg->owner == NOOWNER && arg->count == 0)
+    else if (arg->owner == OMP_NOOWNER && arg->count == 0)
     {
         fprintf(stderr, "error: lock not set\n");
         exit(1);

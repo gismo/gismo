@@ -170,7 +170,7 @@ typedef struct omp_lock_t {
     int lock;
 } omp_lock_t;
 
-enum { UNLOCKED = -1, INIT, LOCKED };
+enum { OMP_UNLOCKED = -1, OMP_INIT, OMP_LOCKED };
 
 void GISMO_EXPORT omp_init_lock(omp_lock_t *arg);
 
@@ -207,7 +207,7 @@ typedef struct omp_nest_lock_t {
     int count;
 } omp_nest_lock_t;
 
-enum { NOOWNER = -1, MASTER = 0 };
+enum { OMP_NOOWNER = -1, OMP_MASTER = 0 };
 
 void GISMO_EXPORT omp_init_nest_lock(omp_nest_lock_t *arg);
 
