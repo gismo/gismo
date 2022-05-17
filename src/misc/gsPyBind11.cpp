@@ -51,16 +51,18 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_enum_gsBoundary( core );
 
   gismo::pybind11_init_gsBasis( core );
-  gismo::pybind11_init_gsFunction( core );
+  gismo::pybind11_init_gsBasisFun( core );
   gismo::pybind11_init_gsFunctionSet( core );
+  gismo::pybind11_init_gsFunction( core );
   gismo::pybind11_init_gsFunctionExpr( core );
+  gismo::pybind11_init_gsBoxTopology( core );
   gismo::pybind11_init_gsGeometry( core );
   gismo::pybind11_init_gsMultiPatch( core );
   gismo::pybind11_init_gsMultiBasis( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
-  hsplines.attr("__name__") = "pygismo.hspline";
+  hsplines.attr("__name__") = "pygismo.hsplines";
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
 
@@ -85,6 +87,7 @@ PYBIND11_MODULE(pygismo, m) {
 
   gismo::pybind11_init_gsCmdLine( io );
   gismo::pybind11_init_gsFileData( io );
+  gismo::pybind11_init_gsReadFile( io );
   gismo::pybind11_init_gsOptionList (io );  
 
   py::module matrix = m.def_submodule("matrix");
@@ -105,6 +108,17 @@ PYBIND11_MODULE(pygismo, m) {
   modelling.attr("__name__") = "pygismo.modelling";
   modelling.attr("__version__") = GISMO_VERSION;
   modelling.doc() = "G+Smo (Geometry + Simulation Modules): Modelling module";
+
+  py::module msplines = m.def_submodule("msplines");
+
+  hsplines.attr("__name__") = "pygismo.msplines";
+  hsplines.attr("__version__") = GISMO_VERSION;
+  hsplines.doc() = "G+Smo (Geometry + Simulation Modules): MSplines module";
+
+  // gismo::pybind11_init_gsMappedSpline( msplines );
+  // gismo::pybind11_init_gsMappedBasis1( msplines );
+  gismo::pybind11_init_gsMappedBasis2( msplines );
+  // gismo::pybind11_init_gsMappedBasis3( msplines );
 
   py::module mpi = m.def_submodule("mpi");
   

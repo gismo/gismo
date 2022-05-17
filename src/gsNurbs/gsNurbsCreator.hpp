@@ -211,7 +211,7 @@ gsNurbsCreator<T>::BSplineUnitInterval(short_t deg)
     gsKnotVector<T> KV(0,1, 0,deg+1);
     gsMatrix<T> C(deg+1, 1);
     for (short_t i = 0; i <= deg; ++i)
-        C(i) = i / static_cast<T>(deg);
+        C(i) = static_cast<T>(i) / static_cast<T>(deg);
     return BSplinePtr(new gsBSpline<T>(KV, give(C)));
 }
 
@@ -228,7 +228,7 @@ gsNurbsCreator<T>::BSplineRectangle( T const & low_x,
 
     const T pi = 3.1415926535897932384626433832795;
 
-    T r = turndeg / 180 * pi;
+    T r = turndeg / (T)(180) * pi;
 
     C <<  low_x, low_y ,
         upp_x, low_y,
@@ -251,11 +251,11 @@ gsNurbsCreator<T>::BSplineRectangle( T const & low_x,
     D(6,0) = C(2,0); D(6,1) = C(2,1);
     D(8,0) = C(3,0); D(8,1) = C(3,1);
 
-    D(1,0) = (C(0,0)+C(1,0))/2; D(1,1) = (C(0,1)+C(1,1))/2;
-    D(3,0) = (C(0,0)+C(2,0))/2; D(3,1) = (C(0,1)+C(2,1))/2;
-    D(5,0) = (C(3,0)+C(1,0))/2; D(5,1) = (C(3,1)+C(1,1))/2;
-    D(7,0) = (C(2,0)+C(3,0))/2; D(7,1) = (C(2,1)+C(3,1))/2;
-    D(4,0) = (C(0,0)+C(3,0))/2; D(4,1) = (C(0,1)+C(3,1))/2;
+    D(1,0) = (C(0,0)+C(1,0))/(T)(2); D(1,1) = (C(0,1)+C(1,1))/(T)(2);
+    D(3,0) = (C(0,0)+C(2,0))/(T)(2); D(3,1) = (C(0,1)+C(2,1))/(T)(2);
+    D(5,0) = (C(3,0)+C(1,0))/(T)(2); D(5,1) = (C(3,1)+C(1,1))/(T)(2);
+    D(7,0) = (C(2,0)+C(3,0))/(T)(2); D(7,1) = (C(2,1)+C(3,1))/(T)(2);
+    D(4,0) = (C(0,0)+C(3,0))/(T)(2); D(4,1) = (C(0,1)+C(3,1))/(T)(2);
 
     return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(D)));
 
@@ -324,7 +324,7 @@ gsNurbsCreator<T>::BSplineSquareGrid(int n, int m,
     for(int i = 0; i < n; i++)
         for(int j = 0; j < m; j++)
         {
-            mp.addPatch(BSplineSquare(r,lx + r*i ,ly + r*j)) ;
+            mp.addPatch(BSplineSquare(r,lx + r*(T)(i) ,ly + r*(T)(j))) ;
         }
     mp.computeTopology();
     return mp;
@@ -388,9 +388,9 @@ gsNurbsCreator<T>::BSplineCube(short_t deg)
         for (int j = 0; j <= deg; ++j)
             for (int i = 0; i <= deg; ++i)
             {
-                C(r, 0) = ((T) i) / deg;
-                C(r, 1) = ((T) j) / deg;
-                C(r, 2) = ((T) k) / deg;
+                C(r, 0) = ((T) i) / (T)(deg);
+                C(r, 1) = ((T) j) / (T)(deg);
+                C(r, 2) = ((T) k) / (T)(deg);
                 ++r;
             }
 
@@ -411,7 +411,7 @@ gsNurbsCreator<T>::BSplineCubeGrid(int n, int m,int p,
         for(int j = 0; j < m; j++)
             for(int k = 0; k < p; k++)
         {
-            mp.addPatch(BSplineCube(r,lx + r*i ,ly + r*j,lz+r*k)) ;
+            mp.addPatch(BSplineCube(r,lx + r*(T)(i) ,ly + r*(T)(j),lz+r*(T)(k))) ;
         }
     mp.computeTopology();
     return mp;

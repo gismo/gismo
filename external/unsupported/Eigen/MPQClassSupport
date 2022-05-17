@@ -30,7 +30,7 @@ namespace Eigen
    { return ::max(x,y); }
 
    template<> EIGEN_DEVICE_FUNC EIGEN_ALWAYS_INLINE 
-   bool isfinite(const std::complex<mpq_class>& x)
+   bool isfinite(const std::complex<mpq_class>&)
    { return true; }
 
   }

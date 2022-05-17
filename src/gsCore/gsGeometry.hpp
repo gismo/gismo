@@ -30,14 +30,43 @@ class gsSquaredDistance GISMO_FINAL : public gsFunction<T>
 {
 public:
     gsSquaredDistance(const gsGeometry<T> & g, const gsVector<T> & pt)
-    : m_g(g), m_pt(pt) { }
+        : m_g(&g), m_pt(&pt), m_gd(2) { }
 
     // f  = (1/2)*||x-pt||^2
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_g.eval_into(u,value);
+        m_g->eval_into(u, m_gd[0]);
         result.resize(1, u.cols());
-        result.at(0) = 0.5 * (value-m_pt).squaredNorm();
+        result.at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
+    }
+
+    void evalAllDers_into(const gsMatrix<T> & u, const int n,
+                          std::vector<gsMatrix<T> > & result) const
+    {
+        GISMO_ASSERT(1==u.cols(), "Single argument assumed");
+        result.resize(n+1);
+        m_g->evalAllDers_into(u, n, m_gd);
+
+        // f  = (1/2)*||x-pt||^2
+        result[0].resize(1, 1);
+        result[0].at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
+        if (n==0) return;
+
+        // f' = x'*(x-pt)        
+        auto jacT = m_gd[1].reshaped(u.rows(),m_pt->rows());
+        result[1].noalias() = jacT * (m_gd[0] - *m_pt);
+        if (n==1) return;
+
+        // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
+        tmp.noalias() = jacT * jacT.transpose();
+        index_t d2  = u.rows() * (u.rows()+1) / 2;
+        gsMatrix<T> hm;
+        for ( index_t k=0; k < m_g->coefs().cols(); ++k )
+        {
+            hm = util::secDerToHessian(m_gd[2].block(k*d2,0,d2,1),u.rows()).reshaped(u.rows(),u.rows());
+            tmp += (m_gd[0].at(k)-m_pt->at(k)) * hm;
+        }
+        util::hessianToSecDer(tmp,u.rows(),result[2]);
     }
 
     // f' = x'*(x-pt)
@@ -47,34 +76,35 @@ public:
         for ( index_t i=0; i != u.cols(); i++ )
         {
             tmp = u.col(i);
-            m_g.eval_into(tmp,value);
-            m_g.jacobian_into(tmp,jac);
-            result.col(i).noalias() = jac.transpose() * (value - m_pt);
+            m_g->eval_into(tmp,m_gd[0]);
+            m_g->jacobian_into(tmp,m_gd[1]);
+            result.col(i).noalias() = m_gd[1].transpose() * (m_gd[0] - *m_pt);
         }
     }
 
-    // f' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
+    // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
     void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
                       index_t) const
     {
-        m_g.eval_into(u,value);
-        m_g.jacobian_into(u,jac);
-        result.noalias() = jac.transpose() * jac;
-        for ( index_t k=0; k < m_g.coefs().cols(); ++k )
+        m_g->eval_into(u,m_gd[0]);
+        m_g->jacobian_into(u,m_gd[1]);
+        result.noalias() = m_gd[1].transpose() * m_gd[1];
+        for ( index_t k=0; k < m_g->coefs().cols(); ++k )
         {
-            tmp = m_g.hessian(u,k);
-            result.noalias() += (value.at(k)-m_pt.at(k))*tmp;
+            tmp = m_g->hessian(u,k);
+            result.noalias() += (m_gd[0].at(k)-m_pt->at(k))*tmp;
         }
     }
 
-    gsMatrix<T> support() const {return m_g.support()  ;}
-    short_t domainDim ()  const {return m_g.domainDim();}
+    gsMatrix<T> support() const {return m_g->support()  ;}
+    short_t domainDim ()  const {return m_g->domainDim();}
     short_t targetDim ()  const {return 1;}
 
 private:
-    const gsGeometry<T> & m_g;
-    const gsVector<T> & m_pt;
-    mutable gsMatrix<T> tmp, value, jac;
+    const gsGeometry<T> * m_g;
+    const gsVector<T> * m_pt;
+    mutable std::vector<gsMatrix<T> > m_gd;
+    mutable gsMatrix<T> tmp;
 };
 
 template<class T>
@@ -104,7 +134,7 @@ gsMatrix<T> gsGeometry<T>::parameterCenter( const boxSide& bc )
     for (index_t d=0; d<dim;++d)
     {
         if (d != dir)
-            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / T(2);
+            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / (T)(2);
         else if (bc.parameter())
             coordinates(d,0) = supp(d,1);
         else
@@ -248,10 +278,10 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 }
 
 template<class T>
-void gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
-                                   gsVector<T> & result,
-                                   const T accuracy,
-                                   const bool useInitialPoint) const
+T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
+                                gsVector<T> & result,
+                                const T accuracy,
+                                const bool useInitialPoint) const
 {
     GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
                   pt.rows() <<"!="<< targetDim() );
@@ -260,11 +290,12 @@ void gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
     gsMinimizer<T> fmin(dist2);
     fmin.solve();
     result = fmin.currentDesign();
-    return;
 #else
     gsSquaredDistance<T> dist2(*this, pt);
-    result = dist2.argMin(accuracy*accuracy, 10);
+    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 100, result)
+    : dist2.argMin(accuracy*accuracy, 100) ;
 #endif
+    return math::sqrt( dist2.eval(result).value() );
 }
 
 template<class T>
@@ -443,20 +474,20 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
         extractRows(m_coefs,tmp.active(0),coefM);
 
         if (flags & NEED_VALUE)
-            out.values[0]=coefM.transpose()*tmp.values[0];
+            out.values[0].noalias()=coefM.transpose()*tmp.values[0];
         if (flags & NEED_DERIV)
         {
             const index_t derS = tmp.derivSize();
             out.values[1].resize(derS*numCo,numPt);
             for (index_t p=0; p< numPt; ++p)
-                out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
+                out.values[1].reshapeCol(p, derS, numCo).noalias() = tmp.deriv(p)*coefM;
         }
         if (flags & NEED_DERIV2)
         {
             const index_t derS = tmp.deriv2Size();
             out.values[2].resize(derS*numCo,numPt);
             for (index_t p=0; p< numPt; ++p)
-                out.values[2].reshapeCol(p, derS, numCo) = tmp.deriv2(p)*coefM;
+                out.values[2].reshapeCol(p, derS, numCo).noalias() = tmp.deriv2(p)*coefM;
         }
         if (flags & NEED_ACTIVE)
             this->active_into(in.col(0), out.actives);
@@ -476,11 +507,11 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
         {
             extractRows(m_coefs,tmp.active(p),coefM);
             if (flags & NEED_VALUE)
-                out.values[0].reshapeCol(p,1,numCo) = tmp.eval(p)*coefM;
+                out.values[0].reshapeCol(p,1,numCo).noalias() = tmp.eval(p)*coefM;
             if (flags & NEED_DERIV)
-                out.values[1].reshapeCol(p, derS, numCo) = tmp.deriv(p)*coefM;
+                out.values[1].reshapeCol(p, derS, numCo).noalias() = tmp.deriv(p)*coefM;
             if (flags & NEED_DERIV2)
-                out.values[2].reshapeCol(p, der2S, numCo) = tmp.deriv2(p)*coefM;
+                out.values[2].reshapeCol(p, der2S, numCo).noalias() = tmp.deriv2(p)*coefM;
         }
     }
 }

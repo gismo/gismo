@@ -406,13 +406,13 @@ void gsCmdLinePrivate::GismoCmdOut::usage(TCLAP::CmdLineInterface& c)
     }
 
     // then the rest
-    for (TCLAP::ArgListIterator it = argList.begin(); it != argList.end(); it++)
-    if ( !xorHandler.contains( (*it) ) )
-    {
-        spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 );
-        spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 );
-        gsInfo << std::endl;
-    }
+    for (std::list<TCLAP::Arg*>::reverse_iterator it = argList.rbegin(); it != argList.rend(); it++)
+        if ( !xorHandler.contains( (*it) ) )
+        {
+            spacePrint( gsInfo, (*it)->longID(), 75, 3, 3 );
+            spacePrint( gsInfo, (*it)->getDescription(), 75, 5, 0 );
+            gsInfo << std::endl;
+        }
 }
 
 

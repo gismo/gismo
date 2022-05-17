@@ -22,19 +22,20 @@ namespace gismo
 {
 
 // Adaptor to compute Hessian
-template<typename T>
-void secDerToHessian(typename gsMatrix<T>::constRef & secDers,
+template <typename Derived>
+void secDerToHessian(const Eigen::DenseBase<Derived> &  secDers,
                      const index_t dim,
-                     Eigen::Matrix<T,Dynamic,Dynamic> & hessian)
+                     gsMatrix<typename Derived::Scalar> & hessian)
 {
     const index_t sz = dim*(dim+1)/2;
-    const gsAsConstMatrix<T> ders(secDers.data(), sz, secDers.size() / sz );
+    const gsAsConstMatrix<typename Derived::Scalar>
+        ders(secDers.derived().data(), sz, secDers.size() / sz );
     hessian.resize(dim*dim, ders.cols() );
 
     switch ( dim )
     {
     case 1:
-        hessian = secDers; // ders
+        hessian = secDers.transpose(); //==ders
         break;
     case 2:
         hessian.row(0)=ders.row(0);//0,0
@@ -122,19 +123,20 @@ template<class E> class sqNorm_expr;
 template<class E> class det_expr;
 template<class E> class value_expr;
 template<class E> class asdiag_expr;
+template<class E> class max_expr;
 template<class E> class rowsum_expr;
 template<class E> class colsum_expr;
 template<class E> class col_expr;
 template<class T> class meas_expr;
 template<class E> class inv_expr;
-template<class E> class tr_expr;
+template<class E, bool cw = false> class tr_expr;
 template<class E> class cb_expr;
 template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
-template<class E1, class E2, bool = E1::ColBlocks> class mult_expr
+template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::ScalarValued> class mult_expr
 {using E1::GISMO_ERROR_mult_expr_has_invalid_template_arguments;};
 
 // Call as pow(a,b)
@@ -224,7 +226,11 @@ public:
 
     /// Returns the transpose of the expression
     tr_expr<E> tr() const
-    { return tr_expr<E>(static_cast<E const&>(*this)); }
+    { return tr_expr<E,false>(static_cast<E const&>(*this)); }
+
+    /// Returns the coordinate-wise transpose of the expression
+    tr_expr<E,true> cwisetr() const
+    { return tr_expr<E,true>(static_cast<E const&>(*this)); }
 
     /// Returns the puts the expression to colBlocks
     cb_expr<E> cb() const
@@ -279,6 +285,10 @@ public:
     /// Returns a diagonal matrix expression of the vector expression
     asdiag_expr<E> asDiag() const
     { return asdiag_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the rowSum of a matrix
+    max_expr<E> max() const
+    { return max_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the rowSum of a matrix
     rowsum_expr<E> rowSum() const
@@ -706,15 +716,24 @@ public:
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
 
+    typedef integral_expr<T> AreaRetType;
+    AreaRetType area() const
+    { return integral(_expr<T,true>(1)); }
+
+    typedef integral_expr<meas_expr<T> > PHAreaRetType;
+    /// The diameter of the element on the physical space
+    PHAreaRetType area(const gsGeometryMap<Scalar> & _G) const
+    { return integral(meas_expr<T>(_G)); }
+
     typedef pow_expr<integral_expr<T> > DiamRetType;
     /// The diameter of the element (on parameter space)
     DiamRetType diam() const //-> int(1)^(1/d)
-    { return pow(integral(_expr<T,true>(1)),(T)(1)/2); }
+    { return pow(integral(_expr<T,true>(1)),(T)(1)/(T)(2)); }
 
     typedef pow_expr<integral_expr<meas_expr<T> > > PHDiamRetType;
     /// The diameter of the element on the physical space
     PHDiamRetType diam(const gsGeometryMap<Scalar> & _G) const
-    { return pow(integral(meas_expr<T>(_G)),(T)(1)/2); }
+    { return pow(integral(meas_expr<T>(_G)),(T)(1)/(T)(2)); }
 
     //const gsMatrix<T> points() const {return pts;}
 
@@ -747,22 +766,22 @@ public:
     enum {Space= 0, ScalarValued= 1, ColBlocks = 0};
 
     integral_expr(const gsFeElement<Scalar> & el, const _expr<E> & u)
-    : _e(el), _ff(u) { }
+    : m_val(-1), _e(el), _ff(u) { }
 
     const Scalar & eval(const index_t k) const
     {
         GISMO_ENSURE(_e.isValid(), "Element is valid within integrals only.");
-        if (0==k)
+        // if (0==k)
         {
             const Scalar * w = _e.weights().data();
             m_val = (*w) * _ff.val().eval(0);
-            for (index_t k = 1; k != _e.weights().rows(); ++k)
-                m_val += (*(++w)) * _ff.val().eval(k);
+            for (index_t j = 1; j != _e.weights().rows(); ++j)
+                m_val += (*(++w)) * _ff.val().eval(j);
         }
         return m_val;
     }
 
-    inline integral_expr<E> val() const { return *this; }
+    inline const integral_expr<E> & val() const { return *this; }
     inline index_t rows() const { return 0; }
     inline index_t cols() const { return 0; }
     void parse(gsExprHelper<Scalar> & evList) const
@@ -774,7 +793,11 @@ public:
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void print(std::ostream &os) const
-    { os << "integral(.)"; }
+    {
+        os << "integral(";
+        _ff.print(os);
+        os <<")";
+    }
 };
 
 /*
@@ -846,7 +869,7 @@ public:
     {
         //evList.add(_G); //done in gsExprHelper
         evList.add(*this);
-        this->data().flags |= NEED_VALUE;
+        this->data().flags |= NEED_VALUE|NEED_ACTIVE;
         //_G.data().flags  |= NEED_VALUE; //done in gsExprHelper
     }
 };
@@ -891,7 +914,7 @@ public:
     inline const gsMatrix<T> & fixedPart() const {return m_sd->fixedDofs;}
     gsMatrix<T> & fixedPart() {return m_sd->fixedDofs;}
 
-    index_t   id() const { return (m_sd ? m_sd->id : -1); }
+    index_t   id() const { return (m_sd ? m_sd->id : -101); }
     void setSpaceData(gsFeSpaceData<T>& sd) {m_sd = &sd;}
 
     index_t   interfaceCont() const {return m_sd->cont;}
@@ -935,11 +958,11 @@ public:
     // space restrictTo(boundaries);
     // space restrictTo(bcRefList domain);
 
-    void setupMapper(gsDofMapper dofsMapper)
+    void setupMapper(gsDofMapper dofsMapper) const
     {
-        GISMO_ASSERT( m_sd->mapper.isFinalized(), "The provided dof-mapper is not finalized.");
-        GISMO_ASSERT( m_sd->mapper.mapSize()==this->source().totalSize(), "The dof-mapper is not consistent.");
-        m_sd->mapper.swap(dofsMapper);
+        GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
+        GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()), "The dof-mapper is not consistent.");
+        m_sd->mapper = give(dofsMapper);
     }
 
     void setup(const index_t _icont = -1) const
@@ -1042,11 +1065,16 @@ public:
             for (typename gsBoundaryConditions<T>::const_citerator
                      it = bc.cornerBegin(); it != bc.cornerEnd(); ++it)
             {
-                //assumes (unk == -1 || it->unknown == unk)
-                GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
-                             "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner),
-                                          it->patch, it->unknown);
+                for (index_t r = 0; r!=this->dim(); ++r)
+                {
+                    if (it->component!=-1 && r!=it->component) continue;
+
+                    //assumes (unk == -1 || it->unknown == unk)
+                    GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
+                                 "Problem: a corner boundary condition is set on a patch id which does not exist.");
+                    m_sd->mapper.eliminateDof(mb->basis(it->patch).functionAtCorner(it->corner),
+                                              it->patch, it->component);
+                }
             }
 
         } else if (const gsBasis<T> *b =
@@ -1164,7 +1192,7 @@ public:
                 //assumes (unk == -1 || it->unknown == unk)
                 GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
                              "Problem: a corner boundary condition is set on a patch id which does not exist.");
-                m_sd->mapper.eliminateDof(mapb->basis(it->patch).functionAtCorner(it->corner), it->patch);
+                m_sd->mapper.eliminateDof(mapb->basis(it->patch).functionAtCorner(it->corner), it->patch, it->component);
             }
         } else
         {
@@ -1176,17 +1204,6 @@ public:
 
         // Compute Dirichlet node values
         gsDirichletValues(bc, dir_values, *this);
-
-        // corner values (overrides edge BCs)
-        gsMatrix<T> & fixedDofs = const_cast<gsMatrix<T> &>(m_sd->fixedDofs);
-        for ( typename gsBoundaryConditions<T>::const_citerator
-                  it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
-        {
-            GISMO_ASSERT(nullptr!=mb, "Assumes a multibasis at this point");
-            const int i  = mb->basis(it->patch).functionAtCorner(it->corner);
-            const int ii = m_sd->mapper.bindex( i , it->patch, 0 );//component=0 for now! Todo.
-            fixedDofs.at(ii) = it->value;
-        }
     }
 
     void print(std::ostream &os) const { os << "u"; }
@@ -1394,8 +1411,8 @@ public:
 /*
   Expression for the transpose of an expression
 */
-template<class E>
-class tr_expr : public _expr<tr_expr<E> >
+template<class E, bool cw>
+class tr_expr : public _expr<tr_expr<E,cw> >
 {
     typename E::Nested_t _u;
 
@@ -1408,7 +1425,7 @@ public:
 
 public:
     enum {ColBlocks = E::ColBlocks, ScalarValued=E::ScalarValued};
-    enum {Space = (E::Space==1?2:(E::Space==2?1:E::Space))};
+    enum {Space = cw?E::Space:(E::Space==1?2:(E::Space==2?1:E::Space))};
 
     mutable Temporary_t res;
     const Temporary_t & eval(const index_t k) const
@@ -1427,8 +1444,8 @@ public:
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
-    const gsFeSpace<Scalar> & rowVar() const { return _u.colVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & rowVar() const { return cw?_u.rowVar():_u.colVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return cw?_u.colVar():_u.rowVar(); }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
@@ -1473,7 +1490,7 @@ public:
         ev = _u.eval(k);
         if (E::ColBlocks)
         {
-            return res;
+            return ev;
         }
         else
         {
@@ -1569,7 +1586,7 @@ class trace_expr  : public _expr<trace_expr<E> >
 {
 public:
     typedef typename E::Scalar Scalar;
-    enum {ScalarValued = 0, Space = E::Space, ColBlocks= E::ColBlocks};
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks= 0};
 
 private:
     typename E::Nested_t _u;
@@ -1588,17 +1605,23 @@ public:
         auto tmp = _u.eval(k);
         const index_t cb = _u.rows();
         const index_t r  = _u.cardinality();
-        res.resize(r, 1);
+        if (Space==1)
+            res.resize(r, 1);
+        else
+            res.resize(1, r);
+
         for (index_t i = 0; i!=r; ++i)
-            res(i,0) = tmp.middleCols(i*cb,cb).trace();
+            res.at(i) = tmp.middleCols(i*cb,cb).trace();
         return res;
     }
 
     // choose if !ColBlocks
     //todo: Scalar eval(const index_t k) const
 
-    index_t rows() const { return _u.cols() / _u.rows(); }
+    index_t rows() const { return _u.cols() / _u.rows(); } //_u.cardinality()?
     index_t cols() const { return 1; }
+
+    index_t cardinality_impl() const { return _u.cardinality(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
@@ -1939,6 +1962,66 @@ public:
     { _u.parse(evList); }
 
     void print(std::ostream &os) const { os << "diag("; _u.print(os); os <<")";}
+};
+
+// Takes the max of a vector
+template<class E>
+class max_expr  : public _expr<max_expr<E> >
+{
+public:
+    typedef typename E::Scalar Scalar;
+    enum {ScalarValued = 0, Space = E::Space, ColBlocks = 1};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> tmp;
+    mutable gsMatrix<Scalar> res;
+
+public:
+
+    max_expr(_expr<E> const& u) : _u(u)
+    {
+        //GISMO_ASSERT( _u.rows()*_u.cols() == _n*_m, "Wrong dimension"); //
+    }
+
+    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
+
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
+    void setFlag() const { _u.setFlag(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+    void print(std::ostream &os) const { os << "max("; _u.print(os); os<<")"; }
+private:
+    template<class U> inline
+    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        tmp = u.eval(k);
+
+        res.resize(1,u.cardinality());
+        if (E::ColBlocks)
+            for (index_t c=0; c!=_u.cardinality(); c++)
+                res(0,c) = tmp.block(0,c*u.cols(),u.rows(),u.cols()).maxCoeff();
+        else
+            for (index_t c=0; c!=_u.rows(); c++)
+                res(0,c) = tmp.block(c*u.rows(),0,u.rows(),u.cols()).maxCoeff();
+        return res;
+    }
+
+
+    template<class U> inline
+    typename util::enable_if< !util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
+    eval_impl(const U & u, const index_t k)  const
+    {
+        res = u.eval(k).colwise().maxCoeff();
+        return res;
+    }
 };
 
 template<class E>
@@ -2737,6 +2820,8 @@ public:
     index_t rows() const { return _u.data().laplacians.rows(); }
     index_t cols() const { return 1; }
 
+    index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_u);
@@ -2849,7 +2934,7 @@ public:
         //GISMO_ASSERT(rows() == cols(), "The Jacobian matrix is not square");
     }
 
-    MatExprType eval(const index_t k) const { return _G.data().jacInv.reshapeCol(k,cols(),rows()).transpose(); }
+    MatExprType eval(const index_t k) const { return _G.data().jacInvTr.reshapeCol(k,cols(),rows()).transpose(); }
 
     index_t rows() const { return _G.data().dim.first;  }
     index_t cols() const { return _G.data().dim.second; }
@@ -2903,7 +2988,8 @@ public:
         return res;
     }
 
-    const gsFeSpace<Scalar> & rowVar() const { return rowVar_impl<E>(); }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    //const gsFeSpace<Scalar> & rowVar() const { return rowVar_impl<E>(); }
     const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     index_t rows() const { return rows_impl(_u); }
@@ -3102,7 +3188,7 @@ public:
     hess_expr(const gsFeSolution<T> & u) : _u(u) { }
 
     mutable gsMatrix<T> res;
-    const gsMatrix<T> eval(const index_t k) const
+    const gsMatrix<T> & eval(const index_t k) const
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected. Actives: \n"<<_u.data().actives);
 
@@ -3163,6 +3249,9 @@ public:
         else
             return _u.parDim() * (_u.parDim() + 1) / 2;
     }
+
+    const gsFeSpace<Scalar> & rowVar() const { return gsNullExpr<Scalar>::get(); }
+    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3325,8 +3414,9 @@ public:
 
   as well as
 
-  [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
-
+  both are ColBlocks: [A1 A2 A3] * [B1 B2 B3] = [A1*B1  A2*B2  A3*B3]
+                                                [A2*B1 ..           ]
+                                                [                   ]
 */
 template <typename E1, typename E2>
 class mult_expr<E1, E2, true> : public _expr<mult_expr<E1, E2, true> >
@@ -3339,7 +3429,7 @@ private:
 
     mutable gsMatrix<Scalar> res;
 public:
-    enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
+    enum {ScalarValued = 0, ColBlocks = E1::ColBlocks}; //(!)
     enum {Space = (int)E1::Space + (int)E2::Space };
 
     mult_expr(_expr<E1> const& u,
@@ -3462,7 +3552,6 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
-
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
 {
@@ -3538,7 +3627,11 @@ collapse_expr<E1,E2> collapse( _expr<E1> const& u, _expr<E2> const& v)
   Expression for the Frobenius matrix (or double dot) product (first
   version) Also block-wise
 
-  [A1 A2 A3] . [B1 B2 B3] = [A1.B1  A2.B2  A3.B3]
+  [A1 A2 A3] . [B1 B2 B3]
+  =
+  [ A1.B1  A1.B2  A1.B3 ]
+  [ A2.B1  A2.B2  A2.B3 ]
+  [ A3.B1  A3.B2  A3.B3 ]
 */
 template <typename E1, typename E2, bool = E2::ColBlocks>
 class frprod_expr : public _expr<frprod_expr<E1, E2> >
@@ -3574,8 +3667,8 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
         // assert _u.size()==_v.size()
-        const index_t rb = _u.rows(); //==cb
-        const index_t nb = _u.cols() / rb;
+        const index_t rb = _u.rows();
+        const index_t nb = _u.cardinality();
         auto A = _u.eval(k);
         auto B = _v.eval(k);
         res.resize(nb, nb);
@@ -3593,7 +3686,7 @@ public:
     { _u.parse(evList); _v.parse(evList); }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
 
     void print(std::ostream &os) const
     { os << "("; _u.print(os); os<<" % "; _v.print(os); os<<")";}
@@ -3637,7 +3730,7 @@ public:
         auto A = _u.eval(k);
         auto B = _v.eval(k);
         const index_t rb = A.rows(); //==cb
-        const index_t nb = A.cols() / rb;
+        const index_t nb = _u.cardinality();
         res.resize(nb, 1);
         for (index_t i = 0; i!=nb; ++i) // all with all
             res(i,0) =
@@ -3795,7 +3888,10 @@ public:
         GISMO_ENSURE((int)E1::Space == (int)E2::Space &&
                      _u.rowVar()==_v.rowVar() && _u.colVar()==_v.colVar(),
                      "Error: adding apples and oranges (use comma instead),"
-                     " namely:\n" << _u <<"\n"<<_v);
+                     " namely:\n" << _u <<"\n"<<_v<<
+                     " \nvars:\n" << _u.rowVar().id()<<"!="<<_v.rowVar().id() <<", "<< _u.colVar().id()<<"!="<<_v.colVar().id()<<
+                     " \nspaces:\n" << (int)E1::Space<< "!="<< (int)E2::Space
+            );
     }
 
     mutable Temporary_t res;
@@ -3856,7 +3952,7 @@ class summ_expr : public _expr<summ_expr<E1,E2> >
 public:
     typedef typename E1::Scalar Scalar;
 
-    enum {Space = E1::Space, ScalarValued= 0, ColBlocks= 1};
+    enum {Space = E1::Space, ScalarValued= 0, ColBlocks= E2::ColBlocks};
 
     summ_expr(E1 const& u, E2 const& M) : _u(u), _M(M) { }
 
@@ -3866,10 +3962,10 @@ public:
         const index_t sr = sl.rows();
         auto ml   = _M.eval(k);
         const index_t mr = ml.rows();
-        const index_t mb = ml.cols() / mr;
+        const index_t mb = _M.cardinality();
 
         GISMO_ASSERT(_M.cols()==_M.rows(),"Matrix must be square: "<< _M.rows()<<" x "<< _M.cols() << " expr: "<< _M );
-        GISMO_ASSERT(_M.cardinality()==_u.cols(),"cardinality must match vector, but card(M)="<<_M.cardinality()<<" and cols(u)="<<_u.cols());
+        GISMO_ASSERT(mb==_u.cols(),"cardinality must match vector, but card(M)="<<_M.cardinality()<<" and cols(u)="<<_u.cols());
 
         res.setZero(mr, sr * mr);
         for (index_t i = 0; i!=sr; ++i)

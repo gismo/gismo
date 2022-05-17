@@ -95,14 +95,14 @@ public:
     void setAdaptiveStepSize()    { m_adapt_step_size = true;  m_step_size = 0;         }
 
     /// @brief Set the step size
-    void setStepSize(T step_size) { m_adapt_step_size = false; m_step_size = step_size; }
+    void setStepSize(T step_size) { m_adapt_step_size = false; m_step_size = (gsOptionList::Real)step_size; }
 
     /// @brief Returns a list of default options
     static gsOptionList defaultOptions()
     {
         gsOptionList opt = Base::defaultOptions();
         opt.addSwitch("AdaptiveStepSize", "Adaptive step sizes (to minimize residual)", true );
-        opt.addReal  ("StepSize", "Step size (requires AdaptiveStepSize to be false)" , (T)0    );
+        opt.addReal  ("StepSize", "Step size (requires AdaptiveStepSize to be false)" , 0    );
         return opt;
     }
 
@@ -139,7 +139,7 @@ private:
     VectorType m_tmp;
     VectorType m_update;
     bool m_adapt_step_size;
-    T m_step_size;
+    gsOptionList::Real m_step_size;
 
 };
 

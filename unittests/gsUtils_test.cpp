@@ -283,7 +283,7 @@ TEST(name)
     CHECK_EQUAL("unsigned int", util::type<unsigned>::name());
     CHECK_EQUAL("long", util::type<long>::name());
     CHECK_EQUAL("unsigned long", util::type<unsigned long>::name());
-#ifndef _WIN32
+#ifndef _MSC_VER
     CHECK_EQUAL("long long", util::type<signed long long int>::name());
     CHECK_EQUAL("unsigned long long", util::type<unsigned long long int>::name());
     //CHECK_EQUAL("gismo::gsGenericGeometry<(" + util::type<short_t>::name() + ")2, " + util::type<real_t>::name() + ">", util::type<gsGenericGeometry<2> >::name());

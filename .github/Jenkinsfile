@@ -1,27 +1,28 @@
 // Jenkins script for G+Smo, Angelos Mantzaflaris, 2019
 
-// Gather builders , 'gismo-win7x64'
-def labels = ['gismo-ubuntu', 'gismo-mac1015', 'gismo-fedora', 'gismo-win10'] //'gismo-centos',
+def labels = ['gismo-ubuntu', 'gismo-mac1015', 'gismo-fedora'] //'gismo-centos',
 def builders = [:]
-for (x in labels)
+
+for (label in labels)
 {
-    def label = x
     builders[label] =
     {
         node(label)
-	{
-	        //for(e in env) {echo e + " is " + ${e}}
-   		dir('gismo_src') { checkout scm }
-	    	//buildGismo()
-		cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID-[jenkins] "
-		//-D CTEST_TEST_MODEL=Experimental
-		//-D CMAKE_ARGS='-DGISMO_BUILD_UNITTESTS=ON -DCMAKE_BUILD_TYPE=Release'
+        {
+            dir('gismo_src') { checkout scm }
+            cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID-[jenkins] "
+        }
+    }
+}
 
-//to do
-// cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./buildmgw -D CTEST_CMAKE_GENERATOR=\"MinGW Makefiles\" -D CTEST_SITE=$NODE_NAME-MinGW-$BUILD_ID-[jenkins] "
-
-// MacOSX: add path in ~/.MacOSX/environment.plist 
-	}
+def label = 'gismo-win10'
+builders[label] =
+{
+    node(label)
+    {
+	dir('gismo_src') { checkout scm }
+	cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./build -D CTEST_SITE=$NODE_NAME-$BUILD_ID-[jenkins] "
+	cmd "ctest -S gismo_src/cmake/ctest_script.cmake -D CTEST_SOURCE_DIRECTORY=./gismo_src -D CTEST_BINARY_DIRECTORY=./buildmgw -D CTEST_CMAKE_GENERATOR=\"MinGW Makefiles\" -D CTEST_SITE=$NODE_NAME-MinGW-$BUILD_ID-[jenkins] "
     }
 }
 
@@ -29,7 +30,5 @@ for (x in labels)
 parallel builders
 
 // Cross-platform cmd
-def cmd (acmd)
-{
-    if (isUnix()) { sh acmd } else { bat acmd}
-}
+def cmd (acmd) { if (isUnix()) { sh acmd } else { bat acmd} }
+//for(e in env) {echo e + " is " + ${e}}

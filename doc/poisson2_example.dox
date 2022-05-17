@@ -14,7 +14,7 @@ where \f$\mathbf{n}\f$ is the outward pointing unit normal vector,
 \f$\Gamma_D\f$ and \f$\Gamma_N\f$ are the parts of the boundary where Dirichlet (essential) and Neumann (natural) boundary conditions are prescribed, respectively. The corresponding weak formulation is:
 \f{eqnarray*}{
 \text{Find }u\in\Sigma_{h}\text{ such that}\\
-\int_\Omega \nabla u \cdot  \nabla \psi \text{d}\Omega = \int_\Omega f\psi \text{d}\Omega + \int_{\Gamma_N} g\psi \text{d}\Gamma\\
+\int_\Omega \nabla u \cdot  \nabla \psi \text{d}\Omega = \int_\Omega f\psi \text{d}\Omega + \int_{\Gamma_N} h\psi \text{d}\Gamma\\
 \forall\psi\in\Sigma_{h}
 \f}
 Where \f$\Sigma_{h}\f$ is the function space where the Dirichlet boundary conditions according to function \f$h\f$ are applied and \f$\psi\f$ are the basis functions.

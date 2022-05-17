@@ -84,10 +84,6 @@
 #include <gsUnum/gsUnum.h>
 #endif
 
-#ifdef GISMO_WITH_CODIPACK
-#include <gsCoDiPack/gsCoDiPack.h>
-#endif
-
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES

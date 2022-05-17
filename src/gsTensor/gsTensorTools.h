@@ -75,7 +75,7 @@ void tensorCombineTransferMatrices(
         bool more;
         do {
             // get the old tensor index
-            T contrib = T(1);
+            T contrib = (T)(1);
             for (unsigned i = 0; i < d; ++i)
             {
                 contrib *= it[i].value();

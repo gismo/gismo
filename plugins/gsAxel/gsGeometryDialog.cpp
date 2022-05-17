@@ -118,6 +118,7 @@ void gsGeometryDialog::initWidget(void) {
     layoutOpacity->addWidget(new QLabel("Opacity",this));
     layoutOpacity->addWidget(d->sliderOpacity);
     d->sliderOpacity->setMaximum(100);
+    d->sliderOpacity->setMinimum(0);
     d->sliderOpacity->setValue(initOpacityValue());
     
     //SHADER//
@@ -175,8 +176,8 @@ void gsGeometryDialog::initWidget(void) {
     QHBoxLayout *layoutSampling = new QHBoxLayout;
     layoutSampling->addWidget(new QLabel("Sampling",this));
     d->spinBoxSampling_u = new QSpinBox(this);
-    d->spinBoxSampling_u->setMaximum(5000);
-    d->spinBoxSampling_u->setMinimum(5);
+    d->spinBoxSampling_u->setButtonSymbols(QAbstractSpinBox::PlusMinus);//no arrows QAbstractSpinBox::NoButtons
+    d->spinBoxSampling_u->setRange(5,5000);
     d->spinBoxSampling_u->setValue(DEFAULT_SAMPLES);
     layoutSampling->addWidget(d->spinBoxSampling_u);
     connect(d->spinBoxSampling_u, SIGNAL(valueChanged(int)), this, SLOT(onSamplingDataChanged_u(int)));
@@ -463,7 +464,7 @@ void gsGeometryDialog::initComboBoxShaderValue(void)
                 items << list.at(i).fileName();
         }
         
-        qSort(items.begin(), items.end(), caseInsensitiveLessThan);
+        std::sort(items.begin(), items.end(), caseInsensitiveLessThan);
         int indInitShader = -1;
         int indCurrentShader = -1;
         
@@ -553,7 +554,7 @@ void gsGeometryDialog::onShaderStateChanged(bool isShader)
 
 void gsGeometryDialog::onOpacityChanged(int opacity)
 {
-    double opacity_d = 1.0 - 0.01 * opacity; // range from 0.00 to 1.00
+    double opacity_d = 0.01 * opacity; // range from 0.00 to 1.00
     d->data->setOpacity(opacity_d);
     
     //emit dataChangedByOpacity(d->data, opacity_d);
@@ -563,12 +564,12 @@ void gsGeometryDialog::onOpacityChanged(int opacity)
 
 int gsGeometryDialog::initOpacityValue(void)
 {
-    double initOpacity = 0.0;
+    double initOpacity = 1.0;
     double opacity = d->data->opacity();
     if(opacity > initOpacity)
         initOpacity = opacity;
     
-    return 100 * (1.0 - initOpacity);
+    return 100 * initOpacity;
 }
 
 QString gsGeometryDialog::initShaderValue(void)
@@ -592,7 +593,7 @@ void gsGeometryDialog::showBasis(void)
 	// Create basis object and add it in the object list
     gsBasisData * myData = new gsBasisData(myGismoData);
     // myData->setColor(QColor("#0080ff"));
-    // double opacity = 1.0 - 0.01 * d->sliderOpacity->value();
+    // double opacity = 0.01 * d->sliderOpacity->value();
     // myData->setOpacity(opacity);
     
 	emit dataInserted(myData);
@@ -728,11 +729,11 @@ void gsGeometryDialog::refineGeometry(void)
 
     if ( gismo::gsTHBSpline<2> * hb = dynamic_cast<gismo::gsTHBSpline<2>*>(myGismoData.get()) )
     {
-         gismo::gsMatrix<unsigned, 2, 2> elements;
+         gismo::gsMatrix<index_t, 2, 2> elements;
          hb->basis().elementSupport_into(parameter, elements);
          gsInfo<<"element support: \n"<<  elements <<"\n";
 
-         std::vector<unsigned> box;
+         std::vector<index_t> box;
          const int lvl = hb->basis().levelOf(parameter) + 1;// increase level by 1
          gsInfo<<"level: \n"<< lvl-1  <<"\n";
          box.push_back(lvl);

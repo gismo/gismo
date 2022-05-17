@@ -273,6 +273,14 @@ public:
         data->appendToRoot(node);
     }
 
+    /// Add a string to the Xml tree
+    void addString (const std::string & s, const std::string & label)
+    {
+        gsXmlNode* node = internal::makeNode("string",s,*data);
+        node->append_attribute(internal::makeAttribute("label", label, *data));
+        data->appendToRoot(node);
+    }
+
     std::string getString () const
     {
 
@@ -280,6 +288,42 @@ public:
         //node = getNextSibling(node, "string");
         std::string res( node->value() );
         return res;
+    }
+
+    std::string getString(index_t id) const
+    {
+        //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
+
+        gsXmlNode * root = getXmlRoot();
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = root->first_node();
+             child; child = child->next_sibling())
+        {
+            id_at = child->first_attribute("id");
+            if (id_at && atoi(id_at->value()) == id ) {
+                std::string res(child->value());
+                return res;
+            }
+        }
+        GISMO_ERROR("String with id " << id << " does not exist!");
+    }
+
+    std::string getString (const std::string & label) const
+    {
+        //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
+
+        gsXmlNode * root = getXmlRoot();
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = root->first_node();
+             child; child = child->next_sibling())
+        {
+            id_at = child->first_attribute("label");
+            if (id_at && id_at->value() == label ) {
+                std::string res(child->value());
+                return res;
+            }
+        }
+        GISMO_ERROR("String with label " << label << " does not exist!");
     }
 
     /// Returns the size of the data

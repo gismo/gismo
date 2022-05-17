@@ -538,7 +538,7 @@ private:
 
             // pivot row
             M.row(r).tail(bc).array() /= M(r, piv);
-            M(r, piv) = T(1);
+            M(r, piv) = (T)(1);
             
             // upper block
             M.block(0, piv+1, r, bc).noalias() -=

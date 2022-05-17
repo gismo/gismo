@@ -213,8 +213,8 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
                         // Mixed derivatives 2 * dudv N_i * dudv N_j + ...
                         else
                         {
-                            localAij += 2 * der2(i * stride + s, k) *
-                                            der2(j * stride + s, k);
+                            localAij += T(2) * der2(i * stride + s, k) *
+                                               der2(j * stride + s, k);
                         }
                     }
 
