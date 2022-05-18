@@ -2168,30 +2168,37 @@ public:
 };
 
 /**
-   Expression for the sign of another expression
+   Expression for the component-wise positive part
 */
 template<class E>
 class ramp_expr : public _expr<ramp_expr<E> >
 {
-    typename E::Nested_t _u;
 public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = E::ScalarValued, Space = E::Space, ColBlocks= E::ColBlocks};
+private:
+    typename E::Nested_t _u;
+    mutable gsMatrix<Scalar> res;
+public:
 
     ramp_expr(_expr<E> const& u) : _u(u) { }
-
-    auto eval(const index_t k) const -> decltype( _u.eval(k).cwiseMax(0) )
+    
+    const gsMatrix<Scalar> & eval(index_t k) const
+    // auto eval(const index_t k) const -> decltype( _u.eval(k).cwiseMax(0) )
     {   
-        return _u.eval(k).cwiseMax(0.0); // component-wise maximum with zero
+        res.resize(1,1);
+        res = _u.eval(k).cwiseMax(0.0); // component-wise maximum with zero
+        return res;
     }
+    
 
-    const index_t rows() const { return 0;}//_u.rows(); }
-    const index_t cols() const { return 0;}//_u.cols(); }
+    const index_t rows() const { return _u.rows(); }
+    const index_t cols() const { return _u.cols(); }
 
     void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
 
-    static bool isScalar() { return true; }
+    static bool isScalar() { return true; } // TODO: remove? 
 
     const gsFeSpace<Scalar> & rowVar() const {return _u.rowVar();}
     const gsFeSpace<Scalar> & colVar() const {return _u.colVar();}
