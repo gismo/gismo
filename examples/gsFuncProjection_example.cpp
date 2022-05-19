@@ -15,278 +15,10 @@
 //! [Include namespace]
 #include <gismo.h>
 
-#include <gsUnstructuredSplines/src/gsApproxC1Spline.h>
-#include <gsUnstructuredSplines/src/gsDPatch.h>
-#include <gsUnstructuredSplines/src/gsAlmostC1.h>
-#include <gsUnstructuredSplines/src/gsC1SurfSpline.h>
-
-#include <gsUtils/gsQuasiInterpolate.h>
 #include <gsUtils/gsFuncProjection.h>
 
 using namespace gismo;
 //! [Include namespace]
-
-/**
- * Smoothing method:
- * - m 0 == Approx C1 method
- * - m 1 == D-Patch method
- * - m 2 == Almost C1 method
- * - m 3 == Nitsche's method
- */
-enum MethodFlags
-{
-    APPROXC1       = 0, // Approx C1 Method
-    DPATCH         = 1, // D-Patch
-    ALMOSTC1       = 2, // Almost C1
-    NITSCHE        = 3, // Nitsche
-    SURFASG1       = 5, // AS-G1
-    // Add more [...]
-};
-
-void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMappedBasis<2,real_t> & bb2, gsDofMapper & mapper)
-{
-    mapper.setIdentity(bb2.nPatches(), bb2.size(), 1);
-
-    gsMatrix<index_t> bnd;
-    for (typename gsBoundaryConditions<real_t>::const_iterator
-                 it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it)
-    {
-        bnd = bb2.basis(it->ps.patch).boundary(it->ps.side());
-        mapper.markBoundary(it->ps.patch, bnd, 0);
-    }
-
-    for (typename gsBoundaryConditions<real_t>::const_iterator
-             it = bc.begin("Neumann"); it != bc.end("Neumann"); ++it)
-    {
-        bnd = bb2.basis(it->ps.patch).boundaryOffset(it->ps.side(),1);
-        mapper.markBoundary(it->ps.patch, bnd, 0);
-    }
-    mapper.finalize();
-}
-
-void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMultiBasis<> & dbasis, gsDofMapper & mapper)
-{
-    mapper.init(dbasis);
-
-    for (gsBoxTopology::const_iiterator it = dbasis.topology().iBegin();
-         it != dbasis.topology().iEnd(); ++it) // C^0 at the interface
-    {
-        dbasis.matchInterface(*it, mapper);
-    }
-
-    gsMatrix<index_t> bnd;
-    for (typename gsBoundaryConditions<real_t>::const_iterator
-                 it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it)
-    {
-        bnd = dbasis.basis(it->ps.patch).boundary(it->ps.side());
-        mapper.markBoundary(it->ps.patch, bnd, 0);
-    }
-
-    for (typename gsBoundaryConditions<real_t>::const_iterator
-                 it = bc.begin("Neumann"); it != bc.end("Neumann"); ++it)
-    {
-        bnd = dbasis.basis(it->ps.patch).boundaryOffset(it->ps.side(),1);
-        mapper.markBoundary(it->ps.patch, bnd, 0);
-    }
-    mapper.finalize();
-}
-
-void gsDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> & dbasis, gsBoundaryConditions<> & bc,
-                                           gsMappedBasis<2,real_t> & bb2, const expr::gsFeSpace<real_t> & u)
-{
-    const gsDofMapper & mapper = u.mapper();
-
-    gsMatrix<index_t> bnd = mapper.findFree(mapper.numPatches()-1);
-    gsDofMapper mapperBdy;
-    mapperBdy.setIdentity(bb2.nPatches(), bb2.size(), 1);  // bb2.nPatches() == 1
-    mapperBdy.markBoundary(0, bnd, 0);
-    mapperBdy.finalize();
-
-    gsExprAssembler<real_t> A(1,1);
-    A.setIntegrationElements(dbasis);
-
-    auto G = A.getMap(mp);
-    auto uu = A.getSpace(bb2);
-    auto g_bdy = A.getBdrFunction(G);
-
-    uu.setupMapper(mapperBdy);
-    gsMatrix<real_t> & fixedDofs_A = const_cast<expr::gsFeSpace<real_t>&>(uu).fixedPart();
-    fixedDofs_A.setZero( uu.mapper().boundarySize(), 1 );
-
-    real_t lambda = 1e-5;
-
-    A.initSystem();
-    A.assembleBdr(bc.get("Dirichlet"), uu * uu.tr() * meas(G));
-    A.assembleBdr(bc.get("Dirichlet"), uu * g_bdy * meas(G));
-    A.assembleBdr(bc.get("Neumann"),
-                  lambda * (igrad(uu, G) * nv(G).normalized()) * (igrad(uu, G) * nv(G).normalized()).tr() * meas(G));
-    A.assembleBdr(bc.get("Neumann"),
-                  lambda *  (igrad(uu, G) * nv(G).normalized()) * (g_bdy.tr() * nv(G).normalized()) * meas(G));
-
-    gsSparseSolver<real_t>::SimplicialLDLT solver;
-    solver.compute( A.matrix() );
-    gsMatrix<real_t> & fixedDofs = const_cast<expr::gsFeSpace<real_t>& >(u).fixedPart();
-    fixedDofs = solver.solve(A.rhs());
-}
-
-void gsDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> & dbasis, gsBoundaryConditions<> & bc, const expr::gsFeSpace<real_t> & u)
-{
-    gsDofMapper mapper = u.mapper();
-    gsDofMapper mapperBdy(dbasis, u.dim());
-    for (gsBoxTopology::const_iiterator it = dbasis.topology().iBegin();
-         it != dbasis.topology().iEnd(); ++it) // C^0 at the interface
-    {
-        dbasis.matchInterface(*it, mapperBdy);
-    }
-    for (size_t np = 0; np < mp.nPatches(); np++)
-    {
-        gsMatrix<index_t> bnd = mapper.findFree(np);
-        mapperBdy.markBoundary(np, bnd, 0);
-    }
-    mapperBdy.finalize();
-
-    gsExprAssembler<real_t> A(1,1);
-    A.setIntegrationElements(dbasis);
-
-    auto G = A.getMap(mp);
-    auto uu = A.getSpace(dbasis);
-    auto g_bdy = A.getBdrFunction(G);
-
-    uu.setupMapper(mapperBdy);
-    gsMatrix<real_t> & fixedDofs_A = const_cast<expr::gsFeSpace<real_t>&>(uu).fixedPart();
-    fixedDofs_A.setZero( uu.mapper().boundarySize(), 1 );
-
-    real_t lambda = 1e-5;
-
-    A.initSystem();
-    A.assembleBdr(bc.get("Dirichlet"), uu * uu.tr() * meas(G));
-    A.assembleBdr(bc.get("Dirichlet"), uu * g_bdy * meas(G));
-    A.assembleBdr(bc.get("Neumann"),
-                  lambda * (igrad(uu, G) * nv(G).normalized()) * (igrad(uu, G) * nv(G).normalized()).tr() * meas(G));
-    A.assembleBdr(bc.get("Neumann"),
-                  lambda *  (igrad(uu, G) * nv(G).normalized()) * (g_bdy.tr() * nv(G).normalized()) * meas(G));
-
-    gsSparseSolver<real_t>::SimplicialLDLT solver;
-    solver.compute( A.matrix() );
-    gsMatrix<real_t> & fixedDofs = const_cast<expr::gsFeSpace<real_t>& >(u).fixedPart();
-    gsMatrix<real_t> fixedDofs_temp = solver.solve(A.rhs());
-
-    // Reordering the dofs of the boundary
-    fixedDofs.setZero(mapper.boundarySize(),1);
-    index_t sz = 0;
-    for (size_t np = 0; np < mp.nPatches(); np++)
-    {
-        gsMatrix<index_t> bnd = mapperBdy.findFree(np);
-        bnd.array() += sz;
-        for (index_t i = 0; i < bnd.rows(); i++)
-        {
-            index_t ii = mapperBdy.asVector()(bnd(i,0));
-            fixedDofs(mapper.global_to_bindex(mapper.asVector()(bnd(i,0))),0) = fixedDofs_temp(ii,0);
-        }
-        sz += mapperBdy.patchSize(np,0);
-    }
-}
-
-void computeStabilityParameter(gsMultiPatch<> mp, gsMultiBasis<> dbasis, gsMatrix<real_t> & mu_interfaces)
-{
-    mu_interfaces.setZero();
-
-    index_t i = 0;
-    for ( typename gsMultiPatch<real_t>::const_iiterator it = mp.iBegin(); it != mp.iEnd(); ++it, ++i)
-    {
-        gsMultiPatch<> mp_temp;
-        mp_temp.addPatch(mp.patch(it->first().patch));
-        mp_temp.addPatch(mp.patch(it->second().patch));
-        mp_temp.computeTopology();
-
-        gsMultiBasis<> dbasis_temp;
-        dbasis_temp.addBasis(dbasis.basis(it->first().patch).clone().release());
-        dbasis_temp.addBasis(dbasis.basis(it->second().patch).clone().release());
-
-        gsBoundaryConditions<> bc;
-
-//        patchSide pS1 = mp_temp.interfaces()[0].first();
-//        patchSide pS2 = mp_temp.interfaces()[0].second();
-//
-//
-//        index_t side = pS1.index() < 3 ? (pS1.index() == 1 ? 2 : 1) : (pS1.index() == 3 ? 4 : 3);
-//        bc.addCondition(patchSide(pS1.patchIndex(), side), condition_type::dirichlet, 0);
-//
-//        side = pS2.index() < 3 ? (pS2.index() == 1 ? 2 : 1) : (pS2.index() == 3 ? 4 : 3);
-//        bc.addCondition(patchSide(pS2.patchIndex(), side), condition_type::dirichlet, 0);
-
-        // Make the Eigenvalue problem to a homogeneous one
-        for (gsMultiPatch<>::const_biterator bit = mp_temp.bBegin(); bit != mp_temp.bEnd(); ++bit)
-            bc.addCondition(*bit, condition_type::dirichlet, 0);
-
-        gsExprAssembler<real_t> A2(1, 1), B2(1, 1);
-
-        // Elements used for numerical integration
-        A2.setIntegrationElements(dbasis_temp);
-        B2.setIntegrationElements(dbasis_temp);
-
-        // Set the geometry map
-        auto GA = A2.getMap(mp_temp);
-        auto GB = B2.getMap(mp_temp);
-
-        // Set the discretization space
-        auto uA = A2.getSpace(dbasis_temp);
-        auto uB = B2.getSpace(dbasis_temp);
-
-        uA.setup(bc, dirichlet::homogeneous, 0);
-        uB.setup(bc, dirichlet::homogeneous,0);
-        //uA.setup(0);
-        //uB.setup(0);
-
-        A2.initSystem();
-        B2.initSystem();
-
-        real_t c = 0.25;
-        A2.assembleIfc(mp_temp.interfaces(),
-                       c * ilapl(uA.left(), GA.left()) * ilapl(uA.left(), GA.left()).tr() * nv(GA.left()).norm(),
-                       c * ilapl(uA.left(), GA.left()) * ilapl(uA.right(), GA.right()).tr() * nv(GA.left()).norm(),
-                       c * ilapl(uA.right(), GA.right()) * ilapl(uA.left(), GA.left()).tr() * nv(GA.left()).norm(),
-                       c * ilapl(uA.right(), GA.right()) * ilapl(uA.right(), GA.right()).tr() * nv(GA.left()).norm());
-
-        B2.assemble(ilapl(uB, GB) * ilapl(uB, GB).tr() * meas(GB));
-
-        // TODO INSTABLE && SLOW
-        Eigen::MatrixXd AA = A2.matrix().toDense().cast<double>();
-        Eigen::MatrixXd BB = B2.matrix().toDense().cast<double>();
-        Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> ges(AA, BB);
-
-        real_t m_h      = dbasis_temp.basis(0).getMinCellLength(); //*dbasis.basis(0).getMinCellLength();
-        mu_interfaces(i,0) = 16.0 * m_h * ges.eigenvalues().array().maxCoeff();
-/*
-        gsSparseSolver<>::SimplicialLDLT sol;
-        sol.compute(B2.matrix());
-        gsSparseMatrix<> R = sol.matrixU();
-        gsSparseMatrix<> RT = sol.matrixL();
-        gsMatrix<> AAA = RT.toDense().inverse() * AA * R.toDense().inverse();
-
-        gsConjugateGradient<> cg(AAA);
-
-        cg.setCalcEigenvalues(true);
-        cg.setTolerance(1e-15);
-        cg.setMaxIterations(100000);
-
-        gsMatrix<> rhs, result;
-        rhs.setRandom( AAA.rows(), 1 );
-        result.setRandom( AAA.rows(), 1 );
-
-        cg.solve(rhs,result);
-
-        gsInfo << "Tol: " << cg.error() << "\n";
-        gsInfo << "Max it: " << cg.iterations() << "\n";
-
-        gsMatrix<real_t> eigenvalues;
-        cg.getEigenvalues(eigenvalues);
-
-        gsInfo << "Cond Number: " << eigenvalues.bottomRows(1)(0,0) << "\n";
-*/
-    }
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -305,7 +37,7 @@ int main(int argc, char *argv[])
     std::string output;
     std::string fn;
 
-    gsCmdLine cmd("Tutorial on solving a Biharmonic problem with different spaces.");
+    gsCmdLine cmd(".");
     // Flags related to the input/geometry
     cmd.addString( "f", "file", "Input geometry file from path (with .xml)", fn );
 
@@ -344,13 +76,15 @@ int main(int argc, char *argv[])
         mp.degreeElevate(degree-mp.patch(0).degree(0));
     else if (degree-mp.patch(0).degree(0) <0)
     {
-        // Perform
-        gsMultiPatch<> result;
-        gsFuncProjection<real_t>::L2(dbasis,mp,result);
-        gsWriteParaview(result,"mp_corrected",1000,true);
-        gsWrite(result,"mp_corrected");
-        mp = result;
-        gsInfo<<"\nProjected to lower-order basis of degree "<<degree<<"\n\n";
+        mp.degreeReduce(mp.patch(0).degree(0)-degree);
+
+        // // Perform
+        // gsMultiPatch<> result;
+        // gsFuncProjection<real_t>::L2(dbasis,mp,result);
+        // gsWriteParaview(result,"mp_corrected",1000,true);
+        // gsWrite(result,"mp_corrected");
+        // mp = result;
+        // gsInfo<<"\nProjected to lower-order basis of degree "<<degree<<"\n\n";
     }
 
     // h-refine each basis
