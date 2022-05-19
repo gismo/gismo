@@ -260,6 +260,9 @@ public:
     /// \brief Elevate the degree of all patches by \a elevationSteps.
     void degreeElevate(int elevationSteps = 1);
 
+    /// \brief Degree the degree of all patches by \a reductionSteps.
+    void degreeReduce(int reductionSteps = 1);
+
     void embed(const index_t N)
     {
         for ( typename PatchContainer::const_iterator it = m_patches.begin();

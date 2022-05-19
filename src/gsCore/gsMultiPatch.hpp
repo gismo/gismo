@@ -281,6 +281,15 @@ void gsMultiPatch<T>::degreeElevate(int elevationSteps)
     }
 }
 
+template<class T>
+void gsMultiPatch<T>::degreeReduce(int reductionSteps)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->degreeReduce(reductionSteps, -1);
+    }
+}
 
 template<class T>
 void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const

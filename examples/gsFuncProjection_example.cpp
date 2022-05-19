@@ -72,19 +72,24 @@ int main(int argc, char *argv[])
     dbasis.setDegree( degree); // preserve smoothness
     //dbasis.degreeElevate(degree- mp.patch(0).degree(0));
 
+    gsMultiPatch<> mp_reduced = mp;
+    gsMultiPatch<> mp_projected;
+
     if (degree-mp.patch(0).degree(0) >0)
         mp.degreeElevate(degree-mp.patch(0).degree(0));
     else if (degree-mp.patch(0).degree(0) <0)
     {
-        mp.degreeReduce(mp.patch(0).degree(0)-degree);
+        mp_reduced.degreeReduce(mp.patch(0).degree(0)-degree);
+        gsWriteParaview(mp_reduced,"mp_reduced",1000,true);
+        gsWrite(mp_reduced,"mp_reduced");
 
-        // // Perform
-        // gsMultiPatch<> result;
-        // gsFuncProjection<real_t>::L2(dbasis,mp,result);
-        // gsWriteParaview(result,"mp_corrected",1000,true);
-        // gsWrite(result,"mp_corrected");
-        // mp = result;
-        // gsInfo<<"\nProjected to lower-order basis of degree "<<degree<<"\n\n";
+        // Perform L2 projection
+        gsFuncProjection<real_t>::L2(dbasis,mp,mp_reduced,true,true);
+        gsWriteParaview(mp_projected,"mp_projected",1000,true);
+        gsWrite(mp_projected,"mp_projected");
+
+        gsInfo<<"\nProjected to lower-order basis of degree "<<degree<<"\n\n";
+
     }
 
     // h-refine each basis
