@@ -24,7 +24,7 @@ namespace gismo {
  */
 
 template <class T>
-struct gsL2Projection
+struct gsFuncProjection
 {
 
 protected:
@@ -41,14 +41,26 @@ public:
      * @param[in]  source  The source geometry
      * @param      result  The result geometry
      */
-    static void projectGeometry(    const gsMultiBasis<T> & basis,
-                                    const gsMultiPatch<T> & source,
-                                    gsMultiPatch<T> & result);
+    static void L2( const gsMultiBasis<T> & basis,
+                    const gsMultiPatch<T> & source,
+                    gsMultiPatch<T> & result,
+                    bool fixSides = true,
+                    bool fixInteriorVerts = true);
+
+    static void L2( const gsMultiBasis<T> & basis,
+                    const gsFunctionSet<T> & source,
+                    gsMultiPatch<T> & result);
+
+protected:
+    static void _L2(const gsMultiBasis<T> & basis,
+                    const gsFunctionSet<T> & source,
+                    const gsBoundaryConditions<T> & bc,
+                    gsMultiPatch<T> & result);
 
 }; //struct
 
 } // gismo
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsL2Projection.hpp)
+#include GISMO_HPP_HEADER(gsFuncProjection.hpp)
 #endif

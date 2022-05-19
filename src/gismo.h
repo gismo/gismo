@@ -200,7 +200,7 @@ namespace internal
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsL2Projection.h>
+#include <gsUtils/gsFuncProjection.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
