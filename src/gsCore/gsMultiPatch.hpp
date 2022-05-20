@@ -731,11 +731,11 @@ gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
 #ifndef _MSC_VER
 #   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
     struct __closestPointHelper cph;
-#   pragma omp parallel for default(none) shared(accuracy,pt) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
+#   pragma omp parallel for default(shared) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
 #else
     struct __closestPointHelper cph;
 #endif
-    for (size_t k = 0; k!= m_patches.size(); ++k)
+    for (size_t k = 0; k < m_patches.size(); ++k)
     {
         // possible improvement: approximate dist: eval patch on a
         // grid. find min distance between grid and pt
