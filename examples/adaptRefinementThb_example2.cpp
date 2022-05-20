@@ -237,6 +237,7 @@ int main(int argc, char *argv[])
     mesher.options().setInt("RefineExtension",Ext);
     mesher.options().setSwitch("Admissible",admissible);
     mesher.options().setInt("Admissibility",0);
+    mesher.options().setInt("Verbose",1);
     // mesher.options().setInt("MaxLevel",3);
     mesher.getOptions();
 
@@ -314,40 +315,80 @@ int main(int argc, char *argv[])
         // the refinement-criterion and -parameter.
         std::vector<bool> elMarked( eltErrs.size() );
 
-        // gsRefineMarkedElements( bases, elMarked, 1 );
+        gsRefineMarkedElements( bases, elMarked, 1 );
 
-        // std::vector<bool> elCMarked( eltErrs.size() );
-        // for (index_t k=0; k!=eltErrs.size(); k++)
-        //     eltErrs[k] = -eltErrs[k];
+        std::vector<bool> elCMarked( eltErrs.size() );
+        for (index_t k=0; k!=eltErrs.size(); k++)
+            eltErrs[k] = -eltErrs[k];
 
-        // gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
+        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
 
-        // for (index_t k=0; k!=elMarked.size(); k++)
-        //     gsInfo<<eltErrs[k]<<"\t"<<elMarked[k]<<"\n";
+        for (index_t k=0; k!=elMarked.size(); k++)
+            gsInfo<<eltErrs[k]<<"\t"<<elCMarked[k]<<"\n";
 
-        // // Get the element-wise norms.
-        // ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-        // std::vector<real_t> eltCErrs  = ev.elementwise();
+        // Get the element-wise norms.
+        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
+        std::vector<real_t> eltCErrs  = ev.elementwise();
 
-        // //! [errorComputation]
+        //! [errorComputation]
 
-        // for (index_t k=0; k!=eltCErrs.size(); k++)
-        //     gsInfo<<eltCErrs[k]<<"\n";
+        for (index_t k=0; k!=eltCErrs.size(); k++)
+            gsInfo<<eltCErrs[k]<<"\n";
 
-        // offset = 0;
-        // for (index_t p = 0; p!=patches.nPatches(); p++)
-        // {
-        //     auto first = eltCErrs.begin() + offset;
-        //     offset += bases.basis(p).numElements();
-        //     auto last = eltCErrs.begin() + offset;
-        //     std::vector<real_t> tmpErrors(first,last);
-        //     gsElementErrorPlotter<real_t> err_eh(bases.basis(p),tmpErrors);
-        //     const gsField<> elemError_eh( patches.patch(p), err_eh, true );
-        //     gsWriteParaview<>( elemError_eh, "error_elem_crs" + std::to_string(p), 1000, false);
-        // }
+        offset = 0;
+        for (index_t p = 0; p!=patches.nPatches(); p++)
+        {
+            auto first = eltCErrs.begin() + offset;
+            offset += bases.basis(p).numElements();
+            auto last = eltCErrs.begin() + offset;
+            std::vector<real_t> tmpErrors(first,last);
+            gsElementErrorPlotter<real_t> err_eh(bases.basis(p),tmpErrors);
+            const gsField<> elemError_eh( patches.patch(p), err_eh, true );
+            gsWriteParaview<>( elemError_eh, "error_elem_crs" + std::to_string(p), 1000, false);
+        }
 
         for (index_t k = 0; k!=eltErrs.size(); k++)
             gsDebug<<eltErrs[k]<<"\n";
+
+        mesher.mark(eltCErrs);
+        mesher.refine();
+
+        gsMarkElementsForRef( eltCErrs, adaptRefCrit, adaptRefParam, elCMarked);
+
+        for (index_t k=0; k!=elMarked.size(); k++)
+            gsInfo<<eltCErrs[k]<<"\t"<<elCMarked[k]<<"\n";
+
+        // _toContainer
+        std::vector<gsHBoxContainer<2,real_t>> container(patches.nPieces());
+        index_t c = 0;
+        gsBasis<> * basis = nullptr;
+
+        gsMultiPatch<> * mp;
+        gsMultiBasis<> * mb;
+        typename gsBasis<>::domainIter domIt;
+        gsHDomainIterator<real_t,2> * domHIt = nullptr;
+        for (index_t patchInd=0; patchInd < patches.nPieces(); ++patchInd)
+        {
+            // Initialize domain element iterator
+            if ( (mp = dynamic_cast<gsMultiPatch<>*>(&patches)) ) basis = &(mp->basis(patchInd));
+            if ( (mb = dynamic_cast<gsMultiBasis<>*>(&patches)) ) basis = &(mb->basis(patchInd));
+            GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+            // for all elements in patch pn
+            domIt  = basis->makeDomainIterator();
+            domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
+            GISMO_ENSURE(domHIt!=nullptr,"Domain should be 2 dimensional for flattening");
+
+            for (; domHIt->good(); domHIt->next() )
+            {
+                if (elCMarked[c])
+                    container.at(patchInd).add(gsHBox<2,real_t>(domHIt,patchInd));
+                c++;
+            }
+        }
+        // ! _toContainer
+
+        return 0;
+
 
         if (coarsening)
         {

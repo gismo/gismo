@@ -206,6 +206,11 @@ public:
      */
     void makeUnitBoxes();
 
+    /**
+
+    */
+    HIterator begin() {return m_boxes.begin();}
+    HIterator end() {return m_boxes.end();}
 
 protected:
     /// Helper to take the box union

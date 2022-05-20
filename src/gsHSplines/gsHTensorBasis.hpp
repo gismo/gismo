@@ -312,6 +312,32 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
 }
 
 template<short_t d, class T>
+void gsHTensorBasis<d,T>::uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots)
+{
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    std::vector<index_t> boxes;
+    index_t lvl;
+    for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
+    {
+        if (it.level() == 0)
+            continue;
+        lvl = it.level() - 1;
+        const point & l = it.lowerCorner();
+        const point & u = it.upperCorner();
+
+        boxes.push_back(lvl);
+        for( short_t i = 0; i < d; i++)
+            boxes.push_back( l(i) / 2);
+        for( short_t i = 0; i < d; i++)
+            boxes.push_back( u(i)/2 + (index_t)(u(i)%2!=0));
+    }
+
+    this->clone()->unrefineElements_withCoefs(coefs, boxes);
+    this->uniformCoarsen(numKnots);
+}
+
+
+template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
 {
     GISMO_ASSERT(boxes.rows() == d, "refine() needs d rows of boxes.");
@@ -1418,6 +1444,28 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
 
     update_structure();
 }
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::uniformCoarsen(int numKnots)
+{
+    GISMO_UNUSED(numKnots);
+    GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");
+
+    tensorBasis * first_basis = m_bases.front()->clone().release();
+    first_basis->uniformCoarsen(1);
+    m_bases.insert( m_bases.begin(), first_basis );
+
+    // Delete the last level
+    delete m_bases.back();
+    m_bases.erase( m_bases.end() );
+
+    // Lift all indices in the tree by one level
+    m_tree.divideByTwo();
+    // What happens when zero interior knots???????
+
+    update_structure();
+}
+
 
 template<short_t d, class T>
 std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const

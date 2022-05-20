@@ -54,7 +54,9 @@ public:
 
     void getOptions();
 
-    void mark(const std::vector<T> & errors) { mark(errors,m_maxLvl); }
+    void mark_into(const std::vector<T> & errors, std::vector<bool> & elMarked);
+
+    void mark(const std::vector<T> & errors) { return mark(errors,m_maxLvl); }
     void mark(const std::vector<T> & errors, index_t maxLvl);
 
     bool refine(const patchHContainer & markedRef);
@@ -92,6 +94,7 @@ private:
 
     void _unrefineElementsThreshold(const index_t level);
 
+    void _markElements( const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, std::vector<bool> & elMarked, bool coarsen=false);
     void _markElements( const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, patchHContainer & container, bool coarsen=false);
     void _markFraction( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);
     void _markPercentage( const std::vector<T> & elError, T refParameter, index_t maxLevel, std::vector<index_t> & elLevels, std::vector<bool> & elMarked, bool coarsen=false);

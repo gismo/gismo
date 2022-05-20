@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <gsHSplines/gsHBoxUtils.h>
+
+
 namespace gismo
 {
 
@@ -166,48 +169,26 @@ typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::boxUnion(const 
 template <short_t d, class T>
 typename gsHBoxContainer<d, T>::Container gsHBoxContainer<d, T>::_boxUnion(const Container & container1, const Container & container2) const
 {
-    SortedContainer sortedResult;
+    // SortedContainer sortedResult;
 
-    SortedContainer scontainer1(container1.begin(), container1.end());
-    SortedContainer scontainer2(container2.begin(), container2.end());
+    // SortedContainer scontainer1 = gsHBoxSort<d,T>(container1);
+    // SortedContainer scontainer2 = gsHBoxSort<d,T>(container2);
 
-    struct
-    {
-        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
-        {
-            return
-            (a.level() < b.level())
-            ||
-            ((a.level() == b.level()) &&
-            std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-                                        b.lowerIndex().begin(), b.lowerIndex().end())   )
-            ||
-            ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
-            std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-                                        b.upperIndex().begin(), b.upperIndex().end())    );
-        };
-    }
-    comp;
+    // sortedResult.reserve(scontainer1.size() + scontainer2.size());
+    // if (scontainer1.size()!=0 && scontainer2.size()!=0)
+    // {
+    //     std::set_union( scontainer1.begin(),scontainer1.end(),
+    //                     scontainer2.begin(),scontainer2.end(),
+    //                     std::inserter(sortedResult,sortedResult.begin()),
+    //                     gsHBoxCompare<d,T>());
+    // }
+    // else if (scontainer1.size()!=0 && container2.size()==0)
+    //     sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
+    // else if (scontainer1.size()==0 && container2.size()!=0)
+    //     sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
+    // else    { /* Do nothing */ }
 
-    sortedResult.reserve(scontainer1.size() + scontainer2.size());
-    if (scontainer1.size()!=0 && scontainer2.size()!=0)
-    {
-        // First sort (otherwise union is wrong)
-        std::sort(scontainer1.begin(),scontainer1.end(),comp);
-        std::sort(scontainer2.begin(),scontainer2.end(),comp);
-
-        std::set_union( scontainer1.begin(),scontainer1.end(),
-                        scontainer2.begin(),scontainer2.end(),
-                        std::inserter(sortedResult,sortedResult.begin()),
-                        comp);
-    }
-    else if (scontainer1.size()!=0 && container2.size()==0)
-        sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
-    else if (scontainer1.size()==0 && container2.size()!=0)
-        sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
-    else    { /* Do nothing */ }
-
-    Container result(sortedResult.begin(),sortedResult.end());
+    Container result = gsHBoxUnion<d,T>(container1,container2);
 
     return result;
 }

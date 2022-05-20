@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsUtils/gsCombinatorics.h>
+#include <gsHSplines/gsHBoxUtils.h>
 
 namespace gismo
 {
@@ -112,27 +113,33 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
 template <short_t d, class T>
 bool gsHBox<d, T>::isContained(const gsHBox<d,T> & other) const
 {
-    bool res = true;
-    res &= this->level() == other.level();
-    for (index_t i=0; i!=d && res; i++)
-    {
-        res &= this->lowerIndex().at(i) <= other.lowerIndex().at(i);
-        res &= this->upperIndex().at(i) >= other.upperIndex().at(i);
-    }
-    return res;
+    // bool res = true;
+    // res &= this->level() == other.level();
+    // for (index_t i=0; i!=d && res; i++)
+    // {
+    //     res &= this->lowerIndex().at(i) <= other.lowerIndex().at(i);
+    //     res &= this->upperIndex().at(i) >= other.upperIndex().at(i);
+    // }
+    // return res;
+
+
+    return gsHBoxIsContained<d,T>()(*this,other);
+
 }
 
 template <short_t d, class T>
 bool gsHBox<d, T>::contains(const gsHBox<d,T> & other) const
 {
-    bool res = true;
-    res &= this->level() == other.level();
-    for (index_t i=0; i!=d && res; i++)
-    {
-        res &= this->lowerIndex().at(i) >= other.lowerIndex().at(i);
-        res &= this->upperIndex().at(i) <= other.upperIndex().at(i);
-    }
-    return res;
+    // bool res = true;
+    // res &= this->level() == other.level();
+    // for (index_t i=0; i!=d && res; i++)
+    // {
+    //     res &= this->lowerIndex().at(i) >= other.lowerIndex().at(i);
+    //     res &= this->upperIndex().at(i) <= other.upperIndex().at(i);
+    // }
+    // return res;
+
+    return gsHBoxContains<d,T>()(*this,other);
 }
 
 template <short_t d, class T>
@@ -542,105 +549,85 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::boxUnion(const HContainer & conta
 template <short_t d, class T>
 typename gsHBox<d, T>::Container gsHBox<d, T>::_boxUnion(const Container & container1, const Container & container2) const
 {
-    SortedContainer sortedResult;
+    // SortedContainer sortedResult;
 
-    SortedContainer scontainer1(container1.begin(), container1.end());
-    SortedContainer scontainer2(container2.begin(), container2.end());
+    // SortedContainer scontainer1 = gsHBoxSort<d,T>(container1);
+    // SortedContainer scontainer2 = gsHBoxSort<d,T>(container2);
 
 
-    struct
-    {
-        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
-        {
-            return
-             (a.patch() < b.patch())
-            ||
-            ((a.patch() == b.patch()) &&
-             (a.level() < b.level())     )
-            ||
-            ((a.patch() == b.patch()) &&
-             (a.level() == b.level()) &&
-             std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-                                        b.lowerIndex().begin(), b.lowerIndex().end())   )
-            ||
-            ((a.patch() == b.patch()) &&
-             (a.level() == b.level()) &&
-             (a.lowerIndex() == b.lowerIndex()) &&
-             std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-                                        b.upperIndex().begin(), b.upperIndex().end())    );
-        };
-    }
-    comp;
+    // struct
+    // {
+    //     bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
+    //     {
+    //         return
+    //          (a.patch() < b.patch())
+    //         ||
+    //         ((a.patch() == b.patch()) &&
+    //          (a.level() < b.level())     )
+    //         ||
+    //         ((a.patch() == b.patch()) &&
+    //          (a.level() == b.level()) &&
+    //          std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
+    //                                     b.lowerIndex().begin(), b.lowerIndex().end())   )
+    //         ||
+    //         ((a.patch() == b.patch()) &&
+    //          (a.level() == b.level()) &&
+    //          (a.lowerIndex() == b.lowerIndex()) &&
+    //          std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
+    //                                     b.upperIndex().begin(), b.upperIndex().end())    );
+    //     };
+    // }
+    // comp;
 
-    sortedResult.reserve(scontainer1.size() + scontainer2.size());
-    if (scontainer1.size()!=0 && scontainer2.size()!=0)
-    {
-        // First sort (otherwise union is wrong)
-        std::sort(scontainer1.begin(),scontainer1.end(),comp);
-        std::sort(scontainer2.begin(),scontainer2.end(),comp);
+    // sortedResult.reserve(scontainer1.size() + scontainer2.size());
+    // if (scontainer1.size()!=0 && scontainer2.size()!=0)
+    // {
+    //     // First sort (otherwise union is wrong)
+    //     std::sort(scontainer1.begin(),scontainer1.end(),comp);
+    //     std::sort(scontainer2.begin(),scontainer2.end(),comp);
 
-        std::set_union( scontainer1.begin(),scontainer1.end(),
-                        scontainer2.begin(),scontainer2.end(),
-                        std::inserter(sortedResult,sortedResult.begin()),
-                        comp);
-    }
-    else if (scontainer1.size()!=0 && container2.size()==0)
-        sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
-    else if (scontainer1.size()==0 && container2.size()!=0)
-        sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
-    else    { /* Do nothing */ }
+    //     std::set_union( scontainer1.begin(),scontainer1.end(),
+    //                     scontainer2.begin(),scontainer2.end(),
+    //                     std::inserter(sortedResult,sortedResult.begin()),
+    //                     comp);
+    // }
+    // else if (scontainer1.size()!=0 && container2.size()==0)
+    // {
+    //     scontainer1 = SortedContainer (container1.begin(), container1.end());
+    //     scontainer2 = SortedContainer (container2.begin(), container2.end());
+    //     sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
+    // }
+    // else if (scontainer1.size()==0 && container2.size()!=0)
+    // {
 
-    Container result(sortedResult.begin(),sortedResult.end());
+    //     sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
+    // }
+    // else    { /* Do nothing */ }
 
-    return result;
+    return gsHBoxUnion<d,T>(container1,container2);
 }
 
 template <short_t d, class T>
 typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & container) const
 {
-    SortedContainer scontainer(container.begin(), container.end());
+    // SortedContainer scontainer = gsHBoxSort<d,T>(container);
 
-    struct
-    {
-        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
-        {
-            return
-             (a.patch() < b.patch())
-            ||
-            ((a.patch() == b.patch()) &&
-             (a.level() < b.level())     )
-            ||
-            ((a.patch() == b.patch()) &&
-             (a.level() == b.level()) &&
-             std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-                                            b.lowerIndex().begin(), b.lowerIndex().end())   )
-            ||
-            ((a.patch() == b.patch()) &&
-             (a.level() == b.level()) &&
-             (a.lowerIndex() == b.lowerIndex()) &&
-             std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-                                            b.upperIndex().begin(), b.upperIndex().end())    );
-        };
-    }
-    comp;
+    // struct
+    // {
+    //     bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
+    //     {
+    //         return a.isSame(b);
+    //     };
+    // }
+    // pred;
 
-    struct
-    {
-        bool operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const
-        {
-            return a.isSame(b);
-        };
-    }
-    pred;
+    // // Get unique entries
+    // typename SortedContainer::iterator it = std::unique(scontainer.begin(),scontainer.end(),pred);
+    // scontainer.resize(distance(scontainer.begin(), it));
+    // Container result(scontainer.begin(),scontainer.end());
+    // return result;
 
-    // First sort (otherwise unique is wrong)
-    std::sort(scontainer.begin(),scontainer.end(),comp);
-
-    // Get unique entries
-    typename SortedContainer::iterator it = std::unique(scontainer.begin(),scontainer.end(),pred);
-    scontainer.resize(distance(scontainer.begin(), it));
-    Container result(scontainer.begin(),scontainer.end());
-    return result;
+    return gsHBoxUnique<d,T>(container);
 }
 
 template <short_t d, class T>

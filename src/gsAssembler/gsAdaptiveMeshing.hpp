@@ -63,10 +63,8 @@ namespace gismo
  * \ingroup Assembler
  */
 template <class T>
-void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, patchHContainer & container, bool coarsen)
+void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, std::vector<bool> & elMarked, bool coarsen)
 {
-    std::vector<bool> elMarked;
-
     std::vector<index_t> elLevels;
     _getElLevels(elLevels);
 
@@ -85,10 +83,20 @@ void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, int r
         GISMO_ERROR("unknown marking strategy");
     }
 
+    if (m_verbose==1)
+        _printMarking(elError,elLevels,elMarked);
+}
+
+template <class T>
+void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, int refCriterion, T refParameter, index_t maxLevel, patchHContainer & container, bool coarsen)
+{
+    std::vector<bool> elMarked;
+    this->_markElements(elError,refCriterion,refParameter,maxLevel,elMarked,coarsen);
     container = _toContainer(elMarked);
 
     if (m_verbose==1)
-        _printMarking(elError,elLevels,elMarked);
+        for (index_t p=0; p!=container.size(); p++)
+            gsDebugVar(container[p]);
 }
 
 template <class T>
@@ -425,12 +433,18 @@ void gsAdaptiveMeshing<T>::getOptions()
 }
 
 template<class T>
+void gsAdaptiveMeshing<T>::mark_into(const std::vector<T> & errors, std::vector<bool> & elMarked)
+{
+    _markElements( errors, m_refRule, m_refParam, m_maxLvl, elMarked,false);//,flag [coarse]);
+}
+
+template<class T>
 void gsAdaptiveMeshing<T>::mark(const std::vector<T> & errors, index_t level)
 {
     _markElements( errors, m_refRule, m_refParam, level, m_markedRef,false);//,flag [coarse]);
 
-    if (m_crsParam!=-1)
-        _markElements( errors, m_refRule, m_refParam, level, m_markedCrs,true);//,flag [coarse]);
+    // if (m_crsParam!=-1)
+    //     _markElements( errors, m_refRule, m_refParam, level, m_markedCrs,true);//,flag [coarse]);
 
 }
 
@@ -524,6 +538,7 @@ void gsAdaptiveMeshing<T>::_refineMarkedElements(   const patchHContainer & mark
                 GISMO_ERROR("Admissibility type unknown or basis type not recognized");
 
             gsHBoxContainer<2,real_t> container(marked.at(pn).toUnitBoxes());
+            gsDebugVar(container);
             std::vector<index_t> boxes = container.toRefBoxes();
             if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
                 mp->patch(pn).refineElements(container.toRefBoxes());

@@ -6,3 +6,5 @@
 
 #include <gsHSplines/gsHBox.h>
 #include <gsHSplines/gsHBox.hpp>
+
+#include <gsHSplines/gsHBoxUtils.h>

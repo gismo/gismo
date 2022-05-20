@@ -259,6 +259,19 @@ struct kdnode
         }
     }
 
+    void divideByTwo()
+    {
+        if ( isLeaf() )
+        {
+            box->first .array() /= 2;
+            box->second.array() /= 2;
+        }
+        else
+        {
+            pos /= 2;
+        }
+    }
+
     // Splits the node (ie. two children are added)
     inline void split()
     {

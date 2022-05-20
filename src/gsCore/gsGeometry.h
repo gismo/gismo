@@ -484,6 +484,12 @@ public:
         this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
     }
 
+    /// Coarsen the geometry uniformly, removing \a numKnots new knots into each knot span
+    virtual void uniformCoarsen(int numKnots = 1) // todo: int dir = -1
+    {
+        this->basis().uniformCoarsen_withCoefs( m_coefs, numKnots);
+    }
+
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
      *
      * The syntax of \em boxes depends on the implementation in the

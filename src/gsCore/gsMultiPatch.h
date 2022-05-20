@@ -257,6 +257,10 @@ public:
     /// in each knot-span with multipliplicity \a mul
     void uniformRefine(int numKnots = 1, int mul = 1);
 
+    /// \brief Coarsen uniformly all patches by removing \a numKnots
+    /// in each knot-span
+    void uniformCoarsen(int numKnots = 1);
+
     /// \brief Elevate the degree of all patches by \a elevationSteps.
     void degreeElevate(int elevationSteps = 1);
 

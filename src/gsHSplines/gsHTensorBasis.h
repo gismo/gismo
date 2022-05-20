@@ -603,6 +603,12 @@ public:
     void unrefineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
     void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
+    // Coarsens the basis uniformly by removing \a numKnots knots on each knot span
+    virtual void uniformCoarsen(int numKnots = 1);
+
+    // Coarsen the basis uniformly and adjust the given matrix of coefficients accordingly
+    void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
