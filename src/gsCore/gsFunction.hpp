@@ -194,6 +194,7 @@ int gsFunction<T>::newtonRaphson_impl(
     double damping_factor, T scale) const
 {
     const index_t n = value.rows();
+    const T norm = value.norm() == 0 ? 1 : value.norm();
     const bool squareJac = (n == domainDim());//assumed for _Dim!=-1
 
     GISMO_ASSERT( arg.size() == domainDim(),
@@ -220,18 +221,18 @@ int gsFunction<T>::newtonRaphson_impl(
         this->compute(arg,fd);
         residual = (0==mode?fd.values[0]:fd.values[1]);
 
-        residual.noalias() = value - scale*residual;
+        residual.noalias() = (value - scale*residual) / norm;// -->>>>>> NORMALIZE THIS??? / (residual.norm();
         rnorm[iter%2] = residual.norm();
 
         if(rnorm[iter%2] <= accuracy) // residual below threshold
         {
-            //gsInfo <<"--- OK: Accuracy "<<rnorm[iter%2]<<" reached.\n";
+            // gsInfo <<"--- OK: Accuracy "<<rnorm[iter%2]<<" reached.\n";
             return iter;
         }
 
         if( iter>4 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <1.1)
         {
-            //gsInfo <<"--- OK: Converged to residual "<<rnorm[iter%2]<<"("<<rnorm[(iter-1)%2]/rnorm[iter%2]<<"), niter"<<iter<<".\n";
+            // gsInfo <<"--- OK: Converged to residual "<<rnorm[iter%2]<<" ("<<rnorm[(iter-1)%2]/rnorm[iter%2]<<"), niter = "<<iter<<".\n";
             return iter; //std::pair<iter,rnorm>
         }
 
