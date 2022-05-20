@@ -191,6 +191,7 @@ public:
     {
         //gsInfo<<"\n Space="<<E::Space<<", ScV="<<E::ScalarValued<<", ColBlocks="<<E::ColBlocks<<"\n";
         static_cast<E const&>(*this).print(os);
+        os<<"\n";
         /*
           std::string tmp(__PRETTY_FUNCTION__);
           tmp.erase(0,74);
@@ -1449,7 +1450,7 @@ public:
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    void print(std::ostream &os) const { os<<"("; _u.print(os); os <<")'"; }
+    void print(std::ostream &os) const { os<<"("; _u.print(os); os <<")\u1D40"; }
 private:
 /*
   template<class U> EIGEN_STRONG_INLINE MatExprType
@@ -2434,7 +2435,7 @@ public:
     const gsFeSpace<Scalar> & colVar() const
     {return gsNullExpr<Scalar>::get();}
 
-    void print(std::ostream &os) const { os << "grad("; _u.print(os); os <<")"; }
+    void print(std::ostream &os) const { os << "\u2207("; _u.print(os); os <<")"; }
 private:
 
     template<class U> static inline
@@ -2508,7 +2509,7 @@ public:
         _u.data().flags |= NEED_GRAD|NEED_ACTIVE; // define flags
     }
 
-    void print(std::ostream &os) const { os << "grad(s)"; }
+    void print(std::ostream &os) const { os << "\u2207(s)"; }
 };
 
 /*
@@ -2828,7 +2829,10 @@ public:
         _u.data().flags |= NEED_LAPLACIAN;
     }
 
-    void print(std::ostream &os) const { os << "lap("; _u.print(os); os <<")"; }
+    static const gsFeSpace<Scalar> & rowVar() {return E::rowVar();}
+    static const gsFeSpace<Scalar> & colVar() {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os << "\u2206("; _u.print(os); os <<")"; } //or \u0394
 };
 
 /*
@@ -2847,7 +2851,7 @@ public:
     lapl_expr(const gsFeSolution<T> & u) : _u(u) { }
 
     mutable gsMatrix<T> res;
-    const gsMatrix<T> eval(const index_t k) const
+    const gsMatrix<T> & eval(const index_t k) const
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
 
@@ -2880,7 +2884,10 @@ public:
         _u.data().flags |= NEED_ACTIVE | NEED_DERIV2;
     }
 
-    void print(std::ostream &os) const { os << "lap(s)"; }
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<T>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<T>::get();}
+
+    void print(std::ostream &os) const { os << "\u2206(s)"; }
 };
 
 /*
@@ -3010,7 +3017,7 @@ public:
         //note: cardinality() depends on actives
     }
 
-    void print(std::ostream &os) const { os << "jac("; _u.print(os);os <<")"; }
+    void print(std::ostream &os) const { os << "\u2207("; _u.print(os);os <<")"; }
 
 private:
 
@@ -3114,7 +3121,7 @@ public:
     /// The generalized Jacobian matrix inverse, i.e.: (J^t J)^{-t} J^t
     jacInv_expr<T> ginv() const { return jacInv_expr<T>(_G); }
 
-    void print(std::ostream &os) const { os << "jac_("; _G.print(os); os <<")"; }
+    void print(std::ostream &os) const { os << "\u2207("; _G.print(os); os <<")"; }
 };
 
 template<class E>
@@ -3172,7 +3179,7 @@ public:
 
     void print(std::ostream &os) const
     //    { os << "hess("; _u.print(os);os <<")"; }
-    { os << "hess(U)"; }
+    { os << "\u210D(U)"; }
 };
 
 template<class T>
@@ -3260,7 +3267,7 @@ public:
         _u.data().flags |= NEED_ACTIVE | NEED_VALUE | NEED_DERIV2;
     }
 
-    void print(std::ostream &os) const { os << "hess(s)"; }
+    void print(std::ostream &os) const { os << "\u210D(s)"; }
 };
 
 
@@ -4197,6 +4204,10 @@ jac_expr<E> jac(const symbol_expr<E> & u) { return jac_expr<E>(u); }
 /// The Jacobian matrix of a geometry map
 template<class T> EIGEN_STRONG_INLINE
 jac_expr<gsGeometryMap<T> > jac(const gsGeometryMap<T> & G) {return jac_expr<gsGeometryMap<T> >(G);}
+
+/// Jacobian matrix for a solution expression
+template<class T> EIGEN_STRONG_INLINE
+grad_expr<gsFeSolution<T> > jac(const gsFeSolution<T> & s) {return grad_expr<gsFeSolution<T> >(s);}
 
 template<class E> EIGEN_STRONG_INLINE
 hess_expr<E> hess(const symbol_expr<E> & u) { return hess_expr<E>(u); }
