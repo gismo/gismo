@@ -7,7 +7,8 @@ namespace gismo{
 template<class T> inline
 std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gsMatrix<T> & u)
 {
-    std::vector<gsSparseMatrix<T>> result(2, gsSparseMatrix<T>( u.cols(), b.size() ));
+    int dim = b.domainDim();
+    std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
     std::vector<gsMatrix<T>> ev;
     gsMatrix<index_t> act;
 
@@ -15,10 +16,14 @@ std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gs
     b.active_into(u.col(0), act);
     result[0].reservePerColumn( act.rows() );
     result[1].reservePerColumn( act.rows() );
+    if (dim==2)
+        result[2].reservePerColumn( act.rows() );
     for (index_t i=0; i!=act.rows(); ++i)
     {
         result[0].insert(0, act.at(i) ) = ev[0].at(i);
-        result[1].insert(0, act.at(i) ) = ev[1].at(i);
+        result[1].insert(0, act.at(i) ) = ev[1].at(dim*i);
+        if (dim == 2)
+            result[2].insert(0, act.at(i) ) = ev[1].at(dim*i+1);
     }
     for (index_t k=1; k!=u.cols(); ++k)
     {
@@ -27,12 +32,16 @@ std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gs
         for (index_t i=0; i!=act.rows(); ++i)
         {
             result[0].insert(k, act.at(i) ) = ev[0].at(i);
-            result[1].insert(k, act.at(i) ) = ev[1].at(i);
+            result[1].insert(k, act.at(i) ) = ev[1].at(dim*i);
+            if (dim == 2)
+                result[2].insert(k, act.at(i) ) = ev[1].at(dim*i +1);
         }
     }
 
     result[0].makeCompressed();
     result[1].makeCompressed();
+    if (dim == 2)
+        result[2].makeCompressed();
     return result;
 }
 
