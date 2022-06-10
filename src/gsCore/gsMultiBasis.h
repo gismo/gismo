@@ -77,7 +77,7 @@ public:
     }
 
     /// Create a single-basis instance
-    gsMultiBasis( const gsBasis<T> & geo );
+    gsMultiBasis( const gsBasis<T> & geo, bool numeratorOnly = false);
 
     /// Create from bases and boundary/interface information
     gsMultiBasis( BasisContainer & bases,
@@ -189,9 +189,9 @@ public:
 
 public:
 
-    short_t domainDim () const {return m_bases.front()->domainDim();}
+    short_t domainDim () const {return m_bases.empty() ? 0 : m_bases.front()->domainDim();}
 
-    short_t targetDim () const {return m_bases.front()->targetDim();}
+    short_t targetDim () const {return m_bases.empty() ? 0 : m_bases.front()->targetDim();}
 
     /// Swap with another gsMultiBasis.
     void swap(gsMultiBasis& other)

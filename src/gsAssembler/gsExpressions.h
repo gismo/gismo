@@ -938,7 +938,7 @@ public:
 
         // Reconstruct solution coefficients on patch p
         const index_t sz  = mb[p].size();
-        result.resize(sz, dim); // (!)
+        result.resize(sz, dim!=1 ? dim : solVector.cols()); // (!)
 
         for (index_t c = 0; c!=dim; c++) // for all components
         {
@@ -947,7 +947,8 @@ public:
             {
                 const int ii = m_sd->mapper.index(i, p, c);
                 if ( m_sd->mapper.is_free_index(ii) ) // DoF value is in the solVector
-                    result(i,c) = solVector.at(ii);
+                    result.row(i) = solVector.row(ii);
+                    //result(i,c) = solVector.at(ii);
                 else // eliminated DoF: fill with Dirichlet data
                 {
                     result(i,c) =  m_sd->fixedDofs.at( m_sd->mapper.global_to_bindex(ii) );
@@ -2368,8 +2369,8 @@ public:
 
     Scalar eval(const index_t k) const { return abs_expr::eval_impl(_u,k); }
 
-    index_t rows() const { return 0; }
-    index_t cols() const { return 0; }
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return _u.cols(); }
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); }
 
@@ -2387,7 +2388,7 @@ private:
     typename util::enable_if<U::ScalarValued,Scalar>::type
     eval_impl(const U & u, const index_t k) {return math::abs(u.eval(k)); }
     template<class U> static inline
-    typename util::enable_if<!U::ScalarValued,Scalar>::type
+    typename util::enable_if<!U::ScalarValued,gsMatrix<Scalar> >::type
     eval_impl(const U & u, const index_t k) { return u.eval(k).cwiseAbs(); }
 };
 
