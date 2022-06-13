@@ -227,6 +227,10 @@ if(GISMO_WITH_SPECTRA)
   add_subdirectory(extensions/gsSpectra)
 endif(GISMO_WITH_SPECTRA)
 
+if(GISMO_WITH_PRECICE)
+  add_subdirectory(extensions/gsPreCICE)
+endif(GISMO_WITH_PRECICE)
+
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SUPERLU_INCLUDES}
