@@ -2187,7 +2187,6 @@ public:
     
     const gsMatrix<Scalar> & eval(index_t k) const
     {   
-        res.resize(1,1);
         res = _u.eval(k).cwiseMax(0.0); // component-wise maximum with zero
         return res;
     }
@@ -2199,12 +2198,10 @@ public:
     void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
 
-    static bool isScalar() { return true; } // TODO: remove? 
-
     const gsFeSpace<Scalar> & rowVar() const {return _u.rowVar();}
     const gsFeSpace<Scalar> & colVar() const {return _u.colVar();}
 
-    void print(std::ostream &os) const { os<<"pos.part("; _u.print(os); os <<")"; }
+    void print(std::ostream &os) const { os<<"posPart("; _u.print(os); os <<")"; }
 };
 
 
