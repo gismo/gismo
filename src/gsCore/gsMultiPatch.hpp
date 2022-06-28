@@ -281,6 +281,15 @@ void gsMultiPatch<T>::degreeElevate(int elevationSteps)
     }
 }
 
+template<class T>
+void gsMultiPatch<T>::degreeReduce(int elevationSteps)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->degreeReduce(elevationSteps, -1);
+    }
+}
 
 template<class T>
 void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
@@ -302,15 +311,19 @@ void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
 }
 
 template<class T>
-gsMultiPatch<T> gsMultiPatch<T>::uniformSplit() const
+gsMultiPatch<T> gsMultiPatch<T>::uniformSplit(index_t dir) const
 {
-    int n = math::exp2(parDim());
+    int n;
+    if (dir == -1)
+        n = math::exp2(parDim());
+    else
+        n = 2;
     std::vector<gsGeometry<T>*> result;
     result.reserve(nPatches() * n);
 
     for (size_t np = 0; np < nPatches(); ++np)
     {
-        std::vector<gsGeometry<T>*> result_temp = m_patches[np]->uniformSplit();
+        std::vector<gsGeometry<T>*> result_temp = m_patches[np]->uniformSplit(dir);
         result.insert(result.end(), result_temp.begin(), result_temp.end());
     }
     gsMultiPatch<T> mp(result);
@@ -731,11 +744,11 @@ gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
 #ifndef _MSC_VER
 #   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
     struct __closestPointHelper cph;
-#   pragma omp parallel for default(none) shared(accuracy,pt) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
+#   pragma omp parallel for default(shared) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
 #else
     struct __closestPointHelper cph;
 #endif
-    for (size_t k = 0; k!= m_patches.size(); ++k)
+    for (size_t k = 0; k < m_patches.size(); ++k)
     {
         // possible improvement: approximate dist: eval patch on a
         // grid. find min distance between grid and pt

@@ -92,7 +92,7 @@ public:
         mfile << "<DataSet part=\""
               <<part<<"\" timestep=\""
               <<tstep<<"\" file=\""
-              <<fn<<part<<ext<<"\"/>\n";//<<"_"
+              <<fn<<"_"<<part<<ext<<"\"/>\n";
     }
 
     /// Finalizes the collection by closing the XML tags, always call
