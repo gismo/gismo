@@ -299,7 +299,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         result = give(init);
     else
     {
-        gsMatrix<T,2> supp = support();
+        gsMatrix<T> supp = this->support();
         if (0!=supp.size())
         {
             gsGridIterator<T,CUBE> pt(supp, 5);//per direction
