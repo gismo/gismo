@@ -86,3 +86,4 @@ inline void cramerInverseInPlace()
 //    derived() = cramerInverse().eval();
     derived().swap(cramerInverse().eval());
 }
+

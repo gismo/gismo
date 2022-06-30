@@ -18,13 +18,53 @@
 namespace gismo
 {
 
+
 template <typename T> class gsIpOptTNLP;
 class gsOptProblemPrivate;
+
+/*
+template<typename T,
+         typename Objective,
+         typename StepSize=BarzilaiBorwein<Scalar>,
+         typename Callback=NoCallback<Scalar>,
+         typename FiniteDifferences=CentralDifferences<Scalar> >
+class gsIpoptTNLP
+{
+    
+}
+
+};
+*/
+
+/*
+class gsFunctional
+{
+ gsFunction
+
+};
+
+template <typename T>
+class gsOptimizer
+{
+    gsOptimizer();
+
+    // fobj: D -> R 
+    gsOptimizer(const gsFunction<T> & fobj);
+
+    // fobj: C -> R 
+    gsOptimizer(const gsFunctional<T> & fobj);
+
+    // fobj: C -> R^c
+    // support: constraint bounds
+    gsOptimizer(const gsFunction<T> & fcon);
+};
+//*/
+
+
 
 /**
    \brief Class defining an optimization problem
 */
-
 template <typename T>
 class gsOptProblem
 {
@@ -132,7 +172,7 @@ public:
 
     std::ostream &print(std::ostream &os) const
     {
-        os << "Design variables:" << m_numDesignVars
+        os << "Design variables: " << m_numDesignVars
            << "\nNumber of constraints: " << m_numConstraints
             //<< "\ndesign lower:" << m_desLowerBounds.transpose()
             //<< "\ndesign upper:" << m_desUpperBounds.transpose()
@@ -213,7 +253,7 @@ private:
 
 } // end namespace gismo
 
-// note: statically compiled in header-only mode
-// #ifndef GISMO_BUILD_LIB
-// #include GISMO_HPP_HEADER(gsOptProblem.hpp)
-// #endif
+// note: must be statically compiled in header-only mode
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsOptProblem.hpp)
+#endif

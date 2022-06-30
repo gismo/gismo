@@ -15,6 +15,9 @@
 #include "IpTNLP.hpp"
 #include "IpIpoptApplication.hpp"
 #include "IpSolveStatistics.hpp"
+#else
+#include "gdcpp.h"
+//#include "lsqcpp.h"
 #endif
 
 #include <gsIO/gsFileManager.h>
@@ -245,7 +248,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
 
 
 template <typename T>
-gsOptProblem<T>::gsOptProblem()
+gsOptProblem<T>::gsOptProblem() : numIterations(0), finalObjective(0)
 {
     #ifdef GISMO_WITH_IPOPT
 
@@ -290,6 +293,57 @@ void gsOptProblem<T>::gradObj_into(const gsAsConstVector<T> & u, gsAsVector<T> &
     }
 }
 
+
+namespace {
+
+template<typename T>
+struct gdcOf
+{
+    typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vector;
+    typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+    const gsOptProblem<T> * opt;
+
+    gdcOf() : opt(nullptr) { }
+    gdcOf(const gsOptProblem<T> & _opt) : opt(&_opt) { }
+
+    // for gdc
+    T operator()(const Vector & vx, Vector & vfgrad) const
+    {
+        GISMO_ASSERT(opt,"Invalid opt");
+        gsAsConstVector<T> x(vx.data(),vx.size());
+        vfgrad.resize(opt->numDesignVars());
+        gsAsVector<T>  fgrad(vfgrad.data(),vfgrad.size());
+        opt->gradObj_into(x,fgrad);
+        return opt->evalObj(x);
+    }
+
+    T operator()(const Vector & vx) const
+    {
+        GISMO_ASSERT(opt,"Invalid opt");
+        gsAsConstVector<T> x(vx.data(),vx.size());
+        //vfgrad.resize(opt->numDesignVars());
+        //gsAsVector<T>  fgrad(vfgrad.data(),vfgrad.size());
+        //opt->gradObj_into(x,fgrad);
+        return opt->evalObj(x);
+    }
+
+    
+    // for gd in lsq
+    void operator()(const Vector & vx, Vector & vf, Matrix & vfjac) const
+    {
+        GISMO_ASSERT(opt,"Invalid opt");
+        gsAsConstVector<T> x(vx.data(),vx.size());
+        vfjac.resize(1,opt->numDesignVars());
+        gsAsVector<T> fjac(vfjac.data(),vfjac.cols());
+        opt->gradObj_into(x,fjac);
+        vf.resize(1,1);
+        vf(0,0) = opt->evalObj(x);
+    }
+};
+
+}//namespace
+
+
 template <typename T>
 void gsOptProblem<T>::solve()
 {
@@ -319,8 +373,67 @@ void gsOptProblem<T>::solve()
     //gsInfo << "*** The final value of the objective function is " << finalObjective <<".\n";
 
 #else
+    gsInfo << "Warning: constraints are ignored.\n";
 
-    GISMO_NO_IMPLEMENTATION
+    // You can specify a StepSize functor as template parameter.
+    // There are ConstantStepSize,  BarzilaiBorwein and
+    // WolfeBacktracking available. (Default is BarzilaiBorwein)
+    //
+    // You can additionally specify a Callback functor as template parameter.
+    //
+    // You can additionally specify a FiniteDifferences functor as template
+    // parameter. There are Forward-, Backward- and CentralDifferences
+    // available. (Default is CentralDifferences)
+
+    typedef
+    //gdc::GradientDescent<T, gdcOp<T>, gdc::DecreaseBacktracking<T> >
+    //gdc::GradientDescent<T, gdcOp<T>, gdc::ArmijoBacktracking<T> >
+    //gdc::GradientDescent<T, gdcOp<T>, gdc::ConstantStepSize<T> >
+    gdc::GradientDescent<T, gdcOf<T>, gdc::WolfeBacktracking<T> >
+        gdOpt;
+    gdcOf<T> op(*this);
+    gdOpt optimizer;
+
+    optimizer.setObjective(op); //gdc
+    //optimizer.setErrorFunction(op); //lsq
+
+    //optimizer.setCallback(op);
+
+    // for finite difference computations
+    //optimizer.setNumericalEpsilon(1e-9);
+                
+    // Set number of iterations as stop criterion.
+    // Set it to 0 or negative for infinite iterations (default is 0).
+    optimizer.setMaxIterations(200);
+
+    // Set the minimum length of the gradient.
+    // The optimizer stops minimizing if the gradient length falls below this
+    // value (default is 1e-9).
+    optimizer.setMinGradientLength(1e-9);
+
+    // Set the minimum length of the step.
+    // The optimizer stops minimizing if the step length falls below this
+    // value (default is 1e-9).
+    optimizer.setMinStepLength(1e-9);
+
+    // for constant size
+    //optimizer.setStepSize(.1);
+
+    // Set the momentum rate used for the step calculation (default is 0.0).
+    // Defines how much momentum is kept from previous iterations.
+    //optimizer.setMomentum(4);
+
+    // Turn verbosity on, so the optimizer prints status updates after each
+    // iteration.
+    //optimizer.setVerbosity(4);
+
+    // Start the optimization
+    typename gdOpt::Result result = optimizer.minimize(m_curDesign);
+    std::cout << "Done! Converged: " << (result.converged ? "true" : "false")<<"\n";
+    numIterations = result.iterations;
+    //finalObjective = result.fval.value(); //lsq
+    finalObjective = result.fval;
+    m_curDesign = give(result.xval);
 #endif
 
 }
