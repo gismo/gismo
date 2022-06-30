@@ -14,15 +14,17 @@ endif()
 
 # Apply same configuration as G+Smo
 include(gsConfig)
+set(CMAKE_CXX_VISIBILITY_PRESET default)# this is needed to get the CoDiPack tapes exported
 
 ##
 ## CoDiPack package
 ##
 
+
 # Download CoDiPack sources at configure time
 include(gsFetch)
 gismo_fetch_directory(CoDiPack
-    URL https://github.com/SciCompKL/CoDiPack/archive/numericExtension.zip
+    URL https://github.com/SciCompKL/CoDiPack/archive/refs/heads/master.zip
     DESTINATION    external
 )
 
@@ -33,6 +35,25 @@ set(CODIPACK_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/CoDiPack/include CACHE INT
 set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
   CACHE INTERNAL "Gismo include directories")
 
+# Add needed instantiations to the precompiled library
+foreach(instance ${GISMO_COEFF_TYPE} ${GISMO_EXTRA_COEFF_TYPE})
+  set(GISMO_EXTRA_INSTANCE ${GISMO_EXTRA_INSTANCE} 
+    "codi::RealForwardGen<${instance}>;codi::RealReverseGen<${instance}>;codi::RealReverseIndexGen<${instance}>"
+    CACHE INTERNAL "Additional instantiations")
+endforeach()
+add_library(${PROJECT_NAME} OBJECT gsCoDiPack_.cpp)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  COMPILE_DEFINITIONS gismo_EXPORTS
+  POSITION_INDEPENDENT_CODE ON
+  LINKER_LANGUAGE CXX
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
+  FOLDER "G+Smo extensions"  )
+
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+  CACHE INTERNAL "Gismo extensions to be included")
+
 # Install CoDiPack header files
 install(DIRECTORY ${CODIPACK_INCLUDE_DIR}/
         DESTINATION include/gismo/ )
@@ -41,9 +62,6 @@ install(DIRECTORY ${CODIPACK_INCLUDE_DIR}/
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo/
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
-
-# Add filedata folder
-add_definitions(-DELAST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/filedata/") 
 
 # Add example files
 include_directories(${CODIPACK_INCLUDE_DIR})

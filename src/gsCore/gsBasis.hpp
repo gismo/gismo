@@ -160,7 +160,7 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     const index_t stride = values.rows() / actives.rows();
 
     GISMO_ASSERT( actives.rows() * stride == values.rows(),
-                  "Number of values and actives does not fit together");
+                  "Number of values "<<values.rows()<< " and actives "<<actives.rows()<<" does not fit together");
 
     result.resize( tarDim * stride, numPts );
     result.setZero();
@@ -184,9 +184,9 @@ inline gsMatrix<T> gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 }
 
 template<class T> inline
-void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const
+gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 {
-    result.resize( u.cols(), this->size() );
+    gsSparseMatrix<T> result( u.cols(), this->size() );
     gsMatrix<T> ev;
     gsMatrix<index_t> act;
 
@@ -205,6 +205,7 @@ void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & re
     }
 
     result.makeCompressed();
+    return result;
 }
 
 template<class T> inline
@@ -216,8 +217,7 @@ memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> cons
     GISMO_ASSERT (this->size() == pts.cols() , "Expecting as many points as the basis functions." );
     GISMO_ASSERT (this->size() == vals.cols(), "Expecting as many values as the number of points." );
 
-    gsSparseMatrix<T>  Cmat;
-    collocationMatrix(pts, Cmat);
+    gsSparseMatrix<T>  Cmat = collocationMatrix(pts);
     gsMatrix<T> x ( this->size(), vals.rows());
 
     // typename gsSparseSolver<T>::BiCGSTABIdentity solver( Cmat );
@@ -532,6 +532,10 @@ size_t gsBasis<T>::elementIndex(const gsVector<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+gsMatrix<T> gsBasis<T>::elementInSupportOf(index_t j) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 const gsBasis<T>& gsBasis<T>::component(short_t) const
 { GISMO_NO_IMPLEMENTATION }
 
@@ -544,7 +548,15 @@ std::vector<index_t> gsBasis<T>::asElements(gsMatrix<T> const &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+std::vector<index_t> gsBasis<T>::asElementsUnrefine(gsMatrix<T> const &, int) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refine(gsMatrix<T> const &, int)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::unrefine(gsMatrix<T> const &, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -552,7 +564,15 @@ void gsBasis<T>::refineElements(std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::unrefineElements(std::vector<index_t> const &)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::refineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> const &)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

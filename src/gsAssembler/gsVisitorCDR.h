@@ -16,51 +16,44 @@
 namespace gismo
 {
 
-/** \brief Visitor for the convection-diffusion-reaction equation.
- *
- * Visitor for PDEs of the form\n
- * Find \f$ u: \mathbb R^d \rightarrow \mathbb R^d\f$
- * \f[ -\mathrm{div}( A \nabla u ) + b\cdot \nabla u + c u = f \f]
- * (+ boundary conditions), where\n
- * \f$ A \f$ (diffusion coefficient) is a \f$d\times d\f$-matrix,\n
- * \f$ b \f$ (convection velocity) is a \f$d\times 1\f$-vector,\n
- * \f$ c \f$ (reaction coefficient) is a scalar
- *
- * The coefficients are given as gsFunction with vector-valued return.\n
- * See the constructor gsVisitorCDR() for details on their format!
- *
- * Obviously, setting \f$ A= I\f$, \f$ b= 0\f$, and \f$c = 0\f$ results
- * in the special case of the Poisson equation.
- *
- */
-
-struct stabilizerCDR
-{
-    enum method
-    {
-        SUPG = 1,
-        none = 0
-    };
-};
-
+   /** @brief Visitor for the convection-diffusion-reaction equation.
+     *
+     * Visitor for PDEs of the form\n
+     * Find \f$ u: \mathbb R^d \rightarrow \mathbb R^d\f$
+     * \f[ -\mathrm{div}( A \nabla u ) + b\cdot \nabla u + c u = f \f]
+     * (+ boundary conditions), where\n
+     * \f$ A \f$ (diffusion coefficient) is a \f$d\times d\f$-matrix,\n
+     * \f$ b \f$ (convection velocity) is a \f$d\times 1\f$-vector,\n
+     * \f$ c \f$ (reaction coefficient) is a scalar
+     *
+     * The coefficients are given as gsFunction with vector-valued return.\n
+     * See the constructor gsVisitorCDR() for details on their format!
+     *
+     * Obviously, setting \f$ A = I\f$, \f$ b = 0\f$, and \f$c = 0\f$ results
+     * in the special case of the Poisson equation.
+     *
+     * @ingroup Assembler
+     */
 template <class T>
 class gsVisitorCDR
 {
 public:
 
-
+    /// @brief Constructor
+    ///
+    /// @param pde  Reference to \a gsConvDiffRePde object
     gsVisitorCDR(const gsPde<T> & pde)
-    { 
+    {
         const gsConvDiffRePde<T>* cdr =
             static_cast<const gsConvDiffRePde<T>*>(&pde);
-        
+
         coeff_A_ptr = cdr->diffusion ();
         coeff_b_ptr = cdr->convection();
         coeff_c_ptr = cdr->reaction  ();
         rhs_ptr     = cdr->rhs       ();
 
         flagStabType = stabilizerCDR::none;
-        
+
         GISMO_ASSERT( rhs_ptr->targetDim() == 1 ,
                       "Not yet tested for multiple right-hand-sides");
     }
@@ -95,6 +88,7 @@ public:
         GISMO_ASSERT( flagStabilization == stabilizerCDR::none || flagStabilization == stabilizerCDR::SUPG, "flagStabilization not known");
     }
 
+    /// Initialize
     void initialize(const gsBasis<T> & basis,
                     const index_t ,
                     const gsOptionList & options,
@@ -110,7 +104,7 @@ public:
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;
     }
 
-    // Evaluate on element.
+    /// Evaluate on element
     inline void evaluate(const gsBasis<T>       & basis, // to do: more unknowns
                          const gsGeometry<T>    & geo,
                          const gsMatrix<T>      & quNodes)
@@ -142,7 +136,7 @@ public:
         localRhs.setZero(numActive, rhsVals.rows());//multiple right-hand sides
     }
 
-    
+    /// Assemble
     inline void assemble(gsDomainIterator<T>    & element,
                          const gsVector<T>      & quWeights)
     {
@@ -272,10 +266,11 @@ public:
         system.push(localMat, localRhs, actives, eliminatedDofs.front(), 0, 0);
     }
 
+    /// Returns the parameter required for SUPG
     T getSUPGParameter( const gsVector<T> & lo,
                         const gsVector<T> & up)
     {
-        const int N = 2;
+        const index_t N = 2;
 
         const index_t d = lo.size();
 
@@ -289,32 +284,32 @@ public:
         coeff_b_ptr->eval_into( phys_pts, b_at_phys_pts );
         // ...and get it's norm.
         T b_norm = 0;
-        for( int i=0; i < d; i++)
+        for( index_t i=0; i < d; i++)
             b_norm += b_at_phys_pts(i,0) * b_at_phys_pts(i,0);
         b_norm = math::sqrt( b_norm );
 
-        T SUPG_param = T(0.0);
+        T SUPG_param = (T)(0.0);
         if( b_norm > 0 )
         {
             gsMatrix<T> aMat;
 
             if( d == 2 )
             {
-                int N1 = N+1;
+                index_t N1 = N+1;
                 md.points.resize( 2, 4*N1 );
                 aMat.resize( 2, 4*N1 );
 
-                for( int i = 0; i <= N; ++i )
+                for( index_t i = 0; i <= N; ++i )
                 {
-                    T a = T(i)/T(N);
+                    T a = (T)(i)/(T)(N);
                     aMat(0,i) = a;
-                    aMat(1,i) = T(0.0);
+                    aMat(1,i) = (T)(0.0);
                     aMat(0,i+N1) = a;
-                    aMat(1,i+N1) = T(1.0);
+                    aMat(1,i+N1) = (T)(1.0);
 
-                    aMat(0,i+2*N1) = T(0.0);
+                    aMat(0,i+2*N1) = (T)(0.0);
                     aMat(1,i+2*N1) = a;
-                    aMat(0,i+3*N1) = T(1.0);
+                    aMat(0,i+3*N1) = (T)(1.0);
                     aMat(1,i+3*N1) = a;
                 }
             }
@@ -327,22 +322,22 @@ public:
                 md.points.resize( 3, 6*(N+1)*(N+1) );
                 aMat.resize( 3, 6*(N+1)*(N+1) );
 
-                int N1 = N+1;
+                index_t N1 = N+1;
                 md.points.resize( 2, 4*N1 );
                 aMat.resize( 2, 4*N1 );
 
-                int ij = 0;
-                for( int i = 0; i <= N; ++i )
-                    for( int j = 0; j <= N; ++j )
+                index_t ij = 0;
+                for( index_t i = 0; i <= N; ++i )
+                    for( index_t j = 0; j <= N; ++j )
                     {
-                        T ai = T(i)/T(N);
-                        T aj = T(j)/T(N);
-                        aMat(0,ij) = T(0.0);
-                        aMat(1,ij) = T(0.0);
-                        aMat(2,ij) = T(0.0);
-                        aMat(0,ij+N1) = T(1.0);
-                        aMat(1,ij+N1) = T(1.0);
-                        aMat(1,ij+N1) = T(1.0);
+                        T ai = (T)(i)/(T)(N);
+                        T aj = (T)(j)/(T)(N);
+                        aMat(0,ij) = (T)(0.0);
+                        aMat(1,ij) = (T)(0.0);
+                        aMat(2,ij) = (T)(0.0);
+                        aMat(0,ij+N1) = (T)(1.0);
+                        aMat(1,ij+N1) = (T)(1.0);
+                        aMat(1,ij+N1) = (T)(1.0);
 
                     }
                 */
@@ -357,7 +352,7 @@ public:
             for( index_t di = 0; di < d; ++di )
                 for( index_t i = 0; i < aMat.cols(); ++i)
                 {
-                    md.points(di,i) = ( 1 - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
+                    md.points(di,i) = ( (T)(1) - aMat(di,i) )*lo[di] + aMat(di,i) * up[di];
                 }
 
             base->computeMap(md);
@@ -372,7 +367,7 @@ public:
                 if( b_proj_max < b_proj(i) )
                     b_proj_max = b_proj(i);
             }
-            SUPG_param = ( b_proj_max - b_proj_min ) / ( 2 * b_norm );
+            SUPG_param = ( b_proj_max - b_proj_min ) / ( (T)(2) * b_norm );
         }
 
         return SUPG_param;
@@ -416,4 +411,3 @@ protected:
 
 
 } // namespace gismo
-

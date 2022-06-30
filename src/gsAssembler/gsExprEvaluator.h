@@ -15,6 +15,7 @@
 
 #include<gsIO/gsParaviewCollection.h>
 #include<gsAssembler/gsQuadrature.h>
+#include <gsAssembler/gsRemapInterface.h>
 
 namespace gismo
 {
@@ -31,8 +32,6 @@ class gsExprEvaluator
 private:
     typename gsExprHelper<T>::Ptr m_exprdata;
 
-    expr::gsFeElement<T> m_element;
-
 private:
     std::vector<T> m_elWise;
     T              m_value;
@@ -40,7 +39,10 @@ private:
     gsOptionList m_options;
 
 public:
+    typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
+
     typedef std::vector< boundaryInterface > intContainer;
+    typedef std::vector< patchSide > bContainer;
 
     typedef typename gsExprHelper<T>::element     element;
     typedef typename gsExprHelper<T>::geometryMap geometryMap;
@@ -97,6 +99,8 @@ public:
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
 
+    const typename gsExprHelper<T>::Ptr exprData() const { return m_exprdata; }
+
     /// Registers \a mp as an isogeometric geometry map and return a handle to it
     geometryMap getMap(const gsMultiPatch<T> & mp) //conv->tmp->error
     { return m_exprdata->getMap(mp); }
@@ -110,11 +114,11 @@ public:
     { return m_exprdata->getVar(func, dim); }
 
     /// Registers \a func as a variable defined on \a G and returns a handle to it
-    variable getVariable(const gsFunctionSet<T> & func, geometryMap G)
+    expr::gsComposition<T> getVariable(const gsFunctionSet<T> & func, geometryMap G)
     { return m_exprdata->getVar(func, G); }
 
     /// Returns a handle to an isogeometric element
-    element getElement() const { return m_element; }
+    element getElement() { return m_exprdata->getElement(); }
 
     /// Calculates the square root of the lastly computed quantities (eg. integrals)
     void calcSqrt()
@@ -152,13 +156,27 @@ public:
     /// boundary of the integration domain
     template<class E> // note: integralBdrElWise not offered
     T integralBdr(const expr::_expr<E> & expr)
-    { return computeBdr_impl<E,plus_op>(expr); }
+    { return computeBdr_impl<E,plus_op>(expr,
+      m_exprdata->multiBasis().topology().boundaries()); }
+
+    /// Calculates the integral of the expression \a expr on the
+    /// boundaries contained in \a bdrlist
+    template<class E> // note: integralBdrElWise not offered
+    T integralBdr(const expr::_expr<E> & expr, const bContainer & bdrlist)
+    { return computeBdr_impl<E,plus_op>(expr,bdrlist); }
+
+    /// Calculates the integral of the expression \a expr on the
+    /// boundaries contained in \a BCs taking into account boundary functions
+    template<class E> // note: integralBdrElWise not offered
+    T integralBdrBc(const bcRefList & BCs, const expr::_expr<E> & expr)
+    { return computeBdrBc_impl<E,plus_op>(BCs,expr); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces of the (multi-basis) integration domain
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr)
-    { return computeInterface_impl<E,plus_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+    { return computeInterface_impl<E,plus_op>(expr,
+      m_exprdata->multiBasis().topology().interfaces()); }
 
     /// Calculates the integral of the expression \a expr on the
     /// interfaces \a iFaces of the integration domain
@@ -183,6 +201,24 @@ public:
     template<class E> // note: elementwise integral not offered
     T maxInterface(const expr::_expr<E> & expr)
     { return computeInterface_impl<E,max_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+
+    /// Calculates the maximum of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
+    template<class E> // note: elementwise integral not offered
+    T maxInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
+    { return computeInterface_impl<E,max_op>(expr, iFaces); }
+
+    /// Calculates the minimum of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
+    template<class E> // note: elementwise integral not offered
+    T minInterface(const expr::_expr<E> & expr)
+    { return computeInterface_impl<E,min_op>(expr, m_exprdata->multiBasis().topology().interfaces()); }
+
+    /// Calculates the minimum of the expression \a expr on the
+    /// interfaces of the (multi-basis) integration domain
+    template<class E> // note: elementwise integral not offered
+    T minInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
+    { return computeInterface_impl<E,min_op>(expr, iFaces); }
 
     /// Calculates the minimum value of the expression \a expr by
     /// sampling over a finite number of points
@@ -236,7 +272,7 @@ public:
     testEval(const expr::_expr<E> & expr,
              const gsVector<T> & pt, const index_t patchInd = 0)
     {
-        // expr.printDetail(gsInfo);
+        expr.print(gsInfo);
         gsInfo << "Result:\n"<< eval(expr,pt,patchInd) <<"\n";
     }
 
@@ -283,7 +319,10 @@ private:
     T compute_impl(const expr::_expr<E> & expr);
 
     template<class E, class _op>
-    T computeBdr_impl(const expr::_expr<E> & expr);
+    T computeBdr_impl(const expr::_expr<E> & expr, const bContainer & bdrlist);
+
+    template<class E, class _op>
+    T computeBdrBc_impl(const bcRefList & BCs, const expr::_expr<E> & expr);
 
     template<class E, class _op>
     T computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces);
@@ -294,23 +333,20 @@ private:
     struct plus_op
     {
         static inline T init() { return 0; }
-        static inline void acc(const T contrib, const T w, T & res) { res += w * contrib; }
+        static inline void acc(const T contrib, const T w, T & res)
+        { res += w * contrib; }
     };
     struct min_op
     {
         static inline T init() { return math::limits::max(); }
         static inline void acc (const T contrib, const T, T & res)
-        {
-            res = math::min(contrib, res);
-        }
+        { res = math::min(contrib, res); } //note: min/max are not atomic
     };
     struct max_op
     {
         static inline T init() { return math::limits::min(); }
         static inline void acc (const T contrib, const T, T & res)
-        {
-            res = math::max(contrib, res);
-        }
+        { res = math::max(contrib, res); }
     };
 
 };
@@ -319,37 +355,49 @@ template<class T>
 template<class E, bool storeElWise, class _op>
 T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 {
-    // GISMO_ASSERT( expr.isScalar(), // precompute
-    //               "Expecting scalar expression instead of "
-    //               <<expr.cols()<<" x "<<expr.rows() );
-    //expr.print(gsInfo); // precompute
+    m_value = _op::init();
+    m_elWise.clear();
+    if ( storeElWise )
+        m_elWise.resize(m_exprdata->multiBasis().totalElements());
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+    index_t patch_cnt = 0;
+#   endif
 
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
-    // initialize flags
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE, SAME_ELEMENT);
-    m_exprdata->setFlags(expr, SAME_ELEMENT, SAME_ELEMENT);
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
 
-    // Computed value
+    // Computed value on element
     T elVal;
-    m_value = _op::init();
-    m_elWise.clear();
-    if ( storeElWise )
-        m_elWise.reserve(m_exprdata->multiBasis().totalElements());
+    index_t c = 0;
     for (unsigned patchInd=0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         // Quadrature rule
         QuRule =  gsQuadrature::get(m_exprdata->multiBasis().basis(patchInd), m_options);
-        //gsDebugVar(QuRule.numNodes());
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-        m_element.set(*domIt);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
-        // Start iteration over elements
+        // Start iteration over elements of patchInd
+#       ifdef _OPENMP
+        if ( storeElWise )
+        {
+            c = patch_cnt + tid;
+            patch_cnt += domIt->numElements();// a bit costy
+        }
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
         for (; domIt->good(); domIt->next() )
+#       endif
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
@@ -360,22 +408,32 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
             // Compute on element
             elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(expr.val().eval(k), quWeights[k], elVal);
+            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
+                _op::acc(_arg.eval(k), quWeights[k], elVal);
 
-            //gsDebugVar(elVal);
-            _op::acc(elVal, 1, m_value);
             if ( storeElWise )
-                m_elWise.push_back( elVal );
+            {
+#               ifdef _OPENMP
+                m_elWise[c] = elVal;
+                c += nt;
+#               else
+                m_elWise[c++] = elVal;
+#               endif
+            }
+
+#           pragma omp critical (_op_acc)
+            _op::acc(elVal, 1, m_value);
         }
     }
 
+}//omp parallel
     return m_value;
 }
 
 template<class T>
 template<class E, class _op>
-T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
+T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
+                                      const bContainer & bdrlist)
 {
     // GISMO_ASSERT( expr.isScalar(),
     //               "Expecting scalar expression instead of "
@@ -386,25 +444,24 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
     gsQuadRule<T> QuRule;  // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
-    // initialize flags
-    m_exprdata->setFlags(expr, SAME_ELEMENT, SAME_ELEMENT);
-
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
+    
     // Computed value
     T elVal;
     m_value = _op::init();
     m_elWise.clear();
 
     for (typename gsBoxTopology::const_biterator bit = //!! not multipatch!
-             m_exprdata->multiBasis().topology().bBegin(); bit != m_exprdata->multiBasis().topology().bEnd(); ++bit)
+             bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
         // Quadrature rule
         QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(bit->patch), m_options,bit->direction());
-        m_exprdata->mapData.side = bit->side();
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(bit->patch).makeDomainIterator(bit->side());
-        m_element.set(*domIt);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
         for (; domIt->good(); domIt->next() )
@@ -414,12 +471,78 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr)
                           m_exprdata->points(), quWeights);
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(bit->patch);
+            m_exprdata->precompute(bit->patch, bit->side() );
 
             // Compute on element
             elVal = _op::init();
             for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(expr.val().eval(k), quWeights[k], elVal);
+                _op::acc(_arg.eval(k), quWeights[k], elVal);
+
+            _op::acc(elVal, 1, m_value);
+            //if ( storeElWise ) m_elWise.push_back( elVal );
+        }
+    }
+
+    return m_value;
+}
+
+template<class T>
+template<class E, class _op>
+T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
+                                      const expr::_expr<E> & expr)
+{
+    // GISMO_ASSERT( expr.isScalar(),
+    //               "Expecting scalar expression instead of "
+    //               <<expr.cols()<<" x "<<expr.rows() );
+
+    //expr.print(gsInfo);
+
+    if ( BCs.empty() ) return 0;
+    m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
+
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    gsVector<T> quWeights; // quadrature weights
+
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
+
+    // Computed value
+    T elVal;
+    m_value = _op::init();
+    m_elWise.clear();
+
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
+    {
+        const boundary_condition<T> * it = &iit->get();
+
+        // Quadrature rule
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch()), m_options, it->side().direction());
+
+        // Update boundary function source
+        m_exprdata->setMutSource(*it->function());
+
+        // Initialize domain element iterator
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->multiBasis().basis(it->patch()).makeDomainIterator(it->side());
+        m_exprdata->getElement().set(*domIt,quWeights);
+
+        // Start iteration over elements
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                          m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(it->patch(), it->side() );
+
+            // Compute on element
+            elVal = _op::init();
+            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
+                _op::acc(_arg.eval(k), quWeights[k], elVal);
 
             _op::acc(elVal, 1, m_value);
             //if ( storeElWise ) m_elWise.push_back( elVal );
@@ -433,58 +556,66 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces)
 {
-    // GISMO_ASSERT( expr.isScalar(),
-    //               "Expecting scalar expression instead of "
-    //               <<expr.cols()<<" x "<<expr.rows() );
+    auto arg_tpl = expr.val();
+    m_exprdata->parse(arg_tpl);
 
-    //expr.print(gsInfo);
-
-    gsQuadRule<T> QuRule;  // Quadrature rule
+    typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights; // quadrature weights
-
-    // initialize flags
-    m_exprdata->setFlags(expr, SAME_ELEMENT, SAME_ELEMENT);
 
     // Computed value
     T elVal;
     m_value = _op::init();
+    //if ( storeElWise )
+    m_elWise.reserve(m_exprdata->multiBasis().topology().nInterfaces());
     m_elWise.clear();
 
-    for (typename gsBoxTopology::const_iiterator iit = //!! not multipatch!
+    for (typename gsBoxTopology::const_iiterator iit =
              iFaces.begin(); iit != iFaces.end(); ++iit)
     {
         const boundaryInterface & iFace = *iit;
         const index_t patch1 = iFace.first().patch;
-        // const index_t patch2 = iFace.second().patch; //!
-        // Quadrature rule
-        QuRule = gsQuadrature::get(m_exprdata->multiBasis().basis(patch1),
-                                   m_options, iFace.first().side().direction());
+        const index_t patch2 = iFace.second().patch;
 
-        m_exprdata->mapData.side = iFace.first().side();
+        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
+                                          m_exprdata->multiBasis().basis(patch1).support(),
+                                          m_exprdata->multiBasis().basis(patch2).support() );
+
+        //gsRemapInterface<T> interfaceMap(m_exprdata->multiPatch(),
+        //                                 m_exprdata->multiBasis(),
+        //                                 *iit);//,opt
+        //gsDebugVar(interfaceMap);
+
+        // Quadrature rule
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
+                                      m_options, iFace.first().side().direction());
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
-            m_exprdata->multiBasis().basis(patch1).makeDomainIterator(iFace.first().side());
-        m_element.set(*domIt);
+            //interfaceMap.makeDomainIterator();
+            m_exprdata->multiBasis().piece(patch1).makeDomainIterator(iFace.first().side());
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements
+        elVal = _op::init();
         for (; domIt->good(); domIt->next() )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          m_exprdata->points(), quWeights);
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
-            m_exprdata->precompute(patch1);
+            m_exprdata->precompute(iFace);
 
             // Compute on element
-            elVal = _op::init();
-            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quadrature nodes
-                _op::acc(expr.val().eval(k), quWeights[k], elVal);
-
-            _op::acc(elVal, 1, m_value);
-            //if ( storeElWise ) m_elWise.push_back( elVal );
+            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over qu-nodes
+            {
+                _op::acc(arg_tpl.eval(k), quWeights[k], elVal);
+            }
         }
+        _op::acc(elVal, 1, m_value);
+        //if ( storeElWise )
+            m_elWise.push_back( elVal );
     }
 
     return m_value;
@@ -501,8 +632,8 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
     // bug: fails due to gsFeVariable::rows() before evaluation
     // GISMO_ASSERT( expr.isScalar(), "Expecting scalar");
 
-    m_exprdata->initFlags();
-    expr.setFlag();
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
     m_elWise.clear();
     m_elWise.reserve(git.numPoints());
 
@@ -510,7 +641,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
     {
         m_exprdata->points() = *git;
         m_exprdata->precompute(patchInd);
-        m_elWise.push_back( expr.val().eval(0) );
+        m_elWise.push_back( _arg.eval(0) );
 
         // equivalent:
         //m_elWise.push_back( m_exprdata->eval(expr).value() );
@@ -529,7 +660,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
     // bug: fails due to gsFeVariable::rows() before evaluation
     // GISMO_ASSERT( expr.isScalar(), "Expecting scalar");
 
-    m_exprdata->setFlags(expr);
+    m_exprdata->parse(expr);
     m_elWise.clear();
     m_elWise.reserve(git.numPoints());
     gsMatrix<T> tmp;
@@ -551,15 +682,15 @@ typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
 gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
                          const index_t patchInd)
 {
-    m_exprdata->initFlags(SAME_ELEMENT|NEED_ACTIVE);
-    m_exprdata->setFlags(expr);
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
     m_elWise.clear();
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
     // expr.printDetail(gsInfo); //
 
-    m_value = expr.val().eval(0);
+    m_value = _arg.eval(0);
     return gsAsConstMatrix<T>(&m_value,1,1);
 }
 
@@ -569,7 +700,7 @@ typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
 gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
                          const index_t patchInd)
 {
-    m_exprdata->setFlags(expr);
+    m_exprdata->parse(expr);
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
 
@@ -592,7 +723,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             geometryMap G,
                                             std::string const & fn)
     {
-        m_exprdata->setFlags(expr);
+        m_exprdata->parse(expr);
 
         //if false, embed topology ?
         const index_t n = m_exprdata->multiBasis().nBases();
@@ -606,7 +737,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         for ( index_t i=0; i != n; ++i )
         {
             fileName = fn + util::to_string(i);
-            unsigned nPts = m_options.askInt("plot.npts", 3000);
+            unsigned nPts = m_options.askInt("plot.npts", 1000);
             ab = m_exprdata->multiBasis().piece(i).support();
             gsGridIterator<T,CUBE> pt(ab, nPts);
             eval(expr, pt, i);

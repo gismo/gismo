@@ -104,18 +104,22 @@ public:
     /// on the parameter domain based on the fast diagonalization approach
     /// (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
     ///
-    /// The stiffness matrix represents \f$ -\beta \Delta u + \alpha u \f$
+    /// The stiffness matrix represents
+    /// \f$ \beta (\nabla u, \nabla v)_{L_2} + \alpha (u, v)_{L_2} + \gamma (u, 1)_{L_2} (v,1)_{L_2} \f$
     ///
     /// \param basis  A tensor basis
     /// \param bc     Boundary conditions
     /// \param opt    Assembler options
     /// \param alpha  Scaling parameter (see above)
+    /// \param beta   Scaling parameter (see above)
+    /// \param gamma  Scaling parameter (see above). Only allowed for pure Neumann case.
     static OpUPtr            fastDiagonalizationOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
         T alpha = 0,
-        T beta = 1
+        T beta = 1,
+        T gamma = 0
     );
 
     /// Provides \a gsLinearOperator representing the subspace corrected mass smoother
@@ -134,11 +138,12 @@ public:
     /// \param opt    Assembler options
     /// \param sigma  Scaling parameter (see above)
     /// \param alpha  Scaling parameter (see above)
+    /// \param beta   Scaling parameter (see above)
     static OpUPtr            subspaceCorrectedMassSmootherOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
-        T sigma = T(12)/T(100),
+        T sigma = (T)(12) / (T)(100),
         T alpha = 0,
         T beta = 1
     );

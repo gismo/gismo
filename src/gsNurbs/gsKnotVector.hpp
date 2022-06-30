@@ -47,6 +47,25 @@ public:
 
         typename gsKnotVector<T>::knotContainer knotValues;
 
+        gsXmlAttribute * mode = node->first_attribute("mode");
+        //mode: uniform, graded, ..
+        if (mode)
+        {
+            if ( !strcmp( mode->value(),"uniform") )
+            {
+                gsXmlAttribute * szc = node->first_attribute("csize");
+                GISMO_ENSURE(szc, "size of knot-vector coefficients is missing (csize attribute).");
+                index_t sz = atoi(szc->value());
+
+                //gsXmlAttribute * mlt = node->first_attribute("mult");
+                //if mlt
+
+                result = gsKnotVector<T>(0.0, 1.0, sz-p-1, p+1, 1, p);
+                return;
+            }
+        }
+
+        // Case: mode: none/default
         std::istringstream str;
         str.str( node->value() );
         for (T knot; gsGetReal(str, knot);)
@@ -194,7 +213,7 @@ const gsKnotVector<T> & gsKnotVector<T>::trimDomain(const T dbegin, const T dend
 
     return *this;
 }
-//*/
+*/
 
 
 template<typename T>
@@ -632,11 +651,11 @@ void gsKnotVector<T>::initUniform( T first,
     m_multSum .clear();
     m_multSum .reserve(interior+2);
 
-    const T h = (last-first) / (interior+1);
+    const T h = (last-first) / (T)(interior+1);
 
     for(unsigned i = m_deg - mult_ends + 1, j=1; i!= 0; --i, ++j)
     {   // add left ghost knots
-        m_repKnots.push_back(first-i*h);
+        m_repKnots.push_back(first-(T)(i)*h);
         m_multSum .push_back(j);
     }
 
@@ -645,7 +664,7 @@ void gsKnotVector<T>::initUniform( T first,
 
     for( unsigned i=1; i<=interior; ++i)
     {
-        m_repKnots.insert( m_repKnots.end(), mult_interior, first + i*h );
+        m_repKnots.insert( m_repKnots.end(), mult_interior, first + (T)(i)*h );
         m_multSum .push_back( mult_interior + m_multSum.back() );
     }
 
@@ -654,7 +673,7 @@ void gsKnotVector<T>::initUniform( T first,
 
     for(unsigned i = 1; i!=m_deg - mult_ends + 2; ++i)
     {   // add right ghost knots
-        m_repKnots.push_back(last+i*h);
+        m_repKnots.push_back(last+(T)(i)*h);
         m_multSum .push_back(m_multSum.back() + 1);
     }
 
@@ -923,18 +942,18 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result) const
 
     if ( m_deg!=0)
     {
-        result(0,0) = std::accumulate( itr, itr+m_deg, T(0.0) ) / m_deg ;
+        result(0,0) = std::accumulate( itr, itr+m_deg, (T)(0.0) ) / (T)(m_deg) ;
 
         if ( result(0,0) < *(itr-1) )// Ensure that the point is in range
             result(0,0) = *(itr-1);
 
         for (++itr; itr != end()-m_deg; ++itr, ++i )
         {
-            result(0,i) = std::accumulate( itr, itr+m_deg, T(0.0) ) / m_deg ;
+            result(0,i) = std::accumulate( itr, itr+m_deg, (T)(0.0) ) / (T)(m_deg) ;
             if ( result(0,i) == result(0,i-1) )
             {
                 // perturbe point to remain inside the needed support
-                result(0,i-1) -= 1/T(1000000000); // =mpq_class(1,1000000000);
+                result(0,i-1) -= (T)(1)/(T)(1000000000); // =mpq_class(1,1000000000);
                 //to try: result(0,i-1) = math::nextafter(result(0,i-1), *result.data() );
             }
         }
@@ -954,7 +973,7 @@ void gsKnotVector<T>::centers_into(gsMatrix<T> & result) const
     result.resize(1, numElements());
     index_t i = 0;
     for (uiterator it = domainUBegin(); it != domainUEnd(); ++it, ++i)
-        result.at(i) = (*(it+1) + *it) / 2;
+        result.at(i) = (*(it+1) + *it) / (T)(2);
 }
 
 template <class T>
@@ -965,7 +984,7 @@ T gsKnotVector<T>::greville(int i) const
                  "Index of Greville point is out of range.");
     iterator itr = begin() + 1;
     return ( m_deg==0 ? *(itr+i-1) :
-             std::accumulate( itr+i, itr+i+m_deg, T(0.0) ) / m_deg
+             std::accumulate( itr+i, itr+i+m_deg, (T)(0.0) ) / (T)(m_deg)
              // Special case C^{-1}
              - (*(itr+i) == *(itr+i+m_deg) ? 1e-10 : 0 )
         );
@@ -982,9 +1001,9 @@ void gsKnotVector<T>::getUniformRefinementKnots(mult_t knotsPerSpan, knotContain
     T prev = m_repKnots.front();
     for( uiterator uit = ubegin()+1; uit != uend(); ++uit )
     {
-        const T step = (*uit - prev)/T(knotsPerSpan+1);
+        const T step = (*uit - prev)/(T)(knotsPerSpan+1);
         for( mult_t i = 1; i <= knotsPerSpan; ++ i)
-            result.insert( result.end(), mult, prev + i*step );
+            result.insert( result.end(), mult, prev + (T)(i)*step );
         prev=*uit;
     }
 }

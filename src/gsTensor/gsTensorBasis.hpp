@@ -350,7 +350,7 @@ void gsTensorBasis<d,T>::boundary_into(boxSide const & s, gsMatrix<int> & bstruc
 
     return this->slice(k, (r ? size(k) - 1 : 0) ).release();
 }
-//*/
+*/
 
 /*
 template <short_t d, class BB, class B>
@@ -370,7 +370,7 @@ struct MakeBoundaryBasis<2, BB, B>
         return bases[0];
     }
 };
-//*/
+*/
 
 template<short_t d, class T>
 void
@@ -899,7 +899,7 @@ gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 template<short_t d, class T>
 typename gsGeometry<T>::uPtr
 gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
-                                          std::vector<gsMatrix<T> >const& grid) const
+                                    std::vector<gsMatrix<T> >const& grid) const
 {
     GISMO_ASSERT (this->size() == vals.cols(), 
                   "Expecting as many values as the number of basis functions." );
@@ -925,7 +925,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
         q0.resize(sz_i, n * r_i);
 
         // Solve for i-th coordinate basis
-        m_bases[i]->collocationMatrix(grid[i], Cmat);
+        Cmat = m_bases[i]->collocationMatrix(grid[i]);
         solver.compute(Cmat); 
         #ifndef NDEBUG
         if ( solver.info() != Eigen::Success )
@@ -1032,6 +1032,19 @@ T gsTensorBasis<d, T>::getMaxCellLength() const
     return h;
 }
 
+template<short_t d, class T>
+gsMatrix<T> gsTensorBasis<d,T>::elementInSupportOf(index_t j) const
+{
+    const gsVector<index_t, d> ti = tensorIndex(j);
+    gsMatrix<T> el, res(d,2);
+    for (short_t i = 0; i < d; ++i)
+    {
+        el = m_bases[i]->elementInSupportOf(ti[i]);
+        res.row(i) = el;
+    }
+    return res;
+}
+    
 //template<short_t d, class T>
 //gsDomain<T> * gsTensorBasis<d,T>::makeDomain() const
 //{

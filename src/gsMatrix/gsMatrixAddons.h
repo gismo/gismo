@@ -73,7 +73,9 @@ inline Matrix<Scalar, Dynamic, Dynamic> cramerInverse() const
             rvo1 = M.template topLeftCorner<4, 4>().inverse();
             break;
         default:
-            eigen_assert(false && "Not implemented.");
+            gsWarn<<"Inversion by LU for matrix of size "<<M.rows()<<"\n";
+            M.inverse();
+            break;
     };
     return rvo1;
 }

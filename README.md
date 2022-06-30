@@ -9,7 +9,6 @@
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
-=====                     version 20.12 Alpha                    =====
 =====                   https://github.com/gismo                 =====
 ======================================================================
 ```
@@ -19,16 +18,14 @@
 |------------|------------|----------------------|
 | [CDash](https://cdash-ci.inria.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Report results from all builds |
 | [Appveyor](https://ci.appveyor.com/project/gismo/gismo)  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[appVeyor]) | Windows MSVC 14.0 |
-| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | macOS XCode9, C++98 <br> macOS XCode10, C++11 <br> macOS XCode11, C++14 <br> macOS XCode12, C++17 |
+| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | MacOS XCode9-12 |
 | [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
-| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux GCC6, C++98 <br> Linux GCC7, C++11 <br> Linux GCC8, C++14 <br> Linux GCC9, C++17 <br> Linux GCC10, C++20 <br> Linux Clang7, C++98 <br> Linux Clang8, C++11 <br> Linux Clang9, C++14 <br> Linux Clang10, C++17 <br> Linux Clang11, C++20] |
-| [Travis](https://travis-ci.org/gismo/gismo/branches) | [![Travis Status](https://travis-ci.org/gismo/gismo.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[travis]) | macOS XCode9 C++98 <br> macOS XCode10, C++11 <br> macOS XCode11, C++14 <br> Linux GCC, C++98 |
+| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
 | [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
 | [Jenkins](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable) | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[jenkins]) |VMs for Linux/MacOS/Windows |
 | GCC Farm | [Status](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
 | [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
 | [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
-
 
 This README file contains brief information. More details are found in
 the [Wiki pages](https://github.com/gismo/gismo/wiki).
@@ -41,9 +38,10 @@ or using subversion:
 
 ```svn co https://github.com/gismo/gismo/trunk gismo```
 
-or as a zip file:
+or as a tar.gz or zip file:
 
-https://github.com/gismo/gismo/archive/stable.zip
+* https://github.com/gismo/gismo/archive/stable.tar.gz
+* https://github.com/gismo/gismo/archive/stable.zip
 
 # Prerequisites
 
@@ -51,12 +49,14 @@ https://github.com/gismo/gismo/archive/stable.zip
   - MS Windows
   - Linux
   - macOS
+  - FreeBSD
 
 * Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
 * Compilers tested include recent versions of
   - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)
-  - [Clang](https://clang.llvm.org) also Apple Clang
+  - [AppleClang](https://developer.apple.com/documentation/xcode/) see [here](https://mac.r-project.org/openmp/) for OpenMP support
+  - [Clang](https://clang.llvm.org)
   - [GNU GCC](https://gcc.gnu.org)
   - [Intel C++ compiler](https://software.intel.com/content/www/us/en/develop/tools/compilers/c-compilers.html)
   - [Mingw64](http://mingw-w64.org/)
@@ -68,37 +68,40 @@ https://github.com/gismo/gismo/archive/stable.zip
   - [IBM XLC C/C++](https://www.ibm.com/products/xl-cpp-linux-compiler-power) fails to compile Eigen
 
 * Recommended:
+   - [Doxygen](https://www.doxygen.org) for generating documentation.
    - [Paraview](https://www.paraview.org) for visualization.
 
 # Compilation
 
-The compilation requires configuration using CMake at a new, empty
-folder (in-source builds are disabled).
+The compilation requires configuration using [CMake](https://cmake.org)
+at a new, empty folder (in-source builds are disabled).
 
-* On Linux/macOS: A Unix makefile exists in the root source
-  folder. Running "make" creates a sub folder named "build" and
+* On **Linux/macOS**: A Unix makefile exists in the root source
+  folder. Running `make` creates a sub folder named `build` and
   executes CMake and compilation inside that folder. Alternatively,
   choose your own build folder and execute CMake pointing to the
   sources.
 
-* On MS Windows: Run cmake-gui tool (from an environment that is
-  configured with your compiler) to generate makefiles (or Visual
-  Studio project). Then execute the make tool to launch
-  compilation. Alternatively, use the QtCreator GUI and open the
-  CMakeLists.txt file on the root folder to create a QtCreator
-  project.
+* On **MS Windows**: MS Visual Studio has [built-in CMake
+  support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
+  since version 2015. Alternatively, you can run the `cmake-gui` tool
+  (from an environment that is configured with your compiler) to
+  generate makefiles (or Visual Studio project files). Then execute
+  the make tool to launch compilation. Alternatively, use the
+  QtCreator GUI and open the CMakeLists.txt file on the root folder to
+  create a QtCreator project.
 
-After successful compilation a dynamic library is created in ./lib and
-executable example programs are output at the ./bin subdirectory of
+After successful compilation a dynamic library is created in `./lib` and
+executable example programs are output at the `./bin` subdirectory of
 the build folder.
 
-Additionally, if Doxygen is available on the system one can execute
-(eg. on Linux):
+Additionally, if [Doxygen](https://www.doxygen.org) is available on
+the system one can execute (eg. on Linux):
 
 ```make doc```
 
 to obtain the Doxygen documentation in HTML format. The main doxygen
-page is at ./doc/html/index.html.
+page is at `./doc/html/index.html`.
 
 More information at https://github.com/gismo/gismo/wiki
 
@@ -116,6 +119,11 @@ Release, RelWithDebInfo, MinSizeRel.
 
   The arithmetic type to be used for all computations. Available options
 include double, long double, float.
+
+* GISMO_EXTRA_INSTANCE    *not set*
+
+  If set to one or more of the options available for GISMO_COEFF_TYPE
+  the G+Smo library is compiled with extra arithmetic types enabled.
 
 * GISMO_EXTRA_DEBUG       *OFF*
 
@@ -212,6 +220,12 @@ eleven modules are present as sub-folders:
 * **doc**
 
   Files related to doxygen documentation.
+
+# Third-party repository distribution
+
+- openSUSE Science Project: https://en.opensuse.org/openSUSE:Science_Math
+- FreeBSD port: https://www.freshports.org/math/gismo/
+- Ubuntu upstream packages: https://launchpad.net/~g+smo/+archive/ubuntu/upstream
 
 # Contact and support
 

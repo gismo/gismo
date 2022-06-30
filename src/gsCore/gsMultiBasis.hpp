@@ -22,10 +22,13 @@ namespace gismo
 {
 
 template<class T>
-gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb )
+gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb, bool NoRational)
 : m_topology( bb.dim() )
 {
-    m_bases.push_back( bb.clone().release() );
+    if (NoRational)
+        m_bases.push_back( bb.source().clone().release() );
+    else
+        m_bases.push_back( bb.clone().release() );
     m_topology.addBox();
     m_topology.addAutoBoundaries();
 }
@@ -180,7 +183,8 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
         const gsBoundaryConditions<T>& boundaryConditions,
         const gsOptionList& assemblerOptions,
         int numKnots,
-        int mul)
+        int mul,
+        index_t unk)
 {
     // Get coarse mapper
     gsDofMapper coarseMapper;
@@ -189,7 +193,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             coarseMapper,
-            0
+            unk
     );
 
     // Refine
@@ -206,7 +210,7 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             fineMapper,
-            0
+            unk
     );
 
     // restrict to free dofs
@@ -219,7 +223,8 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
         gsSparseMatrix<T, RowMajor>& transferMatrix,
         const gsBoundaryConditions<T>& boundaryConditions,
         const gsOptionList& assemblerOptions,
-        int numKnots)
+        int numKnots,
+        index_t unk)
 {
     // Get fine mapper
     gsDofMapper fineMapper;
@@ -228,7 +233,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             fineMapper,
-            0
+            unk
     );
 
     // Refine
@@ -245,7 +250,7 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
             boundaryConditions,
             coarseMapper,
-            0
+            unk
     );
 
     // restrict to free dofs

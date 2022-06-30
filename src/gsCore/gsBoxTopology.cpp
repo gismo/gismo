@@ -18,6 +18,25 @@
 namespace gismo
 {
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  namespace py = pybind11;
+
+  void pybind11_init_gsBoxTopology(py::module &m)
+  {
+    using Class = gsBoxTopology;
+    py::class_<Class>(m, "gsBoxTopology")
+
+      // Constructors
+      .def(py::init<>())
+      .def("boundaries", static_cast<std::vector< patchSide >& (Class::*)()> (&Class::boundaries))
+      .def("interfaces", static_cast<std::vector< boundaryInterface >& (Class::*)()> (&Class::interfaces))
+
+      ;
+  }
+
+#endif
+
 std::ostream & gsBoxTopology::print(std::ostream &os) const
 {
     if ( nboxes > 0 )
@@ -343,4 +362,28 @@ void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists)
         }
     }
 }
+
+std::vector<std::vector<patchCorner>> gsBoxTopology::vertices() const
+{
+    std::vector<std::vector<patchCorner>> allCorners;
+    for (index_t n = 0; n < nboxes; ++n)
+    {
+        for(index_t j=1;j<=4;++j)
+        {
+            std::vector<patchCorner> cornerLists;
+            patchCorner start(n, j);
+            getCornerList(start, cornerLists);
+            bool alreadyReached = false;
+            for(size_t k = 0;k<allCorners.size();++k)
+                for(size_t l = 0;l<allCorners[k].size();++l)
+                    if(allCorners[k][l].patch==n && allCorners[k][l].m_index==j)
+                        alreadyReached = true;
+            if (cornerLists.size() > 0 && !alreadyReached)
+                allCorners.push_back(cornerLists);
+        }
+    }
+
+    return allCorners;
+}
+
 }

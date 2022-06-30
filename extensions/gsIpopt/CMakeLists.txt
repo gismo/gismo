@@ -25,26 +25,30 @@ if (NOT IPOPT_FOUND)
   message("Will attempt to download and compile IpOpt ${IPOPT_VER} (do: make IpOpt; cmake .")
 
   #fetch here!
+  set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin CACHE INTERNAL "")
+  set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
+    CACHE INTERNAL "")
 
+  # For Mumps: If using GFortran 10, add
+  # ADD_FCFLAGS=-fallow-argument-mismatch to compiler flags.
   include(ExternalProject)
   ExternalProject_Add(IpOpt
     SOURCE_DIR        ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
-    CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/configure --prefix=<INSTALL_DIR> #--libdir=${CMAKE_BINARY_DIR}/lib
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/configure --prefix=<INSTALL_DIR> #ADD_FCFLAGS=-fallow-argument-mismatch
     URL http://www.coin-or.org/download/source/Ipopt/Ipopt-${IPOPT_VER}.tgz
     PATCH_COMMAND      patch -t -s -p1 < ${gismo_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/mumps.patch ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/mumps.patch
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/get.Mumps
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Metis/get.Metis
     COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Blas/get.Blas
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Lapack/get.Lapack
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib64
     BUILD_COMMAND ${MAKE}
     UPDATE_COMMAND     ""
+    BUILD_BYPRODUCTS "${IPOPT_LIBRARY}"
     #DOWNLOAD_NO_PROGRESS 0
     )
-  set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin CACHE INTERNAL "")
-  set(IPOPT_LIBRARY ${CMAKE_BINARY_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
-    CACHE INTERNAL "")
 else()
   #add_custom_target (IpOpt)
 endif(NOT IPOPT_FOUND)

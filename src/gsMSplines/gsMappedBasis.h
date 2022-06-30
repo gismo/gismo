@@ -29,6 +29,8 @@ template<short_t d,class T> class gsMappedSingleBasis;
 template<short_t d,class T>
 class gsMappedBasis  : public gsFunctionSet<T>
 {
+    friend class gsMappedSingleBasis<d,T>;
+
 private:
     typedef std::vector<std::pair<int,int> >::iterator step_iter;
     typedef gsBasis<T> BasisType;
@@ -54,9 +56,8 @@ public:
     gsMappedBasis() : m_mapper(nullptr)
     { }
 
-    gsMappedBasis(gsMultiPatch<T> const & mp, std::string pathToMap );
-
-    gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m): m_mapper(nullptr)
+    gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)
+    : m_mapper(nullptr)
     {
         init(mb,m);
     }
@@ -69,6 +70,7 @@ public:
     {
         GISMO_ASSERT(mb.domainDim()==d, "Error in dimensions");
         m_topol  = mb.topology();
+
         delete m_mapper;
         m_mapper = new gsWeightMapper<T>(m);
 
@@ -104,6 +106,14 @@ public:
 
      /// getter for m_bases
     const std::vector<BasisType*> getBases() const;
+
+     /// getter for m_bases
+    std::vector<BasisType*> getBasesCopy() const
+    {
+        std::vector<BasisType*> bases;
+        cloneAll(m_bases,bases);
+        return bases;
+    }
 
     /// getter for m_mapper
     gsWeightMapper<T> const & getMapper() const
@@ -160,7 +170,7 @@ public:
 
 private:
     /// helper function for boundary and innerBoundaries
-    void addLocalIndizesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const;
+    void addLocalIndicesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const;
 
 public:
     void reorderDofs(const gsPermutationMatrix& permMatrix)
@@ -351,18 +361,32 @@ protected:
 
     // Data members
 protected:
-    /// topology, specifying the relation (connections) between the patches
+    /// Topology, specifying the relation (connections) between the patches
     gsBoxTopology m_topol;
 
-    /// vector of patches (bases)
+    /// Vector of local bases
     std::vector<BasisType *> m_bases;
 
-    /// map between the local basis functions and the newly created ones
+    /// Map between the local basis functions and the newly created ones
     gsWeightMapper<T> * m_mapper;
     // gsSparseMatrix<T> r:C, c:B
 
+    /// Underlying bases per patch
     std::vector<gsMappedSingleBasis<d,T> > m_sb;
+
+    // Make gsMultiBasis a member instead of m_bases and m_topol?
 };
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMappedBasis
+   */
+  // void pybind11_init_gsMappedBasis1(pybind11::module &m);
+  void pybind11_init_gsMappedBasis2(pybind11::module &m);
+  // void pybind11_init_gsMappedBasis3(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 }
 

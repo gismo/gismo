@@ -193,6 +193,12 @@ public:
     // TrimSurf
     //void inDomain(axlPoint *normal, double u,double v);
 
+    //from axlAbsractSurfaceBSpline
+    void setSurface(int pointsCount_u, int pointsCount_v,
+                    int order_u, int order_v, int dimension,
+                    double *knots_u, double *knots_v,
+                    double *points, bool rational);
+    
 public:
 
     //

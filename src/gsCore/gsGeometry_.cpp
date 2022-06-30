@@ -23,4 +23,28 @@ namespace gismo
     CLASS_TEMPLATE_INST gsSurface <real_t> ;
     CLASS_TEMPLATE_INST gsVolume  <real_t> ;
     CLASS_TEMPLATE_INST gsBulk    <real_t> ;
+
+#ifdef GISMO_BUILD_PYBIND11
+
+namespace py = pybind11;
+
+void pybind11_init_gsGeometry(py::module &m)
+{
+  using Base = gsFunction<real_t>;
+  using Class = gsGeometry<real_t>;
+  py::class_<Class, Base>(m, "gsGeometry")
+
+  // Member functions
+  .def("parDim", &Class::targetDim, "Gives the parameter dimension")
+  .def("geoDim", &Class::targetDim, "Gives the geometry dimension")
+  .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs), "Get the coefficients as a reference")
+  .def("coefs", static_cast<const gsMatrix<real_t>& (Class::*)() const> (&Class::coefs), "Get the coefficients as a const reference")
+  .def("setCoefs", &Class::setCoefs, "Sets the coefficients")
+  .def("basis", static_cast<const gsBasis<real_t>& (Class::*)() const>(&Class::basis), "Returns the bspline basis")
+  .def("basis", static_cast<gsBasis<real_t>& (Class::*)()>(&Class::basis), "Returns the bspline basis as a reference")
+  ;
+}
+
+#endif
+
 }

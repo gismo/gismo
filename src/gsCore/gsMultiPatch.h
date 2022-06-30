@@ -43,6 +43,8 @@ public:
     typedef memory::unique_ptr< gsMultiPatch > uPtr;
 
     typedef std::vector<gsGeometry<T> *> PatchContainer;
+    typedef std::map<boundaryInterface,typename gsGeometry<T>::uPtr>  InterfaceRep;
+    typedef std::map<patchSide,typename gsGeometry<T>::uPtr>         BoundaryRep;
 
     typedef typename PatchContainer::iterator iterator;
     typedef typename PatchContainer::const_iterator const_iterator;
@@ -126,6 +128,16 @@ public:
 
     index_t size() const { return 1; }
 
+    /// Return the number of coefficients (control points)
+    index_t coefsSize() const
+    {
+        index_t sz = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+            sz += (*it)->coefsSize();
+        return sz;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
@@ -206,7 +218,7 @@ public:
     void permute(const std::vector<short_t> & perm);
 
     ///\brief Return the basis of the \a i-th patch.
-    gsBasis<T> & basis( size_t i ) const;
+    gsBasis<T> & basis( const size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
     void addPatch(typename gsGeometry<T>::uPtr g);
@@ -248,6 +260,9 @@ public:
     /// \brief Elevate the degree of all patches by \a elevationSteps.
     void degreeElevate(int elevationSteps = 1);
 
+    /// \brief Reduce the degree of all patches by \a elevationSteps.
+    void degreeReduce(int elevationSteps = 1);
+
     void embed(const index_t N)
     {
         for ( typename PatchContainer::const_iterator it = m_patches.begin();
@@ -263,7 +278,7 @@ public:
     /// \param cornersOnly When set to true an interface is accepted
     /// if the patch corners match, even if the parameterization does
     /// not agree
-    bool computeTopology( T tol = 1e-4, bool cornersOnly = false);
+    bool computeTopology( T tol = 1e-4, bool cornersOnly = false, bool tjunctions = false);
 
     /// \brief Attempt to close gaps between the interfaces. Assumes
     /// that the topology is computed, ie. computeTopology() has been
@@ -283,10 +298,11 @@ public:
     /// to two points: the lower and upper corner of the bounding box.
     void boundingBox(gsMatrix<T> & result) const;
 
-    /// \brief Splits each patch uniformly in each direction into two new patches,
-    /// giving a total number of 2^d new patches. This method allocated new
-    /// space for each new geometry, the original one stays unchanged.
-    gsMultiPatch<T> uniformSplit() const;
+    /// \brief Splits each patch uniformly in each direction (if dir = -1)
+    /// into two new patches, giving a total number of 2^d new patches per patch.
+    /// If dir is a parametric direction, then it only splits in that one direction.
+    /// This method allocated new space for each new geometry, the original one stays unchanged.
+    gsMultiPatch<T> uniformSplit(index_t dir =-1) const;
 
 
     /** @brief Checks if all patch-interfaces are fully matching, and if not, repairs them, i.e., makes them fully matching.
@@ -295,19 +311,57 @@ public:
     * Assumes that the meshes on all levels of the gsHTensorBasis
     * are fully matching.
     */
-    void repairInterfaces();
+    void repairInterfaces()
+    {
+        std::vector< boundaryInterface > bivec = interfaces();
+        size_t kmax = 2*bivec.size();
+        size_t k = 0;
+        bool sthChanged = false;
+        bool change = false;
+        do
+        {
+            sthChanged = false;
+            for( size_t i = 0; i < bivec.size(); i++ )
+            {
+                change = repairInterface( bivec[i] );
+                sthChanged = sthChanged || change;
+            }
+            k++; // just to be sure this cannot go on infinitely
+        }
+        while( sthChanged && k <= kmax );
+    }
+
+    /** @brief Checks if the interface is fully matching, and if not, repairs it.
+    *
+    * \remarks Designed for gsHTensorBasis and derived bases.
+    * Assumes that the respective meshes on all levels of the
+    * gsHTensorBasis are fully matching.
+    *
+    * \returns true, if something was repaired, i.e., if the mesh on the interface was changed.
+    */
+    bool repairInterface( const boundaryInterface & bi );
+
 
     /// @brief For each point in \a points, locates the parametric coordinates of the point
     /// \param points
     /// \param pids vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
-    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim) const;
+    void locatePoints(const gsMatrix<T> & points, gsVector<index_t> & pids, gsMatrix<T> & preim, const T accuracy = 1e-6) const;
 
     /// @brief For each point in \a points located on patch pid1, locates the parametric coordinates of the point
     ///
     /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+
+    std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
+                                                   const T accuracy = 1e-6) const;
+
+    void constructInterfaceRep();
+    void constructBoundaryRep();
+
+    const InterfaceRep & interfaceRep() const { return m_ifaces; }
+    const BoundaryRep & boundaryRep() const { return m_bdr; }
     
 protected:
 
@@ -317,6 +371,9 @@ protected:
 private:
 
     PatchContainer m_patches;
+
+    InterfaceRep m_ifaces;
+    BoundaryRep m_bdr;
 
 private:
     // implementation functions
@@ -347,6 +404,15 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
 {
     return b.print( os );
 }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMultiPatch
+   */
+  void pybind11_init_gsMultiPatch(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 } // namespace gismo

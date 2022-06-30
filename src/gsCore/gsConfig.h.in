@@ -23,7 +23,10 @@
 #define GISMO_PATCH      @gismo_VERSION_PATCH@
 
 /** Define default coefficient type. */
-#define real_t           @GISMO_COEFF_TYPE@
+#define GISMO_COEFF_TYPE @GISMO_COEFF_TYPE@
+#ifndef real_t
+#define real_t           GISMO_COEFF_TYPE
+#endif
 
 /** Define default index type. */
 #define index_t          @GISMO_INDEX_TYPE@
@@ -77,6 +80,16 @@
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
+
+/* Determine if Python module should be built. */
+#cmakedefine GISMO_BUILD_PYBIND11
+
+#ifdef GISMO_BUILD_PYBIND11
+#include <pybind11/iostream.h>
+#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#endif
 
 /* Debug settings. */
 #cmakedefine GISMO_EXTRA_DEBUG

@@ -261,11 +261,14 @@ public:
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2Func_into(u, m_coefs, result); }
 
-    /// @}
-
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const
+    { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
 
     // Look at gsFunctionSet for documentation
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
+
+    /// @}
 
     /// \brief Evaluates if the geometry orientation coincide with the
     /// ambient orientation.
@@ -277,12 +280,10 @@ public:
         if ( parDim() == geoDim() )
         {
             const T val = gsFunction<T>::jacobian( parameterCenter() ).determinant();
-            return (T(0) < val) - (val < T(0));
+            return (T(0) < val) - (val < (T)(0));
         }
         return 1;
     }
-
-    /// @}
 
     /*************************************************************************/
 
@@ -328,7 +329,7 @@ public:
     { 
         // default impl. assumes convex support
         gsMatrix<T> S = this->basis().support();
-        return ( S.col(0) + S.col(1) ) * T(0.5);
+        return ( S.col(0) + S.col(1) ) * (T)(0.5);
     }
 
     /// Get coordinates of the boxCorner \a bc in the parameter domain
@@ -493,6 +494,11 @@ public:
         this->basis().refineElements_withCoefs(this->m_coefs, boxes );
     }
 
+    void unrefineElements( std::vector<index_t> const & boxes )
+    {
+        this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
+    }
+
     typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
     
     /// Embeds coefficients in 3D
@@ -501,23 +507,34 @@ public:
         embed(3);
     }
 
-    /// Embeds coefficients in \a N dimension
-    void embed(index_t N)
-    { 
+    /// \brief Embeds coefficients in \a N dimensions
+    ///For the new dimensions zeros are added (or removed) on the
+    /// right (if \a pad_right is true) or on the left (if \a
+    /// pad_right is false)
+    void embed(index_t N, bool pad_right = true)
+    {
         GISMO_ASSERT( N > 0, "Embed dimension must be positive");
 
         const index_t nc = N - m_coefs.cols();
+        if ( nc == 0 ) return;
 
-        if ( nc != 0 )
+        if (!pad_right && nc<0)
+            m_coefs.leftCols(N) = m_coefs.rightCols(N);
+        m_coefs.conservativeResize(Eigen::NoChange, N);
+
+        if ( nc > 0 )
         {
-            m_coefs.conservativeResize(Eigen::NoChange, N);
-            if ( nc > 0 )
+            if (pad_right)
                 m_coefs.rightCols(nc).setZero();
-            else // nc < 0
+            else
             {
-                gsWarn<<"Coefficients projected (deleted)..\n";
+                m_coefs.rightCols(N-nc) = m_coefs.leftCols(N-nc);
+                m_coefs.leftCols(nc).setZero();
             }
         }
+#       ifndef NDEBUG
+        else gsWarn<<"Coefficients projected (deleted)..\n";
+#       endif
     }
 
     /// \brief Returns the degree wrt direction i
@@ -554,6 +571,13 @@ public:
 
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
     typename gsGeometry::uPtr boundary(boxSide const& s) const;
+
+    /// Computes and returns the interface with \a other as a new geometry
+    virtual typename gsGeometry::uPtr iface(const boundaryInterface & bi,
+                                            const gsGeometry & other) const;
+
+    /// Get parametrization of box component \a bc as a new gsGeometry uPtr.
+    typename gsGeometry::uPtr component(boxComponent const& bc) const;
 
     GISMO_UPTR_FUNCTION_PURE(gsGeometry, clone)
 
@@ -599,8 +623,9 @@ public:
                               const T accuracy = 1e-6,
                               const bool useInitialPoint = false) const;
 
-    /// Returns the parameters of closest point to \a pt
-    void closestPointTo(const gsVector<T> & pt,
+    /// Returns the parameters of closest point to \a pt as an argument, and the
+    /// Euclidean distance as a return value
+    T closestPointTo(const gsVector<T> & pt,
                         gsVector<T> & result,
                         const T accuracy = 1e-6,
                         const bool useInitialPoint = false) const;
@@ -684,6 +709,15 @@ struct gsGeoTraits<4,T>
 {
     typedef gsBulk<T> GeometryBase;
 };
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsGeometry
+   */
+  void pybind11_init_gsGeometry(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

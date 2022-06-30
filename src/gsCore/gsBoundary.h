@@ -241,6 +241,8 @@ public:
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
 
+    index_t patchIndex() {return patch;}
+
     /**
      * @brief returns the vector of the corners contained in the side
      * @param dim is the ambient dimension
@@ -390,6 +392,10 @@ public:
 
     patchCorner(index_t p, boxCorner c)
         : boxCorner(c), patch (p) { }
+
+    // Accessors
+    boxCorner& corner()       {return *this;}
+    const boxCorner& corner() const {return *this;}
 
     /**
      * @brief returns a vector of patchSides that contain this corner
@@ -644,7 +650,7 @@ public:
         directionOrientation.resize(2);
         directionMap(ps1.direction())=ps2.direction();
         directionMap(1-ps1.direction())=1-ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
         directionOrientation(1-ps1.direction())=o1;
     }
 
@@ -658,9 +664,6 @@ public:
         directionMap.resize(dim);
         directionOrientation.resize(dim);
 
-        directionMap(ps1.direction())=ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
-
         for (int i = 1 ; i < dim; ++i)
         {
             const index_t o = (ps1.direction()+i)%dim;
@@ -670,6 +673,9 @@ public:
             directionOrientation(o)=true;
             /// TODO: discuss and define default orientation
         }
+        directionMap(ps1.direction())=ps2.direction();
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
+
     }
 
     boundaryInterface(gsVector<short_t>     const & p,
@@ -680,6 +686,8 @@ public:
       directionOrientation(orient_flags)
     {
         GISMO_ASSERT(p.size() == 4, "Expecting four integers");
+        directionMap(ps1.direction())=ps2.direction();
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
     }
 
     boundaryInterface(patchSide const & _ps1,
@@ -687,7 +695,10 @@ public:
                       gsVector<index_t> const & map_info,
                       gsVector<bool>    const & orient_flags)
         : ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
-    {  }
+    {
+        directionMap(ps1.direction())=ps2.direction();
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
+    }
 
     GISMO_DEPRECATED boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
@@ -704,8 +715,8 @@ public:
 
     //DEPRECATED
     void init (patchSide const & _ps1,
-                      patchSide const & _ps2,
-                      gsVector<bool>    const & orient_flags)
+               patchSide const & _ps2,
+               gsVector<bool>    const & orient_flags)
     {
         ps1=_ps1;
         ps2=_ps2;
@@ -715,11 +726,10 @@ public:
         directionOrientation.resize(dim);
 
         directionMap(ps1.direction())=ps2.direction();
-        directionOrientation(ps1.direction())= (ps1.parameter()!=ps2.parameter());
+        directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
 
         directionMap(1-ps1.direction())=1-ps2.direction();
         directionOrientation(1-ps1.direction())= orient_flags(0);
-
     }
 
 
@@ -728,6 +738,11 @@ public:
         return ps1==other.ps1 && ps2==other.ps2
                 && directionMap==other.directionMap
                 && directionOrientation==other.directionOrientation;
+    }
+
+    inline bool operator< (const boundaryInterface& other) const
+    {
+        return ps1<other.ps1 || (ps1==other.ps1 && ps2<other.ps2);
     }
 
     /**
@@ -1040,5 +1055,13 @@ gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
     return temp;
 }
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsBoundary
+   */
+  void pybind11_enum_gsBoundary(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo

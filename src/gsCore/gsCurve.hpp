@@ -37,13 +37,13 @@ void gsCurve<T>::toMesh(gsMesh<T> & msh, int npoints) const
     this->eval_into(paramSamples.col(0), cp);
 
     typename gsMesh<T>::VertexHandle v1,
-    //v0 = msh.addVertex( cp(0,0), cp(1,0), zzero ? T(0) : cp(2,0) );
+    //v0 = msh.addVertex( cp(0,0), cp(1,0), zzero ? (T)(0) : cp(2,0) );
     v0 = msh.addVertex( cp );
 
     for ( int i = 1; i<npoints; ++i)
     {
         this->eval_into(paramSamples.col(i), cp);
-        //v1 = msh.addVertex( cp(0,0), cp(1,0), zzero ? T(0) : cp(2,0) );
+        //v1 = msh.addVertex( cp(0,0), cp(1,0), zzero ? (T)(0) : cp(2,0) );
         v1 = msh.addVertex( cp );
         msh.addEdge(v0, v1);
         v0 = v1;

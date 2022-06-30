@@ -91,7 +91,12 @@ public:
             const gsXmlAttribute * comp = child->first_attribute("component");
             int cIndex = -1;
             if (NULL != comp)
-                cIndex = atoi( child->first_attribute("component")->value() );
+                cIndex = atoi( comp->value() );
+
+            const gsXmlAttribute * att_ispar = child->first_attribute("parametric");
+            bool ispar = false;
+            if (NULL != att_ispar)
+                ispar = atoi( att_ispar->value() );
 
             getBoundaries(child, ids, boundaries);
 
@@ -100,8 +105,8 @@ public:
             const char * bctype = bcat->value();
             for (std::vector<patchSide>::const_iterator it = boundaries.begin();
                     it != boundaries.end(); ++it)
-                result.add(it->patch, it->side(), bctype, func[fIndex], uIndex,cIndex,
-                        false);        //parametric
+                result.add(it->patch, it->side(), bctype,
+                           func[fIndex], uIndex,cIndex, ispar);
         }
 
         T val(0);
@@ -111,12 +116,24 @@ public:
             str.clear();
             str.str(child->value());
             GISMO_ENSURE(gsGetReal(str, val), "No value");
-            const int uIndex = atoi(child->first_attribute("unknown")->value());
-            const int cIndex = atoi(child->first_attribute("corner")->value());
+
+            // Unknown is optional, otherwise 0
+            const gsXmlAttribute * unk = child->first_attribute("unknown");
+            int uIndex = 0;
+            if (NULL != unk)
+                uIndex = atoi( unk->value() );
+
+            // Component is optional, otherwise -1
+            const gsXmlAttribute * comp = child->first_attribute("component");
+            int cIndex = -1;
+            if (NULL != comp)
+                cIndex = atoi( comp->value() );
+
+            const int cornIndex = atoi(child->first_attribute("corner")->value());
             int pIndex = atoi(child->first_attribute("patch")->value());
             pIndex = ids[pIndex];
 
-            result.addCornerValue(cIndex, val, pIndex, uIndex);
+            result.addCornerValue(cornIndex, val, pIndex, uIndex, cIndex);
         }
     }
 
@@ -172,7 +189,7 @@ public:
         typedef typename std::vector<typename gsFunction<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionFromXml(*fit, data, count);
+            gsXmlNode * ff = putFunctionToXml(*fit, data, count);
             BCs->append_node(ff);
             ++count;
         }
@@ -236,11 +253,14 @@ public:
             gsXmlNode * cvNode = internal::makeNode("cv", data);
             gsXmlAttribute * unknownNode = internal::makeAttribute("unknown",
                     c.unknown, data);
+            gsXmlAttribute * componentNode = internal::makeAttribute("component",
+                    c.component, data);
             gsXmlAttribute * patchNode = internal::makeAttribute("patch",
                     c.patch, data);
             gsXmlAttribute * cornerNode = internal::makeAttribute("corner",
                     c.corner.m_index, data);
             cvNode->append_attribute(unknownNode);
+            cvNode->append_attribute(componentNode);
             cvNode->append_attribute(patchNode);
             cvNode->append_attribute(cornerNode);
             std::ostringstream oss;
@@ -254,7 +274,7 @@ public:
     }
 
 private:
-    static gsXmlNode * putFunctionFromXml(
+    static gsXmlNode * putFunctionToXml(
             const typename gsFunction<T>::Ptr & obj, gsXmlTree & data,
             int index)
     {
@@ -263,8 +283,7 @@ private:
         {
             gsFunctionExpr<T> * ptr2 =
                     dynamic_cast<gsFunctionExpr<T> *>(obj.get());
-            gsFunctionExpr<T> expr = *ptr2;
-            result = putFunctionExprFromXml(expr, result, data);
+            result = putFunctionExprToXml(*ptr2, result, data);
         }
         gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
                 data);
@@ -272,7 +291,7 @@ private:
         return result;
     }
 
-    static gsXmlNode * putFunctionExprFromXml(const gsFunctionExpr<T> & obj,
+    static gsXmlNode * putFunctionExprToXml(const gsFunctionExpr<T> & obj,
             gsXmlNode * result, gsXmlTree & data)
     {
         std::string typeStr = gsXml<gsFunctionExpr<T> >::type();
@@ -282,20 +301,20 @@ private:
                 data);
         result->append_attribute(dim);
         // set value
-        std::ostringstream stream;
-        bool first = true;
-        for (short_t i = 0; i < obj.targetDim(); ++i)
+        const short_t tdim = obj.targetDim();
+        if ( tdim == 1)
         {
-            if (!first)
-            {
-                stream << ", ";
-            }
-            stream << obj.expression(i);
-            first = false;
+            result->value( makeValue(obj.expression(), data) );
         }
-        //val = stream.str();
-        char * value = data.allocate_string(stream.str().c_str());
-        result->value(value);
+        else
+        {
+            gsXmlNode * cnode;
+            for (short_t c = 0; c!=tdim; ++c)
+            {
+                cnode = makeNode("c", obj.expression(c), data);
+                result->append_node(cnode);
+            }
+        }
         return result;
     }
 

@@ -3,7 +3,7 @@
     @brief Provides declaration of DomainIterator abstract interface.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -54,7 +54,7 @@ namespace gismo
 
      }
      \endverbatim
-     
+
      \ingroup Core
  *
  *
@@ -76,9 +76,9 @@ public:
 
     gsDomainIterator( ) : m_basis(NULL), m_isGood( true ) { }
 
-    /// \brief Constructor using a basis 
+    /// \brief Constructor using a basis
     gsDomainIterator( const gsBasis<T>& basisParam, const boxSide & s = boundary::none)
-        : center( gsVector<T>::Zero(basisParam.dim()) ), m_basis( &basisParam ), 
+        : center( gsVector<T>::Zero(basisParam.dim()) ), m_basis( &basisParam ),
           m_isGood( true ), m_side(s)
     { }
 
@@ -158,12 +158,17 @@ public:
         GISMO_NO_IMPLEMENTATION
     }
 
+    virtual bool isBoundaryElement() const
+    {
+        GISMO_NO_IMPLEMENTATION
+    }
+
     /// Return the diagonal of the element
     T getCellSize() const
     {
         return (upperCorner() - lowerCorner()).norm();
     }
-    
+
     /// Return the length of the smallest edge of the element
     T getMinCellLength() const
     {

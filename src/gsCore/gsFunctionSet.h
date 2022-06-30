@@ -402,6 +402,9 @@ public:
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> > & result) const;
 
+    /// Evaluate all derivatives upto order \a n, \see evalAllDers_into
+    std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n) const;
+
     /// Evaluate the function, \see eval_into()
     gsMatrix<T> eval(const gsMatrix<T>& u) const;
 
@@ -571,6 +574,15 @@ public:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunctionSet<T>& b)
 {return b.print(os); }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsFunction
+   */
+  void pybind11_init_gsFunctionSet(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

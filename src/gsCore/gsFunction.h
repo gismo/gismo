@@ -233,8 +233,9 @@ public:
 
     gsMatrix<T> argMin(const T accuracy = 1e-6,//index_t coord = 0
                        int max_loop = 100,
+                       gsMatrix<T> init = gsMatrix<T>(),
                        double damping_factor = 1) const;
-    
+
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
@@ -259,7 +260,7 @@ public:
 
 private:
 
-    template<int mode>
+    template<int mode, int _Dim=-1>
     int newtonRaphson_impl(
         const gsVector<T> & value,
         gsVector<T> & arg, bool withSupport = true,
@@ -273,6 +274,15 @@ private:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunction<T>& b)
 {return b.print(os); }
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsFunction
+   */
+  void pybind11_init_gsFunction(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 } // namespace gismo

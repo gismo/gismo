@@ -290,6 +290,8 @@ public:
     /// CAREFUL: works only for 2D
     void getOVs(std::vector<std::vector<patchCorner> > & cornerLists) const;
 
+
+    std::vector<std::vector<patchCorner>> vertices() const;
 protected:
     // Data members
 
@@ -307,6 +309,14 @@ protected:
 
 }; // class gsBoxTopology
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsBoxTopology
+   */
+  void pybind11_init_gsBoxTopology(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

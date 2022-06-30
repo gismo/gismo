@@ -15,7 +15,6 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 
-//#define _USE_MATH_DEFINES
 #include <cmath>
 #include <complex>
 
@@ -86,6 +85,12 @@ using codi::sinh;
 using codi::sqrt;
 using codi::tan;
 using codi::tanh;
+using codi::isnan;
+using codi::isfinite;
+using codi::isinf;
+//using codi::real;
+//using codi::imag;
+//using codi::conj;
 #endif
 
 #ifdef GISMO_WITH_UNUM
@@ -295,7 +300,7 @@ using ::cos;
 using ::cosh;
 using ::exp;
 using ::floor;
-using ::log10;
+inline mpq_class log10(const mpq_class & a) { return log(a)/log(10); }
 using ::log;
 using ::pow;
 using ::sin;
@@ -319,7 +324,7 @@ inline mpq_class ldexp(const mpq_class & a, int b ) {return  a;}
 /// Returns the sign of \a val
 template <typename T> int getSign(T val)
 {
-    return (T(0) < val) - (val < T(0));
+    return (T(0) < val) - (val < (T)(0));
 }
 
 /// Return smallest difference between two (integer)T numbers as unsigned T

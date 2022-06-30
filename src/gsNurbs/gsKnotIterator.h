@@ -504,7 +504,9 @@ public:
      */
     void uNext()
     {
-        m_pos = (m_uit++).multSum();//advance unique position and update m_pos
+        ++m_uit;
+        m_pos = firstAppearance();
+        //m_pos = (m_uit++).multSum();//advance unique position and update m_pos
     }
 
     /**
@@ -515,6 +517,13 @@ public:
     void uPrev()
     {
         --m_uit;
+        m_pos = firstAppearance();
+    }
+
+    /// Advance by \a a knots (counted without repetitions)
+    void uAdd(const difference_type & a)
+    {
+        m_uit += a;
         m_pos = firstAppearance();
     }
 

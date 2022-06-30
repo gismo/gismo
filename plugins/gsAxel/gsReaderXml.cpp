@@ -73,6 +73,7 @@ bool gsReaderXml::canRead(const QString& file)
 
 bool gsReaderXml::read(const QString& file)
 {
+    //std::cout<<"gsReadXml Reading file .. "<< file.toStdString()<<std::endl;
     if ( file.size() )
     {
         gismo::gsFileData<double> filedata(file.toUtf8().constData());

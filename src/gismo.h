@@ -29,7 +29,7 @@ namespace gismo
 /** @namespace gismo::internal
 
     @brief
-    This namespace contains functionalities that is internal to the library.
+    This namespace contains functionalities that are internal to the library.
 */
 namespace internal
 { }
@@ -103,6 +103,10 @@ namespace internal
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 
+/* ----------- MSplines ----------- */
+#include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
+
 /* ----------- Modeling ----------- */
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
@@ -121,6 +125,9 @@ namespace internal
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
+#include <gsModeling/gsPeriodicParametrization.h>
+#include <gsModeling/gsPeriodicOverlap.h>
+#include <gsModeling/gsPeriodicStitch.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
@@ -128,6 +135,7 @@ namespace internal
 #include <gsPde/gsEulerBernoulliBeamPde.h>
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
+#include <gsPde/gsPointLoads.h>
 //#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- MultiGrid ----------- */
@@ -155,6 +163,7 @@ namespace internal
 #include <gsSolver/gsGMRes.h>
 #include <gsSolver/gsGradientMethod.h>
 #include <gsSolver/gsConjugateGradient.h>
+#include <gsSolver/gsBiCgStab.h>
 #include <gsSolver/gsPreconditioner.h>
 #include <gsSolver/gsAdditiveOp.h>
 #include <gsSolver/gsBlockOp.h>
@@ -165,6 +174,12 @@ namespace internal
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
+
+/* ----------- Ieti ----------- */
+#include <gsIeti/gsIetiMapper.h>
+#include <gsIeti/gsIetiSystem.h>
+#include <gsIeti/gsPrimalSystem.h>
+#include <gsIeti/gsScaledDirichletPrec.h>
 
 /* ----------- IO ----------- */
 #include <gsIO/gsOptionList.h>
@@ -184,6 +199,7 @@ namespace internal
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
+#include <gsUtils/gsQuasiInterpolate.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

@@ -73,7 +73,7 @@ public:
     /// \brief Default constructor
     gsTensorBSplineBasis() : Base()
     {
-        for(unsigned i = 0; i!=d; ++i)
+        for(short_t i = 0; i!=d; ++i)
             this->m_bases[i] = new Basis_t();
     }
 
@@ -126,7 +126,7 @@ public:
     explicit gsTensorBSplineBasis(std::vector<KnotVectorType> KV)
     { 
         GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
-        for(unsigned i = 0; i!=d; ++i)
+        for(short_t i = 0; i!=d; ++i)
             this->m_bases[i] = new Basis_t( give(KV[i]) );
         m_isPeriodic = -1; 
     }
@@ -230,7 +230,7 @@ public:
         os << "TensorBSplineBasis: dim=" << this->dim()<< ", size="<< this->size() <<".";
         if( m_isPeriodic != -1 )
             os << "Periodic in " << m_isPeriodic << "-th direction.\n";
-        for ( unsigned i = 0; i!=d; ++i )
+        for ( short_t i = 0; i!=d; ++i )
             os << "\n  Direction "<< i <<": "<< Self_t::component(i).knots() <<" ";
         os << "\n";
         return os;
@@ -245,7 +245,7 @@ public:
     /// \copydetails gsBSplineBasis::refine_k
     void k_refine(Self_t & other, int const & i = 1)
     { 
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             Self_t::component(j).refine_k(other.component(j), i);
     }
 
@@ -253,7 +253,7 @@ public:
     /// directions)
     void refine_p(int const & i = 1)
     {
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             Self_t::component(j).refine_p(i);
     }
     
@@ -261,7 +261,7 @@ public:
     /// each knot-span, for all directions
     void refine_h(int const & i = 1)
     {
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             Self_t::component(j).refine_h(i);
     }
 
@@ -306,7 +306,7 @@ public:
     void insertKnots(const std::vector< std::vector<T> >& refineKnots)
     {
         GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
-        for (unsigned j = 0; j < d; ++j) // refine basis in each direction
+        for (short_t j = 0; j < d; ++j) // refine basis in each direction
             this->knots(j).insert(refineKnots[j]);
     }
 
@@ -356,7 +356,7 @@ public:
     /// interior knots by \a i
     void reduceContinuity(int const & i = 1) 
     { 
-        for (unsigned j = 0; j < d; ++j)
+        for (short_t j = 0; j < d; ++j)
             Self_t::component(j).reduceContinuity(i);
     }
 
@@ -365,7 +365,7 @@ public:
     template <int _Rows>
     void elementSupport_into(const index_t i, gsMatrix<index_t, _Rows, 2> & result) const
     {
-        result.resize(d,2);
+        //result.resize(d,2);
         gsMatrix<index_t> tmp_vec;
         const gsVector<index_t, d> ti = this->tensorIndex(i);
 
@@ -390,7 +390,7 @@ public:
     /// \brief Returns the indices of active basis functions in the
     /// given input element box
     template <int _Rows>
-    void elementActive_into(const gsMatrix<unsigned,_Rows,2> & box,
+    void elementActive_into(const gsMatrix<index_t,_Rows,2> & box,
                              gsMatrix<index_t> & result) const
     {
         GISMO_ASSERT( box.rows() == static_cast<index_t>(d), "Invalid input box");
@@ -399,7 +399,7 @@ public:
         gsVector<index_t,d> str;
         this->stride_cwise(str);
 
-        for (unsigned dm = 0; dm != d; ++dm)
+        for (short_t dm = 0; dm != d; ++dm)
         {
             tmp(dm,0) = Self_t::component(dm).knots().lastKnotIndex (box(dm,0)) - this->degree(dm);
             tmp(dm,1) = Self_t::component(dm).knots().firstKnotIndex(box(dm,1)) - 1;
@@ -407,14 +407,28 @@ public:
 
         const gsVector<index_t,d> sz = tmp.col(1)- tmp.col(0) + gsVector<index_t,d>::Ones();
 
-        gsMatrix<unsigned> cact = 
-            gsVector<unsigned>::LinSpaced(sz[0], tmp(0,0), tmp(0,1));
-        for (unsigned dm = 1; dm != d; ++dm)
-            cact = cact.replicate(1,sz[dm]) + 
-                   gsVector<unsigned>::Constant(cact.rows(), str[dm] )
-                 * gsVector<unsigned>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1)).transpose();
+        result = gsVector<index_t>::LinSpaced(sz[0], tmp(0,0), tmp(0,1));
+        for (short_t dm = 1; dm != d; ++dm)
+            result = result.replicate(1,sz[dm]) + 
+                gsVector<index_t>::Constant(result.rows(), str[dm] )
+                * gsVector<index_t>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1))
+                .transpose();
     }
 
+    template <int _Rows>
+    gsMatrix<T> elementDom(const gsMatrix<index_t,_Rows,2> & box) const
+    {
+        GISMO_ASSERT( box.rows() == static_cast<index_t>(d), "Invalid input box");
+        gsMatrix<T> rvo;
+        rvo.resize(d,2);
+        for (short_t dm = 0; dm != d; ++dm)
+        {
+            rvo(dm,0) = Self_t::component(dm).knots().uValue(box(dm,0));
+            rvo(dm,1) = Self_t::component(dm).knots().uValue(box(dm,1));
+        }
+        return rvo;
+    }
+    
     /// Tells, whether there is a coordinate direction in which the basis is periodic.
     inline bool isPeriodic() const { return m_isPeriodic != -1; }
 
@@ -489,6 +503,16 @@ protected:
 
 };
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsTensorBSplineBasis
+   */
+  void pybind11_init_gsTensorBSplineBasis2(pybind11::module &m);
+  void pybind11_init_gsTensorBSplineBasis3(pybind11::module &m);
+  void pybind11_init_gsTensorBSplineBasis4(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 
@@ -509,6 +533,6 @@ EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<2,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<3,real_t>;
 EXTERN_CLASS_TEMPLATE gsTensorBSplineBasis<4,real_t>;
 }
-//*/
+*/
 #endif
 // *****************************************************************

@@ -1,4 +1,3 @@
-
 /** @file gsBasis.h
 
     @brief Provides declaration of Basis abstract interface.
@@ -627,7 +626,7 @@ public:
      * Each column of \em result corresponds to a column of \em u. It contains the
      * "pure" and the mixed derivatives for each active basis function, "above" each other.\n
      * \n
-     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)\f$, $d = 2$ be bivariate basis functions,
+     ** <b>Example (bivariate):</b> Let \f$B_i(x,y)\f$, <em>d = 2</em> be bivariate basis functions,
      * and let the functions with indices <em>3,4,7, and 8</em> (K = 4) be active at an evaluation
      * point \em u. Then, the corresponding column of \em result represents:\n
      * \f$ (
@@ -635,7 +634,7 @@ public:
      * \partial_{xx}\, B_4(u), \partial_{yy}\, B_4(u), \partial_{xy}\, B_4(u),
      * \partial_{xx}\, B_7(u), ... , \partial_{xy}\, B_8(u) )^T \f$\n
      * \n
-     * <b>Example (trivariate):</b> Let \f$B_i(x,y,z)\f$, $d = 3$ be trivariate basis functions,
+     * <b>Example (trivariate):</b> Let \f$B_i(x,y,z)\f$, <em>d = 3</em> be trivariate basis functions,
      * and let the functions with indices <em>3,4,7, and 8</em> be active at an evaluation
      * point \em u. Then, the corresponding column of \em result represents:\n
      * \f$(
@@ -667,7 +666,9 @@ public:
 
      The entries in <em>result[0]</em>, <em>result[1]</em>, and <em>result[2]</em> are ordered as in
      eval_into(), deriv_into(), and deriv2_into(), respectively. For <em>i > 2</em>, the
-     derivatives are stored in lexicographical order.
+     derivatives are stored in lexicographical order, e.g. for order <em>i = 3</em> and dimension <em>2</em>
+     the derivatives are stored as follows:
+     \f$ \partial_{xxx}, \, \partial_{xxy}, \, \partial_{xyy}, \, \partial_{yyy}.\, \f$\n
 
      \param[in] u Evaluation points, each column corresponds to one evaluation point.
      \param[in] n All derivatives up to order \em n are computed and stored
@@ -753,6 +754,10 @@ public:
     /// @brief Returns an index for the element which contains point \a u
     virtual size_t elementIndex(const gsVector<T> & u ) const;
 
+    /// @brief Returns (the coordinates of) an element in the support
+    /// of basis function \a j
+    virtual gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// @brief For a tensor product basis, return the (const) 1-d
     /// basis for the \a i-th parameter component.
     virtual const gsBasis<T> & component(short_t i) const;
@@ -782,8 +787,10 @@ public:
      * \param[in] refExt Extension to be applied to the refinement boxes
      */
     virtual void refine(gsMatrix<T> const & boxes, int refExt = 0);
+    virtual void unrefine(gsMatrix<T> const & boxes, int refExt = 0);
 
     virtual std::vector<index_t> asElements(gsMatrix<T> const & boxes, int refExt = 0) const;
+    virtual std::vector<index_t> asElementsUnrefine(gsMatrix<T> const & boxes, int refExt = 0) const;
 
     /** @brief Refinement function, with different sytax for different basis.
      *
@@ -793,6 +800,7 @@ public:
      *
      */
     virtual void refineElements(std::vector<index_t> const & boxes);
+    virtual void unrefineElements(std::vector<index_t> const & boxes);
 
     /** @brief Refine basis and geometry coefficients to levels.
      *
@@ -800,6 +808,7 @@ public:
      * input depend on the implementation of refineElements().
      */
     virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
+    virtual void unrefineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span
@@ -927,7 +936,7 @@ public:
     /// The collocation matrix is a sparse matrix with \em u.cols rows
     /// and \em size() columns. The entry \em (i,j) is the value of
     /// basis function \em j at evaluation point \em i.
-    void collocationMatrix(gsMatrix<T> const& u, gsSparseMatrix<T> & result) const;
+    gsSparseMatrix<T> collocationMatrix(gsMatrix<T> const& u) const;
 
     /// Reverse the basis
     virtual void reverse();
@@ -957,6 +966,14 @@ protected:
 
 }; // class gsBasis
 
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsGeometry
+   */
+  void pybind11_init_gsBasis(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 } // namespace gismo
 

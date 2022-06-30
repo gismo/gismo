@@ -450,7 +450,7 @@ void gsRationalBasis<SrcT>::evalAllDers_into(const gsMatrix<T> & u, int n,
             ev(k,i) *= m_weights( act(k,i), 0 ) ;
     }
 }
-//*/
+*/
 
 template<class SrcT>
 void gsRationalBasis<SrcT>::deriv_into(const gsMatrix<T> & u,
@@ -545,8 +545,8 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 
             result.template block<Dim,1>(kstr,i) +=
                 // - 2 N_k' W' + 2 N_k (W')^2 / W
-                ( 2 * ev[0](k,i) / W ) * dW.cwiseProduct(dW)
-                - 2 * ev[1].template block<Dim,1>(kd,i).cwiseProduct(dW);
+                ( (T)(2) * ev[0](k,i) / W ) * dW.cwiseProduct(dW)
+                - (T)(2) * ev[1].template block<Dim,1>(kd,i).cwiseProduct(dW);
 
             int m = Dim;
             for ( int _u=0; _u != Dim; ++_u ) // for all mixed derivatives
@@ -555,8 +555,8 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
                     result(kstr + m++, i) +=
                         - ev[1](kd+_u,i) * dW.at(_v) // - du N_k * dv W
                         - ev[1](kd+_v,i) * dW.at(_u) // - dv N_k * du W
-                        // + 2 * N_k * du W * dv W / W
-                        + 2 * ev[0](k,i) * dW.at(_u) * dW.at(_v) / W;
+                        // + (T)(2) * N_k * du W * dv W / W
+                        + (T)(2) * ev[0](k,i) * dW.at(_u) * dW.at(_v) / W;
                 }
 
             result.template block<str,1>(kstr,i) *=

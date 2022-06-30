@@ -34,7 +34,8 @@ gsLobattoRule<T>::setNodes( gsVector<index_t> const & numNodes,
         for (short_t i = 0; i < d; ++i)
         {
             if (!lookupReference(numNodes[i], nodes[i], weights[i]))
-                computeReference(numNodes[i], nodes[i], weights[i], REAL_DIG);
+                computeReference(numNodes[i], nodes[i], weights[i],
+                                 0==REAL_DIG?2:REAL_DIG);
             if (1!=numNodes[i])
                 nodes[i].last() -= epsilon; //interval may be half-open
         }
@@ -78,7 +79,7 @@ gsLobattoRule<T>::computeReference(index_t n,       // Number of points
 
     // Initial estimate ( Chebyshev-Gauss-Lobatto nodes)
     for ( i = 0; i < n; i++ )
-        x[i] = math::cos ( EIGEN_PI * ( i ) / ( n - 1 ) );
+      x[i] = math::cos ( (T)(EIGEN_PI) * (T)( i ) / (T)( n - 1 ) );
 
     gsVector<T> xold(n);
     gsVector<T> p(n*n);
@@ -269,7 +270,7 @@ gsLobattoRule<T>::lookupReference(index_t n,   // Number of points
     default:
     {
         //gsWarn << "  Illegal value of N = " << n << "\n";
-        gsWarn << "Precomputed Lobatto rule (1,..,20) not found.\n";
+        gsWarn << "Precomputed Lobatto rule (1,..,20) not found for N="<<n<<".\n";
         return false;
     }
 

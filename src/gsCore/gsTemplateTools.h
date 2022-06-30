@@ -78,6 +78,9 @@ template<class T> struct enable_if<true, T> { typedef T type;};
 template<class T, class U> struct is_same { enum { value = 0 }; };
 template<class T>          struct is_same<T, T> { enum { value = 1 }; };
 
+template<typename U> struct is_pointer     { static const bool value = false; };
+template<typename U> struct is_pointer<U*> { static const bool value = true ; };
+
 template <typename B, typename D> struct Host
 { operator B*() const; operator D*(); };
 template <typename B, typename D>

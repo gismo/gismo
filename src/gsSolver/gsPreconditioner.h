@@ -144,7 +144,7 @@ protected:
 ///
 /// \f$ x_{new} = x_{old} + \tau P (f - A*x_{old}).\f$
 ///
-/// @warning: The implemenation pf stepT assumes that P is symmetric.
+/// @warning The implemenation pf stepT assumes that P is symmetric.
 ///
 /// \ingroup Solver
 template<class T>

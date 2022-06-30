@@ -29,7 +29,7 @@ gsAffineFunction<T>::gsAffineFunction(const gsVector<index_t> &dir, const gsVect
     m_trans.resize(dim);
     for (index_t i=0; i<dim; ++i)
     {
-        const T ratio = size1[i]==0 ? T(1) : size2(dir[i])/size1[i];
+        const T ratio = size1[i]==0 ? (T)(1) : size2(dir[i])/size1[i];
         m_mat(dir(i),i) = o[i] ? ratio : -ratio;
         m_trans(dir(i)) = o[i] ? box2(dir[i],0) : box2(dir[i],1);
     }

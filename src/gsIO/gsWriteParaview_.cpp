@@ -34,7 +34,10 @@ TEMPLATE_INST
 void gsWriteParaview(gsGeometrySlice<T> const& Geo, std::string const & fn, unsigned npts );
 
 TEMPLATE_INST
-void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts );
+void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts);
+
+TEMPLATE_INST
+void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph);
 
 TEMPLATE_INST
 void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn, 
@@ -70,6 +73,9 @@ void gsWriteParaviewSolid(gsSolid<T> const  & sl,
 
 TEMPLATE_INST
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd);
+
+TEMPLATE_INST
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
 
 TEMPLATE_INST
 void gsWriteParaview(const std::vector<gsMesh<T> >& sl, std::string const & fn);
