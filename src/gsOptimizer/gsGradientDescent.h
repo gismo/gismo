@@ -26,6 +26,7 @@ template<typename Objective,
          typename StepSize=gdc::BarzilaiBorwein<T>,
          typename Callback=gdc::NoCallback<T>,
          typename FiniteDifferences=gdc::CentralDifferences<T> >
+
 using gsGradientDescent = gdc::GradientDescent<T, Objective, StepSize, Callback, FiniteDifferences>;
 
 } //namespace gismo

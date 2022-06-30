@@ -13,6 +13,7 @@
 
 #include <gismo.h>
 
+#include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
 
 using namespace gismo;

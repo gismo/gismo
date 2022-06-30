@@ -49,7 +49,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
     typedef Ipopt::IpoptCalculatedQuantities IpoptCalculatedQuantities;
 
     public:
-        gsIpOptTNLP(gsOptProblem<T> & op) : m_op(op) { }
+        gsIpOptTNLP(gsOptProblem<T> & op) : mop(op) { }
 
     public:
         /**@name Overloaded from TNLP */
