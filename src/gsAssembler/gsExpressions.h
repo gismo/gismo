@@ -1843,7 +1843,7 @@ flat_expr<E> const flat(E const & u)
 
 /*
   Expression for the diagonal(s) of a (matrix) expression
-
+*/
   template<class E>
   class diag_expr  : public _expr<diag_expr<E> >
   {
@@ -1887,7 +1887,11 @@ flat_expr<E> const flat(E const & u)
 
   void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
   };
-*/
+
+/// Make a matrix 2x2 expression "flat"
+template <typename E> EIGEN_STRONG_INLINE
+diag_expr<E> const diagonal(E const & u)
+{ return diag_expr<E>(u); }
 
 #define GISMO_EXPR_VECTOR_EXPRESSION(name, mname, isSv)                 \
     template<class E> class name##_##expr  : public _expr<name##_##expr<E> > { \
