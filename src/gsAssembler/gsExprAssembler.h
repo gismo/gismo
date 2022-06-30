@@ -17,6 +17,8 @@
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsExprHelper.h>
 
+#include <gsAssembler/gsCPPInterface.h>
+
 namespace gismo
 {
 
@@ -771,9 +773,12 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         const index_t patch2 = iFace.second().patch;
 
         //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
-        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
-                                          m_exprdata->multiBasis().basis(patch1).support(),
-                                          m_exprdata->multiBasis().basis(patch2).support() );
+
+//        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
+//                                          m_exprdata->multiBasis().basis(patch1).support(),
+//                                          m_exprdata->multiBasis().basis(patch2).support() );
+
+        gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
