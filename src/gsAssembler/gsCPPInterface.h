@@ -39,8 +39,6 @@ public:
     /// Unique pointer for gsRemapInterface
     typedef memory::unique_ptr< gsCPPInterface > uPtr;
 
-public:
-
     /// @brief Constructor
     ///
     /// @param  mp                 The multi-patch object
@@ -56,7 +54,24 @@ public:
                      const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
                      const gsOptionList      & opt = defaultOptions() );
+private:
+    const    gsGeometry<T>* m_slaveGeom ;      ///< Geometry of first patch  -- Slave
+    typename gsGeometry<T>::Ptr m_masterGeom;  ///< Geometry of second patch -- Master
 
+    boundaryInterface m_boundaryInterface;   ///< Corresponding boundary interface
+
+    const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
+    const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
+
+    std::vector<index_t> m_freeDirs;
+    index_t m_fixedParam;
+    index_t m_fixedDir;
+
+    std::vector< std::vector<T> > m_breakpoints;  ///< Union of breakpoints of both bases
+
+    T m_Tolerance;                            ///< Tolerance for closest point algorithm
+
+public:
     /// @Returns default options
     ///
     /// See constructor for their meaning
@@ -67,8 +82,6 @@ public:
         defaultOpts.addReal( "Tolerance", "Tolerance to be used for closest point search.", 1e-5);
         return defaultOpts;
     }
-
-public:
 
 
     /// @brief Evaluates the interface map
@@ -95,34 +108,19 @@ public:
     virtual std::ostream & print(std::ostream& os) const;
 
 private:
-
     /// Computes the box which represents the intersection of sides of incoming patches
     void constructInterfaceBox();
 
     /// Constructs the breakpoints \a m_breakpoints
     void constructBreaks();
-
-private:
-    const gsGeometry<T>* m_slaveGeom ;      ///< Geometry of first patch  -- Slave
-    typename gsGeometry<T>::Ptr m_masterGeom;      ///< Geometry of second patch -- Master
-
-    boundaryInterface m_boundaryInterface;   ///< Corresponding boundary interface
-
-    const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
-    const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
-
-    std::vector< std::vector<T> > m_breakpoints;  ///< Union of breakpoints of both bases
-
-    T m_Tolerance;                            ///< Tolerance for closest point algorithm
-
-}; // End gsRemapInterface
+}; // End gsCPPInterface
 
 
 /// @brief   Prints the state of the object
 /// @relates gsCPPInterface
 template <class T>
-inline std::ostream & operator<<(std::ostream & os, const gsCPPInterface<T> & remapIf)
-{ return remapIf.print(os); }
+inline std::ostream & operator<<(std::ostream & os, const gsCPPInterface<T> & cppIf)
+{ return cppIf.print(os); }
 
 } // End namespace gismo
 

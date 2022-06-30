@@ -34,60 +34,47 @@ gsCPPInterface<T>::gsCPPInterface(const gsMultiPatch<T>   & mp,
       m_boundaryInterface(bi),
       m_Tolerance(opt.getReal("Tolerance"))
 {
-
+    
     GISMO_ASSERT( m_slaveGeom->geoDim()==m_masterGeom->geoDim(), "gsCPPInterface: Dimensions do not agree." );
 
-    // First we construct the affine mapping
-    // constructInterfaceBox();
+    m_fixedDir   = m_boundaryInterface.second().direction(); 
+    // Index of the parametric direction which is normal to the boundary of the master surface
+    m_fixedParam = m_boundaryInterface.second().parameter();
+    // Value of the parameter in the fixed direction ( usually 0 or 1).
+    // This is constant on the entire master boundary
 
-    // constructBreaks();
-
+    // Vector with the ordered indices of directions that are 'free' i.e. not the m_fixedDir
+    for (index_t j=0; j<m_masterGeom->domainDim(); j++)
+    {
+        if (j != m_fixedDir ) { m_freeDirs.push_back(j); }
+    }
 }
 
 
 template <class T>
 void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
-    result.resizeLike(u);
-
     GISMO_ASSERT( u.rows() == domainDim(), "gsCPPInterface::eval_into: "
         "The rows of the evaluation points must be equal to the dimension of the domain." );
 
-    // gsMatrix<T> uProjected = u;
-    // projectOntoInterface(uProjected, m_parameterBounds1);
-
+    result.resizeLike(u);
     gsVector<T> slavePoint;
     gsVector<T> masterParams;
     
-    index_t dims       = u.rows();
-    index_t fixedDir   = m_boundaryInterface.second().direction();
-    T       fixedParam = m_boundaryInterface.second().parameter();
-
-    std::vector<index_t> freeDirs;
-    for (index_t j=0; j<dims; j++)
-    {
-        if (j != fixedDir ) {freeDirs.push_back(j);}
-    }
-
     for (index_t i=0; i<u.cols(); i++) // For every set( column ) of parameters
     {   
         slavePoint = m_slaveGeom->eval( u.col(i) ); // Get the evaluation of u on the slave surface
         m_masterGeom->closestPointTo( slavePoint, masterParams, m_Tolerance);
-        // Find the point of the master surface, that is closest to the slavePoint
+        // Find the parameters of the point of the master surface, which is closest to the slavePoint
         
-        // patchSide.direction --> The index of the direction that is normal to the patchSide
-        //                         ( or the parameter which is constant on this patchSide)
-        // patchSide.parameter --> The value of this constant parameter {0,1}
-
-        for (index_t j=0; j<freeDirs.size(); j++)
+        // masterParams are 1 less than then masters domain dimensions
+        // since only the boundary is considered in the CPP procedure
+        // but we need to return domainDim, parameters thus the following loop
+        for (index_t j=0; j<m_freeDirs.size(); j++)
         {
-            // QUESTION: Can I be sure that the masterParams are in the correct order??
-            result( freeDirs[j], i ) = masterParams(j);
+            result( m_freeDirs[j], i ) = masterParams(j);
         }
-
-        // This should stay the same for the general case
-        result(  fixedDir, i ) = fixedParam;
-        // of the slavePoint, on the master surface.
+        result(  m_fixedDir, i ) = m_fixedParam; // this param is known a priori
     }
     
 }
