@@ -17,7 +17,7 @@ endif()
 #find_package(BLAS REQUIRED)
 find_package(IpOpt QUIET)
 
-set(IPOPT_SOURCES gsOptProblem_.cpp)
+#set(IPOPT_SOURCES gsOptProblem_.cpp)
 
 if (NOT IPOPT_FOUND)
   set(IPOPT_VER "3.12.6") # 3.12.9 conflicts patching
@@ -55,29 +55,29 @@ endif(NOT IPOPT_FOUND)
 
 include_directories(${IPOPT_INCLUDE_DIR})
 
-add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
+#add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
 
 if (NOT IPOPT_FOUND)
   add_dependencies(${PROJECT_NAME} IpOpt)
 endif(NOT IPOPT_FOUND)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  COMPILE_DEFINITIONS gismo_EXPORTS
-  POSITION_INDEPENDENT_CODE ON
-  LINKER_LANGUAGE CXX
-  CXX_VISIBILITY_PRESET hidden
-  VISIBILITY_INLINES_HIDDEN ON
-  FOLDER "G+Smo extensions"  )
+#set_target_properties(${PROJECT_NAME} PROPERTIES
+#  COMPILE_DEFINITIONS gismo_EXPORTS
+#  POSITION_INDEPENDENT_CODE ON
+#  LINKER_LANGUAGE CXX
+#  CXX_VISIBILITY_PRESET hidden
+#  VISIBILITY_INLINES_HIDDEN ON
+#  FOLDER "G+Smo extensions"  )
 
 
 # Apply same configuration as G+Smo
-include( gsConfig)
+#include( gsConfig)
 
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-  CACHE INTERNAL "Gismo extensions to be included")
+#set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+#  CACHE INTERNAL "Gismo extensions to be included")
 set(gismo_LINKER ${gismo_LINKER} ${IPOPT_LIBRARY}
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}
-  DESTINATION include/gismo/gsIpopt/
-  FILES_MATCHING PATTERN "*.h")
+#install(DIRECTORY ${PROJECT_SOURCE_DIR}
+#  DESTINATION include/gismo/gsIpopt/
+#  FILES_MATCHING PATTERN "*.h")

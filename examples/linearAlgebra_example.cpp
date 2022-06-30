@@ -40,6 +40,21 @@ int main(int argc, char**argv)
     A << 2,2,3,  4,5,6,  7,8,10;
     A(0,0) -= 1 ;
 
+    gsInfo << "A=\n"<< A <<"\n";
+
+    real_t * dd = new real_t[9];
+    for(index_t i= 0; i!=9;++i)        
+        dd[i] = i;
+
+    real_t * aa = A.data();
+    A.setPtr(dd);
+    gsInfo << "A=\n"<< A <<"\n";
+
+    A.setPtr(aa);
+    gsInfo << "A=\n"<< A <<"\n";
+
+    delete dd;
+    
     // If the type of the entries of the matrix is not given, the
     // default type is real_t (e.g. double)
     gsMatrix<> E (3,1);
