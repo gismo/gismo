@@ -16,6 +16,7 @@
 #include<gsIO/gsParaviewCollection.h>
 #include<gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
+#include <gsAssembler/gsCPPInterface.h>
 
 namespace gismo
 {
@@ -576,9 +577,11 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         const index_t patch1 = iFace.first().patch;
         const index_t patch2 = iFace.second().patch;
 
-        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
-                                          m_exprdata->multiBasis().basis(patch1).support(),
-                                          m_exprdata->multiBasis().basis(patch2).support() );
+//        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
+//                                          m_exprdata->multiBasis().basis(patch1).support(),
+//                                          m_exprdata->multiBasis().basis(patch2).support() );
+
+        gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
 
         //gsRemapInterface<T> interfaceMap(m_exprdata->multiPatch(),
         //                                 m_exprdata->multiBasis(),
