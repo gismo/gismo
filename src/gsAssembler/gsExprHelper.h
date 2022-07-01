@@ -129,9 +129,19 @@ public:
 
     const gsMultiPatch<T> & multiPatch() const
     {
-        GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
-        GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first), "Multipatch geometry map not set.");
-        return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
+        if ( !m_mdata.empty() )
+        {
+        GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first),
+                     "Multipatch geometry map not set.");
+            return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
+        }
+        if (nullptr!=m_mirror && !m_mirror->m_mdata.empty() )
+        {
+            GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mirror->m_mdata.begin()->first),
+                         "Multipatch geometry map not set.");
+            return *static_cast<const gsMultiPatch<T>*>(m_mirror->m_mdata.begin()->first);
+        }
+        GISMO_ERROR("Geometry map not set.");
     }
 
     const gsMapData<T> & multiPatchData() const
