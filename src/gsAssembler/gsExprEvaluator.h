@@ -268,6 +268,15 @@ public:
          const index_t patchInd = 0);
 
     template<class E>
+#ifdef __DOXYGEN__
+    gsAsConstMatrix<T>
+#else
+    typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+#endif
+    evalIfc(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const boundaryInterface & ifc);
+
+    template<class E>
     typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
     evalIfc(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
             const boundaryInterface & ifc);
@@ -580,7 +589,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     {
         const boundaryInterface & iFace = *iit;
         const index_t patch1 = iFace.first().patch;
-        const index_t patch2 = iFace.second().patch;
+        //const index_t patch2 = iFace.second().patch;
 
 //        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
 //                                          m_exprdata->multiBasis().basis(patch1).support(),
@@ -725,7 +734,6 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
 
-/*
 template<class T>
 template<class E>
 typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
@@ -745,7 +753,6 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_value = _arg.eval(0);
     return gsAsConstMatrix<T>(&m_value,1,1);
 }
-*/
 
 template<class T>
 template<class E>
