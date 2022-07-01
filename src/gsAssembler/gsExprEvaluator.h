@@ -267,6 +267,11 @@ public:
     eval(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
          const index_t patchInd = 0);
 
+    template<class E>
+    typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+    evalIfc(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const boundaryInterface & ifc);
+
     /// Computes value of the expression \a expr at the point \a pt of
     /// patch \a patchId, and displays the result
     template<class E> void
@@ -706,6 +711,54 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     m_exprdata->parse(expr);
     m_exprdata->points() = pt;
     m_exprdata->precompute(patchInd);
+
+    // expr.printDetail(gsInfo); //after precompute
+
+    gsMatrix<T> tmp = expr.eval(0);
+    // const index_t r = expr.rows();
+    // const index_t c = expr.cols();
+    // gsInfo <<"tmp - "<< tmp.dim() <<" rc - "<< r <<", "<<c<<"\n";
+    const index_t r = tmp.rows();
+    const index_t c = tmp.cols();
+    m_elWise.resize(r*c);
+    gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
+    return gsAsConstMatrix<T>(m_elWise, r, c);
+}
+
+/*
+template<class T>
+template<class E>
+typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const boundaryInterface & ifc)
+{
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
+    m_elWise.clear();
+    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), ifc);            
+    m_exprdata->points() = pt;
+    interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+    m_exprdata->precompute(ifc);
+
+    // expr.printDetail(gsInfo); //
+
+    m_value = _arg.eval(0);
+    return gsAsConstMatrix<T>(&m_value,1,1);
+}
+*/
+
+template<class T>
+template<class E>
+typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const boundaryInterface & ifc)
+{
+    m_exprdata->parse(expr);
+    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), ifc);            
+    m_exprdata->points() = pt;
+    interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+
+    m_exprdata->precompute(ifc);
 
     // expr.printDetail(gsInfo); //after precompute
 
