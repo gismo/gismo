@@ -135,7 +135,7 @@ public:
                      "Multipatch geometry map not set.");
             return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
         }
-        if (nullptr!=m_mirror && !m_mirror->m_mdata.empty() )
+        if (isMirrored() && !m_mirror->m_mdata.empty() )
         {
             GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mirror->m_mdata.begin()->first),
                          "Multipatch geometry map not set.");
@@ -411,7 +411,7 @@ public:
 
     void precompute(const boundaryInterface & iFace)
     {
-        this->precompute    (iFace.first ().patch, iFace.first() .side());
+        this->precompute( iFace.first ().patch, iFace.first().side() );
         if ( isMirrored() )
             m_mirror->precompute(iFace.second().patch, iFace.second().side());
     }
