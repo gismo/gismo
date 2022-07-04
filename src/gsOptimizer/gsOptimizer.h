@@ -28,7 +28,10 @@ class gsOptimizer
 public:
 
     /** default constructor */
-    gsOptimizer() {};
+    gsOptimizer()
+    :
+    m_op(nullptr)
+    {};
 
     gsOptimizer(gsOptProblem<T> * problem)
     :
@@ -37,8 +40,8 @@ public:
 
     }
 
-    // /** default destructor */
-    // virtual ~gsOptimizer();
+    /** default destructor */
+    virtual ~gsOptimizer() { };
 
 public:
 
