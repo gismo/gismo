@@ -138,7 +138,7 @@ public:
         // WHAT ABOUT CONSTRAINTS????
         HLBFGS(
                 sol.size(),
-                5, // hardcoded???
+                5, // hardcoded??? -->>> change to an option of the class
                 sol.data(),
                 static_func_grad,
                 nullptr,
@@ -153,11 +153,11 @@ public:
     {
         GISMO_ASSERT(initialGuess.cols()==1,"The initial guess should have vector format");
         this->getOptions();
-        m_curDesign = initialGuess;
-        std::vector<T> sol(m_curDesign.rows());
-        gsMatrix<T>::Map(&sol[0], m_curDesign.rows(),1) = m_curDesign;
+        std::vector<T> sol(initialGuess.rows());
+        gsMatrix<T>::Map(sol.data(), initialGuess.rows(),1) = initialGuess;
         this->run(sol);
 
+        m_curDesign = gsMatrix<T>::Map(sol.data(), sol.size(),1);
         m_numIterations = m_hlbfgs_info[2];
         m_finalObjective = m_op->evalObj(gsAsConstVector<T>(m_curDesign.data(),m_curDesign.rows()));
     }

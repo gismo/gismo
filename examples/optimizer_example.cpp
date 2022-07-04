@@ -246,22 +246,11 @@ int main(int argc, char* argv[])
     // Start the optimization
     optimizer->solve(in);
 
-    gsDebugVar(optimizer->iterations());
-    gsDebugVar(optimizer->objective());
-    gsDebugVar(optimizer->currentDesign());
-
-    /*
-    // Run optimizer
-    optimizer->solve();
-
-    // Print some details in the output
-    optimizer->print(gsInfo);
-
     // Print final design info
     gsInfo << "\nNumber of iterations : " << optimizer->iterations() <<"\n";
     gsInfo << "Final objective value: " << optimizer->objective() <<"\n";
     gsInfo << "Final design: " << optimizer->currentDesign().transpose() <<"\n";
-    */
+
     delete optimizer;
     return EXIT_SUCCESS;
 }
