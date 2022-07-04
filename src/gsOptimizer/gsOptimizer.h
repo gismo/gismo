@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsOptimizer/gsOptProblem.h>
 
 #pragma once
 
@@ -27,10 +28,17 @@ class gsOptimizer
 public:
 
     /** default constructor */
-    gsOptimizer();
+    gsOptimizer() {};
 
-    /** default destructor */
-    virtual ~gsOptimizer();
+    gsOptimizer(gsOptProblem<T> * problem)
+    :
+    m_op(problem)
+    {
+
+    }
+
+    // /** default destructor */
+    // virtual ~gsOptimizer();
 
 public:
 
@@ -42,20 +50,29 @@ public:
 public:
 
     const gsMatrix<T> & currentDesign() const { return m_curDesign; }
+    gsMatrix<T> & currentDesign() { return m_curDesign; }
 
     T currentObjValue() const
     {
-        gsAsConstVector<T> tmp(m_curDesign.data(), m_numDesignVars);
+        gsAsConstVector<T> tmp(m_curDesign.data(), m_op->numDesignVars());
         return m_op->evalObj(tmp);
     }
 
-    T objective()    const { return finalObjective; }
+    T objective()    const { return m_finalObjective; }
 
-    int iterations() const { return numIterations; }
+    int iterations() const { return m_numIterations; }
+
+    gsOptionList & options() { return m_options; }
 
 public:
 
-    void solve () = 0;
+    virtual void solve (const gsMatrix<T> & initialGuess) = 0;
+    virtual void solve ()
+    {
+        m_curDesign.resize(m_op->numDesignVars(),1);
+        m_curDesign.setZero();
+        this->solve(m_curDesign);
+    }
 
     std::ostream &print(std::ostream &os) const
     {
@@ -69,13 +86,16 @@ protected:
     gsOptProblem<T> * m_op;
 
     /// Current design variables (and starting point )
-    gsMatrix<T> m_curDesign;
+    gsMatrix<T>     m_curDesign;
+
+    /// Options
+    gsOptionList m_options;
 
 protected:
 
     // Statistics
-    int numIterations;
-    T   finalObjective;
+    index_t     m_numIterations;
+    T           m_finalObjective;
 
 private:
 
