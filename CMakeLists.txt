@@ -229,6 +229,10 @@ if(GISMO_WITH_SPECTRA)
   add_subdirectory(extensions/gsSpectra)
 endif(GISMO_WITH_SPECTRA)
 
+if(GISMO_WITH_HLBGFS)
+  add_subdirectory(extensions/gsHLBFGS)
+endif(GISMO_WITH_HLBGFS)
+
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SUPERLU_INCLUDES}
