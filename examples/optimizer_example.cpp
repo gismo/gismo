@@ -15,6 +15,7 @@
 
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
+#include <gsHLBFGS/gsHLBFGS.h>
 
 using namespace gismo;
 
@@ -159,26 +160,18 @@ private:
     using gsOptProblem<T>::m_curDesign;
 };
 
-
-
-template<typename T = real_t>
-struct Objective
-{
-    typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vector;
-    typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
-
-    T operator()(const Vector & vx, Vector & vfgrad) const
-    {
-        vfgrad.resize(2);
-        vfgrad[0] = 0;
-        vfgrad[1] = 2.0*(vx[1] - 2.0);
-
-        return (vx[1] - 2.0) * (vx[1] - 2.0);
-    }
-};
-
 int main(int argc, char* argv[])
 {
+    //! [Parse command line]
+    index_t solver  = 0;
+
+    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    cmd.addInt( "s", "solver", "Solver used for optimization: 0 - gsGradientDescent, 1 - gsHLBFGS, 2 - IpOpt", solver);
+
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    //! [Parse command line]
+
+
     // Define an optimizer object
     gsInfo << "\nOptimization problem:";
     gsInfo << "\nmin_x f(x) = -(x1-2)^2      (objective function)";
@@ -187,58 +180,88 @@ int main(int argc, char* argv[])
     gsInfo << "\n      -1 <= x0 <= 1         (variable bounds)\n\n";
 
 
-    gsGradientDescent<Objective<> > optimizer;
+    gsOptProblemExample<real_t> problem;
 
-    //optimizer.setObjective(op); //gdc
-    //optimizer.setErrorFunction(op); //lsq
+    gsOptimizer<real_t> * optimizer;
+    switch (solver)
+    {
+        case 0 :
+        optimizer = new gsGradientDescent<>(&problem);
+        break;
 
-    //optimizer.setCallback(op);
+        case 1 :
+        optimizer = new gsHLBFGS<real_t>(&problem);
+        break;
+
+#ifdef GISMO_WITH_IPOPT
+        case 2:
+        // optimizer =
+        break;
+#endif
+
+        default:
+        GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
+    }
+
+
+
+
+
+    //optimizer->setObjective(op); //gdc
+    //optimizer->setErrorFunction(op); //lsq
+
+    //optimizer->setCallback(op);
 
     // for finite difference computations
-    //optimizer.setNumericalEpsilon(1e-9);
+    //optimizer->setNumericalEpsilon(1e-9);
                 
     // Set number of iterations as stop criterion.
     // Set it to 0 or negative for infinite iterations (default is 0).
-    optimizer.setMaxIterations(200);
+    optimizer->options().setInt("MaxIterations",200);
 
     // Set the minimum length of the gradient.
     // The optimizer stops minimizing if the gradient length falls below this
     // value (default is 1e-9).
-    optimizer.setMinGradientLength(1e-9);
+    optimizer->options().setReal("MinGradientLength",1e-9);
 
     // Set the minimum length of the step.
     // The optimizer stops minimizing if the step length falls below this
     // value (default is 1e-9).
-    optimizer.setMinStepLength(1e-9);
+    optimizer->options().setReal("MinStepLength",1e-9);
 
     // for constant size
-    //optimizer.setStepSize(.1);
+    //optimizer->setStepSize(.1);
 
     // Set the momentum rate used for the step calculation (default is 0.0).
     // Defines how much momentum is kept from previous iterations.
-    //optimizer.setMomentum(4);
+    //optimizer->setMomentum(4);
 
     // Turn verbosity on, so the optimizer prints status updates after each
     // iteration.
-    optimizer.setVerbosity(14);
+    optimizer->options().setInt("Verbose",14);
 
     gsVector<> in(2);
     in << 0.5, 1.5;        
 
     // Start the optimization
-    auto result = optimizer.minimize(in);
-    
+    optimizer->solve(in);
+
+    gsDebugVar(optimizer->iterations());
+    gsDebugVar(optimizer->objective());
+    gsDebugVar(optimizer->currentDesign());
+
     /*
     // Run optimizer
-    optimizer.solve();
+    optimizer->solve();
 
     // Print some details in the output
-    optimizer.print(gsInfo);
+    optimizer->print(gsInfo);
 
     // Print final design info
-    gsInfo << "\nNumber of iterations : " << optimizer.iterations() <<"\n";
-    gsInfo << "Final objective value: " << optimizer.objective() <<"\n";
-    gsInfo << "Final design: " << optimizer.currentDesign().transpose() <<"\n";
+    gsInfo << "\nNumber of iterations : " << optimizer->iterations() <<"\n";
+    gsInfo << "Final objective value: " << optimizer->objective() <<"\n";
+    gsInfo << "Final design: " << optimizer->currentDesign().transpose() <<"\n";
     */
+    delete optimizer;
     return EXIT_SUCCESS;
 }
