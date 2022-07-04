@@ -36,13 +36,40 @@ static void static_newiter_callback(int iter, int call_iter, real_t *x, real_t* 
         ", ||g|| = " << *gnorm << std::endl;*/
 }
 
+
+struct gsHLBFGSObjective
+{
+    typedef double T;
+    typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vector;
+    // typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+
+    gsHLBFGSObjective(gsOptProblem<T>* objective)
+    :
+    obj(objective)
+    { }
+
+    gsHLBFGSObjective()
+    :
+    obj(nullptr)
+    { }
+
+    void operator() (int N, real_t* x, real_t* prev_x, real_t* f, real_t* g) const
+    {
+        gsAsConstVector<real_t> u(x,N);
+        *f = obj->evalObj(u);
+        
+        gsAsVector<real_t> Gvec(g,N);
+        obj->gradObj_into(u,Gvec);
+    }
+
+    gsOptProblem<T> * obj;
+};
+
 template<typename T>
 class gsHLBFGS : public gsOptimizer<T>
 {
 public:
     using Base = gsOptimizer<T>;
-
-    typedef std::function<void(const std::vector<real_t>& x, real_t &f, std::vector<real_t>& g)> func_grad_eval;
 
 public:
     // gsHLBFGS(gsOptProblem<T> * problem)
@@ -57,14 +84,6 @@ public:
     Base(problem)
     {
         this->defaultOptions();
-
-        func_grad =  [this](const std::vector<T>& X, T& F, std::vector<T>& G) {
-            gsAsConstVector<real_t> u(X.data(),X.size());
-            gsAsVector<real_t> Gvec(G.data(),G.size());
-            F = m_op->evalObj(u);
-            m_op->gradObj_into(u,Gvec);
-            // objInterFreeFunc_into(X, F, G);
-        };
     }
 
 
@@ -122,18 +141,20 @@ public:
 
         // std::function<void(index_t N, real_t* x, real_t* prev_x, real_t* f, real_t* g)>
 
-        std::function<void(int N, double* x, double* prev_x, double* f, double* g)> wrapfunc = [&](int N, double* x, double*, double* f, double* g) {
+        const std::function<void(int N, double* x, double* prev_x, double* f, double* g)> wrapfunc =
+            [&](int N, double* x, double*, double* f, double* g) {
             std::vector<double> array_x(N), array_g(N);
-            for (int i=0; i<N; i++)
-                array_x[i] = x[i];
 
-            func_grad(array_x, *f, array_g);
-
-            for (int i=0; i<N; i++)
-                g[i] = array_g[i];
+            gsAsConstVector<real_t> u(x,N);
+            *f = m_op->evalObj(u);
+            
+            gsAsVector<real_t> Gvec(g,N);
+            m_op->gradObj_into(u,Gvec);
         };
 
         local_func_grad = &wrapfunc;
+
+        //gsHLBFGSObjective obj(m_op);
 
         // WHAT ABOUT CONSTRAINTS????
         HLBFGS(
@@ -141,6 +162,7 @@ public:
                 5, // hardcoded??? -->>> change to an option of the class
                 sol.data(),
                 static_func_grad,
+//                obj,
                 nullptr,
                 HLBFGS_UPDATE_Hessian,
                 static_newiter_callback,
@@ -186,7 +208,7 @@ protected:
 
 // to be removed
 public:
-    func_grad_eval func_grad;
+
     int maxiter = 10000; // Maximum number of quasi-Newton updates
     real_t gtol = 1e-10; // The iteration will stop when ||g||/max(1,||x||) <= gtol
     bool verbose = true;
