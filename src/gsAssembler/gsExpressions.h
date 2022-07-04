@@ -417,7 +417,7 @@ public:
 
     /// Returns whether this expression is evaluated across an interface
     bool isAcross() const { return m_isAcross; }
-    
+
     E right() const
     {
         E ac(this->derived());
@@ -618,6 +618,42 @@ public:
     }
 
     index_t targetDim() const { return m_fs->targetDim();}
+
+    void deformBy( const gsFeSolution<T> & deformation) const
+    {
+        const gsMatrix<T> &defVector = deformation.coefs();
+        const index_t dim = m_fs->domainDim();
+
+        const gsMultiBasis<T> & mb = static_cast<const gsMultiBasis<T>&>(deformation.space().source());
+        const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T>&>(*this->m_fs );
+        GISMO_ASSERT( dynamic_cast<const gsMultiBasis<T>*>(&deformation.space().source()), "error");
+        GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( this->m_fs), "error");
+
+        // For every patch of the MultiPatch
+        for ( index_t p=0; p < mp.nPatches(); p++ )
+        {
+            // Get the patch's coefficients
+            gsMatrix<T> &result = mp.patch(p).coefs();
+
+            // Reconstruct solution coefficients on patch p
+            const index_t sz  = mb[p].size();
+
+            // For all components
+            for (index_t c = 0; c!=dim; c++)
+            {
+                // loop over all basis functions (even the eliminated ones)
+                for (index_t i = 0; i < sz; ++i)
+                {
+                    const int ii = deformation.mapper().index(i, p, c);
+                    if ( deformation.mapper().is_free_index(ii) ) // DoF value is in the defVector
+                    {
+                        result(i,c) += defVector.at(ii);
+                    }
+
+                }
+            }
+        }
+    }
 public:
     typedef T Scalar;
 
@@ -717,7 +753,7 @@ public:
     bool isValid() const { return nullptr!=m_weights; }
 
     const gsVector<T> & weights() const {return *m_weights;}
-    
+
     template<class E>
     integral_expr<E> integral(const _expr<E>& ff) const
     { return integral_expr<E>(*this,ff); }
@@ -744,7 +780,7 @@ public:
     //const gsMatrix<T> points() const {return pts;}
 
     //index_t dim() { return di->
-        
+
     void print(std::ostream &os) const { os << "e"; }
 
     void parse(gsExprHelper<T> & evList) const
@@ -929,7 +965,7 @@ public:
         GISMO_ASSERT(_r>-2 && _r<1, "Invalid or not implemented (r="<<_r<<").");
         return m_sd->cont = _r;
     }
-    
+
     gsFeSolution<T> function(const gsMatrix<T>& solVector) const
     { return gsFeSolution<T>(*this); }
 
@@ -1291,7 +1327,7 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-    
+
     index_t rows() const {return _u.dim(); }
 
     static index_t cols() {return 1; }
@@ -2188,13 +2224,13 @@ private:
 public:
 
     ppart_expr(_expr<E> const& u) : _u(u) { }
-    
+
     const gsMatrix<Scalar> & eval(index_t k) const
-    {   
+    {
         res = _u.eval(k).cwiseMax(0.0); // component-wise maximum with zero
         return res;
     }
-    
+
 
     const index_t rows() const { return _u.rows(); }
     const index_t cols() const { return _u.cols(); }
