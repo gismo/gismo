@@ -17,6 +17,7 @@ CMakeLists.txt.user
 # Visual Studio
 /CMakeSettings.json*
 /.vs
+**/.vscode
 /build*
 
 # CMake
@@ -26,3 +27,6 @@ CMakeFiles/
 # Patch Files
 *.patch
 *.rej
+
+#Mac OS
+**/.DS_Store
