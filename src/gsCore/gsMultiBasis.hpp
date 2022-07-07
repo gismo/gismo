@@ -22,10 +22,13 @@ namespace gismo
 {
 
 template<class T>
-gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb )
+gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb, bool NoRational)
 : m_topology( bb.dim() )
 {
-    m_bases.push_back( bb.clone().release() );
+    if (NoRational)
+        m_bases.push_back( bb.source().clone().release() );
+    else
+        m_bases.push_back( bb.clone().release() );
     m_topology.addBox();
     m_topology.addAutoBoundaries();
 }

@@ -29,11 +29,13 @@ namespace gismo
 
       // Constructors
       .def(py::init<>())
-      .def("boundaries", static_cast<std::vector< patchSide >& (Class::*)()> (&Class::boundaries));
+      .def("boundaries", static_cast<std::vector< patchSide >& (Class::*)()> (&Class::boundaries))
+      .def("interfaces", static_cast<std::vector< boundaryInterface >& (Class::*)()> (&Class::interfaces))
+
+      ;
   }
 
 #endif
-
 
 std::ostream & gsBoxTopology::print(std::ostream &os) const
 {

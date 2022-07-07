@@ -260,6 +260,9 @@ public:
     /// \brief Elevate the degree of all patches by \a elevationSteps.
     void degreeElevate(int elevationSteps = 1);
 
+    /// \brief Reduce the degree of all patches by \a elevationSteps.
+    void degreeReduce(int elevationSteps = 1);
+
     void embed(const index_t N)
     {
         for ( typename PatchContainer::const_iterator it = m_patches.begin();
@@ -275,7 +278,7 @@ public:
     /// \param cornersOnly When set to true an interface is accepted
     /// if the patch corners match, even if the parameterization does
     /// not agree
-    bool computeTopology( T tol = 1e-4, bool cornersOnly = false);
+    bool computeTopology( T tol = 1e-4, bool cornersOnly = false, bool tjunctions = false);
 
     /// \brief Attempt to close gaps between the interfaces. Assumes
     /// that the topology is computed, ie. computeTopology() has been
@@ -295,10 +298,11 @@ public:
     /// to two points: the lower and upper corner of the bounding box.
     void boundingBox(gsMatrix<T> & result) const;
 
-    /// \brief Splits each patch uniformly in each direction into two new patches,
-    /// giving a total number of 2^d new patches. This method allocated new
-    /// space for each new geometry, the original one stays unchanged.
-    gsMultiPatch<T> uniformSplit() const;
+    /// \brief Splits each patch uniformly in each direction (if dir = -1)
+    /// into two new patches, giving a total number of 2^d new patches per patch.
+    /// If dir is a parametric direction, then it only splits in that one direction.
+    /// This method allocated new space for each new geometry, the original one stays unchanged.
+    gsMultiPatch<T> uniformSplit(index_t dir =-1) const;
 
 
     /** @brief Checks if all patch-interfaces are fully matching, and if not, repairs them, i.e., makes them fully matching.
@@ -349,6 +353,9 @@ public:
     /// \param pid2 vector containing for each point the patch id where it belongs (or -1 if not found)
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
+
+    std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
+                                                   const T accuracy = 1e-6) const;
 
     void constructInterfaceRep();
     void constructBoundaryRep();
