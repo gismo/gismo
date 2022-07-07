@@ -141,6 +141,50 @@ public:
         this->readBlockScalarData(dataID,coords.cols(),IDs,values);
     }
 
+    // void readBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, gsMatrix<T> & values) const
+    // {
+    //     T * values_ptr = new T[size];
+    //     m_interface.readBlockVectorData(dataID,size,IDs,values_ptr);
+    //     index_t rows =
+    //     values = Eigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size);
+
+    //     // CAST VALUES TO gsMATRIX
+    // }
+
+    // void readBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, gsMatrix<T> & values) const
+    // {
+    //     index_t * IDs = new index_t[coords.cols()];
+    //     this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
+
+    //     this->readBlockVectorData(dataID,coords.cols(),IDs,values);
+    // }
+
+    void writeBlockScalarData(const index_t & dataID, const index_t & size, const index_t * IDs, const gsMatrix<T> & values)
+    {
+        m_interface.writeBlockScalarData(dataID,size,IDs,values.data());
+    }
+
+    void writeBlockScalarData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, const gsMatrix<T> & values)
+    {
+        index_t * IDs = new index_t[coords.cols()];
+        this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
+
+        this->writeBlockScalarData(dataID,coords.cols(),IDs,values);
+    }
+
+    // void writeBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, const gsMatrix<T> & values) const
+    // {
+    //     m_interface.writeBlockVectorData(dataID,size,IDs,values.data());
+    // }
+
+    // void writeBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, const gsMatrix<T> & values) const
+    // {
+    //     index_t * IDs = new index_t[coords.cols()];
+    //     this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
+
+    //     this->writeBlockVectorData(dataID,coords.cols(),IDs,values);
+    // }
+
     void getMeshVertexIDsFromPositions(const index_t & meshID, const gsMatrix<T> & coords, gsMatrix<index_t> & IDs) const
     {
         index_t * ID_ptr;

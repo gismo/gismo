@@ -48,12 +48,14 @@ public:
     gsPreCICEFunction(        gsPreCICE<T> *    interface,
                         const index_t &         meshID,
                         const index_t &         dataID,
-                        const gsMultiPatch<T> & patches)
+                        const gsMultiPatch<T> & patches,
+                        const bool parametric = false)
     :
     m_interface(interface),
     m_meshID(meshID),
     m_dataID(dataID),
     m_patches(patches),
+    m_parametric(parametric),
     m_patchID(0),
     m_domainDim(m_patches.domainDim())
     {
@@ -63,8 +65,9 @@ public:
     static uPtr make(   const gsPreCICE<T> *    interface,
                         const index_t &         meshID,
                         const index_t &         dataID,
-                        const gsMultiPatch<T> & patches)
-    { return uPtr(new gsPreCICEFunction(interface, meshID, dataID, patches)); }
+                        const gsMultiPatch<T> & patches,
+                        const bool parametric = false)
+    { return uPtr(new gsPreCICEFunction(interface, meshID, dataID, patches, parametric)); }
 
     GISMO_CLONE_FUNCTION(gsPreCICEFunction)
 
@@ -88,12 +91,10 @@ public:
                                               << ", expected "<< m_domainDim);
 
         gsMatrix<T> coords(m_patches.targetDim(),u.cols());
-        // m_patches.patch(m_patchID).eval_into(u,coords);
-        coords = u;
-
-        gsDebugVar(u);
-        gsDebugVar(coords);
-
+        if (m_parametric)
+            m_patches.patch(m_patchID).eval_into(u,coords);
+        else
+            coords = u;
 
         m_interface->readBlockScalarData(m_meshID,m_dataID,coords,result);
     }
@@ -135,6 +136,7 @@ private:
 
     gsPreCICE<T> * m_interface;
     gsMultiPatch<T> m_patches;
+    bool m_parametric;
     index_t m_meshID, m_dataID;
     index_t m_patchID;
     index_t m_domainDim;

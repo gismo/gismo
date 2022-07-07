@@ -82,12 +82,12 @@ public:
 
     // to do: make time collections as well
 	// ! i is not included in the filename, must be in included fn !
-    void addTimestep(String const & fn, int tstep, String const & ext)
+    void addTimestep(String const & fn, double tstep, String const & ext)
     {
         mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
-    void addTimestep(String const & fn, int part, int tstep, String const & ext)
+    void addTimestep(String const & fn, int part, double tstep, String const & ext)
     {
         mfile << "<DataSet part=\""
               <<part<<"\" timestep=\""
