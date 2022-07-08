@@ -39,13 +39,17 @@ int main(int argc, char *argv[])
   
     //! [Read input file]
 
+    // Generate domain
     gsMultiPatch<> patches;
     patches.addPatch(gsNurbsCreator<>::BSplineRectangle(0.0,-0.25,1.0,0.0));
 
+    // Set external heat-flux to zero
     gsFunctionExpr<> f("0",2);
 
+    // Create bases
     gsMultiBasis<> bases(patches);//true: poly-splines (not NURBS)
 
+    // Set degree
     bases.setDegree( bases.maxCwiseDegree() + numElevate);
 
     // h-refine each basis
@@ -55,7 +59,9 @@ int main(int argc, char *argv[])
 
     gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
     
+    // Set heat conduction coefficient
     real_t k_temp = 100;
+    // Set bottom wall temp
     real_t u_wall = 310;
 
 // ----------------------------------------------------------------------------------------------
@@ -72,8 +78,13 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
 
 // ----------------------------------------------------------------------------------------------
+    // Set the interface for the precice coupling
     patchSide couplingInterface(0,boundary::north);
+
+    // Get a domain iterator on the coupling interface
     typename gsBasis<real_t>::domainIter domIt = bases.basis(couplingInterface.patch).makeDomainIterator(couplingInterface.side());
+
+    // Set the dimension of the points
     index_t rows = patches.targetDim();
     gsMatrix<> nodes;
     // Start iteration over elements
@@ -88,6 +99,7 @@ int main(int argc, char *argv[])
         quadOptions.addInt("quB","Number of quadrature points: quA*deg + quB",1);
     */
 
+    // First obtain the size of all quadrature points
     index_t quadSize = 0;
     typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
     for (; domIt->good(); domIt->next(), k++ )
@@ -95,11 +107,14 @@ int main(int argc, char *argv[])
         QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
         quadSize+=QuRule->numNodes();
     }
+
+    // Initialize parametric coordinates
     gsMatrix<> uv(rows,quadSize);
+    // Initialize physical coordinates
     gsMatrix<> xy(rows,quadSize);
 
+    // Grab all quadrature points
     index_t offset = 0;
-
     for (domIt->reset(); domIt->good(); domIt->next(), k++ )
     {
         QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
@@ -114,6 +129,7 @@ int main(int argc, char *argv[])
         offset += QuRule->numNodes();
     }
 
+    // Define precice interface
     gsPreCICE<real_t> interface("Solid", precice_config);
     interface.addMesh("Solid-Mesh",xy);
     real_t precice_dt = interface.initialize();
@@ -122,41 +138,37 @@ int main(int argc, char *argv[])
     index_t tempID = interface.getDataID("Temperature",meshID);
     index_t fluxID = interface.getDataID("Heat-Flux",meshID);
 
-    // gsMatrix<> result;
-    // interface.readBlockScalarData(meshID,tempID,xy,result);
-    // gsDebugVar(result);
-
-
-
 // ----------------------------------------------------------------------------------------------
 
+    // Define boundary conditions
     gsBoundaryConditions<> bcInfo;
+    // Dirichlet side
     gsConstantFunction<> g_D(u_wall,2);
-
-    real_t u_wall2 = 300;
+    // Homogeneous Neumann
     gsConstantFunction<> g_N(0.0,2);
-    gsConstantFunction<> g_D2(u_wall2,2);
+    // Coupling side
     gsPreCICEFunction<real_t> g_C(&interface,meshID,tempID,patches);
+    // Add all BCs
+    // Isolated Neumann sides
     bcInfo.addCondition(0, boundary::east,  condition_type::neumann  , &g_N, 0, false, 0);
     bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_N, 0, false, 0);
+    // Bottom side (prescribed temp)
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0, false, 0);
+    // Coupling interface
     bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &g_C, 0, false, 0);
-    // bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &g_D2, 0, false, 0);
+    // Assign geometry map
     bcInfo.setGeoMap(patches);
 
 // ----------------------------------------------------------------------------------------------
 
+    // Time integration coefficient (0.0 = explicit, 1.0 = implicit)
     real_t theta = 1.0;
 
-    // Generate system matrix and load vector
-    // gsInfo << "Assembling mass and stiffness...\n";
-    
     // Set the geometry map
     geometryMap G = A.getMap(patches);
 
     // Set the discretization space
     space u = A.getSpace(bases);
-
 
     // Set the source term
     auto ff = A.getCoeff(f, G);
@@ -165,12 +177,14 @@ int main(int argc, char *argv[])
     gsMatrix<> solVector;
     solution u_sol = A.getSolution(u, solVector);
 
-    u.setup(bcInfo, dirichlet::homogeneous, 0); // NOTE:
+    u.setup(bcInfo, dirichlet::homogeneous, 0);
 
+    // Assemble mass matrix
     A.initSystem();
     A.assemble( u * u.tr() * meas(G));
     gsSparseMatrix<> M = A.matrix();
 
+    // Assemble stiffness matrix (NOTE: also adds the dirichlet BCs inside the matrixs)
     A.initSystem();
     A.assemble( k_temp * igrad(u, G) * igrad(u, G).tr() * meas(G) );
     gsSparseMatrix<> K = A.matrix();
@@ -182,31 +196,34 @@ int main(int argc, char *argv[])
     // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
     gsSparseSolver<>::CGDiagonal solver;
 
+    // Time step
     real_t dt = 0.01;
 
-    // Project u_wall as initial condition
+    // Project u_wall as initial condition (violates Dirichlet side on precice interface)
     gsConstantFunction<> uwall_fun(u_wall,2);
     auto uwall = A.getCoeff(uwall_fun, G);
-
-
+    // RHS of the projection
     A.assemble( u * uwall * meas(G) );
     solver.compute(M);
     solVector = solver.solve(A.rhs());
-    // solVector.resize(A.numDofs(),1);
-    // solVector.setConstant(u_wall);
-    A.initVector();
-    u.setup(bcInfo, dirichlet::l2Projection, 0); // NOTE:
 
+    // Initialize the RHS for assembly
+    A.initVector();
+    u.setup(bcInfo, dirichlet::l2Projection, 0);
+
+    // Assemble the RHS
     gsVector<> F = dt*A.rhs() + (M-dt*(1.0-theta)*K)*solVector;
     gsVector<> F0 = F;
     gsVector<> F_checkpoint = F;
+
+    // Define the solution collection for Paraview
     gsParaviewCollection collection("solution");
 
     index_t timestep = 0;
     index_t timestep_checkpoint = 0;
     real_t time = 0;
 
-
+    // Plot initial solution
     if (plot)
     {
         std::string fileName = "solution_" + util::to_string(timestep);
@@ -220,9 +237,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Time integration loop
     while (interface.isCouplingOngoing())
     {
-        gsDebug<<"Inside loop\n";
         // read temperature from interface
         if (interface.isReadDataAvailable())
         {
@@ -238,7 +255,6 @@ int main(int argc, char *argv[])
             F = theta*dt*A.rhs() + (1.0-theta)*dt*F0 + (M-dt*(1.0-theta)*K)*solVector;
         }
 
-        gsDebug<<"Before checkpoint\n";
         // save checkpoint
         if (interface.isActionRequired(interface.actionWriteIterationCheckpoint()))
         {
@@ -265,9 +281,6 @@ int main(int argc, char *argv[])
                 // Only exchange y component
                 result(0,k) = -tmp.at(1);
             }
-
-            // gsDebugVar(result);
-            // TODO
             interface.writeBlockScalarData(meshID,fluxID,xy,result);
         }
 
@@ -303,28 +316,6 @@ int main(int argc, char *argv[])
 
 
     }
-
-    // for ( int i = 1; i<=numSteps; ++i) // for all timesteps
-    // {
-    //     A.assemble( u * ff * meas(G) );
-    //     F = dt*A.rhs() + (M-dt*(1.0-theta)*K)*solVector;
-    //     // Compute the system for the timestep i
-    //     gsInfo << "Solving timestep " << i*dt << ".\n";
-    //     solVector = solver.compute(M + dt*theta*K).solve(F);
-
-    //     if (plot)
-    //     {
-    //         std::string fileName = "solution_" + util::to_string(i);
-    //         ev.options().setSwitch("plot.elements", true);
-    //         ev.options().setInt("plot.npts", 1000);
-    //         ev.writeParaview( u_sol   , G, fileName);
-    //         for (size_t p=0; p!=patches.nPatches(); p++)
-    //         {
-    //           fileName = "solution_" + util::to_string(i) + std::to_string(p);
-    //           collection.addTimestep(fileName,i,".vts");
-    //         }
-    //     }
-    // }
 
     if (plot)
     {

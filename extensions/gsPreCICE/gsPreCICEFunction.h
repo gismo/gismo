@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Hofreither
+    Author(s): H.M. Verhelst (TU Delft, 2019-...)
 */
 
 #pragma once
@@ -22,14 +22,10 @@ namespace gismo
 {
 
 /**
-    @brief Class defining a globally constant function
-
-    \tparam T value type
-
-    \ingroup function
-    \ingroup Core
-*/
-
+ * @brief      Class defining a gsFunction that reads from the precice::SolverInterface
+ *
+ * @tparam     T     Number format
+ */
 template <class T>
 class gsPreCICEFunction : public gsFunction<T>
 {
@@ -42,9 +38,18 @@ public:
     /// Unique pointer for gsPreCICEFunction
     typedef memory::unique_ptr< gsPreCICEFunction > uPtr;
 
+    /// Default constructor
     gsPreCICEFunction() { }
 
-    /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^{\text{dim(val)}} \f$
+    /**
+     * @brief      Constructs a new instance of the gsPreCICEFunction
+     *
+     * @param      interface   The precice::SolverInterface (see \a gsPreCICE)
+     * @param[in]  meshID      The ID of the mesh on which the data is located
+     * @param[in]  dataID      The ID of the data
+     * @param[in]  patches     The geometry
+     * @param[in]  parametric  Specifies whether the data is defined on the parametric domain or not
+     */
     gsPreCICEFunction(        gsPreCICE<T> *    interface,
                         const index_t &         meshID,
                         const index_t &         dataID,
@@ -61,7 +66,7 @@ public:
     {
     }
 
-    /// Constructs a constant function \f$ \mathbb R^{\text{domainDim}} \to \mathbb R^{\text{dim(val)}} \f$
+    /// Constructs a function pointer
     static uPtr make(   const gsPreCICE<T> *    interface,
                         const index_t &         meshID,
                         const index_t &         dataID,
@@ -71,24 +76,31 @@ public:
 
     GISMO_CLONE_FUNCTION(gsPreCICEFunction)
 
+    /// Access a piece
     const gsPreCICEFunction<T> & piece(const index_t) const
     {
         return *this;
     }
 
-    // Documentation in gsFunction class
+    /// See \a gsFunction
     virtual short_t domainDim() const
     { return m_domainDim; }
 
-    // Documentation in gsFunction class
+    /// Gives the targetDomain, currently only scalar functions (todo)
     virtual short_t targetDim() const
     { return 1; }
 
-    // Documentation in gsFunction class
+    /// See \a gsFunction
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
+
+        // Does not work
+        // if (m_parametric)
+        //     m_interface->readBlockScalarData(m_meshID,m_dataID,m_patches.patch(m_patchID).eval(u),result);
+        // if (m_parametric)
+        //     m_interface->readBlockScalarData(m_meshID,m_dataID,u,result);
 
         gsMatrix<T> coords(m_patches.targetDim(),u.cols());
         if (m_parametric)
@@ -99,35 +111,35 @@ public:
         m_interface->readBlockScalarData(m_meshID,m_dataID,coords,result);
     }
 
-    // Documentation in gsFunction class
+    /// See \a gsFunction
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         // This would be nice to have with higher-order (IGA) coupling of precice
         GISMO_NO_IMPLEMENTATION;
     }
 
-    // Documentation in gsFunction class
+    /// See \a gsFunction
     virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         // This would be nice to have with higher-order (IGA) coupling of precice
         GISMO_NO_IMPLEMENTATION;
     }
 
+    /// See \a gsFunction
     void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result) const
     {
         // This would be nice to have with higher-order (IGA) coupling of precice
-
-        // GISMO_NO_IMPLEMENTATION;
-
         gsMatrix<T> tmp;
         this->eval_into(u,tmp);
         result.push_back(tmp);
     }
 
-    // Documentation in gsFunction class
+    /// See \a gsFunction
     virtual std::ostream &print(std::ostream &os) const
     {
+        os << "gsPreCICEFunction, defined using gsPreCICE (precice::SolverInterface):\n";
+        os << m_interface;
         return os;
     }
 
@@ -135,9 +147,9 @@ public:
 private:
 
     gsPreCICE<T> * m_interface;
+    index_t m_meshID, m_dataID;
     gsMultiPatch<T> m_patches;
     bool m_parametric;
-    index_t m_meshID, m_dataID;
     index_t m_patchID;
     index_t m_domainDim;
 

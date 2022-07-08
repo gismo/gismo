@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, couplingSide.opposite(),   condition_type::dirichlet  , &g_D, 0, false, 0);
     for (size_t s=1; s<=4; s++)
         if (s!=couplingSide.index() && s!=couplingSide.opposite().index())
-            bcInfo.addCondition(0, boxSide(side),  condition_type::neumann  , &g_N, 0, false, 0);
+            bcInfo.addCondition(0, boxSide(s),  condition_type::neumann  , &g_N, 0, false, 0);
     bcInfo.setGeoMap(patches);
 
 // ----------------------------------------------------------------------------------------------
