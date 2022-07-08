@@ -365,21 +365,82 @@ inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
+    
+    // If the measure on a boundary is requested, calculate the outer normal vector as well
+    if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
+
+    // Outer normal vector
+    if ( InOut.flags & NEED_OUTER_NORMAL)
+    {
+        if (InOut.side==boundary::none)
+            gsWarn<< "Computing boundary normal without a valid side.\n";
+        const T   sgn = sideOrientation(InOut.side);
+        const int dir = InOut.side.direction();
+        InOut.outNormals.resize(n,numPts);
+
+        if (tarDim!=-1 ? tarDim == domDim : n==d)
+        {
+            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
+
+            typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
+            for (index_t p=0;  p!=numPts; ++p)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                T alt_sgn = sgn * (T)( //jacT.rows()==jacT.cols() &&
+                                    jacT.determinant()<0 ? -1 : 1);
+                for (int i = 0; i != n; ++i) //for all components of the normal
+                {
+                    jacT.firstMinor(dir, i, minor);
+                    InOut.outNormals(i,p) = alt_sgn * minor.determinant();
+                    alt_sgn  *= -1;
+                }
+            }
+        }
+        else
+        {
+            gsMatrix<T,domDim,domDim> metric(d,d);
+            gsVector<T,domDim>      param(d);
+            typename gsMatrix<T,domDim,domDim>::FirstMinorMatrixType minor;
+            for (index_t p=0;  p!=numPts; ++p)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                metric= (jacT*jacT.transpose());
+                T alt_sgn = sgn;
+                for (int i = 0; i != (domDim!=-1?domDim:d); ++i) //for all components of the normal
+                {
+                    metric.firstMinor(dir, i, minor);
+                    param(i) = alt_sgn * minor.determinant();
+                    alt_sgn  *= -1;
+                }
+                //note: metric.determinant() == InOut.measures.at(p)
+                InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
+            }
+        }
+
+    }
 
     // Measure
     if (InOut.flags & NEED_MEASURE)
     {
         InOut.measures.resize(1,numPts);
-        for (index_t p = 0; p < numPts; ++p) // for all points
+        if (InOut.side==boundary::none) // If in the domain's interior
         {
-            typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
-                    gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
-//            if (tarDim == domDim && tarDim!=-1)
-            if ( tarDim!=-1 ? tarDim == domDim : n==d )
-                InOut.measures(0,p) = math::abs(jac.determinant());
-            else
-                InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  )
-                                                  .determinant() );
+            for (index_t p = 0; p < numPts; ++p) // for all points
+            {
+                typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
+                        gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
+    //            if (tarDim == domDim && tarDim!=-1)
+                if ( tarDim!=-1 ? tarDim == domDim : n==d )
+                    InOut.measures(0,p) = math::abs(jac.determinant());
+                else
+                    InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  )
+                                                    .determinant() );
+            }
+        }
+        else // If on the domain's interior
+        {
+            // return the outer normal vector's norm ( colwise i.e. for every point)
+            InOut.measures = InOut.outNormals.colwise().norm();
         }
     }
 
@@ -445,55 +506,7 @@ inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
         }
     }
 
-    // Outer normal vector
-    if ( InOut.flags & NEED_OUTER_NORMAL)
-    {
-        if (InOut.side==boundary::none)
-            gsWarn<< "Computing boundary normal without a valid side.\n";
-        const T   sgn = sideOrientation(InOut.side);
-        const int dir = InOut.side.direction();
-        InOut.outNormals.resize(n,numPts);
 
-        if (tarDim!=-1 ? tarDim == domDim : n==d)
-        {
-            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
-
-            typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
-            for (index_t p=0;  p!=numPts; ++p)
-            {
-                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                T alt_sgn = sgn * (T)( //jacT.rows()==jacT.cols() &&
-                                    jacT.determinant()<0 ? -1 : 1);
-                for (int i = 0; i != n; ++i) //for all components of the normal
-                {
-                    jacT.firstMinor(dir, i, minor);
-                    InOut.outNormals(i,p) = alt_sgn * minor.determinant();
-                    alt_sgn  *= -1;
-                }
-            }
-        }
-        else
-        {
-            gsMatrix<T,domDim,domDim> metric(d,d);
-            gsVector<T,domDim>      param(d);
-            typename gsMatrix<T,domDim,domDim>::FirstMinorMatrixType minor;
-            for (index_t p=0;  p!=numPts; ++p)
-            {
-                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                metric= (jacT*jacT.transpose());
-                T alt_sgn = sgn;
-                for (int i = 0; i != (domDim!=-1?domDim:d); ++i) //for all components of the normal
-                {
-                    metric.firstMinor(dir, i, minor);
-                    param(i) = alt_sgn * minor.determinant();
-                    alt_sgn  *= -1;
-                }
-                //note: metric.determinant() == InOut.measures.at(p)
-                InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
-            }
-        }
-
-    }
 
     /*
     // Curvature of isoparametric curve
