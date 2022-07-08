@@ -964,6 +964,54 @@ quad_split(Face f, Vertex v, Halfedge s)
     }
 }
 
+void gsSurfMesh::quad_split()
+{
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Halfedge he;
+
+    // reserve vertices, edges, faces
+    reserve(n_vertices() + n_edges() + n_faces(),
+        2 * n_edges(), 4 * n_faces());
+
+    auto points = get_vertex_property<Point>("v:point");
+
+    index_t env = n_vertices(); // edge vertices start here
+
+    // loop over all edges, add edge points
+    Point tmp;
+    for (auto eit : edges())
+    {
+        he = halfedge(eit, 0);
+        tmp = (points[from_vertex(he)] + points[to_vertex(he)]) / 2;
+        v = add_vertex(tmp);
+        insert_vertex(he, v);
+    }
+
+    index_t fnv = n_vertices(); // face vertices start here
+
+    // loop over all faces, add face points
+    for (auto fit : faces())
+    {
+        auto fv = vertices(fit);
+        tmp.setZero();
+        for (auto vc = fv.begin(); vc != fv.end(); ++vc, ++vc)
+            tmp += points[*vc];
+        tmp /= 4;
+        add_vertex(tmp);  // vertex gets shifted face id
+    }
+
+    int i = 0;
+    for (auto fit : faces())
+    {
+        v = gsSurfMesh::Vertex(fnv + (i++));//face vertex id ?
+        //Start from an original vertex
+        auto fv = vertices(fit).begin();
+        if ((*fv).idx() >= env) ++fv; //todo: add -> operator
+        //assert ( (*fv).idx() < nv )
+        quad_split(fit, v, fv.he());
+    }
+
+}
 
 //-----------------------------------------------------------------------------
 

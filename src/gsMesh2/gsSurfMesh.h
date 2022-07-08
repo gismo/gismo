@@ -1675,6 +1675,7 @@ public: //--------------------------------------------- higher-level operations
     /// \a s of the face
     /// \a f is assumed to have 8 vertices, including \a s
     void quad_split(Face f, Vertex v, Halfedge s);
+    void quad_split();
     
     /** Split the edge \c e by first adding point \c p to the mesh and then
      connecting it to the two vertices of the adjacent triangles that are
