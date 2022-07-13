@@ -34,6 +34,9 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
                           gsMatrix<T> const & points,
                           gsBasis<T>  & basis)
 {
+    GISMO_ASSERT(points.cols()==param_values.cols(), "Pointset dimensions problem "<< points.cols() << " != " <<param_values.cols() );
+    GISMO_ASSERT(basis.domainDim()==param_values.rows(), "Parameter values are inconsistent: "<< basis.domainDim() << " != " <<param_values.rows() );
+
     m_param_values = param_values;
     m_points = points;
     m_result = NULL;
@@ -213,8 +216,8 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
                         // Mixed derivatives 2 * dudv N_i * dudv N_j + ...
                         else
                         {
-                            localAij += T(2) * der2(i * stride + s, k) *
-                                               der2(j * stride + s, k);
+                            localAij += 2 * der2(i * stride + s, k) *
+                                            der2(j * stride + s, k);
                         }
                     }
 
