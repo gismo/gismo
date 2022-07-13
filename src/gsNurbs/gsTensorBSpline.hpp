@@ -390,7 +390,7 @@ std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) con
         midpoints.setZero(d);
 
         for(unsigned i=0; i<d;++i)
-            midpoints(i)= (basis().knots(i).sbegin().value() + (--basis().knots(i).send()).value())/T(2);
+            midpoints(i)= (basis().knots(i).sbegin().value() + (--basis().knots(i).send()).value())/ (T)(2);
 
         for(unsigned i=0; i<d;++i)
         {
@@ -424,7 +424,7 @@ std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) con
     else
     {
         result.reserve(2);
-        T xi =  (basis().knots(dir).sbegin().value() + (--basis().knots(dir).send()).value())/T(2);
+        T xi =  (basis().knots(dir).sbegin().value() + (--basis().knots(dir).send()).value())/(T)(2);
         gsTensorBSpline<d,T>* left = new gsTensorBSpline<d,T>();
         gsTensorBSpline<d,T>* right = new gsTensorBSpline<d,T>();
 
