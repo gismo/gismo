@@ -127,6 +127,19 @@ public:
     void setConstraints(const std::vector<index_t>& indices,
 			const std::vector<gsMatrix<T> >& coefs);
 
+    /// Sets constraints in such a way that the previous values at \a
+    /// fixedSides of the geometry remain intact.
+    void setConstraints(const std::vector<boxSide>& fixedSides);
+
+    /// Set constraints in such a way that the resulting geometry on
+    /// each of \a fixedSides will coincide with the corresponding
+    /// curve in \a fixedCurves.
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsBSpline<T> >& fixedCurves);
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsGeometry<T> * >& fixedCurves);
+
+
 private:
     /// Extends the system of equations by taking constraints into account.
     void extendSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
