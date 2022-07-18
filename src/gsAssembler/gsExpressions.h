@@ -115,6 +115,7 @@ template<class T> class gsFeVariable;
 template<class T> class gsFeSolution;
 template<class E> class symm_expr;
 template<class E> class symmetrize_expr;
+template<class E> class normalized_expr;
 template<class E> class trace_expr;
 template<class E> class integral_expr;
 template<class E> class adjugate_expr;
@@ -269,6 +270,10 @@ public:
     /// Returns the Euclidean norm of the expression
     norm_expr<E> norm() const
     { return norm_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Returns the vector normalized to unit length
+    normalized_expr<E> normalized() const
+    { return normalized_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the determinant of the expression
     det_expr<E> det() const
@@ -1928,7 +1933,7 @@ flat_expr<E> const flat(E const & u)
   void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
   };
 
-/// Make a matrix 2x2 expression "flat"
+/// Get diagonal elements of matrix as a vector
 template <typename E> EIGEN_STRONG_INLINE
 diag_expr<E> const diagonal(E const & u)
 { return diag_expr<E>(u); }
@@ -2782,10 +2787,6 @@ public:
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
 
-    // Normalized to unit length
-    normalized_expr<onormal_expr<T> > normalized()
-    { return normalized_expr<onormal_expr<T> >(*this); }
-
     void print(std::ostream &os) const { os << "nv("; _G.print(os); os <<")"; }
 };
 
@@ -2818,10 +2819,6 @@ public:
         evList.add(_G);
         _G.data().flags |= NEED_NORMAL;
     }
-
-    // Normalized to unit length
-    normalized_expr<normal_expr<T> > normalized()
-    { return normalized_expr<normal_expr<T> >(*this); }
 
     void print(std::ostream &os) const { os << "sn("; _G.print(os); os <<")"; }
 };
@@ -2872,10 +2869,6 @@ public:
         _G.data().flags |= NEED_NORMAL;
         _G.data().flags |= NEED_OUTER_NORMAL;
     }
-
-    // Normalized to unit length
-    normalized_expr<tangent_expr<T> > normalized()
-    { return normalized_expr<tangent_expr<T> >(*this); }
 
     void print(std::ostream &os) const { os << "tv("; _G.print(os); os <<")"; }
 };
