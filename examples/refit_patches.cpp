@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsModeling/gsPatchGenerator.h>
 
 using namespace gismo;
 
@@ -59,12 +60,15 @@ int main(int argc, char *argv[])
         gsKnotVector<> kv1(0, 1, np[1]-2, 2, 1, 1);
         gsTensorBSplineBasis<2,real_t> bbasis(kv0,kv1);
 
+        a<<0,0;
+        b<<1,1;
+        pts = gsPointGrid(a, b, np);
+
         mp.patch(p) = *bbasis.makeGeometry(eval.transpose()).release();
         mp_par.patch(p) = *bbasis.makeGeometry(pts.transpose()).release();
     }
     // mp.topology() = mp0->topology();
 
-    gsDebugVar(mp.patch(0));
     gsWriteParaview(mp,"mp",1000,true);
 
     // todo: mp = mp0->approximateLinearly();
@@ -93,7 +97,6 @@ int main(int argc, char *argv[])
     //STEP 3: Fit curve network with B-splines of degree \a d and \a k interior knots
     //parametrizePts
     gsKnotVector<> kv(0, 1, nknots, degree+1, 1, degree);
-    gsDebugVar(kv);
     gsBSplineBasis<> fbasis(kv);
     gsFitting<> cfit;
 
@@ -103,7 +106,7 @@ int main(int argc, char *argv[])
     // Can we make a nice initialization of the multipatch? Such that we can put the sides directly in the side index
     for (size_t p=0; p!=mp.nPatches(); p++)
         for (index_t k=0; k!=4; k++)
-            pbdr[p].addPatch(mp.patch(0));
+            pbdr[p].addPatch(mp.patch(0).boundary(0));
 
 
     index_t k=0;
@@ -111,29 +114,27 @@ int main(int argc, char *argv[])
     {
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
         // note: free to choose a parameterization, here we just take the knots
-        // uv  = crv.knots().asMatrix().middleCols(1,crv.numCoefs());
+        xyz = crv.coefs().transpose();
+        uv  = crv.knots().asMatrix().middleCols(1,crv.numCoefs());
         //
         // THIS IS VERY WRONG
-        xyz = crv.coefs().transpose();
-        xyz.conservativeResize(xyz.rows(),xyz.cols()-1);
+        // xyz.conservativeResize(xyz.rows(),xyz.cols()-1);
         uv = gsVector<>::LinSpaced(xyz.cols(),0,1).transpose();
 
-        gsDebugVar( xyz );
-        gsDebugVar( uv );
-        gsDebugVar(crv.knots().asMatrix());
         cfit = gsFitting<>(uv,xyz,fbasis);
+
+        std::vector<index_t> prescribedDoFs;
+        std::vector<gsMatrix<>> prescibedCoefs;
+        prescribedDoFs.push_back(0);
+        prescribedDoFs.push_back(fbasis.size()-1);
+        prescibedCoefs.push_back(crv.coefs().row(0));
+        prescibedCoefs.push_back(crv.coefs().row(crv.basis().size()-1));
+
+        cfit.setConstraints(prescribedDoFs,prescibedCoefs);
         cfit.compute();
         pbdr[it->first.first() .patch].patch(it->first.first() .side()-1) = *cfit.result() ;
         pbdr[it->first.second().patch].patch(it->first.second().side()-1) = *cfit.result() ;
         crv_net.addPatch( *cfit.result() );
-
-        if (k==1)
-        {
-            gsWriteParaview(*cfit.result(),"result");
-            gsMatrix<> coefs = cfit.result()->coefs().transpose();
-            gsWriteParaviewPoints(coefs,"crv_fit_pts");
-            gsWriteParaviewPoints(xyz,"original_pts");
-        }
     }
     for (auto it = brep.begin(); it!=brep.end(); ++it)
     {
@@ -142,12 +143,21 @@ int main(int argc, char *argv[])
         uv  = crv.knots().asMatrix().middleCols(1,crv.numCoefs());
         xyz = crv.coefs().transpose();
         cfit = gsFitting<>(uv,xyz,fbasis);
+
+        std::vector<index_t> prescribedDoFs;
+        std::vector<gsMatrix<>> prescibedCoefs;
+        prescribedDoFs.push_back(0);
+        prescribedDoFs.push_back(fbasis.size()-1);
+        prescibedCoefs.push_back(crv.coefs().row(0));
+        prescibedCoefs.push_back(crv.coefs().row(crv.basis().size()-1));
+        cfit.setConstraints(prescribedDoFs,prescibedCoefs);
+
         cfit.compute();
         pbdr[it->first.patch].patch(it->first.side()-1) = *cfit.result() ;
         crv_net.addPatch( *cfit.result() );
     }
 
-    gsWriteParaview(crv_net.patch(1),"crv_fit",1000,false,true);
+    gsWriteParaview(crv_net,"crv_fit",1000,false,false);
     gsMatrix<> coefs = crv_net.patch(1).coefs().transpose();
     gsWriteParaviewPoints(coefs,"crv_fit_pts");
 
@@ -162,19 +172,33 @@ int main(int argc, char *argv[])
     //STEP 4: fit interior points of each patch with boundary constraints being the curves..
     for (size_t p=0; p!=pbdr.size(); p++)
     {
+        gsPatchGenerator<real_t> generator(pbdr.at(p));
+        gsMatrix<> coefs;
+        generator.preparePatch(sbasis,coefs);
+        gsMatrix<index_t> bdr_idx = sbasis.allBoundary();
+
+        std::vector<index_t> prescribedDoFs;
+        std::vector<gsMatrix<>> prescibedCoefs;
+        for (index_t k=0; k!=bdr_idx.size(); k++)
+        {
+            prescribedDoFs.push_back(bdr_idx(k,0));
+            prescibedCoefs.push_back(coefs.row(bdr_idx(k,0)));
+        }
+
         uv  = mp_par.patch(p).coefs().transpose();
         xyz = mp.patch(p).coefs().transpose();
         sfit = gsFitting<>(uv,xyz,sbasis);
 
-        std::vector<gsGeometry<real_t> * > prescribedCurves;
-        std::vector<boxSide> prescribedSides;
+        // std::vector<gsGeometry<real_t> * > prescribedCurves;
+        // std::vector<boxSide> prescribedSides;
 
-        for (index_t s=0; s!=4; s++) //sides
-        {
-            prescribedSides.push_back(boxSide(s+1));
-            prescribedCurves.push_back(&pbdr[p].patch(s));
-        }
-        sfit.setConstraints(prescribedSides, prescribedCurves);
+        // for (index_t s=0; s!=4; s++) //sides
+        // {
+        //     prescribedSides.push_back(boxSide(s+1));
+        //     prescribedCurves.push_back(&pbdr[p].patch(s));
+        // }
+        // sfit.setConstraints(prescribedSides, prescribedCurves);
+        sfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
         sfit.compute();
         gsWriteParaview(*sfit.result(),"fit");

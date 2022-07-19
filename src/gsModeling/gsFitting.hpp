@@ -101,8 +101,6 @@ void gsFitting<T>::compute(T lambda)
     }
     // Solves for many right hand side  columns
     gsMatrix<T> x;
-    gsDebugVar(A_mat.toDense());
-    gsDebugVar(m_B.transpose());
 
     x = solver.solve(m_B); //toDense()
 
