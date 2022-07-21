@@ -346,10 +346,10 @@ public:
     index_t numCycles(index_t lvl) const              { return m_numCycles[lvl];           }
 
     /// Set the damping of for the coarse-grid correction
-    void setCorarseGridCorrectionDamping(T damping)   { m_damping = damping;               }
+    void setCoarseGridCorrectionDamping(T damping)    { m_damping = damping;               }
 
     /// Get the damping of for the coarse-grid correction
-    T corarseGridCorrectionDamping() const            { return m_damping;                  }
+    T coarseGridCorrectionDamping() const             { return m_damping;                  }
 
     /// Returns a list of default options
     static gsOptionList defaultOptions();
