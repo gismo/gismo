@@ -1,6 +1,6 @@
 /** @file gsOptimizer.h
 
-    @brief Provides declaration of an optimization problem.
+    @brief
 
     This file is part of the G+Smo library.
 

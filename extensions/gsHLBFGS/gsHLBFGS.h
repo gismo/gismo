@@ -14,7 +14,7 @@
 /*
 To do:
 - Use Eigen
-- change real_t, int
+- change T, int
 - clean includes
 - change .cpp to .hpp
 */
@@ -27,7 +27,8 @@ To do:
 namespace gismo
 {
 
-static void static_newiter_callback(int iter, int call_iter, real_t *x, real_t* f, real_t *g, real_t* gnorm)
+template<typename T>
+static void static_newiter_callback(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)
 {
     std::cout << "# iter "<< iter << ": #func eval. " << call_iter << ", f = " << *f <<
     ", ||g|| = " << *gnorm << std::endl;
@@ -106,6 +107,7 @@ protected:
         m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
         m_options.addReal("MinStepLength","Minimal step length",1e-9);
         m_options.addInt("Verbose","Verbosity level",0);
+        m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",5);
     }
 
     void getOptions()
@@ -114,20 +116,21 @@ protected:
         m_minGradientLength = m_options.getReal("MinGradientLength");
         m_minStepLength = m_options.getReal("MinStepLength");
         m_verbose = m_options.getInt("Verbose");
+        m_M = m_options.getInt("LBFGSUpdates");
 
         // m_hlbfgs_info[1] = static_cast<bool>(m_maxIterations);
         m_hlbfgs_info[4] = static_cast<bool>(m_maxIterations);
         m_hlbfgs_info[5] = static_cast<bool>(m_verbose);
 
-        m_hlbfgs_pars[5] = gtol;
-        m_hlbfgs_pars[6] = gtol;
+        m_hlbfgs_pars[5] = 1e-10;
+        m_hlbfgs_pars[6] = 1e-10;
     }
 
 public:
 
 protected:
 
-    static void static_func_grad(int N, real_t* x, real_t* prev_x, real_t* f, real_t* g) {
+    static void static_func_grad(int N, T* x, T* prev_x, T* f, T* g) {
         (*local_func_grad)(N, x, prev_x, f, g);
     }
 
@@ -139,7 +142,7 @@ public:
 
         INIT_HLBFGS(m_hlbfgs_pars, m_hlbfgs_info);
 
-        // std::function<void(index_t N, real_t* x, real_t* prev_x, real_t* f, real_t* g)>
+        // std::function<void(index_t N, T* x, T* prev_x, T* f, T* g)>
 
         const std::function<void(int N, double* x, double* prev_x, double* f, double* g)> wrapfunc =
             [&](int N, double* x, double*, double* f, double* g) {
@@ -159,7 +162,7 @@ public:
         // WHAT ABOUT CONSTRAINTS????
         HLBFGS(
                 sol.size(),
-                5, // hardcoded??? -->>> change to an option of the class
+                m_M, // hardcoded??? -->>> change to an option of the class
                 sol.data(),
                 static_func_grad,
 //                obj,
@@ -202,21 +205,15 @@ protected:
 // HLBFGS options
 protected:
     index_t m_hlbfgs_info[20] = {0};
-    real_t  m_hlbfgs_pars[20] = {0};
+    T  m_hlbfgs_pars[20] = {0};
+    index_t m_M;
 
-    static const std::function<void(int N, real_t* x, real_t* prev_x, real_t* f, real_t* g)> * local_func_grad;
-
-// to be removed
-public:
-
-    int maxiter = 10000; // Maximum number of quasi-Newton updates
-    real_t gtol = 1e-10; // The iteration will stop when ||g||/max(1,||x||) <= gtol
-    bool verbose = true;
+    static const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * local_func_grad;
 
 };
 
 template<typename T>
-const std::function<void(int N, real_t* x, real_t* prev_x, real_t* f, real_t* g)> * gsHLBFGS<T>::local_func_grad = nullptr;
+const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * gsHLBFGS<T>::local_func_grad = nullptr;
 
 
 // using gsHLBFGS = gdc::GradientDescent<T, Objective, StepSize, Callback, FiniteDifferences>;

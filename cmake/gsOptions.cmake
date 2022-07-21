@@ -153,6 +153,11 @@ if  (${GISMO_WITH_SPECTRA})
 message ("  GISMO_WITH_SPECTRA      ${GISMO_WITH_SPECTRA}")
 endif()
 
+option(GISMO_WITH_HLBGFS        "With HLBFGS"              false  )
+if  (${GISMO_WITH_HLBGFS})
+message ("  GISMO_WITH_HLBGFS      ${GISMO_WITH_HLBGFS}")
+endif()
+
 option(GISMO_WITH_SUPERLU        "With SuperLU"              false  )
 if  (${GISMO_WITH_SUPERLU})
 message ("  GISMO_WITH_SUPERLU      ${GISMO_WITH_SUPERLU}")

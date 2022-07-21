@@ -26,7 +26,7 @@ ${gismo_externals}/HLBFGS/Lite_Sparse_Matrix.h
 
 # Apply same configuration as G+Smo
 include(gsConfig)
-set(CMAKE_CXX_VISIBILITY_PRESET default)# this is needed to get the CoDiPack tapes exported
+set(CMAKE_CXX_VISIBILITY_PRESET default)
 
 add_library(${PROJECT_NAME} OBJECT ${HLBFGS_SOURCES}) #STATIC
 #target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
