@@ -333,10 +333,10 @@ public:
     }
 
     /// Get coordinates of the boxCorner \a bc in the parameter domain
-    gsMatrix<T> parameterCenter( const boxCorner& bc );
+    gsMatrix<T> parameterCenter( const boxCorner& bc ) const;
 
     /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
-    gsMatrix<T> parameterCenter( const boxSide& bs );
+    gsMatrix<T> parameterCenter( const boxSide& bs ) const;
 
     /// Get back the side of point \a u
     //boxSide sideOf(const gsVector<T> & u); //

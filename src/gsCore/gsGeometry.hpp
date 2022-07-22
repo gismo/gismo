@@ -108,7 +108,7 @@ private:
 };
 
 template<class T>
-gsMatrix<T> gsGeometry<T>::parameterCenter( const boxCorner& bc )
+gsMatrix<T> gsGeometry<T>::parameterCenter( const boxCorner& bc ) const
 {
     gsMatrix<T> supp = parameterRange();
     const index_t dim = supp.rows();
@@ -125,7 +125,7 @@ gsMatrix<T> gsGeometry<T>::parameterCenter( const boxCorner& bc )
 }
 
 template<class T>
-gsMatrix<T> gsGeometry<T>::parameterCenter( const boxSide& bc )
+gsMatrix<T> gsGeometry<T>::parameterCenter( const boxSide& bc ) const
 {
     gsMatrix<T> supp = parameterRange();
     const index_t dim = supp.rows();

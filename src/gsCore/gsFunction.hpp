@@ -15,6 +15,7 @@
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
+#include <gsCore/gsGeometry.h>
 
 #pragma once
 
@@ -361,7 +362,7 @@ gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
 }
 
 template <typename T, short_t domDim, short_t tarDim>
-inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
+inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut, int d, int n)
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
@@ -374,7 +375,9 @@ inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
     {
         if (InOut.side==boundary::none)
             gsWarn<< "Computing boundary normal without a valid side.\n";
+        // gsDebugVar( InOut.side);
         const T   sgn = sideOrientation(InOut.side);
+        // gsDebugVar( sgn );
         const int dir = InOut.side.direction();
         InOut.outNormals.resize(n,numPts);
 
@@ -382,12 +385,49 @@ inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
         {
             if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
 
+            T det_sgn = 0;
             typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
+            // Determine Jacobian determinant's sign, assume constant along boundary
+            if (InOut.flags & SAME_ELEMENT )
+            {
+                for (index_t p=0;  p!=numPts; ++p)
+                {
+                    const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                    T detJacTcurr = jacT.determinant();
+                    if ( math::abs(detJacTcurr) >= 1e-7 )
+                    {
+                        det_sgn = detJacTcurr < 0 ? -1 : 1;
+                        break;
+                    }
+                }
+                if ( 0 == det_sgn )
+                {
+                    gsMatrix<T> parameterCenter = (static_cast<const gsGeometry<T>*>(&src))->parameterCenter(InOut.side);
+                    T detJacTcurr = src.jacobian(parameterCenter).determinant();
+                    det_sgn = detJacTcurr < 0 ? -1 : 1;
+                }
+            }
             for (index_t p=0;  p!=numPts; ++p)
             {
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                T alt_sgn = sgn * (T)( //jacT.rows()==jacT.cols() &&
-                                    jacT.determinant()<0 ? -1 : 1);
+                // BUG: When the determinant is really close to zero but negative,
+                // the result might be the opposite of what is expected because of alt_sgn
+                
+                if (! (InOut.flags &SAME_ELEMENT)  )
+                {
+                    T detJacTcurr = jacT.determinant();
+                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 : 
+                        ( detJacTcurr < 0 ? -1 : 1 );
+                    if ( 0 == det_sgn )
+                    {
+                        gsMatrix<T> parameterCenter = (static_cast<const gsGeometry<T>*>(&src))->parameterCenter(InOut.side);
+                        T detJacTcurr = src.jacobian(parameterCenter).determinant();
+                        det_sgn = detJacTcurr < 0 ? -1 : 1;
+                    }
+                }
+                GISMO_ENSURE(det_sgn!=0, "Cannot find a non-zero Jacobian determinant.\n" << InOut.points);
+
+                T alt_sgn = sgn *  det_sgn;
                 for (int i = 0; i != n; ++i) //for all components of the normal
                 {
                     jacT.firstMinor(dir, i, minor);
@@ -549,26 +589,26 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     switch (10 * Dim.second + Dim.first)
     {
     // curves
-    case 11: computeAuxiliaryData<T,1,1>(InOut, Dim.first, Dim.second); break;
-    case 21: computeAuxiliaryData<T,1,2>(InOut, Dim.first, Dim.second); break;
-//    case 31: computeAuxiliaryData<T,1,3>(InOut, Dim.first, Dim.second); break;
-//    case 41: computeAuxiliaryData<T,1,4>(InOut, Dim.first, Dim.second); break;
+    case 11: computeAuxiliaryData<T,1,1>(*this, InOut, Dim.first, Dim.second); break;
+    case 21: computeAuxiliaryData<T,1,2>(*this, InOut, Dim.first, Dim.second); break;
+//    case 31: computeAuxiliaryData<T,1,3>(*this, InOut, Dim.first, Dim.second); break;
+//    case 41: computeAuxiliaryData<T,1,4>(*this, InOut, Dim.first, Dim.second); break;
     // surfaces
-//  case 12: computeAuxiliaryData<T,2,1>(InOut, Dim.first, Dim.second); break;
-    case 22: computeAuxiliaryData<T,2,2>(InOut, Dim.first, Dim.second); break;
-    case 32: computeAuxiliaryData<T,2,3>(InOut, Dim.first, Dim.second); break;
-//    case 42: computeAuxiliaryData<T,2,4>(InOut, Dim.first, Dim.second); break;
+//  case 12: computeAuxiliaryData<T,2,1>(*this, InOut, Dim.first, Dim.second); break;
+    case 22: computeAuxiliaryData<T,2,2>(*this, InOut, Dim.first, Dim.second); break;
+    case 32: computeAuxiliaryData<T,2,3>(*this, InOut, Dim.first, Dim.second); break;
+//    case 42: computeAuxiliaryData<T,2,4>(*this, InOut, Dim.first, Dim.second); break;
 // volumes
-//  case 13: computeAuxiliaryData<T,3,1>(InOut, Dim.first, Dim.second); break;
-//  case 23: computeAuxiliaryData<T,3,2>(InOut, Dim.first, Dim.second); break;
-    case 33: computeAuxiliaryData<T,3,3>(InOut, Dim.first, Dim.second); break;
+//  case 13: computeAuxiliaryData<T,3,1>(*this, InOut, Dim.first, Dim.second); break;
+//  case 23: computeAuxiliaryData<T,3,2>(*this, InOut, Dim.first, Dim.second); break;
+    case 33: computeAuxiliaryData<T,3,3>(*this, InOut, Dim.first, Dim.second); break;
 //    case 43: computeAuxiliaryData<T,3,4>(InOut, Dim.first, Dim.second); break;
 // 4D bulks
-//  case 14: computeAuxiliaryData<T,4,1>(InOut, Dim.first, Dim.second); break;
-//  case 24: computeAuxiliaryData<T,4,2>(InOut, Dim.first, Dim.second); break;
-//  case 34: computeAuxiliaryData<T,4,3>(InOut, Dim.first, Dim.second); break;
-    case 44: computeAuxiliaryData<T,4,4>(InOut, Dim.first, Dim.second); break;
-    default: computeAuxiliaryData<T,-1,-1>(InOut, Dim.first, Dim.second); break;
+//  case 14: computeAuxiliaryData<T,4,1>(*this, InOut, Dim.first, Dim.second); break;
+//  case 24: computeAuxiliaryData<T,4,2>(*this, InOut, Dim.first, Dim.second); break;
+//  case 34: computeAuxiliaryData<T,4,3>(*this, InOut, Dim.first, Dim.second); break;
+    case 44: computeAuxiliaryData<T,4,4>(*this, InOut, Dim.first, Dim.second); break;
+    default: computeAuxiliaryData<T,-1,-1>(*this, InOut, Dim.first, Dim.second); break;
     }
 
 }
