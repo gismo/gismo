@@ -200,7 +200,7 @@ struct boundary_condition
         {
             case condition_type::dirichlet:
             {
-                GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
+                //GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
                 m_label = "Dirichlet";
                 break;
             }
