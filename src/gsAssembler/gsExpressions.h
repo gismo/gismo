@@ -2863,6 +2863,9 @@ public:
     index_t rows() const { return _G.data().dim.second; }
     index_t cols() const { return 1; }
 
+    static const gsFeSpace<Scalar> & rowVar() {return gsNullExpr<Scalar>::get();}
+    static const gsFeSpace<Scalar> & colVar() {return gsNullExpr<Scalar>::get();}
+
     void parse(gsExprHelper<Scalar> & evList) const
     {
         evList.add(_G);
