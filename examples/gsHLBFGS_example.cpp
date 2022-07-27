@@ -1426,7 +1426,7 @@ int main(int argc, char* argv[])
 	//GISMO_ENSURE(bRep.isClosed(), "The boundary is not closed, adjust tolerance.");
 	//bRep.closeGaps(tol);
 
-	gsWriteParaview(bRep, "bRep", 1000, true, true);
+//	gsWriteParaview(bRep, "bRep", 1000, true, true);
 
 	//--------------------------------------------------------------------------------------------------
 
@@ -1497,7 +1497,7 @@ int main(int argc, char* argv[])
 
 
 
-return 0;
+//return 0;
 
 	gsStopwatch stopwatch;
 	//bool success = opt.compute();
@@ -1540,7 +1540,7 @@ return 0;
 
 	gsWriteParaview(mp, "mp", 1000, true, true);
 
-	//gsWrite(mp, filename_output);
+	gsWrite(mp, filename_output);
 	//--------------------------------------------------------------------------------------------------
 
 
@@ -1551,7 +1551,7 @@ return 0;
 
 	//--------------------------------------------------------------------------------------------------
 
-	system("pause");
+//	system("pause");
 	return EXIT_SUCCESS;
 }
 
