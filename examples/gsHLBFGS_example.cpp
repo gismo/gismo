@@ -1391,8 +1391,8 @@ int main(int argc, char* argv[])
 	// Load XML file containing the boundary represention 
 	// TODO: give some different cases as defalut benchmarks, 
 	//       otherwise deal with the input filename
-	//std::string filename_input("breps/duck_boundary.xml");
-	std::string filename_input("breps/male_bdry2.xml");
+	std::string filename_input("breps/duck_boundary.xml");
+//	std::string filename_input("breps/male_bdry2.xml");
 	//std::string filename_input("breps/duck_bdryNURBS.xml");
 	//std::string filename_input("breps/nurbstest.xml");
 	std::string filename_output("results");
