@@ -997,8 +997,8 @@ public:
             {
                 const int ii = m_sd->mapper.index(i, p, c);
                 if ( m_sd->mapper.is_free_index(ii) ) // DoF value is in the solVector
-                    result.row(i) = solVector.row(ii);
-                    //result(i,c) = solVector.at(ii);
+                    // result.row(i) = solVector.row(ii);
+                    result(i,c) = solVector.at(ii);
                 else // eliminated DoF: fill with Dirichlet data
                 {
                     result(i,c) =  m_sd->fixedDofs.at( m_sd->mapper.global_to_bindex(ii) );

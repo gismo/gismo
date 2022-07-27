@@ -424,7 +424,15 @@ private:
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
+            gsMatrix<T> tempMat; 
             // ------- Compute  -------
+            for (index_t k = 0; k != m_quWeights.rows(); ++k)
+            {
+                // if (! E::isMatrix())
+                //     tempMat = ee.eval(k);
+                //     tempMat.resize(tempMat.rows()/2, 2);
+                //     gsDebugVar( tempMat.transpose().rowwise().sum() ); 
+            }
             const T * w = m_quWeights.data();
             localMat.noalias() = (*w) * ee.eval(0);
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
@@ -795,6 +803,9 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+            
+            if (m_exprdata->points()(0,1) == 0.25 )
+            gsDebugVar( m_exprdata->points() );
 
             if (m_exprdata->points().cols()==0)
                 continue;

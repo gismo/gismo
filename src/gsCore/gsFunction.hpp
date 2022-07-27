@@ -303,7 +303,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         gsMatrix<T> supp = this->support();
         if (0!=supp.size())
         {
-            gsGridIterator<T,CUBE> pt(supp, 5);//per direction
+            gsGridIterator<T,CUBE> pt(supp, 20);//per direction
             T val, mval = std::numeric_limits<T>::max();
             for(;pt; ++pt)
             {

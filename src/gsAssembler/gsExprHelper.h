@@ -384,6 +384,15 @@ public:
             it->first->function(patchIndex).computeMap(it->second);
             it->second.mine().patchId = patchIndex;
             it->second.mine().points.swap(m_points.mine());
+            if ( (m_points.mine().cols() == 3 && m_points.mine()(0,1) == 0.25)
+                || (m_points.mine().cols() == 1 && m_points.mine()(0,0) == 0.25) 
+                || isMirrored() && (m_mirror->m_points.mine().cols() == 3 && m_mirror->m_points.mine()(0,1) == 0.25)
+                || isMirrored() && (m_mirror->m_points.mine().cols() == 1 && m_mirror->m_points.mine()(0,0) == 0.25))
+            {
+                gsDebug << "P="<<patchIndex <<"\n "<< it->second.mine().values[0] <<"\n"
+                << "Params : " << m_points.mine() << "\n"
+                << "Patch: " << it->first->function(patchIndex) << "\n";
+            }
         }
 
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
