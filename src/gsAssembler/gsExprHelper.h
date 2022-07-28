@@ -202,6 +202,20 @@ public:
 
     //void clearMutSource() ?
 
+    void activateFlags(unsigned flg)
+    {
+        // Additional evaluation flags
+        for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
+            it->second.mine().flags |= flg;
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.mine().flags |= flg;
+        for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
+            it->second.mine().flags |= flg;
+        // gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
+        // gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
+        // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
+    }
+
 private:
 
     inline gsExprHelper & iface()
@@ -240,11 +254,11 @@ private:
     {
         // Additional evaluation flags
         for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= NEED_ACTIVE;
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+        it->second.mine().flags |= NEED_ACTIVE;
         // gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
         // gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
         // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
@@ -252,11 +266,11 @@ private:
         if (isMirrored())
         {
             for (MapDataIt it  = m_mirror->m_mdata.begin(); it != m_mirror->m_mdata.end(); ++it)
-                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+                it->second.mine().flags |= NEED_ACTIVE;
             for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
-                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+                it->second.mine().flags |= NEED_ACTIVE;
             for (CFuncDataIt it  = m_mirror->m_cdata.begin(); it != m_mirror->m_cdata.end(); ++it)
-                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+                it->second.mine().flags |= NEED_ACTIVE;
             // gsInfo<< "+fdata: "<< m_mirror->m_fdata.size()<<"\n";
             // gsInfo<< "+mdata: "<< m_mirror->m_mdata.size()<<"\n";
             // gsInfo<< "+cdata: "<< m_mirror->m_cdata.size()<<std::endl;
@@ -381,25 +395,16 @@ public:
         {
             it->second.mine().points.swap(m_points.mine());//swap
             it->second.mine().side    = bs;
-            it->first->function(patchIndex).computeMap(it->second);
             it->second.mine().patchId = patchIndex;
+            it->first->function(patchIndex).computeMap(it->second);
             it->second.mine().points.swap(m_points.mine());
-            if ( (m_points.mine().cols() == 3 && m_points.mine()(0,1) == 0.25)
-                || (m_points.mine().cols() == 1 && m_points.mine()(0,0) == 0.25) 
-                || isMirrored() && (m_mirror->m_points.mine().cols() == 3 && m_mirror->m_points.mine()(0,1) == 0.25)
-                || isMirrored() && (m_mirror->m_points.mine().cols() == 1 && m_mirror->m_points.mine()(0,0) == 0.25))
-            {
-                gsDebug << "P="<<patchIndex <<"\n "<< it->second.mine().values[0] <<"\n"
-                << "Params : " << m_points.mine() << "\n"
-                << "Patch: " << it->first->function(patchIndex) << "\n";
-            }
         }
 
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
         {
+            it->second.mine().patchId = patchIndex;
             it->first->piece(patchIndex)
                 .compute(m_points, it->second);
-            it->second.mine().patchId = patchIndex;
         }
 
         for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)

@@ -388,7 +388,8 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-
+    m_exprdata->activateFlags(SAME_ELEMENT);
+    
     // Computed value on element
     T elVal;
     index_t c = 0;
@@ -461,7 +462,8 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    
+    m_exprdata->activateFlags(SAME_ELEMENT);
+
     // Computed value
     T elVal;
     m_value = _op::init();
@@ -520,6 +522,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
+    m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;
@@ -573,6 +576,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 {
     auto arg_tpl = expr.val();
     m_exprdata->parse(arg_tpl);
+    m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights; // quadrature weights
