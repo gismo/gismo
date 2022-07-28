@@ -808,7 +808,6 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
             
             if (m_exprdata->points()(0,1) == 0.25 )
-            gsDebugVar( m_exprdata->points() );
 
             if (m_exprdata->points().cols()==0)
                 continue;
