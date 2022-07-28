@@ -789,7 +789,7 @@ public:
     //const gsMatrix<T> points() const {return pts;}
 
     //index_t dim() { return di->
-
+    
     void print(std::ostream &os) const { os << "e"; }
 
     void parse(gsExprHelper<T> & evList) const
@@ -3640,6 +3640,48 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
+/*
+  Expression for multiplication operation (fourth version)
+
+  Multiplication by gsMatrix
+*/
+template <typename E2, bool rmult>
+class mmult_expr
+    : public _expr<mmult_expr<E2,rmult> >
+{
+public:
+    typedef typename E2::Scalar Scalar;
+private:
+    const gsMatrix<Scalar> & _c;
+    typename E2::Nested_t _v;
+
+public:
+    enum {ScalarValued = 0, ColBlocks = E2::ColBlocks};
+    enum {Space = E2::Space};
+
+    mmult_expr(gsMatrix<Scalar> const & c, _expr<E2> const& v)
+    : _c(c), _v(v) { }
+
+    EIGEN_STRONG_INLINE AutoReturn_t eval(const index_t k) const
+    {
+        return rmult ? ( _v.eval(k) * _c ) : ( _c * _v.eval(k) );
+    }
+
+    index_t rows() const { return _c.rows(); }
+    index_t cols() const { return _v.cols(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _v.parse(evList); }
+
+    index_t cardinality_impl() const
+    { return _v.cardinality(); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _v.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _v.colVar(); }
+
+    void print(std::ostream &os) const { os << "M*";_v.print(os); }
+};
+
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
 {
@@ -4329,11 +4371,13 @@ mult_expr<typename E1::Scalar,E1,false> const
 operator-(_expr<E1> const& u)
 { return mult_expr<typename E1::Scalar,E1, false>(-1, u); }
 
-/*
-  template <typename E1> mult_expr<gsMatrix<typename E1::Scalar>,E1,false> const
-  operator*(gsMatrix<typename E1::Scalar> const& u, _expr<E1> const& v)
-  { return mult_expr<gsMatrix<typename E1::Scalar>,E1, false>(u, v); }
-*/
+template <typename E2> mmult_expr<E2,false> const
+operator*(gsMatrix<typename E2::Scalar> const& u, _expr<E2> const& v)
+{ return mmult_expr<E2, false>(u, v); }
+
+template <typename E1> mmult_expr<E1,true> const
+operator*(_expr<E1> const& v, gsMatrix<typename E1::Scalar> const& u)
+{ return mmult_expr<E1, true>(u, v); }
 
 /// Frobenious product (also known as double dot product) operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE

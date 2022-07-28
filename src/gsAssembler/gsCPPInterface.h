@@ -58,18 +58,18 @@ private:
     const    gsGeometry<T>* m_slaveGeom ;      ///< Geometry of first patch  -- Slave
     typename gsGeometry<T>::Ptr m_masterGeom;  ///< Geometry of second patch -- Master
 
-    boundaryInterface m_boundaryInterface;   ///< Corresponding boundary interface
-
     const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
     const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
 
+    boundaryInterface m_boundaryInterface;   ///< Corresponding boundary interface
+
+    T m_Tolerance;                            ///< Tolerance for closest point algorithm
+    
     std::vector<index_t> m_freeDirs;
     index_t m_fixedParam;
     index_t m_fixedDir;
 
     std::vector< std::vector<T> > m_breakpoints;  ///< Union of breakpoints of both bases
-
-    T m_Tolerance;                            ///< Tolerance for closest point algorithm
 
 public:
     /// @Returns default options

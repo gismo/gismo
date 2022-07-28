@@ -70,7 +70,7 @@ void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) c
         // masterParams are 1 less than then masters domain dimensions
         // since only the boundary is considered in the CPP procedure
         // but we need to return domainDim, parameters thus the following loop
-        for (index_t j=0; j<m_freeDirs.size(); j++)
+        for (size_t j=0; j<m_freeDirs.size(); j++)
         {
             result( m_freeDirs[j], i ) = masterParams(j);
         }
