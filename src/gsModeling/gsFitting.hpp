@@ -39,6 +39,25 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
     m_result = NULL;
     m_basis = &basis;
     m_points.transposeInPlace();
+
+    m_mbasis = nullptr;
+    m_offset.resize(1,0);
+}
+
+template<class T>
+gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
+                          gsMatrix<T> const & points,
+                          gsVector<index_t> & offset,
+                          gsMultiBasis<T>  & basis)
+{
+    m_param_values = param_values;
+    m_points = points;
+    m_result = NULL;
+    m_mbasis = &basis;
+    m_points.transposeInPlace();
+
+    m_offset = give(offset);
+    m_basis = nullptr;    
 }
 
 template<class T>
