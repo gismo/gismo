@@ -303,7 +303,7 @@ gsOptionList gsMultiGridOp<T>::defaultOptions()
     opt.addInt   ("NumPreSmooth"                , "Number of pre-smoothing steps",                                         1 );
     opt.addInt   ("NumPostSmooth"               , "Number of post-smoothing steps",                                        1 );
     opt.addInt   ("NumCycles"                   , "Number of cycles (usually 1 for V-cycle or 2 for W-cycle)",             1 );
-    opt.addReal  ("CorarseGridCorrectionDamping", "Damping of the coarse-grid correction (usually 1)", (gsOptionList::Real)1 );
+    opt.addReal  ("CoarseGridCorrectionDamping" , "Damping of the coarse-grid correction (usually 1)", (gsOptionList::Real)1 );
     opt.addSwitch("SymmSmooth"                  , "Iff true, stepT is called for post-smoothing",           true );
 
     return opt;
@@ -315,7 +315,7 @@ void gsMultiGridOp<T>::setOptions(const gsOptionList & opt)
     Base::setOptions(opt);
     m_numPreSmooth     = opt.askInt   ("NumPreSmooth"                , m_numPreSmooth    );
     m_numPostSmooth    = opt.askInt   ("NumPostSmooth"               , m_numPostSmooth   );
-    m_damping          = opt.askReal  ("CorarseGridCorrectionDamping", m_damping         );
+    m_damping          = opt.askReal  ("CoarseGridCorrectionDamping" , m_damping         );
     m_symmSmooth       = opt.askSwitch("SymmSmooth"                  , m_symmSmooth      );
 
     const index_t nc   = opt.askInt   ("NumCycles"                   , -1                );
