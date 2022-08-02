@@ -42,6 +42,12 @@ public:
               gsMatrix<T> const & points, 
               gsBasis<T>  & basis);
 
+        /// constructor
+    gsFitting(gsMatrix<T> const & param_values, 
+              gsMatrix<T> const & points,
+              gsVector<index_t>   offset,
+              gsMultiBasis<T>  & mbasis);
+
     /// Destructor
     virtual ~gsFitting();
 
@@ -139,8 +145,14 @@ protected:
     /// the points of the point cloud
     gsMatrix<T> m_points;
 
+    // Patch offsets
+    gsMatrix<T> m_offset;
+
     /// Pointer keeping the basis
     gsBasis<T> * m_basis;
+
+    /// Pointer keeping multibasis
+    gsMultiBasis<T> * m_mbasis;
 
     /// Pointer keeping the resulting geometry
     gsGeometry<T> * m_result;
