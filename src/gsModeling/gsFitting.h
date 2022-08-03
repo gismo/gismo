@@ -17,6 +17,7 @@
 #include <gsCore/gsForwardDeclarations.h>
 #include <vector>
 #include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
 
 namespace gismo
 {
@@ -157,6 +158,9 @@ protected:
 
     /// Pointer keeping the resulting geometry
     gsGeometry<T> * m_result;
+
+    /// Pointer keeping the resulting multipatch geometry
+    gsMappedSpline<2,T> m_mresult;
 
     // All point-wise errors
     std::vector<T> m_pointErrors;

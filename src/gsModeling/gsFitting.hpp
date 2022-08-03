@@ -19,6 +19,7 @@
 #include <gsTensor/gsTensorDomainIterator.h>
 
 
+
 namespace gismo
 {
 
@@ -53,7 +54,7 @@ gsFitting<T>::              gsFitting(gsMatrix<T> const& param_values,
     m_param_values = param_values;
     m_points = points;
     m_result = NULL;
-    m_mbasis = &basis;
+    m_mbasis = &mbasis;
     m_points.transposeInPlace();
 
     m_offset = give(offset);
@@ -77,9 +78,9 @@ void gsFitting<T>::compute(T lambda)
     //To optimize sparse matrix an estimation of nonzero elements per
     //column can be given here
     int nonZerosPerCol = 1;
-    for (int i = 0; i < m_mbasis->dim(); ++i) // to do: improve
+    for (int i = 0; i < m_mbasis->domainDim(); ++i) // to do: improve
         // nonZerosPerCol *= m_basis->degree(i) + 1;
-        nonZerosPerCol *= ( 2 * m_mbasis->degree(i) + 1 ) * 4;
+        nonZerosPerCol *= ( 2 * m_mbasis->degree(0,i) + 1 ) * 4;
     // TODO: improve by taking constraints nonzeros into account.
     A_mat.reservePerColumn( nonZerosPerCol );
 
@@ -111,7 +112,7 @@ void gsFitting<T>::compute(T lambda)
     if ( solver.preconditioner().info() != Eigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
-        m_result = NULL;
+        
         return;
     }
     // Solves for many right hand side  columns
@@ -125,7 +126,7 @@ void gsFitting<T>::compute(T lambda)
     //x=A_mat.fullPivHouseholderQr().solve( m_B);
     // Solves for many right hand side  columns
     // finally generate the B-spline curve
-    m_result = m_mbasis->makeGeometry( give(x) ).release();
+    m_mresult = gsMappedSpline<2,T> ( *m_mbasis,give(x));
 }
 
 
@@ -134,25 +135,26 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
     const int num_points = m_points.rows();
-    const int num_patches = nPatches();
+    const int num_patches ( m_mbasis->nPatches() ); //initialize
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
     gsMatrix<index_t> actives;
+    
 
     for (index_t h = 0; h < num_patches; h++ ) {
 
-        auto & basis = getBase(h);
+        auto & basis = m_mbasis->getBase(h);
 
         for (index_t k = 0; k != num_points; ++k)
         {
             curr_point = m_param_values.col(k+m_offset[h]);
 
             //computing the values of the basis functions at the current point
-            basis->eval_into(curr_point, value);
+            basis.eval_into(curr_point, value);
 
             // which functions have been computed i.e. which are active
-            basis->active_into(curr_point, actives);
+            basis.active_into(curr_point, actives);
 
             const index_t numActive = actives.rows();
 
