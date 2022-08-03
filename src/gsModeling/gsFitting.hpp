@@ -86,12 +86,16 @@ void gsFitting<T>::compute(T lambda)
 
     //right side vector (more dimensional!)
     gsMatrix<T> m_B(num_basis + m_constraintsRHS.rows(), dimension);
-    m_B.setZero(); // enusure that all entries are zero in the beginning
+    m_B.setZero();  // enusure that all entries are zero in the beginning
 
     // building the matrix A and the vector b of the system of linear
     // equations A*x==b
 
     assembleSystem(A_mat, m_B);
+
+    gsDebugVar(m_B.transpose());
+
+    gsDebugVar(A_mat.toDense());
 
     // --- Smoothing matrix computation
     //test degree >=3
