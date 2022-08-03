@@ -22,9 +22,10 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr hbs;
 
     int np = 500;
-    int nd = 81;
+    int nd = 25;
     int  err_type = 1;
     int function = 1;
+    int eps = 0.01;
     
     gsCmdLine cmd("Hi, give me a file (.xml) with some multipatch geometry and basis.");
     cmd.addPlainString("filename", "File containing mp geometry and basis (.xml).", filename);
@@ -47,42 +48,46 @@ int main(int argc, char *argv[])
     data.getFirst(mb);
     data.getFirst(cf);
 
-    gsInfo << "Multipatch" << mp << "\n";
-    gsInfo << "Basis" << mb << "\n";
+    mbasis.init(mb, cf);
+
+    gsInfo << "Number of patches: " << mp.nPatches() << "\n";
+    gsInfo << "Number of points per patch: " << nd << "\n";
+    gsInfo << "Number of basis functions: " << mbasis.size() << "\n";
+    //gsInfo << "Basis" << mb << "\n";
 
 
     switch (function) {
     case 1:
         f = gsFunctionExpr<>("(exp(52*sqrt((10*x-2)^2+(10*y-3)^2)))^(-1)", 3);//one peak
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     case 2:
         f = gsFunctionExpr<>("y/2*(cos(4*(x^2+y-1)))^4", 3);//waves
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     case 3:
         f = gsFunctionExpr<>("3/4*exp(-((9*x-2)^2 + (9*y-2)^2)/4)+3/4*exp(-((9*x+1)^2)/49 - (9*y+1)/10)+1/2*exp(-((9*x-7)^2 + (9*y-3)^2)/4)-1/5*exp(-(9*x-4)^2 - (9*y-7)^2)", 3);//hils
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     case 4:
         f = gsFunctionExpr<>("sin((x*x+y*y+2/(5*pi))^(-1))", 3);//crater
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     case 5:
         f = gsFunctionExpr<>("(exp(2*sqrt((x)^2+(y)^2)))^(-1)", 3);//cusp
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     case 6:
         f = gsFunctionExpr<>("(exp(2*sqrt((10*x+3)^2+(10*y-3)^2)))^(-1) + (exp(2*sqrt((10*x-3)^2+(10*y+3)^2)))^(-1)", 3);//2 peaks
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     case 7:
         f = gsFunctionExpr<>("(1.5*exp(sqrt((10*x-3)^2+(10*y-3)^2)))^(-1)+ (1.5*exp(sqrt((10*x+3)^2+(10*y+3)^2)))^(-1) + (1.5*exp(sqrt((10*x)^2+(10*y)^2)))^(-1)", 3);//3 peaks
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     case 8:
         f = gsFunctionExpr<>("(x+y)/2+sqrt(((x-y)/2)^2)", 3);//Rvachev functions (R-functions)
-        gsInfo << "Source function " << f << ".\n" << "\n";
+        gsInfo << "Source function: " << f << "\n";
         break;
     default:
         gsInfo << "Unknown function, please pick one of the functions 1 - 8" << "\n";
@@ -119,8 +124,13 @@ int main(int argc, char *argv[])
         //gsDebugVar(ptc);
         gsVector<> c0 = para.col(0);
         gsVector<> c1 = para.col(1);
+        c0.array() += eps;
+        c1.array() -= eps;
+        gsDebugVar(c0);
+        gsDebugVar(c1); 
         //the parameter values for the fitting
         gsMatrix<> pts = uniformPointGrid(c0, c1, nd);
+       //  gsMatrix<> pts(2, nd);
         //gsInfo << "Parameter values used for fitting: " << "\n" << pts << "\n";
         Mpar.middleCols(offset[i], nd) = pts;
         
@@ -138,34 +148,39 @@ int main(int argc, char *argv[])
     //gsDebugVar(Mpar);
     //gsDebugVar(fval);
 
-    /*gsFileData<> out;
+    gsFileData<> out;
     out << Mpar;
     out << fval;
-    out << gsMatrix<>(offset); //conversion
-    out.save("fitting_test");
+    out << gsMatrix<index_t>(offset); //conversion
+    out.save("fitting_test1");
 
-    gsDebugVar(out.lastPath()); */
+    gsDebugVar(out.lastPath()); 
 
    // end loop
     
-    mbasis.init(mb, cf);
+   
     
     //create the fitting object
     gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
     gsInfo<<"Creating the multipatch fitting object"<<"\n";
     gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
     gsFitting<> fitting(Mpar, fval, offset, mbasis);
+
+
     gsInfo<<"fit class created"<<"\n";
     //gsMatrix<> results(1,6);
     fitting.compute(0); //0
-    gsGeometry<> * test;
-    test = fitting.result();
 
-    gsDebugVar(test);
+
+
+    //gsGeometry<> * test;
+    //test = fitting.result();
+
+    //gsDebugVar(test);
 
     //gsTHBSpline<2>  * hbs1 = static_cast< gsTHBSpline<2>  *> (test);
-    std::vector<real_t> errors;
-    fitting.get_Error(errors, err_type);
+    //std::vector<real_t> errors;
+    //fitting.get_Error(errors, err_type);
     
     real_t error;
     fitting.computeApproxError(error, 0);
