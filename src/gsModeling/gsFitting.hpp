@@ -146,9 +146,9 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
         auto & basis = m_mbasis->getBase(h);
 
-        for (index_t k = 0; k != num_points; ++k)
+        for (index_t k = offset[h]; k = offset[h+1]; ++k)
         {
-            curr_point = m_param_values.col(k+m_offset[h]);
+            curr_point = m_param_values.col(k);
 
             //computing the values of the basis functions at the current point
             basis.eval_into(curr_point, value);
@@ -161,7 +161,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
             for (index_t i = 0; i != numActive; ++i)
             {
                 const index_t ii = actives.at(i);
-                m_B.row(ii) += value.at(i) * m_points.row(k+m_offset[h]);
+                m_B.row(ii) += value.at(i) * m_points.row(k);
                 for (index_t j = 0; j != numActive; ++j)
                     A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
             }

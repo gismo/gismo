@@ -148,7 +148,7 @@ protected:
     gsMatrix<T> m_points;
 
     // Patch offsets
-    gsMatrix<T> m_offset;
+    gsVector<index_t> m_offset;
 
     /// Pointer keeping the basis
     gsBasis<T> * m_basis;
