@@ -146,7 +146,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
         auto & basis = m_mbasis->getBase(h);
 
-        for (index_t k = offset[h]; k = offset[h+1]; ++k)
+        for (index_t k = m_offset[h]; k = m_offset[h+1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
