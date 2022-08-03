@@ -9,6 +9,7 @@
 
 
 
+
 using namespace gismo;
 
 
@@ -38,7 +39,8 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp;
     gsMultiBasis<> mb;
     gsSparseMatrix<> cf;
-   
+    gsMappedBasis<2, real_t> mbasis;
+
     // Load data as multipatch structure
 
     data.getFirst(mp);
@@ -145,19 +147,20 @@ int main(int argc, char *argv[])
 
    // end loop
     
-
-    /*
+    mbasis.init(mb, cf);
+    
     //create the fitting object
     gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
-    gsInfo<<"Creating the THB fitting object"<<"\n";
+    gsInfo<<"Creating the multipatch fitting object"<<"\n";
     gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
-    gsFitting<>  fitting(pts, hbs_eval, THB);
+    gsFitting<>  fitting(Mpar, fval, offset, mbasis);
     gsInfo<<"fit class created"<<"\n";
-    gsMatrix<> results(1,6);
-    fitting.compute(0.0000001); /0
+    //gsMatrix<> results(1,6);
+    fitting.compute(0); //0
     gsGeometry<> * test;
     test = fitting.result();
-    gsTHBSpline<2>  * hbs1 = static_cast< gsTHBSpline<2>  *> (test);
+
+    //gsTHBSpline<2>  * hbs1 = static_cast< gsTHBSpline<2>  *> (test);
     std::vector<real_t> errors;
     fitting.get_Error(errors, err_type);
     real_t error;
@@ -172,11 +175,13 @@ int main(int argc, char *argv[])
             min = errors[j];
         }
     }
-    results(0,0) = hbs1->basis().maxLevel();
+    /*results(0, 0) = hbs1->basis().maxLevel();
     results(0,1) = hbs1->basis().size();
     results(0,2) = min;
     results(0,3) = max;
-    results(0,5) = error;
+    results(0,5) = error;*/
+
+    /*
 
     real_t num = 0;
     for(unsigned int j = 0; j < errors.size(); j++){
@@ -204,7 +209,7 @@ int main(int argc, char *argv[])
     }
     gsInfo<<"\n"<<"Finished"<<"\n";
 
-/*
+
 
     gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
     gsInfo<<"Creating the Tensor fitting object"<<"\n";
@@ -259,6 +264,7 @@ int main(int argc, char *argv[])
     gsWriteParaview( test , "t_fitting_1", np);
     gsInfo<<"\n"<<"Finished"<<"\n";
 */
+    
 
 
 
