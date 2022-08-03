@@ -45,10 +45,10 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
 }
 
 template<class T>
-gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
-                          gsMatrix<T> const & points,
-                          gsVector<index_t> & offset,
-                          gsMultiBasis<T>  & basis)
+gsFitting<T>::              gsFitting(gsMatrix<T> const& param_values,
+                                      gsMatrix<T> const& points,
+                                      gsVector<index_t>  offset,
+                                      gsMappedBasis<2,T> & mbasis)
 {
     m_param_values = param_values;
     m_points = points;
@@ -67,7 +67,7 @@ void gsFitting<T>::compute(T lambda)
     if ( m_result )
         delete m_result;
 
-    const int num_basis=m_basis->size();
+    const int num_basis=m_mbasis->size();
     const short_t dimension=m_points.cols();
 
     //left side matrix
@@ -77,9 +77,9 @@ void gsFitting<T>::compute(T lambda)
     //To optimize sparse matrix an estimation of nonzero elements per
     //column can be given here
     int nonZerosPerCol = 1;
-    for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
+    for (int i = 0; i < m_mbasis->dim(); ++i) // to do: improve
         // nonZerosPerCol *= m_basis->degree(i) + 1;
-        nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 ) * 4;
+        nonZerosPerCol *= ( 2 * m_mbasis->degree(i) + 1 ) * 4;
     // TODO: improve by taking constraints nonzeros into account.
     A_mat.reservePerColumn( nonZerosPerCol );
 
@@ -125,7 +125,7 @@ void gsFitting<T>::compute(T lambda)
     //x=A_mat.fullPivHouseholderQr().solve( m_B);
     // Solves for many right hand side  columns
     // finally generate the B-spline curve
-    m_result = m_basis->makeGeometry( give(x) ).release();
+    m_result = m_mbasis->makeGeometry( give(x) ).release();
 }
 
 
@@ -134,30 +134,37 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
     const int num_points = m_points.rows();
+    const int num_patches = nPatches();
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
     gsMatrix<index_t> actives;
 
-    for(index_t k = 0; k != num_points; ++k)
-    {
-        curr_point = m_param_values.col(k);
+    for (index_t h = 0; h < num_patches; h++ ) {
 
-        //computing the values of the basis functions at the current point
-        m_basis->eval_into(curr_point, value);
+        auto & basis = getBase(h);
 
-        // which functions have been computed i.e. which are active
-        m_basis->active_into(curr_point, actives);
-
-        const index_t numActive = actives.rows();
-
-        for (index_t i = 0; i != numActive; ++i)
+        for (index_t k = 0; k != num_points; ++k)
         {
-            const index_t ii = actives.at(i);
-            m_B.row(ii) += value.at(i) * m_points.row(k);
-            for (index_t j = 0; j != numActive; ++j)
-                A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
+            curr_point = m_param_values.col(k+m_offset[h]);
+
+            //computing the values of the basis functions at the current point
+            basis->eval_into(curr_point, value);
+
+            // which functions have been computed i.e. which are active
+            basis->active_into(curr_point, actives);
+
+            const index_t numActive = actives.rows();
+
+            for (index_t i = 0; i != numActive; ++i)
+            {
+                const index_t ii = actives.at(i);
+                m_B.row(ii) += value.at(i) * m_points.row(k+m_offset[h]);
+                for (index_t j = 0; j != numActive; ++j)
+                    A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
+            }
         }
+
     }
 }
 

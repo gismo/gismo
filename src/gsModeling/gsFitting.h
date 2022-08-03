@@ -16,6 +16,7 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <vector>
+#include <gsMSplines/gsMappedBasis.h>
 
 namespace gismo
 {
@@ -45,8 +46,8 @@ public:
         /// constructor
     gsFitting(gsMatrix<T> const & param_values, 
               gsMatrix<T> const & points,
-              gsVector<index_t>   offset,
-              gsMultiBasis<T>  & mbasis);
+              gsVector<index_t>  offset,
+              gsMappedBasis<2,T>  & mbasis) ;
 
     /// Destructor
     virtual ~gsFitting();
@@ -152,7 +153,7 @@ protected:
     gsBasis<T> * m_basis;
 
     /// Pointer keeping multibasis
-    gsMultiBasis<T> * m_mbasis;
+    gsMappedBasis<2,T> * m_mbasis;
 
     /// Pointer keeping the resulting geometry
     gsGeometry<T> * m_result;
