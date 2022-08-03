@@ -94,12 +94,13 @@ int main(int argc, char *argv[])
 
     //gsDebugVar(nbp);
 
-    gsVector<index_t> offset(nbp);
+    gsVector<index_t> offset(nbp+1);
     offset[0] = 0;
     for (size_t i = 1; i<nbp; ++i)
     {
         offset[i] = offset[i - 1] + nd;
     }
+    offset[nbp] = offset[nbp - 1] + nd;
 
     //gsDebugVar(offset.transpose());
 
@@ -153,19 +154,23 @@ int main(int argc, char *argv[])
     gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
     gsInfo<<"Creating the multipatch fitting object"<<"\n";
     gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
-    gsFitting<>  fitting(Mpar, fval, offset, mbasis);
+    gsFitting<> fitting(Mpar, fval, offset, mbasis);
     gsInfo<<"fit class created"<<"\n";
     //gsMatrix<> results(1,6);
     fitting.compute(0); //0
     gsGeometry<> * test;
     test = fitting.result();
 
+    gsDebugVar(test);
+
     //gsTHBSpline<2>  * hbs1 = static_cast< gsTHBSpline<2>  *> (test);
     std::vector<real_t> errors;
     fitting.get_Error(errors, err_type);
+    
     real_t error;
     fitting.computeApproxError(error, 0);
-    real_t min = 1000000;
+    gsDebugVar(error);
+    /*real_t min = 1000000;
     real_t max = -1000000;
     for(unsigned int j =0; j < errors.size();j++){
         if(errors[j]>max){
@@ -174,7 +179,7 @@ int main(int argc, char *argv[])
         if(errors[j]<min){
             min = errors[j];
         }
-    }
+    } */
     /*results(0, 0) = hbs1->basis().maxLevel();
     results(0,1) = hbs1->basis().size();
     results(0,2) = min;
