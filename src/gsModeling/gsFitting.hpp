@@ -326,7 +326,12 @@ template<class T>
 void gsFitting<T>::computeApproxError(T& error, int type) const
 {
     gsMatrix<T> results;
-    m_result->eval_into(m_param_values, results);
+    if (m_result)
+        m_result->eval_into(m_param_values, results);
+    else
+    {
+        m_mresult.eval_into(0,m_param_values, results);
+    }
     error = 0;
 
     //computing the approximation error = sum_i ||x(u_i)-p_i||^2
