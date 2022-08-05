@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
     //gsDebugVar(offset.transpose());
 
     gsMatrix<real_t> Mpar (2 , nbp * nd);
+
     gsMatrix<real_t> fval (f.targetDim(), nbp * nd);
 
     gsMultiPatch<> ptc;
@@ -124,10 +125,10 @@ int main(int argc, char *argv[])
         //gsDebugVar(ptc);
         gsVector<> c0 = para.col(0);
         gsVector<> c1 = para.col(1);
-        c0.array() += eps;
-        c1.array() -= eps;
-        gsDebugVar(c0);
-        gsDebugVar(c1); 
+       // c0.array() += eps;
+       // c1.array() -= eps;
+       // gsDebugVar(c0);
+       // gsDebugVar(c1); 
         //the parameter values for the fitting
         gsMatrix<> pts = uniformPointGrid(c0, c1, nd);
        //  gsMatrix<> pts(2, nd);
@@ -152,7 +153,7 @@ int main(int argc, char *argv[])
     out << Mpar;
     out << fval;
     out << gsMatrix<index_t>(offset); //conversion
-    out.save("fitting_test1");
+    out.save("fitting_test");
 
     gsDebugVar(out.lastPath()); 
 
@@ -171,19 +172,25 @@ int main(int argc, char *argv[])
     //gsMatrix<> results(1,6);
     fitting.compute(0); //0
 
+    gsInfo << "Ho fatto il fitting" << "\n";
 
-
-    //gsGeometry<> * test;
-    //test = fitting.result();
+   // gsMappedSpline<2,real_t>  test;
+    //test = fitting.mresult();
 
     //gsDebugVar(test);
 
-    //gsTHBSpline<2>  * hbs1 = static_cast< gsTHBSpline<2>  *> (test);
+    //gsMappedSpline<2, real_t> * fun = static_cast<gsMappedSpline<2, real_t>  *> (test);
     //std::vector<real_t> errors;
-    //fitting.get_Error(errors, err_type);
+    //fitting.get_Error(errors,0);
+
+    gsInfo << "Ci sono fino a qui!" << "\n";
     
     real_t error;
+
     fitting.computeApproxError(error, 0);
+
+    gsInfo << "Ho calcolato gli errori" << "\n";
+
     gsDebugVar(error);
     /*real_t min = 1000000;
     real_t max = -1000000;
