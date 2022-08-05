@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr hbs;
 
     int np = 500;
-    int nd = 25;
+    int nd = 81;
     int  err_type = 1;
     int function = 1;
     int eps = 0.01;
@@ -172,24 +172,26 @@ int main(int argc, char *argv[])
     //gsMatrix<> results(1,6);
     fitting.compute(0); //0
 
-    gsInfo << "Ho fatto il fitting" << "\n";
+    gsInfo << "I computed the fitting" << "\n";
 
-   // gsMappedSpline<2,real_t>  test;
-    //test = fitting.mresult();
+    gsMappedSpline<2,real_t>  test;
+    test = fitting.mresult();
 
-    //gsDebugVar(test);
+    gsDebugVar(test);
 
-    //gsMappedSpline<2, real_t> * fun = static_cast<gsMappedSpline<2, real_t>  *> (test);
+    gsMappedSpline<2, real_t> * fun = static_cast<gsMappedSpline<2, real_t>  *> (&test);
     //std::vector<real_t> errors;
     //fitting.get_Error(errors,0);
 
-    gsInfo << "Ci sono fino a qui!" << "\n";
+   // gsDebugVar(errors);
+
+    gsInfo << "I computed up to here!" << "\n";
     
     real_t error;
 
     fitting.computeApproxError(error, 0);
 
-    gsInfo << "Ho calcolato gli errori" << "\n";
+    gsInfo << "Got the errors" << "\n";
 
     gsDebugVar(error);
     /*real_t min = 1000000;
@@ -216,15 +218,19 @@ int main(int argc, char *argv[])
             num++;
         }
     }
-    results(0,4) = (num*100)/errors.size();
-    gsFileData<> newdata;
-    newdata << *test ;
+    
+    
+    results(0,4) = (num*100)/errors.size(); */
+
+    //gsFileData<> newdata;
+    //newdata << test ;
     plot = true;
     if(plot){
-        newdata.dump("gsThbs_loc_face_4");
-        gsWriteParaview( *test , "gsThbs_loc_face_4", np);
+        //newdata.dump("multipatch spline");
+        gsWriteParaview( *fun , "multipatch_spline", np);
+        gsFileManager::open("multipatch_spline.vtk");
     }
-    gsMatrix<> hbs1_eval =hbs1->eval(pts);
+    /*gsMatrix<> hbs1_eval = hbs1->eval(pts);
     gsInfo<<"number of points"<<errors.size()<<"\n";
     plot_errors( hbs_eval, hbs1_eval,errors, "gsThbs_loc_face_error_4");
     gsInfo<<"results"<<results<<"\n"<<"\n";
