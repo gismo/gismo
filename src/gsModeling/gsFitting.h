@@ -107,6 +107,9 @@ public:
     /// gives back the computed approximation
     gsGeometry<T> * result() const { return m_result; }
 
+    /// gives back the computed approximation for multipatch geometry
+    //gsMappedSpline<2,T>  mresult() const { return m_result; }
+
     /// Returns the basis of the approximation
     const gsBasis<T> & getBasis() const {return *m_basis;}
 
@@ -160,7 +163,7 @@ protected:
     gsGeometry<T> * m_result;
 
     /// Pointer keeping the resulting multipatch geometry
-    gsMappedSpline<2,T> m_mresult;
+    gsMappedSpline<2,T>  m_mresult;
 
     // All point-wise errors
     std::vector<T> m_pointErrors;

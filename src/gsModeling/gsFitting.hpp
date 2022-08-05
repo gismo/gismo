@@ -131,6 +131,8 @@ void gsFitting<T>::compute(T lambda)
     // Solves for many right hand side  columns
     // finally generate the B-spline curve
     m_mresult = gsMappedSpline<2,T> ( *m_mbasis,give(x));
+
+    //gsDebugVar(m_mresult);
 }
 
 
@@ -148,23 +150,25 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     for (index_t h = 0; h < num_patches; h++ ) {
 
-        auto & basis = m_mbasis->getBase(h);
+        //auto & basis = *m_mbasis;
+
 
         for (index_t k = m_offset[h]; k < m_offset[h+1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
             //computing the values of the basis functions at the current point
-            basis.eval_into(curr_point, value);
+            m_mbasis->eval_into(h,curr_point, value);
 
             // which functions have been computed i.e. which are active
-            basis.active_into(curr_point, actives);
+            m_mbasis->active_into(h,curr_point, actives);
 
             const index_t numActive = actives.rows();
 
             for (index_t i = 0; i != numActive; ++i)
             {
                 const index_t ii = actives.at(i);
+                
                 m_B.row(ii) += value.at(i) * m_points.row(k);
                 for (index_t j = 0; j != numActive; ++j)
                     A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
@@ -278,7 +282,7 @@ void gsFitting<T>::computeErrors()
     m_pointErrors.clear();
 
     gsMatrix<T> val_i;
-    //m_result->eval_into(m_param_values.col(0), val_i);
+    //->eval_into(m_param_values.col(0), val_i);
     m_result->eval_into(m_param_values, val_i);
     m_pointErrors.push_back( (m_points.row(0) - val_i.col(0).transpose()).norm() );
     m_max_error = m_min_error = m_pointErrors.back();
