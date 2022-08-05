@@ -93,9 +93,9 @@ void gsFitting<T>::compute(T lambda)
 
     assembleSystem(A_mat, m_B);
 
-    gsDebugVar(m_B.transpose());
+    //gsDebugVar(m_B.transpose());
 
-    gsDebugVar(A_mat.toDense());
+    //gsDebugVar(A_mat.toDense());
 
     // --- Smoothing matrix computation
     //test degree >=3
@@ -324,34 +324,59 @@ void gsFitting<T>::computeMaxNormErrors()
 
 template<class T>
 void gsFitting<T>::computeApproxError(T& error, int type) const
+
 {
     gsMatrix<T> results;
-    if (m_result)
-        m_result->eval_into(m_param_values, results);
-    else
-    {
-        m_mresult.eval_into(0,m_param_values, results);
-    }
-    error = 0;
 
-    //computing the approximation error = sum_i ||x(u_i)-p_i||^2
+    const int num_patches(m_mbasis->nPatches());
 
-    for (index_t i = 0; i != m_points.rows(); ++i)
-    {
-        const T err = (m_points.row(i) - results.col(i).transpose()).squaredNorm();
+    error = 0; 
 
-        switch (type) {
-        case 0:
-            error += err;
-            break;
-        case 1:
-            error += sqrt(err);
-            break;
-        default:
-            gsWarn << "Unknown type in computeApproxError(error, type)...\n";
-            break;
+    for (index_t h = 0; h < num_patches; h++) {
+
+
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) {
+
+           // gsDebugVar(k); 
+
+            if (m_result)
+                m_result->eval_into(m_param_values, results);
+            else
+            {
+                m_mresult.eval_into(h, m_param_values, results); 
+            }
+
+            //computing the approximation error = sum_i ||x(u_i)-p_i||^2
+
+            //for (index_t i = 0; i < m_points.row(k).size(); ++i) 
+            // 
+            //{
+
+            //gsDebugVar(results.col(k));
+            //gsDebugVar(m_points.row(k));
+
+                const T err = (m_points.row(k) - results.col(k).transpose()).squaredNorm();
+
+                switch (type) {
+                case 0:
+                    error += err;
+                    break;
+                case 1:
+                    error += sqrt(err);
+                    break;
+                default:
+                    gsWarn << "Unknown type in computeApproxError(error, type)...\n";
+                    break;
+                }
+
+               // gsDebugVar(err); 
+            //}
+
         }
+
     }
+
+
 }
 
 template<class T>

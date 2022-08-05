@@ -108,7 +108,7 @@ public:
     gsGeometry<T> * result() const { return m_result; }
 
     /// gives back the computed approximation for multipatch geometry
-    //gsMappedSpline<2,T>  mresult() const { return m_result; }
+    const gsMappedSpline<2,T> & mresult() const { return m_mresult; }
 
     /// Returns the basis of the approximation
     const gsBasis<T> & getBasis() const {return *m_basis;}
