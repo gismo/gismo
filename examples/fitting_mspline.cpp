@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     std::string filename = "face.xml";
     gsGeometry<>::uPtr hbs;
 
-    int np = 500;
+    int np = 700;
     int nd = 81;
     int  err_type = 1;
     int function = 1;
@@ -87,6 +87,10 @@ int main(int argc, char *argv[])
         break;
     case 8:
         f = gsFunctionExpr<>("(x+y)/2+sqrt(((x-y)/2)^2)", 3);//Rvachev functions (R-functions)
+        gsInfo << "Source function: " << f << "\n";
+        break;
+    case 9:
+        f = gsFunctionExpr<>("x", 3);//constant
         gsInfo << "Source function: " << f << "\n";
         break;
     default:
@@ -176,10 +180,10 @@ int main(int argc, char *argv[])
 
     gsMappedSpline<2,real_t>  test;
     test = fitting.mresult();
+     
+    gsDebugVar(test); 
 
-    gsDebugVar(test);
-
-    gsMappedSpline<2, real_t> * fun = static_cast<gsMappedSpline<2, real_t>  *> (&test);
+    //gsMappedSpline<2, real_t> * fun = static_cast<gsMappedSpline<2, real_t>  *> (&test);
     //std::vector<real_t> errors;
     //fitting.get_Error(errors,0);
 
@@ -226,9 +230,10 @@ int main(int argc, char *argv[])
     //newdata << test ;
     plot = true;
     if(plot){
+        gsMultiPatch<> surf = test.exportToPatches();
         //newdata.dump("multipatch spline");
-        gsWriteParaview( *fun , "multipatch_spline", np);
-        gsFileManager::open("multipatch_spline.vtk");
+        gsWriteParaview( surf , "multipatch_spline", np);
+        gsFileManager::open("multipatch_spline.pvd");
     }
     /*gsMatrix<> hbs1_eval = hbs1->eval(pts);
     gsInfo<<"number of points"<<errors.size()<<"\n";
