@@ -71,6 +71,8 @@ void gsFitting<T>::compute(T lambda)
     const int num_basis=m_mbasis->size();
     const short_t dimension=m_points.cols();
 
+    gsDebugVar(dimension);
+    
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
     gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
@@ -94,7 +96,6 @@ void gsFitting<T>::compute(T lambda)
     assembleSystem(A_mat, m_B);
 
     //gsDebugVar(m_B.transpose());
-
     //gsDebugVar(A_mat.toDense());
 
     // --- Smoothing matrix computation
@@ -130,6 +131,8 @@ void gsFitting<T>::compute(T lambda)
     //x=A_mat.fullPivHouseholderQr().solve( m_B);
     // Solves for many right hand side  columns
     // finally generate the B-spline curve
+
+    gsDebugVar(x.transpose());
     m_mresult = gsMappedSpline<2,T> ( *m_mbasis,give(x));
 
     //gsDebugVar(m_mresult);
@@ -140,41 +143,36 @@ template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
-    const int num_points = m_points.rows();
     const int num_patches ( m_mbasis->nPatches() ); //initialize
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
     gsMatrix<index_t> actives;
-    
 
-    for (index_t h = 0; h < num_patches; h++ ) {
-
-        //auto & basis = *m_mbasis;
-
+    for (index_t h = 0; h < num_patches; h++ )
+    {
+        auto & basis = m_mbasis->basis(h);
 
         for (index_t k = m_offset[h]; k < m_offset[h+1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
             //computing the values of the basis functions at the current point
-            m_mbasis->eval_into(h,curr_point, value);
+            basis.eval_into(curr_point, value);
 
             // which functions have been computed i.e. which are active
-            m_mbasis->active_into(h,curr_point, actives);
+            basis.active_into(curr_point, actives);
 
             const index_t numActive = actives.rows();
 
             for (index_t i = 0; i != numActive; ++i)
             {
                 const index_t ii = actives.at(i);
-                
                 m_B.row(ii) += value.at(i) * m_points.row(k);
                 for (index_t j = 0; j != numActive; ++j)
                     A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
             }
         }
-
     }
 }
 
@@ -255,15 +253,6 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
                     }
 
                     localA(i, j) += weight * localAij;
-
-                    // old code, just for the case if I break something
-
-//                    localA(i,j) += weight * (
-//                            // der2.template block<3,1>(i*stride,k)
-//                            der2(i*stride  , k) * der2(j*stride  , k) +  // d^2u N_i * d^2u N_j
-//                            der2(i*stride+1, k) * der2(j*stride+1, k) +  // d^2v N_i * d^2v N_j
-//                            2 * der2(i*stride+2, k) * der2(j*stride+2, k)// dudv N_i * dudv N_j
-//                            );
                 }
         }
 

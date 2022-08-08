@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     int nd = 81;
     int  err_type = 1;
     int function = 1;
-    int eps = 0.01;
+    real_t eps = 0.01;
     
     gsCmdLine cmd("Hi, give me a file (.xml) with some multipatch geometry and basis.");
     cmd.addPlainString("filename", "File containing mp geometry and basis (.xml).", filename);
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 
     gsVector<index_t> offset(nbp+1);
     offset[0] = 0;
-    for (size_t i = 1; i<nbp; ++i)
+    for (int i = 1; i<nbp; ++i)
     {
         offset[i] = offset[i - 1] + nd;
     }
@@ -114,39 +114,36 @@ int main(int argc, char *argv[])
     //gsDebugVar(offset.transpose());
 
     gsMatrix<real_t> Mpar (2 , nbp * nd);
-
-    gsMatrix<real_t> fval (f.targetDim(), nbp * nd);
+    gsMatrix<real_t> fval (3, nbp * nd);
 
     gsMultiPatch<> ptc;
     
 
     // loop on the nb of patches
-
-    for (int i = 0; i < nbp ; i++) {
-
-        gsDebugVar(i);
-        gsMatrix<> para = mp.patch(i).parameterRange();
+    gsMatrix<> para, pts, mp_eval;
+    gsVector<> c0, c1;
+    for (int i = 0; i < nbp ; i++)
+    {
+        para = mp.patch(i).parameterRange();
         //gsDebugVar(ptc);
-        gsVector<> c0 = para.col(0);
-        gsVector<> c1 = para.col(1);
-       // c0.array() += eps;
-       // c1.array() -= eps;
-       // gsDebugVar(c0);
-       // gsDebugVar(c1); 
+        c0 = para.col(0);
+        c1 = para.col(1);
+        c0.array() += eps; // avoid double points on boundary
+        c1.array() -= eps;
         //the parameter values for the fitting
-        gsMatrix<> pts = uniformPointGrid(c0, c1, nd);
+        pts = uniformPointGrid(c0, c1, nd);
        //  gsMatrix<> pts(2, nd);
         //gsInfo << "Parameter values used for fitting: " << "\n" << pts << "\n";
         Mpar.middleCols(offset[i], nd) = pts;
         
         //the evaluated values of the original surface
-        gsMatrix<> mp_eval = mp.patch(i).eval(pts);
+        mp_eval = mp.patch(i).eval(pts);
         //gsInfo<<"Original surface points: "<<"\n"<< mp_eval<<"\n";
         //gsDebugVar(mp_eval.rows());
         //gsDebugVar(mp_eval.cols());
 
-        //gsDebugVar(f.eval(mp_eval));
-        fval.middleCols(offset[i], nd) = f.eval(mp_eval);
+        fval.middleCols(offset[i], nd).topRows(2) = mp_eval.topRows(2);
+        fval.middleCols(offset[i], nd).row(2)     = f.eval(mp_eval);
 
     }
 
@@ -187,6 +184,8 @@ int main(int argc, char *argv[])
     //std::vector<real_t> errors;
     //fitting.get_Error(errors,0);
 
+    //real_t min_error = *std::min(errors.begin(),errors.end())
+    
    // gsDebugVar(errors);
 
     gsInfo << "I computed up to here!" << "\n";
@@ -226,85 +225,17 @@ int main(int argc, char *argv[])
     
     results(0,4) = (num*100)/errors.size(); */
 
-    //gsFileData<> newdata;
-    //newdata << test ;
-    plot = true;
-    if(plot){
-        gsMultiPatch<> surf = test.exportToPatches();
-        //newdata.dump("multipatch spline");
+    gsFileData<> newdata;
+    gsMultiPatch<> surf = test.exportToPatches();
+    newdata << surf;
+    newdata.save("fitting_result");
+
+    if(plot)
+    {
+        gsWriteParaviewPoints(fval, "point_data");
         gsWriteParaview( surf , "multipatch_spline", np);
         gsFileManager::open("multipatch_spline.pvd");
     }
-    /*gsMatrix<> hbs1_eval = hbs1->eval(pts);
-    gsInfo<<"number of points"<<errors.size()<<"\n";
-    plot_errors( hbs_eval, hbs1_eval,errors, "gsThbs_loc_face_error_4");
-    gsInfo<<"results"<<results<<"\n"<<"\n";
-    gsInfo<<results(0,0);
-    gsInfo<<" & "<<results(0,1);
-    gsInfo.setf(std::ios::scientific);
-    for(int j = 2; j < results.cols();j++){
-        gsInfo<<" & "<<results(0,j);
-    }
-    gsInfo<<"\n"<<"Finished"<<"\n";
 
-
-
-    gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
-    gsInfo<<"Creating the Tensor fitting object"<<"\n";
-    gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
-    gsMatrix<> results(1,6);
-    gsFitting<> * t_fitting = new gsFitting<>(pts, hbs_eval, T_tbasis);
-
-    t_fitting->compute(0.001);
-    gsGeometry<> * t_test;
-    t_test = t_fitting->result();
-    gsInfo<<*t_test<<"\n";
-
-        gsGeometry<> * test;
-    test = t_fitting->result();
-    std::vector<real_t> errors;
-    t_fitting->get_Error(errors, err_type);
-    real_t error;
-    t_fitting->computeApproxError(error, 0);
-    real_t min = 1000000;
-    real_t max = -1000000;
-    for(unsigned int j =0; j < errors.size();j++){
-        if(errors[j]>max){
-            max = errors[j];
-        }
-        if(errors[j]<min){
-            min = errors[j];
-        }
-    }
-    results(0,0) = 0;
-    results(0,1) = test->basis().size();
-    results(0,2) = min;
-    results(0,3) = max;
-    results(0,5) = error;
-
-    real_t num = 0;
-    for(unsigned int j = 0; j < errors.size(); j++){
-        if(errors[j]< 0.00001){
-            num++;
-        }
-    }
-    results(0,4) = (num*100)/errors.size();
-    gsInfo<<results(0,0);
-    gsInfo<<" & "<<results(0,1);
-    gsInfo.setf(std::ios::scientific);
-    for(int j = 2; j < results.cols();j++){
-        gsInfo<<" & "<<results(0,j);
-    }
-
-    gsFileData<> t_newdata;
-    t_newdata << *t_test ;
-    t_newdata.dump("t_fitting_1");
-    gsWriteParaview( test , "t_fitting_1", np);
-    gsInfo<<"\n"<<"Finished"<<"\n";
-*/
-    
-
-
-
-  return 0;
+    return EXIT_SUCCESS;
 }
