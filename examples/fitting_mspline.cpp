@@ -13,29 +13,46 @@
 using namespace gismo;
 
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     bool plot = false;
     //measuring the computational time
     //int clo=clock();
     std::string filename = "face.xml";
-    gsGeometry<>::uPtr hbs;
 
     int np = 700;
-    int nd = 100;
-    int err_type = 1;
-    int function = 1;
+    //int nd = 100;
+    //int err_type = 1;
+    //int function = 1;
     real_t lambda = 0;
-    real_t eps = 0.01;
-    
-    gsCmdLine cmd("Hi, give me a file (.xml) with some multipatch geometry and basis.");
+    //real_t eps = 0.01;
+    std::string fn = "fitting/deepdrawingC.xml";
+
+    /*gsCmdLine cmd("Hi, give me a file (.xml) with some multipatch geometry and basis.");
     cmd.addPlainString("filename", "File containing mp geometry and basis (.xml).", filename);
     cmd.addInt("f", "function", "Number of the function", function);
     cmd.addReal ("l", "lambda", "smoothing parameter", lambda);
     cmd.addInt("p", "nd", "Number of fitting points", nd);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
-     
+    */
+
+    gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
+        "file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. "
+        "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
+        "3 x N matrix. Every column represents a point (x,y,z) in space.");
+    cmd.addString("g", "filename", "File containing mp geometry and basis (.xml).", filename);
+    cmd.addString("d", "data", "Input sample data", fn);
+    cmd.addReal("l", "lambda", "smoothing parameter", lambda);
+    cmd.addSwitch("plot", "Plot result in ParaView format", plot);
+
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+    gsFileData<> fd_in(fn);
+    gsMatrix<> Mpar, fval;
+    gsMatrix<> offset;
+    fd_in.getId<gsMatrix<> >(0, Mpar);
+    fd_in.getId<gsMatrix<> >(1, fval);
+    fd_in.getId<gsMatrix<> >(2, offset);
 
     // The file data
     gsFileData<> data( filename );
@@ -54,12 +71,12 @@ int main(int argc, char *argv[])
     mbasis.init(mb, cf);
 
     gsInfo << "Number of patches: " << mp.nPatches() << "\n";
-    gsInfo << "Number of points per patch: " << nd << "\n";
+    //gsInfo << "Number of points per patch: " << nd << "\n";
     gsInfo << "Number of basis functions: " << mbasis.size() << "\n";
     //gsInfo << "Basis" << mb << "\n";
 
 
-    switch (function) {
+    /*switch (function) {
     case 1:
         f = gsFunctionExpr<>("(exp(52*sqrt((10*x-2)^2+(10*y-3)^2)))^(-1)", 3);//one peak
         gsInfo << "Source function: " << f << "\n";
@@ -125,14 +142,14 @@ int main(int argc, char *argv[])
     gsMatrix<real_t> Mpar (2 , nbp * nd);
     gsMatrix<real_t> fval (3, nbp * nd);
 
-  
+
     // loop on the nb of patches
     gsMatrix<> para, pts, mp_eval;
     gsVector<> c0, c1;
     for (int i = 0; i < nbp ; i++)
     {
         para = mp.patch(i).parameterRange();
-       
+
         c0 = para.col(0);
         c1 = para.col(1);
         c0.array() += eps; // avoid double points on boundary
@@ -141,7 +158,7 @@ int main(int argc, char *argv[])
         pts = uniformPointGrid(c0, c1, nd);
         //gsInfo << "Parameter values used for fitting: " << "\n" << pts << "\n";
         Mpar.middleCols(offset[i], nd) = pts;
-        
+
         //the evaluated values of the original surface
         mp_eval = mp.patch(i).eval(pts);
 
@@ -158,34 +175,39 @@ int main(int argc, char *argv[])
     out.save("fitting_test");
 
    // end loop
-    
+
+   */
+
    
-    
+
+
     //create the fitting object
-    gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
-    gsInfo<<"Creating the multipatch fitting object"<<"\n";
-    gsInfo<<"//////////////////////////////////////////////////////////"<<"\n";
+    gsInfo << "//////////////////////////////////////////////////////////" << "\n";
+    gsInfo << "Creating the multipatch fitting object" << "\n";
+    gsInfo << "//////////////////////////////////////////////////////////" << "\n";
+
+
     gsFitting<> fitting(Mpar, fval, offset, mbasis);
 
 
-    gsInfo<<"Fit class created"<<"\n";
-    
+    gsInfo << "Fit class created" << "\n";
+
     fitting.compute(lambda); // smoothing parameter lambda
 
     gsInfo << "I computed the fitting" << "\n";
 
-    gsMappedSpline<2,real_t>  test;
+    gsMappedSpline<2, real_t>  test;
     test = fitting.mresult();
 
     std::vector<real_t> errors;
-    fitting.get_Error(errors,0);
+    fitting.get_Error(errors, 0);
 
     real_t min_error = *std::min_element(errors.begin(), errors.end());
     real_t max_error = *std::max_element(errors.begin(), errors.end());
 
     gsInfo << "Min error: " << min_error << "\n";
     gsInfo << "L_inf: " << max_error << "\n";
-    
+
     real_t error;
 
     fitting.computeApproxError(error, 0);
@@ -197,11 +219,11 @@ int main(int argc, char *argv[])
     newdata << surf;
     newdata.save("fitting_result");
 
-    if(plot)
+    if (plot)
     {
         gsInfo << "Plotting in Paraview..." << "\n";
         gsWriteParaviewPoints(fval, "point_data");
-        gsWriteParaview( surf , "multipatch_spline", np);
+        gsWriteParaview(surf, "multipatch_spline", np);
         gsFileManager::open("multipatch_spline.pvd");
     }
 
