@@ -327,27 +327,26 @@ template<class T>
 void gsFitting<T>::computeApproxError(T& error, int type) const
 
 {
-    gsMatrix<T> results;
+    gsMatrix<T> curr_point, results;
 
     const int num_patches(m_mbasis->nPatches());
 
     error = 0; 
 
-    for (index_t h = 0; h < num_patches; h++) {
+    for (index_t h = 0; h < num_patches; h++) 
+    {
 
-
-        if (m_result)
-            m_result->eval_into(m_param_values, results);
-        else
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
         {
-            m_mresult.eval_into(h, m_param_values, results);
-        }
+            curr_point = m_param_values.col(k);
 
+            if (m_result)
+                m_result->eval_into(curr_point, results);
+            else
+            {
+                m_mresult.eval_into(h, curr_point, results);
+            }
 
-
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) {
-
-          
                 const T err = (m_points.row(k) - results.col(k).transpose()).squaredNorm();
 
                 switch (type) {
@@ -374,39 +373,33 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 {
     errors.clear();
 
-    gsMatrix<T> results;
+    gsMatrix<T> curr_point, results;
 
     T err = 0;
 
     const int num_patches(m_mbasis->nPatches());
 
-    for (index_t h = 0; h < num_patches; h++) {
-
-
-        if (m_result)
-            m_result->eval_into(m_param_values, results);
-        else
-        {
-            m_mresult.eval_into(h, m_param_values, results);
-        }
-
-        results.transposeInPlace();
-
-        //gsInfo << "res" << results << "\t";
-
+    for (index_t h = 0; h < num_patches; h++) 
+    {
         for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
         {
+            curr_point = m_param_values.col(k);
              
-           // gsInfo << "res" << results(k, 3) << "\t";
-          //  gsInfo << "mp" << m_points(k, 3) << "\t";
-          //  gsInfo << "err" << m_points(k, 3) - results(k, 3) << "\n";
+            if (m_result)
+                m_result->eval_into(curr_point, results);
+            else
+            {
+                m_mresult.eval_into(h, curr_point, results);
+            }
+
+            results.transposeInPlace();
 
             err = math::abs(m_points(k, 3) - results(k, 3));
 
-            gsInfo << "mpoints" << m_points.row(k) << "\n";
-            gsInfo << "res" << results.row(k) << "\n";
+            //gsInfo << "mpoints" << m_points.row(k) << "\n";
+            //gsInfo << "res" << results.row(k) << "\n";
 
-            gsInfo << "err" << err << "\n";
+            //gsInfo << "err" << err << "\n";
 
                     switch (type)
                     {
