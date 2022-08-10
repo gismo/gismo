@@ -347,7 +347,7 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
                 m_mresult.eval_into(h, curr_point, results);
             }
 
-                const T err = (m_points.row(k) - results.col(k).transpose()).squaredNorm();
+                const T err = (m_points.row(k) - results.transpose()).squaredNorm();
 
                 switch (type) {
                 case 0:
@@ -394,12 +394,7 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
             results.transposeInPlace();
 
-            err = math::abs(m_points(k, 3) - results(k, 3));
-
-            //gsInfo << "mpoints" << m_points.row(k) << "\n";
-            //gsInfo << "res" << results.row(k) << "\n";
-
-            //gsInfo << "err" << err << "\n";
+            err = (m_points.row(k) - results).lpNorm<Eigen::Infinity>();
 
                     switch (type)
                     {
