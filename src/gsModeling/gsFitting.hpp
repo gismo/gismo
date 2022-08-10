@@ -354,24 +354,21 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
                     error += err;
                     break;
                 case 1:
-                    error += sqrt(err);
+                    error += math::sqrt(err);
                     break;
                 default:
                     gsWarn << "Unknown type in computeApproxError(error, type)...\n";
                     break;
                 }
-
         }
-
     }
-
-
 }
 
 template<class T>
 void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 {
     errors.clear();
+    errors.reserve(m_points.rows());
 
     gsMatrix<T> curr_point, results;
 
@@ -394,7 +391,7 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
             results.transposeInPlace();
 
-            err = (m_points.row(k) - results).lpNorm<Eigen::Infinity>();
+            err = (m_points.row(k) - results).template lpNorm<Eigen::Infinity>();
 
                     switch (type)
                     {
@@ -402,17 +399,14 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
                         errors.push_back(err);
                         break;
                     case 1:
-                        errors.push_back(err);
+                        errors.push_back(math::sqrt(err));
                         break;
                     default:
                         gsWarn << "Unknown type in get_Error(errors, type)...\n";
                         break;
                     }
-
         }
-
     }
-
 }
 
 template<class T>
