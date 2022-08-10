@@ -22,14 +22,17 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr hbs;
 
     int np = 700;
-    int nd = 81;
-    int  err_type = 1;
+    int nd = 100;
+    int err_type = 1;
     int function = 1;
+    real_t lambda = 0;
     real_t eps = 0.01;
     
     gsCmdLine cmd("Hi, give me a file (.xml) with some multipatch geometry and basis.");
     cmd.addPlainString("filename", "File containing mp geometry and basis (.xml).", filename);
     cmd.addInt("f", "function", "Number of the function", function);
+    cmd.addReal ("l", "lambda", "smoothing parameter", lambda);
+    cmd.addInt("p", "nd", "Number of fitting points", nd);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
      
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -66,7 +69,7 @@ int main(int argc, char *argv[])
         gsInfo << "Source function: " << f << "\n";
         break;
     case 3:
-        f = gsFunctionExpr<>("3/4*exp(-((9*x-2)^2 + (9*y-2)^2)/4)+3/4*exp(-((9*x+1)^2)/49 - (9*y+1)/10)+1/2*exp(-((9*x-7)^2 + (9*y-3)^2)/4)-1/5*exp(-(9*x-4)^2 - (9*y-7)^2)", 3);//hils
+        f = gsFunctionExpr<>("3/4*exp(-((9*x-2)^2 + (9*y-2)^2)/4)+3/4*exp(-((9*x+1)^2)/49 - (9*y+1)/10)+1/2*exp(-((9*x-7)^2 + (9*y-3)^2)/4)-1/5*exp(-(9*x-4)^2 - (9*y-7)^2)", 3);//hills
         gsInfo << "Source function: " << f << "\n";
         break;
     case 4:
@@ -93,6 +96,14 @@ int main(int argc, char *argv[])
         f = gsFunctionExpr<>("x", 3);//constant
         gsInfo << "Source function: " << f << "\n";
         break;
+    case 10:
+        f = gsFunctionExpr<>("x^2+y^2", 3);//paraboloid
+        gsInfo << "Source function: " << f << "\n";
+        break;
+    case 11:
+        f = gsFunctionExpr<>("(tanh(9*y-9*x)+1)/9", 3);//sigmoid
+        gsInfo << "Source function: " << f << "\n";
+        break;
     default:
         gsInfo << "Unknown function, please pick one of the functions 1 - 8" << "\n";
         return 0;
@@ -101,7 +112,6 @@ int main(int argc, char *argv[])
 
     int nbp = mp.nPatches();
 
-    //gsDebugVar(nbp);
 
     gsVector<index_t> offset(nbp+1);
     offset[0] = 0;
@@ -111,52 +121,41 @@ int main(int argc, char *argv[])
     }
     offset[nbp] = offset[nbp - 1] + nd;
 
-    //gsDebugVar(offset.transpose());
 
     gsMatrix<real_t> Mpar (2 , nbp * nd);
     gsMatrix<real_t> fval (3, nbp * nd);
 
-    gsMultiPatch<> ptc;
-    
-
+  
     // loop on the nb of patches
     gsMatrix<> para, pts, mp_eval;
     gsVector<> c0, c1;
     for (int i = 0; i < nbp ; i++)
     {
         para = mp.patch(i).parameterRange();
-        //gsDebugVar(ptc);
+       
         c0 = para.col(0);
         c1 = para.col(1);
         c0.array() += eps; // avoid double points on boundary
         c1.array() -= eps;
         //the parameter values for the fitting
         pts = uniformPointGrid(c0, c1, nd);
-       //  gsMatrix<> pts(2, nd);
         //gsInfo << "Parameter values used for fitting: " << "\n" << pts << "\n";
         Mpar.middleCols(offset[i], nd) = pts;
         
         //the evaluated values of the original surface
         mp_eval = mp.patch(i).eval(pts);
-        //gsInfo<<"Original surface points: "<<"\n"<< mp_eval<<"\n";
-        //gsDebugVar(mp_eval.rows());
-        //gsDebugVar(mp_eval.cols());
 
         fval.middleCols(offset[i], nd).topRows(2) = mp_eval.topRows(2);
         fval.middleCols(offset[i], nd).row(2)     = f.eval(mp_eval);
 
     }
 
-    //gsDebugVar(Mpar);
-    //gsDebugVar(fval);
 
     gsFileData<> out;
     out << Mpar;
     out << fval;
     out << gsMatrix<index_t>(offset); //conversion
     out.save("fitting_test");
-
-    gsDebugVar(out.lastPath()); 
 
    // end loop
     
@@ -169,61 +168,29 @@ int main(int argc, char *argv[])
     gsFitting<> fitting(Mpar, fval, offset, mbasis);
 
 
-    gsInfo<<"fit class created"<<"\n";
-    //gsMatrix<> results(1,6);
-    fitting.compute(0); //0
+    gsInfo<<"Fit class created"<<"\n";
+    
+    fitting.compute(lambda); // smoothing parameter lambda
 
     gsInfo << "I computed the fitting" << "\n";
 
     gsMappedSpline<2,real_t>  test;
     test = fitting.mresult();
-     
-    gsDebugVar(test); 
 
-    //gsMappedSpline<2, real_t> * fun = static_cast<gsMappedSpline<2, real_t>  *> (&test);
-    //std::vector<real_t> errors;
-    //fitting.get_Error(errors,0);
+    std::vector<real_t> errors;
+    fitting.get_Error(errors,0);
 
-    //real_t min_error = *std::min(errors.begin(),errors.end())
-    
-   // gsDebugVar(errors);
+    real_t min_error = *std::min_element(errors.begin(), errors.end());
+    real_t max_error = *std::max_element(errors.begin(), errors.end());
 
-    gsInfo << "I computed up to here!" << "\n";
+    gsInfo << "Min error: " << min_error << "\n";
+    gsInfo << "L_inf: " << max_error << "\n";
     
     real_t error;
 
     fitting.computeApproxError(error, 0);
 
-    gsInfo << "Got the errors" << "\n";
-
-    gsDebugVar(error);
-    /*real_t min = 1000000;
-    real_t max = -1000000;
-    for(unsigned int j =0; j < errors.size();j++){
-        if(errors[j]>max){
-            max = errors[j];
-        }
-        if(errors[j]<min){
-            min = errors[j];
-        }
-    } */
-    /*results(0, 0) = hbs1->basis().maxLevel();
-    results(0,1) = hbs1->basis().size();
-    results(0,2) = min;
-    results(0,3) = max;
-    results(0,5) = error;*/
-
-    /*
-
-    real_t num = 0;
-    for(unsigned int j = 0; j < errors.size(); j++){
-        if(errors[j]< 0.00001){
-            num++;
-        }
-    }
-    
-    
-    results(0,4) = (num*100)/errors.size(); */
+    gsInfo << "L_2: " << error << "\n";
 
     gsFileData<> newdata;
     gsMultiPatch<> surf = test.exportToPatches();
@@ -232,6 +199,7 @@ int main(int argc, char *argv[])
 
     if(plot)
     {
+        gsInfo << "Plotting in Paraview..." << "\n";
         gsWriteParaviewPoints(fval, "point_data");
         gsWriteParaview( surf , "multipatch_spline", np);
         gsFileManager::open("multipatch_spline.pvd");

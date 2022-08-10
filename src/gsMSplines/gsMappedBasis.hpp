@@ -300,7 +300,7 @@ void gsMappedBasis<d,T>::derivSingle_into(const unsigned patch, const int global
             for(index_t j=0;j<pActive.rows();++j)
             {
                 L(2*p,pActive(j,p)+offset)=allLocals(2*j,p);
-                L(2*p+1,pActive(j,p)+offset)=allLocals(2*j+1,p);
+                L(2*p+1,pActive(j,p)+offset)=allLocals(2*j+1,p); 
             }
         Coefs(global_BF,0)=1;
         gsSparseMatrix<T> temp = L*(m_mapper->asMatrix())*Coefs;

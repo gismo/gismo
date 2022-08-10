@@ -70,8 +70,6 @@ void gsFitting<T>::compute(T lambda)
 
     const int num_basis=m_mbasis->size();
     const short_t dimension=m_points.cols();
-
-    gsDebugVar(dimension);
     
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
@@ -95,8 +93,6 @@ void gsFitting<T>::compute(T lambda)
 
     assembleSystem(A_mat, m_B);
 
-    //gsDebugVar(m_B.transpose());
-    //gsDebugVar(A_mat.toDense());
 
     // --- Smoothing matrix computation
     //test degree >=3
@@ -132,7 +128,7 @@ void gsFitting<T>::compute(T lambda)
     // Solves for many right hand side  columns
     // finally generate the B-spline curve
 
-    gsDebugVar(x.transpose());
+
     m_mresult = gsMappedSpline<2,T> ( *m_mbasis,give(x));
 
     //gsDebugVar(m_mresult);
@@ -203,65 +199,81 @@ void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
 template<class T>
 void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 {
-    const short_t dim = m_basis->dim();
-    const short_t stride = dim*(dim+1)/2;
+    const int num_patches(m_mbasis->nPatches()); //initialize
+
+    const short_t dim(m_mbasis->domainDim());
+    const short_t stride = dim * (dim + 1) / 2;
 
     gsVector<index_t> numNodes(dim);
-    for ( short_t i = 0; i!= dim; ++i )
-        numNodes[i] = this->m_basis->degree(i);//+1;
-    gsGaussRule<T> QuRule( numNodes ); // Reference Quadrature rule
     gsMatrix<T> quNodes, der2, localA;
     gsVector<T> quWeights;
     gsMatrix<index_t> actives;
 
-    typename gsBasis<T>::domainIter domIt = m_basis->makeDomainIterator();
-
-    for (; domIt->good(); domIt->next() )
+    for (index_t h = 0; h < num_patches; h++)
     {
-        // Map the Quadrature rule to the element and compute basis derivatives
-        QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
-        m_basis->deriv2_into(quNodes, der2);
-        m_basis->active_into(domIt->center, actives);
-        const index_t numActive = actives.rows();
-        localA.setZero(numActive, numActive );
+        auto & basis = m_mbasis->basis(h);
 
-        // perform the quadrature
-        for (index_t k = 0; k < quWeights.rows(); ++k)
+        //gsDebugVar(dim);
+        //gsDebugVar(stride);
+
+        for (short_t i = 0; i != dim; ++i)
         {
-            const T weight = quWeights[k] * lambda;
+            numNodes[i] = basis.degree(i);//+1; 
+        }
 
-            for (index_t i=0; i!=numActive; ++i)
-                for (index_t j=0; j!=numActive; ++j)
-                {
-                    T localAij = 0; // temporary variable
+        gsGaussRule<T> QuRule(numNodes); // Reference Quadrature rule
 
-                    for (short_t s = 0; s < stride; s++)
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(); 
+
+
+        for (; domIt->good(); domIt->next())
+        {
+            // Map the Quadrature rule to the element and compute basis derivatives
+            QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
+            basis.deriv2_into(quNodes, der2);
+            basis.active_into(domIt->center, actives);
+            const index_t numActive = actives.rows();
+            localA.setZero(numActive, numActive);
+
+            // perform the quadrature
+            for (index_t k = 0; k < quWeights.rows(); ++k)
+            {
+                const T weight = quWeights[k] * lambda;
+
+                for (index_t i = 0; i != numActive; ++i)
+                    for (index_t j = 0; j != numActive; ++j)
                     {
-                        // The pure second derivatives
-                        // d^2u N_i * d^2u N_j + ...
-                        if (s < dim)
+                        T localAij = 0; // temporary variable
+
+                        for (short_t s = 0; s < stride; s++)
                         {
-                            localAij += der2(i * stride + s, k) *
-                                        der2(j * stride + s, k);
+                            // The pure second derivatives
+                            // d^2u N_i * d^2u N_j + ...
+                            if (s < dim)
+                            {
+                                localAij += der2(i * stride + s, k) *
+                                    der2(j * stride + s, k);
+                            }
+                            // Mixed derivatives 2 * dudv N_i * dudv N_j + ...
+                            else
+                            {
+                                localAij += T(2) * der2(i * stride + s, k) *
+                                    der2(j * stride + s, k);
+                            }
                         }
-                        // Mixed derivatives 2 * dudv N_i * dudv N_j + ...
-                        else
-                        {
-                            localAij += T(2) * der2(i * stride + s, k) *
-                                               der2(j * stride + s, k);
-                        }
+
+                        localA(i, j) += weight * localAij;
                     }
+            }
 
-                    localA(i, j) += weight * localAij;
-                }
+            for (index_t i = 0; i != numActive; ++i)
+            {
+                const int ii = actives(i, 0);
+                for (index_t j = 0; j != numActive; ++j)
+                    A_mat(ii, actives(j, 0)) += localA(i, j);
+            }
         }
 
-        for (index_t i=0; i!=numActive; ++i)
-        {
-            const int ii = actives(i,0);
-            for (index_t j=0; j!=numActive; ++j)
-                A_mat( ii, actives(j,0) ) += localA(i,j);
-        }
     }
 }
 
@@ -324,26 +336,18 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
     for (index_t h = 0; h < num_patches; h++) {
 
 
+        if (m_result)
+            m_result->eval_into(m_param_values, results);
+        else
+        {
+            m_mresult.eval_into(h, m_param_values, results);
+        }
+
+
+
         for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) {
 
-           // gsDebugVar(k); 
-
-            if (m_result)
-                m_result->eval_into(m_param_values, results);
-            else
-            {
-                m_mresult.eval_into(h, m_param_values, results); 
-            }
-
-            //computing the approximation error = sum_i ||x(u_i)-p_i||^2
-
-            //for (index_t i = 0; i < m_points.row(k).size(); ++i) 
-            // 
-            //{
-
-            //gsDebugVar(results.col(k));
-            //gsDebugVar(m_points.row(k));
-
+          
                 const T err = (m_points.row(k) - results.col(k).transpose()).squaredNorm();
 
                 switch (type) {
@@ -358,9 +362,6 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
                     break;
                 }
 
-               // gsDebugVar(err); 
-            //}
-
         }
 
     }
@@ -372,31 +373,58 @@ template<class T>
 void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 {
     errors.clear();
+
     gsMatrix<T> results;
-    m_result->eval_into(m_param_values,results);
-    results.transposeInPlace();
 
-    for (index_t row = 0; row != m_points.rows(); row++)
-    {
-        T err = 0;
-        for (index_t col = 0; col != m_points.cols(); col++)
+    T err = 0;
+
+    const int num_patches(m_mbasis->nPatches());
+
+    for (index_t h = 0; h < num_patches; h++) {
+
+
+        if (m_result)
+            m_result->eval_into(m_param_values, results);
+        else
         {
-            err += math::pow(m_points(row, col) - results(row, col), 2);
+            m_mresult.eval_into(h, m_param_values, results);
         }
 
-        switch (type)
+        results.transposeInPlace();
+
+        //gsInfo << "res" << results << "\t";
+
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
         {
-        case 0:
-            errors.push_back(err);
-            break;
-        case 1:
-            errors.push_back(sqrt(err));
-            break;
-        default:
-            gsWarn << "Unknown type in get_Error(errors, type)...\n";
-            break;
+             
+           // gsInfo << "res" << results(k, 3) << "\t";
+          //  gsInfo << "mp" << m_points(k, 3) << "\t";
+          //  gsInfo << "err" << m_points(k, 3) - results(k, 3) << "\n";
+
+            err = math::abs(m_points(k, 3) - results(k, 3));
+
+            gsInfo << "mpoints" << m_points.row(k) << "\n";
+            gsInfo << "res" << results.row(k) << "\n";
+
+            gsInfo << "err" << err << "\n";
+
+                    switch (type)
+                    {
+                    case 0:
+                        errors.push_back(err);
+                        break;
+                    case 1:
+                        errors.push_back(err);
+                        break;
+                    default:
+                        gsWarn << "Unknown type in get_Error(errors, type)...\n";
+                        break;
+                    }
+
         }
+
     }
+
 }
 
 template<class T>
