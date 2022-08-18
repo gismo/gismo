@@ -1864,7 +1864,11 @@ void gsSurfMesh::cc_subdivide()
     for (i = env; i!=fnv;++i)
     {
         v = gsSurfMesh::Vertex(i); //edge points
-        if (is_boundary(v)) continue;
+        if (is_boundary(v))
+        {
+            gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
+            continue;
+        }
         auto vit = vertices(v);
         auto vcp = vit;
         tmp.setZero();
@@ -1884,6 +1888,7 @@ void gsSurfMesh::cc_subdivide()
         auto & pt = points[v];//original vertex positions are computed using new edge/face points only
         if (is_boundary(v))
         {
+            gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
             if (2>n)
             {
                 auto vv = vertices(v);
@@ -1922,7 +1927,7 @@ gsSurfMesh::cc_limit_points(std::string label)
         n = valence(*vit);
         if (is_boundary(*vit))
         {
-            gsWarn<< "Boundary vertex are ignored.\n";
+            gsWarn<< "Boundary vertex is ignored.\n";
             
             if (2>n)
             {
@@ -1936,10 +1941,10 @@ gsSurfMesh::cc_limit_points(std::string label)
         for ( auto he : halfedges(*vit) )
         {
             if (is_boundary(he))
-        {
-            gsWarn<< "Boundary halfedge ignored.\n";                
-        }
-                    
+            {
+                gsWarn<< "Boundary halfedge is ignored.\n";                
+            }
+
             pt += 4 * points[ to_vertex(he) ] +
                 points[ to_vertex(next_halfedge(he)) ];
         }
@@ -2069,9 +2074,10 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
 #   pragma omp parallel for default(none) shared(std::cout,points,bb) private(n,v,h2,coefs) shared(mp)
     for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
     {
+        //gsInfo << "face id: "<< fit->idx() <<"\n"; 
         coefs.resize(16,3);//thread privates must be initialized for each thread
         index_t s = 0;
-        
+
         for ( auto he : halfedges(*fit) )
         {
             auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
@@ -2082,18 +2088,14 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
             v = from_vertex(he);
             n = valence(v);
 
-            c10 = c01 = c11 = n * points[v];
-            c11 = 2 * points[to_vertex(he)] +
-                points[to_vertex(next_halfedge(he))] +
-                2 * points[to_vertex(ccw_rotated_halfedge(he))];
-            c11 /= n+5;
-
+            /*
             if (is_boundary(v))
             {
                 gsInfo <<"Boundary vertex.....\n";
-                c11 *= (real_t)(n+5)/(2*n+3);
 
                 auto vv = vertices(v);
+                
+                c11 *= (real_t)(n+5)/(2*n+3);
 
                 if ( is_boundary(to_vertex(he)) )//boundary edge
                 {
@@ -2125,12 +2127,20 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
                     c00 = points[v];
                 continue;
             }
+            */
+
+            c10 = c01 = c11 = n * points[v];
                         
             c00 = n*n*points[v];
             for (auto h : halfedges(v))
                 c00 += 4 * points[ to_vertex(h) ] +
                     points[ to_vertex(next_halfedge(h)) ] ;
             c00 /= n*(n+5);
+
+            c11 += 2 * points[to_vertex(he)] +
+                points[to_vertex(next_halfedge(he))] +
+                2 * points[to_vertex(ccw_rotated_halfedge(he))];
+            c11 /= n+5;
 
             c10 += 2 * points[to_vertex(he)] +
                 0.5 * points[to_vertex(next_halfedge(he))] +
