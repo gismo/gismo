@@ -18,25 +18,46 @@ class gsFittingRWF : public gsFitting<T>
 {
 public:
     gsFittingRWF(gsMatrix<T> const & param_values,
-                    gsMatrix<T> const & points,
-                    gsBasis<T> & basis)
+                 gsMatrix<T> const & points,
+                 gsBasis<T> & basis)
         : gsFitting<T>(param_values, points, basis)
     {}
-    void compute( const gsTensorBSpline<d,T>& lambda, const bool condcheck, const int dreg);
-    void compute( const gsBSpline<T>& lambda, const bool condcheck);
-    //void applySmoothing(const gsTensorBSpline<d,T>& lambda, gsSparseMatrix<T> & A_mat);
-    void applySmoothing(const gsGeometry<T>& lambda, gsSparseMatrix<T> & A_mat, const int dreg);
-    void applySmoothing(const gsBSpline<T>& lambda, gsSparseMatrix<T> & A_mat);
-
-    /// Refinement with THB, lambda remains unchanged.
-    bool nextIteration(const T & tolerance, const T & err_threshold, const gsTensorBSpline<d,T>& lambda);
-
-    /// Refinement with B-splines (in 1D), lambda unchanged.
-    bool nextIteration(const T alpha, const T &toll, const T & tolerance, gsBSpline<T> &lambda, const bool l_ref, const bool reg, const T l_min, const T l_max, const bool condcheck, const int strategy, const bool remove);
 
     /// ...
-    bool nextLambdaIteration(const T alpha, const T & toll, const T & tolerance, gsTensorBSpline<d,T>& lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg);
-    bool nextLambdaIteration(const T & tolerance, const T & err_threshold, gsBSpline<T>& lambda);
+    bool nextIteration(const T alpha, const T & toll, const T & tolerance, gsGeometry<T>& lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg);
+
+protected:
+    /// TODO: docu
+    void compute( const gsGeometry<T>& lambda, const bool condcheck, const int dreg);
+
+    /// TODO: docu
+    void applySmoothing(const gsGeometry<T>& lambda, gsSparseMatrix<T> & A_mat, const int dreg);
+
+    /// Refinement with B-splines (in 1D), lambda unchanged.
+    //bool nextIteration(const T alpha, const T & toll, const T & tolerance, gsBSpline<T> & lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck);
+
+
+    void ConstraintCorrection(gsBSpline<T> &lambda, T alpha);
+    void ConstraintCorrection(gsTensorBSpline<2,T> &lambda, T alpha);
+    void ConstraintCorrection(gsGeometry<T> &lambda, T alpha)
+    {
+        if(d==1)
+        {
+            gsGeometry<T> *ptr = &lambda;
+            gsBSpline<T>* actualLambda = static_cast<gsBSpline<T>*>(ptr);
+            ConstraintCorrection(*actualLambda, alpha);
+        }
+        else if (d==2)
+        {
+            gsGeometry<T> *ptr = &lambda;
+            gsTensorBSpline<2,T>* actualLambda = static_cast<gsTensorBSpline<2,T>*>(ptr);
+            ConstraintCorrection(*actualLambda, alpha);
+        }
+        else
+            gsWarn << "This is not implemented, yet." << std::endl;
+    }
+
+public:
     void writeParaviewLog(const gsTensorBSpline<d,T> & field, std::string const & fn, unsigned npts=1000, bool mesh=false);
     void writeParaviewPointsLog( gsMatrix<T>& pts, gsMatrix<T>& vals, gsVector<unsigned> &np, const std::string& fn);
     void writeParaviewDeriv2Log(const gsGeometry<T> & field, std::string const & fn, unsigned npts);
@@ -74,7 +95,7 @@ T gsFittingRWF<d,T>::elemLength() const
 }
 
 template<unsigned d, class T>
-void gsFittingRWF<d,T>::compute( const gsTensorBSpline<d,T>& lambda, const bool condcheck, const int dreg)
+void gsFittingRWF<d,T>::compute( const gsGeometry<T>& lambda, const bool condcheck, const int dreg)
 {
     // Wipe out previous result
     if ( this->m_result )
@@ -83,19 +104,17 @@ void gsFittingRWF<d,T>::compute( const gsTensorBSpline<d,T>& lambda, const bool 
     const int num_basis=this->m_basis->size();
     const int dimension=this->m_points.cols();
 
-    //left side matrix
-    //gsMatrix<T> A_mat(num_basis,num_basis);
+    // left side matrix
     gsSparseMatrix<T> A_mat(num_basis, num_basis);
-    //gsMatrix<T>A_mat(num_basis,num_basis);
-    //To optimize sparse matrix an estimation of nonzero elements per
-    //column can be given here
+    // To optimize sparse matrix an estimation of nonzero elements per
+    // column can be given here
     int nonZerosPerCol = 1;
     for (int i = 0; i < this->m_basis->dim(); ++i) // to do: improve
         // nonZerosPerCol *= m_basis->degree(i) + 1;
         nonZerosPerCol *= ( 2 * this->m_basis->degree(i) + 1 ) * 4;
     A_mat.reservePerColumn( nonZerosPerCol );
 
-    //right side vector (more dimensional!)
+    // right side vector (more dimensional!)
     gsMatrix<T> m_B(num_basis, dimension);
     m_B.setZero(); // enusure that all entries are zero in the beginning
 
@@ -103,143 +122,25 @@ void gsFittingRWF<d,T>::compute( const gsTensorBSpline<d,T>& lambda, const bool 
     // equations A*x==b
 
     this->assembleSystem(A_mat, m_B);
-
-    applySmoothing(lambda, A_mat, dreg);
-
-    //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
-
-    //gsDebugVar( A_mat.nonZerosPerCol().maxCoeff() );
-    //gsDebugVar( A_mat.nonZerosPerCol().minCoeff() );
-    A_mat.makeCompressed();
-
-    typename gsSparseSolver<T>:: LU solver( A_mat );
-    gsMatrix<T> x;
-    if (condcheck)
-    {
-        //T cnum;
-        //cnum = gsSolverUtils<T>::conditionNumber(A_mat);
-        //gsInfo << "Condition number: " << cnum << std::endl;
-
-        //solver.compute(A_mat);
-        Eigen::SparseMatrix<T> I(A_mat.rows(),A_mat.cols());
-        I.setIdentity();
-        auto A_inv = solver.solve(I);
-        real_t condnum = A_mat.norm() * A_inv.norm();           // This should be * not / right?
-        gsInfo << "Condition number: " << condnum << std::endl;
-
-        // For bash, condition number check
-        T h = this->m_basis->getMaxCellLength();
-
-        std::string filename("conditioning_"+std::to_string(this->m_basis->degree(0))+"_"+std::to_string(lambda.degree(0))+ ".csv");
-        std::ofstream file_out;
-
-        file_out.open(filename, std::ios::app);
-        file_out <<  " " << h << " " << condnum << "\n";
-        file_out.close();
-
-        //x = A_inv * m_B;
-    }
-
-    /*if ( solver.preconditioner().info() != Eigen::Success )
-    {
-        std::cerr<<  "The preconditioner failed. Aborting.";// << std::endl;
-        this->m_result = NULL;
-        return;
-    }
-    */
-    // Solves for many right hand side  columns
-    //else
-    //    x = solver.solve(m_B); //toDense()
-    x = solver.solve(m_B); //toDense()
-    //gsMatrix<T> x (m_B.rows(), m_B.cols());
-    //x=A_mat.fullPivHouseholderQr().solve( m_B);
-    // Solves for many right hand side  columns
-    // finally generate the B-spline curve
-    this->m_result = this->m_basis->makeGeometry( give(x) ).release();
-}
-
-template<unsigned d, class T>
-void gsFittingRWF<d,T>::compute( const gsBSpline<T>& lambda, const bool condcheck)
-{
-    // Wipe out previous result
-    if ( this->m_result )
-        delete this->m_result;
-
-    const int num_basis=this->m_basis->size();
-    const int dimension=this->m_points.cols();
-
-    //left side matrix
-    //gsMatrix<T> A_mat(num_basis,num_basis);
-    gsSparseMatrix<T> A_mat(num_basis, num_basis);
-    //gsMatrix<T>A_mat(num_basis,num_basis);
-    //To optimize sparse matrix an estimation of nonzero elements per
-    //column can be given here
-    int nonZerosPerCol = 1;
-    for (int i = 0; i < this->m_basis->dim(); ++i) // to do: improve
-        // nonZerosPerCol *= m_basis->degree(i) + 1;
-        nonZerosPerCol *= ( 2 * this->m_basis->degree(i) + 1 ) * 4;
-    A_mat.reservePerColumn( nonZerosPerCol );
-
-    //right side vector (more dimensional!)
-    gsMatrix<T> m_B(num_basis, dimension);
-    m_B.setZero(); // enusure that all entries are zero in the beginning
-
-    // building the matrix A and the vector b of the system of linear
-    // equations A*x==b
-
-    this->assembleSystem(A_mat, m_B);
-
-    int dreg =2;
     applySmoothing(lambda, A_mat,dreg);
-
-    //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
-
-    //gsDebugVar( A_mat.nonZerosPerCol().maxCoeff() );
-    //gsDebugVar( A_mat.nonZerosPerCol().minCoeff() );
     A_mat.makeCompressed();
 
     typename gsSparseSolver<T>:: LU solver( A_mat );
 
     if(condcheck)
     {
-        gsHTensorBasis<d, T> & basis_temp = static_cast<gsHTensorBasis<d, T> &> (*this->m_basis);
-        gsBSplineBasis<T>& basis = static_cast<gsBSplineBasis<T>&> (basis_temp.tensorLevel(0));
-        //gsKnotVector<T> & knots = basis.knots();
-        //gsInfo << "Knots in condcheck: " << knots.asMatrix() << std::endl;
-        gsInfo << "h1: " << basis.getMinCellLength() << std::endl;
-        gsInfo << "h2: " << this->m_basis->getMinCellLength() << std::endl;
-
-        solver.compute(A_mat);
+        //solver.compute(A_mat);
         Eigen::SparseMatrix<T> I(A_mat.rows(),A_mat.cols());
         I.setIdentity();
         auto A_inv = solver.solve(I);
         real_t condnum = A_mat.norm() * A_inv.norm();           // This should be * not / right?
         gsInfo << "Condition number: " << condnum << std::endl;
-
-        // For bash, condition number check
-        T h = this->m_basis->getMinCellLength();
-
-        std::string filename("conditioning_"+std::to_string(this->m_basis->degree(0))+"_"+std::to_string(lambda.degree())+ ".csv");
-        std::ofstream file_out;
-
-        file_out.open(filename, std::ios::app);
-        file_out <<  " " << h << " " << condnum << "\n";
-        file_out.close();
     }
 
-    //if ( solver.preconditioner().info() != Eigen::Success )
-    //{
-    //    gsWarn<<  "The preconditioner failed. Aborting.\n";
-    //    this->m_result = NULL;
-    //    return;
-    //}
-    // Solves for many right hand side  columns
+    // Solves for many right hand side columns
     gsMatrix<T> x;
-    x = solver.solve(m_B); //toDense()
-    //gsMatrix<T> x (m_B.rows(), m_B.cols());
-    //x=A_mat.fullPivHouseholderQr().solve( m_B);
-    // Solves for many right hand side  columns
-    // finally generate the B-spline curve
+    x = solver.solve(m_B);
+    // finally generate the B-spline
     this->m_result = this->m_basis->makeGeometry( give(x) ).release();
 }
 
@@ -339,191 +240,15 @@ void gsFittingRWF<d,T>::applySmoothing(const gsGeometry<T>& lambda, gsSparseMatr
 }
 
 template<unsigned d, class T>
-bool gsFittingRWF<d,T>::nextIteration(const T alpha, const T & toll, const T & tolerance, gsBSpline<T> & lambda, const bool l_ref, const bool reg, const T l_min, const T l_max, const bool condcheck, const int strategy, const bool remove)
-{
-    if ( this->m_pointErrors.size() != 0 )
-    {
-
-        if ( this->m_max_error > tolerance || strategy == 6 )
-        {
-            if (strategy == 2)
-            {
-                // Uniform Refinement. TODO: Change to gsHTensorBasis.
-                gsTHBSplineBasis<1,T>* basis = static_cast<gsTHBSplineBasis<1,T> *> (this->m_basis);
-                basis->uniformRefine();
-                if (l_ref)
-                {
-                    lambda.basis().uniformRefine();
-                    findLambda1D(lambda.basis(), lambda, l_min, l_max,0);
-                }
-            }
-
-            if (strategy == 6)
-            {
-                gsMatrix<T> paramsWhereErrTooBig;
-                for ( size_t i=0; i < this->m_pointErrors.size(); i++ )
-                {
-                    if (this->m_pointErrors[i] > toll)
-                    {
-                        index_t oldCols = paramsWhereErrTooBig.cols();
-                        paramsWhereErrTooBig.conservativeResize(2, oldCols + 1);
-                        paramsWhereErrTooBig.col(oldCols) = this->m_param_values.col(i);
-                    }
-                }
-
-                std::set<index_t> coefsToDecrease;
-                gsMatrix<unsigned> actives;
-                for (index_t i=0; i< paramsWhereErrTooBig.cols(); i++)
-                {
-                    lambda.basis().active_into(paramsWhereErrTooBig.col(i), actives);
-                    for(index_t j=0; j<actives.rows(); j++)
-                    {
-                        coefsToDecrease.insert(actives(j,0));
-                    }
-                }
-
-                for ( std::set<index_t>::const_iterator it=coefsToDecrease.begin() ; it!=coefsToDecrease.end(); ++it )
-                {
-                    if ( lambda.coef(*it, 0) > 1e-11 ) // Could also try other lambda min than 1e-11?
-                    {
-                        lambda.coef(*it, 0) *= alpha;
-                    }
-                }
-
-                // ------ New Code for putting a threshold on the maximum incline/decline of lambda, version Bert
-                //index_t optk = std::ceil(lambda.basis().getMaxCellLength() * tol_slope);   // I tried different parameters, from 4 to 18
-                //T optk = lambda.basis().getMaxCellLength() * tol_slope;
-                T optk = 1; // for the adaptive chosen alpha we fix jumps to 1.
-                index_t m = lambda.basis().size();
-
-                for (index_t i=0; i<m-1; i++)
-                {
-                    lambda.coef(i+1, 0) = math::min(lambda.coef(i+1, 0), lambda.coef(i,0)/math::pow(alpha,optk));
-                }
-                for (index_t i=0; i<m-1; i++)
-                {
-                    lambda.coef(m-i-2, 0) = math::min(lambda.coef(m-i-2, 0), lambda.coef(m-i-1,0)/math::pow(alpha,optk));
-                }
-            }
-        }
-        else
-        {
-            gsDebug << "Tolerance reached.\n";
-            return false;
-        }
-    }
-
-    // Knot removal for stabilization:
-    if (remove)
-    {
-        gsHTensorBasis<d, T> & basis_temp = static_cast<gsHTensorBasis<d, T> &> (*this->m_basis);
-        gsBSplineBasis<T>& basis = static_cast<gsBSplineBasis<T>&> (basis_temp.tensorLevel(0));
-        gsKnotVector<T> knots = basis.knots();
-
-        real_t h = basis.getMinCellLength();
-        real_t h_left = -1.0/2;
-        real_t h_right = 1.0/2;
-        real_t h_ll = h_left  + h;
-        real_t h_lr = h_left  - h;
-        real_t h_rl = h_right + h;
-        real_t h_rr = h_right - h;
-
-        knots.remove(h_left);
-        knots.remove(h_right);
-        knots.remove(h_ll);
-        knots.remove(h_lr);
-        knots.remove(h_rl);
-        knots.remove(h_rr);
-
-        this ->m_basis = new gsTHBSplineBasis<d, T>(gsBSplineBasis<T>(knots));
-    }
-
-    // We run one fitting step and compute the errors
-    if (reg)
-        this->compute(lambda, condcheck);
-    else
-    {
-        gsFitting<T>::compute(0.0);
-    }
-    this->computeErrors();
-
-    // Knot insertion after stabilization, such that uniform refinement works as expected:
-    if (remove)
-    {
-        gsHTensorBasis<d, T>& basis_temp = static_cast<gsHTensorBasis<d, T> &> (*this->m_basis);
-        gsBSplineBasis<T>& basis = static_cast<gsBSplineBasis<T>&> (basis_temp.tensorLevel(0));
-        gsKnotVector<T> knots = basis.knots();
-
-        real_t h = basis.getMinCellLength();
-        real_t h_left = -1.0/2;
-        real_t h_right = 1.0/2;
-        real_t h_ll = h_left+h;
-        real_t h_lr = h_left-h;
-        real_t h_rl = h_right+h;
-        real_t h_rr = h_right-h;
-
-        knots.insert(h_left);
-        knots.insert(h_right);
-        knots.insert(h_ll);
-        knots.insert(h_lr);
-        knots.insert(h_rl);
-        knots.insert(h_rr);
-
-        this ->m_basis = new gsTHBSplineBasis<d, T>(gsBSplineBasis<T>(knots));
-    }
-
-    return true;
-}
-
-template<unsigned d, class T>
-bool gsFittingRWF<d,T>::nextIteration(const T & tolerance, const  T & err_threshold, const gsTensorBSpline<d,T> & lambda)
-{
-    // INVARIANT
-    // look at iterativeRefine
-
-    if ( this->m_pointErrors.size() != 0 )
-    {
-
-        if ( this->m_max_error > tolerance )
-        {
-            // if err_treshold is -1 we refine the m_ref percent of the whole domain
-            T threshold = (err_threshold >= 0) ? err_threshold : this->setRefineThreshold(this->m_pointErrors);
-
-            std::vector<unsigned> boxes = this->getBoxes(this->m_pointErrors, threshold);
-            if(boxes.size()==0)
-                return false;
-
-            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
-            basis->refineElements(boxes);
-
-            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
-        }
-        else
-        {
-            gsDebug << "Tolerance reached.\n";
-            return false;
-        }
-    }
-
-    // We run one fitting step and compute the errors
-    this->compute(lambda);
-    this->computeErrors();
-
-    return true;
-}
-
-template<unsigned d, class T>
-bool gsFittingRWF<d,T>::nextLambdaIteration(const T alpha, const T & toll, const T & tolerance, gsTensorBSpline<d,T> & lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg)
+bool gsFittingRWF<d,T>::nextIteration(const T alpha, const T & toll, const T & tolerance, gsGeometry<T> & lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg)
 {
     if ( this->m_pointErrors.size() != 0 )
     {
         if ( this->m_max_error > tolerance )
         {
-            if (ref_unif)
+            if (ref_unif)  // Uniform refine the fitting basis
             {
-                gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
-                basis->uniformRefine(1);
-
+                this->m_basis->uniformRefine(1);
             }
             if (dec_lambda)
             {
@@ -557,61 +282,7 @@ bool gsFittingRWF<d,T>::nextLambdaIteration(const T alpha, const T & toll, const
                     }
                 }
 
-                // Variation Bert in 2D:
-                index_t m1 = lambda.basis().size(0);
-                index_t m2 = lambda.basis().size(1);
-
-                // First we go through all rows, keep v constant
-
-                gsInfo << "Starting constraint correction in u direction" << std::endl;
-                for (index_t j=0; j<m2; j++)
-                {
-                    for (index_t i=0; i<m1-1; i++)
-                    {
-                        // Adaptation for row j left to right:
-                        index_t this_id = lambda.basis().index(i,j);
-                        index_t next_id = lambda.basis().index(i+1,j);
-                        lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-                    }
-                    for (index_t i=0; i<m1-1; i++)
-                    {
-                        // Adaptation for row j right to left:
-                        index_t this_id = lambda.basis().index(m1-i-1,j);
-                        index_t next_id = lambda.basis().index(m1-i-2,j);
-                        lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-                    }
-                }
-
-                // Second we go through all columns, keep u constant
-
-                gsInfo << "Starting constraint correction in v direction" << std::endl;
-                for (index_t i=0; i<m1; i++)
-                {
-                    for (index_t j=0; j<m2-1; j++)
-                    {
-                        // Adaptation for column i bottom to top:
-                        index_t this_id = lambda.basis().index(i,j);
-                        index_t next_id = lambda.basis().index(i,j+1);
-                        lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-                    }
-                    for (index_t j=0; j<m2-1; j++)
-                    {
-                        // Adaptation for column i top to bottom:
-                        index_t this_id = lambda.basis().index(i,m2-j-1);
-                        index_t next_id = lambda.basis().index(i,m2-j-2);
-                        lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-                    }
-                }
-
-                gsInfo << "Done constraint correction" << std::endl;
-
-                gsTensorBSpline<d,T> lambda_log (lambda);
-                for (index_t i = 0; i<lambda_log.basis().size(); i++)
-                {
-                    lambda_log.coef(i)(0)=std::log10(lambda_log.coef(i)(0));
-                }
-                // gsInfo << "Writing lambda.xml" << std::endl;
-                gsWriteParaview(lambda_log,"lambda_log",(m1+1)*(m2+1));
+                ConstraintCorrection(lambda,alpha);
             }
         }
         else
@@ -629,61 +300,77 @@ bool gsFittingRWF<d,T>::nextLambdaIteration(const T alpha, const T & toll, const
 }
 
 template<unsigned d, class T>
-bool gsFittingRWF<d,T>::nextLambdaIteration(const T & tolerance, const  T & err_threshold, gsBSpline<T> & lambda)
+void gsFittingRWF<d,T>::ConstraintCorrection(gsBSpline<T> &lambda, T alpha)
 {
-    if ( this->m_pointErrors.size() != 0 )
+
+    // ------ New Code for putting a threshold on the maximum incline/decline of lambda, version Bert
+    //index_t optk = std::ceil(lambda.basis().getMaxCellLength() * tol_slope);   // I tried different parameters, from 4 to 18
+    //T optk = lambda.basis().getMaxCellLength() * tol_slope;
+    T optk = 1; // for the adaptive chosen alpha we fix jumps to 1.
+    index_t m = lambda.basis().size();
+
+    for (index_t i=0; i<m-1; i++)
     {
-        gsInfo <<"Regularisation function lambda is uniformly refined." << std::endl;
-        lambda.uniformRefine(1);
-        if ( this->m_max_error > tolerance )
+        lambda.coef(i+1, 0) = math::min(lambda.coef(i+1, 0), lambda.coef(i,0)/math::pow(alpha,optk));
+    }
+    for (index_t i=0; i<m-1; i++)
+    {
+        lambda.coef(m-i-2, 0) = math::min(lambda.coef(m-i-2, 0), lambda.coef(m-i-1,0)/math::pow(alpha,optk));
+    }
+
+}
+
+template<unsigned d, class T>
+void gsFittingRWF<d,T>::ConstraintCorrection(gsTensorBSpline<2,T> &lambda, T alpha)
+{
+    // Variation Bert in 2D:
+    index_t m1 = lambda.basis().size(0);
+    index_t m2 = lambda.basis().size(1);
+
+    // First we go through all rows, keep v constant
+    for (index_t j=0; j<m2; j++)
+    {
+        for (index_t i=0; i<m1-1; i++)
         {
-            gsMatrix<T> paramsWhereErrTooBig;
-            gsInfo << "There are " << this->m_pointErrors.size() << " errors, "
-                   << this->m_param_values.cols() << " parameters and "
-                   << paramsWhereErrTooBig.cols() << " too big ones so far." << std::endl;
-            for ( size_t i=0; i < this->m_pointErrors.size(); i++ )
-            {
-                if (this->m_pointErrors[i] > tolerance)   // Should be err_threshold?
-                {
-                    index_t oldCols = paramsWhereErrTooBig.cols();
-                    paramsWhereErrTooBig.conservativeResize(2, oldCols + 1);
-                    paramsWhereErrTooBig.col(oldCols) = this->m_param_values.col(i);
-                }
-            }
-            gsInfo << "There were " << paramsWhereErrTooBig.cols() << " points with the error above tolerance." << std::endl;
-
-            std::set<index_t> coefsToDecrease;
-            gsMatrix<unsigned> actives;
-            for (index_t i=0; i< paramsWhereErrTooBig.cols(); i++)
-            {
-                lambda.basis().active_into(paramsWhereErrTooBig.col(i), actives);
-                for(index_t j=0; j<actives.rows(); j++)
-                {
-                    coefsToDecrease.insert(actives(j,0));
-                }
-            }
-
-            gsInfo << coefsToDecrease.size() << " coefs should be made smaller." << std::endl;
-
-            for ( std::set<index_t>::const_iterator it=coefsToDecrease.begin() ; it!=coefsToDecrease.end(); ++it )
-            {
-                lambda.coef(*it, 0) *= 0.1;
-            }
-            gsInfo << "Writing lambda.xml" << std::endl;
-            gsWriteParaview(lambda,"lambda_"+std::to_string(lambda.coefs().rows()), 2000, false, true);
+            // Adaptation for row j left to right:
+            index_t this_id = lambda.basis().index(i,j);
+            index_t next_id = lambda.basis().index(i+1,j);
+            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
         }
-        else
+        for (index_t i=0; i<m1-1; i++)
         {
-            gsDebug << "Tolerance reached.\n";
-            return false;
+            // Adaptation for row j right to left:
+            index_t this_id = lambda.basis().index(m1-i-1,j);
+            index_t next_id = lambda.basis().index(m1-i-2,j);
+            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
         }
     }
 
-    // We run one fitting step and compute the errors
-    this->compute(lambda);
-    this->computeErrors();
+    // Second we go through all columns, keep u constant
+    for (index_t i=0; i<m1; i++)
+    {
+        for (index_t j=0; j<m2-1; j++)
+        {
+            // Adaptation for column i bottom to top:
+            index_t this_id = lambda.basis().index(i,j);
+            index_t next_id = lambda.basis().index(i,j+1);
+            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
+        }
+        for (index_t j=0; j<m2-1; j++)
+        {
+            // Adaptation for column i top to bottom:
+            index_t this_id = lambda.basis().index(i,m2-j-1);
+            index_t next_id = lambda.basis().index(i,m2-j-2);
+            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
+        }
+    }
 
-    return true;
+    gsTensorBSpline<2,T> lambda_log (lambda);
+    for (index_t i = 0; i<lambda_log.basis().size(); i++)
+    {
+        lambda_log.coef(i)(0)=std::log10(lambda_log.coef(i)(0));
+    }
+    gsWriteParaview(lambda_log,"lambda_log",(m1+1)*(m2+1));
 }
 
 
