@@ -22,10 +22,12 @@ int main(int argc, char *argv[])
     real_t tol = 1e-5;
     index_t nknots = 5, degree = 3;
     index_t npts = 100;
+    real_t lambda = 0;
 
     gsCmdLine cmd("Computes patches from structured (tensor-product) data samples by fitting.");
     cmd.addPlainString("filename", "File containing multipatch input (.xml).", filename);
     cmd.addReal  ("t","tolerance","Tolerance for identifing patch interfaces", tol);
+    cmd.addReal  ("L","lambda","lambda", lambda);
     cmd.addInt   ("d", "degree", "Degree of B-splines for reparameterization", degree);
     cmd.addInt   ("k", "knots", "Number of interior knots for reparameterization", nknots);
     cmd.addInt   ("N", "npts", "Number of points for sampling", npts);
@@ -100,18 +102,37 @@ int main(int argc, char *argv[])
     gsBSplineBasis<> fbasis(kv);
     gsFitting<> cfit;
 
-    std::vector<gsMultiPatch<> > pbdr(mp.nPatches()); // patch boundary curves (4 for each)
+    // std::vector<gsMultiPatch<> > pbdr(mp.nPatches()); // patch boundary curves (4 for each)
+    std::vector<std::pair<std::vector<gsMatrix<index_t>>,gsMatrix<real_t> > > pbdr(mp.nPatches()); // patch boundary curves (4 for each)
     crv_net.clear();
     gsMatrix<> uv, xyz;
-    // Can we make a nice initialization of the multipatch? Such that we can put the sides directly in the side index
-    for (size_t p=0; p!=mp.nPatches(); p++)
-        for (index_t k=0; k!=4; k++)
-            pbdr[p].addPatch(mp.patch(0).boundary(0));
+    // // Can we make a nice initialization of the multipatch? Such that we can put the sides directly in the side index
+    // for (size_t p=0; p!=mp.nPatches(); p++)
+    //     for (index_t k=0; k!=4; k++)
+    //         pbdr[p].addPatch(mp.patch(0).boundary(0));
 
+    gsTensorBSplineBasis<2> sbasis(kv,kv);
+    for (size_t p=0; p!=mp.nPatches(); p++)
+    {
+        pbdr[p].first.resize(4);
+        pbdr[p].second.resize(sbasis.size(),mp.targetDim());
+    }
 
     index_t k=0;
     for (auto it = irep.begin(); it!=irep.end(); ++it, k++)
     {
+
+        gsDebugVar(it->first.first().patch);
+        gsDebugVar(it->first.first().side());
+        gsDebugVar(it->first.second().patch);
+        gsDebugVar(it->first.second().side());
+        gsDebugVar(it->first.dirOrientation());
+
+        gsDebugVar(it->first.first());
+        gsDebugVar(it->first.second());
+
+        gsMatrix<index_t> bndThis,bndOther;
+
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
         // note: free to choose a parameterization, here we just take the knots
         xyz = crv.coefs().transpose();
@@ -119,7 +140,7 @@ int main(int argc, char *argv[])
         //
         // THIS IS VERY WRONG
         // xyz.conservativeResize(xyz.rows(),xyz.cols()-1);
-        uv = gsVector<>::LinSpaced(xyz.cols(),0,1).transpose();
+        // uv = gsVector<>::LinSpaced(xyz.cols(),0,1).transpose();
 
         cfit = gsFitting<>(uv,xyz,fbasis);
 
@@ -132,13 +153,32 @@ int main(int argc, char *argv[])
 
         cfit.setConstraints(prescribedDoFs,prescibedCoefs);
         cfit.compute();
-        pbdr[it->first.first() .patch].patch(it->first.first() .side()-1) = *cfit.result() ;
-        pbdr[it->first.second().patch].patch(it->first.second().side()-1) = *cfit.result() ;
+
+        sbasis.matchWith(it->first,sbasis,bndThis,bndOther);
+        gsDebugVar(bndThis);
+        gsDebugVar(bndOther);
+
+
+        // pbdr[it->first.first() .patch].patch(it->first.first() .side()-1) = *cfit.result();
+        // pbdr[it->first.second().patch].patch(it->first.second().side()-1) = *cfit.result(); // flip this?
+
+        GISMO_ASSERT(bndThis .rows()==cfit.result()->coefs().rows(),"Coefficients and indices do not match!");
+        GISMO_ASSERT(bndOther.rows()==cfit.result()->coefs().rows(),"Coefficients and indices do not match!");
+
+        pbdr[it->first.first() .patch].first.at(it->first.first() .side()-1) = bndThis;
+        for (index_t k=0; k!=bndThis .rows(); k++)
+            pbdr[it->first.first() .patch].second.row(bndThis (k,0)) = cfit.result()->coefs().row(k);
+
+        pbdr[it->first.second() .patch].first.at(it->first.second() .side()-1) = bndOther;
+        for (index_t k=0; k!=bndOther.rows(); k++)
+            pbdr[it->first.second() .patch].second.row(bndOther(k,0)) = cfit.result()->coefs().row(k);
+
         crv_net.addPatch( *cfit.result() );
     }
     for (auto it = brep.begin(); it!=brep.end(); ++it)
     {
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
+        gsDebugVar(it->first);
         // note: free to choose a parameterization, here we just take the knots
         uv  = crv.knots().asMatrix().middleCols(1,crv.numCoefs());
         xyz = crv.coefs().transpose();
@@ -153,7 +193,10 @@ int main(int argc, char *argv[])
         cfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
         cfit.compute();
-        pbdr[it->first.patch].patch(it->first.side()-1) = *cfit.result() ;
+        gsMatrix<index_t> bndThis = sbasis.boundary(it->first.side());
+        pbdr[it->first .patch].first.at(it->first .side()-1) = bndThis;
+        for (index_t k=0; k!=bndThis.rows(); k++)
+            pbdr[it->first .patch].second.row(bndThis(k,0)) = cfit.result()->coefs().row(k);
         crv_net.addPatch( *cfit.result() );
     }
 
@@ -166,24 +209,38 @@ int main(int argc, char *argv[])
     // fd.dump("curve_output");
     // gsInfo <<"Resulting file is written out to curve_output.xml\n" ;
 
-    gsTensorBSplineBasis<2> sbasis(kv,kv);
     gsFitting<> sfit;
     gsMultiPatch<> mp_res;
     //STEP 4: fit interior points of each patch with boundary constraints being the curves..
     for (size_t p=0; p!=pbdr.size(); p++)
     {
-        gsPatchGenerator<real_t> generator(pbdr.at(p));
-        gsMatrix<> coefs;
-        generator.preparePatch(sbasis,coefs);
-        gsMatrix<index_t> bdr_idx = sbasis.allBoundary();
-
         std::vector<index_t> prescribedDoFs;
         std::vector<gsMatrix<>> prescibedCoefs;
-        for (index_t k=0; k!=bdr_idx.size(); k++)
+
+        // gsPatchGenerator<real_t> generator(pbdr.at(p));
+        // gsMatrix<> coefs;
+        // generator.preparePatch(sbasis,coefs);
+        // gsMatrix<index_t> bdr_idx = sbasis.allBoundary();
+
+        // for (index_t k=0; k!=bdr_idx.size(); k++)
+        // {
+        //     prescribedDoFs.push_back(bdr_idx(k,0));
+        //     prescibedCoefs.push_back(coefs.row(bdr_idx(k,0)));
+        // }
+
+        for (index_t s=0; s!=pbdr.at(p).first.size(); s++)
         {
-            prescribedDoFs.push_back(bdr_idx(k,0));
-            prescibedCoefs.push_back(coefs.row(bdr_idx(k,0)));
+            gsDebugVar(s);
+            for (index_t k=0; k!=pbdr.at(p).first.at(s).size(); k++)
+            {
+                index_t index = (pbdr.at(p).first.at(s) )(k,0);
+                gsDebugVar(index);
+                prescribedDoFs.push_back(index);
+                // gsDebugVar((pbdr.at(p).second).row(index));
+                prescibedCoefs.push_back((pbdr.at(p).second).row(index));
+            }
         }
+
 
         uv  = mp_par.patch(p).coefs().transpose();
         xyz = mp.patch(p).coefs().transpose();
@@ -200,7 +257,7 @@ int main(int argc, char *argv[])
         // sfit.setConstraints(prescribedSides, prescribedCurves);
         sfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
-        sfit.compute();
+        sfit.compute(lambda);
         gsWriteParaview(*sfit.result(),"fit");
         mp_res.addPatch(*sfit.result());
     }
