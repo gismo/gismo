@@ -907,8 +907,7 @@ quad_split(Face f, Vertex v, Halfedge s)
 {
     /*
      Split an arbitrary face into quads by connecting each vertex of fh to vh.
-     - fh will remain valid (it will become one of the triangles)
-     - the halfedge handles of the new triangles will point to the old halfeges
+     - fh will remain valid (it will become one of the quads)
      */
 
     //assert: number of vertices is even (4,6,..)
@@ -929,6 +928,7 @@ quad_split(Face f, Vertex v, Halfedge s)
 
     // ---------------
     Halfedge e = new_edge(from_vertex(hnext),v);
+    set_face(e, f);
     set_next_halfedge(prev_halfedge(hnext),e);//sets next(h) and also prev(last)
     set_next_halfedge(e,e0);//sets next(h) and also prev(last)
 

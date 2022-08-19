@@ -1673,7 +1673,7 @@ public: //--------------------------------------------- higher-level operations
 
     /// Quad-split face connecting vertex \a v, starting from corner
     /// \a s of the face
-    /// \a f is assumed to have 8 vertices, including \a s
+    /// \a f is assumed to have 8 vertices, and contains halfedge \a s
     void quad_split(Face f, Vertex v, Halfedge s);
     void quad_split();
     
