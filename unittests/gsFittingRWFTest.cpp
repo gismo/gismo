@@ -41,9 +41,54 @@ SUITE(gsFittingRWFTest)
         alpha = std::pow(alpha, h_rel);
 
         for(index_t i=0; i < iter; i++)
-            ref.nextIteration(alpha, toll, tolerance, lambda, false, true, condcheck, dreg);
+            ref.nextIteration(alpha, toll, tolerance, lambda, false, true, condcheck, dreg, false);
 
         CHECK_CLOSE(ref.maxPointError(), 4.97e-05, 1e-7);
+    }
+
+    TEST(stable_suppguided_1D)
+    {
+        index_t iter = 9;
+        std::string fn("/ya/ya135/ya13515/x/Testing/Example1D/BertsCurve/paperfinal/01Constraints/example_v_curve.xml");
+        index_t numURef = 0;
+        index_t numLRef = 6;
+        real_t alpha = 1e-10;
+        real_t toll = 1e-3;
+        real_t tolerance = 1e-3;
+        bool condcheck = false;
+        index_t lknots = 4;
+
+        // get data
+        gsFileData<> fd_in(fn);
+        gsMatrix<> uv, xyz;
+        fd_in.getId<gsMatrix<> >(0, uv );
+        fd_in.getId<gsMatrix<> >(1, xyz);
+
+        // build fitting basis
+        gsKnotVector<> u_knots (0, 1, 32, 4);
+        gsBSplineBasis<>basis( u_knots );
+        basis.uniformRefine( (1<<numURef)-1 );
+        gsFittingRWF<1,real_t> ref( uv, xyz, basis);
+
+        //build lambda
+        gsBSpline<> lambda;
+        gsFileData<> lbd_in("fitting/01lambda_1D-02.xml");
+        lbd_in.getId<gsBSpline<> >(0, lambda );
+        lambda.uniformRefine(lknots);
+        lambda.uniformRefine((1<<numLRef)-1);
+
+        ref.findLambda(lambda,0,1e-7);
+
+        // compute alpha
+        // const std::vector<real_t> & errors = ref.pointWiseErrors();
+        alpha = math::pow(alpha,lambda.basis().getMaxCellLength()/(lambda.basis().support().coeff(1)-lambda.basis().support().coeff(0)));
+
+        for(index_t i=0; i < iter; i++)
+            ref.nextIteration(alpha, toll, tolerance, lambda, false, false, condcheck, 2, false);
+
+        real_t maxerr = ref.maxPointError();
+
+        CHECK_CLOSE(maxerr,0.001393879226060754,1e-10);
     }
 
     TEST(stable_errguided_1D)
@@ -82,7 +127,7 @@ SUITE(gsFittingRWFTest)
         alpha = math::pow(alpha,lambda.basis().getMaxCellLength()/(lambda.basis().support().coeff(1)-lambda.basis().support().coeff(0)));
 
         for(index_t i=0; i < iter; i++)
-            ref.nextIteration(alpha, toll, tolerance, lambda, false, true, condcheck, 2);
+            ref.nextIteration(alpha, toll, tolerance, lambda, false, true, condcheck, 2, false);
 
         CHECK_CLOSE(ref.maxPointError(), 2.46e-04, 1e-6);
     }

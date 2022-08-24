@@ -1,7 +1,3 @@
-#ifndef GSFITTINGRWF_H
-#define GSFITTINGRWF_H
-
-#endif // GSFITTINGRWF_H
 #pragma once
 
 #include <gsModeling/gsFitting.h>
@@ -24,75 +20,46 @@ public:
     {}
 
     /// ...
-    bool nextIteration(const T alpha, const T & toll, const T & tolerance, gsGeometry<T>& lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg);
+    bool nextIteration(const T alpha, const T & toll, const T & tolerance, gsGeometry<T>& lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg, const bool save);
 
 protected:
+    /// TODO: Explain parameters.
+    index_t index(index_t i, index_t m1, index_t j = 0, index_t m2 = 1,  index_t k =0) const
+    {
+        return k*m1*m2 + j*m1 + i;
+    }
+    index_t reverseindex(index_t i, index_t m1, index_t j = 0, index_t m2 = 1,  index_t k =0, index_t m3 = 1) const
+    {
+        return index(m1-1-i,m1,m2-1-j,m2,m3-1-k);
+    }
+
     /// TODO: docu
     void compute( const gsGeometry<T>& lambda, const bool condcheck, const int dreg);
 
     /// TODO: docu
     void applySmoothing(const gsGeometry<T>& lambda, gsSparseMatrix<T> & A_mat, const int dreg);
 
-    /// Refinement with B-splines (in 1D), lambda unchanged.
-    //bool nextIteration(const T alpha, const T & toll, const T & tolerance, gsBSpline<T> & lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck);
+    void ConstraintCorrection1direction(gsGeometry<T>& lambda, T alpha, bool forward, index_t m1, index_t m2 = 1, index_t m3 = 1) const;
+    void ConstraintCorrection(gsGeometry<T> &lambda, T alpha);
 
-
-    void ConstraintCorrection(gsBSpline<T> &lambda, T alpha);
-    void ConstraintCorrection(gsTensorBSpline<2,T> &lambda, T alpha);
-    void ConstraintCorrection(gsGeometry<T> &lambda, T alpha)
-    {
-        if(d==1)
-        {
-            gsGeometry<T> *ptr = &lambda;
-            gsBSpline<T>* actualLambda = static_cast<gsBSpline<T>*>(ptr);
-            ConstraintCorrection(*actualLambda, alpha);
-        }
-        else if (d==2)
-        {
-            gsGeometry<T> *ptr = &lambda;
-            gsTensorBSpline<2,T>* actualLambda = static_cast<gsTensorBSpline<2,T>*>(ptr);
-            ConstraintCorrection(*actualLambda, alpha);
-        }
-        else
-            gsWarn << "This is not implemented, yet." << std::endl;
-    }
+    void writeParaviewPointsLog( gsMatrix<T>& pts, gsMatrix<T>& vals, gsVector<unsigned> &np, const std::string& fn);
 
 public:
     void writeParaviewLog(const gsTensorBSpline<d,T> & field, std::string const & fn, unsigned npts=1000, bool mesh=false);
-    void writeParaviewPointsLog( gsMatrix<T>& pts, gsMatrix<T>& vals, gsVector<unsigned> &np, const std::string& fn);
-    void writeParaviewDeriv2Log(const gsGeometry<T> & field, std::string const & fn, unsigned npts);
-
-    void findLambda1D(gsBSplineBasis<T> basis_lambda, gsBSpline<T>& result, T l_min, T l_max ,const index_t numLRef);
 
     /// Difference to 1D version: result has to have the basis with the correct knots.
-    void findLambda2D(gsTensorBSpline<d,T> &result, T l_min, T l_max);
+    void findLambda(gsGeometry<T> &result, T l_min, T l_max);
 
-    T max(gsMatrix<T> & ders) const;
+    // Only works in 1D and for ordered data points. Compare Paper 1, 3.2.Bounded Slope regularization, first example
+    T getL2ApproxErrorMidpoint(const std::vector<T> & errors) const;
 
-    T elemLength() const;
+    // Assumption: h is uniform & the same in both directions (i.e., 2D).
+    // almost midpoint rule but the length is slightly off.
+    T getL2ApproxErrorMidpointUniform(const std::vector<T> & errors) const;
 
-    T getL2error(const std::vector<T> & errors) const;
-    T getL2errorTensor(const std::vector<T> & errors) const;
+    /// TODO docu
     T getRMSE(const std::vector<T> & errors) const;
 };
-
-template<unsigned d, class T>
-T gsFittingRWF<d,T>::max(gsMatrix<T> & ders) const
-{
-    T maximum=0;
-    for (index_t i=0; i< ders.rows(); i++)
-        for (index_t j=0; j< ders.cols(); j++)
-            if (std::abs(ders(i,j))>maximum)
-                maximum=std::abs(ders(i,j));
-    return maximum;
-}
-
-template<unsigned d, class T>
-T gsFittingRWF<d,T>::elemLength() const
-{
-    gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d, T> *> (this->m_basis);
-    return basis->getMaxCellLength();
-}
 
 template<unsigned d, class T>
 void gsFittingRWF<d,T>::compute( const gsGeometry<T>& lambda, const bool condcheck, const int dreg)
@@ -240,7 +207,7 @@ void gsFittingRWF<d,T>::applySmoothing(const gsGeometry<T>& lambda, gsSparseMatr
 }
 
 template<unsigned d, class T>
-bool gsFittingRWF<d,T>::nextIteration(const T alpha, const T & toll, const T & tolerance, gsGeometry<T> & lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg)
+bool gsFittingRWF<d,T>::nextIteration(const T alpha, const T & toll, const T & tolerance, gsGeometry<T> & lambda, const bool ref_unif, const bool dec_lambda, const bool condcheck, const int dreg, const bool save)
 {
     if ( this->m_pointErrors.size() != 0 )
     {
@@ -300,77 +267,51 @@ bool gsFittingRWF<d,T>::nextIteration(const T alpha, const T & toll, const T & t
 }
 
 template<unsigned d, class T>
-void gsFittingRWF<d,T>::ConstraintCorrection(gsBSpline<T> &lambda, T alpha)
+void gsFittingRWF<d, T>::ConstraintCorrection1direction(gsGeometry<T>& lambda, T alpha, bool forward, index_t m1, index_t m2, index_t m3) const
 {
-
-    // ------ New Code for putting a threshold on the maximum incline/decline of lambda, version Bert
-    //index_t optk = std::ceil(lambda.basis().getMaxCellLength() * tol_slope);   // I tried different parameters, from 4 to 18
-    //T optk = lambda.basis().getMaxCellLength() * tol_slope;
-    T optk = 1; // for the adaptive chosen alpha we fix jumps to 1.
-    index_t m = lambda.basis().size();
-
-    for (index_t i=0; i<m-1; i++)
+    // Trick: Works for d=1 and d=2 as well, because next_id_v and next_id_w are equal to this_id.
+    for (index_t i=0; i<m1; i++)
     {
-        lambda.coef(i+1, 0) = math::min(lambda.coef(i+1, 0), lambda.coef(i,0)/math::pow(alpha,optk));
-    }
-    for (index_t i=0; i<m-1; i++)
-    {
-        lambda.coef(m-i-2, 0) = math::min(lambda.coef(m-i-2, 0), lambda.coef(m-i-1,0)/math::pow(alpha,optk));
-    }
+        for (index_t j=0; j<m2; j++)
+        {
+            for (index_t k=0; k<m3; k++)
+            {
+                // In 1D i should go only up to m1-1.
+                // Similarly for j and k in 2D and 3D, respectively.
+                index_t next_i = std::min(i+1,m1-1);
+                index_t next_j = std::min(j+1,m2-1);
+                index_t next_k = std::min(k+1,m3-1);
 
+                // Compute the neighbouring indices.
+                index_t this_id   = forward ? index(i,      m1, j,      m2, k)      : reverseindex(i     , m1, j,      m2, k,     m3);
+                index_t next_id_u = forward ? index(next_i, m1, j,      m2, k)      : reverseindex(next_i, m1, j,      m2, k,     m3);
+                index_t next_id_v = forward ? index(i,      m1, next_j, m2, k)      : reverseindex(i,      m1, next_j, m2, k,     m3);
+                index_t next_id_w = forward ? index(i,      m1, j,      m2, next_k) : reverseindex(i,      m1, j,      m2, next_k,m3);
+
+                // Correct the neighbouring CPs.
+                lambda.coef(next_id_u, 0) = std::min(lambda.coef(next_id_u, 0), lambda.coef(this_id,0)/alpha);
+                lambda.coef(next_id_v, 0) = std::min(lambda.coef(next_id_v, 0), lambda.coef(this_id,0)/alpha);
+                lambda.coef(next_id_w, 0) = std::min(lambda.coef(next_id_w, 0), lambda.coef(this_id,0)/alpha);
+            }
+        }
+    }
 }
 
 template<unsigned d, class T>
-void gsFittingRWF<d,T>::ConstraintCorrection(gsTensorBSpline<2,T> &lambda, T alpha)
+void gsFittingRWF<d,T>::ConstraintCorrection(gsGeometry<T> &lambda, T alpha)
 {
-    // Variation Bert in 2D:
-    index_t m1 = lambda.basis().size(0);
-    index_t m2 = lambda.basis().size(1);
-
-    // First we go through all rows, keep v constant
-    for (index_t j=0; j<m2; j++)
+    GISMO_ASSERT(d<4, "Implemented only for d=1, 2 or 3.");
+    index_t m1 = lambda.basis().component(0).size();
+    index_t m2 = 1;
+    index_t m3 = 1;
+    if (d>1)
     {
-        for (index_t i=0; i<m1-1; i++)
-        {
-            // Adaptation for row j left to right:
-            index_t this_id = lambda.basis().index(i,j);
-            index_t next_id = lambda.basis().index(i+1,j);
-            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-        }
-        for (index_t i=0; i<m1-1; i++)
-        {
-            // Adaptation for row j right to left:
-            index_t this_id = lambda.basis().index(m1-i-1,j);
-            index_t next_id = lambda.basis().index(m1-i-2,j);
-            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-        }
+        m2 = lambda.basis().component(1).size();
+        if (d==3)
+            m3 = lambda.basis().component(2).size();
     }
-
-    // Second we go through all columns, keep u constant
-    for (index_t i=0; i<m1; i++)
-    {
-        for (index_t j=0; j<m2-1; j++)
-        {
-            // Adaptation for column i bottom to top:
-            index_t this_id = lambda.basis().index(i,j);
-            index_t next_id = lambda.basis().index(i,j+1);
-            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-        }
-        for (index_t j=0; j<m2-1; j++)
-        {
-            // Adaptation for column i top to bottom:
-            index_t this_id = lambda.basis().index(i,m2-j-1);
-            index_t next_id = lambda.basis().index(i,m2-j-2);
-            lambda.coef(next_id, 0) = std::min(lambda.coef(next_id, 0), lambda.coef(this_id,0)/alpha);
-        }
-    }
-
-    gsTensorBSpline<2,T> lambda_log (lambda);
-    for (index_t i = 0; i<lambda_log.basis().size(); i++)
-    {
-        lambda_log.coef(i)(0)=std::log10(lambda_log.coef(i)(0));
-    }
-    gsWriteParaview(lambda_log,"lambda_log",(m1+1)*(m2+1));
+    ConstraintCorrection1direction(lambda, alpha, true, m1, m2, m3);
+    ConstraintCorrection1direction(lambda, alpha, false, m1, m2, m3);
 }
 
 
@@ -428,71 +369,7 @@ void gsFittingRWF<d,T>::writeParaviewLog(const gsTensorBSpline<d,T> & field, std
 }
 
 template<unsigned d, class T>
-void gsFittingRWF<d,T>::writeParaviewDeriv2Log(const gsGeometry<T> &field, std::string const & fn, unsigned npts)
-{
-    gsMatrix<T> ab = field.support();
-    gsVector<T> a = ab.col(0);
-    gsVector<T> b = ab.col(1);
-    gsVector<unsigned> np = uniformSampleCount(a, b, npts);
-    gsMatrix<T> eval_geo = gsPointGrid(a, b, np);
-    gsMatrix<T> deriv2_field = field.deriv2(eval_geo);
-    gsMatrix<T> coefs (deriv2_field.cols(),2);
-
-    for (index_t j=0; j< deriv2_field.cols() ; j++)
-    {
-        coefs(j,0) = eval_geo(0,j);
-        coefs(j,1) = deriv2_field(0,j)/math::abs(deriv2_field(0,j)) * math::log( 1 + math::abs(deriv2_field(0,j)));
-    }
-
-    std::vector<T> knots (eval_geo.cols()+2);
-    knots[0] = eval_geo(0,0);
-    for (index_t i=0; i<eval_geo.cols(); i++)
-    {
-        knots[i+1] = eval_geo(0,i);
-    }
-    knots[eval_geo.cols()+1] = eval_geo(0,eval_geo.cols()-1);
-
-    gsKnotVector<T> knotvector (knots,1);
-    gsBSplineBasis<> basis( knotvector );
-    gsBSpline<T> result(basis,coefs);
-
-    gsWriteParaview(result, fn, 10000, false, true);
-}
-
-
-template<unsigned d, class T>
-void gsFittingRWF<d,T>::findLambda1D(gsBSplineBasis<T> basis_lambda, gsBSpline<T> &result, T l_min, T l_max, const index_t numLRef)
-{
-    // Future improvements: test if it works for general d.
-
-    // set coefficients
-    int n = basis_lambda.size();
-    gsMatrix<> coefs_lambda(n,1);
-
-    // Inititalize coefficients
-    for (index_t i=0; i<n; i++)
-    {
-        coefs_lambda(i,0) = l_max;
-    }
-
-    // Find coefficients which have data in their support
-    gsMatrix<unsigned> actives_new;
-    gsMatrix<T> evals_new;
-    for (index_t i=0; i< this->m_param_values.cols(); i++)
-    {
-        basis_lambda.active_into(this->m_param_values.col(i), actives_new);
-        basis_lambda.eval_into(this->m_param_values.col(i), evals_new);
-        for(index_t j=0; j<actives_new.rows(); j++)
-        {
-            if (evals_new(j,0) != 0)
-                coefs_lambda(actives_new(j,0),0) = l_min;
-        }
-    }
-    result = gsBSpline<T>(basis_lambda, coefs_lambda);
-}
-
-template<unsigned d, class T>
-void gsFittingRWF<d,T>::findLambda2D(gsTensorBSpline<d,T> &result, T l_min, T l_max)
+void gsFittingRWF<d,T>::findLambda(gsGeometry<T> &result, T l_min, T l_max)
 {
     // Future improvements: test if it works for general d.
     // Inititalize all coefficients to l_max
@@ -517,22 +394,18 @@ void gsFittingRWF<d,T>::findLambda2D(gsTensorBSpline<d,T> &result, T l_min, T l_
 }
 
 template<unsigned d, class T>
-T gsFittingRWF<d,T>::getL2error(const std::vector<T> & errors) const
+T gsFittingRWF<d,T>::getL2ApproxErrorMidpoint(const std::vector<T> & errors) const
 {
-    // TODO: gismo assert d = 1.
-    // type : L^2 error
+    GISMO_ASSERT(d==1,"Only implemented for 1D");
     T result = 0;
 
-    // Get local h: Only works if param are ordered
     gsVector<T> paramdist (errors.size()-1);
-
     for (size_t j = 0; j < errors.size() - 1 ;j++)
     {
         paramdist(j) = this->m_param_values(0,j+1)-this->m_param_values(0,j);
     }
-    gsVector<> localh(errors.size());
 
-    // ToDo: add 0.5 (dist paramdist, rand), Annahme: Rand = 1. und letzter param
+    gsVector<> localh(errors.size());
     localh[0] = 0.5* paramdist[0];
     localh[errors.size()-1] = 0.5* paramdist[errors.size()-2];
     for (size_t j=1; j<errors.size()-1; j++)
@@ -542,17 +415,16 @@ T gsFittingRWF<d,T>::getL2error(const std::vector<T> & errors) const
 
     for (size_t i=0; i < errors.size(); i++)
     {
-         result += errors[i]*errors[i]*localh[1];           // For error guided, Berts curve: localh[i], otherwise: localh[1] for uniform sampled data
+         result += errors[i]*errors[i]*localh[i];
     }
 
     return sqrt(result);
 }
 
 template<unsigned d, class T>
-T gsFittingRWF<d,T>::getL2errorTensor(const std::vector<T> & errors) const
+T gsFittingRWF<d,T>::getL2ApproxErrorMidpointUniform(const std::vector<T> & errors) const
 {
-    // TODO: gismo assert d = 2.
-    // type : L^2 error if h is uniform & the same in both directions
+    GISMO_ASSERT(d==2,"Implemented only for 2D");
     T result = 0;
 
     for (size_t i=0; i < errors.size(); i++)
@@ -562,8 +434,6 @@ T gsFittingRWF<d,T>::getL2errorTensor(const std::vector<T> & errors) const
 
     T h = std::abs(std::max((this->m_param_values(1,0)-this->m_param_values(0,0)),
                                  (this->m_param_values(1,1)-this->m_param_values(0,1))));
-
-    gsInfo << "h: " << h << std::endl;
 
     return sqrt(result * h * h);
 }
@@ -583,4 +453,5 @@ T gsFittingRWF<d,T>::getRMSE(const std::vector<T> & errors) const
     return sqrt(result / errors.size());
 }
 
-}
+} // namespace
+

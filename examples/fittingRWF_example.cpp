@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     bool condcheck    = false;
     bool errguided    = false;
     bool suppguided   = false;
+    bool saveLogLambda = false;
     index_t numURef   = 0;
     index_t numUknots = 0;
     index_t numVknots = 0;
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
             "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
             "3 x N matrix. Every column represents a point (x,y,z) in space.");
     cmd.addSwitch("save", "Save result in XML format", save);
+    cmd.addSwitch("loglambda", "Save logarithm of lambda in PVD format", saveLogLambda);
     cmd.addSwitch("iter_l", "Iterate lambda", iter_lambda);
     cmd.addSwitch("iter_r", "Refine solution", iter_refine);
     cmd.addSwitch("samebasis","sets lambda basis same as fitting basis", lambda_basis_same_as_fitting);
@@ -160,7 +162,7 @@ int main(int argc, char *argv[])
     // Support-guided method for the choice of lambda
     if (suppguided)
     {
-        ref.findLambda2D(lambda, epsmin , eps);
+        ref.findLambda(lambda, epsmin , eps);
     }
 
     // Adapt alpha for the lambda adaptation -for 2D is it alpha^h or alpha^h^2?
@@ -205,11 +207,11 @@ int main(int argc, char *argv[])
         time.restart();
 
         if (suppguided)
-            ref.nextIteration(alpha,toll,tolerance, lambda, false, false, condcheck, dreg);
+            ref.nextIteration(alpha,toll,tolerance, lambda, false, false, condcheck, dreg, saveLogLambda);
         else if (errguided)
-            ref.nextIteration(alpha,toll,tolerance, lambda, false, true, condcheck, dreg);
+            ref.nextIteration(alpha,toll,tolerance, lambda, false, true, condcheck, dreg, saveLogLambda);
         else // given (input) lambda
-            ref.nextIteration(alpha,toll,tolerance, lambda, true, false, condcheck, dreg);
+            ref.nextIteration(alpha,toll,tolerance, lambda, true, false, condcheck, dreg, saveLogLambda);
 
         time.stop();
         gsInfo<<"Fitting time: "<< time <<"\n";
@@ -220,7 +222,7 @@ int main(int argc, char *argv[])
 
         table(0,i) = ref.result()->basis().getMinCellLength();
         table(1,i) = ref.maxPointError();
-        table(2,i) = ref.getL2errorTensor(errors);
+        table(2,i) = ref.getL2ApproxErrorMidpointUniform(errors);
         table(3,i) = 1.0* ref.numPointsBelow(tolerance)/errors.size();
         table(4,i) = ref.result()->basis().size();
         table(5,i) = ref.getRMSE(errors);
@@ -273,8 +275,9 @@ int main(int argc, char *argv[])
         extensions::gsWritePK_SHEET(*TP_spline, "result");
     }
 
-    // Saving last lambda:
-    ref.writeParaviewLog(lambda,"lambda", 50000, false);
+    if (saveLogLambda)
+        ref.writeParaviewLog(lambda,"lambda", 50000, false);
+
 
     // Write out lambda min and max
     real_t lambdamax(0);
