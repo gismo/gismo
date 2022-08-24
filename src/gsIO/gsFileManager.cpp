@@ -36,6 +36,10 @@
 #include <sys/syslimits.h>
 #endif
 
+#if defined __linux__
+#include <limits.h>
+#endif
+
 namespace gismo
 {
 
@@ -148,7 +152,7 @@ bool gsFileManager::isFullyQualified(const std::string& fn)
     // case "c:\\abc"
     if ( fn.size() > 2 && isalpha(fn[0]) && fn[1] == ':')
     {
-        for (int i = 0; i < getValidPathSeparators().length(); ++i)
+        for (size_t i = 0; i < getValidPathSeparators().length(); ++i)
         {
             valid = valid || (fn[2] == getValidPathSeparators()[i]);
         }
@@ -420,7 +424,14 @@ std::string gsFileManager::getExePath()
     GISMO_ASSERT(_fileExistsWithoutSearching(_temp),
         "The executable cannot be found where it is expected." );
     return getPath(std::string(_temp));
-#elif defined __linux__ // GCC, Clang
+#elif defined __linux__
+    char exePath[PATH_MAX];
+    ssize_t len = ::readlink("/proc/self/exe", exePath, sizeof(exePath));
+    if (len == -1 || len == sizeof(exePath))
+        len = 0;
+    exePath[len] = '\0';
+    return getPath(std::string(exePath));
+#elif defined __FreeBSD__ //https://stackoverflow.com/questions/1023306/finding-current-executables-path-without-proc-self-exe
     char exePath[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", exePath, sizeof(exePath));
     if (len == -1 || len == sizeof(exePath))

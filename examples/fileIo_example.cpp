@@ -111,6 +111,8 @@ int main(int argc, char *argv[])
 
   lookFor< gsPlanarDomain<> > (data) ;
 
+  lookFor< gsCurveLoop<> > (data) ;
+
   lookFor< gsTrimSurface<> > (data) ;
 
   lookFor< gsMultiPatch<> > (data) ;
@@ -145,7 +147,21 @@ int main(int argc, char *argv[])
       gsInfo<< "  Write back to mp.3dm\n";
       extensions::writeON_MultiPatch(*o);
   }
- 
+
+  if ( data.has< gsMesh<> >() )
+  {
+      gsInfo<<"* There is "<< data.count< gsMesh<> >() <<" "
+          <<data.type< gsMesh<> >()<<" "<< data.tag< gsMesh<> >()
+          <<" in the file.\n";
+
+      gsMesh<>::uPtr o = data.getFirst< gsMesh<> >();
+      gsInfo<< "  Read it ..\n";
+      gsInfo<< "  "<<*o ;
+
+      gsInfo<< "  Write back to mesh.3dm\n";
+      extensions::writeON_Mesh(*o,"mesh");
+  }
+
 #endif
 
 #ifdef GISMO_WITH_OCC

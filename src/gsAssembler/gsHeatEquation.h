@@ -12,7 +12,7 @@
 */
 
 #pragma once
-
+#include <gsAssembler/gsVisitorMass.h>
 
 namespace gismo
 {
@@ -43,7 +43,7 @@ public:
        m_stationary(&stationary), m_theta(0.5)
     {
         m_options.addReal("theta",
-        "Theta parameter determining the time integration scheme[0..1]", m_theta);
+        "Theta parameter determining the time integration scheme [0..1]", m_theta);
     }
 
 public:
@@ -208,7 +208,7 @@ void gsHeatEquation<T>::assembleMass()
 
     // Pre-allocate non-zero elements for each column of the
     // sparse matrix
-    m_system.reserve(m_bases[0], m_options, 0);// zero rhs's
+    m_system.reserve(m_bases[0], m_options, 1);// zero rhs's
 
     // Assemble mass integrals
     gsVisitorMass<T> mass;

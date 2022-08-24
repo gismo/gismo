@@ -13,7 +13,7 @@
 
 #include <gsCore/gsMultiBasis.h>
 
-namespace gismo 
+namespace gismo
 {
 
 template<class T>
@@ -80,7 +80,7 @@ void gsDofMapper::init( std::vector<const gsMultiBasis<T> *> const & bases)
     //i.e. bases[comp]->back().size() are equal for all comp
     else
     {
-      m_numFreeDofs.assign(numComp, (m_offset.back() + bases[0]->back().size())*nPatches); m_numFreeDofs.front()=0;
+      m_numFreeDofs.assign(numComp+1, (m_offset.back() + bases[0]->back().size())); m_numFreeDofs.front()=0;
     }
 
     m_numElimDofs.assign(numComp+1,0);
@@ -99,10 +99,10 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
     {
         if (unk == -1 || it->unknown() == unk) // special value -1 eliminates all BCs found
         {
-            GISMO_ASSERT(it->ps.patch < m_offset.size(),
+            GISMO_ASSERT(it->ps.patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a boundary condition is set on a patch id which does not exist.");
 
-            gsMatrix<unsigned> bnd = basis[it->ps.patch].boundary(it->ps.side());
+            gsMatrix<index_t> bnd = basis[it->ps.patch].boundary(it->ps.side());
             markBoundary(it->ps.patch, bnd);
         }
     }
@@ -113,7 +113,7 @@ void gsDofMapper::init(const gsMultiBasis<T>         &basis,
     {
         if (unk == -1 || it->unknown == unk)
         {
-            GISMO_ASSERT(it->patch < m_offset.size(),
+            GISMO_ASSERT(it->patch < static_cast<index_t>(m_offset.size()),
                          "Problem: a corner boundary condition is set on a patch id which does not exist.");
 
             eliminateDof(basis[it->patch].functionAtCorner(it->corner), it->patch);

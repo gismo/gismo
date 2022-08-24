@@ -1,0 +1,343 @@
+namespace gismo {
+/**
+
+\page ieti_example ieti_example.cpp
+
+We consider the Poisson boundary value problem (for simplicity here
+only with Dirichlet conditions):
+\f{eqnarray*}{
+                    -\Delta u &=& f \quad \text{in} \quad \Omega,         \\
+                            u &=& g \quad \text{on} \quad \partial\Omega.
+\f}
+Its variational form is: Find \f$ u\in V_g \f$ such that
+\f[
+    \int_\Omega \nabla u \nabla v d x = \int_\Omega f v dx
+\f]
+for all \f$ u\in V_0 \f$, which corresponds to the linear system
+\f[
+      A \underline u = \underline f.
+\f]
+
+The computational domain is a non-overlapping multi-patch domain:
+\f[
+      \overline{ \Omega } = \bigcup_{k=1}^K \overline{ \Omega_k }
+\f]
+\f[
+      \Omega_k \cap \Omega_l = \emptyset
+      \quad \text{ for all } k\not=l.
+\f]
+On each patch, we have a isogeometric function space \f$ V_k \f$. We
+assume that the function spaces are *fully matching*. The global
+function space is
+\f[
+        V_h = \{ v\in V \;:\;  v|_{\Omega_k} \in V_k \}
+\f]
+where \f$ V \f$ is the proper continuous space.
+
+After reading the command line arguments, we read in the geometry file and
+modify the geometry as desired:
+
+\snippet ieti_example.cpp Define Geometry
+\snippet ieti_example.cpp Define Geometry2
+
+Then, we set up the right-hand-side f and a \a gsBoundaryConditions
+object based on the command line arguments.
+
+\snippet ieti_example.cpp Define Source
+
+Then, we extract the basis from the multi patch object to obtain a
+multi basis.
+
+\snippet ieti_example.cpp Define Basis
+
+We set the spline degree and the grid size as desired.
+
+\snippet ieti_example.cpp Set degree and refine
+
+Now, we can discuss the IETI system.
+
+We are considering patch-wise formulations of the variational formulation:
+\f[
+    \int_{\Omega_k} \nabla u \nabla v d x = \int_{\Omega_k} f v dx
+\f]
+Each of these bilinear forms and linear forms lead to matrices and vectors
+\f[
+      A_k \qquad\text{and}\qquad \underline f_k.
+\f]
+
+Using the jump matrices \f$ B_k \f$, which are provided by the class
+\a gsIetiMapper, we obtain the following problem:
+
+\f[
+    \begin{pmatrix}
+        A_1 &     &      &     & B_1^\top \\
+            & A_2 &      &     & B_2^\top \\
+            &     &\ddots&     & \vdots   \\
+            &     &      & A_K & B_K^\top \\
+        B_1 & B_2 &\cdots& B_K &   0      \\
+    \end{pmatrix}
+    \begin{pmatrix}
+        \underline u_1 \\
+        \underline u_2 \\
+        \vdots         \\
+        \underline u_K \\
+        \underline \lambda
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+        \underline f_1 \\
+        \underline f_2 \\
+        \vdots         \\
+        \underline f_K \\
+        0
+    \end{pmatrix}
+\f]
+
+This is the kind of systems, the class \a gsIetiSystem is working with.
+The problem is that -- in general -- the matrices \f$ A_k \f$ are singular.
+To circumvent this problem, in FETI-dp / IETI-dp methods, we use primal
+degrees of freedom, like vertex values or edge averages.
+
+These primal dofs are handled by the classes \a gsPrimalSystem and again
+\a gsIetiMapper. The IETI mapper provides vectors \f$ c_k^{(i)} \f$ that
+realize the *constraint* that the primal dof is set to zero. For each
+patch, these *primal constraints* build a matrix \f$ C_k \f$. The IETI
+mapper also provides a vector of indices that associates each of these
+primal constraints to a (global) index referring to the primal dof.
+
+Finally, we obtain one subspace (the K+1st) that refers to the primal
+degrees of freedom.
+
+We have the following IETI system:
+\f[
+    \begin{pmatrix}
+       \tilde A_1 &            &             &                &  \tilde B_1^\top     \\
+                  & \tilde A_2 &             &                &  \tilde B_2^\top     \\
+                  &            &   \ddots    &                &  \vdots              \\
+                  &            &             & \tilde A_{K+1} &  \tilde B_{K+1}^\top \\
+       \tilde B_1 & \tilde B_2 &   \cdots    & \tilde B_{K+1} &     0                \\
+    \end{pmatrix}
+    \begin{pmatrix}
+        \underline{ \tilde u}_1     \\
+        \underline{ \tilde u}_2     \\
+        \vdots                      \\
+        \underline{ \tilde u}_{K+1} \\
+        \underline \lambda
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+        \underline{ \tilde f}_1     \\
+        \underline{ \tilde f}_2     \\
+        \vdots                     \\
+        \underline{ \tilde f}_{K+1} \\
+        0
+    \end{pmatrix},
+    \qquad (*)
+\f]
+which is passed to the class \a gsIetiSystem. For \f$ k=1,\ldots,K \f$, we have
+the local saddle point system
+\f[
+     \tilde{A}_k
+     =
+     \begin{pmatrix}
+           A_k   & C_k^\top \\
+           C_k   &  0
+      \end{pmatrix},
+\f]
+the extended jump matrix
+\f[
+     \tilde{B}_k
+     =
+     B_k (P_0^{(k)})^\top
+     =
+     \begin{pmatrix}
+         B_k   &   0_k
+     \end{pmatrix}
+\f]
+and the extended right-hand side
+\f[
+     \underline{\tilde f}_k
+     =
+     P_0^{(k)} \underline f_k
+     =
+     \begin{pmatrix}
+         \underline f_k \\ 0
+     \end{pmatrix}.
+\f]
+These modifications are provided by \a gsPrimalSystem. The class \a gsPrimalSystem
+moreover computes the energy minimizing basis functions and represents them as
+matrices \f$ \Psi_k = (P_c^{(k)})^\top \tilde{A}_k^{-1} R_c \f$, where
+\f$ R_c=(0,I)^\top \f$ and \f$ P_c=(I,0) \f$. It then computes
+\f[
+      \tilde A_{K+1} = \sum_{k=1}^K \Psi_k A_k \Psi_k^\top
+      \quad\text{and}\quad
+      \tilde B_{K+1} = \sum_{k=1}^K B_k \Psi_k^\top
+      \quad\text{and}\quad
+      \underline{\tilde f}_{K+1} = \sum_{k=1}^K \Psi_k \underline f_k.
+\f]
+
+By setting a corresponding flag, it is possible to eliminate the pointwise
+constraints. A constraint is pointwise the correspoding row of \f$ C_k \f$
+has only one non-zero entries. Typically, the corner values are pointwise
+constraints.
+
+Instead of directly solving the IETI-saddle point system (*), we solve the
+corresponding Schur complement system
+\f[
+      F \underline \lambda = \underline g,
+\f]
+where
+\f[
+    F = \sum_{k=1}^{K+1} \tilde B_k \tilde A_k^{-1} \tilde B_k^\top
+    \quad\text{and}\quad
+    \underline g = \sum_{k=1}^{K+1} \tilde B_k \tilde A_k^{-1} \underline{\tilde f}_k.
+\f]
+The Schur complement system is preconditioned with the scaled Dirichlet
+preconditioner
+\f[
+    M_{sD}
+    = \sum_{k=1}^{K} \hat B_k D_k^{-1} S_k D_k^{-1} \hat B_k^\top,
+\f]
+where \f$ S_k \f$ is the Schur complement of \f$ A_k \f$ (not: \f$\tilde A_k\f$)
+with respect to the dofs on the interfaces. \f$ \hat B_k \f$ is the restriction
+of \f$ B_k \f$ to the dofs on the interfaces. \f$ D_k \f$ is a scaling matrix, e.g.,
+based on multiplicity scaling. The class \a gsScaledDirichletPrec
+not only collects the contributions of the preconditioner; it also helps with
+restricting to the skeleton and computing the Schur complement.
+
+In the example file *ieti2_example.cpp*, we solve the saddle point system (*)
+with a MINRES solver, preconditioned with a block-diagonal preconditioner, where
+the last block is \f$ M_{sD} \f$.
+
+First, we set up the \a gsIetiMapper object, which helps us with assembling
+and keeping track of the dof indices.
+
+\snippet ieti_example.cpp Define Ieti Mapper
+
+For initializing the IETI mapper, it is necessary to provide a \a gsDofMapper
+for the global problem and the function values for the eliminated dofs
+(typically the Dirichlet conditions). If systems are considered, the method
+it is expected to have one IETI mapper per variable.
+
+For obtaining a \a gsDofMapper, we use the assembler:
+
+\snippet ieti_example.cpp Define global mapper
+
+Now we set the primal degrees of freedom. The following commands compute the
+(vectors that make up the) constraint matrices \f$ C_k \f$ and store them in
+the \a gsIetiMapper object.
+
+\snippet ieti_example.cpp Define primals
+
+The following command computes the jump matrices \f$ B_k \f$ and stores
+them in the \a gsIetiMapper object.
+
+\snippet ieti_example.cpp Define jumps
+
+Now, we set up the classes for the IETI system, the primal system, and the
+scaled Dirichlet preconditioner.
+
+\snippet ieti_example.cpp Setup
+
+Now, we assemble the linear system and the right-hand side on each patch using
+a for loop. We use local versions of the geometry (\a gsMultiPatch), the
+basis (\a gsMultiBasis) and the boundary conditions (\a gsBoundaryConditions).
+
+The function initFeSpace provides a new dof mapper and the Dirichlet data.
+This is necessary since it might happen that a 2d-patch touches the Dirichlet
+boundary just with a corner or that a 3d-patch touches the Dirichlet boundary
+with a corner or an edge. These cases are not covered by bc.getConditionsForPatch
+
+The example file *ieti2_example.cpp* shows how to assemble with a classical
+assembler.
+
+\snippet ieti_example.cpp Assemble
+
+Now, we tell the preconditioner about the local matrix \f$ A_k \f$, the local
+vector \f$ \underline f_k \f$ and the matrix \f$ B_k \f$. This is done before
+the class \a gsPrimalSystem modifies these objects. The following command
+does all necessary steps:
+
+\snippet ieti_example.cpp Patch to preconditioner
+
+This can also be done in a step-by-step way, for example if one does not want
+to use a sparse Cholesky solver (which requires symmetric positive definite
+problems and would be done by default). This is shown in *ieti2_example.cpp*.
+
+As next step, we treat the primal dofs. We first compute energy minimizing primal
+basis functions. Then the following commands amends the variables jumpMatrix,
+localMatrix, and localRhs, which hold \f$ B_k \f$, \f$ A_k \f$ and
+\f$ \underline f_k \f$ before calling the function and \f$ \tilde B_k \f$,
+\f$ \tilde A_k \f$, and \f$ \underline{\tilde f}_k \f$ thereafter. Finally, this
+function collects the contributions for \f$ \tilde B_{K+1} \f$,
+\f$ \tilde A_{K+1} \f$, and \f$ \underline{\tilde f}_{K+1} \f$ in the object.
+
+\snippet ieti_example.cpp Patch to primals
+
+This can also be done in a step-by-step way, for example if one does not want
+to use a sparse LU solver (which would be done by default). This is shown in
+the file *ieti2_example.cpp*.
+
+Now, we add \f$ \tilde B_k \f$, \f$ \tilde A_k \f$, and \f$ \underline{\tilde f}_k \f$
+to the IETI-system:
+
+\snippet ieti_example.cpp Patch to system
+
+Additionally, one can also provide a solver object that realizes \f$ \tilde A_k^{-1} \f$,
+possibly the one which has already been used for the setup of the bases for the primal
+doefs. By default, again, a LU solver would be used.
+
+\snippet ieti_example.cpp End of assembling loop
+
+Finally, we add \f$ \tilde B_{K+1} \f$, \f$ \tilde A_{K+1} \f$, and
+\f$ \underline{\tilde f}_{K+1} \f$ to the IETI-system:
+
+\snippet ieti_example.cpp Primal to system
+
+The \a gsScaledDirichletPrec can automatically compute the multiplicity scaling. Other
+scaling matrices can be manually defined.
+
+\snippet ieti_example.cpp Setup scaling
+
+Now, we compute the right-hand-side
+\f[
+    \underline g = \sum_{k=1}^{K+1} \tilde B_k \tilde A_k^{-1} \underline{\tilde f}_k.
+\f]
+
+\snippet ieti_example.cpp Setup rhs
+
+We choose a random initial guess.
+
+\snippet ieti_example.cpp Define initial guess
+
+As a next step, we solve the problem
+\f[
+      F \underline \lambda = \underline g
+\f]
+using the scaled Dirichlet preconditioner with a conjugate gradient solver.
+
+\snippet ieti_example.cpp Solver
+
+So far, we have only computed the Lagrange multipliers \f$ \underline \lambda \f$,
+from which we want to recover the solution.
+
+Here, we first compute the solutions \f$ \underline{\tilde u}_k \f$ for 
+\f$ k=1,\ldots,K+1 \f$. Here, the first K solutions refer to the patches and have
+homogenous values for the primal dofs. So, we distribute the primal dof values from the
+primal problem (= last subdomain) to the patches (=first K subdomains) and
+obtain the solutions \f$ \underline u_k \f$ for \f$ k=1,\ldots,K \f$. Then, finally, the
+IETI mapper is able to combine everything into one solution vector \f$ \underline u \f$.
+
+\snippet ieti_example.cpp Recover
+
+
+\section ieti_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/ieti_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include ieti_example.cpp
+
+*/
+
+}

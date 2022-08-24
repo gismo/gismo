@@ -165,30 +165,41 @@ public:
     index_t size() const { return m_knots.size() - m_p - 1 - m_periodic; }
 
     // Look at gsBasis class for a description
-    int numElements() const { return m_knots.numElements(); }
+    size_t numElements() const { return m_knots.numElements(); }
     using Base::numElements; //unhide
 
     // Look at gsBasis class for a description
-    int elementIndex(const gsVector<T> & u ) const;
+    size_t elementIndex(const gsVector<T> & u ) const;
 
     // Same as gsBasis::elementIndex but argument is a value instead of a vector
-    int elementIndex(T u ) const;
+    size_t elementIndex(T u ) const;
 
+    // Look at gsBasis class for a description
+    gsMatrix<T> elementInSupportOf(index_t j) const;
+    
     /// @brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
-    void elementSupport_into(const unsigned & i,
-                             gsMatrix<unsigned,1,2>& result) const
+    void elementSupport_into(const index_t i, gsMatrix<index_t,1,2>& result) const
     {
-        gsMatrix<unsigned> tmp_vec;
+        gsMatrix<index_t> tmp_vec;
         m_knots.supportIndex_into(i, tmp_vec);
-        result = tmp_vec;
+        result = tmp_vec.cwiseMax(0).cwiseMin(m_knots.numElements());
+    }
+
+    template <int _Rows>
+    gsMatrix<T> elementDom(const gsMatrix<index_t,_Rows,2> & box) const
+    {
+        gsMatrix<T> rvo(1,2);
+        rvo.at(0) = m_knots.uValue(box.at(0));
+        rvo.at(1) = m_knots.uValue(box.at(1));
+        return rvo;
     }
 
     // Look at gsBasis class for a description
-    const TensorSelf_t & component(unsigned i) const = 0;
+    const TensorSelf_t & component(short_t i) const = 0;
 
     // Look at gsBasis class for a description
-    TensorSelf_t & component(unsigned i) = 0;
+    TensorSelf_t & component(short_t i) = 0;
 
     /// @brief Returns the anchors (greville points) of the basis
     void anchors_into(gsMatrix<T> & result) const 
@@ -197,7 +208,7 @@ public:
     }
 
     /// @brief Returns the anchors (greville points) of the basis
-    void anchor_into(unsigned i, gsMatrix<T> & result) const 
+    void anchor_into(index_t i, gsMatrix<T> & result) const
     { 
         result.resize(1,1);
         result(0,0) = m_knots.greville(i);
@@ -208,16 +219,16 @@ public:
                       gsMesh<T> & mesh) const;
 
     // Look at gsBasis class for a description
-    void active_into(const gsMatrix<T> & u, gsMatrix<unsigned>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
 
     // Look at gsBasis class for a description
-    bool isActive(const unsigned i, const gsVector<T> & u) const;
+    bool isActive(const index_t i, const gsVector<T> & u) const;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> allBoundary( ) const ;
+    gsMatrix<index_t> allBoundary( ) const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<unsigned> boundaryOffset(boxSide const & s,unsigned offset) const;
+    gsMatrix<index_t> boundaryOffset(boxSide const & s,index_t offset) const;
 
 #ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s
@@ -229,18 +240,18 @@ public:
     gsMatrix<T> support() const ;
 
     // Look at gsBasis class for a description
-    gsMatrix<T> support( const unsigned & i ) const ;
+    gsMatrix<T> support(const index_t & i ) const ;
 
     /// @brief Only meaningfull for periodic basis: For basis members that have
     /// a twin, this function returns the other twin index, otherwise it
     /// returns the same index as the argument
-    unsigned twin(unsigned i) const ;
+    index_t twin(index_t i) const ;
 
     // Look at gsBasis class for a description
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
-    virtual void evalSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
     virtual void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
@@ -249,7 +260,7 @@ public:
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
-    void derivSingle_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
     void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
@@ -261,7 +272,7 @@ public:
     void deriv3_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
-    void deriv2Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description -- NEW SANDRA
     void deriv3Single_into(unsigned i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
@@ -306,7 +317,7 @@ public:
     std::string detail() const;
 
     // Look at gsBasis class for a description
-    virtual void evalDerSingle_into(unsigned i, const gsMatrix<T> & u, 
+    virtual void evalDerSingle_into(index_t i, const gsMatrix<T> & u,
                                     int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
@@ -314,7 +325,7 @@ public:
                                   std::vector<gsMatrix<T> >& result) const;
 
     // Look at gsBasis class for a description
-    virtual void evalAllDersSingle_into(unsigned i, const gsMatrix<T> & u, 
+    virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
@@ -354,12 +365,12 @@ public:
 
     /// @brief Returns the index of the first active (ie. non-zero) basis function at point u
     /// Takes into account non-clamped knots.
-    inline unsigned firstActive(T u) const { 
+    inline index_t firstActive(T u) const {
         return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p : 0 );
     }
 
     // Number of active functions at any point of the domain
-    inline unsigned numActive() const { return m_p + 1; }
+    inline index_t numActive() const { return m_p + 1; }
 
     // Look at gsBasis class for a description
     gsDomain<T> * domain() const { return const_cast<KnotVectorType *>(&m_knots); }
@@ -390,7 +401,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    void refineElements(std::vector<unsigned> const & elements)
+    void refineElements(std::vector<index_t> const & elements)
     { m_knots.refineSpans(elements); }
 
     // Look at gsBasis class for a description
@@ -529,7 +540,7 @@ public:
     }
 
     // Look at gsBasis class for a description
-    unsigned functionAtCorner(boxCorner const & c) const;
+    index_t functionAtCorner(boxCorner const & c) const;
 
     /// @brief Returns number of functions crossing the boundary of the knot vector.
     int numCrossingFunctions () const
@@ -594,8 +605,8 @@ public:
 
     void matchWith(const boundaryInterface & bi,
                    const gsBasis<T> & other,
-                   gsMatrix<unsigned> & bndThis,
-                   gsMatrix<unsigned> & bndOther) const;
+                   gsMatrix<index_t> & bndThis,
+                   gsMatrix<index_t> & bndOther) const;
 
 protected:
 
@@ -772,10 +783,10 @@ public:
     GISMO_CLONE_FUNCTION(gsBSplineBasis)
 
     // Look at gsBasis class for a description
-    Self_t & component(unsigned i);
+    Self_t & component(short_t i);
     
     // Look at gsBasis class for a description
-    const Self_t & component(unsigned i) const;
+    const Self_t & component(short_t i) const;
 
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const;
             

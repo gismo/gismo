@@ -107,11 +107,6 @@ public:
         return new gsPoissonPde<T>(m_domain.patch(np),bc,m_rhs);
     }
 
-    virtual T getCoeffForIETI(unsigned np) const {
-        if(np==0)
-            gsWarn<<"gsPoissonPde::getCoeffForIETI: Assume homogeneous coefficient alpha==1\n";
-        return 1;
-    }
 protected:
     using gsPde<T>::m_unknownDim;
     using gsPde<T>::m_domain;

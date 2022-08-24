@@ -1,9 +1,11 @@
 ######################################################################
-## gismoConfig.cmake --- G+SMO CMake Configuration file
+## gismoConfig.cmake --- G+Smo CMake Configuration file
 ## This file is part of the G+Smo library.
 ##
+## https://github.com/gismo/gismo
+## https://gismo.github.io/
+##
 ## Author: Angelos Mantzaflaris
-## Copyright (C) 2012 - 2018
 ######################################################################
 
 ######################################################################
@@ -29,14 +31,19 @@
 
 # These are IMPORTED targets created by gismoTargets.cmake (add TARGETS gsView ...)
 
-set(GISMO_VERSION        "@gismo_VERSION@")
-#set(GISMO_VERSION_MAJOR  "@gismo_VERSION_MAJOR@")
-#set(GISMO_VERSION_MINOR  "@gismo_VERSION_MINOR@")
-#set(GISMO_VERSION_BUILD  "@gismo_VERSION_BUILD@")
+set(GISMO_VERSION       "@gismo_VERSION@")
+set(GISMO_VERSION_MAJOR "@gismo_VERSION_MAJOR@")
+set(GISMO_VERSION_MINOR "@gismo_VERSION_MINOR@")
+set(GISMO_VERSION_PATCH "@gismo_VERSION_PATCH@")
+set(gismo_VERSION       "@gismo_VERSION@")
+set(gismo_VERSION_MAJOR "@gismo_VERSION_MAJOR@")
+set(gismo_VERSION_MINOR "@gismo_VERSION_MINOR@")
+set(gismo_VERSION_PATCH "@gismo_VERSION_PATCH@")
 
 set(GISMO_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
 set(GISMO_LIBRARY_DIR  "@CONF_LIB_DIRS@")
 set(GISMO_LIBRARIES    gismo)
+set(TARGET_ARCHITECTURE "@TARGET_ARCHITECTURE@")
 set(GISMO_MODULE_PATH  "@CONF_MODULE_PATH@")
 set(GISMO_USE_FILE     "@CONF_USE_FILE@")
 set(GISMO_BUILD_TYPE   "@CMAKE_BUILD_TYPE@")

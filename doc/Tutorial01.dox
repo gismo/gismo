@@ -228,7 +228,7 @@ Build type        | Characteristics
 \c Release        | The macro NDEBUG is defined, fully optimized
 
 The default build type (if not specified with the CMAKE_BUILD_TYPE
-setting) is RelWithDebInfo.  Contrarily to the default setting of
+setting) is Release.  Contrarily to the default setting of
 CMake, in \gismo the macro NDEBUG \b is defined in this
 setting. Therefore in RelWithDebInfo mode you still get a fairly good
 checking level, with the cost that the performance is reduced.
@@ -306,7 +306,7 @@ preferred:
 - \b index_t This is the number type used for all matrix and vector indices and sizes (eg. number of rows).
 - \b size_t This is the type used in the standard library, eg. for the size of an std::vector.
 
-Note that index_t and size_t might be different types, therefore case
+Note that index_t and size_t might be different types, therefore care
 should be taken when comparing their value.
 
 Many template classes (for instance matrices) have a default first

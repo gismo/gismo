@@ -465,7 +465,7 @@ void writeSingleGeometry(gsFunction<T> const& func,
                          gsMatrix<T> const& supp,
                          std::string const & fn, unsigned npts)
 {
-    const int n = func.targetDim();
+    int n = func.targetDim();
     const int d = func.domainDim();
 
     gsVector<T> a = supp.col(0);
@@ -488,6 +488,12 @@ void writeSingleGeometry(gsFunction<T> const& func,
 
         if ( n == 1 )
         {
+            if (d==3)
+            {
+                n = 4;
+                eval_func.conservativeResize(4,eval_func.cols() );
+            }
+
             //std::swap( eval_geo.row(d),  eval_geo.row(0) );
             eval_func.row(d) = eval_func.row(0);
             eval_func.topRows(d) = pts;
@@ -710,7 +716,27 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     if ( mesh ) // Output the underlying mesh
     {
         const std::string fileName = fn + "_mesh";
-        writeSingleCompMesh(Geo.basis(), Geo, fileName, npts);
+
+	int ptsPerEdge;
+
+	// If not using default, compute the resolution from npts.
+	if(npts!=8)
+	{
+	    const T evalPtsPerElem = npts * (1.0 / Geo.basis().numElements());
+
+	    // The following complicated formula should ensure similar
+	    // resolution of the mesh edges and the surface. The
+	    // additional multiplication by deg - 1 ensures quadratic
+	    // elements to be approximated by at least two lines etc.
+	    ptsPerEdge = cast<T,int>(
+            math::max(Geo.basis().maxDegree()-1, (index_t)1) * math::pow(evalPtsPerElem, T(1.0)/Geo.domainDim()) );
+	}
+	else
+	{
+	    ptsPerEdge = npts;
+	}
+
+        writeSingleCompMesh(Geo.basis(), Geo, fileName, ptsPerEdge);
         collection.addPart(fileName, ".vtp");
     }
 

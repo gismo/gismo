@@ -86,6 +86,12 @@ using codi::sinh;
 using codi::sqrt;
 using codi::tan;
 using codi::tanh;
+using codi::isnan;
+using codi::isfinite;
+using codi::isinf;
+//using codi::real;
+//using codi::imag;
+//using codi::conj;
 #endif
 
 #ifdef GISMO_WITH_UNUM
@@ -159,7 +165,7 @@ inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 }
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 template<>
 inline mpq_class nextafter(mpq_class x, mpq_class y)
 {
@@ -178,7 +184,7 @@ inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits,es> x,
 
 // inline real_t nextafter(real_t x, real_t y)
 // {
-// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_MPQ)
+// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_GMP)
 //     return x + ( y < x ? -1e-16 : 1e-16 );
 // #   elif defined(GISMO_WITH_UNUM)
 //     return sw::unum::nextafter(x,y);
@@ -265,6 +271,7 @@ using mpfr::cos;
 using mpfr::cosh;
 using mpfr::floor;
 using mpfr::log;
+using mpfr::log10;
 using mpfr::pow;
 using mpfr::sin;
 using mpfr::sinh;
@@ -282,7 +289,7 @@ using mpfr::isnan;
 
 #endif
 
-#ifdef GISMO_WITH_MPQ
+#ifdef GISMO_WITH_GMP
 // Math functions for GMP/mpq_class
 using ::abs;
 using ::acos;
@@ -294,7 +301,7 @@ using ::cos;
 using ::cosh;
 using ::exp;
 using ::floor;
-using ::log10;
+inline mpq_class log10(const mpq_class & a) { return log(a)/log(10); }
 using ::log;
 using ::pow;
 using ::sin;

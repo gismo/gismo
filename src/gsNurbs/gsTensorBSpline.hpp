@@ -174,7 +174,7 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         }
 
         // construct the object
-        //result = gsTensorBSpline<d-1,T>(*tbasis, give(coefs) );
+        //result = gsTensorBSpline<static_cast<short_t>(d-1),T>(*tbasis, give(coefs) );
         //result = BoundaryGeometry(*tbasis, give(coefs) );
         result = BoundaryGeometryType(*tbasis, coefs );
     }
@@ -288,7 +288,7 @@ void gsTensorBSpline<d,T>::degreeElevate(short_t const i, short_t const dir)
     this->basis().size_cwise(sz);
 
     swapTensorDirection(0, dir, sz, this->m_coefs);
-    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+    this->m_coefs.resize( sz[0], n * sz.template tail<static_cast<short_t>(d-1)>().prod() );
 
     bspline::degreeElevateBSpline(this->basis().component(dir), this->m_coefs, i);
     sz[0] = this->m_coefs.rows();
@@ -312,7 +312,7 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
     this->basis().size_cwise(sz);
 
     swapTensorDirection(0, dir, sz, this->m_coefs);
-    this->m_coefs.resize( sz[0], n * sz.template tail<d-1>().prod() );
+    this->m_coefs.resize( sz[0], n * sz.template tail<static_cast<short_t>(d-1)>().prod() );
 
     gsBoehm( this->basis().component(dir).knots(), this->coefs() , knot, i);
     sz[0] = this->m_coefs.rows();
@@ -516,6 +516,50 @@ void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left
     left.swapDirections(0,dir);
     right = gsTensorBSpline<d,T>(Basis(give(KVR)), give(coefR));
     right.swapDirections(0,dir);
+}
+
+
+template<short_t d, class T>
+std::vector<gsGeometry<T>* >
+gsTensorBSpline<d,T>::splitAtMult(index_t minMult, index_t dir) const
+{
+    GISMO_ASSERT( (dir >= -1) && (dir < static_cast<index_t>(d)),
+                  "Invalid basis component "<< dir <<" requested for splitting" );
+    std::vector<gsGeometry<T>* > result;
+
+    if (-1==dir)
+    {
+        std::vector<gsGeometry<T>* > tmpi, tmp;
+        result = this->splitAtMult(minMult,0);
+        for(short_t i=1; i<d;++i)
+        {
+            tmp.swap(result);
+            result.clear();
+            for(size_t j=0; j!=tmp.size();++j)
+            {
+                tmpi = static_cast<gsTensorBSpline<d,T>*>(tmp[j])
+                    ->splitAtMult(minMult,i);
+                delete tmp[j];
+                result.insert( result.end(), tmpi.begin(), tmpi.end() );
+            }
+        }
+        return result;
+    }
+
+    gsTensorBSpline<d,T> * tmp = new gsTensorBSpline<d,T>(*this);
+    //iterate over knots
+    for (typename KnotVectorType::uiterator it = knots(dir).ubegin()+1;
+         it!=knots(dir).uend()-1; ++it)
+    {
+        if (it.multiplicity()>=minMult)
+        {
+            gsTensorBSpline<d,T> * o = new gsTensorBSpline<d,T>();
+            tmp->splitAt(dir,*it,*o,*tmp);
+            result.push_back(o);
+        }
+    }
+    result.push_back(tmp);
+    return result;
 }
 
 

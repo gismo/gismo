@@ -139,7 +139,7 @@ void gsFittingRWF<d,T>::applySmoothing(const gsGeometry<T>& lambda, gsSparseMatr
     gsGaussRule<T> QuRule( numNodes ); // Reference Quadrature rule
     gsMatrix<T> quNodes, localA;
     gsVector<T> quWeights;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     gsMatrix<T> reg;
     gsMatrix<T> derAll;
 
@@ -229,7 +229,7 @@ void gsFittingRWF<d,T>::findLambda(gsGeometry<T> &result, T l_min, T l_max)
     }
 
     // Find coefficients which have data in their support
-    gsMatrix<unsigned> actives_new;
+    gsMatrix<index_t> actives_new;
     gsMatrix<real_t> evals_new;
     for (index_t i=0; i< this->m_param_values.cols(); i++)
     {
@@ -368,7 +368,7 @@ void gsFittingRWFErrorGuided<d, T>::DecreaseLambdaErrorGuided(gsGeometry<T>& lam
         }
     }
     std::set<index_t> coefsToDecrease;
-    gsMatrix<unsigned> actives;
+    gsMatrix<index_t> actives;
     for (index_t i=0; i< paramsWhereErrTooBig.cols(); i++)
     {
         lambda.basis().active_into(paramsWhereErrTooBig.col(i), actives);

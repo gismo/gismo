@@ -62,10 +62,10 @@ public:
     typedef memory::unique_ptr< gsTensorBSpline > uPtr;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::Geometry BoundaryGeometryType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Geometry BoundaryGeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis BoundaryBasisType;
 
 public:
 
@@ -242,7 +242,7 @@ public:
 
 public:
 
-    /// Constucts an isoparametric slice of this tensorBSpline by fixing
+    /// Constructs an isoparametric slice of this tensorBSpline by fixing
     /// \a par in direction \a dir_fixed. The resulting tensorBSpline has
     /// one less dimension and is given back in \a result.
     void slice(index_t dir_fixed,T par,BoundaryGeometryType & result) const;
@@ -251,6 +251,10 @@ public:
     /// in 2^d parts, by calling splitAt() for each direction.
     /// The function automatically searches for the midpoint the corresponding knot vector.
     std::vector<gsGeometry<T>* > uniformSplit(index_t dir = -1) const;
+
+    /// Split the patch into smaller patches at the position of all
+    /// knots with multiplicity at least \a minMult
+    std::vector<gsGeometry<T>* > splitAtMult(index_t minMult = 1, index_t dir = -1) const;
 
     /// Splits the geometry into two pieces (\a left, \a right) along direction \a dir at \a xi. The splitting
     /// is performed by increasing the multiplicity of knot \a xi to p+1, or if \a xi does not exist as knot,

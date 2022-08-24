@@ -204,8 +204,7 @@ public:
     std::ostream& print( std::ostream& os ) const;
 
     /// Dimension of the parameter domain (must match for all bases).
-    short_t dim() const
-    { return m_bases[0]->dim();}
+    short_t dim() const { return m_bases[0]->dim();}
 
     /// @brief Returns the polynomial degree of basis \a i in component \a j,
     /// if the basis is of polynomial or piecewise polynomial type.
@@ -346,7 +345,8 @@ public:
     /// grid functions.
     ///
     /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
-    /// the \a assemblerOptions have to be provided
+    /// the \a assemblerOptions have to be provided. By deault, the boundary conditions for
+    /// unknown 0 are chosen. Use the parameter unk to choose another one.
     ///
     /// \sa gsMultiBasis::uniformRefine
     void uniformRefine_withTransfer(
@@ -354,7 +354,8 @@ public:
         const gsBoundaryConditions<T>& boundaryConditions,
         const gsOptionList& assemblerOptions,
         int numKnots = 1,
-        int mul = 1
+        int mul = 1,
+        index_t unk = 0
         );
 
     /// @brief Refine the component \a comp of every basis uniformly
@@ -377,7 +378,7 @@ public:
     /// on patch \em k.
     ///
     /// See gsHTensorBasis::refineElements() for further documentation.
-    void refineElements(int k, std::vector<unsigned> const & boxes)
+    void refineElements(int k, std::vector<index_t> const & boxes)
     {
         m_bases[k]->refineElements(boxes);
     }
@@ -411,14 +412,16 @@ public:
     /// grid functions.
     ///
     /// For computing the transfer matrix (but not for refinement), the \a boundaryConditions and
-    /// the \a assemblerOptions have to be provided
+    /// the \a assemblerOptions have to be provided. By deault, the boundary conditions for
+    /// unknown 0 are chosen. Use the parameter unk to choose another one.
     ///
     /// \sa gsMultiBasis::uniformCoarsen
     void uniformCoarsen_withTransfer(
         gsSparseMatrix<T, RowMajor>& transfer,
         const gsBoundaryConditions<T>& boundaryConditions,
         const gsOptionList& assemblerOptions,
-        int numKnots = 1
+        int numKnots = 1,
+        index_t unk = 0
         );
 
     /// @brief Returns the basis that corresponds to the component
@@ -435,10 +438,10 @@ public:
     typename gsBasis<T>::uPtr componentBasis_withIndices(
         patchComponent pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower = true
     ) const;
-    
+
     /// @brief Returns the bases that correspond to the components
     ///
     /// @param pc        The components
@@ -449,7 +452,7 @@ public:
     std::vector<typename gsBasis<T>::uPtr> componentBasis_withIndices(
         const std::vector<patchComponent>& pc,
         const gsDofMapper& dm,
-        gsMatrix<unsigned>& indices,
+        gsMatrix<index_t>& indices,
         bool no_lower = true
     ) const;
 
@@ -521,10 +524,10 @@ public:
      *
      * Is called by repairInterface(), templated over dimension.
      */
-    template<int d>
+    template<short_t d>
     bool repairInterfaceFindElements( const boundaryInterface & bi,
-                                      std::vector<unsigned> & refEltsFirst,
-                                      std::vector<unsigned> & refEltsSecond );
+                                      std::vector<index_t> & refEltsFirst,
+                                      std::vector<index_t> & refEltsSecond );
 
     /// @brief Elevate the degree of every basis by the given amount. (keeping the smoothness)
     void degreeElevate(short_t const i = 1, short_t const dir = -1)

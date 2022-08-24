@@ -46,7 +46,7 @@ public:
 public:
 
     /// dimension of the domain
-    virtual int dim() const
+    virtual short_t dim() const
     { gsWarn << "gsDomain: dimension() not defined at "<< *this << "\n"; return 0; }
 
     /// Returns a bounding box for the domain

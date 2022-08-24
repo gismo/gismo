@@ -206,11 +206,11 @@ gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z)
 */
 
 template<class T> typename gsNurbsCreator<T>::BSplinePtr
-gsNurbsCreator<T>::BSplineUnitInterval(int deg)
+gsNurbsCreator<T>::BSplineUnitInterval(short_t deg)
 {
     gsKnotVector<T> KV(0,1, 0,deg+1);
     gsMatrix<T> C(deg+1, 1);
-    for (int i = 0; i <= deg; ++i)
+    for (short_t i = 0; i <= deg; ++i)
         C(i) = i / static_cast<T>(deg);
     return BSplinePtr(new gsBSpline<T>(KV, give(C)));
 }
@@ -344,7 +344,7 @@ gsNurbsCreator<T>::BSplineSquare( gsMatrix<T> const & Box)
 
 // The unit square represented as a tensor B-spline of degree \a deg
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
-gsNurbsCreator<T>::BSplineSquare(int deg, T scale)
+gsNurbsCreator<T>::BSplineSquareDeg(short_t deg, T scale)
 {
     GISMO_ASSERT(deg>0,"Degree must be at least one.");
     TensorBSpline2Ptr res = BSplineSquare(scale, 0.0, 0.0);
@@ -376,7 +376,7 @@ gsNurbsCreator<T>::BSplineCube( T const & r, T const & x,
 //
 /// The unit cube represented as a tensor B-spline of degree \a deg
 template<class T> typename gsNurbsCreator<T>::TensorBSpline3Ptr
-gsNurbsCreator<T>::BSplineCube(int deg)
+gsNurbsCreator<T>::BSplineCube(short_t deg)
 {
     const int n = (deg + 1) * (deg + 1) * (deg + 1);        // number of basis functions
 
@@ -475,7 +475,7 @@ gsNurbsCreator<T>::NurbsQuarterAnnulus( T const & r0, T const & r1)
 
 /// Inexact annulus using B-splines
 template<class T> typename gsNurbsCreator<T>::GeometryPtr
-gsNurbsCreator<T>::BSplineQuarterAnnulus(int const & deg)
+gsNurbsCreator<T>::BSplineQuarterAnnulus(const short_t & deg)
 {
     GeometryPtr quann = gsNurbsCreator<T>::NurbsQuarterAnnulus();
 
