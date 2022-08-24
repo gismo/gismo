@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     T_tbasis.uniformRefine( (1<<numURef)-1 );
 
     // Create hierarchical refinement object
-    gsFittingRWF<2, real_t> ref( uv, xyz, T_tbasis);
+    gsFittingRWFErrorGuided<2, real_t> ref( uv, xyz, T_tbasis);
 
     gsInfo << "Fitting Basis: " << ref.getBasis() << std::endl;
     gsInfo << "Lambda Basis: " << lambda << std::endl;
@@ -207,11 +207,11 @@ int main(int argc, char *argv[])
         time.restart();
 
         if (suppguided)
-            ref.nextIteration(alpha,toll,tolerance, lambda, false, false, condcheck, dreg, saveLogLambda);
+            ref.gsFittingRWF<2,real_t>::nextIteration(alpha,toll,tolerance, lambda, false, condcheck, dreg, saveLogLambda);
         else if (errguided)
             ref.nextIteration(alpha,toll,tolerance, lambda, false, true, condcheck, dreg, saveLogLambda);
         else // given (input) lambda
-            ref.nextIteration(alpha,toll,tolerance, lambda, true, false, condcheck, dreg, saveLogLambda);
+            ref.gsFittingRWF<2,real_t>::nextIteration(alpha,toll,tolerance, lambda, true, condcheck, dreg, saveLogLambda);
 
         time.stop();
         gsInfo<<"Fitting time: "<< time <<"\n";
@@ -275,8 +275,9 @@ int main(int argc, char *argv[])
         extensions::gsWritePK_SHEET(*TP_spline, "result");
     }
 
-    if (saveLogLambda)
-        ref.writeParaviewLog(lambda,"lambda", 50000, false);
+    // TODO
+//    if (saveLogLambda)
+//        ref.writeParaviewLog(lambda,"lambda", 50000, false);
 
 
     // Write out lambda min and max

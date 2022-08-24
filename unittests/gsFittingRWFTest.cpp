@@ -28,7 +28,7 @@ SUITE(gsFittingRWFTest)
         gsKnotVector<> v_knots (0, 1, 0, 4);
         gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );
         T_tbasis.uniformRefine( (1<<numURef)-1 );
-        gsFittingRWF<2,real_t> ref( uv, xyz, T_tbasis);
+        gsFittingRWFErrorGuided<2,real_t> ref( uv, xyz, T_tbasis);
 
         //build lambda
         gsFileData<> lbd_in("fitting/01lambda_3D-04.xml");
@@ -84,7 +84,7 @@ SUITE(gsFittingRWFTest)
         alpha = math::pow(alpha,lambda.basis().getMaxCellLength()/(lambda.basis().support().coeff(1)-lambda.basis().support().coeff(0)));
 
         for(index_t i=0; i < iter; i++)
-            ref.nextIteration(alpha, toll, tolerance, lambda, false, false, condcheck, 2, false);
+            ref.nextIteration(alpha, toll, tolerance, lambda, false, condcheck, 2, false);
 
         real_t maxerr = ref.maxPointError();
 
@@ -113,12 +113,12 @@ SUITE(gsFittingRWFTest)
         gsKnotVector<> u_knots (0, 1, 32, 4);
         gsBSplineBasis<>basis( u_knots );
         basis.uniformRefine( (1<<numURef)-1 );
-        gsFittingRWF<1,real_t> ref( uv, xyz, basis);
+        gsFittingRWFErrorGuided<1,real_t> ref( uv, xyz, basis);
 
         //build lambda
-        gsBSpline<> lambda;
+        gsTensorBSpline<1,real_t> lambda;
         gsFileData<> lbd_in("fitting/01lambda_1D-02.xml");
-        lbd_in.getId<gsBSpline<> >(0, lambda );
+        lbd_in.getId<gsTensorBSpline<1,real_t> >(0, lambda );
         lambda.uniformRefine(lknots);
         lambda.uniformRefine((1<<numLRef)-1);
 
