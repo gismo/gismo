@@ -9,6 +9,9 @@ namespace gismo
 {
     CLASS_TEMPLATE_INST gsBasis<real_t>;
 
+TEMPLATE_INST
+std::vector<gsSparseMatrix<real_t>> collocationMatrix1(const gsBasis<real_t> & b, const gsMatrix<real_t> & u);
+
 #ifdef GISMO_BUILD_PYBIND11
 
 namespace py = pybind11;
@@ -33,6 +36,14 @@ void pybind11_init_gsBasis(py::module &m)
     .def("numElements", static_cast<size_t (Class::*)() const> ( &Class::numElements), "Number of elements")
     .def("component", static_cast<gsBasis<real_t> & (Class::*)(short_t ) > ( &Class::component), "Return the basis of component",py::return_value_policy::reference)
     ;
+}
+
+
+void pybind11_init_PPN(pybind11::module &m)
+{
+    pybind11::module ppn = m.def_submodule("ppn");
+    // .def("dim", &Class::dim, "Returns the dimension of the basis")
+    ppn.def("collocationMatrix1", &gismo::collocationMatrix1<real_t>, "returns the collocation matrix and its derivatives.");
 }
 
 #endif
