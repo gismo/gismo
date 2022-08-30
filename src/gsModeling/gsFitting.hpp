@@ -143,7 +143,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
-    gsMatrix<index_t> actives;
+    gsMatrix<index_t> actives;    
 
     for (index_t h = 0; h < num_patches; h++ )
     {
