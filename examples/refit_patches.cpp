@@ -76,12 +76,13 @@ int main(int argc, char *argv[])
     // todo: mp = mp0->approximateLinearly();
     
     // STEP 1: Get curve network with merged linear interfaces
+    gsInfo<<"Loading curve network...";
     mp.constructInterfaceRep();
     mp.constructBoundaryRep();
     auto & irep = mp.interfaceRep();
     auto & brep = mp.boundaryRep();
-    gsInfo <<" irep "<< irep.size() <<" \n" ;
-    gsInfo <<" brep "<< brep.size() <<" \n" ;
+    gsDebug <<" irep "<< irep.size() <<" \n" ;
+    gsDebug <<" brep "<< brep.size() <<" \n" ;
 
     // outputing...
     gsMultiPatch<> crv_net;
@@ -95,9 +96,11 @@ int main(int argc, char *argv[])
     // gsInfo <<"Resulting file is written out to linear_output.xml\n" ;
     gsWriteParaview(crv_net,"crv_net",1000,true);
     //end outputing
+    gsInfo<<"Finished\n";
     
     //STEP 3: Fit curve network with B-splines of degree \a d and \a k interior knots
     //parametrizePts
+    gsInfo<<"Making boundary representation with fitted interfaces...";
     gsKnotVector<> kv(0, 1, nknots, degree+1, 1, degree);
     gsBSplineBasis<> fbasis(kv);
     gsFitting<> cfit;
@@ -121,16 +124,6 @@ int main(int argc, char *argv[])
     index_t k=0;
     for (auto it = irep.begin(); it!=irep.end(); ++it, k++)
     {
-
-        gsDebugVar(it->first.first().patch);
-        gsDebugVar(it->first.first().side());
-        gsDebugVar(it->first.second().patch);
-        gsDebugVar(it->first.second().side());
-        gsDebugVar(it->first.dirOrientation());
-
-        gsDebugVar(it->first.first());
-        gsDebugVar(it->first.second());
-
         gsMatrix<index_t> bndThis,bndOther;
 
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
@@ -155,10 +148,6 @@ int main(int argc, char *argv[])
         cfit.compute();
 
         sbasis.matchWith(it->first,sbasis,bndThis,bndOther);
-        gsDebugVar(bndThis);
-        gsDebugVar(bndOther);
-
-
         // pbdr[it->first.first() .patch].patch(it->first.first() .side()-1) = *cfit.result();
         // pbdr[it->first.second().patch].patch(it->first.second().side()-1) = *cfit.result(); // flip this?
 
@@ -178,7 +167,6 @@ int main(int argc, char *argv[])
     for (auto it = brep.begin(); it!=brep.end(); ++it)
     {
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
-        gsDebugVar(it->first);
         // note: free to choose a parameterization, here we just take the knots
         uv  = crv.knots().asMatrix().middleCols(1,crv.numCoefs());
         xyz = crv.coefs().transpose();
@@ -193,6 +181,11 @@ int main(int argc, char *argv[])
         cfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
         cfit.compute();
+        cfit.computeErrors();
+        real_t tol = 1e-1;
+        if (cfit.maxPointError()> tol)
+            gsWarn<<"Error of curve fit is large: "<<cfit.maxPointError()<<">"<<tol<<"\n";
+
         gsMatrix<index_t> bndThis = sbasis.boundary(it->first.side());
         pbdr[it->first .patch].first.at(it->first .side()-1) = bndThis;
         for (index_t k=0; k!=bndThis.rows(); k++)
@@ -203,6 +196,7 @@ int main(int argc, char *argv[])
     gsWriteParaview(crv_net,"crv_fit",1000,false,false);
     gsMatrix<> coefs = crv_net.patch(1).coefs().transpose();
     gsWriteParaviewPoints(coefs,"crv_fit_pts");
+    gsInfo<<"Finished\n";
 
     // fd.clear();
     // fd<< crv_net ;
@@ -212,31 +206,18 @@ int main(int argc, char *argv[])
     gsFitting<> sfit;
     gsMultiPatch<> mp_res;
     //STEP 4: fit interior points of each patch with boundary constraints being the curves..
+    gsInfo<<"Fitting surface...";
     for (size_t p=0; p!=pbdr.size(); p++)
     {
         std::vector<index_t> prescribedDoFs;
         std::vector<gsMatrix<>> prescibedCoefs;
 
-        // gsPatchGenerator<real_t> generator(pbdr.at(p));
-        // gsMatrix<> coefs;
-        // generator.preparePatch(sbasis,coefs);
-        // gsMatrix<index_t> bdr_idx = sbasis.allBoundary();
-
-        // for (index_t k=0; k!=bdr_idx.size(); k++)
-        // {
-        //     prescribedDoFs.push_back(bdr_idx(k,0));
-        //     prescibedCoefs.push_back(coefs.row(bdr_idx(k,0)));
-        // }
-
         for (index_t s=0; s!=pbdr.at(p).first.size(); s++)
         {
-            gsDebugVar(s);
             for (index_t k=0; k!=pbdr.at(p).first.at(s).size(); k++)
             {
                 index_t index = (pbdr.at(p).first.at(s) )(k,0);
-                gsDebugVar(index);
                 prescribedDoFs.push_back(index);
-                // gsDebugVar((pbdr.at(p).second).row(index));
                 prescibedCoefs.push_back((pbdr.at(p).second).row(index));
             }
         }
@@ -245,24 +226,40 @@ int main(int argc, char *argv[])
         uv  = mp_par.patch(p).coefs().transpose();
         xyz = mp.patch(p).coefs().transpose();
         sfit = gsFitting<>(uv,xyz,sbasis);
-
-        // std::vector<gsGeometry<real_t> * > prescribedCurves;
-        // std::vector<boxSide> prescribedSides;
-
-        // for (index_t s=0; s!=4; s++) //sides
-        // {
-        //     prescribedSides.push_back(boxSide(s+1));
-        //     prescribedCurves.push_back(&pbdr[p].patch(s));
-        // }
-        // sfit.setConstraints(prescribedSides, prescribedCurves);
         sfit.setConstraints(prescribedDoFs,prescibedCoefs);
-
         sfit.compute(lambda);
+        real_t tol = 1e-1;
+        if (cfit.maxPointError()> tol)
+            gsWarn<<"Error of surface fit is large: "<<cfit.maxPointError()<<">"<<tol<<"\n";
+
+        if (sfit.result()==NULL)
+        {
+            // gsMultiPatch<> tmp_net;
+            // for (index_t s=0; s!=pbdr.at(p).first.size(); s++)
+            // {
+            //     for (index_t k=0; k!=pbdr.at(p).first.at(s).size(); k++)
+            //     {
+            //         index_t index = (pbdr.at(p).first.at(s) )(k,0);
+            //         prescribedDoFs.push_back(index);
+            //         prescibedCoefs.push_back((pbdr.at(p).second).row(index));
+            //     }
+            // }
+
+            // for (index_t s=0; s!=pbdr.at(p).first.size(); s++)
+            // {
+            //     tmp_net.addPatch(fbasis.makeGeometry(pbdr.at(p)))
+            // }
+            gsWriteParaviewPoints(xyz,"points");
+            gsWriteParaview(mp.patch(p),"geom");
+            GISMO_ERROR("Fit failed for patch "<<p<<"! See net.pvd for the curve net and points.pvd for the points.");
+        }
+
         gsWriteParaview(*sfit.result(),"fit");
         mp_res.addPatch(*sfit.result());
     }
-   
     gsWriteParaview(mp_res,"final",1000,true);
+    gsWrite<>(mp_res,"final");
+    gsInfo<<"Finished\n";
 
     return EXIT_SUCCESS;
 }
