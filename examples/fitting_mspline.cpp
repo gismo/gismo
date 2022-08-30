@@ -24,11 +24,11 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
     bool plot = false;
-    std::string filename = "fitting/face.xml";
+    std::string filename = "fitting/chess.xml";
 
     int np = 700;
     real_t lambda = 0;
-    std::string fn = "fitting/deepdrawingC.xml";
+    std::string fn = "fitting/acc_chess_ptcloud.xml";
 
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
         "file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. "
