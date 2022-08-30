@@ -43,10 +43,19 @@ int main(int argc, char* argv[])
 
     gsFileData<> fd_in(fn);
     gsMatrix<> Mpar, fval;
-    gsMatrix<> offset;
+    gsMatrix<index_t> offset, pId;
     fd_in.getId<gsMatrix<> >(0, Mpar);
     fd_in.getId<gsMatrix<> >(1, fval);
-    fd_in.getId<gsMatrix<> >(2, offset);
+    if (fd_in.hasId(2))
+    {
+        fd_in.getId<gsMatrix<index_t> >(2, offset);
+    }
+    if (fd_in.hasId(3))
+    {
+        fd_in.getId<gsMatrix<index_t> >(3, pId);
+
+    }
+    
 
     // gsVector<index_t>(offset);
     
