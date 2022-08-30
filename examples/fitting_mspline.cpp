@@ -1,13 +1,21 @@
-/// gsFitting_general.cpp
-/// Author:Gabor Kiss
-/// for testing the class gsFitting
+/*  @file fitting_msplines.cpp
+
+    @brief Implementation of point cloud data fitting with
+           multipatch splines functions
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author: M. Marsala
+
+*/
 
 #include <iostream>
 #include <time.h>
-
 #include <gismo.h>
-
-
 
 
 using namespace gismo;
@@ -65,7 +73,7 @@ int main(int argc, char* argv[])
 
     //create the fitting object
     gsInfo << "//////////////////////////////////////////////////////////" << "\n";
-    gsInfo << "Creating the multipatch fitting object" << "\n";
+    gsInfo << "///////   Creating the multipatch fitting object   ///////" << "\n";
     gsInfo << "//////////////////////////////////////////////////////////" << "\n";
 
 
