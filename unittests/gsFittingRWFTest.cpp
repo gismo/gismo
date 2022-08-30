@@ -124,7 +124,7 @@ SUITE(gsFittingRWFTest)
 
         // compute alpha
         // const std::vector<real_t> & errors = ref.pointWiseErrors();
-        alpha = math::pow(alpha,lambda.basis().getMaxCellLength()/(lambda.basis().support().coeff(1)-lambda.basis().support().coeff(0)));
+        alpha = math::pow(alpha,lambda.basis().getMaxCellLength());
 
         for(index_t i=0; i < iter; i++)
             ref.nextIteration(alpha, toll, tolerance, lambda, false, true, condcheck, 2, false);
