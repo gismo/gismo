@@ -78,6 +78,7 @@ namespace py = pybind11;
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
       
       .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Get gsMultiPatch to the filedata.")
+      .def("getAll", static_cast<std::vector< memory::unique_ptr<gsGeometry<real_t>> > (Class::*)() const > (&Class::getAll<gsGeometry<real_t>>), "Get gsGeometry to the filedata.")
 
       // Work around to obtain the matrix from Filedata. Standard way is not working!
       .def("getMatrix", &getMatrix, "Get any first gsMatrix.")
