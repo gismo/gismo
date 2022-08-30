@@ -583,7 +583,7 @@ public:
     //virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1)
 
     // Refine the basis uniformly and adjust the given matrix of coefficients accordingly
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir = -1);
 
     // Refine the basis and adjust the given matrix of coefficients accordingly
     void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);

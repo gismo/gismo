@@ -341,7 +341,7 @@ public:
 
     /// Refine the basis uniformly and perform knot refinement for the
     /// given coefficient vector
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, int mul=1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, int mul=1, int dir=-1);
 
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones

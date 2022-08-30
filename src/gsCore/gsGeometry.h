@@ -479,9 +479,9 @@ public:
     /// @{
 
     /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1) // todo: int dir = -1
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1) // todo: int dir = -1
     {
-        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
+        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
     }
 
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
