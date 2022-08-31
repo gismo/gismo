@@ -1,4 +1,4 @@
-/** @file gsFitPatches.cpp
+/** @file refit_patches.cpp
 
     @brief Computes patches from structured (tensor-product) data samples by fitting.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): H.M. Verhelst, A. Mantzaflaris
 */
 
 #include <gismo.h>
@@ -16,13 +16,96 @@
 
 using namespace gismo;
 
+/**
+ * @brief      { function_description }
+ *
+ * @param[in]  xyz    The xyz
+ * @param[in]  alpha  The alpha
+ *
+ * @tparam     T      { description }
+ *
+ * @return     { description_of_the_return_value }
+ */
+template<class T>
+gsMatrix<T> parameterize_points1D(const gsMatrix<T> & xyz, T alpha = 0.5)
+{
+    index_t N = xyz.cols();
+    gsMatrix<T> uv(1,N);
+
+    uv(0,0)   = 0;
+    uv(0,N-1) = 1;
+    std::vector<T> distances(N-1);
+    for (index_t k=1; k!=N; k++)
+        distances.at(k-1) = std::pow((xyz.col(k)-xyz.col(k-1)).norm(),alpha);
+
+    T d = std::accumulate(distances.begin(),distances.end(),0.0);
+    for (index_t k=1; k!=N-1; k++)
+        uv(0,k) = uv(0,k-1) + distances.at(k) / d;
+
+    return uv;
+}
+
+
+/**
+ * @brief      Parameterizes a gridded surface
+ *
+ * @param[in]  bbasis  A linear basis that has a basis function for each grid point
+ * @param[in]  xyz     The xyz locations of the points
+ * @param[in]  alpha   The alpha
+ *
+ * @tparam     T       { description }
+ *
+ * @return     { description_of_the_return_value }
+ */
+template<class T>
+gsMatrix<T> parameterize_points2D(const gsTensorBSplineBasis<2,real_t> & bbasis, const gsMatrix<T> & xyz, T alpha = 0.5)
+{
+    gsMatrix<T> uv(2,xyz.cols());
+    gsMatrix<index_t> slice;
+    gsMatrix<T> tmp_coefs;
+    gsMatrix<T> u_mat(bbasis.size(0),bbasis.size(1));
+    gsMatrix<T> v_mat(bbasis.size(0),bbasis.size(1));
+    for(index_t k=0; k!=bbasis.size(0); k++)
+    {
+        slice = bbasis.coefSlice(0,k);
+        tmp_coefs.resize(xyz.rows(),slice.rows());
+        for (index_t c=0; c!=slice.rows(); c++)
+            tmp_coefs.col(c) = xyz.col(slice(c,0));
+
+        u_mat.row(k) = parameterize_points1D(tmp_coefs,alpha);
+    }
+    u_mat.array() /= u_mat.rows();
+    u_mat = u_mat.colwise().sum(); // takes the sum of the rows for each column
+
+    for(index_t k=0; k!=bbasis.size(1); k++)
+    {
+        slice = bbasis.coefSlice(1,k);
+        tmp_coefs.resize(3,slice.rows());
+        for (index_t c=0; c!=slice.rows(); c++)
+            tmp_coefs.col(c) = xyz.col(slice(c,0));
+        v_mat.col(k) = parameterize_points1D(tmp_coefs,alpha).transpose();
+    }
+    v_mat.array() /= v_mat.cols();
+    v_mat = v_mat.rowwise().sum();
+
+    for (index_t i=0; i!=u_mat.cols(); i++)
+        for (index_t j=0; j!=v_mat.rows(); j++)
+        {
+            uv.col(bbasis.index(j,i))<<v_mat(j,0),u_mat(0,i);
+        }
+    return uv;
+}
+
 int main(int argc, char *argv[])
 {
     std::string filename("domain2d/yeti_mp2.xml");
+    bool plot = false;
     real_t tol = 1e-5;
     index_t nknots = 5, degree = 3;
     index_t npts = 100;
     real_t lambda = 0;
+    // real_t gtol = 1e-6;
+    // bool reparam = false, gaps = true;
 
     gsCmdLine cmd("Computes patches from structured (tensor-product) data samples by fitting.");
     cmd.addPlainString("filename", "File containing multipatch input (.xml).", filename);
@@ -31,18 +114,39 @@ int main(int argc, char *argv[])
     cmd.addInt   ("d", "degree", "Degree of B-splines for reparameterization", degree);
     cmd.addInt   ("k", "knots", "Number of interior knots for reparameterization", nknots);
     cmd.addInt   ("N", "npts", "Number of points for sampling", npts);
+    // cmd.addReal  ("g","gap-tolerance","Tolerance for closing gaps", gtol);
+    // cmd.addSwitch("reparam", "Reparameterize all patches using a fixed degree and number of knots", reparam);
+    // cmd.addSwitch("nogaps", "Close any gaps along interfaces upto tolerance \'gtol\'", gaps);
+    cmd.addSwitch("plot", "plot results", plot);
+
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsMultiPatch<>::uPtr mp0 = gsReadFile<>(filename);
-    mp0->computeTopology();
-    gsInfo <<" Got"<< *mp0 <<" \n" ;
+    mp0->computeTopology(tol,true);
+
+    // gsInfo <<"Computing"<< (gaps?" corner-based ":" ")<<"topology with tolerance = "<<tol<<"... \n" ;
+    // mp->computeTopology(tol, gaps);
+    // gsInfo << * mp <<"\n" ;
+    // //gsInfo << mp->detail() <<"\n";
+    // if (gaps) //Close gaps?
+    // {
+    //     gsInfo <<"Closing gaps with tolerance = "<<gtol<<"... \n" ;
+    //     mp->closeGaps(gtol);
+    //     gsInfo <<"Computing topology with tolerance = "<<tol<<"... \n" ;
+    //     mp->computeTopology(tol, false);
+    //     mp->closeGaps(gtol);//close again for any previously missed interfaces
+    //     gsInfo << * mp <<"\n" ;
+    //     //gsInfo << mp->detail() <<"\n";
+    // }
+
+    gsInfo <<" Got "<< *mp0 <<" \n" ;
 
 
     // STEP 0: sample all patches to get linear patches.
     // (already the input is ASSUMED linear for now)
     // sample each patch on a grid
     // create the linear patches with the samples as coefficients + the topology of the initial one   
-    gsMatrix<> ab, pts, eval;
+    gsMatrix<> ab, pts, eval, par_pts;
     gsVector<> a, b;
     gsVector<unsigned> np;
     gsMultiPatch<> mp = *mp0;
@@ -53,27 +157,24 @@ int main(int argc, char *argv[])
         a = ab.col(0);
         b = ab.col(1);
         np = uniformSampleCount(a, b, npts);
+        // Uniform parameters for evaluation
         pts = gsPointGrid(a, b, np);
 
         mp0->patch(p).eval_into(pts,eval);
 
-        // maybe also choosae knot-parametrization (uniform, centripetal or others...)
         gsKnotVector<> kv0(0, 1, np[0]-2, 2, 1, 1);
         gsKnotVector<> kv1(0, 1, np[1]-2, 2, 1, 1);
         gsTensorBSplineBasis<2,real_t> bbasis(kv0,kv1);
 
-        a<<0,0;
-        b<<1,1;
-        pts = gsPointGrid(a, b, np);
+        // Reparameterize points
+        pts = parameterize_points2D(bbasis,eval);
 
         mp.patch(p) = *bbasis.makeGeometry(eval.transpose()).release();
+
+        // Contains the parametric values of the points
         mp_par.patch(p) = *bbasis.makeGeometry(pts.transpose()).release();
     }
-    // mp.topology() = mp0->topology();
-
-    gsWriteParaview(mp,"mp",1000,true);
-
-    // todo: mp = mp0->approximateLinearly();
+    if (plot) gsWriteParaview(mp,"mp",1000,true);
     
     // STEP 1: Get curve network with merged linear interfaces
     gsInfo<<"Loading curve network...";
@@ -90,11 +191,8 @@ int main(int argc, char *argv[])
         crv_net.addPatch((*it->second));
     for (auto it = brep.begin(); it!=brep.end(); ++it)
         crv_net.addPatch((*it->second));
-    // gsFileData<> fd;
-    // fd<< crv_net ;
-    // fd.dump("linear_output");
-    // gsInfo <<"Resulting file is written out to linear_output.xml\n" ;
-    gsWriteParaview(crv_net,"crv_net",1000,true);
+
+    if (plot) gsWriteParaview(crv_net,"crv_net",1000,true);
     //end outputing
     gsInfo<<"Finished\n";
     
@@ -105,14 +203,10 @@ int main(int argc, char *argv[])
     gsBSplineBasis<> fbasis(kv);
     gsFitting<> cfit;
 
-    // std::vector<gsMultiPatch<> > pbdr(mp.nPatches()); // patch boundary curves (4 for each)
-    std::vector<std::pair<std::vector<gsMatrix<index_t>>,gsMatrix<real_t> > > pbdr(mp.nPatches()); // patch boundary curves (4 for each)
+    // pbdr contains the indices of the boundary curves in he first entry of the pair, and the coefficients in the second
+    std::vector<std::pair<std::vector<gsMatrix<index_t>>,gsMatrix<real_t> > > pbdr(mp.nPatches());
     crv_net.clear();
     gsMatrix<> uv, xyz;
-    // // Can we make a nice initialization of the multipatch? Such that we can put the sides directly in the side index
-    // for (size_t p=0; p!=mp.nPatches(); p++)
-    //     for (index_t k=0; k!=4; k++)
-    //         pbdr[p].addPatch(mp.patch(0).boundary(0));
 
     gsTensorBSplineBasis<2> sbasis(kv,kv);
     for (size_t p=0; p!=mp.nPatches(); p++)
@@ -127,13 +221,8 @@ int main(int argc, char *argv[])
         gsMatrix<index_t> bndThis,bndOther;
 
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
-        // note: free to choose a parameterization, here we just take the knots
         xyz = crv.coefs().transpose();
-        uv  = crv.knots().asMatrix().middleCols(1,crv.numCoefs());
-        //
-        // THIS IS VERY WRONG
-        // xyz.conservativeResize(xyz.rows(),xyz.cols()-1);
-        // uv = gsVector<>::LinSpaced(xyz.cols(),0,1).transpose();
+        uv  = parameterize_points1D(xyz);
 
         cfit = gsFitting<>(uv,xyz,fbasis);
 
@@ -148,8 +237,6 @@ int main(int argc, char *argv[])
         cfit.compute();
 
         sbasis.matchWith(it->first,sbasis,bndThis,bndOther);
-        // pbdr[it->first.first() .patch].patch(it->first.first() .side()-1) = *cfit.result();
-        // pbdr[it->first.second().patch].patch(it->first.second().side()-1) = *cfit.result(); // flip this?
 
         GISMO_ASSERT(bndThis .rows()==cfit.result()->coefs().rows(),"Coefficients and indices do not match!");
         GISMO_ASSERT(bndOther.rows()==cfit.result()->coefs().rows(),"Coefficients and indices do not match!");
@@ -167,9 +254,8 @@ int main(int argc, char *argv[])
     for (auto it = brep.begin(); it!=brep.end(); ++it)
     {
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
-        // note: free to choose a parameterization, here we just take the knots
-        uv  = crv.knots().asMatrix().middleCols(1,crv.numCoefs());
         xyz = crv.coefs().transpose();
+        uv  = parameterize_points1D(xyz);
         cfit = gsFitting<>(uv,xyz,fbasis);
 
         std::vector<index_t> prescribedDoFs;
@@ -193,15 +279,8 @@ int main(int argc, char *argv[])
         crv_net.addPatch( *cfit.result() );
     }
 
-    gsWriteParaview(crv_net,"crv_fit",1000,false,false);
-    gsMatrix<> coefs = crv_net.patch(1).coefs().transpose();
-    gsWriteParaviewPoints(coefs,"crv_fit_pts");
+    if (plot) gsWriteParaview(crv_net,"crv_fit",1000,false,false);
     gsInfo<<"Finished\n";
-
-    // fd.clear();
-    // fd<< crv_net ;
-    // fd.dump("curve_output");
-    // gsInfo <<"Resulting file is written out to curve_output.xml\n" ;
 
     gsFitting<> sfit;
     gsMultiPatch<> mp_res;
@@ -232,32 +311,9 @@ int main(int argc, char *argv[])
         if (cfit.maxPointError()> tol)
             gsWarn<<"Error of surface fit is large: "<<cfit.maxPointError()<<">"<<tol<<"\n";
 
-        if (sfit.result()==NULL)
-        {
-            // gsMultiPatch<> tmp_net;
-            // for (index_t s=0; s!=pbdr.at(p).first.size(); s++)
-            // {
-            //     for (index_t k=0; k!=pbdr.at(p).first.at(s).size(); k++)
-            //     {
-            //         index_t index = (pbdr.at(p).first.at(s) )(k,0);
-            //         prescribedDoFs.push_back(index);
-            //         prescibedCoefs.push_back((pbdr.at(p).second).row(index));
-            //     }
-            // }
-
-            // for (index_t s=0; s!=pbdr.at(p).first.size(); s++)
-            // {
-            //     tmp_net.addPatch(fbasis.makeGeometry(pbdr.at(p)))
-            // }
-            gsWriteParaviewPoints(xyz,"points");
-            gsWriteParaview(mp.patch(p),"geom");
-            GISMO_ERROR("Fit failed for patch "<<p<<"! See net.pvd for the curve net and points.pvd for the points.");
-        }
-
-        gsWriteParaview(*sfit.result(),"fit");
         mp_res.addPatch(*sfit.result());
     }
-    gsWriteParaview(mp_res,"final",1000,true);
+    if (plot) gsWriteParaview(mp_res,"final",1000,true);
     gsWrite<>(mp_res,"final");
     gsInfo<<"Finished\n";
 
