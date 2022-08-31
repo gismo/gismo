@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     real_t u_min = 1;
     real_t u_max = -1;
     std::string fn = "fitting/example_1D.xml";
-    std::string lambda_file = "01lambda_1D-02.xml";
+    std::string lambda_file = "";
 
     // Reading options from the command line
     gsCmdLine cmd("Fit parametrized sample data with a BSpline Curve. Expected input file is an XML "
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     cmd.addReal("f", "toleranceslope", "slope tolerance", tol_slope);
 
     cmd.addReal("g","tolerancelambda","error tolerance for lambda reduction/adaptation",toll);
-    cmd.addReal("p","FactorReductionLambda", "in each lambda iteration in strategy 6 coefficient with errors above toll will be reduced by alpha",alpha);
+    cmd.addReal("p","FactorReductionLambda", "in each lambda iteration coefficients with errors above toll will be reduced by alpha",alpha);
 
     cmd.addString("d", "data", "Input sample data", fn);
     cmd.addReal("u", "u_min", "u_min in uv box", u_min);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     gsFileData<> fe;
 
     // Check if matrix sizes are OK
-    GISMO_ASSERT( params.cols() == points.cols() && params.rows() == 1 && points.rows() == 1,
+    GISMO_ASSERT( params.cols() == points.cols() && params.rows() == 1 && points.rows() <= 2,
                   "Wrong input");
 
     // Determine the parameter domain by mi/max of parameter values
@@ -101,11 +101,23 @@ int main(int argc, char *argv[])
     basis.uniformRefine( (1<<numURef)-1 );
     gsFittingRWFErrorGuided<1, real_t> ref( params, points, basis);
 
-    // Regularization function lambda for surface fitting
-    gsInfo << "Reading input lambda tensor-product B-spline." << std::endl;
-    gsFileData<> lbd_in(lambda_file);
     gsTensorBSpline<1,real_t> lambda;
-    lbd_in.getId<gsTensorBSpline<1,real_t> >(0, lambda );
+    // Regularization function lambda for surface fitting
+    if (!(lambda_file==""))
+    {
+        gsInfo << "Reading input lambda tensor-product B-spline." << std::endl;
+        gsFileData<> lbd_in(lambda_file);
+        lbd_in.getId<gsTensorBSpline<1,real_t> >(0, lambda );
+    }
+    else
+    {
+        gsKnotVector<> knots_l (u_min,u_max,numLknots,1);
+        gsBSplineBasis<> l_basis(knots_l);
+        gsMatrix<> coefs (numLknots+1,1);
+        for(index_t i=0; i<coefs.rows(); i++)
+            coefs(i, 0) = l_max;
+        lambda = gsTensorBSpline<1>(l_basis,coefs);
+    }
 
     // Setting the correct theoretical degree, in case deg_l is not a input
     if(suppguided)  // For strategy 6 we need q=0 such that degree is not elevated
@@ -114,15 +126,12 @@ int main(int argc, char *argv[])
         {
             deg_l = 2*deg_x +2*dreg + 1;  // Optimal degree theory: 2q + 2 dreg + d, in Paper dreg = 2
         }
-        lambda.degreeElevate(deg_l-lambda.degree(0));    // Could be extended to both directions
+        lambda.degreeElevate(deg_l-lambda.basis().degree(0));    // Could be extended to both directions
         lambda.uniformRefine((1<<numLRef)-1);
+        ref.findLambda(lambda,l_min,l_max);
     }
     else if (errguided)
         lambda.uniformRefine((1<<numLRef)-1);
-
-    gsInfo << "Alpha: " << alpha << std::endl;
-    real_t h_rel  = lambda.basis().getMaxCellLength();
-    gsInfo << "Relative h lambda" << h_rel << std::endl;
 
     const std::vector<real_t> & errors = ref.pointWiseErrors();
 
@@ -132,14 +141,15 @@ int main(int argc, char *argv[])
     gsInfo<<"Initial uniform refinement: "<< numURef<<".\n";
     gsInfo<<"Degree                    : "<< deg_x << ".\n";
     gsInfo<<"Error tolerance           : "<< tolerance<<".\n";
-    gsInfo<<"Smoothing function        : "<< "Created BSpline curve of degree "<<lambda.basis().degree()<<".\n";
+    gsInfo<<"Smoothing function        : "<< "Created BSpline curve of degree "<<lambda.basis().degree(0)<<".\n";
 
     gsStopwatch time;
 
     if (errguided)
     {
+        real_t h_rel  = lambda.basis().getMaxCellLength();
         alpha = std::pow(alpha, h_rel);
-        iter = std::floor(std::log(1e-02)/std::log(alpha))+1;   // 1e-02 should be determined from l_min, l_max - TODO
+        iter = std::floor(std::log(l_min/l_max)/std::log(alpha))+1;   // 1e-02 should be determined from l_min, l_max - TODO
         gsInfo << "----------------\n"
                << "Iteration number calculated:" << iter << std::endl
                << "Alpha as alpha^h new calculated: " << alpha << std::endl
@@ -148,7 +158,7 @@ int main(int argc, char *argv[])
     else
         iter = iter + 1;
 
-    gsMatrix<real_t> table(3,iter+1);
+    gsMatrix<real_t> table(7,iter);
     table.setZero();
 
     for (int i=0; i < iter; i++)
@@ -176,10 +186,11 @@ int main(int argc, char *argv[])
 
         table(0,i) = ref.result()->basis().getMinCellLength();
         table(1,i) = ref.maxPointError();
-        table(2,i) = ref.getL2ApproxErrorMidpoint(errors);
-        table(3,i) = 1.0* ref.numPointsBelow(tolerance)/errors.size();
-        table(4,i) = ref.result()->basis().size();
-        table(5,i) = ref.getRMSE(errors);
+        table(2,i) = ref.getL2ApproxErrorMidpointUniform(errors);
+        table(3,i) = ref.getL2ApproxErrorMidpoint(errors);
+        table(4,i) = 1.0* ref.numPointsBelow(tolerance)/errors.size();
+        table(5,i) = ref.result()->basis().size();
+        table(6,i) = ref.getRMSE(errors);
 
         if ( ref.maxPointError() < tolerance )
             break;
@@ -209,8 +220,8 @@ int main(int argc, char *argv[])
     //gsWriteParaview(lambda_log,"lambda_log_result", 1000, false, true);
 
     // Writing table for errorplot and saving table to errorplot.xml
-    gsMatrix<real_t> bigMatrix(3, iter+1);
-    for(index_t i=0; i<=iter; i++)
+    gsMatrix<real_t> bigMatrix(3, iter);
+    for(index_t i=0; i<iter; i++)
     {
         bigMatrix(0,i) = table(0,i);
         bigMatrix(1,i) = table(1,i);
@@ -247,7 +258,9 @@ int main(int argc, char *argv[])
 
     gsInfo<<"----------------\n";
     gsInfo<<"Table: Span length and errors for lambda function with degree "<<lambda.basis().degree()<<" and Span length "<<lambda.basis().getMaxCellLength()<<".\n";
-    gsInfo<<" Line 0: Span length.\n Line 1: Maximum error.\n Line 2: L² error.\n";
+    gsInfo<<" Line 0: Span length.\n Line 1: Maximum error.\n Line 2: L² error approx uniform.\n"
+            " Line 3: L² error approx midpoint.\n Line 4: % below tol.\n Line 5: DOFs.\n"
+            " Line 6: RMSE.\n";
     gsInfo<<table<<"\n";
     gsInfo<<"----------------\n Finished.\n";
 

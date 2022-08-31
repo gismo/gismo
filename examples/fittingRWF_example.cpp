@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     index_t numURef   = 0;
     index_t numUknots = 0;
     index_t numVknots = 0;
+    index_t numLknots = 0;
     // iter: 0 -> only a fitting with given settings, >0 -> number of iterations with uniform refinement
     index_t iter      = 2;
     index_t deg_x     = 2;
@@ -41,7 +42,7 @@ int main(int argc, char *argv[])
     real_t v_min      = 1;
     real_t v_max      = -1;
     std::string fn    = "fitting/deepdrawingC.xml";
-    std::string lambda_file = "fitting/lambdadeepdrawingC.xml";
+    std::string lambda_file = "";
     //real_t ltemp      = 1.0;
 
     // Reading options from the command line
@@ -67,6 +68,7 @@ int main(int argc, char *argv[])
     cmd.addInt("a", "lrefine", "initial uniform refinement steps of lambda", numLRef);
     cmd.addInt("b", "uknots", "initial uniform refinement (number of inserted knots) of fitting basis in u knot direction", numUknots);
     cmd.addInt("c", "vknots", "initial uniform refinement (number of inserted knots) of fitting basis in v knot direction", numVknots);
+    cmd.addInt("m", "lknots", "initial uniform refinement (number of inserted knots) of lambda basis in u and v direction", numLknots);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
 
     cmd.addReal("g","tolerancelambda","error tolerance for lambda reduction/adaptation",toll);
@@ -120,10 +122,23 @@ int main(int argc, char *argv[])
     gsKnotVector<> v_knots (v_min, v_max, numVknots, deg_y+1 ) ;
 
     // Regularization function lambda for surface fitting
-    gsInfo << "Reading input lambda tensor-product B-spline." << std::endl;
-    gsFileData<> lbd_in(lambda_file);
     gsTensorBSpline<2> lambda;
-    lbd_in.getId<gsTensorBSpline<2> >(0, lambda );
+    if (lambda_file=="")
+    {
+        gsKnotVector<> uknots_l (u_min,u_max,numLknots,1);
+        gsKnotVector<> vknots_l (v_min,v_max,numLknots,1);
+        gsTensorBSplineBasis<2> l_basis(uknots_l,vknots_l);
+        gsMatrix<> coefs ((numLknots+1)*(numLknots+1),1);
+        for(index_t i=0; i<coefs.rows(); i++)
+            coefs(i, 0) = eps;
+        lambda = gsTensorBSpline<2>(l_basis,coefs);
+    }
+    else
+    {
+        gsInfo << "Reading input lambda tensor-product B-spline." << std::endl;
+        gsFileData<> lbd_in(lambda_file);
+        lbd_in.getId<gsTensorBSpline<2> >(0, lambda );
+    }
 
     // Setting the correct theoretical degree, in case deg_l is not a input
     if(suppguided)  // For strategy 6 we need q=0 such that degree is not elevated

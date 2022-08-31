@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 {
     // Parameter, Input
     index_t example = 1;
-    std::string fn = "fitting/examplethomas1.xml";
+    std::string fn = "/ya/ya135/ya13515/x/build-gismo-Desktop-Debug/bin/result.xml";
 
     gsCmdLine cmd("Creating samples data from a surface:\n"
                   "Example 1: Intersecting surface with hole from Paper 1. \n"

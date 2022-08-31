@@ -274,7 +274,7 @@ T gsFittingRWF<d,T>::getL2ApproxErrorMidpoint(const std::vector<T> & errors) con
 template<unsigned d, class T>
 T gsFittingRWF<d,T>::getL2ApproxErrorMidpointUniform(const std::vector<T> & errors) const
 {
-    GISMO_ASSERT(d==2,"Implemented only for 2D");
+    GISMO_ASSERT(d<=2,"Implemented only for 1D and 2D");
     T result = 0;
 
     for (size_t i=0; i < errors.size(); i++)
@@ -282,10 +282,19 @@ T gsFittingRWF<d,T>::getL2ApproxErrorMidpointUniform(const std::vector<T> & erro
          result += errors[i]*errors[i];
     }
 
-    T h = std::abs(std::max((this->m_param_values(1,0)-this->m_param_values(0,0)),
-                                 (this->m_param_values(1,1)-this->m_param_values(0,1))));
+    T h;
+    if (d==1)
+    {
+        h = std::abs(this->m_param_values(0,1)-this->m_param_values(0,0));
+        return sqrt(result * h);
+    }
+    else
+    {
+        h = std::abs(std::max((this->m_param_values(1,0)-this->m_param_values(0,0)),
+                                (this->m_param_values(1,1)-this->m_param_values(0,1))));
+        return sqrt(result * h * h);
+    }
 
-    return sqrt(result * h * h);
 }
 
 template<unsigned d, class T>
@@ -363,7 +372,7 @@ void gsFittingRWFErrorGuided<d, T>::DecreaseLambdaErrorGuided(gsGeometry<T>& lam
         if (this->m_pointErrors[i] > toll)
         {
             index_t oldCols = paramsWhereErrTooBig.cols();
-            paramsWhereErrTooBig.conservativeResize(2, oldCols + 1);
+            paramsWhereErrTooBig.conservativeResize(d, oldCols + 1);
             paramsWhereErrTooBig.col(oldCols) = this->m_param_values.col(i);
         }
     }

@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Iteration "<<i<<".."<<"\n";
 
         time.restart();
-        ref.gsFittingRWF<2,real_t>::nextIteration(alpha,toll,tolerance, lambda, false, condcheck, dreg, saveLogLambda);//nextLambdaIteration(alpha,toll,tolerance, threshold, lambda, true, false, false, dreg);
+        ref.gsFittingRWF<2,real_t>::nextIteration(alpha,toll,tolerance, lambda, true, condcheck, dreg, saveLogLambda);//nextLambdaIteration(alpha,toll,tolerance, threshold, lambda, true, false, false, dreg);
         time.stop();
         gsInfo<<"Fitting time: "<< time <<"\n";
         gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
