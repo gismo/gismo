@@ -545,6 +545,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
+    opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     return opt;
 }
 
@@ -776,10 +777,14 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     gsVector<T> quWeights;// quadrature weights
     _eval ee(m_matrix, m_rhs, quWeights);
 
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
     {
-        const boundaryInterface & iFace = *it;
+        // If flipSide switch is enabled, then the integration will be performed on
+        // the opposite side of the interface
+        const boundaryInterface & iFace =  flipSide ? it->getInverse() : *it;
         const index_t patch1 = iFace.first() .patch;
         const index_t patch2 = iFace.second().patch;
 
