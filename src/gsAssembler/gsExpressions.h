@@ -1892,45 +1892,47 @@ flat_expr<E> const flat(E const & u)
   template<class E>
   class diag_expr  : public _expr<diag_expr<E> >
   {
-  public:
-  typedef typename E::Scalar Scalar;
-  enum {ScalarValued = 0};
-  private:
-  typename E::Nested_t _u;
-  mutable gsMatrix<Scalar> res;
+    public:
+        typedef typename E::Scalar Scalar;
+        enum {ScalarValued = 0};
+    private:
+        typename E::Nested_t _u;
+        mutable gsMatrix<Scalar> res;
 
-  public:
-  diag_expr(_expr<E> const& u) : _u(u)
-  { GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got "
-  << _u.rows() <<" x "<< _u.cols() ); }
+    public:
+        diag_expr(_expr<E> const& u) : _u(u)
+        { 
+            GISMO_ASSERT(0== _u.cols()%_u.rows(), "Expecting square-block expression, got "
+            << _u.rows() <<" x "<< _u.cols() ); 
+        }
 
-  // choose if ColBlocks
-  const gsMatrix<Scalar> & eval(const index_t k) const
-  {
-  // Assume mat ??
-  MatExprType tmp = _u.eval(k);
-  const index_t cb = _u.rows();
-  const index_t r  = _u.cols() / cb;
-  res.resize(r, cb);
-  for (index_t i = 0; i!=r; ++i)
-  res.row(i) = tmp.middleCols(i*cb,cb).diagonal();
-  return res;
-  }
+        // choose if ColBlocks
+        const gsMatrix<Scalar> & eval(const index_t k) const
+        {
+            // Assume mat ??
+            MatExprType tmp = _u.eval(k);
+            const index_t cb = _u.rows();
+            const index_t r  = _u.cols() / cb;
+            res.resize(r, cb);
+            for (index_t i = 0; i!=r; ++i)
+                res.row(i) = tmp.middleCols(i*cb,cb).diagonal();
+            return res;
+        }
 
-  // choose if !ColBlocks
-  //todo: Scalar eval(const index_t k) const
+        // choose if !ColBlocks
+        //todo: Scalar eval(const index_t k) const
 
-  index_t rows() const { return _u.cols() / _u.rows(); }
-  index_t cols() const { return 1; }
+        index_t rows() const { return _u.cols() / _u.rows(); }
+        index_t cols() const { return 1; }
 
-  void parse(gsExprHelper<Scalar> & evList) const
-  { _u.parse(evList); }
+        void parse(gsExprHelper<Scalar> & evList) const
+        { _u.parse(evList); }
 
-  const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+        const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+        const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
 
-  void print(std::ostream &os) const { os << "trace("; _u.print(os); os<<")"; }
+        void print(std::ostream &os) const { os << "diagonal("; _u.print(os); os<<")"; }
   };
 
 /// Get diagonal elements of matrix as a vector
