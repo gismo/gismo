@@ -30,6 +30,7 @@ namespace gismo
 template<typename T>
 static void static_newiter_callback(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)
 {
+    // TODO: give it a flag to decide if we need to print or not.
     std::cout << "# iter "<< iter << ": #func eval. " << call_iter << ", f = " << *f <<
     ", ||g|| = " << *gnorm << std::endl;
     /*std::cout << "# iter "<< std::setw(4) << iter << ": #func eval. " << std::setw(4) << call_iter <<
@@ -103,11 +104,11 @@ public:
 protected:
     void defaultOptions()
     {
-        m_options.addInt("MaxIterations","Maximum iterations",0);
+        m_options.addInt("MaxIterations","Maximum iterations",1e3);
         m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
         m_options.addReal("MinStepLength","Minimal step length",1e-9);
-        m_options.addInt("Verbose","Verbosity level",0);
-        m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",5);
+        m_options.addSwitch("Verbose","Verbosity level", true);
+        m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
     }
 
     void getOptions()
@@ -115,18 +116,20 @@ protected:
         m_maxIterations = m_options.getInt("MaxIterations");
         m_minGradientLength = m_options.getReal("MinGradientLength");
         m_minStepLength = m_options.getReal("MinStepLength");
-        m_verbose = m_options.getInt("Verbose");
+        m_verbose = m_options.getSwitch("Verbose");
         m_M = m_options.getInt("LBFGSUpdates");
 
-        // m_hlbfgs_info[1] = static_cast<bool>(m_maxIterations);
-        m_hlbfgs_info[4] = static_cast<bool>(m_maxIterations);
-        m_hlbfgs_info[5] = static_cast<bool>(m_verbose);
+        // m_hlbfgs_info[3]:The lbfgs strategy. 0: standard, 1: M1QN3 strategy (recommended)
+        // Gilbert, J. C., & Lemaréchal, C. (1989). Some numerical experiments with variable-storage
+        // quasi-Newton algorithms. Mathematical programming, 45(1), 407-435.
+        m_hlbfgs_info[3] = 1;
 
-        m_hlbfgs_pars[5] = 1e-10;
-        m_hlbfgs_pars[6] = 1e-10;
+        m_hlbfgs_info[4] = static_cast<index_t>(m_maxIterations);
+        m_hlbfgs_info[5] = static_cast<index_t>(m_verbose);
+
+        m_hlbfgs_pars[5] = m_minGradientLength;
+        m_hlbfgs_pars[6] = m_minStepLength;
     }
-
-public:
 
 protected:
 
@@ -141,7 +144,7 @@ public:
         // m_curDesign = initialGuess;
 
         INIT_HLBFGS(m_hlbfgs_pars, m_hlbfgs_info);
-
+        this->getOptions();
         // std::function<void(index_t N, T* x, T* prev_x, T* f, T* g)>
 
         const std::function<void(int N, double* x, double* prev_x, double* f, double* g)> wrapfunc =
@@ -177,7 +180,6 @@ public:
     void solve(const gsMatrix<T> & initialGuess)
     {
         GISMO_ASSERT(initialGuess.cols()==1,"The initial guess should have vector format");
-        this->getOptions();
         std::vector<T> sol(initialGuess.rows());
         gsMatrix<T>::Map(sol.data(), initialGuess.rows(),1) = initialGuess;
         this->run(sol);
@@ -185,6 +187,7 @@ public:
         m_curDesign = gsMatrix<T>::Map(sol.data(), sol.size(),1);
         m_numIterations = m_hlbfgs_info[2];
         m_finalObjective = m_op->evalObj(gsAsConstVector<T>(m_curDesign.data(),m_curDesign.rows()));
+
     }
 
 // Members taken from Base
@@ -200,7 +203,7 @@ protected:
     index_t m_maxIterations;
     T m_minGradientLength;
     T m_minStepLength;
-    index_t m_verbose;
+    bool m_verbose;
 
 // HLBFGS options
 protected:
