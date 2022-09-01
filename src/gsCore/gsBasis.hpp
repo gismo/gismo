@@ -706,6 +706,55 @@ T gsBasis<T>::getMaxCellLength() const
     return h;
 }
 
+// compute the collocation matrix of the points u and its partial derivatives
+template<class T> inline
+std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gsMatrix<T> & u)
+{
+    int dim = b.domainDim();
+    std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
+    std::vector<gsMatrix<T>> ev;
+    gsMatrix<index_t> act;
+
+    b.evalAllDers_into  (u.col(0), 1, ev);
+    b.active_into(u.col(0), act);
+    result[0].reservePerColumn( act.rows() );
+    result[1].reservePerColumn( act.rows() );
+    if (dim==2)
+        result[2].reservePerColumn( act.rows() );
+    for (index_t i=0; i!=act.rows(); ++i)
+    {
+        result[0].insert(0, act.at(i) ) = ev[0].at(i);
+        result[1].insert(0, act.at(i) ) = ev[1].at(dim*i);
+        if (dim == 2)
+            result[2].insert(0, act.at(i) ) = ev[1].at(dim*i+1);
+    }
+    for (index_t k=1; k!=u.cols(); ++k)
+    {
+        b.evalAllDers_into  (u.col(k), 1, ev );
+        b.active_into(u.col(k), act);
+        for (index_t i=0; i!=act.rows(); ++i)
+        {
+            result[0].insert(k, act.at(i) ) = ev[0].at(i);
+            result[1].insert(k, act.at(i) ) = ev[1].at(dim*i);
+            if (dim == 2)
+                result[2].insert(k, act.at(i) ) = ev[1].at(dim*i +1);
+        }
+    }
+
+    result[0].makeCompressed();
+    result[1].makeCompressed();
+    if (dim == 2)
+        result[2].makeCompressed();
+    return result;
+}
+
+
+
+
+
+
+
+
 // gsBasis<T>::linearComb(active, evals, m_tmpCoefs, result);
 // gsBasis<T>::jacobianFromGradients(active, grads, m_tmpCoefs, result);
 
