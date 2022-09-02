@@ -1,6 +1,6 @@
-/** @file heatEquation2_example.cpp
+/** @file flow-over-heated-plate.cpp
 
-    @brief Solves the heat equation using time-stepping
+    @brief Heat equation participant for the PreCICE example "flow over heated plate"
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): S. Moore, A. Mantzaflaris
+    Author(s): H.M. Verhelst
 */
 
 #include <gismo.h>
@@ -24,15 +24,13 @@ int main(int argc, char *argv[])
     index_t plotmod = 1;
     index_t numRefine  = 5;
     index_t numElevate = 0;
-    bool last = false;
     std::string precice_config("../precice_config.xml");
 
-    gsCmdLine cmd("Testing the heat equation.");
+    gsCmdLine cmd("Flow over heated plate for PreCICE.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
-    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addInt("m","plotmod", "Modulo for plotting, i.e. if plotmod==1, plots every timestep", plotmod);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -85,47 +83,39 @@ int main(int argc, char *argv[])
     typename gsBasis<real_t>::domainIter domIt = bases.basis(couplingInterface.patch).makeDomainIterator(couplingInterface.side());
 
     // Set the dimension of the points
-    index_t rows = patches.targetDim();
     gsMatrix<> nodes;
     // Start iteration over elements
     gsVector<> tmp;
-    index_t k=0;
 
     gsOptionList quadOptions = A.options();
-    // NEED A DIFFERENT RULE FOR dirichlet::interpolation --> see: gsGaussRule<T> bdQuRule(basis, 1.0, 1, iter->side().direction());
-    /*
-        quadOptions.addInt("quRule","Quadrature rule [1:GaussLegendre,2:GaussLobatto]",1);
-        quadOptions.addReal("quA","Number of quadrature points: quA*deg + quB",1.0);
-        quadOptions.addInt("quB","Number of quadrature points: quA*deg + quB",1);
-    */
 
     // First obtain the size of all quadrature points
     index_t quadSize = 0;
     typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
-    for (; domIt->good(); domIt->next(), k++ )
+    for (; domIt->good(); domIt->next() )
     {
         QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
         quadSize+=QuRule->numNodes();
     }
 
     // Initialize parametric coordinates
-    gsMatrix<> uv(rows,quadSize);
+    gsMatrix<> uv(patches.domainDim(),quadSize);
     // Initialize physical coordinates
-    gsMatrix<> xy(rows,quadSize);
+    gsMatrix<> xy(patches.targetDim(),quadSize);
 
     // Grab all quadrature points
     index_t offset = 0;
-    for (domIt->reset(); domIt->good(); domIt->next(), k++ )
+    for (domIt->reset(); domIt->good(); domIt->next())
     {
         QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
         // Map the Quadrature rule to the element
         QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                        nodes, tmp);
-        uv.block(0,offset,rows,QuRule->numNodes()) = nodes;
+        uv.block(0,offset,patches.domainDim(),QuRule->numNodes()) = nodes;
 
         gsMatrix<> tmp2;
         patches.patch(couplingInterface.patch).eval_into(nodes,tmp2);
-        xy.block(0,offset,rows,QuRule->numNodes()) = patches.patch(couplingInterface.patch).eval(nodes);
+        xy.block(0,offset,patches.targetDim(),QuRule->numNodes()) = patches.patch(couplingInterface.patch).eval(nodes);
         offset += QuRule->numNodes();
     }
 
@@ -169,6 +159,7 @@ int main(int argc, char *argv[])
 
     // Set the discretization space
     space u = A.getSpace(bases);
+    u.setup(bcInfo, dirichlet::homogeneous, 0);
 
     // Set the source term
     auto ff = A.getCoeff(f, G);
@@ -176,8 +167,6 @@ int main(int argc, char *argv[])
     // Set the solution
     gsMatrix<> solVector;
     solution u_sol = A.getSolution(u, solVector);
-
-    u.setup(bcInfo, dirichlet::homogeneous, 0);
 
     // Assemble mass matrix
     A.initSystem();

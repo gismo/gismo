@@ -1,9 +1,5 @@
 ### CMakeLists.txt --- PreCICE library
 ## Author: Angelos Mantzaflaris, Hugo Verhelst
-#
-# The library is header-only, the extra code is downloaded in place of
-# the source folder of G+Smo
-#
 ######################################################################
 
 if(POLICY CMP0076)# CMake 3.13

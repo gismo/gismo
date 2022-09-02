@@ -1,6 +1,6 @@
-/** @file heatEquation2_example.cpp
+/** @file heat-equation-coupling.cpp
 
-    @brief Solves the heat equation using time-stepping
+    @brief Heat equation participant for a double coupled heat equation
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): S. Moore, A. Mantzaflaris
+    Author(s): H.M. Verhelst
 */
 
 #include <gismo.h>
@@ -24,11 +24,10 @@ int main(int argc, char *argv[])
     index_t plotmod = 1;
     index_t numRefine  = 5;
     index_t numElevate = 0;
-    bool last = false;
     short_t side = 0;
     std::string precice_config("../precice_config.xml");
 
-    gsCmdLine cmd("Testing the heat equation.");
+    gsCmdLine cmd("Coupled heat equation using PreCICE.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
@@ -145,12 +144,6 @@ int main(int argc, char *argv[])
     index_t meshID = interface.getMeshID(meshname);
     index_t tempID = interface.getDataID("Temperature",meshID);
     index_t fluxID = interface.getDataID("Heat-Flux",meshID);
-
-    // gsMatrix<> result;
-    // interface.readBlockScalarData(meshID,tempID,xy,result);
-    // gsDebugVar(result);
-
-
 
 // ----------------------------------------------------------------------------------------------
 
