@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsHSplines/gsHBoxUtils.h>
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
 
@@ -34,8 +35,10 @@ public:
     typedef typename std::vector<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>  SortedContainer;
     typedef typename std::vector<Container>                                 HContainer; // container[level]
     typedef typename Container::iterator            Iterator;
+    typedef typename Container::reverse_iterator    rIterator;
     typedef typename Container::const_iterator      cIterator;
     typedef typename HContainer::iterator           HIterator;
+    typedef typename HContainer::reverse_iterator   rHIterator;
     typedef typename HContainer::const_iterator     cHIterator;
 
 
@@ -43,13 +46,15 @@ public:
 
     gsHBox() { }
 
-    gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid = 0);
+    gsHBox(const gsHDomainIterator<T,d> * domHIt);
 
-    gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis, const index_t pid = 0);
+    gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid);
 
-    gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid = 0);
+    gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
 
-    gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis, const index_t pid = 0);
+    gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
+
+    gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
 
     /// Copy constructor (makes deep copy)
     gsHBox( const gsHBox<d,T> & other );
@@ -95,21 +100,29 @@ public:
      *
      * @return     True if active, False otherwise.
      */
-    bool isActive();
+    bool isActive() const;
+
+    /**
+     * @brief      Determines if active or contained in the active elemebt.
+     *             In other words; checks if the level of this box is higher or equal to the level of the mesh here.
+     *
+     * @return     True if active or contained, False otherwise.
+     */
+    bool isActiveOrContained() const;
 
     /**
      * @brief      Gets the coordinates of the box (first column lower corner, second column higher corner).
      *
      * @return     The coordinates of the box.
      */
-    const gsMatrix<T> & getCoordinates();
+    const gsMatrix<T> & getCoordinates() const;
 
     /**
      * @brief      Gets the center of the box.
      *
      * @return     The center of the box.
      */
-    const gsMatrix<T> & getCenter();
+    const gsMatrix<T> & getCenter() const;
 
     /**
      * @brief      Gets the lower corner of the box
@@ -153,6 +166,60 @@ public:
     index_t level() const;
 
     /**
+     * @brief      Gets the level in the center of the object
+     *
+     * @return     The level in the center of the object
+     */
+    index_t levelInCenter() const;
+
+    /**
+     * @brief      Sets the error of the object
+     */
+    void setError(T error);
+
+    /**
+     * @brief      Gets the error stored in the object
+     *
+     * @return     The error of the object
+     */
+    T error() const;
+
+    /**
+     * @brief      Assigns an index to the object
+     */
+    void setIndex(index_t index);
+
+    /**
+     * @brief      Gets the index stored in the object
+     *
+     * @return     The index of the object
+     */
+    index_t index() const;
+
+    /**
+     * @brief      Marks \a this element for refinement
+     */
+    void mark();
+    /**
+     * @brief      Unmarks \a this element for refinement
+     */
+    void unmark();
+
+    /**
+     * @brief      Returns whether the element is marked or not
+     *
+     * @return     \a this is marked
+     */
+    bool marked() const;
+
+    /**
+     * @brief      Sets the mark.
+     *
+     * @param[in]  mark  The mark
+     */
+    void setMark(bool mark);
+
+    /**
      * @brief      Gets the parent of the object.
      *
      * @return     The parent of the object.
@@ -167,6 +234,27 @@ public:
      * @return     The ancestor.
      */
     gsHBox<d,T> getAncestor(index_t k) const;
+
+    /**
+     * @brief      Gets the children of the object.
+     *
+     * @return     The children of the object.
+     */
+    Container getChildren() const;
+
+    /**
+     * @brief      Gets the descendants of the object on level \a k.
+     *
+     * @param[in]  k     The reference level
+     *
+     * @return     The children of the object.
+     */
+    Container getDescendants(index_t k) const;
+
+    /**
+
+     */
+    Container getSiblings() const;
 
     /**
      * @brief      Gets the support extension.
@@ -202,12 +290,62 @@ public:
      */
     Container getTneighborhood(index_t m);
 
+
+    /**
+     * @brief      Gets the neighborhood.
+     *
+     * @param[in]  m     The jump parameter
+     *
+     * @tparam     _mode  H or T refinement (else not implemented)
+     *
+     * @return     The neighborhood.
+     */
+    template<enum Neighborhood _mode>
+    typename gsHBox<d,T>::Container getNeighborhood(index_t m) { return getNeighborhood_impl<_mode>(m);}
+
+
+    /**
+     * @brief      Gets the refinement neighborhood.
+     * Returns either the H- or T-neighborhood, depending on the underlying basis
+     *
+     * @param[in]  m     The jump parameter
+     *
+     * @return     The T-neighborhood.
+    */
+    Container getNeighborhood(index_t m);
+
+    /**
+     * @brief      Gets the Coarsening neighborhood.
+     *
+     * @param[in]  m     The jump parameter
+     *
+     * @return     The coarsening neighborhood.
+     */
+    Container getCneighborhood(index_t m);
+
+    /**
+     * @brief      Gets the Coarsening extension,
+     * which is the coarsening neighborhood before checking for active elements.
+     *
+     * @param[in]  m     The jump parameter
+     *
+     * @return     The coarsening extension.
+     */
+    Container getCextension(index_t m);
+
+    /**
+     * @brief      Returns a container representation of the object.
+     *
+     * @return     Container representation of the object.
+     */
+    Container            toContainer();
+
     /**
      * @brief      Returns a hierarchical container representation of the object.
      *
      * @return     Hierarchical container representation of the object.
      */
-    HContainer           toContainer();
+    HContainer           toHContainer();
 
     /**
      * @brief      Prints the object
@@ -227,19 +365,27 @@ public:
      *
      * @return     Refinement box representation of the object.
      */
-    RefBox toRefBox() const;
+    RefBox toRefBox(index_t targetLevel) const;
+    RefBox toRefBox() const
+    {
+        return this->toRefBox(this->level()+1);
+    }
 
     /**
      * @brief      Returns a box representation of the object on the higher level (needed for coarsening).
      *
      * @return     Coarsening box representation of the object.
      */
-    RefBox toCrsBox() const;
+    RefBox toCrsBox(index_t targetLevel) const;
+    RefBox toCrsBox() const
+    {
+        return this->toCrsBox(this->level()-1);
+    }
 
     // Helper functions
     HContainer           boxUnion(const HContainer & container1, const HContainer & container2) const;
 
-    const gsHTensorBasis<d,T> & basis() { return *m_basis; }
+    const gsHTensorBasis<d,T> & basis() const { return *m_basis; }
 
     /**
      * @brief      Returns unit boxes representation of the object.
@@ -255,11 +401,23 @@ public:
      */
     bool good() const;
 
+    /**
+     * @brief      Cleans the container from bad elements (see \a good())
+     *
+     * @param      container  The container
+     */
     void clean(Container & container) const;
 
+    /**
+     * @brief      Computes the parametric coordinates of \a this
+     */
+    void computeCoordinates() const;
+    /**
+     * @brief      Computes the center of \a this
+     */
+    void computeCenter() const;
 
 protected:
-    void _computeCoordinates();
 
     void _computeIndices();
     gsAabb<d,index_t> _computeIndices(const gsMatrix<T> & coords, index_t level);
@@ -267,6 +425,7 @@ protected:
     gsAabb<d,index_t> _computeIndices(const gsMatrix<T> & coords);
 
     gsAabb<d,index_t> _elevateBox(const gsAabb<d,index_t> & box) const;
+    gsAabb<d,index_t> _lowerBox(const gsAabb<d,index_t> & box) const;
 
     Container  _getParents(typename gsHBox<d,T>::Container  & container) const;
     HContainer _getParents(typename gsHBox<d,T>::HContainer & container) const;
@@ -275,13 +434,39 @@ protected:
     Container _boxUnion(const Container & container1, const Container & container2) const;
     Container _makeUnique(const Container & container) const;
 
+    template<enum Neighborhood _mode>
+    typename std::enable_if<_mode==Neighborhood::Automatic, typename gsHBox<d,T>::Container>::type
+    getNeighborhood_impl(index_t m)
+    {
+        return this->getNeighborhood(m);
+    }
+
+    template<enum Neighborhood _mode>
+    typename std::enable_if<_mode==Neighborhood::T, typename gsHBox<d,T>::Container>::type
+    getNeighborhood_impl(index_t m)
+    {
+        return this->getTneighborhood(m);
+    }
+
+    template<enum Neighborhood _mode>
+    typename std::enable_if<_mode==Neighborhood::H, typename gsHBox<d,T>::Container>::type
+    getNeighborhood_impl(index_t m)
+    {
+        return this->getHneighborhood(m);
+    }
+
+
 protected:
     gsAabb<d,index_t> m_indices;
 
     index_t m_pid;
-    gsMatrix<T> m_coords;
-    gsMatrix<T> m_center;
+    mutable gsMatrix<T> m_coords;
+    mutable gsMatrix<T> m_center;
     const gsHTensorBasis<d,T> * m_basis;
+
+    T m_error;
+    index_t m_index;
+    bool m_marked;
 
 }; // class gsHBox
 

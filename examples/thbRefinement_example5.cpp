@@ -17,6 +17,9 @@
 
 #include <gsHSplines/gsHBox.h>
 #include <gsHSplines/gsHBoxContainer.h>
+#include <gsHSplines/gsHBoxUtils.h>
+#include <gsAssembler/gsAdaptiveMeshing.h>
+#include <gsAssembler/gsAdaptiveMeshingCompare.h>
 
 using namespace gismo;
 
@@ -49,6 +52,8 @@ int main(int argc, char *argv[])
     index_t testCase  = 0;
     index_t verbose   = 0;
 
+    index_t rule = 3;
+
     bool plot     = false;
     bool Hneigh   = false;
 
@@ -61,6 +66,10 @@ int main(int argc, char *argv[])
                "Number of uniform refinements to be performed", numHref);
     cmd.addInt("t","testCase",
                "Test configuration", testCase);
+
+    cmd.addInt("R","rule",
+               "Rule for refinement/coarsening", rule);
+
 
     cmd.addInt("v","verbose",
                "Verbose output", verbose);
@@ -124,12 +133,12 @@ int main(int argc, char *argv[])
     boxes[4] = 8;
     mp.patch(0).refineElements(boxes);
 
-    boxes[0] = 4;
-    boxes[1] = 6;
-    boxes[2] = 2;
-    boxes[3] = 8;
-    boxes[4] = 4;
-    mp.patch(0).refineElements(boxes);
+    // boxes[0] = 4;
+    // boxes[1] = 6;
+    // boxes[2] = 2;
+    // boxes[3] = 8;
+    // boxes[4] = 4;
+    // mp.patch(0).refineElements(boxes);
 
     boxes[0] = 4;
     boxes[1] = 10;
@@ -142,8 +151,8 @@ int main(int argc, char *argv[])
 
 
     gsHTensorBasis<2,real_t> * basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
-    gsHBoxContainer<2,real_t> markedRef, markedCrs;
-    gsHBox<2,real_t> cell;
+    gsHBoxContainer<2> markedRef, markedCrs;
+    gsHBox<2> cell;
     basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
 
     gsVector<index_t,2> low,upp;
@@ -152,69 +161,202 @@ int main(int argc, char *argv[])
     low <<7,3;
     upp <<8,4;
     lvl = 4;
-    cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+    cell = gsHBox<2>(low,upp,lvl,basis);
     markedRef.add(cell);
 
     low <<6,6;
     upp <<7,7;
     lvl = 3;
-    cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+    cell = gsHBox<2>(low,upp,lvl,basis);
     markedRef.add(cell);
 
     low <<4,3;
     upp <<5,4;
     lvl = 3;
-    cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+    cell = gsHBox<2>(low,upp,lvl,basis);
     markedRef.add(cell);
 
+    markedRef.markTadmissible(m);
     markedRef.makeUnitBoxes();
-    // markedRef.markTadmissible(m);
 
     gsDebugVar(markedRef);
-    mp.patch(0).refineElements(markedRef.toRefBoxes());
+    gsWriteParaview(mp,"mp",1000,true);
+
+    gsHBox<2>::Container c = markedRef.toContainer();
+    for (typename gsHBox<2>::cIterator it=c.begin(); it!=c.end(); it++)
+    {
+        gsDebugVar(*it);
+        gsHBoxContainer<2> siblings(it->getSiblings());
+        gsDebugVar(siblings);
+    }
+
+    for (typename gsHBox<2>::Iterator it=c.begin(); it!=c.end(); it++)
+    {
+        gsDebugVar(*it);
+        gsHBoxContainer<2> siblings(gsHBoxUnique<2,real_t>(it->getTneighborhood(2)));
+        // siblings.makeUnique();
+        gsDebugVar(siblings);
+    }
+
+    gsHBoxContainer<2> resContainer2(cell.getParent().getCneighborhood(m));
+    gsDebugVar(resContainer2);
+
+
 
     low <<0,0;
     upp <<1,1;
     lvl = 2;
-    cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+    cell = gsHBox<2>(low,upp,lvl,basis);
     markedCrs.add(cell);
 
     low <<3,3;
     upp <<4,4;
     lvl = 3;
-    cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+    cell = gsHBox<2>(low,upp,lvl,basis);
     markedCrs.add(cell);
 
     low <<5,1;
     upp <<6,2;
     lvl = 3;
-    cell = gsHBox<2,real_t>(low,upp,lvl,basis);
+    cell = gsHBox<2>(low,upp,lvl,basis);
     markedCrs.add(cell);
 
+    low <<4,7;
+    upp <<5,8;
+    lvl = 3;
+    cell = gsHBox<2>(low,upp,lvl,basis);
+    markedCrs.add(cell);
 
-    for (typename gsHBoxContainer<2,real_t>::HIterator Hit=markedCrs.begin(); Hit!=markedCrs.end(); Hit++)
-    {
-        for (typename gsHBoxContainer<2,real_t>::cIterator Cit=Hit->begin(); Cit!=Hit->end(); Cit++)
+    gsOverlapCompare<2,real_t> overlapCompare(markedRef.toContainer(),2);
+    gsHBoxContainer<2> coarsened;
+    for (typename gsHBoxContainer<2>::HIterator Hit=markedCrs.begin(); Hit!=markedCrs.end(); Hit++)
+        for (typename gsHBoxContainer<2>::cIterator Cit=Hit->begin(); Cit!=Hit->end(); Cit++)
         {
-            bool clean = true;
-            for (typename gsHBox<2,real_t>::HIterator HRit=markedRef.begin(); HRit!=markedRef.end(); HRit++)
+            if (overlapCompare.check(*Cit))
+                coarsened.add(*Cit);
+        }
+
+    gsDebugVar(coarsened);
+    // mp.patch(0).refineElements(markedRef.toRefBoxes());
+    // gsWriteParaview(mp,"mp_ref",1000,true);
+    // mp.patch(0).unrefineElements(coarsened.toCrsBoxes());
+    // gsWriteParaview(mp,"mp_crs",1000,true);
+    return 0;
+    //
+    for (typename gsHBoxContainer<2>::HIterator Hit=markedCrs.begin(); Hit!=markedCrs.end(); Hit++)
+        for (typename gsHBoxContainer<2>::cIterator Cit=Hit->begin(); Cit!=Hit->end(); Cit++)
+        {
+            for (typename gsHBoxContainer<2>::HIterator Hit2=markedCrs.begin(); Hit2!=markedCrs.end(); Hit2++)
             {
-                for (typename gsHBoxContainer<2,real_t>::cIterator CRit=HRit->begin(); CRit!=HRit->end(); CRit++)
+                for (typename gsHBoxContainer<2>::cIterator Cit2=Hit2->begin(); Cit2!=Hit2->end(); Cit2++)
                 {
-                    gsHBox<2,real_t> box(*Cit);
-                    gsHBox<2,real_t> parent(Cit->getParent());
-                    gsDebugVar(box);
-                    gsDebugVar(parent);
-                    gsDebugVar(*CRit);
-
-                    gsDebugVar(parent.contains(box));
-                    gsDebugVar(box.isContained(parent));
-
-                    gsDebugVar(parent.contains(*CRit));
-                    gsDebugVar(CRit->isContained(box));
-                    gsDebugVar(CRit->isContained(parent));
+                    gsDebug<<"Checking "<<*Cit2<<" against "<<*Cit<<"\n";
                 }
             }
+        }
+
+
+    typename gsBasis<>::domainIter domIt = mp.basis(0).makeDomainIterator();
+    gsHDomainIterator<real_t,2> * domHIt = nullptr;
+    domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
+    std::vector<real_t> errors(gsMultiBasis<>(mp).totalElements());
+    index_t i=0;
+    for (; domHIt->good(); domHIt->next(), i++ )
+    {
+        errors[i] = i;
+        gsHBox<2> box(domHIt);
+        gsDebugVar(box);
+        gsDebugVar(i);
+    }
+
+    gsDebugVar(errors.size());
+    for (std::vector<real_t>::const_iterator it = errors.begin(); it!=errors.end(); it++)
+        gsDebugVar(*it);
+
+    errors[4]  = 1004;
+    errors[28] = 1028;
+    errors[35] = 1035;
+
+    errors[21] = 1./1021;
+    errors[31] = 1./1031;
+    errors[41] = 1./1041;
+
+    gsAdaptiveMeshing<real_t> mesher(mp);
+    mesher.options().setInt("RefineRule",rule);
+    mesher.options().setInt("CoarsenRule",rule);
+    mesher.options().setReal("RefineParam",0.2);
+    mesher.options().setReal("CoarsenParam",0.9999);
+    mesher.getOptions();
+    std::vector<bool> refine, coarsen;
+    mesher.mark_into(errors,refine,false);
+    mesher.mark_into(errors,coarsen,true);
+
+    index_t j=0;
+    for (std::vector<real_t>::const_iterator it = errors.begin(); it!=errors.end(); it++, j++)
+    {
+        std::string what;
+        if (refine[j])
+            what = "refined";
+        else if (coarsen[j])
+            what = "coarsened";
+        else
+            what = "nothing";
+        gsDebug<<"Element "<<j<<": error = "<<errors[j]<<" is "<<what<<"\n";
+    }
+
+    std::vector<bool> filter(markedCrs.totalSize());
+    // std::fill(filter.begin(), filter.end(), true);
+    index_t k=0;
+    for (typename gsHBoxContainer<2>::HIterator Hit=markedCrs.begin(); Hit!=markedCrs.end(); Hit++)
+    {
+        for (typename gsHBoxContainer<2>::cIterator Cit=Hit->begin(); Cit!=Hit->end(); Cit++, k++)
+        {
+            bool clean = true;
+
+            // Rule #1: Support extension of the coarsening cell contains a refinement cell
+            index_t l=0;
+            for (typename gsHBoxContainer<2>::HIterator Hit2=markedCrs.begin(); Hit2!=markedCrs.end(); Hit2++)
+            {
+                for (typename gsHBoxContainer<2>::cIterator Cit2=Hit2->begin(); Cit2!=Hit2->end(); Cit2++, l++)
+                {
+                    if (!clean || Cit->isSame(*Cit2))
+                        continue;
+
+                    gsHBox<2> parent1(Cit->getParent());
+                    gsHBox<2> parent2(Cit2->getParent());
+
+                    clean &= !(parent1.contains(*Cit2));
+                    if (!clean)
+                    {
+                        gsDebug<<"Rule #1: Box "<<*Cit<<" eliminated because it overlaps with coarsening box "<<*Cit2<<"\n";
+                        break;
+                    }
+                }
+            }
+
+            if (!clean)
+                continue;
+
+            // Rule #2: Support extension of the coarsening cell contains a refinement cell ------>>>>> What about the T/H-Neighborhood???
+            for (typename gsHBox<2>::HIterator HRit=markedRef.begin(); HRit!=markedRef.end(); HRit++)
+            {
+                for (typename gsHBoxContainer<2>::cIterator CRit=HRit->begin(); CRit!=HRit->end(); CRit++)
+                {
+                    if (!clean || Cit->isSame(*CRit))
+                        continue;
+
+                    gsHBox<2> box(*CRit);
+                    gsHBox<2> parent(Cit->getParent());
+
+                    clean &= !(parent.contains(box));
+                    if (!clean)
+                    {
+                        gsDebug<<"Rule #2: Box "<<*Cit<<" eliminated because contains refinement box "<<*CRit<<"\n";
+                        break;
+                    }
+                }
+            }
+            filter.at(k) = clean;
         }
     }
 
@@ -229,15 +371,15 @@ int main(int argc, char *argv[])
         gsInfo<<markedRef<<"\n";
     }
 
-    // gsHBoxContainer<2,real_t> tmp;
-    // gsHBoxContainer<2,real_t>::HContainer container;
+    // gsHBoxContainer<2> tmp;
+    // gsHBoxContainer<2>::HContainer container;
     // if (verbose>1 &&   Hneigh  )
     // {
     //     gsInfo<<"------------------------H-Neighborhood m\n";
-    //     tmp = gsHBoxContainer<2,real_t>(cell.getHneighborhood(m));
+    //     tmp = gsHBoxContainer<2>(cell.getHneighborhood(m));
     //     container = tmp.boxes();
-    //     for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
-    //         for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+    //     for (typename gsHBoxContainer<2>::HIterator hit = container.begin(); hit!=container.end(); hit++)
+    //         for (typename gsHBoxContainer<2>::Iterator it = hit->begin(); it!=hit->end(); it++)
     //             gsInfo<<it->getCoordinates()<<"\n";
 
     // }
@@ -245,10 +387,10 @@ int main(int argc, char *argv[])
     // if (verbose>1 && !(Hneigh) )
     // {
     //     gsInfo<<"------------------------T-Neighborhood m\n";
-    //     tmp = gsHBoxContainer<2,real_t>(cell.getTneighborhood(m));
+    //     tmp = gsHBoxContainer<2>(cell.getTneighborhood(m));
     //     container = tmp.boxes();
-    //     for (typename gsHBoxContainer<2,real_t>::HIterator hit = container.begin(); hit!=container.end(); hit++)
-    //         for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+    //     for (typename gsHBoxContainer<2>::HIterator hit = container.begin(); hit!=container.end(); hit++)
+    //         for (typename gsHBoxContainer<2>::Iterator it = hit->begin(); it!=hit->end(); it++)
     //             gsInfo<<it->getCoordinates()<<"\n";
     // }
 
@@ -272,7 +414,7 @@ int main(int argc, char *argv[])
     }
 
 
-    gsHBoxContainer<2,real_t> container(markedRef.toUnitBoxes());
+    gsHBoxContainer<2> container(markedRef.toUnitBoxes());
     // gsDebugVar(container);
 
     std::vector<index_t> refboxes = container.toRefBoxes();

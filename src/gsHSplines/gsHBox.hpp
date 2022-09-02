@@ -14,15 +14,25 @@
 #pragma once
 
 #include <gsUtils/gsCombinatorics.h>
-#include <gsHSplines/gsHBoxUtils.h>
+#include <gsHSplines/gsHBSplineBasis.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
 
 namespace gismo
 {
 
 template <short_t d, class T>
+gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
+:
+gsHBox(domHIt,-1)
+{ }
+
+template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid)
 :
-m_pid(pid)
+m_pid(pid),
+m_error(0),
+m_index(-1),
+m_marked(false)
 {
     m_basis = nullptr;
     m_basis = static_cast<const gsHTensorBasis<d,T> *>(domHIt->m_basis);
@@ -32,14 +42,17 @@ m_pid(pid)
     m_coords.col(0) = domHIt->lowerCorner();
     m_coords.col(1) = domHIt->upperCorner();
     m_center = (m_coords.col(1) + m_coords.col(0))/2;
-    _computeIndices();
+    m_indices = _computeIndices(m_coords,m_center);
 }
 
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis, const index_t pid)
 :
 m_indices(low,upp,level),
-m_pid(pid)
+m_pid(pid),
+m_error(0),
+m_index(-1),
+m_marked(false)
 {
     m_basis = basis;
 }
@@ -48,7 +61,10 @@ template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid)
 :
 m_indices(box),
-m_pid(pid)
+m_pid(pid),
+m_error(0),
+m_index(-1),
+m_marked(false)
 {
     m_basis = basis;
 }
@@ -56,7 +72,10 @@ m_pid(pid)
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis, const index_t pid)
 :
-m_pid(pid)
+m_pid(pid),
+m_error(0),
+m_index(-1),
+m_marked(false)
 {
     GISMO_ENSURE(indices.size()==2*d+1,"Index size is wrong");
     typename gsHBox<d,T>::point low, upp;
@@ -91,10 +110,13 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
     if (this!=&other)
     {
         m_indices = other.m_indices;
+        m_pid     = other.m_pid;
         m_coords  = other.m_coords;
         m_center  = other.m_center;
         m_basis   = other.m_basis;
-        m_pid     = other.m_pid;
+        m_error   = other.m_error;
+        m_marked  = other.m_marked;
+        m_index   = other.m_index;
     }
     return *this;
 }
@@ -103,10 +125,13 @@ template <short_t d, class T>
 gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
 {
     m_indices = give(other.m_indices);
+    m_pid     = give(other.m_pid);
     m_coords  = give(other.m_coords);
     m_center  = give(other.m_center);
     m_basis   = give(other.m_basis);
-    m_pid     = give(other.m_pid);
+    m_error   = give(other.m_error);
+    m_marked  = give(other.m_marked);
+    m_index   = give(other.m_index);
     return *this;
 }
 
@@ -157,31 +182,51 @@ bool gsHBox<d, T>::isSame(const gsHBox<d,T> & other) const
 }
 
 template <short_t d, class T>
-bool gsHBox<d, T>::isActive()
+bool gsHBox<d, T>::isActive() const
 {
     return m_basis->getLevelAtPoint(this->getCenter()) == this->level();
 }
 
 template <short_t d, class T>
-const gsMatrix<T> & gsHBox<d, T>::getCoordinates()
+bool gsHBox<d, T>::isActiveOrContained() const
 {
-    if (m_coords.size()==0)
-        _computeCoordinates();
+    return m_basis->getLevelAtPoint(this->getCenter()) >= this->level();
+}
+
+template <short_t d, class T>
+index_t gsHBox<d, T>::levelInCenter() const
+{
+    return m_basis->getLevelAtPoint(this->getCenter());
+}
+
+template <short_t d, class T>
+const gsMatrix<T> & gsHBox<d, T>::getCoordinates() const
+{
+    GISMO_ASSERT(m_coords.size()!=0,"Coordinates have not been computed! Please call computeCoordinates()");
     return m_coords;
 }
 
 template <short_t d, class T>
-const gsMatrix<T> & gsHBox<d, T>::getCenter()
+const gsMatrix<T> & gsHBox<d, T>::getCenter() const
 {
+    // GISMO_ASSERT(m_center.size()!=0,"Center has not been computed! Please call computeCenter()");
     if (m_center.size()==0)
-        _computeCoordinates();
+        this->computeCenter();
     return m_center;
 }
 
 template <short_t d, class T>
-gsVector<T,d>  gsHBox<d, T>::lowerCorner() const { return m_coords.col(0); }
+gsVector<T,d>  gsHBox<d, T>::lowerCorner() const
+{
+    GISMO_ASSERT(m_coords.size()!=0,"Coordinates have not been computed! Please call computeCoordinates()");
+    return m_coords.col(0);
+}
 template <short_t d, class T>
-gsVector<T,d>  gsHBox<d, T>::upperCorner() const { return m_coords.col(1); }
+gsVector<T,d>  gsHBox<d, T>::upperCorner() const
+{
+    GISMO_ASSERT(m_coords.size()!=0,"Coordinates have not been computed! Please call computeCoordinates()");
+    return m_coords.col(1);
+}
 
 template <short_t d, class T>
 const typename gsHBox<d,T>::point & gsHBox<d, T>::lowerIndex() const { return m_indices.first;  }
@@ -195,6 +240,30 @@ template <short_t d, class T>
 index_t gsHBox<d, T>::level() const { return m_indices.level; }
 
 template <short_t d, class T>
+void gsHBox<d, T>::setError(T error) { m_error = error; }
+
+template <short_t d, class T>
+T gsHBox<d, T>::error() const { return m_error; }
+
+template <short_t d, class T>
+void gsHBox<d, T>::setIndex(index_t index) { m_index = index; }
+
+template <short_t d, class T>
+index_t gsHBox<d, T>::index() const { return m_index; }
+
+template <short_t d, class T>
+void gsHBox<d, T>::mark() { m_marked = true; }
+
+template <short_t d, class T>
+void gsHBox<d, T>::unmark() { m_marked = false; }
+
+template <short_t d, class T>
+bool gsHBox<d, T>::marked() const { return m_marked; }
+
+template <short_t d, class T>
+void gsHBox<d, T>::setMark(bool mark) { m_marked = mark; }
+
+template <short_t d, class T>
 gsHBox<d,T> gsHBox<d, T>::getParent() const
 {
     GISMO_ENSURE(this->level()>0,"Box is at ground level and has no parent");
@@ -206,7 +275,9 @@ template <short_t d, class T>
 gsHBox<d,T> gsHBox<d, T>::getAncestor(index_t k) const
 {
     index_t lvl = this->level();
-    GISMO_ASSERT(lvl > k,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
+    // GISMO_ASSERT(lvl > k,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
+    GISMO_ASSERT(k >= 0,"Requested ancestor k = "<<k<<" should be greater than or equal to 0");
+    GISMO_ASSERT(lvl >= 0,"Level lvl = "<<lvl<<" should be larger than 0");
     // GISMO_ASSERT(k > 0,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
     gsHBox<d,T> parent = this->getParent();
     gsHBox<d,T> ancestor;
@@ -215,14 +286,77 @@ gsHBox<d,T> gsHBox<d, T>::getAncestor(index_t k) const
         ancestor = parent.getAncestor(k);
         return ancestor;
     }
-    else
-    {
+    else if (k==lvl-1)
         return parent;
-    }
+    else if (k==lvl)
+        return *this;
+    else
+        GISMO_ERROR("Cannot find ancestor with index k="<<k<<" on level l="<<lvl<<". Something went wrong?");
 }
 
 template <short_t d, class T>
-typename gsHBox<d,T>::HContainer gsHBox<d, T>::toContainer()
+typename gsHBox<d,T>::Container gsHBox<d, T>::getChildren() const
+{
+    gsAabb<d,index_t> box = _lowerBox(m_indices);
+    gsHBox<d,T> childRegion(box,m_basis,m_pid);
+    return childRegion.toUnitBoxes();
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::getDescendants(index_t k) const
+{
+    index_t lvl = this->level();
+    // GISMO_ASSERT(lvl > k,"Current level should be larger than requested level, l = "<<lvl<<", k = "<<k);
+    GISMO_ASSERT(k >= 0,"Requested descendant k = "<<k<<" should be larger than or equal to 0");
+    GISMO_ASSERT(lvl >= 0,"Level lvl = "<<lvl<<" should be larger than 0");
+    Container descendants(std::pow(std::pow(2,d),k-lvl));
+    if (k==lvl)
+        descendants.push_back(*this);
+    if (k==lvl+1)
+        descendants = this->getChildren();
+    else
+    {
+        Container tmp = this->getChildren(); // children have level lvl+1
+        for (index_t k_tmp = lvl+1; k_tmp!=k; k_tmp++)
+        {
+            descendants.clear();
+            // descendants.reserve()
+            for (Iterator it=tmp.begin(); it!=tmp.end(); it++)
+            {
+                Container tmp2 = it->getChildren();
+                for (Iterator it2=tmp2.begin(); it2!=tmp2.end(); it2++)
+                    descendants.push_back(*it2);
+            }
+            tmp = descendants;
+        }
+    }
+    return descendants;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::getSiblings() const
+{
+    auto isthis = [this](const gsHBox<d,T> & other) { return gsHBoxEqual<d,T>()(other,*this); };
+    gsHBox<d,T> parent = this->getParent();
+    typename gsHBox<d,T>::Container children = parent.getChildren();
+    Iterator toErase = std::find_if(children.begin(),children.end(),isthis);
+    if (toErase!=children.end())
+        children.erase(toErase);
+    else
+        GISMO_ERROR("Something went wrong");
+    return children;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::toContainer()
+{
+    Container container;
+    container.push_back(*this);
+    return container;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::HContainer gsHBox<d, T>::toHContainer()
 {
     HContainer container;
     container.resize(this->level()+1);
@@ -233,7 +367,7 @@ typename gsHBox<d,T>::HContainer gsHBox<d, T>::toContainer()
 template <short_t d, class T>
 typename gsHBox<d, T>::Container gsHBox<d, T>::getSupportExtension()
 {
-    this->_computeCoordinates();
+    this->computeCenter();
     index_t lvl = this->level();
     // Compute actives
     gsMatrix<index_t> acts;
@@ -294,8 +428,11 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getHneighborhood(index_t m)
 
         // Eliminate elements which are too low
         for (Iterator it = extension.begin(); it!=extension.end(); it++)
+        {
+            it->computeCenter(); // needed to check active
             if (it->isActive())
                 neighborhood.push_back(*it);
+        }
     }
     return neighborhood;
 }
@@ -317,11 +454,82 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getTneighborhood(index_t m)
         parents = _getParents(extension);
 
         for (Iterator it = parents.begin(); it!=parents.end(); it++)
+        {
+            it->computeCenter(); // needed to check active
             if (it->isActive())
                 neighborhood.push_back(*it);
+        }
         // neighborhood = parents;
     }
     return neighborhood;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::getNeighborhood(index_t m)
+{
+    Container result;
+    if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(m_basis))
+        result = this->getNeighborhood<Neighborhood::T>(m);
+    else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(m_basis))
+        result = this->getNeighborhood<Neighborhood::H>(m);
+    else
+        GISMO_ERROR("Basis type should be gsTHBSplineBasis or gsHBSplineBasis");
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::getCextension(index_t m)
+{
+    // See Definition 3.5 from [1]
+    // [1] Carraturo, M., Giannelli, C., Reali, A. & Vázquez, R.
+    // Suitably graded THB-spline refinement and coarsening: Towards an adaptive isogeometric analysis of additive manufacturing processes.
+    // Comput. Methods Appl. Mech. Eng. 348, 660–679 (2019).
+    //
+    // This function returns the coarsening neighborhood of \a this, which is an element to be reactivated
+    Container extension, children, childExtension, descendants, result;
+    index_t targetLvl = this->level() + m;
+
+    children = this->getChildren();
+    for (typename gsHBox<d,T>::Iterator child=children.begin(); child!=children.end(); child++)
+    {
+        childExtension = child->getSupportExtension();
+        extension = gsHBoxUtils<d,T>::Union(extension,childExtension);
+    }
+
+    // All elements in the support extension of the children (so at level l+1)
+    extension = gsHBoxUtils<d,T>::Union(extension,children);
+    // question: needed MINUS the siblings??
+    // extension = gsHBoxUtils<d,T>::Difference(extension,children);
+
+    // result = extension;
+    // gsDebugVar(targetLvl);
+    for (typename gsHBox<d,T>::Iterator eIt = extension.begin(); eIt!=extension.end(); eIt++)
+    {
+        descendants = eIt->getDescendants(targetLvl);
+        result.insert(result.end(), descendants.begin(), descendants.end());
+    }
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBox<d,T>::Container gsHBox<d, T>::getCneighborhood(index_t m)
+{
+    // See Definition 3.5 from [1]
+    // [1] Carraturo, M., Giannelli, C., Reali, A. & Vázquez, R.
+    // Suitably graded THB-spline refinement and coarsening: Towards an adaptive isogeometric analysis of additive manufacturing processes.
+    // Comput. Methods Appl. Mech. Eng. 348, 660–679 (2019).
+    //
+    // This function returns the coarsening neighborhood of \a this, which is an element to be reactivated
+    Container descendants, result;
+    descendants = this->getCextension(m);
+
+    for (typename gsHBox<d,T>::Iterator dIt = descendants.begin(); dIt!=descendants.end(); dIt++)
+    {
+        dIt->computeCenter(); // needed to check active
+        if (dIt->levelInCenter()>=dIt->level()) // the level is even larger (i.e. even higher decendant)!!
+            result.push_back(*dIt);
+    }
+    return result;
 }
 
 template <short_t d, class T>
@@ -340,11 +548,13 @@ std::ostream& gsHBox<d, T>::print( std::ostream& os ) const
             <<" -- "
             <<"("<<m_coords.col(1).transpose()<<")";
     }
+    os  <<"\nmarked = "<<m_marked<<"";
+    os  <<"\nerror = "<<m_error<<"";
     return os;
 }
 
 template <short_t d, class T>
-void gsHBox<d, T>::_computeCoordinates()
+void gsHBox<d, T>::computeCoordinates() const
 {
     m_coords.resize(d,2);
     gsVector<T> low(d), upp(d);
@@ -357,7 +567,12 @@ void gsHBox<d, T>::_computeCoordinates()
     }
     m_coords.col(0) = low;
     m_coords.col(1) = upp;
+}
 
+template <short_t d, class T>
+void gsHBox<d, T>::computeCenter() const
+{
+    this->computeCoordinates();
     m_center = (m_coords.col(0) + m_coords.col(1))/2;
 }
 
@@ -422,6 +637,18 @@ gsAabb<d,index_t> gsHBox<d, T>::_elevateBox(const gsAabb<d,index_t> & box) const
 }
 
 template <short_t d, class T>
+gsAabb<d,index_t> gsHBox<d, T>::_lowerBox(const gsAabb<d,index_t> & box) const
+{
+    typename gsHBox<d,T>::point low,upp;
+    for (index_t i = 0; i!=d; i++)
+    {
+        low.at(i) = box.first .at(i) * 2;
+        upp.at(i) = box.second.at(i) * 2;
+    }
+    return gsAabb<d,index_t>(low,upp,box.level+1);
+}
+
+template <short_t d, class T>
 typename gsHBox<d,T>::HContainer gsHBox<d, T>::_getParents(HContainer & container) const
 {
     HContainer result;
@@ -482,31 +709,33 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toBox() const
 }
 
 template <short_t d, class T>
-typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
+typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox(index_t targetLevel) const
 {
+    GISMO_ASSERT(targetLevel > this->level(),"Target level must be larger than the current level, but "<<targetLevel<<"=<"<<this->level());
     std::vector<index_t> result(2*d+1);
-    result[0] = this->level()+1;
-    index_t lowerIndex, upperIndex, degree, maxKtIndex, ext;
+    index_t diff = targetLevel - this->level();
+    result[0] = this->level() + diff;
+    index_t lowerIndex, upperIndex, degree; //, maxKtIndex
     for (index_t i = 0; i!=d; i++)
     {
         degree = m_basis->degree(i);
-        maxKtIndex = m_basis->tensorLevel(this->level()+1).knots(i).size();
+        // maxKtIndex = m_basis->tensorLevel(this->level()+1).knots(i).size();
 
         if (degree % 2 == 1 && degree>1)
         {
-            lowerIndex = this->lowerIndex()[i]*2;
+            lowerIndex = this->lowerIndex()[i]*std::pow(2,diff);
             ( lowerIndex < (degree-1)/2-1 ? lowerIndex=0 : lowerIndex-=(degree-1)/2-1 );
             result[i+1] = lowerIndex;
-            upperIndex = this->upperIndex()[i]*2;
+            upperIndex = this->upperIndex()[i]*std::pow(2,diff);
             // ( upperIndex + (degree)/2+1 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2+1);
             result[d+i+1] = upperIndex;
         }
         else
         {
-            lowerIndex = this->lowerIndex()[i]*2;
+            lowerIndex = this->lowerIndex()[i]*std::pow(2,diff);
             ( lowerIndex < (degree-1)/2 ? lowerIndex=0 : lowerIndex-=(degree-1)/2 );
             result[i+1] = lowerIndex;
-            upperIndex = this->upperIndex()[i]*2;
+            upperIndex = this->upperIndex()[i]*std::pow(2,diff);
             // ( upperIndex + (degree)/2 >= maxKtIndex ? upperIndex=maxKtIndex-1 : upperIndex+=(degree)/2);
             result[d+i+1] = upperIndex;
         }
@@ -515,14 +744,17 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toRefBox() const
 }
 
 template <short_t d, class T>
-typename gsHBox<d,T>::RefBox gsHBox<d, T>::toCrsBox() const
+typename gsHBox<d,T>::RefBox gsHBox<d, T>::toCrsBox(index_t targetLevel) const
 {
-    std::vector<index_t> result(5);
-    result[0] = this->level()-1;
-    result[1] = this->lowerIndex()[0]*2;
-    result[2] = this->lowerIndex()[1]*2;
-    result[3] = this->upperIndex()[0]*2;
-    result[4] = this->upperIndex()[1]*2;
+    GISMO_ASSERT(targetLevel < this->level(),"Target level must be smaller than the current level, but "<<targetLevel<<">="<<this->level());
+    std::vector<index_t> result(2*d+1);
+    index_t diff = this->level() - targetLevel;
+    result[0] = this->level() - diff;
+    for (index_t i = 0; i!=d; i++)
+    {
+        result[i+1] = this->lowerIndex()[i]/std::pow(2,diff);
+        result[d+i+1] = this->upperIndex()[i]/std::pow(2,diff);
+    }
     return result;
 }
 
@@ -604,7 +836,7 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_boxUnion(const Container & conta
     // }
     // else    { /* Do nothing */ }
 
-    return gsHBoxUnion<d,T>(container1,container2);
+    return gsHBoxUtils<d,T>::Union(container1,container2);
 }
 
 template <short_t d, class T>
@@ -627,7 +859,7 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::_makeUnique(const Container & con
     // Container result(scontainer.begin(),scontainer.end());
     // return result;
 
-    return gsHBoxUnique<d,T>(container);
+    return gsHBoxUtils<d,T>::Unique(container);
 }
 
 template <short_t d, class T>

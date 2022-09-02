@@ -27,6 +27,8 @@
 #include <gsModeling/gsSolid.h>
 //#include <gsUtils/gsMesh/gsHeMesh.h>
 
+#include <gsHSplines/gsHBoxContainer.h>
+
 
 #define PLOT_PRECISION 5
 
@@ -1018,6 +1020,49 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
         collection.addPart(fileName, ".vtu");
     }
 
+    collection.save();
+}
+
+/// Export Basis functions
+template<class T>
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn)
+{
+    gsMatrix<T> points, values(1,4),corners(2,2);
+    gsVector<index_t> np(2);
+    np<<2,2;
+    box.computeCoordinates();
+    points = gsPointGrid<T>(box.getCoordinates(),4);
+    values.setConstant(box.level());
+    gsWriteParaviewTPgrid(points,values,np,fn);
+}
+
+template<class T>
+void gsWriteParaview(gsHBox<2,T> & box, std::string const & fn)
+{
+    gsParaviewCollection collection(fn);
+
+    writeSingleHBox(box,fn);
+    collection.addPart(fn, ".vts");
+
+    // Write out the collection file
+    collection.save();
+}
+
+template<class T>
+void gsWriteParaview(gsHBoxContainer<2,T> & boxes, std::string const & fn)
+{
+    gsParaviewCollection collection(fn);
+
+    index_t i=0;
+    for (typename gsHBoxContainer<2,T>::HIterator Hit = boxes.begin(); Hit!=boxes.end(); Hit++)
+        for (typename gsHBoxContainer<2,T>::Iterator Cit = Hit->begin(); Cit!=Hit->end(); Cit++, i++)
+        {
+            std::string fileName = fn + util::to_string(i);
+            writeSingleHBox<T>(*Cit,fileName);
+            collection.addPart(fileName, ".vts");
+        }
+
+    // Write out the collection file
     collection.save();
 }
 

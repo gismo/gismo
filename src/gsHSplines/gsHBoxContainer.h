@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHBoxUtils.h>
 
 namespace gismo
 {
@@ -29,8 +30,10 @@ public:
     typedef typename gsHBox<d,T>::HContainer        HContainer;
     typedef typename gsHBox<d,T>::Iterator          Iterator;
     typedef typename gsHBox<d,T>::cIterator         cIterator;
+    typedef typename gsHBox<d,T>::rIterator         rIterator;
     typedef typename gsHBox<d,T>::HIterator         HIterator;
     typedef typename gsHBox<d,T>::cHIterator        cHIterator;
+    typedef typename gsHBox<d,T>::rHIterator        rHIterator;
 
 public:
     gsHBoxContainer();
@@ -61,33 +64,14 @@ public:
     /// Prints the container
     std::ostream& print( std::ostream& os ) const;
 
-
     /**
-     * @brief      Takes the union of two hierarchical containers
+     * @brief      Returns all the boxes of \a patchID
      *
-     * @param[in]  container1  The container 1
-     * @param[in]  container2  The container 2
+     * @param[in]  patchID  The patch id
      *
-     * @return     The hierarchical container with the union.
+     * @return     container of boxes on patch \a patchID
      */
-    HContainer           boxUnion(const HContainer & container1, const HContainer & container2) const;
-    /**
-     * @brief      Takes the union of \a this and the \a other \ref gsHBoxContainer
-     *
-     * @param[in]  other  The other gsHBoxContainer
-     *
-     * @return     The gsHBoxContainer with the union.
-     */
-    gsHBoxContainer<d,T> boxUnion(const gsHBoxContainer<d,T> & other) const;
-    /**
-     * @brief      Takes the union of two \ref gsHBoxContainer
-     *
-     * @param[in]  container1  The container 1
-     * @param[in]  container2  The container 2
-     *
-     * @return     The gsHBoxContainer with the union.
-     */
-    gsHBoxContainer<d,T> boxUnion(const gsHBoxContainer<d,T> & container1, const gsHBoxContainer<d,T> & container2) const;
+    gsHBoxContainer<d,T> patch(const index_t patchID) const;
 
     /// Removes duplicate boxes
     void makeUnique();
@@ -97,56 +81,19 @@ public:
     /// Returns the actives on \a level
     const Container & getActivesOnLevel(index_t lvl) const;
     /// Gives a hierarchical container with all the parents of the boxes stored in \a this
-    HContainer getParents() const;
+    Container getParents() const;
 
+    /// Gives a hierarchical container with all the children of the boxes stored in \a this
+    Container getChildren() const;
 
-    /**
-     * @brief      Marks H-recursively
-     *
-     * @param      marked  The marked boxes
-     * @param[in]  lvl     The level
-     * @param[in]  m       The jump parameter
-     *
-     * @return     The resulting hierarchical container.
-     */
-    HContainer  markHrecursive(HContainer & marked, index_t lvl, index_t m) const;
-    /// Applies \ref markHrecursive on \a this
-    void        markHrecursive(index_t lvl, index_t m);
-    /**
-     * @brief      Marks T-recursively
-     *
-     * @param      marked  The marked boxes
-     * @param[in]  lvl     The level
-     * @param[in]  m       The jump parameter
-     *
-     * @return     The resulting hierarchical container.
-     */
-    HContainer  markTrecursive(HContainer & marked, index_t lvl, index_t m) const;
-    /// Applies \ref markTrecursive on \a this
-    void        markTrecursive(index_t lvl, index_t m);
-
-    /**
-     * @brief      Performs H-admissible refinement
-     *
-     * @param      marked  The marked boxes
-     * @param[in]  m       The jump parameter
-     *
-     * @return     The resulting hierarchical container.
-     */
-    void        markHadmissible(HContainer & marked, index_t m) const;
-    /// Applies \ref markHadmissible on \a this
+    /// Applies \ref _markHadmissible on \a this
     void        markHadmissible(index_t m);
-    /**
-     * @brief      Performs T-admissible refinement
-     *
-     * @param      marked  The marked boxes
-     * @param[in]  m       The jump parameter
-     *
-     * @return     The resulting hierarchical container.
-     */
-    void        markTadmissible(HContainer & marked, index_t m) const;
-    /// Applies \ref markTadmissible on \a this
+
+    /// Applies \ref _markTadmissible on \a this
     void        markTadmissible(index_t m);
+
+    /// Applies \ref _markAdmissible on \a this
+    void        markAdmissible(index_t m);
 
     /// Returns a heirarchical container with the boxes stored in the container
     HContainer & boxes() { return m_boxes; }
@@ -161,45 +108,49 @@ public:
      *
      * @return     Boxes representation of the object.
      */
-    RefBox toBoxes()    const;
+    RefBox toBoxes(const index_t patchID=-1)    const;
 
     /**
      * @brief      Returns refinement box representation of the object.
      *
      * @return     Refinement box representation of the object.
      */
-    RefBox toRefBoxes() const;
+    RefBox toRefBoxes(const index_t patchID=-1) const;
 
     /**
      * @brief      Returns coarsening box representation of the object.
      *
      * @return     Coarsening box representation of the object.
      */
-    RefBox toCrsBoxes() const;
+    RefBox toCrsBoxes(const index_t patchID=-1) const;
 
     /**
      * @brief      Returns box coordinate represenation of the object
      *
      * @return     Box coordinate representation of the object
      */
-    gsMatrix<T> toCoords();
+    gsMatrix<T> toCoords(const index_t patchID=-1) const;
 
     /**
      * @brief      Transforms the boxes in \a container as unit boxes
      *
-     * @param[in]  container  A hierarchical container of boxes
-     *
      * @return     A hierarchical container containing the unit boxes.
      */
-    HContainer toUnitBoxes(const HContainer & container) const;
+    Container toUnitBoxes() const {return gsHBoxUtils<d,T>::toUnitBoxes(this->m_boxes);}
 
     /**
-     * @brief      Returns the boxes inside as unit boxes
+     * @brief      Transforms the boxes in \a container as unit boxes
      *
      * @return     A hierarchical container containing the unit boxes.
      */
-    HContainer toUnitBoxes() const;
+    HContainer toUnitHBoxes() const {return gsHBoxUtils<d,T>::toUnitHBoxes(this->m_boxes);}
 
+    /**
+     * @brief      Returns a container representation of the object.
+     *
+     * @return     Container representation of the object.
+     */
+    Container toContainer() const {return gsHBoxUtils<d,T>::toContainer(m_boxes);}
 
     /**
      * @brief      Transforms/splits the boxes inside the container to unit boxes
@@ -212,15 +163,119 @@ public:
     HIterator begin() {return m_boxes.begin();}
     HIterator end() {return m_boxes.end();}
 
+    cHIterator cbegin() const {return m_boxes.begin();}
+    cHIterator cend() const {return m_boxes.end();}
+
+    rHIterator rbegin() {return m_boxes.rbegin();}
+    rHIterator rend() {return m_boxes.rend();}
+
+
+    /**
+     * @brief      Returns the basis of the underlying basis
+     *
+     * NOTE: Assumes that the basis of all boxes is the same
+     *
+     * @return     { description_of_the_return_value }
+     */
+    const gsHTensorBasis<d,T> & basis() { return this->begin()->front().basis(); }
+
+
 protected:
-    /// Helper to take the box union
-    Container _boxUnion(const Container & container1, const Container & container2) const;
+    // /// Helper to take the box union
+    // Container _boxUnion(const Container & container1, const Container & container2) const;
+
+    // /**
+    //  * @brief      Takes the union of two \ref gsHBoxContainer
+    //  *
+    //  * @param[in]  container1  The container 1
+    //  * @param[in]  container2  The container 2
+    //  *
+    //  * @return     The gsHBoxContainer with the union.
+    //  */
+    // gsHBoxContainer<d,T> _boxUnion(const gsHBoxContainer<d,T> & container1, const gsHBoxContainer<d,T> & container2) const;
+
+    // /**
+    //  * @brief      Takes the union of two hierarchical containers
+    //  *
+    //  * @param[in]  container1  The container 1
+    //  * @param[in]  container2  The container 2
+    //  *
+    //  * @return     The hierarchical container with the union.
+    //  */
+    // HContainer           _boxUnion(const HContainer & container1, const HContainer & container2) const;
+
 
     /// Constructs a new level
     void _makeLevel(index_t lvl);
 
     /// Checks the container
     bool _check(const HContainer & boxes);
+
+    /**
+     * @brief      Marks H-recursively
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  lvl     The level
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    HContainer  _markHrecursive(HContainer & marked, index_t lvl, index_t m) const;
+    /// Applies \ref markHrecursive on \a this
+    void        _markHrecursive(index_t lvl, index_t m);
+    /**
+     * @brief      Marks T-recursively
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  lvl     The level
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    HContainer  _markTrecursive(HContainer & marked, index_t lvl, index_t m) const;
+
+    /**
+     * @brief      Marks T-recursively
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  lvl     The level
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    HContainer  _markRecursive(HContainer & marked, index_t lvl, index_t m) const;
+    /// Applies \ref markTrecursive on \a this
+    void        _markRecursive(index_t lvl, index_t m);
+
+    /**
+     * @brief      Performs T-admissible refinement
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    void        _markTadmissible(HContainer & marked, index_t m) const;
+
+    /**
+     * @brief      Performs H-admissible refinement
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    void        _markHadmissible(HContainer & marked, index_t m) const;
+
+    /**
+     * @brief      Performs T/H-admissible refinement
+     *
+     * @param      marked  The marked boxes
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container.
+     */
+    void        _markAdmissible(HContainer & marked, index_t m) const;
 
 
 protected:

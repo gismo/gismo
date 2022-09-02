@@ -286,6 +286,11 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
+// Refinement
+template <short_t d, class T=real_t>     class gsHBox;
+template <short_t d, class T=real_t>     class gsHBoxContainer;
+
+
 /// @endcond
 
 ///@}

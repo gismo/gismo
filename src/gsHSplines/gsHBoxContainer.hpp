@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include <gsHSplines/gsHBoxUtils.h>
-
-
 namespace gismo
 {
 
@@ -124,79 +121,90 @@ void gsHBoxContainer<d, T>::add(const gsHBoxContainer<d,T> & boxes)
 }
 
 template <short_t d, class T>
-gsHBoxContainer<d,T> gsHBoxContainer<d, T>::boxUnion(const gsHBoxContainer<d,T> & other) const
+gsHBoxContainer<d,T> gsHBoxContainer<d, T>::patch(const index_t patchID) const
 {
-    return boxUnion(*this,other);
-}
-
-template <short_t d, class T>
-gsHBoxContainer<d,T> gsHBoxContainer<d, T>::boxUnion(const gsHBoxContainer<d,T> & container1, const gsHBoxContainer<d,T> & container2) const
-{
-    HContainer result;
-    HContainer region1(container1.boxes());
-    HContainer region2(container2.boxes());
-
-    index_t lmax = std::max(region1.size(),region2.size());
-    region1.resize(lmax);
-    region2.resize(lmax);
-    result.resize(lmax);
-
-    for (index_t l = 0; l!=lmax; l++)
-        result[l] = _boxUnion(region1[l],region2[l]);
-
-    return gsHBoxContainer<d,T>(result);
-}
-
-template <short_t d, class T>
-typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::boxUnion(const HContainer & container1, const HContainer & container2) const
-{
-    HContainer result, region1, region2;
-
-    region1 = container1;
-    region2 = container2;
-
-    index_t lmax = std::max(region1.size(),region2.size());
-    region1.resize(lmax);
-    region2.resize(lmax);
-    result.resize(lmax);
-
-    for (index_t l = 0; l!=lmax; l++)
-        result[l] = _boxUnion(region1[l],region2[l]);
-
-    return result;
-}
-
-template <short_t d, class T>
-typename gsHBoxContainer<d, T>::Container gsHBoxContainer<d, T>::_boxUnion(const Container & container1, const Container & container2) const
-{
-    // SortedContainer sortedResult;
-
-    // SortedContainer scontainer1 = gsHBoxSort<d,T>(container1);
-    // SortedContainer scontainer2 = gsHBoxSort<d,T>(container2);
-
-    // sortedResult.reserve(scontainer1.size() + scontainer2.size());
-    // if (scontainer1.size()!=0 && scontainer2.size()!=0)
-    // {
-    //     std::set_union( scontainer1.begin(),scontainer1.end(),
-    //                     scontainer2.begin(),scontainer2.end(),
-    //                     std::inserter(sortedResult,sortedResult.begin()),
-    //                     gsHBoxCompare<d,T>());
-    // }
-    // else if (scontainer1.size()!=0 && container2.size()==0)
-    //     sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
-    // else if (scontainer1.size()==0 && container2.size()!=0)
-    //     sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
-    // else    { /* Do nothing */ }
-
-    Container result = gsHBoxUnion<d,T>(container1,container2);
-
+    gsHBoxContainer<d,T> result;
+    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+        for (cIterator it = hit->begin(); it!=hit->end(); it++)
+            if (it->patch()==patchID || it->patch()==-1)
+                result.add(*it);
     return result;
 }
 
 // template <short_t d, class T>
+// gsHBoxContainer<d,T> gsHBoxContainer<d, T>::_boxUnion(const gsHBoxContainer<d,T> & other) const
+// {
+//     return _boxUnion(*this,other);
+// }
+
+// template <short_t d, class T>
+// gsHBoxContainer<d,T> gsHBoxContainer<d, T>::_boxUnion(const gsHBoxContainer<d,T> & container1, const gsHBoxContainer<d,T> & container2) const
+// {
+//     HContainer result;
+//     HContainer region1(container1.boxes());
+//     HContainer region2(container2.boxes());
+
+//     index_t lmax = std::max(region1.size(),region2.size());
+//     region1.resize(lmax);
+//     region2.resize(lmax);
+//     result.resize(lmax);
+
+//     for (index_t l = 0; l!=lmax; l++)
+//         result[l] = __boxUnion(region1[l],region2[l]);
+
+//     return gsHBoxContainer<d,T>(result);
+// }
+
+// template <short_t d, class T>
+// typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::_boxUnion(const HContainer & container1, const HContainer & container2) const
+// {
+//     HContainer result, region1, region2;
+
+//     region1 = container1;
+//     region2 = container2;
+
+//     index_t lmax = std::max(region1.size(),region2.size());
+//     region1.resize(lmax);
+//     region2.resize(lmax);
+//     result.resize(lmax);
+
+//     for (index_t l = 0; l!=lmax; l++)
+//         result[l] = __boxUnion(region1[l],region2[l]);
+
+//     return result;
+// }
+
+// template <short_t d, class T>
+// typename gsHBoxContainer<d, T>::Container gsHBoxContainer<d, T>::__boxUnion(const Container & container1, const Container & container2) const
+// {
+//     // SortedContainer sortedResult;
+
+//     // SortedContainer scontainer1 = gsHBoxUtils<d,T>::Sort(container1);
+//     // SortedContainer scontainer2 = gsHBoxUtils<d,T>::Sort(container2);
+
+//     // sortedResult.reserve(scontainer1.size() + scontainer2.size());
+//     // if (scontainer1.size()!=0 && scontainer2.size()!=0)
+//     // {
+//     //     std::set_union( scontainer1.begin(),scontainer1.end(),
+//     //                     scontainer2.begin(),scontainer2.end(),
+//     //                     std::inserter(sortedResult,sortedResult.begin()),
+//     //                     gsHBoxCompare<d,T>());
+//     // }
+//     // else if (scontainer1.size()!=0 && container2.size()==0)
+//     //     sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
+//     // else if (scontainer1.size()==0 && container2.size()!=0)
+//     //     sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
+//     // else    { /* Do nothing */ }
+
+//     Container result = gsHBoxUtils<d,T>::Union(container1,container2);
+
+//     return result;
+// }
+
+// template <short_t d, class T>
 // void gsHBoxContainer<d, T>::makeUnique()
 // {
-//     auto comp = [](auto a, auto b)
+//     auto comp = [](const gsHBox<d,T> & a, const gsHBox<d,T> & b)
 //                     {
 //                         return a.isSame(b);
 //                     };
@@ -246,104 +254,53 @@ const typename gsHBoxContainer<d, T>::Container & gsHBoxContainer<d, T>::getActi
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::getParents() const
+typename gsHBoxContainer<d, T>::Container gsHBoxContainer<d, T>::getParents() const
 {
-    HContainer result;
-    result.resize(this->boxes().size()-1);
+    Container result;
+    // result.reserve(this->boxes().size()-1);
 
     // Handle level 0 separately (operation cannot be performed on level 0)
     GISMO_ASSERT(m_boxes[0].size()==0,"Boxes at level 0 cannot have a parent. Did something go wrong? You can run check() to see if the boxes are allocated coorectly");
 
-    HIterator resIt = result.begin();
     for (cHIterator hit = std::next(m_boxes.begin()); hit!=m_boxes.end(); hit++)
         for (cIterator it=hit->begin(); it!=hit->end(); it++)
-            resIt->push_back(*it);
+            result.push_back(it->getParent());
 
     return result;
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markTrecursive(HContainer & marked, index_t lvl, index_t m) const
+typename gsHBoxContainer<d, T>::Container gsHBoxContainer<d, T>::getChildren() const
 {
-    Container marked_l = marked[lvl];
-    Container marked_k;
+    Container result, children;
 
-    gsHBoxContainer<d,T> neighbors;
-    for (Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
-        neighbors.add(it->getTneighborhood(m));
+    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+        for (cIterator it=hit->begin(); it!=hit->end(); it++)
+        {
+            children = it->getChildren();
+            for (cIterator cit=children.begin(); cit!=children.end(); cit++)
+                result.push_back(*cit);
+        }
 
-    index_t k = lvl - m + 1;
-    if (neighbors.boxes().size()!=0)
-    {
-        marked_k = marked[k];
-        gsHBoxContainer<d,T> boxunion = boxUnion(neighbors,gsHBoxContainer<d,T>(marked_k));
-        marked[k] = boxunion.getActivesOnLevel(k);
-        marked = this->markTrecursive(marked,k,m);
-    }
-    return marked;
-}
-
-template <short_t d, class T>
-void gsHBoxContainer<d, T>::markTadmissible(HContainer & marked, index_t m) const
-{
-    HContainer unitBoxes = this->toUnitBoxes(marked);
-    for (size_t l = 0; l!=unitBoxes.size(); l++)
-        this->markTrecursive(unitBoxes,l,m);
-    marked = unitBoxes;
+    return result;
 }
 
 template <short_t d, class T>
 void gsHBoxContainer<d, T>::markTadmissible(index_t m)
 {
-    this->markTadmissible(this->boxes(),m);
-}
-
-template <short_t d, class T>
-void gsHBoxContainer<d, T>::markTrecursive(index_t lvl, index_t m)
-{
-    m_boxes = this->markTrecursive(m_boxes,lvl,m);
-}
-
-template <short_t d, class T>
-typename gsHBoxContainer<d, T>::HContainer gsHBoxContainer<d, T>::markHrecursive(HContainer & marked, index_t lvl, index_t m) const
-{
-    Container marked_l = marked[lvl];
-    Container marked_k;
-
-    gsHBoxContainer<d,T> neighbors;
-    for (Iterator it = marked_l.begin(); it!=marked_l.end(); it++)
-        neighbors.add(it->getHneighborhood(m));
-
-    index_t k = lvl - m + 1;
-    if (neighbors.boxes().size()!=0)
-    {
-        marked_k = marked[k];
-        gsHBoxContainer<d,T> boxunion = boxUnion(neighbors,gsHBoxContainer<d,T>(marked_k));
-        marked[k] = boxunion.getActivesOnLevel(k);
-        marked = this->markHrecursive(marked,k,m);
-    }
-    return marked;
-}
-
-template <short_t d, class T>
-void gsHBoxContainer<d, T>::markHrecursive(index_t lvl, index_t m)
-{
-    m_boxes = this->markHrecursive(m_boxes,lvl,m);
-}
-
-template <short_t d, class T>
-void gsHBoxContainer<d, T>::markHadmissible(HContainer & marked, index_t m) const
-{
-    HContainer unitBoxes = this->toUnitBoxes(marked);
-    for (size_t l = 0; l!=unitBoxes.size(); l++)
-        this->markHrecursive(unitBoxes,l,m);
-    marked = unitBoxes;
+    m_boxes = gsHBoxUtils<d,T>::markTadmissible(m_boxes,m);
 }
 
 template <short_t d, class T>
 void gsHBoxContainer<d, T>::markHadmissible(index_t m)
 {
-    this->markHadmissible(this->boxes(),m);
+    m_boxes = gsHBoxUtils<d,T>::markHadmissible(m_boxes,m);
+}
+
+template <short_t d, class T>
+void gsHBoxContainer<d, T>::markAdmissible(index_t m)
+{
+    m_boxes = gsHBoxUtils<d,T>::markAdmissible(m_boxes,m);
 }
 
 template <short_t d, class T>
@@ -363,13 +320,14 @@ std::ostream& gsHBoxContainer<d, T>::print( std::ostream& os ) const
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toBoxes() const
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toBoxes(const index_t patchID) const
 {
     size_t N = this->totalSize();
     RefBox result;
     result.reserve(( N * (2*d+1) ));
     RefBox box;
-    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+    gsHBoxContainer<d,T> patchBoxes = this->patch(patchID);
+    for (cHIterator hit = patchBoxes.begin(); hit!=patchBoxes.end(); hit++)
         for (cIterator it = hit->begin(); it!=hit->end(); it++)
         {
             box = it->toBox();
@@ -381,13 +339,14 @@ typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toBoxes() const
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes() const
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes(const index_t patchID) const
 {
-    size_t N = this->totalSize();
+    gsHBoxContainer<d,T> patchBoxes = this->patch(patchID);
+    size_t N = patchBoxes.totalSize();
     RefBox result;
     result.reserve(( N * (2*d+1) ));
     RefBox box;
-    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+    for (cHIterator hit = patchBoxes.begin(); hit!=patchBoxes.end(); hit++)
         for (cIterator it = hit->begin(); it!=hit->end(); it++)
         {
             box = it->toRefBox();
@@ -399,13 +358,14 @@ typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes() const
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toCrsBoxes() const
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toCrsBoxes(const index_t patchID) const
 {
-    size_t N = this->totalSize();
+    gsHBoxContainer<d,T> patchBoxes = this->patch(patchID);
+    size_t N = patchBoxes.totalSize();
     RefBox result;
     result.reserve(( N * (2*d+1) ));
     RefBox box;
-    for (cHIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+    for (cHIterator hit = patchBoxes.begin(); hit!=patchBoxes.end(); hit++)
         for (cIterator it = hit->begin(); it!=hit->end(); it++)
         {
             box = it->toCrsBox();
@@ -417,12 +377,13 @@ typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toCrsBoxes() const
 }
 
 template <short_t d, class T>
-gsMatrix<T> gsHBoxContainer<d, T>::toCoords()
+gsMatrix<T> gsHBoxContainer<d, T>::toCoords(const index_t patchID) const
 {
-    size_t N = this->totalSize();
+    gsHBoxContainer<d,T> patchBoxes = this->patch(patchID);
+    size_t N = patchBoxes.totalSize();
     gsMatrix<T> boxes(d,2*N);
     index_t boxCount = 0;
-    for (HIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+    for (HIterator hit = patchBoxes.begin(); hit!=patchBoxes.end(); hit++)
         for (Iterator it = hit->begin(); it!=hit->end(); it++)
         {
             boxes.block(0,2*boxCount,d,2) = it->getCoordinates();
@@ -433,33 +394,9 @@ gsMatrix<T> gsHBoxContainer<d, T>::toCoords()
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::toUnitBoxes(const HContainer & container) const
-{
-    HContainer result(container.size());
-    HIterator  resIt  = result.begin();
-    Container  boxes;
-
-    for (cHIterator hit = container.begin(); hit!=container.end(); hit++, resIt++)
-        for (cIterator it = hit->begin(); it!=hit->end(); it++)
-        {
-            boxes = it->toUnitBoxes();
-            for (cIterator boxIt = boxes.begin(); boxIt != boxes.end(); boxIt++)
-                resIt->push_back(*boxIt);
-        }
-
-    return result;
-}
-
-template <short_t d, class T>
-typename gsHBoxContainer<d,T>::HContainer gsHBoxContainer<d, T>::toUnitBoxes() const
-{
-    return this->toUnitBoxes(this->m_boxes);
-}
-
-template <short_t d, class T>
 void gsHBoxContainer<d, T>::makeUnitBoxes()
 {
-    this->m_boxes = this->toUnitBoxes();
+    this->m_boxes = this->toUnitHBoxes();
 }
 
 } // namespace gismo

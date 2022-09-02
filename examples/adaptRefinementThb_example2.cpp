@@ -82,6 +82,9 @@ int main(int argc, char *argv[])
     index_t Ext = 0;
     index_t CExt = 0;
 
+    index_t numElevate = 0;
+    index_t numRefine = 0;
+
     index_t type = 2;
 
     // Number of refinement loops to be done
@@ -92,6 +95,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("coarsen", "Also coarsen", coarsening);
     cmd.addSwitch("admissible", "Admissible refinement", admissible);
     cmd.addInt("r", "numLoop", "number of refinement loops", numRefinementLoops);
+    cmd.addInt("R", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt("e", "degreeElevation","Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt("E", "Extension", "Extension", Ext);
     cmd.addInt("C", "CExtension", "CExtension", CExt);
     cmd.addInt("T", "BasisType", "BasisType; 0 = BSpline, 1 = THB, 2 = HB", type);
@@ -127,9 +132,6 @@ int main(int argc, char *argv[])
     patches.computeTopology();
     //! [computeTopology]
 
-
-    // patches.degreeElevate(2);
-
     //! [GetGeometryDataTens]
     std::string fileSrcTens( "planar/lshape2d_3patches_tens.xml" );
     gsMultiPatch<real_t> patchesTens;
@@ -158,6 +160,14 @@ int main(int argc, char *argv[])
     // Copy basis from the geometry
     gsMultiBasis<> bases( patches );
     //! [GetBasisFromTHB]
+
+    // Elevate and p-refine the basis to order p + numElevate
+    // where p is the highest degree in the bases
+    bases.setDegree( bases.maxCwiseDegree() + numElevate);
+
+    // h-refine each basis
+    for (int r =0; r < numRefine; ++r)
+        bases.uniformRefine();
 
     //! [GetBasisFromTens]
     // Copy tensor basis
@@ -216,28 +226,15 @@ int main(int argc, char *argv[])
 
     gsParaviewCollection collection("adaptRef");
 
-    gsAdaptiveMeshing<real_t> patchMesher(patches);
-    patchMesher.options().setInt("CoarsenRule",2);
-    patchMesher.options().setInt("RefineRule",2);
-    patchMesher.options().setReal("CoarsenParam",0.9);
-    patchMesher.options().setReal("RefineParam",0.9);
-    patchMesher.options().setInt("CoarsenExtension",CExt);
-    patchMesher.options().setInt("RefineExtension",Ext);
-    patchMesher.options().setSwitch("Admissible",admissible);
-    patchMesher.options().setInt("Admissibility",0);
-    // patchMesher.options().setInt("MaxLevel",3);
-    patchMesher.getOptions();
-
     gsAdaptiveMeshing<real_t> mesher(bases);
     mesher.options().setInt("CoarsenRule",2);
     mesher.options().setInt("RefineRule",2);
-    mesher.options().setReal("CoarsenParam",0.9);
-    mesher.options().setReal("RefineParam",0.9);
+    mesher.options().setReal("CoarsenParam",0.1);
+    mesher.options().setReal("RefineParam",0.1);
     mesher.options().setInt("CoarsenExtension",CExt);
     mesher.options().setInt("RefineExtension",Ext);
     mesher.options().setSwitch("Admissible",admissible);
     mesher.options().setInt("Admissibility",0);
-    mesher.options().setInt("Verbose",1);
     // mesher.options().setInt("MaxLevel",3);
     mesher.getOptions();
 
@@ -248,7 +245,12 @@ int main(int argc, char *argv[])
         // bases = gsMultiBasis<>(patches);
         gsDebug<<"-------------------Loop = "<<refLoop<<"\n";
         //! [beginRefLoop]
-
+        // gsWriteParaview(bases.basis(0),"basis0",200);
+        // gsWriteParaview(bases.basis(1),"basis1",200);
+        // gsWriteParaview(bases.basis(2),"basis2",200);
+        // gsDebugVar(bases.basis(0).numElements());
+        // gsDebugVar(bases.basis(1).numElements());
+        // gsDebugVar(bases.basis(2).numElements());
         // --------------- solving ---------------
 
         //! [solverPart]
@@ -271,6 +273,8 @@ int main(int argc, char *argv[])
         // Associate the solution to the patches (isogeometric field)
         gsField<> solField(patches, sol);
 
+        gsInfo<<"NumDofs = "<<solVector.size()<<"\n";
+
         gsWriteParaview<>(solField, "adaptRef" + std::to_string(2*refLoop), 1000, true);
         for (size_t p = 0; p!=patches.nPatches(); ++p)
         {
@@ -286,6 +290,7 @@ int main(int argc, char *argv[])
         // Compute the error in the H1-seminorm ( = energy norm in this example )
         // using the known exact solution.
         gsExprEvaluator<> ev;
+        gsDebugVar(PoissonAssembler.multiBasis().totalElements());
         ev.setIntegrationElements(PoissonAssembler.multiBasis());
         gsExprEvaluator<>::geometryMap Gm = ev.getMap(patches);
         auto is = ev.getVariable(sol);
@@ -309,100 +314,28 @@ int main(int argc, char *argv[])
         }
 
         // --------------- adaptive refinement ---------------
-
-        //! [adaptRefinementPart]
-        // Mark elements for refinement, based on the computed local errors and
-        // the refinement-criterion and -parameter.
-        std::vector<bool> elMarked( eltErrs.size() );
-
-        gsRefineMarkedElements( bases, elMarked, 1 );
-
-        std::vector<bool> elCMarked( eltErrs.size() );
-        for (index_t k=0; k!=eltErrs.size(); k++)
-            eltErrs[k] = -eltErrs[k];
-
-        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParam, elCMarked);
-
-        for (index_t k=0; k!=elMarked.size(); k++)
-            gsInfo<<eltErrs[k]<<"\t"<<elCMarked[k]<<"\n";
-
-        // Get the element-wise norms.
-        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-        std::vector<real_t> eltCErrs  = ev.elementwise();
-
-        //! [errorComputation]
-
-        for (index_t k=0; k!=eltCErrs.size(); k++)
-            gsInfo<<eltCErrs[k]<<"\n";
-
-        offset = 0;
-        for (index_t p = 0; p!=patches.nPatches(); p++)
-        {
-            auto first = eltCErrs.begin() + offset;
-            offset += bases.basis(p).numElements();
-            auto last = eltCErrs.begin() + offset;
-            std::vector<real_t> tmpErrors(first,last);
-            gsElementErrorPlotter<real_t> err_eh(bases.basis(p),tmpErrors);
-            const gsField<> elemError_eh( patches.patch(p), err_eh, true );
-            gsWriteParaview<>( elemError_eh, "error_elem_crs" + std::to_string(p), 1000, false);
-        }
-
         for (index_t k = 0; k!=eltErrs.size(); k++)
             gsDebug<<eltErrs[k]<<"\n";
 
-        mesher.mark(eltCErrs);
-        mesher.refine();
-
-        gsMarkElementsForRef( eltCErrs, adaptRefCrit, adaptRefParam, elCMarked);
-
-        for (index_t k=0; k!=elMarked.size(); k++)
-            gsInfo<<eltCErrs[k]<<"\t"<<elCMarked[k]<<"\n";
-
-        // _toContainer
-        std::vector<gsHBoxContainer<2,real_t>> container(patches.nPieces());
-        index_t c = 0;
-        gsBasis<> * basis = nullptr;
-
-        gsMultiPatch<> * mp;
-        gsMultiBasis<> * mb;
-        typename gsBasis<>::domainIter domIt;
-        gsHDomainIterator<real_t,2> * domHIt = nullptr;
-        for (index_t patchInd=0; patchInd < patches.nPieces(); ++patchInd)
-        {
-            // Initialize domain element iterator
-            if ( (mp = dynamic_cast<gsMultiPatch<>*>(&patches)) ) basis = &(mp->basis(patchInd));
-            if ( (mb = dynamic_cast<gsMultiBasis<>*>(&patches)) ) basis = &(mb->basis(patchInd));
-            GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
-            // for all elements in patch pn
-            domIt  = basis->makeDomainIterator();
-            domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
-            GISMO_ENSURE(domHIt!=nullptr,"Domain should be 2 dimensional for flattening");
-
-            for (; domHIt->good(); domHIt->next() )
-            {
-                if (elCMarked[c])
-                    container.at(patchInd).add(gsHBox<2,real_t>(domHIt,patchInd));
-                c++;
-            }
-        }
-        // ! _toContainer
-
-        return 0;
-
-
+        gsHBoxContainer<2,real_t> refined, unrefined;
         if (coarsening)
         {
-            mesher.mark(eltErrs);
-            mesher.adapt();
-            // patchMesher.mark(eltErrs);
-            // patchMesher.adapt();
+            mesher.markRef_into(eltErrs,refined);
+            mesher.markCrs_into(eltErrs,refined,unrefined);
+            mesher.refine(refined);
+            mesher.unrefine(unrefined);
         }
         else
         {
-            mesher.mark(eltErrs);
-            mesher.refine();
-            // patchMesher.mark(eltErrs);
-            // patchMesher.refine();
+            mesher.markRef_into(eltErrs,refined);
+            gsDebugVar(refined);
+            mesher.refine(refined);
+        }
+
+        for (size_t p = 0; p!=patches.nPatches(); ++p)
+        {
+            gsHBoxContainer<2,real_t> patchContainer = refined.patch(p);
+            gsWriteParaview(patchContainer,"Refined_patch_" + std::to_string(p));
         }
 
         gsWriteParaview<>(solField, "adaptRef" + std::to_string(2*refLoop+1), 1000, true);
@@ -417,16 +350,20 @@ int main(int argc, char *argv[])
         //! [repairInterfaces]
         // Call repair interfaces to make sure that the new meshes
         // match along patch interfaces.
-        bases.repairInterfaces( patches.interfaces() );
-        // bases = gsMultiBasis<>(patches);
         // patches.repairInterfaces();
+        gsDebugVar(bases.totalElements());
+        bases.repairInterfaces( patches.interfaces() );
+        gsWriteParaview(bases.basis(0),"basis0",200);
+        gsWriteParaview(bases.basis(1),"basis1",200);
+        gsWriteParaview(bases.basis(2),"basis2",200);
+        gsDebugVar(bases.totalElements());
+        // bases = gsMultiBasis<>(patches);
         //! [repairInterfaces]
 
         // bases.repairInterfaces( patches.interfaces() );
 
 
         gsWriteParaview(patches,"mp",1000,true);
-        gsWriteParaview(bases.basis(0),"basis",1000,true);
 
         //! [Export to Paraview]
         // Export the final solution
@@ -436,7 +373,7 @@ int main(int argc, char *argv[])
 
         // }
         //! [Export to Paraview]
-
+        mesher.rebuild();
     }
 
     collection.save();
