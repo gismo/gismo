@@ -26,7 +26,7 @@ namespace gismo
 template<short_t d,class T> class gsMappedSingleSpline;
 
 template<short_t d,class T>
-class gsMappedSpline : public gsFunctionSet<T>
+class gsMappedSpline : public gsGeoTraits<d,T>::GeometryBase
 {
     friend class gsMappedSingleSpline<d,T>;
 
@@ -122,6 +122,10 @@ public:
 //////////////////////////////////////////////////
 // Virtual member functions required by the base class
 //////////////////////////////////////////////////
+
+    typedef gsMappedSingleBasis<d, T> Basis;
+
+    GISMO_BASIS_ACCESSORS
 
     GISMO_CLONE_FUNCTION(gsMappedSpline)
 
