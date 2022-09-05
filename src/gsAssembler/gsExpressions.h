@@ -3026,8 +3026,8 @@ public:
 
     MatExprType eval(const index_t k) const { return _G.data().jacInvTr.reshapeCol(k,cols(),rows()).transpose(); }
 
-    index_t rows() const { return _G.data().dim.first;  }
-    index_t cols() const { return _G.data().dim.second; }
+    index_t rows() const { return _G.source().domainDim(); }
+    index_t cols() const { return _G.source().targetDim(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3168,7 +3168,6 @@ public:
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
     jac_expr(const gsGeometryMap<T> & G) : _G(G) { }
-
     MatExprType eval(const index_t k) const
     {
         // TarDim x ParDim
