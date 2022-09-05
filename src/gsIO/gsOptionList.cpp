@@ -179,6 +179,14 @@ void gsOptionList::setSwitch(const std::string & label,
     it->second.first = value;
 }
 
+void gsOptionList::toggleSwitch( const std::string & label )
+{
+    SwitchTable::iterator it = m_switches.find(label);
+    GISMO_ENSURE(it!=m_switches.end(), "Invalid request (setSwitch): "<<label<<" is not a switch; it is "<<getInfo(label)<<".");
+    it->second.first = !(it->second.first);
+}
+
+
 void gsOptionList::addString(const std::string & label,
                              const std::string & desc,
                              const std::string & value)
