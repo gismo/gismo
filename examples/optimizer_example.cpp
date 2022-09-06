@@ -1,6 +1,6 @@
-/** @file gsOptProblemExample
+/** @file optmizer_example
 
-    @brief Toy example for optimizer
+    @brief Toy example for optimizer and optimization problem
 
     This file is part of the G+Smo library.
 
@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
     //! [Parse command line]
     index_t solver  = 0;
 
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    gsCmdLine cmd("Demonstrates the use of optimizers.");
     cmd.addInt( "s", "solver", "Solver used for optimization: 0 - gsGradientDescent, 1 - gsHLBFGS, 2 - IpOpt", solver);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -196,6 +196,13 @@ int main(int argc, char* argv[])
 #ifdef GISMO_WITH_IPOPT
         case 2:
         // optimizer =
+        // Set the momentum rate used for the step calculation (default is 0.0).
+        // Defines how much momentum is kept from previous iterations.
+        //optimizer->setMomentum(4);
+
+        // // Turn verbosity on, so the optimizer prints status updates after each
+        // // iteration.
+        // optimizer->options().setInt("Verbose",14);
         break;
 #endif
 
@@ -203,17 +210,6 @@ int main(int argc, char* argv[])
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
     }
 
-
-
-
-
-    //optimizer->setObjective(op); //gdc
-    //optimizer->setErrorFunction(op); //lsq
-
-    //optimizer->setCallback(op);
-
-    // for finite difference computations
-    //optimizer->setNumericalEpsilon(1e-9);
                 
     // Set number of iterations as stop criterion.
     // Set it to 0 or negative for infinite iterations (default is 0).
@@ -229,22 +225,11 @@ int main(int argc, char* argv[])
     // value (default is 1e-9).
     optimizer->options().setReal("MinStepLength",1e-9);
 
-    // for constant size
-    //optimizer->setStepSize(.1);
-
-    // Set the momentum rate used for the step calculation (default is 0.0).
-    // Defines how much momentum is kept from previous iterations.
-    //optimizer->setMomentum(4);
-
-    // Turn verbosity on, so the optimizer prints status updates after each
-    // iteration.
-    optimizer->options().setInt("Verbose",14);
-
     gsVector<> in(2);
     in << 0.5, 1.5;        
 
     // Start the optimization
-    optimizer->solve(in);
+    optimizer->solve();
 
     // Print final design info
     gsInfo << "\nNumber of iterations : " << optimizer->iterations() <<"\n";

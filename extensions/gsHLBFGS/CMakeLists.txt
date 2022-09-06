@@ -13,7 +13,7 @@ ${gismo_externals}/HLBFGS/HLBFGS.cpp
 ${gismo_externals}/HLBFGS/HLBFGS_BLAS.cpp
 ${gismo_externals}/HLBFGS/ICFS.cpp
 ${gismo_externals}/HLBFGS/LineSearch.cpp
-${gismo_externals}/HLBFGS/Lite_Sparse_Matrix.cpp
+# ${gismo_externals}/HLBFGS/Lite_Sparse_Matrix.cpp
 )
 
 SET(HLBFGS_HEADERS
@@ -21,7 +21,7 @@ ${gismo_externals}/HLBFGS/HLBFGS.h
 ${gismo_externals}/HLBFGS/HLBFGS_BLAS.h
 ${gismo_externals}/HLBFGS/ICFS.h
 ${gismo_externals}/HLBFGS/LineSearch.h
-${gismo_externals}/HLBFGS/Lite_Sparse_Matrix.h
+# ${gismo_externals}/HLBFGS/Lite_Sparse_Matrix.h
 )
 
 # Apply same configuration as G+Smo
