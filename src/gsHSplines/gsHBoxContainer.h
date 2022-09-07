@@ -52,6 +52,8 @@ public:
     /// Checks if the hierarchical container is correctly defined
     bool check() { return _check(this->boxes()); };
 
+    void clear();
+
     /// Adds a single box
     void add(const gsHBox<d,T>          & box  );
     /// Adds boxes stored in a container

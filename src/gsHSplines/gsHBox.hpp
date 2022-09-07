@@ -221,11 +221,30 @@ gsVector<T,d>  gsHBox<d, T>::lowerCorner() const
     GISMO_ASSERT(m_coords.size()!=0,"Coordinates have not been computed! Please call computeCoordinates()");
     return m_coords.col(0);
 }
+
 template <short_t d, class T>
 gsVector<T,d>  gsHBox<d, T>::upperCorner() const
 {
     GISMO_ASSERT(m_coords.size()!=0,"Coordinates have not been computed! Please call computeCoordinates()");
     return m_coords.col(1);
+}
+
+template <short_t d, class T>
+T gsHBox<d, T>::getCellSize() const
+{
+    return (upperCorner() - lowerCorner()).norm();
+}
+
+template <short_t d, class T>
+T gsHBox<d, T>::getMinCellLength() const
+{
+    return (upperCorner() - lowerCorner()).minCoeff();
+}
+
+template <short_t d, class T>
+T gsHBox<d, T>::getMaxCellLength() const
+{
+    return (upperCorner() - lowerCorner()).maxCoeff();
 }
 
 template <short_t d, class T>

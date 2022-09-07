@@ -115,6 +115,13 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
 
+TEMPLATE_INST
+void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
+                         std::string const & fn, unsigned resolution);
+
+TEMPLATE_INST
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
+
 
 } // namespace gismo
 

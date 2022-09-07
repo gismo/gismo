@@ -138,6 +138,15 @@ public:
      */
     gsVector<T,d> upperCorner() const;
 
+    /// Return the diagonal of the element
+    T getCellSize() const;
+
+    /// Return the length of the smallest edge of the element
+    T getMinCellLength() const;
+
+    /// Return the length of the largest edge of the element
+    T getMaxCellLength() const;
+
     /**
      * @brief      Gets the lower index of the box
      *

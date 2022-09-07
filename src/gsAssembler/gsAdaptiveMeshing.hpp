@@ -634,7 +634,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
     GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
 
     T Thr = parameter * _maxError(elements);
-    T current;
+    T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsLargerErrCompare<2,T>(Thr);
 
     auto loop_action = [this,&elements,&thres_predicate,&predicates,&elMarked,&current]
@@ -644,7 +644,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
 
         if (thres_predicate->check(*box))
         {
-            current = box->error();
+            current = std::max(current,box->error());
             return true;
         }
 
@@ -682,7 +682,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
     GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
 
     T Thr = parameter * _maxError(elements);
-    T current;
+    T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsLargerErrCompare<2,T>(Thr);
 
     auto loop_action = [this,&elements,&thres_predicate,&predicates,&elMarked,&current]
@@ -692,7 +692,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
 
         if (thres_predicate->check(*box))
         {
-            current = box->error();
+            current = std::max(current,box->error());
             return true;
         }
 
@@ -716,7 +716,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
     GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
 
     T Thr = parameter * _maxError(elements);
-    T current;
+    T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsSmallerErrCompare<2,T>(Thr);
 
     auto loop_action = [this,&elements,&thres_predicate,&predicates,&elMarked,&current]
@@ -726,7 +726,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
 
         if (thres_predicate->check(*box))
         {
-            current = box->error();
+            current = std::max(current,box->error());
             return true;
         }
 
@@ -758,7 +758,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
     GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
 
     T Thr = parameter * _maxError(elements);
-    T current;
+    T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsSmallerErrCompare<2,T>(Thr);
 
     auto loop_action = [this,&elements,&thres_predicate,&predicates,&elMarked,&current]
@@ -768,7 +768,7 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
 
         if (thres_predicate->check(*box))
         {
-            current = box->error();
+            current = std::max(current,box->error());
             return true;
         }
 
@@ -788,8 +788,8 @@ void gsAdaptiveMeshing<T>::defaultOptions()
 {
     m_options.addInt("CoarsenRule","Rule used for coarsening: 1=GARU, 2=PUCA, 3=BULK.",1);
     m_options.addInt("RefineRule","Rule used for refinement: 1=GARU, 2=PUCA, 3=BULK.",1);
-    m_options.addReal("CoarsenParam","Parameter used for coarsening",0.5);
-    m_options.addReal("RefineParam","Parameter used for refinement",-1);
+    m_options.addReal("CoarsenParam","Parameter used for coarsening",0.1);
+    m_options.addReal("RefineParam","Parameter used for refinement",0.1);
 
     m_options.addInt("CoarsenExtension","Extension coarsening",0);
     m_options.addInt("RefineExtension","Extension refinement",0);
@@ -837,6 +837,7 @@ void gsAdaptiveMeshing<T>::getOptions()
 template<class T>
 void gsAdaptiveMeshing<T>::markRef_into(const std::vector<T> & elError, HBoxContainer & elMarked)
 {
+    elMarked.clear();
     std::vector<index_t> permutation;
     this->_assignErrors(m_boxes,elError);
     permutation = this->_sortPermutation(m_boxes); // Index of the lowest error is first
@@ -857,6 +858,7 @@ void gsAdaptiveMeshing<T>::markRef_into(const std::vector<T> & elError, HBoxCont
 template<class T>
 void gsAdaptiveMeshing<T>::markCrs_into(const std::vector<T> & elError, const HBoxContainer & markedRef, HBoxContainer & elMarked)
 {
+    elMarked.clear();
     std::vector<index_t> permutation;
     this->_assignErrors(m_boxes,elError);
     permutation = this->_sortPermutation(m_boxes);
@@ -912,6 +914,30 @@ bool gsAdaptiveMeshing<T>::unrefine(const HBoxContainer & markedCrs)
     if ((coarsen = markedCrs.totalSize()>0))
         _unrefineMarkedElements(markedCrs,m_crsExt);
     return coarsen;
+}
+
+template<class T>
+bool gsAdaptiveMeshing<T>::refineAll()
+{
+    HBoxContainer ref;
+    for (typename boxMapType::iterator it = m_boxes.begin(); it!=m_boxes.end(); it++)
+        ref.add(*it->second);
+
+    this->refine(ref);
+
+    return true;
+}
+
+template<class T>
+bool gsAdaptiveMeshing<T>::unrefineAll()
+{
+    HBoxContainer crs;
+    for (typename boxMapType::iterator it = m_boxes.begin(); it!=m_boxes.end(); it++)
+        crs.add(*it->second);
+
+    this->unrefine(crs);
+
+    return true;
 }
 
 // template<class T>

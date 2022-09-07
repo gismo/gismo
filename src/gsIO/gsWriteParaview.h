@@ -303,6 +303,13 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
 
+template<class T>
+void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
+                         std::string const & fn, unsigned resolution = 8);
+
+template<class T>
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
+
 // Please document
 template <class T>
 void plot_errors(const gsMatrix<T> & orig, 

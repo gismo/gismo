@@ -76,6 +76,14 @@ size_t gsHBoxContainer<d, T>::totalSize() const
     return std::accumulate(m_boxes.begin(), m_boxes.end(), 0, size_sum);
 }
 
+template <short_t d, class T>
+void gsHBoxContainer<d, T>::clear()
+{
+    for (HIterator hit = m_boxes.begin(); hit!=m_boxes.end(); hit++)
+        hit->clear();
+    m_boxes.clear();
+}
+
 /**
  * @brief      Checks if the level of the boxes in the container matches the container level
  *

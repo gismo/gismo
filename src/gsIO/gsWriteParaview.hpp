@@ -231,7 +231,7 @@ void writeSingleBasisMesh(const gsBasis<T> & basis,
 /// Export a computational mesh
 template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
-                         std::string const & fn, unsigned resolution = 8)
+                         std::string const & fn, unsigned resolution)
 {
     gsMesh<T> msh(basis, resolution);
     Geo.evaluateMesh(msh);

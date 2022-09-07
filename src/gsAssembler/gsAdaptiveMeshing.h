@@ -78,6 +78,8 @@ public:
     bool refine() { return refine(m_markedRef); }
     bool unrefine() { return unrefine(m_markedRef); };
 
+    bool refineAll();
+    bool unrefineAll();
 
     // void flatten(const index_t level);
     // void flatten() { flatten(m_maxLvl); } ;
