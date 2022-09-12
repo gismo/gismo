@@ -71,6 +71,7 @@ public:
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
+        opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
@@ -747,10 +748,14 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     m_elWise.clear();
-    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), ifc);            
+
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+    const boundaryInterface & iFace =  flipSide ? ifc.getInverse() : ifc;
+
+    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);            
     m_exprdata->points() = pt;
     interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
-    m_exprdata->precompute(ifc);
+    m_exprdata->precompute(iFace);
 
     // expr.printDetail(gsInfo); //
 
@@ -765,11 +770,15 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
                             const boundaryInterface & ifc)
 {
     m_exprdata->parse(expr);
-    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), ifc);            
+
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+    const boundaryInterface & iFace =  flipSide ? ifc.getInverse() : ifc;
+
+    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);            
     m_exprdata->points() = pt;
     interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
-    m_exprdata->precompute(ifc);
+    m_exprdata->precompute(iFace);
 
     // expr.printDetail(gsInfo); //after precompute
 
