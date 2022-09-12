@@ -287,6 +287,11 @@ public:
     void initMatrix()
     {
         resetDimensions();
+        clearMatrix();
+    }
+
+    void clearMatrix()
+    {
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
         if ( 0 == m_matrix.rows() || 0 == m_matrix.cols() )
@@ -305,7 +310,7 @@ public:
             m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );
         }
     }
-
+    
     /// \brief Initializes the right-hand side vector only
     void initVector(const index_t numRhs = 1)
     {
@@ -355,6 +360,10 @@ public:
     /*
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
+
+    /// \brief Assembles the Jacobian matrix of the expression \a args with
+    // respect to the solution \a u
+    template<class expr> void assembleJacobian(const expr residual, solution & u);
 
 private:
 
@@ -414,6 +423,7 @@ private:
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
         gsMatrix<T>         localMat;
+        gsMatrix<T>         aux;
 
         _eval(gsSparseMatrix<T> & _matrix,
               gsMatrix<T>       & _rhs,
@@ -424,15 +434,7 @@ private:
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
-            gsMatrix<T> tempMat; 
             // ------- Compute  -------
-            for (index_t k = 0; k != m_quWeights.rows(); ++k)
-            {
-                // if (! E::isMatrix())
-                //     tempMat = ee.eval(k);
-                //     tempMat.resize(tempMat.rows()/2, 2);
-                //     gsDebugVar( tempMat.transpose().rowwise().sum() ); 
-            }
             const T * w = m_quWeights.data();
             localMat.noalias() = (*w) * ee.eval(0);
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
@@ -450,6 +452,20 @@ private:
             }
 
         }// operator()
+
+        template <typename E> void accJacMatrix(const gismo::expr::_expr<E> & ee, index_t j, T scalar = (T)1)
+        {
+            GISMO_ASSERT(E::isVector(), "Expecting a vector expression.");
+
+            // ------- Compute  -------
+            const T * w = m_quWeights.data();
+            aux.noalias() = (*w) * ee.eval(0);
+            for (index_t k = 1; k != m_quWeights.rows(); ++k)
+                aux.noalias() += (*(++w)) * ee.eval(k);
+
+            localMat.resize(aux.rows(), aux.rows());// happens once
+            localMat.col(j) = scalar * aux;
+        }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
@@ -811,8 +827,6 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
-            
-            if (m_exprdata->points()(0,1) == 0.25 )
 
             if (m_exprdata->points().cols()==0)
                 continue;
@@ -831,5 +845,90 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 
     m_matrix.makeCompressed();
 }
+
+template<class T> template<class expr>
+void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
+
+    clearMatrix();
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+    m_exprdata->parse(residual, u);
+    m_exprdata->activateFlags(SAME_ELEMENT);
+    //op_tuple(__printExpr(), arg_tpl);
+
+    gsDebugVar( u.space().isValid() );
+    gsDebugVar( u.space().data().actives );
+        
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+
+    gsVector<T> quWeights; // quadrature weights
+
+    _eval ee(m_matrix, m_rhs, quWeights);
+    static const T delta = 0.00001;
+
+    // Note: omp thread will loop over all patches and will work on Ep/nt
+    // elements, where Ep is the elements on the patch.
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    {
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+        m_exprdata->getElement().set(*domIt,quWeights);
+
+        // Start iteration over elements of patchInd
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
+        for (; domIt->good(); domIt->next() )
+#       endif
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
+            // Evaluate at quadrature points
+            m_exprdata->precompute(patchInd);
+
+            gsDebugVar( u.space().isValid() );
+            gsDebugVar( u.space().data().values.size() );
+
+            for ( index_t j = 0; j< u.space().cardinality(); j++ )
+            {// for all basis functions (column j of local matrix)
+                //Perturbe \a u
+                u.perturbLocal( delta  , j, patchInd);
+                ee.accJacMatrix(residual, j,  8 / (12*delta) );
+                u.perturbLocal( delta  , j, patchInd);
+                ee.accJacMatrix(residual, j, -1 / (12*delta) );
+                u.perturbLocal(-3*delta, j, patchInd);
+                ee.accJacMatrix(residual, j, -8 / (12*delta) );
+                u.perturbLocal( -delta , j, patchInd);
+                ee.accJacMatrix(residual, j,  1 / (12*delta) );
+                //Unperturb \a u
+                u.perturbLocal(2*delta, j, patchInd);
+            }
+
+            // Assemble contributions of the element to the global matrix
+            ee.push<true>(u.rowVar(), u.rowVar());
+        }
+    }
+
+}//omp parallel
+    m_matrix.makeCompressed();
+}
+
 
 } //namespace gismo

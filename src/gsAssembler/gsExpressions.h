@@ -1370,6 +1370,30 @@ public:
     const gsMatrix<T> & coefs() const { return *_Sv; }
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
 
+    /// val: perturbation value, j: local bf index, p: patch
+    void perturbLocal(T val, index_t j, index_t p = 0)
+    {
+        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+
+        auto qr = std::div(j, _u.data().actives.size() );
+        _u.mapper().print();
+        gsDebugVar(_u.mapper().asVector());
+        const index_t ii = _u.mapper().index(qr.rem, p, qr.quot);
+        gsDebugVar(ii);
+        gsDebugVar(j);
+        gsDebugVar(qr.rem );
+        gsDebugVar(qr.quot);
+        gsDebugVar( _Sv);
+        if (_u.mapper().is_free_index(ii) )
+        {
+            GISMO_ASSERT(ii<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
+            gsDebugVar( _Sv);
+            _Sv->at(ii) += val;
+        }
+        //else
+        //    _u.fixedPart().at( _u.mapper().global_to_bindex(ii) ) += val;
+    }
+
     /// Extract the coefficients of piece \a p
     void extract(gsMatrix<T> & result, const index_t p = 0) const
     { _u.getCoeffs(*_Sv, result, p); }
@@ -1932,7 +1956,7 @@ flat_expr<E> const flat(E const & u)
         const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
 
-        void print(std::ostream &os) const { os << "diagonal("; _u.print(os); os<<")"; }
+  void print(std::ostream &os) const { os << "diag("; _u.print(os); os<<")"; }
   };
 
 /// Get diagonal elements of matrix as a vector

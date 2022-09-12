@@ -28,14 +28,15 @@ gsCPPInterface<T>::gsCPPInterface(const gsMultiPatch<T>   & mp,
                                   const boundaryInterface & bi,
                                   const gsOptionList      & opt)
     : m_slaveGeom( &(mp[bi.first().patch ])),
-      m_masterGeom((mp[bi.second().patch]).boundary(bi.second())),
+      m_masterGeom( &(mp[bi.second().patch ])),
+      m_masterBdr((mp[bi.second().patch]).boundary(bi.second())),
       m_slaveBasis(&(basis[bi.first().patch ])),
       m_masterBasis(&(basis[bi.second().patch])),
       m_boundaryInterface(bi),
       m_Tolerance(opt.getReal("Tolerance"))
 {
     
-    GISMO_ASSERT( m_slaveGeom->geoDim()==m_masterGeom->geoDim(), "gsCPPInterface: Dimensions do not agree." );
+    GISMO_ASSERT( m_slaveGeom->geoDim()==m_masterBdr->geoDim(), "gsCPPInterface: Dimensions do not agree." );
 
     m_fixedDir   = m_boundaryInterface.second().direction(); 
     // Index of the parametric direction which is normal to the boundary of the master surface
@@ -44,7 +45,7 @@ gsCPPInterface<T>::gsCPPInterface(const gsMultiPatch<T>   & mp,
     // This is constant on the entire master boundary
 
     // Vector with the ordered indices of directions that are 'free' i.e. not the m_fixedDir
-    for (index_t j=0; j<m_masterGeom->domainDim(); j++)
+    for (index_t j=0; j<m_masterBdr->domainDim(); j++)
     {
         if (j != m_fixedDir ) { m_freeDirs.push_back(j); }
     }
@@ -52,21 +53,60 @@ gsCPPInterface<T>::gsCPPInterface(const gsMultiPatch<T>   & mp,
 
 
 template <class T>
-void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
+void gsCPPInterface<T>::eval_into(gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     GISMO_ASSERT( u.rows() == domainDim(), "gsCPPInterface::eval_into: "
         "The rows of the evaluation points must be equal to the dimension of the domain." );
 
+    gsVector<T> masterParams;
+    /* -- version with isInside check
+    gsVector<bool> isInside;
+    gsMatrix<T> slavePts, preIm;
+
+    // Get the evaluation of u on the slave surface
+    slavePts = m_slaveGeom->eval( u );
+    //check whether slave points lie within master geometry
+    m_masterGeom->locateOn(slavePts,isInside,preIm,false,m_Tolerance);
+
+    // Pick the relevant points only, wipe out the rest
+    index_t npts = 0;
+    for (index_t i=u.cols()-1; i>=0; --i)
+        if (isInside[i])
+            u.col(i).swap(u.col(npts++));
+    u.conservativeResize(u.rows(), npts);
+    result.resize(u.rows(), npts);
+
+    for (index_t i=0; i<npts; i++) // For every set( column ) of parameters
+    {
+        // Find the parameters of the point of the master surface boundary,
+        // which is closest to the slavePoint
+        m_masterBdr->closestPointTo(slavePts.col(i), masterParams, m_Tolerance);
+
+        // masterParams are 1 less than the masters' domain dimensions
+        // since only the boundary is considered in the CPP procedure
+        // but we need to return domainDim, parameters thus the following loop
+        for (size_t j=0; j<m_freeDirs.size(); j++)
+        {
+            result( m_freeDirs[j], i ) = masterParams(j);
+        }
+        result(  m_fixedDir, i ) = m_fixedParam; // this param is known a priori
+    }
+
+    */
+
+    //--- closest point version
     result.resizeLike(u);
     gsVector<T> slavePoint;
-    gsVector<T> masterParams;
-    
+
     for (index_t i=0; i<u.cols(); i++) // For every set( column ) of parameters
-    {   
-        slavePoint = m_slaveGeom->eval( u.col(i) ); // Get the evaluation of u on the slave surface
-        m_masterGeom->closestPointTo( slavePoint, masterParams, m_Tolerance);
-        // Find the parameters of the point of the master surface, which is closest to the slavePoint
-        
+    {
+        // Get the evaluation of u on the slave surface
+        slavePoint = m_slaveGeom->eval( u.col(i) );
+
+        // Find the parameters of the point of the master surface boundary,
+        // which is closest to the slavePoint
+        m_masterBdr->closestPointTo( slavePoint, masterParams, m_Tolerance);
+
         // masterParams are 1 less than then masters domain dimensions
         // since only the boundary is considered in the CPP procedure
         // but we need to return domainDim, parameters thus the following loop
@@ -76,7 +116,7 @@ void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) c
         }
         result(  m_fixedDir, i ) = m_fixedParam; // this param is known a priori
     }
-    
+    //--- closest point version
 }
 
 

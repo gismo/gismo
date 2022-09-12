@@ -55,8 +55,8 @@ public:
                      const boundaryInterface & bi,
                      const gsOptionList      & opt = defaultOptions() );
 private:
-    const    gsGeometry<T>* m_slaveGeom ;      ///< Geometry of first patch  -- Slave
-    typename gsGeometry<T>::Ptr m_masterGeom;  ///< Geometry of second patch -- Master
+    const gsGeometry<T>* m_slaveGeom, *m_masterGeom; ///< Geometry of first (Slave) patch and second patch (master) 
+    typename gsGeometry<T>::Ptr m_masterBdr;  ///< The boundary geometry of second patch -- Master
 
     const gsBasis<T> * m_slaveBasis ;        ///< Basis on first patch
     const gsBasis<T> * m_masterBasis;        ///< Basis on second patch
@@ -88,7 +88,7 @@ public:
     ///
     /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents
     /// \f$ G_2^{-1} \circ G_1 \f$
-    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
+    virtual void eval_into(gsMatrix<T> & u, gsMatrix<T> & result) const;
 
     /// Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_slaveGeom->domainDim(); }
