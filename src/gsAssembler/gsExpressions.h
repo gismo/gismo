@@ -240,8 +240,8 @@ public:
     { return cb_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the sign of the expression
-    sign_expr<E> sgn() const
-    { return sign_expr<E>(static_cast<E const&>(*this)); }
+    sign_expr<E> sgn(Scalar tolerance=0) const
+    { return sign_expr<E>(static_cast<E const&>(*this), tolerance); }
 
     /// Returns the expression's positive part
     ppart_expr<E> ppart() const
@@ -2194,16 +2194,19 @@ template<class E>
 class sign_expr : public _expr<sign_expr<E> >
 {
     typename E::Nested_t _u;
+    typename E::Scalar _tol;
 public:
     typedef typename E::Scalar Scalar;
     enum {ScalarValued = 1, Space = E::Space, ColBlocks= 0};
 
-    sign_expr(_expr<E> const& u) : _u(u) { }
+    sign_expr(_expr<E> const& u, Scalar tolerance = 0.0) : _u(u),_tol(tolerance){ 
+        GISMO_ASSERT( _tol >= 0, "Tolerance for sign_expr should be a positive number.");
+    }
 
     Scalar eval(const index_t k) const
     {
         const Scalar v = _u.val().eval(k);
-        return ( v>0 ? 1 : ( v<0 ? -1 : 0 ) );
+        return ( v>_tol ? 1 : ( v<-_tol ? -1 : 0 ) );
     }
 
     static index_t rows() { return 0; }
