@@ -53,7 +53,7 @@ gsCPPInterface<T>::gsCPPInterface(const gsMultiPatch<T>   & mp,
 
 
 template <class T>
-void gsCPPInterface<T>::eval_into(gsMatrix<T> & u, gsMatrix<T> & result) const
+void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     GISMO_ASSERT( u.rows() == domainDim(), "gsCPPInterface::eval_into: "
         "The rows of the evaluation points must be equal to the dimension of the domain." );

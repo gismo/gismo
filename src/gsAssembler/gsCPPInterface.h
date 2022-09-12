@@ -88,7 +88,7 @@ public:
     ///
     /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents
     /// \f$ G_2^{-1} \circ G_1 \f$
-    virtual void eval_into(gsMatrix<T> & u, gsMatrix<T> & result) const;
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const;
 
     /// Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_slaveGeom->domainDim(); }
