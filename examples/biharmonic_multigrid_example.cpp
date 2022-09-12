@@ -20,9 +20,9 @@ using namespace gismo;
 
 /**
  * Smoothing method:
- * - s 0 == Approx C1 method
- * - s 1 == Nitsche's method
- * - s 2 == D-Patch's method
+ * - m 0 == Approx C1 method
+ * - m 1 == Nitsche's method
+ * - m 2 == D-Patch's method
  */
 enum MethodFlags
 {
@@ -218,7 +218,7 @@ void uniformCoarsen_withTransfer(
         gsMappedBasis<2, real_t> mappedBasis_coarse;
         gsApproxC1Spline<2, real_t> approxC1(mp, mb);
         //approxC1.options().setSwitch("info",info);
-        approxC1.options().setSwitch("plot",false);
+        approxC1.options().setSwitch("plot",true);
         approxC1.options().setSwitch("interpolation",true);
         approxC1.options().setSwitch("second", false);
         approxC1.options().setInt("gluingDataDegree",1);
@@ -404,10 +404,12 @@ int main(int argc, char *argv[])
     mp.computeTopology();
     //! [Read geometry]
 
-    gsFunctionExpr<>f("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    //gsFunctionExpr<>f("256*pi*pi*pi*pi*(4*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+    gsFunctionExpr<>f("0",2);
     gsInfo << "Source function: " << f << "\n";
 
-    gsFunctionExpr<> ms("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    //gsFunctionExpr<> ms("(cos(4*pi*x) - 1) * (cos(4*pi*y) - 1)",2);
+    gsFunctionExpr<> ms("1",2);
     gsInfo << "Exact function: " << ms << "\n";
 
     //! [Refinement]
@@ -431,12 +433,14 @@ int main(int argc, char *argv[])
     for (gsMultiPatch<>::const_biterator bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
     {
         // Laplace
-        gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
-
+        //gsFunctionExpr<> laplace ("-16*pi*pi*(2*cos(4*pi*x)*cos(4*pi*y) - cos(4*pi*x) - cos(4*pi*y))",2);
+      gsFunctionExpr<> laplace ("0",2);
+      
         // Neumann
-        gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
-                                 "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)", 2);
-
+      //  gsFunctionExpr<> sol1der("-4*pi*(cos(4*pi*y) - 1)*sin(4*pi*x)",
+      //                           "-4*pi*(cos(4*pi*x) - 1)*sin(4*pi*y)", 2);
+      gsFunctionExpr<> sol1der("0", "0", 2);
+      
         bc.addCondition(*bit, condition_type::dirichlet, ms);
         if (second)
             bc.addCondition(*bit, condition_type::laplace, laplace);
@@ -470,7 +474,7 @@ int main(int argc, char *argv[])
     // The approx. C1 space
     gsApproxC1Spline<2,real_t> approxC1(mp, basis);
     //approxC1.options().setSwitch("info",info);
-    approxC1.options().setSwitch("plot",false);
+    approxC1.options().setSwitch("plot", false);
     approxC1.options().setSwitch("interpolation",true);
     approxC1.options().setSwitch("second",second);
     approxC1.options().setInt("gluingDataDegree",1);
@@ -512,8 +516,8 @@ int main(int argc, char *argv[])
         global2local = approxC1.getSystem();
         mappedBasis2.init(dbasis_temp, global2local);
 
-        cmd.addInt("MG.InterfaceStrategy", "No gluing needed!",iFace::none);
-        cmd.addInt("MG.DirichletStrategy", "No elimination needed!",dirichlet::none);
+        cmd.addInt("MG.InterfaceStrategy", "No gluing needed!", iFace::none);
+        cmd.addInt("MG.DirichletStrategy", "No elimination needed!", dirichlet::none);
     }
     else if (method == MethodFlags::BSPLINE)
     {
