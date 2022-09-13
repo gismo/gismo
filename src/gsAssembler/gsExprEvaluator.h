@@ -15,7 +15,8 @@
 
 #include<gsIO/gsParaviewCollection.h>
 #include<gsAssembler/gsQuadrature.h>
-#include <gsAssembler/gsRemapInterface.h>
+#include<gsAssembler/gsRemapInterface.h>
+#include<gsIO/gsWriteParaview.h>
 
 namespace gismo
 {
