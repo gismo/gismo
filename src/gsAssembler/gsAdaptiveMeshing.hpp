@@ -190,13 +190,15 @@ void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, const
 template <class T>
 void gsAdaptiveMeshing<T>::_crsPredicates_into(std::vector<gsHBoxCheck<2,T> *> & predicates)
 {
+    HBoxContainer empty;
     predicates.push_back(new gsMinLvlCompare<2,T>(0));
+    predicates.push_back(new gsOverlapCompare<2,T>(empty,m_m));
 }
 
 template <class T>
 void gsAdaptiveMeshing<T>::_crsPredicates_into(const HBoxContainer & markedRef, std::vector<gsHBoxCheck<2,T> *> & predicates)
 {
-    this->_crsPredicates_into(predicates);
+    predicates.push_back(new gsMinLvlCompare<2,T>(0));
     predicates.push_back(new gsOverlapCompare<2,T>(markedRef,m_m));
 }
 
