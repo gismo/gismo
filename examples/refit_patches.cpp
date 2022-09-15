@@ -103,14 +103,16 @@ int main(int argc, char *argv[])
     real_t tol = 1e-5;
     index_t nknots = 5, degree = 3;
     index_t npts = 100;
-    real_t lambda = 0;
+    real_t lambda_crv = 0;
+    real_t lambda_srf = 0;
     // real_t gtol = 1e-6;
     // bool reparam = false, gaps = true;
 
     gsCmdLine cmd("Computes patches from structured (tensor-product) data samples by fitting.");
     cmd.addPlainString("filename", "File containing multipatch input (.xml).", filename);
     cmd.addReal  ("t","tolerance","Tolerance for identifing patch interfaces", tol);
-    cmd.addReal  ("L","lambda","lambda", lambda);
+    cmd.addReal  ("l","lambda_crv","lambda for the curve fitting", lambda_crv);
+    cmd.addReal  ("L","lambda_srf","lambda for the surface fitting", lambda_srf);
     cmd.addInt   ("d", "degree", "Degree of B-splines for reparameterization", degree);
     cmd.addInt   ("k", "knots", "Number of interior knots for reparameterization", nknots);
     cmd.addInt   ("N", "npts", "Number of points for sampling", npts);
@@ -174,7 +176,7 @@ int main(int argc, char *argv[])
         // Contains the parametric values of the points
         mp_par.patch(p) = *bbasis.makeGeometry(pts.transpose()).release();
     }
-    if (plot) gsWriteParaview(mp,"mp",1000,true);
+    if (plot) gsWriteParaview(mp,"mp",200,false);
     
     // STEP 1: Get curve network with merged linear interfaces
     gsInfo<<"Loading curve network...";
@@ -186,13 +188,22 @@ int main(int argc, char *argv[])
     gsDebug <<" brep "<< brep.size() <<" \n" ;
 
     // outputing...
-    gsMultiPatch<> crv_net;
+    gsMultiPatch<> crv_net, iface_net, bnd_net;
     for (auto it = irep.begin(); it!=irep.end(); ++it)
+    {
+        iface_net.addPatch((*it->second));
         crv_net.addPatch((*it->second));
+    }
     for (auto it = brep.begin(); it!=brep.end(); ++it)
+    {
+        bnd_net.addPatch((*it->second));
         crv_net.addPatch((*it->second));
+    }
 
-    if (plot) gsWriteParaview(crv_net,"crv_net",1000,true);
+    if (plot) gsWriteParaview(iface_net,"iface_net",200);
+    if (plot) gsWriteParaview(bnd_net,"bnd_net",200);
+    if (plot) gsWriteParaview(crv_net,"crv_net",200);
+
     //end outputing
     gsInfo<<"Finished\n";
     
@@ -266,7 +277,7 @@ int main(int argc, char *argv[])
         prescibedCoefs.push_back(crv.coefs().row(crv.basis().size()-1));
         cfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
-        cfit.compute();
+        cfit.compute(lambda_crv);
         cfit.computeErrors();
         real_t tol = 1e-1;
         if (cfit.maxPointError()> tol)
@@ -279,11 +290,11 @@ int main(int argc, char *argv[])
         crv_net.addPatch( *cfit.result() );
     }
 
-    if (plot) gsWriteParaview(crv_net,"crv_fit",1000,false,false);
+    if (plot) gsWriteParaview(crv_net,"crv_fit",200);
     gsInfo<<"Finished\n";
 
     gsFitting<> sfit;
-    gsMultiPatch<> mp_res;
+    std::vector<gsGeometry<>*> container(mp0->nPatches());
     //STEP 4: fit interior points of each patch with boundary constraints being the curves..
     gsInfo<<"Fitting surface...";
     for (size_t p=0; p!=pbdr.size(); p++)
@@ -306,14 +317,18 @@ int main(int argc, char *argv[])
         xyz = mp.patch(p).coefs().transpose();
         sfit = gsFitting<>(uv,xyz,sbasis);
         sfit.setConstraints(prescribedDoFs,prescibedCoefs);
-        sfit.compute(lambda);
-        real_t tol = 1e-1;
-        if (cfit.maxPointError()> tol)
-            gsWarn<<"Error of surface fit is large: "<<cfit.maxPointError()<<">"<<tol<<"\n";
 
-        mp_res.addPatch(*sfit.result());
+        sfit.compute(lambda_srf);
+        sfit.computeErrors();
+        real_t tol = 1e-1;
+        if (sfit.maxPointError()> tol)
+            gsWarn<<"Error of surface fit is large: "<<sfit.maxPointError()<<">"<<tol<<"\n";
+
+        container.at(p) = give(sfit.result());
+        // mp_res.addPatch(*sfit.result());
     }
-    if (plot) gsWriteParaview(mp_res,"final",1000,true);
+    gsMultiPatch<> mp_res(container,mp0->boundaries(),mp0->interfaces());
+    if (plot) gsWriteParaview(mp_res,"final",200,true);
     gsWrite<>(mp_res,"final");
     gsInfo<<"Finished\n";
 
