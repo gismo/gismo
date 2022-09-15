@@ -170,6 +170,20 @@ void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
     }
 }
 
+template<class T>
+gsSparseMatrix<T> gsFitting<T>::smoothingMatrix(T lambda) const
+{
+
+    const int num_basis=m_basis->size();
+
+    gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
+    int nonZerosPerCol = 1;
+    for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
+        nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 );
+    A_mat.reservePerColumn( nonZerosPerCol );
+    const_cast<gsFitting*>(this)->applySmoothing(lambda, A_mat);
+    return A_mat;
+}
 
 template<class T>
 void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)

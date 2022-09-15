@@ -89,7 +89,7 @@ public:
     /// Adds to the matrix A_mat terms for minimization of second derivative, weighted
     /// with parameter lambda.
     void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
-    
+    gsSparseMatrix<T> smoothingMatrix(T lambda) const;
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
 
@@ -183,6 +183,16 @@ private:
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
 
 }; // class gsFitting
+
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsKnotVector
+   */
+  void pybind11_init_gsFitting(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 }// namespace gismo

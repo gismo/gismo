@@ -249,9 +249,9 @@ public:
         this->add<Object>(obj);
     }
 
-    /// Add the object to the Xml tree, same as <<
+    /// Add the object to the Xml tree, same as <<, but also allows to set the XML id attribute
     template<class Object>
-    void add (const Object & obj)
+    void add (const Object & obj, int id = -1)
     {
         gsXmlNode* node =
             internal::gsXml<Object>::put(obj, *data);
@@ -262,7 +262,7 @@ public:
         }
         else
         {
-            data->appendToRoot(node);
+            data->appendToRoot(node,id);
         }
     }
 
