@@ -960,9 +960,9 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         // Grab the indices to be matched
         bndThis = this->boundary( bi.first() .side() );
         bndOther= _other->boundary( bi.second().side() );
-//        GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
-//                      "Input error, sizes do not match: "
-//                      <<bndThis.rows()<<"!="<<bndOther.rows() );
+        GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
+                     "Input error, sizes do not match: "
+                     <<bndThis.rows()<<"!="<<bndOther.rows() );
         if (bndThis.size() == 1) return;
 
         // Get interface data

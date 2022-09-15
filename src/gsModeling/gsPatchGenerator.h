@@ -58,7 +58,7 @@ public:
 
     /// \brief Main routine that performs the computation (to be
     /// implemented in derived classes)
-    virtual const gsGeometry<T> & compute() {};
+    virtual const gsGeometry<T> & compute() = 0;
 
     /// \brief Main routine that receives input and performs the computation
     const gsGeometry<T> & compute(const gsMultiPatch<T> & boundary)
@@ -81,7 +81,7 @@ public:
         return m_boundary;
     }
 
-// protected:
+protected:
 
     /// \brief Resolves the configuration of the input boundaries and
     /// creates a patch filled with the boundary coefficients
