@@ -2,7 +2,6 @@
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 #include <gsModeling/gsFittingRWF.h>
-#include <gsParasolid/gsWriteParasolid.h>
 
 using namespace gismo;
 
@@ -12,7 +11,7 @@ int main(int argc, char *argv[])
     real_t alpha      = 1e-10;
     real_t eps        = 1e-06;
     real_t epsmin     = 0.0;
-    int dreg          = 2;
+    index_t dreg      = 2;
     bool iter_lambda  = false;
     bool iter_refine  = false;
     bool save         = false;

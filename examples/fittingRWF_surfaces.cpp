@@ -1,6 +1,9 @@
 #include <gismo.h>
 #include <math.h>
+
+#ifdef GISMO_WITH_PSOLID
 #include <gsParasolid/gsWriteParasolid.h>
+#endif
 
 using namespace gismo;
 
@@ -187,6 +190,7 @@ void surface_subdivision_9(std::string fn)
 
     split_in_3(1, v_min, v_max, uleft, vbottom, vmiddle, vtop);
 
+#ifdef GISMO_WITH_PSOLID
     gsInfo << "Writing NX File" << std::endl;
     extensions::gsWritePK_SHEET(vbottom, "uleftvbottom");
     extensions::gsWritePK_SHEET(vmiddle, "uleftvmiddle");
@@ -205,6 +209,7 @@ void surface_subdivision_9(std::string fn)
     extensions::gsWritePK_SHEET(vbottom, "urightvbottom");
     extensions::gsWritePK_SHEET(vmiddle, "urightvmiddle");
     extensions::gsWritePK_SHEET(vtop, "urightvtop");
+#endif // GISMO_WITH_PSOLID
 }
 
 int main(int argc, char *argv[])

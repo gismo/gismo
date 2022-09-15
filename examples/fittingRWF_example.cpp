@@ -2,7 +2,10 @@
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsHSplines/gsHFitting.h>
 #include <gsModeling/gsFittingRWF.h>
+
+#ifdef GISMO_WITH_PSOLID
 #include <gsParasolid/gsWriteParasolid.h>
+#endif
 
 #include <iostream>
 #include <fstream>
@@ -268,6 +271,7 @@ int main(int argc, char *argv[])
         fd.dump("result");
     }
 
+#ifdef GISMO_WITH_PSOLID
     bool nx = true;
     if(nx)
     {
@@ -275,6 +279,7 @@ int main(int argc, char *argv[])
         gsTensorBSpline<2>* TP_spline = static_cast<gsTensorBSpline<2>*>(ref.result());
         extensions::gsWritePK_SHEET(*TP_spline, "result");
     }
+#endif // GISMO_WITH_PSOLID
 
     // TODO
 //    if (saveLogLambda)

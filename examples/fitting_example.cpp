@@ -12,7 +12,10 @@
 */
 
 #include <gismo.h>
+
+#ifdef GISMO_WITH_PSOLID
 #include <gsParasolid/gsWriteParasolid.h>
+#endif
 
 using namespace gismo;
 
@@ -177,10 +180,12 @@ int main(int argc, char *argv[])
     bool nx = true;
     if(nx)
     {
+#ifdef GISMO_WITH_PSOLID
         gsTHBSpline<2>* thb_result = static_cast<gsTHBSpline<2>*>(ref.result());
         gsTensorBSpline<2> TP_spline;
         thb_result->convertToBSpline(TP_spline);
         extensions::gsWritePK_SHEET(TP_spline, "result_fitting_example");
+#endif // GISMO_WITH_PSOLID
     }
 
     else
