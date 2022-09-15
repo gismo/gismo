@@ -16,15 +16,17 @@
 
 using namespace gismo;
 
+
 /**
- * @brief      { function_description }
+ * @brief      Parameterizes the points for a curve using centripetal (alpha=0)
+ *             or chord-length (alpha=0.5) parameterization
  *
- * @param[in]  xyz    The xyz
- * @param[in]  alpha  The alpha
+ * @param[in]  xyz    The coordinates of the points, each column is a point
+ * @param[in]  alpha  Alpha coefficient
  *
- * @tparam     T      { description }
+ * @tparam     T      Double
  *
- * @return     { description_of_the_return_value }
+ * @return     Parametric coordinates for each point, per column
  */
 template<class T>
 gsMatrix<T> parameterize_points1D(const gsMatrix<T> & xyz, T alpha = 0.5)
@@ -47,15 +49,16 @@ gsMatrix<T> parameterize_points1D(const gsMatrix<T> & xyz, T alpha = 0.5)
 
 
 /**
- * @brief      Parameterizes a gridded surface
+ * @brief      Parameterizes the points for a surface using centripetal
+ *             (alpha=0) or chord-length (alpha=0.5) parameterization
  *
- * @param[in]  bbasis  A linear basis that has a basis function for each grid point
- * @param[in]  xyz     The xyz locations of the points
- * @param[in]  alpha   The alpha
+ * @param[in]  bbasis  A Tensor B-spline basis to fit on
+ * @param[in]  xyz     The coordinates of the points, each column is a point
+ * @param[in]  alpha   Alpha coefficient
  *
- * @tparam     T       { description }
+ * @tparam     T       Double
  *
- * @return     { description_of_the_return_value }
+ * @return     Parametric coordinates for each point, per column
  */
 template<class T>
 gsMatrix<T> parameterize_points2D(const gsTensorBSplineBasis<2,real_t> & bbasis, const gsMatrix<T> & xyz, T alpha = 0.5)
@@ -108,7 +111,7 @@ int main(int argc, char *argv[])
     // real_t gtol = 1e-6;
     // bool reparam = false, gaps = true;
 
-    gsCmdLine cmd("Computes patches from structured (tensor-product) data samples by fitting.");
+    gsCmdLine cmd("Computes patches from structured (tensor-product) data samples by fitting. Give a file path to an XML or 3dm file to refit the patches!");
     cmd.addPlainString("filename", "File containing multipatch input (.xml).", filename);
     cmd.addReal  ("t","tolerance","Tolerance for identifing patch interfaces", tol);
     cmd.addReal  ("l","lambda_crv","lambda for the curve fitting", lambda_crv);
@@ -116,30 +119,12 @@ int main(int argc, char *argv[])
     cmd.addInt   ("d", "degree", "Degree of B-splines for reparameterization", degree);
     cmd.addInt   ("k", "knots", "Number of interior knots for reparameterization", nknots);
     cmd.addInt   ("N", "npts", "Number of points for sampling", npts);
-    // cmd.addReal  ("g","gap-tolerance","Tolerance for closing gaps", gtol);
-    // cmd.addSwitch("reparam", "Reparameterize all patches using a fixed degree and number of knots", reparam);
-    // cmd.addSwitch("nogaps", "Close any gaps along interfaces upto tolerance \'gtol\'", gaps);
     cmd.addSwitch("plot", "plot results", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsMultiPatch<>::uPtr mp0 = gsReadFile<>(filename);
     mp0->computeTopology(tol,true);
-
-    // gsInfo <<"Computing"<< (gaps?" corner-based ":" ")<<"topology with tolerance = "<<tol<<"... \n" ;
-    // mp->computeTopology(tol, gaps);
-    // gsInfo << * mp <<"\n" ;
-    // //gsInfo << mp->detail() <<"\n";
-    // if (gaps) //Close gaps?
-    // {
-    //     gsInfo <<"Closing gaps with tolerance = "<<gtol<<"... \n" ;
-    //     mp->closeGaps(gtol);
-    //     gsInfo <<"Computing topology with tolerance = "<<tol<<"... \n" ;
-    //     mp->computeTopology(tol, false);
-    //     mp->closeGaps(gtol);//close again for any previously missed interfaces
-    //     gsInfo << * mp <<"\n" ;
-    //     //gsInfo << mp->detail() <<"\n";
-    // }
 
     gsInfo <<" Got "<< *mp0 <<" \n" ;
 
@@ -278,10 +263,10 @@ int main(int argc, char *argv[])
         cfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
         cfit.compute(lambda_crv);
-        cfit.computeErrors();
-        real_t tol = 1e-1;
-        if (cfit.maxPointError()> tol)
-            gsWarn<<"Error of curve fit is large: "<<cfit.maxPointError()<<">"<<tol<<"\n";
+        // cfit.computeErrors();
+        // real_t tol = 1e-1;
+        // if (cfit.maxPointError()> tol)
+        //     gsWarn<<"Error of curve fit is large: "<<cfit.maxPointError()<<">"<<tol<<"\n";
 
         gsMatrix<index_t> bndThis = sbasis.boundary(it->first.side());
         pbdr[it->first .patch].first.at(it->first .side()-1) = bndThis;
@@ -312,20 +297,18 @@ int main(int argc, char *argv[])
             }
         }
 
-
         uv  = mp_par.patch(p).coefs().transpose();
         xyz = mp.patch(p).coefs().transpose();
         sfit = gsFitting<>(uv,xyz,sbasis);
         sfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
         sfit.compute(lambda_srf);
-        sfit.computeErrors();
-        real_t tol = 1e-1;
-        if (sfit.maxPointError()> tol)
-            gsWarn<<"Error of surface fit is large: "<<sfit.maxPointError()<<">"<<tol<<"\n";
+        // sfit.computeErrors();
+        // real_t tol = 1e-1;
+        // if (sfit.maxPointError()> tol)
+        //     gsWarn<<"Error of surface fit is large: "<<sfit.maxPointError()<<">"<<tol<<"\n";
 
         container.at(p) = give(sfit.result());
-        // mp_res.addPatch(*sfit.result());
     }
     gsMultiPatch<> mp_res(container,mp0->boundaries(),mp0->interfaces());
     if (plot) gsWriteParaview(mp_res,"final",200,true);
