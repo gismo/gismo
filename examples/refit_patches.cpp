@@ -83,7 +83,7 @@ gsMatrix<T> parameterize_points2D(const gsTensorBSplineBasis<2,real_t> & bbasis,
     for(index_t k=0; k!=bbasis.size(1); k++)
     {
         slice = bbasis.coefSlice(1,k);
-        tmp_coefs.resize(3,slice.rows());
+        tmp_coefs.resize(xyz.rows(),slice.rows());
         for (index_t c=0; c!=slice.rows(); c++)
             tmp_coefs.col(c) = xyz.col(slice(c,0));
         v_mat.col(k) = parameterize_points1D(tmp_coefs,alpha).transpose();

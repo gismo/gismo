@@ -43,7 +43,7 @@ public:
               gsBasis<T>  & basis);
 
     /// Destructor
-    virtual ~gsFitting();
+    // virtual ~gsFitting();
 
 public:
 

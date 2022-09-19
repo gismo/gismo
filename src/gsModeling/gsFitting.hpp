@@ -23,12 +23,12 @@
 namespace gismo
 {
 
-template<class T>
-gsFitting<T>::~gsFitting()
-{
-    if ( m_result )
-        delete m_result;
-}
+// template<class T>
+// gsFitting<T>::~gsFitting()
+// {
+//     // if ( m_result!=NULL )
+//     //     delete m_result;
+// }
 
 template<class T>
 gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
