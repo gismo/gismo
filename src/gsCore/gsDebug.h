@@ -234,10 +234,11 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
   #pragma clang diagnostic ignored "-Wconstant-logical-operand"
   #pragma clang diagnostic ignored "-Wbind-to-temporary-copy"
 
-#elif defined __GNUC__ // major version >=4
+#elif defined __GNUC__ && !defined __FUJITSU // major version >=4
 // typedef locally defined but not used [-Wunused-local-typedefs]
 #if ( __GNUC__>4 || (__GNUC__==4 && __GNUC_MINOR__>7) )
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
 #endif
 
 #if (__cplusplus < 201703L && __GNUC__>6)

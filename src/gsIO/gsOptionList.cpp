@@ -629,7 +629,6 @@ gsXml<gsOptionList>::put (const gsOptionList & obj, gsXmlTree & data)
     return optionList;
 }
 
-
 } // namespace internal
 
 #ifdef GISMO_BUILD_PYBIND11

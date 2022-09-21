@@ -18,11 +18,11 @@
 |------------|------------|----------------------|
 | [CDash](https://cdash-ci.inria.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Report results from all builds |
 | [Appveyor](https://ci.appveyor.com/project/gismo/gismo)  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[appVeyor]) | Windows MSVC 14.0 |
-| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | MacOS XCode9-12 |
+| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | MacOS XCode 10-13 |
 | [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
 | [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
 | [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
-| [Jenkins](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable) | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[jenkins]) |VMs for Linux/MacOS/Windows |
+| [Jenkins](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable) | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[jenkins]) | VMs for Linux/MacOS/Windows |
 | GCC Farm | [Status](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
 | [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
 | [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
@@ -117,13 +117,26 @@ Release, RelWithDebInfo, MinSizeRel.
 
 * GISMO_COEFF_TYPE        *double*
 
-  The arithmetic type to be used for all computations. Available options
-include double, long double, float.
+  The arithmetic type to be used for all computations. Available
+options are float, double, long double, mpfr::mpreal, mpq_class,
+posit_2_0, posit_3_0, posit_3_1, posit_4_0, posit_8_0, posit_8_1,
+posit_16_1, posit_32_2, posit_64_3, posit_128_4, posit_256_5
 
 * GISMO_EXTRA_INSTANCE    *not set*
 
   If set to one or more of the options available for GISMO_COEFF_TYPE
   the G+Smo library is compiled with extra arithmetic types enabled.
+
+* GISMO_INDEX_TYPE        *int*
+
+  The integer type to be used for all indices. Available options are
+int, int8_t, int16_t, int32_t, int64_t, long, long long
+
+* GISMO_SHORT_TYPE        *int*
+
+  The integer type to be used for all non-index integers, e.g., the
+spatial dimension. Available options are int, int8_t, int16_t,
+int32_t, int64_t, long, long long
 
 * GISMO_EXTRA_DEBUG       *OFF*
 
@@ -167,6 +180,24 @@ compiled.
   The location for installation of the library, e.g. /usr/local on some
 Linux systems.
 
+* TARGET_ARCHITECTURE     *auto*
+
+  If G+Smo is built in Release mode optimized compiler flags for the
+selected target architecture are used. *auto* determines the
+architecture of the host system automatically. Available options are
+auto, generic, none, native and any value CPUID, e.g., skylake or
+apple-m1.
+
+* TARGET_PROFILER         *none*
+
+  If G+Smo is build in Release mode compiler flags for the selected
+target profiler are used. Available options are gprof and vtune (on
+x86/x86_64 systems).
+
+* OFA_VERBOSE             *OFF*
+
+  If enabled the OptimizeForArchitecture script will produce verbose
+output which might be helpful for debugging purposes.
 
 # Directory structure
 

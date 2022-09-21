@@ -15,6 +15,7 @@
 
 // STD includes
 #include <vector>
+#include <array>
 #include <iterator>
 #include <set>
 #include <map>

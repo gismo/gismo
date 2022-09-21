@@ -193,9 +193,23 @@
   #define EIGEN_COMP_EMSCRIPTEN 0
 #endif
 
+/// \internal EIGEN_COMP_FCC set to FCC version if the compiler is Fujitsu Compiler
+#if defined(__FUJITSU) || defined(__CLANG_FUJITSU)
+  #define EIGEN_COMP_FCC (__FCC_major__*100+__FCC_minor__*10+__FCC_patchlevel__)
+#else
+  #define EIGEN_COMP_FCC 0
+#endif
+
+/// \internal EIGEN_COMP_CRAY set to CARY version if the compiler is Cray Compiler
+#if defined(_CRAYC)
+  #define EIGEN_COMP_CRAY (_RELEASE_MAJOR*100+_RELEASE_MINOR*10+_RELEASE_PATCHLEVEL)
+#else
+  #define EIGEN_COMP_CRAY 0
+#endif
+
 
 /// \internal EIGEN_GNUC_STRICT set to 1 if the compiler is really GCC and not a compatible compiler (e.g., ICC, clang, mingw, etc.)
-#if EIGEN_COMP_GNUC && !(EIGEN_COMP_CLANG || EIGEN_COMP_ICC || EIGEN_COMP_MINGW || EIGEN_COMP_PGI || EIGEN_COMP_IBM || EIGEN_COMP_ARM || EIGEN_COMP_EMSCRIPTEN)
+#if EIGEN_COMP_GNUC && !(EIGEN_COMP_CLANG || EIGEN_COMP_ICC || EIGEN_COMP_MINGW || EIGEN_COMP_PGI || EIGEN_COMP_IBM || EIGEN_COMP_ARM || EIGEN_COMP_EMSCRIPTEN || EIGEN_COMP_FCC || EIGEN_COMP_CRAY)
   #define EIGEN_COMP_GNUC_STRICT 1
 #else
   #define EIGEN_COMP_GNUC_STRICT 0
@@ -932,7 +946,7 @@
 #define EIGEN_ALWAYS_INLINE EIGEN_STRONG_INLINE
 #endif
 
-#if EIGEN_COMP_GNUC
+#if EIGEN_COMP_GNUC && !defined(EIGEN_COMP_CRAY)
 #define EIGEN_DONT_INLINE __attribute__((noinline))
 #elif EIGEN_COMP_MSVC
 #define EIGEN_DONT_INLINE __declspec(noinline)

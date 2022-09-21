@@ -1,7 +1,12 @@
-version: 2.0
+version: 2.1
 
 jobs:
-  macos_x86_64_xcode10_cxx11_release:
+
+  ###
+  ### macOS 10.14.4 (Mojave), XCode 10.3.0 (x86_64)
+  ###
+
+  macos_x_64_86_xcode-103_cxx11_release:
     macos:
       xcode: "10.3.0"
     working_directory: ~/gismo
@@ -14,12 +19,16 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="macos_x86_64_xcode10_cxx11_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="MacOS-x86_64-XCode10.3-cxx11-Release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
-  macos_x86_64_xcode11_cxx14_release:
+  ###
+  ### macOS 10.15.5 (Catalina), XCode 11.7.0 (x86_64)
+  ###
+
+  macos_x86_64_xcode-117_cxx14_release:
     macos:
       xcode: "11.7.0"
     working_directory: ~/gismo
@@ -32,12 +41,16 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="macos_x86_64_xcode11_cxx14_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="MacOS-x86_64-XCode1.7-cxx14-Release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=14 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
-  macos_x86_64_xcode12_cxx17_release:
+  ###
+  ### macOS 11.4.0 (Big Sur), XCode 12.5.1 (x86_64)
+  ###
+
+  macos_x86_64_xcode-125_cxx17_release:
     macos:
       xcode: "12.5.1"
     working_directory: ~/gismo
@@ -50,15 +63,86 @@ jobs:
       - checkout
       - run:
           name: Configure G+Smo on MacOS
-          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="macos_x86_64_xcode12_cxx17_release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="MacOS-x86_64-XCode-12.5-cxx17-Release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=17 -DGISMO_WITH_ONURBS=ON
       - run:
           name: Build and test G+Smo on MacOS
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
+  ###
+  ### macOS 11.6.2 (Big Sur), XCode 13.2.1 (x86_64)
+  ###
+
+  macos_x86_64_xcode-132_cxx20_release:
+    macos:
+      xcode: "13.2.1"
+    working_directory: ~/gismo
+    environment:
+      MAKEJOBS: 4
+    steps:
+      - run:
+          name: Install dependencies
+          command: brew install cmake
+      - checkout
+      - run:
+          name: Configure G+Smo on MacOS
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="MacOS-x86_64-XCode-13.2-cxx20-Release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=20 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on MacOS
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
+
+  ###
+  ### Ubuntu 20.04 Linux, GCC 9.3 (aarch64)
+  ###
+
+  linux_aarch64_gcc9_cxx11_release:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    working_directory: ~/gismo
+    environment:
+      MAKEJOBS: 4
+    steps:
+      - run:
+          name: Install dependencies
+          command: sudo apt-get update -y && sudo apt-get install cmake gcc g++ -y
+      - checkout
+      - run:
+          name: Configure G+Smo on Linux
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="Linux-aarch64-gcc9-cxx11-Release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on Linux
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
+
+  ###
+  ### Ubuntu 20.04 Linux, Clang 10 (aarch64)
+  ###
+
+  linux_aarch64_clang10_cxx11_release:
+    machine:
+      image: ubuntu-2004:202101-01
+    resource_class: arm.medium
+    working_directory: ~/gismo
+    environment:
+      MAKEJOBS: 4
+    steps:
+      - run:
+          name: Install dependencies
+          command: sudo apt-get update -y && sudo apt-get install cmake clang -y
+      - checkout
+      - run:
+          name: Configure G+Smo on Linux
+          command: cmake . -DCMAKE_QUIET=ON -DBUILDNAME="Linux-aarch64-clang10-cxx11-Release" -DSITE="$CIRCLE_USERNAME-$CIRCLE_BRANCH [cci]" -DGISMO_INSOURCE_BUILD=ON -DGISMO_BUILD_UNITTESTS=ON -DCMAKE_CXX_STANDARD=11 -DGISMO_WITH_ONURBS=ON
+      - run:
+          name: Build and test G+Smo on Linux
+          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
+
 workflows:
-  version: 2
+  version: 2.1
   build:
     jobs:
-      - macos_x86_64_xcode10_cxx11_release
-      - macos_x86_64_xcode11_cxx14_release
-      - macos_x86_64_xcode12_cxx17_release
+      - macos_x_64_86_xcode-103_cxx11_release
+      - macos_x86_64_xcode-117_cxx14_release
+      - macos_x86_64_xcode-125_cxx17_release
+      - macos_x86_64_xcode-132_cxx20_release
+      - linux_aarch64_gcc9_cxx11_release
+      - linux_aarch64_clang10_cxx11_release

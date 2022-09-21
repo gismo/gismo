@@ -16,8 +16,9 @@
  
 #pragma once
 
-#include <gsIO/gsXml.h>
+#include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>
+#include <gsIO/gsXml.h>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -26,6 +27,8 @@
 #endif
 
 #include <gsCore/gsMemory.h>
+
+#include <fstream>
 
 namespace gismo {
 

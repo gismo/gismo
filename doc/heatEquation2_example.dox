@@ -1,0 +1,14 @@
+namespace gismo {
+
+/**
+
+\page heatEquation2_example heatEquation2_example.cpp
+
+Here is the full file \c examples/heatEquation2_example.cpp. Clicking on a function
+or class name will lead you to its reference documentation.
+
+\include heatEquation2_example.cpp
+
+*/
+
+}

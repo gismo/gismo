@@ -400,7 +400,7 @@ public:
         return result;
     }
 
-    gsVector<index_t> nonZerosPerInner(index_t upto = std::numeric_limits<index_t>::max())  const
+    gsVector<index_t> nonZerosPerInner(index_t upto = 2000000000)  const
     {
         upto = math::min(upto, this->cols());
         gsVector<index_t> nz(upto);

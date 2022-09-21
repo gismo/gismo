@@ -23,6 +23,7 @@
 //#include <tclap/MultiSwitchArg.h>
 // --- end External files
 
+#include <gsCore/gsSysInfo.h>
 #include <gsIO/gsOptionList.h>
 
 namespace gismo
@@ -426,57 +427,18 @@ void gsCmdLine::printVersion()
     gsInfo << "\n";
     gsInfo << "                   G+Smo \n";
     gsInfo << "      Geometry plus Simulation modules\n";
-    gsInfo << "               version "<< GISMO_VERSION<<"\n";
-    gsInfo << "Compiled by ";
-//https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
-#if defined(_MSC_VER) && _MSC_VER < 1600
-    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"199711L" <<", ";
-#elsif _MSC_VER >= 1900
-    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<_MSVC_LANG <<", ";
-#elsif _MSC_VER >= 1600
-    gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"201103L" <<", ";
-#elif defined(__clang__ )
-    gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
-#elif defined(_INTEL_COMPILER)
-    gsInfo << "Intel C++ "<<__INTEL_COMPILER<<" ("<<__cplusplus <<", ";
-#elif defined(__MINGW64__)
-    gsInfo << "MinGW "<<__MINGW64_VERSION_MAJOR<<"."<<__MINGW64_VERSION_MINOR<<" ("<<__cplusplus <<", ";
-#elif defined(__SUNPRO_CC)
-    gsInfo << "Solaris Studio "<<__SUNPRO_CC<<" ("<<__cplusplus <<", ";
-#elif defined(__GNUG__)
-    gsInfo << "GNU GCC "<<__GNUC__<<"."<<__GNUC_MINOR__<<"."<<__GNUC_PATCHLEVEL__<<" ("<<__cplusplus <<", ";
-#else
-    gsInfo << "C++ ("<<__cplusplus <<", ";
-#endif
-
-#ifdef __INTEL_MKL__
-    gsInfo << "MKL "<<INTEL_MKL_VERSION<<", ";
-#endif
-
-#ifdef _LIBCPP_VERSION
-    gsInfo << "libc++ "<<_LIBCPP_VERSION <<")\n";
-#  elif defined(__GLIBCXX__)
-    gsInfo << "glibc++ "<< __GLIBCXX__ <<")\n";
-#  elif defined(__GLIBCPP__)
-    gsInfo << "glibc++ "<< __GLIBCPP__ <<")\n";
-#elif defined(__LIBCOMO__)
-    gsInfo << "Comeau STL "<< __LIBCOMO__ <<")\n";
-#  elif defined(__STL_CONFIG_H)
-    gsInfo << "SGI STL)\n";
-#  elif defined(__MSL_CPP__)
-    gsInfo << "MSL standard lib)\n";
-#  elif defined(__IBMCPP__)
-    gsInfo << "VACPP STL)\n";
-#  elif defined(MSIPL_COMPILE_H)
-    gsInfo << "Modena C++ STL)\n";
-#  elif (defined(_YVALS) && !defined(__IBMCPP__)) || defined(_CPPLIB_VER)
-    gsInfo << "Dinkumware STL "<< _CPPLIB_VER<<")\n";
-#  elif defined(__STD_RWCOMPILER_H__) || defined(_RWSTD_VER)
-    gsInfo << "Rogue Wave lib "<<_RWSTD_VER<<")\n";
-#else
-    gsInfo << "Unknown-STD)\n";
-#endif
-    //gsInfo << "Eigen "<< EIGEN_WORLD_VERSION<<"."<<EIGEN_MAJOR_VERSION<<"."<<EIGEN_MINOR_VERSION<<"\n";
+    gsInfo << "               version "<< gsSysInfo::getGismoVersion() << "\n";
+    gsInfo << "Compiled by " << gsSysInfo::getCompilerVersion()
+           << " (" << gsSysInfo::getCppVersion()
+           << ", " << gsSysInfo::getStdLibVersion()
+           << ", eigen " << gsSysInfo::getEigenVersion()
+           << (gsSysInfo::getExtraLibsVersion().empty() ? ")\n"
+               : ", "+gsSysInfo::getExtraLibsVersion()+")\n");
+    gsInfo << "Running on " << gsSysInfo::getCpuInfo()
+           << " (memory " << gsSysInfo::getMemoryInfo() << ")"
+           << " with real_t:" << util::type<real_t>::name()
+           << ", index_t:" << util::type<index_t>::name()
+           << ", short_t:" << util::type<short_t>::name() << "\n";
     gsInfo << "web: http://github.com/gismo\n";
 }
 

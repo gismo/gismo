@@ -19,12 +19,12 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
   endif()
 endif()
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
-message ("  CMAKE_C_COMPILER        ${CMAKE_C_COMPILER}")
 message ("  CMAKE_CXX_COMPILER      ${CMAKE_CXX_COMPILER}")
 message ("  CMAKE_CXX_STANDARD      ${CMAKE_CXX_STANDARD}")
 
 message ("  GISMO_COEFF_TYPE        ${GISMO_COEFF_TYPE}")
 message ("  GISMO_INDEX_TYPE        ${GISMO_INDEX_TYPE}")
+message ("  GISMO_SHORT_TYPE        ${GISMO_SHORT_TYPE}")
 
 ## #################################################################
 ## Options list: Standard options
@@ -176,6 +176,11 @@ endif()
 option(GISMO_WITH_UNUM           "With Universal NUMber"     false  )
 if  (${GISMO_WITH_UNUM})
 message ("  GISMO_WITH_UNUM         ${GISMO_WITH_UNUM}")
+endif()
+
+option(GISMO_WITH_XBRAID         "With XBraid"               false  )
+if  (${GISMO_WITH_XBRAID})
+message ("  GISMO_WITH_XBRAID       ${GISMO_WITH_XBRAID}")
 endif()
 
 ## #################################################################

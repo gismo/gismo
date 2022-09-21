@@ -1,0 +1,239 @@
+namespace gismo {
+
+/**
+
+\page performance_benchmark performance_benchmark.cpp
+
+The aim of the performance benchmark is to provide a ready-to-run
+application to measure the computational performance of G+Smo and its
+underlying libraries on your computer with the specific compiler
+configuration. It implements a suite of benchmarks that measure the
+performance of certain low-level operations such as the computation of
+the dot-product between two vectors or the addition of two vectors
+(AXPY) as well as high-order operations such as the assembly of system
+matrices. The performance benchmark is particularly useful when you
+run G+Smo on a new computer architecture (e.g., Apple Silicon M1, IBM
+Power10, or Fujitsu's A64FX) or updated some of the underlying
+libraries (e.g., Eigen) and want to see if the changes have improved
+the performance.
+
+Though the performance benchmark can be run in sequential mode it is
+recommended to configure it with `GISMO_WITH_OPENMP=ON` enabled to
+take full advantage of G+Smo's OpenMP parallelization.
+
+A list of all available benchmarks can be printed by running
+`./bin/performance_benchmark --list` which yields
+
+~~~~~text
+
+                   G+Smo 
+      Geometry plus Simulation modules
+               version 21.12.0
+Compiled by AppleClang 13.0.0.13000029 (C++ 201103, libc++ 12000, eigen 3.4.0)
+Running on Apple M1 (memory 8 GB) with real_t:double, index_t:int, short_t:int
+web: http://github.com/gismo
+
+The following benchmarks are available:
+#01: Memory copy (native C array)
+#02: Memory copy (gsVector)
+#03: Dot product (native C array)
+[...]
+~~~~~
+
+\section PerformanceBenchmarkRunningTheBenchmark Running the performance benchmark
+
+To run the full performance benchmark with the default configuration simply type
+
+~~~~bash
+$> ./bin/performance_benchmark -all -o benchmark.tex
+[...]
+[memcopyCarray] Memory copy (native C array)
+100(100)...400(66)...1600(44)...6400(29)...25600(19)...102400(12)...   ...1677721600(1)[failed!]...
+[memcopyEigen] Memory copy (gsVector)
+100(100)...400(66)...1600(44)...6400(29)...25600(19)...102400(12)...   ...1677721600(1)[failed!]...
+[...]
+~~~~
+
+By using the `-o` flag the detailed output is written to the file
+`benchmark.tex`.
+
+
+In default mode, the performance benchmark runs each benchmark for a
+sequence of increasing problem sizes starting at 100 and increasing
+the problem size by a factor of 4 until the total system memory is
+exceeded. The latter is indicated in the output above by the trailing
+`[failed!]`. We will explain below how this case is handled by a
+`memory_safeguard` mechanism that detects insufficient memory without
+trying to allocate the memory in the first place. The value in braces,
+e.g., `400(66)`, indicates the number of runs the particular test is
+executed, here 66 times. For very small problem sizes it is advisable
+to run the same test multiple times and average the result over the
+number of runs to reduce the influence of inaccurate time
+measurements.
+
+The output file `benchmark.tex` is transformed into a PDF file using
+the command \c pdflatex (see https://www.latex-project.org):
+
+\image html figs/performance_benchmark_memcopy1.pdf
+
+Each group represents a different problem size. By default, each
+problem size is run with 1, 2, 4, ..., `omp_get_max_threads()` OpenMP
+threads, which is represented by the different bars. The above plot
+shows the speedup achieved with multiple OpenMP threads for moderate
+problem sizes (e.g., 1 and 6 MB) and the saturation of the memory
+subsystem around 60 GB/s for problem sizes larger than 100 MB. The
+figure below shows the same benchmark but implemented with the \ref
+gsVector class instead of native C arrays.
+
+\image html figs/performance_benchmark_memcopy2.pdf
+
+When running all benchmarks (`--all` flag) the output file will
+contain additional plots that compare benchmarks of the same type,
+e.g., memory copy of C-style arrays and \ref gsVector.
+
+\image html figs/performance_benchmark_memcopy3.pdf
+
+Since the values can differ by orders of magnitude it might be useful
+to replace `\begin{axis}...\end{axis}` by
+`\begin{semilogyaxis}...\end{semilogyaxis}` in the output file
+`benchmark.tex` before executing the `pdflatex` command to produce
+plots with logarithmic y-axis.
+
+A list of benchmark results for different computer architectures,
+compilers, and operating systems is mainted at the G+Smo <a
+href="https://github.com/gismo/gismo/wiki/Benchmarking">Wiki</a>.
+
+\section PerformanceBenchmarkCustomizingTheBenchmark Customizing the performance benchmark
+
+The performance benchmark can be customized using various command-line
+arguments. Individual benchmarks can be selected using the `-b` flag,
+e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b 1 -b 4 -o benchmark.tex
+~~~~
+
+will run *benchmark #1* (memory copy (native C array)) and *benchmark
+#4* (dot-product (\ref gsVector)).
+
+The problem sizes can be defined by either providing a list of values, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b 1 -v 100 -v 500 -v 1000 -o benchmark.tex
+[...]
+[memcopyCarray] Memory copy (native C array)
+100(100)...500(66)...1000(44)...
+~~~~
+
+or by providing the smallest (`--vsizemin`) and largest
+(`--vsizemax`) problem size and, optionally, the factor (`-V`/`--vsizefactor`) by
+which the problem size should be increased, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b 1 --vsizemin 100 --vsizemax 1000 -V 1.2 -o benchmark.tex
+[...]
+[memcopyCarray] Memory copy (native C array)
+100(100)...120(66)...144(44)...172(29)...206(19)...247(12)...296(8)...355(5)...426(3)...511(2)...613(1)...735(1)...882(1)...
+~~~~
+
+Here, the `vsize`-family of flags refers to all vector-type
+benchmarks. Similarly, the `msize`-family of flags (`--msizemin`,
+`--msizemax`, `-M`/`--msizefactor`) refers to all matrix-type
+benchmarks.
+
+The sequence of runs can be specified in the same way, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b 1 --vsizemin 100 --vsizemax 1000 -V 1.2 --runsmin 4 --runsmax 80 -R 1.3 -o benchmark.tex
+[...]
+[memcopyCarray] Memory copy (native C array)
+100(80)...120(61)...144(46)...172(35)...206(26)...247(20)...296(15)...355(11)...426(8)...511(6)...613(4)...735(4)...882(4)...
+~~~~
+
+Here, the smallest problem size is executed 80 times (`--runsmax`) and
+for each larger problem instance, the number of runs is successively
+reduced by the factor 1.3 (`-R`/`--runsfactor`) but not below 4 (`--runsmin`).
+
+Finally, the number of OpenMP threads that should be used can be
+specified globally by providing an explicit list, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -t 1 -t 4 -t 8 -o benchmark.tex
+~~~~
+
+runs all benchmarks with 1, 4, and 8 OpenMP threads.
+
+
+Instead of writing the detailed output to a LaTeX file it is also possible to create an XML file using the `-o` flag with a filename ending with `.xml`, e.g.,
+
+~~~~bash
+$> ./bin/performance_benchmark -b 1 -o benchmark.xml
+~~~~
+
+The XML file can be opened as shown in the code snippet below
+
+~~~~cpp
+std::string fn="benchmark.xml";
+gsBenchmark benchmark;
+gsFileData<> fd(fn);
+fd.getId(0, benchmark);
+gsInfo << bm;
+~~~~
+
+This will write the benchmark output to \ref gsInfo
+
+If this flag is omitted, the output is written to
+\ref gsInfo 
+
+~~~~text
+[memcopyCarray] Memory copy (native C array)
+ memsize | 4x (#Threads : Bandwidth in GB/s)
+    1 KB |    1 : 6.10e+00   2 : 1.17e+00   4 : 8.77e-01   8 : 3.17e-01
+    6 KB |    1 : 1.17e+01   2 : 9.47e+00   4 : 4.70e+00   8 : 2.62e+00
+   25 KB |    1 : 3.15e+01   2 : 8.28e+00   4 : 1.35e+01   8 : 1.08e+01
+  100 KB |    1 : 4.54e+01   2 : 4.48e+01   4 : 5.06e+01   8 : 6.72e+00
+  400 KB |    1 : 3.48e+01   2 : 5.94e+01   4 : 7.62e+01   8 : 8.33e+01
+    1 MB |    1 : 2.96e+01   2 : 6.92e+01   4 : 1.17e+02   8 : 6.41e+01
+    6 MB |    1 : 2.34e+01   2 : 8.51e+01   4 : 1.17e+02   8 : 1.12e+02
+   25 MB |    1 : 2.78e+01   2 : 5.67e+01   4 : 7.02e+01   8 : 6.77e+01
+  100 MB |    1 : 1.51e+01   2 : 5.85e+01   4 : 5.72e+01   8 : 4.59e+01
+  400 MB |    1 : 1.51e+01   2 : 5.95e+01   4 : 5.69e+01   8 : 4.59e+01
+    1 GB |    1 : 5.48e+00   2 : 7.31e+00   4 : 2.05e+01   8 : 1.76e+01
+    6 GB |    1 : 4.43e+00   2 : 5.71e+00   4 : 6.26e+00   8 : 4.03e+00
+~~~~
+
+The above output shows the bandwidth in GB/s of the memory copy
+benchmark for different array sizes (rows) and 1, 2, 4, and 8 OpenMP
+threads (columns).
+
+\section PerformanceBenchmarkImplementingAdditionalBenchmarks Implementing additional benchmarks
+
+To implement additional benchmarks, copy one of the existing ones and
+adjust the constructors and member functions accordingly:
+
+\snippet performance_benchmark.cpp Implement benchmark eigen dense matrix-vector multiplication
+
+Make sure that all tasks that should not be included in the time
+measurement are performed in the constructor. Furthermore, make sure
+to instanciate the `memory_safeguard` object ` _msg(n)` first as it
+will let the benchmark fail gracefully if the estimated amount of
+memory exceeds the system's total memory. The implementation of the
+`memory_safeguard` class is given below:
+
+\snippet performance_benchmark.cpp Implement memory safeguard
+
+If you are unsure about the exact memory consumption you can return an
+upper bound, e.g., expected memory consumption + 10%, in the
+benchmark's `size(index_t n)` function.
+
+\section PerformanceBenchmarkAnnotatedSourceFile Annotated source file
+
+Here is the full file \c examples/performance_benchmark.cpp. Clicking
+on a function or class name will lead you to its reference
+documentation.
+
+\include performance_benchmark.cpp
+
+*/
+
+}
