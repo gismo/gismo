@@ -1367,6 +1367,37 @@ public:
     void setSolutionVector(gsMatrix<T>& solVector)
     { _Sv = & solVector; }
 
+    /// @brief Sets all coeeficients of the solution vector that belong to 
+    ///    patch \a p , and refer to the specified \a component equal to \a value. 
+    /// @param component The index of the component to be set.
+    /// @param value The value that the coefficients will be set to.
+    /// @param patch The index of the patch whose coefficients will be set. By default all patches are affected,
+    void setComponent(index_t component, real_t value, index_t patch=-1)
+    {
+        gsMatrix<T> & solVector = *_Sv;
+        const gsDofMapper & mapper = _u.mapper();
+
+        index_t patchStart, patchEnd; 
+        if (patch==-1){
+            patchStart = 0; 
+            patchEnd   = _u.mapper().numPatches();
+        }
+        else{
+            patchStart = patch;
+            patchEnd   = patch + 1;
+        }
+
+        for (size_t p=patchStart; p!=patchEnd; ++p)
+        {
+            for (index_t i = 0; i != mapper.patchSize(p, component); ++i)
+            {
+                const index_t ii = mapper.index(i, p, component);
+                if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
+                    solVector.at(ii) = value;
+            }
+        }
+    }
+
     const gsMatrix<T> & coefs() const { return *_Sv; }
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
 
