@@ -864,9 +864,6 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     m_exprdata->parse(residual, u);
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
-
-    gsDebugVar( u.space().isValid() );
-    gsDebugVar( u.space().data().actives );
         
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
 
@@ -903,9 +900,6 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
             // Evaluate at quadrature points
             m_exprdata->precompute(patchInd);
 
-            gsDebugVar( u.space().isValid() );
-            gsDebugVar( u.space().data().values.size() );
-
             for ( index_t j = 0; j< u.space().cardinality(); j++ )
             {// for all basis functions (column j of local matrix)
                 //Perturbe \a u
@@ -922,7 +916,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
             }
 
             // Assemble contributions of the element to the global matrix
-            ee.push<true>(u.rowVar(), u.rowVar());
+            ee.push<true>(u.space().rowVar(), u.space().rowVar());
         }
     }
 

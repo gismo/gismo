@@ -259,9 +259,9 @@ private:
             it->second.mine().flags |= NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
         it->second.mine().flags |= NEED_ACTIVE;
-        // gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
-        // gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
-        // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
+        //gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
+        //gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
+        //gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
 
         if (isMirrored())
         {

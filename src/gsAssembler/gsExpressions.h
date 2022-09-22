@@ -1376,18 +1376,10 @@ public:
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
 
         auto qr = std::div(j, _u.data().actives.size() );
-        _u.mapper().print();
-        gsDebugVar(_u.mapper().asVector());
         const index_t ii = _u.mapper().index(qr.rem, p, qr.quot);
-        gsDebugVar(ii);
-        gsDebugVar(j);
-        gsDebugVar(qr.rem );
-        gsDebugVar(qr.quot);
-        gsDebugVar( _Sv);
         if (_u.mapper().is_free_index(ii) )
         {
             GISMO_ASSERT(ii<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
-            gsDebugVar( _Sv);
             _Sv->at(ii) += val;
         }
         //else
