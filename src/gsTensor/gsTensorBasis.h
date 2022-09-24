@@ -567,6 +567,10 @@ public:
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
 
+    // see gsBasis for documentation
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
+
     /// Get the minimum mesh size, as expected for inverse inequalities
     virtual T getMinCellLength() const;
     

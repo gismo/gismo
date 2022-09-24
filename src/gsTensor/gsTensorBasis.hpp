@@ -979,13 +979,14 @@ template<short_t d, class T>
 void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                                    const gsBasis<T> & other,
                                    gsMatrix<index_t> & bndThis,
-                                   gsMatrix<index_t> & bndOther) const
+                                   gsMatrix<index_t> & bndOther,
+                                   index_t offset) const
 {
     if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
     {
         // Grab the indices to be matched
-        bndThis = this->boundary( bi.first() .side() );
-        bndOther= _other->boundary( bi.second().side() );
+        bndThis = this->boundaryOffset( bi.first() .side(), offset );
+        bndOther= _other->boundaryOffset( bi.second().side(), offset );
         GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
                       "Input error, sizes do not match: "
                       <<bndThis.rows()<<"!="<<bndOther.rows() );
@@ -1032,6 +1033,15 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
     }
     
     gsWarn<<"Cannot match with "<< other <<"\n";
+}
+
+template<short_t d, class T>
+void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
+                                   const gsBasis<T> & other,
+                                   gsMatrix<index_t> & bndThis,
+                                   gsMatrix<index_t> & bndOther) const
+{
+    this->matchWith(bi,other,bndThis,bndOther,0);
 }
 
 template<short_t d, class T>
