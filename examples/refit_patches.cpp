@@ -133,17 +133,18 @@ int main(int argc, char *argv[])
     // (already the input is ASSUMED linear for now)
     // sample each patch on a grid
     // create the linear patches with the samples as coefficients + the topology of the initial one   
-    gsMatrix<> ab, pts, eval, par_pts;
-    gsVector<> a, b;
-    gsVector<unsigned> np;
     gsMultiPatch<> mp = *mp0;
     gsMultiPatch<> mp_par = *mp0;
+    gsMatrix<> ab, pts, eval, par_pts;
+    gsVector<> a, b;
+    gsVector<unsigned> np(mp.parDim());
+
     for (size_t p=0; p!=mp0->nPatches(); p++)
     {
         ab = mp0->patch(p).support();
         a = ab.col(0);
         b = ab.col(1);
-        np = uniformSampleCount(a, b, npts);
+        np.setConstant((std::ceil(std::pow(npts,1./mp.parDim()))));
         // Uniform parameters for evaluation
         pts = gsPointGrid(a, b, np);
 
@@ -157,7 +158,6 @@ int main(int argc, char *argv[])
         pts = parameterize_points2D(bbasis,eval);
 
         mp.patch(p) = *bbasis.makeGeometry(eval.transpose()).release();
-
         // Contains the parametric values of the points
         mp_par.patch(p) = *bbasis.makeGeometry(pts.transpose()).release();
     }
