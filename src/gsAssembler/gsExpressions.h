@@ -999,6 +999,7 @@ public:
     {
         this->setInterfaceCont(_icont);
         m_sd->mapper = gsDofMapper();
+        const index_t dim = this->dim();
         const gsMultiBasis<T> *mb = dynamic_cast<const gsMultiBasis<T> *>(&this->source());
         if (mb != nullptr)
         {
@@ -1039,9 +1040,14 @@ public:
                 // Cast to tensor b-spline basis
                 if (!it->ps.parameter())
                         bnd.swap(bnd1);
-                for (index_t k = 0; k < bnd.size(); ++k)
-                    m_sd->mapper.matchDof(it->ps.patch, (bnd)(k, 0),
-                                          it->ps.patch, (bnd1)(k, 0), cc);
+                for (index_t c = 0; c!=dim; c++) // for all components
+                {
+                    if (c==cc || cc==-1 )
+                        for (index_t k = 0; k < bnd.size(); ++k)
+                            m_sd->mapper.matchDof(it->ps.patch, (bnd)(k, 0),
+                                                  it->ps.patch, (bnd1)(k, 0), c);
+                }
+
             }
 
             // Collapsed
@@ -1056,9 +1062,13 @@ public:
                 bnd = mb->basis(it->ps.patch).boundary(it->ps.side());
 
                 // match all DoFs to the first one of the side
-                for (index_t k = 0; k < bnd.size() - 1; ++k)
-                    m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
-                                          it->ps.patch, (bnd)(k + 1, 0), cc);
+                for (index_t c = 0; c!=dim; c++) // for all components
+                {
+                    if (c==cc || cc==-1)
+                        for (index_t k = 0; k < bnd.size() - 1; ++k)
+                            m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
+                                                  it->ps.patch, (bnd)(k + 1, 0), c);
+                }
             }
 
             // corners
@@ -1114,6 +1124,7 @@ public:
         } else if (const gsMappedBasis<2, T> *mapb =
                    dynamic_cast<const gsMappedBasis<2, T> *>(&this->source())) {
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size(), this->dim());
+            const index_t dim = this->dim();
 
             if (0 == this->interfaceCont()) // C^0 matching interface
             {
@@ -1159,9 +1170,13 @@ public:
                 {
                     if (!it->ps.parameter())
                         bnd.swap(bnd1);
-                    for (index_t k = 0; k < bnd.size(); ++k)
-                        m_sd->mapper.matchDof(it->ps.patch, (bnd)(k, 0),
-                                              it->ps.patch, (bnd1)(k, 0), cc);
+                    for (index_t c = 0; c!=dim; c++) // for all components
+                    {
+                        if (c==cc || cc==-1 )
+                            for (index_t k = 0; k < bnd.size() - 1; ++k)
+                                m_sd->mapper.matchDof(  it->ps.patch, (bnd)(k, 0),
+                                                        it->ps.patch, (bnd1)(k, 0), c);
+                    }
                 } else
                     gsWarn << "Unable to apply clamped condition.\n";
             }
@@ -1180,9 +1195,13 @@ public:
                 if (mapb != NULL) // clamp adjacent dofs
                 {
                     // match all DoFs to the first one of the side
-                    for (index_t k = 0; k < bnd.size() - 1; ++k)
-                        m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
-                                              it->ps.patch, (bnd)(k + 1, 0), cc);
+                    for (index_t c = 0; c!=dim; c++) // for all components
+                    {
+                        if (c==cc || cc==-1)
+                            for (index_t k = 0; k < bnd.size() - 1; ++k)
+                                m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
+                                                      it->ps.patch, (bnd)(k + 1, 0), c);
+                    }
                 }
             }
 

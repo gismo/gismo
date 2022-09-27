@@ -396,14 +396,15 @@ public:
 
     /// Return a reference to boundary conditions of certain type for
     /// unknown \a unk
-    bcRefList get(const std::string & label, const short_t unk = 0) const
+    bcRefList get(const std::string & label, const short_t unk = 0, int comp = -1) const
     {
         bcRefList result;
         const const_bciterator it = m_bc.find(label);
         if ( it != m_bc.end() )
             for (const_iterator c = it->second.begin(); c!= it->second.end(); ++c)
                 if ( c->m_unknown == unk )
-                    result.push_back(*c);
+                    if ( c->m_unkcomp == comp || c->m_unkcomp == -1 )
+                        result.push_back(*c);
         return result;
     }
 
