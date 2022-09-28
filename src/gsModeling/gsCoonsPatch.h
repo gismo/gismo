@@ -52,6 +52,8 @@ public:
     // Look at gsPatchGenerator
     const gsGeometry<T> & compute();
 
+    gsMatrix<T> coef(index_t k);
+
 private:
 
     template<short_t d> void compute_impl();

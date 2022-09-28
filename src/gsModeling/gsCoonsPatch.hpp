@@ -138,5 +138,86 @@ void gsCoonsPatch<T>::compute_impl()
     m_result = resultBasis.makeGeometry( give(coefs) ).release();
 }
 
+template <typename T>
+gsMatrix<T> gsCoonsPatch<T>::coef(index_t k)
+{
+    gsTensorBSplineBasis<2,T> resultBasis; // Basis for the Coon's patch
+    gsMatrix<T> coefs;                     // CPs of the Coon's patch
+
+    // Resolve boundary configuration and set boundary coefficients
+    this->preparePatch(resultBasis, coefs);
+
+    //-------- Compute interior control points
+    // Note: assuming that the param. domain is [0,1]^d
+
+    gsVector<unsigned,2> vend,   // Multi-index of the furthest vertex
+                         stride, // The strides of the tensor-basis
+                         tmp;
+
+    for (short_t k = 0; k < 2; ++k)
+    {
+        vend  [k] = resultBasis.size(k) - 1;
+        stride[k] = resultBasis.stride(k);
+    }
+
+    // Multi-index of current interior CP (in iteration)
+    gsGridIterator<unsigned,CUBE,2> grid(gsVector<unsigned,2>::Ones(), vend);
+    // Multi-index of current cube element stencil (in iteration) ( [-1,1]^d --> [0,2]^d )
+    static const gsVector<unsigned,2> twos = gsVector<unsigned,2>::Constant(2);
+    gsGridIterator<unsigned,CUBE,2> cf(twos, false);
+
+    //for(; grid; ++grid) // loop over all interior coefficients
+    //{
+    // grab current coefficient
+    gsMatrix<T> curCoef(1,2); //coefs.row(stride.dot(*grid));
+
+    cf.reset();
+    ++cf;// skip (0..0), ie. the coordinates of CP "*grid"
+
+    for(; cf; ++cf) // loop over all cube elements (stencil around *grid)
+    {
+        // cf:  ***
+        //      *+*
+        //      ***
+        
+        // Initialize weight sign
+        T w = -1.0;
+        
+        for(short_t k=0; k!=2; k++)
+        {
+            // Compute weight
+            if (0 != cf->at(k) ) // coordinate not equal to cf->at(k) ?
+            {
+                // fetch Greville point
+                const T x = 
+                resultBasis.component(k).anchor(grid->at(k)).value();
+                // update weight
+                w *= - ( 2 == cf->at(k) ? x : 1.0-x );
+            }
+            
+            // Compute index of contributing coefficient
+            // 0 : CP index coordinate of current CP grid->at(k)
+            // 1 : fixed to corner coordinate 0
+            // 2 : fixed to corner coordinate vend[k]
+            // tmp: *--*--*
+            //      |     |
+            //      *  +  *
+            //      |     |
+            //      *--*--*
+            tmp[k] = ( cf->at(k)==0 ? grid->at(k)  :
+                       cf->at(k)==1 ? 0 : vend[k] );
+        }
+        
+        // Add contribution of current cube element "*cf" to curCoef
+        curCoef += w * coefs.row( stride.dot(tmp) ) ;
+
+    }//cf
+    //}//grid
+
+    // Coons' patch is ready
+    //m_result = resultBasis.makeGeometry( give(coefs) ).release();
+
+    return curCoef;
+}
 
 }// namespace gismo
