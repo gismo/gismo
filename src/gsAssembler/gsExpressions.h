@@ -565,7 +565,7 @@ public:
     typedef T Scalar;
     typedef const _expr<T> Nested_t;
 
-    _expr(Scalar c) : _c(give(c)) { }
+    explicit _expr(Scalar c) : _c(give(c)) { }
 
 public:
     enum {Space = 0, ScalarValued = 1, ColBlocks= 0};
@@ -1400,6 +1400,8 @@ public:
 
     const gsMatrix<T> & coefs() const { return *_Sv; }
     //gsMatrix<T> & coefs() { return *_Sv; } // wd4702 ?
+    
+    //const gsMatrix<T> & coefs(component, patch) const { return *_Sv; }
 
     /// val: perturbation value, j: local bf index, p: patch
     void perturbLocal(T val, index_t j, index_t p = 0)
@@ -4105,61 +4107,6 @@ public:
 };
 
 /*
-  Expression for addition operation between an expression and a scalar
-*/
-template <typename E1>
-class add_expr<typename E1::Scalar,E1>
-    : public _expr<add_expr<typename E1::Scalar,E1> >
-{
-    typename E1::Nested_t _u;
-    typename E1::Scalar   _v; 
-
-public:
-    enum {ScalarValued = 1, ColBlocks = 0};
-    enum {Space = E1::Space}; // == E2::Space
-
-    typedef typename E1::Scalar Scalar;
-
-    add_expr(_expr<E1> const& u, Scalar v)
-    : _u(u), _v(v)
-    {
-        GISMO_ENSURE( E1::ScalarValued && !E1::ColBlocks, 
-        "Error, addition between expressions and numbers works only if the expression is scalar valued.[ try using: ("<<_u<<" ).val() ]"
-        );
-    }
-
-    Scalar eval(const index_t k) const
-    {
-        return _u.eval(k) + _v;
-    }
-
-    index_t rows() const { return 1; }
-    index_t cols() const { return 1; }
-
-    void parse(gsExprHelper<Scalar> & evList) const
-    { _u.parse(evList);}
-
-
-    index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const { return gsNullExpr<Scalar>::get(); }
-
-    void print(std::ostream &os) const
-    { os << "("; _u.print(os);os <<" + "<< _v << ")"; }
-};
-
-/*// testing, |, ^, &, <<, >>, ||, &&,  unary ~
-  template <typename E1, typename E2> add_expr<E1,E2> const
-  operator|(_expr<E1> const& u, _expr<E2> const& v)
-  { return add_expr<E1, E2>(u, v); }
-  template <typename E1, typename E2> add_expr<E1,E2> const
-  operator^(_expr<E1> const& u, _expr<E2> const& v)
-  { return add_expr<E1, E2>(u, v); }
-*/
-
-
-/*
   lincom_expr (lc) ?
   Expression for (square) matrix summation operation
 
@@ -4502,15 +4449,15 @@ add_expr<E1,E2> const operator+(_expr<E1> const& u, _expr<E2> const& v)
 
 /// Addition operator for expressions and numbers
 template <typename E> EIGEN_STRONG_INLINE
-add_expr<typename E::Scalar, E> const
+add_expr<_expr<typename E::Scalar>, E> const
 operator+(_expr<E> const& u, const typename E::Scalar v)
-{ return add_expr<typename E::Scalar, E>(u, v); }
+{ return add_expr<_expr<typename E::Scalar>, E>(u, _expr<typename E::Scalar>(v)); }
 
 /// Addition operator for expressions and numbers
 template <typename E> EIGEN_STRONG_INLINE
-add_expr<typename E::Scalar, E> const
+add_expr<_expr<typename E::Scalar>, E> const
 operator+(const typename E::Scalar v, _expr<E> const& u)
-{ return add_expr<typename E::Scalar, E>(u, v); }
+{ return add_expr<_expr<typename E::Scalar>, E>(_expr<typename E::Scalar>(v), u); }
 
 /// Matrix-summation operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
