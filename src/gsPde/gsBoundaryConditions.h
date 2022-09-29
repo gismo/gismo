@@ -403,7 +403,7 @@ public:
         if ( it != m_bc.end() )
             for (const_iterator c = it->second.begin(); c!= it->second.end(); ++c)
                 if ( c->m_unknown == unk )
-                    if ( c->m_unkcomp == comp || c->m_unkcomp == -1 )
+                    if ( c->m_unkcomp == comp || comp == -1 )
                         result.push_back(*c);
         return result;
     }
