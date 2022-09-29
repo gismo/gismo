@@ -1367,7 +1367,7 @@ public:
     void setSolutionVector(gsMatrix<T>& solVector)
     { _Sv = & solVector; }
 
-    /// @brief Sets all coeeficients of the solution vector that belong to 
+    /// @brief Sets all coefficients of the solution vector that belong to 
     ///    patch \a p , and refer to the specified \a component equal to \a value. 
     /// @param component The index of the component to be set.
     /// @param value The value that the coefficients will be set to.
@@ -2234,6 +2234,37 @@ public:
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os << "id("<<_dim <<")";}
+};
+
+/**
+   Wrapper expression for constant matrices
+*/
+class constMat_expr : public _expr<constMat_expr >
+{
+public:
+    typedef real_t Scalar;
+    enum {Space = 0, ScalarValued = 0, ColBlocks = 0};
+private:
+    gsMatrix<Scalar> _mat;
+
+public:
+    constMat_expr(const gsMatrix<Scalar> mat) : _mat(mat) { }
+
+public:
+
+    gsMatrix<Scalar> eval(const index_t) const
+    {
+        return _mat;
+    }
+
+    index_t rows() const { return _mat.rows(); }
+    index_t cols() const { return  _mat.cols(); }
+    void parse(gsExprHelper<Scalar> & ) const {  }
+
+    const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+    void print(std::ostream &os) const { os << "constMat";}
 };
 
 /**
@@ -4316,6 +4347,14 @@ public:
 
 /// The identity matrix of dimension \a dim
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
+
+EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim) { 
+    gsMatrix<real_t> ones(dim, dim);
+    ones.fill(1);
+    return constMat_expr(ones); 
+    }
+
+EIGEN_STRONG_INLINE constMat_expr mat(const gsMatrix<real_t> mat) { return constMat_expr(mat); }
 
 // Returns the unit as an expression
 //EIGEN_STRONG_INLINE _expr<real_t> one() { return _expr<real_t,true>(1); }
