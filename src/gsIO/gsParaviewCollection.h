@@ -50,7 +50,7 @@ public:
 public:
 
     /// Constructor using a filename.
-    gsParaviewCollection(std::string const & fn)
+    gsParaviewCollection(std::string const & fn) // TODO: Initialize with gsExprEvaluator as argument?
     : mfn(fn), counter(0)
     {
         mfile <<"<?xml version=\"1.0\"?>\n";
@@ -58,41 +58,42 @@ public:
         mfile <<"<Collection>\n";
     }
 
-    /// Adds a part in the collection, with complete filename (including extension) \a fn
-    void addPart(String const & fn)
-    {
-        GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
-    }
+    // /// Adds a part in the collection, with complete filename (including extension) \a fn
+    // void addPart(String const & fn)
+    // {
+    //     GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
+    //     GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+    //     mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
+    // }
 
-    /// Adds a part in the collection, with filename \a fn with extension \a ext appended
-    void addPart(String const & fn, String const & ext)
-    {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
-    }
+    // /// Adds a part in the collection, with filename \a fn with extension \a ext appended
+    // void addPart(String const & fn, String const & ext)
+    // {
+    //     GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+    //     mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
+    // }
 
-    /// Adds a part in the collection, with filename \a fni and extension \a ext appended
-    void addPart(String const & fn, int i, String const & ext)
-    {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
-    }
+    // /// Adds a part in the collection, with filename \a fni and extension \a ext appended
+    // void addPart(String const & fn, int i, String const & ext)
+    // {
+    //     GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+    //     mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
+    // }
 
-    // to do: make time collections as well
-	// ! i is not included in the filename, must be in included fn !
-    void addTimestep(String const & fn, int tstep, String const & ext)
-    {
-        mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
-    }
+    // // to do: make time collections as well
+	// // ! i is not included in the filename, must be in included fn !
+    // void addTimestep(String const & fn, int tstep, String const & ext)
+    // {
+    //     mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
+    // }
 
-    void addTimestep(String const & fn, int part, int tstep, String const & ext)
+    // EVERY PATCH NEEDS TO BE PUT INTO ITS OWN "PART" THUS ITS OWN DATASET
+    void addDataSet(gsParaviewDataSet dataSet, /*String const & fn, int part, int tstep, String const & ext*/)
     {
-        mfile << "<DataSet part=\""
-              <<part<<"\" timestep=\""
-              <<tstep<<"\" file=\""
-              <<fn<<"_"<<part<<ext<<"\"/>\n";
+        dataSet.save(); // the actual file is written to disk/finalized
+        mfile << "<DataSet part=\"" <<part<<"\""
+              << " timestep=\""    <<tstep<<"\""
+              << " file=\""<<fn<<"_"<<part<<ext<<"\"/>\n";
     }
 
     /// Finalizes the collection by closing the XML tags, always call
@@ -126,6 +127,27 @@ private:
     // Construction without a filename is not allowed
     gsParaviewCollection();
 };
+
+class gsParaviewDataSet // a .vts file 
+{
+    
+public:
+    typedef std::string String;
+private:
+    int part;
+    int timestep;
+    String filename;
+    gsMultiPatch mPatch;
+
+    // Will only be called by save function, to make sure it is the last element in the file
+    void addGeometry(){}
+public:
+    void addField(expr, String label){};
+
+    void save(){};
+
+
+}
 
 /// Fast creation of a collection using base filename \a fn, extension
 /// \a ext.  The collection will contain the files fn_0.ext,
