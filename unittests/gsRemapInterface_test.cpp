@@ -118,8 +118,9 @@ SUITE(gsRemapInterface_test)
         mp.computeTopology();
 
         CHECK ( mp.nInterfaces() == 1 );
-        const boundaryInterface &bi = *(mp.iBegin());
-
+        const boundaryInterface bi = mp.iBegin()->getInverse();
+        gsInfo << bi <<std::endl;
+        
         gsMultiBasis<> mb(mp); // extract basis
 
         gsRemapInterface<real_t> ri(mp,mb,bi,optHelper(5));

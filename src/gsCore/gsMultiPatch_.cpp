@@ -36,7 +36,7 @@ namespace gismo
 
       .def("basis", static_cast<gsBasis<real_t> & (Class::*)(const size_t) const> ( &Class::basis), "Access the i-th basis of the multipatch",py::return_value_policy::reference)
 
-      .def("computeTopology", static_cast<bool (Class::*)(real_t, bool)> ( &Class::computeTopology), "Compute Topology")
+      .def("computeTopology", static_cast<bool (Class::*)(real_t, bool, bool)> ( &Class::computeTopology), "Compute Topology")
       ;
   }
 

@@ -162,7 +162,6 @@ public:
         GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                       "Invalid dimensions" );
 
-        gsDebugVar(dir);
         gsSparseMatrix<T, RowMajor> transfer;
         if (dir==-1)
         {
