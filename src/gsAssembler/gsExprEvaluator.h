@@ -660,7 +660,6 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
     // bug: fails due to gsFeVariable::rows() before evaluation
     // GISMO_ASSERT( expr.isScalar(), "Expecting scalar");
 
-    auto _arg = expr.val();
     m_exprdata->parse(expr);
     m_elWise.clear();
     m_elWise.reserve(git.numPoints());
@@ -670,7 +669,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
         m_exprdata->points() = *git; // ..
         m_exprdata->precompute(patchInd);
         // m_exprdata->eval_into(expr, tmp);
-        tmp = _arg.eval(0);
+        tmp = expr.eval(0);
         m_elWise.insert(m_elWise.end(), tmp.data(), tmp.data()+tmp.size());
     }
     m_value = 0; // not used
@@ -691,7 +690,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
 
     // expr.printDetail(gsInfo); //
 
-    m_value = expr.eval(0);
+    m_value = _arg.eval(0);
     return gsAsConstMatrix<T>(&m_value,1,1);
 }
 
