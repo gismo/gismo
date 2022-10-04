@@ -217,7 +217,7 @@ int main(int argc, char* argv[])
 
         case 5:
             gsInfo << "5) Poisson equation on the unit cube\n";
-            mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineCube(1));
+            mp = gsMultiPatch<>(*gsNurbsCreator<>::BSplineCube((real_t)1));
             sol_exact = gsFunctionExpr<>( "sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
             rhs_exact = gsFunctionExpr<>( "(3*pi^2)*sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
             coeff_diff = gsFunctionExpr<>("1","0","0","0","1","0","0","0","1",3);
@@ -668,7 +668,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
         gsSparseEntries<> se;
         se.reserve(sz);
         for (index_t i=0; i<sz; ++i)
-            se.add(indices(i,0),i,real_t(1));
+            se.add(indices(i,0),i,(real_t)(1));
         gsSparseMatrix<real_t,RowMajor> transfer(nTotalDofs,sz);
         transfer.setFrom(se);
         if (sz>0)
@@ -695,7 +695,7 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     }
     gsPreconditionerOp<>::uPtr result = gsPreconditionerFromOp<>::make(makeMatrixOp(matrix), gsAdditiveOp<>::make(transfers, ops));
     result->setOptions(opt);
-    return result;
+    return give(result);
 }
 
 gsPreconditionerOp<>::Ptr setupBlockILUT(
