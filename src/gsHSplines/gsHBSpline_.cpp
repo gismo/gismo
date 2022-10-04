@@ -217,8 +217,8 @@ void pybind11_init_gsHBSpline2(py::module &m)
 
 	// Derived from gsHTensorBasis
 	.def("size",&Class::size,"Returns the domain dimension")
-	.def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-		py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+	.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+		py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
 
 	// .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &     )> (&Class::unrefine), "Refines the basis given a box")
 	.def("refineElements  ",&Class::refineElements  ,"Refines the basis given elements  ")
@@ -251,8 +251,8 @@ void pybind11_init_gsHBSpline3(py::module &m)
 
 	// Derived from gsHTensorBasis
 	.def("size",&Class::size,"Returns the domain dimension")
-	.def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-		py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+	.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+		py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
 
 	// .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &     )> (&Class::unrefine), "Refines the basis given a box")
 	.def("refineElements  ",&Class::refineElements  ,"Refines the basis given elements  ")
@@ -285,8 +285,8 @@ void pybind11_init_gsHBSpline4(py::module &m)
 
 	// Derived from gsHTensorBasis
 	.def("size",&Class::size,"Returns the domain dimension")
-	.def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-		py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+	.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+		py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
 
 	// .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &     )> (&Class::unrefine), "Refines the basis given a box")
 	.def("refineElements  ",&Class::refineElements  ,"Refines the basis given elements  ")

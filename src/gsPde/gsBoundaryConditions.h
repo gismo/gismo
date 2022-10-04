@@ -105,7 +105,7 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 template<class T>
 struct boundary_condition
 {
-    typedef typename gsFunction<T>::Ptr function_ptr;
+    typedef typename gsFunctionSet<T>::Ptr function_ptr;
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
                         const std::string & label, short_t unknown,
@@ -254,7 +254,7 @@ struct boundary_condition
     function_ptr function() const { return m_function; }
 
     // Returns a reference to the function data
-    //const gsFunction<T> & function() const { return *m_function; }
+    //const gsFunctionSet<T> & function() const { return *m_function; }
 
     /// Returns the type of the boundary condition
     condition_type::type  type() const { return m_type; }
@@ -396,14 +396,15 @@ public:
 
     /// Return a reference to boundary conditions of certain type for
     /// unknown \a unk
-    bcRefList get(const std::string & label, const short_t unk = 0) const
+    bcRefList get(const std::string & label, const short_t unk = 0, int comp = -1) const
     {
         bcRefList result;
         const const_bciterator it = m_bc.find(label);
         if ( it != m_bc.end() )
             for (const_iterator c = it->second.begin(); c!= it->second.end(); ++c)
                 if ( c->m_unknown == unk )
-                    result.push_back(*c);
+                    if ( c->m_unkcomp == comp || comp == -1 )
+                        result.push_back(*c);
         return result;
     }
 
@@ -571,7 +572,7 @@ public:
     }
 
     void add(int p, boxSide s, const std::string & label,
-             gsFunction<T> * f, short_t unknown = 0,
+             gsFunctionSet<T> * f, short_t unknown = 0,
              int comp = -1, bool parametric = false)
     {
         function_ptr f_ptr = memory::make_shared_not_owned(f);
@@ -580,7 +581,7 @@ public:
     }
 
     void add(int p, boxSide s, const std::string & label,
-             const gsFunction<T> & f, short_t unknown = 0,
+             const gsFunctionSet<T> & f, short_t unknown = 0,
              int comp = -1, bool parametric = false)
     {
         function_ptr fun = memory::make_shared(f.clone().release());
@@ -603,7 +604,7 @@ public:
      * is defined in parametric coordinates.
      */
     void addCondition(int p, boxSide s, condition_type::type t,
-                      gsFunction<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
+                      gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         function_ptr fun = memory::make_shared_not_owned(f);
         addCondition(p,s,t,fun,unknown,parametric,comp);
@@ -624,7 +625,7 @@ public:
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,
-                      const gsFunction<T> & func, short_t unknown = 0,
+                      const gsFunctionSet<T> & func, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
     {
         function_ptr fun(func.clone().release());
@@ -632,14 +633,14 @@ public:
     }
 
     void addCondition( boxSide s, condition_type::type t,
-                       gsFunction<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
+                       gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         // for single-patch only
         addCondition(0,s,t,f,unknown,parametric,comp);
     }
 
     void addCondition(const patchSide& ps, condition_type::type t,
-                      gsFunction<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
+                      gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         addCondition(ps.patch, ps.side(), t, f, unknown,parametric,comp);
     }
@@ -651,13 +652,13 @@ public:
     }
 
     void addCondition(const patchSide& ps, condition_type::type t,
-                      const gsFunction<T> & func, short_t unknown = 0, bool parametric = false, int comp = -1)
+                      const gsFunctionSet<T> & func, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         addCondition(ps.patch, ps.side(), t, func, unknown,parametric,comp);
     }
 
     void addCondition(int p, boundary::side s, condition_type::type t,
-                      const gsFunction<T> & func, short_t unknown = 0,
+                      const gsFunctionSet<T> & func, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
     {
         function_ptr fun(func.clone().release());
@@ -665,7 +666,7 @@ public:
     }
 
     void addCondition(int p, boundary::side s, condition_type::type t,
-                      gsFunction<T> * func, short_t unknown = 0,
+                      gsFunctionSet<T> * func, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
     {
         addCondition(p,boxSide(s),t,func,unknown,parametric,comp);

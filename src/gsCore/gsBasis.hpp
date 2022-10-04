@@ -580,7 +580,7 @@ void gsBasis<T>::uniformRefine(int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int )
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -678,6 +678,11 @@ void gsBasis<T>::reverse()
 template<class T>
 void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
                gsMatrix<index_t> &, gsMatrix<index_t> &) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
+               gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

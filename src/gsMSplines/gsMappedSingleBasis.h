@@ -1,6 +1,6 @@
 /** @file gsMappedSingleBasis.h
 
-    @brief Provides declaration of Basis abstract interface.
+    @brief Implementation of a piece of the gsMappedBasis
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): H.M. Verhelst, P. Weinmueller
 */
 
 #pragma once
@@ -114,6 +114,12 @@ public:
     gsMatrix<T> support() const
     {
         return m_basis->getBase(m_index).support();
+    }
+
+    /// Returns a bounding box for the basis' domain
+    gsMatrix<T> support(const index_t &) const
+    {
+        return this->support();
     }
 
     /// Returns the boundary basis on side s

@@ -153,7 +153,7 @@ public:
         typedef typename gsBoundaryConditions<T>::const_bciterator bctype_it;
         typedef typename Object::const_iterator bc_it;
 
-        std::vector<typename gsFunction<T>::Ptr> fun;
+        std::vector<typename gsFunctionSet<T>::Ptr> fun;
         //gsSortedVector<typename gsFunction<T>::Ptr> fun;
         typedef typename std::vector<const boundary_condition<T>*> bctype_vec;
         typedef typename std::map<int, bctype_vec> bctype_map;
@@ -165,7 +165,7 @@ public:
             bctype_map map;
             for (bc_it bc = it->second.begin(); bc != it->second.end(); ++bc)
             {
-                typename gsFunction<T>::Ptr ptr = bc->function();
+                typename gsFunctionSet<T>::Ptr ptr = bc->function();
                 bool contains = std::find(fun.begin(), fun.end(), ptr)
                         != fun.end();
                 if (!contains)
@@ -186,7 +186,7 @@ public:
         }
 
         int count = 0;
-        typedef typename std::vector<typename gsFunction<T>::Ptr>::const_iterator fun_it;
+        typedef typename std::vector<typename gsFunctionSet<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
             gsXmlNode * ff = putFunctionToXml(*fit, data, count);
@@ -275,7 +275,7 @@ public:
 
 private:
     static gsXmlNode * putFunctionToXml(
-            const typename gsFunction<T>::Ptr & obj, gsXmlTree & data,
+            const typename gsFunctionSet<T>::Ptr & obj, gsXmlTree & data,
             int index)
     {
         gsXmlNode * result = internal::makeNode("Function", data);

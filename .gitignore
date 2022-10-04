@@ -22,7 +22,12 @@ CMakeLists.txt.user
 # CMake
 CMakeCache.txt
 CMakeFiles/
+/.cmake/
 
 # Patch Files
 *.patch
 *.rej
+
+# Data
+data-private/
+data/

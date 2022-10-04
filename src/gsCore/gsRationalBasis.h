@@ -167,12 +167,12 @@ public:
     // Look at gsBasis class for a description
     short_t totalDegree() const     {return m_src->totalDegree(); }
 
-    void uniformRefine(int numKnots = 1, int mul=1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
     {
-        m_src->uniformRefine_withCoefs(m_weights, numKnots, mul);
+        m_src->uniformRefine_withCoefs(m_weights, numKnots, mul, dir);
     }
 
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1, int dir=-1);
 
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
 
@@ -567,7 +567,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 
 
 template<class SrcT>
-void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul)
+void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul, int dir)
 {
     GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                   "Invalid dimensions" );
