@@ -13,7 +13,6 @@
 #include <gsCore/gsFunctionExpr.h>
 #include <gsIO/gsOptionList.h>
 #include <gsMatrix/gsSparseMatrix.h>
-#include <gsMatrix/gsMatrix.h>
 #endif
 
 
