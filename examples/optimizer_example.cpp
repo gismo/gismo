@@ -189,10 +189,11 @@ int main(int argc, char* argv[])
         optimizer = new gsGradientDescent<>(&problem);
         break;
 
+#ifdef GISMO_WITH_HLBFGS
         case 1 :
         optimizer = new gsHLBFGS<real_t>(&problem);
         break;
-
+#endif
 #ifdef GISMO_WITH_IPOPT
         case 2:
         // optimizer =
@@ -205,7 +206,6 @@ int main(int argc, char* argv[])
         // optimizer->options().setInt("Verbose",14);
         break;
 #endif
-
         default:
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
     }
