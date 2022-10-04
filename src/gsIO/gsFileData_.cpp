@@ -74,7 +74,6 @@ namespace py = pybind11;
       .def("add", static_cast<void (Class::*)(const gsMatrix<real_t> &) > (&Class::add<gsMatrix<real_t>>), "Add gsMatrix to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
 
-
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
       
       .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Get gsMultiPatch to the filedata.")
@@ -98,9 +97,5 @@ namespace py = pybind11;
            })
       ;    
   }
-
-
-
 #endif // GISMO_BUILD_PYBIND11
-  
 } // end namespace gismo
