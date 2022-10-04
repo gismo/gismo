@@ -11,8 +11,8 @@
     Author(s): A. Mantzaflaris
 */
 
-EIGEN_STRONG_INLINE void setPtr(Scalar * ptr)
+EIGEN_STRONG_INLINE void swapPointer(Scalar * & ptr)
 {
-    // Use with Caution for memory leaks! 
-    m_storage.data() = ptr;
+    // Use with Caution for memory leaks!
+    m_storage.swapData(ptr);
 }
