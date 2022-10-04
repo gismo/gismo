@@ -23,12 +23,12 @@
 namespace gismo
 {
 
-// template<class T>
-// gsFitting<T>::~gsFitting()
-// {
-//     // if ( m_result!=NULL )
-//     //     delete m_result;
-// }
+template<class T>
+gsFitting<T>::~gsFitting()
+{
+    if ( m_result )
+        delete m_result;
+}
 
 template<class T>
 gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
@@ -420,7 +420,7 @@ void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides,
 {
     std::vector<gsBSpline<T> > tmp = fixedCurves;
     std::vector<gsGeometry<T> *> fixedCurves_input(tmp.size());
-    for (index_t k=0; k!=fixedCurves.size(); k++)
+    for (size_t k=0; k!=fixedCurves.size(); k++)
         fixedCurves_input[k] = dynamic_cast<gsGeometry<T> *>(&(tmp[k]));
     setConstraints(fixedSides, fixedCurves_input);
 }

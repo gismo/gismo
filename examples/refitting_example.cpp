@@ -157,9 +157,9 @@ int main(int argc, char *argv[])
         // Reparameterize points
         pts = parameterize_points2D(bbasis,eval);
 
-        mp.patch(p) = *bbasis.makeGeometry(eval.transpose()).release();
+        mp.patch(p) = give(*bbasis.makeGeometry(eval.transpose()));
         // Contains the parametric values of the points
-        mp_par.patch(p) = *bbasis.makeGeometry(pts.transpose()).release();
+        mp_par.patch(p) = give(*bbasis.makeGeometry(pts.transpose()));
     }
     if (plot) gsWriteParaview(mp,"mp",200,false);
     
@@ -197,10 +197,9 @@ int main(int argc, char *argv[])
     gsInfo<<"Making boundary representation with fitted interfaces...";
     gsKnotVector<> kv(0, 1, nknots, degree+1, 1, degree);
     gsBSplineBasis<> fbasis(kv);
-    gsFitting<> cfit;
 
     // pbdr contains the indices of the boundary curves in he first entry of the pair, and the coefficients in the second
-    std::vector<std::pair<std::vector<gsMatrix<index_t>>,gsMatrix<real_t> > > pbdr(mp.nPatches());
+    std::vector<std::pair<std::vector<gsMatrix<index_t>>,gsMatrix<real_t> > > pbdr(mp0->nPatches());
     crv_net.clear();
     gsMatrix<> uv, xyz;
 
@@ -220,7 +219,7 @@ int main(int argc, char *argv[])
         xyz = crv.coefs().transpose();
         uv  = parameterize_points1D(xyz);
 
-        cfit = gsFitting<>(uv,xyz,fbasis);
+        gsFitting<> cfit(uv,xyz,fbasis);
 
         std::vector<index_t> prescribedDoFs;
         std::vector<gsMatrix<>> prescibedCoefs;
@@ -252,7 +251,7 @@ int main(int argc, char *argv[])
         const gsBSpline<> & crv = static_cast<const gsBSpline<> &>(*it->second);
         xyz = crv.coefs().transpose();
         uv  = parameterize_points1D(xyz);
-        cfit = gsFitting<>(uv,xyz,fbasis);
+        gsFitting<> cfit(uv,xyz,fbasis);
 
         std::vector<index_t> prescribedDoFs;
         std::vector<gsMatrix<>> prescibedCoefs;
@@ -278,7 +277,6 @@ int main(int argc, char *argv[])
     if (plot) gsWriteParaview(crv_net,"crv_fit",200);
     gsInfo<<"Finished\n";
 
-    gsFitting<> sfit;
     std::vector<gsGeometry<>*> container(mp0->nPatches());
     //STEP 4: fit interior points of each patch with boundary constraints being the curves..
     gsInfo<<"Fitting surface...";
@@ -287,7 +285,7 @@ int main(int argc, char *argv[])
         std::vector<index_t> prescribedDoFs;
         std::vector<gsMatrix<>> prescibedCoefs;
 
-        for (index_t s=0; s!=pbdr.at(p).first.size(); s++)
+        for (size_t s=0; s!=pbdr.at(p).first.size(); s++)
         {
             for (index_t k=0; k!=pbdr.at(p).first.at(s).size(); k++)
             {
@@ -299,7 +297,7 @@ int main(int argc, char *argv[])
 
         uv  = mp_par.patch(p).coefs().transpose();
         xyz = mp.patch(p).coefs().transpose();
-        sfit = gsFitting<>(uv,xyz,sbasis);
+        gsFitting<> sfit(uv,xyz,sbasis);
         sfit.setConstraints(prescribedDoFs,prescibedCoefs);
 
         sfit.compute(lambda_srf);
@@ -308,8 +306,9 @@ int main(int argc, char *argv[])
         // if (sfit.maxPointError()> tol)
         //     gsWarn<<"Error of surface fit is large: "<<sfit.maxPointError()<<">"<<tol<<"\n";
 
-        container.at(p) = give(sfit.result());
+        container.at(p) = sfit.result()->clone().release();
     }
+
     gsMultiPatch<> mp_res(container,mp0->boundaries(),mp0->interfaces());
     if (plot) gsWriteParaview(mp_res,"final",200,true);
     gsWrite<>(mp_res,"final");
