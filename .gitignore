@@ -1,6 +1,5 @@
 # Submodule files
 submodules.txt
-extensions/
 
 # CLion user-specific files
 .idea
