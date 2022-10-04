@@ -691,7 +691,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
 
     // expr.printDetail(gsInfo); //
 
-    m_value = _arg.eval(0);
+    m_value = expr.eval(0);
     return gsAsConstMatrix<T>(&m_value,1,1);
 }
 
