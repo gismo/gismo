@@ -262,6 +262,9 @@ public:
     /// \brief Increase the degree of all patches by \a elevationSteps, preserves multiplicity
     void degreeIncrease(short_t const elevationSteps = 1, short_t const dir = -1);
 
+    /// \brief Reduce the degree of all patches by \a elevationSteps.
+    void degreeReduce(int elevationSteps = 1);
+
     void embed(const index_t N)
     {
         for ( typename PatchContainer::const_iterator it = m_patches.begin();
@@ -297,10 +300,11 @@ public:
     /// to two points: the lower and upper corner of the bounding box.
     void boundingBox(gsMatrix<T> & result) const;
 
-    /// \brief Splits each patch uniformly in each direction into two new patches,
-    /// giving a total number of 2^d new patches. This method allocated new
-    /// space for each new geometry, the original one stays unchanged.
-    gsMultiPatch<T> uniformSplit() const;
+    /// \brief Splits each patch uniformly in each direction (if dir = -1)
+    /// into two new patches, giving a total number of 2^d new patches per patch.
+    /// If dir is a parametric direction, then it only splits in that one direction.
+    /// This method allocated new space for each new geometry, the original one stays unchanged.
+    gsMultiPatch<T> uniformSplit(index_t dir =-1) const;
 
 
     /** @brief Checks if all patch-interfaces are fully matching, and if not, repairs them, i.e., makes them fully matching.
@@ -339,6 +343,8 @@ public:
     */
     bool repairInterface( const boundaryInterface & bi );
 
+    /// Computes linear approximation of the patches using \a nsamples per direction
+    gsMultiPatch<T> approximateLinearly(index_t nsamples) const;
 
     /// @brief For each point in \a points, locates the parametric coordinates of the point
     /// \param points

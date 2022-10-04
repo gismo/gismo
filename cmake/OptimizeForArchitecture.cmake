@@ -1764,7 +1764,7 @@ macro(OFA_HandleArmOptions)
     list(APPEND _march_flag_list "armv8-a")
     list(APPEND _available_vector_units_list "aes" "crc" "crypto" "dotprod" "fp" "fp16" "fp16fml" "lse" "neon" "ras" "rcpc" "rdm" "sha2" "sha3" "sm4" "zcm" "zcz")        
   elseif(TARGET_ARCHITECTURE STREQUAL "apple-m1")
-    list(APPEND _mtune_flag_list "vortex")
+    list(APPEND _mtune_flag_list "apple-m1") # changed from: vortex, after Xcode 14 update  
     list(APPEND _march_flag_list "armv8.3-a")
     list(APPEND _march_flag_list "armv8.2-a")
     list(APPEND _march_flag_list "armv8.1-a")

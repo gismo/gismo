@@ -1,3 +1,4 @@
+
 #####################################################################
 ## CMakeLists.txt --- root
 ## This file is part of the G+Smo library.
@@ -155,6 +156,7 @@ unset(${PROJECT_NAME}_MODULES    CACHE)
 unset(${PROJECT_NAME}_optionals  CACHE)
 unset(${PROJECT_NAME}_LINKER     CACHE)
 unset(gismo_TMPL_HEADERS         CACHE)
+unset(gismo_UNITTESTS            CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
@@ -233,6 +235,10 @@ if(GISMO_WITH_SPECTRA)
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_SPECTRA)
 
+if(GISMO_WITH_PRECICE)
+  add_subdirectory(extensions/gsPreCICE)
+endif(GISMO_WITH_PRECICE)
+
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SUPERLU_INCLUDES}
@@ -273,16 +279,6 @@ include_directories(${GISMO_INCLUDE_DIRS})
 # external inclusion paths
 #get_property(EXTERNAL_INCLUDE_DIRS GLOBAL PROPERTY EXTERNAL_INCLUDE_DIRS)
 #include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/external)
-
-## #################################################################
-## Unittests
-## #################################################################
-
-if(GISMO_BUILD_UNITTESTS)
-  add_subdirectory(unittests)
-else()
-  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
-endif(GISMO_BUILD_UNITTESTS)
 
 ## #################################################################
 ## G+Smo sources
@@ -375,6 +371,16 @@ endif(GISMO_BUILD_MEX)
 if(GISMO_BUILD_RHINOPLUGINS)
   add_subdirectory(plugins/RhinoTHBSplines)
 endif(GISMO_BUILD_RHINOPLUGINS)
+
+## #################################################################
+## Unittests
+## #################################################################
+
+if(GISMO_BUILD_UNITTESTS)
+  add_subdirectory(unittests)
+else()
+  add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
+endif(GISMO_BUILD_UNITTESTS)
 
 ## #################################################################
 ## Install

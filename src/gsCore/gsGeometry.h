@@ -606,6 +606,8 @@ public:
 
     virtual void toMesh(gsMesh<T> & msh, int npoints) const;
 
+    typename gsGeometry::uPtr approximateLinearly() const;
+
     /// Updates the vertices of input \a mesh by evaluating the
     /// geometry at vertices.
     ///  Vertices of the new mesh are

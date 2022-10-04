@@ -42,6 +42,8 @@ void pybind11_init_gsGeometry(py::module &m)
   .def("setCoefs", &Class::setCoefs, "Sets the coefficients")
   .def("basis", static_cast<const gsBasis<real_t>& (Class::*)() const>(&Class::basis), "Returns the bspline basis")
   .def("basis", static_cast<gsBasis<real_t>& (Class::*)()>(&Class::basis), "Returns the bspline basis as a reference")
+  .def("rotate", (void (Class::*)(real_t, const gsVector<real_t,3>&)) &Class::rotate, "Apply 3D Rotation by an angle radians around axis")
+  .def("rotate", (void (Class::*)(real_t)) &Class::rotate, "Apply 2D Rotation by an angle radians")
   ;
 }
 

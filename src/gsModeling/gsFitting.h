@@ -89,7 +89,7 @@ public:
     /// Adds to the matrix A_mat terms for minimization of second derivative, weighted
     /// with parameter lambda.
     void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
-    
+    gsSparseMatrix<T> smoothingMatrix(T lambda) const;
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
 
@@ -126,6 +126,19 @@ public:
     /// \param coefs prescribed coefficients.
     void setConstraints(const std::vector<index_t>& indices,
 			const std::vector<gsMatrix<T> >& coefs);
+
+    /// Sets constraints in such a way that the previous values at \a
+    /// fixedSides of the geometry remain intact.
+    void setConstraints(const std::vector<boxSide>& fixedSides);
+
+    /// Set constraints in such a way that the resulting geometry on
+    /// each of \a fixedSides will coincide with the corresponding
+    /// curve in \a fixedCurves.
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsBSpline<T> >& fixedCurves);
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsGeometry<T> * >& fixedCurves);
+
 
 private:
     /// Extends the system of equations by taking constraints into account.
@@ -170,6 +183,16 @@ private:
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
 
 }; // class gsFitting
+
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsKnotVector
+   */
+  void pybind11_init_gsFitting(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 }// namespace gismo

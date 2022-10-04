@@ -153,10 +153,10 @@ public:
     }
     
     /// Returns the starting value of the domain of the basis
-    T domainStart() const { return this->basis().knots().first(); }
+    T domainStart() const { return *this->basis().knots().domainBegin(); }
     
     /// Returns the end value of the domain of the basis
-    T domainEnd() const { return this->basis().knots().last(); }
+    T domainEnd() const { return *this->basis().knots().domainEnd(); }
     
     /// Returns a reference to the knot vector
     KnotVectorType & knots(const int i = 0) 
