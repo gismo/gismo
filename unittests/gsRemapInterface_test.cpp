@@ -119,7 +119,6 @@ SUITE(gsRemapInterface_test)
 
         CHECK ( mp.nInterfaces() == 1 );
         const boundaryInterface bi = mp.iBegin()->getInverse();
-        gsInfo << bi <<std::endl;
         
         gsMultiBasis<> mb(mp); // extract basis
 
@@ -319,7 +318,7 @@ SUITE(gsRemapInterface_test)
         mp = mp.uniformSplit();
 
         CHECK ( mp.nInterfaces() == 4 );
-        const boundaryInterface &bi = *(mp.iBegin());
+        const boundaryInterface &bi = *(--mp.iEnd());
 
         gsMultiBasis<> mb(mp); // extract basis
 
