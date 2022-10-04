@@ -16,6 +16,7 @@
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsNurbs/gsBSpline.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 
 
@@ -34,6 +35,9 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
                           gsMatrix<T> const & points,
                           gsBasis<T>  & basis)
 {
+    GISMO_ASSERT(points.cols()==param_values.cols(), "Pointset dimensions problem "<< points.cols() << " != " <<param_values.cols() );
+    GISMO_ASSERT(basis.domainDim()==param_values.rows(), "Parameter values are inconsistent: "<< basis.domainDim() << " != " <<param_values.rows() );
+
     m_param_values = param_values;
     m_points = points;
     m_result = NULL;
@@ -97,6 +101,7 @@ void gsFitting<T>::compute(T lambda)
     }
     // Solves for many right hand side  columns
     gsMatrix<T> x;
+
     x = solver.solve(m_B); //toDense()
 
     // If there were constraints, we obtained too many coefficients.
@@ -227,8 +232,8 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
                         // Mixed derivatives 2 * dudv N_i * dudv N_j + ...
                         else
                         {
-                            localAij += T(2) * der2(i * stride + s, k) *
-                                               der2(j * stride + s, k);
+                            localAij += (T)2 * der2(i * stride + s, k) *
+                                            der2(j * stride + s, k);
                         }
                     }
 
@@ -380,6 +385,78 @@ void gsFitting<T>::setConstraints(const std::vector<index_t>& indices,
     }
 
     setConstraints(lhs, rhs);
+}
+
+template<class T>
+void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides)
+{
+    if(fixedSides.size() == 0)
+    return;
+
+    std::vector<index_t> indices;
+    std::vector<gsMatrix<T> > coefs;
+
+    for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
+    {
+    gsMatrix<index_t> ind = this->m_basis->boundary(*it);
+    for(index_t r=0; r<ind.rows(); r++)
+    {
+        index_t fix = ind(r,0);
+        // If it is a new constraint, add it.
+        if(std::find(indices.begin(), indices.end(), fix) == indices.end())
+        {
+        indices.push_back(fix);
+        coefs.push_back(this->m_result->coef(fix));
+        }
+    }
+    }
+
+    setConstraints(indices, coefs);
+}
+
+template<class T>
+void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides,
+                      const std::vector<gsBSpline<T> >& fixedCurves)
+{
+    std::vector<gsBSpline<T> > tmp = fixedCurves;
+    std::vector<gsGeometry<T> *> fixedCurves_input(tmp.size());
+    for (size_t k=0; k!=fixedCurves.size(); k++)
+        fixedCurves_input[k] = dynamic_cast<gsGeometry<T> *>(&(tmp[k]));
+    setConstraints(fixedSides, fixedCurves_input);
+}
+
+template<class T>
+void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides,
+                      const std::vector<gsGeometry<T> * >& fixedCurves)
+{
+    if(fixedSides.size() == 0)
+    return;
+
+    GISMO_ASSERT(fixedCurves.size() == fixedSides.size(),
+         "fixedCurves and fixedSides are of different sizes.");
+
+    std::vector<index_t> indices;
+    std::vector<gsMatrix<T> > coefs;
+    for(size_t s=0; s<fixedSides.size(); s++)
+    {
+    gsMatrix<T> coefsThisSide = fixedCurves[s]->coefs();
+    gsMatrix<index_t> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
+    GISMO_ASSERT(coefsThisSide.rows() == indicesThisSide.rows(),
+             "Coef number mismatch between prescribed curve and basis side.");
+
+    for(index_t r=0; r<indicesThisSide.rows(); r++)
+    {
+        index_t fix = indicesThisSide(r,0);
+        // If it is a new constraint, add it.
+        if(std::find(indices.begin(), indices.end(), fix) == indices.end())
+        {
+        indices.push_back(fix);
+        coefs.push_back(coefsThisSide.row(r));
+        }
+    }
+    }
+
+    setConstraints(indices, coefs);
 }
 
 
