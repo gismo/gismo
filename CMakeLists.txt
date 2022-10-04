@@ -233,6 +233,10 @@ if(GISMO_WITH_HLBFGS)
   add_subdirectory(extensions/gsHLBFGS)
 endif(GISMO_WITH_HLBFGS)
 
+if(GISMO_WITH_PRECICE)
+  add_subdirectory(extensions/gsPreCICE)
+endif(GISMO_WITH_PRECICE)
+
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SUPERLU_INCLUDES}
