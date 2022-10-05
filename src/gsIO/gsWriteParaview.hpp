@@ -840,7 +840,7 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
     int d= basis.dim();
     int n= d+1;
 
-    gsMatrix<T> ab = basis.support(i) ;
+    gsMatrix<T> ab = basis.support() ;
     gsVector<T> a = ab.col(0);
     gsVector<T> b = ab.col(1);
     gsVector<unsigned> np = uniformSampleCount(a,b, npts );
