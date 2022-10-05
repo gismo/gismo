@@ -15,6 +15,7 @@
 
 #include <gsHSplines/gsHBox.h>
 #include <gsHSplines/gsHBoxUtils.h>
+#include <gsIO/gsXml.h>
 
 namespace gismo
 {
@@ -311,6 +312,11 @@ EXTERN_CLASS_TEMPLATE gsHBoxContainer<1,real_t>;
 EXTERN_CLASS_TEMPLATE gsHBoxContainer<2,real_t>;
 EXTERN_CLASS_TEMPLATE gsHBoxContainer<3,real_t>;
 EXTERN_CLASS_TEMPLATE gsHBoxContainer<4,real_t>;
+
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBoxContainer<1,real_t> >;
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBoxContainer<2,real_t> >;
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBoxContainer<3,real_t> >;
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBoxContainer<4,real_t> >;
 }
 #endif
 // *****************************************************************

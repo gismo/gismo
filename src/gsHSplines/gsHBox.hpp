@@ -17,8 +17,22 @@
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 
+#include <gsIO/gsXml.h>
+
 namespace gismo
 {
+
+template <short_t d, class T>
+gsHBox<d, T>::gsHBox()
+:
+m_pid(-1),
+m_error(0),
+m_error_proj(0),
+m_index(-1),
+m_marked(false)
+{
+    m_basis = nullptr;
+}
 
 template <short_t d, class T>
 gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt)
@@ -31,6 +45,7 @@ gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid)
 :
 m_pid(pid),
 m_error(0),
+m_error_proj(0),
 m_index(-1),
 m_marked(false)
 {
@@ -51,6 +66,7 @@ gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHB
 m_indices(low,upp,level),
 m_pid(pid),
 m_error(0),
+m_error_proj(0),
 m_index(-1),
 m_marked(false)
 {
@@ -63,6 +79,7 @@ gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * 
 m_indices(box),
 m_pid(pid),
 m_error(0),
+m_error_proj(0),
 m_index(-1),
 m_marked(false)
 {
@@ -74,6 +91,7 @@ gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<
 :
 m_pid(pid),
 m_error(0),
+m_error_proj(0),
 m_index(-1),
 m_marked(false)
 {
@@ -109,14 +127,15 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
 {
     if (this!=&other)
     {
-        m_indices = other.m_indices;
-        m_pid     = other.m_pid;
-        m_coords  = other.m_coords;
-        m_center  = other.m_center;
-        m_basis   = other.m_basis;
-        m_error   = other.m_error;
-        m_marked  = other.m_marked;
-        m_index   = other.m_index;
+        m_indices      = other.m_indices;
+        m_pid          = other.m_pid;
+        m_coords       = other.m_coords;
+        m_center       = other.m_center;
+        m_basis        = other.m_basis;
+        m_error        = other.m_error;
+        m_error_proj   = other.m_error_proj;
+        m_marked       = other.m_marked;
+        m_index        = other.m_index;
     }
     return *this;
 }
@@ -124,14 +143,15 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
 template <short_t d, class T>
 gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
 {
-    m_indices = give(other.m_indices);
-    m_pid     = give(other.m_pid);
-    m_coords  = give(other.m_coords);
-    m_center  = give(other.m_center);
-    m_basis   = give(other.m_basis);
-    m_error   = give(other.m_error);
-    m_marked  = give(other.m_marked);
-    m_index   = give(other.m_index);
+    m_indices      = give(other.m_indices);
+    m_pid          = give(other.m_pid);
+    m_coords       = give(other.m_coords);
+    m_center       = give(other.m_center);
+    m_basis        = give(other.m_basis);
+    m_error        = give(other.m_error);
+    m_error_proj   = give(other.m_error_proj);
+    m_marked       = give(other.m_marked);
+    m_index        = give(other.m_index);
     return *this;
 }
 
@@ -259,10 +279,30 @@ template <short_t d, class T>
 index_t gsHBox<d, T>::level() const { return m_indices.level; }
 
 template <short_t d, class T>
-void gsHBox<d, T>::setError(T error) { m_error = error; }
+void gsHBox<d, T>::setError(T error)
+{
+    m_error     = error;
+}
+
+template <short_t d, class T>
+void gsHBox<d, T>::setAndProjectError(T error)
+{
+    this->setError(error);
+    this->computeCoordinates();
+    m_error_proj= math::pow(1./2.,2*m_basis->maxDegree()+2) * error ;
+}
 
 template <short_t d, class T>
 T gsHBox<d, T>::error() const { return m_error; }
+
+template <short_t d, class T>
+T gsHBox<d, T>::projectedError() const { return m_error_proj; }
+
+template <short_t d, class T>
+T gsHBox<d, T>::projectedImprovement() const
+{
+    return math::pow(this->getCellSize(),2)*(m_error-4*m_error_proj);
+}
 
 template <short_t d, class T>
 void gsHBox<d, T>::setIndex(index_t index) { m_index = index; }
@@ -894,5 +934,71 @@ void gsHBox<d, T>::clean(Container & container) const
     cIterator beg = std::remove_if(container.begin(),container.end(),pred);
     container.erase(beg,container.end());
 }
+
+namespace internal
+{
+
+/// @brief Get a FunctionsExpr from XML data
+template<short_t d, class T>
+class gsXml< gsHBox<d,T> >
+{
+private:
+    gsXml() { }
+    typedef gsHBox<d,T> Object;
+public:
+    GSXML_COMMON_FUNCTIONS(Object);
+    static std::string tag ()  { return "HBox"; }
+    static std::string type () { return "HBox"+std::to_string(d); }
+
+    GSXML_GET_POINTER(Object);
+
+    static void get_into (gsXmlNode * node, Object & obj)
+    {
+        gsXmlNode * tmp = node->first_node("box");
+        GISMO_ASSERT( tmp , "Expected to find a box node.");
+
+        std::vector<index_t> box;
+        box.push_back(atoi( tmp->first_attribute("level")->value() ));
+
+        std::istringstream str;
+        str.clear();
+        str.str( tmp->value() );
+        unsigned c;
+        for( unsigned i = 0; i < 2*d; i++)
+        {
+            str>> c;
+            box.push_back(c);
+        }
+
+        if (tmp->first_attribute("patch"))
+        {
+            index_t patch = atoi(tmp->first_attribute("patch")->value());
+            obj = gsHBox<d,T>(box,nullptr,patch);
+        }
+        else
+            obj = gsHBox<d,T>(box,nullptr);
+        // getFunctionFromXml(node, obj);
+    }
+
+    static gsXmlNode * put (const Object & obj,
+                            gsXmlTree & data )
+    {
+        gsXmlNode * tmp = makeNode("HBox", data);
+        tmp->append_attribute( makeAttribute("type",internal::gsXml<Object>::type().c_str(), data) );
+        // tmp->append_attribute(makeAttribute("level", 0, data));
+
+        gsMatrix<index_t> box(1,2*d);
+        box.leftCols(d)  = obj.lowerIndex().transpose();
+        box.rightCols(d) = obj.upperIndex().transpose();
+        gsXmlNode * mat = putMatrixToXml( box, data, "box" );
+        mat->append_attribute(makeAttribute("level", obj.level(), data));
+        if (obj.patch()!=-1)
+            mat->append_attribute(makeAttribute("patch", obj.patch(), data));
+        tmp->append_node(mat);
+        return tmp;
+    }
+};
+
+} // internal
 
 } // namespace gismo

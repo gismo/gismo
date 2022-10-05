@@ -16,6 +16,7 @@
 #include <gsHSplines/gsHBoxUtils.h>
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
+#include <gsIO/gsXml.h>
 
 namespace gismo
 {
@@ -44,7 +45,7 @@ public:
 
 public:
 
-    gsHBox() { }
+    gsHBox();
 
     gsHBox(const gsHDomainIterator<T,d> * domHIt);
 
@@ -187,11 +188,30 @@ public:
     void setError(T error);
 
     /**
+     * @brief      Sets the error of the object and compute the projection of the error on a finer mesh
+     */
+    void setAndProjectError(T error);
+
+    /**
      * @brief      Gets the error stored in the object
      *
      * @return     The error of the object
      */
     T error() const;
+
+    /**
+     * @brief      Gets the projected error stored in the object
+     *
+     * @return     The error of the object
+     */
+    T projectedError() const;
+
+    /**
+     * @brief      Gets the projected improvement = error - projected error
+     *
+     * @return     The projected improvement
+     */
+    T projectedImprovement() const;
 
     /**
      * @brief      Assigns an index to the object
@@ -474,6 +494,7 @@ protected:
     const gsHTensorBasis<d,T> * m_basis;
 
     T m_error;
+    T m_error_proj;
     index_t m_index;
     bool m_marked;
 
@@ -503,6 +524,12 @@ EXTERN_CLASS_TEMPLATE gsHBox<1,real_t>;
 EXTERN_CLASS_TEMPLATE gsHBox<2,real_t>;
 EXTERN_CLASS_TEMPLATE gsHBox<3,real_t>;
 EXTERN_CLASS_TEMPLATE gsHBox<4,real_t>;
+
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<1,real_t> >;
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<2,real_t> >;
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<3,real_t> >;
+EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<4,real_t> >;
+
 }
 #endif
 // *****************************************************************

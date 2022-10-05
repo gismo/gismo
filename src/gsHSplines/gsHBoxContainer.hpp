@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsIO/gsXml.h>
+
 namespace gismo
 {
 
@@ -406,5 +408,54 @@ void gsHBoxContainer<d, T>::makeUnitBoxes()
 {
     this->m_boxes = this->toUnitHBoxes();
 }
+
+namespace internal
+{
+
+/// @brief Get a FunctionsExpr from XML data
+template<short_t d, class T>
+class gsXml< gsHBoxContainer<d,T> >
+{
+private:
+    gsXml() { }
+    typedef gsHBoxContainer<d,T> Object;
+public:
+    GSXML_COMMON_FUNCTIONS(Object);
+    static std::string tag ()  { return "HBoxContainer"; }
+    static std::string type () { return "HBoxContainer"+std::to_string(d); }
+
+    GSXML_GET_POINTER(Object);
+
+    static void get_into (gsXmlNode * node, Object & obj)
+    {
+        index_t patch = atoi(node->first_attribute("size")->value());
+
+        gsXmlNode * boxNode;
+        for (boxNode = node->first_node("HBox");
+             boxNode; boxNode = boxNode->next_sibling("HBox"))
+        {
+            gsHBox<d,T> * box = gsXml<gsHBox<d,T> >::get(boxNode);
+            obj.add(*box);
+        }
+    }
+
+    static gsXmlNode * put (const Object & obj,
+                            gsXmlTree & data )
+    {
+        gsXmlNode * container = makeNode("HBoxContainer", data);
+        container->append_attribute( makeAttribute("type",internal::gsXml<Object>::type().c_str(), data) );
+        container->append_attribute(makeAttribute("size", obj.totalSize(), data));
+
+        for (typename Object::cHIterator hit = obj.cbegin(); hit!=obj.cend(); hit++)
+            for (typename Object::cIterator it = hit->begin(); it!=hit->end(); it++)
+            {
+                gsXmlNode * box = gsXml< gsHBox<d,T> >::put(*it,data);
+                container->append_node(box);
+            }
+        return container;
+    }
+};
+
+} // internal
 
 } // namespace gismo

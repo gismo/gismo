@@ -1027,12 +1027,14 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
 template<class T>
 void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn)
 {
-    gsMatrix<T> points, values(1,4),corners(2,2);
+    gsMatrix<T> points, values(3,4),corners(2,2);
     gsVector<index_t> np(2);
     np<<2,2;
     box.computeCoordinates();
     points = gsPointGrid<T>(box.getCoordinates(),4);
-    values.setConstant(box.level());
+    values.row(0).setConstant(box.level());
+    values.row(1).setConstant(box.error());
+    values.row(2).setConstant(box.projectedError());
     gsWriteParaviewTPgrid(points,values,np,fn);
 }
 
