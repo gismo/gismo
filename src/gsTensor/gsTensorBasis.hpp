@@ -899,7 +899,7 @@ gsTensorBasis<d,T>::interpolateAtAnchors(gsMatrix<T> const& vals) const
 template<short_t d, class T>
 typename gsGeometry<T>::uPtr
 gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
-                                    std::vector<gsMatrix<T> >const& grid) const
+                                          std::vector<gsMatrix<T> >const& grid) const
 {
     GISMO_ASSERT (this->size() == vals.cols(), 
                   "Expecting as many values as the number of basis functions." );
@@ -961,8 +961,8 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         bndThis = this->boundary( bi.first() .side() );
         bndOther= _other->boundary( bi.second().side() );
         GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
-                      "Input error, sizes do not match: "
-                      <<bndThis.rows()<<"!="<<bndOther.rows() );
+                     "Input error, sizes do not match: "
+                     <<bndThis.rows()<<"!="<<bndOther.rows() );
         if (bndThis.size() == 1) return;
 
         // Get interface data

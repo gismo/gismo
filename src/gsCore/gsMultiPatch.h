@@ -341,6 +341,8 @@ public:
     */
     bool repairInterface( const boundaryInterface & bi );
 
+    /// Computes linear approximation of the patches using \a nsamples per direction
+    gsMultiPatch<T> approximateLinearly(index_t nsamples) const;
 
     /// @brief For each point in \a points, locates the parametric coordinates of the point
     /// \param points
