@@ -428,8 +428,6 @@ public:
 
     static void get_into (gsXmlNode * node, Object & obj)
     {
-        index_t patch = atoi(node->first_attribute("size")->value());
-
         gsXmlNode * boxNode;
         for (boxNode = node->first_node("HBox");
              boxNode; boxNode = boxNode->next_sibling("HBox"))

@@ -45,7 +45,7 @@ template <short_t d, class T>
 typename gsHBox<d, T>::HContainer gsHBoxUtils<d,T>::Unique(const HContainer & container)
 {
     HContainer result(container.size());
-    for (index_t k=0; k!=container.size(); k++)
+    for (size_t k=0; k!=container.size(); k++)
         result[k] = gsHBoxUtils<d,T>::Unique(container[k]);
     return result;
 }
