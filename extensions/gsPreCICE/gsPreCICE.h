@@ -83,6 +83,12 @@ public:
         return m_precicedt;
     }
 
+    void initialize_data()
+    {
+        m_interface.initializeData();
+    }
+
+
 
     /**
      * @brief      Adds a mesh to the precice interface
@@ -159,23 +165,21 @@ public:
         this->readBlockScalarData(dataID,coords.cols(),IDs,values);
     }
 
-    // void readBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, gsMatrix<T> & values) const
-    // {
-    //     T * values_ptr = new T[size];
-    //     m_interface.readBlockVectorData(dataID,size,IDs,values_ptr);
-    //     index_t rows =
-    //     values = Eigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size);
+    void readBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, gsMatrix<T> & values) const
+    {
+        int d = m_interface.getDimensions();
+        T * values_ptr = new T[size*d];
+        m_interface.readBlockVectorData(dataID,size,IDs,values_ptr);
+        values = Eigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size*d);
+        values.blockTransposeInPlace(d);
+    }
 
-    //     // CAST VALUES TO gsMATRIX
-    // }
-
-    // void readBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, gsMatrix<T> & values) const
-    // {
-    //     index_t * IDs = new index_t[coords.cols()];
-    //     this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
-
-    //     this->readBlockVectorData(dataID,coords.cols(),IDs,values);
-    // }
+    void readBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, gsMatrix<T> & values) const
+    {
+        index_t * IDs = new index_t[coords.cols()];
+        this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
+        this->readBlockVectorData(dataID,coords.cols(),IDs,values);
+    }
 
     /**
      * @brief      Writes a block of scalar data.
@@ -206,18 +210,18 @@ public:
         this->writeBlockScalarData(dataID,coords.cols(),IDs,values);
     }
 
-    // void writeBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, const gsMatrix<T> & values) const
-    // {
-    //     m_interface.writeBlockVectorData(dataID,size,IDs,values.data());
-    // }
+    void writeBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, const gsMatrix<T> & values)
+    {
+        m_interface.writeBlockVectorData(dataID,size,IDs,values.data());
+    }
 
-    // void writeBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, const gsMatrix<T> & values) const
-    // {
-    //     index_t * IDs = new index_t[coords.cols()];
-    //     this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
+    void writeBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, const gsMatrix<T> & values)
+    {
+        index_t * IDs = new index_t[coords.cols()];
+        this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
 
-    //     this->writeBlockVectorData(dataID,coords.cols(),IDs,values);
-    // }
+        this->writeBlockVectorData(dataID,coords.cols(),IDs,values);
+    }
 
     /**
      * @brief      Gets the mesh vertex IDs from positions of the points.
@@ -281,7 +285,7 @@ public:
     {
         os << precice::getVersionInformation()<<"\n\n";
         os << "Interface has the following meshes:\n";
-        for (index_t k=0; k!=m_meshNames.size(); k++)
+        for (size_t k=0; k!=m_meshNames.size(); k++)
             gsInfo<<m_meshNames[k]<<"\t (ID="<<m_meshIDs[k]<<")\n";
         return os;
     }

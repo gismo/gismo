@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     cmd.addInt("m","plotmod", "Modulo for plotting, i.e. if plotmod==1, plots every timestep", plotmod);
     cmd.addInt("s","side", "Patchside of interface", side);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-  
+
     //! [Read input file]
 
     gsMultiPatch<> patches;
@@ -47,7 +47,14 @@ int main(int argc, char *argv[])
     else
         GISMO_ERROR("Side unknown");
 
-    gsFunctionExpr<> f("0",2);
+    real_t alpha = 3;
+    real_t beta  = 1.3;
+    real_t time  = 0;
+    real_t k_temp = 1;
+
+    // Set external heat-flux to zero
+    gsConstantFunction<> f(beta-2-2*alpha,2);
+    gsFunctionExpr<> u_ex("1+x^2+" + std::to_string(alpha) + "*y^2 + " + std::to_string(beta) + "*" + std::to_string(time),2);
 
     gsMultiBasis<> bases(patches);//true: poly-splines (not NURBS)
 
@@ -59,9 +66,6 @@ int main(int argc, char *argv[])
     numRefine = 0;
 
     gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
-    
-    real_t k_temp = 100;
-    real_t u_wall = (side==0 ? 300 : 0);
 
 // ----------------------------------------------------------------------------------------------
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -129,9 +133,9 @@ int main(int argc, char *argv[])
 
     std::string membername;
     if (side==0) //left
-        membername = "Left";
+        membername = "Dirichlet";
     else if (side==1) //right
-        membername = "Right";
+        membername = "Neumann";
     else
         GISMO_ERROR("Side unknown");
 
@@ -147,86 +151,113 @@ int main(int argc, char *argv[])
 // ----------------------------------------------------------------------------------------------
 
     gsBoundaryConditions<> bcInfo;
-    gsConstantFunction<> g_D(u_wall,2);
-    gsConstantFunction<> g_Cini(u_wall,2);
-    gsConstantFunction<> g_N(0.0,2);
-    gsPreCICEFunction<real_t> g_Cprecice(&interface,meshID,(side==0 ? tempID : fluxID),patches);
-    gsFunction<> * g_C = &g_Cini;
+    gsPreCICEFunction<real_t> g_CD(&interface,meshID,(side==0 ? tempID : fluxID),patches);
+    gsPreCICEFunction<real_t> g_CN(&interface,meshID,(side==0 ? tempID : fluxID),patches);
+    gsFunction<> * g_C = &u_ex;
 
-    bcInfo.addCondition(0, couplingSide,condition_type::dirichlet  , g_C, 0, false, 0);
-    bcInfo.addCondition(0, couplingSide.opposite(),   condition_type::dirichlet  , &g_D, 0, false, 0);
-    for (size_t s=1; s<=4; s++)
-        if (s!=couplingSide.index() && s!=couplingSide.opposite().index())
-            bcInfo.addCondition(0, boxSide(s),  condition_type::neumann  , &g_N, 0, false, 0);
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u_ex, 0, false, 0);
+    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &u_ex, 0, false, 0);
+    if (side==0)
+    {
+        bcInfo.addCondition(0, couplingSide,condition_type::dirichlet  , g_C, 0, false, 0);
+        bcInfo.addCondition(0, couplingSide.opposite(),condition_type::dirichlet, &u_ex, 0, false, 0);
+    }
+    else
+    {
+        bcInfo.addCondition(0, couplingSide,condition_type::neumann  , &g_CN);
+        bcInfo.addCondition(0, couplingSide.opposite(),condition_type::dirichlet, &u_ex, 0, false, 0);
+    }
+
     bcInfo.setGeoMap(patches);
+    // gsDebugVar(bcInfo);
 
 // ----------------------------------------------------------------------------------------------
 
-    real_t theta = 1.0;
-
     // Generate system matrix and load vector
     // gsInfo << "Assembling mass and stiffness...\n";
-    
+
     // Set the geometry map
     geometryMap G = A.getMap(patches);
 
     // Set the discretization space
     space u = A.getSpace(bases);
 
-
     // Set the source term
     auto ff = A.getCoeff(f, G);
 
     // Set the solution
-    gsMatrix<> solVector;
+    gsMatrix<> solVector, solVector_ini;
     solution u_sol = A.getSolution(u, solVector);
+    solution u_ini = A.getSolution(u, solVector);
 
-    u.setup(bcInfo, dirichlet::homogeneous, 0); // NOTE:
+    u.setup(bcInfo, dirichlet::homogeneous, 0);
     A.initSystem();
+    gsDebugVar(A.numDofs());
     A.assemble( u * u.tr() * meas(G));
     gsSparseMatrix<> M = A.matrix();
 
-    // Enforce Neumann conditions to right-hand side
-    auto g_Neumann = A.getBdrFunction(G);
-    A.assembleBdr(bcInfo.get("Neumann"), u * g_Neumann.val() * nv(G).norm() );
 
     // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
     gsSparseSolver<>::CGDiagonal solver;
 
     real_t dt = 0.01;
 
-    // Project u_wall as initial condition
-    gsConstantFunction<> uwall_fun(u_wall,2);
-    auto uwall = A.getCoeff(uwall_fun, G);
-
-    u.setup(bcInfo, dirichlet::l2Projection, 0); // NOTE:
+    // Project u_wall as initial condition (violates Dirichlet side on precice interface)
+    auto uex = A.getCoeff(u_ex, G);
+    // RHS of the projection
+    u.setup(bcInfo, dirichlet::l2Projection, 0);
     A.initSystem();
-    A.assemble( u * u.tr() * meas(G), u * uwall * meas(G) );
+    A.assemble( u * u.tr() * meas(G), u * uex * meas(G) );
+    solver.compute(A.matrix());
+    solVector_ini = solVector = solver.solve(A.rhs());
+
+        gsMatrix<> result(1,uv.cols()), tmp2;
+    // Write initial data
+    if (interface.isActionRequired(interface.actionWriteInitialData()))
+    {
+        for (index_t k=0; k!=uv.cols(); k++)
+        {
+            if (side==0)
+            {
+                gsWarn<<"Write the flux here!!!\n";
+                tmp2 = ev.eval( - jac(u_sol) * nv(G).normalized(),uv.col(k));
+                result(0,k) = tmp2.at(0);
+            }
+            else
+            {
+                tmp2 = ev.eval(u_sol,uv.col(k));
+                result(0,k) = tmp2.at(0);
+            }
+        }
+        // gsDebugVar(result);
+        interface.writeBlockScalarData(meshID,side==0 ? fluxID : tempID,xy,result);
+        interface.markActionFulfilled(interface.actionWriteInitialData());
+    }
+    interface.initialize_data();
+
+    // interface.readBlockScalarData(meshID,side==0 ? tempID : fluxID,xy,result);
+    // gsDebugVar(result);
+
+    // Initialize the RHS for assembly
+    if (side==0)
+        g_C = &g_CD;
+    gsDebugVar(bcInfo);
+    A.initSystem();
+    A.assemble( k_temp * igrad(u, G) * igrad(u, G).tr() * meas(G), u * uex * meas(G) );
     gsSparseMatrix<> K = A.matrix();
-    solver.compute(K);
-    solVector = solver.solve(A.rhs());
-    // solVector.resize(A.numDofs(),1);
-    // solVector.setConstant(u_wall);
 
-    gsDebugVar(solVector);
-    solVector.resize(A.numDofs(),1);
-    solVector.setConstant(u_wall);
-    gsDebugVar(solVector);
-
-    A.initVector();
-    g_C = &g_Cprecice;
-    u.setup(bcInfo, dirichlet::l2Projection, 0); // NOTE:
-
-    gsVector<> F = dt*A.rhs() + (M-dt*(1.0-theta)*K)*solVector;
+    // Assemble the RHS
+    gsVector<> F = dt*A.rhs() + M*solVector;
     gsVector<> F0 = F;
     gsVector<> F_checkpoint = F;
+    gsMatrix<> solVector_checkpoint = solVector;
+
     gsParaviewCollection collection("solution");
+    gsParaviewCollection exact_collection("exact_solution");
 
     index_t timestep = 0;
     index_t timestep_checkpoint = 0;
-    real_t time = 0;
-
-
+    real_t t_checkpoint = 0;
     if (plot)
     {
         std::string fileName = "solution_" + util::to_string(timestep);
@@ -238,36 +269,48 @@ int main(int argc, char *argv[])
           fileName = "solution_" + util::to_string(timestep) + std::to_string(p);
           collection.addTimestep(fileName,time,".vts");
         }
+
+        // fileName = "exact_solution_" + util::to_string(timestep);
+        // ev.writeParaview( uex   , G, fileName);
+        // for (size_t p=0; p!=patches.nPatches(); p++)
+        // {
+        //   fileName = "exact_solution_" + util::to_string(timestep) + std::to_string(p);
+        //   exact_collection.addTimestep(fileName,time,".vts");
+        // }
+
+        ev.writeParaview( u_sol   , G, "initial_solution");
+
     }
 
+    // time += precice_dt;
     while (interface.isCouplingOngoing())
     {
-        gsDebug<<"Inside loop\n";
         // read temperature from interface
-        if (interface.isReadDataAvailable())
-        {
+        // if (interface.isReadDataAvailable())
+        // {
+            u_ex = gsFunctionExpr<>("1+x^2+" + std::to_string(alpha) + "*y^2 + " + std::to_string(beta) + "*" + std::to_string(time),2);
             u.setup(bcInfo, dirichlet::l2Projection, 0); // NOTE:
+
             A.initSystem();
-            A.assemble( k_temp * igrad(u, G) * igrad(u, G).tr() * meas(G) );
+            A.assemble( k_temp * igrad(u, G) * igrad(u, G).tr() * meas(G), u * ff * meas(G) );
             K = A.matrix();
-
-            gsMatrix<> result;
-            interface.readBlockScalarData(meshID,(side==0 ? tempID : fluxID),xy,result);
-            gsDebugVar(result);
-
-            // Then assemble
             auto g_Neumann = A.getBdrFunction(G);
             A.assembleBdr(bcInfo.get("Neumann"), u * g_Neumann.val() * nv(G).norm() );
-            A.assemble( u * ff * meas(G) );
-            F = theta*dt*A.rhs() + (1.0-theta)*dt*F0 + (M-dt*(1.0-theta)*K)*solVector;
-        }
+            F = dt*A.rhs() + M*solVector;
 
-        gsDebug<<"Before checkpoint\n";
+            // gsMatrix<> result;
+            // interface.readBlockScalarData(meshID,side==0 ? tempID : fluxID,xy,result);
+            // gsDebugVar(result);
+        // }
+
         // save checkpoint
         if (interface.isActionRequired(interface.actionWriteIterationCheckpoint()))
         {
+            gsDebugVar("Write checkpoint");
             F_checkpoint = F0;
+            t_checkpoint = time;
             timestep_checkpoint = timestep;
+            solVector_checkpoint = solVector;
             interface.markActionFulfilled(interface.actionWriteIterationCheckpoint());
         }
 
@@ -276,7 +319,7 @@ int main(int argc, char *argv[])
 
         // solve gismo timestep
         gsInfo << "Solving timestep " << timestep*dt << "...";
-        solVector = solver.compute(M + dt*theta*K).solve(F);
+        solVector = solver.compute(M + dt*K).solve(F);
         gsInfo<<"Finished\n";
         // write heat fluxes to interface
         if (interface.isWriteDataRequired(dt))
@@ -288,11 +331,20 @@ int main(int argc, char *argv[])
                 // tmp = ev.eval(k_temp * igrad(u_sol,G),uv.col(k));
                 // Only exchange y component
                 // result(0,k) = -tmp.at(1);
-                tmp = ev.eval(u_sol,uv.col(k));
-                result(0,k) = tmp.at(0);
+                //
+                //
+                if (side==0)
+                {
+                    gsWarn<<"Write the flux here!!!\n";
+                    tmp = ev.eval(jac(u_sol) * nv(G).normalized(),uv.col(k));
+                    result(0,k) = tmp.at(0);
+                }
+                else
+                {
+                    tmp = ev.eval(u_sol,uv.col(k));
+                    result(0,k) = tmp.at(0);
+                }
             }
-
-            gsDebugVar(result);
             // TODO
             interface.writeBlockScalarData(meshID,side==0 ? fluxID : tempID,xy,result);
         }
@@ -301,18 +353,21 @@ int main(int argc, char *argv[])
         precice_dt = interface.advance(dt);
 
         // advance variables
+        time += dt;
         timestep += 1;
         F0 = F;
 
         if (interface.isActionRequired(interface.actionReadIterationCheckpoint()))
         {
+            gsDebugVar("Read checkpoint");
             F0 = F_checkpoint;
+            time = t_checkpoint;
             timestep = timestep_checkpoint;
+            solVector = solVector_checkpoint;
             interface.markActionFulfilled(interface.actionReadIterationCheckpoint());
         }
         else
         {
-            time += dt;
             if (timestep % plotmod==0 && plot)
             {
                 std::string fileName = "solution_" + util::to_string(timestep);
@@ -324,37 +379,22 @@ int main(int argc, char *argv[])
                   fileName = "solution_" + util::to_string(timestep) + std::to_string(p);
                   collection.addTimestep(fileName,time,".vts");
                 }
+
+                // fileName = "exact_solution_" + util::to_string(timestep);
+                // ev.writeParaview( uex   , G, fileName);
+                // for (size_t p=0; p!=patches.nPatches(); p++)
+                // {
+                //   fileName = "exact_solution_" + util::to_string(timestep) + std::to_string(p);
+                //   exact_collection.addTimestep(fileName,time,".vts");
+                // }
             }
         }
-
-
     }
-
-    // for ( int i = 1; i<=numSteps; ++i) // for all timesteps
-    // {
-    //     A.assemble( u * ff * meas(G) );
-    //     F = dt*A.rhs() + (M-dt*(1.0-theta)*K)*solVector;
-    //     // Compute the system for the timestep i
-    //     gsInfo << "Solving timestep " << i*dt << ".\n";
-    //     solVector = solver.compute(M + dt*theta*K).solve(F);
-
-    //     if (plot)
-    //     {
-    //         std::string fileName = "solution_" + util::to_string(i);
-    //         ev.options().setSwitch("plot.elements", true);
-    //         ev.options().setInt("plot.npts", 1000);
-    //         ev.writeParaview( u_sol   , G, fileName);
-    //         for (size_t p=0; p!=patches.nPatches(); p++)
-    //         {
-    //           fileName = "solution_" + util::to_string(i) + std::to_string(p);
-    //           collection.addTimestep(fileName,i,".vts");
-    //         }
-    //     }
-    // }
 
     if (plot)
     {
         collection.save();
+        exact_collection.save();
     }
 
 

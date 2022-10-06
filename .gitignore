@@ -28,6 +28,7 @@ CMakeFiles/
 *.rej
 
 # paraview result files
-*.vtp
 *.pvd
-
+*.vtk
+*.vts
+*.vtp
