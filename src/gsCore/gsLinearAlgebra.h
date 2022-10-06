@@ -26,6 +26,7 @@
 
 // Plugin provides extra members
 #define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
+#define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
 #include <gsMatrix/gsEigenDeclarations.h>
 
 #include <Eigen/Core>

@@ -952,8 +952,8 @@ public:
             {
                 const int ii = m_sd->mapper.index(i, p, c);
                 if ( m_sd->mapper.is_free_index(ii) ) // DoF value is in the solVector
-                    result.row(i) = solVector.row(ii);
-                    //result(i,c) = solVector.at(ii);
+                  for(index_t s = 0; s != solVector.cols(); ++s )
+                    result(i,c+s) = solVector(ii,s); //assume dim==1 xor solVector.cols()==1
                 else // eliminated DoF: fill with Dirichlet data
                 {
                     result(i,c) =  m_sd->fixedDofs.at( m_sd->mapper.global_to_bindex(ii) );
@@ -968,7 +968,7 @@ public:
     void setupMapper(gsDofMapper dofsMapper) const
     {
         GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
-        GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()), "The dof-mapper is not consistent.");
+        GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
         m_sd->mapper = give(dofsMapper);
     }
 
@@ -3907,8 +3907,8 @@ public:
     { _u.parse(evList); }
 
 
-    const gsFeSpace<Scalar> & rowVar() const { return false; }
-    const gsFeSpace<Scalar> & colVar() const { return false; }
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
 
     void print(std::ostream &os) const
     { os << "("<< _c <<"/";_u.print(os);os << ")";}

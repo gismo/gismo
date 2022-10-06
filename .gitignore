@@ -27,3 +27,8 @@ CMakeFiles/
 # Patch Files
 *.patch
 *.rej
+
+# paraview result files
+*.vtp
+*.pvd
+

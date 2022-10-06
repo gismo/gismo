@@ -73,19 +73,19 @@ public:
     //     mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
     // }
 
-    // /// Adds a part in the collection, with filename \a fni and extension \a ext appended
-    // void addPart(String const & fn, int i, String const & ext)
-    // {
-    //     GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-    //     mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
-    // }
+    /// Adds a part in the collection, with filename \a fni and extension \a ext appended
+    void addPart(String const & fn, int i, String const & ext)
+    {
+        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+        mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
+    }
 
-    // // to do: make time collections as well
-	// // ! i is not included in the filename, must be in included fn !
-    // void addTimestep(String const & fn, int tstep, String const & ext)
-    // {
-    //     mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
-    // }
+    // to do: make time collections as well
+	// ! i is not included in the filename, must be in included fn !
+    void addTimestep(String const & fn, double tstep, String const & ext)
+    {
+        mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
+    }
 
     // EVERY PATCH NEEDS TO BE PUT INTO ITS OWN "PART" THUS ITS OWN DATASET
     void addDataSet(gsParaviewDataSet dataSet, /*String const & fn, int part, int tstep, String const & ext*/)

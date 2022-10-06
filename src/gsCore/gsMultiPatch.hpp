@@ -620,6 +620,20 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
 }
 
 template<class T>
+gsMultiPatch<T> gsMultiPatch<T>::approximateLinearly(index_t nsamples) const
+{
+    gsMultiPatch<T> result;
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        result.addPatch( (*it)->approximateLinearly() );
+    }
+
+    result.gsBoxTopology::operator=(*this);//copy the original topology
+    return result;
+}
+
+template<class T>
 bool gsMultiPatch<T>::repairInterface( const boundaryInterface & bi )
 {
     gsMultiBasis<T> multiBasis(*this);

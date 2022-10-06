@@ -1,7 +1,7 @@
 
 #include <gsCore/gsTemplateTools.h>
-#include <gsIpopt/gsOptProblem.h>
-#include <gsIpopt/gsOptProblem.hpp>
+#include <gsOptimizer/gsOptProblem.h>
+#include <gsOptimizer/gsOptProblem.hpp>
 
 namespace gismo
 {
