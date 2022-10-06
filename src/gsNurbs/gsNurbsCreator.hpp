@@ -33,7 +33,8 @@ gsNurbsCreator<T>::rotate2D(gsTensorBSpline<2,T> const & geo, const T turndeg, c
 {
     GISMO_ASSERT(geo.geoDim() >= 2,"Geometry must be 2D or higher");
 
-    T r = turndeg / 180 * M_PI;
+    const T pi = 3.1415926535897932384626433832795;
+    T r = turndeg / 180 * pi;
     T tx, ty;
 
     gsMatrix<T> newcoefs = geo.coefs();
