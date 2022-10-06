@@ -76,6 +76,10 @@ FOREACH(subdir ${SUBDIRS})
     target_precompiled_header(${GM_NAME} gsPrecompiledHeader)
   endif()
 
+  if(GISMO_WITH_IPOPT AND ${GM_NAME} MATCHES gsOptimizer)
+    include_directories(${IPOPT_INCLUDE_DIR})
+  endif()
+
   set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
     CACHE INTERNAL "G+Smo modules" )
 

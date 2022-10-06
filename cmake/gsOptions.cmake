@@ -123,6 +123,11 @@ if  (${GISMO_WITH_SPECTRA})
 message ("  GISMO_WITH_SPECTRA      ${GISMO_WITH_SPECTRA}")
 endif()
 
+option(GISMO_WITH_HLBGFS        "With HLBFGS"              false  )
+if  (${GISMO_WITH_HLBGFS})
+message ("  GISMO_WITH_HLBGFS      ${GISMO_WITH_HLBGFS}")
+endif()
+
 option(GISMO_WITH_PRECICE        "With PreCICE"              false  )
 if  (${GISMO_WITH_PRECICE})
 message ("  GISMO_WITH_PRECICE      ${GISMO_WITH_PRECICE}")

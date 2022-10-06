@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 0.8.4-->
+<xml>
+ <Geometry type="TensorNurbs2" id="0">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">1 0 
+1 1 
+0 1 
+0.6666666666660001 0 
+0.5 0.5 
+0 0.6666666666666 
+0.33333333333333 0 
+0.1666666666666 0.166666666666666 
+0 0.33333333333333 
+</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2" id="1">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">0 1 
+-1 1 
+-1 0 
+0 0.6666666666660001 
+-0.5 0.5 
+-0.6666666666666 0 
+0 0.33333333333333 
+-0.1666666666666 0.166666666666666 
+-0.33333333333333 0 
+</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2" id="2">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">-1 0 
+-1 -1 
+0 -1 
+-0.6666666666660001 0 
+-0.5 -0.5 
+0 -0.6666666666666 
+-0.33333333333333 0 
+-0.1666666666666 -0.166666666666666 
+0 -0.33333333333333 
+</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2" id="3">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+1 
+0.707106781186548 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">0 -1 
+1 -1 
+1 0 
+0 -0.6666666666660001 
+0.5 -0.5 
+0.6666666666666 0 
+0 -0.33333333333333 
+0.1666666666666 -0.166666666666666 
+0.33333333333333 0 
+</coefs>
+ </Geometry>
+ <Geometry type="TensorNurbs2" id="4">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 
+0.707106781186548 
+1 
+0.707106781186548 
+0.5 
+0.707106781186548 
+1 
+0.707106781186548 
+1 
+</weights>
+  </Basis>
+  <coefs geoDim="2">0 -0.333333333333333 
+0.166666666666666 -0.1666666666666667 
+0.3333333333333333 0 
+-0.166666666666666 -0.1666666666666667 
+0 0 
+0.166666666666666 0.1666666666666667 
+-0.333333333333333 0 
+-0.166666666666666 0.1666666666666667 
+0 0.3333333333333333 
+</coefs>
+ </Geometry>
+ <MultiPatch parDim="2" id="5">
+  <patches type="id_range">0 4</patches>
+  <interfaces>4 4 1 4 0 1 0 0
+4 2 0 4 1 0 0 1
+3 4 4 3 0 1 1 1
+3 2 0 1 0 1 1 1
+2 4 4 1 1 0 0 1
+2 2 3 1 0 1 1 1
+1 2 2 1 0 1 1 1
+0 2 1 1 0 1 1 1
+</interfaces>
+  <boundary>3 3
+1 3
+2 3
+0 3
+</boundary>
+ </MultiPatch>
+</xml>
+

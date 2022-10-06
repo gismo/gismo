@@ -28,6 +28,10 @@ CMakeFiles/
 *.patch
 *.rej
 
+# paraview result files
+*.vtp
+*.pvd
+
 # Data
 data-private/
 data/

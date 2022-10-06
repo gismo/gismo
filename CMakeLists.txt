@@ -235,6 +235,10 @@ if(GISMO_WITH_SPECTRA)
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif(GISMO_WITH_SPECTRA)
 
+if(GISMO_WITH_HLBFGS)
+  add_subdirectory(extensions/gsHLBFGS)
+endif(GISMO_WITH_HLBFGS)
+
 if(GISMO_WITH_PRECICE)
   add_subdirectory(extensions/gsPreCICE)
 endif(GISMO_WITH_PRECICE)

@@ -198,7 +198,7 @@ install_and_deploy_linux:
   tags:
     - linux
   stage: test #deploy #(deploy will only run only when all test succeeds)
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/gcc:9
+  image: gcc:9
   script:
     - apt-get update -y
     - apt-get install cmake -y
@@ -212,24 +212,21 @@ install_and_deploy_linux:
     - cp /builds/gismo-ci/gismo/CTestConfig.cmake /builds/gismo-ci/gismo/deploy/
     - mv /builds/gismo-ci/gismo/examples/*.cpp /builds/gismo-ci/gismo/deploy/
     - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
-    - cmake ../gismo/deploy -Dgismo_DIR=/builds/gismo-ci/buildlib -DBUILDNAME="$CI_JOB_NAME-local" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA-[gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
+    - cmake ../gismo/deploy -Dgismo_DIR=/builds/gismo-ci/buildlib -DBUILDNAME="$CI_JOB_NAME-local" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
-    - export TODAY=`date +"%Y-%m-%d"`
     # II. Test deploy from system tree
     - cd /builds/gismo-ci/buildlib
     - cmake --build . --target install
     - rm -rf ~/.cmake /builds/gismo-ci/buildproj
     - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
-    - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA-[gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
-    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest || true #continues in case of failure
+    - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" || true
+    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest
     # III. Test direct use of -lgismo
     - rm -rf ./poisson_example.out
-    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson_example.cpp -o poisson_example.out -I/usr/include/gismo -lgismo 2> compile.log
     - ctest --output-on-failure -A compile.log -M Experimental -T Submit
     - if [ ! -f "poisson_example.out" ]; then cat compile.log; fi
     - ./poisson_example.out
-    # CDASH link
-    - echo "https://cdash-ci.inria.fr/index.php?project=Gismo&date=$TODAY&filtercount=2&showfilters=1&filtercombine=and&field1=site&compare1=61&value1=$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA-[gitlab-ci]&field2=buildname&compare2=65&value2=install"
   only:
     - stable
     - external_pull_requests
