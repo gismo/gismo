@@ -229,6 +229,10 @@ if(GISMO_WITH_SPECTRA)
   add_subdirectory(extensions/gsSpectra)
 endif(GISMO_WITH_SPECTRA)
 
+if(GISMO_WITH_HLBFGS)
+  add_subdirectory(extensions/gsHLBFGS)
+endif(GISMO_WITH_HLBFGS)
+
 if(GISMO_WITH_PRECICE)
   add_subdirectory(extensions/gsPreCICE)
 endif(GISMO_WITH_PRECICE)
