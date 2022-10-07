@@ -28,5 +28,10 @@ CMakeFiles/
 *.patch
 *.rej
 
+# paraview result files
+*.vtp
+*.pvd
+
+
 #Mac OS
 **/.DS_Store

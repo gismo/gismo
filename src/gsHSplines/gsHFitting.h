@@ -143,16 +143,6 @@ public:
     std::vector<index_t> getBoxes(const std::vector<T>& errors,
                                    const T threshold);
 
-    /// Sets constraints in such a way that the previous values at \a
-    /// fixedSides of the geometry remain intact.
-    void setConstraints(const std::vector<boxSide>& fixedSides);
-
-    /// Set constraints in such a way that the resulting geometry on
-    /// each of \a fixedSides will coincide with the corresponding
-    /// curve in \a fixedCurves.
-    void setConstraints(const std::vector<boxSide>& fixedSides,
-			const std::vector<gsBSpline<T> >& fixedCurves);
-
 protected:
     /// Appends a box around parameter to the boxes only if the box is not
     /// already in boxes
@@ -197,67 +187,6 @@ protected:
 };
 
 template<short_t d, class T>
-void gsHFitting<d, T>::setConstraints(const std::vector<boxSide>& fixedSides)
-{
-    if(fixedSides.size() == 0)
-	return;
-
-    std::vector<index_t> indices;
-    std::vector<gsMatrix<T> > coefs;
-
-    for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
-    {
-	gsMatrix<index_t> ind = this->m_basis->boundary(*it);
-	for(index_t r=0; r<ind.rows(); r++)
-	{
-	    index_t fix = ind(r,0);
-	    // If it is a new constraint, add it.
-	    if(std::find(indices.begin(), indices.end(), fix) == indices.end())
-	    {
-		indices.push_back(fix);
-		coefs.push_back(this->m_result->coef(fix));
-	    }
-	}
-    }
-
-    gsFitting<T>::setConstraints(indices, coefs);
-}
-
-template<short_t d, class T>
-void gsHFitting<d, T>::setConstraints(const std::vector<boxSide>& fixedSides,
-				      const std::vector<gsBSpline<T> >& fixedCurves)
-{
-    if(fixedSides.size() == 0)
-	return;
-
-    GISMO_ASSERT(fixedCurves.size() == fixedSides.size(),
-		 "fixedCurves and fixedSides are of different sizes.");
-
-    std::vector<index_t> indices;
-    std::vector<gsMatrix<T> > coefs;
-    for(size_t s=0; s<fixedSides.size(); s++)
-    {
-	gsMatrix<T> coefsThisSide = fixedCurves[s].coefs();
-	gsMatrix<index_t> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
-	GISMO_ASSERT(coefsThisSide.rows() == indicesThisSide.rows(),
-		     "Coef number mismatch between prescribed curve and basis side.");
-
-	for(index_t r=0; r<indicesThisSide.rows(); r++)
-	{
-	    index_t fix = indicesThisSide(r,0);
-	    // If it is a new constraint, add it.
-	    if(std::find(indices.begin(), indices.end(), fix) == indices.end())
-	    {
-		indices.push_back(fix);
-		coefs.push_back(coefsThisSide.row(r));
-	    }
-	}
-    }
-
-    gsFitting<T>::setConstraints(indices, coefs);
-}
-
-template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
 {
     std::vector<boxSide> dummy;
@@ -266,7 +195,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold)
 
 template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
-				     const std::vector<boxSide>& fixedSides)
+                     const std::vector<boxSide>& fixedSides)
 {
     // INVARIANT
     // look at iterativeRefine
@@ -290,7 +219,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 	    if(m_result != NULL && fixedSides.size() > 0)
 	    {
 		m_result->refineElements(boxes);
-		setConstraints(fixedSides);
+		gsFitting<T>::setConstraints(fixedSides);
 	    }
 
             gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
@@ -457,3 +386,7 @@ T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
 
 
 }// namespace gismo
+
+// #ifndef GISMO_BUILD_LIB
+// #include GISMO_HPP_HEADER(gsFitting.hpp)
+// #endif
