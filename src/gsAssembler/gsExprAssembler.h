@@ -469,8 +469,12 @@ private:
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
                 aux.noalias() += (*(++w)) * ee.eval(k);
 
-            localMat.resize(aux.rows(), aux.rows());// happens once
-            localMat.col(j) = scalar * aux;
+            if ( 0 == localMat.size() )
+            {
+                 localMat.setZero(aux.rows(), aux.cols() );
+            }
+            //localMat.resize(aux.rows(), aux.rows());// happens once
+            localMat.col(j) += scalar * aux;
         }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
@@ -1003,7 +1007,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             }
 
             // Assemble contributions of the element to the global matrix
-            ee.template push<false>(u.space().rowVar(), u.space().rowVar());
+            ee.template push<true>(u.space().rowVar(), u.space().rowVar());
         }
     }
 
