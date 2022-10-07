@@ -13,9 +13,10 @@
 
 #pragma once
 
-#include<gsIO/gsParaviewCollection.h>
+// #include<gsIO/gsParaviewCollection.h>
 #include<gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
+#include<vector>
 
 namespace gismo
 {
@@ -308,12 +309,16 @@ public:
                        std::string const & fn)
     { writeParaview_impl<E,false>(expr,m_exprdata->getMap(),fn); }
 
+    template<class E>
+    std::vector<std::string> expr2vtk(const expr::_expr<E> & expr, std::string label="SolutionField");
 
 private:
 
     template<class E, bool gmap>
     void writeParaview_impl(const expr::_expr<E> & expr,
                             geometryMap G, std::string const & fn);
+
+
 
     template<class E, bool storeElWise, class _op>
     T compute_impl(const expr::_expr<E> & expr);
@@ -723,48 +728,98 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             geometryMap G,
                                             std::string const & fn)
     {
-        m_exprdata->parse(expr);
+        // m_exprdata->parse(expr);
 
-        //if false, embed topology ?
-        const index_t n = m_exprdata->multiBasis().nBases();
-        gsParaviewCollection collection(fn);
-        std::string fileName;
+        // //if false, embed topology ?
+        // const index_t n = m_exprdata->multiBasis().nBases();
+        // gsParaviewCollection collection(fn);
+        // std::string fileName;
 
-        gsMatrix<T> pts, vals, ab;
+        // gsMatrix<T> pts, vals, ab;
 
-        const bool mesh = m_options.askSwitch("plot.elements");
+        // const bool mesh = m_options.askSwitch("plot.elements");
 
-        for ( index_t i=0; i != n; ++i )
+        // for ( index_t i=0; i != n; ++i )
+        // {
+        //     fileName = fn + util::to_string(i);
+        //     unsigned nPts = m_options.askInt("plot.npts", 1000);
+        //     ab = m_exprdata->multiBasis().piece(i).support();
+        //     gsGridIterator<T,CUBE> pt(ab, nPts);
+        //     eval(expr, pt, i);
+        //     nPts = pt.numPoints();
+        //     vals = allValues(m_elWise.size()/nPts, nPts);
+
+        //     if (gmap) // Forward the points ?
+        //     {
+        //         eval(G, pt, i);
+        //         pts = allValues(m_elWise.size()/nPts, nPts);
+        //     }
+
+        //     gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
+        //                           vals,
+        //                           pt.numPointsCwise(), fileName );
+        //     collection.addPart(fileName, ".vts");
+
+        //     if ( mesh )
+        //     {
+        //         fileName+= "_mesh";
+        //         gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
+        //         static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
+        //         gsWriteParaview(msh, fileName, false);
+        //         collection.addPart(fileName, ".vtp");
+        //     }
+        // }
+        // collection.save();
+    }
+
+
+/// @brief  Evaluates one expression over all patches and returns all <DataArray> xml tags as a vecotr of strings
+/// @tparam T 
+/// @param expr Expression to be evaluated
+/// @param label The label with which the expression will appear in Paraview
+/// @return Vector of strings of all <DataArrays>
+template<class T>
+template<class E>
+std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & expr,
+                                          std::string label)
+{   
+    std::vector<std::string> out;
+    std::stringstream dataArray;
+    m_exprdata->parse(expr);
+
+    //if false, embed topology ?
+    const index_t n = m_exprdata->multiBasis().nBases();
+
+    gsMatrix<T> pts, vals, ab;
+
+    for ( index_t i=0; i != n; ++i )
+    {
+        unsigned nPts = m_options.askInt("plot.npts", 1000);
+        ab = m_exprdata->multiBasis().piece(i).support();
+        gsGridIterator<T,CUBE> pt(ab, nPts);
+        eval(expr, pt, i);
+        nPts = pt.numPoints();
+        vals = allValues(m_elWise.size()/nPts, nPts);
+
+        dataArray <<"<DataArray type=\"Float32\" Name=\""<< label <<"\" format=\"ascii\" NumberOfComponents=\""<< ( vals.rows()==1 ? 1 : 3) <<"\">\n";
+        if ( vals.rows()==1 )
+            for ( index_t j=0; j<vals.cols(); ++j)
+                dataArray<< vals.at(j) <<" ";
+        else
         {
-            fileName = fn + util::to_string(i);
-            unsigned nPts = m_options.askInt("plot.npts", 1000);
-            ab = m_exprdata->multiBasis().piece(i).support();
-            gsGridIterator<T,CUBE> pt(ab, nPts);
-            eval(expr, pt, i);
-            nPts = pt.numPoints();
-            vals = allValues(m_elWise.size()/nPts, nPts);
-
-            if (gmap) // Forward the points ?
+            for ( index_t j=0; j<vals.cols(); ++j)
             {
-                eval(G, pt, i);
-                pts = allValues(m_elWise.size()/nPts, nPts);
-            }
-
-            gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
-                                  vals,
-                                  pt.numPointsCwise(), fileName );
-            collection.addPart(fileName, ".vts");
-
-            if ( mesh )
-            {
-                fileName+= "_mesh";
-                gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
-                static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
-                gsWriteParaview(msh, fileName, false);
-                collection.addPart(fileName, ".vtp");
+                for ( index_t i=0; i!=vals.rows(); ++i)
+                    dataArray<< vals(i,j) <<" ";
+                for ( index_t i=vals.rows(); i<3; ++i)
+                    dataArray<<"0 ";
             }
         }
-        collection.save();
+        dataArray <<"\n</DataArray>\n";
+        out.push_back( dataArray.str() );
+        dataArray.clear();
     }
+    return out; 
+}
 
 } //namespace gismo
