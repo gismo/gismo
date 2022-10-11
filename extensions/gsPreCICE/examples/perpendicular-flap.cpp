@@ -13,8 +13,12 @@
 
 #include <gismo.h>
 #include <gsPreCICE/gsPreCICE.h>
-#include <gsPreCICE/gsPreCICEFunction.h>
-#include <gsPreCICE/gsPreCICEScalarFunction.h>
+// #include <gsPreCICE/gsPreCICEFunction.h>
+#include <gsPreCICE/gsPreCICEVectorFunction.h>
+
+#include <gsElasticity/gsMassAssembler.h>
+#include <gsElasticity/gsElasticityAssembler.h>
+
 
 using namespace gismo;
 
@@ -23,7 +27,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     index_t plotmod = 1;
-    index_t numRefine  = 5;
+    index_t numRefine  = 0;
     index_t numElevate = 0;
     std::string precice_config("../precice_config.xml");
 
@@ -40,10 +44,7 @@ int main(int argc, char *argv[])
 
     // Generate domain
     gsMultiPatch<> patches;
-    patches.addPatch(gsNurbsCreator<>::BSplineRectangle(0.0,-0.25,1.0,0.0));
-
-    // Set external heat-flux to zero
-    gsFunctionExpr<> f("0",2);
+    patches.addPatch(gsNurbsCreator<>::BSplineRectangle(-0.05,0.0,0.05,1.0));
 
     // Create bases
     gsMultiBasis<> bases(patches);//true: poly-splines (not NURBS)
@@ -58,10 +59,11 @@ int main(int argc, char *argv[])
 
     gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
     
-    // Set heat conduction coefficient
-    real_t k_temp = 100;
-    // Set bottom wall temp
-    real_t u_wall = 310;
+    real_t rho = 3000;
+    real_t E = 40000;
+    real_t nu = 0.3;
+    real_t mu = E / (2.0 * (1.0 + nu));
+    real_t lambda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu));
 
 // ----------------------------------------------------------------------------------------------
     typedef gsExprAssembler<>::geometryMap geometryMap;
@@ -78,10 +80,11 @@ int main(int argc, char *argv[])
 
 // ----------------------------------------------------------------------------------------------
     // Set the interface for the precice coupling
-    patchSide couplingInterface(0,boundary::north);
+    std::vector<patchSide> couplingInterfaces(3);
+    couplingInterfaces[0] = patchSide(0,boundary::east);
+    couplingInterfaces[1] = patchSide(0,boundary::north);
+    couplingInterfaces[2] = patchSide(0,boundary::west);
 
-    // Get a domain iterator on the coupling interface
-    typename gsBasis<real_t>::domainIter domIt = bases.basis(couplingInterface.patch).makeDomainIterator(couplingInterface.side());
 
     // Set the dimension of the points
     gsMatrix<> nodes;
@@ -90,13 +93,20 @@ int main(int argc, char *argv[])
 
     gsOptionList quadOptions = A.options();
 
-    // First obtain the size of all quadrature points
     index_t quadSize = 0;
-    typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
-    for (; domIt->good(); domIt->next() )
+
+    for (std::vector<patchSide>::const_iterator it = couplingInterfaces.begin(); it!=couplingInterfaces.end(); it++)
     {
-        QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
-        quadSize+=QuRule->numNodes();
+        // Get a domain iterator on the coupling interface
+        typename gsBasis<real_t>::domainIter domIt = bases.basis(it->patch).makeDomainIterator(it->side());
+
+        // First obtain the size of all quadrature points
+        typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
+        for (; domIt->good(); domIt->next() )
+        {
+            QuRule = gsQuadrature::getPtr(bases.basis(it->patch), quadOptions,it->side().direction());
+            quadSize+=QuRule->numNodes();
+        }
     }
 
     // Initialize parametric coordinates
@@ -106,18 +116,25 @@ int main(int argc, char *argv[])
 
     // Grab all quadrature points
     index_t offset = 0;
-    for (domIt->reset(); domIt->good(); domIt->next())
-    {
-        QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
-        // Map the Quadrature rule to the element
-        QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                       nodes, tmp);
-        uv.block(0,offset,patches.domainDim(),QuRule->numNodes()) = nodes;
 
-        gsMatrix<> tmp2;
-        patches.patch(couplingInterface.patch).eval_into(nodes,tmp2);
-        xy.block(0,offset,patches.targetDim(),QuRule->numNodes()) = patches.patch(couplingInterface.patch).eval(nodes);
-        offset += QuRule->numNodes();
+    for (std::vector<patchSide>::const_iterator it = couplingInterfaces.begin(); it!=couplingInterfaces.end(); it++)
+    {
+        // Get a domain iterator on the coupling interface
+        typename gsBasis<real_t>::domainIter domIt = bases.basis(it->patch).makeDomainIterator(it->side());
+        typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
+        for (domIt->reset(); domIt->good(); domIt->next())
+        {
+            QuRule = gsQuadrature::getPtr(bases.basis(it->patch), quadOptions,it->side().direction());
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           nodes, tmp);
+            uv.block(0,offset,patches.domainDim(),QuRule->numNodes()) = nodes;
+
+            gsMatrix<> tmp2;
+            patches.patch(it->patch).eval_into(nodes,tmp2);
+            xy.block(0,offset,patches.targetDim(),QuRule->numNodes()) = patches.patch(it->patch).eval(nodes);
+            offset += QuRule->numNodes();
+        }
     }
 
     // Define precice interface
@@ -126,31 +143,47 @@ int main(int argc, char *argv[])
     real_t precice_dt = interface.initialize();
 
     index_t meshID = interface.getMeshID("Solid-Mesh");
-    index_t tempID = interface.getDataID("Temperature",meshID);
-    index_t fluxID = interface.getDataID("Heat-Flux",meshID);
+    index_t dispID = interface.getDataID("Displacement",meshID);
+    index_t forceID = interface.getDataID("Force",meshID);
 
 // ----------------------------------------------------------------------------------------------
 
     // Define boundary conditions
     gsBoundaryConditions<> bcInfo;
     // Dirichlet side
-    gsConstantFunction<> g_D(u_wall,2);
-    // Homogeneous Neumann
-    gsConstantFunction<> g_N(0.0,2);
+    gsConstantFunction<> g_D(0,patches.geoDim());
     // Coupling side
-    gsPreCICEScalarFunction<real_t> g_C(&interface,meshID,tempID,patches);
+    gsPreCICEVectorFunction<real_t> g_C(&interface,meshID,forceID,patches,patches.geoDim());
     // Add all BCs
-    // Isolated Neumann sides
-    bcInfo.addCondition(0, boundary::east,  condition_type::neumann  , &g_N, 0, false, 0);
-    bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_N, 0, false, 0);
+    // Coupling interface
+    bcInfo.addCondition(0, boundary::north,  condition_type::neumann , &g_C);
+    bcInfo.addCondition(0, boundary::east,  condition_type::neumann  , &g_C);
+    bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_C);
     // Bottom side (prescribed temp)
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0, false, 0);
-    // Coupling interface
-    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, &g_C, 0, false, 0);
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0, false, 1);
     // Assign geometry map
     bcInfo.setGeoMap(patches);
 
 // ----------------------------------------------------------------------------------------------
+
+    // // source function, rhs
+    // gsConstantFunction<> g(0.,0.,2);
+
+    // // source function, rhs
+    // gsConstantFunction<> gravity(0.,0.,2);
+
+    // // creating mass assembler
+    // gsMassAssembler<real_t> massAssembler(patches,bases,bcInfo,gravity);
+    // massAssembler.options().setReal("Density",rho);
+    // massAssembler.assemble();
+    // gsDebugVar(massAssembler.matrix().toDense());
+
+    // gsElasticityAssembler<real_t> assembler(patches,bases,bcInfo,g);
+    // assembler.options().setReal("YoungsModulus",E);
+    // assembler.options().setReal("PoissonsRatio",nu);
+    // assembler.assemble();
+    // gsDebugVar(assembler.matrix().toDense());
 
     // Time integration coefficient (0.0 = explicit, 1.0 = implicit)
     real_t theta = 1.0;
@@ -159,29 +192,40 @@ int main(int argc, char *argv[])
     geometryMap G = A.getMap(patches);
 
     // Set the discretization space
-    space u = A.getSpace(bases);
-    u.setup(bcInfo, dirichlet::homogeneous, 0);
-
-    // Set the source term
-    auto ff = A.getCoeff(f, G);
+    space u = A.getSpace(bases,patches.geoDim());
 
     // Set the solution
     gsMatrix<> solVector;
     solution u_sol = A.getSolution(u, solVector);
 
     // Assemble mass matrix
+    u.setup(bcInfo, dirichlet::homogeneous, 0);
     A.initSystem();
-    A.assemble( u * u.tr() * meas(G));
+    A.assemble( rho * u * u.tr() * meas(G));
     gsSparseMatrix<> M = A.matrix();
 
     // Assemble stiffness matrix (NOTE: also adds the dirichlet BCs inside the matrixs)
+    u.setup(bcInfo, dirichlet::l2Projection, 0);
     A.initSystem();
-    A.assemble( k_temp * igrad(u, G) * igrad(u, G).tr() * meas(G) );
-    gsSparseMatrix<> K = A.matrix();
 
-    // Enforce Neumann conditions to right-hand side
+    auto v = u;
+    A.assemble(
+                0.5 * mu * meas(G) *
+                ( ijac(v,G) + ijac(v,G).cwisetr() )
+                %
+                ( ijac(u,G) +  ijac(u,G).cwisetr()).tr()   // 18x18
+                +
+                lambda * meas(G) *
+                ( ijac( v, G).trace()  *  ijac( u, G).trace().tr() )
+                );
+
+    gsDebugVar(A.matrix().toDense());
+
     auto g_Neumann = A.getBdrFunction(G);
-    A.assembleBdr(bcInfo.get("Neumann"), u * g_Neumann.val() * nv(G).norm() );
+    // Assemble Neumann BC term ( to .rhs())
+    A.assembleBdr(bcInfo.get("Neumann"), v * g_Neumann * meas(G)  );
+
+    gsSparseMatrix<> K = A.matrix();
 
     // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
     gsSparseSolver<>::CGDiagonal solver;
@@ -190,16 +234,8 @@ int main(int argc, char *argv[])
     real_t dt = 0.1;
 
     // Project u_wall as initial condition (violates Dirichlet side on precice interface)
-    gsConstantFunction<> uwall_fun(u_wall,2);
-    auto uwall = A.getCoeff(uwall_fun, G);
     // RHS of the projection
-    A.assemble( u * uwall * meas(G) );
-    solver.compute(M);
-    solVector = solver.solve(A.rhs());
-
-    // Initialize the RHS for assembly
-    A.initVector();
-    u.setup(bcInfo, dirichlet::l2Projection, 0);
+    solVector.setZero(A.numDofs(),1);
 
     // Assemble the RHS
     gsVector<> F = dt*A.rhs() + (M-dt*(1.0-theta)*K)*solVector;
@@ -227,21 +263,31 @@ int main(int argc, char *argv[])
         }
     }
 
+    auto g_C_tmp = A.getCoeff(g_C,G);
+
     // Time integration loop
     while (interface.isCouplingOngoing())
     {
         // read temperature from interface
         if (interface.isReadDataAvailable())
         {
-            u.setup(bcInfo, dirichlet::l2Projection, 0); // NOTE:
             A.initSystem();
-            A.assemble( k_temp * igrad(u, G) * igrad(u, G).tr() * meas(G) );
-            K = A.matrix();
-
             // Then assemble
-            auto g_Neumann = A.getBdrFunction(G);
-            A.assembleBdr(bcInfo.get("Neumann"), u * g_Neumann.val() * nv(G).norm() );
-            A.assemble( u * ff * meas(G) );
+            // auto g_Neumann = A.getBdrFunction(G);
+            auto g_Neumann = g_C_tmp;
+            // gsDebugVar("Assembling neumann ...");
+            A.assembleBdr(bcInfo.get("Neumann"), v * g_Neumann * nv(G).norm()  );
+            // A.assembleBdr(bcInfo.get("Neumann"), v * nv(G)  );
+            // gsDebugVar(A.rhs().transpose());
+            // gsDebugVar("Assembling neumann finished");
+
+            // gsDebugVar(uv.col(13));
+            // gsDebugVar(ev.eval(g_Neumann,uv.col(13)));
+            // gsDebugVar(ev.eval(meas(G),uv.col(13)));
+            // gsDebugVar(ev.eval(g_Neumann * meas(G),uv.col(13)));
+
+            // gsDebugVar(ev.eval(v * g_Neumann * meas(G),uv.col(13)));
+
             F = theta*dt*A.rhs() + (1.0-theta)*dt*F0 + (M-dt*(1.0-theta)*K)*solVector;
         }
 
@@ -263,15 +309,13 @@ int main(int argc, char *argv[])
         // write heat fluxes to interface
         if (interface.isWriteDataRequired(dt))
         {
-            gsMatrix<> result(1,uv.cols()), tmp;
+            gsMatrix<> result(patches.geoDim(),uv.cols());
             for (index_t k=0; k!=uv.cols(); k++)
             {
                 // gsDebugVar(ev.eval(nv(G),uv.col(k)));
-                tmp = ev.eval(k_temp * igrad(u_sol,G),uv.col(k));
-                // Only exchange y component
-                result(0,k) = -tmp.at(1);
+                result.col(k) = ev.eval(u_sol,uv.col(k));
             }
-            interface.writeBlockScalarData(meshID,fluxID,xy,result);
+            interface.writeBlockVectorData(meshID,dispID,xy,result);
         }
 
         // do the coupling

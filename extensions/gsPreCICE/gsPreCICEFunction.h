@@ -63,7 +63,7 @@ public:
     m_patches(patches),
     m_targetDim(targetDim),
     m_parametric(parametric),
-    m_patchID(0),
+    m_patchID(0), // TODO
     m_domainDim(m_patches.domainDim())
     {
     }
@@ -96,20 +96,14 @@ public:
     /// See \a gsFunction
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
-                                              << ", expected "<< m_domainDim);
-
         // Does not work
         // if (m_parametric)
         //     m_interface->readBlockScalarData(m_meshID,m_dataID,m_patches.patch(m_patchID).eval(u),result);
         // if (m_parametric)
         //     m_interface->readBlockScalarData(m_meshID,m_dataID,u,result);
 
-        gsMatrix<T> coords(m_patches.targetDim(),u.cols());
-        if (m_parametric)
-            m_patches.patch(m_patchID).eval_into(u,coords);
-        else
-            coords = u;
+        gsMatrix<T> coords;
+        _getCoords(u,coords);
 
         if (m_targetDim==1)
             m_interface->readBlockScalarData(m_meshID,m_dataID,coords,result);
@@ -149,8 +143,20 @@ public:
         return os;
     }
 
+protected:
+    void _getCoords(const gsMatrix<T> & u, gsMatrix<T> & coords) const
+    {
+        GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
+                                              << ", expected "<< m_domainDim);
 
-private:
+        coords.resize(m_patches.targetDim(),u.cols());
+        if (m_parametric)
+            m_patches.patch(m_patchID).eval_into(u,coords);
+        else
+            coords = u;
+    }
+
+protected:
 
     gsPreCICE<T> * m_interface;
     index_t m_meshID, m_dataID;
