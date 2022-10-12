@@ -17,46 +17,68 @@
 
 namespace gismo
 {
-
-template <typename T> class gsIpOptTNLP;
-class gsOptProblemPrivate;
-
 /**
    \brief Class defining an optimization problem
 */
-
 template <typename T>
 class gsOptProblem
 {
 
-    friend class gsIpOptTNLP<T>;
-
 public:
 
-    /** default constructor */
-    gsOptProblem();
+    // /** default constructor */
+    // gsOptProblem();
 
-    /** default destructor */
-    virtual ~gsOptProblem();
+    // /** default destructor */
+    // virtual ~gsOptProblem();
 
 public:
 
     /// \brief Returns the gradient value of the objective function at design
     /// value \a u
-    virtual T evalObj( const gsAsConstVector<T> & u ) const = 0;
+    virtual T evalObj( const gsAsConstVector<T> & u ) const
+    {GISMO_NO_IMPLEMENTATION }
 
     /// \brief Returns the gradient of the objective function at design value
     /// \a u
     /// By default it uses finite differences, overriding it should provide exact gradient.
-    virtual void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const;
+    virtual void gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    {
+        const index_t n = u.rows();
+        //GISMO_ASSERT((index_t)m_numDesignVars == n*m, "Wrong design.");
+
+        gsMatrix<T> uu = u;//copy
+        gsAsVector<T> tmp(uu.data(), n);
+        gsAsConstVector<T> ctmp(uu.data(), n);
+        index_t c = 0;
+
+        // for all partial derivatives (column-wise)
+        for ( index_t i = 0; i!=n; i++ )
+        {
+            // to do: add m_desLowerBounds m_desUpperBounds check
+            tmp[i]  += T(0.00001);
+            const T e1 = this->evalObj(ctmp);
+            tmp[i]   = u[i] + T(0.00002);
+            const T e3 = this->evalObj(ctmp);
+            tmp[i]   = u[i] - T(0.00001);
+            const T e2 = this->evalObj(ctmp);
+            tmp[i]   = u[i] - T(0.00002);
+            const T e4 = this->evalObj(ctmp);
+            tmp[i]   = u[i];
+            result[c++]= ( 8 * (e1 - e2) + e4 - e3 ) / T(0.00012);
+        }
+    }
+
 
     /// \brief Returns values of the constraints at design value \a u
-    virtual void evalCon_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const = 0;
+    virtual void evalCon_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    {GISMO_NO_IMPLEMENTATION }
 
     /// \brief Returns Jacobian of the constraints at design value \a u.
     /// Format of \a result is sparse, complying to \a m_conJacRows
     /// and \a m_conJacCols
-    virtual void jacobCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const = 0;
+    virtual void jacobCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result ) const
+    {GISMO_NO_IMPLEMENTATION }
 
     /// \brief Returns Hessian Lagrangian of the constraints at design value
     virtual void hessLagr_into( const gsAsConstVector<T> &, gsAsVector<T> &) const
@@ -90,7 +112,7 @@ public:
     /// @brief Callback function is executed after every
     ///    iteration. Returning false causes premature termination of
     ///    the optimization
-    virtual bool intermediateCallback() { return true;}
+    // virtual bool intermediateCallback() { return true;}
 
 public:
 
@@ -112,41 +134,27 @@ public:
 
     const std::vector<index_t> & conJacCols() const { return m_conJacCols; }
 
-    const gsMatrix<T> & currentDesign() const { return m_curDesign; }
-
-    const gsMatrix<T> & lambda() const { return m_lambda; }
-
-    T currentObjValue() const
-    {
-        gsAsConstVector<T> tmp(m_curDesign.data(), m_numDesignVars);
-        return evalObj(tmp);
-    }
-
-    T objective()    const { return finalObjective; }
-
-    int iterations() const { return numIterations; }
-
 public:
 
-    void solve ();
+    // void solve ();
 
-    std::ostream &print(std::ostream &os) const
-    {
-        os << "Design variables:" << m_numDesignVars
-           << "\nNumber of constraints: " << m_numConstraints
-            //<< "\ndesign lower:" << m_desLowerBounds.transpose()
-            //<< "\ndesign upper:" << m_desUpperBounds.transpose()
-            //<< "\nconstr lower:" << m_conLowerBounds.transpose()
-            //<< "\nconstr upper:" << m_conUpperBounds.transpose()
-           << "\nNumber of active sensitivities: " << m_numConJacNonZero
-           << "\nSparsity of sensitivities: " <<std::fixed<<std::setprecision(2)
-           << (100.0*m_numConJacNonZero)/(m_numDesignVars*m_numConstraints) << " %"
-            //<< "\nm_conJacRows:" << m_conJacRows.transpose()
-            //<< "\nm_conJacCols:" << m_conJacCols.transpose()
-            //<< "\nm_curDesign:" << m_curDesign.transpose()
-            ;
-        return os;
-    }
+    // std::ostream &print(std::ostream &os) const
+    // {
+    //     os << "Design variables: " << m_numDesignVars
+    //        << "\nNumber of constraints: " << m_numConstraints
+    //         //<< "\ndesign lower:" << m_desLowerBounds.transpose()
+    //         //<< "\ndesign upper:" << m_desUpperBounds.transpose()
+    //         //<< "\nconstr lower:" << m_conLowerBounds.transpose()
+    //         //<< "\nconstr upper:" << m_conUpperBounds.transpose()
+    //        << "\nNumber of active sensitivities: " << m_numConJacNonZero
+    //        << "\nSparsity of sensitivities: " <<std::fixed<<std::setprecision(2)
+    //        << (100.0*m_numConJacNonZero)/(m_numDesignVars*m_numConstraints) << " %"
+    //         //<< "\nm_conJacRows:" << m_conJacRows.transpose()
+    //         //<< "\nm_conJacCols:" << m_conJacCols.transpose()
+    //         //<< "\nm_curDesign:" << m_curDesign.transpose()
+    //         ;
+    //     return os;
+    // }
 
 
 protected:
@@ -183,37 +191,12 @@ protected:
 
     /// Lagrange multipliers (set in the finalize_solution method)
     gsMatrix<T> m_lambda;
-
-protected:
-
-    // Statistics
-    int numIterations;
-    T   finalObjective;
-
-private:
-
-    /**@name Methods to block default compiler methods.
-     * The compiler automatically generates the following three methods.
-     *  Since the default compiler implementation is generally not what
-     *  you want (for all but the most simple classes), we usually
-     *  put the declarations of these methods in the private section
-     *  and never implement them. This prevents the compiler from
-     *  implementing an incorrect "default" behavior without us
-     *  knowing. (See e.g. Scott Meyers book, "Effective C++")
-     *
-     */
-    //@{
-    gsOptProblem(const gsOptProblem & );
-    gsOptProblem& operator=(const gsOptProblem & );
-    //@}
-
-    gsOptProblemPrivate * m_data;
 };
 
 
 } // end namespace gismo
 
-// note: statically compiled in header-only mode
-// #ifndef GISMO_BUILD_LIB
-// #include GISMO_HPP_HEADER(gsOptProblem.hpp)
-// #endif
+// note: must be statically compiled in header-only mode
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsOptProblem.hpp)
+#endif

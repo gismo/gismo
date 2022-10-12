@@ -83,4 +83,9 @@ inline Matrix<Scalar, Dynamic, Dynamic> cramerInverse() const
 /**
   * \brief Inplace inversion for small matrices using Cramer's Rule
   */
-inline void cramerInverseInPlace() { derived().swap(cramerInverse().eval()); }
+inline void cramerInverseInPlace()
+{
+//    derived() = cramerInverse().eval();
+    derived().swap(cramerInverse().eval());
+}
+

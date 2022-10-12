@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+ <Geometry type="TensorBSpline2" id="1">
+   <Basis type="TensorBSplineBasis2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="2">0.0 0.0 0.0 0.2 0.4 0.6 0.8 1.0 1.0 1.0</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0.0 0.0 0.0 1.0 1.0 1.0</KnotVector>
+    </Basis>
+   </Basis>
+  <coefs geoDim="2">
+0 0
+0.1 0
+0.3 0
+0.5 0 
+0.7 0
+0.9 0
+1 0
+0 0.1
+0.1 0.1
+0.3 0.1
+0.5 0.1
+0.7 0.1
+0.9 0.1
+1 0.1
+0 0.2
+0.1 0.2
+0.3 0.2
+0.5 0.2 
+0.7 0.2
+0.9 0.2
+1 0.2
+</coefs>
+ </Geometry>
+</xml>
+
