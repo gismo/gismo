@@ -247,16 +247,22 @@ int main(int argc, char* argv[])
     optimizer->options().setReal("MinStepLength",1e-9);
     //! [Optimizer options]
 
+    //! [Initial solution]
     gsVector<> in(2);
     in << 0.5, 1.5;        
+    //! [Initial solution]
 
+    //! [Solve]
     // Start the optimization
     optimizer->solve(in);
+    //! [Solve]
 
+    //! [Output]
     // Print final design info
     gsInfo << "\nNumber of iterations : " << optimizer->iterations() <<"\n";
     gsInfo << "Final objective value: " << optimizer->objective() <<"\n";
     gsInfo << "Final design: " << optimizer->currentDesign().transpose() <<"\n";
+    //! [Output]
 
     delete optimizer;
     return EXIT_SUCCESS;

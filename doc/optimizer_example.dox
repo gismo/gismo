@@ -42,6 +42,19 @@ In the main part of the code, the optimizers can be defined. Since \ref gsOptimi
 
 \snippet optimizer_example.cpp Optimizer selection
 
+Accordingly, the initial solution can be defined
+
+\snippet optimizer_example.cpp Initial solution
+
+And the problem can be solved
+
+\snippet optimizer_example.cpp Solve
+
+The output is printed as follows
+
+\snippet optimizer_example.cpp Output
+
+
 \section optimizer_exampleAnnotated Annotated source file
 
 Here is the full file \c examples/optimizer_example.cpp. Clicking on a function
