@@ -120,6 +120,8 @@ public:
 
     int numConstraints() const { return m_conLowerBounds.size(); }
 
+    int numConJacNonZero() const { return m_numConJacNonZero; }
+
     int numConDerivs  () const { return m_conJacRows.size(); }
 
     T lowerCon(int k) const { return m_conLowerBounds[k]; }
@@ -129,6 +131,12 @@ public:
     T lowerDesignVar(int k) const { return m_desLowerBounds[k]; }
 
     T upperDesignVar(int k) const { return m_desUpperBounds[k]; }
+
+    const gsVector<T> & desLowerBounds() const {return m_desLowerBounds;}
+    const gsVector<T> & desUpperBounds() const {return m_desUpperBounds;}
+
+    const gsVector<T> & conLowerBounds() const {return m_conLowerBounds;}
+    const gsVector<T> & conUpperBounds() const {return m_conUpperBounds;}
 
     const std::vector<index_t> & conJacRows() const { return m_conJacRows; }
 

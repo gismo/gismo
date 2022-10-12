@@ -52,6 +52,16 @@ struct gsGradientDescentObjective
     gsOptProblem<T> * obj;
 };
 
+/**
+ * @brief      This class describes the gradient descent method
+ *
+ * @tparam     T                  Real type
+ * @tparam     StepSize           StepSize option, see external/gdcpp.h
+ * @tparam     Callback           Callback option, see external/gdcpp.h
+ * @tparam     FiniteDifferences  FiniteDifferences option, see external/gdcpp.h
+ *
+ * @ingroup    Optimizer
+ */
 template<typename T = real_t,
          typename StepSize=gdc::BarzilaiBorwein<T>,
          typename Callback=gdc::NoCallback<T>,
