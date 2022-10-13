@@ -1,6 +1,6 @@
 #include <gsCore/gsTemplateTools.h>
-#include <gsIpopt/gsIpOpt.h>
-#include <gsIpopt/gsIpOpt.hpp>
+#include <gsIpOpt/gsIpOpt.h>
+#include <gsIpOpt/gsIpOpt.hpp>
 
 namespace gismo
 {

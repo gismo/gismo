@@ -21,7 +21,7 @@
 #endif
 
 #ifdef GISMO_WITH_IPOPT
-#include <gsIpopt/gsIpOpt.h>
+#include <gsIpOpt/gsIpOpt.h>
 #endif
 
 using namespace gismo;
@@ -216,16 +216,17 @@ int main(int argc, char* argv[])
         break;
 #endif
 #ifdef GISMO_WITH_IPOPT
-        // case 2:
-        // optimizer = new gsIpOpt<real_t>(&problem);
-        // Set the momentum rate used for the step calculation (default is 0.0).
-        // Defines how much momentum is kept from previous iterations.
+        case 2:
+        optimizer = new gsIpOpt<real_t>(&problem);
+
+        //Set the momentum rate used for the step calculation (default is 0.0).
+        //Defines how much momentum is kept from previous iterations.
         //optimizer->setMomentum(4);
 
-        // // Turn verbosity on, so the optimizer prints status updates after each
-        // // iteration.
-        // optimizer->options().setInt("Verbose",14);
-        // break;
+        // Turn verbosity on, so the optimizer prints status updates after each
+        // iteration.
+        optimizer->options().setInt("Verbose",14);
+        break;
 #endif
         default:
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");

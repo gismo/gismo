@@ -1,11 +1,13 @@
 ######################################################################
-## CMakeLists.txt --- gsIpopt
+## CMakeLists.txt --- gsIpOpt
 ## This file is part of the G+Smo library.
 ##
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-project(gsIpopt)
+project(gsIpOpt)
+
+include( gsConfig)
 
 if(GISMO_WITH_CODIPACK)
   include_directories(${CODIPACK_INCLUDE_DIR})
@@ -17,7 +19,7 @@ endif()
 #find_package(BLAS REQUIRED)
 find_package(IpOpt QUIET)
 
-#set(IPOPT_SOURCES gsOptProblem_.cpp)
+set(IPOPT_SOURCES gsIpOpt_.cpp)
 
 if (NOT IPOPT_FOUND)
   set(IPOPT_VER "3.14.10") # 3.12.6 uses patching
@@ -62,34 +64,29 @@ else()
   #add_custom_target (IpOpt)
 endif(NOT IPOPT_FOUND)
 
-#include_directories(${IPOPT_INCLUDE_DIR})
-
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
-    CACHE INTERNAL "Gismo include directories")
-  
-#add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
+  include_directories(${IPOPT_INCLUDE_DIR})
+add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
 
 #if (NOT IPOPT_FOUND)
-#  add_dependencies(${PROJECT_NAME} IpOpt)
+  add_dependencies(${PROJECT_NAME} IpOpt)
 #endif(NOT IPOPT_FOUND)
 
-#set_target_properties(${PROJECT_NAME} PROPERTIES
-#  COMPILE_DEFINITIONS gismo_EXPORTS
-#  POSITION_INDEPENDENT_CODE ON
-#  LINKER_LANGUAGE CXX
-#  CXX_VISIBILITY_PRESET hidden
-#  VISIBILITY_INLINES_HIDDEN ON
-#  FOLDER "G+Smo extensions"  )
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  COMPILE_DEFINITIONS gismo_EXPORTS
+  POSITION_INDEPENDENT_CODE ON
+  LINKER_LANGUAGE CXX
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN ON
+  FOLDER "G+Smo extensions"  )
 
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
+  CACHE INTERNAL "Gismo include directories")
 
-# Apply same configuration as G+Smo
-#include( gsConfig)
-
-#set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-#  CACHE INTERNAL "Gismo extensions to be included")
+set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+  CACHE INTERNAL "Gismo extensions to be included")
 set(gismo_LINKER ${gismo_LINKER} ${IPOPT_LIBRARY}
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}
-#  DESTINATION include/gismo/gsIpopt/
+#  DESTINATION include/gismo/gsIpOpt/
 #  FILES_MATCHING PATTERN "*.h")
