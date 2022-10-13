@@ -19,7 +19,12 @@ using namespace gismo;
 
 int main(int argc, char* argv[])
 {
+    std::string output;
+    index_t numknots(3), deg(2);
+
     gsCmdLine cmd("Tutorial on gsFupBasis class.");
+    cmd.addInt("interior", "Interior knots.", numknots);
+    cmd.addInt("deg", "Degree.", deg);
     // cmd.addPlainString("input", "G+Smo input basis file.", input);
     // cmd.addString("o", "output", "Name of the output file.", output);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -28,7 +33,7 @@ int main(int argc, char* argv[])
     // reading the basis
     // ======================================================================
 
-    gsFupBasis<real_t> fup;
+    gsFupBasis<real_t> fup(0,1,numknots,deg);
     
     // printing the basis
     gsInfo << "The file contains: \n" << fup << "\n";
@@ -37,7 +42,7 @@ int main(int argc, char* argv[])
     // printing some properties of the basis
     gsInfo << "Dimension of the parameter space: " << fup.dim() << "\n"
            << "Number of basis functions: " << fup.size() << "\n"
-           << "Number of elements: " << fup.numElements() << "\n"
+           //<< "Number of elements: " << fup.numElements() << "\n"
            << "Max degree of the basis: " << fup.maxDegree() << "\n"
            << "Min degree of the basis: " << fup.minDegree() << "\n"
            << "\n";
@@ -61,20 +66,24 @@ int main(int argc, char* argv[])
     // ----------------------------------------------------------------------
 
     gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
-    gsInfo << "u " << size(u) << ": \n" << u << "\n\n";
+    gsInfo << "u: \n" << u << "\n\n";
 
     // indices of active (nonzero) functions at parameter u
     gsMatrix<index_t> active = fup.active(u);
-    gsInfo << "Active functions at u " << size(active) << ": \n"
+    gsInfo << "Active functions at u " << active.rows()<<" x "<<active.cols() << ": \n"
            << active << "\n\n";
 
-    gsInfo << "Is number 2 active at the point ? " <<fup.isActive(0,u.col(0)) << ": \n"
-           << active << "\n\n";
+    //gsInfo << "Is number 2 active at the point ? " <<fup.isActive(0,u.col(0)) << ": \n"
+    //<< active << "\n\n";
 
+
+    gsMatrix<> anchors = fup.anchors();
+    gsInfo << "Anchors : \n"
+           << anchors << "\n\n";
 
     // values of all active functions at u
     gsMatrix<> values = fup.eval(u);
-    gsInfo << "Values at u " << size(values) << ": \n"
+    gsInfo << "Values at u " << values.cols() << ": \n"
            << values << "\n\n";
 
     // values of single basis functions
@@ -94,7 +103,7 @@ int main(int argc, char* argv[])
 
 
     gsMatrix<> derivs = fup.deriv(u);
-    gsInfo << "Derivatives at u " << size(derivs) << ": \n"
+    gsInfo << "Derivatives at u " << derivs.cols() << ": \n"
            << derivs << "\n\n";
 
 
@@ -120,7 +129,7 @@ int main(int argc, char* argv[])
 
 
     gsMatrix<> derivs2 = fup.deriv2(u);
-    gsInfo << "Second derivatives at u " << size(derivs2) << ": \n"
+    gsInfo << "Second derivatives at u " << derivs2.cols() << ": \n"
            << derivs2 << "\n\n";
 
     for (index_t i = 0; i != active.rows(); i++)

@@ -37,24 +37,6 @@ struct gsFupTraits
     //typedef gsTensorFup<d,T>      Geometry;
     //typedef gsTensorNurbs<d,T>        RatGeometry;
 };
-template<class T>
-struct gsFupTraits<1,T>
-{
-    typedef gsKnotVector<T> KnotVectorType;
-    typedef gsFupBasis<T>         Basis;
-    typedef gsNurbsBasis<T>           RatBasis;
-    typedef gsFup<T>              Geometry;
-    typedef gsNurbs<T>                RatGeometry;
-};
-template<class T>
-struct gsFupTraits<0,T>
-{
-    typedef gsKnotVector<T> KnotVectorType;
-    typedef gsConstantBasis<T>                       Basis;
-    typedef gsConstantBasis<T>                       RatBasis;
-    typedef gsConstantFunction<T>                    Geometry;
-    typedef gsConstantFunction<T>                    RatGeometry;
-};
 
 /** \brief
     A univariate B-spline basis.
@@ -66,19 +48,10 @@ struct gsFupTraits<0,T>
     \ingroup Nurbs
 */
 template<class T>
-class gsFupBasis<T> : public gsBasis<T>
+class gsFupBasis : public gsBasis<T>
 {
-    /// @brief Degree
-    short_t m_p;
-
-    /// @brief Knot vector
-    KnotVectorType m_knots;
-    
-    /// @brief Denotes whether the basis is periodic, ( 0 -- non-periodic, >0 -- number of ``crossing" functions)
-    int m_periodic;
-
-    /*/// @brief Multiplicity of the p+1st knot from the beginning and from the end.
-      int m_bordKnotMulti;*/
+    index_t m_p;
+    gsKnotVector<T> m_knots;
 
 public:
     typedef gsBasis<T> Base;
@@ -104,24 +77,34 @@ public:
     typedef memory::unique_ptr< Self_t > uPtr;
   
 public:
-    private: virtual gsFupBasis * clone_impl() const = 0;
-    public: uPtr clone() const { return uPtr(dynamic_cast<Self_t*>(clone_impl())); }
+    GISMO_CLONE_FUNCTION(gsFupBasis)
 
-public:
+    gsFupBasis()
+    {
+        m_p = 0;
+        m_knots.initClamped(0);
+    }
+    
+    gsFupBasis(const T u0, const T u1, const unsigned interior, 
+                   const int degree)
+    {
+        m_p = degree;
+        m_knots.initUniform(u0, u1, interior, m_p+2, 1, m_p+1);
+    }
+
+    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
+    { return nullptr; }
 
     // Look at gsBasis class for a description
     short_t domainDim() const { return Dim; }
 
     // Look at gsBasis class for a description
-    index_t size() const { return 10; }
-
-    // Look at gsBasis class for a description
-    size_t numElements() const { return m_knots.numElements(); }
+    index_t size() const { return m_knots.size() - m_p - 2; }
 
     /// @brief Returns the anchors (greville points) of the basis
     void anchors_into(gsMatrix<T> & result) const 
     { 
-        //CV points
+        m_knots.greville_into(result);        
     }
 
     /// @brief Returns the anchors (greville points) of the basis
@@ -133,43 +116,83 @@ public:
 
     // Look at gsBasis class for a description
     void connectivity(const gsMatrix<T> & nodes, 
-                      gsMesh<T> & mesh) const;
+                      gsMesh<T> & mesh) const { }
+
+
+    inline index_t firstActive(T u) const
+    {
+        return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p : 0 );
+    }
 
     // Look at gsBasis class for a description
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
+    {
+        result.resize(m_p+2, u.cols());
+        for (index_t j = 0; j < u.cols(); ++j)
+        {
+            unsigned first = firstActive(u(0,j));
+            for (int i = 0; i != m_p+2; ++i)
+                result(i,j) = first++;
+        }
+    }
 
     // Look at gsBasis class for a description
-    gsMatrix<T> support() const ;
+    gsMatrix<T> support() const
+    {
+        gsMatrix<T> res(1,2);
+        res << domainStart() , domainEnd() ;
+        return res;
+    }
 
     // Look at gsBasis class for a description
-    gsMatrix<T> support(const index_t & i ) const ;
+    gsMatrix<T> support(const index_t & i ) const
+    {
+        GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,
+                      "Invalid index of basis function." );
+        gsMatrix<T> res(1,2);
+        res << ( i > m_p ? m_knots[i] : m_knots[m_p] ),
+            ( static_cast<size_t>(i) < (m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
+              m_knots[m_knots.size()-m_p-1] );
+        return res ;
+    }
 
     // Look at gsBasis class for a description
-    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+    {
+        //char_length = knotlength
+
+        //scale for partition of unity
+    }
 
     // Look at gsBasis class for a description
-    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
+    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const { }
 
     // Look at gsBasis class for a description
-    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    {
+
+    }
 
     // Look at gsBasis class for a description
-    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const { }
 
     // Look at gsBasis class for a description
-    void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
+    void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
+    {
+
+    }
 
     // Look at gsBasis class for a description
-    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const { }
 
     // Look at gsBasis class for a description
-    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
+    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const { }
 
     // Look at gsBasis class for a description
-    void deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
+    void deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const { }
 
     // Look at gsBasis class for a description
-    gsMatrix<T> laplacian(const gsMatrix<T> & u ) const ;
+    gsMatrix<T> laplacian(const gsMatrix<T> & u ) const { return gsMatrix<T>(); }
     
     /// @brief Check the FupBasis for consistency
     bool check() const
@@ -178,24 +201,42 @@ public:
     }
   
     /// @brief Prints the object as a string.
-    std::ostream &print(std::ostream &os) const;
+    std::ostream &print(std::ostream &os) const
+{
+    os << "FupBasis: deg=" <<degree()
+       << ", size="<< size() << ", knot vector:\n";
+    os << m_knots;
+    return os;
+}
 
     // Look at gsBasis class for a description
     virtual void evalDerSingle_into(index_t i, const gsMatrix<T> & u,
-                                    int n, gsMatrix<T>& result) const;
+                                    int n, gsMatrix<T>& result) const{ }
 
     // Look at gsBasis class for a description
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                                  std::vector<gsMatrix<T> >& result) const;
+                                  std::vector<gsMatrix<T> >& result) const
+    {
+
+    }
 
     // Look at gsBasis class for a description
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
-                                        int n, gsMatrix<T>& result) const;
+                                        int n, gsMatrix<T>& result) const
+    {
+        //m_p;
+        //anchor(i);
+        //u
+        //knotspan
+        //n
+
+        
+    }
 
     // Look at gsBasis class for a description
     short_t degree(short_t i) const
     {
-        return m_p; 
+        return 0; 
     }
 
     short_t degree() const {return m_p;}
@@ -214,27 +255,29 @@ public:
 
     /// @brief True iff the point \a pp is in the domain of the basis
     inline bool inDomain(T const & pp) const 
-    { return ( (pp >= *(m_knots.begin()+m_p)) &&  (pp <= *(m_knots.end()-m_p-1) ) ); }
+    { return true; }
 
     /// @brief Returns the starting value of the domain of the basis
-    T domainStart() const { return *(m_knots.begin()+m_p); }
+    T domainStart() const { return 0; }
 
     /// @brief Returns the ending value of the domain of the basis
-    T domainEnd() const { return *(m_knots.end()-m_p-1); }
+    T domainEnd() const { return 1; }
 
     // Number of active functions at any point of the domain
     inline index_t numActive() const { return m_p + 1; }
 
     // Look at gsBasis class for a description
     void uniformRefine(int numKnots = 1, int mul=1)
-    { m_knots.uniformRefine(numKnots,mul); }
+    {
+
+    }
 
     /// @brief Elevate the degree of the basis and preserve the smoothness
     void degreeElevate(short_t const & i = 1, short_t const dir = -1)
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
-        m_p+=i; m_knots.degreeElevate(i); 
+
     }
 
     // Look at gsBasis for documentation
@@ -243,7 +286,7 @@ public:
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
-        m_p-=i; m_knots.degreeReduce(i);
+
         //m_periodic =
     }
 
