@@ -20,9 +20,10 @@
 #include <gsHLBFGS/gsHLBFGS.h>
 #endif
 
-// #ifdef GISMO_WITH_IPOPT
-// #include <gsIpopt/gsIpOpt.h>
-// #endif
+#ifdef GISMO_WITH_IPOPT
+#include <gsIpopt/gsIpOpt.h>
+#endif
+
 using namespace gismo;
 
 /** 

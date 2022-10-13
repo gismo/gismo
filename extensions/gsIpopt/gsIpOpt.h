@@ -14,8 +14,6 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsOptimizer.h>
-#include <gsIpopt/gsIpOpt.hpp>
-
 
 #pragma once
 

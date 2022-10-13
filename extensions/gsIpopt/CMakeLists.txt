@@ -62,8 +62,11 @@ else()
   #add_custom_target (IpOpt)
 endif(NOT IPOPT_FOUND)
 
-include_directories(${IPOPT_INCLUDE_DIR})
+#include_directories(${IPOPT_INCLUDE_DIR})
 
+set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
+    CACHE INTERNAL "Gismo include directories")
+  
 #add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
 
 #if (NOT IPOPT_FOUND)
