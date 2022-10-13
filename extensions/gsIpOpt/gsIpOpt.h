@@ -21,7 +21,7 @@ namespace gismo
 {
 
 template <typename T> class gsIpOptTNLP;
-class gsIpOptPrivate;
+template <typename T> class gsIpOptPrivate;
 /**
    \brief Class defining an optimization problem
 */
@@ -42,13 +42,14 @@ public:
     /** default destructor */
     virtual ~gsIpOpt();
 
+    // Currently not used
     void defaultOptions()
     {
-        // m_options.addInt("MaxIterations","Maximum iterations",1e3);
-        // m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
-        // m_options.addReal("MinStepLength","Minimal step length",1e-9);
-        // m_options.addInt("Verbose","Verbosity level 0: no output, 1: summary, 2: full output", 0);
-        // m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
+        m_options.addInt("MaxIterations","Maximum iterations",1e3);
+        m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
+        m_options.addReal("MinStepLength","Minimal step length",1e-9);
+        m_options.addInt("Verbose","Verbosity level 0: no output, 1: summary, 2: full output", 0);
+        m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
     }
 
     void getOptions()
@@ -70,13 +71,6 @@ public:
         // m_hlbfgs_pars[5] = m_minGradientLength;
         // m_hlbfgs_pars[6] = m_minStepLength;
     }
-
-public:
-
-    /// @brief Callback function is executed after every
-    ///    iteration. Returning false causes premature termination of
-    ///    the optimization
-    virtual bool intermediateCallback() { return true;}
 
 public:
 
@@ -124,7 +118,7 @@ protected:
     int numIterations;
     T   finalObjective;
 
-    gsIpOptPrivate * m_data;
+    gsIpOptPrivate<T> * m_data;
 
 private:
 

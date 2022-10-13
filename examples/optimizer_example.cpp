@@ -221,11 +221,11 @@ int main(int argc, char* argv[])
 
         //Set the momentum rate used for the step calculation (default is 0.0).
         //Defines how much momentum is kept from previous iterations.
-        //optimizer->setMomentum(4);
+        // optimizer->setMomentum(4);
 
         // Turn verbosity on, so the optimizer prints status updates after each
         // iteration.
-        optimizer->options().setInt("Verbose",14);
+        // optimizer->options().setInt("Verbose",14);
         break;
 #endif
         default:
@@ -233,6 +233,7 @@ int main(int argc, char* argv[])
     }
     //! [Optimizer selection]
                 
+    // NO EFFECT FOR gsIpOpt
     //! [Optimizer options]
     // Set number of iterations as stop criterion.
     // Set it to 0 or negative for infinite iterations (default is 0).

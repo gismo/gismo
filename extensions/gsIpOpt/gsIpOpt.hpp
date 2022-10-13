@@ -22,12 +22,13 @@
 namespace gismo
 {
 
+template <class T>
 class gsIpOptPrivate
 {
 public:
 #ifdef GISMO_WITH_IPOPT
     // Pointer to IpOpt interface
-    Ipopt::SmartPtr<Ipopt::TNLP> tnlp;
+    Ipopt::SmartPtr<gsIpOptTNLP<T>> tnlp;
 #endif
 
 };
@@ -46,7 +47,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
     typedef Ipopt::IpoptCalculatedQuantities IpoptCalculatedQuantities;
 
     public:
-        gsIpOptTNLP(gsOptProblem<T> & op)
+        gsIpOptTNLP(gsOptProblem<T> * op)
         :
         m_op(op)
         {
@@ -58,6 +59,12 @@ class gsIpOptTNLP : public Ipopt::TNLP
         {
             m_curDesign = currentDesign;
         }
+
+        /// @brief Callback function is executed after every
+        ///    iteration. Returning false causes premature termination of
+        ///    the optimization
+        bool intermediateCallback() { return true;}
+
 
     public:
         /**@name Overloaded from TNLP */
@@ -249,7 +256,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
     private:
         gsOptProblem<T> * m_op;
         gsMatrix<T> m_curDesign;
-        T m_lambda;
+        gsMatrix<T> m_lambda;
 
     private:
         gsIpOptTNLP(const gsIpOptTNLP & );
@@ -271,7 +278,7 @@ Base(problem)
     this->defaultOptions();
 
     #ifdef GISMO_WITH_IPOPT
-    m_data       =  new gsIpOptPrivate();
+    m_data       =  new gsIpOptPrivate<T>();
     m_data->tnlp =  new gsIpOptTNLP<T>(m_op);
     #else
     m_data = NULL;
@@ -296,7 +303,8 @@ void gsIpOpt<T>::solve(const gsMatrix<T> & initialGuess)
         return;
     }
 
-    m_data->tnlp.setCurrentDesign(initialGuess);
+    gsIpOptTNLP<T> * tmp = dynamic_cast<gsIpOptTNLP<T> * >(Ipopt::GetRawPtr(m_data->tnlp));
+    tmp->setCurrentDesign(initialGuess);
     status = app->OptimizeTNLP(m_data->tnlp);
     //if (status != Ipopt::Solve_Succeeded)
     //   gsInfo << "Optimization did not succeed.\n";
