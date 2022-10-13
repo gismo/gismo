@@ -13,6 +13,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsOptimizer/gsOptProblem.h>
+#include <gsIO/gsOptionList.h>
 
 #pragma once
 
