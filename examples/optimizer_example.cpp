@@ -186,7 +186,7 @@ int main(int argc, char* argv[])
     index_t solver  = 0;
 
     gsCmdLine cmd("Demonstrates the use of optimizers.");
-    cmd.addInt( "s", "solver", "Solver used for optimization: 0 - gsGradientDescent, 1 - gsHLBFGS, 2 - IpOpt", solver);
+    cmd.addInt( "s", "solver", "Solver used. 0:gsGradientDescent, 1:gsHLBFGS, 2:IpOpt", solver);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]

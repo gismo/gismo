@@ -21,8 +21,8 @@ find_package(IpOpt QUIET)
 
 set(IPOPT_SOURCES gsIpOpt_.cpp)
 
-if (NOT IPOPT_FOUND)
-  set(IPOPT_VER "3.14.10") # 3.12.6 uses patching
+#if (NOT IPOPT_FOUND)
+  set(IPOPT_VER "3.14.10")
   message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
   message("Will attempt to download and compile IpOpt ${IPOPT_VER} (do: make IpOpt; cmake .")
 
@@ -36,8 +36,6 @@ if (NOT IPOPT_FOUND)
   set(IPOPT_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
     CACHE INTERNAL "")
 
-  # For Mumps: If using GFortran 10, add
-  # ADD_FCFLAGS=-fallow-argument-mismatch to compiler flags.
   include(ExternalProject)
   ExternalProject_Add(IpOpt
     BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/IpOpt
@@ -60,15 +58,38 @@ if (NOT IPOPT_FOUND)
     UPDATE_COMMAND    ""
     #DOWNLOAD_NO_PROGRESS 0
     )
-else()
+#else()
   #add_custom_target (IpOpt)
-endif(NOT IPOPT_FOUND)
+#endif(NOT IPOPT_FOUND)
 
-  include_directories(${IPOPT_INCLUDE_DIR})
+
+## MUMPS (metis?)
+
+set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with IpOpt
+
+  gismo_fetch_directory(ThirdParty-Mumps
+    URL https://github.com/coin-or-tools/ThirdParty-Mumps/archive/refs/heads/stable/3.0.zip
+    DESTINATION    external)
+
+  set(MUMPS_LIBRARY ${MUMPS_INST}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}coinmumps${CMAKE_SHARED_LIBRARY_SUFFIX} )
+
+  # For Mumps: If using GFortran 10, add
+  # ADD_FCFLAGS=-fallow-argument-mismatch to compiler flags.
+  ExternalProject_Add(ThirdParty-Mumps
+      BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/ThirdParty-Mumps
+      SOURCE_DIR        ${gismo_externals}/ThirdParty-Mumps
+#      COMMAND ${gismo_externals}/ThirdParty-Mumps/get.Mumps
+      CONFIGURE_COMMAND ${gismo_externals}/ThirdParty-Mumps/configure --prefix=${MUMPS_INST} ADD_FCFLAGS=-fallow-argument-mismatch
+      BUILD_BYPRODUCTS "${MUMPS_LIBRARY}"
+      DOWNLOAD_COMMAND  ""
+      UPDATE_COMMAND    ""
+      )
+
+include_directories(${IPOPT_INCLUDE_DIR})
 add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
 
 #if (NOT IPOPT_FOUND)
-  add_dependencies(${PROJECT_NAME} IpOpt)
+  add_dependencies(${PROJECT_NAME} IpOpt ThirdParty-Mumps)
 #endif(NOT IPOPT_FOUND)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -84,7 +105,7 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
   CACHE INTERNAL "Gismo extensions to be included")
-set(gismo_LINKER ${gismo_LINKER} ${IPOPT_LIBRARY}
+set(gismo_LINKER ${gismo_LINKER} ${IPOPT_LIBRARY} ${MUMPS_LIBRARY}
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}
