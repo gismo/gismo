@@ -351,6 +351,9 @@ if(GISMO_MOTOR)
   gismo_fetch_module(motor)
 endif()
 
+  include(gsFetch)
+  gismo_fetch_module(gsFupBasis)
+  
 ## #################################################################
 ## Shared and static library
 ## #################################################################

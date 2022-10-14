@@ -683,6 +683,9 @@ public:
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
 
+    gsMatrix<T> evalAllDersSingle(index_t i, const gsMatrix<T> & u,
+                                  int n) const;
+
     /// @brief Evaluate the (partial) derivative(s) of order \a n the
     /// \a i-th basis function at points \a u into \a result.
     virtual void evalDerSingle_into(index_t i, const

@@ -2,12 +2,12 @@
 
     @brief Provides declaration of FupBasis class
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
 */
 
 
@@ -22,10 +22,12 @@
 
 #include <gsNurbs/gsKnotVector.h>
 
-//extern double __fup_0_16_d_MOD_fupn(const int * deg, const double * anchor, const double * u, const double * ch_knot_length, const int * deriv_order);
-
+// Start  Fortran declarations
 extern "C" double __fup_0_16_d_MOD_fupn(int * deg, double * anchor, double * u,
                                         double * ch_knot_length, int * deriv_order);
+
+extern "C" void __fup_0_16_d_MOD_racun();
+// End  Fortran declarations
 
 namespace gismo
 {
@@ -54,8 +56,9 @@ struct gsFupTraits
 template<class T>
 class gsFupBasis : public gsBasis<T>
 {
-    index_t m_p;
+    mutable index_t m_p;
     gsKnotVector<T> m_knots;
+    mutable T m_knot_length;
 
 public:
     typedef gsBasis<T> Base;
@@ -79,7 +82,7 @@ public:
 
     /// @brief Smart pointer for gsFupBasis
     typedef memory::unique_ptr< Self_t > uPtr;
-  
+
 public:
     GISMO_CLONE_FUNCTION(gsFupBasis)
 
@@ -88,12 +91,16 @@ public:
         m_p = 0;
         m_knots.initClamped(0);
     }
-    
-    gsFupBasis(const T u0, const T u1, const unsigned interior, 
+
+    gsFupBasis(const T u0, const T u1, const unsigned interior,
                    const int degree)
     {
         m_p = degree;
         m_knots.initUniform(u0, u1, interior, m_p+2, 1, m_p+1);
+        m_knot_length = (T)(u1-u0)/(m_knots.numElements());
+
+        //Precompute values at rational points
+        __fup_0_16_d_MOD_racun();
     }
 
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
@@ -106,26 +113,26 @@ public:
     index_t size() const { return m_knots.size() - m_p - 2; }
 
     /// @brief Returns the anchors (greville points) of the basis
-    void anchors_into(gsMatrix<T> & result) const 
-    { 
-        m_knots.greville_into(result);        
+    void anchors_into(gsMatrix<T> & result) const
+    {
+        m_knots.greville_into(result);
     }
 
     /// @brief Returns the anchors (greville points) of the basis
     void anchor_into(index_t i, gsMatrix<T> & result) const
-    { 
+    {
         result.resize(1,1);
         result(0,0) = m_knots.greville(i);
     }
 
     // Look at gsBasis class for a description
-    void connectivity(const gsMatrix<T> & nodes, 
+    void connectivity(const gsMatrix<T> & nodes,
                       gsMesh<T> & mesh) const { }
 
 
     inline index_t firstActive(T u) const
     {
-        return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p : 0 );
+        return ( inDomain(u) ? (m_knots.iFind(u)-m_knots.begin()) - m_p - 1 : 0 );
     }
 
     // Look at gsBasis class for a description
@@ -163,8 +170,6 @@ public:
     // Look at gsBasis class for a description
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
     {
-        //char_length = knotlength
-
         //scale for partition of unity
     }
 
@@ -197,21 +202,22 @@ public:
 
     // Look at gsBasis class for a description
     gsMatrix<T> laplacian(const gsMatrix<T> & u ) const { return gsMatrix<T>(); }
-    
+
     /// @brief Check the FupBasis for consistency
     bool check() const
-    { 
+    {
         return true;
     }
-  
+
     /// @brief Prints the object as a string.
     std::ostream &print(std::ostream &os) const
-{
-    os << "FupBasis: deg=" <<degree()
-       << ", size="<< size() << ", knot vector:\n";
-    os << m_knots;
-    return os;
-}
+    {
+        os << "FupBasis: deg=" <<degree()
+           << ", size="<< size() << ", knot vector:\n";
+        os << m_knots;
+        os << "\nCharacteristic length: "<< m_knot_length <<"\n";
+        return os;
+    }
 
     // Look at gsBasis class for a description
     virtual void evalDerSingle_into(index_t i, const gsMatrix<T> & u,
@@ -229,17 +235,21 @@ public:
                                         int n, gsMatrix<T>& result) const
     {
         T anc = m_knots.greville(i);
-        T chlen = (T)1/(m_knots.size()-m_p-1);
-        //__fup_0_16_d_MOD_fupn(&m_p, &anc, u.data(), &chlen, &n);
         T * udata = const_cast<T*>(u.data());
-        int dd = m_p, nn = n;
-        __fup_0_16_d_MOD_fupn(&dd, &anc, udata, &chlen, &nn);
+        result.resize(n+1, u.cols() );
+
+        for ( index_t k = 0; k!=u.cols(); ++k)
+            for ( index_t j = 0; j<=n; ++j)
+            {
+                result(j,k) = __fup_0_16_d_MOD_fupn(&m_p, &anc, udata,
+                                                    &m_knot_length, &j);
+            }
     }
 
     // Look at gsBasis class for a description
     short_t degree(short_t i) const
     {
-        return 0; 
+        return 0;
     }
 
     short_t degree() const {return m_p;}
@@ -252,12 +262,12 @@ public:
 
     // Look at gsBasis class for a description
     short_t totalDegree() const { return m_p; }
- 
+
     /// @brief Returns the order of the B-spline  basis
     inline unsigned order() const { return m_p+1; }
 
     /// @brief True iff the point \a pp is in the domain of the basis
-    inline bool inDomain(T const & pp) const 
+    inline bool inDomain(T const & pp) const
     { return true; }
 
     /// @brief Returns the starting value of the domain of the basis
@@ -300,7 +310,7 @@ public:
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
-        return ( s == boundary::none ? 
+        return ( s == boundary::none ?
                  typename gsBasis<T>::domainIter(new gsTensorDomainIterator<T,1>(*this)) :
                  typename gsBasis<T>::domainIter(new gsTensorDomainBoundaryIterator<T,1>(*this, s))
                 );

@@ -493,6 +493,15 @@ void gsBasis<T>::evalAllDersSingle_into(index_t, const gsMatrix<T> &,
                                         int, gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
+template <class T>
+gsMatrix<T>
+gsBasis<T>::evalAllDersSingle(index_t i, const gsMatrix<T>& u, int n) const
+{
+    gsMatrix<T> result;
+    this->evalAllDersSingle_into(i, u, n, result );
+    return result;
+}
+
 template<class T>
 void gsBasis<T>::evalDerSingle_into(index_t, const
                                     gsMatrix<T> &, int,

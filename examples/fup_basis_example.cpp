@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
     // ======================================================================
 
     gsFupBasis<real_t> fup(0,1,numknots,deg);
-    
+
     // printing the basis
     gsInfo << "The file contains: \n" << fup << "\n";
 
@@ -54,7 +54,9 @@ int main(int argc, char* argv[])
     gsInfo << "Support: \n"
            << support << "\n\n";
 
-
+    gsMatrix<> anchors = fup.anchors();
+    gsInfo << "Anchors : \n"
+           << anchors << "\n\n";
 
     // ======================================================================
     // evaluation
@@ -65,21 +67,25 @@ int main(int argc, char* argv[])
     // values
     // ----------------------------------------------------------------------
 
-    gsMatrix<> u = 0.3 * support.col(0) + 0.7 * support.col(1);
-    gsInfo << "u: \n" << u << "\n\n";
+    gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 10);
+    gsInfo << "Evaluation points: \n" << u << "\n\n";
 
     // indices of active (nonzero) functions at parameter u
     gsMatrix<index_t> active = fup.active(u);
-    gsInfo << "Active functions at u " << active.rows()<<" x "<<active.cols() << ": \n"
+    gsInfo << "Active functions at each point (per column): \n"
            << active << "\n\n";
 
-    //gsInfo << "Is number 2 active at the point ? " <<fup.isActive(0,u.col(0)) << ": \n"
-    //<< active << "\n\n";
+    // values of each basis function
+    for (index_t j = 0; j != fup.size(); j++)
+    {
+        gsMatrix<> val = fup.evalAllDersSingle(j, u, 1);
+        gsInfo << "++++basis fun. index:  " << j
+               << "\n  --values:\n" << val.row(0)
+               << "\n  --deriv:\n" << val.row(1) << "\n";
+    }
+    gsInfo << "\n";
 
-
-    gsMatrix<> anchors = fup.anchors();
-    gsInfo << "Anchors : \n"
-           << anchors << "\n\n";
+    return 0;
 
     // values of all active functions at u
     gsMatrix<> values = fup.eval(u);
