@@ -235,13 +235,12 @@ public:
                                         int n, gsMatrix<T>& result) const
     {
         T anc = m_knots.greville(i);
-        T * udata = const_cast<T*>(u.data());
         result.resize(n+1, u.cols() );
-
         for ( index_t k = 0; k!=u.cols(); ++k)
             for ( index_t j = 0; j<=n; ++j)
             {
-                result(j,k) = __fup_0_16_d_MOD_fupn(&m_p, &anc, udata,
+                result(j,k) = __fup_0_16_d_MOD_fupn(&m_p, &anc,
+                                                    const_cast<T*>(u.data())+k,
                                                     &m_knot_length, &j);
             }
     }
