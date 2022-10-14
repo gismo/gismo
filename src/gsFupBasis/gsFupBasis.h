@@ -8,7 +8,6 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
     
-    Author(s): A. Mantzaflaris, D. Mokris
 */
 
 
@@ -22,6 +21,11 @@
 #include <gsTensor/gsTensorDomainBoundaryIterator.h>
 
 #include <gsNurbs/gsKnotVector.h>
+
+//extern double __fup_0_16_d_MOD_fupn(const int * deg, const double * anchor, const double * u, const double * ch_knot_length, const int * deriv_order);
+
+extern "C" double __fup_0_16_d_MOD_fupn(int * deg, double * anchor, double * u,
+                                        double * ch_knot_length, int * deriv_order);
 
 namespace gismo
 {
@@ -224,13 +228,12 @@ public:
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const
     {
-        //m_p;
-        //anchor(i);
-        //u
-        //knotspan
-        //n
-
-        
+        T anc = m_knots.greville(i);
+        T chlen = (T)1/(m_knots.size()-m_p-1);
+        //__fup_0_16_d_MOD_fupn(&m_p, &anc, u.data(), &chlen, &n);
+        T * udata = const_cast<T*>(u.data());
+        int dd = m_p, nn = n;
+        __fup_0_16_d_MOD_fupn(&dd, &anc, udata, &chlen, &nn);
     }
 
     // Look at gsBasis class for a description
