@@ -20,9 +20,10 @@
 #include <gsHLBFGS/gsHLBFGS.h>
 #endif
 
-// #ifdef GISMO_WITH_IPOPT
-// #include <gsIpopt/gsIpOpt.h>
-// #endif
+#ifdef GISMO_WITH_IPOPT
+#include <gsIpOpt/gsIpOpt.h>
+#endif
+
 using namespace gismo;
 
 /** 
@@ -185,7 +186,7 @@ int main(int argc, char* argv[])
     index_t solver  = 0;
 
     gsCmdLine cmd("Demonstrates the use of optimizers.");
-    cmd.addInt( "s", "solver", "Solver used for optimization: 0 - gsGradientDescent, 1 - gsHLBFGS, 2 - IpOpt", solver);
+    cmd.addInt( "s", "solver", "Solver used. 0:gsGradientDescent, 1:gsHLBFGS, 2:IpOpt", solver);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -215,14 +216,15 @@ int main(int argc, char* argv[])
         break;
 #endif
 #ifdef GISMO_WITH_IPOPT
-        // case 2:
-        // optimizer = new gsIpOpt<real_t>(&problem);
-        // Set the momentum rate used for the step calculation (default is 0.0).
-        // Defines how much momentum is kept from previous iterations.
-        //optimizer->setMomentum(4);
+        case 2:
+        optimizer = new gsIpOpt<real_t>(&problem);
 
-        // // Turn verbosity on, so the optimizer prints status updates after each
-        // // iteration.
+        //Set the momentum rate used for the step calculation (default is 0.0).
+        //Defines how much momentum is kept from previous iterations.
+        // optimizer->setMomentum(4);
+
+        // Turn verbosity on, so the optimizer prints status updates after each
+        // iteration.
         // optimizer->options().setInt("Verbose",14);
         // break;
 #endif
@@ -230,7 +232,7 @@ int main(int argc, char* argv[])
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
     }
     //! [Optimizer selection]
-                
+
     //! [Optimizer options]
     // Set number of iterations as stop criterion.
     // Set it to 0 or negative for infinite iterations (default is 0).
@@ -255,7 +257,6 @@ int main(int argc, char* argv[])
     //! [Solve]
     // Start the optimization
     optimizer->solve(in);
-    //! [Solve]
 
     //! [Output]
     // Print final design info

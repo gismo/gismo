@@ -186,7 +186,7 @@ if(GISMO_WITH_CODIPACK)
 endif(GISMO_WITH_CODIPACK)
 
 if(GISMO_WITH_IPOPT)
-  add_subdirectory(extensions/gsIpopt)
+  add_subdirectory(extensions/gsIpOpt)
   #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
   #CACHE INTERNAL "${PROJECT_NAME} include directories")
   #include_directories(${IPOPT_INCLUDE_DIR})
