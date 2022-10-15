@@ -27,10 +27,10 @@ if (NOT OpenCascade_FOUND)
   include(gsFetch)
   gismo_fetch_directory(OCC
       URL_MD5 "35f3da72c1fb53e32e5cfd826113b32a"
-      URL https://people.ricam.oeaw.ac.at/gismo/thirdparty/opencascade-${OCC_VER}.tgz
+      URL https://files.inria.fr/gismo/gz/opencascade-${OCC_VER}.tgz
       DESTINATION    external
       )
-
+    
     # Set OpenCascade include directory
     set(OCC_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/OCC-prefix/include/opencascade CACHE INTERNAL "")
 

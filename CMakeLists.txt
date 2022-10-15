@@ -196,6 +196,20 @@ include_directories(${GISMO_INCLUDE_DIRS})
 # Add externals directory
 add_subdirectory(external)
 
+if(GISMO_WITH_CODIPACK)
+  add_subdirectory(extensions/gsCoDiPack)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #include_directories(${CODIPACK_INCLUDE_DIR})
+endif(GISMO_WITH_CODIPACK)
+
+if(GISMO_WITH_IPOPT)
+  add_subdirectory(extensions/gsIpOpt)
+  #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
+  #CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #include_directories(${IPOPT_INCLUDE_DIR})
+endif(GISMO_WITH_IPOPT)
+
 #if(GISMO_WITH_METIS)
 #include_directories(${METIS_INCLUDE_DIR})
 #set(gismo_LINKER ${gismo_LINKER} ${METIS_LIBRARIES}

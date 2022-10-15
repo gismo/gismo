@@ -759,7 +759,6 @@ namespace gdc
 //        typename std::enable_if<decltype(hasGradient<Objective>(nullptr)),Scalar>::type
         Scalar evaluateObjective(const Vector &xval, Vector &gradient)
         {
-            std::cout<<"YES\n";
             gradient.resize(0);
             Scalar fval = objective_(xval, gradient);
             if(gradient.size() == 0)

@@ -130,6 +130,12 @@ public:
         return m_spline->degree(m_index,i);
     }
 
+    /// Returns the bounding box for the support.
+    gsMatrix<T> support() const
+    {
+      return m_spline->getBase(m_index).support();
+    }
+  
     /// The gsBasisFun points to the i-th spline function of m_spline
     /// after calling this setter.
     void setPiece( unsigned const & i )
