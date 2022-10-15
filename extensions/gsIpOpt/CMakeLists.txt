@@ -23,8 +23,7 @@ set(IPOPT_SOURCES gsIpOpt_.cpp)
 
 #if (NOT IPOPT_FOUND)
   set(IPOPT_VER "3.14.10")
-  message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
-  message("Will attempt to download and compile IpOpt ${IPOPT_VER} (do: make IpOpt; cmake .")
+  #message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
 
   #fetch here!
   include(gsFetch)
@@ -48,20 +47,15 @@ set(IPOPT_SOURCES gsIpOpt_.cpp)
 #    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Metis/get.Metis
 #    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Blas/get.Blas
 #    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Lapack/get.Lapack
-#    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib
-#    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib64
-#    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_BINARY_DIR}/lib <INSTALL_DIR>/lib
-    BUILD_COMMAND ${MAKE}
+#    BUILD_COMMAND ${MAKE}
     UPDATE_COMMAND     ""
     BUILD_BYPRODUCTS "${IPOPT_LIBRARY}"
     DOWNLOAD_COMMAND  ""
-    UPDATE_COMMAND    ""
     #DOWNLOAD_NO_PROGRESS 0
     )
 #else()
   #add_custom_target (IpOpt)
 #endif(NOT IPOPT_FOUND)
-
 
 ## MUMPS (metis?)
 
@@ -71,6 +65,11 @@ set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with 
     URL https://github.com/coin-or-tools/ThirdParty-Mumps/archive/refs/heads/stable/3.0.zip
     DESTINATION    external)
 
+  gismo_fetch_directory(MUMPS
+    URL https://files.inria.fr/gismo/gz/MUMPS.tar.gz
+    #URL https://github.com/scivision/mumps/archive/refs/heads/main.zip
+    DESTINATION    external/ThirdParty-Mumps)
+
   set(MUMPS_LIBRARY ${MUMPS_INST}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}coinmumps${CMAKE_SHARED_LIBRARY_SUFFIX} )
 
   # For Mumps: If using GFortran 10, add
@@ -78,7 +77,7 @@ set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with 
   ExternalProject_Add(ThirdParty-Mumps
       BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/ThirdParty-Mumps
       SOURCE_DIR        ${gismo_externals}/ThirdParty-Mumps
-#      COMMAND ${gismo_externals}/ThirdParty-Mumps/get.Mumps
+      #COMMAND           ${gismo_externals}/ThirdParty-Mumps/get.Mumps
       CONFIGURE_COMMAND ${gismo_externals}/ThirdParty-Mumps/configure --prefix=${MUMPS_INST} ADD_FCFLAGS=-fallow-argument-mismatch
       BUILD_BYPRODUCTS "${MUMPS_LIBRARY}"
       DOWNLOAD_COMMAND  ""
@@ -89,7 +88,8 @@ include_directories(${IPOPT_INCLUDE_DIR})
 add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})
 
 #if (NOT IPOPT_FOUND)
-  add_dependencies(${PROJECT_NAME} IpOpt ThirdParty-Mumps)
+  add_dependencies(IpOpt ThirdParty-Mumps)
+  add_dependencies(${PROJECT_NAME} IpOpt)
 #endif(NOT IPOPT_FOUND)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
