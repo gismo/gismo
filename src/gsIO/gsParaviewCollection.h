@@ -15,137 +15,12 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsMSplines/gsMappedBasis.h>
-#include <gsAssembler/gsExprHelper.h>
-#include <gsAssembler/gsExprEvaluator.h>
+// #include <gsAssembler/gsExprHelper.h>
+#include <gsIO/gsParaviewDataSet.h>
 
 #include<fstream>
 
 namespace gismo {
-
-
-
-class gsParaviewDataSet // a collection of .vts files 
-{
-
-public:
-    typedef std::string String;
-    int m_numPatches;
-private:
-    index_t plotPrec;
-    int part;
-    String m_basename;
-    gsExprHelper<real_t>::geometryMap m_geoMap;
-    gsExprEvaluator<real_t> m_evaltr;
-    // Will only be called by save() function, to make sure it is the last element in the file
-    void outputGeometry(){
-        // file << "</PointData>/n";
-        // m_evaltr.geo2points(m_geoMap);
-    }
-public:
-
-    gsParaviewDataSet(std::string basename, gsExprHelper<real_t>::geometryMap geoMap,
-                      gsExprEvaluator<real_t> eval)
-                      :m_basename(basename),
-                       m_geoMap(geoMap),
-                       m_evaltr(eval)
-    {
-        m_numPatches = m_geoMap.source().nPieces(); // Number of patches
-        //gsDebugVar( numPatches);
-
-        unsigned nPts = m_evaltr.options().askInt("plot.npts", 1000);
-
-        // QUESTION: Can I be certain that the ids are consecutive?
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
-        {
-            gsMatrix<real_t> activeBases = m_geoMap.source().piece(k).support();
-            gsGridIterator<real_t,CUBE> pt(activeBases, nPts);
-
-            const gsVector<index_t> & np( pt.numPointsCwise() );
-            index_t np1 = (np.size()>1 ? np(1)-1 : 0);
-            index_t np2 = (np.size()>2 ? np(2)-1 : 0);
-
-            // initializes individual .vts files
-            // for every patch
-            std::string filename;
-            filename = m_basename + "_patch" +std::to_string(k)+".vts";
-            std::ofstream file(filename.c_str());
-            file << std::fixed; // no exponents
-            file << std::setprecision(5); // PLOT_PRECISION
-            file <<"<?xml version=\"1.0\"?>\n";
-            file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
-            file <<"<StructuredGrid WholeExtent=\"0 "<< np(0)-1<<" 0 "<< np1 <<" 0 "
-                << np2 <<"\">\n";
-            file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np1<<" 0 "
-                << np2 <<"\">\n";
-            file <<"<PointData>\n";
-            file.close();
-        }
-
-    }
-
-    template<class E>
-    void addField(const expr::_expr<E> & expr, String label){
-        // evaluates the expression and appends it to the vts files
-        //for every patch
-        std::vector<std::string> tags = m_evaltr.expr2vtk(expr, label);
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
-        {
-            std::string filename;
-            filename = m_basename + "_patch" +std::to_string(k)+".vts";
-            std::ofstream file;
-            file.open(filename.c_str(), std::ios_base::app); // Append to file
-            file << std::fixed; // no exponents
-            file << std::setprecision(5); // PLOT_PRECISION
-
-            file << tags[k];
-            file.close(); 
-        }
-
-    };
-
-    // void addFields( expr... )
-    // {
-    //     // maybe I can use the variable names as the labels by
-    //     // using the # "stringify" 
-    //     // see: https://stackoverflow.com/questions/3386861/converting-a-variable-name-to-a-string-in-c
-    // }
-
-
-    std::vector<std::string> filenames()
-    {   std::vector<std::string> names;
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
-        {
-            names.push_back( m_basename + "_patch" +std::to_string(k)+".vts" );
-        }
-        return names;
-    }
-
-
-    void save(){
-        // QUESTION: Can I be certain that the ids are consecutive?
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
-        {
-            std::string filename;
-            filename = m_basename + "_patch" +std::to_string(k)+".vts";
-            std::ofstream file;
-            file.open(filename.c_str(), std::ios_base::app); // Append to file 
-            file << std::fixed; // no exponents
-            file << std::setprecision(5); // PLOT_PRECISION
-
-
-            file <<"</PointData>\n";
-            outputGeometry();
-            file << "</Piece>\n</StructuredGrid>\n</VTKFile>";
-            file.close();
-        }
-        // output text files for each part.
-    };
-
-
-};
-
-//=============================================================================================================
-
 /**
     \brief This class is used to create a Paraview .pvd (collection)
     file.
@@ -178,7 +53,7 @@ public:
 
     /// Constructor using a filename ( without extension ).
     gsParaviewCollection(String const  &fn)
-    : mfn(fn), counter(0) //, m_evaluator(evaluator)
+    : mfn(fn), counter(0), m_evaluator(nullptr)
     {
         mfile <<"<?xml version=\"1.0\"?>\n";
         mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
@@ -186,7 +61,7 @@ public:
     }
 
     /// Constructor using a filename ( without extension ) and an evaluator.
-    gsParaviewCollection(String const  &fn, gsExprEvaluator<> evaluator)
+    gsParaviewCollection(String const  &fn, gsExprEvaluator<> * evaluator)
     : mfn(fn), counter(0), m_evaluator(evaluator)
     {
         mfile <<"<?xml version=\"1.0\"?>\n";
@@ -292,7 +167,7 @@ private:
 
     int m_step_count=-1;
 
-    gsExprEvaluator<> m_evaluator;
+    gsExprEvaluator<> * m_evaluator;
 
 private:
     // Construction without a filename is not allowed
