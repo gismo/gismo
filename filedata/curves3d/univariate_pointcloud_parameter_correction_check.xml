@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This XML file is part of G+Smo, https://github.com/gismo/gismo.
+
+This file contains a parametrized point cloud.
+
+The data are given in two matrices:
+
+Matrix id 0 : contains a 2 x N matrix. Every column represents a (u,v) parametric coordinate
+
+Matrix id 1 : contains a 3 x N matrix. Every column represents a point (x,y,z) in space
+
+Every column (u,v) of matrix 0 corresponds to a column (x,y,z) of matrix 1, i.e. a discrete mapping
+
+f : R^2 -> R^3
+
+is defined by
+
+f ( mat0.col(i) )  =  mat1.col(i)
+
+for all i = 0,...,N-1
+-->
+
+<xml>
+<Matrix rows="3" cols="11" id="1">
+    0 0.1333333333333333 0.2 0.3333333333333333 0.4 0.5333333333333333 0.6 0.7333333333333333 0.8 0.9333333333333333 1
+    0.6666666666666667 0.6666666666666667 0.6666666666666667 0.6666666666666667 0.6666666666666667 0.6666666666666667 0.7 1. 1. 1. 1.
+    0.3333333333333333 0.3333333333333333 0.3666666666666667 0.3333333333333333 0.3333333333333333 0.3666666666666667 0.3333333333333333 0.3333333333333333 0.36 0.3666666666666667 0.3866666666666667
+</Matrix>
+
+ <Matrix rows="1" cols="11" id="0">
+     0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+</Matrix>
+
+ <Matrix rows="1" cols="11" id="2">
+     0 0.06990016 0.10840208 0.21002667 0.27588741 0.39350363 0.46518442 0.78689385 0.84335379 0.95633526 1.
+</Matrix>
+</xml>
+
