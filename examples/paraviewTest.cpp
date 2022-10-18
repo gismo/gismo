@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <gismo.h>
-#include <gsIO/gsParaviewDataSet.h>
 
 
 using namespace gismo;
