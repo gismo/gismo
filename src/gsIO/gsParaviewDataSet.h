@@ -53,8 +53,6 @@ public:
         {
             std::ofstream file;
             file.open( fnames[k].c_str(), std::ios_base::app); // Append to file
-            file << std::fixed; // no exponents
-            file << std::setprecision(5); // PLOT_PRECISION
             file << tags[k];
             file.close(); 
         }

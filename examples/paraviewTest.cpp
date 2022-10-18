@@ -33,7 +33,7 @@ int main(int argc, char const *argv[])
     gsFunctionExpr<> ten_conditional("10*( (x<-5) or (x>5) )",2);
 
     gsExprEvaluator<> evaluator(assembler);
-
+    evaluator.options().setInt("plot.precision",2);
     //std::vector<std::string> out( evaluator.expr2vtk(initGeo, "Geometry") );
     //gsDebugVar( out[0] );
 

@@ -75,10 +75,6 @@ namespace gismo
             filename = m_basename + "_patch" +std::to_string(k)+".vts";
             std::ofstream file;
             file.open(filename.c_str(), std::ios_base::app); // Append to file 
-            file << std::fixed; // no exponents
-            file << std::setprecision(5); // PLOT_PRECISION
-
-
             file <<"</PointData>\n";
             file << points[k];
             file << "</Piece>\n</StructuredGrid>\n</VTKFile>";

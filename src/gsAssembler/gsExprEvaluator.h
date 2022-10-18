@@ -71,6 +71,7 @@ public:
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
+        opt.addInt("plot.precision", "Number of decimals in the paraview output ( only when used with gsParaviewDataSet ).", 5);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
@@ -787,6 +788,8 @@ std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & exp
 {   
     std::vector<std::string> out;
     std::stringstream dataArray;
+    dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
+    dataArray.precision(m_options.askInt("plot.precision",5));
     m_exprdata->parse(expr);
 
     //if false, embed topology ?
@@ -833,6 +836,8 @@ std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap
 {   
     std::vector<std::string> out;
     std::stringstream dataArray;
+    dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
+    dataArray.precision(m_options.askInt("plot.precision",5));
 
     //if false, embed topology ?
     const index_t n = m_exprdata->multiBasis().nBases();
