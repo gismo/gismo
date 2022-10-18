@@ -28,6 +28,7 @@ namespace gismo
         dataSet.save(); // the actual files are written to disk/finalized
         std::vector<std::string> filenames( dataSet.filenames() );
 
+        time = time==-1 ? m_step_count : time;
         for (size_t i=0; i!=filenames.size(); i++)
         {
             addPart( filenames[i], -1, time);

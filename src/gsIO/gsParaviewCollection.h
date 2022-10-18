@@ -109,7 +109,7 @@ public:
         mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
-    void addDataSet(gsParaviewDataSet dataSet, real_t time);
+    void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
 
     gsParaviewDataSet newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time=-1);
     // {

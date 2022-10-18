@@ -52,14 +52,14 @@ int main(int argc, char const *argv[])
     // for ( index_t i=0; i!= dSet.m_numPatches; i++) gsInfo << dSet.filenames()[i] << "\n";
     // dSet.save();
 
-    collection.addDataSet(dSet,1.0);
+    collection.addDataSet(dSet);
 
     mPatch.patch(0).coefs().array() += 1;
 
     dSet = collection.newTimeStep(&initGeo);
     dSet.addFields( labels, meas(initGeo), initGeo.norm() );
 
-    collection.addDataSet(dSet,2.0);
+    collection.addDataSet(dSet);
 
     collection.save(); 
 
