@@ -121,7 +121,7 @@ public:
         dataSet.save(); // the actual files are written to disk/finalized
         std::vector<std::string> filenames( dataSet.filenames() );
 
-        for (index_t i=0; i!=filenames.size(); i++)
+        for (size_t i=0; i!=filenames.size(); i++)
         {
             addPart( mfn + std::to_string(i), time);
         }

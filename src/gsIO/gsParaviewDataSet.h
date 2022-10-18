@@ -24,17 +24,13 @@
 namespace gismo 
 {
 
-class gsParaviewDataSet // a collection of .vts files 
+class GISMO_EXPORT gsParaviewDataSet // a collection of .vts files 
 {
-
-public:
-    int m_numPatches;
 private:
-    index_t plotPrec;
-    int part;
     std::string m_basename;
     gsExprHelper<real_t>::geometryMap * m_geoMap;
     gsExprEvaluator<real_t> * m_evaltr;
+    index_t m_numPatches;
     
 public:
     gsParaviewDataSet(std::string basename, 
