@@ -35,11 +35,6 @@ private:
     std::string m_basename;
     gsExprHelper<real_t>::geometryMap * m_geoMap;
     gsExprEvaluator<real_t> * m_evaltr;
-
-    
-    // Will only be called by save() function, to make sure it is the last element in the file
-    void outputGeometry();
-
     
 public:
     gsParaviewDataSet(std::string basename, 

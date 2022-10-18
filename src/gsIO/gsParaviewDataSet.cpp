@@ -17,8 +17,6 @@
 
 namespace gismo
 {
-
-    
     gsParaviewDataSet::gsParaviewDataSet(std::string basename,
                     gsExprHelper<real_t>::geometryMap * geoMap,
                     gsExprEvaluator<real_t> * eval)
@@ -27,9 +25,6 @@ namespace gismo
                     m_evaltr(eval),
                     m_numPatches(geoMap->source().nPieces())
     {
-        //m_numPatches = m_geoMap->source().nPieces(); // Number of patches
-        //gsDebugVar( numPatches);
-
         unsigned nPts = m_evaltr->options().askInt("plot.npts", 1000);
 
         // QUESTION: Can I be certain that the ids are consecutive?
@@ -70,16 +65,9 @@ namespace gismo
     }
 
 
-    // Will only be called by save() function, to make sure it is the last element in the file
-    
-    void gsParaviewDataSet::outputGeometry(){
-        // file << "</PointData>/n";
-        // m_evaltr.geo2points(m_geoMap);
-    }
-
-    
     void gsParaviewDataSet::save()
     {
+        std::vector<std::string> points = m_evaltr->geoMap2vtk(*m_geoMap);
         // QUESTION: Can I be certain that the ids are consecutive?
         for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
         {
@@ -92,7 +80,7 @@ namespace gismo
 
 
             file <<"</PointData>\n";
-            outputGeometry();
+            file << points[k];
             file << "</Piece>\n</StructuredGrid>\n</VTKFile>";
             file.close();
         }

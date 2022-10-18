@@ -312,6 +312,8 @@ public:
     template<class E>
     std::vector<std::string> expr2vtk(const expr::_expr<E> & expr, std::string label="SolutionField");
 
+    std::vector<std::string> geoMap2vtk(const geometryMap geoMap);
+
 private:
 
     template<class E, bool gmap>
@@ -755,7 +757,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         //         pts = allValues(m_elWise.size()/nPts, nPts);
         //     }
 
-        //     gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
+            // gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
         //                           vals,
         //                           pt.numPointsCwise(), fileName );
         //     collection.addPart(fileName, ".vts");
@@ -816,6 +818,47 @@ std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & exp
             }
         }
         dataArray <<"\n</DataArray>\n";
+        out.push_back( dataArray.str() );
+        dataArray.str(std::string()); // Clear the dataArray stringstream
+    }
+    return out; 
+}
+
+/// @brief  Evaluates a geometry map over all patches and returns all <Points> xml tags as a vecotr of strings
+/// @tparam T 
+/// @param geoMap Geometry map to be evaluated
+/// @return Vector of strings of all <DataArrays>
+template<class T>
+std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap)
+{   
+    std::vector<std::string> out;
+    std::stringstream dataArray;
+
+    //if false, embed topology ?
+    const index_t n = m_exprdata->multiBasis().nBases();
+
+    gsMatrix<T> pts, vals, ab;
+
+    for ( index_t i=0; i != n; ++i )
+    {
+        unsigned nPts = m_options.askInt("plot.npts", 1000);
+        ab = m_exprdata->multiBasis().piece(i).support();
+        gsGridIterator<T,CUBE> pt(ab, nPts);
+        eval(geoMap, pt, i);
+        nPts = pt.numPoints();
+        pts = allValues(m_elWise.size()/nPts, nPts);
+
+        dataArray <<"<Points>\n";
+        dataArray <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
+        for ( index_t j=0; j<pts.cols(); ++j)
+        {
+            for ( index_t i=0; i!=n; ++i)
+                dataArray<< pts(i,j) <<" ";
+            for ( index_t i=n; i<3; ++i)
+                dataArray<<"0 ";
+        }
+        dataArray <<"</DataArray>\n</Points>\n";
+
         out.push_back( dataArray.str() );
         dataArray.str(std::string()); // Clear the dataArray stringstream
     }
