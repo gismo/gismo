@@ -39,9 +39,12 @@ int main(int argc, char const *argv[])
 
     //gsParaviewCollection collection("collection", &evaluator);
 
+    std::vector<std::string> labels;
+    labels.push_back("measure");
+    labels.push_back("norm");
     gsParaviewDataSet dSet("test_file", &initGeo, &evaluator);
-    dSet.addField( meas(initGeo) ,"measure");
-    for ( index_t i=0; i!= dSet.m_numPatches; i++) gsInfo << dSet.filenames()[i] << "\n";
+    dSet.addFields( labels, meas(initGeo), initGeo.norm() );
+    // for ( index_t i=0; i!= dSet.m_numPatches; i++) gsInfo << dSet.filenames()[i] << "\n";
     dSet.save();
 
 

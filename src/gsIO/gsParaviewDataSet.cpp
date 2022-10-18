@@ -24,14 +24,16 @@ namespace gismo
                     gsExprEvaluator<real_t> * eval)
                     :m_basename(basename),
                     m_geoMap(geoMap),
-                    m_evaltr(eval)
+                    m_evaltr(eval),
+                    m_numPatches(geoMap->source().nPieces())
     {
-        m_numPatches = m_geoMap->source().nPieces(); // Number of patches
+        //m_numPatches = m_geoMap->source().nPieces(); // Number of patches
         //gsDebugVar( numPatches);
 
         unsigned nPts = m_evaltr->options().askInt("plot.npts", 1000);
 
         // QUESTION: Can I be certain that the ids are consecutive?
+        std::vector<std::string> fnames = filenames();
         for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
         {
             gsMatrix<real_t> activeBases = m_geoMap->source().piece(k).support();
@@ -43,9 +45,7 @@ namespace gismo
 
             // initializes individual .vts files
             // for every patch
-            std::string filename;
-            filename = m_basename + "_patch" +std::to_string(k)+".vts";
-            std::ofstream file(filename.c_str());
+            std::ofstream file(fnames[k].c_str());
             file << std::fixed; // no exponents
             file << std::setprecision(5); // PLOT_PRECISION
             file <<"<?xml version=\"1.0\"?>\n";
@@ -58,34 +58,6 @@ namespace gismo
             file.close();
         }
     }
-    
-    
-    template<class E>
-    void gsParaviewDataSet::addField(const expr::_expr<E> & expr, std::string label)
-    {
-        // evaluates the expression and appends it to the vts files
-        //for every patch
-        std::vector<std::string> tags = m_evaltr->expr2vtk(expr, label);
-        std::vector<std::string> filenames;
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
-        {
-            std::ofstream file;
-            file.open(filenames[k].c_str(), std::ios_base::app); // Append to file
-            file << std::fixed; // no exponents
-            file << std::setprecision(5); // PLOT_PRECISION
-
-            file << tags[k];
-            file.close(); 
-        }
-
-    }
-
-    // void addFields( expr... )
-    // {
-    //     // maybe I can use the variable names as the labels by
-    //     // using the # "stringify" 
-    //     // see: https://stackoverflow.com/questions/3386861/converting-a-variable-name-to-a-string-in-c
-    // }
 
     
     std::vector<std::string> gsParaviewDataSet::filenames()

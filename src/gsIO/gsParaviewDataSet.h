@@ -51,14 +51,39 @@ public:
 
     template<class E>
     void addField(const expr::_expr<E> & expr,
-                  std::string label);
+                  std::string label)
+    {
+        // evaluates the expression and appends it to the vts files
+        //for every patch
+        std::vector<std::string> tags = m_evaltr->expr2vtk(expr, label);
+        std::vector<std::string> fnames = filenames();
 
-    // void addFields( expr... )
-    // {
-    //     // maybe I can use the variable names as the labels by
-    //     // using the # "stringify" 
-    //     // see: https://stackoverflow.com/questions/3386861/converting-a-variable-name-to-a-string-in-c
-    // }
+        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
+        {
+            std::ofstream file;
+            file.open( fnames[k].c_str(), std::ios_base::app); // Append to file
+            file << std::fixed; // no exponents
+            file << std::setprecision(5); // PLOT_PRECISION
+            file << tags[k];
+            file.close(); 
+        }
+    }
+
+    // Just here to stop the recursion
+    void addFields(std::vector<std::string> labels){} 
+
+
+    // The recursive case: we take a number, alongside
+    // some other numbers, and produce their sum.
+    template <class E, typename... Rest>
+    void addFields(std::vector<std::string> labels, const expr::_expr<E> & expr, Rest... rest) {
+        // keep all but first label 
+        std::vector<std::string> newlabels(labels.cbegin()+1, labels.cend());
+        
+
+        addField(   expr, labels[0]);       // Add the expression 'expr' with it's corresponding label ( first one )
+        addFields(   newlabels, rest...);   // Recursion
+    }
 
     std::vector<std::string> filenames();
 

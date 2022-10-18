@@ -817,7 +817,7 @@ std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & exp
         }
         dataArray <<"\n</DataArray>\n";
         out.push_back( dataArray.str() );
-        dataArray.clear();
+        dataArray.str(std::string()); // Clear the dataArray stringstream
     }
     return out; 
 }
