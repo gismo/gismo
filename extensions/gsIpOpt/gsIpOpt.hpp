@@ -1,4 +1,4 @@
-/** @file gsOptProblem.hpp
+/** @file gsIpOpt.hpp
 
     @brief Provides implementation of an optimization problem.
 
@@ -22,12 +22,13 @@
 namespace gismo
 {
 
-class gsOptProblemPrivate
+template <class T>
+class gsIpOptPrivate
 {
 public:
 #ifdef GISMO_WITH_IPOPT
     // Pointer to IpOpt interface
-    Ipopt::SmartPtr<Ipopt::TNLP> tnlp;
+    Ipopt::SmartPtr<gsIpOptTNLP<T>> tnlp;
 #endif
 
 };
@@ -46,7 +47,24 @@ class gsIpOptTNLP : public Ipopt::TNLP
     typedef Ipopt::IpoptCalculatedQuantities IpoptCalculatedQuantities;
 
     public:
-        gsIpOptTNLP(gsOptProblem<T> & op) : m_op(op) { }
+        gsIpOptTNLP(gsOptProblem<T> * op)
+        :
+        m_op(op)
+        {
+            m_curDesign.resize(m_op->numDesignVars(),1);
+            m_curDesign.setZero();
+        }
+
+        void setCurrentDesign(const gsMatrix<T> & currentDesign)
+        {
+            m_curDesign = currentDesign;
+        }
+
+        /// @brief Callback function is executed after every
+        ///    iteration. Returning false causes premature termination of
+        ///    the optimization
+        bool intermediateCallback() { return true;}
+
 
     public:
         /**@name Overloaded from TNLP */
@@ -57,11 +75,11 @@ class gsIpOptTNLP : public Ipopt::TNLP
         {
             // gsDebug<<"Getting get_nlp_info.\n";
 
-            n = m_op.m_numDesignVars;
-            m = m_op.m_numConstraints;
+            n = m_op->numDesignVars();
+            m = m_op->numConstraints();
 
             // Nonzeros in the constaint jacobian
-            nnz_jac_g = m_op.m_numConJacNonZero;
+            nnz_jac_g = m_op->numConJacNonZero();
 
             // hessian of the lagrangian not supported yet
             nnz_h_lag = 0;
@@ -81,11 +99,11 @@ class gsIpOptTNLP : public Ipopt::TNLP
 
             // to do: { memcpy(target, start, numVals); }
 
-            copy_n( m_op.m_desLowerBounds.data(), n, x_l );
-            copy_n( m_op.m_desUpperBounds.data(), n, x_u );
+            copy_n( m_op->desLowerBounds().data(), n, x_l );
+            copy_n( m_op->desUpperBounds().data(), n, x_u );
 
-            copy_n( m_op.m_conLowerBounds.data(), m, g_l );
-            copy_n( m_op.m_conUpperBounds.data(), m, g_u );
+            copy_n( m_op->conLowerBounds().data(), m, g_l );
+            copy_n( m_op->conUpperBounds().data(), m, g_u );
 
             return true;
         }
@@ -99,7 +117,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
             //gsDebug<<"Getting get_starting_point.\n";
 
             // Here, we assume we only have starting values for the design variables
-            copy_n( m_op.m_curDesign.data(), n, x );
+            copy_n( m_curDesign.data(), n, x );
             return true;
         }
 
@@ -110,7 +128,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
             //gsDebug<<"Getting eval_f.\n";
 
             gsAsConstVector<T> xx(x, n);
-            obj_value = m_op.evalObj( xx );
+            obj_value = m_op->evalObj( xx );
             return true;
         }
 
@@ -121,7 +139,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
 
             gsAsConstVector<T> xx(x     , n);
             gsAsVector<T> result (grad_f, n);
-            m_op.gradObj_into(xx, result);
+            m_op->gradObj_into(xx, result);
             return true;
         }
 
@@ -132,7 +150,7 @@ class gsIpOptTNLP : public Ipopt::TNLP
 
             gsAsConstVector<T> xx(x, n);
             gsAsVector<T> result(g, m);
-            m_op.evalCon_into(xx, result);
+            m_op->evalCon_into(xx, result);
             return true;
         }
 
@@ -147,14 +165,14 @@ class gsIpOptTNLP : public Ipopt::TNLP
             if (values == NULL)
             {
                 // pass the structure of the jacobian of the constraints
-                copy_n( m_op.m_conJacRows.data(), nele_jac, iRow );
-                copy_n( m_op.m_conJacCols.data(), nele_jac, jCol );
+                copy_n( m_op->conJacRows().data(), nele_jac, iRow );
+                copy_n( m_op->conJacCols().data(), nele_jac, jCol );
             }
             else
             {
                 gsAsConstVector<T> xx(x     , n      );
                 gsAsVector<T>  result(values, nele_jac);
-                m_op.jacobCon_into(xx, result);
+                m_op->jacobCon_into(xx, result);
             }
 
             return true;
@@ -207,14 +225,14 @@ class gsIpOptTNLP : public Ipopt::TNLP
         Ipopt::SmartPtr< const Ipopt::Vector >  curr  = ip_data->curr()->x();
         Ipopt::SmartPtr< Ipopt::DenseVector > dv = MakeNewDenseVector ();
         curr->Copy(dv);
-        m_op.m_curDesign = gsAsConstVector<T>(dx->Values(),m_op.m_curDesign.rows());
+        m_op->m_curDesign = gsAsConstVector<T>(dx->Values(),m_op->m_curDesign.rows());
         */
         // gsInfo << "\n === intermediateCallback is called === \n\n";
-        return m_op.intermediateCallback();
+        return this->intermediateCallback();
 
         //SmartPtr< const IteratesVector >  trial = ip_data->trial();
         //int it = ip_data->iter_count();
-        //Number 	tol = ip_data->tol();
+        //Number    tol = ip_data->tol();
     }
 
 
@@ -228,70 +246,47 @@ class gsIpOptTNLP : public Ipopt::TNLP
                                const IpoptData* ip_data,
                                IpoptCalculatedQuantities* ip_cq)
         {
-            m_op.m_curDesign = gsAsConstVector<T>(x,n);
-            m_op.m_lambda = gsAsConstVector<T>(lambda,m);
+            m_curDesign = gsAsConstVector<T>(x,n);
+            m_lambda = gsAsConstVector<T>(lambda,m);
 
-            //m_op.finalize();
+            //m_op->finalize();
         }
 
         //@}
     private:
-        gsOptProblem<T> & m_op;
+        gsOptProblem<T> * m_op;
+        gsMatrix<T> m_curDesign;
+        gsMatrix<T> m_lambda;
+
     private:
         gsIpOptTNLP(const gsIpOptTNLP & );
         gsIpOptTNLP& operator=(const gsIpOptTNLP & );
 };
 #endif
 
+template <typename T>
+gsIpOpt<T>::~gsIpOpt()
+{
+    delete m_data;
+}
 
 template <typename T>
-gsOptProblem<T>::gsOptProblem()
+gsIpOpt<T>::gsIpOpt(gsOptProblem<T> * problem)
+:
+Base(problem)
 {
-    #ifdef GISMO_WITH_IPOPT
+    this->defaultOptions();
 
-    m_data       =  new gsOptProblemPrivate();
-    m_data->tnlp =  new gsIpOptTNLP<T>(*this);
+    #ifdef GISMO_WITH_IPOPT
+    m_data       =  new gsIpOptPrivate<T>();
+    m_data->tnlp =  new gsIpOptTNLP<T>(m_op);
     #else
     m_data = NULL;
     #endif
 }
 
 template <typename T>
-gsOptProblem<T>::~gsOptProblem()
-{
-    delete m_data;
-}
-
-template <typename T>
-void gsOptProblem<T>::gradObj_into(const gsAsConstVector<T> & u, gsAsVector<T> & result) const
-{
-    const index_t n = u.rows();
-    //GISMO_ASSERT((index_t)m_numDesignVars == n*m, "Wrong design.");
-
-    gsMatrix<T> uu = u;//copy
-    gsAsVector<T> tmp(uu.data(), n);
-    gsAsConstVector<T> ctmp(uu.data(), n);
-    index_t c = 0;
-
-    // for all partial derivatives (column-wise)
-    for ( index_t i = 0; i!=n; i++ )
-    {
-        // to do: add m_desLowerBounds m_desUpperBounds check
-        tmp[i]  += T(0.00001);
-        const T e1 = this->evalObj(ctmp);
-        tmp[i]   = u[i] + T(0.00002);
-        const T e3 = this->evalObj(ctmp);
-        tmp[i]   = u[i] - T(0.00001);
-        const T e2 = this->evalObj(ctmp);
-        tmp[i]   = u[i] - T(0.00002);
-        const T e4 = this->evalObj(ctmp);
-        tmp[i]   = u[i];
-        result[c++]= ( 8 * (e1 - e2) + e4 - e3 ) / T(0.00012);
-    }
-}
-
-template <typename T>
-void gsOptProblem<T>::solve()
+void gsIpOpt<T>::solve(const gsMatrix<T> & initialGuess)
 {
 #ifdef GISMO_WITH_IPOPT
 
@@ -308,10 +303,12 @@ void gsOptProblem<T>::solve()
         return;
     }
 
+    gsIpOptTNLP<T> * tmp = dynamic_cast<gsIpOptTNLP<T> * >(Ipopt::GetRawPtr(m_data->tnlp));
+    tmp->setCurrentDesign(initialGuess);
     status = app->OptimizeTNLP(m_data->tnlp);
     //if (status != Ipopt::Solve_Succeeded)
     //   gsInfo << "Optimization did not succeed.\n";
-    
+
     // Retrieve some statistics about the solve
     numIterations  = app->Statistics()->IterationCount();
     finalObjective = app->Statistics()->FinalObjective();

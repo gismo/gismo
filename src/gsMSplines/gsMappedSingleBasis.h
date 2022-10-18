@@ -116,6 +116,12 @@ public:
         return m_basis->getBase(m_index).support();
     }
 
+    /// Returns a bounding box for the basis' domain
+    gsMatrix<T> support(const index_t & i) const
+    {
+        return m_basis->getBase(m_index).support(i);
+    }
+  
     /// Returns the boundary basis on side s
     gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
     {
