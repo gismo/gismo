@@ -50,6 +50,10 @@ public:
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
 
+    void parameterCorrection(T accuracy = 1e-8,
+                             index_t maxIter = 10,
+                             T tolOrth = 1e-6);
+
     /// Computes the euclidean error for each point
     void computeErrors();
 
@@ -146,6 +150,8 @@ private:
 
 protected:
 
+    //gsOptionList
+
     /// the parameter values of the point cloud
     gsMatrix<T> m_param_values;
 
@@ -160,6 +166,8 @@ protected:
 
     // All point-wise errors
     std::vector<T> m_pointErrors;
+
+    mutable T m_last_lambda;
 
     /// Maximum point-wise error
     T m_max_error;

@@ -25,6 +25,7 @@ void pybind11_init_gsFitting(py::module &m)
     .def("compute", &Class::compute, "Computes the least square fit for a gsBasis.")
     .def("applySmoothing", &Class::applySmoothing, "apply smoothing to the input matrix.")
     .def("smoothingMatrix", &Class::smoothingMatrix, "get the amoothing matrix.")
+    .def("parameterCorrection", &Class::parameterCorrection, "Apply parameter correction steps.")
     ;
 }
 #endif
