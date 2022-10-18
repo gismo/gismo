@@ -286,6 +286,10 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
+// gsParaviewDataSet
+
+class gsParaviewDataSet;
+
 /// @endcond
 
 ///@}

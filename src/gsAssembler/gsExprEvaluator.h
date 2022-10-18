@@ -13,7 +13,7 @@
 
 #pragma once
 
-//#include<gsIO/gsParaviewCollection.h>
+#include<gsIO/gsParaviewCollection.h>
 #include<gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include<vector>
@@ -730,48 +730,48 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             geometryMap G,
                                             std::string const & fn)
     {
-        // m_exprdata->parse(expr);
+        m_exprdata->parse(expr);
 
-        // //if false, embed topology ?
-        // const index_t n = m_exprdata->multiBasis().nBases();
-        // gsParaviewCollection collection(fn);
-        // std::string fileName;
+        //if false, embed topology ?
+        const index_t n = m_exprdata->multiBasis().nBases();
+        gsParaviewCollection collection(fn);
+        std::string fileName;
 
-        // gsMatrix<T> pts, vals, ab;
+        gsMatrix<T> pts, vals, ab;
 
-        // const bool mesh = m_options.askSwitch("plot.elements");
+        const bool mesh = m_options.askSwitch("plot.elements");
 
-        // for ( index_t i=0; i != n; ++i )
-        // {
-        //     fileName = fn + util::to_string(i);
-        //     unsigned nPts = m_options.askInt("plot.npts", 1000);
-        //     ab = m_exprdata->multiBasis().piece(i).support();
-        //     gsGridIterator<T,CUBE> pt(ab, nPts);
-        //     eval(expr, pt, i);
-        //     nPts = pt.numPoints();
-        //     vals = allValues(m_elWise.size()/nPts, nPts);
+        for ( index_t i=0; i != n; ++i )
+        {
+            fileName = fn + util::to_string(i);
+            unsigned nPts = m_options.askInt("plot.npts", 1000);
+            ab = m_exprdata->multiBasis().piece(i).support();
+            gsGridIterator<T,CUBE> pt(ab, nPts);
+            eval(expr, pt, i);
+            nPts = pt.numPoints();
+            vals = allValues(m_elWise.size()/nPts, nPts);
 
-        //     if (gmap) // Forward the points ?
-        //     {
-        //         eval(G, pt, i);
-        //         pts = allValues(m_elWise.size()/nPts, nPts);
-        //     }
+            if (gmap) // Forward the points ?
+            {
+                eval(G, pt, i);
+                pts = allValues(m_elWise.size()/nPts, nPts);
+            }
 
-            // gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
-        //                           vals,
-        //                           pt.numPointsCwise(), fileName );
-        //     collection.addPart(fileName, ".vts");
+            gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
+                                  vals,
+                                  pt.numPointsCwise(), fileName );
+            collection.addPart(fileName, ".vts");
 
-        //     if ( mesh )
-        //     {
-        //         fileName+= "_mesh";
-        //         gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
-        //         static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
-        //         gsWriteParaview(msh, fileName, false);
-        //         collection.addPart(fileName, ".vtp");
-        //     }
-        // }
-        // collection.save();
+            if ( mesh )
+            {
+                fileName+= "_mesh";
+                gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
+                static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
+                gsWriteParaview(msh, fileName, false);
+                collection.addPart(fileName, ".vtp");
+            }
+        }
+        collection.save();
     }
 
 

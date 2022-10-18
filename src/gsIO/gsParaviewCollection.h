@@ -15,8 +15,8 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsMSplines/gsMappedBasis.h>
-// #include <gsAssembler/gsExprHelper.h>
-#include <gsIO/gsParaviewDataSet.h>
+#include <gsAssembler/gsExprHelper.h>
+
 
 #include<fstream>
 
@@ -45,7 +45,7 @@ namespace gismo {
 
     \ingroup IO
 */
-class gsParaviewCollection
+class GISMO_EXPORT gsParaviewCollection
 {
 public:
     typedef std::string String;
@@ -109,50 +109,34 @@ public:
         mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
     }
 
-    // EVERY PATCH NEEDS TO BE PUT INTO ITS OWN "PART" THUS ITS OWN <DATASET>
+    void addDataSet(gsParaviewDataSet dataSet, real_t time);
 
-    // The part does not need to be specified as long as the <DataSet> appear
-    // in the same order for each timestep
+    gsParaviewDataSet newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time=-1);
+    // {
+    //     // TODO:
+    //     // This will return an empty dataSet that has a proper filename according
+    //     // to the internal timestep numbering
 
-    // A data set is meant to be an abstraction for multiple <DataSet> tags in paraview, 
-    // that all stem from the same gsGeometryMap, and refer to the same timestep.
-    void addDataSet(gsParaviewDataSet dataSet, real_t time)
-    {
-        dataSet.save(); // the actual files are written to disk/finalized
-        std::vector<std::string> filenames( dataSet.filenames() );
-
-        for (size_t i=0; i!=filenames.size(); i++)
-        {
-            addPart( mfn + std::to_string(i), time);
-        }
-    }
-
-    void /*gsParaviewDataSet*/ newTimeStep(real_t time=-1)
-    {
-        // TODO:
-        // This will return an empty dataSet that has a proper filename according
-        // to the internal timestep numbering
-
-        // The user will then add all the desired fields to it, and then execute
-        // addDataSet() to append it to the pvd file.
-        // return gsParaviewDataSet("", ,m_evaluator); 
-    }
+    //     // The user will then add all the desired fields to it, and then execute
+    //     // addDataSet() to append it to the pvd file.
+    //     // return gsParaviewDataSet("", ,m_evaluator); 
+    // }
 
     /// Finalizes the collection by closing the XML tags, always call
     /// this function (once) when you finish adding files
     void save()
     {
-        // GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
-        // mfile <<"</Collection>\n";
-        // mfile <<"</VTKFile>\n";
+        GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
+        mfile <<"</Collection>\n";
+        mfile <<"</VTKFile>\n";
 
-        // mfn.append(".pvd");
-        // std::ofstream f( mfn.c_str() );
-        // GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
-        // f << mfile.rdbuf();
-        // f.close();
-        // mfile.str("");
-        // counter = -1;
+        mfn.append(".pvd");
+        std::ofstream f( mfn.c_str() );
+        GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
+        f << mfile.rdbuf();
+        f.close();
+        mfile.str("");
+        counter = -1;
     }
 
 private:

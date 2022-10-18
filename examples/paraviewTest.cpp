@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <gismo.h>
+#include <gsIO/gsParaviewDataSet.h>
 
 
 using namespace gismo;
@@ -39,13 +40,28 @@ int main(int argc, char const *argv[])
 
     //gsParaviewCollection collection("collection", &evaluator);
 
+    gsParaviewCollection collection("collect", &evaluator);
+
     std::vector<std::string> labels;
     labels.push_back("measure");
     labels.push_back("norm");
-    gsParaviewDataSet dSet("test_file", &initGeo, &evaluator);
+
+
+    gsParaviewDataSet dSet = collection.newTimeStep(&initGeo);
     dSet.addFields( labels, meas(initGeo), initGeo.norm() );
     // for ( index_t i=0; i!= dSet.m_numPatches; i++) gsInfo << dSet.filenames()[i] << "\n";
-    dSet.save();
+    // dSet.save();
+
+    collection.addDataSet(dSet,1.0);
+
+    mPatch.patch(0).coefs().array() += 1;
+
+    dSet = collection.newTimeStep(&initGeo);
+    dSet.addFields( labels, meas(initGeo), initGeo.norm() );
+
+    collection.addDataSet(dSet,2.0);
+
+    collection.save(); 
 
 
 
