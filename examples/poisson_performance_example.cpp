@@ -98,10 +98,10 @@ int main(int argc, char *argv[])
       f = gsFunctionExpr<real_t>("2*pi^2*sin(pi*x)*sin(pi*y)", 2);
       break;
     case 3:
-      f = gsFunctionExpr<real_t>("2*pi^2*sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
+      f = gsFunctionExpr<real_t>("3*pi^2*sin(pi*x)*sin(pi*y)*sin(pi*z)", 3);
       break;
     case 4:
-      f = gsFunctionExpr<real_t>("2*pi^2*sin(pi*x)*sin(pi*y)*sin(pi*z)*sin(pi*t)", 4);
+      f = gsFunctionExpr<real_t>("4*pi^2*sin(pi*x)*sin(pi*y)*sin(pi*z)*sin(pi*t)", 4);
       break;
     default:
       GISMO_ERROR("Unsupported spatial dimension");
