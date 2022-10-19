@@ -372,6 +372,15 @@ gsNurbsCreator<T>::BSplineCube( T const & r, T const & x,
 }
 
 
+template<class T> typename gsNurbsCreator<T>::TensorBSpline4Ptr
+gsNurbsCreator<T>::BSplineHyperCube( T const & r, T const & x,
+                                     T const & y, T const & z,
+                                     T const & t)
+{
+    return gsNurbsCreator<T>::lift4D(*gsNurbsCreator<T>::BSplineCube(r, x, y, z), t);
+}
+
+
 // Note: this can probably be removed once we have degree elevation for tensor B-splines.
 //
 /// The unit cube represented as a tensor B-spline of degree \a deg

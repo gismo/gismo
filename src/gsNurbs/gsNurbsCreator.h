@@ -14,7 +14,7 @@
 
 // Note:
 // will provide functions to make bsplines, nurbs etc
-// like the identity, ruled, l spapes, rings, etc
+// like the identity, ruled, l-shapes, rings, etc
 // linear extrude .....
 // sweep ( eg. half-cylinder by sweeping half-circle
 // revolve operation
@@ -109,7 +109,12 @@ public:
 
     /// Cube of side \a r, with lower left corner at (x,y,z)
     static TensorBSpline3Ptr BSplineCube( T const & r = 1, T const & x = 0,
-                                               T const & y = 0, T const & z = 0  );
+                                          T const & y = 0, T const & z = 0  );
+
+    /// Hypercube of side \a r, with lower left corner at (x,y,z,t)
+    static TensorBSpline4Ptr BSplineHyperCube( T const & r = 1, T const & x = 0,
+                                               T const & y = 0, T const & z = 0,
+                                               T const & t = 0);
 
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
