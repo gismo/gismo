@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
         //! [ParaView visualization]
         if (plot) {
           ev.options().setSwitch("plot.elements", true);
-          ev.writeParaview(u_ex, G, "poisson");
+          ev.writeParaview(u_sol, G, "poisson");
         }
         //! [ParaView visualization]
       }
