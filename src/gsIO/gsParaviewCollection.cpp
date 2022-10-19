@@ -31,7 +31,10 @@ namespace gismo
         time = time==-1 ? m_step_count : time;
         for (size_t i=0; i!=filenames.size(); i++)
         {
-            addPart( filenames[i], -1, time);
+            // Keep only the filename because <DataSet> tags in the .pvd
+            // file use relative paths
+            std::experimental::filesystem::path fPath(filenames[i]); 
+            addPart( fPath.filename(), -1, time); 
         }
     }
 

@@ -39,7 +39,7 @@ int main(int argc, char const *argv[])
 
     //gsParaviewCollection collection("collection", &evaluator);
 
-    gsParaviewCollection collection("collect", &evaluator);
+    gsParaviewCollection collection("outputFiles/collect", &evaluator);
 
     std::vector<std::string> labels;
     labels.push_back("measure");
@@ -61,6 +61,9 @@ int main(int argc, char const *argv[])
     collection.addDataSet(dSet);
 
     collection.save(); 
+
+    // Just to check I have not messed up the current implementation
+    evaluator.writeParaview(meas(initGeo),initGeo, "evOutput");
 
 
 

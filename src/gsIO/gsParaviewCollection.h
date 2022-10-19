@@ -19,6 +19,9 @@
 
 
 #include<fstream>
+#include<experimental/filesystem>
+
+namespace fsystem = std::experimental::filesystem;
 
 namespace gismo {
 /**
@@ -55,6 +58,9 @@ public:
     gsParaviewCollection(String const  &fn)
     : mfn(fn), counter(0), m_evaluator(nullptr)
     {
+        if ( "" != mfn.parent_path())
+        GISMO_ENSURE( fsystem::exists( mfn.parent_path() ), 
+            "The specified folder " << mfn.parent_path() << " does not exist, please create it first.");
         mfile <<"<?xml version=\"1.0\"?>\n";
         mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
         mfile <<"<Collection>\n";
@@ -64,6 +70,9 @@ public:
     gsParaviewCollection(String const  &fn, gsExprEvaluator<> * evaluator)
     : mfn(fn), counter(0), m_evaluator(evaluator)
     {
+        if ( "" != mfn.parent_path())
+        GISMO_ENSURE( fsystem::exists( mfn.parent_path() ), 
+            "The specified folder " << mfn.parent_path() << " does not exist, please create it first.");  
         mfile <<"<?xml version=\"1.0\"?>\n";
         mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
         mfile <<"<Collection>\n";
@@ -130,7 +139,7 @@ public:
         mfile <<"</Collection>\n";
         mfile <<"</VTKFile>\n";
 
-        mfn.append(".pvd");
+        mfn.replace_extension(".pvd");
         std::ofstream f( mfn.c_str() );
         GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
         f << mfile.rdbuf();
@@ -144,7 +153,7 @@ private:
     std::stringstream mfile;
 
     /// File name
-    String mfn;
+    fsystem::path mfn;
 
     /// Counter for the number of parts (files) added in the collection
     int counter;
