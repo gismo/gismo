@@ -28,7 +28,7 @@ namespace gismo
 */
 
 template<class T> typename gsNurbsCreator<T>::TensorBSpline3Ptr
-gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
+gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z, bool symm)
 {
     gsKnotVector<T> KV(0, 1, 0, 2);
     const int sz = geo.basis().size();
@@ -48,6 +48,8 @@ gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
 
     // Lift
     newcoefs.col(2).bottomRows(sz).array() += z;
+    if (symm)
+        newcoefs.col(2).topRows(sz).array()-= z;
 
     return TensorBSpline3Ptr(new gsTensorBSpline<3,T>(geo.basis().knots(0),
                                     geo.basis().knots(1),
@@ -56,7 +58,7 @@ gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
 
 
 template<class T> typename gsNurbsCreator<T>::TensorBSpline4Ptr
-gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
+gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z, bool symm)
 {
     gsKnotVector<T> KV(0, 1, 0, 2);
     const int sz = geo.basis().size();
@@ -76,6 +78,8 @@ gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
 
     // Lift
     newcoefs.col(3).bottomRows(sz).array() += z;
+    if (symm)
+        newcoefs.col(3).topRows(sz).array()-= z;
 
     return TensorBSpline4Ptr(new gsTensorBSpline<4,T>(geo.basis().knots(0),
                                     geo.basis().knots(1),
@@ -85,7 +89,7 @@ gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
 
 
 template<class T> typename gsNurbsCreator<T>::TensorNurbs3Ptr
-gsNurbsCreator<T>::lift3D( gsTensorNurbs<2,T> const & geo, T z)
+gsNurbsCreator<T>::lift3D( gsTensorNurbs<2,T> const & geo, T z, bool symm)
 {
     gsKnotVector<T> KV(0, 1, 0, 2);
     const int sz = geo.basis().size();
@@ -109,6 +113,8 @@ gsNurbsCreator<T>::lift3D( gsTensorNurbs<2,T> const & geo, T z)
 
     // Lift
     newcoefs.col(2).bottomRows(sz).array() += z;
+    if (symm)
+        newcoefs.col(2).topRows(sz).array()-= z;
 
     return TensorNurbs3Ptr(new gsTensorNurbs<3,T>(geo.basis().knots(0),
                                                       geo.basis().knots(1),
@@ -117,7 +123,7 @@ gsNurbsCreator<T>::lift3D( gsTensorNurbs<2,T> const & geo, T z)
 
 
 template<class T> typename gsNurbsCreator<T>::TensorNurbs4Ptr
-gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z)
+gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z, bool symm)
 {
     gsKnotVector<T> KV(0, 1, 0, 2);
     const int sz = geo.basis().size();
@@ -141,6 +147,8 @@ gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z)
 
     // Lift
     newcoefs.col(3).bottomRows(sz).array() += z;
+    if (symm)
+        newcoefs.col(3).topRows(sz).array()-= z;
 
     return TensorNurbs4Ptr(new gsTensorNurbs<4,T>(geo.basis().knots(0),
                                                       geo.basis().knots(1),
@@ -377,7 +385,13 @@ gsNurbsCreator<T>::BSplineHyperCube( T const & r, T const & x,
                                      T const & y, T const & z,
                                      T const & t)
 {
-    return gsNurbsCreator<T>::lift4D(*gsNurbsCreator<T>::BSplineCube(r, x, y, z), t);
+    auto hcube = gsNurbsCreator<T>::lift4D(*gsNurbsCreator<T>::BSplineCube(r, (T)0, (T)0, (T)0), r/2, true);
+    auto & C = hcube->coefs();
+    C.col(0).array() += x;
+    C.col(1).array() += y;
+    C.col(2).array() += z;
+    C.col(3).array() += t;
+    return hcube;
 }
 
 

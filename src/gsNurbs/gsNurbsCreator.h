@@ -47,13 +47,13 @@ struct gsNurbsCreator
 
 public:
 
-    static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
+    static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1, bool symm = false);
 
-    static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);
+    static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1, bool symm = false);
 
-    static TensorNurbs3Ptr lift3D( gsTensorNurbs<2,T> const & geo, T z = 1);
+    static TensorNurbs3Ptr lift3D( gsTensorNurbs<2,T> const & geo, T z = 1, bool symm = false);
 
-    static TensorNurbs4Ptr lift4D( gsTensorNurbs<3,T> const & geo, T z = 1);
+    static TensorNurbs4Ptr lift4D( gsTensorNurbs<3,T> const & geo, T z = 1, bool symm = false);
 
     /* Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
     \param X Defines the X axis of the plane containing the arc
