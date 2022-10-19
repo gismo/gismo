@@ -121,15 +121,6 @@ public:
     void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
 
     gsParaviewDataSet newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time=-1);
-    // {
-    //     // TODO:
-    //     // This will return an empty dataSet that has a proper filename according
-    //     // to the internal timestep numbering
-
-    //     // The user will then add all the desired fields to it, and then execute
-    //     // addDataSet() to append it to the pvd file.
-    //     // return gsParaviewDataSet("", ,m_evaluator); 
-    // }
 
     /// Finalizes the collection by closing the XML tags, always call
     /// this function (once) when you finish adding files
