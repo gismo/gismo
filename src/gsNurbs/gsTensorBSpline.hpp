@@ -209,9 +209,7 @@ void gsTensorBSpline<d,T>::swapDirections(const unsigned i, const unsigned j)
 template<short_t d, class T>
 void gsTensorBSpline<d,T>::toggleOrientation()
 {
-    gsVector<index_t,d> sz;
-    this->basis().size_cwise(sz);
-    swapTensorDirection(0, 1, sz, m_coefs);
+    swapDirections(0,1);
 }
 
 
