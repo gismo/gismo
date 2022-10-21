@@ -455,6 +455,17 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
     return true;
 }
 
+template <class T>
+void gsMultiPatch<T>::fixOrientation()
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+        if ( -1 == (*it)->orientation() )
+            (*it)->toggleOrientation();
+    
+    if (this->nInterfaces() || this->nBoundary() )
+        this->computeTopology();
+}
 
 template <class T>
 bool gsMultiPatch<T>::matchVerticesOnSide (

@@ -280,6 +280,9 @@ public:
     /// not agree
     bool computeTopology( T tol = 1e-4, bool cornersOnly = false, bool tjunctions = false);
 
+    /// \brief Provides positive orientation for all patches
+    void fixOrientation();
+
     /// \brief Attempt to close gaps between the interfaces. Assumes
     /// that the topology is computed, ie. computeTopology() has been
     /// called.

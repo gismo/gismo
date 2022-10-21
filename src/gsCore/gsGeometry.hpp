@@ -522,6 +522,12 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
 }
 
 template<class T>
+void gsGeometry<T>::toggleOrientation()
+{
+    GISMO_NO_IMPLEMENTATION
+}
+
+template<class T>
 std::vector<boxSide> gsGeometry<T>::locateOn(const gsMatrix<T> & u, gsVector<bool> & onGeo, gsMatrix<T> & preIm, bool lookForBoundary, real_t tol) const
 {
     onGeo.resize(u.cols());
