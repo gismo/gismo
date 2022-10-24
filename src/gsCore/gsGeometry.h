@@ -285,6 +285,8 @@ public:
         return 1;
     }
 
+    virtual void toggleOrientation();
+
     /*************************************************************************/
 
     /// @name Accessors

@@ -34,7 +34,7 @@ struct condition_type
         robin     = 2, ///< Robin type
         clamped   = 3, ///< Robin type
         weak_clamped = 30,
-        collapsed = 4, 
+        collapsed = 4,
         laplace = 5 ///< Laplace type, e.g. \Delta u = g
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
@@ -608,6 +608,12 @@ public:
     {
         function_ptr fun = memory::make_shared_not_owned(f);
         addCondition(p,s,t,fun,unknown,parametric,comp);
+    }
+
+    void addConditions(const bcRefList & bcrf)
+    {
+        for (auto bc : bcrf)
+            m_bc[bc.get().ctype()].push_back(bc);
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,

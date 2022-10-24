@@ -207,6 +207,13 @@ void gsTensorBSpline<d,T>::swapDirections(const unsigned i, const unsigned j)
 }
 
 template<short_t d, class T>
+void gsTensorBSpline<d,T>::toggleOrientation()
+{
+    swapDirections(0,1);
+}
+
+
+template<short_t d, class T>
 bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 {
     gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
