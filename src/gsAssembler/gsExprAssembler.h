@@ -48,7 +48,7 @@ public:
     typedef typename gsSparseMatrix<T>::constBlockView matConstBlockView;
 
     typedef typename gsBoundaryConditions<T>::bcRefList   bcRefList;
-    //typedef typename gsBoundaryConditions<T>::bcContainer bcContainer;
+    typedef gsBoxTopology::bContainer  bContainer;
     typedef gsBoxTopology::ifContainer ifContainer;
 
     typedef typename gsExprHelper<T>::element     element;     ///< Current element
@@ -348,6 +348,8 @@ public:
     /// The arguments are considered as integrals over the boundary
     /// parts in \a BCs
     template<class... expr> void assembleBdr(const bcRefList & BCs, expr&... args);
+
+    template<class... expr> void assembleBdr(const bContainer & bnd, expr&... args);
 
     template<class... expr> void assembleIfc(const ifContainer & iFaces, expr... args);
     /*
@@ -739,6 +741,58 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(it->patch(), it->side());
+
+            // Assemble contributions of the element
+            op_tuple(ee, arg_tpl);
+        }
+    }
+
+//}//omp parallel
+
+    m_matrix.makeCompressed();
+}
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+
+    if ( bnd.size()==0 || 0==numDofs() ) return;
+
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parse(arg_tpl);
+
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    gsVector<T> quWeights;               // quadrature weights
+
+    _eval ee(m_matrix, m_rhs, quWeights);
+
+//#   pragma omp parallel for
+
+    for (gsBoxTopology::const_biterator it = bnd.begin();
+         it != bnd.end(); ++it )
+    {
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(it->patch),
+                                    m_options, it->side().direction());
+
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->multiBasis().basis(it->patch).
+            makeDomainIterator(it->side());
+        m_exprdata->getElement().set(*domIt,quWeights);
+
+        // Start iteration over elements
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(it->patch, it->side());
 
             // Assemble contributions of the element
             op_tuple(ee, arg_tpl);
