@@ -16,9 +16,9 @@
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
 
-#ifdef GISMO_WITH_HLBFGS
+// #ifdef GISMO_WITH_HLBFGS
 #include <gsHLBFGS/gsHLBFGS.h>
-#endif
+// #endif
 
 #ifdef GISMO_WITH_IPOPT
 #include <gsIpOpt/gsIpOpt.h>
@@ -209,12 +209,12 @@ int main(int argc, char* argv[])
         optimizer = new gsGradientDescent<>(&problem);
         break;
 
-#ifdef GISMO_WITH_HLBFGS
+// #ifdef GISMO_WITH_HLBFGS
         case 1 :
         optimizer = new gsHLBFGS<real_t>(&problem);
         optimizer->options().setInt("Verbose",2);
         break;
-#endif
+// #endif
 #ifdef GISMO_WITH_IPOPT
         case 2:
         optimizer = new gsIpOpt<real_t>(&problem);

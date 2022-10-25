@@ -65,6 +65,8 @@ class gsIpOptTNLP : public Ipopt::TNLP
         ///    the optimization
         bool intermediateCallback() { return true;}
 
+        const gsMatrix<T> & currentDesign() {return m_curDesign; }
+        const gsMatrix<T> & lambda()        {return m_lambda; }
 
     public:
         /**@name Overloaded from TNLP */
@@ -310,8 +312,10 @@ void gsIpOpt<T>::solve(const gsMatrix<T> & initialGuess)
     //   gsInfo << "Optimization did not succeed.\n";
 
     // Retrieve some statistics about the solve
-    numIterations  = app->Statistics()->IterationCount();
-    finalObjective = app->Statistics()->FinalObjective();
+    m_numIterations  = app->Statistics()->IterationCount();
+    m_finalObjective = app->Statistics()->FinalObjective();
+    m_curDesign      = tmp->currentDesign();
+    m_lambda         = tmp->lambda();
     //gsInfo << "\n*** The problem solved in " << numIterations << " iterations!\n";
     //gsInfo << "*** The final value of the objective function is " << finalObjective <<".\n";
 

@@ -115,8 +115,6 @@ protected:
     using Base::m_options;
 
     // Statistics
-    int numIterations;
-    T   finalObjective;
 
     gsIpOptPrivate<T> * m_data;
 
