@@ -21,6 +21,12 @@ namespace gismo
 {
 
 template <class T>
+gsAdaptiveMeshing<T>::gsAdaptiveMeshing()
+{
+    defaultOptions();
+}
+
+template <class T>
 gsAdaptiveMeshing<T>::gsAdaptiveMeshing(gsFunctionSet<T> & input)
 :
 m_input(&input)
@@ -44,8 +50,6 @@ void gsAdaptiveMeshing<T>::rebuild()
 
     for (typename boxMapType::iterator it=m_boxes.begin(); it!=m_boxes.end(); it++)
         check &= it->first==m_indices[*it->second];
-
-    gsDebugVar(m_indices.size());
 
     GISMO_ASSERT(check,"Something went wrong in the construction of the mappers");
 }
@@ -118,9 +122,31 @@ void gsAdaptiveMeshing<T>::_assignErrors(boxMapType & container, const std::vect
 {
     GISMO_ASSERT(elError.size()==container.size(),"The number of errors must be the same as the number of elements, but "<<elError.size()<<"!="<<container.size());
     index_t k=0;
-    for (typename boxMapType::iterator it = container.begin(); it!=container.end(); it++, k++)
+
+    if (m_refRule == PBULK || m_crsRule == PBULK)
+        for (typename boxMapType::iterator it = container.begin(); it!=container.end(); it++, k++)
+            it->second->setAndProjectError(elError[k],m_alpha,m_beta);
+    else
+        for (typename boxMapType::iterator it = container.begin(); it!=container.end(); it++, k++)
+            it->second->setError(elError[k]);
+
+    m_totalError = _totalError(m_boxes);
+    m_maxError = _maxError(m_boxes);
+    if (m_alpha!=-1 && m_beta!=-1)
     {
-        it->second->setError(elError[k]);
+        const gsBasis<T> * basis = nullptr;
+        index_t patchInd=0; // Assymes now that the minDegree is lowest on patch 0, or that the degree there is representative
+        if ( const gsMultiPatch<T> * mp = dynamic_cast<const gsMultiPatch<T>*>(m_input) ) basis = &(mp->basis(patchInd));
+        if ( const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(m_input) ) basis = &(mb->basis(patchInd));
+        GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+
+        m_uniformRefError = math::pow(1/2.,m_alpha * basis->minDegree() + m_beta) * m_totalError;
+        m_uniformCrsError = math::pow(  2.,m_alpha * basis->minDegree() + m_beta) * m_totalError;
+    }
+    else
+    {
+        m_uniformRefError = 0;
+        m_uniformCrsError = 0;
     }
 }
 
@@ -168,19 +194,22 @@ void gsAdaptiveMeshing<T>::_assignErrors(boxMapType & container, const std::vect
 
 template <class T>
 template<bool _coarsen,bool _admissible>
-void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, const index_t refCriterion, const T parameter, const std::vector<index_t> & permutation, const std::vector<gsHBoxCheck<2,T> *> & predicates, HBoxContainer & elMarked)
+void gsAdaptiveMeshing<T>::_markElements(  const std::vector<T> & elError, const index_t refCriterion, const std::vector<gsHBoxCheck<2,T> *> & predicates, HBoxContainer & elMarked) const
 {
     // Mark using different rules
     switch (refCriterion)
     {
     case GARU:
-        _markThreshold<_coarsen,_admissible>(m_boxes,parameter,predicates,permutation,elMarked);
+        _markThreshold<_coarsen,_admissible>(m_boxes,predicates,elMarked);
         break;
     case PUCA:
-        _markPercentage<_coarsen,_admissible>(m_boxes,parameter,predicates,permutation,elMarked);
+        _markPercentage<_coarsen,_admissible>(m_boxes,predicates,elMarked);
         break;
     case BULK:
-        _markFraction<_coarsen,_admissible>(m_boxes,parameter,predicates,permutation,elMarked);
+        _markFraction<_coarsen,_admissible>(m_boxes,predicates,elMarked);
+        break;
+    case PBULK:
+        _markProjectedFraction<_coarsen,_admissible>(m_boxes,predicates,elMarked);
         break;
     default:
         GISMO_ERROR("unknown marking strategy");
@@ -221,6 +250,18 @@ std::vector<index_t> gsAdaptiveMeshing<T>::_sortPermutation( const boxMapType & 
     return idx;
 }
 
+template <class T>
+std::vector<index_t> gsAdaptiveMeshing<T>::_sortPermutationProjected( const boxMapType & container)
+{
+    std::vector<index_t> idx(container.size());
+    std::iota(idx.begin(),idx.end(),0);
+    std::stable_sort(idx.begin(), idx.end(),
+           [&container](size_t i1, size_t i2) {
+            return container.at(i1)->projectedImprovement() < container.at(i2)->projectedImprovement();});
+
+    return idx;
+}
+
 // template <class T>
 // void gsAdaptiveMeshing<T>::_sortPermutated( const std::vector<index_t> & permutation, boxContainer & container)
 // {
@@ -233,17 +274,16 @@ std::vector<index_t> gsAdaptiveMeshing<T>::_sortPermutation( const boxMapType & 
 // }
 
 template <class T>
-typename gsAdaptiveMeshing<T>::HBox * gsAdaptiveMeshing<T>::_boxPtr(const HBox & box)
+typename gsAdaptiveMeshing<T>::HBox * gsAdaptiveMeshing<T>::_boxPtr(const HBox & box) const
 {
     // Fails if box is not in m_boxes
-    HBox * boxPtr = m_boxes[m_indices[box]];
-
+    HBox * boxPtr = m_boxes.at(m_indices.at(box));
     return boxPtr;
     // return m_boxes[m_indices[box]];
 }
 
 template <class T>
-bool gsAdaptiveMeshing<T>::_checkBox( const HBox & box, const std::vector<gsHBoxCheck<2,T> *> predicates)
+bool gsAdaptiveMeshing<T>::_checkBox( const HBox & box, const std::vector<gsHBoxCheck<2,T> *> predicates) const
 {
     bool check = true;
     for (typename std::vector<gsHBoxCheck<2,T>*>::const_iterator errIt = predicates.begin(); errIt!=predicates.end(); errIt++)
@@ -252,7 +292,7 @@ bool gsAdaptiveMeshing<T>::_checkBox( const HBox & box, const std::vector<gsHBox
 }
 
 template <class T>
-bool gsAdaptiveMeshing<T>::_checkBoxes( const typename HBox::Container & boxes, const std::vector<gsHBoxCheck<2,T> *> predicates)
+bool gsAdaptiveMeshing<T>::_checkBoxes( const typename HBox::Container & boxes, const std::vector<gsHBoxCheck<2,T> *> predicates) const
 {
     bool check = true;
     for (typename HBox::cIterator it = boxes.begin(); it!=boxes.end(); it++)
@@ -265,28 +305,28 @@ bool gsAdaptiveMeshing<T>::_checkBoxes( const typename HBox::Container & boxes, 
 
 
 template <class T>
-void gsAdaptiveMeshing<T>::_addAndMark( HBox & box, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+void gsAdaptiveMeshing<T>::_addAndMark( HBox & box, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     _boxPtr(box)->mark();
     elMarked.add(*_boxPtr(box));
 }
 
 template <class T>
-void gsAdaptiveMeshing<T>::_addAndMark( typename HBox::Container & boxes, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+void gsAdaptiveMeshing<T>::_addAndMark( typename HBox::Container & boxes, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     for (typename HBox::Iterator it = boxes.begin(); it!=boxes.end(); it++)
         _addAndMark(*it,elMarked);
 }
 
 template <class T>
-void gsAdaptiveMeshing<T>::_setContainerProperties( typename HBox::Container & boxes )
+void gsAdaptiveMeshing<T>::_setContainerProperties( typename HBox::Container & boxes ) const
 {
     for (typename HBox::Iterator it = boxes.begin(); it!=boxes.end(); it++)
     {
         // HBox * box = _boxPtr(*it);
         // it->setError(box->error());
         // it->setMark(box->marked());
-        it->setError(_boxPtr(*it)->error());
+        it->setAndProjectError(_boxPtr(*it)->error(),m_alpha,m_beta);
     }
 }
 
@@ -308,11 +348,11 @@ T gsAdaptiveMeshing<T>::_totalError(const boxMapType & elements)
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if< _coarsen &&  _admissible, void>::type
-gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Fraction marking for coarsening...\n";
     T cummulErrMarked = T(0);
-    T errorMarkSum = parameter * _totalError(elements);
+    T errorMarkSum =  m_crsParam * m_totalError;
 
     // Accumulation operator for neighborhoods (boxContainer)
     auto accumulate_error = [](const T & val, const typename boxContainer::value_type & b)
@@ -348,20 +388,20 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T p
         return (cummulErrMarked > errorMarkSum);
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<"\n";
+    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if< _coarsen && !_admissible, void>::type
-gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Fraction marking for coarsening...\n";
     T cummulErrMarked = T(0);
-    T errorMarkSum = parameter * _totalError(elements);
+    T errorMarkSum = m_crsParam * m_totalError;
 
     auto loop_action = [this,&elements,&predicates,&cummulErrMarked,&errorMarkSum,&elMarked]
                     (const index_t & index)
@@ -379,19 +419,19 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T p
         return (cummulErrMarked > errorMarkSum);
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<"\n";
+    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if<!_coarsen &&  _admissible, void>::type
-gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Fraction marking (admissible) for refinement...\n";
     T cummulErrMarked = T(0);
-    T errorMarkSum = parameter * _totalError(elements);
+    T errorMarkSum = m_refParam * m_totalError;
 
     // Accumulation operator for neighborhoods (boxContainer)
     auto accumulate_error = [](const T & val, const typename boxContainer::value_type & b)
@@ -428,19 +468,19 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T p
         return (cummulErrMarked > errorMarkSum);
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<"\n";
+    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if<!_coarsen && !_admissible, void>::type
-gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Fraction marking (not admissible) for refinement...\n";
     T cummulErrMarked = T(0);
-    T errorMarkSum = parameter * _totalError(elements);
+    T errorMarkSum = m_refParam * m_totalError;
 
     auto loop_action = [this,&elements,&predicates,&cummulErrMarked,&errorMarkSum,&elMarked]
                     (const index_t & index)
@@ -460,22 +500,208 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const T p
         // return false;
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<"\n";
+    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with marked error = "<<cummulErrMarked<<" and threshold = "<<errorMarkSum<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if< _coarsen &&  _admissible, void>::type
-gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
+{
+    gsDebug<<"Projected fraction (admissible) marking for coarsening...\n";
+    T targetError = m_refParamExtra;
+    if (m_totalError > targetError)
+        return;
+    if (m_uniformCrsError < targetError) // then all elements should be refined
+    {
+        this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
+        return;
+    }
+    T projectedError = m_totalError;
+
+    // Accumulation operator for neighborhoods (boxContainer)
+    auto accumulate_improvement = [](const T & val, const typename boxContainer::value_type & b)
+    { return val + b.projectedSetBack(); };
+
+    auto loop_action = [this,&elements,&predicates,&projectedError,&targetError,&elMarked,&accumulate_improvement]
+                    (const index_t & index)
+    {
+        // Get the box
+        HBox_ptr box = elements.at(index);
+        // Continue if the box is already marked or if it does not satsfy all checks
+        if (_boxPtr(*box)->marked() || !_checkBox(*box,predicates))
+            return false;
+
+        // Get the neighborhoods
+        typename HBox::Container sibs = box->getSiblings();
+        _setContainerProperties(sibs);
+        if (!gsHBoxUtils<2,T>::allActive(sibs))
+            return false;
+
+        HBoxContainer siblings(sibs);
+        T siblingSetBack = std::accumulate(sibs.begin(),sibs.end(),0.0,accumulate_improvement);
+
+        // Check all siblings if they satisfy the predicates
+        if (_checkBoxes(sibs,predicates))
+        {
+            projectedError += siblingSetBack;
+            _addAndMark(sibs,elMarked);
+            projectedError += box->projectedSetBack();
+            _addAndMark(*box,elMarked);
+        }
+
+        // return false;
+        return (projectedError > targetError);
+    };
+
+    std::find_if(m_refPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
+    elMarked = HBoxUtils::Unique(elMarked);
+    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with projected error = "<<projectedError<<" and target error = "<<targetError<<"\n";
+
+    std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
+    elMarked = HBoxUtils::Unique(elMarked);
+    gsDebug<<"[Mark projected fraction] Marked "<<elMarked.totalSize()<<" elements with projected error = "<<projectedError<<" and target error = "<<targetError<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+}
+
+
+template <class T>
+template<bool _coarsen,bool _admissible>
+typename std::enable_if< _coarsen && !_admissible, void>::type
+gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
+{
+    GISMO_NO_IMPLEMENTATION;
+    // gsDebug<<"Projected fraction marking for coarsening...\n";
+    // T projectedError = m_totalError;
+    // T targetError = m_crsParam;
+    // if (projectedError > targetError)
+    //     return;
+
+    // auto loop_action = [this,&elements,&predicates,&projectedError,&targetError,&elMarked]
+    //                 (const index_t & index)
+    // {
+    //     // Get the box
+    //     HBox_ptr box = elements.at(index);
+
+    //     // Check box if it satisfy the predicates
+    //     if (_checkBox(*box,predicates))
+    //     {
+    //         projectedError += box->projectedImprovement();
+    //         _addAndMark(*box,elMarked);
+    //     }
+    //     // return false;
+    //     return (projectedError > targetError);
+    // };
+
+    // std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
+    // elMarked = HBoxUtils::Unique(elMarked);
+    // gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with projected error = "<<projectedError<<" and target error = "<<targetError<<"\n";
+}
+
+template <class T>
+template<bool _coarsen,bool _admissible>
+typename std::enable_if<!_coarsen &&  _admissible, void>::type
+gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
+{
+    gsDebug<<"Projected fraction (admissible) marking for refinement...\n";
+    T targetError = m_refParamExtra;
+    if (m_totalError < targetError)
+        return;
+    // if (m_uniformRefError > targetError) // then all elements should be refined
+    // {
+    //     this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
+    //     return;
+    // }
+    T projectedError = m_totalError;
+
+    // Accumulation operator for neighborhoods (boxContainer)
+    auto accumulate_improvement = [](const T & val, const typename boxContainer::value_type & b)
+    {
+        return val + b.error() - b.projectedErrorRef();
+    };
+
+    auto loop_action = [this,&elements,&predicates,&projectedError,&targetError,&elMarked,&accumulate_improvement]
+                    (const index_t & index)
+    {
+        // Get the box
+        HBox_ptr box = elements.at(index);
+        if (_boxPtr(*box)->marked())
+        {
+            return false;
+        }
+
+        // Get the neighborhoods
+        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
+        HBoxContainer neighborhoodtmp = HBoxContainer(neighborhood);
+        _setContainerProperties(neighborhood);
+        T neighborhoodImprovement = std::accumulate(neighborhood.begin(),neighborhood.end(),0.0,accumulate_improvement);
+
+        // Check all elements in the neighborhood if they satisfy the predicates
+        if (_checkBoxes(neighborhood,predicates))
+        {
+            projectedError -= neighborhoodImprovement;
+            _addAndMark(neighborhood,elMarked);
+        }
+        // return false;
+        return (projectedError < targetError);
+    };
+
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
+    elMarked = HBoxUtils::Unique(elMarked);
+    gsDebug<<"[Mark projected fraction] Marked "<<elMarked.totalSize()<<" elements with projected error = "<<projectedError<<" and target error = "<<targetError<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+}
+
+template <class T>
+template<bool _coarsen,bool _admissible>
+typename std::enable_if<!_coarsen && !_admissible, void>::type
+gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
+{
+    gsDebug<<"Projected fraction (not admissible) marking for refinement...\n";
+    T targetError = m_refParamExtra;
+    if (m_totalError < targetError)
+        return;
+    if (m_uniformRefError > targetError) // then all elements should be refined
+    {
+        this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
+        return;
+    }
+    T projectedError = m_totalError;
+
+    auto loop_action = [this,&elements,&predicates,&projectedError,&targetError,&elMarked]
+                    (const index_t & index)
+    {
+        HBox_ptr box = elements.at(index);
+
+        // if the errorMarkSum is exceeded with the current contribution, return true
+        // if (cummulErrMarked + box->error() > errorMarkSum)
+        //     return true;
+
+        if (_checkBox(*box,predicates))
+        {
+            projectedError -= box->projectedImprovement();
+            _addAndMark(*box,elMarked);
+        }
+        return (projectedError < targetError);
+        // return false;
+    };
+
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
+    elMarked = HBoxUtils::Unique(elMarked);
+    gsDebug<<"[Mark projected fraction] Marked "<<elMarked.totalSize()<<" elements with projected error = "<<projectedError<<" and target error = "<<targetError<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+}
+
+template <class T>
+template<bool _coarsen,bool _admissible>
+typename std::enable_if< _coarsen &&  _admissible, void>::type
+gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Percentage marking for coarsening...\n";
     // Total number of elements:
     size_t NE = elements.size();
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
-    index_t NR = cast<T,index_t>( math::floor( parameter * T(NE) ) );
+    index_t NR = cast<T,index_t>( math::floor( m_crsParam * T(NE) ) );
 
     index_t nmarked = 0;
     auto loop_action = [this,&elements,&predicates,&NR,&nmarked,&elMarked]
@@ -504,22 +730,22 @@ gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T
         return (nmarked > NR);
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<parameter*100<<"%)"<<"\n";
+    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_crsParam*100<<"%)"<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if< _coarsen && !_admissible, void>::type
-gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Percentage marking for coarsening...\n";
     // Total number of elements:
     size_t NE = elements.size();
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
-    index_t NR = cast<T,index_t>( math::floor( parameter * T(NE) ) );
+    index_t NR = cast<T,index_t>( math::floor( m_crsParam * T(NE) ) );
 
     index_t nmarked = 0;
     auto loop_action = [this,&elements,&predicates,&NR,&nmarked,&elMarked]
@@ -535,22 +761,22 @@ gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T
         return (nmarked > NR);
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<parameter*100<<"%)"<<"\n";
+    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_crsParam*100<<"%)"<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if<!_coarsen &&  _admissible, void>::type
-gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Percentage marking (admissible) for refinement...\n";
     // Total number of elements:
     size_t NE = elements.size();
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
-    index_t NR = cast<T,index_t>( math::floor( parameter * T(NE) ) );
+    index_t NR = cast<T,index_t>( math::floor( m_refParam * T(NE) ) );
 
     index_t nmarked = 0;
     auto loop_action = [this,&elements,&predicates,&nmarked,&NR,&elMarked]
@@ -573,22 +799,22 @@ gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T
         return (nmarked > NR);
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<parameter*100<<"%)"<<"\n";
+    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_refParam*100<<"%)"<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if<!_coarsen && !_admissible, void>::type
-gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Percentage marking (not admissible) for refinement...\n";
     // Total number of elements:
     size_t NE = elements.size();
     // Compute the index from which the refinement should start,
     // once the vector is sorted.
-    index_t NR = cast<T,index_t>( math::floor( parameter * T(NE) ) );
+    index_t NR = cast<T,index_t>( math::floor( m_refParam * T(NE) ) );
 
     index_t nmarked = 0;
     auto loop_action = [&elements,&predicates,&NR,&nmarked,&elMarked]
@@ -608,9 +834,9 @@ gsAdaptiveMeshing<T>::_markPercentage_impl( const boxMapType & elements, const T
         return (nmarked > NR);
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<parameter*100<<"%)"<<"\n";
+    gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_refParam*100<<"%)"<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
@@ -630,12 +856,12 @@ T gsAdaptiveMeshing<T>::_maxError(const boxMapType & elements)
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if< _coarsen &&  _admissible, void>::type
-gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Threshold marking for coarsening...\n";
-    GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
+    GISMO_ASSERT(m_crsParam<=1 && m_crsParam>=0,"Coarsening parameter must be a percentage!");
 
-    T Thr = parameter * _maxError(elements);
+    T Thr = m_crsParam * m_maxError;
     T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsLargerErrCompare<2,T>(Thr);
 
@@ -670,20 +896,20 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
         return false;
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<"\n";
+    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if< _coarsen && !_admissible, void>::type
-gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Threshold marking for coarsening...\n";
-    GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
+    GISMO_ASSERT(m_crsParam<=1 && m_crsParam>=0,"Coarsening parameter must be a percentage!");
 
-    T Thr = parameter * _maxError(elements);
+    T Thr = m_crsParam * m_maxError;
     T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsLargerErrCompare<2,T>(Thr);
 
@@ -704,20 +930,20 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
         return false;
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<"\n";
+    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if<!_coarsen &&  _admissible, void>::type
-gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Threshold marking (admissible) for refinement...\n";
-    GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
+    GISMO_ASSERT(m_refParam<=1 && m_refParam>=0,"Refinement parameter must be a percentage!");
 
-    T Thr = parameter * _maxError(elements);
+    T Thr = m_refParam * m_maxError;
     T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsSmallerErrCompare<2,T>(Thr);
 
@@ -746,20 +972,20 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
         return false;
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<"\n";
+    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template <class T>
 template<bool _coarsen,bool _admissible>
 typename std::enable_if<!_coarsen && !_admissible, void>::type
-gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T parameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked)
+gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Threshold marking (not admissible) for refinement...\n";
-    GISMO_ASSERT(parameter<=1 && parameter>=0,"Refinement parameter must be a percentage!");
+    GISMO_ASSERT(m_refParam<=1 && m_refParam>=0,"Refinement parameter must be a percentage!");
 
-    T Thr = parameter * _maxError(elements);
+    T Thr = m_refParam * m_maxError;
     T current = 0;
     gsHBoxCheck<2,T> * thres_predicate = new gsSmallerErrCompare<2,T>(Thr);
 
@@ -780,9 +1006,9 @@ gsAdaptiveMeshing<T>::_markThreshold_impl( const boxMapType & elements, const T 
         return false;
     };
 
-    std::find_if(permutation.cbegin(),permutation.cend(),loop_action);
+    std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<"\n";
+    gsDebug<<"[Mark threshold] Marked "<<elMarked.totalSize()<<" elements with largest error "<<current<<" and treshold = "<<Thr<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template<class T>
@@ -792,11 +1018,16 @@ void gsAdaptiveMeshing<T>::defaultOptions()
     m_options.addInt("RefineRule","Rule used for refinement: 1=GARU, 2=PUCA, 3=BULK.",1);
     m_options.addReal("CoarsenParam","Parameter used for coarsening",0.1);
     m_options.addReal("RefineParam","Parameter used for refinement",0.1);
+    m_options.addReal("CoarsenParamExtra","Extra parameter used for coarsening",0.1);
+    m_options.addReal("RefineParamExtra","Extra parameter used for refinement",0.1);
+
+    m_options.addInt("Convergence_alpha","Estimated convergence parameter of he error, for alpha*p+beta convergence",-1);
+    m_options.addInt("Convergence_beta","Estimated convergence parameter of he error, for alpha*p+beta convergence",-1);
 
     m_options.addInt("CoarsenExtension","Extension coarsening",0);
     m_options.addInt("RefineExtension","Extension refinement",0);
 
-    m_options.addInt("MaxLevel","Maximum refinement level",10);
+    m_options.addInt("MaxLevel","Maximum refinement level",3);
 
     m_options.addInt("Admissibility","Admissibility region, 0=T-admissibility (default), 1=H-admissibility",0);
     m_options.addSwitch("Admissible","Mark the admissible region",true);
@@ -806,26 +1037,48 @@ void gsAdaptiveMeshing<T>::defaultOptions()
 template<class T>
 void gsAdaptiveMeshing<T>::getOptions()
 {
-    if (m_options.getInt("CoarsenRule")==1)
-        m_crsRule = GARU;
-    else if (m_options.getInt("CoarsenRule")==2)
-        m_crsRule = PUCA;
-    else if (m_options.getInt("CoarsenRule")==3)
-        m_crsRule = BULK;
-    else
-        GISMO_ERROR("Marking strategy unknown");
+    switch (m_options.askInt("CoarsenRule",3))
+    {
+        case 1:
+            m_crsRule = GARU;
+            break;
+        case 2:
+            m_crsRule = PUCA;
+            break;
+        case 3:
+            m_crsRule = BULK;
+            break;
+        case 4:
+            m_crsRule = PBULK;
+            break;
+        default:
+            GISMO_ERROR("Coarsening marking strategy unknown");
+            break;
+    }
 
-    if (m_options.getInt("RefineRule")==1)
-        m_refRule = GARU;
-    else if (m_options.getInt("RefineRule")==2)
-        m_refRule = PUCA;
-    else if (m_options.getInt("RefineRule")==3)
-        m_refRule = BULK;
-    else
-        GISMO_ERROR("Marking strategy unknown");
+    switch (m_options.askInt("RefineRule",3))
+    {
+        case 1:
+            m_refRule = GARU;
+            break;
+        case 2:
+            m_refRule = PUCA;
+            break;
+        case 3:
+            m_refRule = BULK;
+            break;
+        case 4:
+            m_refRule = PBULK;
+            break;
+        default:
+            GISMO_ERROR("Refinement marking strategy unknown");
+            break;
+    }
 
     m_crsParam = m_options.getReal("CoarsenParam");
+    m_crsParamExtra = m_options.getReal("CoarsenParamExtra");
     m_refParam = m_options.getReal("RefineParam");
+    m_refParamExtra = m_options.getReal("RefineParamExtra");
 
     m_crsExt = m_options.getInt("CoarsenExtension");
     m_refExt = m_options.getInt("RefineExtension");
@@ -834,24 +1087,29 @@ void gsAdaptiveMeshing<T>::getOptions()
 
     m_admissible = m_options.getSwitch("Admissible");
     m_m = m_options.getInt("Jump");
+
+    m_alpha=m_options.askInt("Convergence_alpha",-1);
+    m_beta=m_options.askInt("Convergence_beta",-1);
 }
 
 template<class T>
 void gsAdaptiveMeshing<T>::markRef_into(const std::vector<T> & elError, HBoxContainer & elMarked)
 {
     elMarked.clear();
-    std::vector<index_t> permutation;
     this->_assignErrors(m_boxes,elError);
-    permutation = this->_sortPermutation(m_boxes); // Index of the lowest error is first
-    std::reverse(permutation.begin(),permutation.end()); // Index of the highest error is first
+    if (m_refRule!=PBULK)
+        m_refPermutation = this->_sortPermutation(m_boxes); // Index of the lowest error is first
+    else
+        m_refPermutation = this->_sortPermutationProjected(m_boxes); // Index of the lowest error is first
+    std::reverse(m_refPermutation.begin(),m_refPermutation.end()); // Index of the highest error is first
 
     std::vector<gsHBoxCheck<2,T> *> predicates;
     _refPredicates_into(predicates);
 
     if (m_admissible)
-        _markElements<false,true>( elError, m_refRule, m_refParam, permutation, predicates, elMarked);//,flag [coarse]);
+        _markElements<false,true>( elError, m_refRule, predicates, elMarked);//,flag [coarse]);
     else
-        _markElements<false,false>( elError, m_refRule, m_refParam, permutation, predicates, elMarked);//,flag [coarse]);
+        _markElements<false,false>( elError, m_refRule, predicates, elMarked);//,flag [coarse]);
 
     for (typename std::vector<gsHBoxCheck<2,T>*>::iterator pred=predicates.begin(); pred!=predicates.end(); pred++)
         delete *pred;
@@ -861,9 +1119,13 @@ template<class T>
 void gsAdaptiveMeshing<T>::markCrs_into(const std::vector<T> & elError, const HBoxContainer & markedRef, HBoxContainer & elMarked)
 {
     elMarked.clear();
-    std::vector<index_t> permutation;
+    std::vector<index_t> m_crsPermutation;
     this->_assignErrors(m_boxes,elError);
-    permutation = this->_sortPermutation(m_boxes);
+
+    if (m_crsRule!=PBULK)
+        m_crsPermutation = this->_sortPermutation(m_boxes); // Index of the lowest error is first
+    else
+        m_crsPermutation = this->_sortPermutationProjected(m_boxes); // Index of the lowest error is first
 
     std::vector<gsHBoxCheck<2,T> *> predicates;
     if (markedRef.totalSize()==0 || !m_admissible)
@@ -872,9 +1134,9 @@ void gsAdaptiveMeshing<T>::markCrs_into(const std::vector<T> & elError, const HB
         _crsPredicates_into(markedRef,predicates);
 
     if (m_admissible)
-        _markElements<true,true>( elError, m_crsRule, m_crsParam, permutation, predicates, elMarked);//,flag [coarse]);
+        _markElements<true,true>( elError, m_crsRule, predicates, elMarked);//,flag [coarse]);
     else
-        _markElements<true,false>( elError, m_crsRule, m_crsParam, permutation, predicates, elMarked);//,flag [coarse]);
+        _markElements<true,false>( elError, m_crsRule, predicates, elMarked);//,flag [coarse]);
 
     for (typename std::vector<gsHBoxCheck<2,T>*>::iterator pred=predicates.begin(); pred!=predicates.end(); pred++)
         delete *pred;
@@ -1099,7 +1361,7 @@ void gsAdaptiveMeshing<T>::_unrefineMarkedElements(     const HBoxContainer & ma
 }
 
 template<class T>
-typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer( const std::vector<bool> & bools)
+typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer( const std::vector<bool> & bools) const
 {
     HBoxContainer container;
 

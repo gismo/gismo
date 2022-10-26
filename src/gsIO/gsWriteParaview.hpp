@@ -1034,7 +1034,7 @@ void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn)
     points = gsPointGrid<T>(box.getCoordinates(),4);
     values.row(0).setConstant(box.level());
     values.row(1).setConstant(box.error());
-    values.row(2).setConstant(box.projectedError());
+    values.row(2).setConstant(box.projectedErrorRef());
     gsWriteParaviewTPgrid(points,values,np,fn);
 }
 

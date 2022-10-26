@@ -83,23 +83,28 @@ int main(int argc, char *argv[])
     index_t CExt = 0;
 
     index_t numElevate = 0;
-    index_t numRefine = 0;
+    index_t numInitUniformRefine = 0;
 
-    index_t type = 2;
+    index_t type = 1;
+
+    bool uniform = false;
 
     // Number of refinement loops to be done
     int numRefinementLoops = 4;
 
+    std::string mesherOptionsFile("options/mesher_options.xml");
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("coarsen", "Also coarsen", coarsening);
     cmd.addSwitch("admissible", "Admissible refinement", admissible);
+    cmd.addSwitch("uniform", "Uniform refinement, otherwise random", uniform);
     cmd.addInt("r", "numLoop", "number of refinement loops", numRefinementLoops);
-    cmd.addInt("R", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt("R", "uniformRefine", "Number of Uniform h-refinement loops",  numInitUniformRefine );
     cmd.addInt("e", "degreeElevation","Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt("E", "Extension", "Extension", Ext);
     cmd.addInt("C", "CExtension", "CExtension", CExt);
     cmd.addInt("T", "BasisType", "BasisType; 0 = BSpline, 1 = THB, 2 = HB", type);
+    cmd.addString( "O", "mesherOpt", "Input XML file for mesher options", mesherOptionsFile );
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
@@ -107,9 +112,10 @@ int main(int argc, char *argv[])
 
     //! [Function data]
     // Define exact solution (will be used for specifying Dirichlet boundary conditions
-    gsFunctionExpr<> g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x)+3*pi)/3.0 ) )", 2);
+    // gsFunctionExpr<> g("if( y>0, ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x) - pi)/3.0 ), ( (x^2+y^2)^(1.0/3.0) )*sin( (2*atan2(y,x)+3*pi)/3.0 ) )", 2);
+    gsFunctionExpr<> g("sin(pi*x) * sin(pi*y)", 2);
     // Define source function
-    gsFunctionExpr<> f("0",2);
+    gsFunctionExpr<> f("2*pi^2*sin(pi*x)*sin(pi*y)",2);
     //! [Function data]
 
     // Print out source function and solution
@@ -121,7 +127,7 @@ int main(int argc, char *argv[])
 
     //! [GetGeometryData]
     // Read xml and create gsMultiPatch
-    std::string fileSrc( "planar/lshape2d_3patches_thb.xml" );
+    std::string fileSrc( "planar/square_1patch_thb.xml" );
     gsMultiPatch<real_t> patches;
     gsReadFile<real_t>( fileSrc, patches);
     //! [GetGeometryData]
@@ -133,7 +139,7 @@ int main(int argc, char *argv[])
     //! [computeTopology]
 
     //! [GetGeometryDataTens]
-    std::string fileSrcTens( "planar/lshape2d_3patches_tens.xml" );
+    std::string fileSrcTens( "planar/square_1patch_tens.xml" );
     gsMultiPatch<real_t> patchesTens;
     gsReadFile<real_t>( fileSrcTens, patchesTens);
     patchesTens.computeTopology();
@@ -166,8 +172,8 @@ int main(int argc, char *argv[])
     bases.setDegree( bases.maxCwiseDegree() + numElevate);
 
     // h-refine each basis
-    for (int r =0; r < numRefine; ++r)
-        bases.uniformRefine();
+    // for (int r =0; r < numInitUniformRefine; ++r)
+    //     bases.uniformRefine();
 
     //! [GetBasisFromTens]
     // Copy tensor basis
@@ -195,16 +201,20 @@ int main(int argc, char *argv[])
 
 
     //! [initialRefinements]
-    // Number of initial uniform refinement steps:
-    int numInitUniformRefine  = 2;
-
     gsMultiPatch<> patches0 = patches;
 
-    for (int i = 0; i < numInitUniformRefine; ++i)
+    for (size_t p=0; p!=patches.nPatches(); ++p)
     {
-     bases.uniformRefine();
-     patches.uniformRefine();
+        gsMatrix<> bbox = patches.patch(p).support();
+        gsDebugVar(bbox);
+        for (int i = 0; i < numInitUniformRefine; ++i)
+        {
+            patches.patch(p).refineElements(patches.basis(p).asElements(bbox));
+            bases.basis(p).refineElements(patches.basis(p).asElements(bbox));
+        }
     }
+
+    gsDebugVar(bases.basis(0));
     //! [initialRefinements]
 
 
@@ -226,34 +236,34 @@ int main(int argc, char *argv[])
 
     gsParaviewCollection collection("adaptRef");
 
+    gsFileData<> fd_mesher(mesherOptionsFile);
+    gsOptionList mesherOpts;
+    fd_mesher.getFirst<gsOptionList>(mesherOpts);
+
     gsAdaptiveMeshing<real_t> mesher(bases);
-    mesher.options().setInt("CoarsenRule",2);
-    mesher.options().setInt("RefineRule",2);
-    mesher.options().setReal("CoarsenParam",0.1);
-    mesher.options().setReal("RefineParam",0.1);
-    mesher.options().setInt("CoarsenExtension",CExt);
-    mesher.options().setInt("RefineExtension",Ext);
-    mesher.options().setSwitch("Admissible",admissible);
-    mesher.options().setInt("Admissibility",0);
+    mesher.options() = mesherOpts;
+    gsDebugVar(mesher.options());
+    // mesher.options().setInt("CoarsenRule",2);
+    // mesher.options().setInt("RefineRule",2);
+    // mesher.options().setReal("CoarsenParam",0.1);
+    // mesher.options().setReal("RefineParam",0.1);
+    // mesher.options().setInt("CoarsenExtension",CExt);
+    // mesher.options().setInt("RefineExtension",Ext);
+    // mesher.options().setSwitch("Admissible",admissible);
+    // mesher.options().setInt("Admissibility",0);
     // mesher.options().setInt("MaxLevel",3);
     mesher.getOptions();
 
     //! [beginRefLoop]
     gsField<> solField;
+    real_t errorOld = 0;
+    real_t errorNew = 0;
+    real_t cummImprovement = 0, cummImprovementOld = 0;
+    std::ofstream file("result");
     for( int refLoop = 0; refLoop <= numRefinementLoops; refLoop++)
     {
         // bases = gsMultiBasis<>(patches);
         gsDebug<<"-------------------Loop = "<<refLoop<<"\n";
-        //! [beginRefLoop]
-        // gsWriteParaview(bases.basis(0),"basis0",200);
-        // gsWriteParaview(bases.basis(1),"basis1",200);
-        // gsWriteParaview(bases.basis(2),"basis2",200);
-        // gsDebugVar(bases.basis(0).numElements());
-        // gsDebugVar(bases.basis(1).numElements());
-        // gsDebugVar(bases.basis(2).numElements());
-        // --------------- solving ---------------
-
-        //! [solverPart]
         // Construct assembler
         gsPoissonAssembler<real_t> PoissonAssembler(patches,bases,bcInfo,f);
         PoissonAssembler.options().setInt("DirichletValues", dirichlet::l2Projection);
@@ -275,11 +285,11 @@ int main(int argc, char *argv[])
 
         gsInfo<<"NumDofs = "<<solVector.size()<<"\n";
 
-        gsWriteParaview<>(solField, "adaptRef" + std::to_string(2*refLoop), 1000, true);
+        gsWriteParaview<>(solField, "adaptRef" + std::to_string(refLoop), 1000, true);
         for (size_t p = 0; p!=patches.nPatches(); ++p)
         {
-            collection.addTimestep("adaptRef"+ std::to_string(2*refLoop) + std::to_string(p),2*refLoop,".vts");
-            collection.addTimestep("adaptRef"+ std::to_string(2*refLoop) + std::to_string(p) + "_mesh",2*refLoop,".vtp");
+            collection.addTimestep("adaptRef"+ std::to_string(refLoop) + std::to_string(p),refLoop,".vts");
+            collection.addTimestep("adaptRef"+ std::to_string(refLoop) + std::to_string(p) + "_mesh",refLoop,".vtp");
         }
 
         //! [solverPart]
@@ -297,9 +307,42 @@ int main(int argc, char *argv[])
         auto ms = ev.getVariable(g, Gm);
 
         // Get the element-wise norms.
-        ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
-        std::vector<real_t> eltErrs  = ev.elementwise();
+        ev.integralElWise( ( is - ms).sqNorm()*meas(Gm) );
+        // std::vector<real_t> eltErrs  = ev.elementwise();
+        std::vector<real_t> sqEltErrs  = ev.elementwise();
+        std::vector<real_t> eltErrs  = sqEltErrs;
+        // std::vector<real_t> eltErrs(sqEltErrs.size());
+        // std::transform(sqEltErrs.begin(),sqEltErrs.end(),eltErrs.begin(),[](real_t x) {return std::sqrt(x);});
+        errorNew = ev.integral( ( is - ms).sqNorm()*meas(Gm) );
+
+        // gsDebugVar(ev.integral( ( is - ms).sqNorm()*meas(Gm) ));
+        // gsDebugVar(ev.integral( pow(( is - ms).norm(),0.5)*meas(Gm) ));
+        // gsDebugVar(ev.integral( pow(( is - ms).norm(),2)*meas(Gm) ));
+
         //! [errorComputation]
+
+        // Make container of the boxes
+        gsHBoxContainer<2,real_t> elts;
+        index_t c = 0;
+        for (index_t p=0; p < bases.nPieces(); ++p)
+        {
+        // index_t p=0;
+            typename gsBasis<real_t>::domainIter domIt = bases.basis(p).makeDomainIterator();
+            gsHDomainIterator<real_t,2> * domHIt = nullptr;
+            domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
+            GISMO_ENSURE(domHIt!=nullptr,"Domain not loaded");
+            for (; domHIt->good(); domHIt->next())
+            {
+                gsHBox<2,real_t> box(domHIt,p);
+                box.setAndProjectError(eltErrs[c],mesherOpts.getInt("Convergence_alpha"),mesherOpts.getInt("Convergence_beta"));
+                elts.add(box);
+                c++;
+            }
+        }
+        typename gsHBoxContainer<2,real_t>::Container container = elts.toContainer();
+        typename gsHBoxContainer<2,real_t>::SortedContainer scontainer = gsHBoxUtils<2,real_t>::Sort(container);
+
+        gsWriteParaview(elts,"elts");
 
         index_t offset = 0;
         for (index_t p = 0; p!=patches.nPatches(); p++)
@@ -313,69 +356,150 @@ int main(int argc, char *argv[])
             gsWriteParaview<>( elemError_eh, "error_elem_ref" + std::to_string(p), 1000, false);
         }
 
-        // --------------- adaptive refinement ---------------
-        for (index_t k = 0; k!=eltErrs.size(); k++)
-            gsDebug<<eltErrs[k]<<"\n";
-
-        gsHBoxContainer<2,real_t> refined, unrefined;
-        if (coarsening)
+        if (!coarsening)
         {
-            mesher.markRef_into(eltErrs,refined);
-            mesher.markCrs_into(eltErrs,refined,unrefined);
+            gsHBoxContainer<2,real_t> refined;
+            // --------------- adaptive refinement ---------------
+            cummImprovement = 0;
+            if (!uniform)
+            {
+                index_t index = std::rand()%container.size();
+                // gsDebugVar(index);
+                gsHBox<2,real_t> refbox = *std::next(container.begin(),index);
+                typename gsHBoxContainer<2,real_t>::HContainer hcontainer = gsHBoxUtils<2,real_t>::markAdmissible(refbox,2);
+                refined = gsHBoxContainer<2,real_t>(hcontainer);
+
+                for (typename gsHBoxContainer<2,real_t>::HIterator hit = refined.begin(); hit!=refined.end(); hit++)
+                    for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+                    {
+                        auto pred = [it](auto b){return it->isSame(b);};
+                        typename gsHBox<2,real_t>::SortedContainer::iterator found = std::find_if(scontainer.begin(),scontainer.end(),pred);
+                        if (found!=scontainer.end())
+                            cummImprovement += found->error()-found->projectedErrorRef();
+                        else
+                            GISMO_ERROR("Hi");
+                    }
+
+            }
+            else
+            {
+                refined = elts;
+                for (typename gsHBoxContainer<2,real_t>::HIterator hit = refined.begin(); hit!=refined.end(); hit++)
+                    for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+                        cummImprovement += it->error()-it->projectedErrorRef();
+            }
+
+            gsDebugVar(refined);
+
+
             mesher.refine(refined);
-            mesher.unrefine(unrefined);
+            gsWriteParaview(refined,"refined");
+
+            for (size_t p = 0; p!=patches.nPatches(); ++p)
+            {
+                gsHBoxContainer<2,real_t> patchContainer = refined.patch(p);
+                gsWriteParaview(patchContainer,"Refined_patch_" + std::to_string(p));
+            }
         }
         else
         {
-            mesher.markRef_into(eltErrs,refined);
-            gsDebugVar(refined);
-            mesher.refine(refined);
-        }
+            cummImprovement = 0;
+            gsHBoxContainer<2,real_t> coarsened;
+            if (!uniform)
+            {
+                index_t index = std::rand()%container.size();
+                // gsDebugVar(index);
+                gsHBox<2,real_t> crsbox = *std::next(container.begin(),index);
+                typename gsHBoxContainer<2,real_t>::HContainer hcontainer = gsHBoxUtils<2,real_t>::Container2HContainer(crsbox.getParent().getChildren());
+                coarsened = gsHBoxContainer<2,real_t>(hcontainer);
 
-        for (size_t p = 0; p!=patches.nPatches(); ++p)
-        {
-            gsHBoxContainer<2,real_t> patchContainer = refined.patch(p);
-            gsWriteParaview(patchContainer,"Refined_patch_" + std::to_string(p));
-        }
+                bool failed = false;
+                for (typename gsHBoxContainer<2,real_t>::HIterator hit = coarsened.begin(); hit!=coarsened.end(); hit++)
+                    for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+                    {
+                        auto pred = [it](auto b)
+                        {
+                            return it->isSame(b);
+                        };
+                        typename gsHBox<2,real_t>::SortedContainer::iterator found = std::find_if(scontainer.begin(),scontainer.end(),pred);
+                        if (found!=scontainer.end())
+                        {
+                            gsDebugVar(*found);
+                            gsDebugVar(found->projectedErrorCrs());
+                            gsDebugVar(found->error());
+                            cummImprovement += found->projectedErrorCrs() - found->error();
+                        }
+                        else
+                        {
+                            failed = true;
+                            break;
+                        }
+                            // GISMO_ERROR("Hi");
+                    }
 
-        gsWriteParaview<>(solField, "adaptRef" + std::to_string(2*refLoop+1), 1000, true);
-        for (size_t p = 0; p!=patches.nPatches(); ++p)
-        {
-            collection.addTimestep("adaptRef"+ std::to_string(2*refLoop+1) + std::to_string(p),2*refLoop+1,".vts");
-            collection.addTimestep("adaptRef"+ std::to_string(2*refLoop+1) + std::to_string(p) + "_mesh",2*refLoop+1,".vtp");
-        }
+                if (failed)
+                {
+                    refLoop--;
+                    continue;
+                }
+            }
+            else
+            {
+                coarsened = elts;
+                for (typename gsHBoxContainer<2,real_t>::HIterator hit = coarsened.begin(); hit!=coarsened.end(); hit++)
+                    for (typename gsHBoxContainer<2,real_t>::Iterator it = hit->begin(); it!=hit->end(); it++)
+                        cummImprovement += it->projectedErrorCrs() - it->error();
+            }
 
+            mesher.unrefine(coarsened);
+            gsWriteParaview(coarsened,"coarsened");
+
+            for (size_t p = 0; p!=patches.nPatches(); ++p)
+            {
+                gsHBoxContainer<2,real_t> patchContainer = coarsened.patch(p);
+                gsWriteParaview(patchContainer,"Coarsened_patch_" + std::to_string(p));
+            }
+        }
         //! [adaptRefinementPart]
 
         //! [repairInterfaces]
         // Call repair interfaces to make sure that the new meshes
         // match along patch interfaces.
         // patches.repairInterfaces();
-        gsDebugVar(bases.totalElements());
-        bases.repairInterfaces( patches.interfaces() );
-        gsWriteParaview(bases.basis(0),"basis0",200);
-        gsWriteParaview(bases.basis(1),"basis1",200);
-        gsWriteParaview(bases.basis(2),"basis2",200);
-        gsDebugVar(bases.totalElements());
+        // gsDebugVar(bases.totalElements());
+        // bases.repairInterfaces( patches.interfaces() );
+        // gsWriteParaview(bases.basis(0),"basis0",200);
+        // gsWriteParaview(bases.basis(1),"basis1",200);
+        // gsWriteParaview(bases.basis(2),"basis2",200);
+        // gsDebugVar(bases.totalElements());
         // bases = gsMultiBasis<>(patches);
         //! [repairInterfaces]
 
         // bases.repairInterfaces( patches.interfaces() );
-
-
         gsWriteParaview(patches,"mp",1000,true);
 
         //! [Export to Paraview]
-        // Export the final solution
-        // if( plot && refLoop == numRefinementLoops )
-        // {
-           // Write the computed solution to paraview files
-
-        // }
         //! [Export to Paraview]
         mesher.rebuild();
+
+        ev.setIntegrationElements(bases);
+        // Get the element-wise norms.
+
+        if (refLoop==0)
+        {
+            errorOld = errorNew;
+            cummImprovementOld = cummImprovement;
+            continue;
+        }
+
+        gsInfo<<"Improvement = "<<errorOld-errorNew<<"\n";
+        gsInfo<<"Predicted   = "<<cummImprovementOld<<"\n";
+        file<<errorOld-errorNew<<","<<cummImprovementOld<<"\n";
+        errorOld = errorNew;
+        cummImprovementOld = cummImprovement;
     }
 
+    file.close();
     collection.save();
 
     //! [Plot in Paraview]

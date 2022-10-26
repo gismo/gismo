@@ -27,7 +27,8 @@ gsHBox<d, T>::gsHBox()
 :
 m_pid(-1),
 m_error(0),
-m_error_proj(0),
+m_error_ref(0),
+m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
@@ -45,7 +46,8 @@ gsHBox<d, T>::gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid)
 :
 m_pid(pid),
 m_error(0),
-m_error_proj(0),
+m_error_ref(0),
+m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
@@ -66,7 +68,8 @@ gsHBox<d, T>::gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHB
 m_indices(low,upp,level),
 m_pid(pid),
 m_error(0),
-m_error_proj(0),
+m_error_ref(0),
+m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
@@ -79,7 +82,8 @@ gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * 
 m_indices(box),
 m_pid(pid),
 m_error(0),
-m_error_proj(0),
+m_error_ref(0),
+m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
@@ -91,7 +95,8 @@ gsHBox<d, T>::gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<
 :
 m_pid(pid),
 m_error(0),
-m_error_proj(0),
+m_error_ref(0),
+m_error_crs(0),
 m_index(-1),
 m_marked(false)
 {
@@ -133,7 +138,8 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( const gsHBox<d,T> & other )
         m_center       = other.m_center;
         m_basis        = other.m_basis;
         m_error        = other.m_error;
-        m_error_proj   = other.m_error_proj;
+        m_error_ref    = other.m_error_ref;
+        m_error_crs    = other.m_error_crs;
         m_marked       = other.m_marked;
         m_index        = other.m_index;
     }
@@ -149,7 +155,8 @@ gsHBox<d,T> & gsHBox<d, T>::operator= ( gsHBox<d,T> && other )
     m_center       = give(other.m_center);
     m_basis        = give(other.m_basis);
     m_error        = give(other.m_error);
-    m_error_proj   = give(other.m_error_proj);
+    m_error_ref    = give(other.m_error_ref);
+    m_error_crs    = give(other.m_error_crs);
     m_marked       = give(other.m_marked);
     m_index        = give(other.m_index);
     return *this;
@@ -285,23 +292,32 @@ void gsHBox<d, T>::setError(T error)
 }
 
 template <short_t d, class T>
-void gsHBox<d, T>::setAndProjectError(T error)
+void gsHBox<d, T>::setAndProjectError(T error, index_t alpha, index_t beta)
 {
     this->setError(error);
-    this->computeCoordinates();
-    m_error_proj= math::pow(1./2.,2*m_basis->maxDegree()+2) * error ;
+    m_error_ref= math::pow(1./2.,alpha*m_basis->maxDegree()+beta) * error ;
+    m_error_crs= math::pow(2.,alpha*m_basis->maxDegree()+beta) * error ;
 }
 
 template <short_t d, class T>
 T gsHBox<d, T>::error() const { return m_error; }
 
 template <short_t d, class T>
-T gsHBox<d, T>::projectedError() const { return m_error_proj; }
+T gsHBox<d, T>::projectedErrorRef() const { return m_error_ref; }
+
+template <short_t d, class T>
+T gsHBox<d, T>::projectedErrorCrs() const { return m_error_crs; }
 
 template <short_t d, class T>
 T gsHBox<d, T>::projectedImprovement() const
 {
-    return math::pow(this->getCellSize(),2)*(m_error-4*m_error_proj);
+    return m_error-m_error_ref;
+}
+
+template <short_t d, class T>
+T gsHBox<d, T>::projectedSetBack() const
+{
+    return m_error_crs-m_error;
 }
 
 template <short_t d, class T>

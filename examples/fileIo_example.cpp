@@ -118,6 +118,11 @@ int main(int argc, char *argv[])
   lookFor< gsMultiPatch<> > (data) ;
 
   lookFor< gsFunctionExpr<> > (data);
+
+  lookFor< gsHBox<2,real_t> > (data);
+
+  lookFor< gsHBoxContainer<2,real_t> > (data);
+
     
 #ifdef GISMO_WITH_ONURBS
   if ( data.has< gsPlanarDomain<> >() )

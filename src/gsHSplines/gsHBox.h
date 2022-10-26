@@ -42,6 +42,11 @@ public:
     typedef typename HContainer::reverse_iterator   rHIterator;
     typedef typename HContainer::const_iterator     cHIterator;
 
+    /// Shared pointer for gsHTensorBasis
+    typedef memory::shared_ptr< gsHBox > Ptr;
+
+    /// Unique pointer for gsHTensorBasis
+    typedef memory::unique_ptr< gsHBox > uPtr;
 
 public:
 
@@ -188,9 +193,9 @@ public:
     void setError(T error);
 
     /**
-     * @brief      Sets the error of the object and compute the projection of the error on a finer mesh
+     * @brief      Sets the error of the object and compute the projection of the error on a finer mesh. The projection is performed based on a theoretical rate of convergence of alpha*p+beta
      */
-    void setAndProjectError(T error);
+    void setAndProjectError(T error, index_t alpha=2, index_t beta=0);
 
     /**
      * @brief      Gets the error stored in the object
@@ -200,18 +205,36 @@ public:
     T error() const;
 
     /**
-     * @brief      Gets the projected error stored in the object
+     * @brief      The error contribution of *this when it is refined
      *
      * @return     The error of the object
      */
-    T projectedError() const;
+    T projectedErrorRef() const;
 
     /**
-     * @brief      Gets the projected improvement = error - projected error
+     * @brief      The error contribution of *this when it is coarsened
+     *
+     *             Note: this means that
+     *
+     * @return     The error of the object
+     */
+    T projectedErrorCrs() const;
+
+
+    /**
+     * @brief      Gives the projected improvement that can be expected for \a this
      *
      * @return     The projected improvement
      */
     T projectedImprovement() const;
+
+    /**
+     * @brief      Gives the projected set-back that can be expected for \a this
+     *
+     * @return     The projected improvement
+     */
+    T projectedSetBack() const;
+
 
     /**
      * @brief      Assigns an index to the object
@@ -415,6 +438,7 @@ public:
     HContainer           boxUnion(const HContainer & container1, const HContainer & container2) const;
 
     const gsHTensorBasis<d,T> & basis() const { return *m_basis; }
+    void setBasis(const gsHTensorBasis<d,T> * basis) { m_basis = basis; }
 
     /**
      * @brief      Returns unit boxes representation of the object.
@@ -494,7 +518,8 @@ protected:
     const gsHTensorBasis<d,T> * m_basis;
 
     T m_error;
-    T m_error_proj;
+    T m_error_ref;
+    T m_error_crs;
     index_t m_index;
     bool m_marked;
 

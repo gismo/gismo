@@ -48,6 +48,8 @@ public:
 
 public:
 
+    gsAdaptiveMeshing();
+
     gsAdaptiveMeshing(gsFunctionSet<T> & input);
 
     // ~gsAdaptiveMeshing();
@@ -106,6 +108,7 @@ private:
     // void _unrefineElementsThreshold(const index_t level);
 
     std::vector<index_t> _sortPermutation( const boxMapType & container);
+    std::vector<index_t> _sortPermutationProjected( const boxMapType & container);
     // void _sortPermutated( const std::vector<index_t> & permutation, boxContainer & container);
 
     void _crsPredicates_into( std::vector<gsHBoxCheck<2,T> *> & predicates);
@@ -113,91 +116,108 @@ private:
     void _refPredicates_into( std::vector<gsHBoxCheck<2,T> *> & predicates);
 
     template<bool _coarsen,bool _admissible>
-    void _markElements(  const std::vector<T> & elError, const index_t refCriterion, const T refParameter, const std::vector<index_t> & permutation, const std::vector<gsHBoxCheck<2,T> *> & predicates, HBoxContainer & elMarked);
+    void _markElements(  const std::vector<T> & elError, const index_t refCriterion, const std::vector<gsHBoxCheck<2,T> *> & predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
-    void _markFraction( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked)
+    void _markFraction( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
     {
-        _markFraction_impl<_coarsen,_admissible>(elements,refParameter,predicates,permutation,elMarked);
+        _markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
     }
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen &&  _admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen && !_admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen &&  _admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen && !_admissible, void>::type
-    _markFraction_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
-    void _markPercentage( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked)
+    void _markProjectedFraction( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
     {
-        _markPercentage_impl<_coarsen,_admissible>(elements,refParameter,predicates,permutation,elMarked);
+        _markProjectedFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
     }
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen &&  _admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen && !_admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen &&  _admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen && !_admissible, void>::type
-    _markPercentage_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked);
+    _markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+
 
     template<bool _coarsen,bool _admissible>
-    void _markThreshold( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, HBoxContainer & elMarked)
+    void _markPercentage( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
     {
-        _markThreshold_impl<_coarsen,_admissible>(elements,refParameter,predicates,permutation,elMarked);
+        _markPercentage_impl<_coarsen,_admissible>(elements,predicates,elMarked);
     }
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen &&  _admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked);
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if< _coarsen && !_admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked);
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen &&  _admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked);
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
     template<bool _coarsen,bool _admissible>
     typename std::enable_if<!_coarsen && !_admissible, void>::type
-    _markThreshold_impl( const boxMapType & elements, const T refParameter, const std::vector<gsHBoxCheck<2,T> *> predicates, const std::vector<index_t> & permutation, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked);
+    _markPercentage_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
 
-    bool _checkBox  ( const          HBox            & box  , const std::vector<gsHBoxCheck<2,T> *> predicates);
-    bool _checkBoxes( const typename HBox::Container & boxes, const std::vector<gsHBoxCheck<2,T> *> predicates);
+    template<bool _coarsen,bool _admissible>
+    void _markThreshold( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const
+    {
+        _markThreshold_impl<_coarsen,_admissible>(elements,predicates,elMarked);
+    }
+    template<bool _coarsen,bool _admissible>
+    typename std::enable_if< _coarsen &&  _admissible, void>::type
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+
+    template<bool _coarsen,bool _admissible>
+    typename std::enable_if< _coarsen && !_admissible, void>::type
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+
+    template<bool _coarsen,bool _admissible>
+    typename std::enable_if<!_coarsen &&  _admissible, void>::type
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+
+    template<bool _coarsen,bool _admissible>
+    typename std::enable_if<!_coarsen && !_admissible, void>::type
+    _markThreshold_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, HBoxContainer & elMarked) const;
+
+    bool _checkBox  ( const          HBox            & box  , const std::vector<gsHBoxCheck<2,T> *> predicates) const;
+    bool _checkBoxes( const typename HBox::Container & boxes, const std::vector<gsHBoxCheck<2,T> *> predicates) const;
 
     T _totalError(const boxMapType & elements);
 
     T _maxError(  const boxMapType & elements);
 
-    void _addAndMark(          HBox            & box  , typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked);
-    void _addAndMark( typename HBox::Container & boxes, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked);
+    void _addAndMark(          HBox            & box  , HBoxContainer & elMarked) const;
+    void _addAndMark( typename HBox::Container & boxes, HBoxContainer & elMarked) const;
 
-    void _setContainerProperties( typename HBox::Container & boxes );
+    void _setContainerProperties( typename HBox::Container & boxes ) const;
 
-    // void _markLevelThreshold( index_t level, HBoxContainer & elMarked);
-    void _getElLevels( std::vector<index_t> & elLevels);
+    HBox * _boxPtr(const HBox & box) const;
 
-    void _printMarking(const HBoxContainer & elMarked);
-
-    HBox * _boxPtr(const HBox & box);
-
-    typename gsAdaptiveMeshing<T>::HBoxContainer _toContainer( const std::vector<bool> & bools);
+    typename gsAdaptiveMeshing<T>::HBoxContainer _toContainer( const std::vector<bool> & bools) const;
 
 protected:
     // M & m_basis;
@@ -205,10 +225,12 @@ protected:
     // const gsMultiPatch<T> & m_patches;
     gsOptionList m_options;
 
-    T               m_crsParam, m_refParam;
+    T               m_crsParam, m_crsParamExtra, m_refParam, m_refParamExtra;
     MarkingStrategy m_crsRule, m_refRule;
     index_t         m_crsExt, m_refExt;
     index_t         m_maxLvl;
+
+    index_t         m_alpha, m_beta;
 
     index_t m_m;
 
@@ -221,6 +243,10 @@ protected:
 
     indexMapType m_indices;
     boxMapType   m_boxes;
+
+    T m_totalError, m_maxError, m_uniformRefError, m_uniformCrsError;
+
+    std::vector<index_t> m_refPermutation, m_crsPermutation;
 
     /*
         The plan:

@@ -36,6 +36,12 @@ public:
     typedef typename gsHBox<d,T>::cHIterator        cHIterator;
     typedef typename gsHBox<d,T>::rHIterator        rHIterator;
 
+    /// Shared pointer for gsHTensorBasis
+    typedef memory::shared_ptr< gsHBoxContainer > Ptr;
+
+    /// Unique pointer for gsHTensorBasis
+    typedef memory::unique_ptr< gsHBoxContainer > uPtr;
+
 public:
     gsHBoxContainer();
 
