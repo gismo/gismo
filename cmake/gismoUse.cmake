@@ -192,3 +192,9 @@ function(get_repo_info repository revision) #REPO_REVISION
       FILES_MATCHING PATTERN "*.h")
 
   endmacro(add_gismo_module)
+
+  macro(gismo_require_submodule SUBMOD)
+    if (NOT ";${GISMO_SUBMODULES};" MATCHES ";${SUBMOD};")
+      message(FATAL_ERROR "The submodule ${PROJECT_NAME} depends on ${SUBMOD}.\nEnable ${SUBMOD} by adding it to GISMO_SUBMODULES and rerun CMake.")
+    endif()
+  endmacro(gismo_require_submodule)
