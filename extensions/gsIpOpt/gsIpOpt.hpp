@@ -250,8 +250,6 @@ class gsIpOptTNLP : public Ipopt::TNLP
         {
             m_curDesign = gsAsConstVector<T>(x,n);
             m_lambda = gsAsConstVector<T>(lambda,m);
-
-            //m_op->finalize();
         }
 
         //@}
