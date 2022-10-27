@@ -723,10 +723,10 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             geometryMap G,
                                             std::string const & fn)
     {
+        //if gmap is false, embed topology ?
         m_exprdata->parse(expr);
-
-        //if false, embed topology ?
-        const index_t n = m_exprdata->multiBasis().nBases();
+        //const index_t n = m_exprdata->multiBasis().nBases();
+        const index_t n = G.source().nPieces();
         gsParaviewCollection collection(fn);
         std::string fileName;
 
@@ -738,7 +738,8 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         {
             fileName = fn + util::to_string(i);
             unsigned nPts = m_options.askInt("plot.npts", 1000);
-            ab = m_exprdata->multiBasis().piece(i).support();
+            //ab = m_exprdata->multiBasis().piece(i).support();
+            ab = G.source().piece(i).support();
             gsGridIterator<T,CUBE> pt(ab, nPts);
             eval(expr, pt, i);
             nPts = pt.numPoints();

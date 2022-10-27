@@ -42,12 +42,14 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
     m_points = points;
     m_result = NULL;
     m_basis = &basis;
-    m_points.transposeInPlace();
+    m_points.transposeInPlace(); // points are now on the rows
 }
 
 template<class T>
 void gsFitting<T>::compute(T lambda)
 {
+    m_last_lambda = lambda;
+
     // Wipe out previous result
     if ( m_result )
         delete m_result;
@@ -114,6 +116,76 @@ void gsFitting<T>::compute(T lambda)
     m_result = m_basis->makeGeometry( give(x) ).release();
 }
 
+template <class T>
+void gsFitting<T>::parameterCorrection(T accuracy,
+                                       index_t maxIter,
+                                       T tolOrth)
+{
+    if ( !m_result )
+        compute(m_last_lambda);
+
+    const index_t d = m_param_values.rows();
+    const index_t n = m_points.cols();
+    T maxAng, avgAng;
+    std::vector<gsMatrix<T> > vals;
+    gsMatrix<T> DD, der;
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+        maxAng = -1;
+        avgAng = 0;
+        //auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
+        //(vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+
+#       pragma omp parallel for default(shared) private(der,DD,vals)
+        for (index_t s = 0; s<m_points.rows(); ++s)
+            //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
+        {
+            vals = m_result->evalAllDers(m_param_values.col(s), 1);
+            for (index_t k = 0; k!=d; ++k)
+            {
+                der = vals[1].reshaped(d,n);
+                DD = vals[0].transpose() - m_points.row(s);
+                const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
+                const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
+#               pragma omp critical (max_avg_ang)
+                {
+                    maxAng = math::max(maxAng, a );
+                    avgAng += a;
+                }
+            }
+            /*
+            auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
+                (vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+            maxAng = ( DD.colwise().normalized() *
+                       der.colwise().normalized().transpose()
+                ).array().acos().maxCoeff();
+            */
+        }
+
+        avgAng /= d*m_points.rows();
+        //gsInfo << "Avg-deviation: "<< avgAng << " / max: "<<maxAng<<"\n";
+
+        // if (math::abs(0.5*EIGEN_PI-maxAng) <= tolOrth ) break;
+
+        gsVector<T> newParam;
+#       pragma omp parallel for default(shared) private(newParam)
+        for (index_t i = 0; i<m_points.rows(); ++i)
+        //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
+        {
+            newParam = m_param_values.col(i);
+            m_result->closestPointTo(m_points.row(i).transpose(),
+                                     newParam, accuracy, true);
+
+            // (!) There might be the same parameter for two points
+            // or ordering constraints in the case of structured/grid data
+            m_param_values.col(i) = newParam;
+        }
+
+        // refit
+        compute(m_last_lambda);
+    }
+}
+
 
 template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
@@ -125,6 +197,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
     gsMatrix<T> value, curr_point;
     gsMatrix<index_t> actives;
 
+#   pragma omp parallel for default(shared) private(curr_point,actives,value)
     for(index_t k = 0; k != num_points; ++k)
     {
         curr_point = m_param_values.col(k);
@@ -140,8 +213,10 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
         for (index_t i = 0; i != numActive; ++i)
         {
             const index_t ii = actives.at(i);
+#           pragma omp critical (acc_m_B)
             m_B.row(ii) += value.at(i) * m_points.row(k);
             for (index_t j = 0; j != numActive; ++j)
+#               pragma omp critical (acc_A_mat)
                 A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
         }
     }
@@ -173,6 +248,7 @@ void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
 template<class T>
 gsSparseMatrix<T> gsFitting<T>::smoothingMatrix(T lambda) const
 {
+    m_last_lambda = lambda;
 
     const int num_basis=m_basis->size();
 
@@ -188,6 +264,8 @@ gsSparseMatrix<T> gsFitting<T>::smoothingMatrix(T lambda) const
 template<class T>
 void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 {
+    m_last_lambda = lambda;
+
     const short_t dim = m_basis->dim();
     const short_t stride = dim*(dim+1)/2;
 
@@ -201,7 +279,13 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
     typename gsBasis<T>::domainIter domIt = m_basis->makeDomainIterator();
 
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+    for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#   else
     for (; domIt->good(); domIt->next() )
+#   endif
     {
         // Map the Quadrature rule to the element and compute basis derivatives
         QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
