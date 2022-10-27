@@ -530,11 +530,13 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
-    opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
-    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+    opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
+    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
+    opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
+    opt.addSwitch("overInt", "Apply over-integration or not?", false);
     return opt;
 }
 

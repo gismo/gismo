@@ -72,13 +72,13 @@ public:
 
     static BSplinePtr BSplineUnitInterval(short_t deg);
 
-/// 2d-rectange [low_x,upp_x] x [low_y,upp_y], rotated by \a turndeg degrees.
+    /// 2d-rectange [low_x,upp_x] x [low_y,upp_y], rotated by \a turndeg degrees.
     static TensorBSpline2Ptr BSplineRectangle( T const & low_x = 0,
                                                     T const & low_y = 0,
                                                     T const & upp_x = 1,
                                                     T const & upp_y = 1, T const & turndeg = 0);
 
-    // Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
+    /// Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
     static TensorBSpline2Ptr BSplineRectangleWithPara( T low_x = 0, T low_y = 0, T upp_x = 1, T upp_y = 1);
 
 /// Creates a \em n X \em m rectangle multipatch consisting of B-splines squares
@@ -195,6 +195,15 @@ public:
     static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
 
 }; // struct
+
+#ifdef GISMO_BUILD_PYBIND11
+
+    /**
+     * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
+     */
+    void pybind11_init_gsNurbsCreator(pybind11::module &m);
+
+#endif
 
 } // namespace gismo
 
