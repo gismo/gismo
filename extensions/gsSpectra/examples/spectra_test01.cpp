@@ -59,7 +59,14 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Test for eigenvalue solvers.\n A is a symmetric matrix and B is positive definite\n";
 
+
+
     gsMatrix<> Ad = A.toDense();
+    // Eigen::GeneralizedSelfAdjointEigenSolver< typename gsMatrix<>::Base >  eigSolverA;
+    // eigSolverA.compute(Ad);
+    // gsInfo << "Eigen dense solver:\n";
+    // gsInfo << "Eigenvalues A*x=lambda*B*x:\n" << eigSolverA.eigenvalues().transpose() <<"\n\n";
+
     gsSpectraSymSolver<gsMatrix<real_t>> minev(Ad, math::floor(sz/2), sz);
     minev.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
     gsInfo << "Symmetric solver:\n";
@@ -74,6 +81,12 @@ int main(int argc, char *argv[])
     minev3.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
     gsInfo << "Symmetric solver:\n";
     gsInfo << "Eigenvalues A*x=lambda*x:\n" << minev3.eigenvalues().transpose() <<"\n\n";
+
+    // gsMatrix<> Bd = B.toDense();
+    // Eigen::GeneralizedSelfAdjointEigenSolver< typename gsMatrix<>::Base >  eigSolverAB;
+    // eigSolverAB.compute(Ad,Bd);
+    // gsInfo << "Eigen dense solver:\n";
+    // gsInfo << "Eigenvalues A*x=lambda*B*x:\n" << eigSolverAB.eigenvalues().transpose() <<"\n\n";
 
     gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cholesky> Chsolver(A,B,math::floor(sz/2),sz);
     Chsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
