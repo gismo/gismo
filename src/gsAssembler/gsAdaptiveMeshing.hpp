@@ -251,13 +251,25 @@ std::vector<index_t> gsAdaptiveMeshing<T>::_sortPermutation( const boxMapType & 
 }
 
 template <class T>
-std::vector<index_t> gsAdaptiveMeshing<T>::_sortPermutationProjected( const boxMapType & container)
+std::vector<index_t> gsAdaptiveMeshing<T>::_sortPermutationProjectedRef( const boxMapType & container)
 {
     std::vector<index_t> idx(container.size());
     std::iota(idx.begin(),idx.end(),0);
     std::stable_sort(idx.begin(), idx.end(),
            [&container](size_t i1, size_t i2) {
             return container.at(i1)->projectedImprovement() < container.at(i2)->projectedImprovement();});
+
+    return idx;
+}
+
+template <class T>
+std::vector<index_t> gsAdaptiveMeshing<T>::_sortPermutationProjectedCrs( const boxMapType & container)
+{
+    std::vector<index_t> idx(container.size());
+    std::iota(idx.begin(),idx.end(),0);
+    std::stable_sort(idx.begin(), idx.end(),
+           [&container](size_t i1, size_t i2) {
+            return container.at(i1)->projectedSetBack() < container.at(i2)->projectedSetBack();});
 
     return idx;
 }
@@ -511,19 +523,19 @@ typename std::enable_if< _coarsen &&  _admissible, void>::type
 gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, const std::vector<gsHBoxCheck<2,T> *> predicates, typename gsAdaptiveMeshing<T>::HBoxContainer & elMarked) const
 {
     gsDebug<<"Projected fraction (admissible) marking for coarsening...\n";
-    T targetError = m_refParamExtra;
+    T targetError = m_crsParamExtra;
     if (m_totalError > targetError)
         return;
-    if (m_uniformCrsError < targetError) // then all elements should be refined
-    {
-        this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
-        return;
-    }
+    // if (m_uniformCrsError < targetError) // then all elements should be refined
+    // {
+    //     this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
+    //     return;
+    // }
     T projectedError = m_totalError;
 
     // Accumulation operator for neighborhoods (boxContainer)
     auto accumulate_improvement = [](const T & val, const typename boxContainer::value_type & b)
-    { return val + b.projectedSetBack(); };
+    { return val + b.projectedErrorCrs() - b.error(); };
 
     auto loop_action = [this,&elements,&predicates,&projectedError,&targetError,&elMarked,&accumulate_improvement]
                     (const index_t & index)
@@ -548,17 +560,13 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
         {
             projectedError += siblingSetBack;
             _addAndMark(sibs,elMarked);
-            projectedError += box->projectedSetBack();
+            projectedError += box->projectedErrorCrs() - box->error();
             _addAndMark(*box,elMarked);
         }
 
         // return false;
         return (projectedError > targetError);
     };
-
-    std::find_if(m_refPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
-    elMarked = HBoxUtils::Unique(elMarked);
-    gsDebug<<"[Mark fraction] Marked "<<elMarked.totalSize()<<" elements with projected error = "<<projectedError<<" and target error = "<<targetError<<"\n";
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
@@ -1100,7 +1108,14 @@ void gsAdaptiveMeshing<T>::markRef_into(const std::vector<T> & elError, HBoxCont
     if (m_refRule!=PBULK)
         m_refPermutation = this->_sortPermutation(m_boxes); // Index of the lowest error is first
     else
-        m_refPermutation = this->_sortPermutationProjected(m_boxes); // Index of the lowest error is first
+        m_refPermutation = this->_sortPermutationProjectedRef(m_boxes); // Index of the lowest error is first
+
+    // To do:
+    // - sort the errors for coarsened and refined in separate functions
+    // try again
+    // - computeError(primalL,dualL,dualH) class in gsThinSHellAssemblerDWR which derives from gsFunctionSet
+
+
     std::reverse(m_refPermutation.begin(),m_refPermutation.end()); // Index of the highest error is first
 
     std::vector<gsHBoxCheck<2,T> *> predicates;
@@ -1119,13 +1134,13 @@ template<class T>
 void gsAdaptiveMeshing<T>::markCrs_into(const std::vector<T> & elError, const HBoxContainer & markedRef, HBoxContainer & elMarked)
 {
     elMarked.clear();
-    std::vector<index_t> m_crsPermutation;
     this->_assignErrors(m_boxes,elError);
 
     if (m_crsRule!=PBULK)
         m_crsPermutation = this->_sortPermutation(m_boxes); // Index of the lowest error is first
     else
-        m_crsPermutation = this->_sortPermutationProjected(m_boxes); // Index of the lowest error is first
+        m_crsPermutation = this->_sortPermutationProjectedCrs(m_boxes); // Index of the lowest error is first
+    gsDebugVar(m_crsPermutation.size());
 
     std::vector<gsHBoxCheck<2,T> *> predicates;
     if (markedRef.totalSize()==0 || !m_admissible)
@@ -1137,6 +1152,8 @@ void gsAdaptiveMeshing<T>::markCrs_into(const std::vector<T> & elError, const HB
         _markElements<true,true>( elError, m_crsRule, predicates, elMarked);//,flag [coarse]);
     else
         _markElements<true,false>( elError, m_crsRule, predicates, elMarked);//,flag [coarse]);
+
+    gsDebugVar(m_crsPermutation.size());
 
     for (typename std::vector<gsHBoxCheck<2,T>*>::iterator pred=predicates.begin(); pred!=predicates.end(); pred++)
         delete *pred;

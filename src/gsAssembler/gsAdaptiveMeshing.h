@@ -108,7 +108,8 @@ private:
     // void _unrefineElementsThreshold(const index_t level);
 
     std::vector<index_t> _sortPermutation( const boxMapType & container);
-    std::vector<index_t> _sortPermutationProjected( const boxMapType & container);
+    std::vector<index_t> _sortPermutationProjectedRef( const boxMapType & container);
+    std::vector<index_t> _sortPermutationProjectedCrs( const boxMapType & container);
     // void _sortPermutated( const std::vector<index_t> & permutation, boxContainer & container);
 
     void _crsPredicates_into( std::vector<gsHBoxCheck<2,T> *> & predicates);
