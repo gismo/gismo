@@ -925,7 +925,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
         q0.resize(sz_i, n * r_i);
 
         // Solve for i-th coordinate basis
-        m_bases[i]->collocationMatrix(grid[i], Cmat);
+        Cmat = m_bases[i]->collocationMatrix(grid[i]);
         solver.compute(Cmat); 
         #ifndef NDEBUG
         if ( solver.info() != Eigen::Success )
@@ -961,8 +961,8 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         bndThis = this->boundary( bi.first() .side() );
         bndOther= _other->boundary( bi.second().side() );
         GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
-                      "Input error, sizes do not match: "
-                      <<bndThis.rows()<<"!="<<bndOther.rows() );
+                     "Input error, sizes do not match: "
+                     <<bndThis.rows()<<"!="<<bndOther.rows() );
         if (bndThis.size() == 1) return;
 
         // Get interface data

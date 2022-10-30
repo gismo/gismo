@@ -34,7 +34,7 @@ struct condition_type
         robin     = 2, ///< Robin type
         clamped   = 3, ///< Robin type
         weak_clamped = 30,
-        collapsed = 4, 
+        collapsed = 4,
         laplace = 5 ///< Laplace type, e.g. \Delta u = g
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
@@ -304,13 +304,14 @@ struct boundary_condition
     template<class T>
     struct corner_value
     {
-        corner_value(index_t p, boxCorner c, T v, short_t unk = 0)
-                : patch(p), corner(c), value(v), unknown(unk) { }
+        corner_value(index_t p, boxCorner c, T v, short_t unk = 0, int comp = -1)
+                : patch(p), corner(c), value(v), unknown(unk), component(comp) { }
 
         index_t patch;     ///< The index of the patch.
         boxCorner corner; ///< The corner
         T value;          ///< The value
         short_t   unknown;    ///< Unknown to which this boundary condition refers to
+        int   component;    ///< The component of the unknown
     };
 
 /** @brief
@@ -608,6 +609,12 @@ public:
         addCondition(p,s,t,fun,unknown,parametric,comp);
     }
 
+    void addConditions(const bcRefList & bcrf)
+    {
+        for (auto bc : bcrf)
+            m_bc[bc.get().ctype()].push_back(bc);
+    }
+
     void addCondition(int p, boxSide s, condition_type::type t,
                       const function_ptr & f_shptr, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
@@ -670,14 +677,14 @@ public:
         addCondition(p,boxSide(s),t,func,unknown,parametric,comp);
     }
 
-    void addCornerValue(boxCorner c, T value, int p = 0, short_t unknown = 0)
+    void addCornerValue(boxCorner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
-        corner_values.push_back( corner_value<T>(p,c,value,unknown) );
+        corner_values.push_back( corner_value<T>(p,c,value,unknown,component) );
     }
 
-    void addCornerValue(boundary::corner c, T value, int p = 0, short_t unknown = 0)
+    void addCornerValue(boundary::corner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
-        corner_values.push_back( corner_value<T>(p,boxCorner(c),value,unknown) );
+        corner_values.push_back( corner_value<T>(p,boxCorner(c),value,unknown,component) );
     }
 
     /// Prints the object as a string.

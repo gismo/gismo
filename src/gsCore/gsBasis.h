@@ -951,7 +951,7 @@ public:
     /// The collocation matrix is a sparse matrix with \em u.cols rows
     /// and \em size() columns. The entry \em (i,j) is the value of
     /// basis function \em j at evaluation point \em i.
-    void collocationMatrix(gsMatrix<T> const& u, gsSparseMatrix<T> & result) const;
+    gsSparseMatrix<T> collocationMatrix(gsMatrix<T> const& u) const;
 
     /// Reverse the basis
     virtual void reverse();

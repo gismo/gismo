@@ -128,10 +128,8 @@ int main(int argc, char* argv[])
     gsInfo << "\nUnique knots: \n";
     std::for_each(unique.begin(), unique.end(), print);
 
-    gsMatrix<>* greville = kv6.greville();
-    gsInfo << "\n\nGreville points: \n" << *greville << "\n\n";
-    delete greville;
-
+    gsMatrix<> greville = kv6.greville();
+    gsInfo << "\n\nGreville points: \n" << greville << "\n\n";
 
     std::vector<index_t> mult = kv6.multiplicities();
     gsInfo << "Multiplicities: ";

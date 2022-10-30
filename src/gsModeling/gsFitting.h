@@ -50,6 +50,10 @@ public:
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
 
+    void parameterCorrection(T accuracy = 1e-8,
+                             index_t maxIter = 10,
+                             T tolOrth = 1e-6);
+
     /// Computes the euclidean error for each point
     void computeErrors();
 
@@ -89,7 +93,7 @@ public:
     /// Adds to the matrix A_mat terms for minimization of second derivative, weighted
     /// with parameter lambda.
     void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
-    
+    gsSparseMatrix<T> smoothingMatrix(T lambda) const;
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
 
@@ -127,11 +131,26 @@ public:
     void setConstraints(const std::vector<index_t>& indices,
 			const std::vector<gsMatrix<T> >& coefs);
 
+    /// Sets constraints in such a way that the previous values at \a
+    /// fixedSides of the geometry remain intact.
+    void setConstraints(const std::vector<boxSide>& fixedSides);
+
+    /// Set constraints in such a way that the resulting geometry on
+    /// each of \a fixedSides will coincide with the corresponding
+    /// curve in \a fixedCurves.
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsBSpline<T> >& fixedCurves);
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsGeometry<T> * >& fixedCurves);
+
+
 private:
     /// Extends the system of equations by taking constraints into account.
     void extendSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
 
 protected:
+
+    //gsOptionList
 
     /// the parameter values of the point cloud
     gsMatrix<T> m_param_values;
@@ -147,6 +166,8 @@ protected:
 
     // All point-wise errors
     std::vector<T> m_pointErrors;
+
+    mutable T m_last_lambda;
 
     /// Maximum point-wise error
     T m_max_error;
@@ -170,6 +191,16 @@ private:
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
 
 }; // class gsFitting
+
+
+#ifdef GISMO_BUILD_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsKnotVector
+   */
+  void pybind11_init_gsFitting(pybind11::module &m);
+
+#endif // GISMO_BUILD_PYBIND11
 
 
 }// namespace gismo

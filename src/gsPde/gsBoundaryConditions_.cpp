@@ -24,6 +24,7 @@ void pybind11_enum_gsBoundaryConditions(py::module &m)
         .value("clamped"       , condition_type::clamped )
         .value("weak_clamped"  , condition_type::weak_clamped)
         .value("collapsed"     , condition_type::collapsed)
+        .value("laplace"       , condition_type::laplace)
         .export_values();
 }
 
@@ -55,8 +56,13 @@ void pybind11_init_gsBoundaryConditions(py::module &m)
                             // py::arg("parametric") = false,
                             // py::arg("comp") = -1
                             )
-
-    .def("addCornerValue", static_cast<void (Class::*)(boundary::corner, real_t, int, short_t)> (&Class::addCornerValue),
+    .def("addCondition", static_cast<void (Class::*)(const patchSide&, condition_type::type,       gsFunction<real_t> *     , short_t, bool, int)> (&Class::addCondition),
+        "Adds a boundary condition"//,
+        // py::arg("unknown") = 0,
+        // py::arg("parametric") = false,
+        // py::arg("comp") = -1
+        )
+      .def("addCornerValue", static_cast<void (Class::*)(boundary::corner, real_t, int, short_t, int)> (&Class::addCornerValue),
                             "Adds a boundary condition"//,
                             // py::arg("p") = 0,
                             // py::arg("unknown") = 0

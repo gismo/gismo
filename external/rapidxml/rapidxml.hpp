@@ -1384,13 +1384,14 @@ namespace rapidxml
 
         inline int numNodes() const {return max_Id+1;}
 
-        void appendToRoot(xml_node<Ch> * node)
+        void appendToRoot(xml_node<Ch> * node, int id = -1)
         {
             char tmp[6];
-            sprintf(tmp,"%d", (unsigned short)(++max_Id));
+            sprintf(tmp,"%d", (unsigned short)(-1==id ? ++max_Id : id ));
             node->append_attribute(this->allocate_attribute(
             this->allocate_string("id"), this->allocate_string(tmp) ) );
             getRoot()->append_node(node);
+            if (-1!=id) max_Id = std::max(id,max_Id);
         }
 
         inline unsigned getFloatPrecision() const {return m_float_precision;}
