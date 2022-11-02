@@ -56,18 +56,18 @@ FOREACH(subdir ${SUBDIRS})
   # compiled above only for GISMO_COEFF_TYPE
   math(EXPR ii "1")
   foreach(ins ${GISMO_EXTRA_INSTANCE})
-    add_library(${GM_NAME}${ii} OBJECT
+    add_library(${GM_NAME}_${ii} OBJECT
       ${${subdir}_H}
       ${${subdir}_HPP}
       ${${subdir}_INS}
       )
-    set_target_properties(${GM_NAME}${ii} PROPERTIES
+    set_target_properties(${GM_NAME}_${ii} PROPERTIES
       COMPILE_DEFINITIONS "gismo_EXPORTS;real_t=${ins}"
       POSITION_INDEPENDENT_CODE ON
       LINKER_LANGUAGE CXX
       FOLDER "G+Smo modules"
       )
-    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}${ii}>
+    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}_${ii}>
       CACHE INTERNAL "G+Smo modules" )
     math(EXPR ii "${ii}+1")
   endforeach()

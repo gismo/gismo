@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#ifdef GISMO_WITH_IPOPT
+#ifdef gsIpOpt_ENABLED
 #include "IpTNLP.hpp"
 #include "IpIpoptApplication.hpp"
 #include "IpSolveStatistics.hpp"
@@ -26,14 +26,14 @@ template <class T>
 class gsIpOptPrivate
 {
 public:
-#ifdef GISMO_WITH_IPOPT
+#ifdef gsIpOpt_ENABLED
     // Pointer to IpOpt interface
     Ipopt::SmartPtr<gsIpOptTNLP<T>> tnlp;
 #endif
 
 };
 
-#ifdef GISMO_WITH_IPOPT
+#ifdef gsIpOpt_ENABLED
     /** @brief Interface for IpOpt optimization problem
      *
      */
@@ -277,7 +277,7 @@ Base(problem)
 {
     this->defaultOptions();
 
-    #ifdef GISMO_WITH_IPOPT
+    #ifdef gsIpOpt_ENABLED
     m_data       =  new gsIpOptPrivate<T>();
     m_data->tnlp =  new gsIpOptTNLP<T>(m_op);
     #else
@@ -288,7 +288,7 @@ Base(problem)
 template <typename T>
 void gsIpOpt<T>::solve(const gsMatrix<T> & initialGuess)
 {
-#ifdef GISMO_WITH_IPOPT
+#ifdef gsIpOpt_ENABLED
 
     Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
     app->RethrowNonIpoptException(true);
