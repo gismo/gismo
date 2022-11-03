@@ -55,18 +55,7 @@ public:
     int cols() const { return m_mat.cols(); }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
-        gsDebugVar(m_mat.rows());
-        gsDebugVar(m_mat.cols());
-
         GISMO_ASSERT(m_mat.rows()!=0 && m_mat.cols()!=0,"The matrix has zero rows or columns. Is the matrix a temporary (e.g. A-B)?");
-        gsDebugVar(m_mat.rows());
-        gsDebugVar(m_mat.cols());
-        gsDebugVar(gsAsConstVector<Scalar>(x_in,  m_mat.cols()).transpose());
-        gsDebugVar(gsAsConstVector<Scalar>(x_in,  m_mat.cols()).rows());
-        gsDebugVar(gsAsConstVector<Scalar>(x_in,  m_mat.cols()).cols());
-
-        gsDebugVar(m_mat * gsAsConstVector<Scalar>(x_in,  m_mat.cols()));
-
         gsAsVector<Scalar>(y_out, m_mat.rows()).noalias() =
             m_mat * gsAsConstVector<Scalar>(x_in,  m_mat.cols());
     }
@@ -115,10 +104,6 @@ public:
         m_solver.isSymmetric(true);
 #endif
 #endif
-
-#ifdef GISMO_WITH_PARDISO
-        gsInfo<<"Pardiso is used\n";
-#endif
         m_solver.compute(mat);
 
         GISMO_ASSERT(m_solver.info() == Eigen::Success,"SparseSymShiftSolve: factorization failed with the given shift");
@@ -155,6 +140,114 @@ public:
     {
         m_solver.compute(m_mat, Eigen::Lower, sigma);
         GISMO_ASSERT(m_solver.info() == Spectra::CompInfo::Successful,"DenseSymShiftSolve: factorization failed with the given shift");
+    }
+};
+
+// Shift operation wrapper
+template <class MatrixType>
+class SpectraSymCholesky
+{
+public:
+    typedef typename MatrixType::Scalar Scalar;
+    typedef typename MatrixType::Nested NestedMatrix;
+    NestedMatrix m_mat;
+    const index_t m_n;
+// #ifdef GISMO_WITH_PARDISO
+//     typename gsSparseSolver<Scalar>::PardisoLLT m_solver;
+// #elif  GISMO_WITH_SUPERLU
+//     typename gsSparseSolver<Scalar>::SuperLU m_solver;
+// #else
+    typename gsSparseSolver<Scalar>::SimplicialLLT m_solver;
+// #endif
+
+    Spectra::CompInfo m_info;  // status of the decomposition
+
+public:
+    SpectraSymCholesky(const MatrixType&&   ) = delete;
+    SpectraSymCholesky(const MatrixType& mat)
+    :
+    m_mat(mat), m_n(mat.rows())
+    {
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
+
+        m_solver.compute(mat);
+        m_info = (m_solver.info() == Eigen::Success) ?
+            Spectra::CompInfo::Successful :
+            Spectra::CompInfo::NumericalIssue;
+    }
+    int rows() const { return m_n; }
+    int cols() const { return m_n; }
+
+    /// See Spectra/SparseCholesky.h for help
+    Spectra::CompInfo info() const { return m_info; }
+
+    /// See Spectra/SparseCholesky.h for help
+    void lower_triangular_solve(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsConstVector<Scalar> x(x_in,  m_n);
+        gsAsVector<Scalar>      y(y_out, m_n);
+        y.noalias() = m_solver.permutationP() * x;
+        m_solver.matrixL().solveInPlace(y);
+    }
+
+    /// See Spectra/SparseCholesky.h for help
+    void upper_triangular_solve(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsConstVector<Scalar> x(x_in,  m_n);
+        gsAsVector<Scalar>      y(y_out, m_n);
+        y.noalias() = m_solver.matrixU().solve(x);
+        y = m_solver.permutationPinv() * y;
+    }
+};
+
+// Shift operation wrapper
+template <class MatrixType>
+class SpectraSymRegularInverse
+{
+public:
+    typedef typename MatrixType::Scalar Scalar;
+    typedef typename MatrixType::Nested NestedMatrix;
+    NestedMatrix m_mat;
+    const index_t m_n;
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<Scalar>::PardisoLU m_solver;
+#elif  GISMO_WITH_SUPERLU
+    typename gsSparseSolver<Scalar>::SuperLU m_solver;
+#else
+    typename gsSparseSolver<Scalar>::CGDiagonal m_solver;
+#endif
+
+    Spectra::CompInfo m_info;  // status of the decomposition
+
+public:
+    SpectraSymRegularInverse(const MatrixType&&   ) = delete;
+    SpectraSymRegularInverse(const MatrixType& mat)
+    :
+    m_mat(mat), m_n(mat.rows())
+    {
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
+
+        m_solver.compute(mat);
+        m_info = (m_solver.info() == Eigen::Success) ?
+            Spectra::CompInfo::Successful :
+            Spectra::CompInfo::NumericalIssue;
+    }
+    int rows() const { return m_n; }
+    int cols() const { return m_n; }
+
+    /// See Spectra/SparseRegularInverse.h for help
+    Spectra::CompInfo info() const { return m_info; }
+
+    /// See Spectra/SparseRegularInverse.h for help
+    void solve(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
+    }
+
+    /// See Spectra/SparseRegularInverse.h for help
+    void perform_op(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_mat.template selfadjointView<Eigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_n);
     }
 };
 
@@ -267,10 +360,10 @@ template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::C
 class SpectraOps
 {
 public:
-    typedef Spectra::SparseCholesky<typename MatrixType::Scalar> InvOp;
+    typedef SpectraSymCholesky<MatrixType> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
-    SpectraMatProd<MatrixType>                           opA;
-    Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
+    SpectraMatProd<MatrixType>     opA;
+    SpectraSymCholesky<MatrixType> opB;
 };
 
 /// For GEigsMode::RegularInverse
@@ -278,10 +371,10 @@ template <class MatrixType>
 class SpectraOps<MatrixType,Spectra::GEigsMode::RegularInverse>
 {
 public:
-    typedef Spectra::SparseRegularInverse<typename MatrixType::Scalar> InvOp;
+    typedef SpectraSymRegularInverse<MatrixType> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
-    SpectraMatProd<MatrixType>                           opA;
-    Spectra::SparseRegularInverse<typename MatrixType::Scalar> opB;
+    SpectraMatProd<MatrixType>           opA;
+    SpectraSymRegularInverse<MatrixType> opB;
 };
 
 /// For GEigsMode::ShiftInvert and GEigsMode::Cayley
