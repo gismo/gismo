@@ -1170,7 +1170,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
 
     // Setup the characteristic matrices
     m_xmatrix.clear();
-    m_xmatrix.resize( m_bases.size() );
+    m_xmatrix.resize( m_tree.getMaxInsLevel()+1 );
 
     // Compress the tree
     m_tree.makeCompressed();
@@ -1342,7 +1342,7 @@ boundaryOffset(boxSide const & s,index_t offset) const
     gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
     GISMO_ASSERT(this->maxLevel() < this->m_bases.size(),"Something went wrong: maxLevel() < m_bases.size(), "<<this->maxLevel()<<" < "<<m_bases.size());
-    needLevel(m_xmatrix.size());
+    needLevel(m_xmatrix.size()-1);
 
     for(size_t i = 0; i != m_xmatrix.size(); i++)
     {
