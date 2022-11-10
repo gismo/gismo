@@ -1,4 +1,5 @@
 
+
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsMesh2/gsSurfMesh.h>
@@ -34,6 +35,13 @@ gsSurfMesh()
     garbage_ = false;
 }
 
+
+gsSurfMesh::
+gsSurfMesh(const gsMatrix<Scalar> & pts)
+{
+    for( auto & col : pts.colwise() )
+        this->add_vertex(col);
+}
 
 //-----------------------------------------------------------------------------
 
@@ -1866,7 +1874,7 @@ void gsSurfMesh::cc_subdivide()
         v = gsSurfMesh::Vertex(i); //edge points
         if (is_boundary(v))
         {
-            gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
+            //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
             continue;
         }
         auto vit = vertices(v);
@@ -1888,7 +1896,7 @@ void gsSurfMesh::cc_subdivide()
         auto & pt = points[v];//original vertex positions are computed using new edge/face points only
         if (is_boundary(v))
         {
-            gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
+            //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
             if (2>n)
             {
                 auto vv = vertices(v);

@@ -41,7 +41,6 @@ typedef Eigen::Vector<Scalar,3> Vec3;
 
 public: //------------------------------------------------------ topology types
 
-
     /// Base class for all topology types (internally it is basically an index)
     /// \sa Vertex, Halfedge, Edge, Face
     class Base_handle
@@ -945,6 +944,9 @@ public: //-------------------------------------------- constructor / destructor
 
     /// default constructor
     gsSurfMesh();
+
+    /// Constructor from a set of points
+    gsSurfMesh(const gsMatrix<Scalar> & pts);
 
     // destructor (is virtual, since we inherit from Geometry_representation)
     virtual ~gsSurfMesh();
