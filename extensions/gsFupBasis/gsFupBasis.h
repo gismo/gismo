@@ -92,11 +92,13 @@ public:
         m_knots.initClamped(0);
     }
 
-    gsFupBasis(const T u0, const T u1, const unsigned interior,
-                   const int degree)
+    gsFupBasis(const T u0, const T u1,
+               const unsigned interior,
+               const int degree)
     {
         m_p = degree;
-        m_knots.initUniform(u0, u1, interior, m_p+2, 1, m_p+1);
+        //m_knots.initUniform(u0, u1, interior, m_p+2, 1, m_p+1);
+        m_knots.initUniform(u0, u1, interior, 1, 1, m_p+1);
         m_knot_length = (T)(u1-u0)/(m_knots.numElements());
 
         //Precompute values at rational points
