@@ -103,6 +103,27 @@ public:
         __fup_0_16_d_MOD_racun();
     }
 
+    void fupn_eval(const gsMatrix<T> & u, int deriv_order,
+                   gsMatrix<T>& result) const
+    {
+        gsMatrix<index_t> act;
+        result.resize(m_p+2, u.cols() );
+        for ( index_t k = 0; k!=u.cols(); ++k)
+        {
+            act = this->active(u.col(k));
+            for ( index_t i = 0; i!=act.rows(); ++i)
+            {
+                T anc = m_knots.greville(act(i));
+                result(i,k) = __fup_0_16_d_MOD_fupn(&m_p, &anc,
+                                                    const_cast<T*>(u.data())+k,
+                                                    &m_knot_length, &deriv_order);
+                gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<","
+                      <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
+            }
+        }       
+    }
+
+         
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
     { return nullptr; }
 
@@ -170,7 +191,7 @@ public:
     // Look at gsBasis class for a description
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
     {
-        //scale for partition of unity
+        fupn_eval(u,0,result);
     }
 
     // Look at gsBasis class for a description
@@ -179,7 +200,7 @@ public:
     // Look at gsBasis class for a description
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
     {
-
+        fupn_eval(u,1,result);
     }
 
     // Look at gsBasis class for a description
@@ -236,12 +257,14 @@ public:
     {
         T anc = m_knots.greville(i);
         result.resize(n+1, u.cols() );
-        for ( index_t k = 0; k!=u.cols(); ++k)
-            for ( index_t j = 0; j<=n; ++j)
+        for ( index_t j = 0; j<=n; ++j)
+            for ( index_t k = 0; k!=u.cols(); ++k)
             {
                 result(j,k) = __fup_0_16_d_MOD_fupn(&m_p, &anc,
                                                     const_cast<T*>(u.data())+k,
                                                     &m_knot_length, &j);
+                gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<","
+                       <<m_knot_length<<","<<j<<") = " << result(j,k) <<"\n";
             }
     }
 

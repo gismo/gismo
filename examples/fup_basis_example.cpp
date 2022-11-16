@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     // values
     // ----------------------------------------------------------------------
 
-    gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 10);
+    gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 5);
     gsInfo << "Evaluation points: \n" << u << "\n\n";
 
     // indices of active (nonzero) functions at parameter u
@@ -85,12 +85,16 @@ int main(int argc, char* argv[])
     }
     gsInfo << "\n";
 
-    return 0;
-
     // values of all active functions at u
     gsMatrix<> values = fup.eval(u);
-    gsInfo << "Values at u " << values.cols() << ": \n"
+    gsInfo << "Values at u (" <<values.rows() << "): \n"
            << values << "\n\n";
+
+    gsMatrix<> derivs = fup.deriv(u);
+    gsInfo << "Derivatives at u " << derivs.cols() << ": \n"
+           << derivs << "\n\n";
+
+    return 0;
 
     // values of single basis functions
     for (index_t i = 0; i != active.rows(); i++)
@@ -101,17 +105,6 @@ int main(int argc, char* argv[])
                << "   value: " << val(0, 0) << "\n";
     }
     gsInfo << "\n";
-
-
-    // ----------------------------------------------------------------------
-    // derivatives
-    // ----------------------------------------------------------------------
-
-
-    gsMatrix<> derivs = fup.deriv(u);
-    gsInfo << "Derivatives at u " << derivs.cols() << ": \n"
-           << derivs << "\n\n";
-
 
     // derivatives of single basis function
     for (index_t i = 0; i != active.rows(); i++)

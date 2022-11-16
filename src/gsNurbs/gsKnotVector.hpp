@@ -497,7 +497,7 @@ std::ostream & gsKnotVector<T>::print(std::ostream &os) const
         for (iterator itr = begin(); itr != end(); ++itr)
             os << *itr << " ";
     }
-    os << "] (deg=" << degree()
+    os << "] (bdr=" << degree()+1
        << ", size=" << size()
        << ", minSpan=" << minIntervalLength()
        << ", maxSpan=" << maxIntervalLength()
