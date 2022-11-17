@@ -131,8 +131,10 @@ private:
     T fupn_eval_single(T u, int deriv_order, index_t i) const
     {
         T anc = m_knots.greville(i);
-        //TODO: if (m_openKV) 
-        return __fup_0_16_d_MOD_fupn(&m_p, &anc, &u, &m_knot_length, &deriv_order);
+        T val = __fup_0_16_d_MOD_fupn(&m_p, &anc, &u, &m_knot_length, &deriv_order);
+        //TODO: if (m_openKV)
+
+        return val / (1<<m_p);
 
         //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
     }
