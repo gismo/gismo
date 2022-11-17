@@ -56,10 +56,10 @@ struct gsFupTraits
 template<class T>
 class gsFupBasis : public gsBasis<T>
 {
-    mutable index_t m_p;
-    gsKnotVector<T> m_knots;
-    mutable T m_knot_length;
-
+    mutable index_t m_p;     /// Degree of FUP basis
+    gsKnotVector<T> m_knots; /// the knotvector
+    mutable T m_knot_length; /// characteristic length
+    bool m_openKV;     /// if true the boundary basis functions will be modified
 public:
     typedef gsBasis<T> Base;
 
@@ -86,27 +86,34 @@ public:
 public:
     GISMO_CLONE_FUNCTION(gsFupBasis)
 
+    //// Empty constructor (creates an empty basis)
     gsFupBasis()
     {
         m_p = 0;
         m_knots.initClamped(0);
     }
 
+    /// Constructs basis in domain [u0,u1]
+    /// \a interior number of interior knots
+    /// \a degree   the degree of the basis
+    /// \a open   whether the knotvector should be open (modified boundary)
     gsFupBasis(const T u0, const T u1,
                const unsigned interior,
-               const int degree)
+               const int degree, bool open = false)
+    : m_openKV(open)
     {
         m_p = degree;
-        //m_knots.initUniform(u0, u1, interior, m_p+2, 1, m_p+1);
-        m_knots.initUniform(u0, u1, interior, 1, 1, m_p+1);
-        m_knot_length = (T)(u1-u0)/(m_knots.numElements());
+        //m_knots.initUniform(u0, u1, interior, m_p+2, 1, m_p+1); // here there were multiple knots at the ends, not appriate for now
+        m_knots.initUniform(u0, u1, interior, 1, 1, m_p+1); //initialize knot vector for degree m_p+1 (to keep analogy with B-Splines)
+        m_knot_length = (T)(u1-u0)/(m_knots.numElements()); // compute the characteristic length
 
-        //Precompute values at rational points
+        //Precompute values at rational points for degrees 1..16
         __fup_0_16_d_MOD_racun();
     }
 
 private:
 
+    /// Evaluate using fortran code the values of order \a deriv_order at points \a u
     void fupn_eval(const gsMatrix<T> & u, int deriv_order,
                    gsMatrix<T>& result) const
     {
@@ -120,12 +127,14 @@ private:
         }
     }
 
+    /// Get value of basis function \a i, at point \a u, of order \a deriv_order 
     T fupn_eval_single(T u, int deriv_order, index_t i) const
     {
         T anc = m_knots.greville(i);
-        return __fup_0_16_d_MOD_fupn(&m_p, &anc, &u,
-                                     &m_knot_length, &deriv_order);
-                //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
+        //TODO: if (m_openKV) 
+        return __fup_0_16_d_MOD_fupn(&m_p, &anc, &u, &m_knot_length, &deriv_order);
+
+        //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
     }
 
 public:
@@ -215,7 +224,8 @@ public:
     }
 
     // Look at gsBasis class for a description
-    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const {
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    {
         result.resize(1, u.cols() );
         for ( index_t k = 0; k!=u.cols(); ++k)
             result(0,k) = fupn_eval_single(u(0,k), 1, i);
@@ -248,7 +258,10 @@ public:
 
     // Look at gsBasis class for a description
     virtual void evalDerSingle_into(index_t i, const gsMatrix<T> & u,
-                                    int n, gsMatrix<T>& result) const{ }
+                                    int n, gsMatrix<T>& result) const
+    {
+
+    }
 
     // Look at gsBasis class for a description
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
@@ -294,13 +307,13 @@ public:
     { return true; }
 
     /// @brief Returns the starting value of the domain of the basis
-    T domainStart() const { return 0; }
+    T domainStart() const { return *m_knots.domainBegin(); }
 
     /// @brief Returns the ending value of the domain of the basis
-    T domainEnd() const { return 1; }
+    T domainEnd() const { return *m_knots.domainEnd(); }
 
     // Number of active functions at any point of the domain
-    inline index_t numActive() const { return m_p + 1; }
+    inline index_t numActive() const { return m_p + 2; }
 
     // Look at gsBasis class for a description
     void uniformRefine(int numKnots = 1, int mul=1)
