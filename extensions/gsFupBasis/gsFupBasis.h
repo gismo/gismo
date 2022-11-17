@@ -39,9 +39,9 @@ struct gsFupTraits
     typedef gsKnotVector<T> KnotVectorType;
 
     //typedef gsTensorFupBasis<d,T> Basis;
-    //typedef gsTensorNurbsBasis<d,T>   RatBasis;
+    //typedef gsTensorRatBasis<d,T> RatBasis;
     //typedef gsTensorFup<d,T>      Geometry;
-    //typedef gsTensorNurbs<d,T>        RatGeometry;
+    //typedef gsTensorNurbs<d,T>    RatGeometry;
 };
 
 /** \brief
@@ -105,26 +105,30 @@ public:
         __fup_0_16_d_MOD_racun();
     }
 
+private:
+
     void fupn_eval(const gsMatrix<T> & u, int deriv_order,
                    gsMatrix<T>& result) const
     {
-        gsMatrix<index_t> act;
         result.resize(m_p+2, u.cols() );
+        index_t act;
         for ( index_t k = 0; k!=u.cols(); ++k)
         {
-            act = this->active(u.col(k));
-            for ( index_t i = 0; i!=act.rows(); ++i)
-            {
-                T anc = m_knots.greville(act(i));
-                result(i,k) = __fup_0_16_d_MOD_fupn(&m_p, &anc,
-                                                    const_cast<T*>(u.data())+k,
-                                                    &m_knot_length, &deriv_order);
-                gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<","
-                      <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
-            }
-        }       
+            act = firstActive(u(0,k));
+            for ( index_t i = 0; i!=m_p+2; ++i)
+                result(i,k) = fupn_eval_single(u(0,k), deriv_order, act++);
+        }
     }
 
+    T fupn_eval_single(T u, int deriv_order, index_t i) const
+    {
+        T anc = m_knots.greville(i);
+        return __fup_0_16_d_MOD_fupn(&m_p, &anc, &u,
+                                     &m_knot_length, &deriv_order);
+                //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
+    }
+
+public:
          
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
     { return nullptr; }
@@ -164,7 +168,7 @@ public:
         result.resize(m_p+2, u.cols());
         for (index_t j = 0; j < u.cols(); ++j)
         {
-            unsigned first = firstActive(u(0,j));
+            index_t first = firstActive(u(0,j));
             for (int i = 0; i != m_p+2; ++i)
                 result(i,j) = first++;
         }
@@ -191,13 +195,18 @@ public:
     }
 
     // Look at gsBasis class for a description
-    virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const
     {
         fupn_eval(u,0,result);
     }
 
     // Look at gsBasis class for a description
-    virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const { }
+    void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const
+    {
+        result.resize(1, u.cols() );
+        for ( index_t k = 0; k!=u.cols(); ++k)
+            result(0,k) = fupn_eval_single(u(0,k), 0, i);
+    }
 
     // Look at gsBasis class for a description
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
@@ -206,12 +215,10 @@ public:
     }
 
     // Look at gsBasis class for a description
-    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const { }
-
-    // Look at gsBasis class for a description
-    void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
-    {
-
+    void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const {
+        result.resize(1, u.cols() );
+        for ( index_t k = 0; k!=u.cols(); ++k)
+            result(0,k) = fupn_eval_single(u(0,k), 1, i);
     }
 
     // Look at gsBasis class for a description
@@ -219,9 +226,6 @@ public:
 
     // Look at gsBasis class for a description
     void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const { }
-
-    // Look at gsBasis class for a description
-    void deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const { }
 
     // Look at gsBasis class for a description
     gsMatrix<T> laplacian(const gsMatrix<T> & u ) const { return gsMatrix<T>(); }
@@ -250,30 +254,25 @@ public:
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> >& result) const
     {
-
+        result.resize(n+1);
+        for ( index_t j = 0; j<=n; ++j)
+            fupn_eval(u,j,result[j]);
     }
 
     // Look at gsBasis class for a description
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const
     {
-        T anc = m_knots.greville(i);
         result.resize(n+1, u.cols() );
         for ( index_t j = 0; j<=n; ++j)
             for ( index_t k = 0; k!=u.cols(); ++k)
-            {
-                result(j,k) = __fup_0_16_d_MOD_fupn(&m_p, &anc,
-                                                    const_cast<T*>(u.data())+k,
-                                                    &m_knot_length, &j);
-                gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<","
-                       <<m_knot_length<<","<<j<<") = " << result(j,k) <<"\n";
-            }
+                result(j,k) = fupn_eval_single(u(0,k), j, i);
     }
 
     // Look at gsBasis class for a description
     short_t degree(short_t i) const
     {
-        return 0;
+        return m_p;
     }
 
     short_t degree() const {return m_p;}
@@ -306,7 +305,8 @@ public:
     // Look at gsBasis class for a description
     void uniformRefine(int numKnots = 1, int mul=1)
     {
-
+        GISMO_ASSERT(1==mul, "multiple knot ?");
+        m_knots.uniformRefine(numKnots,mul);
     }
 
     /// @brief Elevate the degree of the basis and preserve the smoothness
@@ -324,7 +324,6 @@ public:
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
 
-        //m_periodic =
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
