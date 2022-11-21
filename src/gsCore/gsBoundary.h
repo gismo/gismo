@@ -68,6 +68,11 @@ struct boundary
     };
 };
 
+struct interaction
+{
+    enum { conforming = 0, contact = 1};
+};
+
 // forward declarations; defined later
 struct boxCorner;
 struct patchCorner;
@@ -893,6 +898,8 @@ public:
 
     void reorderCorners(gsMatrix<index_t> & boundary) const;
 
+    void setAsContact() { m_type = interaction::contact; }
+
 private:
 
     patchSide ps1; ///< The first patch side.
@@ -963,6 +970,9 @@ private:
     * See boundaryInterface::directionMap for documentation.
     */
     gsVector<bool>    directionOrientation;
+
+
+    interaction m_type;
 
     /// TODO: the information could be stored in a single vector of signed integers: the sign gives the orientation
     /// the problem is that it is necessary to shift the indices as there is no -0
