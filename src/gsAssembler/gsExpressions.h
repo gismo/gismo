@@ -627,15 +627,38 @@ public:
     }
 
     index_t targetDim() const { return m_fs->targetDim();}
-
-    void deformBy( const gsFeSolution<T> & deformation) const
+ 
+    /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
+    void copyCoefs( const gsGeometryMap<T> & other) const
     {
-        const gsMatrix<T> &defVector = deformation.coefs();
         const index_t dim = m_fs->domainDim();
 
-        const gsMultiBasis<T> & mb = static_cast<const gsMultiBasis<T>&>(deformation.space().source());
+        GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( this->m_fs ), "error");
+        const gsMultiPatch<T> & thisMP  = static_cast<const gsMultiPatch<T>&>(*this->m_fs );
+        GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( other->m_fs ), "error");
+        const gsMultiPatch<T> & otherMP = static_cast<const gsMultiPatch<T>&>(*other.m_fs );
+        GISMO_ASSERT( (thisMP.domainDim()==otherMP.domainDim())&&
+                      (thisMP.geoDim()==otherMP.geoDim())&&
+                      (thisMP.coefsSize() == otherMP.coefsSize())&&
+                      (thisMP.nPatches()==otherMP.nPatches()), 
+                "The geometryMaps are not compatible!");
+
+        // For every patch of the MultiPatch
+        for ( index_t p=0; p < thisMP.nPatches(); p++ )
+        {
+            // Copy coeffs of the other MultiPatch
+            thisMP.patch(p).coefs() = otherMP.patch(p).coefs();
+        }
+
+    }   //end copyCoffs
+
+    void deformBy( const gsFeSolution<T> & displacement) const
+    {
+        const index_t dim = m_fs->domainDim();
+
+        const gsMultiBasis<T> & mb = static_cast<const gsMultiBasis<T>&>(displacement.space().source());
         const gsMultiPatch<T> & mp = static_cast<const gsMultiPatch<T>&>(*this->m_fs );
-        GISMO_ASSERT( dynamic_cast<const gsMultiBasis<T>*>(&deformation.space().source()), "error");
+        GISMO_ASSERT( dynamic_cast<const gsMultiBasis<T>*>(&displacement.space().source()), "error");
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( this->m_fs), "error");
 
         // For every patch of the MultiPatch
@@ -653,16 +676,20 @@ public:
                 // loop over all basis functions (even the eliminated ones)
                 for (index_t i = 0; i < sz; ++i)
                 {
-                    const int ii = deformation.mapper().index(i, p, c);
-                    if ( deformation.mapper().is_free_index(ii) ) // DoF value is in the defVector
+                    const int ii = displacement.mapper().index(i, p, c);
+                    if ( displacement.mapper().is_free_index(ii) ) // DoF value is in the defVector
                     {
-                        result(i,c) += defVector.at(ii);
+                        result(i,c) += displacement.coefs().at(ii);
                     }
-
+                    else
+                    {
+                        result(i,c) += displacement.fixedPart().at( displacement.mapper().global_to_bindex(ii));
+                    }
                 }
             }
         }
-    }
+    } // end deformBy
+
 public:
     typedef T Scalar;
 
