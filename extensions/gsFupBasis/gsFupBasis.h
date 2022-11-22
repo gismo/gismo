@@ -134,7 +134,7 @@ private:
         T val = __fup_0_16_d_MOD_fupn(&m_p, &anc, &u, &m_knot_length, &deriv_order);
         //TODO: if (m_openKV)
 
-        return val / (1<<m_p);
+        return val/ (1<<m_p);
 
         //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
     }
@@ -234,10 +234,18 @@ public:
     }
 
     // Look at gsBasis class for a description
-    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const { }
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    {
+        fupn_eval(u,2,result);
+    }
 
     // Look at gsBasis class for a description
-    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const { }
+    void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+    {
+        result.resize(1, u.cols() );
+        for ( index_t k = 0; k!=u.cols(); ++k)
+            result(0,k) = fupn_eval_single(u(0,k), 2, i);
+    }
 
     // Look at gsBasis class for a description
     gsMatrix<T> laplacian(const gsMatrix<T> & u ) const { return gsMatrix<T>(); }
