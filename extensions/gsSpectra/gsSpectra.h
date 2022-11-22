@@ -46,7 +46,11 @@ public:
     NestedMatrix m_mat;
 public:
     SpectraMatProd(const MatrixType&&   ) = delete;
-    SpectraMatProd(const MatrixType& mat) : m_mat(mat) { }
+    SpectraMatProd(const MatrixType& mat) : m_mat(mat)
+    {
+        gsDebugVar(mat.rows());
+        gsDebugVar(mat.cols());
+    }
     int rows() const { return m_mat.rows(); }
     int cols() const { return m_mat.cols(); }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
@@ -66,8 +70,13 @@ public:
     typedef typename MatrixType::Nested NestedMatrix;
     NestedMatrix m_mat;
     const index_t m_n;
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<Scalar>::PardisoLU m_solver;
+#elif  GISMO_WITH_SUPERLU
+    typename gsSparseSolver<Scalar>::SuperLU m_solver;
+#else
     typename gsSparseSolver<Scalar>::LU m_solver;
-
+#endif
 public:
     SpectraMatShiftSolve(const MatrixType&&   ) = delete;
     SpectraMatShiftSolve(const MatrixType& mat)
@@ -90,7 +99,11 @@ public:
         identity.setIdentity();
 
         mat = mat - sigma * identity;
+#ifndef GISMO_WITH_PARDISO
+#ifndef GISMO_WITH_SUPERLU
         m_solver.isSymmetric(true);
+#endif
+#endif
         m_solver.compute(mat);
 
         GISMO_ASSERT(m_solver.info() == Eigen::Success,"SparseSymShiftSolve: factorization failed with the given shift");
@@ -127,6 +140,161 @@ public:
     {
         m_solver.compute(m_mat, Eigen::Lower, sigma);
         GISMO_ASSERT(m_solver.info() == Spectra::CompInfo::Successful,"DenseSymShiftSolve: factorization failed with the given shift");
+    }
+};
+
+// Shift operation wrapper
+template <class MatrixType>
+class SpectraSymCholesky
+{
+public:
+    typedef typename MatrixType::Scalar Scalar;
+    typedef typename MatrixType::Nested NestedMatrix;
+    NestedMatrix m_mat;
+    const index_t m_n;
+// #ifdef GISMO_WITH_PARDISO
+//     typename gsSparseSolver<Scalar>::PardisoLLT m_solver;
+// #elif  GISMO_WITH_SUPERLU
+//     typename gsSparseSolver<Scalar>::SuperLU m_solver;
+// #else
+    typename gsSparseSolver<Scalar>::SimplicialLLT m_solver;
+// #endif
+
+    Spectra::CompInfo m_info;  // status of the decomposition
+
+public:
+    SpectraSymCholesky(const MatrixType&&   ) = delete;
+    SpectraSymCholesky(const MatrixType& mat)
+    :
+    m_mat(mat), m_n(mat.rows())
+    {
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
+
+        m_solver.compute(mat);
+        m_info = (m_solver.info() == Eigen::Success) ?
+            Spectra::CompInfo::Successful :
+            Spectra::CompInfo::NumericalIssue;
+    }
+    int rows() const { return m_n; }
+    int cols() const { return m_n; }
+
+    /// See Spectra/SparseCholesky.h for help
+    Spectra::CompInfo info() const { return m_info; }
+
+    /// See Spectra/SparseCholesky.h for help
+    void lower_triangular_solve(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsConstVector<Scalar> x(x_in,  m_n);
+        gsAsVector<Scalar>      y(y_out, m_n);
+        y.noalias() = m_solver.permutationP() * x;
+        m_solver.matrixL().solveInPlace(y);
+    }
+
+    /// See Spectra/SparseCholesky.h for help
+    void upper_triangular_solve(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsConstVector<Scalar> x(x_in,  m_n);
+        gsAsVector<Scalar>      y(y_out, m_n);
+        y.noalias() = m_solver.matrixU().solve(x);
+        y = m_solver.permutationPinv() * y;
+    }
+};
+
+// Shift operation wrapper
+template <class MatrixType>
+class SpectraSymRegularInverse
+{
+public:
+    typedef typename MatrixType::Scalar Scalar;
+    typedef typename MatrixType::Nested NestedMatrix;
+    NestedMatrix m_mat;
+    const index_t m_n;
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<Scalar>::PardisoLU m_solver;
+#elif  GISMO_WITH_SUPERLU
+    typename gsSparseSolver<Scalar>::SuperLU m_solver;
+#else
+    typename gsSparseSolver<Scalar>::CGDiagonal m_solver;
+#endif
+
+    Spectra::CompInfo m_info;  // status of the decomposition
+
+public:
+    SpectraSymRegularInverse(const MatrixType&&   ) = delete;
+    SpectraSymRegularInverse(const MatrixType& mat)
+    :
+    m_mat(mat), m_n(mat.rows())
+    {
+        GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
+
+        m_solver.compute(mat);
+        m_info = (m_solver.info() == Eigen::Success) ?
+            Spectra::CompInfo::Successful :
+            Spectra::CompInfo::NumericalIssue;
+    }
+    int rows() const { return m_n; }
+    int cols() const { return m_n; }
+
+    /// See Spectra/SparseRegularInverse.h for help
+    Spectra::CompInfo info() const { return m_info; }
+
+    /// See Spectra/SparseRegularInverse.h for help
+    void solve(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
+    }
+
+    /// See Spectra/SparseRegularInverse.h for help
+    void perform_op(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_mat.template selfadjointView<Eigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_n);
+    }
+};
+
+
+// Shift operation wrapper
+template <class MatrixType>
+class SpectraSymShiftInvert
+{
+public:
+    typedef typename MatrixType::Scalar Scalar;
+    typedef typename MatrixType::Nested NestedMatrix;
+    NestedMatrix m_A, m_B;
+    const index_t m_n;
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<Scalar>::PardisoLU m_solver;
+#elif  GISMO_WITH_SUPERLU
+    typename gsSparseSolver<Scalar>::SuperLU m_solver;
+#else
+    typename gsSparseSolver<Scalar>::LU m_solver;
+#endif
+public:
+    SpectraSymShiftInvert(const MatrixType&&   ,const MatrixType&& ) = delete;
+    SpectraSymShiftInvert(const MatrixType& A  ,const MatrixType& B)
+    :
+    m_A(A), m_B(B), m_n(A.rows())
+    {
+        GISMO_ASSERT(m_A.rows() == m_A.cols(),"Matrix A must be square!");
+        GISMO_ASSERT(m_B.rows() == m_B.cols(),"Matrix B must be square!");
+        GISMO_ASSERT(m_B.rows() == m_A.rows(),"Matrix A and B must be the same size!");
+    }
+    int rows() const { return m_n; }
+    int cols() const { return m_n; }
+    void perform_op(const Scalar* x_in, Scalar* y_out) const
+    {
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
+    }
+
+    void set_shift(const Scalar& sigma)
+    {
+        MatrixType mat = m_A - sigma * m_B;
+        #ifndef GISMO_WITH_PARDISO
+        #ifndef GISMO_WITH_SUPERLU
+                m_solver.isSymmetric(true);
+        #endif
+        #endif
+        m_solver.compute(mat);
+        GISMO_ASSERT(m_solver.info()==Eigen::Success,"Factorization failed");
     }
 };
 
@@ -192,10 +360,10 @@ template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::C
 class SpectraOps
 {
 public:
-    typedef Spectra::SparseCholesky<typename MatrixType::Scalar> InvOp;
+    typedef SpectraSymCholesky<MatrixType> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
-    SpectraMatProd<MatrixType>                           opA;
-    Spectra::SparseCholesky<typename MatrixType::Scalar> opB;
+    SpectraMatProd<MatrixType>     opA;
+    SpectraSymCholesky<MatrixType> opB;
 };
 
 /// For GEigsMode::RegularInverse
@@ -203,10 +371,10 @@ template <class MatrixType>
 class SpectraOps<MatrixType,Spectra::GEigsMode::RegularInverse>
 {
 public:
-    typedef Spectra::SparseRegularInverse<typename MatrixType::Scalar> InvOp;
+    typedef SpectraSymRegularInverse<MatrixType> InvOp;
     SpectraOps(const MatrixType & A, const MatrixType & B) : opA(A), opB(B) { }
-    SpectraMatProd<MatrixType>                           opA;
-    Spectra::SparseRegularInverse<typename MatrixType::Scalar> opB;
+    SpectraMatProd<MatrixType>           opA;
+    SpectraSymRegularInverse<MatrixType> opB;
 };
 
 /// For GEigsMode::ShiftInvert and GEigsMode::Cayley
@@ -215,10 +383,10 @@ class SpectraShiftOps
 {
 public:
     typedef typename MatrixType::Scalar Scalar;
-    typedef Spectra::SymShiftInvert<typename MatrixType::Scalar> InvOp;
+    typedef SpectraSymShiftInvert<MatrixType> InvOp;
     SpectraShiftOps(const MatrixType & A, const MatrixType & B) : opA(A,B), opB(B) { }
-    Spectra::SymShiftInvert<typename MatrixType::Scalar> opA;
-    SpectraMatProd<MatrixType>                           opB;
+    SpectraSymShiftInvert<MatrixType>   opA;
+    SpectraMatProd<MatrixType>          opB;
 };
 
 /// Specialization for GEigsMode::Buckling
@@ -227,10 +395,10 @@ class SpectraShiftOps<MatrixType,Spectra::GEigsMode::Buckling>
 {
 public:
     typedef typename MatrixType::Scalar Scalar;
-    typedef Spectra::SymShiftInvert<typename MatrixType::Scalar> InvOp;
+    typedef SpectraSymShiftInvert<MatrixType> InvOp;
     SpectraShiftOps(const MatrixType & A, const MatrixType & B) : opA(A,B), opB(A) { }
-    Spectra::SymShiftInvert<typename MatrixType::Scalar> opA;
-    SpectraMatProd<MatrixType>                           opB;
+    SpectraSymShiftInvert<MatrixType>   opA;
+    SpectraMatProd<MatrixType>          opB;
 };
 
 //template<> //compilation fails with this
