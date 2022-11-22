@@ -1970,7 +1970,7 @@ flat_expr<E> const flat(E const & u)
   {
     public:
         typedef typename E::Scalar Scalar;
-        enum {ScalarValued = 0};
+        enum {Space=0, ColBlocks=E::ColBlocks, ScalarValued = 0};
     private:
         typename E::Nested_t _u;
         mutable gsMatrix<Scalar> res;
@@ -1999,7 +1999,7 @@ flat_expr<E> const flat(E const & u)
         //todo: Scalar eval(const index_t k) const
 
         index_t rows() const { return _u.cols() / _u.rows(); }
-        index_t cols() const { return 1; }
+        index_t cols() const { return _u.rows(); }
 
         void parse(gsExprHelper<Scalar> & evList) const
         { _u.parse(evList); }
