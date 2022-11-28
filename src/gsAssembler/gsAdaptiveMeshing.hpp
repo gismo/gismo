@@ -526,11 +526,11 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
     T targetError = m_crsParamExtra;
     if (m_totalError > targetError)
         return;
-    // if (m_uniformCrsError < targetError) // then all elements should be refined
-    // {
-    //     this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
-    //     return;
-    // }
+    if (m_uniformCrsError < targetError) // then all elements should be refined
+    {
+        this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
+        return;
+    }
     T projectedError = m_totalError;
 
     // Accumulation operator for neighborhoods (boxContainer)
@@ -616,11 +616,11 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
     T targetError = m_refParamExtra;
     if (m_totalError < targetError)
         return;
-    // if (m_uniformRefError > targetError) // then all elements should be refined
-    // {
-    //     this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
-    //     return;
-    // }
+    if (m_uniformRefError > targetError) // then all elements should be refined
+    {
+        this->_markFraction_impl<_coarsen,_admissible>(elements,predicates,elMarked);
+        return;
+    }
     T projectedError = m_totalError;
 
     // Accumulation operator for neighborhoods (boxContainer)
