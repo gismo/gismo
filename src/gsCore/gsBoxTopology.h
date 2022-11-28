@@ -227,6 +227,8 @@ public:
     const ifContainer & interfaces() const { return m_interfaces; }
     ifContainer & interfaces() { return m_interfaces; }
 
+    ifContainer selectInterfaces(interaction::type ifc_type) const;
+
     /// Check that boundaries and interfaces are consistent.
     void checkConsistency() const;
 
@@ -305,7 +307,7 @@ protected:
     bContainer m_boundary;
 
     /// List of intefaces between boxes
-    ifContainer m_interfaces ;
+    ifContainer m_interfaces;
 
 }; // class gsBoxTopology
 

@@ -662,7 +662,7 @@ public:
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( this->m_fs), "error");
 
         // For every patch of the MultiPatch
-        for ( index_t p=0; p < mp.nPatches(); p++ )
+        for ( size_t p=0; p < mp.nPatches(); p++ )
         {
             // Get the patch's coefficients
             gsMatrix<T> &result = mp.patch(p).coefs();
@@ -1414,9 +1414,9 @@ public:
             patchEnd   = patch + 1;
         }
 
-        for (size_t p=patchStart; p!=patchEnd; ++p)
+        for (index_t p=patchStart; p!=patchEnd; ++p)
         {
-            for (index_t i = 0; i != mapper.patchSize(p, component); ++i)
+            for (size_t i = 0; i != mapper.patchSize(p, component); ++i)
             {
                 const index_t ii = mapper.index(i, p, component);
                 if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
@@ -1982,7 +1982,6 @@ flat_expr<E> const flat(E const & u)
             << _u.rows() <<" x "<< _u.cols() ); 
         }
 
-        // choose if ColBlocks
         const gsMatrix<Scalar> & eval(const index_t k) const
         {
             // Assume mat ??
@@ -1994,9 +1993,6 @@ flat_expr<E> const flat(E const & u)
                 res.row(i) = tmp.middleCols(i*cb,cb).diagonal();
             return res;
         }
-
-        // choose if !ColBlocks
-        //todo: Scalar eval(const index_t k) const
 
         index_t rows() const { return _u.cols() / _u.rows(); }
         index_t cols() const { return _u.rows(); }

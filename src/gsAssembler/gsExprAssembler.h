@@ -793,6 +793,8 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
+    typedef typename gsFunction<T>::uPtr ifacemap;
+
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
@@ -804,6 +806,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 
     const bool flipSide = m_options.askSwitch("flipSide", false);
 
+    ifacemap interfaceMap;
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
     {
@@ -813,13 +816,12 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         const index_t patch1 = iFace.first() .patch;
         const index_t patch2 = iFace.second().patch;
 
-        //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
-
-//        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
-//                                          m_exprdata->multiBasis().basis(patch1).support(),
-//                                          m_exprdata->multiBasis().basis(patch2).support() );
-
-        gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+        if (iFace.type() == interaction::conforming)
+            gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                           m_exprdata->multiBasis().basis(patch1).support(),
+                                           m_exprdata->multiBasis().basis(patch2).support() );
+        else
+            interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
@@ -835,7 +837,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+            interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             if (m_exprdata->points().cols()==0)
                 continue;

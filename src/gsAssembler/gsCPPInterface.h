@@ -54,6 +54,13 @@ public:
                      const gsMultiBasis<T>   & mb,
                      const boundaryInterface & bi,
                      const gsOptionList      & opt = defaultOptions() );
+
+    static uPtr make (const gsMultiPatch<T>   & mp,
+                     const gsMultiBasis<T>   & mb,
+                     const boundaryInterface & bi,
+                     const gsOptionList      & opt = defaultOptions() )
+    { return uPtr(new gsCPPInterface(mp,mb,bi,opt)); }
+    
 private:
     const gsGeometry<T>* m_slaveGeom, *m_masterGeom; ///< Geometry of first (Slave) patch and second patch (master) 
     typename gsGeometry<T>::Ptr m_masterBdr;  ///< The boundary geometry of second patch -- Master
