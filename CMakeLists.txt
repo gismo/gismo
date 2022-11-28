@@ -196,26 +196,6 @@ include_directories(${GISMO_INCLUDE_DIRS})
 # Add externals directory
 add_subdirectory(external)
 
-if(GISMO_WITH_CODIPACK)
-  add_subdirectory(extensions/gsCoDiPack)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${CODIPACK_INCLUDE_DIR}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${CODIPACK_INCLUDE_DIR})
-endif(GISMO_WITH_CODIPACK)
-
-if(GISMO_WITH_IPOPT)
-  add_subdirectory(extensions/gsIpOpt)
-  #set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${IPOPT_INCLUDE_DIR}
-  #CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${IPOPT_INCLUDE_DIR})
-endif(GISMO_WITH_IPOPT)
-
-#if(GISMO_WITH_METIS)
-#include_directories(${METIS_INCLUDE_DIR})
-#set(gismo_LINKER ${gismo_LINKER} ${METIS_LIBRARIES}
-#    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-#endif(GISMO_WITH_METIS)
-
 if(GISMO_WITH_MPI)
   find_package(MPI REQUIRED)
   set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPI_INCLUDE_PATH}
@@ -232,30 +212,6 @@ if(${GISMO_COEFF_TYPE} STREQUAL "mpfr::mpreal")
   include(external/gsGmp.cmake)
   include(external/gsMpfr.cmake)
 endif()
-
-#if(GISMO_WITH_PARDISO)
-#endif(GISMO_WITH_PARDISO)
-
-#if(GISMO_WITH_PASTIX)
-#endif(GISMO_WITH_PASTIX)
-
-if(GISMO_WITH_PSOLID)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsParasolid"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif(GISMO_WITH_PSOLID)
-
-if(GISMO_WITH_SPECTRA)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsSpectra"
-    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
-endif(GISMO_WITH_SPECTRA)
-
-if(GISMO_WITH_HLBFGS)
-  add_subdirectory(extensions/gsHLBFGS)
-endif(GISMO_WITH_HLBFGS)
-
-if(GISMO_WITH_PRECICE)
-  add_subdirectory(extensions/gsPreCICE)
-endif(GISMO_WITH_PRECICE)
 
 if(GISMO_WITH_SUPERLU)
   find_package(SuperLU REQUIRED)
@@ -283,13 +239,6 @@ if(GISMO_WITH_UMFPACK)
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   #include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
-
-if(GISMO_WITH_SMESH)
-  include(external/surface_mesh.cmake)
-  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SMESH_INCLUDE_DIRS}
-  CACHE INTERNAL "${PROJECT_NAME} include directories")
-  #include_directories(${SMESH_INCLUDE_DIR})
-endif()
 
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
