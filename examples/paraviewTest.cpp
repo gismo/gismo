@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <gismo.h>
+#include <gsIO/gsFileManager.h>
 
 
 using namespace gismo;
@@ -25,20 +26,13 @@ int main(int argc, char const *argv[])
     gsExprAssembler<>::geometryMap initGeo = assembler.getMap(mPatch); // Geometry map in the initial configuration
 
 
-    gsBoundaryConditions<> bc;
-    bc.setGeoMap(mPatch);
-
-    gsConstantFunction<> zero(0,2);
-    gsConstantFunction<> ten(10,2);
-    gsFunctionExpr<> ten_conditional("10*( (x<-5) or (x>5) )",2);
-
     gsExprEvaluator<> evaluator(assembler);
     evaluator.options().setInt("plot.precision",2);
     //std::vector<std::string> out( evaluator.expr2vtk(initGeo, "Geometry") );
     //gsDebugVar( out[0] );
 
     //gsParaviewCollection collection("collection", &evaluator);
-
+    
     gsParaviewCollection collection("outputFiles/collect", &evaluator);
 
     std::vector<std::string> labels;
