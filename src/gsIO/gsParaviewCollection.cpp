@@ -33,8 +33,8 @@ namespace gismo
         {
             // Keep only the filename because <DataSet> tags in the .pvd
             // file use relative paths
-            std::experimental::filesystem::path fPath(filenames[i]); 
-            addPart( fPath.filename(), -1, time); 
+            addPart( gsFileManager::getBasename(filenames[i]) +"." +
+                     gsFileManager::getExtension(filenames[i]), -1, time); 
         }
     }
 
@@ -45,7 +45,7 @@ namespace gismo
             m_step_count += 1.0;
             time = m_step_count;
         }
-        std::string name = mfn;
+        std::string name = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn);
         name += "_t" + std::to_string(time);
        
         return gsParaviewDataSet(name, geoMap, m_evaluator);
