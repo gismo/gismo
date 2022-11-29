@@ -121,10 +121,10 @@ set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
 file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY ${PROJECT_SOURCE_DIR})\nset(CTEST_BINARY_DIRECTORY   ${PROJECT_BINARY_DIR})\nset(CTEST_SITE         ${SITE})\nset(CTEST_BUILD_NAME   ${BUILDNAME})\n")
 
 include(submodules.txt)
-set(GISMO_SUBMODULES ${SUBMODULES_TXT} ${GISMO_SUBMODULES} CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+set(GISMO_SUBMODULES ${SUBMODULES_TXT} ${GISMO_SUBMODULES} CACHE STRING "List of optional G+Smo modules" FORCE)
 list(TRANSFORM GISMO_SUBMODULES STRIP)
 set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
-  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+  CACHE STRING "List of optional G+Smo modules" FORCE)
 #message(STATUS "Submodules ${GISMO_SUBMODULES}")
 
 ## #################################################################
@@ -276,7 +276,7 @@ list(TRANSFORM GISMO_SUBMODULES STRIP)
 list(REMOVE_DUPLICATES GISMO_SUBMODULES)
 list(SORT GISMO_SUBMODULES)
 set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
-  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+  CACHE STRING "List of optional G+Smo modules" FORCE)
 foreach(gssm ${GISMO_SUBMODULES})
   string(STRIP ${gssm} SUBMODULE)
   #message("Fetch ${SUBMODULE}")
@@ -298,7 +298,7 @@ endif()
 
 message("  GISMO_SUBMODULES        ${GISMO_SUBMODULES}")
 set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
-  CACHE INTERNAL "List of optional G+Smo modules" FORCE)
+  CACHE STRING "List of optional G+Smo modules" FORCE)
 
 ## #################################################################
 ## Shared and static library
