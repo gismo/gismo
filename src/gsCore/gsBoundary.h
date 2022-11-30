@@ -810,6 +810,7 @@ public:
         result.directionOrientation.resize(directionOrientation.rows());
         result.ps1=ps2;
         result.ps2=ps1;
+        result.m_type = m_type;
         for (index_t i=0;i<directionMap.rows();++i)
         {
             result.directionMap(directionMap(i))=i;
