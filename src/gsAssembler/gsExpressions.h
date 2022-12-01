@@ -4439,9 +4439,9 @@ template <typename E> mult_expr<constMat_expr, E> const
 operator*( gsMatrix<typename E::Scalar> const& u, _expr<E> const& v)
 { return mult_expr<constMat_expr, E>(mat(u), v); }
 
-template <typename Ε> mult_expr<Ε, constMat_expr> const
-operator*(_expr<Ε> const& u, gsMatrix<typename Ε::Scalar> const& v)
-{ return mult_expr<Ε, constMat_expr>(u, mat(v) ); }
+template <typename E> mult_expr<E, constMat_expr> const
+operator*(_expr<E> const& u, gsMatrix<typename E::Scalar> const& v)
+{ return mult_expr<E, constMat_expr>(u, mat(v) ); }
 
 /// Frobenious product (also known as double dot product) operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
