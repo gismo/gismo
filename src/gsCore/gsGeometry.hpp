@@ -350,6 +350,16 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
 */
 
 template<class T>
+std::ostream & gsGeometry<T>::print(std::ostream &os) const
+{
+    os << "Geometry "<< "R^"<< this->parDim() << 
+        " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
+        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
+    os<<"\nBasis:\n" << this->basis();
+    return os; 
+}
+
+template<class T>
 void gsGeometry<T>::merge(gsGeometry *)
 { GISMO_NO_IMPLEMENTATION }
 

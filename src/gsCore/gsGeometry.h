@@ -582,14 +582,7 @@ public:
     GISMO_UPTR_FUNCTION_PURE(gsGeometry, clone)
 
     /// Prints the object as a string.
-    virtual std::ostream &print(std::ostream &os) const
-    {
-        os << "Geometry "<< "R^"<< this->parDim() << 
-            " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
-            ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
-        os<<"\nBasis:\n" << (const gsFunction<T>&)(this->basis()) ;
-        return os; 
-    }
+    virtual std::ostream &print(std::ostream &os) const;
 
     /// Merge the given \a other geometry into this one.
     virtual void merge( gsGeometry * other );
