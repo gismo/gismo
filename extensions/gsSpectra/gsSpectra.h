@@ -72,7 +72,7 @@ public:
     const index_t m_n;
 #ifdef GISMO_WITH_PARDISO
     typename gsSparseSolver<Scalar>::PardisoLU m_solver;
-#elif  GISMO_WITH_SUPERLU
+#elseif  GISMO_WITH_SUPERLU
     typename gsSparseSolver<Scalar>::SuperLU m_solver;
 #else
     typename gsSparseSolver<Scalar>::LU m_solver;
@@ -154,7 +154,7 @@ public:
     const index_t m_n;
 // #ifdef GISMO_WITH_PARDISO
 //     typename gsSparseSolver<Scalar>::PardisoLLT m_solver;
-// #elif  GISMO_WITH_SUPERLU
+// #elseif  GISMO_WITH_SUPERLU
 //     typename gsSparseSolver<Scalar>::SuperLU m_solver;
 // #else
     typename gsSparseSolver<Scalar>::SimplicialLLT m_solver;
@@ -211,7 +211,7 @@ public:
     const index_t m_n;
 #ifdef GISMO_WITH_PARDISO
     typename gsSparseSolver<Scalar>::PardisoLU m_solver;
-#elif  GISMO_WITH_SUPERLU
+#elseif  GISMO_WITH_SUPERLU
     typename gsSparseSolver<Scalar>::SuperLU m_solver;
 #else
     typename gsSparseSolver<Scalar>::CGDiagonal m_solver;
@@ -263,7 +263,7 @@ public:
     const index_t m_n;
 #ifdef GISMO_WITH_PARDISO
     typename gsSparseSolver<Scalar>::PardisoLU m_solver;
-#elif  GISMO_WITH_SUPERLU
+#elseif  GISMO_WITH_SUPERLU
     typename gsSparseSolver<Scalar>::SuperLU m_solver;
 #else
     typename gsSparseSolver<Scalar>::LU m_solver;
