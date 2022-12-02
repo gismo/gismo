@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
     cmd.addInt("interior", "Interior knots.", numknots);
     cmd.addInt("deg", "Degree.", deg);
     // cmd.addPlainString("input", "G+Smo input basis file.", input);
-    // cmd.addString("o", "output", "Name of the output file.", output);
+     cmd.addString("o", "output", "Name of the output file.", output);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     // ======================================================================
@@ -82,6 +82,13 @@ int main(int argc, char* argv[])
         gsInfo << "++++basis fun. index:  " << j
                << "\n  --values:\n" << val.row(0)
                << "\n  --deriv:\n" << val.row(1) << "\n";
+    }
+    gsInfo << "\n";
+
+       for (index_t j = 0; j != fup.size(); j++)
+    {
+        gsInfo << "++++basis fun. index:  " << j
+               << "\n  --support:\n" << fup.support(j)<< "\n";
     }
     gsInfo << "\n";
 

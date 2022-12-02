@@ -132,13 +132,56 @@ private:
     {
         T anc = m_knots.greville(i);
         T val = __fup_0_16_d_MOD_fupn(&m_p, &anc, &u, &m_knot_length, &deriv_order);
-        //TODO: if (m_openKV)
+        //gsInfo << "Red:" << m_p << "\n"; -- writes order
+        //TODO: 
 
-        return val/ (1<<m_p);
+      /* switch (m_p)
+        {
+        case 1:
+            if(i=0) {
+                val=(36.0/5.0)*val;
+            }
+            else if(i=size() ){
+                val=(36.0/5.0)*val;
+            }
+            else  {
+                val=val;
+            }
+            break;
+        case 2:
+            if(i=0) {
+                val=(36.0/5.0)*val;
+            }
+            else if(i=size() ) {
+                val=(36.0/5.0)*val;
+            }
+            else {
+                val=val;
+            }
+            break;
+        case 3:
+            gsInfo << "treci" << i << "\n";
+            gsInfo << size() <<"\n";
+            break;
+        
+        default:
+
+            break;
+        } */
+
+        /*if(i<m_p+2)
+        {
+            
+        }*/
+        return val / (1<<m_p);
 
         //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
     }
-
+    T mod_coeff(index_t i) const
+    {
+        
+        return 1;
+    }
 public:
          
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
@@ -194,15 +237,16 @@ public:
     }
 
     // Look at gsBasis class for a description
+    // check support for writing
     gsMatrix<T> support(const index_t & i ) const
     {
         GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,
-                      "Invalid index of basis function." );
-        gsMatrix<T> res(1,2);
-        res << ( i > m_p ? m_knots[i] : m_knots[m_p] ),
-            ( static_cast<size_t>(i) < (m_knots.size()-2*m_p-2) ? m_knots[i+m_p+1] :
-              m_knots[m_knots.size()-m_p-1] );
-        return res ;
+                  "Invalid index of basis function." );
+     gsMatrix<T> res(1,2);
+     res << ( i > m_p+1 ? m_knots[i] : m_knots[m_p+1] ),
+        ( static_cast<size_t>(i) < (m_knots.size()-2*(m_p+2)) ? m_knots[i+m_p+2] :
+          m_knots[m_knots.size()-m_p-2] );
+            return res ;
     }
 
     // Look at gsBasis class for a description
