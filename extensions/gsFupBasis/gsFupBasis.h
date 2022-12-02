@@ -118,12 +118,23 @@ private:
                    gsMatrix<T>& result) const
     {
         result.resize(m_p+2, u.cols() );
-        index_t act;
+        gsVector<T> tmp;
+        index_t act, m;
         for ( index_t k = 0; k!=u.cols(); ++k)
         {
-            act = firstActive(u(0,k));
+            act = firstActive(u(0,k)); // act is the leftmost non-zero func index 
+            m=act;
             for ( index_t i = 0; i!=m_p+2; ++i)
-                result(i,k) = fupn_eval_single(u(0,k), deriv_order, act++);
+                result(i,k) = fupn_eval_single(u(0,k), deriv_order, m++);
+            m=act;
+            tmp.resize(m < m_p+1 ? m_p+1-m : 0);
+            for (index_t j = 0; j!=m_p+2 && (m < m_p+1); ++j)
+             {
+                    tmp(j)=result.col(k).topRows(m+1).dot(mod_coeff(m));
+                    m++;
+             }
+             result.col(k).topRows(tmp.size())=tmp;
+            
         }
     }
 
@@ -177,10 +188,41 @@ private:
 
         //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
     }
-    T mod_coeff(index_t i) const
+    gsVector<T> mod_coeff(index_t i) const
     {
+        gsVector<T> res;
+
+        switch (m_p)
+        {
+        case 2:
+            switch (i)
+            {
+            case 0:
+                res.resize(1);
+                res(0)=36.0/5.0; 
+                return res;
+
+            case 1:
+                res.resize(2);
+                res(0)=-36.0/5.0;
+                res(1)=18.0/13.0; 
+                return res;
+
+             case 2:
+                res.resize(3);
+                res(0)=1.0; 
+                res(0)=-5.0/13.0;
+                res(0)=1.0;
+                return res;
+
+            default:
+                GISMO_ERROR ("Wrong! No modification");
+            }
         
-        return 1;
+        default:
+            GISMO_ERROR ("Order not implemented");
+        }
+
     }
 public:
          
