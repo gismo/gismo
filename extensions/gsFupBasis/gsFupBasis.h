@@ -125,7 +125,7 @@ private:
             act = firstActive(u(0,k)); // act is the leftmost non-zero func index 
             m=act;
             for ( index_t i = 0; i!=m_p+2; ++i)
-                result(i,k) = fupn_eval_single(u(0,k), deriv_order, m++);
+                result(i,k) = fupn_call(u(0,k), deriv_order, m++);
             m=act;
             tmp.resize(m < m_p+1 ? m_p+1-m : 0);
             for (index_t j = 0; j!=m_p+2 && (m < m_p+1); ++j)
@@ -134,60 +134,31 @@ private:
                     m++;
              }
              result.col(k).topRows(tmp.size())=tmp;
-            
         }
     }
 
-    /// Get value of basis function \a i, at point \a u, of order \a deriv_order 
-    T fupn_eval_single(T u, int deriv_order, index_t i) const
+
+    /// Get value of unmodified basis function \a i, at point \a u, of order \a deriv_order 
+    inline T fupn_call(T u, int deriv_order, index_t i) const
     {
         T anc = m_knots.greville(i);
         T val = __fup_0_16_d_MOD_fupn(&m_p, &anc, &u, &m_knot_length, &deriv_order);
-        //gsInfo << "Red:" << m_p << "\n"; -- writes order
-        //TODO: 
-
-      /* switch (m_p)
-        {
-        case 1:
-            if(i=0) {
-                val=(36.0/5.0)*val;
-            }
-            else if(i=size() ){
-                val=(36.0/5.0)*val;
-            }
-            else  {
-                val=val;
-            }
-            break;
-        case 2:
-            if(i=0) {
-                val=(36.0/5.0)*val;
-            }
-            else if(i=size() ) {
-                val=(36.0/5.0)*val;
-            }
-            else {
-                val=val;
-            }
-            break;
-        case 3:
-            gsInfo << "treci" << i << "\n";
-            gsInfo << size() <<"\n";
-            break;
-        
-        default:
-
-            break;
-        } */
-
-        /*if(i<m_p+2)
-        {
-            
-        }*/
         return val / (1<<m_p);
-
-        //gsInfo<<std::fixed<<std::setw(6) << "fupn("<<m_p<<","<<anc<<","<<u(k)<<"," <<m_knot_length<<","<<deriv_order<<") = " << result(i,k) <<"\n";
     }
+
+    T fupn_eval_single(T u, int deriv_order, index_t i) const
+    {
+        if (i<m_p+1)
+        {
+            gsVector<T> mc = mod_coeff(i);
+            gsVector<T> tmp(mc.size());
+            for (index_t j = 0; j<=i; ++j)
+                tmp(j) = fupn_call(u, deriv_order, j);
+            return mc.dot(tmp);
+        }
+        return fupn_call(u, deriv_order, i);
+    }
+
     gsVector<T> mod_coeff(index_t i) const
     {
         gsVector<T> res;
@@ -211,8 +182,8 @@ private:
              case 2:
                 res.resize(3);
                 res(0)=1.0; 
-                res(0)=-5.0/13.0;
-                res(0)=1.0;
+                res(1)=-5.0/13.0;
+                res(2)=1.0;
                 return res;
 
             default:
