@@ -587,7 +587,7 @@ public:
         os << "Geometry "<< "R^"<< this->parDim() << 
             " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
             ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
-        os<<"\nBasis:\n" << this->basis() ;
+        os<<"\nBasis:\n" << (const gsFunction<T>&)(this->basis()) ;
         return os; 
     }
 
