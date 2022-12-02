@@ -42,34 +42,15 @@ public:
     /** default destructor */
     virtual ~gsIpOpt();
 
-    // Currently not used
-    void defaultOptions()
-    {
-        m_options.addInt("MaxIterations","Maximum iterations",1e3);
-        m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
-        m_options.addReal("MinStepLength","Minimal step length",1e-9);
-        m_options.addInt("Verbose","Verbosity level 0: no output, 1: summary, 2: full output", 0);
-        m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
-    }
+    // // Currently not used
+    // void defaultOptions()
+    // {
+    //     using Base::defaultOptions;
+    // }
 
     void getOptions()
     {
-        // m_maxIterations = m_options.getInt("MaxIterations");
-        // m_minGradientLength = m_options.getReal("MinGradientLength");
-        // m_minStepLength = m_options.getReal("MinStepLength");
-        // m_verbose = m_options.getInt("Verbose");
-        // m_M = m_options.getInt("LBFGSUpdates");
-
-        // // m_hlbfgs_info[3]:The lbfgs strategy. 0: standard, 1: M1QN3 strategy (recommended)
-        // // Gilbert, J. C., & Lemaréchal, C. (1989). Some numerical experiments with variable-storage
-        // // quasi-Newton algorithms. Mathematical programming, 45(1), 407-435.
-        // m_hlbfgs_info[3] = 1;
-
-        // m_hlbfgs_info[4] = static_cast<index_t>(m_maxIterations);
-        // m_hlbfgs_info[5] = static_cast<index_t>((m_verbose==2));
-
-        // m_hlbfgs_pars[5] = m_minGradientLength;
-        // m_hlbfgs_pars[6] = m_minStepLength;
+        gsWarn<<"gsIpOpt.h has its options stored in filedata/options/ipopt.opt\n";
     }
 
 public:
@@ -113,10 +94,13 @@ protected:
     using Base::m_finalObjective;
     using Base::m_curDesign;
     using Base::m_options;
+    using Base::m_verbose;
+    using Base::m_maxIterations;
+
+    using Base::defaultOptions;
+    using Base::getOptions;
 
     // Statistics
-    int numIterations;
-    T   finalObjective;
 
     gsIpOptPrivate<T> * m_data;
 

@@ -9,14 +9,10 @@
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
 #include "HLBFGS/HLBFGS.h"
-// #include "gsHLBFGS/HLBFGS_wrapper.cpp"
-//#include "stlbfgs/stlbfgs.h"
 /*
 To do:
 - Use Eigen
 - change T, int
-- clean includes
-- change .cpp to .hpp
 */
 
 // https://xueyuhanlang.github.io/software/HLBFGS/
@@ -26,18 +22,6 @@ To do:
 
 namespace gismo
 {
-
-template<typename T>
-static void static_newiter_callback(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)
-{
-    // TODO: give it a flag to decide if we need to print or not.
-    std::cout << "# iter "<< iter << ": #func eval. " << call_iter << ", f = " << *f <<
-    ", ||g|| = " << *gnorm << std::endl;
-    /*std::cout << "# iter "<< std::setw(4) << iter << ": #func eval. " << std::setw(4) << call_iter <<
-        ", f = " << std::setiosflags(std::ios::fixed) << std::setiosflags(std::ios::right) << std::setprecision(6) << *f <<
-        ", ||g|| = " << *gnorm << std::endl;*/
-}
-
 
 struct gsHLBFGSObjective
 {
@@ -89,34 +73,20 @@ public:
     }
 
 
-public:
-    // const gsMatrix<T> & lambda() const { return m_lambda; }
-
-    // void minimize(const Vector &initialGuess)
-    // {
-    //     m_result = Optimizer::minimize(initialGuess);
-    //     Base::m_numIterations = m_result.iterations;
-    //     Base::m_finalObjective = m_result.fval;
-    // }
-
-    // Result result() { return m_result; };
-
 protected:
     void defaultOptions()
     {
-        m_options.addInt("MaxIterations","Maximum iterations",1e3);
+        Base::defaultOptions();
         m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
         m_options.addReal("MinStepLength","Minimal step length",1e-9);
-        m_options.addSwitch("Verbose","Verbosity level", true);
         m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
     }
 
     void getOptions()
     {
-        m_maxIterations = m_options.getInt("MaxIterations");
+        Base::getOptions();
         m_minGradientLength = m_options.getReal("MinGradientLength");
         m_minStepLength = m_options.getReal("MinStepLength");
-        m_verbose = m_options.getSwitch("Verbose");
         m_M = m_options.getInt("LBFGSUpdates");
 
         // m_hlbfgs_info[3]:The lbfgs strategy. 0: standard, 1: M1QN3 strategy (recommended)
@@ -133,8 +103,14 @@ protected:
 
 protected:
 
-    static void static_func_grad(int N, T* x, T* prev_x, T* f, T* g) {
+    static void static_func_grad(int N, T* x, T* prev_x, T* f, T* g)
+    {
         (*local_func_grad)(N, x, prev_x, f, g);
+    }
+
+    static void static_newiter_callback(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)
+    {
+        (*local_newiter_callback)(iter, call_iter, x, f, g, gnorm);
     }
 
 public:
@@ -160,7 +136,15 @@ public:
 
         local_func_grad = &wrapfunc;
 
-        //gsHLBFGSObjective obj(m_op);
+        const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> wrapcallback =
+            [this](int iter, int call_iter, T *x, T* f, T *g, T* gnorm)
+        {
+            // TODO: give it a flag to decide if we need to print or not.
+            if (m_verbose==2)
+                gsInfo<<"# iter "<< iter << ": #func eval. " << call_iter << ", f = " << *f <<", ||g|| = " << *gnorm << std::endl;
+        };
+
+        local_newiter_callback = &wrapcallback;
 
         // WHAT ABOUT CONSTRAINTS????
         HLBFGS(
@@ -188,6 +172,9 @@ public:
         m_numIterations = m_hlbfgs_info[2];
         m_finalObjective = m_op->evalObj(gsAsConstVector<T>(m_curDesign.data(),m_curDesign.rows()));
 
+        if (m_verbose==1)
+            gsInfo<<"HLBFGS finished in "<<m_numIterations<<" iterations, with final objective "<<m_finalObjective<<"\n";
+
     }
 
 // Members taken from Base
@@ -197,13 +184,16 @@ protected:
     using Base::m_finalObjective;
     using Base::m_curDesign;
     using Base::m_options;
+    using Base::m_verbose;
+    using Base::m_maxIterations;
+
+    using Base::defaultOptions;
+    using Base::getOptions;
 
 // Options
 protected:
-    index_t m_maxIterations;
     T m_minGradientLength;
     T m_minStepLength;
-    bool m_verbose;
 
 // HLBFGS options
 protected:
@@ -212,11 +202,13 @@ protected:
     index_t m_M;
 
     static const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * local_func_grad;
-
+    static const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> * local_newiter_callback;
 };
 
 template<typename T>
 const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * gsHLBFGS<T>::local_func_grad = nullptr;
+template<typename T>
+const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> * gsHLBFGS<T>::local_newiter_callback = nullptr;
 
 
 // using gsHLBFGS = gdc::GradientDescent<T, Objective, StepSize, Callback, FiniteDifferences>;
