@@ -575,6 +575,8 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces)
 {
+    typedef typename gsFunction<T>::uPtr ifacemap;
+
     auto arg_tpl = expr.val();
     m_exprdata->parse(arg_tpl);
     m_exprdata->activateFlags(SAME_ELEMENT);
@@ -589,23 +591,24 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     m_elWise.reserve(m_exprdata->multiBasis().topology().nInterfaces());
     m_elWise.clear();
 
+    ifacemap interfaceMap;
     for (typename gsBoxTopology::const_iiterator iit =
              iFaces.begin(); iit != iFaces.end(); ++iit)
     {
         const boundaryInterface & iFace = *iit;
         const index_t patch1 = iFace.first().patch;
-        //const index_t patch2 = iFace.second().patch;
+        const index_t patch2 = iFace.second().patch;
 
-//        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
-//                                          m_exprdata->multiBasis().basis(patch1).support(),
-//                                          m_exprdata->multiBasis().basis(patch2).support() );
-
-        gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+        if (iFace.type() == interaction::conforming)
+            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                      m_exprdata->multiBasis().basis(patch1).support(),
+                                                      m_exprdata->multiBasis().basis(patch2).support() );
+        else
+            interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
 
         //gsRemapInterface<T> interfaceMap(m_exprdata->multiPatch(),
         //                                 m_exprdata->multiBasis(),
         //                                 *iit);//,opt
-        //gsDebugVar(interfaceMap);
 
         // Quadrature rule
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
@@ -624,7 +627,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+            interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(iFace);

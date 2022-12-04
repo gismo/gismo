@@ -817,9 +817,9 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         const index_t patch2 = iFace.second().patch;
 
         if (iFace.type() == interaction::conforming)
-            gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
-                                           m_exprdata->multiBasis().basis(patch1).support(),
-                                           m_exprdata->multiBasis().basis(patch2).support() );
+            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                      m_exprdata->multiBasis().basis(patch1).support(),
+                                                      m_exprdata->multiBasis().basis(patch2).support() );
         else
             interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
 
