@@ -60,7 +60,6 @@ int main(int argc, char *argv[])
     gsInfo<<"Test for eigenvalue solvers.\n A is a symmetric matrix and B is positive definite\n";
 
     gsMatrix<> Ad = A.toDense();
-
     gsSpectraSymSolver<gsMatrix<real_t>> minev(Ad, math::floor(sz/2), sz);
     minev.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
     gsInfo << "Symmetric solver:\n";
