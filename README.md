@@ -82,14 +82,22 @@ at a new, empty folder (in-source builds are disabled).
   choose your own build folder and execute CMake pointing to the
   sources.
 
-* On **MS Windows**: MS Visual Studio has [built-in CMake
-  support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
-  since version 2015. Alternatively, you can run the `cmake-gui` tool
-  (from an environment that is configured with your compiler) to
-  generate makefiles (or Visual Studio project files). Then execute
-  the make tool to launch compilation. Alternatively, use the
-  QtCreator GUI and open the CMakeLists.txt file on the root folder to
-  create a QtCreator project.
+* On **MS Windows**: 
+     * To compile G+Smo natively, you can use MS Visual Studio which has [built-in CMake
+       support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
+       since version 2015. Alternatively, you can run the `cmake-gui` tool
+       (from an environment that is configured with your compiler) to
+       generate makefiles (or Visual Studio project files). Then execute
+       the make tool to launch compilation. Alternatively, use the
+       QtCreator GUI and open the CMakeLists.txt file on the root folder to
+       create a QtCreator project.
+     * Another option is to install [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install)
+       which:
+       > lets developers install a Linux distribution [...] and use Linux applications, utilities, 
+       > and Bash command-line tools directly on Windows, unmodified, without the overhead of 
+       > a traditional virtual machine or dualboot setup.
+     
+       Then you can download, compile and use G+Smo as if your were using a native Linux machine.
 
 After successful compilation a dynamic library is created in `./lib` and
 executable example programs are output at the `./bin` subdirectory of
