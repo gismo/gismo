@@ -15,7 +15,6 @@
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
-#include <gsCore/gsGeometry.h>
 
 #pragma once
 
@@ -351,6 +350,42 @@ void gsFunction<T>::eval_component_into(const gsMatrix<T>&,
                                         gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
+template<class T>
+gsMatrix<T> gsFunction<T>::parameterCenter( const boxCorner& bc ) const
+{
+    gsMatrix<T> supp = this->support();
+    const index_t dim = supp.rows();
+    gsMatrix<T> coordinates(dim,1);
+    gsVector<bool> boxPar = bc.parameters(dim);
+    for (index_t d=0; d<dim;++d)
+    {
+        if (boxPar(d))
+            coordinates(d,0) = supp(d,1);
+        else
+            coordinates(d,0) = supp(d,0);
+    }
+    return coordinates;
+}
+
+template<class T>
+gsMatrix<T> gsFunction<T>::parameterCenter( const boxSide& bc ) const
+{
+    gsMatrix<T> supp = this->support();
+    const index_t dim = supp.rows();
+    gsMatrix<T> coordinates(dim,1);
+    const index_t dir = bc.direction();
+    for (index_t d=0; d<dim;++d)
+    {
+        if (d != dir)
+            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / (T)(2);
+        else if (bc.parameter())
+            coordinates(d,0) = supp(d,1);
+        else
+            coordinates(d,0) = supp(d,0);
+    }
+    return coordinates;
+}
+
 template <class T> void
 gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
                             index_t coord) const
@@ -402,7 +437,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 }
                 if ( 0 == det_sgn )
                 {
-                    gsMatrix<T> parameterCenter = (static_cast<const gsGeometry<T>*>(&src))->parameterCenter(InOut.side);
+                    gsMatrix<T> parameterCenter = src.parameterCenter(InOut.side);
                     T detJacTcurr = src.jacobian(parameterCenter).determinant();
                     det_sgn = detJacTcurr < 0 ? -1 : 1;
                 }
@@ -420,7 +455,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                         ( detJacTcurr < 0 ? -1 : 1 );
                     if ( 0 == det_sgn )
                     {
-                        gsMatrix<T> parameterCenter = (static_cast<const gsGeometry<T>*>(&src))->parameterCenter(InOut.side);
+                        gsMatrix<T> parameterCenter = src.parameterCenter(InOut.side);
                         T detJacTcurr = src.jacobian(parameterCenter).determinant();
                         det_sgn = detJacTcurr < 0 ? -1 : 1;
                     }
