@@ -29,6 +29,7 @@ namespace gismo
         std::vector<std::string> filenames( dataSet.filenames() );
 
         time = time==-1 ? m_step_count : time;
+        mfile << "<!-- Time = " << time << " -->\n"; 
         for (size_t i=0; i!=filenames.size(); i++)
         {
             // Keep only the filename because <DataSet> tags in the .pvd
