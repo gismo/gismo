@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
              2, 1, 4,
              4, 4, 4;
 
-    gsBSpline<> curve( kv, give(coefs));
+    gsBSpline<> curve( kv, give(coefs));  //std::move(coef)
 
     // Print the Bspline curve
     gsInfo << "I am a " << curve << "\n";
