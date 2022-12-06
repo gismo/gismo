@@ -91,6 +91,15 @@ void gsBoxTopology::addAutoBoundaries()
     }
 }
 
+gsBoxTopology::ifContainer gsBoxTopology::selectInterfaces(interaction::type ifc_type) const
+{
+    ifContainer result;
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
+        if ( m_interfaces[i].type() == interaction::contact)
+            result.push_back(m_interfaces[i]);
+    return result;
+}
+
 bool gsBoxTopology::isInterface( const patchSide& ps ) const
 {
     for ( size_t i = 0; i < m_interfaces.size(); ++i )

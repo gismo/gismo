@@ -236,6 +236,21 @@ public:
                        gsMatrix<T> init = gsMatrix<T>(),
                        double damping_factor = 1) const;
 
+    /// Returns a "central" point inside inside the parameter domain
+    virtual gsMatrix<T> parameterCenter() const
+    { 
+        // default impl. assumes convex support
+        gsMatrix<T> S = this->support();
+        return ( S.col(0) + S.col(1) ) * (T)(0.5);
+    }
+
+    /// Get coordinates of the boxCorner \a bc in the parameter domain
+    gsMatrix<T> parameterCenter( const boxCorner& bc ) const;
+
+    /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
+    gsMatrix<T> parameterCenter( const boxSide& bs ) const;
+
+    
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
