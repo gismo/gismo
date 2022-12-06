@@ -131,7 +131,6 @@ public:
 
             const int cornIndex = atoi(child->first_attribute("corner")->value());
             int pIndex = atoi(child->first_attribute("patch")->value());
-            pIndex = ids[pIndex];
 
             result.addCornerValue(cornIndex, val, pIndex, uIndex, cIndex);
         }

@@ -1214,9 +1214,10 @@ public:
 
             // corners
             for (typename gsBoundaryConditions<T>::const_citerator
-                     it = bc.cornerBegin(); it != bc.cornerEnd(); ++it) {
+                     it = bc.cornerBegin(); it != bc.cornerEnd(); ++it)
+            {
                 //assumes (unk == -1 || it->unknown == unk)
-                GISMO_ASSERT(static_cast<size_t>(it->patch) < mb->nBases(),
+                GISMO_ASSERT(static_cast<size_t>(it->patch) < mapb->nPieces(),
                              "Problem: a corner boundary condition is set on a patch id which does not exist.");
                 m_sd->mapper.eliminateDof(mapb->basis(it->patch).functionAtCorner(it->corner), it->patch, it->component);
             }

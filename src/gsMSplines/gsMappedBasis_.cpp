@@ -37,9 +37,9 @@ void pybind11_init_gsMappedBasis2(py::module &m)
     .def(py::init<gsMultiBasis<real_t> const &, const gsSparseMatrix<real_t> >() )
 
     // Member functions
-    .def("eval_into"  , static_cast<void (Class::*)(const unsigned, const gsMatrix<real_t> &, gsMatrix<real_t> &) const> (&Class::eval_into)  , "Evaluates the mapped basis into a matrix")
-    .def("deriv_into" , static_cast<void (Class::*)(const unsigned, const gsMatrix<real_t> &, gsMatrix<real_t> &) const> (&Class::deriv_into) , "Evaluates the first derivatives into a matrix")
-    .def("deriv2_into", static_cast<void (Class::*)(const unsigned, const gsMatrix<real_t> &, gsMatrix<real_t> &) const> (&Class::deriv2_into), "Evaluates the second derivatives into a matrix")
+    .def("eval_into"  , static_cast<void (Class::*)(const index_t, const gsMatrix<real_t> &, gsMatrix<real_t> &) const> (&Class::eval_into)  , "Evaluates the mapped basis into a matrix")
+    .def("deriv_into" , static_cast<void (Class::*)(const index_t, const gsMatrix<real_t> &, gsMatrix<real_t> &) const> (&Class::deriv_into) , "Evaluates the first derivatives into a matrix")
+    .def("deriv2_into", static_cast<void (Class::*)(const index_t, const gsMatrix<real_t> &, gsMatrix<real_t> &) const> (&Class::deriv2_into), "Evaluates the second derivatives into a matrix")
     ;
 }
 

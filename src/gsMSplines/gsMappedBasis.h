@@ -78,7 +78,7 @@ public:
         m_bases.reserve(mb.nBases());
         m_sb.clear();
         m_sb.reserve(mb.nBases());
-        unsigned q = 0;
+        index_t q = 0;
         for ( typename std::vector<BasisType*>::const_iterator
                   it = mb.begin(); it != mb.end(); ++it, ++q )
         {
@@ -151,17 +151,17 @@ public:
     index_t size() const { return m_mapper->getNrOfTargets(); }
 
     /// Returns the number of local basis functions in the basis
-    unsigned localSize() const { return m_mapper->getNrOfSources(); }
+    index_t localSize() const { return m_mapper->getNrOfSources(); }
 
     /// Returns the number of local basis functions of the patch with given \a index in the basis
-    unsigned localSize(const int index) const
+    index_t localSize(const int index) const
     { return m_bases[index]->size(); }
 
     /// Returns the maximal polynomial degree of the patches.
     short_t maxDegree() const;
 
     /// Returns the polynomial degree of direction \a i of \a patch
-    short_t degree(const unsigned patch,const short_t i) const
+    short_t degree(const index_t patch,const short_t i) const
     { return m_bases[patch]->degree(i); }
 
     /// returns the amount of patches of the multi patch
@@ -170,7 +170,7 @@ public:
 
 private:
     /// helper function for boundary and innerBoundaries
-    void addLocalIndicesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const;
+    void addLocalIndicesOfPatchSide(const patchSide& ps,index_t offset,std::vector<index_t>& locals) const;
 
 public:
     void reorderDofs(const gsPermutationMatrix& permMatrix)
@@ -187,15 +187,15 @@ public:
 
     /// gets all indices of global basis functions on the boundary
     /// upto a given offset
-    void boundary(std::vector<index_t> & indices,unsigned offset = 0) const;
+    void boundary(std::vector<index_t> & indices,index_t offset = 0) const;
 
     /// gets all indices of global basis functions on the inner boundary
     /// upto a given offset
-    void innerBoundaries(std::vector<index_t> & indices,unsigned offset = 0) const;
+    void innerBoundaries(std::vector<index_t> & indices,index_t offset = 0) const;
 
     /// gives back the gsMappedSingleBasis object set to the patch i, which
     /// ressembles the composite basis on one patch
-    gsMappedSingleBasis<d,T> & getMappedSingleBasis(const unsigned i)
+    gsMappedSingleBasis<d,T> & getMappedSingleBasis(const index_t i)
     {
         if (m_sb.empty())
         {
@@ -243,7 +243,7 @@ public:
                      gsMatrix<index_t>& result) const; //global BF active on patch at point
 
     /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    virtual void numActive_into(const unsigned patch,const gsMatrix<T> & u, gsVector<unsigned>& result) const
+    virtual void numActive_into(const index_t patch,const gsMatrix<T> & u, gsVector<index_t>& result) const
     {
         GISMO_UNUSED(patch); GISMO_UNUSED(u); GISMO_UNUSED(result);
         GISMO_NO_IMPLEMENTATION
@@ -275,23 +275,23 @@ public:
     /// \param[in,out] result gsMatrix of size <em>k</em> x <em>n</em>.
     /// See above for details.
     ///
-    void eval_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void deriv_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void deriv2_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void eval_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv2_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
     /// Evaluate the \a global_BF-th basis function on \a patch at points \a u into \a result.
-    void evalSingle_into(const unsigned patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void derivSingle_into(const unsigned patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void deriv2Single_into(const unsigned patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void evalSingle_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void derivSingle_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv2Single_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
     /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDers_into(const unsigned patch, const gsMatrix<T> & u,
+    void evalAllDers_into(const index_t patch, const gsMatrix<T> & u,
                           const int n, std::vector<gsMatrix<T> >& result ) const;
 
     /// @brief Evaluate the basis function \a global_BF at \a patch and its derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDersSingle_into(const unsigned patch,const unsigned global_BF, const gsMatrix<T> & u,const int n,gsMatrix<T> & result ) const;
+    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const int n,gsMatrix<T> & result ) const;
 
     /// @}
 
@@ -326,14 +326,14 @@ protected:
      *
      * \param[in] localIndex : the accumulated index of the basis function
      */
-    unsigned _getPatch(unsigned localIndex) const;
+    index_t _getPatch(index_t localIndex) const;
 
     /** gets the patchIndex of the basis function specified by its localIndex.
      *  This is the index of this basis function in the basis of this patch.
      *
      * \param[in] localIndex : the accumulated index of the basis function
      */
-    unsigned _getPatchIndex(const unsigned localIndex) const;
+    index_t _getPatchIndex(const index_t localIndex) const;
 
     /** gets the local index of the basis function of the patch with the
      *  given number.
@@ -341,7 +341,7 @@ protected:
      * \param[in] patch : the number of the patch
      * \param[in] patchIndex : the index of the basis function on the patch
      */
-    unsigned _getLocalIndex(unsigned const patch,unsigned const patchIndex) const
+    index_t _getLocalIndex(index_t const patch,index_t const patchIndex) const
     { return _getFirstLocalIndex(patch)+patchIndex; }
 
     /** gets the local index of the first basis function of the patch with the
@@ -349,14 +349,14 @@ protected:
      *
      * \param[in] patch : the number of the patch
      */
-    unsigned _getFirstLocalIndex(unsigned const patch) const;
+    index_t _getFirstLocalIndex(index_t const patch) const;
 
     /** gets the local index of the last basis function of the patch with the
      *  given number.
      *
      * \param[in] patch : the number of the patch
      */
-    unsigned _getLastLocalIndex(unsigned const patch) const
+    index_t _getLastLocalIndex(index_t const patch) const
     { return _getFirstLocalIndex(patch)+m_bases[patch]->size()-1; }
 
     // Data members

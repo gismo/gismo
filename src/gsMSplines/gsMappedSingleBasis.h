@@ -315,7 +315,7 @@ public:
         // Better way for offset one: compute (anchors()) the normal derivatives at the boundary and return the indices
         if (offset == 1) // Small fix
         {
-            GISMO_ASSERT(offset==1, "The indizes of boundaryOffset(s,1) "
+            GISMO_ASSERT(offset==1, "The indices of boundaryOffset(s,1) "
                                     "will be substract from boundaryOffset(s,0)");
 
             std::vector<index_t> diff, temp2, rtemp2;
@@ -330,6 +330,18 @@ public:
 
         return makeMatrix<index_t>(rtemp.begin(),rtemp.size(),1 );
     }
+
+    index_t functionAtCorner(boxCorner const & c) const
+    {
+        index_t cindex = m_basis->getBase(m_index).functionAtCorner(c);
+        cindex = m_basis->_getLocalIndex(m_index,cindex);
+        GISMO_ENSURE(m_basis->getMapper().sourceIsId(cindex),"Corner function has no identity map, i.e. there are more than 1 functions associated to the corner?");
+        std::vector<index_t> indices;
+        m_basis->getMapper().sourceToTarget(cindex,indices);
+        GISMO_ASSERT(indices.size()==1,"Size of the indices returned for the corner basis function should be 1 but is "<<indices.size()<<". Otherwise, there are more than 1 functions associated to the corner");
+        return indices.front();
+    }
+
     
 // Data members
 private:
