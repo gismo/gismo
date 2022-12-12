@@ -279,7 +279,7 @@ public:
     {
         if ( parDim() == geoDim() )
         {
-            const T val = gsFunction<T>::jacobian( parameterCenter() ).determinant();
+            const T val = gsFunction<T>::jacobian( this->parameterCenter() ).determinant();
             return (T(0) < val) - (val < (T)(0));
         }
         return 1;
@@ -325,20 +325,6 @@ public:
     /// Returns the range of parameters as a matrix with two columns, [lower upper]
     gsMatrix<T> parameterRange() const
     { return this->basis().support(); }
-
-    /// Returns a "central" point inside inside the parameter domain
-    virtual gsMatrix<T> parameterCenter() const
-    { 
-        // default impl. assumes convex support
-        gsMatrix<T> S = this->basis().support();
-        return ( S.col(0) + S.col(1) ) * (T)(0.5);
-    }
-
-    /// Get coordinates of the boxCorner \a bc in the parameter domain
-    gsMatrix<T> parameterCenter( const boxCorner& bc );
-
-    /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
-    gsMatrix<T> parameterCenter( const boxSide& bs );
 
     /// Get back the side of point \a u
     //boxSide sideOf(const gsVector<T> & u); //
@@ -584,14 +570,7 @@ public:
     GISMO_UPTR_FUNCTION_PURE(gsGeometry, clone)
 
     /// Prints the object as a string.
-    virtual std::ostream &print(std::ostream &os) const
-    {
-        os << "Geometry "<< "R^"<< this->parDim() << 
-            " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
-            ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
-        os<<"\nBasis:\n" << this->basis() ;
-        return os; 
-    }
+    virtual std::ostream &print(std::ostream &os) const;
 
     /// Merge the given \a other geometry into this one.
     virtual void merge( gsGeometry * other );

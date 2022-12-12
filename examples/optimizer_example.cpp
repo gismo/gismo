@@ -207,59 +207,56 @@ int main(int argc, char* argv[])
     {
         case 0 :
         optimizer = new gsGradientDescent<>(&problem);
+        // Set the minimum length of the gradient.
+        // The optimizer stops minimizing if the gradient length falls below this
+        // value (default is 1e-9).
+        optimizer->options().setReal("MinGradientLength",1e-9);
+
+        // Set the minimum length of the step.
+        // The optimizer stops minimizing if the step length falls below this
+        // value (default is 1e-9).
+        optimizer->options().setReal("MinStepLength",1e-9);
         break;
 
 #ifdef GISMO_WITH_HLBFGS
         case 1 :
         optimizer = new gsHLBFGS<real_t>(&problem);
-        optimizer->options().setInt("Verbose",2);
         break;
 #endif
 #ifdef GISMO_WITH_IPOPT
         case 2:
         optimizer = new gsIpOpt<real_t>(&problem);
-
-        //Set the momentum rate used for the step calculation (default is 0.0).
-        //Defines how much momentum is kept from previous iterations.
-        // optimizer->setMomentum(4);
-
-        // Turn verbosity on, so the optimizer prints status updates after each
-        // iteration.
-        // optimizer->options().setInt("Verbose",14);
         break;
 #endif
         default:
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
     }
     //! [Optimizer selection]
-                
-    // NO EFFECT FOR gsIpOpt
+
     //! [Optimizer options]
     // Set number of iterations as stop criterion.
-    // Set it to 0 or negative for infinite iterations (default is 0).
     optimizer->options().setInt("MaxIterations",200);
 
-    // Set the minimum length of the gradient.
-    // The optimizer stops minimizing if the gradient length falls below this
-    // value (default is 1e-9).
-    optimizer->options().setReal("MinGradientLength",1e-9);
+    // Set verbosity
+    optimizer->options().setInt("Verbose",2);
 
-    // Set the minimum length of the step.
-    // The optimizer stops minimizing if the step length falls below this
-    // value (default is 1e-9).
-    optimizer->options().setReal("MinStepLength",1e-9);
     //! [Optimizer options]
 
+    //! [Initial solution]
     gsVector<> in(2);
     in << 0.5, 1.5;        
+    //! [Initial solution]
 
+    //! [Solve]
     // Start the optimization
     optimizer->solve(in);
 
+    //! [Output]
     // Print final design info
     gsInfo << "\nNumber of iterations : " << optimizer->iterations() <<"\n";
     gsInfo << "Final objective value: " << optimizer->objective() <<"\n";
     gsInfo << "Final design: " << optimizer->currentDesign().transpose() <<"\n";
+    //! [Output]
 
     delete optimizer;
     return EXIT_SUCCESS;

@@ -84,6 +84,8 @@ public:
     void setReal  (const std::string & label, const Real &      value);
     /// @copydoc gsOptionList::setString()
     void setSwitch(const std::string & label, const bool &        value);
+    /// Toggles switch ( boolean )
+    void toggleSwitch( const std::string & label );
 
     /*/// \brief Sets values of option-group \a gn from values of a std::vector.
     ///

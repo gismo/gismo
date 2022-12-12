@@ -78,7 +78,7 @@ set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with 
       BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/ThirdParty-Mumps
       SOURCE_DIR        ${gismo_externals}/ThirdParty-Mumps
       #COMMAND           ${gismo_externals}/ThirdParty-Mumps/get.Mumps
-      CONFIGURE_COMMAND ${gismo_externals}/ThirdParty-Mumps/configure --prefix=${MUMPS_INST} ADD_FCFLAGS=-fallow-argument-mismatch
+      CONFIGURE_COMMAND ${gismo_externals}/ThirdParty-Mumps/configure --prefix=${MUMPS_INST} #ADD_FCFLAGS=-fallow-argument-mismatch
       BUILD_BYPRODUCTS "${MUMPS_LIBRARY}"
       DOWNLOAD_COMMAND  ""
       UPDATE_COMMAND    ""
