@@ -576,7 +576,7 @@ void gsBasis<T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> c
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine(int, int)
+void gsBasis<T>::uniformRefine(int, int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>

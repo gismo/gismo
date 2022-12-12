@@ -1394,7 +1394,7 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 */
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
+void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 {
     GISMO_UNUSED(numKnots);
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");

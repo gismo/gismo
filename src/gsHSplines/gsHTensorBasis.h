@@ -573,7 +573,7 @@ public:
     }
 
     // Refine the basis uniformly by inserting \a numKnots new knots on each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1);
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
 
     // Refine the basis uniformly and adjust the given matrix of coefficients accordingly
     //virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1)

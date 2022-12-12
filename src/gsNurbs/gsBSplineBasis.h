@@ -395,7 +395,7 @@ public:
     { m_knots.refineSpans(elements); }
 
     // Look at gsBasis class for a description
-    void uniformRefine(int numKnots = 1, int mul=1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
     { m_knots.uniformRefine(numKnots,mul); }
 
     // Look at gsBasis class for a description
