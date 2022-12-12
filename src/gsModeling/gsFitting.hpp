@@ -16,6 +16,7 @@
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsNurbs/gsBSpline.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 
 
@@ -35,6 +36,9 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
                           gsMatrix<T> const & points,
                           gsBasis<T>  & basis)
 {
+    GISMO_ASSERT(points.cols()==param_values.cols(), "Pointset dimensions problem "<< points.cols() << " != " <<param_values.cols() );
+    GISMO_ASSERT(basis.domainDim()==param_values.rows(), "Parameter values are inconsistent: "<< basis.domainDim() << " != " <<param_values.rows() );
+
     m_param_values = param_values;
     m_points = points;
     m_result = NULL;
@@ -42,14 +46,16 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
     m_points.transposeInPlace();
 
     m_mbasis = nullptr;
-    m_offset.resize(1,0);
+    m_offset.resize(2);
+    m_offset[0] = 0;
+    m_offset[1] = m_points.rows();
 }
 
 template<class T>
-gsFitting<T>::              gsFitting(gsMatrix<T> const& param_values,
-                                      gsMatrix<T> const& points,
-                                      gsVector<index_t>  offset,
-                                      gsMappedBasis<2,T> & mbasis)
+gsFitting<T>::gsFitting(gsMatrix<T> const& param_values,
+                        gsMatrix<T> const& points,
+                        gsVector<index_t>  offset,
+                        gsMappedBasis<2,T> & mbasis)
 {
     m_param_values = param_values;
     m_points = points;
@@ -64,6 +70,8 @@ gsFitting<T>::              gsFitting(gsMatrix<T> const& param_values,
 template<class T>
 void gsFitting<T>::compute(T lambda)
 {
+    m_last_lambda = lambda;
+
     // Wipe out previous result
     if ( m_result )
         delete m_result;
@@ -118,6 +126,7 @@ void gsFitting<T>::compute(T lambda)
     }
     // Solves for many right hand side  columns
     gsMatrix<T> x;
+
     x = solver.solve(m_B); //toDense()
 
     // If there were constraints, we obtained too many coefficients.
@@ -134,12 +143,82 @@ void gsFitting<T>::compute(T lambda)
     //gsDebugVar(m_mresult);
 }
 
+template <class T>
+void gsFitting<T>::parameterCorrection(T accuracy,
+                                       index_t maxIter,
+                                       T tolOrth)
+{
+    if ( !m_result )
+        compute(m_last_lambda);
+
+    const index_t d = m_param_values.rows();
+    const index_t n = m_points.cols();
+    T maxAng, avgAng;
+    std::vector<gsMatrix<T> > vals;
+    gsMatrix<T> DD, der;
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+        maxAng = -1;
+        avgAng = 0;
+        //auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
+        //(vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+
+#       pragma omp parallel for default(shared) private(der,DD,vals)
+        for (index_t s = 0; s<m_points.rows(); ++s)
+            //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
+        {
+            vals = m_result->evalAllDers(m_param_values.col(s), 1);
+            for (index_t k = 0; k!=d; ++k)
+            {
+                der = vals[1].reshaped(d,n);
+                DD = vals[0].transpose() - m_points.row(s);
+                const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
+                const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
+#               pragma omp critical (max_avg_ang)
+                {
+                    maxAng = math::max(maxAng, a );
+                    avgAng += a;
+                }
+            }
+            /*
+            auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
+                (vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+            maxAng = ( DD.colwise().normalized() *
+                       der.colwise().normalized().transpose()
+                ).array().acos().maxCoeff();
+            */
+        }
+
+        avgAng /= d*m_points.rows();
+        //gsInfo << "Avg-deviation: "<< avgAng << " / max: "<<maxAng<<"\n";
+
+        // if (math::abs(0.5*EIGEN_PI-maxAng) <= tolOrth ) break;
+
+        gsVector<T> newParam;
+#       pragma omp parallel for default(shared) private(newParam)
+        for (index_t i = 0; i<m_points.rows(); ++i)
+        //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
+        {
+            newParam = m_param_values.col(i);
+            m_result->closestPointTo(m_points.row(i).transpose(),
+                                     newParam, accuracy, true);
+
+            // (!) There might be the same parameter for two points
+            // or ordering constraints in the case of structured/grid data
+            m_param_values.col(i) = newParam;
+        }
+
+        // refit
+        compute(m_last_lambda);
+    }
+}
+
 
 template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
-    const int num_patches ( m_mbasis->nPatches() ); //initialize
+    const int num_patches ( m_basis ?  m_mbasis->nPatches() : 1 ); //initialize
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
@@ -149,6 +228,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
     {
         auto & basis = m_mbasis->basis(h);
 
+//#   pragma omp parallel for default(shared) private(curr_point,actives,value)
         for (index_t k = m_offset[h]; k < m_offset[h+1]; ++k)
         {
             curr_point = m_param_values.col(k);
@@ -164,8 +244,10 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
             for (index_t i = 0; i != numActive; ++i)
             {
                 const index_t ii = actives.at(i);
+//#           pragma omp critical (acc_m_B)
                 m_B.row(ii) += value.at(i) * m_points.row(k);
                 for (index_t j = 0; j != numActive; ++j)
+//#               pragma omp critical (acc_A_mat)
                     A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
             }
         }
@@ -198,6 +280,7 @@ void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
 template<class T>
 gsSparseMatrix<T> gsFitting<T>::smoothingMatrix(T lambda) const
 {
+    m_last_lambda = lambda;
 
     const int num_basis=m_basis->size();
 
@@ -213,8 +296,8 @@ gsSparseMatrix<T> gsFitting<T>::smoothingMatrix(T lambda) const
 template<class T>
 void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 {
+    m_last_lambda = lambda;
     const int num_patches(m_mbasis->nPatches()); //initialize
-
     const short_t dim(m_mbasis->domainDim());
     const short_t stride = dim * (dim + 1) / 2;
 
@@ -223,6 +306,11 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     gsVector<T> quWeights;
     gsMatrix<index_t> actives;
 
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+        
     for (index_t h = 0; h < num_patches; h++)
     {
         auto & basis = m_mbasis->basis(h);
@@ -239,8 +327,12 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
         typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(); 
 
-
-        for (; domIt->good(); domIt->next())
+        
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
+        for (; domIt->good(); domIt->next() )
+#       endif
         {
             // Map the Quadrature rule to the element and compute basis derivatives
             QuRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights);
@@ -275,7 +367,6 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
                                     der2(j * stride + s, k);
                             }
                         }
-
                         localA(i, j) += weight * localAij;
                     }
             }
@@ -445,6 +536,78 @@ void gsFitting<T>::setConstraints(const std::vector<index_t>& indices,
     }
 
     setConstraints(lhs, rhs);
+}
+
+template<class T>
+void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides)
+{
+    if(fixedSides.size() == 0)
+    return;
+
+    std::vector<index_t> indices;
+    std::vector<gsMatrix<T> > coefs;
+
+    for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
+    {
+    gsMatrix<index_t> ind = this->m_basis->boundary(*it);
+    for(index_t r=0; r<ind.rows(); r++)
+    {
+        index_t fix = ind(r,0);
+        // If it is a new constraint, add it.
+        if(std::find(indices.begin(), indices.end(), fix) == indices.end())
+        {
+        indices.push_back(fix);
+        coefs.push_back(this->m_result->coef(fix));
+        }
+    }
+    }
+
+    setConstraints(indices, coefs);
+}
+
+template<class T>
+void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides,
+                      const std::vector<gsBSpline<T> >& fixedCurves)
+{
+    std::vector<gsBSpline<T> > tmp = fixedCurves;
+    std::vector<gsGeometry<T> *> fixedCurves_input(tmp.size());
+    for (size_t k=0; k!=fixedCurves.size(); k++)
+        fixedCurves_input[k] = dynamic_cast<gsGeometry<T> *>(&(tmp[k]));
+    setConstraints(fixedSides, fixedCurves_input);
+}
+
+template<class T>
+void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides,
+                      const std::vector<gsGeometry<T> * >& fixedCurves)
+{
+    if(fixedSides.size() == 0)
+    return;
+
+    GISMO_ASSERT(fixedCurves.size() == fixedSides.size(),
+         "fixedCurves and fixedSides are of different sizes.");
+
+    std::vector<index_t> indices;
+    std::vector<gsMatrix<T> > coefs;
+    for(size_t s=0; s<fixedSides.size(); s++)
+    {
+    gsMatrix<T> coefsThisSide = fixedCurves[s]->coefs();
+    gsMatrix<index_t> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
+    GISMO_ASSERT(coefsThisSide.rows() == indicesThisSide.rows(),
+             "Coef number mismatch between prescribed curve and basis side.");
+
+    for(index_t r=0; r<indicesThisSide.rows(); r++)
+    {
+        index_t fix = indicesThisSide(r,0);
+        // If it is a new constraint, add it.
+        if(std::find(indices.begin(), indices.end(), fix) == indices.end())
+        {
+        indices.push_back(fix);
+        coefs.push_back(coefsThisSide.row(r));
+        }
+    }
+    }
+
+    setConstraints(indices, coefs);
 }
 
 

@@ -4,7 +4,7 @@
 #--- C.1 Output ----------------------------------------------------------------
 sb                                    yes                # Suppress header info
 print_user_options                    yes                # d=no
-print_level                           0                  # d=1
+print_level                           5                  # d=1
 # print_options_documentation         yes
 #--- C.2 Termination -----------------------------------------------------------
 tol                                   1e-8               # d=1e-8
@@ -62,7 +62,7 @@ hessian_approximation                 limited-memory     # d=exact
 
 # exact ~ finite diff
 # derivative_test                      first-order        # d=none
-# derivative_test                     second-order       # d=none
+# derivative_test                      second-order       # d=none
 # derivative_test_perturbation         6e-7               # d=1e-8 (def. value can be too small)
 # derivative_test_tol                 1e-4               # d=1e-4
 # derivative_test_print_all           no                 # d=no

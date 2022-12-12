@@ -63,16 +63,16 @@ namespace py = pybind11;
       .def("getId", static_cast<void (Class::*)(const int &, gsGeometry<real_t> &) const > (&Class::getId<gsGeometry<real_t>>), "Gets a const reference to basis with index i")
 
 
-      .def("add", static_cast<void (Class::*)(const gsMultiPatch<real_t> &) > (&Class::add<gsMultiPatch<real_t>>), "Add gsMultiPatch to the filedata.")
-      .def("add", static_cast<void (Class::*)(const gsMultiBasis<real_t> &) > (&Class::add<gsMultiBasis<real_t>>), "Add gsMultiBasis to the filedata.")
-      .def("add", static_cast<void (Class::*)(const gsBSpline<real_t> &) > (&Class::add<gsBSpline<real_t>>), "Add gsBSpline to the filedata.")
-      .def("add", static_cast<void (Class::*)(const gsTensorBSpline<2, real_t> &) > (&Class::add<gsTensorBSpline<2, real_t>>), "Add gsTensorBSpline to the filedata.")
+        .def("add", static_cast<void (Class::*)(const gsMultiPatch<real_t> &, int) > (&Class::add<gsMultiPatch<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMultiPatch to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsMultiBasis<real_t> &, int) > (&Class::add<gsMultiBasis<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMultiBasis to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsBSpline<real_t> &, int) > (&Class::add<gsBSpline<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsBSpline to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsTensorBSpline<2, real_t> &, int) > (&Class::add<gsTensorBSpline<2, real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsTensorBSpline to the filedata.")
 
-      .def("add", static_cast<void (Class::*)(const gsBoundaryConditions<real_t> &) > (&Class::add<gsBoundaryConditions<real_t>>), "Add gsBoundaryConditions to the filedata.")
-      .def("add", static_cast<void (Class::*)(const gsFunctionExpr<real_t> &) > (&Class::add<gsFunctionExpr<real_t>>), "Add gsFunctionExpr to the filedata.")
-      .def("add", static_cast<void (Class::*)(const gsOptionList &) > (&Class::add<gsOptionList>), "Add gsOptionList to the filedata.")
-      .def("add", static_cast<void (Class::*)(const gsMatrix<real_t> &) > (&Class::add<gsMatrix<real_t>>), "Add gsMatrix to the filedata.")
-      .def("add", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsBoundaryConditions<real_t> &, int) > (&Class::add<gsBoundaryConditions<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsBoundaryConditions to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsFunctionExpr<real_t> &, int) > (&Class::add<gsFunctionExpr<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsFunctionExpr to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsOptionList &, int) > (&Class::add<gsOptionList>), py::arg("object"), py::arg("id")=-1, "Add gsOptionList to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsMatrix<real_t> &, int) > (&Class::add<gsMatrix<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMatrix to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &, int) > (&Class::add<gsSparseMatrix<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsSparseMatrix to the filedata.")
 
 
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")

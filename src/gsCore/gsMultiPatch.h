@@ -280,6 +280,9 @@ public:
     /// not agree
     bool computeTopology( T tol = 1e-4, bool cornersOnly = false, bool tjunctions = false);
 
+    /// \brief Provides positive orientation for all patches
+    void fixOrientation();
+
     /// \brief Attempt to close gaps between the interfaces. Assumes
     /// that the topology is computed, ie. computeTopology() has been
     /// called.
@@ -341,6 +344,8 @@ public:
     */
     bool repairInterface( const boundaryInterface & bi );
 
+    /// Computes linear approximation of the patches using \a nsamples per direction
+    gsMultiPatch<T> approximateLinearly(index_t nsamples) const;
 
     /// @brief For each point in \a points, locates the parametric coordinates of the point
     /// \param points

@@ -77,7 +77,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(0,xi) + (T)(i)/((T)(n1-1))*( corner(1,xi) - corner(0,xi) );
+            pcp(i+j*n1,xi)=corner(0,xi) + i/((T)(n1-1))*( corner(1,xi) - corner(0,xi) );
         }
     }
     j=n2-1; // boundary v=1
@@ -85,7 +85,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(3,xi) + (T)(i)/((T)(n1-1))*( corner(2,xi) - corner(3,xi) );
+            pcp(i+j*n1,xi)=corner(3,xi) + i/((T)(n1-1))*( corner(2,xi) - corner(3,xi) );
         }
     }
     int i=0; // boundary u=0;
@@ -93,7 +93,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(0,xi) + (T)(j)/((T)(n2-1))*( corner(3,xi) - corner(0,xi) );
+            pcp(i+j*n1,xi)=corner(0,xi) + j/((T)(n2-1))*( corner(3,xi) - corner(0,xi) );
         }
     }
     i=n1-1; // boundary u=1;
@@ -101,7 +101,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
         {
-            pcp(i+j*n1,xi)=corner(1,xi) + (T)(j)/((T)(n2-1))*( corner(2,xi) - corner(1,xi) );
+            pcp(i+j*n1,xi)=corner(1,xi) + j/((T)(n2-1))*( corner(2,xi) - corner(1,xi) );
         }
     }
     // uniformly linear dependent in horizontal direction
@@ -111,7 +111,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
         {
             for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
             {
-                pcp(i+j*n1,xi)=pcp(0+j*n1,xi) + (T)(i)/((T)(n1-1))*( pcp(n1-1+j*n1,xi)-pcp(0+j*n1,xi) );
+                pcp(i+j*n1,xi)=pcp(0+j*n1,xi) + i/((T)(n1-1))*( pcp(n1-1+j*n1,xi)-pcp(0+j*n1,xi) );
             }
         }
     }
@@ -179,7 +179,10 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
             delete clone;
         }
 
-        result = BoundaryGeometryType(*tbasis, give(coefs) );
+        // construct the object
+        //result = gsTensorBSpline<static_cast<short_t>(d-1),T>(*tbasis, give(coefs) );
+        //result = BoundaryGeometry(*tbasis, give(coefs) );
+        result = BoundaryGeometryType(*tbasis, coefs );
     }
 }
 
@@ -202,6 +205,13 @@ void gsTensorBSpline<d,T>::swapDirections(const unsigned i, const unsigned j)
     swapTensorDirection(i, j, sz, m_coefs);
     this->basis().swapDirections(i,j);
 }
+
+template<short_t d, class T>
+void gsTensorBSpline<d,T>::toggleOrientation()
+{
+    swapDirections(0,1);
+}
+
 
 template<short_t d, class T>
 bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
@@ -387,7 +397,7 @@ std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) con
         midpoints.setZero(d);
 
         for(unsigned i=0; i<d;++i)
-            midpoints(i)= (basis().knots(i).sbegin().value() + (--basis().knots(i).send()).value())/(T)(2);
+            midpoints(i)= (basis().knots(i).sbegin().value() + (--basis().knots(i).send()).value())/ (T)(2);
 
         for(unsigned i=0; i<d;++i)
         {
@@ -581,8 +591,6 @@ gsTensorBSpline<d,T>:: iface(const boundaryInterface & bi,
     std::list<std::pair<const gsMatrix<T> *,index_t> > cv;//patch,cp-index
     //maybe: check if both ifaces are identical using a flag...
 
-    // gsDebugVar(bdr0.size());
-    // gsDebugVar(bdr1.size());
     cv.push_back( std::make_pair(&this->coefs(), bdr0.at(b[0]++) ) );
     do {
         T dist0=(cv.back().first->row(cv.back().second)-this->coef(bdr0.at(b[0]))).squaredNorm();
@@ -610,6 +618,9 @@ gsTensorBSpline<d,T>:: iface(const boundaryInterface & bi,
         cv.push_back( std::make_pair(&other.coefs(), bdr1.at(b[1]++) ) );
 
     //gsDebugVar(cv.size());
+
+    // temporary fix: the last point is always doubled.
+    cv.pop_back();
 
     // Construct interface geometry using cv and uniform knots (polyline)
     gsMatrix<T> cf(cv.size(),this->geoDim());

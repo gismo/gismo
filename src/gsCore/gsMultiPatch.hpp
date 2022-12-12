@@ -456,6 +456,17 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
     return true;
 }
 
+template <class T>
+void gsMultiPatch<T>::fixOrientation()
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+        if ( -1 == (*it)->orientation() )
+            (*it)->toggleOrientation();
+    
+    if (this->nInterfaces() || this->nBoundary() )
+        this->computeTopology();
+}
 
 template <class T>
 bool gsMultiPatch<T>::matchVerticesOnSide (
@@ -618,6 +629,20 @@ gsAffineFunction<T> gsMultiPatch<T>::getMapForInterface(const boundaryInterface 
     }
 
     return gsAffineFunction<T>(bi.dirMap(bi.first()),bi.dirOrientation(bi.first()) ,box1,box2);
+}
+
+template<class T>
+gsMultiPatch<T> gsMultiPatch<T>::approximateLinearly(index_t nsamples) const
+{
+    gsMultiPatch<T> result;
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        result.addPatch( (*it)->approximateLinearly() );
+    }
+
+    result.gsBoxTopology::operator=(*this);//copy the original topology
+    return result;
 }
 
 template<class T>

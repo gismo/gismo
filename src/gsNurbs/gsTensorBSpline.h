@@ -202,10 +202,11 @@ public:
     /// \todo use flipTensor to generalize to any dimension
     void reverse(unsigned k);
 
-    /// Toggle orientation wrt coordinate k
-    /// \todo use flipTensor to generalize to any dimension
+    /// Swap directions
     void swapDirections(const unsigned i, const unsigned j);
-    
+
+    void toggleOrientation();
+
     /// \brief Return true if point \a u is a corner of
     /// the patch with tolerance \a tol
     bool isPatchCorner(gsMatrix<T> const &v, T tol = 1e-3) const;

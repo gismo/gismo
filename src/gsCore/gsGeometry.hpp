@@ -358,6 +358,11 @@ void gsGeometry<T>::toMesh(gsMesh<T> &, int) const
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+typename gsGeometry<T>::uPtr
+gsGeometry<T>::approximateLinearly() const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsGeometry<T>::outerNormal_into(const gsMatrix<T>&, gsMatrix<T> &) const
 { GISMO_NO_IMPLEMENTATION }
 
@@ -514,6 +519,12 @@ gsGeometry<T>::compute(const gsMatrix<T> & in, gsFuncData<T> & out) const
                 out.values[2].reshapeCol(p, der2S, numCo).noalias() = tmp.deriv2(p)*coefM;
         }
     }
+}
+
+template<class T>
+void gsGeometry<T>::toggleOrientation()
+{
+    GISMO_NO_IMPLEMENTATION
 }
 
 template<class T>

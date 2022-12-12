@@ -285,6 +285,8 @@ public:
         return 1;
     }
 
+    virtual void toggleOrientation();
+
     /*************************************************************************/
 
     /// @name Accessors
@@ -595,6 +597,8 @@ public:
     virtual void merge( gsGeometry * other );
 
     virtual void toMesh(gsMesh<T> & msh, int npoints) const;
+
+    typename gsGeometry::uPtr approximateLinearly() const;
 
     /// Updates the vertices of input \a mesh by evaluating the
     /// geometry at vertices.
