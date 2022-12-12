@@ -146,7 +146,7 @@ void gsMappedBasis<d,T>::active_into(const index_t patch, const gsMatrix<T> & u,
     result.resizeLike( pActive );
     std::vector<std::vector<index_t> > temp_output;//collects the outputs
     temp_output.resize( pActive.cols() );
-    index_t max = 0;
+    size_t max = 0;
     for(index_t i = 0; i< pActive.cols();i++)
     {
         std::vector<index_t> act_i( pActive.col(i).data(), pActive.col(i).data() + numact); // to be removed
@@ -441,7 +441,7 @@ void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index
 template<short_t d,class T>
 index_t gsMappedBasis<d,T>::_getPatch(index_t localIndex) const
 {
-    index_t patch;
+    size_t patch;
     for(patch=0;patch<m_bases.size();patch++)
     {
         if(localIndex>=static_cast<index_t>(m_bases[patch]->size()))

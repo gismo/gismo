@@ -15,6 +15,13 @@
 ##   RESTORE_SUBMODULES      If set submodules are RESTORED from git.
 ##   			     (!)Any local modifications will be LOST.
 ##
+##
+## By default we download only the main branch and a shallow copy is fetched.
+## To get all branches of a submodule one can issue inside the folder:
+## git remote set-branches origin '*'
+## git fetch --unshallow
+## git checkout name-of-branch
+##
 ######################################################################
 set(SUBMODULES_TXT "gsOpennurbs")
 

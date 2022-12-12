@@ -19,9 +19,6 @@ include(gsConfig)
 
 find_package(precice REQUIRED CONFIG)
 
-message("${PROJECT_NAME}_HEADERS")
-message("${${PROJECT_NAME}_HEADERS}")
-
 add_library(${PROJECT_NAME} INTERFACE)
 # target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
 # target_link_libraries(${PROJECT_NAME} PRIVATE precice::precice)
