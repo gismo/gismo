@@ -60,7 +60,7 @@ public:
         _u.data().flags |= NEED_GRAD;
 
         evList.add(_G);
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -81,7 +81,7 @@ private:
         normal.normalize();
         bGrads = _u.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        const Scalar measure =  _G.data().measures.at(k);
+        const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
 
         for (index_t d = 0; d!= cols(); ++d) // for all basis function components
         {
@@ -112,7 +112,7 @@ private:
         normal.normalize();
         bGrads = sGrad.eval(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        const Scalar measure =  _G.data().measures.at(k);
+        const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
 
         m_v.noalias() = ( ( bGrads.col(0).template head<3>() ).cross( cJac.col(1).template head<3>() )
                       -   ( bGrads.col(1).template head<3>() ).cross( cJac.col(0).template head<3>() ) ) / measure;
@@ -168,7 +168,7 @@ public:
 
         const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
         const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
-        const Scalar measure =  _G.data().measures.at(k);
+        const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
 
         evEf = _Ef.eval(k);
 
@@ -234,7 +234,7 @@ public:
         _u.data().flags |= NEED_GRAD;
 
         evList.add(_G);
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
         _Ef.parse(evList);
     }
 
