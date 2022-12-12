@@ -2,7 +2,7 @@
 
 G+Smo extension for the [Open CASCADE Technology](https://dev.opencascade.org) (OCCT) software development kit.
 
-|GISMO_SUBMODULES| gsOpenCascade|
+|GISMO_OPTIONAL| gsOpenCascade|
 |--:|---|
 |License|[MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)|
 |OS support|Linux, Windows, macOS|

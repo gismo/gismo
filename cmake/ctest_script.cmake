@@ -27,7 +27,7 @@
 ##   -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 \
 ##   -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ \
 ##   -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind \
-##   -D GISMO_SUBMODULES="gsOpennurbs\\;gsSpectra"
+##   -D GISMO_OPTIONAL="gsOpennurbs\\;gsSpectra"
 ##   -D DO_COVERAGE=TRUE
 ##
 ## Different dashboard projects and subprojects are possible:
@@ -68,7 +68,7 @@
 ##   CTEST_TEST_MODEL
 ##   CTEST_TEST_TIMEOUT
 ##   CXXNAME
-##   GISMO_SUBMODULES    --> pass to ctest as, eg: -D GISMO_SUBMODULES="gsOpennurbs\\;gsSpectra"
+##   GISMO_OPTIONAL    --> pass to ctest as, eg: -D GISMO_OPTIONAL="gsOpennurbs\\;gsSpectra"
 ##   DO_COVERAGE
 ##   DO_TESTS
 ##   DROP_LOCATION
@@ -521,7 +521,7 @@ macro(run_ctests)
   if(DEFINED KEEPCONFIG)
     ctest_configure(RETURN_VALUE confResult)
   else()
-    ctest_configure(OPTIONS "${CMAKE_ARGS};-DGISMO_SUBMODULES=${GISMO_SUBMODULES};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}" RETURN_VALUE confResult)
+    ctest_configure(OPTIONS "${CMAKE_ARGS};-DGISMO_OPTIONAL=${GISMO_OPTIONAL};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}" RETURN_VALUE confResult)
   endif()
 
   if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)

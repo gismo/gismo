@@ -9,7 +9,7 @@ include(CMakeParseArguments)
 
 #note: latest CMake has FetchContent
 function(gismo_fetch_directory)
-  #use: gismo_fetch_directory(name GIT_REPOSITORY  ${git_repo} DESTINATION  extensions)
+  #use: gismo_fetch_directory(name GIT_REPOSITORY  ${git_repo} DESTINATION  optional)
   set(GF_NAME "${ARGV0}")
   set(oneValueArgs
     # Protect the following options
@@ -81,12 +81,12 @@ function(gismo_add_extension SUBMODULE)
   if(TARGET ${SUBMODULE})
     return()
   endif()
-  if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
-    add_subdirectory(${gismo_SOURCE_DIR}/extensions/${SUBMODULE} ${gismo_BINARY_DIR}/extensions/${SUBMODULE})
-    if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata")
-      string(REGEX MATCH "extensions/${SUBMODULE}/filedata" fmatch ${GISMO_SEARCH_PATHS})
+  if(EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/CMakeLists.txt")
+    add_subdirectory(${gismo_SOURCE_DIR}/optional/${SUBMODULE} ${gismo_BINARY_DIR}/optional/${SUBMODULE})
+    if(EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/filedata")
+      string(REGEX MATCH "optional/${SUBMODULE}/filedata" fmatch ${GISMO_SEARCH_PATHS})
       if(NOT fmatch)
-        set(GISMO_SEARCH_PATHS "${GISMO_SEARCH_PATHS};${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/filedata/" CACHE INTERNAL "File search paths")
+        set(GISMO_SEARCH_PATHS "${GISMO_SEARCH_PATHS};${gismo_SOURCE_DIR}/optional/${SUBMODULE}/filedata/" CACHE INTERNAL "File search paths")
       endif()
     endif()
   else()
@@ -99,30 +99,30 @@ endfunction()
 # (ARGV0) SUBMODULE:  name of submodule
 function(gismo_fetch_module SUBMODULE)
 
-  if(EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
+  if(EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/CMakeLists.txt")
     #Update to current HEAD
-    if(GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/.git")
+    if(GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/.git")
       message("Git fetch ${SUBMODULE}")
       execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth" "1"
 	ERROR_QUIET
-	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
       execute_process(COMMAND "${GIT_EXECUTABLE}" "reset" "--hard"
 	ERROR_QUIET
-	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
       execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
-	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
     endif()
 
     # Restore submodules to their proper hash
     # (!)Any local modifications will be LOST.)
-    if(RESTORE_SUBMODULES AND NOT GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/.git")
+    if(RESTORE_SUBMODULES AND NOT GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/.git")
       message("Git restore ${SUBMODULE}")
       execute_process(COMMAND "${GIT_EXECUTABLE}" "restore"
-	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE}
 	ERROR_QUIET)
       if(${SUBMODULE}_HASH) # can be defined in submodules.txt
 	execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth=1" origin ${${SUBMODULE}_HASH}
-	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE}
 	  ERROR_QUIET
 	  RESULT_VARIABLE gitfetch_res)
 	if(gitfetch_res AND NOT gitfetch_res EQUAL 0)
@@ -131,9 +131,9 @@ function(gismo_fetch_module SUBMODULE)
 	execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" ${${SUBMODULE}_HASH}
 	  OUTPUT_QUIET
 	  ERROR_QUIET
-	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
 	execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
-	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
       endif()
       message("Hash is now ${${SUBMODULE}_HASH}")
     endif()
@@ -166,13 +166,13 @@ function(gismo_fetch_module SUBMODULE)
       set(git_repo https://github.com/gismo/${SUBMODULE}.git)
     endif()
 
-    if(NOT EXISTS "${gismo_SOURCE_DIR}/extensions/${SUBMODULE}/CMakeLists.txt")
+    if(NOT EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/CMakeLists.txt")
       message(STATUS "Cloning into ${SUBMODULE}")
       find_package(Git REQUIRED)
 
       # Fetch SUBMODULE (note: git fetch --unshallow to get full clone)
       execute_process(COMMAND "${GIT_EXECUTABLE}" "clone" "--depth" "1" ${git_repo}
-	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions
+	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional
 	ERROR_QUIET
 	RESULT_VARIABLE gitclone_res)
       if(gitclone_res AND NOT gitclone_res EQUAL 0)
@@ -181,7 +181,7 @@ function(gismo_fetch_module SUBMODULE)
 
       if(NOT GISMO_SUBMODULES_HEAD AND ${SUBMODULE}_HASH)# hash in submodules.txt
 	execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth=1" origin ${${SUBMODULE}_HASH}
-	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE}
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE}
 	  ERROR_QUIET
 	  RESULT_VARIABLE gitfetch_res)
 	if(gitfetch_res AND NOT gitfetch_res EQUAL 0)
@@ -190,9 +190,9 @@ function(gismo_fetch_module SUBMODULE)
 	execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" ${${SUBMODULE}_HASH}
 	  OUTPUT_QUIET
 	  ERROR_QUIET
-	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
 	execute_process(COMMAND "${GIT_EXECUTABLE}" "clean" "-dfx"
-	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/extensions/${SUBMODULE})
+	  WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
 	# note: specific commits are also reachable as, eg,
 	# https://github.com/gismo/gismo/archive/<full-hash>.zip
       endif()
@@ -207,12 +207,12 @@ function(gismo_fetch_module SUBMODULE)
       SVN_USERNAME ${GISMO_UNAME} # Username for Subversion checkout and update
       SVN_PASSWORD ${GISMO_PASS}  # Password for Subversion checkout and update
       SVN_TRUST_CERT 1            # Trust the Subversion server site certificate
-      DESTINATION  extensions )
+      DESTINATION  optional )
 
   else()
     gismo_fetch_directory(${SUBMODULE}
       URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
-      DESTINATION  extensions )
+      DESTINATION  optional )
   endif()
   gismo_add_extension(${SUBMODULE})
 endfunction()

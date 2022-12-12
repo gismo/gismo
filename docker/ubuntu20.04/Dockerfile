@@ -72,8 +72,8 @@ ARG GISMO_INDEX_TYPE=int
 # GISMO_SHORT_TYPE        : {int,int8_t,int16_t,int32_t,int64_t,long,long long}
 ARG GISMO_SHORT_TYPE=int
 
-# GISMO_SUBMODULES        : {gsCoDiPack,gsCompFlow,gsElasticity,gsExaStencils,gsGmp,gsIpOpt,gsKLShell,gsMpfr,gsOpenCascade,gsOpennurbs,gsStructuralAnalysis,gsTrilinos,motor,unsupported}
-ARG GISMO_SUBMODULES=''
+# GISMO_OPTIONAL        : {gsCoDiPack,gsCompFlow,gsElasticity,gsExaStencils,gsGmp,gsIpOpt,gsKLShell,gsMpfr,gsOpenCascade,gsOpennurbs,gsStructuralAnalysis,gsTrilinos,motor,unsupported}
+ARG GISMO_OPTIONAL=''
 
 # GISMO_VERSION           : {v0.8.1,v0.8.2,v0.8.3,v0.8.4,v21.12.0,HEAD,specific hash}
 ARG GISMO_VERSION=HEAD
@@ -330,7 +330,7 @@ RUN if [ "$GISMO_WITH_MPI" = "ON" ] ; then \
     fi
 
 # Install prerequisites for gsOpenCascade extension
-RUN if [ ${GISMO_SUBMODULES} =~ "gsOpenCascade" ] ; then \
+RUN if [ ${GISMO_OPTIONAL} =~ "gsOpenCascade" ] ; then \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         libgl-dev \
@@ -343,7 +343,7 @@ RUN if [ ${GISMO_SUBMODULES} =~ "gsOpenCascade" ] ; then \
     fi
 
 # Install prerequisites for SUPERLU, UMFPACK, and gsTrilinos extension
-RUN if [ "$GISMO_WITH_SUPERLU" = "ON" ] || [ ${GISMO_SUBMODULES} =~ "gsTrilinos" ] || [ "$GISMO_WITH_UMFPACK" = "ON" ] ; then \
+RUN if [ "$GISMO_WITH_SUPERLU" = "ON" ] || [ ${GISMO_OPTIONAL} =~ "gsTrilinos" ] || [ "$GISMO_WITH_UMFPACK" = "ON" ] ; then \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         bc \
@@ -397,7 +397,7 @@ RUN cd gismo    && \
         -DGISMO_COEFF_TYPE=$GISMO_COEFF_TYPE \
         -DGISMO_INDEX_TYPE=$GISMO_INDEX_TYPE \
         -DGISMO_SHORT_TYPE=$GISMO_SHORT_TYPE \
-        -DGISMO_SUBMODULES=$GISMO_SUBMODULES \
+        -DGISMO_OPTIONAL=$GISMO_OPTIONAL \
         -DGISMO_WITH_ADIFF=$GISMO_WITH_ADIFF \
         -DGISMO_WITH_MPI=$GISMO_WITH_MPI \
         -DGISMO_WITH_OPENMP=$GISMO_WITH_OPENMP \

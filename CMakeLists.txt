@@ -121,11 +121,11 @@ set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
 file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY ${PROJECT_SOURCE_DIR})\nset(CTEST_BINARY_DIRECTORY   ${PROJECT_BINARY_DIR})\nset(CTEST_SITE         ${SITE})\nset(CTEST_BUILD_NAME   ${BUILDNAME})\n")
 
 include(submodules.txt)
-set(GISMO_SUBMODULES ${SUBMODULES_TXT} ${GISMO_SUBMODULES} CACHE STRING "List of optional G+Smo modules" FORCE)
-list(TRANSFORM GISMO_SUBMODULES STRIP)
-set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
+set(GISMO_OPTIONAL ${SUBMODULES_TXT} ${GISMO_OPTIONAL} CACHE STRING "List of optional G+Smo modules" FORCE)
+list(TRANSFORM GISMO_OPTIONAL STRIP)
+set(GISMO_OPTIONAL ${GISMO_OPTIONAL}
   CACHE STRING "List of optional G+Smo modules" FORCE)
-#message(STATUS "Submodules ${GISMO_SUBMODULES}")
+#message(STATUS "Submodules ${GISMO_OPTIONAL}")
 
 ## #################################################################
 ## Preprocessor definitions
@@ -161,7 +161,7 @@ set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
 set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
-     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/extensions"
+     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/optional"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 # Offer the user the choice of overriding the installation directories
@@ -182,11 +182,11 @@ if (EIGEN_USE_MKL_ALL)
     CACHE INTERNAL "${PROJECT_NAME} include directories")
 endif()
 
-if (";${GISMO_SUBMODULES};" MATCHES ";gsUniversal;")
+if (";${GISMO_OPTIONAL};" MATCHES ";gsUniversal;")
   gismo_fetch_module(gsUniversal)
 endif()
 
-if (";${GISMO_SUBMODULES};" MATCHES ";gsCoDiPack;")
+if (";${GISMO_OPTIONAL};" MATCHES ";gsCoDiPack;")
   gismo_fetch_module(gsCoDiPack)
 endif()
 
@@ -268,16 +268,16 @@ endif()
 option(GISMO_MOTOR "Enable motor module" OFF)
 if(GISMO_MOTOR)
   #gismo_fetch_module(motor)
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "motor"
+  set(GISMO_OPTIONAL ${GISMO_OPTIONAL} "motor"
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 
-list(TRANSFORM GISMO_SUBMODULES STRIP)
-list(REMOVE_DUPLICATES GISMO_SUBMODULES)
-list(SORT GISMO_SUBMODULES)
-set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
+list(TRANSFORM GISMO_OPTIONAL STRIP)
+list(REMOVE_DUPLICATES GISMO_OPTIONAL)
+list(SORT GISMO_OPTIONAL)
+set(GISMO_OPTIONAL ${GISMO_OPTIONAL}
   CACHE STRING "List of optional G+Smo modules" FORCE)
-foreach(gssm ${GISMO_SUBMODULES})
+foreach(gssm ${GISMO_OPTIONAL})
   string(STRIP ${gssm} SUBMODULE)
   #message("Fetch ${SUBMODULE}")
   gismo_fetch_module(${SUBMODULE})
@@ -296,8 +296,8 @@ if(NOT comp_res EQUAL 0)
   file(WRITE ${gismo_BINARY_DIR}/gsCore/gsConfigExt.h "${CONFIGEXT_H}")
 endif()
 
-message("  GISMO_SUBMODULES        ${GISMO_SUBMODULES}")
-set(GISMO_SUBMODULES ${GISMO_SUBMODULES}
+message("  GISMO_OPTIONAL        ${GISMO_OPTIONAL}")
+set(GISMO_OPTIONAL ${GISMO_OPTIONAL}
   CACHE STRING "List of optional G+Smo modules" FORCE)
 
 ## #################################################################
@@ -377,13 +377,6 @@ endif(GISMO_BUILD_EXAMPLES)
 ## #################################################################
 ## Misc
 ## #################################################################
-
-add_subdirectory(optional)
-
-if (NOT gismo_optionals STREQUAL "")
-  string (REPLACE ";" ", " gismo_optionals "${gismo_optionals}")
-  message(STATUS "Optional compile list: ${gismo_optionals}")
-endif()
 
 unset(GISMO_UNAME CACHE)
 unset(GISMO_PASS CACHE)

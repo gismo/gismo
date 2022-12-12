@@ -2,7 +2,7 @@
 
 G+Smo extension for the [Universal Number Arithmetic](https://github.com/stillwater-sc/universal) library.
 
-|CMake flags|```-DGISMO_SUBMODULES="gsUniversal``` (included automatically if `GISMO_COEFF_TYPE` is a posit)|
+|CMake flags|```-DGISMO_OPTIONAL="gsUniversal``` (included automatically if `GISMO_COEFF_TYPE` is a posit)|
 |--:|---|
 |Required additional CMake flags|```-DCMAKE_CXX_STANDARD=14``` (or better)|
 |License|[MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/)|

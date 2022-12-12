@@ -30,9 +30,9 @@ message ("  GISMO_INDEX_TYPE        ${GISMO_INDEX_TYPE}")
 ## Options list: Standard options
 ## #################################################################
   
-option(GISMO_SUBMODULES_HEAD "Updates submodules to HEAD (online mode)" false  )
-if  (${GISMO_SUBMODULES_HEAD})
-message ("  GISMO_SUBMODULES_HEAD   ${GISMO_SUBMODULES_HEAD}")
+option(GISMO_OPTIONAL_HEAD "Updates submodules to HEAD (online mode)" false  )
+if  (${GISMO_OPTIONAL_HEAD})
+message ("  GISMO_OPTIONAL_HEAD   ${GISMO_OPTIONAL_HEAD}")
 endif()
 
 option(GISMO_PLUGIN_AXL           "Build Axl Plugin"         false  )

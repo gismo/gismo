@@ -37,7 +37,7 @@ elseif(${GISMO_COEFF_TYPE} STREQUAL "posit_2_0"   OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_64_3"  OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_128_4" OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_256_5")
-  set(GISMO_SUBMODULES ${GISMO_SUBMODULES} "gsUniversal"
+  set(GISMO_OPTIONAL ${GISMO_OPTIONAL} "gsUniversal"
     CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS

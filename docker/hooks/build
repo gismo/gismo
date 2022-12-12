@@ -441,21 +441,21 @@ shopt -u extglob;
 echo "[---] GISMO_BUILD_UNITTESTS:  ${GISMO_BUILD_UNITTESTS}"
 
 # Build G+Smo with submodules
-GISMO_SUBMODULES=${GISMO_SUBMODULES}
+GISMO_OPTIONAL=${GISMO_OPTIONAL}
 
 # gsTrilinos extension (must be before checking for MPI support)
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)notrilinos?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsTrilinos" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsTrilinos/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsTrilinos" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsTrilinos/}"
         fi
         ;;
     ?(*\-)trilinos?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsTrilinos"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsTrilinos"
         else
-            GISMO_SUBMODULES="gsTrilinos"
+            GISMO_OPTIONAL="gsTrilinos"
         fi
         GISMO_WITH_MPI=ON
         ;;
@@ -513,15 +513,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nocodipack?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsCoDiPack" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsCoDiPack/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsCoDiPack" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsCoDiPack/}"
         fi
         ;;
     ?(*\-)codipack?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsCoDiPack"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsCoDiPack"
         else
-            GISMO_SUBMODULES="gsCoDiPack"
+            GISMO_OPTIONAL="gsCoDiPack"
         fi
         ;;
 esac
@@ -531,15 +531,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nocompflow?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsCompFlow" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsCompFlow/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsCompFlow" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsCompFlow/}"
         fi
         ;;
     ?(*\-)compflow?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsCompFlow"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsCompFlow"
         else
-            GISMO_SUBMODULES="gsCompFlow"
+            GISMO_OPTIONAL="gsCompFlow"
         fi
         ;;
 esac
@@ -549,15 +549,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noelasticity?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsElasticity" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsElasticity/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsElasticity" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsElasticity/}"
         fi
         ;;
     ?(*\-)elasticity?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsElasticity"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsElasticity"
         else
-            GISMO_SUBMODULES="gsElasticity"
+            GISMO_OPTIONAL="gsElasticity"
         fi
         ;;
 esac
@@ -567,15 +567,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noexastencils?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsExaStencils" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsExastencils/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsExaStencils" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsExastencils/}"
         fi
         ;;
     ?(*\-)exastencils?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsExaStencils"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsExaStencils"
         else
-            GISMO_SUBMODULES="gsExaStencils"
+            GISMO_OPTIONAL="gsExaStencils"
         fi
         ;;
 esac
@@ -585,15 +585,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nogmp?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsGmp" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsGmp/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsGmp" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsGmp/}"
         fi
         ;;
     ?(*\-)gmp?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsGmp"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsGmp"
         else
-            GISMO_SUBMODULES="gsGmp"
+            GISMO_OPTIONAL="gsGmp"
         fi
         ;;
 esac
@@ -603,15 +603,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noipopt?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsIpOpt" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsIpOpt/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsIpOpt" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsIpOpt/}"
         fi
         ;;
     ?(*\-)ipopt?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsIpOpt"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsIpOpt"
         else
-            GISMO_SUBMODULES="gsIpOpt"
+            GISMO_OPTIONAL="gsIpOpt"
         fi
         ;;
 esac
@@ -621,15 +621,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noklshell?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsKLShell" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsKLShell/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsKLShell" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsKLShell/}"
         fi
         ;;
     ?(*\-)klshell?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsKLShell"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsKLShell"
         else
-            GISMO_SUBMODULES="gsKLShell"
+            GISMO_OPTIONAL="gsKLShell"
         fi
         ;;
 esac
@@ -639,15 +639,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nompfr?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsMpfr" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsMpfr/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsMpfr" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsMpfr/}"
         fi
         ;;
     ?(*\-)mpfr?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsMpfr"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsMpfr"
         else
-            GISMO_SUBMODULES="gsMpfr"
+            GISMO_OPTIONAL="gsMpfr"
         fi
         ;;
 esac
@@ -657,15 +657,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nomotor?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "motor" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//motor/}"
+        if [[ ${GISMO_OPTIONAL} =~ "motor" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//motor/}"
         fi
         ;;
     ?(*\-)motor?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};motor"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};motor"
         else
-            GISMO_SUBMODULES="motor"
+            GISMO_OPTIONAL="motor"
         fi
         ;;
 esac
@@ -675,15 +675,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noopencascade?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsOpenCascade" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsOpenCascade/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsOpenCascade" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsOpenCascade/}"
         fi
         ;;
     ?(*\-)opencascade?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsOpenCascade"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsOpenCascade"
         else
-            GISMO_SUBMODULES="gsOpenCascade"
+            GISMO_OPTIONAL="gsOpenCascade"
         fi
         ;;
 esac
@@ -693,15 +693,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noopennurbs?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsOpennurbs" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsOpennurbs/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsOpennurbs" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsOpennurbs/}"
         fi
         ;;
     ?(*\-)opennurbs?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsOpennurbs"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsOpennurbs"
         else
-            GISMO_SUBMODULES="gsOpennurbs"
+            GISMO_OPTIONAL="gsOpennurbs"
         fi
         ;;
 esac
@@ -771,15 +771,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nostructuralanalysis?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsStructuralAnalysis" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsStructuralAnalysis/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsStructuralAnalysis" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsStructuralAnalysis/}"
         fi
         ;;
     ?(*\-)structuralanalysis?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsStructuralAnalysis"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsStructuralAnalysis"
         else
-            GISMO_SUBMODULES="gsStructuralAnalysis"
+            GISMO_OPTIONAL="gsStructuralAnalysis"
         fi
         ;;
 esac
@@ -834,15 +834,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nouniversal?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsUniversal" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsUniversal/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsUniversal" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsUniversal/}"
         fi
         ;;
     ?(*\-)universal?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsUniversal"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsUniversal"
         else
-            GISMO_SUBMODULES="gsUniversal"
+            GISMO_OPTIONAL="gsUniversal"
         fi
         ;;
 esac
@@ -852,15 +852,15 @@ shopt -u extglob;
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)nounsupported?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "unsupported" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//unsupported/}"
+        if [[ ${GISMO_OPTIONAL} =~ "unsupported" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//unsupported/}"
         fi
         ;;
     ?(*\-)unsupported?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};unsupported"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};unsupported"
         else
-            GISMO_SUBMODULES="unsupported"
+            GISMO_OPTIONAL="unsupported"
         fi
         ;;
 esac
@@ -881,7 +881,7 @@ case "$IMAGE_NAME" in
 esac
 shopt -u extglob;
 
-echo "[---] GISMO_SUBMODULES:       ${GISMO_SUBMODULES}"
+echo "[---] GISMO_OPTIONAL:       ${GISMO_OPTIONAL}"
 echo "[---] GISMO_VERSION:          ${GISMO_VERSION}"
 echo "[---] GISMO_WITH_ADIFF:       ${GISMO_WITH_ADIFF}"
 echo "[---] GISMO_WITH_MPI:         ${GISMO_WITH_MPI}"
@@ -895,7 +895,7 @@ echo "[---] GISMO_WITH_SUPERLU:     ${GISMO_WITH_SUPERLU}"
 echo "[---] GISMO_WITH_TAUCS:       ${GISMO_WITH_TAUCS}"
 echo "[---] GISMO_WITH_UMFPACK:     ${GISMO_WITH_UMFPACK}"
 
-if [[ ${GISMO_SUBMODULES} =~ "gsTrilinos" && ("${GISMO_WITH_MPI}" != "ON" || -z "$FC") ]]; then
+if [[ ${GISMO_OPTIONAL} =~ "gsTrilinos" && ("${GISMO_WITH_MPI}" != "ON" || -z "$FC") ]]; then
     echo "[***] Compiling G+Smo with gsTrilinos extension enabled requires GISMO_WITH_MPI=ON and the Fortran compiler FC to be set"
     exit 1
 fi
@@ -920,7 +920,7 @@ ${DOCKER_CMD} build \
     --build-arg GISMO_COEFF_TYPE=${GISMO_COEFF_TYPE} \
     --build-arg GISMO_INDEX_TYPE=${GISMO_INDEX_TYPE} \
     --build-arg GISMO_SHORT_TYPE=${GISMO_SHORT_TYPE} \
-    --build-arg GISMO_SUBMODULES=${GISMO_SUBMODULES} \
+    --build-arg GISMO_OPTIONAL=${GISMO_OPTIONAL} \
     --build-arg GISMO_VERSION=${GISMO_VERSION} \
     --build-arg GISMO_WITH_ADIFF=${GISMO_WITH_ADIFF} \
     --build-arg GISMO_WITH_MPI=${GISMO_WITH_MPI} \

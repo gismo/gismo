@@ -7,9 +7,9 @@
 ##  set(SUBMODULES_TXT "gsOpennurbs;gsSpectra")
 ##
 ##
-## More submodules can be set in GISMO_SUBMODULES argument of cmake.
+## More submodules can be set in GISMO_OPTIONAL argument of cmake.
 ## Related cmake arguments:
-##   GISMO_SUBMODULES_HEAD   If ON all submodules are set to HEAD.
+##   GISMO_OPTIONAL_HEAD   If ON all submodules are set to HEAD.
 ##                           If OFF then a specified commit hash is
 ##			     used (or HEAD if it is not set below)
 ##   RESTORE_SUBMODULES      If set submodules are RESTORED from git.

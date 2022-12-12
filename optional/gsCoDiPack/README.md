@@ -60,7 +60,7 @@ The file ```codipack_example.cpp``` illustrates the basic usage of the CoDiPack 
     ```bash
     mkdir build
     cd build
-    cmake .. -DCMAKE_CXX_STANDARD=11 -DGISMO_BUILD_LIB=OFF -DGISMO_SUBMODULES="gsCoDiPack"
+    cmake .. -DCMAKE_CXX_STANDARD=11 -DGISMO_BUILD_LIB=OFF -DGISMO_OPTIONAL="gsCoDiPack"
     make codipack_example -j4
     ```
 2.  Execution

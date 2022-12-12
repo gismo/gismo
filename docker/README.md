@@ -137,15 +137,15 @@ Open the file `hooks/build` and add a code block of the form
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)noklshell?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsKLShell" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsKLShell/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsKLShell" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsKLShell/}"
         fi
         ;;
     ?(*\-)klshell?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsKLShell"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsKLShell"
         else
-            GISMO_SUBMODULES="gsKLShell"
+            GISMO_OPTIONAL="gsKLShell"
         fi
         ;;
 esac
@@ -160,15 +160,15 @@ If your extension requires certain options to be set make sure you add the above
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)notrilinos?(\-*))
-        if [[ ${GISMO_SUBMODULES} =~ "gsTrilinos" ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES//gsTrilinos/}"
+        if [[ ${GISMO_OPTIONAL} =~ "gsTrilinos" ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL//gsTrilinos/}"
         fi
         ;;
     ?(*\-)trilinos?(\-*))
-        if [[ ${GISMO_SUBMODULES} ]]; then
-            GISMO_SUBMODULES="${GISMO_SUBMODULES};gsTrilinos"
+        if [[ ${GISMO_OPTIONAL} ]]; then
+            GISMO_OPTIONAL="${GISMO_OPTIONAL};gsTrilinos"
         else
-            GISMO_SUBMODULES="gsTrilinos"
+            GISMO_OPTIONAL="gsTrilinos"
         fi
         GISMO_WITH_MPI=ON
         ;;
@@ -198,7 +198,7 @@ shopt -u extglob;
 If your extension requires additional software packages (e.g., a Fortran compiler or additional libraries and header files) to be installed in the Docker image open the file `ubuntu20.04/Dockerfile` and add a code block of the form
 ```bash
 # Install prerequisites for gsOpenCascade extension
-RUN if [ ${GISMO_SUBMODULES} =~ "gsOpenCascade" ] ; then \
+RUN if [ ${GISMO_OPTIONAL} =~ "gsOpenCascade" ] ; then \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         libgl-dev \
