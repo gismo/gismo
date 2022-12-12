@@ -24,6 +24,7 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
     bool plot = false;
+    index_t maxPcIter = 1;
     std::string filename = "fitting/chess.xml";
 
     int np = 700;
@@ -37,6 +38,7 @@ int main(int argc, char* argv[])
     cmd.addString("g", "filename", "File containing mp geometry and basis (.xml).", filename);
     cmd.addString("d", "data", "Input sample data", fn);
     cmd.addReal("l", "lambda", "smoothing parameter", lambda);
+    cmd.addInt("c", "parcor", "Steps of parameter correction", maxPcIter);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -55,6 +57,7 @@ int main(int argc, char* argv[])
         fd_in.getId<gsMatrix<index_t> >(3, pId);
 
     }
+
     
 
     // gsVector<index_t>(offset);
@@ -93,6 +96,8 @@ int main(int argc, char* argv[])
 
     fitting.compute(lambda); // smoothing parameter lambda
 
+    fitting.parameterCorrection(maxPcIter);
+
     gsInfo << "I computed the fitting" << "\n";
 
     gsMappedSpline<2, real_t>  test;
@@ -112,6 +117,12 @@ int main(int argc, char* argv[])
     fitting.computeApproxError(error, 0);
 
     gsInfo << "L_2: " << error << "\n";
+
+
+
+
+
+
 
     gsFileData<> newdata;
     gsMultiPatch<> surf = test.exportToPatches();
