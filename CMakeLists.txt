@@ -323,21 +323,21 @@ add_subdirectory(doc)
 
 add_custom_target(plugins)
 
-if(GISMO_BUILD_AXL)
+if(GISMO_PLUGIN_AXL)
   add_subdirectory(plugins/gsAxel)
-endif(GISMO_BUILD_AXL)
+endif(GISMO_PLUGIN_AXL)
 
 if(GISMO_BUILD_MEX)
   add_subdirectory(plugins/gsMex)
 endif(GISMO_BUILD_MEX)
 
-#if(GISMO_BUILD_PVIEW)
+#if(GISMO_PLUGIN_PVIEW)
 #  add_subdirectory(plugins/gsParaview)
-#endif(GISMO_BUILD_PVIEW)
+#endif(GISMO_PLUGIN_PVIEW)
 
-if(GISMO_BUILD_RHINOPLUGINS)
+if(GISMO_PLUGIN_RHINO)
   add_subdirectory(plugins/RhinoTHBSplines)
-endif(GISMO_BUILD_RHINOPLUGINS)
+endif(GISMO_PLUGIN_RHINO)
 
 ## #################################################################
 ## Unittests

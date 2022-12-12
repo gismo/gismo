@@ -135,9 +135,9 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
 endif()
 
-if(GISMO_EXTRA_DEBUG)
+if(GISMO_WITH_XDEBUG)
   include(gsDebugExtra)
-endif(GISMO_EXTRA_DEBUG)
+endif(GISMO_WITH_XDEBUG)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   # Force to always compile with W4
@@ -162,7 +162,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-compat")
   endif()
 
-  if(GISMO_WARNINGS)
+  if(GISMO_WITH_WARNINGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Woverloaded-virtual -Wextra")
     #-Wshadow -Wconversion -pedantic -Wunused -Wattributes
   endif()
@@ -198,7 +198,7 @@ elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
-if (GISMO_BUILD_PYBIND11)
+if (GISMO_WITH_PYBIND11)
    find_package(pybind11 REQUIRED)
    include_directories(${pybind11_INCLUDE_DIR})
   

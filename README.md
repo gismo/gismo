@@ -140,7 +140,7 @@ include double, long double, float.
   If set to one or more of the options available for GISMO_COEFF_TYPE
   the G+Smo library is compiled with extra arithmetic types enabled.
 
-* GISMO_EXTRA_DEBUG       *OFF*
+* GISMO_WITH_XDEBUG       *OFF*
 
   If set to ON additional debugging tools are enabled during
 compilation. These include checked iterators for GCC and MSVC
@@ -163,7 +163,7 @@ executables are created in build-folder/bin.
   If enabled the tests in the unittests folder are compiled, and an
 executable is created in build-folder/bin.
 
-* GISMO_BUILD_AXL         *OFF*
+* GISMO_PLUGIN_AXL         *OFF*
 
   If enabled the plugin for Axel modeler is compiled (requires Axel).
 

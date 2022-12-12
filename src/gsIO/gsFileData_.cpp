@@ -3,7 +3,7 @@
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileData.hpp>
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
 #include <gsNurbs/gsBSpline.h>
@@ -21,7 +21,7 @@ namespace gismo
 
   CLASS_TEMPLATE_INST gsFileData<real_t>;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 gsMatrix<real_t> getMatrix(std::string & filename)
 {
@@ -98,5 +98,5 @@ namespace py = pybind11;
            })
       ;    
   }
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 } // end namespace gismo

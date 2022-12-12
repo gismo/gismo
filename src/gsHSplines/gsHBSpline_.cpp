@@ -45,7 +45,7 @@ CLASS_TEMPLATE_INST gsXml< gsHBSpline<3,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<4,real_t> >;
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 

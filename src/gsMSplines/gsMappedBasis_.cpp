@@ -23,7 +23,7 @@ CLASS_TEMPLATE_INST gsMappedBasis<1,real_t> ;
 CLASS_TEMPLATE_INST gsMappedBasis<2,real_t> ;
 CLASS_TEMPLATE_INST gsMappedBasis<3,real_t> ;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 

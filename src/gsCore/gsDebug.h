@@ -30,7 +30,7 @@
 //#include <errno.h>
 #endif
 
-//#ifdef GISMO_EXTRA_DEBUG
+//#ifdef GISMO_WITH_XDEBUG
 //  #include <misc/gsStackWalker.h>
 //#endif
 
@@ -305,7 +305,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 
 
 
-#ifdef GISMO_WARNINGS
+#ifdef GISMO_WITH_WARNINGS
     //#pragma message("G+Smo Warnings ON")
   #ifdef __GNUC__
     #define GISMO_DEPRECATED __attribute__((deprecated))

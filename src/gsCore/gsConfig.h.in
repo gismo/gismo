@@ -75,9 +75,9 @@
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
 /* Determine if Python module should be built. */
-#cmakedefine GISMO_BUILD_PYBIND11
+#cmakedefine GISMO_WITH_PYBIND11
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 #include <pybind11/iostream.h>
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
@@ -85,8 +85,8 @@
 #endif
 
 /* Debug settings. */
-#cmakedefine GISMO_EXTRA_DEBUG
-#cmakedefine GISMO_WARNINGS
+#cmakedefine GISMO_WITH_XDEBUG
+#cmakedefine GISMO_WITH_WARNINGS
 
 /**
  * @name Eigen options - MUST be defined before Eigen is included

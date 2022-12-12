@@ -27,7 +27,7 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
-if (GISMO_EXTRA_DEBUG)
+if (GISMO_WITH_XDEBUG)
   if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
     set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
   endif()
@@ -39,7 +39,7 @@ endif()
     ${${PROJECT_NAME}_EXTENSIONS}
     )
 
-  if (GISMO_BUILD_PYBIND11)
+  if (GISMO_WITH_PYBIND11)
     pybind11_add_module(py${PROJECT_NAME} MODULE
       ${${PROJECT_NAME}_MODULES}
       ${${PROJECT_NAME}_SOURCES}
@@ -53,7 +53,7 @@ endif()
     if (GISMO_KLSHELL)
       target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
     endif()# To fix
-  endif(GISMO_BUILD_PYBIND11)
+  endif(GISMO_WITH_PYBIND11)
   
   #generate_export_header(${PROJECT_NAME})
 
@@ -111,7 +111,7 @@ endif()
 #    find_package(OpenMP REQUIRED)
 #  endif()
 
-if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND)
+if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
   target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY})
 endif()
 
@@ -153,7 +153,7 @@ endif(GISMO_BUILD_LIB)
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
 
-  if (GISMO_EXTRA_DEBUG AND DBGHELP_FOUND)
+  if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
      target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY})
   ENDIF()
 

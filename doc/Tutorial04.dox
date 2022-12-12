@@ -44,7 +44,7 @@ inside the build folder.
     options include double, long double, float. This is the type is
     alias as \a real_t.
 
--   GISMO_EXTRA_DEBUG
+-   GISMO_WITH_XDEBUG
 
     If set to ON additional debugging tools are enabled during
     compilation. These include checked iterators for GCC and MSVC
@@ -62,7 +62,7 @@ inside the build folder.
     If enabled the programs in the examples folder are compiled, and
     executables are created in build-folder/bin.
 
--   GISMO_BUILD_AXL
+-   GISMO_PLUGIN_AXL
 
     If enabled the plugin for Axel modeler is compiled (requires
     Axel).
@@ -92,14 +92,14 @@ There are 2 main tools for debugging C++ code:
 - The memory checker, for instance valgrind on linux or the C Run-Time
   Libraries (CRT) on Visual studio.
 
-If the CMake option GISMO_EXTRA_DEBUG is set to ON, more checks are
+If the CMake option GISMO_WITH_XDEBUG is set to ON, more checks are
 performed while running the code. In particular the Standard library
 containers are checked for invalid access, invalid iterators, and so
 on. Also upon failure of the program the call stack is printed on the
 screen.
 
 \note
-The setting GISMO_EXTRA_DEBUG replaces the standard containers, for
+The setting GISMO_WITH_XDEBUG replaces the standard containers, for
 instance std::vector with debug types, eg std::debug_vector. This can
 cause problems when linking the resulting dynamic library with
 third-party codes which is not compiled with the same

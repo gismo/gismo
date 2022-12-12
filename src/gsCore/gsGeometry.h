@@ -703,14 +703,14 @@ struct gsGeoTraits<4,T>
     typedef gsBulk<T> GeometryBase;
 };
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsGeometry
    */
   void pybind11_init_gsGeometry(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 
