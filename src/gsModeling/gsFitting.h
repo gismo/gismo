@@ -115,7 +115,7 @@ public:
     const gsMappedSpline<2,T> & mresult() const { return m_mresult; }
 
     /// Returns the basis of the approximation
-    const gsBasis<T> & getBasis() const {return *m_basis;}
+    const gsBasis<T> & getBasis() const {return *static_cast<const gsBasis<T>*>(m_basis);}
 
     void setBasis(gsBasis<T> & basis) {m_basis=&basis;}
 
@@ -173,10 +173,7 @@ protected:
     gsVector<index_t> m_offset;
 
     /// Pointer keeping the basis
-    gsBasis<T> * m_basis;
-
-    /// Pointer keeping multibasis
-    gsMappedBasis<2,T> * m_mbasis;
+    gsFunctionSet<T> * m_basis;
 
     /// Pointer keeping the resulting geometry
     gsGeometry<T> * m_result;

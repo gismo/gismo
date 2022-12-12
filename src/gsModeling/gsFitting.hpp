@@ -41,11 +41,10 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
 
     m_param_values = param_values;
     m_points = points;
-    m_result = NULL;
+    m_result = nullptr;
     m_basis = &basis;
     m_points.transposeInPlace();
 
-    m_mbasis = nullptr;
     m_offset.resize(2);
     m_offset[0] = 0;
     m_offset[1] = m_points.rows();
@@ -59,12 +58,10 @@ gsFitting<T>::gsFitting(gsMatrix<T> const& param_values,
 {
     m_param_values = param_values;
     m_points = points;
-    m_result = NULL;
-    m_mbasis = &mbasis;
+    m_result = nullptr;
+    m_basis = &mbasis;
     m_points.transposeInPlace();
-
     m_offset = give(offset);
-    m_basis = nullptr;    
 }
 
 template<class T>
@@ -76,8 +73,8 @@ void gsFitting<T>::compute(T lambda)
     if ( m_result )
         delete m_result;
 
-    const int num_basis=m_mbasis->size();
-    const short_t dimension=m_points.cols();
+    const int num_basis = m_basis->size();
+    const short_t dimension = m_points.cols();
     
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
@@ -86,9 +83,9 @@ void gsFitting<T>::compute(T lambda)
     //To optimize sparse matrix an estimation of nonzero elements per
     //column can be given here
     int nonZerosPerCol = 1;
-    for (int i = 0; i < m_mbasis->domainDim(); ++i) // to do: improve
+    for (int i = 0; i < m_basis->domainDim(); ++i) // to do: improve
         // nonZerosPerCol *= m_basis->degree(i) + 1;
-        nonZerosPerCol *= ( 2 * m_mbasis->degree(0,i) + 1 ) * 4;
+        nonZerosPerCol *= ( 2 * m_basis->basis(0).degree(i) + 1 ) * 4;
     // TODO: improve by taking constraints nonzeros into account.
     A_mat.reservePerColumn( nonZerosPerCol );
 
@@ -137,10 +134,10 @@ void gsFitting<T>::compute(T lambda)
     // Solves for many right hand side  columns
     // finally generate the B-spline curve
 
-
-    m_mresult = gsMappedSpline<2,T> ( *m_mbasis,give(x));
-
-    //gsDebugVar(m_mresult);
+    if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
+        m_result = bb->makeGeometry( give(x) ).release();
+    else
+        m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(x));
 }
 
 template <class T>
@@ -218,7 +215,7 @@ template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
-    const int num_patches ( m_basis ?  m_mbasis->nPatches() : 1 ); //initialize
+    const int num_patches ( m_basis->nPieces() ); //initialize
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
@@ -226,7 +223,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     for (index_t h = 0; h < num_patches; h++ )
     {
-        auto & basis = m_mbasis->basis(h);
+        auto & basis = m_basis->basis(h);
 
 //#   pragma omp parallel for default(shared) private(curr_point,actives,value)
         for (index_t k = m_offset[h]; k < m_offset[h+1]; ++k)
@@ -286,8 +283,8 @@ gsSparseMatrix<T> gsFitting<T>::smoothingMatrix(T lambda) const
 
     gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
     int nonZerosPerCol = 1;
-    for (int i = 0; i < m_basis->dim(); ++i) // to do: improve
-        nonZerosPerCol *= ( 2 * m_basis->degree(i) + 1 );
+    for (int i = 0; i < m_basis->domainDim(); ++i) // to do: improve
+        nonZerosPerCol *= ( 2 * m_basis->basis(0).degree(i) + 1 );
     A_mat.reservePerColumn( nonZerosPerCol );
     const_cast<gsFitting*>(this)->applySmoothing(lambda, A_mat);
     return A_mat;
@@ -297,8 +294,8 @@ template<class T>
 void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 {
     m_last_lambda = lambda;
-    const int num_patches(m_mbasis->nPatches()); //initialize
-    const short_t dim(m_mbasis->domainDim());
+    const int num_patches(m_basis->nPieces()); //initialize
+    const short_t dim(m_basis->domainDim());
     const short_t stride = dim * (dim + 1) / 2;
 
     gsVector<index_t> numNodes(dim);
@@ -313,7 +310,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
         
     for (index_t h = 0; h < num_patches; h++)
     {
-        auto & basis = m_mbasis->basis(h);
+        auto & basis = m_basis->basis(h);
 
         //gsDebugVar(dim);
         //gsDebugVar(stride);
@@ -434,7 +431,7 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 {
     gsMatrix<T> curr_point, results;
 
-    const int num_patches(m_mbasis->nPatches());
+    const int num_patches(m_basis->nPieces());
 
     error = 0; 
 
@@ -479,14 +476,14 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
     T err = 0;
 
-    const int num_patches(m_mbasis->nPatches());
+    const int num_patches(m_basis->nPieces());
 
     for (index_t h = 0; h < num_patches; h++) 
     {
         for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
         {
             curr_point = m_param_values.col(k);
-             
+
             if (m_result)
                 m_result->eval_into(curr_point, results);
             else
@@ -549,19 +546,18 @@ void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides)
 
     for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
     {
-    gsMatrix<index_t> ind = this->m_basis->boundary(*it);
-    for(index_t r=0; r<ind.rows(); r++)
-    {
-        index_t fix = ind(r,0);
-        // If it is a new constraint, add it.
-        if(std::find(indices.begin(), indices.end(), fix) == indices.end())
+        gsMatrix<index_t> ind = this->m_basis->basis(0).boundary(*it);
+        for(index_t r=0; r<ind.rows(); r++)
         {
-        indices.push_back(fix);
-        coefs.push_back(this->m_result->coef(fix));
+            index_t fix = ind(r,0);
+            // If it is a new constraint, add it.
+            if(std::find(indices.begin(), indices.end(), fix) == indices.end())
+            {
+                indices.push_back(fix);
+                coefs.push_back(this->m_result->coef(fix));
+            }
         }
     }
-    }
-
     setConstraints(indices, coefs);
 }
 
@@ -591,7 +587,7 @@ void gsFitting<T>::setConstraints(const std::vector<boxSide>& fixedSides,
     for(size_t s=0; s<fixedSides.size(); s++)
     {
     gsMatrix<T> coefsThisSide = fixedCurves[s]->coefs();
-    gsMatrix<index_t> indicesThisSide = m_basis->boundaryOffset(fixedSides[s],0);
+    gsMatrix<index_t> indicesThisSide = m_basis->basis(0).boundaryOffset(fixedSides[s],0);
     GISMO_ASSERT(coefsThisSide.rows() == indicesThisSide.rows(),
              "Coef number mismatch between prescribed curve and basis side.");
 
