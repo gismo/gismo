@@ -300,10 +300,8 @@ public: //------------------------------------------------------ iterator types
 
         /// get the vertex the iterator refers to
         Vertex operator*()  const { return  hnd_; }
-<<<<<<< HEAD
-=======
+
         const Vertex * operator->()  const { return  &hnd_; }
->>>>>>> origin/ccsurf
 
         // (!)
         size_t operator-(const Vertex_iterator& rhs) const
@@ -371,10 +369,8 @@ public: //------------------------------------------------------ iterator types
 
         /// get the halfedge the iterator refers to
         Halfedge operator*()  const { return  hnd_; }
-<<<<<<< HEAD
-=======
+
         const Halfedge * operator->()  const { return  &hnd_; }
->>>>>>> origin/ccsurf
 
         /// are two iterators equal?
         bool operator==(const Halfedge_iterator& rhs) const
@@ -427,10 +423,8 @@ public: //------------------------------------------------------ iterator types
 
         /// get the edge the iterator refers to
         Edge operator*()  const { return  hnd_; }
-<<<<<<< HEAD
-=======
+
         const Edge * operator->()  const { return  &hnd_; }
->>>>>>> origin/ccsurf
 
         /// are two iterators equal?
         bool operator==(const Edge_iterator& rhs) const
@@ -483,10 +477,8 @@ public: //------------------------------------------------------ iterator types
 
         /// get the face the iterator refers to
         Face operator*()  const { return  hnd_; }
-<<<<<<< HEAD
-=======
+
         const Face * operator->()  const { return  &hnd_; }
->>>>>>> origin/ccsurf
 
         // (!)
         size_t operator-(const Face_iterator& rhs) const
@@ -722,10 +714,8 @@ public: //---------------------------------------------------- circulator types
 
         /// get the halfedge the circulator refers to
         Halfedge operator*() const { return halfedge_; }
-<<<<<<< HEAD
-=======
+
         const Halfedge * operator->()  const { return  &halfedge_; }
->>>>>>> origin/ccsurf
 
         /// cast to bool: true if vertex is not isolated
         operator bool() const { return halfedge_.is_valid(); }
@@ -936,10 +926,8 @@ public: //---------------------------------------------------- circulator types
 
         /// get the halfedge the circulator refers to
         Halfedge operator*() const { return halfedge_; }
-<<<<<<< HEAD
-=======
+
         const Halfedge * operator->()  const { return  &halfedge_; }
->>>>>>> origin/ccsurf
 
         // helper for C++11 range-based for-loops
         Halfedge_around_face_circulator& begin() { active_=false; return *this; }
@@ -963,12 +951,9 @@ public: //-------------------------------------------- constructor / destructor
     /// default constructor
     gsSurfMesh();
 
-<<<<<<< HEAD
-=======
     /// Constructor from a set of points
     gsSurfMesh(const gsMatrix<Scalar> & pts);
 
->>>>>>> origin/ccsurf
     // destructor (is virtual, since we inherit from Geometry_representation)
     virtual ~gsSurfMesh();
 
@@ -1696,14 +1681,9 @@ public: //--------------------------------------------- higher-level operations
 
     /// Quad-split face connecting vertex \a v, starting from corner
     /// \a s of the face
-<<<<<<< HEAD
-    /// \a f is assumed to have 8 vertices, including \a s
-    void quad_split(Face f, Vertex v, Halfedge s);
-=======
     /// \a f is assumed to have 8 vertices, and contains halfedge \a s
     void quad_split(Face f, Vertex v, Halfedge s);
     void quad_split();
->>>>>>> origin/ccsurf
     
     /** Split the edge \c e by first adding point \c p to the mesh and then
      connecting it to the two vertices of the adjacent triangles that are
@@ -1918,11 +1898,7 @@ private: //--------------------------------------------------- helper functions
 
 private: //------------------------------------------------------- private data
 
-<<<<<<< HEAD
-    friend bool read_poly(gsSurfMesh& mesh, const std::string& filename);
-=======
     friend bool GISMO_EXPORT read_poly(gsSurfMesh& mesh, const std::string& filename);
->>>>>>> origin/ccsurf
 
     gsProperty_container vprops_;
     gsProperty_container hprops_;
