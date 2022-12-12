@@ -107,42 +107,6 @@ private:
     mutable gsMatrix<T> tmp;
 };
 
-template<class T>
-gsMatrix<T> gsGeometry<T>::parameterCenter( const boxCorner& bc )
-{
-    gsMatrix<T> supp = parameterRange();
-    const index_t dim = supp.rows();
-    gsMatrix<T> coordinates(dim,1);
-    gsVector<bool> boxPar = bc.parameters(dim);
-    for (index_t d=0; d<dim;++d)
-    {
-        if (boxPar(d))
-            coordinates(d,0) = supp(d,1);
-        else
-            coordinates(d,0) = supp(d,0);
-    }
-    return coordinates;
-}
-
-template<class T>
-gsMatrix<T> gsGeometry<T>::parameterCenter( const boxSide& bc )
-{
-    gsMatrix<T> supp = parameterRange();
-    const index_t dim = supp.rows();
-    gsMatrix<T> coordinates(dim,1);
-    const index_t dir = bc.direction();
-    for (index_t d=0; d<dim;++d)
-    {
-        if (d != dir)
-            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / (T)(2);
-        else if (bc.parameter())
-            coordinates(d,0) = supp(d,1);
-        else
-            coordinates(d,0) = supp(d,0);
-    }
-    return coordinates;
-}
-
     /*
 template<class T>
 boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
@@ -310,7 +274,7 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
         if (useInitialPoint)
             arg = result.col(i);
         else
-            arg = parameterCenter();
+            arg = this->parameterCenter();
 
         //const int iter =
         this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
@@ -348,6 +312,16 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
     }
 }
 */
+
+template<class T>
+std::ostream & gsGeometry<T>::print(std::ostream &os) const
+{
+    os << "Geometry "<< "R^"<< this->parDim() << 
+        " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
+        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
+    os<<"\nBasis:\n" << this->basis();
+    return os; 
+}
 
 template<class T>
 void gsGeometry<T>::merge(gsGeometry *)

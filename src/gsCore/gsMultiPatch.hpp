@@ -271,6 +271,7 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
     }
 }
 
+
 template<class T>
 void gsMultiPatch<T>::degreeElevate(short_t const elevationSteps, short_t const dir)
 {

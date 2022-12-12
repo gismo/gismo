@@ -223,24 +223,35 @@ void gsMappedBasis<d,T>::deriv_into(const index_t patch, const gsMatrix<T> & u, 
 template<short_t d,class T>
 void gsMappedBasis<d,T>::deriv2_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
-    gsMatrix<index_t> actives;
-    gsMatrix<T> curr_res;
-    active_into(patch,u,actives);
-    int rows = actives.rows();
-    int cols = actives.cols();
-    const int blocksize = d*(d + 1)/2;
-    result.setZero(blocksize *rows,cols);
-    for(index_t j = 0; j<cols; j++) // For all points u.col(j)
+    gsMatrix<index_t> bact;
+    m_bases[patch]->active_into(u, bact);
+    std::vector<index_t>  act, act0(bact.data(), bact.data()+bact.rows());
+    const index_t shift=_getFirstLocalIndex(patch);
+    std::transform(act0.begin(), act0.end(), act0.begin(),
+                   GS_BIND2ND(std::plus<index_t>(), shift));
+    m_mapper->fastSourceToTarget(act0,act);
+    gsMatrix<T> map;//r:B,c:C
+    m_mapper->getLocalMap(act0, act, map);
+
+    m_bases[patch]->deriv2_into(u, result);
+    index_t       nr = bact.rows();
+    const index_t nc = bact.cols();
+
+    static const index_t sd = d*(d+1)/2;
+
+    const index_t mr = map.cols();
+    gsMatrix<T> tmp(sd*mr, nc);
+
+    for (unsigned i = 0; i!=sd; ++i)
     {
-        const gsMatrix<T> & curr_u =  u.col(j);
-        for(index_t i = 0; i<rows; i++) // For all actives at the point
-        {
-            if(actives(i,j)==0&&i>0)
-                continue;
-            deriv2Single_into(patch, actives(i,j), curr_u, curr_res); // Evaluate N_j(u_i)
-            result.block(i*blocksize,j,blocksize,1).noalias() = curr_res;
-        }
+        Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,sd> >
+            s(result.data()+i, nr, nc, Eigen::Stride<-1,sd>(sd*nr,sd) );
+        Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,sd> >
+            t(tmp.data()+i, mr, nc, Eigen::Stride<-1,sd>(sd*mr,sd) );
+        t = map.transpose() * s; //.noalias() bug
     }
+
+    result.swap(tmp);
 }
 
 template<short_t d,class T>
@@ -300,7 +311,7 @@ void gsMappedBasis<d,T>::derivSingle_into(const index_t patch, const int global_
             for(index_t j=0;j<pActive.rows();++j)
             {
                 L(2*p,pActive(j,p)+offset)=allLocals(2*j,p);
-                L(2*p+1,pActive(j,p)+offset)=allLocals(2*j+1,p);
+                L(2*p+1,pActive(j,p)+offset)=allLocals(2*j+1,p); 
             }
         Coefs(global_BF,0)=1;
         gsSparseMatrix<T> temp = L*(m_mapper->asMatrix())*Coefs;

@@ -17,6 +17,7 @@ CMakeLists.txt.user
 # Visual Studio
 /CMakeSettings.json*
 /.vs
+**/.vscode
 /build*
 
 # CMake
@@ -32,6 +33,6 @@ CMakeFiles/
 *.vtp
 *.pvd
 
-# Data
-data-private/
-data/
+
+#Mac OS
+**/.DS_Store
