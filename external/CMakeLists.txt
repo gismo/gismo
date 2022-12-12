@@ -21,6 +21,7 @@ else()
 endif()
 
 add_subdirectory(gzstream)
+add_subdirectory(turbob64)
 
 if(GISMO_BUILD_CPPLOT)
 #add_subdirectory(boost)

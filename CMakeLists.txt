@@ -48,7 +48,7 @@ if(NOT CMAKE_BUILD_TYPE)
      "RelWithDebInfo" "MinSizeRel")
    endif()
 endif()
-
+add_definitions("-D_GLIBCXX_USE_CXX11_ABI=0")
 set(gismo_VERSION_MAJOR 21) #year
 set(gismo_VERSION_MINOR 12) #month
 set(gismo_VERSION_PATCH 0 ) #patch
@@ -254,6 +254,13 @@ if(GISMO_WITH_TAUCS)
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   #include_directories(SYSTEM ${SUPERLU_INCLUDES})
 endif(GISMO_WITH_TAUCS)
+
+if(GISMO_WITH_TORCH)
+  add_subdirectory(extensions/gsTorch)
+  set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS}
+  CACHE INTERNAL "${PROJECT_NAME} include directories")
+  #include_directories(${TORCH_INCLUDE_DIRS})
+endif(GISMO_WITH_TORCH)
 
 if(GISMO_WITH_UMFPACK)
   find_package(Umfpack REQUIRED)

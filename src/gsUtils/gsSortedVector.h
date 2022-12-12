@@ -15,21 +15,24 @@
 #pragma once
 
 //#include <vector>
-//#include <algorithm>			// For lower_bound
+//#include <algorithm> // For lower_bound
 
+#if !defined(GISMO_WITH_TORCH)
 
 namespace std
 {
 
 template<typename T1, typename T2>
 std::ostream& operator << ( std::ostream& os, 
-    			const std::pair<T1,T2>& rhs )
+                            const std::pair<T1,T2>& rhs )
 {
     os << rhs.first << ", " << rhs.second;
     return os;
 }
 
 }//namespace std
+
+#endif
 
 namespace gismo {
 

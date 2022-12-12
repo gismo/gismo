@@ -59,6 +59,7 @@
 #cmakedefine GISMO_WITH_SPECTRA
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_TAUCS
+#cmakedefine GISMO_WITH_TORCH
 #cmakedefine GISMO_WITH_TRILINOS
 #cmakedefine GISMO_WITH_UMFPACK
 #cmakedefine GISMO_WITH_UNUM

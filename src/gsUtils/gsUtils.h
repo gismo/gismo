@@ -20,6 +20,8 @@
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
 
+#include <turbob64/turbob64.h>
+
 #ifdef __GNUC__ 
 #include <cxxabi.h>
 #include <cstdlib>
@@ -38,6 +40,33 @@ namespace gismo
 namespace util
 {
 
+inline std::string to_base64(const std::string& str)
+{
+    tb64ini(0,0);
+    std::size_t len = tb64enclen(sizeof(char)*(str.size()+1));
+    std::string out(len, 0);
+    unsigned char* c_out = (unsigned char*)out.data();
+    
+    if (tb64enc((const unsigned char*)str.c_str(), sizeof(char)*str.size(), c_out) == 0)
+        GISMO_ERROR("An error occurred during base64 encoding");
+    
+    return out;
+}
+
+inline std::string from_base64(const std::string& str)
+{
+    tb64ini(0,0);
+    std::string out(tb64declen((const unsigned char*)str.c_str(),
+                               sizeof(char)*str.size()), 0);
+    unsigned char* c_out = (unsigned char*)out.data();
+
+    if (tb64dec((const unsigned char*)str.c_str(), sizeof(char)*str.size(), c_out) == 0)
+        GISMO_ERROR("An error occurred during base64 decoding");
+    
+    return out;
+}
+
+  
 #if __cplusplus >= 201103L || _MSC_VER >= 1600
 template <class C, size_t N> // we catch up char arrays
 std::string to_string(C (& value)[N])
