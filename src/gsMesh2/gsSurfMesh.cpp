@@ -36,8 +36,6 @@ gsSurfMesh()
 }
 
 
-<<<<<<< HEAD
-=======
 gsSurfMesh::
 gsSurfMesh(const gsMatrix<Scalar> & pts)
 {
@@ -45,7 +43,6 @@ gsSurfMesh(const gsMatrix<Scalar> & pts)
         this->add_vertex(col);
 }
 
->>>>>>> origin/ccsurf
 //-----------------------------------------------------------------------------
 
 
@@ -918,12 +915,7 @@ quad_split(Face f, Vertex v, Halfedge s)
 {
     /*
      Split an arbitrary face into quads by connecting each vertex of fh to vh.
-<<<<<<< HEAD
      - fh will remain valid (it will become one of the triangles)
-     - the halfedge handles of the new triangles will point to the old halfeges
-=======
-     - fh will remain valid (it will become one of the quads)
->>>>>>> origin/ccsurf
      */
 
     //assert: number of vertices is even (4,6,..)
@@ -944,10 +936,7 @@ quad_split(Face f, Vertex v, Halfedge s)
 
     // ---------------
     Halfedge e = new_edge(from_vertex(hnext),v);
-<<<<<<< HEAD
-=======
-    set_face(e, f);
->>>>>>> origin/ccsurf
+
     set_next_halfedge(prev_halfedge(hnext),e);//sets next(h) and also prev(last)
     set_next_halfedge(e,e0);//sets next(h) and also prev(last)
 
@@ -983,8 +972,6 @@ quad_split(Face f, Vertex v, Halfedge s)
     }
 }
 
-<<<<<<< HEAD
-=======
 void gsSurfMesh::quad_split()
 {
     gsSurfMesh::Vertex v;
@@ -1033,7 +1020,6 @@ void gsSurfMesh::quad_split()
     }
 
 }
->>>>>>> origin/ccsurf
 
 //-----------------------------------------------------------------------------
 
@@ -1882,12 +1868,6 @@ void gsSurfMesh::cc_subdivide()
         quad_split(fit,v,fv.he());
     }
 
-<<<<<<< HEAD
-#   pragma omp parallel for private(v,tmp)
-    for (i = env; i!=fnv;++i)
-    {
-        v = gsSurfMesh::Vertex(i); //edge points
-=======
 #   pragma omp parallel for default(none) shared(points,env,fnv) private(v,tmp)
     for (i = env; i!=fnv;++i)
     {
@@ -1897,7 +1877,6 @@ void gsSurfMesh::cc_subdivide()
             //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
             continue;
         }
->>>>>>> origin/ccsurf
         auto vit = vertices(v);
         auto vcp = vit;
         tmp.setZero();
@@ -1909,16 +1888,6 @@ void gsSurfMesh::cc_subdivide()
         points[v] = tmp;
     }
 
-<<<<<<< HEAD
-#   pragma omp parallel for private(v)
-    for (i = 0; i!=env;++i)
-    {
-        v = gsSurfMesh::Vertex(i); // original vertices
-        auto vit = halfedges(v);
-        auto vcp = vit;
-        auto & pt = points[v];//original vertex positions are computed using new edge/face points only
-        auto n = valence(v);
-=======
 #   pragma omp parallel for default(none) shared(env,points) private(v)
     for (i = 0; i!=env;++i)
     {
@@ -1941,7 +1910,6 @@ void gsSurfMesh::cc_subdivide()
 
         auto vit = halfedges(v);
         auto vcp = vit;
->>>>>>> origin/ccsurf
         //formula: pt = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
         pt *= n*(n-3);
         if (vit)
@@ -1961,12 +1929,6 @@ gsSurfMesh::cc_limit_points(std::string label)
     auto limits = add_vertex_property<Point>(
         (label == "v:point" ? "v:limit_points_2022" : label),Point(0,0,0));
     real_t n;
-<<<<<<< HEAD
-#   pragma omp parallel for private(n)
-    for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
-    {
-        n = valence(*vit);
-=======
 #   pragma omp parallel for default(none) shared(std::cout,points,limits) private(n)
     for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
     {
@@ -1982,19 +1944,15 @@ gsSurfMesh::cc_limit_points(std::string label)
             continue;
         }
 
->>>>>>> origin/ccsurf
         auto & pt = limits[*vit];
         pt = n*n*points[*vit];
         for ( auto he : halfedges(*vit) )
         {
-<<<<<<< HEAD
-=======
             if (is_boundary(he))
             {
                 gsWarn<< "Boundary halfedge is ignored.\n";                
             }
 
->>>>>>> origin/ccsurf
             pt += 4 * points[ to_vertex(he) ] +
                 points[ to_vertex(next_halfedge(he)) ];
         }
@@ -2020,11 +1978,7 @@ gsSurfMesh::cc_limit_normals(std::string label, bool normalize)
     real_t c1, c2, cc1, cc2;
     index_t i;
     gsSurfMesh::Halfedge h2;
-<<<<<<< HEAD
-#   pragma omp parallel for private(h2,t1,t2,c1,c2,cc1,cc2,i)
-=======
 #   pragma omp parallel for default(none) shared(limits,points,normalize) private(h2,t1,t2,c1,c2,cc1,cc2,i)
->>>>>>> origin/ccsurf
     for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
     {
         const real_t n = valence(*vit);
@@ -2065,11 +2019,7 @@ gsSurfMesh::cc_limit_tangent_vec(std::string label, bool normalize)
     Point t1, t2;
     real_t c1, c2, cc1, cc2;
     index_t i;
-<<<<<<< HEAD
-#   pragma omp parallel for private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
-=======
 #   pragma omp parallel for default(none) shared(limits,points,normalize) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
->>>>>>> origin/ccsurf
     for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
     {
         const real_t n = valence(*vit);
@@ -2129,25 +2079,6 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
     gsSurfMesh::Halfedge h2;
     gsSurfMesh::Vertex v;
     real_t n;
-<<<<<<< HEAD
-    bool warn = true;
-#   pragma omp parallel for private(n,v,h2,coefs)
-    for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
-    {
-        coefs.resize(16,3);//thread privates must be initialized for each thread
-        index_t s = 0;
-
-        if (is_boundary(*fit))
-        {
-            if (warn)
-            {
-                gsWarn<< "Boundary faces are ignored.\n";
-                warn = false;
-            }
-            continue;
-        }
-        
-=======
 #   pragma omp parallel for default(none) shared(std::cout,points,bb) private(n,v,h2,coefs) shared(mp)
     for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
     {
@@ -2155,19 +2086,12 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
         coefs.resize(16,3);//thread privates must be initialized for each thread
         index_t s = 0;
 
->>>>>>> origin/ccsurf
         for ( auto he : halfedges(*fit) )
         {
             auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
             auto c10 = coefs.row(face_pt_idx(1,0,s,4)).transpose();
             auto c01 = coefs.row(face_pt_idx(0,1,s,4)).transpose();
             auto c11 = coefs.row(face_pt_idx(1,1,s,4)).transpose();
-<<<<<<< HEAD
-            v = from_vertex(he);
-            n = valence(v);
-            c00 = n*n*points[v];
-            c10 = c01 = c11 = n * points[v];
-=======
             ++s;
             v = from_vertex(he);
             n = valence(v);
@@ -2216,7 +2140,6 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
             c10 = c01 = c11 = n * points[v];
                         
             c00 = n*n*points[v];
->>>>>>> origin/ccsurf
             for (auto h : halfedges(v))
                 c00 += 4 * points[ to_vertex(h) ] +
                     points[ to_vertex(next_halfedge(h)) ] ;
@@ -2241,14 +2164,8 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
                 points[to_vertex(cw_rotated_halfedge(h2)) ]+
                 0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
             c01 /= n+5;
-<<<<<<< HEAD
-
-            ++s;
-        }
-=======
         }
 
->>>>>>> origin/ccsurf
 #       pragma omp critical (mp_addPatch)
         mp.addPatch( bb.makeGeometry(give(coefs)) );
     }
