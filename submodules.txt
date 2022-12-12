@@ -1,0 +1,43 @@
+######################################################################
+## submodules.txt
+## This file is part of the G+Smo library.
+##
+## Set here any submodules that should be compiled.
+## Use semicolon as separator. Example:
+##  set(SUBMODULES_TXT "gsOpennurbs;gsSpectra")
+##
+##
+## More submodules can be set in GISMO_OPTIONAL argument of cmake.
+## Related cmake arguments:
+##   GISMO_OPTIONAL_HEAD   If ON all submodules are set to HEAD.
+##                           If OFF then a specified commit hash is
+##			     used (or HEAD if it is not set below)
+##   RESTORE_SUBMODULES      If set submodules are RESTORED from git.
+##   			     (!)Any local modifications will be LOST.
+##
+##
+## By default we download only the main branch and a shallow copy is fetched.
+## To get all branches of a submodule one can issue inside the folder:
+## git remote set-branches origin '*'
+## git fetch --unshallow
+## git checkout name-of-branch
+##
+######################################################################
+set(SUBMODULES_TXT "gsOpennurbs")
+
+##
+## The following lines allow to specify a commit instead of HEAD
+##
+
+set(gsElasticity_HASH "a94347d4b8d8cd76de79d4b512023be9b68363bf")
+#set(gsUnitTest_HASH "7c42e5859da640b4304c4abde45f5ecbd9cfe95a") !! right not its not a submodule - it is set in the unittests project
+set(gsStructuralAnalysis_HASH "")
+set(gsKLShell_HASH "")
+set(gsCompFlow_HASH "")
+set(gsExaStencils_HASH "")
+set(unsupported_HASH "")
+set(motor_HASH "")
+
+
+
+# todo: url to list of known plugins

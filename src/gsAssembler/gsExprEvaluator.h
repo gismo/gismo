@@ -108,7 +108,7 @@ public:
     { return m_exprdata->getMap(mp); }
 
     /// Registers \a g as an isogeometric geometry map and return a handle to it
-    geometryMap getMap(const gsFunction<T> & gm)
+    geometryMap getMap(const gsFunctionSet<T> & gm)
     { return m_exprdata->getMap(gm); }
 
     /// Registers \a func as a variable and returns a handle to it

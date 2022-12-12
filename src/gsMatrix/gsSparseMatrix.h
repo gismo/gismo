@@ -533,7 +533,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         }
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsSparseMatrix
@@ -560,7 +560,7 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
     ;
   }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

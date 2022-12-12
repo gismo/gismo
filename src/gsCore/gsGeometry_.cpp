@@ -24,7 +24,7 @@ namespace gismo
     CLASS_TEMPLATE_INST gsVolume  <real_t> ;
     CLASS_TEMPLATE_INST gsBulk    <real_t> ;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 

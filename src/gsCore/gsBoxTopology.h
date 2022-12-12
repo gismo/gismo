@@ -283,7 +283,7 @@ public:
     /// all the vectors are put in the vector \a cornerLists. It will only find vertices on
     /// the inside.
     /// CAREFUL: works only for 2D
-    void getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const;
+    void getEVs(std::vector<std::vector<patchCorner> > & cornerLists, bool boundaries = false) const;
 
     /// gives back all the ordinary vertices (4 faces) of the topology
     /// each OV is represented by a vector of patchCorners, which represent the same vertex
@@ -311,14 +311,14 @@ protected:
 
 }; // class gsBoxTopology
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsBoxTopology
    */
   void pybind11_init_gsBoxTopology(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

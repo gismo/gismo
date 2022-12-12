@@ -12,7 +12,7 @@ namespace gismo
 TEMPLATE_INST
 std::vector<gsSparseMatrix<real_t>> collocationMatrix1(const gsBasis<real_t> & b, const gsMatrix<real_t> & u);
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 

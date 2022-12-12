@@ -17,7 +17,7 @@ gismo_fetch_module(gsUnitTest
 include(gsConfig)
 
 # set include directory
-set(GSUNITTEST_INCLUDE_DIR ${gismo_SOURCE_DIR}/extensions/gsUnitTest
+set(GSUNITTEST_INCLUDE_DIR ${gismo_SOURCE_DIR}/optional/gsUnitTest
   CACHE INTERNAL "gsUnitTest include directory")
 
 install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION

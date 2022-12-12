@@ -113,6 +113,21 @@ page is at `./doc/html/index.html`.
 
 More information at https://github.com/gismo/gismo/wiki
 
+# Optional modules
+
+There is a number of optional modules that may be enabled.
+
+| **Name** | **Description** |
+|----------|-----------------|
+|[gsOpenCascade](https://github.com/gismo/gismo/tree/stable/extensions/gsOpenCascade#readme)| Extends functionality using OpenCascade|
+|[gsElasticity](https://github.com/gismo/gsElasticity#readme)|  |
+|[gsKLShell](https://github.com/gismo/gsKLShell#readme)|  |
+|[gsStructuralAnalysis](https://github.com/gismo/gsStructuralAnalysis#readme)|  |
+
+To enable e.g. gsSpectra and gsOpenCascade set the following option in CMake:
+
+ ``` -D GISMO_OPTIONAL="gsSpectra;gsOpenCascade" ```
+
 # Configuration Options
 
 The available options are displayed at CMake configuration.  Short
@@ -133,7 +148,7 @@ include double, long double, float.
   If set to one or more of the options available for GISMO_COEFF_TYPE
   the G+Smo library is compiled with extra arithmetic types enabled.
 
-* GISMO_EXTRA_DEBUG       *OFF*
+* GISMO_WITH_XDEBUG       *OFF*
 
   If set to ON additional debugging tools are enabled during
 compilation. These include checked iterators for GCC and MSVC
@@ -156,7 +171,7 @@ executables are created in build-folder/bin.
   If enabled the tests in the unittests folder are compiled, and an
 executable is created in build-folder/bin.
 
-* GISMO_BUILD_AXL         *OFF*
+* GISMO_PLUGIN_AXL         *OFF*
 
   If enabled the plugin for Axel modeler is compiled (requires Axel).
 
@@ -165,10 +180,9 @@ executable is created in build-folder/bin.
   If enabled the extensions using functionalities of Parasolid geometric
 kernel are compiled (requires Parasolid).
 
-* GISMO_WITH_ONURBS       *OFF*
+* gsOpennurbs
 
-  If enabled the extension for reading and writing of Rhinoceros' 3DM is
-compiled.
+  Extension for reading and writing of Rhinoceros' 3DM.
 
 * CMAKE_INSTALL_PREFIX   (system dependent)
 

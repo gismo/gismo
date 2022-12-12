@@ -21,7 +21,7 @@
 #include <gsKLShell/gsMaterialMatrixLinear.h>
 #endif
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace gismo {
 
@@ -200,4 +200,4 @@ PYBIND11_MODULE(pygismo, m) {
 #endif
 }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11

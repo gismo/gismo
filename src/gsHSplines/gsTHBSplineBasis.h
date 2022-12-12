@@ -775,7 +775,7 @@ private:
  * End of class gsTHBSplineBasis definition
  */
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsTHBSplineBasis
@@ -784,7 +784,7 @@ private:
   void pybind11_init_gsTHBSplineBasis3(pybind11::module &m);
   void pybind11_init_gsTHBSplineBasis4(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

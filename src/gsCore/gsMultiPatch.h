@@ -257,8 +257,10 @@ public:
     /// in each knot-span with multipliplicity \a mul
     void uniformRefine(int numKnots = 1, int mul = 1);
 
-    /// \brief Elevate the degree of all patches by \a elevationSteps.
-    void degreeElevate(int elevationSteps = 1);
+    /// \brief Elevate the degree of all patches by \a elevationSteps, preserves smoothness
+    void degreeElevate(short_t const elevationSteps = 1, short_t const dir = -1);
+    /// \brief Increase the degree of all patches by \a elevationSteps, preserves multiplicity
+    void degreeIncrease(short_t const elevationSteps = 1, short_t const dir = -1);
 
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
@@ -359,6 +361,9 @@ public:
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
 
+    T closestDistance(const gsVector<T> & pt,std::pair<index_t,gsVector<T> > & result,
+                                                   const T accuracy = 1e-6) const;
+
     std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
                                                    const T accuracy = 1e-6) const;
 
@@ -410,14 +415,14 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
     return b.print( os );
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsMultiPatch
    */
   void pybind11_init_gsMultiPatch(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 
 } // namespace gismo

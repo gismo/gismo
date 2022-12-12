@@ -140,9 +140,9 @@ int main(int argc, char *argv[])
             break;
         }
 
-        if ( filedata.has< gsMesh<> >() )
+        if ( filedata.has< gsSurfMesh >() )
         {
-            gsMesh<>::uPtr msh = filedata.getFirst< gsMesh<> >();
+            auto msh = filedata.getFirst< gsSurfMesh >();
             if (msh)
                 gsInfo<< "Got "<< *msh <<"\n";
             else
@@ -152,6 +152,8 @@ int main(int argc, char *argv[])
             }
 
             gsWriteParaview( *msh, pname);
+            gsFileManager::open(pname+".vtk");
+            return EXIT_SUCCESS;
             break;
         }
 

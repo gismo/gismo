@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     //initial guess
     gsMatrix<> x0;
 
-#ifndef GISMO_WITH_GMP
+#ifndef gsGmp_ENABLED
 
     //Maximum number of iterations
     index_t maxIters = 3*N;
