@@ -38,9 +38,9 @@ gsMatrix<T> parameterize_points1D(const gsMatrix<T> & xyz, T alpha = 0.5)
     uv(0,N-1) = 1;
     std::vector<T> distances(N-1);
     for (index_t k=1; k!=N; k++)
-        distances.at(k-1) = std::pow((xyz.col(k)-xyz.col(k-1)).norm(),alpha);
+        distances.at(k-1) = math::pow((xyz.col(k)-xyz.col(k-1)).norm(),alpha);
 
-    T d = std::accumulate(distances.begin(),distances.end(),0.0);
+    T d = std::accumulate(distances.begin(),distances.end(), T(0));
     for (index_t k=1; k!=N-1; k++)
         uv(0,k) = uv(0,k-1) + distances.at(k) / d;
 

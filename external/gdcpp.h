@@ -159,7 +159,7 @@ namespace gdc
     public:
         CentralDifferences()
             : CentralDifferences(
-                std::sqrt(std::numeric_limits<Scalar>::epsilon()))
+                gismo::math::sqrt(std::numeric_limits<Scalar>::epsilon()))
         { }
 
         CentralDifferences(const Scalar eps)
@@ -336,7 +336,7 @@ namespace gdc
             if(denom == 0)
                 return 1;
             else
-                return std::abs(num / denom);
+                return gismo::math::abs(num / denom);
         }
 
         Scalar inverseStep(const Vector &xval,
@@ -350,7 +350,7 @@ namespace gdc
             if(denom == 0)
                 return 1;
             else
-                return std::abs(num / denom);
+                return gismo::math::abs(num / denom);
         }
     public:
         BarzilaiBorwein()
