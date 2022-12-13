@@ -17,6 +17,8 @@
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsAssembler/gsExprHelper.h>
 #include <gsIO/gsFileManager.h>
+#include <gsIO/gsParaviewDataSet.h>
+
 
 
 #include<fstream>
@@ -123,7 +125,25 @@ public:
 
     void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
 
-    gsParaviewDataSet newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time=-1);
+    void newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time=-1);
+
+    template<class E>
+    void addField(const expr::_expr<E> & expr,
+                  std::string label)
+    {
+        m_dataset->addField(expr, label);
+    }
+
+    // The recursive case: we take a number, alongside
+    // some other numbers, and produce their sum.
+    template <class E, typename... Rest>
+    void addFields(std::vector<std::string> labels, const expr::_expr<E> & expr, Rest... rest) {
+        m_dataset->addFields(labels, expr, rest...);
+    }
+
+    void saveTimeStep(){
+        addDataSet(*m_dataset,m_step_count);
+    };
 
     /// Finalizes the collection by closing the XML tags, always call
     /// this function (once) when you finish adding files
@@ -155,6 +175,8 @@ private:
     int m_step_count=-1;
 
     gsExprEvaluator<> * m_evaluator;
+
+    gsParaviewDataSet* m_dataset=nullptr;
 
 private:
     // Construction without a filename is not allowed

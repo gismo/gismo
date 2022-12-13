@@ -12,7 +12,6 @@
 */
 
 #include <gsIO/gsParaviewCollection.h>
-#include <gsIO/gsParaviewDataSet.h>
 
 
 namespace gismo
@@ -39,17 +38,18 @@ namespace gismo
         }
     }
 
-    gsParaviewDataSet gsParaviewCollection::newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time)
+    void gsParaviewCollection::newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time)
     {   
         if (-1 == time )
         {
             m_step_count += 1.0;
             time = m_step_count;
         }
+        else { m_step_count = time; }
         std::string name = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn);
         name += "_t" + std::to_string(time);
        
-        return gsParaviewDataSet(name, geoMap, m_evaluator);
+        m_dataset = new gsParaviewDataSet(name, geoMap, m_evaluator);
     }
 }
 

@@ -31,7 +31,7 @@ int main(int argc, char const *argv[])
     gsParaviewCollection collection("outputFiles/ParaviewExample", &evaluator);
 
     // Create a DataSet object [i.e. a group of .vts files]
-    gsParaviewDataSet dSet = collection.newTimeStep(&initGeo);
+    collection.newTimeStep(&initGeo);
 
     // Solution field names
     std::vector<std::string> labels;
@@ -39,24 +39,26 @@ int main(int argc, char const *argv[])
     labels.push_back("norm");
 
     // Evaluate and write expressions to the .vts files
-    dSet.addFields( labels, meas(initGeo), initGeo.norm() );
+    collection.addFields( labels, meas(initGeo), initGeo.norm() );
     // Reference the .vts files in the .pvd file
-    collection.addDataSet(dSet);
+    collection.saveTimeStep();
 
     // Dummy Solution Loop
     for (int i=0;i!=3;i++)
     {
         // Create a clean DataSet [ new .vts files]
-        dSet = collection.newTimeStep(&initGeo);
+        if (i==1){collection.newTimeStep(&initGeo, 10);}
+        else{
+            collection.newTimeStep(&initGeo);}
 
         // Dummy solution, just displaces one of the patches
         mPatch.patch(0).coefs().array() += 1;
 
         // Evaluate and write expressions to the .vts files
-        dSet.addFields( labels, meas(initGeo), initGeo.norm() );
+        collection.addFields( labels, meas(initGeo), initGeo.norm() );
 
         // Reference the .vts files in the .pvd file
-        collection.addDataSet(dSet);
+        collection.saveTimeStep();
 
     }
     // Solution has finished
@@ -65,7 +67,7 @@ int main(int argc, char const *argv[])
     collection.save(); 
 
     // Just to check I have not messed up the current implementation
-    evaluator.writeParaview(meas(initGeo),initGeo, "evOutput");
+    // evaluator.writeParaview(meas(initGeo),initGeo, "evOutput");
 
     return 0; 
 }
