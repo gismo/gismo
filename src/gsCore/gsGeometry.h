@@ -616,13 +616,6 @@ public:
                               const T accuracy = 1e-6,
                               const bool useInitialPoint = false) const;
 
-    /// Returns the parameters of closest point to \a pt as an argument, and the
-    /// Euclidean distance as a return value
-    T closestPointTo(const gsVector<T> & pt,
-                        gsVector<T> & result,
-                        const T accuracy = 1e-6,
-                        const bool useInitialPoint = false) const;
-
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 

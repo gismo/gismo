@@ -273,6 +273,14 @@ public:
 
     index_t size() const { return 1;}
 
+
+    /// Returns the parameters of closest point to \a pt as an argument, and the
+    /// Euclidean distance as a return value
+    T closestPointTo(const gsVector<T>& pt,
+        gsVector<T>& result,
+        const T accuracy = 1e-6,
+        const bool useInitialPoint = false) const;
+
 private:
 
     template<int mode, int _Dim=-1>
@@ -283,6 +291,7 @@ private:
         double damping_factor = 1, T scale = 1.0) const;
 
 }; // class gsFunction
+
 
 
 /// Print (as string) operator to be used by all derived classes

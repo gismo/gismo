@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
 
     fitting.compute(lambda); // smoothing parameter lambda
 
-    fitting.parameterCorrection(maxPcIter);
+    fitting.parameterCorrection(1e-8,maxPcIter);
 
     gsInfo << "I computed the fitting" << "\n";
 

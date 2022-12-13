@@ -135,7 +135,7 @@ public:
     size_t nPatches() const
     { return m_mbases->nPatches(); }
 
-    const gsMappedSingleSpline<d,T> & piece(const index_t k) const { return m_ss[k]; }
+    const gsFunction<T> & piece(const index_t k) const { return m_ss[k]; }
 
     index_t size() const {return nPieces();}
 
