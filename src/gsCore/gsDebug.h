@@ -86,10 +86,10 @@ namespace gismo {
  *
  */
 #ifndef NDEBUG
-#   define GISMO_ASSERT(cond, message) do if(!(cond)) {std::stringstream _m_;\
-       _m_<<"GISMO_ASSERT `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "\
-        <<__LINE__<<" ("<<__FUNCTION__<<")";                                 \
-       throw std::logic_error(_m_.str()); } while(false)
+#   define GISMO_ASSERT(cond, message) do if(!(cond)) {std::cerr          \
+       <<"Assert `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "\
+       <<__LINE__<<" ("<<__FUNCTION__<<")"<<std::endl;                    \
+       throw std::logic_error("GISMO_ASSERT"); } while(false)
 #else
 #   define GISMO_ASSERT(condition, message)
 #endif
@@ -99,10 +99,10 @@ namespace gismo {
  *  GISMO_ASSERT but it is executed in release builds as well.
  *
  */
-#define GISMO_ENSURE(cond, message) do if(!(cond)) {std::stringstream _m_;   \
-    _m_<<"GISMO_ENSURE `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "   \
-     <<__LINE__<<" ("<< __FUNCTION__<< ")";                                  \
-    throw std::runtime_error(_m_.str());} while(false)
+#define GISMO_ENSURE(cond, message) do if(!(cond)) {std::cerr             \
+    <<"Ensure `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "   \
+    <<__LINE__<<" ("<< __FUNCTION__<< ")"<<std::endl;                     \
+    throw std::runtime_error("GISMO_ENSURE");} while(false)
 
 /**  
  *  Denote a variable as unused, used to silence warnings in release
@@ -115,9 +115,9 @@ namespace gismo {
  *  Runtime error message
  *
  */
-#define GISMO_ERROR(message) do {std::stringstream _m_; _m_<<"GISMO_ERROR "  \
-    <<message<<"\n"<<__FILE__<<", line " <<__LINE__<<" ("<<__FUNCTION__<<")";\
-    throw std::runtime_error(_m_.str());} while(false)
+#define GISMO_ERROR(message) do {std::cerr <<"Error " <<message<<"\n"\
+    <<__FILE__<<", line " <<__LINE__<<" ("<<__FUNCTION__<<")"<<std::endl;  \
+    throw std::runtime_error("GISMO_ERROR");} while(false)
 
 /**  
  *  Runtime "no implementation" error happens when the user calls a
@@ -126,10 +126,10 @@ namespace gismo {
  */
  
 // TO DO: for GCC __PRETTY_FUNC__ is better
-#define GISMO_NO_IMPLEMENTATION {std::stringstream _m_;                            \
-    _m_<<"Virtual member function `"<<__FUNCTION__<<"` has not been implemented\n" \
-     <<__FILE__<<", line "<<__LINE__<<"\n"<<typeid(*this).name();                  \
-    throw std::runtime_error(_m_.str());}
+#define GISMO_NO_IMPLEMENTATION {std::cerr                                       \
+     <<"Virtual member function `"<<__FUNCTION__<<"` has not been implemented\n" \
+     <<__FILE__<<", line "<<__LINE__<<"\n"<<typeid(*this).name()<<std::endl;     \
+    throw std::runtime_error("GISMO_NO_IMPLEMENTATION");}
 
 /*
 #ifdef _MSC_VER
