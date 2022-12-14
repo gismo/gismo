@@ -20,7 +20,7 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
     std::string output;
-    index_t numknots(3), deg(2);
+    index_t numknots(5), deg(2);
 
     gsCmdLine cmd("Tutorial on gsFupBasis class.");
     cmd.addInt("interior", "Interior knots.", numknots);
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     // values
     // ----------------------------------------------------------------------
 
-    gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 10);
+    gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 7);
     gsInfo << "Evaluation points: \n" << u << "\n\n";
 
     // indices of active (nonzero) functions at parameter u

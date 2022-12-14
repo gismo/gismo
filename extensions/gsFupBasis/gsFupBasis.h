@@ -128,6 +128,7 @@ private:
                 result(i,k) = fupn_call(u(0,k), deriv_order, m++);
             m=act;
             tmp.resize(m < m_p+1 ? m_p+1-m : 0);
+            gsInfo << "Ls" << k << " " << m << "  " << tmp.size() << "\n";
             for (index_t j = 0; j!=m_p+2 && (m < m_p+1); ++j)
              {      
                     tmp(j)=result.col(k).topRows(m+1).dot(mod_coeff(m));
@@ -136,14 +137,16 @@ private:
              result.col(k).topRows(tmp.size())=tmp;
 
             //right side modification
-            /*m=act+m_p+1;
-            tmp.resize(m > size()-m_p-1 ? size()-m-1 : 0);
-            for (index_t j = 0; j!=m_p+2 && (m > size()-m-1); ++j)
+            m=act+m_p+1;
+            tmp.resize(m > size()-m_p-1 ? m_p-size()+m+1 : 0);
+            gsInfo << "Rs" << k << " " << m << "  " << tmp.size() << "\n";
+            /*for (index_t j = 0; j!=m_p+2 && (m > size()-m_p-1); ++j)
              {  
-                    tmp(j)=result.col(k).bottomRows(m+1).dot(mod_coeff(m).reverse());
+                    tmp(j)=result.col(k).bottomRows(size()-m+1).dot(mod_coeff(size()-m).reverse());
                     m--;
              }
              result.col(k).bottomRows(tmp.size())=tmp;*/
+             gsInfo <<"\n";
         }
     }
 
