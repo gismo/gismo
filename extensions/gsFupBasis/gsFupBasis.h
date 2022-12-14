@@ -129,11 +129,21 @@ private:
             m=act;
             tmp.resize(m < m_p+1 ? m_p+1-m : 0);
             for (index_t j = 0; j!=m_p+2 && (m < m_p+1); ++j)
-             {
+             {      
                     tmp(j)=result.col(k).topRows(m+1).dot(mod_coeff(m));
                     m++;
              }
              result.col(k).topRows(tmp.size())=tmp;
+
+            //right side modification
+            /*m=act+m_p+1;
+            tmp.resize(m > size()-m_p-1 ? size()-m-1 : 0);
+            for (index_t j = 0; j!=m_p+2 && (m > size()-m-1); ++j)
+             {  
+                    tmp(j)=result.col(k).bottomRows(m+1).dot(mod_coeff(m).reverse());
+                    m--;
+             }
+             result.col(k).bottomRows(tmp.size())=tmp;*/
         }
     }
 
