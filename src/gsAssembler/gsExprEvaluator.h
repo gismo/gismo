@@ -761,7 +761,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
 //             gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
 //                                   vals,
 //                                   pt.numPointsCwise(), fileName );
-//             collection.addPart(fileName, ".vts");
+//             collection.addPart(fileName + ".vts");
 
 //             if ( mesh )
 //             {
@@ -769,7 +769,7 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
 //                 gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
 //                 static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
 //                 gsWriteParaview(msh, fileName, false);
-//                 collection.addPart(fileName, ".vtp");
+//                 collection.addPart(fileName+ ".vtp");
 //             }
 //         }
 //         collection.save();
@@ -827,7 +827,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                   pt.numPointsCwise(), fileName );
 
             // Snippet from gsParaviewCollection
-            // collection.addPart(fileName, ".vts");
+            // collection.addPart(fileName+ ".vts");
             GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
             file << "<DataSet part=\""<< counter++ <<"\" file=\""<<fileName<<".vts"<<"\"/>\n";
             // End snippet from gsParaviewCollection
@@ -838,7 +838,7 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                 static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
                 gsWriteParaview(msh, fileName + "_mesh", false);
                 // Snippet from gsParaviewCollection
-                // collection.addPart(fileName, ".vtp");
+                // collection.addPart(fileName+ ".vtp");
                 GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
                 file << "<DataSet part=\""<< counter++ <<"\" file=\""<<fileName<<"_mesh.vtp"<<"\"/>\n";
                 // End snippet from gsParaviewCollection

@@ -75,32 +75,11 @@ public:
         mfile <<"<Collection>\n";
     }
     
-    /// Adds a part in the collection, with complete filename (including extension) \a fn
-    void addPart(String const & fn)
-    {
-        GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
-    }
-
-    /// Adds a part in the collection, with filename \a fn with extension \a ext appended
-    void addPart(String const & fn, String const & ext)
-    {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
-    }
-
-    /// Adds a part in the collection, with filename \a fni and extension \a ext appended
-    void addPart(String const & fn, int i, String const & ext)
-    {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
-    }
-    
-
     // Full filename ( with extension )
     void addPart(String const & fn, index_t part=-1, real_t tStep=-1)
     {   
+        GISMO_ASSERT( gsFileManager::getExtension(fn) != "" , "File without extension");
+        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
         // GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
         mfile << "<DataSet ";
         if (part != -1)   mfile << "part=\""<< part <<"\" ";
@@ -193,10 +172,10 @@ inline void makeCollection(std::string const & fn, std::string const & ext, int 
     if ( n > 0)
     {
         for (int i=0; i<n ; i++)
-            pc.addPart(fn, i, ext);
+            pc.addPart(fn + std::to_string(i) + ext);
     }
     else
-        pc.addPart(fn, ext);
+        pc.addPart(fn + ext);
 
     pc.save();
 }
