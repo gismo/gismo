@@ -72,7 +72,6 @@ public:
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
-        opt.addInt("plot.precision", "Number of decimals in the paraview output ( only when used with gsParaviewDataSet ).", 5);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
@@ -312,9 +311,9 @@ public:
     { writeParaview_impl<E,false>(expr,m_exprdata->getMap(),fn); }
 
     template<class E>
-    std::vector<std::string> expr2vtk(const expr::_expr<E> & expr, std::string label="SolutionField");
+    std::vector<std::string> expr2vtk(const expr::_expr<E> & expr, std::string label="SolutionField",unsigned nPts=1000, unsigned precision=5);
 
-    std::vector<std::string> geoMap2vtk(const geometryMap geoMap);
+    std::vector<std::string> geoMap2vtk(const geometryMap geoMap, unsigned nPts=1000, unsigned precision=5);
 
 private:
 
@@ -872,12 +871,14 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
 template<class T>
 template<class E>
 std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & expr,
-                                          std::string label)
+                                          std::string label,
+                                          unsigned nPts,
+                                          unsigned precision)
 {   
     std::vector<std::string> out;
     std::stringstream dataArray;
     dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-    dataArray.precision(m_options.askInt("plot.precision",5));
+    dataArray.precision(precision);
     m_exprdata->parse(expr);
 
     //if false, embed topology ?
@@ -887,7 +888,6 @@ std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & exp
 
     for ( index_t i=0; i != n; ++i )
     {
-        unsigned nPts = m_options.askInt("plot.npts", 1000);
         ab = m_exprdata->multiBasis().piece(i).support();
         gsGridIterator<T,CUBE> pt(ab, nPts);
         eval(expr, pt, i);
@@ -920,12 +920,12 @@ std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & exp
 /// @param geoMap Geometry map to be evaluated
 /// @return Vector of strings of all <DataArrays>
 template<class T>
-std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap)
+std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap, unsigned nPts, unsigned precision)
 {   
     std::vector<std::string> out;
     std::stringstream dataArray;
     dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-    dataArray.precision(m_options.askInt("plot.precision",5));
+    dataArray.precision(precision);
 
     //if false, embed topology ?
     const index_t n = m_exprdata->multiBasis().nBases();
@@ -934,7 +934,6 @@ std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap
 
     for ( index_t i=0; i != n; ++i )
     {
-        unsigned nPts = m_options.askInt("plot.npts", 1000);
         ab = m_exprdata->multiBasis().piece(i).support();
         gsGridIterator<T,CUBE> pt(ab, nPts);
         eval(geoMap, pt, i);
@@ -950,7 +949,7 @@ std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap
             for ( index_t i=n; i<3; ++i)
                 dataArray<<"0 ";
         }
-        dataArray <<"</DataArray>\n</Points>\n";
+        dataArray <<"\n</DataArray>\n</Points>\n";
 
         out.push_back( dataArray.str() );
         dataArray.str(std::string()); // Clear the dataArray stringstream

@@ -31,11 +31,12 @@ private:
     gsExprHelper<real_t>::geometryMap * m_geoMap;
     gsExprEvaluator<real_t> * m_evaltr;
     index_t m_numPatches;
+    gsOptionList m_options;
     
 public:
     gsParaviewDataSet(std::string basename, 
                       gsExprHelper<real_t>::geometryMap * geoMap,
-                      gsExprEvaluator<real_t> * eval);
+                      gsExprEvaluator<real_t> * eval, gsOptionList options);
 
                        
 
@@ -46,7 +47,10 @@ public:
     {
         // evaluates the expression and appends it to the vts files
         //for every patch
-        std::vector<std::string> tags = m_evaltr->expr2vtk(expr, label);
+        unsigned nPts = m_options.askInt("numPoints",1000);
+        unsigned precision = m_options.askInt("precision",5);
+
+        std::vector<std::string> tags = m_evaltr->expr2vtk(expr, label,nPts,precision);
         std::vector<std::string> fnames = filenames();
 
         for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
@@ -78,6 +82,15 @@ public:
 
     void save();
 
+    static gsOptionList defaultOptions()
+    {
+        gsOptionList opt;
+        opt.addInt("numPoints", "Number of points per-patch.", 1000);
+        opt.addInt("precision", "Number of decimal digits.", 5);
+        return opt;
+    }
+
+    gsOptionList & options() {return m_options;}
 
 };
 } // End namespace gismo

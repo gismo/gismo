@@ -162,6 +162,8 @@ public:
         counter = -1;
     }
 
+    gsOptionList & options() {return m_options;}
+
 private:
     /// Pointer to char stream
     std::stringstream mfile;
@@ -177,6 +179,8 @@ private:
     gsExprEvaluator<> * m_evaluator;
 
     gsParaviewDataSet* m_dataset=nullptr;
+
+    gsOptionList m_options = gsParaviewDataSet::defaultOptions();
 
 private:
     // Construction without a filename is not allowed

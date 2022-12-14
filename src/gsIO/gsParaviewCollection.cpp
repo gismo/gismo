@@ -49,7 +49,7 @@ namespace gismo
         std::string name = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn);
         name += "_t" + std::to_string(time);
        
-        m_dataset = new gsParaviewDataSet(name, geoMap, m_evaluator);
+        m_dataset = new gsParaviewDataSet(name, geoMap, m_evaluator, m_options);
     }
 }
 

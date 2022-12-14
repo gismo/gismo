@@ -25,10 +25,13 @@ int main(int argc, char const *argv[])
 
 
     gsExprEvaluator<> evaluator(assembler);
-    evaluator.options().setInt("plot.precision",2);
 
     // Create a Collection object [i.e. .pvd file]
     gsParaviewCollection collection("outputFiles/ParaviewExample", &evaluator);
+
+    // Specify plotting options
+    collection.options().setInt("numPoints", 100);
+    collection.options().setInt("precision",5);
 
     // Create a DataSet object [i.e. a group of .vts files]
     collection.newTimeStep(&initGeo);

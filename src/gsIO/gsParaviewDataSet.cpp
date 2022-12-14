@@ -19,13 +19,15 @@ namespace gismo
 {
     gsParaviewDataSet::gsParaviewDataSet(std::string basename,
                     gsExprHelper<real_t>::geometryMap * geoMap,
-                    gsExprEvaluator<real_t> * eval)
+                    gsExprEvaluator<real_t> * eval,
+                    gsOptionList options)
                     :m_basename(basename),
                     m_geoMap(geoMap),
                     m_evaltr(eval),
-                    m_numPatches(geoMap->source().nPieces())
+                    m_numPatches(geoMap->source().nPieces()),
+                    m_options(options)
     {
-        unsigned nPts = m_evaltr->options().askInt("plot.npts", 1000);
+        unsigned nPts = m_options.askInt("numPoints",1000);
 
         // QUESTION: Can I be certain that the ids are consecutive?
         std::vector<std::string> fnames = filenames();
@@ -67,7 +69,10 @@ namespace gismo
 
     void gsParaviewDataSet::save()
     {
-        std::vector<std::string> points = m_evaltr->geoMap2vtk(*m_geoMap);
+        unsigned nPts = m_options.askInt("numPoints",1000);
+        unsigned precision = m_options.askInt("precision",5);
+
+        std::vector<std::string> points = m_evaltr->geoMap2vtk(*m_geoMap,nPts, precision);
         // QUESTION: Can I be certain that the ids are consecutive?
         for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
         {
