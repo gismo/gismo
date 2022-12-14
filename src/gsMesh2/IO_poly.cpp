@@ -63,10 +63,10 @@ bool read_poly(gsSurfMesh& mesh, const std::string& filename)
     gsSurfMesh::Vertex_property<Point>                                  point = mesh.vertex_property<Point>("v:point",Point(0,0,0));
 
     // read properties from file
-    fread((char*)vconn.data(), sizeof(gsSurfMesh::Vertex_connectivity),   nv, in);
-    fread((char*)hconn.data(), sizeof(gsSurfMesh::Halfedge_connectivity), nh, in);
-    fread((char*)fconn.data(), sizeof(gsSurfMesh::Face_connectivity),     nf, in);
-    fread((char*)point.data(), sizeof(Point),                               nv, in);
+    (void)fread((char*)vconn.data(), sizeof(gsSurfMesh::Vertex_connectivity),   nv, in);
+    (void)fread((char*)hconn.data(), sizeof(gsSurfMesh::Halfedge_connectivity), nh, in);
+    (void)fread((char*)fconn.data(), sizeof(gsSurfMesh::Face_connectivity),     nf, in);
+    (void)fread((char*)point.data(), sizeof(Point),                               nv, in);
 
     fclose(in);
     return true;
