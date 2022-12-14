@@ -145,8 +145,8 @@ void gsFitting<T>::parameterCorrection(T accuracy,
                                        index_t maxIter,
                                        T tolOrth)
 {
-    //if ( !m_mresult )
-       // compute(m_last_lambda);
+    if (!m_result && !m_mresult.size())
+        compute(m_last_lambda);
 
     
     const int num_patches(m_basis->nPieces());
@@ -182,7 +182,11 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 
           
 
-                vals = m_mresult.evalAllDers(curr_points_param, 1);
+                if (m_result)
+                    vals = m_result->piece(h).evalAllDers(curr_points_param, 1);
+                else
+                    vals = m_mresult.piece(h).evalAllDers(curr_points_param, 1);
+
                 for (index_t k = 0; k != d; ++k)
                 {
 
@@ -221,8 +225,12 @@ void gsFitting<T>::parameterCorrection(T accuracy,
                 //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
          
                 newParam = curr_points_param;
-                m_mresult.piece(h).closestPointTo(curr_points.transpose(),
-                    newParam, accuracy, true);
+                if (m_result)
+                    m_result->piece(h).closestPointTo(curr_points.transpose(),
+                                                     newParam, accuracy, true);
+                else
+                    m_mresult.piece(h).closestPointTo(curr_points.transpose(),
+                                                      newParam, accuracy, true);
 
                 // (!) There might be the same parameter for two points
                 // or ordering constraints in the case of structured/grid data
@@ -475,7 +483,7 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
                 m_mresult.eval_into(h, curr_point, results);
             }
 
-                const T err = (m_points.row(k) - results.transpose()).squaredNorm();
+            const T err = (m_points.row(k) - results.transpose()).squaredNorm();
 
                 switch (type) {
                 case 0:
