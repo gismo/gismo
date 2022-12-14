@@ -54,23 +54,15 @@ public:
     typedef std::string String;
 public:
 
-    /// Constructor using a filename ( without extension ).
-    gsParaviewCollection(String const  &fn)
-    : mfn(fn), counter(0), m_evaluator(nullptr)
-    {
-        mfn = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn) + ".pvd";
-        gsFileManager::mkdir( gsFileManager::getPath(mfn) );
-        // if ( "" != mfn.parent_path())
-        // GISMO_ENSURE( fsystem::exists( mfn.parent_path() ), 
-        //     "The specified folder " << mfn.parent_path() << " does not exist, please create it first.");
-        mfile <<"<?xml version=\"1.0\"?>\n";
-        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
-        mfile <<"<Collection>\n";
-    }
-
-    /// Constructor using a filename ( without extension ) and an evaluator.
-    gsParaviewCollection(String const  &fn, gsExprEvaluator<> * evaluator)
-    : mfn(fn), counter(0), m_evaluator(evaluator)
+    /// Constructor using a filename and an (optional) evaluator.
+    gsParaviewCollection(String const  &fn,
+                         gsExprEvaluator<> * evaluator=nullptr)
+                        : mfn(fn),
+                        counter(0),
+                        m_step_count(-1),
+                        m_evaluator(evaluator),
+                        m_dataset(nullptr),
+                        m_options(gsParaviewDataSet::defaultOptions())
     {
         mfn = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn) + ".pvd";
         gsInfo << mfn << "\n";
@@ -174,13 +166,13 @@ private:
     /// Counter for the number of parts (files) added in the collection
     int counter;
 
-    int m_step_count=-1;
+    int m_step_count;
 
     gsExprEvaluator<> * m_evaluator;
 
-    gsParaviewDataSet* m_dataset=nullptr;
+    gsParaviewDataSet* m_dataset;
 
-    gsOptionList m_options = gsParaviewDataSet::defaultOptions();
+    gsOptionList m_options;
 
 private:
     // Construction without a filename is not allowed
