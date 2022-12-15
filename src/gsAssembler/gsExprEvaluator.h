@@ -944,9 +944,9 @@ std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap
         dataArray <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
         for ( index_t j=0; j<pts.cols(); ++j)
         {
-            for ( index_t i=0; i!=n; ++i)
+            for ( index_t i=0; i!=pts.rows(); ++i)
                 dataArray<< pts(i,j) <<" ";
-            for ( index_t i=n; i<3; ++i)
+            for ( index_t i=pts.rows(); i<3; ++i)
                 dataArray<<"0 ";
         }
         dataArray <<"\n</DataArray>\n</Points>\n";
