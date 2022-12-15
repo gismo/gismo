@@ -96,7 +96,7 @@ public:
 
     void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
 
-    void newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time=-1);
+    void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
 
     template<class E>
     void addField(const expr::_expr<E> & expr,

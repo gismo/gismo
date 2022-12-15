@@ -34,7 +34,7 @@ int main(int argc, char const *argv[])
     collection.options().setInt("precision",5);
 
     // Create a DataSet object [i.e. a group of .vts files]
-    collection.newTimeStep(&initGeo);
+    collection.newTimeStep(&mPatch);
 
     // Solution field names
     std::vector<std::string> labels;
@@ -50,9 +50,7 @@ int main(int argc, char const *argv[])
     for (int i=0;i!=3;i++)
     {
         // Create a clean DataSet [ new .vts files]
-        if (i==1){collection.newTimeStep(&initGeo, 10);}
-        else{
-            collection.newTimeStep(&initGeo);}
+        collection.newTimeStep(&mPatch);
 
         // Dummy solution, just displaces one of the patches
         mPatch.patch(0).coefs().array() += 1;
@@ -70,7 +68,8 @@ int main(int argc, char const *argv[])
     collection.save(); 
 
     // Just to check I have not messed up the current implementation
-    // evaluator.writeParaview(meas(initGeo),initGeo, "evOutput");
+    // evaluator.writeParaview(initGeo.norm(),initGeo, "evOutput");
+    // gsWriteParaview(mBasis, mPatch, "test", 1000);
 
     return 0; 
 }

@@ -28,14 +28,13 @@ class GISMO_EXPORT gsParaviewDataSet // a collection of .vts files
 {
 private:
     std::string m_basename;
-    gsExprHelper<real_t>::geometryMap * m_geoMap;
+    gsMultiPatch<real_t> * m_geometry;
     gsExprEvaluator<real_t> * m_evaltr;
-    index_t m_numPatches;
     gsOptionList m_options;
     
 public:
     gsParaviewDataSet(std::string basename, 
-                      gsExprHelper<real_t>::geometryMap * geoMap,
+                      gsMultiPatch<real_t> * geometry,
                       gsExprEvaluator<real_t> * eval, gsOptionList options);
 
                        
@@ -53,7 +52,7 @@ public:
         std::vector<std::string> tags = m_evaltr->expr2vtk(expr, label,nPts,precision);
         std::vector<std::string> fnames = filenames();
 
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
+        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {
             std::ofstream file;
             file.open( fnames[k].c_str(), std::ios_base::app); // Append to file

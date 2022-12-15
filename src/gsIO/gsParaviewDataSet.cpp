@@ -18,22 +18,21 @@
 namespace gismo
 {
     gsParaviewDataSet::gsParaviewDataSet(std::string basename,
-                    gsExprHelper<real_t>::geometryMap * geoMap,
+                    gsMultiPatch<real_t> * geometry,
                     gsExprEvaluator<real_t> * eval,
                     gsOptionList options)
                     :m_basename(basename),
-                    m_geoMap(geoMap),
+                    m_geometry(geometry),
                     m_evaltr(eval),
-                    m_numPatches(geoMap->source().nPieces()),
                     m_options(options)
     {
         unsigned nPts = m_options.askInt("numPoints",1000);
 
         // QUESTION: Can I be certain that the ids are consecutive?
         std::vector<std::string> fnames = filenames();
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
+        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {
-            gsMatrix<real_t> activeBases = m_geoMap->source().piece(k).support();
+            gsMatrix<real_t> activeBases = m_geometry->piece(k).support();
             gsGridIterator<real_t,CUBE> pt(activeBases, nPts);
 
             const gsVector<index_t> & np( pt.numPointsCwise() );
@@ -59,7 +58,7 @@ namespace gismo
     
     std::vector<std::string> gsParaviewDataSet::filenames()
     {   std::vector<std::string> names;
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
+        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {
             names.push_back( m_basename + "_patch" +std::to_string(k)+".vts" );
         }
@@ -72,17 +71,17 @@ namespace gismo
         unsigned nPts = m_options.askInt("numPoints",1000);
         unsigned precision = m_options.askInt("precision",5);
 
-        std::vector<std::string> points = m_evaltr->geoMap2vtk(*m_geoMap,nPts, precision);
+        std::vector<std::string> points = toVTK(*m_geometry,nPts,precision); //m_evaltr->geoMap2vtk(*m_geometry,nPts, precision);
         // QUESTION: Can I be certain that the ids are consecutive?
-        for ( index_t k=0; k!=m_numPatches; k++) // For every patch.
+        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {
             std::string filename;
             filename = m_basename + "_patch" +std::to_string(k)+".vts";
             std::ofstream file;
             file.open(filename.c_str(), std::ios_base::app); // Append to file 
-            file <<"</PointData>\n";
+            file <<"</PointData>\n\n\n<!-- GEOMETRY -->\n<Points>\n";
             file << points[k];
-            file << "</Piece>\n</StructuredGrid>\n</VTKFile>";
+            file << "</Points>\n</Piece>\n</StructuredGrid>\n</VTKFile>";
             file.close();
         }
         // output text files for each part.

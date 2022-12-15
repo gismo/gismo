@@ -38,7 +38,7 @@ namespace gismo
         }
     }
 
-    void gsParaviewCollection::newTimeStep(gsExprHelper<real_t>::geometryMap * geoMap, real_t time)
+    void gsParaviewCollection::newTimeStep(gsMultiPatch<real_t> * geometry, real_t time)
     {   
         if (-1 == time )
         {
@@ -49,7 +49,7 @@ namespace gismo
         std::string name = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn);
         name += "_t" + std::to_string(time);
        
-        m_dataset = new gsParaviewDataSet(name, geoMap, m_evaluator, m_options);
+        m_dataset = new gsParaviewDataSet(name, geometry, m_evaluator, m_options);
     }
 }
 
