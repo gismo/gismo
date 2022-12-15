@@ -128,26 +128,28 @@ private:
                 result(i,k) = fupn_call(u(0,k), deriv_order, m++);
             m=act;
             tmp.resize(m < m_p+1 ? m_p+1-m : 0);
-            gsInfo << "Ls" << k << " " << m << "  " << tmp.size() << "\n";
+            //if (m < m_p+1) gsInfo << "Ls " << k << " " << m << "  " << tmp.size() << "\n";
             for (index_t j = 0; j!=m_p+2 && (m < m_p+1); ++j)
-             {      
-                    tmp(j)=result.col(k).topRows(m+1).dot(mod_coeff(m));
-                    m++;
+             {
+                 //gsInfo <<m<<" ->  coefs:"<< m <<" = "<< mod_coeff(m).transpose() <<" * "<<result.col(k).topRows(m+1).transpose()<< "\n";
+                 tmp(j)=result.col(k).topRows(m+1).dot(mod_coeff(m));
+                 m++;
              }
              result.col(k).topRows(tmp.size())=tmp;
 
             //right side modification
             m=act+m_p+1;
-            tmp.resize(m > size()-m_p-1 ? m_p-size()+m+1 : 0);
-            gsInfo << "Rs" << k << " " << m << "  " << tmp.size() << "\n";
-            for (index_t j = 0; j!=m_p+2 && (m > size()-m_p-1); ++j)
+            tmp.resize(m > size()-m_p-2 ? m_p-size()+m+2 : 0);
+            //if (m > size()-m_p-2) gsInfo << "Rs " << k << " " << m << "  " << tmp.size() << "\n";
+            for (index_t j = 0; j!=m_p+2 && (m > size()-m_p-2); ++j)
             {
-                const index_t sz = m_p-size()+m+1;
-                tmp(j)=result.col(k).bottomRows(sz+1).dot(mod_coeff(sz).reverse());
+                const index_t mm = size()-m-1;
+                //gsInfo <<m<<" ->  coefs:"<< mm <<" = "<< mod_coeff(mm).reverse().transpose() <<" * "<<result.col(k).bottomRows(mm+1).transpose()<< "\n";
+                tmp(j)=result.col(k).bottomRows(mm+1).dot(mod_coeff(mm).reverse());
                 m--;
             }
-            result.col(k).bottomRows(tmp.size())=tmp;
-            gsInfo <<"\n";
+            result.col(k).bottomRows(tmp.size())=tmp.reverse();
+            //gsInfo <<"\ntmpsize "<<tmp.size()<<"\n";
         }
     }
 
