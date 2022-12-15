@@ -71,7 +71,7 @@ public:
         // GISMO_ENSURE( fsystem::exists( mfn.parent_path() ), 
         //     "The specified folder " << mfn.parent_path() << " does not exist, please create it first.");  
         mfile <<"<?xml version=\"1.0\"?>\n";
-        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
+        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">\n";
         mfile <<"<Collection>\n";
     }
     
@@ -108,8 +108,15 @@ public:
     // The recursive case: we take a number, alongside
     // some other numbers, and produce their sum.
     template <class E, typename... Rest>
-    void addFields(std::vector<std::string> labels, const expr::_expr<E> & expr, Rest... rest) {
+    void addFields(std::vector<std::string> labels, const expr::_expr<E> & expr, Rest... rest)
+    {
         m_dataset->addFields(labels, expr, rest...);
+    }
+
+    template<class T>
+    void addField(gsField<T> field, std::string label)
+    {
+        m_dataset->addField(field, label);
     }
 
     void saveTimeStep(){

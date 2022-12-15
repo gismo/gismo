@@ -78,6 +78,26 @@ public:
         addFields(   newlabels, rest...);   // Recursion
     }
 
+    template<class T>
+    void addField(const gsField<T> field, std::string label)
+    {
+        // evaluates the expression and appends it to the vts files
+        //for every patch
+        unsigned nPts = m_options.askInt("numPoints",1000);
+        unsigned precision = m_options.askInt("precision",5);
+
+        std::vector<std::string> tags = toVTK( field.fields(), nPts, precision, label);
+        std::vector<std::string> fnames = filenames();
+
+        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
+        {
+            std::ofstream file;
+            file.open( fnames[k].c_str(), std::ios_base::app); // Append to file
+            file << tags[k];
+            file.close(); 
+        }
+    }
+
     std::vector<std::string> filenames();
 
     void save();
@@ -100,7 +120,7 @@ public:
     /// @param precision Number of decimal points in xml output
     /// @return Vector of strings of all <DataArrays>
     template< class T>
-    static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPts=1000, unsigned precision=5)
+    static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPts=1000, unsigned precision=5, std::string label="")
     {   
         std::vector<std::string> out;
         std::stringstream dataArray;
@@ -125,7 +145,10 @@ public:
             }
 
             // Format as vtk xml string
-            dataArray <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
+            dataArray <<"<DataArray type=\"Float32\" format=\"ascii\" ";
+            if ( "" != label )
+                dataArray << "Name=\"" << label <<"\" ";
+            dataArray << "NumberOfComponents=\"3\">\n";
             // For every point
             for ( index_t j=0; j<xyzPoints.cols(); ++j)
             {
