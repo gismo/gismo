@@ -27,7 +27,7 @@ namespace gismo
 class GISMO_EXPORT gsParaviewDataSet // a collection of .vts files 
 {
 private:
-    const std::string m_basename;
+    std::string m_basename;
     const gsMultiPatch<real_t> * m_geometry;
     gsExprEvaluator<real_t> * m_evaltr;
     gsOptionList m_options;
@@ -37,6 +37,12 @@ public:
                       gsMultiPatch<real_t> * const geometry,
                       gsExprEvaluator<real_t> * eval,
                       gsOptionList options);
+
+    gsParaviewDataSet():m_basename(""),
+                        m_geometry(nullptr),
+                        m_evaltr(nullptr),
+                        m_options(defaultOptions())
+                        {}
 
                        
 

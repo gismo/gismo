@@ -61,7 +61,6 @@ public:
                         counter(0),
                         m_step_count(-1),
                         m_evaluator(evaluator),
-                        m_dataset(nullptr),
                         m_options(gsParaviewDataSet::defaultOptions())
     {
         mfn = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn) + ".pvd";
@@ -95,17 +94,17 @@ public:
     template <typename... Rest>
     void addField(Rest... rest)
     {
-        m_dataset->addField(rest...);
+        m_dataset.addField(rest...);
     }
 
     template <typename... Rest>
     void addFields(Rest... rest)
     {
-        m_dataset->addFields(rest...);
+        m_dataset.addFields(rest...);
     }
 
     void saveTimeStep(){
-        addDataSet(*m_dataset,m_step_count);
+        addDataSet(m_dataset,m_step_count);
     };
 
     /// Finalizes the collection by closing the XML tags, always call
@@ -141,7 +140,7 @@ private:
 
     gsExprEvaluator<> * m_evaluator;
 
-    gsParaviewDataSet* m_dataset;
+    gsParaviewDataSet m_dataset;
 
     gsOptionList m_options;
 
