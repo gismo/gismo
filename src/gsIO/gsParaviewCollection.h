@@ -87,13 +87,6 @@ public:
         mfile << "file=\"" << fn <<"\"/>\n";
     }
 
-    // to do: make time collections as well
-	// ! i is not included in the filename, must be in included fn !
-    void addTimestep(String const & fn, int tstep, String const & ext)
-    {
-        mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
-    }
-
     void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
 
     void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
