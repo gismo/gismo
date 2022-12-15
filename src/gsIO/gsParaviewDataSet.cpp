@@ -18,7 +18,7 @@
 namespace gismo
 {
     gsParaviewDataSet::gsParaviewDataSet(std::string basename,
-                    gsMultiPatch<real_t> * geometry,
+                    gsMultiPatch<real_t> * const geometry,
                     gsExprEvaluator<real_t> * eval,
                     gsOptionList options)
                     :m_basename(basename),
