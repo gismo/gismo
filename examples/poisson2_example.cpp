@@ -206,10 +206,14 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        ev.options().setSwitch("plot.elements", true);
-        ev.writeParaview( u_sol   , G, "solution");
-        //ev.writeParaview( u_ex    , G, "solution_ex");
-        //ev.writeParaview( u, G, "aa");
+
+        gsParaviewCollection collection("solution", &ev);
+        collection.newTimeStep(&mp);
+        collection.addField(u_sol,"numerical solution");
+        collection.addField(u_ex, "exact solution");
+        collection.saveTimeStep();
+        collection.save();
+
 
         gsFileManager::open("solution.pvd");
     }
