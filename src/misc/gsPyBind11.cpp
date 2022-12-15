@@ -16,7 +16,7 @@
 
 #include <gismo.h>
 
-#ifdef GISMO_KLSHELL
+#ifdef gsKLShell_ENABLED
 #include <gsKLShell/gsKLShell.h>
 #include <gsKLShell/gsMaterialMatrixLinear.h>
 #endif
@@ -195,7 +195,7 @@ PYBIND11_MODULE(pygismo, m) {
 
   gismo::pybind11_init_PPN( m );
 
-#ifdef GISMO_KLSHELL
+#ifdef gsKLShell_ENABLED
   gismo::pybind11_init_gsKLShell( klshell );
 #endif
 }
