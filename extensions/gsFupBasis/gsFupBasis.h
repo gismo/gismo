@@ -172,6 +172,15 @@ private:
                 tmp(j) = fupn_call(u, deriv_order, j);
             return mc.dot(tmp);
         }
+        if ( i>size()-m_p-2 )
+        {
+            gsVector<T> mc = mod_coeff(size()-i-1);
+            gsVector<T> tmp(mc.size());
+            index_t c = 0;
+            for (index_t j = i; j<size(); ++j)
+                tmp(c++) = fupn_call(u, deriv_order, j);
+            return mc.dot(tmp.reverse());
+        }
         return fupn_call(u, deriv_order, i);
     }
 
