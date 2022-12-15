@@ -45,8 +45,6 @@ public:
                         {}
 
                        
-
-
     template<class E>
     void addField(const expr::_expr<E> & expr,
                   std::string label)
@@ -102,6 +100,16 @@ public:
             file << tags[k];
             file.close(); 
         }
+    }
+
+    template <class T, typename... Rest>
+    void addFields(std::vector<std::string> labels, const gsField<T> field, Rest... rest) {
+        // keep all but first label 
+        std::vector<std::string> newlabels(labels.cbegin()+1, labels.cend());
+        
+
+        addField(   field, labels[0]);       // Add the expression 'expr' with it's corresponding label ( first one )
+        addFields(   newlabels, rest...);   // Recursion
     }
 
     std::vector<std::string> filenames();
