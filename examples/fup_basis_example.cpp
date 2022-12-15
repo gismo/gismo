@@ -69,6 +69,7 @@ int main(int argc, char* argv[])
 
     gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 7);
     gsInfo << "Evaluation points: \n" << u << "\n\n";
+    u.middleCols(1,5).array() -= 1e-3;
 
     // indices of active (nonzero) functions at parameter u
     gsMatrix<index_t> active = fup.active(u);

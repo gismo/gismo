@@ -140,13 +140,14 @@ private:
             m=act+m_p+1;
             tmp.resize(m > size()-m_p-1 ? m_p-size()+m+1 : 0);
             gsInfo << "Rs" << k << " " << m << "  " << tmp.size() << "\n";
-            /*for (index_t j = 0; j!=m_p+2 && (m > size()-m_p-1); ++j)
-             {  
-                    tmp(j)=result.col(k).bottomRows(size()-m+1).dot(mod_coeff(size()-m).reverse());
-                    m--;
-             }
-             result.col(k).bottomRows(tmp.size())=tmp;*/
-             gsInfo <<"\n";
+            for (index_t j = 0; j!=m_p+2 && (m > size()-m_p-1); ++j)
+            {
+                const index_t sz = m_p-size()+m+1;
+                tmp(j)=result.col(k).bottomRows(sz+1).dot(mod_coeff(sz).reverse());
+                m--;
+            }
+            result.col(k).bottomRows(tmp.size())=tmp;
+            gsInfo <<"\n";
         }
     }
 
