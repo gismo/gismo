@@ -75,7 +75,7 @@ public:
     }
     
     // Full filename ( with extension )
-    void addPart(String const & fn, index_t part=-1, real_t tStep=-1)
+    void addPart(String const & fn, index_t part=-1, real_t tStep=-1, std::string name="")
     {   
         GISMO_ASSERT( gsFileManager::getExtension(fn) != "" , "File without extension");
         GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
@@ -83,6 +83,7 @@ public:
         mfile << "<DataSet ";
         if (part != -1)   mfile << "part=\""<< part <<"\" ";
         if (tStep != -1)  mfile << "timestep=\""<< tStep <<"\" ";
+        if (name != "") mfile << "name=\"" << name << "\" ";
         mfile << "file=\"" << fn <<"\"/>\n";
     }
 

@@ -33,8 +33,18 @@ namespace gismo
         {
             // Keep only the filename because <DataSet> tags in the .pvd
             // file use relative paths
+            std::string name;
+            if (filenames[i].find("_mesh") != std::string::npos)
+                name="Mesh";
+            else if (filenames[i].find("_cnet") != std::string::npos)
+                name="Control Net";
+            else if (filenames[i].find("_patch") != std::string::npos)
+                name="Geometry";
+            else
+                name="";
+            
             addPart( gsFileManager::getBasename(filenames[i]) +"." +
-                     gsFileManager::getExtension(filenames[i]), -1, time); 
+                     gsFileManager::getExtension(filenames[i]), -1, time, name); 
         }
     }
 
