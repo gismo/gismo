@@ -46,7 +46,7 @@ namespace gismo
             time = m_step_count;
         }
         else { m_step_count = time; }
-        std::string name = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn);
+        std::string name = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename);
         name += "_t" + std::to_string(time);
        
         m_dataset = gsParaviewDataSet(name, geometry, m_evaluator, m_options);

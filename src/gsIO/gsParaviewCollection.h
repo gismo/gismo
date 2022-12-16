@@ -57,18 +57,18 @@ public:
     /// Constructor using a filename and an (optional) evaluator.
     gsParaviewCollection(String const  &fn,
                          gsExprEvaluator<> * evaluator=nullptr)
-                        : mfn(fn),
+                        : m_filename(fn),
                         counter(0),
                         m_step_count(-1),
                         m_evaluator(evaluator),
                         m_options(gsParaviewDataSet::defaultOptions())
     {
-        mfn = gsFileManager::getPath(mfn) + gsFileManager::getBasename(mfn) + ".pvd";
-        gsInfo << mfn << "\n";
-        gsFileManager::mkdir( gsFileManager::getPath(mfn) );
-        // if ( "" != mfn.parent_path())
-        // GISMO_ENSURE( fsystem::exists( mfn.parent_path() ), 
-        //     "The specified folder " << mfn.parent_path() << " does not exist, please create it first.");  
+        m_filename = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename) + ".pvd";
+        gsInfo << m_filename << "\n";
+        gsFileManager::mkdir( gsFileManager::getPath(m_filename) );
+        // if ( "" != m_filename.parent_path())
+        // GISMO_ENSURE( fsystem::exists( m_filename.parent_path() ), 
+        //     "The specified folder " << m_filename.parent_path() << " does not exist, please create it first.");  
         mfile <<"<?xml version=\"1.0\"?>\n";
         mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">\n";
         mfile <<"<Collection>\n";
@@ -115,9 +115,9 @@ public:
         mfile <<"</Collection>\n";
         mfile <<"</VTKFile>\n";
 
-        gsInfo << "Exporting to " << mfn << "\n";
-        std::ofstream f( mfn.c_str() );
-        GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
+        gsInfo << "Exporting to " << m_filename << "\n";
+        std::ofstream f( m_filename.c_str() );
+        GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
         f << mfile.rdbuf();
         f.close();
         mfile.str("");
@@ -131,7 +131,7 @@ private:
     std::stringstream mfile;
 
     /// File name
-    std::string mfn;
+    std::string m_filename;
 
     /// Counter for the number of parts (files) added in the collection
     int counter;
