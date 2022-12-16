@@ -90,7 +90,7 @@ public:
         unsigned nPts = m_options.askInt("numPoints",1000);
         unsigned precision = m_options.askInt("precision",5);
 
-        std::vector<std::string> tags = toVTK( field.fields(), nPts, precision, label);
+        std::vector<std::string> tags = toVTK( field, nPts, precision, label);
         std::vector<std::string> fnames = filenames();
 
         for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
@@ -107,7 +107,6 @@ public:
         // keep all but first label 
         std::vector<std::string> newlabels(labels.cbegin()+1, labels.cend());
         
-
         addField(   field, labels[0]);       // Add the expression 'expr' with it's corresponding label ( first one )
         addFields(   newlabels, rest...);   // Recursion
     }
@@ -126,7 +125,7 @@ public:
 
     gsOptionList & options() {return m_options;}
 
-
+private:
     /// @brief  Evaluates gsFunctionSet over all pieces( patches ) and returns all <DataArray> xml tags as a vector of strings
     /// @tparam T 
     /// @param funSet gsFunctionSet to be evaluated
@@ -137,10 +136,6 @@ public:
     static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPts=1000, unsigned precision=5, std::string label="")
     {   
         std::vector<std::string> out;
-        std::stringstream dataArray;
-        dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-        dataArray.precision(precision);
-
         gsMatrix<T> evalPoint;
 
         // Loop over all patches
@@ -158,27 +153,66 @@ public:
                 col++;
             }
 
-            // Format as vtk xml string
-            dataArray <<"<DataArray type=\"Float32\" format=\"ascii\" ";
-            if ( "" != label )
-                dataArray << "Name=\"" << label <<"\" ";
-            dataArray << "NumberOfComponents=\"3\">\n";
-            // For every point
-            for ( index_t j=0; j<xyzPoints.cols(); ++j)
-            {
-                for ( index_t i=0; i!=xyzPoints.rows(); ++i)
-                    dataArray<< xyzPoints(i,j) <<" ";
-                for ( index_t i=xyzPoints.rows(); i<3; ++i)
-                    dataArray<<"0 ";
-            }
-            dataArray <<"\n</DataArray>\n";
-
-            out.push_back( dataArray.str() );
-            dataArray.str(std::string()); // Clear the dataArray stringstream
+            out.push_back( toDataArray(xyzPoints, label, precision)  );
         }
         return out; 
     }
-    
+
+    template< class T>
+    static std::vector<std::string> toVTK(const gsField<T> & field, unsigned nPts=1000, unsigned precision=5, std::string label="")
+    {   
+        std::vector<std::string> out;
+        gsMatrix<T> evalPoint;
+
+        // Loop over all patches
+        for ( index_t i=0; i != field.nPieces(); ++i )
+        {
+            gsGridIterator<T,CUBE> grid(field.fields().basis(i).support(), nPts);
+
+            // Evaluate the MultiPatch for every parametric point of the grid iterator
+            gsMatrix<T> xyzPoints( field.dim(), grid.numPoints());
+            index_t col = 0;
+            for( grid.reset(); grid; ++grid )
+            {
+                evalPoint = *grid; // ..
+                xyzPoints.col(col) =  field.value(evalPoint, i);
+                col++;
+            }
+
+            out.push_back( toDataArray(xyzPoints, label, precision)  );
+        }
+        return out; 
+    }
+
+    /// @brief Formats the coordinates of points as a <DataArray> xml tag for ParaView export.
+    /// @tparam T Arithmetic type
+    /// @param points A gsMatrix<T> with the coordinates of the points, stored column-wise. Its size is (numDims, numPoints)
+    /// @param label A string with the label of the data
+    /// @param precision Number of decimal points in xml output
+    /// @return The raw xml string 
+    template<class T>
+    static std::string toDataArray(const gsMatrix<T> & points, const std::string label, unsigned precision)
+    {
+        std::stringstream stream;
+        stream.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
+        stream.precision(precision); 
+        // Format as vtk xml string
+        stream <<"<DataArray type=\"Float32\" format=\"ascii\" ";
+        if ( "" != label )
+            stream << "Name=\"" << label <<"\" ";
+        stream << "NumberOfComponents=\"3\">\n";
+        // For every point
+        for ( index_t j=0; j<points.cols(); ++j)
+        {
+            for ( index_t i=0; i!=points.rows(); ++i)
+                stream<< points(i,j) <<" ";
+            for ( index_t i=points.rows(); i<3; ++i)
+                stream<<"0 ";
+        }
+        stream <<"\n</DataArray>\n";
+
+        return stream.str();
+    }
 
 };
 } // End namespace gismo
