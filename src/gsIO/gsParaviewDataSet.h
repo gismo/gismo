@@ -85,7 +85,12 @@ public:
     template<class T>
     void addField(const gsField<T> field, std::string label)
     {
-        // evaluates the expression and appends it to the vts files
+        GISMO_ENSURE((field.parDim()  == m_geometry->domainDim() && 
+                      field.geoDim()  == m_geometry->targetDim() &&
+                      field.nPieces() == m_geometry->nPieces() && 
+                      field.patches().coefsSize() == m_geometry->coefsSize()),
+                    "Provided gsField and stored geometry are not compatible!" );
+        // evaluates the field  and appends it to the vts files
         //for every patch
         unsigned nPts = m_options.askInt("numPoints",1000);
         unsigned precision = m_options.askInt("precision",5);
