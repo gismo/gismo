@@ -12,6 +12,7 @@
 */
 
 #include<gsIO/gsParaviewDataSet.h>
+#include<gsIO/gsWriteParaview.h>
 
 
 
@@ -29,7 +30,7 @@ namespace gismo
         unsigned nPts = m_options.askInt("numPoints",1000);
 
         // QUESTION: Can I be certain that the ids are consecutive?
-        std::vector<std::string> fnames = filenames();
+        initFilenames();
         for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {
             gsMatrix<real_t> activeBases = m_geometry->piece(k).support();
@@ -41,7 +42,7 @@ namespace gismo
 
             // initializes individual .vts files
             // for every patch
-            std::ofstream file(fnames[k].c_str());
+            std::ofstream file(m_filenames[k].c_str());
             file << std::fixed; // no exponents
             file << std::setprecision(5); // PLOT_PRECISION
             file <<"<?xml version=\"1.0\"?>\n";
@@ -56,13 +57,9 @@ namespace gismo
     }
 
     
-    std::vector<std::string> gsParaviewDataSet::filenames()
-    {   std::vector<std::string> names;
-        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
-        {
-            names.push_back( m_basename + "_patch" +std::to_string(k)+".vts" );
-        }
-        return names;
+    const std::vector<std::string> gsParaviewDataSet::filenames()
+    {
+        return m_filenames;
     }
 
 
@@ -70,20 +67,42 @@ namespace gismo
     {
         unsigned nPts = m_options.askInt("numPoints",1000);
         unsigned precision = m_options.askInt("precision",5);
+        bool plotElements   = m_options.askSwitch("plotElements", false);
+        bool plotControlNet = m_options.askSwitch("plotControlNet", false);
 
         std::vector<std::string> points = toVTK(*m_geometry,nPts,precision); //m_evaltr->geoMap2vtk(*m_geometry,nPts, precision);
         // QUESTION: Can I be certain that the ids are consecutive?
         for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {
-            std::string filename;
-            filename = m_basename + "_patch" +std::to_string(k)+".vts";
             std::ofstream file;
-            file.open(filename.c_str(), std::ios_base::app); // Append to file 
+            file.open(m_filenames[k].c_str(), std::ios_base::app); // Append to file 
             file <<"</PointData>\n\n\n<!-- GEOMETRY -->\n<Points>\n";
             file << points[k];
             file << "</Points>\n</Piece>\n</StructuredGrid>\n</VTKFile>";
             file.close();
+            if (plotControlNet)
+            {
+                writeSingleControlNet( m_geometry->piece(k), m_basename + "_cnet" + std::to_string(k));
+                m_filenames.push_back( m_basename + "_cnet" + std::to_string(k)+".vtp");
+            } 
+            if ( plotElements)
+            {
+                gsMesh<real_t> msh( gsMultiBasis<real_t>(*m_geometry).basis(k), 2);
+                static_cast<const gsGeometry<real_t>&>(m_geometry->piece(k)).evaluateMesh(msh);
+                gsWriteParaview(msh, m_basename + "_mesh" + std::to_string(k), false);
+                m_filenames.push_back( m_basename + "_mesh" + std::to_string(k)+".vtp");
+            }
         }
         // output text files for each part.
+    }
+
+    void gsParaviewDataSet::initFilenames()
+    {   
+        std::vector<std::string> names;
+        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
+        {
+            names.push_back( m_basename + "_patch" +std::to_string(k)+".vts" );
+        }
+        m_filenames = names;
     }
 } // End namespace gismo

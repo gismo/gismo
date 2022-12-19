@@ -32,6 +32,8 @@ int main(int argc, char const *argv[])
     // Specify plotting options
     collection.options().setInt("numPoints", 100);
     collection.options().setInt("precision",5);
+    collection.options().setSwitch("plotElements",true);
+    collection.options().setSwitch("plotControlNet",true);
 
     // Create a DataSet object [i.e. a group of .vts files]
     collection.newTimeStep(&mPatch);

@@ -28,6 +28,7 @@ class GISMO_EXPORT gsParaviewDataSet // a collection of .vts files
 {
 private:
     std::string m_basename;
+    std::vector<std::string> m_filenames;
     const gsMultiPatch<real_t> * m_geometry;
     gsExprEvaluator<real_t> * m_evaltr;
     gsOptionList m_options;
@@ -116,7 +117,7 @@ public:
         addFields(   newlabels, rest...);   // Recursion
     }
 
-    std::vector<std::string> filenames();
+    const std::vector<std::string> filenames();
 
     void save();
 
@@ -125,6 +126,8 @@ public:
         gsOptionList opt;
         opt.addInt("numPoints", "Number of points per-patch.", 1000);
         opt.addInt("precision", "Number of decimal digits.", 5);
+        opt.addSwitch("plotElements", "Controls plotting of element mesh.", false);
+        opt.addSwitch("plotControlNet", "Controls plotting of control point grid.", false);
         return opt;
     }
 
@@ -218,6 +221,8 @@ private:
 
         return stream.str();
     }
+
+    void initFilenames();
 
 };
 } // End namespace gismo

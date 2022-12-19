@@ -285,6 +285,11 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
 
+/// Export a control net
+template<class T>
+void writeSingleControlNet(const gsGeometry<T> & Geo,
+                           std::string const & fn);
+
 // Please document
 template <class T>
 void plot_errors(const gsMatrix<T> & orig, 
