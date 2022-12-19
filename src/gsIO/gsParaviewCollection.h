@@ -14,8 +14,6 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsMSplines/gsMappedBasis.h>
-#include <gsAssembler/gsExprHelper.h>
 #include <gsIO/gsFileManager.h>
 #include <gsIO/gsParaviewDataSet.h>
 
@@ -42,8 +40,35 @@ namespace gismo {
     pc.save() // finalize and close the file
     \endverbatim
 
+    Or when working with gsExpressions:
+    \verbatim
+    gsParaviewCollection pc(fn, &evaluator ); // Initialize collection
+
+    // Specify plotting options
+    pc.options().setInt("numPoints", 100);
+    pc.options().setInt("precision",5);
+    pc.options().setSwitch("plotElements",true);
+    pc.options().setSwitch("plotControlNet",true);
+
+    // In your solution loop:
+    while ( ... )
+    {
+        // Create new file(s) for this timestep
+        pc.newTimestep(&multiPatch)
+        // Solve here 
+
+        // Write solution fields ( e.g Pressure, Temperature, Stress )
+        pc.addField( gsExpression_1, "label_1" );
+        pc.addField( gsExpression_2, "label_2" );
+        pc.saveTimeStep(); // Save file(s) for this timestep
+    } // end solution loop
+
+    pc.save() // finalize and close the .pvd file
+    \endverbatim
+
+
     The above creates a file with extension pvd. When opening this
-    file with Paraview, the containts of all parts in the list are
+    file with Paraview, the contents of all parts in the list are
     loaded.
 
     \ingroup IO
@@ -58,8 +83,8 @@ public:
     gsParaviewCollection(String const  &fn,
                          gsExprEvaluator<> * evaluator=nullptr)
                         : m_filename(fn),
-                        counter(0),
-                        m_step_count(-1),
+                        m_isSaved(false),
+                        m_time(-1),
                         m_evaluator(evaluator),
                         m_options(gsParaviewDataSet::defaultOptions())
     {
@@ -73,13 +98,16 @@ public:
         mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">\n";
         mfile <<"<Collection>\n";
     }
-    
-    // Full filename ( with extension )
+
+    /// @brief Appends a file to the Paraview collection (.pvd file).
+    /// @param fn Filename to be added. Can also be a path relative to the where the collection file is. 
+    /// @param part Part ID ( optional )
+    /// @param tStep Time step ( optional, else an internal integer counter is used)
+    /// @param name An optional name for this part
     void addPart(String const & fn, index_t part=-1, real_t tStep=-1, std::string name="")
     {   
         GISMO_ASSERT( gsFileManager::getExtension(fn) != "" , "File without extension");
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        // GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+        GISMO_ASSERT( !m_isSaved , "Error: collection has been already saved." );
         mfile << "<DataSet ";
         if (part != -1)   mfile << "part=\""<< part <<"\" ";
         if (tStep != -1)  mfile << "timestep=\""<< tStep <<"\" ";
@@ -87,32 +115,41 @@ public:
         mfile << "file=\"" << fn <<"\"/>\n";
     }
 
+    /// @brief Adds all the files relevant to a gsParaviewDataSet, to the collection.
+    /// @param dataSet The gsParaviewDataSet to be added.
+    /// @param time Time step (optional, else an internal integer counter is used)
     void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
 
+    /// @brief Creates a new time step where all information will be added to.
+    /// @param geometry A gsMultiPatch of the geometry where the solution fields are defined.
+    /// @param time Value of time for this timestep (optional, else an internal integer counter is used)
     void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
 
  
+    /// @brief All arguments are forwarder to gsParaviewDataSet::addField().
     template <typename... Rest>
     void addField(Rest... rest)
     {
         m_dataset.addField(rest...);
     }
 
+    /// @brief All arguments are forwarder to gsParaviewDataSet::addFields().
     template <typename... Rest>
     void addFields(Rest... rest)
     {
         m_dataset.addFields(rest...);
     }
 
+    /// @brief The current timestep is saved and files written to disk.
     void saveTimeStep(){
-        addDataSet(m_dataset,m_step_count);
+        addDataSet(m_dataset,m_time);
     };
 
     /// Finalizes the collection by closing the XML tags, always call
     /// this function (once) when you finish adding files
     void save()
     {
-        GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
+        GISMO_ASSERT(!m_isSaved, "Error: gsParaviewCollection::save() already called." );
         mfile <<"</Collection>\n";
         mfile <<"</VTKFile>\n";
 
@@ -122,9 +159,10 @@ public:
         f << mfile.rdbuf();
         f.close();
         mfile.str("");
-        counter = -1;
+        m_isSaved=true;
     }
 
+    /// @brief Accessor to the current options.
     gsOptionList & options() {return m_options;}
 
 private:
@@ -134,10 +172,10 @@ private:
     /// File name
     std::string m_filename;
 
-    /// Counter for the number of parts (files) added in the collection
-    int counter;
+    /// Flag for checking if collection is already saved.
+    bool m_isSaved;
 
-    int m_step_count;
+    int m_time;
 
     gsExprEvaluator<> * m_evaluator;
 

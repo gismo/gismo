@@ -27,7 +27,7 @@ namespace gismo
         dataSet.save(); // the actual files are written to disk/finalized
         std::vector<std::string> filenames( dataSet.filenames() );
 
-        time = time==-1 ? m_step_count : time;
+        time = time==-1 ? m_time : time;
         mfile << "<!-- Time = " << time << " -->\n"; 
         for (size_t i=0; i!=filenames.size(); i++)
         {
@@ -43,6 +43,7 @@ namespace gismo
             else
                 name="";
             
+            // This is so only the relative part of the path in filenames[] is kept
             addPart( gsFileManager::getBasename(filenames[i]) +"." +
                      gsFileManager::getExtension(filenames[i]), -1, time, name); 
         }
@@ -52,10 +53,10 @@ namespace gismo
     {   
         if (-1 == time )
         {
-            m_step_count += 1.0;
-            time = m_step_count;
+            m_time += 1.0;
+            time = m_time;
         }
-        else { m_step_count = time; }
+        else { m_time = time; }
         std::string name = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename);
         name += "_t" + std::to_string(time);
        
