@@ -719,7 +719,7 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
     {
         fileName = fn + util::to_string(i);
         writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
-        collection.addPart(fileName, ".vts");
+        collection.addPart(fileName + ".vts");
     }
     collection.save();
 }
