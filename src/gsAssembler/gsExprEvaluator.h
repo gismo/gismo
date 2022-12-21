@@ -998,7 +998,7 @@ std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & exp
     return out; 
 }
 
-/// @brief  Evaluates a geometry map over all patches and returns all <Points> xml tags as a vecotr of strings
+/// @brief  Evaluates a geometry map over all patches and returns all <Points> xml tags as a vector of strings
 /// @tparam T 
 /// @param geoMap Geometry map to be evaluated
 /// @return Vector of strings of all <DataArrays>
