@@ -31,11 +31,11 @@
 
 #include <Eigen/Core>
 
-#if defined(GISMO_WITH_MPFR)
+#if defined(gsMpfr_ENABLED)
 #include <unsupported/Eigen/MPRealSupport>
 #endif
 
-#if defined(GISMO_WITH_GMP)
+#if defined(gsGmp_ENABLED)
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 
@@ -72,7 +72,7 @@
 // PaStiX
 //#include <Eigen/PaStiXSupport>
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 #include <pybind11/eigen.h>
 #endif
 

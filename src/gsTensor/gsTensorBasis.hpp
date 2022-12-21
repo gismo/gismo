@@ -822,13 +822,39 @@ void gsTensorBasis<d,T>::refineElements(std::vector<index_t> const & elements)
 
 
 template<short_t d, class T>
-void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
+void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int dir)
 {
     // Simple implementation: get the transfer matrix and apply it.
     // Could be done more efficiently if needed.
     gsSparseMatrix<T, RowMajor> transfer;
-    this->uniformRefine_withTransfer( transfer, numKnots, mul );
-    coefs = transfer * coefs;
+    if (dir==-1)
+    {
+        this->uniformRefine_withTransfer( transfer, numKnots, mul );
+        coefs = transfer * coefs;
+    }
+    else
+    {
+        GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
+                      "Invalid basis component "<< dir <<" requested for degree elevation" );
+
+        gsVector<index_t,d> sz;
+        this->size_cwise(sz);
+
+
+        this->m_bases[dir]->uniformRefine_withTransfer( transfer, numKnots, mul );
+
+        const index_t n = coefs.cols();
+
+        swapTensorDirection(0, dir, sz, coefs);
+        coefs.resize( sz[0], n * sz.template tail<static_cast<short_t>(d-1)>().prod() );
+
+        coefs = transfer * coefs;
+
+        sz[0] = coefs.rows();
+
+        coefs.resize( sz.prod(), n );
+        swapTensorDirection(0, dir, sz, coefs);
+    }
 }
 
 
@@ -953,13 +979,14 @@ template<short_t d, class T>
 void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                                    const gsBasis<T> & other,
                                    gsMatrix<index_t> & bndThis,
-                                   gsMatrix<index_t> & bndOther) const
+                                   gsMatrix<index_t> & bndOther,
+                                   index_t offset) const
 {
     if ( const Self_t * _other = dynamic_cast<const Self_t*>(&other) )
     {
         // Grab the indices to be matched
-        bndThis = this->boundary( bi.first() .side() );
-        bndOther= _other->boundary( bi.second().side() );
+        bndThis = this->boundaryOffset( bi.first() .side(), offset );
+        bndOther= _other->boundaryOffset( bi.second().side(), offset );
         GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
                      "Input error, sizes do not match: "
                      <<bndThis.rows()<<"!="<<bndOther.rows() );
@@ -1006,6 +1033,15 @@ void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
     }
     
     gsWarn<<"Cannot match with "<< other <<"\n";
+}
+
+template<short_t d, class T>
+void gsTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
+                                   const gsBasis<T> & other,
+                                   gsMatrix<index_t> & bndThis,
+                                   gsMatrix<index_t> & bndOther) const
+{
+    this->matchWith(bi,other,bndThis,bndOther,0);
 }
 
 template<short_t d, class T>

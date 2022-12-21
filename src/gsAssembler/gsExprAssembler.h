@@ -17,6 +17,8 @@
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsExprHelper.h>
 
+#include <gsAssembler/gsCPPInterface.h>
+
 namespace gismo
 {
 
@@ -285,6 +287,13 @@ public:
     void initMatrix()
     {
         resetDimensions();
+        clearMatrix();
+    }
+
+    void clearRhs() { m_rhs.setZero(); }
+
+    void clearMatrix()
+    {
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
         if ( 0 == m_matrix.rows() || 0 == m_matrix.cols() )
@@ -354,6 +363,13 @@ public:
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
 
+    /// \brief Assembles the Jacobian matrix of the expression \a args with
+    // respect to the solution \a u
+    template<class expr> void assembleJacobian(const expr residual, solution & u);
+
+    template<class expr> void assembleJacobianIfc(const ifContainer & iFaces,
+                                                  const expr residual, solution & u);
+
 private:
 
     void _blockDims(gsVector<index_t> & rowSizes,
@@ -406,12 +422,14 @@ private:
     } _checkExpr;
 
     // Evaluates expression and and assembles global matrix/rhs
+    template<bool eliminateFixedPart = true>
     struct _eval
     {
         gsSparseMatrix<T> & m_matrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
         gsMatrix<T>         localMat;
+        gsMatrix<T>         aux;
 
         _eval(gsSparseMatrix<T> & _matrix,
               gsMatrix<T>       & _rhs,
@@ -440,6 +458,24 @@ private:
             }
 
         }// operator()
+
+        template <typename E> void accJacMatrix(const gismo::expr::_expr<E> & ee, index_t j, T scalar = (T)1)
+        {
+            GISMO_ASSERT(E::isVector(), "Expecting a vector expression.");
+
+            // ------- Compute  -------
+            const T * w = m_quWeights.data();
+            aux.noalias() = (*w) * ee.eval(0);
+            for (index_t k = 1; k != m_quWeights.rows(); ++k)
+                aux.noalias() += (*(++w)) * ee.eval(k);
+
+            if ( 0 == localMat.size() )
+            {
+                 localMat.setZero(aux.rows(), aux.cols() );
+            }
+            //localMat.resize(aux.rows(), aux.rows());// happens once
+            localMat.col(j) += scalar * aux;
+        }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
@@ -529,12 +565,13 @@ template<class T>
 gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
-    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
+    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);// deprecated
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
     opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
+    opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     return opt;
 }
 
@@ -643,13 +680,13 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
+    m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
 
     gsVector<T> quWeights; // quadrature weights
-
-    _eval ee(m_matrix, m_rhs, quWeights);
+    _eval<true> ee(m_matrix, m_rhs, quWeights);
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
@@ -684,7 +721,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             op_tuple(ee, arg_tpl);
         }
     }
-    
+
 }//omp parallel
     m_matrix.makeCompressed();
 }
@@ -706,11 +743,12 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 // #   endif
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);
+    m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
     gsVector<T> quWeights;               // quadrature weights
 
-    _eval ee(m_matrix, m_rhs, quWeights);
+    _eval<true> ee(m_matrix, m_rhs, quWeights);
 
 //#   pragma omp parallel for
     for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
@@ -755,25 +793,35 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
+    typedef typename gsFunction<T>::uPtr ifacemap;
+
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
+    m_exprdata->activateFlags(SAME_ELEMENT); //note: SAME_ELEMENT is 0 at the opposite/mirrored patch
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights;// quadrature weights
-    _eval ee(m_matrix, m_rhs, quWeights);
+    _eval<true> ee(m_matrix, m_rhs, quWeights);
 
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+
+    ifacemap interfaceMap;
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
     {
-        const boundaryInterface & iFace = *it;
+        // If flipSide switch is enabled, then the integration will be
+        // performed on the opposite side of the interface
+        const boundaryInterface & iFace =  flipSide ? it->getInverse() : *it;
         const index_t patch1 = iFace.first() .patch;
         const index_t patch2 = iFace.second().patch;
 
-        //const gsAffineFunction<T> interfaceMap(m_pde_ptr->patches().getMapForInterface(bi));
-        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
-                                          m_exprdata->multiBasis().basis(patch1).support(),
-                                          m_exprdata->multiBasis().basis(patch2).support() );
+        if (iFace.type() == interaction::conforming)
+            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                      m_exprdata->multiBasis().basis(patch1).support(),
+                                                      m_exprdata->multiBasis().basis(patch2).support() );
+        else
+            interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
@@ -789,7 +837,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+            interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             if (m_exprdata->points().cols()==0)
                 continue;
@@ -808,5 +856,165 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 
     m_matrix.makeCompressed();
 }
+
+template<class T> template<class expr>
+void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
+
+    clearMatrix();
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+    m_exprdata->parse(residual, u);
+    m_exprdata->activateFlags(SAME_ELEMENT);
+    //op_tuple(__printExpr(), arg_tpl);
+
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+
+    gsVector<T> quWeights; // quadrature weights
+
+    _eval<false> ee(m_matrix, m_rhs, quWeights);
+    static const T delta = 0.00001;
+
+    // Note: omp thread will loop over all patches and will work on Ep/nt
+    // elements, where Ep is the elements on the patch.
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    {
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
+
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
+            m_exprdata->multiBasis().basis(patchInd).makeDomainIterator();
+        m_exprdata->getElement().set(*domIt,quWeights);
+
+        // Start iteration over elements of patchInd
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
+        for (; domIt->good(); domIt->next() )
+#       endif
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
+            // Evaluate at quadrature points
+            m_exprdata->precompute(patchInd);
+
+            ee(residual);
+
+            for ( index_t j = 0; j< u.space().cardinality(); j++ )
+            {// for all basis functions (column j of local matrix)
+                //Perturbe \a u
+                u.perturbLocal( delta  , j, patchInd);
+                ee.accJacMatrix(residual, j,  8 / (12*delta) );
+                u.perturbLocal( delta  , j, patchInd);
+                ee.accJacMatrix(residual, j, -1 / (12*delta) );
+                u.perturbLocal(-3*delta, j, patchInd);
+                ee.accJacMatrix(residual, j, -8 / (12*delta) );
+                u.perturbLocal( -delta , j, patchInd);
+                ee.accJacMatrix(residual, j,  1 / (12*delta) );
+                //Unperturb \a u
+                u.perturbLocal(2*delta, j, patchInd);
+            }
+
+            // Assemble contributions of the element to the global matrix
+            ee.template push<true>(u.space().rowVar(), u.space().rowVar());
+        }
+    }
+
+}//omp parallel
+    m_matrix.makeCompressed();
+}
+
+
+template<class T> template<class expr>
+void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
+                                             const expr residual, solution & u)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
+
+    clearMatrix();
+
+    m_exprdata->parse(residual, u);
+    m_exprdata->activateFlags(SAME_ELEMENT);
+    //op_tuple(__printExpr(), arg_tpl);
+
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    gsVector<T> quWeights; // quadrature weights
+
+    _eval<false> ee(m_matrix, m_rhs, quWeights);
+    static const T delta = 0.00001;
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+
+    for (gsBoxTopology::const_iiterator it = iFaces.begin();
+         it != iFaces.end(); ++it )
+    {
+        // If flipSide switch is enabled, then the integration will be
+        // performed on the opposite side of the interface
+        const boundaryInterface & iFace =  flipSide ? it->getInverse() : *it;
+        const index_t patch1 = iFace.first() .patch;
+        //const index_t patch2 = iFace.second().patch;
+
+        gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(),
+                                       m_exprdata->multiBasis(), iFace);
+
+        QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
+                                   m_options, iFace.first().side().direction());
+
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->multiBasis().basis(patch1)
+            .makeDomainIterator(iFace.first().side());
+        m_exprdata->getElement().set(*domIt, quWeights);
+
+        // Start iteration over elements
+        for (; domIt->good(); domIt->next() )
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(iFace);
+
+            ee(residual);
+
+            for ( index_t j = 0; j< u.space().cardinality(); j++ )
+            {// for all basis functions (column j of local matrix)
+                //Perturbe \a u
+                u.perturbLocal( delta  , j, patch1);
+                ee.accJacMatrix(residual, j,  8 / (12*delta) );
+                u.perturbLocal( delta  , j, patch1);
+                ee.accJacMatrix(residual, j, -1 / (12*delta) );
+                u.perturbLocal(-3*delta, j, patch1);
+                ee.accJacMatrix(residual, j, -8 / (12*delta) );
+                u.perturbLocal( -delta , j, patch1);
+                ee.accJacMatrix(residual, j,  1 / (12*delta) );
+                //Unperturb \a u
+                u.perturbLocal(2*delta, j, patch1);
+            }
+
+            // Assemble contributions of the element to the global matrix
+            ee.template push<true>(u.space().rowVar(), u.space().rowVar());
+        }
+    }
+
+    m_matrix.makeCompressed();
+}
+
 
 } //namespace gismo

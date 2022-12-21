@@ -9,7 +9,7 @@ namespace gismo
 
 CLASS_TEMPLATE_INST gsFitting<real_t>;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 void pybind11_init_gsFitting(py::module &m)
@@ -25,6 +25,7 @@ void pybind11_init_gsFitting(py::module &m)
     .def("compute", &Class::compute, "Computes the least square fit for a gsBasis.")
     .def("applySmoothing", &Class::applySmoothing, "apply smoothing to the input matrix.")
     .def("smoothingMatrix", &Class::smoothingMatrix, "get the amoothing matrix.")
+    .def("parameterCorrection", &Class::parameterCorrection, "Apply parameter correction steps.")
     ;
 }
 #endif

@@ -29,7 +29,7 @@
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
 #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
@@ -286,9 +286,8 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
-// gsParaviewDataSet
-
 class gsParaviewDataSet;
+class gsSurfMesh;
 
 /// @endcond
 

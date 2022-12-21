@@ -12,7 +12,7 @@
 #
 ######################################################################
 
-if(GISMO_EXTRA_DEBUG)
+if(GISMO_WITH_XDEBUG)
 
   if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang")
     # using Clang
@@ -72,4 +72,4 @@ if(GISMO_EXTRA_DEBUG)
 
   #add_definitions(-DEIGEN_INTERNAL_DEBUGGING)
 
-endif(GISMO_EXTRA_DEBUG)
+endif(GISMO_WITH_XDEBUG)

@@ -25,10 +25,8 @@
 
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
-//#include <gsUtils/gsMesh/gsHeMesh.h>
 
-
-#define PLOT_PRECISION 5
+#define PLOT_PRECISION 12
 
 namespace gismo
 {
@@ -696,6 +694,35 @@ void gsWriteParaview(const gsField<T> & field,
     collection.save();
 }
 
+/// Write a file containing a solution field over a geometry
+template<class T>
+void gsWriteParaview(gsFunctionSet<T> const& geo,
+                     gsFunctionSet<T> const& func,
+                     std::string const & fn,
+                     unsigned npts)
+{
+    /*
+    if (mesh && (!field.isParametrized()) )
+    {
+        gsWarn<< "Cannot plot mesh from non-parametric field.";
+        mesh = false;
+    }
+    */
+
+    GISMO_ASSERT(geo.nPieces()==func.nPieces(),"Function sets must have same number of pieces, but func has "<<func.nPieces()<<" and geo has "<<geo.nPieces());
+
+    const unsigned n = geo.nPieces();
+    gsParaviewCollection collection(fn);
+    std::string fileName;
+
+    for ( unsigned i=0; i < n; ++i )
+    {
+        fileName = fn + util::to_string(i);
+        writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
+        collection.addPart(fileName, ".vts");
+    }
+    collection.save();
+}
 
 /// Export a Geometry without scalar information
 template<class T>
@@ -733,7 +760,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 	    // additional multiplication by deg - 1 ensures quadratic
 	    // elements to be approximated by at least two lines etc.
 	    ptsPerEdge = cast<T,int>(
-            static_cast<T>(math::max(Geo.basis().maxDegree()-1, (index_t)1)) * math::pow(evalPtsPerElem, T(1.0)/static_cast<T>(Geo.domainDim())) );
+            static_cast<T>(math::max(Geo.basis().maxDegree()-1, (short_t)1)) * math::pow(evalPtsPerElem, T(1.0)/static_cast<T>(Geo.domainDim())) );
 	}
 	else
 	{
@@ -1625,7 +1652,6 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
 
     file.close();
 }
-
 
 template <typename T>
 void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,

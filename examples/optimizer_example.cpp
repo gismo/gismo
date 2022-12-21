@@ -15,7 +15,14 @@
 
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
+
+#ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
+#endif
+
+#ifdef gsIpOpt_ENABLED
+#include <gsIpOpt/gsIpOpt.h>
+#endif
 
 using namespace gismo;
 
@@ -36,11 +43,15 @@ using namespace gismo;
 
 // To define an optimization problem we inherit from gsOptProblem class
 // and implement the default constructor and few inherited virtual functions
+
+//! [OptProblemExample Class]
 template <typename T>
 class gsOptProblemExample : public gsOptProblem<T>
+//! [OptProblemExample Class]
 {
 public:
 
+    //! [OptProblemExample Constructor]
     // The constructor defines all properties of our optimization problem
     gsOptProblemExample()
     {
@@ -89,10 +100,11 @@ public:
         m_conJacRows[1] = 0;
         m_conJacCols[1] = 1;
     }
-
+    //! [OptProblemExample Constructor]
 
 public:
 
+    //! [OptProblemExample evalObj]
     // The evaluation of the objective function must be implemented
     T evalObj( const gsAsConstVector<T> & u ) const
     {
@@ -101,7 +113,9 @@ public:
         //return -(x1 - 2.0) * (x1 - 2.0);
         return (x1 - 2.0) * (x1 - 2.0);
     }
+    //! [OptProblemExample evalObj]
 
+    //! [OptProblemExample gradObj_into]
     // The gradient of the objective function (resorts to finite differences if left unimplemented)
     void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const  
     {
@@ -115,7 +129,9 @@ public:
         //result(1,0)  =   -2.0*(x1 - 2.0);
         result(1,0)  =   2.0*(x1 - 2.0);
     }
+    //! [OptProblemExample gradObj_into]
 
+    //! [OptProblemExample evalCon_into]
     // The evaluation of the constraints must be implemented
     void evalCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
@@ -126,7 +142,9 @@ public:
         const T x1 = u(1,0);
         result[0]  = -(x0*x0 + x1 - 1.0);
     }
+    //! [OptProblemExample evalCon_into]
 
+    //! [OptProblemExample jacobCon_into]
     // The Jacobian of the constraints (resorts to finite differences if left unimplemented)
     void jacobCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
@@ -140,6 +158,7 @@ public:
         // element at 0,1: grad_{x1} g_{1}(x)
         result[1] = -1.0;
     }
+    //! [OptProblemExample jacobCon_into]
 
 private:
 
@@ -159,6 +178,7 @@ private:
 
     using gsOptProblem<T>::m_curDesign;
 };
+//! [OptProblem]
 
 int main(int argc, char* argv[])
 {
@@ -166,7 +186,7 @@ int main(int argc, char* argv[])
     index_t solver  = 0;
 
     gsCmdLine cmd("Demonstrates the use of optimizers.");
-    cmd.addInt( "s", "solver", "Solver used for optimization: 0 - gsGradientDescent, 1 - gsHLBFGS, 2 - IpOpt", solver);
+    cmd.addInt( "s", "solver", "Solver used. 0:gsGradientDescent, 1:gsHLBFGS, 2:IpOpt", solver);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -179,7 +199,7 @@ int main(int argc, char* argv[])
     gsInfo << "\n      0 = x0^2 + x1 - 1     (constraint)";
     gsInfo << "\n      -1 <= x0 <= 1         (variable bounds)\n\n";
 
-
+    //! [Optimizer selection]
     gsOptProblemExample<real_t> problem;
 
     gsOptimizer<real_t> * optimizer;
@@ -187,54 +207,56 @@ int main(int argc, char* argv[])
     {
         case 0 :
         optimizer = new gsGradientDescent<>(&problem);
+        // Set the minimum length of the gradient.
+        // The optimizer stops minimizing if the gradient length falls below this
+        // value (default is 1e-9).
+        optimizer->options().setReal("MinGradientLength",1e-9);
+
+        // Set the minimum length of the step.
+        // The optimizer stops minimizing if the step length falls below this
+        // value (default is 1e-9).
+        optimizer->options().setReal("MinStepLength",1e-9);
         break;
 
-#ifdef GISMO_WITH_HLBFGS
+#ifdef gsHLBFGS_ENABLED
         case 1 :
         optimizer = new gsHLBFGS<real_t>(&problem);
         break;
 #endif
-#ifdef GISMO_WITH_IPOPT
+#ifdef gsIpOpt_ENABLED
         case 2:
-        // optimizer =
-        // Set the momentum rate used for the step calculation (default is 0.0).
-        // Defines how much momentum is kept from previous iterations.
-        //optimizer->setMomentum(4);
-
-        // // Turn verbosity on, so the optimizer prints status updates after each
-        // // iteration.
-        // optimizer->options().setInt("Verbose",14);
+        optimizer = new gsIpOpt<real_t>(&problem);
         break;
 #endif
         default:
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
     }
+    //! [Optimizer selection]
 
-                
+    //! [Optimizer options]
     // Set number of iterations as stop criterion.
-    // Set it to 0 or negative for infinite iterations (default is 0).
     optimizer->options().setInt("MaxIterations",200);
 
-    // Set the minimum length of the gradient.
-    // The optimizer stops minimizing if the gradient length falls below this
-    // value (default is 1e-9).
-    optimizer->options().setReal("MinGradientLength",1e-9);
+    // Set verbosity
+    optimizer->options().setInt("Verbose",2);
 
-    // Set the minimum length of the step.
-    // The optimizer stops minimizing if the step length falls below this
-    // value (default is 1e-9).
-    optimizer->options().setReal("MinStepLength",1e-9);
+    //! [Optimizer options]
 
+    //! [Initial solution]
     gsVector<> in(2);
     in << 0.5, 1.5;        
+    //! [Initial solution]
 
+    //! [Solve]
     // Start the optimization
-    optimizer->solve();
+    optimizer->solve(in);
 
+    //! [Output]
     // Print final design info
     gsInfo << "\nNumber of iterations : " << optimizer->iterations() <<"\n";
     gsInfo << "Final objective value: " << optimizer->objective() <<"\n";
     gsInfo << "Final design: " << optimizer->currentDesign().transpose() <<"\n";
+    //! [Output]
 
     delete optimizer;
     return EXIT_SUCCESS;

@@ -45,7 +45,7 @@ CLASS_TEMPLATE_INST gsXml< gsHBSpline<3,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHBSpline<4,real_t> >;
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 
@@ -82,8 +82,8 @@ void pybind11_init_gsHBSplineBasis2(py::module &m)
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(               ) const> (&Class::support), "Get the support of the basis")
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(const index_t &) const> (&Class::support), "Get the support of the basis function with an index i")
     .def("tensorLevel",&Class::tensorLevel,"Returns the tensor basis on level i")
-    .def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-    	py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+      .def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments 
 
     .def("refine  ", static_cast<void (Class::*)(gsMatrix<real_t> const &, int)> (&Class::refine  ), "Refines the basis given a box")
     .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &, int)> (&Class::unrefine), "Refines the basis given a box")
@@ -130,9 +130,8 @@ void pybind11_init_gsHBSplineBasis3(py::module &m)
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(               ) const> (&Class::support), "Get the support of the basis")
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(const index_t &) const> (&Class::support), "Get the support of the basis function with an index i")
     .def("tensorLevel",&Class::tensorLevel,"Returns the tensor basis on level i")
-    .def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-    	py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
-
+.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments 
     .def("refine  ", static_cast<void (Class::*)(gsMatrix<real_t> const &, int)> (&Class::refine  ), "Refines the basis given a box")
     .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &, int)> (&Class::unrefine), "Refines the basis given a box")
     .def("refine  ", static_cast<void (Class::*)(gsMatrix<real_t> const &     )> (&Class::refine  ), "Refines the basis given a box")
@@ -177,8 +176,8 @@ void pybind11_init_gsHBSplineBasis4(py::module &m)
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(               ) const> (&Class::support), "Get the support of the basis")
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(const index_t &) const> (&Class::support), "Get the support of the basis function with an index i")
     .def("tensorLevel",&Class::tensorLevel,"Returns the tensor basis on level i")
-    .def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-    	py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments 
 
     .def("refine  ", static_cast<void (Class::*)(gsMatrix<real_t> const &, int)> (&Class::refine  ), "Refines the basis given a box")
     .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &, int)> (&Class::unrefine), "Refines the basis given a box")
@@ -217,8 +216,8 @@ void pybind11_init_gsHBSpline2(py::module &m)
 
 	// Derived from gsHTensorBasis
 	.def("size",&Class::size,"Returns the domain dimension")
-	.def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-		py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+	.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+		py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
 
 	// .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &     )> (&Class::unrefine), "Refines the basis given a box")
 	.def("refineElements  ",&Class::refineElements  ,"Refines the basis given elements  ")
@@ -251,8 +250,8 @@ void pybind11_init_gsHBSpline3(py::module &m)
 
 	// Derived from gsHTensorBasis
 	.def("size",&Class::size,"Returns the domain dimension")
-	.def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-		py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+	.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+		py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
 
 	// .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &     )> (&Class::unrefine), "Refines the basis given a box")
 	.def("refineElements  ",&Class::refineElements  ,"Refines the basis given elements  ")
@@ -285,8 +284,8 @@ void pybind11_init_gsHBSpline4(py::module &m)
 
 	// Derived from gsHTensorBasis
 	.def("size",&Class::size,"Returns the domain dimension")
-	.def("uniformRefine", static_cast<void (Class::*)(int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
-		py::arg("numKnots") = 1, py::arg("mul") = 1) //default arguments
+	.def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+		py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
 
 	// .def("unrefine", static_cast<void (Class::*)(gsMatrix<real_t> const &     )> (&Class::unrefine), "Refines the basis given a box")
 	.def("refineElements  ",&Class::refineElements  ,"Refines the basis given elements  ")

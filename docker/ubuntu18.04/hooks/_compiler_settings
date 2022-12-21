@@ -1,0 +1,76 @@
+#!/bin/bash
+# hooks/_compiler_settings
+
+# Compiler setting
+shopt -s extglob;
+case "$IMAGE_NAME" in
+
+    # Clang
+    
+    ?(*\-)clang3.9?(\-*))
+        CC=clang-3.9
+        CXX=clang++-3.9
+        ;;
+    ?(*\-)clang4.0?(\-*))
+        CC=clang-4.0
+        CXX=clang++-4.0
+        ;;
+    ?(*\-)clang5.0?(\-*))
+        CC=clang-5.0
+        CXX=clang++-5.0
+        ;;
+    ?(*\-)clang6.0?(\-*))
+        CC=clang-6.0
+        CXX=clang++-6.0
+        ;;
+    ?(*\-)clang7?(\-*))
+        CC=clang-7
+        CXX=clang++-7
+        ;;
+    ?(*\-)clang8?(\-*))
+        CC=clang-8
+        CXX=clang++-8
+        ;;
+    ?(*\-)clang9?(\-*))
+        CC=clang-9
+        CXX=clang++-9
+        ;;
+
+    # GCC
+                       
+    ?(*\-)gcc4.8?(\-*))
+        CC=gcc-4.8
+        CXX=g++-4.8
+        FC=gfortran-4.8
+        ;;
+    ?(*\-)gcc5?(\-*))
+        CC=gcc-5
+        CXX=g++-5
+        FC=gfortran-5
+        ;;
+    ?(*\-)gcc6?(\-*))
+        CC=gcc-6
+        CXX=g++-6
+        FC=gfortran-6
+        ;;    
+    ?(*\-)gcc7?(\-*))
+        CC=gcc-7
+        CXX=g++-7
+        FC=gfortran-7
+        ;;
+    ?(*\-)gcc8?(\-*))
+        CC=gcc-8
+        CXX=g++-8
+        FC=gfortran-8
+        ;;
+
+    *)
+        echo "[***] Unsupported compiler"
+        exit 1
+        ;;
+esac
+shopt -u extglob;
+
+echo "[---] CC:                     ${CC}"
+echo "[---] CXX:                    ${CXX}"
+echo "[---] FC:                     ${FC}"
