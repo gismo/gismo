@@ -328,8 +328,6 @@ public:
     template<class E>
     std::vector<std::string> expr2vtk(const expr::_expr<E> & expr, std::string label="SolutionField",unsigned nPts=1000, unsigned precision=5);
 
-    std::vector<std::string> geoMap2vtk(const geometryMap geoMap, unsigned nPts=1000, unsigned precision=5);
-
 private:
 
     template<class E, bool gmap>
@@ -992,48 +990,6 @@ std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & exp
             }
         }
         dataArray <<"\n</DataArray>\n";
-        out.push_back( dataArray.str() );
-        dataArray.str(std::string()); // Clear the dataArray stringstream
-    }
-    return out; 
-}
-
-/// @brief  Evaluates a geometry map over all patches and returns all <Points> xml tags as a vector of strings
-/// @tparam T 
-/// @param geoMap Geometry map to be evaluated
-/// @return Vector of strings of all <DataArrays>
-template<class T>
-std::vector<std::string> gsExprEvaluator<T>::geoMap2vtk(const geometryMap geoMap, unsigned nPts, unsigned precision)
-{   
-    std::vector<std::string> out;
-    std::stringstream dataArray;
-    dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-    dataArray.precision(precision);
-
-    //if false, embed topology ?
-    const index_t n = m_exprdata->multiBasis().nBases();
-
-    gsMatrix<T> pts, vals, ab;
-
-    for ( index_t i=0; i != n; ++i )
-    {
-        ab = m_exprdata->multiBasis().piece(i).support();
-        gsGridIterator<T,CUBE> pt(ab, nPts);
-        eval(geoMap, pt, i);
-        nPts = pt.numPoints();
-        pts = allValues(m_elWise.size()/nPts, nPts);
-
-        dataArray <<"<Points>\n";
-        dataArray <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\">\n";
-        for ( index_t j=0; j<pts.cols(); ++j)
-        {
-            for ( index_t i=0; i!=pts.rows(); ++i)
-                dataArray<< pts(i,j) <<" ";
-            for ( index_t i=pts.rows(); i<3; ++i)
-                dataArray<<"0 ";
-        }
-        dataArray <<"\n</DataArray>\n</Points>\n";
-
         out.push_back( dataArray.str() );
         dataArray.str(std::string()); // Clear the dataArray stringstream
     }
