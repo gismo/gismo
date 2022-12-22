@@ -208,6 +208,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
 
         gsParaviewCollection collection("solution", &ev);
+        collection.options().setSwitch("plotElements", true);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
         collection.addField(u_ex, "exact solution");

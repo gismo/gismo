@@ -71,6 +71,9 @@ public:
         unsigned nPts = m_options.askInt("numPoints",1000);
         unsigned precision = m_options.askInt("precision",5);
 
+        //gsExprEvaluator<real_t> ev;
+        //gsMultiBasis<real_t> mb(*m_geometry);
+        //ev.setIntegrationElements(mb);
         std::vector<std::string> tags = m_evaltr->expr2vtk(expr, label,nPts,precision);
         std::vector<std::string> fnames = filenames();
 
@@ -177,15 +180,15 @@ private:
     static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPts=1000, unsigned precision=5, std::string label="")
     {   
         std::vector<std::string> out;
-        gsMatrix<T> evalPoint;
+        gsMatrix<T> evalPoint, xyzPoints;
 
         // Loop over all patches
         for ( index_t i=0; i != funSet.nPieces(); ++i )
         {
-            gsGridIterator<T,CUBE> grid(funSet.basis(i).support(), nPts);
+            gsGridIterator<T,CUBE> grid(funSet.piece(i).support(), nPts);
 
             // Evaluate the MultiPatch for every parametric point of the grid iterator
-            gsMatrix<T> xyzPoints( funSet.targetDim(), grid.numPoints());
+            xyzPoints.resize( funSet.targetDim(), grid.numPoints() );
             index_t col = 0;
             for( grid.reset(); grid; ++grid )
             {
@@ -203,15 +206,15 @@ private:
     static std::vector<std::string> toVTK(const gsField<T> & field, unsigned nPts=1000, unsigned precision=5, std::string label="")
     {   
         std::vector<std::string> out;
-        gsMatrix<T> evalPoint;
+        gsMatrix<T> evalPoint, xyzPoints;
 
         // Loop over all patches
         for ( index_t i=0; i != field.nPieces(); ++i )
         {
-            gsGridIterator<T,CUBE> grid(field.fields().basis(i).support(), nPts);
+            gsGridIterator<T,CUBE> grid(field.fields().piece(i).support(), nPts);
 
             // Evaluate the MultiPatch for every parametric point of the grid iterator
-            gsMatrix<T> xyzPoints( field.dim(), grid.numPoints());
+            xyzPoints.resize( field.dim(), grid.numPoints());
             index_t col = 0;
             for( grid.reset(); grid; ++grid )
             {
