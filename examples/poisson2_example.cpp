@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Plotting in Paraview...\n";
 
-        gsParaviewCollection collection("solution", &ev);
+        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
         collection.save();
 
 
-        gsFileManager::open("solution.pvd");
+        gsFileManager::open("ParaviewOutput/solution.pvd");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
