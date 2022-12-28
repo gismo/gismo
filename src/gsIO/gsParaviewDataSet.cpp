@@ -87,7 +87,18 @@ namespace gismo
             } 
             if ( plotElements)
             {
-                gsMesh<real_t> msh( gsMultiBasis<real_t>(*m_geometry).basis(k), 2);
+                int numPoints = m_options.getInt("plotElements.resolution");
+                if (-1 == numPoints )
+                {
+                    const real_t evalPtsPerElem = 16 * (1.0 / m_geometry->piece(k).basis().numElements());
+
+                    // copied from gsWriteParaview
+                    numPoints = cast<real_t,int>(
+                        static_cast<real_t>(math::max( m_geometry->piece(k).basis().maxDegree()-1, (short_t)1))
+                        * math::pow(evalPtsPerElem, real_t(1.0)/static_cast<real_t>(m_geometry->domainDim())) );
+                }
+                gsInfo << numPoints << "\n";
+                gsMesh<real_t> msh( gsMultiBasis<real_t>(*m_geometry).basis(k), numPoints);
                 static_cast<const gsGeometry<real_t>&>(m_geometry->piece(k)).evaluateMesh(msh);
                 gsWriteParaview(msh, m_basename + "_mesh" + std::to_string(k), false);
                 m_filenames.push_back( m_basename + "_mesh" + std::to_string(k)+".vtp");
