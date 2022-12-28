@@ -42,10 +42,13 @@ namespace gismo
                 name="Geometry";
             else
                 name="";
-            
+
             // This is so only the relative part of the path in filenames[] is kept
-            addPart( gsFileManager::getBasename(filenames[i]) +"." +
-                     gsFileManager::getExtension(filenames[i]), -1, time, name); 
+            std::string relativeFilename = gsFileManager::makeRelative(
+                            gsFileManager::getCurrentPath() + gsFileManager::getPath(m_filename),
+                            filenames[i]);
+            
+            addPart( relativeFilename, -1, time, name); 
         }
     }
 
@@ -57,7 +60,23 @@ namespace gismo
             time = m_time;
         }
         else { m_time = time; }
-        std::string name = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename);
+
+        std::string name;
+        if ( m_options.askSwitch("makeSubfolder",true) )
+        {
+            std::string subfolder = m_options.askString("subfolder");
+            subfolder = ("" == subfolder ) ? gsFileManager::getBasename(m_filename)+"_pvd" : subfolder;
+            gsFileManager::mkdir( gsFileManager::getPath(m_filename) + subfolder ); 
+            char sep = gsFileManager::getNativePathSeparator();
+
+            name = gsFileManager::getPath(m_filename) + subfolder + sep + gsFileManager::getBasename(m_filename);
+        }
+        else
+        {
+            name = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename);
+        }
+
+
         name += "_t" + std::to_string(time);
        
         m_dataset = gsParaviewDataSet(name, geometry, m_evaluator, m_options);

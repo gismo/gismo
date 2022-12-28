@@ -163,6 +163,7 @@ public:
         opt.addInt("numPoints", "Number of points per-patch.", 1000);
         opt.addInt("precision", "Number of decimal digits.", 5);
         opt.addInt("plotElements.resolution", "Drawing resolution for element mesh.", -1);
+        opt.addSwitch("makeSubfolder", "Export vtk files to subfolder ( below the .pvd file ).", true);
         opt.addString("subfolder","Name of subfolder where the vtk files will be stored.", "");
         opt.addSwitch("plotElements", "Controls plotting of element mesh.", false);
         opt.addSwitch("plotControlNet", "Controls plotting of control point grid.", false);
