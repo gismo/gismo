@@ -325,9 +325,6 @@ public:
                        std::string const & fn)
     { writeParaview_impl<E,false>(expr,m_exprdata->getMap(),fn); }
 
-    template<class E>
-    std::vector<std::string> expr2vtk(const expr::_expr<E> & expr, std::string label="SolutionField",unsigned nPts=1000, unsigned precision=5);
-
 private:
 
     template<class E, bool gmap>
@@ -942,58 +939,5 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         counter = -1;
         // End snippet from gsParaviewCollection
     }    
-
-
-/// @brief  Evaluates one expression over all patches and returns all <DataArray> xml tags as a vecotr of strings
-/// @tparam T 
-/// @param expr Expression to be evaluated
-/// @param label The label with which the expression will appear in Paraview
-/// @return Vector of strings of all <DataArrays>
-template<class T>
-template<class E>
-std::vector<std::string> gsExprEvaluator<T>::expr2vtk(const expr::_expr<E> & expr,
-                                          std::string label,
-                                          unsigned nPts,
-                                          unsigned precision)
-{   
-    std::vector<std::string> out;
-    std::stringstream dataArray;
-    dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-    dataArray.precision(precision);
-    m_exprdata->parse(expr);
-
-    //if false, embed topology ?
-    const index_t n = m_exprdata->multiBasis().nBases();
-
-    gsMatrix<T> pts, vals, ab;
-
-    for ( index_t i=0; i != n; ++i )
-    {
-        ab = m_exprdata->multiBasis().piece(i).support();
-        gsGridIterator<T,CUBE> pt(ab, nPts);
-        eval(expr, pt, i);
-        nPts = pt.numPoints();
-        vals = allValues(m_elWise.size()/nPts, nPts);
-
-        dataArray <<"<DataArray type=\"Float32\" Name=\""<< label <<"\" format=\"ascii\" NumberOfComponents=\""<< ( vals.rows()==1 ? 1 : 3) <<"\">\n";
-        if ( vals.rows()==1 )
-            for ( index_t j=0; j<vals.cols(); ++j)
-                dataArray<< vals.at(j) <<" ";
-        else
-        {
-            for ( index_t j=0; j<vals.cols(); ++j)
-            {
-                for ( index_t i=0; i!=vals.rows(); ++i)
-                    dataArray<< vals(i,j) <<" ";
-                for ( index_t i=vals.rows(); i<3; ++i)
-                    dataArray<<"0 ";
-            }
-        }
-        dataArray <<"\n</DataArray>\n";
-        out.push_back( dataArray.str() );
-        dataArray.str(std::string()); // Clear the dataArray stringstream
-    }
-    return out; 
-}
 
 } //namespace gismo

@@ -74,7 +74,7 @@ public:
         //gsExprEvaluator<real_t> ev;
         //gsMultiBasis<real_t> mb(*m_geometry);
         //ev.setIntegrationElements(mb);
-        std::vector<std::string> tags = m_evaltr->expr2vtk(expr, label,nPts,precision);
+        std::vector<std::string> tags = toVTK(expr,nPts,precision,label);
         std::vector<std::string> fnames = filenames();
 
         for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
@@ -230,6 +230,59 @@ private:
         }
         return out; 
     }
+
+    /// @brief  Evaluates one expression over all patches and returns all <DataArray> xml tags as a vector of strings
+    /// @tparam T 
+    /// @param expr Expression to be evaluated
+    /// @param label The label with which the expression will appear in Paraview
+    /// @return Vector of strings of all <DataArrays>
+    template<class E>
+    std::vector<std::string> toVTK(const expr::_expr<E> & expr,
+                                            unsigned nPts=1000,
+                                            unsigned precision=5,
+                                            std::string label="SolutionField")
+    {   
+        std::vector<std::string> out;
+        std::stringstream dataArray;
+        dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
+        dataArray.precision(precision);
+        // m_exprdata->parse(expr);
+
+        //if false, embed topology ?
+        const index_t n = m_evaltr->exprData()->multiBasis().nBases();
+
+        gsMatrix<real_t> pts, vals, ab;
+
+        for ( index_t i=0; i != n; ++i )
+        {
+            ab = m_evaltr->exprData()->multiBasis().piece(i).support();
+            gsGridIterator<real_t,CUBE> pt(ab, nPts);
+            m_evaltr->eval(expr, pt, i);
+            nPts = pt.numPoints();
+            
+            vals = m_evaltr->allValues(m_evaltr->elementwise().size()/nPts, nPts);
+
+            dataArray <<"<DataArray type=\"Float32\" Name=\""<< label <<"\" format=\"ascii\" NumberOfComponents=\""<< ( vals.rows()==1 ? 1 : 3) <<"\">\n";
+            if ( vals.rows()==1 )
+                for ( index_t j=0; j<vals.cols(); ++j)
+                    dataArray<< vals.at(j) <<" ";
+            else
+            {
+                for ( index_t j=0; j<vals.cols(); ++j)
+                {
+                    for ( index_t i=0; i!=vals.rows(); ++i)
+                        dataArray<< vals(i,j) <<" ";
+                    for ( index_t i=vals.rows(); i<3; ++i)
+                        dataArray<<"0 ";
+                }
+            }
+            dataArray <<"\n</DataArray>\n";
+            out.push_back( dataArray.str() );
+            dataArray.str(std::string()); // Clear the dataArray stringstream
+        }
+        return out; 
+    }
+
 
     /// @brief Formats the coordinates of points as a <DataArray> xml tag for ParaView export.
     /// @tparam T Arithmetic type
