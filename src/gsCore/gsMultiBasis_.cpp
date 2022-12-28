@@ -19,7 +19,7 @@ repairInterfaceFindElements<3>(const boundaryInterface & bi,
                                std::vector<index_t> & refEltsFirst,
                                std::vector<index_t> & refEltsSecond );
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   namespace py = pybind11;
 

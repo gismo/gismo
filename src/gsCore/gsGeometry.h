@@ -467,9 +467,9 @@ public:
     /// @{
 
     /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1) // todo: int dir = -1
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1) // todo: int dir = -1
     {
-        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
+        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
     }
 
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
@@ -532,13 +532,23 @@ public:
 
     /// \brief Elevate the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree elevation is
-    /// done for all directions
+    /// done for all directions. Uses \ref gsBasis<T>::degreeElevate
     virtual void degreeElevate(short_t const i = 1, short_t const dir = -1);
+
+    /// \brief Elevate the degree by the given amount \a i for the
+    /// direction \a dir. If \a dir is -1 then degree elevation is
+    /// done for all directions. Uses \ref gsBasis<T>::degreeIncrease
+    virtual void degreeIncrease(short_t const i = 1, short_t const dir = -1);
 
     /// \brief Reduces the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree reduction is
-    /// done for all directions
+    /// done for all directions. Uses \ref gsBasis<T>::degreeReduce
     virtual void degreeReduce(short_t const i = 1, short_t const dir = -1);
+
+    /// \brief Reduces the degree by the given amount \a i for the
+    /// direction \a dir. If \a dir is -1 then degree reduction is
+    /// done for all directions. Uses \ref gsBasis<T>::degreeDecrease
+    virtual void degreeDecrease(short_t const i = 1, short_t const dir = -1);
     
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
@@ -693,14 +703,14 @@ struct gsGeoTraits<4,T>
     typedef gsBulk<T> GeometryBase;
 };
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsGeometry
    */
   void pybind11_init_gsGeometry(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

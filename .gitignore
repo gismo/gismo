@@ -1,4 +1,4 @@
-# Submodule file
+# Submodule files
 submodules.txt
 
 # CLion user-specific files
@@ -23,6 +23,7 @@ CMakeLists.txt.user
 # CMake
 CMakeCache.txt
 CMakeFiles/
+/.cmake/
 
 # Patch Files
 *.patch

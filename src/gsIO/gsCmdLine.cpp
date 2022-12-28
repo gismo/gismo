@@ -485,7 +485,7 @@ std::string & gsCmdLine::getMessage()
     return my->cmd.getMessage();
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 void pybind11_init_gsCmdLine(py::module &m)
@@ -554,6 +554,6 @@ void pybind11_init_gsCmdLine(py::module &m)
     ;
 }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } //namespace gismo

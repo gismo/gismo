@@ -15,7 +15,7 @@ namespace gismo
 
 CLASS_TEMPLATE_INST internal::gsXml< gsBSplineBasis<real_t> >;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 
