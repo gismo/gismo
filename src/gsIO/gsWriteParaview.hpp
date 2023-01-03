@@ -23,6 +23,9 @@
 #include <gsCore/gsField.h>
 #include <gsCore/gsDebug.h>
 
+#include <gsCore/gsMultiPatch.h>
+
+
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
 
@@ -227,7 +230,7 @@ void writeSingleBasisMesh(const gsBasis<T> & basis,
 /// Export a computational mesh
 template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
-                         std::string const & fn, unsigned resolution = 8)
+                         std::string const & fn, unsigned resolution)
 {
     gsMesh<T> msh(basis, resolution);
     Geo.evaluateMesh(msh);
@@ -1735,6 +1738,37 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
     } // for each face
 
     collection.save();
+}
+
+template<typename T>
+void gsWriteParaview( typename gsMultiPatch<T>::BoundaryRep const & brep,
+                                std::string const & fn, unsigned npts, bool ctrlNet)
+{
+    gsMultiPatch<T> bnd_net;
+    for (auto it = brep.begin(); it!=brep.end(); ++it)
+        bnd_net.addPatch((*it->second));
+    gsWriteParaview<T>(bnd_net,fn,npts,false,ctrlNet);
+}
+
+template<typename T>
+void gsWriteParaview( typename gsMultiPatch<T>::InterfaceRep const & irep,
+                                std::string const & fn, unsigned npts, bool ctrlNet)
+{
+    gsMultiPatch<T> iface_net;
+    for (auto it = irep.begin(); it!=irep.end(); ++it)
+        iface_net.addPatch((*it->second));
+    gsWriteParaview<T>(iface_net,fn,npts,false,ctrlNet);
+}
+
+template<typename T>
+void gsWriteParaview(gsMultiPatch<T> const & patches,
+                     typename gsBoundaryConditions<T>::bcContainer const & bcs,
+                     std::string const & fn, unsigned npts, bool ctrlNet)
+{
+    gsMultiPatch<T> bc_net;
+    for (typename gsBoundaryConditions<T>::const_iterator bc=bcs.begin(); bc!=bcs.end(); bc++)
+        bc_net.addPatch(patches[bc->patch()].boundary(bc->side()));
+    gsWriteParaview<T>(bc_net,fn,npts,false,ctrlNet);
 }
 
 template<typename T>

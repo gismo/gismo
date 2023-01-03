@@ -2,6 +2,7 @@
 
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsWriteParaview.hpp>
+#include <gsCore/gsMultiPatch.h>
 
 #define T real_t
 #define uZ unsigned
@@ -99,6 +100,22 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const& fn,
                      unsigned npts);
 
+// TEMPLATE_INST
+// void gsWriteParaview(typename gsMultiPatch<T>::BoundaryRep const & irep,
+//                      std::string const & fn,
+//                      unsigned npts, bool ctrlNet);
+
+// TEMPLATE_INST
+// void gsWriteParaview(typename gsMultiPatch<T>::InterfaceRep const & irep,
+//                      std::string const & fn,
+//                      unsigned npts, bool ctrlNet);
+
+TEMPLATE_INST
+void gsWriteParaview(gsMultiPatch<T> const & patches,
+                     typename gsBoundaryConditions<T>::bcContainer const & bcs,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
+
 TEMPLATE_INST
 void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
                                  const unsigned idLoop,
@@ -111,6 +128,10 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
+
+TEMPLATE_INST
+void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
+                         std::string const & fn, unsigned resolution);
 
 
 } // namespace gismo

@@ -138,6 +138,19 @@ public:
         return sz;
     }
 
+    gsMatrix<T> coefs() const
+    {
+        gsMatrix<T> result(this->coefsSize(),this->geoDim());
+        result.setZero();
+        index_t offset = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+        {
+            result.block(offset,0,(*it)->coefsSize(),(*it)->geoDim()) = (*it)->coefs();
+        }
+        return result;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
@@ -367,11 +380,23 @@ public:
     std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
                                                    const T accuracy = 1e-6) const;
 
+    std::vector<T> HausdorffDistance(   const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
+    T averageHausdorffDistance(         const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
     void constructInterfaceRep();
     void constructBoundaryRep();
+    void constructSides();
 
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
+    const BoundaryRep & sides() const { return m_sides; }
     
 protected:
 
@@ -383,7 +408,7 @@ private:
     PatchContainer m_patches;
 
     InterfaceRep m_ifaces;
-    BoundaryRep m_bdr;
+    BoundaryRep m_bdr, m_sides;
 
 private:
     // implementation functions

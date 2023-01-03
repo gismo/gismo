@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsGeometry.h>
+#include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
 
@@ -278,6 +279,34 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const & fn,
                      unsigned npts = NS);
 
+/// \brief Visualizing multipatch boundaries
+///
+/// \param pdomain the planar domain
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling
+template<class T>
+void gsWriteParaview( typename gsMultiPatch<T>::BoundaryRep const & irep,
+                                std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
+
+/// \brief Visualizing multipatch interfaces
+///
+/// \param pdomain the planar domain
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling
+template<class T>
+void gsWriteParaview( typename gsMultiPatch<T>::InterfaceRep const & irep,
+                                std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
+
+/// \brief Visualizing boundary conditions
+///
+/// \param pdomain the planar domain
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling
+template<class T>
+void gsWriteParaview(gsMultiPatch<T> const & patches,
+                     typename gsBoundaryConditions<T>::bcContainer const & bcs,
+                     std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
+
 /// \brief Export a boundary/hole curve in trimmed surface
 ///
 /// \param surf trimmed surface
@@ -298,6 +327,11 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
+
+/// Export a computational mesh
+template<class T>
+void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
+                         std::string const & fn, unsigned resolution = 8);
 
 // Please document
 template <class T>
