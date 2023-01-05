@@ -8,10 +8,14 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): G. Kiss, A. Mantzaflaris
+    Author(s): G. Kiss, A. Mantzaflaris, D. Mokris
 */
 
 #include <gismo.h>
+
+#ifdef gsParasolid_ENABLED
+#include <gsParasolid/gsWriteParasolid.h>
+#endif
 
 using namespace gismo;
 
@@ -23,6 +27,8 @@ int main(int argc, char *argv[])
     index_t iter      = 2;
     index_t deg_x     = 2;
     index_t deg_y     = 2;
+    index_t u_numKnots = 0;
+    index_t v_numKnots = 0;
     index_t maxPcIter = 1;
     real_t lambda = 1e-07;
     real_t threshold = 1e-02;
@@ -41,6 +47,8 @@ int main(int argc, char *argv[])
     cmd.addInt("i", "iter", "number of iterations", iter);
     cmd.addInt("x", "deg_x", "degree in x direction", deg_x);
     cmd.addInt("y", "deg_y", "degree in y direction", deg_y);
+    cmd.addInt("m", "knots_x", "number of interior knots in u-direction", u_numKnots);
+    cmd.addInt("n", "knots_y", "number of interior knots in v-direction", v_numKnots);
     cmd.addReal("s", "lambda", "smoothing coefficient", lambda);
     cmd.addReal("t", "threshold", "error threshold (special valule -1)", threshold);
     cmd.addReal("p", "refPercent", "percentage of points to refine in each iteration", refPercent);
@@ -95,8 +103,8 @@ int main(int argc, char *argv[])
         v_max = uv.row(1).maxCoeff();
 
     // Create knot-vectors without interior knots
-    gsKnotVector<> u_knots (u_min, u_max, 0, deg_x+1 ) ;
-    gsKnotVector<> v_knots (v_min, v_max, 0, deg_y+1 ) ;
+    gsKnotVector<> u_knots (u_min, u_max, u_numKnots, deg_x+1 ) ;
+    gsKnotVector<> v_knots (v_min, v_max, v_numKnots, deg_y+1 ) ;
 
     // Create a tensor-basis nad apply initial uniform refinement
     gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );
@@ -160,6 +168,11 @@ int main(int argc, char *argv[])
         fd << *ref.result() ;
 
         fd.dump("fitting_out");
+
+#ifdef gsParasolid_ENABLED
+        gsTHBSpline<2>* result = static_cast<gsTHBSpline<2>*>(ref.result());
+        extensions::gsWriteParasolid<real_t>(*result, "result");
+#endif
     }
     else
         gsInfo << "Done. No output created, re-run with --save to get a xml "

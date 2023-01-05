@@ -20,6 +20,14 @@
 #include <gsTensor/gsTensorDomainIterator.h>
 
 
+#ifdef gsParasolid_ENABLED
+
+#include <gsParasolid/gsClosestPoint.h>
+
+// TODO: We assume that m_result is a gsTHBSpline*, which is not always the case.
+#include <gsHSplines/gsTHBSpline.h>
+
+#endif  // gsParasolid_ENABLED
 
 namespace gismo
 {
@@ -140,6 +148,51 @@ void gsFitting<T>::compute(T lambda)
         m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(x));
 }
 
+#ifdef gsParasolid_ENABLED
+
+template <class T>
+void gsFitting<T>::parameterCorrection(T accuracy,
+                                       index_t maxIter,
+                                       T tolOrth)
+{
+    // Silence warnings, cf. https://stackoverflow.com/a/1486931/10348053
+    (void)accuracy;
+    (void)maxIter;
+    (void)tolOrth;
+
+    if ( !m_result )
+        compute(m_last_lambda);
+
+    extensions::gsPKSession::start();
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+        // convert m_result to B-spline
+        gsTHBSpline<2, T> resultTHB  = *static_cast<gsTHBSpline<2>*>(m_result);
+        gsTensorBSpline<2, T> result;
+        resultTHB.convertToBSpline(result);
+
+        // Less efficient version:
+
+        // gsVector<T, 3> point;
+        // gsVector<T, 2> newParam;
+        // for(index_t i=0; i<m_points.rows(); i++)
+        // {
+        //     point = m_points.row(i);
+        //     extensions::gsClosestParam(result, point, newParam);
+        //     m_param_values.col(i) = newParam;
+        // }
+
+        // More efficient version:
+        extensions::gsClosestParam(result, m_points, m_param_values);
+
+        // refit
+        compute(m_last_lambda);
+    }
+    extensions::gsPKSession::stop();
+}
+
+#else // gsParasolid_ENABLED
+
 template <class T>
 void gsFitting<T>::parameterCorrection(T accuracy,
                                        index_t maxIter,
@@ -210,6 +263,7 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     }
 }
 
+#endif // gsParasolid_ENABLED
 
 template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
