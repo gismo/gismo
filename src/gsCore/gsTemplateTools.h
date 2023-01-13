@@ -358,40 +358,6 @@ bool equal(T1 t1, T2 t2)
     }
 }
 
-/*
-template<typename T>
-struct is_complex : integral_constant<bool,
-                    is_same<T,std::complex<short int    > >::value ||
-                    is_same<T,std::complex<int          > >::value ||
-                    is_same<T,std::complex<long int     > >::value ||
-                    is_same<T,std::complex<long long int> >::value ||
-                    is_same<T,std::complex<float        > >::value ||
-                    is_same<T,std::complex<double       > >::value ||
-                    is_same<T,std::complex<long double  > >::value ||
-#ifdef GISMO_WITH_ADIFF
-                    is_same<T,std::complex<gismo::ad::DScalar1<real_t, -1> > >::value ||
-                    is_same<T,std::complex<gismo::ad::DScalar1<real_t,  2> > >::value ||
-                    is_same<T,std::complex<gismo::ad::DScalar1<real_t,  3> > >::value ||
-                    is_same<T,std::complex<gismo::ad::DScalar2<real_t, -1> > >::value ||
-                    is_same<T,std::complex<gismo::ad::DScalar2<real_t,  2> > >::value ||
-                    is_same<T,std::complex<gismo::ad::DScalar2<real_t,  3> > >::value ||
-#endif
-#ifdef GISMO_WITH_CODIPACK
-                    is_same<T,std::complex<codi::RealForward> >::value ||
-                    is_same<T,std::complex<codi::RealReverse> >::value ||
-#endif
-#ifdef GISMO_WITH_MPFR
-                    is_same<T,std::complex<mpfr::mpreal> >::value      ||
-#endif
-#ifdef GISMO_WITH_GMP
-                    is_same<T,std::complex<mpq_class> >::value         ||
-#endif
-#ifdef GISMO_WITH_UNUM
-                    is_same<T,std::complex<posit_32_2> >::value        ||
-#endif
-                    is_same<T,std::complex<real_t> >::value
-                    > {};
-*/
 } // end namespace util
 
 } // end namespace gismo

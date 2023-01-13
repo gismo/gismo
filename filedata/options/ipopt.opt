@@ -61,7 +61,7 @@ hessian_approximation                 limited-memory     # d=exact
 #--- C.14 Derivative Test ------------------------------------------------------
 
 # exact ~ finite diff
-derivative_test                      first-order        # d=none
+# derivative_test                      first-order        # d=none
 # derivative_test                      second-order       # d=none
 # derivative_test_perturbation         6e-7               # d=1e-8 (def. value can be too small)
 # derivative_test_tol                 1e-4               # d=1e-4

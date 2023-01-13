@@ -457,8 +457,8 @@ gsGeometry tag will be found in the resulting file.
 
 Apart from the native XML format of the library, a number of third
 party formats can be imported or exported. One such useful format is
-Rhino's 3DM file format (note: the GISMO_WITH_ONURBS compilation
-parameter must be set). Also, the Siemens' NX (Parasolid) file format
+Rhino's 3DM file format (note: the gsOpennurbs submodule must be
+enabled). Also, the Siemens' NX (Parasolid) file format
 is supported, if the Parasolid library is available in the system
 (note: GISMO_WITH_PSOLID compilation parameter). Other formats include
 the GeoPDE (Matlab/octave) text format, the GoTools format and OBJ,

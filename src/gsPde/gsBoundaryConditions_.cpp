@@ -9,7 +9,7 @@ namespace gismo
     CLASS_TEMPLATE_INST gsBoundaryConditions<real_t>;
     CLASS_TEMPLATE_INST internal::gsXml< gsBoundaryConditions<real_t> >;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 
@@ -39,24 +39,24 @@ void pybind11_init_gsBoundaryConditions(py::module &m)
     .def("clear", &Class::clear, "Clears the gsBoundaryConditions object")
     .def("size", &Class::size, "Number of boundary conditions assigned")
 
-    .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &, const gsFunction<real_t>::Ptr &, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
-    .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &,       gsFunction<real_t>      *, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
-    .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &, const gsFunction<real_t>      &, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
+    .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &, const gsFunctionSet<real_t>::Ptr &, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
+    .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &,       gsFunctionSet<real_t>      *, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
+    .def("add", static_cast<void (Class::*)(int, boxSide, const std::string &, const gsFunctionSet<real_t>      &, short_t, int, bool)> (&Class::add), "Adds a boundary condition")
 
 
-    .def("addCondition", static_cast<void (Class::*)(int, boundary::side, condition_type::type, const gsFunction<real_t> &     , short_t, bool, int)> (&Class::addCondition),
+    .def("addCondition", static_cast<void (Class::*)(int, boundary::side, condition_type::type, const gsFunctionSet<real_t> &     , short_t, bool, int)> (&Class::addCondition),
                             "Adds a boundary condition"//,
                             // py::arg("unknown") = 0,
                             // py::arg("parametric") = false,
                             // py::arg("comp") = -1
                             )
-    .def("addCondition", static_cast<void (Class::*)(int, boundary::side, condition_type::type,       gsFunction<real_t> *     , short_t, bool, int)> (&Class::addCondition),
+    .def("addCondition", static_cast<void (Class::*)(int, boundary::side, condition_type::type,       gsFunctionSet<real_t> *     , short_t, bool, int)> (&Class::addCondition),
                             "Adds a boundary condition"//,
                             // py::arg("unknown") = 0,
                             // py::arg("parametric") = false,
                             // py::arg("comp") = -1
                             )
-    .def("addCondition", static_cast<void (Class::*)(const patchSide&, condition_type::type,       gsFunction<real_t> *     , short_t, bool, int)> (&Class::addCondition),
+    .def("addCondition", static_cast<void (Class::*)(const patchSide&, condition_type::type,       gsFunctionSet<real_t> *     , short_t, bool, int)> (&Class::addCondition),
         "Adds a boundary condition"//,
         // py::arg("unknown") = 0,
         // py::arg("parametric") = false,

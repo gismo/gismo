@@ -29,7 +29,7 @@
 #include <gsAssembler/gsQuadRule.h>
 #include <gsAssembler/gsSparseSystem.h>
 #include <gsAssembler/gsRemapInterface.h>
-
+#include <gsAssembler/gsCPPInterface.h>
 
 
 namespace gismo

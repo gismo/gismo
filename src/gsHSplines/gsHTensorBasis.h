@@ -573,7 +573,7 @@ public:
     }
 
     // Refine the basis uniformly by inserting \a numKnots new knots on each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1);
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
 
     // Refine the basis uniformly and adjust the given matrix of coefficients accordingly
     //virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1)
@@ -583,7 +583,7 @@ public:
     //virtual void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1)
 
     // Refine the basis uniformly and adjust the given matrix of coefficients accordingly
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir = -1);
 
     // Refine the basis and adjust the given matrix of coefficients accordingly
     void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
@@ -606,6 +606,10 @@ public:
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
+
+    // see gsBasis for documentation
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
 
     short_t maxDegree() const
     {

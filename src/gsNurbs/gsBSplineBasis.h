@@ -395,11 +395,11 @@ public:
     { m_knots.refineSpans(elements); }
 
     // Look at gsBasis class for a description
-    void uniformRefine(int numKnots = 1, int mul=1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
     { m_knots.uniformRefine(numKnots,mul); }
 
     // Look at gsBasis class for a description
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul=1, int dir=-1);
 
     // Look at gsBasis class for a description
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
@@ -787,14 +787,14 @@ private:
     using Base::m_periodic;
 };
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsBSplineBasis
    */
   void pybind11_init_gsBSplineBasis(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

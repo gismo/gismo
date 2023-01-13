@@ -202,10 +202,11 @@ public:
     /// \todo use flipTensor to generalize to any dimension
     void reverse(unsigned k);
 
-    /// Toggle orientation wrt coordinate k
-    /// \todo use flipTensor to generalize to any dimension
+    /// Swap directions
     void swapDirections(const unsigned i, const unsigned j);
-    
+
+    void toggleOrientation();
+
     /// \brief Return true if point \a u is a corner of
     /// the patch with tolerance \a tol
     bool isPatchCorner(gsMatrix<T> const &v, T tol = 1e-3) const;
@@ -273,7 +274,7 @@ protected:
 
 }; // class gsTensorBSpline
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsTensorBSpline
@@ -282,7 +283,7 @@ protected:
   void pybind11_init_gsTensorBSpline3(pybind11::module &m);
   void pybind11_init_gsTensorBSpline4(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

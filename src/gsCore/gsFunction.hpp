@@ -299,10 +299,10 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         result = give(init);
     else
     {
-        gsMatrix<T,2> supp = support();
+        gsMatrix<T> supp = this->support();
         if (0!=supp.size())
         {
-            gsGridIterator<T,CUBE> pt(supp, 5);//per direction
+            gsGridIterator<T,CUBE> pt(supp, 20);//per direction
             T val, mval = std::numeric_limits<T>::max();
             for(;pt; ++pt)
             {
@@ -350,6 +350,42 @@ void gsFunction<T>::eval_component_into(const gsMatrix<T>&,
                                         gsMatrix<T>&) const
 { GISMO_NO_IMPLEMENTATION }
 
+template<class T>
+gsMatrix<T> gsFunction<T>::parameterCenter( const boxCorner& bc ) const
+{
+    gsMatrix<T> supp = this->support();
+    const index_t dim = supp.rows();
+    gsMatrix<T> coordinates(dim,1);
+    gsVector<bool> boxPar = bc.parameters(dim);
+    for (index_t d=0; d<dim;++d)
+    {
+        if (boxPar(d))
+            coordinates(d,0) = supp(d,1);
+        else
+            coordinates(d,0) = supp(d,0);
+    }
+    return coordinates;
+}
+
+template<class T>
+gsMatrix<T> gsFunction<T>::parameterCenter( const boxSide& bc ) const
+{
+    gsMatrix<T> supp = this->support();
+    const index_t dim = supp.rows();
+    gsMatrix<T> coordinates(dim,1);
+    const index_t dir = bc.direction();
+    for (index_t d=0; d<dim;++d)
+    {
+        if (d != dir)
+            coordinates(d,0) = ( supp(d,1) + supp(d,0) ) / (T)(2);
+        else if (bc.parameter())
+            coordinates(d,0) = supp(d,1);
+        else
+            coordinates(d,0) = supp(d,0);
+    }
+    return coordinates;
+}
+
 template <class T> void
 gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
                             index_t coord) const
@@ -361,25 +397,125 @@ gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
 }
 
 template <typename T, short_t domDim, short_t tarDim>
-inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
+inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut, int d, int n)
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
+    
+    // If the measure on a boundary is requested, calculate the outer normal vector as well
+    if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
+
+    // Outer normal vector
+    if ( InOut.flags & NEED_OUTER_NORMAL)
+    {
+        if (InOut.side==boundary::none)
+            gsWarn<< "Computing boundary normal without a valid side.\n";
+        // gsDebugVar( InOut.side);
+        const T   sgn = sideOrientation(InOut.side);
+        // gsDebugVar( sgn );
+        const int dir = InOut.side.direction();
+        InOut.outNormals.resize(n,numPts);
+
+        if (tarDim!=-1 ? tarDim == domDim : n==d)
+        {
+            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
+
+            T det_sgn = 0;
+            typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
+            // Determine Jacobian determinant's sign, assume constant along boundary
+            if (InOut.flags & SAME_ELEMENT )
+            {
+                for (index_t p=0;  p!=numPts; ++p)
+                {
+                    const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                    T detJacTcurr = jacT.determinant();
+                    if ( math::abs(detJacTcurr) >= 1e-7 )
+                    {
+                        det_sgn = detJacTcurr < 0 ? -1 : 1;
+                        break;
+                    }
+                }
+                if ( 0 == det_sgn )
+                {
+                    gsMatrix<T> parameterCenter = src.parameterCenter(InOut.side);
+                    T detJacTcurr = src.jacobian(parameterCenter).determinant();
+                    det_sgn = detJacTcurr < 0 ? -1 : 1;
+                }
+            }
+            for (index_t p=0;  p!=numPts; ++p)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                // BUG: When the determinant is really close to zero but negative,
+                // the result might be the opposite of what is expected because of alt_sgn
+                
+                if (! (InOut.flags &SAME_ELEMENT)  )
+                {
+                    T detJacTcurr = jacT.determinant();
+                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 : 
+                        ( detJacTcurr < 0 ? -1 : 1 );
+                    if ( 0 == det_sgn )
+                    {
+                        gsMatrix<T> parameterCenter = src.parameterCenter(InOut.side);
+                        T detJacTcurr = src.jacobian(parameterCenter).determinant();
+                        det_sgn = detJacTcurr < 0 ? -1 : 1;
+                    }
+                }
+                GISMO_ENSURE(det_sgn!=0, "Cannot find a non-zero Jacobian determinant.\n" << InOut.points);
+
+                T alt_sgn = sgn *  det_sgn;
+                for (int i = 0; i != n; ++i) //for all components of the normal
+                {
+                    jacT.firstMinor(dir, i, minor);
+                    InOut.outNormals(i,p) = alt_sgn * minor.determinant();
+                    alt_sgn  *= -1;
+                }
+            }
+        }
+        else
+        {
+            gsMatrix<T,domDim,domDim> metric(d,d);
+            gsVector<T,domDim>      param(d);
+            typename gsMatrix<T,domDim,domDim>::FirstMinorMatrixType minor;
+            for (index_t p=0;  p!=numPts; ++p)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                metric= (jacT*jacT.transpose());
+                T alt_sgn = sgn;
+                for (int i = 0; i != (domDim!=-1?domDim:d); ++i) //for all components of the normal
+                {
+                    metric.firstMinor(dir, i, minor);
+                    param(i) = alt_sgn * minor.determinant();
+                    alt_sgn  *= -1;
+                }
+                //note: metric.determinant() == InOut.measures.at(p)
+                InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
+            }
+        }
+
+    }
 
     // Measure
     if (InOut.flags & NEED_MEASURE)
     {
         InOut.measures.resize(1,numPts);
-        for (index_t p = 0; p < numPts; ++p) // for all points
+        if (InOut.side==boundary::none) // If in the domain's interior
         {
-            typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
-                    gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
-//            if (tarDim == domDim && tarDim!=-1)
-            if ( tarDim!=-1 ? tarDim == domDim : n==d )
-                InOut.measures(0,p) = math::abs(jac.determinant());
-            else
-                InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  )
-                                                  .determinant() );
+            for (index_t p = 0; p < numPts; ++p) // for all points
+            {
+                typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
+                        gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
+    //            if (tarDim == domDim && tarDim!=-1)
+                if ( tarDim!=-1 ? tarDim == domDim : n==d )
+                    InOut.measures(0,p) = math::abs(jac.determinant());
+                else
+                    InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  )
+                                                    .determinant() );
+            }
+        }
+        else // If on the domain's interior
+        {
+            // return the outer normal vector's norm ( colwise i.e. for every point)
+            InOut.measures = InOut.outNormals.colwise().norm();
         }
     }
 
@@ -445,55 +581,7 @@ inline void computeAuxiliaryData(gsMapData<T> & InOut, int d, int n)
         }
     }
 
-    // Outer normal vector
-    if ( InOut.flags & NEED_OUTER_NORMAL)
-    {
-        if (InOut.side==boundary::none)
-            gsWarn<< "Computing boundary normal without a valid side.\n";
-        const T   sgn = sideOrientation(InOut.side);
-        const int dir = InOut.side.direction();
-        InOut.outNormals.resize(n,numPts);
 
-        if (tarDim!=-1 ? tarDim == domDim : n==d)
-        {
-            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
-
-            typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
-            for (index_t p=0;  p!=numPts; ++p)
-            {
-                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                T alt_sgn = sgn * (T)( //jacT.rows()==jacT.cols() &&
-                                    jacT.determinant()<0 ? -1 : 1);
-                for (int i = 0; i != n; ++i) //for all components of the normal
-                {
-                    jacT.firstMinor(dir, i, minor);
-                    InOut.outNormals(i,p) = alt_sgn * minor.determinant();
-                    alt_sgn  *= -1;
-                }
-            }
-        }
-        else
-        {
-            gsMatrix<T,domDim,domDim> metric(d,d);
-            gsVector<T,domDim>      param(d);
-            typename gsMatrix<T,domDim,domDim>::FirstMinorMatrixType minor;
-            for (index_t p=0;  p!=numPts; ++p)
-            {
-                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                metric= (jacT*jacT.transpose());
-                T alt_sgn = sgn;
-                for (int i = 0; i != (domDim!=-1?domDim:d); ++i) //for all components of the normal
-                {
-                    metric.firstMinor(dir, i, minor);
-                    param(i) = alt_sgn * minor.determinant();
-                    alt_sgn  *= -1;
-                }
-                //note: metric.determinant() == InOut.measures.at(p)
-                InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
-            }
-        }
-
-    }
 
     /*
     // Curvature of isoparametric curve
@@ -536,26 +624,26 @@ void gsFunction<T>::computeMap(gsMapData<T> & InOut) const
     switch (10 * Dim.second + Dim.first)
     {
     // curves
-    case 11: computeAuxiliaryData<T,1,1>(InOut, Dim.first, Dim.second); break;
-    case 21: computeAuxiliaryData<T,1,2>(InOut, Dim.first, Dim.second); break;
-//    case 31: computeAuxiliaryData<T,1,3>(InOut, Dim.first, Dim.second); break;
-//    case 41: computeAuxiliaryData<T,1,4>(InOut, Dim.first, Dim.second); break;
+    case 11: computeAuxiliaryData<T,1,1>(*this, InOut, Dim.first, Dim.second); break;
+    case 21: computeAuxiliaryData<T,1,2>(*this, InOut, Dim.first, Dim.second); break;
+//    case 31: computeAuxiliaryData<T,1,3>(*this, InOut, Dim.first, Dim.second); break;
+//    case 41: computeAuxiliaryData<T,1,4>(*this, InOut, Dim.first, Dim.second); break;
     // surfaces
-//  case 12: computeAuxiliaryData<T,2,1>(InOut, Dim.first, Dim.second); break;
-    case 22: computeAuxiliaryData<T,2,2>(InOut, Dim.first, Dim.second); break;
-    case 32: computeAuxiliaryData<T,2,3>(InOut, Dim.first, Dim.second); break;
-//    case 42: computeAuxiliaryData<T,2,4>(InOut, Dim.first, Dim.second); break;
+//  case 12: computeAuxiliaryData<T,2,1>(*this, InOut, Dim.first, Dim.second); break;
+    case 22: computeAuxiliaryData<T,2,2>(*this, InOut, Dim.first, Dim.second); break;
+    case 32: computeAuxiliaryData<T,2,3>(*this, InOut, Dim.first, Dim.second); break;
+//    case 42: computeAuxiliaryData<T,2,4>(*this, InOut, Dim.first, Dim.second); break;
 // volumes
-//  case 13: computeAuxiliaryData<T,3,1>(InOut, Dim.first, Dim.second); break;
-//  case 23: computeAuxiliaryData<T,3,2>(InOut, Dim.first, Dim.second); break;
-    case 33: computeAuxiliaryData<T,3,3>(InOut, Dim.first, Dim.second); break;
+//  case 13: computeAuxiliaryData<T,3,1>(*this, InOut, Dim.first, Dim.second); break;
+//  case 23: computeAuxiliaryData<T,3,2>(*this, InOut, Dim.first, Dim.second); break;
+    case 33: computeAuxiliaryData<T,3,3>(*this, InOut, Dim.first, Dim.second); break;
 //    case 43: computeAuxiliaryData<T,3,4>(InOut, Dim.first, Dim.second); break;
 // 4D bulks
-//  case 14: computeAuxiliaryData<T,4,1>(InOut, Dim.first, Dim.second); break;
-//  case 24: computeAuxiliaryData<T,4,2>(InOut, Dim.first, Dim.second); break;
-//  case 34: computeAuxiliaryData<T,4,3>(InOut, Dim.first, Dim.second); break;
-    case 44: computeAuxiliaryData<T,4,4>(InOut, Dim.first, Dim.second); break;
-    default: computeAuxiliaryData<T,-1,-1>(InOut, Dim.first, Dim.second); break;
+//  case 14: computeAuxiliaryData<T,4,1>(*this, InOut, Dim.first, Dim.second); break;
+//  case 24: computeAuxiliaryData<T,4,2>(*this, InOut, Dim.first, Dim.second); break;
+//  case 34: computeAuxiliaryData<T,4,3>(*this, InOut, Dim.first, Dim.second); break;
+    case 44: computeAuxiliaryData<T,4,4>(*this, InOut, Dim.first, Dim.second); break;
+    default: computeAuxiliaryData<T,-1,-1>(*this, InOut, Dim.first, Dim.second); break;
     }
 
 }
