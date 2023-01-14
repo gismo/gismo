@@ -44,7 +44,7 @@ gsXmlAttribute * makeAttribute( const std::string & name, const std::string & va
 gsXmlAttribute * makeAttribute( const std::string & name, const unsigned & value, gsXmlTree & data)
 {
     char tmp[16];
-    sprintf (tmp,"%d",value);
+    snprintf (tmp,16,"%d",value);
     return data.allocate_attribute( 
 	   data.allocate_string(name.c_str() ), 
 	   data.allocate_string(tmp) );
@@ -74,7 +74,7 @@ gsXmlNode * makeComment(const std::string & comment, gsXmlTree & data)
 std::string to_string(const unsigned & i)
 {
     char tmp[4];
-    sprintf (tmp,"%d",i);
+    snprintf (tmp,4,"%d",i);
     return tmp;
 }
 
