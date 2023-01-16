@@ -7,7 +7,9 @@
 
 # First try: Pardiso compiled with Intel fortran
 if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-  file(GLOB pardiso_names "${Pardiso_DIR}/libpardiso*INTEL*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  string(TOUPPER ${CMAKE_SYSTEM_PROCESSOR} ARCH)
+  string(REPLACE "_" "-" ARCH ${ARCH})
+  file(GLOB pardiso_names "${Pardiso_DIR}/libpardiso*INTEL*${ARCH}*${CMAKE_SHARED_LIBRARY_SUFFIX}")
   list(GET pardiso_names 0 pardiso_first)
   get_filename_component(pardiso_name ${pardiso_first} NAME)
   find_library(PARDISO_LIBRARY NAMES ${pardiso_name}
@@ -31,7 +33,6 @@ if(PARDISO_LIBRARY)
    set_target_properties(Pardiso PROPERTIES IMPORTED_LINK_INTERFACE_LIBRARIES "${LAPACK_LIBRARIES}")
 
 
-
   # Note libmkl_intel.so or libmkl_intel_lp64.so contains "pardiso/pardiso64"
 
    set(Pardiso_FOUND TRUE)
@@ -42,7 +43,10 @@ endif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 
 # Second try: Pardiso compiled with GNU GCC
 if(NOT Pardiso_FOUND)
-  file(GLOB pardiso_names "${Pardiso_DIR}/libpardiso*GNU*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  string(TOUPPER ${CMAKE_SYSTEM_PROCESSOR} ARCH)
+  string(REPLACE "_" "-" ARCH ${ARCH})
+  file(GLOB pardiso_names "${Pardiso_DIR}/libpardiso*GNU*${ARCH}*${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                          "${Pardiso_DIR}/libpardiso*MACOS*${ARCH}*${CMAKE_SHARED_LIBRARY_SUFFIX}")
   list(GET pardiso_names 0 pardiso_first)
   get_filename_component(pardiso_name ${pardiso_first} NAME)
   find_library(PARDISO_LIBRARY NAMES ${pardiso_name}
@@ -60,6 +64,8 @@ if(NOT Pardiso_FOUND)
 
    #find_package(OpenMP)
    #set_target_properties(Pardiso IMPORTED_LINK_INTERFACE_LIBRARIES ${OpenMP_CXX_FLAGS})
+
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
 
   endif(PARDISO_LIBRARY)
 

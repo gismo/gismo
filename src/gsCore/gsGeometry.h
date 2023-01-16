@@ -279,11 +279,13 @@ public:
     {
         if ( parDim() == geoDim() )
         {
-            const T val = gsFunction<T>::jacobian( parameterCenter() ).determinant();
+            const T val = gsFunction<T>::jacobian( this->parameterCenter() ).determinant();
             return (T(0) < val) - (val < (T)(0));
         }
         return 1;
     }
+
+    virtual void toggleOrientation();
 
     /*************************************************************************/
 
@@ -323,20 +325,6 @@ public:
     /// Returns the range of parameters as a matrix with two columns, [lower upper]
     gsMatrix<T> parameterRange() const
     { return this->basis().support(); }
-
-    /// Returns a "central" point inside inside the parameter domain
-    virtual gsMatrix<T> parameterCenter() const
-    { 
-        // default impl. assumes convex support
-        gsMatrix<T> S = this->basis().support();
-        return ( S.col(0) + S.col(1) ) * (T)(0.5);
-    }
-
-    /// Get coordinates of the boxCorner \a bc in the parameter domain
-    gsMatrix<T> parameterCenter( const boxCorner& bc );
-
-    /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
-    gsMatrix<T> parameterCenter( const boxSide& bs );
 
     /// Get back the side of point \a u
     //boxSide sideOf(const gsVector<T> & u); //
@@ -479,9 +467,9 @@ public:
     /// @{
 
     /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1) // todo: int dir = -1
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1) // todo: int dir = -1
     {
-        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul);
+        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
     }
 
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
@@ -544,13 +532,23 @@ public:
 
     /// \brief Elevate the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree elevation is
-    /// done for all directions
+    /// done for all directions. Uses \ref gsBasis<T>::degreeElevate
     virtual void degreeElevate(short_t const i = 1, short_t const dir = -1);
+
+    /// \brief Elevate the degree by the given amount \a i for the
+    /// direction \a dir. If \a dir is -1 then degree elevation is
+    /// done for all directions. Uses \ref gsBasis<T>::degreeIncrease
+    virtual void degreeIncrease(short_t const i = 1, short_t const dir = -1);
 
     /// \brief Reduces the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree reduction is
-    /// done for all directions
+    /// done for all directions. Uses \ref gsBasis<T>::degreeReduce
     virtual void degreeReduce(short_t const i = 1, short_t const dir = -1);
+
+    /// \brief Reduces the degree by the given amount \a i for the
+    /// direction \a dir. If \a dir is -1 then degree reduction is
+    /// done for all directions. Uses \ref gsBasis<T>::degreeDecrease
+    virtual void degreeDecrease(short_t const i = 1, short_t const dir = -1);
     
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
@@ -582,14 +580,7 @@ public:
     GISMO_UPTR_FUNCTION_PURE(gsGeometry, clone)
 
     /// Prints the object as a string.
-    virtual std::ostream &print(std::ostream &os) const
-    {
-        os << "Geometry "<< "R^"<< this->parDim() << 
-            " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
-            ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
-        os<<"\nBasis:\n" << this->basis() ;
-        return os; 
-    }
+    virtual std::ostream &print(std::ostream &os) const;
 
     /// Merge the given \a other geometry into this one.
     virtual void merge( gsGeometry * other );
@@ -712,14 +703,14 @@ struct gsGeoTraits<4,T>
     typedef gsBulk<T> GeometryBase;
 };
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsGeometry
    */
   void pybind11_init_gsGeometry(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

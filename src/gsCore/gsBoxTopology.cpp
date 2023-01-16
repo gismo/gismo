@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   namespace py = pybind11;
 
@@ -89,6 +89,15 @@ void gsBoxTopology::addAutoBoundaries()
             }
         }
     }
+}
+
+gsBoxTopology::ifContainer gsBoxTopology::selectInterfaces(interaction::type ifc_type) const
+{
+    ifContainer result;
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
+        if ( m_interfaces[i].type() == interaction::contact)
+            result.push_back(m_interfaces[i]);
+    return result;
 }
 
 bool gsBoxTopology::isInterface( const patchSide& ps ) const
@@ -319,7 +328,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
     return result;
 }
 
-void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const
+void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists, bool boundaries) const
 {
     GISMO_ASSERT(m_dim==2,"works only for 2D");
     cornerLists.clear();
@@ -335,11 +344,13 @@ void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists)
             for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
-            if(isCycle&&cornerList.size()!=4&&!alreadyReached)
+
+            if(((isCycle&&cornerList.size()!=4)||(boundaries&&(!isCycle)&&cornerList.size()>2))&&!alreadyReached)
                 cornerLists.push_back(cornerList);
         }
     }
 }
+
 
 void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists) const
 {

@@ -271,13 +271,24 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
     }
 }
 
+
 template<class T>
-void gsMultiPatch<T>::degreeElevate(int elevationSteps)
+void gsMultiPatch<T>::degreeElevate(short_t const elevationSteps, short_t const dir)
 {
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        ( *it )->degreeElevate(elevationSteps, -1);
+        ( *it )->degreeElevate(elevationSteps, dir);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::degreeIncrease(short_t const elevationSteps, short_t const dir)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->degreeIncrease(elevationSteps, dir);
     }
 }
 
@@ -455,6 +466,17 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
     return true;
 }
 
+template <class T>
+void gsMultiPatch<T>::fixOrientation()
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+        if ( -1 == (*it)->orientation() )
+            (*it)->toggleOrientation();
+    
+    if (this->nInterfaces() || this->nBoundary() )
+        this->computeTopology();
+}
 
 template <class T>
 bool gsMultiPatch<T>::matchVerticesOnSide (
@@ -750,6 +772,17 @@ template<class T> std::pair<index_t,gsVector<T> >
 gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
                                 const T accuracy) const
 {
+    std::pair<index_t,gsVector<T> > result;
+    this->closestDistance(pt,result,accuracy);
+    return result;
+}
+
+
+template<class T>
+T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
+                                std::pair<index_t,gsVector<T> > & result,
+                                const T accuracy) const
+{
     GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
                   pt.rows() <<"!="<< targetDim() );
 
@@ -776,7 +809,8 @@ gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
         }
     }
     //gsInfo <<"--Pid="<<cph.pid<<", Dist("<<pt.transpose()<<"): "<< cph.dist <<"\n";
-    return std::make_pair(cph.pid, give(cph.preim));
+    result = std::make_pair(cph.pid, give(cph.preim));
+    return cph.dist;
 }
 
 template<class T>

@@ -101,7 +101,7 @@ public:
      * @param tolerance (>=0) if the maximum error is below the tolerance the refinement stops;
      * @param err_threshold the same as in iterative_refine(...).
      */
-    bool nextIteration(T tolerance, T err_threshold, index_t maxPcIter = 5);
+    bool nextIteration(T tolerance, T err_threshold, index_t maxPcIter = 0);
 
     /**
      * @brief Like \a nextIteration without \a fixedSides but keeping the values
@@ -109,7 +109,7 @@ public:
      */
     bool nextIteration(T tolerance, T err_threshold,
                        const std::vector<boxSide>& fixedSides,
-                       index_t maxPcIter = 5);
+                       index_t maxPcIter = 0);
 
     /// Return the refinement percentage
     T getRefPercentage() const

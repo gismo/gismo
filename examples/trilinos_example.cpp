@@ -140,7 +140,7 @@ int main(int argc, char**argv)
             gsInfo << "x = "<< x.transpose() <<"\n\n";
     }
 
-#ifdef GISMO_WITH_TRILINOS
+#ifdef gsTrilinos_ENABLED
 
     // Converting Eigen-Matrix to Trilinos/Epetra
     trilinos::SparseMatrix t_A(A);

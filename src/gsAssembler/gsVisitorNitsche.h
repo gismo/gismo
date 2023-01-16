@@ -226,7 +226,7 @@ private:
     const gsPde<T> * m_pde;
 
     /// Dirichlet function
-    const gsFunction<T> * m_dirdata_ptr;
+    const gsFunctionSet<T> * m_dirdata_ptr;
 
     /// Parameter \f$\alpha\f$ for the linear form
     T m_alpha;

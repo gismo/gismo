@@ -68,6 +68,11 @@ struct boundary
     };
 };
 
+struct interaction
+{
+    enum type { conforming = 0, contact = 2};
+};
+
 // forward declarations; defined later
 struct boxCorner;
 struct patchCorner;
@@ -644,7 +649,7 @@ public:
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
                       bool o1)
-        : ps1(_ps1), ps2(_ps2)
+        : ps1(_ps1), ps2(_ps2), m_type(interaction::conforming)
     {
         directionMap.resize(2);
         directionOrientation.resize(2);
@@ -659,7 +664,7 @@ public:
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
                       short_t dim)
-        : ps1(_ps1), ps2(_ps2)
+        : ps1(_ps1), ps2(_ps2), m_type(interaction::conforming)
     {
         directionMap.resize(dim);
         directionOrientation.resize(dim);
@@ -683,7 +688,7 @@ public:
                       gsVector<bool>    const & orient_flags)
     : ps1(p(0),p(1)), ps2(p(2),p(3)),
       directionMap(map_info),
-      directionOrientation(orient_flags)
+      directionOrientation(orient_flags), m_type(interaction::conforming)
     {
         GISMO_ASSERT(p.size() == 4, "Expecting four integers");
         directionMap(ps1.direction())=ps2.direction();
@@ -695,6 +700,7 @@ public:
                       gsVector<index_t> const & map_info,
                       gsVector<bool>    const & orient_flags)
         : ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
+        , m_type(interaction::conforming)
     {
         directionMap(ps1.direction())=ps2.direction();
         directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
@@ -730,6 +736,7 @@ public:
 
         directionMap(1-ps1.direction())=1-ps2.direction();
         directionOrientation(1-ps1.direction())= orient_flags(0);
+        m_type = interaction::conforming;
     }
 
 
@@ -803,6 +810,7 @@ public:
         result.directionOrientation.resize(directionOrientation.rows());
         result.ps1=ps2;
         result.ps2=ps1;
+        result.m_type = m_type;
         for (index_t i=0;i<directionMap.rows();++i)
         {
             result.directionMap(directionMap(i))=i;
@@ -893,6 +901,10 @@ public:
 
     void reorderCorners(gsMatrix<index_t> & boundary) const;
 
+    void setAsContact() { m_type = interaction::contact; }
+
+    interaction::type type() const { return m_type; }
+
 private:
 
     patchSide ps1; ///< The first patch side.
@@ -963,6 +975,9 @@ private:
     * See boundaryInterface::directionMap for documentation.
     */
     gsVector<bool>    directionOrientation;
+
+
+    interaction::type m_type;
 
     /// TODO: the information could be stored in a single vector of signed integers: the sign gives the orientation
     /// the problem is that it is necessary to shift the indices as there is no -0
@@ -1055,13 +1070,13 @@ gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
     return temp;
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsBoundary
    */
   void pybind11_enum_gsBoundary(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

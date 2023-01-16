@@ -464,7 +464,7 @@ public:
        @brief getLocalMap
        @param[in]  source : array of indexType, source basis functions
        @param[in]  target : array of indexType, target basis functions
-       @param[out] map    : a matrix containing the coefficinets of the expansion of the targets as
+       @param[out] map    : a matrix containing the coefficients of the expansion of the targets as
                             linear combination of the sources. Targets corresponds to columns, sources to rows.
      */
      void getLocalMap (IndexContainer const & source, IndexContainer const & target, gsMatrix<T> &map) const;

@@ -24,11 +24,11 @@
 #include <rapidxml/rapidxml.hpp>       // External file
 #include <rapidxml/rapidxml_print.hpp> // External file
 
-#ifdef GISMO_WITH_ONURBS               // Extension files
+#ifdef gsOpennurbs_ENABLED
 #include <gsOpennurbs/gsReadOpenNurbs.h>
 #endif
 
-#ifdef GISMO_WITH_OCC                  // Extension files
+#ifdef gsOpenCascade_ENABLED
 #include <gsOpenCascade/gsReadBrep.h>
 #endif
 
@@ -180,11 +180,11 @@ bool gsFileData<T>::read(String const & fn)
         return readAxelFile(m_lastPath);
     else if (ext== "off")
         return readOffFile(m_lastPath);
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     else if (ext== "3dm")
         return read3dmFile(m_lastPath);
 #endif
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     else if (ext== "brep")
         return readBrepFile(m_lastPath);
     //else if (ext== "iges")
@@ -1170,17 +1170,33 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   }
 */
 
-/*---------- OFF trinagular mesh .off file */
+/*---------- OFF mesh from .off file */
 
 template<class T>
 bool gsFileData<T>::readOffFile( String const & fn )
 {
+    //https://stackoverflow.com/questions/47125387/stringstream-and-binary-data
+    //std::istringstream buffer;
+    //buffer << file.rdbuf();
+
+    //https://stackoverflow.com/questions/38874200/trying-to-replace-scanf-with-sstream
+
+    /* //verb-read
+    std::ifstream buffer(fn);
+    std::ostringstream bb; bb << buffer.rdbuf();    
+    gsXmlNode* m = internal::makeNode("SurfMesh", *data);
+    m->append_attribute( internal::makeAttribute("type", "off", *data) );        
+    m->value( internal::makeValue( bb.str(), *data) );
+    data->appendToRoot(m);
+    return true;
+    */
+
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("Mesh", *data);
+    gsXmlNode* g = internal::makeNode("SurfMesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 
@@ -1594,7 +1610,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
 template<class T>
 bool gsFileData<T>::readBrepFile( String const & fn )
 {
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     return extensions::gsReadBrep( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);
@@ -2427,7 +2443,7 @@ bool gsFileData<T>::readX3dFile( String const & fn )
 template<class T>
 bool gsFileData<T>::read3dmFile( String const & fn )
 {
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     return extensions::gsReadOpenNurbs( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);

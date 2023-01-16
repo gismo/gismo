@@ -84,6 +84,8 @@ public:
     void setReal  (const std::string & label, const Real &      value);
     /// @copydoc gsOptionList::setString()
     void setSwitch(const std::string & label, const bool &        value);
+    /// Toggles switch ( boolean )
+    void toggleSwitch( const std::string & label );
 
     /*/// \brief Sets values of option-group \a gn from values of a std::vector.
     ///
@@ -307,13 +309,13 @@ public:
 
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsOptionList
    */
   void pybind11_init_gsOptionList(pybind11::module &m);
   
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

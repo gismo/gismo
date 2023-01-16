@@ -19,7 +19,7 @@ namespace gismo {
 
 CLASS_TEMPLATE_INST gsFunctionSet<real_t>;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 

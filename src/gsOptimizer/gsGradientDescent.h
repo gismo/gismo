@@ -100,18 +100,16 @@ public:
 protected:
     void defaultOptions()
     {
-        m_options.addInt("MaxIterations","Maximum iterations",0);
+        Base::defaultOptions();
         m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
         m_options.addReal("MinStepLength","Minimal step length",1e-9);
-        m_options.addInt("Verbose","Verbosity level",0);
     }
 
     void getOptions()
     {
-        m_maxIterations = m_options.getInt("MaxIterations");
+        Base::getOptions();
         m_minGradientLength = m_options.getReal("MinGradientLength");
         m_minStepLength = m_options.getReal("MinStepLength");
-        m_verbose = m_options.getInt("Verbose");
 
         m_solver.setMaxIterations(m_maxIterations);
         m_solver.setMinGradientLength(m_minGradientLength);
@@ -133,14 +131,17 @@ protected:
     using Base::m_finalObjective;
     using Base::m_curDesign;
     using Base::m_options;
+    using Base::m_verbose;
+    using Base::m_maxIterations;
+
+    using Base::defaultOptions;
+    using Base::getOptions;
 
     Result m_result;
 
 protected:
-    index_t m_maxIterations;
     T m_minGradientLength;
     T m_minStepLength;
-    index_t m_verbose;
 
     gdc::GradientDescent<T, gsGradientDescentObjective<T>, StepSize, Callback, FiniteDifferences> m_solver;
 
