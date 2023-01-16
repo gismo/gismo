@@ -14,7 +14,7 @@
 
 // Note:
 // will provide functions to make bsplines, nurbs etc
-// like the identity, ruled, l spapes, rings, etc
+// like the identity, ruled, l-shapes, rings, etc
 // linear extrude .....
 // sweep ( eg. half-cylinder by sweeping half-circle
 // revolve operation
@@ -79,13 +79,13 @@ public:
 
     static gsMultiPatch<T> makeGrid(std::vector<gsMultiPatch<T>> & mps, const index_t M=0, const index_t N=0);
 
-    static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
+    static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1, bool symm = false);
 
-    static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1);
+    static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1, bool symm = false);
 
-    static TensorNurbs3Ptr lift3D( gsTensorNurbs<2,T> const & geo, T z = 1);
+    static TensorNurbs3Ptr lift3D( gsTensorNurbs<2,T> const & geo, T z = 1, bool symm = false);
 
-    static TensorNurbs4Ptr lift4D( gsTensorNurbs<3,T> const & geo, T z = 1);
+    static TensorNurbs4Ptr lift4D( gsTensorNurbs<3,T> const & geo, T z = 1, bool symm = false);
 
     /* Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
     \param X Defines the X axis of the plane containing the arc
@@ -166,7 +166,12 @@ public:
 
     /// Cube of side \a r, with lower left corner at (x,y,z)
     static TensorBSpline3Ptr BSplineCube( T const & r = 1, T const & x = 0,
-                                               T const & y = 0, T const & z = 0  );
+                                          T const & y = 0, T const & z = 0  );
+
+    /// Hypercube of side \a r, with lower left corner at (x,y,z,t)
+    static TensorBSpline4Ptr BSplineHyperCube( T const & r = 1, T const & x = 0,
+                                               T const & y = 0, T const & z = 0,
+                                               T const & t = 0);
 
     // Note: this can probably be removed once we have degree elevation for tensor B-splines.
     //
