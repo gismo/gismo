@@ -10,8 +10,25 @@
 
     Author(s): M. Moller
 
-    Call this example as follows
+    This example is meant to benckmark the performance of assembly and
+    solver for the Poisson equation.
 
+    It supports the following command line arguments:
+
+    -a  type of assembler (0 : expression-based, 1: visitor-based)
+    -d  spatial dimension (1-4)
+    -e  number of uniform order-elevation steps
+    -r  number of uniform h-refonement steps
+    -s  type of solver (0 : )
+    -t  number of patches in t-direction
+    -x  number of patches in x-direction
+    -y  number of patches in y-direction
+    -z  number of patches in z-direction
+
+    --plot  Write solution to file
+    --solve Solve the linear system and compute the error
+
+    Example usage:
     ./bin/poisson_performance_example -d 2 -x 2 -y 4 -e 1 -r 1 -a 0 --solve
 
     This will solve a 2D Poisson equation ('-d 2') on a 2x4
@@ -21,6 +38,11 @@
     the classical visitor-based assembler by using ('-a 1'). If the
     argument '--solve' is left out, only the system matrix and the
     right-hand side are assembled but the linear system is not solved.
+
+    Comment on performance:
+
+    So far, the assembly is parallelized over the number of degrees of
+    freedoms per patch but not over the patches. 
 */
 
 //! [Include namespace]
@@ -35,6 +57,7 @@ int main(int argc, char *argv[])
     bool    solve      = false;
     bool    plot       = false;
     short_t assembler  = 0;
+    short_t solver     = 0;
     short_t numDim     = 3;
     index_t numRefine  = 0;
     index_t numElevate = 0;
@@ -44,15 +67,17 @@ int main(int argc, char *argv[])
     index_t numT       = 1;
     
     gsCmdLine cmd("Performance tuning based on Poisson problem.");
-    cmd.addInt( "a", "assembler", "Type of assembler (0: expression, 1: visitor)",  assembler );
+    cmd.addInt( "a", "assembler", "Type of assembler(0: expression, 1: visitor)",  assembler );
     cmd.addInt( "d", "spatialDimension", "Number of spatial dimension", numDim );
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of uniform h-refinement loops",  numRefine );
+    cmd.addInt( "s", "solver", "Type of solver (0: Eigen-SimplicialLLT, 1: Eigen-SimplicialLDLT, 2: Eigen-QR, 3: Eigen-LU, 4: PARDISO-LLT, 5: PARDISO-LDLT, 6: PARDISO-LU, 7: Eigen-CG-Identity, 8: Eigen-CG-Diagonal, 9: Eigen-BiCGStab-Identity, 10: Eigen-BiCGStab-Diagonal, 11: Eigen-BiCGStabILUT, 12: CG, 13: BiCGStab, 14: GMRES)", solver );
+    cmd.addInt( "t", "patchesTdir", "Number of patches in t-direction", numT );
     cmd.addInt( "x", "patchesXdir", "Number of patches in x-direction", numX );
     cmd.addInt( "y", "patchesYdir", "Number of patches in y-direction", numY );
     cmd.addInt( "z", "patchesZdir", "Number of patches in z-direction", numZ );
-    cmd.addInt( "t", "patchesTdir", "Number of patches in t-direction", numT );
+
     cmd.addSwitch("solve", "Solve the linear system (default: no)", solve);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     
@@ -197,9 +222,101 @@ int main(int argc, char *argv[])
       //! [Solver]
       if (solve) {
         timer.restart();
-        gsSparseSolver<>::CGDiagonal solver;
-        solver.compute(A.matrix());
-        solVector = solver.solve(A.rhs());
+
+        switch(solver) {
+        case 0: { // Eigen-SimplicialLLT
+          gsSparseSolver<>::SimplicialLLT solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 1: { // Eigen-SimplicialLDLT
+          gsSparseSolver<>::SimplicialLDLT solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 2: { // Eigen-QR
+          gsSparseSolver<>::QR solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 3: { // Eigen-LU
+          gsSparseSolver<>::LU solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+#ifdef GISMO_WITH_PARDISO
+        case 4: { // PARDISO-LLT
+          gsSparseSolver<>::PardisoLLT solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 5: { // PARDISO-LDLT
+          gsSparseSolver<>::PardisoLDLT solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 6: { // PARDISO-LU
+          gsSparseSolver<>::PardisoLU solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+#endif
+        case 7: { // Eigen-CG-Identity
+          gsSparseSolver<>::CGIdentity solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 8: { // Eigen-CG-Diagonal
+          gsSparseSolver<>::CGDiagonal solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 9: { // Eigen-BiCGStab-Identity
+          gsSparseSolver<>::BiCGSTABIdentity solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 10: { // Eigen-BiCGStab-Diagonal
+          gsSparseSolver<>::BiCGSTABDiagonal solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 11: { // Eigen-BiCGStab-ILUT
+          gsSparseSolver<>::BiCGSTABILUT solver;
+          solver.compute(A.matrix());
+          solVector = solver.solve(A.rhs());
+          break;
+        }
+        case 12: { // CG
+          gsConjugateGradient<> solver(A.matrix());
+          solver.solve(A.rhs(), solVector);
+          break;
+        }
+        case 13: { // BiCGStab
+          gsBiCgStab<> solver(A.matrix());
+          solver.solve(A.rhs(), solVector);
+          break;
+        }
+        case 14: { // GMRES
+          gsGMRes<> solver(A.matrix());
+          solver.solve(A.rhs(), solVector);
+          break;
+        }
+        default:
+          GISMO_ERROR("Unsupported solver");
+        }
+        
         solver_time += timer.stop();
       }
       //! [Solver]
@@ -256,9 +373,101 @@ int main(int argc, char *argv[])
       //! [Solver]
       if (solve) {
         timer.restart();
-        gsSparseSolver<real_t>::CGDiagonal solver;
-        solver.compute(poisson_assembler.matrix());
-        solVector = solver.solve(poisson_assembler.rhs());
+
+        switch(solver) {
+        case 0: { // Eigen-SimplicialLLT
+          gsSparseSolver<>::SimplicialLLT solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 1: { // Eigen-SimplicialLDLT
+          gsSparseSolver<>::SimplicialLDLT solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 2: { // Eigen-QR
+          gsSparseSolver<>::QR solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 3: { // Eigen-LU
+          gsSparseSolver<>::LU solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+#ifdef GISMO_WITH_PARDISO
+        case 4: { // PARDISO-LLT
+          gsSparseSolver<>::PardisoLLT solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 5: { // PARDISO-LDLT
+          gsSparseSolver<>::PardisoLDLT solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 6: { // PARDISO-LU
+          gsSparseSolver<>::PardisoLU solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+#endif
+        case 7: { // Eigen-CG-Identity
+          gsSparseSolver<>::CGIdentity solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 8: { // Eigen-CG-Diagonal
+          gsSparseSolver<>::CGDiagonal solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 9: { // Eigen-BiCGStab-Identity
+          gsSparseSolver<>::BiCGSTABIdentity solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 10: { // Eigen-BiCGStab-Diagonal
+          gsSparseSolver<>::BiCGSTABDiagonal solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 11: { // Eigen-BiCGStab-ILUT
+          gsSparseSolver<>::BiCGSTABILUT solver;
+          solver.compute(poisson_assembler.matrix());
+          solVector = solver.solve(poisson_assembler.rhs());
+          break;
+        }
+        case 12: { // CG
+          gsConjugateGradient<> solver(poisson_assembler.matrix());
+          solver.solve(poisson_assembler.rhs(), solVector);
+          break;
+        }
+        case 13: { // BiCGStab
+          gsBiCgStab<> solver(poisson_assembler.matrix());
+          solver.solve(poisson_assembler.rhs(), solVector);
+          break;
+        }
+        case 14: { // GMRES
+          gsGMRes<> solver(poisson_assembler.matrix());
+          solver.solve(poisson_assembler.rhs(), solVector);
+          break;
+        }
+        default:
+          GISMO_ERROR("Unsupported solver");
+        }
+        
         solver_time += timer.stop();
       }
       //! [Solver]
