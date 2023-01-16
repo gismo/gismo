@@ -79,7 +79,7 @@ public:
 
     static gsMultiPatch<T> makeGrid(std::vector<gsMultiPatch<T>> & mps, const index_t M=0, const index_t N=0);
 
-    static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1);
+    static TensorBSpline3Ptr lift3D( gsTensorBSpline<2,T> const & geo, T z = 1, bool symm = false);
 
     static TensorBSpline4Ptr lift4D( gsTensorBSpline<3,T> const & geo, T z = 1, bool symm = false);
 
