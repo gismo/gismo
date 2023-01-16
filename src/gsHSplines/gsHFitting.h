@@ -238,6 +238,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 
     //parameter correction
     this->parameterCorrection(1e-7, maxPcIter, 1e-4);//closestPoint accuracy, orthogonality tolerance
+    //this->smoothParameterCorrection(1e-7, maxPcIter);
 
     this->computeErrors();
 

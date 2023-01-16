@@ -19,7 +19,6 @@
 #include <gsNurbs/gsBSpline.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 
-
 #ifdef gsParasolid_ENABLED
 
 #include <gsParasolid/gsClosestPoint.h>
@@ -28,6 +27,9 @@
 #include <gsHSplines/gsTHBSpline.h>
 
 #endif  // gsParasolid_ENABLED
+
+#include <gsIO/gsFileData.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
 {
@@ -192,6 +194,52 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 }
 
 #else // gsParasolid_ENABLED
+
+template <class T>
+void gsFitting<T>::smoothParameterCorrection(T accuracy, index_t maxIter)
+{
+    if(!m_result)
+	compute(m_last_lambda);
+
+    // TODO: Find a better place for this.
+    initParametricDomain();
+
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+	gsInfo << "Correcting for the " << it << "-th time." << std::endl;
+
+	gsMatrix<T> idealPars = m_param_values;
+	gsVector<T> newParam;
+	for (index_t i = 0; i<m_points.rows(); ++i)
+	{
+	    newParam = m_param_values.col(i);
+	    m_result->closestPointTo(m_points.row(i).transpose(), newParam, accuracy, true);
+	    idealPars.col(i) = newParam;
+	}
+
+	index_t deg = 3;
+	index_t numKnots = 7;
+	gsKnotVector<T> uKnots(m_uMin, m_uMax, numKnots, deg + 1);
+	gsKnotVector<T> vKnots(m_vMin, m_vMax, numKnots, deg + 1);
+	gsTensorBSplineBasis<2, T> rebasis(uKnots, vKnots);
+	gsFitting<T> reparam(m_param_values, idealPars, rebasis);
+
+	// TODO: How to choose proper smoothing?
+	// TODO: It seems to work but not to cause that much difference.
+	// Test on a more challenging example!
+	reparam.compute(1e-5);
+
+	// gsFileData<> fd;
+	// fd << *reparam.result();
+	// fd.dump("reparam");
+
+	// Evaluate the reparametrization and replace m_param_values with it.
+	gsMatrix<T> oldPars = m_param_values;
+	reparam.result()->eval_into(oldPars, m_param_values);
+
+	compute(m_last_lambda);
+    }
+}
 
 template <class T>
 void gsFitting<T>::parameterCorrection(T accuracy,

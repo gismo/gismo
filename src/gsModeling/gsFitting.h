@@ -58,6 +58,9 @@ public:
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
 
+    void smoothParameterCorrection(T accuracy = 1e-8,
+				   index_t maxIter = 10);
+
     void parameterCorrection(T accuracy = 1e-8,
                              index_t maxIter = 10,
                              T tolOrth = 1e-6);
@@ -154,6 +157,17 @@ public:
     void setConstraints(const std::vector<boxSide>& fixedSides,
             const std::vector<gsGeometry<T> * >& fixedCurves);
 
+    void initParametricDomain()
+    {
+	m_uMin = m_param_values.row(0).minCoeff();
+	m_uMax = m_param_values.row(0).maxCoeff();
+	m_vMin = m_param_values.row(1).minCoeff();
+	m_vMax = m_param_values.row(1).maxCoeff();
+
+	gsInfo << "Parametric domain: ["
+	       << m_uMin << ", " << m_uMax << "] x ["
+	       << m_vMin << ", " << m_vMax << "]" << std::endl;
+    }
 
 private:
     /// Extends the system of equations by taking constraints into account.
@@ -203,6 +217,8 @@ protected:
     /// This corresponds to vector q in Prautzch, Boehm, Paluszny:
     /// Bezier and B-spline techniques, Section 4.7.
     gsMatrix<T>       m_constraintsRHS;
+
+    T m_uMin, m_uMax, m_vMin, m_vMax;
 
 private:
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
