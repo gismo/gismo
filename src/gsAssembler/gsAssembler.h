@@ -427,6 +427,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push()
     {
+#pragma omp parallel for
         for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor visitor(*m_pde_ptr);
@@ -440,6 +441,7 @@ public: /* Element visitors */
     template<class BElementVisitor>
     void push(const bcContainer & BCs)
     {
+#pragma omp parallel for
         for (typename bcContainer::const_iterator it
              = BCs.begin(); it!= BCs.end(); ++it)
         {
