@@ -12,9 +12,7 @@
 # 4. Set compiler-specific flags
 #=============================================================================
 
-include(ofa/AddCXXCompilerFlag)
 include(ofa/CommonMacros)
-include(CheckIncludeFileCXX)
 
 macro(OFA_HandlePpcOptions)
 
@@ -23,13 +21,13 @@ macro(OFA_HandlePpcOptions)
     if(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC" OR
        CMAKE_CXX_COMPILER_ID MATCHES "PGI")
       # NVidia HPC / PGI
-      AddCXXCompilerFlag("-tp=native" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+      AddCXXCompilerFlag("-tp=native" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _ok)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "XL")
       # IBM XL (on Linux/AIX)
-      AddCXXCompilerFlag("-qarch=auto" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+      AddCXXCompilerFlag("-qarch=auto" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _ok)
     else()
       # Others: GNU, Clang and variants
-      AddCXXCompilerFlag("-march=native" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+      AddCXXCompilerFlag("-march=native" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _ok)
     endif()
 
     if(NOT _ok)
@@ -124,7 +122,7 @@ macro(OFA_HandlePpcOptions)
 
       # Set -qarch flag
       foreach(_flag ${_march_flag_list})
-        AddCXXCompilerFlag("-qarch=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
+        AddCXXCompilerFlag("-qarch=${_flag}" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _good)
         if(_good)
           break()
         endif(_good)
@@ -135,7 +133,7 @@ macro(OFA_HandlePpcOptions)
 
       # Set -tp flag
       foreach(_flag ${_march_flag_list})
-        AddCXXCompilerFlag("-tp=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
+        AddCXXCompilerFlag("-tp=${_flag}" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _good)
         if(_good)
           break()
         endif(_good)
@@ -146,7 +144,7 @@ macro(OFA_HandlePpcOptions)
       
       # Set -march flag
       foreach(_flag ${_march_flag_list})
-        AddCXXCompilerFlag("-march=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
+        AddCXXCompilerFlag("-march=${_flag}" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _good)
         if(_good)
           break()
         endif(_good)
@@ -157,15 +155,15 @@ macro(OFA_HandlePpcOptions)
 
   # Compile code with profiling instrumentation
   if(TARGET_PROFILER STREQUAL "gprof")
-    AddCXXCompilerFlag("-pg" FLAGS OFA_ARCHITECTURE_FLAGS)
+    AddCXXCompilerFlag("-pg" FLAGS ARCHITECTURE_CXX_FLAGS)
   endif()
 
   # Remove duplicate flags
-  list(REMOVE_DUPLICATES OFA_ARCHITECTURE_FLAGS)
+  list(REMOVE_DUPLICATES ARCHITECTURE_CXX_FLAGS)
 
   if(OFA_VERBOSE)
-    string(REPLACE ";"  ", " _str "${OFA_ARCHITECTURE_FLAGS}")
-    message(STATUS "OFA_ARCHITECTURE_FLAGS: " ${_str})
+    string(REPLACE ";"  ", " _str "${ARCHITECTURE_CXX_FLAGS}")
+    message(STATUS "ARCHITECTURE_CXX_FLAGS: " ${_str})
   endif()
 
 endmacro(OFA_HandlePpcOptions)

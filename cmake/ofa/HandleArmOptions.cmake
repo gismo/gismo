@@ -12,9 +12,7 @@
 # 3. Set compiler-specific flags (e.g., -m<feature>/-mno-<feature>)
 #=============================================================================
 
-include(ofa/AddCXXCompilerFlag)
 include(ofa/CommonMacros)
-include(CheckIncludeFileCXX)
 
 macro(OFA_HandleArmOptions)
 
@@ -26,13 +24,13 @@ macro(OFA_HandleArmOptions)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "NVHPC"
         OR CMAKE_CXX_COMPILER_ID MATCHES "PGI")
       # NVidia HPC / PGI (on Linux/Windows)
-      AddCompilerFlag("-tp=native" CXX_FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+      AddCompilerFlag("-tp=native" CXX_FLAGS ARCHITECTURE_CXX_FLAGS RESULT _ok)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Cray")
       # Cray (on Linux)
       message(FATAL_ERROR, "[OFA] Cray compiler does not support \"native\" flag.")
     else()
       # Others: GNU, Clang and variants
-      AddCXXCompilerFlag("-mcpu=native" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+      AddCXXCompilerFlag("-mcpu=native" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _ok)
     endif()
 
     if(NOT _ok)
@@ -804,7 +802,7 @@ macro(OFA_HandleArmOptions)
     set(_mtune_flag "-mtune")
 
     # foreach(_flag ${_mtune_flag_list})
-    #   AddCXXCompilerFlag("${_mcpu_flag}${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+    #   AddCXXCompilerFlag("${_mcpu_flag}${_flag}" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _ok)
     #   if(_ok)
     #     break()
     #   endif()
@@ -1030,12 +1028,12 @@ macro(OFA_HandleArmOptions)
       if(MSVC AND MSVC_VERSION GREATER 1900)
         _ofa_find(_enable_extension_flag_list "vfpv4" _found)
         if(_found)
-          AddCompilerFlag("/arch:VFPv4" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
+          AddCompilerFlag("/arch:VFPv4" CXX_FLAGS ARCHITECTURE_CXX_FLAGS CXX_RESULT _found)
         endif()
         if(NOT _found)
           _ofa_find(_enable_extension_flag_list "simd" _found)
           if(_found)
-            AddCompilerFlag("/arch:ARMv7VE" CXX_FLAGS OFA_ARCHITECTURE_FLAGS CXX_RESULT _found)
+            AddCompilerFlag("/arch:ARMv7VE" CXX_FLAGS ARCHITECTURE_CXX_FLAGS CXX_RESULT _found)
           endif()
         endif()
         foreach(_flag ${_enable_extension_flag_list})
@@ -1074,14 +1072,14 @@ macro(OFA_HandleArmOptions)
                 set(_march_plus_extensions "${_march_plus_extensions}+no${_flag}")
               endif(_ok)
             endforeach()
-            AddCXXCompilerFlag("-march=${_march_plus_extensions}" FLAGS OFA_ARCHITECTURE_FLAGS)
+            AddCXXCompilerFlag("-march=${_march_plus_extensions}" FLAGS ARCHITECTURE_CXX_FLAGS)
             break()
           endif()
         endforeach()
 
         # Set -mtune flag
         foreach(_mtune ${_mtune_flag_list})
-          AddCXXCompilerFlag("-mtune=${_mtune}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _ok)
+          AddCXXCompilerFlag("-mtune=${_mtune}" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _ok)
           if(_ok)
             break()
           endif()
@@ -1093,6 +1091,15 @@ macro(OFA_HandleArmOptions)
 
   # Compile code with profiling instrumentation
   if(TARGET_PROFILER STREQUAL "gprof")
-    AddCompilerFlag("-pg" CXX_FLAGS OFA_ARCHITECTURE_FLAGS)
+    AddCXXCompilerFlag("-pg" FLAGS ARCHITECTURE_CXX_FLAGS)
   endif()
+
+  # Remove duplicate flags
+  list(REMOVE_DUPLICATES ARCHITECTURE_CXX_FLAGS)
+  
+  if(OFA_VERBOSE)
+    string(REPLACE ";"  ", " _str "${ARCHITECTURE_CXX_FLAGS}")
+    message(STATUS "ARCHITECTURE_CXX_FLAGS: " ${_str})
+  endif()
+  
 endmacro(OFA_HandleArmOptions)
