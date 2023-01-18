@@ -1,15 +1,15 @@
 #=============================================================================
 # Handling of PPC / PPC64 options
 #
-# This is a two-step process:
+# This is a three-step process:
 #
-# 1. Generate a list of compiler flags for the specific CPU
+# 1. Generate a list of available compiler flags for the specific CPU
 #
-# 2. Special compiler-specific treatment of "native" flag
+# 2. Enable/disable feature flags based on available CPU features,
+#    used-defined USE_<feature> variables and the capabilities of the
+#    host system's compiler and linker
 #
-# 3. Disabling of "broken" features based on OFA_xxx_INTRINSICS_BROKEN options
-#
-# 4. Set compiler-specific flags
+# 3. Set compiler-specific flags (e.g., -m<feature>/-mno-<feature>)
 #=============================================================================
 
 include(ofa/CommonMacros)
@@ -122,8 +122,8 @@ macro(OFA_HandlePpcOptions)
 
       # Set -qarch flag
       foreach(_flag ${_march_flag_list})
-        AddCXXCompilerFlag("-mcpu=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
-        AddCXXCompilerFlag("-qarch=${_flag}" FLAGS OFA_ARCHITECTURE_FLAGS RESULT _good)
+        AddCXXCompilerFlag("-mcpu=${_flag}" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _good)
+        AddCXXCompilerFlag("-qarch=${_flag}" FLAGS ARCHITECTURE_CXX_FLAGS RESULT _good)
         if(_good)
           break()
         endif(_good)
