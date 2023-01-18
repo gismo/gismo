@@ -5,8 +5,6 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-include(CheckCXXCompilerFlag)
-
 #find_package(Metis REQUIRED)
 
 #Remove NDEBUG from RelWithDebInfo builds
@@ -263,12 +261,11 @@ endif()
 #string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
-if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
-  #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease" AND NOT OFA_ARCHITECTURE_FLAGS)
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
   foreach (flag ${OFA_ARCHITECTURE_FLAGS})
     #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
   endforeach()
-endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
+endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease" AND NOT OFA_ARCHITECTURE_FLAGS)

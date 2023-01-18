@@ -83,6 +83,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+include(ofa/CheckCXXCompilerFlag)
+
 macro(AddCXXCompilerFlag _flag)
   set(state 0)
   unset(_code)
