@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, C. Karampatzakis
 */
 
 #pragma once
@@ -101,10 +101,10 @@ public:
 
     /// @brief Appends a file to the Paraview collection (.pvd file).
     /// @param fn Filename to be added. Can also be a path relative to the where the collection file is. 
-    /// @param part Part ID ( optional )
     /// @param tStep Time step ( optional, else an internal integer counter is used)
     /// @param name An optional name for this part
-    void addPart(String const & fn, index_t part=-1, real_t tStep=-1, std::string name="")
+    /// @param part Part ID ( optional )
+    void addPart(String const & fn, real_t tStep=-1, std::string name="", index_t part=-1)
     {   
         GISMO_ASSERT( gsFileManager::getExtension(fn) != "" , "File without extension");
         GISMO_ASSERT( !m_isSaved , "Error: collection has been already saved." );

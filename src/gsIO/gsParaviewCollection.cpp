@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, C. Karampatzakis
 */
 
 #include <gsIO/gsParaviewCollection.h>
@@ -48,7 +48,7 @@ namespace gismo
                             gsFileManager::getCurrentPath() + gsFileManager::getPath(m_filename),
                             filenames[i]);
             
-            addPart( relativeFilename, -1, time, name); 
+            addPart( relativeFilename, time, name); 
         }
     }
 
