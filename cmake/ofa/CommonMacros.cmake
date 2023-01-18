@@ -1,3 +1,5 @@
+include(ofa/AddCXXCompilerFlag)
+
 macro(_ofa_find _list _value _ret)
   list(FIND ${_list} "${_value}" _found)
   if(_found EQUAL -1)
