@@ -2369,8 +2369,8 @@ public:
     }
 
 
-    const index_t rows() const { return _u.rows(); }
-    const index_t cols() const { return _u.cols(); }
+    index_t rows() const { return _u.rows(); }
+    index_t cols() const { return _u.cols(); }
 
     void parse(gsExprHelper<Scalar> & el) const
     { _u.parse(el); }
