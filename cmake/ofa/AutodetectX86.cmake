@@ -189,8 +189,8 @@ macro(OFA_AutodetectX86)
       elseif(_cpu_model EQUAL 87)
         set(TARGET_ARCHITECTURE "knl")  # Knights Landing
 
-        # Small cores
-      elseif(_cpu_model EQUAL 138 OR _cpu_model EQUAL 150 _cpu_model EQUAL 156)
+      # Small cores
+      elseif(_cpu_model EQUAL 138 OR _cpu_model EQUAL 150 OR _cpu_model EQUAL 156)
         set(TARGET_ARCHITECTURE "tremont")
 
       elseif(_cpu_model EQUAL 122)
@@ -208,7 +208,7 @@ macro(OFA_AutodetectX86)
       # Big cores
       elseif(_cpu_model EQUAL 183)
         set(TARGET_ARCHITECTURE "raptorlake")
-	
+  
       elseif(_cpu_model EQUAL 167)
         set(TARGET_ARCHITECTURE "rocketlake")
 
