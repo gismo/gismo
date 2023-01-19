@@ -190,7 +190,7 @@ macro(OFA_AutodetectX86)
         set(TARGET_ARCHITECTURE "knl")  # Knights Landing
 
         # Small cores
-      elseif(_cpu_model EQUAL 134)
+      elseif(_cpu_model EQUAL 138 OR _cpu_model EQUAL 150 _cpu_model EQUAL 156)
         set(TARGET_ARCHITECTURE "tremont")
 
       elseif(_cpu_model EQUAL 122)
@@ -206,6 +206,9 @@ macro(OFA_AutodetectX86)
         set(TARGET_ARCHITECTURE "bonnell")
 
       # Big cores
+      elseif(_cpu_model EQUAL 183)
+        set(TARGET_ARCHITECTURE "raptorlake")
+	
       elseif(_cpu_model EQUAL 167)
         set(TARGET_ARCHITECTURE "rocketlake")
 
@@ -306,7 +309,7 @@ macro(OFA_AutodetectX86)
     # 22 16h      | Jaguar / Puma
     # 23 17h      | Zen / Zen+ / Zen 2
     # 24 18h      | Hygon Dhyana
-    # 25 19h      | Zen 3
+    # 25 19h      | Zen 3 / Zen 4
 
     if(_cpu_family EQUAL 25) # 19h
       set(TARGET_ARCHITECTURE "zen3")
