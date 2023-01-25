@@ -38,7 +38,6 @@ int main(int argc, char* argv[])
     // printing the basis
     gsInfo << "The file contains: \n" << fup << "\n";
 
-
     // printing some properties of the basis
     gsInfo << "Dimension of the parameter space: " << fup.dim() << "\n"
            << "Number of basis functions: " << fup.size() << "\n"
@@ -62,14 +61,13 @@ int main(int argc, char* argv[])
     // evaluation
     // ======================================================================
 
-
     // ----------------------------------------------------------------------
     // values
     // ----------------------------------------------------------------------
 
-    gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 7);
+    gsMatrix<> u = gsPointGrid(support(0,0), support(0,1), 11);
     gsInfo << "Evaluation points: \n" << u << "\n\n";
-    u.middleCols(1,5).array() -= 1e-3;
+    //u.middleCols(1,5).array() -= 1e-3;
 
     // indices of active (nonzero) functions at parameter u
     gsMatrix<index_t> active = fup.active(u);
@@ -109,8 +107,8 @@ int main(int argc, char* argv[])
     {
         gsMatrix<> val = fup.evalSingle(active(i), u);
 
-        gsInfo << "basis fun. index:  " << active(i)
-               << "   value: " << val(0, 0) << "\n";
+        gsInfo << "\nbasis fun. index:  " << active(i)
+               << "--> normal value:" << val(0, 0); //val.transpose();  //val(0, 0) << "\n";
     }
     gsInfo << "\n";
 
@@ -120,7 +118,7 @@ int main(int argc, char* argv[])
         gsMatrix<> der = fup.derivSingle(active(i), u);
 
         gsInfo << "basis fun. index:  " << active(i)
-               << "   value: " << std::setw(15) <<  der(0, 0) << "\n";
+               << "--> 1st der. value: " << std::setw(15) <<  der(0, 0) << "\n";
 
         for (index_t row = 1; row != der.rows(); row++)
         {
@@ -129,11 +127,18 @@ int main(int argc, char* argv[])
     }
     gsInfo << "\n";
 
+        // values of each basis function; Testing fup.eval and evalSingle
+     /*for (index_t j = 0; j != fup.size(); j++)
+    {
+        gsMatrix<> val = fup.evalAllDersSingle(j, u, 1);
+        gsInfo << "++++basis fun. index:  " << j
+               << "\n  --values:\n" << val.row(0) << "\n";
+    }*/
+    gsInfo << "\n";
 
     // ----------------------------------------------------------------------
     // second derivatives
     // ----------------------------------------------------------------------
-
 
     gsMatrix<> derivs2 = fup.deriv2(u);
     gsInfo << "Second derivatives at u " << derivs2.cols() << ": \n"
@@ -144,7 +149,7 @@ int main(int argc, char* argv[])
         gsMatrix<> der2 = fup.deriv2Single(active(i), u);
 
         gsInfo << "basis fun. index:  " << active(i)
-               << "   value: " << std::setw(15) << der2(0, 0) << "\n";
+               << "--> 2nd der. value: " << std::setw(15) << der2(0, 0) << "\n";
 
         for (index_t row = 1; row != der2.rows(); row++)
         {
@@ -172,8 +177,9 @@ int main(int argc, char* argv[])
                   "file containing the solution.\n";
     }
 
+       gsFupBasis<real_t> *fup1=fup.clone().release();
+       gsFupBasis<real_t> *fup2=fup.clone().release();
+       gsTensorBasis<2> fuptp(fup1,fup2);  
     return 0;
 }
-
-
 

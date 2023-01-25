@@ -118,12 +118,26 @@ private:
                    gsMatrix<T>& result) const
     {
         result.resize(m_p+2, u.cols() );
+        index_t act;
+        for ( index_t k = 0; k!=u.cols(); ++k)
+        {
+            act = firstActive(u(0,k)); 
+            for ( index_t i = 0; i!=m_p+2; ++i)
+            {
+                result(i,k) = fupn_eval_single(u(0,k), deriv_order, act++);
+            }
+
+        }
+        
+//More efficient code for later.
+//Debug it later!
+#if FALSE
         gsVector<T> tmp;
         index_t act, m;
         for ( index_t k = 0; k!=u.cols(); ++k)
         {
             act = firstActive(u(0,k)); // act is the leftmost non-zero func index 
-            m=act;
+            m=act; 
             for ( index_t i = 0; i!=m_p+2; ++i)
                 result(i,k) = fupn_call(u(0,k), deriv_order, m++);
             m=act;
@@ -138,6 +152,7 @@ private:
              result.col(k).topRows(tmp.size())=tmp;
 
             //right side modification
+            gsInfo << "\n";
             m=act+m_p+1;
             tmp.resize(m > size()-m_p-2 ? m_p-size()+m+2 : 0);
             //if (m > size()-m_p-2) gsInfo << "Rs " << k << " " << m << "  " << tmp.size() << "\n";
@@ -151,6 +166,7 @@ private:
             result.col(k).bottomRows(tmp.size())=tmp.reverse();
             //gsInfo <<"\ntmpsize "<<tmp.size()<<"\n";
         }
+#endif 
     }
 
 
@@ -184,6 +200,7 @@ private:
         return fupn_call(u, deriv_order, i);
     }
 
+    /// Modification coefficients for boundary Fup basis funcions (from order m_p=1 to m_p=10)
     gsVector<T> mod_coeff(index_t i) const
     {
         gsVector<T> res;
