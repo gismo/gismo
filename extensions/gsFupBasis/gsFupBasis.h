@@ -169,6 +169,18 @@ private:
 #endif 
     }
 
+    // Look at gsBasis class for a description
+    gsDomain<T> * domain() const { return const_cast<gsKnotVector<T> *>(&m_knots); }
+
+    const gsKnotVector<T> & knots()const
+    {
+        return m_knots;
+    }
+
+    gsKnotVector<T> & knots()
+    {
+        return m_knots;
+    }
 
     /// Get value of unmodified basis function \a i, at point \a u, of order \a deriv_order 
     inline T fupn_call(T u, int deriv_order, index_t i) const

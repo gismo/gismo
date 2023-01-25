@@ -182,6 +182,7 @@ int main(int argc, char* argv[])
        gsFupBasis<real_t> *fup2=fup.clone().release();
        gsTensorFupBasis<2,real_t> fuptp(fup1,fup2);
 
+       gsWriteParaview(fuptp, "writeout");
     return 0;
 }
 
