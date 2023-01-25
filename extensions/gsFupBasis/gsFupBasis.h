@@ -40,7 +40,7 @@ struct gsFupTraits
 
     //typedef gsTensorFupBasis<d,T> Basis;
     //typedef gsTensorRatBasis<d,T> RatBasis;
-    //typedef gsTensorFup<d,T>      Geometry;
+    typedef gsGeometry<T>           Geometry;
     //typedef gsTensorNurbs<d,T>    RatGeometry;
 };
 

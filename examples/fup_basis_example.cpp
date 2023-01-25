@@ -14,6 +14,7 @@
 #include <gismo.h>
 
 #include <gsFupBasis/gsFupBasis.h>
+#include <gsFupBasis/gsTensorFupBasis.h>
 
 using namespace gismo;
 
@@ -179,7 +180,8 @@ int main(int argc, char* argv[])
 
        gsFupBasis<real_t> *fup1=fup.clone().release();
        gsFupBasis<real_t> *fup2=fup.clone().release();
-       gsTensorBasis<2> fuptp(fup1,fup2);  
+       gsTensorFupBasis<2,real_t> fuptp(fup1,fup2);
+
     return 0;
 }
 
