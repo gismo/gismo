@@ -89,7 +89,6 @@ public:
                         m_options(gsParaviewDataSet::defaultOptions())
     {
         m_filename = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename) + ".pvd";
-        gsInfo << m_filename << "\n";
         gsFileManager::mkdir( gsFileManager::getPath(m_filename) );
         // if ( "" != m_filename.parent_path())
         // GISMO_ENSURE( fsystem::exists( m_filename.parent_path() ), 
@@ -153,7 +152,7 @@ public:
         mfile <<"</Collection>\n";
         mfile <<"</VTKFile>\n";
 
-        gsInfo << "Exporting to " << m_filename << "\n";
+        gsDebug << "Exporting to " << m_filename << "\n";
         std::ofstream f( m_filename.c_str() );
         GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
         f << mfile.rdbuf();
