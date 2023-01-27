@@ -324,6 +324,12 @@ public: //------------------------------------------------------ iterator types
             return (hnd_==rhs.hnd_);
         }
 
+        /// how do two iterators compare?
+        bool operator<(const Vertex_iterator& rhs) const
+        {
+            return (hnd_<rhs.hnd_);
+        }
+
         /// are two iterators different?
         bool operator!=(const Vertex_iterator& rhs) const
         {
@@ -499,6 +505,12 @@ public: //------------------------------------------------------ iterator types
         bool operator==(const Face_iterator& rhs) const
         {
             return (hnd_==rhs.hnd_);
+        }
+
+        /// how do two iterators compare?
+        bool operator<(const Face_iterator& rhs) const
+        {
+            return (hnd_<rhs.hnd_);
         }
 
         /// are two iterators different?

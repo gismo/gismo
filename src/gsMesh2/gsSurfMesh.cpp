@@ -604,7 +604,7 @@ face_valence_sum() const
 {
     unsigned int count = 0;
 #   pragma omp parallel for reduction(+:count)
-    for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
+    for (auto fit = faces_begin(); fit != faces_end(); ++fit)
         count += valence(*fit);
     return count;
 }
@@ -915,7 +915,7 @@ quad_split(Face f, Vertex v, Halfedge s)
 {
     /*
      Split an arbitrary face into quads by connecting each vertex of fh to vh.
-     - fh will remain valid (it will become one of the triangles)
+     - fh will remain valid (it will become one of the quads)
      */
 
     //assert: number of vertices is even (4,6,..)
@@ -1869,7 +1869,7 @@ void gsSurfMesh::cc_subdivide()
     }
 
 #   pragma omp parallel for default(none) shared(points,env,fnv) private(v,tmp)
-    for (i = env; i!=fnv;++i)
+    for (i = env; i<fnv;++i)
     {
         v = gsSurfMesh::Vertex(i); //edge points
         if (is_boundary(v))
@@ -1889,7 +1889,7 @@ void gsSurfMesh::cc_subdivide()
     }
 
 #   pragma omp parallel for default(none) shared(env,points) private(v)
-    for (i = 0; i!=env;++i)
+    for (i = 0; i<env;++i)
     {
         v = gsSurfMesh::Vertex(i); // original vertices
         auto n = valence(v);
@@ -1930,7 +1930,7 @@ gsSurfMesh::cc_limit_points(std::string label)
         (label == "v:point" ? "v:limit_points_2022" : label),Point(0,0,0));
     real_t n;
 #   pragma omp parallel for default(none) shared(std::cout,points,limits) private(n)
-    for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
+    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
     {
         n = valence(*vit);
         if (is_boundary(*vit))
@@ -1979,7 +1979,7 @@ gsSurfMesh::cc_limit_normals(std::string label, bool normalize)
     index_t i;
     gsSurfMesh::Halfedge h2;
 #   pragma omp parallel for default(none) shared(limits,points,normalize) private(h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
+    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
     {
         const real_t n = valence(*vit);
         const real_t cospin = math::cos(EIGEN_PI/n);
@@ -2020,7 +2020,7 @@ gsSurfMesh::cc_limit_tangent_vec(std::string label, bool normalize)
     real_t c1, c2, cc1, cc2;
     index_t i;
 #   pragma omp parallel for default(none) shared(limits,points,normalize) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = vertices_begin(); vit!= vertices_end(); ++vit)
+    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
     {
         const real_t n = valence(*vit);
         const real_t cospin = math::cos(EIGEN_PI/n);
@@ -2080,7 +2080,7 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
     gsSurfMesh::Vertex v;
     real_t n;
 #   pragma omp parallel for default(none) shared(std::cout,points,bb) private(n,v,h2,coefs) shared(mp)
-    for (auto fit = faces_begin(); fit!= faces_end(); ++fit)
+    for (auto fit = faces_begin(); fit < faces_end(); ++fit)
     {
         //gsInfo << "face id: "<< fit->idx() <<"\n"; 
         coefs.resize(16,3);//thread privates must be initialized for each thread
