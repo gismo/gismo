@@ -21,7 +21,7 @@ using namespace gismo;
 int main(int argc, char* argv[])
 {
     std::string output;
-    index_t numknots(5), deg(2);
+    index_t numknots(1), deg(3);
 
     gsCmdLine cmd("Tutorial on gsFupBasis class.");
     cmd.addInt("interior", "Interior knots.", numknots);
