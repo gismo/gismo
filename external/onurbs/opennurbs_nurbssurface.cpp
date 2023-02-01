@@ -520,7 +520,7 @@ void ON_NurbsSurface::Dump( ON_TextLog& dump ) const
       if ( i > 0 )
         dump.Print("\n");
       sPreamble[0] = 0;
-      sprintf(sPreamble,"  CV[%2d]",i);
+      snprintf(sPreamble,128,"  CV[%2d]",i);
       dump.PrintPointList( m_dim, m_is_rat, 
                         m_cv_count[1], m_cv_stride[1],
                         CV(i,0), 

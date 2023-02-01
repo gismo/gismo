@@ -543,7 +543,7 @@ void ON_TextLog::PrintPointGrid( int dim, int is_rat,
   if (!sPreamble || !sPreamble[0])
     sPreamble = "point";
   for ( i = 0; i < point_count0; i++ ) {
-    sprintf( s,  "%s[%2d]", sPreamble, i );
+    snprintf( s, 1024, "%s[%2d]", sPreamble, i );
     PrintPointList( dim, is_rat, point_count1, point_stride1, P + i*point_stride0, s );
   }
 }
