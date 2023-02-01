@@ -135,10 +135,6 @@ install(FILES
   "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckCCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckCXXCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCXXCompilerFlag.cmake"
   DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Install the export set for use with the install-tree
