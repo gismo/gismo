@@ -604,7 +604,7 @@ face_valence_sum() const
 {
     unsigned int count = 0;
 #   pragma omp parallel for reduction(+:count)
-    for (auto fit = faces_begin(); fit != faces_end(); ++fit)
+    for (auto fit = faces_begin(); fit < faces_end(); ++fit)
         count += valence(*fit);
     return count;
 }
