@@ -13,7 +13,8 @@
 
 #pragma once
 
-#include<gsIO/gsParaviewCollection.h>
+// #include<gsIO/gsParaviewCollection.h>
+#include<fstream>
 #include<gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
@@ -324,12 +325,13 @@ public:
                        std::string const & fn)
     { writeParaview_impl<E,false>(expr,m_exprdata->getMap(),fn); }
 
-
 private:
 
     template<class E, bool gmap>
     void writeParaview_impl(const expr::_expr<E> & expr,
                             geometryMap G, std::string const & fn);
+
+
 
     template<class E, bool storeElWise, class _op>
     T compute_impl(const expr::_expr<E> & expr);
@@ -742,6 +744,61 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
 
+// template<class T>
+// template<class E, bool gmap>
+// void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
+//                                             geometryMap G,
+//                                             std::string const & fn)
+//     {
+//         m_exprdata->parse(expr);
+
+//         //if false, embed topology ?
+//         const index_t n = m_exprdata->multiBasis().nBases();
+//         gsParaviewCollection collection(fn);
+//         std::string fileName;
+
+//         gsMatrix<T> pts, vals, ab;
+
+//         const bool mesh = m_options.askSwitch("plot.elements");
+
+//         for ( index_t i=0; i != n; ++i )
+//         {
+//             fileName = fn + util::to_string(i);
+//             unsigned nPts = m_options.askInt("plot.npts", 1000);
+//             ab = m_exprdata->multiBasis().piece(i).support();
+//             gsGridIterator<T,CUBE> pt(ab, nPts);
+//             eval(expr, pt, i);
+//             nPts = pt.numPoints();
+//             vals = allValues(m_elWise.size()/nPts, nPts);
+
+//             if (gmap) // Forward the points ?
+//             {
+//                 eval(G, pt, i);
+//                 pts = allValues(m_elWise.size()/nPts, nPts);
+//             }
+
+//             gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
+//                                   vals,
+//                                   pt.numPointsCwise(), fileName );
+//             collection.addPart(fileName + ".vts");
+
+//             if ( mesh )
+//             {
+//                 fileName+= "_mesh";
+//                 gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
+//                 static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
+//                 gsWriteParaview(msh, fileName, false);
+//                 collection.addPart(fileName+ ".vtp");
+//             }
+//         }
+//         collection.save();
+//     }
+
+
+
+// This is a copy of the above (commented out ) function, which has parts
+// of gsParaviewCollection pasted in it. In this way the inclusion of
+// gsParaviewCollection.h is prevented. This is a temporary modification.
 template<class T>
 template<class E>
 typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
@@ -804,9 +861,22 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
     {
         //if gmap is false, embed topology ?
         m_exprdata->parse(expr);
-        //const index_t n = m_exprdata->multiBasis().nBases();
-        const index_t n = G.source().nPieces();
-        gsParaviewCollection collection(fn);
+
+        //if false, embed topology ?
+        const index_t n = m_exprdata->multiBasis().nBases();
+
+        // Snippet from gsParaviewCollection
+        // gsParaviewCollection collection(fn);
+        std::stringstream file;
+        int counter = 0;
+        file <<"<?xml version=\"1.0\"?>\n";
+        file <<"<VTKFile type=\"Collection\" version=\"0.1\">";
+        file <<"<Collection>\n";
+        // End snippet from gsParaviewCollection
+
+        //const index_t n = G.source().nPieces();
+        //gsParaviewCollection collection(fn);
+
         std::string fileName;
 
         gsMatrix<T> pts, vals, ab;
@@ -833,18 +903,41 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
             gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
                                   vals,
                                   pt.numPointsCwise(), fileName );
-            collection.addPart(fileName, ".vts");
+
+            // Snippet from gsParaviewCollection
+            // collection.addPart(fileName+ ".vts");
+            GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+            file << "<DataSet part=\""<< counter++ <<"\" file=\""<<fileName<<".vts"<<"\"/>\n";
+            // End snippet from gsParaviewCollection
 
             if ( mesh )
             {
-                fileName+= "_mesh";
                 gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
                 static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
-                gsWriteParaview(msh, fileName, false);
-                collection.addPart(fileName, ".vtp");
+                gsWriteParaview(msh, fileName + "_mesh", false);
+                // Snippet from gsParaviewCollection
+                // collection.addPart(fileName+ ".vtp");
+                GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+                file << "<DataSet part=\""<< counter++ <<"\" file=\""<<fileName<<"_mesh.vtp"<<"\"/>\n";
+                // End snippet from gsParaviewCollection
             }
         }
-        collection.save();
-    }
+
+        // Snippet from gsParaviewCollection
+        // collection.save();
+        GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
+        file <<"</Collection>\n";
+        file <<"</VTKFile>\n";
+
+        std::string mfn = fn + ".pvd";
+        gsInfo << mfn << "\n";
+        std::ofstream f( mfn.c_str() );
+        GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
+        f << file.rdbuf();
+        f.close();
+        file.str("");
+        counter = -1;
+        // End snippet from gsParaviewCollection
+    }    
 
 } //namespace gismo

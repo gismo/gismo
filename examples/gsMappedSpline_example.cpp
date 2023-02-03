@@ -403,10 +403,11 @@ User options:
         std::string basename = "MappedBasisSingle";
 
         gsParaviewCollection collection(basename);
-        for (index_t i = 0; i < mbasis1.basis(0).size(); i++) {
+        for (index_t i = 0; i < mbasis1.basis(0).size(); i++)
+        {
             fileName = basename + "_0_" + util::to_string(i);
             gsWriteParaview_basisFnct(i, mbasis1.basis(0), fileName, 1000);
-            collection.addTimestep(fileName, i, ".vts");
+            collection.addPart(fileName + ".vts", i);
         }
         collection.save();
 
@@ -424,7 +425,7 @@ User options:
         for (index_t i = 0; i < mbasis2.basis(0).size(); i++) {
             fileName = basename + "_0_" + util::to_string(i);
             gsWriteParaview_basisFnct(i, mbasis2.basis(0), fileName, 1000);
-            collection.addTimestep(fileName, i, ".vts");
+            collection.addPart(fileName + ".vts", i);
         }
         collection.save();
 
@@ -439,10 +440,11 @@ User options:
         std::string basename = "MappedBasisSingle";
 
         gsParaviewCollection collection(basename);
-        for (index_t i = 0; i < mbasis3.basis(0).size(); i++) {
+        for (index_t i = 0; i < mbasis3.basis(0).size(); i++)
+        {
             fileName = basename + "_0_" + util::to_string(i);
             gsWriteParaview_basisFnct(i, mbasis3.basis(0), fileName, 1000);
-            collection.addTimestep(fileName, i, ".vts");
+            collection.addPart(fileName + ".vts", i);
         }
         collection.save();
 

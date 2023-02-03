@@ -19,6 +19,7 @@ CMakeLists.txt.user
 /.vs
 **/.vscode
 /build*
+.vscode/
 
 # CMake
 CMakeCache.txt
