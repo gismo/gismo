@@ -1354,9 +1354,14 @@ levelAtCorner(boxCorner const & c) const
     // Get parametric points of corner
     gsVector<bool> pars;
     c.parameters_into(d,pars);
-    // Cast to reals and find the level
-    gsMatrix<T> mat = pars.template cast<T>();
-    return getLevelAtPoint(mat);
+    // Get the support of the underlying tensor basis
+    gsMatrix<T> supp = m_bases.front()->support();
+    // Assign the extreme of the support depending on the parametric coordinate
+    gsVector<T> vec(supp.rows());
+    for (index_t r = 0; r!=supp.rows(); r++)
+        vec(r) = supp(r,pars(r));
+
+    return getLevelAtPoint(vec);
 }
 
 template<short_t d, class T>

@@ -42,8 +42,19 @@ public:
      * @param      result  The result geometry
      */
     static void projectGeometry(    const gsMultiBasis<T> & basis,
+                                    const gsFunctionSet<T> & source,
+                                    gsMultiPatch<T> & result);
+
+    static void projectGeometryBoundaries(    const gsMultiBasis<T> & basis,
                                     const gsMultiPatch<T> & source,
                                     gsMultiPatch<T> & result);
+
+
+    static void projectGeometryPenalty(    const gsMultiBasis<T> & basis,
+                                    const gsMultiPatch<T> & source,
+                                    gsMultiPatch<T> & result,
+                                    T penalty = 1e3);
+
 
 }; //struct
 
