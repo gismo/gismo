@@ -202,6 +202,7 @@ install_and_deploy_linux:
   script:
     - apt-get update -y
     - apt-get install cmake -y
+    - apt-get install git -y
     - export MAKEFLAGS=-j3
     - rm -rf ~/.cmake /builds/gismo-ci/buildlib/CMakeCache.txt /builds/gismo-ci/buildlib/lib /usr/lib*/gismo /usr/lib*/*gismo*.* /usr/include/gismo /usr/share/gismodata /builds/gismo-ci/buildproj # Cleanup folders
     - if [ ! -d "/builds/gismo-ci/buildlib" ]; then mkdir /builds/gismo-ci/buildlib; fi
