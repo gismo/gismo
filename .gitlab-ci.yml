@@ -40,7 +40,6 @@
   script:
     - apt-get update -y
     - apt-get install cmake ninja-build -y
-    - echo $CC
     - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE="$BUILD_TYPE" -D UPDATE_REPO=ON -D CTEST_CMAKE_GENERATOR="$GENERATOR" -D CNAME=$CNAME -D CXXNAME=$CXXNAME -D CTEST_TEST_TIMEOUT=150 -D GISMO_OPTIONAL="$GISMO_OPTIONAL" -D LABELS_FOR_SUBPROJECTS="$LABELS_FOR_SUBPROJECTS" -D CMAKE_ARGS="$CMAKE_ARGS" $CTEST_ARGS #-VV
   interruptible: true
   except:
@@ -207,7 +206,6 @@ install_and_deploy_linux:
     - rm -rf ~/.cmake /builds/gismo-ci/buildlib/CMakeCache.txt /builds/gismo-ci/buildlib/lib /usr/lib*/gismo /usr/lib*/*gismo*.* /usr/include/gismo /usr/share/gismodata /builds/gismo-ci/buildproj # Cleanup folders
     - if [ ! -d "/builds/gismo-ci/buildlib" ]; then mkdir /builds/gismo-ci/buildlib; fi
     - cd /builds/gismo-ci/buildlib
-    - echo $CC
     - cmake ../gismo -DBUILDNAME="$CI_JOB_NAME" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA-[gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" -D CMAKE_INSTALL_PREFIX=/usr -DTARGET_ARCHITECTURE=generic #-D GISMO_OPTIONAL="gsOpennurbs\\;gsIpOpt\\;gsSpectra"
     - cmake --build . --target gismo #--parallel 3
     # I. Test deploy from build tree

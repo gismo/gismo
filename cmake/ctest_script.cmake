@@ -166,10 +166,12 @@ endif()
 
 if(DEFINED CNAME)
   find_program (CC NAMES ${CNAME})
+  message("Setting CC to ${CC}")
   set(ENV{CC}  ${CC})
 endif()
 if(DEFINED CXXNAME)
   find_program (CXX NAMES ${CXXNAME})
+  message("Setting CXX to ${CXX}")
   set(ENV{CXX}  ${CXX})
 endif()
 
