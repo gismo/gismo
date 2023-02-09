@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     std::string boundaryConditions("d");
     std::string primals("c");
     bool eliminateCorners = false;
-    real_t tolerance = 1.e-8;
+    real_t tolerance = 1.e-5; // 1e-8 is not realistic for floats
     index_t maxIterations = 100;
     bool calcEigenvalues = false;
     std::string out;

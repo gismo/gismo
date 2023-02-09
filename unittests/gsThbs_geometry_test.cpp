@@ -203,7 +203,7 @@ SUITE(gsThbs_geometry_test)
             gsMatrix<>   T_ev_geom  = THB_geometry.eval(anch);
             gsMatrix<>   T_ev  = THB.eval(anch) ;
             //gsInfo<<"eval  geometry \n"<<  T_ev_geom <<"\n";
-            CHECK_MATRIX_PARTITION_OF_UNIT_CLOSE(T_ev, (real_t)0.0000001);
+            CHECK_MATRIX_PARTITION_OF_UNIT_CLOSE(T_ev, (real_t)0.00001); // This must work for floats as well!
         }
 
     }
