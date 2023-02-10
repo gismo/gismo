@@ -62,6 +62,7 @@ public:
 
     void rebuild();
 
+    void container_into(const std::vector<T> & elError, HBoxContainer & result);
 
     void markRef_into(const std::vector<T> & elError, HBoxContainer & elMarked);
 

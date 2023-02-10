@@ -1101,6 +1101,16 @@ void gsAdaptiveMeshing<T>::getOptions()
 }
 
 template<class T>
+void gsAdaptiveMeshing<T>::container_into(const std::vector<T> & elError, HBoxContainer & result)
+{
+    result.clear();
+    this->_assignErrors(m_boxes,elError);
+    for (typename boxMapType::iterator it = m_boxes.begin(); it!=m_boxes.end(); it++)
+        result.add(*it->second);
+}
+
+
+template<class T>
 void gsAdaptiveMeshing<T>::markRef_into(const std::vector<T> & elError, HBoxContainer & elMarked)
 {
     elMarked.clear();

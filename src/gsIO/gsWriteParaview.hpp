@@ -1059,11 +1059,13 @@ void gsWriteParaview(gsHBoxContainer<2,T> & boxes, std::string const & fn)
     gsParaviewCollection collection(fn);
 
     index_t i=0;
+    std::string fileName;
     for (typename gsHBoxContainer<2,T>::HIterator Hit = boxes.begin(); Hit!=boxes.end(); Hit++)
         for (typename gsHBoxContainer<2,T>::Iterator Cit = Hit->begin(); Cit!=Hit->end(); Cit++, i++)
         {
-            std::string fileName = fn + util::to_string(i);
+            fileName = fn + util::to_string(i);
             writeSingleHBox<T>(*Cit,fileName);
+            fileName = gsFileManager::getFilename(fileName);
             collection.addPart(fileName, ".vts");
         }
 
