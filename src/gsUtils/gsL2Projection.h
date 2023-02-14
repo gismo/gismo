@@ -43,7 +43,16 @@ public:
      */
     static void projectGeometry(    const gsMultiBasis<T> & basis,
                                     const gsFunctionSet<T> & source,
+                                    gsMatrix<T> & result);
+
+    static void projectGeometry(    const gsMultiBasis<T> & basis,
+                                    const gsFunctionSet<T> & source,
                                     gsMultiPatch<T> & result);
+
+    static void projectGeometry(    const gsMultiBasis<T> & intbasis,
+                                    const gsMappedBasis<2,T> & basis,
+                                    const gsMultiPatch<T> & source,
+                                    gsMatrix<T> & result);
 
     static void projectGeometryBoundaries(    const gsMultiBasis<T> & basis,
                                     const gsMultiPatch<T> & source,
