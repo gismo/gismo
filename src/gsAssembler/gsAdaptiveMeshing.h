@@ -90,7 +90,12 @@ public:
     // void unrefineThreshold(const index_t level);
     // void unrefineThreshold(){ unrefineThreshold(m_maxLvl); };
 
+    index_t numBlocked() const;
+    index_t numElements() const;
 
+    void assignErrors(const std::vector<T> & elError);
+    T blockedError() const;
+    T nonBlockedError() const;
 
 private:
     void _makeMap(const gsFunctionSet<T> * input, typename gsAdaptiveMeshing<T>::indexMapType & indexMap, typename gsAdaptiveMeshing<T>::boxMapType & boxMap);

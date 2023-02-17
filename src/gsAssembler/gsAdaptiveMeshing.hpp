@@ -1442,6 +1442,57 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
     return container;
 }
 
+template<class T>
+index_t gsAdaptiveMeshing<T>::numBlocked() const
+{
+    gsMaxLvlCompare<2,T> comp(m_maxLvl);
+    index_t numBlocked = 0;
+    for (typename boxMapType::const_iterator it=m_boxes.cbegin(); it!=m_boxes.cend(); it++)
+        numBlocked += comp.check(*it->second);
+
+    return numBlocked;
+}
+
+template<class T>
+index_t gsAdaptiveMeshing<T>::numElements() const
+{
+    return m_indices.size();
+}
+
+template<class T>
+void gsAdaptiveMeshing<T>::assignErrors(const std::vector<T> & elError)
+{
+    this->_assignErrors(m_boxes,elError);
+}
+
+template<class T>
+T gsAdaptiveMeshing<T>::blockedError() const
+{
+    gsMaxLvlCompare<2,T> comp(m_maxLvl);
+    T error = 0;
+    for (typename boxMapType::const_iterator it=m_boxes.cbegin(); it!=m_boxes.cend(); it++)
+    {
+        if (!(comp.check(*it->second)))
+            error += it->second->error();
+    }
+
+    return error;
+}
+
+template<class T>
+T gsAdaptiveMeshing<T>::nonBlockedError() const
+{
+    gsMaxLvlCompare<2,T> comp(m_maxLvl);
+    T error = 0;
+    for (typename boxMapType::const_iterator it=m_boxes.cbegin(); it!=m_boxes.cend(); it++)
+    {
+        if (comp.check(*it->second))
+            error += it->second->error();
+    }
+
+    return error;
+}
+
 // The functions below are deprecated
 
 /**
