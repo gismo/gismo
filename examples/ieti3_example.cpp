@@ -266,9 +266,17 @@ int main(int argc, char *argv[])
         gsScaledDirichletPrec<>::Blocks blocks
             = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
 
+        gsBoundaryConditions<> bc_A11;
+        for (index_t i = 1; i <= 2*mb.dim(); ++i) {
+            bc_A11.addCondition(0, i, condition_type::dirichlet, &gD);
+        }
+        // TODO: set beta with proper, dimension depending scaling
+        gsLinearOperator<>::Ptr A11 = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local[0],bc_A11,gsAssembler<>::defaultOptions(),/*alpha=*/0,/*beta=*/1,/*gamma=*/0);
+
+        // TODO: Should we take also parameter domain for the other blocks?
         prec.addSubdomain(
             prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
-            gsScaledDirichletPrec<>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) )
+            gsScaledDirichletPrec<>::schurComplement( blocks, /*makeSparseCholeskySolver(blocks.A11)*/ A11 )
         );
 
         // Now, we handle the primal constraints.
@@ -292,15 +300,13 @@ int main(int argc, char *argv[])
         );
 
         // TODO: set beta with proper, dimension depending scaling
-        real_t gamma = (bc_local.dirichletSides().size() == 0) ? 1 : 0;
-        real_t beta = 1;
-        gsLinearOperator<>::Ptr fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local[0],bc_local,gsAssembler<>::defaultOptions(),/*alpha=*/0,beta,gamma);
-        //gsLinearOperator<>::Ptr fd = makeSparseCholeskySolver(localMatrix);
+        real_t alpha = (bc_local.dirichletSides().size() == 0) ? 1 : 0;
+        gsLinearOperator<>::Ptr fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local[0],bc_local,gsAssembler<>::defaultOptions(),alpha,/*beta=*/1,/*gamma=*/0);
         gsLinearOperator<>::Ptr localSolver = gsBlockSolverOp<>::make(fd,modifiedLocalMatrix.bottomRows(ietiMapper.primalConstraints(k).size()).leftCols(localMatrix.rows()));
         primal.addContribution(
             jumpMatrix, localMatrix, localRhs,
             gsPrimalSystem<>::primalBasis(
-                localSolver, embeddingForBasis, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
+                /*makeSparseCholeskySolver(modifiedLocalMatrix)*/ localSolver, embeddingForBasis, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
             )
         );
         gsMatrix<>                       modifiedLocalRhs     = localEmbedding * localRhs;

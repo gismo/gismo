@@ -19,7 +19,6 @@
 #define DEBUGVAR(v) gsInfo << #v << ": " << (v) << "\n"
 #define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
 
-#if 0
 #include <gismo.h>
 #include <gsIeti/gsIetidGMapper.h>
 #include <unsupported/src/gsSolver/gsTimedOp.h>
@@ -83,7 +82,7 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/yeti_mp2.xml");
+    //std::string geometry("domain2d/yeti_mp2.xml");
     index_t splitPatches = 2;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
@@ -102,7 +101,7 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
-    cmd.addString("g", "Geometry",              "Geometry file", geometry);
+    //cmd.addString("g", "Geometry",              "Geometry file", geometry);
     cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
@@ -122,27 +121,27 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    if ( ! gsFileManager::fileExists(geometry) )
-    {
-        gsInfo << "Geometry file could not be found.\n";
-        gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
-        return EXIT_FAILURE;
-    }
+    //if ( ! gsFileManager::fileExists(geometry) )
+    //{
+    //    gsInfo << "Geometry file could not be found.\n";
+    //    gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
+    //    return EXIT_FAILURE;
+    //}
 
     gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
 
     /******************* Define geometry ********************/
 
-    gsInfo << "Define geometry... " << std::flush;
+    //gsInfo << "Define geometry... " << std::flush;
 
     //! [Define Geometry]
-    gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
+    //gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
     //! [Define Geometry]
-    if (!mpPtr)
-    {
-        gsInfo << "No geometry found in file " << geometry << ".\n";
-        return EXIT_FAILURE;
-    }
+    //if (!mpPtr)
+    //{
+    //    gsInfo << "No geometry found in file " << geometry << ".\n";
+    //    return EXIT_FAILURE;
+    //}
     //! [Define Geometry2]
     //gsMultiPatch<>& mp = *mpPtr;
     gsMultiPatch<> mp = approximateQuarterAnnulus(2);
@@ -586,8 +585,3 @@ int main(int argc, char *argv[])
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
-#else
-int main() {}
-
-#endif

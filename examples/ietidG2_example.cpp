@@ -608,12 +608,12 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    if ( ! gsFileManager::fileExists(geometry) )
-    {
-        gsInfo << "Geometry file could not be found.\n";
-        gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
-        return EXIT_FAILURE;
-    }
+    //if ( ! gsFileManager::fileExists(geometry) )
+    //{
+    //    gsInfo << "Geometry file could not be found.\n";
+    //    gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
+    //    return EXIT_FAILURE;
+    //}
 
     gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
 
