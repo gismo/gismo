@@ -19,6 +19,7 @@
 #define DEBUGVAR(v) gsInfo << #v << ": " << (v) << "\n"
 #define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
 
+#if 0
 #include <gismo.h>
 #include <gsIeti/gsIetidGMapper.h>
 #include <unsupported/src/gsSolver/gsTimedOp.h>
@@ -585,3 +586,8 @@ int main(int argc, char *argv[])
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
+
+#else
+int main() {}
+
+#endif

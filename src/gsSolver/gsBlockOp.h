@@ -19,18 +19,17 @@
 namespace gismo
 {
 
-/** \brief Simple class create a block operator structure.
+/** \brief Simple class to create a block operator structure.
  *
  * This class represents a linear operator \f$C\f$ having block structure:
  * \f[
  *   C =
-         \left( \begin{array}{cccc}
+         \begin{pmatrix}
          C_{00} & C_{01} & \ldots & C_{0m}  \\
          C_{10} & C_{11} & \ldots & C_{1m}  \\
          \vdots & \vdots & \ddots & \vdots  \\
          C_{n0} & C_{n1} & \ldots & C_{nm}
-         \end{array}
-         \right),
+         \end{pmatrix},
    \f]
  * where \f$C_{ij}\f$ are themselves gsLinearOperators.
  *
@@ -104,6 +103,84 @@ private:
     gsVector<index_t> m_blockInputPositions;
 
 };
+
+/** \brief Represents the solution of a block system
+ *
+ * Represents the inverse of
+ * \f[
+ *   M =
+         \begin{pmatrix}
+         A & C^T \\
+         C & 0
+         \end{pmatrix},
+   \f]
+ * where the user provides \f$ A^{-1} \f$ as linear operator representing the
+ * inverse of a symmetric and positive definite matrix A and \f$ C \f$ as a
+ * matrix.
+ *
+ * \ingroup Solver
+ */
+template<class T=real_t> //TODO: forward decs
+class gsBlockSolverOp GISMO_FINAL : public gsLinearOperator<T>
+{
+public:
+
+    /// Shared pointer for gsBlockSolverOp
+    typedef memory::shared_ptr< gsBlockSolverOp<T> > Ptr;
+
+    /// Unique pointer for gsBlockSolverOp
+    typedef memory::unique_ptr< gsBlockSolverOp<T> > uPtr;
+
+    /// Base class
+    typedef memory::shared_ptr< gsLinearOperator<T> > BasePtr;
+
+    /// Constructor. Takes the number of blocks (nRows, nCols). Provide the contents of the blocks with addOperator
+    gsBlockSolverOp(BasePtr Ainv, gsSparseMatrix<T> C)
+        : m_Ainv(give(Ainv)), m_C(give(C))
+    {
+        GISMO_ASSERT(m_Ainv->rows()==m_Ainv->cols(), "Ainv is assumed to be symmetric.");
+        GISMO_ASSERT(m_Ainv->cols()==m_C.cols(), "Dimensions do not agree: "<<m_Ainv->cols()<<"!="<<m_C.cols());
+
+        gsMatrix<T> Ct = m_C.transpose();
+        gsMatrix<T> res;
+        m_Ainv->apply(Ct, res);
+        gsMatrix<T> S = Ct.transpose() * res;
+        m_Sinv = makeCholeskySolver(S);
+    }
+
+    /// Make function returning a smart pointer
+    static uPtr make(BasePtr Ainv, gsSparseMatrix<T> C)
+    { return memory::make_unique( new gsBlockSolverOp(give(Ainv), give(C)) ); }
+
+    void apply(const gsMatrix<T> & input, gsMatrix<T> & result) const
+    {
+        result.setZero(input.rows(), input.cols());
+
+        gsMatrix<T> q;
+        m_Ainv->apply(input.topRows(m_Ainv->rows()), q);
+
+        gsMatrix<T> z = m_C * q - input.bottomRows(m_C.rows());
+        gsMatrix<T> Sinvz;
+        m_Sinv->apply(z, Sinvz);
+
+        gsMatrix<T> AinvCSinvz;
+        m_Ainv->apply(m_C.transpose() * Sinvz, AinvCSinvz);
+
+        result.topRows(m_Ainv->rows()) = q - AinvCSinvz;
+        result.bottomRows(m_C.rows()) = Sinvz;
+    }
+
+    index_t rows() const { return m_Ainv->rows()+m_C.rows(); }
+    index_t cols() const { return m_Ainv->rows()+m_C.rows(); }
+
+private:
+
+    BasePtr m_Ainv, m_Sinv;
+    gsSparseMatrix<T> m_C;
+
+};
+
+
 
 } // namespace gismo
 
