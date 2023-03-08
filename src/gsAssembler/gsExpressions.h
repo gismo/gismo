@@ -1402,13 +1402,13 @@ public:
     index_t parDim() const
     { return _u.source().domainDim(); }
 
-    gsDofMapper & mapper() {return _u.mapper();}
+    //gsDofMapper & mapper() {return _u.mapper();}
     const gsDofMapper & mapper() const {return _u.mapper();}
 
     inline const gsMatrix<T> & fixedPart() const {return _u.fixedPart();}
     gsMatrix<T> & fixedPart() {return _u.fixedPart();}
 
-    gsFuncData<T> & data() {return *_u.data();}
+    //gsFuncData<T> & data() {return _u.data();}
     const gsFuncData<T> & data() const {return _u.data();}
 
     void setSolutionVector(gsMatrix<T>& solVector)
@@ -1450,20 +1450,17 @@ public:
     
     //const gsMatrix<T> & coefs(component, patch) const { return *_Sv; }
 
-    /// val: perturbation value, j: local bf index, p: patch
+    /// val: perturbation value, j: global index, p: patch
     void perturbLocal(T val, index_t j, index_t p = 0)
     {
         GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-
-        auto qr = std::div(j, _u.data().actives.size() );
-        const index_t ii = _u.mapper().index(qr.rem, p, qr.quot);
-        if (_u.mapper().is_free_index(ii) )
-        {
-            GISMO_ASSERT(ii<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
-            _Sv->at(ii) += val;
-        }
+        //if (_u.mapper().is_free_index(j) )
+        //{
+            GISMO_ASSERT(j<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
+            _Sv->at(j) += val;
+            //}
         //else
-        //    _u.fixedPart().at( _u.mapper().global_to_bindex(ii) ) += val;
+        //    _u.fixedPart().at( _u.mapper().global_to_bindex(j) ) += val;
     }
 
     /// Extract the coefficients of piece \a p
