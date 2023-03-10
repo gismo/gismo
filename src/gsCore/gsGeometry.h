@@ -568,7 +568,7 @@ public:
     std::vector<gsGeometry *> boundary() const;
 
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
-    typename gsGeometry::uPtr boundary(boxSide const& s) const;
+    virtual typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
     /// Computes and returns the interface with \a other as a new geometry
     virtual typename gsGeometry::uPtr iface(const boundaryInterface & bi,
