@@ -31,6 +31,7 @@ class gsExprAssembler
 {
 private:
     typename gsExprHelper<T>::Ptr m_exprdata;
+    const gsMultiPatch<T>* m_gmap;
 
     gsOptionList m_options;
 
@@ -70,7 +71,7 @@ public:
     /// \param _rBlocks Number of spaces for test functions
     /// \param _cBlocks Number of spaces for solution variables
     gsExprAssembler(index_t _rBlocks = 1, index_t _cBlocks = 1)
-    : m_exprdata(gsExprHelper<T>::make()), m_options(defaultOptions()),
+    : m_exprdata(gsExprHelper<T>::make()), m_gmap(nullptr), m_options(defaultOptions()),
       m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr)
     { }
 
@@ -134,6 +135,16 @@ public:
     /// \warning Must be called before any computation is requested
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
+
+    /// \brief Set the geometrymap ( used for interface assembly)
+    /// \warning Must be called before any computation is requested
+    void setGeometryMap(const gsMultiPatch<T> & gMap)
+    { m_gmap = &gMap;}
+
+    const gsMultiPatch<T>& getGeometryMap() const
+    {
+        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap); 
+    }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     void setIntegrationElements(const gsMultiBasis<T> &&) = delete;
@@ -368,7 +379,7 @@ public:
     template<class expr> void assembleJacobian(const expr residual, solution & u);
 
     template<class expr> void assembleJacobianIfc(const ifContainer & iFaces,
-                                                  const expr residual, solution & u);
+                                                  const expr residual, solution  u);
 
 private:
 
@@ -480,31 +491,34 @@ private:
             const index_t sz = u.space().cardinality();
             localMat.setZero(sz, sz);
 
-            for ( index_t j = 0; j != sz; j++ ) // for all basis functions (col(j))
+            for ( index_t c=0; c!= u.dim(); c++)
             {
-                // todo: for all components
-                const index_t jj = u.mapper().index(u.data().actives.at(j),
-                                                    u.space().data().patchId, 0);
-                if (u.mapper().is_free_index(jj) )
+                const index_t rls = c * u.data().actives.rows();     //local stride
+                for ( index_t j = 0; j != sz/u.dim(); j++ )     // for all basis functions (col(j))
                 {
-                    //todo: take local copy of local solution u
+                    const index_t jj = u.mapper().index(u.data().actives.at(j),
+                                                        u.space().data().patchId, c);
+                    if (u.mapper().is_free_index(jj) )
+                    {
+                        //todo: take local copy of local solution u
 
-                    //Perturb \a u
-                    u.perturbLocal( delta  , jj, u.space().data().patchId);
-                    quadrature(ee, aux);
-                    localMat.col(j) += 8 * aux;
-                    u.perturbLocal( delta  , jj, u.space().data().patchId);
-                    quadrature(ee, aux);
-                    localMat.col(j) -= aux;
-                    u.perturbLocal(-3*delta, jj, u.space().data().patchId);
-                    quadrature(ee, aux);
-                    localMat.col(j) -= 8 * aux;
-                    u.perturbLocal( -delta , jj, u.space().data().patchId);
-                    quadrature(ee, aux);
-                    localMat.col(j) += aux;
-                    localMat.col(j) /= 12*delta;
-                    //Unperturb \a u
-                    u.perturbLocal(2*delta, jj, u.space().data().patchId);
+                        //Perturb \a u
+                        u.perturbLocal( delta  , jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) += 8 * aux;
+                        u.perturbLocal( delta  , jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) -= aux;
+                        u.perturbLocal(-3*delta, jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) -= 8 * aux;
+                        u.perturbLocal( -delta , jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) += aux;
+                        localMat.col(rls+j) /= 12*delta;
+                        //Unperturb \a u
+                        u.perturbLocal(2*delta, jj, u.space().data().patchId);
+                    }
                 }
             }
 
@@ -609,6 +623,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
+    opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
     return opt;
 
     /// dirichlet treatment? elimination ????
@@ -870,7 +885,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
                                                       m_exprdata->multiBasis().basis(patch1).support(),
                                                       m_exprdata->multiBasis().basis(patch2).support() );
         else
-            interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), m_exprdata->multiBasis(), iFace);
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
@@ -975,12 +990,12 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
 template<class T> template<class expr>
 void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
-                                             const expr residual, solution & u)
+                                             const expr residual, solution  u)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
 
-    clearMatrix();
+    // clearMatrix();
 
     m_exprdata->parse(residual, u);
     m_exprdata->activateFlags(SAME_ELEMENT);
@@ -992,6 +1007,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
     _eval ee(m_matrix, m_rhs, quWeights);
     static const T delta = 0.00001;
     const bool flipSide = m_options.askSwitch("flipSide", false);
+    const bool movingInterface = m_options.askSwitch("movingInterface", false);
 
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
@@ -1002,7 +1018,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
         const index_t patch1 = iFace.first() .patch;
         //const index_t patch2 = iFace.second().patch;
 
-        gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(),
+        gsCPPInterface<T> interfaceMap(getGeometryMap(), // ! make current geometry
                                        m_exprdata->multiBasis(), iFace);
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
@@ -1019,6 +1035,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
+            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             if (m_exprdata->points().cols()==0)
                 continue;
@@ -1027,7 +1044,62 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             m_exprdata->precompute(iFace);
 
             ee(residual);
-            ee.diff(residual, u);
+            if (!movingInterface)
+            {
+                ee.diff(residual, u);
+            }
+            else
+            {
+                GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
+                static const T delta = 0.00001;
+
+                const index_t sz = u.space().cardinality();
+                ee.localMat.setZero(sz, sz);
+
+                for ( index_t c=0; c!= u.dim(); c++)
+                {
+                    const index_t rls = c * u.data().actives.rows();     //local stride
+                    for ( index_t j = 0; j != sz/u.dim(); j++ )     // for all basis functions (col(j))
+                    {
+                        const index_t jj = u.mapper().index(u.data().actives.at(j),
+                                                            u.space().data().patchId, c);
+                        if (u.mapper().is_free_index(jj) )
+                        {
+                            //Perturb \a u
+                            u.perturbLocal( delta  , jj, u.space().data().patchId);
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(ee, ee.aux);
+                            ee.localMat.col(rls+j) += 8 * ee.aux;
+
+                            u.perturbLocal( delta  , jj, u.space().data().patchId);
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(ee, ee.aux);
+                            ee.localMat.col(rls+j) -= ee.aux;
+
+                            u.perturbLocal(-3*delta, jj, u.space().data().patchId);
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(ee, ee.aux);
+                            ee.localMat.col(rls+j) -= 8 * ee.aux;
+
+                            u.perturbLocal( -delta , jj, u.space().data().patchId);
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(ee, ee.aux);
+                            ee.localMat.col(rls+j) += ee.aux;
+
+                            ee.localMat.col(rls+j) /= 12*delta;
+                            //Unperturb \a u
+                            u.perturbLocal(2*delta, jj, u.space().data().patchId);
+                        }
+                    }
+                }
+
+                //  ------- Accumulate  -------
+                ee.template push<true,false>(ee.rowVar(), ee.rowVar());
+            }
         }
     }
 

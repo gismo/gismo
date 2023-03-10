@@ -1356,7 +1356,7 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        bool singleActives = (1 == _u.data().actives.cols()); 
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
@@ -1364,9 +1364,9 @@ public:
 
         for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+            for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
-                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
+                const index_t ii = map.index(_u.data().actives(i, singleActives ? 0 : k), _u.data().patchId, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 else
@@ -1453,7 +1453,7 @@ public:
     /// val: perturbation value, j: global index, p: patch
     void perturbLocal(T val, index_t j, index_t p = 0)
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        // GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
         //if (_u.mapper().is_free_index(j) )
         //{
             GISMO_ASSERT(j<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
