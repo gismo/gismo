@@ -1048,7 +1048,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             {
                 ee.diff(residual, u);
             }
-            else
+            else // For Moving Geometry Maps
             {
                 GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
                 static const T delta = 0.00001;
@@ -1067,38 +1067,43 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
                         {
                             //Perturb \a u
                             u.perturbLocal( delta  , jj, u.space().data().patchId);
+                            interfaceMap.updateBdr();
                             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
                             m_exprdata->precompute(iFace);
-                            ee.quadrature(ee, ee.aux);
+                            ee.quadrature(residual, ee.aux);
                             ee.localMat.col(rls+j) += 8 * ee.aux;
 
                             u.perturbLocal( delta  , jj, u.space().data().patchId);
+                            interfaceMap.updateBdr();
                             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
                             m_exprdata->precompute(iFace);
-                            ee.quadrature(ee, ee.aux);
+                            ee.quadrature(residual, ee.aux);
                             ee.localMat.col(rls+j) -= ee.aux;
 
                             u.perturbLocal(-3*delta, jj, u.space().data().patchId);
+                            interfaceMap.updateBdr();
                             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
                             m_exprdata->precompute(iFace);
-                            ee.quadrature(ee, ee.aux);
+                            ee.quadrature(residual, ee.aux);
                             ee.localMat.col(rls+j) -= 8 * ee.aux;
 
                             u.perturbLocal( -delta , jj, u.space().data().patchId);
+                            interfaceMap.updateBdr();
                             interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
                             m_exprdata->precompute(iFace);
-                            ee.quadrature(ee, ee.aux);
+                            ee.quadrature(residual, ee.aux);
                             ee.localMat.col(rls+j) += ee.aux;
 
                             ee.localMat.col(rls+j) /= 12*delta;
                             //Unperturb \a u
                             u.perturbLocal(2*delta, jj, u.space().data().patchId);
+                            interfaceMap.updateBdr();
                         }
                     }
                 }
 
                 //  ------- Accumulate  -------
-                ee.template push<true,false>(ee.rowVar(), ee.rowVar());
+                ee.template push<true,false>(residual.rowVar(), residual.rowVar());
             }
         }
     }
