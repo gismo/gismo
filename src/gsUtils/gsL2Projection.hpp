@@ -13,6 +13,7 @@
 
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsAssembler/gsExprAssembler.h>
+#include <gsAssembler/gsExprEvaluator.h>
 #include <gsMatrix/gsSparseSolver.h>
 #include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsBoundary.h>
@@ -21,8 +22,98 @@
 namespace gismo {
 
 template<typename T>
-void gsL2Projection<T>::projectGeometry(const gsMultiBasis<T> & basis,
+void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
+                                            const gsMultiPatch<T> & geometry,
+                                            gsMultiPatch<T> & result)
+{
+    result.clear();
+
+    gsExprAssembler<T> A(1,1);
+    gsMatrix<T> solVector;
+
+    A.setIntegrationElements(basis);
+    space u = A.getSpace(basis,geometry.targetDim());
+    solution sol = A.getSolution(u, solVector);
+    auto f = A.getCoeff(geometry);
+    geometryMap G = A.getMap(geometry);
+
+    u.setup(0);
+    A.initSystem();
+
+    // assemble system
+    A.assemble(u*u.tr() * meas(G),u * f * meas(G));
+
+    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
+    solver->compute(A.matrix());
+    solVector = solver->solve(A.rhs());
+
+    gsExprEvaluator<> ev(A);
+    gsDebugVar(ev.integral((sol-f).sqNorm()));
+
+    sol.extract(result);
+    result.computeTopology();
+    result.closeGaps();
+}
+
+template<typename T>
+void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
+                                            const gsMultiPatch<T> & geometry,
+                                            gsMatrix<T> & result)
+{
+    gsExprAssembler<T> A(1,1);
+
+    A.setIntegrationElements(basis);
+    space u = A.getSpace(basis,geometry.targetDim());
+    auto f = A.getCoeff(geometry);
+    geometryMap G = A.getMap(geometry);
+
+    u.setup(-1);
+    A.initSystem();
+
+    // assemble system
+    A.assemble(u*u.tr() * meas(G),u * f * meas(G));
+
+    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
+    solver->compute(A.matrix());
+    result = solver->solve(A.rhs());
+
+    solution sol = A.getSolution(u, result);
+    gsExprEvaluator<> ev(A);
+    gsDebugVar(ev.integral((sol-f).sqNorm()));
+}
+
+template<typename T>
+void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & intbasis,
+                                            const gsMappedBasis<2,T> & basis,
+                                            const gsMultiPatch<T> & geometry,
+                                            gsMatrix<T> & result)
+{
+    gsExprAssembler<T> A(1,1);
+
+    A.setIntegrationElements(intbasis);
+    space u = A.getSpace(basis,geometry.targetDim());
+    auto f = A.getCoeff(geometry);
+    geometryMap G = A.getMap(geometry);
+
+    u.setup(-1);
+    A.initSystem();
+
+    // assemble system
+    A.assemble(u*u.tr()*meas(G),u * f*meas(G));
+
+    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
+    solver->compute(A.matrix());
+    result = solver->solve(A.rhs());
+
+    solution sol = A.getSolution(u, result);
+    gsExprEvaluator<> ev(A);
+    gsDebugVar(ev.integral((sol-f).sqNorm()));
+}
+
+template<typename T>
+void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
                                             const gsFunctionSet<T> & source,
+                                            const gsMultiPatch<T>   & geometry,
                                             gsMultiPatch<T> & result)
 {
     result.clear();
@@ -32,14 +123,15 @@ void gsL2Projection<T>::projectGeometry(const gsMultiBasis<T> & basis,
 
     A.setIntegrationElements(basis);
     space u = A.getSpace(basis,source.targetDim());
+    auto  f = A.getCoeff(source);
     solution sol = A.getSolution(u, solVector);
-    auto G = A.getCoeff(source);
+    geometryMap G = A.getMap(geometry);
 
     u.setup(-1);
     A.initSystem();
 
     // assemble system
-    A.assemble(u*u.tr(),u * G);
+    A.assemble(u*u.tr() * meas(G),u * f * meas(G));
 
     typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
     solver->compute(A.matrix());
@@ -51,48 +143,57 @@ void gsL2Projection<T>::projectGeometry(const gsMultiBasis<T> & basis,
 }
 
 template<typename T>
-void gsL2Projection<T>::projectGeometry(const gsMultiBasis<T> & basis,
+void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
                                             const gsFunctionSet<T> & source,
+                                            const gsMultiPatch<T>   & geometry,
                                             gsMatrix<T> & result)
 {
     gsExprAssembler<T> A(1,1);
 
     A.setIntegrationElements(basis);
     space u = A.getSpace(basis,source.targetDim());
-    auto G = A.getCoeff(source);
+    auto  f = A.getCoeff(source);
+    geometryMap G = A.getMap(geometry);
 
     u.setup(-1);
     A.initSystem();
 
     // assemble system
-    A.assemble(u*u.tr(),u * G);
+    A.assemble(u*u.tr() * meas(G),u * f * meas(G));
 
     typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
     solver->compute(A.matrix());
     result = solver->solve(A.rhs());
 }
 
+
 template<typename T>
-void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & intbasis,
-                                            const gsMappedBasis<2,T> & basis,
-                                            const gsMultiPatch<T> & source,
+void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
+                                            const gsMappedBasis<2,T>& basis,
+                                            const gsFunctionSet<T>  & source,
+                                            const gsMultiPatch<T>   & geometry,
                                             gsMatrix<T> & result)
 {
     gsExprAssembler<T> A(1,1);
 
     A.setIntegrationElements(intbasis);
     space u = A.getSpace(basis,source.targetDim());
-    geometryMap G = A.getMap(source);
+    auto  f = A.getCoeff(source);
+    geometryMap G = A.getMap(geometry);
 
     u.setup(-1);
     A.initSystem();
 
     // assemble system
-    A.assemble(u*u.tr()*meas(G),u * G*meas(G));
+    A.assemble(u*u.tr()*meas(G),u * f *meas(G));
 
     typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
     solver->compute(A.matrix());
     result = solver->solve(A.rhs());
+
+    solution sol = A.getSolution(u, result);
+    gsExprEvaluator<> ev(A);
+    gsDebugVar(ev.integral((sol-f).sqNorm()));
 }
 
 template<typename T>

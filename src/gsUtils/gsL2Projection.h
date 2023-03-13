@@ -42,16 +42,32 @@ public:
      * @param      result  The result geometry
      */
     static void projectGeometry(    const gsMultiBasis<T> & basis,
-                                    const gsFunctionSet<T> & source,
+                                    const gsMultiPatch<T> & geometry,
                                     gsMatrix<T> & result);
 
     static void projectGeometry(    const gsMultiBasis<T> & basis,
-                                    const gsFunctionSet<T> & source,
+                                    const gsMultiPatch<T> & geometry,
                                     gsMultiPatch<T> & result);
 
     static void projectGeometry(    const gsMultiBasis<T> & intbasis,
                                     const gsMappedBasis<2,T> & basis,
-                                    const gsMultiPatch<T> & source,
+                                    const gsMultiPatch<T> & geometry,
+                                    gsMatrix<T> & result);
+
+    static void projectFunction(    const gsMultiBasis<T> & basis,
+                                    const gsFunctionSet<T> & source,
+                                    const gsMultiPatch<T> & geometry,
+                                    gsMatrix<T> & result);
+
+    static void projectFunction(    const gsMultiBasis<T> & basis,
+                                    const gsFunctionSet<T> & source,
+                                    const gsMultiPatch<T> & geometry,
+                                    gsMultiPatch<T> & result);
+
+    static void projectFunction(    const gsMultiBasis<T>   & intbasis,
+                                    const gsMappedBasis<2,T>& basis,
+                                    const gsFunctionSet<T>  & source,
+                                    const gsMultiPatch<T>   & geometry,
                                     gsMatrix<T> & result);
 
     static void projectGeometryBoundaries(    const gsMultiBasis<T> & basis,
