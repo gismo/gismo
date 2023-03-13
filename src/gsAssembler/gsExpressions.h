@@ -2895,12 +2895,12 @@ public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
+    explicit onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     auto eval(const index_t k) const -> decltype(_G.data().outNormals.col(k))
     { return _G.data().outNormals.col(k); }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return  _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
@@ -2933,7 +2933,7 @@ public:
     auto eval(const index_t k) const -> decltype(_G.data().normals.col(k))
     { return _G.data().normals.col(k); }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
@@ -2985,7 +2985,7 @@ public:
 
     }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     static const gsFeSpace<Scalar> & rowVar() {return gsNullExpr<Scalar>::get();}
@@ -3114,8 +3114,8 @@ public:
         return gsAsConstMatrix<Scalar>(_G.data().fundForms.col(k).data(),rows(),cols());
     }
 
-    index_t rows() const { return _G.data().dim.first ; }
-    index_t cols() const { return _G.data().dim.first ; }
+    index_t rows() const { return _G.source().domainDim() ; }
+    index_t cols() const { return _G.source().domainDim() ; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3501,8 +3501,8 @@ public:
         return res;
     }
 
-    index_t rows() const { return _G.data().dim.second; }
-    index_t cols() const { return _G.data().dim.first; }
+    index_t rows() const { return _G.source().targetDim(); }
+    index_t cols() const { return _G.source().domainDim(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
