@@ -46,8 +46,8 @@ int main(int argc, char *argv[])
     auto vpassed = HEmesh.vertex_property<gsSurfMesh::Scalar>("v:passed", 0 );
     // Index of the curve loop (negative) or of the patch (positive)
     auto hindex = HEmesh.halfedge_property<int>("h:index", 0 );
-    // Patch index of each face
-    auto findex = HEmesh.face_property<int>("f:index", -1 );
+    // Patch index of each face (seems unused)
+    //auto findex = HEmesh.face_property<int>("f:index", -1 );
 
     // Create a stack of EVs and boundary EVs
     std::list<gsSurfMesh::Vertex> EVs;
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Writing multipatch:\t"<<time.stop()<<" seconds\n";
     }
 
-    for (index_t k = 0; k!=dirSizes.size(); k++)
+    for (size_t k = 0; k!=dirSizes.size(); k++)
         gsDebug<<"Patch "<<k<<": Dir 0: "<<dirSizes[k].first<<"; Dir 1: "<<dirSizes[k].second<<"\n";
 
 
