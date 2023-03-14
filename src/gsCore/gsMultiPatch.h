@@ -370,6 +370,9 @@ public:
     void constructInterfaceRep();
     void constructBoundaryRep();
 
+    void constructInterfaceRep(const std::string l);
+    void constructBoundaryRep(const std::string l);
+
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
     

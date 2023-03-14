@@ -1031,15 +1031,30 @@ public:
         
         // Read boundary
         std::vector< patchSide > boundaries;
-        tmp = node->first_node("boundary");
-        if (tmp)
-            getBoundaries(tmp, ids, boundaries);
+        for (gsXmlNode * child = node->first_node("boundary"); child;
+                child = child->next_sibling("boundary"))
+        {
+            std::vector< patchSide > tmp_boundaries;
+            if (child)
+            {
+                getBoundaries(child, ids, tmp_boundaries);
+                boundaries.insert( boundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
+            }
+        }
+        // todo: check for duplicates
         
         // Read interfaces
         std::vector< boundaryInterface > interfaces;
-        tmp = node->first_node("interfaces");
-        if (tmp)
-            getInterfaces(tmp, d, ids, interfaces);
+        for (gsXmlNode * child = node->first_node("interfaces"); child;
+                child = child->next_sibling("interfaces"))
+        {
+            std::vector< boundaryInterface > tmp_interfaces;
+            if (child)
+            {
+                getInterfaces(child, d, ids, tmp_interfaces);
+                interfaces.insert( interfaces.end(), tmp_interfaces.begin(), tmp_interfaces.end() );
+            }
+        }
 
         obj = gsMultiPatch<T>(patches, boundaries, interfaces);        
     }
