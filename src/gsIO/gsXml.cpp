@@ -200,6 +200,7 @@ void appendBoxTopology(const gsBoxTopology& topology,
                 << it->dirOrientation().transpose() << "\n";
         }
         node->append_node(internal::makeNode("interfaces", oss.str(), data));
+        // todo: add export per group of interfaces
         oss.clear();
         oss.str("");
     }
@@ -228,6 +229,10 @@ void getInterfaces(gsXmlNode* node,
     // temporaries for interface reading
     gsVector<index_t> dirMap(d);
     gsVector<bool>    dirOrient(d);
+    std::string name;
+    const gsXmlAttribute * name_att = node->first_attribute("name");
+    if (NULL != name_att)
+        name = name_att->value();
 
     std::istringstream iss;
     iss.str( node->value() );
@@ -267,7 +272,7 @@ void getInterfaces(gsXmlNode* node,
             }
         }
         
-        result.push_back( boundaryInterface(p, dirMap, dirOrient) );
+        result.push_back( boundaryInterface(p, dirMap, dirOrient,name) );
         
 //            // OLD format: read in Orientation flags
 //            gsVector<bool> orient(d-1);// orientation flags
@@ -291,6 +296,10 @@ void getBoundaries(gsXmlNode * node, std::map<int, int> & ids,
     std::istringstream iss;
     iss.str(node->value());
     int patch, side;
+    std::string name;
+    const gsXmlAttribute * name_att = node->first_attribute("name");
+    if (NULL != name_att)
+        name = name_att->value();
     
     while (iss >> std::ws >> patch)
     {
@@ -299,7 +308,7 @@ void getBoundaries(gsXmlNode * node, std::map<int, int> & ids,
             patch = ids[patch];
         }
         iss >> std::ws >> side;
-        result.push_back(patchSide(patch, side));
+        result.push_back(patchSide(patch, side, name));
     }
 }
 
