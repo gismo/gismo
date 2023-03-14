@@ -40,6 +40,62 @@ public:
         GISMO_ASSERT(!strcmp(node->name(), tag().c_str()),
                 "Something went wrong. Expected tag "<< tag());
 
+        std::istringstream str;
+        std::map<int, int> ids;
+
+        // Check if any of the BCs is defined on a boundary set name
+        const int mp_index = atoi(node->first_attribute("multipatch")->value());
+        gsXmlNode* toplevel = node->parent();
+        std::vector< patchSide > allboundaries;
+        for (gsXmlNode * child = node->first_node("bc"); child;
+                child = child->next_sibling("bc"))
+        {
+            std::map<int, int> tmp_ids;;
+
+            const gsXmlAttribute * att_name = child->first_attribute("name");
+            if (NULL != att_name)
+            {
+                gsXmlNode* mp_node = searchId(mp_index, toplevel);
+                GISMO_ASSERT( mp_node != NULL,
+                              "No Multipatch with Id "<<mp_index<<" found in the XML data.");
+
+                gsXmlNode * tmp = mp_node->first_node("patches");
+                std::istringstream tmp_str ;
+                tmp_str.str( tmp->value() );
+                // Handle id_range or id_index for multipatches. This is needed to assign the right indices for the BCs
+                if ( ! strcmp( tmp->first_attribute("type")->value(),"id_range") )
+                {
+                    int first, last;
+                    gsGetInt(tmp_str, first);
+                    gsGetInt(tmp_str, last);
+                    for ( int i = first; i<=last; ++i )
+                        tmp_ids[i] = i - first;
+                }
+                else if ( ! strcmp( tmp->first_attribute("type")->value(),"id_index") )
+                {
+                    int c = 0;
+                    for (int pindex; gsGetInt(tmp_str, pindex);)
+                        tmp_ids[pindex] = c++;
+                }
+                else
+                {
+                    gsWarn<<"Unknown tag in XML multipatch object.\n";
+                }
+
+                for (gsXmlNode * child = mp_node->first_node("boundary"); child;
+                        child = child->next_sibling("boundary"))
+                {
+                    std::vector< patchSide > tmp_boundaries;
+                    if (child)
+                    {
+                        getBoundaries(child, tmp_ids, tmp_boundaries);
+                        allboundaries.insert( allboundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
+                    }
+                }
+                break;
+            }
+        }
+
         //gsXmlNode * tmp = node->first_node("patches");
         //GISMO_ASSERT(tmp, "No pathes tag");
 //
@@ -65,8 +121,6 @@ public:
 //        {
 //            gsWarn<<"Incomplete tag \"patch\" in boundaryConditions.\n";
 //        }
-        std::istringstream str;
-        std::map<int, int> ids;
 
         // Read function inventory
         int count = countByTag("Function", node);
@@ -98,7 +152,16 @@ public:
             if (NULL != att_ispar)
                 ispar = atoi( att_ispar->value() );
 
-            getBoundaries(child, ids, boundaries);
+            const gsXmlAttribute * att_name = child->first_attribute("name");
+            if (NULL != att_name)
+            {
+                std::string name = att_name->value();
+                for (typename std::vector<patchSide>::const_iterator it=allboundaries.begin(); it!=allboundaries.end(); it++)
+                    if (it->label()==name)
+                        boundaries.push_back(*it);
+            }
+            else
+                getBoundaries(child, ids, boundaries);
 
             const gsXmlAttribute * bcat = child->first_attribute("type");
             GISMO_ASSERT(NULL != bcat, "No type provided");

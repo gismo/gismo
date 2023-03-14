@@ -172,9 +172,10 @@ public:
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
     void addInterface(index_t p1, boxSide s1,
-                      index_t p2, boxSide s2)
+                      index_t p2, boxSide s2,
+                      std::string l = "")
     {
-        addInterface(boundaryInterface(patchSide(p1, s1), patchSide(p2, s2), m_dim));
+        addInterface(boundaryInterface(patchSide(p1, s1), patchSide(p2, s2), m_dim,l));
     }
 
     /// Add an interface described by \a bi.
@@ -190,9 +191,9 @@ public:
     }
 
     /// Set side \a s of box \a p to a boundary.
-    void addBoundary(index_t p, boxSide s)
+    void addBoundary(index_t p, boxSide s, std::string l = "")
     {
-        addBoundary(patchSide(p, s));
+        addBoundary(patchSide(p, s, l));
     }
 
     /// Set patch side \a ps to a boundary.
@@ -223,9 +224,29 @@ public:
     const bContainer & boundaries() const { return m_boundary;}
     bContainer & boundaries() { return m_boundary;}
 
+    /// Return the vector of boundaries with label \a l.
+    bContainer   boundaries(const std::string l) const
+    {
+        bContainer result;
+        for (const_biterator bit = bBegin(); bit!=bEnd(); bit++)
+            if (bit->label() == l)
+                result.push_back(*bit);
+        return result;
+    }
+
     /// Return the vector of interfaces.
     const ifContainer & interfaces() const { return m_interfaces; }
     ifContainer & interfaces() { return m_interfaces; }
+
+    /// Return the vector of interfaces with label \a l.
+    ifContainer   interfaces(const std::string l) const
+    {
+        ifContainer result;
+        for (const_iiterator iit = iBegin(); iit!=iEnd(); iit++)
+            if (iit->label() == l)
+                result.push_back(*iit);
+        return result;
+    }
 
     ifContainer selectInterfaces(interaction::type ifc_type) const;
 
