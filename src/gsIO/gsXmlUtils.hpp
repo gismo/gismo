@@ -1041,8 +1041,10 @@ public:
                 boundaries.insert( boundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
             }
         }
-        // todo: check for duplicates
-        
+        // Remove duplicates (keeps the first one)
+        std::sort(boundaries.begin(), boundaries.end());
+        boundaries.erase(std::unique(boundaries.begin(), boundaries.end()), boundaries.end());
+
         // Read interfaces
         std::vector< boundaryInterface > interfaces;
         for (gsXmlNode * child = node->first_node("interfaces"); child;
@@ -1055,6 +1057,10 @@ public:
                 interfaces.insert( interfaces.end(), tmp_interfaces.begin(), tmp_interfaces.end() );
             }
         }
+        // Remove duplicates (keeps the first one)
+        std::sort(interfaces.begin(), interfaces.end());
+        interfaces.erase(std::unique(interfaces.begin(), interfaces.end()), interfaces.end());
+
 
         obj = gsMultiPatch<T>(patches, boundaries, interfaces);        
     }

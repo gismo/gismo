@@ -367,10 +367,14 @@ public:
     std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
                                                    const T accuracy = 1e-6) const;
 
+    /// Construct the interface representation
     void constructInterfaceRep();
+    /// Construct the boundary representation
     void constructBoundaryRep();
 
+    /// Construct the interface representation of sides with label \a l
     void constructInterfaceRep(const std::string l);
+    /// Construct the boundary representation of sides with label \a l
     void constructBoundaryRep(const std::string l);
 
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
