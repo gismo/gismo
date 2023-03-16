@@ -97,16 +97,17 @@ int main(int argc, char *argv[])
 
     const std::string baseName("heat_eq_solution");
     gsParaviewCollection collection(baseName);
-
-    std::string fileName;
+    collection.options().setInt("numPoints", 1000);
+    collection.options().setInt("precision", 5);
 
     if ( plot )
     {
         //sol = assembler.constructSolution(Sol); // same as next line
         gsField<> sol = stationary.constructSolution(Sol);
-        fileName = baseName + "0";
-        gsWriteParaview<>(sol, fileName, 1000, true);
-        collection.addTimestep(fileName,0,"0.vts");
+
+        collection.newTimeStep(&patches);
+        collection.addField(sol, "Temperature");
+        collection.saveTimeStep();
     }
 
     for ( int i = 1; i<=numSteps; ++i) // for all timesteps
@@ -125,9 +126,9 @@ int main(int argc, char *argv[])
         if ( plot )
         {
             // Plot the snapshot to paraview
-            fileName = baseName + util::to_string(i);
-            gsWriteParaview<>(sol, fileName, 1000, true);
-            collection.addTimestep(fileName,i,"0.vts");
+            collection.newTimeStep(&patches);
+            collection.addField(sol, "Temperature");
+            collection.saveTimeStep();
         }
     }
 

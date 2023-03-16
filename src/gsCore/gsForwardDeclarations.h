@@ -286,7 +286,7 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
-
+class gsParaviewDataSet;
 class gsSurfMesh;
 
 /// @endcond

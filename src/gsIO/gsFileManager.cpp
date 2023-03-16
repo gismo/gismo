@@ -576,14 +576,20 @@ std::string gsFileManager::getExtension(std::string const & fn)
 
 std::string gsFileManager::getBasename(std::string const & fn)
 {
-    if(fn.find_last_of(".") != std::string::npos)
+
+    std::string name = fn;
+    if(fn.find_last_of(".") != std::string::npos) // If filename has an extension
     {
         size_t pos1 = fn.find_last_of(getValidPathSeparators());
         size_t pos2 = fn.rfind(".");
-        std::string name = fn.substr(pos1+1, pos2-pos1-1);
-        return name;
+        name = fn.substr(pos1+1, pos2-pos1-1);
     }
-    return fn;
+    else if (fn.find_last_of(getValidPathSeparators()) != std::string::npos) // If filename contains at lest one separator
+    {
+        size_t pos1 = fn.find_last_of(getValidPathSeparators());
+        name = fn.substr(pos1+1);
+    }
+    return name;
 }
 
 std::string gsFileManager::getFilename(std::string const & fn)
