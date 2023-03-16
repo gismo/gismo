@@ -196,13 +196,18 @@ void gsFitting<T>::parameterCorrection(T accuracy,
         for (index_t i = 0; i<m_points.rows(); ++i)
         //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
         {
+            const auto & curr = m_points.row(i).transpose();
             newParam = m_param_values.col(i);
-            m_result->closestPointTo(m_points.row(i).transpose(),
-                                     newParam, accuracy, true);
+            m_result->closestPointTo(curr, newParam, accuracy, true);
+
+            // Decide whether to accept the correction or to drop it
+            if ((m_result->eval(newParam) - curr).norm()
+                    < (m_result->eval(m_param_values.col(i))
+                        - curr).norm())
+                    m_param_values.col(i) = newParam;
 
             // (!) There might be the same parameter for two points
             // or ordering constraints in the case of structured/grid data
-            m_param_values.col(i) = newParam;
         }
 
         // refit
