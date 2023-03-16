@@ -1,57 +1,50 @@
-/** @file gsFitting.h
+/** @file gsIRLSFitting.h
 
     @brief Provides declaration of data fitting algorithms by least
     squares approximation.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): M. Kapl, G. Kiss, A. Mantzaflaris, D. Mokris
+    Author(s): S. Imperatore
 */
 
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <vector>
-#include <gsMSplines/gsMappedBasis.h>
-#include <gsMSplines/gsMappedSpline.h>
 
 namespace gismo
 {
 
 /**
-  @brief 
+  @brief
    Class for performing a least squares fit of a parametrized point cloud with a gsGeometry.
-    
+
    \ingroup Modeling
 **/
 template<class T>
-class gsFitting
+class gsIRLSFitting
 {
 public:
     /// default constructor
-    gsFitting()
+    gsIRLSFitting()
     {
         m_basis = NULL;
         m_result= NULL ;
     }
 
     /// constructor
-    gsFitting(gsMatrix<T> const & param_values, 
-              gsMatrix<T> const & points, 
-              gsBasis<T>  & basis);
-
-        /// constructor
-    gsFitting(gsMatrix<T> const & param_values, 
-              gsMatrix<T> const & points,
-              gsVector<index_t>  offset,
-              gsMappedBasis<2,T>  & mbasis) ;
+    gsIRLSFitting(gsMatrix<T> const & param_values,
+                  gsMatrix<T> const & points,
+                  gsBasis<T>  & basis,
+                  std::vector<T> & weights);
 
     /// Destructor
-    virtual ~gsFitting();
+    virtual ~gsIRLSFitting();
 
 public:
 
@@ -62,16 +55,13 @@ public:
                              index_t maxIter = 10,
                              T tolOrth = 1e-6);
 
-    void parameterCorrectionFixedBoundary(T accuracy = 1e-8,
-                                          index_t maxIter = 10);
-
     /// Computes the euclidean error for each point
     void computeErrors();
 
     /// Computes the maximum norm error for each point
     void computeMaxNormErrors();
 
-    /// Computes the approximation error of the fitted curve to the original point cloud
+    /// Computes the approximation error of the fitted model to the original point cloud
     void computeApproxError(T & error, int type = 0) const;
 
     ///return the errors for each point
@@ -89,14 +79,31 @@ public:
         return m_pointErrors;
     }
 
+    /// Return the weighted error for each point
+    const std::vector<T> & pointWiseWErrors() const
+    {
+        return m_pointWErrors;
+    }
+
     /// Computes the number of points below the error threshold (or zero if not fitted)
     size_t numPointsBelow(T threshold) const
-    { 
+    {
         const size_t result=
-            std::count_if(m_pointErrors.begin(), m_pointErrors.end(), 
+            std::count_if(m_pointErrors.begin(), m_pointErrors.end(),
                           GS_BIND2ND(std::less<T>(), threshold));
-        return result; 
+        return result;
     }
+
+    /// Computes the number of points below the error threshold (or zero if not fitted)
+    size_t numPointsBelowWeight(T threshold) const
+    {
+        const size_t result=
+            std::count_if(m_pointWErrors.begin(), m_pointWErrors.end(),
+                          GS_BIND2ND(std::less<T>(), threshold));
+        return result;
+    }
+
+
 
     /// Computes the least squares fit for a gsBasis
     void iterativeCompute( T const & tolerance, unsigned const & num_iters = 10);
@@ -106,7 +113,7 @@ public:
     void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
     gsSparseMatrix<T> smoothingMatrix(T lambda) const;
     /// Assembles system for the least square fit.
-    void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
+    void assembleSystem(gsSparseMatrix<T>& A_mat, std::vector<T>& weights, gsMatrix<T>& B);
 
 
 public:
@@ -114,19 +121,20 @@ public:
     /// gives back the computed approximation
     gsGeometry<T> * result() const { return m_result; }
 
-    /// gives back the computed approximation for multipatch geometry
-    const gsMappedSpline<2,T> & mresult() const { return m_mresult; }
-
     /// Returns the basis of the approximation
-    const gsBasis<T> & getBasis() const {return *static_cast<const gsBasis<T>*>(m_basis);}
+    const gsBasis<T> & getBasis() const {return *m_basis;}
 
     void setBasis(gsBasis<T> & basis) {m_basis=&basis;}
 
     /// returns the parameter values
+    gsMatrix<T> & getreturnParamValues() {return m_param_values;}
     gsMatrix<T> & returnParamValues() {return m_param_values;}
 
     /// returns the points
     gsMatrix<T> returnPoints() const {return m_points;}
+
+    /// returns the weights (does this function exists? Do I need it?)
+    // std::vector<T> & returnWeights() {return m_weights;}
 
     /// Sets constraints that the coefficients of the resulting
     /// geometry have to conform to. More precisely, denoting the
@@ -171,20 +179,20 @@ protected:
     /// the points of the point cloud
     gsMatrix<T> m_points;
 
-    // Patch offsets
-    gsVector<index_t> m_offset;
-
     /// Pointer keeping the basis
-    gsFunctionSet<T> * m_basis;
+    gsBasis<T> * m_basis;
+
+    /// the weights associated to the observations
+    std::vector<T> m_weights;
 
     /// Pointer keeping the resulting geometry
     gsGeometry<T> * m_result;
 
-    /// Pointer keeping the resulting multipatch geometry
-    gsMappedSpline<2,T>  m_mresult;
-
     // All point-wise errors
     std::vector<T> m_pointErrors;
+
+    // All point-wise weighted error
+    std::vector<T> m_pointWErrors;
 
     mutable T m_last_lambda;
 
@@ -209,22 +217,22 @@ protected:
 private:
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
 
-}; // class gsFitting
+}; // class gsIRLSFitting
 
 
-#ifdef GISMO_WITH_PYBIND11
+#ifdef GISMO_BUILD_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsKnotVector
    */
-  void pybind11_init_gsFitting(pybind11::module &m);
+  void pybind11_init_gsIRLSFitting(pybind11::module &m);
 
-#endif // GISMO_WITH_PYBIND11
+#endif // GISMO_BUILD_PYBIND11
 
 
 }// namespace gismo
 
 
 #ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsFitting.hpp)
+#include GISMO_HPP_HEADER(gsIRLSFitting.hpp)
 #endif

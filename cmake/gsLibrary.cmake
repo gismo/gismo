@@ -49,6 +49,7 @@ endif()
     target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
     #target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
     target_link_libraries(py${PROJECT_NAME} PRIVATE "${${PROJECT_NAME}_LINKER}")
+    #target_link_libraries(py${PROJECT_NAME} PRIVATE "${${PROJECT_NAME}_LINKER} ${OpenMP_libomp_LIBRARY}")
 
     if (GISMO_KLSHELL)
       target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)

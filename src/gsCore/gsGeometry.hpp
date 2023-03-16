@@ -256,8 +256,8 @@ T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
     result = fmin.currentDesign();
 #else
     gsSquaredDistance<T> dist2(*this, pt);
-    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 100, result)
-    : dist2.argMin(accuracy*accuracy, 100) ;
+    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 1000, result)
+    : dist2.argMin(accuracy*accuracy, 1000) ;
 #endif
     return math::sqrt( dist2.eval(result).value() );
 }

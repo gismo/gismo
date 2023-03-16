@@ -217,6 +217,76 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 
 
 template <class T>
+void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
+                                                    index_t maxIter)
+{
+    if ( !m_result )
+        compute(m_last_lambda);
+
+//     const index_t d = m_param_values.rows();
+//     const index_t n = m_points.cols();
+//     T maxAng, avgAng;
+//     std::vector<gsMatrix<T> > vals;
+//     gsMatrix<T> DD, der;
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+//         maxAng = -1;
+//         avgAng = 0;
+//         //auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
+//         //(vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+//
+// #       pragma omp parallel for default(shared) private(der,DD,vals)
+//         for (index_t s = 0; s<m_points.rows(); ++s)
+//             //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
+//         {
+//             vals = m_result->evalAllDers(m_param_values.col(s), 1);
+//             for (index_t k = 0; k!=d; ++k)
+//             {
+//                 der = vals[1].reshaped(d,n);
+//                 DD = vals[0].transpose() - m_points.row(s);
+//                 const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
+//                 const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
+// #               pragma omp critical (max_avg_ang)
+//                 {
+//                     maxAng = math::max(maxAng, a );
+//                     avgAng += a;
+//                 }
+//             }
+//             /*
+//             auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
+//                 (vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+//             maxAng = ( DD.colwise().normalized() *
+//                        der.colwise().normalized().transpose()
+//                 ).array().acos().maxCoeff();
+//             */
+//         }
+//
+//         avgAng /= d*m_points.rows();
+//         //gsInfo << "Avg-deviation: "<< avgAng << " / max: "<<maxAng<<"\n";
+//
+//         // if (math::abs(0.5*EIGEN_PI-maxAng) <= tolOrth ) break;
+
+      gsVector<T> newParam;
+#     pragma omp parallel for default(shared) private(newParam)
+      for (index_t i = 0; i<m_points.rows(); ++i)
+      //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
+      {
+        newParam = m_param_values.col(i);
+        m_result->closestPointTo(m_points.row(i).transpose(),newParam, accuracy, true);
+        // (!) There might be the same parameter for two points
+        // or ordering constraints in the case of structured/grid data
+        m_param_values.col(i) = newParam;
+      }
+
+      // refit
+      compute(m_last_lambda);
+    }
+}
+
+
+
+
+template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
@@ -224,7 +294,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
-    gsMatrix<index_t> actives;    
+    gsMatrix<index_t> actives;
 
     for (index_t h = 0; h < num_patches; h++ )
     {

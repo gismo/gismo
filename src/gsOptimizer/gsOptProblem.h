@@ -116,6 +116,10 @@ public:
 
 public:
 
+    const gsMatrix<T> & currentDesign () const { return m_curDesign; }
+
+    gsMatrix<T> currentDesign () { return m_curDesign; }
+
     int numDesignVars () const { return m_curDesign.size(); }
 
     int numConstraints() const { return m_conLowerBounds.size(); }

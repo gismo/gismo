@@ -217,24 +217,27 @@ if (GISMO_WITH_OPENMP)
    # Apple explicitly disabled OpenMP support in their compilers that
    # are shipped with XCode but there is an easy workaround as
    # described at https://mac.r-project.org/openmp/
-   if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
-       "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-      find_path(OpenMP_C_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
-      find_path(OpenMP_CXX_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
-      find_library(OpenMP_libomp_LIBRARY
-        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES lib)
+   #if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
+   #    "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      #find_path(OpenMP_C_INCLUDE_DIR
+      #  NAMES "omp.h" PATHS /opt/homebrew/Cellar/libomp/15.0.2 PATH_SUFFICES include)
+      set(OpenMP_C_INCLUDE_DIR /opt/homebrew/Cellar/libomp/15.0.2/include)
+      #find_path(OpenMP_CXX_INCLUDE_DIR
+      #  NAMES "omp.h" PATHS /opt/homebrew/Cellar/libomp/15.0.2 PATH_SUFFICES include)
+      set(OpenMP_CXX_INCLUDE_DIR /opt/homebrew/Cellar/libomp/15.0.2/include)
+      #find_library(OpenMP_libomp_LIBRARY
+      #  NAMES "omp" PATHS /opt/homebrew/Cellar/libomp/15.0.2 PATH_SUFFICES lib)
+      set(OpenMP_libomp_LIBRARY /opt/homebrew/Cellar/libomp/15.0.2/lib/libomp.dylib)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fopenmp -I${OpenMP_C_INCLUDE_DIR}")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp -I${OpenMP_CXX_INCLUDE_DIR}")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
       set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
-   else() 
-      find_package(OpenMP REQUIRED)
-      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+   #else()
+   #   find_package(OpenMP REQUIRED)
+   #   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+   #   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
       #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-   endif()
+   #endif()
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCXX AND NOT GISMO_WITH_OPENMP)

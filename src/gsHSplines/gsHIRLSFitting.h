@@ -1,4 +1,4 @@
-/** @file gsHFitting.h
+/** @file gsHIRLSFitting.h
 
     @brief Adaptive fitting using hierarchical splines
 
@@ -8,19 +8,19 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): C. Giannelli, G. Kiss
+    Author(s): S. Imperatore
 */
 
 #pragma once
 
-#include <gsModeling/gsFitting.h>
+#include <gsModeling/gsIRLSFitting.h>
 #include <gsHSplines/gsHTensorBasis.h>
 
 namespace gismo {
 
 /**
     \brief
-    This class applies hierarchical fitting of parametrized point clouds.
+    This class applies hierarchical iterative reweighed fitting of parametrized point clouds.
 
     \tparam T coefficient type
 
@@ -28,7 +28,7 @@ namespace gismo {
 */
 
 template <short_t d, class T>
-class gsHFitting : public gsFitting<T>
+class gsHIRLSFitting : public gsIRLSFitting<T>
 {
 public:
 
@@ -36,7 +36,7 @@ public:
 
 public:
     /// Default constructor
-    gsHFitting();
+    gsHIRLSFitting();
 
     /**
         \brief
@@ -55,12 +55,13 @@ public:
 
         \param lambda Smoothing parameter
     */
-    gsHFitting(gsMatrix<T> const & param_values,
-               gsMatrix<T> const & points,
-               gsHTensorBasis<d,T> & basis,
-               T refin, const std::vector<unsigned> & extension,
-               T lambda = 0)
-    : gsFitting<T>(param_values, points, basis)
+    gsHIRLSFitting(gsMatrix<T> const & param_values,
+                   gsMatrix<T> const & points,
+                   gsHTensorBasis<d,T> & basis,
+                   std::vector<T> & weights, // do I need a reference or not?
+                   T refin, const std::vector<unsigned> & extension,
+                   T lambda = 0)
+    : gsIRLSFitting<T>(param_values, points, basis, weights)
     {
         GISMO_ASSERT((refin >=0) && (refin <=1),
                      "Refinement percentage must be between 0 and 1." );
@@ -77,6 +78,7 @@ public:
         m_max_error = m_min_error = 0;
 
         m_pointErrors.reserve(m_param_values.cols());
+        m_pointWErrors.reserve(m_param_values.cols());
     }
 
 public:
@@ -103,18 +105,13 @@ public:
      */
     bool nextIteration(T tolerance, T err_threshold, index_t maxPcIter = 0);
 
-    bool nextIterationFixedBoundary(T tolerance, T err_threshold, index_t maxPcIter = 0);
-    bool nextIterationFixedBoundary(T tolerance, T err_threshold,
-                                    const std::vector<boxSide>& fixedSides,
-                                    index_t maxPcIter = 0);
-
     /**
      * @brief Like \a nextIteration without \a fixedSides but keeping the values
      * on these sides unchanged throughout the fit.
      */
     bool nextIteration(T tolerance, T err_threshold,
                        const std::vector<boxSide>& fixedSides,
-                       index_t maxPcIter = 0);
+                       index_t maxPcIter = 5);
 
     /// Return the refinement percentage
     T getRefPercentage() const
@@ -149,36 +146,6 @@ public:
     std::vector<index_t> getBoxes(const std::vector<T>& errors,
                                    const T threshold);
 
-    /// Returns the boxes covering the whole domain
-    std::vector<index_t> getAllBoxes();
-
-    /// returns the cells covering the whole domain.
-    // std::vector<gsVector<T>> getAllCells(); // in a std::vector of gsVector(s)
-    std::vector<gsMatrix<T>> getAllCells(); // in a std::vector of gsMatrix(s)
-
-    std::vector<T> cellAvgErr(const std::vector<T>& errors,
-                              const gsMatrix<T>& parameters);
-
-    std::vector<T> cellMaxErr(const std::vector<T>& errors,
-                              const gsMatrix<T>& parameters);
-
-    /// Returns the boxes covering the whole domain and the average error registered on each of them.
-    //void getAllBoxesWithAvgErrors(std::vector<T>& errors,
-    //                             std::vector<T> storeAvg);
-
-    // compute one step approximation, without refinement.
-    // Assumption: the Hierarchical Domain is already constructed.
-    void computeApproximation(index_t maxPcIter);
-
-    void appendBox(std::vector<gsMatrix<T>>& cells,
-                   std::vector<index_t>& boxes);
-
-    std::vector<T> BoxAvgErr(const std::vector<T>& errors,
-                             const gsMatrix<T>& parameters);
-
-    std::vector<T> BoxMaxErr(const std::vector<T>& errors,
-                             const gsMatrix<T>& parameters);
-
 protected:
     /// Appends a box around parameter to the boxes only if the box is not
     /// already in boxes
@@ -212,18 +179,19 @@ protected:
     /// Size of the extension
     std::vector<unsigned> m_ext;
 
-    using gsFitting<T>::m_param_values;
-    using gsFitting<T>::m_points;
-    using gsFitting<T>::m_basis;
-    using gsFitting<T>::m_result;
+    using gsIRLSFitting<T>::m_param_values;
+    using gsIRLSFitting<T>::m_points;
+    using gsIRLSFitting<T>::m_basis;
+    using gsIRLSFitting<T>::m_result;
 
-    using gsFitting<T>::m_pointErrors;
-    using gsFitting<T>::m_max_error;
-    using gsFitting<T>::m_min_error;
+    using gsIRLSFitting<T>::m_pointErrors;
+    using gsIRLSFitting<T>::m_pointWErrors;
+    using gsIRLSFitting<T>::m_max_error;
+    using gsIRLSFitting<T>::m_min_error;
 };
 
 template<short_t d, class T>
-bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
+bool gsHIRLSFitting<d, T>::nextIteration(T tolerance, T err_threshold,
                                      index_t maxPcIter)
 {
     std::vector<boxSide> dummy;
@@ -231,22 +199,22 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 }
 
 template<short_t d, class T>
-bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
+bool gsHIRLSFitting<d, T>::nextIteration(T tolerance, T err_threshold,
                                      const std::vector<boxSide>& fixedSides,
                                      index_t maxPcIter)
 {
     // INVARIANT
     // look at iterativeRefine
 
-    if ( m_pointErrors.size() != 0 )
+    if ( m_pointWErrors.size() != 0 )
     {
 
         if ( m_max_error > tolerance )
         {
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
-            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointWErrors);
 
-            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
+            std::vector<index_t> boxes = getBoxes(m_pointWErrors, threshold);
             if(boxes.size()==0)
                 return false;
 
@@ -257,7 +225,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
             if(m_result != NULL && fixedSides.size() > 0)
             {
                 m_result->refineElements(boxes);
-                gsFitting<T>::setConstraints(fixedSides);
+                gsIRLSFitting<T>::setConstraints(fixedSides);
             }
             gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
         }
@@ -279,79 +247,14 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
     return true;
 }
 
-
 template<short_t d, class T>
-bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance, T err_threshold,
-                                                  index_t maxPcIter)
-{
-    std::vector<boxSide> dummy;
-    return nextIterationFixedBoundary(tolerance, err_threshold, dummy, maxPcIter);
-}
-
-
-template<short_t d, class T>
-bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance, T err_threshold,
-                                                  const std::vector<boxSide>& fixedSides,
-                                                  index_t maxPcIter)
-{
-    // INVARIANT
-    // look at iterativeRefine
-
-    if ( m_pointErrors.size() != 0 )
-    {
-
-        if ( m_max_error > tolerance )
-        {
-            // if err_treshold is -1 we refine the m_ref percent of the whole domain
-            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
-
-            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
-            if(boxes.size()==0)
-                return false;
-
-            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
-            basis->refineElements(boxes);
-
-            // If there are any fixed sides, prescribe the coefs in the finer basis.
-            if(m_result != NULL && fixedSides.size() > 0)
-            {
-                m_result->refineElements(boxes);
-                gsFitting<T>::setConstraints(fixedSides);
-            }
-            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
-        }
-        else
-        {
-            gsDebug << "Tolerance reached.\n";
-            return false;
-        }
-    }
-
-    // We run one fitting step and compute the errors
-    this->compute(m_lambda);
-
-    //parameter correction
-    this->parameterCorrectionFixedBoundary(1e-7, maxPcIter);//closestPoint accuracy
-
-    this->computeErrors();
-
-    return true;
-}
-
-
-
-
-
-
-
-template<short_t d, class T>
-void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_threshold)
+void gsHIRLSFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_threshold)
 {
     // INVARIANT:
     // m_pointErrors contains the point-wise errors of the fitting
     // therefore: if the size of m_pointErrors is 0, there was no fitting up to this point
 
-    if ( m_pointErrors.size() == 0 )
+    if ( m_pointWErrors.size() == 0 )
     {
         this->compute(m_lambda);
         this->computeErrors();
@@ -375,7 +278,7 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
 }
 
 template <short_t d, class T>
-std::vector<index_t> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
+std::vector<index_t> gsHIRLSFitting<d, T>::getBoxes(const std::vector<T>& errors,
                                                  const T threshold)
 {
     // cells contains lower corners of elements marked for refinment from maxLevel
@@ -397,7 +300,7 @@ std::vector<index_t> gsHFitting<d, T>::getBoxes(const std::vector<T>& errors,
 }
 
 template <short_t d, class T>
-void gsHFitting<d, T>::appendBox(std::vector<index_t>& boxes,
+void gsHIRLSFitting<d, T>::appendBox(std::vector<index_t>& boxes,
                                   std::vector<index_t>& cells,
                                   const gsVector<T>& parameter)
 {
@@ -456,7 +359,7 @@ void gsHFitting<d, T>::appendBox(std::vector<index_t>& boxes,
 
 
 template <short_t d, class T>
-bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
+bool gsHIRLSFitting<d, T>::isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
                                              const std::vector<index_t>& cells)
 {
 
@@ -481,7 +384,7 @@ bool gsHFitting<d, T>::isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
 }
 
 template<short_t d, class T>
-T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
+T gsHIRLSFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
 {
     std::vector<T> errorsCopy = errors;
     const size_t i = cast<T,size_t>(errorsCopy.size() * (1.0 - m_ref));

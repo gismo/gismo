@@ -395,6 +395,15 @@ protected:
 
 }; // class gsParametrization
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsParametrization
+   */
+  void pybind11_init_gsParametrization(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

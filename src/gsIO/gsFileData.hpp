@@ -1196,7 +1196,8 @@ bool gsFileData<T>::readOffFile( String const & fn )
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("SurfMesh", *data);
+    //gsXmlNode* g = internal::makeNode("SurfMesh", *data);
+    gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 
