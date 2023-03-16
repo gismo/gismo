@@ -977,7 +977,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
 #           pragma omp critical (assemble_fdiffs)
             {
-                ee(residual); //Computes residual to m_rhs
+                // ee(residual); //Computes residual to m_rhs
                 ee.diff(residual, u); //Computes Jacobian
             }
         }
@@ -1043,7 +1043,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(iFace);
 
-            ee(residual);
+            // ee(residual);
             if (!movingInterface)
             {
                 ee.diff(residual, u);
