@@ -164,10 +164,6 @@ if (GISMO_WITH_VTK)
 message ("  GISMO_WITH_VTK          ${GISMO_WITH_VTK}")
 endif()
 
-if(DEFINED ${isGit} AND ${isGit} EQUAL 0)
-  message(STATUS "Type \"${GIT_EXECUTABLE} submodule\" to see the state of submodules")
-endif()
-
 #https://www.threadingbuildingblocks.org/documentation
 #message ("  GISMO_WITH_ITBB          ${GISMO_WITH_ITBB}")
 

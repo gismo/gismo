@@ -19,6 +19,7 @@ namespace gismo
 {
 
 #ifndef GISMO_WITH_MPI
+typedef int MPI_Comm;
 typedef int MPI_Group;
 typedef int MPI_Request;
 struct MPI_Status {};
@@ -335,7 +336,8 @@ public:
 
 #ifdef GISMO_WITH_MPI
     operator MPI_Comm () const  { return MPI_COMM_SELF;}
-    //#else
+#else
+    operator MPI_Comm () const  { return 0;}
     //    typedef int MPI_Group;
     //    typedef int MPI_Request;
     //    struct MPI_Status {};

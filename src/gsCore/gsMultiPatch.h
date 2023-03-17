@@ -380,6 +380,7 @@ public:
     std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
                                                    const T accuracy = 1e-6) const;
 
+    /// Construct the interface representation
     std::vector<T> HausdorffDistance(   const gsMultiPatch<T> & other,
                                         const index_t nsamples = 1000,
                                         const T accuracy = 1e-6,
@@ -391,8 +392,14 @@ public:
                                         const bool directed=false);
 
     void constructInterfaceRep();
+    /// Construct the boundary representation
     void constructBoundaryRep();
     void constructSides();
+
+    /// Construct the interface representation of sides with label \a l
+    void constructInterfaceRep(const std::string l);
+    /// Construct the boundary representation of sides with label \a l
+    void constructBoundaryRep(const std::string l);
 
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }

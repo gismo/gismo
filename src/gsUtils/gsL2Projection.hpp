@@ -73,7 +73,7 @@ void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
     // assemble system
     A.assemble(u*u.tr() * meas(G),u * f * meas(G));
 
-    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
+    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<T>::get( "SimplicialLDLT" );
     solver->compute(A.matrix());
     result = solver->solve(A.rhs());
 

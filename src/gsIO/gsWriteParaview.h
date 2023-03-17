@@ -333,6 +333,11 @@ template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution = 8);
 
+/// Export a control net
+template<class T>
+void writeSingleControlNet(const gsGeometry<T> & Geo,
+                           std::string const & fn);
+
 // Please document
 template <class T>
 void plot_errors(const gsMatrix<T> & orig, 
