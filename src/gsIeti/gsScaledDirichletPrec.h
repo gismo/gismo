@@ -184,6 +184,12 @@ public:
         return schurComplement( blocks, cholesky );
     }
 
+    static OpPtr schurComplement( const SparseMatrix& localMatrix, const std::vector<index_t> dofs)
+    {
+        real_t time = 0;
+	return schurComplement( localMatrix, dofs, time );
+    }
+
     /// Restricts the jump matrix and the local stiffness matrix to the skeleton
     ///
     /// @param jumpMatrix    The jump matrix
@@ -204,6 +210,16 @@ public:
         real_t& time
     )
     { return std::pair<JumpMatrix,OpPtr>(restrictJumpMatrix(jumpMatrix,dofs),schurComplement(localMatrix,dofs,time)); }
+
+    static std::pair<JumpMatrix,OpPtr> restrictToSkeleton(
+        const JumpMatrix& jumpMatrix,
+        const SparseMatrix& localMatrix,
+        const std::vector<index_t>& dofs
+    )
+    {
+        real_t time = 0;
+	return restrictToSkeleton( jumpMatrix, localMatrix, dofs, time );
+    }
 
     /// @brief Returns the number of Lagrange multipliers.
     ///

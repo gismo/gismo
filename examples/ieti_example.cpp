@@ -17,8 +17,6 @@
     Author(s): S. Takacs
 */
 
-#if 0
-
 #include <ctime>
 #include <gismo.h>
 
@@ -461,9 +459,4 @@ int main(int argc, char *argv[])
     }
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-
-#else
-int main() {}
-
-#endif
 

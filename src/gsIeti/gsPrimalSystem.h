@@ -257,6 +257,18 @@ public:
         real_t& time
     );
 
+    void handleConstraints(
+        const std::vector<SparseVector>& primalConstraints,
+        const std::vector<index_t>& primalDofIndices,
+        JumpMatrix& jumpMatrix,
+        SparseMatrix& localMatrix,
+        Matrix& localRhs
+    )
+    {
+        real_t time = 0;
+        handleConstraints( primalConstraints, primalDofIndices, jumpMatrix, localMatrix, localRhs, time);
+    }
+
     /// @brief  Distributes the given solution for K+1 subdomains to the K patches
     ///
     /// @param    sol   The solution, first for the K patches, followed by the
