@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     index_t deg_x     = 2;
     index_t deg_y     = 2;
     index_t maxPcIter = 1;
+    index_t sepIndex  = -1;
     real_t lambda = 1e-07;
     real_t threshold = 1e-02;
     real_t tolerance = 1e-02;
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
+    cmd.addInt("n", "interiors", "number of interior points belonging to the input point cloud", sepIndex);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -81,6 +83,9 @@ int main(int argc, char *argv[])
     fd_in.getId<gsMatrix<> >(1, xyz);
     //! [Read data]
 
+    gsWriteParaviewPoints(uv, "parameters");
+    gsWriteParaviewPoints(xyz, "points");
+
     // This is for outputing an XML file, if requested
     gsFileData<> fd;
 
@@ -88,6 +93,11 @@ int main(int argc, char *argv[])
     GISMO_ASSERT( uv.cols() == xyz.cols() && uv.rows() == 2 && xyz.rows() == 3,
                   "Wrong input");
 
+    if (sepIndex > xyz.cols() || sepIndex < 0)
+    {
+      gsInfo << "Apply " << maxPcIter << " parameter correction step to the whole point cloud.\n";
+      sepIndex = xyz.cols();
+    }
     // Determine the parameter domain by mi/max of parameter values
     real_t u_min = uv.row(0).minCoeff(),
         u_max = uv.row(0).maxCoeff(),
@@ -116,6 +126,8 @@ int main(int argc, char *argv[])
     gsHFitting<2, real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
 
     const std::vector<real_t> & errors = ref.pointWiseErrors();
+    std::vector<real_t> errors2;
+    real_t sum_of_2errors;
 
     // Print settings summary
     gsInfo<<"Fitting "<< xyz.cols() <<" samples.\n";
@@ -129,20 +141,35 @@ int main(int argc, char *argv[])
     gsInfo<<"Smoothing parameter: "<< lambda<<".\n";
 
     gsStopwatch time;
-
     for(int i = 0; i <= iter; i++)
     {
         gsInfo<<"----------------\n";
         gsInfo<<"Iteration "<<i<<".."<<"\n";
 
         time.restart();
-        ref.nextIteration(tolerance, threshold, maxPcIter);
+        //ref.nextIteration(tolerance, threshold, maxPcIter);
+        if(i == 0){
+          //ref.nextIteration(tolerance, threshold, maxPcIter);
+          ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        }
+        else{
+          //ref.nextIteration(tolerance, threshold, maxPcIter);
+          ref.nextIterationFixedBoundary(tolerance, threshold, 0, sepIndex);
+        }
         time.stop();
-        gsInfo<<"Fitting time: "<< time <<"\n";
 
+        gsMesh<> mesh(ref.result()->basis());
+        gsWriteParaview(mesh, internal::to_string(i+1) + "_iter_mesh");
+        gsWriteParaviewPoints(ref.returnParamValues(), internal::to_string(i+1) + "_iter_fitting_parameters");
+
+        ref.get_Error(errors2, 0);
+        sum_of_2errors = std::accumulate(errors2.begin(), errors2.end(), 0.0);
+        gsInfo<<"Fitting time: "<< time <<"\n";
         gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
-        gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
-        gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
+        gsInfo<<"DOFs         : "<< ref.result()->basis().size() <<"\n";
+        gsInfo<<"Min distance : "<< ref.minPointError() <<"\n";
+        std::cout << "Max distance : "<< ref.maxPointError() << std::scientific <<"\n";
+        std::cout << "MSE    error : "<< sum_of_2errors/errors2.size() << std::scientific <<"\n";
         gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(tolerance)/errors.size()<<"%.\n";
 
         if ( ref.maxPointError() < tolerance )
@@ -158,6 +185,7 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
         fd << *ref.result() ;
+        gsWriteParaviewPoints(ref.returnParamValues(), "fitting_out_parameters");
 
         fd.dump("fitting_out");
     }
