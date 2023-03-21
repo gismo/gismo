@@ -148,14 +148,15 @@ int main(int argc, char *argv[])
 
         time.restart();
         //ref.nextIteration(tolerance, threshold, maxPcIter);
-        if(i == 0){
-          //ref.nextIteration(tolerance, threshold, maxPcIter);
-          ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
-        }
-        else{
-          //ref.nextIteration(tolerance, threshold, maxPcIter);
-          ref.nextIterationFixedBoundary(tolerance, threshold, 0, sepIndex);
-        }
+        ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        // if(i == 0){
+        //   //ref.nextIteration(tolerance, threshold, maxPcIter);
+        //   ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        // }
+        // else{
+        //   //ref.nextIteration(tolerance, threshold, maxPcIter);
+        //   ref.nextIterationFixedBoundary(tolerance, threshold, 0, sepIndex);
+        // }
         time.stop();
 
         gsMesh<> mesh(ref.result()->basis());
