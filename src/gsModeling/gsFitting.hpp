@@ -75,7 +75,7 @@ void gsFitting<T>::compute(T lambda)
 
     const int num_basis = m_basis->size();
     const short_t dimension = m_points.cols();
-    
+
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
     gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
@@ -118,7 +118,7 @@ void gsFitting<T>::compute(T lambda)
     if ( solver.preconditioner().info() != Eigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
-        
+
         return;
     }
     // Solves for many right hand side  columns
@@ -218,64 +218,32 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 
 template <class T>
 void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
-                                                    index_t maxIter)
+                                                    index_t maxIter,
+                                                    index_t sepIndex)
 {
     if ( !m_result )
         compute(m_last_lambda);
 
-//     const index_t d = m_param_values.rows();
-//     const index_t n = m_points.cols();
-//     T maxAng, avgAng;
-//     std::vector<gsMatrix<T> > vals;
-//     gsMatrix<T> DD, der;
     for (index_t it = 0; it!=maxIter; ++it)
     {
-//         maxAng = -1;
-//         avgAng = 0;
-//         //auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-//         //(vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
-//
-// #       pragma omp parallel for default(shared) private(der,DD,vals)
-//         for (index_t s = 0; s<m_points.rows(); ++s)
-//             //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
-//         {
-//             vals = m_result->evalAllDers(m_param_values.col(s), 1);
-//             for (index_t k = 0; k!=d; ++k)
-//             {
-//                 der = vals[1].reshaped(d,n);
-//                 DD = vals[0].transpose() - m_points.row(s);
-//                 const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
-//                 const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
-// #               pragma omp critical (max_avg_ang)
-//                 {
-//                     maxAng = math::max(maxAng, a );
-//                     avgAng += a;
-//                 }
-//             }
-//             /*
-//             auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-//                 (vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
-//             maxAng = ( DD.colwise().normalized() *
-//                        der.colwise().normalized().transpose()
-//                 ).array().acos().maxCoeff();
-//             */
-//         }
-//
-//         avgAng /= d*m_points.rows();
-//         //gsInfo << "Avg-deviation: "<< avgAng << " / max: "<<maxAng<<"\n";
-//
-//         // if (math::abs(0.5*EIGEN_PI-maxAng) <= tolOrth ) break;
 
       gsVector<T> newParam;
 #     pragma omp parallel for default(shared) private(newParam)
-      for (index_t i = 0; i<m_points.rows(); ++i)
+      for (index_t i = 0; i < sepIndex; ++i)
       //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
       {
-        newParam = m_param_values.col(i);
-        m_result->closestPointTo(m_points.row(i).transpose(),newParam, accuracy, true);
-        // (!) There might be the same parameter for two points
-        // or ordering constraints in the case of structured/grid data
-        m_param_values.col(i) = newParam;
+          const auto & curr = m_points.row(i).transpose();
+          newParam = m_param_values.col(i);
+          m_result->closestPointTo(curr, newParam, accuracy, true);
+
+          // Decide whether to accept the correction or to drop it
+          if ((m_result->eval(newParam) - curr).norm()
+                  < (m_result->eval(m_param_values.col(i))
+                      - curr).norm())
+                  m_param_values.col(i) = newParam;
+
+          // (!) There might be the same parameter for two points
+          // or ordering constraints in the case of structured/grid data
       }
 
       // refit
@@ -382,7 +350,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
 #   endif
-        
+
     for (index_t h = 0; h < num_patches; h++)
     {
         auto & basis = m_basis->basis(h);
@@ -392,14 +360,14 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
         for (short_t i = 0; i != dim; ++i)
         {
-            numNodes[i] = basis.degree(i);//+1; 
+            numNodes[i] = basis.degree(i);//+1;
         }
 
         gsGaussRule<T> QuRule(numNodes); // Reference Quadrature rule
 
-        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(); 
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
 
-        
+
 #       ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #       else
@@ -508,12 +476,12 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    error = 0; 
+    error = 0;
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
 
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
@@ -553,9 +521,9 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
