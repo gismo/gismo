@@ -103,10 +103,11 @@ public:
      */
     bool nextIteration(T tolerance, T err_threshold, index_t maxPcIter = 0);
 
-    bool nextIterationFixedBoundary(T tolerance, T err_threshold, index_t maxPcIter = 0);
+    bool nextIterationFixedBoundary(T tolerance, T err_threshold, index_t maxPcIter = 0, index_t sepIndex = -1);
     bool nextIterationFixedBoundary(T tolerance, T err_threshold,
                                     const std::vector<boxSide>& fixedSides,
-                                    index_t maxPcIter = 0);
+                                    index_t maxPcIter = 0,
+                                    index_t sepIndex = -1);
 
     /**
      * @brief Like \a nextIteration without \a fixedSides but keeping the values
@@ -282,17 +283,19 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 
 template<short_t d, class T>
 bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance, T err_threshold,
-                                                  index_t maxPcIter)
+                                                  index_t maxPcIter, index_t sepIndex)
 {
     std::vector<boxSide> dummy;
-    return nextIterationFixedBoundary(tolerance, err_threshold, dummy, maxPcIter);
+    return nextIterationFixedBoundary(tolerance, err_threshold, dummy, maxPcIter, sepIndex);
 }
 
 
 template<short_t d, class T>
-bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance, T err_threshold,
+bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance,
+                                                  T err_threshold,
                                                   const std::vector<boxSide>& fixedSides,
-                                                  index_t maxPcIter)
+                                                  index_t maxPcIter,
+                                                  index_t sepIndex)
 {
     // INVARIANT
     // look at iterativeRefine
@@ -331,7 +334,7 @@ bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance, T err_threshold,
     this->compute(m_lambda);
 
     //parameter correction
-    this->parameterCorrectionFixedBoundary(1e-7, maxPcIter);//closestPoint accuracy
+    this->parameterCorrectionFixedBoundary(1e-7, maxPcIter, sepIndex);//closestPoint accuracy
 
     this->computeErrors();
 
