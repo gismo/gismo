@@ -816,6 +816,7 @@ T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
 template<class T>
 void gsMultiPatch<T>::constructInterfaceRep()
 {
+    m_ifaces.clear();
     for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
     {
         const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
@@ -827,7 +828,33 @@ void gsMultiPatch<T>::constructInterfaceRep()
 template<class T>
 void gsMultiPatch<T>::constructBoundaryRep()
 {
+    m_bdr.clear();
     for ( biterator it = bBegin(); it != bEnd(); ++it ) // for all boundaries
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->patch];
+        m_bdr[*it] = p1.boundary(*it);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructInterfaceRep(const std::string l)
+{
+    m_ifaces.clear();
+    ifContainer ifaces = this->interfaces(l);
+    for ( iiterator it = ifaces.begin(); it != ifaces.end(); ++it ) // for all interfaces
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        m_ifaces[*it] = p1.iface(*it,p2);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructBoundaryRep(const std::string l)
+{
+    m_bdr.clear();
+    bContainer bdrs = this->boundaries(l);
+    for ( biterator it = bdrs.begin(); it != bdrs.end(); ++it ) // for all boundaries
     {
         const gsGeometry<T> & p1 = *m_patches[it->patch];
         m_bdr[*it] = p1.boundary(*it);
