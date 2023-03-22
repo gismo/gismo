@@ -14,6 +14,7 @@
 */
 
 #include <gsCore/gsBasis.h>
+#include <gsCore/gsBoundary.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsNurbs/gsBSpline.h>
@@ -215,6 +216,31 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     }
 }
 
+template <class T>
+bool gsFitting<T>::is_corner(gsMatrix<T> & p_domain,
+                             gsVector<T> & param)
+{
+  bool corner_check = false;
+  if( (math::abs(param(0) - p_domain(0,0)) < 1e-15) && (math::abs(param(1) - p_domain(1,0)) < 1e-15) ){
+    // gsInfo << "param:\n" << param << "\n";
+    // gsInfo << param(0,0) << " == " << p_domain(0,0) << "\n";
+    // gsInfo << param(0,1) << " == " << p_domain(1,0) << "\n";
+    corner_check = true;
+  }
+  else if( (math::abs(param(0) - p_domain(0,1)) < 1e-15) && (math::abs(param(1) - p_domain(1,0)) < 1e-15) ){
+    corner_check = true;
+  }
+  else if( (math::abs(param(0) - p_domain(0,1)) < 1e-15) && (math::abs(param(1) - p_domain(1,1)) < 1e-15) ){
+    corner_check = true;
+  }
+  else if( (math::abs(param(0) - p_domain(0,0)) < 1e-15) && (math::abs(param(1) - p_domain(1,1)) < 1e-15) ){
+    corner_check = true;
+  }
+  else{
+    corner_check = false;
+  }
+  return corner_check;
+}
 
 template <class T>
 void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
@@ -244,6 +270,103 @@ void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
 
           // (!) There might be the same parameter for two points
           // or ordering constraints in the case of structured/grid data
+      }
+
+      // Correct the parameters, but keep them on the boundary
+      gsMatrix<T> geoSupport = m_result->support();
+
+      for (index_t i = sepIndex; i < m_points.rows(); ++i)
+      {
+          gsVector<T> newBoundaryParam(1);
+          const auto & curr = m_points.row(i).transpose();
+          newParam = m_param_values.col(i);
+
+          //if (!is_corner(geoSupport, newParam)){
+
+            // gsInfo << "West  : " << newParam(0) << "==" << geoSupport(0,0) << "\n";
+            // gsInfo << "East  : " << newParam(0) << "==" << geoSupport(0,1) << "\n";
+            // gsInfo << "South : " << newParam(1) << "==" << geoSupport(1,0) << "\n";
+            // gsInfo << "North : " << newParam(1) << "==" << geoSupport(1,1) << "\n";
+
+
+            gsVector<T> leftParam = m_param_values.col(i);
+            gsVector<T> rightParam = m_param_values.col(i);
+
+            if ( (i==sepIndex) && !is_corner(geoSupport, newParam) ){
+              leftParam = m_param_values.col(m_points.rows()-1);
+              rightParam = m_param_values.col(i+1);
+            }
+
+            if ( (i==m_points.rows()-1) && !is_corner(geoSupport, newParam) ){
+              leftParam = m_param_values.col(i-1);
+              rightParam = m_param_values.col(sepIndex);
+            }
+
+            if ( (i>sepIndex) && (i < m_points.rows()-1) && !is_corner(geoSupport, newParam) ){
+
+              leftParam = m_param_values.col(i-1);
+              rightParam = m_param_values.col(i+1);
+            }
+
+            if( math::abs(newParam(0) - geoSupport(0,0)) < 1e-15 )
+            {
+              typename gsGeometry<T>::uPtr b = m_result->boundary(1);
+
+
+              newBoundaryParam << newParam(1);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "West-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+
+              if( (leftParam(1) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(1)) )
+                newParam(1) = newBoundaryParam(0);
+            }
+            else if ( math::abs(newParam(0) - geoSupport(0,1)) < 1e-15 )
+            {
+              typename gsGeometry<T>::uPtr b = m_result->boundary(2);
+
+
+              newBoundaryParam << newParam(1);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "East-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+              if( (leftParam(1) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(1)) )
+                newParam(1) = newBoundaryParam(0);
+            }
+            else if ( math::abs(newParam(1) - geoSupport(1,0)) < 1e-15 )
+            {
+              typename gsGeometry<T>::uPtr b = m_result->boundary(3);
+
+
+              newBoundaryParam << newParam(0);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "South-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+              if( (leftParam(0) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(0)) )
+                newParam(0) = newBoundaryParam(0);
+
+            }
+            else{
+              typename gsGeometry<T>::uPtr b = m_result->boundary(4);
+
+              // gsInfo << newParam(1) << "==" << geoSupport(1,1) << "\n";
+              newBoundaryParam << newParam(0);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "North-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+              if( (leftParam(0) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(0)) )
+                newParam(0) = newBoundaryParam(0);
+            }
+            if ((m_result->eval(newParam) - curr).norm()
+                    < (m_result->eval(m_param_values.col(i))
+                        - curr).norm())
+                    m_param_values.col(i) = newParam;
+
+          //} // corner: to be moved or not.
       }
 
       // refit

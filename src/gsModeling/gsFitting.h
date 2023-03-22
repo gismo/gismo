@@ -66,6 +66,8 @@ public:
                                           index_t maxIter = 10,
                                           index_t sepIndex = -1);
 
+    bool is_corner(gsMatrix<T> & parametric_domain, gsVector<T> & parameter);
+
     /// Computes the euclidean error for each point
     void computeErrors();
 

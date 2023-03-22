@@ -104,6 +104,11 @@ int main(int argc, char *argv[])
         v_min = uv.row(1).minCoeff(),
         v_max = uv.row(1).maxCoeff();
 
+    gsInfo << "Parameter domain:\n";
+    gsInfo << "u_min : " << u_min << "\n";
+    gsInfo << "u_max : " << u_max << "\n";
+    gsInfo << "v_min : " << v_min << "\n";
+    gsInfo << "v_max : " << v_max << "\n";
     // Create knot-vectors without interior knots
     gsKnotVector<> u_knots (u_min, u_max, 0, deg_x+1 ) ;
     gsKnotVector<> v_knots (v_min, v_max, 0, deg_y+1 ) ;
