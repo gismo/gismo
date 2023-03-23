@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
     real_t refPercent = 0.1;
     std::string fn = "fitting/deepdrawingC.xml";
 
+    std::vector<index_t> modevec;
+
     // Reading options from the command line
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
             "file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. "
@@ -50,6 +52,7 @@ int main(int argc, char *argv[])
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
     cmd.addInt("n", "interiors", "number of interior points belonging to the input point cloud", sepIndex);
+    cmd.addMultiInt("m", "modes", "Modes to select", modevec);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -191,8 +194,16 @@ int main(int argc, char *argv[])
     {
         gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
         fd << *ref.result() ;
-        gsWriteParaviewPoints(ref.returnParamValues(), "fitting_out_parameters");
-
+        gsMatrix<> fitting_out_parameters = ref.returnParamValues();
+        gsWriteParaviewPoints(fitting_out_parameters, "fitting_out_parameters");
+        for(index_t idx = 0; idx < modevec.size(); idx++){
+          gsInfo << "Print " << modevec[idx] << "-th parameter.\n";
+          gsMatrix<> print_parameter(2,1);
+          print_parameter << fitting_out_parameters.col(modevec[idx]);
+          gsWriteParaviewPoints(print_parameter, internal::to_string(modevec[idx]) + "_parameter");
+          gsMatrix<> print_point(3,1); print_point << xyz.col(modevec[idx]);
+          gsWriteParaviewPoints(print_point, internal::to_string(modevec[idx]) + "_point");
+        }
         fd.dump("fitting_out");
     }
     else

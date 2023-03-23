@@ -254,30 +254,40 @@ void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
     {
 
       gsVector<T> newParam;
+      gsMatrix<T> geoSupport = m_result->support();
 #     pragma omp parallel for default(shared) private(newParam)
       for (index_t i = 0; i < sepIndex; ++i)
       //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
       {
+          // gsInfo << "Interior:\n" << newParam << "\n";
           const auto & curr = m_points.row(i).transpose();
           newParam = m_param_values.col(i);
           m_result->closestPointTo(curr, newParam, accuracy, true);
 
           // Decide whether to accept the correction or to drop it
-          if ((m_result->eval(newParam) - curr).norm()
-                  < (m_result->eval(m_param_values.col(i))
-                      - curr).norm())
-                  m_param_values.col(i) = newParam;
+          // gsInfo << "Correction:\n" << newParam << "\n";
+          // gsInfo << "On the boundary ? " << "\n";
+          // gsInfo << geoSupport(0,0) << "<" << newParam(0) << "<" << geoSupport(0,1) << "\n";
+          // gsInfo << geoSupport(1,0) << "<" << newParam(1) << "<" << geoSupport(1,1) << "\n";
+          // if( ( geoSupport(0,0) < newParam(0) ) && ( newParam(0) < geoSupport(0,1) ) && ( geoSupport(1,0) < newParam(1) ) && ( newParam(1) < geoSupport(1,1) ) )
+          // {
+            // gsInfo << "And we get here.\n";
+          if ((m_result->eval(newParam) - curr).norm() < (m_result->eval(m_param_values.col(i))- curr).norm()){
+            m_param_values.col(i) = newParam;
+          }
+          //}
 
           // (!) There might be the same parameter for two points
           // or ordering constraints in the case of structured/grid data
       }
 
       // Correct the parameters, but keep them on the boundary
-      gsMatrix<T> geoSupport = m_result->support();
+
 
       for (index_t i = sepIndex; i < m_points.rows(); ++i)
       {
           gsVector<T> newBoundaryParam(1);
+          gsVector<T> oldBoundaryParam(1);
           const auto & curr = m_points.row(i).transpose();
           newParam = m_param_values.col(i);
 
@@ -310,61 +320,96 @@ void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
 
             if( math::abs(newParam(0) - geoSupport(0,0)) < 1e-15 )
             {
+              // gsInfo << newParam(0) << " == " << geoSupport(0,0) << "\n";
+              // gsInfo << "1 = West-boundary:\n" << newParam << "\n";
               typename gsGeometry<T>::uPtr b = m_result->boundary(1);
 
 
               newBoundaryParam << newParam(1);
+              oldBoundaryParam << newParam(1);
               // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
               // gsInfo << "West-boundary correction:\n";
               b->closestPointTo(curr, newBoundaryParam, accuracy, true);
               // gsInfo << "optimized: " << newBoundaryParam << "\n";
 
-              if( (leftParam(1) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(1)) )
+              // assumption: boundary parameters in anti-clockwise order
+              if( (leftParam(1) > newBoundaryParam(0)) && (newBoundaryParam(0) > rightParam(1)) ){
                 newParam(1) = newBoundaryParam(0);
+              }
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
+
             }
             else if ( math::abs(newParam(0) - geoSupport(0,1)) < 1e-15 )
             {
+              // gsInfo << newParam(0) << " == " << geoSupport(0,1) << "\n";
+              // gsInfo << "2 = East-boundary:\n" << newParam << "\n";
               typename gsGeometry<T>::uPtr b = m_result->boundary(2);
 
 
               newBoundaryParam << newParam(1);
+              oldBoundaryParam << newParam(1);
               // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
               // gsInfo << "East-boundary correction:\n";
               b->closestPointTo(curr, newBoundaryParam, accuracy, true);
               // gsInfo << "optimized: " << newBoundaryParam << "\n";
-              if( (leftParam(1) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(1)) )
+              if( (leftParam(1) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(1)) ){
                 newParam(1) = newBoundaryParam(0);
+              }
+
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
+
             }
             else if ( math::abs(newParam(1) - geoSupport(1,0)) < 1e-15 )
             {
+              // gsInfo << newParam(1) << " == " << geoSupport(1,0) << "\n";
+              // gsInfo << "3 = South-boundary:\n" << newParam << "\n";
               typename gsGeometry<T>::uPtr b = m_result->boundary(3);
 
 
               newBoundaryParam << newParam(0);
+              oldBoundaryParam << newParam(0);
               // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
               // gsInfo << "South-boundary correction:\n";
               b->closestPointTo(curr, newBoundaryParam, accuracy, true);
               // gsInfo << "optimized: " << newBoundaryParam << "\n";
-              if( (leftParam(0) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(0)) )
+              if( (leftParam(0) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(0)) ){
                 newParam(0) = newBoundaryParam(0);
+              }
 
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
             }
             else{
+              // gsInfo << newParam(1) << " == " << geoSupport(1,1) << "\n";
+              // gsInfo << i << "-th point:\n" << "\n";
+              // gsInfo << rightParam(0)<< " < " << newParam(0) << " < " << leftParam(0) << "\n";
               typename gsGeometry<T>::uPtr b = m_result->boundary(4);
 
               // gsInfo << newParam(1) << "==" << geoSupport(1,1) << "\n";
               newBoundaryParam << newParam(0);
+              oldBoundaryParam << newParam(0);
               // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
               // gsInfo << "North-boundary correction:\n";
               b->closestPointTo(curr, newBoundaryParam, accuracy, true);
               // gsInfo << "optimized: " << newBoundaryParam << "\n";
-              if( (leftParam(0) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(0)) )
+              // assumption: paramters in anti-clockwise order
+              // gsInfo << "Projection:\n";
+              // gsInfo << rightParam(0)<< " < " << newBoundaryParam(0) << " < " << leftParam(0) << "\n";
+              if( (leftParam(0) > newBoundaryParam(0)) && (newBoundaryParam(0) > rightParam(0)) ){
+                // gsInfo << "Before:\n" << newParam << "\n";
                 newParam(0) = newBoundaryParam(0);
+                // gsInfo << "After:\n" << newParam << "\n";
+              }
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
             }
-            if ((m_result->eval(newParam) - curr).norm()
-                    < (m_result->eval(m_param_values.col(i))
-                        - curr).norm())
-                    m_param_values.col(i) = newParam;
+
 
           //} // corner: to be moved or not.
       }
