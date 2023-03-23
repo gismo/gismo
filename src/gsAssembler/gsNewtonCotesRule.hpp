@@ -158,6 +158,8 @@ gsNewtonCotesRule<T>::computeReference(index_t n,       // Number of points
         }
         w[i] = a + b;
     }
+    x[0] += 1e-12;
+    x[n-1] -= 1e-12;
 }
 
 } // namespace gismo
