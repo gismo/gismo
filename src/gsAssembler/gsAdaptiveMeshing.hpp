@@ -77,7 +77,7 @@ void gsAdaptiveMeshing<T>::_makeMap(const gsFunctionSet<T> * input, typename gsA
             // Initialize domain element iterator
             if ( const gsMultiPatch<T> * mp = dynamic_cast<const gsMultiPatch<T>*>(input) ) basis = &(mp->basis(patchInd));
             if ( const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(input) ) basis = &(mb->basis(patchInd));
-            GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+            GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
             gsHDomainIterator<T,2> * domHIt = nullptr;
