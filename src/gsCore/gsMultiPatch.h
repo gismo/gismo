@@ -138,6 +138,19 @@ public:
         return sz;
     }
 
+    gsMatrix<T> coefs() const
+    {
+        gsMatrix<T> result(this->coefsSize(),this->geoDim());
+        result.setZero();
+        index_t offset = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+        {
+            result.block(offset,0,(*it)->coefsSize(),(*it)->geoDim()) = (*it)->coefs();
+        }
+        return result;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
