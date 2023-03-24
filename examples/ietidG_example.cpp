@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    //std::string geometry("domain2d/yeti_mp2.xml");
+    std::string geometry;
     index_t splitPatches = 2;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
-    //cmd.addString("g", "Geometry",              "Geometry file", geometry);
+    cmd.addString("g", "Geometry",              "Geometry file; if empty, use approximateQuarterAnnulus", geometry);
     cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
@@ -121,32 +121,39 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    //if ( ! gsFileManager::fileExists(geometry) )
-    //{
-    //    gsInfo << "Geometry file could not be found.\n";
-    //    gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
-    //    return EXIT_FAILURE;
-    //}
-
     gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
+    
+
 
     /******************* Define geometry ********************/
 
     //gsInfo << "Define geometry... " << std::flush;
-
-    //! [Define Geometry]
-    //gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
-    //! [Define Geometry]
-    //if (!mpPtr)
-    //{
-    //    gsInfo << "No geometry found in file " << geometry << ".\n";
-    //    return EXIT_FAILURE;
-    //}
-    //! [Define Geometry2]
-    //gsMultiPatch<>& mp = *mpPtr;
-    gsMultiPatch<> mp = approximateQuarterAnnulus(2);
+    gsMultiPatch<>::uPtr mpPtr;
+    if (!geometry.empty())
     {
+        if ( ! gsFileManager::fileExists(geometry) )
+        {
+            gsInfo << "Geometry file could not be found.\n";
+            gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
+            return EXIT_FAILURE;
+        }
 
+        //! [Define Geometry]
+        mpPtr = gsReadFile<>(geometry);
+        //! [Define Geometry]
+        if (!mpPtr)
+        {
+            gsInfo << "No geometry found in file " << geometry << ".\n";
+            return EXIT_FAILURE;
+        }
+        //! [Define Geometry2]
+    }
+    else
+        mpPtr = memory::make_unique( new gsMultiPatch<>( approximateQuarterAnnulus(2) ) );
+        
+    gsMultiPatch<>& mp = *mpPtr;
+    
+    {
         std::vector<gsGeometry<>*> ptch;
         for(size_t np = 0; np< mp.nPatches(); ++np)
         {
@@ -176,10 +183,6 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "done.\n";
-
-    /************** Compute penalty parameter **************/
-    if(penalty < 0)
-        penalty *= degree * degree;
 
 
     /************** Define boundary conditions **************/
@@ -271,7 +274,7 @@ int main(int argc, char *argv[])
 
     /************** Compute penalty parameter **************/
     if(penalty < 0)
-        penalty *= mb.maxCwiseDegree();
+        penalty = 4 * (mb.maxCwiseDegree()+1) * (mb.maxCwiseDegree()+mb.dim()); //* mb.maxCwiseDegree();
 
     /********* Setup assembler and assemble matrix **********/
 
@@ -318,6 +321,13 @@ int main(int argc, char *argv[])
                 return EXIT_FAILURE;
         }
 
+    // Compute the jump matrices
+    bool fullyRedundant = true,
+         noLagrangeMultipliersForCorners = cornersAsPrimals;
+    //! [Define jumps]
+    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
+    //! [Define jumps]
+    
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
     //! [Define primals]
@@ -330,13 +340,6 @@ int main(int argc, char *argv[])
     if (facesAsPrimals)
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
     //! [Define primals]
-
-    // Compute the jump matrices
-    bool fullyRedundant = true,
-         noLagrangeMultipliersForCorners = cornersAsPrimals;
-    //! [Define jumps]
-    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
-    //! [Define jumps]
 
     //! [Setup]
     // The ieti system does not have a special treatment for the
@@ -377,6 +380,8 @@ int main(int argc, char *argv[])
         assemblerOptions.setReal("DG.Alpha", alpha);
         assemblerOptions.setReal("DG.Beta", beta);
         assemblerOptions.setReal("DG.Penalty", penalty);
+        if (k==0)
+            gsInfo << "Use penalty parameter: " << penalty << "\n";
 
         gsGenericAssembler<> assembler(
             mp_local,
@@ -550,9 +555,9 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(cmd);
-        fd.add(uVec);
-        gsMatrix<> mat; ieti.saddlePointProblem()->toMatrix(mat); fd.add(mat);
+        //fd.add(cmd);
+        //fd.add(uVec);
+        //gsMatrix<> mat; ieti.saddlePointProblem()->toMatrix(mat); fd.add(mat);
         fd.addComment(std::string("ietidG_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
         gsInfo << "Write solution to file " << out << "\n";
