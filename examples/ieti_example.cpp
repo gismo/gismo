@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
         ietiMapper.init( mb, u.mapper(), u.fixedPart() );
     }
     //! [Define global mapper]
-
+    
     // Which primal dofs should we choose?
     bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
     for (size_t i=0; i<primals.length(); ++i)
@@ -204,6 +204,14 @@ int main(int argc, char *argv[])
                 return EXIT_FAILURE;
         }
 
+    // Compute the jump matrices
+    bool fullyRedundant = true,
+         noLagrangeMultipliersForCorners = cornersAsPrimals;
+
+    //! [Define jumps]
+    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
+    //! [Define jumps]
+        
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
     //! [Define primals]
@@ -216,13 +224,6 @@ int main(int argc, char *argv[])
     if (facesAsPrimals)
         ietiMapper.interfaceAveragesAsPrimals(mp,2);
     //! [Define primals]
-
-    // Compute the jump matrices
-    bool fullyRedundant = true,
-         noLagrangeMultipliersForCorners = cornersAsPrimals;
-    //! [Define jumps]
-    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
-    //! [Define jumps]
 
     //! [Setup]
     // The ieti system does not have a special treatment for the
@@ -419,8 +420,8 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(cmd);
-        fd.add(uVec);
+        //fd.add(cmd);
+        //fd.add(uVec);
         fd.addComment(std::string("ieti_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
         gsInfo << "Write solution to file " << out << "\n";

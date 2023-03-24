@@ -92,7 +92,10 @@ gsMatrix<T> gsIetiSystem<T>::rhsForSchurComplement() const
 {
     setupSparseLUSolvers();
     Matrix result;
-    result.setZero( this->nLagrangeMultipliers(), this->m_localRhs[0].cols());
+    if (m_fixedPart)
+        result = - *m_fixedPart;
+    else
+        result.setZero( this->nLagrangeMultipliers(), this->m_localRhs[0].cols());
     const index_t numPatches = this->m_jumpMatrices.size();
     for (index_t i=0; i<numPatches; ++i)
     {
@@ -133,6 +136,12 @@ gsMatrix<T> gsIetiSystem<T>::rhsForSaddlePoint() const
         const index_t l = m_localRhs[k].rows();
         result.middleRows(i, l) = m_localRhs[k];
         i += l;
+    }
+    if (m_fixedPart)
+    {
+        const index_t l = m_fixedPart->rows();
+        GISMO_ASSERT( i+l==result.rows(), "gsIetiSystem::rhsForSaddlePoint: Dimensions do not agree." );
+        result.bottomRows(l) = *m_fixedPart;
     }
     return result;
 }

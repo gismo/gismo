@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    std::string geometry("domain2d/yeti_mp2.xml");
+    std::string geometry("domain2d/square.xml");
     index_t splitPatches = 1;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
     std::string primals("c");
     real_t tolerance = 1.e-8;
     index_t maxIterations = 100;
+    bool fullFloating = false;
     std::string out;
     bool plot = false;
 
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
     cmd.addString("c", "Primals",               "Primal constraints (c=corners, e=edges, f=faces)", primals);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Stopping criterion for linear solver", maxIterations);
+    cmd.addSwitch(     "FullFloating",          "Represent boundary data in fully floating way", fullFloating);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
     cmd.addSwitch(     "plot",                  "Plot the result with Paraview", plot);
 
@@ -173,13 +175,14 @@ int main(int argc, char *argv[])
             iFace::glue
         );
         assembler.computeDirichletDofs();
+        gsInfo << "DirichletDofs: " << assembler.fixedDofs() << "\n";
         ietiMapper.init( mb, assembler.system().rowMapper(0), assembler.fixedDofs() );
     }
 
     // Compute the jump matrices
     bool fullyRedundant = true,
-         noLagrangeMultipliersForCorners = true;
-    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
+         noLagrangeMultipliersForCorners = !true; //TODO
+    ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners, fullFloating);
 
     // We tell the ieti mapper which primal constraints we want.
     bool cornersAsPrimals = false, edgesAsPrimals = false, facesAsPrimals = false;
@@ -207,6 +210,10 @@ int main(int argc, char *argv[])
     // primal dofs. They are just one more subdomain
     gsIetiSystem<> ieti;
     ieti.reserve(nPatches+1);
+    if (fullFloating)
+        ieti.fixedPart() = gsMatrix<>(ietiMapper.fixedPartLagrange()).moveToPtr(); //TODO
+    if (fullFloating)
+        gsInfo << "DirichletDofs: " << *(ieti.fixedPart()) << "\n";
 
     // The scaled Dirichlet preconditioner is independent of the
     // primal dofs.
@@ -235,7 +242,7 @@ int main(int argc, char *argv[])
             mb_local,
             bc_local,
             f,
-            dirichlet::elimination,
+            fullFloating ? dirichlet::none : dirichlet::elimination,
             iFace::glue
         );
 
@@ -267,16 +274,24 @@ int main(int argc, char *argv[])
             = gsScaledDirichletPrec<>::matrixBlocks(localMatrix, skeletonDofs);
 
         gsBoundaryConditions<> bc_A11;
+        if (!fullFloating)
+            bc_A11 = bc_local; // fullFloating requires Dirichlet conds everywhere
         for (index_t i = 1; i <= 2*mb.dim(); ++i) {
-            bc_A11.addCondition(0, i, condition_type::dirichlet, &gD);
+            if (!bc_A11.getConditionFromSide(patchSide(0,i)))
+                bc_A11.addCondition(0, i, condition_type::dirichlet, &gD);
         }
         // TODO: set beta with proper, dimension depending scaling
-        gsLinearOperator<>::Ptr A11 = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local[0],bc_A11,gsAssembler<>::defaultOptions(),/*alpha=*/0,/*beta=*/1,/*gamma=*/0);
+        //gsLinearOperator<>::Ptr A11inv = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local[0],bc_A11,gsAssembler<>::defaultOptions(),/*alpha=*/0,/*beta=*/1,/*gamma=*/0);
+
+        gsInfo << "bc_local: " << bc_local << "\n";
+        gsInfo << "localMatrix: " << localMatrix.rows() << "\n";
+        //gsInfo << "A11fd: " << A11inv->rows() << "\n";
+        gsInfo << "blocks.A11: " << blocks.A11.rows() << "\n";
 
         // TODO: Should we take also parameter domain for the other blocks?
         prec.addSubdomain(
             prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
-            gsScaledDirichletPrec<>::schurComplement( blocks, /*makeSparseCholeskySolver(blocks.A11)*/ A11 )
+            gsScaledDirichletPrec<>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) /*A11inv*/ )
         );
 
         // Now, we handle the primal constraints.
@@ -300,18 +315,23 @@ int main(int argc, char *argv[])
         );
 
         // TODO: set beta with proper, dimension depending scaling
-        real_t alpha = (bc_local.dirichletSides().size() == 0) ? 1 : 0;
-        gsLinearOperator<>::Ptr fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local[0],bc_local,gsAssembler<>::defaultOptions(),alpha,/*beta=*/1,/*gamma=*/0);
-        gsLinearOperator<>::Ptr localSolver = gsBlockSolverOp<>::make(fd,modifiedLocalMatrix.bottomRows(ietiMapper.primalConstraints(k).size()).leftCols(localMatrix.rows()));
+        //real_t alpha = (bc_local.dirichletSides().size() == 0) ? 1 : 0;
+        //gsLinearOperator<>::Ptr fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local[0],bc_local,gsAssembler<>::defaultOptions(),alpha,/*beta=*/1,/*gamma=*/0);
+        //gsInfo << "fd: " << fd->rows() << "\n";
+
+        //gsLinearOperator<>::Ptr localSolver = gsBlockSolverOp<>::make(fd,modifiedLocalMatrix.bottomRows(ietiMapper.primalConstraints(k).size()).leftCols(localMatrix.rows()));
+        
+        gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(modifiedLocalMatrix);
+        
+        gsMatrix<>                       modifiedLocalRhs     = localEmbedding * localRhs;
+        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding.transpose();
         primal.addContribution(
             jumpMatrix, localMatrix, localRhs,
             gsPrimalSystem<>::primalBasis(
-                /*makeSparseCholeskySolver(modifiedLocalMatrix)*/ localSolver, embeddingForBasis, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
-            )
+                localSolver, embeddingForBasis, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
+            ),
+            makeMatrixOp(gsSparseMatrix<real_t, RowMajor>(localEmbedding.transpose()).moveToPtr())
         );
-        gsMatrix<>                       modifiedLocalRhs     = localEmbedding * localRhs;
-        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding.transpose();
-
 
         // Register the local solver to the block preconditioner. We use
         // a sparse LU solver since the local saddle point problem is not
@@ -344,6 +364,10 @@ int main(int argc, char *argv[])
 
     /**************** Setup solver and solve ****************/
 
+    gsInfo << "\n\nrhsForSaddlePoint:\n" << ieti.rhsForSaddlePoint().transpose() << "\n";
+    {gsMatrix<> mat; ieti.saddlePointProblem()->toMatrix(mat); gsInfo << "\n\nsaddlePointProblem:\n " << mat << "\n"; }
+
+    
     gsInfo << "Setup solver and solve... \n"
         "    Setup multiplicity scaling... " << std::flush;
 
@@ -393,8 +417,8 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        fd.add(cmd);
-        fd.add(uVec);
+        //fd.add(cmd);
+        //fd.add(uVec);
         fd.addComment(std::string("ieti2_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
         gsInfo << "Write solution to file " << out << "\n";
