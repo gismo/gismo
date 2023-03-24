@@ -239,8 +239,8 @@ void gsPrimalSystem<T>::handleConstraints(
 
     addContribution(
         jumpMatrix, localMatrix, localRhs,
-        basis
-	//TODO: , makeMatrixOp(SparseMatrix(localEmbedding).moveToPtr())
+        basis,
+        gsLinearOperator<>::Ptr(makeMatrixOp(localEmbedding)) //TODO: FixMe: .moveToPtr()
     );
 
     localMatrix  = give(modifiedLocalMatrix);
@@ -263,41 +263,24 @@ gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
 
     for (index_t i=0; i<sz; ++i)
     {
-        if( m_embeddings[i] )
-	{
-            GISMO_ENSURE( sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols())
-                >= this->m_primalBases[i].rows(),
-                "gsPrimalSystem::distributePrimalSolution: (1) Dimensions do not agree: "
-                << sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols())
-                << ">=" << this->m_primalBases[i].rows() 
-                << "This method assumes the primal subspace to be the last one." );
-        }
-	else
-	{
-            GISMO_ENSURE( sol[i].rows() >= this->m_primalBases[i].rows(),
-                "gsPrimalSystem::distributePrimalSolution: (1a) Dimensions do not agree: "
-                << sol[i].rows() << ">=" << this->m_primalBases[i].rows()
-                << "This method assumes the primal subspace to be the last one." );
-        }
+        GISMO_ASSERT( sol.size()>i, "");
+	GISMO_ASSERT( m_embeddings.size()>i, "");
+	GISMO_ASSERT( m_primalBases.size()>i, "");
 
-        GISMO_ENSURE(
-            this->m_primalBases[i].cols() == sol.back().rows(),
-            "gsPrimalSystem::distributePrimalSolution: (2) Dimensions do not agree: "
-            << this->m_primalBases[i].cols() << "==" << sol.back().rows()
-            << "This method assumes the primal subspace to be the last one." );
-
-
-        GISMO_ENSURE(
-            sol.back().cols() == sol[i].cols(),
-            "gsPrimalSystem::distributePrimalSolution: (3) Dimensions do not agree: "
+        GISMO_ASSERT( sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols()) //TODO: connected to the TODO above with .moveToPtr
+        >= this->m_primalBases[i].rows()
+            && this->m_primalBases[i].cols() == sol.back().rows()
+            && sol.back().cols() == sol[i].cols(),
+            "gsPrimalSystem::distributePrimalSolution: Dimensions do not agree: "
+            << sol[i].rows()+(m_embeddings[i]->rows() - m_embeddings[i]->cols()) //TODO: connected to the TODO above with .moveToPtr
+            << ">=" << this->m_primalBases[i].rows() << "&&"
+            << this->m_primalBases[i].cols() << "==" << sol.back().rows() << "&&"
             << sol.back().cols() << "==" << sol[i].cols() << " (i=" << i << "). "
             << "This method assumes the primal subspace to be the last one." );
 
         if (m_embeddings[i] && m_embeddings[i]->cols() > 0)
         {
             Matrix tmp;
-	    gsInfo << "m_embeddings["<<i<<"]: " << m_embeddings[i]->rows() << "x" << m_embeddings[i]->cols() << "\n";
-            gsInfo << "sol[i]: " << sol[i].rows() << "x" << sol[i].cols() << "\n";
             m_embeddings[i]->apply(sol[i],tmp);
             sol[i].swap(tmp);
         }

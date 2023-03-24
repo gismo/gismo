@@ -30,13 +30,6 @@ namespace gismo
  *                   &            &             & \tilde A_N &  \tilde B_N^\top \\
  *        \tilde B_1 & \tilde B_2 &   \cdots    & \tilde B_N &     0            \\
  *     \end{pmatrix}
- *     \begin{pmatrix}
- *        \tilde u_1 \\\tilde u_2 \\  \vdots    \\\tilde u_N \\ \lambda
- *     \end{pmatrix}
- *     =
- *     \begin{pmatrix}
- *        \tilde f_1 \\\tilde f_2 \\  \vdots    \\\tilde f_N \\ g_D
- *     \end{pmatrix}
  *  \f]
  *
  *  The corresponding Schur complement is
@@ -48,9 +41,7 @@ namespace gismo
  *  For a standard IETI-DP setup, \f$ \tilde A_k \f$ and \f$ \tilde B_k \f$ are
  *  obtained from the original matrices \f$ A_k \f$ and \f$ B_k \f$ by
  *  eliminating the primal dofs or by incorporating a constraint that sets them
- *  to zero. The corresponding right-hand sides \f$ \tilde f_k \f$ are set up
- *  analogously. \f$ g_D \f$ is refered to the \ref fixedPart and contains the
- *  Dirichlet data for the full floating case and is zero otheriwse.
+ *  to zero.
  *
  *  This class does not have any special treatment for the primal problem of a
  *  IETI-DP solver. Thus, the primal problem is just another subdomain and in
@@ -84,7 +75,6 @@ class gsIetiSystem
     typedef gsSparseMatrix<T,RowMajor>        JumpMatrix;      ///< Sparse matrix type for jumps
     typedef memory::shared_ptr<JumpMatrix>    JumpMatrixPtr;   ///< Shared pointer to sparse matrix type for jumps
     typedef gsMatrix<T>                       Matrix;          ///< Matrix type
-    typedef memory::shared_ptr<Matrix>        MatrixPtr;       ///< Shared pointer to matrix type
 public:
 
     /// @brief Reserves the memory required to store the number of subdomains
@@ -120,10 +110,6 @@ public:
     OpPtr&               localSolverOp(index_t k)        { return m_localSolverOps[k]; }
     const OpPtr&         localSolverOp(index_t k) const  { return m_localSolverOps[k]; }
 
-    /// Access the fixed part
-    MatrixPtr&           fixedPart()                     { return m_fixedPart;         }
-    const MatrixPtr&     fixedPart() const               { return m_fixedPart;         }
-    
     /// @brief Returns the number of Lagrange multipliers
     ///
     /// This requires that at least one jump matrix has been set.
@@ -177,7 +163,6 @@ private:
     std::vector<JumpMatrixPtr>  m_jumpMatrices;       ///< Stores the jump matrices
     std::vector<OpPtr>          m_localMatrixOps;     ///< Stores the local matrix ops \f$ \tilde A_k \f$
     std::vector<Matrix>         m_localRhs;           ///< Stores the local right-hand sides
-    MatrixPtr                   m_fixedPart;          ///< Stores the fired part \f$ g_D \f$
     mutable std::vector<OpPtr>  m_localSolverOps;     ///< Stores the local solvers
 };
 

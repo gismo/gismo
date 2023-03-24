@@ -66,9 +66,9 @@ public:
     gsIetiMapper(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        Matrix fixedPart
+        const Matrix& fixedPart
     )
-    { init(multiBasis, give(dofMapperGlobal), give(fixedPart)); }
+    { init(multiBasis, give(dofMapperGlobal), fixedPart); }
 
     /// @brief Init the ieti mapper after default construction
     ///
@@ -80,7 +80,7 @@ public:
     void init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        Matrix fixedPart
+        const Matrix& fixedPart
     );
 
     /// @brief Set up the corners as primal dofs
@@ -116,8 +116,7 @@ public:
     ///                        if false, then no redundancy
     /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
     ///                        if the corners are chosen as primal dofs
-    /// @param fullFloating    Realize essential conditions using full floating, not via elimination
-    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners, bool fullFloating=false );
+    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners );
 
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
@@ -183,15 +182,6 @@ public:
     /// Only available after \ref computeJumpMatrices has been called
     const Matrix& fixedPart(index_t k) const                               { return m_fixedPart[k];               }
 
-    /// @brief The function values for the eliminated dofs in the case of full floating
-    const Matrix& fixedPartLagrange() const
-    {
-        const size_t nPatches = m_jumpMatrices.size();
-        GISMO_ASSERT( m_fixedPart.size() == nPatches+1, "gsIetiMapper::fixedPartLagrange: This is only available for full floating case." );
-        gsInfo << "fixedPartLagrange(): "<<m_fixedPart[nPatches].rows()<<"x"<<m_fixedPart[nPatches].cols()<<"\n";
-        return m_fixedPart[nPatches];
-    }
-    
     /// @brief Reference to the multi basis object being passed to constructur or \ref init
     const gsMultiBasis<T>& multiBasis() const                              { return *m_multiBasis;                }
 
@@ -205,13 +195,11 @@ protected:
     const gsMultiBasis<T>*                        m_multiBasis;          ///< Pointer to the respective multibasis
     gsDofMapper                                   m_dofMapperGlobal;     ///< The global dof mapper
     std::vector<gsDofMapper>                      m_dofMapperLocal;      ///< A vector of the patch-local dof mappers
-    Matrix                                        m_fixedPartGlobal;     ///< The values for the elminated (Dirichlet) dofs
     std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs
     std::vector<JumpMatrix>                       m_jumpMatrices;        ///< The jump matrices
     index_t                                       m_nPrimalDofs;         ///< The number of primal dofs already created
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
     std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints
-    bool                                          m_fullFloating;        ///< The essential conditions are handled using full floating
     unsigned                                      m_status;              ///< A status flag that is checked by assertions
 };
 

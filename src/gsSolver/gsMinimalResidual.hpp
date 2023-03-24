@@ -40,7 +40,7 @@ bool gsMinimalResidual<T>::initIteration( const typename gsMinimalResidual<T>::V
 
     gammaPrev = 1;
     T ip = z.col(0).dot(v.col(0));
-    GISMO_ASSERT(ip >= T(0), "gsMinimalResidual::initIteration(...), preconditioner not positive semi-definite; ip = "<<ip);
+    GISMO_ASSERT(ip >= T(0), "gsMinimalResidual::initIteration(...), preconditioner not positive semi-definite");
     gamma = math::sqrt(ip);
     gammaNew = 1;
     eta = gamma;
@@ -60,7 +60,7 @@ bool gsMinimalResidual<T>::step( typename gsMinimalResidual<T>::VectorType& x )
     vNew = Az - (delta/gamma)*v - (gamma/gammaPrev)*vPrev;
     m_precond->apply(vNew, zNew);
     T ip = zNew.col(0).dot(vNew.col(0));
-    GISMO_ASSERT(ip >= T(0), "gsMinimalResidual::step(...), preconditioner not positive semi-definite; ip = "<<ip);
+    GISMO_ASSERT(ip >= T(0), "gsMinimalResidual::step(...), preconditioner not positive semi-definite");
     gammaNew = math::sqrt(ip);
     const T a0 = c*delta - cPrev*s*gamma;
     const T a1 = math::sqrt(a0*a0 + gammaNew*gammaNew);

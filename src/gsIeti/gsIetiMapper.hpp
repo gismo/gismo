@@ -29,7 +29,7 @@ template <class T>
 void gsIetiMapper<T>::init(
         const gsMultiBasis<T>& multiBasis,
         gsDofMapper dofMapperGlobal,
-        Matrix fixedPart
+        const Matrix& fixedPart
     )
 {
     GISMO_ASSERT( dofMapperGlobal.componentsSize() == 1, "gsIetiMapper::init: "
@@ -41,8 +41,9 @@ void gsIetiMapper<T>::init(
     m_multiBasis = &multiBasis;
     m_dofMapperGlobal = give(dofMapperGlobal);
     m_dofMapperLocal.clear();
-    m_fixedPartGlobal = give(fixedPart);
+    m_dofMapperLocal.resize(nPatches);
     m_fixedPart.clear();
+    m_fixedPart.resize(nPatches);
     m_jumpMatrices.clear();
     m_nPrimalDofs = 0;
     m_primalConstraints.clear();
@@ -50,7 +51,37 @@ void gsIetiMapper<T>::init(
     m_primalDofIndices.clear();
     m_primalDofIndices.resize(nPatches);
     m_status = 1;
-    
+
+    for (index_t k=0; k<nPatches; ++k)
+    {
+        const index_t nDofs = m_dofMapperGlobal.patchSize(k);
+        GISMO_ASSERT( nDofs>=m_multiBasis->piece(k).size(), "gsIetiMapper::init: "
+            "The mapper for patch "<<k<<" has not as many dofs as the corresponding basis." );
+
+        m_dofMapperLocal[k].setIdentity(1,nDofs);
+
+        // Eliminate boundary dofs (we do not consider the full floating case).
+        for (index_t i=0; i<nDofs; ++i)
+        {
+            const index_t idx = m_dofMapperGlobal.index(i,k);
+            if (m_dofMapperGlobal.is_boundary_index(idx))
+                m_dofMapperLocal[k].eliminateDof(i,0);
+        }
+        m_dofMapperLocal[k].finalize();
+
+        const index_t szFixedPart = m_dofMapperLocal[k].boundarySize();
+        m_fixedPart[k].setZero(szFixedPart,1);
+        for (index_t i=0; i<nDofs; ++i)
+        {
+            const index_t idx = m_dofMapperGlobal.index(i,k);
+            if (m_dofMapperGlobal.is_boundary_index(idx))
+            {
+                const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(i,k);
+                const index_t localBoundaryIdx = m_dofMapperLocal[k].bindex(i,0);
+                m_fixedPart[k](localBoundaryIdx,0) = fixedPart(globalBoundaryIdx,0);
+            }
+        }
+    }
 }
 
 
@@ -94,7 +125,7 @@ struct dof_helper {
 template <class T>
 void gsIetiMapper<T>::cornersAsPrimals(bool includeIsolated)
 {
-    GISMO_ASSERT( m_status&2, "gsIetiMapper: The jump matrices have to be computed first." );
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( !(m_status&4), "gsIetiMapper::cornersAsPrimals: This function has already been called." );
     m_status |= 4;
 
@@ -185,7 +216,7 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 template <class T>
 void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d, bool includeIsolated )
 {
-    GISMO_ASSERT( m_status&2, "gsIetiMapper: The jump matrices have to be computed first." );
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
     GISMO_ASSERT( d<=m_multiBasis->dim(), "gsIetiMapper::interfaceAveragesAsPrimals: "
         "Interfaces cannot have larger dimension than considered object." );
@@ -235,7 +266,7 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
 template <class T>
 void gsIetiMapper<T>::customPrimalConstraints( std::vector< std::pair<index_t,SparseVector> > data )
 {
-    GISMO_ASSERT( m_status&2, "gsIetiMapper: The jump matrices have to be computed first." );
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
     const index_t sz = data.size();
     for (index_t i=0; i<sz; ++i)
@@ -250,73 +281,30 @@ void gsIetiMapper<T>::customPrimalConstraints( std::vector< std::pair<index_t,Sp
 template <class T>
 std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 {
-    GISMO_ASSERT( m_status&2, "gsIetiMapper: The jump matrices have to be computed first." );
+    GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
     std::vector<index_t> result;
     const index_t patchSize = m_dofMapperGlobal.patchSize(patch);
     const index_t dim = m_multiBasis->dim();
     result.reserve(2*dim*std::pow(patchSize,(1.0-dim)/dim));
     for (index_t i=0; i<patchSize; ++i)
-        if ( m_dofMapperGlobal.is_coupled(i,patch) || ( m_fullFloating && m_dofMapperGlobal.is_boundary(i,patch) ) )
+        if ( m_dofMapperGlobal.is_coupled(i,patch) )
             result.push_back(m_dofMapperLocal[patch].index(i,0)); //TODO: there is a problem with this for dG, when its mapper is used
     return result;
 }
 
 template <class T>
-void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners, bool fullFloating )
+void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
+
     GISMO_ASSERT( !(m_status&2), "gsIetiMapper::computeJumpMatrices: This function has already been called." );
     m_status |= 2;
-    
-    m_fullFloating = fullFloating; //TODO
 
     const index_t nPatches = m_dofMapperGlobal.numPatches();
-    index_t coupledSize = m_dofMapperGlobal.coupledSize();
-
-    // First, derive the local dof mappers and the corresponding fixed parts
-    m_dofMapperLocal.resize(nPatches);
-    m_fixedPart.resize(fullFloating ? nPatches+1 : nPatches);
-    for (index_t k=0; k<nPatches; ++k)
-    {
-        const index_t patchSize = m_dofMapperGlobal.patchSize(k);
-        GISMO_ASSERT( patchSize>=m_multiBasis->piece(k).size(), "gsIetiMapper::init: "
-            "The mapper for patch "<<k<<" has not as many dofs as the corresponding basis." );
-
-        m_dofMapperLocal[k].setIdentity(1,patchSize);
-
-        // Eliminate boundary dofs (if we do not consider the full floating case).
-        if (!fullFloating)
-        {
-            for (index_t i=0; i<patchSize; ++i)
-            {
-                const index_t idx = m_dofMapperGlobal.index(i,k);
-                if (m_dofMapperGlobal.is_boundary_index(idx))
-                    m_dofMapperLocal[k].eliminateDof(i,0);
-            }
-        }
-        m_dofMapperLocal[k].finalize();
-
-        const index_t szFixedPart = m_dofMapperLocal[k].boundarySize();
-        m_fixedPart[k].setZero(szFixedPart,1);
-        if (!fullFloating)
-        {
-            // Write the values for the boundary dofs to local vectors
-            for (index_t i=0; i<patchSize; ++i)
-            {
-                const index_t idx = m_dofMapperGlobal.index(i,k);
-                if (m_dofMapperGlobal.is_boundary_index(idx))
-                {
-                    const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(i,k);
-                    const index_t localBoundaryIdx = m_dofMapperLocal[k].bindex(i,0);
-                    m_fixedPart[k](localBoundaryIdx,0) = m_fixedPartGlobal(globalBoundaryIdx,0);
-                }
-            }
-        }
-    }
+    const index_t coupledSize = m_dofMapperGlobal.coupledSize();
 
     // Find the groups of to be coupled indices
-    // Coupled with the boundary is represented as coupled with patch no. -1 (if full floating)
     std::vector< std::vector< std::pair<index_t,index_t> > > coupling;
     coupling.resize(coupledSize);
 
@@ -326,37 +314,17 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
         for (index_t i=0; i<patchSize; ++i)
         {
             const index_t globalIndex = m_dofMapperGlobal.index(i,k);
-            if ( m_dofMapperGlobal.is_boundary_index(globalIndex) ) gsInfo << "Boundary index.\n";
             if ( m_dofMapperGlobal.is_coupled_index(globalIndex) )
             {
                 const index_t coupledIndex = m_dofMapperGlobal.cindex(i,k);
                 const index_t localIndex = m_dofMapperLocal[k].index(i,0);
-                coupling[coupledIndex].emplace_back(k, localIndex);
-                if (fullFloating && m_dofMapperGlobal.is_boundary_index(globalIndex) && coupling[coupledIndex][0].first != -1)
-                {
-                    gsInfo << "Add coupled.\n";
-                    const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(i,k);
-                    coupling[coupledIndex].insert(
-                        coupling[coupledIndex].begin(),
-                        std::pair<index_t,index_t>(-1, globalBoundaryIdx)
-                    );
-                }
-                else if (m_dofMapperGlobal.is_boundary_index(globalIndex))
-                    gsInfo << "Do not add (coupled).\n";                    
-            }
-            else if (fullFloating && m_dofMapperGlobal.is_boundary_index(globalIndex)) // boundary, but not coupled
-            {
-                gsInfo << "Add uncoupled.\n";
-                const index_t globalBoundaryIdx = m_dofMapperGlobal.bindex(i,k);
-                const index_t localIndex = m_dofMapperLocal[k].index(i,0);
-                coupling.emplace_back();
-                coupling.back().emplace_back(-1, globalBoundaryIdx);
-                coupling.back().emplace_back(k, localIndex);
+                coupling[coupledIndex].push_back(
+                    std::pair<index_t,index_t>(k,localIndex)
+                );
             }
         }
     }
-    coupledSize = coupling.size();
-    
+
     // Erease data for corners if so desired
     if (excludeCorners)
     {
@@ -370,8 +338,7 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
                 if ( m_dofMapperGlobal.is_coupled_index(globalIndex) )
                 {
                     const index_t coupledIndex = m_dofMapperGlobal.cindex(idx,k);
-                    if ( !fullFloating || (!coupling[coupledIndex].empty() && coupling[coupledIndex][0].first != -1) )
-                        coupling[coupledIndex].clear();
+                    coupling[coupledIndex].clear();
                 }
             }
         }
@@ -398,9 +365,6 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
         jumpMatrices_se[i].reserve(std::pow(m_dofMapperLocal[i].freeSize(),(1.0-dim)/dim));
     }
 
-    if (fullFloating)
-        m_fixedPart[nPatches].setZero(numLagrangeMult,m_fixedPartGlobal.cols());
-    
     index_t multiplier = 0;
     for (index_t i=0; i<coupledSize; ++i)
     {
@@ -414,20 +378,8 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
             {
                 const index_t patch2 = coupling[i][j2].first;
                 const index_t localMappedIndex2 = coupling[i][j2].second;
-                gsInfo << "Patch1:" << patch1 << ",Patch2:" << patch2 << "\n";
-                if (patch1!=-1 && patch2!=-1)
-                {
-                    jumpMatrices_se[patch1].add(multiplier,localMappedIndex1,(T)1);
-                    jumpMatrices_se[patch2].add(multiplier,localMappedIndex2,(T)-1);
-                }
-                else
-                {
-                    const index_t patch = (patch1 != -1 ? patch1 : patch2);
-                    const index_t localMappedIndex = (patch1 != -1 ? localMappedIndex1 : localMappedIndex2);
-                    const index_t globalBoundaryIdx = (patch1 != -1 ? localMappedIndex2 : localMappedIndex1);
-                    jumpMatrices_se[patch].add(multiplier,localMappedIndex,(T)42); //TODO
-                    m_fixedPart[nPatches].row(multiplier) = 42*m_fixedPartGlobal.row(globalBoundaryIdx);
-                }
+                jumpMatrices_se[patch1].add(multiplier,localMappedIndex1,(T)1);
+                jumpMatrices_se[patch2].add(multiplier,localMappedIndex2,(T)-1);
                 ++multiplier;
             }
         }

@@ -273,15 +273,15 @@ int main(int argc, char *argv[])
 
         gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(modifiedLocalMatrix);
 
-        gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
-        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
-
         primal.addContribution(
             jumpMatrix, localMatrix, localRhs,
             gsPrimalSystem<>::primalBasis(
                 localSolver, embeddingForBasis, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
             )
         );
+        gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
+        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
+
 
         // Register the local solver to the block preconditioner. We use
         // a sparse LU solver since the local saddle point problem is not
@@ -363,8 +363,8 @@ int main(int argc, char *argv[])
     {
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
-        //fd.add(cmd);
-        //fd.add(uVec);
+        fd.add(cmd);
+        fd.add(uVec);
         fd.addComment(std::string("ieti2_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
         gsInfo << "Write solution to file " << out << "\n";

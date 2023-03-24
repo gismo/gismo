@@ -187,7 +187,7 @@ public:
     static OpPtr schurComplement( const SparseMatrix& localMatrix, const std::vector<index_t> dofs)
     {
         real_t time = 0;
-        return schurComplement( localMatrix, dofs, time );
+	return schurComplement( localMatrix, dofs, time );
     }
 
     /// Restricts the jump matrix and the local stiffness matrix to the skeleton
