@@ -248,10 +248,16 @@ public:
 
 private:
     void constructRestrictionMatricesforL2() {
-        std::vector<Eigen::Triplet<real_t> > tripletList;
+        gsSparseEntries<T> tripletList;
         m_R1T.resize(m_underlyingOperator.rows(), m_fastDiag->rows());
         for (int l = 0; l < m_fastDiag->rows(); ++l)
-            tripletList.push_back(Eigen::Triplet<real_t>(l, l, T(1)));
+        {
+            GISMO_ASSERT( l < m_R1T.rows(), l <<"<"<< m_R1T.rows() );
+            GISMO_ASSERT( l < m_R1T.cols(), l <<"<"<< m_R1T.cols() );
+
+            tripletList.add(l, l, T(1));
+        }
+
 
         const gsTensorBSplineBasis<2, T> &tb1 = dynamic_cast<const gsTensorBSplineBasis<2, T> & >(m_basis[0]);
 
@@ -306,11 +312,7 @@ private:
             //eliminateDirichlet1D(boundaryConditionsForDirection(m_bc1, comp1), result);
             result = result.block(1,1,result.rows()-2, result.cols()-2);
 
-#if defined(GISMO_WITH_PARDISO)
-            gsSparseSolver<>::PardisoLLT solver;
-#else
-            gsSparseSolver<>::SimplicialLDLT solver;
-#endif
+            Choleskyfac solver;
             solver.compute(M);
             //gsInfo << "M: \n" << M.toDense() << "\n";;
             //gsInfo << "result: " << result.rows() << "\n";;
@@ -318,15 +320,22 @@ private:
             for (int i = 0; i < result.cols(); ++i)
                 values.push_back(solver.solve(result.col(i).toDense()));
 
-            for (size_t k = 0; k < dofsPatchIFace.size(); ++k) {
-                for (int i = 0; i < values[k].rows(); ++i){
-                        tripletList.push_back(Eigen::Triplet<real_t>(m_originalSize+r+i, dofsPatchIFace[k], values[k](i, 0)));
+            for (size_t k = 0; k < dofsPatchIFace.size(); ++k)
+            {
+                //for (index_t i = 0; i < values[k].rows(); ++i)
+                for (index_t i = 1; i < values[k].rows()-1; ++i) /*eliminate corners*/
+                {
+                    const index_t row = m_originalSize+r+i /*eliminate corners*/-1;
+                    const index_t col = dofsPatchIFace[k];
+                    GISMO_ASSERT( row < m_R1T.rows(), row <<"<"<< m_R1T.rows() );
+                    GISMO_ASSERT( col < m_R1T.cols(), col <<"<"<< m_R1T.cols() );
+                    tripletList.add(row, col, values[k](i, 0));
                 }
             }
             r += values[0].rows();
         }
 
-        m_R1T.setFromTriplets(tripletList.begin(), tripletList.end());
+        m_R1T.setFrom(tripletList);
         m_R1T.makeCompressed();
         //gsInfo << "matrix: \n"<<m_R1T.toDense()<<"\n";
     }
@@ -401,14 +410,8 @@ protected:
     const gsOptionList &m_options;
 
     std::vector<gsSparseMatrix <T> > m_mass;
-
     gsSparseMatrix <T> m_R1T, m_R2T;
-#if defined(GISMO_WITH_PARDISO)
-    typename gsSparseSolver<T>::PardisoLLT* m_edgeSolver;
-#else
-    typename gsSparseSolver<T>::SimplicialLDLT *m_edgeSolver;
-#endif
-
+    Choleskyfac* m_edgeSolver;
     real_t m_eig;
 
 }; // gsInexactIETIPrec
@@ -571,7 +574,7 @@ int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
-    //std::string geometry("domain2d/yeti_mp2.xml");
+    std::string geometry;
     index_t splitPatches = 2;
     real_t stretchGeometry = 1;
     index_t refinements = 1;
@@ -589,7 +592,7 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Solves a PDE with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
-    //cmd.addString("g", "Geometry",              "Geometry file", geometry);
+    cmd.addString("g", "Geometry",              "Geometry file", geometry);
     cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
     cmd.addReal  ("",  "StretchGeometry",       "Stretch geometry in x-direction by the given factor", stretchGeometry);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
@@ -608,30 +611,37 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    //if ( ! gsFileManager::fileExists(geometry) )
-    //{
-    //    gsInfo << "Geometry file could not be found.\n";
-    //    gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
-    //    return EXIT_FAILURE;
-    //}
-
     gsInfo << "Run ietidG2_example with options:\n" << cmd << std::endl;
 
     /******************* Define geometry ********************/
 
     gsInfo << "Define geometry... " << std::flush;
 
-    //! [Define Geometry]
-    //gsMultiPatch<>::uPtr mpPtr = gsReadFile<>(geometry);
-    //! [Define Geometry]
-    //if (!mpPtr)
-    //{
-    //    gsInfo << "No geometry found in file " << geometry << ".\n";
-    //    return EXIT_FAILURE;
-    //}
-    //! [Define Geometry2]
-    //gsMultiPatch<>& mp = *mpPtr;
-    gsMultiPatch<> mp = approximateQuarterAnnulus(2);
+    gsMultiPatch<>::uPtr mpPtr;
+    if (!geometry.empty())
+    {
+        if ( ! gsFileManager::fileExists(geometry) )
+        {
+            gsInfo << "Geometry file could not be found.\n";
+            gsInfo << "I was searching in the current directory and in: " << gsFileManager::getSearchPaths() << "\n";
+            return EXIT_FAILURE;
+        }
+
+        //! [Define Geometry]
+        mpPtr = gsReadFile<>(geometry);
+        //! [Define Geometry]
+        if (!mpPtr)
+        {
+            gsInfo << "No geometry found in file " << geometry << ".\n";
+            return EXIT_FAILURE;
+        }
+        //! [Define Geometry2]
+    }
+    else
+    {
+        mpPtr = memory::make_unique(new gsMultiPatch<>(approximateQuarterAnnulus(2)));
+    }
+    gsMultiPatch<>& mp = *mpPtr;
     {
 
         std::vector<gsGeometry<>*> ptch;
@@ -818,7 +828,7 @@ int main(int argc, char *argv[])
     //! [Define jumps]
     ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
     //! [Define jumps]
-    
+
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
     //! [Define primals]

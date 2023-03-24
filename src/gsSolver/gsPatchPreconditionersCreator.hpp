@@ -71,14 +71,15 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
             for (size_t i = 0; i < corners.size(); ++i)
                 offset.erase(corners[i]);
 
-            for (index_t row = 0; row < bnd.rows(); row++) {
+            for (index_t row = 0; row < bnd.rows(); row++)
                 boundaryDofs.push_sorted_unique(bnd(row, 0));
-            }
         }
 
-        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit) {
+        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit)
+        {
             index_t corner = basis.functionAtCorner(mit->first);
-            for (size_t row = 0; row < boundaryDofs.size(); row++) {
+            for (size_t row = 0; row < boundaryDofs.size(); row++)
+            {
                 if (boundaryDofs[row] < corner)
                     offset[mit->first] += 1;
             }
@@ -91,7 +92,8 @@ void getUVtrans(const gsBasis<T> &basis, const gsBoundaryConditions<T>& bc,
 
         index_t i(0);
         index_t r1(0), c1(0), r2(0), c2(0), r3(0), c3(0);
-        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit, i+=2) {
+        for (std::map<index_t, index_t>::iterator mit = offset.begin(); mit != offset.end(); ++mit, i+=2)
+        {
             r1 = 0; c1 = 0; r2 = 0; c2 = 0; r3 = 0; c3 = 0;
             index_t c = basis.functionAtCorner(mit->first) - mit->second;
             elCorner.push_sorted_unique(c);
@@ -263,19 +265,20 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     if(bc.cornerValues().size() == 0)
         return op;
 
-    GISMO_ASSERT(basis.dim() == 2, "gsPatchPreconditionersCreator<>::removeCornersFromInverse, The method is only implemented for 2D!");
+    //GISMO_ASSERT(basis.dim() == 2, "gsPatchPreconditionersCreator<>::removeCornersFromInverse, The method is only implemented for 2D!");
 
-    // Sonst: Anwendung der SMW...
+    // Apply SMW formula.
     gsMatrix<T> AinvU, x;
     gsSparseMatrix<T> U, Vtrans;
     gsSortedVector<index_t> elCorner;
     getUVtrans(basis, bc, opt, local_stiff, local_mass, U, Vtrans, elCorner, isFastDiag, alpha);
 
-    if(elCorner.empty())
+    if (elCorner.empty())
         return op;
 
     AinvU.resize(U.rows(), U.cols());
-    for (index_t c = 0; c < U.cols(); ++c) {
+    for (index_t c = 0; c < U.cols(); ++c)
+    {
         op->apply(U.col(c).toDense(), x);
         AinvU.col(c) = x;
     }
@@ -286,14 +289,15 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
 
     index_t r = 0;
     for(index_t i = 0; i < op->rows(); i++)
-        if(std::find(elCorner.begin(), elCorner.end(), i) == elCorner.end()) {
+        if(std::find(elCorner.begin(), elCorner.end(), i) == elCorner.end())
+        {
             seId.add(i, r, (T) 1);
             r++;
         }
     id.setFrom(seId);
 
-    typename gsMatrixOp< gsSparseMatrix<T> >::Ptr matOp = makeMatrixOp(id.moveToPtr()); //TODO: Discuss memory leak in makeMatrixOp with matrix instead of pointer?
-    return  gsProductOp<T>::make(
+    typename gsMatrixOp< gsSparseMatrix<T> >::Ptr matOp = makeMatrixOp(id.moveToPtr());
+        return  gsProductOp<T>::make(
                 matOp,
                 gsProductOp<T>::make(std::move(op),
                 gsSumOp<T>::make(

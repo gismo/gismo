@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsInfo << "Run ieti_example with options:\n" << cmd << std::endl;
-    
+
 
 
     /******************* Define geometry ********************/
@@ -150,9 +150,9 @@ int main(int argc, char *argv[])
     }
     else
         mpPtr = memory::make_unique( new gsMultiPatch<>( approximateQuarterAnnulus(2) ) );
-        
+
     gsMultiPatch<>& mp = *mpPtr;
-    
+
     {
         std::vector<gsGeometry<>*> ptch;
         for(size_t np = 0; np< mp.nPatches(); ++np)
@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
     //! [Define jumps]
     ietiMapper.computeJumpMatrices(fullyRedundant, noLagrangeMultipliersForCorners);
     //! [Define jumps]
-    
+
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
     //! [Define primals]
