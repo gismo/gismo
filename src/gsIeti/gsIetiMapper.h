@@ -101,7 +101,7 @@ public:
     /// if d=geo.dim(), i.e., for the patch averages. In this case, the requirement
     /// that it contributes to at least two patches does not apply. For corners,
     /// use \ref cornersAsPrimals instead.
-    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d, bool includeIsolated=false );
+    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d, bool includeIsolated=false, bool donotmatch = false );
 
     /// @brief With this function, the caller can register more primal constraints
     ///

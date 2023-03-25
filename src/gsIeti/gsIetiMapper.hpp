@@ -214,7 +214,7 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 
 
 template <class T>
-void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d, bool includeIsolated )
+void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d, bool includeIsolated, bool donotmatch )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
@@ -252,12 +252,19 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
                     m_primalConstraints[k].push_back(give(constr));
                     m_primalDofIndices[k].push_back(m_nPrimalDofs);
                     ++used;
+                    if (donotmatch)
+                    {
+                        ++m_nPrimalDofs;
+                    }
                 }
             }
             // TODO: This causes a problem when dG with edge primal dofs are used for 3d
             //GISMO_ASSERT( used==0 || used == sz, "Internal error." );
-            if (used)
-                ++m_nPrimalDofs;
+            if (!donotmatch)
+            {
+                if (used)
+                    ++m_nPrimalDofs;
+            }
         }
     }
 }

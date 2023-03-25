@@ -279,8 +279,8 @@ int main(int argc, char *argv[])
                 localSolver, embeddingForBasis, rhsForBasis, ietiMapper.primalDofIndices(k), primal.nPrimalDofs()
             )
         );
-        gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
-        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
+        gsMatrix<>                       modifiedLocalRhs     = localEmbedding * localRhs;
+        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding.transpose();
 
 
         // Register the local solver to the block preconditioner. We use

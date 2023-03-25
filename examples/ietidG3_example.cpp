@@ -15,8 +15,8 @@
 */
 #include <ctime>
 
-#define DEBUGVAR(v) gsInfo << #v << ": " << (v) << "\n"
-#define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << "\n"
+#define DEBUGVAR(v) gsInfo << #v << ": " << (v) << " (line nr. " << __LINE__ << ")\n"
+#define DEBUGMAT(m) gsInfo << #m << ": " << (m).rows() << "x" << (m).cols() << " (line nr. " << __LINE__ << ")\n"
 
 #include <gismo.h>
 #include <gsAssembler/gsVisitorDg.h>
@@ -80,6 +80,29 @@ struct timings
     }
 };
 
+gsSparseMatrix<> mixedMass( const gsMultiBasis<>& mb, const gsMultiBasis<>&  mb2, const gsOptionList& options )
+{
+    gsExprAssembler<> mass(1, 1);
+
+    if (mb.basis(0).numElements() < mb2.basis(0).numElements())
+        mass.setIntegrationElements(mb2);
+    else
+        mass.setIntegrationElements(mb);
+
+    gsExprAssembler<>::space u = mass.getSpace(mb2);
+    gsExprAssembler<>::space v = mass.getTestSpace(u, mb);
+    mass.setOptions(options);
+    mass.initMatrix();
+    mass.assemble(v * u.tr());
+
+    gsSparseMatrix<> result;
+    mass.matrix_into(result);
+    return result;
+}
+
+
+
+
 /// A preconditioner class for IETI-DP with local inexact preconditioners
 template<class T>
 class gsInexactIETIPrec : public gsPreconditionerOp<T> {
@@ -124,15 +147,16 @@ public:
         gsSparseMatrix<> M;
         for (size_t i = 0; i < m_patchIFace.size(); ++i) {
             M = gsPatchPreconditionersCreator<>::massMatrix(* m_basis[i+1].boundaryBasis(m_patchIFace[i].takenFrom));
-            m_mass.push_back(M.block(1,1,M.rows()-2, M.cols()-2)); //TODO: 3d; w/o corners
+            m_mass.push_back(M);
+            DEBUGVAR(i);
+            DEBUGMAT(m_mass[i]);
+            //m_mass.push_back(M.block(1,1,M.rows()-2, M.cols()-2)); //TODO: 3d; w/o corners
         }
 
         constructRestrictionMatricesforL2();
         index_t colentry = 0;
         for (index_t r = m_originalSize; r < m_underlyingOperator.rows(); r++, colentry++)
-        {
             m_R2T.insert(r, colentry) = T(1);
-        }
         m_R2T.makeCompressed();
 
         m_R1T *= 0.7;
@@ -160,7 +184,7 @@ public:
         m_edgeSolver = memory::unique_ptr<Choleskyfac>(new Choleskyfac(edgeMass));
 
         m_eig = powerIteration();
-        gsInfo << "m_eig= " << m_eig << "\n";
+        DEBUGVAR(m_eig);
     }
 
     static BasePtr make(const gsSparseMatrix <T> &K,
@@ -255,6 +279,7 @@ private:
     void constructRestrictionMatricesforL2() {
         gsSparseEntries<T> tripletList;
         m_R1T.resize(m_underlyingOperator.rows(), m_fastDiag->rows());
+        DEBUGMAT(m_R1T);
         for (int l = 0; l < m_fastDiag->rows(); ++l)
         {
             GISMO_ASSERT( l < m_R1T.rows(), l <<"<"<< m_R1T.rows() );
@@ -272,72 +297,88 @@ private:
             values.clear();
             dofsPatchIFace.clear();
 
-            const gsSparseMatrix<T>& M = m_mass[j];
-
-            for (index_t i = 1; i < m_basis[0].boundary(m_patchIFace[j].assignedTo).rows()-1; ++i) //without the corners //TODO: 3D
-            //for (index_t i = 0; i < m_basis[0].boundary(m_patchIFace[j].assignedTo).rows(); ++i)
+            //for (index_t i = 1; i < m_basis[0].boundary(m_patchIFace[j].assignedTo).rows()-1; ++i) //without the corners //TODO: 3D
+            for (index_t i = 0; i < m_basis[0].boundary(m_patchIFace[j].assignedTo).rows(); ++i)
                 if (m_mapper.is_free(m_basis[0].boundary(m_patchIFace[j].assignedTo)(i, 0), 0))
                 {
                     // subtract for the corner values
                     index_t idx = m_mapper.index(m_basis[0].boundary(m_patchIFace[j].assignedTo)(i, 0));
-                    for(size_t corner = 1; corner <= math::pow(2,m_basis[0].dim()); corner++) {
-                        if (m_mapper.is_free(m_basis[0].functionAtCorner(corner), 0) && m_mapper.index(m_basis[0].functionAtCorner(corner)) < idx)
-                        {
-                            idx--;
-                        }
-                    }
+                    //for(size_t corner = 1; corner <= math::pow(2,m_basis[0].dim()); corner++) {
+                    //    if (m_mapper.is_free(m_basis[0].functionAtCorner(corner), 0) && m_mapper.index(m_basis[0].functionAtCorner(corner)) < idx)
+                    //    {
+                    //        idx--;
+                    //    }
+                    //}
+                    DEBUGVAR(idx);
                     dofsPatchIFace.push_back(idx);
                 }
+            gsMultiBasis<T> mb2(*m_basis[0].boundaryBasis(m_patchIFace[j].assignedTo));
+            gsMultiBasis<T> mb(*m_basis[j+1].boundaryBasis(m_patchIFace[j].takenFrom));
 
-            gsExprAssembler <T> mass(1, 1);
-            gsMultiBasis <T> mb2(*m_basis[0].boundaryBasis(m_patchIFace[j].assignedTo));
-            gsMultiBasis <T> mb(*m_basis[j+1].boundaryBasis(m_patchIFace[j].takenFrom));
+            gsSparseMatrix<T> mixed_mass = mixedMass( mb, mb2, m_options );
+            DEBUGMAT(mixed_mass);
+            DEBUGVAR(mixed_mass.toDense());
+            //TODO: eliminateDirichlet1D(boundaryConditionsForDirection(m_bc1, comp1), result);
+            //result = result.block(1,1,result.rows()-2, result.cols()-2); //without the corners //TODO: 3D
+            DEBUGMAT(m_mass[j]);
 
-            if (mb.basis(0).numElements() < mb2.basis(0).numElements())
-                mass.setIntegrationElements(mb2);
-            else
-                mass.setIntegrationElements(mb);
-
-            typename gsExprAssembler<T>::space u = mass.getSpace(mb2);
-            typename gsExprAssembler<T>::space v = mass.getTestSpace(u, mb);
-            mass.setOptions(m_options);
-            mass.initMatrix();
-            mass.assemble(v * u.tr());
-
-            gsSparseMatrix <T> result;
-            mass.matrix_into(result);
-            gsInfo << "result: " << result.rows() << "x" << result.cols() << "\n";
-            //eliminateDirichlet1D(boundaryConditionsForDirection(m_bc1, comp1), result);
-            result = result.block(1,1,result.rows()-2, result.cols()-2); //without the corners //TODO: 3D
-            gsInfo << "result: " << result.rows() << "x" << result.cols() << "\n";
-            gsInfo << "M: " << M.rows() << "x" << M.cols() << "\n";
-            Choleskyfac solver;
-            solver.compute(M);
-            //gsInfo << "M: \n" << M.toDense() << "\n";;
-            //gsInfo << "result: " << result.rows() << "\n";;
-
-            //TODO: We are solving 2D exactly here. Not what we want!
-            for (index_t i = 0; i < result.cols(); ++i)
-                values.push_back(solver.solve(result.col(i).toDense()));
-
-            for (size_t k = 0; k < dofsPatchIFace.size(); ++k)
+            gsMatrix<index_t> ai_idxes = m_basis[j+1].boundary(m_patchIFace[j].takenFrom);
+            gsSparseEntries<> ai_embedding_se;
+            index_t free_idx = 0;
+            for (index_t i=0; i<ai_idxes.rows(); ++i)
             {
-                //for (index_t i = 0; i < values[k].rows(); ++i)
-                for (index_t i = 1; i < values[k].rows()-1; ++i) //without the corners //TODO: 3D
+                if (m_mapper.is_free(ai_idxes(i,0),j+1))
                 {
-                    index_t row = m_originalSize+r+i -1; //without the corners //TODO: 3D
+                    ai_embedding_se.add(i,free_idx,1);
+                    ++free_idx;
+                }
+            }
+            gsSparseMatrix<T> ai_embedding(ai_idxes.rows(), free_idx);
+            ai_embedding.setFrom(ai_embedding_se);
+
+            std::vector<gsSparseMatrix<T>> li_embeddings;
+            gsMatrix<index_t> li_idxes = m_basis[0].boundary(m_patchIFace[j].assignedTo);
+            gsSparseEntries<> li_embedding_se;
+            free_idx = 0;
+            for (index_t i=0; i<li_idxes.rows(); ++i)
+            {
+                if (m_mapper.is_free(li_idxes(i,0),0))
+                {
+                    li_embedding_se.add(i,free_idx,1);
+                    ++free_idx;
+                }
+            }
+            gsSparseMatrix<T> li_embedding(li_idxes.rows(), free_idx);
+            li_embedding.setFrom(li_embedding_se);
+
+            m_mass[j] = ai_embedding.transpose() * m_mass[j] * ai_embedding;
+            DEBUGMAT(m_mass[j]);
+
+            mixed_mass = ai_embedding.transpose() * mixed_mass * li_embedding;
+            DEBUGMAT(mixed_mass);
+
+            Choleskyfac solver;
+            solver.compute(m_mass[j]);
+
+            gsMatrix<T> projMatrix = solver.solve(mixed_mass.toDense());
+
+            for (index_t k = 0; k < projMatrix.cols(); ++k)
+            {
+                for (index_t i = 0; i < projMatrix.rows(); ++i)
+                {
+                    index_t row = m_originalSize+r+i;
                     index_t col = dofsPatchIFace[k];
                     GISMO_ASSERT( row < m_R1T.rows(), row <<"<"<< m_R1T.rows() );
                     GISMO_ASSERT( col < m_R1T.cols(), col <<"<"<< m_R1T.cols() );
-                    tripletList.add(row, col, values[k](i, 0));
+                    tripletList.add(row, col, projMatrix(i, k));
                 }
             }
-            r += values[0].rows();
+            r += projMatrix.rows();
         }
 
         m_R1T.setFrom(tripletList);
         m_R1T.makeCompressed();
-        //gsInfo << "matrix: \n"<<m_R1T.toDense()<<"\n";
+        DEBUGVAR(m_R1T.toDense());
     }
 
     inline T powerIteration(index_t N = 10)
@@ -592,7 +633,7 @@ int main(int argc, char *argv[])
     real_t penalty = 5;
     std::string boundaryConditions("d");
     std::string primals("c");
-    bool eliminatePointwiseDofs = true; // true for MFD
+    bool eliminatePointwiseDofs = !true; // true for MFD
     real_t tolerance = 1.e-6;
     index_t maxIterations = 20000;
     std::string out;
@@ -643,13 +684,13 @@ int main(int argc, char *argv[])
     gsMultiPatch<>& mp = *mpPtr;
     {
 
-        std::vector<gsGeometry<>*> ptch;
+        /*std::vector<gsGeometry<>*> ptch;
         for(size_t np = 0; np< mp.nPatches(); ++np)
         {
             std::vector<gsGeometry<>* >  ptch_ =  mp.patch(np).uniformSplit(1);
             ptch.insert(ptch.end(),ptch_.begin(),ptch_.end());
         }
-        mp = gsMultiPatch<real_t>(ptch);
+        mp = gsMultiPatch<real_t>(ptch);*/
 
         for (index_t i=0; i<splitPatches; ++i)
         {
@@ -910,7 +951,6 @@ int main(int argc, char *argv[])
         }
 */
 
-gsInfo << "Assembling 1\n";
         gsGenericAssembler<> assembler(
             mp_local,
             mb_local,
@@ -949,10 +989,9 @@ gsInfo << "Assembling 1\n";
         gsMatrix<>                       localRhs    = assembler.rhs();
         gsSparseMatrix<>                 localMatrix = assembler.matrix();
         //! [Assemble]
-        //gsInfo << "matrix\n"<<localMatrix.toDense()<<"\n";
-        gsInfo << "localMatrix: " << localMatrix.rows() << "x" << localMatrix.cols() << "\n";
-        gsInfo << "jumpMatrix: " << jumpMatrix.rows() << "x" << jumpMatrix.cols() << "\n";
-
+        DEBUGMAT(jumpMatrix);
+        DEBUGMAT(localRhs);
+        DEBUGMAT(localMatrix);
 
         //! [Patch to preconditioner]
         // Add the patch to the scaled Dirichlet preconditioner
@@ -960,7 +999,6 @@ gsInfo << "Assembling 1\n";
 
 //! inexact stuff
 
-gsInfo << "Assembling 1a\n";
         // TODO: Use parameter domain assembler, which is also much faster!
         gsGenericAssembler<> hatassembler(
                 mp.dim()==2 ? gsMultiPatch<>(*gsNurbsCreator<>::BSplineSquare()) : gsMultiPatch<>(*gsNurbsCreator<>::BSplineCube()),
@@ -992,36 +1030,19 @@ gsInfo << "Assembling 1a\n";
         gsScaledDirichletPrec<>::Blocks blocks
                 = gsScaledDirichletPrec<>::matrixBlocks(hatassembler.matrix(), skeletonDofs);
 
-        gsInfo << "hatassembler.matrix(): " << hatassembler.matrix().rows() << "x" << hatassembler.matrix().cols() << "\n";
-        gsInfo << "blocks.A00: " << blocks.A00.rows() << "x" << blocks.A00.cols() << "\n";
-        gsInfo << "blocks.A11: " << blocks.A11.rows() << "x" << blocks.A11.cols() << "\n";
-
-        //gsInfo << "hatmatrix: \n" << blocks.A00.toDense() << "\n";
-gsInfo << "Assembling 3\n";
+        DEBUGMAT(hatassembler.matrix());
+        DEBUGMAT(blocks.A00);
+        DEBUGMAT(blocks.A11);
 
         timer.restart();
         gsLinearOperator<>::Ptr A11_fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions);
-        // TODO: Problems may arize with hidden Dirichlet conditions
         times.setupInverseInMsD(k) += timer.stop();
-        gsInfo << "A11_fd: " << A11_fd->rows() << "x" << A11_fd->cols() << "\n";
-
-gsInfo << "Assembling 4\n";
+        DEBUGMAT(*A11_fd);
 
         prec.addSubdomain(
                 prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
                 gsScaledDirichletPrec<>::schurComplement(blocks, A11_fd)
         );
-
-/*
-        prec.addSubdomain(
-                gsScaledDirichletPrec<>::restrictToSkeleton(
-                        jumpMatrix,
-                        localMatrix,
-                        ietiMapper.skeletonDofs(k),
-                        times.setupInverseInMsD(k)
-                    )
-                );
-*/
         //! [Patch to preconditioner]
 
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
@@ -1036,16 +1057,19 @@ gsInfo << "Assembling 4\n";
                 modifiedLocalMatrix,
                 localEmbedding,
                 embeddingForBasis,
-                rhsForBasis,
-                false
+                rhsForBasis
         );
+        DEBUGMAT(localMatrix);
+        DEBUGMAT(modifiedLocalMatrix);
+        DEBUGMAT(localEmbedding);
+        DEBUGMAT(embeddingForBasis);
+        DEBUGMAT(rhsForBasis);
 
-        gsInfo << "modifiedLocalMatrix: " <<modifiedLocalMatrix.rows() << "x" << modifiedLocalMatrix.cols() << "\n";
-        gsInfo << "localEmbedding: " <<localEmbedding.rows() << "x" << localEmbedding.cols() << "\n";
-        gsInfo << "embeddingForBasis: " <<embeddingForBasis.rows() << "x" << embeddingForBasis.cols() << "\n";
+        gsMatrix<>                       modifiedLocalRhs     = localEmbedding * localRhs;
+        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding.transpose();
 
-
-gsInfo << "Assembling 5\n";
+        DEBUGMAT(modifiedLocalRhs);
+        DEBUGMAT(modifiedJumpMatrix);
 
         //! [Patch to primals]
         real_t reg;
@@ -1054,18 +1078,28 @@ gsInfo << "Assembling 5\n";
         else
             reg = (real_t)0;
 
-        modifiedLocalMatrix = localEmbedding.transpose() * modifiedLocalMatrix * localEmbedding;
         // Set up the local preconditioners
-        for(index_t i = 1; i <= 1<<mb.dim(); i++)
-            bc_local.addCornerValue(i, 0, 0);
+        if (eliminatePointwiseDofs && cornersAsPrimals)
+        {
+            for(index_t i = 1; i <= 1<<mb.dim(); i++) // Since corners are always primals
+                bc_local.addCornerValue(i, 0, 0);
+        }
 
         timer.restart();
-        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_local, assemblerOptions, reg, (real_t)1, (real_t)0);
-        gsInfo << "fastdiagOp: " <<fastdiagOp->rows() << "x" << fastdiagOp->cols() << "\n";
-gsInfo << "Assembling 6\n";
+        gsLinearOperator<>::Ptr fastdiagOp = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(
+            mb_local.basis(0), bc_local, assemblerOptions, reg, (real_t)1, (real_t)0, true);
+        DEBUGMAT(*fastdiagOp);
+        {
+            // TODO: Scaling of the remainder term
+            gsMatrix<> dis;
+            fastdiagOp->toMatrix(dis);
+            gsInfo << dis << "\n";
+        }
 
+        //localPrec does not work propperly now, since it needs to consider that the
+        //corners are "there but eliminated" (diag = 1)
         gsLinearOperator<>::Ptr localPrec = gsInexactIETIPrec<real_t>::make(
-                                                                       modifiedLocalMatrix,
+                                                                       localMatrix,
                                                                        fastdiagOp,
                                                                        mb_local,
                                                                        ietiMapper.artificialIfaces(k),
@@ -1073,70 +1107,71 @@ gsInfo << "Assembling 6\n";
                                                                        penalty,
                                                                        assemblerOptions
                                                                        );
+        DEBUGMAT(*localPrec);
+        {
+            gsMatrix<> dis;
+            localPrec->toMatrix(dis);
+            gsInfo << dis << "\n";
+        }
 
-        gsLinearOperator<>::Ptr modifiedLocalPrec
-            = gsBlockSolverOp<>::make( localPrec,
-                modifiedLocalMatrix.bottomRows(modifiedLocalMatrix.rows()-localPrec->rows()).leftCols(localPrec->rows()) );
+        DEBUGVAR(localEmbedding.rows()-localEmbedding.cols());
+        gsLinearOperator<>::Ptr modifiedLocalPrec;
+        if (localEmbedding.rows()-localEmbedding.cols())
+            modifiedLocalPrec = gsBlockSolverOp<>::make( localPrec,
+                modifiedLocalMatrix.bottomRows(localEmbedding.rows()-localEmbedding.cols()).leftCols(localPrec->rows()) );
+        else
+            modifiedLocalPrec = localPrec;
+
+        DEBUGMAT(*modifiedLocalPrec);
 
         times.setupPk(k) += timer.stop();
-gsInfo << "Assembling 7\n";
 
         gsLinearOperator<>::Ptr localSolver = gsIterativeSolverOp<gsConjugateGradient<> >::make(modifiedLocalMatrix, modifiedLocalPrec);
-        gsInfo << "localSolver: " <<localSolver->rows() << "x" << localSolver->cols() << "\n";
-        gsInfo << "localPrec: " <<localPrec->rows() << "x" << localPrec->cols() << "\n";
-        gsInfo << "localMatrix: " <<localMatrix.rows() << "x" << localMatrix.cols() << "\n";
-gsInfo << "Assembling 8\n";
+        DEBUGMAT(*localSolver);
 
-        gsInfo << "localEmbedding: " << localEmbedding.rows() << "x" << localEmbedding.cols() << "\n";
-        gsInfo << "jumpMatrix: " << jumpMatrix.rows() << "x" << jumpMatrix.cols() << "\n";
-        gsInfo << "localRhs: " << localRhs.rows() << "x" << localRhs.cols() << "\n";
-
-        gsMatrix<>                       modifiedLocalRhs     = localEmbedding.transpose() * localRhs;
-        gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding;
 
         /// "real" elimination
         timer.restart();
-gsInfo << "Assembling 9\n";
-
-        //gsInfo << "embeddingForBasis: " << embeddingForBasis.toDense() << "\n";
-        gsInfo << "rhsForBasis: " << rhsForBasis << "\n";
-        gsSparseMatrix<real_t> mat1 = localEmbedding.transpose() * embeddingForBasis * localEmbedding;
-        gsMatrix<real_t> mat2 = localEmbedding.transpose() * rhsForBasis;
-
-        gsSparseMatrix<> basisDel = localEmbedding * gsPrimalSystem<>::primalBasis(
+        gsSparseMatrix<> basisDel = gsPrimalSystem<>::primalBasis(
                 localSolver,
-                mat1,
-                mat2,
+                embeddingForBasis,
+                rhsForBasis,
                 ietiMapper.primalDofIndices(k),
                 primal.nPrimalDofs()
         );
+        DEBUGMAT(basisDel);
+        DEBUGVAR(basisDel.toDense());
+
+        gsInfo << "ietiMapper.primalDofIndices(k): "; for (index_t idx : ietiMapper.primalDofIndices(k)) { gsInfo << idx << " "; } gsInfo << "\n";
 
         times.assemblePrimalBasis(k) += timer.stop();
 
         // TODO: this has to go into gsPrimalSystem<>::primalBasis ?
 
-        if(eliminatePointwiseDofs) {
+        /*if(eliminatePointwiseDofs)
+        {
             for (size_t i = 0; i < ietiMapper.primalConstraints(k).size(); ++i) {
                 gsSparseVector<> constraint = ietiMapper.primalConstraints(k)[i];
                 for (int j = 0; j < constraint.size(); ++j) {
                     if(constraint[j])
                     {
+                        //TODO: This seems to be wrong
+                        GISMO_ASSERT(math::abs(basisDel(j, ietiMapper.primalDofIndices(k)[i]) - 1) < 1e-4,
+                              "("<<j<<", ietiMapper.primalDofIndices("<<k<<")["<<i<<"] [aka."<<ietiMapper.primalDofIndices(k)[i]<<"]) = "
+                              <<basisDel(j, ietiMapper.primalDofIndices(k)[i])<<"!=1");
                         basisDel(j, ietiMapper.primalDofIndices(k)[i]) = (real_t)1;
                     }
                 }
             }
-        }
-gsInfo << "Assembling 10\n";
+        }*/
 
-        gsInfo << "primal basis: \n"<< basisDel.toDense()<<"\n";
         primal.addContribution(
                 jumpMatrix,
                 localMatrix,
                 localRhs,
-                basisDel,
-                makeMatrixOp(localEmbedding.moveToPtr())
+                basisDel
+                //,makeMatrixOp(localEmbedding.moveToPtr())
         );
-gsInfo << "Assembling 11\n";
 /*
         timer.restart();
         gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(localMatrix);
@@ -1147,20 +1182,15 @@ gsInfo << "Assembling 11\n";
         // positive definite.
         bdPrec->addOperator(k,k, gsTimedOp<>::make("P "+std::to_string(k), modifiedLocalPrec));
 
-gsInfo << "Assembling 12\n";
 
         // Add the patch to the Ieti system
-        DEBUGMAT(modifiedJumpMatrix);
-        DEBUGMAT(modifiedLocalMatrix);
-        DEBUGMAT(modifiedLocalRhs);
-
         //! [Patch to system]
         ieti.addSubdomain(
             modifiedJumpMatrix.moveToPtr(),
             makeMatrixOp(modifiedLocalMatrix.moveToPtr()),
             give(modifiedLocalRhs)
         );
-gsInfo << "Assembling fin.\n";
+        gsInfo << "Assembling fin.\n";
         //! [Patch to system]
     //! [End of assembling loop]
     } // end for

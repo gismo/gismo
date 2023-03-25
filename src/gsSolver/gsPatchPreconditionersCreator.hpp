@@ -255,14 +255,15 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     const gsOptionList& opt,
     const bool isFastDiag = false,
     T alpha = 0,
-    T gamma = 0
+    T gamma = 0,
+    bool onlySoftElimination = false
     )
 {
     dirichlet::strategy ds = (dirichlet::strategy)opt.askInt("DirichletStrategy",dirichlet::elimination);
     GISMO_ENSURE (ds == dirichlet::elimination, "Unknown Dirichlet strategy.");
     GISMO_ENSURE (gamma == 0, "Gamma is not allowed to be non zero");
 
-    if(bc.cornerValues().size() == 0)
+    if (bc.cornerValues().size() == 0)
         return op;
 
     //GISMO_ASSERT(basis.dim() == 2, "gsPatchPreconditionersCreator<>::removeCornersFromInverse, The method is only implemented for 2D!");
@@ -284,9 +285,24 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     }
 
     typename gsLinearOperator<T>::Ptr corrOp = makePartialPivLUSolver(gsMatrix<T>{(gsMatrix<T>::Identity(Vtrans.rows(), U.cols()) - Vtrans*AinvU)});
+
+    typename gsLinearOperator<T>::uPtr result = gsProductOp<T>::make(
+                std::move(op),
+                gsSumOp<T>::make(
+                    gsIdentityOp<T>::make(op->rows()),
+                    gsProductOp<T>::make(
+                        makeMatrixOp((Vtrans).moveToPtr()),
+                        corrOp,
+                        makeMatrixOp(gsSparseMatrix<T>(AinvU.sparseView()).moveToPtr())
+                        )
+                    )
+              );
+
+    if (onlySoftElimination)
+      return result;
+
     gsSparseMatrix<T> id(op->rows(), op->cols()-elCorner.size());
     gsSparseEntries<T> seId; seId.reserve(op->cols());
-
     index_t r = 0;
     for(index_t i = 0; i < op->rows(); i++)
         if(std::find(elCorner.begin(), elCorner.end(), i) == elCorner.end())
@@ -297,14 +313,9 @@ typename gsLinearOperator<T>::uPtr removeCornersFromInverse(
     id.setFrom(seId);
 
     typename gsMatrixOp< gsSparseMatrix<T> >::Ptr matOp = makeMatrixOp(id.moveToPtr());
-        return  gsProductOp<T>::make(
+    return  gsProductOp<T>::make(
                 matOp,
-                gsProductOp<T>::make(std::move(op),
-                gsSumOp<T>::make(
-                        gsIdentityOp<T>::make(matOp->rows()),
-                                gsProductOp<T>::make( makeMatrixOp((Vtrans).moveToPtr()), corrOp, makeMatrixOp(gsSparseMatrix<T>(AinvU.sparseView()).moveToPtr()) )
-                            )
-                        ),
+                give(result),
                 makeMatrixOp(matOp->matrix().transpose())
               );
 }
@@ -456,7 +467,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     const gsOptionList& opt,
     T alpha,
     T beta,
-    T gamma
+    T gamma,
+    bool onlySoftElimination
     )
 {
     GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() does not work for beta==0." );
@@ -556,7 +568,8 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         opt,
         true,
         alpha,
-        gamma
+        gamma,
+        onlySoftElimination
         );
 }
 

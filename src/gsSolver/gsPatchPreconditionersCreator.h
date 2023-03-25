@@ -113,13 +113,16 @@ public:
     /// \param alpha  Scaling parameter (see above)
     /// \param beta   Scaling parameter (see above)
     /// \param gamma  Scaling parameter (see above). Only allowed for pure Neumann case.
+    /// \param onlySoftElimination Iff true, the corners are not really eliminated, but rows and cols are removed,
+    ///               diagonal entry is set to 1 (TODO: hopefully)
     static OpUPtr            fastDiagonalizationOp(
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions(),
         T alpha = 0,
         T beta = 1,
-        T gamma = 0
+        T gamma = 0,
+        bool onlySoftElimination = false
     );
 
     /// Provides \a gsLinearOperator representing the subspace corrected mass smoother
