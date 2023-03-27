@@ -157,7 +157,10 @@ public:
                 //gsDebug<<"            err = "<<m_error<<" --> Solution reached.\n";
                 break;
             }
-
+if( m_num_iter % 100 == 0)
+{
+    gsInfo << "[" << m_num_iter << ": " << m_error << "]" << std::flush;
+}
             tmp_error_hist.push_back(m_error);
             //gsDebug<<"            err = "<<m_error<<"\n";
         }
