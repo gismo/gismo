@@ -86,7 +86,8 @@ public:
                         m_isSaved(false),
                         m_time(-1),
                         m_evaluator(evaluator),
-                        m_options(gsParaviewDataSet::defaultOptions())
+                        m_options(gsParaviewDataSet::defaultOptions()),
+                        counter(0)
     {
         m_filename = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename) + ".pvd";
         gsFileManager::mkdir( gsFileManager::getPath(m_filename) );
@@ -113,6 +114,47 @@ public:
         if (name != "") mfile << "name=\"" << name << "\" ";
         mfile << "file=\"" << fn <<"\"/>\n";
     }
+
+    // The following functions are all deprecated, only here for backwards compatibility!
+
+    /// Adds a part in the collection, with complete filename (including extension) \a fn
+    // GISMO_DEPRECATED void addPart(String const & fn)
+    // {
+    //     GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
+    //     GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+    //     // mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
+    //     addPart( fn, -1, "", counter++);
+    // }
+
+    // Adds a part in the collection, with filename \a fn with extension \a ext appended
+    GISMO_DEPRECATED void addPart(String const & fn, String const & ext)
+    {
+        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+        // mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
+        addPart( fn+ext, -1, "", counter++);
+    }
+
+    // Adds a part in the collection, with filename \a fni and extension \a ext appended
+    GISMO_DEPRECATED void addPart(String const & fn, int i, String const & ext)
+    {
+        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+        // mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
+        addPart( fn+std::to_string(i)+ext, -1, "", i);
+    }
+
+    GISMO_DEPRECATED void addTimestep(String const & fn, double tstep, String const & ext)
+    {
+        // mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
+        addPart( fn+ext, tstep);
+    }
+
+    GISMO_DEPRECATED void addTimestep(String const & fn, int part, double tstep, String const & ext)
+    {
+        // mfile << "<DataSet part=\""<<part<<"\" timestep=\""<<tstep<<"\" file=\""<<fn<<"_"<<part<<ext<<"\"/>\n";
+        addPart( fn+"_"+std::to_string(part)+ext, tstep, "", part);
+    }
+
+    // End of deprecated functions
 
     /// @brief Adds all the files relevant to a gsParaviewDataSet, to the collection.
     /// @param dataSet The gsParaviewDataSet to be added.
@@ -159,6 +201,7 @@ public:
         f.close();
         mfile.str("");
         m_isSaved=true;
+        counter = -1;
     }
 
     /// @brief Accessor to the current options.
@@ -181,6 +224,8 @@ private:
     gsParaviewDataSet m_dataset;
 
     gsOptionList m_options;
+
+    index_t counter;
 
 private:
     // Construction without a filename is not allowed
