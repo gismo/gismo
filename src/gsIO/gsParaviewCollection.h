@@ -159,7 +159,7 @@ public:
     /// @brief Adds all the files relevant to a gsParaviewDataSet, to the collection.
     /// @param dataSet The gsParaviewDataSet to be added.
     /// @param time Time step (optional, else an internal integer counter is used)
-    void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
+    void addDataSet(gsParaviewDataSet & dataSet, real_t time=-1);
 
     /// @brief Creates a new time step where all information will be added to.
     /// @param geometry A gsMultiPatch of the geometry where the solution fields are defined.
@@ -167,22 +167,25 @@ public:
     void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
 
  
-    /// @brief All arguments are forwarder to gsParaviewDataSet::addField().
+    /// @brief All arguments are forwarded to gsParaviewDataSet::addField().
     template <typename... Rest>
     void addField(Rest... rest)
     {
+        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before addField().");
         m_dataset.addField(rest...);
     }
 
-    /// @brief All arguments are forwarder to gsParaviewDataSet::addFields().
+    /// @brief All arguments are forwarded to gsParaviewDataSet::addFields().
     template <typename... Rest>
     void addFields(Rest... rest)
     {
+        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before addFields().");
         m_dataset.addFields(rest...);
     }
 
     /// @brief The current timestep is saved and files written to disk.
     void saveTimeStep(){
+        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before saveTimeStep().");
         addDataSet(m_dataset,m_time);
     };
 
@@ -191,17 +194,20 @@ public:
     void save()
     {
         GISMO_ASSERT(!m_isSaved, "Error: gsParaviewCollection::save() already called." );
-        mfile <<"</Collection>\n";
-        mfile <<"</VTKFile>\n";
+        if (!m_isSaved)
+        {
+            mfile <<"</Collection>\n";
+            mfile <<"</VTKFile>\n";
 
-        gsDebug << "Exporting to " << m_filename << "\n";
-        std::ofstream f( m_filename.c_str() );
-        GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
-        f << mfile.rdbuf();
-        f.close();
-        mfile.str("");
-        m_isSaved=true;
-        counter = -1;
+            gsDebug << "Exporting to " << m_filename << "\n";
+            std::ofstream f( m_filename.c_str() );
+            GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
+            f << mfile.rdbuf();
+            f.close();
+            mfile.str("");
+            m_isSaved=true;
+            counter = -1;
+        }
     }
 
     /// @brief Accessor to the current options.
