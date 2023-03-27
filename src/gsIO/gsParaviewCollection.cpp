@@ -35,11 +35,11 @@ namespace gismo
             // file use relative paths
             std::string name;
             if (filenames[i].find("_mesh") != std::string::npos)
-                name="Mesh";
+                name="Mesh"+std::to_string(i);
             else if (filenames[i].find("_cnet") != std::string::npos)
-                name="Control Net";
+                name="Control Net"+std::to_string(i);
             else if (filenames[i].find("_patch") != std::string::npos)
-                name="Geometry";
+                name="Geometry"+std::to_string(i);
             else
                 name="";
 
