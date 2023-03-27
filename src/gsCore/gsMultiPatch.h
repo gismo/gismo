@@ -138,6 +138,7 @@ public:
         return sz;
     }
 
+    /// Returns the coefficient matrix of the multi-patch geometry
     gsMatrix<T> coefs() const
     {
         gsMatrix<T> result(this->coefsSize(),this->geoDim());
