@@ -114,33 +114,20 @@ public:
         if (name != "") mfile << "name=\"" << name << "\" ";
         mfile << "file=\"" << fn <<"\"/>\n";
     }
+    // CAUTION! 
+    // The previous 3 versions of gsParaviewCollection::addPart() have been combined into the one above
+    // since they were all doing basiacally the same thing. Below you can see a 'conversion table' that
+    // can help you adapt your code to the new syntax. For questions contact C. Karampatzakis (Github @ckarampa )
+    // OLD SYNTAX ( Deprecated )                              |   NEW SYNTAX 
+    //-----------------------------------------------------------------------------------------------------------
+    // addPart(String const & fn)                             |   addPart( fn, -1, "", counter++);               |
+    //                                                                                                           |
+    // addPart(String const & fn, String const & ext)         |   addPart( fn+ext, -1, "", counter++);           |
+    //                                                                                                           |
+    // addPart(String const & fn, int i, String const & ext)  |   addPart( fn+std::to_string(i)+ext, -1, "", i); |
+    // ----------------------------------------------------------------------------------------------------------
 
     // The following functions are all deprecated, only here for backwards compatibility!
-
-    /// Adds a part in the collection, with complete filename (including extension) \a fn
-    // GISMO_DEPRECATED void addPart(String const & fn)
-    // {
-    //     GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
-    //     GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-    //     // mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
-    //     addPart( fn, -1, "", counter++);
-    // }
-
-    // Adds a part in the collection, with filename \a fn with extension \a ext appended
-    GISMO_DEPRECATED void addPart(String const & fn, String const & ext)
-    {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        // mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
-        addPart( fn+ext, -1, "", counter++);
-    }
-
-    // Adds a part in the collection, with filename \a fni and extension \a ext appended
-    GISMO_DEPRECATED void addPart(String const & fn, int i, String const & ext)
-    {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        // mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
-        addPart( fn+std::to_string(i)+ext, -1, "", i);
-    }
 
     GISMO_DEPRECATED void addTimestep(String const & fn, double tstep, String const & ext)
     {
