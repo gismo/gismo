@@ -101,8 +101,8 @@ public:
 
     /// @brief Appends a file to the Paraview collection (.pvd file).
     /// @param fn Filename to be added. Can also be a path relative to the where the collection file is. 
-    /// @param tStep Time step ( optional, else an internal integer counter is used)
-    /// @param name An optional name for this part
+    /// @param tStep Time step ( optional )
+    /// @param name An optional name for this part. This is the name that will show up  in Paraview's MultiBlock inspector for this Part. It is not the filename.
     /// @param part Part ID ( optional )
     void addPart(String const & fn, real_t tStep=-1, std::string name="", index_t part=-1)
     {   
