@@ -16,6 +16,15 @@
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
 
+#ifdef gsIpOpt_ENABLED
+#include <gsIpOpt/gsIpOpt.h>
+#endif
+#ifdef gsHLBFGS_ENABLED
+#include <gsHLBFGS/gsHLBFGS.h>
+#endif
+#include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptimizer/gsFunctionAdaptor.h>
+
 #pragma once
 
 
@@ -318,6 +327,18 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
             result.setZero( dd );
     }
 
+//#if false
+#ifdef gsIpOpt_ENABLED
+    gsFunctionAdaptor<T> fmin(*this);
+    //gsIpOpt<T> solver( &fmin );
+    gsGradientDescent<T> solver( &fmin );
+    //gsHLBFGS<T> solver( &fmin );
+
+    //solver.options().setInt("MaxIterations",200);
+    solver.options().setInt("Verbose",0);
+    solver.solve(result);
+    result = solver.currentDesign();
+#else
     switch (dd)
     {
     case 2:
@@ -328,6 +349,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
                               accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
     }
+#endif
 
     return result;
 }
