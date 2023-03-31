@@ -89,6 +89,9 @@ int main(int argc, char *argv[])
     fd_in.getId<gsMatrix<> >(1, xyz);
     //! [Read data]
 
+    gsWriteParaviewPoints(uv, "parameters");
+    gsWriteParaviewPoints(xyz, "points");
+
     // This is for outputing an XML file, if requested
     gsFileData<> fd;
 
@@ -124,6 +127,8 @@ int main(int argc, char *argv[])
     gsHFitting<2, real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
 
     const std::vector<real_t> & errors = ref.pointWiseErrors();
+    std::vector<real_t> errors2;
+    real_t sum_of_errors2;
 
     // Print settings summary
     gsInfo<<"Fitting "<< xyz.cols() <<" samples.\n";
@@ -146,11 +151,27 @@ int main(int argc, char *argv[])
         time.restart();
         ref.nextIteration(tolerance, threshold, maxPcIter);
         time.stop();
+
+        gsMesh<> mesh(ref.result()->basis());
+        gsWriteParaview(mesh, internal::to_string(i+1) + "_iter_mesh");
+        gsWriteParaview(*ref.result(), internal::to_string(i+1) + "_iter_geo", 100000, true);
+        gsWriteParaviewPoints(ref.returnParamValues(), internal::to_string(i+1) + "_iter_fitting_parameters");
+
+
+        // compute mean squared error
+        ref.get_Error(errors2, 0);
+        sum_of_errors2 = std::accumulate(errors2.begin(), errors2.end(), 0.0);
+
         gsInfo<<"Fitting time: "<< time <<"\n";
 
         gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
-        gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
-        gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
+        gsInfo    << "DOFs         : "<< ref.result()->basis().size() <<"\n";
+        // gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
+        // gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
+        std::cout << "Min distance : "<< ref.minPointError() << std::scientific <<"\n";
+        std::cout << "Max distance : "<< ref.maxPointError() << std::scientific <<"\n";
+        std::cout << "         MSE : "<< sum_of_errors2/errors2.size() << std::scientific <<"\n";
+
         gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(tolerance)/errors.size()<<"%.\n";
 
         if ( ref.maxPointError() < tolerance )
