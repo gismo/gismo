@@ -216,6 +216,14 @@ public:
         std::swap(*m_src, tmp.basis() );
     }
 
+    void degreeDecrease(short_t const& i = 1, short_t const dir = -1)
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeDecrease(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
     /* if ever be reused, change to actual and current GISMO_UPTR_FUNCTION stuff und uPtr
       GISMO_UPTR_FUNCTION_DEF(gsBasis<T>, boundaryBasis, boxSide const &)
       {
