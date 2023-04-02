@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsOptimizer/gsOptProblem.h>
+#include <gsUtils/gsThreaded.h>
 
 namespace gismo
 {
@@ -53,18 +54,27 @@ public:
 
     T evalObj( const gsAsConstVector<T> & u ) const
     {
+        for (index_t i=0; i!=m_numDesignVars; ++i)
+            if ( u(i)<m_desLowerBounds.at(i) || u(i)>m_desUpperBounds.at(i) )
+                return math::limits::max();
         return m_obj.eval(u).value();
     }
 
-    mutable gsMatrix<T> jac;
+    mutable util::gsThreaded<gsMatrix<T> > jac;
     void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const  
     {
+        for (index_t i=0; i!=m_numDesignVars; ++i)
+            if ( u(i)<m_desLowerBounds.at(i) || u(i)>m_desUpperBounds.at(i) )
+            {
+                result.setZero();
+                return;
+            }
+
         //gsOptProblem<T>::gradObj_into(u,result);
         //gsDebugVar( result.transpose() );
         m_obj.deriv_into(u, jac);
         //gsDebugVar( jac.transpose() );
-        result = jac;
-        
+        result = jac.mine();
     }
 
     void evalCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const

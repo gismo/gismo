@@ -334,7 +334,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     gsGradientDescent<T> solver( &fmin );
     //gsHLBFGS<T> solver( &fmin );
 
-    //solver.options().setInt("MaxIterations",200);
+    solver.options().setInt("MaxIterations",100);
     solver.options().setInt("Verbose",0);
     solver.solve(result);
     result = solver.currentDesign();

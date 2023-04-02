@@ -48,7 +48,7 @@ public:
 
     virtual void defaultOptions()
     {
-        m_options.addInt("MaxIterations","Maximum iterations",0);
+        m_options.addInt("MaxIterations","Maximum iterations",10);
         m_options.addInt("Verbose","Verbosity level",0);
     }
 
