@@ -327,8 +327,8 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
             result.setZero( dd );
     }
 
-//#if false
-#ifdef gsIpOpt_ENABLED
+#if false
+//#ifdef gsIpOpt_ENABLED
     gsFunctionAdaptor<T> fmin(*this);
     //gsIpOpt<T> solver( &fmin );
     gsGradientDescent<T> solver( &fmin );
@@ -423,7 +423,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
-    
+
     // If the measure on a boundary is requested, calculate the outer normal vector as well
     if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
 
@@ -469,11 +469,11 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
                 // BUG: When the determinant is really close to zero but negative,
                 // the result might be the opposite of what is expected because of alt_sgn
-                
+
                 if (! (InOut.flags &SAME_ELEMENT)  )
                 {
                     T detJacTcurr = jacT.determinant();
-                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 : 
+                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 :
                         ( detJacTcurr < 0 ? -1 : 1 );
                     if ( 0 == det_sgn )
                     {
