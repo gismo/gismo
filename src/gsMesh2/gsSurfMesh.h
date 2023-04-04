@@ -1,3 +1,15 @@
+/** @file gsSurfMesh.h
+
+    @brief Half edge mesh structure
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): A. Mantzaflaris, H.M. Verhelst
+*/
 
 #pragma once
 
@@ -324,6 +336,12 @@ public: //------------------------------------------------------ iterator types
             return (hnd_==rhs.hnd_);
         }
 
+        /// how do two iterators compare?
+        bool operator<(const Vertex_iterator& rhs) const
+        {
+            return (hnd_<rhs.hnd_);
+        }
+
         /// are two iterators different?
         bool operator!=(const Vertex_iterator& rhs) const
         {
@@ -499,6 +517,12 @@ public: //------------------------------------------------------ iterator types
         bool operator==(const Face_iterator& rhs) const
         {
             return (hnd_==rhs.hnd_);
+        }
+
+        /// how do two iterators compare?
+        bool operator<(const Face_iterator& rhs) const
+        {
+            return (hnd_<rhs.hnd_);
         }
 
         /// are two iterators different?
@@ -1881,6 +1905,9 @@ public: // Catmull-Clark functions
     /// Generate ACC3 biqubic Bezier patches
     gsMultiPatch<real_t> cc_acc3(bool comp_topology = false) const;
 
+    /// Generate linear tensor-product patches (possibly merging faces)
+    gsMultiPatch<real_t> linear_patches() const;
+    
 private: //--------------------------------------------------- helper functions
 
     /** make sure that the outgoing halfedge of vertex v is a boundary halfedge

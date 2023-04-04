@@ -220,6 +220,7 @@ void gsFitting<T>::parameterCorrection(T accuracy,
             gsVector<T> newParam;
 #       pragma omp parallel for default(shared) private(newParam)
 
+
             for (index_t s = m_offset[h]; s < m_offset[h + 1]; ++s)
             {
                 curr_points_param = m_param_values.col(s);
@@ -242,6 +243,7 @@ void gsFitting<T>::parameterCorrection(T accuracy,
                     m_param_values.col(s) = newParam;
             
             }
+
 
             // refit
         }

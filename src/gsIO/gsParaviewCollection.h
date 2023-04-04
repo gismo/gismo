@@ -8,17 +8,20 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, C. Karampatzakis
 */
 
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsIO/gsFileManager.h>
+#include <gsIO/gsParaviewDataSet.h>
+
+
 
 #include<fstream>
 
 namespace gismo {
-
 /**
     \brief This class is used to create a Paraview .pvd (collection)
     file.
@@ -37,95 +40,156 @@ namespace gismo {
     pc.save() // finalize and close the file
     \endverbatim
 
+    Or when working with gsExpressions:
+    \verbatim
+    gsParaviewCollection pc(fn, &evaluator ); // Initialize collection
+
+    // Specify plotting options
+    pc.options().setInt("numPoints", 100);
+    pc.options().setInt("precision",5);
+    pc.options().setSwitch("plotElements",true);
+    pc.options().setSwitch("plotControlNet",true);
+
+    // In your solution loop:
+    while ( ... )
+    {
+        // Create new file(s) for this timestep
+        pc.newTimestep(&multiPatch)
+        // Solve here 
+
+        // Write solution fields ( e.g Pressure, Temperature, Stress )
+        pc.addField( gsExpression_1, "label_1" );
+        pc.addField( gsExpression_2, "label_2" );
+        pc.saveTimeStep(); // Save file(s) for this timestep
+    } // end solution loop
+
+    pc.save() // finalize and close the .pvd file
+    \endverbatim
+
+
     The above creates a file with extension pvd. When opening this
-    file with Paraview, the containts of all parts in the list are
+    file with Paraview, the contents of all parts in the list are
     loaded.
 
     \ingroup IO
 */
-class gsParaviewCollection
+class GISMO_EXPORT gsParaviewCollection
 {
 public:
     typedef std::string String;
 public:
 
-    /// Constructor using a filename.
-    gsParaviewCollection(std::string const & fn)
-    : mfn(fn), counter(0)
+    /// Constructor using a filename and an (optional) evaluator.
+    gsParaviewCollection(String const  &fn,
+                         gsExprEvaluator<> * evaluator=nullptr)
+                        : m_filename(fn),
+                        m_isSaved(false),
+                        m_time(-1),
+                        m_evaluator(evaluator),
+                        m_options(gsParaviewDataSet::defaultOptions())
     {
+        m_filename = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename) + ".pvd";
+        gsFileManager::mkdir( gsFileManager::getPath(m_filename) );
+        // if ( "" != m_filename.parent_path())
+        // GISMO_ENSURE( fsystem::exists( m_filename.parent_path() ), 
+        //     "The specified folder " << m_filename.parent_path() << " does not exist, please create it first.");  
         mfile <<"<?xml version=\"1.0\"?>\n";
-        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">";
+        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">\n";
         mfile <<"<Collection>\n";
     }
 
-    /// Adds a part in the collection, with complete filename (including extension) \a fn
-    void addPart(String const & fn)
-    {
-        GISMO_ASSERT(fn.find_last_of(".") != String::npos, "File without extension");
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<"\"/>\n";
+    /// @brief Appends a file to the Paraview collection (.pvd file).
+    /// @param fn Filename to be added. Can also be a path relative to the where the collection file is. 
+    /// @param tStep Time step ( optional, else an internal integer counter is used)
+    /// @param name An optional name for this part
+    /// @param part Part ID ( optional )
+    void addPart(String const & fn, real_t tStep=-1, std::string name="", index_t part=-1)
+    {   
+        GISMO_ASSERT( gsFileManager::getExtension(fn) != "" , "File without extension");
+        GISMO_ASSERT( !m_isSaved , "Error: collection has been already saved." );
+        mfile << "<DataSet ";
+        if (part != -1)   mfile << "part=\""<< part <<"\" ";
+        if (tStep != -1)  mfile << "timestep=\""<< tStep <<"\" ";
+        if (name != "") mfile << "name=\"" << name << "\" ";
+        mfile << "file=\"" << fn <<"\"/>\n";
     }
 
-    /// Adds a part in the collection, with filename \a fn with extension \a ext appended
-    void addPart(String const & fn, String const & ext)
+    /// @brief Adds all the files relevant to a gsParaviewDataSet, to the collection.
+    /// @param dataSet The gsParaviewDataSet to be added.
+    /// @param time Time step (optional, else an internal integer counter is used)
+    void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
+
+    /// @brief Creates a new time step where all information will be added to.
+    /// @param geometry A gsMultiPatch of the geometry where the solution fields are defined.
+    /// @param time Value of time for this timestep (optional, else an internal integer counter is used)
+    void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
+
+ 
+    /// @brief All arguments are forwarder to gsParaviewDataSet::addField().
+    template <typename... Rest>
+    void addField(Rest... rest)
     {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<counter++<<"\" file=\""<<fn<<ext<<"\"/>\n";
+        m_dataset.addField(rest...);
     }
 
-    /// Adds a part in the collection, with filename \a fni and extension \a ext appended
-    void addPart(String const & fn, int i, String const & ext)
+    /// @brief All arguments are forwarder to gsParaviewDataSet::addFields().
+    template <typename... Rest>
+    void addFields(Rest... rest)
     {
-        GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
-        mfile << "<DataSet part=\""<<i<<"\" file=\""<<fn<<i<<ext<<"\"/>\n";
+        m_dataset.addFields(rest...);
     }
 
-    // to do: make time collections as well
-	// ! i is not included in the filename, must be in included fn !
-    void addTimestep(String const & fn, double tstep, String const & ext)
-    {
-        mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
-    }
-
-    void addTimestep(String const & fn, int part, double tstep, String const & ext)
-    {
-        mfile << "<DataSet part=\""
-              <<part<<"\" timestep=\""
-              <<tstep<<"\" file=\""
-              <<fn<<"_"<<part<<ext<<"\"/>\n";
-    }
+    /// @brief The current timestep is saved and files written to disk.
+    void saveTimeStep(){
+        addDataSet(m_dataset,m_time);
+    };
 
     /// Finalizes the collection by closing the XML tags, always call
     /// this function (once) when you finish adding files
     void save()
     {
-        GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
+        GISMO_ASSERT(!m_isSaved, "Error: gsParaviewCollection::save() already called." );
         mfile <<"</Collection>\n";
         mfile <<"</VTKFile>\n";
 
-        mfn.append(".pvd");
-        std::ofstream f( mfn.c_str() );
-        GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
+        gsDebug << "Exporting to " << m_filename << "\n";
+        std::ofstream f( m_filename.c_str() );
+        GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
         f << mfile.rdbuf();
         f.close();
         mfile.str("");
-        counter = -1;
+        m_isSaved=true;
     }
+
+    /// @brief Accessor to the current options.
+    gsOptionList & options() {return m_options;}
 
 private:
     /// Pointer to char stream
     std::stringstream mfile;
 
     /// File name
-    String mfn;
+    std::string m_filename;
 
-    /// Counter for the number of parts (files) added in the collection
-    int counter;
+    /// Flag for checking if collection is already saved.
+    bool m_isSaved;
+
+    int m_time;
+
+    gsExprEvaluator<> * m_evaluator;
+
+    gsParaviewDataSet m_dataset;
+
+    gsOptionList m_options;
 
 private:
     // Construction without a filename is not allowed
     gsParaviewCollection();
 };
+
+//=================================================================================================
+
+
 
 /// Fast creation of a collection using base filename \a fn, extension
 /// \a ext.  The collection will contain the files fn_0.ext,
@@ -137,10 +201,10 @@ inline void makeCollection(std::string const & fn, std::string const & ext, int 
     if ( n > 0)
     {
         for (int i=0; i<n ; i++)
-            pc.addPart(fn, i, ext);
+            pc.addPart(fn + std::to_string(i) + ext);
     }
     else
-        pc.addPart(fn, ext);
+        pc.addPart(fn + ext);
 
     pc.save();
 }

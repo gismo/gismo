@@ -271,6 +271,10 @@ public:
 
     /// Returns the weights of the rational basis
     gsMatrix<T> & weights()  { return m_weights; }
+    
+
+    /// Returns true, since by definition a gsRationalBasis is rational.
+    virtual bool isRational() const { return true;}
 
     /// Access to i-th weight
     T & weight(int i)             { return m_weights(i); }

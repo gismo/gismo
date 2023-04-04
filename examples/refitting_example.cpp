@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
         ab = mp0->patch(p).support();
         a = ab.col(0);
         b = ab.col(1);
-        np.setConstant((std::ceil(std::pow(npts,1./mp.parDim()))));
+        np.setConstant((math::ceil(math::pow(npts,1./mp.parDim()))));
         // Uniform parameters for evaluation
         pts = gsPointGrid(a, b, np);
 

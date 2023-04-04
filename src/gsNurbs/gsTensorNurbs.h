@@ -229,30 +229,34 @@ public:
         GISMO_ASSERT( i>0, "multiplicity must be at least 1");
         GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
                       "Invalid basis component "<< dir <<" requested for degree elevation" );
-        
-        const index_t n = this->m_coefs.cols();
+
+        // Combine control points and weights to n+1 dimensional "control points"
+        gsMatrix<T> projectiveCoefs = basis().projectiveCoefs(m_coefs, weights());
+
+        // Dimension of physical space + 1 for the weights
+        const index_t n = projectiveCoefs.cols();
+
         gsTensorBSplineBasis<d,T> & tbs = this->basis().source();
-
         gsVector<index_t,d> sz;
-        tbs.size_cwise(sz);
+        tbs.size_cwise(sz); // Size of basis per (parametric) direction
         
-        swapTensorDirection(0, dir, sz, m_coefs  );
-        std::swap(sz[0],sz[dir]);
-        swapTensorDirection(0, dir, sz, weights());
-        const index_t nc = sz.template tail<static_cast<short_t>(d-1)>().prod();
-        m_coefs  .resize( sz[0], n * nc );
-        weights().resize( sz[0], nc     );
-        
-        gsBoehm(tbs.knots(dir), weights(), knot, i, false);
-        gsBoehm(tbs.knots(dir), m_coefs  , knot, i, true );
-        sz[0] = m_coefs.rows();
+        swapTensorDirection(0, dir, sz, projectiveCoefs  );
 
+        const index_t nc = sz.template tail<static_cast<short_t>(d-1)>().prod();
+        projectiveCoefs.resize( sz[0], n * nc );
+        
+        // Insert knot and update projective control points
+        gsBoehm(tbs.knots(dir), projectiveCoefs  , knot, i, true );
+        sz[0] = projectiveCoefs.rows();
+
+        // New number of coefficients
         const index_t ncoef = sz.prod();
-        m_coefs  .resize(ncoef, n );
-        weights().resize(ncoef, 1 );
-        swapTensorDirection(0, dir, sz, m_coefs  );
-        std::swap(sz[0],sz[dir]);
-        swapTensorDirection(0, dir, sz, weights());
+        projectiveCoefs.resize(ncoef, n );
+
+        swapTensorDirection(0, dir, sz, projectiveCoefs  );
+
+        // Unpack projective control points and update the coefs and weights of the original NURBS
+        basis().setFromProjectiveCoefs(projectiveCoefs, m_coefs, weights() );
     }
 
     /// Access to i-th weight

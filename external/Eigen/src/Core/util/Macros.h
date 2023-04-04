@@ -166,8 +166,10 @@
 // 4.5   0x0405
 // 5.0   0x0500
 // 12.1  0x0C01
-#if defined(__IBMCPP__) || defined(__xlc__) || defined(__ibmxl__)
+#if defined(__IBMCPP__) || defined(__xlC__)
   #define EIGEN_COMP_IBM __xlC__
+#elif defined(__ibmxl__)
+  #define EIGEN_COMP_IBM (__ibmxl_version__*100000+__ibmxl_release__*1000+__ibmxl_modification__*100+__ibmxl_ptf_fix_level__)
 #else
   #define EIGEN_COMP_IBM 0
 #endif

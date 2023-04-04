@@ -1031,15 +1031,36 @@ public:
         
         // Read boundary
         std::vector< patchSide > boundaries;
-        tmp = node->first_node("boundary");
-        if (tmp)
-            getBoundaries(tmp, ids, boundaries);
-        
+        for (gsXmlNode * child = node->first_node("boundary"); child;
+                child = child->next_sibling("boundary"))
+        {
+            std::vector< patchSide > tmp_boundaries;
+            if (child)
+            {
+                getBoundaries(child, ids, tmp_boundaries);
+                boundaries.insert( boundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
+            }
+        }
+        // Remove duplicates (keeps the first one)
+        std::sort(boundaries.begin(), boundaries.end());
+        boundaries.erase(std::unique(boundaries.begin(), boundaries.end()), boundaries.end());
+
         // Read interfaces
         std::vector< boundaryInterface > interfaces;
-        tmp = node->first_node("interfaces");
-        if (tmp)
-            getInterfaces(tmp, d, ids, interfaces);
+        for (gsXmlNode * child = node->first_node("interfaces"); child;
+                child = child->next_sibling("interfaces"))
+        {
+            std::vector< boundaryInterface > tmp_interfaces;
+            if (child)
+            {
+                getInterfaces(child, d, ids, tmp_interfaces);
+                interfaces.insert( interfaces.end(), tmp_interfaces.begin(), tmp_interfaces.end() );
+            }
+        }
+        // Remove duplicates (keeps the first one)
+        std::sort(interfaces.begin(), interfaces.end());
+        interfaces.erase(std::unique(interfaces.begin(), interfaces.end()), interfaces.end());
+
 
         obj = gsMultiPatch<T>(patches, boundaries, interfaces);        
     }

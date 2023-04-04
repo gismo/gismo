@@ -152,6 +152,7 @@ template <class T=real_t>                class gsTrimSurface;
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
 template <class T=real_t>                class gsGaussRule;
+template <class T=real_t>                class gsNewtonCotesRule;
 template <class T=real_t>                class gsGalerkinMethod;
 
 // Domains
@@ -286,7 +287,7 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
-
+class gsParaviewDataSet;
 class gsSurfMesh;
 
 /// @endcond
