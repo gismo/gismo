@@ -213,6 +213,7 @@ int main(int argc, char *argv[])
                 {
                     GISMO_ASSERT(0==method, "Invalid method");
                     A.assembleJacobian(residual, u_sol);
+                    A.assemble(residual);
                 }
                 //else // TODO:  Jacobian using automatic differentiation
                 ma_time += timer.stop();
