@@ -126,6 +126,8 @@ void gsFitting<T>::compute(T lambda)
 
     x = solver.solve(m_B); //toDense()
 
+    gsInfo << "CG it : " << solver.iterations() << ", CG res: " << solver.error() << "\n";
+
     // If there were constraints, we obtained too many coefficients.
     x.conservativeResize(num_basis, Eigen::NoChange);
 
@@ -234,7 +236,10 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 
                 // (!) There might be the same parameter for two points
                 // or ordering constraints in the case of structured/grid data
-                m_param_values.col(s) = newParam;
+                if ((m_mresult.piece(h).eval(newParam) - curr_points).norm()
+                    < (m_mresult.piece(h).eval(m_param_values.col(s))
+                        - curr_points).norm())
+                    m_param_values.col(s) = newParam;
             
             }
 
@@ -413,7 +418,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     }
 }
 
-template<class T>
+/*template<class T>
 void gsFitting<T>::computeErrors()
 {
     m_pointErrors.clear();
@@ -434,6 +439,40 @@ void gsFitting<T>::computeErrors()
 
         if ( err > m_max_error ) m_max_error = err;
         if ( err < m_min_error ) m_min_error = err;
+    }
+}*/
+
+
+
+template<class T>
+void gsFitting<T>::computeErrors()
+{
+    m_pointErrors.clear();
+
+    gsMatrix<T> curr_point, results;
+
+    const int num_patches(m_basis->nPieces());
+
+    for (index_t h = 0; h < num_patches; h++)
+    {
+
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
+        {
+            curr_point = m_param_values.col(k);
+
+            if (m_result)
+                m_result->eval_into(curr_point, results);
+            else
+            {
+                m_mresult.eval_into(h, curr_point, results);
+            }
+
+
+            const T err = (m_points.row(k) - results.transpose()).norm();
+
+            m_pointErrors.push_back(err);
+
+        }
     }
 }
 
