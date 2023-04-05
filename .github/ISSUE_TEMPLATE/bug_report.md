@@ -2,8 +2,8 @@
 name: Bug report
 about: Use issues for bug reports
 title: ''
-labels: ''
-assignees: ''
+labels: enhancement
+assignees: filiatra
 
 ---
 
