@@ -1,4 +1,4 @@
-/** @file poisson2_example.cpp
+/** @file nonlinear_example.cpp
 
     @brief Tutorial on how to use expression assembler to solve a non-linear Poisson equation
 

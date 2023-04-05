@@ -139,7 +139,8 @@ public:
     int size(int const& k) const{ return m_src->size(k); }
 
     size_t numElements() const { return m_src->numElements(); }
-    using Base::numElements; //unhide
+    size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
+    //using Base::numElements; //unhide
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
