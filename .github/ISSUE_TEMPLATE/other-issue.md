@@ -1,5 +1,5 @@
 ---
-name: Custom issue template
+name: Other issue
 about: Issues other than bugs/feature requests.
 title: ''
 labels: ''
