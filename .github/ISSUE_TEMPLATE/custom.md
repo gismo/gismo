@@ -1,10 +1,10 @@
 ---
 name: Custom issue template
-about: Describe this issue template's purpose here.
+about: Issues other than bugs/feature requests.
 title: ''
 labels: ''
-assignees: ''
+assignees: ckarampa, hverhelst
 
 ---
 
-
+For questions use the [Q&A section](https://github.com/gismo/gismo/discussions/categories/q-a).

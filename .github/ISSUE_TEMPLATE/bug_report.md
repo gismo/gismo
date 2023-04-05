@@ -3,7 +3,7 @@ name: Bug report
 about: Use issues for bug reports
 title: ''
 labels: bug
-assignees: hverhelst, ckarampa
+assignees: ckarampa, hverhelst
 
 ---
 
