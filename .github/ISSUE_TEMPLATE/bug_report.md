@@ -2,8 +2,8 @@
 name: Bug report
 about: Use issues for bug reports
 title: ''
-labels: enhancement
-assignees: filiatra
+labels: bug
+assignees: hverhelst, ckarampa
 
 ---
 
