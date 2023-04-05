@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    index_t numRefine  = 5;
+    index_t numRefine  = 3;
     index_t numElevate = 0;
     index_t maxIter = 100;
     index_t method = 1;
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::CGDiagonal solver;
 
     gsVector<> l2err(numRefine+1), h1err(numRefine+1);
-    gsInfo<< "(dot1=assembled, dot2=solved, dot3=got_error)\n"
+    gsInfo<< "(dot1=assembled, dot2=solved, dot3=nonlinear_loop,dot4=got_error)\n"
         "\nDoFs: ";
     double setup_time(0), ma_time(0), slv_time(0), err_time(0);
     gsStopwatch timer;
