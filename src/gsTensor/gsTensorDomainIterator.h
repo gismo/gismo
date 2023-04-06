@@ -97,7 +97,10 @@ public:
     {
         m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
         if (m_isGood)
+        {
             update();
+            ++m_id; //increment id
+        }
         return m_isGood;
     }
 
@@ -107,7 +110,10 @@ public:
         for (index_t i = 0; i < increment; i++)
             m_isGood = m_isGood && nextLexicographic(curElement, meshStart, meshEnd);
         if (m_isGood)
+        {
             update();
+            m_id += increment; //increment id
+        }
         return m_isGood;
     }
 
@@ -177,11 +183,17 @@ private:
         }
     }
 
+//    size_t numElements() const
+//    {
+//
+//    }
+  
 // Data members
 public:
     using gsDomainIterator<T>::center;
 
 protected:
+    using gsDomainIterator<T>::m_id;
     using gsDomainIterator<T>::m_basis;
     using gsDomainIterator<T>::m_isGood;
 
