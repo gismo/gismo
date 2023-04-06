@@ -374,6 +374,16 @@ template <typename E>
 std::ostream &operator<<(std::ostream &os, const _expr<E> & b)
 {b.print(os); return os; }
 
+}
+}
+
+#include <gsAssembler/expr/precomputed_expr.h>
+
+namespace gismo
+{
+namespace expr
+{
+
 /*
   Null expression is a compatibility expression invalid at runtime
 */
