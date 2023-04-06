@@ -53,6 +53,12 @@ gsCPPInterface<T>::gsCPPInterface(const gsMultiPatch<T>   & mp,
 
 
 template <class T>
+void gsCPPInterface<T>::updateBdr()
+{
+    m_masterBdr = m_masterGeom->boundary(m_boundaryInterface.second());
+}
+
+template <class T>
 void gsCPPInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const
 {
     GISMO_ASSERT( u.rows() == domainDim(), "gsCPPInterface::eval_into: "

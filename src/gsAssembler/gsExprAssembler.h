@@ -31,6 +31,7 @@ class gsExprAssembler
 {
 private:
     typename gsExprHelper<T>::Ptr m_exprdata;
+    const gsMultiPatch<T>* m_gmap;
 
     gsOptionList m_options;
 
@@ -70,7 +71,7 @@ public:
     /// \param _rBlocks Number of spaces for test functions
     /// \param _cBlocks Number of spaces for solution variables
     gsExprAssembler(index_t _rBlocks = 1, index_t _cBlocks = 1)
-    : m_exprdata(gsExprHelper<T>::make()), m_options(defaultOptions()),
+    : m_exprdata(gsExprHelper<T>::make()), m_gmap(nullptr), m_options(defaultOptions()),
       m_vrow(_rBlocks,nullptr), m_vcol(_cBlocks,nullptr)
     { }
 
@@ -134,6 +135,16 @@ public:
     /// \warning Must be called before any computation is requested
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setMultiBasis(mesh); }
+
+    /// \brief Set the geometrymap ( used for interface assembly)
+    /// \warning Must be called before any computation is requested
+    void setGeometryMap(const gsMultiPatch<T> & gMap)
+    { m_gmap = &gMap;}
+
+    const gsMultiPatch<T>& getGeometryMap() const
+    {
+        return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap); 
+    }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     void setIntegrationElements(const gsMultiBasis<T> &&) = delete;
@@ -368,7 +379,7 @@ public:
     template<class expr> void assembleJacobian(const expr residual, solution & u);
 
     template<class expr> void assembleJacobianIfc(const ifContainer & iFaces,
-                                                  const expr residual, solution & u);
+                                                  const expr residual, solution  u);
 
 private:
 
@@ -422,12 +433,12 @@ private:
     } _checkExpr;
 
     // Evaluates expression and and assembles global matrix/rhs
-    template<bool eliminateFixedPart = true>
     struct _eval
     {
         gsSparseMatrix<T> & m_matrix;
         gsMatrix<T>       & m_rhs;
         const gsVector<T> & m_quWeights;
+        bool m_elim;
         gsMatrix<T>         localMat;
         gsMatrix<T>         aux;
 
@@ -435,22 +446,23 @@ private:
               gsMatrix<T>       & _rhs,
               const gsVector<>  & _quWeights)
         : m_matrix(_matrix), m_rhs(_rhs),
-          m_quWeights(_quWeights)
+          m_quWeights(_quWeights), m_elim(true)
         { }
+
+        void setElim(bool elim) {m_elim = elim;}
 
         template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
         {
             // ------- Compute  -------
-            const T * w = m_quWeights.data();
-            localMat.noalias() = (*w) * ee.eval(0);
-            for (index_t k = 1; k != m_quWeights.rows(); ++k)
-                localMat.noalias() += (*(++w)) * ee.eval(k);
+            quadrature(ee,localMat);
 
             //  ------- Accumulate  -------
             if (E::isMatrix())
-                push<true>(ee.rowVar(), ee.colVar());
+                if (m_elim) push<true,true>(ee.rowVar(), ee.colVar());
+                else push<true,false>(ee.rowVar(), ee.colVar());
             else if (E::isVector())
-                push<false>(ee.rowVar(), ee.colVar());
+                if (m_elim) push<false,true>(ee.rowVar(), ee.colVar());
+                else push<false,false>(ee.rowVar(), ee.colVar());
             else
             {
                 GISMO_ERROR("Something went terribly wrong at this point");
@@ -459,28 +471,66 @@ private:
 
         }// operator()
 
-        template <typename E> void accJacMatrix(const gismo::expr::_expr<E> & ee, index_t j, T scalar = (T)1)
+        template <typename E>
+        inline void quadrature(const gismo::expr::_expr<E> & ee,
+                               gsMatrix<T> & lm)
         {
-            GISMO_ASSERT(E::isVector(), "Expecting a vector expression.");
-
             // ------- Compute  -------
             const T * w = m_quWeights.data();
-            aux.noalias() = (*w) * ee.eval(0);
+            lm.noalias() = (*w) * ee.eval(0);
             for (index_t k = 1; k != m_quWeights.rows(); ++k)
-                aux.noalias() += (*(++w)) * ee.eval(k);
+                lm.noalias() += (*(++w)) * ee.eval(k);
+        }
 
-            if ( 0 == localMat.size() )
+        template <typename E> void diff(const gismo::expr::_expr<E> & ee,
+                                        solution & u)
+        {
+            GISMO_ASSERT(E::isVector(), "Expecting a vector expression.");
+            static const T delta = 0.00001;
+
+            const index_t sz = u.space().cardinality();
+            localMat.setZero(sz, sz);
+
+            for ( index_t c=0; c!= u.dim(); c++)
             {
-                 localMat.setZero(aux.rows(), aux.cols() );
+                const index_t rls = c * u.data().actives.rows();     //local stride
+                for ( index_t j = 0; j != sz/u.dim(); j++ )     // for all basis functions (col(j))
+                {
+                    const index_t jj = u.mapper().index(u.data().actives.at(j),
+                                                        u.space().data().patchId, c);
+                    if (u.mapper().is_free_index(jj) )
+                    {
+                        //todo: take local copy of local solution u
+
+                        //Perturb \a u
+                        u.perturbLocal( delta  , jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) += 8 * aux;
+                        u.perturbLocal( delta  , jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) -= aux;
+                        u.perturbLocal(-3*delta, jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) -= 8 * aux;
+                        u.perturbLocal( -delta , jj, u.space().data().patchId);
+                        quadrature(ee, aux);
+                        localMat.col(rls+j) += aux;
+                        localMat.col(rls+j) /= 12*delta;
+                        //Unperturb \a u
+                        u.perturbLocal(2*delta, jj, u.space().data().patchId);
+                    }
+                }
             }
-            //localMat.resize(aux.rows(), aux.rows());// happens once
-            localMat.col(j) += scalar * aux;
+
+            //  ------- Accumulate  -------
+            push<true,false>(ee.rowVar(), ee.rowVar());
         }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
-        template<bool isMatrix> void push(const expr::gsFeSpace<T> & v,
-                                          const expr::gsFeSpace<T> & u)
+        template<bool isMatrix, bool elim = true>
+        void push(const expr::gsFeSpace<T> & v,
+                  const expr::gsFeSpace<T> & u)
         {
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
@@ -535,7 +585,7 @@ private:
 #                                       pragma omp critical (acc_m_matrix)
                                         m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
-                                    else // colMap.is_boundary_index(jj) )
+                                    else if (elim) // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
@@ -566,13 +616,25 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);// deprecated
+    opt.addInt("DirichletStrategy"  , "Strategy related to enforcement of Dirichlet DoF values [0ignore, 1:eliminate, 2:..]", 1);
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
     opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
+    opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
     return opt;
+
+    /// dirichlet treatment? elimination ????
+
+    //storage of quadrature points, TP, ... non-linear assembly.
+    
+    //gsExpressions.h -> split ?
+
+    //parallel interface assembly..
+    
+    // mpi assemly. ???
 }
 
 template<class T>
@@ -683,10 +745,12 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
 
     gsVector<T> quWeights; // quadrature weights
-    _eval<true> ee(m_matrix, m_rhs, quWeights);
+    _eval ee(m_matrix, m_rhs, quWeights);
+    const index_t elim = m_options.getInt("DirichletStrategy");
+    ee.setElim(1==elim);
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
@@ -745,10 +809,10 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     m_exprdata->parse(arg_tpl);
     m_exprdata->activateFlags(SAME_ELEMENT);
 
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     gsVector<T> quWeights;               // quadrature weights
 
-    _eval<true> ee(m_matrix, m_rhs, quWeights);
+    _eval ee(m_matrix, m_rhs, quWeights);
 
 //#   pragma omp parallel for
     for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
@@ -793,6 +857,8 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
+#pragma omp parallel
+{
     typedef typename gsFunction<T>::uPtr ifacemap;
 
     auto arg_tpl = std::make_tuple(args...);
@@ -802,11 +868,12 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights;// quadrature weights
-    _eval<true> ee(m_matrix, m_rhs, quWeights);
+    _eval ee(m_matrix, m_rhs, quWeights);
 
     const bool flipSide = m_options.askSwitch("flipSide", false);
 
     ifacemap interfaceMap;
+#   pragma omp for
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
     {
@@ -821,7 +888,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
                                                       m_exprdata->multiBasis().basis(patch1).support(),
                                                       m_exprdata->multiBasis().basis(patch2).support() );
         else
-            interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), m_exprdata->multiBasis(), iFace);
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
                                    m_options, iFace.first().side().direction());
@@ -854,6 +921,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         }
     }
 
+}//omp parallel
     m_matrix.makeCompressed();
 }
 
@@ -864,6 +932,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
 
     clearMatrix();
+    clearRhs();
 
 #pragma omp parallel
 {
@@ -880,8 +949,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     gsVector<T> quWeights; // quadrature weights
 
-    _eval<false> ee(m_matrix, m_rhs, quWeights);
-    static const T delta = 0.00001;
+    _eval ee(m_matrix, m_rhs, quWeights);
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
@@ -911,25 +979,11 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
             // Evaluate at quadrature points
             m_exprdata->precompute(patchInd);
 
-            ee(residual);
-
-            for ( index_t j = 0; j< u.space().cardinality(); j++ )
-            {// for all basis functions (column j of local matrix)
-                //Perturbe \a u
-                u.perturbLocal( delta  , j, patchInd);
-                ee.accJacMatrix(residual, j,  8 / (12*delta) );
-                u.perturbLocal( delta  , j, patchInd);
-                ee.accJacMatrix(residual, j, -1 / (12*delta) );
-                u.perturbLocal(-3*delta, j, patchInd);
-                ee.accJacMatrix(residual, j, -8 / (12*delta) );
-                u.perturbLocal( -delta , j, patchInd);
-                ee.accJacMatrix(residual, j,  1 / (12*delta) );
-                //Unperturb \a u
-                u.perturbLocal(2*delta, j, patchInd);
+#           pragma omp critical (assemble_fdiffs)
+            {
+                // ee(residual); //Computes residual to m_rhs
+                ee.diff(residual, u); //Computes Jacobian
             }
-
-            // Assemble contributions of the element to the global matrix
-            ee.template push<true>(u.space().rowVar(), u.space().rowVar());
         }
     }
 
@@ -940,23 +994,24 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
 template<class T> template<class expr>
 void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
-                                             const expr residual, solution & u)
+                                             const expr residual, solution  u)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
 
-    clearMatrix();
+    // clearMatrix();
 
     m_exprdata->parse(residual, u);
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule  ---->OUT
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     gsVector<T> quWeights; // quadrature weights
 
-    _eval<false> ee(m_matrix, m_rhs, quWeights);
+    _eval ee(m_matrix, m_rhs, quWeights);
     static const T delta = 0.00001;
     const bool flipSide = m_options.askSwitch("flipSide", false);
+    const bool movingInterface = m_options.askSwitch("movingInterface", false);
 
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
@@ -967,7 +1022,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
         const index_t patch1 = iFace.first() .patch;
         //const index_t patch2 = iFace.second().patch;
 
-        gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(),
+        gsCPPInterface<T> interfaceMap(getGeometryMap(), // ! make current geometry
                                        m_exprdata->multiBasis(), iFace);
 
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
@@ -984,6 +1039,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
+            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             if (m_exprdata->points().cols()==0)
                 continue;
@@ -991,25 +1047,71 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(iFace);
 
-            ee(residual);
-
-            for ( index_t j = 0; j< u.space().cardinality(); j++ )
-            {// for all basis functions (column j of local matrix)
-                //Perturbe \a u
-                u.perturbLocal( delta  , j, patch1);
-                ee.accJacMatrix(residual, j,  8 / (12*delta) );
-                u.perturbLocal( delta  , j, patch1);
-                ee.accJacMatrix(residual, j, -1 / (12*delta) );
-                u.perturbLocal(-3*delta, j, patch1);
-                ee.accJacMatrix(residual, j, -8 / (12*delta) );
-                u.perturbLocal( -delta , j, patch1);
-                ee.accJacMatrix(residual, j,  1 / (12*delta) );
-                //Unperturb \a u
-                u.perturbLocal(2*delta, j, patch1);
+            // ee(residual);
+            if (!movingInterface)
+            {
+                ee.diff(residual, u);
             }
+            else // For Moving Geometry Maps
+            {
+                GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
+                static const T delta = 0.00001;
 
-            // Assemble contributions of the element to the global matrix
-            ee.template push<true>(u.space().rowVar(), u.space().rowVar());
+                const index_t sz = residual.eval(0).rows(); // Caution this must be the correct size , depending if .right() or .left() are used
+                ee.localMat.setZero(sz, sz);
+
+                auto & rowVar = residual.rowVar();
+
+                for ( index_t c=0; c!= u.dim(); c++)
+                {
+                    const index_t rls = c * rowVar.data().actives.rows();     //local stride
+                    for ( index_t j = 0; j != sz/u.dim(); j++ )     // for all basis functions (col(j))
+                    {
+                        const index_t jj = u.mapper().index(rowVar.data().actives(j),
+                                                            rowVar.data().patchId, c);
+                        if (rowVar.mapper().is_free_index(jj) )
+                        {
+                            //Perturb \a u
+                            u.perturbLocal( delta  , jj, rowVar.data().patchId);
+                            interfaceMap.updateBdr();
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(residual, ee.aux);
+                            ee.localMat.col(rls+j) += 8 * ee.aux;
+
+
+                            u.perturbLocal( delta  , jj, rowVar.data().patchId);
+                            interfaceMap.updateBdr();
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(residual, ee.aux);
+                            ee.localMat.col(rls+j) -= ee.aux;
+
+                            u.perturbLocal(-3*delta, jj, rowVar.data().patchId);
+                            interfaceMap.updateBdr();
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(residual, ee.aux);
+                            ee.localMat.col(rls+j) -= 8 * ee.aux;
+
+                            u.perturbLocal( -delta , jj, rowVar.data().patchId);
+                            interfaceMap.updateBdr();
+                            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+                            m_exprdata->precompute(iFace);
+                            ee.quadrature(residual, ee.aux);
+                            ee.localMat.col(rls+j) += ee.aux;
+
+                            ee.localMat.col(rls+j) /= 12*delta;
+                            //Unperturb \a u
+                            u.perturbLocal(2*delta, jj, rowVar.data().patchId);
+                            interfaceMap.updateBdr();
+                        }
+                    }
+                }
+
+                //  ------- Accumulate  -------
+                ee.template push<true,false>(residual.rowVar(), residual.rowVar());
+            }
         }
     }
 
