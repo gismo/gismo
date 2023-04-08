@@ -52,4 +52,10 @@ foreach(file ${unittests_SRCS})
   set_property(TEST unit_${testname} PROPERTY LABELS unittests)
 endforeach(file ${FILES})
 
+foreach(file ${gismo_UNITTESTS})
+  get_filename_component(testname ${file} NAME_WE) # name without extension
+  add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
+  set_property(TEST unit_${testname} PROPERTY LABELS unittests)
+endforeach(file ${FILES})
+
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)

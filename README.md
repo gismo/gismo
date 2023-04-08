@@ -259,6 +259,9 @@ eleven modules are present as sub-folders:
 
   https://github.com/gismo/gismo/issues
 
+* Questions (Q&A):
+
+  https://github.com/gismo/gismo/discussions/categories/q-a
 
 # People
 
