@@ -54,13 +54,6 @@ int main(int argc, char **argv)
     gsInfo << "Gismo was compiled without MPI support.\n";
 #endif
 
-#ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-    gsInfo<<"OpenMP is enabled with "<<nt<<" threads\n";
-#endif
-
-
     // Initialize the MPI environment
     const gsMpi & mpi = gsMpi::init(argc, argv);
 
