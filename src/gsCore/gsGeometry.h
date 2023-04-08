@@ -108,15 +108,15 @@ public:
     
     /// @brief Default constructor.  Note: Derived constructors (except for
     /// the default) should assign \a m_basis to a valid pointer
-    gsGeometry() :m_basis( NULL ), m_id(0)
+    gsGeometry() :m_basis( NULL ), m_id(0), m_label("")
     { }
 
     /// @brief Constructor by a basis and coefficient vector
     ///
     /// Coefficients are given by \em{give(coefs) and they are
     /// consumed, i.e. the \coefs variable will be empty after the call
-    gsGeometry( const gsBasis<T> & basis, gsMatrix<Scalar_t> coefs) :
-    m_basis(basis.clone().release()), m_id(0)
+    gsGeometry( const gsBasis<T> & basis, gsMatrix<Scalar_t> coefs, const std::string label="") :
+    m_basis(basis.clone().release()), m_id(0), m_label(label)
     {
         m_coefs.swap(coefs);
         GISMO_ASSERT( basis.size() == m_coefs.rows(), 
@@ -127,7 +127,7 @@ public:
 
     /// @brief Copy Constructor
     gsGeometry(const gsGeometry & o) 
-    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
+    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id), m_label(o.m_label)
     { }
 
     /// @}
@@ -140,6 +140,7 @@ public:
             delete m_basis;
             m_basis = o.basis().clone().release() ;
             m_id = o.m_id;
+            m_label = o.m_label;
         }
         return *this;
     }
@@ -152,7 +153,8 @@ public:
 #if EIGEN_HAS_RVALUE_REFERENCES
     gsGeometry(gsGeometry&& other) 
     : m_coefs(std::move(other.m_coefs)), m_basis(other.m_basis), 
-      m_id(std::move(other.m_id))
+      m_id(std::move(other.m_id)),
+      m_label(std::move(other.m_label))
     {
         other.m_basis = NULL;
     }
@@ -162,6 +164,7 @@ public:
         delete m_basis;
         m_basis = other.m_basis; other.m_basis = NULL;
         m_id = std::move(other.m_id);
+        m_label = std::move(other.m_label);
         return *this;
     }
 #endif
@@ -629,6 +632,11 @@ public:
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
 
+    /// Sets the patch label for this patch
+    void setLabel(const std::string label) { m_label = label; }
+
+    /// Returns the patch label for this patch
+    std::string label() const { return m_label; }
 
 protected:
     void swap(gsGeometry & other)
@@ -636,6 +644,7 @@ protected:
         std::swap(m_basis, other.m_basis);
         m_coefs.swap(other.m_coefs);
         std::swap(m_id, other.m_id);
+        std::swap(m_label, other.m_label);
     }
 
 protected:
@@ -650,6 +659,10 @@ protected:
     /// An auxiliary index for this geometry (eg. in case it is part
     /// of a multi-patch object)
     size_t m_id;
+
+    /// An auxiliary label for this geometry (eg. in case it is part
+    /// of a multi-patch object)
+    std::string m_label;
 
 }; // class gsGeometry
 

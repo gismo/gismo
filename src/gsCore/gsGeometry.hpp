@@ -320,6 +320,8 @@ std::ostream & gsGeometry<T>::print(std::ostream &os) const
         " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
         ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
     os<<"\nBasis:\n" << this->basis();
+    if (!m_label.empty())
+        os << "Label "<< this->label() << "\n";
     return os; 
 }
 

@@ -330,7 +330,14 @@ Object * getGeometryFromXml ( gsXmlNode * node)
         }
     }
     
-    return new Object(*b,c);
+    std::string label;
+    gsXmlAttribute * attr_label = node->first_attribute("label");
+    if ( nullptr != attr_label )
+        label = attr_label->value();
+
+    Object * result = new Object(*b,c);
+    result->setLabel(label);
+    return result;
 }
 
 /// Helper to put geometries to XML
@@ -360,6 +367,8 @@ gsXmlNode * putGeometryToXml ( Object const & obj, gsXmlTree & data)
     tmp->append_attribute( makeAttribute("geoDim", obj.geoDim(), data) );
     bs->append_node(tmp);
 
+    if (!obj.label().empty())
+        bs->append_attribute( makeAttribute("label", obj.label(), data) );
     return bs;
 }
 

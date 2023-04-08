@@ -221,10 +221,15 @@ public:
     gsBasis<T> & basis( const size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
-    void addPatch(typename gsGeometry<T>::uPtr g);
+    void addPatch(typename gsGeometry<T>::uPtr g, const std::string & label="");
 
     /// Add a patch by copying argument
-    void addPatch(const gsGeometry<T> & g);
+    void addPatch(const gsGeometry<T> & g, const std::string & label="");
+
+    void addPatches(const gsMultiPatch<T> & patches);
+
+    std::vector<size_t> indicesByLabel(const std::string & label) const;
+
 
     /// \brief Search for the given geometry and return its patch index.
     size_t findPatchIndex( gsGeometry<T>* g ) const;

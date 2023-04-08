@@ -204,7 +204,7 @@ void gsMultiPatch<T>::permute(const std::vector<short_t> & perm)
 }
 
 template<class T>
-void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
+void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g, const std::string & label)
 {
     if ( m_dim == -1 )
     {
@@ -215,14 +215,24 @@ void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
                       "Tried to add a patch of different dimension in a multipatch." );
     }
     g->setId( m_patches.size() );
+    if (!label.empty())
+        g->setLabel( label );
+
     m_patches.push_back( g.release() ) ;
     addBox();
 }
 
 template<class T>
-inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
+inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g, const std::string & label)
 {
-    addPatch(g.clone());
+    addPatch(g.clone(),label);
+}
+
+template<class T>
+void gsMultiPatch<T>::addPatches(const gsMultiPatch<T> & patches)
+{
+    for (size_t p=0; p!=patches.nPatches(); p++)
+        this->addPatch(patches.patch(p),patches.patch(p).label());
 }
 
 template<class T>
@@ -233,6 +243,18 @@ size_t gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
     GISMO_ASSERT( it != m_patches.end(), "Did not find the patch index." );
     // note: should return g->patchId();
     return it - m_patches.begin();
+}
+
+template<class T>
+inline std::vector<size_t> gsMultiPatch<T>::indicesByLabel(const std::string & label) const
+{
+    std::vector<size_t> result;
+    for ( const_iterator it = m_patches.begin(); it != m_patches.end(); ++it )
+    {
+        if ((*it)->label()==label)
+            result.push_back((*it)->id());
+    }
+    return result;
 }
 
 template<class T>
