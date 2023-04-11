@@ -574,7 +574,7 @@ int main(int argc, char *argv[])
     gsMatrix<> x;
     //TODO: Not possible: x.setRandom( bdPrec->rows(), 1 );
     x.setZero( ieti.nLagrangeMultipliers(), 1 );
-
+    gsInfo << "[" << ieti.nLagrangeMultipliers() << " dofs of scs]";
     //! [Define initial guess]
 
     //gsInfo << ieti.rhsForSaddlePoint().transpose() << "\n";

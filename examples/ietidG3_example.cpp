@@ -766,6 +766,7 @@ int main(int argc, char *argv[])
         }
         DEBUGMAT(hatassembler.matrix());
         gsSparseMatrix<> stiffness = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb_local[0], bc_local);
+        gsInfo << "[" << stiffness.rows() << " classical dofs]";
         DEBUGMAT(stiffness);
         const index_t classical_dofs = stiffness.rows();
         const index_t ai_dofs = hatassembler.matrix().rows() - classical_dofs;
@@ -793,6 +794,8 @@ int main(int argc, char *argv[])
         gsLinearOperator<>::Ptr A11_fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb_local.basis(0), bc_A11, assemblerOptions);
         DEBUGMAT(*A11_fd);
 
+        gsInfo << "[" << A11_fd->rows() << " inner dofs]";
+
         prec.addSubdomain(
                 prec.restrictJumpMatrix(jumpMatrix, skeletonDofs).moveToPtr(),
                 gsScaledDirichletPrec<>::schurComplement(blocks, A11_fd)
@@ -818,6 +821,8 @@ int main(int argc, char *argv[])
         DEBUGMAT(localEmbedding);
         DEBUGMAT(embeddingForBasis);
         DEBUGMAT(rhsForBasis);
+
+	gsInfo << "[" << localMatrix.rows() << " classical + ai dofs]";
 
         gsMatrix<>                       modifiedLocalRhs     = localEmbedding * localRhs;
         gsSparseMatrix<real_t, RowMajor> modifiedJumpMatrix   = jumpMatrix * localEmbedding.transpose();
@@ -935,6 +940,8 @@ int main(int argc, char *argv[])
         bdPrec->addOperator(k,k,modifiedLocalPrec);
 
 
+        gsInfo << "[" << modifiedLocalMatrix.rows() << " modified dofs]";
+
         // Add the patch to the Ieti system
         //! [Patch to system]
         ieti.addSubdomain(
@@ -963,6 +970,7 @@ int main(int argc, char *argv[])
         // since a sparse LU solver would be set up on the fly if required.
         // Here, we make use of the fact that we can use a Cholesky solver
         // because the primal problem is symmetric and positive definite:
+	gsInfo << "[" << primal.localMatrix().rows() << " primal dofs]";
         bdPrec->addOperator(nPatches, nPatches, makeSparseCholeskySolver(primal.localMatrix()) );
 
         // Add to IETI system
@@ -1004,6 +1012,8 @@ int main(int argc, char *argv[])
     //TODO: Not possible: x.setRandom( bdPrec->rows(), 1 );
     x.setZero( bdPrec->rows(), 1 );
 
+    gsInfo << "[" << bdPrec->rows() << " dofs of spp]";
+
     //! [Define initial guess]
 
     //gsInfo << ieti.rhsForSaddlePoint().transpose() << "\n";
@@ -1014,7 +1024,8 @@ int main(int argc, char *argv[])
     // This is the main cg iteration
     //! [Solve]
     //gsMinimalResidual //TODO
-    gsGMRes<>( ieti.saddlePointProblem(), bdPrec )
+    gsGMRes
+    <>( ieti.saddlePointProblem(), bdPrec )
             .setOptions( cmd.getGroup("Solver") )
             .solveDetailed( ieti.rhsForSaddlePoint(), x, errorHistory );
     //! [Solve]

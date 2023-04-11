@@ -589,6 +589,8 @@ int main(int argc, char *argv[])
     //TODO: Not possible: x.setRandom( bdPrec->rows(), 1 );
     x.setZero( bdPrec->rows(), 1 );
 
+    gsInfo << "[" << bdPrec->rows() << " dofs of spp]";
+
     //! [Define initial guess]
 
     //gsInfo << ieti.rhsForSaddlePoint().transpose() << "\n";
