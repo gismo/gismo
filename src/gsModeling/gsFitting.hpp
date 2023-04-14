@@ -193,7 +193,7 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     extensions::gsPKSession::stop();
 }
 
-#else // gsParasolid_ENABLED
+#else // Parasolid not enabled
 
 template <class T>
 void gsFitting<T>::smoothParameterCorrection(T accuracy, index_t maxIter)
