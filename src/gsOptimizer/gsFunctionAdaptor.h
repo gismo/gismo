@@ -62,13 +62,13 @@ public:
     mutable util::gsThreaded<gsMatrix<T> > jac;
     void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
+
         //gsOptProblem<T>::gradObj_into(u,result);
         //gsDebugVar( result.transpose() );
         m_obj.deriv_into(u, jac);
         //gsDebugVar( jac.transpose() );
         result = jac.mine();
-
-     }
+    }
 
     void evalCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
