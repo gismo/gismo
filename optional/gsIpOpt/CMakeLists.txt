@@ -39,7 +39,7 @@ set(IPOPT_SOURCES gsIpOpt_.cpp)
   ExternalProject_Add(IpOpt
     BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/IpOpt
     SOURCE_DIR        ${gismo_externals}/IpOpt
-    CONFIGURE_COMMAND ${gismo_externals}/IpOpt/configure --prefix=<INSTALL_DIR> #ADD_FCFLAGS=-fallow-argument-mismatch
+    CONFIGURE_COMMAND ${gismo_externals}/IpOpt/configure --with-mumps --prefix=<INSTALL_DIR> #ADD_FCFLAGS=-fallow-argument-mismatch
     #URL http://www.coin-or.org/download/source/Ipopt/Ipopt-${IPOPT_VER}.tgz
 #    PATCH_COMMAND      patch -t -s -p1 < ${gismo_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
 #    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/mumps.patch ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/mumps.patch
