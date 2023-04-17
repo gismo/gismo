@@ -304,8 +304,13 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     gsVector<T> result;
 
     // Initial point
-    if ( 0 != init.size() )
+    if ( 0 != init.size() ){
         result = give(init);
+        // gsInfo << "+++++ argMin +++++\n";
+        // gsInfo << "initial input:\n" << init << "\n";
+        // gsInfo << "initial guess:\n" << result << "\n";
+        // gsInfo << "++++++++++++++++++\n";
+    }
     else
     {
         gsMatrix<T> supp = this->support();
@@ -327,7 +332,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
             result.setZero( dd );
     }
 
-#if false
+#if true
 //#ifdef gsIpOpt_ENABLED
     gsFunctionAdaptor<T> fmin(*this);
     //gsIpOpt<T> solver( &fmin );
@@ -336,8 +341,15 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
 
     solver.options().setInt("MaxIterations",100);
     solver.options().setInt("Verbose",0);
+    // add lower limits and upper limits for HLBFGS
+    // optimizer->solve(problem.currentDesign());
+    //gsInfo << "Initial guess:\n" << result << "\n";
+    //gsInfo << "alternative:\n" << solver.currentDesign() << "\n";
     solver.solve(result);
+    //solver.solve(solver.currentDesign()); // this gives a segfault because solver.currentDesign() is empty.
     result = solver.currentDesign();
+    //gsInfo << "final result:\n" << result << "\n";
+
 #else
     switch (dd)
     {
