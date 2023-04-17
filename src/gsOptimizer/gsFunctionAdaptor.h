@@ -54,22 +54,14 @@ public:
 
     T evalObj( const gsAsConstVector<T> & u ) const
     {
-        for (index_t i=0; i!=m_numDesignVars; ++i)
-            if ( u(i)<m_desLowerBounds.at(i) || u(i)>m_desUpperBounds.at(i) )
-                return math::limits::max();
+        gsAsVector<T> u1(const_cast<T*>(u.data()), u.size() ); // keep point within bounds
+        u1 = u1.cwiseMax(m_desLowerBounds).cwiseMin(m_desUpperBounds);
         return m_obj.eval(u).value();
     }
 
     mutable util::gsThreaded<gsMatrix<T> > jac;
     void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const  
     {
-        for (index_t i=0; i!=m_numDesignVars; ++i)
-            if ( u(i)<m_desLowerBounds.at(i) || u(i)>m_desUpperBounds.at(i) )
-            {
-                result.setZero();
-                return;
-            }
-
         //gsOptProblem<T>::gradObj_into(u,result);
         //gsDebugVar( result.transpose() );
         m_obj.deriv_into(u, jac);
