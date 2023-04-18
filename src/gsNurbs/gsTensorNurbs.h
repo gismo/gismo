@@ -444,8 +444,8 @@ public:
             rightBasis->weights());
 
 
-        left  = gsTensorNurbs<d,T>( leftBasis->knots(0), leftBasis->knots(1), leftNurbs->coefs(), leftBasis->weights() );
-        right = gsTensorNurbs<d,T>( rightBasis->knots(0), rightBasis->knots(1), rightNurbs->coefs(), rightBasis->weights() );
+        left  = gsTensorNurbs<d,T>( *leftBasis,  leftNurbs->coefs() );
+        right = gsTensorNurbs<d,T>( *rightBasis, rightNurbs->coefs());
     }
 
 protected:
