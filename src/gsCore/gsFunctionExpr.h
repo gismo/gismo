@@ -91,6 +91,9 @@ public:
 
     gsFunctionExpr(const gsFunctionExpr& other);
 
+    gsMatrix<T> support() const;
+    void setSupport(gsMatrix<T> sp);
+
     ///\brief Make function taking an expression string and the domain dimension (scalar function)
     static uPtr make(const std::string & expression_string, short_t ddim)
     { return uPtr(new gsFunctionExpr(expression_string, ddim)); }
