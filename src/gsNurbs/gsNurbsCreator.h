@@ -87,6 +87,8 @@ public:
 
     static TensorNurbs4Ptr lift4D( gsTensorNurbs<3,T> const & geo, T z = 1);
 
+    static TensorBSpline2Ptr extrude(gsBSpline<T> const & geo, T zminus, T zplus);
+
     /* Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
     \param X Defines the X axis of the plane containing the arc
     \param Y Defines the Y axis of the plane containing the arc
