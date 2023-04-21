@@ -39,14 +39,14 @@ struct gsGradientDescentObjective
     obj(nullptr)
     { }
 
-
     T operator()(const Vector & vx, Vector & vfgrad) const
     {
         vfgrad.resize(obj->numDesignVars());
         gsAsConstVector<T> xvec(vx.data(),vx.size());
         gsAsVector<T> gvec(vfgrad.data(),vfgrad.size());
+        const T val = obj->evalObj(xvec);
         obj->gradObj_into(xvec,gvec);
-        return obj->evalObj(xvec);
+        return val;
     }
 
     gsOptProblem<T> * obj;

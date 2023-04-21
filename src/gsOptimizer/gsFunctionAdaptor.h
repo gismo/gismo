@@ -2,12 +2,12 @@
 
     @brief Class definiting an optimization problem for a gsFunction
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -20,8 +20,8 @@ namespace gismo
 {
 
 
-/** 
- * @brief 
+/**
+ * @brief
  *
  */
 
@@ -42,9 +42,9 @@ public:
         m_desUpperBounds.resize(m_numDesignVars);
 
         gsMatrix<T> sup = obj.support();
-        m_desLowerBounds = sup.col(0); //! bound_relax_factor        
+        m_desLowerBounds = sup.col(0); //! bound_relax_factor
         m_desUpperBounds = sup.col(1);
-        
+
         m_curDesign = 0.5 * (m_desLowerBounds + m_desUpperBounds);
         //gsDebugVar( m_curDesign.transpose() );
     }
@@ -54,21 +54,14 @@ public:
 
     T evalObj( const gsAsConstVector<T> & u ) const
     {
-        for (index_t i=0; i!=m_numDesignVars; ++i)
-            if ( u(i)<m_desLowerBounds.at(i) || u(i)>m_desUpperBounds.at(i) )
-                return math::limits::max();
+        gsAsVector<T> u1(const_cast<T*>(u.data()), u.size() ); // keep point within bounds
+        u1 = u1.cwiseMax(m_desLowerBounds).cwiseMin(m_desUpperBounds);
         return m_obj.eval(u).value();
     }
 
     mutable util::gsThreaded<gsMatrix<T> > jac;
-    void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const  
+    void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
-        for (index_t i=0; i!=m_numDesignVars; ++i)
-            if ( u(i)<m_desLowerBounds.at(i) || u(i)>m_desUpperBounds.at(i) )
-            {
-                result.setZero();
-                return;
-            }
 
         //gsOptProblem<T>::gradObj_into(u,result);
         //gsDebugVar( result.transpose() );
@@ -79,9 +72,9 @@ public:
 
     void evalCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
-        
+
     }
-    
+
     void jacobCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
 
