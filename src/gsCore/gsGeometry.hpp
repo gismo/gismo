@@ -115,7 +115,7 @@ public:
     gsTangentDistance(const gsGeometry<T> & g, const gsVector<T> & pt)
         : m_g(&g), m_pt(&pt), m_gd(2) { }
 
-    // f  = ((pt - x)^T * n)^2
+    // f  = ((x - pt)^T * n)^2
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         result.resize(1, u.cols());
@@ -128,11 +128,13 @@ public:
 
 		for(index_t i=0; i<u.cols(); i++)
 		{
-			T dot = (*m_pt - values.col(i)).dot(normals.col(i));
+			gsVector<T> normal = normals.col(i);
+			normal.normalize();
+			T dot = (values.col(i) - *m_pt).dot(normal);
 			result(0, i) = dot * dot;
 		}
     }
-
+	/*
 	// f' = 2 * ((pt - x)^T * n) * (-x' * n)
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
@@ -199,7 +201,33 @@ public:
             tmp = m_g->hessian(u,k);
             result.noalias() += (m_gd[0].at(k)-m_pt->at(k))*tmp;
         }
-    }
+		}*/
+
+	// Re-implemented from gsFunctionSet<T> so as not to call gsFunctionSet<T>::eval_into.
+	void evalAllDers_into(const gsMatrix<T> & u, const int n,
+						  std::vector<gsMatrix<T> > & result) const
+	{
+		result.resize(n+1);
+
+		switch(n)
+		{
+		case 0:
+			eval_into(u, result[0]);
+			break;
+		case 1:
+			eval_into (u, result[0]);
+			this->deriv_into(u, result[1]);
+			break;
+		case 2:
+			eval_into  (u, result[0]);
+			this->deriv_into (u, result[1]);
+			this->deriv2_into(u, result[2]);
+			break;
+		default:
+			GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n ); //<< " for "<<*this);
+			break;
+		}
+	}
 
     gsMatrix<T> support() const {return m_g->support()  ;}
     short_t domainDim ()  const {return m_g->domainDim();}
