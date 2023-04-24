@@ -18,7 +18,7 @@
     -a  type of assembler (0 : expression-based, 1: visitor-based)
     -d  spatial dimension (1-4)
     -e  number of uniform order-elevation steps
-    -r  number of uniform h-refonement steps
+    -r  number of uniform h-refinement steps
     -s  type of solver (0 : )
     -t  number of patches in t-direction
     -x  number of patches in x-direction
