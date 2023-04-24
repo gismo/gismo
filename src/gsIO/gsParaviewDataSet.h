@@ -189,16 +189,15 @@ private:
     /// @param precision Number of decimal points in xml output
     /// @return Vector of strings of all <DataArrays>
     template< class T>
-    static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPtsInit=1000, unsigned precision=5, std::string label="")
+    static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPts=1000, unsigned precision=5, std::string label="")
     {   
         std::vector<std::string> out;
         gsMatrix<T> evalPoint, xyzPoints;
-        unsigned nPts = nPtsInit;
 
         // Loop over all patches
         for ( index_t i=0; i != funSet.nPieces(); ++i )
         {
-            gsGridIterator<T,CUBE> grid(funSet.piece(i).support(), nPtsInit);
+            gsGridIterator<T,CUBE> grid(funSet.piece(i).support(), nPts);
 
             // Evaluate the MultiPatch for every parametric point of the grid iterator
             xyzPoints.resize( funSet.targetDim(), grid.numPoints() );
@@ -216,16 +215,15 @@ private:
     }
 
     template< class T>
-    static std::vector<std::string> toVTK(const gsField<T> & field, unsigned nPtsInit=1000, unsigned precision=5, std::string label="")
+    static std::vector<std::string> toVTK(const gsField<T> & field, unsigned nPts=1000, unsigned precision=5, std::string label="")
     {   
         std::vector<std::string> out;
         gsMatrix<T> evalPoint, xyzPoints;
-        unsigned nPts = nPtsInit;
 
         // Loop over all patches
         for ( index_t i=0; i != field.nPieces(); ++i )
         {
-            gsGridIterator<T,CUBE> grid(field.fields().piece(i).support(), nPtsInit);
+            gsGridIterator<T,CUBE> grid(field.fields().piece(i).support(), nPts);
 
             // Evaluate the MultiPatch for every parametric point of the grid iterator
             xyzPoints.resize( field.dim(), grid.numPoints());
@@ -249,13 +247,12 @@ private:
     /// @return Vector of strings of all <DataArrays>
     template<class E>
     std::vector<std::string> toVTK(const expr::_expr<E> & expr,
-                                            unsigned nPtsInit=1000,
+                                            unsigned nPts=1000,
                                             unsigned precision=5,
                                             std::string label="SolutionField")
     {   
         std::vector<std::string> out;
         std::stringstream dataArray;
-        unsigned nPts = nPtsInit;
         dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
         dataArray.precision(precision);
         // m_exprdata->parse(expr);
@@ -268,11 +265,10 @@ private:
         for ( index_t i=0; i != n; ++i )
         {
             ab = m_evaltr->exprData()->multiBasis().piece(i).support();
-            gsGridIterator<real_t,CUBE> pt(ab, nPtsInit);
+            gsGridIterator<real_t,CUBE> pt(ab, nPts);
             m_evaltr->eval(expr, pt, i);
-            nPts = pt.numPoints();
             
-            vals = m_evaltr->allValues(m_evaltr->elementwise().size()/nPts, nPts);
+            vals = m_evaltr->allValues(m_evaltr->elementwise().size()/pt.numPoints(), pt.numPoints());
 
             dataArray <<"<DataArray type=\"Float32\" Name=\""<< label <<"\" format=\"ascii\" NumberOfComponents=\""<< ( vals.rows()==1 ? 1 : 3) <<"\">\n";
             if ( vals.rows()==1 )
