@@ -91,6 +91,9 @@ public:
     }
 
 
+    void updateBdr();
+
+
     /// @brief Evaluates the interface map
     ///
     /// Interfaces map \f$ \widehat \Gamma_1 \rightarrow \widehat \Gamma_2 \f$ that represents

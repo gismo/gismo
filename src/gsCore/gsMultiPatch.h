@@ -138,6 +138,21 @@ public:
         return sz;
     }
 
+    /// Returns the coefficient matrix of the multi-patch geometry
+    gsMatrix<T> coefs() const
+    {
+        gsMatrix<T> result(this->coefsSize(),this->geoDim());
+        result.setZero();
+        index_t offset = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+        {
+            result.block(offset,0,(*it)->coefsSize(),(*it)->geoDim()) = (*it)->coefs();
+            offset += (*it)->coefsSize();
+        }
+        return result;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
@@ -367,8 +382,15 @@ public:
     std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
                                                    const T accuracy = 1e-6) const;
 
+    /// Construct the interface representation
     void constructInterfaceRep();
+    /// Construct the boundary representation
     void constructBoundaryRep();
+
+    /// Construct the interface representation of sides with label \a l
+    void constructInterfaceRep(const std::string l);
+    /// Construct the boundary representation of sides with label \a l
+    void constructBoundaryRep(const std::string l);
 
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }

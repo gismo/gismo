@@ -260,43 +260,15 @@ void gsFitting<T>::parameterCorrection(T accuracy,
         for (index_t i = 0; i<m_points.rows(); ++i)
         //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
         {
+            const auto & curr = m_points.row(i).transpose();
             newParam = m_param_values.col(i);
-            m_result->closestPointTo(m_points.row(i).transpose(),
-                                     newParam, accuracy, true);
-
-            // (!) There might be the same parameter for two points
-            // or ordering constraints in the case of structured/grid data
-
-            // avoiding numerical error:
-            bool flag = false;
-            for(index_t el = 0; el != newParam.size(); el++)
-            {
-              if(newParam.at(el) < supp(el,0))
-              {
-                gsInfo << newParam.at(el) << "<" << supp(el,0) << "\n";
-                newParam.at(el) = supp(el,0);
-                flag = true;
-              }
-              if(newParam.at(el) > supp(el,1))
-              {
-                gsInfo << newParam.at(el) << ">" << supp(el,1) << "\n";
-                newParam.at(el) = supp(el,1);
-                flag = true;
-              }
-            }
-
-            if(flag)
-              gsInfo << newParam << "\n";
-
-            m_param_values.col(i) = newParam;
+            m_result->closestPointTo(curr, newParam, accuracy, true);
 
             // Decide whether to accept the correction or to drop it
-            // const auto & curr = m_points.row(i).transpose();
-            // gsInfo << newParam << "\n";
-            // if ((m_result->eval(newParam) - curr).norm() < (m_result->eval(m_param_values.col(i))- curr).norm()){
-            //   m_param_values.col(i) = newParam;
-            // }
-
+            if ((m_result->eval(newParam) - curr).norm()
+                    < (m_result->eval(m_param_values.col(i))
+                        - curr).norm())
+                    m_param_values.col(i) = newParam;
         }
 
         // refit

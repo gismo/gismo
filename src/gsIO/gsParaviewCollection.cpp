@@ -22,9 +22,12 @@ namespace gismo
 
     // A gsParaviewDataSet is meant to be an abstraction for multiple <DataSet> tags in paraview, 
     // that all stem from the same gsGeometryMap, and refer to the same timestep.
-    void gsParaviewCollection::addDataSet(gsParaviewDataSet dataSet, real_t time)
+    void gsParaviewCollection::addDataSet(gsParaviewDataSet & dataSet, real_t time)
     {
-        dataSet.save(); // the actual files are written to disk/finalized
+        GISMO_ENSURE(!dataSet.isEmpty(), "The gsParaviewDataSet you are trying to add is empty!");
+        GISMO_ASSERT(time>=0, "Time should be a non-negative real number.");
+
+        if (! dataSet.isSaved()) dataSet.save(); // the actual files are written to disk/finalized
         std::vector<std::string> filenames( dataSet.filenames() );
 
         time = time==-1 ? m_time : time;
@@ -35,11 +38,11 @@ namespace gismo
             // file use relative paths
             std::string name;
             if (filenames[i].find("_mesh") != std::string::npos)
-                name="Mesh";
+                name="Mesh"+std::to_string(i);
             else if (filenames[i].find("_cnet") != std::string::npos)
-                name="Control Net";
+                name="Control Net"+std::to_string(i);
             else if (filenames[i].find("_patch") != std::string::npos)
-                name="Geometry";
+                name="Geometry"+std::to_string(i);
             else
                 name="";
 
@@ -54,6 +57,9 @@ namespace gismo
 
     void gsParaviewCollection::newTimeStep(gsMultiPatch<real_t> * geometry, real_t time)
     {   
+        GISMO_ASSERT( m_dataset.isEmpty() || m_dataset.isSaved(), "Previous timestep has not been saved. try running saveTimeStep() before newTimeStep().");
+        GISMO_ASSERT(-1==time || time>=0, "Time should be a non-negative real number.");
+
         if (-1 == time )
         {
             m_time += 1.0;
