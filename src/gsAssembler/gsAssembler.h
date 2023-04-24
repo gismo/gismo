@@ -717,7 +717,7 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
 
         // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
-        visitor_.localToGlobal(patchIndex, m_ddof, m_system); // omp_locks inside
+        visitor_.localToGlobal(patchIndex, m_ddof, m_system);
     }
 }//omp parallel
 
