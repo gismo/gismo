@@ -17,6 +17,8 @@
 #include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
 #include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
 
+#include <gsUtils/gsStopwatch.h>
+
 namespace gismo
 {
 
@@ -47,7 +49,12 @@ void gsPoissonAssembler<T>::assemble()
     m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
 
     //Get sparsity pattern
+    double init_time(0);
+    gsStopwatch timer;
+    timer.restart();
     initMatrix();
+    init_time += timer.stop();
+    gsInfo << "      Init: " << init_time << "\n";
 
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
@@ -87,79 +94,69 @@ void gsPoissonAssembler<T>::initMatrix()
     GISMO_ASSERT( &rowMap == &m_system.colMapper(0), "Error");
     std::vector< std::map<index_t,bool> > colv(rowMap.freeSize());//m_system.matrix().cols()
 
-#pragma omp parallel
-{
-    gsMatrix<index_t> actives;
-    gsMatrix<T> cpt;
-    //gsSparseEntries<T> entries;
-
-#ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-//#   pragma omp for
-#endif
+#   pragma omp parallel for shared(colv)
     for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
-    {
-        // Initialize domain element iterator -- using unknown 0
+    {	
+	    // Initialize domain element iterator -- using unknown 0
         const gsBasis<T> & basis = m_bases[0][np];
 
-        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
-
-        // Start iteration over elements
+#       pragma omp parallel
+	    {
+			gsMatrix<T> cpt;
+			gsMatrix<index_t> actives;
+			typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
+			
+			// Start iteration over elements
 #ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+			const int tid = omp_get_thread_num();
+			const int nt  = omp_get_num_threads();
+			for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #else
-        for (; domIt->good(); domIt->next() )
+			for (; domIt->good(); domIt->next() )
 #endif
-        {
-            cpt = domIt->center;
-            actives = basis.active(cpt);
-            m_system.mapColIndices(actives, np, actives);
+			{
+				cpt = domIt->center;
+				actives = basis.active(cpt);
+				m_system.mapColIndices(actives, np, actives);
+				
+				const index_t numActive = actives.rows();
 
-            const index_t numActive = actives.rows();
 
+				GISMO_ASSERT( m_system.matrix().cols() == m_system.rhs().rows(), "gsSparseSystem is not allocated");
 
-            GISMO_ASSERT( m_system.matrix().cols() == m_system.rhs().rows(), "gsSparseSystem is not allocated");
-
-            for (index_t i = 0; i < numActive; ++i)
-                //for (index_t i = 0; i != sz; ++i)
-            {
-                const int ii =  actives(i);
-                if ( rowMap.is_free_index(actives.at(i)) )
-                {
-#                   pragma omp parallel for
-                    for (index_t j = 0; j < numActive; ++j)
-                    {
-                        const int jj = actives(j);
-                        if ( rowMap.is_free_index(actives.at(j)) )
-                        {
-                            // Matrix is symmetric, we store only lower
-                           // triangular part
-                            auto it = colv[ii].find(jj);
-                            if (colv[ii].end()==it)
-                            {
-#                               pragma omp critical (colv_indices)
-//                            m_system.matrix().coeffRef(ii, jj) += 0.0;
-                            //entries.add(ii,jj, 0.0 );
-                                colv[ii][jj] = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }//for patches
-
-//#pragma omp barrier
-//#   pragma omp parallel for
-
-}//omp parallel
-
+				for (index_t i = 0; i < numActive; ++i)
+				//for (index_t i = 0; i != sz; ++i)
+				{
+					const int ii =  actives(i);
+					if ( rowMap.is_free_index(actives.at(i)) )
+					{
+						for (index_t j = 0; j < numActive; ++j)
+						{
+							const int jj = actives(j);
+							if ( rowMap.is_free_index(actives.at(j)) )
+							{
+								// Matrix is symmetric, we store only lower
+								// triangular part
+								auto it = colv[ii].find(jj);
+								if (colv[ii].end()==it)
+								{
+#                                   pragma omp critical (colv_indices)
+									//                            m_system.matrix().coeffRef(ii, jj) += 0.0;
+									//entries.add(ii,jj, 0.0 );
+									colv[ii][jj] = true;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}//for patches
+	
     for (index_t c = 0; c!=(index_t)colv.size();++c)
         for ( const auto & t : colv[c] )
             m_system.matrix().coeffRef(t.first, c) = (T)(0);    
     m_system.matrix().makeCompressed();
 }
-
 
 }// namespace gismo
