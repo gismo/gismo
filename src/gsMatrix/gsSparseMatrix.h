@@ -286,6 +286,26 @@ public:
         if (0!=val) this->coeffRef(i,j) += val;
     }
 
+    inline T& getCoeff(_Index row, _Index col)
+    {
+      eigen_assert(row>=0 && row<rows() && col>=0 && col<cols());
+      
+      const _Index outer = Base::IsRowMajor ? row : col;
+      const _Index inner = Base::IsRowMajor ? col : row;
+
+      _Index start = Base::m_outerIndex[outer];
+      _Index end = Base::m_innerNonZeros ? Base::m_outerIndex[outer] + Base::m_innerNonZeros[outer] :
+          Base::m_outerIndex[outer+1];
+      eigen_assert(end>=start && "you probably called coeffRef on a non finalized matrix");
+      if(end<=start)
+          GISMO_ERROR("The sparsematrix entry was not allocated.");
+      const _Index p = Base::m_data.searchLowerIndex(start,end-1,StorageIndex(inner));
+      if((p<end) && (Base::m_data.index(p)==inner))
+        return Base::m_data.value(p);
+      else
+          GISMO_ERROR("The sparsematrix entry was not allocated.");
+    }
+    
     /// Insert to entry (\a i, \a j) the value \a val, but not an
     /// explicit zero
     inline void insertTo(_Index i, _Index j, const T val)
