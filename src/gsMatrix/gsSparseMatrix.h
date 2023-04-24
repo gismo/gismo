@@ -288,7 +288,7 @@ public:
 
     inline T& getCoeff(_Index row, _Index col)
     {
-      eigen_assert(row>=0 && row<rows() && col>=0 && col<cols());
+      eigen_assert(row>=0 && row<this->rows() && col>=0 && col<this->cols());
       
       const _Index outer = Base::IsRowMajor ? row : col;
       const _Index inner = Base::IsRowMajor ? col : row;

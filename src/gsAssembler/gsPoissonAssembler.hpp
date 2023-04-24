@@ -96,7 +96,7 @@ void gsPoissonAssembler<T>::initMatrix()
 #ifdef _OPENMP
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
-#   pragma omp for
+//#   pragma omp for
 #endif
     for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
     {
@@ -108,7 +108,6 @@ void gsPoissonAssembler<T>::initMatrix()
         // Start iteration over elements
 #ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-//#       pragma omp critical(localMat)
 #else
         for (; domIt->good(); domIt->next() )
 #endif
@@ -151,16 +150,15 @@ void gsPoissonAssembler<T>::initMatrix()
         }
     }//for patches
 
-#pragma omp barrier
+//#pragma omp barrier
+//#   pragma omp parallel for
 
-#   pragma omp parallel for
-    for (index_t c = 0; c!=(index_t)colv.size();++c)
-        for ( const auto & t : colv[c] )
-            m_system.matrix().coeffRef(c, t.first) = (T)(0);
-    
 }//omp parallel
 
-    Base::finalize();
+    for (index_t c = 0; c!=(index_t)colv.size();++c)
+        for ( const auto & t : colv[c] )
+            m_system.matrix().coeffRef(t.first, c) = (T)(0);    
+    m_system.matrix().makeCompressed();
 }
 
 
