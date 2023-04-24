@@ -40,6 +40,7 @@ private:
     const gsMultiPatch<real_t> * m_geometry;
     gsExprEvaluator<real_t> * m_evaltr;
     gsOptionList m_options;
+    bool m_isSaved;
     
 public:
     /// @brief Basic constructor
@@ -55,7 +56,8 @@ public:
     gsParaviewDataSet():m_basename(""),
                         m_geometry(nullptr),
                         m_evaltr(nullptr),
-                        m_options(defaultOptions())
+                        m_options(defaultOptions()),
+                        m_isSaved(false)
                         {}
                    
     /// @brief Evaluates an expression, and writes that data to the vtk files.
@@ -66,6 +68,7 @@ public:
     void addField(const expr::_expr<E> & expr,
                   std::string label)
     {
+        GISMO_ENSURE( !m_isSaved, "You cannot add more fields if the gsParaviewDataSet has been saved.");
         // evaluates the expression and appends it to the vts files
         //for every patch
         unsigned nPts = m_options.askInt("numPoints",1000);
@@ -114,6 +117,7 @@ public:
     template<class T>
     void addField(const gsField<T> field, std::string label)
     {
+        GISMO_ENSURE( !m_isSaved, "You cannot add more fields if the gsParaviewDataSet has been saved.");
         GISMO_ENSURE((field.parDim()  == m_geometry->domainDim() && 
                       field.geoDim()  == m_geometry->targetDim() &&
                       field.nPieces() == m_geometry->nPieces() && 
@@ -135,6 +139,7 @@ public:
             file.close(); 
         }
     }
+
     /// @brief Recursive form of addField()
     /// @tparam T 
     /// @tparam ...Rest 
@@ -155,6 +160,10 @@ public:
     const std::vector<std::string> filenames();
 
     void save();
+
+    bool isEmpty();
+
+    bool isSaved();
 
     /// @brief Accessor to the current options.
     static gsOptionList defaultOptions()
@@ -258,9 +267,8 @@ private:
             ab = m_evaltr->exprData()->multiBasis().piece(i).support();
             gsGridIterator<real_t,CUBE> pt(ab, nPts);
             m_evaltr->eval(expr, pt, i);
-            nPts = pt.numPoints();
             
-            vals = m_evaltr->allValues(m_evaltr->elementwise().size()/nPts, nPts);
+            vals = m_evaltr->allValues(m_evaltr->elementwise().size()/pt.numPoints(), pt.numPoints());
 
             dataArray <<"<DataArray type=\"Float32\" Name=\""<< label <<"\" format=\"ascii\" NumberOfComponents=\""<< ( vals.rows()==1 ? 1 : 3) <<"\">\n";
             if ( vals.rows()==1 )
