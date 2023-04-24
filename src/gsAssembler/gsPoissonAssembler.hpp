@@ -46,6 +46,9 @@ void gsPoissonAssembler<T>::assemble()
     // Reserve sparse system
     m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
 
+    //Get sparsity pattern
+    initMatrix();
+
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
 
@@ -74,6 +77,66 @@ void gsPoissonAssembler<T>::assemble()
         Base::template pushInterface<gsVisitorDg<T> >();
     
     // Assembly is done, compress the matrix
+    Base::finalize();
+}
+
+template <class T>
+void gsPoissonAssembler<T>::initMatrix()
+{
+    //gsSparseEntries<T> entries;
+#pragma omp parallel
+{
+    gsMatrix<index_t> actives;
+    gsMatrix<T> cpt;
+
+#ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#endif
+
+    for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+    {
+        // Initialize domain element iterator -- using unknown 0
+        const gsBasis<T> & basis = m_bases[0][np];
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
+
+        // Start iteration over elements
+#ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#else
+        for (; domIt->good(); domIt->next() )
+#endif
+        {
+            cpt = domIt->center;
+            actives = basis.active(cpt);
+            const index_t numActive = actives.rows();
+            const gsDofMapper & rowMap = m_system.rowMapper(0);
+
+            GISMO_ASSERT( &rowMap == &m_system.colMapper(0), "Error");
+            GISMO_ASSERT( m_system.matrix().cols() == m_system.rhs().rows(), "gsSparseSystem is not allocated");
+
+            for (index_t i = 0; i != numActive; ++i)
+            {
+                const int ii =  actives(i);
+                if ( rowMap.is_free_index(actives.at(i)) )
+                {
+                    for (index_t j = 0; j < numActive; ++j)
+                    {
+                        const int jj = actives(j);
+                        if ( rowMap.is_free_index(actives.at(j)) )
+                        {
+                            // Matrix is symmetric, we store only lower
+                            // triangular part
+#                           pragma omp critical(localMat)
+                            m_system.matrix().coeffRef(ii, jj) += 0.0;
+                        }
+                    }
+                }
+            }
+        }
+    }//for patches
+}//omp parallel
+
     Base::finalize();
 }
 
