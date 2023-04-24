@@ -13,6 +13,7 @@
 
 #include <gismo.h>
 
+
 #ifdef gsParasolid_ENABLED
 #include <gsParasolid/gsWriteParasolid.h>
 #endif
@@ -89,6 +90,28 @@ int main(int argc, char *argv[])
     fd_in.getId<gsMatrix<> >(1, xyz);
     //! [Read data]
 
+    gsWriteParaviewPoints(uv, "parameters");
+    gsWriteParaviewPoints(xyz, "points");
+
+    ///////////////////////////// START /////////////////////////////
+
+
+    std::ofstream file_results;
+    file_results.open("r"+internal::to_string(numURef)+"_fiting_example_results.csv");
+    file_results << "step, dofs, min, max, mse, percentage\n";
+
+    index_t step = maxPcIter;
+    //for (index_t step=0; step <= maxPcIter; step ++)
+    {
+
+    std::ofstream max_results;
+    std::ofstream mse_results;
+    max_results.open("r"+internal::to_string(numURef)+"pc"+internal::to_string(step)+"_max_results.csv");
+    max_results << "dofs, max\n";
+
+    mse_results.open("r"+internal::to_string(numURef)+"pc"+internal::to_string(step)+"_mse_results.csv");
+    mse_results << "dofs, mse\n";
+
     // This is for outputing an XML file, if requested
     gsFileData<> fd;
 
@@ -124,6 +147,8 @@ int main(int argc, char *argv[])
     gsHFitting<2, real_t> ref( uv, xyz, THB, refPercent, ext, lambda);
 
     const std::vector<real_t> & errors = ref.pointWiseErrors();
+    std::vector<real_t> errors2;
+    real_t sum_of_errors2;
 
     // Print settings summary
     gsInfo<<"Fitting "<< xyz.cols() <<" samples.\n";
@@ -144,30 +169,82 @@ int main(int argc, char *argv[])
         gsInfo<<"Iteration "<<i<<".."<<"\n";
 
         time.restart();
-        ref.nextIteration(tolerance, threshold, maxPcIter);
+        //ref.nextIteration(tolerance, threshold, maxPcIter);
+        ref.nextIteration(tolerance, threshold, step);
         time.stop();
+
+        gsMesh<> mesh(ref.result()->basis());
+        gsMatrix<> uv_fitting = ref.returnParamValues() ;
+        gsWriteParaview(mesh, internal::to_string(i+1) + "_iter_mesh_pc" + internal::to_string(step));
+        gsWriteParaview(*ref.result(), internal::to_string(i+1) + "_iter_geo_pc" + internal::to_string(step), 100000, true);
+        gsWriteParaviewPoints(uv_fitting, internal::to_string(i+1) + "_iter_fitting_parameters_pc" + internal::to_string(step));
+
+
+        // compute mean squared error
+        ref.get_Error(errors2, 0);
+        sum_of_errors2 = std::accumulate(errors2.begin(), errors2.end(), 0.0);
+
         gsInfo<<"Fitting time: "<< time <<"\n";
 
+
+        index_t dofs = ref.result()->basis().size();
+        real_t minPointError = ref.minPointError();
+        real_t maxPointError = ref.maxPointError();
+        real_t mseError = sum_of_errors2/errors2.size();
+        real_t percentagePoint = 100.0 * ref.numPointsBelow(tolerance)/errors.size();
+
+        //std::vector<real_t> pointWise = ref.pointWiseErrors();
+
+        gsMatrix<real_t> matErrors(4,errors.size());
+        for(index_t el = 0; el < errors.size(); el++){
+          matErrors(0,el) = uv_fitting(0,el);
+          matErrors(1,el) = uv_fitting(1,el);
+          matErrors(2,el) = 0;
+          matErrors(3,el) = errors[el];
+        }
+
+        gsWriteParaviewPoints(matErrors, internal::to_string(i+1) + "colors_iter_fitting_parameters_pc" + internal::to_string(step));
+
+
+
+
+
+
         gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
-        gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
-        gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
-        gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(tolerance)/errors.size()<<"%.\n";
+        gsInfo<<"Parameter correction steps: "<< step << "\n";
+        gsInfo    << "DOFs         : "<< dofs <<"\n";
+        // gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
+        // gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
+        std::cout << "Min distance : "<< minPointError << std::scientific <<"\n";
+        std::cout << "Max distance : "<< maxPointError << std::scientific <<"\n";
+        std::cout << "         MSE : "<< mseError << std::scientific <<"\n";
+        gsInfo<<"Points below tolerance: "<< percentagePoint <<"%.\n";
+
+
+        file_results << std::to_string(step) << "," << std::to_string(dofs) << "," << std::ostringstream(std::to_string(minPointError)).str() << "," << std::ostringstream(std::to_string(maxPointError)).str() << "," << std::ostringstream(std::to_string(mseError)).str() << "," << std::ostringstream(std::to_string(percentagePoint)).str() << "\n";
+        max_results <<  std::to_string(dofs) << "," << std::ostringstream(std::to_string(maxPointError)).str() << "\n";
+        mse_results <<  std::to_string(dofs) << "," << std::ostringstream(std::to_string(mseError)).str() << "\n";
+
+
 
         if ( ref.maxPointError() < tolerance )
         {
-            gsInfo<<"Error tolerance achieved after "<<i<<" iterations.\n";
+            gsInfo<<"Error tolerance achieved after "<< i <<" iterations.\n";
             break;
         }
-    }
+    } // iterative loop
+
+    max_results.close();
+    mse_results.close();
 
     gsInfo<<"----------------\n";
 
     if ( save )
     {
-        gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
+        gsInfo<<"Done. Writing solution to file fitting_out_pc" << step << ".xml\n";
         fd << *ref.result() ;
 
-        fd.dump("fitting_out");
+        fd.dump("fitting_out_pc"+internal::to_string(step));
 
 #ifdef gsParasolid_ENABLED
         gsTHBSpline<2>* result = static_cast<gsTHBSpline<2>*>(ref.result());
@@ -177,6 +254,7 @@ int main(int argc, char *argv[])
     else
         gsInfo << "Done. No output created, re-run with --save to get a xml "
                   "file containing the solution.\n";
-
+    } // parameter correction steps
+    file_results.close();
     return 0;
 }

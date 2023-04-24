@@ -266,7 +266,7 @@ public:
     std::vector<Expression_t> expression;
     std::vector<std::string>  string;
     short_t dim;
-
+    gsMatrix<T> support;
 private:
     gsFunctionExprPrivate();
     gsFunctionExprPrivate operator= (const gsFunctionExprPrivate & other);
@@ -426,6 +426,14 @@ gsFunctionExpr<T>::gsFunctionExpr(gsFunctionExpr && other)
 {
     my = other.my; other.my = NULL;
 }
+
+template<typename T>
+gsMatrix<T> gsFunctionExpr<T>::support() const
+{ return my->support; }
+
+template<typename T>
+void gsFunctionExpr<T>::setSupport(gsMatrix<T> sp)
+{ return my->support.swap(sp); }
 
 template<typename T>
 gsFunctionExpr<T> & gsFunctionExpr<T>::operator=(const gsFunctionExpr& other)

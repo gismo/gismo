@@ -16,6 +16,15 @@
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
 
+#ifdef gsIpOpt_ENABLED
+#include <gsIpOpt/gsIpOpt.h>
+#endif
+#ifdef gsHLBFGS_ENABLED
+#include <gsHLBFGS/gsHLBFGS.h>
+#endif
+#include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptimizer/gsFunctionAdaptor.h>
+
 #pragma once
 
 
@@ -295,8 +304,13 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     gsVector<T> result;
 
     // Initial point
-    if ( 0 != init.size() )
+    if ( 0 != init.size() ){
         result = give(init);
+        // gsInfo << "+++++ argMin +++++\n";
+        // gsInfo << "initial input:\n" << init << "\n";
+        // gsInfo << "initial guess:\n" << result << "\n";
+        // gsInfo << "++++++++++++++++++\n";
+    }
     else
     {
         gsMatrix<T> supp = this->support();
@@ -318,6 +332,25 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
             result.setZero( dd );
     }
 
+#if true
+//#ifdef gsIpOpt_ENABLED
+    gsFunctionAdaptor<T> fmin(*this);
+    //gsIpOpt<T> solver( &fmin );
+    gsGradientDescent<T> solver( &fmin );
+    //gsHLBFGS<T> solver( &fmin );
+
+    solver.options().setInt("MaxIterations",100);
+    solver.options().setInt("Verbose",0);
+    // add lower limits and upper limits for HLBFGS
+    // optimizer->solve(problem.currentDesign());
+    //gsInfo << "Initial guess:\n" << result << "\n";
+    //gsInfo << "alternative:\n" << solver.currentDesign() << "\n";
+    solver.solve(result);
+    //solver.solve(solver.currentDesign()); // this gives a segfault because solver.currentDesign() is empty.
+    result = solver.currentDesign();
+    //gsInfo << "final result:\n" << result << "\n";
+
+#else
     switch (dd)
     {
     case 2:
@@ -328,6 +361,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
                               accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
     }
+#endif
 
     return result;
 }
@@ -401,7 +435,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
-    
+
     // If the measure on a boundary is requested, calculate the outer normal vector as well
     if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
 
@@ -447,11 +481,11 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
                 // BUG: When the determinant is really close to zero but negative,
                 // the result might be the opposite of what is expected because of alt_sgn
-                
+
                 if (! (InOut.flags &SAME_ELEMENT)  )
                 {
                     T detJacTcurr = jacT.determinant();
-                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 : 
+                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 :
                         ( detJacTcurr < 0 ? -1 : 1 );
                     if ( 0 == det_sgn )
                     {

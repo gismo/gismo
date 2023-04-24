@@ -215,6 +215,11 @@ namespace internal
 #include <gsTrilinos/gsTrilinos.h>
 #endif
 
+#ifdef gsOpennurbs_ENABLED
+#include "gsOpennurbs/gsReadOpenNurbs.h"
+#include "gsOpennurbs/gsWriteOpenNurbs.h"
+#endif
+
 /*
 #if defined(gismo_EXPORTS) || defined(gismo_dev_EXPORTS)
 #  ifdef _MSC_VER

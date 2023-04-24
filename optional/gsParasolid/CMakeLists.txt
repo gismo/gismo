@@ -37,6 +37,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     FOLDER "G+Smo extensions"
     )
 
+add_subdirectory(examples)
+
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
     CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
 set(gismo_LINKER ${gismo_LINKER} ${PARASOLID_LIBRARY}

@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, D. Mokris
 */
 
 #pragma once
@@ -18,6 +18,7 @@
 #include <gsCore/gsFuncData.h>
 
 #include <gsCore/gsGeometrySlice.h>
+#include <gsUtils/gsThreaded.h>
 
 //#include <gsCore/gsMinimizer.h>
 
@@ -30,14 +31,14 @@ class gsSquaredDistance GISMO_FINAL : public gsFunction<T>
 {
 public:
     gsSquaredDistance(const gsGeometry<T> & g, const gsVector<T> & pt)
-        : m_g(&g), m_pt(&pt), m_gd(2) { }
+        : m_g(&g), m_pt(&pt) { m_gd.mine().resize(2); }
 
     // f  = (1/2)*||x-pt||^2
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
-        m_g->eval_into(u, m_gd[0]);
+        m_g->eval_into(u, m_gd.mine()[0]);
         result.resize(1, u.cols());
-        result.at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
+        result.at(0) = 0.5 * (m_gd.mine()[0]-*m_pt).squaredNorm();
     }
 
     void evalAllDers_into(const gsMatrix<T> & u, const int n,
@@ -49,12 +50,131 @@ public:
 
         // f  = (1/2)*||x-pt||^2
         result[0].resize(1, 1);
-        result[0].at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
+        result[0].at(0) = 0.5 * (m_gd.mine()[0]-*m_pt).squaredNorm();
         if (n==0) return;
 
         // f' = x'*(x-pt)        
-        auto jacT = m_gd[1].reshaped(u.rows(),m_pt->rows());
-        result[1].noalias() = jacT * (m_gd[0] - *m_pt);
+        auto jacT = m_gd.mine()[1].reshaped(u.rows(),m_pt->rows()); // transposed Jacobian, 2x3.
+        result[1].noalias() = jacT * (m_gd.mine()[0] - *m_pt);  // 2x1, each row is a partial derivative of x dot (x-pt).
+        if (n==1) return;
+
+        // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
+        tmp.mine().noalias() = jacT * jacT.transpose();
+        index_t d2  = u.rows() * (u.rows()+1) / 2;
+        gsMatrix<T> hm;
+        for ( index_t k=0; k < m_g->coefs().cols(); ++k )
+        {
+            hm = util::secDerToHessian(m_gd.mine()[2].block(k*d2,0,d2,1),u.rows()).reshaped(u.rows(),u.rows());
+            tmp.mine() += (m_gd.mine()[0].at(k)-m_pt->at(k)) * hm;
+        }
+        util::hessianToSecDer(tmp.mine(),u.rows(),result[2]);
+    }
+
+    // f' = x'*(x-pt)
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        result.resize(u.rows(), u.cols());
+        for ( index_t i=0; i != u.cols(); i++ )
+        {
+            tmp = u.col(i);
+            m_g->eval_into(tmp,m_gd.mine()[0]);
+            m_g->jacobian_into(tmp,m_gd.mine()[1]);
+            result.col(i).noalias() = m_gd.mine()[1].transpose() * (m_gd.mine()[0] - *m_pt);
+        }
+    }
+
+    // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
+    void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
+                      index_t) const
+    {
+        m_g->eval_into(u,m_gd.mine()[0]);
+        m_g->jacobian_into(u,m_gd.mine()[1]);
+        result.noalias() = m_gd.mine()[1].transpose() * m_gd.mine()[1];
+        for ( index_t k=0; k < m_g->coefs().cols(); ++k )
+        {
+            tmp = m_g->hessian(u,k);
+            result.noalias() += (m_gd.mine()[0].at(k)-m_pt->at(k))*tmp;
+        }
+    }
+
+    gsMatrix<T> support() const {return m_g->support()  ;}
+    short_t domainDim ()  const {return m_g->domainDim();}
+    short_t targetDim ()  const {return 1;}
+
+private:
+    const gsGeometry<T> * m_g;
+    const gsVector<T> * m_pt;
+    mutable util::gsThreaded<std::vector<gsMatrix<T> > > m_gd;
+    mutable util::gsThreaded<gsMatrix<T> > tmp;
+};
+
+/// W. Zheng et al: Fast B-spline curve fitting by L-BFGS, equation (7).
+template<class T>
+class gsTangentDistance GISMO_FINAL : public gsFunction<T>
+{
+public:
+    gsTangentDistance(const gsGeometry<T> & g, const gsVector<T> & pt)
+        : m_g(&g), m_pt(&pt), m_gd(2) { }
+
+    // f  = ((x - pt)^T * n)^2
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        result.resize(1, u.cols());
+
+		gsMapData<> md(NEED_VALUE|NEED_NORMAL);
+		md.points = u;
+		m_g->computeMap(md);
+		gsMatrix<> values  = md.values[0]; // a 3 x u.cols() matrix equal to what comes out of eval_into(u, m_gd[0])
+		gsMatrix<> normals = md.normals;   // a 3 x u.cols() matrix
+
+		for(index_t i=0; i<u.cols(); i++)
+		{
+			gsVector<T> normal = normals.col(i);
+			normal.normalize();
+			T dot = (values.col(i) - *m_pt).dot(normal);
+			result(0, i) = dot * dot;
+		}
+    }
+	/*
+	// f' = 2 * ((pt - x)^T * n) * (-x' * n)
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        result.resize(u.rows(), u.cols());
+
+		gsMapData<> md(NEED_VALUE|NEED_NORMAL);
+		md.points = u;
+		m_g->computeMap(md);
+		gsMatrix<> values  = md.values[0]; // 3 x u.cols() matrix
+		gsMatrix<> normals = md.normals;   // 3 x u.cols() matrix
+
+        for(index_t i=0; i != u.cols(); i++)
+        {
+            tmp = u.col(i);
+			T dot = (*m_pt - values.col(i)).dot(normals.col(i));
+            m_g->jacobian_into(tmp,m_gd[1]);
+            result.col(i).noalias() = -2 * dot * (m_gd[1].transpose() * normals.col(i));
+        }
+    }
+
+    void evalAllDers_into(const gsMatrix<T> & u, const int n,
+                          std::vector<gsMatrix<T> > & result) const
+    {
+        GISMO_ASSERT(1==u.cols(), "Single argument assumed");
+        result.resize(n+1);
+        m_g->evalAllDers_into(u, n, m_gd);
+
+		// not that efficient but prevents code duplication
+		eval_into(u, result[0]);
+        if (n==0) return;
+
+        // f' = x'*(x-pt)
+        auto jacT = m_gd[1].reshaped(u.rows(),m_pt->rows()); // transposed Jacobian, 2x3.
+		// gsMapData<> md(NEED_NORMAL);
+		// md.points = u;
+		// m_g->computeMap(md);
+		// gsMatrix<> normal = md.normals; // 3x1?
+        // result[1].noalias() = -1 * jacT * normal;
+		deriv_into(u, result[1]);
         if (n==1) return;
 
         // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
@@ -69,23 +189,11 @@ public:
         util::hessianToSecDer(tmp,u.rows(),result[2]);
     }
 
-    // f' = x'*(x-pt)
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        result.resize(u.rows(), u.cols());
-        for ( index_t i=0; i != u.cols(); i++ )
-        {
-            tmp = u.col(i);
-            m_g->eval_into(tmp,m_gd[0]);
-            m_g->jacobian_into(tmp,m_gd[1]);
-            result.col(i).noalias() = m_gd[1].transpose() * (m_gd[0] - *m_pt);
-        }
-    }
-
     // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
     void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
                       index_t) const
     {
+		gsInfo << "hessian" << std::endl;
         m_g->eval_into(u,m_gd[0]);
         m_g->jacobian_into(u,m_gd[1]);
         result.noalias() = m_gd[1].transpose() * m_gd[1];
@@ -94,7 +202,33 @@ public:
             tmp = m_g->hessian(u,k);
             result.noalias() += (m_gd[0].at(k)-m_pt->at(k))*tmp;
         }
-    }
+		}*/
+
+	// Re-implemented from gsFunctionSet<T> so as not to call gsFunctionSet<T>::eval_into.
+	void evalAllDers_into(const gsMatrix<T> & u, const int n,
+						  std::vector<gsMatrix<T> > & result) const
+	{
+		result.resize(n+1);
+
+		switch(n)
+		{
+		case 0:
+			eval_into(u, result[0]);
+			break;
+		case 1:
+			eval_into (u, result[0]);
+			this->deriv_into(u, result[1]);
+			break;
+		case 2:
+			eval_into  (u, result[0]);
+			this->deriv_into (u, result[1]);
+			this->deriv2_into(u, result[2]);
+			break;
+		default:
+			GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n ); //<< " for "<<*this);
+			break;
+		}
+	}
 
     gsMatrix<T> support() const {return m_g->support()  ;}
     short_t domainDim ()  const {return m_g->domainDim();}
@@ -256,6 +390,8 @@ T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
     result = fmin.currentDesign();
 #else
     gsSquaredDistance<T> dist2(*this, pt);
+	// Uncomment for TDM:
+	//gsTangentDistance<T> dist2(*this, pt);
     result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 100, result)
     : dist2.argMin(accuracy*accuracy, 100) ;
 #endif
