@@ -299,7 +299,7 @@ public:
       eigen_assert(end>=start && "you probably called coeffRef on a non finalized matrix");
       if(end<=start)
           GISMO_ERROR("The sparsematrix entry was not allocated.");
-      const _Index p = Base::m_data.searchLowerIndex(start,end-1,StorageIndex(inner));
+      const _Index p = Base::m_data.searchLowerIndex(start,end-1,(typename Base::StorageIndex)(inner));
       if((p<end) && (Base::m_data.index(p)==inner))
         return Base::m_data.value(p);
       else
