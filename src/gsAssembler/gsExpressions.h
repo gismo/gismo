@@ -374,6 +374,16 @@ template <typename E>
 std::ostream &operator<<(std::ostream &os, const _expr<E> & b)
 {b.print(os); return os; }
 
+}
+}
+
+#include <gsAssembler/expr/precomputed_expr.h>
+
+namespace gismo
+{
+namespace expr
+{
+
 /*
   Null expression is a compatibility expression invalid at runtime
 */
@@ -1242,7 +1252,7 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        bool singleActives = (1 == _u.data().actives.cols()); 
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
@@ -1250,9 +1260,9 @@ public:
 
         for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+            for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
-                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
+                const index_t ii = map.index(_u.data().actives(i, singleActives ? 0 : k), _u.data().patchId, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 else
@@ -1288,13 +1298,13 @@ public:
     index_t parDim() const
     { return _u.source().domainDim(); }
 
-    gsDofMapper & mapper() {return _u.mapper();}
+    //gsDofMapper & mapper() {return _u.mapper();}
     const gsDofMapper & mapper() const {return _u.mapper();}
 
     inline const gsMatrix<T> & fixedPart() const {return _u.fixedPart();}
     gsMatrix<T> & fixedPart() {return _u.fixedPart();}
 
-    gsFuncData<T> & data() {return *_u.data();}
+    //gsFuncData<T> & data() {return _u.data();}
     const gsFuncData<T> & data() const {return _u.data();}
 
     void setSolutionVector(gsMatrix<T>& solVector)
@@ -1336,20 +1346,17 @@ public:
     
     //const gsMatrix<T> & coefs(component, patch) const { return *_Sv; }
 
-    /// val: perturbation value, j: local bf index, p: patch
+    /// val: perturbation value, j: global index, p: patch
     void perturbLocal(T val, index_t j, index_t p = 0)
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-
-        auto qr = std::div(j, _u.data().actives.size() );
-        const index_t ii = _u.mapper().index(qr.rem, p, qr.quot);
-        if (_u.mapper().is_free_index(ii) )
-        {
-            GISMO_ASSERT(ii<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
-            _Sv->at(ii) += val;
-        }
+        // GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        //if (_u.mapper().is_free_index(j) )
+        //{
+            GISMO_ASSERT(j<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
+            _Sv->at(j) += val;
+            //}
         //else
-        //    _u.fixedPart().at( _u.mapper().global_to_bindex(ii) ) += val;
+        //    _u.fixedPart().at( _u.mapper().global_to_bindex(j) ) += val;
     }
 
     /// Extract the coefficients of piece \a p
@@ -2784,12 +2791,12 @@ public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
+    explicit onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     auto eval(const index_t k) const -> decltype(_G.data().outNormals.col(k))
     { return _G.data().outNormals.col(k); }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return  _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
@@ -2822,7 +2829,7 @@ public:
     auto eval(const index_t k) const -> decltype(_G.data().normals.col(k))
     { return _G.data().normals.col(k); }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
@@ -2874,7 +2881,7 @@ public:
 
     }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     static const gsFeSpace<Scalar> & rowVar() {return gsNullExpr<Scalar>::get();}
@@ -3003,8 +3010,8 @@ public:
         return gsAsConstMatrix<Scalar>(_G.data().fundForms.col(k).data(),rows(),cols());
     }
 
-    index_t rows() const { return _G.data().dim.first ; }
-    index_t cols() const { return _G.data().dim.first ; }
+    index_t rows() const { return _G.source().domainDim() ; }
+    index_t cols() const { return _G.source().domainDim() ; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3390,8 +3397,8 @@ public:
         return res;
     }
 
-    index_t rows() const { return _G.data().dim.second; }
-    index_t cols() const { return _G.data().dim.first; }
+    index_t rows() const { return _G.source().targetDim(); }
+    index_t cols() const { return _G.source().domainDim(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {

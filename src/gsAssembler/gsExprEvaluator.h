@@ -581,7 +581,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 
     auto arg_tpl = expr.val();
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    // m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights; // quadrature weights

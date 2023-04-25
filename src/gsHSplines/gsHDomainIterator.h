@@ -85,6 +85,7 @@ public:
                 updateElement();
         }
 
+        ++m_id; //increment id
         return this->m_isGood;
     }
 
@@ -101,6 +102,7 @@ public:
         if (this->m_isGood)
             updateElement();
 
+        m_id += increment; //increment id
         return this->m_isGood;
     }
 
@@ -198,6 +200,9 @@ public:
     using gsDomainIterator<T>::m_basis;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+protected:
+    using gsDomainIterator<T>::m_id;
 
 private:
 
