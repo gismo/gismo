@@ -108,6 +108,11 @@ public:
                                     const std::vector<boxSide>& fixedSides,
                                     index_t maxPcIter = 0,
                                     index_t sepIndex = -1);
+    bool nextIterationSepBoundary(T tolerance, T err_threshold, index_t maxPcIter = 0, index_t sepIndex = -1);
+    bool nextIterationSepBoundary(T tolerance, T err_threshold,
+                                  const std::vector<boxSide>& fixedSides,
+                                  index_t maxPcIter = 0,
+                                  index_t sepIndex = -1);
 
     /**
      * @brief Like \a nextIteration without \a fixedSides but keeping the values
@@ -179,6 +184,9 @@ public:
 
     std::vector<T> BoxMaxErr(const std::vector<T>& errors,
                              const gsMatrix<T>& parameters);
+
+    gsMatrix<T> getFieldMaxError(const gsMatrix<T> & parameters,
+                                 const std::vector<T> & erros);
 
 protected:
     /// Appends a box around parameter to the boxes only if the box is not
@@ -282,6 +290,16 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 
 
 template<short_t d, class T>
+bool gsHFitting<d, T>::nextIterationSepBoundary(T tolerance, T err_threshold,
+                                                  index_t maxPcIter, index_t sepIndex)
+{
+    std::vector<boxSide> dummy;
+    return nextIterationSepBoundary(tolerance, err_threshold, dummy, maxPcIter, sepIndex);
+}
+
+
+
+template<short_t d, class T>
 bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance, T err_threshold,
                                                   index_t maxPcIter, index_t sepIndex)
 {
@@ -342,6 +360,56 @@ bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance,
 }
 
 
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextIterationSepBoundary(T tolerance,
+                                                  T err_threshold,
+                                                  const std::vector<boxSide>& fixedSides,
+                                                  index_t maxPcIter,
+                                                  index_t sepIndex)
+{
+    // INVARIANT
+    // look at iterativeRefine
+
+    if ( m_pointErrors.size() != 0 )
+    {
+
+        if ( m_max_error > tolerance )
+        {
+            // if err_treshold is -1 we refine the m_ref percent of the whole domain
+            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
+            if(boxes.size()==0)
+                return false;
+
+            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+            basis->refineElements(boxes);
+
+            // If there are any fixed sides, prescribe the coefs in the finer basis.
+            if(m_result != NULL && fixedSides.size() > 0)
+            {
+                m_result->refineElements(boxes);
+                gsFitting<T>::setConstraints(fixedSides);
+            }
+            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
+        }
+        else
+        {
+            gsDebug << "Tolerance reached.\n";
+            return false;
+        }
+    }
+
+    // We run one fitting step and compute the errors
+    this->compute(m_lambda);
+
+    //parameter correction
+    this->parameterCorrectionSepBoundary(1e-7, maxPcIter, sepIndex);//closestPoint accuracy
+
+    this->computeErrors();
+
+    return true;
+}
 
 
 
@@ -491,6 +559,45 @@ T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
     typename std::vector<T>::iterator pos = errorsCopy.begin() + i;
     std::nth_element(errorsCopy.begin(), pos, errorsCopy.end());
     return *pos;
+}
+
+template <class T>
+bool is_point_inside_support(const gsMatrix<T>& parameter,
+                             const gsMatrix<T>& support)
+{
+    const real_t x = parameter(0, 0);
+    const real_t y = parameter(1, 0);
+
+    return support(0, 0) <= x && x < support(0, 1) &&
+           support(1, 0) <= y && y < support(1, 1);
+}
+
+
+template<short_t d, class T>
+gsMatrix<T> gsHFitting<d, T>::getFieldMaxError(const gsMatrix<T> & parameters,
+                                               const std::vector<T> & errors)
+{
+
+    gsTHBSplineBasis<d, T>* basis = static_cast< gsTHBSplineBasis<d,T>* > (this->m_basis);
+    gsMatrix<T> coefsField(basis->size(),1);
+    for (index_t i = 0; i != basis->size(); i++)
+    {
+      gsVector<T> u;
+      T maxError = 0;
+      T currError = 0;
+      for(index_t p = 0; p < errors.size(); p++)
+      {
+        u = parameters.col(p);
+        currError = errors[p];
+        if (basis->isActive(i,u)){
+          if(maxError < currError){
+            maxError = currError;
+          }
+        }
+      }
+      coefsField(i,0) = maxError;
+     }
+     return coefsField;
 }
 
 
