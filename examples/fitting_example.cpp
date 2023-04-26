@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     index_t deg_x     = 2;
     index_t deg_y     = 2;
     index_t maxPcIter = 1;
+    bool correctBoundary = false;
     index_t sepIndex  = -1;
     real_t lambda = 1e-07;
     real_t threshold = 1e-02;
@@ -33,6 +34,7 @@ int main(int argc, char *argv[])
     std::string fn = "fitting/deepdrawingC.xml";
 
     std::vector<index_t> modevec;
+    std::vector<index_t> corners;
 
     // Reading options from the command line
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
@@ -40,6 +42,7 @@ int main(int argc, char *argv[])
             "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
             "3 x N matrix. Every column represents a point (x,y,z) in space.");
     cmd.addSwitch("save", "Save result in XML format", save);
+    cmd.addSwitch("b", "b_correction", "apply parater correction also on the boundary points", correctBoundary);
     cmd.addInt("c", "parcor", "Steps of parameter correction", maxPcIter);
     cmd.addInt("i", "iter", "number of iterations", iter);
     cmd.addInt("x", "deg_x", "degree in x direction", deg_x);
@@ -53,6 +56,7 @@ int main(int argc, char *argv[])
     cmd.addString("d", "data", "Input sample data", fn);
     cmd.addInt("n", "interiors", "number of interior points belonging to the input point cloud", sepIndex);
     cmd.addMultiInt("m", "modes", "Modes to select", modevec);
+    cmd.addMultiInt("g", "corners", "point cloud corners", corners);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -156,20 +160,35 @@ int main(int argc, char *argv[])
 
         time.restart();
         //ref.nextIteration(tolerance, threshold, maxPcIter);
-        ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        if (correctBoundary){
+          gsInfo << "Correct also the boundary points\n";
+          ref.nextIterationSepBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        }
+        else{
+          if(sepIndex < 0){
+            gsInfo << "Apply parameter correction to the whole pointcloud.\n";
+          }
+          else{
+            gsInfo << "No parameter correction on boundary points.\n";
+          }
+          ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        }
         // if(i == 0){
         //   //ref.nextIteration(tolerance, threshold, maxPcIter);
-        //   ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        //   ref.nextIterationSepBoundary(tolerance, threshold, maxPcIter, sepIndex);
+        //   //ref.nextIterationFixedBoundary(tolerance, threshold, maxPcIter, sepIndex);
         // }
         // else{
+        //   ref.nextIterationSepBoundary(tolerance, threshold, 1, sepIndex);
         //   //ref.nextIteration(tolerance, threshold, maxPcIter);
-        //   ref.nextIterationFixedBoundary(tolerance, threshold, 0, sepIndex);
+        //   //ref.nextIterationFixedBoundary(tolerance, threshold, 0, sepIndex);
         // }
         time.stop();
 
         gsMesh<> mesh(ref.result()->basis());
         gsWriteParaview(mesh, internal::to_string(i+1) + "_iter_mesh");
-        gsWriteParaviewPoints(ref.returnParamValues(), internal::to_string(i+1) + "_iter_fitting_parameters");
+        gsWriteParaview(*ref.result(), internal::to_string(i+1) + "_iter_geo", 100000, false, true);
+
 
         ref.get_Error(errors2, 0);
         sum_of_2errors = std::accumulate(errors2.begin(), errors2.end(), 0.0);
@@ -192,17 +211,49 @@ int main(int argc, char *argv[])
 
     if ( save )
     {
-        gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
-        fd << *ref.result() ;
         gsMatrix<> fitting_out_parameters = ref.returnParamValues();
+
+        gsInfo << "Plot parametric field on the geometry.\n";
+        index_t numSamples(100000);
+        bool plot_mesh = true;
+        std::string pname("param");
+        gsGeometry<>::uPtr geo = ref.result()->clone();
+        gsParamField<real_t> pfld(*geo);
+        gsWriteParaview(*geo, pfld, pname + "_geo", numSamples);
+        gsWriteParaview(*geo, pname + "_msh", numSamples, plot_mesh, false);
+
+        gsMatrix<> colorPoints(xyz.rows() + 1, xyz.cols());
+        gsMatrix<> errorsMat(1,errors.size());
+        for(index_t err = 0; err < errors.size(); err++){
+            errorsMat(0,err) = errors[err];
+        }
+        colorPoints.row(0) = xyz.row(0);
+        colorPoints.row(1) = xyz.row(1);
+        colorPoints.row(2) = xyz.row(2);
+        colorPoints.row(3) = errorsMat;
+
+        gsWriteParaviewPoints(colorPoints, "color");
+
+        // gsInfo << "Plot the max approximation error of the geometry.\n";
+        //
+        // gsMatrix<> fieldCoefs = ref.getFieldMaxError(fitting_out_parameters, errors);
+        // gsInfo << "Error field coefs:\n" << fieldCoefs << "\n";
+
+        gsInfo<<"Done. Writing solution to file fitting_out.xml\n";
+        gsWriteParaview(*ref.result(), "final_geometry", 100000, false, true);
+        gsInfo << "Solution:\n" << *ref.result() << "\n";
+        fd << *ref.result() ;
+
         gsWriteParaviewPoints(fitting_out_parameters, "fitting_out_parameters");
-        for(index_t idx = 0; idx < modevec.size(); idx++){
-          gsInfo << "Print " << modevec[idx] << "-th parameter.\n";
+        for(index_t idx = 0; idx < modevec.size(); idx++)
+        {
+          std::string idxparamname = std::to_string(modevec[idx]) + "_parameter";
           gsMatrix<> print_parameter(2,1);
           print_parameter << fitting_out_parameters.col(modevec[idx]);
-          gsWriteParaviewPoints(print_parameter, internal::to_string(modevec[idx]) + "_parameter");
+          gsWriteParaviewPoints(print_parameter, idxparamname);
+          std::string idxpointname = std::to_string(modevec[idx]) + "_point";
           gsMatrix<> print_point(3,1); print_point << xyz.col(modevec[idx]);
-          gsWriteParaviewPoints(print_point, internal::to_string(modevec[idx]) + "_point");
+          gsWriteParaviewPoints(print_point, idxpointname);
         }
         fd.dump("fitting_out");
     }
