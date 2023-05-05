@@ -100,10 +100,9 @@ int main(int argc, char *argv[])
     file_results.open("r"+internal::to_string(numURef)+"_fiting_example_results.csv");
     file_results << "step, dofs, min, max, mse, percentage\n";
 
-    index_t step = maxPcIter;
-    //for (index_t step=0; step <= maxPcIter; step ++)
+    //index_t step = maxPcIter;
+    for (index_t step=0; step <= maxPcIter; step ++)
     {
-
     std::ofstream max_results;
     std::ofstream mse_results;
     max_results.open("r"+internal::to_string(numURef)+"pc"+internal::to_string(step)+"_max_results.csv");

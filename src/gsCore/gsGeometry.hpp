@@ -53,7 +53,7 @@ public:
         result[0].at(0) = 0.5 * (m_gd.mine()[0]-*m_pt).squaredNorm();
         if (n==0) return;
 
-        // f' = x'*(x-pt)        
+        // f' = x'*(x-pt)
         auto jacT = m_gd.mine()[1].reshaped(u.rows(),m_pt->rows()); // transposed Jacobian, 2x3.
         result[1].noalias() = jacT * (m_gd.mine()[0] - *m_pt);  // 2x1, each row is a partial derivative of x dot (x-pt).
         if (n==1) return;
@@ -389,9 +389,9 @@ T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
     fmin.solve();
     result = fmin.currentDesign();
 #else
-    gsSquaredDistance<T> dist2(*this, pt);
+  gsSquaredDistance<T> dist2(*this, pt);
 	// Uncomment for TDM:
-	//gsTangentDistance<T> dist2(*this, pt);
+	// gsTangentDistance<T> dist2(*this, pt);
     result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 100, result)
     : dist2.argMin(accuracy*accuracy, 100) ;
 #endif
@@ -452,11 +452,11 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const
 {
-    os << "Geometry "<< "R^"<< this->parDim() << 
+    os << "Geometry "<< "R^"<< this->parDim() <<
         " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
-        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
+        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1);
     os<<"\nBasis:\n" << this->basis();
-    return os; 
+    return os;
 }
 
 template<class T>
@@ -579,7 +579,7 @@ gsGeometry<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
     m_basis->deriv2_into(u, B) ;
     // col j = indices of active functions at column point u(..,j)
     m_basis->active_into(u, ind);
-    
+
     result.setZero(d,d);
     static const index_t j = 0;// just one column
     //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)
