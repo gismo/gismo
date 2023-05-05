@@ -13,6 +13,7 @@
 
 #include <gsIO/gsXml.h>
 #include <gsCore/gsFunctionExpr.h>
+#include <gsCore/gsConstantFunction.h>
 #include <gsUtils/gsSortedVector.h>
 
 namespace gismo
@@ -292,6 +293,9 @@ public:
                     {
                         gsXmlAttribute * unknownNode = internal::makeAttribute(
                                 "unknown", b.m_unknown, data);
+                        gsXmlAttribute * componentNode = internal::makeAttribute("component",
+                                b.unkComponent(), data);
+                        bcNode->append_attribute(componentNode);
                         bcNode->append_attribute(unknownNode);
                         first = false;
                     }
@@ -347,9 +351,32 @@ private:
                     dynamic_cast<gsFunctionExpr<T> *>(obj.get());
             result = putFunctionExprToXml(*ptr2, result, data);
         }
+        else if (typeid(*obj) == typeid(gsConstantFunction<T> ))
+            {
+            gsConstantFunction<T> * ptr2 =
+                    dynamic_cast<gsConstantFunction<T> *>(obj.get());
+            result = putConstantFunctionToXml(*ptr2, result, data);
+        }
         gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
                 data);
         result->append_attribute(indexNode);
+        return result;
+    }
+
+    static gsXmlNode * putConstantFunctionToXml(const gsConstantFunction<T> & obj,
+            gsXmlNode * result, gsXmlTree & data)
+    {
+        std::string typeStr = "FunctionExpr";
+        gsXmlAttribute * type = internal::makeAttribute("type", typeStr, data);
+        result->append_attribute(type);
+        gsXmlAttribute * dim = internal::makeAttribute("dim", obj.domainDim(),
+                data);
+        result->append_attribute(dim);
+
+        // set value
+        gsMatrix<T> value = obj.value();
+        const short_t tdim = obj.targetDim();
+        result->value( makeValue( value, data, true) );
         return result;
     }
 
