@@ -66,7 +66,7 @@ public:
         }
 
 
-        m_curDesign.resize(m_numDesignVars);
+        m_curDesign.resize(m_numDesignVars,1);
         m_curDesign << m_mp[0].coefs().reshape(m_mp[0].coefs().size(),1), m_params.transpose();
 
     }
@@ -195,7 +195,6 @@ private:
     using gsOptProblem<T>::m_curDesign;
 };
 //! [OptProblem]
-
 
 
 
