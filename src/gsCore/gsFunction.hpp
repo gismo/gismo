@@ -89,6 +89,7 @@ void gsFunction<T>::div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
+    const gsMatrix<T> sup = this->support();
 
     //gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
     const index_t parDim = u.rows();                // dimension of domain
@@ -106,16 +107,38 @@ void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
         for ( index_t j = 0; j<parDim; j++ ) // for all variables
         {
             delta.setZero();
-            delta(j)  = (T)(0.00001);
-            uc.col(0) = u.col(p)+delta;
-            uc.col(1) = u.col(p)-delta;
-            delta(j)  = (T)(0.00002);
-            uc.col(2) = u.col(p)+delta;
-            uc.col(3) = u.col(p)-delta;
-            //m_geo.eval_into(u, tmp);
-            this->eval_into(uc, ev );
-            tmp=(8*( ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / (T)(0.00012);
-
+            if ( u(j,p) - 0.00002 < sup(j,0) )
+            {   //forward finite differences
+                delta(j)  = (T)(0.00001);
+                uc.col(0) = u.col(p)+  delta;
+                uc.col(1) = u.col(p)+2*delta;
+                uc.col(2) = u.col(p)+3*delta;
+                uc.col(3) = u.col(p)+4*delta;
+                this->eval_into(uc, ev);
+                tmp= ( -25 * this->eval(u.col(p)) + 48*ev.col(0) - 36*ev.col(1) + 16*ev.col(2) - 3*ev.col(3) ) / (T)(0.00012);
+            }
+            else if ( u(j,p) + 0.00002 > sup(j,1) )
+            {   //backward finite differences
+                delta(j)  = (T)(0.00001);
+                uc.col(0) = u.col(p)-  delta;
+                uc.col(1) = u.col(p)-2*delta;
+                uc.col(2) = u.col(p)-3*delta;
+                uc.col(3) = u.col(p)-4*delta;
+                this->eval_into(uc, ev);
+                tmp= ( 25 * this->eval(u.col(p)) - 48*ev.col(0) + 36*ev.col(1) - 16*ev.col(2) + 3*ev.col(3) ) / (T)(0.00012);
+            }
+            else
+            {   //central finite differences
+                delta(j)  = (T)(0.00001);
+                uc.col(0) = u.col(p)+delta;
+                uc.col(1) = u.col(p)-delta;
+                delta(j)  = (T)(0.00002);
+                uc.col(2) = u.col(p)+delta;
+                uc.col(3) = u.col(p)-delta;
+                //m_geo.eval_into(u, tmp);
+                this->eval_into(uc, ev );
+                tmp=(8*(ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / (T)(0.00012);
+            }
             for (index_t c=0; c<tarDim; ++c)  // for all components
                 result(c*parDim+j,p)=tmp(c);
         }
