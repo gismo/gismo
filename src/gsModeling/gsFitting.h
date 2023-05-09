@@ -4,7 +4,7 @@
     squares approximation.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -23,9 +23,9 @@ namespace gismo
 {
 
 /**
-  @brief 
+  @brief
    Class for performing a least squares fit of a parametrized point cloud with a gsGeometry.
-    
+
    \ingroup Modeling
 **/
 template<class T>
@@ -40,12 +40,12 @@ public:
     }
 
     /// constructor
-    gsFitting(gsMatrix<T> const & param_values, 
-              gsMatrix<T> const & points, 
+    gsFitting(gsMatrix<T> const & param_values,
+              gsMatrix<T> const & points,
               gsBasis<T>  & basis);
 
         /// constructor
-    gsFitting(gsMatrix<T> const & param_values, 
+    gsFitting(gsMatrix<T> const & param_values,
               gsMatrix<T> const & points,
               gsVector<index_t>  offset,
               gsMappedBasis<2,T>  & mbasis) ;
@@ -58,9 +58,19 @@ public:
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
 
+    void computePen(T lambda1 = 0, index_t d1 = 0, T lambda2 = 0, index_t d2 = 0);
+
     void parameterCorrection(T accuracy = 1e-8,
                              index_t maxIter = 10,
                              T tolOrth = 1e-6);
+
+    void parameterCorrectionPen(T accuracy = 1e-8,
+                                index_t maxIter = 10,
+                                T tolOrth = 1e-6,
+                                T lambda1 = 1e-6,
+                                index_t d1 = 1,
+                                T lambda2 = 1e-6,
+                                index_t d2 = 1);
 
     /// Computes the euclidean error for each point
     void computeErrors();
@@ -88,11 +98,11 @@ public:
 
     /// Computes the number of points below the error threshold (or zero if not fitted)
     size_t numPointsBelow(T threshold) const
-    { 
+    {
         const size_t result=
-            std::count_if(m_pointErrors.begin(), m_pointErrors.end(), 
+            std::count_if(m_pointErrors.begin(), m_pointErrors.end(),
                           GS_BIND2ND(std::less<T>(), threshold));
-        return result; 
+        return result;
     }
 
     /// Computes the least squares fit for a gsBasis
@@ -104,6 +114,9 @@ public:
     gsSparseMatrix<T> smoothingMatrix(T lambda) const;
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
+
+    void applyPenalization(T lambda1, index_t d1, T lambda2, index_t d2, gsSparseMatrix<T> & A_mat);
+
 
 
 public:

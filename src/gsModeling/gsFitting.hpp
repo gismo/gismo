@@ -75,7 +75,7 @@ void gsFitting<T>::compute(T lambda)
 
     const int num_basis = m_basis->size();
     const short_t dimension = m_points.cols();
-    
+
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
     gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
@@ -118,7 +118,7 @@ void gsFitting<T>::compute(T lambda)
     if ( solver.preconditioner().info() != Eigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
-        
+
         return;
     }
     // Solves for many right hand side  columns
@@ -140,6 +140,96 @@ void gsFitting<T>::compute(T lambda)
         m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(x));
 }
 
+template<class T>
+void gsFitting<T>::computePen(T lambda1, index_t d1, T lambda2, index_t d2)
+{
+    // m_last_lambda = lambda; // what about this member?
+
+    // Wipe out previous result
+    // gsInfo << "Compute penalizaiton.\n";
+    if ( m_result )
+        delete m_result;
+
+    const int num_basis = m_basis->size();
+    const short_t dimension = m_points.cols();
+
+    //left side matrix
+    //gsMatrix<T> A_mat(num_basis,num_basis);
+    gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
+    //gsMatrix<T>A_mat(num_basis,num_basis);
+    //To optimize sparse matrix an estimation of nonzero elements per
+    //column can be given here
+    int nonZerosPerCol = 1;
+    for (int i = 0; i < m_basis->domainDim(); ++i) // to do: improve
+        // nonZerosPerCol *= m_basis->degree(i) + 1;
+        nonZerosPerCol *= ( 2 * m_basis->basis(0).degree(i) + 1 ) * 4;
+    // TODO: improve by taking constraints nonzeros into account.
+    A_mat.reservePerColumn( nonZerosPerCol );
+
+    //right side vector (more dimensional!)
+    gsMatrix<T> m_B(num_basis + m_constraintsRHS.rows(), dimension);
+    m_B.setZero();  // enusure that all entries are zero in the beginning
+
+    // building the matrix A and the vector b of the system of linear
+    // equations A*x==b
+
+    assembleSystem(A_mat, m_B); // A_mat is the collocation matrix
+
+
+    // --- Penalization matrices computation
+    if(lambda1 > 0 || lambda2 > 0)
+    {
+      // gsInfo << "lambda1 = " << lambda1 << ", lambda2 = " << lambda2 << ".\n";
+      applyPenalization(lambda1, d1, lambda2, d2, A_mat);
+      // gsInfo << "A_mat: "<< A_mat.rows() << " x " << A_mat.cols() << "\n";
+    }
+
+    if(m_constraintsLHS.rows() > 0)
+      extendSystem(A_mat, m_B);
+
+    //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
+
+    //gsDebugVar( A_mat.nonZerosPerCol().maxCoeff() );
+    //gsDebugVar( A_mat.nonZerosPerCol().minCoeff() );
+    // gsInfo << "makeCompressed.\n";
+    A_mat.makeCompressed();
+    // gsInfo << "done.\n";
+
+    typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
+
+    if ( solver.preconditioner().info() != Eigen::Success )
+    {
+        gsWarn<<  "The preconditioner failed. Aborting.\n";
+
+        return;
+    }
+    // Solves for many right hand side  columns
+    gsMatrix<T> x;
+
+    x = solver.solve(m_B); //toDense()
+    // gsInfo << "pen coefs: " << x.rows() << "x" << x.cols() << "\n" << x << "\n";
+
+    // If there were constraints, we obtained too many coefficients.
+    // gsInfo << "conservativeResize.\n";
+    x.conservativeResize(num_basis, Eigen::NoChange);
+    // gsInfo << "Resized.\n";
+
+    //gsMatrix<T> x (m_B.rows(), m_B.cols());
+    //x=A_mat.fullPivHouseholderQr().solve( m_B);
+    // Solves for many right hand side  columns
+    // finally generate the B-spline curve
+
+    if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
+        m_result = bb->makeGeometry( give(x) ).release();
+    else
+        m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(x));
+
+    // gsInfo << "End of compute pen!!!" << "\n";
+}
+
+
+
+
 template <class T>
 void gsFitting<T>::parameterCorrection(T accuracy,
                                        index_t maxIter,
@@ -148,49 +238,8 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     if ( !m_result )
         compute(m_last_lambda);
 
-    const index_t d = m_param_values.rows();
-    const index_t n = m_points.cols();
-    T maxAng, avgAng;
-    std::vector<gsMatrix<T> > vals;
-    gsMatrix<T> DD, der;
     for (index_t it = 0; it!=maxIter; ++it)
     {
-        maxAng = -1;
-        avgAng = 0;
-        //auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-        //(vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
-
-#       pragma omp parallel for default(shared) private(der,DD,vals)
-        for (index_t s = 0; s<m_points.rows(); ++s)
-            //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
-        {
-            vals = m_result->evalAllDers(m_param_values.col(s), 1);
-            for (index_t k = 0; k!=d; ++k)
-            {
-                der = vals[1].reshaped(d,n);
-                DD = vals[0].transpose() - m_points.row(s);
-                const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
-                const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
-#               pragma omp critical (max_avg_ang)
-                {
-                    maxAng = math::max(maxAng, a );
-                    avgAng += a;
-                }
-            }
-            /*
-            auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-                (vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
-            maxAng = ( DD.colwise().normalized() *
-                       der.colwise().normalized().transpose()
-                ).array().acos().maxCoeff();
-            */
-        }
-
-        avgAng /= d*m_points.rows();
-        //gsInfo << "Avg-deviation: "<< avgAng << " / max: "<<maxAng<<"\n";
-
-        // if (math::abs(0.5*EIGEN_PI-maxAng) <= tolOrth ) break;
-
         gsVector<T> newParam;
 #       pragma omp parallel for default(shared) private(newParam)
         for (index_t i = 0; i<m_points.rows(); ++i)
@@ -217,6 +266,49 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 
 
 template <class T>
+void gsFitting<T>::parameterCorrectionPen(T accuracy,
+                                          index_t maxIter,
+                                          T tolOrth,
+                                          T lambda1,
+                                          index_t d1,
+                                          T lambda2,
+                                          index_t d2)
+{
+    if ( !m_result )
+        computePen(lambda1, d1, lambda2, d2);
+
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+        gsVector<T> newParam;
+#       pragma omp parallel for default(shared) private(newParam)
+        for (index_t i = 0; i<m_points.rows(); ++i)
+        //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
+        {
+            const auto & curr = m_points.row(i).transpose();
+            newParam = m_param_values.col(i);
+            m_result->closestPointTo(curr, newParam, accuracy, true);
+
+            // Decide whether to accept the correction or to drop it
+            if ((m_result->eval(newParam) - curr).norm()
+                    < (m_result->eval(m_param_values.col(i))
+                        - curr).norm())
+                    m_param_values.col(i) = newParam;
+
+            // (!) There might be the same parameter for two points
+            // or ordering constraints in the case of structured/grid data
+        }
+
+        // refit
+        computePen(lambda1, d1, lambda2, d2);
+    }
+}
+
+
+
+
+
+
+template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
 {
@@ -224,7 +316,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
-    gsMatrix<index_t> actives;    
+    gsMatrix<index_t> actives;
 
     for (index_t h = 0; h < num_patches; h++ )
     {
@@ -312,7 +404,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
 #   endif
-        
+
     for (index_t h = 0; h < num_patches; h++)
     {
         auto & basis = m_basis->basis(h);
@@ -322,14 +414,14 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
         for (short_t i = 0; i != dim; ++i)
         {
-            numNodes[i] = basis.degree(i);//+1; 
+            numNodes[i] = basis.degree(i);//+1;
         }
 
         gsGaussRule<T> QuRule(numNodes); // Reference Quadrature rule
 
-        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(); 
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
 
-        
+
 #       ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #       else
@@ -383,6 +475,132 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
     }
 }
+
+
+
+template<class T>
+gsSparseMatrix<T> diff(const gsSparseMatrix<T> & E)
+{
+  gsSparseMatrix<T> E1 = E.block(0, 0, E.rows()-1, E.cols());
+  gsSparseMatrix<T> E2 = E.block(1, 0, E.rows()-1, E.cols());
+  return E2 - E1;
+}
+
+template<class T>
+gsSparseMatrix<T> diff(const gsSparseMatrix<T> & E, const index_t d)
+{
+  //GISMO_ASSERT( E.rows() <= d, "Wrong regularization amount.");
+  if (d == 0)
+  {
+    return E;
+  }
+  else
+  {
+    index_t r = 1;
+    gsSparseMatrix<T> D = E;
+    while( r <= d)
+    {
+      D = diff(D);
+      r += 1;
+    }
+    return D;
+  }
+}
+
+template<class T>
+gsSparseMatrix<T> gsKroneckerMatProduct(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
+{
+  gsMatrix<T> C(B.rows() * A.rows(), B.cols() * A.cols());
+  C.setZero();
+
+  for(index_t i = 0; i < A.rows(); i++)
+  {
+    for(index_t j = 0; j < A.cols(); j++)
+    {
+      // gsInfo << A(i,j) << " *\n"<< B << "\n";
+      C.block(i * B.rows(), j * B.cols(), B.rows(), B.cols()) = A(i,j) * B;
+    }
+  }
+
+  // gsInfo << C << "\n";
+
+  return C.sparseView();
+}
+
+
+
+template<class T>
+void gsFitting<T>::applyPenalization(T lambda1, index_t d1, T lambda2, index_t d2, gsSparseMatrix<T> & A_mat)
+{
+
+    const int num_patches(m_basis->nPieces()); //initialize
+    const short_t dim(m_basis->domainDim());
+    const short_t stride = dim * (dim + 1) / 2;
+
+    gsMatrix<T> localP1;
+    gsMatrix<T> localP2;
+
+    gsMatrix<index_t> actives;
+
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+    for (index_t h = 0; h < num_patches; h++)
+    {
+        auto & basis = m_basis->basis(h);
+
+        index_t n1 = basis.component(0).size(); // n
+        if(n1 <= d1)
+        {
+          gsInfo << "Too high penalization in 0-direction, set " << d1 << " to " << n1-1 << "\n";
+          d1 = n1 - 1;
+        }
+
+        index_t n2 = basis.component(1).size(); // n-tilde
+        if(n2 <= d2)
+        {
+          gsInfo << "Too high penalization in 1-direction, set " << d2 << " to " << n2-1 << "\n";
+          d2 = n2 - 1;
+        }
+
+        gsSparseMatrix<T> I1(n1, n1);
+        I1.setIdentity();
+        // gsInfo << "I1 =\n" << I1 << "\n";
+        gsSparseMatrix<T> D1 = diff(I1, d1);
+        // gsInfo << "D1 =\n" << D1 << "\n";
+
+
+
+        gsSparseMatrix<T> I2(n2, n2);
+        I2.setIdentity();
+        gsSparseMatrix<T> D2 = diff(I2, d2);
+
+        gsSparseMatrix<T> P1_left = gsKroneckerMatProduct(I2,D1);
+        gsSparseMatrix<T> P1 = P1_left.transpose() * P1_left;
+
+        // gsInfo << "P1_left =\n" << P1_left << "\n";
+
+        gsSparseMatrix<T> P2_left = gsKroneckerMatProduct(I1,D2);
+        gsSparseMatrix<T> P2 = P2_left.transpose() * P2_left;
+
+        // gsInfo << "Collocation matrix =\n" << A_mat.rows() << " x " << A_mat.cols() << "\n";
+        // gsInfo << "Apply penalizaion to patch n. " << h << ".\n";
+
+        A_mat += lambda1 * P1 + lambda2 * P2;
+
+
+    } // num patches
+}
+
+
+
+
+
+
+
+
 
 template<class T>
 void gsFitting<T>::computeErrors()
@@ -438,12 +656,12 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    error = 0; 
+    error = 0;
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
 
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
@@ -483,9 +701,9 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 

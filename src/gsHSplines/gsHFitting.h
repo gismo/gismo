@@ -185,7 +185,7 @@ protected:
     using gsFitting<T>::m_pointErrors;
     using gsFitting<T>::m_max_error;
     using gsFitting<T>::m_min_error;
-};
+}; // class gsHFitting
 
 template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
