@@ -17,17 +17,48 @@
 #include <time.h>
 #include <gismo.h>
 
+#ifdef gsOpennurbs_ENABLED
+#include "gsOpennurbs/gsWriteOpenNurbs.h"
+#endif
+
 
 using namespace gismo;
 
 
+
+gsSparseMatrix<> makeC0basis(const gsMultiBasis<>& mb)
+{
+    gsDofMapper m_dofMapper;
+    mb.getMapper(true, m_dofMapper);
+    index_t m_globals = m_dofMapper.size();
+    index_t m_locals = m_dofMapper.mapSize();
+    gsSparseMatrix<> matrix(m_locals, m_globals);
+    index_t local = 0;
+    for (size_t patch = 0; patch < m_dofMapper.numPatches(); ++patch)
+    {
+        const size_t patchSize = (patch != m_dofMapper.numPatches() - 1) ?
+            m_dofMapper.offset(patch + 1) - m_dofMapper.offset(patch) :
+            m_locals - m_dofMapper.offset(m_dofMapper.numPatches() - 1);
+        for (size_t i = 0; i < patchSize; ++i)
+        {
+            const index_t global = m_dofMapper.index(i, patch);
+            matrix.at(local, global) = 1;
+            local++;
+        }
+    }
+    matrix.makeCompressed();
+    return matrix;
+}
+
+
 int main(int argc, char* argv[])
 {
-    bool plot = false;
+    bool bernstein = false,  plot = false;
     index_t maxPcIter = 1;
     std::string filename = "fitting/chess.xml";
 
-    int np = 700;
+    int np = 7000;
+    real_t scale_par = 1;
     real_t lambda = 0;
     std::string fn = "fitting/acc_chess_ptcloud.xml";
 
@@ -37,8 +68,10 @@ int main(int argc, char* argv[])
         "3 x N matrix. Every column represents a point (x,y,z) in space.");
     cmd.addString("g", "filename", "File containing mp geometry and basis (.xml).", filename);
     cmd.addString("d", "data", "Input sample data", fn);
+    cmd.addReal("s", "scale_par", "Scale parameter for ptscloud", scale_par);
     cmd.addReal("l", "lambda", "smoothing parameter", lambda);
     cmd.addInt("c", "parcor", "Steps of parameter correction", maxPcIter);
+    cmd.addSwitch("bb", "Use Bernstein basis", bernstein);
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -48,6 +81,16 @@ int main(int argc, char* argv[])
     gsMatrix<index_t> offset, pId;
     fd_in.getId<gsMatrix<> >(0, Mpar);
     fd_in.getId<gsMatrix<> >(1, fval);
+
+   
+
+
+    if (fval.cols() == 3)
+    {
+        Mpar = Mpar.transpose();
+        fval = fval.transpose();
+    }
+
     if (fd_in.hasId(2))
     {
         fd_in.getId<gsMatrix<index_t> >(2, offset);
@@ -69,14 +112,24 @@ int main(int argc, char* argv[])
     gsMultiBasis<> mb;
     gsSparseMatrix<> cf;
     gsMappedBasis<2, real_t> mbasis;
+    typedef gsExprAssembler<>::space       space;
 
     // Load data as multipatch structure
 
     data.getFirst(mp);
     data.getFirst(mb);
-    data.getFirst(cf);
+    
+
+    //gsMappedBasis<2, real_t> bb2;
+    if (bernstein) { 
+        cf = makeC0basis(mb);
+    }
+    else {
+        data.getFirst(cf);
+    }
 
     mbasis.init(mb, cf);
+
 
     gsInfo << "Number of patches: " << mp.nPatches() << "\n";
     //gsInfo << "Number of points per patch: " << nd << "\n";
@@ -88,6 +141,11 @@ int main(int argc, char* argv[])
     gsInfo << "///////   Creating the multipatch fitting object   ///////" << "\n";
     gsInfo << "//////////////////////////////////////////////////////////" << "\n";
 
+    fval = scale_par * fval;
+
+    gsStopwatch timer;
+
+    timer.restart();
 
     gsFitting<> fitting(Mpar, fval, offset, mbasis);
 
@@ -96,27 +154,55 @@ int main(int argc, char* argv[])
 
     fitting.compute(lambda); // smoothing parameter lambda
 
-    fitting.parameterCorrection(1e-8,maxPcIter);
+    fitting.parameterCorrection(1e-12,maxPcIter);
+
+    timer.stop();
+
+    gsInfo << "Elapsed time for the solving: " << timer.elapsed() << " sec" << "\n";
 
     gsInfo << "I computed the fitting" << "\n";
+   
+
 
     gsMappedSpline<2, real_t>  test;
     test = fitting.mresult();
 
     std::vector<real_t> errors;
-    fitting.get_Error(errors, 0);
+    //fitting.get_Error(errors, 0);
+
+    fitting.computeErrors();
+    errors = fitting.pointWiseErrors();
+
+    real_t ave_linf;
+    ave_linf = 0;
+
+   /* for (index_t j = 0; j < fval.cols(); j++) {
+
+        ave_linf += errors[j];
+
+    }*/
+
+    gsMatrix<>ptswithcolors(4, fval.cols());
+
+    ptswithcolors.topRows(3) = fval;
+    ptswithcolors.row(3) = gsAsConstMatrix<>(errors);
+    
 
     real_t min_error = *std::min_element(errors.begin(), errors.end());
     real_t max_error = *std::max_element(errors.begin(), errors.end());
 
+
+
     gsInfo << "Min error: " << min_error << "\n";
     gsInfo << "L_inf: " << max_error << "\n";
+    //gsInfo << "Ave L_inf: " << ave_linf / fval.cols() << "\n";
 
     real_t error;
 
     fitting.computeApproxError(error, 0);
 
-    gsInfo << "L_2: " << error << "\n";
+    gsInfo << "RMSE: " << std::sqrt(error/fval.cols()) << "\n";  
+
 
 
 
@@ -126,13 +212,18 @@ int main(int argc, char* argv[])
 
     gsFileData<> newdata;
     gsMultiPatch<> surf = test.exportToPatches();
+    gsInfo << "Write back to mp.3dm\n";
+    extensions::writeON_MultiPatch(surf);
     newdata << surf;
+    newdata << mb;
+    newdata << cf;
     newdata.save("fitting_result");
+    gsWriteParaviewPoints(ptswithcolors, "point_data");
 
     if (plot)
     {
         gsInfo << "Plotting in Paraview..." << "\n";
-        gsWriteParaviewPoints(fval, "point_data");
+        gsWriteParaviewPoints(ptswithcolors, "point_data");
         gsWriteParaview(surf, "multipatch_spline", np);
         gsFileManager::open("multipatch_spline.pvd");
     }
