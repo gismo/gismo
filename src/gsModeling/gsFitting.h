@@ -4,7 +4,7 @@
     squares approximation.
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -23,9 +23,9 @@ namespace gismo
 {
 
 /**
-  @brief 
+  @brief
    Class for performing a least squares fit of a parametrized point cloud with a gsGeometry.
-    
+
    \ingroup Modeling
 **/
 template<class T>
@@ -40,12 +40,12 @@ public:
     }
 
     /// constructor
-    gsFitting(gsMatrix<T> const & param_values, 
-              gsMatrix<T> const & points, 
+    gsFitting(gsMatrix<T> const & param_values,
+              gsMatrix<T> const & points,
               gsBasis<T>  & basis);
 
         /// constructor
-    gsFitting(gsMatrix<T> const & param_values, 
+    gsFitting(gsMatrix<T> const & param_values,
               gsMatrix<T> const & points,
               gsVector<index_t>  offset,
               gsMappedBasis<2,T>  & mbasis) ;
@@ -91,11 +91,11 @@ public:
 
     /// Computes the number of points below the error threshold (or zero if not fitted)
     size_t numPointsBelow(T threshold) const
-    { 
+    {
         const size_t result=
-            std::count_if(m_pointErrors.begin(), m_pointErrors.end(), 
+            std::count_if(m_pointErrors.begin(), m_pointErrors.end(),
                           GS_BIND2ND(std::less<T>(), threshold));
-        return result; 
+        return result;
     }
 
     /// Computes the least squares fit for a gsBasis
@@ -168,6 +168,8 @@ public:
 	       << m_uMin << ", " << m_uMax << "] x ["
 	       << m_vMin << ", " << m_vMax << "]" << std::endl;
     }
+
+    T lambda() const {return m_last_lambda;}
 
 private:
     /// Extends the system of equations by taking constraints into account.
