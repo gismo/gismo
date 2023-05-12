@@ -235,7 +235,7 @@ public:
      * classes to get proper results.
      */
     // Look at gsFunction class for documentation
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().derivFunc_into(u, m_coefs, result); }
 
 
@@ -258,10 +258,10 @@ public:
      * classes to get proper results.
      */
     // Look at gsFunctionSet class for documentation
-    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     { this->basis().deriv2Func_into(u, m_coefs, result); }
 
-    void evalAllDers_into(const gsMatrix<T> & u, int n,
+    virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result) const
     { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
 
@@ -530,6 +530,9 @@ public:
      //{ return this->basisComponent(i).degree(); };
      { return this->basis().degree(i); }
 
+    /// Inserts knot \a knot at direction \a dir, \a i times
+    virtual void insertKnot( T knot, index_t dir, index_t i = 1);
+
     /// \brief Elevate the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree elevation is
     /// done for all directions. Uses \ref gsBasis<T>::degreeElevate
@@ -568,7 +571,7 @@ public:
     std::vector<gsGeometry *> boundary() const;
 
     /// Get parametrization of boundary side \a s as a new gsGeometry uPtr.
-    typename gsGeometry::uPtr boundary(boxSide const& s) const;
+    virtual typename gsGeometry::uPtr boundary(boxSide const& s) const;
 
     /// Computes and returns the interface with \a other as a new geometry
     virtual typename gsGeometry::uPtr iface(const boundaryInterface & bi,
