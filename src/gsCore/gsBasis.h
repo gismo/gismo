@@ -411,6 +411,23 @@ public:
       Member functions that need to be redefined in the derived class.
     */
 
+    /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
+    virtual const gsMatrix<T> & weights() const 
+    {
+        static gsMatrix<T> dummy;
+        return dummy; 
+    }
+
+    /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
+    virtual gsMatrix<T> & weights()
+    {
+        static gsMatrix<T> dummy;
+        return dummy; 
+    }
+
+    /// Returns false, since all bases that inherit from gsBasis are not rational.
+    virtual bool isRational() const { return false;}
+
     /**
      * @brief
      * Returns the anchor points that represent the members of the basis.

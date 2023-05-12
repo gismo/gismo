@@ -139,7 +139,8 @@ public:
     int size(int const& k) const{ return m_src->size(k); }
 
     size_t numElements() const { return m_src->numElements(); }
-    using Base::numElements; //unhide
+    size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
+    //using Base::numElements; //unhide
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
@@ -216,6 +217,14 @@ public:
         std::swap(*m_src, tmp.basis() );
     }
 
+    void degreeDecrease(short_t const& i = 1, short_t const dir = -1)
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeDecrease(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
     /* if ever be reused, change to actual and current GISMO_UPTR_FUNCTION stuff und uPtr
       GISMO_UPTR_FUNCTION_DEF(gsBasis<T>, boundaryBasis, boxSide const &)
       {
@@ -271,6 +280,10 @@ public:
 
     /// Returns the weights of the rational basis
     gsMatrix<T> & weights()  { return m_weights; }
+    
+
+    /// Returns true, since by definition a gsRationalBasis is rational.
+    virtual bool isRational() const { return true;}
 
     /// Access to i-th weight
     T & weight(int i)             { return m_weights(i); }
