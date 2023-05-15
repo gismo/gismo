@@ -404,6 +404,50 @@ public:
         return result;
     }
 
+
+    /// Splits the geometry into two pieces (\a left, \a right) along direction \a dir at \a xi. The splitting
+    /// is performed by increasing the multiplicity of knot \a xi to p+1, or if \a xi does not exist as knot,
+    /// it is inserted p+1 times.
+    void splitAt(index_t dir,T xi, gsTensorNurbs<d,T>& left,  gsTensorNurbs<d,T>& right) const
+    {
+        // We use the simple fact that a NURBS function in R^d is the central projection
+        // of a spline function in R^{d+1} into R^d.
+        //
+        // Create a B-spline in R^{d+1} and split it
+        Basis& basis = static_cast<Basis&>(*m_basis); // Basis is here gsTensorNurbsBasis
+        gsTensorBSpline<d,T> leftBS, rightBS;
+        gsTensorBSpline<d,T> tmp(basis.source(), basis.projectiveCoefs(m_coefs)); 
+        
+        // Use gsTensorBSpline::splitAt() with the projective coefs.
+        tmp.splitAt(dir, xi, leftBS, rightBS);
+
+
+        // Turn the B-splines in R^{d+1} back into NURBS in R^d
+        // gsTensorBSpline<d,T>* spline = static_cast<gsTensorBSpline<d,T>*>(*it);
+        
+        gsTensorNurbsBasis<d,T>* leftBasis = new gsTensorNurbsBasis<d,T>(leftBS.basis().clone().release());
+        gsTensorNurbs<d,T>* leftNurbs = new gsTensorNurbs<d,T>;
+        leftNurbs->m_basis = leftBasis;
+
+        gsTensorNurbsBasis<d,T>::setFromProjectiveCoefs(
+            leftBS.coefs(),
+            leftNurbs->m_coefs,
+            leftBasis->weights());
+        
+        gsTensorNurbsBasis<d,T>* rightBasis = new gsTensorNurbsBasis<d,T>(rightBS.basis().clone().release());
+        gsTensorNurbs<d,T>* rightNurbs = new gsTensorNurbs<d,T>;
+        rightNurbs->m_basis = rightBasis;
+
+        gsTensorNurbsBasis<d,T>::setFromProjectiveCoefs(
+            rightBS.coefs(),
+            rightNurbs->m_coefs,
+            rightBasis->weights());
+
+
+        left  = gsTensorNurbs<d,T>( *leftBasis,  leftNurbs->coefs() );
+        right = gsTensorNurbs<d,T>( *rightBasis, rightNurbs->coefs());
+    }
+
 protected:
     // todo: check function: check the coefficient number, degree, knot vector ...
 

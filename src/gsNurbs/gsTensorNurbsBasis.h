@@ -138,6 +138,15 @@ public:
         m_src->size_cwise(result);
     }
 
+    size_t numElements() const
+    {
+        return m_src->numElements();
+        // size_t nElem = m_bases[0]->numElements();
+        // for (short_t dim = 1; dim < d; ++dim)
+        //     nElem *= m_bases[dim]->numElements();
+        // return nElem;
+    }
+
     /// Returns the strides for all dimensions
     void stride_cwise(gsVector<index_t,d> & result) const
     {
