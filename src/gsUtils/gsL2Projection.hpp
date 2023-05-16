@@ -22,7 +22,7 @@
 namespace gismo {
 
 template<typename T>
-void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
+T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
                                             const gsMultiPatch<T> & geometry,
                                             gsMultiPatch<T> & result)
 {
@@ -53,10 +53,12 @@ void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
+
+    return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 template<typename T>
-void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
+T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
                                             const gsMultiPatch<T> & geometry,
                                             gsMatrix<T> & result)
 {
@@ -80,10 +82,11 @@ void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
     solution sol = A.getSolution(u, result);
     gsExprEvaluator<> ev(A);
     gsDebugVar(ev.integral((sol-f).sqNorm()));
+    return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 template<typename T>
-void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & intbasis,
+T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & intbasis,
                                             const gsMappedBasis<2,T> & basis,
                                             const gsMultiPatch<T> & geometry,
                                             gsMatrix<T> & result)
@@ -108,10 +111,12 @@ void gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & intbasis,
     solution sol = A.getSolution(u, result);
     gsExprEvaluator<> ev(A);
     gsDebugVar(ev.integral((sol-f).sqNorm()));
+    ev.writeParaview((sol-f).sqNorm(),G,"error");
+    return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 template<typename T>
-void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
+T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
                                             const gsFunctionSet<T> & source,
                                             const gsMultiPatch<T>   & geometry,
                                             gsMultiPatch<T> & result)
@@ -140,10 +145,11 @@ void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
+    return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 template<typename T>
-void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
+T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
                                             const gsFunctionSet<T> & source,
                                             const gsMultiPatch<T>   & geometry,
                                             gsMatrix<T> & result)
@@ -164,11 +170,12 @@ void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
     typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
     solver->compute(A.matrix());
     result = solver->solve(A.rhs());
+    return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 
 template<typename T>
-void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
+T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
                                             const gsMappedBasis<2,T>& basis,
                                             const gsFunctionSet<T>  & source,
                                             const gsMultiPatch<T>   & geometry,
@@ -194,11 +201,12 @@ void gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
     solution sol = A.getSolution(u, result);
     gsExprEvaluator<> ev(A);
     gsDebugVar(ev.integral((sol-f).sqNorm()));
+    return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 template<typename T>
-void gsL2Projection<T>::projectGeometryBoundaries(const gsMultiBasis<T> & basis,
-                                            const gsMultiPatch<T> & source,
+T gsL2Projection<T>::projectGeometryBoundaries(const gsMultiBasis<T> & basis,
+                                            const gsMultiPatch<T> & geometry,
                                             gsMultiPatch<T> & result)
 {
     result.clear();
@@ -235,12 +243,13 @@ void gsL2Projection<T>::projectGeometryBoundaries(const gsMultiBasis<T> & basis,
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
+    return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 
 template<typename T>
-void gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
-                                            const gsMultiPatch<T> & source,
+T gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
+                                            const gsMultiPatch<T> & geometry,
                                             gsMultiPatch<T> & result,
                                             T penalty)
 {
@@ -263,16 +272,8 @@ void gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
     gsBoundaryConditions<T> bc;
     bc.setGeoMap(source);
     for (index_t p=0; p!=source.geoDim(); p++)
-    {
         for (typename gsMultiPatch<T>::const_biterator bit = source.bBegin(); bit != source.bEnd(); ++bit)
             bc.addCondition(*bit, condition_type::dirichlet,static_cast<gsFunctionSet<T>*>(&coords[p]), 0, true, p);
-        // for (typename gsMultiPatch<T>::const_iiterator iit = source.iBegin(); iit != source.iEnd(); ++iit)
-        // {
-        //     bc.addCondition(iit->first(), condition_type::dirichlet,static_cast<gsFunctionSet<T>*>(&coords[p]), 0, true, p);
-        //     bc.addCondition(iit->second(),condition_type::dirichlet,static_cast<gsFunctionSet<T>*>(&coords[p]), 0, true, p);
-        // }
-
-    }
 
 
     u.setup(bc, dirichlet::l2Projection, -1);
@@ -308,6 +309,7 @@ void gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
+    return ev.integral((Gvar-G).sqNorm() * meas(G));
 }
 
 

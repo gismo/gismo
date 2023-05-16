@@ -59,7 +59,7 @@ index_t gsMappedBasis<d,T>::size(const index_t index) const
 template<short_t d,class T>
 short_t gsMappedBasis<d,T>::maxDegree() const
 {
-    int deg = degree(0,0);
+    index_t deg = degree(0,0);
     for(size_t i=0;i<nPatches();i++)
         for(short_t j=0;j<m_bases[i]->dim();++j)
             if(degree(i,j)>deg)
@@ -70,14 +70,14 @@ short_t gsMappedBasis<d,T>::maxDegree() const
 template<short_t d,class T>
 void gsMappedBasis<d,T>::addLocalIndicesOfPatchSide(const patchSide& ps,index_t offset,std::vector<index_t>& locals) const
 {
-    int patch = ps.patch;
-    int side  = ps.side();
-    int localOffset = _getFirstLocalIndex(patch);
+    index_t patch = ps.patch;
+    index_t side  = ps.side();
+    index_t localOffset = _getFirstLocalIndex(patch);
     gsMatrix<index_t> indizes;
     //for(index_t i = 0;i<=offset;++i)
     {
         indizes=m_bases[patch]->boundaryOffset(side,offset);
-        for(int j=0;j<indizes.rows();++j)
+        for(index_t j=0;j<indizes.rows();++j)
             locals.push_back(indizes.at(j)+localOffset);
     }
 }
@@ -114,11 +114,11 @@ void gsMappedBasis<d,T>::innerBoundaries(std::vector<index_t> & indices,index_t 
 }
 
 template<short_t d,class T>
-gsGeometry<T>* gsMappedBasis<d,T>::exportPatch(const int i,gsMatrix<T> const & localCoef) const
+gsGeometry<T>* gsMappedBasis<d,T>::exportPatch(const index_t i,gsMatrix<T> const & localCoef) const
 {
     const short_t geoDim=localCoef.cols();
-    const int start = _getFirstLocalIndex(i);
-    const int end   = _getLastLocalIndex(i);
+    const index_t start = _getFirstLocalIndex(i);
+    const index_t end   = _getLastLocalIndex(i);
     gsMatrix<T> coefs = localCoef.block(start,0,end-start+1,geoDim);
     return getBase(i).makeGeometry( give(coefs) ).release();
 }
@@ -204,8 +204,8 @@ void gsMappedBasis<d,T>::deriv_into(const index_t patch, const gsMatrix<T> & u, 
     gsMatrix<index_t> actives;
     gsMatrix<T> curr_res;
     active_into(patch,u,actives);
-    int rows = actives.rows();
-    int cols = actives.cols();
+    index_t rows = actives.rows();
+    index_t cols = actives.cols();
     result.setZero(d*rows,cols);
     for(index_t j = 0; j<cols; j++) // For all points u.col(j)
     {
@@ -255,7 +255,7 @@ void gsMappedBasis<d,T>::deriv2_into(const index_t patch, const gsMatrix<T> & u,
 }
 
 template<short_t d,class T>
-void gsMappedBasis<d,T>::evalSingle_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+void gsMappedBasis<d,T>::evalSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     BasisType * this_patch = m_bases[patch];
     index_t start = _getFirstLocalIndex(patch), end = _getLastLocalIndex(patch);
@@ -286,7 +286,7 @@ void gsMappedBasis<d,T>::evalSingle_into(const index_t patch, const int global_B
 }
 
 template<short_t d,class T>
-void gsMappedBasis<d,T>::derivSingle_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+void gsMappedBasis<d,T>::derivSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     BasisType * this_patch = m_bases[patch];
     index_t start = _getFirstLocalIndex(patch), end = _getLastLocalIndex(patch);
@@ -320,9 +320,9 @@ void gsMappedBasis<d,T>::derivSingle_into(const index_t patch, const int global_
 }
 
 template<short_t d,class T>
-void gsMappedBasis<d,T>::deriv2Single_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const
+void gsMappedBasis<d,T>::deriv2Single_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
-    const int blocksize = d*(d + 1)/2;
+    const index_t blocksize = d*(d + 1)/2;
     BasisType * this_patch = m_bases[patch];
     index_t start = _getFirstLocalIndex(patch), end = _getLastLocalIndex(patch);
     if ( m_mapper->targetIsId(global_BF) )
@@ -357,7 +357,7 @@ void gsMappedBasis<d,T>::deriv2Single_into(const index_t patch, const int global
 
 template<short_t d,class T>
 void gsMappedBasis<d,T>::evalAllDers_into(const index_t patch, const gsMatrix<T> & u,
-                                             const int n, std::vector<gsMatrix<T> >& result) const
+                                             const index_t n, std::vector<gsMatrix<T> >& result) const
 {
     gsMatrix<index_t> bact;
     m_bases[patch]->active_into(u, bact);
@@ -409,7 +409,7 @@ void gsMappedBasis<d,T>::evalAllDers_into(const index_t patch, const gsMatrix<T>
 }
 
 template<short_t d,class T>
-void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u,const int n,gsMatrix<T> & result ) const
+void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const
 {
     GISMO_ASSERT( n<2, "gsTensorBasis::evalAllDers() not implemented for n > 1." );
     result.resize(( 2*n + 1 ), u.cols());

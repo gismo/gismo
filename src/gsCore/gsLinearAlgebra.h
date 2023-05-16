@@ -186,9 +186,9 @@ public:
 
     #ifdef GISMO_WITH_PARDISO
     /// Pardiso (if enabled)
-    typedef Eigen::PardisoLDLT<Eigen::SparseMatrix<T,0,index_t> > PardisoLDLT;
-    typedef Eigen::PardisoLLT <Eigen::SparseMatrix<T,0,index_t> > PardisoLLT;
-    typedef Eigen::PardisoLU  <Eigen::SparseMatrix<T,0,index_t> > PardisoLU;
+    typedef Eigen::PardisoLDLT<Eigen::SparseMatrix<T,0,int> > PardisoLDLT;
+    typedef Eigen::PardisoLLT <Eigen::SparseMatrix<T,0,int> > PardisoLLT;
+    typedef Eigen::PardisoLU  <Eigen::SparseMatrix<T,0,int> > PardisoLU;
     #endif
 
 };

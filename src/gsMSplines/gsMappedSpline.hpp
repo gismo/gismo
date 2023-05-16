@@ -23,7 +23,6 @@ gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseM
     m_mbases = new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m);
 
     // collect and transform the coefficients
-    const index_t cols = mp.geoDim();
     gsMatrix<T> local = mp.coefs();
     m_mbases->local_coef_to_global_coef(local,m_global);
 
