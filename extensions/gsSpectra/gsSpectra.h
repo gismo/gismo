@@ -48,8 +48,6 @@ public:
     SpectraMatProd(const MatrixType&&   ) = delete;
     SpectraMatProd(const MatrixType& mat) : m_mat(mat)
     {
-        gsDebugVar(mat.rows());
-        gsDebugVar(mat.cols());
     }
     int rows() const { return m_mat.rows(); }
     int cols() const { return m_mat.cols(); }
