@@ -27,37 +27,11 @@ int main(int argc, char *argv[])
 {
     index_t degree    = 1;
     index_t m         = 2;
-
-    index_t numHref   = 2;
-
-    index_t testCase  = 0;
-    index_t verbose   = 0;
-
-    index_t rule = 3;
-
-    bool plot     = false;
-    bool Hneigh   = false;
-
-    gsCmdLine cmd("Create standard refined THB meshes.");
+    gsCmdLine cmd("Example of gsHBox.");
     cmd.addInt("m","jump",
                "parameter m", m);
     cmd.addInt("p","degree",
                "Spline degree", degree);
-    cmd.addInt("r","numHref",
-               "Number of uniform refinements to be performed", numHref);
-    cmd.addInt("t","testCase",
-               "Test configuration", testCase);
-
-    cmd.addInt("R","rule",
-               "Rule for refinement/coarsening", rule);
-
-
-    cmd.addInt("v","verbose",
-               "Verbose output", verbose);
-
-    cmd.addSwitch("plot", "Plot result in ParaView format", plot);
-    cmd.addSwitch("Hneigh", "H-neighborhood if true, T-neighborhood if false (default)", Hneigh);
-
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsMultiPatch<> mpBspline, mp;
@@ -136,7 +110,9 @@ int main(int argc, char *argv[])
     mp.patch(0).refineElements(boxes);
 
     gsWriteParaview(mp,"init",1,true);
+    gsInfo<<"Initial basis constructed:\n"<<mp.basis(0)<<"\n";
 
+    gsHTensorBasis<2,real_t> * basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
     gsHBoxContainer<2> markedRef, markedRef2, markedCrs;
     gsHBox<2> cell;
 
@@ -148,6 +124,11 @@ int main(int argc, char *argv[])
     cell = gsHBox<2>(low,upp,lvl,basis);
     markedRef.add(cell);
     gsWriteParaview(markedRef,"markedRef");
+    gsInfo<<"Added one refinement box (markedRef.pvd):\n"<<markedRef<<"\n";
+
+    markedRef.markAdmissible(m);
+    gsWriteParaview(markedRef,"refCell_Admissible");
+    gsInfo<<"Admissibility region of the refined cell plotted in refCell_Admissible.pvd\n";
 
     low <<4,2;
     upp <<5,3;
@@ -155,16 +136,15 @@ int main(int argc, char *argv[])
     cell = gsHBox<2>(low,upp,lvl,basis);
     markedCrs.add(cell);
     gsWriteParaview(cell,"crsCell");
+    gsInfo<<"Added one coarsening box (markedCrs.pvd):\n"<<markedCrs<<"\n";
 
     gsHBoxContainer<2> Cextension(cell.getParent().getCextension(m));
     gsWriteParaview(Cextension,"crsCell_Cextension");
+    gsInfo<<"Coarsening extension plotted in crsCell_Cextension.pvd\n";
 
     gsHBoxContainer<2> Cneighborhood(cell.getParent().getCneighborhood(m));
     gsWriteParaview(Cneighborhood,"crsCell_Cneighborhood");
-
-    markedRef.markAdmissible(2);
-    gsWriteParaview(markedRef,"refCell_Admissible");
-
+    gsInfo<<"Coarsening neighborhood plotted in crsCell_Cneighborhood.pvd\n";
     return 0;
 }
 
