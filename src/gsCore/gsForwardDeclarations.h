@@ -119,6 +119,7 @@ template <class T=real_t>                class gsMultiPatch;
 template <class basis_t >                class gsRationalBasis;
 template <short_t d, class T=real_t>     class gsTensorBasis;
 template <short_t d, class T=real_t>     class gsHTensorBasis;
+template <short_t d, class T=real_t>     class gsMappedBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
@@ -148,6 +149,7 @@ template <short_t d, class T=real_t>     class gsTensorNurbs;
 template <short_t d, class T=real_t>     class gsTensorBezier;
 template <short_t d, class T=real_t>     class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
+template <short_t d, class T=real_t>     class gsMappedSpline;
 
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
