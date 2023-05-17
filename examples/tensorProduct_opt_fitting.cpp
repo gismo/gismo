@@ -76,7 +76,7 @@ public:
         m_curDesign << m_mp->result()->coefs().reshape(m_mp->result()->coefs().size(),1), t_params.reshape(t_params.size(),1); // coefs_x, coefs_y, coefs_z, u, v
 
         m_G.resize(m_mp->result()->coefs().rows(), m_mp->result()->coefs().rows());
-        // Allocate the sparse matrix (TODO)
+        m_G.reservePerColumn( cast<T,index_t>( (2 * m_mp->result()->basis().maxDegree() + 1) * 1.333 ) );
         m_mp->applySmoothing(m_mp->lambda(), m_G);
 
     }
