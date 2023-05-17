@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include <gsHSplines/gsHBoxUtils.h>
+#include <gsIO/gsXml.h>
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
-#include <gsIO/gsXml.h>
+#include <gsHSplines/gsHNeighborhood.h>
 
 namespace gismo
 {
@@ -352,7 +352,7 @@ public:
      *
      * @return     The neighborhood.
      */
-    template<enum Neighborhood _mode>
+    template<gsHNeighborhood _mode>
     typename gsHBox<d,T>::Container getNeighborhood(index_t m) { return getNeighborhood_impl<_mode>(m);}
 
 
@@ -487,22 +487,22 @@ protected:
     Container _boxUnion(const Container & container1, const Container & container2) const;
     Container _makeUnique(const Container & container) const;
 
-    template<enum Neighborhood _mode>
-    typename std::enable_if<_mode==Neighborhood::Automatic, typename gsHBox<d,T>::Container>::type
+    template<gsHNeighborhood _mode>
+    typename std::enable_if<_mode==gsHNeighborhood::Automatic, typename gsHBox<d,T>::Container>::type
     getNeighborhood_impl(index_t m)
     {
         return this->getNeighborhood(m);
     }
 
-    template<enum Neighborhood _mode>
-    typename std::enable_if<_mode==Neighborhood::T, typename gsHBox<d,T>::Container>::type
+    template<gsHNeighborhood _mode>
+    typename std::enable_if<_mode==gsHNeighborhood::T, typename gsHBox<d,T>::Container>::type
     getNeighborhood_impl(index_t m)
     {
         return this->getTneighborhood(m);
     }
 
-    template<enum Neighborhood _mode>
-    typename std::enable_if<_mode==Neighborhood::H, typename gsHBox<d,T>::Container>::type
+    template<gsHNeighborhood _mode>
+    typename std::enable_if<_mode==gsHNeighborhood::H, typename gsHBox<d,T>::Container>::type
     getNeighborhood_impl(index_t m)
     {
         return this->getHneighborhood(m);

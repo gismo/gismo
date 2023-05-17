@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsHSplines/gsHBox.h>
-#include <gsHSplines/gsHBoxUtils.h>
+#include <gsHSplines/gsHNeighborhood.h>
 #include <gsIO/gsXml.h>
 
 namespace gismo
@@ -290,8 +290,8 @@ protected:
 protected:
     HContainer m_boxes;
 
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+// public:
+//     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 }; // class gsHBoxContainer
 

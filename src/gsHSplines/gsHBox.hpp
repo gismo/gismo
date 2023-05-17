@@ -544,9 +544,9 @@ typename gsHBox<d,T>::Container gsHBox<d, T>::getNeighborhood(index_t m)
 {
     Container result;
     if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(m_basis))
-        result = this->getNeighborhood<Neighborhood::T>(m);
+        result = this->getNeighborhood<gsHNeighborhood::T>(m);
     else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(m_basis))
-        result = this->getNeighborhood<Neighborhood::H>(m);
+        result = this->getNeighborhood<gsHNeighborhood::H>(m);
     else
         GISMO_ERROR("Basis type should be gsTHBSplineBasis or gsHBSplineBasis");
     return result;

@@ -1074,7 +1074,7 @@ void gsWriteParaview(gsHBox<2,T> & box, std::string const & fn)
     gsParaviewCollection collection(fn);
 
     writeSingleHBox(box,fn);
-    collection.addPart(fn, ".vts");
+    collection.addPart(fn + ".vts");
 
     // Write out the collection file
     collection.save();
@@ -1093,7 +1093,7 @@ void gsWriteParaview(gsHBoxContainer<2,T> & boxes, std::string const & fn)
             fileName = fn + util::to_string(i);
             writeSingleHBox<T>(*Cit,fileName);
             fileName = gsFileManager::getFilename(fileName);
-            collection.addPart(fileName, ".vts");
+            collection.addPart(fileName + ".vts",-1,"",i);
         }
 
     // Write out the collection file

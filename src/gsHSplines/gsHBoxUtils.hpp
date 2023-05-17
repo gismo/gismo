@@ -400,32 +400,32 @@ typename gsHBox<d,T>::HContainer gsHBoxUtils<d, T>::toUnitHBoxes(const HContaine
 template <short_t d, class T>
 typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markTadmissible(const HContainer & marked, index_t m)
 {
-    return gsHBoxUtils<d,T>::markAdmissible<Neighborhood::T>(marked,m);
+    return gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::T>(marked,m);
 }
 
 template <short_t d, class T>
 typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markTadmissible(const gsHBox<d,T> & marked, index_t m)
 {
-    return gsHBoxUtils<d,T>::markAdmissible<Neighborhood::T>(marked,m);
+    return gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::T>(marked,m);
 }
 
 
 template <short_t d, class T>
 typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markHadmissible(const HContainer & marked, index_t m)
 {
-    return gsHBoxUtils<d,T>::markAdmissible<Neighborhood::H>(marked,m);
+    return gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::H>(marked,m);
 }
 
 template <short_t d, class T>
 typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markHadmissible(const gsHBox<d,T> & marked, index_t m)
 {
-    return gsHBoxUtils<d,T>::markAdmissible<Neighborhood::H>(marked,m);
+    return gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::H>(marked,m);
 }
 
 
 template <short_t d, class T>
-template<enum Neighborhood _mode>
-typename std::enable_if<_mode==Neighborhood::T || _mode==Neighborhood::H, typename gsHBoxUtils<d, T>::HContainer>::type
+template<gsHNeighborhood _mode>
+typename std::enable_if<_mode==gsHNeighborhood::T || _mode==gsHNeighborhood::H, typename gsHBoxUtils<d, T>::HContainer>::type
 gsHBoxUtils<d, T>::_markRecursive(const HContainer & marked, index_t lvl, index_t m)
 {
     HContainer marked_copy = marked;
@@ -450,15 +450,15 @@ gsHBoxUtils<d, T>::_markRecursive(const HContainer & marked, index_t lvl, index_
 }
 
 template <short_t d, class T>
-template<enum Neighborhood _mode>
-typename std::enable_if<_mode!=Neighborhood::T && _mode!=Neighborhood::H, typename gsHBoxUtils<d, T>::HContainer>::type
+template<gsHNeighborhood _mode>
+typename std::enable_if<_mode!=gsHNeighborhood::T && _mode!=gsHNeighborhood::H, typename gsHBoxUtils<d, T>::HContainer>::type
 gsHBoxUtils<d, T>::_markRecursive(const HContainer & marked, index_t lvl, index_t m)
 {
     GISMO_ERROR("Mode must be T or H");
 }
 
 template <short_t d, class T>
-template<enum Neighborhood _mode>
+template<gsHNeighborhood _mode>
 typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const HContainer & marked, index_t m)
 {
     HContainer unitBoxes = gsHBoxUtils<d,T>::toUnitHBoxes(marked);
@@ -470,7 +470,7 @@ typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const HC
 }
 
 template <short_t d, class T>
-template<enum Neighborhood _mode>
+template<gsHNeighborhood _mode>
 typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const gsHBox<d,T> & marked, index_t m)
 {
     HContainer unitBoxes = gsHBoxUtils<d,T>::Container2HContainer(marked.toUnitBoxes());
@@ -482,9 +482,9 @@ typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const gs
 // {
 //     HContainer result;
 //     if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(marked.basis()))
-//         result = gsHBoxUtils<d,T>::getNeighborhood<Neighborhood::T>(m);
+//         result = gsHBoxUtils<d,T>::getNeighborhood<gsHNeighborhood::T>(m);
 //     else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(marked.basis()))
-//         result = gsHBoxUtils<d,T>::getNeighborhood<Neighborhood::T>(m);
+//         result = gsHBoxUtils<d,T>::getNeighborhood<gsHNeighborhood::T>(m);
 //     else
 //         GISMO_ERROR("Basis type should be gsTHBSplineBasis or gsHBSplineBasis");
 //     return result;
@@ -495,9 +495,9 @@ typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const HC
 {
     HContainer result;
     if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(&marked.front().front().basis()))
-        result = gsHBoxUtils<d,T>::markAdmissible<Neighborhood::T>(marked,m);
+        result = gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::T>(marked,m);
     else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(&marked.front().front().basis()))
-        result = gsHBoxUtils<d,T>::markAdmissible<Neighborhood::H>(marked,m);
+        result = gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::H>(marked,m);
     else
         GISMO_ERROR("Basis type should be gsTHBSplineBasis or gsHBSplineBasis");
     return result;
@@ -508,9 +508,9 @@ typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const gs
 {
     HContainer result;
     if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(&marked.basis()))
-        result = gsHBoxUtils<d,T>::markAdmissible<Neighborhood::T>(marked,m);
+        result = gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::T>(marked,m);
     else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(&marked.basis()))
-        result = gsHBoxUtils<d,T>::markAdmissible<Neighborhood::H>(marked,m);
+        result = gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::H>(marked,m);
     else
         GISMO_ERROR("Basis type should be gsTHBSplineBasis or gsHBSplineBasis");
     return result;

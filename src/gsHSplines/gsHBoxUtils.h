@@ -1,3 +1,4 @@
+
 /** @file gsAdaptiveRefUtils.h
 
     @brief Provides generic routines for adaptive refinement.
@@ -15,16 +16,11 @@
 
 
 #include <iostream>
+// #include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHNeighborhood.h>
 
 namespace gismo
 {
-
-enum class Neighborhood : short_t
-{
-    Automatic = 0,
-    T = 1,
-    H = 2,
-};
 
 template<short_t d, class T>
 struct gsHBoxUtils
@@ -156,9 +152,9 @@ public:
      *
      * @return     The resulting hierarchical container.
      */
-    template<enum Neighborhood _mode>
+    template<gsHNeighborhood _mode>
     static HContainer markAdmissible(const gsHBox<d,T> & marked, index_t m);
-    template<enum Neighborhood _mode>
+    template<gsHNeighborhood _mode>
     static HContainer markAdmissible(const HContainer & marked, index_t m);
 
     static HContainer markAdmissible(const gsHBox<d,T> & marked, index_t m);
@@ -175,18 +171,18 @@ protected:
 	 * @param[in]  lvl     The level
 	 * @param[in]  m       The jump parameter
 	 *
-	 * @tparam     _mode   see Neighborhood for T or H
+	 * @tparam     _mode   see gsHNeighborhood for T or H
 	 *
 	 * @return     The resulting hierarchical container.
 	 */
-	template<enum Neighborhood _mode>
+	template<gsHNeighborhood _mode>
     static
-    typename std::enable_if<_mode==Neighborhood::T || _mode==Neighborhood::H, HContainer>::type
+    typename std::enable_if<_mode==gsHNeighborhood::T || _mode==gsHNeighborhood::H, HContainer>::type
 	_markRecursive(const HContainer & marked, index_t lvl, index_t m);
 
-	template<enum Neighborhood _mode>
+	template<gsHNeighborhood _mode>
     static
-    typename std::enable_if<_mode!=Neighborhood::T && _mode!=Neighborhood::H, HContainer>::type
+    typename std::enable_if<_mode!=gsHNeighborhood::T && _mode!=gsHNeighborhood::H, HContainer>::type
 	_markRecursive(const HContainer & marked, index_t lvl, index_t m);
 };
 
