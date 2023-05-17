@@ -1,6 +1,6 @@
-/** @file gsHBox.h
+/** @file gsHBoxContainer.h
 
-    @brief Provides definition of the gsHBox
+    @brief Provides a container for gsHBox
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): G. Kiss, A. Mantzaflaris, J. Speh
+    Author(s): H.M.Verhelst (TU Delft 2019-...)
 */
 
 #pragma once
@@ -179,15 +179,16 @@ public:
     rHIterator rend() {return m_boxes.rend();}
 
 
-    /**
-     * @brief      Returns the basis of the underlying basis
-     *
-     * NOTE: Assumes that the basis of all boxes is the same
-     *
-     * @return     { description_of_the_return_value }
-     */
-    const gsHTensorBasis<d,T> & basis() { return this->begin()->front().basis(); }
+    // /**
+    //  * @brief      Returns the basis of the underlying basis
+    //  *
+    //  * NOTE: Assumes that the basis of all boxes is the same
+    //  *
+    //  * @return     { description_of_the_return_value }
+    //  */
+    // const gsHTensorBasis<d,T> & basis() { return this->begin()->front().basis(); }
 
+    gsHNeighborhood NHtype() const { return m_NHtype;}
 
 protected:
     // /// Helper to take the box union
@@ -212,7 +213,6 @@ protected:
     //  * @return     The hierarchical container with the union.
     //  */
     // HContainer           _boxUnion(const HContainer & container1, const HContainer & container2) const;
-
 
     /// Constructs a new level
     void _makeLevel(index_t lvl);
@@ -289,6 +289,7 @@ protected:
 
 protected:
     HContainer m_boxes;
+    gsHNeighborhood m_NHtype;
 
 // public:
 //     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

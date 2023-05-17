@@ -1,6 +1,6 @@
-/** @file
+/** @file gsHBoxUtils.hpp
 
-    @brief
+    @brief Provides utility functions for gsHBox and gsHBoxContainer
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): H.M. Verhelst
+    Author(s): H.M. Verhelst   (2019-..., TU Delft)
 */
 
 #pragma once
@@ -493,10 +493,21 @@ typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const gs
 template <short_t d, class T>
 typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const HContainer & marked, index_t m)
 {
+    gsHNeighborhood NHtype = gsHNeighborhood::None;
+    // Find the basis type of the neighborhood in the first non-empty level
+    for (cHIterator hit = marked.begin(); hit!=marked.end(); hit++)
+    {
+        if (hit->size()!=0)
+        {
+            NHtype = gsHBoxUtils<d,T>::neighborhoodType(hit->front());
+            break;
+        }
+    }
+
     HContainer result;
-    if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(&marked.front().front().basis()))
+    if      (NHtype==gsHNeighborhood::T)
         result = gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::T>(marked,m);
-    else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(&marked.front().front().basis()))
+    else if (NHtype==gsHNeighborhood::H)
         result = gsHBoxUtils<d,T>::markAdmissible<gsHNeighborhood::H>(marked,m);
     else
         GISMO_ERROR("Basis type should be gsTHBSplineBasis or gsHBSplineBasis");
@@ -536,6 +547,16 @@ bool gsHBoxUtils<d, T>::allActive(const HContainer & elements)
     return check;
 }
 
+template <short_t d, class T>
+gsHNeighborhood gsHBoxUtils<d, T>::neighborhoodType( const gsHBox<d,T> & box )
+{
+    if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(&box.basis()))
+        return gsHNeighborhood::T;
+    else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(&box.basis()))
+        return gsHNeighborhood::H;
+    else
+        GISMO_ERROR("Neighborhood type cannot be inferred. Is the basis related to the HBox a gsHTensorBasis?");
+}
 
 template <short_t d, class T>
 bool gsHBoxCompare<d,T>::operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & b) const

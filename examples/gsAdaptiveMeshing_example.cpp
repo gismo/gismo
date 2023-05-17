@@ -23,24 +23,6 @@
 
 using namespace gismo;
 
-void writeCells(const std::string name, const gsMatrix<real_t> corners)
-{
-    std::ofstream file;
-    file.open(name,std::ofstream::out);
-    for (index_t c=0; c!=corners.cols()/2; c++)
-    {
-        for (index_t d=0; d!=2; d++)
-            for (index_t r=0; r!=corners.rows(); r++)
-            {
-                file<<corners(r,2*c+d);
-                if (!(r==corners.rows()-1 && d==1))
-                    file<<",";
-                else
-                    file<<"\n";
-            }
-    }
-    file.close();
-}
 
 template<typename T>
 class gsElementErrorPlotter : public gsFunction<T>
@@ -121,7 +103,6 @@ int main(int argc, char *argv[])
     cmd.addInt("R","rule",
                "Rule for refinement/coarsening", rule);
 
-
     cmd.addInt("v","verbose",
                "Verbose output", verbose);
 
@@ -171,7 +152,6 @@ int main(int argc, char *argv[])
     boxes[4] = 4;
     mp.patch(0).refineElements(boxes);
 
-
     boxes[0] = 2;
     boxes[1] = 2;
     boxes[2] = 2;
@@ -193,13 +173,6 @@ int main(int argc, char *argv[])
     boxes[4] = 8;
     mp.patch(0).refineElements(boxes);
 
-    // boxes[0] = 4;
-    // boxes[1] = 6;
-    // boxes[2] = 2;
-    // boxes[3] = 8;
-    // boxes[4] = 4;
-    // mp.patch(0).refineElements(boxes);
-
     boxes[0] = 4;
     boxes[1] = 10;
     boxes[2] = 12;
@@ -212,6 +185,7 @@ int main(int argc, char *argv[])
 
     gsHTensorBasis<2,real_t> * basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
 
+    // Assigns errors to the elements, based on their level: e = 10^{l-1}
     typename gsBasis<>::domainIter domIt = mp.basis(0).makeDomainIterator();
     gsHDomainIterator<real_t,2> * domHIt = nullptr;
     domHIt = dynamic_cast<gsHDomainIterator<real_t,2> *>(domIt.get());
@@ -219,14 +193,6 @@ int main(int argc, char *argv[])
     index_t i=0;
     for (; domHIt->good(); domHIt->next(), i++ )
         errors[i] = math::pow(10,domHIt->getLevel()-1);// + i;
-
-    // errors[11]  = 10001;
-    // errors[13] = 10002;
-    // errors[33] = 10003;
-
-    // errors[32] = 1./10001;
-    // errors[21] = 1./10002;
-    // errors[42] = 1./10003;
 
     index_t offset = 0;
     for (index_t p = 0; p!=mp.nPatches(); p++)
@@ -274,8 +240,6 @@ int main(int argc, char *argv[])
     refine.add(cell);
     mesher.markCrs_into(errors,refine,coarsen);
 
-    // gsDebugVar(marked4ref.)
-
     gsInfo<<"Cells marked for refinement:\n";
     gsInfo<<refine<<"\n";
     gsWriteParaview(refine,"marked4ref");
@@ -287,17 +251,6 @@ int main(int argc, char *argv[])
     mesher.refine(refine);
     mesher.unrefine(coarsen);
     gsWriteParaview(mp,"end",1,true);
-
-    mesher.rebuild();
-    mesher.refineAll();
-    gsWriteParaview(mp,"end_refined",1,true);
-
-    mesher.rebuild();
-    mesher.unrefineAll();
-    mesher.rebuild();
-    mesher.unrefineAll();
-    gsWriteParaview(mp,"end_coarsened",1,true);
-
 
     return 0;
 }

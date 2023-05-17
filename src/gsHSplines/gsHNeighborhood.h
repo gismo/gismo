@@ -1,6 +1,6 @@
-/** @file gsAdaptiveRefUtils.h
+/** @file gsHNeighborhood.h
 
-    @brief Provides generic routines for adaptive refinement.
+    @brief Provides a struct for the neighborhood for admissibility
 
     This file is part of the G+Smo library.
 
@@ -18,9 +18,10 @@ namespace gismo
 
 enum class gsHNeighborhood 
 {
+    None = -1,
     Automatic = 0,
     T = 1,
-    H = 2,
+    H = 2
 };
 
 } // namespace gismo

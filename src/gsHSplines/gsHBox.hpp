@@ -1,6 +1,6 @@
 /** @file gsHBox.hpp
 
-    @brief Provides implementation of HTensorBasis common operations.
+    @brief Provides gsHBox: smart boxes for HTensorBases
 
     This file is part of the G+Smo library.
 

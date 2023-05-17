@@ -1,6 +1,6 @@
-/** @file gsHTensorBasis.hpp
+/** @file gsHBoxContainer.hpp
 
-    @brief Provides implementation of HTensorBasis common operations.
+    @brief Provides a container for gsHBox
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): G. Kiss, A. Mantzaflaris, J. Speh
+    Author(s): H.M.Verhelst (TU Delft 2019-...)
 */
 
 #pragma once
@@ -20,6 +20,8 @@ namespace gismo
 
 template <short_t d, class T>
 gsHBoxContainer<d, T>::gsHBoxContainer()
+:
+m_NHtype(gsHNeighborhood::None)
 { }
 
 template <short_t d, class T>
@@ -46,6 +48,7 @@ gsHBoxContainer<d, T>::gsHBoxContainer(const Container & boxes)
         m_boxes[it->level()].push_back(*it);
     }
 
+    m_NHtype = boxes.size()!=0 ? gsHBoxUtils<d,T>::neighborhoodType(boxes.front()) : gsHNeighborhood::None;
 }
 
 template <short_t d, class T>
@@ -63,6 +66,17 @@ gsHBoxContainer<d, T>::gsHBoxContainer(const HContainer & boxes)
             {
                 this->_makeLevel(it->level());
                 m_boxes[it->level()].push_back(*it);
+            }
+        }
+
+        // Find the basis type of the neighborhood in the first non-empty level
+        m_NHtype = gsHNeighborhood::None;
+        for (cHIterator hit = boxes.begin(); hit!=boxes.end(); hit++)
+        {
+            if (hit->size()!=0)
+            {
+                m_NHtype = gsHBoxUtils<d,T>::neighborhoodType(hit->front());
+                break;
             }
         }
     }
@@ -108,6 +122,9 @@ void gsHBoxContainer<d, T>::add(const gsHBox<d,T> & box)
 {
     this->_makeLevel(box.level());
     m_boxes[box.level()].push_back(box);
+
+    if (m_NHtype==gsHNeighborhood::None)
+        m_NHtype = gsHBoxUtils<d,T>::neighborhoodType(box);
 }
 
 template <short_t d, class T>
@@ -310,7 +327,12 @@ void gsHBoxContainer<d, T>::markHadmissible(index_t m)
 template <short_t d, class T>
 void gsHBoxContainer<d, T>::markAdmissible(index_t m)
 {
-    m_boxes = gsHBoxUtils<d,T>::markAdmissible(m_boxes,m);
+    if      (m_NHtype==gsHNeighborhood::T)
+        m_boxes = gsHBoxUtils<d,T>::markTadmissible(m_boxes,m);
+    else if (m_NHtype==gsHNeighborhood::H)
+        m_boxes = gsHBoxUtils<d,T>::markHadmissible(m_boxes,m);
+    else
+        GISMO_ERROR("Neighborhood type not understood");
 }
 
 template <short_t d, class T>

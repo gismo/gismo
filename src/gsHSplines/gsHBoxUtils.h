@@ -1,7 +1,6 @@
+/** @file gsHBoxUtils.h
 
-/** @file gsAdaptiveRefUtils.h
-
-    @brief Provides generic routines for adaptive refinement.
+    @brief Provides utility functions for gsHBox and gsHBoxContainer
 
     This file is part of the G+Smo library.
 
@@ -9,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): S. Kleiss
+    Author(s): H.M. Verhelst   (2019-..., TU Delft)
 */
 
 #pragma once
@@ -163,6 +162,8 @@ public:
     static bool allActive(const  Container & elements);
     static bool allActive(const HContainer & elements);
 
+    static gsHNeighborhood neighborhoodType(const gsHBox<d,T> & box);
+
 protected:
 	/**
 	 * @brief      Marks Recursively
@@ -185,72 +186,6 @@ protected:
     typename std::enable_if<_mode!=gsHNeighborhood::T && _mode!=gsHNeighborhood::H, HContainer>::type
 	_markRecursive(const HContainer & marked, index_t lvl, index_t m);
 };
-
-
-// template <short_t d, class T>
-// void removeDuplicates( gsHBox<d,T>::Container & Container )
-// {
-//     typedef Container::iterator Iterator;
-//     Iterator it=Container.begin();
-//     while (it!=Container.end())
-//     {
-//         if (it)
-//             Container.erase(it++);
-//     }
-
-// }
-
-// void removeDuplicates( gsHBox<d,T>::HContainer & HContainer )
-// {
-//     typedef HContainer::iterator HIterator;
-//     for (HIterator it!=Container.begin())
-
-// }
-
-// template <short_t d, class T>
-// gsHBox<d, T>::Container _boxUnion(const gsHBox<d, T>::Container & container1, const gsHBox<d, T>::Container & container2) const
-// {
-//     gsHBox<d, T>::SortedContainer sortedResult;
-
-//     gsHBox<d, T>::SortedContainer scontainer1(container1.begin(), container1.end());
-//     gsHBox<d, T>::SortedContainer scontainer2(container2.begin(), container2.end());
-
-//     auto comp = [](auto & a, auto & b)
-//                     {
-//                         return
-//                         (a.level() < b.level())
-//                         ||
-//                         ((a.level() == b.level()) &&
-//                         std::lexicographical_compare(  a.lowerIndex().begin(), a.lowerIndex().end(),
-//                                                     b.lowerIndex().begin(), b.lowerIndex().end())   )
-//                         ||
-//                         ((a.level() == b.level()) && (a.lowerIndex() == b.lowerIndex()) &&
-//                         std::lexicographical_compare(  a.upperIndex().begin(), a.upperIndex().end(),
-//                                                     b.upperIndex().begin(), b.upperIndex().end())    );
-//                     };
-
-//     sortedResult.reserve(scontainer1.size() + scontainer2.size());
-//     if (scontainer1.size()!=0 && scontainer2.size()!=0)
-//     {
-//         // First sort (otherwise union is wrong)
-//         std::sort(scontainer1.begin(),scontainer1.end(),comp);
-//         std::sort(scontainer2.begin(),scontainer2.end(),comp);
-
-//         std::set_union( scontainer1.begin(),scontainer1.end(),
-//                         scontainer2.begin(),scontainer2.end(),
-//                         std::inserter(sortedResult,sortedResult.begin()),
-//                         comp);
-//     }
-//     else if (scontainer1.size()!=0 && container2.size()==0)
-//         sortedResult.insert(sortedResult.end(),scontainer1.begin(),scontainer1.end());
-//     else if (scontainer1.size()==0 && container2.size()!=0)
-//         sortedResult.insert(sortedResult.end(),scontainer2.begin(),scontainer2.end());
-//     else    { /* Do nothing */ }
-
-//     gsHBox<d, T>::Container result(sortedResult.begin(),sortedResult.end());
-
-//     return result;
-// }
 
 template <short_t d, class T>
 struct gsHBoxCompare

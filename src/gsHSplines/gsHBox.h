@@ -1,6 +1,6 @@
 /** @file gsHBox.h
 
-    @brief Provides definition of the gsHBox
+    @brief Provides gsHBox: smart boxes for HTensorBases
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): G. Kiss, A. Mantzaflaris, J. Speh
+    Author(s): H.M.Verhelst (TU Delft 2019-...)
 */
 
 #pragma once
@@ -491,7 +491,10 @@ protected:
     typename std::enable_if<_mode==gsHNeighborhood::Automatic, typename gsHBox<d,T>::Container>::type
     getNeighborhood_impl(index_t m)
     {
-        return this->getNeighborhood(m);
+        if (dynamic_cast<const gsTHBSplineBasis<d,T>*>(this->basis()))
+            return this->getTneighborhood(m);
+        else if (dynamic_cast<const gsHBSplineBasis<d,T>*>(this->basis()))
+            return this->getHneighborhood(m);
     }
 
     template<gsHNeighborhood _mode>
