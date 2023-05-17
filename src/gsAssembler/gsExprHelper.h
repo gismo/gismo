@@ -129,9 +129,19 @@ public:
 
     const gsMultiPatch<T> & multiPatch() const
     {
-        GISMO_ASSERT(!m_mdata.empty(), "Geometry map not set.");
-        GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first), "Multipatch geometry map not set.");
-        return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
+        if ( !m_mdata.empty() )
+        {
+        GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first),
+                     "Multipatch geometry map not set.");
+            return *static_cast<const gsMultiPatch<T>*>(m_mdata.begin()->first);
+        }
+        if (isMirrored() && !m_mirror->m_mdata.empty() )
+        {
+            GISMO_ASSERT(nullptr!=dynamic_cast<const gsMultiPatch<T>*>(m_mirror->m_mdata.begin()->first),
+                         "Multipatch geometry map not set.");
+            return *static_cast<const gsMultiPatch<T>*>(m_mirror->m_mdata.begin()->first);
+        }
+        GISMO_ERROR("Geometry map not set.");
     }
 
     const gsMapData<T> & multiPatchData() const
@@ -185,12 +195,26 @@ public:
         return var;
     }
 
-    void setMutSource(const gsFunction<T> & func)
+    void setMutSource(const gsFunctionSet<T> & func)
     {
         mutSrc = &func;
     }
 
     //void clearMutSource() ?
+
+    void activateFlags(unsigned flg)
+    {
+        // Additional evaluation flags
+        for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
+            it->second.mine().flags |= flg;
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+            it->second.mine().flags |= flg;
+        for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
+            it->second.mine().flags |= flg;
+        // gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
+        // gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
+        // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
+    }
 
 private:
 
@@ -230,23 +254,23 @@ private:
     {
         // Additional evaluation flags
         for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= NEED_ACTIVE;
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+            it->second.mine().flags |= NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
-            it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
-        // gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
-        // gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
-        // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
+        it->second.mine().flags |= NEED_ACTIVE;
+        //gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
+        //gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
+        //gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
 
         if (isMirrored())
         {
             for (MapDataIt it  = m_mirror->m_mdata.begin(); it != m_mirror->m_mdata.end(); ++it)
-                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+                it->second.mine().flags |= NEED_ACTIVE;
             for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
-                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+                it->second.mine().flags |= NEED_ACTIVE;
             for (CFuncDataIt it  = m_mirror->m_cdata.begin(); it != m_mirror->m_cdata.end(); ++it)
-                it->second.mine().flags |= SAME_ELEMENT|NEED_ACTIVE;
+                it->second.mine().flags |= NEED_ACTIVE;
             // gsInfo<< "+fdata: "<< m_mirror->m_fdata.size()<<"\n";
             // gsInfo<< "+mdata: "<< m_mirror->m_mdata.size()<<"\n";
             // gsInfo<< "+cdata: "<< m_mirror->m_cdata.size()<<std::endl;
@@ -371,16 +395,16 @@ public:
         {
             it->second.mine().points.swap(m_points.mine());//swap
             it->second.mine().side    = bs;
-            it->first->function(patchIndex).computeMap(it->second);
             it->second.mine().patchId = patchIndex;
+            it->first->function(patchIndex).computeMap(it->second);
             it->second.mine().points.swap(m_points.mine());
         }
 
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
         {
+            it->second.mine().patchId = patchIndex;
             it->first->piece(patchIndex)
                 .compute(m_points, it->second);
-            it->second.mine().patchId = patchIndex;
         }
 
         for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
@@ -401,7 +425,7 @@ public:
 
     void precompute(const boundaryInterface & iFace)
     {
-        this->precompute    (iFace.first ().patch, iFace.first() .side());
+        this->precompute( iFace.first ().patch, iFace.first().side() );
         if ( isMirrored() )
             m_mirror->precompute(iFace.second().patch, iFace.second().side());
     }

@@ -51,6 +51,10 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = tru
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
 
+GISMO_EXPORT void gsWriteParaview(const gsSurfMesh & sm,
+                                  std::string const & fn,
+                                  std::initializer_list<std::string> props = {});
+    
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///
 /// \param meshes vector of gsMesh objects
@@ -68,6 +72,16 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
                      unsigned npts=NS, bool mesh = false);
+
+/// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
+///
+/// \param func a \a gsFunctionSet representing the function to be plotted
+/// \param geo  a \a gsFunctionSet representing the geometry to be plotted
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each patch
+template<class T>
+void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
+                     std::string const & fn, unsigned npts = NS);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
@@ -309,6 +323,11 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
 
 template<class T>
 void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
+
+/// Export a control net
+template<class T>
+void writeSingleControlNet(const gsGeometry<T> & Geo,
+                           std::string const & fn);
 
 // Please document
 template <class T>

@@ -82,14 +82,22 @@ at a new, empty folder (in-source builds are disabled).
   choose your own build folder and execute CMake pointing to the
   sources.
 
-* On **MS Windows**: MS Visual Studio has [built-in CMake
-  support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
-  since version 2015. Alternatively, you can run the `cmake-gui` tool
-  (from an environment that is configured with your compiler) to
-  generate makefiles (or Visual Studio project files). Then execute
-  the make tool to launch compilation. Alternatively, use the
-  QtCreator GUI and open the CMakeLists.txt file on the root folder to
-  create a QtCreator project.
+* On **MS Windows**: 
+     * To compile G+Smo natively, you can use MS Visual Studio which has [built-in CMake
+       support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
+       since version 2015. Alternatively, you can run the `cmake-gui` tool
+       (from an environment that is configured with your compiler) to
+       generate makefiles (or Visual Studio project files). Then execute
+       the make tool to launch compilation. Alternatively, use the
+       QtCreator GUI and open the CMakeLists.txt file on the root folder to
+       create a QtCreator project.
+     * Another option is to install [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install)
+       which:
+       > lets developers install a Linux distribution [...] and use Linux applications, utilities, 
+       > and Bash command-line tools directly on Windows, unmodified, without the overhead of 
+       > a traditional virtual machine or dualboot setup.
+     
+       Then you can download, compile and use G+Smo as if your were using a native Linux machine.
 
 After successful compilation a dynamic library is created in `./lib` and
 executable example programs are output at the `./bin` subdirectory of
@@ -104,6 +112,21 @@ to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at `./doc/html/index.html`.
 
 More information at https://github.com/gismo/gismo/wiki
+
+# Optional modules
+
+There is a number of optional modules that may be enabled.
+
+| **Name** | **Description** |
+|----------|-----------------|
+|[gsOpenCascade](https://github.com/gismo/gismo/tree/stable/extensions/gsOpenCascade#readme)| Extends functionality using OpenCascade|
+|[gsElasticity](https://github.com/gismo/gsElasticity#readme)|  |
+|[gsKLShell](https://github.com/gismo/gsKLShell#readme)|  |
+|[gsStructuralAnalysis](https://github.com/gismo/gsStructuralAnalysis#readme)|  |
+
+To enable e.g. gsSpectra and gsOpenCascade set the following option in CMake:
+
+ ``` -D GISMO_OPTIONAL="gsSpectra;gsOpenCascade" ```
 
 # Configuration Options
 
@@ -125,7 +148,7 @@ include double, long double, float.
   If set to one or more of the options available for GISMO_COEFF_TYPE
   the G+Smo library is compiled with extra arithmetic types enabled.
 
-* GISMO_EXTRA_DEBUG       *OFF*
+* GISMO_WITH_XDEBUG       *OFF*
 
   If set to ON additional debugging tools are enabled during
 compilation. These include checked iterators for GCC and MSVC
@@ -148,7 +171,7 @@ executables are created in build-folder/bin.
   If enabled the tests in the unittests folder are compiled, and an
 executable is created in build-folder/bin.
 
-* GISMO_BUILD_AXL         *OFF*
+* GISMO_PLUGIN_AXL         *OFF*
 
   If enabled the plugin for Axel modeler is compiled (requires Axel).
 
@@ -157,10 +180,9 @@ executable is created in build-folder/bin.
   If enabled the extensions using functionalities of Parasolid geometric
 kernel are compiled (requires Parasolid).
 
-* GISMO_WITH_ONURBS       *OFF*
+* gsOpennurbs
 
-  If enabled the extension for reading and writing of Rhinoceros' 3DM is
-compiled.
+  Extension for reading and writing of Rhinoceros' 3DM.
 
 * CMAKE_INSTALL_PREFIX   (system dependent)
 
@@ -237,6 +259,9 @@ eleven modules are present as sub-folders:
 
   https://github.com/gismo/gismo/issues
 
+* Questions (Q&A):
+
+  https://github.com/gismo/gismo/discussions/categories/q-a
 
 # People
 

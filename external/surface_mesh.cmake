@@ -1,7 +1,5 @@
 # Fetching surface_mesh external
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
 include(gsFetch)
 gismo_fetch_directory(surface_mesh
   GIT_REPOSITORY https://opensource.cit-ec.de/git/surface_mesh
@@ -17,7 +15,13 @@ file(GLOB SMSOURCES ${gismo_SOURCE_DIR}/external/surface_mesh/src/surface_mesh/*
 file(GLOB SMHEADERS ${gismo_SOURCE_DIR}/external/surface_mesh/src/surface_mesh/*.h)
 set(SMESH_INCLUDE_DIRS ${gismo_SOURCE_DIR}/external/surface_mesh/src CACHE INTERNAL "surface_mesh include dir")
 #.. target_include_directories
-add_library(surface_mesh OBJECT EXCLUDE_FROM_ALL ${SMSOURCES} ${SMHEADERS})
+add_library(surface_mesh OBJECT ${SMSOURCES} ${SMHEADERS})
+
+set_target_properties(surface_mesh PROPERTIES
+  POSITION_INDEPENDENT_CODE ON
+  CXX_VISIBILITY_PRESET default
+  LINKER_LANGUAGE CXX
+  FOLDER "G+Smo extensions")
 
 set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:surface_mesh>
     CACHE INTERNAL "Gismo extensions to be included")

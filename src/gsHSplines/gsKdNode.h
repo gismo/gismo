@@ -159,6 +159,14 @@ struct kdnode
         box = new kdBox( point::Zero(), upp);
     }
 
+    /// Constructor (root node)
+    kdnode(point const & low, point const & upp) : axis(-1) , level(0),
+                                  parent(0), left(0) , right(0)
+    {
+        // Initial box, upp is expected to be indexed in finest level
+        box = new kdBox( low, upp);
+    }
+
     /// Constructor (leaf node)
     kdnode(kdBox const & bb) 
         : axis(-1) , level(0),

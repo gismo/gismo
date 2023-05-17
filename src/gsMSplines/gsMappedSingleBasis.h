@@ -1,6 +1,6 @@
 /** @file gsMappedSingleBasis.h
 
-    @brief Provides declaration of Basis abstract interface.
+    @brief Implementation of a piece of the gsMappedBasis
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): H.M. Verhelst, P. Weinmueller
 */
 
 #pragma once
@@ -121,7 +121,6 @@ public:
     {
         return m_basis->getBase(m_index).support(i);
     }
-  
     /// Returns the boundary basis on side s
     gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
     {
@@ -315,7 +314,7 @@ public:
         // Better way for offset one: compute (anchors()) the normal derivatives at the boundary and return the indices
         if (offset == 1) // Small fix
         {
-            GISMO_ASSERT(offset==1, "The indizes of boundaryOffset(s,1) "
+            GISMO_ASSERT(offset==1, "The indices of boundaryOffset(s,1) "
                                     "will be substract from boundaryOffset(s,0)");
 
             std::vector<index_t> diff, temp2, rtemp2;
@@ -330,6 +329,18 @@ public:
 
         return makeMatrix<index_t>(rtemp.begin(),rtemp.size(),1 );
     }
+
+    index_t functionAtCorner(boxCorner const & c) const
+    {
+        index_t cindex = m_basis->getBase(m_index).functionAtCorner(c);
+        cindex = m_basis->_getLocalIndex(m_index,cindex);
+        GISMO_ENSURE(m_basis->getMapper().sourceIsId(cindex),"Corner function has no identity map, i.e. there are more than 1 functions associated to the corner?");
+        std::vector<index_t> indices;
+        m_basis->getMapper().sourceToTarget(cindex,indices);
+        GISMO_ASSERT(indices.size()==1,"Size of the indices returned for the corner basis function should be 1 but is "<<indices.size()<<". Otherwise, there are more than 1 functions associated to the corner");
+        return indices.front();
+    }
+
     
 // Data members
 private:

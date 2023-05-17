@@ -105,6 +105,9 @@ namespace internal
 #include <gsHSplines/gsHBox.h>
 #include <gsHSplines/gsHBoxContainer.h>
 
+/* ----------- Mesh ----------- */
+#include <gsMesh2/gsSurfMesh.h>
+
 /* ----------- MSplines ----------- */
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsMappedSpline.h>
@@ -190,6 +193,7 @@ namespace internal
 #include <gsIO/gsFileManager.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
+#include <gsIO/gsParaviewDataSet.h>
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
@@ -202,13 +206,14 @@ namespace internal
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
+#include <gsUtils/gsL2Projection.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
 #include <gsAutoDiff.h>
 #endif
 
-#ifdef GISMO_WITH_TRILINOS
+#ifdef gsTrilinos_ENABLED
 #include <gsTrilinos/gsTrilinos.h>
 #endif
 

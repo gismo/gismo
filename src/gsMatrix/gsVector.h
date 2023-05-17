@@ -319,7 +319,7 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 // template<class T> inline
 //     inline T & gsVector3d<T>::z () { return (*this)(2); }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsVector
@@ -342,7 +342,7 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
     ;
   }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 
 

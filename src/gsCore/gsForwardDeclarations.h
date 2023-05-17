@@ -29,7 +29,7 @@
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
 #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
@@ -152,6 +152,7 @@ template <class T=real_t>                class gsTrimSurface;
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
 template <class T=real_t>                class gsGaussRule;
+template <class T=real_t>                class gsNewtonCotesRule;
 template <class T=real_t>                class gsGalerkinMethod;
 
 // Domains
@@ -286,10 +287,8 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
-// Refinement
-template <short_t d, class T=real_t>     class gsHBox;
-template <short_t d, class T=real_t>     class gsHBoxContainer;
-
+class gsParaviewDataSet;
+class gsSurfMesh;
 
 /// @endcond
 

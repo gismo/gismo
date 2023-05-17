@@ -104,6 +104,10 @@ public:
     }
 
 public:
+
+    /// Returns the element id
+    size_t id() const   { return m_id; }
+
     /// Is the iterator still pointing to a valid element?
     bool good() const   { return m_isGood; }
 
@@ -219,6 +223,8 @@ protected:
     bool m_isGood;
 
     boxSide m_side;
+
+    size_t m_id;
 
 private:
     // disable copying

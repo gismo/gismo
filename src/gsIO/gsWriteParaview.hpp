@@ -25,12 +25,10 @@
 
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
-//#include <gsUtils/gsMesh/gsHeMesh.h>
 
 #include <gsHSplines/gsHBoxContainer.h>
 
-
-#define PLOT_PRECISION 5
+#define PLOT_PRECISION 12
 
 namespace gismo
 {
@@ -685,19 +683,48 @@ void gsWriteParaview(const gsField<T> & field,
 
         fileName = fn + util::to_string(i);
         writeSinglePatchField( field, i, fileName, npts );
-        collection.addPart(fileName, ".vts");
+        collection.addPart(fileName + ".vts");
         if ( mesh )
         {
             fileName+= "_mesh";
             writeSingleCompMesh(dom, field.patch(i), fileName);
 
-            collection.addPart(fileName, ".vtp");
+            collection.addPart(fileName + ".vtp");
         }
 
     }
     collection.save();
 }
 
+/// Write a file containing a solution field over a geometry
+template<class T>
+void gsWriteParaview(gsFunctionSet<T> const& geo,
+                     gsFunctionSet<T> const& func,
+                     std::string const & fn,
+                     unsigned npts)
+{
+    /*
+    if (mesh && (!field.isParametrized()) )
+    {
+        gsWarn<< "Cannot plot mesh from non-parametric field.";
+        mesh = false;
+    }
+    */
+
+    GISMO_ASSERT(geo.nPieces()==func.nPieces(),"Function sets must have same number of pieces, but func has "<<func.nPieces()<<" and geo has "<<geo.nPieces());
+
+    const unsigned n = geo.nPieces();
+    gsParaviewCollection collection(fn);
+    std::string fileName;
+
+    for ( unsigned i=0; i < n; ++i )
+    {
+        fileName = fn + util::to_string(i);
+        writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
+        collection.addPart(fileName + ".vts");
+    }
+    collection.save();
+}
 
 /// Export a Geometry without scalar information
 template<class T>
@@ -711,12 +738,12 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     if ( curve )
     {
         writeSingleCurve(Geo, fn, npts);
-        collection.addPart(fn, ".vtp");
+        collection.addPart(fn + ".vtp");
     }
     else
     {
         writeSingleGeometry(Geo, fn, npts);
-        collection.addPart(fn, ".vts");
+        collection.addPart(fn + ".vts");
     }
 
     if ( mesh ) // Output the underlying mesh
@@ -735,7 +762,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 	    // additional multiplication by deg - 1 ensures quadratic
 	    // elements to be approximated by at least two lines etc.
 	    ptsPerEdge = cast<T,int>(
-            static_cast<T>(math::max(Geo.basis().maxDegree()-1, (index_t)1)) * math::pow(evalPtsPerElem, T(1.0)/static_cast<T>(Geo.domainDim())) );
+            static_cast<T>(math::max(Geo.basis().maxDegree()-1, (short_t)1)) * math::pow(evalPtsPerElem, T(1.0)/static_cast<T>(Geo.domainDim())) );
 	}
 	else
 	{
@@ -743,14 +770,14 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 	}
 
         writeSingleCompMesh(Geo.basis(), Geo, fileName, ptsPerEdge);
-        collection.addPart(fileName, ".vtp");
+        collection.addPart(fileName + ".vtp");
     }
 
     if ( ctrlNet ) // Output the control net
     {
         const std::string fileName = fn + "_cnet";
         writeSingleControlNet(Geo, fileName);
-        collection.addPart(fileName, ".vtp");
+        collection.addPart(fileName + ".vtp");
     }
 
     // Write out the collection file
@@ -770,7 +797,7 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
     {
         const std::string fileName = fn + util::to_string(i) + "_mesh";
         writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts);
-        collection.addPart(fileName, ".vtp");
+        collection.addPart(fileName + ".vtp");
     }
 
     // Write out the collection file
@@ -808,26 +835,26 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
         if ( Geo.at(i)->domainDim() == 1 )
         {
             writeSingleCurve(*Geo[i], fnBase, npts);
-            collection.addPart(fnBase, ".vtp");
+            collection.addPart(fnBase + ".vtp");
         }
         else
         {
             writeSingleGeometry( *Geo[i], fnBase, npts ) ;
-            collection.addPart(fnBase, ".vts");
+            collection.addPart(fnBase + ".vts");
         }
 
         if ( mesh )
         {
             const std::string fileName = fnBase + "_mesh";
             writeSingleCompMesh(Geo[i]->basis(), *Geo[i], fileName);
-            collection.addPart(fileName, ".vtp");
+            collection.addPart(fileName + ".vtp");
         }
 
         if ( ctrlNet ) // Output the control net
         {
             const std::string fileName = fnBase + "_cnet";
             writeSingleControlNet(*Geo[i], fileName);
-            collection.addPart(fileName, ".vtp");
+            collection.addPart(fileName + ".vtp");
         }
     }
     collection.save();
@@ -924,7 +951,7 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
     {
         const std::string fileName = fn + util::to_string(i);
         gsWriteParaview(func.function(i), func.function(i).support(), fileName, npts,false);
-        collection.addPart(fileName, ".vts");
+        collection.addPart(fileName + ".vts");
     }
 
     // Write out the collection file
@@ -1012,7 +1039,7 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
     {
         std::string fileName = fn + util::to_string(i);
         gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
-        collection.addPart(fileName, ".vts");
+        collection.addPart(fileName + ".vts");
     }
 
     if ( mesh )
@@ -1020,7 +1047,7 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
         std::string fileName = fn + "_mesh";
         writeSingleBasisMesh(basis, fileName);
         //collection.addPart(fileName, ".vtp");
-        collection.addPart(fileName, ".vtu");
+        collection.addPart(fileName + ".vtu");
     }
 
     collection.save();
@@ -1488,7 +1515,7 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
     {
         std::string fnBase = fn + util::to_string(i);
         writeSingleTrimSurface(*sl.face[i]->surf, fnBase, numSamples);
-        collection.addPart(fnBase, ".vtp");
+        collection.addPart(fnBase + ".vtp");
     }
 
     // Write out the collection file
@@ -1675,7 +1702,6 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     file.close();
 }
 
-
 template <typename T>
 void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
                      const std::string& fn)
@@ -1705,7 +1731,7 @@ void gsWriteParaview(const gsTrimSurface<T> & surf, std::string const & fn,
     gsParaviewCollection collection(fn);
 
     writeSingleTrimSurface(surf, fn, npts);
-    collection.addPart(fn, ".vtp");
+    collection.addPart(fn + ".vtp");
 
     if ( trimCurves )
     {
@@ -1751,7 +1777,7 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                 gsWriteParaviewTrimmedCurve(*(face->surf), idLoop, idCurve,
                                             fileName, npts);
 
-                collection.addPart(fileName,".vts");
+                collection.addPart(fileName + ".vts");
 
             } // for each curve
         } // for each curve loop

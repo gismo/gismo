@@ -24,7 +24,7 @@ namespace gismo
     CLASS_TEMPLATE_INST gsVolume  <real_t> ;
     CLASS_TEMPLATE_INST gsBulk    <real_t> ;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 
@@ -44,6 +44,7 @@ void pybind11_init_gsGeometry(py::module &m)
   .def("basis", static_cast<gsBasis<real_t>& (Class::*)()>(&Class::basis), "Returns the bspline basis as a reference")
   .def("rotate", (void (Class::*)(real_t, const gsVector<real_t,3>&)) &Class::rotate, "Apply 3D Rotation by an angle radians around axis")
   .def("rotate", (void (Class::*)(real_t)) &Class::rotate, "Apply 2D Rotation by an angle radians")
+      .def("closestPointTo", (void (Class::*)(real_t)) &Class::rotate, "Get the closest position to a given point in space")
   ;
 }
 

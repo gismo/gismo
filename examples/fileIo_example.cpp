@@ -15,11 +15,11 @@
 
 #include <gismo.h>
 
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
 #include "gsOpennurbs/gsWriteOpenNurbs.h"
 #endif
 
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
 #include "gsOpenCascade/gsReadBrep.h"
 #endif
 
@@ -56,11 +56,11 @@ void lookFor( const gsFileData<> & data )
 int main(int argc, char *argv[])
 {
   
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     gsInfo << "Using opennurbs.\n";
 #endif
 
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     gsInfo << "Using OpenCascade.\n";
 #endif
 
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
   lookFor< gsHBoxContainer<2,real_t> > (data);
 
     
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
   if ( data.has< gsPlanarDomain<> >() )
   {
       gsInfo<<"* There is a "<< data.count< gsPlanarDomain<> >() <<" "
@@ -169,10 +169,8 @@ int main(int argc, char *argv[])
 
 #endif
 
-#ifdef GISMO_WITH_OCC
+//#ifdef gsOpenCascade_ENABLED 
+//#endif
 
- 
-#endif
-  
-  return 0;
+  return EXIT_SUCCESS;
 }

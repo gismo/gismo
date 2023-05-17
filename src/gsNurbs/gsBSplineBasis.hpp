@@ -1077,7 +1077,7 @@ void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> &
 
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
+void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int )
 {
     // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;

@@ -271,24 +271,24 @@ void gsMultiPatch<T>::uniformRefine(int numKnots, int mul)
     }
 }
 
+
 template<class T>
-void gsMultiPatch<T>::uniformCoarsen(int numKnots)
+void gsMultiPatch<T>::degreeElevate(short_t const elevationSteps, short_t const dir)
 {
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        ( *it )->uniformCoarsen(numKnots);
+        ( *it )->degreeElevate(elevationSteps, dir);
     }
 }
 
-
 template<class T>
-void gsMultiPatch<T>::degreeElevate(int elevationSteps)
+void gsMultiPatch<T>::degreeIncrease(short_t const elevationSteps, short_t const dir)
 {
     for ( typename PatchContainer::const_iterator it = m_patches.begin();
           it != m_patches.end(); ++it )
     {
-        ( *it )->degreeElevate(elevationSteps, -1);
+        ( *it )->degreeIncrease(elevationSteps, dir);
     }
 }
 
@@ -299,6 +299,16 @@ void gsMultiPatch<T>::degreeReduce(int elevationSteps)
           it != m_patches.end(); ++it )
     {
         ( *it )->degreeReduce(elevationSteps, -1);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::uniformCoarsen(int numKnots)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->uniformCoarsen(numKnots);
     }
 }
 
@@ -772,6 +782,17 @@ template<class T> std::pair<index_t,gsVector<T> >
 gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
                                 const T accuracy) const
 {
+    std::pair<index_t,gsVector<T> > result;
+    this->closestDistance(pt,result,accuracy);
+    return result;
+}
+
+
+template<class T>
+T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
+                                std::pair<index_t,gsVector<T> > & result,
+                                const T accuracy) const
+{
     GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
                   pt.rows() <<"!="<< targetDim() );
 
@@ -798,12 +819,14 @@ gsMultiPatch<T>::closestPointTo(const gsVector<T> & pt,
         }
     }
     //gsInfo <<"--Pid="<<cph.pid<<", Dist("<<pt.transpose()<<"): "<< cph.dist <<"\n";
-    return std::make_pair(cph.pid, give(cph.preim));
+    result = std::make_pair(cph.pid, give(cph.preim));
+    return cph.dist;
 }
 
 template<class T>
 void gsMultiPatch<T>::constructInterfaceRep()
 {
+    m_ifaces.clear();
     for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
     {
         const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
@@ -815,7 +838,33 @@ void gsMultiPatch<T>::constructInterfaceRep()
 template<class T>
 void gsMultiPatch<T>::constructBoundaryRep()
 {
+    m_bdr.clear();
     for ( biterator it = bBegin(); it != bEnd(); ++it ) // for all boundaries
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->patch];
+        m_bdr[*it] = p1.boundary(*it);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructInterfaceRep(const std::string l)
+{
+    m_ifaces.clear();
+    ifContainer ifaces = this->interfaces(l);
+    for ( iiterator it = ifaces.begin(); it != ifaces.end(); ++it ) // for all interfaces
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        m_ifaces[*it] = p1.iface(*it,p2);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructBoundaryRep(const std::string l)
+{
+    m_bdr.clear();
+    bContainer bdrs = this->boundaries(l);
+    for ( biterator it = bdrs.begin(); it != bdrs.end(); ++it ) // for all boundaries
     {
         const gsGeometry<T> & p1 = *m_patches[it->patch];
         m_bdr[*it] = p1.boundary(*it);

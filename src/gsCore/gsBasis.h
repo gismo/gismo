@@ -411,6 +411,23 @@ public:
       Member functions that need to be redefined in the derived class.
     */
 
+    /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
+    virtual const gsMatrix<T> & weights() const 
+    {
+        static gsMatrix<T> dummy;
+        return dummy; 
+    }
+
+    /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
+    virtual gsMatrix<T> & weights()
+    {
+        static gsMatrix<T> dummy;
+        return dummy; 
+    }
+
+    /// Returns false, since all bases that inherit from gsBasis are not rational.
+    virtual bool isRational() const { return false;}
+
     /**
      * @brief
      * Returns the anchor points that represent the members of the basis.
@@ -812,7 +829,7 @@ public:
 
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1);
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
 
     /// @brief Refine the basis uniformly
     ///
@@ -827,7 +844,7 @@ public:
     /// \endcode
     ///
     /// \sa gsBasis::uniformRefine
-    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1);
+    virtual void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, int dir=-1);
 
     /// @brief Refine the basis uniformly
     ///
@@ -964,6 +981,16 @@ public:
     virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                            gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
 
+    /// \brief Computes the indices of DoFs that match on the
+    /// interface \a bi. The interface is assumed to be a common face
+    /// between this patch and \a other, with an offset \a offset.
+    /// The output is two lists of indices \a bndThis and \a bndOther,
+    /// with indices that match one-to-one on the boundary \a bi.
+    ///
+    /// NOTE: bndThis will have \a offset but bndOther will NOT have an offset (hence offset 0)
+    virtual void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                           gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
+
 
     /// Get the minimum mesh size, as expected for inverse inequalities
     virtual T getMinCellLength() const;
@@ -981,14 +1008,14 @@ protected:
 
 }; // class gsBasis
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsGeometry
    */
   void pybind11_init_gsBasis(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

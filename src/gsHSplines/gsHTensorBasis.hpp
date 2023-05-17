@@ -276,8 +276,10 @@ void gsHTensorBasis<d,T>::unrefineElements_withTransfer(std::vector<index_t> con
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul)
+void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int dir)
 {
+    GISMO_ASSERT(dir==-1,"Direction is not implemented");
+
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     //uniformRefine(numKnots);
     //gsMatrix<> transf;
@@ -624,7 +626,7 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
     }
 
     // Update the basis
-    // update_structure();
+    update_structure();
 }
 
 // template<short_t d, class T>
@@ -788,7 +790,8 @@ template<short_t d, class T>
 void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                                     const gsBasis<T> & other,
                                     gsMatrix<index_t> & bndThis,
-                                    gsMatrix<index_t> & bndOther) const
+                                    gsMatrix<index_t> & bndOther,
+                                    index_t offset) const
 {
     if( const Self_t * _other = dynamic_cast<const Self_t*>( &other) )
     {
@@ -801,11 +804,11 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
 
         // get the global indices of the basis functions which are
         // active on the interface
-        bndThis = this->boundary( bi.first().side() );
+        bndThis = this->boundaryOffset( bi.first().side(), offset );
 
         // this is only for checking whether, at least, both involved
         // bases have the same number of DOF on the interface.
-        bndOther= _other->boundary( bi.second().side() );
+        bndOther= _other->boundaryOffset( bi.second().side(), offset );
         GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
                       "Input error, sizes do not match: "
                       <<bndThis.rows()<<"!="<<bndOther.rows() );
@@ -850,9 +853,9 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
                     // however, we need either the first
                     // or last basis function
                     if( bi.second().parameter() ) // true = 1 = end
-                        tens1[jj] = N[jj]-1;
+                        tens1[jj] = N[jj]-(1+offset);
                     else
-                        tens1[jj] = 0;
+                        tens1[jj] = offset;
                 }
                 else
                 {
@@ -876,6 +879,16 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
     }
     gsWarn<<"Cannot match with "<< other <<"\n";
 }
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
+                                    const gsBasis<T> & other,
+                                    gsMatrix<index_t> & bndThis,
+                                    gsMatrix<index_t> & bndOther) const
+{
+    matchWith(bi,other,bndThis,bndOther,0);
+}
+
 
 //protected functions
 
@@ -1421,7 +1434,7 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 */
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul)
+void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 {
     GISMO_UNUSED(numKnots);
     GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");

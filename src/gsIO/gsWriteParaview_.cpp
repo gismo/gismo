@@ -37,6 +37,9 @@ TEMPLATE_INST
 void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
+void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts);
+
+TEMPLATE_INST
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph);
 
 TEMPLATE_INST
