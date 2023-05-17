@@ -65,7 +65,7 @@ public:
 
         currentparams = m_params.transpose();
         // gsInfo << "parameters order:\n" << currentparams << "\n";
-        for(index_t i = 0; i < t_params.size(); i++)
+        for(index_t i = 0; i < currentparams.size(); i++)
         {
           m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the parameters, take care or the finate differences
           m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the parameters
