@@ -63,9 +63,8 @@ public:
           m_desUpperBounds[i] =  1.0e19; // upper bound on the coefficients
         }
 
-        gsMatrix<> t_params(m_params.cols(), m_params.rows());
-        t_params = m_params.transpose();
-        // gsInfo << "parameters order:\n" << t_params << "\n";
+        currentparams = m_params.transpose();
+        // gsInfo << "parameters order:\n" << currentparams << "\n";
         for(index_t i = 0; i < t_params.size(); i++)
         {
           m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the parameters, take care or the finate differences
@@ -73,7 +72,7 @@ public:
         }
 
         m_curDesign.resize(m_numDesignVars,1);
-        m_curDesign << m_mp->result()->coefs().reshape(m_mp->result()->coefs().size(),1), t_params.reshape(t_params.size(),1); // coefs_x, coefs_y, coefs_z, u, v
+        m_curDesign << m_mp->result()->coefs().reshape(m_mp->result()->coefs().size(),1), currentparams.reshape(currentparams.size(),1); // coefs_x, coefs_y, coefs_z, u, v
 
         m_G.resize(m_mp->result()->coefs().rows(), m_mp->result()->coefs().rows());
         m_G.reservePerColumn( cast<T,index_t>( (2 * m_mp->result()->basis().maxDegree() + 1) * 1.333 ) );
