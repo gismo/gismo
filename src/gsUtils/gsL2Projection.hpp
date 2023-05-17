@@ -145,6 +145,7 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
+    gsExprEvaluator<> ev(A);
     return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
@@ -155,10 +156,12 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
                                             gsMatrix<T> & result)
 {
     gsExprAssembler<T> A(1,1);
+    gsMatrix<T> solVector;
 
     A.setIntegrationElements(basis);
     space u = A.getSpace(basis,source.targetDim());
     auto  f = A.getCoeff(source);
+    solution sol = A.getSolution(u, solVector);
     geometryMap G = A.getMap(geometry);
 
     u.setup(-1);
@@ -170,6 +173,7 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
     typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
     solver->compute(A.matrix());
     result = solver->solve(A.rhs());
+    gsExprEvaluator<> ev(A);
     return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
@@ -215,18 +219,18 @@ T gsL2Projection<T>::projectGeometryBoundaries(const gsMultiBasis<T> & basis,
     gsMatrix<T> solVector;
 
     A.setIntegrationElements(basis);
-    space u = A.getSpace(basis,source.geoDim());
+    space u = A.getSpace(basis,geometry.geoDim());
     solution sol = A.getSolution(u, solVector);
-    geometryMap G = A.getMap(source);
+    geometryMap G = A.getMap(geometry);
 
-    std::vector<gsMultiPatch<T>> coords(source.geoDim());
-    for (index_t p=0; p!=source.geoDim(); p++)
-        coords[p] = source.coord(p);
+    std::vector<gsMultiPatch<T>> coords(geometry.geoDim());
+    for (index_t p=0; p!=geometry.geoDim(); p++)
+        coords[p] = geometry.coord(p);
 
     gsBoundaryConditions<T> bc;
-    bc.setGeoMap(source);
-    for (index_t p=0; p!=source.geoDim(); p++)
-        for (typename gsMultiPatch<T>::const_biterator bit = source.bBegin(); bit != source.bEnd(); ++bit)
+    bc.setGeoMap(geometry);
+    for (index_t p=0; p!=geometry.geoDim(); p++)
+        for (typename gsMultiPatch<T>::const_biterator bit = geometry.bBegin(); bit != geometry.bEnd(); ++bit)
             bc.addCondition(*bit, condition_type::dirichlet,static_cast<gsFunctionSet<T>*>(&coords[p]), 0, true, p);
 
     u.setup(bc, dirichlet::l2Projection, 0);
@@ -243,7 +247,8 @@ T gsL2Projection<T>::projectGeometryBoundaries(const gsMultiBasis<T> & basis,
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
-    return ev.integral((sol-f).sqNorm() * meas(G));
+    gsExprEvaluator<> ev(A);
+    return ev.integral((sol-G).sqNorm() * meas(G));
 }
 
 
@@ -259,20 +264,20 @@ T gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
     gsMatrix<T> solVector;
 
     A.setIntegrationElements(basis);
-    space u = A.getSpace(basis,source.geoDim());
+    space u = A.getSpace(basis,geometry.geoDim());
     solution sol = A.getSolution(u, solVector);
-    geometryMap G = A.getMap(source);
-    auto Gvar = A.getCoeff(source,G);
+    geometryMap G = A.getMap(geometry);
+    auto Gvar = A.getCoeff(geometry,G);
     element el = A.getElement();
 
-    std::vector<gsMultiPatch<T>> coords(source.geoDim());
-    for (index_t p=0; p!=source.geoDim(); p++)
-        coords[p] = source.coord(p);
+    std::vector<gsMultiPatch<T>> coords(geometry.geoDim());
+    for (index_t p=0; p!=geometry.geoDim(); p++)
+        coords[p] = geometry.coord(p);
 
     gsBoundaryConditions<T> bc;
-    bc.setGeoMap(source);
-    for (index_t p=0; p!=source.geoDim(); p++)
-        for (typename gsMultiPatch<T>::const_biterator bit = source.bBegin(); bit != source.bEnd(); ++bit)
+    bc.setGeoMap(geometry);
+    for (index_t p=0; p!=geometry.geoDim(); p++)
+        for (typename gsMultiPatch<T>::const_biterator bit = geometry.bBegin(); bit != geometry.bEnd(); ++bit)
             bc.addCondition(*bit, condition_type::dirichlet,static_cast<gsFunctionSet<T>*>(&coords[p]), 0, true, p);
 
 
@@ -280,7 +285,7 @@ T gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
 
 
     std::vector<boundaryInterface> iFace;
-    for (typename gsMultiPatch<T>::const_iiterator iit = source.iBegin(); iit != source.iEnd(); ++iit)
+    for (typename gsMultiPatch<T>::const_iiterator iit = geometry.iBegin(); iit != geometry.iEnd(); ++iit)
         iFace.push_back(*iit);
 
     A.initSystem();
@@ -309,6 +314,7 @@ T gsL2Projection<T>::projectGeometryPenalty(const gsMultiBasis<T> & basis,
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
+    gsExprEvaluator<> ev(A);
     return ev.integral((Gvar-G).sqNorm() * meas(G));
 }
 

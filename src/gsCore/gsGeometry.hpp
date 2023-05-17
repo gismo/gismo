@@ -272,7 +272,6 @@ T gsGeometry<T>::directedHausdorffDistance(const gsGeometry & other, const index
     this->eval_into(uv,pts);
     // Find the maximum of the closest point on *other from the set of pts
     T maxDist=std::numeric_limits<T>::min();
-    T dist;
     gsVector<T> tmp;
     for (index_t k=0; k!=pts.cols(); k++)
     {

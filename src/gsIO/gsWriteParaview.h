@@ -12,7 +12,6 @@
 */
 
 #include <gsCore/gsGeometry.h>
-#include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
 
@@ -39,6 +38,19 @@ namespace gismo {
 template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn, 
                      unsigned npts=NS, bool mesh = false, bool ctrlNet = false);
+
+/**
+ * @brief      Writes a gsMappedBasis over a gsMappedSpline geometry
+ *
+ * @param      mspline  The mapped spline
+ * @param      mbasis   The mapped basis
+ * @param      fn       The filename
+ * @param[in]  npts     The number of sampling points
+ * 
+ */
+template<class T>
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,
+                     std::string const & fn,unsigned npts = NS);
 
 /// \brief Export a mesh to paraview file
 ///
@@ -279,24 +291,32 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const & fn,
                      unsigned npts = NS);
 
-/// \brief Visualizing multipatch boundaries
-///
-/// \param pdomain the planar domain
-/// \param fn filename where paraview file is written
-/// \param npts number of points used for sampling
+/**
+ * @brief      Writes the boundaries of a multipatch to paraview
+ *
+ * @param      patches  The patches
+ * @param      fn       The filename
+ * @param[in]  npts     The number of sampling points per boundary
+ * @param[in]  ctrlNet  Plot the control net
+ */
 template<class T>
-void gsWriteParaview( typename gsMultiPatch<T>::BoundaryRep const & irep,
-                                std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
+void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
 
-/// \brief Visualizing multipatch interfaces
-///
-/// \param pdomain the planar domain
-/// \param fn filename where paraview file is written
-/// \param npts number of points used for sampling
+/**
+ * @brief      Writes the interfaces of a multipatch to paraview
+ *
+ * @param      patches  The patches
+ * @param      fn       The filename
+ * @param[in]  npts     The number of sampling points per interface
+ * @param[in]  ctrlNet  Plot the control net
+ */
 template<class T>
-void gsWriteParaview( typename gsMultiPatch<T>::InterfaceRep const & irep,
-                                std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
-
+void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);                            
+                                 
 /// \brief Visualizing boundary conditions
 ///
 /// \param pdomain the planar domain

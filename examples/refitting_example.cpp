@@ -12,8 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsModeling/gsPatchGenerator.h>
-#include <gsUnstructuredSplines/src/gsSmoothInterfaces.h>
 
 using namespace gismo;
 
@@ -106,7 +104,6 @@ int main(int argc, char *argv[])
     bool plot = false;
     bool mesh = false;
     bool cnet = false;
-    bool smooth = false;
     bool Hausdorff = false;
     real_t tol = 1e-5;
     index_t nknots = 5, degree = 3;
@@ -127,7 +124,6 @@ int main(int argc, char *argv[])
     cmd.addInt   ("N", "npts", "Number of points for sampling", npts);
     cmd.addInt   ("s", "npts_plot", "Number of points for sampling for plotting", npts_plot);
     cmd.addSwitch("plot", "plot results", plot);
-    cmd.addSwitch("smooth", "Apply patch Smoothing", smooth);
     cmd.addSwitch("hausdorff", "Compute Hausdorff distance", Hausdorff);
     cmd.addSwitch("mesh", "plot mesh", mesh);
     cmd.addSwitch("cnet", "plot control net", cnet);
@@ -322,15 +318,6 @@ int main(int argc, char *argv[])
     gsInfo<<"Finished\n";
 
     gsMultiPatch<> mp_res(container,mp0->boundaries(),mp0->interfaces());
-
-    if (smooth)
-    {
-        gsInfo<<"Smoothing interfaces..."<<std::flush;
-        gsSmoothInterfaces<2,real_t> smooth(mp_res);
-        smooth.compute();
-        mp_res = smooth.exportToPatches();
-        gsInfo<<"Finished\n";
-    }
 
     if (plot)
     {

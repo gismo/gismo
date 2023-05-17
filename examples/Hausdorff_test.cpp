@@ -13,28 +13,7 @@
 
 #include <gismo.h>
 
-#include <gsUnstructuredSplines/src/gsMPBESBasis.h>
-#include <gsUnstructuredSplines/src/gsMPBESSpline.h>
-#include <gsUnstructuredSplines/src/gsDPatch.h>
-#include <gsUnstructuredSplines/src/gsAlmostC1.h>
-#include <gsUnstructuredSplines/src/gsApproxC1Spline.h>
-#include <gsUnstructuredSplines/src/gsC1SurfSpline.h>
-
-#include <gsKLShell/gsThinShellAssembler.h>
-#include <gsKLShell/gsMaterialMatrixLinear.h>
-#include <gsKLShell/gsFunctionSum.h>
-
-#include <gsSpectra/gsSpectra.h>
-
-#include <gsUtils/gsQuasiInterpolate.h>
-
-
 #include <gsAssembler/gsExprAssembler.h>
-
-#include <gsStructuralAnalysis/gsStructuralAnalysisUtils.h>
-
-#include <gsKLShell/gsThinShellUtils.h>
-
 
 using namespace gismo;
 

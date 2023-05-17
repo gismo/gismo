@@ -2,7 +2,7 @@
 
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsWriteParaview.hpp>
-#include <gsCore/gsMultiPatch.h>
+// #include <gsCore/gsMultiPatch.h>
 
 #define T real_t
 #define uZ unsigned
@@ -39,6 +39,9 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
 
 TEMPLATE_INST
 void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts);
+
+TEMPLATE_INST
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts);
 
 TEMPLATE_INST
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph);
@@ -100,15 +103,15 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const& fn,
                      unsigned npts);
 
-// TEMPLATE_INST
-// void gsWriteParaview(typename gsMultiPatch<T>::BoundaryRep const & irep,
-//                      std::string const & fn,
-//                      unsigned npts, bool ctrlNet);
+TEMPLATE_INST
+void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
 
-// TEMPLATE_INST
-// void gsWriteParaview(typename gsMultiPatch<T>::InterfaceRep const & irep,
-//                      std::string const & fn,
-//                      unsigned npts, bool ctrlNet);
+TEMPLATE_INST
+void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
 
 TEMPLATE_INST
 void gsWriteParaview(gsMultiPatch<T> const & patches,
