@@ -187,6 +187,7 @@ template<class T> inline
 gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 {
     gsSparseMatrix<T> result( u.cols(), this->size() );
+    result.reservePerColumn( math::sqrt(u.cols()) ); // Reserve/allocate memory
     gsMatrix<T> ev;
     gsMatrix<index_t> act;
 
@@ -717,6 +718,8 @@ std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gs
 {
     int dim = b.domainDim();
     std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
+    for (int i=0; i!=dim+1; ++i)
+        result[i].reservePerColumn( math::sqrt(u.cols()) );
     std::vector<gsMatrix<T>> ev;
     gsMatrix<index_t> act;
 

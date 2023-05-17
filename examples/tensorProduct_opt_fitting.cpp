@@ -76,12 +76,18 @@ public:
         m_curDesign << m_mp->result()->coefs().reshape(m_mp->result()->coefs().size(),1), t_params.reshape(t_params.size(),1); // coefs_x, coefs_y, coefs_z, u, v
 
         m_G.resize(m_mp->result()->coefs().rows(), m_mp->result()->coefs().rows());
+        // Allocate the sparse matrix (TODO)
         m_mp->applySmoothing(m_mp->lambda(), m_G);
 
     }
     //! [OptProblemExample Constructor]
 
 public:
+
+    //temporary storage
+    mutable gsMatrix<T> tmp, currentparams;
+    mutable gsSparseMatrix<T> c;
+    mutable std::vector<gsSparseMatrix<T>> c_matrices;
 
     //! [OptProblemExample evalObj]
     // The evaluation of the objective function must be implemented
@@ -92,18 +98,11 @@ public:
         u1 = u1.cwiseMax(m_desLowerBounds).cwiseMin(m_desUpperBounds);
 
         gsAsConstMatrix<T> currentcoefs(u.data(),  m_mp->result()->coefs().rows(), m_mp->result()->coefs().cols());
-        gsAsConstMatrix<T> currentparams(u.data() + m_mp->result()->coefs().size(), m_X.cols(), 2);
+        currentparams = gsAsConstMatrix<T>(u.data() + m_mp->result()->coefs().size(), m_X.cols(), 2).transpose();
 
-
-        gsMatrix<T> tmp, val;
-        gsMatrix<index_t> act;
-        T f_eval = 0.;
-        gsSparseMatrix<T> c = m_mp->result()->basis().collocationMatrix(gsMatrix<T>(currentparams.transpose() ) ) ;
-        tmp = c * currentcoefs - m_X.transpose();
-        f_eval = (tmp * tmp.transpose()).trace();
-        f_eval += (currentcoefs.transpose() * m_G * currentcoefs).trace() * m_mp->lambda();
-
-        return 0.5 * f_eval ;
+        c = m_mp->result()->basis().collocationMatrix( currentparams ) ;
+        tmp.noalias() = c * currentcoefs - m_X.transpose();
+        return 0.5 * ( (tmp * tmp.transpose()).trace() + (currentcoefs.transpose() * m_G * currentcoefs).trace() * m_mp->lambda() );
     }
 
     //! [OptProblemExample gradObj_into]
@@ -121,21 +120,19 @@ public:
     //   compute the partial derivatice with respect to v-parameter
     //
 
-      gsAsConstMatrix<T> currentparams(u.data() + m_mp->result()->coefs().size(), m_X.cols(), 2);
       gsAsConstMatrix<T> currentcoefs(u.data(),  m_mp->result()->coefs().rows(), m_mp->result()->coefs().cols());
+      currentparams = gsAsConstMatrix<T>(u.data() + m_mp->result()->coefs().size(), m_X.cols(), 2).transpose();
 
-      // move to member and fill them in the constructor
-      std::vector<gsSparseMatrix<T>> c_matrices = collocationMatrix1(m_mp->result()->basis(), gsMatrix<T>(currentparams.transpose()));
+      c_matrices = collocationMatrix1(m_mp->result()->basis(), currentparams);
       // c_matrices[0] : collocation matrix
+      tmp.noalias() = c_matrices[0] * currentcoefs - m_X.transpose();
 
-      gsMatrix<T> d_coefs = ( c_matrices[0].transpose()*c_matrices[0] + m_mp->lambda() * m_G ) * currentcoefs - c_matrices[0].transpose() * m_X.transpose();
-      gsMatrix<T> tmp = c_matrices[0] * currentcoefs - m_X.transpose();
-      gsMatrix<T> d_u = (tmp * (c_matrices[1] * currentcoefs).transpose()).diagonal();
-      gsMatrix<T> d_v = (tmp * (c_matrices[2] * currentcoefs).transpose()).diagonal();
+      result.head(currentcoefs.size()).noalias() = // d_coefs.asVector();
+      ( ( c_matrices[0].transpose()*c_matrices[0] + m_mp->lambda() * m_G ) * currentcoefs - c_matrices[0].transpose() * m_X.transpose() )
+          .reshaped(currentcoefs.size(),1);
 
-      result.head(currentcoefs.size()) = d_coefs.asVector();
-      result.middleRows(currentcoefs.size(),d_u.size()) = d_u;
-      result.tail(d_v.size()) = d_v;
+      result.middleRows(currentcoefs.size(),m_X.cols()).noalias() = (tmp * (c_matrices[1] * currentcoefs).transpose()).diagonal();
+      result.tail(m_X.cols()).noalias() = (tmp * (c_matrices[2] * currentcoefs).transpose()).diagonal();
     }
 
 
