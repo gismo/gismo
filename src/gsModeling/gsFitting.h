@@ -64,6 +64,8 @@ public:
                              index_t maxIter = 10,
                              T tolOrth = 1e-6);
 
+    void smoothParameterCorrection(T accuracy = 1e-8, index_t maxIter = 10);
+
     void parameterCorrectionPen(T accuracy = 1e-8,
                                 index_t maxIter = 10,
                                 T tolOrth = 1e-6,
