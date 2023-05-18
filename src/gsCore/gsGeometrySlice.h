@@ -81,6 +81,11 @@ public:
         gsMatrix<T> fullU;
         getFullParMatrix(u,fullU);
         m_geo->deriv_into(fullU,result);
+        const index_t d = domainDim();
+        result.resize(d+1, result.size()/(d+1));
+        result.row(m_fixed_dir).swap(result.row(d));
+        result.conservativeResize(d,Eigen::NoChange);
+        result.resize(result.size()/u.cols(), u.cols());
     }
 
     /// \brief Gives back the parameterRange of this slice in a Matrix

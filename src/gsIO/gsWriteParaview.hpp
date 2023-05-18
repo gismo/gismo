@@ -1620,18 +1620,21 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     file << "\n";
 
     // Triangles or quads
-    file << "POLYGONS " << sl.numFaces() << " " <<
-        (sl.faces().front()->vertices.size()+1) * sl.numFaces() << std::endl;
-    for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
-         it!=sl.faces().end(); ++it)
+    if ( 0!=sl.numFaces() )
     {
-        file << (*it)->vertices.size() <<" "; //3: triangles, 4: quads
-        for (typename std::vector< gsVertex<T>* >::const_iterator vit=
-                 (*it)->vertices.begin(); vit!=(*it)->vertices.end(); ++vit)
+        file << "POLYGONS " << sl.numFaces() << " " <<
+            (sl.faces().front()->vertices.size()+1) * sl.numFaces() << std::endl;
+        for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
+             it!=sl.faces().end(); ++it)
         {
-            file << (*vit)->getId() << " ";
+            file << (*it)->vertices.size() <<" "; //3: triangles, 4: quads
+            for (typename std::vector< gsVertex<T>* >::const_iterator vit=
+                     (*it)->vertices.begin(); vit!=(*it)->vertices.end(); ++vit)
+            {
+                file << (*vit)->getId() << " ";
+            }
+            file << "\n";
         }
-        file << "\n";
     }
     file << "\n";
 

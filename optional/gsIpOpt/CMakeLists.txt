@@ -8,6 +8,7 @@
 project(gsIpOpt)
 
 include( gsConfig)
+include(ExternalProject)
 
 if(GISMO_WITH_CODIPACK)
   include_directories(${CODIPACK_INCLUDE_DIR})
@@ -21,43 +22,6 @@ find_package(IpOpt QUIET)
 
 set(IPOPT_SOURCES gsIpOpt_.cpp)
 
-#if (NOT IPOPT_FOUND)
-  set(IPOPT_VER "3.14.10")
-  #message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
-
-  #fetch here!
-  include(gsFetch)
-  gismo_fetch_directory(IpOpt
-    URL https://github.com/coin-or/Ipopt/archive/refs/tags/releases/3.14.10.zip
-    DESTINATION    external)
-
-  set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin-or CACHE INTERNAL "")
-  set(IPOPT_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
-    CACHE INTERNAL "")
-
-  include(ExternalProject)
-  ExternalProject_Add(IpOpt
-    BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/IpOpt
-    SOURCE_DIR        ${gismo_externals}/IpOpt
-    CONFIGURE_COMMAND ${gismo_externals}/IpOpt/configure --prefix=<INSTALL_DIR> #ADD_FCFLAGS=-fallow-argument-mismatch
-    #URL http://www.coin-or.org/download/source/Ipopt/Ipopt-${IPOPT_VER}.tgz
-#    PATCH_COMMAND      patch -t -s -p1 < ${gismo_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
-#    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/mumps.patch ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/mumps.patch
-#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/get.Mumps
-#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Metis/get.Metis
-#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Blas/get.Blas
-#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Lapack/get.Lapack
-#    BUILD_COMMAND ${MAKE}
-    UPDATE_COMMAND     ""
-    BUILD_BYPRODUCTS "${IPOPT_LIBRARY}"
-    DOWNLOAD_COMMAND  ""
-    #DOWNLOAD_NO_PROGRESS 0
-    )
-#else()
-  #add_custom_target (IpOpt)
-#endif(NOT IPOPT_FOUND)
-
-## MUMPS (metis?)
 
 set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with IpOpt
 
@@ -83,6 +47,44 @@ set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with 
       DOWNLOAD_COMMAND  ""
       UPDATE_COMMAND    ""
       )
+
+
+#if (NOT IPOPT_FOUND)
+  set(IPOPT_VER "3.14.10")
+  #message("IpOpt not found (define IpOpt_DIR if it exists on the system).")
+
+  #fetch here!
+  include(gsFetch)
+  gismo_fetch_directory(IpOpt
+    URL https://github.com/coin-or/Ipopt/archive/refs/tags/releases/3.14.10.zip
+    DESTINATION    external)
+
+  set(IPOPT_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/include/coin-or CACHE INTERNAL "")
+  set(IPOPT_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix/lib/${CMAKE_SHARED_LIBRARY_PREFIX}ipopt${CMAKE_SHARED_LIBRARY_SUFFIX}
+    CACHE INTERNAL "")
+
+  ExternalProject_Add(IpOpt
+    BINARY_DIR        ${CMAKE_CURRENT_BINARY_DIR}/IpOpt
+    SOURCE_DIR        ${gismo_externals}/IpOpt
+    CONFIGURE_COMMAND ${gismo_externals}/IpOpt/configure --with-mumps --with-mumps-cflags="-I${MUMPS_INST}/include/coin-or/mumps"  --with-mumps-lflags="-L${MUMPS_INST}/lib -lcoinmumps" --prefix=<INSTALL_DIR> #ADD_FCFLAGS=-fallow-argument-mismatch
+    #URL http://www.coin-or.org/download/source/Ipopt/Ipopt-${IPOPT_VER}.tgz
+#    PATCH_COMMAND      patch -t -s -p1 < ${gismo_SOURCE_DIR}/external/ipopt.patch -d ${CMAKE_CURRENT_BINARY_DIR}/Ipopt
+#    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/mumps.patch ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/mumps.patch
+#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Mumps/get.Mumps
+#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Metis/get.Metis
+#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Blas/get.Blas
+#    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Ipopt/ThirdParty/Lapack/get.Lapack
+#    BUILD_COMMAND ${MAKE}
+    UPDATE_COMMAND     ""
+    BUILD_BYPRODUCTS "${IPOPT_LIBRARY}"
+    DOWNLOAD_COMMAND  ""
+    #DOWNLOAD_NO_PROGRESS 0
+    )
+#else()
+  #add_custom_target (IpOpt)
+#endif(NOT IPOPT_FOUND)
+
+## MUMPS (metis?)
 
 include_directories(${IPOPT_INCLUDE_DIR})
 add_library(${PROJECT_NAME} OBJECT ${IPOPT_SOURCES})

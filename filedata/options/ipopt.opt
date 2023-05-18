@@ -4,7 +4,7 @@
 #--- C.1 Output ----------------------------------------------------------------
 sb                                    yes                # Suppress header info
 print_user_options                    yes                # d=no
-print_level                           5                  # d=1
+print_level                           2                  # d=1
 # print_options_documentation         yes
 #--- C.2 Termination -----------------------------------------------------------
 tol                                   1e-8               # d=1e-8

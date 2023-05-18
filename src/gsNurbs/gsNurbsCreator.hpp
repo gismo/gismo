@@ -377,6 +377,33 @@ gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z)
                                                       KV, give(newcoefs), give(newweights) ));
 }
 
+template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
+gsNurbsCreator<T>::extrude(gsBSpline<T> const & geo, T zminus, T zplus)
+{
+    gsKnotVector<T> KV(0, 1, 0, 2);
+    const int sz = geo.basis().size();
+
+    gsMatrix<T> newcoefs( 2*sz, geo.geoDim() ) ;
+
+    // Copy coefficients
+    newcoefs.topRows(sz)    =
+        newcoefs.bottomRows(sz) = geo.coefs();
+
+    // Embed in 3D if needed
+    if (newcoefs.cols() == 2 )
+    {
+        newcoefs.conservativeResize( Eigen::NoChange, 3);
+        newcoefs.col(2).setZero();
+    }
+
+    // Lift
+    newcoefs.col(2).bottomRows(sz).array() += zplus;
+    newcoefs.col(2).topRows(sz).array()    -= zminus;
+
+    return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(geo.basis().knots(),
+                                    KV, give(newcoefs) ));
+}
+
 /* * Computes a set of control points, weights, and knots that define an order-3 circular arc centered at the origin
     \param X Defines the X axis of the plane containing the arc
     \param Y Defines the Y axis of the plane containing the arc

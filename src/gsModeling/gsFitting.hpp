@@ -20,7 +20,17 @@
 #include <gsNurbs/gsBSpline.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 
+#ifdef gsParasolid_ENABLED
 
+#include <gsParasolid/gsClosestPoint.h>
+
+// TODO: We assume that m_result is a gsTHBSpline*, which is not always the case.
+#include <gsHSplines/gsTHBSpline.h>
+
+#endif  // gsParasolid_ENABLED
+
+#include <gsIO/gsFileData.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
 {
@@ -220,6 +230,97 @@ void gsFitting<T>::computePen(T lambda1, index_t d1, T lambda2, index_t d2)
         m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(x));
 }
 
+#ifdef gsParasolid_ENABLED
+
+template <class T>
+void gsFitting<T>::parameterCorrection(T accuracy,
+                                       index_t maxIter,
+                                       T tolOrth)
+{
+    // Silence warnings, cf. https://stackoverflow.com/a/1486931/10348053
+    (void)accuracy;
+    (void)maxIter;
+    (void)tolOrth;
+
+    if ( !m_result )
+        compute(m_last_lambda);
+
+    extensions::gsPKSession::start();
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+        // convert m_result to B-spline
+        gsTHBSpline<2, T> resultTHB  = *static_cast<gsTHBSpline<2>*>(m_result);
+        gsTensorBSpline<2, T> result;
+        resultTHB.convertToBSpline(result);
+
+        // Less efficient version:
+
+        // gsVector<T, 3> point;
+        // gsVector<T, 2> newParam;
+        // for(index_t i=0; i<m_points.rows(); i++)
+        // {
+        //     point = m_points.row(i);
+        //     extensions::gsClosestParam(result, point, newParam);
+        //     m_param_values.col(i) = newParam;
+        // }
+
+        // More efficient version:
+        extensions::gsClosestParam(result, m_points, m_param_values);
+
+        // refit
+        compute(m_last_lambda);
+    }
+    extensions::gsPKSession::stop();
+}
+
+#else // Parasolid not enabled
+
+template <class T>
+void gsFitting<T>::smoothParameterCorrection(T accuracy, index_t maxIter)
+{
+    if(!m_result)
+	compute(m_last_lambda);
+
+    // TODO: Find a better place for this.
+    initParametricDomain();
+
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+	gsInfo << "Correcting for the " << it << "-th time." << std::endl;
+
+	gsMatrix<T> idealPars = m_param_values;
+	gsVector<T> newParam;
+	for (index_t i = 0; i<m_points.rows(); ++i)
+	{
+	    newParam = m_param_values.col(i);
+	    m_result->closestPointTo(m_points.row(i).transpose(), newParam, accuracy, true);
+	    idealPars.col(i) = newParam;
+	}
+
+	index_t deg = 3;
+	index_t numKnots = 7;
+	gsKnotVector<T> uKnots(m_uMin, m_uMax, numKnots, deg + 1);
+	gsKnotVector<T> vKnots(m_vMin, m_vMax, numKnots, deg + 1);
+	gsTensorBSplineBasis<2, T> rebasis(uKnots, vKnots);
+	gsFitting<T> reparam(m_param_values, idealPars, rebasis);
+
+	// TODO: How to choose proper smoothing?
+	// TODO: It seems to work but not to cause that much difference.
+	// Test on a more challenging example!
+	reparam.compute(1e-5);
+
+	// gsFileData<> fd;
+	// fd << *reparam.result();
+	// fd.dump("reparam");
+
+	// Evaluate the reparametrization and replace m_param_values with it.
+	gsMatrix<T> oldPars = m_param_values;
+	reparam.result()->eval_into(oldPars, m_param_values);
+
+	compute(m_last_lambda);
+    }
+}
+
 template <class T>
 void gsFitting<T>::parameterCorrection(T accuracy,
                                        index_t maxIter,
@@ -230,11 +331,9 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 
     const index_t d = m_param_values.rows();
     const index_t n = m_points.cols();
-    T maxAng, avgAng;
-    std::vector<gsMatrix<T> > vals;
-    gsMatrix<T> DD, der;
-    for (index_t it = 0; it!=maxIter; ++it)
-    {
+
+     for (index_t it = 0; it!=maxIter; ++it)
+     {
         gsVector<T> newParam;
 #       pragma omp parallel for default(shared) private(newParam)
         for (index_t i = 0; i<m_points.rows(); ++i)
@@ -280,6 +379,7 @@ void gsFitting<T>::parameterCorrectionPen(T accuracy,
     for (index_t it = 0; it!=maxIter; ++it)
     {
         gsVector<T> newParam;
+        gsMatrix<T> supp = this->result()->support();
 #       pragma omp parallel for default(shared) private(newParam)
         for (index_t i = 0; i<m_points.rows(); ++i)
         //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
@@ -293,9 +393,6 @@ void gsFitting<T>::parameterCorrectionPen(T accuracy,
                     < (m_result->eval(m_param_values.col(i))
                         - curr).norm())
                     m_param_values.col(i) = newParam;
-
-            // (!) There might be the same parameter for two points
-            // or ordering constraints in the case of structured/grid data
         }
 
         // refit
@@ -563,6 +660,7 @@ void gsFitting<T>::parameterCorrectionSepBoundary(T accuracy,
     }
 }
 
+#endif // gsParasolid_ENABLED
 
 
 template <class T>

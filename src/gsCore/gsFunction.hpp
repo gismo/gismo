@@ -16,6 +16,15 @@
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
 
+#ifdef gsIpOpt_ENABLED
+#include <gsIpOpt/gsIpOpt.h>
+#endif
+#ifdef gsHLBFGS_ENABLED
+#include <gsHLBFGS/gsHLBFGS.h>
+#endif
+#include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptimizer/gsFunctionAdaptor.h>
+
 #pragma once
 
 
@@ -80,6 +89,7 @@ void gsFunction<T>::div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
+    const gsMatrix<T> sup = this->support();
 
     //gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
     const index_t parDim = u.rows();                // dimension of domain
@@ -97,16 +107,38 @@ void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
         for ( index_t j = 0; j<parDim; j++ ) // for all variables
         {
             delta.setZero();
-            delta(j)  = (T)(0.00001);
-            uc.col(0) = u.col(p)+delta;
-            uc.col(1) = u.col(p)-delta;
-            delta(j)  = (T)(0.00002);
-            uc.col(2) = u.col(p)+delta;
-            uc.col(3) = u.col(p)-delta;
-            //m_geo.eval_into(u, tmp);
-            this->eval_into(uc, ev );
-            tmp=(8*( ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / (T)(0.00012);
-
+            if ( u(j,p) - 0.00002 < sup(j,0) )
+            {   //forward finite differences
+                delta(j)  = (T)(0.00001);
+                uc.col(0) = u.col(p)+  delta;
+                uc.col(1) = u.col(p)+2*delta;
+                uc.col(2) = u.col(p)+3*delta;
+                uc.col(3) = u.col(p)+4*delta;
+                this->eval_into(uc, ev);
+                tmp= ( -25 * this->eval(u.col(p)) + 48*ev.col(0) - 36*ev.col(1) + 16*ev.col(2) - 3*ev.col(3) ) / (T)(0.00012);
+            }
+            else if ( u(j,p) + 0.00002 > sup(j,1) )
+            {   //backward finite differences
+                delta(j)  = (T)(0.00001);
+                uc.col(0) = u.col(p)-  delta;
+                uc.col(1) = u.col(p)-2*delta;
+                uc.col(2) = u.col(p)-3*delta;
+                uc.col(3) = u.col(p)-4*delta;
+                this->eval_into(uc, ev);
+                tmp= ( 25 * this->eval(u.col(p)) - 48*ev.col(0) + 36*ev.col(1) - 16*ev.col(2) + 3*ev.col(3) ) / (T)(0.00012);
+            }
+            else
+            {   //central finite differences
+                delta(j)  = (T)(0.00001);
+                uc.col(0) = u.col(p)+delta;
+                uc.col(1) = u.col(p)-delta;
+                delta(j)  = (T)(0.00002);
+                uc.col(2) = u.col(p)+delta;
+                uc.col(3) = u.col(p)-delta;
+                //m_geo.eval_into(u, tmp);
+                this->eval_into(uc, ev );
+                tmp=(8*(ev.col(0)- ev.col(1)) + ev.col(3) - ev.col(2) ) / (T)(0.00012);
+            }
             for (index_t c=0; c<tarDim; ++c)  // for all components
                 result(c*parDim+j,p)=tmp(c);
         }
@@ -295,8 +327,13 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     gsVector<T> result;
 
     // Initial point
-    if ( 0 != init.size() )
+    if ( 0 != init.size() ){
         result = give(init);
+        // gsInfo << "+++++ argMin +++++\n";
+        // gsInfo << "initial input:\n" << init << "\n";
+        // gsInfo << "initial guess:\n" << result << "\n";
+        // gsInfo << "++++++++++++++++++\n";
+    }
     else
     {
         gsMatrix<T> supp = this->support();
@@ -318,6 +355,25 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
             result.setZero( dd );
     }
 
+#if true
+//#ifdef gsIpOpt_ENABLED
+    gsFunctionAdaptor<T> fmin(*this);
+    //gsIpOpt<T> solver( &fmin );
+    //gsGradientDescent<T> solver( &fmin );
+    gsHLBFGS<T> solver( &fmin );
+
+    solver.options().setInt("MaxIterations",100);
+    solver.options().setInt("Verbose",0);
+    // add lower limits and upper limits for HLBFGS
+    // optimizer->solve(problem.currentDesign());
+    //gsInfo << "Initial guess:\n" << result << "\n";
+    //gsInfo << "alternative:\n" << solver.currentDesign() << "\n";
+    solver.solve(result);
+    //solver.solve(solver.currentDesign()); // this gives a segfault because solver.currentDesign() is empty.
+    result = solver.currentDesign();
+    //gsInfo << "final result:\n" << result << "\n";
+
+#else
     switch (dd)
     {
     case 2:
@@ -328,6 +384,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
                               accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
     }
+#endif
 
     return result;
 }
@@ -401,7 +458,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
 {
     //GISMO_ASSERT( domDim*tarDim == 1, "Both domDim and tarDim must have the same sign");
     const index_t numPts = InOut.points.cols();
-    
+
     // If the measure on a boundary is requested, calculate the outer normal vector as well
     if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
 
@@ -447,11 +504,11 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
                 // BUG: When the determinant is really close to zero but negative,
                 // the result might be the opposite of what is expected because of alt_sgn
-                
+
                 if (! (InOut.flags &SAME_ELEMENT)  )
                 {
                     T detJacTcurr = jacT.determinant();
-                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 : 
+                    det_sgn = math::abs(detJacTcurr) < 1e-7 ? 0 :
                         ( detJacTcurr < 0 ? -1 : 1 );
                     if ( 0 == det_sgn )
                     {
