@@ -722,22 +722,26 @@ public:
         addCondition(p,boxSide(s),t,func,unknown,parametric,comp);
     }
 
+    /// Adds a boundary condition with \a value on a corner \a c of patch \a p for \a unknown \a component
     void addCornerValue(boxCorner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
         corner_values.push_back( corner_value<T>(p,c,value,unknown,component) );
     }
 
+    /// Adds a boundary condition with \a value on a corner \a c of patch \a p for \a unknown \a component
     void addCornerValue(boundary::corner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
         corner_values.push_back( corner_value<T>(p,boxCorner(c),value,unknown,component) );
     }
 
+    /// Couples the degrees of freedom on patch \a p1 side \a s1 and patch \a p2 side \a s2 for \a unknown and component \a comp
     void addCoupled(int p1, boundary::side s1, int p2, boundary::side s2, index_t dim,
                       short_t unknown = 0, int comp = -1)
     {
         coupled_boundaries.push_back( coupled_boundary<T>(p1,boxSide(s1),p2,boxSide(s2),dim,unknown,comp));
     }
 
+    /// Couples the degrees of freedom on patch \a p1 side \a s1 and patch \a p2 side \a s2 for \a unknown and component \a comp
     void addCoupled(int p1, boxSide s1, int p2, boxSide s2, index_t dim,
                       short_t unknown = 0, int comp = -1)
     {
