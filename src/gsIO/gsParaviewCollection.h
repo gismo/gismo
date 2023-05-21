@@ -114,6 +114,17 @@ public:
         mfile << "file=\"" << fn <<"\"/>\n";
     }
 
+    void addPart(String const & fn, std::string extension, index_t part=-1)
+    {
+        GISMO_DEPRECATED;
+    }
+
+    void addTimestep(String const & fn, index_t part=-1, real_t tStep=-1, std::string extension="" )
+    {
+        GISMO_DEPRECATED;
+    }
+
+
     /// @brief Adds all the files relevant to a gsParaviewDataSet, to the collection.
     /// @param dataSet The gsParaviewDataSet to be added.
     /// @param time Time step (optional, else an internal integer counter is used)
