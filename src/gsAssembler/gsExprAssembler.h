@@ -733,7 +733,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
-bool failed = false;
+    bool failed = false;
 #pragma omp parallel shared(failed)
 {
 #   ifdef _OPENMP
@@ -768,7 +768,7 @@ bool failed = false;
 #       ifdef _OPENMP
         for ( domIt->next(tid); domIt->good() && (!failed); domIt->next(nt) )
 #       else
-        for (; domIt->good() && (!failed); domIt->next() )
+        for (; domIt->good(); domIt->next() )
 #       endif
         {
             // Map the Quadrature rule to the element
@@ -786,6 +786,7 @@ bool failed = false;
             }
             catch (...)
             {
+                // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
                 #pragma omp atomic write
                 failed = true;
                 break;
@@ -798,6 +799,7 @@ bool failed = false;
     }
 
 }//omp parallel
+    // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
     m_matrix.makeCompressed();
 }
