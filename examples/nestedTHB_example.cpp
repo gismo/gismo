@@ -42,10 +42,10 @@ int main(int argc, char *argv[])
     gsKnotVector<> kv(a, b, interior, multEnd);
 
     // ...a 2D-tensor-B-spline basis with this knot vector...
-    gsTensorBSplineBasis<2,real_t> tens( kv, kv );
+    gsTensorBSplineBasis<2,real_t> tens( kv, kv )   ;
 
     // ...and a 2D-THB-spline basis out of the tensor-B-spline basis.
-    gsTHBSplineBasis<2,real_t> thb( tens , true);
+    gsHBSplineBasis<2,real_t> thb( tens , true);
     //! [constBasis]
 
 
@@ -78,6 +78,11 @@ int main(int argc, char *argv[])
 
     thb.refineElements(box);
     //! [refViaStdVec]
+    gsInfo << "basis after refinement:\n" << thb << std::endl;
+    index_t l = 0;
+    for (auto b = thb.getBases().begin(); b!=thb.getBases().end(); b++, l++)
+        gsDebug<<"Level "<<l<<":\n"<<*(*b)<<"\n";
+
 
     // Export the refined basis to paraview files
     gsWriteParaview(thb, "thb_refined_first" );
