@@ -563,6 +563,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
         for(index_t j = 0; j < k1.size();j++)
         {
+            //Here: get knot indices in some standard indexing (eg. dyadic)
+
             const gsKnotVector<T> & kv = m_bases.back()->knots(j);
             k1[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
                                       boxes(j,2*i  ) ) - 1).uIndex();
@@ -900,7 +902,9 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
             ind[i]  = curr[i].index(); // index of the function in the matrix
         }
 
-        if ( m_tree.query3(low, upp,level) == level) //if active
+        //Here: get knot indices in some standard indexing (eg. dyadic)
+
+        if ( m_tree.query3(low, upp,level) == level) //if active ????
             cmat.push_unsorted( m_bases[level]->index( ind ) );
 
     }

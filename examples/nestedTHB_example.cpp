@@ -68,26 +68,35 @@ int main(int argc, char *argv[])
     // Export the initial basis to paraview files
     gsWriteParaview(thb, "thb0_init" );
 
-    //! [refViaStdVec]
+
+    // ONLY FOD DYADIC
     std::vector<index_t> box;
+    /*
     box.push_back( 1 );
     box.push_back( 0 );
     box.push_back( 0 );
-    box.push_back( 4 );
-    box.push_back( 4 );
+    box.push_back( 1 );
+    box.push_back( 1 );
 
-    thb.refineElements(box);
-    //! [refViaStdVec]
+    thb.refineElements(box); //data is tailored for dyadic refinement.
+    */
+
+    gsMatrix<> rbox(2,2);
+    rbox<< 0,0, .24, .24 ;
+    thb.refine(rbox); //data is tailored for dyadic refinement.
+        
     gsInfo << "basis after refinement:\n" << thb << std::endl;
-    index_t l = 0;
-    for (auto b = thb.getBases().begin(); b!=thb.getBases().end(); b++, l++)
-        gsDebug<<"Level "<<l<<":\n"<<*(*b)<<"\n";
+    gsWrite(thb, "after_ref");
 
+    thb.tree().printLeaves();
+    thb.printSpaces();
+    //thb.printCharMatrix();
 
     // Export the refined basis to paraview files
     gsWriteParaview(thb, "thb_refined_first" );
     gsInfo << "after refinement," << std::endl;
-return 0;
+
+    return 0;
 
     //! [stdOpsCout]
     gsInfo << "this basis is:\n" << thb << std::endl;
