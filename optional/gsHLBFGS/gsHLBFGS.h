@@ -9,6 +9,7 @@
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
 #include "HLBFGS/HLBFGS.h"
+#include <gsUtils/gsStopwatch.h>
 /*
 To do:
 - Use Eigen
@@ -43,7 +44,7 @@ struct gsHLBFGSObjective
     {
         gsAsConstVector<real_t> u(x,N);
         *f = obj->evalObj(u);
-        
+
         gsAsVector<real_t> Gvec(g,N);
         obj->gradObj_into(u,Gvec);
     }
@@ -129,7 +130,7 @@ public:
 
             gsAsConstVector<real_t> u(x,N);
             *f = m_op->evalObj(u);
-            
+
             gsAsVector<real_t> Gvec(g,N);
             m_op->gradObj_into(u,Gvec);
         };
@@ -144,9 +145,12 @@ public:
                 gsInfo<<"# iter "<< iter << ": #func eval. " << call_iter << ", f = " << *f <<", ||g|| = " << *gnorm << std::endl;
         };
 
+
         local_newiter_callback = &wrapcallback;
 
-        // WHAT ABOUT CONSTRAINTS????
+        // WHAT ABOUT CONSTRAINTS???? There are no.
+        gsStopwatch time;
+        time.restart();
         HLBFGS(
                 sol.size(),
                 m_M, // hardcoded??? -->>> change to an option of the class
@@ -159,6 +163,8 @@ public:
                 m_hlbfgs_pars,
                 m_hlbfgs_info
               );
+
+        this->m_itime.push_back(time.stop());
     }
 
     void solve(const gsMatrix<T> & initialGuess)
@@ -172,7 +178,7 @@ public:
         m_numIterations = m_hlbfgs_info[2];
         m_finalObjective = m_op->evalObj(gsAsConstVector<T>(m_curDesign.data(),m_curDesign.rows()));
 
-        if (m_verbose==1)
+        if (m_verbose==2)
             gsInfo<<"HLBFGS finished in "<<m_numIterations<<" iterations, with final objective "<<m_finalObjective<<"\n";
 
     }
@@ -214,4 +220,3 @@ const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> *
 // using gsHLBFGS = gdc::GradientDescent<T, Objective, StepSize, Callback, FiniteDifferences>;
 
 } //namespace gismo
-
