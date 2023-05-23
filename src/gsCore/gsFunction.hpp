@@ -358,8 +358,8 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
 #if true
 //#ifdef gsIpOpt_ENABLED
     gsFunctionAdaptor<T> fmin(*this);
-    //gsIpOpt<T> solver( &fmin );
-    //gsGradientDescent<T> solver( &fmin );
+    // gsIpOpt<T> solver( &fmin );
+    // gsGradientDescent<T> solver( &fmin );
     gsHLBFGS<T> solver( &fmin );
 
     solver.options().setInt("MaxIterations",100);
