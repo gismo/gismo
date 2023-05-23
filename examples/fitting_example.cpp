@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
     index_t v_numKnots = 0;
     index_t maxPcIter = 1;
     real_t lambda = 1e-07;
-    real_t threshold = 1e-02;
     real_t tolerance = 1e-02;
+    real_t threshold = tolerance;
     index_t extension = 2;
     real_t refPercent = 0.1;
     std::string fn = "fitting/deepdrawingC.xml";
@@ -100,8 +100,8 @@ int main(int argc, char *argv[])
     file_results.open("r"+internal::to_string(numURef)+"_fiting_example_results.csv");
     file_results << "step, dofs, min, max, mse, percentage\n";
 
-    //index_t step = maxPcIter;
-    for (index_t step=0; step <= maxPcIter; step ++)
+    index_t step = maxPcIter;
+    // for (index_t step=0; step <= maxPcIter; step ++)
     {
     std::ofstream max_results;
     std::ofstream mse_results;
