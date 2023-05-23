@@ -135,27 +135,47 @@ public:
 			result(0, i) = dot * dot;
 		}
     }
-	/*
-	// f' = 2 * ((pt - x)^T * n) * (-x' * n)
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        result.resize(u.rows(), u.cols());
 
-		gsMapData<> md(NEED_VALUE|NEED_NORMAL);
+
+
+	// f' = 2 * ((x-pt)^T * n) * (x' * n + x*n')
+  void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+  {
+    result.resize(u.rows(), u.cols());
+
+		gsMapData<> md(NEED_VALUE|NEED_DERIV2|NEED_NORMAL|NEED_JACOBIAN);
 		md.points = u;
 		m_g->computeMap(md);
-		gsMatrix<> values  = md.values[0]; // 3 x u.cols() matrix
-		gsMatrix<> normals = md.normals;   // 3 x u.cols() matrix
 
-        for(index_t i=0; i != u.cols(); i++)
-        {
-            tmp = u.col(i);
-			T dot = (*m_pt - values.col(i)).dot(normals.col(i));
-            m_g->jacobian_into(tmp,m_gd[1]);
-            result.col(i).noalias() = -2 * dot * (m_gd[1].transpose() * normals.col(i));
-        }
+    const gsMatrix<T> & values = md.values[0];   // 3 x u.cols() matrix
+    const gsMatrix<T> & derivs = md.values[1];   // 3 x u.cols() matrix
+    const gsMatrix<T> & derivs2 = md.values[2];   // 3 x u.cols() matrix
+    gsMatrix<T> & normals = md.normals;   // 3 x u.cols() matrix
+
+    result.resize(2, u.cols());
+    gsMatrix<T,3,3> djm;
+    gsMatrix<T, 2, 3> jm;
+    gsMatrix<T,3,2> Jn, JN;
+
+    for(index_t i = 0; i < u.cols(); i++)
+    {
+      jm = derivs.col(i).reshaped(2,3);
+      djm = derivs2.col(i).reshaped(3,3);
+
+      Jn.col(0) = jm.row(0).cross(djm.row(2)) - jm.row(1).cross(djm.row(0));
+      Jn.col(1) = jm.row(0).cross(djm.row(1)) - jm.row(1).cross(djm.row(2));
+
+      real_t factor = 1/normals.col(i).norm();
+      JN.noalias() = factor * ( gsMatrix<>::Identity(3,3) - (normals.col(i) * normals.col(i).transpose())  /
+                              (normals.col(i).transpose() * normals.col(i)) ) * Jn;
+
+      normals.col(i).normalize();
+      result.col(i).noalias() =  2 *  normals.col(i).dot(values.col(i) - *m_pt) *
+                              ( md.jacobian(i).transpose() * normals.col(i) + JN.transpose() * (values.col(i) - *m_pt)  );
     }
+  }
 
+  /*
     void evalAllDers_into(const gsMatrix<T> & u, const int n,
                           std::vector<gsMatrix<T> > & result) const
     {
@@ -189,6 +209,7 @@ public:
         util::hessianToSecDer(tmp,u.rows(),result[2]);
     }
 
+
     // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
     void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
                       index_t) const
@@ -202,7 +223,8 @@ public:
             tmp = m_g->hessian(u,k);
             result.noalias() += (m_gd[0].at(k)-m_pt->at(k))*tmp;
         }
-		}*/
+		}
+    */
 
 	// Re-implemented from gsFunctionSet<T> so as not to call gsFunctionSet<T>::eval_into.
 	void evalAllDers_into(const gsMatrix<T> & u, const int n,
