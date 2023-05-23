@@ -503,11 +503,9 @@ public:
     void printSpaces(std::ostream &os = gsInfo) const
     {
         os<<"Spline-space hierarchy:\n";
-        // for(unsigned i = 0; i<= maxLevel(); i++)
-        for(unsigned i = 0; i<m_bases.size(); i++)
+        for(unsigned i = 0; i<= maxLevel(); i++)
         {
-            // if ( m_xmatrix[i].size() )
-            if ( true )
+            if ( m_xmatrix[i].size() )
             {
                 os<<"- level="<<i<<
                     ", size="<<m_xmatrix[i].size() << ":\n";
