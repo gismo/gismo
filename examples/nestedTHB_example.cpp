@@ -69,7 +69,9 @@ int main(int argc, char *argv[])
     gsTensorBSplineBasis<2,real_t> tens3( kv3, kv3 );
     tens3.insertKnot(0.375,0);
     tens3.insertKnot(0.825,0);
+    tens3.insertKnot(0.3125,1);
     tens3.insertKnot(0.375,1);
+    tens3.insertKnot(0.4375,1);
     tens3.insertKnot(0.825,1);
     gsDebugVar(tens3);
     thb.addLevel(tens3);
@@ -80,7 +82,6 @@ int main(int argc, char *argv[])
 
     thb.printSpaces();
 
-return 0;
     // Export the initial basis to paraview files
     gsWriteParaview(thb, "thb0_init" );
 

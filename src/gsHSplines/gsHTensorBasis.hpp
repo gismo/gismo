@@ -32,19 +32,21 @@ namespace gismo
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis)
 {
+    GISMO_ENSURE(m_manualLevels,"Add level only works when m_manualLevels==true");
     // Fill the unique indices
     std::vector<std::vector<index_t>> lvlIndices(d);
     const tensorBasis * tb2 = dynamic_cast<const tensorBasis*>(m_bases.back());
     std::vector<T> difference, intersection;
     std::vector<T> knots1, knots2;
-    std::vector<index_t> dirIndices, extraIndices;
-
+    std::vector<index_t> dirIndices;
+    gsKnotVector<T> tmpknots;
     for (short_t dim=0; dim!=d; dim++)
     {
         dirIndices = m_uIndices.back()[dim];
         // Take the difference of the knot vectors
-        knots1 = tb2->knots(dim).unique();
-        knots2 = next_basis.knots(dim).unique();
+        tmpknots= tb2->knots(dim);
+        knots1  = tb2->knots(dim).unique();
+        knots2  = next_basis.knots(dim).unique();
 
         // Check nestedness. 
         // The unique knots of the new basis must contain the ones of the previous level
@@ -63,31 +65,47 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
                             knots1.begin(), knots1.end(), 
                                 std::back_inserter(difference) );
 
+        // We reverse since later on we loop and pop the elements on the back
+        std::reverse(difference.begin(),difference.end());
         // Double all indices in dirIndices. These correspond to the indices that come from the nested bases
         std::transform(dirIndices.begin(), dirIndices.end(), dirIndices.begin(), [=](index_t& i){return 2*i;});
-        gsDebugVar(gsAsConstVector<index_t>(dirIndices));
-        gsDebugVar(gsAsConstVector<T>(difference));
 
         // Find the extra indices for the nodes in difference
-        extraIndices.clear();
-        extraIndices.reserve(difference.size());
         while (difference.size()!=0)
         {
+            index_t i, n;
+            typename std::vector<T>::iterator diff_ptr = difference.begin();
             // Find the index of the highest knot below the different knot
-            index_t i = tb2->knots(dim).uFind(difference.back()).uIndex(); // index of the knot span in which *it is located
-            // Push the new index to a temporary container
-            extraIndices.push_back(dirIndices[i]+1);
-            difference.pop_back();
+            i = tmpknots.uFind(*diff_ptr).uIndex(); // index of the knot span in which *it is located
+            
+            // Count how many difference knots lay in the same span
+            for (n = 0, diff_ptr = difference.begin(); diff_ptr!=difference.end() && tmpknots.uFind(*diff_ptr).uIndex()==i; n++, diff_ptr++);
+            // Count the distance between two element indices. It should be larger than n
+            GISMO_ENSURE(n < dirIndices[i+1] - dirIndices[i],"Trying to insert more knots than available in the tensor structure");
+
+            index_t newIdx;
+            if (n % 2 != 0)
+            {
+                // We add the middle knot
+                diff_ptr = std::next(difference.begin(),(n-1)/2);
+                newIdx = (dirIndices[i] + dirIndices[i+1]) / 2;
+            }
+            else
+            {
+                // We add the first knot
+                diff_ptr = difference.begin();                
+                newIdx = dirIndices[i] + 1;
+            }
+
+            // Add the correct index
+            dirIndices.insert(std::upper_bound( dirIndices.begin(), dirIndices.end(), newIdx ),newIdx);
+            // Insert the removed difference knot in the temporary knot vector
+            tmpknots.insert(*diff_ptr);
+            // Remove the difference knot, since it is treated
+            difference.erase(diff_ptr);
         }
-        gsDebugVar(gsAsConstVector<index_t>(extraIndices));
-
-        // Push the temporary container to the dirIndices
-        for (typename std::vector<index_t>::const_iterator it=extraIndices.begin(); it!=extraIndices.end(); it++)
-            dirIndices.insert(std::upper_bound( dirIndices.begin(), dirIndices.end(), *it ),*it);
-
-        GISMO_ASSERT(knots2.size()==dirIndices.size(),"Something went wrong, knots2.size() = "<<knots2.size()<<"!= "<<dirIndices.size()<<" = "<<"dirIndices.size()");
+        
         lvlIndices[dim] = dirIndices;
-        gsDebugVar(gsAsVector<index_t>(dirIndices));
     }
     m_uIndices.push_back(lvlIndices);
 
@@ -637,12 +655,23 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
             k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
                                       boxes(j,2*i+1) ) - 1).uIndex();
 
+            // left and right
+
             // Trivial boxes trigger some refinement
             if ( k1[j] == k2[j])
             {
                 if (0!=k1[j]) {--k1[j];}
                 ++k2[j];
             }
+        }
+
+        if (m_manualLevels)
+        {
+            for(index_t j = 0; j < k1.size();j++)
+            {
+                k1[j] = m_uIndices[fLevel][j][k1[j]];
+                k2[j] = m_uIndices[fLevel][j][k2[j]];
+            }   
         }
 
         // 2. Find the smallest level in which the box is completely contained

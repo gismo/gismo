@@ -109,14 +109,18 @@ public:
 
     /// Default empty constructor
     gsHTensorBasis()
+    :
+    m_manualLevels(false)
     {
         initialize_class(tensorBasis());
         update_structure();
     }
 
     gsHTensorBasis( gsBasis<T> const&  tbasis, bool manualLevels)
+    :
+    m_manualLevels(manualLevels)
     {
-        if (!manualLevels) 
+        if (!m_manualLevels) 
         {
             initialize_class(tbasis);
             // Build the characteristic matrices
@@ -161,6 +165,8 @@ public:
 
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
                     const std::vector<index_t> & boxes)
+    :
+    m_manualLevels(false)
     {
         initialize_class(tbasis);
         point i1;
@@ -196,6 +202,8 @@ public:
 */
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const&  tbasis,
                     gsMatrix<T> const & boxes)
+    :
+    m_manualLevels(false)
     {
         //assert(boxes.rows() == 2);    //can accept only 2D coordinates- Delete during the generalization of the lac to nD
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
@@ -237,6 +245,8 @@ public:
     gsHTensorBasis( gsTensorBSplineBasis<d,T> const& tbasis,
                     gsMatrix<T> const & boxes,
                     const std::vector<index_t> & levels)
+    :
+    m_manualLevels(false)
     {
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
@@ -280,6 +290,8 @@ public:
             m_deg            = o.m_deg;
             m_tree           = o.m_tree;
             m_xmatrix        = o.m_xmatrix;
+            m_manualLevels   = o.m_manualLevels; 
+            m_uIndices       = o.m_uIndices;
 
             freeAll( m_bases );
             m_bases.resize( o.m_bases.size() );
@@ -360,8 +372,12 @@ protected:
     // (for debugging purposes)
     // boxHistory m_boxHistory;
 
-    /// Store the indices of the element boundaries for each level
+    bool m_manualLevels;
+
+    /// Store the indices of the element boundaries for each level (only if m_manualLevels==true)
     std::vector<std::vector<std::vector<index_t>>> m_uIndices;
+
+
 
 public:
     // Needed since m_tree is 16B aligned
@@ -488,7 +504,7 @@ public:
     {
         os<<"Spline-space hierarchy:\n";
         // for(unsigned i = 0; i<= maxLevel(); i++)
-        for(unsigned i = 0; i<=m_bases.size(); i++)
+        for(unsigned i = 0; i<m_bases.size(); i++)
         {
             // if ( m_xmatrix[i].size() )
             if ( true )
