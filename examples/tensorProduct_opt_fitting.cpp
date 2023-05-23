@@ -271,6 +271,13 @@ int main(int argc, char *argv[])
       gsWriteParaviewPoints( params, "params_it0");
     }
 
+    real_t rmse0 = 0.;
+    // compute the fitting error.
+    gsMatrix<> tmp0 = original.eval(params) - X;
+    real_t pred0_eval = (tmp0 * tmp0.transpose()).trace();
+    rmse0 += math::pow(pred0_eval/X.cols(), 0.5);
+
+    std::cout << "Initial fitting error: " << rmse0 << std::scientific << "\n";
 
     // Initialization of the optimization problem.
     gsOptProblemExample<real_t> problem(fitting_object, params, X); // FIRST THE fitting object, THEN THE PARAMETERS AND THEN THE POINTS.
