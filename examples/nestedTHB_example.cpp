@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
     int      degree = 3;
     unsigned multEnd = degree + 1;  // multiplicity at the two end knots
     gsKnotVector<> kv(a, b, interior, multEnd);
+    gsDebugVar(kv.asMatrix());
 
     // ...a 2D-tensor-B-spline basis with this knot vector...
     gsTensorBSplineBasis<2,real_t> tens( kv, kv )   ;
@@ -56,15 +57,30 @@ int main(int argc, char *argv[])
 
     // ...a 2D-tensor-B-spline basis with this knot vector...
     gsTensorBSplineBasis<2,real_t> tens2( kv2, kv2 );
+    gsDebugVar(kv2.asMatrix());
+    tens2.insertKnot(0.375,0);
+    tens2.insertKnot(0.825,0);
     gsDebugVar(tens2);
+    thb.addLevel(tens2);
+
+    gsKnotVector<> kv3(a, b, interior, multEnd,degree);
+    gsDebugVar(kv3.asMatrix());
+    // ...a 2D-tensor-B-spline basis with this knot vector...
+    gsTensorBSplineBasis<2,real_t> tens3( kv3, kv3 );
+    tens3.insertKnot(0.375,0);
+    tens3.insertKnot(0.825,0);
+    tens3.insertKnot(0.375,1);
+    tens3.insertKnot(0.825,1);
+    gsDebugVar(tens3);
+    thb.addLevel(tens3);
 
     // // ...a 2D-tensor-B-spline basis with this knot vector...
     // gsTensorBSplineBasis<2,real_t> tens2 = tens;
     // tens2.uniformRefine();
 
-    thb.addLevel(tens2);
-    gsInfo << "basis before refinement:\n" << thb << std::endl;
+    thb.printSpaces();
 
+return 0;
     // Export the initial basis to paraview files
     gsWriteParaview(thb, "thb0_init" );
 

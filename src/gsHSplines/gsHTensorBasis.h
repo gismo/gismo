@@ -130,10 +130,19 @@ public:
 
             // Construct the initial basis
             m_bases.reserve(3);
-            if ( const tensorBasis * tb2 =
-                    dynamic_cast<const tensorBasis*>(&tbasis) )
+            if ( const tensorBasis * tb2 = dynamic_cast<const tensorBasis*>(&tbasis) )
             {
                 m_bases.push_back(tb2->clone().release());
+                // For the tbasis, count the unique knot values
+                std::vector<std::vector<index_t>> lvlIndices(d);
+                std::vector<index_t> dirIndices;
+                for (short_t dim=0; dim!=d; dim++)
+                {
+                    dirIndices.resize(tb2->knots(dim).uSize());
+                    std::iota(dirIndices.begin(),dirIndices.end(),0);
+                    lvlIndices[dim] = dirIndices;
+                }
+                m_uIndices.push_back(lvlIndices);
             }
             else
             {
@@ -303,12 +312,8 @@ public:
         freeAll( m_bases );
     }
 
-    void addLevel( const gsTensorBSplineBasis<d, T>& next_basis)
-    {
-        // m_bases.push_back( new gsTensorBSplineBasis<d, T>( give( next_basis ) ));
-        m_bases.push_back( next_basis.clone().release() );
-    }
-
+    void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
+    
     /// \brief Inserts a domain into the basis
     void only_insert_box(point const & k1, point const & k2, int lvl);
 
@@ -354,6 +359,9 @@ protected:
     // // Stores the coordinates of all inserted boxes
     // (for debugging purposes)
     // boxHistory m_boxHistory;
+
+    /// Store the indices of the element boundaries for each level
+    std::vector<std::vector<std::vector<index_t>>> m_uIndices;
 
 public:
     // Needed since m_tree is 16B aligned
@@ -479,13 +487,18 @@ public:
     void printSpaces(std::ostream &os = gsInfo) const
     {
         os<<"Spline-space hierarchy:\n";
-        for(unsigned i = 0; i<= maxLevel(); i++)
+        // for(unsigned i = 0; i<= maxLevel(); i++)
+        for(unsigned i = 0; i<=m_bases.size(); i++)
         {
-            if ( m_xmatrix[i].size() )
+            // if ( m_xmatrix[i].size() )
+            if ( true )
             {
                 os<<"- level="<<i<<
                     ", size="<<m_xmatrix[i].size() << ":\n";
-                os << "Space: "<< * m_bases[i] <<")";
+                os << "Space: "<< * m_bases[i] <<")\n";
+                os << "Indices:\n";
+                for (size_t dim=0; dim!=d; dim++)
+                    os << "Dir "<<dim<<": "<<gsAsConstVector<index_t>(m_uIndices[i][dim]).transpose()<<"\n";
             }
             else
             {

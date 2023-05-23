@@ -30,6 +30,72 @@ namespace gismo
 // }
 
 template<short_t d, class T>
+void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis)
+{
+    // Fill the unique indices
+    std::vector<std::vector<index_t>> lvlIndices(d);
+    const tensorBasis * tb2 = dynamic_cast<const tensorBasis*>(m_bases.back());
+    std::vector<T> difference, intersection;
+    std::vector<T> knots1, knots2;
+    std::vector<index_t> dirIndices, extraIndices;
+
+    for (short_t dim=0; dim!=d; dim++)
+    {
+        dirIndices = m_uIndices.back()[dim];
+        // Take the difference of the knot vectors
+        knots1 = tb2->knots(dim).unique();
+        knots2 = next_basis.knots(dim).unique();
+
+        // Check nestedness. 
+        // The unique knots of the new basis must contain the ones of the previous level
+        std::set_intersection(  knots2.begin(), knots2.end(),
+                                knots1.begin(), knots1.end(), 
+                                std::back_inserter(intersection) );
+        // The difference of the two must not contain any knot in knots1!
+        std::set_difference(  knots1.begin(), knots1.end(),
+                                intersection.begin(), intersection.end(), 
+                                std::back_inserter(difference) );
+        GISMO_ASSERT(difference.size()==0,"Knot vector is not nested!");
+
+        difference.clear();
+        // The difference of the two must not contain any knot in knots1!
+        std::set_difference(knots2.begin(), knots2.end(),
+                            knots1.begin(), knots1.end(), 
+                                std::back_inserter(difference) );
+
+        // Double all indices in dirIndices. These correspond to the indices that come from the nested bases
+        std::transform(dirIndices.begin(), dirIndices.end(), dirIndices.begin(), [=](index_t& i){return 2*i;});
+        gsDebugVar(gsAsConstVector<index_t>(dirIndices));
+        gsDebugVar(gsAsConstVector<T>(difference));
+
+        // Find the extra indices for the nodes in difference
+        extraIndices.clear();
+        extraIndices.reserve(difference.size());
+        while (difference.size()!=0)
+        {
+            // Find the index of the highest knot below the different knot
+            index_t i = tb2->knots(dim).uFind(difference.back()).uIndex(); // index of the knot span in which *it is located
+            // Push the new index to a temporary container
+            extraIndices.push_back(dirIndices[i]+1);
+            difference.pop_back();
+        }
+        gsDebugVar(gsAsConstVector<index_t>(extraIndices));
+
+        // Push the temporary container to the dirIndices
+        for (typename std::vector<index_t>::const_iterator it=extraIndices.begin(); it!=extraIndices.end(); it++)
+            dirIndices.insert(std::upper_bound( dirIndices.begin(), dirIndices.end(), *it ),*it);
+
+        GISMO_ASSERT(knots2.size()==dirIndices.size(),"Something went wrong, knots2.size() = "<<knots2.size()<<"!= "<<dirIndices.size()<<" = "<<"dirIndices.size()");
+        lvlIndices[dim] = dirIndices;
+        gsDebugVar(gsAsVector<index_t>(dirIndices));
+    }
+    m_uIndices.push_back(lvlIndices);
+
+    // m_bases.push_back( new gsTensorBSplineBasis<d, T>( give( next_basis ) ));
+    m_bases.push_back( next_basis.clone().release() );
+}
+
+template<short_t d, class T>
 gsMatrix<T> gsHTensorBasis<d,T>::support() const
 {
     return m_bases[0]->support();
