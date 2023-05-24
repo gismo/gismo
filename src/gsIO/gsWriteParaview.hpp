@@ -732,9 +732,30 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
 /// Write a file containing a solution field over a geometry
 template<class T>
 void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
-                     gsMappedBasis<2,T>  const& mbasis,
                      std::string const & fn,
                      unsigned npts)
+{
+    gsParaviewCollection collection(fn);
+    std::string fileName, fileName_nopath;
+    for ( index_t p=0; p < mspline.nPieces(); ++p )
+    {
+        // Compute the geometry
+        fileName = fn + "_" + util::to_string(p);
+        fileName_nopath = gsFileManager::getFilename(fileName);
+        writeSingleGeometry(mspline.piece(p),mspline.piece(p).support(),fileName,npts);
+        collection.addPart(fileName_nopath + ".vts",-1,"",p);
+    }
+    collection.save();
+}
+
+/// Write a file containing a solution field over a geometry
+template<class T>
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
+                     gsMappedBasis<2,T>  const& mbasis,
+                     std::string const & fn,
+                     unsigned npts,
+                     const bool fullsupport,
+                     const std::vector<index_t> indices)
 {
     /*
         We loop over all global basis functions.
@@ -744,34 +765,69 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
     */
     GISMO_ASSERT(mspline.nPieces()==mbasis.nPieces(),"Function sets must have same number of pieces, but the basis has "<<mbasis.nPieces()<<" and the geometry has "<<mspline.nPieces());
 
+    std::vector<index_t> plotIndices;
+    if (indices.size()==0)
+    {
+        plotIndices.resize(mbasis.globalSize());
+        std::generate(plotIndices.begin(), plotIndices.end(), [n = 0] () mutable { return n++; });
+    }
+    else
+        plotIndices = indices;
 
     gsParaviewCollection collection(fn);
     std::string fileName, fileName_nopath;
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
-
+    gsVector<unsigned> np;
     for ( index_t p=0; p < mspline.nPieces(); ++p )
     {
-        ab = mspline.piece(p).support();
-        a = ab.col(0);
-        b = ab.col(1);
-
-        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
-        pts = gsPointGrid(a, b, np);
-
-        eval_geo = mspline.piece(p).eval(pts);//pts
-
-
-        for (index_t k = 0; k < mbasis.globalSize(); k++)
+        if (fullsupport)
         {
-            fileName = fn + util::to_string(k) + "_" + util::to_string(p);
+            // Compute the geometry
+            ab = mspline.piece(p).support();
+            a = ab.col(0);
+            b = ab.col(1);
+
+            np = uniformSampleCount(a, b, npts);
+            pts = gsPointGrid(a, b, np);
+
+            eval_geo = mspline.piece(p).eval(pts);//pts
+        }
+        
+        for (std::vector<index_t>::const_iterator i = plotIndices.begin(); i!=plotIndices.end(); i++)//, k++)
+        {
+            if (!fullsupport)
+            {
+                // Compute the geometry on the support of the basis function
+                ab = mbasis.piece(p).support(*i);
+                // ab = mbasis.piece(p).support();
+                a = ab.col(0);
+                b = ab.col(1);
+
+                np = uniformSampleCount(a, b, npts);
+                pts = gsPointGrid(a, b, np);
+
+                eval_geo = mspline.piece(p).eval(pts);//pts                
+            }
+
+            fileName = fn + util::to_string(*i) + "_" + util::to_string(p);
             fileName_nopath = gsFileManager::getFilename(fileName);
 
-            eval_basis = mbasis.piece(p).evalSingle(k,pts);
+            eval_basis = mbasis.piece(p).evalSingle(*i,pts);
             gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
 
-            collection.addPart(fileName_nopath + ".vts",k,"",p);
-        }   
+            collection.addPart(fileName_nopath + ".vts",*i,"",p);
+        }
+        // for (index_t k = 0; k < mbasis.globalSize(); k++)
+        // {
+        //     fileName = fn + util::to_string(k) + "_" + util::to_string(p);
+        //     fileName_nopath = gsFileManager::getFilename(fileName);
+
+        //     eval_basis = mbasis.piece(p).evalSingle(k,pts);
+        //     gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
+
+        //     collection.addPart(fileName_nopath + ".vts",k,"",p);
+        // }   
     }
     collection.save();
 }
@@ -1112,6 +1168,43 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
     collection.save();
 }
 
+/// Export Basis functions
+template<class T>
+void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
+                     std::string const & fn, unsigned npts)
+{
+    GISMO_ENSURE(mp.nPatches()==mb.nBases(),"Number of bases and patches do not correspond");
+
+    gsParaviewCollection collection(fn);
+    
+    gsMatrix<T> eval_geo, eval_basis, pts, ab;
+    gsVector<T> a, b;
+
+    index_t k=0;
+    for (size_t p=0; p!=mp.nPatches(); p++)
+        for ( index_t i=0; i< mb.basis(p).size(); i++, k++)
+        {
+            // Compute the geometry on the support of the basis function
+            ab = mb.basis(p).support(i);
+            a = ab.col(0);
+            b = ab.col(1);
+
+            gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+            pts = gsPointGrid(a, b, np);
+
+            eval_geo = mp.patch(p).eval(pts);//pts
+
+            std::string fileName = fn + "_" + util::to_string(k);
+            std::string fileName_nopath = gsFileManager::getFilename(fileName);
+
+            eval_basis = mb.basis(p).evalSingle(i,pts);
+            gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
+            // gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
+            // collection.addPart(fileName_nopath + ".vts",-1,"",k);
+            collection.addPart(fileName_nopath + ".vts",k);
+        }
+    collection.save();
+}
 
 /// Export Point set to Paraview
 template<class T>

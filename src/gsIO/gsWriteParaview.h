@@ -40,17 +40,49 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
                      unsigned npts=NS, bool mesh = false, bool ctrlNet = false);
 
 /**
- * @brief      Writes a gsMappedBasis over a gsMappedSpline geometry
+ * @brief      Writes a gsMappedSpline geometry
  *
  * @param      mspline  The mapped spline
- * @param      mbasis   The mapped basis
  * @param      fn       The filename
  * @param[in]  npts     The number of sampling points
  * 
  */
 template<class T>
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
                      std::string const & fn,unsigned npts = NS);
+
+
+
+
+/**
+ * @brief      Plot the basis functions of a multi-basis
+ *
+ * @param      mp    A multi-patch geometry to plot the basis on
+ * @param      mb    The multi-basis
+ * @param      fn    The file name
+ * @param[in]  npts  The number of points
+ *
+ */
+template<class T>
+void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
+                     std::string const & fn, unsigned npts = NS);
+
+/**
+ * @brief      Writes a gsMappedBasis over a gsMappedSpline geometry
+ *
+ * @param      mspline      The mapped spline
+ * @param      mbasis       The mapped basis
+ * @param      fn           The filename
+ * @param      fullsupport  Plot the basis over the whole domain
+ * @param      indices      Basis functions to be plotted
+ * @param[in]  npts         The number of sampling points
+ * 
+ */
+template<class T>
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,
+                     std::string const & fn,unsigned npts = NS, 
+                     const bool fullsupport = false,
+                     const std::vector<index_t> indices = std::vector<index_t>());
 
 /// \brief Export a mesh to paraview file
 ///

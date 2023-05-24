@@ -44,9 +44,9 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T projectGeometry(    const gsMultiBasis<T> & basis,
-                                    const gsMultiPatch<T> & geometry,
-                                    gsMatrix<T> & result);
+    static T projectGeometry(   const gsMultiBasis<T> & basis,
+                                const gsMultiPatch<T> & geometry,
+                                gsMatrix<T> & result);
 
     /**
      * @brief      Projects a \a source geometry onto \a basis and returns it in
@@ -58,9 +58,9 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T projectGeometry(    const gsMultiBasis<T> & basis,
-                                    const gsMultiPatch<T> & geometry,
-                                    gsMultiPatch<T> & result);
+    static T projectGeometry(   const gsMultiBasis<T> & basis,
+                                const gsMultiPatch<T> & geometry,
+                                gsMultiPatch<T> & result);
 
     /**
      * @brief      Projects a \a source geometry onto \a basis and returns it in
@@ -73,10 +73,10 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T projectGeometry(    const gsMultiBasis<T> & intbasis,
-                                    const gsMappedBasis<2,T> & basis,
-                                    const gsMultiPatch<T> & geometry,
-                                    gsMatrix<T> & result);
+    static T projectGeometry(   const gsMultiBasis<T> & intbasis,
+                                const gsMappedBasis<2,T> & basis,
+                                const gsMultiPatch<T> & geometry,
+                                gsMatrix<T> & result);
 
     /**
      * @brief      Projects a function on a basis
@@ -88,10 +88,10 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T projectFunction(    const gsMultiBasis<T> & basis,
-                                    const gsFunctionSet<T> & source,
-                                    const gsMultiPatch<T> & geometry,
-                                    gsMatrix<T> & result);
+    static T projectFunction(   const gsMultiBasis<T> & basis,
+                                const gsFunctionSet<T> & source,
+                                const gsMultiPatch<T> & geometry,
+                                gsMatrix<T> & result);
 
     /**
      * @brief      Projects a function on a basis
@@ -103,10 +103,10 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T projectFunction(    const gsMultiBasis<T> & basis,
-                                    const gsFunctionSet<T> & source,
-                                    const gsMultiPatch<T> & geometry,
-                                    gsMultiPatch<T> & result);
+    static T projectFunction(   const gsMultiBasis<T> & basis,
+                                const gsFunctionSet<T> & source,
+                                const gsMultiPatch<T> & geometry,
+                                gsMultiPatch<T> & result);
 
     /**
      * @brief      Projects a function on a basis
@@ -119,11 +119,11 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T projectFunction(    const gsMultiBasis<T>   & intbasis,
-                                    const gsMappedBasis<2,T>& basis,
-                                    const gsFunctionSet<T>  & source,
-                                    const gsMultiPatch<T>   & geometry,
-                                    gsMatrix<T> & result);
+    static T projectFunction(   const gsMultiBasis<T>   & intbasis,
+                                const gsMappedBasis<2,T>& basis,
+                                const gsFunctionSet<T>  & source,
+                                const gsMultiPatch<T>   & geometry,
+                                gsMatrix<T> & result);
 
     /**
      * @brief      Projects a \a source geometry onto \a basis and returns it in
@@ -135,9 +135,9 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T projectGeometryBoundaries(    const gsMultiBasis<T> & basis,
-                                    const gsMultiPatch<T> & geometry,
-                                    gsMultiPatch<T> & result);
+    static T projectGeometryBoundaries( const gsMultiBasis<T> & basis,
+                                        const gsMultiPatch<T> & geometry,
+                                        gsMultiPatch<T> & result);
 
 
     /**
@@ -152,9 +152,9 @@ public:
      * @return     The L2 error of the projection
      */
     static T projectGeometryPenalty(    const gsMultiBasis<T> & basis,
-                                    const gsMultiPatch<T> & geometry,
-                                    gsMultiPatch<T> & result,
-                                    T penalty = 1e3);
+                                        const gsMultiPatch<T> & geometry,
+                                        gsMultiPatch<T> & result,
+                                        T penalty = 1e3);
 
 
 }; //struct

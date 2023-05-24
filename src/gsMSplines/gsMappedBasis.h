@@ -318,6 +318,16 @@ public:
     void local_coef_to_global_coef(gsMatrix<T> const & localCoefs,gsMatrix<T> & globalCoefs) const
     {  m_mapper->mapToTargetCoefs(localCoefs,globalCoefs); }
 
+    /// See gsMappedBasis::_getPatchIndex
+    index_t getPatch(index_t const localIndex)
+    {
+        return _getPatch(localIndex);
+    }
+    index_t getPatchIndex(index_t const localIndex)
+    {
+        return _getPatchIndex(localIndex);
+    }
+
 protected:
     //////////////////////////////////////////////////
     // functions for working with Indexes
@@ -328,7 +338,7 @@ protected:
      *
      * \param[in] localIndex : the accumulated index of the basis function
      */
-    index_t _getPatch(index_t localIndex) const;
+    index_t _getPatch(index_t const localIndex) const;
 
     /** gets the patchIndex of the basis function specified by its localIndex.
      *  This is the index of this basis function in the basis of this patch.

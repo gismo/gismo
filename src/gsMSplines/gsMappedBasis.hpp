@@ -259,6 +259,7 @@ void gsMappedBasis<d,T>::evalSingle_into(const index_t patch, const index_t glob
 {
     BasisType * this_patch = m_bases[patch];
     index_t start = _getFirstLocalIndex(patch), end = _getLastLocalIndex(patch);
+    result.setZero(1,u.cols());
     if ( m_mapper->targetIsId(global_BF) )
     {
         IndexContainer indlist;
@@ -272,16 +273,19 @@ void gsMappedBasis<d,T>::evalSingle_into(const index_t patch, const index_t glob
     {
         gsMatrix<T> allLocals;
         gsMatrix<index_t> pActive;
-        this_patch->eval_into(u, allLocals);
-        this_patch->active_into(u, pActive);
-        gsSparseMatrix<T> L(allLocals.cols(),localSize()),Coefs(size(),1);
-        const index_t offset = _getFirstLocalIndex(patch);
-        for(index_t p = 0;p<allLocals.cols();++p)
-            for(index_t j=0;j<pActive.rows();++j)
-                L(p,pActive(j,p)+offset)=allLocals(j,p);
-        Coefs(global_BF,0)=1;
-        gsSparseMatrix<T> temp = L*(m_mapper->asMatrix())*Coefs;
-        result = temp.transpose().toDense();
+        for (index_t k = 0; k != u.cols(); k++)
+        {
+            this_patch->eval_into(u.col(k), allLocals);
+            this_patch->active_into(u.col(k), pActive);
+            gsSparseMatrix<T> L(allLocals.cols(),localSize()), Coefs(size(),1);
+            const index_t offset = _getFirstLocalIndex(patch);
+            for(index_t p = 0;p<allLocals.cols();++p)
+                for(index_t j=0;j<pActive.rows();++j)
+                    L(p,pActive(j,p)+offset)=allLocals(j,p);
+            Coefs(global_BF,0)=1;
+            gsSparseMatrix<T> temp = L*(m_mapper->asMatrix())*Coefs;
+            result.col(k) = temp.transpose().toDense();
+        }
     }
 }
 
@@ -450,13 +454,14 @@ void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index
 }
 
 template<short_t d,class T>
-index_t gsMappedBasis<d,T>::_getPatch(index_t localIndex) const
+index_t gsMappedBasis<d,T>::_getPatch(const index_t localIndex) const
 {
     size_t patch;
+    index_t patchIndex=localIndex;
     for(patch=0;patch<m_bases.size();patch++)
     {
-        if(localIndex>=static_cast<index_t>(m_bases[patch]->size()))
-            localIndex-=m_bases[patch]->size();
+        if(patchIndex>=static_cast<index_t>(m_bases[patch]->size()))
+            patchIndex-=m_bases[patch]->size();
         else
             break;
     }
