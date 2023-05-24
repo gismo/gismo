@@ -533,6 +533,9 @@ public:
      //{ return this->basisComponent(i).degree(); };
      { return this->basis().degree(i); }
 
+    /// Inserts knot \a knot at direction \a dir, \a i times
+    virtual void insertKnot( T knot, index_t dir, index_t i = 1);
+
     /// \brief Elevate the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree elevation is
     /// done for all directions. Uses \ref gsBasis<T>::degreeElevate

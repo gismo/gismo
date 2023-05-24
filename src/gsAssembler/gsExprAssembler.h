@@ -616,7 +616,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);// deprecated
-    opt.addInt("DirichletStrategy"  , "Strategy related to enforcement of Dirichlet DoF values [0ignore, 1:eliminate, 2:..]", 1);
+    opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11 );
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
     opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
@@ -751,7 +751,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     gsVector<T> quWeights; // quadrature weights
     _eval ee(m_matrix, m_rhs, quWeights);
     const index_t elim = m_options.getInt("DirichletStrategy");
-    ee.setElim(1==elim);
+    ee.setElim(dirichlet::elimination==elim);
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.

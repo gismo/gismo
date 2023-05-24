@@ -350,6 +350,12 @@ std::vector<gsGeometry<T> *> gsGeometry<T>::boundary() const
 }
 
 template<class T>
+void gsGeometry<T>::insertKnot( T knot, index_t dir, index_t i)
+{
+    GISMO_NO_IMPLEMENTATION
+}
+
+template<class T>
 void gsGeometry<T>::degreeElevate(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();

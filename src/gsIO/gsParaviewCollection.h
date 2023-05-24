@@ -86,7 +86,8 @@ public:
                         m_isSaved(false),
                         m_time(-1),
                         m_evaluator(evaluator),
-                        m_options(gsParaviewDataSet::defaultOptions())
+                        m_options(gsParaviewDataSet::defaultOptions()),
+                        counter(0)
     {
         m_filename = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename) + ".pvd";
         gsFileManager::mkdir( gsFileManager::getPath(m_filename) );
@@ -100,8 +101,8 @@ public:
 
     /// @brief Appends a file to the Paraview collection (.pvd file).
     /// @param fn Filename to be added. Can also be a path relative to the where the collection file is. 
-    /// @param tStep Time step ( optional, else an internal integer counter is used)
-    /// @param name An optional name for this part
+    /// @param tStep Time step ( optional )
+    /// @param name An optional name for this part. This is the name that will show up  in Paraview's MultiBlock inspector for this Part. It is not the filename.
     /// @param part Part ID ( optional )
     void addPart(String const & fn, real_t tStep=-1, std::string name="", index_t part=-1)
     {   
@@ -113,6 +114,34 @@ public:
         if (name != "") mfile << "name=\"" << name << "\" ";
         mfile << "file=\"" << fn <<"\"/>\n";
     }
+    // CAUTION! 
+    // The previous 3 versions of gsParaviewCollection::addPart() have been combined into the one above
+    // since they were all doing basiacally the same thing. Below you can see a 'conversion table' that
+    // can help you adapt your code to the new syntax. For questions contact C. Karampatzakis (Github @ckarampa )
+    // OLD SYNTAX ( Deprecated )                              |   NEW SYNTAX 
+    //-----------------------------------------------------------------------------------------------------------
+    // addPart(String const & fn)                             |   addPart( fn, -1, "", counter++);               |
+    //                                                                                                           |
+    // addPart(String const & fn, String const & ext)         |   addPart( fn+ext, -1, "", counter++);           |
+    //                                                                                                           |
+    // addPart(String const & fn, int i, String const & ext)  |   addPart( fn+std::to_string(i)+ext, -1, "", i); |
+    // ----------------------------------------------------------------------------------------------------------
+
+    // The following functions are all deprecated, only here for backwards compatibility!
+
+    GISMO_DEPRECATED void addTimestep(String const & fn, double tstep, String const & ext)
+    {
+        // mfile << "<DataSet timestep=\""<<tstep<<"\" file=\""<<fn<<ext<<"\"/>\n";
+        addPart( fn+ext, tstep);
+    }
+
+    GISMO_DEPRECATED void addTimestep(String const & fn, int part, double tstep, String const & ext)
+    {
+        // mfile << "<DataSet part=\""<<part<<"\" timestep=\""<<tstep<<"\" file=\""<<fn<<"_"<<part<<ext<<"\"/>\n";
+        addPart( fn+"_"+std::to_string(part)+ext, tstep, "", part);
+    }
+
+    // End of deprecated functions
 
     void addPart(String const & fn, std::string extension, index_t part=-1)
     {
@@ -128,7 +157,7 @@ public:
     /// @brief Adds all the files relevant to a gsParaviewDataSet, to the collection.
     /// @param dataSet The gsParaviewDataSet to be added.
     /// @param time Time step (optional, else an internal integer counter is used)
-    void addDataSet(gsParaviewDataSet dataSet, real_t time=-1);
+    void addDataSet(gsParaviewDataSet & dataSet, real_t time=-1);
 
     /// @brief Creates a new time step where all information will be added to.
     /// @param geometry A gsMultiPatch of the geometry where the solution fields are defined.
@@ -136,22 +165,25 @@ public:
     void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
 
  
-    /// @brief All arguments are forwarder to gsParaviewDataSet::addField().
+    /// @brief All arguments are forwarded to gsParaviewDataSet::addField().
     template <typename... Rest>
     void addField(Rest... rest)
     {
+        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before addField().");
         m_dataset.addField(rest...);
     }
 
-    /// @brief All arguments are forwarder to gsParaviewDataSet::addFields().
+    /// @brief All arguments are forwarded to gsParaviewDataSet::addFields().
     template <typename... Rest>
     void addFields(Rest... rest)
     {
+        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before addFields().");
         m_dataset.addFields(rest...);
     }
 
     /// @brief The current timestep is saved and files written to disk.
     void saveTimeStep(){
+        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before saveTimeStep().");
         addDataSet(m_dataset,m_time);
     };
 
@@ -160,16 +192,20 @@ public:
     void save()
     {
         GISMO_ASSERT(!m_isSaved, "Error: gsParaviewCollection::save() already called." );
-        mfile <<"</Collection>\n";
-        mfile <<"</VTKFile>\n";
+        if (!m_isSaved)
+        {
+            mfile <<"</Collection>\n";
+            mfile <<"</VTKFile>\n";
 
-        gsDebug << "Exporting to " << m_filename << "\n";
-        std::ofstream f( m_filename.c_str() );
-        GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
-        f << mfile.rdbuf();
-        f.close();
-        mfile.str("");
-        m_isSaved=true;
+            gsDebug << "Exporting to " << m_filename << "\n";
+            std::ofstream f( m_filename.c_str() );
+            GISMO_ASSERT(f.is_open(), "Error creating "<< m_filename );
+            f << mfile.rdbuf();
+            f.close();
+            mfile.str("");
+            m_isSaved=true;
+            counter = -1;
+        }
     }
 
     /// @brief Accessor to the current options.
@@ -192,6 +228,8 @@ private:
     gsParaviewDataSet m_dataset;
 
     gsOptionList m_options;
+
+    index_t counter;
 
 private:
     // Construction without a filename is not allowed
