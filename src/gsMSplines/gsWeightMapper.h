@@ -231,7 +231,7 @@ public:
     {
         IndexContainer indices;
         sourceToTarget(source,indices);
-        return (indices.size()==1 && m_matrix.at(source,indices[0])==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(source,indices[0]),T(1.0)));
     }
 
     /// checks if the mapping for \a target is 1 to 1
@@ -239,7 +239,7 @@ public:
     {
         IndexContainer indices;
         targetToSource(target,indices);
-        return (indices.size()==1 && m_matrix.at(indices[0],target)==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(indices[0],target),T(1.0)));
     }
 
     //////////////////////////////////////////////////

@@ -20,6 +20,7 @@
 #include <gsCore/gsGeometrySlice.h>
 
 //#include <gsCore/gsMinimizer.h>
+#include <gsUtils/gsPointGrid.h>
 
 namespace gismo
 {
@@ -261,6 +262,40 @@ T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
 #endif
     return math::sqrt( dist2.eval(result).value() );
 }
+
+template<class T>
+T gsGeometry<T>::directedHausdorffDistance(const gsGeometry & other, const index_t nsamples, const T accuracy) const
+{
+    // Sample points on *this
+    gsMatrix<T> uv = gsPointGrid<T>(this->support(),nsamples);
+    gsMatrix<T> pts;
+    this->eval_into(uv,pts);
+    // Find the maximum of the closest point on *other from the set of pts
+    T maxDist=std::numeric_limits<T>::min();
+    gsVector<T> tmp;
+    for (index_t k=0; k!=pts.cols(); k++)
+    {
+        maxDist = std::max(maxDist,other.closestPointTo(pts.col(k),tmp,accuracy,false));
+    }
+    return std::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
+}
+
+template<class T>
+T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamples, const T accuracy, bool directed) const
+{
+    T this2other, other2this;
+    this2other = this->directedHausdorffDistance(other,nsamples,accuracy);
+    if (directed)
+        return this2other;
+    else
+    {
+        other2this = other.directedHausdorffDistance(*this,nsamples,accuracy);
+        return std::max(other2this,this2other);
+    }
+}
+
+// template<class T>
+// T gsGeometry<T>::hausdorffDistance() const
 
 template<class T>
 void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,

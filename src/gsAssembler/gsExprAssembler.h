@@ -871,8 +871,8 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
-#pragma omp parallel
-{
+// #pragma omp parallel
+// {
     typedef typename gsFunction<T>::uPtr ifacemap;
 
     auto arg_tpl = std::make_tuple(args...);
@@ -887,7 +887,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     const bool flipSide = m_options.askSwitch("flipSide", false);
 
     ifacemap interfaceMap;
-#   pragma omp for
+// #   pragma omp for
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
     {
@@ -935,7 +935,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         }
     }
 
-}//omp parallel
+// }//omp parallel
     m_matrix.makeCompressed();
 }
 
