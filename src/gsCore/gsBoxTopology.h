@@ -17,6 +17,7 @@
 #include <gsCore/gsExport.h>
 
 #include <gsCore/gsBoundary.h>
+#include <gsMesh2/gsProperty.h>
 
 namespace gismo
 {
@@ -54,12 +55,18 @@ public:
 public:
 
     /// Default constructor
-    gsBoxTopology(short_t d = -1, index_t n = 0) : m_dim(d), nboxes(n) { }
+    gsBoxTopology(short_t d = -1, index_t n = 0) : m_dim(d), nboxes(0) 
+    { 
+        addBox(n);
+    }
 
     gsBoxTopology( short_t d, index_t boxes,
             const bContainer & boundary,
             const ifContainer & interfaces )
-        : m_dim(d), nboxes(boxes), m_boundary(boundary), m_interfaces(interfaces) { }
+    : m_dim(d), nboxes(0), m_boundary(boundary), m_interfaces(interfaces) 
+    { 
+        addBox(boxes);
+    }
 
     // Default copy constructor does the same as the following:
     //gsBoxTopology(const gsBoxTopology & other) : dim(other.dim), nboxes(other.nboxes), 
@@ -159,6 +166,7 @@ public:
         clearTopology();
         m_dim  = -1;
         nboxes =  0;
+        m_boxProp.clear();
     }
 
     /// Swap with another gsBoxTopology.
@@ -168,6 +176,7 @@ public:
         std::swap( nboxes, other.nboxes );
         m_boundary.swap( other.m_boundary );
         m_interfaces.swap( other.m_interfaces );
+        std::swap( m_boxProp, other.m_boxProp );
     }
 
     /// Add an interface between side \a s1 of box \a p1 and side \a s2 of box \a p2.
@@ -188,6 +197,10 @@ public:
     void addBox(index_t i = 1)
     {
         nboxes += i;
+
+        m_boxProp.reserve(m_boxProp.size()+i);
+        for (index_t k=0; k!=i; k++)
+            m_boxProp.push_back();
     }
 
     /// Set side \a s of box \a p to a boundary.
@@ -315,6 +328,44 @@ public:
 
 
     std::vector<std::vector<patchCorner>> vertices() const;
+
+    /// @brief      Adds a box property.
+    ///
+    /// @param[in]  name  The name of the property
+    /// @param[in]  t     The value of the property
+    ///
+    /// @tparam     T     The type of the property
+    ///
+    /// @return     The property as a gsProperty object
+    template <class T> 
+    gsProperty<T> addBoxProperty(const std::string& name, T t=T())
+    {
+        return m_boxProp.add<T>(name, give(t));
+    }
+
+    /// @brief      Adds a box property.
+    ///
+    /// @param[in]  name  The name of the property
+    ///
+    /// @tparam     T     The type of the property
+    ///
+    /// @return     The property as a gsProperty<T> object
+    template <class T> 
+    gsProperty<T> getBoxProperty(const std::string& name) const
+    {
+        return m_boxProp.get<T>(name);
+    }
+
+    ///
+    /// @brief      Returns the number of assigned box properties
+    ///
+    /// @return     The number of assigned box properties
+    ///
+    index_t numBoxProperties() const
+    {
+        return m_boxProp.n_properties();
+    }
+
 protected:
     // Data members
 
@@ -329,6 +380,9 @@ protected:
 
     /// List of intefaces between boxes
     ifContainer m_interfaces;
+
+    /// List of properties for each box
+    gsProperty_container m_boxProp;
 
 }; // class gsBoxTopology
 
