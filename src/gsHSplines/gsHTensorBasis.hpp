@@ -1092,14 +1092,14 @@ void gsHTensorBasis<d,T>::makeCompressed()
     // Compress the tree
     // m_tree.makeCompressed();
 
-    // while ( ! m_xmatrix_offset[1] )
-    // {
-    //     delete m_bases.front();
-    //     m_bases.erase( m_bases.begin() );
-    //     m_tree.decrementLevel();
-    //     m_xmatrix.erase( m_xmatrix.begin() );
-    //     m_xmatrix_offset.erase( m_xmatrix_offset.begin() );
-    // }
+    while ( ! m_xmatrix_offset[1] )
+    {
+        delete m_bases.front();
+        m_bases.erase( m_bases.begin() );
+        m_tree.decrementLevel();
+        m_xmatrix.erase( m_xmatrix.begin() );
+        m_xmatrix_offset.erase( m_xmatrix_offset.begin() );
+    }
     // Note/to do: cleaning up empty levels at the end as well.
 }
 
@@ -1184,7 +1184,6 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
     // Setup the characteristic matrices
     m_xmatrix.clear();
     m_xmatrix.resize( m_tree.getMaxInsLevel()+1 );
-
     // Compress the tree
     m_tree.makeCompressed();
 
@@ -1245,17 +1244,8 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 
     m_tree.init(upp);
 
-        // this->needLevel(3);
-
-    // // Produce a couple of tensor-product spaces by dyadic refinement
-    // m_bases.reserve(3);
-    // for(index_t i = 1; i <= 2; i++)
-    // {
-    //     tensorBasis* next_basis = m_bases[i-1]->clone().release();
-    //     next_basis->uniformRefine(1);
-    //     m_bases.push_back( next_basis );
-    // }
-
+    // Need one level at least, in case refine(gsMatrix<T> boxes) is called
+    this->needLevel(1);
 }
 
 
@@ -1648,14 +1638,13 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >&
     while( m_xmatrix.back().size() == 0 )
         m_xmatrix.pop_back();
 
-    // // ...similarly, erase all those fine bases which are actually not used.
-    // const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
-    // if( sizeDiff > 0 )
-    // {
-    //     gsDebugVar("size difference!");
-    //     freeAll(m_bases.end() - sizeDiff, m_bases.end());
-    //     m_bases.resize(m_xmatrix.size());
-    // }
+    // ...similarly, erase all those fine bases which are actually not used.
+    const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
+    if( sizeDiff > 0 )
+    {
+        freeAll(m_bases.end() - sizeDiff, m_bases.end());
+        m_bases.resize(m_xmatrix.size());
+    }
 
     result.makeCompressed();
 }
