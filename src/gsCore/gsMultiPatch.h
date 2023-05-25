@@ -383,9 +383,20 @@ public:
                                                    const T accuracy = 1e-6) const;
 
     /// Construct the interface representation
+    std::vector<T> HausdorffDistance(   const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
+    T averageHausdorffDistance(         const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
     void constructInterfaceRep();
     /// Construct the boundary representation
     void constructBoundaryRep();
+    void constructSides();
 
     /// Construct the interface representation of sides with label \a l
     void constructInterfaceRep(const std::string l);
@@ -394,6 +405,7 @@ public:
 
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
+    const BoundaryRep & sides() const { return m_sides; }
     
 protected:
 
@@ -405,7 +417,7 @@ private:
     PatchContainer m_patches;
 
     InterfaceRep m_ifaces;
-    BoundaryRep m_bdr;
+    BoundaryRep m_bdr, m_sides;
 
 private:
     // implementation functions

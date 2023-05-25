@@ -1596,7 +1596,7 @@ gsNurbsCreator<T>::NurbsQrtPlateWHoleC0()
 
 }
 
-/// Square of side \a r, with lower left corner at (x,y)
+/// Triangle of height \a H and width \a W with the bottom side centered at 0,0
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
 gsNurbsCreator<T>::BSplineTriangle( T const & H,
                                     T const & W)

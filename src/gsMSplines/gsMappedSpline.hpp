@@ -23,16 +23,9 @@ gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseM
     m_mbases = new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m);
 
     // collect and transform the coefficients
-    const index_t cols = mp.geoDim();
-    gsMatrix<T> local(mp.coefsSize(), cols);
-    index_t offset = 0;
-    for (size_t p=0; p!=mp.nPatches(); ++p)
-    {
-        local.block(offset,0,mp.patch(p).coefs().rows(),cols) = mp.patch(p).coefs();
-        offset += mp.patch(p).coefs().rows();
-    }
-
+    gsMatrix<T> local = mp.coefs();
     m_mbases->local_coef_to_global_coef(local,m_global);
+
     init(*m_mbases);
 }
 
