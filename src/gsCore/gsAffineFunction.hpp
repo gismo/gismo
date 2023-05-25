@@ -64,11 +64,8 @@ template <typename T>
 void gsAffineFunction<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
     result = (m_mat*u).colwise()+m_trans;
-    for (index_t k=0; k!=result.cols(); k++)
-    {
-        result.col(k).array() = result.col(k).array().max(m_box2.col(0).array());
-        result.col(k).array() = result.col(k).array().min(m_box2.col(1).array());
-    }
+    for (index_t k=0; k!=result.rows(); k++)
+        result.row(k) = result.row(k).cwiseMax(m_box2(k,0)).cwiseMin(m_box2(k,1));
 }
 
 template <typename T>
