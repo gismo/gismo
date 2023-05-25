@@ -115,7 +115,7 @@ public:
     ///
     /// Coefficients are given by \em{give(coefs) and they are
     /// consumed, i.e. the \coefs variable will be empty after the call
-    gsGeometry( const gsBasis<T> & basis, gsMatrix<Scalar_t> coefs, const std::string label="") :
+    gsGeometry( const gsBasis<T> & basis, gsMatrix<Scalar_t> coefs) :
     m_basis(basis.clone().release()), m_id(0)
     {
         m_coefs.swap(coefs);
