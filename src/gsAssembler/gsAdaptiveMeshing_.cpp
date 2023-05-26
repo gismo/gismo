@@ -6,5 +6,4 @@
 
 #include <gsAssembler/gsAdaptiveMeshing.h>
 #include <gsAssembler/gsAdaptiveMeshing.hpp>
-// #include <gsAssembler/gsAdaptiveMeshingCompare.h>
 

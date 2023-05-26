@@ -15,8 +15,6 @@
 
 
 #include <iostream>
-// #include <gsHSplines/gsHBox.h>
-#include <gsHSplines/gsHNeighborhood.h>
 
 namespace gismo
 {

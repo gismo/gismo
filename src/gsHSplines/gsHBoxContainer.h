@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsHSplines/gsHBox.h>
-#include <gsHSplines/gsHNeighborhood.h>
 #include <gsIO/gsXml.h>
 
 namespace gismo

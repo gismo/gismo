@@ -39,7 +39,7 @@ public:
      * @param[in]  errors  The errors per element
      */
     gsElementErrorPlotter(const gsBasis<T>& basis, const std::vector<T>& errors ) 
-    : m_mp(mp),m_errors(errors)
+    : m_basis(basis),m_errors(errors)
     { }
 
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& res) const
@@ -51,7 +51,7 @@ public:
             int iter =0;
             // Start iteration over elements
 
-            typename gsBasis<T>::domainIter domIt = m_mp.makeDomainIterator();
+            typename gsBasis<T>::domainIter domIt = m_basis.makeDomainIterator();
             for (; domIt->good(); domIt->next() )
             {
                  bool flag = true;
@@ -77,10 +77,10 @@ public:
         }
     }
 
-    short_t domainDim() const { return m_mp.dim();}
+    short_t domainDim() const { return m_basis.dim();}
 
 private:
-    const gsBasis<T>& m_mp;
+    const gsBasis<T>& m_basis;
     const std::vector<T>& m_errors;
 };
 
