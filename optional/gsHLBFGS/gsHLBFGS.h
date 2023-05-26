@@ -81,6 +81,10 @@ protected:
         m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
         m_options.addReal("MinStepLength","Minimal step length",1e-9);
         m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
+
+        // see documentation in https://xueyuhanlang.github.io/software/HLBFGS/
+        m_options.addInt("PARAMETER0","PARAMETERS0 upto PARAMETER6 are settable",1e-4);
+        m_options.addInt("INFO0","INFO0 upto INFO12 are settable",20);
     }
 
     void getOptions()
@@ -100,6 +104,12 @@ protected:
 
         m_hlbfgs_pars[5] = m_minGradientLength;
         m_hlbfgs_pars[6] = m_minStepLength;
+
+        for (int i = 0; i!=7; ++i)
+            m_hlbfgs_pars[i] = m_options.askInt("PARAMETER"+util::to_string(i) , m_hlbfgs_pars[i]);
+
+        for (int i = 0; i!=13; ++i)
+            m_hlbfgs_info[i] = m_options.askInt("INFO"+util::to_string(i), m_hlbfgs_info[i]);
     }
 
 protected:
@@ -153,7 +163,7 @@ public:
         time.restart();
         HLBFGS(
                 sol.size(),
-                m_M, // hardcoded??? -->>> change to an option of the class
+                m_M,
                 sol.data(),
                 static_func_grad,
 //                obj,
