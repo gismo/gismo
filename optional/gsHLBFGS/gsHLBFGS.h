@@ -78,35 +78,92 @@ protected:
     void defaultOptions()
     {
         Base::defaultOptions();
-        m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
-        m_options.addReal("MinStepLength","Minimal step length",1e-10);
-        m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
 
         // see documentation in https://xueyuhanlang.github.io/software/HLBFGS/
-        m_options.addReal("PARAMETER0","PARAMETERS0 upto PARAMETER6 are settable",1e-4);
-        m_options.addInt("INFO0","INFO0 upto INFO12 are settable",20);
+        // parameters 0 ... 6:
+        m_options.addReal("FuncTol",    "function tolerance used in line-search", 1e-4);
+        m_options.addReal("VarTol",     "variable tolerance used in line-search", 1e-16);
+        m_options.addReal("GradTol",    "gradient tolerance used in line-search", 0.9);
+        m_options.addReal("StpMin",     "stpmin used in line-search",             1e-20);
+        m_options.addReal("StpMax",     "stpmax used in line-search",             1e+20);
+        m_options.addReal("MinGradLen", "Minimal gradient length",                1e-9);
+        m_options.addReal("MinStepLen", "Minimal step length",                    1e-10);
+
+        // infos 0 ... 2, 6 ... 12:
+        m_options.addInt("MaxEval",    "the max number of evaluation in line-search", 20);
+        m_options.addInt("TotEval",    "the total number of evalfunc calls", 0);
+        m_options.addInt("CurrInt",    "the current number of iterations", 0);
+        //m_options.addInt("Strategy", "The lbfgs strategy. 0: standard, 1: M1QN3 strategy[8](recommended).", 0);
+        // maxIterations: set by the parent class
+        // verbose:       set by the parent class
+        m_options.addInt("UpdateHess", "T: the update interval of Hessian. (typical choices: 0-200)", 10);
+        m_options.addInt("SwitchHess", "0: without hessian, 1: with accurate hessian", 0);
+        m_options.addInt("Icfs",       "icfs parameter", 15);
+        m_options.addInt("LineSearch", "0: classical line-search; 1: modified line-search (it is not useful in practice)", 0);
+        m_options.addInt("DissPre",    "0: Disable preconditioned CG; 1: Enable preconditioned CG", 0);
+        m_options.addInt("BetaCG",     "0 or 1 defines different methods for choosing beta in CG.", 1);
+        m_options.addInt("Diag",       "internal usage. 0: only update the diag in USER_DEFINED_HLBFGS_UPDATE_H; 1: default.", 1);
+
+        m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
     }
 
     void getOptions()
     {
         Base::getOptions();
-        m_minGradientLength = m_options.getReal("MinGradientLength");
-        m_minStepLength = m_options.getReal("MinStepLength");
+
+        // parameters
+        m_funcTol =    m_options.getReal("FuncTol");
+        m_varTol =     m_options.getReal("VarTol");
+        m_gradTol =    m_options.getReal("GradTol");
+        m_stpMin =     m_options.getReal("StpMin");
+        m_stpMax =     m_options.getReal("StpMax");
+        m_minGradLen = m_options.getReal("MinGradLen");
+        m_minStepLen = m_options.getReal("MinStepLen");
+
+        // infos
+        m_maxEval =    m_options.getInt("MaxEval");
+        m_totEval =    m_options.getInt("TotEval");
+        m_currInt =    m_options.getInt("CurrInt");
+        m_updateHess = m_options.getInt("UpdateHess");
+        m_switchHess = m_options.getInt("SwitchHess");
+        m_icfs =       m_options.getInt("Icfs");
+        m_lineSearch = m_options.getInt("LineSearch");
+        m_dissPre =    m_options.getInt("DissPre");
+        m_betaCG =     m_options.getInt("BetaCG");
+        m_diag =       m_options.getInt("Diag");
+
         m_M = m_options.getInt("LBFGSUpdates");
 
+        m_hlbfgs_info[0] = static_cast<index_t>(m_maxEval);
+        m_hlbfgs_info[1] = static_cast<index_t>(m_totEval);
+        m_hlbfgs_info[2] = static_cast<index_t>(m_currInt);
         // m_hlbfgs_info[3]:The lbfgs strategy. 0: standard, 1: M1QN3 strategy (recommended)
         // Gilbert, J. C., & Lemaréchal, C. (1989). Some numerical experiments with variable-storage
         // quasi-Newton algorithms. Mathematical programming, 45(1), 407-435.
         m_hlbfgs_info[3] = 1;
-
         m_hlbfgs_info[4] = static_cast<index_t>(m_maxIterations);
         m_hlbfgs_info[5] = static_cast<index_t>(m_verbose);
+        m_hlbfgs_info[6] = static_cast<index_t>(m_updateHess);
+        m_hlbfgs_info[7] = static_cast<index_t>(m_switchHess);
+        m_hlbfgs_info[8] = static_cast<index_t>(m_icfs);
+        m_hlbfgs_info[9] = static_cast<index_t>(m_lineSearch);
+        m_hlbfgs_info[10] = static_cast<index_t>(m_dissPre);
+        m_hlbfgs_info[11] = static_cast<index_t>(m_betaCG);
+        m_hlbfgs_info[12] = static_cast<index_t>(m_diag);
 
-        m_hlbfgs_pars[5] = m_minGradientLength;
-        m_hlbfgs_pars[6] = m_minStepLength;
+        m_hlbfgs_pars[0] = m_funcTol;
+        m_hlbfgs_pars[1] = m_varTol;
+        m_hlbfgs_pars[2] = m_gradTol;
+        m_hlbfgs_pars[3] = m_stpMin;
+        m_hlbfgs_pars[4] = m_stpMax;
+        m_hlbfgs_pars[5] = m_minGradLen;
+        m_hlbfgs_pars[6] = m_minStepLen;
 
         for (int i = 0; i!=7; ++i)
+        {
             m_hlbfgs_pars[i] = m_options.askReal("PARAMETER"+util::to_string(i) , m_hlbfgs_pars[i]);
+            //gsInfo << "m_hlbfgs_pars[" << i << "]: " << m_hlbfgs_pars[i] << std::endl;
+        }
 
         for (int i = 0; i!=13; ++i)
             m_hlbfgs_info[i] = m_options.askInt("INFO"+util::to_string(i), m_hlbfgs_info[i]);
@@ -206,8 +263,26 @@ protected:
 
 // Options
 protected:
-    T m_minGradientLength;
-    T m_minStepLength;
+    // parameters
+    T m_funcTol;
+    T m_varTol;
+    T m_gradTol;
+    T m_stpMin;
+    T m_stpMax;
+    T m_minGradLen;
+    T m_minStepLen;
+
+    // infos
+    index_t m_maxEval;
+    index_t m_totEval;
+    index_t m_currInt;
+    index_t m_updateHess;
+    index_t m_switchHess;
+    index_t m_icfs;
+    index_t m_lineSearch;
+    index_t m_dissPre;
+    index_t m_betaCG;
+    index_t m_diag;
 
 // HLBFGS options
 protected:
