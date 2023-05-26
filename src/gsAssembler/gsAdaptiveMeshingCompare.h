@@ -15,14 +15,18 @@
 
 
 #include <iostream>
-// #include <gsHSplines/gsHBoxContainer.h>
-// #include <gsHSplines/gsHBox.h>
 #include <gsHSplines/gsHBoxUtils.h>
-#include <gsIO/gsWriteParaview.h>
 
 namespace gismo
 {
 
+
+/**
+ * @brief      Base class for performing checks on \ref gsHBox objects
+ *
+ * @tparam     d     { description }
+ * @tparam     T     { description }
+ */
 template <short_t d, class T>
 class gsHBoxCheck
 {
@@ -32,8 +36,12 @@ public:
     virtual bool check(const gsHBox<d,T> & box) const = 0;
 };
 
-
-
+/**
+ * @brief      Checks if the level of a \ref gsHBox is bigger than a minimum level
+ *
+ * @tparam     d     parametric dimension
+ * @tparam     T     real type
+ */
 template <short_t d, class T>
 class gsMinLvlCompare : public gsHBoxCheck<d,T>
 {
@@ -50,6 +58,12 @@ protected:
     index_t m_minLevel;
 };
 
+/**
+ * @brief      Checks if the level of a \ref gsHBox is smaller than a maximum level
+ *
+ * @tparam     d     parametric dimension
+ * @tparam     T     real type
+ */
 template <short_t d, class T>
 class gsMaxLvlCompare : public gsHBoxCheck<d,T>
 {
@@ -65,6 +79,12 @@ protected:
     index_t m_maxLevel;
 };
 
+/**
+ * @brief      Checks if the error of a \ref gsHBox is smaller than a threshold
+ *
+ * @tparam     d     parametric dimension
+ * @tparam     T     real type
+ */
 template <short_t d, class T>
 class gsSmallerErrCompare : public gsHBoxCheck<d,T>
 {
@@ -80,6 +100,12 @@ protected:
     T m_threshold;
 };
 
+/**
+ * @brief      Checks if the error of a \ref gsHBox is larger than a threshold
+ *
+ * @tparam     d     parametric dimension
+ * @tparam     T     real type
+ */
 template <short_t d, class T>
 class gsLargerErrCompare : public gsHBoxCheck<d,T>
 {
@@ -95,10 +121,25 @@ protected:
     T m_threshold;
 };
 
+/**
+ * @brief      Checks if the coarsening neighborhood of a box is empty and if it overlaps with a refinement mask
+ *
+ * Checks if the coarsening neighborhood of a box is empty and if it overlaps with a refinement mask.
+ * If so, the box can be coarsened admissibly.
+ *
+ * @tparam     d     parametric dimension
+ * @tparam     T     real type
+ */
 template <short_t d, class T>
 class gsOverlapCompare : public gsHBoxCheck<d,T>
 {
 public:
+    /**
+     * @brief      Construct a gsOverlapCompare
+     *
+     * @param[in]  markedRef  Container of elements marked for refinement
+     * @param[in]  m          Jump parameter
+     */
     gsOverlapCompare(const gsHBoxContainer<d,T> & markedRef, index_t m) //, patchHContainer & markedCrs
     :
     m_m(m)

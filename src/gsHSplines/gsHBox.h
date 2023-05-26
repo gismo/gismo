@@ -16,10 +16,34 @@
 #include <gsIO/gsXml.h>
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
-#include <gsHSplines/gsHNeighborhood.h>
+#include <gsHSplines/gsHBoxUtils.h>
 
 namespace gismo
 {
+
+/**
+ * @brief      This class provides a Hierarchical Box (gsHBox)
+ * 
+ * A gsHBox is a 'smart' object that represents an element or multiple elements in a mesh.
+ * It closely relates to the element definition used in \ref gsHTensorBasis::asElements.
+ * Using the gsHBox as an element, it can provide its parent and its children on other levels,
+ * its support extensions and its refinement neighborhoods. Furthermore, the gsHBox has functions
+ * to check if it is equal to or contained in other gsHBoxes.
+ * 
+ * The \ref gsHBoxContainer is a container of gsHBoxes, that can be used to perform operations
+ * on multiple gsHBoxes. Furthermore, it is an object that can be used to store neighborhoods. 
+ * Other containers are the \a gsHBox::Container or the \a gsHBoxSortedContainer.
+ * 
+ * Operations such as domain intersections, unions, or the sorting of gsHBoxContainers
+ * are provided in \ref gsHBoxUtils.
+ *
+ * @tparam     d     Domain dimension
+ * @tparam     T     Real type
+ * 
+ * \ingroup HSplines
+ * 
+ */
+
 
 template<int d, class T>
 class gsHBox
@@ -50,16 +74,51 @@ public:
 
 public:
 
+    /// Default constructor
     gsHBox();
 
+    /**
+     * @brief      Constructs a gsHBox from a domain iterator
+     *
+     * @param[in]  domHIt  A hierarchical domain iterator
+     */
     gsHBox(const gsHDomainIterator<T,d> * domHIt);
 
+    /**
+     * @brief      Constructs a gsHBox from a domain iterator
+     *
+     * @param[in]  domHIt  A hierarchical domain iterator
+     * @param[in]  pid     The patch ID
+     */
     gsHBox(const gsHDomainIterator<T,d> * domHIt, const index_t pid);
 
+    /**
+     * @brief      Constructs a gsHBox from an element
+     *
+     * @param[in]  low    The lower corner of the element, see \ref gsHTensorBasis
+     * @param[in]  upp    The upper corner of the element, see \ref gsHTensorBasis
+     * @param[in]  level  The level of the element
+     * @param[in]  basis  The basis on which the element is defined
+     * @param[in]  pid    The patch ID
+     */
     gsHBox(const typename gsHBox<d,T>::point & low,const typename gsHBox<d,T>::point & upp, index_t level, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
 
+    /**
+     * @brief      Constructs a gsHBox from an element
+     *
+     * @param[in]  box    The box as AABB box
+     * @param[in]  basis  The basis on which the element is defined
+     * @param[in]  pid    The patch ID
+     */
     gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
 
+    /**
+     * @brief      Constructs a gsHBox from an element
+     *
+     * @param[in]  indices  Element definition (+ level) as in \ref gsHTensorBasis. This object is 2*d+1 long
+     * @param[in]  basis    The basis on which the element is defined
+     * @param[in]  pid      The patch ID
+     */
     gsHBox(const std::vector<index_t> & indices, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
 
     /// Copy constructor (makes deep copy)

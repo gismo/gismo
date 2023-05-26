@@ -21,6 +21,28 @@
 namespace gismo
 {
 
+/**
+ * @brief      The gsHNeighborhood is a struct that classifies the type of admissible refinement
+ */
+enum class gsHNeighborhood 
+{
+    None = -1,
+    Automatic = 0,
+    T = 1,
+    H = 2
+};
+
+/**
+ * @brief      The gsHBoxUtils provide basic utilities to modify HBoxes
+ * 
+ * The gsHBoxUtils work on \ref gsHBox objects and \ref gsHBoxContainer objects.
+ * Other containers such as the \ref gsHBox::Container (a vector of gsHBox) or 
+ * \ref gsHBox::SortedContainer can also be used. The \ref gsHBox::HContainer is a
+ * container that stores \ref gsHBox per level.
+ *
+ * @tparam     d     Domain dimension
+ * @tparam     T     Real type
+ */
 template<short_t d, class T>
 struct gsHBoxUtils
 {
@@ -51,24 +73,24 @@ public:
 	/**
 	 * @brief      Performs an intersection. Keeps the smallest boxes in overlapping regions, can also intersect partial boxes
 	 *
-	 * @param[in]  container1  The container 1
-	 * @param[in]  container2  The container 2
+	 * @param[in]  container1  The first container
+	 * @param[in]  container2  The second container
 	 *
-	 * @tparam     d           { description }
-	 * @tparam     T           { description }
+	 * @tparam     d     Domain dimension
+	 * @tparam     T     Real type
 	 *
-	 * @return     { description_of_the_return_value }
+	 * @return     The intersection of two containers
 	 */
 	static typename gsHBox<d, T>::Container Intersection(const Container & container1, const Container & container2);
 	static typename gsHBox<d, T>::Container ContainedIntersection(const Container & container1, const Container & container2);
 	/**
 	 * @brief      Performs an intersection; only keeps the boxes that are EXACTLY the same (also level is the same)
 	 *
-	 * @param[in]  container1  The container 1
-	 * @param[in]  container2  The container 2
+	 * @param[in]  container1  The first container
+	 * @param[in]  container2  The second container
 	 *
-	 * @tparam     d           { description }
-	 * @tparam     T           { description }
+	 * @tparam     d     Domain dimension
+	 * @tparam     T     Real type
 	 *
 	 * @return     { description_of_the_return_value }
 	 */

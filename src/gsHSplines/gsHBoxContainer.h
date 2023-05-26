@@ -20,6 +20,22 @@
 namespace gismo
 {
 
+/**
+ * @brief      The Hierarchical Box Container provides a container for \ref gsHBox objects
+ *
+ * The \red gsHBoxContainer stores \ref gsHBox objects in a smart way. The container
+ * allows to perform routines from the \ref gsHBox (e.g. \ref gsHBox::getParent) on a
+ * group of \ref gsHBox. In addition, it can be used to pass multiple \ref gsHBox objects
+ * efficiently.
+ * 
+ * The \ref gsHBoxContainer provides a function to convert it to so-called RefBoxes.
+ * RefBoxes are boxes defined using a std::vector<index_t> to pass refinement boxes to
+ * \ref gsHTensorBasis. Furthermore, UnitBoxes can also be produced, which basically means
+ * that every contained \ref gsHBox is split such that it contains a single element.
+ *
+ * @tparam     d     { description }
+ * @tparam     T     { description }
+ */
 template<short_t d, class T>
 class gsHBoxContainer
 {

@@ -27,13 +27,16 @@
 namespace gismo
 {
 
-// enum MarkingStrategy
-// {
-//     GARU=1,
-//     PUCA=2,
-//     BULK=3
-// };
-
+/**
+ * @brief      Provides adaptive meshing routines. 
+ * 
+ * Provided element errors, this class performs marking, 
+ * refinement and coarsening of a provided basis. The class
+ * uses the \ref gsHBox and \ref gsHBoxContainer classes
+ * to ensure admissible meshing. 
+ *
+ * @tparam     T     { description }
+ */
 template <class T>
 class gsAdaptiveMeshing
 {

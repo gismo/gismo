@@ -15,65 +15,7 @@
 
 #include <gismo.h>
 
-#include <gsHSplines/gsHBox.h>
-#include <gsHSplines/gsHBoxContainer.h>
-#include <gsHSplines/gsHBoxUtils.h>
-#include <gsAssembler/gsAdaptiveMeshing.h>
-#include <gsAssembler/gsAdaptiveMeshingCompare.h>
-
 using namespace gismo;
-
-
-template<typename T>
-class gsElementErrorPlotter : public gsFunction<T>
-{
-public:
-    gsElementErrorPlotter(const gsBasis<T>& mp, const std::vector<T>& errors ) : m_mp(mp),m_errors(errors)
-    {
-
-    }
-
-    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& res) const
-    {
-        // Initialize domain element iterator -- using unknown 0
-        res.setZero(1,u.cols());
-        for(index_t i=0; i<u.cols();++i)
-        {
-            int iter =0;
-            // Start iteration over elements
-
-            typename gsBasis<T>::domainIter domIt = m_mp.makeDomainIterator();
-            for (; domIt->good(); domIt->next() )
-            {
-                 bool flag = true;
-                const gsVector<T>& low = domIt->lowerCorner();
-                const gsVector<T>& upp = domIt->upperCorner();
-
-
-                for(int d=0; d<domainDim();++d )
-                {
-                    if(low(d)> u(d,i) || u(d,i) > upp(d))
-                    {
-                        flag = false;
-                        break;
-                    }
-                }
-                if(flag)
-                {
-                     res(0,i) = m_errors.at(iter);
-                     break;
-                }
-                iter++;
-            }
-        }
-    }
-
-    short_t domainDim() const { return m_mp.dim();}
-
-private:
-    const gsBasis<T>& m_mp;
-    const std::vector<T>& m_errors;
-};
 
 int main(int argc, char *argv[])
 {
@@ -195,7 +137,7 @@ int main(int argc, char *argv[])
         errors[i] = math::pow(10,domHIt->getLevel()-1);// + i;
 
     index_t offset = 0;
-    for (index_t p = 0; p!=mp.nPatches(); p++)
+    for (size_t p = 0; p!=mp.nPatches(); p++)
     {
         auto first = errors.begin() + offset;
         offset += mp.basis(p).numElements();

@@ -19,14 +19,28 @@
 namespace gismo
 {
 
+
+/**
+ * @brief      This class provides a function that returns a constant error on each element
+ * 
+ * The elements of the provided basis are extracted and the errors from the error container
+ * are associated to each element. The function can be passed to a Paraview export.
+ *
+ * @tparam     T     { description }
+ */
 template<typename T>
 class gsElementErrorPlotter : public gsFunction<T>
 {
 public:
-    gsElementErrorPlotter(const gsBasis<T>& mp, const std::vector<T>& errors ) : m_mp(mp),m_errors(errors)
-    {
-
-    }
+    /**
+     * @brief      Constructs a function to plot the error of elements
+     *
+     * @param[in]  basis   The basis
+     * @param[in]  errors  The errors per element
+     */
+    gsElementErrorPlotter(const gsBasis<T>& basis, const std::vector<T>& errors ) 
+    : m_mp(mp),m_errors(errors)
+    { }
 
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& res) const
     {

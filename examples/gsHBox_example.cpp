@@ -15,12 +15,6 @@
 
 #include <gismo.h>
 
-#include <gsHSplines/gsHBox.h>
-#include <gsHSplines/gsHBoxContainer.h>
-#include <gsHSplines/gsHBoxUtils.h>
-#include <gsAssembler/gsAdaptiveMeshing.h>
-#include <gsAssembler/gsAdaptiveMeshingCompare.h>
-
 using namespace gismo;
 
 int main(int argc, char *argv[])
