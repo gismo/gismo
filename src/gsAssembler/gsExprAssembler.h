@@ -623,7 +623,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
     opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
-    opt.addSwitch("overInt", "Apply over-integration or not?", false);
+    opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
     return opt;
