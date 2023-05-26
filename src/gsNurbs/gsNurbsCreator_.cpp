@@ -62,7 +62,9 @@ void pybind11_init_gsNurbsCreator(py::module &m)
 	    .def_static("NurbsQuarterAnnulus", &Class::NurbsQuarterAnnulus,
 					"Exact annulus using NURBS",
 	    			py::arg("r0")=0, py::arg("r1")=1)
-
+        .def_static("NurbsAnnulus", &Class::NurbsAnnulus,
+    				"Exact full annulus using NURBS",
+        			py::arg("r0")=0, py::arg("r1")=1)
 	    .def_static("BSplineSaddle", &Class::BSplineSaddle,
 					"Saddle using B-splines")
 	    .def_static("BSplineQuarterAnnulus", &Class::BSplineQuarterAnnulus,
@@ -133,8 +135,11 @@ void pybind11_init_gsNurbsCreator(py::module &m)
 	    .def_static("NurbsQrtPlateWHoleC0", &Class::NurbsQrtPlateWHoleC0,
 					"")//?
 	    .def_static("BSplineTriangle", &Class::BSplineTriangle,
-					"",//?
-	    			py::arg("H")=1, py::arg("W")=0)
+					"Makes a Isosceles triangle with height H and width W ",
+    			py::arg("H")=1, py::arg("W")=0)
+        .def_static("BSplineTriangle", &Class::BSplineTriangle,
+    				"Makes a star with N patches, outer radius R0 and inner radius R1",
+        			py::arg("H")=1, py::arg("W")=0)
     ;
 }
 

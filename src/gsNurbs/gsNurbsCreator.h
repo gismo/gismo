@@ -184,9 +184,15 @@ public:
     static TensorNurbs3Ptr NurbsCube( T const & r = 1, T const & x = 0,
                                            T const & y = 0, T const & z = 0 );
 
-    /// Exact annulus using NURBS
+    /// Exact annulus using NURBS with inner radius \a r0 and outer radius \a r1
     static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 = 1, T const & r1 = 2);
+    /// Exact full annulus using NURBS with inner radius \a r0 and outer radius \a r1
+    static TensorNurbs2Ptr NurbsAnnulus( T const & r0 =1, T const & r1 =2);
+    
     static TensorNurbs3Ptr BSplineSaddle();
+    /// Inexact annulus using B-splines
+    static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
+
     /// Inexact annulus using B-splines
     static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
 
@@ -250,7 +256,11 @@ public:
 
     static TensorBSpline2Ptr NurbsQrtPlateWHoleC0();
 
+    /// Makes a Isosceles triangle with height \a H and width \a W 
     static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
+
+    /// Makes a star with \a N patches, outer radius \a R0 and inner radius \a R1
+    static gsMultiPatch<T> BSplineStar(index_t const & N = 3, T const & R0 = 1, T const & R1 = 0.5 );
 
 }; // struct
 
