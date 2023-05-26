@@ -228,15 +228,6 @@ inline index_t gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
 }
 
 template<class T>
-inline void gsMultiPatch<T>::addPatches(const gsMultiPatch<T> & mp)
-{
-    // for (const_iterator p = mp.begin(); p!=mp.end(); p++)
-        // addPatch(*p->clone());
-    for (index_t p=0; p!=mp.nPatches(); p++)
-        addPatch(mp.patch(p));
-}
-
-template<class T>
 size_t gsMultiPatch<T>::findPatchIndex( gsGeometry<T>* g ) const
 {
     const_iterator it

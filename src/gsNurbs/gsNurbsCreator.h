@@ -188,11 +188,8 @@ public:
     static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 = 1, T const & r1 = 2);
     /// Exact full annulus using NURBS with inner radius \a r0 and outer radius \a r1
     static TensorNurbs2Ptr NurbsAnnulus( T const & r0 =1, T const & r1 =2);
-    
-    static TensorNurbs3Ptr BSplineSaddle();
-    /// Inexact annulus using B-splines
-    static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
 
+    static TensorNurbs3Ptr BSplineSaddle();
     /// Inexact annulus using B-splines
     static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
 

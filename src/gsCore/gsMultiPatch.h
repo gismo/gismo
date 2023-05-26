@@ -241,9 +241,6 @@ public:
     /// Add a patch by copying argument
     index_t addPatch(const gsGeometry<T> & g);
 
-    ///\brief Add a patch from a gsMultiPatch<T>
-    void addPatches(const gsMultiPatch<T> & mp);
-
     /// \brief Search for the given geometry and return its patch index.
     size_t findPatchIndex( gsGeometry<T>* g ) const;
 
