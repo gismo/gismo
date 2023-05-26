@@ -632,12 +632,24 @@ public:
                         const T accuracy = 1e-6,
                         const bool useInitialPoint = false) const;
 
+    /// Computes the Hausdorff distance in a single direction from *this to \a other.
+    /// The Hausdorff distance is computed by taking the maximum of the shortest distances
+    /// between points of this and \a other.
+    T directedHausdorffDistance(const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6) const;
+
+    /// Computes the Hausdorff distance between *this to \a other.
+    T HausdorffDistance(        const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6,
+                                const bool directed=false) const;
+
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
-
 
 protected:
     void swap(gsGeometry & other)

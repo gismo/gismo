@@ -116,10 +116,38 @@ public:
         return m_basis->getBase(m_index).support();
     }
 
-    /// Returns a bounding box for the basis' domain
+    /// Returns a bounding box for the basis' domain on the domain of *this
     gsMatrix<T> support(const index_t & i) const
     {
-        return m_basis->getBase(m_index).support(i);
+        typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
+        m_basis->getMapper().targetToSource(i,sourceIndices);
+        // Get the support on the whole patch
+        gsMatrix<T> supp;
+        gsMatrix<T> localSupp;
+        for (typename gsMappedBasis<d,T>::IndexContainer::iterator i = sourceIndices.begin(); i!=sourceIndices.end(); i++)
+        {
+            // Only consider local basis functions on the same patch
+            if (m_basis->getPatch(*i)!=m_index) continue;
+            // Get the support of the basis function
+            localSupp = m_basis->getBase(m_index).support(m_basis->getPatchIndex(*i));
+            // If no support is available, we assign it
+            if (supp.rows()==0 && supp.cols()==0)
+            {
+                supp = localSupp;
+                continue;
+            }
+            // If a support is available, we increase it if needd
+            for (index_t dim=0; dim!=d; dim++)
+            {
+                if (localSupp(dim,0) < supp(dim,0))
+                    supp(dim,0) = localSupp(dim,0);
+                if (localSupp(dim,1) > supp(dim,1))
+                    supp(dim,1) = localSupp(dim,1);
+            }
+        }
+
+        return supp;
+        // return m_basis->getBase(m_index).support();
     }
     /// Returns the boundary basis on side s
     gsBasis<T>* boundaryBasis_impl(boxSide const & s) const

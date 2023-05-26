@@ -396,7 +396,7 @@ public:
             it->second.mine().points.swap(m_points.mine());//swap
             it->second.mine().side    = bs;
             it->second.mine().patchId = patchIndex;
-            it->first->function(patchIndex).computeMap(it->second);
+            it->first->function(patchIndex).computeMap(it->second.mine());
             it->second.mine().points.swap(m_points.mine());
         }
 
@@ -404,13 +404,13 @@ public:
         {
             it->second.mine().patchId = patchIndex;
             it->first->piece(patchIndex)
-                .compute(m_points, it->second);
+                .compute(m_points, it->second.mine());
         }
 
         for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
         {
             it->first.first->piece(patchIndex)
-                .compute(it->first.second->mine().values[0], it->second);
+                .compute(it->first.second->mine().values[0], it->second.mine());
             it->second.mine().patchId = patchIndex;
         }
 

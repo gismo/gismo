@@ -1158,6 +1158,36 @@ public:
                 }
             }
 
+            // Coupled
+            for (typename gsBoundaryConditions<T>::const_cpliterator
+                     it = bc.coupledBegin(); it != bc.coupledEnd(); ++it)
+            {
+                const index_t cc = it->component;
+
+                GISMO_ASSERT(static_cast<size_t>(it->ifc.first().patch) < this->mapper().numPatches(),
+                             "Problem: a boundary condition is set on a patch id which does not exist.");
+                GISMO_ASSERT(static_cast<size_t>(it->ifc.second().patch) < this->mapper().numPatches(),
+                             "Problem: a boundary condition is set on a patch id which does not exist.");
+
+
+                bnd = mb->basis(it->ifc.first().patch).boundary(it->ifc.first().side());
+                bnd1 = mb->basis(it->ifc.second().patch).boundary(it->ifc.second().side());
+
+                // match all DoFs to the first one of the side
+                for (index_t c = 0; c!=dim; c++) // for all components
+                {
+                    if (c==cc || cc==-1)
+                    {
+                        for (index_t k = 0; k < bnd.size() - 1; ++k)
+                            m_sd->mapper.matchDof(it->ifc.first() .patch, (bnd)(0, 0),
+                                                  it->ifc.first() .patch, (bnd)(k + 1, 0), c);
+                        for (index_t k = 0; k < bnd1.size(); ++k)
+                            m_sd->mapper.matchDof(it->ifc.first() .patch, (bnd)(0, 0),
+                                                  it->ifc.second().patch, (bnd1)(k, 0), c);
+                    }
+                }
+            }
+
             // corners
             for (typename gsBoundaryConditions<T>::const_citerator
                      it = bc.cornerBegin(); it != bc.cornerEnd(); ++it)

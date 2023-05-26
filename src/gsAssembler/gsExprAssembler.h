@@ -617,13 +617,15 @@ template<class T>
 gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
-    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);// deprecated
-    opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11 );
-    opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
-    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
+    opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11);
+    opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
+    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
+    opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
+    opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
     return opt;
@@ -733,9 +735,10 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
-#pragma omp parallel
+    bool failed = false;
+#pragma omp parallel shared(failed)
 {
 #   ifdef _OPENMP
     const int tid = omp_get_thread_num();
@@ -756,7 +759,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //todo: distribute in parallel somehow?
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases() && (!failed); ++patchInd) //todo: distribute in parallel somehow?
     {
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
@@ -767,7 +770,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+        for ( domIt->next(tid); domIt->good() && (!failed); domIt->next(nt) )
 #       else
         for (; domIt->good(); domIt->next() )
 #       endif
@@ -780,14 +783,27 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 continue;
 
             // Perform required pre-computations on the quadrature nodes
+            try
+            {
             m_exprdata->precompute(patchInd);
             //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
+            }
+            catch (...)
+            {
+                // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
+                #pragma omp atomic write
+                failed = true;
+                break;
+            }
+
 
             // Assemble contributions of the element
             op_tuple(ee, arg_tpl);
         }
     }
 }//omp parallel
+    // Throw something else?? (floating point exception?)
+    GISMO_ENSURE(!failed,"Assembly failed due to an error");
     m_matrix.makeCompressed();
 }
 
@@ -911,8 +927,8 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
 
-#pragma omp parallel
-{
+// #pragma omp parallel
+// {
     typedef typename gsFunction<T>::uPtr ifacemap;
 
     auto arg_tpl = std::make_tuple(args...);
@@ -927,7 +943,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
     const bool flipSide = m_options.askSwitch("flipSide", false);
 
     ifacemap interfaceMap;
-#   pragma omp for
+// #   pragma omp for
     for (gsBoxTopology::const_iiterator it = iFaces.begin();
          it != iFaces.end(); ++it )
     {
@@ -975,7 +991,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         }
     }
 
-}//omp parallel
+// }//omp parallel
     m_matrix.makeCompressed();
 }
 

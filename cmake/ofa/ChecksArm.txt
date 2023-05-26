@@ -68,25 +68,25 @@
 # armv5te  : no options
 # armv5tej : no options
 
-# armv6    : fp nofp vfpv2
-# armv6j   : fp nofp vfpv2
-# armv6k   : fp nofp vfpv2
-# armv6z   : fp nofp vfpv2
-# armv6kz  : fp nofp vfpv2
-# armv6zk  : fp nofp vfpv2
-# armv6t2  : fp nofp vfpv2
+# armv6    : fp vfpv2
+# armv6j   : fp vfpv2
+# armv6k   : fp vfpv2
+# armv6z   : fp vfpv2
+# armv6kz  : fp vfpv2
+# armv6zk  : fp vfpv2
+# armv6t2  : fp vfpv2
 # armv6-m  : no options
 # armv6s-m : no options
 fp;arm_neon.h;vcvt_f16_f32;float32x4_t()
 vfpv2;cstdlib;exit;0
 
-# armv7    : fp nofp vfpv3-d16
+# armv7    : fp vfpv3-d16
 vfpv3-d16;cstdlib;exit;0;vfpv3_d16
 
 # armv7-a  : mp sec fp vfpv3 vfpv3-d16-fp16 vfpv3-fp16 vfpv4-d16 vfpv4 simd
-#            neon-fp16 neon-vfpv4 nosimd nofp vfpv3-d16 neon neon-vfpv3
+#            neon-fp16 neon-vfpv4 nosimd vfpv3-d16 neon neon-vfpv3
 # armv7ve  : vfpv3-d16 vfpv3 vfpv3-d16-fp16 vfpv3-fp16 fp vfpv4 neon neon-fp16
-#            simd nosimd nofp vfpv4-d16 neon-vfpv3 neon-vfpv4
+#            simd nosimd vfpv4-d16 neon-vfpv3 neon-vfpv4
 mp;cstdlib;exit;0
 neon;cstdlib;exit;0
 neon-fp16;cstdlib;exit;0;neon_fp16
@@ -100,7 +100,7 @@ vfpv3-fp16;cstdlib;exit;0;vfpv3_fp16
 vfpv4;cstdlib;exit;0
 vfpv4-d16;cstdlib;exit;0;vfpv4_d16
 
-# armv7-r  : fp.sp fp vfpv3xd-fp16 vfpv3-d16-fp16 idiv nofp noidiv vfpv3xd vfpv3-d16
+# armv7-r  : fp.sp fp vfpv3xd-fp16 vfpv3-d16-fp16 idiv noidiv vfpv3xd vfpv3-d16
 fp.sp;cstdlib;exit;0;fp_sp
 fp.dp;cstdlib;exit;0;fp_dp
 idiv;cstdlib;exit;0
@@ -108,20 +108,20 @@ vfpv3dx;cstdlib;exit;0
 vfpv3dx-fp16;cstdlib;exit;0;vfpv3dx_fp16
 
 # armv7-m  : no options
-# armv7e-m : fp fpv5 fp.dp nofp vfpv4-sp-d16 fpv5-d16
+# armv7e-m : fp fpv5 fp.dp vfpv4-sp-d16 fpv5-d16
 fpv5;cstdlib;exit;0
 fpv5_d16;cstdlib;exit;0
 vfpv4-sp-d16;cstdlib;exit;0;vfpv4_sp_d16
 
-# armv8-a   : crc simd crypto nocrypto nofp sb predres
+# armv8-a   : crc simd crypto nocrypto sb predres
 crc;arm_acle.h;__crc32b;(uint32_t)0,(uint8_t)0
 crypto;arm_neon.h;vaesdq_u8;uint8x16_t(), uint8x16_t()
 sb;cstdlib;exit;0
 predres;cstdlib;exit;0
 
-# armv8-r   : crc fp.sp simd crypto nocrypto nofp
-# armv8.1-a : simd crypto nocrypto nofp sb predres
-# armv8.2-a : simd fp16 fp16fml crypto nocrypto nofp dotprod sb predres i8mm bf16
+# armv8-r   : crc fp.sp simd crypto nocrypto
+# armv8.1-a : simd crypto nocrypto sb predres
+# armv8.2-a : simd fp16 fp16fml crypto nocrypto dotprod sb predres i8mm bf16
 bf16,sve;arm_sve.h;svbfdot;svfloat32_t(),svbfloat16_t(),svbfloat16_t()
 dotprod;arm_neon.h;svdot;svint32_t(),svint8_t(),svint8_t()
 fp16;arm_neon.h;vabdq_f16;float16x8_t(),float16x8_t()
@@ -129,10 +129,10 @@ fp16fml;arm_neon.h;vfmlalq_high_f16;float32x4_t(),float16x8_t(),float16x8_t()
 i8mm,sve;arm_sve.h;svmmla;svint32_t(),svint8_t(),svint8_t()
 simd;arm_neon.h;vaddq_u32;uint32x4_t(),uint32x4_t()
 
-# armv8.3-a : simd fp16 fp16fml crypto nocrypto nofp dotprod sb predres i8mm bf16
-# armv8.4-a : simd fp16 crypto nocrypto nofp sb predres i8mm bf16
-# armv8.5-a : simd fp16 crypto nocrypto nofp i8mm bf16
-# armv8.6-a : simd fp16 crypto nocrypto nofp i8mm bf16
+# armv8.3-a : simd fp16 fp16fml crypto nocrypto dotprod sb predres i8mm bf16
+# armv8.4-a : simd fp16 crypto nocrypto sb predres i8mm bf16
+# armv8.5-a : simd fp16 crypto nocrypto i8mm bf16
+# armv8.6-a : simd fp16 crypto nocrypto i8mm bf16
 
 # ARM64 (aarch64) 64-bit
 

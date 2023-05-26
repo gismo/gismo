@@ -114,10 +114,39 @@ public:
         update_structure();
     }
 
-    gsHTensorBasis( gsBasis<T> const&  tbasis)
+    gsHTensorBasis( gsBasis<T> const&  tbasis, bool manualLevels)
     {
-        initialize_class(tbasis);
-        // Build the characteristic matrices
+        if (!manualLevels) 
+        {
+            initialize_class(tbasis);
+            // Build the characteristic matrices
+        }
+        else
+        {
+            // Degrees
+            m_deg.resize(d);
+            for( index_t i = 0; i < d; i++)
+                m_deg[i] = tbasis.degree(i);
+
+            // Construct the initial basis
+            m_bases.reserve(3);
+            if ( const tensorBasis * tb2 =
+                    dynamic_cast<const tensorBasis*>(&tbasis) )
+            {
+                m_bases.push_back(tb2->clone().release());
+            }
+            else
+            {
+                GISMO_ERROR("Cannot construct a Hierarchical basis from "<< tbasis );
+            }
+
+            // Initialize the binary tree
+            point upp;
+            for ( index_t i = 0; i!=d; ++i )
+                upp[i] = m_bases[0]->knots(i).numElements();
+
+            m_tree.init(upp);
+        }
         update_structure();
     }
 
@@ -273,6 +302,15 @@ public:
     {
         freeAll( m_bases );
     }
+
+    void addLevel( const gsTensorBSplineBasis<d, T>& next_basis)
+    {
+        // m_bases.push_back( new gsTensorBSplineBasis<d, T>( give( next_basis ) ));
+        m_bases.push_back( next_basis.clone().release() );
+    }
+
+    /// \brief Inserts a domain into the basis
+    void only_insert_box(point const & k1, point const & k2, int lvl);
 
 protected:
 
