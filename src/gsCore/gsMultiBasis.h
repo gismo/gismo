@@ -315,11 +315,11 @@ public:
     /// @brief Refine every basis uniformly
     ///
     /// This calls \a gsBasis::uniformRefine(\a numKnots,\a mul) for all patches
-    void uniformRefine(int numKnots = 1, int mul = 1)
+    void uniformRefine(int numKnots = 1, int mul = 1, int dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
         {
-            m_bases[k]->uniformRefine(numKnots,mul);
+            m_bases[k]->uniformRefine(numKnots,mul,dir);
         }
     }
 
@@ -707,14 +707,14 @@ std::ostream& operator<<( std::ostream& os, const gsMultiBasis<T>& b )
     return b.print( os );
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsMultiBasis
    */
   void pybind11_init_gsMultiBasis(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

@@ -3,7 +3,7 @@
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsReadFile.h>
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 #include <gsCore/gsMultiPatch.h>
 #endif
 
@@ -11,7 +11,7 @@
 namespace gismo
 {
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
   void pybind11_init_gsReadFile(py::module &m) {
@@ -28,6 +28,6 @@ namespace py = pybind11;
       ;    
   }
   
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
   
 } // end namespace gismo

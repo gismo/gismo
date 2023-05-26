@@ -16,12 +16,12 @@
 
 #include <gismo.h>
 
-#ifdef GISMO_KLSHELL
+#ifdef gsKLShell_ENABLED
 #include <gsKLShell/gsKLShell.h>
 #include <gsKLShell/gsMaterialMatrixLinear.h>
 #endif
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace gismo {
 
@@ -202,7 +202,7 @@ PYBIND11_MODULE(pygismo, m) {
 
   gismo::pybind11_init_PPN( m );
 
-#ifdef GISMO_KLSHELL
+#ifdef gsKLShell_ENABLED
   gismo::pybind11_init_gsKLShell( klshell );
 #endif
 
@@ -211,4 +211,4 @@ PYBIND11_MODULE(pygismo, m) {
 #endif
 }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11

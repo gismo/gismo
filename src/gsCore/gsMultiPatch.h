@@ -138,6 +138,21 @@ public:
         return sz;
     }
 
+    /// Returns the coefficient matrix of the multi-patch geometry
+    gsMatrix<T> coefs() const
+    {
+        gsMatrix<T> result(this->coefsSize(),this->geoDim());
+        result.setZero();
+        index_t offset = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+        {
+            result.block(offset,0,(*it)->coefsSize(),(*it)->geoDim()) = (*it)->coefs();
+            offset += (*it)->coefsSize();
+        }
+        return result;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
@@ -221,10 +236,10 @@ public:
     gsBasis<T> & basis( const size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
-    void addPatch(typename gsGeometry<T>::uPtr g);
+    index_t addPatch(typename gsGeometry<T>::uPtr g);
 
     /// Add a patch by copying argument
-    void addPatch(const gsGeometry<T> & g);
+    index_t addPatch(const gsGeometry<T> & g);
 
     ///\brief Add a patch from a gsMultiPatch<T>
     void addPatches(const gsMultiPatch<T> & mp);
@@ -260,8 +275,10 @@ public:
     /// in each knot-span with multipliplicity \a mul
     void uniformRefine(int numKnots = 1, int mul = 1);
 
-    /// \brief Elevate the degree of all patches by \a elevationSteps.
-    void degreeElevate(int elevationSteps = 1);
+    /// \brief Elevate the degree of all patches by \a elevationSteps, preserves smoothness
+    void degreeElevate(short_t const elevationSteps = 1, short_t const dir = -1);
+    /// \brief Increase the degree of all patches by \a elevationSteps, preserves multiplicity
+    void degreeIncrease(short_t const elevationSteps = 1, short_t const dir = -1);
 
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
@@ -362,14 +379,36 @@ public:
     /// \param preim in each column,  the parametric coordinates of the corresponding point in the patch
     void locatePoints(const gsMatrix<T> & points, index_t pid1, gsVector<index_t> & pid2, gsMatrix<T> & preim) const;
 
+    T closestDistance(const gsVector<T> & pt,std::pair<index_t,gsVector<T> > & result,
+                                                   const T accuracy = 1e-6) const;
+
     std::pair<index_t,gsVector<T> > closestPointTo(const gsVector<T> & pt,
                                                    const T accuracy = 1e-6) const;
 
+    /// Construct the interface representation
+    std::vector<T> HausdorffDistance(   const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
+    T averageHausdorffDistance(         const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
     void constructInterfaceRep();
+    /// Construct the boundary representation
     void constructBoundaryRep();
+    void constructSides();
+
+    /// Construct the interface representation of sides with label \a l
+    void constructInterfaceRep(const std::string l);
+    /// Construct the boundary representation of sides with label \a l
+    void constructBoundaryRep(const std::string l);
 
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
+    const BoundaryRep & sides() const { return m_sides; }
     
 protected:
 
@@ -381,7 +420,7 @@ private:
     PatchContainer m_patches;
 
     InterfaceRep m_ifaces;
-    BoundaryRep m_bdr;
+    BoundaryRep m_bdr, m_sides;
 
 private:
     // implementation functions
@@ -413,14 +452,14 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
     return b.print( os );
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsMultiPatch
    */
   void pybind11_init_gsMultiPatch(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 
 } // namespace gismo

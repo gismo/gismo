@@ -626,7 +626,7 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 */
 
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsMatrix
@@ -650,7 +650,7 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
     ;
   }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 
 } // namespace gismo

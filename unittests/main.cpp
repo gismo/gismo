@@ -49,7 +49,7 @@ struct gsUTSelector
     { return true; }
 };
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 template<>
 struct gsUTSelector<mpq_class>
 {

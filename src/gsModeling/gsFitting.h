@@ -16,6 +16,8 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <vector>
+#include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
 
 namespace gismo
 {
@@ -41,6 +43,12 @@ public:
     gsFitting(gsMatrix<T> const & param_values, 
               gsMatrix<T> const & points, 
               gsBasis<T>  & basis);
+
+        /// constructor
+    gsFitting(gsMatrix<T> const & param_values, 
+              gsMatrix<T> const & points,
+              gsVector<index_t>  offset,
+              gsMappedBasis<2,T>  & mbasis) ;
 
     /// Destructor
     virtual ~gsFitting();
@@ -103,8 +111,11 @@ public:
     /// gives back the computed approximation
     gsGeometry<T> * result() const { return m_result; }
 
+    /// gives back the computed approximation for multipatch geometry
+    const gsMappedSpline<2,T> & mresult() const { return m_mresult; }
+
     /// Returns the basis of the approximation
-    const gsBasis<T> & getBasis() const {return *m_basis;}
+    const gsBasis<T> & getBasis() const {return *static_cast<const gsBasis<T>*>(m_basis);}
 
     void setBasis(gsBasis<T> & basis) {m_basis=&basis;}
 
@@ -158,11 +169,17 @@ protected:
     /// the points of the point cloud
     gsMatrix<T> m_points;
 
+    // Patch offsets
+    gsVector<index_t> m_offset;
+
     /// Pointer keeping the basis
-    gsBasis<T> * m_basis;
+    gsFunctionSet<T> * m_basis;
 
     /// Pointer keeping the resulting geometry
     gsGeometry<T> * m_result;
+
+    /// Pointer keeping the resulting multipatch geometry
+    gsMappedSpline<2,T>  m_mresult;
 
     // All point-wise errors
     std::vector<T> m_pointErrors;
@@ -193,14 +210,14 @@ private:
 }; // class gsFitting
 
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsKnotVector
    */
   void pybind11_init_gsFitting(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 
 }// namespace gismo

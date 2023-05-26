@@ -39,6 +39,51 @@ template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn, 
                      unsigned npts=NS, bool mesh = false, bool ctrlNet = false);
 
+/**
+ * @brief      Writes a gsMappedSpline geometry
+ *
+ * @param      mspline  The mapped spline
+ * @param      fn       The filename
+ * @param[in]  npts     The number of sampling points
+ * 
+ */
+template<class T>
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
+                     std::string const & fn,unsigned npts = NS);
+
+
+
+
+/**
+ * @brief      Plot the basis functions of a multi-basis
+ *
+ * @param      mp    A multi-patch geometry to plot the basis on
+ * @param      mb    The multi-basis
+ * @param      fn    The file name
+ * @param[in]  npts  The number of points
+ *
+ */
+template<class T>
+void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
+                     std::string const & fn, unsigned npts = NS);
+
+/**
+ * @brief      Writes a gsMappedBasis over a gsMappedSpline geometry
+ *
+ * @param      mspline      The mapped spline
+ * @param      mbasis       The mapped basis
+ * @param      fn           The filename
+ * @param      fullsupport  Plot the basis over the whole domain
+ * @param      indices      Basis functions to be plotted
+ * @param[in]  npts         The number of sampling points
+ * 
+ */
+template<class T>
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,
+                     std::string const & fn,unsigned npts = NS, 
+                     const bool fullsupport = false,
+                     const std::vector<index_t> indices = std::vector<index_t>());
+
 /// \brief Export a mesh to paraview file
 ///
 /// \param sl a gsMesh object
@@ -51,6 +96,10 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = tru
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
 
+GISMO_EXPORT void gsWriteParaview(const gsSurfMesh & sm,
+                                  std::string const & fn,
+                                  std::initializer_list<std::string> props = {});
+    
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///
 /// \param meshes vector of gsMesh objects
@@ -68,6 +117,16 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
                      unsigned npts=NS, bool mesh = false);
+
+/// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
+///
+/// \param func a \a gsFunctionSet representing the function to be plotted
+/// \param geo  a \a gsFunctionSet representing the geometry to be plotted
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each patch
+template<class T>
+void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
+                     std::string const & fn, unsigned npts = NS);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
@@ -264,6 +323,42 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const & fn,
                      unsigned npts = NS);
 
+/**
+ * @brief      Writes the boundaries of a multipatch to paraview
+ *
+ * @param      patches  The patches
+ * @param      fn       The filename
+ * @param[in]  npts     The number of sampling points per boundary
+ * @param[in]  ctrlNet  Plot the control net
+ */
+template<class T>
+void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
+
+/**
+ * @brief      Writes the interfaces of a multipatch to paraview
+ *
+ * @param      patches  The patches
+ * @param      fn       The filename
+ * @param[in]  npts     The number of sampling points per interface
+ * @param[in]  ctrlNet  Plot the control net
+ */
+template<class T>
+void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);                            
+                                 
+/// \brief Visualizing boundary conditions
+///
+/// \param pdomain the planar domain
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling
+template<class T>
+void gsWriteParaview(gsMultiPatch<T> const & patches,
+                     typename gsBoundaryConditions<T>::bcContainer const & bcs,
+                     std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
+
 /// \brief Export a boundary/hole curve in trimmed surface
 ///
 /// \param surf trimmed surface
@@ -284,6 +379,16 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
+
+/// Export a computational mesh
+template<class T>
+void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
+                         std::string const & fn, unsigned resolution = 8);
+
+/// Export a control net
+template<class T>
+void writeSingleControlNet(const gsGeometry<T> & Geo,
+                           std::string const & fn);
 
 // Please document
 template <class T>

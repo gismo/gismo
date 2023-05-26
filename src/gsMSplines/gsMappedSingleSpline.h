@@ -107,6 +107,11 @@ public:
         m_spline->evalAllDers_into(m_index,u,n,result);
     }
 
+    // support (domain of definition)
+    gsMatrix<T> support() const
+    { return m_spline->support(m_index); }
+
+
     GISMO_CLONE_FUNCTION(gsMappedSingleSpline)
 
     std::ostream &print(std::ostream &os) const
@@ -123,12 +128,6 @@ public:
     short_t degree(short_t i) const
     {
         return m_spline->degree(m_index,i);
-    }
-
-    /// Returns the bounding box for the support.
-    gsMatrix<T> support() const
-    {
-      return m_spline->getBase(m_index).support();
     }
   
     /// The gsBasisFun points to the i-th spline function of m_spline

@@ -139,7 +139,8 @@ public:
     int size(int const& k) const{ return m_src->size(k); }
 
     size_t numElements() const { return m_src->numElements(); }
-    using Base::numElements; //unhide
+    size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
+    //using Base::numElements; //unhide
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
@@ -167,12 +168,12 @@ public:
     // Look at gsBasis class for a description
     short_t totalDegree() const     {return m_src->totalDegree(); }
 
-    void uniformRefine(int numKnots = 1, int mul=1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
     {
-        m_src->uniformRefine_withCoefs(m_weights, numKnots, mul);
+        m_src->uniformRefine_withCoefs(m_weights, numKnots, mul, dir);
     }
 
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1, int dir=-1);
 
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
 
@@ -212,6 +213,14 @@ public:
     {
         typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
         tmp.degreeReduce(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
+    void degreeDecrease(short_t const& i = 1, short_t const dir = -1)
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeDecrease(i,dir);
         tmp.coefs().swap(m_weights);
         std::swap(*m_src, tmp.basis() );
     }
@@ -271,6 +280,10 @@ public:
 
     /// Returns the weights of the rational basis
     gsMatrix<T> & weights()  { return m_weights; }
+    
+
+    /// Returns true, since by definition a gsRationalBasis is rational.
+    virtual bool isRational() const { return true;}
 
     /// Access to i-th weight
     T & weight(int i)             { return m_weights(i); }
@@ -567,7 +580,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 
 
 template<class SrcT>
-void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul)
+void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul, int dir)
 {
     GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                   "Invalid dimensions" );

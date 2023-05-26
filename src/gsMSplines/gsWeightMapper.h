@@ -231,7 +231,7 @@ public:
     {
         IndexContainer indices;
         sourceToTarget(source,indices);
-        return (indices.size()==1 && m_matrix.at(source,indices[0])==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(source,indices[0]),T(1.0)));
     }
 
     /// checks if the mapping for \a target is 1 to 1
@@ -239,7 +239,7 @@ public:
     {
         IndexContainer indices;
         targetToSource(target,indices);
-        return (indices.size()==1 && m_matrix.at(indices[0],target)==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(indices[0],target),T(1.0)));
     }
 
     //////////////////////////////////////////////////
@@ -464,7 +464,7 @@ public:
        @brief getLocalMap
        @param[in]  source : array of indexType, source basis functions
        @param[in]  target : array of indexType, target basis functions
-       @param[out] map    : a matrix containing the coefficinets of the expansion of the targets as
+       @param[out] map    : a matrix containing the coefficients of the expansion of the targets as
                             linear combination of the sources. Targets corresponds to columns, sources to rows.
      */
      void getLocalMap (IndexContainer const & source, IndexContainer const & target, gsMatrix<T> &map) const;

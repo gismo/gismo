@@ -1,6 +1,6 @@
 /** @file gsMappedSingleBasis.h
 
-    @brief Provides declaration of Basis abstract interface.
+    @brief Implementation of a piece of the gsMappedBasis
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): H.M. Verhelst, P. Weinmueller
 */
 
 #pragma once
@@ -116,12 +116,40 @@ public:
         return m_basis->getBase(m_index).support();
     }
 
-    /// Returns a bounding box for the basis' domain
+    /// Returns a bounding box for the basis' domain on the domain of *this
     gsMatrix<T> support(const index_t & i) const
     {
-        return m_basis->getBase(m_index).support(i);
+        typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
+        m_basis->getMapper().targetToSource(i,sourceIndices);
+        // Get the support on the whole patch
+        gsMatrix<T> supp;
+        gsMatrix<T> localSupp;
+        for (typename gsMappedBasis<d,T>::IndexContainer::iterator i = sourceIndices.begin(); i!=sourceIndices.end(); i++)
+        {
+            // Only consider local basis functions on the same patch
+            if (m_basis->getPatch(*i)!=m_index) continue;
+            // Get the support of the basis function
+            localSupp = m_basis->getBase(m_index).support(m_basis->getPatchIndex(*i));
+            // If no support is available, we assign it
+            if (supp.rows()==0 && supp.cols()==0)
+            {
+                supp = localSupp;
+                continue;
+            }
+            // If a support is available, we increase it if needd
+            for (index_t dim=0; dim!=d; dim++)
+            {
+                if (localSupp(dim,0) < supp(dim,0))
+                    supp(dim,0) = localSupp(dim,0);
+                if (localSupp(dim,1) > supp(dim,1))
+                    supp(dim,1) = localSupp(dim,1);
+            }
+        }
+
+        return supp;
+        // return m_basis->getBase(m_index).support();
     }
-  
+
     /// Returns the boundary basis on side s
     gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
     {
@@ -315,7 +343,7 @@ public:
         // Better way for offset one: compute (anchors()) the normal derivatives at the boundary and return the indices
         if (offset == 1) // Small fix
         {
-            GISMO_ASSERT(offset==1, "The indizes of boundaryOffset(s,1) "
+            GISMO_ASSERT(offset==1, "The indices of boundaryOffset(s,1) "
                                     "will be substract from boundaryOffset(s,0)");
 
             std::vector<index_t> diff, temp2, rtemp2;
@@ -330,6 +358,18 @@ public:
 
         return makeMatrix<index_t>(rtemp.begin(),rtemp.size(),1 );
     }
+
+    index_t functionAtCorner(boxCorner const & c) const
+    {
+        index_t cindex = m_basis->getBase(m_index).functionAtCorner(c);
+        cindex = m_basis->_getLocalIndex(m_index,cindex);
+        GISMO_ENSURE(m_basis->getMapper().sourceIsId(cindex),"Corner function has no identity map, i.e. there are more than 1 functions associated to the corner?");
+        std::vector<index_t> indices;
+        m_basis->getMapper().sourceToTarget(cindex,indices);
+        GISMO_ASSERT(indices.size()==1,"Size of the indices returned for the corner basis function should be 1 but is "<<indices.size()<<". Otherwise, there are more than 1 functions associated to the corner");
+        return indices.front();
+    }
+
     
 // Data members
 private:

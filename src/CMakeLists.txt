@@ -7,14 +7,6 @@
 
 include_directories(${GISMO_INCLUDE_DIRS})
 
-if(GISMO_WITH_CODIPACK)
-  include_directories(${CODIPACK_INCLUDE_DIR})
-endif()
-
-if(GISMO_WITH_UNUM)
-  include_directories(${UNUM_INCLUDE_DIR})
-endif()
-
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 #LIST( REMOVE_ITEM SUBDIRS misc)
 LIST( APPEND SUBDIRS gsUtils/gsMesh)
@@ -52,30 +44,33 @@ FOREACH(subdir ${SUBDIRS})
     FOLDER "G+Smo modules"
     )
 
+  if(TARGET gmp)
+    add_dependencies(${GM_NAME} gmp)
+  endif()
+  if(TARGET mpfr)
+    add_dependencies(${GM_NAME} mpfr)
+  endif()
+
   ## Add extra instances (template instantiations)
   # NOTE: The static/non templated part of the library is
   # compiled above only for GISMO_COEFF_TYPE
   math(EXPR ii "1")
   foreach(ins ${GISMO_EXTRA_INSTANCE})
-    add_library(${GM_NAME}${ii} OBJECT
+    add_library(${GM_NAME}_${ii} OBJECT
       ${${subdir}_H}
       ${${subdir}_HPP}
       ${${subdir}_INS}
       )
-    set_target_properties(${GM_NAME}${ii} PROPERTIES
+    set_target_properties(${GM_NAME}_${ii} PROPERTIES
       COMPILE_DEFINITIONS "gismo_EXPORTS;real_t=${ins}"
       POSITION_INDEPENDENT_CODE ON
       LINKER_LANGUAGE CXX
       FOLDER "G+Smo modules"
       )
-    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}${ii}>
+    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}_${ii}>
       CACHE INTERNAL "G+Smo modules" )
     math(EXPR ii "${ii}+1")
   endforeach()
-
-  if(GISMO_BUILD_MULTIPRECISION)
-    add_dependencies(${GM_NAME} gsMultiPrecisionExtension)
-  endif()
 
   if (GISMO_BUILD_PCH)
     target_precompiled_header(${GM_NAME} gsPrecompiledHeader)

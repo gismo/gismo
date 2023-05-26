@@ -18,7 +18,7 @@
 #include <cmath>
 #include <complex>
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
@@ -62,7 +62,7 @@ using std::real;
 using std::imag;
 using std::conj;
 
-#ifdef GISMO_WITH_CODIPACK
+#ifdef gsCoDiPack_ENABLED
 using codi::abs;
 using codi::acos;
 using codi::asin;
@@ -93,44 +93,44 @@ using codi::isinf;
 //using codi::conj;
 #endif
 
-#ifdef GISMO_WITH_UNUM
-using sw::unum::abs;
-using sw::unum::acos;
-using sw::unum::asin;
-using sw::unum::atan2;
-using sw::unum::atan;
-using sw::unum::ceil;
-using sw::unum::cos;
-using sw::unum::cosh;
-using sw::unum::exp;
-using sw::unum::floor;
-//using sw::unum::frexp;
-//using sw::unum::ldexp;
-using sw::unum::log10;
-using sw::unum::log;
-using sw::unum::max;
-using sw::unum::min;
-using sw::unum::pow;
-using sw::unum::sin;
-using sw::unum::sinh;
-using sw::unum::sqrt;
-using sw::unum::tan;
-using sw::unum::tanh;
+#ifdef gsUniversal_ENABLED
+using sw::universal::abs;
+using sw::universal::acos;
+using sw::universal::asin;
+using sw::universal::atan2;
+using sw::universal::atan;
+using sw::universal::ceil;
+using sw::universal::cos;
+using sw::universal::cosh;
+using sw::universal::exp;
+using sw::universal::floor;
+//using sw::universal::frexp;
+//using sw::universal::ldexp;
+using sw::universal::log10;
+using sw::universal::log;
+using sw::universal::max;
+using sw::universal::min;
+using sw::universal::pow;
+using sw::universal::sin;
+using sw::universal::sinh;
+using sw::universal::sqrt;
+using sw::universal::tan;
+using sw::universal::tanh;
 
 // dummy
 template<size_t nbits, size_t es>
-inline sw::unum::posit<nbits,es> frexp(const sw::unum::posit<nbits,es> & a, int* b) {return  a;}
+inline sw::universal::posit<nbits,es> frexp(const sw::universal::posit<nbits,es> & a, int* b) {return  a;}
 
 template<size_t nbits, size_t es>
-inline sw::unum::posit<nbits,es> ldexp(const sw::unum::posit<nbits,es> & a, int b ) {return  a;}
+inline sw::universal::posit<nbits,es> ldexp(const sw::universal::posit<nbits,es> & a, int b ) {return  a;}
 
-using sw::unum::isnan;
-using sw::unum::isfinite;
-using sw::unum::isinf;
+using sw::universal::isnan;
+using sw::universal::isfinite;
+using sw::universal::isinf;
 
-using sw::unum::real;
-using sw::unum::imag;
-using sw::unum::conj;
+using sw::universal::real;
+using sw::universal::imag;
+using sw::universal::conj;
 
 #endif
 
@@ -156,7 +156,7 @@ inline T nextafter(T x, T y)
 #   endif
 }
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 template<>
 inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 {
@@ -164,7 +164,7 @@ inline mpfr::mpreal nextafter(mpfr::mpreal x, mpfr::mpreal y)
 }
 #endif
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 template<>
 inline mpq_class nextafter(mpq_class x, mpq_class y)
 {
@@ -172,21 +172,21 @@ inline mpq_class nextafter(mpq_class x, mpq_class y)
 }
 #endif
 
-#ifdef GISMO_WITH_UNUM
+#ifdef gsUniversal_ENABLED
 template<size_t nbits, size_t es>
-inline sw::unum::posit<nbits,es> nextafter(sw::unum::posit<nbits,es> x,
-                                           sw::unum::posit<nbits,es>  y)
+inline sw::universal::posit<nbits,es> nextafter(sw::universal::posit<nbits,es> x,
+                                           sw::universal::posit<nbits,es>  y)
 {
-    return sw::unum::nextafter(x,y);
+    return sw::universal::nextafter(x,y);
 }
 #endif
 
 // inline real_t nextafter(real_t x, real_t y)
 // {
-// #   if defined(GISMO_WITH_MPFR) || defined(GISMO_WITH_GMP)
+// #   if defined(gsMpfr_ENABLED) || defined(gsGmp_ENABLED)
 //     return x + ( y < x ? -1e-16 : 1e-16 );
-// #   elif defined(GISMO_WITH_UNUM)
-//     return sw::unum::nextafter(x,y);
+// #   elif defined(gsUniversal_ENABLED)
+//     return sw::universal::nextafter(x,y);
 // #   elif defined(_MSC_VER) && _MSC_VER < 1800
 //     return _nextafter(x,y);
 // #   else
@@ -208,7 +208,7 @@ struct numeric_limits
     { return std::numeric_limits<T>::digits10; }
 };
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 template <>
 struct numeric_limits<mpfr::mpreal>
 {
@@ -220,7 +220,7 @@ struct numeric_limits<mpfr::mpreal>
 };
 #endif
 
-//#ifdef GISMO_WITH_MPFR
+//#ifdef gsMpfr_ENABLED
 //#  define REAL_DIG std::numeric_limits<real_t>::digits10()
 //#else
 //#  define REAL_DIG std::numeric_limits<real_t>::digits10
@@ -258,7 +258,7 @@ using std::isinf;
 #endif
 #endif
 
-#ifdef GISMO_WITH_MPFR
+#ifdef gsMpfr_ENABLED
 // Math functions for MPFR
 using mpfr::abs;
 using mpfr::acos;
@@ -288,7 +288,7 @@ using mpfr::isnan;
 
 #endif
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 // Math functions for GMP/mpq_class
 using ::abs;
 using ::acos;

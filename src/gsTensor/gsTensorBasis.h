@@ -123,6 +123,7 @@ public:
     // Look at gsBasis class for a description
     size_t numElements(boxSide const & s) const
     {
+        if (0==s.index()) return this->numElements();
         const short_t dir =  s.direction();
         size_t nElem = 1;
         for (short_t dim = 0; dim < d; ++dim)
@@ -317,10 +318,13 @@ public:
     virtual std::ostream &print(std::ostream &os) const = 0;
 
     // Look at gsBasis class for documentation 
-    virtual void uniformRefine(int numKnots = 1, int mul=1)
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
     {
-        for (short_t j = 0; j < d; ++j)
+        if (-1==dir)
+            for (short_t j = 0; j < d; ++j)
             m_bases[j]->uniformRefine(numKnots,mul);
+        else
+            m_bases[dir]->uniformRefine(numKnots,mul);
     }
 
     /** \brief Refine elements defined by their tensor-index.
@@ -341,7 +345,7 @@ public:
 
     /// Refine the basis uniformly and perform knot refinement for the
     /// given coefficient vector
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, int mul=1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots=1, int mul=1, int dir=-1);
 
     /// Refine the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
@@ -566,6 +570,10 @@ public:
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
+
+    // see gsBasis for documentation
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const;
 
     /// Get the minimum mesh size, as expected for inverse inequalities
     virtual T getMinCellLength() const;

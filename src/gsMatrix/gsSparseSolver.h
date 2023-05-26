@@ -24,6 +24,7 @@ template<typename T> class gsEigenBiCGSTABILUT;
 template<typename T> class gsEigenSparseLU;
 template<typename T> class gsEigenSparseQR;
 template<typename T> class gsEigenSimplicialLDLT;
+template<typename T> class gsEigenSimplicialDLT;
 
 template<typename T> class gsEigenSuperLU;
 template<typename T> class gsEigenPardisoLDLT;
@@ -75,6 +76,7 @@ public:
     typedef gsEigenSparseLU<T>             LU;
     typedef gsEigenSparseQR<T>             QR;
     typedef gsEigenSimplicialLDLT<T>       SimplicialLDLT;
+    typedef gsEigenSimplicialLDLT<T>       SimplicialLLT;
 
     // optionals
     typedef gsEigenSuperLU<T>              SuperLU;
@@ -120,6 +122,7 @@ public:
     {
         if (slv=="CGDiagonal")       return uPtr(new CGDiagonal());
         if (slv=="SimplicialLDLT")   return uPtr(new SimplicialLDLT());
+        if (slv=="SimplicialLLT")   return uPtr(new SimplicialLLT());
 #       ifdef GISMO_WITH_PARDISO
         if (slv=="PardisoLU")        return uPtr(new PardisoLU());
         if (slv=="PardisoLDLT")      return uPtr(new PardisoLDLT());
@@ -194,6 +197,7 @@ GISMO_EIGEN_SPARSE_SOLVER (gsEigenBiCGSTABILUT,     BiCGSTABILUT)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenSparseLU,       SparseLU)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenSparseQR,       SparseQR)
 GISMO_EIGEN_SPARSE_SOLVER (gsEigenSimplicialLDLT, SimplicialLDLT)
+GISMO_EIGEN_SPARSE_SOLVER (gsEigenSimplicialLLT, SimplicialLLT)
 
 #ifdef GISMO_WITH_SUPERLU
     GISMO_EIGEN_SPARSE_SOLVER (gsEigenSuperLU, SuperLU)

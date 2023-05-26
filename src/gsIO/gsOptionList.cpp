@@ -107,7 +107,7 @@ std::string gsOptionList::askString(const std::string & label,
                                     const std::string & value) const
 {
     StringTable::const_iterator it = m_strings.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_strings.end() && exists(label) )
         gsWarn << "Invalid request (askString): "<<label<<" is given, but not a string; it is "<<getInfo(label)<<".\n";
 #endif
@@ -118,7 +118,7 @@ index_t gsOptionList::askInt(const std::string & label,
                          const index_t & value) const
 {
     IntTable::const_iterator it = m_ints.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_ints.end() && exists(label) )
         gsWarn << "Invalid request (askInt): "<<label<<" is given, but not an int; it is "<<getInfo(label)<<".\n";
 #endif
@@ -129,7 +129,7 @@ bool gsOptionList::askSwitch(const std::string & label,
                              const bool & value) const
 {
     SwitchTable::const_iterator it = m_switches.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_switches.end() && exists(label) )
         gsWarn << "Invalid request (askSwitch): "<<label<<" is given, but not a switch; it is "<<getInfo(label)<<".\n";
 #endif
@@ -140,7 +140,7 @@ gsOptionList::Real gsOptionList::askReal(const std::string & label,
                              const Real & value) const
 {
     RealTable::const_iterator it = m_reals.find(label);
-#if defined(GISMO_EXTRA_DEBUG)
+#if defined(GISMO_WITH_XDEBUG)
     if ( it == m_reals.end() && exists(label) )
         gsWarn << "Invalid request (askReal): "<<label<<" is given, but not a real; it is "<<getInfo(label)<<".\n";
 #endif
@@ -178,6 +178,14 @@ void gsOptionList::setSwitch(const std::string & label,
     GISMO_ENSURE(it!=m_switches.end(), "Invalid request (setSwitch): "<<label<<" is not a switch; it is "<<getInfo(label)<<".");
     it->second.first = value;
 }
+
+void gsOptionList::toggleSwitch( const std::string & label )
+{
+    SwitchTable::iterator it = m_switches.find(label);
+    GISMO_ENSURE(it!=m_switches.end(), "Invalid request (setSwitch): "<<label<<" is not a switch; it is "<<getInfo(label)<<".");
+    it->second.first = !(it->second.first);
+}
+
 
 void gsOptionList::addString(const std::string & label,
                              const std::string & desc,
@@ -632,7 +640,7 @@ gsXml<gsOptionList>::put (const gsOptionList & obj, gsXmlTree & data)
 
 } // namespace internal
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 void pybind11_init_gsOptionList(py::module &m) {
@@ -742,6 +750,6 @@ void pybind11_init_gsOptionList(py::module &m) {
 
 }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } //namespace gismo

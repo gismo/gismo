@@ -329,8 +329,9 @@ Object * getGeometryFromXml ( gsXmlNode * node)
             }
         }
     }
-    
-    return new Object(*b,c);
+
+    Object * result = new Object(*b,c);
+    return result;
 }
 
 /// Helper to put geometries to XML
@@ -359,7 +360,6 @@ gsXmlNode * putGeometryToXml ( Object const & obj, gsXmlTree & data)
     tmp = putMatrixToXml( obj.coefs(), data, "coefs" );
     tmp->append_attribute( makeAttribute("geoDim", obj.geoDim(), data) );
     bs->append_node(tmp);
-
     return bs;
 }
 
