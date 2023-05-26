@@ -63,6 +63,16 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
 }
 
 template<short_t d, class T> inline
+index_t gsHTensorBasis<d,T>::getLevelAtIndex(const point & Pt) const
+{
+    const int maxLevel = m_tree.getMaxInsLevel();
+
+    needLevel(maxLevel);
+
+    return m_tree.levelOf( Pt, maxLevel);
+}
+
+template<short_t d, class T> inline
 void gsHTensorBasis<d,T>::getLevelUniqueSpanAtPoints(const  gsMatrix<T> & Pt,
                                                      gsVector<index_t> & lvl,
                                                      gsMatrix<index_t> & loIdx ) const
@@ -302,6 +312,32 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
     //this->m_xmatrix.erase(this->m_xmatrix.begin(),this->m_xmatrix.begin()+1);
     //coefs = transf*coefs;
 }
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots)
+{
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    std::vector<index_t> boxes;
+    index_t lvl;
+    for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
+    {
+        if (it.level() == 0)
+            continue;
+        lvl = it.level() - 1;
+        const point & l = it.lowerCorner();
+        const point & u = it.upperCorner();
+
+        boxes.push_back(lvl);
+        for( short_t i = 0; i < d; i++)
+            boxes.push_back( l(i) / 2);
+        for( short_t i = 0; i < d; i++)
+            boxes.push_back( u(i)/2 + (index_t)(u(i)%2!=0));
+    }
+
+    this->clone()->unrefineElements_withCoefs(coefs, boxes);
+    this->uniformCoarsen(numKnots);
+}
+
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes, int refExt)
@@ -1147,8 +1183,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
 
     // Setup the characteristic matrices
     m_xmatrix.clear();
-    m_xmatrix.resize( m_bases.size() );
-
+    m_xmatrix.resize( m_tree.getMaxInsLevel()+1 );
     // Compress the tree
     m_tree.makeCompressed();
 
@@ -1174,7 +1209,6 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
     // +1 for the initial basis in m_bases
     const int extraLevels = maxLevel + 1 - m_bases.size();
-
     for ( int i = 0; i < extraLevels; ++i )
     {
         tensorBasis * next_basis = m_bases.back()->clone().release();
@@ -1210,15 +1244,8 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 
     m_tree.init(upp);
 
-    // Produce a couple of tensor-product spaces by dyadic refinement
-    m_bases.reserve(3);
-    for(index_t i = 1; i <= 2; i++)
-    {
-        tensorBasis* next_basis = m_bases[i-1]->clone().release();
-        next_basis->uniformRefine(1);
-        m_bases.push_back( next_basis );
-    }
-
+    // Need one level at least, in case refine(gsMatrix<T> boxes) is called
+    this->needLevel(1);
 }
 
 
@@ -1291,7 +1318,7 @@ gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
 {
     std::vector<index_t> temp;
     gsVector<index_t, d>  ind;
-    for(unsigned i = 0; i <= this->maxLevel(); i++)
+    for(size_t i = 0; i != m_xmatrix[i].size(); i++)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
              it != m_xmatrix[i].end(); it++)
         {
@@ -1317,11 +1344,14 @@ boundaryOffset(boxSide const & s,index_t offset) const
     std::vector<index_t> temp;
     gsVector<index_t,d>  ind;
     // i goes through all levels of the hierarchical basis
-    for(unsigned i = 0; i <= this->maxLevel(); i++)
+    GISMO_ASSERT(this->maxLevel() < this->m_bases.size(),"Something went wrong: maxLevel() < m_bases.size(), "<<this->maxLevel()<<" < "<<m_bases.size());
+    needLevel(m_xmatrix.size()-1);
+
+    for(size_t i = 0; i != m_xmatrix.size(); i++)
     {
         GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
-                     "Offset cannot be bigger than the amount of basis"
-                     "functions orthogonal to Boxside s!");
+                     "Offset ("<<offset<<") cannot be bigger than the amount of basis"
+                     "functions orthogonal to Boxside s! ("<<this->m_bases[i]->size(k)<<")");
 
         index_t r = ( par ? this->m_bases[i]->size(k) - 1 -offset : offset);
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
@@ -1422,6 +1452,28 @@ void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 
     update_structure();
 }
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::uniformCoarsen(int numKnots)
+{
+    GISMO_UNUSED(numKnots);
+    GISMO_ASSERT(numKnots == 1, "Only implemented for numKnots = 1");
+
+    tensorBasis * first_basis = m_bases.front()->clone().release();
+    first_basis->uniformCoarsen(1);
+    m_bases.insert( m_bases.begin(), first_basis );
+
+    // Delete the last level
+    delete m_bases.back();
+    m_bases.erase( m_bases.end() );
+
+    // Lift all indices in the tree by one level
+    m_tree.divideByTwo();
+    // What happens when zero interior knots???????
+
+    update_structure();
+}
+
 
 template<short_t d, class T>
 std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const

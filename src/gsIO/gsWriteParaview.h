@@ -214,6 +214,24 @@ template<class T>
 void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn, 
                      unsigned npts =NS, bool mesh = false);
 
+/// \brief Export gsHBox to paraview files
+///
+/// \param basis a basis object
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each curve
+/// \param mesh if true, the parameter mesh is plotted as well
+template<class T>
+void gsWriteParaview(gsHBox<2,T> & box, std::string const & fn);
+
+/// \brief Export gsHBox to paraview files
+///
+/// \param basis a basis object
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each curve
+/// \param mesh if true, the parameter mesh is plotted as well
+template<class T>
+void gsWriteParaview(gsHBoxContainer<2,T> & box, std::string const & fn);
+
 
 /// \brief Export 2D Point set to Paraview file
 ///
@@ -384,6 +402,10 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
 template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution = 8);
+
+/// Export a gsHBox
+template<class T>
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
 
 /// Export a control net
 template<class T>

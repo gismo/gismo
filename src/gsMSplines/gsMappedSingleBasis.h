@@ -149,7 +149,6 @@ public:
         return supp;
         // return m_basis->getBase(m_index).support();
     }
-
     /// Returns the boundary basis on side s
     gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
     {

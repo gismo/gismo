@@ -305,6 +305,16 @@ void gsMultiPatch<T>::degreeReduce(int elevationSteps)
 }
 
 template<class T>
+void gsMultiPatch<T>::uniformCoarsen(int numKnots)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->uniformCoarsen(numKnots);
+    }
+}
+
+template<class T>
 void gsMultiPatch<T>::boundingBox(gsMatrix<T> & result) const
 {
     result.setZero(geoDim(),2);

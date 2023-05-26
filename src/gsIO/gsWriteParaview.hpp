@@ -28,6 +28,8 @@
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
 
+#include <gsHSplines/gsHBoxContainer.h>
+
 #define PLOT_PRECISION 12
 
 namespace gismo
@@ -1168,7 +1170,56 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
     collection.save();
 }
 
-/// Export Basis functions
+/// Writes a single \ref gsHBox \a box to a file with name \a fn
+template<class T>
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn)
+{
+    gsMatrix<T> points, values(3,4),corners(2,2);
+    gsVector<index_t> np(2);
+    np<<2,2;
+    box.computeCoordinates();
+    points = gsPointGrid<T>(box.getCoordinates(),4);
+    values.row(0).setConstant(box.level());
+    values.row(1).setConstant(box.error());
+    values.row(2).setConstant(box.projectedErrorRef());
+    gsWriteParaviewTPgrid(points,values,np,fn);
+}
+
+/// Writes a single \ref gsHBox \a box to a file with name \a fn
+template<class T>
+void gsWriteParaview(gsHBox<2,T> & box, std::string const & fn)
+{
+    gsParaviewCollection collection(fn);
+
+    writeSingleHBox(box,fn);
+    collection.addPart(fn + ".vts");
+
+    // Write out the collection file
+    collection.save();
+}
+
+/// Writes a container of \ref gsHBox , i.e. a \gsHBoxContainer \a boxes, to a file with name \a fn
+template<class T>
+void gsWriteParaview(gsHBoxContainer<2,T> & boxes, std::string const & fn)
+{
+    gsParaviewCollection collection(fn);
+
+    index_t i=0;
+    std::string fileName;
+    for (typename gsHBoxContainer<2,T>::HIterator Hit = boxes.begin(); Hit!=boxes.end(); Hit++)
+        for (typename gsHBoxContainer<2,T>::Iterator Cit = Hit->begin(); Cit!=Hit->end(); Cit++, i++)
+        {
+            fileName = fn + util::to_string(i);
+            writeSingleHBox<T>(*Cit,fileName);
+            fileName = gsFileManager::getFilename(fileName);
+            collection.addPart(fileName + ".vts",-1,"",i);
+        }
+
+    // Write out the collection file
+    collection.save();
+}
+
+/// Export basis functions
 template<class T>
 void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
                      std::string const & fn, unsigned npts)

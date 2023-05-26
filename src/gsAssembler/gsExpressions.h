@@ -1037,9 +1037,7 @@ public:
                   for(index_t s = 0; s != solVector.cols(); ++s )
                     result(i,c+s) = solVector(ii,s); //assume dim==1 xor solVector.cols()==1
                 else // eliminated DoF: fill with Dirichlet data
-                {
                     result(i,c) =  m_sd->fixedDofs.at( m_sd->mapper.global_to_bindex(ii) );
-                }
             }
         }
     }
@@ -1423,7 +1421,6 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-
     index_t rows() const {return _u.dim(); }
 
     static index_t cols() {return 1; }

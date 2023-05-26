@@ -289,9 +289,17 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
+template <short_t d, class T=real_t>     struct gsHBoxUtils;
+template <short_t d, class T=real_t>     struct gsHBoxContains;
+template <short_t d, class T=real_t>     struct gsHBoxIsContained;
+template <short_t d, class T=real_t>     struct gsHBoxCompare;
+template <short_t d, class T=real_t>     struct gsHBoxEqual;
+
+template <short_t d, class T=real_t>     class gsHBox;
+template <short_t d, class T=real_t>     class gsHBoxContainer;
+
 class gsParaviewDataSet;
 class gsSurfMesh;
-
 /// @endcond
 
 ///@}

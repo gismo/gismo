@@ -280,6 +280,10 @@ public:
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
 
+    /// \brief Coarsen uniformly all patches by removing \a numKnots
+    /// in each knot-span
+    void uniformCoarsen(int numKnots = 1);
+
     void embed(const index_t N)
     {
         for ( typename PatchContainer::const_iterator it = m_patches.begin();

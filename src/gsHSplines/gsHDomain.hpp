@@ -1746,6 +1746,13 @@ gsHDomain<d,T>::multiplyByTwo()
     }
 
 template<short_t d, class T> inline void
+gsHDomain<d,T>::divideByTwo()
+    {
+        m_upperIndex /= 2;
+        nodeSearch< reduceCoordsOneLevel_visitor >();
+    }
+
+template<short_t d, class T> inline void
 gsHDomain<d,T>::decrementLevel()
     {
         m_maxInsLevel--;

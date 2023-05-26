@@ -57,6 +57,12 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
                      unsigned npts, bool mesh);
 
 TEMPLATE_INST
+void gsWriteParaview(gsHBox<2,T> & hbox, std::string const & fn);
+
+TEMPLATE_INST
+void gsWriteParaview(gsHBoxContainer<2,T> & hbox, std::string const & fn);
+
+TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn);
 
 TEMPLATE_INST
@@ -141,6 +147,9 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
 TEMPLATE_INST
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution);
+
+TEMPLATE_INST
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
 
 
 } // namespace gismo
