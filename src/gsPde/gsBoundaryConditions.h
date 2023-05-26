@@ -314,6 +314,21 @@ struct boundary_condition
         int   component;    ///< The component of the unknown
     };
 
+/**
+    @brief Class prescribing a value related to a corner of a patch
+*/
+    template<class T>
+    struct coupled_boundary
+    {
+        coupled_boundary(index_t p1, boxSide s1, index_t p2, boxSide s2, short_t dim, short_t unk = 0, int comp = -1)
+                : ifc(patchSide(p1,s1), patchSide(p2,s2), dim), unknown(unk), component(comp)
+                {}
+
+        boundaryInterface ifc;
+        short_t   unknown;    ///< Unknown to which this boundary condition refers to
+        int   component;    ///< The component of the unknown
+    };
+
 /** @brief
     Class containing a set of  boundary conditions.
 
@@ -335,6 +350,10 @@ public:
     typedef typename std::deque<corner_value<T> >       cornerContainer;
     typedef typename cornerContainer::iterator citerator;
     typedef typename cornerContainer::const_iterator const_citerator;
+
+    typedef typename std::deque<coupled_boundary<T>> cplContainer;
+    typedef typename cplContainer::iterator cpliterator;
+    typedef typename cplContainer::const_iterator const_cpliterator;
 
     typedef typename std::deque<boundaryInterface> ppContainer;
     typedef typename ppContainer::iterator ppiterator;
@@ -372,6 +391,7 @@ public:
         m_bc.swap(other.m_bc);
         corner_values.swap(other.corner_values);
         m_periodicPairs.swap(other.m_periodicPairs);
+        coupled_boundaries.swap(other.coupled_boundaries);
     }
 
 public:
@@ -381,6 +401,7 @@ public:
         m_bc.clear();
         corner_values.clear();
         m_periodicPairs.clear();
+        coupled_boundaries.clear();
     }
 
     size_t size() const
@@ -388,7 +409,7 @@ public:
         size_t sz = 0;
         for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
             sz += it->second.size();
-        return sz + corner_values.size();
+        return sz + corner_values.size() + coupled_boundaries.size();
     }
 
     /// Return a reference to boundary conditions of certain type
@@ -421,6 +442,8 @@ public:
     const bcContainer & robinSides()     const {return m_bc["Robin"]; }
 
     const cornerContainer & cornerValues() const  {return corner_values;  }
+
+    const cplContainer & coupledBoundaries() const {return coupled_boundaries; }
 
     /// Extracts the BC, comming from a certain component.
     bcContainer reducedContainer(const bcContainer & container, short_t unknown) const
@@ -543,6 +566,16 @@ public:
     const_citerator cornerEnd() const
     { return corner_values.end(); }
 
+    /// Get an iterator to the beginning of the coupled boundaries
+    /// \return an iterator to the beginning of the coupled boundaries
+    const_cpliterator coupledBegin() const
+    { return coupled_boundaries.begin(); }
+
+    /// Get an iterator to the end of coupled boundaries
+    /// \return an iterator to the end of the coupled boundaries
+    const_cpliterator coupledEnd() const
+    { return coupled_boundaries.end(); }
+
     /// Get an iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     iterator robinBegin()
@@ -562,6 +595,17 @@ public:
     /// \return an iterator to the end of the corner values
     citerator cornerEnd()
     { return corner_values.end(); }
+
+    /// Get an iterator to the beginning of the coupled boundaries
+    /// \return an iterator to the beginning of the coupled boundaries
+    cpliterator coupledBegin()
+    { return coupled_boundaries.begin(); }
+
+    /// Get an iterator to the end of coupled boundaries
+    /// \return an iterator to the end of the coupled boundaries
+    cpliterator coupledEnd()
+    { return coupled_boundaries.end(); }
+
 
     void add(int p, boxSide s, const std::string & label,
              const function_ptr & f_ptr, short_t unknown = 0,
@@ -678,15 +722,32 @@ public:
         addCondition(p,boxSide(s),t,func,unknown,parametric,comp);
     }
 
+    /// Adds a boundary condition with \a value on a corner \a c of patch \a p for \a unknown \a component
     void addCornerValue(boxCorner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
         corner_values.push_back( corner_value<T>(p,c,value,unknown,component) );
     }
 
+    /// Adds a boundary condition with \a value on a corner \a c of patch \a p for \a unknown \a component
     void addCornerValue(boundary::corner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
         corner_values.push_back( corner_value<T>(p,boxCorner(c),value,unknown,component) );
     }
+
+    /// Couples the degrees of freedom on patch \a p1 side \a s1 and patch \a p2 side \a s2 for \a unknown and component \a comp
+    void addCoupled(int p1, boundary::side s1, int p2, boundary::side s2, index_t dim,
+                      short_t unknown = 0, int comp = -1)
+    {
+        coupled_boundaries.push_back( coupled_boundary<T>(p1,boxSide(s1),p2,boxSide(s2),dim,unknown,comp));
+    }
+
+    /// Couples the degrees of freedom on patch \a p1 side \a s1 and patch \a p2 side \a s2 for \a unknown and component \a comp
+    void addCoupled(int p1, boxSide s1, int p2, boxSide s2, index_t dim,
+                      short_t unknown = 0, int comp = -1)
+    {
+        coupled_boundaries.push_back( coupled_boundary<T>(p1,s1,p2,s2,dim,unknown,comp));
+    }
+
 
     /// Prints the object as a string.
     std::ostream & print(std::ostream &os) const
@@ -856,6 +917,8 @@ private: // Data members
     };
 
     cornerContainer corner_values; ///< List of corners with fixed value
+
+    cplContainer coupled_boundaries; ///< List of boundaries that are coupled
 
     mutable bcData m_bc;  ///< Containers for BCs of various types
 

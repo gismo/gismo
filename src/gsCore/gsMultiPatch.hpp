@@ -204,7 +204,7 @@ void gsMultiPatch<T>::permute(const std::vector<short_t> & perm)
 }
 
 template<class T>
-void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
+index_t gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
 {
     if ( m_dim == -1 )
     {
@@ -214,15 +214,17 @@ void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
         GISMO_ASSERT( m_dim == g->parDim(),
                       "Tried to add a patch of different dimension in a multipatch." );
     }
-    g->setId( m_patches.size() );
+    index_t index = m_patches.size();
+    g->setId(index);
     m_patches.push_back( g.release() ) ;
     addBox();
+    return index;
 }
 
 template<class T>
-inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
+inline index_t gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
 {
-    addPatch(g.clone());
+    return addPatch(g.clone());
 }
 
 template<class T>

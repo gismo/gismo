@@ -143,6 +143,11 @@ public:
 
     // End of deprecated functions
 
+    GISMO_DEPRECATED void addPart(String const & fn, String extension)
+    {
+        addPart( fn+extension);
+    }
+
     /// @brief Adds all the files relevant to a gsParaviewDataSet, to the collection.
     /// @param dataSet The gsParaviewDataSet to be added.
     /// @param time Time step (optional, else an internal integer counter is used)

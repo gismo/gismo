@@ -236,10 +236,10 @@ public:
     gsBasis<T> & basis( const size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
-    void addPatch(typename gsGeometry<T>::uPtr g);
+    index_t addPatch(typename gsGeometry<T>::uPtr g);
 
     /// Add a patch by copying argument
-    void addPatch(const gsGeometry<T> & g);
+    index_t addPatch(const gsGeometry<T> & g);
 
     /// \brief Search for the given geometry and return its patch index.
     size_t findPatchIndex( gsGeometry<T>* g ) const;

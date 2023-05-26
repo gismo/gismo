@@ -731,9 +731,10 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
-    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized");
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
-#pragma omp parallel
+    bool failed = false;
+#pragma omp parallel shared(failed)
 {
 #   ifdef _OPENMP
     const int tid = omp_get_thread_num();
@@ -754,7 +755,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd) //todo: distribute in parallel somehow?
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases() && (!failed); ++patchInd) //todo: distribute in parallel somehow?
     {
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
@@ -765,7 +766,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+        for ( domIt->next(tid); domIt->good() && (!failed); domIt->next(nt) )
 #       else
         for (; domIt->good(); domIt->next() )
 #       endif
@@ -778,8 +779,19 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 continue;
 
             // Perform required pre-computations on the quadrature nodes
+            try
+            {
             m_exprdata->precompute(patchInd);
             //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
+            }
+            catch (...)
+            {
+                // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
+                #pragma omp atomic write
+                failed = true;
+                break;
+            }
+
 
             // Assemble contributions of the element
             op_tuple(ee, arg_tpl);
@@ -787,6 +799,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     }
 
 }//omp parallel
+    // Throw something else?? (floating point exception?)
+    GISMO_ENSURE(!failed,"Assembly failed due to an error");
     m_matrix.makeCompressed();
 }
 

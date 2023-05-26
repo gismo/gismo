@@ -645,7 +645,6 @@ public:
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
 
-
 protected:
     void swap(gsGeometry & other)
     {
