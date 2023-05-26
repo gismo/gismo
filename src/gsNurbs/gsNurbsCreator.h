@@ -104,12 +104,13 @@ public:
 
     static BSplinePtr BSplineUnitInterval(short_t deg);
 
-/// 2d-rectange [low_x,upp_x] x [low_y,upp_y], rotated by \a turndeg degrees.
+    /// 2d-rectange [low_x,upp_x] x [low_y,upp_y], rotated by \a turndeg degrees.
     static TensorBSpline2Ptr BSplineRectangle( T const & low_x = 0,
                                                     T const & low_y = 0,
                                                     T const & upp_x = 1,
                                                     T const & upp_y = 1, T const & turndeg = 0);
 
+    /// Rectangle described by the identity mapping over the given parameter domain, using tensor product B-splines.
 
     /// 2d-trapezium
     static TensorBSpline2Ptr BSplineTrapezium( T const & Lbot = 1,
@@ -183,8 +184,11 @@ public:
     static TensorNurbs3Ptr NurbsCube( T const & r = 1, T const & x = 0,
                                            T const & y = 0, T const & z = 0 );
 
-    /// Exact annulus using NURBS
+    /// Exact annulus using NURBS with inner radius \a r0 and outer radius \a r1
     static TensorNurbs2Ptr NurbsQuarterAnnulus( T const & r0 = 1, T const & r1 = 2);
+    /// Exact full annulus using NURBS with inner radius \a r0 and outer radius \a r1
+    static TensorNurbs2Ptr NurbsAnnulus( T const & r0 =1, T const & r1 =2);
+
     static TensorNurbs3Ptr BSplineSaddle();
     /// Inexact annulus using B-splines
     static GeometryPtr BSplineQuarterAnnulus(const short_t & deg = 2);
@@ -249,9 +253,22 @@ public:
 
     static TensorBSpline2Ptr NurbsQrtPlateWHoleC0();
 
+    /// Makes a Isosceles triangle with height \a H and width \a W 
     static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
 
+    /// Makes a star with \a N patches, outer radius \a R0 and inner radius \a R1
+    static gsMultiPatch<T> BSplineStar(index_t const & N = 3, T const & R0 = 1, T const & R1 = 0.5 );
+
 }; // struct
+
+#ifdef GISMO_BUILD_PYBIND11
+
+    /**
+     * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
+     */
+    void pybind11_init_gsNurbsCreator(pybind11::module &m);
+
+#endif
 
 } // namespace gismo
 
