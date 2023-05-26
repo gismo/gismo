@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     real_t deg = 2;
     index_t numKnots = 2;
     real_t lambda = 1e-6;
-    real_t gtoll = 1e-7; // to decrees to push trogh the iterations
+    real_t gtoll = 1e-7; // to decrese to push trogh the iterations
     std::string fn = "../filedata/fitting/floaterPts_out.xml";
     index_t verbosity = 0; // 0 (no videoprint), 1 (some videoprint), 2 (a lot of videoprint)
     bool ptype = false; // keep it false.
