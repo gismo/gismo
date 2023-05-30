@@ -46,41 +46,47 @@ int main(int argc, char *argv[])
     gsTensorBSplineBasis<2,real_t> tens( kv, kv )   ;
 
     // ...and a 2D-THB-spline basis out of the tensor-B-spline basis.
-    gsHBSplineBasis<2,real_t> thb( tens , true);
+    gsTHBSplineBasis<2,real_t> thb( tens , true);
+    gsTHBSplineBasis<2,real_t> thb2( tens , false);
     //! [constBasis]
 
 
     gsInfo << "basis before refinement:\n" << thb << std::endl;
 
 
-    gsKnotVector<> kv2(a, b, interior, multEnd,degree-1);
+    gsKnotVector<> kv2(a, b, interior, multEnd);//degree-1
+
+    // tens.uniformRefine(1,degree-1);
+    // thb.addLevel(tens);
 
     // ...a 2D-tensor-B-spline basis with this knot vector...
     gsTensorBSplineBasis<2,real_t> tens2( kv2, kv2 );
     gsDebugVar(kv2.asMatrix());
     tens2.insertKnot(0.375,0);
+    tens2.insertKnot(0.375,1);
     tens2.insertKnot(0.825,0);
+    tens2.insertKnot(0.825,1);
     gsDebugVar(tens2);
     thb.addLevel(tens2);
 
-    gsKnotVector<> kv3(a, b, interior, multEnd,degree);
-    gsDebugVar(kv3.asMatrix());
-    // ...a 2D-tensor-B-spline basis with this knot vector...
-    gsTensorBSplineBasis<2,real_t> tens3( kv3, kv3 );
-    tens3.insertKnot(0.375,0);
-    tens3.insertKnot(0.825,0);
-    tens3.insertKnot(0.3125,1);
-    tens3.insertKnot(0.375,1);
-    tens3.insertKnot(0.4375,1);
-    tens3.insertKnot(0.825,1);
-    gsDebugVar(tens3);
-    thb.addLevel(tens3);
+    // gsKnotVector<> kv3(a, b, interior, multEnd,degree);
+    // gsDebugVar(kv3.asMatrix());
+    // // ...a 2D-tensor-B-spline basis with this knot vector...
+    // gsTensorBSplineBasis<2,real_t> tens3( kv3, kv3 );
+    // tens3.insertKnot(0.375,0);
+    // tens3.insertKnot(0.825,0);
+    // tens3.insertKnot(0.3125,1);
+    // tens3.insertKnot(0.375,1);
+    // tens3.insertKnot(0.4375,1);
+    // tens3.insertKnot(0.825,1);
+    // gsDebugVar(tens3);
+    // thb.addLevel(tens3);
 
     // // ...a 2D-tensor-B-spline basis with this knot vector...
     // gsTensorBSplineBasis<2,real_t> tens2 = tens;
     // tens2.uniformRefine();
 
-    thb.printSpaces();
+    thb.printBases();
 
     // Export the initial basis to paraview files
     gsWriteParaview(thb, "thb0_init" );
@@ -99,11 +105,13 @@ int main(int argc, char *argv[])
     */
 
     gsMatrix<> rbox(2,2);
-    rbox<< 0,0, .24, .24 ;
+    rbox.col(0)<<0.20,0.20;
+    rbox.col(1)<<0.4,0.4;
+    // rbox<< 0,0, .5, .5 ;
     thb.refine(rbox); //data is tailored for dyadic refinement.
+    thb2.refine(rbox); //data is tailored for dyadic refinement.
         
     gsInfo << "basis after refinement:\n" << thb << std::endl;
-    gsWrite(thb, "after_ref");
 
     thb.tree().printLeaves();
     thb.printSpaces();
@@ -111,6 +119,7 @@ int main(int argc, char *argv[])
 
     // Export the refined basis to paraview files
     gsWriteParaview(thb, "thb_refined_first" );
+    gsWriteParaview(thb2, "thb2_refined_first" );
     gsInfo << "after refinement," << std::endl;
 
     return 0;
