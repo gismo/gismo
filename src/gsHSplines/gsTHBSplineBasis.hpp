@@ -99,7 +99,7 @@ void gsTHBSplineBasis<d,T>::representBasis()
     m_presentation.clear();
 
     gsMatrix<index_t, d, 2> element_ind(d, 2);
-    point low, high;
+    gsVector<index_t, d   > low, high;
     for (index_t j = 0; j < this->size(); ++j)
     {
         index_t level = this->levelOf(j);
@@ -116,6 +116,11 @@ void gsTHBSplineBasis<d,T>::representBasis()
         // support indices of the coarsest level (low & high), has presentation
         // based only on B-Splines (and not THB-Splines).
         // this is not the same as query 3
+        if (m_manualLevels)
+        {
+            this->_knotIndexToDiadicIndex(level,low);
+            this->_knotIndexToDiadicIndex(level,high);
+        }
         index_t clevel = this->m_tree.query4(low, high, level);
 
         if (level != clevel) // we must compute its presentation
@@ -127,8 +132,8 @@ void gsTHBSplineBasis<d,T>::representBasis()
             // {
             //     gsDebugVar(low);
             //     gsDebugVar(high);
-            //     _diadicIndexToKnotIndex(clevel,low);
-            //     _diadicIndexToKnotIndex(clevel,high);
+            //     this->_diadicIndexToKnotIndex(clevel,low);
+            //     this->_diadicIndexToKnotIndex(clevel,high);
             //     gsDebugVar(low);
             //     gsDebugVar(high);
             // }
@@ -186,6 +191,8 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 
     for (unsigned level = cur_level; level < pres_level; ++level)
     {
+        gsDebugVar(finest_low);
+        gsDebugVar(finest_high);
         _updateSizeOfCoefs(level, level + 1, finest_low,
                            finest_high, cur_size_of_coefs);
 
@@ -201,8 +208,8 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         gsDebugVar(chigh);
         if (m_manualLevels)
         {
-            _diadicIndexToKnotIndex(level,clow);
-            _diadicIndexToKnotIndex(level,chigh);
+            this->_diadicIndexToKnotIndex(level,clow);
+            this->_diadicIndexToKnotIndex(level,chigh);
         }
         gsDebugVar(clow);
         gsDebugVar(chigh);
@@ -214,11 +221,14 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         gsDebugVar(fhigh);
         if (m_manualLevels)
         {
-            _diadicIndexToKnotIndex(level + 1,flow);
-            _diadicIndexToKnotIndex(level + 1,fhigh);
+            this->_diadicIndexToKnotIndex(level + 1,flow);
+            this->_diadicIndexToKnotIndex(level + 1,fhigh);
         }
         gsDebugVar(flow);
         gsDebugVar(fhigh);
+
+        gsDebugVar(act_size_of_coefs);
+        gsDebugVar(cur_size_of_coefs);
 
         std::vector<T> knots;
 
@@ -328,8 +338,8 @@ unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
 
     if (m_manualLevels)
     {
-        _diadicIndexToKnotIndex(level,low);
-        _diadicIndexToKnotIndex(new_level,flow);
+        this->_diadicIndexToKnotIndex(level,low);
+        this->_diadicIndexToKnotIndex(new_level,flow);
     }
 
     gsVector<index_t, d> new_index(d);
@@ -462,10 +472,10 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
     gsDebugVar(fhigh);
     if (m_manualLevels)
     {
-        _diadicIndexToKnotIndex(clevel,clow);
-        _diadicIndexToKnotIndex(clevel,chigh);
-        _diadicIndexToKnotIndex(flevel,flow);
-        _diadicIndexToKnotIndex(flevel,fhigh);
+        this->_diadicIndexToKnotIndex(clevel,clow);
+        this->_diadicIndexToKnotIndex(clevel,chigh);
+        this->_diadicIndexToKnotIndex(flevel,flow);
+        this->_diadicIndexToKnotIndex(flevel,fhigh);
     }
     gsDebugVar(clow);
     gsDebugVar(chigh);
@@ -1441,8 +1451,8 @@ gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& bounding
 
     if (m_manualLevels)
     {
-        _diadicIndexToKnotIndex(level,low);
-        _diadicIndexToKnotIndex(level,low);
+        this->_diadicIndexToKnotIndex(level,low);
+        this->_diadicIndexToKnotIndex(level,low);
     }
 
     const int lowIndex0 = knots0.lastKnotIndex (low(0)) - m_deg[0];
