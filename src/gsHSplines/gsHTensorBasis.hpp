@@ -667,11 +667,8 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
         if (m_manualLevels)
         {
-            for(index_t j = 0; j < k1.size();j++)
-            {
-                k1[j] = m_uIndices[fLevel][j][k1[j]];
-                k2[j] = m_uIndices[fLevel][j][k2[j]];
-            }   
+            _knotIndexToDiadicIndex(fLevel,k1);
+            _knotIndexToDiadicIndex(fLevel,k2);
         }
 
         // 2. Find the smallest level in which the box is completely contained
@@ -1797,6 +1794,37 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<index_t
         }
     }
 }
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::_knotIndexToDiadicIndex(const index_t level, const index_t dir, index_t & knotIndex) const
+{
+    GISMO_ASSERT(m_manualLevels,"Only works for manual levels");
+    knotIndex = m_uIndices[level][dir][knotIndex];
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::_knotIndexToDiadicIndex(const index_t level, gsVector<index_t,d> & knotIndex) const
+{
+    for (index_t r = 0; r != d; r++)
+        this->_knotIndexToDiadicIndex(level,r,knotIndex[r]);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::_diadicIndexToKnotIndex(const index_t level, const index_t dir, index_t & diadicIndex) const
+{
+    GISMO_ASSERT(m_manualLevels,"Only works for manual levels");
+    typename std::vector<index_t>::const_iterator it = std::find_if(m_uIndices[level][dir].begin(),m_uIndices[level][dir].end(),[&diadicIndex](const index_t i) { return i >= diadicIndex; });
+    GISMO_ASSERT(it!=m_uIndices[level][dir].end(),"Index not found");
+    diadicIndex = std::distance(m_uIndices[level][dir].begin(),it);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::_diadicIndexToKnotIndex(const index_t level, gsVector<index_t,d> & diadicIndex) const
+{
+    for (index_t r = 0; r != d; r++)
+        this->_diadicIndexToKnotIndex(level,r,diadicIndex[r]);
+}
+
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::degreeElevate(int const & i, int const dir)

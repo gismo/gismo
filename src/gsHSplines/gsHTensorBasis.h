@@ -522,6 +522,21 @@ public:
     }
 
     /// Prints the spline-space hierarchy
+    void printBases(std::ostream &os = gsInfo) const
+    {
+        os<<"Spline-space hierarchy:\n";
+        for(unsigned i = 0; i< m_bases.size(); i++)
+        {
+            os<<"- level="<<i<<
+                ", size="<<m_bases[i]->size() << ":\n";
+            os << "Space: "<< * m_bases[i] <<")\n";
+            os << "Indices:\n";
+            for (size_t dim=0; dim!=d; dim++)
+                os << "Dir "<<dim<<": "<<gsAsConstVector<index_t>(m_uIndices[i][dim]).transpose()<<"\n";
+        }
+    }
+
+    /// Prints the spline-space hierarchy
     void printBasic(std::ostream &os = gsInfo) const
     {
         os << "basis of dimension " <<this->dim()<<
@@ -1007,6 +1022,13 @@ protected:
     /// the boxes are given back in a std::vector<index_t> and are in the right format
     /// to be given to refineElements().
     void getBoxesAlongSlice( int dir, T par,std::vector<index_t>& boxes ) const;
+
+    /// 
+    void _knotIndexToDiadicIndex(const index_t level, const index_t dir, index_t & knotIndex) const;
+    void _diadicIndexToKnotIndex(const index_t level, const index_t dir, index_t & diadicIndex) const;
+
+    void _knotIndexToDiadicIndex(const index_t level, gsVector<index_t,d> & diadicIndex) const;
+    void _diadicIndexToKnotIndex(const index_t level, gsVector<index_t,d> & diadicIndex) const;
 
 private:
 

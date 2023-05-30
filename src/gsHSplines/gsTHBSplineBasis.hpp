@@ -123,6 +123,16 @@ void gsTHBSplineBasis<d,T>::representBasis()
             this->m_tree.computeFinestIndex(low, level, low);
             this->m_tree.computeFinestIndex(high, level, high);
 
+            // if (m_manualLevels)
+            // {
+            //     gsDebugVar(low);
+            //     gsDebugVar(high);
+            //     _diadicIndexToKnotIndex(clevel,low);
+            //     _diadicIndexToKnotIndex(clevel,high);
+            //     gsDebugVar(low);
+            //     gsDebugVar(high);
+            // }
+
             this->m_is_truncated[j] = clevel;
             _representBasisFunction(j, clevel, low, high);
         }
@@ -187,8 +197,28 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         this->m_tree.computeLevelIndex(finest_low, level, clow);
         this->m_tree.computeLevelIndex(finest_high, level, chigh);
 
+        gsDebugVar(clow);
+        gsDebugVar(chigh);
+        if (m_manualLevels)
+        {
+            _diadicIndexToKnotIndex(level,clow);
+            _diadicIndexToKnotIndex(level,chigh);
+        }
+        gsDebugVar(clow);
+        gsDebugVar(chigh);
+
         this->m_tree.computeLevelIndex(finest_low, level + 1, flow);
         this->m_tree.computeLevelIndex(finest_high, level + 1, fhigh);
+
+        gsDebugVar(flow);
+        gsDebugVar(fhigh);
+        if (m_manualLevels)
+        {
+            _diadicIndexToKnotIndex(level + 1,flow);
+            _diadicIndexToKnotIndex(level + 1,fhigh);
+        }
+        gsDebugVar(flow);
+        gsDebugVar(fhigh);
 
         std::vector<T> knots;
 
@@ -295,6 +325,12 @@ unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
 
     gsVector<index_t, d> flow(d);
     this->m_tree.computeLevelIndex(fin_low, new_level, flow);
+
+    if (m_manualLevels)
+    {
+        _diadicIndexToKnotIndex(level,low);
+        _diadicIndexToKnotIndex(new_level,flow);
+    }
 
     gsVector<index_t, d> new_index(d);
 
@@ -420,6 +456,22 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
     this->m_tree.computeLevelIndex(finest_low, flevel, flow);
     this->m_tree.computeLevelIndex(finest_high, flevel, fhigh);
 
+    gsDebugVar(clow);
+    gsDebugVar(chigh);
+    gsDebugVar(flow);
+    gsDebugVar(fhigh);
+    if (m_manualLevels)
+    {
+        _diadicIndexToKnotIndex(clevel,clow);
+        _diadicIndexToKnotIndex(clevel,chigh);
+        _diadicIndexToKnotIndex(flevel,flow);
+        _diadicIndexToKnotIndex(flevel,fhigh);
+    }
+    gsDebugVar(clow);
+    gsDebugVar(chigh);
+    gsDebugVar(flow);
+    gsDebugVar(fhigh);
+
     // number of new coefficients
     unsigned nmb_of_coefs = 1;
 
@@ -436,9 +488,18 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
         unsigned fnmb_knts = fkv.knotsUntilSpan(fhigh[dim]) -
             fkv.knotsUntilSpan(flow[dim]);
 
+            gsDebugVar(cnmb_knts);
+            gsDebugVar(fnmb_knts);
+
+            gsDebugVar(dim);
+
         size_of_coefs(dim) += fnmb_knts - cnmb_knts;
+    gsDebugVar(nmb_of_coefs);
+    gsDebugVar(size_of_coefs(dim));
         nmb_of_coefs *= size_of_coefs(dim);
+    gsDebugVar(nmb_of_coefs);
     }
+
 
     return nmb_of_coefs;
 }
@@ -1377,6 +1438,12 @@ gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& bounding
 
     const gsKnotVector<T> & knots0 = m_bases[level]->knots(0);
     const gsKnotVector<T> & knots1 = m_bases[level]->knots(1);
+
+    if (m_manualLevels)
+    {
+        _diadicIndexToKnotIndex(level,low);
+        _diadicIndexToKnotIndex(level,low);
+    }
 
     const int lowIndex0 = knots0.lastKnotIndex (low(0)) - m_deg[0];
     const int uppIndex0 = knots0.firstKnotIndex(upp(0)) - 1;
