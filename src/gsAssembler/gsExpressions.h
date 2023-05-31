@@ -1541,8 +1541,13 @@ public:
     // insert g-coefficients to the solution vector
     void insert(const gsGeometry<T> & g, const index_t p = 0) const
     {
+        insert(g.coefs(), p);
+    }
+
+    // insert g-coefficients to the solution vector
+    void insert(const gsMatrix<T> & cf, const index_t p = 0) const
+    {
         const index_t dim = _u.dim();
-        const gsMatrix<T> & cf = g.coefs();
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
         const gsDofMapper & mapper = _u.mapper();
