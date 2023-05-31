@@ -493,8 +493,11 @@ public:
             sthChanged = false;
             for( size_t i = 0; i < bivec.size(); i++ )
             {
-                change = repairInterface( bivec[i] );
-                sthChanged = sthChanged || change;
+                if ( bivec[i].type() != interaction::contact)
+                {
+                    change = repairInterface( bivec[i] );
+                    sthChanged = sthChanged || change;
+                }
             }
             k++; // just to be sure this cannot go on infinitely
         }

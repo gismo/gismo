@@ -1098,7 +1098,8 @@ public:
             {
                 for (gsBoxTopology::const_iiterator it = mb->topology().iBegin();
                      it != mb->topology().iEnd(); ++it) {
-                    mb->matchInterface(*it, m_sd->mapper);
+                    if ( it->type() != interaction::contact ) // If the interface type is 'contact' ignore it.
+                        mb->matchInterface(*it, m_sd->mapper);
                 }
             }
 
