@@ -559,7 +559,7 @@ public:
                               index_t coord) const;
     
     /// Return the control net of the geometry
-    void controlNet( gsMesh<T> & mesh) const
+    virtual void controlNet( gsMesh<T> & mesh) const
     { basis().connectivity(m_coefs, mesh); }
 
     /// @brief Computes the outer normals at parametric points \a u.
