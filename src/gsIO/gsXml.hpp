@@ -54,7 +54,7 @@ char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
         {
             for ( index_t i = 0; i< value.rows(); ++i)
                 oss << value(i,j) <<" ";
-            oss << "\n";
+            if (value.cols()>1) oss << "\n";
         }
     else
         for ( index_t i = 0; i< value.rows(); ++i)
