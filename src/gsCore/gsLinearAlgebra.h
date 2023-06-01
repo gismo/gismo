@@ -18,6 +18,7 @@
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
 
+#define Eigen gsEigen
 // Make Eigen use GISMO_ASSERT which throws exceptions
 //
 // Must be defined before including Eigen headers
@@ -71,6 +72,8 @@
 
 // PaStiX
 //#include <Eigen/PaStiXSupport>
+
+#undef Eigen
 
 #ifdef GISMO_WITH_PYBIND11
 #include <pybind11/eigen.h>
