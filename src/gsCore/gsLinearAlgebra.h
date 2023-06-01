@@ -30,7 +30,7 @@
 #define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
 #include <gsMatrix/gsEigenDeclarations.h>
 
-#include <Eigen/Core>
+#include <gsEigen/Core>
 
 #if defined(gsMpfr_ENABLED)
 #include <unsupported/Eigen/MPRealSupport>
@@ -40,9 +40,9 @@
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include <Eigen/StdVector>
+#include <gsEigen/Dense>
+#include <gsEigen/Sparse>
+#include <gsEigen/StdVector>
 
 // Extra Eigen code
 #include <gsMatrix/Adjugate.h>
@@ -51,29 +51,33 @@
 //#include <gsMatrix/RowSelection.h>
 
 #ifdef GISMO_WITH_SUPERLU
-#include <Eigen/SuperLUSupport>
+#include <gsEigen/SuperLUSupport>
 #endif
 
 #ifdef GISMO_WITH_PARDISO
-#include <Eigen/PardisoSupport>
+#include <gsEigen/PardisoSupport>
 #endif
 
 #ifdef GISMO_WITH_PASTIX
-#include <Eigen/PaStiXSupport>
+#include <gsEigen/PaStiXSupport>
 #endif
 
 // sparsesuite
-//#include <Eigen/UmfPackSupport>
-//#include <Eigen/SPQRSupport>
-//#include <Eigen/CholmodSupport>
+//#include <gsEigen/UmfPackSupport>
+//#include <gsEigen/SPQRSupport>
+//#include <gsEigen/CholmodSupport>
 
 // METIS
-//#include <Eigen/MetisSupport>
+//#include <gsEigen/MetisSupport>
 
 // PaStiX
-//#include <Eigen/PaStiXSupport>
+//#include <gsEigen/PaStiXSupport>
 
 #undef Eigen
+#undef eigen_assert
+#undef EIGEN_MATRIXBASE_PLUGIN
+#undef EIGEN_PLAINOBJECTBASE_PLUGIN
+
 
 #ifdef GISMO_WITH_PYBIND11
 #include <pybind11/eigen.h>

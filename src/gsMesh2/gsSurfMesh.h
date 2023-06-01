@@ -28,8 +28,10 @@ typedef Point Color;
 typedef Point Texture_coordinate;
 }
 
+#define Eigen gsEigen
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Point)
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(gismo::Vec2f)
+#undef Eigen
 
 #include <gsMesh2/gsProperty.h>
 

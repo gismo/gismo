@@ -24,7 +24,9 @@ template <class T>
 class gsSolidHeVertex  : public gsSolidElement<T>
 {
 public:
+    #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
     typedef T scalar_t;
     typedef gsSolidElement<T> SolidElement;
     typedef typename SolidElement::gsSolidHeVertexHandle gsSolidHeVertexHandle;

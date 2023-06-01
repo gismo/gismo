@@ -49,7 +49,9 @@ template<int d, class T>
 class gsHBox
 {
 public:
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
 public:
     typedef gsVector<index_t,d> point;
