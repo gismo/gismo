@@ -200,7 +200,7 @@ template<class T>
 void gsMultiPatch<T>::permute(const std::vector<short_t> & perm)
 {
     gsAsVector<gsGeometry<T>*> a (m_patches);
-    a = Eigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
+    a = gsEigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
 }
 
 template<class T>

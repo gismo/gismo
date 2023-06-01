@@ -53,7 +53,7 @@ public:
 
 public:
     typedef gsVector<index_t,d> point;
-    typedef typename Eigen::aligned_allocator<gsHBox<d,T>> aalloc;
+    typedef typename gsEigen::aligned_allocator<gsHBox<d,T>> aalloc;
 
     typedef typename std::vector<index_t>                                   RefBox;
     typedef typename std::list<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>    Container;

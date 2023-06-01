@@ -782,7 +782,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
         {
             gsMatrix<T> bigger;
             int cprows = cp.rows();
-            /*cp.conservativeResize( cp.rows() + temp_cp.rows(), Eigen::NoChange );
+            /*cp.conservativeResize( cp.rows() + temp_cp.rows(), gsEigen::NoChange );
               for( int j=cprows; j < cp.rows(); j++ )
               cp.row(j) = temp2.row(j-cprows);*/
             bigger.resize(cp.rows()+new_cp.rows(), cp.cols());

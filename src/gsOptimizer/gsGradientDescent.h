@@ -26,8 +26,8 @@ namespace gismo
 template<typename T>
 struct gsGradientDescentObjective
 {
-    typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vector;
-    // typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+    typedef gsEigen::Matrix<T, gsEigen::Dynamic, 1> Vector;
+    // typedef gsEigen::Matrix<T, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
 
     gsGradientDescentObjective(gsOptProblem<T>* objective)
     :

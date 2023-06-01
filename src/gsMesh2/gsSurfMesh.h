@@ -18,8 +18,8 @@
 
 namespace gismo // typedefs
 {
-typedef Eigen::Vector<real_t,3> Point;
-typedef Eigen::Vector<float,2> Vec2f;
+typedef gsEigen::Vector<real_t,3> Point;
+typedef gsEigen::Vector<float,2> Vec2f;
 /// Normal type
 typedef Point Normal;
 /// Color type
@@ -49,7 +49,7 @@ typedef gismo::Point Point;
 
 private:
 /// 3D vector type
-typedef Eigen::Vector<Scalar,3> Vec3;
+typedef gsEigen::Vector<Scalar,3> Vec3;
 
 public: //------------------------------------------------------ topology types
 

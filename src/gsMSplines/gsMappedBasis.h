@@ -42,7 +42,7 @@ private:
     typedef typename std::vector<index_t>::const_iterator ConstIndexIter;
     typedef typename std::vector<T> WeightContainer;
     typedef typename std::vector<T>::const_iterator ConstWeightIter;
-    typedef Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
+    typedef gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
 
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
