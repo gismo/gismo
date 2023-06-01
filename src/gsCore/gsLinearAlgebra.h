@@ -43,6 +43,7 @@
 #include <gsEigen/Dense>
 #include <gsEigen/Sparse>
 #include <gsEigen/StdVector>
+#include <gsEigen/Geometry>
 
 // Extra Eigen code
 #include <gsMatrix/Adjugate.h>
