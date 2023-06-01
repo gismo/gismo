@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 21.12.0-->
+<xml>
+ <OptionList id="0">
+  <int label="Admissibility" desc="Admissibility region, 0=T-admissibility (default), 1=H-admissibility" value="0"/>
+  <int label="CoarsenExtension" desc="Extension coarsening" value="0"/>
+  <int label="CoarsenRule" desc="Rule used for coarsening: 1=GARU, 2=PUCA, 3=BULK, 4=PBULK." value="2"/>
+  <int label="Jump" desc="Jump parameter m" value="2"/>
+  <int label="MaxLevel" desc="Maximum refinement level" value="2"/>
+  <int label="RefineExtension" desc="Extension refinement" value="0"/>
+  <int label="RefineRule" desc="Rule used for refinement: 1=GARU, 2=PUCA, 3=BULK, 4=PBULK." value="2"/>
+  <real label="CoarsenParam" desc="Parameter used for coarsening" value="0.1"/>
+  <real label="CoarsenParamExtra" desc="Parameter used for coarsening" value="1e-2"/>
+  <real label="RefineParam" desc="Parameter used for refinement" value="0.5"/>
+  <real label="RefineParamExtra" desc="Parameter used for refinement" value="1e-100"/>
+  <bool label="Admissible" desc="Mark the admissible region" value="1"/>
+  <int label="Convergence_alpha" desc="Estimated convergence parameter of the error, for alpha*p+beta convergence." value="2"/>
+  <int label="Convergence_beta" desc="Estimated convergence parameter of the error, for alpha*p+beta convergence." value="2"/>
+
+ </OptionList>
+</xml>
+

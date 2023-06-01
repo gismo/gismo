@@ -315,11 +315,11 @@ public:
     /// @brief Refine every basis uniformly
     ///
     /// This calls \a gsBasis::uniformRefine(\a numKnots,\a mul) for all patches
-    void uniformRefine(int numKnots = 1, int mul = 1)
+    void uniformRefine(int numKnots = 1, int mul = 1, int dir = -1)
     {
         for (size_t k = 0; k < m_bases.size(); ++k)
         {
-            m_bases[k]->uniformRefine(numKnots,mul);
+            m_bases[k]->uniformRefine(numKnots,mul,dir);
         }
     }
 

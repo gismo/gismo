@@ -30,6 +30,7 @@ class gsAffineFunction : public gsFunction<T>
 {
 protected:
     gsMatrix<T> m_mat;
+    gsMatrix<T> m_box1, m_box2;
     gsVector<T> m_trans;
 public:
     /// Shared pointer for gsAffineFunction
