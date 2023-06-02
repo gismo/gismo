@@ -2,6 +2,7 @@
 
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsWriteParaview.hpp>
+// #include <gsCore/gsMultiPatch.h>
 
 #define T real_t
 #define uZ unsigned
@@ -40,11 +41,26 @@ TEMPLATE_INST
 void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,std::string const & fn,unsigned npts);
+
+TEMPLATE_INST
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts,const bool fullsupport, const std::vector<index_t> indices);
+
+TEMPLATE_INST
+void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,std::string const & fn, unsigned npts);
+
+TEMPLATE_INST
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph);
 
 TEMPLATE_INST
 void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn, 
                      unsigned npts, bool mesh);
+
+TEMPLATE_INST
+void gsWriteParaview(gsHBox<2,T> & hbox, std::string const & fn);
+
+TEMPLATE_INST
+void gsWriteParaview(gsHBoxContainer<2,T> & hbox, std::string const & fn);
 
 TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn);
@@ -100,6 +116,22 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      unsigned npts);
 
 TEMPLATE_INST
+void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
+
+TEMPLATE_INST
+void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
+
+TEMPLATE_INST
+void gsWriteParaview(gsMultiPatch<T> const & patches,
+                     typename gsBoundaryConditions<T>::bcContainer const & bcs,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet);
+
+TEMPLATE_INST
 void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
                                  const unsigned idLoop,
                                  const unsigned idCurve,
@@ -111,6 +143,13 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
                            const bool isParam,
                            std::string const & fn, unsigned npts);
+
+TEMPLATE_INST
+void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
+                         std::string const & fn, unsigned resolution);
+
+TEMPLATE_INST
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
 
 
 } // namespace gismo

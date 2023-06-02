@@ -101,7 +101,7 @@ namespace gismo
                         // copied from gsWriteParaview
                         numPoints = cast<real_t,int>(
                             static_cast<real_t>(math::max( m_geometry->piece(k).basis().maxDegree()-1, (short_t)1))
-                            * math::pow(evalPtsPerElem, real_t(1.0)/static_cast<real_t>(m_geometry->domainDim())) );
+                            * math::pow(evalPtsPerElem, (real_t)(1.0)/static_cast<real_t>(m_geometry->domainDim())) );
                     }
                     gsMesh<real_t> msh( gsMultiBasis<real_t>(*m_geometry).basis(k), numPoints);
                     static_cast<const gsGeometry<real_t>&>(m_geometry->piece(k)).evaluateMesh(msh);

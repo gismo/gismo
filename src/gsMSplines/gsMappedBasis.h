@@ -97,11 +97,11 @@ public:
     //////////////////////////////////////////////////
 
     /// getter for (const) m_bases[i]
-    BasisType const & getBase(int i) const
+    BasisType const & getBase(index_t i) const
     { return *m_bases[i]; }
 
     /// getter for m_bases[i]
-    BasisType & getBase(int i)
+    BasisType & getBase(index_t i)
     { return *m_bases[i]; }
 
      /// getter for m_bases
@@ -150,11 +150,13 @@ public:
     index_t size(const index_t index) const;
     index_t size() const { return m_mapper->getNrOfTargets(); }
 
+    index_t globalSize() const { return m_mapper->getNrOfTargets(); }
+
     /// Returns the number of local basis functions in the basis
     index_t localSize() const { return m_mapper->getNrOfSources(); }
 
     /// Returns the number of local basis functions of the patch with given \a index in the basis
-    index_t localSize(const int index) const
+    index_t localSize(const index_t index) const
     { return m_bases[index]->size(); }
 
     /// Returns the maximal polynomial degree of the patches.
@@ -210,7 +212,7 @@ public:
     //const gsFunctionSet & piece(const index_t k) const { return m_sb[k]; }
 
     /// gives back the domain iterator of the boundary side \a s of a given \a patch
-    domainIter makeDomainIterator(const int patch,const boxSide & s) const
+    domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
     { return m_bases[patch]->makeDomainIterator(s); }
 
     /** exports the patch \a i of this geometry (with coefs) to a Geometry object
@@ -219,7 +221,7 @@ public:
      *
      * \param[in] localCoef : the coefficients to the local basis functions
      */
-    gsGeometry<T>* exportPatch(const int i,gsMatrix<T> const & localCoef) const;
+    gsGeometry<T>* exportPatch(const index_t i,gsMatrix<T> const & localCoef) const;
 
     /** exports this geometry (with coefs) to a gsMultiPatch object.
      *
@@ -280,18 +282,18 @@ public:
     void deriv2_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
     /// Evaluate the \a global_BF-th basis function on \a patch at points \a u into \a result.
-    void evalSingle_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void derivSingle_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void deriv2Single_into(const index_t patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void evalSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void derivSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv2Single_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
     /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
     /// to order \a n at points \a u into \a result.
     void evalAllDers_into(const index_t patch, const gsMatrix<T> & u,
-                          const int n, std::vector<gsMatrix<T> >& result ) const;
+                          const index_t n, std::vector<gsMatrix<T> >& result ) const;
 
     /// @brief Evaluate the basis function \a global_BF at \a patch and its derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const int n,gsMatrix<T> & result ) const;
+    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const;
 
     /// @}
 
@@ -316,6 +318,16 @@ public:
     void local_coef_to_global_coef(gsMatrix<T> const & localCoefs,gsMatrix<T> & globalCoefs) const
     {  m_mapper->mapToTargetCoefs(localCoefs,globalCoefs); }
 
+    /// See gsMappedBasis::_getPatchIndex
+    index_t getPatch(index_t const localIndex)
+    {
+        return _getPatch(localIndex);
+    }
+    index_t getPatchIndex(index_t const localIndex)
+    {
+        return _getPatchIndex(localIndex);
+    }
+
 protected:
     //////////////////////////////////////////////////
     // functions for working with Indexes
@@ -326,7 +338,7 @@ protected:
      *
      * \param[in] localIndex : the accumulated index of the basis function
      */
-    index_t _getPatch(index_t localIndex) const;
+    index_t _getPatch(index_t const localIndex) const;
 
     /** gets the patchIndex of the basis function specified by its localIndex.
      *  This is the index of this basis function in the basis of this patch.

@@ -43,7 +43,7 @@
 
   <!-- Assembler options -->
  <OptionList id="4">
-  <int label="DirichletStrategy" desc="Strategy related to enforcement of Dirichlet DoF values [0ignore, 1:eliminate, 2:..]" value="1"/>
+  <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
   <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
   <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
   <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>

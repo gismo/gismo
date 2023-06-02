@@ -594,6 +594,10 @@ void gsBasis<T>::uniformCoarsen(int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::uniformCoarsen_withCoefs(gsMatrix<T>& , int )
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> &,
                                             int)
 { GISMO_NO_IMPLEMENTATION }

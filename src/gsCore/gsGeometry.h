@@ -472,6 +472,12 @@ public:
         this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
     }
 
+    /// Coarsen the geometry uniformly, removing \a numKnots new knots into each knot span
+    virtual void uniformCoarsen(int numKnots = 1) // todo: int dir = -1
+    {
+        this->basis().uniformCoarsen_withCoefs( m_coefs, numKnots);
+    }
+
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
      *
      * The syntax of \em boxes depends on the implementation in the
@@ -529,6 +535,9 @@ public:
     short_t degree(const short_t & i) const
      //{ return this->basisComponent(i).degree(); };
      { return this->basis().degree(i); }
+
+    /// Inserts knot \a knot at direction \a dir, \a i times
+    virtual void insertKnot( T knot, index_t dir, index_t i = 1);
 
     /// \brief Elevate the degree by the given amount \a i for the
     /// direction \a dir. If \a dir is -1 then degree elevation is
@@ -623,12 +632,24 @@ public:
                         const T accuracy = 1e-6,
                         const bool useInitialPoint = false) const;
 
+    /// Computes the Hausdorff distance in a single direction from *this to \a other.
+    /// The Hausdorff distance is computed by taking the maximum of the shortest distances
+    /// between points of this and \a other.
+    T directedHausdorffDistance(const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6) const;
+
+    /// Computes the Hausdorff distance between *this to \a other.
+    T HausdorffDistance(        const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6,
+                                const bool directed=false) const;
+
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
-
 
 protected:
     void swap(gsGeometry & other)

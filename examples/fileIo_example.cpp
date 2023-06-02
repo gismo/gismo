@@ -118,6 +118,11 @@ int main(int argc, char *argv[])
   lookFor< gsMultiPatch<> > (data) ;
 
   lookFor< gsFunctionExpr<> > (data);
+
+  lookFor< gsHBox<2,real_t> > (data);
+
+  lookFor< gsHBoxContainer<2,real_t> > (data);
+
     
 #ifdef gsOpennurbs_ENABLED
   if ( data.has< gsPlanarDomain<> >() )
