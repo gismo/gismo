@@ -81,6 +81,7 @@ public:
 
 public:
 
+    void updateGeometry(gsMatrix<T> coefficients, gsMatrix<T> parameters);
     /**
      * @brief iterative_refine iteratively refine the basis
      *
@@ -188,6 +189,15 @@ protected:
 };
 
 template<short_t d, class T>
+void gsHFitting<d, T>::updateGeometry(gsMatrix<T> coefficients,
+                                     gsMatrix<T> parameters)
+{
+  this->m_result->coefs() = coefficients;
+  this->m_param_values = parameters;
+  this->computeErrors();
+}
+
+template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
                                      index_t maxPcIter)
 {
@@ -251,6 +261,8 @@ void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_thr
     // INVARIANT:
     // m_pointErrors contains the point-wise errors of the fitting
     // therefore: if the size of m_pointErrors is 0, there was no fitting up to this point
+
+    // shall we introduce the parameter correction already here?
 
     if ( m_pointErrors.size() == 0 )
     {
