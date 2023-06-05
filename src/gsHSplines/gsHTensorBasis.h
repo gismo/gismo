@@ -114,10 +114,39 @@ public:
         update_structure();
     }
 
-    gsHTensorBasis( gsBasis<T> const&  tbasis)
+    gsHTensorBasis( gsBasis<T> const&  tbasis, bool manualLevels)
     {
-        initialize_class(tbasis);
-        // Build the characteristic matrices
+        if (!manualLevels) 
+        {
+            initialize_class(tbasis);
+            // Build the characteristic matrices
+        }
+        else
+        {
+            // Degrees
+            m_deg.resize(d);
+            for( index_t i = 0; i < d; i++)
+                m_deg[i] = tbasis.degree(i);
+
+            // Construct the initial basis
+            m_bases.reserve(3);
+            if ( const tensorBasis * tb2 =
+                    dynamic_cast<const tensorBasis*>(&tbasis) )
+            {
+                m_bases.push_back(tb2->clone().release());
+            }
+            else
+            {
+                GISMO_ERROR("Cannot construct a Hierarchical basis from "<< tbasis );
+            }
+
+            // Initialize the binary tree
+            point upp;
+            for ( index_t i = 0; i!=d; ++i )
+                upp[i] = m_bases[0]->knots(i).numElements();
+
+            m_tree.init(upp);
+        }
         update_structure();
     }
 
@@ -274,6 +303,15 @@ public:
         freeAll( m_bases );
     }
 
+    void addLevel( const gsTensorBSplineBasis<d, T>& next_basis)
+    {
+        // m_bases.push_back( new gsTensorBSplineBasis<d, T>( give( next_basis ) ));
+        m_bases.push_back( next_basis.clone().release() );
+    }
+
+    /// \brief Inserts a domain into the basis
+    void only_insert_box(point const & k1, point const & k2, int lvl);
+
 protected:
 
     // TO DO: remove these members after they are not used anymore
@@ -416,7 +454,7 @@ public:
     void printCharMatrix(std::ostream &os = gsInfo) const
     {
         os<<"Characteristic matrix:\n";
-        for(unsigned i = 0; i<= maxLevel(); i++)
+        for(size_t i = 0; i!= m_xmatrix.size(); i++)
         {
             if ( m_xmatrix[i].size() )
             {
@@ -441,7 +479,7 @@ public:
     void printSpaces(std::ostream &os = gsInfo) const
     {
         os<<"Spline-space hierarchy:\n";
-        for(unsigned i = 0; i<= maxLevel(); i++)
+        for(size_t i = 0; i!= m_xmatrix.size(); i++)
         {
             if ( m_xmatrix[i].size() )
             {
@@ -470,7 +508,7 @@ public:
         os << "Domain: ["<< supp.col(0).transpose()<< "]..["<<
             supp.col(1).transpose()<< "].\n";
         os <<"Size per level: ";
-        for(unsigned i = 0; i<= this->m_tree.getMaxInsLevel(); i++)
+        for(size_t i = 0; i!= m_xmatrix.size(); i++)
             os << this->m_xmatrix[i].size()<< " ";
         os<<"\n";
     }
@@ -603,6 +641,12 @@ public:
     void unrefineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
     void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
+    // Coarsens the basis uniformly by removing \a numKnots knots on each knot span
+    virtual void uniformCoarsen(int numKnots = 1);
+
+    // Coarsen the basis uniformly and adjust the given matrix of coefficients accordingly
+    void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const;
@@ -670,6 +714,17 @@ public:
     /// \return levels gsMatrix of size <em>1</em> x <em>n</em>.\n
     /// <em>levels(0,i)</em> is the level of the point defined by the <em>i</em>-th column in \em Pts.
     index_t getLevelAtPoint(const  gsMatrix<T> & Pt ) const;
+
+    // S.K.
+    /// @brief Returns the level(s) at indexes in the parameter domain.
+    ///
+                    /// \param[in] Pt gsMatrix of size <em>d</em> x <em>n</em>, where\n
+                    /// \em d is the dimension of the parameter domain and\n
+                    /// \em n is the number of evaluation points.\n
+                    /// Each column of \em Pts represents one evaluation point.
+                    /// \return levels gsMatrix of size <em>1</em> x <em>n</em>.\n
+                    /// <em>levels(0,i)</em> is the level of the point defined by the <em>i</em>-th column in \em Pts.
+    index_t getLevelAtIndex(const point & Pt ) const;
 
     // S.K.
     /// @brief Returns the level(s) and knot span(s) at point(s) in the parameter domain.
@@ -979,7 +1034,7 @@ private:
 
     //D
 public:
-    /// \brief Returns transfer matrix betweend the hirarchycal spline given
+    /// \brief Returns transfer matrix between the hirarchical spline given
     /// by the characteristic matrix "old" and this
     void transfer (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
 

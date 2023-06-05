@@ -156,6 +156,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsTensorBSplineBasis2( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis3( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis4( nurbs );
+  gismo::pybind11_init_gsNurbsCreator( nurbs );
 
   
   py::module pde = m.def_submodule("pde");
@@ -186,17 +187,26 @@ PYBIND11_MODULE(pygismo, m) {
   utils.attr("__version__") = GISMO_VERSION;
   utils.doc() = "G+Smo (Geometry + Simulation Modules): Utils module";
 
+  gismo::pybind11_init_PPN( m );
+
+#ifdef gsKLShell_ENABLED
   py::module klshell = m.def_submodule("klshell");
 
   klshell.attr("__name__") = "pygismo.klshell";
   klshell.attr("__version__") = GISMO_VERSION;
   klshell.doc() = "G+Smo (Geometry + Simulation Modules): KLShell module";
 
-
-  gismo::pybind11_init_PPN( m );
-
-#ifdef gsKLShell_ENABLED
   gismo::pybind11_init_gsKLShell( klshell );
+#endif
+
+#ifdef gsStructuralAnalysis_ENABLED
+  py::module structuralanalysis = m.def_submodule("structuralanalysis");
+
+  structuralanalysis.attr("__name__") = "pygismo.structuralanalysis";
+  structuralanalysis.attr("__version__") = GISMO_VERSION;
+  structuralanalysis.doc() = "G+Smo (Geometry + Simulation Modules): StructuralAnalysis module";
+
+  gismo::pybind11_init_gsStructuralAnalysis( structuralanalysis );
 #endif
 }
 

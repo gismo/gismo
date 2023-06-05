@@ -23,8 +23,12 @@
 #include <gsCore/gsField.h>
 #include <gsCore/gsDebug.h>
 
+#include <gsCore/gsMultiPatch.h>
+
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsSolid.h>
+
+#include <gsHSplines/gsHBoxContainer.h>
 
 #define PLOT_PRECISION 12
 
@@ -227,7 +231,7 @@ void writeSingleBasisMesh(const gsBasis<T> & basis,
 /// Export a computational mesh
 template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
-                         std::string const & fn, unsigned resolution = 8)
+                         std::string const & fn, unsigned resolution)
 {
     gsMesh<T> msh(basis, resolution);
     Geo.evaluateMesh(msh);
@@ -672,7 +676,7 @@ void gsWriteParaview(const gsField<T> & field,
 
     const unsigned n = field.nPieces();
     gsParaviewCollection collection(fn);
-    std::string fileName;
+    std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
     {
@@ -680,14 +684,16 @@ void gsWriteParaview(const gsField<T> & field,
             field.igaFunction(i).basis() : field.patch(i).basis();
 
         fileName = fn + util::to_string(i);
+        fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( field, i, fileName, npts );
-        collection.addPart(fileName + ".vts");
+        collection.addPart(fileName_nopath + ".vts");
         if ( mesh )
         {
             fileName+= "_mesh";
+            fileName_nopath = gsFileManager::getFilename(fileName);
             writeSingleCompMesh(dom, field.patch(i), fileName);
 
-            collection.addPart(fileName + ".vtp");
+            collection.addPart(fileName_nopath + ".vtp");
         }
 
     }
@@ -713,13 +719,117 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
 
     const unsigned n = geo.nPieces();
     gsParaviewCollection collection(fn);
-    std::string fileName;
+    std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
     {
         fileName = fn + util::to_string(i);
+        fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
-        collection.addPart(fileName + ".vts");
+        collection.addPart(fileName_nopath + ".vts");
+    }
+    collection.save();
+}
+
+/// Write a file containing a solution field over a geometry
+template<class T>
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
+                     std::string const & fn,
+                     unsigned npts)
+{
+    gsParaviewCollection collection(fn);
+    std::string fileName, fileName_nopath;
+    for ( index_t p=0; p < mspline.nPieces(); ++p )
+    {
+        // Compute the geometry
+        fileName = fn + "_" + util::to_string(p);
+        fileName_nopath = gsFileManager::getFilename(fileName);
+        writeSingleGeometry(mspline.piece(p),mspline.piece(p).support(),fileName,npts);
+        collection.addPart(fileName_nopath + ".vts",-1,"",p);
+    }
+    collection.save();
+}
+
+/// Write a file containing a solution field over a geometry
+template<class T>
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
+                     gsMappedBasis<2,T>  const& mbasis,
+                     std::string const & fn,
+                     unsigned npts,
+                     const bool fullsupport,
+                     const std::vector<index_t> indices)
+{
+    /*
+        We loop over all global basis functions.
+        For each global basis function, we find the patches on which it is active
+        On the patches, we call evalSingle_into and construct a local Paraview file
+        Then, the paraview file is combined as part in a collection.
+    */
+    GISMO_ASSERT(mspline.nPieces()==mbasis.nPieces(),"Function sets must have same number of pieces, but the basis has "<<mbasis.nPieces()<<" and the geometry has "<<mspline.nPieces());
+
+    std::vector<index_t> plotIndices;
+    if (indices.size()==0)
+    {
+        plotIndices.resize(mbasis.globalSize());
+        std::generate(plotIndices.begin(), plotIndices.end(), [n = 0] () mutable { return n++; });
+    }
+    else
+        plotIndices = indices;
+
+    gsParaviewCollection collection(fn);
+    std::string fileName, fileName_nopath;
+    gsMatrix<T> eval_geo, eval_basis, pts, ab;
+    gsVector<T> a, b;
+    gsVector<unsigned> np;
+    for ( index_t p=0; p < mspline.nPieces(); ++p )
+    {
+        if (fullsupport)
+        {
+            // Compute the geometry
+            ab = mspline.piece(p).support();
+            a = ab.col(0);
+            b = ab.col(1);
+
+            np = uniformSampleCount(a, b, npts);
+            pts = gsPointGrid(a, b, np);
+
+            eval_geo = mspline.piece(p).eval(pts);//pts
+        }
+        
+        for (std::vector<index_t>::const_iterator i = plotIndices.begin(); i!=plotIndices.end(); i++)//, k++)
+        {
+            if (!fullsupport)
+            {
+                // Compute the geometry on the support of the basis function
+                ab = mbasis.piece(p).support(*i);
+                // ab = mbasis.piece(p).support();
+                a = ab.col(0);
+                b = ab.col(1);
+
+                np = uniformSampleCount(a, b, npts);
+                pts = gsPointGrid(a, b, np);
+
+                eval_geo = mspline.piece(p).eval(pts);//pts                
+            }
+
+            fileName = fn + util::to_string(*i) + "_" + util::to_string(p);
+            fileName_nopath = gsFileManager::getFilename(fileName);
+
+            eval_basis = mbasis.piece(p).evalSingle(*i,pts);
+            gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
+
+            collection.addPart(fileName_nopath + ".vts",*i,"",p);
+        }
+        // for (index_t k = 0; k < mbasis.globalSize(); k++)
+        // {
+        //     fileName = fn + util::to_string(k) + "_" + util::to_string(p);
+        //     fileName_nopath = gsFileManager::getFilename(fileName);
+
+        //     eval_basis = mbasis.piece(p).evalSingle(k,pts);
+        //     gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
+
+        //     collection.addPart(fileName_nopath + ".vts",k,"",p);
+        // }   
     }
     collection.save();
 }
@@ -732,50 +842,52 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     const bool curve = ( Geo.domainDim() == 1 );
 
     gsParaviewCollection collection(fn);
-
+    std::string fn_nopath = gsFileManager::getFilename(fn);
     if ( curve )
     {
         writeSingleCurve(Geo, fn, npts);
-        collection.addPart(fn + ".vtp");
+        collection.addPart(fn_nopath + ".vtp");
     }
     else
     {
         writeSingleGeometry(Geo, fn, npts);
-        collection.addPart(fn + ".vts");
+        collection.addPart(fn_nopath + ".vts");
     }
 
     if ( mesh ) // Output the underlying mesh
     {
         const std::string fileName = fn + "_mesh";
+        std::string fileName_nopath = gsFileManager::getFilename(fileName);
 
-	int ptsPerEdge;
+    	int ptsPerEdge;
 
-	// If not using default, compute the resolution from npts.
-	if(npts!=8)
-	{
-	    const T evalPtsPerElem = npts * (1.0 / Geo.basis().numElements());
+    	// If not using default, compute the resolution from npts.
+    	if(npts!=8)
+    	{
+    	    const T evalPtsPerElem = npts * (1.0 / Geo.basis().numElements());
 
-	    // The following complicated formula should ensure similar
-	    // resolution of the mesh edges and the surface. The
-	    // additional multiplication by deg - 1 ensures quadratic
-	    // elements to be approximated by at least two lines etc.
-	    ptsPerEdge = cast<T,int>(
-            static_cast<T>(math::max(Geo.basis().maxDegree()-1, (short_t)1)) * math::pow(evalPtsPerElem, T(1.0)/static_cast<T>(Geo.domainDim())) );
-	}
-	else
-	{
-	    ptsPerEdge = npts;
-	}
+    	    // The following complicated formula should ensure similar
+    	    // resolution of the mesh edges and the surface. The
+    	    // additional multiplication by deg - 1 ensures quadratic
+    	    // elements to be approximated by at least two lines etc.
+    	    ptsPerEdge = cast<T,int>(
+                static_cast<T>(math::max(Geo.basis().maxDegree()-1, (short_t)1)) * math::pow(evalPtsPerElem, T(1.0)/static_cast<T>(Geo.domainDim())) );
+    	}
+    	else
+    	{
+    	    ptsPerEdge = npts;
+    	}
 
         writeSingleCompMesh(Geo.basis(), Geo, fileName, ptsPerEdge);
-        collection.addPart(fileName + ".vtp");
+        collection.addPart(fileName_nopath + ".vtp");
     }
 
     if ( ctrlNet ) // Output the control net
     {
         const std::string fileName = fn + "_cnet";
+        std::string fileName_nopath = gsFileManager::getFilename(fileName);
         writeSingleControlNet(Geo, fileName);
-        collection.addPart(fileName + ".vtp");
+        collection.addPart(fileName_nopath + ".vtp");
     }
 
     // Write out the collection file
@@ -794,8 +906,9 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
     for (size_t i = 0; i != domain.nPatches(); ++i)
     {
         const std::string fileName = fn + util::to_string(i) + "_mesh";
+        const std::string fileName_nopath = gsFileManager::getFilename(fileName);
         writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts);
-        collection.addPart(fileName + ".vtp");
+        collection.addPart(fileName_nopath + ".vtp");
     }
 
     // Write out the collection file
@@ -824,35 +937,38 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
     const size_t n = Geo.size();
 
     gsParaviewCollection collection(fn);
-    std::string fnBase;
+    std::string fnBase, fnBase_nopath;
 
     for ( size_t i=0; i<n ; i++)
     {
         fnBase = fn + "_" + util::to_string(i);
+        fnBase_nopath = gsFileManager::getFilename(fnBase);
 
         if ( Geo.at(i)->domainDim() == 1 )
         {
             writeSingleCurve(*Geo[i], fnBase, npts);
-            collection.addPart(fnBase + ".vtp");
+            collection.addPart(fnBase_nopath + ".vtp");
         }
         else
         {
             writeSingleGeometry( *Geo[i], fnBase, npts ) ;
-            collection.addPart(fnBase + ".vts");
+            collection.addPart(fnBase_nopath + ".vts");
         }
 
         if ( mesh )
         {
             const std::string fileName = fnBase + "_mesh";
+            const std::string fileName_nopath = gsFileManager::getFilename(fileName);
             writeSingleCompMesh(Geo[i]->basis(), *Geo[i], fileName);
-            collection.addPart(fileName + ".vtp");
+            collection.addPart(fileName_nopath + ".vtp");
         }
 
         if ( ctrlNet ) // Output the control net
         {
             const std::string fileName = fnBase + "_cnet";
+            const std::string fileName_nopath = gsFileManager::getFilename(fileName);
             writeSingleControlNet(*Geo[i], fileName);
-            collection.addPart(fileName + ".vtp");
+            collection.addPart(fileName_nopath + ".vtp");
         }
     }
     collection.save();
@@ -948,8 +1064,9 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
     for (index_t i = 0; i != func.size(); ++i)
     {
         const std::string fileName = fn + util::to_string(i);
+        const std::string fileName_nopath = gsFileManager::getFilename(fileName);
         gsWriteParaview(func.function(i), func.function(i).support(), fileName, npts,false);
-        collection.addPart(fileName + ".vts");
+        collection.addPart(fileName_nopath + ".vts");
     }
 
     // Write out the collection file
@@ -1036,21 +1153,109 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
     for ( index_t i=0; i< n; i++)
     {
         std::string fileName = fn + util::to_string(i);
+        std::string fileName_nopath = gsFileManager::getFilename(fileName);
         gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
-        collection.addPart(fileName + ".vts");
+        collection.addPart(fileName_nopath + ".vts");
     }
 
     if ( mesh )
     {
         std::string fileName = fn + "_mesh";
+        std::string fileName_nopath = gsFileManager::getFilename(fileName);
         writeSingleBasisMesh(basis, fileName);
         //collection.addPart(fileName, ".vtp");
-        collection.addPart(fileName + ".vtu");
+        collection.addPart(fileName_nopath + ".vtu");
     }
 
     collection.save();
 }
 
+/// Writes a single \ref gsHBox \a box to a file with name \a fn
+template<class T>
+void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn)
+{
+    gsMatrix<T> points, values(3,4),corners(2,2);
+    gsVector<index_t> np(2);
+    np<<2,2;
+    box.computeCoordinates();
+    points = gsPointGrid<T>(box.getCoordinates(),4);
+    values.row(0).setConstant(box.level());
+    values.row(1).setConstant(box.error());
+    values.row(2).setConstant(box.projectedErrorRef());
+    gsWriteParaviewTPgrid(points,values,np,fn);
+}
+
+/// Writes a single \ref gsHBox \a box to a file with name \a fn
+template<class T>
+void gsWriteParaview(gsHBox<2,T> & box, std::string const & fn)
+{
+    gsParaviewCollection collection(fn);
+
+    writeSingleHBox(box,fn);
+    collection.addPart(fn + ".vts");
+
+    // Write out the collection file
+    collection.save();
+}
+
+/// Writes a container of \ref gsHBox , i.e. a \gsHBoxContainer \a boxes, to a file with name \a fn
+template<class T>
+void gsWriteParaview(gsHBoxContainer<2,T> & boxes, std::string const & fn)
+{
+    gsParaviewCollection collection(fn);
+
+    index_t i=0;
+    std::string fileName;
+    for (typename gsHBoxContainer<2,T>::HIterator Hit = boxes.begin(); Hit!=boxes.end(); Hit++)
+        for (typename gsHBoxContainer<2,T>::Iterator Cit = Hit->begin(); Cit!=Hit->end(); Cit++, i++)
+        {
+            fileName = fn + util::to_string(i);
+            writeSingleHBox<T>(*Cit,fileName);
+            fileName = gsFileManager::getFilename(fileName);
+            collection.addPart(fileName + ".vts",-1,"",i);
+        }
+
+    // Write out the collection file
+    collection.save();
+}
+
+/// Export basis functions
+template<class T>
+void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
+                     std::string const & fn, unsigned npts)
+{
+    GISMO_ENSURE(mp.nPatches()==mb.nBases(),"Number of bases and patches do not correspond");
+
+    gsParaviewCollection collection(fn);
+    
+    gsMatrix<T> eval_geo, eval_basis, pts, ab;
+    gsVector<T> a, b;
+
+    index_t k=0;
+    for (size_t p=0; p!=mp.nPatches(); p++)
+        for ( index_t i=0; i< mb.basis(p).size(); i++, k++)
+        {
+            // Compute the geometry on the support of the basis function
+            ab = mb.basis(p).support(i);
+            a = ab.col(0);
+            b = ab.col(1);
+
+            gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+            pts = gsPointGrid(a, b, np);
+
+            eval_geo = mp.patch(p).eval(pts);//pts
+
+            std::string fileName = fn + "_" + util::to_string(k);
+            std::string fileName_nopath = gsFileManager::getFilename(fileName);
+
+            eval_basis = mb.basis(p).evalSingle(i,pts);
+            gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
+            // gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
+            // collection.addPart(fileName_nopath + ".vts",-1,"",k);
+            collection.addPart(fileName_nopath + ".vts",k);
+        }
+    collection.save();
+}
 
 /// Export Point set to Paraview
 template<class T>
@@ -1465,8 +1670,9 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
     for ( size_t i=0; i<n ; i++)
     {
         std::string fnBase = fn + util::to_string(i);
+        std::string fnBase_nopath = gsFileManager::getFilename(fnBase);
         writeSingleTrimSurface(*sl.face[i]->surf, fnBase, numSamples);
-        collection.addPart(fnBase + ".vtp");
+        collection.addPart(fnBase_nopath + ".vtp");
     }
 
     // Write out the collection file
@@ -1682,7 +1888,8 @@ void gsWriteParaview(const gsTrimSurface<T> & surf, std::string const & fn,
     gsParaviewCollection collection(fn);
 
     writeSingleTrimSurface(surf, fn, npts);
-    collection.addPart(fn + ".vtp");
+    std::string fn_nopath = gsFileManager::getFilename(fn);
+    collection.addPart(fn_nopath + ".vtp");
 
     if ( trimCurves )
     {
@@ -1721,6 +1928,7 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
             {
                 // file name is fn_curve_Fface_Lloop_Ccurve
                 std::string fileName = fn + "_curve_F";
+                std::string fileName_nopath = gsFileManager::getFilename(fileName);
                 fileName += to_string(idFace) + "_L" +
                             to_string(idLoop) + "_C" +
                             to_string(idCurve);
@@ -1728,13 +1936,51 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                 gsWriteParaviewTrimmedCurve(*(face->surf), idLoop, idCurve,
                                             fileName, npts);
 
-                collection.addPart(fileName + ".vts");
+                collection.addPart(fileName_nopath + ".vts");
 
             } // for each curve
         } // for each curve loop
     } // for each face
 
     collection.save();
+}
+
+template<typename T>
+void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet)
+{
+    typename gsMultiPatch<T>::BoundaryRep const & brep = patches.boundaryRep();
+    GISMO_ENSURE(brep.size()!=0,"Boundary representation is empty. Call gsMultiPatch::constructBoundaryRep first!");
+    gsMultiPatch<T> bnd_net;
+    for (auto it = brep.begin(); it!=brep.end(); ++it)
+        bnd_net.addPatch((*it->second));
+    gsWriteParaview<T>(bnd_net,fn,npts,false,ctrlNet);
+}
+
+template<typename T>
+void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
+                     std::string const & fn,
+                     unsigned npts, bool ctrlNet)
+{
+
+    typename gsMultiPatch<T>::InterfaceRep const & irep = patches.interfaceRep();
+    GISMO_ENSURE(irep.size()!=0,"Interface representation is empty. Call gsMultiPatch::constructInterfaceRep first!");
+    gsMultiPatch<T> iface_net;
+    for (auto it = irep.begin(); it!=irep.end(); ++it)
+        iface_net.addPatch((*it->second));
+    gsWriteParaview<T>(iface_net,fn,npts,false,ctrlNet);
+}
+
+template<typename T>
+void gsWriteParaview(gsMultiPatch<T> const & patches,
+                     typename gsBoundaryConditions<T>::bcContainer const & bcs,
+                     std::string const & fn, unsigned npts, bool ctrlNet)
+{
+    gsMultiPatch<T> bc_net;
+    for (typename gsBoundaryConditions<T>::const_iterator bc=bcs.begin(); bc!=bcs.end(); bc++)
+        bc_net.addPatch(patches[bc->patch()].boundary(bc->side()));
+    gsWriteParaview<T>(bc_net,fn,npts,false,ctrlNet);
 }
 
 template<typename T>

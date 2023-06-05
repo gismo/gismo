@@ -487,8 +487,9 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                     param(i) = alt_sgn * minor.determinant();
                     alt_sgn  *= -1;
                 }
-                //note: metric.determinant() == InOut.measures.at(p)
-                InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
+                //InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
+                InOut.outNormals.col(p)=(jacT.transpose()*param).normalized()
+                    *jacT.col(!dir).norm();
             }
         }
 
@@ -512,7 +513,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                                                     .determinant() );
             }
         }
-        else // If on the domain's interior
+        else // If on boundary
         {
             // return the outer normal vector's norm ( colwise i.e. for every point)
             InOut.measures = InOut.outNormals.colwise().norm();

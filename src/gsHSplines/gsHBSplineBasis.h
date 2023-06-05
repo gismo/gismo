@@ -57,8 +57,8 @@ public:
     gsHBSplineBasis() { }
 
     /// @brief Constructor out of a tensor BSpline Basis
-    gsHBSplineBasis(gsBasis<T> const&  tbasis)
-        : gsHTensorBasis<d,T>(tbasis) 
+    gsHBSplineBasis(gsBasis<T> const&  tbasis, bool manualLevels=false )
+        : gsHTensorBasis<d,T>(tbasis, manualLevels) 
     {
         // initialize(); // is done in the base constructor
     }

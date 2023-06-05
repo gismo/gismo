@@ -125,6 +125,18 @@ public:
         return m_leaf.level();
     }
 
+    // Returns the element multi-index at the current level
+    // If you need the element at the level above, divide this all indices by 2
+    gsVector<index_t> elementMultiIndex() const
+    {
+        gsVector<index_t> res(d);
+        for (index_t i = 0; i!=d; ++i)
+        {
+            res[i] =  std::distance(m_breaks[i].begin(), m_curElement[i]);
+        }
+        return res;
+    }
+
 private:
 
     gsHDomainIterator();

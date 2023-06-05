@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    // Create a tensot-producte basis
+    // Create a tensor-product basis
     gsKnotVector<> KV (0, 1, numknots, degree+1, 1);
     gsTensorBSplineBasis<2> tp(KV,KV);
     gsInfo<< "Coarsest level: "<< tp <<"\n";

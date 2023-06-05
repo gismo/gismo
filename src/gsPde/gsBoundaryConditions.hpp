@@ -156,6 +156,7 @@ public:
             const gsXmlAttribute * att_name = child->first_attribute("name");
             if (NULL != att_name)
             {
+                boundaries.clear();
                 std::string name = att_name->value();
                 for (typename std::vector<patchSide>::const_iterator it=allboundaries.begin(); it!=allboundaries.end(); it++)
                     if (it->label()==name)
@@ -163,6 +164,12 @@ public:
             }
             else
                 getBoundaries(child, ids, boundaries);
+
+            if (boundaries.size() == 0) {
+              gsWarn << "Boundary condition without boundary to apply to. The"
+                        " following bc will be unused\n" << *child
+                     << std::endl;
+            }
 
             const gsXmlAttribute * bcat = child->first_attribute("type");
             GISMO_ASSERT(NULL != bcat, "No type provided");

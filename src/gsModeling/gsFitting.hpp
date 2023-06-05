@@ -153,7 +153,7 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     T maxAng, avgAng;
     std::vector<gsMatrix<T> > vals;
     gsMatrix<T> DD, der;
-    for (index_t it = 0; it!=maxIter; ++it)
+    for (index_t it = 0; it<maxIter; ++it)
     {
         maxAng = -1;
         avgAng = 0;
@@ -165,7 +165,7 @@ void gsFitting<T>::parameterCorrection(T accuracy,
             //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
         {
             vals = m_result->evalAllDers(m_param_values.col(s), 1);
-            for (index_t k = 0; k!=d; ++k)
+            for (index_t k = 0; k<d; ++k)
             {
                 der = vals[1].reshaped(d,n);
                 DD = vals[0].transpose() - m_points.row(s);
