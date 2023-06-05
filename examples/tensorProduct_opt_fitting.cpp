@@ -182,6 +182,9 @@ int main(int argc, char *argv[])
     index_t plotIt = -1;
     bool apdm = false;
 
+    real_t funcTol = 1e-4;
+    int maxEval = 20;
+
     gsCmdLine cmd("Tensor product B-spline surface fitting by L-BFGS: http://dx.doi.org/10.1016/j.cagd.2012.03.004");
 
     cmd.addInt("i", "iter", "number of maximum iterations of the optimization algorithm(s).", maxIter);
@@ -196,6 +199,8 @@ int main(int argc, char *argv[])
     cmd.addSwitch("z", "plot", "(0): no paraview plot generated.", plotInParaview);
     cmd.addInt("k", "kplot", "iteration of the optimization procedure to be plotted", plotIt);
     cmd.addSwitch("a", "apdm", "run the A-PDM algorithm.", apdm);
+    cmd.addReal("c", "funcTol", "function tolerance used in line-search", funcTol);
+    cmd.addInt("j", "maxEval", "the max number of evaluation in line-search", maxEval);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -292,13 +297,16 @@ int main(int argc, char *argv[])
     gsInfo << "Fast fitting with HLBFGS:\n";
     // TODO: store time and fitting error in a proper way.
     // Uncomment the following line to avoid the foor loop on the maximum number of iterations.
-    // index_t it_opt = maxIter;
+    //index_t it_opt = maxIter;
     for(index_t it_opt = 1; it_opt <= maxIter; it_opt++)
     {
       optimizer = new gsHLBFGS<real_t>(&problem);
       optimizer->options().setInt("Verbose",verbosity);
-      optimizer->options().setReal("MinGradientLength", gtoll);
+      optimizer->options().setReal("MinGradLen", gtoll);
       optimizer->options().setInt("LBFGSUpdates", mupdate);
+
+      optimizer->options().setReal("FuncTol", funcTol);
+      optimizer->options().setInt("MaxEval", maxEval);
 
       //! [Solve]
       // Start the optimization

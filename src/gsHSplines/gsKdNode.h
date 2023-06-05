@@ -31,27 +31,71 @@ struct gsAabb
 public:
     typedef gsVector<Z,d> point;
 
+    gsAabb(const point & l, const point & u, index_t lvl)
+    :
+    first(l),second(u),level(lvl)
+    { }
+
     gsAabb(const point & l, const point & u)
-    {
-        first  = l;
-        second = u;
-    }
+    :
+    gsAabb(l,u,-1)
+    { }
 
     gsAabb(const point & u)
+    :
+    second(u),level(-1)
     {
         first.setZero();
-        second = u;
+    }
+
+    gsAabb()
+    :
+    level(-1)
+    {
+        first.setZero();
+        second.setZero();
+    }
+
+    /// Copy constructor (makes deep copy)
+    gsAabb( const gsAabb<d,Z>& other )
+    {
+        operator=(other);
+    }
+
+    /// Move constructor
+    gsAabb( gsAabb<d,Z>&& other )
+    {
+        operator=(give(other));
+    }
+
+    /// Assignment operator
+    gsAabb<d,Z>& operator= ( const gsAabb<d,Z>& other )
+    {
+        if (this!=&other)
+        {
+            first  = other.first;
+            second = other.second;
+            level  = other.level;
+        }
+        return *this;
+    }
+
+    /// Move assignment operator
+    gsAabb<d,Z>& operator= ( gsAabb<d,Z>&& other )
+    {
+        first  = give(other.first);
+        second = give(other.second);
+        level  = give(other.level);
+        return *this;
     }
 
 public:
 
-    //point lower;
-    //point upper;
     point first;
     point second;
 
     /// Level in which the box lives
-    int level ;
+    index_t level;
 
     // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -220,6 +264,19 @@ struct kdnode
         else
         {
             pos *= 2;
+        }
+    }
+
+    void divideByTwo()
+    {
+        if ( isLeaf() )
+        {
+            box->first .array() /= 2;
+            box->second.array() /= 2;
+        }
+        else
+        {
+            pos /= 2;
         }
     }
 

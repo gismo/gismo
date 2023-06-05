@@ -1037,9 +1037,7 @@ public:
                   for(index_t s = 0; s != solVector.cols(); ++s )
                     result(i,c+s) = solVector(ii,s); //assume dim==1 xor solVector.cols()==1
                 else // eliminated DoF: fill with Dirichlet data
-                {
                     result(i,c) =  m_sd->fixedDofs.at( m_sd->mapper.global_to_bindex(ii) );
-                }
             }
         }
     }
@@ -1157,6 +1155,36 @@ public:
                         for (index_t k = 0; k < bnd.size() - 1; ++k)
                             m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
                                                   it->ps.patch, (bnd)(k + 1, 0), c);
+                }
+            }
+
+            // Coupled
+            for (typename gsBoundaryConditions<T>::const_cpliterator
+                     it = bc.coupledBegin(); it != bc.coupledEnd(); ++it)
+            {
+                const index_t cc = it->component;
+
+                GISMO_ASSERT(static_cast<size_t>(it->ifc.first().patch) < this->mapper().numPatches(),
+                             "Problem: a boundary condition is set on a patch id which does not exist.");
+                GISMO_ASSERT(static_cast<size_t>(it->ifc.second().patch) < this->mapper().numPatches(),
+                             "Problem: a boundary condition is set on a patch id which does not exist.");
+
+
+                bnd = mb->basis(it->ifc.first().patch).boundary(it->ifc.first().side());
+                bnd1 = mb->basis(it->ifc.second().patch).boundary(it->ifc.second().side());
+
+                // match all DoFs to the first one of the side
+                for (index_t c = 0; c!=dim; c++) // for all components
+                {
+                    if (c==cc || cc==-1)
+                    {
+                        for (index_t k = 0; k < bnd.size() - 1; ++k)
+                            m_sd->mapper.matchDof(it->ifc.first() .patch, (bnd)(0, 0),
+                                                  it->ifc.first() .patch, (bnd)(k + 1, 0), c);
+                        for (index_t k = 0; k < bnd1.size(); ++k)
+                            m_sd->mapper.matchDof(it->ifc.first() .patch, (bnd)(0, 0),
+                                                  it->ifc.second().patch, (bnd1)(k, 0), c);
+                    }
                 }
             }
 
@@ -1393,7 +1421,6 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-
     index_t rows() const {return _u.dim(); }
 
     static index_t cols() {return 1; }

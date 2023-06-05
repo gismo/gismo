@@ -102,6 +102,8 @@ namespace internal
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
+#include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHBoxContainer.h>
 
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
@@ -159,6 +161,9 @@ namespace internal
 #include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
+
+#include <gsAssembler/gsAdaptiveMeshing.h>
+#include <gsAssembler/gsAdaptiveMeshingUtils.h>
 
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>

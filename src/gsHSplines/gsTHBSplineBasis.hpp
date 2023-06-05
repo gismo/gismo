@@ -44,7 +44,7 @@ boundaryOffset(boxSide const & s,index_t offset) const
         gsVector<index_t,d>  ind;
         index_t hi;
         // i goes through all levels of the hierarchical basis
-        for(unsigned i = 0; i <= this->maxLevel(); i++)
+        for(size_t i = 0; i != m_xmatrix.size(); i++)
         {
             GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
                          "Offset cannot be bigger than the amount of basis"
@@ -871,7 +871,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     gsMultiPatch<T> result;
     //identify the outer polylines- conected components
     int first_level = 0;
-    for(unsigned int i = 0; i < this->m_xmatrix.size(); i++)
+    for(size_t i = 0; i < this->m_xmatrix.size(); i++)
     {
         if(this->m_xmatrix[i].size()>0)
         {
@@ -1075,7 +1075,7 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
 
         // Identify the level of the point
-        const int lvl = this->m_tree.levelOf(low, maxLevel);
+        const int lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
 
         for(int i = 0; i <= lvl; i++)
         {

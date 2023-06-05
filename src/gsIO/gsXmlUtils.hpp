@@ -1091,6 +1091,9 @@ public:
       
         appendBoxTopology(obj, mp_node, data);
 
+        if (obj.numBoxProperties()!=0)
+            gsWarn<<"Multi-patch object has box properties that are not written to XML\n";
+
         return mp_node;
     }
     
