@@ -1079,7 +1079,6 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
     gsVector<T> quWeights; // quadrature weights
 
     _eval ee(m_matrix, m_rhs, quWeights);
-    static const T delta = 0.00001;
     const bool flipSide = m_options.askSwitch("flipSide", false);
     const bool movingInterface = m_options.askSwitch("movingInterface", false);
 

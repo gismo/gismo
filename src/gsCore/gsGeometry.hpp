@@ -152,6 +152,59 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
      */
 
 template<class T>
+gsGeometry<T>::gsGeometry(const gsGeometry<T> & o) 
+: m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
+{ }
+
+template<class T>
+void gsGeometry<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{ this->basis().evalFunc_into(u, m_coefs, result); }
+
+template<class T>
+void gsGeometry<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{ this->basis().derivFunc_into(u, m_coefs, result); }
+
+template<class T>
+void gsGeometry<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{ this->basis().deriv2Func_into(u, m_coefs, result); }
+
+template<class T>
+void gsGeometry<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
+                        std::vector<gsMatrix<T> > & result) const
+{ this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+
+template<class T>
+short_t gsGeometry<T>::domainDim() const { return this->basis().domainDim(); }
+
+template<class T>
+short_t gsGeometry<T>::coDim() const { return coefDim()-this->basis().domainDim(); }
+
+template<class T>
+short_t gsGeometry<T>::parDim() const { return this->basis().domainDim(); }
+
+template<class T>
+gsMatrix<T> gsGeometry<T>::support() const
+{ return this->basis().support(); }
+
+template<class T>
+/// Returns the range of parameters as a matrix with two columns, [lower upper]
+gsMatrix<T> gsGeometry<T>::parameterRange() const
+{ return this->basis().support(); }
+
+template<class T>
+gsGeometry<T>& gsGeometry<T>::operator=( const gsGeometry<T> & o)
+{
+    if ( this != &o )
+    {
+        m_coefs = o.m_coefs;
+        delete m_basis;
+        m_basis = o.basis().clone().release() ;
+        m_id = o.m_id;
+    }
+    return *this;
+}
+
+template<class T>
 typename gsGeometry<T>::uPtr
 gsGeometry<T>::boundary(boxSide const& s) const
 {
@@ -241,6 +294,39 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 {
     return this->m_coefs.row(this->basis().functionAtCorner(c));
 }
+
+template<class T>
+void gsGeometry<T>::uniformRefine(int numKnots, int mul, int dir) // todo: int dir = -1
+{
+    this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
+}
+
+template<class T>
+void gsGeometry<T>::uniformCoarsen(int numKnots) // todo: int dir = -1
+{
+    this->basis().uniformCoarsen_withCoefs( m_coefs, numKnots);
+}
+
+template<class T>
+void gsGeometry<T>::refineElements( std::vector<index_t> const & boxes )
+{
+    this->basis().refineElements_withCoefs(this->m_coefs, boxes );
+}
+
+template<class T>
+void gsGeometry<T>::unrefineElements( std::vector<index_t> const & boxes )
+{
+    this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
+}
+
+template<class T>
+inline typename gsGeometry<T>::uPtr gsGeometry<T>::coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
+
+template<class T>
+short_t gsGeometry<T>::degree(const short_t & i) const
+    //{ return this->basisComponent(i).degree(); };
+    { return this->basis().degree(i); }
+
 
 template<class T>
 T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
@@ -503,6 +589,10 @@ gsGeometry<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
         result += C(ind(i,j), coord) * tmp;
     }
 }
+
+template<class T>
+void gsGeometry<T>::controlNet( gsMesh<T> & mesh) const
+{ basis().connectivity(m_coefs, mesh); }
 
 
 
