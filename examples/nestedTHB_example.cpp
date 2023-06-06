@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
     int      degree = 3;
     unsigned multEnd = degree + 1;  // multiplicity at the two end knots
     gsKnotVector<> kv(a, b, interior, multEnd);
-    gsDebugVar(kv.asMatrix());
 
     // ...a 2D-tensor-B-spline basis with this knot vector...
     gsTensorBSplineBasis<2,real_t> tens( kv, kv )   ;
@@ -48,11 +47,11 @@ int main(int argc, char *argv[])
     // ...and a 2D-THB-spline basis out of the tensor-B-spline basis.
     gsTHBSplineBasis<2,real_t> thb( tens , true);
     gsTHBSplineBasis<2,real_t> thb2( tens , false);
+    gsWriteParaview(tens, "thb_level0" );
     //! [constBasis]
 
 
     gsInfo << "basis before refinement:\n" << thb << std::endl;
-
 
     gsKnotVector<> kv2(a, b, interior, multEnd);//degree-1
 
@@ -61,30 +60,12 @@ int main(int argc, char *argv[])
 
     // ...a 2D-tensor-B-spline basis with this knot vector...
     gsTensorBSplineBasis<2,real_t> tens2( kv2, kv2 );
-    gsDebugVar(kv2.asMatrix());
     tens2.insertKnot(0.375,0);
     tens2.insertKnot(0.375,1);
-    tens2.insertKnot(0.825,0);
-    tens2.insertKnot(0.825,1);
-    gsDebugVar(tens2);
+    tens2.insertKnot(0.875,0);
+    tens2.insertKnot(0.875,1);
     thb.addLevel(tens2);
-
-    // gsKnotVector<> kv3(a, b, interior, multEnd,degree);
-    // gsDebugVar(kv3.asMatrix());
-    // // ...a 2D-tensor-B-spline basis with this knot vector...
-    // gsTensorBSplineBasis<2,real_t> tens3( kv3, kv3 );
-    // tens3.insertKnot(0.375,0);
-    // tens3.insertKnot(0.825,0);
-    // tens3.insertKnot(0.3125,1);
-    // tens3.insertKnot(0.375,1);
-    // tens3.insertKnot(0.4375,1);
-    // tens3.insertKnot(0.825,1);
-    // gsDebugVar(tens3);
-    // thb.addLevel(tens3);
-
-    // // ...a 2D-tensor-B-spline basis with this knot vector...
-    // gsTensorBSplineBasis<2,real_t> tens2 = tens;
-    // tens2.uniformRefine();
+    gsWriteParaview(tens2, "thb_level1" );
 
     thb.printBases();
 
@@ -94,24 +75,23 @@ int main(int argc, char *argv[])
 
     // ONLY FOD DYADIC
     std::vector<index_t> box;
-    /*
     box.push_back( 1 );
     box.push_back( 0 );
     box.push_back( 0 );
-    box.push_back( 1 );
-    box.push_back( 1 );
+    box.push_back( 3 );
+    box.push_back( 3 );
 
     thb.refineElements(box); //data is tailored for dyadic refinement.
-    */
 
-    gsMatrix<> rbox(2,2);
-    rbox.col(0)<<0.20,0.20;
-    rbox.col(1)<<0.4,0.4;
-    // rbox<< 0,0, .5, .5 ;
-    thb.refine(rbox); //data is tailored for dyadic refinement.
-    thb2.refine(rbox); //data is tailored for dyadic refinement.
+    // gsMatrix<> rbox(2,2);
+    // rbox.col(0)<<0.0,0.0;
+    // rbox.col(1)<<0.49,0.49;
+    // // rbox<< 0,0, .5, .5 ;
+    // thb.refine(rbox); //data is tailored for dyadic refinement.
+    // thb2.refine(rbox); //data is tailored for dyadic refinement.
         
     gsInfo << "basis after refinement:\n" << thb << std::endl;
+    gsInfo << "uniform basis after refinement:\n" << thb2 << std::endl;
 
     thb.tree().printLeaves();
     thb.printSpaces();
@@ -122,141 +102,16 @@ int main(int argc, char *argv[])
     gsWriteParaview(thb2, "thb2_refined_first" );
     gsInfo << "after refinement," << std::endl;
 
-    return 0;
+    gsVector<unsigned> np(2); np<<100,100;
+    gsVector<> A(2); A<<0,0;
+    gsVector<> B(2); B<<1,1;
+    gsMatrix<> grid = gsPointGrid<>(A,B,np);
+    gsMatrix<> res;
+    thb2.eval_into(grid,res);
+    gsVector<> sums = res.colwise().sum();
 
-    //! [stdOpsCout]
-    gsInfo << "this basis is:\n" << thb << std::endl;
-    //! [stdOpsCout]
+    if ((sums.array()<1-1e-12 && sums.array()>1+1e-12).count()==0)
+        gsInfo<<"The basis has the partition of unity property\n";
 
-    // --------------- "standard" evaluations ---------------
-    //! [stdOpsStd]
-    gsMatrix<real_t> u(2,3);
-    u(0,0) = 0.95;
-    u(1,0) = 0.05;
-
-    u(0,1) = 0.95;
-    u(1,1) = 0.3;
-
-    u(0,2) = 0.6;
-    u(1,2) = 0.9;
-
-    gsMatrix<index_t> resActives;
-    gsMatrix<real_t>   resEvals;
-
-    thb.active_into( u, resActives);
-    thb.eval_into(   u, resEvals);
-
-    gsInfo << "active functions: \n" << resActives << std::endl;
-    gsInfo << "their values:     \n" << resEvals   << std::endl;
-    //! [stdOpsStd]
-
-    gsInfo << std::endl;
-
-    // --------------- index-computations ---------------
-
-    //! [indexTransfForw]
-    std::vector<unsigned> tmpFlatIndices;
-    std::vector<int>      tmpLevels;
-
-    gsInfo << "transform indices\n";
-    gsInfo << "global/hier.index  ->  flat tensor index (on level)" << std::endl;
-    for( unsigned i = 27; i <= 35; i++)
-    {
-        // print computed indices/levels
-        gsInfo << i;
-        gsInfo << "  ->  ";
-        gsInfo << thb.flatTensorIndexOf(i);
-        gsInfo << "  ( " << thb.levelOf(i) << " )" << std::endl;
-
-        // store indices/levels for reverse transformation later
-        tmpFlatIndices.push_back( thb.flatTensorIndexOf(i) );
-        tmpLevels.push_back(  thb.levelOf(i) );
-    }
-    //! [indexTransfForw]
-
-
-    //! [indexTransfBack]
-    gsInfo << std::endl;
-    gsInfo << "reverse index transformation\n";
-    gsInfo << "flat tensor index (on level)  ->  global/hier.index" << std::endl;
-    for( unsigned i = 0; i < tmpLevels.size(); i++ )
-    {
-        // print global/hierarchical indices
-        gsInfo << tmpFlatIndices[i] << "  ( " << tmpLevels[i] << " )";
-        gsInfo << "  ->  ";
-        gsInfo << thb.flatTensorIndexToHierachicalIndex( tmpFlatIndices[i], tmpLevels[i] ) << std::endl;
-    }
-    //! [indexTransfBack]
-
-    gsInfo << std::endl;
-
-    // --------------- some gsHTensorBasis-specific functions ---------------
-    //! [stdOpsHTens]
-    gsVector<index_t> resLevels;
-    gsMatrix<index_t> resLowerCorner;
-
-    thb.getLevelUniqueSpanAtPoints(u, resLevels, resLowerCorner);
-
-    gsInfo << "levels:        " << std::endl << resLevels.transpose() << std::endl;
-    gsInfo << "lower corners: " << std::endl << resLowerCorner        << std::endl;
-    //! [stdOpsHTens]
-
-    gsInfo << std::endl;
-
-    // print the underlying tree
-    //! [stdOpsHTensTree]
-    gsMatrix<index_t> resUpperCorner;
-
-    thb.tree().getBoxes( resLowerCorner, resUpperCorner, resLevels);
-
-    gsInfo << "levels:        " << std::endl << resLevels      << std::endl;
-    gsInfo << "lower corners: " << std::endl << resLowerCorner << std::endl;
-    gsInfo << "upper corners: " << std::endl << resUpperCorner << std::endl;
-    //! [stdOpsHTensTree]
-
-
-
-
-    // --------------- 2nd local refinement ---------------
-    gsInfo << std::endl << std::endl;
-
-    //! [refViaStdVec2]
-    box.clear();
-    box.push_back( 2 );
-    box.push_back( 2 );
-    box.push_back( 4 );
-    box.push_back( 6 );
-    box.push_back( 10 );
-
-    thb.refineElements(box);
-
-    gsInfo << "after 2nd refinement, this basis is:\n" << thb << std::endl;
-    //! [refViaStdVec2]
-
-    gsWriteParaview(thb, "thb_refined_second" );
-
-    boxSide side(1);
-    gsMatrix<index_t> result = thb.boundaryOffset(1,0);
-    gsInfo<<"Basis indices along side "<<side<<": "<<result.transpose()<<"\n";
-
-    for (index_t k=1; k<5; k++)
-    {
-        boxCorner corner(k);
-        gsInfo<<"Basis function index in corner "<<corner<<": "<<thb.functionAtCorner(corner)<<"\n";
-    }
-
-    // --------------- plot basis after 1 refinement ---------------
-    //! [Plot in Paraview]
-    if( plot )
-    {
-        // Run paraview
-        gsFileManager::open("thb1_refined.pvd");
-    }
-    //! [Plot in Paraview]
-    else
-    {
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
-    }
     return EXIT_SUCCESS;
 }

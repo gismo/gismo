@@ -128,16 +128,6 @@ void gsTHBSplineBasis<d,T>::representBasis()
             this->m_tree.computeFinestIndex(low, level, low);
             this->m_tree.computeFinestIndex(high, level, high);
 
-            // if (m_manualLevels)
-            // {
-            //     gsDebugVar(low);
-            //     gsDebugVar(high);
-            //     this->_diadicIndexToKnotIndex(clevel,low);
-            //     this->_diadicIndexToKnotIndex(clevel,high);
-            //     gsDebugVar(low);
-            //     gsDebugVar(high);
-            // }
-
             this->m_is_truncated[j] = clevel;
             _representBasisFunction(j, clevel, low, high);
         }
@@ -191,8 +181,6 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 
     for (unsigned level = cur_level; level < pres_level; ++level)
     {
-        gsDebugVar(finest_low);
-        gsDebugVar(finest_high);
         _updateSizeOfCoefs(level, level + 1, finest_low,
                            finest_high, cur_size_of_coefs);
 
@@ -203,32 +191,18 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 
         this->m_tree.computeLevelIndex(finest_low, level, clow);
         this->m_tree.computeLevelIndex(finest_high, level, chigh);
-
-        gsDebugVar(clow);
-        gsDebugVar(chigh);
         if (m_manualLevels)
         {
             this->_diadicIndexToKnotIndex(level,clow);
             this->_diadicIndexToKnotIndex(level,chigh);
         }
-        gsDebugVar(clow);
-        gsDebugVar(chigh);
-
         this->m_tree.computeLevelIndex(finest_low, level + 1, flow);
         this->m_tree.computeLevelIndex(finest_high, level + 1, fhigh);
-
-        gsDebugVar(flow);
-        gsDebugVar(fhigh);
         if (m_manualLevels)
         {
             this->_diadicIndexToKnotIndex(level + 1,flow);
             this->_diadicIndexToKnotIndex(level + 1,fhigh);
         }
-        gsDebugVar(flow);
-        gsDebugVar(fhigh);
-
-        gsDebugVar(act_size_of_coefs);
-        gsDebugVar(cur_size_of_coefs);
 
         std::vector<T> knots;
 
@@ -466,10 +440,6 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
     this->m_tree.computeLevelIndex(finest_low, flevel, flow);
     this->m_tree.computeLevelIndex(finest_high, flevel, fhigh);
 
-    gsDebugVar(clow);
-    gsDebugVar(chigh);
-    gsDebugVar(flow);
-    gsDebugVar(fhigh);
     if (m_manualLevels)
     {
         this->_diadicIndexToKnotIndex(clevel,clow);
@@ -477,11 +447,6 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
         this->_diadicIndexToKnotIndex(flevel,flow);
         this->_diadicIndexToKnotIndex(flevel,fhigh);
     }
-    gsDebugVar(clow);
-    gsDebugVar(chigh);
-    gsDebugVar(flow);
-    gsDebugVar(fhigh);
-
     // number of new coefficients
     unsigned nmb_of_coefs = 1;
 
@@ -498,16 +463,8 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
         unsigned fnmb_knts = fkv.knotsUntilSpan(fhigh[dim]) -
             fkv.knotsUntilSpan(flow[dim]);
 
-            gsDebugVar(cnmb_knts);
-            gsDebugVar(fnmb_knts);
-
-            gsDebugVar(dim);
-
         size_of_coefs(dim) += fnmb_knts - cnmb_knts;
-    gsDebugVar(nmb_of_coefs);
-    gsDebugVar(size_of_coefs(dim));
         nmb_of_coefs *= size_of_coefs(dim);
-    gsDebugVar(nmb_of_coefs);
     }
 
 

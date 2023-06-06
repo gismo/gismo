@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
 
     // Flag whether final mesh should be plotted in ParaView
     bool plot = false;
+    bool manual = false;
     bool dump;
 
     RefineLoopMax = 2;
@@ -69,6 +70,7 @@ int main(int argc, char *argv[])
     cmd.addReal("p", "parameter", "Parameter for adaptive refinement", refParameter);
     cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files",
                 dump);
+    cmd.addSwitch("manual", "Uses the 'addLevel' feature of the THB basis, where levels can be specified manually", manual);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -130,25 +132,83 @@ int main(int argc, char *argv[])
     if (dump)
         gsWrite(*geo, "adapt_geo.xml");
 
+    geo->degreeElevate(degree-geo->degree(0));
     gsTensorBSplineBasis<2,real_t> tbb = geo->basis();
     tbb.setDegree(degree);
 
     gsInfo << "\nCoarse discretization basis:\n" << tbb << "\n";
 
     // With this gsTensorBSplineBasis, it's possible to call the THB-Spline constructor
-    gsTHBSplineBasis<2,real_t> THB( tbb );
+    gsTHBSplineBasis<2,real_t> THB;
 
-    gsTHBSpline<2,real_t> THB_patches(tbb, geo->coefs());
+    for (int i = 0; i < initUnifRef; ++i)
+    {
+        if (manual)
+        {
+            tbb.uniformRefine(1,2);
+            geo->uniformRefine(1,2);            
+        }
+        else
+        {
+            tbb.uniformRefine();
+            geo->uniformRefine();
+        }
+
+    }
+
+
+    if (manual)
+    {
+        // Manual creation of levels in THB hierarchy
+        // We create a hierarchy where in the first degree levels, the basis is refined and the continuity is reduced
+        // Then diadic refinements are created
+        // lvl 0: {0, 0, 0, 0, 0.25, 0.5, 0.75, 1, 1, 1, 1}
+        // lvl 1: {0, 0, 0, 0, 0.125, 0.125, 0.25, 0.25, 0.375, 0.375, 0.5, 0.5, 0.625, 0.625, 0.75, 0.75, 0.825, 0.825, 1, 1, 1, 1}
+        // lvl 2: {0, 0, 0, 0, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, ...}
+        // lvl 3: {0, 0, 0, 0, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, ...}
+        // etc
+        THB = gsTHBSplineBasis<2,real_t>(tbb,true);
+        gsDebugVar(tbb);
+
+        // This does not work
+        //{
+        // for (index_t k=0; k!=degree-1; k++)
+        // {
+        //     tbb.reduceContinuity(1);
+        //     tbb.uniformRefine(1,k+1);
+        //     THB.addLevel(tbb);
+        //     gsDebugVar(tbb.knots(0).asMatrix());
+        // }
+
+        // for (index_t k=0; k!=5; k++)
+        // {
+        //     tbb.uniformRefine(1,degree-1);
+        //     THB.addLevel(tbb);
+        //     gsDebugVar(tbb.knots(0).asMatrix());
+        // }
+        //}
+
+        // This works    
+        //{
+        for (index_t k=0; k!=5; k++)
+        {
+            tbb.uniformRefine(1,2);
+            THB.addLevel(tbb);
+        }
+        //}
+    }
+    else
+    {
+        THB = gsTHBSplineBasis<2,real_t> ( tbb );
+    }
+
+
+
+    gsTHBSpline<2,real_t> THB_patches(THB, geo->coefs());
 
     // Finally, create a vector (of length one) of this gsTHBSplineBasis
     gsMultiBasis<real_t> bases(THB);
     gsMultiPatch<real_t> mp(THB_patches);
-
-    for (int i = 0; i < initUnifRef; ++i)
-    {
-        mp.uniformRefine();
-        bases.uniformRefine();
-    }
 
     gsMultiPatch<> mpsol; // holds computed solution
     gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);// constructs matrix and rhs

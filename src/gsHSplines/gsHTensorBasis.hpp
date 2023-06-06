@@ -527,6 +527,12 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
                 ++k2;
             }
 
+            if (m_manualLevels)
+            {
+                _knotIndexToDiadicIndex(refLevel,j,k1);
+                _knotIndexToDiadicIndex(refLevel,j,k2);
+            }
+
             // If applicable, add the refinement extension.
             // Note that extending by one cell on level L means
             // extending by two cells in level L+1
@@ -995,6 +1001,11 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
         }
 
         //Here: get knot indices in some standard indexing (eg. dyadic)
+        if (m_manualLevels)
+        {
+            _knotIndexToDiadicIndex(level,low);
+            _knotIndexToDiadicIndex(level,upp);
+        }
 
         if ( m_tree.query3(low, upp,level) == level) //if active ????
             cmat.push_unsorted( m_bases[level]->index( ind ) );

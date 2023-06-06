@@ -314,6 +314,8 @@ public:
         m_xmatrix = std::move(other.m_xmatrix);
         m_tree    = std::move(other.m_tree);
         m_xmatrix_offset = std::move(other.m_xmatrix_offset);
+        m_manualLevels   = std::move(other.m_manualLevels);
+        m_uIndices   = std::move(other.m_uIndices);
         return *this;
     }
 #endif
