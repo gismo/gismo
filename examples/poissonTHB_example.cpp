@@ -132,7 +132,6 @@ int main(int argc, char *argv[])
     if (dump)
         gsWrite(*geo, "adapt_geo.xml");
 
-    geo->degreeElevate(degree-geo->degree(0));
     gsTensorBSplineBasis<2,real_t> tbb = geo->basis();
     tbb.setDegree(degree);
 
@@ -144,16 +143,9 @@ int main(int argc, char *argv[])
     for (int i = 0; i < initUnifRef; ++i)
     {
         if (manual)
-        {
             tbb.uniformRefine(1,1);
-            geo->uniformRefine(1,1);            
-        }
         else
-        {
             tbb.uniformRefine();
-            geo->uniformRefine();
-        }
-
     }
 
 
@@ -203,25 +195,15 @@ int main(int argc, char *argv[])
     }
 
 
-
-    gsTHBSpline<2,real_t> THB_patches(THB, geo->coefs());
-
     // Finally, create a vector (of length one) of this gsTHBSplineBasis
     gsMultiBasis<real_t> bases(THB);
-    gsMultiPatch<real_t> mp(THB_patches);
 
     gsMultiPatch<> mpsol; // holds computed solution
     gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);// constructs matrix and rhs
-    pa.options().setReal("quA",2.);
-    pa.options().setInt("quB",2.);
-    pa.options().setInt("DirichletValues", dirichlet::l2Projection);
     pa.options().setInt("DirichletValues", dirichlet::l2Projection);
 
     if (dump)
         gsWrite(bases[0], "adapt_basis_0.xml");
-
-    gsWriteParaview<>(mp, "mp", 1001, true);
-
 
     // So, ready to start the adaptive refinement loop:
     for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
@@ -264,8 +246,6 @@ int main(int argc, char *argv[])
         auto ff = ev.getVariable(f, Gm);
 
         // The vector with element-wise local error estimates.
-        ev.options().setReal("quA",2.);
-        ev.options().setInt("quB",2.);
         ev.writeParaview( (ilapl(f1,Gm) + ff).sqNorm() ,Gm,"error");
         ev.integralElWise( (ilapl(f1,Gm) + ff).sqNorm() * meas(Gm) );
         const std::vector<real_t> & elErrEst = ev.elementwise();
@@ -300,13 +280,9 @@ int main(int argc, char *argv[])
             // Write approximate solution to paraview files
             gsInfo<<"Plotting in Paraview...\n";
             gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
-            gsWriteParaview<>(mp, "mp_ref", 5001);
             // Run paraview and plot the last mesh
             gsFileManager::open("p2d_adaRef_sol.pvd");
         }
-        gsRefineMarkedElements( mp, elMarked, refExt);
-
-        gsWrite(mp,"mp");
         gsWrite(pa.multiBasis(),"mb");
 
     }
