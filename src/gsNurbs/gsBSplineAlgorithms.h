@@ -34,7 +34,7 @@ namespace bspline
     void evalBasis( T u,
                     KnotIterator knot,
                     int deg,
-                    Eigen::MatrixBase<Derived> const & result )
+                    gsEigen::MatrixBase<Derived> const & result )
     {       
         STACK_ARRAY(T, left, deg  + 1);
         STACK_ARRAY(T, right, deg + 1);
@@ -46,9 +46,9 @@ namespace bspline
                     KnotIterator knot,
                     int deg,
                     T left[], T right[], 
-                    Eigen::MatrixBase<Derived> const & result )
+                    gsEigen::MatrixBase<Derived> const & result )
     {
-        Eigen::MatrixBase<Derived>& res = const_cast<Eigen::MatrixBase<Derived>&>(result);
+        gsEigen::MatrixBase<Derived>& res = const_cast<gsEigen::MatrixBase<Derived>&>(result);
         
         res(0,0)= (T)(1.0);  // 0-th degree function value
         
@@ -71,7 +71,7 @@ namespace bspline
     template <class T, typename KnotIterator, typename Derived>
     void evalDeg1Basis(  const T & u,
                          const KnotIterator knot,
-                         Eigen::MatrixBase<Derived> const & result )
+                         gsEigen::MatrixBase<Derived> const & result )
     {
         result(0,0) =  u       - (*knot+1);
         result(1,0) =  (*knot) - u        ;
@@ -84,7 +84,7 @@ namespace bspline
     template <class T, typename KnotIterator, typename Derived>
     void evalDeg2Basis(  const T & u,
                          const KnotIterator knot,
-                         Eigen::MatrixBase<Derived> const & result )
+                         gsEigen::MatrixBase<Derived> const & result )
     {
         
     }

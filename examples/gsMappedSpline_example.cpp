@@ -35,7 +35,9 @@ public:
     /// Unique pointer for gsSingleBasis
     typedef memory::unique_ptr< gsSingleBasis > uPtr;
 
+    #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
     gsSingleBasis(gsBasis<T> & basis, index_t bfID) :
             _basis(basis), m_bfID(bfID), _basis_piece(nullptr)

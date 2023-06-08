@@ -357,7 +357,9 @@ protected:
 
 public:
     // Needed since m_tree is 16B aligned
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
     protected:
 
     /// \brief Stores the offsets of active functions for all levels

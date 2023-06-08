@@ -24,7 +24,7 @@ template <class T>
 class gsSparseRows
 {
 public:
-    typedef Eigen::SparseVector<T> Row;
+    typedef gsEigen::SparseVector<T> Row;
 
     struct RowBlockXpr;
 
@@ -156,7 +156,7 @@ public:
       }
 
     template <class Derived>
-    void toSparseMatrix(Eigen::SparseMatrixBase<Derived>& m) const
+    void toSparseMatrix(gsEigen::SparseMatrixBase<Derived>& m) const
       {
         m.derived().resize( rows(), cols() );
         m.derived().reserve( nonZeros() );

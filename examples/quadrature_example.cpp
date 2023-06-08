@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
                     <<"- weights:\n"<<weights.transpose()<<"\n";
         }
         start = GaussRule.cols();
-        GaussRule.conservativeResize(Eigen::NoChange,GaussRule.cols()+points.cols());
+        GaussRule.conservativeResize(gsEigen::NoChange,GaussRule.cols()+points.cols());
         GaussRule.block(0,start,GaussRule.rows(),points.cols()) = points;
 
         //---------------------------------------------------------------------------
@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
                     <<"- weights:\n"<<weights.transpose()<<"\n";
         }
         start = MixedRule.cols();
-        MixedRule.conservativeResize(Eigen::NoChange,MixedRule.cols()+points.cols());
+        MixedRule.conservativeResize(gsEigen::NoChange,MixedRule.cols()+points.cols());
         MixedRule.block(0,start,MixedRule.rows(),points.cols()) = points;
         //---------------------------------------------------------------------------
         //  Patch-rule
@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
                     <<"- weights:\n"<<weights.transpose()<<"\n";
         }
         start = TensorPatch.cols();
-        TensorPatch.conservativeResize(Eigen::NoChange,TensorPatch.cols()+points.cols());
+        TensorPatch.conservativeResize(gsEigen::NoChange,TensorPatch.cols()+points.cols());
         TensorPatch.block(0,start,TensorPatch.rows(),points.cols()) = points;
         //---------------------------------------------------------------------------
     }
@@ -193,7 +193,7 @@ int main(int argc, char* argv[])
                     <<"- weights:\n"<<weights.transpose()<<"\n";
         }
         start = GaussRule.cols();
-        GaussRule.conservativeResize(Eigen::NoChange,GaussRule.cols()+points.cols());
+        GaussRule.conservativeResize(gsEigen::NoChange,GaussRule.cols()+points.cols());
         GaussRule.block(0,start,GaussRule.rows(),points.cols()) = points;
         //---------------------------------------------------------------------------
         // Gauss-Lobatto rule (w/ over-integration)
@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
                     <<"- weights:\n"<<weights.transpose()<<"\n";
         }
         start = MixedRule.cols();
-        MixedRule.conservativeResize(Eigen::NoChange,MixedRule.cols()+points.cols());
+        MixedRule.conservativeResize(gsEigen::NoChange,MixedRule.cols()+points.cols());
         MixedRule.block(0,start,MixedRule.rows(),points.cols()) = points;
         //---------------------------------------------------------------------------
         //  Patch-rule
@@ -219,7 +219,7 @@ int main(int argc, char* argv[])
                     <<"- weights:\n"<<weights.transpose()<<"\n";
         }
         start = TensorPatch.cols();
-        TensorPatch.conservativeResize(Eigen::NoChange,TensorPatch.cols()+points.cols());
+        TensorPatch.conservativeResize(gsEigen::NoChange,TensorPatch.cols()+points.cols());
         TensorPatch.block(0,start,TensorPatch.rows(),points.cols()) = points;
 
     }

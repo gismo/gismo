@@ -431,8 +431,8 @@ gsVector3d<T> gsCurveLoop<T>::initFrom3DPlaneFit(const std::vector<gsVector3d<T>
     }
 
     // compute a singular value decomposition
-    Eigen::JacobiSVD< Eigen::Matrix<T, Dynamic, Dynamic> > svd(
-        shiftedPoints * shiftedPoints.transpose(), Eigen::ComputeFullU);
+    gsEigen::JacobiSVD< gsEigen::Matrix<T, Dynamic, Dynamic> > svd(
+        shiftedPoints * shiftedPoints.transpose(), gsEigen::ComputeFullU);
 
     // extract plane projection matrix from the svd
     gsMatrix<T> svd_u(svd.matrixU());

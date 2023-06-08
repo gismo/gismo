@@ -271,7 +271,7 @@ gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
     // Embed in 3D if needed
     if (newcoefs.cols() == 2 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 3);
+        newcoefs.conservativeResize( gsEigen::NoChange, 3);
         newcoefs.col(2).setZero();
     }
 
@@ -299,7 +299,7 @@ gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
     // Embed in 4D if needed
     if (newcoefs.cols() == 3 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 4);
+        newcoefs.conservativeResize( gsEigen::NoChange, 4);
         newcoefs.col(3).setZero();
     }
 
@@ -332,7 +332,7 @@ gsNurbsCreator<T>::lift3D( gsTensorNurbs<2,T> const & geo, T z)
     // Embed in 3D if needed
     if (newcoefs.cols() == 2 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 3);
+        newcoefs.conservativeResize( gsEigen::NoChange, 3);
         newcoefs.col(2).setZero();
     }
 
@@ -364,7 +364,7 @@ gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z)
     // Embed in 4D if needed
     if (newcoefs.cols() == 3 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 4);
+        newcoefs.conservativeResize( gsEigen::NoChange, 4);
         newcoefs.col(3).setZero();
     }
 
