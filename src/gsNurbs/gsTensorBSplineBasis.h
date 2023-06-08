@@ -297,6 +297,11 @@ public:
     void insertKnot(T knot, index_t dir, int mult=1)
     { this->knots(dir).insert( knot, mult); }
 
+    /// Removes the knot \em knot with multiplicity \em mult in the knot
+    /// vector of direction \a dir.
+    void removeKnot(T knot, index_t dir, int mult=1)
+    { this->knots(dir).remove( knot, mult); }
+
     /**
      * \brief Takes a vector of coordinate wise knot values and
      * inserts these values to the basis.

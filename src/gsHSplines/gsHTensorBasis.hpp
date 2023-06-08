@@ -531,8 +531,8 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
             {
                 _knotIndexToDiadicIndex(refLevel,j,k1);
                 _knotIndexToDiadicIndex(refLevel,j,k2);
+                refExt=0;
             }
-
             // If applicable, add the refinement extension.
             // Note that extending by one cell on level L means
             // extending by two cells in level L+1
@@ -1279,6 +1279,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
+    GISMO_ENSURE(!m_manualLevels || (size_t)(maxLevel)<m_uIndices.size(),"Maximum manual level reached, maxLevel = "<<maxLevel<<", m_uIndices.size() = "<<m_uIndices.size());
     // +1 for the initial basis in m_bases
     const int extraLevels = maxLevel + 1 - m_bases.size();
 
