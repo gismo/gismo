@@ -664,7 +664,8 @@ void writeSingleTrimSurface(const gsTrimSurface<T> & surf,
 template<class T>
 void gsWriteParaview(const gsField<T> & field,
                      std::string const & fn,
-                     unsigned npts, bool mesh)
+                     unsigned npts, bool mesh, 
+                     const std::string pDelim)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -683,7 +684,7 @@ void gsWriteParaview(const gsField<T> & field,
         const gsBasis<T> & dom = field.isParametrized() ?
             field.igaFunction(i).basis() : field.patch(i).basis();
 
-        fileName = fn + util::to_string(i);
+        fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( field, i, fileName, npts );
         collection.addPart(fileName_nopath + ".vts");
@@ -705,7 +706,7 @@ template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo,
                      gsFunctionSet<T> const& func,
                      std::string const & fn,
-                     unsigned npts)
+                     unsigned npts, const std::string pDelim)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -723,7 +724,7 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
 
     for ( unsigned i=0; i < n; ++i )
     {
-        fileName = fn + util::to_string(i);
+        fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
         collection.addPart(fileName_nopath + ".vts");
@@ -932,7 +933,7 @@ void gsWriteParaview(const gsGeometrySlice<T> & Geo,
 template<class T>
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
                       std::string const & fn,
-                      unsigned npts, bool mesh, bool ctrlNet)
+                      unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim)
 {
     const size_t n = Geo.size();
 
@@ -941,7 +942,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
 
     for ( size_t i=0; i<n ; i++)
     {
-        fnBase = fn + "_" + util::to_string(i);
+        fnBase = fn + pDelim + util::to_string(i);
         fnBase_nopath = gsFileManager::getFilename(fnBase);
 
         if ( Geo.at(i)->domainDim() == 1 )
