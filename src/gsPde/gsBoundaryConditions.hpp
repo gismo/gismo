@@ -382,7 +382,6 @@ private:
 
         // set value
         gsMatrix<T> value = obj.value();
-        const short_t tdim = obj.targetDim();
         result->value( makeValue( value, data, true) );
         return result;
     }
