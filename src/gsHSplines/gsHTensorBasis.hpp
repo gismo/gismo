@@ -143,6 +143,9 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
     for( int i =0; i < Dim; i++)
         loIdx[i] = m_bases[maxLevel]->knots(i).uFind( Pt(i,0) ).uIndex();
 
+    if (m_manualLevels)
+        this->_knotIndexToDiadicIndex(maxLevel,loIdx);
+    
     return m_tree.levelOf( loIdx, maxLevel);
 }
 
@@ -531,14 +534,16 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
             {
                 _knotIndexToDiadicIndex(refLevel,j,k1);
                 _knotIndexToDiadicIndex(refLevel,j,k2);
-                refExt=0;
+//                CHECK
+                // GISMO_ASSERT(refExt==0,"Manual levels do not yet work for refinement extensions");
+                // refExt=0;
             }
             // If applicable, add the refinement extension.
             // Note that extending by one cell on level L means
             // extending by two cells in level L+1
-            ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-            const index_t maxKtIndex = kv.size();
-            ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
+            // ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
+            // const index_t maxKtIndex = kv.size();
+            // ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
 
             // Store the data...
             refVector[i*offset]       = refLevel;

@@ -210,6 +210,24 @@ int main(int argc, char *argv[])
             HTB = new gsTHBSplineBasis<2,real_t>(tbb,false);
     }
 
+    gsMatrix<> boxes(2,2);
+    boxes.row(0)<<0.25,0.75;
+    boxes.row(1)<<0.00,1.00;
+    HTB->refine(boxes);
+
+    // std::vector<index_t> elements = HTB->asElements(boxes,0);
+    // HTB->refineElements(elements);
+    // gsDebugVar(gsAsConstVector<index_t>(elements));
+
+    gsWriteParaview<>(*HTB, "basis", 500, true);
+
+    gsWrite(*HTB,"HTB");
+
+
+
+
+
+    return 0;
 
     // Finally, create a vector (of length one) of this gsTHBSplineBasis
     gsMultiBasis<real_t> bases(*HTB);
@@ -312,6 +330,7 @@ int main(int argc, char *argv[])
             // Write approximate solution to paraview files
             gsInfo<<"Plotting in Paraview...\n";
             gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
+            gsWriteParaview<>(pa.multiBasis()[0], "basis", 500, true);
             // Run paraview and plot the last mesh
             gsFileManager::open("errors.pvd");
         }

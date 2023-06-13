@@ -111,16 +111,16 @@ void gsTHBSplineBasis<d,T>::representBasis()
         // I tried with block, I can not trick the compiler to use references
         low = element_ind.col(0); //block<d, 1>(0, 0);
         high = element_ind.col(1); //block<d, 1>(0, 1);
-
-        // Finds coarsest level that function, with supports given with
-        // support indices of the coarsest level (low & high), has presentation
-        // based only on B-Splines (and not THB-Splines).
-        // this is not the same as query 3
         if (m_manualLevels)
         {
             this->_knotIndexToDiadicIndex(level,low);
             this->_knotIndexToDiadicIndex(level,high);
         }
+
+        // Finds coarsest level that function, with supports given with
+        // support indices of the coarsest level (low & high), has presentation
+        // based only on B-Splines (and not THB-Splines).
+        // this is not the same as query 3
         index_t clevel = this->m_tree.query4(low, high, level);
 
         if (level != clevel) // we must compute its presentation
@@ -169,7 +169,6 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
     // B-Spline vector tensor index
     gsVector<index_t, d> bspl_vec_ti =
         this->m_bases[cur_level]->tensorIndex(tensor_index);
-
 
     // we need to separately save knot vectors because we will modify
     // them, when we proceed from one level on another
@@ -232,9 +231,16 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         _truncate(coefs, act_size_of_coefs, cur_size_of_coefs,
                   level + 1, bspl_vec_ti, cur_level, finest_low);
     }
+    gsDebug<<"---------------------------------------------\n";
+    gsDebugVar(j);
+    gsDebugVar(tensor_index);
+    gsDebugVar(bspl_vec_ti);
+    gsDebugVar(coefs);
+    gsDebug<<"---------------------------------------------\n";
 
     _saveNewBasisFunPresentation(coefs, act_size_of_coefs,
                                  j, pres_level, finest_low);
+    gsDebug<<"---------------------------------------------\n";
 }
 
 
@@ -350,10 +356,16 @@ void gsTHBSplineBasis<d,T>::_truncate(
     if (this->m_xmatrix[level].size() == 0)
         return;
 
-
     // global tensor index
     const unsigned const_ten_index = _basisFunIndexOnLevel(bspl_vec_ti,
                                                            bspl_vec_ti_level, finest_low, level);
+
+    gsDebugVar(m_manualLevels);
+    gsDebugVar(bspl_vec_ti);
+    gsDebugVar(bspl_vec_ti_level);
+    gsDebugVar(finest_low);
+    gsDebugVar(const_ten_index);
+
     gsVector<index_t, d> act_coefs_strides(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_coefs_strides);
 
@@ -411,7 +423,8 @@ void gsTHBSplineBasis<d,T>::_truncate(
                 }
                 // ten_index <= tensor_active_index holds
             }
-
+            gsDebugVar(ten_index);
+            gsDebugVar(tensor_active_index);
             if (ten_index == tensor_active_index) // truncate
                 coefs(coef_index + index, 0) = 0;
 

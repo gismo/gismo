@@ -383,6 +383,10 @@ public:
     void insertKnot(T knot, int mult=1)
     { m_knots.insert( knot, mult); }
 
+    /// @brief Removes the knot \em knot in the underlying knot vector.
+    void removeKnot(T knot, int mult=1)
+    { m_knots.remove( knot, mult); }
+
     // compatibility with tensor-bsplines
     void insertKnots(const std::vector< std::vector<T> >& refineKnots)
     {
