@@ -478,14 +478,7 @@ template<class T>
 void gsGeometry<T>::degreeElevate(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeElevate(i);
-    else if (dir < parDim() )
-        b->degreeElevate(i, dir);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to elevate.");
-
+    b->degreeElevate(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
@@ -498,14 +491,7 @@ template<class T>
 void gsGeometry<T>::degreeReduce(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeReduce(i);
-    else if (dir < parDim() )
-        b->component(dir).degreeReduce(i);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to degree-reduce.");
-
+    b->degreeReduce(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
@@ -518,14 +504,7 @@ template<class T>
 void gsGeometry<T>::degreeIncrease(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeIncrease(i);
-    else if (dir < parDim() )
-        b->degreeIncrease(i, dir);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to elevate.");
-
+    b->degreeIncrease(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
@@ -538,14 +517,7 @@ template<class T>
 void gsGeometry<T>::degreeDecrease(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeDecrease(i);
-    else if (dir < parDim() )
-        b->component(dir).degreeDecrease(i);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to degree-reduce.");
-
+    b->degreeDecrease(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
