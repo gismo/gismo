@@ -1,0 +1,12 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "cmake>=3.16",
+    "pybind11",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+test-skip = ["*arm64"]
