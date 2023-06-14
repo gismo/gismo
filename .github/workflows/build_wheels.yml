@@ -1,0 +1,53 @@
+name: build_python_wheels
+
+on:
+  push:
+    branches: ["stable", "ft-pygismo"]
+
+jobs:
+  wheel_build_full:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name:  build wheels
+      uses: pypa/cibuildwheel@v2.12.1
+
+    - uses: actions/upload-artifact@v3
+      with:
+        path: ./wheelhouse/*.whl
+
+  source_dist:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Build sdist
+      run: pipx run build --sdist
+
+    - uses: actions/upload-artifact@v3
+      with:
+        path: ./dist/*
+
+  upload_test_pypi:
+    needs: [wheel_build_full, source_dist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@v1.6.1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip_existing: true
+          user: __token__
+          password: ${{ secrets.PYPI_TEST_TOKEN }}
