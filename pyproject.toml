@@ -7,6 +7,15 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.cibuildwheel]
+test-command = "python3 {project}/python_examples/bspline_curve_example.py"
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+build = ["cp310-many*"]
+
 [tool.cibuildwheel.macos]
-archs = ["x86_64", "arm64"]
+#archs = ["x86_64", "arm64"]
+archs = ["arm64"]
 test-skip = ["*arm64"]
+build = ["cp310*"]

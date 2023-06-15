@@ -33,26 +33,41 @@ if (GISMO_WITH_XDEBUG)
   endif()
 endif()
 
-  add_library(${PROJECT_NAME} SHARED
-    ${${PROJECT_NAME}_MODULES}
-    ${${PROJECT_NAME}_SOURCES}
-    ${${PROJECT_NAME}_EXTENSIONS}
-    )
-
   if (GISMO_WITH_PYBIND11)
-    pybind11_add_module(py${PROJECT_NAME} MODULE
+    add_library(${PROJECT_NAME} STATIC
       ${${PROJECT_NAME}_MODULES}
       ${${PROJECT_NAME}_SOURCES}
       ${${PROJECT_NAME}_EXTENSIONS}
-      "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
       )
-    target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
-    #target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
-    target_link_libraries(py${PROJECT_NAME} PRIVATE "${${PROJECT_NAME}_LINKER}")
+
+    pybind11_add_module(py${PROJECT_NAME} MODULE
+      "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
+    )
+
+    # since gismo (${PROJECT_NAME}) target includes bindings, it needs
+    # pybind/python info. Those are automatically managed in
+    # `pybind11_add_module`. Since we aren't using it, setup gismo target
+    # in similar fashion manually. 
+    target_link_libraries(${PROJECT_NAME} pybind11::module)
+    if(NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
+      set_target_properties(${target_name} PROPERTIES CXX_VISIBILITY_PRESET "hidden")
+    endif()
+    if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+      target_link_libraries(${target_name} pybind11::lto)
+    endif()
+
+    # link gismo to pygismo
+    target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
 
     if (GISMO_KLSHELL)
       target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
     endif()# To fix
+  else()
+    add_library(${PROJECT_NAME} SHARED
+      ${${PROJECT_NAME}_MODULES}
+      ${${PROJECT_NAME}_SOURCES}
+      ${${PROJECT_NAME}_EXTENSIONS}
+      )
   endif(GISMO_WITH_PYBIND11)
   
   #generate_export_header(${PROJECT_NAME})

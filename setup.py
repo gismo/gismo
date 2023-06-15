@@ -73,6 +73,7 @@ class CMakeBuild(build_ext):
             # option flags for gismo
             f"-DGISMO_WITH_PYBIND11=ON",
             f"-DGISMO_BUILD_EXAMPLES=OFF",
+            f"-DNOSNIPPETS=ON",
             # find_package(pybind11) hint
             f"-Dpybind11_DIR={pybind11.get_cmake_dir()}",
         ]
@@ -175,8 +176,9 @@ class CMakeBuild(build_ext):
                 # CMake 3.12+ only.
                 build_args += [f"-j{self.parallel}"]
 
-            # if len(ext.extra_args["build_args"]) != 0:
-            #    build_args.extend(ext.extra_args["build_args"])
+        # from github actions, use parallel build
+        elif "GITHUB_ACTIONS" in os.environ:
+            build_args += [f"-j{os.cpu_count()}"]
 
         build_temp = Path(self.build_temp) / ext.name
         if not build_temp.exists():
@@ -185,7 +187,9 @@ class CMakeBuild(build_ext):
         # provide standard include path for third party libraries
         gs_external = Path().cwd() / "external"
         eigen_sym_path = Path(gs_external / "Eigen")
-        eigen_sym_path.symlink_to(gs_external / "gsEigen")
+        # rerun after error build won't eraise this correctly
+        if not eigen_sym_path.is_symlink():
+            eigen_sym_path.symlink_to(gs_external / "gsEigen")
 
         subprocess.run(
             ["cmake", ext.sourcedir] + cmake_args, cwd=build_temp, check=True
