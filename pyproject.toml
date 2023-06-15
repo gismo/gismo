@@ -12,10 +12,9 @@ test-command = "python3 {project}/python_examples/bspline_curve_example.py"
 
 [tool.cibuildwheel.linux]
 archs = ["x86_64"]
-build = ["cp310-many*"]
+build = ["cp38-many*", "cp39-many*"]
 
 [tool.cibuildwheel.macos]
-#archs = ["x86_64", "arm64"]
-archs = ["arm64"]
+archs = ["x86_64", "arm64"]
 test-skip = ["*arm64"]
-build = ["cp310*"]
+build = ["cp38*", "cp39*", "cp310-macosx_x86_64"]
