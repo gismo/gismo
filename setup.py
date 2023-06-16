@@ -137,6 +137,33 @@ class CMakeBuild(build_ext):
                 cmake_args += [
                     "-DCMAKE_OSX_ARCHITECTURES={}".format(";".join(archs))
                 ]
+            if platform.machine().startswith("arm64"):
+                cmake_args += [
+                    "-DTARGET_ARCHITECTURE=apple-m1"
+                ]
+            elif platform.machine().startswith("x86_64"):
+                cmake_args += [
+                    "-DTARGET_ARCHITECTURE=haswell"
+                ]
+            else:
+                raise ValueError(f"{archs} architecture is not supported")
+
+        elif sys.platform.startswith("linux"):
+            # Cross-compile support for linux
+            if platform.machine().startswith("x86_64"):
+                cmake_args += [
+                    "-DTARGET_ARCHITECTURE=haswell"
+                ]
+            elif platform.machine().startswith("aarch64"):
+                cmake_args += [
+                    "-DTARGET_ARCHITECTURE=generic"
+                ]
+            elif platform.machine().startswith("ppc64le"):
+                cmake_args += [
+                    "-DTARGET_ARCHITECTURE=generic"
+                ]
+            else:
+                raise ValueError(f"{platform.machine()} architecture is not supported")            
 
         # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
         # across all generators.
