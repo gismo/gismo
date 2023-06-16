@@ -33,13 +33,22 @@ if (GISMO_WITH_XDEBUG)
   endif()
 endif()
 
-  if (GISMO_WITH_PYBIND11)
+  # build static within github ci 
+  if ($ENV{GITHUB_ACTIONS})
     add_library(${PROJECT_NAME} STATIC
       ${${PROJECT_NAME}_MODULES}
       ${${PROJECT_NAME}_SOURCES}
       ${${PROJECT_NAME}_EXTENSIONS}
       )
+  else()
+    add_library(${PROJECT_NAME} SHARED
+      ${${PROJECT_NAME}_MODULES}
+      ${${PROJECT_NAME}_SOURCES}
+      ${${PROJECT_NAME}_EXTENSIONS}
+      )
+  endif()
 
+  if (GISMO_WITH_PYBIND11)
     pybind11_add_module(py${PROJECT_NAME} MODULE
       "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
     )
@@ -62,12 +71,6 @@ endif()
     if (GISMO_KLSHELL)
       target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
     endif()# To fix
-  else()
-    add_library(${PROJECT_NAME} SHARED
-      ${${PROJECT_NAME}_MODULES}
-      ${${PROJECT_NAME}_SOURCES}
-      ${${PROJECT_NAME}_EXTENSIONS}
-      )
   endif(GISMO_WITH_PYBIND11)
   
   #generate_export_header(${PROJECT_NAME})
