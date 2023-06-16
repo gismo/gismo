@@ -143,9 +143,7 @@ class CMakeBuild(build_ext):
                     "-DTARGET_ARCHITECTURE=apple-m1"
                 ]
             elif platform.machine().startswith("x86_64"):
-                cmake_args += [
-                    "-DTARGET_ARCHITECTURE=haswell"
-                ]
+                pass
             else:
                 raise ValueError(f"{archs} architecture is not supported")
 
@@ -165,10 +163,13 @@ class CMakeBuild(build_ext):
                 ]
             else:
                 raise ValueError(f"{platform.machine()} architecture is not supported")            
+        # from github actions, use parallel build
+        if "GITHUB_ACTIONS" in os.environ:
+            build_args += [f"-j{os.cpu_count()}"]
 
         # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
         # across all generators.
-        if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
+        elif "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
             # self.parallel is a Python 3 only way to set parallel jobs by hand
             # using -j in the build_ext call,
             # not supported by pip or PyPA-build.
@@ -176,9 +177,6 @@ class CMakeBuild(build_ext):
                 # CMake 3.12+ only.
                 build_args += [f"-j{self.parallel}"]
 
-        # from github actions, use parallel build
-        elif "GITHUB_ACTIONS" in os.environ:
-            build_args += [f"-j{os.cpu_count()}"]
 
         build_temp = Path(self.build_temp) / ext.name
         if not build_temp.exists():
