@@ -816,6 +816,30 @@ void gsKnotVector<T>::addConstant( T amount )
 }
 
 template<typename T>
+void gsKnotVector<T>::addConstant(T start, T amount)
+{
+    typename std::vector<T>::iterator beg   = m_repKnots.begin();
+    while (*beg < start)
+        beg++;
+
+    // The last element is closed from both sides.
+    uiterator dend = domainUEnd();
+
+    // If statement is needed because uFind gives back an iterator to the n-1 entry while the nth is required
+    if (start!=*dend)
+    {
+        uiterator uit = uFind(start);
+        for (; uit != uend(); ++uit)
+            uit.setValue(*uit + amount);
+    }
+    else
+        dend.setValue(*dend + amount);
+
+
+    GISMO_ASSERT( check(), "addConstant() has produced an invalid knot vector.");
+}
+
+template<typename T>
 void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
 {
     GISMO_ASSERT( i>=0, "Expecting non-negative number");

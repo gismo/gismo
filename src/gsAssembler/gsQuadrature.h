@@ -16,6 +16,7 @@
 #include <gsIO/gsOptionList.h>
 #include <gsAssembler/gsGaussRule.h>
 #include <gsAssembler/gsLobattoRule.h>
+#include <gsAssembler/gsNewtonCotesRule.h>
 #include <gsAssembler/gsPatchRule.h>
 #include <gsAssembler/gsOverIntegrateRule.h>
 

@@ -14,10 +14,11 @@
 #pragma once
 
 // #include<gsIO/gsParaviewCollection.h>
-#include<fstream>
-#include<gsAssembler/gsQuadrature.h>
+#include <fstream>
+#include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
+#include <gsIO/gsWriteParaview.h>
 
 namespace gismo
 {
@@ -49,6 +50,8 @@ public:
     typedef typename gsExprHelper<T>::element     element;
     typedef typename gsExprHelper<T>::geometryMap geometryMap;
     typedef typename gsExprHelper<T>::variable    variable;
+
+    typedef typename gsFunction<T>::uPtr ifacemap;
 
 public:
 
@@ -577,11 +580,9 @@ template<class T>
 template<class E, class _op>
 T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces)
 {
-    typedef typename gsFunction<T>::uPtr ifacemap;
-
     auto arg_tpl = expr.val();
     m_exprdata->parse(arg_tpl);
-    m_exprdata->activateFlags(SAME_ELEMENT);
+    // m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights; // quadrature weights
@@ -812,9 +813,19 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     const bool flipSide = m_options.askSwitch("flipSide", false);
     const boundaryInterface & iFace =  flipSide ? ifc.getInverse() : ifc;
 
-    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);            
+    const index_t patch1 = iFace.first().patch;
+    const index_t patch2 = iFace.second().patch;
+
+    ifacemap interfaceMap;
+    if (iFace.type() == interaction::conforming)
+        interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                  m_exprdata->multiBasis().basis(patch1).support(),
+                                                  m_exprdata->multiBasis().basis(patch2).support() );
+    else
+        interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+
     m_exprdata->points() = pt;
-    interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+    interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
     m_exprdata->precompute(iFace);
 
     // expr.printDetail(gsInfo); //
@@ -834,9 +845,19 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     const bool flipSide = m_options.askSwitch("flipSide", false);
     const boundaryInterface & iFace =  flipSide ? ifc.getInverse() : ifc;
 
-    gsCPPInterface<T> interfaceMap(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);            
+    const index_t patch1 = iFace.first().patch;
+    const index_t patch2 = iFace.second().patch;
+
+    ifacemap interfaceMap;
+    if (iFace.type() == interaction::conforming)
+        interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                  m_exprdata->multiBasis().basis(patch1).support(),
+                                                  m_exprdata->multiBasis().basis(patch2).support() );
+    else
+        interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+
     m_exprdata->points() = pt;
-    interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+    interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
     m_exprdata->precompute(iFace);
 

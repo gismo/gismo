@@ -84,7 +84,10 @@ public:
 
     T length() const { return (m_end - m_start).norm(); }
 
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
+
 
 private:
     gsPoint<d, T> m_start;

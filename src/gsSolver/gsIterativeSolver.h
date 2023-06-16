@@ -68,7 +68,7 @@ public:
     /// the matrix, you might use \ref makeMatrixOp() to obtain a shared pointer
     /// to a gsLinearOperator which can be supplied alternatively.
     template<typename Derived>
-    gsIterativeSolver( const Eigen::EigenBase<Derived> & mat,
+    gsIterativeSolver( const gsEigen::EigenBase<Derived> & mat,
                        const LinOpPtr& precond)
     : m_mat(makeMatrixOp(mat.derived())),
       m_precond(precond),

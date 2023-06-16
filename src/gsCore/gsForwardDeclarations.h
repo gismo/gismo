@@ -119,6 +119,7 @@ template <class T=real_t>                class gsMultiPatch;
 template <class basis_t >                class gsRationalBasis;
 template <short_t d, class T=real_t>     class gsTensorBasis;
 template <short_t d, class T=real_t>     class gsHTensorBasis;
+template <short_t d, class T=real_t>     class gsMappedBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
@@ -148,10 +149,12 @@ template <short_t d, class T=real_t>     class gsTensorNurbs;
 template <short_t d, class T=real_t>     class gsTensorBezier;
 template <short_t d, class T=real_t>     class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
+template <short_t d, class T=real_t>     class gsMappedSpline;
 
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
 template <class T=real_t>                class gsGaussRule;
+template <class T=real_t>                class gsNewtonCotesRule;
 template <class T=real_t>                class gsGalerkinMethod;
 
 // Domains
@@ -286,9 +289,17 @@ template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
 
+template <short_t d, class T=real_t>     struct gsHBoxUtils;
+template <short_t d, class T=real_t>     struct gsHBoxContains;
+template <short_t d, class T=real_t>     struct gsHBoxIsContained;
+template <short_t d, class T=real_t>     struct gsHBoxCompare;
+template <short_t d, class T=real_t>     struct gsHBoxEqual;
+
+template <short_t d, class T=real_t>     class gsHBox;
+template <short_t d, class T=real_t>     class gsHBoxContainer;
+
 class gsParaviewDataSet;
 class gsSurfMesh;
-
 /// @endcond
 
 ///@}

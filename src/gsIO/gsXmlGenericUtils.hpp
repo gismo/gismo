@@ -312,8 +312,8 @@ Object * getGeometryFromXml ( gsXmlNode * node)
             if (val ==  "rotation" ) // 3d
             {
                 getMatrixFromXml<typename Object::Scalar_t>(tmp, 4, 1, a);
-                Eigen::Transform<typename Object::Scalar_t,3,Eigen::Affine> 
-                    rot( Eigen::AngleAxis<typename Object::Scalar_t> 
+                gsEigen::Transform<typename Object::Scalar_t,3,gsEigen::Affine> 
+                    rot( gsEigen::AngleAxis<typename Object::Scalar_t> 
                          ( a(3,0), a.template block<3,1>(0,0).normalized() ) );
                 c = (c. rowwise().homogeneous() * 
                      rot.matrix().transpose() ).leftCols(3) ;
@@ -329,8 +329,9 @@ Object * getGeometryFromXml ( gsXmlNode * node)
             }
         }
     }
-    
-    return new Object(*b,c);
+
+    Object * result = new Object(*b,c);
+    return result;
 }
 
 /// Helper to put geometries to XML
@@ -359,7 +360,6 @@ gsXmlNode * putGeometryToXml ( Object const & obj, gsXmlTree & data)
     tmp = putMatrixToXml( obj.coefs(), data, "coefs" );
     tmp->append_attribute( makeAttribute("geoDim", obj.geoDim(), data) );
     bs->append_node(tmp);
-
     return bs;
 }
 

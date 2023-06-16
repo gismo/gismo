@@ -23,7 +23,7 @@ namespace gismo
 
 // Adaptor to compute Hessian
 template <typename Derived>
-void secDerToHessian(const Eigen::DenseBase<Derived> &  secDers,
+void secDerToHessian(const gsEigen::DenseBase<Derived> &  secDers,
                      const index_t dim,
                      gsMatrix<typename Derived::Scalar> & hessian)
 {
@@ -373,6 +373,16 @@ public:
 template <typename E>
 std::ostream &operator<<(std::ostream &os, const _expr<E> & b)
 {b.print(os); return os; }
+
+}
+}
+
+#include <gsAssembler/expr/precomputed_expr.h>
+
+namespace gismo
+{
+namespace expr
+{
 
 /*
   Null expression is a compatibility expression invalid at runtime
@@ -1027,9 +1037,7 @@ public:
                   for(index_t s = 0; s != solVector.cols(); ++s )
                     result(i,c+s) = solVector(ii,s); //assume dim==1 xor solVector.cols()==1
                 else // eliminated DoF: fill with Dirichlet data
-                {
                     result(i,c) =  m_sd->fixedDofs.at( m_sd->mapper.global_to_bindex(ii) );
-                }
             }
         }
     }
@@ -1147,6 +1155,36 @@ public:
                         for (index_t k = 0; k < bnd.size() - 1; ++k)
                             m_sd->mapper.matchDof(it->ps.patch, (bnd)(0, 0),
                                                   it->ps.patch, (bnd)(k + 1, 0), c);
+                }
+            }
+
+            // Coupled
+            for (typename gsBoundaryConditions<T>::const_cpliterator
+                     it = bc.coupledBegin(); it != bc.coupledEnd(); ++it)
+            {
+                const index_t cc = it->component;
+
+                GISMO_ASSERT(static_cast<size_t>(it->ifc.first().patch) < this->mapper().numPatches(),
+                             "Problem: a boundary condition is set on a patch id which does not exist.");
+                GISMO_ASSERT(static_cast<size_t>(it->ifc.second().patch) < this->mapper().numPatches(),
+                             "Problem: a boundary condition is set on a patch id which does not exist.");
+
+
+                bnd = mb->basis(it->ifc.first().patch).boundary(it->ifc.first().side());
+                bnd1 = mb->basis(it->ifc.second().patch).boundary(it->ifc.second().side());
+
+                // match all DoFs to the first one of the side
+                for (index_t c = 0; c!=dim; c++) // for all components
+                {
+                    if (c==cc || cc==-1)
+                    {
+                        for (index_t k = 0; k < bnd.size() - 1; ++k)
+                            m_sd->mapper.matchDof(it->ifc.first() .patch, (bnd)(0, 0),
+                                                  it->ifc.first() .patch, (bnd)(k + 1, 0), c);
+                        for (index_t k = 0; k < bnd1.size(); ++k)
+                            m_sd->mapper.matchDof(it->ifc.first() .patch, (bnd)(0, 0),
+                                                  it->ifc.second().patch, (bnd1)(k, 0), c);
+                    }
                 }
             }
 
@@ -1356,7 +1394,7 @@ public:
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        bool singleActives = (1 == _u.data().actives.cols()); 
 
         res.setZero(_u.dim(), 1);
         const gsDofMapper & map = _u.mapper();
@@ -1364,9 +1402,9 @@ public:
 
         for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
-            for (index_t i = 0; i!=_u.data().actives.size(); ++i)
+            for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
-                const index_t ii = map.index(_u.data().actives.at(i), _u.data().patchId, c);
+                const index_t ii = map.index(_u.data().actives(i, singleActives ? 0 : k), _u.data().patchId, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 else
@@ -1383,7 +1421,6 @@ public:
 
     const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-
     index_t rows() const {return _u.dim(); }
 
     static index_t cols() {return 1; }
@@ -1402,13 +1439,13 @@ public:
     index_t parDim() const
     { return _u.source().domainDim(); }
 
-    gsDofMapper & mapper() {return _u.mapper();}
+    //gsDofMapper & mapper() {return _u.mapper();}
     const gsDofMapper & mapper() const {return _u.mapper();}
 
     inline const gsMatrix<T> & fixedPart() const {return _u.fixedPart();}
     gsMatrix<T> & fixedPart() {return _u.fixedPart();}
 
-    gsFuncData<T> & data() {return *_u.data();}
+    //gsFuncData<T> & data() {return _u.data();}
     const gsFuncData<T> & data() const {return _u.data();}
 
     void setSolutionVector(gsMatrix<T>& solVector)
@@ -1450,20 +1487,17 @@ public:
     
     //const gsMatrix<T> & coefs(component, patch) const { return *_Sv; }
 
-    /// val: perturbation value, j: local bf index, p: patch
+    /// val: perturbation value, j: global index, p: patch
     void perturbLocal(T val, index_t j, index_t p = 0)
     {
-        GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
-
-        auto qr = std::div(j, _u.data().actives.size() );
-        const index_t ii = _u.mapper().index(qr.rem, p, qr.quot);
-        if (_u.mapper().is_free_index(ii) )
-        {
-            GISMO_ASSERT(ii<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
-            _Sv->at(ii) += val;
-        }
+        // GISMO_ASSERT(1==_u.data().actives.cols(), "Single actives expected");
+        //if (_u.mapper().is_free_index(j) )
+        //{
+            GISMO_ASSERT(j<_Sv->size(), "Solution vector is not initialized/allocated, sz="<<_Sv->size() );
+            _Sv->at(j) += val;
+            //}
         //else
-        //    _u.fixedPart().at( _u.mapper().global_to_bindex(ii) ) += val;
+        //    _u.fixedPart().at( _u.mapper().global_to_bindex(j) ) += val;
     }
 
     /// Extract the coefficients of piece \a p
@@ -2898,12 +2932,12 @@ public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
+    explicit onormal_expr(const gsGeometryMap<T> & G) : _G(G) { }
 
     auto eval(const index_t k) const -> decltype(_G.data().outNormals.col(k))
     { return _G.data().outNormals.col(k); }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return  _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
@@ -2936,7 +2970,7 @@ public:
     auto eval(const index_t k) const -> decltype(_G.data().normals.col(k))
     { return _G.data().normals.col(k); }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     const gsFeSpace<T> & rowVar() const {return gsNullExpr<T>::get();}
@@ -2988,7 +3022,7 @@ public:
 
     }
 
-    index_t rows() const { return _G.data().dim.second; }
+    index_t rows() const { return _G.source().targetDim(); }
     index_t cols() const { return 1; }
 
     static const gsFeSpace<Scalar> & rowVar() {return gsNullExpr<Scalar>::get();}
@@ -3117,8 +3151,8 @@ public:
         return gsAsConstMatrix<Scalar>(_G.data().fundForms.col(k).data(),rows(),cols());
     }
 
-    index_t rows() const { return _G.data().dim.first ; }
-    index_t cols() const { return _G.data().dim.first ; }
+    index_t rows() const { return _G.source().domainDim() ; }
+    index_t cols() const { return _G.source().domainDim() ; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -3504,8 +3538,8 @@ public:
         return res;
     }
 
-    index_t rows() const { return _G.data().dim.second; }
-    index_t cols() const { return _G.data().dim.first; }
+    index_t rows() const { return _G.source().targetDim(); }
+    index_t cols() const { return _G.source().domainDim(); }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {

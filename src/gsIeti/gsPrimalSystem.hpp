@@ -258,7 +258,7 @@ gsPrimalSystem<T>::distributePrimalSolution( std::vector<Matrix> sol )
             sol[i].swap(tmp);
         }
         else
-            sol[i].conservativeResize( this->m_primalBases[i].rows(), Eigen::NoChange );
+            sol[i].conservativeResize( this->m_primalBases[i].rows(), gsEigen::NoChange );
         sol[i] += this->m_primalBases[i] * sol.back();
     }
 

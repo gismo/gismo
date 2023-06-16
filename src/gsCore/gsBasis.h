@@ -411,6 +411,23 @@ public:
       Member functions that need to be redefined in the derived class.
     */
 
+    /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
+    virtual const gsMatrix<T> & weights() const 
+    {
+        static gsMatrix<T> dummy;
+        return dummy; 
+    }
+
+    /// Only for compatibility reasons, with gsRationalBasis. It returns an empty matrix.
+    virtual gsMatrix<T> & weights()
+    {
+        static gsMatrix<T> dummy;
+        return dummy; 
+    }
+
+    /// Returns false, since all bases that inherit from gsBasis are not rational.
+    virtual bool isRational() const { return false;}
+
     /**
      * @brief
      * Returns the anchor points that represent the members of the basis.
@@ -858,6 +875,21 @@ public:
     ///
     /// \sa gsBasis::uniformRefine
     virtual void uniformCoarsen(int numKnots = 1);
+
+    /// @brief Coarsen the basis uniformly
+    ///
+    /// The function simultainously updates the vector \a coefs, representing a function
+    /// in the bases, such that its new version represents the same function.
+    ///
+    /// This function is equivalent to
+    /// \code
+    /// gsSparseMatrix<T,RowMajor> transfer;
+    /// basis->uniformCoarsen_withTransfer(transfer, numKnots);
+    /// coefs = transfer * coefs;
+    /// \endcode
+    ///
+    /// \sa gsBasis::uniformRefine
+    virtual void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
 
     /// @brief Coarsen the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones

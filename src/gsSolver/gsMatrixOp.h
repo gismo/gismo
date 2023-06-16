@@ -123,7 +123,7 @@ private:
   * \relates gsMatrixOp
   */
 template <class Derived>
-typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const Eigen::EigenBase<Derived>& mat)
+typename gsMatrixOp<Derived>::uPtr makeMatrixOp(const gsEigen::EigenBase<Derived>& mat)
 {
     return gsMatrixOp<Derived>::make(mat.derived());
 }
@@ -229,9 +229,9 @@ private:
 ///
 /// \relates gsSolverOp
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makePartialPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< gsEigen::PartialPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makePartialPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return memory::make_unique( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< gsEigen::PartialPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 /// @brief Convenience function to create an LU solver with partial
@@ -240,9 +240,9 @@ typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> >
 ///
 /// \relates gsSolverOp
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makePartialPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
+typename gsSolverOp< gsEigen::PartialPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makePartialPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
-    return memory::make_unique( new gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< gsEigen::PartialPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 
@@ -251,9 +251,9 @@ typename gsSolverOp< Eigen::PartialPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> >
 ///
 /// \relates gsSolverOp
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeFullPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< gsEigen::FullPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeFullPivLUSolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return memory::make_unique( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< gsEigen::FullPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 /// @brief Convenience function to create an LU solver with full
@@ -262,9 +262,9 @@ typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >:
 ///
 /// \relates gsSolverOp
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeFullPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
+typename gsSolverOp< gsEigen::FullPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeFullPivLUSolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
-    return memory::make_unique( new gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< gsEigen::FullPivLU< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 
@@ -276,9 +276,9 @@ typename gsSolverOp< Eigen::FullPivLU< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >:
 ///
 /// \relates gsSolverOp
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeCholeskySolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
+typename gsSolverOp< gsEigen::LDLT< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeCholeskySolver(const gsMatrix<T, _Rows, _Cols, _Opt> & mat)
 {
-    return memory::make_unique( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< gsEigen::LDLT< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 /// @brief Convenience function to create a Cholesky (LDL^T) solver
@@ -290,9 +290,9 @@ typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr
 ///
 /// \relates gsSolverOp
 template <class T, int _Rows, int _Cols, int _Opt>
-typename gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeCholeskySolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
+typename gsSolverOp< gsEigen::LDLT< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >::uPtr  makeCholeskySolver(const memory::shared_ptr< gsMatrix<T, _Rows, _Cols, _Opt> > & mat)
 {
-    return memory::make_unique( new gsSolverOp< Eigen::LDLT< Eigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
+    return memory::make_unique( new gsSolverOp< gsEigen::LDLT< gsEigen::Matrix<T, _Rows, _Cols, _Opt> > >(mat) );
 }
 
 

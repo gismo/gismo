@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsModeling/gsPatchGenerator.h>
 
 using namespace gismo;
 
@@ -103,9 +102,13 @@ int main(int argc, char *argv[])
 {
     std::string filename("domain2d/yeti_mp2.xml");
     bool plot = false;
+    bool mesh = false;
+    bool cnet = false;
+    bool Hausdorff = false;
     real_t tol = 1e-5;
     index_t nknots = 5, degree = 3;
     index_t npts = 100;
+    index_t npts_plot = 200;
     real_t lambda_crv = 0;
     real_t lambda_srf = 0;
     // real_t gtol = 1e-6;
@@ -119,7 +122,11 @@ int main(int argc, char *argv[])
     cmd.addInt   ("d", "degree", "Degree of B-splines for reparameterization", degree);
     cmd.addInt   ("k", "knots", "Number of interior knots for reparameterization", nknots);
     cmd.addInt   ("N", "npts", "Number of points for sampling", npts);
+    cmd.addInt   ("s", "npts_plot", "Number of points for sampling for plotting", npts_plot);
     cmd.addSwitch("plot", "plot results", plot);
+    cmd.addSwitch("hausdorff", "Compute Hausdorff distance", Hausdorff);
+    cmd.addSwitch("mesh", "plot mesh", mesh);
+    cmd.addSwitch("cnet", "plot control net", cnet);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -161,10 +168,10 @@ int main(int argc, char *argv[])
         // Contains the parametric values of the points
         mp_par.patch(p) = give(*bbasis.makeGeometry(pts.transpose()));
     }
-    if (plot) gsWriteParaview(mp,"mp",200,false);
+    if (plot) gsWriteParaview(mp,"mp",npts_plot);
     
     // STEP 1: Get curve network with merged linear interfaces
-    gsInfo<<"Loading curve network...";
+    gsInfo<<"Loading curve network..."<<std::flush;
     mp.constructInterfaceRep();
     mp.constructBoundaryRep();
     auto & irep = mp.interfaceRep();
@@ -185,16 +192,16 @@ int main(int argc, char *argv[])
         crv_net.addPatch((*it->second));
     }
 
-    if (plot) gsWriteParaview(iface_net,"iface_net",200);
-    if (plot) gsWriteParaview(bnd_net,"bnd_net",200);
-    if (plot) gsWriteParaview(crv_net,"crv_net",200);
+    if (plot) gsWriteParaview(iface_net,"iface_net",npts_plot);
+    if (plot) gsWriteParaview(bnd_net,"bnd_net",npts_plot);
+    if (plot) gsWriteParaview(crv_net,"crv_net",npts_plot);
 
     //end outputing
     gsInfo<<"Finished\n";
     
     //STEP 3: Fit curve network with B-splines of degree \a d and \a k interior knots
     //parametrizePts
-    gsInfo<<"Making boundary representation with fitted interfaces...";
+    gsInfo<<"Making boundary representation with fitted interfaces..."<<std::flush;
     gsKnotVector<> kv(0, 1, nknots, degree+1, 1, degree);
     gsBSplineBasis<> fbasis(kv);
 
@@ -274,12 +281,12 @@ int main(int argc, char *argv[])
         crv_net.addPatch( *cfit.result() );
     }
 
-    if (plot) gsWriteParaview(crv_net,"crv_fit",200);
+    if (plot) gsWriteParaview(crv_net,"crv_fit",npts_plot);
     gsInfo<<"Finished\n";
 
     std::vector<gsGeometry<>*> container(mp0->nPatches());
     //STEP 4: fit interior points of each patch with boundary constraints being the curves..
-    gsInfo<<"Fitting surface...";
+    gsInfo<<"Fitting surface..."<<std::flush;
     for (size_t p=0; p!=pbdr.size(); p++)
     {
         std::vector<index_t> prescribedDoFs;
@@ -308,11 +315,70 @@ int main(int argc, char *argv[])
 
         container.at(p) = sfit.result()->clone().release();
     }
+    gsInfo<<"Finished\n";
 
     gsMultiPatch<> mp_res(container,mp0->boundaries(),mp0->interfaces());
-    if (plot) gsWriteParaview(mp_res,"final",200,true);
-    gsWrite<>(mp_res,"final");
-    gsInfo<<"Finished\n";
+
+    if (plot)
+    {
+        gsInfo<<"Plotting in Paraview..."<<std::flush;
+        gsWriteParaview(mp_res,"final",npts_plot,mesh,cnet);
+        gsInfo<<"Finished\n";
+    }
+
+    gsFileData<> fd;
+    fd<<mp_res;
+
+    if (Hausdorff)
+    {
+        gsInfo<<"Computing Hausdorff distance..."<<std::flush;
+        std::vector<real_t> hausdorffs = mp_res.HausdorffDistance(*mp0,1000,1e-6,true);
+        gsInfo<<"Finished.\n";
+
+        typedef gsExprAssembler<>::geometryMap geometryMap;
+        gsPiecewiseFunction<real_t> distances(mp0->nPatches());
+        std::vector<gsConstantFunction<real_t>> funcs(mp0->nPatches());
+        real_t area;
+        for (size_t p = 0; p!=hausdorffs.size(); p++)
+        {
+            gsExprEvaluator<> ev;
+            gsMultiPatch<> mp_tmp(mp_res.patch(p));
+            gsMultiBasis<> dbasis(mp_tmp);
+            ev.setIntegrationElements(dbasis);
+            geometryMap G = ev.getMap(mp_tmp);
+            area = ev.integral(meas(G));
+            funcs.at(p) = gsConstantFunction<>(hausdorffs.at(p) / std::sqrt(area),2);
+            distances.addPiece(funcs.at(p));
+            gsDebugVar(hausdorffs.at(p));
+        }
+
+        gsInfo<<"Plotting Hausdorff distance..."<<std::flush;
+        gsWriteParaview(*mp0,distances,"distField",100);
+        gsInfo<<"Finished.\n";
+
+        gsMatrix<> hausdorff(3,1);
+        hausdorff(0,0) = std::accumulate(hausdorffs.begin(),hausdorffs.end(),0.0) / hausdorffs.size();
+        hausdorff(1,0) = *std::max_element(hausdorffs.begin(),hausdorffs.end());
+        hausdorff(2,0) = *std::min_element(hausdorffs.begin(),hausdorffs.end());
+
+        gsInfo<<"Average Hausdorff distance: "<<hausdorff(0,0)<<"\n";
+        gsInfo<<"Maximum Hausdorff distance: "<<hausdorff(1,0)<<"\n";
+        gsInfo<<"Minimum Hausdorff distance: "<<hausdorff(2,0)<<"\n";
+
+
+        fd<<hausdorff;
+        gsMatrix<> tmp = gsAsMatrix<real_t>(hausdorffs);
+        fd<<tmp;
+
+        std::ofstream file;
+        file.open("haussdorfs.csv",std::ofstream::out);
+        for (size_t k=0; k!=hausdorffs.size(); k++)
+            file<<std::setprecision(12)<<hausdorffs.at(k)<<"\n";
+
+        file.close();
+    }
+    fd.save("final");
+
 
     return EXIT_SUCCESS;
 }

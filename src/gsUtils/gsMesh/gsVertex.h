@@ -42,7 +42,7 @@ public:
     gsVertex() : MeshElement(), gsVector3d<T>() { }
 
     template<typename OtherDerived>
-    gsVertex(const Eigen::MatrixBase<OtherDerived>& other) :
+    gsVertex(const gsEigen::MatrixBase<OtherDerived>& other) :
     MeshElement(), gsVector3d<T>(other) { }
 
     /// @brief Constructor, take 3 scalars.
@@ -203,7 +203,7 @@ bool operator == (gsVertex<T> const & lhs,gsVertex<T> const & rhs)
     return (lhs.x()==rhs.x())&&
            (lhs.y()==rhs.y())&&
            (lhs.z()==rhs.z());
-//    return lhs.Eigen::template Matrix<T,3,1>::operator==(rhs); /slower
+//    return lhs.gsEigen::template Matrix<T,3,1>::operator==(rhs); /slower
 }
 
 template<class T>
@@ -239,7 +239,7 @@ bool operator > (gsVertex<T> const & lhs,gsVertex<T> const & rhs)
 template<class T>
 bool operator != (gsVertex<T> const & lhs, gsVertex<T> const & rhs)
 {
-    //return lhs.Eigen::template Matrix<T,3,1>::operator!=(rhs);
+    //return lhs.gsEigen::template Matrix<T,3,1>::operator!=(rhs);
     return !(lhs.x()== rhs.x()&& lhs.y()==rhs.y()&& lhs.z()==rhs.z());
 }
 

@@ -141,7 +141,7 @@ void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &
         RHS(i, 1)      = (T)( 0);
     }
 
-    Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
+    gsEigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
     gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < N; i++)
     {

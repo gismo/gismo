@@ -197,7 +197,7 @@ void hessianToSecDer (const gsMatrix<T> & hessian,
 }
 
 template<typename T>
-void secDerToTensor(typename Eigen::DenseBase<Eigen::Map<const Eigen::Matrix<T, -1, -1>, 0, Eigen::Stride<0, 0> > >::ConstColXpr & secDers,
+void secDerToTensor(typename gsEigen::DenseBase<gsEigen::Map<const gsEigen::Matrix<T, -1, -1>, 0, gsEigen::Stride<0, 0> > >::ConstColXpr & secDers,
                     gsMatrix<T> * a,
                     short_t parDim, short_t geoDim)
 {
