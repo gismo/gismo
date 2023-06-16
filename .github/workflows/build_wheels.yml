@@ -9,7 +9,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        arch: [x86_64, arm64, aarch64]
         os: [macos-latest, ubuntu-latest]
+        exclude:
+          - os: macos-latest
+            arch: aarch64
+          - os: ubuntu-latest
+            arch: arm64
 
     steps:
     - uses: actions/checkout@v3
@@ -17,6 +23,10 @@ jobs:
         submodules: recursive
     - name:  build wheels
       uses: pypa/cibuildwheel@v2.12.1
+      env:
+        CIBW_ARCHS: ${{ matrix.arch }}
+        CIBW_SKIP: "pp* *musllinux"
+        CIBW_TEST_SKIP: "*-macosx_arm64 *-*linux_{aarch64,ppc64le,s390x}"
 
     - uses: actions/upload-artifact@v3
       with:

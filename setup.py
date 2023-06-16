@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -185,7 +186,7 @@ class CMakeBuild(build_ext):
         # provide standard include path for third party libraries
         gs_external = Path().cwd() / "external"
         eigen_sym_path = Path(gs_external / "Eigen")
-        # rerun after error build won't eraise this correctly
+        # rerun after error build won't erase this correctly
         if not eigen_sym_path.is_symlink():
             eigen_sym_path.symlink_to(gs_external / "gsEigen")
 
