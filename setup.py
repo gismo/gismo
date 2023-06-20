@@ -13,6 +13,44 @@ import pybind11
 # taken from pybind cmake example
 # https://github.com/pybind/cmake_example/blob/master/setup.py
 
+
+# get version from CMakeLists.txt
+def extract_number(line_str, start_phrase, end_phrase):
+    tmp = line_str[len(start_phrase) :]
+    number = tmp[: tmp.index(end_phrase)].strip()
+    if len(number) == 0:
+        raise ValueError("Invalid version str in CMakeLists.txt")
+    return number
+
+
+here = Path(__file__).parent.resolve()
+cmakelists = here / "CMakeLists.txt"
+with open(cmakelists, "r") as cm:
+    major_phrase = "set(gismo_VERSION_MAJOR"
+    minor_phrase = "set(gismo_VERSION_MINOR"
+    patch_phrase = "set(gismo_VERSION_PATCH"
+    major = ""
+    minor = ""
+    patch = ""
+    status = [False, False, False]
+    for line in cm:
+        if major_phrase in line:
+            major = extract_number(line, major_phrase, ")")
+            status[0] = True
+        elif minor_phrase in line:
+            minor = extract_number(line, minor_phrase, ")")
+            status[1] = True
+        elif patch_phrase in line:
+            patch = extract_number(line, patch_phrase, ")")
+            status[1] = True
+        else:
+            continue
+
+        if all(status):
+            break
+
+version = f"{major}.{minor}.{patch}"
+
 # Convert distutils Windows platform specifiers to CMake -A arguments
 PLAT_TO_CMAKE = {
     "win32": "Win32",
@@ -46,7 +84,7 @@ class CMakeBuild(build_ext):
         extdir = ext_fullpath.parent.resolve()
 
         # Using this requires trailing slash for auto-detection & inclusion of
-        # auxiliary "native" libs
+        # auxiiliary "native" libs
 
         debug = (
             int(os.environ.get("DEBUG", 0))
@@ -140,9 +178,7 @@ class CMakeBuild(build_ext):
                     "-DCMAKE_OSX_ARCHITECTURES={}".format(";".join(archs))
                 ]
             if platform.machine().startswith("arm64"):
-                cmake_args += [
-                    "-DTARGET_ARCHITECTURE=apple-m1"
-                ]
+                cmake_args += ["-DTARGET_ARCHITECTURE=apple-m1"]
             elif platform.machine().startswith("x86_64"):
                 pass
             else:
@@ -151,19 +187,15 @@ class CMakeBuild(build_ext):
         elif sys.platform.startswith("linux"):
             # Cross-compile support for linux
             if platform.machine().startswith("x86_64"):
-                cmake_args += [
-                    "-DTARGET_ARCHITECTURE=haswell"
-                ]
+                cmake_args += ["-DTARGET_ARCHITECTURE=haswell"]
             elif platform.machine().startswith("aarch64"):
-                cmake_args += [
-                    "-DTARGET_ARCHITECTURE=generic"
-                ]
+                cmake_args += ["-DTARGET_ARCHITECTURE=generic"]
             elif platform.machine().startswith("ppc64le"):
-                cmake_args += [
-                    "-DTARGET_ARCHITECTURE=generic"
-                ]
+                cmake_args += ["-DTARGET_ARCHITECTURE=generic"]
             else:
-                raise ValueError(f"{platform.machine()} architecture is not supported")            
+                raise ValueError(
+                    f"{platform.machine()} architecture is not supported"
+                )
         # from github actions, use parallel build
         if "GITHUB_ACTIONS" in os.environ:
             build_args += [f"-j{os.cpu_count()}"]
@@ -177,7 +209,6 @@ class CMakeBuild(build_ext):
             if hasattr(self, "parallel") and self.parallel:
                 # CMake 3.12+ only.
                 build_args += [f"-j{self.parallel}"]
-
 
         build_temp = Path(self.build_temp) / ext.name
         if not build_temp.exists():
@@ -207,7 +238,7 @@ with open("README.md") as readme:
 
 setup(
     name="pygismo",
-    version="0.0.0",
+    version=version,
     author="Angelos Mantzaflaris",
     author_email="angelos.mantzaflaris@inria.fr",
     description="G+Smo (Geometry + Simulation Modules)",
@@ -221,6 +252,12 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Programming Language :: Python",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Natural Language :: English",
         "Topic :: Scientific/Engineering",
     ],

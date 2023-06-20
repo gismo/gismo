@@ -2,7 +2,8 @@ name: build_python_wheels
 
 on:
   push:
-    branches: ["stable", "ft-pygismo"]
+    branches: ["stable"]
+  pull_request:
 
 jobs:
   wheel_build_full:
@@ -48,6 +49,8 @@ jobs:
   upload_test_pypi:
     needs: [wheel_build_full, source_dist]
     runs-on: ubuntu-latest
+    # try to publish only if this is a push to stable branch
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stable' }}
     steps:
       - uses: actions/download-artifact@v3
         with:
