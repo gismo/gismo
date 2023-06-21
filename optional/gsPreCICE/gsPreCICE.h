@@ -140,7 +140,7 @@ public:
         T * values_ptr = new T[size];
         m_interface.readBlockScalarData(dataID,size,IDs,values_ptr);
 
-        values = Eigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size);
+        values = gsEigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size);
     }
 
     /**
@@ -164,7 +164,7 @@ public:
     //     T * values_ptr = new T[size];
     //     m_interface.readBlockVectorData(dataID,size,IDs,values_ptr);
     //     index_t rows =
-    //     values = Eigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size);
+    //     values = gsEigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size);
 
     //     // CAST VALUES TO gsMATRIX
     // }
@@ -233,7 +233,7 @@ public:
         for (index_t k=0; k!=coords.cols(); k++)
             gsDebugVar(ID_ptr[k]);
 
-        IDs = Eigen::Map<typename gsMatrix<index_t>::Base>(ID_ptr,1,coords.cols());
+        IDs = gsEigen::Map<typename gsMatrix<index_t>::Base>(ID_ptr,1,coords.cols());
     }
 
     /**

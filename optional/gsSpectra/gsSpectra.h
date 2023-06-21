@@ -102,7 +102,7 @@ public:
 #endif
         m_solver.compute(mat);
 
-        GISMO_ASSERT(m_solver.info() == Eigen::Success,"SparseSymShiftSolve: factorization failed with the given shift");
+        GISMO_ASSERT(m_solver.info() == gsEigen::Success,"SparseSymShiftSolve: factorization failed with the given shift");
     }
 };
 
@@ -134,7 +134,7 @@ public:
 
     void set_shift(const Scalar& sigma)
     {
-        m_solver.compute(m_mat, Eigen::Lower, sigma);
+        m_solver.compute(m_mat, gsEigen::Lower, sigma);
         GISMO_ASSERT(m_solver.info() == Spectra::CompInfo::Successful,"DenseSymShiftSolve: factorization failed with the given shift");
     }
 };
@@ -167,7 +167,7 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
 
         m_solver.compute(mat);
-        m_info = (m_solver.info() == Eigen::Success) ?
+        m_info = (m_solver.info() == gsEigen::Success) ?
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
@@ -224,7 +224,7 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
 
         m_solver.compute(mat);
-        m_info = (m_solver.info() == Eigen::Success) ?
+        m_info = (m_solver.info() == gsEigen::Success) ?
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
@@ -243,7 +243,7 @@ public:
     /// See Spectra/SparseRegularInverse.h for help
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
-        gsAsVector<Scalar>(y_out, m_n).noalias() = m_mat.template selfadjointView<Eigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_n);
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_mat.template selfadjointView<gsEigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_n);
     }
 };
 
@@ -290,7 +290,7 @@ public:
         #endif
         #endif
         m_solver.compute(mat);
-        GISMO_ASSERT(m_solver.info()==Eigen::Success,"Factorization failed");
+        GISMO_ASSERT(m_solver.info()==gsEigen::Success,"Factorization failed");
     }
 };
 
