@@ -30,7 +30,7 @@ public:
 
     typedef gsPoint<d, T> Self;
 
-    typedef typename Eigen::aligned_allocator<Self> aalloc;
+    typedef typename gsEigen::aligned_allocator<Self> aalloc;
 
     typedef T Scalar_t;
 

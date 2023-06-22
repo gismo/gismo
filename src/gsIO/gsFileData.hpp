@@ -1128,7 +1128,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   if(kind==8) // 4D control points
   {
   gsMatrix<T>  weights =  coefs.row(3);
-  coefs.resize(Eigen::NoChange,3);
+  coefs.resize(gsEigen::NoChange,3);
   gsDebug<<"weights: "<< weights.transpose() <<"\n";
   }
 

@@ -125,7 +125,7 @@ public:
     /// matrix. Note that matrix() might return a lower diagonal
     /// matrix, if we exploit possible symmetry during assembly
     /// (check: m_matrix.symmetry() == true )
-    Eigen::SparseSelfAdjointView< typename gsSparseMatrix<T>::Base, Lower> fullMatrix()
+    gsEigen::SparseSelfAdjointView< typename gsSparseMatrix<T>::Base, Lower> fullMatrix()
     {
         return m_system.matrix().template selfadjointView<Lower>();
     }
