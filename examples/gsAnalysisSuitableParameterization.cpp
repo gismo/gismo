@@ -101,6 +101,7 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename)
 //                                       "but multi-patch has "
 //            << mp.nPatches() << " patches");
 
+
     // resulting mesh
     gsOptionList options;
     options.addReal("quA",
