@@ -242,6 +242,10 @@ if(GISMO_WITH_UMFPACK)
   #include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
 
+if(GISMO_WITH_HLBFGS)
+  add_subdirectory(optional/gsHLBFGS)
+endif(GISMO_WITH_HLBFGS)
+
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
 
