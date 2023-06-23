@@ -65,7 +65,7 @@ endif()
 ## gsOpenCascade extension
 ##
 include_directories(SYSTEM ${OCC_INCLUDE_DIR})
-set(OCC_SOURCES gsReadBrep.cpp)
+set(OCC_SOURCES gsReadOcct.cpp gsWriteOcct.cpp)
 
 # Compile the extension as part of the G+Smo library
 add_library(${PROJECT_NAME} OBJECT ${OCC_SOURCES})

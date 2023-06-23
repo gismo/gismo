@@ -29,7 +29,7 @@
 #endif
 
 #ifdef gsOpenCascade_ENABLED
-#include <gsOpenCascade/gsReadBrep.h>
+#include <gsOpenCascade/gsReadOcct.h>
 #endif
 
 #ifdef GISMO_WITH_PSOLID               // Extension files
@@ -2236,7 +2236,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
         }
     }
 
-    const bool fc = (fclose(fr) != EOF);
+    const bool fc = ( 0==fclose(fr) );
     if (fc) gsWarn<< "File closing didn't succeeded!\n";
     return fc;
 }
