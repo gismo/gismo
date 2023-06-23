@@ -196,6 +196,7 @@ int main(int argc, char *argv[])
     gsInfo << "Available threads: " << omp_get_max_threads() << "\n";
 #endif
 
+
     //////////////////// STEP 1: read a multi-patch file /////////////////
     index_t initialMethod = 0;
     index_t paramMethod = 1;
