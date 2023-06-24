@@ -1,4 +1,4 @@
-/** @file biharmonic_example.cpp
+/** @file gsAnalysisSuitableParameterization_example.cpp
 
     @brief Analysis-suitable parameterization example.
 
@@ -13,9 +13,9 @@
 
 #include <gismo.h>
 #include <gsHLBFGS/gsHLBFGS.h>
-#include <gsModeling/gsBarrierPatch.h>
+#include "gsModeling/gsBarrierPatch.h"
 #include "gsModeling/gsBarrierCore.h"
-#include "gsModeling/gsBarrierPatchGenerator.h"
+//#include "gsModeling/gsBarrierPatchGenerator.h"
 
 using namespace gismo;
 
@@ -291,19 +291,22 @@ int main(int argc, char *argv[])
       short_t pardim = mp->domainDim();
       short_t geodim = mp->targetDim();
       if (isBRep || pardim != geodim) {
-        if (geodim == 2) {
-          gsBarrierPatchGenerator<2, real_t> patchGenerator(*mp,
-                                                            filename_input);
-          patchGenerator.options().setInt("InitialMethod", initialMethod);
-          patchGenerator.initialization();
-          *mp = patchGenerator.getMultiPatch();
-        } else if (geodim == 3) {
-          gsBarrierPatchGenerator<3, real_t> patchGenerator(*mp,
-                                                            filename_input);
-          patchGenerator.options().setInt("InitialMethod", initialMethod);
-          patchGenerator.initialization();
-          *mp = patchGenerator.getMultiPatch();
-        }
+        gsSpringPatch<real_t> springInitializer(*mp);
+        gsInfo << "Created a " << springInitializer.compute() << "\n";
+        mp->clear();
+        *mp = springInitializer.result();
+
+//        if (geodim == 2) {
+//          gsBarrierPatch<2, real_t> patchGenerator(*mp);
+//          patchGenerator.options().setInt("InitialMethod", initialMethod);
+//          patchGenerator.initialization();
+//          *mp = patchGenerator.result();
+//        } else if (geodim == 3) {
+//          gsBarrierPatch<3, real_t> patchGenerator(*mp);
+//          patchGenerator.options().setInt("InitialMethod", initialMethod);
+//          patchGenerator.initialization();
+//          *mp = patchGenerator.result();
+//        }
       }
       //! [construct a initial parameterization if the input data is B-Rep]
 
