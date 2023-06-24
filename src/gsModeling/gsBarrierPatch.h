@@ -1,13 +1,9 @@
 /** @file gsBarrierPatch.hpp
 
-    @brief Provides patch construction from boundary data by using barrier method. It is a
-    reference implementation of the following paper. If you make use of the code or the
-    idea/algorithm in your work, please cite our paper:
-	Ji, Y., Yu, Y. Y., Wang, M. Y., & Zhu, C. G. (2021).
-	Constructing high-quality planar NURBS parameterization for
-	isogeometric analysis by adjustment control points and weights.
-	Journal of Computational and Applied Mathematics, 396, 113615.
-	(https://www.sciencedirect.com/science/article/pii/S0377042721002375)
+    @brief This software facilitates the creation of analysis-suitable
+    parameterizations from given boundary representations. Serving as a
+    reference implementation, it embodies the methods and concepts detailed
+    in Ye Ji's doctoral research.
 
     This file is part of the G+Smo library.
 
@@ -27,75 +23,68 @@ using namespace gismo;
 
 namespace gismo
 {
+/**
+ * \brief Computes a patch parametrization given a set of boundary geometries.
+ * Parametrization is not guaranteed to be non-singular. Works for planar surfaces and volumes.
+ *
+ * \tparam d domain dimension
+ * \tparam T Coefficient type
+ * \ingroup Modeling
+ */
+template<short_t d, typename T=real_t>
+class gsBarrierPatch
+{
+ public:
+  /// Constructs the object using a given multi-patch and a degree of freedom mapper.
+  explicit gsBarrierPatch(const gsMultiPatch<T> &mp, const gsDofMapper &mapper);
 
-    /**
-      \brief Computes a patch parametrization given a set of
-      boundary geometries.  Parametrization is not guaranteed to be
-      non-singular. Works for surface, volumes, or any dimension. (not
-      yet, only works for planar domain now)
+  /// Constructs the object using a given multi-patch and an optional patch-wise flag (default true).
+  explicit gsBarrierPatch(const gsMultiPatch<T> &mp, bool patchWise = true);
 
-      \tparam d domain dimension
-      \tparam T Coefficient type
+  /// Sets the mapper.
+  void setMapper(const gsDofMapper &mapper) { m_mapper = mapper; };
 
-      \ingroup Modeling
-      */
+  /// Returns the result in a multi-patch format.
+  const gsMultiPatch<T> &result() const;
 
-    // It is a barrier function-based method. The main step ff
-    template<short_t d, typename T>
-    class gsBarrierPatch
-    {
-    public:
+  /// Computes the patch using analysis-suitable methods.
+  void compute();
 
-        gsBarrierPatch(const gsMultiPatch<T> &mp, const gsDofMapper &mapper);
+  /// Returns the options list.
+  gsOptionList &options() { return m_options; }
 
-        gsBarrierPatch(const gsMultiPatch<T> &mp, bool patchWise = false);
-        // gsBarrierPatch(const gsMultiPatch<T> &mp, patchCorner corner);
-        // gsBarrierPatch(const gsMultiPatch<T> &mp, boundaryInterface iface);
+  /// Sets the default options.
+  void defaultOptions();
 
-    public:
-        void setMapper(const gsDofMapper &mapper) { m_mapper = mapper; }
+ private:
+  /// Creates a mapper.
+  void _makeMapper();
 
-        gsMultiPatch<T> &result();
+  /// Creates a mapper for a single patch.
+  gsDofMapper _makeMapperOnePatch(const gsGeometry<T>&currPatch) const;
 
-        /// compute analysis-suitable by different methods
-        void compute();
+  /// Creates a mapper for global patches.
+  void _makeMapperGlobalPatches();
 
-        gsOptionList &options() { return m_options; }
+  /// Creates a mapper for local patches.
+  void _makeMapperLocalPatches();
 
-        void defaultOptions();
+  mutable gsExprEvaluator<T> m_evaluator;
+  mutable gsExprAssembler<T> m_assembler;
+  gsDofMapper m_mapper;
 
-    protected:
-        void _makeMapper();
+  mutable gsMultiPatch<T> m_mp;
+  gsMultiBasis<T> m_mb;
+  gsMultiPatch<T> m_bRep;
 
-        gsDofMapper _makeMapperOnePatch(const gsGeometry<T>&currPatch);
+  std::string m_filename;
 
-        void _makeMapperGlobalPatches();
+  gsVector<T, d> m_boundingBoxLeftBottomCorner;
+  gsVector<T, d> m_scalingVec;
 
-        void _makeMapperLocalPatches();
-
-    private:
-
-        mutable gsExprEvaluator<T> m_evaluator;
-        mutable gsExprAssembler<T> m_assembler;
-        gsDofMapper m_mapper;
-
-        mutable gsMultiPatch<T> m_mp;
-        gsMultiBasis<T> m_mb;
-        gsMultiPatch<T> m_bRep;
-//        T m_area; // area of computational domain
-//        T m_scaledArea = 1.0;
-
-        std::string m_filename;
-
-        gsVector<T, d> m_boundingBoxLeftBottomCorner;
-        gsVector<T, d> m_scalingVec;
-
-//        const T m_boxsize = 1.0;
-//        real_t m_scalingFactor = 1.0;
-
-        size_t m_freeInterface = 1;
-        gsOptionList m_options;
-    };
+  size_t m_freeInterface = 1;
+  gsOptionList m_options;
+};
 }// namespace gismo
 
 #ifndef GISMO_BUILD_LIB

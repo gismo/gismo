@@ -239,6 +239,7 @@ non-singular. Works for surface, volumes.
     template<short_t d, typename T>
     gsDofMapper
     gsBarrierPatch<d, T>::_makeMapperOnePatch(const gsGeometry<T> &currPatch)
+    const
     {
         ////! [Make mapper for the design DoFs]
         // Now, we set all the inner control points as optimization variables
@@ -253,8 +254,7 @@ non-singular. Works for surface, volumes.
         return mapper;
     }
 
-
     template<short_t d, typename T>
-    gsMultiPatch<T> &gsBarrierPatch<d, T>::result() { return m_mp; }
+    const gsMultiPatch<T> &gsBarrierPatch<d, T>::result() const { return m_mp; }
 
 }// namespace gismo
