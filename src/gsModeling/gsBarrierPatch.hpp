@@ -94,12 +94,73 @@ gsBarrierPatch<d, T>::gsBarrierPatch(const gsMultiPatch<T> &mp, bool patchWise)
 //     // _makeMapper();
 // }
 
+///// Construct an initial parameterization if the input is B-Rep
+//template<short_t d, typename T>
+//void gsBarrierPatch<d, T>::initialization()
+//{
+//  // 1. discrete Coons 2. Smoothness energy 3. Spring model etc.
+//  switch (m_options.askInt("InitialMethod", 0))
+//  {
+//    case 1:
+//    {
+//      gsInfo << "Using Coons' patch construction.\n";
+//      gsCoonsPatch<T> coons(m_bRep);
+//      gsInfo << "Created a " << coons.compute() << "\n";
+//      m_mp.addPatch(coons.result());
+//      break;
+//    }
+//    case 2:
+//    {
+////                // Cross Approximation patch method
+////                // Question: only works for 3D surfaces? i.e., for mapping: x: R^2 --> R^3
+////
+////                gsInfo << "Using cross approximation construction.\n";
+////                gsCrossApPatch<T> cross(m_bRep);
+////                gsInfo << "Created a " << cross.compute() << "\n";
+////                //if (save) gsWrite(spring.result(), "result_patch");
+////                m_mp.addPatch(cross.result());
+//      break;
+//    }
+//    case 3:
+//    {
+//      // construct a parameterization with the inner control points all equal to (0, 0)
+//      gsInfo << "Set all the inner control points to a same point.\n";
+//      gsCoonsPatch<T> coons(m_bRep);
+//      coons.compute();
+//      m_mp.addPatch(coons.result());
+//
+//      _makeMapper();
+//      gsVector<T> initialZeros(m_mapper.freeSize());
+//      initialZeros.setConstant(m_boxsize / 2.0);
+//      convert_gsFreeVec_to_mp(initialZeros, m_mapper, m_mp);
+//      gsInfo << "Created a same point Patch." << "\n";
+//      break;
+//    }
+//    case 4:
+//    {
+//      // Smoothness energy method
+//      // However, the results seems similar with Spring model method?
+//
+//      break;
+//    }
+//    case 0:
+//    default:
+//      // Spring model method
+//      gsInfo << "Using spring patch construction.\n";
+//      gsSpringPatch<T> spring(m_bRep);
+//      gsInfo << "Created a " << spring.compute() << "\n";
+//      m_mp.addPatch(spring.result());
+//      break;
+//  }
+//  m_mp.computeTopology();
+//}
+
+/// Computes analysis-suitable parameterizations using different methods.
 template<short_t d, typename T>
 void gsBarrierPatch<d, T>::compute()
 {
   // Preprocessing: Scale the computational domain to [0,1]^d for better
   // numerical stability and to have consistent convergence criteria.
-  const double boxsize = 1.0;
   gsMatrix<T> boundingBox;
   m_mp.boundingBox(boundingBox);
   gsVector<T, d> bbmin = boundingBox.col(0);
@@ -107,7 +168,7 @@ void gsBarrierPatch<d, T>::compute()
   T maxside = (bbmax-bbmin).maxCoeff();
 
   gsVector<T, d> scaleFactor;
-  scaleFactor.setConstant(boxsize/maxside);
+  scaleFactor.setConstant(m_boxsize/maxside);
 
   // Apply transformation (translation and scaling) to the patches
   for (auto &patch:m_mp) {
@@ -157,67 +218,6 @@ void gsBarrierPatch<d, T>::compute()
     ptch->translate(bbmin);
   }
 }
-
-//template<short_t d, typename T>
-//    void gsBarrierPatch<d, T>::compute()
-//    {
-//        // preprocessing: scale the computational domain to [0,10]^d for better
-//        // numerical stability and to have a consistent convergence criteria
-//        const double boxsize = 1.0;
-//        gsMatrix<T> boundingBox;
-//        m_mp.boundingBox(boundingBox);
-//        gsVector<T, d> bbmin = boundingBox.col(0);
-//        gsVector<T, d> bbmax = boundingBox.col(1);
-//        real_t maxside = (bbmax-bbmin).maxCoeff();
-//
-//        gsVector<T, d> scaleFactor;
-//        scaleFactor.setConstant(boxsize/maxside);
-//        for (auto &ptch:m_mp) {
-//            ptch->translate(-bbmin);
-//            ptch->scale(scaleFactor);
-//        }
-//
-//        // start parameterization construction
-//        gsStopwatch timer;
-//        switch (m_freeInterface)
-//        {
-//            case 0:
-//            {
-//                // construct analysis-suitable parameterization piecewisely
-//                for (auto iptch = 0; iptch < m_mp.nPatches(); ++iptch)
-//                {
-//                    gsInfo << "I am parameterizing " << iptch
-//                           << "-th patch, total number of patches is "
-//                           << m_mp.nPatches() << "\n";
-//                    gsDofMapper currMapper = _makeMapperOnePatch(
-//                            m_mp.patch(iptch));
-//                    gsMultiPatch<T> optCurrPatch = gsBarrierCore<d, T>::compute(
-//                            m_mp.patch(iptch), currMapper, m_options);
-//                    m_mp.patch(iptch).setCoefs(optCurrPatch.patch(0).coefs());
-//                }
-//                break;
-//            }
-//            case 1:
-//            {
-//                // construct analysis-suitable parameterization with moving interfaces
-//                m_mp = gsBarrierCore<d, T>::compute(m_mp, m_mapper, m_options);
-//                break;
-//            }
-//        }
-//
-//        real_t runtime = timer.stop();
-//        gsInfo  << "\n"
-//                << "Multi-patch parameterization construction completed! Running time is "
-//                << runtime << "\n";
-//
-//        // restore scale to the original size of the input model
-//        for (auto &isf:scaleFactor)
-//            isf = 1./isf;
-//        for (auto &ptch:m_mp) {
-//            ptch->scale(scaleFactor);
-//            ptch->translate(bbmin);
-//        }
-//    }
 
     /// This function sets the default options of the BarrierPatch object by
     // calling the defaultOptions method of gsBarrierCore.

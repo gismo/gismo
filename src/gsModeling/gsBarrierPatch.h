@@ -44,11 +44,14 @@ class gsBarrierPatch
   /// Sets the mapper.
   void setMapper(const gsDofMapper &mapper) { m_mapper = mapper; };
 
+//  /// Construct an initial parameterization if the input is B-Rep
+//  void initialization();
+
+  /// Computes analysis-suitable parameterizations using different methods.
+  void compute();
+
   /// Returns the result in a multi-patch format.
   const gsMultiPatch<T> &result() const { return m_mp; };
-
-  /// Computes the patch using analysis-suitable methods.
-  void compute();
 
   /// Returns the options list.
   gsOptionList &options() { return m_options; };
@@ -81,6 +84,7 @@ class gsBarrierPatch
   gsMultiPatch<T> m_bRep;
 
   std::string m_filename;
+  T m_boxsize = 1.0;
 
   gsVector<T, d> m_boundingBoxLeftBottomCorner;
   gsVector<T, d> m_scalingVec;
