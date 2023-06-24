@@ -1,13 +1,11 @@
-/** @file gsBarrierCore.hpp
+/** @file gsBarrierCore.h
 
-    @brief Provides patch construction from boundary data by using barrier method. It is a
-    reference implementation of the following paper. If you make use of the code or the
-    idea/algorithm in your work, please cite our paper:
-	Ji, Y., Yu, Y. Y., Wang, M. Y., & Zhu, C. G. (2021).
-	Constructing high-quality planar NURBS parameterization for
-	isogeometric analysis by adjustment control points and weights.
-	Journal of Computational and Applied Mathematics, 396, 113615.
-	(https://www.sciencedirect.com/science/article/pii/S0377042721002375)
+    @brief This software facilitates the creation of analysis-suitable
+    parameterizations from given boundary representations. Serving as a
+    reference implementation, it embodies the methods and concepts detailed
+    in Ye Ji's doctoral research. Here, optimization-based (barrier, penalty)
+    methods and PDE-based methods are provided. Please refer to the
+    implementation for the relevant references.
 
     This file is part of the G+Smo library.
 
@@ -22,7 +20,7 @@
 
 #include <gismo.h>
 #include <gsHLBFGS/gsHLBFGS.h>
-#include <gsCore/gsFuncData.h>
+//#include <gsCore/gsFuncData.h>
 //#include <gsAssembler/gsDirichletValues.h>
 //#include <gsStructuralAnalysis/gsStaticNewton.h>
 //#include <gsLBFGSpp/gsLBFGSpp.h>
@@ -48,26 +46,23 @@ void convert_gsFreeVec_to_geom(const gsVector<T> &gsFreeVec,
                                index_t pindex = 0);
 
 namespace gismo {
-
 /**
-  \brief Computes a patch parametrization given a set of
-  boundary geometries.  Parametrization is not guaranteed to be
-  non-singular. Works for surface, volumes, or any dimension. (not
-  yet, only works for planar domain now)
-
-  \tparam d domain dimension
-  \tparam T Coefficient type
-
-  \ingroup Modeling
-  */
+ * \brief Computes a patch parametrization given a set of boundary geometries.
+ * Parametrization is not guaranteed to be non-singular. Works for planar surfaces and volumes.
+ *
+ * \tparam d domain dimension
+ * \tparam T Coefficient type
+ * \ingroup Modeling
+ */
 
 // It is a barrier function-based method. The main step ff
 template<short_t d, typename T>
 struct gsBarrierCore {
  protected:
-  typedef gsExprAssembler<>::geometryMap geometryMap;
-  typedef gsExprAssembler<>::space space;
-  typedef gsExprAssembler<>::solution solution;
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::space space;
+  typedef typename gsExprAssembler<T>::solution solution;
+
  public:
   static gsMultiPatch<T>
   compute(const gsMultiPatch<T> &mp, const gsDofMapper &mapper,
@@ -81,9 +76,8 @@ struct gsBarrierCore {
                                              const gsDofMapper &mapper,
                                              const gsOptionList &options);
 
-  static gsMultiPatch<T> computeVHPatch(const gsMultiPatch<T> &mp,
-                                        const gsDofMapper &mapper,
-                                        const gsOptionList &options);
+  static gsMultiPatch<T> computeVariationalHarmonicPatch(const
+  gsMultiPatch<T> &mp, const gsDofMapper &mapper, const gsOptionList &options);
 
   static gsMultiPatch<T> computePenaltyPatch2(const gsMultiPatch<T> &mp,
                                               const gsDofMapper &mapper,

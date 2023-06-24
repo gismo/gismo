@@ -1,13 +1,11 @@
 /** @file gsBarrierCore.hpp
 
-    @brief Provides patch construction from boundary data by using barrier method. It is a
-    reference implementation of the following paper. If you make use of the code or the
-    idea/algorithm in your work, please cite our paper:
-	Ji, Y., Yu, Y. Y., Wang, M. Y., & Zhu, C. G. (2021).
-	Constructing high-quality planar NURBS parameterization for
-	isogeometric analysis by adjustment control points and weights.
-	Journal of Computational and Applied Mathematics, 396, 113615.
-	(https://www.sciencedirect.com/science/article/pii/S0377042721002375)
+    @brief This software facilitates the creation of analysis-suitable
+    parameterizations from given boundary representations. Serving as a
+    reference implementation, it embodies the methods and concepts detailed
+    in Ye Ji's doctoral research. Here, optimization-based (barrier, penalty)
+    methods and PDE-based methods are provided. Please refer to the
+    implementation for the relevant references.
 
     This file is part of the G+Smo library.
 
@@ -777,6 +775,9 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addInt("Verbose",
                  "Print output 0: no print, 1: summary, 2: iterations and summary",
                  0);
+  options.addInt("InitialMethod",
+                   "Initialization Method: 0 Coons' patch (default), 1 Spring patch, 2: Cross-Ap. patch",
+                   0);
   options.addInt("ParamMethod",
                  "Parameterization Method: 0 Barrier patch (default), 1 Penalty patch, 2: PDE patch",
                  0);
@@ -895,7 +896,7 @@ gsMultiPatch<T> gsBarrierCore<d, T>::compute(const gsMultiPatch<T> &mp,
       break;
     }
     case 5: {
-      result = computeVHPatch(mp, mapper, options);
+      result = computeVariationalHarmonicPatch(mp, mapper, options);
       break;
     }
     case 6: {
@@ -912,9 +913,9 @@ gsMultiPatch<T> gsBarrierCore<d, T>::compute(const gsMultiPatch<T> &mp,
 // Modified Variational Harmonic Method
 template<short_t d, typename T>
 gsMultiPatch<T>
-gsBarrierCore<d, T>::computeVHPatch(const gsMultiPatch<T> &mp,
-                                    const gsDofMapper &mapper,
-                                    const gsOptionList &options) {
+gsBarrierCore<d, T>::computeVariationalHarmonicPatch(const gsMultiPatch<T> &mp,
+                                                     const gismo::gsDofMapper &mapper,
+                                                     const gismo::gsOptionList &options) {
   index_t verbose = options.askInt("Verbose", 0);
   // TODO: We can remove the line below this line and remove the const in front of mp. Then we change mp in-place.
   gsMultiPatch<T> result = mp;
