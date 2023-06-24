@@ -1,4 +1,4 @@
-/** @file gsBarrierPatch.hpp
+/** @file gsBarrierPatch.h
 
     @brief This software facilitates the creation of analysis-suitable
     parameterizations from given boundary representations. Serving as a
@@ -45,13 +45,13 @@ class gsBarrierPatch
   void setMapper(const gsDofMapper &mapper) { m_mapper = mapper; };
 
   /// Returns the result in a multi-patch format.
-  const gsMultiPatch<T> &result() const;
+  const gsMultiPatch<T> &result() const { return m_mp; };
 
   /// Computes the patch using analysis-suitable methods.
   void compute();
 
   /// Returns the options list.
-  gsOptionList &options() { return m_options; }
+  gsOptionList &options() { return m_options; };
 
   /// Sets the default options.
   void defaultOptions();
@@ -68,6 +68,9 @@ class gsBarrierPatch
 
   /// Creates a mapper for local patches.
   void _makeMapperLocalPatches();
+
+  /// Log information about the mapper.
+  void logMapperInformation();
 
   mutable gsExprEvaluator<T> m_evaluator;
   mutable gsExprAssembler<T> m_assembler;
