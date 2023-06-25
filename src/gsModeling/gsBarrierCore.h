@@ -27,24 +27,6 @@
 
 using namespace gismo;
 
-/// assign all free control points from multi patch into vector
-template<typename T>
-gsVector<T> convert_mp_to_gsFreeVec(const gsMultiPatch<T> &mp,
-                                    const gsDofMapper &mapper);
-
-/// assign all free control points from vector into multi patch
-template<typename T>
-void convert_gsFreeVec_to_mp(const gsVector<T> &gsFreeVec,
-                             const gsDofMapper &mapper,
-                             gsMultiPatch<T> &mp);
-
-/// assign all free control points from vector into geometry
-template<typename T>
-void convert_gsFreeVec_to_geom(const gsVector<T> &gsFreeVec,
-                               const gsDofMapper &mapper,
-                               gsMultiPatch<T> &geom,
-                               index_t pindex = 0);
-
 namespace gismo {
 /**
  * \brief Computes a patch parametrization given a set of boundary geometries.
@@ -55,10 +37,62 @@ namespace gismo {
  * \ingroup Modeling
  */
 
-// It is a barrier function-based method. The main step ff
-template<short_t d, typename T>
+/// Convert the free control points of a multi-patch into a vector
+template<typename T = real_t>
+gsVector<T> convertMultiPatchToFreeVector(const gsMultiPatch<T> &mp,
+                                          const gsDofMapper &mapper) {
+  gsVector<T> freeVec(mapper.freeSize());
+
+  for (size_t iptch = 0; iptch != mp.nPatches(); iptch++) {
+    for (index_t idim = 0; idim != mp.targetDim(); idim++) {
+      for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); idof++)
+        // if it is possible to just loop over the free index
+        // since this function is called very often during optimization
+        if (mapper.is_free(idof, iptch, idim)) {
+          index_t idx = mapper.index(idof, iptch, idim);
+          freeVec(idx) = mp.patch(iptch).coefs()(idof, idim);
+        }
+    }
+  }
+  return freeVec;
+}
+
+/// Convert free control points from a vector into a multi-patch
+template<typename T = real_t>
+void convertFreeVectorToMultiPatch(const gsVector<T> &gsFreeVec,
+                                   const gsDofMapper &mapper,
+                                   gsMultiPatch<T> &mp) {
+  for (size_t iptch = 0; iptch != mp.nPatches(); iptch++) {
+    for (index_t idim = 0; idim != mp.targetDim(); idim++) {
+      for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); idof++)
+        // if it is possible to just loop over the free index
+        // since this function is called very often during optimization
+        if (mapper.is_free(idof, iptch, idim)) {
+          index_t idx = mapper.index(idof, iptch, idim);
+          mp.patch(iptch).coefs()(idof, idim) = gsFreeVec(idx);
+        }
+    }
+  }
+}
+
+/// helper function to set optimizer options
+template<typename T>
+void setOptimizerOptions(gsHLBFGS<T>& optimizer, const gsOptionList& options) {
+  optimizer.options().setInt("MaxIterations", options.askInt("qi_MaxIterations", 1e4));
+  optimizer.options().setReal("MinGradientLength", options.askReal("qi_MinGradientLength", 1e-4));
+  optimizer.options().setReal("MinStepLength", options.askReal("qi_MinStepLength", 1e-4));
+  optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
+}
+
+/// helper function to verbose log
+void verboseLog(const std::string& message, const index_t& verbose) {
+  if (verbose > 0) { gsInfo << message << "\n"; }
+}
+
+/// gsBarrierCore
+template<short_t d, typename T= real_t>
 struct gsBarrierCore {
- protected:
+ private:
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::space space;
   typedef typename gsExprAssembler<T>::solution solution;
@@ -101,6 +135,7 @@ struct gsBarrierCore {
                                           const gsDofMapper &mapper,
                                           const gsOptionList &options);
 
+  /// Compute the area of the computational domain
   static T computeArea(const gsMultiPatch<T> &mp);
 
  protected:
@@ -131,9 +166,9 @@ struct gsBarrierCore {
    * @param[in]  translation  { parameter_description }
    * @param[in]  scaling      { parameter_description }
    */
-  static void
-  scaling(gsMultiPatch<T> &mp, const gsVector<T, d> &translation,
-          const gsVector<T, d> &scaling);
+//  static void
+//  scaling(gsMultiPatch<T> &mp, const gsVector<T, d> &translation,
+//          const gsVector<T, d> &scaling);
 
   /**
    * @brief      Undo translation and scaling of a multipatch
@@ -142,35 +177,57 @@ struct gsBarrierCore {
    * @param[in]  translation  { parameter_description }
    * @param[in]  scaling      { parameter_description }
    */
-  static void
-  scalingUndo(gsMultiPatch<T> &mp, const gsVector<T, d> &translation,
-              const gsVector<T, d> &scaling);
+//  static void
+//  scalingUndo(gsMultiPatch<T> &mp, const gsVector<T, d> &translation,
+//              const gsVector<T, d> &scaling);
 
   static gsOptionList defaultOptions();
+
+ private:
+  static void foldoverElimination(const gsMultiPatch<T>& mp,
+                                  const gsDofMapper& mapper,
+                                  gsVector<T>& initialGuessVector,
+                                  const T& scaledArea,
+                                  const gsOptionList& options);
+
+  static void qualityImprovement(gsMultiPatch<T>& result,
+                                 const gsDofMapper& mapper,
+                                 gsVector<T>& initialGuessVector,
+                                 const T& scaledArea,
+                                 const gsOptionList& options);
 };
 
 template<short_t d, typename T = real_t>
 class gsObjFoldoverFree : public gsOptProblem<T> {
-  typedef gsExprAssembler<>::geometryMap geometryMap;
-  typedef gsExprAssembler<>::space space;
-  typedef gsExprAssembler<>::solution solution;
 
-  using Base = gsOptProblem<T>;
+ private:
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::space space;
+  typedef typename gsExprAssembler<T>::solution solution;
+
  public:
-  gsObjFoldoverFree(const gsMultiPatch<T> &patches,
-                    gsDofMapper mapper);
+  gsObjFoldoverFree(const gsMultiPatch<T> &patches, gsDofMapper  mapper);
 
-  T evalObj(const gsAsConstVector<T> &u) const final;
+  /// Evaluates the objective function at the given point u.
+  T evalObj(const gsAsConstVector<T> &u) const override;
 
-  void gradObj_into(const gsAsConstVector<T> &u, gsAsVector<T> &result) const;
+  /// Computes the gradient of the objective function at the given point u
+  // and stores it in result.
+  void gradObj_into(const gsAsConstVector<T> &u, gsAsVector<T> &result) const override;
 
-  gsOptionList &options() { return m_options; }
+  void setDelta(const T& delta) {m_eps=delta;};
 
+  /// Returns the options list for the class instance.
+  gsOptionList options() { return m_options; }
+
+  /// Sets the default options for the class instance.
   void defaultOptions();
 
+  /// Adds the given options to the class instance's options.
   void addOptions(const gsOptionList &options);
 
-  void applyOptions();
+  /// Applies the current options to the class instance.
+  void applyOptions(const gsOptionList &options);
 
  protected:
   mutable gsMultiPatch<T> m_mp;
@@ -182,33 +239,37 @@ class gsObjFoldoverFree : public gsOptProblem<T> {
 
   gsOptionList m_options;
 
-  int m_AAPreconditionType = 0;
-  T m_eps; // need to handle later, set m_eps = 0.05*S
+  T m_eps = T();  // need to handle later, set m_eps = 0.05*S, T() is the default value of T.
 };
 
 template<short_t d, typename T>
 class gsObjQualityImprovePt : public gsOptProblem<T> {
-  typedef gsExprAssembler<>::geometryMap geometryMap;
-  typedef gsExprAssembler<>::space space;
-  typedef gsExprAssembler<>::solution solution;
+ private:
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::space space;
+  typedef typename gsExprAssembler<T>::solution solution;
 
-  using Base = gsOptProblem<T>;
  public:
-  gsObjQualityImprovePt(const gsMultiPatch<T> &patches,
-                        gsDofMapper mapper);
+  gsObjQualityImprovePt(const gsMultiPatch<T> &patches, gsDofMapper mapper);
 
-  T evalObj(const gsAsConstVector<T> &u) const final;
+  /// Evaluates the objective function at the given point u.
+  T evalObj(const gsAsConstVector<T> &u) const override;
 
-  void gradObj_into(const gsAsConstVector<T> &u,
-                    gsAsVector<T> &result) const;
+  /// Computes the gradient of the objective function at the given point u
+  // and stores it in result.
+  void gradObj_into(const gsAsConstVector<T> &u, gsAsVector<T> &result) const override;
 
-  gsOptionList &options() { return m_options; }
+  /// Returns the options list for the class instance.
+  gsOptionList options() { return m_options; }
 
+  /// Sets the default options for the class instance.
   void defaultOptions();
 
+  /// Adds the given options to the class instance's options.
   void addOptions(const gsOptionList &options);
 
-  void applyOptions();
+  /// Applies the current options to the class instance.
+  void applyOptions(const gsOptionList &options);
 
  private:
   template<short_t _d>
@@ -252,16 +313,16 @@ class gsObjQualityImprovePt : public gsOptProblem<T> {
 
   gsOptionList m_options;
 
-  T m_lambda1, m_lambda2;
+  T m_lambda1 = 1.0, m_lambda2 = 1.0;
 };
 
 template<short_t d, typename T>
 class gsObjVHPt : public gsOptProblem<T> {
-  typedef gsExprAssembler<>::geometryMap geometryMap;
-  typedef gsExprAssembler<>::space space;
-  typedef gsExprAssembler<>::solution solution;
+ private:
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::space space;
+  typedef typename gsExprAssembler<T>::solution solution;
 
-  using Base = gsOptProblem<T>;
  public:
   gsObjVHPt(const gsMultiPatch<T> &patches,
             gsDofMapper mapper);
@@ -325,11 +386,11 @@ class gsObjVHPt : public gsOptProblem<T> {
 
 template<short_t d, typename T>
 class gsObjSmoothingPt : public gsOptProblem<T> {
-  typedef gsExprAssembler<>::geometryMap geometryMap;
-  typedef gsExprAssembler<>::space space;
-  typedef gsExprAssembler<>::solution solution;
+ private:
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::space space;
+  typedef typename gsExprAssembler<T>::solution solution;
 
-  using Base = gsOptProblem<T>;
  public:
   gsObjSmoothingPt(const gsMultiPatch<T> &patches,
                    gsDofMapper mapper);
@@ -393,11 +454,11 @@ class gsObjSmoothingPt : public gsOptProblem<T> {
 
 template<short_t d, typename T>
 class gsObjPenaltyPt : public gsOptProblem<T> {
-  typedef gsExprAssembler<>::geometryMap geometryMap;
-  typedef gsExprAssembler<>::space space;
-  typedef gsExprAssembler<>::solution solution;
+ private:
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::space space;
+  typedef typename gsExprAssembler<T>::solution solution;
 
-  using Base = gsOptProblem<T>;
  public:
   gsObjPenaltyPt(const gsMultiPatch<T> &patches,
                  gsDofMapper mapper);
@@ -461,11 +522,11 @@ class gsObjPenaltyPt : public gsOptProblem<T> {
 
 template<short_t d, typename T>
 class gsObjPenaltyPt2 : public gsOptProblem<T> {
-  typedef gsExprAssembler<>::geometryMap geometryMap;
-  typedef gsExprAssembler<>::space space;
-  typedef gsExprAssembler<>::solution solution;
+ private:
+  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+  typedef typename gsExprAssembler<T>::space space;
+  typedef typename gsExprAssembler<T>::solution solution;
 
-  using Base = gsOptProblem<T>;
  public:
   gsObjPenaltyPt2(const gsMultiPatch<T> &patches,
                   gsDofMapper mapper);
@@ -526,59 +587,8 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 
   T m_lambda1, m_lambda2, m_eps = 1e-3;
 };
+
 }// namespace gismo
-
-template<typename T>
-gsVector<T> convert_mp_to_gsFreeVec(const gsMultiPatch<T> &mp,
-                                    const gsDofMapper &mapper) {
-  gsVector<T> freeVec(mapper.freeSize());
-
-  for (size_t iptch = 0; iptch != mp.nPatches(); iptch++) {
-    for (index_t idim = 0; idim != mp.targetDim(); idim++) {
-      for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); idof++)
-        // if it is possible to just loop over the free index
-        // since this function is called very often during optimization
-        if (mapper.is_free(idof, iptch, idim)) {
-          index_t idx = mapper.index(idof, iptch, idim);
-          freeVec(idx) = mp.patch(iptch).coefs()(idof, idim);
-        }
-    }
-  }
-  return freeVec;
-}
-
-template<typename T>
-void convert_gsFreeVec_to_mp(const gsVector<T> &gsFreeVec,
-                             const gsDofMapper &mapper,
-                             gsMultiPatch<T> &mp) {
-  for (size_t iptch = 0; iptch != mp.nPatches(); iptch++) {
-    for (index_t idim = 0; idim != mp.targetDim(); idim++) {
-      for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); idof++)
-        // if it is possible to just loop over the free index
-        // since this function is called very often during optimization
-        if (mapper.is_free(idof, iptch, idim)) {
-          index_t idx = mapper.index(idof, iptch, idim);
-          mp.patch(iptch).coefs()(idof, idim) = gsFreeVec(idx);
-        }
-    }
-  }
-}
-
-template<typename T>
-void convert_gsFreeVec_to_geom(const gsVector<T> &gsFreeVec,
-                               const gsDofMapper &mapper,
-                               gsMultiPatch<T> &geom,
-                               index_t pindex) {
-  for (index_t idim = 0; idim != geom.targetDim(); idim++) {
-    for (size_t idof = 0; idof != mapper.patchSize(pindex, idim); idof++)
-      // if it is possible to just loop over the free index
-      // since this function is called very often during optimization
-      if (mapper.is_free(idof, pindex, idim)) {
-        index_t idx = mapper.index(idof, pindex, idim);
-        geom.coefs()(idof, idim) = gsFreeVec(idx);
-      }
-  }
-}
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBarrierCore.hpp)

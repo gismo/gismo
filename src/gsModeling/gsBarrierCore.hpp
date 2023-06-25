@@ -1,3 +1,5 @@
+#include <utility>
+
 /** @file gsBarrierCore.hpp
 
     @brief This software facilitates the creation of analysis-suitable
@@ -20,47 +22,6 @@
 
 namespace gismo {
 namespace expr {
-
-//template<class E> class ppartval_expr;
-
-//template <typename E>
-//class _expr<E, false> {
-//  ppartval_expr<E> ppartval() const { return ppartval_expr<E>(static_cast<E const &>(*this)); }
-//}
-//
-//template <typename E>
-//ppartval_expr<E> ppartval() { return ppartval_expr<E>(); }
-//
-//template<class E>
-//class ppartval_expr : public _expr<ppartval_expr<E> >
-//{
-//  typename E::Nested_t _u;
-// public:
-//  typedef typename E::Scalar Scalar;
-//  enum {ScalarValued = 1, Space = 0, ColBlocks= 0};
-//  mutable Scalar res;
-// public:
-//
-//  ppartval_expr(_expr<E> const& u) : _u(u) { }
-//
-//  Scalar & eval(index_t k) const
-//  {
-//    res = std::max(0.0,_u.eval(k));
-//    return res; // component-wise maximum with zero
-//  }
-//
-//
-//  const index_t rows() const { return 0; }
-//  const index_t cols() const { return 0; }
-//
-//  void parse(gsExprHelper<Scalar> & evList) const
-//  { _u.parse(evList); }
-//
-//  const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
-//  const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-//
-//  void print(std::ostream &os) const { os<<"posPart("; _u.print(os); os <<")"; }
-//};
 
 template <typename E1, typename E2>
 class frprod3_expr : public _expr<frprod3_expr<E1,E2> >
@@ -291,7 +252,6 @@ class ternary_expr  : public _expr<ternary_expr<E0,E1,E2> >
 //         GISMO_ERROR("Something went wrong");
 //     }
 };
-
 
 /*
   Expression for Jacobian matrix (diagonal part) for PDE-based parameterization construction
@@ -766,103 +726,92 @@ frprod2_expr<E1,E2> const frprod2(E1 const & u, E2 const& M)
 template<class E0, class E1, class E2> EIGEN_STRONG_INLINE
 ternary_expr<E0,E1,E2> ternary(const E0 & u, const E1 & v, const E2 & w) { return ternary_expr<E0,E1,E2>(u,v,w); }
 
-
 } // namespace expr
 
 template<short_t d, typename T>
 gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   gsOptionList options;
-  options.addInt("Verbose",
-                 "Print output 0: no print, 1: summary, 2: iterations and summary",
-                 0);
-  options.addInt("InitialMethod",
-                   "Initialization Method: 0 Coons' patch (default), 1 Spring patch, 2: Cross-Ap. patch",
-                   0);
-  options.addInt("ParamMethod",
-                 "Parameterization Method: 0 Barrier patch (default), 1 Penalty patch, 2: PDE patch",
-                 0);
+
+  // Print output 0: no print, 1: summary, 2: iterations and summary
+  options.addInt("Verbose", "Print output level", 0);
+
+  // Initialization Method: 0 Coons' patch (default), 1 Spring patch, 2: Cross-Ap. patch
+  options.addInt("InitialMethod", "Initialization method", 0);
+
+  // Parameterization Method: 0 Barrier patch (default), 1 Penalty patch, 2: PDE patch
+  options.addInt("ParamMethod", "Parameterization method", 0);
+
   // Parameter and stopping criteria for foldover elimination step
-  options.addReal("ff_Delta",
-                  "Sets the parameter delta for the foldover-free optimization problem",
-                  0.01);
-  options.addInt("ff_MaxIterations",
-                 "Set the MaxIterations option for the quality improvement optimization problem",
-                 1e4);
-  options.addReal("ff_MinGradientLength",
-                  "Set the MinGradientLength option for the foldover-free optimization problem",
-                  1e-20);
-  options.addReal("ff_MinStepLength",
-                  "Set the MinStepLength option for the foldover-free optimization problem",
-                  1e-20);
+  options.addReal("ff_Delta", "Delta for foldover-free optimization", 0.05);
+  options.addInt("ff_MaxIterations", "Max iterations for quality improvement", 1e4);
+  options.addReal("ff_MinGradientLength", "Min gradient length for foldover-free optimization", 1e-20);
+  options.addReal("ff_MinStepLength", "Min step length for foldover-free optimization", 1e-20);
 
   // Parameters and stopping criteria for quality improvement step
-  options.addInt("qi_MaxIterations",
-                 "Set the MaxIterations option for the quality improvement optimization problem",
-                 1e4);
-  options.addReal("qi_MinGradientLength",
-                  "Set the MinGradientLength option for the quality improvement optimization problem",
-                  1e-4);
-  options.addReal("qi_MinStepLength",
-                  "Set the MinStepLength option for the quality improvement optimization problem",
-                  1e-4);
+  options.addInt("qi_MaxIterations", "Max iterations for quality improvement", 1e4);
+  options.addReal("qi_MinGradientLength", "Min gradient length for quality improvement", 1e-4);
+  options.addReal("qi_MinStepLength", "Min step length for quality improvement", 1e-4);
 
   // Set quadrature rules for objective function and gradient evaluation
-  options.addReal("quA",
-                  "Number of quadrature points: quA*deg + quB; For patchRule: Order of the target space",
-                  1.0);
-  options.addInt("quB",
-                 "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space",
-                 1);
-  options.addInt("quRule",
-                 "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                 1);
-  options.addInt("overInt", "Apply over-integration or not?", 0);
+  options.addReal("quA", "Quadrature points: quA*deg + quB; For patchRule: Order of target space", 1.0);
+  options.addInt("quB", "Quadrature points: quA*deg + quB; For patchRule: Regularity of target space", 1);
+  options.addInt("quRule", "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]", 1);
+  options.addInt("overInt", "Apply over-integration?", 0);
 
-  options.addInt("AAPreconsitionType",
-                 "Preconditioner type for AA: 0: NO preconditioning, 1: Full Jacobian preconditioner, 2: Diagonal Jacobian preconditioner, 3: Diagonal Block Jacobian preconditioner",
-                 0);
+  // Preconditioner type for AA: 0: NO preconditioning, 1: Full Jacobian preconditioner, 2: Diagonal Jacobian preconditioner, 3: Diagonal Block Jacobian preconditioner
+  options.addInt("AAPreconditionType", "Preconditioner type for AA", 0);
+
   return options;
 }
 
-template<short_t d, typename T>
-void gsBarrierCore<d, T>::scaling(gsMultiPatch<T> &mp,
-                                  const gsVector<T, d> &translation,
-                                  const gsVector<T, d> &scaling) {
-  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
-    mp.patch(iptch).translate(translation);
-    mp.patch(iptch).scale(scaling);
-  }
-}
+//template<short_t d, typename T>
+//void gsBarrierCore<d, T>::scaling(gsMultiPatch<T> &mp,
+//                                  const gsVector<T, d> &translation,
+//                                  const gsVector<T, d> &scaling) {
+//  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
+//    mp.patch(iptch).translate(translation);
+//    mp.patch(iptch).scale(scaling);
+//  }
+//}
+//
+//template<short_t d, typename T>
+//void gsBarrierCore<d, T>::scalingUndo(gsMultiPatch<T> &mp,
+//                                      const gsVector<T, d> &translation,
+//                                      const gsVector<T, d> &scaling) {
+//  gsVector<T, d> invScalingVec;
+//  invScalingVec.array() = 1. / scaling.array();
+//
+//  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
+//    mp.patch(iptch).scale(invScalingVec);
+//    mp.patch(iptch).translate(-translation);
+//  }
+//}
 
-template<short_t d, typename T>
-void gsBarrierCore<d, T>::scalingUndo(gsMultiPatch<T> &mp,
-                                      const gsVector<T, d> &translation,
-                                      const gsVector<T, d> &scaling) {
-  gsVector<T, d> invScalingVec;
-  invScalingVec.array() = 1. / scaling.array();
-
-  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
-    mp.patch(iptch).scale(invScalingVec);
-    mp.patch(iptch).translate(-translation);
-  }
-}
-
+/// Compute the area of the computational domain
 template<short_t d, typename T>
 T gsBarrierCore<d, T>::computeArea(const gsMultiPatch<T> &mp) {
   return computeAreaInterior(mp);
 }
 
+/// Compute the area of a multi-patch representing computational domain
 template<short_t d, typename T>
-T gsBarrierCore<d, T>::computeAreaInterior(const gsMultiPatch<T> &mp) {
-  gsMultiBasis<T> mb(mp);
-  gsExprEvaluator<T> ev;
-  ev.setIntegrationElements(mb);
-  geometryMap G = ev.getMap(mp);
+T gsBarrierCore<d, T>::computeAreaInterior(const gsMultiPatch<T> &multiPatch) {
+    // Creating a multi-basis from the provided multi-patch
+    gsMultiBasis<T> multiBasis(multiPatch);
 
-  // TODO: Since foldovers in initialization, the following method is not stable.
-  //  Check Eq.(17) in our paper.
-  T area = ev.integral(jac(G).det());
-  return area;
+    // Initializing an expression evaluator
+    gsExprEvaluator<T> evaluator;
+
+    // Setting integration elements
+    evaluator.setIntegrationElements(multiBasis);
+
+    // Getting the geometry map
+    geometryMap geometry = evaluator.getMap(multiPatch);
+
+    // Computing the area by integrating over the determinant of the Jacobian of the geometry map
+    T area = evaluator.integral(jac(geometry).det());
+
+    return area;
 }
 
 template<short_t d, typename T>
@@ -871,41 +820,97 @@ T gsBarrierCore<d, T>::computeAreaBoundary(const gsMultiPatch<T> &mp) {
   return -1;
 }
 
+//template<short_t d, typename T>
+//gsMultiPatch<T> gsBarrierCore<d, T>::compute(const gsMultiPatch<T> &mp,
+//                                             const gsDofMapper &mapper,
+//                                             const gsOptionList &options) {
+//  gsMultiPatch<T> result;
+//  switch (options.askInt("ParamMethod", 0)) {
+//    // TODO: add weights optimization step for each method
+//    case 1: {
+//      result = computePenaltyPatch(mp, mapper, options);
+//      break;
+//    }
+//    case 2: {
+//      result = computePenaltyPatch2(mp, mapper, options);
+//      break;
+//    }
+//    case 3: {
+//      result = computePDEPatch(mp, mapper, options);
+//      break;
+//    }
+//    case 4: {
+//      result = computePDEPatchAA(mp, mapper, options);
+////      result = computePDEPatchAAH1(result, mapper, options);
+//      break;
+//    }
+//    case 5: {
+//      result = computeVariationalHarmonicPatch(mp, mapper, options);
+//      break;
+//    }
+//    case 6: {
+//      result = computePDEPatchAAH1(mp, mapper, options);
+//      break;
+//    }
+//    case 0:
+//    default:result = computeBarrierPatch(mp, mapper, options);
+//      break;
+//  }
+//  return result;
+//}
+
+enum class ParamMethod {
+  BarrierPatch,
+  PenaltyPatch,
+  PenaltyPatch2,
+  PDEPatch,
+  PDEPatchAA,
+  VariationalHarmonicPatch,
+  PDEPatchAAH1,
+  // Add new methods here...
+};
+
 template<short_t d, typename T>
 gsMultiPatch<T> gsBarrierCore<d, T>::compute(const gsMultiPatch<T> &mp,
                                              const gsDofMapper &mapper,
                                              const gsOptionList &options) {
   gsMultiPatch<T> result;
-  switch (options.askInt("ParamMethod", 0)) {
-    // TODO: add weights optimization step for each method
-    case 1: {
+
+  ParamMethod method = static_cast<ParamMethod>(options.askInt("ParamMethod", 0));
+
+  switch (method) {
+    case ParamMethod::PenaltyPatch: {
       result = computePenaltyPatch(mp, mapper, options);
       break;
     }
-    case 2: {
+    case ParamMethod::PenaltyPatch2: {
       result = computePenaltyPatch2(mp, mapper, options);
       break;
     }
-    case 3: {
+    case ParamMethod::PDEPatch: {
       result = computePDEPatch(mp, mapper, options);
       break;
     }
-    case 4: {
+    case ParamMethod::PDEPatchAA: {
       result = computePDEPatchAA(mp, mapper, options);
-//      result = computePDEPatchAAH1(result, mapper, options);
       break;
     }
-    case 5: {
+    case ParamMethod::VariationalHarmonicPatch: {
       result = computeVariationalHarmonicPatch(mp, mapper, options);
       break;
     }
-    case 6: {
+    case ParamMethod::PDEPatchAAH1: {
       result = computePDEPatchAAH1(mp, mapper, options);
       break;
     }
-    case 0:
-    default:result = computeBarrierPatch(mp, mapper, options);
+    case ParamMethod::BarrierPatch:
+    default: {
+      if (method != ParamMethod::BarrierPatch) {
+        gsWarn << "Invalid ParamMethod value. Defaulting to BarrierPatch.\n";
+      }
+      result = computeBarrierPatch(mp, mapper, options);
       break;
+    }
   }
   return result;
 }
@@ -926,7 +931,7 @@ gsBarrierCore<d, T>::computeVariationalHarmonicPatch(const gsMultiPatch<T> &mp,
   T scaledArea = computeAreaInterior(mp);
 
   // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(mp, mapper);
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
 
   gsObjVHPt<d, T> objVHPt(mp, mapper);
   objVHPt.addOptions(options);
@@ -958,7 +963,7 @@ gsBarrierCore<d, T>::computeVariationalHarmonicPatch(const gsMultiPatch<T> &mp,
   optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
   optimizer.solve(initialGuessVector);
 
-  convert_gsFreeVec_to_mp<T>(optimizer.currentDesign(), mapper, result);
+  convertFreeVectorToMultiPatch<T>(optimizer.currentDesign(), mapper, result);
 
   if (verbose > 0) gsInfo << "Finished!" << "\n";
   return result;
@@ -978,7 +983,7 @@ gsBarrierCore<d, T>::computeSmoothing(const gsMultiPatch<T> &mp,
   T scaledArea = computeAreaInterior(mp);
 
   // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(mp, mapper);
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
 
   gsObjSmoothingPt<d, T> objSmoothingPt(mp, mapper);
   objSmoothingPt.addOptions(options);
@@ -1011,7 +1016,7 @@ gsBarrierCore<d, T>::computeSmoothing(const gsMultiPatch<T> &mp,
   optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
   optimizer.solve(initialGuessVector);
 
-  convert_gsFreeVec_to_mp<T>(optimizer.currentDesign(), mapper, result);
+  convertFreeVectorToMultiPatch<T>(optimizer.currentDesign(), mapper, result);
 
   if (verbose > 0) gsInfo << "Finished!" << "\n";
   return result;
@@ -1032,7 +1037,7 @@ gsBarrierCore<d, T>::computePenaltyPatch(const gsMultiPatch<T> &mp,
   T scaledArea = computeAreaInterior(mp);
 
   // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(mp, mapper);
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
 
   gsObjPenaltyPt<d, T> objPenaltyPt(mp, mapper);
   objPenaltyPt.addOptions(options);
@@ -1055,7 +1060,7 @@ gsBarrierCore<d, T>::computePenaltyPatch(const gsMultiPatch<T> &mp,
 
   optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
   optimizer.solve(initialGuessVector);
-  convert_gsFreeVec_to_mp<T>(optimizer.currentDesign(), mapper, result);
+  convertFreeVectorToMultiPatch<T>(optimizer.currentDesign(), mapper, result);
   // scalingUndo();
   // gsWrite(m_mp, m_filename + "_penalty_final");
   if (verbose > 0) gsInfo << "Finished!" << "\n";
@@ -1077,7 +1082,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
 //        T scaledArea = computeAreaInterior(mp);
 
   // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(mp, mapper);
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
 
   gsExprEvaluator<T> evaluator;
   gsExprAssembler<T> assembler;
@@ -1109,7 +1114,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
       gsVector<real_t> const &x) {
     // TODO: need to change here
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto metricMat = jac(G).tr() * jac(G);
@@ -1131,7 +1136,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLx(space1, G);
@@ -1147,7 +1152,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
       gsVector<real_t> const &x) {
     // TODO: need to change here
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto invJacMat = jac(G).inv();
@@ -1166,7 +1171,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLxH1(space1, G);
@@ -1217,7 +1222,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
 //    solVector = staticSolver.solveLinear();
 //  else
 //    solVector = staticSolver.solveNonlinear();
-//  convert_gsFreeVec_to_mp<T>(solVector, mapper, result);
+//  convertFreeVectorToMultiPatch<T>(solVector, mapper, result);
 //
 //  // Step 2: Improve parameterization quality for general domains
 //  gsStaticNewton<real_t> step2Solver(linearMatrix, solVector,
@@ -1228,7 +1233,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
 //    solVector = step2Solver.solveLinear();
 //  else
 //    solVector = step2Solver.solveNonlinear();
-//  convert_gsFreeVec_to_mp<T>(solVector, mapper, result);
+//  convertFreeVectorToMultiPatch<T>(solVector, mapper, result);
 
   if (verbose > 0) gsInfo << "Finished!" << "\n";
   return result;
@@ -1248,7 +1253,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
         << "\n";
 
   // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(mp, mapper);
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
 
   gsExprEvaluator<T> evaluator;
   gsExprAssembler<T> assembler;
@@ -1282,7 +1287,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
       gsVector<real_t> const &x) {
     // TODO: need to change here
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto metricMat = jac(G).tr() * jac(G);
@@ -1303,7 +1308,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLx(space1, G);
@@ -1318,7 +1323,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLxDiag(space1, G);
@@ -1333,7 +1338,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLxDiagBlock(space1, G);
@@ -1347,7 +1352,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
   Residual_t ResidualImprove = [&assembler, &mapper, &mp, &space1](
       gsVector<real_t> const &x) {
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto invJacMat = jac(G).inv();
@@ -1365,7 +1370,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLxH1(space1, G);
@@ -1381,7 +1386,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLxH1DiagBlock(space1, G);
@@ -1394,7 +1399,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
 
   gsVector<> solVector;
   int m = 5, n = 5;
-  int AAPreconditionType = options.askInt("AAPreconsitionType", 0);
+  int AAPreconditionType = options.askInt("AAPreconditionType", 0);
   switch (AAPreconditionType) {
     case 1: // Full Jacobian
     {
@@ -1622,7 +1627,7 @@ gsBarrierCore<d, T>::computePDEPatchAA(const gsMultiPatch<T> &mp,
     }
   }
 
-  convert_gsFreeVec_to_mp<T>(solVector, mapper, result);
+  convertFreeVectorToMultiPatch<T>(solVector, mapper, result);
 
   if (verbose > 0) gsInfo << "Finished!" << "\n";
   return result;
@@ -1642,7 +1647,7 @@ gsBarrierCore<d, T>::computePDEPatchAAH1(const gsMultiPatch<T> &mp,
         << "\n";
 
   // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(mp, mapper);
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
 
   gsExprEvaluator<T> evaluator;
   gsExprAssembler<T> assembler;
@@ -1669,7 +1674,7 @@ gsBarrierCore<d, T>::computePDEPatchAAH1(const gsMultiPatch<T> &mp,
   Residual_t ResidualImprove = [&assembler, &mapper, &mp, &space1](
       gsVector<real_t> const &x) {
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto invJacMat = jac(G).inv();
@@ -1687,7 +1692,7 @@ gsBarrierCore<d, T>::computePDEPatchAAH1(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLxH1(space1, G);
@@ -1703,7 +1708,7 @@ gsBarrierCore<d, T>::computePDEPatchAAH1(const gsMultiPatch<T> &mp,
       gsVector<T> const &x) {
     // analytical Jacobian matrix
     gsMultiPatch<> mp1 = mp;
-    convert_gsFreeVec_to_mp<T>(x, mapper, mp1);
+    convertFreeVectorToMultiPatch<T>(x, mapper, mp1);
     geometryMap G = assembler.getMap(mp1);
 
     auto jacMat = jacScaledLxH1DiagBlock(space1, G);
@@ -1736,7 +1741,7 @@ gsBarrierCore<d, T>::computePDEPatchAAH1(const gsMultiPatch<T> &mp,
     file << iterHist[j] << "  " << resHist[j] << "  " << timeHist[j] << "\n";
   }
 
-  convert_gsFreeVec_to_mp<T>(solVector, mapper, result);
+  convertFreeVectorToMultiPatch<T>(solVector, mapper, result);
 
   if (verbose > 0) gsInfo << "Finished!" << "\n";
   return result;
@@ -1758,7 +1763,7 @@ gsBarrierCore<d, T>::computePenaltyPatch2(const gsMultiPatch<T> &mp,
   T scaledArea = computeAreaInterior(mp);
 
   // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(mp, mapper);
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
 
   gsObjPenaltyPt2<d, T> objPenaltyPt(mp, mapper);
   objPenaltyPt.options().setReal("qi_lambda1", 1.0);
@@ -1795,106 +1800,172 @@ gsBarrierCore<d, T>::computePenaltyPatch2(const gsMultiPatch<T> &mp,
 //        gsInfo << "res2.transpose()" << res2.transpose() <<"\n";
 //        gsInfo << "(res1-res2).norm()" << (res1-res2).norm() << "\n";
   optimizer.solve(initialGuessVector);
-  convert_gsFreeVec_to_mp<T>(optimizer.currentDesign(), mapper, result);
+  convertFreeVectorToMultiPatch<T>(optimizer.currentDesign(), mapper, result);
   // scalingUndo();
   // gsWrite(m_mp, m_filename + "_penalty_final");
   if (verbose > 0) gsInfo << "Finished!" << "\n";
   return result;
 }
 
+//template<short_t d, typename T>
+//gsMultiPatch<T>
+//gsBarrierCore<d, T>::computeBarrierPatch(const gsMultiPatch<T> &mp,
+//                                         const gsDofMapper &mapper,
+//                                         const gsOptionList &options) {
+//  index_t verbose = options.askInt("Verbose", 0);
+//  // TODO: We can remove the line below this line and remove the const in front of mp. Then we change mp in-place.
+//  gsMultiPatch<T> result = mp;
+//  if (verbose > 0) gsInfo << "Start foldover elimination step..." << "\n";
+//  T scaledArea = computeAreaInterior(result);
+//
+//  // initial guess
+//  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(result,
+//                                                              mapper);
+//
+//  // STEP 2: foldover elimination step
+//  T Efoldover = std::numeric_limits<T>::max();
+//  index_t it = 0; // usually, only one step is enough.
+//
+//  constexpr T EPSILON = 1e-20;
+//  constexpr int MAX_ITER = 10;
+//  int maxIterFoldoverFree = options.askInt("ff_MaxIterations", 1e4);
+//  T minGradLengthFoldoverFree = options.askReal("ff_MinGradientLength", 1e-12);
+//  T minStepLengthFoldoverFree = options.askReal("ff_MinStepLength", 1e-12);
+//
+//  gsObjFoldoverFree<d, T> objFoldoverFree(mp, mapper);
+//  objFoldoverFree.addOptions(options);
+//
+//  gsHLBFGS<T> optFoldoverFree(&objFoldoverFree);
+//  optFoldoverFree.options().setInt("MaxIterations", maxIterFoldoverFree);
+//  optFoldoverFree.options().setReal("MinGradientLength", minGradLengthFoldoverFree);
+//  optFoldoverFree.options().setReal("MinStepLength", minStepLengthFoldoverFree);
+//  optFoldoverFree.options().setInt("Verbose", verbose);
+//
+//  do {
+//    T delta = pow(0.1, it) * 5e-2 * scaledArea; // parameter delta
+//    objFoldoverFree.setDelta(delta);
+//
+//    optFoldoverFree.solve(initialGuessVector);
+//
+//    ++it;
+//    Efoldover = optFoldoverFree.objective();
+//    initialGuessVector = optFoldoverFree.currentDesign();
+//  } while (Efoldover > EPSILON && it < MAX_ITER);
+//
+//  // If the foldover elimination step fails, then exit.
+//  if (Efoldover > EPSILON)
+//  {
+//    gsInfo << "Maximum iterations reached. The foldover-energy value is "
+//           << Efoldover
+//           << ". This suggests there may be issues with the input data.\n"
+//           << "Exiting prematurely.\n";
+////    return EXIT_FAILURE;
+//  }
+//
+//  // STEP 3: parameterization quality improvement
+//  if (verbose > 0)
+//    gsInfo << "Start parameterization quality improvement step..." << "\n";
+//
+//  gsObjQualityImprovePt<d, T> objQualityImprovePt(result, mapper);
+//
+//  gsOptionList thisOptions = options;
+//  thisOptions.addReal("qi_lambda1", "Sets the lambda_1 value for Emips", 1.0);
+//  thisOptions.addReal("qi_lambda2", "Sets the lambda 2 value for Eunif", 1.0 / pow(scaledArea, 2));
+//  objQualityImprovePt.applyOptions(thisOptions);
+//
+//  gsHLBFGS<T> optQualityImprovePt(&objQualityImprovePt);
+//  setOptimizerOptions<T>(optQualityImprovePt, options);
+//
+//  optQualityImprovePt.solve(initialGuessVector);
+//  convertFreeVectorToMultiPatch<T>(optQualityImprovePt.currentDesign(),
+//                                   mapper, result);
+//
+//  return result;
+//}
+
 template<short_t d, typename T>
-gsMultiPatch<T>
-gsBarrierCore<d, T>::computeBarrierPatch(const gsMultiPatch<T> &mp,
-                                         const gsDofMapper &mapper,
-                                         const gsOptionList &options) {
-  index_t verbose = options.askInt("Verbose", 0);
-  // TODO: We can remove the line below this line and remove the const in front of mp. Then we change mp in-place.
+gsMultiPatch<T> gsBarrierCore<d, T>::computeBarrierPatch(const gsMultiPatch<T>& mp,
+                                                         const gsDofMapper& mapper,
+                                                         const gsOptionList& options) {
+//  index_t verbose = options.askInt("Verbose", 0);
   gsMultiPatch<T> result = mp;
-  if (verbose > 0) gsInfo << "Start foldover elimination step..." << "\n";
+
+  // Compute scaledArea and initial guess vector
   T scaledArea = computeAreaInterior(result);
 
-  // initial guess
-  gsVector<T> initialGuessVector = convert_mp_to_gsFreeVec<T>(result,
-                                                              mapper);
+  // get initial guess vector
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(result, mapper);
 
-  real_t Efoldover;
-  index_t it = 0;
-  // usually, only one step is enough.
-
-  T runTime = 0;
-  gsObjFoldoverFree<d, T> objFoldoverFree(mp, mapper);
-  objFoldoverFree.addOptions(options);
-  do {
-    T delta = pow(0.1, it) * 5e-2 *
-        scaledArea; // parameter delta for foldover elimination step
-
-    objFoldoverFree.options().setReal("ff_Delta", delta);
-    objFoldoverFree.applyOptions();
-
-    gsHLBFGS<T> optFoldoverFree(&objFoldoverFree);
-    optFoldoverFree.options().setInt("MaxIterations",
-                                     options.askInt("ff_MaxIterations",
-                                                    1e4));
-    optFoldoverFree.options().setReal("MinGradientLength",
-                                      options.askReal(
-                                          "ff_MinGradientLength",
-                                          1e-12));
-    optFoldoverFree.options().setReal("MinStepLength", options.askReal(
-        "ff_MinStepLength", 1e-12));
-    optFoldoverFree.options().setInt("Verbose", verbose);
-    optFoldoverFree.solve(initialGuessVector);
-//    runTime += optFoldoverFree.runTime();
-
-    ++it;
-    Efoldover = optFoldoverFree.currentObjValue();
-    initialGuessVector = optFoldoverFree.currentDesign();
-  } while (Efoldover > 1e-20 && it < 10);
-
-  GISMO_ASSERT(Efoldover < 1e-20,
-               "Max iterations reached. The value of foldover-energy is "
-                   + std::to_string(Efoldover)
-                   + ". Probably something is wrong with the input data.");
-
-  // write the parameterization after foldover elimination step to .xml file
-  convert_gsFreeVec_to_mp<T>(initialGuessVector, mapper, result);
-  // scalingUndo();
-  // gsWrite(m_mp, m_filename + "_barrier_ff");
-  // scaling();
+  // STEP 2: foldover elimination step
+  foldoverElimination(mp, mapper, initialGuessVector, scaledArea, options);
 
   // STEP 3: parameterization quality improvement
-  if (verbose > 0)
-    gsInfo << "Start parameterization quality improvement step..."
-           << "\n";
+  qualityImprovement(result, mapper, initialGuessVector, scaledArea, options);
+
+  // Update the result with optimized parameterization
+  convertFreeVectorToMultiPatch(initialGuessVector, mapper, result);
+
+  return result;
+}
+
+template<short_t d, typename T>
+void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T>& mp,
+                                                     const gsDofMapper& mapper,
+                                                     gsVector<T>& initialGuessVector,
+                                                     const T& scaledArea,
+                                                     const gsOptionList& options) {
+
+  verboseLog("Start foldover elimination step...", options.askInt("Verbose", 0));
+  constexpr T EPSILON = 1e-20;
+  constexpr int MAX_ITER = 10;
+  gsObjFoldoverFree<d, T> objFoldoverFree(mp, mapper);
+  objFoldoverFree.addOptions(options);
+
+  gsHLBFGS<T> optFoldoverFree(&objFoldoverFree);
+  optFoldoverFree.options().setInt("MaxIterations", options.askInt("ff_MaxIterations", 1e4));
+  optFoldoverFree.options().setReal("MinGradientLength", options.askReal("ff_MinGradientLength", 1e-12));
+  optFoldoverFree.options().setReal("MinStepLength", options.askReal("ff_MinStepLength", 1e-12));
+  optFoldoverFree.options().setInt("Verbose", options.askInt("Verbose", 0));
+
+  T Efoldover = std::numeric_limits<T>::max();
+  for (index_t it = 0; it < MAX_ITER; ++it) {
+    T delta = pow(0.1, it) * 5e-2 * scaledArea; // parameter delta
+    objFoldoverFree.setDelta(delta);
+    optFoldoverFree.solve(initialGuessVector);
+
+    Efoldover = optFoldoverFree.objective();
+    initialGuessVector = optFoldoverFree.currentDesign();
+
+    if (Efoldover <= EPSILON) { break; }
+  }
+
+  if (Efoldover > EPSILON) {
+    throw std::runtime_error("Maximum iterations reached. The foldover-energy value is " +
+        std::to_string(Efoldover) +
+        ". This suggests there may be issues with the input data.");
+  }
+}
+
+template<short_t d, typename T>
+void gsBarrierCore<d, T>::qualityImprovement(gsMultiPatch<T>& result,
+                                                    const gsDofMapper& mapper,
+                                                    gsVector<T>& initialGuessVector,
+                                                    const T& scaledArea,
+                                                    const gsOptionList&
+                                                    options) {
+  verboseLog("Start parameterization quality improvement step...", options.askInt("Verbose", 0));
   gsObjQualityImprovePt<d, T> objQualityImprovePt(result, mapper);
-  objQualityImprovePt.options().setReal("qi_lambda1", 1.0);
-  objQualityImprovePt.options().setReal("qi_lambda2", 1.0 / pow(scaledArea, 2));
-//  objQualityImprovePt.options().setReal("qi_lambda2", 0.0);
-  objQualityImprovePt.addOptions(options);
-  objQualityImprovePt.applyOptions();
+
+  gsOptionList thisOptions = options;
+  thisOptions.addReal("qi_lambda1", "Sets the lambda_1 value for Emips", 1.0);
+  thisOptions.addReal("qi_lambda2", "Sets the lambda 2 value for Eunif", 1.0 / pow(scaledArea, 2));
+  objQualityImprovePt.applyOptions(thisOptions);
 
   gsHLBFGS<T> optQualityImprovePt(&objQualityImprovePt);
-  optQualityImprovePt.options().setInt("MaxIterations", options.getInt(
-      "qi_MaxIterations"));
-//        optQualityImprovePt.options().setReal("MinGradientLength",
-//                                              options.getReal(
-//                                                      "qi_MinGradientLength"));
-//        optQualityImprovePt.options().setReal("MinStepLength", options.getReal(
-//                "qi_MinStepLength"));
-  optQualityImprovePt.options().setReal("MinGradientLength", 1e-4);
-  optQualityImprovePt.options().setReal("MinStepLength", 1e-4);
+  setOptimizerOptions<T>(optQualityImprovePt, options);
 
-  optQualityImprovePt.options().setInt("Verbose", verbose);
   optQualityImprovePt.solve(initialGuessVector);
-//  runTime += optQualityImprovePt.runTime();
-  if (verbose > 0)
-    gsInfo << "Total runtime of the barrier patch: " << runTime << "\n";
-
-  convert_gsFreeVec_to_mp<T>(optQualityImprovePt.currentDesign(), mapper,
-                             result);
-
-//     scalingUndo();
-//     gsWrite(m_mp, m_filename + "_barrier_final");
-  return result;
+  initialGuessVector = optQualityImprovePt.currentDesign();
 }
 
 template<short_t d, typename T>
@@ -1904,7 +1975,7 @@ gsObjFoldoverFree<d, T>::gsObjFoldoverFree(const gsMultiPatch<T> &patches,
     m_mp(patches),
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
-//    defaultOptions();
+    defaultOptions();
   m_assembler.setIntegrationElements(m_mb);
   m_evaluator = gsExprEvaluator<T>(m_assembler);
 }
@@ -1921,47 +1992,45 @@ void gsObjFoldoverFree<d, T>::addOptions(const gsOptionList &options) {
 }
 
 template<short_t d, typename T>
-void gsObjFoldoverFree<d, T>::applyOptions() {
+void gsObjFoldoverFree<d, T>::applyOptions(const gsOptionList &options) {
   m_eps = m_options.getReal("ff_Delta");
   m_evaluator.options().update(m_options, gsOptionList::addIfUnknown);
 }
 
 template<short_t d, typename T>
 T gsObjFoldoverFree<d, T>::evalObj(const gsAsConstVector<T> &u) const {
-//        gsMultiPatch<T> mp = m_mp;
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
   geometryMap G = m_evaluator.getMap(m_mp);
 
   auto EfoldoverFree = (m_eps - jac(G).det()).ppartval();
-//        T F = m_evaluator.integral(EfoldoverFree);
   return m_evaluator.integral(EfoldoverFree);
 }
 
 template<short_t d, typename T>
 void gsObjFoldoverFree<d, T>::gradObj_into(const gsAsConstVector<T> &u,
                                            gsAsVector<T> &result) const {
-//        gsMultiPatch<T> mp = m_mp;
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
   geometryMap G = m_assembler.getMap(m_mp);
 
-  // TODO: can the following two lines move outside this function？
-  space space1 = m_assembler.getSpace(m_mb, d); // 1D space!!
+  // Only call these once if their results don't change.
+  static const space space1 = m_assembler.getSpace(m_mb, d);
   space1.setupMapper(m_mapper);
 
-//        |J|' w.r.t. physical coordinates x and y
+  // |J|' w.r.t. physical coordinates x and y
   auto derJacDet = frprod2(space1, jac(G).tr().adj());
 
-  gsVector<T> zerovec(d);
-  zerovec.setConstant(0.0);
-  gsConstantFunction<T> zerofun(zerovec, d);
-  auto zero = m_evaluator.getVariable(zerofun);
-  //TODO: zero-space expression
-  auto Eder = ternary(m_eps - jac(G).det(), -derJacDet, (space1 * zero));
+  gsConstantFunction<T> zeroFunc(gsVector<T>::Zero(d), d);
+  auto zeroVar = m_evaluator.getVariable(zeroFunc);
+
+  auto Eder = ternary(m_eps - jac(G).det(), -derJacDet, space1 * zeroVar);
 
   m_assembler.initSystem();
   m_assembler.assemble(Eder);
-  result = gsAsVector<T>(const_cast<T *>(m_assembler.rhs().data()),
-                         m_assembler.rhs().rows());
+
+  result.resize(m_assembler.rhs().rows());
+  std::copy(m_assembler.rhs().data(),
+            m_assembler.rhs().data() + m_assembler.rhs().rows(),
+            result.data());
 }
 
 template<short_t d, typename T>
@@ -1972,16 +2041,16 @@ gsObjQualityImprovePt<d, T>::gsObjQualityImprovePt(
     m_mp(patches),
     m_mapper(std::move(mapper)),
     m_mb(m_mp) {
-  defaultOptions();
   m_assembler.setIntegrationElements(m_mb);
   m_evaluator = gsExprEvaluator<T>(m_assembler);
+//  defaultOptions();
 }
 
 template<short_t d, typename T>
 void gsObjQualityImprovePt<d, T>::defaultOptions() {
   // @Ye, make this reasonable default options
-  m_options.addReal("qi_lambda1", "Sets the lambda 1 value", 1e-2);
-  m_options.addReal("qi_lambda2", "Sets the lambda 2 value", 1e-2);
+  m_options.addReal("qi_lambda1", "Sets the lambda 1 value", 1.0);
+  m_options.addReal("qi_lambda2", "Sets the lambda 2 value", 1.0);
 }
 
 template<short_t d, typename T>
@@ -1990,7 +2059,8 @@ void gsObjQualityImprovePt<d, T>::addOptions(const gsOptionList &options) {
 }
 
 template<short_t d, typename T>
-void gsObjQualityImprovePt<d, T>::applyOptions() {
+void gsObjQualityImprovePt<d, T>::applyOptions(const gsOptionList &options) {
+  m_options.update(options, gsOptionList::addIfUnknown);
   m_lambda1 = m_options.getReal("qi_lambda1");
   m_lambda2 = m_options.getReal("qi_lambda2");
   m_evaluator.options().update(m_options, gsOptionList::addIfUnknown);
@@ -2005,9 +2075,7 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjQualityImprovePt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-//        gsMultiPatch<T> mp = m_mp;
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
-
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
   geometryMap G = m_evaluator.getMap(m_mp);
 
   if (m_evaluator.min(jac(G).det()) < 0) {
@@ -2016,10 +2084,7 @@ gsObjQualityImprovePt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
     auto Ewinslow = jac(G).sqNorm() / jac(G).det();
     auto Euniform = pow(jac(G).det(), 2);
 
-//            T F = m_evaluator.integral(
-//                    m_lambda1 * Ewinslow + m_lambda2 * Euniform);
-    return m_evaluator.integral(
-        m_lambda1 * Ewinslow + m_lambda2 * Euniform);
+    return m_evaluator.integral( m_lambda1 * Ewinslow + m_lambda2 * Euniform);
   }
 }
 
@@ -2028,7 +2093,7 @@ template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjQualityImprovePt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
 //        gsMultiPatch<T> mp = m_mp;
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2041,10 +2106,7 @@ gsObjQualityImprovePt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
 //            // another objective function term - Jiao et al. 2011
 //            auto Ewinslow = jac(G).sqNorm() / pow(jac(G).det(), 2.0 / 3.0);
 
-//            T F = m_evaluator.integral(
-//                    m_lambda1 * Ewinslow + m_lambda2 * Euniform);
-    return m_evaluator.integral(
-        m_lambda1 * Ewinslow + m_lambda2 * Euniform);
+    return m_evaluator.integral( m_lambda1 * Ewinslow + m_lambda2 * Euniform );
   }
 }
 
@@ -2059,14 +2121,14 @@ template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjQualityImprovePt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                                gsAsVector<T> &result) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_assembler.getMap(m_mp);
 
   space space1 = m_assembler.getSpace(m_mb, d); // 1D space!!
   space1.setupMapper(m_mapper);
 
-  //      |J|' w.r.t. physical coordinates x and y
+  // |J|' w.r.t. physical coordinates x and y
   auto derJacDet = frprod2(space1, jac(G).tr().adj());
 
   auto Ewinslow = jac(G).sqNorm() / jac(G).det();
@@ -2086,8 +2148,7 @@ template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjQualityImprovePt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                                gsAsVector<T> &result) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
-
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
   geometryMap G = m_assembler.getMap(m_mp);
 
   space space1 = m_assembler.getSpace(m_mb, d); // 1D space!!
@@ -2096,10 +2157,8 @@ gsObjQualityImprovePt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
   //      |J|' w.r.t. physical coordinates x and y
   auto derJacDet = frprod2(space1, jac(G).tr().adj());
 
-  auto derEwinslow = frprod2(space1, (jac(G).inv().sqNorm() * jac(G) -
-      jac(G).sqNorm() *
-          (jac(G).tr() * jac(G) *
-              jac(G).tr()).inv()));
+  auto derEwinslow = frprod2(space1, (jac(G).inv().sqNorm() * jac(G) - jac(G)
+  .sqNorm() * (jac(G).tr() * jac(G) * jac(G).tr()).inv()));
 
 //        // gradient of another objective function term
 //        auto Ewinslow = jac(G).sqNorm() / pow(jac(G).det(), 2.0 / 3.0);
@@ -2155,7 +2214,7 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjVHPt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2215,7 +2274,7 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjVHPt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2245,7 +2304,7 @@ void gsObjVHPt<d, T>::gradObj2_into(const gsAsConstVector<T> &u,
 //    gsObjPenaltyPt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
 //                                            gsAsVector<T> &result) const
 //    {
-//        convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+//        convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 //
 //        geometryMap G = m_assembler.getMap(m_mp);
 //
@@ -2283,7 +2342,7 @@ void gsObjVHPt<d, T>::gradObj2_into(const gsAsConstVector<T> &u,
 //    gsObjPenaltyPt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
 //                                            gsAsVector<T> &result) const
 //    {
-//        convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+//        convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 //
 //        geometryMap G = m_assembler.getMap(m_mp);
 //
@@ -2356,7 +2415,7 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjSmoothingPt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2377,7 +2436,7 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjSmoothingPt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2441,7 +2500,7 @@ T gsObjPenaltyPt<d, T>::evalObj(const gsAsConstVector<T> &u) const {
 //template<short_t _d>
 //typename std::enable_if<_d == 2, T>::type
 //gsObjPenaltyPt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-//  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+//  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 //
 //  geometryMap G = m_evaluator.getMap(m_mp);
 //
@@ -2461,7 +2520,7 @@ template<short_t d, typename T>
 template<short_t _d>
 //typename std::enable_if<_d == 3, T>::type
 T gsObjPenaltyPt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2490,7 +2549,7 @@ template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjPenaltyPt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                         gsAsVector<T> &result) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_assembler.getMap(m_mp);
 
@@ -2528,7 +2587,7 @@ template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjPenaltyPt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                         gsAsVector<T> &result) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_assembler.getMap(m_mp);
 
@@ -2602,7 +2661,7 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2627,7 +2686,7 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
 
@@ -2664,7 +2723,7 @@ template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                          gsAsVector<T> &result) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_assembler.getMap(m_mp);
 
@@ -2707,7 +2766,7 @@ template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                          gsAsVector<T> &result) const {
-  convert_gsFreeVec_to_mp<T>(u, m_mapper, m_mp);
+  convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_assembler.getMap(m_mp);
 
