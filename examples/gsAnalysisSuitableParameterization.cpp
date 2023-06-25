@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
     index_t verbose = 0;
     index_t numRefine = 0;
     index_t numElevate = 0;
-    index_t AAPreconsitionType = 0;
+    index_t AAPreconditionType = 0;
     bool free = false, isBRep = false;
 
     // Load XML file containing a multi-patch
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
                "Print output 0: no print, 1: summary, 2: full print",
                verbose);
     cmd.addInt("a", "preconditionType",
-               "Preconsitioner type for Anderson Acceleration", AAPreconsitionType);
+               "Preconsitioner type for Anderson Acceleration", AAPreconditionType);
     cmd.addSwitch("free", "Make interfaces free", free);
     try { cmd.getValues(argc, argv); }
     catch (int rv) { return rv; }
@@ -271,22 +271,6 @@ int main(int argc, char *argv[])
       gsInfo << " Got" << *mp << " \n";
       //! [Read geometry]
 
-//    gsMultiPatch<> initMP;
-//    for (auto &_patch:*mp)
-//    {
-//        gsMultiPatch<> bRep;
-//        bRep.addPatch(_patch->boundary(1));
-//        bRep.addPatch(_patch->boundary(2));
-//        bRep.addPatch(_patch->boundary(3));
-//        bRep.addPatch(_patch->boundary(4));
-//
-//        gsBarrierPatchGenerator<2, real_t> patchGenerator(bRep, "screwGeomSpring_mp");
-//        patchGenerator.options().setInt("InitialMethod", initialMethod);
-//        patchGenerator.initialization();
-//        initMP.addPatch( patchGenerator.getMultiPatch().patch(0));
-//    }
-//    gsWrite(initMP, "screwGeomSpring_mp");
-
       //! [construct a initial parameterization if the input data is B-Rep]
       short_t pardim = mp->domainDim();
       short_t geodim = mp->targetDim();
@@ -318,7 +302,6 @@ int main(int argc, char *argv[])
       // Note, the following line will mark all the interfaces and boundaries automatically.
       mp->fixOrientation();
       mp->computeTopology();
-//    gsWrite(*mp, "Yi_ex4DCM_Rabbit");
       //! [align the orientations of a multi-patch parameterization]
 
       //! [refine the geometry for better result]
@@ -345,6 +328,7 @@ int main(int argc, char *argv[])
 //
 //    gsDofMapper mapper2;
 //    makeMapperFreeInterface(*mp, mapper2);
+
       gsStopwatch timer;
       //! [perform analysis-suitable parameterization construstion]
       gsMultiPatch<> result;
@@ -352,7 +336,7 @@ int main(int argc, char *argv[])
         gsBarrierPatch<2, real_t> opt(*mp, !free);
         opt.options().setInt("Verbose", verbose);
         opt.options().setInt("ParamMethod", paramMethod);
-        opt.options().setInt("AAPreconsitionType", AAPreconsitionType);
+        opt.options().setInt("AAPreconditionType", AAPreconditionType);
         opt.compute();
         result = opt.result();
       } else if (geodim == 3) {
@@ -366,35 +350,6 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
       }
       //! [perform analysis-suitable parameterization construstion]
-
-//      if (outputFile.is_open()) {
-//        outputFile << ifile << " " << timer.stop() << std::endl;
-//      } else {
-//        std::cerr << "Unable to open output.txt file." << std::endl;
-//        return 1;
-//      }
-
-//    real_t time = 0.0;
-//    for (auto iptch=0; iptch<result.nPatches(); ++iptch)
-//    {
-//        gsMultiPatch<real_t> currBRep;
-//        for (auto i=1; i<5; ++i)
-//        {
-//            auto currBdry = result.patch(iptch).boundary(i);
-//            currBRep.addPatch( *currBdry );
-////            auto *geo = dynamic_cast< gsTensorBSpline<2,real_t> * > (&currBRep.patch(i));
-////            currBRep.patch(i) = *geo;
-//        }
-//        gsInfo << currBRep << "\n";
-//
-//        gsCoonsPatch<real_t> coons(currBRep);
-//
-//        gsStopwatch timer;
-//        result.patch(iptch) = coons.compute();
-//        time += timer.stop();
-////
-////        result.patch(iptch) = coons.result();
-//    }
 
       //! [output the parameterization result]
       std::string filename_output = filename_input;
@@ -411,13 +366,9 @@ int main(int argc, char *argv[])
       else
         filename_output += "Free";
 
-//    gsWrite(result, filename_output);
       outputResult(result, filename_output);
       gsInfo << "The results have been written into " << filename_output
              << "\n";
-
-//    }
-//    outputResult(result, "duck1116_test");
     //! [output the parameterization result]
 
     return EXIT_SUCCESS;
