@@ -177,6 +177,59 @@ public:
 
     }
 
+  /// gradientCheck subroutine, very useful to check the correctness of your
+  // own analytic gradient. Author: Ye Ji (jiyess@outlook.com)
+  void gradientCheck(const gsVector<T> &u) {
+    // Get the analytic gradient
+    std::vector<T> sol(u.size());
+    gsAsVector<T> analyticGrad(sol);
+    std::copy(u.begin(), u.end(), sol.begin());
+    m_op->gradObj_into(sol, analyticGrad);
+
+    // Finite difference calculation of gradient using central differences
+    gsVector<T> numericalGrad(u.size());
+    T h = sqrt(std::numeric_limits<T>::epsilon()) * u.cwiseAbs().maxCoeff();
+    T forwardValue, backwardValue;
+
+    std::vector<T> solForNumericalGrad(u.size());
+    std::copy(u.begin(), u.end(), solForNumericalGrad.begin());
+
+    // Iterate through each dimension
+    for (int k = 0; k < u.size(); ++k) {
+      // Compute function value at forward step
+      solForNumericalGrad[k] += h;
+      forwardValue = m_op->evalObj(solForNumericalGrad);
+
+      // Compute function value at backward step
+      solForNumericalGrad[k] -= 2 * h;
+      backwardValue = m_op->evalObj(solForNumericalGrad);
+
+      // Compute the numerical gradient using central difference formula
+      numericalGrad(k) = (forwardValue - backwardValue) / (2 * h);
+
+      // Reset the k-th component to its original value
+      solForNumericalGrad[k] += h;
+    }
+
+    // Compare the analytic gradient and the numerical gradient
+    gsInfo << "Analytical gradient:  Finite difference gradient: \n";
+
+    int numElementsToPrint = std::min(analyticGrad.size(), 30);
+    for (int i = 0; i < numElementsToPrint; ++i) {
+      gsInfo << std::setw(5) << i << std::setw(20) << analyticGrad(i)
+             << std::setw(20) << numericalGrad(i) << "\n";
+    }
+
+    if (u.size() > 30) {
+      gsInfo << "(Displaying the first 30 components only)\n";
+    }
+
+    T relativeError =
+        (analyticGrad - numericalGrad).norm() / analyticGrad.norm();
+    gsInfo << "The relative error between the analytic gradient and the "
+              "numerical gradient is: " << relativeError << "\n\n";
+  }
+
 // Members taken from Base
 protected:
     using Base::m_op;
