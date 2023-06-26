@@ -201,11 +201,11 @@ public:
       forwardValue = m_op->evalObj(solForNumericalGrad);
 
       // Compute function value at backward step
-      solForNumericalGrad[k] -= 2 * h;
+      solForNumericalGrad[k] -= 2.0 * h;
       backwardValue = m_op->evalObj(solForNumericalGrad);
 
       // Compute the numerical gradient using central difference formula
-      numericalGrad(k) = (forwardValue - backwardValue) / (2 * h);
+      numericalGrad(k) = (forwardValue - backwardValue) / (2.0 * h);
 
       // Reset the k-th component to its original value
       solForNumericalGrad[k] += h;
