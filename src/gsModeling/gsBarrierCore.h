@@ -342,75 +342,7 @@ class gsObjVHPt : public gsOptProblem<T> {
 
   void addOptions(const gsOptionList &options);
 
-  void applyOptions();
-
- private:
-  template<short_t _d>
-  typename std::enable_if<_d == 2, T>::type
-  evalObj_impl(const gsAsConstVector<T> &u) const;
-
-  template<short_t _d>
-  typename std::enable_if<_d == 3, T>::type
-  evalObj_impl(const gsAsConstVector<T> &u) const;
-
-  template<short_t _d>
-  typename std::enable_if<_d != 2 && _d != 3, T>::type
-  evalObj_impl(
-      const gsAsConstVector<T> &u) const {GISMO_NO_IMPLEMENTATION; }
-
-  template<short_t _d>
-  typename std::enable_if<_d == 2, T>::type
-  gradObj_into_impl(const gsAsConstVector<T> &u,
-                    gsAsVector<T> &result) const;
-
-  template<short_t _d>
-  typename std::enable_if<_d == 3, T>::type
-  gradObj_into_impl(const gsAsConstVector<T> &u,
-                    gsAsVector<T> &result) const;
-
-  template<short_t _d>
-  typename std::enable_if<_d != 2 && _d != 3, T>::type
-  gradObj_into_impl(const gsAsConstVector<T> &u,
-                    gsAsVector<T> &result) const {GISMO_NO_IMPLEMENTATION; }
-
- protected:
-  mutable gsMultiPatch<T> m_mp;
-  const gsDofMapper m_mapper;
-  const gsMultiBasis<T> m_mb;
-
-  mutable gsExprEvaluator<T> m_evaluator;
-  mutable gsExprAssembler<T> m_assembler;
-
-  gsOptionList m_options;
-
-  T m_lambda1, m_lambda2, m_eps = 4e-4; // 4e-4
-};
-
-template<short_t d, typename T>
-class gsObjSmoothingPt : public gsOptProblem<T> {
- private:
-  typedef typename gsExprAssembler<T>::geometryMap geometryMap;
-  typedef typename gsExprAssembler<T>::space space;
-  typedef typename gsExprAssembler<T>::solution solution;
-
- public:
-  gsObjSmoothingPt(const gsMultiPatch<T> &patches,
-                   gsDofMapper mapper);
-
-  T evalObj(const gsAsConstVector<T> &u) const final;
-
-  void gradObj2_into(const gsAsConstVector<T> &u,
-                     gsAsVector<T> &result) const;
-
-  gsOptionList &options() { return m_options; }
-
-  void setEps(T tol) { m_eps = tol; }
-
-  void defaultOptions();
-
-  void addOptions(const gsOptionList &options);
-
-  void applyOptions();
+  void applyOptions(const gsOptionList &options);
 
  private:
   template<short_t _d>
