@@ -190,7 +190,7 @@ struct gsBarrierCore {
                                   const T& scaledArea,
                                   const gsOptionList& options);
 
-  static void qualityImprovement(gsMultiPatch<T>& result,
+  static void qualityImprovement(const gsMultiPatch<T>& mp,
                                  const gsDofMapper& mapper,
                                  gsVector<T>& initialGuessVector,
                                  const T& scaledArea,
@@ -476,12 +476,12 @@ class gsObjPenaltyPt : public gsOptProblem<T> {
 
   void addOptions(const gsOptionList &options);
 
-  void applyOptions();
+  void applyOptions(const gsOptionList &options);
 
  private:
-  template<short_t _d>
+//  template<short_t _d>
 //  typename std::enable_if<_d == 2, T>::type
-  T evalObj_impl(const gsAsConstVector<T> &u) const;
+//  T evalObj_impl(const gsAsConstVector<T> &u) const;
 
 //  template<short_t _d>
 //  typename std::enable_if<_d == 3, T>::type
@@ -517,7 +517,7 @@ class gsObjPenaltyPt : public gsOptProblem<T> {
 
   gsOptionList m_options;
 
-  T m_lambda1, m_lambda2, m_eps = 1e-10; // 4e-4
+  T m_lambda1, m_lambda2, m_eps = 1e-4; // 4e-4
 };
 
 template<short_t d, typename T>
