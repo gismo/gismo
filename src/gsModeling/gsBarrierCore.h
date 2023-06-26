@@ -110,9 +110,6 @@ struct gsBarrierCore {
                                              const gsDofMapper &mapper,
                                              const gsOptionList &options);
 
-  static gsMultiPatch<T> computeVariationalHarmonicPatch(const
-  gsMultiPatch<T> &mp, const gsDofMapper &mapper, const gsOptionList &options);
-
   static gsMultiPatch<T> computePenaltyPatch2(const gsMultiPatch<T> &mp,
                                               const gsDofMapper &mapper,
                                               const gsOptionList &options);
@@ -130,6 +127,11 @@ struct gsBarrierCore {
   static gsMultiPatch<T> computePDEPatchAAH1(const gsMultiPatch<T> &mp,
                                              const gsDofMapper &mapper,
                                              const gsOptionList &options);
+
+  /// variational harmonic method
+  static gsMultiPatch<T> computeVHPatch(const gsMultiPatch<T> &mp,
+                                        const gsDofMapper &mapper,
+                                        const gsOptionList &options);
 
   static gsMultiPatch<T> computeSmoothing(const gsMultiPatch<T> &mp,
                                           const gsDofMapper &mapper,
@@ -479,18 +481,6 @@ class gsObjPenaltyPt : public gsOptProblem<T> {
   void applyOptions(const gsOptionList &options);
 
  private:
-//  template<short_t _d>
-//  typename std::enable_if<_d == 2, T>::type
-//  T evalObj_impl(const gsAsConstVector<T> &u) const;
-
-//  template<short_t _d>
-//  typename std::enable_if<_d == 3, T>::type
-//  evalObj_impl(const gsAsConstVector<T> &u) const;
-
-//  template<short_t _d>
-//  typename std::enable_if<_d != 2 && _d != 3, T>::type
- // T evalObj_impl(
-//      const gsAsConstVector<T> &u) const;// {GISMO_NO_IMPLEMENTATION; }
 
   template<short_t _d>
   typename std::enable_if<_d == 2, T>::type
@@ -544,7 +534,7 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 
   void addOptions(const gsOptionList &options);
 
-  void applyOptions();
+  void applyOptions(const gsOptionList &options);
 
  private:
   template<short_t _d>
@@ -585,7 +575,7 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 
   gsOptionList m_options;
 
-  T m_lambda1, m_lambda2, m_eps = 1e-3;
+  T m_lambda1 = 1.0, m_lambda2 = 1.0, m_eps = 1e-3;
 };
 
 }// namespace gismo

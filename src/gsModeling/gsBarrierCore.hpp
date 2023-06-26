@@ -896,7 +896,7 @@ gsMultiPatch<T> gsBarrierCore<d, T>::compute(const gsMultiPatch<T> &mp,
       break;
     }
     case ParamMethod::VariationalHarmonicPatch: {
-      result = computeVariationalHarmonicPatch(mp, mapper, options);
+      result = computeVHPatch(mp, mapper, options);
       break;
     }
     case ParamMethod::PDEPatchAAH1: {
@@ -918,9 +918,9 @@ gsMultiPatch<T> gsBarrierCore<d, T>::compute(const gsMultiPatch<T> &mp,
 // Modified Variational Harmonic Method
 template<short_t d, typename T>
 gsMultiPatch<T>
-gsBarrierCore<d, T>::computeVariationalHarmonicPatch(const gsMultiPatch<T> &mp,
-                                                     const gismo::gsDofMapper &mapper,
-                                                     const gismo::gsOptionList &options) {
+gsBarrierCore<d, T>::computeVHPatch(const gsMultiPatch<T> &mp,
+                                    const gismo::gsDofMapper &mapper,
+                                    const gismo::gsOptionList &options) {
   index_t verbose = options.askInt("Verbose", 0);
   // TODO: We can remove the line below this line and remove the const in front of mp. Then we change mp in-place.
   gsMultiPatch<T> result = mp;
@@ -1743,135 +1743,37 @@ gsMultiPatch<T>
 gsBarrierCore<d, T>::computePenaltyPatch2(const gsMultiPatch<T> &mp,
                                           const gsDofMapper &mapper,
                                           const gsOptionList &options) {
-  index_t verbose = options.askInt("Verbose", 0);
-  // TODO: We can remove the line below this line and remove the const in front of mp. Then we change mp in-place.
-  gsMultiPatch<T> result = mp;
-  if (verbose > 0)
-    gsInfo
-        << "Start penalty function based parameterization construction..."
-        << "\n";
+
+  verboseLog("Penalty function-based (2) parameterization construction ...",
+             options.askInt("Verbose", 0));
+
+  // Compute scaledArea and initial guess vector
   T scaledArea = computeAreaInterior(mp);
 
-  // initial guess
-  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(mp, mapper);
+  // get initial guess vector
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
 
   gsObjPenaltyPt2<d, T> objPenaltyPt(mp, mapper);
-  objPenaltyPt.options().setReal("qi_lambda1", 1.0);
-  objPenaltyPt.options().setReal("qi_lambda2", 1.0 / pow(scaledArea, 2));
-//  gsInfo << "lambda_area" << (1.0 / pow(scaledArea, 2)) << "\n";
-//  objPenaltyPt.options().setReal("qi_lambda2", 1.0);
-//  objPenaltyPt.options().setReal("qi_lambda2", 0.0);
-  objPenaltyPt.addOptions(options);
-  objPenaltyPt.applyOptions();
+  objPenaltyPt.setEps(options.getReal("ff_Delta") * scaledArea);
+
+  gsOptionList thisOptions = options;
+  thisOptions.addReal("qi_lambda1", "Sets the lambda_1 value for Emips", 1.0);
+  thisOptions.addReal("qi_lambda2",
+                      "Sets the lambda 2 value for Eunif",
+                      1.0 / pow(scaledArea, 2));
+  objPenaltyPt.applyOptions(thisOptions);
 
   gsHLBFGS<T> optimizer(&objPenaltyPt);
-//        gsLBFGSpp<T> optimizer(&objPenaltyPt);
-  optimizer.options().setInt("MaxIterations",
-                             options.askInt("qi_MaxIterations", 1e4));
-//        optimizer.options().setReal("MinGradientLength",
-//                                    options.askReal("qi_MinGradientLength",
-//                                                    1e-4));
-//        optimizer.options().setReal("MinStepLength",
-//                                    options.askReal("qi_MinStepLength", 1e-4));
+  setOptimizerOptions<T>(optimizer, options);
 
-  optimizer.options().setReal("MinGradientLength", 1e-5);
-  optimizer.options().setReal("MinStepLength", 1e-5);
-  optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
-
-//        std::vector<real_t> u;
-//        for (const auto& _u:initialGuessVector)
-//            u.push_back(_u);
-//
-//        gsAsVector<real_t> res1(u);
-//        gsAsVector<real_t> res2(u);
-//        objPenaltyPt.gradObj2_into(u,res1);
-//        objPenaltyPt.gradObj_into(u,res2);
-//        gsInfo << "res1.transpose()" << res1.transpose() <<"\n";
-//        gsInfo << "res2.transpose()" << res2.transpose() <<"\n";
-//        gsInfo << "(res1-res2).norm()" << (res1-res2).norm() << "\n";
   optimizer.solve(initialGuessVector);
+  gsMultiPatch<T> result = mp;
   convertFreeVectorToMultiPatch<T>(optimizer.currentDesign(), mapper, result);
-  // scalingUndo();
-  // gsWrite(m_mp, m_filename + "_penalty_final");
-  if (verbose > 0) gsInfo << "Finished!" << "\n";
+
+  verboseLog("Finished!", options.askInt("Verbose", 0));
+
   return result;
 }
-
-//template<short_t d, typename T>
-//gsMultiPatch<T>
-//gsBarrierCore<d, T>::computeBarrierPatch(const gsMultiPatch<T> &mp,
-//                                         const gsDofMapper &mapper,
-//                                         const gsOptionList &options) {
-//  index_t verbose = options.askInt("Verbose", 0);
-//  // TODO: We can remove the line below this line and remove the const in front of mp. Then we change mp in-place.
-//  gsMultiPatch<T> result = mp;
-//  if (verbose > 0) gsInfo << "Start foldover elimination step..." << "\n";
-//  T scaledArea = computeAreaInterior(result);
-//
-//  // initial guess
-//  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector<T>(result,
-//                                                              mapper);
-//
-//  // STEP 2: foldover elimination step
-//  T Efoldover = std::numeric_limits<T>::max();
-//  index_t it = 0; // usually, only one step is enough.
-//
-//  constexpr T EPSILON = 1e-20;
-//  constexpr int MAX_ITER = 10;
-//  int maxIterFoldoverFree = options.askInt("ff_MaxIterations", 1e4);
-//  T minGradLengthFoldoverFree = options.askReal("ff_MinGradientLength", 1e-12);
-//  T minStepLengthFoldoverFree = options.askReal("ff_MinStepLength", 1e-12);
-//
-//  gsObjFoldoverFree<d, T> objFoldoverFree(mp, mapper);
-//  objFoldoverFree.addOptions(options);
-//
-//  gsHLBFGS<T> optFoldoverFree(&objFoldoverFree);
-//  optFoldoverFree.options().setInt("MaxIterations", maxIterFoldoverFree);
-//  optFoldoverFree.options().setReal("MinGradientLength", minGradLengthFoldoverFree);
-//  optFoldoverFree.options().setReal("MinStepLength", minStepLengthFoldoverFree);
-//  optFoldoverFree.options().setInt("Verbose", verbose);
-//
-//  do {
-//    T delta = pow(0.1, it) * 5e-2 * scaledArea; // parameter delta
-//    objFoldoverFree.setDelta(delta);
-//
-//    optFoldoverFree.solve(initialGuessVector);
-//
-//    ++it;
-//    Efoldover = optFoldoverFree.objective();
-//    initialGuessVector = optFoldoverFree.currentDesign();
-//  } while (Efoldover > EPSILON && it < MAX_ITER);
-//
-//  // If the foldover elimination step fails, then exit.
-//  if (Efoldover > EPSILON)
-//  {
-//    gsInfo << "Maximum iterations reached. The foldover-energy value is "
-//           << Efoldover
-//           << ". This suggests there may be issues with the input data.\n"
-//           << "Exiting prematurely.\n";
-////    return EXIT_FAILURE;
-//  }
-//
-//  // STEP 3: parameterization quality improvement
-//  if (verbose > 0)
-//    gsInfo << "Start parameterization quality improvement step..." << "\n";
-//
-//  gsObjQualityImprovePt<d, T> objQualityImprovePt(result, mapper);
-//
-//  gsOptionList thisOptions = options;
-//  thisOptions.addReal("qi_lambda1", "Sets the lambda_1 value for Emips", 1.0);
-//  thisOptions.addReal("qi_lambda2", "Sets the lambda 2 value for Eunif", 1.0 / pow(scaledArea, 2));
-//  objQualityImprovePt.applyOptions(thisOptions);
-//
-//  gsHLBFGS<T> optQualityImprovePt(&objQualityImprovePt);
-//  setOptimizerOptions<T>(optQualityImprovePt, options);
-//
-//  optQualityImprovePt.solve(initialGuessVector);
-//  convertFreeVectorToMultiPatch<T>(optQualityImprovePt.currentDesign(),
-//                                   mapper, result);
-//
-//  return result;
-//}
 
 template<short_t d, typename T>
 gsMultiPatch<T> gsBarrierCore<d, T>::computeBarrierPatch(const gsMultiPatch<T>& mp,
@@ -2678,8 +2580,8 @@ gsObjPenaltyPt2<d, T>::gsObjPenaltyPt2(const gsMultiPatch<T> &patches,
 template<short_t d, typename T>
 void gsObjPenaltyPt2<d, T>::defaultOptions() {
   // @Ye, make this reasonable default options
-  m_options.addReal("qi_lambda1", "Sets the lambda 1 value", 1e-2);
-  m_options.addReal("qi_lambda2", "Sets the lambda 2 value", 1e-2);
+  m_options.addReal("qi_lambda1", "Sets the lambda 1 value", 1.0);
+  m_options.addReal("qi_lambda2", "Sets the lambda 2 value", 1.0);
 }
 
 template<short_t d, typename T>
@@ -2688,7 +2590,8 @@ void gsObjPenaltyPt2<d, T>::addOptions(const gsOptionList &options) {
 }
 
 template<short_t d, typename T>
-void gsObjPenaltyPt2<d, T>::applyOptions() {
+void gsObjPenaltyPt2<d, T>::applyOptions(const gsOptionList &options) {
+  m_options.update(options, gsOptionList::addIfUnknown);
   m_lambda1 = m_options.getReal("qi_lambda1");
   m_lambda2 = m_options.getReal("qi_lambda2");
   m_evaluator.options().update(m_options, gsOptionList::addIfUnknown);
@@ -2703,55 +2606,55 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
+  // Convert the free vector to multipatch
   convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
+  // Get the map G
   geometryMap G = m_evaluator.getMap(m_mp);
 
-  gsConstantFunction<T> eps1(m_eps, d);
-  auto eps = m_evaluator.getVariable(eps1);
-//        auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2), 0.5));
+  // Constant function for evaluation
+  gsConstantFunction<T> epsilon(m_eps, d);
+  auto eps = m_evaluator.getVariable(epsilon);
 
+  // Calculation of chi with ternary operation
   auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
-  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(),
-                     jac(G).det().val());
+  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(), jac(G).det().val());
 
+  // Calculation of Ewinslow and Euniform
   auto Ewinslow = jac(G).sqNorm() / chi;
-//        auto Ewinslow = jac(G).sqNorm()/pow(chi,2.0);
-//        auto Euniform = pow(jac(G).det(), 2);
-  auto Euniform = chi + 1 / chi;
+  auto Euniform = chi + 1.0 / chi;
 
-  T F = m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
-  return F;
+  // Evaluate the integral and return
+  return m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
 }
 
 template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
+  // Convert the free vector to multipatch
   convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
+  // Get the map G
   geometryMap G = m_evaluator.getMap(m_mp);
 
-  gsConstantFunction<T> eps1(m_eps, d);
-  auto eps = m_evaluator.getVariable(eps1);
-//        auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2), 0.5));
+  // Define epsilon constant function
+  gsConstantFunction<T> epsilon(m_eps, d);
+  auto eps = m_evaluator.getVariable(epsilon);
 
+  // Compute chi part and chi
   auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
-  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(),
-                     jac(G).det().val());
+  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(), jac(G).det().val());
 
-//        auto Ewinslow = jac(G).sqNorm() / pow(chi, 2.0 / 3.0);
+  // Compute Ewinslow
   auto Ewinslow = 0.5 * (jac(G).sqNorm() * jac(G).inv().sqNorm()) *
-      pow(jac(G).det(), 2) / pow(chi, 2);
+      pow(jac(G).det(), 2.0) / pow(chi, 2.0);
 
-//        auto Euniform = pow(jac(G).det(), 2);
-  auto Euniform = chi + 1 / chi;
-//        auto volume = gsBarrierCore<_d,T>::computeArea(m_mp);
-//        auto Euniform = chi/volume+volume/chi;
+  // Compute Euniform
+  auto Euniform = chi + 1.0 / chi;
 
-//        T F = m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
-  return m_evaluator.integral(
-      m_lambda1 * Ewinslow + m_lambda2 * Euniform);
+  // Compute and return the integral
+  return m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
 }
 
 template<short_t d, typename T>
@@ -2765,41 +2668,47 @@ template<short_t _d>
 typename std::enable_if<_d == 2, T>::type
 gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                          gsAsVector<T> &result) const {
+  // Convert the free vector to multipatch
   convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
+  // Get the map G
   geometryMap G = m_assembler.getMap(m_mp);
 
-  space space1 = m_assembler.getSpace(m_mb, d); // 1D space!!
-  space1.setupMapper(m_mapper);
+  // Set up the space mapper
+  space spaceMapper = m_assembler.getSpace(m_mb, d);
+  spaceMapper.setupMapper(m_mapper);
 
-  //      |J|' w.r.t. physical coordinates x and y
-  auto derJacDet = frprod2(space1, jac(G).tr().adj());
+  // Compute the derivative of |J| with respect to physical coordinates x and y
+  auto derJacDet = frprod2(spaceMapper, jac(G).tr().adj());
 
-  gsConstantFunction<T> eps1(m_eps, d);
-  auto eps = m_evaluator.getVariable(eps1);
-  gsConstantFunction<T> unit1(1.0, d);
-  auto unit = m_evaluator.getVariable(unit1);
+  // Define constant functions for epsilon and unity
+  gsConstantFunction<T> epsilon(m_eps, d);
+  gsConstantFunction<T> unity(1.0, d);
 
-  // My penalty function
+  // Get the variables for epsilon and unity
+  auto eps = m_evaluator.getVariable(epsilon);
+  auto unit = m_evaluator.getVariable(unity);
+
+  // Define chi and its derivative chip
   auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
+  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(), jac(G).det().val());
+  auto chip = ternary(eps.val() - jac(G).det(), chiPPart.val(), unit.val());
 
-  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(),
-                     jac(G).det().val());
-  auto chip = ternary(eps.val() - jac(G).det(), (chiPPart).val(),
-                      unit.val());
-
+  // Define Ewinslow and its derivative
   auto Ewinslow = jac(G).sqNorm() / chi;
-  auto derEwinslow = 1.0 / chi * (2.0 * frprod2(space1, jac(G)) -
+  auto derEwinslow = 1.0 / chi * (2.0 * frprod2(spaceMapper, jac(G)) -
       Ewinslow.val() * chip * derJacDet);
 
-//        auto derEwinslow = 2.0 * frprod2(space1, jac(G));
-//        auto derEuniform = 2.0 * jac(G).det() * derJacDet;
+  // Define the derivative of Euniform
   auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
 
+  // Assemble the system and set the result
   m_assembler.initSystem();
   m_assembler.assemble(m_lambda1 * derEwinslow + m_lambda2 * derEuniform);
   result = gsAsVector<T>(const_cast<T *>(m_assembler.rhs().data()),
                          m_assembler.rhs().rows());
+
+  // Return success
   return EXIT_SUCCESS;
 }
 
@@ -2808,59 +2717,47 @@ template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                                          gsAsVector<T> &result) const {
+  // Convert the free vector to multipatch
   convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
+  // Initialize the map G
   geometryMap G = m_assembler.getMap(m_mp);
 
-  space space1 = m_assembler.getSpace(m_mb, d); // 1D space!!
+  // Initialize and setup the space
+  space space1 = m_assembler.getSpace(m_mb, d);
   space1.setupMapper(m_mapper);
 
-  //      |J|' w.r.t. physical coordinates x and y
+  // Compute the derivative of |J| w.r.t. physical coordinates x and y
   auto derJacDet = frprod2(space1, jac(G).tr().adj());
 
-  gsConstantFunction<T> eps1(m_eps, d);
-  auto eps = m_evaluator.getVariable(eps1);
-  gsConstantFunction<T> unit1(1.0, d);
-  auto unit = m_evaluator.getVariable(unit1);
+  // Initialize constant functions
+  gsConstantFunction<T> epsilonFunction(m_eps, d);
+  gsConstantFunction<T> unityFunction(1.0, d);
 
-  // My penalty function
-//        auto chiPPart = eps * (jac(G).det()-eps.val()).exponent();
+  // Get the corresponding variables
+  auto eps = m_evaluator.getVariable(epsilonFunction);
+  auto unit = m_evaluator.getVariable(unityFunction);
+
+  // Compute the chi part
   auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
 
-  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(),
-                     jac(G).det().val());
-  auto chip = ternary(eps.val() - jac(G).det(), chiPPart.val(),
-                      unit.val());
+  // Ternary operation to compute chi and chip
+  auto chi = ternary(eps.val() - jac(G).det(), chiPPart.val(), jac(G).det().val());
+  auto chip = ternary(eps.val() - jac(G).det(), chiPPart.val(), unit.val());
 
-//        auto commonTerm = pow(eps.val() + pow(jac(G).det(), 2), 0.5);
-//        auto chi = 0.5 * (jac(G).det() + commonTerm);
-//        auto chip = 0.5 * (unit.val() + jac(G).det() / commonTerm);
-
-//        auto Ewinslow = jac(G).sqNorm() / pow(chi, 2.0 / 3.0);
-//        auto derEwinslow =
-//                2.0 * frprod2(space1, jac(G)) / pow(chi, 2.0 / 3.0) -
-//                2.0 / 3.0 * Ewinslow / chi * chip * derJacDet;
-
+  // Define additional computations
   auto jacFrobNorm2 = jac(G).sqNorm() * jac(G).inv().sqNorm();
-  auto derJacFrob2 = frprod2(space1, (jac(G).inv().sqNorm() * jac(G) -
-      jac(G).sqNorm() *
-          (jac(G).tr() * jac(G) *
-              jac(G).tr()).inv()));
+  auto derJacFrob2 = frprod2(space1, (jac(G).inv().sqNorm() * jac(G) - jac(G).sqNorm() * (jac(G).tr() * jac(G) * jac(G).tr()).inv()));
 
-  auto derEwinslow = derJacFrob2 * pow(jac(G).det(), 2) / pow(chi, 2) +
-      jacFrobNorm2 / pow(chi, 2) *
-          (jac(G).det() - chip / chi * pow(jac(G).det(), 2)) *
-          derJacDet;
-
-//        auto derEuniform = 2.0 * jac(G).det() * derJacDet;
+  auto derEwinslow = derJacFrob2 * pow(jac(G).det(), 2) / pow(chi, 2) + jacFrobNorm2 / pow(chi, 2) * (jac(G).det() - chip / chi * pow(jac(G).det(), 2)) * derJacDet;
   auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
-//        auto volume = gsBarrierCore<_d,T>::computeArea(m_mp);
-//        auto derEuniform = (chip/volume-volume*chip/pow(chi,2)) * derJacDet;
 
+  // Initialize and assemble the system
   m_assembler.initSystem();
   m_assembler.assemble(m_lambda1 * derEwinslow + m_lambda2 * derEuniform);
-  result = gsAsVector<T>(const_cast<T *>(m_assembler.rhs().data()),
-                         m_assembler.rhs().rows());
+
+  // Compute and return the result
+  result = gsAsVector<T>(const_cast<T *>(m_assembler.rhs().data()), m_assembler.rhs().rows());
   return EXIT_SUCCESS;
 }
 
