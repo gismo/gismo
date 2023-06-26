@@ -52,6 +52,8 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
         knots2  = next_basis.knots(dim).unique();
 
         // Check nestedness. 
+        intersection.clear();
+        difference.clear();
         // The unique knots of the new basis must contain the ones of the previous level
         std::set_intersection(  knots2.begin(), knots2.end(),
                                 knots1.begin(), knots1.end(), 
