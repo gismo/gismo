@@ -512,9 +512,12 @@ public:
                 os<<"- level="<<i<<
                     ", size="<<m_xmatrix[i].size() << ":\n";
                 os << "Space: "<< * m_bases[i] <<")\n";
-                os << "Indices:\n";
-                for (size_t dim=0; dim!=d; dim++)
-                    os << "Dir "<<dim<<": "<<gsAsConstVector<index_t>(m_uIndices[i][dim]).transpose()<<"\n";
+                if (m_manualLevels)
+                {
+                    os << "Indices:\n";
+                    for (size_t dim=0; dim!=d; dim++)
+                        os << "Dir "<<dim<<": "<<gsAsConstVector<index_t>(m_uIndices[i][dim]).transpose()<<"\n";
+                }
             }
             else
             {
@@ -532,9 +535,12 @@ public:
             os<<"- level="<<i<<
                 ", size="<<m_bases[i]->size() << ":\n";
             os << "Space: "<< * m_bases[i] <<")\n";
-            os << "Indices:\n";
-            for (size_t dim=0; dim!=d; dim++)
-                os << "Dir "<<dim<<": "<<gsAsConstVector<index_t>(m_uIndices[i][dim]).transpose()<<"\n";
+            if (m_manualLevels)
+            {
+                os << "Indices:\n";
+                for (size_t dim=0; dim!=d; dim++)
+                    os << "Dir "<<dim<<": "<<gsAsConstVector<index_t>(m_uIndices[i][dim]).transpose()<<"\n";
+            }
         }
     }
 

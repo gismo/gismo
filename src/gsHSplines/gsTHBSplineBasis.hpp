@@ -231,16 +231,8 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         _truncate(coefs, act_size_of_coefs, cur_size_of_coefs,
                   level + 1, bspl_vec_ti, cur_level, finest_low);
     }
-    gsDebug<<"---------------------------------------------\n";
-    gsDebugVar(j);
-    gsDebugVar(tensor_index);
-    gsDebugVar(bspl_vec_ti);
-    gsDebugVar(coefs);
-    gsDebug<<"---------------------------------------------\n";
-
     _saveNewBasisFunPresentation(coefs, act_size_of_coefs,
                                  j, pres_level, finest_low);
-    gsDebug<<"---------------------------------------------\n";
 }
 
 
@@ -359,13 +351,6 @@ void gsTHBSplineBasis<d,T>::_truncate(
     // global tensor index
     const unsigned const_ten_index = _basisFunIndexOnLevel(bspl_vec_ti,
                                                            bspl_vec_ti_level, finest_low, level);
-
-    gsDebugVar(m_manualLevels);
-    gsDebugVar(bspl_vec_ti);
-    gsDebugVar(bspl_vec_ti_level);
-    gsDebugVar(finest_low);
-    gsDebugVar(const_ten_index);
-
     gsVector<index_t, d> act_coefs_strides(d);
     bspline::buildCoeffsStrides<d>(act_size_of_coefs, act_coefs_strides);
 
@@ -423,8 +408,6 @@ void gsTHBSplineBasis<d,T>::_truncate(
                 }
                 // ten_index <= tensor_active_index holds
             }
-            gsDebugVar(ten_index);
-            gsDebugVar(tensor_active_index);
             if (ten_index == tensor_active_index) // truncate
                 coefs(coef_index + index, 0) = 0;
 
@@ -470,9 +453,11 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
         const gsKnotVector<T>& fkv =
             this->m_bases[flevel]->knots(dim);
 
+        // Number of knots in the coarse knot vector
         unsigned cnmb_knts = ckv.knotsUntilSpan(chigh[dim]) -
             ckv.knotsUntilSpan(clow[dim]);
 
+        // Number of knots in the fine knot vector
         unsigned fnmb_knts = fkv.knotsUntilSpan(fhigh[dim]) -
             fkv.knotsUntilSpan(flow[dim]);
 

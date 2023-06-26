@@ -525,7 +525,6 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
     const index_t a =  knots.iFind(*valBegin)     - knots.begin();
     const index_t b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
 
-
     // allocate a memory for new knots and new control points
     gsSparseVector<T> nknots(b + p + nik);
 

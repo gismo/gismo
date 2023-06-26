@@ -45,6 +45,9 @@ void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis
         dirIndices = m_uIndices.back()[dim];
         // Take the difference of the knot vectors
         tmpknots= tb2->knots(dim);
+
+        GISMO_ASSERT(tmpknots.maxInteriorMultiplicity()<tmpknots.degree()+1,"Knot vector cannot have knot multiplicities higher than p="<<tmpknots.degree());
+
         knots1  = tb2->knots(dim).unique();
         knots2  = next_basis.knots(dim).unique();
 
