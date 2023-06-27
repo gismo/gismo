@@ -165,8 +165,15 @@ private:
             // knotVals = kv.unique()
 
             m_breaks[dim].clear();
+            index_t t;
             for (unsigned index = start; index <= end; ++index)
-                m_breaks[dim].push_back( kv(index) );// unique index
+            {
+                t = index;
+                if (basis().manualLevels() )
+                    static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                        _diadicIndexToKnotIndex(level2,dim,t);
+                m_breaks[dim].push_back( kv(t) );// unique index
+            }
 
             m_curElement(dim) =
             m_meshStart(dim)  = m_breaks[dim].begin();
@@ -193,6 +200,8 @@ private:
 // =============================================================================
 // members
 // =============================================================================
+
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
 
 public:
 

@@ -327,6 +327,8 @@ public:
         freeAll( m_bases );
     }
 
+    bool manualLevels() const { return m_manualLevels; }
+
     void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
     
     /// \brief Inserts a domain into the basis
