@@ -77,15 +77,18 @@ void convertFreeVectorToMultiPatch(const gsVector<T> &gsFreeVec,
 
 /// helper function to set optimizer options
 template<typename T>
-void setOptimizerOptions(gsHLBFGS<T>& optimizer, const gsOptionList& options) {
-  optimizer.options().setInt("MaxIterations", options.askInt("qi_MaxIterations", 1e4));
-  optimizer.options().setReal("MinGradientLength", options.askReal("qi_MinGradientLength", 1e-4));
-  optimizer.options().setReal("MinStepLength", options.askReal("qi_MinStepLength", 1e-4));
+void setOptimizerOptions(gsHLBFGS<T> &optimizer, const gsOptionList &options) {
+  optimizer.options().setInt("MaxIterations",
+                             options.askInt("qi_MaxIterations", 1e4));
+  optimizer.options().setReal("MinGradientLength",
+                              options.askReal("qi_MinGradientLength", 1e-4));
+  optimizer.options().setReal("MinStepLength",
+                              options.askReal("qi_MinStepLength", 1e-4));
   optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
 }
 
 /// helper function to verbose log
-void verboseLog(const std::string& message, const index_t& verbose) {
+void verboseLog(const std::string &message, const index_t &verbose) {
   if (verbose > 0) { gsInfo << message << "\n"; }
 }
 
@@ -98,47 +101,42 @@ struct gsBarrierCore {
   typedef typename gsExprAssembler<T>::solution solution;
 
  public:
-  static gsMultiPatch<T>
-  compute(const gsMultiPatch<T> &mp, const gsDofMapper &mapper,
-          const gsOptionList &options);
+  /// construct analysis-suitable parameterization
+  static gsMultiPatch<T> compute(const gsMultiPatch<T> &mp,
+                                 const gsDofMapper &mapper,
+                                 const gsOptionList &options);
 
+  /// Compute the area of the computational domain
+  static T computeArea(const gsMultiPatch<T> &mp);
+
+  /// Default options
+  static gsOptionList defaultOptions();
+
+ private:
+  /// Barrier function-based method
   static gsMultiPatch<T> computeBarrierPatch(const gsMultiPatch<T> &mp,
                                              const gsDofMapper &mapper,
                                              const gsOptionList &options);
 
+  /// Penalty function-based method (1)
   static gsMultiPatch<T> computePenaltyPatch(const gsMultiPatch<T> &mp,
                                              const gsDofMapper &mapper,
                                              const gsOptionList &options);
 
+  /// Penalty function-based method (2)
   static gsMultiPatch<T> computePenaltyPatch2(const gsMultiPatch<T> &mp,
                                               const gsDofMapper &mapper,
                                               const gsOptionList &options);
 
-  // TODO: implement Jochen's PDE-based parameterization method using Newton's iteration
+  /// PDE-based methods, including H2 and H1
   static gsMultiPatch<T> computePDEPatch(const gsMultiPatch<T> &mp,
                                          const gsDofMapper &mapper,
                                          const gsOptionList &options);
-
-  // Jochen's PDE-based parameterization method using Anderson Acceleration
-  static gsMultiPatch<T> computePDEPatchAA(const gsMultiPatch<T> &mp,
-                                           const gsDofMapper &mapper,
-                                           const gsOptionList &options);
-
-  static gsMultiPatch<T> computePDEPatchAAH1(const gsMultiPatch<T> &mp,
-                                             const gsDofMapper &mapper,
-                                             const gsOptionList &options);
 
   /// variational harmonic method
   static gsMultiPatch<T> computeVHPatch(const gsMultiPatch<T> &mp,
                                         const gsDofMapper &mapper,
                                         const gsOptionList &options);
-
-  static gsMultiPatch<T> computeSmoothing(const gsMultiPatch<T> &mp,
-                                          const gsDofMapper &mapper,
-                                          const gsOptionList &options);
-
-  /// Compute the area of the computational domain
-  static T computeArea(const gsMultiPatch<T> &mp);
 
  protected:
   /**
@@ -159,44 +157,18 @@ struct gsBarrierCore {
    */
   static T computeAreaBoundary(const gsMultiPatch<T> &mp);
 
- public:
-
-  /**
-   * @brief      Translate and scale a multipatch
-   *
-   * @param      mp           { parameter_description }
-   * @param[in]  translation  { parameter_description }
-   * @param[in]  scaling      { parameter_description }
-   */
-//  static void
-//  scaling(gsMultiPatch<T> &mp, const gsVector<T, d> &translation,
-//          const gsVector<T, d> &scaling);
-
-  /**
-   * @brief      Undo translation and scaling of a multipatch
-   *
-   * @param      mp           { parameter_description }
-   * @param[in]  translation  { parameter_description }
-   * @param[in]  scaling      { parameter_description }
-   */
-//  static void
-//  scalingUndo(gsMultiPatch<T> &mp, const gsVector<T, d> &translation,
-//              const gsVector<T, d> &scaling);
-
-  static gsOptionList defaultOptions();
-
  private:
-  static void foldoverElimination(const gsMultiPatch<T>& mp,
-                                  const gsDofMapper& mapper,
-                                  gsVector<T>& initialGuessVector,
-                                  const T& scaledArea,
-                                  const gsOptionList& options);
+  static void foldoverElimination(const gsMultiPatch<T> &mp,
+                                  const gsDofMapper &mapper,
+                                  gsVector<T> &initialGuessVector,
+                                  const T &scaledArea,
+                                  const gsOptionList &options);
 
-  static void qualityImprovement(const gsMultiPatch<T>& mp,
-                                 const gsDofMapper& mapper,
-                                 gsVector<T>& initialGuessVector,
-                                 const T& scaledArea,
-                                 const gsOptionList& options);
+  static void qualityImprovement(const gsMultiPatch<T> &mp,
+                                 const gsDofMapper &mapper,
+                                 gsVector<T> &initialGuessVector,
+                                 const T &scaledArea,
+                                 const gsOptionList &options);
 };
 
 template<short_t d, typename T = real_t>
@@ -208,16 +180,17 @@ class gsObjFoldoverFree : public gsOptProblem<T> {
   typedef typename gsExprAssembler<T>::solution solution;
 
  public:
-  gsObjFoldoverFree(const gsMultiPatch<T> &patches, gsDofMapper  mapper);
+  gsObjFoldoverFree(const gsMultiPatch<T> &patches, gsDofMapper mapper);
 
   /// Evaluates the objective function at the given point u.
   T evalObj(const gsAsConstVector<T> &u) const override;
 
   /// Computes the gradient of the objective function at the given point u
   // and stores it in result.
-  void gradObj_into(const gsAsConstVector<T> &u, gsAsVector<T> &result) const override;
+  void gradObj_into(const gsAsConstVector<T> &u,
+                    gsAsVector<T> &result) const override;
 
-  void setDelta(const T& delta) {m_eps=delta;};
+  void setDelta(const T &delta) { m_eps = delta; };
 
   /// Returns the options list for the class instance.
   gsOptionList options() { return m_options; }
@@ -241,7 +214,8 @@ class gsObjFoldoverFree : public gsOptProblem<T> {
 
   gsOptionList m_options;
 
-  T m_eps = T();  // need to handle later, set m_eps = 0.05*S, T() is the default value of T.
+  T m_eps =
+      T();  // need to handle later, set m_eps = 0.05*S, T() is the default value of T.
 };
 
 template<short_t d, typename T>
@@ -259,7 +233,8 @@ class gsObjQualityImprovePt : public gsOptProblem<T> {
 
   /// Computes the gradient of the objective function at the given point u
   // and stores it in result.
-  void gradObj_into(const gsAsConstVector<T> &u, gsAsVector<T> &result) const override;
+  void gradObj_into(const gsAsConstVector<T> &u,
+                    gsAsVector<T> &result) const override;
 
   /// Returns the options list for the class instance.
   gsOptionList options() { return m_options; }
@@ -512,6 +487,9 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 
 }// namespace gismo
 
+
+
+////////////////////////////////// AA solver //////////////////////////////
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsBarrierCore.hpp)
 #endif
@@ -531,9 +509,9 @@ typedef double Scalar;
 template<int Rows, int Cols, int Options = (gsEigen::ColMajor |
     EIGEN_ALIGNMENT)>
 using MatrixT = gsEigen::Matrix<Scalar,
-                              Rows,
-                              Cols,
-                              Options>;  ///< A typedef of the dense matrix of Eigen.
+                                Rows,
+                                Cols,
+                                Options>;  ///< A typedef of the dense matrix of Eigen.
 typedef MatrixT<gsEigen::Dynamic, 1>
     VectorX;                    ///< A nd column vector.
 typedef MatrixT<gsEigen::Dynamic, gsEigen::Dynamic> MatrixXX;  ///< A n by m
@@ -837,8 +815,7 @@ class AndersonAcceleration {
 
     // Anderson iteration
     while (iter_ < maxIter_ && orgresNorm > tolerance_) {
-      if (!(iter_ % updateStep_))
-      {
+      if (!(iter_ % updateStep_)) {
         preconditioner_ = Jacobian(current_u_);
         linearSolver_.compute(preconditioner_);
       }
