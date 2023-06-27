@@ -20,6 +20,8 @@
 
 #include <gismo.h>
 #include <gsHLBFGS/gsHLBFGS.h>
+//#include <stdexcept>  // std::invalid_argument
+//#include <gsPreAA/gsPreAA.h>
 //#include <gsCore/gsFuncData.h>
 //#include <gsAssembler/gsDirichletValues.h>
 //#include <gsStructuralAnalysis/gsStaticNewton.h>
@@ -487,798 +489,369 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 
 }// namespace gismo
 
+///
+/// Parameters to control the preconditioned Anderson Acceleration algorithm
+///
+template <typename Scalar = double>
+class preAAParam {
+ public:
+  ///
+  /// Depth: The number of previous iterates used for Andreson Acceleration.
+  /// Typically in application \ref m is small, say <= 10.
+  /// There is usually little advantage in large \ref m.
+  /// The default value is \c 5.
+  /// Large values result in excessive computing time.
+  ///
+  int m;
+  ///
+  /// Absolute tolerance for convergence test.
+  /// This parameter determines the absolute accuracy \f$\epsilon_{abs}\f$
+  /// with which the solution is to be found. A minimization terminates when
+  /// \f$||F|| < \epsilon_{abs}\f$, where \f$||\cdot||\f$ denotes the
+  /// Euclidean (L2) norm. The default value is \c 1e-5.
+  ///
+  Scalar epsilon;
+  ///
+  /// Relative tolerance for convergence test.
+  /// This parameter determines the relative accuracy \f$\epsilon_{rel}\f$
+  /// with which the solution is to be found. A minimization terminates when
+  /// \f$||F|| < \max\{\epsilon_{abs}, \epsilon_{rel}||x||\}\f$,
+  /// where \f$||\cdot||\f$ denotes the Euclidean (L2) norm.
+  /// The default value is \c 1e-5.
+  ///
+  Scalar epsilon_rel;
+  ///
+  /// The maximum number of iterations.
+  /// The iteration process is terminated when the iteration count exceeds
+  /// this parameter. Setting this parameter to zero continues an iteration
+  /// process until a convergence or error. The default value is \c 0.
+  ///
+  int max_iterations;
+  ///
+  /// The step to update the preconditioner.
+  /// update the preconditioner every updatePreconditionerStep step
+  ///
+  int updatePreconditionerStep;
+  ///
+  /// Mixing or damping parameter.
+  /// It plays exactly the same role as it does for Picard iteration.
+  /// One could vary \ref beta as the iteration.
+  ///
+//  Scalar beta;
+  ///
+  /// Use preconditioning or not?
+  ///
+  bool usePreconditioning;
 
-
-////////////////////////////////// AA solver //////////////////////////////
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsBarrierCore.hpp)
-#endif
-
-#ifdef USE_FLOAT_SCALAR
-typedef float Scalar
-#else
-typedef double Scalar;
-#endif
-
-#ifdef EIGEN_DONT_ALIGN
-#define EIGEN_ALIGNMENT Eigen::DontAlign
-#else
-#define EIGEN_ALIGNMENT gsEigen::AutoAlign
-#endif
-
-template<int Rows, int Cols, int Options = (gsEigen::ColMajor |
-    EIGEN_ALIGNMENT)>
-using MatrixT = gsEigen::Matrix<Scalar,
-                                Rows,
-                                Cols,
-                                Options>;  ///< A typedef of the dense matrix of Eigen.
-typedef MatrixT<gsEigen::Dynamic, 1>
-    VectorX;                    ///< A nd column vector.
-typedef MatrixT<gsEigen::Dynamic, gsEigen::Dynamic> MatrixXX;  ///< A n by m
-// matrix.
-
-template<typename T>
-void
-AALoop(const int &iter_, const gsVector<T> &current_F_, gsVector<T> &current_u_,
-       gsMatrix<T> &prev_dG_, gsMatrix<T> &prev_dF_, gsMatrix<T> &M_,
-       gsVector<T> &theta_, gsVector<T> &dF_scale_, const int &m_,
-       const int &dim_, int &col_idx_, const real_t &resNorm_) {
-  gsVector<T> G = current_F_ + current_u_;
-
-  if (iter_ == 0) {
-    prev_dF_.col(0) = -current_F_;
-    prev_dG_.col(0) = -G;
-    current_u_ = G;
-  } else {
-    prev_dF_.col(col_idx_) += current_F_;
-    prev_dG_.col(col_idx_) += G;
-
-    Scalar eps = 1e-14;
-    Scalar scale = std::max(eps, prev_dF_.col(col_idx_).norm());
-    dF_scale_(col_idx_) = scale;
-    prev_dF_.col(col_idx_) /= scale;
-
-    int m_k = std::min(m_, iter_);
-
-    if (m_k == 1) {
-      theta_(0) = 0;
-      Scalar dF_sqrnorm = prev_dF_.col(col_idx_).squaredNorm();
-      M_(0, 0) = dF_sqrnorm;
-      Scalar dF_norm = std::sqrt(dF_sqrnorm);
-
-      if (dF_norm > eps) {
-        // compute theta = (dF * F) / (dF * dF)
-        theta_(0) = (prev_dF_.col(col_idx_) / dF_norm).dot(
-            current_F_ / dF_norm);
-      }
-    } else {
-      // Update the normal equation matrix, for the column and row corresponding to the new dF column
-      VectorX new_inner_prod = (prev_dF_.col(col_idx_).transpose()
-          * prev_dF_.block(0, 0, dim_,
-                           m_k)).transpose();
-      M_.block(col_idx_, 0, 1, m_k) = new_inner_prod.transpose();
-      M_.block(0, col_idx_, m_k, 1) = new_inner_prod;
-
-      // Solve normal equation
-      gsEigen::CompleteOrthogonalDecomposition<MatrixXX> cod_;
-      cod_.compute(M_.block(0, 0, m_k, m_k));
-      theta_.head(m_k) = cod_.solve(
-          prev_dF_.block(0, 0, dim_, m_k).transpose() *
-              current_F_);
-    }
-
-    // Use rescaled theata to compute new u
-    current_u_ =
-        G
-            - prev_dG_.block(0, 0, dim_, m_k)
-                * ((theta_.head(m_k).array() /
-                    dF_scale_.head(m_k).array())
-                    .matrix());
-
-    col_idx_ = (col_idx_ + 1) % m_;
-    prev_dF_.col(col_idx_) = -current_F_;
-    prev_dG_.col(col_idx_) = -G;
+ public:
+  ///
+  /// Constructor for preAA parameters.
+  /// Default values for parameters will be set when the object is created.
+  ///
+  preAAParam() {
+    // clang-format off
+    m = 5;
+    epsilon = Scalar(1e-5);
+    epsilon_rel = Scalar(1e-5);
+    max_iterations = 100;
+    updatePreconditionerStep = 10;
+//    beta = Scalar(1.0);
+    usePreconditioning = false;
+    // clang-format on
   }
+
+  ///
+  /// Checking the validity of preconditioned AA parameters.
+  /// An `std::invalid_argument` exception will be thrown if some parameter
+  /// is invalid.
+  ///
+  inline void check_param() const {
+    if (m < 0)
+      throw std::invalid_argument("'m' must be non-negative");
+    if (epsilon < 0)
+      throw std::invalid_argument("'epsilon' must be non-negative");
+    if (epsilon_rel < 0)
+      throw std::invalid_argument("'epsilon_rel' must be non-negative");
+    if (max_iterations < 0)
+      throw std::invalid_argument("'max_iterations' must be non-negative");
+//    if (beta < 0 || beta > 1.0)
+//      throw std::invalid_argument("'beta' must be between 0 and 1");
+  }
+};
+
+namespace preAApp {
+
+template<typename Func>
+inline void measureTime(Func func) {
+  auto beforeTime = std::chrono::high_resolution_clock::now();
+
+  func();  // Call the function
+
+  auto afterTime = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration<double>(afterTime - beforeTime).count();
+  printf("\nTime passed by %.8f sec. \n", duration);
 }
 
-template<typename T>
-void
-AALoopSR1(const int &iter_,
-          gsVector<T> &current_F_,
-          gsVector<T> &current_u_,
-          gsMatrix<T> &prev_dG_,
-          gsMatrix<T> &prev_dF_,
-          gsMatrix<T> &M_,
-          gsVector<T> &theta_,
-          gsVector<T> &dF_scale_,
-          const int &m_,
-          const int &dim_,
-          int &col_idx_,
-          const real_t &resNorm_,
-          gsMatrix<T> &H_) {
-  gsVector<T> G = current_F_ + current_u_;
-
-  if (iter_ == 0) {
-    prev_dF_.col(0) = -current_F_;
-    prev_dG_.col(0) = -G;
-    current_u_ = G;
-  } else {
-    prev_dF_.col(col_idx_) += current_F_;
-    prev_dG_.col(col_idx_) += G;
-
-    // SR1
-//        gsVector<> dx = prev_dG_.col(col_idx_)-prev_dF_.col(col_idx_);
-//        gsVector<> commonVec = dx - H_ * prev_dF_.col(col_idx_);
-//        H_ += (commonVec * commonVec.transpose()) / (prev_dF_.col(col_idx_).transpose() * commonVec);
-
-//        gsVector<> dx = prev_dG_.col(col_idx_)-prev_dF_.col(col_idx_);
-//        real_t commonFactor = dx.transpose() * prev_dF_.col(col_idx_);
-////        gsDebugVar(1.0 + prev_dF_.col(col_idx_).transpose()*H_*prev_dF_.col(col_idx_)/commonFactor);
-////        gsDebugVar((prev_dG_.col(col_idx_)* prev_dG_.col(col_idx_).transpose()) / commonFactor);
-//        real_t num1 = (prev_dF_.col(col_idx_).transpose()*H_*prev_dF_.col(col_idx_)/commonFactor).value();
-////        gsDebugVar(num1 * (prev_dG_.col(col_idx_)* prev_dG_.col(col_idx_).transpose()) / commonFactor);
-//        H_ += (dx* dx.transpose()) / commonFactor +
-//              num1 * (dx* dx.transpose()) / commonFactor -
-//              (dx*prev_dF_.col(col_idx_).transpose()*H_+
-//               H_*prev_dF_.col(col_idx_)*dx.transpose())/commonFactor;
-//        current_F_ = -M.inverse() * current_F_;
-
-    // SR1
-    Scalar eps = 1e-14;
-    Scalar scale = std::max(eps, prev_dF_.col(col_idx_).norm());
-    dF_scale_(col_idx_) = scale;
-    prev_dF_.col(col_idx_) /= scale;
-
-    int m_k = std::min(m_, iter_);
-
-    if (m_k == 1) {
-      theta_(0) = 0;
-      Scalar dF_sqrnorm = prev_dF_.col(col_idx_).squaredNorm();
-      M_(0, 0) = dF_sqrnorm;
-      Scalar dF_norm = std::sqrt(dF_sqrnorm);
-
-      if (dF_norm > eps) {
-        // compute theta = (dF * F) / (dF * dF)
-        theta_(0) = (prev_dF_.col(col_idx_) / dF_norm).dot(
-            current_F_ / dF_norm);
-      }
-    } else {
-      // Update the normal equation matrix, for the column and row corresponding to the new dF column
-      VectorX new_inner_prod = (prev_dF_.col(col_idx_).transpose()
-          * prev_dF_.block(0, 0, dim_,
-                           m_k)).transpose();
-      M_.block(col_idx_, 0, 1, m_k) = new_inner_prod.transpose();
-      M_.block(0, col_idx_, m_k, 1) = new_inner_prod;
-
-      // Solve normal equation
-      gsEigen::CompleteOrthogonalDecomposition<MatrixXX> cod_;
-      cod_.compute(M_.block(0, 0, m_k, m_k));
-      theta_.head(m_k) = cod_.solve(
-          prev_dF_.block(0, 0, dim_, m_k).transpose() *
-              current_F_);
-    }
-
-    // Use rescaled theata to compute new u
-    current_u_ =
-        G
-            - prev_dG_.block(0, 0, dim_, m_k)
-                * ((theta_.head(m_k).array() /
-                    dF_scale_.head(m_k).array())
-                    .matrix());
-
-    col_idx_ = (col_idx_ + 1) % m_;
-    prev_dF_.col(col_idx_) = -current_F_;
-    prev_dG_.col(col_idx_) = -G;
-  }
-}
-
-template<typename T>
-void AALoopAdpt(const int &iter_, const gsVector<T> &current_F_,
-                gsVector<T> &current_u_,
-                gsMatrix<T> &prev_dG_, gsMatrix<T> &prev_dF_, gsMatrix<T> &M_,
-                gsVector<T> &theta_, gsVector<T> &dF_scale_, const int &m_,
-                const int &dim_, int &col_idx_, const real_t &resNorm_) {
-  gsVector<T> G = current_F_ + current_u_;
-
-  if (iter_ == 0) {
-    prev_dF_.col(0) = -current_F_;
-    prev_dG_.col(0) = -G;
-    current_u_ = G;
-  } else {
-    prev_dF_.col(col_idx_) += current_F_;
-    prev_dG_.col(col_idx_) += G;
-
-    Scalar eps = 1e-14;
-    Scalar scale = std::max(eps, prev_dF_.col(col_idx_).norm());
-    dF_scale_(col_idx_) = scale;
-    prev_dF_.col(col_idx_) /= scale;
-
-    int m_k = std::min(m_, iter_);
-
-    if (m_k == 1) {
-      theta_(0) = 0;
-      Scalar dF_sqrnorm = prev_dF_.col(col_idx_).squaredNorm();
-      M_(0, 0) = dF_sqrnorm;
-      Scalar dF_norm = std::sqrt(dF_sqrnorm);
-
-      if (dF_norm > eps) {
-        // compute theta = (dF * F) / (dF * dF)
-        theta_(0) = (prev_dF_.col(col_idx_) / dF_norm).dot(
-            current_F_ / dF_norm);
-      }
-    } else {
-      // Update the normal equation matrix, for the column and row corresponding to the new dF column
-      VectorX new_inner_prod = (prev_dF_.col(col_idx_).transpose()
-          * prev_dF_.block(0, 0, dim_,
-                           m_k)).transpose();
-      M_.block(col_idx_, 0, 1, m_k) = new_inner_prod.transpose();
-      M_.block(0, col_idx_, m_k, 1) = new_inner_prod;
-
-      // Solve normal equation
-      gsEigen::CompleteOrthogonalDecomposition<MatrixXX> cod_;
-      cod_.compute(M_.block(0, 0, m_k, m_k));
-      theta_.head(m_k) = cod_.solve(
-          prev_dF_.block(0, 0, dim_, m_k).transpose() *
-              current_F_);
-    }
-
-    T gamma = (current_F_ -
-        prev_dF_.block(0, 0, dim_, m_k) * theta_.head(m_k)).norm() /
-        current_F_.norm();
-    T beta = 1.0 - gamma;
-
-    // Use rescaled theata to compute new u
-    current_u_ =
-        G
-            - beta * (prev_dG_.block(0, 0, dim_, m_k)
-                * ((theta_.head(m_k).array() /
-                    dF_scale_.head(m_k).array())
-                    .matrix()));
-
-    col_idx_ = (col_idx_ + 1) % m_;
-    prev_dF_.col(col_idx_) = -current_F_;
-    prev_dG_.col(col_idx_) = -G;
-  }
-}
-
-template<typename T>
+/// @brief Anderson acceleration solver and its (preconditioned) variants
+///
+/// \ingroup Solver
+template<typename Scalar = double>
 class AndersonAcceleration {
-  typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
-  typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
  public:
-  AndersonAcceleration() = default;
+  typedef std::function<gsSparseMatrix<Scalar>(gsVector<Scalar> const &)> Jacobian_t;
+  typedef std::function<gsVector<Scalar>(gsVector<Scalar> const &)> Residual_t;
 
-  explicit AndersonAcceleration(int m)
-      : m_(m),
-        iter_(0),
-        col_idx_(0) {
-    GISMO_ASSERT(m > 0, "m should be greater than 0");
+  explicit AndersonAcceleration(const preAAParam<Scalar> &param) :
+      m_param(param) {
+    checkParam();
   }
 
-  AndersonAcceleration(int m, int maxIter, T tol, int updateStep)
-      : m_(m),
-        maxIter_(maxIter),
-        tolerance_(tol),
-        updateStep_(updateStep),
-        iter_(0),
-        col_idx_(0) {
-    GISMO_ASSERT(m > 0, "m should be greater than 0");
-  }
+  /// perform Anderson acceleration iteration
+  const gsVector<Scalar> &compute(const gsVector<Scalar> &u0, const Residual_t &F,
+                         const Jacobian_t &Jacobian) {
+    // print the current solver information
+    if (m_printInfo) { printSolverInfo();}
 
-// 残差向量和Jacobian句柄
-  const gsVector<T> &compute(const gsVector<T> &u0,
-                             const Residual_t &F,
-                             std::vector<int> &iterHist,
-                             std::vector<double> &resHist,
-                             std::vector<double> &timeHist) {
-    current_u_ = u0;
-    init();
+    // initialize the solver and preallocate memory
+    initialize(u0);
 
-    double time = 0.0;
-    timeHist.push_back(time);
-    gsStopwatch timer;
-    // Anderson iteration
-    while (iter_ < 1000 && resNorm_ > 1e-5) {
-      current_F_ = F(current_u_);
-      resNorm_ = current_F_.norm();
-      gsInfo << "iter: " << iter_ << ", resNorm: " << resNorm_ << "\n";
+    // Iteration 0
+    updateG(F, Jacobian);
 
-      AALoop(iter_, current_F_, current_u_, prev_dG_, prev_dF_, M_,
-             theta_, dF_scale_, m_, dim_, col_idx_, resNorm_);
-
-      iter_++;
-      time += timer.stop();
-      // track residual history and timing history
-      iterHist.push_back(iter_ - 1);
-      resHist.push_back(resNorm_);
-      if (iter_ < 1000 && resNorm_ > 1e-5)
-        timeHist.push_back(time);
-
-      timer.restart();
-    }
-    return current_u_;
-  }
-
-  const gsVector<T> &computePrecond(const gsVector<T> &u0,
-                                    const Residual_t &F,
-                                    const Jacobian_t &Jacobian,
-                                    std::vector<int> &iterHist,
-                                    std::vector<double> &resHist,
-                                    std::vector<double> &timeHist) {
-    current_u_ = u0;
-    init();
-
-    double time = 0.0;
-    timeHist.push_back(time);
-    gsStopwatch timer;
-    T orgresNorm = std::numeric_limits<real_t>::max();
-
-    // Anderson iteration
-    while (iter_ < maxIter_ && orgresNorm > tolerance_) {
-      if (!(iter_ % updateStep_)) {
-        preconditioner_ = Jacobian(current_u_);
-        linearSolver_.compute(preconditioner_);
-      }
-      gsMatrix<T> orgRes = F(current_u_);
-      current_F_ = -linearSolver_.solve(orgRes);
-
-      resNorm_ = current_F_.norm();
-      gsInfo << "iter: " << iter_ << ", resNorm: " << resNorm_ << "\n";
-      orgresNorm = orgRes.norm();
-
-      AALoop(iter_, current_F_, current_u_, prev_dG_, prev_dF_, M_,
-             theta_, dF_scale_, m_, dim_, col_idx_, resNorm_);
-
-      iter_++;
-
-      time += timer.stop();
-      // track residual history and timing history
-      iterHist.push_back(iter_ - 1);
-      resHist.push_back(orgresNorm);
-      if (iter_ < 1000 && orgresNorm > 1e-5)
-        timeHist.push_back(time);
-
-      timer.restart();
+    // check if the initial guess is the solution
+    if (m_currResidualNorm < m_param.epsilon) {
+      printf("You are lucky, the initial guess is exactly the solution.\n\n\n");
+      return u0;
+    } else {
+      m_solution = m_currentG;
     }
 
-    return current_u_;
-  }
-
-  const gsVector<T> &computeSR1(const gsVector<T> &u0, const Residual_t &F) {
-    current_u_ = u0;
-    init();
-
-//        gsSparseMatrix<T> H(dim_, dim_);
-    gsMatrix<T> H(dim_, dim_);
-    H.setIdentity();
-
-    // Anderson iteration
-    while (iter_ < 1000 && resNorm_ > 1e-5) {
-      current_F_ = F(current_u_);
-      resNorm_ = current_F_.norm();
-      gsInfo << "iter: " << iter_ << ", resNorm: " << resNorm_ << "\n";
-
-//            current_F_ = -H*F(current_u_);
-      AALoopSR1(iter_, current_F_, current_u_, prev_dG_, prev_dF_, M_,
-                theta_, dF_scale_, m_, dim_, col_idx_, resNorm_, H);
-
-      iter_++;
+    // print iteration information
+    if (m_printInfo) {
+      printf("Iter.      ||F(x)|| \n");
+      printIterationInfo();
     }
 
-    return current_u_;
+    // Start iteration
+    startIteration(F, Jacobian);
+
+    return m_solution;
   }
 
-  // m: number of previous iterations used
-  // d: dimension of variables
-  // u0: initial variable values
-  void init() {
-    dim_ = current_u_.size();
-    current_u_.resize(dim_);
-    current_F_.resize(dim_);
-    prev_dG_.resize(dim_, m_);
-    prev_dF_.resize(dim_, m_);
-    preconditioner_.resize(dim_, dim_);
-
-    M_.resize(m_, m_);
-    theta_.resize(m_);
-    dF_scale_.resize(m_);
-  }
+  inline void enableIterationInfoPrinting() { m_printInfo = true; }
+  inline void disableIterationInfoPrinting() { m_printInfo = false; }
 
  private:
-//    Eigen::CompleteOrthogonalDecomposition<MatrixXX> linearSolver_;
-  gsSparseSolver<>::LU linearSolver_;
-  gsSparseMatrix<T> preconditioner_;
-  gsVector<T> current_u_;
-  gsVector<T> current_F_;
-  gsMatrix<T> prev_dG_;
-  gsMatrix<T> prev_dF_;
-  gsMatrix<T> M_;        // Normal equations matrix for the computing theta
-  gsVector<T> theta_;  // theta value computed from normal equations
-  gsVector<T> dF_scale_;        // The scaling factor for each column of prev_dF
+  inline void initialize(const gsVector<Scalar> &u0) {
+    m_solution = u0;
+    m_dim = m_solution.size();
+    m_iter = 0;
+    m_columnIndex = 0;
 
-  T resNorm_ = std::numeric_limits<real_t>::max();
-  int m_ =
-      5;        // Number of previous iterates used for Andreson Acceleration
-  int dim_ = -1;  // Dimension of variables
-  int iter_ = 0;    // Iteration count since initialization
-  int col_idx_ = 0;  // Index for history matrix column to store the next value
-  int maxIter_ = 1e2; // maximum iteration
-  T tolerance_ = 1e-5; // tolerance for convergence test
-  int updateStep_ = 10; // update the preconditioner every updateStep step
+    m_currentF.resize(m_dim);
+    m_prevdG.resize(m_dim, m_param.m);
+    m_prevdF.resize(m_dim, m_param.m);
+
+    m_normalEquationMatrix.resize(m_param.m, m_param.m);
+    m_alpha.resize(m_param.m);
+    m_scaledF.resize(m_param.m);
+
+    if (m_param.usePreconditioning) { m_preconditioner.resize(m_dim, m_dim); }
+  }
+
+  inline void checkParam() {
+    m_param.check_param();
+  }
+
+  inline void printSolverInfo() {
+    printf("\nAnderson Acceleration SOLVER: parameter settings... \n");
+    printf("depth                       =     %d\n", m_param.m);
+    printf("use preconditioner          =     %d\n",
+           m_param.usePreconditioning);
+    printf("update preconditioner step  =     %d\n\n",
+           m_param.updatePreconditionerStep);
+  }
+
+  inline void startIteration(const Residual_t &F, const Jacobian_t &Jacobian) {
+    m_iter = 1;
+    if (m_param.m == 0) {
+      performPicardIteration(F, Jacobian);
+    } else {
+      performAAIteration(F, Jacobian);
+    }
+  }
+
+  inline void performPicardIteration(const Residual_t &F,
+                                     const Jacobian_t &Jacobian) {
+    while (m_iter < m_param.max_iterations
+        && m_currResidualNorm > m_param.epsilon) {
+      updateG(F, Jacobian);
+
+      // update the solution
+      m_solution = m_currentG;
+
+      printIterationInfo();
+
+      ++m_iter;
+      trackIterationInfo();
+    }
+  }
+
+  inline void performAAIteration(const Residual_t &F,
+                                 const Jacobian_t &Jacobian) {
+    m_prevdF.col(0) = -m_currentF;
+    m_prevdG.col(0) = -m_currentG;
+
+    while (m_iter < m_param.max_iterations &&
+        m_currResidualNorm > m_param.epsilon) {
+      updateG(F, Jacobian);
+
+      printIterationInfo();
+
+      updatePrevdFAndPrevdG();
+
+      // update alpha and solution (compute normal equation)
+      updateAlpha();
+      updateSolution();
+
+      // update the column indices
+      updateColumnIndices();
+
+      ++m_iter;
+      trackIterationInfo();
+    }
+  }
+
+  /// update fixed point function
+  inline void updateG(const Residual_t &F, const Jacobian_t &Jacobian) {
+    if (m_param.usePreconditioning) {
+      updateGWithPreconditioning(F, Jacobian);
+    } else {
+      updateGWithoutPreconditioning(F);
+    }
+    m_currentG = m_currentF + m_solution;
+  }
+
+  /// update fixed point function with preconditioning
+  inline void updateGWithPreconditioning(const Residual_t &F,
+                                         const Jacobian_t &Jacobian) {
+    if (!(m_iter % m_param.updatePreconditionerStep)) {
+      m_preconditioner = Jacobian(m_solution);
+      m_linearSolverPreconditioning.compute(m_preconditioner);
+    }
+    gsVector<Scalar> residual = F(m_solution);
+    m_currResidualNorm = residual.norm();
+
+    m_currentF = -m_linearSolverPreconditioning.solve(residual);
+  }
+
+  /// update fixed point function without preconditioning
+  inline void updateGWithoutPreconditioning(const Residual_t &F) {
+    m_currentF = F(m_solution);
+    m_currResidualNorm = m_currentF.norm();
+  }
+
+  inline void printIterationInfo() {
+    if (m_printInfo) {
+      printf(" %d         %.4e\n", m_iter, m_currResidualNorm);
+    }
+  }
+
+  inline void updatePrevdFAndPrevdG() {
+    m_prevdF.col(m_columnIndex) += m_currentF;
+    m_prevdG.col(m_columnIndex) += m_currentG;
+
+    // scale previous dF for better numerical stability
+    Scalar scale = std::max(EPSILON, m_prevdF.col(m_columnIndex).norm());
+    m_scaledF(m_columnIndex) = scale;
+    m_prevdF.col(m_columnIndex) /= scale;
+  }
+
+  /// update the coefficients \f$ alpha_i \f$ by solving a Least-Square problem
+  inline void updateAlpha() {
+    // compute m_mk
+    m_mk = std::min(m_param.m, m_iter);
+
+    if (m_mk == 1) {
+      m_alpha(0) = 0;
+      Scalar dF_squaredNorm = m_prevdF.col(m_columnIndex).squaredNorm();
+      m_normalEquationMatrix(0, 0) = dF_squaredNorm;
+      Scalar dF_norm = std::sqrt(dF_squaredNorm);
+
+      // For better numerical stability
+      if (dF_norm > EPSILON) {
+        // compute alpha = (dF * F) / (dF * dF)
+        m_alpha(0) = (m_prevdF.col(m_columnIndex) / dF_norm).dot(
+            m_currentF / dF_norm);
+      }
+    } else {
+      // Update the normal equation matrix
+      // for the column and row corresponding to the new dF column.
+      // note: only one column and one row are needed to be updated.
+      gsVector<Scalar> new_inner_prod = (m_prevdF.col(m_columnIndex).transpose()
+          * m_prevdF.block(0, 0, m_dim, m_mk)).transpose();
+      m_normalEquationMatrix.block(m_columnIndex, 0, 1, m_mk) =
+          new_inner_prod.transpose();
+      m_normalEquationMatrix.block(0, m_columnIndex, m_mk, 1) =
+          new_inner_prod;
+
+      // Solve normal equation: A^{T} A x = A^{T} b
+      m_linearSolver.compute(m_normalEquationMatrix.block(0, 0, m_mk, m_mk));
+      m_alpha.head(m_mk) = m_linearSolver.solve(
+          m_prevdF.block(0, 0, m_dim, m_mk).transpose() * m_currentF);
+    }
+  }
+
+  /// update the solution
+  inline void updateSolution() {
+    // Update the current solution (x) using the rescaled alpha
+    m_solution = m_currentG - m_prevdG.block(0, 0, m_dim, m_mk) *
+        ((m_alpha.head(m_mk).array()
+            / m_scaledF.head(m_mk).array()).matrix());
+  }
+
+  void updateColumnIndices() {
+    m_columnIndex = (m_columnIndex + 1) % m_param.m;
+    m_prevdF.col(m_columnIndex) = -m_currentF;
+    m_prevdG.col(m_columnIndex) = -m_currentG;
+  }
+
+  inline void trackIterationInfo() {
+    if (m_trackResidualNorm) { m_residualList.push_back(m_currResidualNorm); }
+  }
+
+  // Linear solver for the Least-Square problem
+  gsEigen::FullPivLU<gsMatrix<Scalar>> m_linearSolver;
+  // Parameters
+  const preAAParam<Scalar> m_param;
+  int m_dim = -1;
+  // Iteration
+  int m_iter = 0;
+  int m_mk = 0;
+  int m_columnIndex = 0;
+  // Residual
+  Scalar m_currResidualNorm;
+  // Solution
+  gsVector<Scalar> m_solution;
+  gsVector<Scalar> m_currentF;
+  gsVector<Scalar> m_currentG;
+  // Anderson extrapolation
+  gsMatrix<Scalar> m_prevdG;
+  gsMatrix<Scalar> m_prevdF;
+  gsMatrix<Scalar> m_normalEquationMatrix;
+  gsVector<Scalar> m_alpha;
+  gsVector<Scalar> m_scaledF;
+  // Preconditioning
+  gsSparseMatrix<Scalar> m_preconditioner;
+  gsEigen::SparseLU<gsSparseMatrix<Scalar>> m_linearSolverPreconditioning;
+  // Print information
+  bool m_printInfo = true;
+
+  // track residual norm history
+  bool m_trackResidualNorm = false;
+  std::vector<Scalar> m_residualList;
+
+  const Scalar EPSILON = 1e-14;
 };
 
-template<typename T>
-class AACompositeAA {
-  typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
-  typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
-
- public:
-  AACompositeAA() = default;
-
-  // m - outer loop window size, n - inner loop window size
-  AACompositeAA(int m, int n)
-      : m_(m),
-        n_(n),
-        iter_(0),
-        col_idx_(0) {
-    GISMO_ASSERT(m > 0, "m should be greater than 0");
-    GISMO_ASSERT(n > 0, "n should be greater than 0");
-  }
-
-  // 残差向量和Jacobian句柄
-  const gsVector<T> &compute(const gsVector<T> &u0,
-                             const Residual_t &F,
-                             std::vector<int> &iterHist,
-                             std::vector<double> &resHist,
-                             std::vector<double> &timeHist) {
-    current_u_ = u0;
-    init();
-
-    double time = 0.0;
-    timeHist.push_back(time);
-    gsStopwatch timer;
-    // Anderson iteration
-    while (iter_ < 1000 && resNorm_ > 1e-5) {
-      current_F_ = F(current_u_);
-      resNorm_ = current_F_.norm();
-//            gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_ << "\n";
-
-      AALoop(iter_, current_F_, current_u_, prev_dG_, prev_dF_, M_,
-             theta_,
-             dF_scale_, m_, dim_, col_idx_, resNorm_);
-      iter_++;
-
-      time += timer.stop();
-      // track residual history and timing history
-      iterHist.push_back(iter_ - 1);
-      resHist.push_back(resNorm_);
-      if (iter_ < 1000 && resNorm_ > 1e-5)
-        timeHist.push_back(time);
-
-      timer.restart();
-
-      if (iter_ >= m_) {
-        int iterInner = 0;
-
-        int col_idx = 0;
-        gsMatrix<T> prev_dG;
-        gsMatrix<T> prev_dF;
-        gsMatrix<T> M;
-        gsVector<T> theta;
-        gsVector<T> dF_scale;
-
-        prev_dG.resize(dim_, n_);
-        prev_dF.resize(dim_, n_);
-
-        M.resize(n_, n_);
-        theta.resize(n_);
-        dF_scale.resize(n_);
-
-        while (iterInner <= n_ && resNorm_ > 1e-5) {
-          current_F_ = F(current_u_);
-          resNorm_ = current_F_.norm();
-//                    gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_
-//                           << "\n";
-
-          AALoop(iterInner, current_F_, current_u_, prev_dG, prev_dF,
-                 M, theta, dF_scale, n_, dim_, col_idx, resNorm_);
-          iterInner++;
-          iter_++;
-
-          time += timer.stop();
-          // track residual history and timing history
-          iterHist.push_back(iter_ - 1);
-          resHist.push_back(resNorm_);
-          if (iter_ < 1000 && resNorm_ > 1e-5)
-            timeHist.push_back(time);
-
-          timer.restart();
-        }
-      }
-    }
-
-    return current_u_;
-  }
-
-  const gsVector<T> &computePrecond(const gsVector<T> &u0, const Residual_t &F,
-                                    const Jacobian_t &Jacobian) {
-    current_u_ = u0;
-    init();
-
-    // Anderson iteration
-    while (iter_ < 1000 && resNorm_ > 1e-5) {
-      if (!(iter_ % 10)) {
-        preconditioner_ = Jacobian(current_u_);
-        linearSolver_.compute(preconditioner_);
-      }
-      current_F_ = -linearSolver_.solve(F(current_u_));
-
-      resNorm_ = current_F_.norm();
-      gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_ << "\n";
-
-      AALoop(iter_, current_F_, current_u_, prev_dG_, prev_dF_, M_,
-             theta_,
-             dF_scale_, m_, dim_, col_idx_, resNorm_);
-      iter_++;
-
-      if (iter_ >= m_) {
-        int iterInner = 0;
-
-        int col_idx = 0;
-        gsMatrix<T> prev_dG;
-        gsMatrix<T> prev_dF;
-        gsMatrix<T> M;
-        gsVector<T> theta;
-        gsVector<T> dF_scale;
-
-        prev_dG.resize(dim_, n_);
-        prev_dF.resize(dim_, n_);
-
-        M.resize(n_, n_);
-        theta.resize(n_);
-        dF_scale.resize(n_);
-
-        while (iterInner <= n_ && resNorm_ > 1e-5) {
-          if (!(iter_ % 10)) {
-            preconditioner_ = Jacobian(current_u_);
-            linearSolver_.compute(preconditioner_);
-          }
-
-          current_F_ = -linearSolver_.solve(F(current_u_));
-          resNorm_ = current_F_.norm();
-          gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_
-                 << "\n";
-
-          AALoop(iterInner, current_F_, current_u_, prev_dG, prev_dF,
-                 M, theta,
-                 dF_scale, n_, dim_, col_idx, resNorm_);
-          iterInner++;
-          iter_++;
-        }
-      }
-    }
-    return current_u_;
-  }
-
-  // m: number of previous iterations used
-  // d: dimension of variables
-  // u0: initial variable values
-  void init() {
-    dim_ = current_u_.size();
-//        current_u_.resize(dim_);
-    current_F_.resize(dim_);
-    prev_dG_.resize(dim_, m_);
-    prev_dF_.resize(dim_, m_);
-
-    M_.resize(m_, m_);
-    theta_.resize(m_);
-    dF_scale_.resize(m_);
-  }
-
- private:
-  gsSparseSolver<>::LU linearSolver_;
-  gsSparseMatrix<T> preconditioner_;
-  gsVector<T> current_u_;
-  gsVector<T> current_F_;
-  gsMatrix<T> prev_dG_;
-  gsMatrix<T> prev_dF_;
-  gsMatrix<T> M_;        // Normal equations matrix for the computing theta
-  gsVector<T> theta_;  // theta value computed from normal equations
-  gsVector<T> dF_scale_;        // The scaling factor for each column of prev_dF
-
-  real_t resNorm_ = std::numeric_limits<real_t>::max();
-  int m_ = 5;        // Number of previous iterates used for AA
-  int n_ = 5;     // Widow size of inner loop
-  int dim_ = -1;  // Dimension of variables
-  int iter_ = 0;    // Iteration count since initialization
-  int col_idx_ = 0;  // Index for history matrix column to store the next value
-};
-
-template<typename T>
-class AAAdaptiveCompositeAA {
-  typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
-  typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
-
- public:
-  AAAdaptiveCompositeAA() = default;
-
-  // m - outer loop window size, n - inner loop window size
-  AAAdaptiveCompositeAA(int m, int n)
-      : m_(m),
-        n_(n),
-        iter_(0),
-        col_idx_(0) {
-    GISMO_ASSERT(m > 0, "m should be greater than 0");
-    GISMO_ASSERT(n > 0, "n should be greater than 0");
-  }
-
-  // 残差向量和Jacobian句柄
-  const gsVector<T> &compute(const gsVector<T> &u0,
-                             const Residual_t &F,
-                             std::vector<int> &iterHist,
-                             std::vector<double> &resHist,
-                             std::vector<double> &timeHist) {
-    current_u_ = u0;
-    init();
-
-    double time = 0.0;
-    timeHist.push_back(time);
-    gsStopwatch timer;
-    // Anderson iteration
-    while (iter_ < 1000 && resNorm_ > 1e-5) {
-      current_F_ = F(current_u_);
-      resNorm_ = current_F_.norm();
-//            gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_ << "\n";
-
-      AALoopAdpt(iter_, current_F_, current_u_, prev_dG_, prev_dF_, M_,
-                 theta_,
-                 dF_scale_, m_, dim_, col_idx_, resNorm_);
-      iter_++;
-
-      time += timer.stop();
-      // track residual history and timing history
-      iterHist.push_back(iter_ - 1);
-      resHist.push_back(resNorm_);
-      if (iter_ < 1000 && resNorm_ > 1e-5)
-        timeHist.push_back(time);
-
-      timer.restart();
-
-      if (iter_ >= m_) {
-        int iterInner = 0;
-
-        int col_idx = 0;
-        gsMatrix<T> prev_dG;
-        gsMatrix<T> prev_dF;
-        gsMatrix<T> M;
-        gsVector<T> theta;
-        gsVector<T> dF_scale;
-
-        prev_dG.resize(dim_, n_);
-        prev_dF.resize(dim_, n_);
-
-        M.resize(n_, n_);
-        theta.resize(n_);
-        dF_scale.resize(n_);
-
-        while (iterInner <= n_ && resNorm_ > 1e-5) {
-          current_F_ = F(current_u_);
-          resNorm_ = current_F_.norm();
-//                    gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_
-//                           << "\n";
-
-          AALoop(iterInner, current_F_, current_u_, prev_dG, prev_dF,
-                 M, theta,
-                 dF_scale, n_, dim_, col_idx, resNorm_);
-          iterInner++;
-          iter_++;
-
-          time += timer.stop();
-          // track residual history and timing history
-          iterHist.push_back(iter_ - 1);
-          resHist.push_back(resNorm_);
-          if (iter_ < 1000 && resNorm_ > 1e-5)
-            timeHist.push_back(time);
-
-          timer.restart();
-        }
-      }
-    }
-
-    return current_u_;
-  }
-
-  const gsVector<T> &computePrecond(const gsVector<T> &u0, const Residual_t &F,
-                                    const Jacobian_t &Jacobian) {
-    current_u_ = u0;
-    init();
-
-    // Anderson iteration
-    while (iter_ < 1000 && resNorm_ > 1e-5) {
-      if (!(iter_ % 10)) {
-        preconditioner_ = Jacobian(current_u_);
-        linearSolver_.compute(preconditioner_);
-      }
-      current_F_ = -linearSolver_.solve(F(current_u_));
-
-      resNorm_ = current_F_.norm();
-      gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_ << "\n";
-
-      AALoopAdpt(iter_, current_F_, current_u_, prev_dG_, prev_dF_, M_,
-                 theta_, dF_scale_, m_, dim_, col_idx_, resNorm_);
-      iter_++;
-
-      if (iter_ >= m_) {
-        int iterInner = 0;
-
-        int col_idx = 0;
-        gsMatrix<T> prev_dG;
-        gsMatrix<T> prev_dF;
-        gsMatrix<T> M;
-        gsVector<T> theta;
-        gsVector<T> dF_scale;
-
-        prev_dG.resize(dim_, n_);
-        prev_dF.resize(dim_, n_);
-
-        M.resize(n_, n_);
-        theta.resize(n_);
-        dF_scale.resize(n_);
-
-        while (iterInner <= n_ && resNorm_ > 1e-5) {
-          if (!(iter_ % 10)) {
-            preconditioner_ = Jacobian(current_u_);
-            linearSolver_.compute(preconditioner_);
-          }
-
-          current_F_ = -linearSolver_.solve(F(current_u_));
-          resNorm_ = current_F_.norm();
-          gsInfo << "iter: " << iter_ << "  resNorm: " << resNorm_
-                 << "\n";
-
-          AALoop(iterInner, current_F_, current_u_, prev_dG, prev_dF,
-                 M, theta,
-                 dF_scale, n_, dim_, col_idx, resNorm_);
-          iterInner++;
-          iter_++;
-        }
-      }
-    }
-
-    return current_u_;
-  }
-
-  // m: number of previous iterations used
-  // d: dimension of variables
-  // u0: initial variable values
-  void init() {
-    dim_ = current_u_.size();
-    current_u_.resize(dim_);
-    current_F_.resize(dim_);
-    prev_dG_.resize(dim_, m_);
-    prev_dF_.resize(dim_, m_);
-
-    M_.resize(m_, m_);
-    theta_.resize(m_);
-    dF_scale_.resize(m_);
-  }
-
- private:
-  gsSparseSolver<>::LU linearSolver_;
-  gsSparseMatrix<T> preconditioner_;
-  gsVector<T> current_u_;
-  gsVector<T> current_F_;
-  gsMatrix<T> prev_dG_;
-  gsMatrix<T> prev_dF_;
-  gsMatrix<T> M_;        // Normal equations matrix for the computing theta
-  gsVector<T> theta_;  // theta value computed from normal equations
-  gsVector<T> dF_scale_;        // The scaling factor for each column of prev_dF
-
-  real_t resNorm_ = std::numeric_limits<real_t>::max();
-  int m_ =
-      5;        // Number of previous iterates used for Andreson Acceleration
-  int n_ = 5;     // Widow size of inner loop
-  int dim_ = -1;  // Dimension of variables
-  int iter_ = 0;    // Iteration count since initialization
-  int col_idx_ = 0;  // Index for history matrix column to store the next value
-};
+}

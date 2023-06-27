@@ -1023,16 +1023,16 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   // get initial guess vector
   gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
 
-  std::string solverSetting = "Parameters setting:\n";
-  solverSetting += "\t\t\t Window size = " +
-      std::to_string(options.getInt("AAwindowsize")) + "\n";
-  solverSetting += "\t\t\t Update preconditioner every " +
-      std::to_string(options.getInt("N_update")) + " steps \n";
-  solverSetting += "\t\t\t Preconditioner type: " +
-      std::to_string(options.getInt("AAPreconditionType")) + "\n";
-  solverSetting += "\t\t\t Need improve by H1?  " +
-      std::to_string(options.getSwitch("needPDEH1")) + "\n";
-  verboseLog(solverSetting, options.askInt("Verbose", 0));
+//  std::string solverSetting = "Parameters setting:\n";
+//  solverSetting += "\t\t\t Window size = " +
+//      std::to_string(options.getInt("AAwindowsize")) + "\n";
+//  solverSetting += "\t\t\t Update preconditioner every " +
+//      std::to_string(options.getInt("N_update")) + " steps \n";
+//  solverSetting += "\t\t\t Preconditioner type: " +
+//      std::to_string(options.getInt("AAPreconditionType")) + "\n";
+//  solverSetting += "\t\t\t Need improve by H1?  " +
+//      std::to_string(options.getSwitch("needPDEH1")) + "\n";
+//  verboseLog(solverSetting, options.askInt("Verbose", 0));
 
   verboseLog("PDE-based parameterization construction ...\n",
              options.askInt("Verbose", 0));
@@ -1087,7 +1087,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   };
 
   Jacobian_t Jacobian;
-  int preconditionerType = 0;
+  int preconditionerType = options.askInt("AAPreconditionType", 0);
   switch (preconditionerType) {
     case 1:
       Jacobian = [&Residual, &assembler, &mapper, &mpSubstitute, &space1](
@@ -1134,15 +1134,24 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
       };
   }
 
-  int m = options.askInt("AAwindowsize", 5);
-  int AAPreconditionType = options.askInt("AAPreconditionType", 0);
-  // TODO: use preAApp and remove these resHist etc.
-  AndersonAcceleration<T> solver(m);
-  std::vector<int> iterHist;
-  std::vector<double> resHist, timeHist;
-  gsVector<T> solVector = solver.computePrecond(initialGuessVector,
-                                                Residual, Jacobian, iterHist,
-                                                resHist, timeHist);
+  preAAParam<T> param;
+  param.m = options.askInt("AAwindowsize", 5);
+  param.usePreconditioning = true;
+  param.updatePreconditionerStep = options.askInt("N_update", 5);
+  param.epsilon = 1e-5;
+
+  preAApp::AndersonAcceleration<T> AASolver(param);
+  gsVector<T> solVector = AASolver.compute(initialGuessVector,
+                                           Residual, Jacobian);
+
+//  int m = options.askInt("AAwindowsize", 5);
+//  // TODO: use preAApp and remove these resHist etc.
+//  AndersonAcceleration<T> solver(m);
+//  std::vector<int> iterHist;
+//  std::vector<double> resHist, timeHist;
+//  gsVector<T> solVector = solver.computePrecond(initialGuessVector,
+//                                                Residual, Jacobian, iterHist,
+//                                                resHist, timeHist);
 
   if (options.askSwitch("needPDEH1", true)) {
     verboseLog("\nStart parameterization improvement by H1 discrezation...",
@@ -1162,7 +1171,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
       return assembler.rhs();
     };
 
-    preconditionerType = options.askInt("AAPreconditionTypeH1", 0);
+    preconditionerType = options.askInt("AAPreconditionType", 0);
     switch (preconditionerType) {
       case 1:
         Jacobian = [&assembler, &mapper, &mpSubstitute, &mb, &space1](
@@ -1196,9 +1205,8 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
         };
     }
 
-    AndersonAcceleration<T> solver2(m);
-    solVector = solver2.computePrecond(solVector, Residual, Jacobian,
-                                       iterHist, resHist, timeHist);
+    preAApp::AndersonAcceleration<T> AASolver2(param);
+    solVector = AASolver2.compute(solVector, Residual, Jacobian);
   }
 
   gsMultiPatch<T> result = mp;
