@@ -44,9 +44,6 @@ class gsBarrierPatch
   /// Sets the mapper.
   void setMapper(const gsDofMapper &mapper) { m_mapper = mapper; };
 
-//  /// Construct an initial parameterization if the input is B-Rep
-//  void initialization();
-
   /// Computes analysis-suitable parameterizations using different methods.
   void compute();
 

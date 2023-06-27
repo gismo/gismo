@@ -94,67 +94,6 @@ gsBarrierPatch<d, T>::gsBarrierPatch(const gsMultiPatch<T> &mp, bool patchWise)
 //     // _makeMapper();
 // }
 
-///// Construct an initial parameterization if the input is B-Rep
-//template<short_t d, typename T>
-//void gsBarrierPatch<d, T>::initialization()
-//{
-//  // 1. discrete Coons 2. Smoothness energy 3. Spring model etc.
-//  switch (m_options.askInt("InitialMethod", 0))
-//  {
-//    case 1:
-//    {
-//      gsInfo << "Using Coons' patch construction.\n";
-//      gsCoonsPatch<T> coons(m_bRep);
-//      gsInfo << "Created a " << coons.compute() << "\n";
-//      m_mp.addPatch(coons.result());
-//      break;
-//    }
-//    case 2:
-//    {
-////                // Cross Approximation patch method
-////                // Question: only works for 3D surfaces? i.e., for mapping: x: R^2 --> R^3
-////
-////                gsInfo << "Using cross approximation construction.\n";
-////                gsCrossApPatch<T> cross(m_bRep);
-////                gsInfo << "Created a " << cross.compute() << "\n";
-////                //if (save) gsWrite(spring.result(), "result_patch");
-////                m_mp.addPatch(cross.result());
-//      break;
-//    }
-//    case 3:
-//    {
-//      // construct a parameterization with the inner control points all equal to (0, 0)
-//      gsInfo << "Set all the inner control points to a same point.\n";
-//      gsCoonsPatch<T> coons(m_bRep);
-//      coons.compute();
-//      m_mp.addPatch(coons.result());
-//
-//      _makeMapper();
-//      gsVector<T> initialZeros(m_mapper.freeSize());
-//      initialZeros.setConstant(m_boxsize / 2.0);
-//      convert_gsFreeVec_to_mp(initialZeros, m_mapper, m_mp);
-//      gsInfo << "Created a same point Patch." << "\n";
-//      break;
-//    }
-//    case 4:
-//    {
-//      // Smoothness energy method
-//      // However, the results seems similar with Spring model method?
-//
-//      break;
-//    }
-//    case 0:
-//    default:
-//      // Spring model method
-//      gsInfo << "Using spring patch construction.\n";
-//      gsSpringPatch<T> spring(m_bRep);
-//      gsInfo << "Created a " << spring.compute() << "\n";
-//      m_mp.addPatch(spring.result());
-//      break;
-//  }
-//  m_mp.computeTopology();
-//}
-
 /// Computes analysis-suitable parameterizations using different methods.
 template<short_t d, typename T>
 void gsBarrierPatch<d, T>::compute()
