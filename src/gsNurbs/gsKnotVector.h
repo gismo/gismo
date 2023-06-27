@@ -255,6 +255,8 @@ public: // queries
     /// Provides the knot with unique index \a i
     const T& operator()(const mult_t i) const
     {
+        GISMO_ASSERT( static_cast<size_t>(i) < uSize(),
+                      "Unique index "<<i<<" not in the knot vector.");
         return *( this->ubegin()+(numLeftGhosts()+i) );
     }
 

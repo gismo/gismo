@@ -140,8 +140,31 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
             all_boxes.push_back(c);
         }
     }
-    Object * hbs = new Object(*tp, all_boxes);
+
+    gsXmlAttribute * manualLevels = node->first_attribute("manualLevels");
+    bool ml = manualLevels && !strcmp(manualLevels->value(),"true");
+    Object * hbs = new Object(*tp, ml);
     delete tp;
+
+    if (ml)
+    {
+        index_t lvl = 1;
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = node->first_node("Basis");
+             child; child = child->next_sibling("Basis"))
+        {
+            id_at = child->first_attribute("level");
+            if (id_at && atoi(id_at->value()) == lvl )
+            {
+                ++lvl;
+                auto tb = memory::make_unique(
+                    internal::gsXml<gsTensorBSplineBasis<d,T> >::get(child) );
+                hbs->addLevel( give(*tb) );
+            }
+        }
+    }
+
+    hbs->refineElements(all_boxes);
     return hbs;
 }
 

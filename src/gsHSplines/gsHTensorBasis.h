@@ -105,6 +105,7 @@ public:
     /// Dimension of the parameter domain
     static const short_t Dim = d;
 
+    friend class gsHDomainIterator<T,d>;
 public:
 
     /// Default empty constructor
