@@ -1,5 +1,3 @@
-#include <utility>
-
 /** @file gsBarrierCore.hpp
 
     @brief This software facilitates the creation of analysis-suitable
@@ -21,815 +19,6 @@
 #pragma once
 
 namespace gismo {
-namespace expr {
-
-template<typename E1, typename E2>
-class frprod3_expr : public _expr<frprod3_expr<E1, E2> > {
- public:
-  typedef typename E2::Scalar Scalar;
-  enum { ScalarValued = 0, Space = E1::Space, ColBlocks = 0 };
-
- private:
-  typename E1::Nested_t _u;
-  typename E2::Nested_t _v;
-
-  mutable gsMatrix<Scalar> res, bGrads, b;
-
- public:
-
-  frprod3_expr(_expr<E1> const &u, _expr<E2> const &v)
-      : _u(u), _v(v) {
-    // gsInfo << "expression is space ? "<<E1::Space <<"\n"; _u.print(gsInfo);
-    // GISMO_ASSERT(_u.rows() == _v.rows(),
-    //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
-    // GISMO_ASSERT(_u.cols() == _v.cols(),
-    //              "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
-  }
-
-  const gsMatrix<Scalar> &eval(const index_t k) const //todo: specialize for nb==1
-  {
-    auto A = _v.eval(k);
-    b = _u.eval(k);
-//        gsDebugVar(b);
-
-    res.noalias() = b * A;
-    return res;
-  }
-
-  index_t rows() const { return 1; }
-  index_t cols() const { return 1; }
-
-  void parse(gsExprHelper<Scalar> &evList) const {
-    _v.parse(evList);
-//        evList.add(_u);
-//        _u.data().flags |= NEED_GRAD;
-    _u.parse(evList);
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _v.rowVar(); }
-
-  void print(std::ostream &os) const {
-    os << "(";
-    _u.print(os);
-    os << " % ";
-    _v.print(os);
-    os << ")";
-  }
-};
-
-/// Frobenious product (also known as double dot product) operator for expressions
-template<typename E1, typename E2>
-EIGEN_STRONG_INLINE
-frprod3_expr<E1, E2> const frprod3(E1 const &u,
-                                   E2 const &M) {
-  return frprod3_expr<E1, E2>(u,
-                              M);
-}
-
-template<class E0, class E1, class E2>
-class ternary_expr;
-
-/*
-  Expression for Jacobian matrix for PDE-based parameterization construction
-*/
-template<class E>
-class jacScaledLx_expr : public _expr<jacScaledLx_expr<E> > {
- public:
-  typedef typename E::Scalar Scalar;
-
- private:
-  typename E::Nested_t _u;
-  typename gsGeometryMap<Scalar>::Nested_t _G;
-
- public:
-  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
-
-  jacScaledLx_expr(const E &u, const gsGeometryMap<Scalar> &G) : _u(u), _G(G) {}
-
-  mutable gsMatrix<Scalar> res, derivGeom, deriv2Geom, derivBasis, deriv2Basis;
-  mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
-  mutable gsMatrix<Scalar> commonTerm, dLxdx, dLxdy, dLydx, dLydy;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  const gsMatrix<Scalar> &eval(const index_t k) const {
-    gsMatrix<Scalar> basis = _u.data().values[0].col(k);
-
-    derivBasis = _u.data().values[1].col(k).transpose();
-    deriv2Basis = _u.data().values[2].col(k).transpose();
-
-    derivBasis.blockTransposeInPlace(_u.dim());
-    deriv2Basis.blockTransposeInPlace(1 + _u.dim());
-
-    derivGeom = _G.data().values[1].col(k);
-    deriv2Geom = _G.data().values[2].col(k);
-
-    Scalar g11 = derivGeom(0) * derivGeom(0) + derivGeom(2) * derivGeom(2);
-    Scalar g12 = derivGeom(0) * derivGeom(1) + derivGeom(2) * derivGeom(3);
-    Scalar g22 = derivGeom(1) * derivGeom(1) + derivGeom(3) * derivGeom(3);
-
-    Scalar scaleFactor = g11 + g22;
-
-    Scalar Lx =
-        (g22 * deriv2Geom(0) + g11 * deriv2Geom(1) - 2.0 * g12 * deriv2Geom(2))
-            / scaleFactor;
-    Scalar Ly =
-        (g22 * deriv2Geom(3) + g11 * deriv2Geom(4) - 2.0 * g12 * deriv2Geom(5))
-            / scaleFactor;
-
-    dg11dx.noalias() = 2.0 * derivGeom(0) * derivBasis.row(0);
-    dg11dy.noalias() = 2.0 * derivGeom(2) * derivBasis.row(0);
-    dg22dx.noalias() = 2.0 * derivGeom(1) * derivBasis.row(1);
-    dg22dy.noalias() = 2.0 * derivGeom(3) * derivBasis.row(1);
-    dg12dx.noalias() =
-        derivGeom(1) * derivBasis.row(0) + derivGeom(0) * derivBasis.row(1);
-    dg12dy.noalias() =
-        derivGeom(3) * derivBasis.row(0) + derivGeom(2) * derivBasis.row(1);
-
-    commonTerm.noalias() = g22 * deriv2Basis.row(0) + g11 * deriv2Basis.row(1)
-        - 2.0 * g12 * deriv2Basis.row(2);
-    dLxdx.noalias() = dg22dx * deriv2Geom(0) + dg11dx * deriv2Geom(1)
-        - 2.0 * dg12dx * deriv2Geom(2) + commonTerm;
-    dLxdy.noalias() = dg22dy * deriv2Geom(0) + dg11dy * deriv2Geom(1)
-        - 2.0 * dg12dy * deriv2Geom(2);
-    dLydx.noalias() = dg22dx * deriv2Geom(3) + dg11dx * deriv2Geom(4)
-        - 2.0 * dg12dx * deriv2Geom(5);
-    dLydy.noalias() = dg22dy * deriv2Geom(3) + dg11dy * deriv2Geom(4)
-        - 2.0 * dg12dy * deriv2Geom(5) + commonTerm;
-
-    dLxdx = (dLxdx - Lx * (dg11dx + dg22dx)) / scaleFactor;
-    dLxdy = (dLxdy - Lx * (dg11dy + dg22dy)) / scaleFactor;
-    dLydx = (dLydx - Ly * (dg11dx + dg22dx)) / scaleFactor;
-    dLydy = (dLydy - Ly * (dg11dy + dg22dy)) / scaleFactor;
-
-    const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
-    res.resize(_u.cardinality(), _u.cardinality());
-//        res.setZero();
-    res.topLeftCorner(A, A).noalias() = basis * dLxdx;
-    res.topRightCorner(A, A).noalias() = basis * dLxdy;
-    res.bottomLeftCorner(A, A).noalias() = basis * dLydx;
-    res.bottomRightCorner(A, A).noalias() = basis * dLydy;
-
-    return res;
-  }
-
-  index_t rows() const { return 1; }
-
-  index_t cols() const { return 1; }
-
-  void parse(gsExprHelper<Scalar> &evList) const {
-    evList.add(_u);
-    _u.data().flags |= NEED_VALUE | NEED_GRAD | NEED_DERIV2;
-
-    evList.add(_G);
-    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
-  index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-  void print(std::ostream &os) const {
-    os << "jacScaledLx(";
-    _u.print(os);
-    os << ")";
-  }
-};
-
-template<class E0, class E1, class E2>
-class ternary_expr : public _expr<ternary_expr<E0, E1, E2> > {
-  typename E0::Nested_t _u;
-  typename E1::Nested_t _v;
-  typename E2::Nested_t _w;
- public:
-  typedef typename E1::Scalar Scalar;
-
-  explicit ternary_expr(_expr<E0> const &u,
-                        _expr<E1> const &v,
-                        _expr<E2> const &w)
-      :
-      _u(u),
-      _v(v),
-      _w(w) {
-    GISMO_ASSERT(E0::ScalarValued, "Condition must be scalar valued");
-    GISMO_ASSERT((int) E1::ScalarValued == (int) E2::ScalarValued,
-                 "Both v and w must be scalar valued (or not).");
-    GISMO_ASSERT((int) E1::ColBlocks == (int) E2::ColBlocks,
-                 "Both v and w must be colblocks (or not).");
-    GISMO_ASSERT((int) E1::Space == (int) E2::Space,
-                 "Both v and w must be space (or not), but E1::Space = "
-                     << E1::Space << " and E2::Space = " << E2::Space);
-    GISMO_ASSERT(_v.rows() == _w.rows(),
-                 "Rows of v and w differ. _v.rows() = " << _v.rows()
-                                                        << ", _w.rows() = "
-                                                        << _w.rows());
-    GISMO_ASSERT(_v.cols() == _w.cols(),
-                 "Columns of v and w differ. _v.cols() = " << _v.cols()
-                                                           << ", _w.cols() = "
-                                                           << _w.cols());
-    GISMO_ASSERT(_v.rowVar() == _w.rowVar(), "rowVar of v and w differ.");
-    GISMO_ASSERT(_v.colVar() == _w.colVar(), "colVar of v and w differ.");
-  }
- public:
-  enum {
-    ScalarValued = E1::ScalarValued,
-    ColBlocks = E1::ColBlocks,
-    Space = E1::Space
-  }; // == E2::Space
-
-  const Temporary_t eval(const index_t k) const {
-    return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
-  }
-  // { res = eval_impl(_u,_v,_w,k); return  res;}
-
-  index_t rows() const { return _v.rows(); }
-  index_t cols() const { return _v.cols(); }
-  void parse(gsExprHelper<Scalar> &evList) const {
-    _u.parse(evList);
-    _v.parse(evList);
-    _w.parse(evList);
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
-
-  // TODO: Maybe something is wrong here?
-//    void print(std::ostream &os) const { _u.print(os) <<" ? " << _v.print(os) << " : " << _w.print(os); }
-
-// private:
-//     template<class U, class V, class W> static inline
-//     typename util::enable_if<U::ScalarValued && V::ScalarValued,AutoReturn_t>::type
-//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
-//     {
-//         gsMatrix<Scalar> res(1,1);
-// //        bool test = u.eval(k) > 0;
-//         res<<(u.eval(k) > 0 ?  v.eval(k) : w.eval(k));
-//         return res;
-//     }
-
-//     template<class U, class V, class W> static inline
-//     typename util::enable_if<U::ScalarValued && !V::ScalarValued,AutoReturn_t>::type
-//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
-//     {
-//         return u.eval(k) > 0 ? v.eval(k) : w.eval(k);
-//     }
-
-//     template<class U, class V, class W> static inline
-//     typename util::enable_if<!U::ScalarValued,gsMatrix<Scalar>>::type
-//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
-//     {
-//         GISMO_ERROR("Something went wrong");
-//     }
-};
-
-/*
-  Expression for Jacobian matrix (diagonal part) for PDE-based parameterization construction
-*/
-template<class E>
-class jacScaledLxDiag_expr : public _expr<jacScaledLxDiag_expr<E> > {
- public:
-  typedef typename E::Scalar Scalar;
-
- private:
-  typename E::Nested_t _u;
-  typename gsGeometryMap<Scalar>::Nested_t _G;
-
- public:
-  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
-
-  jacScaledLxDiag_expr(const E &u, const gsGeometryMap<Scalar> &G)
-      : _u(u), _G(G) {}
-
-  mutable gsMatrix<Scalar> res, derivGeom, deriv2Geom, derivBasis, deriv2Basis;
-  mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
-  mutable gsMatrix<Scalar> commonTerm, dLxdx, dLydy;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  const gsMatrix<Scalar> &eval(const index_t k) const {
-    derivBasis = _u.data().values[1].col(k).transpose();
-    deriv2Basis = _u.data().values[2].col(k).transpose();
-
-    derivBasis.blockTransposeInPlace(_u.dim());
-    deriv2Basis.blockTransposeInPlace(1 + _u.dim());
-
-    derivGeom = _G.data().values[1].col(k);
-    deriv2Geom = _G.data().values[2].col(k);
-
-    Scalar g11 = derivGeom(0) * derivGeom(0) + derivGeom(2) * derivGeom(2);
-    Scalar g12 = derivGeom(0) * derivGeom(1) + derivGeom(2) * derivGeom(3);
-    Scalar g22 = derivGeom(1) * derivGeom(1) + derivGeom(3) * derivGeom(3);
-
-    Scalar scaleFactor = g11 + g22;
-
-    Scalar Lx =
-        (g22 * deriv2Geom(0) + g11 * deriv2Geom(1) - 2.0 * g12 * deriv2Geom(2))
-            / scaleFactor;
-    Scalar Ly =
-        (g22 * deriv2Geom(3) + g11 * deriv2Geom(4) - 2.0 * g12 * deriv2Geom(5))
-            / scaleFactor;
-
-    dg11dx.noalias() = 2.0 * derivGeom(0) * derivBasis.row(0);
-    dg11dy.noalias() = 2.0 * derivGeom(2) * derivBasis.row(0);
-    dg22dx.noalias() = 2.0 * derivGeom(1) * derivBasis.row(1);
-    dg22dy.noalias() = 2.0 * derivGeom(3) * derivBasis.row(1);
-    dg12dx.noalias() =
-        derivGeom(1) * derivBasis.row(0) + derivGeom(0) * derivBasis.row(1);
-    dg12dy.noalias() =
-        derivGeom(3) * derivBasis.row(0) + derivGeom(2) * derivBasis.row(1);
-
-    commonTerm.noalias() = g22 * deriv2Basis.row(0) + g11 * deriv2Basis.row(1)
-        - 2.0 * g12 * deriv2Basis.row(2);
-    dLxdx.noalias() = dg22dx * deriv2Geom(0) + dg11dx * deriv2Geom(1)
-        - 2.0 * dg12dx * deriv2Geom(2) + commonTerm;
-    dLydy.noalias() = dg22dy * deriv2Geom(3) + dg11dy * deriv2Geom(4)
-        - 2.0 * dg12dy * deriv2Geom(5) + commonTerm;
-
-    dLxdx = (dLxdx - Lx * (dg11dx + dg22dx)) / scaleFactor;
-    dLydy = (dLydy - Ly * (dg11dy + dg22dy)) / scaleFactor;
-
-    const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
-    res.resize(_u.cardinality(), _u.cardinality());
-    res.setZero();
-    res.topLeftCorner(A, A) = (_u.data().values[0].col(k).array()
-        * dLxdx.array()).matrix().asDiagonal();
-    res.bottomRightCorner(A, A) = (_u.data().values[0].col(k).array()
-        * dLydy.array()).matrix().asDiagonal();
-
-    return res;
-  }
-
-  index_t rows() const { return 1; }
-
-  index_t cols() const { return 1; }
-
-  void parse(gsExprHelper<Scalar> &evList) const {
-    evList.add(_u);
-    _u.data().flags |= NEED_VALUE | NEED_GRAD | NEED_DERIV2;
-
-    evList.add(_G);
-    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
-  index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-  void print(std::ostream &os) const {
-    os << "jacScaledLxDiag(";
-    _u.print(os);
-    os << ")";
-  }
-};
-
-/*
-  Expression for Jacobian matrix (diagonal block) for PDE-based parameterization construction
-*/
-template<class E>
-class jacScaledLxDiagBlock_expr : public _expr<jacScaledLxDiagBlock_expr<E> > {
- public:
-  typedef typename E::Scalar Scalar;
-
- private:
-  typename E::Nested_t _u;
-  typename gsGeometryMap<Scalar>::Nested_t _G;
-
- public:
-  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
-
-  jacScaledLxDiagBlock_expr(const E &u, const gsGeometryMap<Scalar> &G)
-      : _u(u), _G(G) {}
-
-  mutable gsMatrix<Scalar> res, basis, derivGeom, deriv2Geom, derivBasis,
-      deriv2Basis;
-  mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
-  mutable gsMatrix<Scalar> commonTerm, dLxdx, dLydy;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  const gsMatrix<Scalar> &eval(const index_t k) const {
-//        basis = _u.data().values[0].col(k);
-
-    derivBasis = _u.data().values[1].col(k).transpose();
-    deriv2Basis = _u.data().values[2].col(k).transpose();
-
-    derivBasis.blockTransposeInPlace(_u.dim());
-    deriv2Basis.blockTransposeInPlace(1 + _u.dim());
-
-    derivGeom = _G.data().values[1].col(k);
-    deriv2Geom = _G.data().values[2].col(k);
-
-    Scalar g11 = derivGeom(0) * derivGeom(0) + derivGeom(2) * derivGeom(2);
-    Scalar g12 = derivGeom(0) * derivGeom(1) + derivGeom(2) * derivGeom(3);
-    Scalar g22 = derivGeom(1) * derivGeom(1) + derivGeom(3) * derivGeom(3);
-    Scalar scaleFactor = g11 + g22;
-
-    Scalar Lx =
-        (g22 * deriv2Geom(0) + g11 * deriv2Geom(1) - 2.0 * g12 * deriv2Geom(2))
-            / scaleFactor;
-    Scalar Ly =
-        (g22 * deriv2Geom(3) + g11 * deriv2Geom(4) - 2.0 * g12 * deriv2Geom(5))
-            / scaleFactor;
-
-    dg11dx.noalias() = 2.0 * derivGeom(0) * derivBasis.row(0);
-    dg11dy.noalias() = 2.0 * derivGeom(2) * derivBasis.row(0);
-    dg22dx.noalias() = 2.0 * derivGeom(1) * derivBasis.row(1);
-    dg22dy.noalias() = 2.0 * derivGeom(3) * derivBasis.row(1);
-    dg12dx.noalias() =
-        derivGeom(1) * derivBasis.row(0) + derivGeom(0) * derivBasis.row(1);
-    dg12dy.noalias() =
-        derivGeom(3) * derivBasis.row(0) + derivGeom(2) * derivBasis.row(1);
-
-    commonTerm.noalias() = g22 * deriv2Basis.row(0) + g11 * deriv2Basis.row(1)
-        - 2.0 * g12 * deriv2Basis.row(2);
-    dLxdx.noalias() = dg22dx * deriv2Geom(0) + dg11dx * deriv2Geom(1)
-        - 2.0 * dg12dx * deriv2Geom(2) + commonTerm;
-    dLydy.noalias() = dg22dy * deriv2Geom(3) + dg11dy * deriv2Geom(4)
-        - 2.0 * dg12dy * deriv2Geom(5) + commonTerm;
-
-    dLxdx = (dLxdx - Lx * (dg11dx + dg22dx)) / scaleFactor;
-    dLydy = (dLydy - Ly * (dg11dy + dg22dy)) / scaleFactor;
-
-    const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
-    res.resize(_u.cardinality(), _u.cardinality());
-    res.setZero();
-    res.template topLeftCorner(A, A).noalias() =
-        _u.data().values[0].col(k) * dLxdx;
-    res.template bottomRightCorner(A, A).noalias() =
-        _u.data().values[0].col(k) * dLydy;
-
-    return res;
-  }
-
-  index_t rows() const { return 1; }
-
-  index_t cols() const { return 1; }
-
-  void parse(gsExprHelper<Scalar> &evList) const {
-    evList.add(_u);
-    _u.data().flags |= NEED_VALUE | NEED_GRAD | NEED_DERIV2;
-
-    evList.add(_G);
-    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
-  index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-  void print(std::ostream &os) const {
-    os << "jacScaledLxDiagBlock(";
-    _u.print(os);
-    os << ")";
-  }
-};
-
-/*
-  Expression for Jacobian matrix (in H1 space) for PDE-based parameterization construction
-*/
-template<class E>
-class jacScaledLxH1_expr : public _expr<jacScaledLxH1_expr<E> > {
- public:
-  typedef typename E::Scalar Scalar;
-
- private:
-  typename E::Nested_t _u;
-  typename gsGeometryMap<Scalar>::Nested_t _G;
-
- public:
-  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
-
-  jacScaledLxH1_expr(const E &u, const gsGeometryMap<Scalar> &G)
-      : _u(u), _G(G) {}
-
-  mutable gsMatrix<Scalar> res, derivBasis;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  const gsMatrix<Scalar> &eval(const index_t k) const {
-    gsMatrix<Scalar> jacMat = _G.data().values[1].reshapeCol(k,
-                                                             _G.data().dim.first,
-                                                             _G.data().dim.second);
-    gsMatrix<Scalar> invJacMat = jacMat.inverse();
-
-    derivBasis = _u.data().values[1].col(k).transpose();
-    derivBasis.blockTransposeInPlace(_u.dim());
-    gsMatrix<Scalar> invJacHatG;
-    invJacHatG.noalias() = invJacMat * derivBasis;
-
-    const index_t N = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
-    gsMatrix<Scalar> jacdLxdx(N, N);
-    gsMatrix<Scalar> jacdLxdy(N, N);
-    gsMatrix<Scalar> jacdLydx(N, N);
-    gsMatrix<Scalar> jacdLydy(N, N);
-
-    gsMatrix<> temp(2, N);
-    for (auto i = 0; i < N; ++i) {
-      // for x-direction
-      temp.row(0).noalias() = invJacHatG(0, i) * invJacHatG.row(0);
-      temp.row(1).noalias() = invJacHatG(1, i) * invJacHatG.row(0);
-      gsMatrix<Scalar> dinvJacdx(2, 2);
-      dinvJacdx.row(0).noalias() = invJacHatG(0, i) * invJacMat.row(0);
-      dinvJacdx.row(1).noalias() = invJacHatG(1, i) * invJacMat.row(0);
-      jacdLxdx.col(i).noalias() = -temp.transpose() * invJacMat.col(0)
-          - invJacHatG.transpose() * dinvJacdx.col(0);
-      jacdLydx.col(i).noalias() = -temp.transpose() * invJacMat.col(1)
-          - invJacHatG.transpose() * dinvJacdx.col(1);
-
-      // for y-direction
-      temp.row(0).noalias() = invJacHatG(0, i) * invJacHatG.row(1);
-      temp.row(1).noalias() = invJacHatG(1, i) * invJacHatG.row(1);
-      gsMatrix<Scalar> dinvJacdy(2, 2);
-      dinvJacdy.row(0).noalias() = invJacHatG(0, i) * invJacMat.row(1);
-      dinvJacdy.row(1).noalias() = invJacHatG(1, i) * invJacMat.row(1);
-      jacdLxdy.col(i).noalias() = -temp.transpose() * invJacMat.col(0)
-          - invJacHatG.transpose() * dinvJacdy.col(0);
-      jacdLydy.col(i).noalias() = -temp.transpose() * invJacMat.col(1)
-          - invJacHatG.transpose() * dinvJacdy.col(1);
-    }
-
-    res.resize(_u.cardinality(), _u.cardinality());
-    res.setZero();
-    res.template topLeftCorner(N, N).noalias() = jacdLxdx;
-    res.template topRightCorner(N, N).noalias() = jacdLxdy;
-    res.template bottomLeftCorner(N, N).noalias() = jacdLydx;
-    res.template bottomRightCorner(N, N).noalias() = jacdLydy;
-
-    return res;
-  }
-
-  index_t rows() const { return 1; }
-
-  index_t cols() const { return 1; }
-
-  void parse(gsExprHelper<Scalar> &evList) const {
-    evList.add(_u);
-    _u.data().flags |= NEED_GRAD;
-
-    evList.add(_G);
-    _G.data().flags |= NEED_DERIV;
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
-  index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-  void print(std::ostream &os) const {
-    os << "jacScaledLx(";
-    _u.print(os);
-    os << ")";
-  }
-};
-
-/*
-  Expression for Jacobian matrix (in H1 space) for PDE-based parameterization construction
-*/
-template<class E>
-class jacScaledLxH1DiagBlock_expr
-    : public _expr<jacScaledLxH1DiagBlock_expr<E> > {
- public:
-  typedef typename E::Scalar Scalar;
-
- private:
-  typename E::Nested_t _u;
-  typename gsGeometryMap<Scalar>::Nested_t _G;
-
- public:
-  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
-
-  jacScaledLxH1DiagBlock_expr(const E &u, const gsGeometryMap<Scalar> &G)
-      : _u(u), _G(G) {}
-
-  mutable gsMatrix<Scalar> res, derivBasis;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  const gsMatrix<Scalar> &eval(const index_t k) const {
-    gsMatrix<Scalar> jacMat = _G.data().values[1].reshapeCol(k,
-                                                             _G.data().dim.first,
-                                                             _G.data().dim.second);
-    gsMatrix<Scalar> invJacMat = jacMat.inverse();
-
-    derivBasis = _u.data().values[1].col(k).transpose();
-    derivBasis.blockTransposeInPlace(_u.dim());
-    gsMatrix<Scalar> invJacHatG = invJacMat * derivBasis;
-
-    const index_t N = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
-    gsMatrix<Scalar> jacdLxdx(N, N);
-//        gsMatrix<Scalar> jacdLxdy(N,N);
-//        gsMatrix<Scalar> jacdLydx(N,N);
-    gsMatrix<Scalar> jacdLydy(N, N);
-
-    gsMatrix<> temp(2, N);
-    for (auto i = 0; i < N; ++i) {
-      // for x-direction
-      temp.row(0) = invJacHatG(0, i) * invJacHatG.row(0);
-      temp.row(1) = invJacHatG(1, i) * invJacHatG.row(0);
-      gsMatrix<Scalar> dinvJacdx(2, 2);
-      dinvJacdx.row(0) = invJacHatG(0, i) * invJacMat.row(0);
-      dinvJacdx.row(1) = invJacHatG(1, i) * invJacMat.row(0);
-      jacdLxdx.col(i) = -temp.transpose() * invJacMat.col(0)
-          - invJacHatG.transpose() * dinvJacdx.col(0);
-//            jacdLydx.col(i) = -temp.transpose()*invJacMat.col(1) - invJacHatG.transpose()*dinvJacdx.col(1);
-
-      // for y-direction
-      temp.row(0) = invJacHatG(0, i) * invJacHatG.row(1);
-      temp.row(1) = invJacHatG(1, i) * invJacHatG.row(1);
-      gsMatrix<Scalar> dinvJacdy(2, 2);
-      dinvJacdy.row(0) = invJacHatG(0, i) * invJacMat.row(1);
-      dinvJacdy.row(1) = invJacHatG(1, i) * invJacMat.row(1);
-//            jacdLxdy.col(i) = -temp.transpose()*invJacMat.col(0) - invJacHatG.transpose()*dinvJacdy.col(0);
-      jacdLydy.col(i) = -temp.transpose() * invJacMat.col(1)
-          - invJacHatG.transpose() * dinvJacdy.col(1);
-    }
-
-    res.resize(_u.cardinality(), _u.cardinality());
-    res.setZero();
-    res.template topLeftCorner(N, N) = jacdLxdx;
-//        res.template topRightCorner(N,N) = jacdLxdy;
-//        res.template bottomLeftCorner(N,N) = jacdLydx;
-    res.template bottomRightCorner(N, N) = jacdLydy;
-
-    return res;
-  }
-
-  index_t rows() const { return 1; }
-
-  index_t cols() const { return 1; }
-
-  void parse(gsExprHelper<Scalar> &evList) const {
-    evList.add(_u);
-    _u.data().flags |= NEED_GRAD;
-
-    evList.add(_G);
-    _G.data().flags |= NEED_DERIV;
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
-  index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-  void print(std::ostream &os) const {
-    os << "jacScaledLx(";
-    _u.print(os);
-    os << ")";
-  }
-};
-
-/*
-
-  Expression for the product of the jacob of space and matrix A. Return term
-  is a column vector (d*n x 1). The result should be the same as the result
-  from jac(space) % A, whereas avoids redundant multiply with zero-value components.
-
- For 2D case:
- frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{11}*dN_2/dxi_1,
- a_{12}*dN_2/dxi_2,...,a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_2, a_{21}*dN_1/dxi_1,
- a_{22}*dN_1/dxi_2, a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_2,...,a_{21}*dN_n/dxi_1,
- a_{22}*dN_n/dxi_2]
- For 3D case:
- frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{13}*dN_1/dxi_3,...
- a_{11}*dN_2/dxi_1, a_{12}*dN_2/dxi_1, a_{13}*dN_2/dxi_3,...,
- a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_1, a_{13}*dN_n/dxi_3,
- a_{21}*dN_1/dxi_1, a_{22}*dN_1/dxi_2, a_{23}*dN_1/dxi_3,...
- a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_1, a_{23}*dN_2/dxi_3,...,
- a_{21}*dN_n/dxi_1, a_{22}*dN_n/dxi_1, a_{23}*dN_n/dxi_3,
- a_{31}*dN_1/dxi_1, a_{32}*dN_1/dxi_2, a_{33}*dN_1/dxi_3,...
- a_{31}*dN_2/dxi_1, a_{32}*dN_2/dxi_1, a_{33}*dN_2/dxi_3,...,
- a_{31}*dN_n/dxi_1, a_{32}*dN_n/dxi_1, a_{33}*dN_n/dxi_3,]
-
-NOTE: _u should be a space, _v should NOT be a space (fix with assert)
-
- */
-template<typename E1, typename E2>
-class frprod2_expr : public _expr<frprod2_expr<E1, E2> > {
- public:
-  typedef typename E2::Scalar Scalar;
-  enum { ScalarValued = 0, Space = E1::Space, ColBlocks = 0 };
-
- private:
-  typename E1::Nested_t _u;
-  typename E2::Nested_t _v;
-
-  mutable gsMatrix<Scalar> res, bGrads;
-
- public:
-
-  frprod2_expr(_expr<E1> const &u, _expr<E2> const &v)
-      : _u(u), _v(v) {
-    // gsInfo << "expression is space ? "<<E1::Space <<"\n"; _u.print(gsInfo);
-    // GISMO_ASSERT(_u.rows() == _v.rows(),
-    //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
-    // GISMO_ASSERT(_u.cols() == _v.cols(),
-    //              "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
-  }
-
-  const gsMatrix<Scalar> &eval(const index_t k) const //todo: specialize for nb==1
-  {
-    auto A = _v.eval(k);
-    bGrads = _u.data().values[1].col(k).transpose();
-    bGrads.blockTransposeInPlace(_u.dim());
-    res.noalias() = A * bGrads;
-    res.transposeInPlace();
-    res.resize(1, _u.cardinality());
-//        res.reshaped(1,_u.cardinality());
-    res.transposeInPlace();
-    return res;
-  }
-
-  index_t rows() const { return 1; }
-  index_t cols() const { return 1; }
-
-  void parse(gsExprHelper<Scalar> &evList) const {
-    _v.parse(evList);
-    evList.add(_u);
-    _u.data().flags |= NEED_GRAD;
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _v.rowVar(); }
-
-  void print(std::ostream &os) const {
-    os << "(";
-    _u.print(os);
-    os << " % ";
-    _v.print(os);
-    os << ")";
-  }
-};
-
-/// jacobian matrix of scaled Lx for PDE-based parameterization construction
-template<class E>
-EIGEN_STRONG_INLINE
-jacScaledLx_expr<E> jacScaledLx(const E &u,
-                                const gsGeometryMap<typename E::Scalar> &G) {
-  return jacScaledLx_expr<E>(u, G);
-}
-
-/// diagonal part of jacobian matrix of scaled Lx for PDE-based parameterization construction
-template<class E>
-EIGEN_STRONG_INLINE
-jacScaledLxDiag_expr<E> jacScaledLxDiag(const E &u,
-                                        const gsGeometryMap<typename E::Scalar> &G) {
-  return jacScaledLxDiag_expr<E>(u, G);
-}
-
-/// diagonal block part of jacobian matrix of scaled Lx for PDE-based parameterization construction
-template<class E>
-EIGEN_STRONG_INLINE
-jacScaledLxDiagBlock_expr<E> jacScaledLxDiagBlock(const E &u,
-                                                  const gsGeometryMap<typename E::Scalar> &G) {
-  return jacScaledLxDiagBlock_expr<E>(u, G);
-}
-
-/// jacobian matrix of scaled Lx (in H1 space) for PDE-based parameterization construction
-template<class E>
-EIGEN_STRONG_INLINE
-jacScaledLxH1_expr<E> jacScaledLxH1(const E &u,
-                                    const gsGeometryMap<typename E::Scalar> &G) {
-  return jacScaledLxH1_expr<E>(u, G);
-}
-
-///// jacobian matrix of scaled Lx (in H1 space) for PDE-based parameterization construction
-//template<class E> EIGEN_STRONG_INLINE
-//jacScaledLxH1Diag_expr<E> jacScaledLxH1Diag(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return jacScaledLxH1Diag_expr<E>(u, G); }
-//
-/// jacobian matrix of scaled Lx (in H1 space) for PDE-based parameterization construction
-template<class E>
-EIGEN_STRONG_INLINE
-jacScaledLxH1DiagBlock_expr<E> jacScaledLxH1DiagBlock(const E &u,
-                                                      const gsGeometryMap<
-                                                          typename E::Scalar> &G) {
-  return jacScaledLxH1DiagBlock_expr<E>(u, G);
-}
-
-// Frobenious product (also known as double dot product) operator for expressions
-template<typename E1, typename E2>
-EIGEN_STRONG_INLINE
-frprod2_expr<E1, E2> const frprod2(E1 const &u,
-                                   E2 const &M) {
-  return frprod2_expr<E1, E2>(u,
-                              M);
-}
-
-/// Ternary ternary_expr
-template<class E0, class E1, class E2>
-EIGEN_STRONG_INLINE
-ternary_expr<E0, E1, E2> ternary(const E0 &u,
-                                 const E1 &v,
-                                 const E2 &w) {
-  return ternary_expr<E0, E1, E2>(u,
-                                  v,
-                                  w);
-}
-
-} // namespace expr
 
 template<short_t d, typename T>
 gsOptionList gsBarrierCore<d, T>::defaultOptions() {
@@ -884,29 +73,6 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
 
   return options;
 }
-
-//template<short_t d, typename T>
-//void gsBarrierCore<d, T>::scaling(gsMultiPatch<T> &mp,
-//                                  const gsVector<T, d> &translation,
-//                                  const gsVector<T, d> &scaling) {
-//  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
-//    mp.patch(iptch).translate(translation);
-//    mp.patch(iptch).scale(scaling);
-//  }
-//}
-//
-//template<short_t d, typename T>
-//void gsBarrierCore<d, T>::scalingUndo(gsMultiPatch<T> &mp,
-//                                      const gsVector<T, d> &translation,
-//                                      const gsVector<T, d> &scaling) {
-//  gsVector<T, d> invScalingVec;
-//  invScalingVec.array() = 1. / scaling.array();
-//
-//  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
-//    mp.patch(iptch).scale(invScalingVec);
-//    mp.patch(iptch).translate(-translation);
-//  }
-//}
 
 /// Compute the area of the computational domain
 template<short_t d, typename T>
@@ -2028,5 +1194,842 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
 
   return result;
 }
+
+namespace expr {
+
+template<typename E1, typename E2>
+class frprod2_expr;
+template<typename E1, typename E2>
+class frprod3_expr;
+template<class E0, class E1, class E2>
+class ternary_expr; // ternary expression
+template<class E>
+class jacScaledLx_expr;
+template<class E>
+class jacScaledLxDiag_expr;
+template<class E>
+class jacScaledLxDiagBlock_expr;
+template<class E>
+class jacScaledLxH1_expr;
+template<class E>
+class jacScaledLxH1DiagBlock_expr;
+
+/*
+
+  Expression for the product of the jacob of space and matrix A. Return term
+  is a column vector (d*n x 1). The result should be the same as the result
+  from jac(space) % A, whereas avoids redundant multiply with zero-value components.
+
+ For 2D case:
+ frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{11}*dN_2/dxi_1,
+ a_{12}*dN_2/dxi_2,...,a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_2, a_{21}*dN_1/dxi_1,
+ a_{22}*dN_1/dxi_2, a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_2,...,a_{21}*dN_n/dxi_1,
+ a_{22}*dN_n/dxi_2]
+ For 3D case:
+ frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{13}*dN_1/dxi_3,...
+ a_{11}*dN_2/dxi_1, a_{12}*dN_2/dxi_1, a_{13}*dN_2/dxi_3,...,
+ a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_1, a_{13}*dN_n/dxi_3,
+ a_{21}*dN_1/dxi_1, a_{22}*dN_1/dxi_2, a_{23}*dN_1/dxi_3,...
+ a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_1, a_{23}*dN_2/dxi_3,...,
+ a_{21}*dN_n/dxi_1, a_{22}*dN_n/dxi_1, a_{23}*dN_n/dxi_3,
+ a_{31}*dN_1/dxi_1, a_{32}*dN_1/dxi_2, a_{33}*dN_1/dxi_3,...
+ a_{31}*dN_2/dxi_1, a_{32}*dN_2/dxi_1, a_{33}*dN_2/dxi_3,...,
+ a_{31}*dN_n/dxi_1, a_{32}*dN_n/dxi_1, a_{33}*dN_n/dxi_3,]
+
+NOTE: _u should be a space, _v should NOT be a space (fix with assert)
+
+ */
+template<typename E1, typename E2>
+class frprod3_expr : public _expr<frprod3_expr<E1, E2> > {
+ public:
+  typedef typename E2::Scalar Scalar;
+  enum { ScalarValued = 0, Space = E1::Space, ColBlocks = 0 };
+
+ private:
+  typename E1::Nested_t _u;
+  typename E2::Nested_t _v;
+
+  mutable gsMatrix<Scalar> res, bGrads, b;
+
+ public:
+
+  frprod3_expr(_expr<E1> const &u, _expr<E2> const &v)
+      : _u(u), _v(v) {
+    // gsInfo << "expression is space ? "<<E1::Space <<"\n"; _u.print(gsInfo);
+    // GISMO_ASSERT(_u.rows() == _v.rows(),
+    //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
+    // GISMO_ASSERT(_u.cols() == _v.cols(),
+    //              "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
+  }
+
+  const gsMatrix<Scalar> &eval(const index_t k) const //todo: specialize for nb==1
+  {
+    auto A = _v.eval(k);
+    b = _u.eval(k);
+//        gsDebugVar(b);
+
+    res.noalias() = b * A;
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    _v.parse(evList);
+//        evList.add(_u);
+//        _u.data().flags |= NEED_GRAD;
+    _u.parse(evList);
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _v.rowVar(); }
+
+  void print(std::ostream &os) const {
+    os << "(";
+    _u.print(os);
+    os << " % ";
+    _v.print(os);
+    os << ")";
+  }
+};
+
+/// Frobenious product (also known as double dot product) operator for expressions
+template<typename E1, typename E2>
+EIGEN_STRONG_INLINE
+frprod3_expr<E1, E2> const frprod3(E1 const &u,
+                                   E2 const &M) {
+  return frprod3_expr<E1, E2>(u, M);
+}
+
+template<class E0, class E1, class E2>
+class ternary_expr : public _expr<ternary_expr<E0, E1, E2> > {
+  typename E0::Nested_t _u;
+  typename E1::Nested_t _v;
+  typename E2::Nested_t _w;
+ public:
+  typedef typename E1::Scalar Scalar;
+
+  explicit ternary_expr(_expr<E0> const &u,
+                        _expr<E1> const &v,
+                        _expr<E2> const &w)
+      :
+      _u(u),
+      _v(v),
+      _w(w) {
+    GISMO_ASSERT(E0::ScalarValued, "Condition must be scalar valued");
+    GISMO_ASSERT((int) E1::ScalarValued == (int) E2::ScalarValued,
+                 "Both v and w must be scalar valued (or not).");
+    GISMO_ASSERT((int) E1::ColBlocks == (int) E2::ColBlocks,
+                 "Both v and w must be colblocks (or not).");
+    GISMO_ASSERT((int) E1::Space == (int) E2::Space,
+                 "Both v and w must be space (or not), but E1::Space = "
+                     << E1::Space << " and E2::Space = " << E2::Space);
+    GISMO_ASSERT(_v.rows() == _w.rows(),
+                 "Rows of v and w differ. _v.rows() = " << _v.rows()
+                                                        << ", _w.rows() = "
+                                                        << _w.rows());
+    GISMO_ASSERT(_v.cols() == _w.cols(),
+                 "Columns of v and w differ. _v.cols() = " << _v.cols()
+                                                           << ", _w.cols() = "
+                                                           << _w.cols());
+    GISMO_ASSERT(_v.rowVar() == _w.rowVar(), "rowVar of v and w differ.");
+    GISMO_ASSERT(_v.colVar() == _w.colVar(), "colVar of v and w differ.");
+  }
+ public:
+  enum {
+    ScalarValued = E1::ScalarValued,
+    ColBlocks = E1::ColBlocks,
+    Space = E1::Space
+  }; // == E2::Space
+
+  const Temporary_t eval(const index_t k) const {
+    return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
+  }
+  // { res = eval_impl(_u,_v,_w,k); return  res;}
+
+  index_t rows() const { return _v.rows(); }
+  index_t cols() const { return _v.cols(); }
+  void parse(gsExprHelper<Scalar> &evList) const {
+    _u.parse(evList);
+    _v.parse(evList);
+    _w.parse(evList);
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
+
+// private:
+//     template<class U, class V, class W> static inline
+//     typename util::enable_if<U::ScalarValued && V::ScalarValued,AutoReturn_t>::type
+//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
+//     {
+//         gsMatrix<Scalar> res(1,1);
+// //        bool test = u.eval(k) > 0;
+//         res<<(u.eval(k) > 0 ?  v.eval(k) : w.eval(k));
+//         return res;
+//     }
+
+//     template<class U, class V, class W> static inline
+//     typename util::enable_if<U::ScalarValued && !V::ScalarValued,AutoReturn_t>::type
+//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
+//     {
+//         return u.eval(k) > 0 ? v.eval(k) : w.eval(k);
+//     }
+
+//     template<class U, class V, class W> static inline
+//     typename util::enable_if<!U::ScalarValued,gsMatrix<Scalar>>::type
+//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
+//     {
+//         GISMO_ERROR("Something went wrong");
+//     }
+};
+
+/*
+  Expression for Jacobian matrix for PDE-based parameterization construction
+*/
+template<class E>
+class jacScaledLx_expr : public _expr<jacScaledLx_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+
+ public:
+  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
+
+  jacScaledLx_expr(const E &u, const gsGeometryMap<Scalar> &G) : _u(u), _G(G) {}
+
+  mutable gsMatrix<Scalar> res, derivGeom, deriv2Geom, derivBasis, deriv2Basis;
+  mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
+  mutable gsMatrix<Scalar> commonTerm, dLxdx, dLxdy, dLydx, dLydy;
+
+//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    gsMatrix<Scalar> basis = _u.data().values[0].col(k);
+
+    derivBasis = _u.data().values[1].col(k).transpose();
+    deriv2Basis = _u.data().values[2].col(k).transpose();
+
+    derivBasis.blockTransposeInPlace(_u.dim());
+    deriv2Basis.blockTransposeInPlace(1 + _u.dim());
+
+    derivGeom = _G.data().values[1].col(k);
+    deriv2Geom = _G.data().values[2].col(k);
+
+    Scalar g11 = derivGeom(0) * derivGeom(0) + derivGeom(2) * derivGeom(2);
+    Scalar g12 = derivGeom(0) * derivGeom(1) + derivGeom(2) * derivGeom(3);
+    Scalar g22 = derivGeom(1) * derivGeom(1) + derivGeom(3) * derivGeom(3);
+
+    Scalar scaleFactor = g11 + g22;
+
+    Scalar Lx =
+        (g22 * deriv2Geom(0) + g11 * deriv2Geom(1) - 2.0 * g12 * deriv2Geom(2))
+            / scaleFactor;
+    Scalar Ly =
+        (g22 * deriv2Geom(3) + g11 * deriv2Geom(4) - 2.0 * g12 * deriv2Geom(5))
+            / scaleFactor;
+
+    dg11dx.noalias() = 2.0 * derivGeom(0) * derivBasis.row(0);
+    dg11dy.noalias() = 2.0 * derivGeom(2) * derivBasis.row(0);
+    dg22dx.noalias() = 2.0 * derivGeom(1) * derivBasis.row(1);
+    dg22dy.noalias() = 2.0 * derivGeom(3) * derivBasis.row(1);
+    dg12dx.noalias() =
+        derivGeom(1) * derivBasis.row(0) + derivGeom(0) * derivBasis.row(1);
+    dg12dy.noalias() =
+        derivGeom(3) * derivBasis.row(0) + derivGeom(2) * derivBasis.row(1);
+
+    commonTerm.noalias() = g22 * deriv2Basis.row(0) + g11 * deriv2Basis.row(1)
+        - 2.0 * g12 * deriv2Basis.row(2);
+    dLxdx.noalias() = dg22dx * deriv2Geom(0) + dg11dx * deriv2Geom(1)
+        - 2.0 * dg12dx * deriv2Geom(2) + commonTerm;
+    dLxdy.noalias() = dg22dy * deriv2Geom(0) + dg11dy * deriv2Geom(1)
+        - 2.0 * dg12dy * deriv2Geom(2);
+    dLydx.noalias() = dg22dx * deriv2Geom(3) + dg11dx * deriv2Geom(4)
+        - 2.0 * dg12dx * deriv2Geom(5);
+    dLydy.noalias() = dg22dy * deriv2Geom(3) + dg11dy * deriv2Geom(4)
+        - 2.0 * dg12dy * deriv2Geom(5) + commonTerm;
+
+    dLxdx = (dLxdx - Lx * (dg11dx + dg22dx)) / scaleFactor;
+    dLxdy = (dLxdy - Lx * (dg11dy + dg22dy)) / scaleFactor;
+    dLydx = (dLydx - Ly * (dg11dx + dg22dx)) / scaleFactor;
+    dLydy = (dLydy - Ly * (dg11dy + dg22dy)) / scaleFactor;
+
+    const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
+    res.resize(_u.cardinality(), _u.cardinality());
+//        res.setZero();
+    res.topLeftCorner(A, A).noalias() = basis * dLxdx;
+    res.topRightCorner(A, A).noalias() = basis * dLxdy;
+    res.bottomLeftCorner(A, A).noalias() = basis * dLydx;
+    res.bottomRightCorner(A, A).noalias() = basis * dLydy;
+
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_VALUE | NEED_GRAD | NEED_DERIV2;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
+  // TODO: question, what do these parameters mean?
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "jacScaledLx(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Expression for Jacobian matrix (diagonal part) for PDE-based parameterization construction
+*/
+template<class E>
+class jacScaledLxDiag_expr : public _expr<jacScaledLxDiag_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+
+ public:
+  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
+
+  jacScaledLxDiag_expr(const E &u, const gsGeometryMap<Scalar> &G)
+      : _u(u), _G(G) {}
+
+  mutable gsMatrix<Scalar> res, derivGeom, deriv2Geom, derivBasis, deriv2Basis;
+  mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
+  mutable gsMatrix<Scalar> commonTerm, dLxdx, dLydy;
+
+//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    derivBasis = _u.data().values[1].col(k).transpose();
+    deriv2Basis = _u.data().values[2].col(k).transpose();
+
+    derivBasis.blockTransposeInPlace(_u.dim());
+    deriv2Basis.blockTransposeInPlace(1 + _u.dim());
+
+    derivGeom = _G.data().values[1].col(k);
+    deriv2Geom = _G.data().values[2].col(k);
+
+    Scalar g11 = derivGeom(0) * derivGeom(0) + derivGeom(2) * derivGeom(2);
+    Scalar g12 = derivGeom(0) * derivGeom(1) + derivGeom(2) * derivGeom(3);
+    Scalar g22 = derivGeom(1) * derivGeom(1) + derivGeom(3) * derivGeom(3);
+
+    Scalar scaleFactor = g11 + g22;
+
+    Scalar Lx =
+        (g22 * deriv2Geom(0) + g11 * deriv2Geom(1) - 2.0 * g12 * deriv2Geom(2))
+            / scaleFactor;
+    Scalar Ly =
+        (g22 * deriv2Geom(3) + g11 * deriv2Geom(4) - 2.0 * g12 * deriv2Geom(5))
+            / scaleFactor;
+
+    dg11dx.noalias() = 2.0 * derivGeom(0) * derivBasis.row(0);
+    dg11dy.noalias() = 2.0 * derivGeom(2) * derivBasis.row(0);
+    dg22dx.noalias() = 2.0 * derivGeom(1) * derivBasis.row(1);
+    dg22dy.noalias() = 2.0 * derivGeom(3) * derivBasis.row(1);
+    dg12dx.noalias() =
+        derivGeom(1) * derivBasis.row(0) + derivGeom(0) * derivBasis.row(1);
+    dg12dy.noalias() =
+        derivGeom(3) * derivBasis.row(0) + derivGeom(2) * derivBasis.row(1);
+
+    commonTerm.noalias() = g22 * deriv2Basis.row(0) + g11 * deriv2Basis.row(1)
+        - 2.0 * g12 * deriv2Basis.row(2);
+    dLxdx.noalias() = dg22dx * deriv2Geom(0) + dg11dx * deriv2Geom(1)
+        - 2.0 * dg12dx * deriv2Geom(2) + commonTerm;
+    dLydy.noalias() = dg22dy * deriv2Geom(3) + dg11dy * deriv2Geom(4)
+        - 2.0 * dg12dy * deriv2Geom(5) + commonTerm;
+
+    dLxdx = (dLxdx - Lx * (dg11dx + dg22dx)) / scaleFactor;
+    dLydy = (dLydy - Ly * (dg11dy + dg22dy)) / scaleFactor;
+
+    const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
+    res.resize(_u.cardinality(), _u.cardinality());
+    res.setZero();
+    res.topLeftCorner(A, A) = (_u.data().values[0].col(k).array()
+        * dLxdx.array()).matrix().asDiagonal();
+    res.bottomRightCorner(A, A) = (_u.data().values[0].col(k).array()
+        * dLydy.array()).matrix().asDiagonal();
+
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_VALUE | NEED_GRAD | NEED_DERIV2;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
+  // TODO: question, what do these parameters mean?
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "jacScaledLxDiag(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Expression for Jacobian matrix (diagonal block) for PDE-based parameterization construction
+*/
+template<class E>
+class jacScaledLxDiagBlock_expr : public _expr<jacScaledLxDiagBlock_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+
+ public:
+  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
+
+  jacScaledLxDiagBlock_expr(const E &u, const gsGeometryMap<Scalar> &G)
+      : _u(u), _G(G) {}
+
+  mutable gsMatrix<Scalar> res, basis, derivGeom, deriv2Geom, derivBasis,
+      deriv2Basis;
+  mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
+  mutable gsMatrix<Scalar> commonTerm, dLxdx, dLydy;
+
+//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+//        basis = _u.data().values[0].col(k);
+
+    derivBasis = _u.data().values[1].col(k).transpose();
+    deriv2Basis = _u.data().values[2].col(k).transpose();
+
+    derivBasis.blockTransposeInPlace(_u.dim());
+    deriv2Basis.blockTransposeInPlace(1 + _u.dim());
+
+    derivGeom = _G.data().values[1].col(k);
+    deriv2Geom = _G.data().values[2].col(k);
+
+    Scalar g11 = derivGeom(0) * derivGeom(0) + derivGeom(2) * derivGeom(2);
+    Scalar g12 = derivGeom(0) * derivGeom(1) + derivGeom(2) * derivGeom(3);
+    Scalar g22 = derivGeom(1) * derivGeom(1) + derivGeom(3) * derivGeom(3);
+    Scalar scaleFactor = g11 + g22;
+
+    Scalar Lx =
+        (g22 * deriv2Geom(0) + g11 * deriv2Geom(1) - 2.0 * g12 * deriv2Geom(2))
+            / scaleFactor;
+    Scalar Ly =
+        (g22 * deriv2Geom(3) + g11 * deriv2Geom(4) - 2.0 * g12 * deriv2Geom(5))
+            / scaleFactor;
+
+    dg11dx.noalias() = 2.0 * derivGeom(0) * derivBasis.row(0);
+    dg11dy.noalias() = 2.0 * derivGeom(2) * derivBasis.row(0);
+    dg22dx.noalias() = 2.0 * derivGeom(1) * derivBasis.row(1);
+    dg22dy.noalias() = 2.0 * derivGeom(3) * derivBasis.row(1);
+    dg12dx.noalias() =
+        derivGeom(1) * derivBasis.row(0) + derivGeom(0) * derivBasis.row(1);
+    dg12dy.noalias() =
+        derivGeom(3) * derivBasis.row(0) + derivGeom(2) * derivBasis.row(1);
+
+    commonTerm.noalias() = g22 * deriv2Basis.row(0) + g11 * deriv2Basis.row(1)
+        - 2.0 * g12 * deriv2Basis.row(2);
+    dLxdx.noalias() = dg22dx * deriv2Geom(0) + dg11dx * deriv2Geom(1)
+        - 2.0 * dg12dx * deriv2Geom(2) + commonTerm;
+    dLydy.noalias() = dg22dy * deriv2Geom(3) + dg11dy * deriv2Geom(4)
+        - 2.0 * dg12dy * deriv2Geom(5) + commonTerm;
+
+    dLxdx = (dLxdx - Lx * (dg11dx + dg22dx)) / scaleFactor;
+    dLydy = (dLydy - Ly * (dg11dy + dg22dy)) / scaleFactor;
+
+    const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
+    res.resize(_u.cardinality(), _u.cardinality());
+    res.setZero();
+    res.template topLeftCorner(A, A).noalias() =
+        _u.data().values[0].col(k) * dLxdx;
+    res.template bottomRightCorner(A, A).noalias() =
+        _u.data().values[0].col(k) * dLydy;
+
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_VALUE | NEED_GRAD | NEED_DERIV2;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
+  // TODO: question, what do these parameters mean?
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "jacScaledLxDiagBlock(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Expression for Jacobian matrix (in H1 space) for PDE-based parameterization construction
+*/
+template<class E>
+class jacScaledLxH1_expr : public _expr<jacScaledLxH1_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+
+ public:
+  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
+
+  jacScaledLxH1_expr(const E &u, const gsGeometryMap<Scalar> &G)
+      : _u(u), _G(G) {}
+
+  mutable gsMatrix<Scalar> res, derivBasis;
+
+//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    gsMatrix<Scalar> jacMat = _G.data().values[1].reshapeCol(k,
+                                                             _G.data().dim.first,
+                                                             _G.data().dim.second);
+    gsMatrix<Scalar> invJacMat = jacMat.inverse();
+
+    derivBasis = _u.data().values[1].col(k).transpose();
+    derivBasis.blockTransposeInPlace(_u.dim());
+    gsMatrix<Scalar> invJacHatG;
+    invJacHatG.noalias() = invJacMat * derivBasis;
+
+    const index_t N = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
+    gsMatrix<Scalar> jacdLxdx(N, N);
+    gsMatrix<Scalar> jacdLxdy(N, N);
+    gsMatrix<Scalar> jacdLydx(N, N);
+    gsMatrix<Scalar> jacdLydy(N, N);
+
+    gsMatrix<> temp(2, N);
+    for (auto i = 0; i < N; ++i) {
+      // for x-direction
+      temp.row(0).noalias() = invJacHatG(0, i) * invJacHatG.row(0);
+      temp.row(1).noalias() = invJacHatG(1, i) * invJacHatG.row(0);
+      gsMatrix<Scalar> dinvJacdx(2, 2);
+      dinvJacdx.row(0).noalias() = invJacHatG(0, i) * invJacMat.row(0);
+      dinvJacdx.row(1).noalias() = invJacHatG(1, i) * invJacMat.row(0);
+      jacdLxdx.col(i).noalias() = -temp.transpose() * invJacMat.col(0)
+          - invJacHatG.transpose() * dinvJacdx.col(0);
+      jacdLydx.col(i).noalias() = -temp.transpose() * invJacMat.col(1)
+          - invJacHatG.transpose() * dinvJacdx.col(1);
+
+      // for y-direction
+      temp.row(0).noalias() = invJacHatG(0, i) * invJacHatG.row(1);
+      temp.row(1).noalias() = invJacHatG(1, i) * invJacHatG.row(1);
+      gsMatrix<Scalar> dinvJacdy(2, 2);
+      dinvJacdy.row(0).noalias() = invJacHatG(0, i) * invJacMat.row(1);
+      dinvJacdy.row(1).noalias() = invJacHatG(1, i) * invJacMat.row(1);
+      jacdLxdy.col(i).noalias() = -temp.transpose() * invJacMat.col(0)
+          - invJacHatG.transpose() * dinvJacdy.col(0);
+      jacdLydy.col(i).noalias() = -temp.transpose() * invJacMat.col(1)
+          - invJacHatG.transpose() * dinvJacdy.col(1);
+    }
+
+    res.resize(_u.cardinality(), _u.cardinality());
+    res.setZero();
+    res.template topLeftCorner(N, N).noalias() = jacdLxdx;
+    res.template topRightCorner(N, N).noalias() = jacdLxdy;
+    res.template bottomLeftCorner(N, N).noalias() = jacdLydx;
+    res.template bottomRightCorner(N, N).noalias() = jacdLydy;
+
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_GRAD;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
+  // TODO: question, what do these parameters mean?
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "jacScaledLx(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Expression for Jacobian matrix (in H1 space) for PDE-based parameterization construction
+*/
+template<class E>
+class jacScaledLxH1DiagBlock_expr
+    : public _expr<jacScaledLxH1DiagBlock_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+
+ public:
+  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
+
+  jacScaledLxH1DiagBlock_expr(const E &u, const gsGeometryMap<Scalar> &G)
+      : _u(u), _G(G) {}
+
+  mutable gsMatrix<Scalar> res, derivBasis;
+
+//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    gsMatrix<Scalar> jacMat = _G.data().values[1].reshapeCol(k,
+                                                             _G.data().dim.first,
+                                                             _G.data().dim.second);
+    gsMatrix<Scalar> invJacMat = jacMat.inverse();
+
+    derivBasis = _u.data().values[1].col(k).transpose();
+    derivBasis.blockTransposeInPlace(_u.dim());
+    gsMatrix<Scalar> invJacHatG = invJacMat * derivBasis;
+
+    const index_t N = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
+    gsMatrix<Scalar> jacdLxdx(N, N);
+//        gsMatrix<Scalar> jacdLxdy(N,N);
+//        gsMatrix<Scalar> jacdLydx(N,N);
+    gsMatrix<Scalar> jacdLydy(N, N);
+
+    gsMatrix<> temp(2, N);
+    for (auto i = 0; i < N; ++i) {
+      // for x-direction
+      temp.row(0) = invJacHatG(0, i) * invJacHatG.row(0);
+      temp.row(1) = invJacHatG(1, i) * invJacHatG.row(0);
+      gsMatrix<Scalar> dinvJacdx(2, 2);
+      dinvJacdx.row(0) = invJacHatG(0, i) * invJacMat.row(0);
+      dinvJacdx.row(1) = invJacHatG(1, i) * invJacMat.row(0);
+      jacdLxdx.col(i) = -temp.transpose() * invJacMat.col(0)
+          - invJacHatG.transpose() * dinvJacdx.col(0);
+//            jacdLydx.col(i) = -temp.transpose()*invJacMat.col(1) - invJacHatG.transpose()*dinvJacdx.col(1);
+
+      // for y-direction
+      temp.row(0) = invJacHatG(0, i) * invJacHatG.row(1);
+      temp.row(1) = invJacHatG(1, i) * invJacHatG.row(1);
+      gsMatrix<Scalar> dinvJacdy(2, 2);
+      dinvJacdy.row(0) = invJacHatG(0, i) * invJacMat.row(1);
+      dinvJacdy.row(1) = invJacHatG(1, i) * invJacMat.row(1);
+//            jacdLxdy.col(i) = -temp.transpose()*invJacMat.col(0) - invJacHatG.transpose()*dinvJacdy.col(0);
+      jacdLydy.col(i) = -temp.transpose() * invJacMat.col(1)
+          - invJacHatG.transpose() * dinvJacdy.col(1);
+    }
+
+    res.resize(_u.cardinality(), _u.cardinality());
+    res.setZero();
+    res.template topLeftCorner(N, N) = jacdLxdx;
+//        res.template topRightCorner(N,N) = jacdLxdy;
+//        res.template bottomLeftCorner(N,N) = jacdLydx;
+    res.template bottomRightCorner(N, N) = jacdLydy;
+
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_GRAD;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
+  // TODO: question, what do these parameters mean?
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "jacScaledLx(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+
+  Expression for the product of the jacob of space and matrix A. Return term
+  is a column vector (d*n x 1). The result should be the same as the result
+  from jac(space) % A, whereas avoids redundant multiply with zero-value components.
+
+ For 2D case:
+ frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{11}*dN_2/dxi_1,
+ a_{12}*dN_2/dxi_2,...,a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_2, a_{21}*dN_1/dxi_1,
+ a_{22}*dN_1/dxi_2, a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_2,...,a_{21}*dN_n/dxi_1,
+ a_{22}*dN_n/dxi_2]
+ For 3D case:
+ frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{13}*dN_1/dxi_3,...
+ a_{11}*dN_2/dxi_1, a_{12}*dN_2/dxi_1, a_{13}*dN_2/dxi_3,...,
+ a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_1, a_{13}*dN_n/dxi_3,
+ a_{21}*dN_1/dxi_1, a_{22}*dN_1/dxi_2, a_{23}*dN_1/dxi_3,...
+ a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_1, a_{23}*dN_2/dxi_3,...,
+ a_{21}*dN_n/dxi_1, a_{22}*dN_n/dxi_1, a_{23}*dN_n/dxi_3,
+ a_{31}*dN_1/dxi_1, a_{32}*dN_1/dxi_2, a_{33}*dN_1/dxi_3,...
+ a_{31}*dN_2/dxi_1, a_{32}*dN_2/dxi_1, a_{33}*dN_2/dxi_3,...,
+ a_{31}*dN_n/dxi_1, a_{32}*dN_n/dxi_1, a_{33}*dN_n/dxi_3,]
+
+NOTE: _u should be a space, _v should NOT be a space (fix with assert)
+
+ */
+template<typename E1, typename E2>
+class frprod2_expr : public _expr<frprod2_expr<E1, E2> > {
+ public:
+  typedef typename E2::Scalar Scalar;
+  enum { ScalarValued = 0, Space = E1::Space, ColBlocks = 0 };
+
+ private:
+  typename E1::Nested_t _u;
+  typename E2::Nested_t _v;
+
+  mutable gsMatrix<Scalar> res, bGrads;
+
+ public:
+
+  frprod2_expr(_expr<E1> const &u, _expr<E2> const &v)
+      : _u(u), _v(v) {
+    // gsInfo << "expression is space ? "<<E1::Space <<"\n"; _u.print(gsInfo);
+    // GISMO_ASSERT(_u.rows() == _v.rows(),
+    //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
+    // GISMO_ASSERT(_u.cols() == _v.cols(),
+    //              "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
+  }
+
+  const gsMatrix<Scalar> &eval(const index_t k) const //todo: specialize for nb==1
+  {
+    auto A = _v.eval(k);
+    bGrads = _u.data().values[1].col(k).transpose();
+    bGrads.blockTransposeInPlace(_u.dim());
+    res.noalias() = A * bGrads;
+    res.transposeInPlace();
+    res.resize(1, _u.cardinality());
+//        res.reshaped(1,_u.cardinality());
+    res.transposeInPlace();
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    _v.parse(evList);
+    evList.add(_u);
+    _u.data().flags |= NEED_GRAD;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _v.rowVar(); }
+
+  void print(std::ostream &os) const {
+    os << "(";
+    _u.print(os);
+    os << " % ";
+    _v.print(os);
+    os << ")";
+  }
+};
+
+/// jacobian matrix of scaled Lx for PDE-based parameterization construction
+template<class E>
+EIGEN_STRONG_INLINE
+jacScaledLx_expr<E> jacScaledLx(const E &u,
+                                const gsGeometryMap<typename E::Scalar> &G) {
+  return jacScaledLx_expr<E>(u, G);
+}
+
+/// diagonal part of jacobian matrix of scaled Lx for PDE-based parameterization construction
+template<class E>
+EIGEN_STRONG_INLINE
+jacScaledLxDiag_expr<E> jacScaledLxDiag(const E &u,
+                                        const gsGeometryMap<typename E::Scalar> &G) {
+  return jacScaledLxDiag_expr<E>(u, G);
+}
+
+/// diagonal block part of jacobian matrix of scaled Lx for PDE-based parameterization construction
+template<class E>
+EIGEN_STRONG_INLINE
+jacScaledLxDiagBlock_expr<E> jacScaledLxDiagBlock(const E &u,
+                                                  const gsGeometryMap<typename E::Scalar> &G) {
+  return jacScaledLxDiagBlock_expr<E>(u, G);
+}
+
+/// jacobian matrix of scaled Lx (in H1 space) for PDE-based parameterization construction
+template<class E>
+EIGEN_STRONG_INLINE
+jacScaledLxH1_expr<E> jacScaledLxH1(const E &u,
+                                    const gsGeometryMap<typename E::Scalar> &G) {
+  return jacScaledLxH1_expr<E>(u, G);
+}
+
+/// jacobian matrix of scaled Lx (in H1 space) for PDE-based parameterization construction
+template<class E>
+EIGEN_STRONG_INLINE
+jacScaledLxH1DiagBlock_expr<E> jacScaledLxH1DiagBlock(const E &u,
+                                                      const gsGeometryMap<
+                                                          typename E::Scalar> &G) {
+  return jacScaledLxH1DiagBlock_expr<E>(u, G);
+}
+
+// Frobenious product (also known as double dot product) operator for expressions
+template<typename E1, typename E2>
+EIGEN_STRONG_INLINE
+frprod2_expr<E1, E2> const frprod2(E1 const &u,
+                                   E2 const &M) {
+  return frprod2_expr<E1, E2>(u, M);
+}
+
+/// Ternary ternary_expr
+template<class E0, class E1, class E2>
+EIGEN_STRONG_INLINE
+ternary_expr<E0, E1, E2> ternary(const E0 &u,
+                                 const E1 &v,
+                                 const E2 &w) {
+  return ternary_expr<E0, E1, E2>(u, v, w);
+}
+} // namespace expr
 
 }// namespace gismo
