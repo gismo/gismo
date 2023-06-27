@@ -20,12 +20,8 @@
 
 #include <gismo.h>
 #include <gsHLBFGS/gsHLBFGS.h>
-//#include <stdexcept>  // std::invalid_argument
-//#include <gsPreAA/gsPreAA.h>
-//#include <gsCore/gsFuncData.h>
-//#include <gsAssembler/gsDirichletValues.h>
-//#include <gsStructuralAnalysis/gsStaticNewton.h>
 //#include <gsLBFGSpp/gsLBFGSpp.h>
+//#include <gsPreAA/gsPreAA.h>
 
 using namespace gismo;
 
