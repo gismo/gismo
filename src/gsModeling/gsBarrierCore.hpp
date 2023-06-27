@@ -71,6 +71,15 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   // Preconditioner type for AA: 0: NO preconditioning, 1: Full Jacobian preconditioner, 2: Diagonal Jacobian preconditioner, 3: Diagonal Block Jacobian preconditioner
   options.addInt("AAPreconditionType", "Preconditioner type for AA", 0);
 
+  // Update the preconditioner every N_update steps
+  options.addInt("N_update", "update preconditioner every N_update steps", 10);
+
+  // window size m for our preconditioned AA solver
+  options.addInt("AAwindowsize", "window size for preconditioned AA solver", 5);
+
+  // need improve the parameterization quality for PDE-based method?
+  options.addSwitch("needPDEH1", "improve quality by H1 discrezation?", true);
+
   return options;
 }
 
@@ -1014,13 +1023,18 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   // get initial guess vector
   gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
 
+  std::string solverSetting = "Parameters setting:\n";
+  solverSetting += "\t\t\t Window size = " +
+      std::to_string(options.getInt("AAwindowsize")) + "\n";
+  solverSetting += "\t\t\t Update preconditioner every " +
+      std::to_string(options.getInt("N_update")) + " steps \n";
+  solverSetting += "\t\t\t Preconditioner type: " +
+      std::to_string(options.getInt("AAPreconditionType")) + "\n";
+  solverSetting += "\t\t\t Need improve by H1?  " +
+      std::to_string(options.getSwitch("needPDEH1")) + "\n";
+  verboseLog(solverSetting, options.askInt("Verbose", 0));
+
   verboseLog("PDE-based parameterization construction ...\n",
-             options.askInt("Verbose", 0));
-  // TODO: need to change by options
-  verboseLog("Parameters setting: window size = m \n"
-             "\t\t\t update preconditioner every N_update steps \n"
-             "\t\t\t Preconditioner = Full Jacobian \n"
-             "\t\t\t need improve by H1? = Yes \n",
              options.askInt("Verbose", 0));
 
   gsExprEvaluator<T> evaluator;
