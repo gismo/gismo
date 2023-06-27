@@ -242,7 +242,7 @@ gsBarrierCore<d, T>::computePenaltyPatch2(const gsMultiPatch<T> &mp,
   gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
 
   gsObjPenaltyPt2<d, T> objPenaltyPt(mp, mapper);
-  objPenaltyPt.setEps(options.getReal("ff_Delta") * scaledArea);
+  objPenaltyPt.setEps(options.askReal("penaltyFactor", 0.01) * scaledArea);
 
   gsOptionList thisOptions = options;
   thisOptions.addReal("qi_lambda1", "Sets the lambda_1 value for Emips", 1.0);
@@ -867,7 +867,8 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
 
   // Calculation of Ewinslow and Euniform
   auto Ewinslow = jac(G).sqNorm() / chi;
-  auto Euniform = chi + 1.0 / chi;
+//  auto Euniform = chi + 1.0 / chi;
+  auto Euniform = pow(jac(G).det(), 2.0);
 
   // Evaluate the integral and return
   return m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
@@ -897,7 +898,8 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
       pow(jac(G).det(), 2.0) / pow(chi, 2.0);
 
   // Compute Euniform
-  auto Euniform = chi + 1.0 / chi;
+//  auto Euniform = chi + 1.0 / chi;
+  auto Euniform = pow(jac(G).det(), 2.0);
 
   // Compute and return the integral
   return m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
@@ -947,7 +949,8 @@ gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
       Ewinslow.val() * chip * derJacDet);
 
   // Define the derivative of Euniform
-  auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
+//  auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
+  auto derEuniform = 2.0 * jac(G).det() * derJacDet;
 
   // Assemble the system and set the result
   m_assembler.initSystem();
@@ -1002,7 +1005,8 @@ gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
   auto derEwinslow = derJacFrob2 * pow(jac(G).det(), 2) / pow(chi, 2)
       + jacFrobNorm2 / pow(chi, 2)
           * (jac(G).det() - chip / chi * pow(jac(G).det(), 2)) * derJacDet;
-  auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
+//  auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
+  auto derEuniform = 2.0 * jac(G).det() * derJacDet;
 
   // Initialize and assemble the system
   m_assembler.initSystem();
