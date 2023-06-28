@@ -96,6 +96,8 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
                    10000);
   ev.options() = options;
 
+  gsInfo << "\n Parameterization quality info (only values for quadrature "
+            "points). \n More information please refer to paraview files! \n";
 //   Scaled Jacobian metric
   T minScaledJacobian = 0.0, maxScaledJacobian = 0.0,
       integralScaledJacobian = 0.0;
@@ -117,8 +119,6 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
     integralScaledJacobian = ev.template integral(metric_ScaledJacobian);
   }
 
-  gsInfo << "\n Parameterization quality info (only values for quadrature "
-            "points). \n More information please refer to paraview files! \n";
   gsInfo << " Scaled Jacobian:    min.: " << minScaledJacobian
          << "   max: " << maxScaledJacobian
          << "     integral: " << integralScaledJacobian / mp.nPatches()
