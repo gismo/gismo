@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
   bool isBRep = false; // Input data is B-Rep
 
   // Constants for input file and description
-  std::string INPUT_FILE = "planar/TUDflame.xml";
+  std::string INPUT_FILE = "breps/other/TUDflame.xml";
   const std::string DESCRIPTION = "Hi, give me a file (eg: .xml) containing multi-patch and I will try to parameterize it!";
 
   // Read input from command line arguments

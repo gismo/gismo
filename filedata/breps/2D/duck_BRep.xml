@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <Geometry type="BSpline">
+   <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.16 0.26 0.36 0.5 0.64 0.74 0.84 1 1 1 </KnotVector>
+   </Basis>
+  <coefs geoDim="2">
+  30 80
+  22.8 90.4 
+  11.3 115.8
+  5.8 146.6
+  0.2 172.3
+  1.6 203.6
+  8 230
+  13.2 251.9
+  26 288.6
+  40 292
+  </coefs>
+ </Geometry>
+ <Geometry type="BSpline">
+   <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.16 0.26 0.36 0.5 0.64 0.74 0.84 1 1 1 </KnotVector>
+   </Basis>
+  <coefs geoDim="2">
+  415 3
+  467.1 21.2
+  481.6 103.6
+  463.5 160.9
+  395 205.8
+  375.8 261.7
+  480.5 299.5
+  438 327.4
+  434.3 382
+  445 405
+  </coefs>
+ </Geometry>
+ <Geometry type="BSpline">
+   <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.2 0.35 0.5 0.65 0.8 1 1 1 </KnotVector>
+   </Basis>
+  <coefs geoDim="2">
+  40 292
+  63.6 253.3
+  204.7 199.9
+  190.9 286.5
+  173.9 370.3
+  269.7 501.4
+  390.4 363.6
+  445 405
+  </coefs>
+ </Geometry>
+ <Geometry type="BSpline">
+   <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.2 0.35 0.5 0.65 0.8 1 1 1 </KnotVector>
+   </Basis>
+  <coefs geoDim="2">
+  30 80
+  92.3 65.1
+  146.8 59
+  203.2 51.8
+  267.6 35.2
+  317.5 20.1
+  395.4 13.4
+  415 3
+  </coefs>
+ </Geometry>
+
+</xml>
+
+
+  
+  
