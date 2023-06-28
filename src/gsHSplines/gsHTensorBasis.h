@@ -327,8 +327,13 @@ public:
         freeAll( m_bases );
     }
 
+    /// Returns true if levels are assigned manually
     bool manualLevels() const { return m_manualLevels; }
 
+    /// Returns the number of levels
+    index_t numLevels() const { return m_bases.size(); }
+
+    /// Adds a level, only if manual levels are activated.
     void addLevel( const gsTensorBSplineBasis<d, T>& next_basis);
     
     /// \brief Inserts a domain into the basis

@@ -182,9 +182,25 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
 
     //tp_node->append_attribute( makeAttribute( "levels",2 ,data )); // deprecated
   
-    // Write the component bases
-    gsXmlNode * tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
-    tp_node->append_node(tmp);
+    gsXmlNode * tmp;
+    if (obj.manualLevels())
+    {
+        tp_node->append_attribute( makeAttribute("manualLevels","true", data) );
+        for (index_t l = 0; l != obj.numLevels(); l++)
+        {
+            tmp = putTensorBasisToXml(obj.tensorLevel(l), data);
+            tmp->append_attribute( makeAttribute("level", to_string(l), data ) );
+            tp_node->append_node(tmp);
+        }
+    }
+    else
+    {
+        tp_node->append_attribute( makeAttribute("manualLevels","false", data) );
+        // Write the component bases
+        tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
+        tp_node->append_node(tmp);
+    }
+
     
     //Output boxes
     gsMatrix<index_t> box(1,2*d);
