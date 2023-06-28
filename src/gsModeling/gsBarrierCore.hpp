@@ -316,6 +316,13 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
   for (index_t it = 0; it < MAX_ITER; ++it) {
     T delta = pow(0.1, it) * 5e-2 * scaledArea; // parameter delta
     objFoldoverFree.setDelta(delta);
+
+    // TODO: check here ...
+    std::vector<T> uuu;
+    std::copy(initialGuessVector.begin(), initialGuessVector.end(), std::back_inserter(uuu));
+    if (abs(objFoldoverFree.evalObj(uuu)) < 1e-5)
+      return;
+
     optFoldoverFree.solve(initialGuessVector);
 
     Efoldover = optFoldoverFree.objective();
