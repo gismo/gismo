@@ -376,6 +376,8 @@ public:
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
 
+    void quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, std::vector<gsVector<T> > & cWeights);
+
     /// \brief Assembles the Jacobian matrix of the expression \a args with
     // respect to the solution \a u
     template<class expr> void assembleJacobian(const expr residual, solution & u);
@@ -1186,6 +1188,78 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
     m_matrix.makeCompressed();
 }
+
+template<class T>
+void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, std::vector<gsVector<T> > & cWeights)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
+
+    gsVector<T> quWeights; // quadrature weights
+    _eval ee(m_matrix, m_rhs, quWeights);
+    const index_t elim = m_options.getInt("DirichletStrategy");
+    ee.setElim(dirichlet::elimination==elim);
+
+    std::vector<gsMatrix<T> > cPoints( m_exprdata->multiBasis().nBases() );
+    std::vector<gsVector<T> > cWeights( m_exprdata->multiBasis().nBases() );
+
+    // Note: omp thread will loop over all patches and will work on Ep/nt
+    // elements, where Ep is the elements on the patch.
+    index_t count = 0;
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    {
+        auto & bb = m_exprdata->multiBasis().basis(patchInd);
+
+        QuRule = gsQuadrature::getPtr(bb, m_options);
+        const index_t numNodes = QuRule->numNodes();
+
+        cPoints[patchInd].resize(bb.domainDim(), bb.numElements() * numNodes );
+
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt = bb.makeDomainIterator();
+        m_exprdata->getElement().set(*domIt,quWeights);
+
+        // Start iteration over elements of patchInd
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
+        for (; domIt->good(); domIt->next() )
+#       endif
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            cWeights[patchInd].segment(count, numNodes) = quWeights;
+            cPoints[patchInd].middleCols(count, numNodes) = m_exprdata->points();
+            count += numNodes;
+        }
+    }
+}//omp parallel
+
+    index_t sz = 0;
+    for (size_t i = 0; i!= cPoints.size(); ++i)
+        sz += cPoints[i].cols();
+        
+    m_matrix = gsSparseMatrix<T>(sz, numDofs());
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    {
+
+
+    }
+    
+
+    m_matrix.makeCompressed();
+}
+
 
 
 } //namespace gismo
