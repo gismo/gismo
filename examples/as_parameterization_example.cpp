@@ -106,17 +106,17 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
         jac(G).det() / (jac(G)[0].norm() * jac(G)[1].norm());
     ev.writeParaview(metric_ScaledJacobian, G,
                      filename + "_ScaledJacobian");
-    minScaledJacobian = ev.template min(metric_ScaledJacobian);
-    maxScaledJacobian = ev.template max(metric_ScaledJacobian);
-    integralScaledJacobian = ev.template integral(metric_ScaledJacobian);
+    minScaledJacobian = ev.min(metric_ScaledJacobian);
+    maxScaledJacobian = ev.max(metric_ScaledJacobian);
+    integralScaledJacobian = ev.integral(metric_ScaledJacobian);
   } else if (mdim == 3) {
     auto metric_ScaledJacobian = jac(G).det() /
         (jac(G)[0].norm() * jac(G)[1].norm() *
             jac(G)[2].norm());
     ev.writeParaview(metric_ScaledJacobian, G, filename + "_ScaledJacobian");
-    minScaledJacobian = ev.template min(metric_ScaledJacobian);
-    maxScaledJacobian = ev.template max(metric_ScaledJacobian);
-    integralScaledJacobian = ev.template integral(metric_ScaledJacobian);
+    minScaledJacobian = ev.min(metric_ScaledJacobian);
+    maxScaledJacobian = ev.max(metric_ScaledJacobian);
+    integralScaledJacobian = ev.integral(metric_ScaledJacobian);
   }
 
   gsInfo << " Scaled Jacobian:    min.: " << minScaledJacobian
@@ -131,9 +131,9 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
   auto metric_Uniformity = pow((jac(G).det() - area.val()) / area.val(), 2);
   ev.writeParaview(metric_Uniformity, G, filename + "_Uniformity");
 
-  T minUniformity = ev.template min(metric_Uniformity);
-  T maxUniformity = ev.template max(metric_Uniformity);
-  T integralUniformity = ev.template integral(metric_Uniformity);
+  T minUniformity = ev.min(metric_Uniformity);
+  T maxUniformity = ev.max(metric_Uniformity);
+  T integralUniformity = ev.integral(metric_Uniformity);
   gsInfo << " Uniformity:    min.: " << minUniformity
          << "    max: " << maxUniformity
          << "    integral: " << integralUniformity / mp.nPatches() << "\n";
