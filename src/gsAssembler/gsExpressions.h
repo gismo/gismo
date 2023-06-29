@@ -136,7 +136,7 @@ template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class E> class ppart_expr;
-template<class E> class exponent_expr;
+template<class E> class exp_expr;
 template<class E> class ppartval_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
@@ -246,8 +246,8 @@ public:
     { return sign_expr<E>(static_cast<E const&>(*this), tolerance); }
 
     /// Returns exp(expression)
-    exponent_expr<E> exponent() const
-    { return exponent_expr<E>(static_cast<E const&>(*this)); }
+    exp_expr<E> exp() const
+    { return exp_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the expression's positive part
     ppart_expr<E> ppart() const
@@ -2389,17 +2389,17 @@ public:
 };
 
 /**
-   Expression for the exponent of expression
+   Expression for the exponentiation of a given expression.
 */
 template<class E>
-class exponent_expr : public _expr<exponent_expr<E> >
+class exp_expr : public _expr<exp_expr<E> >
 {
   typename E::Nested_t _u;
  public:
   typedef typename E::Scalar Scalar;
   enum {ScalarValued = 1, Space = E::Space, ColBlocks= 0};
 
-  exponent_expr(_expr<E> const& u) : _u(u) { }
+  exp_expr(_expr<E> const& u) : _u(u) { }
 
   Scalar eval(const index_t k) const
   {
@@ -2418,7 +2418,7 @@ class exponent_expr : public _expr<exponent_expr<E> >
   const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
   const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
-  void print(std::ostream &os) const { os<<"exponent("; _u.print(os); os <<")"; }
+  void print(std::ostream &os) const { os<<"exp("; _u.print(os); os <<")"; }
 };
 
 /**

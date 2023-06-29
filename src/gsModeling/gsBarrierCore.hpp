@@ -862,7 +862,7 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
   auto eps = m_evaluator.getVariable(epsilon);
 
   // Calculation of chi with ternary operation
-  auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
+  auto chiPPart = eps * ((jac(G).det() - eps.val()).exp());
   auto chi =
       ternary(eps.val() - jac(G).det(), chiPPart.val(), jac(G).det().val());
 
@@ -890,7 +890,7 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
   auto eps = m_evaluator.getVariable(epsilon);
 
   // Compute chi part and chi
-  auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
+  auto chiPPart = eps * ((jac(G).det() - eps.val()).exp());
   auto chi =
       ternary(eps.val() - jac(G).det(), chiPPart.val(), jac(G).det().val());
 
@@ -939,7 +939,7 @@ gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
   auto unit = m_evaluator.getVariable(unity);
 
   // Define chi and its derivative chip
-  auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
+  auto chiPPart = eps * ((jac(G).det() - eps.val()).exp());
   auto chi =
       ternary(eps.val() - jac(G).det(), chiPPart.val(), jac(G).det().val());
   auto chip = ternary(eps.val() - jac(G).det(), chiPPart.val(), unit.val());
@@ -990,7 +990,7 @@ gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
   auto unit = m_evaluator.getVariable(unityFunction);
 
   // Compute the chi part
-  auto chiPPart = eps * ((jac(G).det() - eps.val()).exponent());
+  auto chiPPart = eps * ((jac(G).det() - eps.val()).exp());
 
   // Ternary operation to compute chi and chip
   auto chi =
