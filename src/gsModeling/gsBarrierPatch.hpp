@@ -122,7 +122,7 @@ void gsBarrierPatch<d, T>::compute()
     case 0:
     {
       // Construct analysis-suitable parameterization piecewise.
-      for (auto iptch = 0; iptch < m_mp.nPatches(); ++iptch)
+      for (size_t iptch = 0; iptch < m_mp.nPatches(); ++iptch)
       {
         gsInfo << "Parameterizing " << iptch
                << "-th patch. Total number of patches is "
