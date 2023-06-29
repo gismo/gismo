@@ -1,4 +1,4 @@
-/** @file gsAnalysisSuitableParameterization_example.cpp
+/** @file as_parameterization_example.cpp
 
     @brief Analysis-suitable parameterization example.
 
