@@ -1,4 +1,4 @@
-/** @file gsReadBrep.cpp
+/** @file gsReadOcct.cpp
 
     @brief Reading OpenCascade .brep files
 
@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsOpenCascade/gsReadBrep.h>
+#include <gsOpenCascade/gsReadOcct.h>
 
 
 #include <TopoDS.hxx>
@@ -82,6 +82,9 @@
 
 #include <StlAPI_Writer.hxx>
 #include <VrmlAPI_Writer.hxx>
+
+
+#define gsEndl std::endl
 
 namespace gismo {
 
@@ -674,3 +677,4 @@ bool readGeom2d_BSplineCurve( const opencascade::handle<Geom2d_BSplineCurve> & b
 
 }// namespace gismo
 
+#undef gsEndl
