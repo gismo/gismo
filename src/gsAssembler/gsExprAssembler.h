@@ -1208,8 +1208,8 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     const index_t elim = m_options.getInt("DirichletStrategy");
     ee.setElim(dirichlet::elimination==elim);
 
-    std::vector<gsMatrix<T> > cPoints( m_exprdata->multiBasis().nBases() );
-    std::vector<gsVector<T> > cWeights( m_exprdata->multiBasis().nBases() );
+    cPoints.resize( m_exprdata->multiBasis().nBases() );
+    cWeights.resize( m_exprdata->multiBasis().nBases() );
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
