@@ -317,12 +317,6 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
     T delta = pow(0.1, it) * 5e-2 * scaledArea; // parameter delta
     objFoldoverFree.setDelta(delta);
 
-    // TODO: check here ...
-    std::vector<T> uuu;
-    std::copy(initialGuessVector.begin(), initialGuessVector.end(), std::back_inserter(uuu));
-    if (abs(objFoldoverFree.evalObj(uuu)) < 1e-5)
-      return;
-
     optFoldoverFree.solve(initialGuessVector);
 
     Efoldover = optFoldoverFree.objective();
@@ -408,7 +402,7 @@ void gsObjFoldoverFree<d, T>::gradObj_into(const gsAsConstVector<T> &u,
   geometryMap G = m_assembler.getMap(m_mp);
 
   // Only call these once if their results don't change.
-  static const space space1 = m_assembler.getSpace(m_mb, d);
+  space space1 = m_assembler.getSpace(m_mb, d);
   space1.setupMapper(m_mapper);
 
   // |J|' w.r.t. physical coordinates x and y
