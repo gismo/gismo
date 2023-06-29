@@ -117,10 +117,10 @@ T gsBarrierCore<d, T>::computeAreaBoundary(const gsMultiPatch<T> &mp) {
 }
 
 enum class ParamMethod {
-  BarrierPatch,
+  PDEPatch,
   PenaltyPatch,
   PenaltyPatch2,
-  PDEPatch,
+  BarrierPatch,
   VariationalHarmonicPatch,
   // Add new methods here...
 };
@@ -136,33 +136,54 @@ gsMultiPatch<T> gsBarrierCore<d, T>::compute(const gsMultiPatch<T> &mp,
 
   switch (method) {
     case ParamMethod::PenaltyPatch: {
+#ifdef gsHLBFGS_ENABLED
       result = computePenaltyPatch(mp, mapper, options);
+#else
+      GISMO_ERROR("PenaltyPatch not available without gsHLBFGS. Please "
+                  "compile with gsHLBGFS enabled");
+#endif
       break;
     }
     case ParamMethod::PenaltyPatch2: {
+#ifdef gsHLBFGS_ENABLED
       result = computePenaltyPatch2(mp, mapper, options);
+#else
+      GISMO_ERROR("PenaltyPatch2 not available without gsHLBFGS. Please "
+                  "compile with gsHLBGFS enabled");
+#endif
       break;
     }
-    case ParamMethod::PDEPatch: {
-      result = computePDEPatch(mp, mapper, options);
+    case ParamMethod::BarrierPatch: {
+#ifdef gsHLBFGS_ENABLED
+      result = computeBarrierPatch(mp, mapper, options);
+#else
+      GISMO_ERROR("BarrierPatch not available without gsHLBFGS. Please "
+                  "compile with gsHLBGFS enabled");
+#endif
       break;
     }
     case ParamMethod::VariationalHarmonicPatch: {
+#ifdef gsHLBFGS_ENABLED
       result = computeVHPatch(mp, mapper, options);
+#else
+      GISMO_ERROR("VHPatch not available without gsHLBFGS. Please "
+                  "compile with gsHLBGFS enabled");
+#endif
       break;
     }
-    case ParamMethod::BarrierPatch:
+    case ParamMethod::PDEPatch:
     default: {
-      if (method != ParamMethod::BarrierPatch) {
-        gsWarn << "Invalid ParamMethod value. Defaulting to BarrierPatch.\n";
+      if (method != ParamMethod::PDEPatch) {
+        gsWarn << "Invalid ParamMethod value. Defaulting to PDEPatch.\n";
       }
-      result = computeBarrierPatch(mp, mapper, options);
+      result = computePDEPatch(mp, mapper, options);
       break;
     }
   }
   return result;
 }
 
+#ifdef gsHLBFGS_ENABLED
 // Modified Variational Harmonic Method
 template<short_t d, typename T>
 gsMultiPatch<T>
@@ -264,10 +285,10 @@ gsBarrierCore<d, T>::computePenaltyPatch2(const gsMultiPatch<T> &mp,
 }
 
 template<short_t d, typename T>
-gsMultiPatch<T> gsBarrierCore<d,
-                              T>::computeBarrierPatch(const gsMultiPatch<T> &mp,
-                                                      const gsDofMapper &mapper,
-                                                      const gsOptionList &options) {
+gsMultiPatch<T>
+    gsBarrierCore<d,T>::computeBarrierPatch(const gsMultiPatch<T> &mp,
+                                            const gsDofMapper &mapper,
+                                            const gsOptionList &options) {
 
   // Compute scaledArea and initial guess vector
   T scaledArea = computeAreaInterior(mp);
@@ -1018,6 +1039,7 @@ gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
                          m_assembler.rhs().rows());
   return EXIT_SUCCESS;
 }
+#endif
 
 template<short_t d, typename T>
 gsMultiPatch<T>
@@ -1148,15 +1170,6 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   preAApp::AndersonAcceleration<T> AASolver(param);
   gsVector<T> solVector = AASolver.compute(initialGuessVector,
                                            Residual, Jacobian);
-
-//  int m = options.askInt("AAwindowsize", 5);
-//  // TODO: use preAApp and remove these resHist etc.
-//  AndersonAcceleration<T> solver(m);
-//  std::vector<int> iterHist;
-//  std::vector<double> resHist, timeHist;
-//  gsVector<T> solVector = solver.computePrecond(initialGuessVector,
-//                                                Residual, Jacobian, iterHist,
-//                                                resHist, timeHist);
 
   if (options.askSwitch("needPDEH1", true)) {
     verboseLog("\nStart parameterization improvement by H1 discrezation...",
@@ -1373,8 +1386,7 @@ class ternary_expr : public _expr<ternary_expr<E0, E1, E2> > {
 //  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval
 //  (k) : _w.eval(k)); }
 
-  const Temporary_t eval(const index_t k) const
-  {
+  const Temporary_t eval(const index_t k) const {
     return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
   }
 

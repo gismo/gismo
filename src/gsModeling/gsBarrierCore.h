@@ -19,7 +19,11 @@
 #pragma once
 
 #include <gismo.h>
+
+#ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
+#endif
+
 //#include <gsLBFGSpp/gsLBFGSpp.h>
 //#include <gsPreAA/gsPreAA.h>
 
@@ -74,6 +78,7 @@ void convertFreeVectorToMultiPatch(const gsVector<T> &gsFreeVec,
 }
 
 /// helper function to set optimizer options
+#ifdef gsHLBFGS_ENABLED
 template<typename T>
 void setOptimizerOptions(gsHLBFGS<T> &optimizer, const gsOptionList &options) {
   optimizer.options().setInt("MaxIterations",
@@ -84,6 +89,7 @@ void setOptimizerOptions(gsHLBFGS<T> &optimizer, const gsOptionList &options) {
                               options.askReal("qi_MinStepLength", 1e-4));
   optimizer.options().setInt("Verbose", options.askInt("Verbose", 0));
 }
+#endif
 
 /// helper function to verbose log
 void verboseLog(const std::string &message, const index_t &verbose) {
@@ -169,6 +175,7 @@ struct gsBarrierCore {
                                  const gsOptionList &options);
 };
 
+#ifdef gsHLBFGS_ENABLED
 template<short_t d, typename T = real_t>
 class gsObjFoldoverFree : public gsOptProblem<T> {
 
@@ -212,8 +219,7 @@ class gsObjFoldoverFree : public gsOptProblem<T> {
 
   gsOptionList m_options;
 
-  T m_eps =
-      T();  // need to handle later, set m_eps = 0.05*S, T() is the default value of T.
+  T m_eps = T (1e-2);
 };
 
 template<short_t d, typename T>
@@ -482,6 +488,7 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 
   T m_lambda1 = 1.0, m_lambda2 = 1.0, m_eps = 1e-3;
 };
+#endif
 
 }// namespace gismo
 

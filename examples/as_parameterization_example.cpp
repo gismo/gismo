@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 
   //////////////////// STEP 1: read a multi-patch file /////////////////
   // Variables initialization with more descriptive names
-  index_t paramMethod = 1; // Parameterization method
+  index_t paramMethod = 0; // Parameterization method
   index_t verboseMode = 0; // Verbose mode: 0 - no print, 1 - summary, 2 - full print
   index_t numRefine = 0; // Number of Uniform h-refinement
   index_t numElevate = 0; // Number of degree elevation steps to perform
