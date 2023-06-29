@@ -1359,9 +1359,11 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
         for(short_t i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
 
+        if (m_manualLevels)
+            this->_knotIndexToDiadicIndex(maxLevel,low);
+
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
-
         for(int i = 0; i <= lvl; i++)
         {
             /*
