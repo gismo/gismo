@@ -1370,9 +1370,14 @@ class ternary_expr : public _expr<ternary_expr<E0, E1, E2> > {
     Space = E1::Space
   }; // == E2::Space
 
-  const Temporary_t eval(const index_t k) const {
+//  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval
+//  (k) : _w.eval(k)); }
+
+  const Temporary_t eval(const index_t k) const
+  {
     return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
   }
+
   // { res = eval_impl(_u,_v,_w,k); return  res;}
 
   index_t rows() const { return _v.rows(); }
@@ -1385,6 +1390,20 @@ class ternary_expr : public _expr<ternary_expr<E0, E1, E2> > {
 
   const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
   const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
+
+  /// Split needed for Temporary_t return type
+// private:
+//    typename util::enable_if<E1::ScalarValued,Scalar>::type
+//  eval_impl(const E0 & u, const E1 & v, const E2 & w, const index_t k) const
+//  {
+//    return (u.eval(k) > 0 ? v.eval(k) : w.eval(k));
+//  }
+
+//  typename util::enable_if<!ScalarValued,gsMatrix<Scalar>>::type
+//  eval_impl(const E0 & u, const E1 & v, const E2 & w, const index_t k)
+//  {
+//    return (u.eval(k).array() > 0 ? v.eval(k) : w.eval(k));
+//  }
 
 // private:
 //     template<class U, class V, class W> static inline
@@ -1692,9 +1711,9 @@ class jacScaledLxDiagBlock_expr : public _expr<jacScaledLxDiagBlock_expr<E> > {
     const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
     res.resize(_u.cardinality(), _u.cardinality());
     res.setZero();
-    res.template topLeftCorner(A, A).noalias() =
+    res.topLeftCorner(A, A).noalias() =
         _u.data().values[0].col(k) * dLxdx;
-    res.template bottomRightCorner(A, A).noalias() =
+    res.bottomRightCorner(A, A).noalias() =
         _u.data().values[0].col(k) * dLydy;
 
     return res;
@@ -1790,10 +1809,10 @@ class jacScaledLxH1_expr : public _expr<jacScaledLxH1_expr<E> > {
 
     res.resize(_u.cardinality(), _u.cardinality());
     res.setZero();
-    res.template topLeftCorner(N, N).noalias() = jacdLxdx;
-    res.template topRightCorner(N, N).noalias() = jacdLxdy;
-    res.template bottomLeftCorner(N, N).noalias() = jacdLydx;
-    res.template bottomRightCorner(N, N).noalias() = jacdLydy;
+    res.topLeftCorner(N, N).noalias() = jacdLxdx;
+    res.topRightCorner(N, N).noalias() = jacdLxdy;
+    res.bottomLeftCorner(N, N).noalias() = jacdLydx;
+    res.bottomRightCorner(N, N).noalias() = jacdLydy;
 
     return res;
   }
@@ -1886,10 +1905,10 @@ class jacScaledLxH1DiagBlock_expr
 
     res.resize(_u.cardinality(), _u.cardinality());
     res.setZero();
-    res.template topLeftCorner(N, N) = jacdLxdx;
-//        res.template topRightCorner(N,N) = jacdLxdy;
-//        res.template bottomLeftCorner(N,N) = jacdLydx;
-    res.template bottomRightCorner(N, N) = jacdLydy;
+    res.topLeftCorner(N, N) = jacdLxdx;
+//        res.topRightCorner(N,N) = jacdLxdy;
+//        res.bottomLeftCorner(N,N) = jacdLydx;
+    res.bottomRightCorner(N, N) = jacdLydy;
 
     return res;
   }
