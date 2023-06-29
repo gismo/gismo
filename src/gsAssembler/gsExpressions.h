@@ -2456,6 +2456,9 @@ public:
     void print(std::ostream &os) const { os<<"posPart("; _u.print(os); os <<")"; }
 };
 
+/**
+   Expression for the positive part of a given expression
+*/
 template<class E>
 class ppartval_expr : public _expr<ppartval_expr<E> >
 {
@@ -2474,7 +2477,6 @@ class ppartval_expr : public _expr<ppartval_expr<E> >
     return res; // component-wise maximum with zero
   }
 
-
   const index_t rows() const { return 0; }
   const index_t cols() const { return 0; }
 
@@ -2487,6 +2489,9 @@ class ppartval_expr : public _expr<ppartval_expr<E> >
   void print(std::ostream &os) const { os<<"posPart("; _u.print(os); os <<")"; }
 };
 
+/**
+   Expression pow(a,b) returns the value of 'a' raised to the power of 'b'
+*/
 template<class E>
 class pow_expr : public _expr<pow_expr<E> >
 {
