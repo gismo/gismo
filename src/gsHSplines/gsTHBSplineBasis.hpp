@@ -454,18 +454,14 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
             this->m_bases[flevel]->knots(dim);
 
         // Number of knots in the coarse knot vector
-        unsigned cnmb_knts = ckv.knotsUntilSpan(chigh[dim]) -
-            ckv.knotsUntilSpan(clow[dim]);
+        unsigned cnmb_knts = ckv.lastKnotIndex(chigh[dim]) -ckv.firstKnotIndex(clow[dim]);
 
         // Number of knots in the fine knot vector
-        unsigned fnmb_knts = fkv.knotsUntilSpan(fhigh[dim]) -
-            fkv.knotsUntilSpan(flow[dim]);
+        unsigned fnmb_knts = fkv.lastKnotIndex(fhigh[dim]) -fkv.firstKnotIndex(flow[dim]);
 
         size_of_coefs(dim) += fnmb_knts - cnmb_knts;
         nmb_of_coefs *= size_of_coefs(dim);
     }
-
-
     return nmb_of_coefs;
 }
 
