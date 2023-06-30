@@ -21,7 +21,7 @@ namespace gismo
 {
 
 /** @brief
-    Sparse vector class, based on Eigen::SparseVector.
+    Sparse vector class, based on gsEigen::SparseVector.
 
     \tparam T coefficient type
     \tparam _Option zero is ColMajor order.
@@ -31,14 +31,14 @@ namespace gismo
 */
 
 template<typename T, int _Options, typename _Index>
-class gsSparseVector : public Eigen::SparseVector<T,_Options,_Index>
+class gsSparseVector : public gsEigen::SparseVector<T,_Options,_Index>
 {
 public:
 
-    typedef Eigen::SparseVector<T,_Options,_Index> Base;
+    typedef gsEigen::SparseVector<T,_Options,_Index> Base;
     
     // Type pointing to a block of the sparse vector
-    typedef typename Eigen::Block<Base> Block;
+    typedef typename gsEigen::Block<Base> Block;
     
     // Type pointing to a block view of the sparse vector
     typedef gsMatrixBlockView<Base> BlockView;
@@ -53,22 +53,22 @@ public:
     /// This constructor allows constructing a gsSparseVector from
     /// Eigen expressions
     template<typename OtherDerived>
-    gsSparseVector(const Eigen::EigenBase<OtherDerived>& other)  : Base(other) { }
+    gsSparseVector(const gsEigen::EigenBase<OtherDerived>& other)  : Base(other) { }
 
     /// This constructor allows constructing a gsSparseVector from
     /// another sparse expression
     template<typename OtherDerived> 
-    gsSparseVector(const Eigen::MatrixBase<OtherDerived>& other)  : Base(other) { } 
+    gsSparseVector(const gsEigen::MatrixBase<OtherDerived>& other)  : Base(other) { } 
     
     /// This constructor allows constructing a gsSparseVector from
     /// another sparse expression
     template<typename OtherDerived> 
-    gsSparseVector(const Eigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { } 
+    gsSparseVector(const gsEigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { } 
 
     /// This constructor allows constructing a gsSparseVector from
     /// another sparse expression
     template<typename OtherDerived> 
-    gsSparseVector(const Eigen::ReturnByValue<OtherDerived>& other)  : Base(other) { } 
+    gsSparseVector(const gsEigen::ReturnByValue<OtherDerived>& other)  : Base(other) { } 
     
     ~gsSparseVector() { }
     

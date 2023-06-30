@@ -25,7 +25,8 @@ enum MarkingStrategy
 {
     GARU=1,
     PUCA=2,
-    BULK=3
+    BULK=3,
+    PBULK=4
 };
 
 template <class T>

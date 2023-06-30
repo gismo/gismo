@@ -93,7 +93,9 @@ private:
 
     /// Keeps the highest upper indices (at level gsHDomain::m_indexLevel)
     point m_upperIndex;
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
     /// The level of the box representation (global indices)
     unsigned m_indexLevel;
@@ -452,6 +454,9 @@ public:
     /// Multiply all coordinates by two
     void multiplyByTwo();
 
+    /// Divide all coordinates by two
+    void divideByTwo();
+
     /// Decrement the level index globally
     void decrementLevel();
 
@@ -739,6 +744,18 @@ private:
         static void visitNode(kdnode<d,T> * leafNode, return_type &)
         {
             leafNode->multiplyByTwo();
+        }
+    };
+
+    /// Multiplies everything by 2
+    struct reduceCoordsOneLevel_visitor
+    {
+        typedef int return_type;
+        static return_type init() {return 0;}
+
+        static void visitNode(kdnode<d,T> * leafNode, return_type &)
+        {
+            leafNode->divideByTwo();
         }
     };
 

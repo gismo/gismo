@@ -770,6 +770,9 @@ public: // things required by gsKnotVector
         remove( ubegin()  , i );
         remove( uend() - 1, i );
         m_deg -= i;
+        for (uiterator itr = ubegin()+1; itr != uend()-1; ++itr)
+            if ( itr.multiplicity() > m_deg )
+                remove( itr, itr.multiplicity() - m_deg );
     }
 
     /// Increase the multiplicity of all the knots by \a i. If \a

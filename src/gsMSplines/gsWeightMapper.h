@@ -26,8 +26,8 @@ public:
     typedef T weightType;
     typedef index_t indexType; //indices of gsMatrix
 
-    typedef gsSparseMatrix<weightType,Eigen::RowMajor,indexType> LToGMatrix;
-    typedef gsSparseMatrix<weightType,Eigen::ColMajor,indexType> GToLMatrix;
+    typedef gsSparseMatrix<weightType,gsEigen::RowMajor,indexType> LToGMatrix;
+    typedef gsSparseMatrix<weightType,gsEigen::ColMajor,indexType> GToLMatrix;
 
     typedef std::vector<indexType> IndexContainer;
     typedef std::vector<indexType>::const_iterator CIndexIter;
@@ -146,13 +146,13 @@ public:
         optimize(other.getOptimizationFlags());
     }
 
-    gsWeightMapper(const gsSparseMatrix<weightType,Eigen::RowMajor,indexType> & other)
+    gsWeightMapper(const gsSparseMatrix<weightType,gsEigen::RowMajor,indexType> & other)
     {
         m_optimizationMatrix=NULL;
         *this=other;
     }
 
-    gsWeightMapper(const gsSparseMatrix<weightType,Eigen::ColMajor,indexType> & other)
+    gsWeightMapper(const gsSparseMatrix<weightType,gsEigen::ColMajor,indexType> & other)
     {
         m_optimizationMatrix=NULL;
         *this=other;
@@ -231,7 +231,7 @@ public:
     {
         IndexContainer indices;
         sourceToTarget(source,indices);
-        return (indices.size()==1 && m_matrix.at(source,indices[0])==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(source,indices[0]),T(1.0)));
     }
 
     /// checks if the mapping for \a target is 1 to 1
@@ -239,7 +239,7 @@ public:
     {
         IndexContainer indices;
         targetToSource(target,indices);
-        return (indices.size()==1 && m_matrix.at(indices[0],target)==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(indices[0],target),T(1.0)));
     }
 
     //////////////////////////////////////////////////

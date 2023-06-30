@@ -28,10 +28,10 @@ namespace gismo
    \ingroup Matrix
 */
 template<class T, int _Rows, int _Cols>
-class gsAsMatrix : public Eigen::Map< Eigen::Matrix<T,_Rows,_Cols> >
+class gsAsMatrix : public gsEigen::Map< gsEigen::Matrix<T,_Rows,_Cols> >
 {
 public:
-    typedef Eigen::Map< Eigen::Matrix<T,_Rows,_Cols> > Base;
+    typedef gsEigen::Map< gsEigen::Matrix<T,_Rows,_Cols> > Base;
 
     // type of first minor matrix: rows and cols reduced by one
     typedef typename gsMatrix< T, _Rows, _Cols>::FirstMinorMatrixType FirstMinorMatrixType;
@@ -43,17 +43,17 @@ public:
     typedef typename gsMatrix< T, _Rows, _Cols>::ColMinorMatrixType  ColMinorMatrixType;
 
     // Type pointing to the transpose of the matrix
-    typedef Eigen::Transpose<Base> Tr;
+    typedef gsEigen::Transpose<Base> Tr;
 
     // Type pointing to the (const) transpose of the matrix
-    typedef const Eigen::Transpose<const Base> constTr;
+    typedef const gsEigen::Transpose<const Base> constTr;
 
 public:
     gsAsMatrix( std::vector<T> & v, index_t n, index_t m)
     : Base( v.data(), n, m)
     { 
         //GISMO_ASSERT( v.size() != 0, "Tried to map an empty vector." ); 
-        GISMO_ASSERT( m*n <= index_t(v.size()), "Not enough coefficients in vector to map." ); 
+        GISMO_ASSERT( m*n <= (index_t)(v.size()), "Not enough coefficients in vector to map." );
     }
 
     gsAsMatrix( std::vector<T> & v)
@@ -137,16 +137,16 @@ private:
    \ingroup Matrix
 */
 template<class T, int _Rows, int _Cols>
-class gsAsConstMatrix : public Eigen::Map< const Eigen::Matrix<T,_Rows,_Cols> >
+class gsAsConstMatrix : public gsEigen::Map< const gsEigen::Matrix<T,_Rows,_Cols> >
 {
 public:
-    typedef Eigen::Map<const Eigen::Matrix<T,_Rows,_Cols> > Base;
+    typedef gsEigen::Map<const gsEigen::Matrix<T,_Rows,_Cols> > Base;
 
     // Type pointing to the transpose of the matrix
-    typedef Eigen::Transpose<Base> Tr;
+    typedef gsEigen::Transpose<Base> Tr;
 
     // Type pointing to the (const) transpose of the matrix
-    typedef const Eigen::Transpose<const Base> constTr;
+    typedef const gsEigen::Transpose<const Base> constTr;
 
     // type of first minor matrix: rows and cols reduced by one
     typedef typename gsMatrix< T, _Rows, _Cols>::FirstMinorMatrixType FirstMinorMatrixType;
@@ -162,7 +162,7 @@ public:
     gsAsConstMatrix( const std::vector<T> & v, index_t n, index_t m)
     : Base( v.data(), n, m)
     { 
-        GISMO_ASSERT( m*n <= index_t(v.size()), "Not enough coefficients in vector to map." ); 
+        GISMO_ASSERT( m*n <= (index_t)(v.size()), "Not enough coefficients in vector to map." );
     }
 
     gsAsConstMatrix( const std::vector<T> & v)
@@ -174,7 +174,7 @@ public:
     gsAsConstMatrix( const T * pt, unsigned n, unsigned m)
     : Base( pt, n, m) {  }
 
-    gsAsConstMatrix(const Eigen::Map< Eigen::Matrix<T,_Rows,_Cols> > & mat)
+    gsAsConstMatrix(const gsEigen::Map< gsEigen::Matrix<T,_Rows,_Cols> > & mat)
     : Base( mat.data(), mat.rows(), mat.cols()) 
     {  }
 
@@ -238,12 +238,12 @@ class gsAsVector : public gsAsMatrix<T,_Rows,1>
 //class gsAsVector : public gsAsMatrix<T,_Rows,(_Rows==1?1:0)>
 {
 public:
-    //typedef Eigen::Map< Eigen::Matrix<T,_Rows,1> > Base;
+    //typedef gsEigen::Map< gsEigen::Matrix<T,_Rows,1> > Base;
     //typedef gsAsMatrix<T,_Rows,(_Rows==1?1:0)> Base;
     typedef gsAsMatrix<T,_Rows,1> Base;
 
     // Type for treating a vector as a permutation matrix
-    typedef Eigen::PermutationMatrix<_Rows> Permutation;
+    typedef gsEigen::PermutationMatrix<_Rows> Permutation;
 
 public:
     gsAsVector( std::vector<T> & v)
@@ -284,7 +284,7 @@ template<class T, int _Rows>
 class gsAsConstVector : public gsAsConstMatrix<T,_Rows,1>
 {
 public:
-    //typedef Eigen::Map<const Eigen::Matrix<T,_Rows,1> > Base;
+    //typedef gsEigen::Map<const gsEigen::Matrix<T,_Rows,1> > Base;
 
     typedef gsAsConstMatrix<T,_Rows,1> Base;
     //typedef gsAsConstMatrix<T,_Rows,(_Rows==1?1:0)> Base;

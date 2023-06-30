@@ -31,10 +31,10 @@ template <typename MatrixType, bool isConst = false>
 class gsMatrixBlockView
 {
 public:
-    typedef Eigen::Block<MatrixType>   block_t    ;
-    typedef Eigen::Block<MatrixType> * block_ptr_t;
+    typedef gsEigen::Block<MatrixType>   block_t    ;
+    typedef gsEigen::Block<MatrixType> * block_ptr_t;
 
-    typedef Eigen::Matrix<index_t,Eigen::Dynamic, 1, Eigen::ColMajor> Vector_t;
+    typedef gsEigen::Matrix<index_t,gsEigen::Dynamic, 1, gsEigen::ColMajor> Vector_t;
 
 public:
 
@@ -186,7 +186,7 @@ public:
 
     /// Overwrites the contents of block (i,j) with matrix \a other
 	template<typename OtherDerived>
-    void assign(index_t i, index_t j, const Eigen::EigenBase<OtherDerived>& other)
+    void assign(index_t i, index_t j, const gsEigen::EigenBase<OtherDerived>& other)
     {
         GISMO_ASSERT( i < m_rowSize && j < m_colSize ,
                       "Assign to invalid block requested.");

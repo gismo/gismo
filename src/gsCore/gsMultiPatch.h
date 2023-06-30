@@ -138,6 +138,21 @@ public:
         return sz;
     }
 
+    /// Returns the coefficient matrix of the multi-patch geometry
+    gsMatrix<T> coefs() const
+    {
+        gsMatrix<T> result(this->coefsSize(),this->geoDim());
+        result.setZero();
+        index_t offset = 0;
+        for (typename PatchContainer::const_iterator it =
+                 m_patches.begin(); it != m_patches.end(); ++it )
+        {
+            result.block(offset,0,(*it)->coefsSize(),(*it)->geoDim()) = (*it)->coefs();
+            offset += (*it)->coefsSize();
+        }
+        return result;
+    }
+
 public:
     /**
      * @brief construct the affine map that places bi.first() next to bi.second() and
@@ -221,10 +236,10 @@ public:
     gsBasis<T> & basis( const size_t i ) const;
 
     ///\brief Add a patch from a gsGeometry<T>::uPtr
-    void addPatch(typename gsGeometry<T>::uPtr g);
+    index_t addPatch(typename gsGeometry<T>::uPtr g);
 
     /// Add a patch by copying argument
-    void addPatch(const gsGeometry<T> & g);
+    index_t addPatch(const gsGeometry<T> & g);
 
     /// \brief Search for the given geometry and return its patch index.
     size_t findPatchIndex( gsGeometry<T>* g ) const;
@@ -264,6 +279,10 @@ public:
 
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
+
+    /// \brief Coarsen uniformly all patches by removing \a numKnots
+    /// in each knot-span
+    void uniformCoarsen(int numKnots = 1);
 
     void embed(const index_t N)
     {
@@ -368,9 +387,20 @@ public:
                                                    const T accuracy = 1e-6) const;
 
     /// Construct the interface representation
+    std::vector<T> HausdorffDistance(   const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
+    T averageHausdorffDistance(         const gsMultiPatch<T> & other,
+                                        const index_t nsamples = 1000,
+                                        const T accuracy = 1e-6,
+                                        const bool directed=false);
+
     void constructInterfaceRep();
     /// Construct the boundary representation
     void constructBoundaryRep();
+    void constructSides();
 
     /// Construct the interface representation of sides with label \a l
     void constructInterfaceRep(const std::string l);
@@ -379,6 +409,7 @@ public:
 
     const InterfaceRep & interfaceRep() const { return m_ifaces; }
     const BoundaryRep & boundaryRep() const { return m_bdr; }
+    const BoundaryRep & sides() const { return m_sides; }
     
 protected:
 
@@ -390,7 +421,7 @@ private:
     PatchContainer m_patches;
 
     InterfaceRep m_ifaces;
-    BoundaryRep m_bdr;
+    BoundaryRep m_bdr, m_sides;
 
 private:
     // implementation functions

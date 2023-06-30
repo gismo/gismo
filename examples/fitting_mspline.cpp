@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
     gsFileData<> newdata;
     gsMultiPatch<> surf = test.exportToPatches();
     gsInfo << "Write back to mp.3dm\n";
-    extensions::writeON_MultiPatch(surf);
+    extensions::writeON_MultiPatch(surf,"mp");
     newdata << surf;
     newdata << mb;
     newdata << cf;

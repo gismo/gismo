@@ -26,11 +26,11 @@ namespace util
 // Usage:
 // gsThreaded<C> a;
 // a.mine();
-template<class C>
+template<class C, class Allocator = std::allocator<C> >
 class gsThreaded
 {
 #ifdef _OPENMP
-    std::vector<C> m_array;
+    std::vector<C,Allocator> m_array;
     #else
     C m_c;
 #endif

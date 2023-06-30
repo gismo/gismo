@@ -85,6 +85,7 @@ public:
                 updateElement();
         }
 
+        ++m_id; //increment id
         return this->m_isGood;
     }
 
@@ -101,6 +102,7 @@ public:
         if (this->m_isGood)
             updateElement();
 
+        m_id += increment; //increment id
         return this->m_isGood;
     }
 
@@ -121,6 +123,18 @@ public:
     int getLevel() const
     {
         return m_leaf.level();
+    }
+
+    // Returns the element multi-index at the current level
+    // If you need the element at the level above, divide this all indices by 2
+    gsVector<index_t> elementMultiIndex() const
+    {
+        gsVector<index_t> res(d);
+        for (index_t i = 0; i!=d; ++i)
+        {
+            res[i] =  std::distance(m_breaks[i].begin(), m_curElement[i]);
+        }
+        return res;
     }
 
 private:
@@ -197,7 +211,12 @@ public:
     using gsDomainIterator<T>::center;
     using gsDomainIterator<T>::m_basis;
 
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
+
+protected:
+    using gsDomainIterator<T>::m_id;
 
 private:
 
