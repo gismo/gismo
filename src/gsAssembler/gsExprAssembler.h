@@ -1221,7 +1221,9 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         QuRule = gsQuadrature::getPtr(bb, m_options);
         const index_t numNodes = QuRule->numNodes();
 
-        cPoints[patchInd].resize(bb.domainDim(), bb.numElements() * numNodes );
+        const index_t sz = bb.numElements() * numNodes;
+        cPoints[patchInd].resize(bb.domainDim(), sz );
+        cWeights[patchInd].resize( sz );
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt = bb.makeDomainIterator();
@@ -1244,18 +1246,6 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
         }
     }
 }//omp parallel
-
-    index_t sz = 0;
-    for (size_t i = 0; i!= cPoints.size(); ++i)
-        sz += cPoints[i].cols();
-        
-    m_matrix = gsSparseMatrix<T>(sz, numDofs());
-    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
-    {
-
-
-    }
-    
 
     m_matrix.makeCompressed();
 }

@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include "gsModeling/gsBarrierPatch.h"
 
 using namespace gismo;
 
