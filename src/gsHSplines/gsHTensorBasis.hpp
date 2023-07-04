@@ -15,6 +15,8 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
+#include <gsUtils/gsPointGrid.h>
+
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
@@ -1897,6 +1899,20 @@ void gsHTensorBasis<d,T>::degreeDecrease(int const & i, int const dir)
 
     this->update_structure();
 }
+
+template<short_t d, class T>
+bool gsHTensorBasis<d,T>::testPartitionOfUnity(const index_t npts, const T tol) const
+{
+    gsVector<unsigned> np(d);
+    np.setConstant(npts);
+    gsMatrix<T> supp = this->support();
+    gsMatrix<T> grid = gsPointGrid<T>(supp.col(0),supp.col(1),np);
+    gsMatrix<T> res;
+    this->eval_into(grid,res);
+    gsVector<T> sums = res.colwise().sum();
+    return ((sums.array()>1-tol && sums.array()<1+tol).all());
+}
+
 
 namespace internal
 {

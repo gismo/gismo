@@ -1086,7 +1086,6 @@ private:
                                                                                       std::vector< std::vector< std::vector< std::vector< T > > > >& params,
                                                                                       bool indicesFlag ) const;
 
-    //D
 public:
     /// \brief Returns transfer matrix betweend the hirarchycal spline given
     /// by the characteristic matrix "old" and this
@@ -1098,6 +1097,15 @@ public:
     /// maximum level i.e. ignoring higher level refinements
     void setActiveToLvl(int level, std::vector<CMatrix>& x_matrix_lvl) const;
 
+public:
+    /**
+     * @brief      Test the partition of unity
+     *
+     * @param[in]  npts  The number of points in each direction
+     *
+     * @return     True if the basis has the parition of unity property.
+     */
+    bool testPartitionOfUnity(const index_t npts = 100, const T tol = 1e-12) const;
 
 //    void local2globalIndex( gsVector<index_t,d> const & index,
 //                            index_t lvl,
