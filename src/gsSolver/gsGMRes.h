@@ -59,7 +59,7 @@ private:
     /// and stores the solution in the private member y.
     void solveUpperTriangular(const VectorType& R, const VectorType& gg)
     {
-       y = R.template triangularView<Eigen::Upper>().solve(gg);
+       y = R.template triangularView<gsEigen::Upper>().solve(gg);
     }
 
     /// Prints the object as a string.

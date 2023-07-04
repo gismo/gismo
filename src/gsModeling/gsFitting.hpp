@@ -115,7 +115,7 @@ void gsFitting<T>::compute(T lambda)
 
     typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
 
-    if ( solver.preconditioner().info() != Eigen::Success )
+    if ( solver.preconditioner().info() != gsEigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
         
@@ -127,7 +127,7 @@ void gsFitting<T>::compute(T lambda)
     x = solver.solve(m_B); //toDense()
 
     // If there were constraints, we obtained too many coefficients.
-    x.conservativeResize(num_basis, Eigen::NoChange);
+    x.conservativeResize(num_basis, gsEigen::NoChange);
 
     //gsMatrix<T> x (m_B.rows(), m_B.cols());
     //x=A_mat.fullPivHouseholderQr().solve( m_B);
@@ -153,19 +153,19 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     T maxAng, avgAng;
     std::vector<gsMatrix<T> > vals;
     gsMatrix<T> DD, der;
-    for (index_t it = 0; it!=maxIter; ++it)
+    for (index_t it = 0; it<maxIter; ++it)
     {
         maxAng = -1;
         avgAng = 0;
-        //auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-        //(vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+        //auto der = gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,-1> >
+        //(vals[1].data()+k, n, m_points.rows(), gsEigen::Stride<-1,-1>(d*n,d) );
 
 #       pragma omp parallel for default(shared) private(der,DD,vals)
         for (index_t s = 0; s<m_points.rows(); ++s)
             //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
         {
             vals = m_result->evalAllDers(m_param_values.col(s), 1);
-            for (index_t k = 0; k!=d; ++k)
+            for (index_t k = 0; k<d; ++k)
             {
                 der = vals[1].reshaped(d,n);
                 DD = vals[0].transpose() - m_points.row(s);
@@ -178,8 +178,8 @@ void gsFitting<T>::parameterCorrection(T accuracy,
                 }
             }
             /*
-            auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-                (vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
+            auto der = gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,-1> >
+                (vals[1].data()+k, n, m_points.rows(), gsEigen::Stride<-1,-1>(d*n,d) );
             maxAng = ( DD.colwise().normalized() *
                        der.colwise().normalized().transpose()
                 ).array().acos().maxCoeff();
@@ -498,7 +498,7 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
             results.transposeInPlace();
 
-            err = (m_points.row(k) - results).template lpNorm<Eigen::Infinity>();
+            err = (m_points.row(k) - results).template lpNorm<gsEigen::Infinity>();
 
                     switch (type)
                     {

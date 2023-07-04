@@ -130,7 +130,7 @@ private:
 /// @brief Returns a smart pointer to a Richardson operator referring on \a mat
 /// \relates gsRichardsonOp
 template <class Derived>
-typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
+typename gsRichardsonOp<Derived>::uPtr makeRichardsonOp(const gsEigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsRichardsonOp<Derived>::make(mat.derived(), tau); }
 
 /// @brief Returns a smart pointer to a Richardson operator referring on \a mat
@@ -247,7 +247,7 @@ private:
 /// @brief Returns a smart pointer to a Jacobi operator referring on \a mat
 /// \relates gsJacobiOp
 template <class Derived>
-typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const Eigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
+typename gsJacobiOp<Derived>::uPtr makeJacobiOp(const gsEigen::EigenBase<Derived>& mat, typename Derived::Scalar tau = 1)
 { return gsJacobiOp<Derived>::make(mat.derived(), tau); }
 
 /// @brief Returns a smart pointer to a Jacobi operator referring on \a mat
@@ -355,7 +355,7 @@ private:
 /// @brief Returns a smart pointer to a Gauss-Seidel operator referring on \a mat
 /// \relates gsGaussSeidelOp
 template <class Derived>
-typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
+typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const gsEigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived>::make(mat.derived()); }
 
 /// @brief Returns a smart pointer to a Jacobi operator referring on \a mat
@@ -367,7 +367,7 @@ typename gsGaussSeidelOp<Derived>::uPtr makeGaussSeidelOp(const memory::shared_p
 /// @brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
 /// \relates gsGaussSeidelOp
 template <class Derived>
-typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussSeidelOp(const gsEigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::make(mat.derived()); }
 
 /// @brief Returns a smart pointer to a reverse Gauss-Seidel operator referring on \a mat
@@ -379,7 +379,7 @@ typename gsGaussSeidelOp<Derived,gsGaussSeidel::reverse>::uPtr makeReverseGaussS
 /// @brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
 /// \relates gsGaussSeidelOp
 template <class Derived>
-typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const Eigen::EigenBase<Derived>& mat)
+typename gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::uPtr makeSymmetricGaussSeidelOp(const gsEigen::EigenBase<Derived>& mat)
 { return gsGaussSeidelOp<Derived,gsGaussSeidel::symmetric>::make(mat.derived()); }
 
 /// @brief Returns a smart pointer to a symmetric Gauss-Seidel operator referring on \a mat
@@ -467,14 +467,14 @@ public:
 private:
     const MatrixPtr         m_mat;  ///< Shared pointer to matrix (if needed)
     NestedMatrix            m_expr; ///< Nested Eigen expression
-    Eigen::IncompleteLUT<T> m_ilu;  ///< The decomposition itself
+    gsEigen::IncompleteLUT<T> m_ilu;  ///< The decomposition itself
     using Base::m_num_of_sweeps;
 };
 
 /// @brief Returns a smart pointer to a Gauss-Seidel operator referring on \a mat
 /// \relates gsIncompleteLUOp
 template <class Derived>
-typename gsIncompleteLUOp<Derived>::uPtr makeIncompleteLUOp(const Eigen::EigenBase<Derived>& mat)
+typename gsIncompleteLUOp<Derived>::uPtr makeIncompleteLUOp(const gsEigen::EigenBase<Derived>& mat)
 { return gsIncompleteLUOp<Derived>::make(mat.derived()); }
 
 /// @brief Returns a smart pointer to a Jacobi operator referring on \a mat

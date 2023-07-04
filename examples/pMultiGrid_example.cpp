@@ -730,9 +730,9 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     sizes[nPatches] = A.rows() - shifts[nPatches];
 
     // Vector of factorized operators
-    std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > P(nPatches+1);
+    std::vector< gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> > P(nPatches+1);
     // Vector of factorized operators
-    std::vector< Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > Pinv(nPatches+1);
+    std::vector< gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> > Pinv(nPatches+1);
     // Define the A_aprox matrix
     // Inefficient since it does not use a sparse matrix
     gsMatrix<> A_aprox(A.rows(),A.cols());
@@ -744,7 +744,7 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     {
         // Diagonal entries
         gsSparseMatrix<> block = A.block(shifts[k],shifts[k],sizes[k],sizes[k]);
-        Eigen::IncompleteLUT<real_t> ilu;
+        gsEigen::IncompleteLUT<real_t> ilu;
         ilu.setFillfactor(1);
         ilu.compute(block);
         P[k] = ilu.fillReducingPermutation();
@@ -756,8 +756,8 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
         {
             gsMatrix<> ddB = A.block(shifts[nPatches],shifts[k],sizes[nPatches],sizes[k]);
             gsMatrix<> ddC = A.block(shifts[k],shifts[nPatches],sizes[k],sizes[nPatches]);
-            gsMatrix<> ddBtilde = ilu.factors().triangularView<Eigen::Upper>().transpose().solve((ddB*P[k]).transpose()).transpose();
-            gsMatrix<> ddCtilde = ilu.factors().triangularView<Eigen::UnitLower>().solve(Pinv[k]*ddC);
+            gsMatrix<> ddBtilde = ilu.factors().triangularView<gsEigen::Upper>().transpose().solve((ddB*P[k]).transpose()).transpose();
+            gsMatrix<> ddCtilde = ilu.factors().triangularView<gsEigen::UnitLower>().solve(Pinv[k]*ddC);
 
             S -= (ddBtilde*ddCtilde).sparseView();
             A_aprox.block(shifts[k],shifts[nPatches],sizes[k],sizes[nPatches]) = ddCtilde;
@@ -770,7 +770,7 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     if (sizes[nPatches]>0)
     {
         // Preform ILUT on the S-matrix.
-        Eigen::IncompleteLUT<real_t> ilu;
+        gsEigen::IncompleteLUT<real_t> ilu;
         ilu.setFillfactor(1);
         ilu.compute(S);
         P[nPatches] = ilu.fillReducingPermutation();
@@ -787,8 +787,8 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
                 x.setZero(rhs.rows(),rhs.cols());
                 for (index_t k=0; k<=m_nPatches; ++k)
                     x.block(m_shifts[k],0,m_sizes[k],1) = m_Pinv[k]*rhs.block(m_shifts[k],0,m_sizes[k],1);
-                x = m_A_aprox.template triangularView<Eigen::UnitLower>().solve(x);
-                x = m_A_aprox.template triangularView<Eigen::Upper>().solve(x);
+                x = m_A_aprox.template triangularView<gsEigen::UnitLower>().solve(x);
+                x = m_A_aprox.template triangularView<gsEigen::Upper>().solve(x);
                 for (index_t k=0; k<=m_nPatches; ++k)
                     x.block(m_shifts[k],0,m_sizes[k],1) = m_P[k]*x.block(m_shifts[k],0,m_sizes[k],1);
             },

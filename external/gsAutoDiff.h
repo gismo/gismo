@@ -58,7 +58,7 @@ struct DScalar1
 {
 public:
     typedef _Scalar                    Scalar;
-    typedef Eigen::Matrix<_Scalar,d,1> Gradient_t;
+    typedef gsEigen::Matrix<_Scalar,d,1> Gradient_t;
     
     // ======================================================================
     /// @{ \name Constructors and accessors
@@ -110,13 +110,13 @@ public:
     }
 
     template <typename Derived>
-    inline void gradient_into(const Eigen::DenseBase<Derived> & res) const
+    inline void gradient_into(const gsEigen::DenseBase<Derived> & res) const
     {
         if ( 0==grad.size() )
             grad.setZero( res.rows() );
 
         // Note: Eigen hack to write on expression
-        const_cast<Eigen::DenseBase<Derived>&>(res) = grad;
+        const_cast<gsEigen::DenseBase<Derived>&>(res) = grad;
     }
 
 
@@ -132,8 +132,8 @@ public:
     }
 
     template<int _Rows, int _Cols>
-    static void Initialize(const Eigen::Matrix<Scalar,_Rows,_Cols> & values,
-                           Eigen::Matrix<DScalar1,_Rows,_Cols> & result)
+    static void Initialize(const gsEigen::Matrix<Scalar,_Rows,_Cols> & values,
+                           gsEigen::Matrix<DScalar1,_Rows,_Cols> & result)
     {
         result.resize(values.rows(), values.cols());
         const int numVars = values.size();
@@ -504,7 +504,7 @@ template <typename Scalar, int d>
 std::ostream &operator<<(std::ostream &out, const DScalar1<Scalar,d> &s) 
 {
 	out << "[" << s.getValue()
-		<< ", grad=" << s.getGradient().format(Eigen::IOFormat(4, 1, ", ", "; ", "", "", "[", "]"))
+		<< ", grad=" << s.getGradient().format(gsEigen::IOFormat(4, 1, ", ", "; ", "", "", "[", "]"))
 		<< "]";
 	return out;
 }
@@ -537,8 +537,8 @@ struct DScalar2
 {
 public:
     typedef _Scalar                    Scalar;
-    typedef Eigen::Matrix<_Scalar,d,1> Gradient_t;
-    typedef Eigen::Matrix<_Scalar,d,d> Hessian_t;
+    typedef gsEigen::Matrix<_Scalar,d,1> Gradient_t;
+    typedef gsEigen::Matrix<_Scalar,d,d> Hessian_t;
     
     // ======================================================================
     /// @{ \name Constructors and accessors
@@ -588,13 +588,13 @@ public:
     }
 
     template <typename Derived>
-    inline void gradient_into(const Eigen::DenseBase<Derived> & res) const
+    inline void gradient_into(const gsEigen::DenseBase<Derived> & res) const
     {
         if ( 0==grad.size() )
             grad.setZero( res.rows() );
 
         // Note: Eigen hack to write on expression
-        const_cast<Eigen::DenseBase<Derived>&>(res) = grad;
+        const_cast<gsEigen::DenseBase<Derived>&>(res) = grad;
     }
 
     inline const Hessian_t  & getHessian()  const 
@@ -604,13 +604,13 @@ public:
     }
 
     template <typename Derived>
-    inline void hessian_into(const Eigen::DenseBase<Derived> & res) const
+    inline void hessian_into(const gsEigen::DenseBase<Derived> & res) const
     {
         if ( 0==hess.size() )
             hess.setZero( res.rows(), res.cols() );
 
         // Note: Eigen hack to write on expression
-        const_cast<Eigen::DenseBase<Derived>&>(res) = hess;
+        const_cast<gsEigen::DenseBase<Derived>&>(res) = hess;
     }
 
     inline size_t             numVars()     const { return grad.size(); }
@@ -626,8 +626,8 @@ public:
     }
 
     template<int _Rows, int _Cols>
-    static void Initialize(const Eigen::Matrix<Scalar,_Rows,_Cols> & values,
-                           Eigen::Matrix<DScalar2,_Rows,_Cols> & result)
+    static void Initialize(const gsEigen::Matrix<Scalar,_Rows,_Cols> & values,
+                           gsEigen::Matrix<DScalar2,_Rows,_Cols> & result)
     {
         result.resize(values.rows(), values.cols());
         const int numVars = values.size();
@@ -1122,8 +1122,8 @@ template <typename Scalar, int d>
 std::ostream &operator<<(std::ostream &out, const DScalar2<Scalar,d> & s) 
 {
 	out << "[" << s.getValue()
-		<< ", grad=" << s.getGradient().format(Eigen::IOFormat(4, 1, ", ", "; ", "", "", "[", "]"))
-		<< ", hess=" << s.getHessian().format(Eigen::IOFormat(4, 0, ", ", "; ", "", "", "[", "]"))
+		<< ", grad=" << s.getGradient().format(gsEigen::IOFormat(4, 1, ", ", "; ", "", "", "[", "]"))
+		<< ", hess=" << s.getHessian().format(gsEigen::IOFormat(4, 0, ", ", "; ", "", "", "[", "]"))
 		<< "]";
 	return out;
 }

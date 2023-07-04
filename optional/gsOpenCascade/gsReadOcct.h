@@ -1,6 +1,6 @@
-/** @file gsReadBrep.cpp
+/** @file gsReadOcct.h
 
-    @brief Reading OpenCascade .brep files
+    @brief Reading OpenCascade .brep and others via OCCT
 
     This file is part of the G+Smo library. 
 
@@ -17,8 +17,6 @@
 
 #include <gsIO/gsXml.h>
 
-#define gsEndl std::endl
-
 namespace opencascade { template<class O> class handle; }
 class TopoDS_Shape;
 class Geom_Surface;
@@ -29,7 +27,6 @@ class Geom2d_BSplineCurve;
 namespace gismo {
 
 namespace extensions {
-
 
 /// Reads a brep file
 bool gsReadBrep(const char * filename, internal::gsXmlTree & data);

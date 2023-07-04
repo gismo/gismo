@@ -13,6 +13,7 @@
 
 #include <gsIO/gsXml.h>
 #include <gsCore/gsFunctionExpr.h>
+#include <gsCore/gsConstantFunction.h>
 #include <gsUtils/gsSortedVector.h>
 
 namespace gismo
@@ -155,6 +156,7 @@ public:
             const gsXmlAttribute * att_name = child->first_attribute("name");
             if (NULL != att_name)
             {
+                boundaries.clear();
                 std::string name = att_name->value();
                 for (typename std::vector<patchSide>::const_iterator it=allboundaries.begin(); it!=allboundaries.end(); it++)
                     if (it->label()==name)
@@ -162,6 +164,12 @@ public:
             }
             else
                 getBoundaries(child, ids, boundaries);
+
+            if (boundaries.size() == 0) {
+              gsWarn << "Boundary condition without boundary to apply to. The"
+                        " following bc will be unused\n" << *child
+                     << std::endl;
+            }
 
             const gsXmlAttribute * bcat = child->first_attribute("type");
             GISMO_ASSERT(NULL != bcat, "No type provided");
@@ -292,6 +300,9 @@ public:
                     {
                         gsXmlAttribute * unknownNode = internal::makeAttribute(
                                 "unknown", b.m_unknown, data);
+                        gsXmlAttribute * componentNode = internal::makeAttribute("component",
+                                b.unkComponent(), data);
+                        bcNode->append_attribute(componentNode);
                         bcNode->append_attribute(unknownNode);
                         first = false;
                     }
@@ -347,9 +358,31 @@ private:
                     dynamic_cast<gsFunctionExpr<T> *>(obj.get());
             result = putFunctionExprToXml(*ptr2, result, data);
         }
+        else if (typeid(*obj) == typeid(gsConstantFunction<T> ))
+            {
+            gsConstantFunction<T> * ptr2 =
+                    dynamic_cast<gsConstantFunction<T> *>(obj.get());
+            result = putConstantFunctionToXml(*ptr2, result, data);
+        }
         gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
                 data);
         result->append_attribute(indexNode);
+        return result;
+    }
+
+    static gsXmlNode * putConstantFunctionToXml(const gsConstantFunction<T> & obj,
+            gsXmlNode * result, gsXmlTree & data)
+    {
+        std::string typeStr = "FunctionExpr";
+        gsXmlAttribute * type = internal::makeAttribute("type", typeStr, data);
+        result->append_attribute(type);
+        gsXmlAttribute * dim = internal::makeAttribute("dim", obj.domainDim(),
+                data);
+        result->append_attribute(dim);
+
+        // set value
+        gsMatrix<T> value = obj.value();
+        result->value( makeValue( value, data, true) );
         return result;
     }
 

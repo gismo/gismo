@@ -540,12 +540,9 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
         }
     }
 
-
     // Normal vector of hypersurface
-    if (n==d+1 && InOut.flags & NEED_NORMAL)
+    if ( (InOut.flags & NEED_NORMAL) && (tarDim!=-1 ? tarDim == domDim+1 : n==d+1) )
     {
-        GISMO_ASSERT( n == d + 1, "Codimension should be equal to one");
-
         typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
         InOut.normals.resize(n, numPts);
 

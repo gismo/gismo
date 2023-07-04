@@ -200,11 +200,11 @@ template<class T>
 void gsMultiPatch<T>::permute(const std::vector<short_t> & perm)
 {
     gsAsVector<gsGeometry<T>*> a (m_patches);
-    a = Eigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
+    a = gsEigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
 }
 
 template<class T>
-void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
+index_t gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
 {
     if ( m_dim == -1 )
     {
@@ -214,15 +214,17 @@ void gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
         GISMO_ASSERT( m_dim == g->parDim(),
                       "Tried to add a patch of different dimension in a multipatch." );
     }
-    g->setId( m_patches.size() );
+    index_t index = m_patches.size();
+    g->setId(index);
     m_patches.push_back( g.release() ) ;
     addBox();
+    return index;
 }
 
 template<class T>
-inline void gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
+inline index_t gsMultiPatch<T>::addPatch(const gsGeometry<T> & g)
 {
-    addPatch(g.clone());
+    return addPatch(g.clone());
 }
 
 template<class T>
@@ -299,6 +301,16 @@ void gsMultiPatch<T>::degreeReduce(int elevationSteps)
           it != m_patches.end(); ++it )
     {
         ( *it )->degreeReduce(elevationSteps, -1);
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::uniformCoarsen(int numKnots)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->uniformCoarsen(numKnots);
     }
 }
 
@@ -814,6 +826,43 @@ T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
 }
 
 template<class T>
+std::vector<T> gsMultiPatch<T>::HausdorffDistance(  const gsMultiPatch<T> & other,
+                                                    const index_t nsamples,
+                                                    const T accuracy,
+                                                    const bool directed)
+{
+    GISMO_ASSERT(this->nPatches()==other.nPatches(),"Number of patches should be the same, but this->nPatches()!=other.nPatches() -> "<<this->nPatches()<<"!="<<other.nPatches());
+    std::vector<T> result(this->nPatches());
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+#   ifdef _OPENMP
+    for ( size_t p=tid; p<this->nPatches(); p+=nt )
+#   else
+    for ( size_t p=0; p<this->nPatches(); p++ )
+#   endif
+    {
+        result.at(p) = this->patch(p).HausdorffDistance(other.patch(p),nsamples,accuracy,directed);
+    }
+}//omp parallel
+    return result;
+}
+
+template<class T>
+T gsMultiPatch<T>::averageHausdorffDistance(  const gsMultiPatch<T> & other,
+                                                    const index_t nsamples,
+                                                    const T accuracy,
+                                                    bool directed)
+{
+    std::vector<T> distances = HausdorffDistance(other,nsamples,accuracy,directed);
+    return std::accumulate(distances.begin(), distances.end(), 0.0) / distances.size();
+}
+
+template<class T>
 void gsMultiPatch<T>::constructInterfaceRep()
 {
     m_ifaces.clear();
@@ -858,6 +907,24 @@ void gsMultiPatch<T>::constructBoundaryRep(const std::string l)
     {
         const gsGeometry<T> & p1 = *m_patches[it->patch];
         m_bdr[*it] = p1.boundary(*it);
+    }//end for
+}
+
+template<class T>
+void gsMultiPatch<T>::constructSides()
+{
+    for ( biterator it = bBegin(); it != bEnd(); ++it ) // for all boundaries
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->patch];
+        m_sides[*it] = p1.boundary(*it);
+    }//end for
+
+    for ( iiterator it = iBegin(); it != iEnd(); ++it ) // for all interfaces
+    {
+        const gsGeometry<T> & p1 = *m_patches[it->first() .patch];
+        const gsGeometry<T> & p2 = *m_patches[it->second().patch];
+        m_sides[it->first()] = p1.boundary(it->first());
+        m_sides[it->second()] = p2.boundary(it->second());
     }//end for
 }
 

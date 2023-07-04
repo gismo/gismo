@@ -87,6 +87,18 @@ public:
         }
     }
 
+    void init(const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m )
+    {
+        GISMO_ASSERT(mp.nPatches()>0,"MultiPatch is empty?");
+        m_mbases = new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m);
+
+        // collect and transform the coefficients
+        gsMatrix<T> local = mp.coefs();
+        m_mbases->local_coef_to_global_coef(local,m_global);
+        init(*m_mbases);
+    }
+
+
 public:
 
     index_t nPieces() const {return m_mbases->nPieces();}

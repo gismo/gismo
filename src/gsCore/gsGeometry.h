@@ -126,23 +126,10 @@ public:
     }
 
     /// @brief Copy Constructor
-    gsGeometry(const gsGeometry & o) 
-    : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
-    { }
-
+    gsGeometry(const gsGeometry & o);
     /// @}
 
-    gsGeometry& operator=( const gsGeometry & o)
-    {
-        if ( this != &o )
-        {
-            m_coefs = o.m_coefs;
-            delete m_basis;
-            m_basis = o.basis().clone().release() ;
-            m_id = o.m_id;
-        }
-        return *this;
-    }
+    gsGeometry& operator=( const gsGeometry & o);
     
     virtual ~gsGeometry() 
     {
@@ -188,8 +175,7 @@ public:
      * respective valuation point.
      */
     // Look at gsFunction class for documentation
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().evalFunc_into(u, m_coefs, result); }
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     /** \brief Evaluate derivatives of the function
      * \f$f:\mathbb{R}^d\rightarrow\mathbb{R}^n\f$
@@ -235,8 +221,7 @@ public:
      * classes to get proper results.
      */
     // Look at gsFunction class for documentation
-    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().derivFunc_into(u, m_coefs, result); }
+    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
 
     /** @brief Evaluate second derivatives of the function at points \a u into \a result.
@@ -258,12 +243,10 @@ public:
      * classes to get proper results.
      */
     // Look at gsFunctionSet class for documentation
-    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    { this->basis().deriv2Func_into(u, m_coefs, result); }
+    virtual void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
 
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const
-    { this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+                          std::vector<gsMatrix<T> > & result) const;
 
     // Look at gsFunctionSet for documentation
     virtual void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const;
@@ -310,21 +293,19 @@ public:
     short_t geoDim() const { return this->coefDim(); }
 
     /// Dimension \em d of the parameter domain (overriding gsFunction::domainDim()).
-    virtual short_t domainDim() const { return this->basis().domainDim(); }
+    virtual short_t domainDim() const;
 
     /// Dimension \em d of the parameter domain (same as domainDim()).
-    short_t parDim() const { return this->basis().domainDim(); }
+    short_t parDim() const;
 
     /// Co-dimension of the geometric object
-    short_t coDim() const { return coefDim()-this->basis().domainDim(); }
+    short_t coDim() const;
 
     /// Returns the range of parameters (same as parameterRange())
-    gsMatrix<T> support() const
-    { return this->basis().support(); }
+    gsMatrix<T> support() const;
 
     /// Returns the range of parameters as a matrix with two columns, [lower upper]
-    gsMatrix<T> parameterRange() const
-    { return this->basis().support(); }
+    gsMatrix<T> parameterRange() const;
 
     /// Get back the side of point \a u
     //boxSide sideOf(const gsVector<T> & u); //
@@ -414,8 +395,8 @@ public:
     void rotate(T angle, const gsVector<T,3> & axis )
     {
         assert( geoDim() == 3 );
-        Eigen::Transform<T,3,Eigen::Affine> 
-            rot( Eigen::AngleAxis<T> (angle,axis.normalized()) );
+        gsEigen::Transform<T,3,gsEigen::Affine> 
+            rot( gsEigen::AngleAxis<T> (angle,axis.normalized()) );
         // To do: Simpler way to use transforms ?
         this->m_coefs = (this->m_coefs.rowwise().homogeneous() * 
                          rot.matrix().transpose() ).leftCols(3) ;
@@ -425,7 +406,7 @@ public:
     void rotate(T angle)
     {
         GISMO_ASSERT( geoDim() == 2, "Only for 2D");
-        Eigen::Rotation2D<T> rot(angle);
+        gsEigen::Rotation2D<T> rot(angle);
         this->m_coefs *= rot.matrix().transpose();
     }
 
@@ -467,27 +448,21 @@ public:
     /// @{
 
     /// Refine the geometry uniformly, inserting \a numKnots new knots into each knot span
-    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1) // todo: int dir = -1
-    {
-        this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
-    }
+    virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1); // todo: int dir = -1
+
+    /// Coarsen the geometry uniformly, removing \a numKnots new knots into each knot span
+    virtual void uniformCoarsen(int numKnots = 1); // todo: int dir = -1
 
     /** \brief Refines the basis and adjusts the coefficients to keep the geometry the same.
      *
      * The syntax of \em boxes depends on the implementation in the
      * underlying basis. See gsBasis::refineElements_withCoefs() for details.
      */
-    void refineElements( std::vector<index_t> const & boxes )
-    {
-        this->basis().refineElements_withCoefs(this->m_coefs, boxes );
-    }
+    void refineElements( std::vector<index_t> const & boxes );
 
-    void unrefineElements( std::vector<index_t> const & boxes )
-    {
-        this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
-    }
+    void unrefineElements( std::vector<index_t> const & boxes );
 
-    typename gsGeometry::uPtr coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
+    typename gsGeometry::uPtr coord(const index_t c) const;
     
     /// Embeds coefficients in 3D
     void embed3d()
@@ -508,7 +483,7 @@ public:
 
         if (!pad_right && nc<0)
             m_coefs.leftCols(N) = m_coefs.rightCols(N);
-        m_coefs.conservativeResize(Eigen::NoChange, N);
+        m_coefs.conservativeResize(gsEigen::NoChange, N);
 
         if ( nc > 0 )
         {
@@ -526,9 +501,7 @@ public:
     }
 
     /// \brief Returns the degree wrt direction i
-    short_t degree(const short_t & i) const
-     //{ return this->basisComponent(i).degree(); };
-     { return this->basis().degree(i); }
+    short_t degree(const short_t & i) const;
 
     /// Inserts knot \a knot at direction \a dir, \a i times
     virtual void insertKnot( T knot, index_t dir, index_t i = 1);
@@ -559,8 +532,7 @@ public:
                               index_t coord) const;
     
     /// Return the control net of the geometry
-    void controlNet( gsMesh<T> & mesh) const
-    { basis().connectivity(m_coefs, mesh); }
+    void controlNet( gsMesh<T> & mesh) const;
 
     /// @brief Computes the outer normals at parametric points \a u.
     ///
@@ -626,12 +598,24 @@ public:
                         const T accuracy = 1e-6,
                         const bool useInitialPoint = false) const;
 
+    /// Computes the Hausdorff distance in a single direction from *this to \a other.
+    /// The Hausdorff distance is computed by taking the maximum of the shortest distances
+    /// between points of this and \a other.
+    T directedHausdorffDistance(const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6) const;
+
+    /// Computes the Hausdorff distance between *this to \a other.
+    T HausdorffDistance(        const gsGeometry & other,
+                                const index_t nsamples = 1000,
+                                const T accuracy = 1e-6,
+                                const bool directed=false) const;
+
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 
     /// Returns the patch index for this patch
     size_t id() const { return m_id; }
-
 
 protected:
     void swap(gsGeometry & other)
