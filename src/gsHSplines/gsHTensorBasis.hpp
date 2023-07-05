@@ -651,13 +651,13 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
                 ++k2;
             }
 
-            index_t maxKtIndex = kv.size();
+            index_t maxKtIndexd = kv.size();
             if (m_manualLevels)
             {
                 _knotIndexToDiadicIndex(refLevel,j,k1);
                 _knotIndexToDiadicIndex(refLevel,j,k2);
 
-                _knotIndexToDiadicIndex(refLevel,j,maxKtIndex);
+                _knotIndexToDiadicIndex(refLevel,j,maxKtIndexd);
             }
 
             // If applicable, add the refinement extension.
