@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 
     // ------ Example 1 ------
 
-/*    // --- Unit square, with a spike of the source function at (0.25, 0.6)
+    // --- Unit square, with a spike of the source function at (0.25, 0.6)
     gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-0.6)^2 < 0.2^2, 1, 0 )",2);
     //gsFunctionExpr<>  f("if( (x-0.25)^2 + (y-1.6)^2 < 0.2^2, 1, 0 )",2);
     gsFunctionExpr<>  g("0",2);
@@ -95,10 +95,10 @@ int main(int argc, char *argv[])
 
     //RefineLoopMax = 6;
     //refParameter = 0.6;
-*/
+
     // ^^^^^^ Example 1 ^^^^^^
 
-    
+    /*
     // ------ Example 2 ------
 
     // The classical example associated with the L-Shaped domain.
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     //refParameter = 0.85;
 
     // ^^^^^^ Example 2 ^^^^^^
-    
+    */
 
     gsInfo<<"Source function "<< f << "\n";
     gsInfo<<"Exact solution "<< g <<".\n" << "\n";
@@ -165,29 +165,20 @@ int main(int argc, char *argv[])
             HTB = new gsHBSplineBasis<2,real_t>(tbb,true);
         else
             HTB = new gsTHBSplineBasis<2,real_t>(tbb,true);
-        gsDebugVar(gsAsConstVector<index_t>(tbb.knots(0).multiplicities()));
-        gsDebugVar(tbb.knots(0).asMatrix());
 
-        // This does not work
-        //{
         for (index_t k=0; k!=degree-2; k++)
         {
             tbb.uniformRefine(1,k+1);
             tbb.reduceContinuity(1);
             tbb.removeKnot(0.5,0,1);
-            gsDebugVar(gsAsConstVector<index_t>(tbb.knots(0).multiplicities()));
-            gsDebugVar(tbb.knots(0).asMatrix());
             HTB->addLevel(tbb);
         }
 
         for (index_t k=0; k!=5; k++)
         {
             tbb.uniformRefine(1,degree-1);
-            gsDebugVar(gsAsConstVector<index_t>(tbb.knots(0).multiplicities()));
-            gsDebugVar(tbb.knots(0).asMatrix());
             HTB->addLevel(tbb);
         }
-        //}
 
         // This works    
         //{
@@ -215,20 +206,6 @@ int main(int argc, char *argv[])
     boxes.row(1)<<0.00,1.00;
     HTB->refine(boxes);
 
-    // std::vector<index_t> elements = HTB->asElements(boxes,0);
-    // HTB->refineElements(elements);
-    // gsDebugVar(gsAsConstVector<index_t>(elements));
-
-    gsWriteParaview<>(*HTB, "basis", 500, true);
-
-    gsWrite(*HTB,"HTB");
-
-
-
-
-
-    return 0;
-
     // Finally, create a vector (of length one) of this gsTHBSplineBasis
     gsMultiBasis<real_t> bases(*HTB);
 
@@ -239,23 +216,15 @@ int main(int argc, char *argv[])
     if (dump)
         gsWrite(bases[0], "adapt_basis_0.xml");
 
-    gsParaviewCollection errors("errors.pvd");
     // So, ready to start the adaptive refinement loop:
     for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
     {
         gsInfo << "\n============================== Loop " << RefineLoop << " of " << RefineLoopMax << " ==============================" << "\n" << "\n";
 
-        gsVector<unsigned> np(2); np<<100,100;
-        gsVector<> A(2); A<<0.375,0.5625;
-        gsVector<> B(2); B<<0.0,0.25;
-        gsMatrix<> grid = gsPointGrid<>(A,B,np);
-        gsMatrix<> res;
-        pa.multiBasis().basis(0).eval_into(grid,res);
-        gsVector<> sums = res.colwise().sum();
-        bool unity = ((sums.array()<1-1e-12 && sums.array()>1+1e-12).count()==0);
+        gsHTensorBasis<2,real_t> * HTB_tmp = dynamic_cast<gsHTensorBasis<2,real_t> * >(&pa.multiBasis().basis(0));
+        bool unity = HTB_tmp->testPartitionOfUnity();
         std::string unity_string = unity ? "has " : "does not have ";
 
-        gsHTensorBasis<2,real_t> * HTB_tmp = dynamic_cast<gsHTensorBasis<2,real_t> * >(&pa.multiBasis().basis(0));
 
         gsInfo<<" * Number of elements:  "<<HTB_tmp->numElements()<<"\n";
         gsInfo<<" * Maximum level:       "<<HTB_tmp->maxLevel()+1<<"\n";
@@ -289,13 +258,6 @@ int main(int argc, char *argv[])
         gsExprEvaluator<>::variable f1 = ev.getVariable(mpsol);
         auto ff = ev.getVariable(f, Gm);
 
-        // Plot the error field
-        ev.options().setSwitch("plot.elements",true);
-        std::string fileName = "error" + std::to_string(RefineLoop-1) + "_";
-        ev.writeParaview( (ilapl(f1,Gm) + ff).sqNorm() ,Gm,fileName);
-        errors.addPart(fileName + "0.vts",RefineLoop-1);
-        if (ev.options().getSwitch("plot.elements"))
-            errors.addPart(fileName + "0_mesh.vtp",RefineLoop-1);
         // The vector with element-wise local error estimates.
         ev.integralElWise( (ilapl(f1,Gm) + ff).sqNorm() * meas(Gm) );
         const std::vector<real_t> & elErrEst = ev.elementwise();
@@ -332,12 +294,11 @@ int main(int argc, char *argv[])
             gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
             gsWriteParaview<>(pa.multiBasis()[0], "basis", 500, true);
             // Run paraview and plot the last mesh
-            gsFileManager::open("errors.pvd");
+            gsFileManager::open("p2d_adaRef_sol.pvd");
         }
     }
     gsInfo << "\nFinal basis: " << pa.multiBasis()[0] << "\n";
 
-    errors.save();
     delete HTB;
     return EXIT_SUCCESS;
 }
