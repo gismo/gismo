@@ -899,12 +899,6 @@ public:
     /// Refines the basis function with (hierarchical) index \a i
     void refineBasisFunction(const index_t i);
 
-    void sinkElements(std::vector<index_t> const & boxes)
-    {
-        //1. convert indices
-        //2. call refineElements
-    }
-
     // Look at gsBasis.h for the documentation of this function
     //virtual void uniformRefine(int numKnots = 1);
 

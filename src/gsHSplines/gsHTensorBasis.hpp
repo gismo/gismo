@@ -573,20 +573,19 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
                 ++k2;
             }
 
+            index_t maxKtIndex = kv.size();
             if (m_manualLevels)
             {
                 _knotIndexToDiadicIndex(refLevel,j,k1);
                 _knotIndexToDiadicIndex(refLevel,j,k2);
-//                CHECK
-                // GISMO_ASSERT(refExt==0,"Manual levels do not yet work for refinement extensions");
-                // refExt=0;
+
+                _knotIndexToDiadicIndex(refLevel,j,maxKtIndex);
             }
             // If applicable, add the refinement extension.
             // Note that extending by one cell on level L means
             // extending by two cells in level L+1
-            // ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-            // const index_t maxKtIndex = kv.size();
-            // ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
+            ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
+            ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
 
             // Store the data...
             refVector[i*offset]       = refLevel;
@@ -652,9 +651,17 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
                 ++k2;
             }
 
+            index_t maxKtIndex = kv.size();
+            if (m_manualLevels)
+            {
+                _knotIndexToDiadicIndex(refLevel,j,k1);
+                _knotIndexToDiadicIndex(refLevel,j,k2);
+
+                _knotIndexToDiadicIndex(refLevel,j,maxKtIndex);
+            }
+
             // If applicable, add the refinement extension.
             ( k1 < refExt ? k1=0 : k1-=refExt );
-            const index_t maxKtIndexd = kv.uSize();
             ( k2 + refExt >= maxKtIndexd ? k2=maxKtIndexd-1 : k2+=refExt);
 
             // go one level up;
@@ -701,15 +708,11 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
 
         for(index_t j = 0; j < k1.size();j++)
         {
-            //Here: get knot indices in some standard indexing (eg. dyadic)
-
             const gsKnotVector<T> & kv = m_bases.back()->knots(j);
             k1[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
                                       boxes(j,2*i  ) ) - 1).uIndex();
             k2[j] = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
                                       boxes(j,2*i+1) ) - 1).uIndex();
-
-            // left and right
 
             // Trivial boxes trigger some refinement
             if ( k1[j] == k2[j])
