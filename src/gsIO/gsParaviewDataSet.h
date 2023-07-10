@@ -278,9 +278,9 @@ private:
             {
                 for ( index_t j=0; j<vals.cols(); ++j)
                 {
-                    for ( index_t i=0; i!=vals.rows(); ++i)
-                        dataArray<< vals(i,j) <<" ";
-                    for ( index_t i=vals.rows(); i<3; ++i)
+                    for ( index_t k=0; k!=vals.rows(); ++k)
+                        dataArray<< vals(k,j) <<" ";
+                    for ( index_t k=vals.rows(); k<3; ++k)
                         dataArray<<"0 ";
                 }
             }
