@@ -163,7 +163,9 @@ int main(int argc, char *argv[]) {
   cmd.addPlainString("input", "Name of the input file containing multi-patch", INPUT_FILE);
   cmd.addInt("e", "degreeElevation", "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate);
   cmd.addInt("r", "uniformRefine", "Number of Uniform h-refinement", numRefine);
-  cmd.addInt("p", "paramMethod", "Parameterization Method: 0 Barrier patch (default), 1 Penalty patch, 2 Penalty patch (2), 3: PDE patch", paramMethod);
+  cmd.addInt("p", "paramMethod",
+             "Parameterization Method: 0 PDE patch (default), "
+             "1 Barrier patch , 2 Penalty patch, 3 Penalty patch (2)", paramMethod);
   cmd.addInt("v", "Verbose", "Print output 0: no print, 1: summary, 2: full print", verboseMode);
   cmd.addInt("a", "preconditionType", "Preconsitioner type for Anderson Acceleration", AAPreconditionType);
   cmd.addSwitch("free", "Make interfaces free", isInterfaceFree);
