@@ -20,7 +20,7 @@ namespace gismo
 /** @brief
     A matrix with arbitrary coefficient type and fixed or dynamic size.
 
-    This class provides an interface to Eigen::Matrix from the Eigen
+    This class provides an interface to gsEigen::Matrix from the Eigen
     linear algebra library. Most operations from Eigen are supported
     on a gsMatrix. 
 
@@ -35,13 +35,13 @@ namespace gismo
     \ingroup Matrix
 */
 template<class T, int _Rows, int _Cols, int _Options>
-class gsMatrix : public Eigen::Matrix<T,_Rows, _Cols, _Options>
-//i.e. Eigen::PlainObjectBase<Eigen::Matrix>
-//i.e. Eigen::EigenBase<Eigen::Matrix>
+class gsMatrix : public gsEigen::Matrix<T,_Rows, _Cols, _Options>
+//i.e. gsEigen::PlainObjectBase<gsEigen::Matrix>
+//i.e. gsEigen::EigenBase<gsEigen::Matrix>
 {
 public:
     // Base is the dense matrix class of Eigen
-    typedef Eigen::Matrix<T,_Rows, _Cols, _Options> Base;
+    typedef gsEigen::Matrix<T,_Rows, _Cols, _Options> Base;
 
     // Self type
     typedef gsMatrix<T,_Rows, _Cols, _Options> Self;
@@ -49,54 +49,54 @@ public:
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
-    typedef typename Eigen::aligned_allocator<Self> aalloc;
+    typedef typename gsEigen::aligned_allocator<Self> aalloc;
 
     // Type pointing to a block view of the matrix
     typedef gsMatrixBlockView<Base> BlockView;
 
     // Type pointing to a block of the matrix
-    typedef Eigen::Block<Base> Block;
+    typedef gsEigen::Block<Base> Block;
 
     // Type pointing to a (const) block of the matrix
-    typedef Eigen::Block<const Base> constBlock;
+    typedef gsEigen::Block<const Base> constBlock;
     
     // Type pointing to a row of the matrix
-    typedef Eigen::Block<Base, 1, _Cols, false> Row;
+    typedef gsEigen::Block<Base, 1, _Cols, false> Row;
 
     // Type pointing to a (const) row of the matrix
-    typedef Eigen::Block<const Base, 1, _Cols, false> constRow;
+    typedef gsEigen::Block<const Base, 1, _Cols, false> constRow;
 
     // Type pointing to a set of successive rows of the matrix
-    typedef Eigen::Block<Base, Dynamic, _Cols, false> Rows;
+    typedef gsEigen::Block<Base, Dynamic, _Cols, false> Rows;
 
     // Type pointing to a a set of successive (const) rows of the matrix
-    typedef Eigen::Block<const Base, Dynamic, _Cols, false> constRows;
+    typedef gsEigen::Block<const Base, Dynamic, _Cols, false> constRows;
 
     // Type pointing to a column of the matrix
-    typedef Eigen::Block<Base, _Rows, 1, true > Column;
+    typedef gsEigen::Block<Base, _Rows, 1, true > Column;
 
     // Type pointing to a (const) column of the matrix
-    typedef Eigen::Block<const Base, _Rows, 1, true > constColumn;
+    typedef gsEigen::Block<const Base, _Rows, 1, true > constColumn;
 
     // Type pointing to a set of successive columns of the matrix
-    typedef Eigen::Block<Base, _Rows, Dynamic, true > Columns;
+    typedef gsEigen::Block<Base, _Rows, Dynamic, true > Columns;
 
     // Type pointing to a set of successive (const) columns of the matrix
-    typedef Eigen::Block<const Base, _Rows, Dynamic, true > constColumns;
+    typedef gsEigen::Block<const Base, _Rows, Dynamic, true > constColumns;
 
     // Type pointing to the transpose of the matrix
-    typedef Eigen::Transpose<Base> Tr;
+    typedef gsEigen::Transpose<Base> Tr;
 
     // Type pointing to the (const) transpose of the matrix
-    typedef const Eigen::Transpose<const Base> constTr;
+    typedef const gsEigen::Transpose<const Base> constTr;
 
     // Type refering to any possible Eigen type that can be copied
     // into a gsMatrix
-    typedef Eigen::Ref<Base> Ref;
+    typedef gsEigen::Ref<Base> Ref;
     
     // Type refering to any (const) possible Eigen types that can be
     // copied into a gsMatrix
-    typedef const Eigen::Ref<const Base> constRef;
+    typedef const gsEigen::Ref<const Base> constRef;
 
     /// Shared pointer for gsMatrix
     typedef memory::shared_ptr<gsMatrix> Ptr;
@@ -117,23 +117,23 @@ public:
         ColMinorMatrixType;
 
     // block of fixed size 3
-    typedef Eigen::VectorBlock<Eigen::Block<Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> Col3DType;
-    typedef Eigen::VectorBlock<const Eigen::Block<const Eigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> CCol3DType;
+    typedef gsEigen::VectorBlock<gsEigen::Block<gsEigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> Col3DType;
+    typedef gsEigen::VectorBlock<const gsEigen::Block<const gsEigen::Matrix<T,_Rows,_Cols>,-1,1,true>,3> CCol3DType;
 
 public:  // Solvers related to gsMatrix
-    typedef typename Eigen::EigenSolver<Base> EigenSolver;
+    typedef typename gsEigen::EigenSolver<Base> EigenSolver;
 
-    typedef typename Eigen::SelfAdjointEigenSolver<Base> SelfAdjEigenSolver;
+    typedef typename gsEigen::SelfAdjointEigenSolver<Base> SelfAdjEigenSolver;
     
-    typedef typename Eigen::GeneralizedSelfAdjointEigenSolver<Base> GenSelfAdjEigenSolver;
+    typedef typename gsEigen::GeneralizedSelfAdjointEigenSolver<Base> GenSelfAdjEigenSolver;
 
     // Jacobi SVD using ColPivHouseholderQRPreconditioner
-    typedef typename Eigen::JacobiSVD<Base> JacobiSVD;
+    typedef typename gsEigen::JacobiSVD<Base> JacobiSVD;
 
     // Bidiagonal Divide and Conquer SVD 
-    //typedef typename Eigen::BDCSVD<Base> BDCSVD;
+    //typedef typename gsEigen::BDCSVD<Base> BDCSVD;
 
-    //typedef typename Eigen::CompleteOrthogonalDecomposition CODecomposition;
+    //typedef typename gsEigen::CompleteOrthogonalDecomposition CODecomposition;
     
 public:
 
@@ -148,15 +148,15 @@ public:
 
     /// This constructor allows constructing a gsMatrix from Eigen expressions
     template<typename OtherDerived>
-    gsMatrix(const Eigen::EigenBase<OtherDerived>& other) : Base(other) { }
+    gsMatrix(const gsEigen::EigenBase<OtherDerived>& other) : Base(other) { }
 
     /// This constructor allows constructing a gsMatrix from Eigen expressions
     template<typename OtherDerived>
-    gsMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+    gsMatrix(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
     /// This constructor allows constructing a gsMatrix from Eigen expressions
     template<typename OtherDerived>
-    gsMatrix(const Eigen::ReturnByValue<OtherDerived>& other) : Base(other) { }
+    gsMatrix(const gsEigen::ReturnByValue<OtherDerived>& other) : Base(other) { }
 
     inline operator Ref () { return Ref(*this); }
 
@@ -193,7 +193,7 @@ public:
 
 #if !EIGEN_HAS_RVALUE_REFERENCES
     // swap assignment operator
-    gsMatrix & operator=(typename Eigen::internal::conditional<
+    gsMatrix & operator=(typename gsEigen::internal::conditional<
                          -1==_Rows,gsMatrix, const gsMatrix &>::type other)
     {
         if (-1==_Rows)
@@ -444,7 +444,7 @@ public:
         }
         else
         {
-            Eigen::Map<Base> m(this->data(), nr, nc);
+            gsEigen::Map<Base> m(this->data(), nr, nc);
             this->resize(colBlock, this->size()/colBlock);
             
             index_t i = 0;
@@ -481,7 +481,7 @@ public:
 
     /// Returns the Kronecker product of \a this with \a other
     template<typename OtherDerived>
-    gsMatrix kron(const Eigen::MatrixBase<OtherDerived>& other) const
+    gsMatrix kron(const gsEigen::MatrixBase<OtherDerived>& other) const
     {
         const index_t r  = this->rows(), c = this->cols();
         const index_t ro = other.rows(), co = other.cols();
@@ -494,7 +494,7 @@ public:
 
     /// Returns the Khatri-Rao product of \a this with \a other
     template<typename OtherDerived>
-    gsMatrix khatriRao(const Eigen::MatrixBase<OtherDerived>& other) const
+    gsMatrix khatriRao(const gsEigen::MatrixBase<OtherDerived>& other) const
     {
         const index_t r  = this->rows(), c = this->cols();
         const index_t ro = other.rows();
@@ -510,10 +510,10 @@ private:
 
     // Implementation of (inplace) Reduced Row Echelon Form computation
     template <typename Derived>
-    static void rref_impl(const Eigen::MatrixBase<Derived>& Mat)
+    static void rref_impl(const gsEigen::MatrixBase<Derived>& Mat)
     {  
         // todo: const T tol = 0
-        Eigen::MatrixBase<Derived> & M = const_cast<Eigen::MatrixBase<Derived>& >(Mat);
+        gsEigen::MatrixBase<Derived> & M = const_cast<gsEigen::MatrixBase<Derived>& >(Mat);
         index_t i, piv = 0;
         const index_t nr = M.rows();
         const index_t nc = M.cols();
@@ -555,10 +555,10 @@ private:
 
     // Implementation of (inplace) Row Echelon Form computation
     template <typename Derived>
-    static void ref_impl(const Eigen::MatrixBase<Derived>& Mat)
+    static void ref_impl(const gsEigen::MatrixBase<Derived>& Mat)
     {  
         // todo: const T tol = 0
-        Eigen::MatrixBase<Derived> & M = const_cast<Eigen::MatrixBase<Derived>& >(Mat);
+        gsEigen::MatrixBase<Derived> & M = const_cast<gsEigen::MatrixBase<Derived>& >(Mat);
         index_t i, piv = 0;
         const index_t nr = M.rows();
         const index_t nc = M.cols();
@@ -617,7 +617,7 @@ gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(int rows, int cols) : Base(rows,col
     
 // template<class T, int _Rows, int _Cols, int _Options>
 //  template<typename OtherDerived> 
-// gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+// gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
 /* Clone function. Used to make a copy of the matrix
 template<class T, int _Rows, int _Cols, int _Options> inline
@@ -656,8 +656,8 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 } // namespace gismo
 
 
-namespace Eigen { namespace internal {
+namespace gsEigen { namespace internal {
 template<class T, int _Rows, int _Cols, int _Options>
 struct traits<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
-Eigen::internal::traits<Eigen::Matrix<T,_Rows,_Cols,_Options> > { };
+gsEigen::internal::traits<gsEigen::Matrix<T,_Rows,_Cols,_Options> > { };
 } }

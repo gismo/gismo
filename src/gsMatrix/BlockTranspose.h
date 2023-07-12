@@ -176,7 +176,7 @@ protected:
 
 } // namespace internal
 
-/** \memberof Eigen::MatrixBase
+/** \memberof gsEigen::MatrixBase
   * \return an expression of block-wise transposed tiled matrix
   */
 template<typename Derived>

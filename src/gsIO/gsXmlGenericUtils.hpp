@@ -312,8 +312,8 @@ Object * getGeometryFromXml ( gsXmlNode * node)
             if (val ==  "rotation" ) // 3d
             {
                 getMatrixFromXml<typename Object::Scalar_t>(tmp, 4, 1, a);
-                Eigen::Transform<typename Object::Scalar_t,3,Eigen::Affine> 
-                    rot( Eigen::AngleAxis<typename Object::Scalar_t> 
+                gsEigen::Transform<typename Object::Scalar_t,3,gsEigen::Affine> 
+                    rot( gsEigen::AngleAxis<typename Object::Scalar_t> 
                          ( a(3,0), a.template block<3,1>(0,0).normalized() ) );
                 c = (c. rowwise().homogeneous() * 
                      rot.matrix().transpose() ).leftCols(3) ;

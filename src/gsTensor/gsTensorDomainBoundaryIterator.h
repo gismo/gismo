@@ -261,7 +261,9 @@ private:
     gsVector<T> lower, upper;
 
 public:
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 }; // class gsTensorDomainBoundaryIterator
 
 

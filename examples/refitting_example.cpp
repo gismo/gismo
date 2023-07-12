@@ -372,7 +372,7 @@ int main(int argc, char *argv[])
 
         std::ofstream file;
         file.open("haussdorfs.csv",std::ofstream::out);
-        for (index_t k=0; k!=hausdorffs.size(); k++)
+        for (size_t k=0; k!=hausdorffs.size(); k++)
             file<<std::setprecision(12)<<hausdorffs.at(k)<<"\n";
 
         file.close();

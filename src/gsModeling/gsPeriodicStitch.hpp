@@ -163,7 +163,7 @@ void gsPeriodicStitch<T>::constructAndSolveEquationSystem(const Neighbourhood &n
     }
 
     // Solve the system and save the results.
-    Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
+    gsEigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
     gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < n; i++)
     {
