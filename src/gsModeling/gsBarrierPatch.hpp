@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "gsModeling/gsBarrierCore.h"
+#include <gsModeling/gsBarrierCore.h>
 
 namespace gismo
 {

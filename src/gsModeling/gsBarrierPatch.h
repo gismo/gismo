@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <gismo.h>
 #include <gsHLBFGS/gsHLBFGS.h>
 
 using namespace gismo;
