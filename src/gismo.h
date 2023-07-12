@@ -127,6 +127,7 @@ namespace internal
 #include <gsModeling/gsSpringPatch.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsModeling/gsCrossApPatch.h>
+#include <gsModeling/gsCrossApPatch.h>
 #include "gsModeling/gsBarrierPatch.h"
 
 #include <gsModeling/gsLineSegment.h>
