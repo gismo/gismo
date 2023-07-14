@@ -39,10 +39,10 @@ void gsWriteOpenNurbs(const gsGeometry<T>& geom,
 
 /// Writes a planar domain to OpenNurbs file
 template<class T>
-bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd);
+bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd, const std::string & name);
 
 template<class T>
-bool writeON_MultiPatch( const gsMultiPatch<T> & patches);
+bool writeON_MultiPatch( const gsMultiPatch<T> & patches, const std::string & name);
 
 template<class T>
 bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std::string & name);
