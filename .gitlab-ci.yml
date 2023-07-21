@@ -48,107 +48,90 @@
     - external_pull_requests
     
 #-------------------------------------------------------------------------------
-# Clang 8-13, C++11,14,17,20,23
+# Clang 13-16, C++14,17,20,23
 #-------------------------------------------------------------------------------
 
-# Clang 8, C++11, Release
-linux_x86_64_clang8_cxx11_release_double_int32t:
+# Clang 13, C++14, Release
+linux_x86_64_clang13_cxx14_release_float_int:
   extends: .test:linux:base
   variables:
-    IMAGE:            "silkeh/clang:8"
+    IMAGE:            "silkeh/clang:13"
     CNAME:            "/usr/local/bin/clang"
     CXXNAME:          "/usr/local/bin/clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    GISMO_OPTIONAL:   "gsOpennurbs\\;"
 
-# Clang 9, C++14, Release
-linux_x86_64_clang9_cxx14_release_longdouble_int64t:
+# Clang 14, C++17, Release
+linux_x86_64_clang14_cxx17_release_double_int64t:
   extends: .test:linux:base
   variables:
-    IMAGE:            "silkeh/clang:9"
+    IMAGE:            "silkeh/clang:14
     CNAME:            "/usr/local/bin/clang"
     CXXNAME:          "/usr/local/bin/clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
-    
-# Clang 10, C++17, Release
-linux_x86_64_clang10_cxx17_release_mpreal_long:
-  extends: .test:linux:base
-  variables:
-    IMAGE:            "silkeh/clang:10"
-    CNAME:            "/usr/local/bin/clang"
-    CXXNAME:          "/usr/local/bin/clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int64_t'"
+    GISMO_OPTIONAL:   "gsOpennurbs\\;gsSpectra"
 
-# Clang 11, C++20, Release
-linux_x86_64_clang11_cxx20_release_mpq_long:
+# Clang 15, C++20, Release
+linux_x86_64_clang14_cxx20_release_mpq_int:
   extends: .test:linux:base
   variables:
-    IMAGE:            "silkeh/clang:11"
+    IMAGE:            "silkeh/clang:15
     CNAME:            "/usr/local/bin/clang"
     CXXNAME:          "/usr/local/bin/clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long'"
-    CTEST_ARGS:       "-D DO_TESTS=FALSE"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int'"
+    GISMO_OPTIONAL:   "gsOpennurbs\\;"
 
-# Clang 13 (latest), C++23, Release
-linux_x86_64_clang13_cxx23_release_float_int:
+# Clang 16, C++23, Release
+linux_x86_64_clang14_cxx14_release_mpreal_int:
   extends: .test:linux:base
   variables:
-    IMAGE:            "silkeh/clang:latest"
+    IMAGE:            "silkeh/clang:16
     CNAME:            "/usr/local/bin/clang"
     CXXNAME:          "/usr/local/bin/clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=int'"
     GISMO_OPTIONAL:   "gsOpennurbs\\;"
 
 #-------------------------------------------------------------------------------
-# GCC 8-12, C++11,14,17,20
+# GCC 10-13, C++14,17,20,23
 #-------------------------------------------------------------------------------
-    
-# GCC 8, C++11, Release
-linux_x86_64_gcc8_cxx11_release_mpreal_long:
-  extends: .test:linux:base
-  variables:
-    IMAGE:            "gcc:8"
-    CNAME:            "/usr/local/bin/gcc"
-    CXXNAME:          "/usr/local/bin/g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
 
-# GCC 9, C++14, Release
-linux_x86_64_gcc9_cxx14_release_longdouble_int64t:
-  extends: .test:linux:base
-  variables:
-    IMAGE:            "gcc:9"
-    CNAME:            "/usr/local/bin/gcc"
-    CXXNAME:          "/usr/local/bin/g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
-    
-# GCC 10, C++17, Release
-linux_x86_64_gcc10_cxx17_release_double_int32t:
+# GCC 10, C++14, Release
+linux_x86_64_gcc10_cxx14_release_double_int64t:
   extends: .test:linux:base
   variables:
     IMAGE:            "gcc:10"
     CNAME:            "/usr/local/bin/gcc"
     CXXNAME:          "/usr/local/bin/g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int64_t'"
     GISMO_OPTIONAL:   "gsOpennurbs\\;"
 
-# GCC 11, C++20, Release
-linux_x86_64_gcc11_cxx20_release_float_int:
+# GCC 11, C++17, Release
+linux_x86_64_gcc11_cxx17_release_float_int:
   extends: .test:linux:base
   variables:
     IMAGE:            "gcc:11"
     CNAME:            "/usr/local/bin/gcc"
     CXXNAME:          "/usr/local/bin/g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    GISMO_OPTIONAL:   "gsOpennurbs\\;gsSpectra"
     
-# GCC 12 (latest), C++23, Release
-linux_x86_64_gcc12_cxx23_release_float_int:
+# GCC 12, C++20, Release
+linux_x86_64_gcc12_cxx20_release_mpreal_int:
   extends: .test:linux:base
   variables:
-    IMAGE:            "gcc:latest"
+    IMAGE:            "gcc:12"
     CNAME:            "/usr/local/bin/gcc"
     CXXNAME:          "/usr/local/bin/g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
-    CTEST_ARGS:       "-D DO_TESTS=FALSE"    
-    GISMO_OPTIONAL:   "gsOpennurbs\\;gsSpectra"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=int'"
+
+# GCC 13, C++23, Release
+linux_x86_64_gcc12_cxx23_release_mpq_int:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "gcc:13"
+    CNAME:            "/usr/local/bin/gcc"
+    CXXNAME:          "/usr/local/bin/g++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int'"
     
 ################################################################################
 # 2. Building and testing of external pull requests (PRs)
@@ -236,7 +219,7 @@ install_and_deploy_linux:
 ################################################################################
 
 .docker:linux:base:
-  stage: test # make build
+  stage: test
   image: docker:19.03.12
   services:
     - docker:19.03.12-dind
@@ -249,11 +232,17 @@ install_and_deploy_linux:
     - docker login --username=$DOCKERHUB_USERNAME --password=$DOCKERHUB_PASSWORD
     - cd /builds/gismo-ci/gismo/docker && bash run_build_docker.sh $DOCKERHUB_USERNAME/gismo:$DOCKER_TAG
     - docker push $DOCKERHUB_USERNAME/gismo:$DOCKER_TAG
-#  only:
-#    - stable
+  only:
+    - stable
 
-# GCC 11, C++11, Release
-docker:ubuntu20.04-gcc11-cxx11-release-generic-double-int:
+# GCC 11, C++14, Release
+docker:ubuntu20.04-gcc11-cxx14-release-generic-double-int:
   extends: .docker:linux:base
   variables:
     DOCKER_TAG: "ubuntu20.04-gcc11-cxx14-release-generic-double-int"
+
+# GCC 11, C++14, Debug
+docker:ubuntu20.04-gcc11-cxx14-debug-generic-double-int:
+  extends: .docker:linux:base
+  variables:
+    DOCKER_TAG: "ubuntu20.04-gcc11-cxx14-debug-generic-double-int"
