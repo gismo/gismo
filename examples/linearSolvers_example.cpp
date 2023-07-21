@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
     index_t N = 100;
     //Tolerance
-    real_t tol = std::pow(10.0, - REAL_DIG * 0.75);
+    real_t tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t, double>::value ? 0.75 : 0.5));
 
     gsCmdLine cmd("Solves a 1D PDE with a Courant discretization with several solvers.");
     cmd.addInt ("n", "number", "Number of unknowns",                  N  );
