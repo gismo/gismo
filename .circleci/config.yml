@@ -3,7 +3,7 @@ version: 2.0
 jobs:
   macos_x86_64_xcode14.2_cxx14_release:
     macos:
-      xcode: "14.2.1"
+      xcode: "14.2.0"
     resource_class: macos.x86.medium.gen2
     working_directory: ~/gismo
     environment:
