@@ -173,7 +173,8 @@ int main(int argc, char *argv[])
       gsInfo<< "  "<<*o ;
 
       if ( gsSurface<> * srf = dynamic_cast<gsSurface<>*>(o.get()) )
-      {      
+      {
+      GISMO_UNUSED(srf);
 #ifdef gsOpennurbs_ENABLED
       //gsInfo<< "  Write back to geo.3dm\n";
       //extensions::writeON_NurbsSurface(*srf,"geo");
