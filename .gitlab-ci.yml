@@ -72,7 +72,7 @@ linux_x86_64_clang14_cxx17_release_double_int64t:
     GISMO_OPTIONAL:   "gsOpennurbs\\;gsSpectra"
 
 # Clang 15, C++20, Release
-linux_x86_64_clang14_cxx20_release_mpq_int:
+linux_x86_64_clang15_cxx20_release_mpq_int:
   extends: .test:linux:base
   variables:
     IMAGE:            "silkeh/clang:15
@@ -82,7 +82,7 @@ linux_x86_64_clang14_cxx20_release_mpq_int:
     GISMO_OPTIONAL:   "gsOpennurbs\\;"
 
 # Clang 16, C++23, Release
-linux_x86_64_clang14_cxx14_release_mpreal_int:
+linux_x86_64_clang16_cxx23_release_mpreal_int:
   extends: .test:linux:base
   variables:
     IMAGE:            "silkeh/clang:16
