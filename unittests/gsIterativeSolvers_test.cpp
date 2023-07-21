@@ -103,7 +103,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(CG_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -129,7 +129,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(MinRes_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -153,7 +153,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(MinRes_InexactResidual_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -178,7 +178,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(GMRes_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -202,7 +202,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(CG_Jacobi_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -227,7 +227,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(CG_SGS_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -252,7 +252,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(GMRES_GS_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -277,7 +277,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(GMRES_RGS_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -302,7 +302,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(MinRes_Rich_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
@@ -330,7 +330,7 @@ SUITE(gsIterativeSolvers_test)
     TEST(BICGSTAB_SGS_test)
     {
         index_t          N = 100;
-        real_t           tol = std::pow(10.0, - REAL_DIG * 0.75);
+        real_t           tol = std::pow(10.0, - REAL_DIG * (std::is_same<real_t,double>::value ? 0.75 : 0.5));
 
         gsSparseMatrix<> mat;
         gsMatrix<>       rhs;
