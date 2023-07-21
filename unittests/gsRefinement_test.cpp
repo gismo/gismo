@@ -38,7 +38,7 @@ void testBoehm_helper(const gsBSpline<>& bsp, const std::vector<real_t> knots)
     gsBoehmRefine(kv2, coef2, kv2.degree(), knots.begin(), knots.end());
 
     CHECK (compareKV(kv1, kv2));
-    CHECK ((coef1 - coef2).array().abs().maxCoeff() <= 1e-12);
+    CHECK ((coef1 - coef2).array().abs().maxCoeff() <= (std::is_same<real_t,double>::value ? 1e-12 : 1e-7));
 }
 
 // copied from gsNorms.hpp, which is no longer in stable
