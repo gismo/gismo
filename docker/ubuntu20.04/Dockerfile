@@ -34,12 +34,12 @@ ENV VERSION "$VERSION"
 
 # This file accepts the following build-time arguments:
 
-# C compiler              : {clang-6.0,clang-7,clang-8,clang-9,clang-10,gcc-7,gcc-8,gcc-9,gcc-10,gcc-11}
+# C compiler              : {clang-6.0,clang-7,clang-8,clang-9,clang-10,gcc-7,gcc-8,gcc-9,gcc-10,gcc-11,gcc-12,gcc-13}
 ARG CC=gcc-10
-# C++ compiler            : {clang++-6.0,clang++-7,clang++-8,clang++-9,clang++-10,g++-7,g++-8,g++-9,g++-10,g++-11}
+# C++ compiler            : {clang++-6.0,clang++-7,clang++-8,clang++-9,clang++-10,g++-7,g++-8,g++-9,g++-10,g++-11,g++-12,g++-13}
 ARG CXX=g++-10
 
-# Fortran compiler        : {gfortran-7,gfortran-8,gfortran-9,gfortran-10,gfortran-11}
+# Fortran compiler        : {gfortran-7,gfortran-8,gfortran-9,gfortran-10,gfortran-11,gfortran-12,gfortran-13}
 ARG FC=na
 
 # CMAKE_CXX_STANDARD      : {11,14,17,20,23}
@@ -217,10 +217,30 @@ RUN if [ "$CC" = "gcc-10" ] ; then \
 
 # Install GCC C compiler version 11 (if required)
 RUN if [ "$CC" = "gcc-11" ] ; then \
-    add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         gcc-11 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC C compiler version 12 (if required)
+RUN if [ "$CC" = "gcc-12" ] ; then \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update -q && \
+    apt-get install --no-install-recommends -yq \
+        gcc-12 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC C compiler version 13 (if required)
+RUN if [ "$CC" = "gcc-13" ] ; then \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update -q && \
+    apt-get install --no-install-recommends -yq \
+        gcc-13 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
@@ -263,10 +283,30 @@ RUN if [ "$CXX" = "g++-10" ] ; then \
 
 # Install GCC C++ compiler version 11 (if required)
 RUN if [ "$CXX" = "g++-11" ] ; then \
-    add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         g++-11 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC C++ compiler version 12 (if required)
+RUN if [ "$CXX" = "g++-12" ] ; then \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update -q && \
+    apt-get install --no-install-recommends -yq \
+        g++-12 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC C++ compiler version 13 (if required)
+RUN if [ "$CXX" = "g++-13" ] ; then \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update -q && \
+    apt-get install --no-install-recommends -yq \
+        g++-13 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
@@ -312,10 +352,30 @@ RUN if [ "$FC" = "gfortran-10" ] ; then \
 
 # Install GCC Fortran compiler version 11 (if required)
 RUN if [ "$FC" = "gfortran-11" ] ; then \
-    add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get update -q && \
     apt-get install --no-install-recommends -yq \
         gfortran-11 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC Fortran compiler version 12 (if required)
+RUN if [ "$FC" = "gfortran-12" ] ; then \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update -q && \
+    apt-get install --no-install-recommends -yq \
+        gfortran-12 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    fi
+
+# Install GCC Fortran compiler version 13 (if required)
+RUN if [ "$FC" = "gfortran-13" ] ; then \
+    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update -q && \
+    apt-get install --no-install-recommends -yq \
+        gfortran-13 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     fi
