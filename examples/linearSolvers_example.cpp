@@ -15,7 +15,7 @@
 
 #include <iostream>
 #include <gismo.h>
-
+#include <gsSolver/gsMinResQLP.h>
 
 using namespace gismo;
 
@@ -178,6 +178,20 @@ int main(int argc, char *argv[])
     CGSolver.solve(rhs,x0);
     gsInfo << "done.\n";
     gsIterativeSolverInfo(CGSolver, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
+
+    //Initialize the MINRES-QLP solver
+    gsMinResQLP<> MRQLPSolver(mat,preConMat);
+    MRQLPSolver.setOptions(opt);
+
+    //Set the initial guess to zero
+    x0.setZero(N,1);
+
+    //Solve system with given preconditioner (solution is stored in x0)
+    gsInfo << "\nMRQLPSolver: Started solving... ";
+    clock.restart();
+    MRQLPSolver.solve(rhs,x0);
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(MRQLPSolver, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
 
 
     ///----------------------EIGEN-ITERATIVE-SOLVERS----------------------///
