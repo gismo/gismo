@@ -72,18 +72,18 @@ PYBIND11_MODULE(pygismo, m) {
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
 
-  gismo::pybind11_init_gsHBSplineBasis2( core );
-  gismo::pybind11_init_gsHBSplineBasis3( core );
-  gismo::pybind11_init_gsHBSplineBasis4( core );
-  gismo::pybind11_init_gsHBSpline2( core );
-  gismo::pybind11_init_gsHBSpline3( core );
-  gismo::pybind11_init_gsHBSpline4( core );
-  gismo::pybind11_init_gsTHBSplineBasis2( core );
-  gismo::pybind11_init_gsTHBSplineBasis3( core );
-  gismo::pybind11_init_gsTHBSplineBasis4( core );
-  gismo::pybind11_init_gsTHBSpline2( core );
-  gismo::pybind11_init_gsTHBSpline3( core );
-  gismo::pybind11_init_gsTHBSpline4( core );
+  gismo::pybind11_init_gsHBSplineBasis2( hsplines );
+  gismo::pybind11_init_gsHBSplineBasis3( hsplines );
+  gismo::pybind11_init_gsHBSplineBasis4( hsplines );
+  gismo::pybind11_init_gsHBSpline2( hsplines );
+  gismo::pybind11_init_gsHBSpline3( hsplines );
+  gismo::pybind11_init_gsHBSpline4( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis2( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis3( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis4( hsplines );
+  gismo::pybind11_init_gsTHBSpline2( hsplines );
+  gismo::pybind11_init_gsTHBSpline3( hsplines );
+  gismo::pybind11_init_gsTHBSpline4( hsplines );
   
   py::module io = m.def_submodule("io");
 
@@ -120,9 +120,9 @@ PYBIND11_MODULE(pygismo, m) {
 
   py::module msplines = m.def_submodule("msplines");
 
-  hsplines.attr("__name__") = "pygismo.msplines";
-  hsplines.attr("__version__") = GISMO_VERSION;
-  hsplines.doc() = "G+Smo (Geometry + Simulation Modules): MSplines module";
+  msplines.attr("__name__") = "pygismo.msplines";
+  msplines.attr("__version__") = GISMO_VERSION;
+  msplines.doc() = "G+Smo (Geometry + Simulation Modules): MSplines module";
 
   // gismo::pybind11_init_gsMappedSpline( msplines );
   // gismo::pybind11_init_gsMappedBasis1( msplines );

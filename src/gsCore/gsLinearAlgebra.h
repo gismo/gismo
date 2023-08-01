@@ -74,15 +74,16 @@
 // PaStiX
 //#include <gsEigen/PaStiXSupport>
 
+#ifdef GISMO_WITH_PYBIND11
+#include <pybind11/eigen.h>
+#endif
+
 #undef Eigen
 #undef eigen_assert
 #undef EIGEN_MATRIXBASE_PLUGIN
 #undef EIGEN_PLAINOBJECTBASE_PLUGIN
 
 
-#ifdef GISMO_WITH_PYBIND11
-#include <pybind11/eigen.h>
-#endif
 
 namespace gismo
 {
