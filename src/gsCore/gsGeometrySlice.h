@@ -2,12 +2,12 @@
 
     @brief Provides declaration of the gsGeometrySlice class
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): F. Buchegger
 */
 
@@ -18,7 +18,7 @@
 namespace gismo
 {
 
-/** 
+/**
     \brief gsGeometrySlice is a class representing an iso parametric slice of a geometry object.
     It stores a pointer to the geometry object, which is only valid as long as this object is alive.
     Methods for printing to paraview are available in gsWriteToParaview.h
@@ -84,7 +84,7 @@ public:
         const index_t d = domainDim();
         result.resize(d+1, result.size()/(d+1));
         result.row(m_fixed_dir).swap(result.row(d));
-        result.conservativeResize(d,Eigen::NoChange);
+        result.conservativeResize(d,gsEigen::NoChange);
         result.resize(result.size()/u.cols(), u.cols());
     }
 
