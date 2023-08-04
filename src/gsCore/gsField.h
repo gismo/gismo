@@ -304,6 +304,14 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsField<T>& b)
 {return b.print(os); }
 
+#ifdef GISMO_WITH_PYBIND11
+
+    /**
+     * @brief Initializes the Python wrapper for the class: gsField
+     */
+    void pybind11_init_gsField(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

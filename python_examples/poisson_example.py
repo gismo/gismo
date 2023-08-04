@@ -25,7 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-numRefine = 4
+numRefine = 7
 degree = 3
 plot = True
 
@@ -72,6 +72,11 @@ sol = scipy.sparse.linalg.spsolve(matrix, rhs)
 
 solutionMP = gs.core.gsMultiPatch()
 assembler.constructSolution(sol, solutionMP, 0)
+
+solutionField = assembler.constructSolution(sol, 0)
+L2Error = solutionField.distanceL2(exactFunc, False, 1000)
+H1SeminormError = solutionField.distanceH1(exactFunc, False, 1000)
+print(f"L2 error: {L2Error}\nH1 error: {L2Error + H1SeminormError}")
 
 
 if plot:
