@@ -2,12 +2,12 @@
 
     @brief Provides declaration of Matrix class.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -22,7 +22,7 @@ namespace gismo
 
     This class provides an interface to gsEigen::Matrix from the Eigen
     linear algebra library. Most operations from Eigen are supported
-    on a gsMatrix. 
+    on a gsMatrix.
 
     See therefore also the Eigen documentation for dense matrices,
     http://eigen.tuxfamily.org/dox/group__QuickRefPage.html
@@ -59,7 +59,7 @@ public:
 
     // Type pointing to a (const) block of the matrix
     typedef gsEigen::Block<const Base> constBlock;
-    
+
     // Type pointing to a row of the matrix
     typedef gsEigen::Block<Base, 1, _Cols, false> Row;
 
@@ -93,7 +93,7 @@ public:
     // Type refering to any possible Eigen type that can be copied
     // into a gsMatrix
     typedef gsEigen::Ref<Base> Ref;
-    
+
     // Type refering to any (const) possible Eigen types that can be
     // copied into a gsMatrix
     typedef const gsEigen::Ref<const Base> constRef;
@@ -103,7 +103,7 @@ public:
 
     /// Unique pointer for gsMatrix
     typedef memory::unique_ptr<gsMatrix> uPtr;
-    
+
     // type of first minor matrix: rows and cols reduced by one
     typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ChangeDim<_Cols, -1>::D>
         FirstMinorMatrixType;
@@ -124,17 +124,17 @@ public:  // Solvers related to gsMatrix
     typedef typename gsEigen::EigenSolver<Base> EigenSolver;
 
     typedef typename gsEigen::SelfAdjointEigenSolver<Base> SelfAdjEigenSolver;
-    
+
     typedef typename gsEigen::GeneralizedSelfAdjointEigenSolver<Base> GenSelfAdjEigenSolver;
 
     // Jacobi SVD using ColPivHouseholderQRPreconditioner
     typedef typename gsEigen::JacobiSVD<Base> JacobiSVD;
 
-    // Bidiagonal Divide and Conquer SVD 
+    // Bidiagonal Divide and Conquer SVD
     //typedef typename gsEigen::BDCSVD<Base> BDCSVD;
 
     //typedef typename gsEigen::CompleteOrthogonalDecomposition CODecomposition;
-    
+
 public:
 
     gsMatrix() { }
@@ -169,19 +169,19 @@ public:
      */
     uPtr moveToPtr()
     {
-        uPtr m(new gsMatrix); 
-        m->swap(*this); 
-        return m; 
-        //return uPtr(new gsMatrix<T>(give(*this))); 
+        uPtr m(new gsMatrix);
+        m->swap(*this);
+        return m;
+        //return uPtr(new gsMatrix<T>(give(*this)));
     }
-    
+
     void clear() { this->resize(0,0); }
 /*
     // Using the assignment operators of Eigen
     // Note: using Base::operator=; is ambiguous in MSVC
 #ifdef _MSC_VER // && !__INTEL_COMPILER
     template <class EigenExpr>
-    gsMatrix& operator= (const EigenExpr & other) 
+    gsMatrix& operator= (const EigenExpr & other)
     {
         this->Base::operator=(other);
         return *this;
@@ -204,7 +204,7 @@ public:
     }
 #endif
 
-    std::pair<index_t,index_t> dim() const 
+    std::pair<index_t,index_t> dim() const
     { return std::make_pair(this->rows(), this->cols() ); }
 
     /// \brief Returns the \a i-th element of the vectorization of the matrix
@@ -285,8 +285,8 @@ public:
     /// Returns a submatrix consisting of the rows and columns indexed
     /// by the vector containers \a rowInd and \a colInd respectively
     template<class container>
-    void submatrix(const container & rowInd, 
-                   const container & colInd, 
+    void submatrix(const container & rowInd,
+                   const container & colInd,
                    gsMatrix<T> & result) const
     {
         //GISMO_ASSERT(rowInd.cols() == 1 && colInd.cols() == 1, "Invalid index vector");
@@ -314,7 +314,7 @@ public:
     /// row and column size of the matrix is one less.
     void firstMinor(index_t i, index_t j, FirstMinorMatrixType & result ) const
     {
-        const index_t mrows = this->rows()-1, 
+        const index_t mrows = this->rows()-1,
             mcols = this->cols()-1;
         GISMO_ASSERT( i <= mrows, "Invalid row." );
         GISMO_ASSERT( j <= mcols, "Invalid column." );
@@ -336,7 +336,7 @@ public:
         result.topRows(i)          = this->topRows(i);
         result.bottomRows(mrows-i) = this->bottomRows(mrows-i);
     }
-    
+
     /// Returns the jth column minor, i.e. the matrix after removing column
     /// \a j from the matrix. After the operation the column size of the
     /// matrix is one less.
@@ -351,13 +351,13 @@ public:
 
     void duplicateRow( index_t k )
     {
-        this->conservativeResize(this->rows() + 1, this->cols()); 
+        this->conservativeResize(this->rows() + 1, this->cols());
 
         /*
         // Test this
-        this->bottomRows(this->rows() - k ) = 
+        this->bottomRows(this->rows() - k ) =
         this->middleRows(this->rows() - k, k+1 );
-        
+
         this->row(k+1) = this->row(k);
         return;
 
@@ -373,12 +373,12 @@ public:
     {
         this->noalias() = this->unaryExpr(removeNoise_helper(tol));
     }
-    
+
     // Clone function. Used to make a copy of the matrix
     //gsMatrix * clone() const;
 
     /// Return a block view of the matrix with \a rowSizes and \a colSizes
-    BlockView blockView(const gsVector<index_t> & rowSizes, 
+    BlockView blockView(const gsVector<index_t> & rowSizes,
                         const gsVector<index_t> & colSizes)
     {
         return BlockView(*this, rowSizes, colSizes);
@@ -411,6 +411,51 @@ public:
         }while( didSwap );
     }
 
+    std::vector<index_t> idxByColumn(const index_t j )
+    {
+        std::vector<index_t> permutation;
+        GISMO_ASSERT( j < this->cols(), "Invalid column.");
+
+        index_t lastSwapDone = this->rows() - 1;
+        index_t lastCheckIdx = lastSwapDone;
+
+        for( index_t i=0; i < this->rows(); i++)
+          permutation.push_back(i);
+
+        bool didSwap;
+        gsMatrix<T> tmp(1, this->cols() );
+        index_t idx;
+        do{ //caution! A stable sort algorithm is needed here for lexSortColumns function below
+            didSwap = false;
+            lastCheckIdx = lastSwapDone;
+
+            for( index_t i=0; i < lastCheckIdx; i++)
+                if( this->coeff(i,j) > this->coeff(i+1,j) )
+                {
+                    // gsInfo << this->coeff(i,j) << " > " << this->coeff(i+1,j) << "\n";
+
+                    tmp.row(0) = this->row(i);
+                    index_t tdx = permutation[i];
+
+                    // index_t a = permutation[i];
+                    // index_t b = permuatation[i+1];
+
+                    // gsInfo << "low  : " << this->coeff(i,j) << ", " << indeces[i] << ", " << permutation[i] << "\n";
+                    // gsInfo << "high : " << this->coeff(i+1,j) << ", " << indeces[i] << ", " << permutation[i+1] << "\n";
+
+                    this->row(i) = this->row(i+1);
+                    permutation[i] = permutation[i+1];
+
+                    this->row(i+1) = tmp.row(0);
+                    permutation[i+1] = tdx;
+
+                    didSwap = true;
+                    lastSwapDone = i;
+                }
+        }while( didSwap );
+        return permutation;
+    }
+
     /// Sorts rows of matrix by columns in vector \em lorder.
     void lexSortRows(const std::vector<index_t> & lorder)
     {
@@ -429,10 +474,10 @@ public:
     {
         const index_t nc = this->cols();
         const index_t nr = this->rows();
-        
+
         GISMO_ASSERT( nc % colBlock == 0,
                       "The blocksize is not compatible with number of columns.");
-        
+
         if (nr == 1 || colBlock == 1)
         {
             this->resize(colBlock, this->size()/colBlock);
@@ -446,13 +491,13 @@ public:
         {
             gsEigen::Map<Base> m(this->data(), nr, nc);
             this->resize(colBlock, this->size()/colBlock);
-            
+
             index_t i = 0;
             for (index_t j = 0; j!= nc; j+=colBlock, i+=nr)
                 this->middleCols(i,nr) = m.middleCols(j,colBlock).transpose().eval();
         }
     }
-    
+
     /// Converts the matrix to its Reduced Row Echelon Form (RREF)
     void rrefInPlace() { rref_impl(*this); }
 
@@ -464,7 +509,7 @@ public:
 
     /// Converts the matrix to a Column Echelon Form (CEF)
     void cefInPlace() { ref_impl(this->transpose()); }
-    
+
     std::string printSparsity() const
     {
         std::ostringstream os;
@@ -511,7 +556,7 @@ private:
     // Implementation of (inplace) Reduced Row Echelon Form computation
     template <typename Derived>
     static void rref_impl(const gsEigen::MatrixBase<Derived>& Mat)
-    {  
+    {
         // todo: const T tol = 0
         gsEigen::MatrixBase<Derived> & M = const_cast<gsEigen::MatrixBase<Derived>& >(Mat);
         index_t i, piv = 0;
@@ -539,16 +584,16 @@ private:
             // pivot row
             M.row(r).tail(bc).array() /= M(r, piv);
             M(r, piv) = (T)(1);
-            
+
             // upper block
             M.block(0, piv+1, r, bc).noalias() -=
                 M.col(piv).head(r) * M.row(r).tail(bc);
             M.col(piv).head(r).setZero();
-            
+
             // lower block
             M.block(r+1, piv+1, br, bc).noalias() -= M.col(piv).tail(br) * M.row(r).tail(bc);
             M.col(piv).tail(br).setZero();
-            
+
             ++piv;
         }
     }
@@ -556,7 +601,7 @@ private:
     // Implementation of (inplace) Row Echelon Form computation
     template <typename Derived>
     static void ref_impl(const gsEigen::MatrixBase<Derived>& Mat)
-    {  
+    {
         // todo: const T tol = 0
         gsEigen::MatrixBase<Derived> & M = const_cast<gsEigen::MatrixBase<Derived>& >(Mat);
         index_t i, piv = 0;
@@ -585,7 +630,7 @@ private:
             M.block(r+1, piv+1, br, bc).noalias() -=
                 M.col(piv).tail(br) * M.row(r).tail(bc) / M(r, piv);
             M.col(piv).tail(br).setZero();
-            
+
             ++piv;
         }
     }
@@ -594,13 +639,13 @@ private:
     {
         removeNoise_helper(const T & tol)
         : m_tol(tol) { }
-                                            
+
         inline const T operator() (const T & val) const
         { return ( math::abs(val) < m_tol ? 0 : val ); }
 
         const T & m_tol;
     };
-    
+
 }; // class gsMatrix
 
 
@@ -614,9 +659,9 @@ gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(const Base& a) : Base(a) { }
 
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(int rows, int cols) : Base(rows,cols) { }
-    
+
 // template<class T, int _Rows, int _Cols, int _Options>
-//  template<typename OtherDerived> 
+//  template<typename OtherDerived>
 // gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
 /* Clone function. Used to make a copy of the matrix
@@ -632,7 +677,7 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
    * @brief Initializes the Python wrapper for the class: gsMatrix
    */
   namespace py = pybind11;
-  
+
   template<typename T>
   void pybind11_init_gsMatrix(pybind11::module &m, const std::string & typestr)
   {
