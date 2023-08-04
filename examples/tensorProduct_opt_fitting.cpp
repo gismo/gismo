@@ -78,7 +78,7 @@ public:
           m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the parameters
         }
 
-        // Initialization of the smoothing matrix that we need to define th objective function.
+        // Initialization of the smoothing matrix that we need to define the objective function.
         m_G.resize(m_mp->result()->coefs().rows(), m_mp->result()->coefs().rows());
         m_G.reservePerColumn( cast<T,index_t>( (2 * m_mp->result()->basis().maxDegree() + 1) * 1.333 ) );
         m_mp->applySmoothing(m_mp->lambda(), m_G);
