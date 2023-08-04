@@ -15,7 +15,6 @@
 
 #include <iostream>
 #include <gismo.h>
-#include <gsSolver/gsMinResQLP.h>
 
 using namespace gismo;
 
