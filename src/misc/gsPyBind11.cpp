@@ -48,6 +48,10 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.attr("__version__") = GISMO_VERSION;
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
 
+  gismo::pybind11_enum_gsAssemblerOptions(assembler);
+  gismo::pybind11_init_gsAssembler(assembler);
+  gismo::pybind11_init_gsPoissonAssembler(assembler);
+
   py::module core = m.def_submodule("core");
 
   core.attr("__name__") = "pygismo.core";

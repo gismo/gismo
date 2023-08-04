@@ -35,6 +35,8 @@ repairInterfaceFindElements<3>(const boundaryInterface & bi,
             py::arg("numeratorOnly") = false) //default arguments
 
       // Member functions
+      .def("uniformRefine", &Class::uniformRefine, "Refine uniformly all patches")
+      .def("degreeElevate", &Class::degreeElevate, "Elevate the degree of every basis by the given amount. (keeping the smoothness)")
       .def("domainDim", &Class::domainDim, "Returns the domain dimension of the multipatch")
       .def("targetDim", &Class::targetDim, "Returns the target dimension of the multipatch")
       .def("nBases", &Class::nBases, "Returns the number of patches stored in the multipatch")

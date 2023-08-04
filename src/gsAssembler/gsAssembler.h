@@ -769,6 +769,15 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
 
 }
 
+#ifdef GISMO_WITH_PYBIND11
+
+    /**
+     * @brief Initializes the Python wrapper for the class: gsAssembler
+     */
+    void pybind11_enum_gsAssemblerOptions(py::module &m);
+    void pybind11_init_gsAssembler(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

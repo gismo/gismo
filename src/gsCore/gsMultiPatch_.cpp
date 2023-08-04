@@ -21,6 +21,7 @@ namespace gismo
       // Constructors
       .def(py::init<>())
       .def(py::init<gsMultiPatch<real_t>>())
+      .def(py::init<const gsGeometry<real_t> &>())
 
       // Member functions
       .def("domainDim", &Class::domainDim, "Returns the domain dimension of the multipatch")
