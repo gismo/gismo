@@ -24,12 +24,10 @@ namespace gismo
                         const gsFunction<real_t> &,
                         dirichlet::strategy,
                         iFace::strategy>(),
+                //Member functions
                      py::arg("patches"), py::arg("basis"), py::arg("bconditions"),
                      py::arg("rhs"), py::arg("dirStrategy") = 11,
                      py::arg("intstrategy") = 1)
-                 //Member functions
-                 //.def("options", &Class::options, "Returns the options")
-                 .def("assemble", &Class::assemble, "Assemble the matrix")
                 ;
     }
 

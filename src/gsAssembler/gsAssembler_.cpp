@@ -46,6 +46,7 @@ namespace gismo
                 .def("rhs", static_cast<gsMatrix<real_t> & (Class::*) ()> (&Class::rhs), "Returhs the assembled right-hand-side")
                 .def("constructSolution", static_cast<void (Class::*)(const gsMatrix<real_t> &, gsMultiPatch<real_t> &, short_t) const> (&Class::constructSolution), "Constuct the solution function")
                 .def("constructSolution", static_cast<gsField<real_t> (Class::*)(const gsMatrix<real_t> &, short_t) const> (&Class::constructSolution), "Constuct the solution function")
+                .def("assemble", static_cast<void (Class::*) ()> (&Class::assemble), "Assemble the matrix")
                 ;
     }
 
