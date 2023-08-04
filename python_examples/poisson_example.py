@@ -25,7 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-numRefine = 7
+numRefine = 3
 degree = 3
 plot = True
 
@@ -39,6 +39,7 @@ domain = gs.nurbs.gsNurbsCreator.BSplineQuarterAnnulus(2)
 
 # Multipatch
 mp = gs.core.gsMultiPatch(domain)
+
 # Get basis
 basis = gs.core.gsMultiBasis(mp)
 # Refine and elevate degree
@@ -70,9 +71,7 @@ rhs = assembler.rhs()
 # Solve
 sol = scipy.sparse.linalg.spsolve(matrix, rhs)
 
-solutionMP = gs.core.gsMultiPatch()
-assembler.constructSolution(sol, solutionMP, 0)
-
+# Create solution and compute errors
 solutionField = assembler.constructSolution(sol, 0)
 L2Error = solutionField.distanceL2(exactFunc, False, 1000)
 H1SeminormError = solutionField.distanceH1(exactFunc, False, 1000)
@@ -81,22 +80,24 @@ print(f"L2 error: {L2Error}\nH1 error: {L2Error + H1SeminormError}")
 
 if plot:
     # Plot the solution
-    numsamples = 20
+    numsamples = 30
     x = np.linspace(0, 1, numsamples, True)
     y = np.linspace(0, 1, numsamples, True)
     X, Y = np.meshgrid(x,y)
 
     evalParams = np.concatenate([X.reshape(1,-1), Y.reshape(1,-1)], axis=0)
-    #print(evalParams)
 
-    evalPoints = solutionMP.patch(0).eval(evalParams)
-    evalDomain = domain.eval(evalParams)
-    exactPoints = exactFunc.eval(evalDomain)
+    evalPoints = solutionField.value(evalParams, 0)
+    evalDomain = solutionField.point(evalParams, 0)
+
 
     plotX = evalDomain[0,:].reshape(numsamples, numsamples)
     plotY = evalDomain[1,:].reshape(numsamples,numsamples)
     plotZ = evalPoints.reshape(numsamples,numsamples)
-    plotZexact = exactPoints.reshape(numsamples, numsamples)
+
+    # Evaluation of the exact function
+    # exactPoints = exactFunc.eval(evalDomain)
+    # plotZexact = exactPoints.reshape(numsamples, numsamples)
 
     ax = plt.subplot(111, projection='3d')
     ax.plot_surface(plotX, plotY, plotZ)

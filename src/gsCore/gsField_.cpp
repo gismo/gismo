@@ -20,6 +20,10 @@ namespace gismo
                 //Member functions
                 .def("distanceL2", static_cast< real_t (Class::*)(gsFunctionSet<real_t> const &, bool, int) const> (&Class::distanceL2), "Compute L2 distance")
                 .def("distanceH1", static_cast< real_t (Class::*)(gsFunctionSet<real_t> const &, bool, int) const> (&Class::distanceH1), "Compute H1 semi-norm distance")
+                .def("value", &Class::value, "Evaluate field")
+                .def("point", &Class::point, "Evaluate domain")
+                .def("parDim", &Class::parDim, "Parametric dimension")
+                .def("geoDim", &Class::geoDim, "Geometry dimension")
                 ;
     }
 
