@@ -1250,6 +1250,14 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     m_matrix.makeCompressed();
 }
 
+#ifdef GISMO_WITH_PYBIND11
+
+    /**
+     * @brief Initializes the Python wrapper for the class: gsExprAssembler
+     */
+    void pybind11_init_gsExprAssembler(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 
 } //namespace gismo

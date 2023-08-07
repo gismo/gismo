@@ -51,6 +51,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_enum_gsAssemblerOptions(assembler);
   gismo::pybind11_init_gsAssembler(assembler);
   gismo::pybind11_init_gsPoissonAssembler(assembler);
+  gismo::pybind11_init_gsExprAssembler(assembler);
 
   py::module core = m.def_submodule("core");
 
