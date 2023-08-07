@@ -137,7 +137,7 @@ private:
     const gsMatrix<T> m_params;
     const gsMatrix<T> m_X;
     gsSparseMatrix<T> m_G;
-    // Lastly, we forward the memebers of the base clase gsOptProblem
+    // Lastly, we forward the members of the base clase gsOptProblem
     using gsOptProblem<T>::m_numDesignVars;
 
     using gsOptProblem<T>::m_desLowerBounds;
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
     GISMO_ENSURE( uv.cols() == X.cols() && uv.rows() == 2 && X.rows() == 3,
                   "Wrong input");
 
-    // Determine the parameter domain by mi/max of parameter values
+    // Determine the parameter domain by min/max of parameter values
     real_t u_min = uv.row(0).minCoeff(),
         u_max = uv.row(0).maxCoeff(),
         v_min = uv.row(1).minCoeff(),
@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
 
         optimizer = new gsHLBFGS<real_t>(&problem);
         optimizer->options().setInt("Verbose",verbosity);
-        optimizer->options().setReal("MinGradientLength", gtoll);
+        optimizer->options().setReal("MinGradLen", gtoll);
         optimizer->options().setInt("LBFGSUpdates", mupdate);
 
         //! [Solve]
@@ -283,7 +283,7 @@ int main(int argc, char *argv[])
         gsMatrix<> t_params(params.cols(), params.rows());
         t_params = params.transpose();
         in << original.coefs().reshape( original.coefs().size() ,1), t_params.reshape( t_params.size() ,1);
-        gsInfo << "Optimization loop, for " << maxIter << "iterations.\n";
+        gsInfo << "Optimization loop, for " << maxIter << " iterations.\n";
         optimizer->options().setInt("MaxIterations", maxIter);
         time.restart();
         optimizer->solve(in);
