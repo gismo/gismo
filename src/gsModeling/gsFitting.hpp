@@ -249,9 +249,6 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     if ( !m_result )
         compute(m_last_lambda);
 
-    const index_t d = m_param_values.rows();
-    const index_t n = m_points.cols();
-
      for (index_t it = 0; it!=maxIter; ++it)
      {
         gsVector<T> newParam;
@@ -560,20 +557,20 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
             results.transposeInPlace();
 
-            err = (m_points.row(k) - results).template lpNorm<gsEigen::Infinity>();
+            err = (m_points.row(k) - results).squaredNorm();
 
-                    switch (type)
-                    {
-                    case 0:
-                        errors.push_back(err);
-                        break;
-                    case 1:
-                        errors.push_back(math::sqrt(err));
-                        break;
-                    default:
-                        gsWarn << "Unknown type in get_Error(errors, type)...\n";
-                        break;
-                    }
+            switch (type)
+            {
+            case 0:
+                errors.push_back(err);
+                break;
+            case 1:
+                errors.push_back(math::sqrt(err));
+                break;
+            default:
+                gsWarn << "Unknown type in get_Error(errors, type)...\n";
+                break;
+            }
         }
     }
 }
