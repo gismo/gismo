@@ -249,8 +249,8 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     if ( !m_result )
         compute(m_last_lambda);
 
-     for (index_t it = 0; it!=maxIter; ++it)
-     {
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
         gsVector<T> newParam;
         gsMatrix<T> supp = this->result()->support();
 #       pragma omp parallel for default(shared) private(newParam)

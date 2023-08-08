@@ -192,32 +192,36 @@ int main(int argc, char *argv[])
         real_t mseError = sum_of_errors2/errors2.size();
         real_t percentagePoint = 100.0 * ref.numPointsBelow(tolerance)/errors.size();
 
-        //std::vector<real_t> pointWise = ref.pointWiseErrors();
-
         gsMatrix<real_t> matErrors(4,errors.size());
-        for(index_t el = 0; el < errors.size(); el++){
-          matErrors(0,el) = uv_fitting(0,el);
-          matErrors(1,el) = uv_fitting(1,el);
-          matErrors(2,el) = 0;
-          matErrors(3,el) = errors[el];
+        for(size_t el = 0; el < errors.size(); el++)
+        {
+            matErrors(0,el) = uv_fitting(0,el);
+            matErrors(1,el) = uv_fitting(1,el);
+            matErrors(2,el) = 0;
+            matErrors(3,el) = errors[el];
         }
 
         gsWriteParaviewPoints(matErrors, internal::to_string(i+1) + "colors_iter_fitting_parameters_pc" + internal::to_string(step));
 
-
-
-
-
+        // This is checks the two ways of computing MSE for consistency.
+        // TODO: remove!
+        const std::vector<real_t> ptErrs = ref.pointWiseErrors();
+        real_t mse_Dominik(0);
+        for(auto it = ptErrs.begin(); it != ptErrs.end(); ++it)
+            mse_Dominik += *it * *it;
+        mse_Dominik /= real_t(ptErrs.size());
 
         gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
         gsInfo<<"Parameter correction steps: "<< step << "\n";
         gsInfo    << "DOFs         : "<< dofs <<"\n";
         // gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
         // gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
-        std::cout << "Min distance : "<< minPointError << std::scientific <<"\n";
-        std::cout << "Max distance : "<< maxPointError << std::scientific <<"\n";
-        std::cout << "         MSE : "<< mseError << std::scientific <<"\n";
-        gsInfo<<"Points below tolerance: "<< percentagePoint <<"%.\n";
+        std::cout << "Min distance : "<< minPointError        << std::scientific <<"\n";
+        std::cout << "Max distance : "<< maxPointError        << std::scientific <<"\n";
+        std::cout << "MSE (Dominik): "<< mse_Dominik          << std::scientific <<"\n";
+        std::cout << "MSE (Sofia)  : "<< mseError             << std::scientific <<"\n";
+        std::cout << "        RMSE : "<< math::sqrt(mseError) << std::scientific <<"\n";
+        gsInfo<<"Points below tolerance: "<< percentagePoint  <<"%.\n";
 
 
         file_results << std::to_string(step) << "," << std::to_string(dofs) << "," << std::ostringstream(std::to_string(minPointError)).str() << "," << std::ostringstream(std::to_string(maxPointError)).str() << "," << std::ostringstream(std::to_string(mseError)).str() << "," << std::ostringstream(std::to_string(percentagePoint)).str() << "\n";
