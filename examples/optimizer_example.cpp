@@ -15,6 +15,7 @@
 
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptimizer/gsLevenbergMarquardt.h>
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
@@ -228,7 +229,20 @@ int main(int argc, char* argv[])
         optimizer = new gsIpOpt<real_t>(&problem);
         break;
 #endif
-        default:
+    case 3 :
+        optimizer = new gsLevenbergMarquardt<>(&problem);
+        // Set the minimum length of the gradient.
+        // The optimizer stops minimizing if the gradient length falls below this
+        // value (default is 1e-9).
+        optimizer->options().setReal("MinGradientLength",1e-9);
+
+        // Set the minimum length of the step.
+        // The optimizer stops minimizing if the step length falls below this
+        // value (default is 1e-9).
+        optimizer->options().setReal("MinStepLength",1e-9);
+        break;
+
+    default:
         GISMO_ERROR("No optimizer defined for option "<<solver<<"\n");
     }
     //! [Optimizer selection]

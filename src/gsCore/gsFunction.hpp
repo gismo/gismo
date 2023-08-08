@@ -355,7 +355,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
             result.setZero( dd );
     }
 
-#if true
+#ifdef gsHLBFGS_ENABLED
 //#ifdef gsIpOpt_ENABLED
     gsFunctionAdaptor<T> fmin(*this);
     // gsIpOpt<T> solver( &fmin );
