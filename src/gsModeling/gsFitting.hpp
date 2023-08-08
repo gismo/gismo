@@ -249,8 +249,8 @@ void gsFitting<T>::parameterCorrection(T accuracy,
     if ( !m_result )
         compute(m_last_lambda);
 
-    const index_t d = m_param_values.rows();
-    const index_t n = m_points.cols();
+    //const index_t d = m_param_values.rows();
+    //const index_t n = m_points.cols();
 
      for (index_t it = 0; it!=maxIter; ++it)
      {
