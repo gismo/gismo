@@ -134,6 +134,7 @@ install(FILES
   "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/ofa/AddCXXCompilerFlag.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/ofa/CheckCXXCompilerFlag.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectArm.cmake"
