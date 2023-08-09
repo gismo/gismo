@@ -29,8 +29,8 @@ set(SUBMODULES_TXT "gsOpennurbs")
 ## The following lines allow to specify a commit instead of HEAD
 ##
 
-set(gsElasticity_HASH "a94347d4b8d8cd76de79d4b512023be9b68363bf")
-#set(gsUnitTest_HASH "7c42e5859da640b4304c4abde45f5ecbd9cfe95a") !! right not its not a submodule - it is set in the unittests project
+#set(gsElasticity_HASH "a94347d4b8d8cd76de79d4b512023be9b68363bf")
+#set(gsUnitTest_HASH "7c42e5859da640b4304c4abde45f5ecbd9cfe95a") !! right now its not a submodule - it is set in the unittests project
 set(gsStructuralAnalysis_HASH "")
 set(gsKLShell_HASH "")
 set(gsCompFlow_HASH "")

@@ -954,7 +954,7 @@ gsTensorBasis<d,T>::interpolateGrid(gsMatrix<T> const& vals,
         Cmat = m_bases[i]->collocationMatrix(grid[i]);
         solver.compute(Cmat); 
         #ifndef NDEBUG
-        if ( solver.info() != Eigen::Success )
+        if ( solver.info() != gsEigen::Success )
         {
             gsWarn<< "Failed LU decomposition for:\n";//<< Cmat.toDense() <<"\n";
             gsWarn<< "Points:\n"<< grid[i] <<"\n";

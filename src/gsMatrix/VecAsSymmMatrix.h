@@ -200,7 +200,7 @@ protected:
 
 } // namespace internal
 
-/** \memberof Eigen::MatrixBase
+/** \memberof gsEigen::MatrixBase
   * \return an expression of the replication of \c *this
   *
   * Example: \include MatrixBase_blockDiag_int_int.cpp

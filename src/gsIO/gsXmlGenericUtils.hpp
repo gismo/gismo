@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsCore/gsConstantFunction.h>
+
 namespace gismo {
 
 namespace internal {
@@ -312,8 +314,8 @@ Object * getGeometryFromXml ( gsXmlNode * node)
             if (val ==  "rotation" ) // 3d
             {
                 getMatrixFromXml<typename Object::Scalar_t>(tmp, 4, 1, a);
-                Eigen::Transform<typename Object::Scalar_t,3,Eigen::Affine> 
-                    rot( Eigen::AngleAxis<typename Object::Scalar_t> 
+                gsEigen::Transform<typename Object::Scalar_t,3,gsEigen::Affine> 
+                    rot( gsEigen::AngleAxis<typename Object::Scalar_t> 
                          ( a(3,0), a.template block<3,1>(0,0).normalized() ) );
                 c = (c. rowwise().homogeneous() * 
                      rot.matrix().transpose() ).leftCols(3) ;
@@ -391,6 +393,22 @@ gsXmlNode * putFunctionExprToXml(const gsFunctionExpr<T> & obj, gsXmlNode * resu
 }
 
 template < class T >
+gsXmlNode * putConstantFunctionToXml(const gsConstantFunction<T> & obj,gsXmlNode * result, gsXmlTree & data)
+{
+    std::string typeStr = "FunctionExpr";
+    gsXmlAttribute * type = internal::makeAttribute("type", typeStr, data);
+    result->append_attribute(type);
+    gsXmlAttribute * dim = internal::makeAttribute("dim", obj.domainDim(),
+            data);
+    result->append_attribute(dim);
+
+    // set value
+    gsMatrix<T> value = obj.value();
+    result->value( makeValue( value, data, true) );
+    return result;
+}
+
+template < class T >
 gsXmlNode * putFunctionToXml ( const typename gsFunctionSet<T>::Ptr & obj, gsXmlTree & data, int index)
 {
     gsXmlNode * result = internal::makeNode("Function", data);
@@ -398,7 +416,13 @@ gsXmlNode * putFunctionToXml ( const typename gsFunctionSet<T>::Ptr & obj, gsXml
     {
         gsFunctionExpr<T> * ptr2 =
                 dynamic_cast<gsFunctionExpr<T> *>(obj.get());
-        result = putFunctionExprToXml<T>(*ptr2, result, data);
+        result = putFunctionExprToXml(*ptr2, result, data);
+    }
+    else if (typeid(*obj) == typeid(gsConstantFunction<T> ))
+        {
+        gsConstantFunction<T> * ptr2 =
+                dynamic_cast<gsConstantFunction<T> *>(obj.get());
+        result = putConstantFunctionToXml(*ptr2, result, data);
     }
     gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
             data);

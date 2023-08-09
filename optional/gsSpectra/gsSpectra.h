@@ -18,6 +18,8 @@
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsLinearAlgebra.h>
 
+#define Eigen gsEigen
+
 #include <Spectra/include/Spectra/SymEigsSolver.h>
 #include <Spectra/include/Spectra/SymEigsShiftSolver.h>
 #include <Spectra/include/Spectra/SymGEigsSolver.h>
@@ -448,3 +450,7 @@ public:
 };
 
 } //namespace gismo
+
+
+#undef Eigen
+

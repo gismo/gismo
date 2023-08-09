@@ -1465,7 +1465,7 @@ void gsHTensorBasis<d,T>::uniformCoarsen(int numKnots)
 
     // Delete the last level
     delete m_bases.back();
-    m_bases.erase( m_bases.end() );
+    m_bases.pop_back();
 
     // Lift all indices in the tree by one level
     m_tree.divideByTwo();

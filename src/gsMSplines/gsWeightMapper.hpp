@@ -76,10 +76,10 @@ void gsWeightMapper<T>::mapToTargetCoefs(gsMatrix<weightType> const & sourceCoef
     //    GISMO_ASSERT(m_matrix.isCompressed(),"Mapping has to be compressed for this.");
     //    gsSparseSolver<gsWeightMapper<T>::LToGMatrix>::QR solver;
     //    solver.compute(m_matrix);
-    //    if(solver.info()!=Eigen::Success)
+    //    if(solver.info()!=gsEigen::Success)
     //        GISMO_ERROR("Could not compute the solver SparseQR");
     //    targetCoefs=solver.solve(sourceCoefs);
-    //    if(solver.info()!=Eigen::Success)
+    //    if(solver.info()!=gsEigen::Success)
     //        GISMO_ERROR("Could not solve the QR system for the specific b");
 
     // WORKAROUND
@@ -88,10 +88,10 @@ void gsWeightMapper<T>::mapToTargetCoefs(gsMatrix<weightType> const & sourceCoef
     // solve system with least squares method
     typename gsSparseSolver<T>::QR solver;
     solver.compute(*m_optimizationMatrix);
-    if(solver.info()!=Eigen::Success)
+    if(solver.info()!=gsEigen::Success)
         GISMO_ERROR("Could not compute the solver SparseQR");
     targetCoefs=solver.solve(sourceCoefs);
-    if(solver.info()!=Eigen::Success)
+    if(solver.info()!=gsEigen::Success)
         GISMO_ERROR("Could not solve the QR system for the specific b");
 }
 

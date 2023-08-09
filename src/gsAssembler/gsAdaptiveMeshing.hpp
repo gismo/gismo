@@ -1256,7 +1256,7 @@ void gsAdaptiveMeshing<T>::_refineMarkedElements(   const HBoxContainer & marked
     {
         if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
         if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
-        GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+        GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
 
         // if (m_options.getSwitch("Admissible"))
         // {
@@ -1329,7 +1329,7 @@ void gsAdaptiveMeshing<T>::_unrefineMarkedElements(     const HBoxContainer & ma
     {
         if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
         if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
-        GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+        GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
 
         // if (m_options.getSwitch("Admissible"))
         // {

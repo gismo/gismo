@@ -49,11 +49,13 @@ template<int d, class T>
 class gsHBox
 {
 public:
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
 public:
     typedef gsVector<index_t,d> point;
-    typedef typename Eigen::aligned_allocator<gsHBox<d,T>> aalloc;
+    typedef typename gsEigen::aligned_allocator<gsHBox<d,T>> aalloc;
 
     typedef typename std::vector<index_t>                                   RefBox;
     typedef typename std::list<gsHBox<d,T>,typename gsHBox<d,T>::aalloc>    Container;

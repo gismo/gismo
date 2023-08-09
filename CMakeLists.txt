@@ -88,6 +88,9 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
+#Fix for Eigen directory
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_SOURCE_DIR}/external/Eigen)
+
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
 #Use solution folders for Visual Studio
