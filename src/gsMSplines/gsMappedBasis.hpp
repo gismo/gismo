@@ -82,36 +82,36 @@ void gsMappedBasis<d,T>::addLocalIndicesOfPatchSide(const patchSide& ps,index_t 
     }
 }
 
-template<short_t d,class T>
-void gsMappedBasis<d,T>::boundary(std::vector<index_t> & indices,index_t offset) const
-{
-    std::vector<index_t> locals;
-    locals.reserve(this->size());
-    typedef std::vector< patchSide >::const_iterator b_const_iter;
-    for(b_const_iter iter = m_topol.bBegin();iter!=m_topol.bEnd();++iter)
-        addLocalIndicesOfPatchSide(*iter,offset,locals);
-    sort( locals.begin(), locals.end() );
-    locals.erase( unique( locals.begin(), locals.end() ), locals.end() );
-    m_mapper->sourceToTarget(locals,indices);
-}
+// template<short_t d,class T>
+// void gsMappedBasis<d,T>::boundary(std::vector<index_t> & indices,index_t offset) const
+// {
+//     std::vector<index_t> locals;
+//     locals.reserve(this->size());
+//     typedef std::vector< patchSide >::const_iterator b_const_iter;
+//     for(b_const_iter iter = m_topol.bBegin();iter!=m_topol.bEnd();++iter)
+//         addLocalIndicesOfPatchSide(*iter,offset,locals);
+//     sort( locals.begin(), locals.end() );
+//     locals.erase( unique( locals.begin(), locals.end() ), locals.end() );
+//     m_mapper->sourceToTarget(locals,indices);
+// }
 
-template<short_t d,class T>
-void gsMappedBasis<d,T>::innerBoundaries(std::vector<index_t> & indices,index_t offset) const
-{
-    std::vector<index_t> locals;
-    locals.reserve(this->size());
-    typedef std::vector< gismo::boundaryInterface >::const_iterator i_const_iter;
-    for(i_const_iter iter = m_topol.iBegin();iter!=m_topol.iEnd();++iter)
-    {
-        patchSide firstPs = iter->first();
-        addLocalIndicesOfPatchSide(firstPs,offset,locals);
-        patchSide secondPs = iter->second();
-        addLocalIndicesOfPatchSide(secondPs,offset,locals);
-    }
-    sort( locals.begin(), locals.end() );
-    locals.erase( unique( locals.begin(), locals.end() ), locals.end() );
-    m_mapper->sourceToTarget(locals,indices);
-}
+// template<short_t d,class T>
+// void gsMappedBasis<d,T>::innerBoundaries(std::vector<index_t> & indices,index_t offset) const
+// {
+//     std::vector<index_t> locals;
+//     locals.reserve(this->size());
+//     typedef std::vector< gismo::boundaryInterface >::const_iterator i_const_iter;
+//     for(i_const_iter iter = m_topol.iBegin();iter!=m_topol.iEnd();++iter)
+//     {
+//         patchSide firstPs = iter->first();
+//         addLocalIndicesOfPatchSide(firstPs,offset,locals);
+//         patchSide secondPs = iter->second();
+//         addLocalIndicesOfPatchSide(secondPs,offset,locals);
+//     }
+//     sort( locals.begin(), locals.end() );
+//     locals.erase( unique( locals.begin(), locals.end() ), locals.end() );
+//     m_mapper->sourceToTarget(locals,indices);
+// }
 
 template<short_t d,class T>
 gsGeometry<T>* gsMappedBasis<d,T>::exportPatch(const index_t i,gsMatrix<T> const & localCoef) const

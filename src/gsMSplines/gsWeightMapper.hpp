@@ -82,6 +82,7 @@ void gsWeightMapper<T>::mapToTargetCoefs(gsMatrix<weightType> const & sourceCoef
     //    if(solver.info()!=gsEigen::Success)
     //        GISMO_ERROR("Could not solve the QR system for the specific b");
 
+    GISMO_ASSERT(sourceCoefs.rows()==m_matrix.rows(),"Wrong coefficient size!");
     // WORKAROUND
     if(!m_optimizationMatrix)
         optimize(gsWeightMapper<T>::optTargetToSource);

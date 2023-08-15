@@ -1999,7 +1999,14 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
                 std::vector<lvl_coef> coeffs;
                 gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
-                unsigned max_lvl = math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size()) ;//transfer.size();//
+                gsVector<index_t, d   > low = supp.col(0);
+                gsVector<index_t, d   > upp = supp.col(1);
+                if (m_manualLevels)
+                {
+                    this->_knotIndexToDiadicIndex(i,low);
+                    this->_knotIndexToDiadicIndex(i,upp);
+                }
+                unsigned max_lvl = math::min<index_t>( this->m_tree.query4(low,upp, i), transfer.size()) ;//transfer.size();//
                 //gsDebug<<"transfer size "<< transfer.size()<<" max lvl"<< this->m_tree.query4(supp.col(0),supp.col(1), this->levelOf(start_lv_i+j))<<"   lvl of"<< this->levelOf(start_lv_i+j)<<" support\n"<<supp<<std::endl;
                 lvl_coef temp;
                 temp.pos = old_ij;
@@ -2075,8 +2082,16 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
                 gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //gsDebug<<"supp "<< supp<<std::endl;
+                gsVector<index_t, d   > low = supp.col(0);
+                gsVector<index_t, d   > upp = supp.col(1);
+                if (m_manualLevels)
+                {
+                    this->_knotIndexToDiadicIndex(i,low);
+                    this->_knotIndexToDiadicIndex(i,upp);
+                }
+
                 unsigned max_lvl =
-                    math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+                    math::min<index_t>( this->m_tree.query4(low,upp, i), transfer.size() ) ;
                 std::vector<lvl_coef> coeffs;
                 lvl_coef temp;
                 temp.pos = old_ij;

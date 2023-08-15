@@ -187,13 +187,13 @@ public:
         coefs*=permMatrix;
     }
 
-    /// gets all indices of global basis functions on the boundary
-    /// upto a given offset
-    void boundary(std::vector<index_t> & indices,index_t offset = 0) const;
+    // /// gets all indices of global basis functions on the boundary
+    // /// upto a given offset
+    // void boundary(std::vector<index_t> & indices,index_t offset = 0) const;
 
-    /// gets all indices of global basis functions on the inner boundary
-    /// upto a given offset
-    void innerBoundaries(std::vector<index_t> & indices,index_t offset = 0) const;
+    // /// gets all indices of global basis functions on the inner boundary
+    // /// upto a given offset
+    // void innerBoundaries(std::vector<index_t> & indices,index_t offset = 0) const;
 
     /// gives back the gsMappedSingleBasis object set to the patch i, which
     /// ressembles the composite basis on one patch

@@ -15,16 +15,14 @@
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsMatrix/gsSparseSolver.h>
-#include <gsCore/gsBoxTopology.h>
 #include <gsCore/gsBoundary.h>
-#include <gsCore/gsAffineFunction.h>
 
 namespace gismo {
 
 template<typename T>
-T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
-                                            const gsMultiPatch<T> & geometry,
-                                            gsMultiPatch<T> & result)
+T gsL2Projection<T>::projectGeometry(   const gsMultiBasis<T> & basis,
+                                        const gsFunctionSet<T> & geometry,
+                                        gsMultiPatch<T> & result)
 {
     result.clear();
 
@@ -48,8 +46,6 @@ T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
     solVector = solver->solve(A.rhs());
 
     gsExprEvaluator<> ev(A);
-    gsDebugVar(ev.integral((sol-f).sqNorm()));
-
     sol.extract(result);
     result.computeTopology();
     result.closeGaps();
@@ -58,12 +54,11 @@ T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
 }
 
 template<typename T>
-T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
-                                            const gsMultiPatch<T> & geometry,
-                                            gsMatrix<T> & result)
+T gsL2Projection<T>::projectGeometry(   const gsMultiBasis<T> & basis,
+                                        const gsFunctionSet<T> & geometry,
+                                        gsMatrix<T> & result)
 {
     gsExprAssembler<T> A(1,1);
-
     A.setIntegrationElements(basis);
     space u = A.getSpace(basis,geometry.targetDim());
     auto f = A.getCoeff(geometry);
@@ -81,15 +76,14 @@ T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & basis,
 
     solution sol = A.getSolution(u, result);
     gsExprEvaluator<> ev(A);
-    gsDebugVar(ev.integral((sol-f).sqNorm()));
     return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
 template<typename T>
-T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & intbasis,
-                                            const gsMappedBasis<2,T> & basis,
-                                            const gsMultiPatch<T> & geometry,
-                                            gsMatrix<T> & result)
+T gsL2Projection<T>::projectGeometry(   const gsMultiBasis<T> & intbasis,
+                                        const gsMappedBasis<2,T> & basis,
+                                        const gsFunctionSet<T> & geometry,
+                                        gsMatrix<T> & result)
 {
     gsExprAssembler<T> A(1,1);
 
@@ -110,8 +104,6 @@ T gsL2Projection<T>::projectGeometry(    const gsMultiBasis<T> & intbasis,
 
     solution sol = A.getSolution(u, result);
     gsExprEvaluator<> ev(A);
-    gsDebugVar(ev.integral((sol-f).sqNorm()));
-    ev.writeParaview((sol-f).sqNorm(),G,"error");
     return ev.integral((sol-f).sqNorm() * meas(G));
 }
 
@@ -204,7 +196,6 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
 
     solution sol = A.getSolution(u, result);
     gsExprEvaluator<> ev(A);
-    gsDebugVar(ev.integral((sol-f).sqNorm()));
     return ev.integral((sol-f).sqNorm() * meas(G));
 }
 

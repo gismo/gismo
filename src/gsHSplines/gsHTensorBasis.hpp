@@ -133,7 +133,7 @@ gsMatrix<T> gsHTensorBasis<d,T>::support(const index_t & i) const
     // Get the level
     int lvl = levelOf(i);
     // Return the the support
-    return m_bases[lvl]->support( m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ] );
+    return m_bases[lvl]->support( this->flatTensorIndexOf(i) );
 }
 
 // S.K.
@@ -327,6 +327,13 @@ void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const
     this->transfer(OX, tran);
 }
 
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
+{
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    this->refineElements(boxes);
+    this->transfer2(OX, tran);
+}
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)

@@ -106,6 +106,7 @@ public:
     static const short_t Dim = d;
 
     friend class gsHDomainIterator<T,d>;
+    friend class gsHDomainBoundaryIterator<T,d>;
 public:
 
     /// Default empty constructor
@@ -346,7 +347,7 @@ protected:
 
 protected:
 
-    /// \brief The list of nestes spaces.
+    /// \brief The list of nested spaces.
     ///
     /// See documentation for the class for details on the underlying
     /// structure.
@@ -412,6 +413,7 @@ public:
     //------------------------------------
 
 public:
+
     const std::vector< CMatrix >& getXmatrix() const
     {
         return m_xmatrix;
@@ -695,6 +697,7 @@ public:
      */
     void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
     void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
+    void refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
     void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
@@ -1052,12 +1055,26 @@ protected:
     /// to be given to refineElements().
     void getBoxesAlongSlice( int dir, T par,std::vector<index_t>& boxes ) const;
 
-    /// 
-    void _knotIndexToDiadicIndex(const index_t level, const index_t dir, index_t & knotIndex) const;
-    void _diadicIndexToKnotIndex(const index_t level, const index_t dir, index_t & diadicIndex) const;
+protected:
 
+    /**
+     * @brief      Transfers the \a knotIndex in the knot span in direction \a dir on level \a level to diadic indices
+     *
+     * @param[in]  level      The level
+     * @param[in]  dir        The dir
+     * @param      knotIndex  The knot index
+     */
+    void _knotIndexToDiadicIndex(const index_t level, const index_t dir, index_t & knotIndex) const;
     void _knotIndexToDiadicIndex(const index_t level, gsVector<index_t,d> & diadicIndex) const;
+
+    /**
+     * @brief      Transfers the \a diadicIndex in the knot span in direction on level \a level to knot indices
+     *
+     * @param[in]  level        The level
+     * @param      diadicIndex  The diadic index
+     */
     void _diadicIndexToKnotIndex(const index_t level, gsVector<index_t,d> & diadicIndex) const;
+    void _diadicIndexToKnotIndex(const index_t level, const index_t dir, index_t & diadicIndex) const;
 
 private:
 
