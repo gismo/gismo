@@ -34,7 +34,7 @@ if (GISMO_WITH_XDEBUG)
 endif()
 
   # build static within github ci, if it is building with python ext
-  if ($ENV{GITHUB_ACTIONS} AND GISMO_WITH_PYBIND11)
+  if ("$ENV{GITHUB_ACTIONS}" AND GISMO_WITH_PYBIND11)
     add_library(${PROJECT_NAME} STATIC
       ${${PROJECT_NAME}_MODULES}
       ${${PROJECT_NAME}_SOURCES}

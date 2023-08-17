@@ -214,22 +214,12 @@ class CMakeBuild(build_ext):
         if not build_temp.exists():
             build_temp.mkdir(parents=True)
 
-        # provide standard include path for third party libraries
-        gs_external = Path().cwd() / "external"
-        eigen_sym_path = Path(gs_external / "Eigen")
-        # rerun after error build won't erase this correctly
-        if not eigen_sym_path.is_symlink():
-            eigen_sym_path.symlink_to(gs_external / "gsEigen")
-
         subprocess.run(
             ["cmake", ext.sourcedir] + cmake_args, cwd=build_temp, check=True
         )
         subprocess.run(
             ["cmake", "--build", "."] + build_args, cwd=build_temp, check=True
         )
-
-        # delete eigen_sym_path
-        eigen_sym_path.unlink()
 
 
 # use README as long description
