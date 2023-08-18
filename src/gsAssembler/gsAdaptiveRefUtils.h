@@ -16,8 +16,6 @@
 
 #include <iostream>
 
-#include <gsIO/gsIOUtils.h>
-
 namespace gismo
 {
 
