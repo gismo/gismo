@@ -84,7 +84,6 @@
 #undef EIGEN_PLAINOBJECTBASE_PLUGIN
 
 
-
 namespace gismo
 {
 
