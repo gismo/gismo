@@ -18,6 +18,7 @@
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
 #include <gsAssembler/gsExprHelper.h>  
 #include <gsAssembler/gsExprEvaluator.h>
+#include <gsIO/gsIOUtils.h>
 
 #include<fstream>
 
@@ -173,6 +174,7 @@ public:
         opt.addInt("precision", "Number of decimal digits.", 5);
         opt.addInt("plotElements.resolution", "Drawing resolution for element mesh.", -1);
         opt.addSwitch("makeSubfolder", "Export vtk files to subfolder ( below the .pvd file ).", true);
+        opt.addSwitch("base64", "Export in base64 binary format", false);
         opt.addString("subfolder","Name of subfolder where the vtk files will be stored.", "");
         opt.addSwitch("plotElements", "Controls plotting of element mesh.", false);
         opt.addSwitch("plotControlNet", "Controls plotting of control point grid.", false);
@@ -187,10 +189,15 @@ private:
     /// @param funSet gsFunctionSet to be evaluated
     /// @param nPts   Number of evaluation points, per patch.
     /// @param precision Number of decimal points in xml output
+    /// @param label
+    /// @param export_base64 export as base64 encoded string
     /// @return Vector of strings of all <DataArrays>
-    template< class T>
-    static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPts=1000, unsigned precision=5, std::string label="")
-    {   
+ template <class T>
+ static std::vector<std::string> toVTK(const gsFunctionSet<T>& funSet,
+                                       unsigned nPts = 1000,
+                                       unsigned precision = 5,
+                                       std::string label = "",
+                                       const bool& export_base64 = false) {
         std::vector<std::string> out;
         gsMatrix<T> evalPoint, xyzPoints;
 
@@ -209,14 +216,17 @@ private:
                 col++;
             }
 
-            out.push_back( toDataArray(xyzPoints, label, precision)  );
+            out.push_back( toDataArray(xyzPoints, label, precision, export_base64)  );
         }
-        return out; 
-    }
+        return out;
+ }
 
-    template< class T>
-    static std::vector<std::string> toVTK(const gsField<T> & field, unsigned nPts=1000, unsigned precision=5, std::string label="")
-    {   
+ template <class T>
+ static std::vector<std::string> toVTK(const gsField<T>& field,
+                                       unsigned nPts = 1000,
+                                       unsigned precision = 5,
+                                       std::string label = "",
+                                       const bool& export_base64 = false) {
         std::vector<std::string> out;
         gsMatrix<T> evalPoint, xyzPoints;
 
@@ -235,22 +245,24 @@ private:
                 col++;
             }
 
-            out.push_back( toDataArray(xyzPoints, label, precision)  );
+            out.push_back(
+                toDataArray(xyzPoints, label, precision, export_base64));
         }
-        return out; 
-    }
+        return out;
+ }
 
-    /// @brief  Evaluates one expression over all patches and returns all <DataArray> xml tags as a vector of strings
-    /// @tparam T 
-    /// @param expr Expression to be evaluated
-    /// @param label The label with which the expression will appear in Paraview
-    /// @return Vector of strings of all <DataArrays>
-    template<class E>
-    std::vector<std::string> toVTK(const expr::_expr<E> & expr,
-                                            unsigned nPts=1000,
-                                            unsigned precision=5,
-                                            std::string label="SolutionField")
-    {   
+ /// @brief  Evaluates one expression over all patches and returns all
+ /// <DataArray> xml tags as a vector of strings
+ /// @tparam T
+ /// @param expr Expression to be evaluated
+ /// @param label The label with which the expression will appear in Paraview
+ /// @param export_base64 export as base64 encoded string
+ /// @return Vector of strings of all <DataArrays>
+ template <class E>
+ std::vector<std::string> toVTK(const expr::_expr<E>& expr,
+                                unsigned nPts = 1000, unsigned precision = 5,
+                                std::string label = "SolutionField",
+                                const bool& export_base64 = false) {
         std::vector<std::string> out;
         std::stringstream dataArray;
         dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
@@ -288,39 +300,77 @@ private:
             out.push_back( dataArray.str() );
             dataArray.str(std::string()); // Clear the dataArray stringstream
         }
-        return out; 
-    }
-
+        return out;
+ }
 
     /// @brief Formats the coordinates of points as a <DataArray> xml tag for ParaView export.
     /// @tparam T Arithmetic type
     /// @param points A gsMatrix<T> with the coordinates of the points, stored column-wise. Its size is (numDims, numPoints)
     /// @param label A string with the label of the data
     /// @param precision Number of decimal points in xml output
-    /// @return The raw xml string 
-    template<class T>
-    static std::string toDataArray(const gsMatrix<T> & points, const std::string label, unsigned precision)
-    {
+    /// @param export_base64 (defaults true) export as base63 encoded string - ignore precision
+    /// @return The raw xml string
+ template <class T>
+ static std::string toDataArray(const gsMatrix<T>& points,
+                                const std::string label, unsigned precision,
+                                const bool& export_base64) {
         std::stringstream stream;
-        stream.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-        stream.precision(precision); 
-        // Format as vtk xml string
-        stream <<"<DataArray type=\"Float32\" format=\"ascii\" ";
-        if ( "" != label )
-            stream << "Name=\"" << label <<"\" ";
-        stream << "NumberOfComponents=\"3\">\n";
-        // For every point
-        for ( index_t j=0; j<points.cols(); ++j)
-        {
-            for ( index_t i=0; i!=points.rows(); ++i)
-                stream<< points(i,j) <<" ";
-            for ( index_t i=points.rows(); i<3; ++i)
-                stream<<"0 ";
+
+        if (export_base64) {
+            // From the line below I would assume that only floating types are
+            // supported in this function
+            const std::string vtk_typename = []() {
+              if (std::is_same<T, float>::value) {
+                return std::string("Float32");
+              } else if (std::is_same<T, double>::value) {
+                return std::string("Float64");
+              }
+            }();
+
+            // Write data to vector to ensure it is 3D :/
+            std::vector<T> copy_of_matrix;
+            copy_of_matrix.reserve(points.cols() * 3);
+            for (index_t j = 0; j < points.cols(); ++j) {
+                for (index_t i = 0; i < points.rows(); ++i) {
+                    copy_of_matrix.push_back(points(i, j));
+                }
+                // for (index_t i = points.rows(); i < 3; ++i)
+                //     copy_of_matrix.push_back(0);
+            }
+
+            // Header
+            stream << "<DataArray type=\"" << vtk_typename
+                   << "\" format=\"binary\" ";
+            if ("" != label) {
+                stream << "Name=\"" << label << "\" ";
+            };
+            //
+            stream << "NumberOfComponents=\"2\">\n";
+            // Prepend the number of bytes to be expected (using a single-item
+            // array of unsigned 64 integers)
+            stream << Base64::Encode(std::vector<uint64_t>{
+                          copy_of_matrix.size() * sizeof(T{})})
+                          // Write the actual data
+                          + Base64::Encode(copy_of_matrix);
+        } else {
+            stream.setf(std::ios::fixed);  // write floating point values in
+                                           // fixed-point notation.
+            stream.precision(precision);
+            // Format as vtk xml string
+            stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
+            if ("" != label) stream << "Name=\"" << label << "\" ";
+            stream << "NumberOfComponents=\"3\">\n";
+            // For every point
+            for (index_t j = 0; j < points.cols(); ++j) {
+                for (index_t i = 0; i != points.rows(); ++i)
+                    stream << points(i, j) << " ";
+                for (index_t i = points.rows(); i < 3; ++i) stream << "0 ";
+            }
         }
         stream <<"\n</DataArray>\n";
 
         return stream.str();
-    }
+ }
 
     void initFilenames();
 

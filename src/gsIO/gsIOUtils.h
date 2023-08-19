@@ -1,7 +1,7 @@
 /** @file gsIOUtils.h
 
     @brief Input and output Utilities
-    
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -16,6 +16,7 @@
 #include <gsCore/gsDebug.h>
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
+#include <gsMatrix/gsMatrix.h>
 
 #include <algorithm>
 #include <array>
@@ -293,27 +294,19 @@ class Base64 {
            });
   }
 
- public:
   /**
-   * @brief Actual encoding routine
+   * @brief Actual encoding routine where byte-stream is transformed and encoded
    *
-   * @tparam BaseType type of individual data entries
-   * @param data_vector data to be encoded
+   * @param byte_vector_ptr pointer to start of an array (contiguous)
+   * @param minimum_n_bytes_required number_of_bytes in byte-stream
    * @return std::string encoded data
    */
-  template <typename BaseType>
-  static std::string Encode(const std::vector<BaseType>& data_vector) {
-    const ByteRepresentation* vector_as_bytes =
-        reinterpret_cast<const ByteRepresentation*>(&data_vector[0]);
-
-    // Number of bytes for an entry
-    constexpr const std::size_t length_of_entry{sizeof(BaseType{})};
-    // Minimum number of bytes required
-    const std::size_t minimum_n_bytes_required =
-        length_of_entry * data_vector.size();
-    // Number of bytes must be divisible by three
+  static std::string Encode_(const ByteRepresentation* byte_vector_ptr,
+                             const std::size_t& minimum_n_bytes_required) {
+    // Padding blocks
     const std::size_t additional_padding_bytes =
         (3 - minimum_n_bytes_required % 3) % 3;
+
     // Required groups of three
     const std::size_t number_of_groups =
         (minimum_n_bytes_required + additional_padding_bytes) / 3;
@@ -327,13 +320,13 @@ class Base64 {
       const std::size_t buffer_index = i_group * 3;
       std::array<ByteRepresentation, 3> buffer{};
       buffer[0] = buffer_index < minimum_n_bytes_required
-                      ? vector_as_bytes[buffer_index + 0]
+                      ? byte_vector_ptr[buffer_index + 0]
                       : 0;
       buffer[1] = buffer_index < minimum_n_bytes_required
-                      ? vector_as_bytes[buffer_index + 1]
+                      ? byte_vector_ptr[buffer_index + 1]
                       : 0;
       buffer[2] = buffer_index < minimum_n_bytes_required
-                      ? vector_as_bytes[buffer_index + 2]
+                      ? byte_vector_ptr[buffer_index + 2]
                       : 0;
 
       // Transform bytes into chars using above private encoder table
@@ -347,15 +340,81 @@ class Base64 {
 
     // Replace trailing invalid data with `=`
     for (size_t i = 0; i < additional_padding_bytes; ++i) {
-      encoded_string.push_back('=');
+      encoded_string[number_of_groups * 4 - i - 1] = '=';
     }
 
+    // Safety check
+    std::cout << "\nIs valid : " << isValidBase64String(encoded_string) << std::endl;
     return encoded_string;
   }
 
+ public:
   /**
-   * @brief Reading a B64 string, transforming it into a vector of a specific
-   * type
+   * @brief Helper routine for std::vector data
+   *
+   * @tparam BaseType type of individual data entries
+   * @param data_vector data to be encoded
+   * @return std::string encoded data
+   */
+  template <typename BaseType>
+  static std::string Encode(const std::vector<BaseType>& data_vector) {
+    const ByteRepresentation* vector_as_bytes_ptr =
+        reinterpret_cast<const ByteRepresentation*>(&data_vector[0]);
+
+    // Number of bytes for an entry
+    constexpr const std::size_t length_of_entry{sizeof(BaseType{})};
+    // Minimum number of bytes required
+    const std::size_t minimum_n_bytes_required =
+        length_of_entry * data_vector.size();
+
+    return Encode_(vector_as_bytes_ptr, minimum_n_bytes_required);
+  }
+
+  /**
+   * @brief Helper routine for gsMatrix Types (non-sparse)
+   *
+   * @tparam BaseType type of individual data entries
+   * @param data_vector data to be encoded
+   * @param row_major Encode in row_major style
+   * @return std::string encoded data
+   */
+  template <typename BaseType>
+  static std::string Encode(const gsMatrix<BaseType>& data_vector,
+                            const bool& row_major = true) {
+    static_assert(std::is_arithmetic<BaseType>::value,
+                  "Encoding unsafe for non-arithmetic types.");
+    // We need to ensure that the export is always in row_major storage
+    if ((data_vector.cols() == 1) || (data_vector.rows() == 1) ||
+        (gsMatrix<BaseType>::IsRowMajor == row_major)) {
+      const ByteRepresentation* vector_as_bytes_ptr =
+          reinterpret_cast<const ByteRepresentation*>(data_vector.data());
+
+      // Number of bytes for an entry
+      constexpr const std::size_t length_of_entry{sizeof(BaseType{})};
+      // Minimum number of bytes required
+      const std::size_t minimum_n_bytes_required =
+          length_of_entry * data_vector.size();
+
+      return Encode_(vector_as_bytes_ptr, minimum_n_bytes_required);
+    } else {
+      // This is currently not implemented, transform into a vector (might be
+      // slower)
+      std::vector<BaseType> copy_of_matrix;
+      copy_of_matrix.reserve(data_vector.cols() * data_vector.rows());
+      for (index_t j = 0; j < data_vector.cols(); ++j) {
+        for (index_t i = 0; i < data_vector.rows(); ++i) {
+          copy_of_matrix.push_back(data_vector(i, j));
+        }
+      }
+      std::cout << "Starting to encode a vector of " << copy_of_matrix.size()
+                << "entries";
+      return Encode(copy_of_matrix);
+    }
+  }
+
+  /**
+   * @brief Reading a B64 string, transforming it into a vector of a
+   * specific type
    *
    * @tparam OutputType target type
    */

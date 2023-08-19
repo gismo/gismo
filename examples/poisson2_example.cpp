@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     index_t numRefine  = 5;
     index_t numElevate = 0;
-    bool last = false;
+    bool last{false}, export_b64{false};
     std::string fn("pde/poisson2d_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
@@ -31,8 +31,11 @@ int main(int argc, char *argv[])
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addString( "f", "file", "Input XML file", fn );
-    cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("last", "Solve solely for the last level of h-refinement",
+                  last);
+    cmd.addSwitch(
+        "plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("binary", "Make it binary", export_b64);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -209,6 +212,7 @@ int main(int argc, char *argv[])
 
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
+        collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("plotElements.resolution", 16);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
