@@ -279,7 +279,7 @@ class Base64 {
     static const std::array<unsigned, 256> decode_table{
         ReverseCharEncodeTable_()};
     GISMO_ASSERT((index < 256), "Requested index out of range. Input invalid");
-    GISMO_ASSERT((encode_table[index] == 256),
+    GISMO_ASSERT((decode_table[index] == 256),
                  "Invalid decode type, this should never occur!");
     return decode_table[index];
   }
@@ -344,7 +344,8 @@ class Base64 {
     }
 
     // Safety check
-    std::cout << "\nIs valid : " << isValidBase64String(encoded_string) << std::endl;
+    GISMO_ASSERT(isValidBase64String(encoded_string),
+                 "Something went wrong in B64 encoding, please write an issue");
     return encoded_string;
   }
 
@@ -375,17 +376,19 @@ class Base64 {
    *
    * @tparam BaseType type of individual data entries
    * @param data_vector data to be encoded
-   * @param row_major Encode in row_major style
+   * @param row_wise Encode in row_wise style
    * @return std::string encoded data
    */
   template <typename BaseType>
   static std::string Encode(const gsMatrix<BaseType>& data_vector,
-                            const bool& row_major = true) {
+                            const bool& row_wise = true) {
     static_assert(std::is_arithmetic<BaseType>::value,
                   "Encoding unsafe for non-arithmetic types.");
-    // We need to ensure that the export is always in row_major storage
+    // We need to ensure that the export is in the demanded export order, if the
+    // data is only a vector (i.e. either col or row is 1) or if the storage
+    // scheme is coherent with the demanded export order
     if ((data_vector.cols() == 1) || (data_vector.rows() == 1) ||
-        (gsMatrix<BaseType>::IsRowMajor == row_major)) {
+        (gsMatrix<BaseType>::IsRowMajor == row_wise)) {
       const ByteRepresentation* vector_as_bytes_ptr =
           reinterpret_cast<const ByteRepresentation*>(data_vector.data());
 
@@ -397,17 +400,28 @@ class Base64 {
 
       return Encode_(vector_as_bytes_ptr, minimum_n_bytes_required);
     } else {
-      // This is currently not implemented, transform into a vector (might be
-      // slower)
+      // Here we need to flip the order of elements, for simplicity the data is
+      // copied into a temporary vector (works best with current implementation
+      // but might be slower than other approaches)
       std::vector<BaseType> copy_of_matrix;
-      copy_of_matrix.reserve(data_vector.cols() * data_vector.rows());
-      for (index_t j = 0; j < data_vector.cols(); ++j) {
+      copy_of_matrix.reserve(data_vector.rows() * data_vector.cols());
+
+      // For readability we manipulate the Matrix using (memory safe) operator()
+      // overloads
+      if (row_wise) {
         for (index_t i = 0; i < data_vector.rows(); ++i) {
-          copy_of_matrix.push_back(data_vector(i, j));
+          for (index_t j = 0; j < data_vector.cols(); ++j) {
+            copy_of_matrix.push_back(data_vector(i, j));
+          }
+        }
+      } else {
+        for (index_t j = 0; j < data_vector.cols(); ++j) {
+          for (index_t i = 0; i < data_vector.rows(); ++i) {
+            copy_of_matrix.push_back(data_vector(i, j));
+          }
         }
       }
-      std::cout << "Starting to encode a vector of " << copy_of_matrix.size()
-                << "entries";
+      // Use vector overload
       return Encode(copy_of_matrix);
     }
   }
