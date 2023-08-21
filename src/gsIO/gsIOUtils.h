@@ -435,7 +435,7 @@ class Base64 {
   template <typename OutputType>
   static std::vector<OutputType> Decode(const std::string& base64string) {
     // Check validity of string
-    GISMO_ASSERT(isValidBase64String(base64string.size),
+    GISMO_ASSERT(isValidBase64String(base64string),
                  "Validity check failed");
 
     // Init return value
