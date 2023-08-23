@@ -327,10 +327,12 @@ public:
     {
         GISMO_ASSERT( !strcmp( node->name(),"Matrix"), 
                       "Something went wrong. Expected Matrix tag." );
-        
-        unsigned rows  = atoi ( node->first_attribute("rows")->value() ) ;
-        unsigned cols  = atoi ( node->first_attribute("cols")->value() ) ;
-        getMatrixFromXml<T>(node, rows, cols, obj);
+
+        unsigned rows = atoi(node->first_attribute("rows")->value());
+        unsigned cols = atoi(node->first_attribute("cols")->value());
+        gsXmlAttribute *format = node->first_attribute("format");
+        std::string format_flag = format ? format->value() : "ASCII";
+        getMatrixFromXml<T>(node, rows, cols, obj, format_flag);
     }
     
     static gsXmlNode * put (const gsMatrix<T> & obj,

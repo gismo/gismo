@@ -279,7 +279,7 @@ class Base64 {
     static const std::array<unsigned, 256> decode_table{
         ReverseCharEncodeTable_()};
     GISMO_ASSERT((index < 256), "Requested index out of range. Input invalid");
-    GISMO_ASSERT((decode_table[index] == 256),
+    GISMO_ASSERT((decode_table[index] != 256),
                  "Invalid decode type, this should never occur!");
     return decode_table[index];
   }
@@ -292,6 +292,22 @@ class Base64 {
     return is_valid && std::all_of(s.begin(), s.end(), [](const char& c) {
              return isalnum(c) || c == '+' || c == '/' || c == '=';
            });
+  }
+
+  /**
+   * @brief Trim trailing and preceding whitespaces
+   *
+   * @param s string to be processed
+   * @return std::string
+   */
+  static std::string trimWhitespaces(const std::string& s) {
+    const std::string delimiters(" \n\t");
+    size_t first = s.find_first_not_of(delimiters);
+    if (std::string::npos == first) {
+      GISMO_ERROR("Empty string cannot be converted into data-vector");
+    }
+    size_t last = s.find_last_not_of(delimiters);
+    return s.substr(first, (last - first + 1));
   }
 
   /**
@@ -430,16 +446,20 @@ class Base64 {
    * @brief Reading a B64 string, transforming it into a vector of a
    * specific type
    *
+   * @todo: In the future copies could be avoided by using string_view
+   *
    * @tparam OutputType target type
    */
   template <typename OutputType>
   static std::vector<OutputType> Decode(const std::string& base64string) {
+    // Safeguard
+    const std::string& base64string_trimmed = trimWhitespaces(base64string);
     // Check validity of string
-    GISMO_ASSERT(isValidBase64String(base64string),
+    GISMO_ASSERT(isValidBase64String(base64string_trimmed),
                  "Validity check failed");
 
     // Init return value
-    const std::size_t number_of_groups{base64string.size() / 4};
+    const std::size_t number_of_groups{base64string_trimmed.size() / 4};
     constexpr const std::size_t length_of_entry{sizeof(OutputType{})};
     const std::size_t number_of_output_values{(number_of_groups * 3) /
                                               length_of_entry};
@@ -455,9 +475,9 @@ class Base64 {
       const std::size_t buffer_index = i_group * 4;
       std::array<unsigned, 4> buffer{};
       for (unsigned i{}; i < 4; i++) {
-        buffer[i] = base64string[buffer_index + i] != '='
+        buffer[i] = base64string_trimmed[buffer_index + i] != '='
                         ? char_decode_table(static_cast<unsigned>(
-                              base64string[buffer_index + i]))
+                              base64string_trimmed[buffer_index + i]))
                         : 255;
       }
 

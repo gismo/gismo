@@ -13,6 +13,7 @@
 
 #include <sstream>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsIO/gsIOUtils.h>
 
 namespace gismo {
 
@@ -66,24 +67,82 @@ char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
     return data.allocate_string( oss.str().c_str() );
 }
 
-template<class T>
-void getMatrixFromXml ( gsXmlNode * node, unsigned const & rows,
-                        unsigned const & cols, gsMatrix<T> & result )
-{
-    //gsWarn<<"Reading "<< node->name() <<" matrix of size "<<rows<<"x"<<cols<<"Geometry..\n";
-    std::istringstream str;
-    str.str( node->value() );
-    result.resize(rows,cols);
-
-    for (unsigned i=0; i<rows; ++i) // Read is RowMajor
-        for (unsigned j=0; j<cols; ++j)
-            //if ( !(str >> result(i,j) ) )
-              if (! gsGetValue(str,result(i,j)) )
-            {
-                gsWarn<<"XML Warning: Reading matrix of size "<<rows<<"x"<<cols<<" failed.\n";
-                gsWarn<<"Tag: "<< node->name() <<", Matrix entry: ("<<i<<", "<<j<<").\n";
+template <class T>
+void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
+                      unsigned const& cols, gsMatrix<T>& result,
+                      const std::string& base_type_flag) {
+    if (base_type_flag == "ASCII") {
+        std::istringstream str;
+        str.str(node->value());
+        result.resize(rows, cols);
+        for (unsigned i = 0; i < rows; ++i)  // Read is RowMajor
+            for (unsigned j = 0; j < cols; ++j)
+              // if ( !(str >> result(i,j) ) )
+              if (!gsGetValue(str, result(i, j))) {
+                gsWarn << "XML Warning: Reading matrix of size " << rows << "x"
+                       << cols << " failed.\n";
+                gsWarn << "Tag: " << node->name() << ", Matrix entry: (" << i
+                       << ", " << j << ").\n";
                 return;
+              }
+    } else {
+        // Perform type checks (no integral to floting point conversion)
+        if (std::is_integral<T>::value ^
+            (base_type_flag.find("Int") != std::string::npos)) {
+            GISMO_ERROR(
+                "Conversions from integral to floating type and vice-versa is "
+                "not allowed!");
+        }
+        // Hide the transformation in a polymorphic lambda function to avoid
+        // duplicate code
+        result.resize(rows, cols);
+        auto copy_input_to_gsMatrix = [&result, &rows,
+                                       &cols](const auto& input_array) -> void {
+          // Size check
+          if (input_array.size() != (rows * cols)) {
+            GISMO_ERROR(
+                "Input array has the wrong size or could not be converted");
+          }
+          // Converting into gsMatrix (manipulating directly on gsMatrix is
+          // more efficient if T=InputType)
+          result.resize(rows, cols);
+          for (unsigned i = 0; i < rows; ++i) {
+            for (unsigned j = 0; j < cols; ++j) {
+              result(i, j) = static_cast<T>(input_array[i * cols + j]);
             }
+          }
+        };
+        // Get string
+        std::string b64_string(node->value());
+        // Perform the actual input (using the proper encoding type)
+        if (base_type_flag == "B64Uint16") {  // Unsigned int 16
+            copy_input_to_gsMatrix(
+                Base64::Decode<uint16_t>(b64_string));
+        } else if (base_type_flag == "B64Uint32") {  // Unsigned int 32
+            copy_input_to_gsMatrix(
+                Base64::Decode<uint32_t>(b64_string));
+        } else if (base_type_flag == "B64Uint64") {  // Unsigned int 64
+            copy_input_to_gsMatrix(
+                Base64::Decode<uint64_t>(b64_string));
+        } else if (base_type_flag == "B64Int16") {  // Int 16
+            copy_input_to_gsMatrix(
+                Base64::Decode<int16_t>(b64_string));
+        } else if (base_type_flag == "B64Int32") {  // Int 32
+            copy_input_to_gsMatrix(
+                Base64::Decode<int32_t>(b64_string));
+        } else if (base_type_flag == "B64Int64") {  // Int 64
+            copy_input_to_gsMatrix(
+                Base64::Decode<int64_t>(b64_string));
+        } else if (base_type_flag == "B64Float32") {  // Float 32
+            copy_input_to_gsMatrix(
+                Base64::Decode<float>(b64_string));
+        } else if (base_type_flag == "B64Float64") {  // Float 64
+            copy_input_to_gsMatrix(
+                Base64::Decode<double>(b64_string));
+        } else {
+            GISMO_ERROR("Reading matrix from XML found unknown type");
+        }
+    }
 }
 
 template<class T>
