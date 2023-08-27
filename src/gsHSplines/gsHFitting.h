@@ -81,6 +81,7 @@ public:
 
 public:
 
+    void updateGeometry(gsMatrix<T> coefficients, gsMatrix<T> parameters);
     /**
      * @brief iterative_refine iteratively refine the basis
      *
@@ -186,6 +187,15 @@ protected:
     using gsFitting<T>::m_max_error;
     using gsFitting<T>::m_min_error;
 };
+
+template<short_t d, class T>
+void gsHFitting<d, T>::updateGeometry(gsMatrix<T> coefficients,
+                                     gsMatrix<T> parameters)
+{
+  this->m_result->coefs() = coefficients;
+  this->m_param_values = parameters;
+  this->computeErrors();
+}
 
 template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
