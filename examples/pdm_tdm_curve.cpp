@@ -39,10 +39,6 @@ int main(int argc, char *argv[])
     gsKnotVector<> kv(0, 1, 5, 3+1);//start,end,interior knots, start/end multiplicites of knots
     gsMatrix<> coefs(9, 2);
 
-    gsKnotVector<> cv;
-    cv.initUniform(0 , 1, numKnt, 1, 1, deg); //start,end,num_interior knots, interior multiplicity, end multiplicity, degree
-    gsInfo << "Cyclic knot vector:\n" << cv << "\n";
-
     coefs << 0, 0,
              0., 0.25,
              0.125, 0.5,
@@ -52,6 +48,16 @@ int main(int argc, char *argv[])
              0.625, 0.25,
              0.8, 0.25,
              1, 0.5;
+
+    // coefs << 0, 0,
+    //          0., 0,
+    //          0.125, 0,
+    //          0.25, 0,
+    //          0.375, 0,
+    //          0.5, 0,
+    //          0.625, 0,
+    //          0.8, 0,
+    //          1, 0;
 
     gsMatrix<> coefs_plot;
     coefs_plot = coefs.transpose();
@@ -66,35 +72,33 @@ int main(int argc, char *argv[])
 
     gsMatrix<> X, parameters, uv;
 
+    gsMatrix<> uline = gsVector<>::LinSpaced(numPts, 0, 1);
+    parameters = uline.transpose();
+    original.eval_into(parameters, X);
+
+    uv = parameters;
+    gsInfo << "Points:\n" << X << "\n";
+    gsInfo << "Parameters:\n" << parameters << "\n";
+    gsWriteParaviewPoints(X, "points");
 //
-    real_t umin = 0.;
-    real_t umax = 1.;
+    if (noiseFactor > 0)
+    {
+    real_t umin = uv.minCoeff();
+    real_t umax = uv.maxCoeff();
 
     real_t urange = umax - umin; // umax (=1) - umin (=0)
     gsMatrix<> mu = gsMatrix<>::Random(1,numPts); // 1xnumPts Matrix filled with random numbers between (-1,1)
     mu = (mu + gsMatrix<>::Constant(1,numPts,1.))*urange/2.; // add umax to the matrix to have values between 0 and 2; multiply with range/2
     mu = (mu + gsMatrix<>::Constant(1,numPts,umin)); //set LO (=0) as the lower bound (offset)
 
-
-//
-    gsMatrix<> uline = gsVector<>::LinSpaced(numPts, 0, 1);
-    parameters = uline.transpose();
-    original.eval_into(parameters, X);
-
-    uv = parameters + noiseFactor * mu;
+    uv += noiseFactor * mu;
 
     for(auto row : uv.rowwise())
       std::sort(row.begin(), row.end());
 
     uv = (uv - gsMatrix<>::Constant(uv.rows(), uv.cols(), uv.minCoeff())) * (1/(uv.maxCoeff() - uv.minCoeff()));
-
-
-    gsInfo << "Points:\n" << X << "\n";
-    gsInfo << "Parameters:\n" << parameters << "\n";
-    if(noiseFactor > 0)
-      gsInfo << "Here is the scaled, sorted and PERTUBATED parameters:\n" << uv << "\n";
-
-    gsWriteParaviewPoints(X, "points");
+    gsInfo << "Here is the scaled, sorted and PERTUBATED parameters:\n" << uv << "\n";
+    }
 
 
     gsInfo << "Original basis:" << original.basis() << "\n";
@@ -102,8 +106,8 @@ int main(int argc, char *argv[])
     gsKnotVector<> kf(0, 1, numKnt, deg+1);//start,end,interior knots, start/end multiplicites of knots
     gsBSplineBasis<> basis(kf);
     gsInfo << "----------------------------------------------------\n";
-    gsInfo << " + Original basis size = " << original.basis().size() << " +\n";
-    gsInfo << " + Fitting basis size = " << basis.size() << " +\n";
+    gsInfo << " + Original basis size = " << original.basis().size() << "\n";
+    gsInfo << " + Fitting basis size = " << basis.size() << "\n";
     gsInfo << "----------------------------------------------------\n";
     gsWriteParaview( basis, "basis");
     GISMO_ENSURE(basis.size() < numPts, "Too few sampled points.");
@@ -119,13 +123,13 @@ int main(int argc, char *argv[])
     gsWriteParaview( curve, "pdm_curve", 1000);
     gsWriteParaview( curve, "pdm_cnet", 1000, false, true);
 
-    // Apply parameter correction
-    // for (index_t i = 1; i < X.cols()-1; ++i)
-    // {
-    //   gsVector<> newParam;
-    //   curve.closestPointTo(X.col(i).transpose(), newParam, 1e-10, true);
-    //   uv.col(i) = newParam;
-    // }
+    //Apply parameter correction
+    for (index_t i = 1; i < X.cols()-1; ++i)
+    {
+      gsVector<> newParam;
+      curve.closestPointTo(X.col(i).transpose(), newParam, 1e-10, true);
+      uv.col(i) = newParam;
+    }
 
     gsInfo << "TDM - method:\n";
 
@@ -156,9 +160,50 @@ int main(int argc, char *argv[])
     gsMatrix<>  tmp_col(tmp.rows(), 1);
     tmp = basis.collocationMatrix( uv ) ;
 
+
+
     gsInfo << "Collocation matrix: " << tmp.rows() << " x " << tmp.cols() << "\n";
+    gsDebugVar(tmp);
 
     gsMatrix<> A_mat(X.cols(), basis.size() * 2);
+
+
+    gsMatrix<> B_mat(X.cols() * 2, basis.size() * 2);
+    B_mat.setZero();
+    B_mat.block(0,0,tmp.rows(),tmp.cols()) = tmp;
+    B_mat.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
+    gsInfo << "~B:\n" << B_mat << "\n";
+
+    gsMatrix<> N_diag(X.cols() * 2, X.cols());
+    N_diag.setZero();
+    for(index_t i = 0; i < X.cols(); i++)
+    {
+      N_diag(i,i) = N_x(i,0);
+      N_diag(X.cols()+i,i) = N_y(i,0);
+    }
+    gsInfo << "N_diag:\n" << N_diag << "\n";
+
+    gsMatrix<> X_tilde(X.cols() * 2, 1);
+    X_tilde << X.row(0).transpose(), X.row(1).transpose();
+
+    gsMatrix<> A_tilde = N_diag.transpose() * B_mat;
+    gsMatrix<> rhs = N_diag.transpose() * X_tilde;
+
+
+    gsSparseSolver<>::QR qrsolver_tilde(A_tilde.sparseView());
+    gsMatrix<> sol_tilde = qrsolver_tilde.solve(rhs);
+
+    gsInfo << "Tilde solution:\n";
+    gsInfo << sol_tilde << "\n";
+
+    gsMatrix<> coefs_tilde(basis.size(), 2);
+    for(index_t j=0; j<basis.size(); j++)
+    {
+      coefs_tilde(j,0) = sol_tilde(j);
+      coefs_tilde(j,1) = sol_tilde(basis.size()+j);
+    }
+
+
     gsMatrix<> m_B(X.cols(), 1);
     m_B = X.row(0).transpose().cwiseProduct(N_x) + X.row(1).transpose().cwiseProduct(N_y);
 
@@ -166,6 +211,10 @@ int main(int argc, char *argv[])
 
     index_t k2 = 0;
 
+    gsDebugVar(N_x);
+    gsDebugVar(N_y);
+
+    gsDebugVar(tmp);
 
     for(index_t j=0; j < basis.size(); j++)
     {
@@ -178,9 +227,15 @@ int main(int argc, char *argv[])
       k2 = k2 +1;
     }
 
+    gsDebugVar(A_mat);
 
 
+    // gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_mat);
+    // real_t cond = svd.singularValues()(0)/ svd.singularValues()(svd.singularValues().size()-1);
 
+    // gsInfo << "condition number of system matrix = " << cond << "\n";
+    gsInfo << "Coefs tilde:\n";
+    gsInfo << coefs_tilde << "\n";
 
     gsInfo << "Computing solution with QR factorization: A * c = b.\n";
     // gsEigen::FullPivHouseholderQR<gsMatrix<>::Base> qrsolver( A_mat );
