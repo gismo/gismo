@@ -718,7 +718,14 @@ T gsBasis<T>::getMaxCellLength() const
 
 template<class T> inline
 std::vector<gsSparseMatrix<T> >
-gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u)
+gsBasis<T>::collocationMatrixWithDeriv(const gsMatrix<T> & u) const
+{
+  return this->collocationMatrixWithDeriv(*this,u);
+}
+
+template<class T> inline
+std::vector<gsSparseMatrix<T> >
+gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u) const
 {
     int dim = b.domainDim();
     std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
