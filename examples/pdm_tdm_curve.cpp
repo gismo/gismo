@@ -19,7 +19,7 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    index_t numPts  = 20;
+    index_t numPts  = 100;
     index_t numKnt = 5;
     index_t deg = 3;
     real_t lambda = 0;
@@ -163,16 +163,16 @@ int main(int argc, char *argv[])
 
 
     gsInfo << "Collocation matrix: " << tmp.rows() << " x " << tmp.cols() << "\n";
-    gsDebugVar(tmp);
+    // gsDebugVar(tmp);
 
-    gsMatrix<> A_mat(X.cols(), basis.size() * 2);
+    // gsMatrix<> A_mat(X.cols(), basis.size() * 2);
 
 
     gsMatrix<> B_mat(X.cols() * 2, basis.size() * 2);
     B_mat.setZero();
     B_mat.block(0,0,tmp.rows(),tmp.cols()) = tmp;
     B_mat.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
-    gsInfo << "~B:\n" << B_mat << "\n";
+    // gsInfo << "~B:\n" << B_mat << "\n";
 
     gsMatrix<> N_diag(X.cols() * 2, X.cols());
     N_diag.setZero();
@@ -181,7 +181,12 @@ int main(int argc, char *argv[])
       N_diag(i,i) = N_x(i,0);
       N_diag(X.cols()+i,i) = N_y(i,0);
     }
-    gsInfo << "N_diag:\n" << N_diag << "\n";
+    // N_diag(0,0) = 1;
+    // N_diag(X.cols()-1, X.cols()-1) = 1;
+    // N_diag(X.cols(), X.cols()-1) = 1;
+    // N_diag(2*X.cols()-1, X.cols()-1) = 1;
+
+    // gsInfo << "N_diag:\n" << N_diag << "\n";
 
     gsMatrix<> X_tilde(X.cols() * 2, 1);
     X_tilde << X.row(0).transpose(), X.row(1).transpose();
@@ -189,6 +194,35 @@ int main(int argc, char *argv[])
     gsMatrix<> A_tilde = N_diag.transpose() * B_mat;
     gsMatrix<> rhs = N_diag.transpose() * X_tilde;
 
+    gsEigen::FullPivLU<gsMatrix<>::Base> lu_decomp(A_tilde);
+    auto rank_tilde = lu_decomp.rank();
+    gsInfo << "tilde size = " << A_tilde.rows() << " x " << A_tilde.cols() << "\n";
+    gsInfo << "tilde rank = " << rank_tilde << "\n";
+
+    // impose boundary conditions
+    // probably here we need to set the colums, let's see
+    gsDebugVar(A_tilde.row(0));
+    gsDebugVar(A_tilde.row(0).size());
+    A_tilde.row(0) = gsVector<>::Zero(A_tilde.cols(),1);
+    A_tilde(0,0) = 1;
+    //
+    A_tilde.row(basis.size()-1) = gsVector<>::Zero(A_tilde.cols(),1);
+    A_tilde(basis.size()-1, basis.size()-1) = 1;
+    //
+    A_tilde.row(basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+    A_tilde(basis.size(), basis.size()) = 1;
+    //
+    A_tilde.row(2*basis.size()-1) = gsVector<>::Zero(A_tilde.cols(),1);
+    A_tilde(2*basis.size()-1, 2*basis.size()-1) = 1;
+    //
+    // gsDebugVar(A_tilde);
+
+    // X_tilde(X.cols() * 2, 1);
+    rhs(0,0) = X_tilde(0,0);
+    rhs(basis.size()-1,0) = X_tilde(X.cols()-1,0);
+
+    rhs(basis.size(),0) = X_tilde(X.cols(),0);
+    rhs(2*basis.size()-1,0) = X_tilde(2*X.cols()-1,0);
 
     gsSparseSolver<>::QR qrsolver_tilde(A_tilde.sparseView());
     gsMatrix<> sol_tilde = qrsolver_tilde.solve(rhs);
@@ -203,84 +237,12 @@ int main(int argc, char *argv[])
       coefs_tilde(j,1) = sol_tilde(basis.size()+j);
     }
 
-
-    gsMatrix<> m_B(X.cols(), 1);
-    m_B = X.row(0).transpose().cwiseProduct(N_x) + X.row(1).transpose().cwiseProduct(N_y);
-
-    gsInfo << "m_B : " << m_B.rows() << " x " << m_B.cols() << "\n";
-
-    index_t k2 = 0;
-
-    gsDebugVar(N_x);
-    gsDebugVar(N_y);
-
-    gsDebugVar(tmp);
-
-    for(index_t j=0; j < basis.size(); j++)
-    {
-      tmp_col = tmp.col(j);
-
-      A_mat.col(k2) = tmp_col.cwiseProduct(N_x);
-      k2 = k2+1;
-
-      A_mat.col(k2) = tmp_col.cwiseProduct(N_y);
-      k2 = k2 +1;
-    }
-
-    gsDebugVar(A_mat);
-
-
-    // gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_mat);
+    // check the system matrix
+    // gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_tilde);
     // real_t cond = svd.singularValues()(0)/ svd.singularValues()(svd.singularValues().size()-1);
 
-    // gsInfo << "condition number of system matrix = " << cond << "\n";
-    gsInfo << "Coefs tilde:\n";
-    gsInfo << coefs_tilde << "\n";
-
-    gsInfo << "Computing solution with QR factorization: A * c = b.\n";
-    // gsEigen::FullPivHouseholderQR<gsMatrix<>::Base> qrsolver( A_mat );
-    // gsDebugVar(A_mat);
-    // sol_qr = qrsolver.solve(m_B);
-    gsSparseSolver<>::QR qrsolver_tmp(A_mat.sparseView());
-    gsMatrix<> sol_qr = qrsolver_tmp.solve(m_B);
-
-    gsMatrix<> coefs_qr(basis.size(), 2);
-    for(index_t j=0; j<basis.size(); j++)
-    {
-      coefs_qr(j,0) = sol_qr(2*j);
-      coefs_qr(j,1) = sol_qr(2*j+1);
-    }
-
-    gsInfo << coefs_qr << "\n";
-    gsBSpline<> curve_qr( basis, coefs_qr);
-    coefs_plot = coefs_qr.transpose();
-    gsWriteParaviewPoints(coefs_plot, "coefs_qr");
-    gsWriteParaview( curve_qr, "tdm_curve_qr");
-    gsWriteParaview( curve_qr, "tdm_cnet_qr", 1000, false, true);
-
-    gsInfo << "Computing solution with normal equations: A^tA * c = A^T b.\n";
-    // sol_aa = (A_mat.transpose() * A_mat).ldlt().solve(A_mat.transpose() * m_B);
-    gsMatrix<> AA = A_mat.transpose() * A_mat;
-    gsSparseSolver<>::SimplicialLDLT LDLTsolver(AA.sparseView());
-    gsMatrix<> sol_aa = LDLTsolver.solve(A_mat.transpose() * m_B);
-
-
-
-
-    gsMatrix<> coefs_aa(basis.size(), 2);
-    for(index_t j=0; j<basis.size(); j++)
-    {
-      coefs_aa(j,0) = sol_aa(2*j);
-      coefs_aa(j,1) = sol_aa(2*j+1);
-    }
-
-    gsInfo << coefs_aa << "\n";
-
-    gsBSpline<> curve_aa( basis, coefs_aa);
-    coefs_plot = coefs_aa.transpose();
-    gsWriteParaviewPoints(coefs_plot, "coefs_aa");
-    gsWriteParaview( curve_aa, "tdm_curve_aa");
-    gsWriteParaview( curve_aa, "tdm_cnet_aa", 1000, false, true);
-
+    gsBSpline<> curve_tilde(basis, coefs_tilde);
+    gsWriteParaview(curve_tilde, "tdm_curve", 1000);
+    gsWriteParaview( original, "tdm_cnet", 1000, false, true);
 
 }
