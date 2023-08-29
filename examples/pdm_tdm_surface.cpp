@@ -236,6 +236,7 @@ int main(int argc, char *argv[])
     index_t kx = -1;
     index_t ky = -1;
     real_t lambda = 0;
+    real_t sigma = 0;
     bool ptype = false;
     std::string fn = "../filedata/fitting/shiphull_v200_scalePts.xml";
 
@@ -332,13 +333,13 @@ int main(int argc, char *argv[])
     //for (index_t iter = 0; iter < 10; iter ++)
     {
       // Apply parameter correction
-      for (index_t i = 0; i < X.cols(); ++i)
-      {
-        gsVector<> newParam;
-        original.closestPointTo(X.col(i).transpose(), newParam, 1e-10, true);
-        params.col(i) = newParam;\;'
-      }
-      //params << uv;
+      // for (index_t i = 0; i < X.cols(); ++i)
+      // {
+      //   gsVector<> newParam;
+      //   original.closestPointTo(X.col(i).transpose(), newParam, 1e-10, true);
+      //   params.col(i) = newParam;
+      // }
+      params << uv;
 
       gsMapData<> md(NEED_VALUE|NEED_NORMAL);
       md.points = params; // parametric values
@@ -429,8 +430,8 @@ int main(int argc, char *argv[])
 
 
 
-      gsMatrix<> A_tilde = B_mat.transpose() * (Im + N_diag * N_diag.transpose()) * B_mat;
-      gsMatrix<> rhs = (X_tilde.transpose() * (Im + N_diag * N_diag.transpose()) * B_mat).transpose();
+      gsMatrix<> A_tilde = B_mat.transpose() * (sigma * Im + N_diag * N_diag.transpose()) * B_mat;
+      gsMatrix<> rhs = (X_tilde.transpose() * (sigma * Im + N_diag * N_diag.transpose()) * B_mat).transpose();
 
       gsInfo << A_tilde.rows() << " x " << A_tilde.cols()  << "\n";
       gsInfo << rhs.rows() << " x " << rhs.cols()  << "\n";
