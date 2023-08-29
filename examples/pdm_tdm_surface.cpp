@@ -237,7 +237,8 @@ int main(int argc, char *argv[])
     index_t ky = -1;
     real_t lambda = 0;
     real_t sigma = 0;
-    bool ptype = false;
+    bool corner_conditions = false;
+    bool boundary_curves = true;
     std::string fn = "../filedata/fitting/shiphull_v200_scalePts.xml";
 
     gsCmdLine cmd("Tensor product B-spline surface fitting with Tangent Distance Minimization.");
@@ -490,11 +491,6 @@ int main(int argc, char *argv[])
       // gsInfo << "tilde size = " << A_tilde.rows() << " x " << A_tilde.cols() << "\n";
       // gsInfo << "tilde rank = " << rank_tilde << "\n";
 
-      // gsDebugVar(A_tilde);
-
-      // impose boundary conditions
-      // indeces: i + j*dim(basis.component(0))
-      // indeces: j + i*dim(basis.component(1))
       index_t c1 = 0;
       index_t c2 = basis.component(0).size()-1;
       index_t c3 = (basis.component(1).size()-1) *  basis.component(0).size() ;
@@ -505,62 +501,125 @@ int main(int argc, char *argv[])
       gsInfo << "indeces at the domain extreme = " << c1 + basis.size() << ", " << c2 + basis.size()<< ", " << c3 + basis.size() << ", " << c4 + basis.size() << "\n";
       gsInfo << "indeces at the domain extreme = " << c1 + 2*basis.size() << ", " << c2 + 2*basis.size()<< ", " << c3 + 2*basis.size() << ", " << c4 + 2*basis.size() << "\n";
 
+      std::vector<boxSide> fixedSides;
 
-      // x-component
-      A_tilde.row(c1) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c1, c1 ) = 1;
-      //
-      A_tilde.row( c2 ) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c2 , c2 ) = 1;
-      //
-      A_tilde.row( c3 ) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c3 , c3 ) = 1;
-      //
-      A_tilde.row( c4 ) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c4 , c4 ) = 1;
-      //
-      //
-      // // // y-component
-      A_tilde.row(c1 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c1 + basis.size(), c1 + basis.size() ) = 1;
-      //
-      A_tilde.row( c2 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c2 + basis.size(), c2 + basis.size()) = 1;
-      //
-      A_tilde.row( c3 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c3 + basis.size(), c3 + basis.size()) = 1;
-      //
-      A_tilde.row( c4 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c4 + basis.size() , c4 + basis.size()) = 1;
-      //
-      //
-      A_tilde.row(c1 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c1 + 2*basis.size(), c1 + 2*basis.size() ) = 1;
-      //
-      A_tilde.row( c2 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c2 + 2*basis.size(), c2 + 2*basis.size() ) = 1;
-      //
-      A_tilde.row( c3 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c3 + 2*basis.size(), c3 + 2*basis.size() ) = 1;
-      //
-      A_tilde.row( c4 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-      A_tilde( c4 + 2*basis.size(), c4 + 2*basis.size()) = 1;
-      //
-      //
-      rhs(c1,0) = X(0,interpIdx[0]); // x-component
-      rhs(c2,0) = X(0,interpIdx[1]); // x-component
-      rhs(c3,0) = X(0,interpIdx[3]); // x-component
-      rhs(c4,0) = X(0,interpIdx[2]); // x-component
+      fixedSides.push_back(boxSide(3));
+      fixedSides.push_back(boxSide(2));
+      fixedSides.push_back(boxSide(4));
+      fixedSides.push_back(boxSide(1));
 
-      rhs(c1 + basis.size(),0) = X(1,interpIdx[0]); // y-component
-      rhs(c2 + basis.size(),0) = X(1,interpIdx[1]); // y-component
-      rhs(c3 + basis.size(),0) = X(1,interpIdx[3]); // y-component
-      rhs(c4 + basis.size(),0) = X(1,interpIdx[2]); // y-component
+      for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
+        gsInfo << basis.boundary(*it).transpose() << "\n";
 
-      rhs(c1 + 2*basis.size(),0) = X(2,interpIdx[0]); // z-component
-      rhs(c2 + 2*basis.size(),0) = X(2,interpIdx[1]); // z-component
-      rhs(c3 + 2*basis.size(),0) = X(2,interpIdx[3]); // z-component
-      rhs(c4 + 2*basis.size(),0) = X(2,interpIdx[2]); // z-component
+
+
+      std::vector<index_t> idxConstraints;
+      std::vector<gsMatrix<> > coefsConstraints;
+
+      for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
+      {
+        gsMatrix<index_t> ind = basis.boundary(*it);
+        for(index_t r=0; r<ind.rows(); r++)
+        {
+          index_t fix = ind(r,0);
+          // If it is a new constraint, add it.
+          if(std::find(idxConstraints.begin(), idxConstraints.end(), fix) == idxConstraints.end())
+          {
+            idxConstraints.push_back(fix);
+            coefsConstraints.push_back(original.coef(fix));
+          }
+        }
+      }
+
+      gsInfo << "First coefficient to contrain:\n";
+      gsInfo << coefsConstraints[0] << "\n";
+
+
+      if(boundary_curves)
+      {
+        // for(std::vector<index_t>::const_iterator it=idxConstraints.begin(); it!=idxConstraints.end(); ++it)
+        for(index_t el = 0; el < idxConstraints.size(); ++el)
+        {
+          gsInfo << el << "\n";
+          gsInfo << coefsConstraints[el] << "\n";
+
+          A_tilde.row(idxConstraints[el]) = gsVector<>::Zero(A_tilde.cols(),1);
+          A_tilde( idxConstraints[el], idxConstraints[el] ) = 1;
+
+          A_tilde.row( idxConstraints[el] + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+          A_tilde( idxConstraints[el] + basis.size(), idxConstraints[el] + basis.size() ) = 1;
+
+          A_tilde.row( idxConstraints[el] + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+          A_tilde( idxConstraints[el] + 2*basis.size(), idxConstraints[el] + 2*basis.size() ) = 1;
+
+          rhs(idxConstraints[el], 0) = coefsConstraints[el](0,0); // x-component
+          rhs(idxConstraints[el] + basis.size(),0) = coefsConstraints[el](0,1); // y-component
+          rhs(idxConstraints[el] + 2*basis.size(),0) = coefsConstraints[el](0,2); // z-component
+        }
+      }
+
+      if(corner_conditions)
+      {
+        // corners conditions
+        // x-component
+        A_tilde.row(c1) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c1, c1 ) = 1;
+
+        A_tilde.row( c2 ) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c2 , c2 ) = 1;
+
+        A_tilde.row( c3 ) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c3 , c3 ) = 1;
+
+        A_tilde.row( c4 ) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c4 , c4 ) = 1;
+        //
+
+        // y-component
+        A_tilde.row(c1 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c1 + basis.size(), c1 + basis.size() ) = 1;
+
+        A_tilde.row( c2 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c2 + basis.size(), c2 + basis.size()) = 1;
+
+        A_tilde.row( c3 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c3 + basis.size(), c3 + basis.size()) = 1;
+
+        A_tilde.row( c4 + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c4 + basis.size() , c4 + basis.size()) = 1;
+        //
+
+        // z-component
+        A_tilde.row(c1 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c1 + 2*basis.size(), c1 + 2*basis.size() ) = 1;
+
+        A_tilde.row( c2 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c2 + 2*basis.size(), c2 + 2*basis.size() ) = 1;
+
+        A_tilde.row( c3 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c3 + 2*basis.size(), c3 + 2*basis.size() ) = 1;
+
+        A_tilde.row( c4 + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
+        A_tilde( c4 + 2*basis.size(), c4 + 2*basis.size()) = 1;
+        //
+
+        //
+        rhs(c1,0) = X(0,interpIdx[0]); // x-component
+        rhs(c2,0) = X(0,interpIdx[1]); // x-component
+        rhs(c3,0) = X(0,interpIdx[3]); // x-component
+        rhs(c4,0) = X(0,interpIdx[2]); // x-component
+
+        rhs(c1 + basis.size(),0) = X(1,interpIdx[0]); // y-component
+        rhs(c2 + basis.size(),0) = X(1,interpIdx[1]); // y-component
+        rhs(c3 + basis.size(),0) = X(1,interpIdx[3]); // y-component
+        rhs(c4 + basis.size(),0) = X(1,interpIdx[2]); // y-component
+
+        rhs(c1 + 2*basis.size(),0) = X(2,interpIdx[0]); // z-component
+        rhs(c2 + 2*basis.size(),0) = X(2,interpIdx[1]); // z-component
+        rhs(c3 + 2*basis.size(),0) = X(2,interpIdx[3]); // z-component
+        rhs(c4 + 2*basis.size(),0) = X(2,interpIdx[2]); // z-component
+      }
+
       //
       // for(index_t x=0; x<rhs.size(); x++)
       //   gsInfo << x << ", " << rhs(x,0) << "\n";
