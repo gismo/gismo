@@ -49,16 +49,6 @@ int main(int argc, char *argv[])
              0.8, 0.25,
              1, 0.5;
 
-    // coefs << 0, 0,
-    //          0., 0,
-    //          0.125, 0,
-    //          0.25, 0,
-    //          0.375, 0,
-    //          0.5, 0,
-    //          0.625, 0,
-    //          0.8, 0,
-    //          1, 0;
-
     gsMatrix<> coefs_plot;
     coefs_plot = coefs.transpose();
     gsWriteParaviewPoints(coefs_plot, "coefs_original");
@@ -200,29 +190,26 @@ int main(int argc, char *argv[])
     gsInfo << "tilde rank = " << rank_tilde << "\n";
 
     // impose boundary conditions
-    // probably here we need to set the colums, let's see
-    gsDebugVar(A_tilde.row(0));
-    gsDebugVar(A_tilde.row(0).size());
+    // x-component
     A_tilde.row(0) = gsVector<>::Zero(A_tilde.cols(),1);
     A_tilde(0,0) = 1;
-    //
+
     A_tilde.row(basis.size()-1) = gsVector<>::Zero(A_tilde.cols(),1);
     A_tilde(basis.size()-1, basis.size()-1) = 1;
     //
+    // y-component
     A_tilde.row(basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
     A_tilde(basis.size(), basis.size()) = 1;
-    //
+
     A_tilde.row(2*basis.size()-1) = gsVector<>::Zero(A_tilde.cols(),1);
     A_tilde(2*basis.size()-1, 2*basis.size()-1) = 1;
-    //
-    // gsDebugVar(A_tilde);
 
     // X_tilde(X.cols() * 2, 1);
-    rhs(0,0) = X_tilde(0,0);
-    rhs(basis.size()-1,0) = X_tilde(X.cols()-1,0);
+    rhs(0,0) = X_tilde(0,0); // x-component
+    rhs(basis.size()-1,0) = X_tilde(X.cols()-1,0); // x-component
 
-    rhs(basis.size(),0) = X_tilde(X.cols(),0);
-    rhs(2*basis.size()-1,0) = X_tilde(2*X.cols()-1,0);
+    rhs(basis.size(),0) = X_tilde(X.cols(),0); // y-component
+    rhs(2*basis.size()-1,0) = X_tilde(2*X.cols()-1,0); // y-component
 
     gsSparseSolver<>::QR qrsolver_tilde(A_tilde.sparseView());
     gsMatrix<> sol_tilde = qrsolver_tilde.solve(rhs);
