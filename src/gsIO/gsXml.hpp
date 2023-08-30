@@ -71,7 +71,13 @@ template <class T>
 void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
                       unsigned const& cols, gsMatrix<T>& result,
                       const std::string& base_type_flag) {
-    if (base_type_flag == "ASCII") {
+    // Make sure that flag is in lower case for comparisons
+    std::string base_type_flag_;
+    base_type_flag_.reserve(base_type_flag.size());
+    std::transform(base_type_flag.cbegin(), base_type_flag.cend(),
+                   std::back_inserter(base_type_flag_),
+                   [](unsigned char c) { return std::tolower(c); });
+    if (base_type_flag_ == "ascii") {
         std::istringstream str;
         str.str(node->value());
         result.resize(rows, cols);
@@ -88,7 +94,7 @@ void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
     } else {
         // Perform type checks (no integral to floting point conversion)
         if (std::is_integral<T>::value ^
-            (base_type_flag.find("Int") != std::string::npos)) {
+            (base_type_flag_.find("int") != std::string::npos)) {
             GISMO_ERROR(
                 "Conversions from integral to floating type and vice-versa is "
                 "not allowed!");
@@ -115,28 +121,28 @@ void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
         // Get string
         std::string b64_string(node->value());
         // Perform the actual input (using the proper encoding type)
-        if (base_type_flag == "B64Uint16") {  // Unsigned int 16
+        if (base_type_flag_ == "b64uint16") {  // Unsigned int 16
             copy_input_to_gsMatrix(
                 Base64::Decode<uint16_t>(b64_string));
-        } else if (base_type_flag == "B64Uint32") {  // Unsigned int 32
+        } else if (base_type_flag_ == "b64uint32") {  // Unsigned int 32
             copy_input_to_gsMatrix(
                 Base64::Decode<uint32_t>(b64_string));
-        } else if (base_type_flag == "B64Uint64") {  // Unsigned int 64
+        } else if (base_type_flag_ == "b64bint64") {  // Unsigned int 64
             copy_input_to_gsMatrix(
                 Base64::Decode<uint64_t>(b64_string));
-        } else if (base_type_flag == "B64Int16") {  // Int 16
+        } else if (base_type_flag_ == "b64int16") {  // Int 16
             copy_input_to_gsMatrix(
                 Base64::Decode<int16_t>(b64_string));
-        } else if (base_type_flag == "B64Int32") {  // Int 32
+        } else if (base_type_flag_ == "b64int32") {  // Int 32
             copy_input_to_gsMatrix(
                 Base64::Decode<int32_t>(b64_string));
-        } else if (base_type_flag == "B64Int64") {  // Int 64
+        } else if (base_type_flag_ == "b64int64") {  // Int 64
             copy_input_to_gsMatrix(
                 Base64::Decode<int64_t>(b64_string));
-        } else if (base_type_flag == "B64Float32") {  // Float 32
+        } else if (base_type_flag_ == "b64float32") {  // Float 32
             copy_input_to_gsMatrix(
                 Base64::Decode<float>(b64_string));
-        } else if (base_type_flag == "B64Float64") {  // Float 64
+        } else if (base_type_flag_ == "b64float64") {  // Float 64
             copy_input_to_gsMatrix(
                 Base64::Decode<double>(b64_string));
         } else {

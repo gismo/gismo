@@ -331,7 +331,7 @@ public:
         unsigned rows = atoi(node->first_attribute("rows")->value());
         unsigned cols = atoi(node->first_attribute("cols")->value());
         gsXmlAttribute *format = node->first_attribute("format");
-        std::string format_flag = format ? format->value() : "ASCII";
+        std::string format_flag = format ? format->value() : "ascii";
         getMatrixFromXml<T>(node, rows, cols, obj, format_flag);
     }
     
