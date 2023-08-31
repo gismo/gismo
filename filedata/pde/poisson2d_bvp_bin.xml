@@ -1,0 +1,76 @@
+<xml>
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">100 101</patches>
+    <interfaces>100 2 101 1 0 1 1 1</interfaces>
+    <boundary name="dirichlet">100 3
+      101 3
+      101 4</boundary>
+    <boundary name="neumann">100 1
+      100 4
+      101 2</boundary>
+  </MultiPatch>
+
+  <Function type="FunctionExpr" id="1" dim="2">2*pi^2*sin(pi*x)*sin(pi*y)</Function>
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="2" index="0">sin(pi*x) * sin(pi*y)</Function>
+    <Function type="FunctionExpr" dim="2" index="1" c="2">
+      <c index="0">pi*cos(pi*x) * sin(pi*y)</c>
+      <c index="1">pi*sin(pi*x) * cos(pi*y)</c>
+    </Function>
+    <Function type="FunctionExpr" dim="2" index="2">0</Function>
+    <bc type="Dirichlet" function="0" unknown="0" name="dirichlet">
+    </bc>
+    <bc unknown="0" type="Neumann" function="1" name="neumann">
+    </bc>
+  </boundaryConditions>
+  <Function type="FunctionExpr" id="3" dim="2">sin(pi*x) * sin(pi*y)</Function>
+
+  <OptionList id="4">
+    <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]"
+      value="11" />
+    <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]"
+      value="101" />
+    <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1" />
+    <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2" />
+    <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1" />
+    <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]"
+      value="0.333" />
+    <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1" />
+    <int label="quB" desc="Number of quadrature points: quA*deg + quB" value="1" />
+    <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1" />
+  </OptionList>
+
+
+  <Geometry type="TensorNurbs2" id="100">
+    <Basis type="TensorNurbsBasis2">
+      <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+          <KnotVector degree="1">0.00000 0.00000 1.00000 1.00000</KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+          <KnotVector degree="2">0.00000 0.00000 0.00000 1.00000 1.00000 1.00000</KnotVector>
+        </Basis>
+      </Basis>
+      <weights format="B64Float64">AAAAAAAA8D8AAAAAAADwP9E7f2aeoOY/0Tt/Zp6g5j8AAAAAAADwPwAAAAAAAPA/</weights>
+    </Basis>
+    <coefs geoDim="2" format="B64Float64">
+      AAAAAAAA8D8AAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAADwPwAAAAAAAPA/AAAAAAAAAEAAAAAAAAAAQAAAAAAAAAAAAAAAAAAA8D8AAAAAAAAAAAAAAAAAAABA</coefs>
+  </Geometry>
+
+
+  <Geometry type="TensorNurbs2" id="101">
+    <Basis type="TensorNurbsBasis2">
+      <Basis type="TensorBSplineBasis2">
+        <Basis type="BSplineBasis" index="0">
+          <KnotVector degree="1">0.00000 0.00000 1.00000 1.00000</KnotVector>
+        </Basis>
+        <Basis type="BSplineBasis" index="1">
+          <KnotVector degree="2">0.00000 0.00000 0.00000 1.00000 1.00000 1.00000</KnotVector>
+        </Basis>
+      </Basis>
+      <weights format="B64Float64">AAAAAAAA8D8AAAAAAADwP9E7f2aeoOY/0Tt/Zp6g5j8AAAAAAADwPwAAAAAAAPA/</weights>
+    </Basis>
+    <coefs geoDim="2" format="B64Float64">
+      AAAAAAAAAEAAAAAAAAAAAAAAAAAAAAhAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAAAAACEAAAAAAAAAIQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAhA</coefs>
+  </Geometry>
+</xml>
