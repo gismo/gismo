@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
                   last);
     cmd.addSwitch(
         "plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("binary", "Make it binary", export_b64);
+    cmd.addSwitch("binary", "Use B64 encoding for Paraview", export_b64);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]

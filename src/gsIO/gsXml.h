@@ -381,7 +381,7 @@ gsXmlNode * makeNode( const std::string & name,
 template <class T>
 void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
                       unsigned const& cols, gsMatrix<T>& result,
-                      const std::string& base_type_flag = "ASCII");
+                      const std::string& base_type_flag = "ascii");
 
 /// Helper to insert matrices into XML
 template<class T>

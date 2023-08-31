@@ -99,7 +99,7 @@ Object * getRationalBasisFromXml ( gsXmlNode * node)
     tmp = node->first_node("weights");
     gsMatrix<typename Object::Scalar_t> weights;
     gsXmlAttribute* format = tmp->first_attribute("format");
-    std::string format_flag = format ? format->value() : "ASCII";
+    std::string format_flag = format ? format->value() : "ascii";
     getMatrixFromXml<typename Object::Scalar_t>(tmp, src->size(), 1, weights,
                                                 format_flag);
     return new Object(src, give(weights));
@@ -329,7 +329,7 @@ Object * getGeometryFromXml ( gsXmlNode * node)
     // Read the Coefficients and store them in a matrix
     gsMatrix<typename Object::Scalar_t> coefficient_matrix;
     gsXmlAttribute* format = tmp->first_attribute("format");
-    std::string format_flag = format ? format->value() : "ASCII";
+    std::string format_flag = format ? format->value() : "ascii";
     getMatrixFromXml<typename Object::Scalar_t>(
         tmp, b->size(), geoDim, coefficient_matrix, format_flag);
 
@@ -377,7 +377,7 @@ Object * getGeometryFromXml ( gsXmlNode * node)
         }
     }
 
-    Object * result = new Object(*b,coefficient_matrix);
+    Object * result = new Object(*b, coefficient_matrix);
     return result;
 }
 

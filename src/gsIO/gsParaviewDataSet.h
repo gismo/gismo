@@ -79,7 +79,7 @@ public:
       // gsExprEvaluator<real_t> ev;
       // gsMultiBasis<real_t> mb(*m_geometry);
       // ev.setIntegrationElements(mb);
-      std::vector<std::string> tags =
+      const std::vector<std::string> tags =
           toVTK(expr, nPts, precision, label, export_base64);
       std::vector<std::string> fnames = filenames();
 
@@ -134,9 +134,9 @@ public:
         const unsigned precision = m_options.askInt("precision", 5);
         const bool export_base64 = m_options.askSwitch("base64", false);
 
-        std::vector<std::string> tags =
+        const std::vector<std::string> tags =
             toVTK(field, nPts, precision, label, export_base64);
-        std::vector<std::string> fnames = filenames();
+        const std::vector<std::string> fnames = filenames();
 
         for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
         {
@@ -297,8 +297,7 @@ private:
 
             // Data-Header
             if (export_base64) {
-                // From the line below I would assume that only floating types
-                // are supported in this function
+                // Only floating types are supported in this function
                 const std::string vtk_typename = []() {
                   if (std::is_same<real_t, float>::value) {
                     return std::string("Float32");
@@ -318,7 +317,8 @@ private:
                 if ("" != label) {
                   data_array_stream << "Name=\"" << label << "\" ";
                 };
-                // Only 3D exports are supported
+                // N-dimensional exports are supported (reshape to col might
+                // be required)
                 data_array_stream << "NumberOfComponents=\""
                                   << evaluated_values.rows() << "\">\n";
 
@@ -370,8 +370,7 @@ private:
         std::stringstream stream;
 
         if (export_base64) {
-            // From the line below I would assume that only floating types are
-            // supported in this function
+            // Only floating types are supported in this function
             const std::string vtk_typename = []() {
               if (std::is_same<T, float>::value) {
                 return std::string("Float32");
