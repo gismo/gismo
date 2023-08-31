@@ -183,6 +183,7 @@ namespace internal
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
+#include <gsSolver/gsMinResQLP.h>
 
 /* ----------- Ieti ----------- */
 #include <gsIeti/gsIetiMapper.h>
