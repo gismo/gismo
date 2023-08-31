@@ -37,9 +37,13 @@ SUITE(gsExprAssembler_test)
         auto f = ev.getVariable(ff, G);
 
         ev.integral(f);
-
         const real_t v = ev.value();
         CHECK( v*v < 1e-10 );
+
+        CHECK(1==patches.interfaces().size());
+        ev.integralInterface(f.left() + f.right() , patches.interfaces());
+        const real_t w = ev.value();
+        CHECK( w*w < 1e-10 );
     }
 
     TEST(BoundaryIntegral)
