@@ -298,7 +298,7 @@ public:
     void initMatrix()
     {
         resetDimensions();
-        clearMatrix();
+        clearMatrix(false);
     }
 
     void clearRhs() { m_rhs.setZero(); }
