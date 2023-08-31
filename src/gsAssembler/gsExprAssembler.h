@@ -303,6 +303,12 @@ public:
 
     void clearRhs() { m_rhs.setZero(); }
 
+    /**
+     * @brief Re-Init Matrix (set zero by default)
+     *
+     * @param save_sparsety_pattern only modify values but keep sparsety
+     * information by multiplying matrix by zero in-place
+     */
     void clearMatrix(const bool& save_sparsety_pattern = true) {
       if (save_sparsety_pattern) {
         m_matrix *= 0.0;
