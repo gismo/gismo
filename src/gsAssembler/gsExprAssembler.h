@@ -311,7 +311,8 @@ public:
      */
     void clearMatrix(const bool& save_sparsety_pattern = true) {
       if (save_sparsety_pattern) {
-        m_matrix *= 0.0;
+        std::fill(m_matrix.valuePtr(),
+                  m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
       } else {
         m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
