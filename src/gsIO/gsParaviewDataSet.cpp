@@ -32,11 +32,11 @@ namespace gismo
 
         // Check if binary output is required
         const bool export_base64 = m_options.askSwitch("base64", true);
-        const bool is_little_endian = static_cast<bool>([]() {
+        const bool is_little_endian = []() -> bool {
           // Check if current system is running in little endian (most likely)
           const int n{1};
           return *(char *)&n == 1;
-        });
+        }();
 
         // QUESTION: Can I be certain that the ids are consecutive?
         initFilenames();
