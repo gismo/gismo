@@ -117,19 +117,29 @@ int main(int argc, char *argv[])
    gsMatrix<> coefsPatch(deg+1,2);
    gsInfo << "# Bezier patches =  " << basis.size() / deg << "\n";
    gsInfo << newCoefs.rows() << " x " << newCoefs.cols() << "\n";
+
+   gsMultiPatch<> mpCrv1, mpCrv2;
+   // TODO: fix the number of patches
    for(index_t i = 0; i < basis.size()/deg-1; i++)
    {
      // gsInfo << newCoefs.middleRows(i*(deg), deg+1) << "\n\n";
      coefsPatch = newCoefs.middleRows(i*(deg), deg+1);
      gsBSpline<> bezierPatch(basisAux, coefsPatch);
+
+     mpCrv1.addPatch(bezierPatch);
    }
 
+   gsDebugVar(mpCrv1);
 
-   gsMultiPatch<> mp(bezierExtractionCurve);
-   gsMatrix<> bb;
-   mp.boundingBox(bb);
+   gsMatrix<> bbCrv1;
+   mpCrv1.boundingBox(bbCrv1);
+   gsDebugVar(bbCrv1);
 
-   gsInfo << "bounding box:\n" << bb << "\n";
+   // gsMultiPatch<> mp(bezierExtractionCurve);
+   // gsMatrix<> bb;
+   // mp.boundingBox(bb);
+   //
+   // gsInfo << "bounding box:\n" << bb << "\n";
 
     return 0;
 }
