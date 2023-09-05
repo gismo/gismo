@@ -31,6 +31,10 @@ int main(int argc, char *argv[])
     real_t refPercent = 0.1;
     std::string fn = "fitting/deepdrawingC.xml";
 
+
+
+    
+
     // Reading options from the command line
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
             "file containing two matrices (<Matrix>), with \nMatrix id 0 : contains a 2 x N matrix. "
