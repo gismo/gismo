@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): G. Kiss, A. Mantzaflaris
+    Author(s): S. Imperatore , Y. Ji
 */
 
 #include <gismo.h>
@@ -107,6 +107,29 @@ int main(int argc, char *argv[])
    gsWriteParaview( curve2, "line", 1000, false, true);
 
 
+   //find bounding box for bezier curves segments
+   gsInfo << "----------------------------------------------------\n";
+   gsInfo << deg <<"\n";
+   gsKnotVector<> auxKnt(0, 1, 0, deg+1);//start,end,interior knots, start/end multiplicites of knots
+   gsBSplineBasis<> basisAux(auxKnt);
+
+   gsInfo << basisAux << "\n";
+   gsMatrix<> coefsPatch(deg+1,2);
+   gsInfo << "# Bezier patches =  " << basis.size() / deg << "\n";
+   gsInfo << newCoefs.rows() << " x " << newCoefs.cols() << "\n";
+   for(index_t i = 0; i < basis.size()/deg-1; i++)
+   {
+     // gsInfo << newCoefs.middleRows(i*(deg), deg+1) << "\n\n";
+     coefsPatch = newCoefs.middleRows(i*(deg), deg+1);
+     gsBSpline<> bezierPatch(basisAux, coefsPatch);
+   }
+
+
+   gsMultiPatch<> mp(bezierExtractionCurve);
+   gsMatrix<> bb;
+   mp.boundingBox(bb);
+
+   gsInfo << "bounding box:\n" << bb << "\n";
 
     return 0;
 }
