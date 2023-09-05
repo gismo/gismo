@@ -83,14 +83,14 @@ void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
         result.resize(rows, cols);
         for (unsigned i = 0; i < rows; ++i)  // Read is RowMajor
             for (unsigned j = 0; j < cols; ++j)
-              // if ( !(str >> result(i,j) ) )
-              if (!gsGetValue(str, result(i, j))) {
-                gsWarn << "XML Warning: Reading matrix of size " << rows << "x"
-                       << cols << " failed.\n";
-                gsWarn << "Tag: " << node->name() << ", Matrix entry: (" << i
-                       << ", " << j << ").\n";
-                return;
-              }
+                // if ( !(str >> result(i,j) ) )
+                if (!gsGetValue(str, result(i, j))) {
+                    gsWarn << "XML Warning: Reading matrix of size " << rows
+                           << "x" << cols << " failed.\n";
+                    gsWarn << "Tag: " << node->name() << ", Matrix entry: ("
+                           << i << ", " << j << ").\n";
+                    return;
+                }
     } else {
         // Read the node-value as the given type and cast into the requested
         // Matrix Scalar Type (T)

@@ -28,46 +28,47 @@ namespace gismo
                     m_options(options),
                     m_isSaved(false)
     {
-        const unsigned nPts = m_options.askInt("numPoints",1000);
+        const unsigned nPts = m_options.askInt("numPoints", 1000);
 
         // Check if binary output is required
         const bool export_base64 = m_options.askSwitch("base64", true);
         const bool is_little_endian = []() -> bool {
-          // Check if current system is running in little endian (most likely)
-          const int n{1};
-          return *(char *)&n == 1;
+            // Check if current system is running in little endian (most likely)
+            const int n{1};
+            return *(char *)&n == 1;
         }();
 
         // QUESTION: Can I be certain that the ids are consecutive?
         initFilenames();
-        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
+        for (index_t k = 0; k != m_geometry->nPieces();
+             k++)  // For every patch.
         {
-          gsMatrix<real_t> activeBases = m_geometry->piece(k).support();
-          gsGridIterator<real_t, CUBE> pt(activeBases, nPts);
+            gsMatrix<real_t> activeBases = m_geometry->piece(k).support();
+            gsGridIterator<real_t, CUBE> pt(activeBases, nPts);
 
-          const gsVector<index_t> &np(pt.numPointsCwise());
-          index_t np1 = (np.size() > 1 ? np(1) - 1 : 0);
-          index_t np2 = (np.size() > 2 ? np(2) - 1 : 0);
+            const gsVector<index_t> &np(pt.numPointsCwise());
+            index_t np1 = (np.size() > 1 ? np(1) - 1 : 0);
+            index_t np2 = (np.size() > 2 ? np(2) - 1 : 0);
 
-          // initializes individual .vts files
-          // for every patch
-          std::ofstream file(m_filenames[k].c_str());
-          file << std::fixed;            // no exponents
-          file << std::setprecision(5);  // PLOT_PRECISION
-          file << "<?xml version=\"1.0\"?>\n";
-          file << "<VTKFile type=\"StructuredGrid\" version=\"0.1\"";
-          if (export_base64) {
-            file << " byte_order=\""
-                 << (is_little_endian ? "LittleEndian" : "BigEndian")
-                 << "\" header_type=\"UInt64\"";
-          }
-          file << ">\n";
-          file << "<StructuredGrid WholeExtent=\"0 " << np(0) - 1 << " 0 "
-               << np1 << " 0 " << np2 << "\">\n";
-          file << "<Piece Extent=\"0 " << np(0) - 1 << " 0 " << np1 << " 0 "
-               << np2 << "\">\n";
-          file << "<PointData>\n";
-          file.close();
+            // initializes individual .vts files
+            // for every patch
+            std::ofstream file(m_filenames[k].c_str());
+            file << std::fixed;            // no exponents
+            file << std::setprecision(5);  // PLOT_PRECISION
+            file << "<?xml version=\"1.0\"?>\n";
+            file << "<VTKFile type=\"StructuredGrid\" version=\"0.1\"";
+            if (export_base64) {
+                file << " byte_order=\""
+                     << (is_little_endian ? "LittleEndian" : "BigEndian")
+                     << "\" header_type=\"UInt64\"";
+            }
+            file << ">\n";
+            file << "<StructuredGrid WholeExtent=\"0 " << np(0) - 1 << " 0 "
+                 << np1 << " 0 " << np2 << "\">\n";
+            file << "<Piece Extent=\"0 " << np(0) - 1 << " 0 " << np1 << " 0 "
+                 << np2 << "\">\n";
+            file << "<PointData>\n";
+            file.close();
         }
     }
 
@@ -92,8 +93,8 @@ namespace gismo
             const bool export_base64 = m_options.askSwitch("base64", false);
 
             // Transform points into strings for export
-            std::vector<std::string> points =
-                toVTK(*m_geometry, nPts, precision, "", export_base64); 
+            const std::vector<std::string> points =
+                toVTK(*m_geometry, nPts, precision, "", export_base64);
 
             // QUESTION: Can I be certain that the ids are consecutive?
             for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
