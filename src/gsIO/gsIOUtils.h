@@ -365,6 +365,33 @@ class Base64 {
     return encoded_string;
   }
 
+  template <typename BaseType, typename TargetType>
+  static void CopyIntoGsMatrix(const std::vector<BaseType>& base_vector,
+                        gsMatrix<TargetType>& result) {
+    // Check for size
+    const unsigned rows = result.rows();
+    const unsigned cols = result.cols();
+    // Size check
+    if (base_vector.size() != (rows * cols)) {
+      GISMO_ERROR("Input array has the wrong size or could not be converted");
+    }
+    // Converting into gsMatrix (manipulating directly on gsMatrix is
+    // more efficient if T=InputType)
+    for (unsigned i = 0; i < rows; ++i) {
+      for (unsigned j = 0; j < cols; ++j) {
+        result(i, j) = static_cast<TargetType>(base_vector[i * cols + j]);
+      }
+    }
+  }
+
+  template <typename BaseType, typename TargetType>
+  static void CopyIntoVector(const std::vector<BaseType>& base_vector,
+                             std::vector<TargetType>& result) {
+    std::transform(
+        base_vector.cbegin(), base_vector.cend(), std::back_inserter(result),
+        [](const BaseType& c) { return static_cast<TargetType>(c); });
+  }
+
  public:
   /**
    * @brief Helper routine for std::vector data
@@ -496,6 +523,91 @@ class Base64 {
       }
     }
     return return_value;
+  }
+
+  template <typename GsType, typename ScalarType>
+  static void DecodeIntoGsType(const std::string& base64_string,
+                               const std::string& base_type_flag_,
+                               GsType& result) {
+    static_assert("Requested Type not supported.");
+  }
+
+  template <typename ScalarType>
+  static void DecodeIntoGsType(const std::string& base64_string,
+                               const std::string& base_type_flag_,
+                               gsMatrix<ScalarType>& result) {
+    // Format flag in this function is case sensitive
+    GISMO_ASSERT(
+        std::none_of(base_type_flag_.begin(), base_type_flag_.end(), isupper),
+        "Format flag {ascii, b64float64, ...} must be all lowercase.");
+
+    // Perform type checks (no integral to floting point conversion)
+    if (std::is_integral<ScalarType>::value ^
+        (base_type_flag_.find("int") != std::string::npos)) {
+      GISMO_ERROR(
+          "Conversions from integral to floating type and vice-versa is "
+          "not allowed!");
+    }
+
+    // Perform the actual input (using the proper encoding type)
+    if (base_type_flag_ == "b64uint16") {  // Unsigned int 16
+      CopyIntoGsMatrix(Decode<uint16_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64uint32") {  // Unsigned int 32
+      CopyIntoGsMatrix(Decode<uint32_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64bint64") {  // Unsigned int 64
+      CopyIntoGsMatrix(Decode<uint64_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64int16") {  // Int 16
+      CopyIntoGsMatrix(Base64::Decode<int16_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64int32") {  // Int 32
+      CopyIntoGsMatrix(Base64::Decode<int32_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64int64") {  // Int 64
+      CopyIntoGsMatrix(Base64::Decode<int64_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64float32") {  // Float 32
+      CopyIntoGsMatrix(Base64::Decode<float>(base64_string), result);
+    } else if (base_type_flag_ == "b64float64") {  // Float 64
+      CopyIntoGsMatrix(Base64::Decode<double>(base64_string), result);
+    } else {
+      GISMO_ERROR("Reading matrix from XML found unknown type");
+    }
+  }
+
+  template <typename ScalarType>
+  static void DecodeIntoGsType(const std::string& base64_string,
+                               const std::string& base_type_flag_,
+                               std::vector<ScalarType>& result) {
+    // Format flag in this function is case sensitive
+    GISMO_ASSERT(
+        std::none_of(base_type_flag_.begin(), base_type_flag_.end(), isupper),
+        "Format flag {ascii, b64float64, ...} must be all lowercase.");
+
+    // Perform type checks (no integral to floting point conversion)
+    if (std::is_integral<ScalarType>::value ^
+        (base_type_flag_.find("int") != std::string::npos)) {
+      GISMO_ERROR(
+          "Conversions from integral to floating type and vice-versa is "
+          "not allowed!");
+    }
+
+    // Perform the actual input (using the proper encoding type)
+    if (base_type_flag_ == "b64uint16") {  // Unsigned int 16
+      CopyIntoVector(Decode<uint16_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64uint32") {  // Unsigned int 32
+      CopyIntoVector(Decode<uint32_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64bint64") {  // Unsigned int 64
+      CopyIntoVector(Decode<uint64_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64int16") {  // Int 16
+      CopyIntoVector(Base64::Decode<int16_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64int32") {  // Int 32
+      CopyIntoVector(Base64::Decode<int32_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64int64") {  // Int 64
+      CopyIntoVector(Base64::Decode<int64_t>(base64_string), result);
+    } else if (base_type_flag_ == "b64float32") {  // Float 32
+      CopyIntoVector(Base64::Decode<float>(base64_string), result);
+    } else if (base_type_flag_ == "b64float64") {  // Float 64
+      CopyIntoVector(Base64::Decode<double>(base64_string), result);
+    } else {
+      GISMO_ERROR("Reading matrix from XML found unknown type");
+    }
   }
 };
 

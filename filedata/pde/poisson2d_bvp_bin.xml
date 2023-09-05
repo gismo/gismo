@@ -45,10 +45,11 @@
     <Basis type="TensorNurbsBasis2">
       <Basis type="TensorBSplineBasis2">
         <Basis type="BSplineBasis" index="0">
-          <KnotVector degree="1">0.00000 0.00000 1.00000 1.00000</KnotVector>
+          <KnotVector degree="1" format="B64Float64">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAPA/AAAAAAAA8D8=</KnotVector>
         </Basis>
         <Basis type="BSplineBasis" index="1">
-          <KnotVector degree="2">0.00000 0.00000 0.00000 1.00000 1.00000 1.00000</KnotVector>
+          <KnotVector degree="2" format="B64Float64">
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8D8AAAAAAADwPwAAAAAAAPA/</KnotVector>
         </Basis>
       </Basis>
       <weights format="B64Float64">AAAAAAAA8D8AAAAAAADwP9E7f2aeoOY/0Tt/Zp6g5j8AAAAAAADwPwAAAAAAAPA/</weights>
@@ -62,10 +63,11 @@
     <Basis type="TensorNurbsBasis2">
       <Basis type="TensorBSplineBasis2">
         <Basis type="BSplineBasis" index="0">
-          <KnotVector degree="1">0.00000 0.00000 1.00000 1.00000</KnotVector>
+          <KnotVector degree="1" format="B64Float64">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAPA/AAAAAAAA8D8=</KnotVector>
         </Basis>
         <Basis type="BSplineBasis" index="1">
-          <KnotVector degree="2">0.00000 0.00000 0.00000 1.00000 1.00000 1.00000</KnotVector>
+          <KnotVector degree="2" format="B64Float64">
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8D8AAAAAAADwPwAAAAAAAPA/</KnotVector>
         </Basis>
       </Basis>
       <weights format="B64Float64">AAAAAAAA8D8AAAAAAADwP9E7f2aeoOY/0Tt/Zp6g5j8AAAAAAADwPwAAAAAAAPA/</weights>

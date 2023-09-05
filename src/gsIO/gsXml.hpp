@@ -92,62 +92,10 @@ void getMatrixFromXml(gsXmlNode* node, unsigned const& rows,
                 return;
               }
     } else {
-        // Perform type checks (no integral to floting point conversion)
-        if (std::is_integral<T>::value ^
-            (base_type_flag_.find("int") != std::string::npos)) {
-            GISMO_ERROR(
-                "Conversions from integral to floating type and vice-versa is "
-                "not allowed!");
-        }
-        // Hide the transformation in a polymorphic lambda function to avoid
-        // duplicate code
+        // Read the node-value as the given type and cast into the requested
+        // Matrix Scalar Type (T)
         result.resize(rows, cols);
-        auto copy_input_to_gsMatrix = [&result, &rows,
-                                       &cols](const auto& input_array) -> void {
-          // Size check
-          if (input_array.size() != (rows * cols)) {
-            GISMO_ERROR(
-                "Input array has the wrong size or could not be converted");
-          }
-          // Converting into gsMatrix (manipulating directly on gsMatrix is
-          // more efficient if T=InputType)
-          result.resize(rows, cols);
-          for (unsigned i = 0; i < rows; ++i) {
-            for (unsigned j = 0; j < cols; ++j) {
-              result(i, j) = static_cast<T>(input_array[i * cols + j]);
-            }
-          }
-        };
-        // Get string
-        std::string b64_string(node->value());
-        // Perform the actual input (using the proper encoding type)
-        if (base_type_flag_ == "b64uint16") {  // Unsigned int 16
-            copy_input_to_gsMatrix(
-                Base64::Decode<uint16_t>(b64_string));
-        } else if (base_type_flag_ == "b64uint32") {  // Unsigned int 32
-            copy_input_to_gsMatrix(
-                Base64::Decode<uint32_t>(b64_string));
-        } else if (base_type_flag_ == "b64bint64") {  // Unsigned int 64
-            copy_input_to_gsMatrix(
-                Base64::Decode<uint64_t>(b64_string));
-        } else if (base_type_flag_ == "b64int16") {  // Int 16
-            copy_input_to_gsMatrix(
-                Base64::Decode<int16_t>(b64_string));
-        } else if (base_type_flag_ == "b64int32") {  // Int 32
-            copy_input_to_gsMatrix(
-                Base64::Decode<int32_t>(b64_string));
-        } else if (base_type_flag_ == "b64int64") {  // Int 64
-            copy_input_to_gsMatrix(
-                Base64::Decode<int64_t>(b64_string));
-        } else if (base_type_flag_ == "b64float32") {  // Float 32
-            copy_input_to_gsMatrix(
-                Base64::Decode<float>(b64_string));
-        } else if (base_type_flag_ == "b64float64") {  // Float 64
-            copy_input_to_gsMatrix(
-                Base64::Decode<double>(b64_string));
-        } else {
-            GISMO_ERROR("Reading matrix from XML found unknown type");
-        }
+        Base64::DecodeIntoGsType(node->value(), base_type_flag_, result);
     }
 }
 
