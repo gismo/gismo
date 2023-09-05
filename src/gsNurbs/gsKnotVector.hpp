@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsIO/gsIOUtils.h>
+#include <gsIO/gsBase64.h>
 #include <gsIO/gsXml.h>
 #include <gsNurbs/gsKnotVector.h>
 
