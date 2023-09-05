@@ -365,9 +365,23 @@ class Base64 {
     return encoded_string;
   }
 
+  /**
+   * @brief Copy a read vector of type BaseType into a gsMatrix with ScalarType
+   * TargetType.
+   *
+   * This is required as they might differ from each other, e.g., double into
+   * float, uint into int, etc.. Further, most matrices in Gismo (like
+   * coefficients) are stored in a different order (colwise) than the input
+   * stream, which prohibits the use of writing directly on the pointer
+   *
+   * @tparam BaseType Type as encoded into the input file
+   * @tparam TargetType Type as requested from target
+   * @param base_vector decoded std::vector with base type
+   * @param result gsMatrix passed as reference
+   */
   template <typename BaseType, typename TargetType>
   static void CopyIntoGsMatrix(const std::vector<BaseType>& base_vector,
-                        gsMatrix<TargetType>& result) {
+                               gsMatrix<TargetType>& result) {
     // Check for size
     const unsigned rows = result.rows();
     const unsigned cols = result.cols();
@@ -384,6 +398,14 @@ class Base64 {
     }
   }
 
+  /**
+   * @brief Cast a vector of a base type into a vector of TargetType
+   *
+   * @tparam BaseType Type as encoded into the input file
+   * @tparam TargetType Type as requested from target
+   * @param base_vector decoded std::vector with base type
+   * @param result decoded std::vector with target type
+   */
   template <typename BaseType, typename TargetType>
   static void CopyIntoVector(const std::vector<BaseType>& base_vector,
                              std::vector<TargetType>& result) {
@@ -525,12 +547,25 @@ class Base64 {
     return return_value;
   }
 
+  /**
+   * @brief Placeholder template for type conversion
+   *
+   * Read a base64 string depending on a format flag (that determines base type)
+   * and write it into a new type.
+   *
+   * Currently there are overloads for: gsMatrix<T>, std::vector<T>
+   *
+   * @tparam GsType Target type passed as reference
+   * @tparam ScalarType 
+   * @param base64_string
+   * @param base_type_flag_
+   * @param result
+   */
   template <typename GsType, typename ScalarType>
   static void DecodeIntoGsType(const std::string& base64_string,
                                const std::string& base_type_flag_,
-                               GsType& result) {
-    static_assert("Requested Type not supported.");
-  }
+                               GsType& result);
+  // { GISMO_ERROR("Requested Type not supported."); }
 
   template <typename ScalarType>
   static void DecodeIntoGsType(const std::string& base64_string,
