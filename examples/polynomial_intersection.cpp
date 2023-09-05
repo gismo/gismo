@@ -15,6 +15,16 @@
 
 using namespace gismo;
 
+bool areBoundingBoxesIntersecting(const gsMatrix<>& box1, const gsMatrix<>& box2) {
+  if (box1(0,0) > box2(0,1) || box2(0,0) > box1(0,1)) {
+    return false;
+  }
+  if (box1(1,0) > box2(1,1) || box2(1,0) > box1(1,1)) {
+    return false;
+  }
+  return true;
+}
+
 int main(int argc, char *argv[])
 {
     // Options with default values
@@ -57,7 +67,7 @@ int main(int argc, char *argv[])
 
     gsInfo << "curve:\n" << curve1 << "\n";
 
-    gsWriteParaview( curve1, "c1", 1000);
+//    gsWriteParaview( curve1, "c1", 1000);
     gsWriteParaview( curve1, "c1", 1000, false, true);
 
 
@@ -96,16 +106,15 @@ int main(int argc, char *argv[])
     gsKnotVector<> kv(0, 1, 0, 2);//start,end,interior knots, start/end multiplicites of knots
     gsMatrix<> coefs2(2, 2);
 
-    coefs2 << 0.2, 0,
-             0.2, 2;
+    coefs2 << 0.2, 0.2,
+             0.6, 0.6;
 
    gsBSpline<> curve2( kv, give(coefs2));
 
    gsInfo << "curve:\n" << curve2 << "\n";
 
-   gsWriteParaview( curve2, "line", 1000);
+//   gsWriteParaview( curve2, "line", 1000);
    gsWriteParaview( curve2, "line", 1000, false, true);
-
 
    //find bounding box for bezier curves segments
    gsInfo << "----------------------------------------------------\n";
@@ -115,31 +124,48 @@ int main(int argc, char *argv[])
 
    gsInfo << basisAux << "\n";
    gsMatrix<> coefsPatch(deg+1,2);
-   gsInfo << "# Bezier patches =  " << basis.size() / deg << "\n";
+   gsInfo << "# Bezier patches =  " << basis.numElements() << "\n";
    gsInfo << newCoefs.rows() << " x " << newCoefs.cols() << "\n";
 
-   gsMultiPatch<> mpCrv1, mpCrv2;
-   // TODO: fix the number of patches
-   for(index_t i = 0; i < basis.size()/deg-1; i++)
+//   auto numElems = basis.numElements();
+//   gsDebugVar(basis.numElements());
+
+   gsMultiPatch<> mpCrv1, mpCrv2, markedCrv1;
+   gsMatrix<> bbCrv1, bbCrv2;
+   mpCrv2.addPatch(curve2);
+   mpCrv2.boundingBox(bbCrv2);
+   for(index_t i = 0; i < basis.numElements(); i++)
    {
      // gsInfo << newCoefs.middleRows(i*(deg), deg+1) << "\n\n";
      coefsPatch = newCoefs.middleRows(i*(deg), deg+1);
      gsBSpline<> bezierPatch(basisAux, coefsPatch);
 
+     mpCrv1.clear();
      mpCrv1.addPatch(bezierPatch);
+     mpCrv1.boundingBox(bbCrv1);
+//     gsDebugVar(bbCrv1);
+
+//     gsDebugVar(areBoundingBoxesIntersecting(bbCrv1, bbCrv2));
+      if (areBoundingBoxesIntersecting(bbCrv1, bbCrv2)) {
+        markedCrv1.addPatch(bezierPatch);
+      }
    }
 
-   gsDebugVar(mpCrv1);
+//  gsDebugVar(bbCrv2);
 
-   gsMatrix<> bbCrv1;
-   mpCrv1.boundingBox(bbCrv1);
-   gsDebugVar(bbCrv1);
+  gsWriteParaview(markedCrv1, "c1", 1000, false, true);
 
-   // gsMultiPatch<> mp(bezierExtractionCurve);
-   // gsMatrix<> bb;
-   // mp.boundingBox(bb);
-   //
-   // gsInfo << "bounding box:\n" << bb << "\n";
+  // TODO: next step is to compute intersection using PP algorithm
+//  gsMatrix<> ptCrv = curve1.eval(curve1.basis().knots(0).greville());
+//  gsVector<> pt, res;
+//
+//  for (auto i = 0; i != ptCrv.cols(); ++i) {
+//    pt = ptCrv.col(0);
+//    real_t dist = curve2.closestPointTo(pt, res);
+//    gsDebugVar(dist);
+//  }
 
-    return 0;
+
+
+  return 0;
 }
