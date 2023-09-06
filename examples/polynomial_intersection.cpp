@@ -13,6 +13,12 @@
 
 #include <gismo.h>
 
+//#include <Eigen/Dense>
+//#include <unsupported/Eigen/NonLinearOptimization>
+//#include <unsupported/Eigen/NumericalDiff>
+
+#include <lsqcpp.h>
+
 using namespace gismo;
 
 bool areBoundingBoxesIntersecting(const gsMatrix<>& box1, const gsMatrix<>& box2) {
@@ -24,6 +30,82 @@ bool areBoundingBoxesIntersecting(const gsMatrix<>& box1, const gsMatrix<>& box2
   }
   return true;
 }
+
+//// Generic functor
+//// See http://gsEigen.tuxfamily.org/index.php?title=Functors
+//// C++ version of a function pointer that stores meta-data about the function
+//template<typename _Scalar, int NX = gsEigen::Dynamic, int NY = gsEigen::Dynamic>
+//struct Functor
+//{
+//
+//  // Information that tells the caller the numeric type (eg. double) and size (input / output dim)
+//  typedef _Scalar Scalar;
+//  enum { // Required by numerical differentiation module
+//    InputsAtCompileTime = NX,
+//    ValuesAtCompileTime = NY
+//  };
+//
+//  // Tell the caller the matrix sizes associated with the input, output, and jacobian
+//  typedef gsEigen::Matrix<Scalar,InputsAtCompileTime,1> InputType;
+//  typedef gsEigen::Matrix<Scalar,ValuesAtCompileTime,1> ValueType;
+//  typedef gsEigen::Matrix<Scalar,ValuesAtCompileTime,InputsAtCompileTime> JacobianType;
+//
+//  // Local copy of the number of inputs
+//  int m_inputs, m_values;
+//
+//  // Two constructors:
+//  Functor() : m_inputs(InputsAtCompileTime), m_values(ValuesAtCompileTime) {}
+//  Functor(int inputs, int values) : m_inputs(inputs), m_values(values) {}
+//
+//  // Get methods for users to determine function input and output dimensions
+//  int inputs() const { return m_inputs; }
+//  int values() const { return m_values; }
+//
+//};
+//
+//// https://en.wikipedia.org/wiki/Test_functions_for_optimization
+//// Booth Function
+//// Implement f(x,y) = (x + 2*y -7)^2 + (2*x + y - 5)^2
+//struct BoothFunctor : Functor<double>
+//{
+//  // Simple constructor
+//  BoothFunctor(): Functor<double>(2,2) {}
+//
+//  // Implementation of the objective function
+//  int operator()(const gsEigen::VectorXd &z, gsEigen::VectorXd &fvec) const {
+//    double x = z(0);   double y = z(1);
+//    /*
+//     * Evaluate the Booth function.
+//     * Important: LevenbergMarquardt is designed to work with objective functions that are a sum
+//     * of squared terms. The algorithm takes this into account: do not do it yourself.
+//     * In other words: objFun = sum(fvec(i)^2)
+//     */
+//    fvec(0) = x + 2*y - 7;
+//    fvec(1) = 2*x + y - 5;
+//    return 0;
+//  }
+//};
+
+//template<typename Scalar>
+typedef gsEigen::Matrix<real_t, gsEigen::Dynamic, 1> Vector;
+typedef gsEigen::Matrix<real_t, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
+typedef std::function<void(const Vector &, Vector &, Matrix &)> ErrorFunction;
+
+ErrorFunction BoothFunctor(const Vector &z, Vector &fvec, Matrix &jac) {
+    double x = z(0);   double y = z(1);
+    fvec.resize(2);
+    /*
+     * Evaluate the Booth function.
+     * Important: LevenbergMarquardt is designed to work with objective functions that are a sum
+     * of squared terms. The algorithm takes this into account: do not do it yourself.
+     * In other words: objFun = sum(fvec(i)^2)
+     */
+    fvec(0) = x + 2*y - 7;
+    fvec(1) = 2*x + y - 5;
+//  fvec(0) = x * x + y - 11;
+//  fvec(1) = x + y * y - 7;
+    return nullptr;
+};
 
 int main(int argc, char *argv[])
 {
@@ -165,7 +247,51 @@ int main(int argc, char *argv[])
 //    gsDebugVar(dist);
 //  }
 
+  std::cout << "Testing the Booth function..." << std::endl;
+  gsEigen::VectorXd zInit(2); zInit << 1.87, 2.032;
+  std::cout << "zInit: " << zInit.transpose() << std::endl;
+  gsEigen::VectorXd zSoln(2); zSoln << 1.0, 3.0;
+  std::cout << "zSoln: " << zSoln.transpose() << std::endl;
 
+//  BoothFunctor functor;
+//  gsEigen::NumericalDiff<BoothFunctor> numDiff(functor);
+//  lsq::LevenbergMarquardt<> lm(numDiff);
+//  lm.parameters.maxfev = 1000;
+//  lm.parameters.xtol = 1.0e-10;
+
+//  lsq::LevenbergMarquardt lm();
+//  lm().minimize(zInit);
+
+  // Create LevenbergMarquardt object
+
+  lsq::LevenbergMarquardt<real_t, ErrorFunction, lsq::NoCallback<real_t>,
+      lsq::CentralDifferences<real_t>> lmOptimizer;
+
+//  lmOptimizer().setErrorFunction(BoothFunctor);
+  // Configure the optimizer if necessary
+//  lmOptimizer.setIncrease(2.0);
+//  lmOptimizer.setDecrease(0.5);
+//  lmOptimizer.setLambda(1.0);
+//  lmOptimizer.setMaxItLM(100);
+
+//  gsVector<> fval;
+//  gsMatrix<> jac;
+//  BoothFunctor(zInit, fval, jac);
+
+  lmOptimizer.setErrorFunction(BoothFunctor);
+  lmOptimizer.setVerbosity(3);
+
+  // Run the minimization
+  auto res = lmOptimizer.minimize(zInit);
+
+//  std::cout << "max fun eval: " << lm.parameters.maxfev << std::endl;
+//  std::cout << "x tol: " << lm.parameters.xtol << std::endl;
+  gsInfo << "iter count: " << res.iterations << "\n";
+  gsInfo << "error: " << res.error << "\n";
+  gsInfo << "return status: " << res.converged << "\n";
+  gsInfo << "zSolver: " << res.xval.transpose() << "\n";
+//  gsInfo << "fVal: " << res.fval.transpose() << "\n";
+  gsInfo << "-----------------------------------------------------------\n";
 
   return 0;
 }

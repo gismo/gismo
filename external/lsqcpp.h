@@ -8,7 +8,7 @@
 #ifndef LSQCPP_LSQCPP_H_
 #define LSQCPP_LSQCPP_H_
 
-#include <Eigen/Geometry>
+#include <gsEigen/Geometry>
 #include <vector>
 #include <limits>
 #include <iostream>
@@ -17,7 +17,7 @@
 
 namespace lsq
 {
-    typedef Eigen::MatrixXd::Index Index;
+    typedef gsEigen::MatrixXd::Index Index;
 
     /** Functor to compute forward differences.
       * Computes the gradient of the objective f(x) as follows:
@@ -30,8 +30,8 @@ namespace lsq
     class ForwardDifferences
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
         typedef std::function<void(const Vector &, Vector &)> ErrorFunction;
     private:
         Scalar eps_;
@@ -93,8 +93,8 @@ namespace lsq
     class BackwardDifferences
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
         typedef std::function<void(const Vector &, Vector &)> ErrorFunction;
     private:
         Scalar eps_;
@@ -155,8 +155,8 @@ namespace lsq
     struct CentralDifferences
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
         typedef std::function<void(const Vector &, Vector &)> ErrorFunction;
     private:
         Scalar eps_;
@@ -217,8 +217,8 @@ namespace lsq
     template<typename Scalar>
     struct NoCallback
     {
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
 
         bool operator()(const Index,
             const Vector &,
@@ -236,8 +236,8 @@ namespace lsq
     class ConstantStepSize
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
         typedef std::function<void(const Vector &, Vector &, Matrix &)> ErrorFunction;
     private:
         Scalar stepSize_;
@@ -289,8 +289,8 @@ namespace lsq
     class BarzilaiBorwein
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
         typedef std::function<void(const Vector &, Vector &, Matrix &)> ErrorFunction;
 
         enum class Method
@@ -407,8 +407,8 @@ namespace lsq
     class ArmijoBacktracking
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
         typedef std::function<void(const Vector &, Vector &, Matrix &)> ErrorFunction;
     private:
         Scalar decrease_;
@@ -536,8 +536,8 @@ namespace lsq
     class WolfeBacktracking
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
         typedef std::function<void(const Vector &, Vector &, Matrix &)> ErrorFunction;
     private:
         Scalar decrease_;
@@ -660,14 +660,14 @@ namespace lsq
     template<typename Scalar>
     struct DenseSVDSolver
     {
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
-        typedef Eigen::JacobiSVD<Matrix, Eigen::FullPivHouseholderQRPreconditioner>
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
+        typedef gsEigen::JacobiSVD<Matrix, gsEigen::FullPivHouseholderQRPreconditioner>
             Solver;
 
         void operator()(const Matrix &A, const Vector &b, Vector &result) const
         {
-            Solver solver(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
+            Solver solver(A, gsEigen::ComputeFullU | gsEigen::ComputeFullV);
             result = solver.solve(b);
         }
     };
@@ -675,9 +675,9 @@ namespace lsq
     template<typename Scalar>
     struct DenseCholeskySolver
     {
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
-        typedef Eigen::LDLT<Matrix> Solver;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
+        typedef gsEigen::LDLT<Matrix> Solver;
 
         void operator()(const Matrix &A, const Vector &b, Vector &result) const
         {
@@ -702,8 +702,8 @@ namespace lsq
     class LeastSquaresAlgorithm
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
     protected:
         ErrorFunction errorFunction_;
         StepSize stepSize_;
@@ -944,8 +944,8 @@ namespace lsq
         StepSize, Callback, FiniteDifferences>
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
 
         GradientDescent()
             : LeastSquaresAlgorithm<Scalar, ErrorFunction,
@@ -973,8 +973,8 @@ namespace lsq
         StepSize, Callback, FiniteDifferences>
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
 
     public:
         GaussNewton()
@@ -1004,8 +1004,8 @@ namespace lsq
         ConstantStepSize<Scalar>, Callback, FiniteDifferences>
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
     private:
         Scalar increase_;
         Scalar decrease_;
@@ -1108,8 +1108,8 @@ namespace lsq
         ConstantStepSize<Scalar>, Callback, FiniteDifferences>
     {
     public:
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Vector;
-        typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+        typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
 
     private:
         Scalar radius_;
