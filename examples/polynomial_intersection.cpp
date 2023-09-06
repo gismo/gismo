@@ -178,12 +178,11 @@ int main(int argc, char *argv[])
     bezierExtraction.compute();
 
     gsMatrix<> newCoefs = bezierExtraction.result()->coefs();
-    gsDebugVar(basis);
-    gsDebugVar(newCoefs);
+//    gsDebugVar(basis);
+//    gsDebugVar(newCoefs);
 
     gsBSpline<> bezierExtractionCurve( basis, newCoefs);
     gsWriteParaview(bezierExtractionCurve, "bezierC1", 1000);
-
 
     gsKnotVector<> kv(0, 1, 0, 2);//start,end,interior knots, start/end multiplicites of knots
     gsMatrix<> coefs2(2, 2);
@@ -233,9 +232,63 @@ int main(int argc, char *argv[])
       }
    }
 
+//  gsDebugVar(markedCrv1.nPatches());
 //  gsDebugVar(bbCrv2);
 
   gsWriteParaview(markedCrv1, "c1", 1000, false, true);
+
+   gsMultiPatch<> oneCrv = markedCrv1.patch(2);
+  gsWriteParaview(oneCrv, "c1", 1000, false, true);
+
+    // compute the intersection between oneCrv and curve2
+//  gsDebugVar( oneCrv.coefs() );
+//  gsDebugVar( curve2.coefs() );
+//
+//  gsDebugVar( oneCrv.basis(0) );
+//  gsDebugVar( curve2.basis() );
+
+  gsTensorBSplineBasis<2, real_t> basisBezierTensorProduct(auxKnt, kv);
+//  gsDebugVar(basisBezierTensorProduct);
+  gsMatrix<> coefsBezier(oneCrv.coefsSize()*mpCrv2.coefsSize(), 2);
+  for (auto i=0; i!=oneCrv.coefsSize(); ++i) {
+    for (auto j = 0; j != mpCrv2.coefsSize(); ++j) {
+//      auto idxCurrPt = i * mpCrv2.coefsSize() + j;
+      auto idxCurrPt = j*oneCrv.coefsSize() + i;
+//      gsDebugVar(idxCurrPt);
+
+      coefsBezier.row(idxCurrPt) = oneCrv.patch(0).coef(i) - mpCrv2.patch(0).coef(j);
+    }
+  }
+//  gsDebugVar(coefsBezier);
+  gsTensorBSpline<2,real_t> bezierTensorProduct(basisBezierTensorProduct,
+                                                give(coefsBezier));
+
+//  gsWriteParaview(bezierTensorProduct, "c1", 5000, false, false);
+
+  std::cout << "Testing the Booth function..." << std::endl;
+//  gsEigen::VectorXd zInit(2); zInit << 0.5, 0.5;
+  gsEigen::VectorXd zInit(2); zInit << 0.1, 0.1;
+  gsMatrix<> xx = bezierTensorProduct.eval(zInit);
+  gsDebugVar(xx);
+
+  ErrorFunction interSec = [&bezierTensorProduct](const Vector &z, Vector &fvec, Matrix &jac) {
+//    double x = z(0);   double y = z(1);
+    fvec.resize(2);
+//
+//    fvec(0) = x + 2*y - 7;
+//    fvec(1) = 2*x + y - 5;
+//  fvec(0) = x * x + y - 11;
+//  fvec(1) = x + y * y - 7;
+
+// TODO: fix this parameter transformation
+//    gsVector<real_t> param = z;
+//    param(0) = 1 / (1+ exp(-z(0)));
+//    param(1) = 1 / (1+ exp(-z(1)));
+////////////////////////////////////////////////////////////////////////////////
+
+    fvec = bezierTensorProduct.eval(z);
+    return nullptr;
+  };
 
   // TODO: next step is to compute intersection using PP algorithm
 //  gsMatrix<> ptCrv = curve1.eval(curve1.basis().knots(0).greville());
@@ -247,11 +300,11 @@ int main(int argc, char *argv[])
 //    gsDebugVar(dist);
 //  }
 
-  std::cout << "Testing the Booth function..." << std::endl;
-  gsEigen::VectorXd zInit(2); zInit << 1.87, 2.032;
-  std::cout << "zInit: " << zInit.transpose() << std::endl;
-  gsEigen::VectorXd zSoln(2); zSoln << 1.0, 3.0;
-  std::cout << "zSoln: " << zSoln.transpose() << std::endl;
+//  std::cout << "Testing the Booth function..." << std::endl;
+//  gsEigen::VectorXd zInit(2); zInit << 1.87, 2.032;
+//  std::cout << "zInit: " << zInit.transpose() << std::endl;
+//  gsEigen::VectorXd zSoln(2); zSoln << 1.0, 3.0;
+//  std::cout << "zSoln: " << zSoln.transpose() << std::endl;
 
 //  BoothFunctor functor;
 //  gsEigen::NumericalDiff<BoothFunctor> numDiff(functor);
@@ -266,6 +319,8 @@ int main(int argc, char *argv[])
 
   lsq::LevenbergMarquardt<real_t, ErrorFunction, lsq::NoCallback<real_t>,
       lsq::CentralDifferences<real_t>> lmOptimizer;
+//  lsq::DoglegMethod<real_t, ErrorFunction, lsq::NoCallback<real_t>,
+//                          lsq::CentralDifferences<real_t>> lmOptimizer;
 
 //  lmOptimizer().setErrorFunction(BoothFunctor);
   // Configure the optimizer if necessary
@@ -278,19 +333,29 @@ int main(int argc, char *argv[])
 //  gsMatrix<> jac;
 //  BoothFunctor(zInit, fval, jac);
 
-  lmOptimizer.setErrorFunction(BoothFunctor);
+//  lmOptimizer.setErrorFunction(BoothFunctor);
+  lmOptimizer.setErrorFunction(interSec);
   lmOptimizer.setVerbosity(3);
 
   // Run the minimization
   auto res = lmOptimizer.minimize(zInit);
 
+//  gsDebugVar( bezierTensorProduct.eval(res.xval) );
+
+  auto param = res.xval;
+  gsVector<> param1(1); param1 << param(0);
+  gsVector<> param2(1); param2 << param(1);
+  gsDebugVar(oneCrv.patch(0).eval(param1));
+  gsDebugVar(mpCrv2.patch(0).eval(param2));
+
 //  std::cout << "max fun eval: " << lm.parameters.maxfev << std::endl;
 //  std::cout << "x tol: " << lm.parameters.xtol << std::endl;
+
   gsInfo << "iter count: " << res.iterations << "\n";
   gsInfo << "error: " << res.error << "\n";
   gsInfo << "return status: " << res.converged << "\n";
   gsInfo << "zSolver: " << res.xval.transpose() << "\n";
-//  gsInfo << "fVal: " << res.fval.transpose() << "\n";
+  gsInfo << "fVal: " << res.fval.transpose() << "\n";
   gsInfo << "-----------------------------------------------------------\n";
 
   return 0;
