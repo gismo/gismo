@@ -261,7 +261,7 @@ public:
 
 }; // struct
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
     /**
      * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
