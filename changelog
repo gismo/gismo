@@ -66,7 +66,7 @@ v21.12.0 (https://github.com/gismo/gismo/releases/tag/v21.12.0)
 ------
 * NEW
   - Change versioning scheme to YEAR.MONTH
-  - New docker builders
+  - Docker image support
   - Added submodule system with automated download and deployment
   - New optional submodules: gsElasticity, gsExaStencils, gsCodiPack, gsCompFlow, gsStructuralAnalysis, gsKLShell, gsMultiPrecision, gsSpectra, gsOpenCascade, gsUnum
   - Added reader for IGES files
@@ -80,3 +80,44 @@ v21.12.0 (https://github.com/gismo/gismo/releases/tag/v21.12.0)
   - Better CI testing on several platforms (added gitlab-ci, Jenkins, upgraded ctest_script.cmake)
   - Removed deprecated classes (eg. gsGeometryEvaluator,gsNorms)
   - Fix many warnings and other issues
+
+
+v23.09.0 (https://github.com/gismo/gismo/releases/tag/v23.09.0)
+------
+* NEW
+  - module system using module download at configure time (not using git submodules)
+  - module gsMSplines that allows to incorporate general spline spaces over multipatch geometry
+  - module gsOptimizer for solving optimization problems, featuring gradient descent, HLBFGS, etc
+  - initial module gsPreCICE
+  - python bindings using pybind11 for a basic subset of G+Smo
+  - interface and boundary integrals are added to gsExprAssembler
+  - unrefinement functions added to hierarchical splines
+  - Solvers gsBiCgStab and gsMinResQLP added
+  - p-multigrid method added
+  - Converting meshes to linear multipatches added (#592)
+  - add gsParaviewDataSet and gsParaviewCollection (#604) for better interaction to Paraview (#572)
+  - new mesh class using halfedges
+  - new domain parameterization techniques (#624)
+  - Newton-Cotes (commit 8ff2ee1) and patch-wise (#435) quadrature rules
+  - Handling of boundary labels in gsMultiPatch XML reads (#591)
+* IMPROVED
+  - optimize for achitecture scripts
+  - Expresesion assembler is greatly improved, including handling non-linear problems
+  - Several new geometries added in the gsNurbsCreator
+  - CI tests on various platforms, improved docker support
+  - OpenCascade for CAD file format I/O
+  - Spectra eigenvalue solvers
+  - gsIeti module
+  - Haussdorf distance added in gsGeometry (#611)
+* FIXED
+  - bug fix in gsTensorNurbs::insertKnot() (#589)
+  - namespace problem when G+Smo is used aside to other Eigen library versions
+  - fixed I/O from Parasolid and 3dm
+* API
+  - Minimum C++ version compatibility is now C++11
+  - gsMultiBasis uses the full NURBS basis by default (commit 1a5ff6f)
+  - Add small functions needed for the gsStructuralAnalysis and gsKLShell
+  - Several API changes in expressions
+  - Eigen library version used is now 3.4.0
+  - ExprTk library updated
+
