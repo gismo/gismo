@@ -111,34 +111,54 @@ int main(int argc, char *argv[])
 {
     // Options with default values
 
-    std::string fn = "fitting/deepdrawingC.xml";
+    std::string fn1 = "../filedata/cip/MBench_S1002_v3_curve_01.xml";
+    std::string fn2 = "../filedata/cip/MBench_UIC60_v3_curve_01.xml";
 
     // Reading options from the command line
-    gsCmdLine cmd("Intersection of two polynomial curves.");
-    cmd.addString("d", "data", "Input sample data", fn);
+    gsCmdLine cmd("Intersection of two spline curves.");
+    cmd.addString("c", "curve1", "Input curve 1", fn1);
+    cmd.addString("s", "curve2", "Input curve 2", fn2);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    index_t deg = 3;
+
+    //gsGeometry<>::uPtr geo = filedata.getAnyFirst< gsGeometry<> >();
+    gsFileData<> fd1(fn1);
+    gsBSpline<>::uPtr geo = fd1.getAnyFirst< gsBSpline<> >();
+    gsBSpline<> & curve1 = const_cast<gsBSpline<> &>(*geo);
+
+    // index_t deg = curve1.degree();
+    index_t deg = curve1.degree();
     index_t order = deg+1;
+    gsInfo << "Bspline of degree " << deg << ", order "<< order << "\n";
 
-    gsKnotVector<> ku(0, 1, 5, deg+1);//start,end,interior knots, start/end multiplicites of knots
-    gsMatrix<> coefs(9, 2);
+    // gsKnotVector<> ku(0, 1, 5, deg+1);//start,end,interior knots, start/end multiplicites of knots
+    // gsMatrix<> coefs(9, 2);
+    //
+    // coefs << 0, 0,
+    //          0., 0.25,
+    //          0.125, 0.5,
+    //          0.25, 0.55,
+    //          0.375, 0.5,
+    //          0.5, 0.25,
+    //          0.625, 0.25,
+    //          0.8, 0.25,
+    //          1, 0.5;
+    //
+    // gsMatrix<> coefs_plot;
+    // coefs_plot = coefs.transpose();
+    // gsWriteParaviewPoints(coefs_plot, "coefs_original");
+    // gsBSpline<> curve1( ku, give(coefs));
+    gsDebugVar(curve1.knots());
 
-    coefs << 0, 0,
-             0., 0.25,
-             0.125, 0.5,
-             0.25, 0.55,
-             0.375, 0.5,
-             0.5, 0.25,
-             0.625, 0.25,
-             0.8, 0.25,
-             1, 0.5;
+
+    gsKnotVector<> ku = curve1.knots();
+    gsMatrix<> coefs = curve1.coefs();
 
     gsMatrix<> coefs_plot;
     coefs_plot = coefs.transpose();
     gsWriteParaviewPoints(coefs_plot, "coefs_original");
-    gsBSpline<> curve1( ku, give(coefs));
+
 
 
 
@@ -163,17 +183,26 @@ int main(int argc, char *argv[])
     // }
     //
     ku.increaseMultiplicity(deg-1, false);
+    gsDebugVar(ku);
 
     gsMatrix<> X, uv;
     ku.greville_into(uv);
+    gsDebugVar(uv); // problem with values outside the domain.
+    uv = uv.cwiseMax(*ku.domainBegin()).cwiseMin(*ku.domainEnd()); // keep point within design bounds
+    gsInfo << "Debug greville points with domain constraints.\n";
+    gsInfo << "knot domain: [" << *ku.domainBegin() << ", " << *ku.domainEnd() << "]\n";
+    gsInfo << uv.rows() << " x " << uv.cols() << "\n";
+    gsDebugVar(uv);
     curve1.eval_into(uv, X);
 
-    gsInfo << "Points:\n" << X << "\n";
+    gsInfo << "Points:\n" << X.rows() << " x " << X.cols() << "\n";
     gsInfo << "Parameters:\n" << uv << "\n";
     gsWriteParaviewPoints(X, "points");
 
 
     gsBSplineBasis<> basis(ku);
+    gsDebugVar(basis);
+
     gsFitting<> bezierExtraction(uv, X, basis);
     bezierExtraction.compute();
 
@@ -184,11 +213,15 @@ int main(int argc, char *argv[])
     gsBSpline<> bezierExtractionCurve( basis, newCoefs);
     gsWriteParaview(bezierExtractionCurve, "bezierC1", 1000);
 
+
+
     gsKnotVector<> kv(0, 1, 0, 2);//start,end,interior knots, start/end multiplicites of knots
     gsMatrix<> coefs2(2, 2);
 
-    coefs2 << 0.2, 0.2,
-             0.6, 0.6;
+    // coefs2 << 0.2, 0.2,
+    //          0.6, 0.6;
+    coefs2 << -10, -10,
+             20, 20;
 
    gsBSpline<> curve2( kv, give(coefs2));
 
@@ -197,6 +230,7 @@ int main(int argc, char *argv[])
 //   gsWriteParaview( curve2, "line", 1000);
    gsWriteParaview( curve2, "line", 1000, false, true);
 
+   // return 0;
    //find bounding box for bezier curves segments
    gsInfo << "----------------------------------------------------\n";
    gsInfo << deg <<"\n";
@@ -265,10 +299,12 @@ int main(int argc, char *argv[])
 
 //  gsWriteParaview(bezierTensorProduct, "c1", 5000, false, false);
 
-  std::cout << "Testing the Booth function..." << std::endl;
+  // std::cout << "Testing the Booth function..." << std::endl;
+  gsInfo << "Initial guess: \n";
 //  gsEigen::VectorXd zInit(2); zInit << 0.5, 0.5;
   gsEigen::VectorXd zInit(2); zInit << 0.1, 0.1;
   gsMatrix<> xx = bezierTensorProduct.eval(zInit);
+  gsWriteParaviewPoints(xx, "initialGuess");
   gsDebugVar(xx);
 
   ErrorFunction interSec = [&bezierTensorProduct](const Vector &z, Vector &fvec, Matrix &jac) {
@@ -347,6 +383,12 @@ int main(int argc, char *argv[])
   gsVector<> param2(1); param2 << param(1);
   gsDebugVar(oneCrv.patch(0).eval(param1));
   gsDebugVar(mpCrv2.patch(0).eval(param2));
+
+  // zInit
+  gsWriteParaviewPoints(oneCrv.patch(0).eval(zInit.transpose()), "guessi_1");
+  gsWriteParaviewPoints(mpCrv2.patch(0).eval(zInit.transpose()), "guessi_2");
+  gsWriteParaviewPoints(oneCrv.patch(0).eval(param1), "guessf_1");
+  gsWriteParaviewPoints(mpCrv2.patch(0).eval(param2), "guessf_2");
 
 //  std::cout << "max fun eval: " << lm.parameters.maxfev << std::endl;
 //  std::cout << "x tol: " << lm.parameters.xtol << std::endl;
