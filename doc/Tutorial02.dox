@@ -2,7 +2,7 @@ namespace gismo {
 /**
 \page Tutorial02 Tutorial 02: Geometry
 
-In this tutotial you will get to know the main geometric objects and
+In this tutorial you will get to know the main geometric objects and
 operations available in the library.
 
 \section bsp02 B-splines
@@ -11,8 +11,8 @@ The classes/naming convention regarding B-splines is as follows:
 
 - gsBSplineBasis
 
-  This class derives from gsBasis, represents a set of B-spline basis
-  functions. These are polynomial functions, ie. there are no weights
+  This class derives from gsBasis, representing a set of B-spline basis
+  functions. These are polynomial functions, i.e. there are no weights
   (the weights if we regard them as NURBS are all equal to 1,
   therefore not stored). 
   The main ingredient for constructing a
@@ -20,7 +20,7 @@ The classes/naming convention regarding B-splines is as follows:
 
 - gsBSpline 
 
-  This class derives from gsCurve and consists of a gsBSPlineBasis
+  This class derives from gsCurve and consists of a gsBSplineBasis
   plus a matrix which represents the coefficients in the
   basis. Therefore, the matrix contains the control points of the
   B-spline curve.
@@ -28,7 +28,7 @@ The classes/naming convention regarding B-splines is as follows:
 - gsTensorBSplineBasis\<d\>
 
   The tensor-product basis of dimension d where the coordinates are
-  gsBsplineBasis.
+  gsBSplineBasis.
   
 - gsTensorBSpline\<d\>
 
@@ -42,7 +42,7 @@ refer to Non-uniform rational B-spline bases patches (functions) of
 dimension one, or more, respectively.
 
   Here is an example of how to create a knot
-  vector and a b-spline basis, followed by uniform refinement.
+  vector and a B-spline basis, followed by uniform refinement.
 
   \include bspline_basis.cpp
   Output: \verbinclude bspline_basis.out
@@ -75,7 +75,7 @@ visualization in Paraview as follows:
 
 \subsection crgeo02 Creating simple geometries
 
-- The class gsNurbsCreator has several functions which allow us to create
+- The class gsNurbsCreator has several functions that allow us to create
 (compute) the B-spline basis and the control points of some standard
 geometries.
 
@@ -83,8 +83,8 @@ geometries.
 
 \section multipatch02 Multi-patch
 
-A gsMultiPatch object consists of a collection of patches, plus
-topological information. These information are the boundaries plus the
+A gsMultiPatch object consists of a collection of patches with
+topological information. The topology is given by the boundaries and the
 adjacency graph, defining the connections between patches along
 boundaries.
 
@@ -93,8 +93,8 @@ Here is an XML file defining a simple 2-patch rectangle (two_patches.xml):
 \include filedata/planar/two_squares.xml
 
 The file contains the patches plus information on the boundaries and
-interfaces between them. A boundary is a side which does not meet with
-another side.  An interface consists of two sides which meet plus
+interfaces between them. A boundary is a side that does not meet with
+another side.  An interface consists of two sides that meet plus
 orientation information. The following illustration describes the
 data:
 
@@ -105,7 +105,7 @@ information on the meaning of the multipatch data.
 
 Analogously to multipatch objects, a gsMultiBasis object is a
 collection of gsBasis classes together with topological information
-such as boundaries and interfaeces.
+such as boundaries and interfaces.
 
 */
 }

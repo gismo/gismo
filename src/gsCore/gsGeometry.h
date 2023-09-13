@@ -63,7 +63,7 @@ namespace gismo
     The dimension \em n of the resulting geometry,
     i.e., of the image of the geometry map, is defined by the
     size of the given coefficients, and may be larger than \em d
-    (see gsGeometry::geoDim()). $\,$
+    (see gsGeometry::geoDim()).
 
     For instance, for a B-spline basis (<em>d = 1</em>), we could
     have coefficients of dimension <em>n = 1</em>, which results
