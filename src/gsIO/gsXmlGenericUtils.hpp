@@ -142,8 +142,31 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
             all_boxes.push_back(c);
         }
     }
-    Object * hbs = new Object(*tp, all_boxes);
+
+    gsXmlAttribute * manualLevels = node->first_attribute("manualLevels");
+    bool ml = manualLevels && !strcmp(manualLevels->value(),"true");
+    Object * hbs = new Object(*tp, ml);
     delete tp;
+
+    if (ml)
+    {
+        index_t lvl = 1;
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = node->first_node("Basis");
+             child; child = child->next_sibling("Basis"))
+        {
+            id_at = child->first_attribute("level");
+            if (id_at && atoi(id_at->value()) == lvl )
+            {
+                ++lvl;
+                auto tb = memory::make_unique(
+                    internal::gsXml<gsTensorBSplineBasis<d,T> >::get(child) );
+                hbs->addLevel( give(*tb) );
+            }
+        }
+    }
+
+    hbs->refineElements(all_boxes);
     return hbs;
 }
 
@@ -161,9 +184,25 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
 
     //tp_node->append_attribute( makeAttribute( "levels",2 ,data )); // deprecated
   
-    // Write the component bases
-    gsXmlNode * tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
-    tp_node->append_node(tmp);
+    gsXmlNode * tmp;
+    if (obj.manualLevels())
+    {
+        tp_node->append_attribute( makeAttribute("manualLevels","true", data) );
+        for (index_t l = 0; l != obj.numLevels(); l++)
+        {
+            tmp = putTensorBasisToXml(obj.tensorLevel(l), data);
+            tmp->append_attribute( makeAttribute("level", to_string(l), data ) );
+            tp_node->append_node(tmp);
+        }
+    }
+    else
+    {
+        tp_node->append_attribute( makeAttribute("manualLevels","false", data) );
+        // Write the component bases
+        tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
+        tp_node->append_node(tmp);
+    }
+
     
     //Output boxes
     gsMatrix<index_t> box(1,2*d);

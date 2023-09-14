@@ -79,7 +79,8 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
  * 
  */
 template<class T>
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,
+void gsWriteParaview(gsFunctionSet<T> const& geom,
+                     gsMappedBasis<2,T>  const& mbasis,
                      std::string const & fn,unsigned npts = NS, 
                      const bool fullsupport = false,
                      const std::vector<index_t> indices = std::vector<index_t>());

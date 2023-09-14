@@ -122,12 +122,12 @@ public:
         typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
         m_basis->getMapper().targetToSource(i,sourceIndices);
         // Get the support on the whole patch
-        gsMatrix<T> supp;
+        gsMatrix<T> supp = gsMatrix<T>::Zero(d,2);
         gsMatrix<T> localSupp;
         for (typename gsMappedBasis<d,T>::IndexContainer::iterator i = sourceIndices.begin(); i!=sourceIndices.end(); i++)
         {
             // Only consider local basis functions on the same patch
-            if (m_basis->getPatch(*i)!=m_index) continue;
+            if (m_basis->getPatch(*i)!=m_index) break;
             // Get the support of the basis function
             localSupp = m_basis->getBase(m_index).support(m_basis->getPatchIndex(*i));
             // If no support is available, we assign it
@@ -145,7 +145,6 @@ public:
                     supp(dim,1) = localSupp(dim,1);
             }
         }
-
         return supp;
         // return m_basis->getBase(m_index).support();
     }
