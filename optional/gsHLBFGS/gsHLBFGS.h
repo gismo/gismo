@@ -69,7 +69,7 @@ public:
 
     gsHLBFGS(gsOptProblem<T> * problem)
     :
-    Base(problem)
+    Base(problem), m_hm(0, 0, SYM_LOWER, CCS, FORTRAN_TYPE, true)
     {
         this->defaultOptions();
     }
@@ -226,7 +226,7 @@ public:
                 gsAsConstVector<real_t> u(x,N);
 
                 static bool first = true;
-                if (first)
+                //if (first)
                 {
                     *f = m_op->evalObj(u);                
                     gsAsVector<real_t> Gvec(g,N);
@@ -238,21 +238,21 @@ public:
                 gsAsMatrix<real_t> Hm(tmp,N,N);
                 m_op->hessObj_into(u,Hm);
                 
-                Lite_Sparse_Matrix sm(N, N, SYM_LOWER, CCS, FORTRAN_TYPE, true);
-                sm.begin_fill_entry();
-                double * diag = sm.get_diag();
+                m_hm = Lite_Sparse_Matrix(N, N, SYM_LOWER, CCS, FORTRAN_TYPE, true);
+                m_hm.begin_fill_entry();
+                double * diag = m_hm.get_diag();
                 gsAsVector<real_t> Hdiag(diag, N);
                 Hdiag = Hm.diagonal();
                 for (int i = 0; i < N; ++i)
-                    for (int j = i+1; i < N; ++i)
-                        sm.fill_entry(i, j, Hm(i,j));
+                    for (int j = i+1; j < N; ++j)
+                        m_hm.fill_entry(i, j, Hm(i,j));
 
-                sm.end_fill_entry(); 
-                hessian.set_diag  (sm.get_diag());
-                hessian.set_values(sm.get_values());
-                hessian.set_rowind(sm.get_rowind());
-                hessian.set_colptr(sm.get_colptr());
-                hessian.set_nonzeros(sm.get_nonzero());
+                m_hm.end_fill_entry(); 
+                hessian.set_diag  (m_hm.get_diag());
+                hessian.set_values(m_hm.get_values());
+                hessian.set_rowind(m_hm.get_rowind());
+                hessian.set_colptr(m_hm.get_colptr());
+                hessian.set_nonzeros(m_hm.get_nonzero());
             };
 
         local_hessian = &wraphess;
@@ -332,6 +332,8 @@ protected:
     T  m_hlbfgs_pars[20] = {0};
     index_t m_M;
 
+    Lite_Sparse_Matrix m_hm;
+    
     static const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * local_func_grad;
     static const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> * local_newiter_callback;
     static const std::function<void(int N, double *x, double *prev_x, double *f, double *g, HESSIAN_MATRIX& hessian)> * local_hessian;
