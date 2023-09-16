@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
         gsMesh<> mesh(ref.result()->basis());
         gsMatrix<> uv_fitting = ref.returnParamValues() ;
         gsWriteParaview(mesh, internal::to_string(i+1) + "_iter_mesh_pc" + internal::to_string(step));
-        gsWriteParaview(*ref.result(), internal::to_string(i+1) + "_iter_geo_pc" + internal::to_string(step), 100000, true);
+        gsWriteParaview(*ref.result(), internal::to_string(i+1) + "_iter_geo_pc" + internal::to_string(step), 100000, false, true);
         gsWriteParaviewPoints(uv_fitting, internal::to_string(i+1) + "_iter_fitting_parameters_pc" + internal::to_string(step));
 
 
@@ -224,7 +224,13 @@ int main(int argc, char *argv[])
         gsInfo<<"Points below tolerance: "<< percentagePoint  <<"%.\n";
 
 
-        file_results << std::to_string(step) << "," << std::to_string(dofs) << "," << std::ostringstream(std::to_string(minPointError)).str() << "," << std::ostringstream(std::to_string(maxPointError)).str() << "," << std::ostringstream(std::to_string(mseError)).str() << "," << std::ostringstream(std::to_string(percentagePoint)).str() << "\n";
+        //file_results << std::to_string(step) << "," << std::to_string(dofs) << "," << std::ostringstream(std::to_string(minPointError)).str() << "," << std::ostringstream(std::to_string(maxPointError)).str() << "," << std::ostringstream(std::to_string(mseError)).str() << "," << std::ostringstream(std::to_string(percentagePoint)).str() << "\n";
+        file_results << step << ","
+					 << dofs << ","
+					 << minPointError << std::scientific << ","
+					 << maxPointError << std::scientific << ","
+					 << mseError << std::scientific << ","
+					 << percentagePoint << "\n";
         max_results <<  std::to_string(dofs) << "," << std::ostringstream(std::to_string(maxPointError)).str() << "\n";
         mse_results <<  std::to_string(dofs) << "," << std::ostringstream(std::to_string(mseError)).str() << "\n";
 
@@ -251,7 +257,10 @@ int main(int argc, char *argv[])
 
 #ifdef gsParasolid_ENABLED
         gsTHBSpline<2>* result = static_cast<gsTHBSpline<2>*>(ref.result());
-        extensions::gsWriteParasolid<real_t>(*result, "result");
+		extensions::gsWriteParasolid<real_t>(*result, "result_assembly");
+		gsTensorBSpline<2> TP_spline;
+        result->convertToBSpline(TP_spline);
+        extensions::gsWritePK_SHEET(TP_spline, "result_tp");
 #endif
     }
     else
