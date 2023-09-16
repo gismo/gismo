@@ -21,7 +21,7 @@ namespace gismo
 
 
 /**
- * @brief
+ * @brief Adaptor to see a given gsFunction as (the objective of) an unconstrained optimization problem
  *
  */
 
@@ -67,6 +67,12 @@ public:
         //gsDebugVar( result.transpose() );
         m_obj.deriv_into(u, jac);
         //gsDebugVar( jac.transpose() );
+        result = jac.mine();
+    }
+
+    void hessObj_into( const gsAsConstVector<T> & u, gsAsMatrix<T> & result) const
+    {
+        m_obj.hessian_into(u, jac);
         result = jac.mine();
     }
 

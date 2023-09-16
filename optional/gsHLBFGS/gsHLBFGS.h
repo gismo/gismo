@@ -9,6 +9,7 @@
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
 #include "HLBFGS/HLBFGS.h"
+#include "HLBFGS/Lite_Sparse_Matrix.h"
 #include <gsUtils/gsStopwatch.h>
 /*
 To do:
@@ -181,6 +182,12 @@ protected:
         (*local_newiter_callback)(iter, call_iter, x, f, g, gnorm);
     }
 
+    static void static_hessian(int N, double *x, double *prev_x, double *f,
+                               double *g, HESSIAN_MATRIX& hessian)
+    {
+        (*local_hessian)(N, x, prev_x, f, g, hessian);
+    }
+
 public:
     // void run(const gsMatrix<T> & initialGuess)
     void run(std::vector<T> & sol)
@@ -192,15 +199,14 @@ public:
         // std::function<void(index_t N, T* x, T* prev_x, T* f, T* g)>
 
         const std::function<void(int N, double* x, double* prev_x, double* f, double* g)> wrapfunc =
-            [&](int N, double* x, double*, double* f, double* g) {
-            std::vector<double> array_x(N), array_g(N);
-
-            gsAsConstVector<real_t> u(x,N);
-            *f = m_op->evalObj(u);
-
-            gsAsVector<real_t> Gvec(g,N);
-            m_op->gradObj_into(u,Gvec);
-        };
+            [&](int N, double* x, double*, double* f, double* g)
+            {
+                gsAsConstVector<real_t> u(x,N);
+                *f = m_op->evalObj(u);
+                
+                gsAsVector<real_t> Gvec(g,N);
+                m_op->gradObj_into(u,Gvec);
+            };
 
         local_func_grad = &wrapfunc;
 
@@ -212,8 +218,44 @@ public:
                 gsInfo<<"# iter "<< iter << ": #func eval. " << call_iter << ", f = " << *f <<", ||g|| = " << *gnorm << std::endl;
         };
 
-
         local_newiter_callback = &wrapcallback;
+
+        const std::function<void(int N, double *x, double *prev_x, double *f, double *g, HESSIAN_MATRIX& hessian)> wraphess =
+            [&](int N, double *x, double *prev_x, double *f, double *g, HESSIAN_MATRIX& hessian)
+            {
+                gsAsConstVector<real_t> u(x,N);
+
+                static bool first = true;
+                if (first)
+                {
+                    *f = m_op->evalObj(u);                
+                    gsAsVector<real_t> Gvec(g,N);
+                    m_op->gradObj_into(u,Gvec);
+                }
+                first = false;
+
+                std::vector<double> tmp(N*N);
+                gsAsMatrix<real_t> Hm(tmp,N,N);
+                m_op->hessObj_into(u,Hm);
+                
+                Lite_Sparse_Matrix sm(N, N, SYM_LOWER, CCS, FORTRAN_TYPE, true);
+                sm.begin_fill_entry();
+                double * diag = sm.get_diag();
+                gsAsVector<real_t> Hdiag(diag, N);
+                Hdiag = Hm.diagonal();
+                for (int i = 0; i < N; ++i)
+                    for (int j = i+1; i < N; ++i)
+                        sm.fill_entry(i, j, Hm(i,j));
+
+                sm.end_fill_entry(); 
+                hessian.set_diag  (sm.get_diag());
+                hessian.set_values(sm.get_values());
+                hessian.set_rowind(sm.get_rowind());
+                hessian.set_colptr(sm.get_colptr());
+                hessian.set_nonzeros(sm.get_nonzero());
+            };
+
+        local_hessian = &wraphess;
 
         // WHAT ABOUT CONSTRAINTS???? There are no.
         gsStopwatch time;
@@ -224,7 +266,7 @@ public:
                 sol.data(),
                 static_func_grad,
 //                obj,
-                nullptr,
+                static_hessian,
                 HLBFGS_UPDATE_Hessian,
                 static_newiter_callback,
                 m_hlbfgs_pars,
@@ -292,14 +334,16 @@ protected:
 
     static const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * local_func_grad;
     static const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> * local_newiter_callback;
+    static const std::function<void(int N, double *x, double *prev_x, double *f, double *g, HESSIAN_MATRIX& hessian)> * local_hessian;
 };
+
 
 template<typename T>
 const std::function<void(int N, T* x, T* prev_x, T* f, T* g)> * gsHLBFGS<T>::local_func_grad = nullptr;
 template<typename T>
 const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> * gsHLBFGS<T>::local_newiter_callback = nullptr;
+template<typename T>
+const std::function<void(int N, double *x, double *prev_x, double *f, double *g, HESSIAN_MATRIX& hessian)> * gsHLBFGS<T>::local_hessian = nullptr;
 
-
-// using gsHLBFGS = gdc::GradientDescent<T, Objective, StepSize, Callback, FiniteDifferences>;
 
 } //namespace gismo

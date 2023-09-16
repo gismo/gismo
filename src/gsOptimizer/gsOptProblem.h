@@ -106,8 +106,8 @@ public:
     }
 
     //void evalSingleCon_into(int k, gsMatrix<T> & result);
-    //void hassObj_into( gsMatrix<T> & result);
-
+    virtual void hessObj_into(const gsAsConstVector<T> &, gsAsMatrix<T> &) const
+    {GISMO_NO_IMPLEMENTATION }
 
     /// @brief Callback function is executed after every
     ///    iteration. Returning false causes premature termination of

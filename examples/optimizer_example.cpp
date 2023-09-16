@@ -129,8 +129,13 @@ public:
         const T x1 = u(1,0);
         //result(1,0)  =   -2.0*(x1 - 2.0);
         result(1,0)  =   2.0*(x1 - 2.0);
-    }
+    }            
     //! [OptProblemExample gradObj_into]
+
+    void hessObj_into(const gsAsConstVector<T> & u, gsAsMatrix<T> & result) const  
+    {
+        result.setZero();
+    }
 
     //! [OptProblemExample evalCon_into]
     // The evaluation of the constraints must be implemented
@@ -160,6 +165,9 @@ public:
         result[1] = -1.0;
     }
     //! [OptProblemExample jacobCon_into]
+
+    //void hessLagr_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+
 
 private:
 
@@ -222,6 +230,12 @@ int main(int argc, char* argv[])
 #ifdef gsHLBFGS_ENABLED
         case 1 :
         optimizer = new gsHLBFGS<real_t>(&problem);
+
+        // Newton through HLBFGS: M=0, INFO[6]=0, INFO[7]=1, INFO[10]=0
+        optimizer->options().setInt("LBFGSUpdates", 0); // M
+        optimizer->options().setInt("UpdateHess"  , 0); // INFO[6]
+        optimizer->options().setInt("SwitchHess"  , 1); // INFO[7]
+        optimizer->options().setInt("DissPre"     , 0); // INFO[10]
         break;
 #endif
 #ifdef gsIpOpt_ENABLED
@@ -234,12 +248,12 @@ int main(int argc, char* argv[])
         // Set the minimum length of the gradient.
         // The optimizer stops minimizing if the gradient length falls below this
         // value (default is 1e-9).
-        optimizer->options().setReal("MinGradientLength",1e-9);
+        optimizer->options().setReal("MinGradientLength",1e-16);
 
         // Set the minimum length of the step.
         // The optimizer stops minimizing if the step length falls below this
         // value (default is 1e-9).
-        optimizer->options().setReal("MinStepLength",1e-9);
+        optimizer->options().setReal("MinStepLength",1e-16);
         break;
 
     default:
