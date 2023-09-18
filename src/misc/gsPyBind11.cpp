@@ -65,6 +65,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsGeometry( core );
   gismo::pybind11_init_gsMultiPatch( core );
   gismo::pybind11_init_gsMultiBasis( core );
+  gismo::pybind11_init_gsDofMapper( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
@@ -117,6 +118,10 @@ PYBIND11_MODULE(pygismo, m) {
 
 
   gismo::pybind11_init_gsFitting( modelling );
+  gismo::pybind11_init_gsCoonsPatch( modelling );
+  gismo::pybind11_init_gsSpringPatch( modelling );
+  gismo::pybind11_init_gsBarrierPatch2( modelling );
+  gismo::pybind11_init_gsBarrierPatch3( modelling );
 
   py::module msplines = m.def_submodule("msplines");
 
@@ -206,7 +211,7 @@ PYBIND11_MODULE(pygismo, m) {
   structuralanalysis.attr("__version__") = GISMO_VERSION;
   structuralanalysis.doc() = "G+Smo (Geometry + Simulation Modules): StructuralAnalysis module";
 
-  gismo::pybind11_init_gsStructuralAnalysis( structuralanalysis );
+  // gismo::pybind11_init_gsStructuralAnalysis( structuralanalysis );
 #endif
 }
 

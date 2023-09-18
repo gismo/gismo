@@ -49,6 +49,9 @@ endif()
   endif()
 
   if (GISMO_WITH_PYBIND11)
+
+    target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
+
     pybind11_add_module(py${PROJECT_NAME} MODULE
       "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
     )
