@@ -91,7 +91,7 @@ template<class T> void
 gsFileData<T>::addComment(std::string const & message)
 {
     gsXmlNode * comment = internal::makeComment(message, *data);
-    data->prepend_node(comment);
+    data->appendToRoot(comment);
 }
 
 template<class T> void
