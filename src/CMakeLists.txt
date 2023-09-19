@@ -84,7 +84,7 @@ FOREACH(subdir ${SUBDIRS})
     CACHE INTERNAL "G+Smo modules" )
 
   ## install module
-  if (NOT ${GM_NAME} MATCHES gsMesh) # avoid installing twice gsMesh
+  if (NOT ${GM_NAME} STREQUAL "gsMesh") # avoid installing twice gsMesh
     install(DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/${subdir}"
       DESTINATION include/${PROJECT_NAME}
       FILES_MATCHING PATTERN "*.h" )

@@ -127,6 +127,7 @@ namespace internal
 #include <gsModeling/gsSpringPatch.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsModeling/gsCrossApPatch.h>
+#include <gsModeling/gsBarrierPatch.h>
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
@@ -182,6 +183,7 @@ namespace internal
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
+#include <gsSolver/gsMinResQLP.h>
 
 /* ----------- Ieti ----------- */
 #include <gsIeti/gsIetiMapper.h>

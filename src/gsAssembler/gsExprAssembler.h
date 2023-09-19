@@ -298,29 +298,41 @@ public:
     void initMatrix()
     {
         resetDimensions();
-        clearMatrix();
+        clearMatrix(false);
     }
 
     void clearRhs() { m_rhs.setZero(); }
 
-    void clearMatrix()
-    {
-        m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
+    /**
+     * @brief Re-Init Matrix (set zero by default)
+     *
+     * @param save_sparsety_pattern only modify values but keep sparsety
+     * information by multiplying matrix by zero in-place
+     */
+    void clearMatrix(const bool& save_sparsety_pattern = true) {
+        if (save_sparsety_pattern) {
+            std::fill(m_matrix.valuePtr(),
+                      m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
+        } else {
+            m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
-        if ( 0 == m_matrix.rows() || 0 == m_matrix.cols() )
-            gsWarn << " No internal DOFs, zero sized system.\n";
-        else
-        {
-            // Pick up values from options
-            const T bdA       = m_options.getReal("bdA");
-            const index_t bdB = m_options.getInt("bdB");
-            const T bdO       = m_options.getReal("bdO");
-            T nz = 1;
-            const short_t dim = m_exprdata->multiBasis().domainDim();
-            for (short_t i = 0; i != dim; ++i)
-                nz *= bdA * static_cast<T>(m_exprdata->multiBasis().maxDegree(i)) + static_cast<T>(bdB);
+            if (0 == m_matrix.rows() || 0 == m_matrix.cols())
+                gsWarn << " No internal DOFs, zero sized system.\n";
+            else {
+                // Pick up values from options
+                const T bdA = m_options.getReal("bdA");
+                const index_t bdB = m_options.getInt("bdB");
+                const T bdO = m_options.getReal("bdO");
+                T nz = 1;
+                const short_t dim = m_exprdata->multiBasis().domainDim();
+                for (short_t i = 0; i != dim; ++i)
+                    nz *= bdA * static_cast<T>(
+                                    m_exprdata->multiBasis().maxDegree(i)) +
+                          static_cast<T>(bdB);
 
-            m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );
+                m_matrix.reservePerColumn(numBlocks() *
+                                          cast<T, index_t>(nz * (1.0 + bdO)));
+            }
         }
     }
 
@@ -375,6 +387,8 @@ public:
     /*
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
+
+    void quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, std::vector<gsVector<T> > & cWeights);
 
     /// \brief Assembles the Jacobian matrix of the expression \a args with
     // respect to the solution \a u
@@ -1186,6 +1200,68 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
     m_matrix.makeCompressed();
 }
+
+template<class T>
+void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, std::vector<gsVector<T> > & cWeights)
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
+
+    gsVector<T> quWeights; // quadrature weights
+    _eval ee(m_matrix, m_rhs, quWeights);
+    const index_t elim = m_options.getInt("DirichletStrategy");
+    ee.setElim(dirichlet::elimination==elim);
+
+    cPoints.resize( m_exprdata->multiBasis().nBases() );
+    cWeights.resize( m_exprdata->multiBasis().nBases() );
+
+    // Note: omp thread will loop over all patches and will work on Ep/nt
+    // elements, where Ep is the elements on the patch.
+    index_t count = 0;
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
+    {
+        auto & bb = m_exprdata->multiBasis().basis(patchInd);
+
+        QuRule = gsQuadrature::getPtr(bb, m_options);
+        const index_t numNodes = QuRule->numNodes();
+
+        const index_t sz = bb.numElements() * numNodes;
+        cPoints[patchInd].resize(bb.domainDim(), sz );
+        cWeights[patchInd].resize( sz );
+
+        // Initialize domain element iterator for current patch
+        typename gsBasis<T>::domainIter domIt = bb.makeDomainIterator();
+        m_exprdata->getElement().set(*domIt,quWeights);
+
+        // Start iteration over elements of patchInd
+#       ifdef _OPENMP
+        for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#       else
+        for (; domIt->good(); domIt->next() )
+#       endif
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           m_exprdata->points(), quWeights);
+
+            cWeights[patchInd].segment(count, numNodes) = quWeights;
+            cPoints[patchInd].middleCols(count, numNodes) = m_exprdata->points();
+            count += numNodes;
+        }
+    }
+}//omp parallel
+
+    m_matrix.makeCompressed();
+}
+
 
 
 } //namespace gismo
