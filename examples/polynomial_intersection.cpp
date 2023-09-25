@@ -9,6 +9,13 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): S. Imperatore , Y. Ji
+
+    TODO:
+    - check intersection at different polynomial patches;
+    - check intersection between the two becnhmark curves;
+    - handle the situation when two intersection occur in the same polynomial patch;
+    - imlpement PP algorithm;
+
 */
 
 #include <gismo.h>
@@ -123,7 +130,7 @@ int main(int argc, char *argv[])
 
 
     //gsGeometry<>::uPtr geo = filedata.getAnyFirst< gsGeometry<> >();
-    gsFileData<> fd1(fn1);
+    gsFileData<> fd1(fn2);
     gsBSpline<>::uPtr geo = fd1.getAnyFirst< gsBSpline<> >();
     gsBSpline<> & curve1 = const_cast<gsBSpline<> &>(*geo);
 
@@ -220,8 +227,8 @@ int main(int argc, char *argv[])
 
     // coefs2 << 0.2, 0.2,
     //          0.6, 0.6;
-    coefs2 << -10, -10,
-             20, 20;
+    coefs2 << -20, -10,
+             10, 20;
 
    gsBSpline<> curve2( kv, give(coefs2));
 
@@ -271,8 +278,10 @@ int main(int argc, char *argv[])
 
   gsWriteParaview(markedCrv1, "c1", 1000, false, true);
 
-   gsMultiPatch<> oneCrv = markedCrv1.patch(2);
-  gsWriteParaview(oneCrv, "c1", 1000, false, true);
+
+  gsMultiPatch<> oneCrv = markedCrv1.patch(2);
+  gsWriteParaview(oneCrv, "c1_line", 1000, false, true);
+  gsDebugVar(oneCrv);
 
     // compute the intersection between oneCrv and curve2
 //  gsDebugVar( oneCrv.coefs() );
@@ -304,8 +313,9 @@ int main(int argc, char *argv[])
 //  gsEigen::VectorXd zInit(2); zInit << 0.5, 0.5;
   gsEigen::VectorXd zInit(2); zInit << 0.1, 0.1;
   gsMatrix<> xx = bezierTensorProduct.eval(zInit);
-  gsWriteParaviewPoints(xx, "initialGuess");
   gsDebugVar(xx);
+  gsWriteParaviewPoints(oneCrv.patch(0).eval(zInit.transpose()), "guessi_1");
+  gsWriteParaviewPoints(mpCrv2.patch(0).eval(zInit.transpose()), "guessi_2");
 
   ErrorFunction interSec = [&bezierTensorProduct](const Vector &z, Vector &fvec, Matrix &jac) {
 //    double x = z(0);   double y = z(1);
@@ -383,10 +393,6 @@ int main(int argc, char *argv[])
   gsVector<> param2(1); param2 << param(1);
   gsDebugVar(oneCrv.patch(0).eval(param1));
   gsDebugVar(mpCrv2.patch(0).eval(param2));
-
-  // zInit
-  gsWriteParaviewPoints(oneCrv.patch(0).eval(zInit.transpose()), "guessi_1");
-  gsWriteParaviewPoints(mpCrv2.patch(0).eval(zInit.transpose()), "guessi_2");
   gsWriteParaviewPoints(oneCrv.patch(0).eval(param1), "guessf_1");
   gsWriteParaviewPoints(mpCrv2.patch(0).eval(param2), "guessf_2");
 
