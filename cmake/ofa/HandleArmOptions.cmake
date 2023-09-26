@@ -539,7 +539,7 @@ macro(OFA_HandleArmOptions)
       list(APPEND _march_flag_list "armv8.1-a")
       list(APPEND _march_flag_list "armv8-a")
       list(APPEND _march_flag_list "armv7-a")
-      list(APPEND _available_extension_list "crc" "crypto")
+      list(APPEND _available_extension_list "fp" "asimd" "evtstrm" "aes" "pmull" "sha1" "sha2" "crc32" "atomics" "cpuid" "asimdrdm")
 
       # DEC
     elseif(TARGET_ARCHITECTURE STREQUAL "strongarm110")
@@ -556,7 +556,7 @@ macro(OFA_HandleArmOptions)
       list(APPEND _march_flag_list "armv8.1-a")
       list(APPEND _march_flag_list "armv8-a")
       list(APPEND _march_flag_list "armv7-a")
-      list(APPEND _available_extension_list "fp16" "sve")
+      list(APPEND _available_extension_list "fp" "asimd" "evtstrm" "sha1" "sha2" "crc32" "atomics" "fphp" "asimdhp" "cpuid" "asimdrdm" "fcma" "dcpop" "sve")
 
       # HiSilicon
     elseif(TARGET_ARCHITECTURE STREQUAL "tsv110")

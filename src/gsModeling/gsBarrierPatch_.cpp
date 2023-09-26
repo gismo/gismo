@@ -45,7 +45,7 @@ namespace gismo
 
 	void pybind11_init_gsBarrierPatch2(py::module &m)
 	{
-		using Class = gsBarrierPatch<3,real_t>;
+		using Class = gsBarrierPatch<2,real_t>;
 		py::class_<Class>(m, "gsBarrierPatch2")
 
 		// Constructors
