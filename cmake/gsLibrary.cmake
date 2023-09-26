@@ -58,6 +58,13 @@ if (GISMO_WITH_PYBIND11)
     "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
     )
 
+  set_target_properties(py${PROJECT_NAME} PROPERTIES
+    COMPILE_DEFINITIONS gismo_EXPORTS
+    POSITION_INDEPENDENT_CODE ON
+    LINKER_LANGUAGE CXX
+    CXX_VISIBILITY_PRESET "default"
+    )
+
   # since gismo (${PROJECT_NAME}) target includes bindings, it needs
   # pybind/python info. Those are automatically managed in
   # `pybind11_add_module`. Since we aren't using it, setup gismo target
