@@ -101,6 +101,11 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
                                                 GISMO_VERSION, *data);
     data->prepend_node(comment);
 
+    gsXmlNode * declNode = data->allocate_node(rapidxml::node_type::node_declaration);
+    declNode->append_attribute(data->allocate_attribute("version","1.0"));
+    declNode->append_attribute(data->allocate_attribute("encoding","UTF-8"));
+    data->prepend_node(declNode);
+
     if (compress)
     {
         saveCompressed(fname);
@@ -116,7 +121,6 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
     m_lastPath = tmp;
 
     std::ofstream fn( tmp.c_str() );
-    fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     //rapidxml::print_no_indenting
     fn<< *data;
     fn.close();
