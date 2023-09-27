@@ -62,7 +62,8 @@ if (GISMO_WITH_PYBIND11)
     COMPILE_DEFINITIONS gismo_EXPORTS
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
-    CXX_VISIBILITY_PRESET "default"
+    CXX_VISIBILITY_PRESET "hidden"
+    CUDA_VISIBILITY_PRESET "hidden"
     )
 
   # since gismo (${PROJECT_NAME}) target includes bindings, it needs
@@ -77,6 +78,9 @@ if (GISMO_WITH_PYBIND11)
 
   # link gismo to pygismo
   target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
+
+  pybind11_strip(py${PROJECT_NAME})
+  pybind11_extension(py${PROJECT_NAME})
 
   if (GISMO_KLSHELL)
     target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
@@ -126,8 +130,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   #generate_export_header(${PROJECT_NAME})
 
   if (GISMO_WITH_PYBIND11)
-    #Link with python (linker errors arise otherwise)
-    target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} pybind11::embed)
   endif()
 
 #if(gsMpfr_ENABLED OR gsGmp_ENABLED)
