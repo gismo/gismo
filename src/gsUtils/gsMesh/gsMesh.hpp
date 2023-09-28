@@ -355,7 +355,7 @@ void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int midPts)
     VertexHandle next;
     for ( int i = 0; i<midPts; ++i )
     {
-        next = addVertex(start + (T)i*h*step);
+        next = addVertex(start + (T)(i+1)*h*step);
         addEdge(last, next);
         last = next;
     }
