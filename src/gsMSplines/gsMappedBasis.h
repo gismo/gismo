@@ -19,6 +19,8 @@
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsWeightMapper.h>
 #include <gsCore/gsDomainIterator.h>
+#include <gsCore/gsPiecewiseFunction.h>
+#include <gsCore/gsBasisFun.h>
 
 namespace gismo
 {
@@ -197,18 +199,18 @@ public:
 
     /// gives back the gsMappedSingleBasis object set to the patch i, which
     /// ressembles the composite basis on one patch
-    gsMappedSingleBasis<d,T> & getMappedSingleBasis(const index_t i)
+    gsMappedSingleBasis<d,T> & getMappedSingleBasis(const index_t i) const
     {
-        if (m_sb.empty())
-        {
-            m_sb.reserve(m_bases.size());
-            for (size_t q = 0; q!=m_bases.size(); ++q)
-                m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-        }
+        // if (m_sb.empty())
+        // {
+        //     m_sb.reserve(m_bases.size());
+        //     for (size_t q = 0; q!=m_bases.size(); ++q)
+        //         m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
+        // }
         return m_sb[i];
     }
 
-    const gsMappedSingleBasis<d,T> & piece(const index_t k) const { return m_sb[k]; }
+    const gsMappedSingleBasis<d,T> & piece(const index_t k) const { return getMappedSingleBasis(k); }
     //const gsFunctionSet & piece(const index_t k) const { return m_sb[k]; }
 
     /// gives back the domain iterator of the boundary side \a s of a given \a patch
@@ -280,6 +282,16 @@ public:
     void eval_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
     void deriv_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
     void deriv2_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+
+
+    gsPiecewiseFunction<T> basisFunction(index_t global_BF)
+    {
+        const size_t np = nPatches();
+        gsPiecewiseFunction<T> bf(np);
+        for( size_t i = 0; i!=np; ++i)
+            bf.addPiece( getMappedSingleBasis(i).function(global_BF) );
+        return bf;
+    }
 
     /// Evaluate the \a global_BF-th basis function on \a patch at points \a u into \a result.
     void evalSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
@@ -384,7 +396,7 @@ protected:
     // gsSparseMatrix<T> r:C, c:B
 
     /// Underlying bases per patch
-    std::vector<gsMappedSingleBasis<d,T> > m_sb;
+    mutable std::vector<gsMappedSingleBasis<d,T> > m_sb;
 
     // Make gsMultiBasis a member instead of m_bases and m_topol?
 };

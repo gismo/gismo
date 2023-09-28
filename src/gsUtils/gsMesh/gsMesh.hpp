@@ -281,9 +281,9 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
         uniquemap.push_back(buddy);
     }
 
-    for(size_t i = 0; i < m_face.size(); i++)
+    for(size_t i = 0; i != m_face.size(); i++)
     {
-        for (size_t j = 0; j < 3; j++)
+        for (size_t j = 0; j != m_face[i]->vertices.size(); j++)
         {
             m_face[i]->vertices[j] = m_vertex[uniquemap[m_face[i]->vertices[j]->getId()]];
         }

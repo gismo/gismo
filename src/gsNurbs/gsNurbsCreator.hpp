@@ -785,7 +785,7 @@ gsNurbsCreator<T>::BSplineCubeGrid(int n, int m,int p,
         for(int j = 0; j < m; j++)
             for(int k = 0; k < p; k++)
         {
-            mp.addPatch(BSplineCube(r,lx + r*(T)(i) ,ly + r*(T)(j),lz+r*(T)(k))) ;
+            mp.addPatch(BSplineCube(r, r*(T)(0.5) + lx + r*(T)(i), r*(T)(0.5) + ly + r*(T)(j), r*(T)(0.5) + lz+r*(T)(k))) ;
         }
     mp.computeTopology();
     return mp;

@@ -63,7 +63,7 @@ public:
             cloneAll(other.m_face, m_face);
             for (size_t i = 0; i < other.m_face.size(); ++i)
             {
-                for (size_t j = 0; j != 3; ++j)
+                for (size_t j = 0; j != other.m_face[i]->vertices.size(); ++j)
                 {
                     GISMO_ASSERT(m_vertex[other.m_face[i]->vertices[j]->getId()]->getId() == other.m_face[i]->vertices[j]->getId(), "gsMesh(const gsMesh<T> & mesh): getId() of vertex and face don't match");
                     m_face[i]->vertices[j] = m_vertex[other.m_face[i]->vertices[j]->getId()];

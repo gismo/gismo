@@ -46,7 +46,7 @@ char * makeValue(const gsMatrix<T> & value, gsXmlTree & data,
 {
     std::ostringstream oss;
     // Set precision
-    oss << std::setprecision(data.getFloatPrecision());
+    oss << std::setprecision(data.getFloatPrecision()) << "\n";
 
     // Read/Write is RowMajor
     if ( transposed )
