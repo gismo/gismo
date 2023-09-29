@@ -1,4 +1,4 @@
-/** @file a-tdm_surface.cpp
+/** @file pdm_tdm_surface.cpp
 
     @brief Tutorial on gsBSpline class.
 
@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <gismo.h>
+#include <ctime>
 
 using namespace gismo;
 
@@ -226,29 +227,113 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
 
 
+gsMatrix<> pointWiseErrors(const gsTensorBSpline<2, real_t> & geometry,
+                                  const gsMatrix<> & parameters,
+                                  const gsMatrix<> & points)
+{
+  gsMatrix<> eval;
+  geometry.eval_into(parameters, eval);
+  gsMatrix<> errorMat(1, eval.cols());
+  for (index_t col = 0; col != eval.cols(); col++)
+  {
+      errorMat(0, col) = (eval.col(col) - points.col(col)).norm();
+  }
+  return errorMat;
+}
+
+
+
+std::vector<real_t> computeErrors(const gsTensorBSpline<2, real_t> & geometry,
+                                  const gsMatrix<> & parameters,
+                                  const gsMatrix<> & points)
+{
+  std::vector<real_t> min_max_mse;
+  // gsMatrix<> eval;
+  // geometry.eval_into(parameters, eval);
+  //
+  gsMatrix<> errorMat = pointWiseErrors(geometry, parameters, points);
+  //
+  // for (index_t col = 0; col != eval.cols(); col++)
+  // {
+  //     pointWiseErrors(0, col) = (eval.col(col) - points.col(col)).norm();
+  // }
+
+  real_t min_error = 1e6;
+  real_t max_error = 0;
+  real_t mse_error = 0;
+
+  gsMatrix<> err_point(3,1);
+
+  for (index_t i = 1; i < errorMat.cols(); i++)
+  {
+    const real_t err = errorMat(0,i) ;
+    mse_error += err * err ;
+    if ( err > max_error )
+    {
+      max_error = err;
+      err_point << points.col(i);
+      gsWriteParaviewPoints(err_point, "piMax");
+      geometry.eval_into(parameters.col(i), err_point);
+      gsWriteParaviewPoints(err_point, "siMax");
+    }
+
+    if ( err < min_error )
+    {
+      min_error = err;
+    }
+  }
+
+  min_max_mse.push_back(min_error);
+  min_max_mse.push_back(max_error);
+  min_max_mse.push_back(mse_error/errorMat.cols());
+
+  return min_max_mse;
+}
+
 
 int main(int argc, char *argv[])
 {
-    real_t deg = 2;
-    real_t deg_x = -1;
-    real_t deg_y = -1;
-    index_t numKnots = 5;
-    index_t kx = -1;
-    index_t ky = -1;
-    real_t lambda = 0;
-    real_t sigma = 0;
-    bool corner_conditions = false;
-    bool boundary_curves = true;
-    std::string fn = "../filedata/fitting/shiphull_v200_scalePts.xml";
+    // a
+    bool corner_conditions = false; // b
+    bool boundary_curves = false; // c
+    index_t deg = 2; // d
+    // e
+    std::string fn = "../filedata/fitting/shiphull_scalePts.xml"; // f
+    bool uvcorrection = false; // g
+    // h, i, j, k, l,
+    real_t sigma = 0; // m
+    index_t numKnots = 5; // n
+    // o
+    real_t mu = 1; // p
+    index_t deg_x = -1; // q
+    index_t deg_y = -1; // r
+    real_t lambda = 0; // s
+    // t, u, v, w,
+    index_t kx = -1; // x
+    index_t ky = -1; // y
+    // z
 
     gsCmdLine cmd("Tensor product B-spline surface fitting with Tangent Distance Minimization.");
-
-    cmd.addReal("d", "degree", "bi-degree (q,q).", deg);
-    cmd.addReal("s", "smoothing", "smoothing weight", lambda);
+    // a
+    cmd.addSwitch("b", "boundary", "add boundary constraints to the fitting.", boundary_curves);
+    cmd.addSwitch("c", "corners", "add conrners constraints to the fitting.", corner_conditions);
+    cmd.addInt("d", "degree", "bi-degree (d,d).", deg);
+    // e
+    cmd.addString("f", "filename", "name of the .xml file containing the data", fn);
+    cmd.addSwitch("g", "uvc", "apply parameter correction.", uvcorrection);
+    // h, i, j, k, l,
+    cmd.addReal("m", "tdm", "add TDM to the system", sigma);
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
+    // o
+    cmd.addReal("p", "pdm", "add PDM to the system", mu);
+    cmd.addInt("q", "xdeg", "x-degree (dx,dy).", deg_x);
+    cmd.addInt("r", "ydeg", "y-degree (dy,dy).", deg_y);
+    cmd.addReal("s", "smoothing", "smoothing weight", lambda);
+    // t, u, v, w,
     cmd.addInt("x", "xknt", "number of interior knots in x-direction.", kx);
     cmd.addInt("y", "yknt", "number of interior knots in y-direction.", ky);
-    cmd.addString("f", "filename", "name of the .xml file containing the data", fn);
+    // z
+
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -263,7 +348,8 @@ int main(int argc, char *argv[])
       ky = numKnots;
 
 
-    gsStopwatch time;
+    gsStopwatch gsTime;
+    time_t now = time(0);
 
     gsFileData<> fd_in(fn);
     gsMatrix<> uv, X;
@@ -307,7 +393,17 @@ int main(int argc, char *argv[])
     gsTensorBSplineBasis<2> basis( u_knots, v_knots );
 
     gsFitting<real_t> fitting_object(uv, X, basis);
-    fitting_object.compute(lambda);
+    if(uvcorrection)
+    {
+      fitting_object.compute(lambda);
+      fitting_object.parameterCorrection(1e-10,1,1e-8);
+      fitting_object.compute(lambda);
+    }
+    else
+    {
+      fitting_object.compute(lambda);
+    }
+
 
     gsMatrix<> coefs(basis.size(), 3);
     coefs = fitting_object.result()->coefs();
@@ -318,6 +414,22 @@ int main(int argc, char *argv[])
     gsWriteParaview( original, "pdm_0", 1000, true, false);
     gsWriteParaview( original, "pdm_0", 1000, false, true);
     // writeSingleControlNet(original, "pdm_0_cnet");
+
+    std::vector<real_t> pdm_min_max_mse = computeErrors(original,uv,X);
+
+    std::ofstream pdm_results;
+    pdm_results.open(std::to_string(now) + "pdm_results.csv");
+    pdm_results << "m, deg, mesh, dofs, pc, min, max, mse\n";
+    pdm_results << X.cols() << "," << deg << "," << kx << "x" << ky << ","
+                << basis.size() << "," << uvcorrection << "," << pdm_min_max_mse[0] << std::scientific << ","
+					      << pdm_min_max_mse[1] << std::scientific << ","
+					      << pdm_min_max_mse[2] << std::scientific << "\n";
+    pdm_results.close();
+
+    gsMatrix<> pdmColors(4, X.cols());
+    pdmColors << X.row(0), X.row(1), X.row(2),pointWiseErrors(original,uv,X);
+
+    gsWriteParaviewPoints(pdmColors, "pdm_colors");
 
 
     // Standard least square approximation is our starting point.
@@ -334,13 +446,23 @@ int main(int argc, char *argv[])
     //for (index_t iter = 0; iter < 10; iter ++)
     {
       // Apply parameter correction
-      // for (index_t i = 0; i < X.cols(); ++i)
-      // {
-      //   gsVector<> newParam;
-      //   original.closestPointTo(X.col(i).transpose(), newParam, 1e-10, true);
-      //   params.col(i) = newParam;
-      // }
-      params << uv;
+      if (uvcorrection)
+      {
+        gsInfo << "Apply parameter correction:\n";
+        for (index_t i = 0; i < X.cols(); ++i)
+        {
+          gsVector<> newParam;
+          original.closestPointTo(X.col(i).transpose(), newParam, 1e-10, true);
+          params.col(i) = newParam;
+        }
+      }
+      else
+      {
+        gsInfo << "NO parameter correction:\n";
+        params << uv;
+      }
+
+
 
       gsMapData<> md(NEED_VALUE|NEED_NORMAL);
       md.points = params; // parametric values
@@ -393,16 +515,23 @@ int main(int argc, char *argv[])
   //#   pragma omp parallel for default(shared) private(curr_point,actives,value)
       gsInfo << "assemble TDM system:\n";
 
+      gsInfo << "collocation matrix ...\n";
+      // gsMatrix<> B_mat(X.cols() * 3, basis.size() * 3);
+      gsSparseMatrix<> B_mat(X.cols() * 3, basis.size() * 3);
+      gsMatrix<> Bb(X.cols() * 3, basis.size() * 3);
+      Bb.setZero();
+      Bb.block(0,0,tmp.rows(),tmp.cols()) = tmp;
+      Bb.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
+      Bb.block(2*tmp.rows(),2*tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
+      gsInfo << "... assembled.\n";
+      B_mat = Bb.sparseView();
 
-      gsMatrix<> B_mat(X.cols() * 3, basis.size() * 3);
-      B_mat.setZero();
-      B_mat.block(0,0,tmp.rows(),tmp.cols()) = tmp;
-      B_mat.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
-      B_mat.block(2*tmp.rows(),2*tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
 
       // gsInfo << "~B:\n" << B_mat << "\n";
 
-      gsMatrix<> N_diag(X.cols() * 3, X.cols());
+      gsInfo << "Nomral matrix ...\n";
+      // gsMatrix<> N_diag(X.cols() * 3, X.cols());
+      gsSparseMatrix<> N_diag(X.cols() * 3, X.cols());
       N_diag.setZero();
       for(index_t i = 0; i < X.cols(); i++)
       {
@@ -410,6 +539,9 @@ int main(int argc, char *argv[])
         N_diag(X.cols()+i,i) = N_y(i,0);
         N_diag(2*X.cols()+i,i) = N_z(i,0);
       }
+      gsInfo << "... assembled.\n";
+
+
       // N_diag(0,0) = 1;
       // N_diag(X.cols()-1, X.cols()-1) = 1;
       // N_diag(X.cols(), X.cols()-1) = 1;
@@ -422,17 +554,43 @@ int main(int argc, char *argv[])
       // gsMatrix<> rhs = N_diag.transpose() * X_tilde;
 
 
-      gsMatrix<> Im(3*X.cols(), 3*X.cols());
+      // gsMatrix<> Im(3*X.cols(), 3*X.cols());
+      gsSparseMatrix<> Im(3*X.cols(), 3*X.cols());
       Im.setIdentity();
 
       // N_diag.block(0,0,X.cols(), X.cols()) += Im;
       // N_diag.block(X.cols(),0, X.cols(), X.cols()) += Im;
       // N_diag.block(2*X.cols(),0, X.cols(), X.cols()) += Im;
 
+      // Initialization of the smoothing matrix that we need to define the objective function.
+      gsSparseMatrix<> m_G;
+      m_G.resize(fitting_object.result()->coefs().rows(), fitting_object.result()->coefs().rows());
+      m_G.reservePerColumn( cast<real_t,index_t>( (2 * fitting_object.result()->basis().maxDegree() + 1) * 1.333 ) );
+      fitting_object.applySmoothing(lambda, m_G);
+
+      gsInfo << "Smoothing matrix: " << m_G.rows() << " x " << m_G.cols() << "\n";
 
 
-      gsMatrix<> A_tilde = B_mat.transpose() * (sigma * Im + N_diag * N_diag.transpose()) * B_mat;
-      gsMatrix<> rhs = (X_tilde.transpose() * (sigma * Im + N_diag * N_diag.transpose()) * B_mat).transpose();
+      gsInfo << "System matrix ...\n";
+      gsTime.restart();
+      // gsMatrix<> A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
+      gsSparseMatrix<> A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
+
+      gsSparseMatrix<> G_mat(A_tilde.rows(), A_tilde.cols());
+      gsMatrix<> Gg(A_tilde.rows(), A_tilde.cols());
+      Bb.setZero();
+      Gg.block(0,0,m_G.rows(),m_G.cols()) = m_G;
+      Gg.block(m_G.rows(),m_G.cols(),m_G.rows(),m_G.cols()) = m_G;
+      Gg.block(2*m_G.rows(),2*m_G.cols(),m_G.rows(),m_G.cols()) = m_G;
+      gsInfo << "... assembled.\n";
+      G_mat = Gg.sparseView();
+
+      A_tilde += lambda * G_mat;
+      gsTime.stop();
+      gsInfo << "... assembled in "<< gsTime << ".\n";
+      gsInfo << "System rhs ...\n";
+      gsMatrix<> rhs = (X_tilde.transpose() * (mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat).transpose();
+      gsInfo << "... assembled.\n";
 
       gsInfo << A_tilde.rows() << " x " << A_tilde.cols()  << "\n";
       gsInfo << rhs.rows() << " x " << rhs.cols()  << "\n";
@@ -458,13 +616,19 @@ int main(int argc, char *argv[])
 
       // gsInfo << "right hand side difference: " << (rhs - m_B).norm() << "\n";
 
-
+      gsEigen::LLT<gsMatrix<>::Base> A_llt(A_tilde);
+      if (!A_tilde.isApprox(A_tilde.transpose()) || A_llt.info() == gsEigen::NumericalIssue) {
+        gsInfo << "Possibly non semi-positive definitie matrix!\n";
+      }
       // check the system matrix
       gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_tilde);
-      real_t cond = svd.singularValues()(0)/ svd.singularValues()(svd.singularValues().size()-1);
+      real_t sigma_min = svd.singularValues()(svd.singularValues().size()-1);
+      real_t sigma_max = svd.singularValues()(0);
+      real_t cond = sigma_max/sigma_min;
+
       gsInfo << "System matrix condition number: " << cond << "\n";
-      gsInfo << "System matrix maximum singular values: " << svd.singularValues()(0) << "\n";
-      gsInfo << "System matrix minimum singular values: " << svd.singularValues()(svd.singularValues().size()-1) << "\n";
+      gsInfo << "System matrix maximum singular values: " << sigma_max << "\n";
+      gsInfo << "System matrix minimum singular values: " << sigma_min << "\n";
 
       gsMatrix<real_t> Rb = (svd.singularValues().array() < 1e-6).cast<real_t>();;
       // gsInfo << Rb << "\n";
@@ -472,17 +636,17 @@ int main(int argc, char *argv[])
 
       gsInfo << "Mapping between X and X_tilde.\n";
 
-      gsInfo << X.col(interpIdx[0]).transpose() << "\n";
-      gsInfo << X_tilde(interpIdx[0],0) << " " << X_tilde(interpIdx[0] + X.cols(),0) << " " << X_tilde(interpIdx[0] + 2*X.cols() ,0) << "\n\n";
-
-      gsInfo << X.col(interpIdx[1]).transpose() << "\n";
-      gsInfo << X_tilde(interpIdx[1],0) << " " << X_tilde(interpIdx[1] + X.cols(),0) << " " << X_tilde(interpIdx[1] + 2*X.cols() ,0) << "\n\n";
-
-      gsInfo << X.col(interpIdx[2]).transpose() << "\n";
-      gsInfo << X_tilde(interpIdx[2],0) << " " << X_tilde(interpIdx[2] + X.cols(),0) << " " << X_tilde(interpIdx[2] + 2*X.cols() ,0) << "\n\n";
-
-      gsInfo << X.col(interpIdx[3]).transpose() << "\n";
-      gsInfo << X_tilde(interpIdx[3],0) << " " << X_tilde(interpIdx[3] + X.cols(),0) << " " << X_tilde(interpIdx[3] + 2*X.cols() ,0) << "\n\n";
+      // gsInfo << X.col(interpIdx[0]).transpose() << "\n";
+      // gsInfo << X_tilde(interpIdx[0],0) << " " << X_tilde(interpIdx[0] + X.cols(),0) << " " << X_tilde(interpIdx[0] + 2*X.cols() ,0) << "\n\n";
+      //
+      // gsInfo << X.col(interpIdx[1]).transpose() << "\n";
+      // gsInfo << X_tilde(interpIdx[1],0) << " " << X_tilde(interpIdx[1] + X.cols(),0) << " " << X_tilde(interpIdx[1] + 2*X.cols() ,0) << "\n\n";
+      //
+      // gsInfo << X.col(interpIdx[2]).transpose() << "\n";
+      // gsInfo << X_tilde(interpIdx[2],0) << " " << X_tilde(interpIdx[2] + X.cols(),0) << " " << X_tilde(interpIdx[2] + 2*X.cols() ,0) << "\n\n";
+      //
+      // gsInfo << X.col(interpIdx[3]).transpose() << "\n";
+      // gsInfo << X_tilde(interpIdx[3],0) << " " << X_tilde(interpIdx[3] + X.cols(),0) << " " << X_tilde(interpIdx[3] + 2*X.cols() ,0) << "\n\n";
 
 
 
@@ -537,29 +701,77 @@ int main(int argc, char *argv[])
 
       if(boundary_curves)
       {
+        gsInfo << "Constrains on the boundary curves.\n";
         // for(std::vector<index_t>::const_iterator it=idxConstraints.begin(); it!=idxConstraints.end(); ++it)
+
+      //   for (index_t k=0; k<m_constraintsLHS.outerSize(); ++k)
+      //   {
+    	//   for (typename gsSparseMatrix<T>::InnerIterator it(m_constraintsLHS,k); it; ++it)
+    	//     {
+    	//       A_mat(basisSize + it.row(), it.col()) = it.value();
+    	//       A_mat(it.col(), basisSize + it.row()) = it.value();
+    	//     }
+      //   }
+
+        gsMatrix<> A_comp = A_tilde;
+
         for(index_t el = 0; el < idxConstraints.size(); ++el)
         {
-          gsInfo << el << "\n";
-          gsInfo << coefsConstraints[el] << "\n";
+          for (int k=0; k<B_mat.outerSize(); ++k)
+          {
+            for (gsSparseMatrix<>::InnerIterator it(A_tilde,k); it; ++it)
+            {
+              if (it.row() == idxConstraints[el])
+                A_tilde(it.row(), it.col()) = 0;
+              if (it.row() == idxConstraints[el] && it.col() == idxConstraints[el])
+                A_tilde(it.row(), it.col()) = 1;
 
-          A_tilde.row(idxConstraints[el]) = gsVector<>::Zero(A_tilde.cols(),1);
-          A_tilde( idxConstraints[el], idxConstraints[el] ) = 1;
+              if (it.row() == idxConstraints[el] + basis.size())
+                A_tilde(it.row(), it.col()) = 0;
+              if (it.row() == idxConstraints[el] + basis.size() && it.col() == idxConstraints[el] + basis.size())
+                A_tilde(it.row(), it.col()) = 1;
 
-          A_tilde.row( idxConstraints[el] + basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-          A_tilde( idxConstraints[el] + basis.size(), idxConstraints[el] + basis.size() ) = 1;
+              if (it.row() == idxConstraints[el] + 2*basis.size())
+                A_tilde(it.row(), it.col()) = 0;
+              if (it.row() == idxConstraints[el] + 2*basis.size() && it.col() == idxConstraints[el] + 2*basis.size())
+                A_tilde(it.row(), it.col()) = 1;
 
-          A_tilde.row( idxConstraints[el] + 2*basis.size()) = gsVector<>::Zero(A_tilde.cols(),1);
-          A_tilde( idxConstraints[el] + 2*basis.size(), idxConstraints[el] + 2*basis.size() ) = 1;
+            }
+          }
 
           rhs(idxConstraints[el], 0) = coefsConstraints[el](0,0); // x-component
           rhs(idxConstraints[el] + basis.size(),0) = coefsConstraints[el](0,1); // y-component
           rhs(idxConstraints[el] + 2*basis.size(),0) = coefsConstraints[el](0,2); // z-component
         }
+      // } boundary curves constraints
+
+
+
+      for(index_t el = 0; el < idxConstraints.size(); ++el)
+      {
+        // gsInfo << el << "\n";
+        // gsInfo << coefsConstraints[el] << "\n";
+
+        A_comp.row(idxConstraints[el]) = gsVector<>::Zero(A_comp.cols(),1);
+        A_comp( idxConstraints[el], idxConstraints[el] ) = 1;
+
+        A_comp.row( idxConstraints[el] + basis.size()) = gsVector<>::Zero(A_comp.cols(),1);
+        A_comp( idxConstraints[el] + basis.size(), idxConstraints[el] + basis.size() ) = 1;
+
+        A_comp.row( idxConstraints[el] + 2*basis.size()) = gsVector<>::Zero(A_comp.cols(),1);
+        A_comp( idxConstraints[el] + 2*basis.size(), idxConstraints[el] + 2*basis.size() ) = 1;
+
       }
+
+      gsInfo << "========================================================================================================================\n";
+      gsInfo << "Check constraints application: " << (A_tilde - A_comp.sparseView()).norm() << "\n";
+      gsInfo << "========================================================================================================================\n";
+
+    }
 
       if(corner_conditions)
       {
+        gsInfo << "Constrains on the domain corners.\n";
         // corners conditions
         // x-component
         A_tilde.row(c1) = gsVector<>::Zero(A_tilde.cols(),1);
@@ -624,8 +836,30 @@ int main(int argc, char *argv[])
       // for(index_t x=0; x<rhs.size(); x++)
       //   gsInfo << x << ", " << rhs(x,0) << "\n";
 
-      gsSparseSolver<>::QR qrsolver_tilde(A_tilde.sparseView());
-      gsMatrix<> sol_tilde = qrsolver_tilde.solve(rhs);
+      if (A_llt.info() == gsEigen::NumericalIssue)
+      {
+          gsInfo << "After imposing constrains: Possibly non semi-positive definitie matrix!\n";
+      }
+      // gsSparseSolver<>::QR qrsolver_tilde(A_tilde.sparseView());
+      // gsSparseSolver<>::QR qrsolver_tilde(A_tilde);
+      // gsMatrix<> sol_tilde = qrsolver_tilde.solve(rhs);
+
+
+      A_tilde.makeCompressed();
+
+      typename gsSparseSolver<real_t>::BiCGSTABILUT solver( A_tilde );
+
+      if ( solver.preconditioner().info() != gsEigen::Success )
+      {
+          gsWarn<<  "The preconditioner failed. Aborting.\n";
+
+          return 0;
+      }
+      // Solves for many right hand side  columns
+
+      gsMatrix<> sol_tilde = solver.solve(rhs); //toDense()
+
+
 
       // gsInfo << "Tilde solution:\n";
       // gsInfo << sol_tilde << "\n";
@@ -642,6 +876,26 @@ int main(int argc, char *argv[])
       gsWriteParaview( surface_tilde, "tdm_surf", 1000);
       gsWriteParaview( surface_tilde, "tdm_cnet", 1000, false, true);
 
-    } // end loop on TDM
+      std::vector<real_t> tdm_min_max_mse = computeErrors(surface_tilde,params,X);
+
+      std::ofstream tdm_results;
+      tdm_results.open(std::to_string(now) + "tdm_results.csv");
+      tdm_results << "m, deg, mesh, dofs, pc, min, max, mse, sigma, corners, boundary, cond, s_min, s_max\n";
+      tdm_results << X.cols() << "," << deg << "," << kx << "x" << ky << ","
+                  << basis.size() << ","<< uvcorrection << ","
+                  << tdm_min_max_mse[0] << std::scientific << ","
+  					      << tdm_min_max_mse[1] << std::scientific << ","
+  					      << tdm_min_max_mse[2] << std::scientific << ","
+                  << sigma << ","
+                  << corner_conditions << "," << boundary_curves << ","
+                  << cond << "," << sigma_min << "," << sigma_max << "\n";
+      tdm_results.close();
+
+      gsMatrix<> tdmColors(4, X.cols());
+      tdmColors << X.row(0), X.row(1), X.row(2), pointWiseErrors(surface_tilde,params,X);
+
+      gsWriteParaviewPoints(tdmColors, "tdm_colors");
+
+    } // end A-TDM loop
 
 }

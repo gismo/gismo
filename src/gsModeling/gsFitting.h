@@ -65,6 +65,10 @@ public:
     /// Computes the euclidean error for each point
     void computeErrors();
 
+    /// Computes min, max and mse errors
+
+    std::vector<T> computeErrors(const gsMatrix<> & param_values,const gsMatrix<> & points);
+
     /// Computes the maximum norm error for each point
     void computeMaxNormErrors();
 

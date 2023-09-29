@@ -75,7 +75,7 @@ void gsFitting<T>::compute(T lambda)
 
     const int num_basis = m_basis->size();
     const short_t dimension = m_points.cols();
-    
+
     //left side matrix
     //gsMatrix<T> A_mat(num_basis,num_basis);
     gsSparseMatrix<T> A_mat(num_basis + m_constraintsLHS.rows(), num_basis + m_constraintsLHS.rows());
@@ -118,7 +118,7 @@ void gsFitting<T>::compute(T lambda)
     if ( solver.preconditioner().info() != gsEigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
-        
+
         return;
     }
     // Solves for many right hand side  columns
@@ -216,6 +216,76 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 }
 
 
+
+
+// template<class T> inline
+// gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
+// {
+//     gsSparseMatrix<T> result( u.cols(), this->size() );
+//     gsMatrix<T> ev;
+//     gsMatrix<index_t> act;
+//
+//     eval_into  (u.col(0), ev);
+//     active_into(u.col(0), act);
+//     result.reservePerColumn( act.rows() );
+//     for (index_t i=0; i!=act.rows(); ++i)
+//         result.insert(0, act.at(i) ) = ev.at(i);
+//
+//     for (index_t k=1; k!=u.cols(); ++k)
+//     {
+//         eval_into  (u.col(k), ev );
+//         active_into(u.col(k), act);
+//         for (index_t i=0; i!=act.rows(); ++i)
+//             result.insert(k, act.at(i) ) = ev.at(i);
+//     }
+//
+//     result.makeCompressed();
+//     return result;
+// }
+//
+// template <class T>
+// void gsFitting<T>::assembleTDMSystem(gsSparseMatrix<T>& A_mat,
+//                                      gsMatrix<T>& m_rhs)
+// {
+//   // A_mat = B_mat^T * N * N^T * B_mat
+//   // N = diag(n_x, n_y, n_z)
+//   const int num_patches ( m_basis->nPieces() ); //initialize
+//
+//   //for computing the value of the basis function
+//   gsMatrix<T> value, curr_point;
+//   gsMatrix<index_t> actives;
+//
+//   for (index_t h = 0; h < num_patches; h++ )
+//   {
+//       auto & basis = m_basis->basis(h);
+//
+// //#   pragma omp parallel for default(shared) private(curr_point,actives,value)
+//       for (index_t k = m_offset[h]; k < m_offset[h+1]; ++k)
+//       {
+//           curr_point = m_param_values.col(k); // compute the normal value to the point
+//
+//           //computing the values of the basis functions at the current point
+//           basis.eval_into(curr_point, value);
+//
+//           // which functions have been computed i.e. which are active
+//           basis.active_into(curr_point, actives);
+//
+//           const index_t numActive = actives.rows();
+//
+//           for (index_t i = 0; i != numActive; ++i)
+//           {
+//               const index_t ii = actives.at(i);
+// //#           pragma omp critical (acc_m_B)
+//               m_rhs.row(ii) += value.at(i) * m_points.row(k);
+//               for (index_t j = 0; j != numActive; ++j)
+// //#               pragma omp critical (acc_A_mat)
+//                   A_mat(ii, actives.at(j)) += value.at(i) * value.at(j);
+//           }
+//       }
+//   }
+// }
+
+
 template <class T>
 void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
                                   gsMatrix<T>& m_B)
@@ -224,7 +294,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
     //for computing the value of the basis function
     gsMatrix<T> value, curr_point;
-    gsMatrix<index_t> actives;    
+    gsMatrix<index_t> actives;
 
     for (index_t h = 0; h < num_patches; h++ )
     {
@@ -312,7 +382,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
 #   endif
-        
+
     for (index_t h = 0; h < num_patches; h++)
     {
         auto & basis = m_basis->basis(h);
@@ -322,14 +392,14 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 
         for (short_t i = 0; i != dim; ++i)
         {
-            numNodes[i] = basis.degree(i);//+1; 
+            numNodes[i] = basis.degree(i);//+1;
         }
 
         gsGaussRule<T> QuRule(numNodes); // Reference Quadrature rule
 
-        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator(); 
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
 
-        
+
 #       ifdef _OPENMP
         for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
 #       else
@@ -438,12 +508,12 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    error = 0; 
+    error = 0;
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
 
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
@@ -472,6 +542,39 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
 }
 
 template<class T>
+std::vector<T> gsFitting<T>::computeErrors(const gsMatrix<> & parameters,const gsMatrix<> & points)
+{
+  std::vector<T> min_max_mse;
+  gsMatrix<> eval;
+  m_result->eval_into(parameters, eval);
+
+  gsMatrix<> pointWiseErrors(1, eval.cols());
+
+  for (index_t col = 0; col != eval.cols(); col++)
+  {
+      pointWiseErrors(0, col) = (eval.col(col) - points.col(col)).norm();
+  }
+
+  real_t min_error = 1e6;
+  real_t max_error = 0;
+  real_t mse_error = 0;
+
+  for (index_t i = 1; i < pointWiseErrors.cols(); i++)
+  {
+    const real_t err = pointWiseErrors(0,i) ;
+    mse_error += err * err ;
+    if ( err > max_error ) max_error = err;
+    if ( err < min_error ) min_error = err;
+  }
+
+  min_max_mse.push_back(min_error);
+  min_max_mse.push_back(max_error);
+  min_max_mse.push_back(mse_error/pointWiseErrors.cols());
+
+  return min_max_mse;
+}
+
+template<class T>
 void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 {
     errors.clear();
@@ -483,9 +586,9 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
     const int num_patches(m_basis->nPieces());
 
-    for (index_t h = 0; h < num_patches; h++) 
+    for (index_t h = 0; h < num_patches; h++)
     {
-        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k) 
+        for (index_t k = m_offset[h]; k < m_offset[h + 1]; ++k)
         {
             curr_point = m_param_values.col(k);
 
