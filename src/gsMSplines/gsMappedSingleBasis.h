@@ -230,7 +230,8 @@ public:
     std::ostream &print(std::ostream &os) const
     {
         GISMO_UNUSED(os);
-        GISMO_NO_IMPLEMENTATION;
+        os << "Mapped basis function "<< m_index << " / "<< m_basis->size()-1 <<"\n";
+        return os;
     }
 
     /// Prints the object as a string with extended details.

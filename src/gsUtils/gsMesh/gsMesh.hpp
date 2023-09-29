@@ -281,9 +281,9 @@ gsMesh<T>& gsMesh<T>::cleanMesh()
         uniquemap.push_back(buddy);
     }
 
-    for(size_t i = 0; i < m_face.size(); i++)
+    for(size_t i = 0; i != m_face.size(); i++)
     {
-        for (size_t j = 0; j < 3; j++)
+        for (size_t j = 0; j != m_face[i]->vertices.size(); j++)
         {
             m_face[i]->vertices[j] = m_vertex[uniquemap[m_face[i]->vertices[j]->getId()]];
         }
@@ -355,7 +355,7 @@ void gsMesh<T>::addLine(VertexHandle v0, VertexHandle v1, int midPts)
     VertexHandle next;
     for ( int i = 0; i<midPts; ++i )
     {
-        next = addVertex(start + (T)i*h*step);
+        next = addVertex(start + (T)(i+1)*h*step);
         addEdge(last, next);
         last = next;
     }
