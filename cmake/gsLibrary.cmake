@@ -23,7 +23,7 @@ if(GISMO_BUILD_LIB)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
    "x${CMAKE_GENERATOR}" STREQUAL "xXcode")
- set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
+  set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
@@ -33,58 +33,58 @@ if (GISMO_WITH_XDEBUG)
   endif()
 endif()
 
-  # build static within github ci, if it is building with python ext
-  if ("$ENV{GITHUB_ACTIONS}" AND GISMO_WITH_PYBIND11)
-    add_library(${PROJECT_NAME} STATIC
-      ${${PROJECT_NAME}_MODULES}
-      ${${PROJECT_NAME}_SOURCES}
-      ${${PROJECT_NAME}_EXTENSIONS}
-      )
-  else()
-    add_library(${PROJECT_NAME} SHARED
-      ${${PROJECT_NAME}_MODULES}
-      ${${PROJECT_NAME}_SOURCES}
-      ${${PROJECT_NAME}_EXTENSIONS}
-      )
+# build static within github ci, if it is building with python ext
+if ("$ENV{GITHUB_ACTIONS}" AND GISMO_WITH_PYBIND11)
+  add_library(${PROJECT_NAME} STATIC
+    ${${PROJECT_NAME}_MODULES}
+    ${${PROJECT_NAME}_SOURCES}
+    ${${PROJECT_NAME}_EXTENSIONS}
+    )
+else()
+  add_library(${PROJECT_NAME} SHARED
+    ${${PROJECT_NAME}_MODULES}
+    ${${PROJECT_NAME}_SOURCES}
+    ${${PROJECT_NAME}_EXTENSIONS}
+    )
+endif()
+
+if (GISMO_WITH_PYBIND11)
+  pybind11_add_module(py${PROJECT_NAME} MODULE
+    "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
+  )
+
+  # since gismo (${PROJECT_NAME}) target includes bindings, it needs
+  # pybind/python info. Those are automatically managed in
+  # `pybind11_add_module`. Since we aren't using it, setup gismo target
+  # in similar fashion manually. 
+  target_link_libraries(${PROJECT_NAME} pybind11::module)
+  if(NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
+    set_target_properties(${target_name} PROPERTIES CXX_VISIBILITY_PRESET "hidden")
+  endif()
+  if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    target_link_libraries(${target_name} pybind11::lto)
   endif()
 
-  if (GISMO_WITH_PYBIND11)
-    pybind11_add_module(py${PROJECT_NAME} MODULE
-      "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
-    )
+  # link gismo to pygismo
+  target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
 
-    # since gismo (${PROJECT_NAME}) target includes bindings, it needs
-    # pybind/python info. Those are automatically managed in
-    # `pybind11_add_module`. Since we aren't using it, setup gismo target
-    # in similar fashion manually. 
-    target_link_libraries(${PROJECT_NAME} pybind11::module)
-    if(NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
-      set_target_properties(${target_name} PROPERTIES CXX_VISIBILITY_PRESET "hidden")
-    endif()
-    if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-      target_link_libraries(${target_name} pybind11::lto)
-    endif()
+  if (GISMO_KLSHELL)
+    target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
+  endif()# To fix
+endif(GISMO_WITH_PYBIND11)
 
-    # link gismo to pygismo
-    target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
+#generate_export_header(${PROJECT_NAME})
 
-    if (GISMO_KLSHELL)
-      target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
-    endif()# To fix
-  endif(GISMO_WITH_PYBIND11)
-  
-  #generate_export_header(${PROJECT_NAME})
-
-  set_target_properties(${PROJECT_NAME} PROPERTIES
-  #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
-  VERSION "${${PROJECT_NAME}_VERSION}"
-  SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}"
-  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
-  POSITION_INDEPENDENT_CODE ON
-  LINKER_LANGUAGE CXX
-  #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
-  FOLDER "G+Smo libraries"
-  )
+set_target_properties(${PROJECT_NAME} PROPERTIES
+#https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
+VERSION "${${PROJECT_NAME}_VERSION}"
+SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}"
+PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
+POSITION_INDEPENDENT_CODE ON
+LINKER_LANGUAGE CXX
+#COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
+FOLDER "G+Smo libraries"
+)
 
 #if(gsMpfr_ENABLED OR gsGmp_ENABLED)
 #    find_package(GMP)
@@ -121,9 +121,9 @@ if(${PROJECT_NAME}_LINKER)
   target_link_libraries(${PROJECT_NAME} "${${PROJECT_NAME}_LINKER}")
 endif()
 
-  if (GISMO_GCC_STATIC_LINKAGE)
-    target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++)
-  endif()
+if (GISMO_GCC_STATIC_LINKAGE)
+  target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++)
+endif()
 
 #  if (GISMO_WITH_OPENMP)
 #    find_package(OpenMP REQUIRED)
@@ -134,31 +134,31 @@ if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
 endif()
 
 if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
-    if(CMAKE_CONFIGURATION_TYPES)
-      add_custom_command(
-      TARGET ${PROJECT_NAME}
-      POST_BUILD
-      #COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${PROJECT_NAME}> ${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>
-      COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
-    else()
-      add_custom_command(
-      TARGET ${PROJECT_NAME}
-      POST_BUILD
-      #COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
-      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${PROJECT_NAME}> ${CMAKE_BINARY_DIR}/bin
-      COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
-    endif()
+  if(CMAKE_CONFIGURATION_TYPES)
+    add_custom_command(
+    TARGET ${PROJECT_NAME}
+    POST_BUILD
+    #COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${PROJECT_NAME}> ${CMAKE_BINARY_DIR}/bin/$<CONFIGURATION>
+    COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
+  else()
+    add_custom_command(
+    TARGET ${PROJECT_NAME}
+    POST_BUILD
+    #COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${PROJECT_NAME}> ${CMAKE_BINARY_DIR}/bin
+    COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
+  endif()
 endif( WIN32 )
 
 endif(GISMO_BUILD_LIB)
 
   add_library(${PROJECT_NAME}_static STATIC
-  ${${PROJECT_NAME}_MODULES}
-  ${${PROJECT_NAME}_SOURCES}
-  ${${PROJECT_NAME}_EXTENSIONS}
+    ${${PROJECT_NAME}_MODULES}
+    ${${PROJECT_NAME}_SOURCES}
+    ${${PROJECT_NAME}_EXTENSIONS}
   )
 
   #generate_export_header(${PROJECT_NAME}_static)
@@ -185,11 +185,11 @@ endif(GISMO_BUILD_LIB)
   endif()
 
   set_target_properties(${PROJECT_NAME}_static PROPERTIES
-  COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
-  POSITION_INDEPENDENT_CODE ON
-  LINKER_LANGUAGE CXX
-  FOLDER "G+Smo libraries"
-  OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
+    COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
+    POSITION_INDEPENDENT_CODE ON
+    LINKER_LANGUAGE CXX
+    FOLDER "G+Smo libraries"
+    OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
 

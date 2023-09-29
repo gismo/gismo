@@ -184,6 +184,7 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 ## Extensions
 ## #################################################################
 
+#functions to fetch(download) head revision from git or Subversion
 include(gsFetch)
 
 if (EIGEN_USE_MKL_ALL)
