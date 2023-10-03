@@ -229,6 +229,20 @@ void sortPointCloud(gsMatrix<T> & parameters,
                 p_interiors.row(1), p_south.row(1), p_east.row(1), p_north.row(1), p_west.row(1),
                 p_interiors.row(2), p_south.row(2), p_east.row(2), p_north.row(2), p_west.row(2);
 
+  gsInfo << "+++++++++++++++++++ POINTS +++++++++++++++++++\n";
+  gsInfo << "Interior points: " << p_interiors.rows() << " x " << p_interiors.cols() << "\n";
+  gsInfo << "south points: " << p_south.rows() << " x " << p_south.cols() << "\n";
+  gsInfo << "east points: " << p_east.rows() << " x " << p_east.cols() << "\n";
+  gsInfo << "north points: " << p_north.rows() << " x " << p_north.cols() << "\n";
+  gsInfo << "west points: " << p_west.rows() << " x " << p_west.cols() << "\n";
+
+  gsInfo << "+++++++++++++++++++ PARAMS +++++++++++++++++++\n";
+  gsInfo << "Interior params: " << uv_interiors.rows() << " x " << uv_interiors.cols() << "\n";
+  gsInfo << "south params: " << uv_south.rows() << " x " << uv_south.cols() << "\n";
+  gsInfo << "east params: " << uv_east.rows() << " x " << uv_east.cols() << "\n";
+  gsInfo << "north params: " << uv_north.rows() << " x " << uv_north.cols() << "\n";
+  gsInfo << "west params: " << uv_west.rows() << " x " << uv_west.cols() << "\n";
+
 } // end sortPointCloud
 
 
@@ -307,60 +321,85 @@ public:
           m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the interior parameters
           m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the interior parameters
         }
-        // gsDebugVar(c1);
-        // gsDebugVar(m_mp->result()->coefs().size());
-        for(index_t i = m_c1; i < m_c2; i++) // u_south parameters
+
+        //gsDebugVar(m_c1); //[0,0]
+        m_desLowerBounds[m_mp->result()->coefs().size() + m_c1] = 0.; // lower bound on the LEFT SOUTH corner
+        m_desUpperBounds[m_mp->result()->coefs().size() + m_c1] = 0.; // upper bound on the LEFT SOUTH corner
+        for(index_t i = m_c1+1; i < m_c2; i++) // u_south parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the south parameters
+          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the south parameters
         }
-        // gsDebugVar(m_mp->result()->coefs().size() + m_c1);
+        //gsDebugVar(m_mp->result()->coefs().size() + m_c1);
+
+        //gsDebugVar(m_c2); //[1,0]
         for(index_t i = m_c2; i < m_c3; i++) // u_east parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 1.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 1.; // lower bound on the east parameters
+          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the east parameters
         }
-        // gsDebugVar(m_mp->result()->coefs().size() + m_c2);
-        for(index_t i = m_c3; i < m_c4; i++) // u_north parameters
+        //gsDebugVar(m_mp->result()->coefs().size() + m_c2);
+
+        //gsDebugVar(m_c3); // [1,1]
+        m_desLowerBounds[m_mp->result()->coefs().size()+ m_c3] = 1.; // lower bound on the RIGHT NORTH corner
+        m_desUpperBounds[m_mp->result()->coefs().size()+ m_c3] = 1.; // upper bound on the RIGHT NORTH corner
+        for(index_t i = m_c3+1; i < m_c4; i++) // u_north parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size()+ i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size()+ i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size()+ i] = 0.; // lower bound on the north parameters
+          m_desUpperBounds[m_mp->result()->coefs().size()+ i] = 1.; // upper bound on the north parameters
         }
-        // gsDebugVar(m_mp->result()->coefs().size() + m_c3);
+        //gsDebugVar(m_mp->result()->coefs().size() + m_c3);
+
+        //gsDebugVar(m_c4); //[0,1]
         for(index_t i = m_c4; i < currentparams.rows(); i++) // u_west parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 0.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the west parameters
+          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 0.; // upper bound on the west parameters
         }
         // gsDebugVar(m_mp->result()->coefs().size() + m_c4);
 
         index_t v_shift = m_mp->result()->coefs().size() + currentparams.rows();
-        // gsDebugVar(v_shift);
+        //gsDebugVar(v_shift);
         for(index_t i = 0; i < m_c1; i++) // v_interior parameters
         {
           m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
           m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
         }
+
+        // m_c1 = [0,0]
         for(index_t i = m_c1; i < m_c2; i++) // v_south parameters
         {
-          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 0.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the south parameters
+          m_desUpperBounds[v_shift + i] = 0.; // upper bound on the south parameters
         }
-        for(index_t i = m_c2; i < m_c3; i++) // v_east parameters
+
+        // m_c2 = [1,0] -> set v to 0!
+        m_desLowerBounds[v_shift + m_c2] = 0.; // lower bound on the east parameters
+        m_desUpperBounds[v_shift + m_c2] = 0.; // upper bound on the east parameters
+        for(index_t i = m_c2+1; i < m_c3; i++) // v_east parameters
         {
-          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the east parameters
+          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the east parameters
         }
-        for(index_t i = m_c3; i < m_c4; i++) // u_north parameters
+
+        // m_c3 = [1,1]
+        for(index_t i = m_c3; i < m_c4; i++) // v_north parameters
         {
-          m_desLowerBounds[v_shift + i] = 1.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = 1.; // lower bound on the north parameters
+          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the north parameters
         }
-        for(index_t i = m_c4; i < currentparams.size()/2; i++) // u_west parameters
+
+        // m_c4 = [0,1]
+        m_desLowerBounds[v_shift + m_c4] = 1.; // lower bound on the west parameters
+        m_desUpperBounds[v_shift + m_c4] = 1.; // upper bound on the west parameters
+        for(index_t i = m_c4+1; i < currentparams.size()/2; i++) // v_west parameters
         {
-          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the west parameters
+          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the west parameters
         }
+
+        //gsDebugVar(m_desLowerBounds);
+        //gsDebugVar(m_desUpperBounds);
 
 
         // Initialization of the smoothing matrix that we need to define the objective function.
