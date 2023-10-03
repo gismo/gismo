@@ -498,38 +498,50 @@ private:
 int main(int argc, char *argv[])
 {
 
-    index_t maxIter = 1;
-    index_t mupdate = 20;
-    real_t deg = 2;
-    index_t numKnots = 2;
-    real_t lambda = 1e-6;
-    real_t gtoll = 1e-7; // to decrease to push trough the iterations
-    std::string fn = "../filedata/fitting/shiphull_v200_scalePts.xml";
-    index_t verbosity = 0; // 0 (no videoprint), 1 (some videoprint), 2 (a lot of videoprint)
-    bool ptype = false; // keep it false.
-    bool plotInParaview = false;
-    index_t plotIt = maxIter;
-    bool apdm = false;
-
-    real_t funcTol = 1e-4;
-    int maxEval = 20;
+    bool apdm = false; // a
+    index_t verbosity = 0; // b 0 (no videoprint), 1 (some videoprint), 2 (a lot of videoprint)
+    real_t funcTol = 1e-4; // c
+    real_t deg = 2; // d
+    // e
+    std::string fn = "../filedata/fitting/shiphull_v200_scalePts.xml"; // f
+    real_t gtoll = 1e-7; // g, to decrease to push trough the iterations
+    // h
+    index_t maxIter = 1; // i
+    int maxEval = 20; // j
+    index_t plotIt = maxIter; // k
+    // l
+    index_t mupdate = 20; // m
+    index_t numKnots = 2; // n
+    // o
+    bool ptype = false; // p, keep it false.
+    // q, r
+    real_t lambda = 1e-6; //s
+    // t, u, v, w, x, y,
+    bool plotInParaview = false; // z
 
     gsCmdLine cmd("Tensor product B-spline surface fitting by L-BFGS: http://dx.doi.org/10.1016/j.cagd.2012.03.004");
 
-    cmd.addInt("i", "iter", "number of maximum iterations of the optimization algorithm(s).", maxIter);
-    cmd.addInt("m", "update", "number of LBFGS updates.", mupdate);
-    cmd.addReal("d", "degree", "bi-degree (q,q).", deg);
-    cmd.addReal("s", "smoothing", "smoothing weight", lambda);
-    cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
-    cmd.addString("f", "filename", "name of the .xml file containing the data", fn);
-    cmd.addInt("b", "print", "set printing verbosity", verbosity);
-    cmd.addReal("g", "gtoll", "stopping criteria on ||g||", gtoll);
-    cmd.addSwitch("p", "parameters", "input parameters: (0) from .xml file; (1) for foot-point projection;", ptype);
-    cmd.addSwitch("z", "plot", "(0): no paraview plot generated.", plotInParaview);
-    cmd.addInt("k", "kplot", "iteration of the optimization procedure to be plotted", plotIt);
     cmd.addSwitch("a", "apdm", "run the A-PDM algorithm.", apdm);
+    cmd.addInt("b", "print", "set printing verbosity", verbosity);
     cmd.addReal("c", "funcTol", "function tolerance used in line-search", funcTol);
+    cmd.addReal("d", "degree", "bi-degree (d,d).", deg);
+    // e
+    cmd.addString("f", "filename", "name of the .xml file containing the data", fn);
+    cmd.addReal("g", "gtoll", "stopping criteria on ||g||", gtoll);
+    // h
+    cmd.addInt("i", "iter", "number of maximum iterations of the optimization algorithm(s).", maxIter);
     cmd.addInt("j", "maxEval", "the max number of evaluation in line-search", maxEval);
+    cmd.addInt("k", "kplot", "iteration of the optimization procedure to be plotted", plotIt);
+    // l
+    cmd.addInt("m", "update", "number of LBFGS updates.", mupdate);
+    cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
+    // o
+    cmd.addSwitch("p", "parameters", "input parameters: (0) from .xml file; (1) for foot-point projection;", ptype);
+    // q, r
+    cmd.addReal("s", "smoothing", "smoothing weight", lambda);
+    // t, u, v, w, x, y,
+    cmd.addSwitch("z", "plot", "(0): no paraview plot generated.", plotInParaview);
+
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
