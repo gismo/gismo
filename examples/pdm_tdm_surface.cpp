@@ -38,6 +38,24 @@ void writeToCSVfile(std::string name, gsMatrix<> matrix)
   }
 }
 
+
+/*
+input  : a point cloud in R^N
+output : corresponding scaled point cloud in [0,1]^N
+*/
+template<class T>
+void scalePoints(const gsMatrix<T> & xyz,
+                 gsMatrix<T> & points)
+{
+  T p_min = xyz.minCoeff(),
+         p_max = xyz.maxCoeff();
+  T den = p_max - p_min;
+
+  points.resize(xyz.rows(), xyz.cols());
+  points = (1/den)*(xyz - p_min * gsMatrix<T>::Ones(xyz.rows(), xyz.cols()));
+  gsWriteParaviewPoints(points, "scaled_points");
+}
+
 /* input : a parametrized point cloud with parameters and points
   output : parameters and points ordered by : interior (parameters/points) and
            boundary (parameters/points) ordered anticlockwise south-east-north-west edges,
@@ -352,14 +370,34 @@ int main(int argc, char *argv[])
     time_t now = time(0);
 
     gsFileData<> fd_in(fn);
-    gsMatrix<> uv, X;
+    gsMatrix<> uv, xyz, X;
     fd_in.getId<gsMatrix<> >(0, uv );
-    fd_in.getId<gsMatrix<> >(1, X);
+    fd_in.getId<gsMatrix<> >(1, xyz);
     //! [Read data]
+
+    scalePoints(xyz, X);
+
+    GISMO_ENSURE( uv.cols() == X.cols() && uv.rows() == 2 && X.rows() == 3,
+                  "Wrong input, check id of matrices in the .xml file");
 
     std::vector<index_t> interpIdx;
     sortPointCloud(uv, X, interpIdx);
 
+
+
+    std::ofstream pdm_results;
+    pdm_results.open(std::to_string(now) + "pdm_results.csv");
+    pdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse\n";
+
+    std::ofstream tdm_results;
+    tdm_results.open(std::to_string(now) + "tdm_results.csv");
+    // tdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse, mu*PDM, sigma*TDM, boundary, pos-semi-def, cond, s_min, s_max, s-free\n";
+    tdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse, mu*PDM, sigma*TDM, boundary, cond, s_min, s_max, s-free\n";
+
+    // for loop on space dimension: n = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+      // 0 PC and 1 PC
+      // impose boundary conditions
+      // combine with PDM: m = 1, p = 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1
 
 
     for (std::vector<index_t>::iterator it = interpIdx.begin(); it != interpIdx.end(); ++it)
@@ -374,8 +412,7 @@ int main(int argc, char *argv[])
     gsWriteParaviewPoints(uv, "parameters");
     gsWriteParaviewPoints(X, "points");
 
-    GISMO_ENSURE( uv.cols() == X.cols() && uv.rows() == 2 && X.rows() == 3,
-                  "Wrong input, check id of matrices in the .xml file");
+
 
     // GISMO_ENSURE(lambda == 0, "Smoothing matrix not available (yet).");
 
@@ -417,11 +454,11 @@ int main(int argc, char *argv[])
 
     std::vector<real_t> pdm_min_max_mse = computeErrors(original,uv,X);
 
-    std::ofstream pdm_results;
-    pdm_results.open(std::to_string(now) + "pdm_results.csv");
-    pdm_results << "m, deg, mesh, dofs, pc, min, max, mse\n";
+
     pdm_results << X.cols() << "," << deg << "," << kx << "x" << ky << ","
-                << basis.size() << "," << uvcorrection << "," << pdm_min_max_mse[0] << std::scientific << ","
+                << basis.size() << "," << uvcorrection << ","
+                << lambda << ","
+                << pdm_min_max_mse[0] << std::scientific << ","
 					      << pdm_min_max_mse[1] << std::scientific << ","
 					      << pdm_min_max_mse[2] << std::scientific << "\n";
     pdm_results.close();
@@ -434,7 +471,7 @@ int main(int argc, char *argv[])
 
     // Standard least square approximation is our starting point.
 
-
+    bool psdMatrix = true;
     // Now we perform 1 step of parameter parameterCorrection
     // 1 step of control point update.
     // These two steps represent one iteration of TDM method.
@@ -617,43 +654,25 @@ int main(int argc, char *argv[])
       // gsInfo << "right hand side difference: " << (rhs - m_B).norm() << "\n";
 
       gsEigen::LLT<gsMatrix<>::Base> A_llt(A_tilde);
-      if (!A_tilde.isApprox(A_tilde.transpose()) || A_llt.info() == gsEigen::NumericalIssue) {
+      if (!A_tilde.isApprox(A_tilde.transpose()) || A_llt.info() == gsEigen::NumericalIssue)
+      {
+        psdMatrix = false;
         gsInfo << "Possibly non semi-positive definitie matrix!\n";
       }
-      // check the system matrix
-      gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_tilde);
-      real_t sigma_min = svd.singularValues()(svd.singularValues().size()-1);
-      real_t sigma_max = svd.singularValues()(0);
-      real_t cond = sigma_max/sigma_min;
-
-      gsInfo << "System matrix condition number: " << cond << "\n";
-      gsInfo << "System matrix maximum singular values: " << sigma_max << "\n";
-      gsInfo << "System matrix minimum singular values: " << sigma_min << "\n";
-
-      gsMatrix<real_t> Rb = (svd.singularValues().array() < 1e-6).cast<real_t>();;
-      // gsInfo << Rb << "\n";
-      gsInfo << "Degrees of freedom: " << Rb.sum() << "\n";
-
-      gsInfo << "Mapping between X and X_tilde.\n";
-
-      // gsInfo << X.col(interpIdx[0]).transpose() << "\n";
-      // gsInfo << X_tilde(interpIdx[0],0) << " " << X_tilde(interpIdx[0] + X.cols(),0) << " " << X_tilde(interpIdx[0] + 2*X.cols() ,0) << "\n\n";
+      // // check the system matrix
+      // gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_tilde);
+      // real_t sigma_min = svd.singularValues()(svd.singularValues().size()-1);
+      // real_t sigma_max = svd.singularValues()(0);
+      // real_t cond = sigma_max/sigma_min;
       //
-      // gsInfo << X.col(interpIdx[1]).transpose() << "\n";
-      // gsInfo << X_tilde(interpIdx[1],0) << " " << X_tilde(interpIdx[1] + X.cols(),0) << " " << X_tilde(interpIdx[1] + 2*X.cols() ,0) << "\n\n";
+      // gsInfo << "System matrix condition number: " << cond << "\n";
+      // gsInfo << "System matrix maximum singular values: " << sigma_max << "\n";
+      // gsInfo << "System matrix minimum singular values: " << sigma_min << "\n";
       //
-      // gsInfo << X.col(interpIdx[2]).transpose() << "\n";
-      // gsInfo << X_tilde(interpIdx[2],0) << " " << X_tilde(interpIdx[2] + X.cols(),0) << " " << X_tilde(interpIdx[2] + 2*X.cols() ,0) << "\n\n";
-      //
-      // gsInfo << X.col(interpIdx[3]).transpose() << "\n";
-      // gsInfo << X_tilde(interpIdx[3],0) << " " << X_tilde(interpIdx[3] + X.cols(),0) << " " << X_tilde(interpIdx[3] + 2*X.cols() ,0) << "\n\n";
+      // gsMatrix<real_t> Rb = (svd.singularValues().array() < 1e-6).cast<real_t>();;
+      // // gsInfo << Rb << "\n";
+      // gsInfo << "Degrees of freedom: " << Rb.sum() << "\n";
 
-
-
-      // gsEigen::FullPivLU<gsMatrix<>::Base> lu_decomp(A_tilde);
-      // auto rank_tilde = lu_decomp.rank();
-      // gsInfo << "tilde size = " << A_tilde.rows() << " x " << A_tilde.cols() << "\n";
-      // gsInfo << "tilde rank = " << rank_tilde << "\n";
 
       index_t c1 = 0;
       index_t c2 = basis.component(0).size()-1;
@@ -674,7 +693,6 @@ int main(int argc, char *argv[])
 
       for(std::vector<boxSide>::const_iterator it=fixedSides.begin(); it!=fixedSides.end(); ++it)
         gsInfo << basis.boundary(*it).transpose() << "\n";
-
 
 
       std::vector<index_t> idxConstraints;
@@ -767,6 +785,17 @@ int main(int argc, char *argv[])
       gsInfo << "Check constraints application: " << (A_tilde - A_comp.sparseView()).norm() << "\n";
       gsInfo << "========================================================================================================================\n";
 
+      gsEigen::LLT<gsMatrix<>::Base> A_bc(A_tilde);
+      if (!A_tilde.isApprox(A_tilde.transpose()) || A_bc.info() == gsEigen::NumericalIssue)
+      {
+        psdMatrix = false;
+        gsInfo << "After imposing boundary constrains:\n+++Possibly non semi-positive definitie matrix!+++\n";
+      }
+      else
+      {
+        psdMatrix = true;
+      }
+
     }
 
       if(corner_conditions)
@@ -830,19 +859,41 @@ int main(int argc, char *argv[])
         rhs(c2 + 2*basis.size(),0) = X(2,interpIdx[1]); // z-component
         rhs(c3 + 2*basis.size(),0) = X(2,interpIdx[3]); // z-component
         rhs(c4 + 2*basis.size(),0) = X(2,interpIdx[2]); // z-component
+
+        gsEigen::LLT<gsMatrix<>::Base> A_cc(A_tilde);
+        if (A_cc.info() == gsEigen::NumericalIssue)
+        {
+          psdMatrix = false;
+          gsInfo << "After imposing corner constrains:\n+++Possibly non semi-positive definitie matrix!+++\n";
+        }
+        else
+        {
+          psdMatrix = true;
+        }
       }
 
       //
       // for(index_t x=0; x<rhs.size(); x++)
       //   gsInfo << x << ", " << rhs(x,0) << "\n";
 
-      if (A_llt.info() == gsEigen::NumericalIssue)
-      {
-          gsInfo << "After imposing constrains: Possibly non semi-positive definitie matrix!\n";
-      }
+
       // gsSparseSolver<>::QR qrsolver_tilde(A_tilde.sparseView());
       // gsSparseSolver<>::QR qrsolver_tilde(A_tilde);
       // gsMatrix<> sol_tilde = qrsolver_tilde.solve(rhs);
+
+      // check the system matrix
+      gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_tilde);
+      real_t sigma_min = svd.singularValues()(svd.singularValues().size()-1);
+      real_t sigma_max = svd.singularValues()(0);
+      real_t cond = sigma_max/sigma_min;
+
+      gsInfo << "System matrix condition number: " << cond << "\n";
+      gsInfo << "System matrix maximum singular values: " << sigma_max << "\n";
+      gsInfo << "System matrix minimum singular values: " << sigma_min << "\n";
+
+      gsMatrix<real_t> Rb = (svd.singularValues().array() < 1e-8).cast<real_t>();;
+      // gsInfo << Rb << "\n";
+      gsInfo << "Degrees of freedom: " << Rb.sum() << "\n";
 
 
       A_tilde.makeCompressed();
@@ -878,17 +929,18 @@ int main(int argc, char *argv[])
 
       std::vector<real_t> tdm_min_max_mse = computeErrors(surface_tilde,params,X);
 
-      std::ofstream tdm_results;
-      tdm_results.open(std::to_string(now) + "tdm_results.csv");
-      tdm_results << "m, deg, mesh, dofs, pc, min, max, mse, sigma, corners, boundary, cond, s_min, s_max\n";
       tdm_results << X.cols() << "," << deg << "," << kx << "x" << ky << ","
                   << basis.size() << ","<< uvcorrection << ","
+                  << lambda << ","
                   << tdm_min_max_mse[0] << std::scientific << ","
   					      << tdm_min_max_mse[1] << std::scientific << ","
   					      << tdm_min_max_mse[2] << std::scientific << ","
+                  << mu << ","
                   << sigma << ","
-                  << corner_conditions << "," << boundary_curves << ","
-                  << cond << "," << sigma_min << "," << sigma_max << "\n";
+                  << boundary_curves << ","
+                  //<< psdMatrix << ","
+                  << cond << "," << sigma_min << "," << sigma_max << ","
+                  << Rb.sum() << "\n";
       tdm_results.close();
 
       gsMatrix<> tdmColors(4, X.cols());
