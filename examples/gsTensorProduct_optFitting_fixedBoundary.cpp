@@ -743,8 +743,8 @@ int main(int argc, char *argv[])
       ref.compute(lambda);
       if(verbosity > 1)
         gsInfo << "it     time     rmse\n";
-      // index_t step = maxIter; // uncomment to avoid foor loop on maximum number of iterations.
-      for (index_t step=1; step <= maxIter; step ++)
+      index_t step = maxIter; // uncomment to avoid foor loop on maximum number of iterations.
+      //for (index_t step=1; step <= maxIter; step ++)
       {
         time.restart(); // start optimization procedure: 1 step = points projection + refit to update the control points.
         ref.parameterCorrection(1e-7, step, 1e-4); //closestPoint accuracy, orthogonality tolerance
