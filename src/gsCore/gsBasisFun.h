@@ -54,7 +54,14 @@ public:
     GISMO_CLONE_FUNCTION(gsBasisFun)
 
 public:
-  
+
+    /// Prints the object as a string.
+    virtual std::ostream &print(std::ostream &os) const
+    {
+        os << "gsBasisFun"; return os;
+    }
+
+
     short_t domainDim () const {return m_basis.domainDim();}
 
     short_t targetDim () const {return m_basis.targetDim();}

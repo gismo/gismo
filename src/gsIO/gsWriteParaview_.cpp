@@ -151,6 +151,8 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
 TEMPLATE_INST
 void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
 
+TEMPLATE_INST
+void writeSingleControlNet(const gsGeometry<T> & Geo, std::string const & fn);
 
 } // namespace gismo
 

@@ -18,7 +18,15 @@
 
 #pragma once
 
-#include <gismo.h>
+
+#include <gsUtils/gsStopwatch.h>
+#include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsBasis.h>
+
+#include <gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprEvaluator.h>
+#include <gsAssembler/gsExprAssembler.h>
+
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
@@ -26,8 +34,6 @@
 
 //#include <gsLBFGSpp/gsLBFGSpp.h>
 //#include <gsPreAA/gsPreAA.h>
-
-using namespace gismo;
 
 namespace gismo {
 /**
@@ -490,8 +496,6 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 };
 #endif
 
-}// namespace gismo
-
 ///
 /// Parameters to control the preconditioned Anderson Acceleration algorithm
 ///
@@ -858,3 +862,5 @@ class AndersonAcceleration {
 };
 
 }
+
+}// namespace gismo
