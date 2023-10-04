@@ -116,11 +116,11 @@ public:
         return m_basis->getBase(m_index).support();
     }
 
-    /// Returns a bounding box for the basis' domain on the domain of *this
-    gsMatrix<T> support(const index_t & i) const
+    /// Returns a bounding box for basis function \a kk domain on the domain of *this
+    gsMatrix<T> support(const index_t & kk) const
     {
         typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
-        m_basis->getMapper().targetToSource(i,sourceIndices);
+        m_basis->getMapper().targetToSource(kk,sourceIndices);
         // Get the support on the whole patch
         gsMatrix<T> supp = gsMatrix<T>::Zero(d,2);
         gsMatrix<T> localSupp;

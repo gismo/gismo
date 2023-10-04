@@ -456,7 +456,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                     if ( 0 == det_sgn )
                     {
                         gsMatrix<T> parameterCenter = src.parameterCenter(InOut.side);
-                        T detJacTcurr = src.jacobian(parameterCenter).determinant();
+                        detJacTcurr = src.jacobian(parameterCenter).determinant();
                         det_sgn = detJacTcurr < 0 ? -1 : 1;
                     }
                 }
