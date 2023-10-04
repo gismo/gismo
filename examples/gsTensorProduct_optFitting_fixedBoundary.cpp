@@ -507,7 +507,7 @@ int main(int argc, char *argv[])
     real_t gtoll = 1e-7; // g, to decrease to push trough the iterations
     // h
     index_t maxIter = 1; // i
-    int maxEval = 20; // j
+    int maxEval = 100; // j
     index_t plotIt = maxIter; // k
     // l
     index_t mupdate = 20; // m
@@ -546,7 +546,9 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
 
-    gsStopwatch time;
+    gsStopwatch gsTime;
+
+    time_t now = time(0);
 
     gsFileData<> fd_in(fn);
     gsMatrix<> uv, X;
@@ -640,16 +642,19 @@ int main(int argc, char *argv[])
     gsOptimizer<real_t> * optimizer;
 
     // to store the information in .csv files.
-    std::ofstream file_opt, file_pc;
-    file_opt.open("results_CPDM.csv");
-    file_opt << "it, time, rmse\n";
+    std::ofstream file_opt, file_apdm;
+    file_opt.open(std::to_string(now)+"_CPDM_results.csv");
+    file_opt << "m, deg, pen, dofs, it_opt, min, max, mse, rmse, time\n";
 
 
     gsInfo << "Fast fitting with HLBFGS:\n";
     // TODO: store time and fitting error in a proper way.
     // Uncomment the following line to avoid the foor loop on the maximum number of iterations.
+    gsMatrix<> currentparams(2, X.cols());
+    gsMatrix<> currentcoefs( original.coefs().rows(), original.coefs().cols() );
     index_t it_opt = maxIter;
-    // for(index_t it_opt = 1; it_opt <= maxIter; it_opt++)
+    index_t maxIterComparison = maxIter;
+    for(index_t it_opt = 1; it_opt <= maxIter; it_opt++)
     {
       optimizer = new gsHLBFGS<real_t>(&problem);
       optimizer->options().setInt("Verbose",verbosity);
@@ -659,6 +664,8 @@ int main(int argc, char *argv[])
 
       optimizer->options().setReal("FuncTol", funcTol);
       optimizer->options().setInt("MaxEval", maxEval);
+      optimizer->options().setReal("MinStepLen", 1e-12);
+
 
       //! [Solve]
       // Start the optimization
@@ -667,13 +674,12 @@ int main(int argc, char *argv[])
       t_params = params.transpose();
       in << original.coefs().reshape( original.coefs().size() ,1), t_params.reshape( t_params.size() ,1);
       optimizer->options().setInt("MaxIterations",it_opt); // set maximum number of iterations
-      time.restart(); // start optimization algorithm
+      gsTime.restart(); // start optimization algorithm
       optimizer->solve(in);
-      real_t finaltime = time.stop(); // end optimization algorithm
+      real_t finaltime = gsTime.stop(); // end optimization algorithm
 
       // assemble the new geometry with optimized coefficiets and parameters
       gsMatrix<> finaldesign = optimizer->currentDesign();
-      gsMatrix<> currentcoefs( original.coefs().rows(), original.coefs().cols() );
       for(index_t i=0; i < original.coefs().rows(); i++)
       {
         currentcoefs(i,0) = finaldesign(i,0);
@@ -681,7 +687,7 @@ int main(int argc, char *argv[])
         currentcoefs(i,2) = finaldesign(i + 2*original.coefs().rows(),0);
       }
 
-      gsMatrix<> currentparams(2, X.cols());
+
 
       for(index_t i = original.coefs().size(); i < finaldesign.size(); i++)
       {
@@ -708,47 +714,75 @@ int main(int argc, char *argv[])
         gsTensorBSpline<2, real_t> final( basis, currentcoefs);
         gsWriteParaview( final, "geo_CPDM_it" + internal::to_string(it_opt), 1000, true, false);
         gsWriteParaview( final, "cnet_CPDM_it" + internal::to_string(it_opt), 1000, false, true);
+
+        gsMatrix<> pcolors(4, X.cols());
+        pcolors << X.row(0), X.row(1), X.row(2), final.pointWiseErrors(currentparams,X);
+
+        gsWriteParaviewPoints(pcolors, "colors_it"+internal::to_string(it_opt));
       }
 
       gsTensorBSpline<2, real_t> currentGeo(basis, currentcoefs);
-      real_t rmse = 0.;
-      // compute the fitting error.
-      gsMatrix<> tmp = currentGeo.eval(currentparams) - X;
-      real_t pred_eval = (tmp * tmp.transpose()).trace();
-      rmse += math::pow(pred_eval/X.cols(), 0.5);
-      //gsInfo << it_opt << ", " << time << ", " << rmse << "\n";
-      file_opt <<std::setprecision(3)<< std::to_string(it_opt)<<std::setprecision(12) << "," << std::to_string(finaltime) << "," << std::to_string(rmse) << "\n";
+      std::vector<real_t> sol_min_max_mse = currentGeo.MinMaxMseErrors(params,X);
 
-      gsInfo << it_opt << ", " << time << ", " << rmse <<"\n";
+      gsInfo << it_opt << ", " << gsTime << ", " << math::sqrt(sol_min_max_mse[2]) <<"\n";
       if (verbosity > 1)
       {
         gsInfo << "\nNumber of iterations : " << optimizer->iterations() <<"\n";
         gsInfo << "Final objective value: " << optimizer->objective() <<"\n";
-        gsInfo<<"Fitting time: "<< time <<"\n";
+        gsInfo<<"Fitting time: "<< gsTime <<"\n";
         // gsInfo << "Final design:\n" << optimizer->currentDesign() <<"\n"; // this plot the whole vector given output from the optimizer.
         gsInfo << "params are moved from the originals by: " << (currentparams - params).norm() << "\n";
         gsInfo << "coefficients are moved from the originals by: " << (currentcoefs - original.coefs()).norm() << "\n";
       }
+
+      //file_opt <<std::setprecision(3)<< std::to_string(it_opt)<<std::setprecision(12) << "," << std::to_string(finaltime) << "," << std::to_string(rmse) << "\n";
+
+      //file_opt << "m, deg, pen, dofs, it_opt, min, max, mse, rmse, time\n";
+      file_opt << X.cols() << "," << deg << "," << lambda << ","
+                  << basis.size() << ","<< optimizer->iterations() << ","
+                  << sol_min_max_mse[0] << std::scientific << ","
+  					      << sol_min_max_mse[1] << std::scientific << ","
+  					      << sol_min_max_mse[2] << std::scientific << ","
+                  << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+                  << finaltime << "\n";
+
+      gsWriteParaviewPoints( currentparams, "params_CPDM_it" + internal::to_string(it_opt));
+      gsMatrix<> currentCoefsToPlot(currentcoefs.cols(), currentcoefs.rows());
+      currentCoefsToPlot = currentcoefs.transpose();
+      gsWriteParaviewPoints( currentCoefsToPlot, "coefs_CPDM_it" + internal::to_string(it_opt));
+
+      // gsTensorBSpline<2, real_t> final( basis, give(currentcoefs));
+      gsTensorBSpline<2, real_t> final( basis, currentcoefs);
+      gsWriteParaview( final, "geo_CPDM_it" + internal::to_string(it_opt), 1000, true, false);
+      gsWriteParaview( final, "cnet_CPDM_it" + internal::to_string(it_opt), 1000, false, true);
+
+      maxIterComparison = optimizer->iterations();
+      gsInfo << "Optimizer iterations performed = " << maxIterComparison << "\n";
     } // maxIter
     file_opt.close();
+
+
+
 
 
 
     if(apdm)
     {
       gsInfo << "Running the A-PDM algorithm for comparion.\n";
-      file_pc.open("results_APDM.csv");
-      file_pc << "it, time, rmse\n";
+
+      file_apdm.open(std::to_string(now)+"_APDM_results.csv");
+      file_apdm << "m, deg, pen, dofs, it_opt, pc, min, max, mse, rmse, time\n";
+
       gsFitting<real_t> ref(uv, X, basis); // original geometry, same starting point for C-PDM;
       ref.compute(lambda);
       if(verbosity > 1)
         gsInfo << "it     time     rmse\n";
-      index_t step = maxIter; // uncomment to avoid foor loop on maximum number of iterations.
-      //for (index_t step=1; step <= maxIter; step ++)
+      //index_t step = maxIterComparison; // uncomment to avoid foor loop on maximum number of iterations.
+      for (index_t step=1; step <= maxIterComparison; step ++)
       {
-        time.restart(); // start optimization procedure: 1 step = points projection + refit to update the control points.
+        gsTime.restart(); // start optimization procedure: 1 step = points projection + refit to update the control points.
         ref.parameterCorrection(1e-7, step, 1e-4); //closestPoint accuracy, orthogonality tolerance
-        real_t finaltime = time.stop(); // end of the optimization algorithm
+        real_t finaltime = gsTime.stop(); // end of the optimization algorithm
 
       if(plotInParaview && step == plotIt) // plot certain output
       {
@@ -762,18 +796,19 @@ int main(int argc, char *argv[])
       }
 
       // fitting error
-      real_t rmse = 0.;
-      gsMatrix<> tmp = ref.result()->eval(ref.returnParamValues()) - X;
-      real_t pred_eval = (tmp * tmp.transpose()).trace();
-      rmse += math::pow(pred_eval/X.cols(), 0.5);
-
-      gsInfo << step << ", " << time << ", " << rmse <<"\n";
+      std::vector<real_t> sol_min_max_mse = ref.result()->MinMaxMseErrors(ref.returnParamValues(), X);
 
       // store data in .csv file
-      file_pc << std::to_string(step) << "," << std::to_string(finaltime) << "," << std::to_string(rmse) << "\n";
+      file_apdm << X.cols() << "," << deg << "," << lambda << ","
+              << basis.size() << ","<< step << ","
+              << sol_min_max_mse[0] << std::scientific << ","
+  					  << sol_min_max_mse[1] << std::scientific << ","
+  					  << sol_min_max_mse[2] << std::scientific << ","
+              << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+              << finaltime << "\n";
 
       } // maxIter
-      file_pc.close();
+      file_apdm.close();
     } // fi apdm
 
     return EXIT_SUCCESS;
