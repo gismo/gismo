@@ -298,29 +298,41 @@ public:
     void initMatrix()
     {
         resetDimensions();
-        clearMatrix();
+        clearMatrix(false);
     }
 
     void clearRhs() { m_rhs.setZero(); }
 
-    void clearMatrix()
-    {
-        m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
+    /**
+     * @brief Re-Init Matrix (set zero by default)
+     *
+     * @param save_sparsety_pattern only modify values but keep sparsety
+     * information by multiplying matrix by zero in-place
+     */
+    void clearMatrix(const bool& save_sparsety_pattern = true) {
+        if (save_sparsety_pattern) {
+            std::fill(m_matrix.valuePtr(),
+                      m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
+        } else {
+            m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
-        if ( 0 == m_matrix.rows() || 0 == m_matrix.cols() )
-            gsWarn << " No internal DOFs, zero sized system.\n";
-        else
-        {
-            // Pick up values from options
-            const T bdA       = m_options.getReal("bdA");
-            const index_t bdB = m_options.getInt("bdB");
-            const T bdO       = m_options.getReal("bdO");
-            T nz = 1;
-            const short_t dim = m_exprdata->multiBasis().domainDim();
-            for (short_t i = 0; i != dim; ++i)
-                nz *= bdA * static_cast<T>(m_exprdata->multiBasis().maxDegree(i)) + static_cast<T>(bdB);
+            if (0 == m_matrix.rows() || 0 == m_matrix.cols())
+                gsWarn << " No internal DOFs, zero sized system.\n";
+            else {
+                // Pick up values from options
+                const T bdA = m_options.getReal("bdA");
+                const index_t bdB = m_options.getInt("bdB");
+                const T bdO = m_options.getReal("bdO");
+                T nz = 1;
+                const short_t dim = m_exprdata->multiBasis().domainDim();
+                for (short_t i = 0; i != dim; ++i)
+                    nz *= bdA * static_cast<T>(
+                                    m_exprdata->multiBasis().maxDegree(i)) +
+                          static_cast<T>(bdB);
 
-            m_matrix.reservePerColumn(numBlocks()*cast<T,index_t>(nz*(1.0+bdO)) );
+                m_matrix.reservePerColumn(numBlocks() *
+                                          cast<T, index_t>(nz * (1.0 + bdO)));
+            }
         }
     }
 
