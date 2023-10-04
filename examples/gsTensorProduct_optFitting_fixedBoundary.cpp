@@ -654,6 +654,7 @@ int main(int argc, char *argv[])
     gsMatrix<> currentcoefs( original.coefs().rows(), original.coefs().cols() );
     index_t it_opt = maxIter;
     index_t maxIterComparison = maxIter;
+    std::string prefix;
     for(index_t it_opt = 1; it_opt <= maxIter; it_opt++)
     {
       optimizer = new gsHLBFGS<real_t>(&problem);
@@ -677,6 +678,7 @@ int main(int argc, char *argv[])
       gsTime.restart(); // start optimization algorithm
       optimizer->solve(in);
       real_t finaltime = gsTime.stop(); // end optimization algorithm
+      prefix = "uniform"+internal::to_string(optimizer->iterations())+"optIt_";
 
       // assemble the new geometry with optimized coefficiets and parameters
       gsMatrix<> finaldesign = optimizer->currentDesign();
@@ -705,20 +707,20 @@ int main(int argc, char *argv[])
 
       if(plotInParaview && it_opt == plotIt) // plot certain output
       {
-        gsWriteParaviewPoints( currentparams, "params_CPDM_it" + internal::to_string(it_opt));
+        gsWriteParaviewPoints( currentparams, prefix + "params_CPDM_it");
         gsMatrix<> currentCoefsToPlot(currentcoefs.cols(), currentcoefs.rows());
         currentCoefsToPlot = currentcoefs.transpose();
-        gsWriteParaviewPoints( currentCoefsToPlot, "coefs_CPDM_it" + internal::to_string(it_opt));
+        gsWriteParaviewPoints( currentCoefsToPlot, prefix + "coefs_CPDM_it");
 
         // gsTensorBSpline<2, real_t> final( basis, give(currentcoefs));
         gsTensorBSpline<2, real_t> final( basis, currentcoefs);
-        gsWriteParaview( final, "geo_CPDM_it" + internal::to_string(it_opt), 1000, true, false);
-        gsWriteParaview( final, "cnet_CPDM_it" + internal::to_string(it_opt), 1000, false, true);
+        gsWriteParaview( final, prefix + "geo_CPDM_it", 1000, true, false);
+        gsWriteParaview( final, prefix + "cnet_CPDM_it", 1000, false, true);
 
         gsMatrix<> pcolors(4, X.cols());
         pcolors << X.row(0), X.row(1), X.row(2), final.pointWiseErrors(currentparams,X);
 
-        gsWriteParaviewPoints(pcolors, "colors_it"+internal::to_string(it_opt));
+        gsWriteParaviewPoints(pcolors, prefix + "colors_it");
       }
 
       gsTensorBSpline<2, real_t> currentGeo(basis, currentcoefs);
@@ -746,25 +748,20 @@ int main(int argc, char *argv[])
                   << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
                   << finaltime << "\n";
 
-      gsWriteParaviewPoints( currentparams, "params_CPDM_it" + internal::to_string(it_opt));
+      gsWriteParaviewPoints( currentparams, prefix + "params_CPDM_it");
       gsMatrix<> currentCoefsToPlot(currentcoefs.cols(), currentcoefs.rows());
       currentCoefsToPlot = currentcoefs.transpose();
-      gsWriteParaviewPoints( currentCoefsToPlot, "coefs_CPDM_it" + internal::to_string(it_opt));
+      gsWriteParaviewPoints( currentCoefsToPlot, prefix + "coefs_CPDM_it");
 
       // gsTensorBSpline<2, real_t> final( basis, give(currentcoefs));
       gsTensorBSpline<2, real_t> final( basis, currentcoefs);
-      gsWriteParaview( final, "geo_CPDM_it" + internal::to_string(it_opt), 1000, true, false);
-      gsWriteParaview( final, "cnet_CPDM_it" + internal::to_string(it_opt), 1000, false, true);
+      gsWriteParaview( final, prefix + "geo_CPDM_it", 1000, true, false);
+      gsWriteParaview( final, prefix + "cnet_CPDM_it", 1000, false, true);
 
       maxIterComparison = optimizer->iterations();
       gsInfo << "Optimizer iterations performed = " << maxIterComparison << "\n";
     } // maxIter
     file_opt.close();
-
-
-
-
-
 
     if(apdm)
     {
@@ -780,19 +777,20 @@ int main(int argc, char *argv[])
       //index_t step = maxIterComparison; // uncomment to avoid foor loop on maximum number of iterations.
       for (index_t step=1; step <= maxIterComparison; step ++)
       {
+        prefix = "uniform" + internal::to_string(step) + "pc_";
         gsTime.restart(); // start optimization procedure: 1 step = points projection + refit to update the control points.
         ref.parameterCorrection(1e-7, step, 1e-4); //closestPoint accuracy, orthogonality tolerance
         real_t finaltime = gsTime.stop(); // end of the optimization algorithm
 
-      if(plotInParaview && step == plotIt) // plot certain output
+      //if(plotInParaview && step == plotIt) // plot certain output
       {
-        gsWriteParaviewPoints( ref.returnParamValues(), "params_APDM_it" + internal::to_string(step));
+        gsWriteParaviewPoints( ref.returnParamValues(), prefix + "params_APDM_it");
         gsMatrix<> currentCoefsToPlot(ref.result()->coefs().cols(), ref.result()->coefs().rows());
         currentCoefsToPlot = ref.result()->coefs().transpose();
-        gsWriteParaviewPoints( currentCoefsToPlot, "coefs_APDM_it" + internal::to_string(step));
+        gsWriteParaviewPoints( currentCoefsToPlot, prefix + "coefs_APDM_it");
 
-        gsWriteParaview( *ref.result(), "geo_APDM_it" + internal::to_string(step), 1000, true, false);
-        gsWriteParaview( *ref.result(), "cnet_APDM_it" + internal::to_string(step), 1000, false, true);
+        gsWriteParaview( *ref.result(), prefix + "geo_APDM_it", 1000, true, false);
+        gsWriteParaview( *ref.result(), prefix + "cnet_APDM_it", 1000, false, true);
       }
 
       // fitting error
