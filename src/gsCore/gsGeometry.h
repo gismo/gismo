@@ -2,12 +2,12 @@
 
     @brief Provides declaration of Geometry abstract interface.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -25,7 +25,7 @@
 namespace gismo
 {
 
-/** 
+/**
     \brief
     Abstract base class representing a geometry map.
 
@@ -38,13 +38,13 @@ namespace gismo
 
     \f[ G \ :\ \mathbb R^d \to \mathbb R^n \f]
 
-    so that 
+    so that
 
     \f[ G(\hat x) = x \qquad \hat x \in \mathbb R^d, \ x \in \mathbb R^n \f]
 
     and therefore they derive from gsFunction. A gsGeometry can thus be
     used wherever a gsFunction is expected.
-    
+
     All geometry classes derive from the abstract base class
     gsGeometry, see the \ref geometry.  In general, there is a
     statically known one-to-one mapping between basis types and their
@@ -79,7 +79,7 @@ namespace gismo
     basis function.
 
     Evaluation at parameter values is done with
-    \ref func_eval_members "the Evaluation member functions" derived 
+    \ref func_eval_members "the Evaluation member functions" derived
     from gsFunction.
 
     \tparam T coefficient type
@@ -105,7 +105,7 @@ public:
 
     /// @name Constructors
     /// @{
-    
+
     /// @brief Default constructor.  Note: Derived constructors (except for
     /// the default) should assign \a m_basis to a valid pointer
     gsGeometry() :m_basis( NULL ), m_id(0)
@@ -119,7 +119,7 @@ public:
     m_basis(basis.clone().release()), m_id(0)
     {
         m_coefs.swap(coefs);
-        GISMO_ASSERT( basis.size() == m_coefs.rows(), 
+        GISMO_ASSERT( basis.size() == m_coefs.rows(),
                       "The coefficient matrix of the geometry (rows="<<m_coefs.rows()
                       <<") does not match the number of basis functions in its basis("
                       << basis.size() <<").");
@@ -130,15 +130,15 @@ public:
     /// @}
 
     gsGeometry& operator=( const gsGeometry & o);
-    
-    virtual ~gsGeometry() 
+
+    virtual ~gsGeometry()
     {
         delete m_basis;
     }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
-    gsGeometry(gsGeometry&& other) 
-    : m_coefs(std::move(other.m_coefs)), m_basis(other.m_basis), 
+    gsGeometry(gsGeometry&& other)
+    : m_coefs(std::move(other.m_coefs)), m_basis(other.m_basis),
       m_id(std::move(other.m_id))
     {
         other.m_basis = NULL;
@@ -395,10 +395,10 @@ public:
     void rotate(T angle, const gsVector<T,3> & axis )
     {
         assert( geoDim() == 3 );
-        gsEigen::Transform<T,3,gsEigen::Affine> 
+        gsEigen::Transform<T,3,gsEigen::Affine>
             rot( gsEigen::AngleAxis<T> (angle,axis.normalized()) );
         // To do: Simpler way to use transforms ?
-        this->m_coefs = (this->m_coefs.rowwise().homogeneous() * 
+        this->m_coefs = (this->m_coefs.rowwise().homogeneous() *
                          rot.matrix().transpose() ).leftCols(3) ;
     }
 
@@ -463,7 +463,7 @@ public:
     void unrefineElements( std::vector<index_t> const & boxes );
 
     typename gsGeometry::uPtr coord(const index_t c) const;
-    
+
     /// Embeds coefficients in 3D
     void embed3d()
     {
@@ -525,12 +525,12 @@ public:
     /// direction \a dir. If \a dir is -1 then degree reduction is
     /// done for all directions. Uses \ref gsBasis<T>::degreeDecrease
     virtual void degreeDecrease(short_t const i = 1, short_t const dir = -1);
-    
+
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
     virtual void hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
                               index_t coord) const;
-    
+
     /// Return the control net of the geometry
     void controlNet( gsMesh<T> & mesh) const;
 
@@ -611,6 +611,11 @@ public:
                                 const T accuracy = 1e-6,
                                 const bool directed=false) const;
 
+    gsMatrix<T> pointWiseErrors(const gsMatrix<T> & parameters,
+                                const gsMatrix<T> & points) const;
+
+    std::vector<T> MinMaxMseErrors(const gsMatrix<T> & parameters,
+                                   const gsMatrix<T> & points) const;
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 

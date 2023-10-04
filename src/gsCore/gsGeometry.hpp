@@ -53,7 +53,7 @@ public:
         result[0].at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
         if (n==0) return;
 
-        // f' = x'*(x-pt)        
+        // f' = x'*(x-pt)
         auto jacT = m_gd[1].reshaped(u.rows(),m_pt->rows());
         result[1].noalias() = jacT * (m_gd[0] - *m_pt);
         if (n==1) return;
@@ -152,7 +152,7 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
      */
 
 template<class T>
-gsGeometry<T>::gsGeometry(const gsGeometry<T> & o) 
+gsGeometry<T>::gsGeometry(const gsGeometry<T> & o)
 : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
 { }
 
@@ -384,6 +384,60 @@ T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamp
 // T gsGeometry<T>::hausdorffDistance() const
 
 template<class T>
+gsMatrix<T> gsGeometry<T>::pointWiseErrors(const gsMatrix<T> & parameters,
+                                           const gsMatrix<T> & points) const
+
+{
+  gsMatrix<T> eval;
+  this->eval_into(parameters, eval);
+  gsMatrix<T> errorMat(1, eval.cols());
+  for (index_t col = 0; col != eval.cols(); col++)
+  {
+      errorMat(0, col) = (eval.col(col) - points.col(col)).norm();
+  }
+  return errorMat;
+}
+
+
+template<class T>
+std::vector<T> gsGeometry<T>::MinMaxMseErrors(const gsMatrix<T> & parameters,
+                                              const gsMatrix<T> & points) const
+{
+  std::vector<T> min_max_mse;
+  gsMatrix<T> errorMat = this->pointWiseErrors(parameters, points);
+
+  T min_error = 1e6;
+  T max_error = 0;
+  T mse_error = 0;
+
+  gsMatrix<T> err_point(3,1);
+
+  for (index_t i = 1; i < errorMat.cols(); i++)
+  {
+    const T err = errorMat(0,i) ;
+    mse_error += err * err ;
+    if ( err > max_error )
+    {
+      max_error = err;
+      err_point << points.col(i);
+      this->eval_into(parameters.col(i), err_point);
+    }
+
+    if ( err < min_error )
+    {
+      min_error = err;
+    }
+  }
+
+  min_max_mse.push_back(min_error);
+  min_max_mse.push_back(max_error);
+  min_max_mse.push_back(mse_error/errorMat.cols());
+
+  return min_max_mse;
+}
+
+
+template<class T>
 void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
                                  gsMatrix<T> & result,
                                  const T accuracy, const bool useInitialPoint) const
@@ -437,11 +491,11 @@ void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const
 {
-    os << "Geometry "<< "R^"<< this->parDim() << 
+    os << "Geometry "<< "R^"<< this->parDim() <<
         " --> R^"<< this->geoDim()<< ", #control pnts= "<< coefsSize() <<
-        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1); 
+        ": "<< coef(0) <<" ... "<< coef(this->coefsSize()-1);
     os<<"\nBasis:\n" << this->basis();
-    return os; 
+    return os;
 }
 
 template<class T>
@@ -542,7 +596,7 @@ gsGeometry<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
     m_basis->deriv2_into(u, B) ;
     // col j = indices of active functions at column point u(..,j)
     m_basis->active_into(u, ind);
-    
+
     result.setZero(d,d);
     static const index_t j = 0;// just one column
     //for ( unsigned j=0; j< u.cols(); j++ ) // for all points (columns of u)
