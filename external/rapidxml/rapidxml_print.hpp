@@ -47,7 +47,7 @@ namespace rapidxml
         // Copy characters from given range to given output iterator and expand
         // characters into references (&lt; &gt; &apos; &quot; &amp;)
         template<class OutIt, class Ch>
-        inline OutIt copy_and_expand_chars(const Ch *begin, const Ch *end, Ch noexpand, OutIt out)
+        inline OutIt copy_and_expand_chars(const Ch *begin, const Ch *end, Ch noexpand, OutIt out, int indent=0)
         {
             while (begin != end)
             {
@@ -59,6 +59,11 @@ namespace rapidxml
                 {
                     switch (*begin)
                     {
+                    case Ch('\n'):
+                        *out++ = Ch('\n');
+                        for (int i = 0; i < indent - (int)( begin == std::prev(end) ); ++i)
+                            *out++ = Ch(tab_);
+                        break;
                     case Ch('<'):
                         *out++ = Ch('&'); *out++ = Ch('l'); *out++ = Ch('t'); *out++ = Ch(';');
                         break;
@@ -213,7 +218,7 @@ namespace rapidxml
                 if (!child)
                 {
                     // If node has no children, only print its value without indenting
-                    out = copy_and_expand_chars(node->value(), node->value() + node->value_size(), Ch(0), out);
+                    out = copy_and_expand_chars(node->value(), node->value() + node->value_size(), Ch(0), out, indent+1);
                 }
                 else if (child->next_sibling() == 0 && child->type() == node_data)
                 {
