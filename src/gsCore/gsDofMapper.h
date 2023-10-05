@@ -590,6 +590,14 @@ inline std::ostream& operator<<( std::ostream& os, const gsDofMapper& b )
     return b.print( os );
 }
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsDofMapper
+   */
+  void pybind11_init_gsDofMapper(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

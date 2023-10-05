@@ -65,6 +65,16 @@ protected:
 }; // gsCoonsPatch
 
 
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsCoonsPatch
+   */
+  void pybind11_init_gsCoonsPatch(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
 }// namespace gismo
 
 #ifndef GISMO_BUILD_LIB
