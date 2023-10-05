@@ -217,6 +217,7 @@ int main(int argc, char *argv[])
         pbdr[p].second.resize(sbasis.size(),mp.targetDim());
     }
 
+    index_t k = 0;
     for (auto it = irep.begin(); it!=irep.end(); ++it, k++)
     {
         gsMatrix<index_t> bndThis,bndOther;
@@ -243,12 +244,12 @@ int main(int argc, char *argv[])
         GISMO_ASSERT(bndOther.rows()==cfit.result()->coefs().rows(),"Coefficients and indices do not match!");
 
         pbdr[it->first.first() .patch].first.at(it->first.first() .side()-1) = bndThis;
-        for (index_t k=0; k!=bndThis .rows(); k++)
-            pbdr[it->first.first() .patch].second.row(bndThis (k,0)) = cfit.result()->coefs().row(k);
+        for (index_t l=0; l!=bndThis .rows(); l++)
+            pbdr[it->first.first() .patch].second.row(bndThis (l,0)) = cfit.result()->coefs().row(l);
 
         pbdr[it->first.second() .patch].first.at(it->first.second() .side()-1) = bndOther;
-        for (index_t k=0; k!=bndOther.rows(); k++)
-            pbdr[it->first.second() .patch].second.row(bndOther(k,0)) = cfit.result()->coefs().row(k);
+        for (index_t l=0; l!=bndOther.rows(); l++)
+            pbdr[it->first.second() .patch].second.row(bndOther(l,0)) = cfit.result()->coefs().row(l);
 
         crv_net.addPatch( *cfit.result() );
     }
