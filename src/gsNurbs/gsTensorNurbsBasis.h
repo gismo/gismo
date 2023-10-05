@@ -174,7 +174,6 @@ public:
         gsSparseMatrix<T, RowMajor> transfer;
         if (dir==-1)
         {
-            gsSparseMatrix<T, RowMajor> transfer;
             m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
             coefs     = transfer * ( m_weights.asDiagonal() * coefs);

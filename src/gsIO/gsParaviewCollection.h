@@ -106,13 +106,23 @@ public:
     /// @param part Part ID ( optional )
     void addPart(String const & fn, real_t tStep=-1, std::string name="", index_t part=-1)
     {   
-        GISMO_ASSERT( gsFileManager::getExtension(fn) != "" , "File without extension");
+        std::string ext = "";
+        if (gsFileManager::getExtension(fn) == "")
+        {
+            if (name=="Mesh" || name=="mesh")
+                ext = ".vtp";
+            else if (name=="Geometry" || name=="geometry" || name=="Solution" || name=="solution")
+                ext = ".vts";
+            else
+                GISMO_ERROR("No extension could be found for file "<<fn<<". Try to add an extension or add name 'Mesh','Solution','Geometry'");
+        }
+
         GISMO_ASSERT( !m_isSaved , "Error: collection has been already saved." );
         mfile << "<DataSet ";
         if (part != -1)   mfile << "part=\""<< part <<"\" ";
         if (tStep != -1)  mfile << "timestep=\""<< tStep <<"\" ";
         if (name != "") mfile << "name=\"" << name << "\" ";
-        mfile << "file=\"" << fn <<"\"/>\n";
+        mfile << "file=\"" << fn+ext <<"\"/>\n";
     }
     // CAUTION! 
     // The previous 3 versions of gsParaviewCollection::addPart() have been combined into the one above
