@@ -211,7 +211,7 @@ PYBIND11_MODULE(pygismo, m) {
   structuralanalysis.attr("__version__") = GISMO_VERSION;
   structuralanalysis.doc() = "G+Smo (Geometry + Simulation Modules): StructuralAnalysis module";
 
-  // gismo::pybind11_init_gsStructuralAnalysis( structuralanalysis );
+  gismo::pybind11_init_gsStructuralAnalysis( structuralanalysis );
 #endif
 }
 
