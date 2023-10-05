@@ -115,6 +115,7 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each patch
 /// \param mesh if true, the parameter mesh is plotted as well
+/// \param pDelim is the delimiter that is used to separate fn from the patch index
 template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
                      unsigned npts=NS, bool mesh = false, const std::string pDelim = "");
