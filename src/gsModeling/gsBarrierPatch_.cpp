@@ -50,8 +50,9 @@ namespace gismo
 
 		// Constructors
 		.def(py::init<const gsMultiPatch<real_t> &, const gsDofMapper &>())
-		.def(py::init<const gsMultiPatch<real_t> &>(),
-		      py::arg("patchWise") = true) //default arguments
+		.def(py::init<const gsMultiPatch<real_t> &>())
+		.def(py::init<const gsMultiPatch<real_t> &, bool>())
+		// HV: how to do optional argument in constructor??		      // py::arg("patchWise") = true) //default arguments
 
 		// Member functions
 		.def("setMapper", &Class::setMapper, "Sets the mapper.")
@@ -68,9 +69,10 @@ namespace gismo
 		py::class_<Class>(m, "gsBarrierPatch3")
 
 	   // Constructors
-		.def(py::init<const gsMultiPatch<real_t> &, const gsDofMapper &>())
-		.def(py::init<const gsMultiPatch<real_t> &>(),
-	         py::arg("patchWise") = true) //default arguments
+ 		 .def(py::init<const gsMultiPatch<real_t> &, const gsDofMapper &>())
+ 		 .def(py::init<const gsMultiPatch<real_t> &>())
+ 		 .def(py::init<const gsMultiPatch<real_t> &, bool>())
+		 // HV: how to do optional argument in constructor??		      // py::arg("patchWise") = true) //default arguments
 
 	   // Member functions
 	   .def("setMapper", &Class::setMapper, "Sets the mapper.")

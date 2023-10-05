@@ -34,6 +34,7 @@ void pybind11_init_gsCoonsPatch(py::module &m)
 
     // Member functions
     .def("compute", &Class::compute, "Computes the Coons patch.")
+    .def("result", &Class::result, "Gets the resulting Coons patch.")
     ;
 }
 #endif

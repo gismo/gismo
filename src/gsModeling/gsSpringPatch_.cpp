@@ -31,7 +31,8 @@ void pybind11_init_gsSpringPatch(py::module &m)
     .def(py::init<const gsMultiPatch<real_t> &>()) //default arguments
 
     // Member functions
-    .def("compute", &Class::compute, "Computes the Coons patch.")
+    .def("compute", &Class::compute, "Computes the spring patch.")
+    .def("result", &Class::result, "Get the resulting spring patch.")
     ;
 }
 #endif
