@@ -44,8 +44,22 @@ public:
      *
      * @return     The L2 error of the projection
      */
+    static T projectGeometry(   const gsBasis<T> & basis,
+                                const gsGeometry<T> & geometry,
+                                gsMatrix<T> & result);
+
+    /**
+     * @brief      Projects a \a source geometry onto \a basis and returns it in
+     *             \a result
+     *
+     * @param[in]  basis     The basis to project on
+     * @param[in]  geometry  The geometry
+     * @param      result    The coefficients of the new geometry on \a basis
+     *
+     * @return     The L2 error of the projection
+     */
     static T projectGeometry(   const gsMultiBasis<T> & basis,
-                                const gsMultiPatch<T> & geometry,
+                                const gsFunctionSet<T> & geometry,
                                 gsMatrix<T> & result);
 
     /**
@@ -59,7 +73,7 @@ public:
      * @return     The L2 error of the projection
      */
     static T projectGeometry(   const gsMultiBasis<T> & basis,
-                                const gsMultiPatch<T> & geometry,
+                                const gsFunctionSet<T> & geometry,
                                 gsMultiPatch<T> & result);
 
     /**
@@ -75,7 +89,7 @@ public:
      */
     static T projectGeometry(   const gsMultiBasis<T> & intbasis,
                                 const gsMappedBasis<2,T> & basis,
-                                const gsMultiPatch<T> & geometry,
+                                const gsFunctionSet<T> & geometry,
                                 gsMatrix<T> & result);
 
     /**

@@ -167,8 +167,16 @@ private:
         // Update leaf box
         for (unsigned dim = 0; dim < d; ++dim)
         {
-            const unsigned start = lower(dim);
-            const unsigned end  = upper(dim) ;
+            index_t start = lower(dim);
+            index_t end  = upper(dim) ;
+
+            if (basis().manualLevels() )
+            {
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,start);
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,end);
+            }
 
             const gsKnotVector<T> & kv =
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
@@ -177,7 +185,7 @@ private:
             // knotVals = kv.unique()
 
             m_breaks[dim].clear();
-            for (unsigned index = start; index <= end; ++index)
+            for (index_t index = start; index <= end; ++index)
                 m_breaks[dim].push_back( kv(index) );// unique index
 
             m_curElement(dim) =
@@ -205,6 +213,8 @@ private:
 // =============================================================================
 // members
 // =============================================================================
+
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
 
 public:
 
