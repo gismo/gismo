@@ -208,7 +208,7 @@ int gsFunction<T>::newtonRaphson_impl(
         supp = support();
         GISMO_ASSERT( (arg.array()>=supp.col(0).array()).all() &&
                       (arg.array()<=supp.col(1).array()).all(),
-                      "Initial point is outside the domain.");
+                      "Initial point is outside the domain.\n point = "<<arg<<"\n domain = "<<supp);
     }
     int iter = 0;
     T rnorm[2]; rnorm[1]=1;

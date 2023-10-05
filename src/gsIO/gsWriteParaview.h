@@ -115,9 +115,10 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each patch
 /// \param mesh if true, the parameter mesh is plotted as well
+/// \param pDelim is the delimiter that is used to separate fn from the patch index
 template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
-                     unsigned npts=NS, bool mesh = false);
+                     unsigned npts=NS, bool mesh = false, const std::string pDelim = "");
 
 /// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
 ///
@@ -127,7 +128,7 @@ void gsWriteParaview(const gsField<T> & field, std::string const & fn,
 /// \param npts number of points used for sampling each patch
 template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
-                     std::string const & fn, unsigned npts = NS);
+                     std::string const & fn, unsigned npts = NS, const std::string pDelim = "");
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
@@ -138,9 +139,9 @@ void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
 /// \param ctrlNet if true, the control net is plotted as well
 template<class T>
 void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn, 
-                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false)
+                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_")
 {
-    gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet);
+    gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet, pDelim);
 }
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
@@ -153,7 +154,7 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
 template<class T>
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, 
                       std::string const & fn, unsigned npts=NS,
-                      bool mesh = false, bool ctrlNet = false);
+                      bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_");
 
 /// \brief Export a computational mesh to paraview file
 template<class T>

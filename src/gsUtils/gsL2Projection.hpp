@@ -181,12 +181,11 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T> & basis,
                                             gsMatrix<T> & result)
 {
     gsExprAssembler<T> A(1,1);
-    gsMatrix<T> solVector;
 
     A.setIntegrationElements(basis);
     space u = A.getSpace(basis,source.targetDim());
     auto  f = A.getCoeff(source);
-    solution sol = A.getSolution(u, solVector);
+    solution sol = A.getSolution(u, result);
     geometryMap G = A.getMap(geometry);
 
     u.setup(-1);
