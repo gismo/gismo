@@ -78,15 +78,11 @@ public:
 
         freeAll(m_bases);
         m_bases.reserve(mb.nBases());
+        cloneAll(mb.patchBases(),m_bases);
         m_sb.clear();
-        m_sb.reserve(mb.nBases());
-        index_t q = 0;
-        for ( typename std::vector<BasisType*>::const_iterator
-                  it = mb.begin(); it != mb.end(); ++it, ++q )
-        {
-            m_bases.push_back( (*it)->clone().release() );
+        m_sb.reserve(m_bases.size());
+        for ( size_t q=0; q!=m_bases.size(); ++q )
             m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-        }
 
         m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
     }
@@ -189,13 +185,13 @@ public:
         coefs*=permMatrix;
     }
 
-    // /// gets all indices of global basis functions on the boundary
-    // /// upto a given offset
-    // void boundary(std::vector<index_t> & indices,index_t offset = 0) const;
+    /// gets all indices of global basis functions on the boundary
+    /// upto a given offset
+    void boundary(std::vector<index_t> & indices,index_t offset = 0) const;
 
-    // /// gets all indices of global basis functions on the inner boundary
-    // /// upto a given offset
-    // void innerBoundaries(std::vector<index_t> & indices,index_t offset = 0) const;
+    /// gets all indices of global basis functions on the inner boundary
+    /// upto a given offset
+    void innerBoundaries(std::vector<index_t> & indices,index_t offset = 0) const;
 
     /// gives back the gsMappedSingleBasis object set to the patch i, which
     /// ressembles the composite basis on one patch

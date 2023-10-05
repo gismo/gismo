@@ -217,7 +217,6 @@ int main(int argc, char *argv[])
         pbdr[p].second.resize(sbasis.size(),mp.targetDim());
     }
 
-    index_t k=0;
     for (auto it = irep.begin(); it!=irep.end(); ++it, k++)
     {
         gsMatrix<index_t> bndThis,bndOther;
