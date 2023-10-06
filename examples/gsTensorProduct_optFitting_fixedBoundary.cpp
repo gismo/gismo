@@ -768,7 +768,7 @@ int main(int argc, char *argv[])
       gsInfo << "Running the A-PDM algorithm for comparion.\n";
 
       file_apdm.open(std::to_string(now)+"_APDM_results.csv");
-      file_apdm << "m, deg, pen, dofs, it_opt, pc, min, max, mse, rmse, time\n";
+      file_apdm << "m, deg, pen, dofs, pc, min, max, mse, rmse, time\n";
 
       gsFitting<real_t> ref(uv, X, basis); // original geometry, same starting point for C-PDM;
       ref.compute(lambda);

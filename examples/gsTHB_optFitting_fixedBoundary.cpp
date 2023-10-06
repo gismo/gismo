@@ -768,7 +768,7 @@ int main(int argc, char *argv[])
           gsMesh<> mesh(ref.result()->basis());
           gsMatrix<> uv_fitting = ref.returnParamValues() ;
           gsWriteParaview(mesh, prefix + "_iter_mesh_apdm");
-          gsWriteParaview(*ref.result(), prefix + "_iter_geo_apdm");
+          gsWriteParaview(*ref.result(), prefix + "_iter_geo_apdm", 100000, true);
           gsWriteParaviewPoints(uv_fitting, prefix + "_iter_fitting_parameters_apdm");
 
           ref.get_Error(adapt_errors2, 0);
@@ -796,7 +796,7 @@ int main(int argc, char *argv[])
           // file_pc << std::to_string(refIt+1) << "," << std::to_string(finaltime_adaptiveLoop) << "," << std::to_string(finaltime_itLoop) << "," << std::to_string(dofs) << "," << std::to_string(rmse) << "\n";
 
           file_pc << X.cols() << "," << deg << "," << lambda << ","
-                  << basis.size() << ","<< refIt << "," << maxPcIter << ","
+                  << dofs << ","<< refIt << "," << maxPcIter << ","
                   << sol_min_max_mse[0] << std::scientific << ","
       					  << sol_min_max_mse[1] << std::scientific << ","
       					  << sol_min_max_mse[2] << std::scientific << ","
