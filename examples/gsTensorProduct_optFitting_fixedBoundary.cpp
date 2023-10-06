@@ -21,7 +21,7 @@
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
 #include <gsIpOpt/gsIpOpt.h>
-#endif
+
 
 
 using namespace gismo;
@@ -102,7 +102,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_interiors.resize(2, interiors.size());
   p_interiors.resize(3, interiors.size());
-  for( index_t i = 0; i < interiors.size(); i++ )
+  for( size_t i = 0; i < interiors.size(); i++ )
   {
     uv_interiors.col(i) = parameters.col(interiors[i]);
     p_interiors.col(i) = points.col(interiors[i]);
@@ -110,7 +110,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_west.resize(2, b_west.size());
   gsMatrix<T> tmp_west(3, b_west.size());
-  for( index_t i = 0; i < b_west.size(); i++ )
+  for( size_t i = 0; i < b_west.size(); i++ )
   {
     uv_west.col(i) = parameters.col(b_west[i]);
     tmp_west.col(i) = points.col(b_west[i]);
@@ -118,7 +118,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_east.resize(2, b_east.size());
   gsMatrix<T> tmp_east(3, b_east.size());
-  for( index_t i = 0; i < b_east.size(); i++ )
+  for( size_t i = 0; i < b_east.size(); i++ )
   {
     uv_east.col(i) = parameters.col(b_east[i]);
     tmp_east.col(i) = points.col(b_east[i]);
@@ -126,7 +126,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_south.resize(2, b_south.size());
   gsMatrix<T> tmp_south(3, b_south.size());
-  for( index_t i = 0; i < b_south.size(); i++ )
+  for( size_t i = 0; i < b_south.size(); i++ )
   {
     uv_south.col(i) = parameters.col(b_south[i]);
     tmp_south.col(i) = points.col(b_south[i]);
@@ -134,7 +134,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_north.resize(2, b_north.size());
   gsMatrix<T> tmp_north(3, b_north.size());
-  for( index_t i = 0; i < b_north.size(); i++ )
+  for( size_t i = 0; i < b_north.size(); i++ )
   {
     uv_north.col(i) = parameters.col(b_north[i]);
     tmp_north.col(i) = points.col(b_north[i]);
@@ -149,7 +149,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   std::vector<index_t> tmp = uv_south.idxByColumn(0);
   // gsDebugVar(uv_south);
   p_south.resize(tmp_south.rows(), tmp_south.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_south.col(i) = tmp_south.col(tmp[i]);
   }
@@ -160,7 +160,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   tmp = uv_east.idxByColumn(1);
   // gsDebugVar(uv_east);
   p_east.resize(tmp_east.rows(), tmp_east.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_east.col(i) = tmp_east.col(tmp[i]);
   }
@@ -179,7 +179,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   // for (std::vector<index_t>::iterator it = tmp.begin(); it != tmp.end(); ++it)
   //   gsInfo << *it <<"\n";
   p_north.resize(tmp_north.rows(), tmp_north.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_north.col(i) = tmp_north.col(tmp[i]);
   }
@@ -197,7 +197,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   std::reverse(tmp.begin(),tmp.end());
 
   p_west.resize(tmp_west.rows(), tmp_west.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_west.col(i) = tmp_west.col(tmp[i]);
   }
@@ -594,7 +594,7 @@ int main(int argc, char *argv[])
     gsTensorBSpline<2, real_t> original(basis, coefs);
 
 
-    // step 2. Find the foot point P(t_k) on P(t) for evry data point X_k.
+    // step 2. Find the foot point P(t_k) on P(t) for every data point X_k.
     // already as initial parameters, the foot point projection are provided.
     // REMARK: we can start with any different parameterization, not necessary with the foot-point projection.
     gsMatrix<> params(2, X.cols());
@@ -741,12 +741,12 @@ int main(int argc, char *argv[])
 
       //file_opt << "m, deg, pen, dofs, it_opt, min, max, mse, rmse, time\n";
       file_opt << X.cols() << "," << deg << "," << lambda << ","
-                  << basis.size() << ","<< optimizer->iterations() << ","
-                  << sol_min_max_mse[0] << std::scientific << ","
-  					      << sol_min_max_mse[1] << std::scientific << ","
-  					      << sol_min_max_mse[2] << std::scientific << ","
-                  << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
-                  << finaltime << "\n";
+               << basis.size() << ","<< optimizer->iterations() << ","
+               << sol_min_max_mse[0] << std::scientific << ","
+               << sol_min_max_mse[1] << std::scientific << ","
+               << sol_min_max_mse[2] << std::scientific << ","
+               << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+               << finaltime << "\n";
 
       gsWriteParaviewPoints( currentparams, prefix + "params_CPDM_it");
       gsMatrix<> currentCoefsToPlot(currentcoefs.cols(), currentcoefs.rows());
@@ -812,3 +812,13 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 
 }
+
+#else // gsHLBFGS_ENABLED not defined
+#warning "This file requires gsHLBFGS, otherwise it does not do much."
+
+int main()
+{
+	gsWarn << "This file was not compiled with gsHLBFGS and therefore does not do much.\n";
+	return -1;
+}
+#endif
