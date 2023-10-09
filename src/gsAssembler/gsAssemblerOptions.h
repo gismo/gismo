@@ -20,17 +20,22 @@ struct dirichlet
 {	
     enum strategy
     {
-        elimination  = 11, ///< Enforce Dirichlet BCs by eliminating them from the system
+        elimination  = 11, ///< Enforce Dirichlet BCs by eliminating them from the system (default in gsExprAssembler)
 
-        penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs,
+        penalize     = 13, ///< Penalize the diagonal at the position of Dirichlet DoFs, (TODO in gsExprAssembler)
 
-        nitsche      = 12, ///< Enforce the boundary condition weakly by a penalty term
+        nitsche      = 12, ///< Enforce the boundary condition weakly by a penalty term. (not in gsExprAssembler)
         
         /// Compute Dirichlet DoFs in the normal direction (for a vector valued function),
         /// The tangential component are handled with the Nitsche method.
         eliminatNormal = 14,
 
-        none         = 0 ///<< Do absolutely nothing for Dirichlet boundary conditions.
+        diagonalize  = 15, ///< Sets 1s on the diagonal of the LHS (on the bottom-right), and puts the values of the BCs in the RHS (on the tail)
+
+        // call it "remove"
+
+        none         = 0, ///<< Do absolutely nothing for Dirichlet boundary conditions.
+        remove       = 1  ///<< Remove the Dirichlet BCs from LHS and RHS
     };
 
     enum values

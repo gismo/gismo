@@ -86,8 +86,11 @@ public:
     {
         GISMO_ASSERT( m_vcol.back()->mapper.isFinalized(),
                       "gsExprAssembler::numDofs() says: initSystem() has not been called.");
-        return m_vcol.back()->mapper.firstIndex() +
-	  m_vcol.back()->mapper.freeSize();
+
+        bool strategy = m_options.getInt("DirichletStrategy")==dirichlet::elimination ||
+                        m_options.getInt("DirichletStrategy")==dirichlet::remove;
+
+        return m_vcol.back()->mapper.firstIndex() + (strategy ? m_vcol.back()->mapper.freeSize() : m_vcol.back()->mapper.size() );
     }
 
     /// Returns the number of test functions (after initialization)
@@ -95,8 +98,11 @@ public:
     {
         GISMO_ASSERT( m_vrow.back()->mapper.isFinalized(),
                       "initSystem() has not been called.");
-        return m_vrow.back()->mapper.firstIndex() +
-	  m_vrow.back()->mapper.freeSize();
+
+        bool strategy = m_options.getInt("DirichletStrategy")==dirichlet::elimination ||
+                        m_options.getInt("DirichletStrategy")==dirichlet::remove;
+
+        return m_vrow.back()->mapper.firstIndex() + (strategy ? m_vrow.back()->mapper.freeSize() : m_vrow.back()->mapper.size() );
     }
 
     /// Returns the number of blocks in the matrix, corresponding to
@@ -309,16 +315,21 @@ public:
      * @param save_sparsety_pattern only modify values but keep sparsety
      * information by multiplying matrix by zero in-place
      */
-    void clearMatrix(const bool& save_sparsety_pattern = true) {
-        if (save_sparsety_pattern) {
+    void clearMatrix(const bool& save_sparsety_pattern = true)
+    {
+        if (save_sparsety_pattern)
+        {
             std::fill(m_matrix.valuePtr(),
                       m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
-        } else {
+        }
+        else
+        {
             m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
             if (0 == m_matrix.rows() || 0 == m_matrix.cols())
                 gsWarn << " No internal DOFs, zero sized system.\n";
-            else {
+            else
+            {
                 // Pick up values from options
                 const T bdA = m_options.getReal("bdA");
                 const index_t bdB = m_options.getInt("bdB");
@@ -413,12 +424,15 @@ private:
         }
         else
         {
+            bool strategy = m_options.getInt("DirichletStrategy")==dirichlet::elimination ||
+                            m_options.getInt("DirichletStrategy")==dirichlet::remove;
+
             rowSizes.resize(m_vrow.size());
             for (index_t r = 0; r != rowSizes.size(); ++r) // for all row-blocks
-                rowSizes[r] = m_vrow[r]->dim() * m_vrow[r]->mapper.freeSize();
+                rowSizes[r] = (strategy ?  m_vrow[r]->mapper.freeSize() : m_vrow[r]->mapper.size() );
             colSizes.resize(m_vcol.size());
             for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
-                colSizes[c] = m_vcol[c]->dim() * m_vcol[c]->mapper.freeSize();
+                colSizes[c] = (strategy ?  m_vcol[c]->mapper.freeSize() : m_vcol[c]->mapper.size() );
         }
     }
 
@@ -593,7 +607,7 @@ private:
                                     if ( 0 == localMat(rls+i,cls+j) ) continue;
 
                                     const index_t jj = colMap.index(colInd0.at(j),u.data().patchId,c); // N_j
-                                    if ( colMap.is_free_index(jj) )
+                                    if ( colMap.is_free_index(jj) ) // dirichlet::remove
                                     {
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
@@ -601,7 +615,7 @@ private:
 #                                       pragma omp critical (acc_m_matrix)
                                         m_matrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
                                     }
-                                    else if (elim) // colMap.is_boundary_index(jj) )
+                                    else if (elim) // colMap.is_boundary_index(jj) ) // dirichlet::eliminate
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
@@ -609,10 +623,11 @@ private:
                                         m_rhs.at(ii) -= localMat(rls+i,cls+j) *
                                             fixedDofs.at(colMap.global_to_bindex(jj));
                                     }
+                                    // else: nothing (strategy::none, strategy::diagonalize, strategy::penalize)
                                 }
                             }
                         }
-                        else
+                        else // if (strategy::eliminate)
                         {
                             //The right-hand side can have more than one columns
 #                           pragma omp critical (acc_m_rhs)
@@ -716,19 +731,19 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
 
 template<class T> void gsExprAssembler<T>::resetDimensions()
 {
+    bool strategy = m_options.getInt("DirichletStrategy")==dirichlet::elimination ||
+                    m_options.getInt("DirichletStrategy")==dirichlet::remove;
     if (!m_vcol.front()->valid()) m_vcol.front()->init();
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         if (!m_vcol.front()->valid()) m_vcol.front()->init();
-        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                   m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
+        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() + (strategy ? m_vcol[i-1]->mapper.freeSize() : m_vcol[i-1]->mapper.size()) ); // is the m_vcol[i-1]->dim needed? freeSize should return the size of the total mapper (for all components together)
 
         if ( m_vcol[i] != m_vrow[i] )
         {
             if (!m_vrow.front()->valid()) m_vrow.front()->init();
-            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                       m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
+            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() + (strategy ? m_vrow[i-1]->mapper.freeSize() : m_vrow[i-1]->mapper.size()) );
         }
     }
 }
