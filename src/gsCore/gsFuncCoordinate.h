@@ -148,7 +148,7 @@ gsFuncCoordinate<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result )  cons
 {
     gsMatrix<T> tmp;
     m_function->eval_into(u, tmp);
-    result = tmp(m_index);
+    result = tmp(m_index, gsEigen::all);
 }
 
 template<class T> void
