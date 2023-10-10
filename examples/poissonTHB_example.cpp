@@ -45,6 +45,8 @@ int main(int argc, char *argv[])
 
     // Flag whether final mesh should be plotted in ParaView
     bool plot = false;
+    bool manual = false;
+    bool HB = false;
     bool dump;
 
     RefineLoopMax = 2;
@@ -69,6 +71,8 @@ int main(int argc, char *argv[])
     cmd.addReal("p", "parameter", "Parameter for adaptive refinement", refParameter);
     cmd.addSwitch("dump", "Write geometry and sequence of bases into XML files",
                 dump);
+    cmd.addSwitch("manual", "Uses the 'addLevel' feature of the THB basis, where levels can be specified manually", manual);
+    cmd.addSwitch("HB", "Uses a Hierarchical basis instead of a Truncated Hierarchical basis", HB);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -136,19 +140,74 @@ int main(int argc, char *argv[])
     gsInfo << "\nCoarse discretization basis:\n" << tbb << "\n";
 
     // With this gsTensorBSplineBasis, it's possible to call the THB-Spline constructor
-    gsTHBSplineBasis<2,real_t> THB( tbb );
-
-    gsTHBSpline<2,real_t> THB_patches(tbb, geo->coefs());
-
-    // Finally, create a vector (of length one) of this gsTHBSplineBasis
-    gsMultiBasis<real_t> bases(THB);
-    gsMultiPatch<real_t> mp(THB_patches);
+    gsHTensorBasis<2,real_t> * HTB;
 
     for (int i = 0; i < initUnifRef; ++i)
     {
-        mp.uniformRefine();
-        bases.uniformRefine();
+        if (manual)
+            tbb.uniformRefine(1,1);
+        else
+            tbb.uniformRefine();
     }
+
+
+    if (manual)
+    {
+        // Manual creation of levels in THB hierarchy
+        // We create a hierarchy where in the first degree levels, the basis is refined and the continuity is reduced
+        // Then diadic refinements are created
+        // lvl 0: {0, 0, 0, 0, 0.25, 0.5, 0.75, 1, 1, 1, 1}
+        // lvl 1: {0, 0, 0, 0, 0.125, 0.125, 0.25, 0.25, 0.375, 0.375, 0.5, 0.5, 0.625, 0.625, 0.75, 0.75, 0.825, 0.825, 1, 1, 1, 1}
+        // lvl 2: {0, 0, 0, 0, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, ...}
+        // lvl 3: {0, 0, 0, 0, 0.0625, 0.0625, 0.0625, 0.125, 0.125, 0.125, ...}
+        // etc
+        if (HB)
+            HTB = new gsHBSplineBasis<2,real_t>(tbb,true);
+        else
+            HTB = new gsTHBSplineBasis<2,real_t>(tbb,true);
+
+        for (index_t k=0; k!=degree-2; k++)
+        {
+            tbb.uniformRefine(1,k+1);
+            tbb.reduceContinuity(1);
+            tbb.removeKnot(0.5,0,1);
+            HTB->addLevel(tbb);
+        }
+
+        for (index_t k=0; k!=5; k++)
+        {
+            tbb.uniformRefine(1,degree-1);
+            HTB->addLevel(tbb);
+        }
+
+        // This works    
+        //{
+        // for (index_t k=0; k!=3; k++)
+        // {
+        //     tbb.uniformRefine(1,2);
+        //     gsDebugVar(gsAsConstVector<index_t>(tbb.knots(0).multiplicities()));
+        //     gsDebugVar(tbb.knots(0).asMatrix());
+        //     HTB->addLevel(tbb);
+        // }
+        //}
+
+        HTB->printBases();
+    }
+    else
+    {
+        if (HB)
+            HTB = new gsHBSplineBasis<2,real_t>(tbb,false);
+        else
+            HTB = new gsTHBSplineBasis<2,real_t>(tbb,false);
+    }
+
+    gsMatrix<> boxes(2,2);
+    boxes.row(0)<<0.25,0.75;
+    boxes.row(1)<<0.00,1.00;
+    HTB->refine(boxes);
+
+    // Finally, create a vector (of length one) of this gsTHBSplineBasis
+    gsMultiBasis<real_t> bases(*HTB);
 
     gsMultiPatch<> mpsol; // holds computed solution
     gsPoissonAssembler<real_t> pa(patches,bases,bcInfo,f);// constructs matrix and rhs
@@ -157,15 +216,26 @@ int main(int argc, char *argv[])
     if (dump)
         gsWrite(bases[0], "adapt_basis_0.xml");
 
-    gsWriteParaview<>(mp, "mp", 1001, true);
-
-
     // So, ready to start the adaptive refinement loop:
     for( int RefineLoop = 1; RefineLoop <= RefineLoopMax ; RefineLoop++ )
     {
-        gsInfo << "\n ====== Loop " << RefineLoop << " of " << RefineLoopMax << " ======" << "\n" << "\n";
+        gsInfo << "\n============================== Loop " << RefineLoop << " of " << RefineLoopMax << " ==============================" << "\n" << "\n";
 
-        gsInfo <<"Basis: "<< pa.multiBasis() <<"\n";
+        gsHTensorBasis<2,real_t> * HTB_tmp = dynamic_cast<gsHTensorBasis<2,real_t> * >(&pa.multiBasis().basis(0));
+        bool unity = HTB_tmp->testPartitionOfUnity();
+        std::string unity_string = unity ? "has " : "does not have ";
+
+
+        gsInfo<<" * Number of elements:  "<<HTB_tmp->numElements()<<"\n";
+        gsInfo<<" * Maximum level:       "<<HTB_tmp->maxLevel()+1<<"\n";
+        gsInfo<<" * Tree size:           "<<HTB_tmp->treeSize()<<"\n";
+        gsInfo<<" * Number of functions: "<<HTB_tmp->size()<<"\n";
+        gsInfo<<" * Size per level:      ";
+        for(unsigned i = 0; i<= HTB_tmp->maxLevel(); i++)
+            gsInfo << HTB_tmp->getXmatrix()[i].size()<< " ";
+        gsInfo<<"\n";
+        gsInfo<<" * Partition of unity:  The basis "<<unity_string<<"the partition of unity property\n";
+        gsInfo<<"=========================================================================\n";
 
         // Assemble matrix and rhs
         gsInfo << "Assembling... " << std::flush;
@@ -214,7 +284,7 @@ int main(int argc, char *argv[])
         {
             std::stringstream ss;
             ss << "adapt_basis_" << RefineLoop << ".xml";
-            gsWrite(bases[0], ss.str());
+            gsWrite(pa.multiBasis()[0], ss.str());
         }
 
         if ( (RefineLoop == RefineLoopMax) && plot)
@@ -222,16 +292,13 @@ int main(int argc, char *argv[])
             // Write approximate solution to paraview files
             gsInfo<<"Plotting in Paraview...\n";
             gsWriteParaview<>(sol, "p2d_adaRef_sol", 5001, true);
-            gsWriteParaview<>(mp, "mp_ref", 5001);
+            gsWriteParaview<>(pa.multiBasis()[0], "basis", 500, true);
             // Run paraview and plot the last mesh
             gsFileManager::open("p2d_adaRef_sol.pvd");
         }
-        gsRefineMarkedElements( mp, elMarked, refExt);
-
-
     }
+    gsInfo << "\nFinal basis: " << pa.multiBasis()[0] << "\n";
 
-    gsInfo << "\nFinal basis: " << bases[0] << "\n";
-
+    delete HTB;
     return EXIT_SUCCESS;
 }

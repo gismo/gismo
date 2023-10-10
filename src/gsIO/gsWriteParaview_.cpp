@@ -13,7 +13,7 @@ namespace gismo
   
 TEMPLATE_INST
 void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
-                     unsigned npts, bool mesh);
+                     unsigned npts, bool mesh, const std::string pDelim);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn, 
@@ -21,7 +21,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 
 TEMPLATE_INST
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string const & fn, 
-                      unsigned npts, bool mesh, bool ctrlNet);
+                      unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
@@ -38,13 +38,13 @@ TEMPLATE_INST
 void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
-void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts);
+void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts, const std::string pDelim);
 
 TEMPLATE_INST
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline,std::string const & fn,unsigned npts);
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline, std::string const & fn,unsigned npts);
 
 TEMPLATE_INST
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts,const bool fullsupport, const std::vector<index_t> indices);
+void gsWriteParaview(gsFunctionSet<T> const& geom, gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts,const bool fullsupport, const std::vector<index_t> indices);
 
 TEMPLATE_INST
 void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,std::string const & fn, unsigned npts);

@@ -1254,8 +1254,8 @@ void gsAdaptiveMeshing<T>::_refineMarkedElements(   const HBoxContainer & marked
 
     for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
-        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
+        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) != nullptr ) basis = &(mp->basis(pn));
+        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) != nullptr ) basis = &(mb->basis(pn));
         GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
 
         // if (m_options.getSwitch("Admissible"))
@@ -1369,13 +1369,13 @@ void gsAdaptiveMeshing<T>::_unrefineMarkedElements(     const HBoxContainer & ma
             else
                 GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
         else
-            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input))!= nullptr)
             {
                 // Unrefine all of the found refBoxes in this patch
                 std::vector<index_t> elements = mp->patch(pn).basis().asElementsUnrefine(markedCrs.toCoords(pn), crsExtension);
                 mp->patch(pn).unrefineElements( elements );
             }
-            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr)
             {
                 // Unrefine all of the found refBoxes in this patch
                 mb->unrefine( pn, markedCrs.toCoords(pn), crsExtension );
@@ -1410,8 +1410,8 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
         for (index_t patchInd=0; patchInd < m_input->nPieces(); ++patchInd)
         {
             // Initialize domain element iterator
-            if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(patchInd));
-            if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(patchInd));
+            if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input))!= nullptr ) basis = &(mp->basis(patchInd));
+            if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr ) basis = &(mb->basis(patchInd));
             GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             domIt  = basis->makeDomainIterator();

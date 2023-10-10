@@ -775,7 +775,7 @@ struct __closestPointHelper
 {
     __closestPointHelper() : dist(math::limits::max()), pid(-1) { }
     real_t dist;
-    size_t pid;
+    index_t pid;
     gsVector<> preim;
 };
 }

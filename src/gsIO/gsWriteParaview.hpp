@@ -664,7 +664,8 @@ void writeSingleTrimSurface(const gsTrimSurface<T> & surf,
 template<class T>
 void gsWriteParaview(const gsField<T> & field,
                      std::string const & fn,
-                     unsigned npts, bool mesh)
+                     unsigned npts, bool mesh, 
+                     const std::string pDelim)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -683,7 +684,7 @@ void gsWriteParaview(const gsField<T> & field,
         const gsBasis<T> & dom = field.isParametrized() ?
             field.igaFunction(i).basis() : field.patch(i).basis();
 
-        fileName = fn + util::to_string(i);
+        fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( field, i, fileName, npts );
         collection.addPart(fileName_nopath + ".vts");
@@ -705,7 +706,7 @@ template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo,
                      gsFunctionSet<T> const& func,
                      std::string const & fn,
-                     unsigned npts)
+                     unsigned npts, const std::string pDelim)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -723,7 +724,7 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
 
     for ( unsigned i=0; i < n; ++i )
     {
-        fileName = fn + util::to_string(i);
+        fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
         collection.addPart(fileName_nopath + ".vts");
@@ -752,7 +753,7 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
 
 /// Write a file containing a solution field over a geometry
 template<class T>
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
+void gsWriteParaview(gsFunctionSet<T> const& geom,
                      gsMappedBasis<2,T>  const& mbasis,
                      std::string const & fn,
                      unsigned npts,
@@ -765,7 +766,7 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
         On the patches, we call evalSingle_into and construct a local Paraview file
         Then, the paraview file is combined as part in a collection.
     */
-    GISMO_ASSERT(mspline.nPieces()==mbasis.nPieces(),"Function sets must have same number of pieces, but the basis has "<<mbasis.nPieces()<<" and the geometry has "<<mspline.nPieces());
+    GISMO_ASSERT(geom.nPieces()==mbasis.nPieces(),"Function sets must have same number of pieces, but the basis has "<<mbasis.nPieces()<<" and the geometry has "<<geom.nPieces());
 
     std::vector<index_t> plotIndices;
     if (indices.size()==0)
@@ -781,19 +782,22 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
     gsVector<unsigned> np;
-    for ( index_t p=0; p < mspline.nPieces(); ++p )
+    for ( index_t p=0; p < geom.nPieces(); ++p )
     {
         if (fullsupport)
         {
             // Compute the geometry
-            ab = mspline.piece(p).support();
+            ab = geom.piece(p).support();
             a = ab.col(0);
             b = ab.col(1);
+
+            if (a.prod() == 0 && b.prod()==0)
+                continue;
 
             np = uniformSampleCount(a, b, npts);
             pts = gsPointGrid(a, b, np);
 
-            eval_geo = mspline.piece(p).eval(pts);//pts
+            eval_geo = geom.piece(p).eval(pts);//pts
         }
         
         for (std::vector<index_t>::const_iterator i = plotIndices.begin(); i!=plotIndices.end(); i++)//, k++)
@@ -805,11 +809,13 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
                 // ab = mbasis.piece(p).support();
                 a = ab.col(0);
                 b = ab.col(1);
-
+                if (a.prod() == 0 && b.prod()==0)
+                    continue;
+                
                 np = uniformSampleCount(a, b, npts);
                 pts = gsPointGrid(a, b, np);
 
-                eval_geo = mspline.piece(p).eval(pts);//pts                
+                eval_geo = geom.piece(p).eval(pts);//pts                
             }
 
             fileName = fn + util::to_string(*i) + "_" + util::to_string(p);
@@ -932,7 +938,7 @@ void gsWriteParaview(const gsGeometrySlice<T> & Geo,
 template<class T>
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
                       std::string const & fn,
-                      unsigned npts, bool mesh, bool ctrlNet)
+                      unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim)
 {
     const size_t n = Geo.size();
 
@@ -941,7 +947,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
 
     for ( size_t i=0; i<n ; i++)
     {
-        fnBase = fn + "_" + util::to_string(i);
+        fnBase = fn + pDelim + util::to_string(i);
         fnBase_nopath = gsFileManager::getFilename(fnBase);
 
         if ( Geo.at(i)->domainDim() == 1 )

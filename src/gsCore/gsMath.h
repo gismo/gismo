@@ -369,7 +369,7 @@ inline T mix(T const & a, T const & b, T const & t)
 // numerical comparison
 template<class T>
 inline bool lessthan (T const  a, T const  b)
-{ return ( b-a > math::limits::epsilon); }
+{ return ( b-a > math::limits::epsilon()); }
 
 // numerical equality with \a prec decimal digits
 template<int prec, class T>

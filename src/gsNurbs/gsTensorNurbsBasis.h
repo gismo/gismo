@@ -174,7 +174,6 @@ public:
         gsSparseMatrix<T, RowMajor> transfer;
         if (dir==-1)
         {
-            gsSparseMatrix<T, RowMajor> transfer;
             m_src->uniformRefine_withTransfer(transfer, numKnots, mul);
 
             coefs     = transfer * ( m_weights.asDiagonal() * coefs);
@@ -239,6 +238,19 @@ public:
         
         return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
     }
+
+    // see gsBasis for documentation
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const
+    {
+        if ( const gsTensorNurbsBasis<d,T> * _other = dynamic_cast<const gsTensorNurbsBasis<d,T> *>(&other) )
+            m_src->matchWith(bi,_other->source(),bndThis,bndOther,offset);
+        else if ( const gsTensorBasis<d,T> * _other = dynamic_cast<const gsTensorBasis<d,T> *>(&other) )
+            m_src->matchWith(bi,*_other,bndThis,bndOther,offset);
+        else
+            gsWarn<<"Cannot match with "<<other<<"\n";
+    }
+
 
 protected:
     using Base::m_src;
