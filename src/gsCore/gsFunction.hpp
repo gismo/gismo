@@ -183,6 +183,57 @@ gsMatrix<T> gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
     return res;
 }
 
+template<class T>
+void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
+                                 gsMatrix<T> & result,
+                                 const T accuracy, const bool useInitialPoint) const
+{
+    result.resize(this->domainDim(), points.cols() );
+    gsVector<T> arg;
+    for ( index_t i = 0; i!= points.cols(); ++i)
+    {
+        if (useInitialPoint)
+            arg = result.col(i);
+        else
+            arg = this->parameterCenter();
+
+        //const int iter =
+        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        //gsInfo<< "Iterations: "<< iter <<"\n";
+        //  if (-1==iter)
+        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
+        result.col(i) = arg;
+        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
+            result.col(i) = arg;
+        else
+        {
+            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
+            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
+    }
+}
+/* // alternative impl using closestPointTo
+{
+    result.resize(parDim(), points.cols() );
+    gsVector<T> pt, arg;
+    for ( index_t i = 0; i!= points.cols(); ++i )
+    {
+        pt = points.col(i);
+        if (useInitialPoint)
+            arg = result.col(i);
+
+        this->closestPointTo(pt, arg, accuracy, useInitialPoint);
+        if ( (this->eval(arg)-pt).norm()<=accuracy )
+            result.col(i) = arg;
+        else
+        {
+            //result.col(i) = arg;
+            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
+    }
+}
+*/
+
 template <class T>
 template <int mode,int _Dim>
 int gsFunction<T>::newtonRaphson_impl(
