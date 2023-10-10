@@ -188,18 +188,36 @@ void appendBoxTopology(const gsBoxTopology& topology,
                        gsXmlTree& data)
 {
     std::ostringstream oss;
+    std::ostringstream contact_oss;
 
     if ( topology.nInterfaces() != 0 )
     {
         for ( gsBoxTopology::const_iiterator it = topology.iBegin();
               it != topology.iEnd(); ++it )
         {
-            oss << it->first().patch  << " " << int(it->first().side()) << " "
-                << it->second().patch << " " << int(it->second().side()) << " "
-                << it->dirMap().transpose() << " "
-                << it->dirOrientation().transpose() << "\n";
+            if ( it->type() != interaction::contact)
+            {
+                oss << it->first().patch  << " " << int(it->first().side()) << " "
+                    << it->second().patch << " " << int(it->second().side()) << " "
+                    << it->dirMap().transpose() << " "
+                    << it->dirOrientation().transpose() << "\n";
+            }
+            else
+            {
+                contact_oss << it->first().patch  << " " << int(it->first().side()) << " "
+                    << it->second().patch << " " << int(it->second().side()) << " "
+                    << it->dirMap().transpose() << " "
+                    << it->dirOrientation().transpose() << "\n";
+            }
         }
-        node->append_node(internal::makeNode("interfaces", oss.str(), data));
+        if (oss.str() != "")  node->append_node(internal::makeNode("interfaces", oss.str(), data));
+        if (contact_oss.str() != "") 
+        {
+            gsXmlNode * contact_node = internal::makeNode("interfaces", contact_oss.str(), data);
+            contact_node->append_attribute( internal::makeAttribute("name","contact",data) );    
+            node->append_node(contact_node);
+        }
+        
         // todo: add export per group of interfaces
         oss.clear();
         oss.str("");
@@ -273,7 +291,7 @@ void getInterfaces(gsXmlNode* node,
         }
         
         result.push_back( boundaryInterface(p, dirMap, dirOrient,name) );
-        
+        if (name == "contact") result.back().setAsContact();
 //            // OLD format: read in Orientation flags
 //            gsVector<bool> orient(d-1);// orientation flags
 //            int k;
