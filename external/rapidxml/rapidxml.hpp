@@ -1459,6 +1459,7 @@ namespace rapidxml
         {
             this->remove_all_nodes();
             this->remove_all_attributes();
+            this->max_Id = -1;
             memory_pool<Ch>::clear();
         }
 
