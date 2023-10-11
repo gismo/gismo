@@ -349,7 +349,7 @@ T gsAdaptiveMeshing<T>::_totalError(const boxMapType & elements)
     // Accumulation operator for boxMapType
     auto accumulate_error_ptr = [](const T & val, const typename boxMapType::value_type & b)
     { return val + b.second->error(); };
-    T totalError = std::accumulate(elements.begin(),elements.end(),0.0,accumulate_error_ptr);
+    T totalError = std::accumulate(elements.begin(),elements.end(),T( 0.0 ),accumulate_error_ptr);
     return totalError;
 }
 
@@ -386,7 +386,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
             return false;
 
         HBoxContainer siblings(sibs);
-        T siblingError = std::accumulate(sibs.begin(),sibs.end(),0.0,accumulate_error);
+        T siblingError = std::accumulate(sibs.begin(),sibs.end(),T( 0.0 ),accumulate_error);
 
         // Check all siblings if they satisfy the predicates
         if (_checkBoxes(sibs,predicates))
@@ -462,7 +462,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
         // Get the neighborhoods
         typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
         _setContainerProperties(neighborhood);
-        T neighborhoodError = std::accumulate(neighborhood.begin(),neighborhood.end(),0.0,accumulate_error);
+        T neighborhoodError = std::accumulate(neighborhood.begin(),neighborhood.end(),T( 0.0 ),accumulate_error);
 
         // if the errorMarkSum is exceeded with the current contribution, return true
         // NOTE: this can mean that this element suddenly has a large contribution! i.e., larger then the next element in lin
@@ -553,7 +553,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
             return false;
 
         HBoxContainer siblings(sibs);
-        T siblingSetBack = std::accumulate(sibs.begin(),sibs.end(),0.0,accumulate_improvement);
+        T siblingSetBack = std::accumulate(sibs.begin(),sibs.end(),T( 0.0 ),accumulate_improvement);
 
         // Check all siblings if they satisfy the predicates
         if (_checkBoxes(sibs,predicates))
@@ -643,7 +643,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
         typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
         HBoxContainer neighborhoodtmp = HBoxContainer(neighborhood);
         _setContainerProperties(neighborhood);
-        T neighborhoodImprovement = std::accumulate(neighborhood.begin(),neighborhood.end(),0.0,accumulate_improvement);
+        T neighborhoodImprovement = std::accumulate(neighborhood.begin(),neighborhood.end(),T( 0.0 ),accumulate_improvement);
 
         // Check all elements in the neighborhood if they satisfy the predicates
         if (_checkBoxes(neighborhood,predicates))

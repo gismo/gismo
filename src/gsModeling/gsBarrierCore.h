@@ -761,7 +761,7 @@ class AndersonAcceleration {
 
   inline void printIterationInfo() {
     if (m_printInfo) {
-      printf(" %d         %.4e\n", m_iter, m_currResidualNorm);
+      printf(" %d         %.4e\n", m_iter, static_cast< double >( m_currResidualNorm ));
     }
   }
 
@@ -784,7 +784,7 @@ class AndersonAcceleration {
       m_alpha(0) = 0;
       Scalar dF_squaredNorm = m_prevdF.col(m_columnIndex).squaredNorm();
       m_normalEquationMatrix(0, 0) = dF_squaredNorm;
-      Scalar dF_norm = std::sqrt(dF_squaredNorm);
+      Scalar dF_norm = sqrt(dF_squaredNorm);
 
       // For better numerical stability
       if (dF_norm > EPSILON) {
