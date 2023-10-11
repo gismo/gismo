@@ -200,20 +200,20 @@ void sortPointCloud(gsMatrix<T> & parameters,
   uv_west.transposeInPlace();
 
 
-  gsWriteParaviewPoints(uv_interiors, "uv_interiors");
-  gsWriteParaviewPoints(p_interiors, "p_interiors");
-
-  gsWriteParaviewPoints(uv_west, "uv_west");
-  gsWriteParaviewPoints(tmp_west, "p_west");
-
-  gsWriteParaviewPoints(uv_east, "uv_east");
-  gsWriteParaviewPoints(tmp_east, "p_east");
-
-  gsWriteParaviewPoints(uv_south, "uv_south");
-  gsWriteParaviewPoints(tmp_south, "p_south");
-
-  gsWriteParaviewPoints(uv_north, "uv_north");
-  gsWriteParaviewPoints(tmp_north, "p_north");
+  // gsWriteParaviewPoints(uv_interiors, "uv_interiors");
+  // gsWriteParaviewPoints(p_interiors, "p_interiors");
+  //
+  // gsWriteParaviewPoints(uv_west, "uv_west");
+  // gsWriteParaviewPoints(tmp_west, "p_west");
+  //
+  // gsWriteParaviewPoints(uv_east, "uv_east");
+  // gsWriteParaviewPoints(tmp_east, "p_east");
+  //
+  // gsWriteParaviewPoints(uv_south, "uv_south");
+  // gsWriteParaviewPoints(tmp_south, "p_south");
+  //
+  // gsWriteParaviewPoints(uv_north, "uv_north");
+  // gsWriteParaviewPoints(tmp_north, "p_north");
 
   // reordering of the input point cloud (parameters and points)
   parameters.resize(uv_interiors.rows(), points.cols());
@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
     std::string fn = "../filedata/fitting/shipHullPts55_scale01.xml"; // f, string file input data
     real_t gtoll = 1e-6; // g, HLBFGS stopping criteria
     // h
-    index_t maxIter = 1; // i, max number of iteration for the hlbfgs optimization algorithm
+    index_t maxIter = 200; // i, max number of iteration for the hlbfgs optimization algorithm
     // j, k
     index_t numURef = 0; // l, maximum number of refinement iterations
     index_t mupdate = 20; // m, HLBFGS hessian updates
@@ -518,20 +518,22 @@ int main(int argc, char *argv[])
     std::ofstream file_opt, file_pc;
 
     gsFileData<> fd_in(fn);
-    gsMatrix<> uv, X;
+    gsMatrix<> uv, P, X;
     std::vector<index_t> corners;
     fd_in.getId<gsMatrix<> >(0, uv );
-    fd_in.getId<gsMatrix<> >(1, X);
+    fd_in.getId<gsMatrix<> >(1, P);
     //! [Read data]
 
     gsWriteParaviewPoints(uv, "uv");
-    gsWriteParaviewPoints(X, "points");
+    gsWriteParaviewPoints(P, "points");
 
-    GISMO_ENSURE( uv.cols() == X.cols() && uv.rows() == 2 && X.rows() == 3,
+    GISMO_ENSURE( uv.cols() == P.cols() && uv.rows() == 2 && P.rows() == 3,
                   "Wrong input, check id of matrices in the .xml file");
 
     gsInfo << "Reordering parameters and points as interiors,\n"
               "and anticlockwise boundaried, i.e. south edge, east edge, north edge, west edge.\n";
+    scalePoints(P,X);
+
     sortPointCloud(uv,X,corners);
     index_t c1 = corners[0];
     index_t c2 = corners[1];
@@ -539,7 +541,7 @@ int main(int argc, char *argv[])
     index_t c4 = corners[3];
 
     gsWriteParaviewPoints(uv, "parameters");
-    gsWriteParaviewPoints(X, "points");
+    gsWriteParaviewPoints(X, "points_x");
 
     GISMO_ENSURE( uv.cols() == X.cols() && uv.rows() == 2 && X.rows() == 3,
                   "Wrong input");
@@ -576,18 +578,20 @@ int main(int argc, char *argv[])
 
     file_opt.open(std::to_string(now)+"results_adaptive_CPDM.csv");
     //file_opt << "it, time, fraction, dofs, rmse\n";
-    file_opt << "m, deg, pen, dofs, optIt, refIt, pc, min, max, mse, rmse, time\n";
+    file_opt << "m, deg, pen, dofs, optTol, optIt, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
     file_pc.open(std::to_string(now)+"results_adaptive_APDM.csv");
-    file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, time\n";
+    file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
     real_t finaltime_adaptiveLoop = 0;
+    gtoll = gtoll * 4;
+    maxIter = maxIter / 2;
     for(int refIt = 0; refIt <= maxRef; refIt++) // adaptive loop on the spline space
     {
         gsInfo<<"------------------------------------------------\n";
         gsInfo << "C-PDM for the adaptive loop.\n";
         gsInfo<<"Adaptive loop iteration "<< refIt <<".."<<"\n";
-        prefix = prefix + internal::to_string(refIt);
+        prefix = std::to_string(now) + "adaptive" + internal::to_string(refIt) + "it_";
         real_t finaltime_itLoop = 0.;
 
         gsTime.restart();
@@ -595,6 +599,8 @@ int main(int argc, char *argv[])
         finaltime_itLoop += gsTime.stop();
         // the first opt_f is empty, therefore only the fitting and the computation of the errors is applied.
         // the computation of the errors is not needed, but it is by default done.
+
+        gsWriteParaview(*opt_f.result(), prefix + "cpdm_geo_in", 100000, true);
 
         // after the least square fitting with THB-splines, we optimize the control points and the parametric values.
         gsMatrix<> coefs(basis.size(), 3);
@@ -614,9 +620,13 @@ int main(int argc, char *argv[])
         gsMatrix<> currentparams(2, X.cols());
         gsMatrix<> currentcoefs( original.coefs().rows(), original.coefs().cols() ); // the original for each iteration of the adaptive loop.
 
+
+        gtoll = gtoll / 4;
+        maxIter = maxIter * 2;
+
         optimizer = new gsHLBFGS<real_t>(&problem);
         optimizer->options().setInt("Verbose",verbosity);
-        optimizer->options().setReal("MinGradLen", gtoll); // 1e-12
+        optimizer->options().setReal("MinGradLen", gtoll); // 1e-6 : more or less as refinement tolerance; there should be a balance between the two;
         optimizer->options().setInt("LBFGSUpdates", mupdate);
         optimizer->options().setReal("MinStepLen", 1e-12);
         optimizer->options().setInt("MaxEval", 100);
@@ -677,9 +687,9 @@ int main(int argc, char *argv[])
 
         gsMesh<> mesh(opt_f.result()->basis());
         gsMatrix<> uv_fitting = opt_f.returnParamValues() ;
-        gsWriteParaview(mesh, prefix + "_iter_adaptive_mesh_cpdm");
-        gsWriteParaview(*opt_f.result(), prefix + "_iter_adaptive_geo_cpdm", 100000, true);
-        gsWriteParaviewPoints(uv_fitting, prefix + "_iter_adaptive_fitting_parameters_pdm");
+        gsWriteParaview(mesh, prefix + "cpdm_mesh");
+        gsWriteParaview(*opt_f.result(), prefix + "cpdm_geo_moved", 100000, true);
+        gsWriteParaviewPoints(uv_fitting, prefix + "cpdm_parameters");
 
         // compute mean squared error
         opt_f.get_Error(errors2, 0);
@@ -715,12 +725,14 @@ int main(int argc, char *argv[])
         // file_opt << std::to_string(refIt+1) << "," << std::to_string(finaltime_adaptiveLoop) << "," << std::to_string(finaltime_itLoop) << "," << std::to_string(dofs) << "," << std::to_string(rmse) << "\n";
 
         // file_opt << "m, deg, pen, dofs, optIt, refIt, pc, min, max, mse, rmse, time\n";
-        file_opt << X.cols() << "," << deg << "," << lambda << ","
-                    << basis.size() << ","<< optimizer->iterations() << "," << refIt << "," << maxPcIter << ","
+        // file_opt << "m, deg, pen, dofs, optTol, optIt, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
+        file_opt << X.cols() << "," << deg << "," << lambda << "," << basis.size()<< ","
+                 << gtoll << ", " << optimizer->iterations() << "," << refIt << "," << maxPcIter << ","
                     << sol_min_max_mse[0] << std::scientific << ","
     					      << sol_min_max_mse[1] << std::scientific << ","
     					      << sol_min_max_mse[2] << std::scientific << ","
                     << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+                    << percentagePoint << "," << tolerance << ","
                     << finaltime_itLoop << "\n";
 
 
@@ -753,7 +765,7 @@ int main(int argc, char *argv[])
           gsInfo<<"------------------------------------------------\n";
           gsInfo << "A-PDM for the adaptive loop.\n";
           gsInfo<<"Adaptive loop iteration "<< refIt <<".."<<"\n";
-          prefix = prefix + internal::to_string(refIt);
+          prefix = std::to_string(now) + "adaptive" + internal::to_string(refIt) + "it_";
           real_t finaltime_itLoop = 0.;
 
           gsTime.restart();
@@ -767,9 +779,9 @@ int main(int argc, char *argv[])
 
           gsMesh<> mesh(ref.result()->basis());
           gsMatrix<> uv_fitting = ref.returnParamValues() ;
-          gsWriteParaview(mesh, prefix + "_iter_mesh_apdm");
-          gsWriteParaview(*ref.result(), prefix + "_iter_geo_apdm", 100000, true);
-          gsWriteParaviewPoints(uv_fitting, prefix + "_iter_fitting_parameters_apdm");
+          gsWriteParaview(mesh, prefix + "apdm_mesh");
+          gsWriteParaview(*ref.result(), prefix + "apdm_geo", 100000, true);
+          gsWriteParaviewPoints(uv_fitting, prefix + "apdm_parameters");
 
           ref.get_Error(adapt_errors2, 0);
           adapt_sum_of_errors2 = std::accumulate(errors2.begin(), errors2.end(), 0.0);
@@ -794,13 +806,14 @@ int main(int argc, char *argv[])
           finaltime_adaptiveLoop += finaltime_itLoop;
           // std::setprecision(12);
           // file_pc << std::to_string(refIt+1) << "," << std::to_string(finaltime_adaptiveLoop) << "," << std::to_string(finaltime_itLoop) << "," << std::to_string(dofs) << "," << std::to_string(rmse) << "\n";
-
+          // file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
           file_pc << X.cols() << "," << deg << "," << lambda << ","
                   << dofs << ","<< refIt << "," << maxPcIter << ","
                   << sol_min_max_mse[0] << std::scientific << ","
       					  << sol_min_max_mse[1] << std::scientific << ","
       					  << sol_min_max_mse[2] << std::scientific << ","
                   << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+                  << percentagePoint << "," << tolerance << ","
                   << finaltime_itLoop << "\n";
 
           if ( ref.maxPointError() < tolerance )
