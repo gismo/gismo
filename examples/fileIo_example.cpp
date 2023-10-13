@@ -174,10 +174,10 @@ int main(int argc, char *argv[])
 
       if ( gsSurface<> * srf = dynamic_cast<gsSurface<>*>(o.get()) )
       {      
-#ifdef gsOpennurbs_ENABLED
-      gsInfo<< "  Write back to geo.3dm\n";
-      extensions::writeON_NurbsSurface(*srf,"geo");
-#endif
+// #ifdef gsOpennurbs_ENABLED
+//       gsInfo<< "  Write back to geo.3dm\n"; 
+//       extensions::writeON_NurbsSurface(*srf,"geo");
+// #endif
 #ifdef gsOpenCascade_ENABLED
       gsInfo<< "  Write back to geo.igs\n";
       extensions::writeOcctIges(*srf,"geo");
