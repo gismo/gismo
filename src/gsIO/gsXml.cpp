@@ -185,6 +185,7 @@ gsXmlNode *  anyByTag(const std::string & tag,
 /// Appends a box topology into node, used for gsMultiPatch and gsMultiBasis.
 void appendBoxTopology(const gsBoxTopology& topology,
                        gsXmlNode* node,
+                       std::map<index_t, index_t> id_map,
                        gsXmlTree& data)
 {
     std::ostringstream oss;
@@ -197,15 +198,15 @@ void appendBoxTopology(const gsBoxTopology& topology,
         {
             if ( it->type() != interaction::contact)
             {
-                oss << it->first().patch  << " " << int(it->first().side()) << " "
-                    << it->second().patch << " " << int(it->second().side()) << " "
+                oss << id_map[it->first().patch]  << " " << int(it->first().side()) << " "
+                    << id_map[it->second().patch] << " " << int(it->second().side()) << " "
                     << it->dirMap().transpose() << " "
                     << it->dirOrientation().transpose() << "\n";
             }
             else
             {
-                contact_oss << it->first().patch  << " " << int(it->first().side()) << " "
-                    << it->second().patch << " " << int(it->second().side()) << " "
+                contact_oss << id_map[it->first().patch]  << " " << int(it->first().side()) << " "
+                    << id_map[it->second().patch] << " " << int(it->second().side()) << " "
                     << it->dirMap().transpose() << " "
                     << it->dirOrientation().transpose() << "\n";
             }

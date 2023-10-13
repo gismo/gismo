@@ -325,6 +325,7 @@ GISMO_EXPORT void getInterfaces(gsXmlNode* node,
 
 GISMO_EXPORT void appendBoxTopology(const gsBoxTopology& topology,
                                     gsXmlNode* node,
+                                    std::map<index_t, index_t> id_map,
                                     gsXmlTree& data);
 
 /// Helper to allocate XML node with gsMatrix value
