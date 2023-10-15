@@ -57,7 +57,7 @@ public:
 
     short_t domainDim () const {return m_function->domainDim();}
 
-    short_t targetDim () const {return 1;} // It is a coordinate of a vector function
+    short_t targetDim () const {return (short_t)m_index.size();} // It is a coordinate of a vector function
 
     gsMatrix<T> support() const;
 
