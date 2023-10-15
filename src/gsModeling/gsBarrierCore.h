@@ -104,7 +104,8 @@ void verboseLog(const std::string &message, const index_t &verbose) {
 
 /// gsBarrierCore
 template<short_t d, typename T= real_t>
-struct gsBarrierCore {
+class gsBarrierCore
+{
  private:
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::space space;

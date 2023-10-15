@@ -42,7 +42,7 @@ public:
         result.at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
     }
 
-    void evalAllDers_into(const gsMatrix<T> & u, const int n,
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result) const
     {
         GISMO_ASSERT(1==u.cols(), "Single argument assumed");
