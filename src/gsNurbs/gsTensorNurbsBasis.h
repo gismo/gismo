@@ -245,8 +245,8 @@ public:
     {
         if ( const gsTensorNurbsBasis<d,T> * _other = dynamic_cast<const gsTensorNurbsBasis<d,T> *>(&other) )
             m_src->matchWith(bi,_other->source(),bndThis,bndOther,offset);
-        else if ( const gsTensorBasis<d,T> * _other = dynamic_cast<const gsTensorBasis<d,T> *>(&other) )
-            m_src->matchWith(bi,*_other,bndThis,bndOther,offset);
+        else if ( const gsTensorBasis<d,T> * __other = dynamic_cast<const gsTensorBasis<d,T> *>(&other) )
+            m_src->matchWith(bi,*__other,bndThis,bndOther,offset);
         else
             gsWarn<<"Cannot match with "<<other<<"\n";
     }
