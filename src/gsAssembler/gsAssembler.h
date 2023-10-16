@@ -427,6 +427,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push()
     {
+#       pragma omp parallel for
         for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor visitor(*m_pde_ptr);
@@ -440,6 +441,7 @@ public: /* Element visitors */
     template<class BElementVisitor>
     void push(const bcContainer & BCs)
     {
+#       pragma omp parallel for
         for (typename bcContainer::const_iterator it
              = BCs.begin(); it!= BCs.end(); ++it)
         {
@@ -454,6 +456,7 @@ public: /* Element visitors */
     template<class ElementVisitor>
     void push(const ElementVisitor & visitor)
     {
+#       pragma omp parallel for
         for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
         {
             ElementVisitor curVisitor = visitor;
@@ -479,6 +482,7 @@ public: /* Element visitors */
         InterfaceVisitor visitor(*m_pde_ptr);
 
         const gsMultiPatch<T> & mp = m_pde_ptr->domain();
+#       pragma omp parallel for
         for ( typename gsMultiPatch<T>::const_iiterator
                   it = mp.iBegin(); it != mp.iEnd(); ++it )
         {
@@ -714,8 +718,8 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
         visitor_.assemble(*domIt, quWeights);
 
         // Push to global matrix and right-hand side vector
-#pragma omp critical(localToGlobal)
-        visitor_.localToGlobal(patchIndex, m_ddof, m_system); // omp_locks inside
+	//#pragma omp critical(localToGlobal)
+        visitor_.localToGlobal(patchIndex, m_ddof, m_system);
     }
 }//omp parallel
 

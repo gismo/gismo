@@ -118,6 +118,9 @@ public:
     // Refresh routine
     virtual void refresh();
 
+    // Initializes the sparse matrix, with its sparse pattern
+    void initMatrix();
+    
     // Main assembly routine
     virtual void assemble();
     

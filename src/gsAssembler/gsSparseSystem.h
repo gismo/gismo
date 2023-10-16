@@ -987,7 +987,8 @@ public: /* Add local contributions to system matrix and right-hand side */
             const int ii =  m_rstr.at(r) + actives(i);
             if ( rowMap.is_free_index(actives.at(i)) )
             {
-                m_rhs.row(ii) += localRhs.row(i);
+#             pragma omp atomic
+	      m_rhs.at(ii) += localRhs.at(i);
 
                 for (index_t j = 0; j < numActive; ++j)
                 {
@@ -997,12 +998,14 @@ public: /* Add local contributions to system matrix and right-hand side */
                         // If matrix is symmetric, we store only lower
                         // triangular part
                         if ( (!symm) || jj <= ii )
-                            m_matrix.coeffRef(ii, jj) += localMat(i, j);
+#                           pragma omp atomic
+                            m_matrix.getCoeff(ii, jj) += localMat(i, j);
                     }
                     else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                     {
-                        m_rhs.row(ii).noalias() -= localMat(i, j) *
-                                eliminatedDofs.row( rowMap.global_to_bindex(actives.at(j)) );
+#                       pragma omp atomic
+		        m_rhs.at(ii) -= localMat(i, j) *
+			  eliminatedDofs.at( rowMap.global_to_bindex(actives.at(j)) );
                     }
                 }
             }

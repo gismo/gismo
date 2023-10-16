@@ -17,6 +17,8 @@
 #include <gsAssembler/gsVisitorNitsche.h> // Nitsche boundary integrals
 #include <gsAssembler/gsVisitorDg.h>      // DG interface integrals
 
+#include <gsUtils/gsStopwatch.h>
+
 namespace gismo
 {
 
@@ -46,11 +48,19 @@ void gsPoissonAssembler<T>::assemble()
     // Reserve sparse system
     m_system.reserve(m_bases[0], m_options, this->pde().numRhs());
 
+    //Get sparsity pattern
+    double init_time(0);
+    gsStopwatch timer;
+    timer.restart();
+    initMatrix();
+    init_time += timer.stop();
+    gsInfo << "      Init: " << init_time << "\n";
+
     // Compute the Dirichlet Degrees of freedom (if needed by m_options)
     Base::computeDirichletDofs();
 
     // Clean the sparse system
-   // m_system.setZero(); //<< this call leads to a quite significant performance degrade!
+    // m_system.setZero(); //<< this call leads to a quite significant performance degrade!
 
     // Assemble volume integrals
     Base::template push<gsVisitorPoisson<T> >();
@@ -77,5 +87,52 @@ void gsPoissonAssembler<T>::assemble()
     Base::finalize();
 }
 
+template <class T>
+void gsPoissonAssembler<T>::initMatrix()
+{
+    for (size_t np = 0; np < m_pde_ptr->domain().nPatches(); ++np)
+    {
+	gsMatrix<index_t> actives;
+	gsMatrix<T> cpt;
+	
+        // Initialize domain element iterator -- using unknown 0
+        const gsBasis<T> & basis = m_bases[0][np];
+        typename gsBasis<T>::domainIter domIt = basis.makeDomainIterator();
+
+        // Start iteration over elements
+        for (; domIt->good(); domIt->next() )
+        {
+            cpt = domIt->center;
+            actives = basis.active(cpt);
+	    m_system.mapColIndices(actives, np, actives);
+	    
+            const index_t numActive = actives.rows();
+            const gsDofMapper & rowMap = m_system.rowMapper(0);
+
+            GISMO_ASSERT( &rowMap == &m_system.colMapper(0), "Error");
+            GISMO_ASSERT( m_system.matrix().cols() == m_system.rhs().rows(), "gsSparseSystem is not allocated");
+
+            for (index_t i = 0; i != numActive; ++i)
+            {
+                const int ii =  actives(i);
+                if ( rowMap.is_free_index(actives.at(i)) )
+                {
+                    for (index_t j = 0; j < numActive; ++j)
+                    {
+                        const int jj = actives(j);
+                        if ( rowMap.is_free_index(actives.at(j)) )
+                        {
+                            // Matrix is symmetric, we store only lower
+                            // triangular part
+                            m_system.matrix().coeffRef(ii, jj) += 0.0;
+                        }
+                    }
+                }
+            }
+        }
+    }//for patches
+
+    m_system.matrix().makeCompressed();
+}
 
 }// namespace gismo

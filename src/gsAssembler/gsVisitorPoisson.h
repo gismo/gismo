@@ -92,6 +92,7 @@ public:
         gsMatrix<T> & bVals  = basisData[0];
         gsMatrix<T> & bGrads = basisData[1];
 
+        #pragma omp parallel for
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes
         {
             // Multiply weight by the geometry measure
@@ -100,7 +101,9 @@ public:
             // Compute physical gradients at k as a Dim x NumActive matrix
             transformGradients(md, k, bGrads, physGrad);
 
+            #pragma omp critical(localRhs)
             localRhs.noalias() += weight * ( bVals.col(k) * rhsVals.col(k).transpose() ) ;
+            #pragma omp critical(localMat)
             localMat.noalias() += weight * (physGrad.transpose() * physGrad);
         }
     }
