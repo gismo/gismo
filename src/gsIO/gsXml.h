@@ -25,6 +25,7 @@
 //#include <rapidxml/rapidxml_utils.hpp>     // External file
 //#include <rapidxml/rapidxml_iterators.hpp> // External file
 
+#include <cstring>
 
 /*
 // Forward declare rapidxml structures
@@ -48,7 +49,9 @@ namespace rapidxml
     static obj * getAny (gsXmlNode * node)      \
     { return get(anyByTag(tag(), node)); }      \
     static  obj * getId (gsXmlNode * node, int id) \
-    { return getById< obj >(node, id); }
+    { return getById< obj >(node, id); }                            \
+    static  obj * getLabel(gsXmlNode * node, std::string & label) \
+    { return getByLabel< obj >(node, label); }
 
 #define GSXML_GET_POINTER(obj)          \
     static obj * get (gsXmlNode * node) \
@@ -217,7 +220,44 @@ public:
     //static void     getAny_into   (gsXmlNode * node);
     static Object * getId    (gsXmlNode * node, int id);
     //static void     getId_into   (gsXmlNode * node, int id, Object & result);
+    static Object * getLabel(gsXmlNode * node, std::string & label);
 };
+
+/// Helper to read an object by a given \em id value:
+/// \param node parent node, we check his children to get the given \em id
+/// \param label
+template<class Object>
+Object * getByLabel(gsXmlNode * node, std::string & label)
+{
+    std::string tag = internal::gsXml<Object>::tag();
+    for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
+         child; child = child->next_sibling(tag.c_str()))
+    {
+        const gsXmlAttribute * id_at = child->first_attribute("label");
+        if (id_at && !strcmp(id_at->value(),label.c_str()) )
+            return internal::gsXml<Object>::get(child);
+    }
+    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
+             <<" with label="<<label<<" not found.\n";
+    return NULL;
+}
+
+/// Helper to fetch a node with a certain \em attribute value.
+/// \param root parent node, we check his children for the given \em id
+/// \param id the ID number which is seeked for
+inline gsXmlNode * searchNode(const std::string & name, const std::string & value, gsXmlNode * root)
+{
+    for (gsXmlNode * child = root->first_node();
+         child; child = child->next_sibling())
+    {
+        const gsXmlAttribute * id_at = child->first_attribute(value.c_str());
+        if ( id_at &&  !strcmp(id_at->value(),value.c_str()) )
+            return child;
+    }
+    gsWarn <<"gsXmlUtils: No object with property '"<<name<<" = "<< value<<"' found.\n";
+    return NULL;
+}
+
 
 /// Helper to read an object by a given \em id value:
 /// \param node parent node, we check his children to get the given \em id
