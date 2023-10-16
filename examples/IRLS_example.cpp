@@ -1,4 +1,4 @@
-/** @file fitting_example.cpp
+/** @file IRLS_example.cpp
 
     @brief Demonstrates adaptive fitting of data samples
 
