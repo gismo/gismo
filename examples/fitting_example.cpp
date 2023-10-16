@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     gsWriteParaviewPoints(xyz, "points");
 
     // This is for outputing an XML file, if requested
-    gsFileData<> fd;
+    gsFileData<> fd, pout;
 
     // Check if matrix sizes are OK
     GISMO_ASSERT( uv.cols() == xyz.cols() && uv.rows() == 2 && xyz.rows() == 3,
@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
         else{
           if(sepIndex < 0){
             gsInfo << "Apply parameter correction to the whole pointcloud.\n";
+            ref.nextIteration(tolerance, threshold, maxPcIter);
           }
           else{
             gsInfo << "No parameter correction on boundary points.\n";
@@ -243,6 +244,8 @@ int main(int argc, char *argv[])
         gsWriteParaview(*ref.result(), "final_geometry", 100000, false, true);
         gsInfo << "Solution:\n" << *ref.result() << "\n";
         fd << *ref.result() ;
+        pout << fitting_out_parameters;
+        pout << xyz;
 
         gsWriteParaviewPoints(fitting_out_parameters, "fitting_out_parameters");
         for(index_t idx = 0; idx < modevec.size(); idx++)
@@ -256,6 +259,7 @@ int main(int argc, char *argv[])
           gsWriteParaviewPoints(print_point, idxpointname);
         }
         fd.dump("fitting_out");
+        pout.dump("data_out");
     }
     else
         gsInfo << "Done. No output created, re-run with --save to get a xml "
