@@ -24,6 +24,10 @@ class gsStokesPde : public gsPde<T>
 {
 protected:
     gsStokesPde( ) { }
+    gsStokesPde(const gsStokesPde & o)  :
+    gsStokesPde(o.m_domain,o.m_boundary_conditions, o.m_force, o.m_source, o.m_viscosity)
+    { }
+
     using gsPde<T>::m_domain;
     using gsPde<T>::m_unknownDim;
 
@@ -31,8 +35,8 @@ public:
     gsStokesPde(
         const gsMultiPatch<T>          &domain,
         const gsBoundaryConditions<T>  &bc,
-         gsFunction<T>       *force,
-        gsFunction<T>       *source = NULL,
+        const  gsFunction<T>       *force,
+        const gsFunction<T>       *source = NULL,
         const T                    viscosity = 1
         )
         : gsPde<T>(domain,bc),    m_viscosity(viscosity)
