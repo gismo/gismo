@@ -58,7 +58,7 @@ public:
     const gsFunction<T>* source() const
     { return m_source; }
 
-    T viscocity() const                 { return m_viscosity; }
+    T viscosity() const                 { return m_viscosity; }
 
 
     /// Prints the object as a string.
