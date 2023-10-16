@@ -1,4 +1,4 @@
-/** @file gsScatterGeometry.cpp
+/** @file gsSamplingScatteredGeometry.cpp
 
     @brief Take a gsGeometry and make a point-cloud out of it.
 
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     //gsInfo << "Random uniform interior parameters:\n" << uv_interiors.rows() << " x " << uv_interiors.cols() << "\n";
     gsWriteParaviewPoints(uv_interiors, "interior_parameters");
 
-    int numBts = math::ceil(math::sqrt(totPts)) + 2; // b = math.ceil(math.sqrt(n)) + 2
+    index_t numBts = math::ceil(math::sqrt(totPts)) + 2; // b = math.ceil(math.sqrt(n)) + 2
     //gsInfo << "Number of boundary points: " << numBts*4-4 << "\n";
 
     // Sample the boundaries and the corners.
