@@ -71,6 +71,9 @@ public:
     /// Main function which performs the computation
     virtual void compute();
 
+    /// Prints the object as a string.
+    // virtual std::ostream &print(std::ostream &os) const;
+
     /**
      * Parametric Coordinates u,v from 0..1
      * @return

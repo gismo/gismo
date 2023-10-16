@@ -776,4 +776,17 @@ std::list<T> gsParametrization<T>::LocalNeighbourhood::getNeighbourDistances() c
     return m_neighbourDistances;
 }
 
+// /// Prints the object as a string.
+// template<class T>
+// std::ostream & gsParametrization<T>::print(std::ostream &os) const
+// {
+//     os << "gsParameterization:" << this->dim()<< ", size="<< this->size() <<".";
+//     if( m_isPeriodic != -1 )
+//         os << "Periodic in " << m_isPeriodic << "-th direction.\n";
+//     for ( short_t i = 0; i!=d; ++i )
+//         os << "\n  Direction "<< i <<": "<< Self_t::component(i).knots() <<" ";
+//     os << "\n";
+//     return os;
+// }
+
 } // namespace gismo
