@@ -255,6 +255,7 @@ public:
     void mapToSourceCoefs(gsMatrix<weightType> const & targetCoefs,gsMatrix<weightType> & sourceCoefs) const
     {
         // from target to source it's just a multiplication
+        GISMO_ASSERT(targetCoefs.rows()==m_matrix.cols(),"Wrong coefficient size!");
         sourceCoefs.noalias()=m_matrix * targetCoefs;
     }
 
@@ -438,7 +439,7 @@ public:
     Iterator fastSourceToTarget(indexType source) const
     {
         GISMO_ASSERT(m_matrix.isCompressed(),"optimize() must be called on the mapper with fastSourceToTarget flag before using this function.");
-        GISMO_ASSERT(source<m_matrix.rows() && 0<=source,"index out of bounds");
+        GISMO_ASSERT(source<m_matrix.rows() && 0<=source,"index "<<source<<" out of bounds (matrix.rows() = "<<m_matrix.rows());
         return Iterator(m_matrix,source);
     }
 

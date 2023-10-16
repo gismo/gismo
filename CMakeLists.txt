@@ -95,7 +95,9 @@ endif()
 ## #################################################################
 
 #Fix for Eigen directory
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_SOURCE_DIR}/external/Eigen)
+if (NOT EXISTS "${PROJECT_SOURCE_DIR}/external/Eigen")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_SOURCE_DIR}/external/Eigen)
+endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
 

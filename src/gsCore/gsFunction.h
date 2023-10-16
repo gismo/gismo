@@ -220,6 +220,13 @@ public:
     virtual T distanceL2(gsFunction<T> const &) const
     { GISMO_NO_IMPLEMENTATION }
 
+    /// Takes the physical \a points and computes the corresponding
+    /// parameter values.  If the point cannot be inverted (eg. is not
+    /// part of the geometry) the corresponding parameter values will be undefined
+    virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
+                              const T accuracy = 1e-6,
+                              const bool useInitialPoint = false) const;
+
     /// Newton-Raphson method to find a solution of the equation f(\a
     /// arg) = \a value with starting vector \a arg.
     /// If the point cannot be inverted the corresponding parameter

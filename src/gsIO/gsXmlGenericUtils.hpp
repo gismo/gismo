@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <gsCore/gsConstantFunction.h>
+
 namespace gismo {
 
 namespace internal {
@@ -140,8 +142,31 @@ Object * getHTensorBasisFromXml ( gsXmlNode * node)
             all_boxes.push_back(c);
         }
     }
-    Object * hbs = new Object(*tp, all_boxes);
+
+    gsXmlAttribute * manualLevels = node->first_attribute("manualLevels");
+    bool ml = manualLevels && !strcmp(manualLevels->value(),"true");
+    Object * hbs = new Object(*tp, ml);
     delete tp;
+
+    if (ml)
+    {
+        index_t lvl = 1;
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = node->first_node("Basis");
+             child; child = child->next_sibling("Basis"))
+        {
+            id_at = child->first_attribute("level");
+            if (id_at && atoi(id_at->value()) == lvl )
+            {
+                ++lvl;
+                auto tb = memory::make_unique(
+                    internal::gsXml<gsTensorBSplineBasis<d,T> >::get(child) );
+                hbs->addLevel( give(*tb) );
+            }
+        }
+    }
+
+    hbs->refineElements(all_boxes);
     return hbs;
 }
 
@@ -159,9 +184,25 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
 
     //tp_node->append_attribute( makeAttribute( "levels",2 ,data )); // deprecated
   
-    // Write the component bases
-    gsXmlNode * tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
-    tp_node->append_node(tmp);
+    gsXmlNode * tmp;
+    if (obj.manualLevels())
+    {
+        tp_node->append_attribute( makeAttribute("manualLevels","true", data) );
+        for (index_t l = 0; l != obj.numLevels(); l++)
+        {
+            tmp = putTensorBasisToXml(obj.tensorLevel(l), data);
+            tmp->append_attribute( makeAttribute("level", to_string(l), data ) );
+            tp_node->append_node(tmp);
+        }
+    }
+    else
+    {
+        tp_node->append_attribute( makeAttribute("manualLevels","false", data) );
+        // Write the component bases
+        tmp = putTensorBasisToXml(obj.tensorLevel(0), data);
+        tp_node->append_node(tmp);
+    }
+
     
     //Output boxes
     gsMatrix<index_t> box(1,2*d);
@@ -363,8 +404,70 @@ gsXmlNode * putGeometryToXml ( Object const & obj, gsXmlTree & data)
     return bs;
 }
 
+template < class T >
+gsXmlNode * putFunctionExprToXml(const gsFunctionExpr<T> & obj, gsXmlNode * result, gsXmlTree & data)
+{
+    std::string typeStr = gsXml<gsFunctionExpr<T> >::type();
+    gsXmlAttribute * type = internal::makeAttribute("type", typeStr, data);
+    result->append_attribute(type);
+    gsXmlAttribute * dim = internal::makeAttribute("dim", obj.domainDim(),
+            data);
+    result->append_attribute(dim);
+    // set value
+    const short_t tdim = obj.targetDim();
+    if ( tdim == 1)
+    {
+        result->value( makeValue(obj.expression(), data) );
+    }
+    else
+    {
+        gsXmlNode * cnode;
+        for (short_t c = 0; c!=tdim; ++c)
+        {
+            cnode = makeNode("c", obj.expression(c), data);
+            result->append_node(cnode);
+        }
+    }
+    return result;
+}
 
+template < class T >
+gsXmlNode * putConstantFunctionToXml(const gsConstantFunction<T> & obj,gsXmlNode * result, gsXmlTree & data)
+{
+    std::string typeStr = "FunctionExpr";
+    gsXmlAttribute * type = internal::makeAttribute("type", typeStr, data);
+    result->append_attribute(type);
+    gsXmlAttribute * dim = internal::makeAttribute("dim", obj.domainDim(),
+            data);
+    result->append_attribute(dim);
 
+    // set value
+    gsMatrix<T> value = obj.value();
+    result->value( makeValue( value, data, true) );
+    return result;
+}
+
+template < class T >
+gsXmlNode * putFunctionToXml ( const typename gsFunctionSet<T>::Ptr & obj, gsXmlTree & data, int index)
+{
+    gsXmlNode * result = internal::makeNode("Function", data);
+    if (typeid(*obj) == typeid(gsFunctionExpr<T> ))
+    {
+        gsFunctionExpr<T> * ptr2 =
+                dynamic_cast<gsFunctionExpr<T> *>(obj.get());
+        result = putFunctionExprToXml(*ptr2, result, data);
+    }
+    else if (typeid(*obj) == typeid(gsConstantFunction<T> ))
+        {
+        gsConstantFunction<T> * ptr2 =
+                dynamic_cast<gsConstantFunction<T> *>(obj.get());
+        result = putConstantFunctionToXml(*ptr2, result, data);
+    }
+    gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
+            data);
+    result->append_attribute(indexNode);
+    return result;
+}
 
 
 

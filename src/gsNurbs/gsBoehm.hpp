@@ -510,6 +510,9 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
         const bool update_knots)
 {
 
+    if (valBegin==valEnd)
+        return;
+
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
     const index_t nik = std::distance(valBegin, valEnd); // number of inserted knots
@@ -521,7 +524,6 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
     const index_t a =  knots.iFind(*valBegin)     - knots.begin();
     const index_t b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
-
 
     // allocate a memory for new knots and new control points
     gsSparseVector<T> nknots(b + p + nik);

@@ -52,6 +52,7 @@ public:
     typedef ifContainer::const_iterator const_iiterator;
 
     typedef const boundaryInterface * InterfacePtr;
+    typedef patchSide * BoundaryPtr;
 public:
 
     /// Default constructor
@@ -280,6 +281,9 @@ public:
     /// Returns a pointer to the interface between boxes \a b1 and \a
     /// b2, if one exists, otherwise it returns a null pointer
     InterfacePtr findInterface(const index_t b1, const index_t b2) const;
+
+    /// Returns a pointer to the boundary stored in this class, given \a ps
+    BoundaryPtr getBoundary(const patchSide & ps);
 
     /// set \a result to the associated interface of \a ps, returns
     /// false if it is a boundary patchSide

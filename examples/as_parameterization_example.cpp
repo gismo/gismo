@@ -221,7 +221,7 @@ int main(int argc, char *argv[]) {
     gsInfo << "Now, the multi-patch geometry is: " << *mp << "\n";
   //! [refine the geometry for better result]
 
-  //! [perform analysis-suitable parameterization construstion]
+  //! [perform analysis-suitable parameterization construction]
   gsMultiPatch<> result;
   if (geodim == 2) {
     gsBarrierPatch<2, real_t> opt(*mp, !isInterfaceFree);
@@ -240,16 +240,14 @@ int main(int argc, char *argv[]) {
     gsInfo << "current version only support pardim = geodim = 2 or 3.\n";
     return EXIT_FAILURE;
   }
-  //! [perform analysis-suitable parameterization construstion]
+  //! [perform analysis-suitable parameterization construction]
 
   //! [output the parameterization result]
   std::string outputFilename = INPUT_FILE;
-  outputFilename = outputFilename.substr(outputFilename.find_last_of("/\\") +1); // file name without a path
-  outputFilename = outputFilename.substr(0, outputFilename.find_last_of(".\\")); // file name without an extension
+  outputFilename = gsFileManager::getBasename(outputFilename); // file name without a path
   outputFilename += "_result";
   outputFilename += "R"+std::to_string(numRefine)+"E"+std::to_string(numElevate);
-  if (!isInterfaceFree) outputFilename += "Fixed";
-  else outputFilename += "Free";
+  outputFilename += (!isInterfaceFree) ? "Fixed" : "Free";
 
   outputResult(result, outputFilename);
   gsInfo << "The results have been written into " << outputFilename << "\n";

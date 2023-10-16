@@ -209,6 +209,15 @@ public:
         std::swap(*m_src, tmp.basis() );
     }
 
+    // todo (HV): test!!
+    void degreeIncrease(short_t const& i = 1, short_t const dir = -1)
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeIncrease(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
     void degreeReduce(short_t const& i = 1, short_t const dir = -1)
     {
         typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));

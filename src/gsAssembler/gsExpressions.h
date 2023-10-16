@@ -1247,9 +1247,9 @@ public:
                 // m_sd->mapper.markBoundary(0, bnd, 0);
             }
         } else if (const gsMappedBasis<2, T> *mapb =
-                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source())) {
+                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source()))
+        {
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size(), this->dim());
-            const index_t dim = this->dim();
 
             if (0 == this->interfaceCont()) // C^0 matching interface
             {
@@ -3041,7 +3041,10 @@ public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    normal_expr(const gsGeometryMap<T> & G) : _G(G) { }
+    normal_expr(const gsGeometryMap<T> & G) : _G(G)
+    {
+        GISMO_ENSURE( _G.source().domainDim()+1 == _G.source().targetDim(), "Surface normal requires codimension 1");
+    }
 
     auto eval(const index_t k) const -> decltype(_G.data().normals.col(k))
     { return _G.data().normals.col(k); }
