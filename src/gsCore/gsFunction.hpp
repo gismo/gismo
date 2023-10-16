@@ -362,7 +362,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     //gsGradientDescent<T> solver( &fmin );
     gsHLBFGS<T> solver( &fmin );
 
-    solver.options().setInt("MaxIterations",100);
+    solver.options().setInt("MaxIterations",1000);
     solver.options().setInt("Verbose",0);
     // add lower limits and upper limits for HLBFGS
     // optimizer->solve(problem.currentDesign());
