@@ -353,6 +353,7 @@ bool gsHFitting<d, T>::nextIterationFixedBoundary(T tolerance,
     this->compute(m_lambda);
 
     //parameter correction
+    gsInfo << "Boundaries are fixed.\n";
     this->parameterCorrectionFixedBoundary(1e-7, maxPcIter, sepIndex);//closestPoint accuracy
 
     this->computeErrors();
