@@ -645,7 +645,9 @@ private:
     
 public:
     // Needed since m_pdomain is 16B aligned
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
 }; // class gsTemplate
 

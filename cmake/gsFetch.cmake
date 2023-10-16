@@ -160,10 +160,12 @@ function(gismo_fetch_module SUBMODULE)
   #message("Fetch ${SUBMODULE} (repository: ${GISMO_REPO}, revision: ${GISMO_REPO_REV}, protocol: ${GISMO_FETCH_PROT}, username: ${GISMO_UNAME}, password: ${GISMO_PASS})")
 
   if("x${GISMO_REPO}" STREQUAL "xgit")
-    if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
-      set(git_repo git@github.com:gismo/${SUBMODULE}.git)
-    elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
-      set(git_repo https://github.com/gismo/${SUBMODULE}.git)
+    if(NOT ${SUBMODULE}_url)
+      if("x${GISMO_FETCH_PROT}" STREQUAL "xssh")
+	set(${SUBMODULE}_url git@github.com:gismo/${SUBMODULE}.git)
+      elseif("x${GISMO_FETCH_PROT}" STREQUAL "xhttps")
+	set(${SUBMODULE}_url https://github.com/gismo/${SUBMODULE}.git)
+      endif()
     endif()
 
     if(NOT EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/CMakeLists.txt")
@@ -171,12 +173,14 @@ function(gismo_fetch_module SUBMODULE)
       find_package(Git REQUIRED)
 
       # Fetch SUBMODULE (note: git fetch --unshallow to get full clone)
-      execute_process(COMMAND "${GIT_EXECUTABLE}" "clone" "--depth" "1" ${git_repo}
+      execute_process(COMMAND "${GIT_EXECUTABLE}" "clone" "--depth" "1" ${${SUBMODULE}_url}
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional
 	ERROR_QUIET
+	#OUTPUT_VARIABLE gitclone_out
+	#ERROR_VARIABLE gitclone_err
 	RESULT_VARIABLE gitclone_res)
       if(gitclone_res AND NOT gitclone_res EQUAL 0)
-	message(FATAL_ERROR "Unable to clone module ${SUBMODULE} (${git_repo})")
+	message(FATAL_ERROR "Unable to clone module ${SUBMODULE} (${${SUBMODULE}_url})")
       endif()
 
       if(NOT GISMO_SUBMODULES_HEAD AND ${SUBMODULE}_HASH)# hash in submodules.txt
@@ -185,7 +189,7 @@ function(gismo_fetch_module SUBMODULE)
 	  ERROR_QUIET
 	  RESULT_VARIABLE gitfetch_res)
 	if(gitfetch_res AND NOT gitfetch_res EQUAL 0)
-	  message(FATAL_ERROR "Unable to fetch commit hash ${${SUBMODULE}_HASH} in ${SUBMODULE} (${git_repo})")
+	  message(FATAL_ERROR "Unable to fetch commit hash ${${SUBMODULE}_HASH} in ${SUBMODULE} (${${SUBMODULE}_url})")
 	endif()
 	execute_process(COMMAND "${GIT_EXECUTABLE}" "checkout" ${${SUBMODULE}_HASH}
 	  OUTPUT_QUIET

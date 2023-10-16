@@ -876,6 +876,21 @@ public:
     /// \sa gsBasis::uniformRefine
     virtual void uniformCoarsen(int numKnots = 1);
 
+    /// @brief Coarsen the basis uniformly
+    ///
+    /// The function simultainously updates the vector \a coefs, representing a function
+    /// in the bases, such that its new version represents the same function.
+    ///
+    /// This function is equivalent to
+    /// \code
+    /// gsSparseMatrix<T,RowMajor> transfer;
+    /// basis->uniformCoarsen_withTransfer(transfer, numKnots);
+    /// coefs = transfer * coefs;
+    /// \endcode
+    ///
+    /// \sa gsBasis::uniformRefine
+    virtual void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
+
     /// @brief Coarsen the basis uniformly and produce a sparse matrix which
     /// maps coarse coefficient vectors to refined ones
     ///
@@ -955,6 +970,8 @@ public:
     /// basis function \em j at evaluation point \em i.
     gsSparseMatrix<T> collocationMatrix(gsMatrix<T> const& u) const;
 
+    std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u);
+    
     /// Reverse the basis
     virtual void reverse();
 

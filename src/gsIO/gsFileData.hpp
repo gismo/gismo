@@ -29,7 +29,7 @@
 #endif
 
 #ifdef gsOpenCascade_ENABLED
-#include <gsOpenCascade/gsReadBrep.h>
+#include <gsOpenCascade/gsReadOcct.h>
 #endif
 
 #ifdef GISMO_WITH_PSOLID               // Extension files
@@ -101,6 +101,11 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
                                                 GISMO_VERSION, *data);
     data->prepend_node(comment);
 
+    gsXmlNode * declNode = data->allocate_node(rapidxml::node_type::node_declaration);
+    declNode->append_attribute(data->allocate_attribute("version","1.0"));
+    declNode->append_attribute(data->allocate_attribute("encoding","UTF-8"));
+    data->prepend_node(declNode);
+
     if (compress)
     {
         saveCompressed(fname);
@@ -116,7 +121,6 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
     m_lastPath = tmp;
 
     std::ofstream fn( tmp.c_str() );
-    fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     //rapidxml::print_no_indenting
     fn<< *data;
     fn.close();
@@ -1128,7 +1132,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   if(kind==8) // 4D control points
   {
   gsMatrix<T>  weights =  coefs.row(3);
-  coefs.resize(Eigen::NoChange,3);
+  coefs.resize(gsEigen::NoChange,3);
   gsDebug<<"weights: "<< weights.transpose() <<"\n";
   }
 
@@ -2237,7 +2241,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
         }
     }
 
-    const bool fc = (fclose(fr) != EOF);
+    const bool fc = ( 0==fclose(fr) );
     if (fc) gsWarn<< "File closing didn't succeeded!\n";
     return fc;
 }

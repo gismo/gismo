@@ -215,7 +215,7 @@ bool writeON_NurbsSurface( const gsSurface<T> & surface,
 
 /// Writes a MultiPatch to OpenNurbs file
 template<class T>
-bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
+bool writeON_MultiPatch( const gsMultiPatch<T> & patches, const std::string & name)
 {
     ONX_Model model;
     writeON_Init(model);
@@ -237,12 +237,12 @@ bool writeON_MultiPatch( const gsMultiPatch<T> & patches)
       }
   }
 
-  return writeON_Write3dm(model,"mp.3dm");
+  return writeON_Write3dm(model,name+".3dm");
 }
 
 /// Writes a planar domain to OpenNurbs file
 template<class T>
-bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd)
+bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd, const std::string & name)
 {
     ONX_Model model;
     writeON_Init(model);
@@ -259,7 +259,7 @@ bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd)
       writeON_NurbsCurve(c, model, nm.str() );
     }
 
-  return writeON_Write3dm(model,"pd.3dm");
+  return writeON_Write3dm(model,name+".3dm");
 }
 
 

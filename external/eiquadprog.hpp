@@ -125,14 +125,14 @@ void update_z(VectorXd& z, const MatrixXd& J, const VectorXd& d,  int iq)
 TEMPLATE_T
 void update_r(const MatrixXd& R, VectorXd& r, const VectorXd& d, int iq) 
 {
-    r.head(iq)= R.topLeftCorner(iq,iq).template triangularView<Eigen::Upper>().solve(d.head(iq));
+    r.head(iq)= R.topLeftCorner(iq,iq).template triangularView<gsEigen::Upper>().solve(d.head(iq));
 }
 
 TEMPLATE_T
 bool add_constraint(MatrixXd& R, MatrixXd& J, VectorXd& d, int& iq, Scalar& R_norm);
 
 TEMPLATE_T
-void delete_constraint(MatrixXd& R, MatrixXd& J, Eigen::VectorXi& A, VectorXd& u,  int p, int& iq, int l);
+void delete_constraint(MatrixXd& R, MatrixXd& J, gsEigen::VectorXi& A, VectorXd& u,  int p, int& iq, int l);
 
 
 TEMPLATE_T Scalar
@@ -146,7 +146,7 @@ solve_quadprog(MatrixXd & G,  VectorXd & g0,
   int n=g0.size();  int p=ce0.size();  int m=ci0.size();  
   MatrixXd R(G.rows(),G.cols()), J(G.rows(),G.cols());
   
-  Eigen::LLT<typename MatrixXd::Base,Lower> chol(G.cols());
+  gsEigen::LLT<typename MatrixXd::Base,Lower> chol(G.cols());
  
   VectorXd s(m+p), z(n), r(m + p), d(n),  np(n), u(m + p);
   VectorXd x_old(n), u_old(m + p);
@@ -154,10 +154,10 @@ solve_quadprog(MatrixXd & G,  VectorXd & g0,
   const Scalar inf = std::numeric_limits<Scalar>::infinity();
   Scalar t, t1, t2; /* t is the step length, which is the minimum of the partial step length t1 
     * and the full step length t2 */
-  Eigen::VectorXi A(m + p), A_old(m + p), iai(m + p);
+  gsEigen::VectorXi A(m + p), A_old(m + p), iai(m + p);
   int iq, iter = 0;
   //bool iaexcl[m + p];     // dynamic array sizes not allowed in standard C++
-  Eigen::Array<bool, Dynamic, 1> iaexcl(m + p);
+  gsEigen::Array<bool, Dynamic, 1> iaexcl(m + p);
  	
   me = p; /* number of equality constraints */
   mi = m; /* number of inequality constraints */
@@ -520,7 +520,7 @@ bool add_constraint(MatrixXd& R, MatrixXd& J, VectorXd& d, int& iq, Scalar & R_n
 }
 
 TEMPLATE_T
-void delete_constraint(MatrixXd& R, MatrixXd& J, Eigen::VectorXi& A, VectorXd& u,  int p, int& iq, int l)
+void delete_constraint(MatrixXd& R, MatrixXd& J, gsEigen::VectorXi& A, VectorXd& u,  int p, int& iq, int l)
 {
 
   int n = R.rows();

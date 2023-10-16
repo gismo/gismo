@@ -51,7 +51,11 @@ class ArgException : public std::exception
 			  _errorText(text), 
 			  _argId( id ), 
 			  _typeDescription(td)
-		{ } 
+		{
+#ifdef _MSC_VER
+            std::cerr<<_errorText<<" "<<id<<std::endl;
+#endif
+        }
 		
 		/**
 		 * Destructor.
@@ -156,7 +160,7 @@ class CmdLineParseException : public ArgException
 							std::string( "Exception found when the values ") +
 							std::string( "on the command line do not meet ") +
 							std::string( "the requirements of the defined ") +
-							std::string( "Args." ))
+							std::string( "Args." )) 
 		{ }
 };
 

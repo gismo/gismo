@@ -335,7 +335,7 @@ bool readON_NurbsCurve( const ON_NurbsCurve * pcurve, internal::gsXmlTree & data
 	  for (int k = 0; k < pcurve->m_cv_count; k++ ) 
 	    {
 	      for (int j = 0; j < cvdim; j++ ) 
-		tmp <<" "<< P[k];
+		tmp <<" "<< P[j];
 	      P += cvdim;
 	    }
 	}

@@ -593,6 +593,10 @@ void gsBasis<T>::uniformCoarsen(int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::uniformCoarsen_withCoefs(gsMatrix<T>& , int )
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 void gsBasis<T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> &,
                                             int)
 { GISMO_NO_IMPLEMENTATION }
@@ -711,9 +715,10 @@ T gsBasis<T>::getMaxCellLength() const
     return h;
 }
 
-// compute the collocation matrix of the points u and its partial derivatives
+
 template<class T> inline
-std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gsMatrix<T> & u)
+std::vector<gsSparseMatrix<T> >
+gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u)
 {
     int dim = b.domainDim();
     std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
@@ -752,10 +757,6 @@ std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gs
         result[2].makeCompressed();
     return result;
 }
-
-
-
-
 
 
 

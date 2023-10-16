@@ -8,7 +8,6 @@
 #ifndef GDCPP_GDCPP_H_
 #define GDCPP_GDCPP_H_
 
-#include <Eigen/Geometry>
 #include <limits>
 #include <iostream>
 #include <iomanip>

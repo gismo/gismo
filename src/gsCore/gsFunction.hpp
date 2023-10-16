@@ -215,6 +215,57 @@ gsMatrix<T> gsFunction<T>::laplacian( const gsMatrix<T>& u ) const
     return res;
 }
 
+template<class T>
+void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
+                                 gsMatrix<T> & result,
+                                 const T accuracy, const bool useInitialPoint) const
+{
+    result.resize(this->domainDim(), points.cols() );
+    gsVector<T> arg;
+    for ( index_t i = 0; i!= points.cols(); ++i)
+    {
+        if (useInitialPoint)
+            arg = result.col(i);
+        else
+            arg = this->parameterCenter();
+
+        //const int iter =
+        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        //gsInfo<< "Iterations: "<< iter <<"\n";
+        //  if (-1==iter)
+        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
+        result.col(i) = arg;
+        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
+            result.col(i) = arg;
+        else
+        {
+            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
+            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
+    }
+}
+/* // alternative impl using closestPointTo
+{
+    result.resize(parDim(), points.cols() );
+    gsVector<T> pt, arg;
+    for ( index_t i = 0; i!= points.cols(); ++i )
+    {
+        pt = points.col(i);
+        if (useInitialPoint)
+            arg = result.col(i);
+
+        this->closestPointTo(pt, arg, accuracy, useInitialPoint);
+        if ( (this->eval(arg)-pt).norm()<=accuracy )
+            result.col(i) = arg;
+        else
+        {
+            //result.col(i) = arg;
+            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
+    }
+}
+*/
+
 template <class T>
 template <int mode,int _Dim>
 int gsFunction<T>::newtonRaphson_impl(
@@ -240,7 +291,7 @@ int gsFunction<T>::newtonRaphson_impl(
         supp = support();
         GISMO_ASSERT( (arg.array()>=supp.col(0).array()).all() &&
                       (arg.array()<=supp.col(1).array()).all(),
-                      "Initial point is outside the domain.");
+                      "Initial point is outside the domain.\n point = "<<arg<<"\n domain = "<<supp);
     }
     int iter = 0;
     T rnorm[2]; rnorm[1]=1;
@@ -513,7 +564,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                     if ( 0 == det_sgn )
                     {
                         gsMatrix<T> parameterCenter = src.parameterCenter(InOut.side);
-                        T detJacTcurr = src.jacobian(parameterCenter).determinant();
+                        detJacTcurr = src.jacobian(parameterCenter).determinant();
                         det_sgn = detJacTcurr < 0 ? -1 : 1;
                     }
                 }
@@ -528,7 +579,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 }
             }
         }
-        else
+        else // lower-dim boundary case, d + 1 == n
         {
             gsMatrix<T,domDim,domDim> metric(d,d);
             gsVector<T,domDim>      param(d);
@@ -544,8 +595,8 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                     param(i) = alt_sgn * minor.determinant();
                     alt_sgn  *= -1;
                 }
-                //note: metric.determinant() == InOut.measures.at(p)
                 InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
+                //InOut.outNormals.col(p)=(jacT.transpose()*param).normalized()*jacT.col(!dir).norm();
             }
         }
 
@@ -561,18 +612,25 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
             {
                 typename gsAsConstMatrix<T,domDim,tarDim>::Tr jac =
                         gsAsConstMatrix<T,domDim,tarDim>(InOut.values[1].col(p).data(),d, n).transpose();
-    //            if (tarDim == domDim && tarDim!=-1)
                 if ( tarDim!=-1 ? tarDim == domDim : n==d )
                     InOut.measures(0,p) = math::abs(jac.determinant());
-                else
+                else //unequal dimensions
                     InOut.measures(0,p) = math::sqrt( ( jac.transpose()*jac  )
                                                     .determinant() );
             }
         }
-        else // If on the domain's interior
+        else // If on boundary
         {
-            // return the outer normal vector's norm ( colwise i.e. for every point)
-            InOut.measures = InOut.outNormals.colwise().norm();
+            GISMO_ASSERT(d==2, "Only works for boundary curves..");
+            const int dir = InOut.side.direction();
+            typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
+            InOut.measures.resize(1, numPts);
+            for (index_t p = 0; p != numPts; ++p) // for all points
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                InOut.measures.at(p) = jacT.row(!dir).norm();
+            }
+            //InOut.measures = InOut.outNormals.colwise().norm(); // problematic on 3d curve boundary
         }
     }
 
@@ -596,12 +654,9 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
         }
     }
 
-
     // Normal vector of hypersurface
-    if (n==d+1 && InOut.flags & NEED_NORMAL)
+    if ( (InOut.flags & NEED_NORMAL) && (tarDim!=-1 ? tarDim == domDim+1 : n==d+1) )
     {
-        GISMO_ASSERT( n == d + 1, "Codimension should be equal to one");
-
         typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
         InOut.normals.resize(n, numPts);
 

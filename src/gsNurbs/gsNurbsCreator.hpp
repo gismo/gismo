@@ -271,7 +271,7 @@ gsNurbsCreator<T>::lift3D( gsTensorBSpline<2,T> const & geo, T z)
     // Embed in 3D if needed
     if (newcoefs.cols() == 2 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 3);
+        newcoefs.conservativeResize( gsEigen::NoChange, 3);
         newcoefs.col(2).setZero();
     }
 
@@ -299,7 +299,7 @@ gsNurbsCreator<T>::lift4D( gsTensorBSpline<3,T> const & geo, T z)
     // Embed in 4D if needed
     if (newcoefs.cols() == 3 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 4);
+        newcoefs.conservativeResize( gsEigen::NoChange, 4);
         newcoefs.col(3).setZero();
     }
 
@@ -332,7 +332,7 @@ gsNurbsCreator<T>::lift3D( gsTensorNurbs<2,T> const & geo, T z)
     // Embed in 3D if needed
     if (newcoefs.cols() == 2 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 3);
+        newcoefs.conservativeResize( gsEigen::NoChange, 3);
         newcoefs.col(2).setZero();
     }
 
@@ -364,7 +364,7 @@ gsNurbsCreator<T>::lift4D( gsTensorNurbs<3,T> const & geo, T z)
     // Embed in 4D if needed
     if (newcoefs.cols() == 3 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 4);
+        newcoefs.conservativeResize( gsEigen::NoChange, 4);
         newcoefs.col(3).setZero();
     }
 
@@ -812,7 +812,7 @@ gsNurbsCreator<T>::BSplineCubeGrid(int n, int m,int p,
         for(int j = 0; j < m; j++)
             for(int k = 0; k < p; k++)
         {
-            mp.addPatch(BSplineCube(r,lx + r*(T)(i) ,ly + r*(T)(j),lz+r*(T)(k))) ;
+            mp.addPatch(BSplineCube(r, r*(T)(0.5) + lx + r*(T)(i), r*(T)(0.5) + ly + r*(T)(j), r*(T)(0.5) + lz+r*(T)(k))) ;
         }
     mp.computeTopology();
     return mp;
@@ -874,6 +874,42 @@ gsNurbsCreator<T>::NurbsQuarterAnnulus( T const & r0, T const & r1)
     return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx,KVy, give(C), give(ww)));
 }
 
+template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
+gsNurbsCreator<T>::NurbsAnnulus( T const & r0, T const & r1)
+{
+    gsKnotVector<T> KVx (0,1,3,3,2) ;
+    gsKnotVector<T> KVy (0,1,0,2) ;
+    gsMatrix<T> C(18,2) ;
+    
+    C <<    r0, 0,
+            r0, r0,
+            0, r0,
+            -r0, r0,
+            -r0, 0,
+            -r0,-r0,
+            0,-r0,
+            r0,-r0,
+            r0, 0,
+            r1, 0,
+            r1, r1,
+            0, r1,
+            -r1, r1,
+            -r1, 0,
+            -r1,-r1,
+            0,-r1,
+            r1,-r1,
+            r1, 0;
+    // C *= r;
+
+    // C.col(0).array() += x;
+    // C.col(1).array() += y;
+
+    gsMatrix<T> ww(18,1) ;
+    ww<< 1, 0.707106781186548, 1, 0.707106781186548,1, 0.707106781186548,1, 0.707106781186548, 1, 1, 0.707106781186548, 1, 0.707106781186548,1, 0.707106781186548,1, 0.707106781186548, 1  ;
+
+    return TensorNurbs2Ptr(new gsTensorNurbs<2,T>(KVx,KVy, give(C), give(ww)));
+}
+
 /// Inexact annulus using B-splines
 template<class T> typename gsNurbsCreator<T>::GeometryPtr
 gsNurbsCreator<T>::BSplineQuarterAnnulus(const short_t & deg)
@@ -893,7 +929,6 @@ gsNurbsCreator<T>::BSplineSaddle()
 {
     return TensorNurbs3Ptr(); //TODO
 }
-
 
 /*
 template<class T> typename gsNurbsCreator<T>::TensorNurbs2Ptr
@@ -1623,7 +1658,7 @@ gsNurbsCreator<T>::NurbsQrtPlateWHoleC0()
 
 }
 
-/// Square of side \a r, with lower left corner at (x,y)
+/// Triangle of height \a H and width \a W with the bottom side centered at 0,0
 template<class T> typename gsNurbsCreator<T>::TensorBSpline2Ptr
 gsNurbsCreator<T>::BSplineTriangle( T const & H,
                                     T const & W)
@@ -1635,6 +1670,33 @@ gsNurbsCreator<T>::BSplineTriangle( T const & H,
     C.col(1) << H , 0 , 0.5*H, 0 ;
 
     return TensorBSpline2Ptr(new gsTensorBSpline<2,T>(KV,KV, give(C)));
+}
+
+/// Star with \a N points. Each point is located \a R0 from the center. The other corners are located \a R1 from the center
+template<class T> gsMultiPatch<T>
+gsNurbsCreator<T>::BSplineStar( index_t const & N,
+                                    T const & R0,
+                                    T const & R1)
+{
+    GISMO_ENSURE(N>2,"Star must have at least 3 points.");
+
+    const T pi = 3.1415926535897932384626433832795;
+    const T theta = 2*pi/N;
+    gsKnotVector<T> KV(0,1,0,2);
+    gsMatrix<T> coefs(4,2);
+    coefs<< 0,                      0,
+             R1*math::cos(pi/2-theta/2), R1*math::sin(pi/2-theta/2),
+            -R1*math::cos(pi/2-theta/2), R1*math::sin(pi/2-theta/2),
+            0,                      R0;
+
+    gsTensorBSpline<2,T> bspline(KV,KV,coefs);
+    gsMultiPatch<T> result;
+    for (index_t p=0; p!=N; p++)
+    {
+        result.addPatch(bspline);
+        bspline = *(rotate2D(bspline,theta*360/(2*pi)));
+    }
+    return result;
 }
 
 } // namespace gismo

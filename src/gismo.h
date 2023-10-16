@@ -102,6 +102,8 @@ namespace internal
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
+#include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHBoxContainer.h>
 
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
@@ -125,6 +127,7 @@ namespace internal
 #include <gsModeling/gsSpringPatch.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsModeling/gsCrossApPatch.h>
+#include <gsModeling/gsBarrierPatch.h>
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
@@ -160,6 +163,9 @@ namespace internal
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
 
+#include <gsAssembler/gsAdaptiveMeshing.h>
+#include <gsAssembler/gsAdaptiveMeshingUtils.h>
+
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
 #include <gsSolver/gsMinimalResidual.h>
@@ -177,6 +183,7 @@ namespace internal
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
+#include <gsSolver/gsMinResQLP.h>
 
 /* ----------- Ieti ----------- */
 #include <gsIeti/gsIetiMapper.h>

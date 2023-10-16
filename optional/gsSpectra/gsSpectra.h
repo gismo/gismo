@@ -18,6 +18,8 @@
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsLinearAlgebra.h>
 
+#define Eigen gsEigen
+
 #include <Spectra/include/Spectra/SymEigsSolver.h>
 #include <Spectra/include/Spectra/SymEigsShiftSolver.h>
 #include <Spectra/include/Spectra/SymGEigsSolver.h>
@@ -47,8 +49,8 @@ public:
 public:
     SpectraMatProd(const MatrixType&&   ) = delete;
     SpectraMatProd(const MatrixType& mat) : m_mat(mat) {}
-    int rows() const { return m_mat.rows(); }
-    int cols() const { return m_mat.cols(); }
+    index_t rows() const { return m_mat.rows(); }
+    index_t cols() const { return m_mat.cols(); }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
         GISMO_ASSERT(m_mat.rows()!=0 && m_mat.cols()!=0,"The matrix has zero rows or columns. Is the matrix a temporary (e.g. A-B)?");
@@ -81,8 +83,8 @@ public:
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix must be square!");
     }
-    int rows() const { return m_n; }
-    int cols() const { return m_n; }
+    index_t rows() const { return m_n; }
+    index_t cols() const { return m_n; }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
         gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
@@ -125,8 +127,8 @@ public:
     {
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix must be square!");
     }
-    int rows() const { return m_n; }
-    int cols() const { return m_n; }
+    index_t rows() const { return m_n; }
+    index_t cols() const { return m_n; }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
         gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
@@ -171,8 +173,8 @@ public:
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
-    int rows() const { return m_n; }
-    int cols() const { return m_n; }
+    index_t rows() const { return m_n; }
+    index_t cols() const { return m_n; }
 
     /// See Spectra/SparseCholesky.h for help
     Spectra::CompInfo info() const { return m_info; }
@@ -228,8 +230,8 @@ public:
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
-    int rows() const { return m_n; }
-    int cols() const { return m_n; }
+    index_t rows() const { return m_n; }
+    index_t cols() const { return m_n; }
 
     /// See Spectra/SparseRegularInverse.h for help
     Spectra::CompInfo info() const { return m_info; }
@@ -274,8 +276,8 @@ public:
         GISMO_ASSERT(m_B.rows() == m_B.cols(),"Matrix B must be square!");
         GISMO_ASSERT(m_B.rows() == m_A.rows(),"Matrix A and B must be the same size!");
     }
-    int rows() const { return m_n; }
-    int cols() const { return m_n; }
+    index_t rows() const { return m_n; }
+    index_t cols() const { return m_n; }
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
         gsAsVector<Scalar>(y_out, m_n).noalias() = m_solver.solve( gsAsConstVector<Scalar>(x_in,  m_n) );
@@ -300,7 +302,7 @@ public:
     Typical usage:
     \code
     gsSparseMatrix<> A;
-    const int nEv = 2;
+    const index_t nEv = 2;
     gsSpectraSymSolver<gsSparseMatrix<> > slv(A, nEv, 2*nEv);
     slv.compute();
     if ( slv.info() == 0 )
@@ -317,8 +319,8 @@ class gsSpectraSolver : private SpectraMatProd<MatrixType>,
     typedef SpectraMatProd<MatrixType> MatOp;
     typedef Spectra::GenEigsSolver<MatOp> Base;
 public:
-    gsSpectraSolver(const MatrixType &&   , int nev_, int ncv_) = delete;
-    gsSpectraSolver(const MatrixType & mat, int nev_, int ncv_) :
+    gsSpectraSolver(const MatrixType &&   , index_t nev_, index_t ncv_) = delete;
+    gsSpectraSolver(const MatrixType & mat, index_t nev_, index_t ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };
 
@@ -330,8 +332,8 @@ class gsSpectraSymSolver : private SpectraMatProd<MatrixType>,
     typedef SpectraMatProd<MatrixType> MatOp;
     typedef Spectra::SymEigsSolver<MatOp> Base;
 public:
-    gsSpectraSymSolver(const MatrixType &&   , int nev_, int ncv_) = delete;
-    gsSpectraSymSolver(const MatrixType & mat, int nev_, int ncv_) :
+    gsSpectraSymSolver(const MatrixType &&   , index_t nev_, index_t ncv_) = delete;
+    gsSpectraSymSolver(const MatrixType & mat, index_t nev_, index_t ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
 };
 
@@ -345,8 +347,8 @@ class gsSpectraSymShiftSolver :
     typedef SpectraMatShiftSolve<MatrixType> Op;
     typedef Spectra::SymEigsShiftSolver<Op> Base;
 public:
-    gsSpectraSymShiftSolver(const MatrixType &&   , int nev_, int ncv_, const Scalar& sigma) = delete;
-    gsSpectraSymShiftSolver(const MatrixType & mat, int nev_, int ncv_, const Scalar& sigma) :
+    gsSpectraSymShiftSolver(const MatrixType &&   , index_t nev_, index_t ncv_, const Scalar& sigma) = delete;
+    gsSpectraSymShiftSolver(const MatrixType & mat, index_t nev_, index_t ncv_, const Scalar& sigma) :
     Op(mat), Base(*this, nev_, ncv_,sigma) { Base::init(); }
 };
 
@@ -422,8 +424,8 @@ class gsSpectraGenSymSolver :
 
     typedef Spectra::SymGEigsSolver<MatOp, typename Ops::InvOp,GEigsMode> Base;
 public:
-    gsSpectraGenSymSolver(const MatrixType &&    , const MatrixType &&    , int nev_, int ncv_) = delete;
-    gsSpectraGenSymSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_)
+    gsSpectraGenSymSolver(const MatrixType &&    , const MatrixType &&    , index_t nev_, index_t ncv_) = delete;
+    gsSpectraGenSymSolver(const MatrixType & Amat, const MatrixType & Bmat, index_t nev_, index_t ncv_)
     : Ops(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()))
     { Base::init(); }
 };
@@ -441,10 +443,14 @@ class gsSpectraGenSymShiftSolver :
 
     typedef Spectra::SymGEigsShiftSolver<typename OpType::InvOp, BOpType,GEigsMode> Base;
 public:
-    gsSpectraGenSymShiftSolver(const MatrixType &&    , const MatrixType &&    , int nev_, int ncv_, const Scalar& sigma) = delete;
-    gsSpectraGenSymShiftSolver(const MatrixType & Amat, const MatrixType & Bmat, int nev_, int ncv_, const Scalar& sigma)
+    gsSpectraGenSymShiftSolver(const MatrixType &&    , const MatrixType &&    , index_t nev_, index_t ncv_, const Scalar& sigma) = delete;
+    gsSpectraGenSymShiftSolver(const MatrixType & Amat, const MatrixType & Bmat, index_t nev_, index_t ncv_, const Scalar& sigma)
     : OpType(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()),sigma)
     { Base::init(); }
 };
 
 } //namespace gismo
+
+
+#undef Eigen
+

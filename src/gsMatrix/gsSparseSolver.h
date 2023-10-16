@@ -177,7 +177,7 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
             return gsEigenAdaptor<T>::eigenName::solve(rhs);            \
         }                                                               \
         bool succeed() const                                            \
-        { return gsEigenAdaptor<T>::eigenName::info()==Eigen::Success;} \
+        { return gsEigenAdaptor<T>::eigenName::info()==gsEigen::Success;} \
         int info() const                                                \
         { return gsEigenAdaptor<T>::eigenName::info();}                 \
         index_t rows() const {return m_rows;}                           \

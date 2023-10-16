@@ -44,7 +44,7 @@ boundaryOffset(boxSide const & s,index_t offset) const
         gsVector<index_t,d>  ind;
         index_t hi;
         // i goes through all levels of the hierarchical basis
-        for(unsigned i = 0; i <= this->maxLevel(); i++)
+        for(size_t i = 0; i != m_xmatrix.size(); i++)
         {
             GISMO_ASSERT(static_cast<int>(offset)<this->m_bases[i]->size(k),
                          "Offset cannot be bigger than the amount of basis"
@@ -99,7 +99,7 @@ void gsTHBSplineBasis<d,T>::representBasis()
     m_presentation.clear();
 
     gsMatrix<index_t, d, 2> element_ind(d, 2);
-    point low, high;
+    gsVector<index_t, d   > low, high;
     for (index_t j = 0; j < this->size(); ++j)
     {
         index_t level = this->levelOf(j);
@@ -111,6 +111,11 @@ void gsTHBSplineBasis<d,T>::representBasis()
         // I tried with block, I can not trick the compiler to use references
         low = element_ind.col(0); //block<d, 1>(0, 0);
         high = element_ind.col(1); //block<d, 1>(0, 1);
+        if (m_manualLevels)
+        {
+            this->_knotIndexToDiadicIndex(level,low);
+            this->_knotIndexToDiadicIndex(level,high);
+        }
 
         // Finds coarsest level that function, with supports given with
         // support indices of the coarsest level (low & high), has presentation
@@ -165,7 +170,6 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
     gsVector<index_t, d> bspl_vec_ti =
         this->m_bases[cur_level]->tensorIndex(tensor_index);
 
-
     // we need to separately save knot vectors because we will modify
     // them, when we proceed from one level on another
     std::vector<gsKnotVector<T> > vector_of_kv(d);
@@ -186,9 +190,18 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
 
         this->m_tree.computeLevelIndex(finest_low, level, clow);
         this->m_tree.computeLevelIndex(finest_high, level, chigh);
-
+        if (m_manualLevels)
+        {
+            this->_diadicIndexToKnotIndex(level,clow);
+            this->_diadicIndexToKnotIndex(level,chigh);
+        }
         this->m_tree.computeLevelIndex(finest_low, level + 1, flow);
         this->m_tree.computeLevelIndex(finest_high, level + 1, fhigh);
+        if (m_manualLevels)
+        {
+            this->_diadicIndexToKnotIndex(level + 1,flow);
+            this->_diadicIndexToKnotIndex(level + 1,fhigh);
+        }
 
         std::vector<T> knots;
 
@@ -218,7 +231,6 @@ void gsTHBSplineBasis<d,T>::_representBasisFunction(
         _truncate(coefs, act_size_of_coefs, cur_size_of_coefs,
                   level + 1, bspl_vec_ti, cur_level, finest_low);
     }
-
     _saveNewBasisFunPresentation(coefs, act_size_of_coefs,
                                  j, pres_level, finest_low);
 }
@@ -296,6 +308,12 @@ unsigned gsTHBSplineBasis<d,T>::_basisFunIndexOnLevel(
     gsVector<index_t, d> flow(d);
     this->m_tree.computeLevelIndex(fin_low, new_level, flow);
 
+    if (m_manualLevels)
+    {
+        this->_diadicIndexToKnotIndex(level,low);
+        this->_diadicIndexToKnotIndex(new_level,flow);
+    }
+
     gsVector<index_t, d> new_index(d);
 
     for (unsigned dim = 0; dim < d; dim++)
@@ -329,7 +347,6 @@ void gsTHBSplineBasis<d,T>::_truncate(
     // if we dont have any active function in this level, we do not truncate
     if (this->m_xmatrix[level].size() == 0)
         return;
-
 
     // global tensor index
     const unsigned const_ten_index = _basisFunIndexOnLevel(bspl_vec_ti,
@@ -391,7 +408,6 @@ void gsTHBSplineBasis<d,T>::_truncate(
                 }
                 // ten_index <= tensor_active_index holds
             }
-
             if (ten_index == tensor_active_index) // truncate
                 coefs(coef_index + index, 0) = 0;
 
@@ -420,6 +436,13 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
     this->m_tree.computeLevelIndex(finest_low, flevel, flow);
     this->m_tree.computeLevelIndex(finest_high, flevel, fhigh);
 
+    if (m_manualLevels)
+    {
+        this->_diadicIndexToKnotIndex(clevel,clow);
+        this->_diadicIndexToKnotIndex(clevel,chigh);
+        this->_diadicIndexToKnotIndex(flevel,flow);
+        this->_diadicIndexToKnotIndex(flevel,fhigh);
+    }
     // number of new coefficients
     unsigned nmb_of_coefs = 1;
 
@@ -430,16 +453,15 @@ unsigned gsTHBSplineBasis<d,T>::_updateSizeOfCoefs(
         const gsKnotVector<T>& fkv =
             this->m_bases[flevel]->knots(dim);
 
-        unsigned cnmb_knts = ckv.knotsUntilSpan(chigh[dim]) -
-            ckv.knotsUntilSpan(clow[dim]);
+        // Number of knots in the coarse knot vector
+        unsigned cnmb_knts = ckv.lastKnotIndex(chigh[dim]) -ckv.firstKnotIndex(clow[dim]);
 
-        unsigned fnmb_knts = fkv.knotsUntilSpan(fhigh[dim]) -
-            fkv.knotsUntilSpan(flow[dim]);
+        // Number of knots in the fine knot vector
+        unsigned fnmb_knts = fkv.lastKnotIndex(fhigh[dim]) -fkv.firstKnotIndex(flow[dim]);
 
         size_of_coefs(dim) += fnmb_knts - cnmb_knts;
         nmb_of_coefs *= size_of_coefs(dim);
     }
-
     return nmb_of_coefs;
 }
 
@@ -782,7 +804,7 @@ void gsTHBSplineBasis<d,T>::getBsplinePatches_trimming(
         {
             gsMatrix<T> bigger;
             int cprows = cp.rows();
-            /*cp.conservativeResize( cp.rows() + temp_cp.rows(), Eigen::NoChange );
+            /*cp.conservativeResize( cp.rows() + temp_cp.rows(), gsEigen::NoChange );
               for( int j=cprows; j < cp.rows(); j++ )
               cp.row(j) = temp2.row(j-cprows);*/
             bigger.resize(cp.rows()+new_cp.rows(), cp.cols());
@@ -871,7 +893,7 @@ gsMultiPatch<T> gsTHBSplineBasis<d,T>::getBsplinePatchesToMultiPatch_trimming(
     gsMultiPatch<T> result;
     //identify the outer polylines- conected components
     int first_level = 0;
-    for(unsigned int i = 0; i < this->m_xmatrix.size(); i++)
+    for(size_t i = 0; i < this->m_xmatrix.size(); i++)
     {
         if(this->m_xmatrix[i].size()>0)
         {
@@ -1074,8 +1096,11 @@ void gsTHBSplineBasis<d,T>::active_into(const gsMatrix<T>& u, gsMatrix<index_t>&
         for(short_t i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
 
+        if (m_manualLevels)
+            this->_knotIndexToDiadicIndex(maxLevel,low);
+
         // Identify the level of the point
-        const int lvl = this->m_tree.levelOf(low, maxLevel);
+        const int lvl = std::min(this->m_tree.levelOf(low, maxLevel),(int) m_xmatrix.size()-1);
 
         for(int i = 0; i <= lvl; i++)
         {
@@ -1377,6 +1402,12 @@ gsTHBSplineBasis<d,T>::getBSplinePatch_impl(const std::vector<index_t>& bounding
 
     const gsKnotVector<T> & knots0 = m_bases[level]->knots(0);
     const gsKnotVector<T> & knots1 = m_bases[level]->knots(1);
+
+    if (m_manualLevels)
+    {
+        this->_diadicIndexToKnotIndex(level,low);
+        this->_diadicIndexToKnotIndex(level,low);
+    }
 
     const int lowIndex0 = knots0.lastKnotIndex (low(0)) - m_deg[0];
     const int uppIndex0 = knots0.firstKnotIndex(upp(0)) - 1;
@@ -1968,7 +1999,14 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
                 std::vector<lvl_coef> coeffs;
                 gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
-                unsigned max_lvl = math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size()) ;//transfer.size();//
+                gsVector<index_t, d   > low = supp.col(0);
+                gsVector<index_t, d   > upp = supp.col(1);
+                if (m_manualLevels)
+                {
+                    this->_knotIndexToDiadicIndex(i,low);
+                    this->_knotIndexToDiadicIndex(i,upp);
+                }
+                unsigned max_lvl = math::min<index_t>( this->m_tree.query4(low,upp, i), transfer.size()) ;//transfer.size();//
                 //gsDebug<<"transfer size "<< transfer.size()<<" max lvl"<< this->m_tree.query4(supp.col(0),supp.col(1), this->levelOf(start_lv_i+j))<<"   lvl of"<< this->levelOf(start_lv_i+j)<<" support\n"<<supp<<std::endl;
                 lvl_coef temp;
                 temp.pos = old_ij;
@@ -2044,8 +2082,16 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T>::coarsening_direct( const std::vector<gs
                 gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 //gsDebug<<"supp "<< supp<<std::endl;
+                gsVector<index_t, d   > low = supp.col(0);
+                gsVector<index_t, d   > upp = supp.col(1);
+                if (m_manualLevels)
+                {
+                    this->_knotIndexToDiadicIndex(i,low);
+                    this->_knotIndexToDiadicIndex(i,upp);
+                }
+
                 unsigned max_lvl =
-                    math::min<index_t>( this->m_tree.query4(supp.col(0),supp.col(1), i), transfer.size() ) ;
+                    math::min<index_t>( this->m_tree.query4(low,upp, i), transfer.size() ) ;
                 std::vector<lvl_coef> coeffs;
                 lvl_coef temp;
                 temp.pos = old_ij;

@@ -293,11 +293,13 @@ bool gsWritePK_SHEET(const gsTensorBSpline<2, T>& tp, const std::string& filenam
     PK_BSURF_t bsurf;
     createPK_BSURF<T>(tp, bsurf, false, false);
 
+    gsMatrix<T> domain = tp.parameterRange();
     PK_UVBOX_t uv_box;
-    uv_box.param[0] = 0;
-    uv_box.param[1] = 0;
-    uv_box.param[2] = 1;
-    uv_box.param[3] = 1;
+    // format: umin, vmin, umax, vmax
+    uv_box.param[0] = domain(0, 0);
+    uv_box.param[1] = domain(1, 0);
+    uv_box.param[2] = domain(0, 1);
+    uv_box.param[3] = domain(1, 1);
     PK_BODY_t body;
     err = PK_SURF_make_sheet_body(bsurf, uv_box, &body);
     PARASOLID_ERROR(PK_SURF_make_sheet_body, err);
@@ -396,7 +398,7 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
     const int n = bsp.geoDim();
     if ( n < 3 )
     {
-        coefs.conservativeResize(Eigen::NoChange, 3);
+        coefs.conservativeResize(gsEigen::NoChange, 3);
         coefs.rightCols(3-n).setZero();
     }
     coefs.transposeInPlace();
@@ -467,7 +469,7 @@ bool createPK_BCURVE( const gsBSpline<T>& curve,
     const int n = curve.geoDim();
     if (n < 3)
     {
-        coefs.conservativeResize(Eigen::NoChange, 3);
+        coefs.conservativeResize(gsEigen::NoChange, 3);
         coefs.rightCols(3 - n).setZero();
     }
     coefs.transposeInPlace();
@@ -796,7 +798,7 @@ makeValidGeometry(const gsTHBSpline<2>& surface,
 
     A.makeCompressed();
     gsSparseSolver<real_t>::BiCGSTABILUT solver(A);
-    if (solver.preconditioner().info() != Eigen::Success)
+    if (solver.preconditioner().info() != gsEigen::Success)
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
         return;

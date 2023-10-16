@@ -21,7 +21,7 @@ namespace gismo
 /** @brief
     A vector with arbitrary coefficient type and fixed or dynamic size.
 
-    This class is based on Eigen::Matrix from the Eigen
+    This class is based on gsEigen::Matrix from the Eigen
     linear algebra library. Most operations from Eigen are supported
     on a gsVector. See therefore also the Eigen documentation,
     http://eigen.tuxfamily.org/dox/.
@@ -45,13 +45,13 @@ public:
     // Self type
     typedef gsVector<T,_Rows, _Options> Self;
 
-    typedef typename Eigen::aligned_allocator<Self> aalloc;
+    typedef typename gsEigen::aligned_allocator<Self> aalloc;
 
     // The type of the coefficients of the matrix
     typedef T Scalar_t;
 
     // Type pointing to a block of the vector
-    typedef typename Eigen::Block<Base> Block;
+    typedef typename gsEigen::Block<Base> Block;
 
     // Type pointing to a block view of the vector
     typedef gsMatrixBlockView<Base> BlockView;
@@ -63,14 +63,14 @@ public:
     typedef memory::unique_ptr< gsVector > uPtr;
 
     // Type for copying a vector as a permutation matrix
-    typedef Eigen::PermutationMatrix<_Rows,Base::SizeAtCompileTime,index_t> Permutation;
+    typedef gsEigen::PermutationMatrix<_Rows,Base::SizeAtCompileTime,index_t> Permutation;
 
     // Type for treating a vector as a permutation matrix
-    typedef Eigen::PermutationWrapper<Base> PermutationWrap;
+    typedef gsEigen::PermutationWrapper<Base> PermutationWrap;
 
-    typedef Eigen::Ref<Base> Ref;
+    typedef gsEigen::Ref<Base> Ref;
 
-    typedef const Eigen::Ref<const Base> ConstRef;
+    typedef const gsEigen::Ref<const Base> ConstRef;
 
     // Type for a vector of dimension one less
     typedef gsMatrix< T, ChangeDim<_Rows, -1>::D, ColMajor> Projection_t;
@@ -119,15 +119,15 @@ public:
 
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>
-    gsVector(const Eigen::EigenBase<OtherDerived>& other) : gsBase(other) { }
+    gsVector(const gsEigen::EigenBase<OtherDerived>& other) : gsBase(other) { }
 
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>
-    gsVector(const Eigen::MatrixBase<OtherDerived>& other) : gsBase(other) { }
+    gsVector(const gsEigen::MatrixBase<OtherDerived>& other) : gsBase(other) { }
 
     // This constructor allows constructing a gsVector from Eigen expressions
     template<typename OtherDerived>
-    gsVector(const Eigen::ReturnByValue<OtherDerived>& other) : gsBase(other) { }
+    gsVector(const gsEigen::ReturnByValue<OtherDerived>& other) : gsBase(other) { }
 
     static gsVector<T,2> vec( T x, T y)
     {
@@ -162,7 +162,7 @@ public:
 #endif
 */
 #if !EIGEN_HAS_RVALUE_REFERENCES
-    gsVector & operator=(typename Eigen::internal::conditional<
+    gsVector & operator=(typename gsEigen::internal::conditional<
                          -1==_Rows,gsVector, const gsVector &>::type other)
     {
         if (-1==_Rows)
@@ -200,7 +200,7 @@ public:
         GISMO_ASSERT( i < this->size(), "Invalid vector element." );
         const T * ce = this->data() + this->size();
         for ( T * c = this->data()+i+1; c!= ce; ++c ) *(c-1) = *c;
-        this->conservativeResize(this->size()-1,Eigen::NoChange);
+        this->conservativeResize(this->size()-1,gsEigen::NoChange);
     }
 
 }; // class gsVector
@@ -215,11 +215,11 @@ public:
     \ingroup Matrix
 */
 template<class T>
-class gsVector3d : public Eigen::Matrix<T,3,1>
+class gsVector3d : public gsEigen::Matrix<T,3,1>
 {
 public:
     typedef T scalar_t;
-    typedef Eigen::Matrix<T,3,1> Base ;
+    typedef gsEigen::Matrix<T,3,1> Base ;
 
     /// Shared pointer for gsVector3d
     typedef memory::shared_ptr< gsVector3d > Ptr;
@@ -237,7 +237,7 @@ public:
 
     /// This constructor allows constructing a gsVector3d from Eigen expressions
     template<typename OtherDerived>
-    gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+    gsVector3d(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
     T angle(const gsVector3d<T> & other)
     {
@@ -303,7 +303,7 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 
 // template<class T>
 // template<typename OtherDerived> inline
-// gsVector3d<T>::gsVector3d(const Eigen::MatrixBase<OtherDerived>& other) : Base(other) { }
+// gsVector3d<T>::gsVector3d(const gsEigen::MatrixBase<OtherDerived>& other) : Base(other) { }
 
 
 // template<class T> inline

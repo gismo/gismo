@@ -135,6 +135,6 @@ private:
 } // end namespace gismo
 
 // note: must be statically compiled in header-only mode
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsOptimizer.hpp)
-#endif
+//#ifndef GISMO_BUILD_LIB
+//#include GISMO_HPP_HEADER(gsOptimizer.hpp)
+//#endif

@@ -383,6 +383,10 @@ public:
     void insertKnot(T knot, int mult=1)
     { m_knots.insert( knot, mult); }
 
+    /// @brief Removes the knot \em knot in the underlying knot vector.
+    void removeKnot(T knot, int mult=1)
+    { m_knots.remove( knot, mult); }
+
     // compatibility with tensor-bsplines
     void insertKnots(const std::vector< std::vector<T> >& refineKnots)
     {
@@ -634,7 +638,7 @@ public:
     void expandCoefs(gsMatrix<T> & coefs) const
     {
         const index_t sz = coefs.rows();
-        coefs.conservativeResize(sz+m_periodic, Eigen::NoChange);
+        coefs.conservativeResize(sz+m_periodic, gsEigen::NoChange);
         coefs.bottomRows( m_periodic ) = coefs.topRows( m_periodic );
     }
 
@@ -643,7 +647,7 @@ public:
     void trimCoefs(gsMatrix<T> & coefs) const
     {
         const index_t sz = coefs.rows();
-        coefs.conservativeResize(sz-m_periodic, Eigen::NoChange);
+        coefs.conservativeResize(sz-m_periodic, gsEigen::NoChange);
     }
 
     /// @brief Returns the size of the basis ignoring the bureaucratic way of

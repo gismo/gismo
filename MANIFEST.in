@@ -1,0 +1,7 @@
+graft cmake
+graft src
+graft optional
+graft external
+include submodules.txt
+global-include CMakeLists.txt
+global-exclude .git .git*

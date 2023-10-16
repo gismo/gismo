@@ -37,7 +37,9 @@ public:
 
     mutable gsMatrix<Scalar> bGrads, cJac;
     mutable gsVector<Scalar,3> m_v, normal;
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
     // helper function
     static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
@@ -60,7 +62,7 @@ public:
         _u.data().flags |= NEED_GRAD;
 
         evList.add(_G);
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_MEASURE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -81,7 +83,7 @@ private:
         normal.normalize();
         bGrads = _u.data().values[1].col(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        const Scalar measure =  _G.data().measures.at(k);
+        const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
 
         for (index_t d = 0; d!= cols(); ++d) // for all basis function components
         {
@@ -112,7 +114,7 @@ private:
         normal.normalize();
         bGrads = sGrad.eval(k);
         cJac = _G.data().values[1].reshapeCol(k, _G.data().dim.first, _G.data().dim.second).transpose();
-        const Scalar measure =  _G.data().measures.at(k);
+        const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
 
         m_v.noalias() = ( ( bGrads.col(0).template head<3>() ).cross( cJac.col(1).template head<3>() )
                       -   ( bGrads.col(1).template head<3>() ).cross( cJac.col(0).template head<3>() ) ) / measure;
@@ -145,7 +147,9 @@ public:
 
     mutable gsMatrix<Scalar> uGrads, vGrads, cJac, cDer2, evEf, result;
     mutable gsVector<Scalar> m_u, m_v, normal, m_uv, m_u_der, n_der, n_der2, tmp; // memomry leaks when gsVector<T,3>, i.e. fixed dimension
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
     // helper function
     static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
@@ -168,7 +172,7 @@ public:
 
         const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
         const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
-        const Scalar measure =  _G.data().measures.at(k);
+        const Scalar measure =  (cJac.col3d(0).cross( cJac.col3d(1) )).norm();
 
         evEf = _Ef.eval(k);
 
@@ -234,7 +238,7 @@ public:
         _u.data().flags |= NEED_GRAD;
 
         evList.add(_G);
-        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER | NEED_MEASURE;
+        _G.data().flags |= NEED_NORMAL | NEED_DERIV | NEED_2ND_DER;
         _Ef.parse(evList);
     }
 
@@ -695,7 +699,9 @@ public:
     /// Unique pointer for gsMaterialMatrix
     typedef memory::unique_ptr< gsMaterialMatrix > uPtr;
 
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
     gsMaterialMatrix() { }
 

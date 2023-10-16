@@ -396,6 +396,15 @@ protected:
 
     bool rangeCheck(const std::vector<index_t> &corners, const size_t minimum, const size_t maximum);
 
+public:
+
+    const gsHalfEdgeMesh<T> & mesh() const {return m_mesh;}
+
+    const VectorType & pointParameters() const
+    {
+        return m_parameterPoints;
+    }
+
 }; // class gsParametrization
 
 #ifdef GISMO_WITH_PYBIND11

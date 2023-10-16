@@ -16,11 +16,13 @@
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsFuncCoordinate.h>
 
 #include <gsCore/gsGeometrySlice.h>
 #include <gsUtils/gsThreaded.h>
 
 //#include <gsCore/gsMinimizer.h>
+#include <gsUtils/gsPointGrid.h>
 
 namespace gismo
 {
@@ -41,7 +43,7 @@ public:
         result.at(0) = 0.5 * (m_gd.mine()[0]-*m_pt).squaredNorm();
     }
 
-    void evalAllDers_into(const gsMatrix<T> & u, const int n,
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result) const
     {
         GISMO_ASSERT(1==u.cols(), "Single argument assumed");
@@ -285,6 +287,59 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
      */
 
 template<class T>
+gsGeometry<T>::gsGeometry(const gsGeometry<T> & o) 
+: m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
+{ }
+
+template<class T>
+void gsGeometry<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{ this->basis().evalFunc_into(u, m_coefs, result); }
+
+template<class T>
+void gsGeometry<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{ this->basis().derivFunc_into(u, m_coefs, result); }
+
+template<class T>
+void gsGeometry<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+{ this->basis().deriv2Func_into(u, m_coefs, result); }
+
+template<class T>
+void gsGeometry<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
+                        std::vector<gsMatrix<T> > & result) const
+{ this->basis().evalAllDersFunc_into(u, m_coefs, n, result); }
+
+template<class T>
+short_t gsGeometry<T>::domainDim() const { return this->basis().domainDim(); }
+
+template<class T>
+short_t gsGeometry<T>::coDim() const { return coefDim()-this->basis().domainDim(); }
+
+template<class T>
+short_t gsGeometry<T>::parDim() const { return this->basis().domainDim(); }
+
+template<class T>
+gsMatrix<T> gsGeometry<T>::support() const
+{ return this->basis().support(); }
+
+template<class T>
+/// Returns the range of parameters as a matrix with two columns, [lower upper]
+gsMatrix<T> gsGeometry<T>::parameterRange() const
+{ return this->basis().support(); }
+
+template<class T>
+gsGeometry<T>& gsGeometry<T>::operator=( const gsGeometry<T> & o)
+{
+    if ( this != &o )
+    {
+        m_coefs = o.m_coefs;
+        delete m_basis;
+        m_basis = o.basis().clone().release() ;
+        m_id = o.m_id;
+    }
+    return *this;
+}
+
+template<class T>
 typename gsGeometry<T>::uPtr
 gsGeometry<T>::boundary(boxSide const& s) const
 {
@@ -376,6 +431,39 @@ gsGeometry<T>::coefAtCorner(boxCorner const & c) const
 }
 
 template<class T>
+void gsGeometry<T>::uniformRefine(int numKnots, int mul, int dir) // todo: int dir = -1
+{
+    this->basis().uniformRefine_withCoefs( m_coefs, numKnots, mul, dir);
+}
+
+template<class T>
+void gsGeometry<T>::uniformCoarsen(int numKnots) // todo: int dir = -1
+{
+    this->basis().uniformCoarsen_withCoefs( m_coefs, numKnots);
+}
+
+template<class T>
+void gsGeometry<T>::refineElements( std::vector<index_t> const & boxes )
+{
+    this->basis().refineElements_withCoefs(this->m_coefs, boxes );
+}
+
+template<class T>
+void gsGeometry<T>::unrefineElements( std::vector<index_t> const & boxes )
+{
+    this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
+}
+
+template<class T>
+inline typename gsGeometry<T>::uPtr gsGeometry<T>::coord(const index_t c) const {return this->basis().makeGeometry( this->coefs().col(c) ); }
+
+template<class T>
+short_t gsGeometry<T>::degree(const short_t & i) const
+    //{ return this->basisComponent(i).degree(); };
+    { return this->basis().degree(i); }
+
+
+template<class T>
 T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
                                 gsVector<T> & result,
                                 const T accuracy,
@@ -399,55 +487,56 @@ T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
 }
 
 template<class T>
-void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
-                                 gsMatrix<T> & result,
-                                 const T accuracy, const bool useInitialPoint) const
+T gsGeometry<T>::directedHausdorffDistance(const gsGeometry & other, const index_t nsamples, const T accuracy) const
 {
-    result.resize(parDim(), points.cols() );
-    gsVector<T> arg;
-    for ( index_t i = 0; i!= points.cols(); ++i)
+    // Sample points on *this
+    gsMatrix<T> uv = gsPointGrid<T>(this->support(),nsamples);
+    gsMatrix<T> pts;
+    this->eval_into(uv,pts);
+    // Find the maximum of the closest point on *other from the set of pts
+    T maxDist=std::numeric_limits<T>::min();
+    gsVector<T> tmp;
+    for (index_t k=0; k!=pts.cols(); k++)
     {
-        if (useInitialPoint)
-            arg = result.col(i);
-        else
-            arg = this->parameterCenter();
+        maxDist = std::max(maxDist,other.closestPointTo(pts.col(k),tmp,accuracy,false));
+    }
+    return std::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
+}
 
-        //const int iter =
-        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
-        //gsInfo<< "Iterations: "<< iter <<"\n";
-        //  if (-1==iter)
-        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
-        result.col(i) = arg;
-        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
-            result.col(i) = arg;
-        else
-        {
-            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
-            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
-        }
+template<class T>
+T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamples, const T accuracy, bool directed) const
+{
+    T this2other, other2this;
+    this2other = this->directedHausdorffDistance(other,nsamples,accuracy);
+    if (directed)
+        return this2other;
+    else
+    {
+        other2this = other.directedHausdorffDistance(*this,nsamples,accuracy);
+        return std::max(other2this,this2other);
     }
 }
-/* // alternative impl using closestPointTo
-{
-    result.resize(parDim(), points.cols() );
-    gsVector<T> pt, arg;
-    for ( index_t i = 0; i!= points.cols(); ++i )
-    {
-        pt = points.col(i);
-        if (useInitialPoint)
-            arg = result.col(i);
 
-        this->closestPointTo(pt, arg, accuracy, useInitialPoint);
-        if ( (this->eval(arg)-pt).norm()<=accuracy )
-            result.col(i) = arg;
-        else
-        {
-            //result.col(i) = arg;
-            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
-        }
-    }
+// template<class T>
+// T gsGeometry<T>::hausdorffDistance() const
+
+
+template<class T>
+void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                                  const T accuracy) const
+{
+    gsVector<index_t> ind(xyz.rows()-1);
+    for (index_t i = 0; i!= xyz.rows(); ++i)
+        if (i<k) ind[i]=i;
+        else if (i>k) ind[i-1]=i;       
+
+    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsFuncCoordinate<T> fc(*this, give(ind));
+    fc.invertPoints(pt,uv,accuracy,false);
+    xyz = this->eval(uv);
+    //possible check: pt close to xyz
 }
-*/
+
 
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const
@@ -493,14 +582,7 @@ template<class T>
 void gsGeometry<T>::degreeElevate(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeElevate(i);
-    else if (dir < parDim() )
-        b->degreeElevate(i, dir);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to elevate.");
-
+    b->degreeElevate(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
@@ -513,14 +595,7 @@ template<class T>
 void gsGeometry<T>::degreeReduce(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeReduce(i);
-    else if (dir < parDim() )
-        b->component(dir).degreeReduce(i);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to degree-reduce.");
-
+    b->degreeReduce(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
@@ -533,14 +608,7 @@ template<class T>
 void gsGeometry<T>::degreeIncrease(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeIncrease(i);
-    else if (dir < parDim() )
-        b->degreeIncrease(i, dir);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to elevate.");
-
+    b->degreeIncrease(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
@@ -553,14 +621,7 @@ template<class T>
 void gsGeometry<T>::degreeDecrease(short_t const i, short_t const dir)
 {
     typename gsBasis<T>::uPtr b = m_basis->clone();
-
-    if ( dir == -1 )
-        b->degreeDecrease(i);
-    else if (dir < parDim() )
-        b->component(dir).degreeDecrease(i);
-    else
-        GISMO_ERROR("Invalid direction "<< dir <<" to degree-reduce.");
-
+    b->degreeDecrease(i, dir);
     gsMatrix<T> iVals, iPts = b->anchors();
     this->eval_into(iPts, iVals);
     typename gsGeometry<T>::uPtr g = b->interpolateData(iVals, iPts);
@@ -604,6 +665,10 @@ gsGeometry<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
         result += C(ind(i,j), coord) * tmp;
     }
 }
+
+template<class T>
+void gsGeometry<T>::controlNet( gsMesh<T> & mesh) const
+{ basis().connectivity(m_coefs, mesh); }
 
 
 
