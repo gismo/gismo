@@ -7,90 +7,13 @@
 
 #include (GenerateExportHeader)
 
+## #################################################################
+## Add library targets
+## #################################################################
+
 #message("Using ${${PROJECT_NAME}_EXTENSIONS}")
 #message("Using ${${PROJECT_NAME}_MODULES}")
 #message("Using ${${PROJECT_NAME}_SOURCES}")
-
-###################################################################
-# Static library
-###################################################################
-
-add_library(${PROJECT_NAME}_static STATIC
-  ${${PROJECT_NAME}_MODULES}
-  ${${PROJECT_NAME}_SOURCES}
-  ${${PROJECT_NAME}_EXTENSIONS}
-  )
-
-  #generate_export_header(${PROJECT_NAME}_static)
-
-  if(${PROJECT_NAME}_LINKER)
-    target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
-  endif()
-
-  if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
-     target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY})
-  ENDIF()
-
-  if (GISMO_GCC_STATIC_LINKAGE)
-    target_link_libraries(${PROJECT_NAME}_static -static-libgcc -static-libstdc++)
-  endif()
-
-  # Avoid naming conflic on MSVC
-  if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
-    set(gs_static_lib_suffix _static)
-  endif()
-
-  set_target_properties(${PROJECT_NAME}_static PROPERTIES
-  COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
-  POSITION_INDEPENDENT_CODE ON
-  LINKER_LANGUAGE CXX
-  CXX_VISIBILITY_PRESET "hidden"
-  FOLDER "G+Smo libraries"
-  OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
-
-###################################################################
-# Pygismo
-###################################################################
-
-if (GISMO_WITH_PYBIND11)
-
-  pybind11_add_module(py${PROJECT_NAME} MODULE
-    "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
-    )
-
-  set_target_properties(py${PROJECT_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS
-    POSITION_INDEPENDENT_CODE ON
-    LINKER_LANGUAGE CXX
-    CXX_VISIBILITY_PRESET "hidden"
-    CUDA_VISIBILITY_PRESET "hidden"
-    )
-
-  # since gismo (${PROJECT_NAME}) target includes bindings, it needs
-  # pybind/python info. Those are automatically managed in
-  # `pybind11_add_module`. Since we aren't using it, setup gismo target
-  # in similar fashion manually. 
-  target_link_libraries(${PROJECT_NAME}_static pybind11::module)
-
-  if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-    target_link_libraries(${PROJECT_NAME}_static pybind11::lto)
-  endif()
-
-  # link gismo to pygismo
-  target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
-
-  pybind11_strip(py${PROJECT_NAME})
-  pybind11_extension(py${PROJECT_NAME})
-
-  if (GISMO_KLSHELL)
-    target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
-  endif()# To fix
-
-endif(GISMO_WITH_PYBIND11)
-
-###################################################################
-# Shared library
-###################################################################
 
 if(GISMO_BUILD_LIB)
 
@@ -110,55 +33,58 @@ if (GISMO_WITH_XDEBUG)
   endif()
 endif()
 
-<<<<<<< HEAD
-  add_library(${PROJECT_NAME} SHARED
-    ${${PROJECT_NAME}_MODULES}
-    ${${PROJECT_NAME}_SOURCES}
-    ${${PROJECT_NAME}_EXTENSIONS}
-    )
-
-  if (GISMO_WITH_PYBIND11)
-    pybind11_add_module(py${PROJECT_NAME} MODULE
+  # build static within github ci, if it is building with python ext
+  if ("$ENV{GITHUB_ACTIONS}" AND GISMO_WITH_PYBIND11)
+    add_library(${PROJECT_NAME} STATIC
       ${${PROJECT_NAME}_MODULES}
       ${${PROJECT_NAME}_SOURCES}
       ${${PROJECT_NAME}_EXTENSIONS}
-      "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
       )
-    target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
-    #target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
-    target_link_libraries(py${PROJECT_NAME} PRIVATE "${${PROJECT_NAME}_LINKER}")
-    #target_link_libraries(py${PROJECT_NAME} PRIVATE "${${PROJECT_NAME}_LINKER} ${OpenMP_libomp_LIBRARY}")
+  else()
+    add_library(${PROJECT_NAME} SHARED
+      ${${PROJECT_NAME}_MODULES}
+      ${${PROJECT_NAME}_SOURCES}
+      ${${PROJECT_NAME}_EXTENSIONS}
+      )
+  endif()
+
+  if (GISMO_WITH_PYBIND11)
+    pybind11_add_module(py${PROJECT_NAME} MODULE
+      "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
+    )
+
+    # since gismo (${PROJECT_NAME}) target includes bindings, it needs
+    # pybind/python info. Those are automatically managed in
+    # `pybind11_add_module`. Since we aren't using it, setup gismo target
+    # in similar fashion manually.
+    target_link_libraries(${PROJECT_NAME} pybind11::module)
+    if(NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
+      set_target_properties(${target_name} PROPERTIES CXX_VISIBILITY_PRESET "hidden")
+    endif()
+    if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+      target_link_libraries(${target_name} pybind11::lto)
+    endif()
+
+    # link gismo to pygismo
+    target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
 
     if (GISMO_KLSHELL)
       target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
     endif()# To fix
   endif(GISMO_WITH_PYBIND11)
-  
-  #generate_export_header(${PROJECT_NAME})
-=======
-add_library(${PROJECT_NAME} SHARED
-  ${${PROJECT_NAME}_MODULES}
-  ${${PROJECT_NAME}_SOURCES}
-  ${${PROJECT_NAME}_EXTENSIONS}
-  )
->>>>>>> origin/stable
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
+  #generate_export_header(${PROJECT_NAME})
+
+  set_target_properties(${PROJECT_NAME} PROPERTIES
   #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
   VERSION "${${PROJECT_NAME}_VERSION}"
   SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}"
   PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
   POSITION_INDEPENDENT_CODE ON
   LINKER_LANGUAGE CXX
-  CXX_VISIBILITY_PRESET "hidden"
   #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
   FOLDER "G+Smo libraries"
   )
-  #generate_export_header(${PROJECT_NAME})
-
-  if (GISMO_WITH_PYBIND11)
-    target_link_libraries(${PROJECT_NAME} pybind11::embed)
-  endif()
 
 #if(gsMpfr_ENABLED OR gsGmp_ENABLED)
 #    find_package(GMP)
@@ -229,9 +155,43 @@ endif( WIN32 )
 
 endif(GISMO_BUILD_LIB)
 
+  add_library(${PROJECT_NAME}_static STATIC
+  ${${PROJECT_NAME}_MODULES}
+  ${${PROJECT_NAME}_SOURCES}
+  ${${PROJECT_NAME}_EXTENSIONS}
+  )
+
+  #generate_export_header(${PROJECT_NAME}_static)
+
+  if(${PROJECT_NAME}_LINKER)
+    target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
+  endif()
+
   if (EIGEN_USE_MKL_ALL)
     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
   endif()
+
+  if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
+     target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY})
+  ENDIF()
+
+  if (GISMO_GCC_STATIC_LINKAGE)
+    target_link_libraries(${PROJECT_NAME}_static -static-libgcc -static-libstdc++)
+  endif()
+
+  # Avoid naming conflic on MSVC
+  if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+    set(gs_static_lib_suffix _static)
+  endif()
+
+  set_target_properties(${PROJECT_NAME}_static PROPERTIES
+  COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
+  POSITION_INDEPENDENT_CODE ON
+  LINKER_LANGUAGE CXX
+  FOLDER "G+Smo libraries"
+  OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
+
+set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib/)
 
 ## #################################################################
 ## Installation
