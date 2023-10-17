@@ -138,7 +138,7 @@ void gsFitting<T>::compute(T lambda)
     x = solver.solve(m_B); //toDense()
 
     // If there were constraints, we obtained too many coefficients.
-    x.conservativeResize(num_basis, Eigen::NoChange);
+    x.conservativeResize(num_basis, gsEigen::NoChange);
 
     //gsMatrix<T> x (m_B.rows(), m_B.cols());
     //x=A_mat.fullPivHouseholderQr().solve( m_B);
@@ -205,7 +205,7 @@ void gsFitting<T>::computePen(T lambda1, index_t d1, T lambda2, index_t d2)
 
     typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
 
-    if ( solver.preconditioner().info() != Eigen::Success )
+    if ( solver.preconditioner().info() != gsEigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
 
@@ -230,136 +230,53 @@ void gsFitting<T>::computePen(T lambda1, index_t d1, T lambda2, index_t d2)
         m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(x));
 }
 
-#ifdef gsParasolid_ENABLED
-
-template <class T>
-void gsFitting<T>::parameterCorrection(T accuracy,
-                                       index_t maxIter,
-                                       T tolOrth)
-{
-    // Silence warnings, cf. https://stackoverflow.com/a/1486931/10348053
-    (void)accuracy;
-    (void)maxIter;
-    (void)tolOrth;
-
-    if ( !m_result )
-        compute(m_last_lambda);
-
-<<<<<<< HEAD
-    extensions::gsPKSession::start();
-    for (index_t it = 0; it!=maxIter; ++it)
-    {
-        // convert m_result to B-spline
-        gsTHBSpline<2, T> resultTHB  = *static_cast<gsTHBSpline<2>*>(m_result);
-        gsTensorBSpline<2, T> result;
-        resultTHB.convertToBSpline(result);
-
-        // Less efficient version:
-
-        // gsVector<T, 3> point;
-        // gsVector<T, 2> newParam;
-        // for(index_t i=0; i<m_points.rows(); i++)
-        // {
-        //     point = m_points.row(i);
-        //     extensions::gsClosestParam(result, point, newParam);
-        //     m_param_values.col(i) = newParam;
-        // }
-
-        // More efficient version:
-        extensions::gsClosestParam(result, m_points, m_param_values);
-
-        // refit
-        compute(m_last_lambda);
-    }
-    extensions::gsPKSession::stop();
-}
-
-#else // Parasolid not enabled
-
 template <class T>
 void gsFitting<T>::smoothParameterCorrection(T accuracy, index_t maxIter)
 {
     if(!m_result)
-	compute(m_last_lambda);
+	   compute(m_last_lambda);
 
     // TODO: Find a better place for this.
     initParametricDomain();
 
     for (index_t it = 0; it!=maxIter; ++it)
     {
-	gsInfo << "Correcting for the " << it << "-th time." << std::endl;
+	     gsInfo << "Correcting for the " << it << "-th time." << std::endl;
+       gsMatrix<T> idealPars = m_param_values;
+	     gsVector<T> newParam;
+	     for (index_t i = 0; i<m_points.rows(); ++i)
+	     {
+         newParam = m_param_values.col(i);
+	       m_result->closestPointTo(m_points.row(i).transpose(), newParam, accuracy, true);
+	       idealPars.col(i) = newParam;
+	     }
 
-	gsMatrix<T> idealPars = m_param_values;
-	gsVector<T> newParam;
-	for (index_t i = 0; i<m_points.rows(); ++i)
-	{
-	    newParam = m_param_values.col(i);
-	    m_result->closestPointTo(m_points.row(i).transpose(), newParam, accuracy, true);
-	    idealPars.col(i) = newParam;
-	}
+	     index_t deg = 3;
+	     index_t numKnots = 7;
+	     gsKnotVector<T> uKnots(m_uMin, m_uMax, numKnots, deg + 1);
+	     gsKnotVector<T> vKnots(m_vMin, m_vMax, numKnots, deg + 1);
+	     gsTensorBSplineBasis<2, T> rebasis(uKnots, vKnots);
+	     gsFitting<T> reparam(m_param_values, idealPars, rebasis);
 
-	index_t deg = 3;
-	index_t numKnots = 7;
-	gsKnotVector<T> uKnots(m_uMin, m_uMax, numKnots, deg + 1);
-	gsKnotVector<T> vKnots(m_vMin, m_vMax, numKnots, deg + 1);
-	gsTensorBSplineBasis<2, T> rebasis(uKnots, vKnots);
-	gsFitting<T> reparam(m_param_values, idealPars, rebasis);
-=======
-    const index_t d = m_param_values.rows();
-    const index_t n = m_points.cols();
-    T maxAng, avgAng;
-    std::vector<gsMatrix<T> > vals;
-    gsMatrix<T> DD, der;
-    for (index_t it = 0; it<maxIter; ++it)
-    {
-        maxAng = -1;
-        avgAng = 0;
-        //auto der = gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,-1> >
-        //(vals[1].data()+k, n, m_points.rows(), gsEigen::Stride<-1,-1>(d*n,d) );
+       const index_t d = m_param_values.rows();
+       const index_t n = m_points.cols();
+       T maxAng, avgAng;
+       std::vector<gsMatrix<T> > vals;
+       gsMatrix<T> DD, der;
+       for (index_t it = 0; it<maxIter; ++it)
+       {
+	        // TODO: How to choose proper smoothing?
+	        // TODO: It seems to work but not to cause that much difference.
+	        // Test on a more challenging example!
+	        reparam.compute(1e-5);
+          // Evaluate the reparametrization and replace m_param_values with it.
+	        gsMatrix<T> oldPars = m_param_values;
+	        reparam.result()->eval_into(oldPars, m_param_values);
 
-#       pragma omp parallel for default(shared) private(der,DD,vals)
-        for (index_t s = 0; s<m_points.rows(); ++s)
-            //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
-        {
-            vals = m_result->evalAllDers(m_param_values.col(s), 1);
-            for (index_t k = 0; k<d; ++k)
-            {
-                der = vals[1].reshaped(d,n);
-                DD = vals[0].transpose() - m_points.row(s);
-                const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
-                const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
-#               pragma omp critical (max_avg_ang)
-                {
-                    maxAng = math::max(maxAng, a );
-                    avgAng += a;
-                }
-            }
-            /*
-            auto der = gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,-1> >
-                (vals[1].data()+k, n, m_points.rows(), gsEigen::Stride<-1,-1>(d*n,d) );
-            maxAng = ( DD.colwise().normalized() *
-                       der.colwise().normalized().transpose()
-                ).array().acos().maxCoeff();
-            */
+	        compute(m_last_lambda);
         }
->>>>>>> origin/stable
-
-	// TODO: How to choose proper smoothing?
-	// TODO: It seems to work but not to cause that much difference.
-	// Test on a more challenging example!
-	reparam.compute(1e-5);
-
-	// gsFileData<> fd;
-	// fd << *reparam.result();
-	// fd.dump("reparam");
-
-	// Evaluate the reparametrization and replace m_param_values with it.
-	gsMatrix<T> oldPars = m_param_values;
-	reparam.result()->eval_into(oldPars, m_param_values);
-
-	compute(m_last_lambda);
-    }
-}
+      }
+}// smooth parameter correction
 
 template <class T>
 void gsFitting<T>::parameterCorrection(T accuracy,
@@ -699,8 +616,6 @@ void gsFitting<T>::parameterCorrectionSepBoundary(T accuracy,
       compute(m_last_lambda);
     }
 }
-
-#endif // gsParasolid_ENABLED
 
 
 template <class T>

@@ -392,7 +392,7 @@ gsNurbsCreator<T>::extrude(gsBSpline<T> const & geo, T zminus, T zplus)
     // Embed in 3D if needed
     if (newcoefs.cols() == 2 )
     {
-        newcoefs.conservativeResize( Eigen::NoChange, 3);
+        newcoefs.conservativeResize( gsEigen::NoChange, 3);
         newcoefs.col(2).setZero();
     }
 
@@ -880,7 +880,7 @@ gsNurbsCreator<T>::NurbsAnnulus( T const & r0, T const & r1)
     gsKnotVector<T> KVx (0,1,3,3,2) ;
     gsKnotVector<T> KVy (0,1,0,2) ;
     gsMatrix<T> C(18,2) ;
-    
+
     C <<    r0, 0,
             r0, r0,
             0, r0,

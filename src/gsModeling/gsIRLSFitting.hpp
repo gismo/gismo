@@ -100,7 +100,7 @@ void gsIRLSFitting<T>::compute(T lambda)
 
     typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
 
-    if ( solver.preconditioner().info() != Eigen::Success )
+    if ( solver.preconditioner().info() != gsEigen::Success )
     {
         gsWarn<<  "The preconditioner failed. Aborting.\n";
         m_result = NULL;
@@ -112,7 +112,7 @@ void gsIRLSFitting<T>::compute(T lambda)
     x = solver.solve(m_B); //toDense()
 
     // If there were constraints, we obtained too many coefficients.
-    x.conservativeResize(num_basis, Eigen::NoChange);
+    x.conservativeResize(num_basis, gsEigen::NoChange);
 
     //gsMatrix<T> x (m_B.rows(), m_B.cols());
     //x=A_mat.fullPivHouseholderQr().solve( m_B);

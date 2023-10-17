@@ -423,7 +423,7 @@ private:
         {
             T result = 0;
             for(typename std::vector<Chain>::const_iterator it=m_boundary.begin(); it!=m_boundary.end(); ++it)
-                result += it->getLength();         
+                result += it->getLength();
             return result;
         }
 
@@ -459,7 +459,7 @@ private:
             {
                 const std::list<size_t>& indicesOneComp = it->getVertexIndices();
                 result.insert(result.end(), indicesOneComp.begin(), indicesOneComp.end());
-            }       
+            }
             return result;
         }
 
@@ -545,7 +545,7 @@ public:
 
     /**
      * @brief Constructor
-     * This constructor uses a gsMesh and sortest its vertices.
+     * This constructor uses a gsMesh and sorts its vertices.
      *
      * @param[in] mesh gsMesh object.
      * @param[in] precision tolerance
