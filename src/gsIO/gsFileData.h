@@ -186,6 +186,21 @@ public:
         result = give(*obj);
     }
 
+    /// Searches and fetches a poitner to a Gismo object with a given label
+    template<class Object>
+    inline memory::unique_ptr<Object> getLabel(const std::string & name)  const
+    {
+        return memory::make_unique( internal::gsXml<Object>::getLabel( getXmlRoot(), name ) );
+    }
+
+    /// Searches and fetches the Gismo object with a given label
+    template<class Object>
+    inline void getLabel(const std::string & name, Object& result)  const
+    {
+        memory::unique_ptr<Object> obj = getId<Object>(name);
+        result = give(*obj);
+    }
+
     /// Prints the XML tag of a Gismo object
     template<class Object>
     inline String tag() const

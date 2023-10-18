@@ -50,7 +50,7 @@ namespace rapidxml
     { return get(anyByTag(tag(), node)); }      \
     static  obj * getId (gsXmlNode * node, int id) \
     { return getById< obj >(node, id); }                            \
-    static  obj * getLabel(gsXmlNode * node, std::string & label) \
+    static  obj * getLabel(gsXmlNode * node, const std::string & label) \
     { return getByLabel< obj >(node, label); }
 
 #define GSXML_GET_POINTER(obj)          \
@@ -220,14 +220,14 @@ public:
     //static void     getAny_into   (gsXmlNode * node);
     static Object * getId    (gsXmlNode * node, int id);
     //static void     getId_into   (gsXmlNode * node, int id, Object & result);
-    static Object * getLabel(gsXmlNode * node, std::string & label);
+    static Object * getLabel(gsXmlNode * node, const std::string & label);
 };
 
 /// Helper to read an object by a given \em id value:
 /// \param node parent node, we check his children to get the given \em id
 /// \param label
 template<class Object>
-Object * getByLabel(gsXmlNode * node, std::string & label)
+Object * getByLabel(gsXmlNode * node, const std::string & label)
 {
     std::string tag = internal::gsXml<Object>::tag();
     for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
