@@ -223,8 +223,8 @@ public:
     static Object * getLabel(gsXmlNode * node, const std::string & label);
 };
 
-/// Helper to read an object by a given \em id value:
-/// \param node parent node, we check his children to get the given \em id
+/// Helper to read an object by a given \em label :
+/// \param node parent node, we check his children to get the given \em label
 /// \param label
 template<class Object>
 Object * getByLabel(gsXmlNode * node, const std::string & label)
@@ -233,8 +233,8 @@ Object * getByLabel(gsXmlNode * node, const std::string & label)
     for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
          child; child = child->next_sibling(tag.c_str()))
     {
-        const gsXmlAttribute * id_at = child->first_attribute("label");
-        if (id_at && !strcmp(id_at->value(),label.c_str()) )
+        const gsXmlAttribute * label_at = child->first_attribute("label");
+        if (label_at && !strcmp(label_at->value(),label.c_str()) )
             return internal::gsXml<Object>::get(child);
     }
     std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
