@@ -264,7 +264,7 @@ public:
         this->add<Object>(obj);
     }
 
-    /// Add the object to the Xml tree, same as <<, but also allows to set the XML id attribute
+    /// Add the object to the Xml tree, same as <<, but also allows to set the XML id and label attributes
     template<class Object>
     void add (const Object & obj, int id = -1, std::string label="")
     {
