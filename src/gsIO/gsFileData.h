@@ -197,7 +197,7 @@ public:
     template<class Object>
     inline void getLabel(const std::string & name, Object& result)  const
     {
-        memory::unique_ptr<Object> obj = getId<Object>(name);
+        memory::unique_ptr<Object> obj = getLabel<Object>(name);
         result = give(*obj);
     }
 
