@@ -266,7 +266,7 @@ public:
 
     /// Add the object to the Xml tree, same as <<, but also allows to set the XML id attribute
     template<class Object>
-    void add (const Object & obj, int id = -1)
+    void add (const Object & obj, int id = -1, std::string label="")
     {
         gsXmlNode* node =
             internal::gsXml<Object>::put(obj, *data);
@@ -277,8 +277,15 @@ public:
         }
         else
         {
-            data->appendToRoot(node,id);
+            data->appendToRoot(node,id, label);
         }
+    }
+
+    /// Add the object to the Xml tree, same as <<, but also allows to set the XML label attribute
+    template<class Object>
+    void add (const Object & obj, std::string label)
+    {
+        add(obj, -1, label);
     }
 
     /// Add a string to the Xml tree
