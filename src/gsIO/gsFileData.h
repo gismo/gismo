@@ -303,6 +303,65 @@ public:
         data->appendToRoot(node);
     }
 
+    void addInclude( const std::string & filename, const real_t & time, const index_t & id=-1, const std::string & label="")
+    {
+        gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
+        GISMO_ASSERT( filename!="", "No filename provided for include!");
+        node->append_attribute(internal::makeAttribute("time", std::to_string(time), *data));
+        data->appendToRoot(node,id, label);
+    }
+
+    gsFileData getInclude(index_t id)
+    {
+        gsXmlNode * root = getXmlRoot();
+        const gsXmlAttribute * id_at;
+        for (gsXmlNode * child = root->first_node("xmlfile");
+             child; child = child->next_sibling("xmlfile"))
+        {
+            id_at = child->first_attribute("id");
+            if (id_at && atoi(id_at->value()) == id )
+            {
+                gsFileData res(child->value());
+                return res;
+            }
+        }
+        GISMO_ERROR("Include with id " << id << " does not exist!");
+    }
+
+    gsFileData getInclude(real_t time)
+    {
+        gsXmlNode * root = getXmlRoot();
+        const gsXmlAttribute * time_at;
+        for (gsXmlNode * child = root->first_node("xmlfile");
+             child; child = child->next_sibling("xmlfile"))
+        {
+            time_at = child->first_attribute("time");
+            if (time_at && atof(time_at->value()) == time )
+            {
+                gsFileData res(child->value());
+                return res;
+            }
+        }
+        GISMO_ERROR("Include with time " << time << " does not exist!");
+    }
+
+    gsFileData getInclude(std::string label)
+    {
+        gsXmlNode * root = getXmlRoot();
+        const gsXmlAttribute * label_at;
+        for (gsXmlNode * child = root->first_node("xmlfile");
+             child; child = child->next_sibling("xmlfile"))
+        {
+            label_at = child->first_attribute("label");
+            if (label_at && label_at->value() == label )
+            {
+                gsFileData res( child->value());
+                return res;
+            }
+        }
+        GISMO_ERROR("Include with label " << label << " does not exist!");
+    }
+
     std::string getString () const
     {
 
