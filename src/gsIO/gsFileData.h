@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <string>
+#include <list>
 
 #include <gsIO/gsXml.h>
 
@@ -101,7 +102,7 @@ private:
     FileData * data;
 
     // Used to hold parsed data of native gismo XML files
-    std::vector<char> m_buffer;
+    std::list<std::vector<char> > m_buffer;
 
     // Holds the last path that was used in an I/O operation
     mutable String m_lastPath;
@@ -408,7 +409,7 @@ public:
     }
 
     /// Returns the size of the data
-    size_t bufferSize() const { return m_buffer.size(); };
+    size_t bufferSize() const { return m_buffer.front().size(); };
 
     /// Prints the XML data as a string
     std::ostream &print(std::ostream &os) const;

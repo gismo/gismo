@@ -1119,6 +1119,31 @@ namespace rapidxml
             child->m_next_sibling = 0;
         }
 
+        //! Appends a new child node.
+        //! The appended child becomes the last child.
+        //! \param child Node to append.
+        void merge_parent(xml_node<Ch> * parent)
+        {
+            if (this==parent) return;
+            xml_node<Ch> * child = parent->m_first_node;
+            if (!child) return;
+
+            if (first_node())
+            {
+                child->m_prev_sibling = m_last_node;
+                m_last_node->m_next_sibling = child;
+            }
+            else
+            {
+                child->m_prev_sibling = 0;
+                m_first_node = child;
+            }
+            for (xml_node<Ch> *node = parent->m_first_node; node; node = node->m_next_sibling)
+                node->m_parent = this;
+            m_last_node = parent->m_last_node;
+            parent->m_first_node = parent->m_last_node = 0;
+        }
+
         //! Inserts a new child node at specified place inside the node.
         //! All children after and including the specified node are moved one position back.
         //! \param where Place where to insert the child, or 0 to insert at the back.
@@ -1429,13 +1454,16 @@ namespace rapidxml
         //! Each new call to parse removes previous nodes and attributes (if any), but does not clear memory pool.
         //! \param text XML data to parse; pointer is non-const to denote fact that this data may be modified by the parser.
         template<int Flags>
-        void parse(Ch *text)
+        void parse(Ch *text, bool appendContents = false)
         {
             assert(text);
 
-            // Remove current contents
-            this->remove_all_nodes();
-            this->remove_all_attributes();
+            if (!appendContents)
+            {
+                // Remove current contents
+                this->remove_all_nodes();
+                this->remove_all_attributes();
+            }
 
             // Parse BOM, if any
             parse_bom<Flags>(text);

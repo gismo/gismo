@@ -251,14 +251,50 @@ bool gsFileData<T>::readXmlGzFile( String const & fn )
 template<class T>
 bool gsFileData<T>::readGismoXmlStream(std::istream & is)
 {
-    std::vector<char> buffer(
-        std::istreambuf_iterator<char>(is.rdbuf() ),
-        std::istreambuf_iterator<char>() );
+    m_buffer.emplace_back();
+    std::vector<char> & buffer = m_buffer.back();
+    buffer.assign( std::istreambuf_iterator<char>(is.rdbuf() ),
+                   std::istreambuf_iterator<char>() );
     buffer.push_back('\0');
-    m_buffer.swap(buffer);
-
     // Load file contents
-    data->parse<0>(&m_buffer[0]);
+    data->parse<0>(&buffer[0], true);
+
+    gsXmlNode * ln = data->last_node("xml");
+    if ( !ln )
+    {
+        gsWarn<< "gsFileData: Problem with file "<<m_lastPath
+              <<": Invalid XML file, no root tag <xml> found.\n";
+        assert( root ) ;
+    }
+    std::list<std::string> ifn;
+    for (gsXmlNode * child = ln->first_node("xmlfile") ;
+         child; child = child->next_sibling("xmlfile") )
+    {
+        ifn.push_back( child->value() );
+        gsInfo<< "#xmlfile "<< child->value() <<"\n";
+    }
+
+    gsXmlNode * root = data->getRoot();
+    root->merge_parent(ln);
+    for (gsXmlNode * child = root->first_node("xmlfile") ;
+         child; child = child->next_sibling("xmlfile") )
+    {
+        gsInfo<< "+xmlfile "<< child->value() <<"\n";
+    }
+
+    std::string cfn;
+    for (auto & f : ifn)
+    {
+        cfn = gsFileManager::getPath(m_lastPath);
+        cfn += f;
+        gsInfo<< "xmlfile "<< cfn <<"\n";
+        readXmlFile(cfn);
+        for (gsXmlNode * child = root->first_node("xmlfile") ;
+             child; child = child->next_sibling("xmlfile") )
+        {
+            gsInfo<< "#xmlfile "<< child->value() <<"\n";
+        }
+    }
 
     // TO DO: Check if it contains unknown tags...
     return true;
