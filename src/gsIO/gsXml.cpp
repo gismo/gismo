@@ -215,7 +215,7 @@ void appendBoxTopology(const gsBoxTopology& topology,
         if (contact_oss.str() != "") 
         {
             gsXmlNode * contact_node = internal::makeNode("interfaces", contact_oss.str(), data);
-            contact_node->append_attribute( internal::makeAttribute("name","contact",data) );    
+            contact_node->append_attribute( internal::makeAttribute("type","contact",data) );    
             node->append_node(contact_node);
         }
         
@@ -249,9 +249,12 @@ void getInterfaces(gsXmlNode* node,
     gsVector<index_t> dirMap(d);
     gsVector<bool>    dirOrient(d);
     std::string name;
+    std::string type;
     const gsXmlAttribute * name_att = node->first_attribute("name");
+    const gsXmlAttribute * type_att = node->first_attribute("type");
     if (NULL != name_att)
         name = name_att->value();
+    type = ( NULL == type_att ) ? "" : type_att->value();
 
     std::istringstream iss;
     iss.str( node->value() );
@@ -292,7 +295,7 @@ void getInterfaces(gsXmlNode* node,
         }
         
         result.push_back( boundaryInterface(p, dirMap, dirOrient,name) );
-        if (name == "contact") result.back().setAsContact();
+        if (type == "contact") result.back().setAsContact();
 //            // OLD format: read in Orientation flags
 //            gsVector<bool> orient(d-1);// orientation flags
 //            int k;
