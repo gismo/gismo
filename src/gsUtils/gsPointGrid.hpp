@@ -15,15 +15,15 @@
 #pragma once
 
 
-namespace gismo 
+namespace gismo
 {
 
 /* **************** Utility functions **************** */
 
 
 template<typename T> //cwiseSampleCount
-gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower, 
-                                       const gsVector<T>& upper, 
+gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower,
+                                       const gsVector<T>& upper,
                                        int numPoints)
 {
     const index_t d = lower.rows();
@@ -46,9 +46,9 @@ gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower,
 }
 
 template<typename T>
-void uniformIntervals(const gsVector<T>& lower, 
-                      const gsVector<T>& upper, 
-                      std::vector< std::vector<T> >& intervals, 
+void uniformIntervals(const gsVector<T>& lower,
+                      const gsVector<T>& upper,
+                      std::vector< std::vector<T> >& intervals,
                       int numIntervals)
 {
     const int d = lower.rows();
@@ -79,8 +79,8 @@ void uniformIntervals(const gsVector<T>& lower,
 
 
 template<class T>
-gsMatrix<T> gsPointGrid( gsVector<T> const & a, 
-                         gsVector<T> const & b, 
+gsMatrix<T> gsPointGrid( gsVector<T> const & a,
+                         gsVector<T> const & b,
                          gsVector<unsigned> const & np )
 {
     gsMatrix<T> res(a.size(), np.prod() );
@@ -91,8 +91,8 @@ gsMatrix<T> gsPointGrid( gsVector<T> const & a,
 }
 
 template<typename T>
-gsMatrix<T> uniformPointGrid(const gsVector<T>& lower, 
-                             const gsVector<T>& upper, 
+gsMatrix<T> uniformPointGrid(const gsVector<T>& lower,
+                             const gsVector<T>& upper,
                              int numPoints)
 {
     const gsVector<unsigned> cwisePoints = uniformSampleCount(lower, upper, numPoints);
