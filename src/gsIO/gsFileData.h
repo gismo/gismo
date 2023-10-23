@@ -18,6 +18,7 @@
 #include <list>
 
 #include <gsIO/gsXml.h>
+#include <gsIO/gsFileManager.h>
 
 namespace gismo
 {
@@ -312,55 +313,68 @@ public:
         data->appendToRoot(node,id, label);
     }
 
-    gsFileData getInclude(index_t id)
-    {
+private:
+    gsFileData getInclude(index_t id, real_t time, std::string label)
+    {   
+        // Ensures that only one argument is actually provided
+        GISMO_ENSURE((id!=-1 ^  time!=-1. ^  label!="") &&
+                    !(id!=-1 && time!=-1. && label!=""),
+                    "gsFileData::getInclude("<<id<<","<<time<<","<<label<<"), too many arguments provided!");
+        std::string attr_name, attr_string;
+
+        // Attribute name and string representation, depending on pprovided input.
+        if ( id!=-1 )
+        {
+            attr_name   = "id";
+            attr_string = std::to_string(id); 
+        }
+        else if ( time!=-1)
+        {
+            attr_name   = "time";
+            attr_string = std::to_string(time);
+        }
+        else if ( label!="")
+        {
+            attr_name   = "label";
+            attr_string = label;
+        } 
+
+        bool found=false;
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
+        const gsXmlAttribute * attribute;
         for (gsXmlNode * child = root->first_node("xmlfile");
              child; child = child->next_sibling("xmlfile"))
         {
-            id_at = child->first_attribute("id");
-            if (id_at && atoi(id_at->value()) == id )
+            attribute = child->first_attribute(attr_name.c_str());
+
+            if (id!=-1 && attribute && atoi(attribute->value()) == id ) found=true; 
+            else if (time!=-1. && attribute && atof(attribute->value()) == time ) found=true; 
+            else if ( label!="" && attribute && attribute->value() == label) found=true; 
+
+            if (found)
             {
-                gsFileData res(child->value());
+                std::string filename = gsFileManager::getPath(m_lastPath) +  child->value();
+                gsFileData res(filename);
                 return res;
             }
         }
-        GISMO_ERROR("Include with id " << id << " does not exist!");
+        GISMO_ERROR("Include with " << attr_name << "=" << attr_string << " does not exist!");
+    }
+
+public:
+    gsFileData getInclude(index_t id)
+    {
+        return getInclude(id, -1., "");
     }
 
     gsFileData getInclude(real_t time)
     {
-        gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * time_at;
-        for (gsXmlNode * child = root->first_node("xmlfile");
-             child; child = child->next_sibling("xmlfile"))
-        {
-            time_at = child->first_attribute("time");
-            if (time_at && atof(time_at->value()) == time )
-            {
-                gsFileData res(child->value());
-                return res;
-            }
-        }
-        GISMO_ERROR("Include with time " << time << " does not exist!");
+        return getInclude(-1,time, "");
     }
 
     gsFileData getInclude(std::string label)
     {
-        gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * label_at;
-        for (gsXmlNode * child = root->first_node("xmlfile");
-             child; child = child->next_sibling("xmlfile"))
-        {
-            label_at = child->first_attribute("label");
-            if (label_at && label_at->value() == label )
-            {
-                gsFileData res( child->value());
-                return res;
-            }
-        }
-        GISMO_ERROR("Include with label " << label << " does not exist!");
+        return getInclude(-1,-1.,label);
     }
 
     std::string getString () const
@@ -616,5 +630,6 @@ std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
+
 #include GISMO_HPP_HEADER(gsFileData.hpp)
 #endif
