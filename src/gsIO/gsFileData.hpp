@@ -50,11 +50,11 @@ gsFileData<T>::gsFileData()
 }
 
 template<class T>
-gsFileData<T>::gsFileData(String const & fn)
+gsFileData<T>::gsFileData(String const & fn, bool recursive)
 {
     data = new FileData;
     data->makeRoot();
-    this->read(fn);
+    this->read(fn, recursive);
 }
 
 template<class T>
@@ -159,7 +159,7 @@ gsFileData<T>::ioError(int lineNumber, const std::string& str)
 }
 
 template<class T>
-bool gsFileData<T>::read(String const & fn)
+bool gsFileData<T>::read(String const & fn, bool recursive)
 {
     m_lastPath = gsFileManager::find(fn);
     if ( m_lastPath.empty() )
@@ -173,9 +173,9 @@ bool gsFileData<T>::read(String const & fn)
     String ext = gsFileManager::getExtension(fn);
 
     if (ext== "xml")
-        return readXmlFile(m_lastPath);
+        return readXmlFile(m_lastPath, recursive);
     else if (ext== "gz" && util::ends_with(m_lastPath, ".xml.gz") )
-        return readXmlGzFile(m_lastPath);
+        return readXmlGzFile(m_lastPath, recursive);
     else if (ext== "txt")
         return readGeompFile(m_lastPath);
     else if (ext== "g2")
@@ -226,30 +226,30 @@ bool gsFileData<T>::read(String const & fn)
 /*---------- Native Gismo format */
 
 template<class T>
-bool gsFileData<T>::readXmlFile( String const & fn )
+bool gsFileData<T>::readXmlFile( String const & fn, bool recursive)
 {
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
     if ( file.fail() )
     {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    return readGismoXmlStream(file);
+    return readGismoXmlStream(file, recursive);
 }
 
 template<class T>
-bool gsFileData<T>::readXmlGzFile( String const & fn )
+bool gsFileData<T>::readXmlGzFile( String const & fn, bool recursive)
 {
     // Open file
     igzstream file(fn.c_str(), std::ios::in);
     if ( file.fail() )
     {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    return readGismoXmlStream(file);
+    return readGismoXmlStream(file, recursive);
 }
 
 
 template<class T>
-bool gsFileData<T>::readGismoXmlStream(std::istream & is)
+bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
 {
     m_buffer.emplace_back();
     std::vector<char> & buffer = m_buffer.back();
@@ -266,22 +266,27 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is)
               <<": Invalid XML file, no root tag <xml> found.\n";
         assert( ln ) ;
     }
-    std::list<std::string> ifn;
-    for (gsXmlNode * child = ln->first_node("xmlfile") ;
-         child; child = child->next_sibling("xmlfile") )
+
+    if (recursive)
     {
-        ifn.push_back( child->value() );
-        //ln->remove_node(child);
+        std::list<std::string> ifn;
+        for (gsXmlNode * child = ln->first_node("xmlfile") ;
+            child; child = child->next_sibling("xmlfile") )
+        {
+            ifn.push_back( child->value() );
+            //ln->remove_node(child);
+        }
+
+        std::string cfn = gsFileManager::getPath(m_lastPath);
+        for (auto & f : ifn)
+        {
+            readXmlFile(cfn + f);
+        }
     }
 
     gsXmlNode * root = data->getRoot();
     root->merge_sibling(ln);
     data->remove_node(ln);
-    std::string cfn = gsFileManager::getPath(m_lastPath);
-    for (auto & f : ifn)
-    {
-        readXmlFile(cfn + f);
-    }
 
     // TO DO: Check if it contains unknown tags...
     return true;

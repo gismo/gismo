@@ -49,7 +49,7 @@ public:
      *
      * @param fn filename string
      */
-    explicit gsFileData(String const & fn);
+    explicit gsFileData(String const & fn, bool recursive=false);
 
     /**
      * Loads the contents of a file into a gsFileData object
@@ -58,7 +58,7 @@ public:
      *
      * Returns true on success, false on failure.
      */
-    bool read(String const & fn) ;
+    bool read(String const & fn, bool recursive=false) ;
 
     ~gsFileData();
 
@@ -115,13 +115,13 @@ protected:
  */
 
     /// Reads a file with xml extension
-    bool readXmlFile( String const & fn );
+    bool readXmlFile( String const & fn, bool recursive=false);
 
     /// Reads a file with xml.gz extension
-    bool readXmlGzFile( String const & fn );
+    bool readXmlGzFile( String const & fn, bool recursive=false);
 
     /// Reads Gismo's native XML file
-    bool readGismoXmlStream(std::istream & is);
+    bool readGismoXmlStream(std::istream & is, bool recursive=false);
 
     /// Reads Axel file
     bool readAxelFile(String const & fn);
