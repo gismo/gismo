@@ -305,7 +305,8 @@ public:
         data->appendToRoot(node);
     }
 
-    void addInclude( const std::string & filename, const real_t & time, const index_t & id=-1, const std::string & label="")
+    void addInclude( const std::string & filename, const real_t & time,
+                     const index_t & id=-1, const std::string & label="")
     {
         gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
         GISMO_ASSERT( filename!="", "No filename provided for include!");

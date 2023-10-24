@@ -264,36 +264,23 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is)
     {
         gsWarn<< "gsFileData: Problem with file "<<m_lastPath
               <<": Invalid XML file, no root tag <xml> found.\n";
-        assert( root ) ;
+        assert( ln ) ;
     }
     std::list<std::string> ifn;
     for (gsXmlNode * child = ln->first_node("xmlfile") ;
          child; child = child->next_sibling("xmlfile") )
     {
         ifn.push_back( child->value() );
-        gsInfo<< "#xmlfile "<< child->value() <<"\n";
+        //ln->remove_node(child);
     }
 
     gsXmlNode * root = data->getRoot();
-    root->merge_parent(ln);
-    for (gsXmlNode * child = root->first_node("xmlfile") ;
-         child; child = child->next_sibling("xmlfile") )
-    {
-        gsInfo<< "+xmlfile "<< child->value() <<"\n";
-    }
-
-    std::string cfn;
+    root->merge_sibling(ln);
+    data->remove_node(ln);
+    std::string cfn = gsFileManager::getPath(m_lastPath);
     for (auto & f : ifn)
     {
-        cfn = gsFileManager::getPath(m_lastPath);
-        cfn += f;
-        gsInfo<< "xmlfile "<< cfn <<"\n";
-        readXmlFile(cfn);
-        for (gsXmlNode * child = root->first_node("xmlfile") ;
-             child; child = child->next_sibling("xmlfile") )
-        {
-            gsInfo<< "#xmlfile "<< child->value() <<"\n";
-        }
+        readXmlFile(cfn + f);
     }
 
     // TO DO: Check if it contains unknown tags...

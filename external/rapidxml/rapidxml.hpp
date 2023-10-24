@@ -1122,10 +1122,10 @@ namespace rapidxml
         //! Appends a new child node.
         //! The appended child becomes the last child.
         //! \param child Node to append.
-        void merge_parent(xml_node<Ch> * parent)
+        void merge_sibling(xml_node<Ch> * sibl)
         {
-            if (this==parent) return;
-            xml_node<Ch> * child = parent->m_first_node;
+            if (this==sibl) return;
+            xml_node<Ch> * child = sibl->m_first_node;
             if (!child) return;
 
             if (first_node())
@@ -1138,10 +1138,11 @@ namespace rapidxml
                 child->m_prev_sibling = 0;
                 m_first_node = child;
             }
-            for (xml_node<Ch> *node = parent->m_first_node; node; node = node->m_next_sibling)
+            for (xml_node<Ch> *node = sibl->m_first_node; node; node = node->m_next_sibling)
                 node->m_parent = this;
-            m_last_node = parent->m_last_node;
-            parent->m_first_node = parent->m_last_node = 0;
+            m_last_node = sibl->m_last_node;
+            sibl->m_first_node = sibl->m_last_node = 0;
+            //sibl->m_parent->remove_node(sibl);
         }
 
         //! Inserts a new child node at specified place inside the node.
