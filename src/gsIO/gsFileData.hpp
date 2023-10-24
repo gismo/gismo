@@ -287,6 +287,54 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is)
     return true;
 }
 
+template<class T>
+gsFileData<T> gsFileData<T>::getInclude(index_t id, real_t time, std::string label)
+{   
+    // Ensures that only one argument is actually provided
+    GISMO_ENSURE((id!=-1 ^  time!=-1. ^  label!="") &&
+                !(id!=-1 && time!=-1. && label!=""),
+                "gsFileData::getInclude("<<id<<","<<time<<","<<label<<"), too many arguments provided!");
+    std::string attr_name, attr_string;
+
+    // Attribute name and string representation, depending on pprovided input.
+    if ( id!=-1 )
+    {
+        attr_name   = "id";
+        attr_string = std::to_string(id); 
+    }
+    else if ( time!=-1)
+    {
+        attr_name   = "time";
+        attr_string = std::to_string(time);
+    }
+    else if ( label!="")
+    {
+        attr_name   = "label";
+        attr_string = label;
+    } 
+
+    bool found=false;
+    gsXmlNode * root = getXmlRoot();
+    const gsXmlAttribute * attribute;
+    for (gsXmlNode * child = root->first_node("xmlfile");
+            child; child = child->next_sibling("xmlfile"))
+    {
+        attribute = child->first_attribute(attr_name.c_str());
+
+        if (id!=-1 && attribute && atoi(attribute->value()) == id ) found=true; 
+        else if (time!=-1. && attribute && atof(attribute->value()) == time ) found=true; 
+        else if ( label!="" && attribute && attribute->value() == label) found=true; 
+
+        if (found)
+        {
+            std::string filename = gsFileManager::getPath(m_lastPath) +  child->value();
+            gsFileData res(filename);
+            return res;
+        }
+    }
+    GISMO_ERROR("Include with " << attr_name << "=" << attr_string << " does not exist!");
+}
+
 /*---------- Axl file */
 
 template<class T>
