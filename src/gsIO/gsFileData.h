@@ -48,6 +48,7 @@ public:
      * Initializes a gsFileData object with the contents of a file
      *
      * @param fn filename string
+     * @param recursive if true, then all referenced xml files will be read as one gsFileData object recursively
      */
     explicit gsFileData(String const & fn, bool recursive=false);
 
@@ -55,6 +56,7 @@ public:
      * Loads the contents of a file into a gsFileData object
      *
      * @param fn filename string
+     * @param recursive if true, then all referenced xml files will be read as one gsFileData object recursively
      *
      * Returns true on success, false on failure.
      */
@@ -305,6 +307,11 @@ public:
         data->appendToRoot(node);
     }
 
+    /// @brief Add a reference ( <xmlfile> tag ) to another Gismo .xml file to the xml tree
+    /// @param filename The path of the referenced file, relative to the path of the current file
+    /// @param time for time series data, optional
+    /// @param id Integer for identification purposes, optional
+    /// @param label String for identification purposes, optional
     void addInclude( const std::string & filename, const real_t & time=-1.,
                      const index_t & id=-1, const std::string & label="")
     {
@@ -319,16 +326,25 @@ private:
     gsFileData getInclude(index_t id, real_t time, std::string label);
 
 public:
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
+    /// @param id Index of the <xmlfile> node
+    /// @return A new gsFileData object with the contents of the referenced file
     gsFileData getInclude(index_t id)
     {
         return getInclude(id, -1., "");
     }
 
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
+    /// @param time Time attribute of the <xmlfile> node
+    /// @return A new gsFileData object with the contents of the referenced file
     gsFileData getInclude(real_t time)
     {
         return getInclude(-1,time, "");
     }
 
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
+    /// @param label Label of the <xmlfile> node
+    /// @return A new gsFileData object with the contents of the referenced file
     gsFileData getInclude(std::string label)
     {
         return getInclude(-1,-1.,label);
