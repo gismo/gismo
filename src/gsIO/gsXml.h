@@ -243,18 +243,19 @@ Object * getByLabel(gsXmlNode * node, const std::string & label)
 }
 
 /// Helper to fetch a node with a certain \em attribute value.
-/// \param root parent node, we check his children for the given \em id
-/// \param id the ID number which is seeked for
-inline gsXmlNode * searchNode(const std::string & name, const std::string & value, gsXmlNode * root)
+/// \param root parent node, we check if it's children attribute value matches the given \em value
+/// \param attr_name Attribute's name
+/// \param value the attribute's value number which is seeked for
+inline gsXmlNode * searchNode(gsXmlNode * root,const std::string & attr_name, const std::string & value)
 {
     for (gsXmlNode * child = root->first_node();
          child; child = child->next_sibling())
     {
-        const gsXmlAttribute * id_at = child->first_attribute(value.c_str());
-        if ( id_at &&  !strcmp(id_at->value(),value.c_str()) )
+        const gsXmlAttribute * attribute = child->first_attribute(attr_name.c_str());
+        if ( attribute &&  !strcmp(attribute->value(),value.c_str()) )
             return child;
     }
-    gsWarn <<"gsXmlUtils: No object with property '"<<name<<" = "<< value<<"' found.\n";
+    gsWarn <<"gsXmlUtils: No object with attribute '"<<attr_name<<" = "<< value<<"' found.\n";
     return NULL;
 }
 
