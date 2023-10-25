@@ -1,7 +1,7 @@
 """"
     @file Poisson equation example
 
-    @brief Solve the Poisson equation using the expression assembler in Python
+    @brief Solve the Poisson equation using the expression assembler in Python. Needs the gismo cppyy bindings.
 
     This file is part of the G+Smo library.
 
@@ -17,94 +17,86 @@ from gismo import gismo
 
 
 numElevate = 0
-numRefine = 0
+numRefine = 4
 
+# Read the data from file
 fd = gismo.gsFileData["double"]("pde/poisson2d_bvp.xml")
-mp = gismo.gsMultiPatch['double']()
-#
-fd.getId(0, mp)
 
+# Get the multipatch geometry
+geometry = gismo.gsMultiPatch['double']()
+fd.getId(0, geometry)
 
-f = gismo.gsFunctionExpr['double']()
-fd.getId(1, f)
-print(f"Source function {f}")
+# Get the right-hand side
+righthandside = gismo.gsFunctionExpr['double']()
+fd.getId(1, righthandside)
+print(f"Source function {righthandside}")
 
-bc = gismo.gsBoundaryConditions["double"]()
+# Load the boundary conditions
+boundarycondition = gismo.gsBoundaryConditions["double"]()
+fd.getId(2, boundarycondition)
+boundarycondition.setGeoMap(geometry)
+print(f"Boundary conditions:\n{boundarycondition}")
 
-fd.getId(2, bc)
+# Get the exact solution
+exactsolution = gismo.gsFunctionExpr["double"]()
+fd.getId(3, exactsolution)
 
-
-
-print("Got bc from file")
-bc.setGeoMap(mp)
-print(f"Boundary conditions:\n{bc}")
-
-ms = gismo.gsFunctionExpr["double"]()
-fd.getId(3, ms)
-
+# Get options
 Aopt = gismo.gsOptionList()
-
 fd.getId(4, Aopt)
 
-dbasis = gismo.gsMultiBasis["double"](mp, True)
+# Create basis for solution
+dbasis = gismo.gsMultiBasis["double"](geometry, True)
 dbasis.setDegree(dbasis.maxCwiseDegree() + numElevate)
 
-print(f"Patches: {mp.nPatches()}, degree: {dbasis.minCwiseDegree()}")
+print(f"Number of patches: {geometry.nPatches()}, degree for solution: {dbasis.minCwiseDegree()}")
 
+# Get expression assembler
 A = gismo.gsExprAssembler["double"]()
-
 A.setOptions(Aopt)
-
 print(f"Active Options:\n{A.options()}")
 
 A.setIntegrationElements(dbasis)
 ev = gismo.gsExprEvaluator["double"](A)
 
-G = A.getMap(mp)
-
+# Expressions
+G = A.getMap(geometry)
 u = A.getSpace(dbasis)
+ff = A.getCoeff(righthandside, G)
+u_ex = ev.getVariable(exactsolution, G)
 
-ff = A.getCoeff(f, G)
-
-u_ex = ev.getVariable(ms, G)
-
-
+# The solver
 solver = gismo.gsSparseSolver["double"].CGDiagonal()
 
+for r in range(numRefine):
+    print(f"Refinement step {r}")
 
-for r in range(3):
-    print(f"ref {r}")
-    dbasis.uniformRefine()
+    if r>0:
+        dbasis.uniformRefine()
 
-
-    basis = u.source().basis(0)
-
-    u.setup(bc, gismo.dirichlet.l2Projection, 0)
-
+    # Set up the space and initialize
+    u.setup(boundarycondition, gismo.dirichlet.l2Projection, 0)
     A.initSystem()
 
 
-    print(f"Number of DoFs: {A.numDofs()}")
+    print(f"Number of degrees of freedom: {A.numDofs()}")
 
-    A.assemble(gismo.expr.igrad(u, G) * gismo.expr.igrad(u,G).tr() * gismo.expr.meas(G), u * ff * gismo.expr.meas(G))
-    
-
+    # Assemble the bilinear form
+    A.assemble(gismo.expr.igrad(u, G) * gismo.expr.igrad(u, G).tr() * gismo.expr.meas(G), u * ff * gismo.expr.meas(G))
     g_N = A.getBdrFunction(G)
-    A.assembleBdr(bc.get("Neumann"), u*g_N.tr() * gismo.expr.nv(G))
-  
+    A.assembleBdr(boundarycondition.get("Neumann"), u * g_N.tr() * gismo.expr.nv(G))
 
+    # Solve
     solver.compute(A.matrix())
-
-   
-
     solVector = solver.solve(A.rhs())
-
     u_sol = A.getSolution(u, solVector)
 
 
-    l2err = math.sqrt(ev.integral((u_ex - u_sol).sqNorm() * gismo.expr.meas(G)))
-    h1err = math.sqrt(ev.integral((gismo.expr.igrad(u_ex) - gismo.expr.igrad(u_sol ,G)).sqNorm() * gismo.expr.meas(G)))
 
-    print(f"L2 error: {l2err}\nH1 error: {h1err}")
+    # Compute the L2 and H1-errors
+    l2error = math.sqrt(ev.integral((u_ex - u_sol).sqNorm() * gismo.expr.meas(G)))
+    h1error = math.sqrt(ev.integral((gismo.expr.igrad(u_ex) - gismo.expr.igrad(u_sol, G)).sqNorm() * gismo.expr.meas(G)))
+
+    print(f"L2 error: {l2error}\nH1 error: {h1error}")
 
 
