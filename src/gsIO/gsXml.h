@@ -223,25 +223,6 @@ public:
     static Object * getLabel(gsXmlNode * node, const std::string & label);
 };
 
-/// Helper to read an object by a given \em label :
-/// \param node parent node, we check his children to get the given \em label
-/// \param label
-template<class Object>
-Object * getByLabel(gsXmlNode * node, const std::string & label)
-{
-    std::string tag = internal::gsXml<Object>::tag();
-    for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
-         child; child = child->next_sibling(tag.c_str()))
-    {
-        const gsXmlAttribute * label_at = child->first_attribute("label");
-        if (label_at && !strcmp(label_at->value(),label.c_str()) )
-            return internal::gsXml<Object>::get(child);
-    }
-    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
-             <<" with label="<<label<<" not found.\n";
-    return NULL;
-}
-
 /// Helper to fetch a node with a certain \em attribute value.
 /// \param root parent node, we check if it's children attribute value matches the given \em value
 /// \param attr_name Attribute's name
@@ -258,6 +239,31 @@ inline gsXmlNode * searchNode(gsXmlNode * root,const std::string & attr_name, co
     gsWarn <<"gsXmlUtils: No object with attribute '"<<attr_name<<" = "<< value<<"' found.\n";
     return NULL;
 }
+
+/// Helper to read an object by a given \em label :
+/// \param node parent node, we check his children to get the given \em label
+/// \param label
+template<class Object>
+Object * getByLabel(gsXmlNode * node, const std::string & label)
+{
+    std::string tag = internal::gsXml<Object>::tag();
+    gsXmlNode * nd  = searchNode(node, "label", label);
+    if (nd)
+    {
+        return internal::gsXml<Object>::get(nd);
+    }
+    // for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
+    //      child; child = child->next_sibling(tag.c_str()))
+    // {
+    //     const gsXmlAttribute * label_at = child->first_attribute("label");
+    //     if (label_at && !strcmp(label_at->value(),label.c_str()) )
+    //         return internal::gsXml<Object>::get(child);
+    // }
+    std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
+             <<" with label="<<label<<" not found.\n";
+    return NULL;
+}
+
 
 
 /// Helper to read an object by a given \em id value:
