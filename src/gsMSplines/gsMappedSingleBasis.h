@@ -15,7 +15,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsMesh/gsMesh.h>
-#include <gsMSplines/gsMappedBasis.h>
+//#include <gsMSplines/gsMappedBasis.h>
 
 namespace gismo
 {

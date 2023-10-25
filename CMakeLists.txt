@@ -390,6 +390,48 @@ else()
 endif(GISMO_BUILD_EXAMPLES)
 
 ## #################################################################
+## Python bindings
+## #################################################################
+if(GISMO_WITH_CPPYY)
+  execute_process(COMMAND cling-config --cmake OUTPUT_VARIABLE CPPYY_MODULE_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+  list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+  find_package(Cppyy REQUIRED)
+
+  list(GET GISMO_INCLUDE_DIRS 0 SRC)
+  message("Source DIR: ${SRC}")
+  file(STRINGS ${SRC}/gismo.h INCLUDELINES REGEX "^\\#include *<(.*)>$")
+  FOREACH(line ${INCLUDELINES})
+    string(REGEX MATCH "<(.*)>" _ ${line})
+    list(APPEND GISMO_HEADERS ${CMAKE_MATCH_1})
+  ENDFOREACH()
+
+  # Take out Autodiff and trilinos
+  if(NOT GISMO_WITH_ADIFF)
+    list(FILTER GISMO_HEADERS EXCLUDE REGEX "gsAutoDiff\\.h")
+  endif()
+  if(NOT gsTrilinos_ENABLED)
+    list(FILTER GISMO_HEADERS EXCLUDE REGEX "gsTrilinos/gsTrilinos\\.h")
+  endif()
+
+  list(APPEND GISMO_HEADERS "gsAssembler/gsExpressions.h") # Access to the expressions
+  list(FILTER GISMO_HEADERS EXCLUDE REGEX "gsIO/gsParaviewDataSet.h") # gsParaviewDataSet.h produces an error
+
+  #message("HEADERS ${GISMO_HEADERS}")
+  cppyy_add_bindings(
+          "gismo" "${gismo_VERSION}" "G+Smo" "github.com/gismo"
+          LICENSE "MPL2.0"
+          LANGUAGE_STANDARD "${CMAKE_CXX_STANDARD}"
+          GENERATE_OPTIONS "-D__PIC__;-Wno-macro-redefined"
+          INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}
+          LINK_LIBRARIES "gismo;${CPPYY_MODULE_PATH}/../lib/libCoreLegacy.so"
+          H_DIRS ${GISMO_INCLUDE_DIRS}
+          H_FILES ${GISMO_HEADERS}
+  )
+  install(CODE "execute_process(COMMAND pip install ${PY_WHEEL_FILE})")
+
+endif(GISMO_WITH_CPPYY)
+
+## #################################################################
 ## Misc
 ## #################################################################
 

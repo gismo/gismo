@@ -15,6 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsGeometry.h>
+#include <gsCore/gsCurve.h>
 
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsBoehm.h>

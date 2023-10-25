@@ -17,6 +17,7 @@
 #pragma once
 
 #include <gsIO/gsOptionList.h>
+#include <gsCore/gsDofMapper.h>
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>

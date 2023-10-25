@@ -14,7 +14,8 @@
 #pragma once
 
 #include <gsHSplines/gsHTensorBasis.h>
-#include <gsHSplines/gsHBSpline.h>
+#include <gsCore/gsForwardDeclarations.h>
+//#include <gsHSplines/gsHBSpline.h>
 
 namespace gismo
 {

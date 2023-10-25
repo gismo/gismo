@@ -13,6 +13,11 @@
 
 #pragma once
 
+#include <gsCore/gsExport.h>
+#include <gsAssembler/gsQuadRule.h>
+#include <gsCore/gsMemory.h>
+#include <gsCore/gsLinearAlgebra.h>
+
 namespace gismo
 {
 

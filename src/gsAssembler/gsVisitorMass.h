@@ -12,6 +12,14 @@
 */
 
 #pragma once
+#include <gsPde/gsPde.h>
+#include <gsCore/gsBasis.h>
+#include <gsIO/gsOptionList.h>
+#include <gsCore/gsGeometry.h>
+#include <gsAssembler/gsQuadRule.h>
+#include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsLinearAlgebra.h>
+
 
 namespace gismo
 {

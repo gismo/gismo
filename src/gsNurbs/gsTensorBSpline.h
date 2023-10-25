@@ -14,6 +14,9 @@
 #pragma once
 
 #include <gsCore/gsGeometry.h>
+#include <gsCore/gsSurface.h>
+#include <gsCore/gsVolume.h>
+#include <gsCore/gsCurve.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo

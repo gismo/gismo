@@ -22,6 +22,10 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsNurbs/gsBSpline.h>
+#include <gsNurbs/gsNurbs.h>
+#include <gsNurbs/gsTensorBSpline.h>
+#include <gsNurbs/gsTensorNurbs.h>
 
 namespace gismo
 {

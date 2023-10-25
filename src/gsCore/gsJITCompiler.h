@@ -18,6 +18,8 @@
 
 #include <gsIO/gsXml.h>
 #include <gsIO/gsFileManager.h>
+#include <gsIO/gsFileData.h>
+#include <fstream>
 
 #if defined(_WIN32)
 #include <windows.h>

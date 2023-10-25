@@ -14,8 +14,9 @@
 #pragma once
 
 #include <gsCore/gsGeometry.h>
-#include <gsMSplines/gsMappedSpline.h>
+//#include <gsMSplines/gsMappedSpline.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
+#include <gsCore/gsForwardDeclarations.h>
 
 namespace gismo
 {

@@ -13,6 +13,11 @@
 
 #pragma once
 
+#include <gsCore/gsMemory.h>
+#include <gsCore/gsBasis.h>
+#include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsGeometry.h>
+
 namespace gismo
 {
 
@@ -64,6 +69,14 @@ public: inline uPtr clone() const { return uPtr(clone_impl()); }
     short_t domainDim() const { return 3; }
 
 }; // class gsVolume
+
+// Traits for volume
+    template <typename T>
+    struct gsGeoTraits<3,T>
+    {
+        typedef gsVolume<T> GeometryBase;
+    };
+
 
 } // namespace gismo
 

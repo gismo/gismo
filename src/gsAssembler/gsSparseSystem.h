@@ -15,6 +15,9 @@
 #pragma once
 
 #include <gsCore/gsStdVectorRef.h>
+#include <gsCore/gsDofMapper.h>
+#include <gsMatrix/gsVector.h>
+#include <gsIO/gsOptionList.h>
 
 namespace gismo
 {

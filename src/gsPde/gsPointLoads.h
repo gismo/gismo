@@ -13,6 +13,10 @@
 
 #pragma once
 
+#include <gsCore/gsLinearAlgebra.h>
+#include <vector>
+
+
 namespace gismo
 {
 

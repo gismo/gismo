@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <gsCore/gsGeometry.h>
+#include <gsCore/gsMemory.h>
+
 namespace gismo
 {
 
@@ -62,6 +65,13 @@ public:
     short_t domainDim() const { return 4; }
 
 }; // class gsBulk
+
+// Traits for bulk
+    template <typename T>
+    struct gsGeoTraits<4,T>
+    {
+        typedef gsBulk<T> GeometryBase;
+    };
 
 } // namespace gismo
 

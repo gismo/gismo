@@ -14,9 +14,11 @@
 
 #pragma once
 
-#include <gsModeling/gsSolid.h>
 #include <gsModeling/gsSolidElement.h>
 #include <gsModeling/gsFitting.h>
+#include <gsModeling/gsSolidHalfFace.h>
+#include <gsModeling/gsSolidHeVertex.h>
+#include <gsModeling/gsSolidHalfEdge.h>
 
 #include <gsCore/gsVolume.h>
 #include <gsCore/gsBoundary.h>

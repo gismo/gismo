@@ -42,7 +42,8 @@ namespace gismo
 
     \f[ G(\hat x) = x \qquad \hat x \in \mathbb R^d, \ x \in \mathbb R^n \f]
 
-    and therefore they derive from gsFunction. A gsGeometry can thus be
+    and therefore they derive from gs
+    Function. A gsGeometry can thus be
     used wherever a gsFunction is expected.
     
     All geometry classes derive from the abstract base class
@@ -646,10 +647,10 @@ std::ostream &operator<<(std::ostream &os, const gsGeometry<T>& b)
 
 } // namespace gismo
 
-#include <gsCore/gsCurve.h>
-#include <gsCore/gsSurface.h>
-#include <gsCore/gsVolume.h>
-#include <gsCore/gsBulk.h>
+//#include <gsCore/gsCurve.h>
+//#include <gsCore/gsSurface.h>
+//#include <gsCore/gsVolume.h>
+//#include <gsCore/gsBulk.h>
 
 namespace gismo
 {
@@ -659,34 +660,6 @@ template <short_t d, typename T>
 struct gsGeoTraits
 {
     typedef gsGeometry<T> GeometryBase;
-};
-
-// Traits for curve
-template <typename T>
-struct gsGeoTraits<1,T>
-{
-    typedef gsCurve<T> GeometryBase;
-};
-
-// Traits for surface
-template <typename T>
-struct gsGeoTraits<2,T>
-{
-    typedef gsSurface<T> GeometryBase;
-};
-
-// Traits for volume
-template <typename T>
-struct gsGeoTraits<3,T>
-{
-    typedef gsVolume<T> GeometryBase;
-};
-
-// Traits for bulk
-template <typename T>
-struct gsGeoTraits<4,T>
-{
-    typedef gsBulk<T> GeometryBase;
 };
 
 #ifdef GISMO_WITH_PYBIND11

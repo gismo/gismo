@@ -65,6 +65,8 @@ template<class T> struct gsFeSpaceData
     gsFeSpaceData(const gsFunctionSet<T> & _fs, index_t _dim, index_t _id):
     fs(&_fs), dim(give(_dim)), id(give(_id)) { }
 
+    gsFeSpaceData(): fs(NULL), dim(-1), id(-1) {} // Needed for cppyy module
+
     const gsFunctionSet<T> * fs;
     index_t dim, id;
     gsDofMapper mapper;

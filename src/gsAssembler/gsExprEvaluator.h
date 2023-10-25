@@ -18,6 +18,7 @@
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
+#include <gsAssembler/gsExprHelper.h>
 #include <gsIO/gsWriteParaview.h>
 
 namespace gismo

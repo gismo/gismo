@@ -14,6 +14,14 @@
 
 #pragma once
 
+#include <utility>
+#include <vector>
+#include <ostream>
+#include <list>
+#include <algorithm>
+#include <gsCore/gsConfig.h>
+#include <gsCore/gsDebug.h>
+
 namespace gismo
 {
 /** \brief

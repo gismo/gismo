@@ -79,6 +79,13 @@ public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
 }; // class gsCurve
 
+// Traits for curve
+    template <typename T>
+    struct gsGeoTraits<1,T>
+    {
+        typedef gsCurve<T> GeometryBase;
+    };
+
 } // namespace gismo
 
 

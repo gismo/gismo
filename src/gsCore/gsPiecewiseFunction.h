@@ -12,6 +12,11 @@
 */
 
 #pragma once
+#include <gsCore/gsFunction.h>
+#include <vector>
+#include <gsCore/gsMemory.h>
+#include <gsCore/gsFunctionSet.h>
+
 
 namespace gismo
 {

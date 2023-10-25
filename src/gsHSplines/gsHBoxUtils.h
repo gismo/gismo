@@ -15,6 +15,7 @@
 
 
 #include <iostream>
+#include <gsCore/gsForwardDeclarations.h>
 
 namespace gismo
 {

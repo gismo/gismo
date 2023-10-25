@@ -11,6 +11,8 @@
     Author(s): A. Mantzaflaris
 */
 
+#pragma once
+
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
@@ -18,7 +20,6 @@
 #include <sstream>
 #include <fstream>
 
-#pragma once
 
 #define NS 1000
 

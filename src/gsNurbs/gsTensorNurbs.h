@@ -17,6 +17,7 @@
 #include <gsNurbs/gsTensorNurbsBasis.h>
 
 #include <gsTensor/gsTensorTools.h> // todo: move to hpp
+#include <gsNurbs/gsTensorBSpline.h>
 
 namespace gismo
 {

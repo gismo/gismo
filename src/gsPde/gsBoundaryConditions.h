@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBoundary.h>
+#include <gsCore/gsFunctionSet.h>
 
 
 namespace gismo
@@ -106,6 +107,8 @@ template<class T>
 struct boundary_condition
 {
     typedef typename gsFunctionSet<T>::Ptr function_ptr;
+
+    boundary_condition() {}
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
                         const std::string & label, short_t unknown,
@@ -307,6 +310,8 @@ struct boundary_condition
         corner_value(index_t p, boxCorner c, T v, short_t unk = 0, int comp = -1)
                 : patch(p), corner(c), value(v), unknown(unk), component(comp) { }
 
+        corner_value() {};
+
         index_t patch;     ///< The index of the patch.
         boxCorner corner; ///< The corner
         T value;          ///< The value
@@ -323,6 +328,8 @@ struct boundary_condition
         coupled_boundary(index_t p1, boxSide s1, index_t p2, boxSide s2, short_t dim, short_t unk = 0, int comp = -1)
                 : ifc(patchSide(p1,s1), patchSide(p2,s2), dim), unknown(unk), component(comp)
                 {}
+
+        coupled_boundary() {}
 
         boundaryInterface ifc;
         short_t   unknown;    ///< Unknown to which this boundary condition refers to

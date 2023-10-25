@@ -16,6 +16,7 @@
 
 #include <gsTensor/gsTensorBasis.h>
 #include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSpline.h>
 
 namespace gismo

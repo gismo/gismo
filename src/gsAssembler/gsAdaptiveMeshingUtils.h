@@ -15,6 +15,11 @@
 
 
 #include <iostream>
+#include <vector>
+#include <gsCore/gsBasis.h>
+#include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsFunction.h>
+
 
 namespace gismo
 {

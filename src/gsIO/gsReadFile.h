@@ -24,6 +24,8 @@
 #include <string>
 
 #include <gsCore/gsDebug.h>
+#include <gsCore/gsMemory.h>
+#include <gsIO/gsFileData.h>
 
 namespace gismo
 {

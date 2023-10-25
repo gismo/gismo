@@ -11,6 +11,8 @@
     Author(s): A. Mantzaflaris, H.M. Verhelst
 */
 
+#pragma once
+
 #include <gsUtils/gsPointGrid.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsAssembler/gsAssemblerOptions.h>

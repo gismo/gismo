@@ -12,6 +12,8 @@
 */
 
 #pragma once
+#include <gsCore/gsMultiBasis.h>
+#include <gsCore/gsBasis.h>
 
 namespace gismo
 {

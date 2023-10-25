@@ -13,6 +13,10 @@
 
 #pragma once
 
+#include <vector>
+#include <stddef.h>
+#include <gsCore/gsConfig.h>
+
 namespace gismo
 {
 

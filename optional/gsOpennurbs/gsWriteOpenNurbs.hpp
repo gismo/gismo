@@ -15,6 +15,7 @@
 #include <gsOpennurbs/gsWriteOpenNurbs.h>
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsSurface.h>
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsModeling/gsPlanarDomain.h>
