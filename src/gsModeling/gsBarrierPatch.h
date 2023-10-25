@@ -16,7 +16,11 @@
 
 #pragma once
 
+#include <gsIO/gsOptionList.h>
+
+#ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
+#endif
 
 using namespace gismo;
 

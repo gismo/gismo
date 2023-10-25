@@ -5844,7 +5844,7 @@ bool ON_BinaryArchive::Write3dmStartSection( int version, const char* sInformati
   memset( sVersion, 0, sizeof(sVersion) );
   if ( version < 1 )
     version = ON_BinaryArchive::CurrentArchiveVersion();
-  sprintf(sVersion,"3D Geometry File Format %8d",version);
+  snprintf(sVersion,64,"3D Geometry File Format %8d",version);
   bool rc = WriteByte( 32, sVersion );
   if ( rc )
     rc = BeginWrite3dmBigChunk( TCODE_COMMENTBLOCK, 0 );
@@ -5857,7 +5857,7 @@ bool ON_BinaryArchive::Write3dmStartSection( int version, const char* sInformati
       char s[2048];
       size_t s_len = 0;
       memset( s, 0, sizeof(s) );
-      sprintf(s," 3DM I/O processor: OpenNURBS toolkit version %d",ON::Version());
+      snprintf(s,2048," 3DM I/O processor: OpenNURBS toolkit version %d",ON::Version());
       strcat(s," (compiled on ");
       strcat(s,__DATE__);
       strcat(s,")\n");
