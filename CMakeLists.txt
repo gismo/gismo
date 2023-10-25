@@ -398,7 +398,6 @@ if(GISMO_WITH_CPPYY)
   find_package(Cppyy REQUIRED)
 
   list(GET GISMO_INCLUDE_DIRS 0 SRC)
-  message("Source DIR: ${SRC}")
   file(STRINGS ${SRC}/gismo.h INCLUDELINES REGEX "^\\#include *<(.*)>$")
   FOREACH(line ${INCLUDELINES})
     string(REGEX MATCH "<(.*)>" _ ${line})
@@ -427,7 +426,12 @@ if(GISMO_WITH_CPPYY)
           H_DIRS ${GISMO_INCLUDE_DIRS}
           H_FILES ${GISMO_HEADERS}
   )
-  install(CODE "execute_process(COMMAND pip install ${PY_WHEEL_FILE})")
+  install(CODE "execute_process(COMMAND pip install ${PY_WHEEL_FILE}")
+
+  # Target that installs only the python bindings
+  add_custom_target(install-bindings COMMAND pip install ${PY_WHEEL_FILE}
+          COMMENT "Install the Python bindings using pip"
+          DEPENDS gismo)
 
 endif(GISMO_WITH_CPPYY)
 
