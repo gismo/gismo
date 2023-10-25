@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     real_t tolerance = 1e-02; // upper bound for pointwise error
     index_t extension = 2;
     real_t refPercent = 0.1; // in this way we ask for 90% of points to be under the error threshold
-    std::string fn = "fitting/deepdrawingC.xml";
+    std::string fn = "";
     std::string outname = "fitting_out";
 
     // Reading options from the command line
@@ -77,35 +77,48 @@ int main(int argc, char *argv[])
     f = 1/(1.5*exp(sqrt((10*(x-0.5)-3)^2+(10*(y-0.5)-3)^2))) + 1/(1.5*exp(sqrt((10*(x-0.5)+3)^2+(10*(y-0.5)+3)^2))) + 1/(1.5*exp(sqrt((10*(x-0.5))^2+(10*(y-0.5))^2)));
     */
 
-    //! [Read data]
+    gsMatrix<> uv, xyz;
+    if (fn.size() > 0)
+    {
+    // -x 2 -y 2 -i 7 -s 2.5e-5 --save -c 1 -n 8137 -e 1e-3 -r 0
+    // ! [Read data]
     // Surface fitting
     // Expected input is a file with matrices with:
     // id 0:  u,v   -- parametric coordinates, size 2 x N
-    // id 1:  x,y,z -- corresponding mapped corrupted values, size 3 x N
-    // id 2:  x,y,z -- corresponding mapped true values, size 3 x N
+    // id 1:  x,y,z -- corresponding mapped values, size 3 x N
     gsFileData<> fd_in(fn);
-    gsMatrix<> uv, xyz, target;
     fd_in.getId<gsMatrix<> >(0, uv );
     fd_in.getId<gsMatrix<> >(1, xyz);
-    fd_in.getId<gsMatrix<> >(2, target);
-    //! [Read data]
+    }
+    else
+    {
+      gsFunctionExpr<> source("1/(1.5*exp(sqrt((10*(x-0.5)-3)^2+(10*(y-0.5)-3)^2))) + 1/(1.5*exp(sqrt((10*(x-0.5)+3)^2+(10*(y-0.5)+3)^2))) + 1/(1.5*exp(sqrt((10*(x-0.5))^2+(10*(y-0.5))^2)))",2);
 
-    //gsFunctionExpr<> source("1/(1.5*exp(sqrt((10*(x-0.5)-3)^2+(10*(y-0.5)-3)^2))) + 1/(1.5*exp(sqrt((10*(x-0.5)+3)^2+(10*(y-0.5)+3)^2))) + 1/(1.5*exp(sqrt((10*(x-0.5))^2+(10*(y-0.5))^2)))",2);
-    //gsMatrix<> xyz;
-    //source.eval_into(uv, xyz);
+      gsVector<> lower(2), upper(2);
+      lower(0) = 0; lower(1) = 0;
+      upper(0) = 1; upper(1) = 1;
+      uv = uniformPointGrid(lower, upper, 10000);
+      gsInfo << uv.rows() << " x " << uv.cols() << "\n";
 
-    real_t datamean = 0;
-    real_t data_std = 0;
+      // source.eval_into(uv, points);
+      gsMatrix<> fval = source.eval(uv);
+      xyz.resize(3, fval.cols());
+      xyz << uv.row(0), uv.row(1), fval.row(0);
+    }
 
-    datamean = xyz.rowwise().mean().value();
-    gsInfo<<"mean = "<<datamean<<"\n";
+    gsInfo << uv.rows() << " x " << uv.cols() << "\n";
+    gsInfo << xyz.rows() << " x " << xyz.cols() << "\n";
+
+
+    // datamean = xyz.rowwise().mean();
+    // gsInfo<<"mean = "<<datamean<<"\n";
 
 //    datamean /= xyz.cols();
-    data_std = std::sqrt(((xyz.array()-datamean)*(xyz.array()-datamean)).mean());
-
-//  data_std = (xyz.array()-datamean);
-    gsInfo << "data mean:\n" << datamean << "\n";
-    gsInfo << "data std:\n" << data_std << "\n";
+//     data_std = std::sqrt(((xyz.array()-datamean)*(xyz.array()-datamean)).mean());
+//
+// //  data_std = (xyz.array()-datamean);
+//     gsInfo << "data mean:\n" << datamean << "\n";
+//     gsInfo << "data std:\n" << data_std << "\n";
 
     /*
     for(index_t outlier = 100; outlier <= xyz.cols(); outlier+=100)
@@ -159,7 +172,9 @@ int main(int argc, char *argv[])
     // params, points, basis, weights, refinement percentage, extension, smoothing parameter.
     gsHIRLSFitting<2, real_t> ref( uv, xyz, THB, weights, refPercent, ext, lambda);
 
-    const std::vector<real_t> & errors = ref.pointWiseWErrors();
+    std::vector<real_t> errors;
+    std::vector<real_t> errors2;
+    real_t sum_of_2errors;
 
     gsInfo<<"Starting residuals: "<< errors.size() << "\n";
 
@@ -176,6 +191,10 @@ int main(int argc, char *argv[])
 
     gsStopwatch time;
 
+    std::ofstream file_out;
+    file_out.open("IR_results.csv");
+    file_out << "m, deg, pen, dofs, it, min, max, mse, rmse\n";
+
     for(index_t i = 0; i <= iter; i++)
     {
         gsInfo<<"----------------\n";
@@ -186,12 +205,51 @@ int main(int argc, char *argv[])
                                                             // + computation of the weights
                                                             // + new weighted least square approximation.
         time.stop();
+
+        errors = ref.pointWiseWErrors();
+        gsMatrix<> colorPoints(xyz.rows() + 1, xyz.cols());
+        gsMatrix<> errorsMat = ref.result()->pointWiseErrors(uv, xyz);
+        // for(index_t err = 0; err < errors.size(); err++){
+        //     errorsMat(0,err) = errors[err];
+        // }
+        colorPoints.row(0) = xyz.row(0);
+        colorPoints.row(1) = xyz.row(1);
+        colorPoints.row(2) = xyz.row(2);
+        colorPoints.row(3) = errorsMat;
+
+        gsWriteParaviewPoints(colorPoints, "IR" + internal::to_string(i) + "color");
+
+
         gsInfo<<"Fitting time: "<< time <<"\n";
 
+        gsMesh<> mesh(ref.result()->basis());
+        gsWriteParaview(mesh, "IR" + internal::to_string(i) + "_iter_mesh");
+        gsWriteParaview(*ref.result(), "IR" + internal::to_string(i) + "geo", 100000, false, true);
+        //gsWriteParaview(*ref.result(), internal::to_string(i+1) + "_iter_geo", 100000, false, true);
+
+
+        std::vector<real_t> sol_min_max_mse = ref.result()->MinMaxMseErrors(uv, xyz);
+
+
+        ref.get_Error(errors2, 0);
+        sum_of_2errors = std::accumulate(errors2.begin(), errors2.end(), 0.0);
+        gsInfo<<"Fitting time: "<< time <<"\n";
         gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
-        gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
-        gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
-        gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelowWeight(tolerance)/errors.size()<<"%.\n";
+        gsInfo<<"DOFs         : "<< ref.result()->basis().size() <<"\n";
+        gsInfo<<"Min distance : "<< sol_min_max_mse[0] << std::scientific << "\n";//ref.minPointError() <<"\n";
+        std::cout << "Max distance : "<< sol_min_max_mse[1] << std::scientific << "\n";//<< ref.maxPointError() << std::scientific <<"\n";
+        std::cout << "MSE    error : "<< sol_min_max_mse[2] << std::scientific << "\n";//<< sum_of_2errors/errors2.size() << std::scientific <<"\n";
+        std::cout << "rMSE    error : "<< math::sqrt(sol_min_max_mse[2]) << std::scientific << "\n";//<< sum_of_2errors/errors2.size() << std::scientific <<"\n";
+        gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(tolerance)/errors.size()<<"%.\n";
+
+        //"m, deg, pen, dofs, it, min, max, mse\n";
+        file_out << xyz.cols() << "," << deg_x << "," << lambda << std::scientific << ","
+                 << ref.result()->basis().size() << "," << i << ","
+                 << sol_min_max_mse[0] << std::scientific << ","
+                 << sol_min_max_mse[1] << std::scientific << ","
+                 << sol_min_max_mse[2] << std::scientific << ","
+                 << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+                 << sum_of_2errors/errors2.size() << std::scientific << "\n";
 
         if ( ref.maxPointError() < tolerance )
         {
@@ -199,6 +257,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    file_out.close();
 
     gsInfo<<"----------------\n";
 

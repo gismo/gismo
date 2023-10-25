@@ -58,6 +58,10 @@ public:
     /// Computes the euclidean error for each point
     void computeErrors();
 
+    /// Computes the euclidean error for each point
+    void computeWeights();
+    void computeWeights(T w_toll, T alpha);
+
     /// Computes the maximum norm error for each point
     void computeMaxNormErrors();
 
@@ -114,6 +118,7 @@ public:
     gsSparseMatrix<T> smoothingMatrix(T lambda) const;
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, std::vector<T>& weights, gsMatrix<T>& B);
+    void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
 
 
 public:

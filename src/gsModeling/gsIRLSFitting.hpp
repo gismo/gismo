@@ -81,8 +81,13 @@ void gsIRLSFitting<T>::compute(T lambda)
     // building the matrix A and the vector b of the system of linear
     // equations A*x==b
     // weighted least square: B'WB * x = B'W * b
+    // computeWeights(); // cohen weights: they depend only on the basis function
+    // T tol = 1e-4;
+    // T alpha = 1.5;
+    // computeWeights(tol, alpha);
 
-    assembleSystem(A_mat, m_weights, m_B); // weighted least square fitting
+    //assembleSystem(A_mat, m_weights, m_B); // weighted least square fitting
+    assembleSystem(A_mat, m_B); // weighted least square fitting
 
     // --- Smoothing matrix computation
     //test degree >=3
@@ -131,47 +136,9 @@ void gsIRLSFitting<T>::parameterCorrection(T accuracy,
 
     const index_t d = m_param_values.rows();
     const index_t n = m_points.cols();
-    T maxAng, avgAng;
-    std::vector<gsMatrix<T> > vals;
-    gsMatrix<T> DD, der;
+
     for (index_t it = 0; it!=maxIter; ++it)
     {
-        maxAng = -1;
-        avgAng = 0;
-        //auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-        //(vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
-
-#       pragma omp parallel for default(shared) private(der,DD,vals)
-        for (index_t s = 0; s<m_points.rows(); ++s)
-            //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
-        {
-            vals = m_result->evalAllDers(m_param_values.col(s), 1);
-            for (index_t k = 0; k!=d; ++k)
-            {
-                der = vals[1].reshaped(d,n);
-                DD = vals[0].transpose() - m_points.row(s);
-                const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
-                const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
-#               pragma omp critical (max_avg_ang)
-                {
-                    maxAng = math::max(maxAng, a );
-                    avgAng += a;
-                }
-            }
-            /*
-            auto der = Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,-1> >
-                (vals[1].data()+k, n, m_points.rows(), Eigen::Stride<-1,-1>(d*n,d) );
-            maxAng = ( DD.colwise().normalized() *
-                       der.colwise().normalized().transpose()
-                ).array().acos().maxCoeff();
-            */
-        }
-
-        avgAng /= d*m_points.rows();
-        //gsInfo << "Avg-deviation: "<< avgAng << " / max: "<<maxAng<<"\n";
-
-        // if (math::abs(0.5*EIGEN_PI-maxAng) <= tolOrth ) break;
-
         gsVector<T> newParam;
 #       pragma omp parallel for default(shared) private(newParam)
         for (index_t i = 0; i<m_points.rows(); ++i)
@@ -194,7 +161,7 @@ void gsIRLSFitting<T>::parameterCorrection(T accuracy,
 
 template <class T>
 void gsIRLSFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
-                                      std::vector<T>& m_weights,
+                                      //std::vector<T>& m_weights,
                                       gsMatrix<T>& m_B)
 {
     const int num_points = m_points.rows();
@@ -352,6 +319,47 @@ void gsIRLSFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
     }
 }
 
+
+template<class T>
+void gsIRLSFitting<T>::computeWeights()
+{
+    m_weights.clear();
+
+    gsMatrix<T> integrals(m_basis->size(), 1);
+
+    gsSparseMatrix<T> tmp = m_basis->collocationMatrix(m_param_values);
+
+    gsMatrix<T> Btab = tmp;
+    Btab.array() *= Btab.array();
+    Btab = Btab.matrix();
+    //
+    gsMatrix<T> S_A = Btab.rowwise().sum();
+
+    for(index_t i = 0; i < S_A.rows(); i++)
+      m_weights.push_back(S_A(i,0));
+}
+
+template<class T>
+void gsIRLSFitting<T>::computeWeights(T w_toll, T alpha)
+{
+    if (m_pointErrors.size() == 0)
+    {
+      m_weights.clear();
+      for(index_t i = 0; i < m_param_values.cols(); i++)
+        m_weights.push_back(1.);
+    }
+    else
+    {
+      gsInfo << "points : " << m_pointErrors.size() << " = " << "weights : " << m_weights.size() << "\n";
+      GISMO_ASSERT( m_pointErrors.size() == m_weights.size(), "No 1-1 correspondance between points and weights.");
+      for(index_t i = 0; i < m_pointErrors.size(); i++)
+        if (w_toll < m_pointErrors[i])
+          m_weights[i] = m_weights[i] * alpha;
+    }
+}
+
+
+
 template<class T>
 void gsIRLSFitting<T>::computeErrors()
 {
@@ -363,9 +371,9 @@ void gsIRLSFitting<T>::computeErrors()
     m_result->eval_into(m_param_values, val_i);
     m_pointErrors.push_back(  (m_points.row(0) - val_i.col(0).transpose()).norm() );
     m_pointWErrors.push_back(  ( (m_points.row(0) - val_i.col(0).transpose()).norm() ) * m_weights[0] ); // weighted error computation
-    gsInfo << "Initial weight: " << m_weights[0] << "\n";
-    m_weights[0] = 1/( (m_points.row(0) - val_i.col(0).transpose()).norm() );
-    gsInfo << "Update weight: " << m_weights[0] << "\n";
+    //gsInfo << "Initial weight: " << m_weights[0] << "\n";
+    //m_weights[0] = 1/( (m_points.row(0) - val_i.col(0).transpose()).norm() );
+    //gsInfo << "Update weight: " << m_weights[0] << "\n";
     m_max_error = m_min_error = m_pointErrors.back();
 
     gsInfo << "Initial last weighted-error: " << m_pointWErrors.back() << "\n";
@@ -381,7 +389,7 @@ void gsIRLSFitting<T>::computeErrors()
         m_pointWErrors.push_back(werr); // weighted errors
 
 
-        m_weights[i] = 1/( (m_points.row(i) - val_i.col(i).transpose()).norm() );
+        //m_weights[i] = 1/( (m_points.row(i) - val_i.col(i).transpose()).norm() );
 
         if ( err > m_max_error ) m_max_error = err;
         if ( err < m_min_error ) m_min_error = err;

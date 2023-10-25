@@ -244,6 +244,9 @@ bool gsHIRLSFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 
     this->computeErrors();
 
+    //this->computeWeights( 10 * tolerance, 1.25);
+    this->computeWeights( 10 * tolerance, 2);
+
     return true;
 }
 
