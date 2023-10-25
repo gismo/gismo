@@ -968,10 +968,16 @@ public:
     /// The collocation matrix is a sparse matrix with \em u.cols rows
     /// and \em size() columns. The entry \em (i,j) is the value of
     /// basis function \em j at evaluation point \em i.
+
+    // gsSparseMatrix<T> collocationMatrix(gsMatrix<T> const& u) const;
+    //
+    // std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u);
+
     gsSparseMatrix<T> collocationMatrix(gsMatrix<T> const& u) const;
 
-    std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u);
-    
+    std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsMatrix<T> & u) const;
+    std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u) const;
+
     /// Reverse the basis
     virtual void reverse();
 

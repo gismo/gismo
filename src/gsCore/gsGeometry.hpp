@@ -287,7 +287,7 @@ boxSide gsGeometry<T>::sideOf( const gsVector<T> & u,  )
      */
 
 template<class T>
-gsGeometry<T>::gsGeometry(const gsGeometry<T> & o) 
+gsGeometry<T>::gsGeometry(const gsGeometry<T> & o)
 : m_coefs(o.m_coefs), m_basis(o.m_basis != NULL ? o.basis().clone().release() : NULL), m_id(o.m_id)
 { }
 
@@ -522,13 +522,73 @@ T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamp
 
 
 template<class T>
+gsMatrix<T> gsGeometry<T>::pointWiseErrors(const gsMatrix<T> & parameters,
+                                           const gsMatrix<T> & points) const
+
+{
+  gsMatrix<T> eval;
+  this->eval_into(parameters, eval);
+  gsMatrix<T> errorMat(1, eval.cols());
+  for (index_t col = 0; col != eval.cols(); col++)
+  {
+      errorMat(0, col) = (eval.col(col) - points.col(col)).norm();
+  }
+  return errorMat;
+}
+
+
+
+template<class T>
+std::vector<T> gsGeometry<T>::MinMaxMseErrors(const gsMatrix<T> & parameters,
+                                              const gsMatrix<T> & points) const
+{
+  std::vector<T> min_max_mse;
+  gsMatrix<T> errorMat = this->pointWiseErrors(parameters, points);
+
+  T min_error = 1e6;
+  T max_error = 0;
+  T mse_error = 0;
+
+  gsMatrix<T> err_point(3,1);
+
+  for (index_t i = 1; i < errorMat.cols(); i++)
+  {
+    const T err = errorMat(0,i) ;
+    mse_error += err * err ;
+    if ( err > max_error )
+    {
+      max_error = err;
+      err_point << points.col(i);
+      this->eval_into(parameters.col(i), err_point);
+    }
+
+    if ( err < min_error )
+    {
+      min_error = err;
+    }
+  }
+
+  min_max_mse.push_back(min_error);
+  min_max_mse.push_back(max_error);
+  min_max_mse.push_back(mse_error/errorMat.cols());
+
+  return min_max_mse;
+}
+
+
+
+
+
+
+
+template<class T>
 void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
                                   const T accuracy) const
 {
     gsVector<index_t> ind(xyz.rows()-1);
     for (index_t i = 0; i!= xyz.rows(); ++i)
         if (i<k) ind[i]=i;
-        else if (i>k) ind[i-1]=i;       
+        else if (i>k) ind[i-1]=i;
 
     gsMatrix<T> pt = xyz(ind,gsEigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
