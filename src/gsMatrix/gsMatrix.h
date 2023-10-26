@@ -424,7 +424,7 @@ public:
 
         bool didSwap;
         gsMatrix<T> tmp(1, this->cols() );
-        index_t idx;
+
         do{ //caution! A stable sort algorithm is needed here for lexSortColumns function below
             didSwap = false;
             lastCheckIdx = lastSwapDone;
