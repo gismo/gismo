@@ -98,7 +98,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_interiors.resize(2, interiors.size());
   p_interiors.resize(3, interiors.size());
-  for( index_t i = 0; i < interiors.size(); i++ )
+  for( size_t i = 0; i < interiors.size(); i++ )
   {
     uv_interiors.col(i) = parameters.col(interiors[i]);
     p_interiors.col(i) = points.col(interiors[i]);
@@ -106,7 +106,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_west.resize(2, b_west.size());
   gsMatrix<T> tmp_west(3, b_west.size());
-  for( index_t i = 0; i < b_west.size(); i++ )
+  for( size_t i = 0; i < b_west.size(); i++ )
   {
     uv_west.col(i) = parameters.col(b_west[i]);
     tmp_west.col(i) = points.col(b_west[i]);
@@ -114,7 +114,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_east.resize(2, b_east.size());
   gsMatrix<T> tmp_east(3, b_east.size());
-  for( index_t i = 0; i < b_east.size(); i++ )
+  for( size_t i = 0; i < b_east.size(); i++ )
   {
     uv_east.col(i) = parameters.col(b_east[i]);
     tmp_east.col(i) = points.col(b_east[i]);
@@ -122,7 +122,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_south.resize(2, b_south.size());
   gsMatrix<T> tmp_south(3, b_south.size());
-  for( index_t i = 0; i < b_south.size(); i++ )
+  for( size_t i = 0; i < b_south.size(); i++ )
   {
     uv_south.col(i) = parameters.col(b_south[i]);
     tmp_south.col(i) = points.col(b_south[i]);
@@ -130,7 +130,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
   uv_north.resize(2, b_north.size());
   gsMatrix<T> tmp_north(3, b_north.size());
-  for( index_t i = 0; i < b_north.size(); i++ )
+  for( size_t i = 0; i < b_north.size(); i++ )
   {
     uv_north.col(i) = parameters.col(b_north[i]);
     tmp_north.col(i) = points.col(b_north[i]);
@@ -145,7 +145,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   std::vector<index_t> tmp = uv_south.idxByColumn(0);
   // gsDebugVar(uv_south);
   p_south.resize(tmp_south.rows(), tmp_south.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_south.col(i) = tmp_south.col(tmp[i]);
   }
@@ -156,7 +156,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   tmp = uv_east.idxByColumn(1);
   // gsDebugVar(uv_east);
   p_east.resize(tmp_east.rows(), tmp_east.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_east.col(i) = tmp_east.col(tmp[i]);
   }
@@ -175,7 +175,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   // for (std::vector<index_t>::iterator it = tmp.begin(); it != tmp.end(); ++it)
   //   gsInfo << *it <<"\n";
   p_north.resize(tmp_north.rows(), tmp_north.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_north.col(i) = tmp_north.col(tmp[i]);
   }
@@ -193,7 +193,7 @@ void sortPointCloud(gsMatrix<T> & parameters,
   std::reverse(tmp.begin(),tmp.end());
 
   p_west.resize(tmp_west.rows(), tmp_west.cols());
-  for(index_t i = 0; i<tmp.size(); i++)
+  for(size_t i = 0; i<tmp.size(); i++)
   {
     p_west.col(i) = tmp_west.col(tmp[i]);
   }
@@ -270,13 +270,19 @@ public:
                         index_t c1, // corner 0, south edge
                         index_t c2, // corner 1, east edge
                         index_t c3, // corner 2, north edge
-                        index_t c4) // corner 3, west edge
+                        index_t c4, // corner 3, west edge
+						bool constrainCorners)
     :
     m_mp(&mp),
     m_params(params),
     m_X(X),
     m_c1(c1), m_c2(c2), m_c3(c3), m_c4(c4)
     {
+        T u_min = m_params.row(0).minCoeff(),
+            u_max = m_params.row(0).maxCoeff(),
+            v_min = m_params.row(1).minCoeff(),
+            v_max = m_params.row(1).maxCoeff();
+
         // Number of design variables: how many variables we optimize, i.e. coefficiets + parametric values
         // m_numDesignVars  = m_mp[0].coefs().size() + m_params.size(); // dim * spline-dofs + numPts
         m_numDesignVars  = m_mp->result()->coefs().size() + m_params.size();
@@ -297,78 +303,95 @@ public:
 
         for(index_t i = 0; i < m_c1; i++) // u_interior parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size() + i] = u_min; // lower bound on the interior parameters
+          m_desUpperBounds[m_mp->result()->coefs().size() + i] = u_max; // upper bound on the interior parameters
         }
 
         // m_c1 = [0,0]
-        m_desLowerBounds[m_mp->result()->coefs().size() + m_c1] = 0.; // lower bound on the LEFT SOUTH corner
-        m_desUpperBounds[m_mp->result()->coefs().size() + m_c1] = 0.; // upper bound on the LEFT SOUTH corner
+        m_desLowerBounds[m_mp->result()->coefs().size() + m_c1] = u_min; // lower bound on the LEFT SOUTH corner
+        if(constrainCorners)
+            m_desUpperBounds[m_mp->result()->coefs().size() + m_c1] = u_min; // upper bound on the LEFT SOUTH corner
+        else
+            m_desUpperBounds[m_mp->result()->coefs().size() + m_c1] = u_max; // upper bound on the LEFT SOUTH corner
+
         for(index_t i = m_c1+1; i < m_c2; i++) // u_south parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size() + i] = u_min; // lower bound on the interior parameters
+          m_desUpperBounds[m_mp->result()->coefs().size() + i] = u_max; // upper bound on the interior parameters
         }
 
         // m_c2 = [1,0]
         for(index_t i = m_c2; i < m_c3; i++) // u_east parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 1.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size() + i] = u_max; // lower bound on the interior parameters
+          m_desUpperBounds[m_mp->result()->coefs().size() + i] = u_max; // upper bound on the interior parameters
         }
 
         // m_c3 = [1,1]
-        m_desLowerBounds[m_mp->result()->coefs().size()+ m_c3] = 1.; // lower bound on the interior parameters
-        m_desUpperBounds[m_mp->result()->coefs().size()+ m_c3] = 1.; // upper bound on the interior parameters
+        if(constrainCorners)
+            m_desLowerBounds[m_mp->result()->coefs().size()+ m_c3] = u_max; // lower bound on the interior parameters
+        else
+            m_desLowerBounds[m_mp->result()->coefs().size()+ m_c3] = u_min; // lower bound on the interior parameters
+        m_desUpperBounds[m_mp->result()->coefs().size()+ m_c3] = u_max; // upper bound on the interior parameters
+
         for(index_t i = m_c3+1; i < m_c4; i++) // u_north parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size()+ i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size()+ i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size()+ i] = u_min; // lower bound on the interior parameters
+          m_desUpperBounds[m_mp->result()->coefs().size()+ i] = u_max; // upper bound on the interior parameters
         }
 
         // m_c4 = [0,1]
         for(index_t i = m_c4; i < currentparams.rows(); i++) // u_west parameters
         {
-          m_desLowerBounds[m_mp->result()->coefs().size() + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[m_mp->result()->coefs().size() + i] = 0.; // upper bound on the interior parameters
+          m_desLowerBounds[m_mp->result()->coefs().size() + i] = u_min; // lower bound on the interior parameters
+          m_desUpperBounds[m_mp->result()->coefs().size() + i] = u_min; // upper bound on the interior parameters
         }
 
 
         index_t v_shift = m_mp->result()->coefs().size() + currentparams.rows();
         for(index_t i = 0; i < m_c1; i++) // v_interior parameters
         {
-          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = v_min; // lower bound on the interior parameters
+          m_desUpperBounds[v_shift + i] = v_max; // upper bound on the interior parameters
         }
 
         // m_c1 = [0,0]
         for(index_t i = m_c1; i < m_c2; i++) // v_south parameters
         {
-          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 0.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = v_min; // lower bound on the interior parameters
+          m_desUpperBounds[v_shift + i] = v_min; // upper bound on the interior parameters
         }
 
         // m_c2 = [1,0]
-        m_desLowerBounds[v_shift + m_c2] = 0.; // lower bound on the interior parameters
-        m_desUpperBounds[v_shift + m_c2] = 0.; // upper bound on the interior parameters
+        m_desLowerBounds[v_shift + m_c2] = v_min; // lower bound on the interior parameters
+        if(constrainCorners)
+            m_desUpperBounds[v_shift + m_c2] = v_min; // upper bound on the interior parameters
+        else
+            m_desUpperBounds[v_shift + m_c2] = v_max; // upper bound on the interior parameters
+
         for(index_t i = m_c2+1; i < m_c3; i++) // v_east parameters
         {
-          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = v_min; // lower bound on the interior parameters
+          m_desUpperBounds[v_shift + i] = v_max; // upper bound on the interior parameters
         }
         // m_c3 = [1,1]
         for(index_t i = m_c3; i < m_c4; i++) // u_north parameters
         {
-          m_desLowerBounds[v_shift + i] = 1.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = v_max; // lower bound on the interior parameters
+          m_desUpperBounds[v_shift + i] = v_max; // upper bound on the interior parameters
         }
         // m_c4 = [0,1]
-        m_desLowerBounds[v_shift + m_c4] = 1.; // lower bound on the interior parameters
-        m_desUpperBounds[v_shift + m_c4] = 1.; // upper bound on the interior parameters
+
+        if(constrainCorners)
+            m_desLowerBounds[v_shift + m_c4] = v_max; // lower bound on the interior parameters
+        else
+            m_desLowerBounds[v_shift + m_c4] = v_min; // lower bound on the interior parameters
+        m_desUpperBounds[v_shift + m_c4] = v_max; // upper bound on the interior parameters
+
         for(index_t i = m_c4+1; i < currentparams.size()/2; i++) // u_west parameters
         {
-          m_desLowerBounds[v_shift + i] = 0.; // lower bound on the interior parameters
-          m_desUpperBounds[v_shift + i] = 1.; // upper bound on the interior parameters
+          m_desLowerBounds[v_shift + i] = v_min; // lower bound on the interior parameters
+          m_desUpperBounds[v_shift + i] = v_max; // upper bound on the interior parameters
         }
 
         // Initialization of the smoothing matrix that we need to define the objective function.
@@ -470,7 +493,7 @@ int main(int argc, char *argv[])
     bool apdm = false; // a, run a-pdm
     index_t verbosity = 1; // b, b=2 prints a lot of gsInfo
     index_t maxPcIter = 0; // c, parameter correction steps
-    real_t deg = 2; // d, fitting degree
+    index_t deg = 2; // d, fitting degree
     real_t tolerance = 1e-04; // hierarchical refinement tolerance
 
 
@@ -483,7 +506,8 @@ int main(int argc, char *argv[])
     index_t numURef = 0; // l, maximum number of refinement iterations
     index_t mupdate = 20; // m, HLBFGS hessian updates
     index_t numKnots = 2; // n, fitting initial number of knots in each direction
-    // o, p, q, r,
+    // o, p, q
+	bool constrainCorners = false;
     real_t lambda = 1e-6; // s, fitting smoothing weight
 
     index_t extension = 2;
@@ -494,7 +518,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("a", "apdm", "run the A-PDM algorithm.", apdm); // enamble for comparison
     cmd.addInt("b", "print", "set printing verbosity", verbosity);
     cmd.addInt("c", "step", "number of parameter correction steps for APDM.", maxPcIter);
-    cmd.addReal("d", "degree", "bi-degree (d,d).", deg);
+    cmd.addInt("d", "degree", "bi-degree (d,d).", deg);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("f", "filename", "name of the .xml file containing the data", fn);
     cmd.addReal("g", "gtoll", "stopping criteria on ||g||", gtoll);
@@ -504,7 +528,8 @@ int main(int argc, char *argv[])
     cmd.addInt("l", "level", "number of maximum iterations for the adaptive loop.", maxRef);
     cmd.addInt("m", "update", "number of LBFGS updates.", mupdate);
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
-    // o, p, q, r,
+    // o, p, q
+    cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
     // t, u, v, w, x, y, z
 
@@ -532,7 +557,8 @@ int main(int argc, char *argv[])
 
     gsInfo << "Reordering parameters and points as interiors,\n"
               "and anticlockwise boundaried, i.e. south edge, east edge, north edge, west edge.\n";
-    scalePoints(P,X);
+    //scalePoints(P,X);
+    X = P;
 
     sortPointCloud(uv,X,corners);
     index_t c1 = corners[0];
@@ -571,8 +597,6 @@ int main(int argc, char *argv[])
     gsHFitting<2, real_t> opt_f(uv, X, basis, 0, ext, lambda); // gsHFitting object for C-PDM
     const std::vector<real_t> & errors = opt_f.pointWiseErrors();
     std::vector<real_t> errors2;
-    real_t sum_of_errors2;
-
 
     std::string prefix = "adaptive";
 
@@ -584,8 +608,8 @@ int main(int argc, char *argv[])
     file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
     real_t finaltime_adaptiveLoop = 0;
-    gtoll = gtoll * 4;
-    maxIter = maxIter / 2;
+    //gtoll = gtoll * 4;
+    //maxIter = maxIter / 2;
     for(int refIt = 0; refIt <= maxRef; refIt++) // adaptive loop on the spline space
     {
         gsInfo<<"------------------------------------------------\n";
@@ -609,7 +633,7 @@ int main(int argc, char *argv[])
         params = opt_f.returnParamValues();
 
         // gsOptProblemExample<real_t> problem(opt_f, params, X); // FIRST THE fitting_object, THEN THE PARAMETERS AND THEN THE POINTS.
-        gsOptProblemExample<real_t> problem(opt_f, params, X, c1, c2, c3, c4); // FIRST THE fitting object, THEN THE PARAMETERS AND THEN THE POINTS.
+        gsOptProblemExample<real_t> problem(opt_f, params, X, c1, c2, c3, c4, constrainCorners); // FIRST THE fitting object, THEN THE PARAMETERS AND THEN THE POINTS.
         // the params here are not the original ones, as in the tensor product approach,
         // but the ones computed in each adaptive loop.
         gsOptimizer<real_t> * optimizer;
@@ -621,8 +645,8 @@ int main(int argc, char *argv[])
         gsMatrix<> currentcoefs( original.coefs().rows(), original.coefs().cols() ); // the original for each iteration of the adaptive loop.
 
 
-        gtoll = gtoll / 4;
-        maxIter = maxIter * 2;
+        //gtoll = gtoll / 4;
+        //maxIter = maxIter * 2;
 
         optimizer = new gsHLBFGS<real_t>(&problem);
         optimizer->options().setInt("Verbose",verbosity);
@@ -693,7 +717,6 @@ int main(int argc, char *argv[])
 
         // compute mean squared error
         opt_f.get_Error(errors2, 0);
-        sum_of_errors2 = std::accumulate(errors2.begin(), errors2.end(), 0.0);
 
         gsInfo<<"Fitting time: "<< finaltime_itLoop <<"\n";
 
@@ -755,8 +778,6 @@ int main(int argc, char *argv[])
       gsHFitting<2, real_t> ref(uv, X, refbasis, 0, ext, lambda); // gsHFitting object for A-PDM
       const std::vector<real_t> & adapt_errors = ref.pointWiseErrors();
       std::vector<real_t> adapt_errors2;
-      real_t adapt_sum_of_errors2;
-
 
       //file_pc << "it, time, fraction, dofs, rmse\n";
       prefix = "adaptive";
@@ -784,15 +805,11 @@ int main(int argc, char *argv[])
           gsWriteParaviewPoints(uv_fitting, prefix + "apdm_parameters");
 
           ref.get_Error(adapt_errors2, 0);
-          adapt_sum_of_errors2 = std::accumulate(errors2.begin(), errors2.end(), 0.0);
 
           gsInfo<<"Fitting time: "<< finaltime_itLoop <<"\n";
 
           std::vector<real_t> sol_min_max_mse = ref.result()->MinMaxMseErrors(ref.returnParamValues(), X);
           index_t dofs = ref.result()->basis().size();
-          real_t minPointError = ref.minPointError();
-          real_t maxPointError = ref.maxPointError();
-          real_t mseError = adapt_sum_of_errors2/adapt_errors2.size();
           real_t percentagePoint = 100.0 * ref.numPointsBelow(tolerance)/adapt_errors.size();
 
           gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
