@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<precice-configuration>
+  <log>
+    <sink
+      filter="%Severity% > debug and %Rank% = 0"
+      format="---[precice] %ColorizedSeverity% %Message%"
+      enabled="true" />
+  </log>
+
+  <solver-interface dimensions="2">
+    <data:vector name="Stress" />
+    <data:vector name="Displacement" />
+
+    <mesh name="Fluid-Mesh">
+      <use-data name="Stress" />
+      <use-data name="Displacement" />
+    </mesh>
+
+    <mesh name="Solid-Mesh">
+      <use-data name="Displacement" />
+      <use-data name="Stress" />
+    </mesh>
+
+    <participant name="Fluid">
+      <use-mesh name="Fluid-Mesh" provide="yes" />
+      <use-mesh name="Solid-Mesh" from="Solid" />
+      <write-data name="Stress" mesh="Fluid-Mesh" />
+      <read-data name="Displacement" mesh="Fluid-Mesh" />
+      <mapping:rbf-thin-plate-splines
+        direction="write"
+        from="Fluid-Mesh"
+        to="Solid-Mesh"
+        constraint="consistent" />
+      <mapping:rbf-thin-plate-splines
+        direction="read"
+        from="Solid-Mesh"
+        to="Fluid-Mesh"
+        constraint="consistent" />
+    </participant>
+
+    <participant name="Solid">
+      <use-mesh name="Solid-Mesh" provide="yes" />
+      <write-data name="Displacement" mesh="Solid-Mesh" />
+      <read-data name="Stress" mesh="Solid-Mesh" />
+      <watch-point mesh="Solid-Mesh" name="Flap-Tip" coordinate="0.0;1" />
+    </participant>
+
+    <m2n:sockets from="Fluid" to="Solid" exchange-directory=".." />
+
+    <coupling-scheme:parallel-implicit>
+      <time-window-size value="0.01" />
+      <max-time value="5" />
+      <participants first="Fluid" second="Solid" />
+      <exchange data="Stress" mesh="Solid-Mesh" from="Fluid" to="Solid" />
+      <exchange data="Displacement" mesh="Solid-Mesh" from="Solid" to="Fluid" />
+      <max-iterations value="50" />
+      <relative-convergence-measure limit="5e-3" data="Displacement" mesh="Solid-Mesh" />
+      <relative-convergence-measure limit="5e-3" data="Stress" mesh="Solid-Mesh" />
+      <acceleration:IQN-ILS>
+        <data name="Displacement" mesh="Solid-Mesh" />
+        <data name="Stress" mesh="Solid-Mesh" />
+        <preconditioner type="residual-sum" />
+        <filter type="QR2" limit="1e-2" />
+        <initial-relaxation value="0.5" />
+        <max-used-iterations value="100" />
+        <time-windows-reused value="15" />
+      </acceleration:IQN-ILS>
+    </coupling-scheme:parallel-implicit>
+  </solver-interface>
+</precice-configuration>

@@ -739,7 +739,9 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     gsVector<T> quWeights;         // Mapped weights
     
     // Initialize
+        gsDebugVar("Hi");
     visitor.initialize(B1, B2, bi, m_options, quRule);
+        gsDebugVar("Hi");
 
     const gsGeometry<T> & patch1 = m_pde_ptr->patches()[patchIndex1];
     const gsGeometry<T> & patch2 = m_pde_ptr->patches()[patchIndex2];
@@ -756,13 +758,16 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
         // Compute the quadrature rule on both sides
         quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
         interfaceMap.eval_into(quNodes1,quNodes2);
+        gsDebugVar("Hi");
 
         // Perform required evaluations on the quadrature nodes
         visitor.evaluate(B1, patch1, B2, patch2, quNodes1, quNodes2);
+        gsDebugVar("Hi");
 
         // Assemble on element
         visitor.assemble(*domIt,*domIt, quWeights);
 
+        gsDebugVar("Hi");
         // Push to global patch matrix (m_rhs is filled in place)
         visitor.localToGlobal(patchIndex1, patchIndex2, m_ddof, m_system);
     }

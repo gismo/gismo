@@ -23,7 +23,7 @@
 ## git checkout name-of-branch
 ##
 ######################################################################
-set(SUBMODULES_TXT "gsOpennurbs")
+set(SUBMODULES_TXT "gsOpennurbs;gsElasticity;gsKLShell;gsStructuralAnalysis;gsSpectra;gsPreCICE")
 
 ##
 ## The following lines allow to specify a commit instead of HEAD

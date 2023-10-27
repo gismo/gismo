@@ -19,6 +19,7 @@
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 
+
 #ifdef gsStructuralAnalysis_ENABLED
 #include <gsStructuralAnalysis/gsTimeIntegrator.h>
 #endif
@@ -69,11 +70,25 @@ int main(int argc, char *argv[])
     real_t mu = E / (2.0 * (1.0 + nu));
     real_t lambda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu));
 
+// ----------------------------------------------------------------------------------------------
+    typedef gsExprAssembler<>::geometryMap geometryMap;
+    typedef gsExprAssembler<>::space       space;
+    typedef gsExprAssembler<>::solution    solution;
+
+    gsExprAssembler<> A(1,1);
+
+    gsInfo<<"Active options:\n"<< A.options() <<"\n";
+
+    A.setIntegrationElements(bases);
+
+    gsExprEvaluator<> ev(A);
+
+// ----------------------------------------------------------------------------------------------
     // Set the interface for the precice coupling
-    std::vector<patchSide> couplingInterfaces(3);
+    std::vector<patchSide> couplingInterfaces(1);
     couplingInterfaces[0] = patchSide(0,boundary::east);
-    couplingInterfaces[1] = patchSide(0,boundary::north);
-    couplingInterfaces[2] = patchSide(0,boundary::west);
+    // couplingInterfaces[1] = patchSide(0,boundary::north);
+    // couplingInterfaces[2] = patchSide(0,boundary::west);
 
 
     // Set the dimension of the points
@@ -81,9 +96,6 @@ int main(int argc, char *argv[])
     // Start iteration over elements
     gsVector<> tmp;
 
-    // TEMPORARY: get assembler options. Should come from the gsElasticityAssembler, but the problem is that that one needs to be defined using the BCs, which need the interface...
-
-    gsExprAssembler<> A(1,1);
     gsOptionList quadOptions = A.options();
 
     index_t quadSize = 0;
@@ -130,14 +142,44 @@ int main(int argc, char *argv[])
         }
     }
 
+    gsDebugVar(uv);
+    gsDebugVar(xy);
+
+    // // source function, rhs
+    // gsConstantFunction<> g(0.,0.,2);
+
+    // // source function, rhs
+    // gsConstantFunction<> gravity(0.,0.,2);
+
+    // // Define boundary conditions
+    // gsBoundaryConditions<> bcInfo;
+    // // Dirichlet side
+    // gsConstantFunction<> g_D(0,patches.geoDim());
+    // // Coupling side
+    // gsConstantFunction<> g_N = g;
+    // gsPreCICEVectorFunction<real_t> g_C(&interface,meshID,forceID,patches,patches.geoDim());
+    // // Add all BCs
+    // // Coupling interface
+    // bcInfo.addCondition(0, boundary::north,  condition_type::neumann , &g_N);
+    // bcInfo.addCondition(0, boundary::east,  condition_type::neumann  , &g_N);
+    // bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_N);
+    // // Bottom side (prescribed temp)
+    // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0, false, 0);
+    // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0, false, 1);
+    // // Assign geometry map
+    // bcInfo.setGeoMap(patches);
+
     // Define precice interface
     gsPreCICE<real_t> interface("Solid", precice_config);
     interface.addMesh("Solid-Mesh",xy);
     real_t precice_dt = interface.initialize();
+    // Time step
+    real_t dt = precice_dt;
+
 
     index_t meshID = interface.getMeshID("Solid-Mesh");
     index_t dispID = interface.getDataID("Displacement",meshID);
-    index_t forceID = interface.getDataID("Stress",meshID);
+    index_t forceID = interface.getDataID("Force",meshID);
 
 // ----------------------------------------------------------------------------------------------
 
@@ -150,56 +192,94 @@ int main(int argc, char *argv[])
     gsPreCICEVectorFunction<real_t> g_C(&interface,meshID,forceID,patches,patches.geoDim());
     // Add all BCs
     // Coupling interface
-    bcInfo.addCondition(0, boundary::north,  condition_type::neumann , &g_C);
+    // bcInfo.addCondition(0, boundary::north,  condition_type::neumann , &g_C);
     bcInfo.addCondition(0, boundary::east,  condition_type::neumann  , &g_C);
-    bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_C);
+    // bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_C);
     // Bottom side (prescribed temp)
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0);
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 1);
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0, false, 0);
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 0, false, 1);
     // Assign geometry map
     bcInfo.setGeoMap(patches);
 
+
 // ----------------------------------------------------------------------------------------------
-    // source function, rhs
-    gsConstantFunction<> g(0.,0.,2);
 
-    // source function, rhs
-    gsConstantFunction<> gravity(0.,0.,2);
+    // // source function, rhs
+    // gsConstantFunction<> g(0.,0.,2);
 
-    // creating mass assembler
-    gsMassAssembler<real_t> massAssembler(patches,bases,bcInfo,gravity);
-    massAssembler.options().setReal("Density",rho);
-    massAssembler.assemble();
+    // // source function, rhs
+    // gsConstantFunction<> gravity(0.,0.,2);
 
-    // creating stiffness assembler.
-    gsElasticityAssembler<real_t> assembler(patches,bases,bcInfo,g);
-    assembler.options().setReal("YoungsModulus",E);
-    assembler.options().setReal("PoissonsRatio",nu);
-    assembler.assemble();
+    // // creating mass assembler
+    // gsMassAssembler<real_t> massAssembler(patches,bases,bcInfo,gravity);
+    // massAssembler.options().setReal("Density",rho);
+    // massAssembler.assemble();
 
-    gsMatrix<real_t> Minv;
-    gsSparseMatrix<> M = massAssembler.matrix();
-    gsSparseMatrix<> K = assembler.matrix();
-    gsSparseMatrix<> K_T;
+    // // creating stiffness assembler.
+    // gsElasticityAssembler<real_t> assembler(patches,bases,bcInfo,g);
+    // assembler.options().setReal("YoungsModulus",E);
+    // assembler.options().setReal("PoissonsRatio",nu);
+    // assembler.assemble();
 
-    // Time step
-    real_t dt = precice_dt;
+    // Time integration coefficient (0.0 = explicit, 1.0 = implicit)
+    real_t theta = 1.0;
+
+    // Set the geometry map
+    geometryMap G = A.getMap(patches);
+
+    // Set the discretization space
+    space u = A.getSpace(bases,patches.geoDim());
+
+    // Set the solution
+    gsMatrix<> solVector;
+    solution u_sol = A.getSolution(u, solVector);
+
+    // Assemble mass matrix
+    u.setup(bcInfo, dirichlet::homogeneous, 0);
+    A.initSystem();
+    A.assemble( rho * u * u.tr() * meas(G));
+    gsSparseMatrix<> M = A.matrix();
+
+    // Assemble stiffness matrix (NOTE: also adds the dirichlet BCs inside the matrixs)
+    u.setup(bcInfo, dirichlet::l2Projection, 0);
+    A.initSystem();
+
+    auto v = u;
+    A.assemble(
+                0.5 * mu * meas(G) *
+                ( ijac(v,G) + ijac(v,G).cwisetr() )
+                %
+                ( ijac(u,G) +  ijac(u,G).cwisetr()).tr()   // 18x18
+                +
+                lambda * meas(G) *
+                ( ijac( v, G).trace()  *  ijac( u, G).trace().tr() )
+                );
+
+    auto g_C_tmp = A.getCoeff(g_C,G);
+
+    auto g_Neumann = A.getBdrFunction(G);
+    // Assemble Neumann BC term ( to .rhs())
+    A.assembleBdr(bcInfo.get("Neumann"), v * g_C_tmp * meas(G)  );
+
+    gsDebugVar(A.rhs());
+
+
+    gsSparseMatrix<> K = A.matrix();
+
+    // A Conjugate Gradient linear solver with a diagonal (Jacobi) preconditionner
+    gsSparseSolver<>::CGDiagonal solver;
 
     // Project u_wall as initial condition (violates Dirichlet side on precice interface)
     // RHS of the projection
-    gsMatrix<> solVector;
-    solVector.setZero(assembler.numDofs(),1);
+    solVector.setZero(A.numDofs(),1);
 
-    std::vector<gsMatrix<> > fixedDofs = assembler.allFixedDofs();
     // Assemble the RHS
-    gsMatrix<> F = assembler.rhs();
-    gsMatrix<> F0;
-    gsMatrix<> F_checkpoint, U_checkpoint, V_checkpoint, A_checkpoint;
+    gsVector<> F = dt*A.rhs() + (M-dt*(1.0-theta)*K)*solVector;
+    gsVector<> F0 = A.rhs();
+    gsVector<> F_checkpoint = F;
 
-    F_checkpoint = F0 = F;
-    U_checkpoint = gsVector<real_t>::Zero(assembler.numDofs(),1);
-    V_checkpoint = gsVector<real_t>::Zero(assembler.numDofs(),1);
-    A_checkpoint = gsVector<real_t>::Zero(assembler.numDofs(),1);
+        gsDebugVar(F0.transpose());
+
 
     // Define the solution collection for Paraview
     gsParaviewCollection collection("solution");
@@ -211,33 +291,40 @@ int main(int argc, char *argv[])
     // Plot initial solution
     if (plot)
     {
-        gsMultiPatch<> solution;
-        assembler.constructSolution(solVector,fixedDofs,solution);
-
-        // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
-        gsField<> solField(patches,solution);
-        std::string fileName = "./solution" + util::to_string(timestep);
-        gsWriteParaview<>(solField, fileName, 500);
-        fileName = "solution" + util::to_string(timestep) + "0";
-        collection.addTimestep(fileName,time,".vts");
+        std::string fileName = "solution_" + util::to_string(timestep);
+        ev.options().setSwitch("plot.elements", true);
+        ev.options().setInt("plot.npts", 1000);
+        ev.writeParaview( u_sol   , G, fileName);
+        for (size_t p=0; p!=patches.nPatches(); p++)
+        {
+          fileName = "solution_" + util::to_string(timestep) + std::to_string(p);
+          collection.addTimestep(fileName,time,".vts");
+        }
     }
-
 
     // Function for the Residual
     std::function<gsMatrix<real_t> (real_t) > Forcing;
-    Forcing = [&F,&g_C,&xy](real_t time)
+    Forcing = [&A,&g_C_tmp,&u,&G,&bcInfo](real_t time)
     {
-        gsDebugVar(g_C.eval(xy));
-        gsDebugVar(F.transpose());
-        return F;
+        auto v = u;
+        A.initVector();
+        // Assemble Neumann BC term ( to .rhs())
+        A.assembleBdr(bcInfo.get("Neumann"), v * g_C_tmp * meas(G)  );
+
+        gsMatrix<real_t> r = A.rhs();
+        return r;
     };
 
     gsTimeIntegrator<real_t> timeIntegrator(M,K,Forcing,dt);
-    timeIntegrator.setMethod("Newmark");
-    timeIntegrator.setDisplacement(U_checkpoint);
-    timeIntegrator.setVelocity(V_checkpoint);
-    timeIntegrator.setAcceleration(A_checkpoint);
-    timeIntegrator.constructSolution();
+    timeIntegrator.setMethod("ImplEuler");
+
+    gsDebugVar(M.toDense());
+    gsDebugVar(K.toDense());
+
+    gsMatrix<> U_checkpoint, V_checkpoint, A_checkpoint;
+    U_checkpoint = gsVector<real_t>::Zero(A.numDofs(),1);
+    V_checkpoint = gsVector<real_t>::Zero(A.numDofs(),1);
+    A_checkpoint = gsVector<real_t>::Zero(A.numDofs(),1);
 
     // Time integration loop
     while (interface.isCouplingOngoing())
@@ -247,22 +334,12 @@ int main(int argc, char *argv[])
             U_checkpoint = timeIntegrator.displacements();
             V_checkpoint = timeIntegrator.velocities();
             A_checkpoint = timeIntegrator.accelerations();
-
-            gsInfo<<"Checkpoint written:\n";
-            gsInfo<<"\t ||U|| = "<<timeIntegrator.displacements().norm()<<"\n";
-            gsInfo<<"\t ||V|| = "<<timeIntegrator.velocities().norm()<<"\n";
-            gsInfo<<"\t ||A|| = "<<timeIntegrator.accelerations().norm()<<"\n";
-
-
             timestep_checkpoint = timestep;
             interface.markActionFulfilled(interface.actionWriteIterationCheckpoint());
         }
 
-        assembler.assemble();
-        F = assembler.rhs();
-
         // solve gismo timestep
-        gsInfo << "Solving timestep " << time << "...";
+        gsInfo << "Solving timestep " << time + dt << "...";
         timeIntegrator.step();
         timeIntegrator.constructSolution();
         solVector = timeIntegrator.displacements();
@@ -271,17 +348,19 @@ int main(int argc, char *argv[])
         // potentially adjust non-matching timestep sizes
         dt = std::min(dt,precice_dt);
         timeIntegrator.setTimeStep(dt);
+        gsDebugVar(uv);
+        gsDebugVar(xy);
+        gsDebugVar(g_C.eval(xy));
 
-        gsMultiPatch<> solution;
-        assembler.constructSolution(solVector,fixedDofs,solution);
         // write heat fluxes to interface
         gsMatrix<> result(patches.geoDim(),uv.cols());
         for (index_t k=0; k!=uv.cols(); k++)
         {
             // gsDebugVar(ev.eval(nv(G),uv.col(k)));
-            result.col(k) = solution.patch(0).eval(uv.col(k));
+            result.col(k) = ev.eval(u_sol,uv.col(k));
         }
         interface.writeBlockVectorData(meshID,dispID,xy,result);
+        gsDebugVar(result);
 
         // do the coupling
         precice_dt = interface.advance(dt);
@@ -290,16 +369,9 @@ int main(int argc, char *argv[])
         {
             /// Not converged. gsTimeIntegrator should NOT advance
             timeIntegrator.setTime(time);
-            timeIntegrator.setTimeStep(dt);
             timeIntegrator.setDisplacement(U_checkpoint);
             timeIntegrator.setVelocity(V_checkpoint);
             timeIntegrator.setAcceleration(A_checkpoint);
-            timeIntegrator.constructSolution();
-
-            gsInfo<<"Checkpoint loaded:\n";
-            gsInfo<<"\t ||U|| = "<<timeIntegrator.displacements().norm()<<"\n";
-            gsInfo<<"\t ||V|| = "<<timeIntegrator.velocities().norm()<<"\n";
-            gsInfo<<"\t ||A|| = "<<timeIntegrator.accelerations().norm()<<"\n";
 
             timestep = timestep_checkpoint;
             interface.markActionFulfilled(interface.actionReadIterationCheckpoint());
@@ -310,20 +382,23 @@ int main(int argc, char *argv[])
             // advance variables
             time += dt;
             timestep++;
-
             if (timestep % plotmod==0 && plot)
             {
-                // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
-                gsField<> solField(patches,solution);
-                std::string fileName = "./solution" + util::to_string(timestep);
-                gsWriteParaview<>(solField, fileName, 500);
-                fileName = "solution" + util::to_string(timestep) + "0";
-                collection.addTimestep(fileName,time,".vts");
+                std::string fileName = "solution_" + util::to_string(timestep);
+                ev.options().setSwitch("plot.elements", true);
+                ev.options().setInt("plot.npts", 1000);
+                ev.writeParaview( u_sol   , G, fileName);
+                for (size_t p=0; p!=patches.nPatches(); p++)
+                {
+                  fileName = "solution_" + util::to_string(timestep) + std::to_string(p);
+                  collection.addTimestep(fileName,time,".vts");
+                }
             }
         }
 
-
     }
+
+    interface.finalize();
 
     if (plot)
     {

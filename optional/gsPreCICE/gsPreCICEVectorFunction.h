@@ -58,8 +58,10 @@ public:
                         const index_t &         targetDim=1,
                         const bool parametric = false)
     :
-    Base(interface,meshID,dataID,patches,targetDim,parametric)
-    {}
+    Base(interface,meshID,dataID,patches,parametric)
+    {
+        m_targetDim = targetDim;
+    }
 
     /// Constructs a function pointer
     static uPtr make(   const gsPreCICE<T> *    interface,
@@ -72,10 +74,6 @@ public:
 
     GISMO_CLONE_FUNCTION(gsPreCICEVectorFunction)
 
-    /// Gives the targetDomain, currently only scalar functions (todo)
-    virtual short_t targetDim() const
-    { return m_targetDim; }
-
     using Base::_getCoords;
 
     /// See \a gsFunction
@@ -84,6 +82,7 @@ public:
         gsMatrix<T> coords;
         gsMatrix<T> tmp;
         _getCoords(u,coords);
+
         m_interface->readBlockVectorData(m_meshID,m_dataID,coords,tmp);
         result = tmp;
     }

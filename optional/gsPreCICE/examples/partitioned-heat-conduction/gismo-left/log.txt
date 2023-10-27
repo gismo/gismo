@@ -1,0 +1,41 @@
+Patches: 1, degree: 2
+Active options:
+Options (6):
+* DirichletValues    (int) = 101      Method for computation of Dirichlet DoF values [100..103]
+* bdA               (real) = 2        Estimated nonzeros per column of the matrix: bdA*deg + bdB
+* bdB                (int) = 1        Estimated nonzeros per column of the matrix: bdA*deg + bdB
+* bdO               (real) = 0.333    Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]
+* quA               (real) = 1        Number of quadrature points: quA*deg + quB
+* quB                (int) = 1        Number of quadrature points: quA*deg + quB
+
+---[precice] [0m This is preCICE version 2.4.0
+---[precice] [0m Revision info: no-info [Git failed/Not a repository]
+---[precice] [0m Build type: Release (without debug log)
+---[precice] [0m Configuring preCICE with configuration "../precice-config.xml"
+---[precice] [0m I am participant "Dirichlet"
+---[precice] [0m Setting up primary communication to coupling partner/s
+---[precice] [0m Primary ranks are connected
+---[precice] [0m Setting up preliminary secondary communication to coupling partner/s
+---[precice] [0m Prepare partition for mesh Dirichlet-Mesh
+---[precice] [0m Gather mesh Dirichlet-Mesh
+---[precice] [0m Send global mesh Dirichlet-Mesh
+---[precice] [0m Receive global mesh Neumann-Mesh
+---[precice] [0m Setting up secondary communication to coupling partner/s
+---[precice] [0m Secondary ranks are connected
+---[precice] [0m iteration: 1 of 100, time-window: 1, time: 0 of 0.1, time-window-size: 0.01, max-timestep-length: 0.01, ongoing: yes, time-window-complete: no, write-iteration-checkpoint 
+GISMO_DEBUG: partitioned-heat-conduction.cpp:172, bcInfo: 
+* Dirichlet     : 4
+
+GISMO_DEBUG: partitioned-heat-conduction.cpp:195, A.numDofs(): 
+1024
+---[precice] [0m Compute "read" mapping from mesh "Neumann-Mesh" to mesh "Dirichlet-Mesh".
+---[precice] [0m Using tree-based preallocation for matrix C
+---[precice] [0m Using tree-based preallocation for matrix A
+---[precice] [0m Using rescaling. Solver converged after 58 of 10000 iterations due to sufficient relative convergence. Last residual norm: 1.08573e-08, limits: relative 9.79796e-09 (rtol 1e-09), absolute 1e-50, divergence 9.79796e+30(dtol 1e+30)
+---[precice] [0m Mapping "Temperature" consistent from "Neumann-Mesh" (ID 1) to "Dirichlet-Mesh" (ID 0) for dimension 0 with polynomial set to separate
+---[precice] [0m Mapping "Temperature" consistent from "Neumann-Mesh" (ID 1) to "Dirichlet-Mesh" (ID 0) for dimension 1 with polynomial set to separate
+GISMO_DEBUG: partitioned-heat-conduction.cpp:252, result: 
+0.680375    0.566198    0.823295    -0.329554   -0.444451   -0.0452059  -0.270431   0.904459    0.271423    -0.716795   -0.967399   -0.725537   -0.686642   -0.740419   0.997849    0.0258648   0.22528     0.275105    -0.012834   -0.414966   0.05349     -0.199543   -0.433371   0.615449    -0.860489   0.0519907   -0.615572   0.780465    -0.871657   -0.0845965  -0.52344    0.804416    -0.466669   -0.249586   0.0250707   0.0632129   -0.124725   0.86162     -0.431413   0.279958    0.375723    -0.119791   0.658402    -0.542064   -0.29928    0.912937    0.314608    -0.12088    -0.203127   0.368437    -0.0350187  0.900505    -0.70468    0.282161    0.239193    0.572004    -0.105933   -0.624934   0.112888    -0.660786   -0.793658   -0.00911187 0.969503    0.36889     0.499542    -0.411679   0.168977    -0.69522    -0.74905    -0.671796   -0.85094    -0.894941   -0.647579   0.595596    0.313127    0.278917    -0.813039   0.0404201   -0.860187   -0.0771591  0.146637    -0.896122   0.999987    0.779911    0.995598    0.74108     -0.991677   0.187784    -0.673737   0.826053    -0.281809   0.15886     0.374775    0.061616    -0.39141    0.153942   
+-0.211234   0.59688     -0.604897   0.536459    0.10794     0.257742    0.0268018   0.83239     0.434594    0.213938    -0.514226   0.608354    -0.198111   -0.782382   -0.563486   0.678224    -0.407937   0.0485744   0.94555     0.542715    0.539828    0.783059    -0.295083   0.838053    0.898654    -0.827888   0.326454    -0.302214   -0.959954   -0.873808   0.941268    0.70184     0.0795207   0.520497    0.335448    -0.921439   0.86367     0.441905    0.477069    -0.291903   -0.668052   0.76015     -0.339326   0.786745    0.37334     0.17728     0.717353    0.84794     0.629534    0.821944    -0.56835    0.840257    0.762124    -0.136093   -0.437881   -0.385084   -0.547787   -0.447531   -0.166997   0.813608    -0.747849   0.52095     0.870008    -0.233623   -0.262673   -0.535477   -0.511175   0.464297    0.586941    0.490143    0.900208    0.0431268   -0.519875   0.465309    0.93481     0.51947     -0.730195   -0.843536   -0.59069    0.639355    0.511162    -0.684386   -0.591343   -0.749063   -0.891885   -0.855342   0.846138    -0.639255   -0.21662    0.63939     0.10497     -0.0948483  -0.80072    0.514588    0.984457    0.755228   
+---[precice] [0m Implicitly finalizing in destructor
+---[precice] [31mERROR: [0m The required actions write-iteration-checkpoint are not fulfilled. Did you forget to call "markActionFulfilled"?
