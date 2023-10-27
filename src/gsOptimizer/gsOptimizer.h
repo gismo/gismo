@@ -13,6 +13,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsOptimizer/gsOptProblem.h>
+#include <gsIO/gsOptionList.h>
 
 #pragma once
 
@@ -44,6 +45,18 @@ public:
     virtual ~gsOptimizer() { };
 
 public:
+
+    virtual void defaultOptions()
+    {
+        m_options.addInt("MaxIterations","Maximum iterations",0);
+        m_options.addInt("Verbose","Verbosity level",0);
+    }
+
+    virtual void getOptions()
+    {
+        m_maxIterations = m_options.getInt("MaxIterations");
+        m_verbose = m_options.getInt("Verbose");
+    }
 
     /// @brief Callback function is executed after every
     ///    iteration. Returning false causes premature termination of
@@ -93,6 +106,7 @@ protected:
 
     /// Options
     gsOptionList m_options;
+    index_t m_maxIterations, m_verbose;
 
 protected:
 
@@ -121,6 +135,6 @@ private:
 } // end namespace gismo
 
 // note: must be statically compiled in header-only mode
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsOptimizer.hpp)
-#endif
+//#ifndef GISMO_BUILD_LIB
+//#include GISMO_HPP_HEADER(gsOptimizer.hpp)
+//#endif

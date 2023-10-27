@@ -24,12 +24,12 @@
 #include <rapidxml/rapidxml.hpp>       // External file
 #include <rapidxml/rapidxml_print.hpp> // External file
 
-#ifdef GISMO_WITH_ONURBS               // Extension files
+#ifdef gsOpennurbs_ENABLED
 #include <gsOpennurbs/gsReadOpenNurbs.h>
 #endif
 
-#ifdef GISMO_WITH_OCC                  // Extension files
-#include <gsOpenCascade/gsReadBrep.h>
+#ifdef gsOpenCascade_ENABLED
+#include <gsOpenCascade/gsReadOcct.h>
 #endif
 
 #ifdef GISMO_WITH_PSOLID               // Extension files
@@ -101,6 +101,11 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
                                                 GISMO_VERSION, *data);
     data->prepend_node(comment);
 
+    gsXmlNode * declNode = data->allocate_node(rapidxml::node_type::node_declaration);
+    declNode->append_attribute(data->allocate_attribute("version","1.0"));
+    declNode->append_attribute(data->allocate_attribute("encoding","UTF-8"));
+    data->prepend_node(declNode);
+
     if (compress)
     {
         saveCompressed(fname);
@@ -116,7 +121,6 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
     m_lastPath = tmp;
 
     std::ofstream fn( tmp.c_str() );
-    fn << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     //rapidxml::print_no_indenting
     fn<< *data;
     fn.close();
@@ -180,11 +184,11 @@ bool gsFileData<T>::read(String const & fn)
         return readAxelFile(m_lastPath);
     else if (ext== "off")
         return readOffFile(m_lastPath);
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     else if (ext== "3dm")
         return read3dmFile(m_lastPath);
 #endif
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     else if (ext== "brep")
         return readBrepFile(m_lastPath);
     //else if (ext== "iges")
@@ -1128,7 +1132,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   if(kind==8) // 4D control points
   {
   gsMatrix<T>  weights =  coefs.row(3);
-  coefs.resize(Eigen::NoChange,3);
+  coefs.resize(gsEigen::NoChange,3);
   gsDebug<<"weights: "<< weights.transpose() <<"\n";
   }
 
@@ -1170,17 +1174,33 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   }
 */
 
-/*---------- OFF trinagular mesh .off file */
+/*---------- OFF mesh from .off file */
 
 template<class T>
 bool gsFileData<T>::readOffFile( String const & fn )
 {
+    //https://stackoverflow.com/questions/47125387/stringstream-and-binary-data
+    //std::istringstream buffer;
+    //buffer << file.rdbuf();
+
+    //https://stackoverflow.com/questions/38874200/trying-to-replace-scanf-with-sstream
+
+    /* //verb-read
+    std::ifstream buffer(fn);
+    std::ostringstream bb; bb << buffer.rdbuf();    
+    gsXmlNode* m = internal::makeNode("SurfMesh", *data);
+    m->append_attribute( internal::makeAttribute("type", "off", *data) );        
+    m->value( internal::makeValue( bb.str(), *data) );
+    data->appendToRoot(m);
+    return true;
+    */
+
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("Mesh", *data);
+    gsXmlNode* g = internal::makeNode("SurfMesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 
@@ -1594,7 +1614,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
 template<class T>
 bool gsFileData<T>::readBrepFile( String const & fn )
 {
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     return extensions::gsReadBrep( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);
@@ -2220,7 +2240,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
         }
     }
 
-    const bool fc = (fclose(fr) != EOF);
+    const bool fc = ( 0==fclose(fr) );
     if (fc) gsWarn<< "File closing didn't succeeded!\n";
     return fc;
 }
@@ -2427,7 +2447,7 @@ bool gsFileData<T>::readX3dFile( String const & fn )
 template<class T>
 bool gsFileData<T>::read3dmFile( String const & fn )
 {
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     return extensions::gsReadOpenNurbs( fn.c_str(), *data);
 #else
     GISMO_UNUSED(fn);

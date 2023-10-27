@@ -26,8 +26,8 @@ public:
     typedef T weightType;
     typedef index_t indexType; //indices of gsMatrix
 
-    typedef gsSparseMatrix<weightType,Eigen::RowMajor,indexType> LToGMatrix;
-    typedef gsSparseMatrix<weightType,Eigen::ColMajor,indexType> GToLMatrix;
+    typedef gsSparseMatrix<weightType,gsEigen::RowMajor,indexType> LToGMatrix;
+    typedef gsSparseMatrix<weightType,gsEigen::ColMajor,indexType> GToLMatrix;
 
     typedef std::vector<indexType> IndexContainer;
     typedef std::vector<indexType>::const_iterator CIndexIter;
@@ -146,13 +146,13 @@ public:
         optimize(other.getOptimizationFlags());
     }
 
-    gsWeightMapper(const gsSparseMatrix<weightType,Eigen::RowMajor,indexType> & other)
+    gsWeightMapper(const gsSparseMatrix<weightType,gsEigen::RowMajor,indexType> & other)
     {
         m_optimizationMatrix=NULL;
         *this=other;
     }
 
-    gsWeightMapper(const gsSparseMatrix<weightType,Eigen::ColMajor,indexType> & other)
+    gsWeightMapper(const gsSparseMatrix<weightType,gsEigen::ColMajor,indexType> & other)
     {
         m_optimizationMatrix=NULL;
         *this=other;
@@ -231,7 +231,7 @@ public:
     {
         IndexContainer indices;
         sourceToTarget(source,indices);
-        return (indices.size()==1 && m_matrix.at(source,indices[0])==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(source,indices[0]),T(1.0)));
     }
 
     /// checks if the mapping for \a target is 1 to 1
@@ -239,7 +239,7 @@ public:
     {
         IndexContainer indices;
         targetToSource(target,indices);
-        return (indices.size()==1 && m_matrix.at(indices[0],target)==1);
+        return (indices.size()==1 && math::almostEqual<14>(m_matrix.at(indices[0],target),T(1.0)));
     }
 
     //////////////////////////////////////////////////
@@ -255,6 +255,7 @@ public:
     void mapToSourceCoefs(gsMatrix<weightType> const & targetCoefs,gsMatrix<weightType> & sourceCoefs) const
     {
         // from target to source it's just a multiplication
+        GISMO_ASSERT(targetCoefs.rows()==m_matrix.cols(),"Wrong coefficient size!");
         sourceCoefs.noalias()=m_matrix * targetCoefs;
     }
 
@@ -438,7 +439,7 @@ public:
     Iterator fastSourceToTarget(indexType source) const
     {
         GISMO_ASSERT(m_matrix.isCompressed(),"optimize() must be called on the mapper with fastSourceToTarget flag before using this function.");
-        GISMO_ASSERT(source<m_matrix.rows() && 0<=source,"index out of bounds");
+        GISMO_ASSERT(source<m_matrix.rows() && 0<=source,"index "<<source<<" out of bounds (matrix.rows() = "<<m_matrix.rows());
         return Iterator(m_matrix,source);
     }
 
@@ -464,7 +465,7 @@ public:
        @brief getLocalMap
        @param[in]  source : array of indexType, source basis functions
        @param[in]  target : array of indexType, target basis functions
-       @param[out] map    : a matrix containing the coefficinets of the expansion of the targets as
+       @param[out] map    : a matrix containing the coefficients of the expansion of the targets as
                             linear combination of the sources. Targets corresponds to columns, sources to rows.
      */
      void getLocalMap (IndexContainer const & source, IndexContainer const & target, gsMatrix<T> &map) const;

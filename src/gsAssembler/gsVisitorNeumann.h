@@ -158,7 +158,7 @@ protected:
 
 
     // Neumann function
-    const gsFunction<T> * neudata_ptr;
+    const gsFunctionSet<T> * neudata_ptr;
     boxSide side;
 
     // Basis values

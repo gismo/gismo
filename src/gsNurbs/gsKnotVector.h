@@ -220,6 +220,12 @@ public: // multiplicities
     /// Returns the multiplicity of the last knot
     mult_t multLast() const { return m_multSum.back() - m_multSum.end()[-2]; }
 
+    /// Returns the maximum multiplicity in the interior
+    mult_t maxInteriorMultiplicity() const;
+
+    /// Returns the minimum multiplicity in the interior
+    mult_t minInteriorMultiplicity() const;
+
     /// Returns the multiplicity of the knot number \a i (counter with
     /// repetitions).
     mult_t multiplicityIndex( mult_t i ) const;
@@ -249,6 +255,8 @@ public: // queries
     /// Provides the knot with unique index \a i
     const T& operator()(const mult_t i) const
     {
+        GISMO_ASSERT(i+numLeftGhosts() >=0  && static_cast<size_t>(i+numLeftGhosts()) < uSize(),
+                              "Unique index "<<i<<" not in the knot vector.");
         return *( this->ubegin()+(numLeftGhosts()+i) );
     }
 
@@ -665,6 +673,9 @@ public:
     /// Adds \a amount to all the knots.
     void addConstant( T amount );
 
+    /// Adds \a amount to all the knots, starting at knot \a start.
+    void addConstant( T start, T amount );
+
 public: // things required by gsKnotVector
 
     /// \param uKnots unique knots (assumed to be sorted),
@@ -767,6 +778,9 @@ public: // things required by gsKnotVector
         remove( ubegin()  , i );
         remove( uend() - 1, i );
         m_deg -= i;
+        for (uiterator itr = ubegin()+1; itr != uend()-1; ++itr)
+            if ( itr.multiplicity() > m_deg )
+                remove( itr, itr.multiplicity() - m_deg );
     }
 
     /// Increase the multiplicity of all the knots by \a i. If \a
@@ -927,14 +941,14 @@ std::ostream& operator << (std::ostream& out, const gsKnotVector<T> KV )
 }
 
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsKnotVector
    */
   void pybind11_init_gsKnotVector(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

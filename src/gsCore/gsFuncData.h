@@ -43,7 +43,7 @@ namespace util {
 
 // Adaptor to compute Hessian
 template <typename Derived>
-gsMatrix<typename Derived::Scalar> secDerToHessian(const Eigen::DenseBase<Derived> &  secDers,
+gsMatrix<typename Derived::Scalar> secDerToHessian(const gsEigen::DenseBase<Derived> &  secDers,
                      const index_t dim)
 {
     index_t sz = dim*(dim+1)/2;
@@ -87,7 +87,7 @@ gsMatrix<typename Derived::Scalar> secDerToHessian(const Eigen::DenseBase<Derive
 }
 
 template <typename Derived>
-void hessianToSecDer (const Eigen::DenseBase<Derived> &  hessian,
+void hessianToSecDer (const gsEigen::DenseBase<Derived> &  hessian,
                      const index_t dim,
                      gsMatrix<typename Derived::Scalar> & secDers)
 {
@@ -128,7 +128,7 @@ public:
     typedef typename gsMatrix<T>::constColumn constColumn;
     // Types for returning quick access to data in matrix format
     typedef gsAsConstMatrix<T, -1, -1>                  matrixView;
-    typedef Eigen::Transpose<typename matrixView::Base> matrixTransposeView;
+    typedef gsEigen::Transpose<typename matrixView::Base> matrixTransposeView;
 
 public:
     mutable unsigned flags;

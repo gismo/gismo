@@ -3,7 +3,7 @@
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileData.hpp>
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
 #include <gsNurbs/gsBSpline.h>
@@ -21,7 +21,7 @@ namespace gismo
 
   CLASS_TEMPLATE_INST gsFileData<real_t>;
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 gsMatrix<real_t> getMatrix(std::string & filename)
 {
@@ -44,15 +44,10 @@ namespace py = pybind11;
       .def("read", &Class::read)
       .def("clear", &Class::clear)
       .def("numData", &Class::numData)
-      .def("save", (void (Class::*) ())                         &Class::save)
-      .def("save", (void (Class::*) (const std::string&))       &Class::save)
-      .def("save", (void (Class::*) (const std::string&, bool)) &Class::save)
-      .def("saveCompressed", (void (Class::*) ())
-           &Class::saveCompressed)
-      .def("saveCompressed", (void (Class::*) (const std::string&))
-           &Class::saveCompressed)
-      .def("dump", (void (Class::*) ())                         &Class::dump)
-      .def("dump", (void (Class::*) (const std::string&))       &Class::dump)
+      .def("save",           &Class::save,           py::arg("fname")="dump", py::arg("compress")=false)
+      .def("saveCompressed", &Class::saveCompressed, py::arg("fname")="dump")
+      .def("dump",           &Class::dump,           py::arg("fname")="dump")
+
       .def("addComment", &Class::addComment)
       .def("lastPath", &Class::lastPath)
       .def("setFloatPrecision", &Class::setFloatPrecision)
@@ -63,7 +58,7 @@ namespace py = pybind11;
       .def("getId", static_cast<void (Class::*)(const int &, gsGeometry<real_t> &) const > (&Class::getId<gsGeometry<real_t>>), "Gets a const reference to basis with index i")
 
 
-        .def("add", static_cast<void (Class::*)(const gsMultiPatch<real_t> &, int) > (&Class::add<gsMultiPatch<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMultiPatch to the filedata.")
+      .def("add", static_cast<void (Class::*)(const gsMultiPatch<real_t> &, int) > (&Class::add<gsMultiPatch<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMultiPatch to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsMultiBasis<real_t> &, int) > (&Class::add<gsMultiBasis<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMultiBasis to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsBSpline<real_t> &, int) > (&Class::add<gsBSpline<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsBSpline to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsTensorBSpline<2, real_t> &, int) > (&Class::add<gsTensorBSpline<2, real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsTensorBSpline to the filedata.")
@@ -74,7 +69,6 @@ namespace py = pybind11;
       .def("add", static_cast<void (Class::*)(const gsMatrix<real_t> &, int) > (&Class::add<gsMatrix<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMatrix to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &, int) > (&Class::add<gsSparseMatrix<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsSparseMatrix to the filedata.")
 
-
       //.def("addSparse", static_cast<void (Class::*)(const gsSparseMatrix<real_t> &) > (&Class::add<gsSparseMatrix<real_t>>), "Add gsSparseMatrix to the filedata.")
       
       .def("getAnyFirst", static_cast<bool (Class::*)(gsMultiPatch<real_t> &) const > (&Class::getAnyFirst<gsMultiPatch<real_t>>), "Get gsMultiPatch to the filedata.")
@@ -82,7 +76,6 @@ namespace py = pybind11;
 
       // Work around to obtain the matrix from Filedata. Standard way is not working!
       .def("getMatrix", &getMatrix, "Get any first gsMatrix.")
-
 
       .def("bufferSize", &Class::bufferSize)
       .def("print", &Class::print)
@@ -100,7 +93,5 @@ namespace py = pybind11;
            })
       ;    
   }
-  
-#endif // GISMO_BUILD_PYBIND11
-  
+#endif // GISMO_WITH_PYBIND11
 } // end namespace gismo

@@ -13,7 +13,7 @@ namespace gismo {
 
   \ref Elasticity
 
-  \ref Ipopt
+  \ref gsIpOpt
 
   \subpage gsTrilinos
 
@@ -22,8 +22,6 @@ namespace gismo {
   \subpage gsCoDiPack
 
   \subpage gsExaStencils
-
-  \subpage gsMultiPrecision
 
   \subpage gsOpenCascade
 
@@ -36,6 +34,12 @@ namespace gismo {
   \subpage gsUnitTest
 
   \subpage gsUnum
+
+  \subpage gsKLShell
+
+  \subpage gsStructuralAnalysis
+
+  \subpage gsUnstructuredSplines
 
 */
   //\subpage motor

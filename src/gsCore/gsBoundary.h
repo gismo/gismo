@@ -68,6 +68,11 @@ struct boundary
     };
 };
 
+struct interaction
+{
+    enum type { conforming = 0, contact = 2};
+};
+
 // forward declarations; defined later
 struct boxCorner;
 struct patchCorner;
@@ -227,21 +232,27 @@ struct GISMO_EXPORT patchSide : public boxSide
 {
 public:
     index_t patch;              ///< The index of the patch.
+protected:
+    std::string m_label;        ///< The label of the patchSide.
 public:
 
-    patchSide() : boxSide(), patch(0) { }
+    patchSide() : boxSide(), patch(0), m_label("") { }
 
-    patchSide(index_t p, boxSide s)
-        : boxSide(s), patch(p) { }
+    patchSide(index_t p, boxSide s, const std::string & l="")
+        : boxSide(s), patch(p), m_label(l) { }
 
-    patchSide(index_t p, boundary::side s)
-        : boxSide(s), patch(p) { }
+    patchSide(index_t p, boundary::side s, const std::string & l="")
+        : boxSide(s), patch(p), m_label(l) { }
 
     // Accessors
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
 
     index_t patchIndex() {return patch;}
+    const std::string & label() const {return m_label;}
+    std::string & label() {return m_label;}
+
+    void setLabel(std::string label) { m_label = label; };
 
     /**
      * @brief returns the vector of the corners contained in the side
@@ -257,7 +268,7 @@ public:
 inline std::ostream &operator<<(std::ostream &os, patchSide const & i)
 {
     //os<<"Side: patch="<< i.patch<<", side="<< int(i.side)<<", ie. "<< i.side << ".\n";
-    os<<i.patch<<":"<< i.side();
+    os<<i.patch<<":"<< i.side()<<" "<<i.label();
     return os;
 }
 
@@ -643,8 +654,9 @@ public:
     // special constructor for the 2d case
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
-                      bool o1)
-        : ps1(_ps1), ps2(_ps2)
+                      bool o1,
+                      const std::string & l = "")
+        : m_label(l), ps1(_ps1), ps2(_ps2), m_type(interaction::conforming)
     {
         directionMap.resize(2);
         directionOrientation.resize(2);
@@ -658,8 +670,9 @@ public:
     //
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
-                      short_t dim)
-        : ps1(_ps1), ps2(_ps2)
+                      short_t dim,
+                      const std::string & l = "")
+        : m_label(l), ps1(_ps1), ps2(_ps2), m_type(interaction::conforming)
     {
         directionMap.resize(dim);
         directionOrientation.resize(dim);
@@ -680,10 +693,11 @@ public:
 
     boundaryInterface(gsVector<short_t>     const & p,
                       gsVector<index_t> const & map_info,
-                      gsVector<bool>    const & orient_flags)
-    : ps1(p(0),p(1)), ps2(p(2),p(3)),
+                      gsVector<bool>    const & orient_flags,
+                      const std::string & l = "")
+    : m_label(l), ps1(p(0),p(1)), ps2(p(2),p(3)),
       directionMap(map_info),
-      directionOrientation(orient_flags)
+      directionOrientation(orient_flags), m_type(interaction::conforming)
     {
         GISMO_ASSERT(p.size() == 4, "Expecting four integers");
         directionMap(ps1.direction())=ps2.direction();
@@ -693,8 +707,10 @@ public:
     boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
                       gsVector<index_t> const & map_info,
-                      gsVector<bool>    const & orient_flags)
-        : ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
+                      gsVector<bool>    const & orient_flags,
+                      const std::string & l = "")
+        : m_label(l), ps1(_ps1), ps2(_ps2), directionMap(map_info), directionOrientation(orient_flags)
+        , m_type(interaction::conforming)
     {
         directionMap(ps1.direction())=ps2.direction();
         directionOrientation(ps1.direction())= (ps1.parameter()==ps2.parameter());
@@ -702,24 +718,28 @@ public:
 
     GISMO_DEPRECATED boundaryInterface(patchSide const & _ps1,
                       patchSide const & _ps2,
-                      gsVector<bool>    const & orient_flags)
+                      gsVector<bool>    const & orient_flags,
+                      const std::string & l = "")
     {
-        init(_ps1,_ps2,orient_flags);
+        init(_ps1,_ps2,orient_flags,l);
     }
 
     GISMO_DEPRECATED boundaryInterface(gsVector<short_t>     const & p,
-                      gsVector<bool>    const & orient_flags)
+                      gsVector<bool>    const & orient_flags,
+                      const std::string & l = "")
     {
-        init(patchSide(p(0),boxSide(p(1))),patchSide(p(2),boxSide(p(3))) ,orient_flags);
+        init(patchSide(p(0),boxSide(p(1))),patchSide(p(2),boxSide(p(3))) ,orient_flags,l);
     }
 
     //DEPRECATED
     void init (patchSide const & _ps1,
                patchSide const & _ps2,
-               gsVector<bool>    const & orient_flags)
+               gsVector<bool>    const & orient_flags,
+            const std::string & l = "")
     {
         ps1=_ps1;
         ps2=_ps2;
+        m_label = l;
 
         const index_t dim = orient_flags.cols()+1;
         directionMap.resize(dim);
@@ -730,7 +750,12 @@ public:
 
         directionMap(1-ps1.direction())=1-ps2.direction();
         directionOrientation(1-ps1.direction())= orient_flags(0);
+        m_type = interaction::conforming;
     }
+
+    /// Return the label
+    const std::string & label() const {return m_label;}
+    std::string & label() {return m_label;}
 
 
     bool operator== (const boundaryInterface & other) const
@@ -803,6 +828,7 @@ public:
         result.directionOrientation.resize(directionOrientation.rows());
         result.ps1=ps2;
         result.ps2=ps1;
+        result.m_type = m_type;
         for (index_t i=0;i<directionMap.rows();++i)
         {
             result.directionMap(directionMap(i))=i;
@@ -893,7 +919,12 @@ public:
 
     void reorderCorners(gsMatrix<index_t> & boundary) const;
 
+    void setAsContact() { m_type = interaction::contact; }
+
+    interaction::type type() const { return m_type; }
+
 private:
+    std::string m_label; ///< The label of the interface.
 
     patchSide ps1; ///< The first patch side.
     patchSide ps2; ///< The second patch side.
@@ -963,6 +994,9 @@ private:
     * See boundaryInterface::directionMap for documentation.
     */
     gsVector<bool>    directionOrientation;
+
+
+    interaction::type m_type;
 
     /// TODO: the information could be stored in a single vector of signed integers: the sign gives the orientation
     /// the problem is that it is necessary to shift the indices as there is no -0
@@ -1055,13 +1089,13 @@ gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
     return temp;
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsBoundary
    */
   void pybind11_enum_gsBoundary(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

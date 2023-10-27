@@ -310,7 +310,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     for ( index_t i=0; i<d; ++i )
     {
         // Solve generalized eigenvalue problem
-        ges.compute(local_stiff[i], local_mass[i], Eigen::ComputeEigenvectors);
+        ges.compute(local_stiff[i], local_mass[i], gsEigen::ComputeEigenvectors);
         // Q^T M Q = I, or M = Q^{-T} Q^{-1}
         // Q^T K Q = D, or K = Q^{-T} D Q^{-1}
 
@@ -352,7 +352,7 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     for ( index_t l=0; l<sz; ++l )
         diag( l, 0 ) = (T)(1)/diag( l, 0 );
 
-    memory::unique_ptr< Eigen::DiagonalMatrix<T,Dynamic> > diag_mat( new Eigen::DiagonalMatrix<T,Dynamic>( give(diag) ) );
+    memory::unique_ptr< gsEigen::DiagonalMatrix<T,Dynamic> > diag_mat( new gsEigen::DiagonalMatrix<T,Dynamic>( give(diag) ) );
 
     return gsProductOp<T>::make(
         gsKroneckerOp<T>::make(QTop),
@@ -406,7 +406,7 @@ void tildeSpaceBasis_oneside(const gsTensorBSplineBasis<1,T>& basis, bool isLeft
         for (index_t j = 0; j < p-b; ++j)
             derivs(i-b, j) = math::pow(h, i) * allDerivs[i](j+offset);
 
-    typename gsMatrix<T>::JacobiSVD svd = derivs.jacobiSvd(Eigen::ComputeFullV);
+    typename gsMatrix<T>::JacobiSVD svd = derivs.jacobiSvd(gsEigen::ComputeFullV);
 
     index_t n_tilde;
     if (odd) n_tilde = (p + 1) / 2 - b;

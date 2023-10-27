@@ -220,6 +220,13 @@ public:
     virtual T distanceL2(gsFunction<T> const &) const
     { GISMO_NO_IMPLEMENTATION }
 
+    /// Takes the physical \a points and computes the corresponding
+    /// parameter values.  If the point cannot be inverted (eg. is not
+    /// part of the geometry) the corresponding parameter values will be undefined
+    virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
+                              const T accuracy = 1e-6,
+                              const bool useInitialPoint = false) const;
+
     /// Newton-Raphson method to find a solution of the equation f(\a
     /// arg) = \a value with starting vector \a arg.
     /// If the point cannot be inverted the corresponding parameter
@@ -236,6 +243,21 @@ public:
                        gsMatrix<T> init = gsMatrix<T>(),
                        double damping_factor = 1) const;
 
+    /// Returns a "central" point inside inside the parameter domain
+    virtual gsMatrix<T> parameterCenter() const
+    { 
+        // default impl. assumes convex support
+        gsMatrix<T> S = this->support();
+        return ( S.col(0) + S.col(1) ) * (T)(0.5);
+    }
+
+    /// Get coordinates of the boxCorner \a bc in the parameter domain
+    gsMatrix<T> parameterCenter( const boxCorner& bc ) const;
+
+    /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
+    gsMatrix<T> parameterCenter( const boxSide& bs ) const;
+
+    
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
     {
@@ -275,14 +297,14 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunction<T>& b)
 {return b.print(os); }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsFunction
    */
   void pybind11_init_gsFunction(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 
 } // namespace gismo

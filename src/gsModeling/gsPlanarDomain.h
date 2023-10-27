@@ -262,7 +262,9 @@ private:
     gsMatrix<T,2,2> m_bbox;
 
 public:
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
 }; // class gsPlanarDomain
 

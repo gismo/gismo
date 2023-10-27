@@ -486,6 +486,11 @@ public:
         else return (m_offset[k1]-m_offset[k]);
     }
 
+    size_t totalSize(const index_t c = 0) const
+    {
+        return m_dofs[c].size();
+    }
+
     /// \brief For \a gl being a global index, this function returns a
     /// vector of pairs (patch,dof) that contains all the pairs which
     /// map to \a gl
@@ -585,6 +590,14 @@ inline std::ostream& operator<<( std::ostream& os, const gsDofMapper& b )
     return b.print( os );
 }
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsDofMapper
+   */
+  void pybind11_init_gsDofMapper(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

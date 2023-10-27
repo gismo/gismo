@@ -34,7 +34,7 @@ struct condition_type
         robin     = 2, ///< Robin type
         clamped   = 3, ///< Robin type
         weak_clamped = 30,
-        collapsed = 4, 
+        collapsed = 4,
         laplace = 5 ///< Laplace type, e.g. \Delta u = g
         //mixed BD means: there are both dirichlet and neumann sides
         //robin: a linear combination of value and derivative
@@ -105,7 +105,7 @@ inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 template<class T>
 struct boundary_condition
 {
-    typedef typename gsFunction<T>::Ptr function_ptr;
+    typedef typename gsFunctionSet<T>::Ptr function_ptr;
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
                         const std::string & label, short_t unknown,
@@ -206,7 +206,7 @@ struct boundary_condition
             }
             case condition_type::weak_dirichlet:
             {
-                GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
+                // GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
                 m_label = "Weak Dirichlet";
                 break;
             }
@@ -254,7 +254,7 @@ struct boundary_condition
     function_ptr function() const { return m_function; }
 
     // Returns a reference to the function data
-    //const gsFunction<T> & function() const { return *m_function; }
+    //const gsFunctionSet<T> & function() const { return *m_function; }
 
     /// Returns the type of the boundary condition
     condition_type::type  type() const { return m_type; }
@@ -314,6 +314,21 @@ struct boundary_condition
         int   component;    ///< The component of the unknown
     };
 
+/**
+    @brief Class prescribing a value related to a corner of a patch
+*/
+    template<class T>
+    struct coupled_boundary
+    {
+        coupled_boundary(index_t p1, boxSide s1, index_t p2, boxSide s2, short_t dim, short_t unk = 0, int comp = -1)
+                : ifc(patchSide(p1,s1), patchSide(p2,s2), dim), unknown(unk), component(comp)
+                {}
+
+        boundaryInterface ifc;
+        short_t   unknown;    ///< Unknown to which this boundary condition refers to
+        int   component;    ///< The component of the unknown
+    };
+
 /** @brief
     Class containing a set of  boundary conditions.
 
@@ -335,6 +350,10 @@ public:
     typedef typename std::deque<corner_value<T> >       cornerContainer;
     typedef typename cornerContainer::iterator citerator;
     typedef typename cornerContainer::const_iterator const_citerator;
+
+    typedef typename std::deque<coupled_boundary<T>> cplContainer;
+    typedef typename cplContainer::iterator cpliterator;
+    typedef typename cplContainer::const_iterator const_cpliterator;
 
     typedef typename std::deque<boundaryInterface> ppContainer;
     typedef typename ppContainer::iterator ppiterator;
@@ -372,6 +391,7 @@ public:
         m_bc.swap(other.m_bc);
         corner_values.swap(other.corner_values);
         m_periodicPairs.swap(other.m_periodicPairs);
+        coupled_boundaries.swap(other.coupled_boundaries);
     }
 
 public:
@@ -381,6 +401,7 @@ public:
         m_bc.clear();
         corner_values.clear();
         m_periodicPairs.clear();
+        coupled_boundaries.clear();
     }
 
     size_t size() const
@@ -388,7 +409,7 @@ public:
         size_t sz = 0;
         for (typename bcData::const_iterator it = m_bc.begin(); it != m_bc.end(); ++it)
             sz += it->second.size();
-        return sz + corner_values.size();
+        return sz + corner_values.size() + coupled_boundaries.size();
     }
 
     /// Return a reference to boundary conditions of certain type
@@ -396,14 +417,15 @@ public:
 
     /// Return a reference to boundary conditions of certain type for
     /// unknown \a unk
-    bcRefList get(const std::string & label, const short_t unk = 0) const
+    bcRefList get(const std::string & label, const short_t unk = 0, int comp = -1) const
     {
         bcRefList result;
         const const_bciterator it = m_bc.find(label);
         if ( it != m_bc.end() )
             for (const_iterator c = it->second.begin(); c!= it->second.end(); ++c)
                 if ( c->m_unknown == unk )
-                    result.push_back(*c);
+                    if ( c->m_unkcomp == comp || comp == -1 )
+                        result.push_back(*c);
         return result;
     }
 
@@ -420,6 +442,8 @@ public:
     const bcContainer & robinSides()     const {return m_bc["Robin"]; }
 
     const cornerContainer & cornerValues() const  {return corner_values;  }
+
+    const cplContainer & coupledBoundaries() const {return coupled_boundaries; }
 
     /// Extracts the BC, comming from a certain component.
     bcContainer reducedContainer(const bcContainer & container, short_t unknown) const
@@ -542,6 +566,16 @@ public:
     const_citerator cornerEnd() const
     { return corner_values.end(); }
 
+    /// Get an iterator to the beginning of the coupled boundaries
+    /// \return an iterator to the beginning of the coupled boundaries
+    const_cpliterator coupledBegin() const
+    { return coupled_boundaries.begin(); }
+
+    /// Get an iterator to the end of coupled boundaries
+    /// \return an iterator to the end of the coupled boundaries
+    const_cpliterator coupledEnd() const
+    { return coupled_boundaries.end(); }
+
     /// Get an iterator to the beginning of the Robin sides
     /// \return an iterator to the beginning of the Robin sides
     iterator robinBegin()
@@ -562,6 +596,17 @@ public:
     citerator cornerEnd()
     { return corner_values.end(); }
 
+    /// Get an iterator to the beginning of the coupled boundaries
+    /// \return an iterator to the beginning of the coupled boundaries
+    cpliterator coupledBegin()
+    { return coupled_boundaries.begin(); }
+
+    /// Get an iterator to the end of coupled boundaries
+    /// \return an iterator to the end of the coupled boundaries
+    cpliterator coupledEnd()
+    { return coupled_boundaries.end(); }
+
+
     void add(int p, boxSide s, const std::string & label,
              const function_ptr & f_ptr, short_t unknown = 0,
              int comp = -1, bool parametric = false)
@@ -571,7 +616,7 @@ public:
     }
 
     void add(int p, boxSide s, const std::string & label,
-             gsFunction<T> * f, short_t unknown = 0,
+             gsFunctionSet<T> * f, short_t unknown = 0,
              int comp = -1, bool parametric = false)
     {
         function_ptr f_ptr = memory::make_shared_not_owned(f);
@@ -580,7 +625,7 @@ public:
     }
 
     void add(int p, boxSide s, const std::string & label,
-             const gsFunction<T> & f, short_t unknown = 0,
+             const gsFunctionSet<T> & f, short_t unknown = 0,
              int comp = -1, bool parametric = false)
     {
         function_ptr fun = memory::make_shared(f.clone().release());
@@ -603,10 +648,16 @@ public:
      * is defined in parametric coordinates.
      */
     void addCondition(int p, boxSide s, condition_type::type t,
-                      gsFunction<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
+                      gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         function_ptr fun = memory::make_shared_not_owned(f);
         addCondition(p,s,t,fun,unknown,parametric,comp);
+    }
+
+    void addConditions(const bcRefList & bcrf)
+    {
+        for (auto bc : bcrf)
+            m_bc[bc.get().ctype()].push_back(bc);
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,
@@ -624,7 +675,7 @@ public:
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,
-                      const gsFunction<T> & func, short_t unknown = 0,
+                      const gsFunctionSet<T> & func, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
     {
         function_ptr fun(func.clone().release());
@@ -632,14 +683,14 @@ public:
     }
 
     void addCondition( boxSide s, condition_type::type t,
-                       gsFunction<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
+                       gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         // for single-patch only
         addCondition(0,s,t,f,unknown,parametric,comp);
     }
 
     void addCondition(const patchSide& ps, condition_type::type t,
-                      gsFunction<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
+                      gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         addCondition(ps.patch, ps.side(), t, f, unknown,parametric,comp);
     }
@@ -651,13 +702,13 @@ public:
     }
 
     void addCondition(const patchSide& ps, condition_type::type t,
-                      const gsFunction<T> & func, short_t unknown = 0, bool parametric = false, int comp = -1)
+                      const gsFunctionSet<T> & func, short_t unknown = 0, bool parametric = false, int comp = -1)
     {
         addCondition(ps.patch, ps.side(), t, func, unknown,parametric,comp);
     }
 
     void addCondition(int p, boundary::side s, condition_type::type t,
-                      const gsFunction<T> & func, short_t unknown = 0,
+                      const gsFunctionSet<T> & func, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
     {
         function_ptr fun(func.clone().release());
@@ -665,21 +716,38 @@ public:
     }
 
     void addCondition(int p, boundary::side s, condition_type::type t,
-                      gsFunction<T> * func, short_t unknown = 0,
+                      gsFunctionSet<T> * func, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
     {
         addCondition(p,boxSide(s),t,func,unknown,parametric,comp);
     }
 
+    /// Adds a boundary condition with \a value on a corner \a c of patch \a p for \a unknown \a component
     void addCornerValue(boxCorner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
         corner_values.push_back( corner_value<T>(p,c,value,unknown,component) );
     }
 
+    /// Adds a boundary condition with \a value on a corner \a c of patch \a p for \a unknown \a component
     void addCornerValue(boundary::corner c, T value, int p = 0, short_t unknown = 0, int component = -1)
     {
         corner_values.push_back( corner_value<T>(p,boxCorner(c),value,unknown,component) );
     }
+
+    /// Couples the degrees of freedom on patch \a p1 side \a s1 and patch \a p2 side \a s2 for \a unknown and component \a comp
+    void addCoupled(int p1, boundary::side s1, int p2, boundary::side s2, index_t dim,
+                      short_t unknown = 0, int comp = -1)
+    {
+        coupled_boundaries.push_back( coupled_boundary<T>(p1,boxSide(s1),p2,boxSide(s2),dim,unknown,comp));
+    }
+
+    /// Couples the degrees of freedom on patch \a p1 side \a s1 and patch \a p2 side \a s2 for \a unknown and component \a comp
+    void addCoupled(int p1, boxSide s1, int p2, boxSide s2, index_t dim,
+                      short_t unknown = 0, int comp = -1)
+    {
+        coupled_boundaries.push_back( coupled_boundary<T>(p1,s1,p2,s2,dim,unknown,comp));
+    }
+
 
     /// Prints the object as a string.
     std::ostream & print(std::ostream &os) const
@@ -850,6 +918,8 @@ private: // Data members
 
     cornerContainer corner_values; ///< List of corners with fixed value
 
+    cplContainer coupled_boundaries; ///< List of boundaries that are coupled
+
     mutable bcData m_bc;  ///< Containers for BCs of various types
 
     ppContainer m_periodicPairs; // TODO: add read from xml
@@ -865,7 +935,7 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsBoundaryConditions<T>& bvp)
 {return bvp.print(os); }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
     /**
      * @brief Initializes the Python wrapper for the class: gsBoundaryConditions

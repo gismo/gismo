@@ -167,11 +167,21 @@ private:
         if ( par )
         {
             // AM: a little ugly for now, to be improved
-            return 
-                static_cast<size_t>(m_leaf.upperCorner().at(dir) )
-                == 
-                static_cast<const gsHTensorBasis<d,T>*>(m_basis)
-                ->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;// todo: more efficient
+            size_t diadicSize;
+            const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(m_basis);
+            if (basis().manualLevels() )
+            {
+                gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.level()).knots(dir);
+                index_t start = 0;
+                index_t end  = kv.uSize()-1;
+                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,start);
+                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,end);
+                diadicSize = end - start;
+            }
+            else
+                diadicSize = static_cast<const gsHTensorBasis<d,T>*>(m_basis)->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
+
+            return static_cast<size_t>(m_leaf.upperCorner().at(dir) ) == diadicSize;// todo: more efficient
         }
         else
         {
@@ -194,8 +204,16 @@ private:
         // Update leaf box
         for (unsigned dim = 0; dim < d; ++dim)
         {
-            const unsigned start = lower(dim);
-            const unsigned end  = upper(dim) ;
+            index_t start = lower(dim);
+            index_t end  = upper(dim) ;
+
+            if (basis().manualLevels() )
+            {
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,start);
+                static_cast<const gsHTensorBasis<d,T>*>(m_basis)->
+                    _diadicIndexToKnotIndex(level2,dim,end);
+            }
 
             const gsKnotVector<T> & kv =
                 static_cast<const gsHTensorBasis<d,T>*>(m_basis)
@@ -217,8 +235,8 @@ private:
             }
             else
             {
-                for (unsigned index = start; index <= end; ++index)
-                    m_breaks[dim].push_back( kv(index) );
+                for (index_t index = start; index <= end; ++index)
+                    m_breaks[dim].push_back( kv(index) );// unique index
             }
 
             m_curElement(dim) = 
@@ -260,12 +278,16 @@ private:
 // members
 // =============================================================================
 
+    const gsHTensorBasis<d,T> & basis() const { return *static_cast<const gsHTensorBasis<d,T>*>(m_basis); }
+
 public:
 
     using gsDomainIterator<T>::center;
     using gsDomainIterator<T>::m_basis;
 
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 
 private:
 

@@ -13,9 +13,12 @@
 
 #pragma once
 
-#include<gsIO/gsParaviewCollection.h>
-#include<gsAssembler/gsQuadrature.h>
+// #include<gsIO/gsParaviewCollection.h>
+#include <fstream>
+#include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
+#include <gsAssembler/gsCPPInterface.h>
+#include <gsIO/gsWriteParaview.h>
 
 namespace gismo
 {
@@ -48,6 +51,8 @@ public:
     typedef typename gsExprHelper<T>::geometryMap geometryMap;
     typedef typename gsExprHelper<T>::variable    variable;
 
+    typedef typename gsFunction<T>::uPtr ifacemap;
+
 public:
 
     gsExprEvaluator() : m_exprdata(gsExprHelper<T>::make()),
@@ -70,6 +75,7 @@ public:
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
+        opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
@@ -106,7 +112,7 @@ public:
     { return m_exprdata->getMap(mp); }
 
     /// Registers \a g as an isogeometric geometry map and return a handle to it
-    geometryMap getMap(const gsFunction<T> & gm)
+    geometryMap getMap(const gsFunctionSet<T> & gm)
     { return m_exprdata->getMap(gm); }
 
     /// Registers \a func as a variable and returns a handle to it
@@ -266,6 +272,20 @@ public:
     eval(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
          const index_t patchInd = 0);
 
+    template<class E>
+#ifdef __DOXYGEN__
+    gsAsConstMatrix<T>
+#else
+    typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+#endif
+    evalIfc(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const boundaryInterface & ifc);
+
+    template<class E>
+    typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+    evalIfc(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
+            const boundaryInterface & ifc);
+
     /// Computes value of the expression \a expr at the point \a pt of
     /// patch \a patchId, and displays the result
     template<class E> void
@@ -308,12 +328,13 @@ public:
                        std::string const & fn)
     { writeParaview_impl<E,false>(expr,m_exprdata->getMap(),fn); }
 
-
 private:
 
     template<class E, bool gmap>
     void writeParaview_impl(const expr::_expr<E> & expr,
                             geometryMap G, std::string const & fn);
+
+
 
     template<class E, bool storeElWise, class _op>
     T compute_impl(const expr::_expr<E> & expr);
@@ -373,7 +394,8 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-
+    m_exprdata->activateFlags(SAME_ELEMENT);
+    
     // Computed value on element
     T elVal;
     index_t c = 0;
@@ -446,7 +468,8 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    
+    m_exprdata->activateFlags(SAME_ELEMENT);
+
     // Computed value
     T elVal;
     m_value = _op::init();
@@ -505,6 +528,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
+    m_exprdata->activateFlags(SAME_ELEMENT);
 
     // Computed value
     T elVal;
@@ -558,6 +582,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
 {
     auto arg_tpl = expr.val();
     m_exprdata->parse(arg_tpl);
+    // m_exprdata->activateFlags(SAME_ELEMENT);
 
     typename gsQuadRule<T>::uPtr QuRule;
     gsVector<T> quWeights; // quadrature weights
@@ -569,6 +594,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     m_elWise.reserve(m_exprdata->multiBasis().topology().nInterfaces());
     m_elWise.clear();
 
+    ifacemap interfaceMap;
     for (typename gsBoxTopology::const_iiterator iit =
              iFaces.begin(); iit != iFaces.end(); ++iit)
     {
@@ -576,14 +602,16 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         const index_t patch1 = iFace.first().patch;
         const index_t patch2 = iFace.second().patch;
 
-        gsAffineFunction<T> interfaceMap( iFace.dirMap(), iFace.dirOrientation(),
-                                          m_exprdata->multiBasis().basis(patch1).support(),
-                                          m_exprdata->multiBasis().basis(patch2).support() );
+        if (iFace.type() == interaction::conforming)
+            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                      m_exprdata->multiBasis().basis(patch1).support(),
+                                                      m_exprdata->multiBasis().basis(patch2).support() );
+        else
+            interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
 
         //gsRemapInterface<T> interfaceMap(m_exprdata->multiPatch(),
         //                                 m_exprdata->multiBasis(),
         //                                 *iit);//,opt
-        //gsDebugVar(interfaceMap);
 
         // Quadrature rule
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patch1),
@@ -602,7 +630,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
-            interfaceMap.eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+            interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(iFace);
@@ -717,17 +745,159 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
 
+// template<class T>
+// template<class E, bool gmap>
+// void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
+//                                             geometryMap G,
+//                                             std::string const & fn)
+//     {
+//         m_exprdata->parse(expr);
+
+//         //if false, embed topology ?
+//         const index_t n = m_exprdata->multiBasis().nBases();
+//         gsParaviewCollection collection(fn);
+//         std::string fileName;
+
+//         gsMatrix<T> pts, vals, ab;
+
+//         const bool mesh = m_options.askSwitch("plot.elements");
+
+//         for ( index_t i=0; i != n; ++i )
+//         {
+//             fileName = fn + util::to_string(i);
+//             unsigned nPts = m_options.askInt("plot.npts", 1000);
+//             ab = m_exprdata->multiBasis().piece(i).support();
+//             gsGridIterator<T,CUBE> pt(ab, nPts);
+//             eval(expr, pt, i);
+//             nPts = pt.numPoints();
+//             vals = allValues(m_elWise.size()/nPts, nPts);
+
+//             if (gmap) // Forward the points ?
+//             {
+//                 eval(G, pt, i);
+//                 pts = allValues(m_elWise.size()/nPts, nPts);
+//             }
+
+//             gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
+//                                   vals,
+//                                   pt.numPointsCwise(), fileName );
+//             collection.addPart(fileName + ".vts");
+
+//             if ( mesh )
+//             {
+//                 fileName+= "_mesh";
+//                 gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
+//                 static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
+//                 gsWriteParaview(msh, fileName, false);
+//                 collection.addPart(fileName+ ".vtp");
+//             }
+//         }
+//         collection.save();
+//     }
+
+
+
+// This is a copy of the above (commented out ) function, which has parts
+// of gsParaviewCollection pasted in it. In this way the inclusion of
+// gsParaviewCollection.h is prevented. This is a temporary modification.
+template<class T>
+template<class E>
+typename util::enable_if<E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const boundaryInterface & ifc)
+{
+    auto _arg = expr.val();
+    m_exprdata->parse(_arg);
+    m_elWise.clear();
+
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+    const boundaryInterface & iFace =  flipSide ? ifc.getInverse() : ifc;
+
+    const index_t patch1 = iFace.first().patch;
+    const index_t patch2 = iFace.second().patch;
+
+    ifacemap interfaceMap;
+    if (iFace.type() == interaction::conforming)
+        interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                  m_exprdata->multiBasis().basis(patch1).support(),
+                                                  m_exprdata->multiBasis().basis(patch2).support() );
+    else
+        interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+
+    m_exprdata->points() = pt;
+    interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+    m_exprdata->precompute(iFace);
+
+    // expr.printDetail(gsInfo); //
+
+    m_value = _arg.eval(0);
+    return gsAsConstMatrix<T>(&m_value,1,1);
+}
+
+template<class T>
+template<class E>
+typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
+gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
+                            const boundaryInterface & ifc)
+{
+    m_exprdata->parse(expr);
+
+    const bool flipSide = m_options.askSwitch("flipSide", false);
+    const boundaryInterface & iFace =  flipSide ? ifc.getInverse() : ifc;
+
+    const index_t patch1 = iFace.first().patch;
+    const index_t patch2 = iFace.second().patch;
+
+    ifacemap interfaceMap;
+    if (iFace.type() == interaction::conforming)
+        interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                  m_exprdata->multiBasis().basis(patch1).support(),
+                                                  m_exprdata->multiBasis().basis(patch2).support() );
+    else
+        interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), m_exprdata->multiBasis(), iFace);
+
+    m_exprdata->points() = pt;
+    interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+
+    m_exprdata->precompute(iFace);
+
+    // expr.printDetail(gsInfo); //after precompute
+
+    gsMatrix<T> tmp = expr.eval(0);
+    // const index_t r = expr.rows();
+    // const index_t c = expr.cols();
+    // gsInfo <<"tmp - "<< tmp.dim() <<" rc - "<< r <<", "<<c<<"\n";
+    const index_t r = tmp.rows();
+    const index_t c = tmp.cols();
+    m_elWise.resize(r*c);
+    gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
+    return gsAsConstMatrix<T>(m_elWise, r, c);
+}
+
 template<class T>
 template<class E, bool gmap>
 void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
                                             geometryMap G,
                                             std::string const & fn)
     {
+        //if gmap is false, embed topology ?
         m_exprdata->parse(expr);
 
         //if false, embed topology ?
         const index_t n = m_exprdata->multiBasis().nBases();
-        gsParaviewCollection collection(fn);
+
+        // Snippet from gsParaviewCollection
+        // gsParaviewCollection collection(fn);
+        std::stringstream file;
+        int counter = 0;
+        file <<"<?xml version=\"1.0\"?>\n";
+        file <<"<VTKFile type=\"Collection\" version=\"0.1\">";
+        file <<"<Collection>\n";
+        // End snippet from gsParaviewCollection
+
+        //const index_t n = G.source().nPieces();
+        //gsParaviewCollection collection(fn);
+
         std::string fileName;
 
         gsMatrix<T> pts, vals, ab;
@@ -738,7 +908,8 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
         {
             fileName = fn + util::to_string(i);
             unsigned nPts = m_options.askInt("plot.npts", 1000);
-            ab = m_exprdata->multiBasis().piece(i).support();
+            //ab = m_exprdata->multiBasis().piece(i).support();
+            ab = G.source().piece(i).support();
             gsGridIterator<T,CUBE> pt(ab, nPts);
             eval(expr, pt, i);
             nPts = pt.numPoints();
@@ -753,18 +924,41 @@ void gsExprEvaluator<T>::writeParaview_impl(const expr::_expr<E> & expr,
             gsWriteParaviewTPgrid( gmap ? pts : pt.toMatrix(), // parameters
                                   vals,
                                   pt.numPointsCwise(), fileName );
-            collection.addPart(fileName, ".vts");
+
+            // Snippet from gsParaviewCollection
+            // collection.addPart(fileName+ ".vts");
+            GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+            file << "<DataSet part=\""<< counter++ <<"\" file=\""<<fileName<<".vts"<<"\"/>\n";
+            // End snippet from gsParaviewCollection
 
             if ( mesh )
             {
-                fileName+= "_mesh";
                 gsMesh<T> msh(m_exprdata->multiBasis().basis(i), 2);
                 static_cast<const gsGeometry<T>&>(G.source().piece(i)).evaluateMesh(msh);
-                gsWriteParaview(msh, fileName, false);
-                collection.addPart(fileName, ".vtp");
+                gsWriteParaview(msh, fileName + "_mesh", false);
+                // Snippet from gsParaviewCollection
+                // collection.addPart(fileName+ ".vtp");
+                GISMO_ASSERT(counter!=-1, "Error: collection has been already saved." );
+                file << "<DataSet part=\""<< counter++ <<"\" file=\""<<fileName<<"_mesh.vtp"<<"\"/>\n";
+                // End snippet from gsParaviewCollection
             }
         }
-        collection.save();
-    }
+
+        // Snippet from gsParaviewCollection
+        // collection.save();
+        GISMO_ASSERT(counter!=-1, "Error: gsParaviewCollection::save() already called." );
+        file <<"</Collection>\n";
+        file <<"</VTKFile>\n";
+
+        std::string mfn = fn + ".pvd";
+        gsInfo << mfn << "\n";
+        std::ofstream f( mfn.c_str() );
+        GISMO_ASSERT(f.is_open(), "Error creating "<< mfn );
+        f << file.rdbuf();
+        f.close();
+        file.str("");
+        counter = -1;
+        // End snippet from gsParaviewCollection
+    }    
 
 } //namespace gismo

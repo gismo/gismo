@@ -83,7 +83,7 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
 # For gsLinearAlgebra.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/gsEigen
         DESTINATION include/${PROJECT_NAME}
         PATTERN "*.txt" EXCLUDE
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
@@ -104,6 +104,10 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
               ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
         DESTINATION include/${PROJECT_NAME}/rapidxml/ )
 
+if (GISMO_WITH_ADIFF)
+  install(FILES ${PROJECT_SOURCE_DIR}/external/gsAutoDiff.h
+    DESTINATION include/${PROJECT_NAME}/)
+ endif()
 
 # For pure install
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/rapidxml
@@ -120,7 +124,9 @@ set(GISMO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/gismodata/)
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h" )
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
-        DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
+  DESTINATION include/${PROJECT_NAME}/gsCore/ RENAME gsConfig.h)
+install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfigExt.h
+  DESTINATION include/${PROJECT_NAME}/gsCore/)
 
 # Install cmake files
 install(FILES
@@ -129,14 +135,22 @@ install(FILES
   "${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/gsConfig.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/gsDebugExtra.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckCCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckCXXCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCCompilerFlag.cmake"
-  "${PROJECT_SOURCE_DIR}/cmake/CheckMicCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AddCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/CheckCXXCompilerFlag.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectArm.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectPpc.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectX86.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/ChecksArm.txt"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/ChecksX86.txt"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/CommonMacros.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/HandleArmOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/HandlePpcOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/HandleX86Options.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/ofa/cpuinfo_x86.cxx"
   DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Install the export set for use with the install-tree

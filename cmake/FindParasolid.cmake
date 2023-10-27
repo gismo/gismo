@@ -15,17 +15,19 @@ find_library(PARASOLID_LIBRARY NAMES pskernel
 
 if(PARASOLID_INCLUDE_DIR AND PARASOLID_LIBRARY)
 	get_filename_component(PARASOLID_LIBRARY_DIR ${PARASOLID_LIBRARY} PATH)
-   set(PARASOLID_FOUND TRUE)
+   set(Parasolid_FOUND TRUE)
 endif()
 
 
-if(PARASOLID_FOUND)
-   if(NOT PARASOLID_FIND_QUIETLY)
+if(Parasolid_FOUND)
+   if(NOT Parasolid_FIND_QUIETLY)
       MESSAGE(STATUS "Found Parasolid: ${PARASOLID_LIBRARY}")
    endif()
-elseif(NOT PARASOLID_FOUND)
-#   if(PARASOLID_FIND_REQUIRED) ## TO DO, fix
+elseif(NOT Parasolid_FOUND)
+   if(NOT Parasolid_FIND_QUIETLY)
       message("Could not find Parasolid library.")
+   endif()
+  if(Parasolid_FIND_REQUIRED)
       message(FATAL_ERROR "Set the variable Parasolid_DIR and try again.")
-#   endif()
+   endif(Parasolid_FIND_REQUIRED)
 endif()

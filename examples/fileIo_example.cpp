@@ -1,4 +1,4 @@
-/** @file gsReadWrite_test.cpp
+/** @file fileIo_example.cpp
 
     @brief Testing file reading and writing
 
@@ -15,12 +15,13 @@
 
 #include <gismo.h>
 
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
 #include "gsOpennurbs/gsWriteOpenNurbs.h"
 #endif
 
-#ifdef GISMO_WITH_OCC
-#include "gsOpenCascade/gsReadBrep.h"
+#ifdef gsOpenCascade_ENABLED
+#include "gsOpenCascade/gsReadOcct.h"
+#include "gsOpenCascade/gsWriteOcct.h"
 #endif
 
 
@@ -56,11 +57,11 @@ void lookFor( const gsFileData<> & data )
 int main(int argc, char *argv[])
 {
   
-#ifdef GISMO_WITH_ONURBS
+#ifdef gsOpennurbs_ENABLED
     gsInfo << "Using opennurbs.\n";
 #endif
 
-#ifdef GISMO_WITH_OCC
+#ifdef gsOpenCascade_ENABLED
     gsInfo << "Using OpenCascade.\n";
 #endif
 
@@ -118,8 +119,13 @@ int main(int argc, char *argv[])
   lookFor< gsMultiPatch<> > (data) ;
 
   lookFor< gsFunctionExpr<> > (data);
+
+  lookFor< gsHBox<2,real_t> > (data);
+
+  lookFor< gsHBoxContainer<2,real_t> > (data);
+
     
-#ifdef GISMO_WITH_ONURBS
+#if defined(gsOpennurbs_ENABLED) || defined(gsOpenCascade_ENABLED)
   if ( data.has< gsPlanarDomain<> >() )
   {
       gsInfo<<"* There is a "<< data.count< gsPlanarDomain<> >() <<" "
@@ -130,8 +136,10 @@ int main(int argc, char *argv[])
     gsInfo<< "  Read it ..\n";
     gsInfo<< "  "<<*o ;
 
+#ifdef gsOpennurbs_ENABLED
     gsInfo<< "  Write back to pd.3dm\n";
-    extensions::writeON_PlanarDomain(*o);
+    extensions::writeON_PlanarDomain(*o,"pd");
+#endif
   }
 
   if ( data.has< gsMultiPatch<> >() )
@@ -143,9 +151,41 @@ int main(int argc, char *argv[])
       gsMultiPatch<>::uPtr o = data.getFirst< gsMultiPatch<> >();
       gsInfo<< "  Read it ..\n";
       gsInfo<< "  "<<*o ;
-      
+
+#ifdef gsOpennurbs_ENABLED
       gsInfo<< "  Write back to mp.3dm\n";
-      extensions::writeON_MultiPatch(*o);
+      extensions::writeON_MultiPatch(*o,"mp");
+#endif
+#ifdef gsOpenCascade_ENABLED
+      gsInfo<< "  Write back to mp.igs\n";
+      extensions::writeON_MultiPatch(*o,"mp");
+#endif
+  }
+
+  if ( data.has< gsGeometry<> >() )
+  {
+      gsInfo<<"* There is "<< data.count< gsGeometry<> >() <<" "
+          <<data.type< gsGeometry<> >()<<" "<< data.tag< gsGeometry<> >() 
+          <<" in the file.\n";
+
+      gsGeometry<>::uPtr o = data.getFirst< gsGeometry<> >();
+      gsInfo<< "  Read it ..\n";
+      gsInfo<< "  "<<*o ;
+
+      if ( gsSurface<> * srf = dynamic_cast<gsSurface<>*>(o.get()) )
+      {      
+// #ifdef gsOpennurbs_ENABLED
+//       gsInfo<< "  Write back to geo.3dm\n"; 
+//       extensions::writeON_NurbsSurface(*srf,"geo");
+// #endif
+#ifdef gsOpenCascade_ENABLED
+      gsInfo<< "  Write back to geo.igs\n";
+      extensions::writeOcctIges(*srf,"geo");
+      gsInfo<< "  Write back to geo.step\n";
+      extensions::writeOcctStep(*srf,"geo");
+#endif
+      GISMO_UNUSED(srf);
+      }
   }
 
   if ( data.has< gsMesh<> >() )
@@ -157,17 +197,13 @@ int main(int argc, char *argv[])
       gsMesh<>::uPtr o = data.getFirst< gsMesh<> >();
       gsInfo<< "  Read it ..\n";
       gsInfo<< "  "<<*o ;
-
+#ifdef gsOpennurbs_ENABLED
       gsInfo<< "  Write back to mesh.3dm\n";
       extensions::writeON_Mesh(*o,"mesh");
+#endif
   }
 
 #endif
 
-#ifdef GISMO_WITH_OCC
-
- 
-#endif
-  
-  return 0;
+  return EXIT_SUCCESS;
 }

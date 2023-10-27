@@ -56,10 +56,15 @@ namespace rapidxml
         get_into(node, *result);        \
         return result; }
 
-#define TMPLA2(t1,t2)    t1,t2
-#define TMPLA3(t1,t2,t3) t1,t2,t3
+#define GSXML_GET_INTO(obj)          \
+    static void get_into (gsXmlNode * node, obj & result) \
+    {   result = *get(node); }
 
-#ifdef GISMO_WITH_GMP
+#define TMPLA2(t1,t2)             t1,t2
+#define TMPLA3(t1,t2,t3)          t1,t2,t3
+#define TMPLA4(t1,t2,t3,t4)       t1,t2,t3,t4
+
+#ifdef gsGmp_ENABLED
 // Specialize file I/O to floating point format
 #include<sstream>
 inline std::istringstream &
@@ -131,7 +136,7 @@ inline bool gsGetInt(std::istream & is, Z & var)
   return !(is >> var).fail();
 }
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 template<>
 inline bool gsGetReal(std::istream & is, mpq_class & var)
 {

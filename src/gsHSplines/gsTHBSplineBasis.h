@@ -57,6 +57,8 @@ public:
     util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
+    using gsHTensorBasis<d, T>::m_manualLevels;
+    using gsHTensorBasis<d, T>::_diadicIndexToKnotIndex;
 
     // polygon lines in parameter domain
     // the stucture is [levels [ line [ segments [ x y z w ] ] ] ],
@@ -84,11 +86,6 @@ public:
         representBasis(); 
     }
 
-    /// @brief Constructor out of a Tensor BSpline Basis
-    gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis) 
-    : gsHTensorBasis<d,T>(tbasis) 
-    { representBasis(); }
-
     gsTHBSplineBasis(gsTensorBSplineBasis<d,T> const&  tbasis, 
                      const std::vector<index_t> & boxes) 
     : gsHTensorBasis<d,T>(tbasis, boxes)
@@ -106,8 +103,8 @@ public:
     {  representBasis(); }
 
     /// @brief Constructor out of a tensor BSpline Basis
-    gsTHBSplineBasis(gsBasis<T> const&  tbasis)
-        : gsHTensorBasis<d,T>(tbasis)
+    gsTHBSplineBasis(gsBasis<T> const&  tbasis, bool manualLevels=false)
+        : gsHTensorBasis<d,T>(tbasis, manualLevels)
     {  representBasis(); }
 
 #ifdef __DOXYGEN__
@@ -775,7 +772,7 @@ private:
  * End of class gsTHBSplineBasis definition
  */
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsTHBSplineBasis
@@ -784,7 +781,7 @@ private:
   void pybind11_init_gsTHBSplineBasis3(pybind11::module &m);
   void pybind11_init_gsTHBSplineBasis4(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

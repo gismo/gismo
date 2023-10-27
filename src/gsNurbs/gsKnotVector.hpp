@@ -712,6 +712,28 @@ typename gsKnotVector<T>::multContainer gsKnotVector<T>::multiplicities() const
 }
 
 template<typename T>
+typename gsKnotVector<T>::mult_t gsKnotVector<T>::maxInteriorMultiplicity() const
+{
+    mult_t result = 0;
+    for( uiterator uit = std::next(ubegin()); uit != std::prev(uend()); ++uit )
+        result = std::max(result,uit.multiplicity());
+    return result;
+}
+
+template<typename T>
+typename gsKnotVector<T>::mult_t gsKnotVector<T>::minInteriorMultiplicity() const
+{
+    // No interior knots
+    if (uSize()==2) 
+        return 0;
+
+    mult_t result = m_deg+2;
+    for( uiterator uit = std::next(ubegin()); uit != std::prev(uend()); ++uit )
+        result = std::min(result,uit.multiplicity());
+    return result;
+}
+
+template<typename T>
 typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {
@@ -813,6 +835,30 @@ void gsKnotVector<T>::addConstant( T amount )
 
     std::transform( m_repKnots.begin(), m_repKnots.end(), m_repKnots.begin(),
                     GS_BIND1ST(std::plus<T>(),amount) );
+}
+
+template<typename T>
+void gsKnotVector<T>::addConstant(T start, T amount)
+{
+    typename std::vector<T>::iterator beg   = m_repKnots.begin();
+    while (*beg < start)
+        beg++;
+
+    // The last element is closed from both sides.
+    uiterator dend = domainUEnd();
+
+    // If statement is needed because uFind gives back an iterator to the n-1 entry while the nth is required
+    if (start!=*dend)
+    {
+        uiterator uit = uFind(start);
+        for (; uit != uend(); ++uit)
+            uit.setValue(*uit + amount);
+    }
+    else
+        dend.setValue(*dend + amount);
+
+
+    GISMO_ASSERT( check(), "addConstant() has produced an invalid knot vector.");
 }
 
 template<typename T>

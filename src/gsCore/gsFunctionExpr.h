@@ -34,6 +34,16 @@ namespace gismo
 
     for more details.
 
+
+    The variables used are the ordered list:
+
+    x , y , z, w, u, v, t
+
+    Any function with domain dimension equal to 1 MUST use x as variable. the letters y...t are settable parameters.
+    Any function with domain dimension equal to 2 MUST use x,y as variables. the letters z...t are settable parameters.
+    Any function with domain dimension equal to 3 MUST use x,y,z as variables. the letters w...t are settable parameters.
+    And so on.
+
     \ingroup function
     \ingroup Core
 */
@@ -54,7 +64,7 @@ public:
     /// Default empty constructor
     gsFunctionExpr();
 
-    ///\brief Constructor taking an expression string and the domain dimension (scalar function)
+    ///\brief Constructor taking an expression string and the domain dimension (scalar function in variable)
     gsFunctionExpr(const std::string & expression_string, short_t ddim);
 
     ///\brief Constructor taking two expression strings (2D vector valued function)
@@ -214,14 +224,14 @@ private:
 }; // class gsFunctionExpr
 
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsFunctionExpr
    */
   void pybind11_init_gsFunctionExpr(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

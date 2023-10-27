@@ -59,7 +59,7 @@ void gsPeriodicOverlap<T>::constructTwinsBetween(size_t& currentNrAllVertices,
 
     // Push the corresponding pairs to the twin vector.
     // Note that if we would do std::prev on begin(), we should not dereference.
-    // The error is visible only with -DGISMO_EXTRA_DEBUG=ON.
+    // The error is visible only with -DGISMO_WITH_XDEBUG=ON.
     for(std::list<size_t>::const_iterator it=vertexIndices.begin();
         it == vertexIndices.begin() || *std::prev(it) != to;
         ++it)
@@ -141,7 +141,7 @@ void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &
         RHS(i, 1)      = (T)( 0);
     }
 
-    Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
+    gsEigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
     gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < N; i++)
     {

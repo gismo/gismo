@@ -13,7 +13,9 @@
 
 #include <gsIO/gsXml.h>
 #include <gsCore/gsFunctionExpr.h>
+#include <gsCore/gsConstantFunction.h>
 #include <gsUtils/gsSortedVector.h>
+#include <gsIO/gsXmlGenericUtils.hpp>
 
 namespace gismo
 {
@@ -40,6 +42,62 @@ public:
         GISMO_ASSERT(!strcmp(node->name(), tag().c_str()),
                 "Something went wrong. Expected tag "<< tag());
 
+        std::istringstream str;
+        std::map<int, int> ids;
+
+        // Check if any of the BCs is defined on a boundary set name
+        const int mp_index = atoi(node->first_attribute("multipatch")->value());
+        gsXmlNode* toplevel = node->parent();
+        std::vector< patchSide > allboundaries;
+        for (gsXmlNode * child = node->first_node("bc"); child;
+                child = child->next_sibling("bc"))
+        {
+            std::map<int, int> tmp_ids;;
+
+            const gsXmlAttribute * att_name = child->first_attribute("name");
+            if (NULL != att_name)
+            {
+                gsXmlNode* mp_node = searchId(mp_index, toplevel);
+                GISMO_ASSERT( mp_node != NULL,
+                              "No Multipatch with Id "<<mp_index<<" found in the XML data.");
+
+                gsXmlNode * tmp = mp_node->first_node("patches");
+                std::istringstream tmp_str ;
+                tmp_str.str( tmp->value() );
+                // Handle id_range or id_index for multipatches. This is needed to assign the right indices for the BCs
+                if ( ! strcmp( tmp->first_attribute("type")->value(),"id_range") )
+                {
+                    int first, last;
+                    gsGetInt(tmp_str, first);
+                    gsGetInt(tmp_str, last);
+                    for ( int i = first; i<=last; ++i )
+                        tmp_ids[i] = i - first;
+                }
+                else if ( ! strcmp( tmp->first_attribute("type")->value(),"id_index") )
+                {
+                    int c = 0;
+                    for (int pindex; gsGetInt(tmp_str, pindex);)
+                        tmp_ids[pindex] = c++;
+                }
+                else
+                {
+                    gsWarn<<"Unknown tag in XML multipatch object.\n";
+                }
+
+                for (gsXmlNode * child = mp_node->first_node("boundary"); child;
+                        child = child->next_sibling("boundary"))
+                {
+                    std::vector< patchSide > tmp_boundaries;
+                    if (child)
+                    {
+                        getBoundaries(child, tmp_ids, tmp_boundaries);
+                        allboundaries.insert( allboundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
+                    }
+                }
+                break;
+            }
+        }
+
         //gsXmlNode * tmp = node->first_node("patches");
         //GISMO_ASSERT(tmp, "No pathes tag");
 //
@@ -65,8 +123,6 @@ public:
 //        {
 //            gsWarn<<"Incomplete tag \"patch\" in boundaryConditions.\n";
 //        }
-        std::istringstream str;
-        std::map<int, int> ids;
 
         // Read function inventory
         int count = countByTag("Function", node);
@@ -98,7 +154,23 @@ public:
             if (NULL != att_ispar)
                 ispar = atoi( att_ispar->value() );
 
-            getBoundaries(child, ids, boundaries);
+            const gsXmlAttribute * att_name = child->first_attribute("name");
+            if (NULL != att_name)
+            {
+                boundaries.clear();
+                std::string name = att_name->value();
+                for (typename std::vector<patchSide>::const_iterator it=allboundaries.begin(); it!=allboundaries.end(); it++)
+                    if (it->label()==name)
+                        boundaries.push_back(*it);
+            }
+            else
+                getBoundaries(child, ids, boundaries);
+
+            if (boundaries.size() == 0) {
+              gsWarn << "Boundary condition without boundary to apply to. The"
+                        " following bc will be unused\n" << *child
+                     << std::endl;
+            }
 
             const gsXmlAttribute * bcat = child->first_attribute("type");
             GISMO_ASSERT(NULL != bcat, "No type provided");
@@ -131,7 +203,6 @@ public:
 
             const int cornIndex = atoi(child->first_attribute("corner")->value());
             int pIndex = atoi(child->first_attribute("patch")->value());
-            pIndex = ids[pIndex];
 
             result.addCornerValue(cornIndex, val, pIndex, uIndex, cIndex);
         }
@@ -153,7 +224,7 @@ public:
         typedef typename gsBoundaryConditions<T>::const_bciterator bctype_it;
         typedef typename Object::const_iterator bc_it;
 
-        std::vector<typename gsFunction<T>::Ptr> fun;
+        std::vector<typename gsFunctionSet<T>::Ptr> fun;
         //gsSortedVector<typename gsFunction<T>::Ptr> fun;
         typedef typename std::vector<const boundary_condition<T>*> bctype_vec;
         typedef typename std::map<int, bctype_vec> bctype_map;
@@ -165,7 +236,7 @@ public:
             bctype_map map;
             for (bc_it bc = it->second.begin(); bc != it->second.end(); ++bc)
             {
-                typename gsFunction<T>::Ptr ptr = bc->function();
+                typename gsFunctionSet<T>::Ptr ptr = bc->function();
                 bool contains = std::find(fun.begin(), fun.end(), ptr)
                         != fun.end();
                 if (!contains)
@@ -186,10 +257,10 @@ public:
         }
 
         int count = 0;
-        typedef typename std::vector<typename gsFunction<T>::Ptr>::const_iterator fun_it;
+        typedef typename std::vector<typename gsFunctionSet<T>::Ptr>::const_iterator fun_it;
         for (fun_it fit = fun.begin(); fit != fun.end(); ++fit)
         {
-            gsXmlNode * ff = putFunctionToXml(*fit, data, count);
+            gsXmlNode * ff = putFunctionToXml<T>(*fit, data, count);
             BCs->append_node(ff);
             ++count;
         }
@@ -230,6 +301,9 @@ public:
                     {
                         gsXmlAttribute * unknownNode = internal::makeAttribute(
                                 "unknown", b.m_unknown, data);
+                        gsXmlAttribute * componentNode = internal::makeAttribute("component",
+                                b.unkComponent(), data);
+                        bcNode->append_attribute(componentNode);
                         bcNode->append_attribute(unknownNode);
                         first = false;
                     }
@@ -272,52 +346,6 @@ public:
         }
         return BCs;
     }
-
-private:
-    static gsXmlNode * putFunctionToXml(
-            const typename gsFunction<T>::Ptr & obj, gsXmlTree & data,
-            int index)
-    {
-        gsXmlNode * result = internal::makeNode("Function", data);
-        if (typeid(*obj) == typeid(gsFunctionExpr<T> ))
-        {
-            gsFunctionExpr<T> * ptr2 =
-                    dynamic_cast<gsFunctionExpr<T> *>(obj.get());
-            result = putFunctionExprToXml(*ptr2, result, data);
-        }
-        gsXmlAttribute * indexNode = internal::makeAttribute("index", index,
-                data);
-        result->append_attribute(indexNode);
-        return result;
-    }
-
-    static gsXmlNode * putFunctionExprToXml(const gsFunctionExpr<T> & obj,
-            gsXmlNode * result, gsXmlTree & data)
-    {
-        std::string typeStr = gsXml<gsFunctionExpr<T> >::type();
-        gsXmlAttribute * type = internal::makeAttribute("type", typeStr, data);
-        result->append_attribute(type);
-        gsXmlAttribute * dim = internal::makeAttribute("dim", obj.domainDim(),
-                data);
-        result->append_attribute(dim);
-        // set value
-        const short_t tdim = obj.targetDim();
-        if ( tdim == 1)
-        {
-            result->value( makeValue(obj.expression(), data) );
-        }
-        else
-        {
-            gsXmlNode * cnode;
-            for (short_t c = 0; c!=tdim; ++c)
-            {
-                cnode = makeNode("c", obj.expression(c), data);
-                result->append_node(cnode);
-            }
-        }
-        return result;
-    }
-
 };
 
 } // end namespace internal

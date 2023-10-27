@@ -17,7 +17,7 @@ gismo_fetch_module(gsUnitTest
 include(gsConfig)
 
 # set include directory
-set(GSUNITTEST_INCLUDE_DIR ${gismo_SOURCE_DIR}/extensions/gsUnitTest
+set(GSUNITTEST_INCLUDE_DIR ${gismo_SOURCE_DIR}/optional/gsUnitTest
   CACHE INTERNAL "gsUnitTest include directory")
 
 install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION
@@ -47,6 +47,12 @@ if (NOT NOSNIPPETS)
 endif()
 
 foreach(file ${unittests_SRCS})
+  get_filename_component(testname ${file} NAME_WE) # name without extension
+  add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
+  set_property(TEST unit_${testname} PROPERTY LABELS unittests)
+endforeach(file ${FILES})
+
+foreach(file ${gismo_UNITTESTS})
   get_filename_component(testname ${file} NAME_WE) # name without extension
   add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
   set_property(TEST unit_${testname} PROPERTY LABELS unittests)

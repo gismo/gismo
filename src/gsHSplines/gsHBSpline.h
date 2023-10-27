@@ -113,7 +113,7 @@ public:
     }
 }; // class gsHBSpline
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsHBSpline
@@ -122,7 +122,7 @@ public:
   void pybind11_init_gsHBSpline3(pybind11::module &m);
   void pybind11_init_gsHBSpline4(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

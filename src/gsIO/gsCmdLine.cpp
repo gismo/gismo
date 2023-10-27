@@ -431,9 +431,9 @@ void gsCmdLine::printVersion()
 //https://sourceforge.net/p/predef/wiki/Compilers, see also boost/predef.h
 #if defined(_MSC_VER) && _MSC_VER < 1600
     gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"199711L" <<", ";
-#elsif _MSC_VER >= 1900
+#elif _MSC_VER >= 1900
     gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<_MSVC_LANG <<", ";
-#elsif _MSC_VER >= 1600
+#elif _MSC_VER >= 1600
     gsInfo << "MSVC "<<_MSC_FULL_VER <<" ("<<"201103L" <<", ";
 #elif defined(__clang__ )
     gsInfo << "Clang "<<__clang_version__<<" ("<<__cplusplus <<", ";
@@ -485,7 +485,7 @@ std::string & gsCmdLine::getMessage()
     return my->cmd.getMessage();
 }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
 void pybind11_init_gsCmdLine(py::module &m)
@@ -554,6 +554,6 @@ void pybind11_init_gsCmdLine(py::module &m)
     ;
 }
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } //namespace gismo

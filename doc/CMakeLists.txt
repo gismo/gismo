@@ -30,15 +30,15 @@ if(DOXYGEN_FOUND)
   # Set some Doxygen flags
   set(GISMO_DOXY_PROJECT_NAME             "G+Smo")
   set(GISMO_DOXY_OUTPUT_DIRECTORY_SUFFIX  "")
-  set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/extensions\" \"${gismo_BINARY_DIR}/gsCore\"") #\"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/examples\"
-#  set(GISMO_DOXY_INPUT                    \"${gismo_SOURCE_DIR}/extensions\")
+  set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/optional\" \"${gismo_BINARY_DIR}/gsCore\"") #\"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/examples\"
+#  set(GISMO_DOXY_INPUT                    \"${gismo_SOURCE_DIR}/optional\")
   # Uncomment the line below to have doxygen process only
   # what is inside the doc folder when typing 'make doc'
   # This is ment to improve doc generation time. However, a very good way to
   # tweak doxygen temporarily is to go to CMAKE_BINARY_DIR/doc and edit
   # the Doxyfile directly. Then running doxygen inside that folder will
   # re-generate the doc html pages.
-  #set(GISMO_DOXY_INPUT                    " \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/extensions\" ")
+  #set(GISMO_DOXY_INPUT                    " \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/optional\" ")
   set(IMAGE_PATH        "\"${gismo_SOURCE_DIR}/doc/figs\"")
   set(GISMO_DOXY_EXCLUDE                    "\"${gismo_SOURCE_DIR}/external\" ${IMAGE_PATH} ")
   set(GISMO_DOXY_HTML_COLORSTYLE_HUE      "120") #220

@@ -576,11 +576,11 @@ void gsBasis<T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> c
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine(int, int)
+void gsBasis<T>::uniformRefine(int, int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int )
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -590,6 +590,10 @@ void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &,
 
 template<class T>
 void gsBasis<T>::uniformCoarsen(int)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::uniformCoarsen_withCoefs(gsMatrix<T>& , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -681,6 +685,11 @@ void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
+               gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 T gsBasis<T>::getMinCellLength() const
 {
     const domainIter it = this->makeDomainIterator();
@@ -706,9 +715,10 @@ T gsBasis<T>::getMaxCellLength() const
     return h;
 }
 
-// compute the collocation matrix of the points u and its partial derivatives
+
 template<class T> inline
-std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gsMatrix<T> & u)
+std::vector<gsSparseMatrix<T> >
+gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u)
 {
     int dim = b.domainDim();
     std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
@@ -747,10 +757,6 @@ std::vector<gsSparseMatrix<T>> collocationMatrix1(const gsBasis<T> & b, const gs
         result[2].makeCompressed();
     return result;
 }
-
-
-
-
 
 
 

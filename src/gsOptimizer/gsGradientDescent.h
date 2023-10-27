@@ -17,7 +17,9 @@
 #include <gsIO/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
+#define Eigen gsEigen
 #include "gdcpp.h"
+#undef Eigen
 //#include "lsqcpp.h"
 
 namespace gismo
@@ -26,8 +28,8 @@ namespace gismo
 template<typename T>
 struct gsGradientDescentObjective
 {
-    typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vector;
-    // typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+    typedef gsEigen::Matrix<T, gsEigen::Dynamic, 1> Vector;
+    // typedef gsEigen::Matrix<T, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
 
     gsGradientDescentObjective(gsOptProblem<T>* objective)
     :
@@ -52,6 +54,16 @@ struct gsGradientDescentObjective
     gsOptProblem<T> * obj;
 };
 
+/**
+ * @brief      This class describes the gradient descent method
+ *
+ * @tparam     T                  Real type
+ * @tparam     StepSize           StepSize option, see external/gdcpp.h
+ * @tparam     Callback           Callback option, see external/gdcpp.h
+ * @tparam     FiniteDifferences  FiniteDifferences option, see external/gdcpp.h
+ *
+ * @ingroup    Optimizer
+ */
 template<typename T = real_t,
          typename StepSize=gdc::BarzilaiBorwein<T>,
          typename Callback=gdc::NoCallback<T>,
@@ -90,18 +102,16 @@ public:
 protected:
     void defaultOptions()
     {
-        m_options.addInt("MaxIterations","Maximum iterations",0);
+        Base::defaultOptions();
         m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
         m_options.addReal("MinStepLength","Minimal step length",1e-9);
-        m_options.addInt("Verbose","Verbosity level",0);
     }
 
     void getOptions()
     {
-        m_maxIterations = m_options.getInt("MaxIterations");
+        Base::getOptions();
         m_minGradientLength = m_options.getReal("MinGradientLength");
         m_minStepLength = m_options.getReal("MinStepLength");
-        m_verbose = m_options.getInt("Verbose");
 
         m_solver.setMaxIterations(m_maxIterations);
         m_solver.setMinGradientLength(m_minGradientLength);
@@ -123,14 +133,17 @@ protected:
     using Base::m_finalObjective;
     using Base::m_curDesign;
     using Base::m_options;
+    using Base::m_verbose;
+    using Base::m_maxIterations;
+
+    using Base::defaultOptions;
+    using Base::getOptions;
 
     Result m_result;
 
 protected:
-    index_t m_maxIterations;
     T m_minGradientLength;
     T m_minStepLength;
-    index_t m_verbose;
 
     gdc::GradientDescent<T, gsGradientDescentObjective<T>, StepSize, Callback, FiniteDifferences> m_solver;
 

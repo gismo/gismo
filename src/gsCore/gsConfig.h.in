@@ -44,56 +44,28 @@
 #define GISMO_CONFIG_DIR "@GISMO_CONFIG_DIR@"
 
 /* Enabled Extensions */
+#include <gsCore/gsConfigExt.h>
 #cmakedefine GISMO_WITH_ADIFF
-#cmakedefine GISMO_WITH_CODIPACK
-#cmakedefine GISMO_WITH_IPOPT
-#cmakedefine GISMO_WITH_MPFR
 #cmakedefine GISMO_WITH_MPI
-#cmakedefine GISMO_WITH_GMP
-#cmakedefine GISMO_WITH_ONURBS
-#cmakedefine GISMO_WITH_OCC
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_PASTIX
 #cmakedefine GISMO_WITH_PSOLID
 #cmakedefine GISMO_WITH_SPECTRA
 #cmakedefine GISMO_WITH_SUPERLU
 #cmakedefine GISMO_WITH_TAUCS
-#cmakedefine GISMO_WITH_TRILINOS
 #cmakedefine GISMO_WITH_UMFPACK
-#cmakedefine GISMO_WITH_UNUM
 
-/* Only include new types here that can be set as real_t */
-
-#ifdef GISMO_WITH_MPFR
-#include <mpreal.h>
-#endif
-
-#ifdef GISMO_WITH_GMP
-#include <gmpxx.h>
-#include <unsupported/Eigen/MPQClassExtra>
-#endif
-
-#ifdef GISMO_WITH_UNUM
-#include <gsUnum/gsUnum.h>
-#endif
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
 /* Determine if Python module should be built. */
-#cmakedefine GISMO_BUILD_PYBIND11
-
-#ifdef GISMO_BUILD_PYBIND11
-#include <pybind11/iostream.h>
-#include <pybind11/operators.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#endif
+#cmakedefine GISMO_WITH_PYBIND11
 
 /* Debug settings. */
-#cmakedefine GISMO_EXTRA_DEBUG
-#cmakedefine GISMO_WARNINGS
+#cmakedefine GISMO_WITH_XDEBUG
+#cmakedefine GISMO_WITH_WARNINGS
 
 /**
  * @name Eigen options - MUST be defined before Eigen is included
