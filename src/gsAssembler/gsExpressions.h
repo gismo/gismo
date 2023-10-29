@@ -132,6 +132,7 @@ template<class T> class meas_expr;
 template<class E> class inv_expr;
 template<class E, bool cw = false> class tr_expr;
 template<class E> class cb_expr;
+template<class E> class nocb_expr;
 template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
@@ -237,9 +238,13 @@ public:
     tr_expr<E,true> cwisetr() const
     { return tr_expr<E,true>(static_cast<E const&>(*this)); }
 
-    /// Returns the puts the expression to colBlocks
+    /// Puts the expression to colBlocks
     cb_expr<E> cb() const
     { return cb_expr<E>(static_cast<E const&>(*this)); }
+
+    /// Removes the colBlocks property
+    nocb_expr<E> nocb() const
+    { return nocb_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the sign of the expression
     sign_expr<E> sgn(Scalar tolerance=0) const
@@ -1728,6 +1733,64 @@ public:
             GISMO_ERROR("Cardinality for cb_expr cannot be determined.");
 
         return cardinality;
+    }
+
+    void print(std::ostream &os) const { os<<"{"; _u.print(os); os <<"}"; }
+};
+
+
+/*
+  Expression to make an expression colblocks
+*/
+template<class E>
+class nocb_expr : public _expr<nocb_expr<E> >
+{
+    typename E::Nested_t _u;
+
+public:
+
+    typedef typename E::Scalar Scalar;
+
+    nocb_expr(_expr<E> const& u)
+    : _u(u) { }
+
+public:
+    enum {ColBlocks = 0, ScalarValued=E::ScalarValued};
+    enum {Space = E::Space};
+
+    mutable gsMatrix<Scalar> ev, res;
+
+    const gsMatrix<Scalar> & eval(const index_t k) const
+    {
+        //return _u.eval(k).transpose();
+        // /*
+        ev = _u.eval(k);
+        if (!E::ColBlocks)
+        {
+            return ev;
+        }
+        else
+        {
+            res.resize(_u.rows()*_u.cardinality(),_u.cols());
+            for ( index_t k=0; k!=_u.cardinality(); k++)
+                res.block(k*_u.rows(),0,_u.rows(),_u.cols()) = ev.block(0,k*_u.cols(),_u.rows(),_u.cols());
+        }
+        return res;
+    }
+
+    index_t rows() const { return _u.rows(); }
+
+    index_t cols() const { return _u.cols(); }
+
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _u.parse(evList); }
+
+    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const { return _u.colVar(); }
+
+    index_t cardinality_impl() const
+    {
+        return _u.cardinality();
     }
 
     void print(std::ostream &os) const { os<<"{"; _u.print(os); os <<"}"; }

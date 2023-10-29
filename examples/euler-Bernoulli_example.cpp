@@ -580,26 +580,26 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp_ori;
     gsMultiPatch<> mp_def;
 
-    gsMatrix<> weights(3,1);
-    weights<<1, 0.707106781186548, 1;
     gsKnotVector<> KV(0,1,0,3) ;
-    // gsNurbsBasis<> nbasis(KV,weights);
-    gsBSplineBasis<> nbasis(KV);
+    gsBSplineBasis<> bbasis(KV);
     gsMatrix<> coefs_ori(3,2), coefs_def(3,2);
 
     coefs_ori.row(0)<<0,1;
     coefs_ori.row(1)<<1,1;
     coefs_ori.row(2)<<2,1;
 
-    coefs_def.row(0)<<0,1;
-    coefs_def.row(1)<<1,1;
-    coefs_def.row(2)<<1,0;
+    mp_ori.addPatch(bbasis.makeGeometry(give(coefs_ori)));
+    mp_def = mp_ori;
 
-    mp_ori.addPatch(nbasis.makeGeometry(give(coefs_ori)));
-    mp_def.addPatch(nbasis.makeGeometry(give(coefs_def)));
+    //! [Refinement]
+    // p-refine
+    if (numElevate!=0)
+        mp_ori.degreeElevate(numElevate);
 
-    gsWriteParaview(mp_ori,"mp_ori");
-    gsWriteParaview(mp_def,"mp_def");
+    // h-refine
+    for (int r =0; r < numRefine; ++r)
+        mp_ori.uniformRefine();
+    //! [Refinement]
 
     gsMultiBasis<> mb(mp_ori);
 
@@ -624,11 +624,13 @@ int main(int argc, char *argv[])
     gsVector<> pt(1);
     pt<<0.5;
 
+    gsMatrix<> solVector;
+
     auto X = assembler.getMap(mp_ori);
     auto x = assembler.getMap(mp_def);
     auto u = assembler.getSpace(mb,2);
-
-    gsFunctionExpr<> force("0","x","0",2);
+    auto u_sol = assembler.getSolution(u,solVector);
+    gsFunctionExpr<> force("0","x",2);
     auto ff= assembler.getCoeff(force,X); // evaluates in the physical domain
 
     // Assign variables to the Expression Assembler
@@ -660,13 +662,13 @@ int main(int argc, char *argv[])
 
     /*
      We provide the following functions:
-     E_m  membrane strain tensor.
-     E_m_der first variation of E_m
-     E_m_der2 second variation of E_m
+     E_m  membrane strain tensor.       [Works]
+     E_m_der first variation of E_m     [Works]
+     E_m_der2 second variation of E_m   [Works]
 
-     E_b bending strain tensor.
-     E_b_der first variation of E_b
-     E_b_der2 second variation of E_b
+     E_b bending strain tensor.         [Works]
+     E_b_der first variation of E_b     [Needs bvar1 (nvar1)]
+     E_b_der2 second variation of E_b   [Needs bvar1 (nvar1), bvar2 (nvar2)]
 
      Where:
      x the deformed configuration
@@ -680,7 +682,7 @@ int main(int argc, char *argv[])
     auto normalx = sn(x);
 
 
-    gsDebugVar(ev.eval(cbnvar1(u,X),pt));
+    // gsDebugVar(ev.eval(cbnvar1(u,X),pt));
     // gsDebugVar(ev.eval(cnvar1(u,X),pt));
 
     // cbnvar2dot(u,v,deriv2(G));
@@ -690,9 +692,7 @@ int main(int argc, char *argv[])
     // auto normalX = normal(X);
     // auto normalx = normal(x);
     auto E_m = jac(x).tr()*jac(x) - jac(X).tr()*jac(X); // HV: why no 1/2? maybe you mean x in front of the equation
-    gsDebugVar(ev.eval(E_m,pt));
     auto E_b = cderiv2(x)*normalx - cderiv2(X)*normalX;
-    gsDebugVar(ev.eval(E_b,pt));
     auto S_m = area*youngs*E_m;
     // gsDebugVar(ev.eval(S_m,pt));
     auto S_b = inertia*youngs*E_b;
@@ -700,8 +700,6 @@ int main(int argc, char *argv[])
 
 
     auto E_m_der = jac(x).tr() * jac(u);
-    gsDebugVar(ev.eval(E_m_der,pt));
-
     // gsDebugVar(ev.eval(cderiv2dot(u,normalx.normalized().tr()),pt));
     // gsDebugVar(ev.eval(cderiv2dot(x,var1(u,x)),pt));
 
@@ -709,19 +707,11 @@ int main(int argc, char *argv[])
     // gsDebugVar(ev.eval(E_b_der,pt));
 
     auto S_m_der = area.val()*youngs.val()*E_m_der;
-    gsDebugVar(ev.eval(S_m_der,pt));
-
-    assembler.assemble(S_m_der * E_m_der.tr());
-    gsDebugVar(assembler.matrix());
-
     auto S_b_der = inertia*youngs*E_b_der;
     // gsDebugVar(ev.eval(S_b_der,pt));
 
     auto G1 = jac(x); // HV: correct??, maybe replace by measure/ JL: should be binormal vector
-    // HV version:
-    // auto E_m_der2 = 0.5 * (jac(x).tr() * E_m * jac(x));
-     //JL: Shouldn't this be:
-    auto E_m_der2 = 0.5 * (E_m.val() * (jac(u) * jac(u).tr()) );
+    auto E_m_der2 = 0.5 * (E_m.val() * (jac(u).cwisetr() * jac(u).cwisetr().tr()) );
     auto S_m_der2 = (area*youngs).val()*E_m_der2;
 
     //JL: Added deriv2(u,sn(x).normalized())
@@ -734,59 +724,63 @@ int main(int argc, char *argv[])
 
      F_int = F_m + F_b
     */
-    auto F_m = 0.5 * S_m_der * E_m.tr();
+    auto F_ext = u*ff*area.val();
+
+    auto F_m = 0.5 * E_m.val() * S_m_der.nocb();
+    auto F_b = E_b.val() * S_b_der.nocb();
 
 
-    gsDebugVar(S_m_der.rows());
-    gsDebugVar(S_m_der.cols());
+    gsDebugVar(ev.eval(E_m * S_m_der,pt));
+    gsDebugVar(ev.eval(E_m * S_m_der.cwisetr(),pt));
+    gsDebugVar(ev.eval(E_m * S_m_der.tr(),pt));
+    gsDebugVar(ev.eval(E_m * S_m_der.cwisetr().tr(),pt));
+    gsDebugVar(ev.eval(S_m_der.nocb(),pt));
+    gsDebugVar(ev.eval(E_m,pt));
+    // gsDebugVar(ev.eval(E_m.val() * S_m_der.nocb(),pt));
 
+    gsDebugVar((E_m.val() * S_m_der.nocb()).rows());
+    gsDebugVar((E_m.val() * S_m_der.nocb()).cols());
+    // gsDebugVar((E_m.val() * S_m_der.nocb()).rows());
+
+
+    // gsDebugVar(ev.eval(E_m * S_m_der.nocb(),pt));
+
+    // gsDebugVar((E_m * S_m_der).ColBlocks);
+    // gsDebugVar((E_m * S_m_der.cwisetr()).ColBlocks);
+    // gsDebugVar((E_m * S_m_der.tr()).ColBlocks);
+    // gsDebugVar((E_m * S_m_der.cwisetr().tr()).ColBlocks);
+    // gsDebugVar((E_m * S_m_der.trace()).ColBlocks);
+
+    // gsDebugVar(ev.eval(E_m.val() * S_m_der,pt));
+    // gsDebugVar(ev.eval(E_m.val() * S_m_der.cwisetr(),pt));
+    // gsDebugVar(ev.eval(E_m.val() * S_m_der.tr(),pt));
+    // gsDebugVar(ev.eval(E_m.val() * S_m_der.cwisetr().tr(),pt));
+
+
+
+    gsDebugVar(ev.eval(F_m,pt));
+    gsDebugVar(ev.eval(F_m.cwisetr().tr(),pt));
 
     gsDebugVar(F_m.rows());
     gsDebugVar(F_m.cols());
 
-    gsDebugVar(ev.eval(jac(u),pt));
-    gsDebugVar(jac(u).rows());
-    gsDebugVar(jac(u).cols());
-
-    gsDebugVar(ev.eval(jac(u).cwisetr() * jac(u),pt));
-    gsDebugVar((jac(u).cwisetr() * jac(u)).isMatrix());
-
-    // This is the fix, it's not elegant, but it works
-    gsDebugVar(ev.eval(jac(u).cwisetr() * jac(u).cwisetr().tr(),pt));
-    gsDebugVar((jac(u).cwisetr() * jac(u).cwisetr().tr()).isMatrix());
-
-    assembler.assemble(jac(u).cwisetr() * jac(u).tr());
-    assembler.assemble(jac(u) * jac(u).tr());
-
-
+    assembler.assemble(F_m);
     gsDebugVar(assembler.matrix());
-
-    gsDebugVar(ev.eval(F_m,pt));
-    auto F_b = S_b_der * E_b.tr();
-    // gsDebugVar(ev.eval(F_b,pt));
-
-
 
     // Assemble K_m (linear)
     gsDebug<<"1\n";
     assembler.assemble( S_m_der * E_m_der.tr() * G1.norm() * G1.norm() );
     // Assemble K_m (nonlinear)
     gsDebug<<"2\n";
-    assembler.assemble( S_m_der2.tr() * G1.norm() * G1.norm() );
+    assembler.assemble( S_m_der2 * G1.norm() * G1.norm() );
 
-    assembler.assemble( jac(u) * jac(u).tr() * G1.norm() * G1.norm() );
-
+/*
     // assembler.assemble( S_m_der2 * G1.norm() * G1.norm() );
 
     // Assemble K_b (linear)
     // assembler.assemble( S_b_der * E_b_der.tr() * G1.norm() * G1.norm() );
     // Assemble K_b (nonlinear)
     // assembler.assemble(inertia * youngs * E_b.tr() * E_b_der2_second_half * G1.norm() * G1.norm());
-
-
-    // Assemble F_ext
-    gsDebug<<"3\n";
-    assembler.assemble( u*ff*area * G1.norm() * G1.norm() );
 
     // Assemble F_int
     gsDebug<<"4\n";
@@ -796,11 +790,112 @@ int main(int argc, char *argv[])
                             // F_b
                             ) * G1.norm() * G1.norm()
                         );
+*/
+
+    // Assemble F_ext
+    gsDebug<<"3\n";
+    assembler.assemble( F_ext * G1.norm() * G1.norm() );
+
+    //! [Linear solve]
+    gsSparseMatrix<> K(assembler.numDofs(),assembler.numDofs());
+    K.setIdentity();
+    K *= 1e-6;
+    K += assembler.matrix();
+
+    gsDebugVar(K.toDense());
+
+    gsSparseSolver<>::CGDiagonal solver(K);
+
+    gsDebugVar(assembler.rhs());
+    solVector = solver.solve(assembler.rhs());
+
+    mp_def = mp_ori;
+    gsMatrix<> cc;
+    for ( size_t k =0; k!=mp_ori.nPatches(); ++k) // Deform the geometry
+    {
+        u_sol.extract(cc, k);
+        mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+    }
+    //! [Linear solve]
+
+    //! [Nonlinear solve]
+    real_t residual = assembler.rhs().norm();
+    real_t residual0 = residual;
+    real_t residualOld = residual;
+    gsMatrix<> updateVector = solVector;
+    if (nonlinear)
+    {
+        index_t itMax = 100;
+        real_t tol = 1e-8;
+        for (index_t it = 0; it != itMax; ++it)
+        {
+            assembler.initSystem();
+
+            assembler.assemble( S_m_der * E_m_der.tr() * G1.norm() * G1.norm());
+            assembler.assemble( S_m_der2 * G1.norm() * G1.norm() );
+            assembler.assemble( F_ext * G1.norm() * G1.norm() );
+            assembler.assemble(  -F_m * G1.norm() * G1.norm() );
+            gsDebug<<"Finished\n";
 
 
-    gsSparseSolver<>::CGDiagonal solver(assembler.matrix());
-    gsMatrix<> solVector = solver.solve(assembler.rhs());
+            // solve system
+            solver.compute( assembler.matrix() );
+            updateVector = solver.solve(assembler.rhs()); // this is the UPDATE
+
+
+            solVector += updateVector;
+            residual = assembler.rhs().norm();
+
+            gsInfo<<"Iteration: "<< it
+                   <<", residue: "<< residual
+                   <<", update norm: "<<updateVector.norm()
+                   <<", log(Ri/R0): "<< math::log10(residualOld/residual0)
+                   <<", log(Ri+1/R0): "<< math::log10(residual/residual0)
+                   <<"\n";
+
+            residualOld = residual;
+
+            // update deformed patch
+            u_sol.setSolutionVector(updateVector);
+            for ( size_t k =0; k!=mp_def.nPatches(); ++k) // Deform the geometry
+            {
+                // // extract deformed geometry
+                u_sol.extract(cc, k);
+                mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+            }
+
+            if (residual < tol)
+                break;
+        }
+    }
+    //! [Nonlinear solve]
     gsDebugVar(solVector);
+    gsDebugVar(updateVector);
+
+    //! [Construct solution]
+    u_sol.setSolutionVector(solVector);
+    mp_def = mp_ori;
+    for ( size_t k =0; k!=mp_ori.nPatches(); ++k) // Deform the geometry
+    {
+        u_sol.extract(cc, k);
+        mp_def.patch(k).coefs() += cc;  // defG points to mp_def, therefore updated
+    }
+
+    gsMultiPatch<> deformation = mp_def;
+    for (size_t k = 0; k != mp_def.nPatches(); ++k)
+        deformation.patch(k).coefs() -= mp_ori.patch(k).coefs();
+
+    gsInfo <<"Maximum deformation coef: "
+           << deformation.patch(0).coefs().colwise().maxCoeff() <<".\n";
+    gsInfo <<"Minimum deformation coef: "
+           << deformation.patch(0).coefs().colwise().minCoeff() <<".\n";
+    //! [Construct solution]
+
+
+    gsWriteParaview(mp_ori,"mp_ori");
+    gsWriteParaview(mp_def,"mp_def");
+
+
 
     return EXIT_SUCCESS;
 }// end main
