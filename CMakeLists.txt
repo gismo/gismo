@@ -365,31 +365,6 @@ else()
 endif(GISMO_BUILD_UNITTESTS)
 
 ## #################################################################
-## Install
-## #################################################################
-
-# Configure
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
-configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
-                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
-
-include(gsInstall)
-
-## #################################################################
-## Executables
-## #################################################################
-
-# Note: if the shared libs are created, examples are linked against the
-#  shared lib, otherwise targets are not linked against anything, only
-#  templated code is used.
-if(GISMO_BUILD_EXAMPLES)
-  add_subdirectory(examples)
-else()
-  add_subdirectory(examples EXCLUDE_FROM_ALL)
-endif(GISMO_BUILD_EXAMPLES)
-
-## #################################################################
 ## Python bindings
 ## #################################################################
 if(GISMO_WITH_CPPYY)
@@ -426,14 +401,36 @@ if(GISMO_WITH_CPPYY)
           H_DIRS ${GISMO_INCLUDE_DIRS}
           H_FILES ${GISMO_HEADERS}
   )
-  install(CODE "execute_process(COMMAND pip install ${PY_WHEEL_FILE}")
 
-  # Target that installs only the python bindings
-  add_custom_target(install-bindings COMMAND pip install ${PY_WHEEL_FILE}
-          COMMENT "Install the Python bindings using pip"
-          DEPENDS gismo)
+  # Copy pythonizations to package
+  configure_file("${PROJECT_SOURCE_DIR}/python/pythonize.py.in" "${PROJECT_BINARY_DIR}/gismo/pythonize.py")
 
 endif(GISMO_WITH_CPPYY)
+
+## #################################################################
+## Install
+## #################################################################
+
+# Configure
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
+
+include(gsInstall)
+
+## #################################################################
+## Executables
+## #################################################################
+
+# Note: if the shared libs are created, examples are linked against the
+#  shared lib, otherwise targets are not linked against anything, only
+#  templated code is used.
+if(GISMO_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+else()
+  add_subdirectory(examples EXCLUDE_FROM_ALL)
+endif(GISMO_BUILD_EXAMPLES)
 
 ## #################################################################
 ## Misc

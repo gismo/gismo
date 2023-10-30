@@ -22,7 +22,4 @@ def pythonize_gismo(klass, name):
             cols = self.cols()
             numpyarray = np.frombuffer(self.data(), dtype=np.double, count=rows*cols).reshape(rows, cols)
             return numpyarray
-        #try:
-            setattr(klass, "tonumpy", tonumpy)
-        #except KeyError:
-        #    pass
+        setattr(klass, "tonumpy", tonumpy)
