@@ -188,7 +188,7 @@ template<class T> inline
 gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 {
     gsSparseMatrix<T> result( u.cols(), this->size() );
-    gsInfo << "collocation matrix rows x cols = " << u.cols() << " x " << this->size() << "\n";
+    //gsInfo << "collocation matrix rows x cols = " << u.cols() << " x " << this->size() << "\n";
 
     gsVector<index_t> nact( this->size() );
     nact.setOnes();

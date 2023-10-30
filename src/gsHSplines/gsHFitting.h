@@ -104,6 +104,16 @@ public:
      */
     bool nextIteration(T tolerance, T err_threshold, index_t maxPcIter = 0);
 
+    bool nextRefinement(T tolerance, T err_threshold, index_t maxPcIter = 0);
+    /**
+     * @brief nextIteration_tdm One step of the refinement of iterative_refine(...);
+     * @param tolerance (>=0) if the maximum error is below the tolerance the refinement stops;
+     * @param err_threshold the same as in iterative_refine(...).
+     * @param mu is the amount of PDM, to be set between 0.1 and 1;
+     * @param sigma is the amount of TDM, to be set to 1;
+     */
+    bool nextIteration_tdm(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx);
+
     /**
      * @brief Like \a nextIteration without \a fixedSides but keeping the values
      * on these sides unchanged throughout the fit.
@@ -111,6 +121,16 @@ public:
     bool nextIteration(T tolerance, T err_threshold,
                        const std::vector<boxSide>& fixedSides,
                        index_t maxPcIter = 0);
+
+    bool nextRefinement(T tolerance, T err_threshold,
+                       const std::vector<boxSide>& fixedSides,
+                       index_t maxPcIter = 0);
+
+    bool nextIteration_tdm(T tolerance, T err_threshold,
+                          const std::vector<boxSide>& fixedSides,
+                          index_t maxPcIter,
+                          T mu, T sigma,
+                          const std::vector<index_t>& interpIdx);
 
     /// Return the refinement percentage
     T getRefPercentage() const
@@ -206,6 +226,25 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 }
 
 template<short_t d, class T>
+bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
+                                         index_t maxPcIter, T mu, T sigma,
+                                         const std::vector<index_t>& interpIdx)
+{
+    std::vector<boxSide> dummy;
+    return nextIteration_tdm(tolerance, err_threshold, dummy, maxPcIter, mu, sigma, interpIdx);
+}
+
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold,
+                                         index_t maxPcIter)
+{
+    std::vector<boxSide> dummy;
+    return nextRefinement(tolerance, err_threshold, dummy, maxPcIter);
+}
+
+
+template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
                                      const std::vector<boxSide>& fixedSides,
                                      index_t maxPcIter)
@@ -231,6 +270,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
             // If there are any fixed sides, prescribe the coefs in the finer basis.
             if(m_result != NULL && fixedSides.size() > 0)
             {
+                gsDebugVar(fixedSides.size());
                 m_result->refineElements(boxes);
                 gsFitting<T>::setConstraints(fixedSides);
             }
@@ -253,6 +293,133 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 
     return true;
 }
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
+                                        const std::vector<boxSide>& fixedSides,
+                                        index_t maxPcIter, T mu, T sigma,
+                                        const std::vector<index_t>& interpIdx)
+{
+    // INVARIANT
+    // look at iterativeRefine
+
+    if ( m_pointErrors.size() != 0 )
+    {
+
+        if ( m_max_error > tolerance )
+        {
+            // if err_treshold is -1 we refine the m_ref percent of the whole domain
+            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
+            if(boxes.size()==0)
+                return false;
+
+            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+            //basis->refineElements(boxes);
+            basis->refineElements_withCoefs(this->m_result->coefs(), boxes);
+
+
+            // If there are any fixed sides, prescribe the coefs in the finer basis.
+            if(m_result != NULL && fixedSides.size() > 0)
+            {
+                gsDebugVar(fixedSides.size());
+                m_result->refineElements(boxes);
+                gsFitting<T>::setConstraints(fixedSides);
+            }
+            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
+        }
+        else
+        {
+            gsInfo << "Tolerance reached.\n";
+            return false;
+        }
+    }
+
+    // We run one fitting step and compute the errors
+    //this->compute(m_lambda);
+    gsInfo << "compute_tdm...\n";
+    this->compute_tdm(m_lambda, mu, sigma, interpIdx);
+    // m_results->coefs() = coefs_tilde;
+
+    //parameter correction
+    gsInfo << "apply parameter correction for tdm...\n";
+    this->parameterCorrection_tdm(1e-7, maxPcIter, mu, sigma, interpIdx);
+
+    this->computeErrors();
+
+    return true;
+}
+
+
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold,
+                                      const std::vector<boxSide>& fixedSides,
+                                      index_t maxPcIter)
+{
+    // INVARIANT
+    // look at iterativeRefine
+
+    if ( m_pointErrors.size() != 0 )
+    {
+
+        if ( m_max_error > tolerance )
+        {
+            // if err_treshold is -1 we refine the m_ref percent of the whole domain
+            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
+            if(boxes.size()==0)
+                return false;
+
+            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+            //basis->refineElements(boxes);
+            gsInfo << "Basis size before refinement: = " << basis->size() << "\n";
+            gsInfo << "Coefficients size before refinement: = " << this->m_result->coefs().rows() << " x " << this->m_result->coefs().cols() << "\n";
+            basis->refineElements_withCoefs(this->m_result->coefs(), boxes);
+            gsInfo << "Basis size after refinement: = " << this->m_basis->size() << "\n";
+            gsInfo << "Coefficients size after refinement: = " << this->m_result->coefs().rows() << " x " << this->m_result->coefs().cols() << "\n";
+            //this->updateGeometry(this->m_result->coefs(), this->m_param_values);
+
+
+            // If there are any fixed sides, prescribe the coefs in the finer basis.
+            if(m_result != NULL && fixedSides.size() > 0)
+            {
+                gsDebugVar(fixedSides.size());
+                m_result->refineElements(boxes);
+                gsFitting<T>::setConstraints(fixedSides);
+            }
+            gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
+        }
+        else
+        {
+            gsInfo << "Tolerance reached.\n";
+            return false;
+        }
+
+        const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis);
+        m_result = bb->makeGeometry( give(this->m_result->coefs()) ).release();
+
+    }
+    else
+    {
+      gsInfo << "First fitting: compute with LS.\n";
+
+      this->compute(m_lambda);
+
+      this->parameterCorrection(1e-7, maxPcIter, 1e-4);
+
+    }
+
+    this->computeErrors();
+
+    return true;
+}
+
+
+
+
+
 
 template<short_t d, class T>
 void gsHFitting<d, T>::iterativeRefine(int numIterations, T tolerance, T err_threshold)

@@ -16,6 +16,9 @@
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsAssembler/gsExpressions.h>
+#include <gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprEvaluator.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 
@@ -140,6 +143,655 @@ void gsFitting<T>::compute(T lambda)
         m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(x));
 }
 
+
+
+
+void writeToCSVfile(std::string name, gsMatrix<> matrix)
+{
+  std::ofstream file(name.c_str());
+  for(int  i = 0; i < matrix.rows(); i++)
+  {
+    for(int j = 0; j < matrix.cols(); j++)
+    {
+       std::string str = std::to_string(matrix(i,j));
+       if(j+1 == matrix.cols())
+       {
+           file<<std::setprecision(10)<<str;
+       }
+       else
+       {
+           file<<std::setprecision(10)<<str<<',';
+       }
+    }
+    file<<'\n';
+  }
+}
+
+
+
+
+template<class T>
+void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx)
+{
+    m_last_lambda = lambda;
+    if ( !m_result )
+    {
+      gsInfo << "No existing geometry...\n";
+      compute(m_last_lambda);
+      gsInfo << "... now it does.\n";
+    }
+
+    const index_t num_basis = m_basis->size();
+    const index_t num_points = m_points.rows();
+    const index_t dimension = m_points.cols();
+
+    if( interpIdx.size() == 0)
+    {
+      gsInfo << "Input point cloud needs to be ordered:\n"
+             << "interior points, south boundary curve, east boundary curve, north boundary curve, west boundary curve.\n";
+    return;
+    }
+
+    // sn: compute the normals
+    gsDebugVar(*m_result);
+    gsMatrix<T> refCoefs = m_result->coefs();
+    gsInfo << "current geometry:\n" << *m_result << "\n";
+    gsInfo << "with coefs:\n" << refCoefs << "\n";
+
+    // Wipe out previous result
+    if ( m_result )
+        delete m_result;
+
+    if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
+        m_result = bb->makeGeometry( give(refCoefs) ).release();
+    else
+        m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(refCoefs));
+
+
+    gsExprEvaluator<T> ev;
+    auto G = ev.getMap(*m_result);
+    gsMatrix<T> normals(3, m_param_values.cols());
+    normals.setZero();
+    gsSparseMatrix<T> N_diag(m_points.rows() * 3, m_points.rows());
+    N_diag.setZero();
+    //
+    // gsDebugVar(m_param_values.col(0));
+    // gsDebugVar(m_points.rows());
+    // gsDebugVar(m_points.cols());
+    //for(index_t j=0; j < interpIdx[0]; j++)
+
+    for(index_t j=0; j < m_param_values.cols(); j++)
+    {
+      normals.col(j) = ev.eval(sn(G).normalized(), m_param_values.col(j));
+      N_diag(j,j) = normals(0,j);
+      N_diag(m_points.rows()+j,j) = normals(1,j);
+      N_diag(2*m_points.rows()+j,j) = normals(2,j);
+    }
+    writeToCSVfile(internal::to_string(num_basis)+"normals.csv", N_diag);
+
+    // nv: outer normals for boundary curves.
+    if(false)
+    {
+    for(index_t j=interpIdx[0]; j < m_param_values.cols(); j++)
+    {
+      // south, east, north, west
+      patchSide ps;
+      if ( (interpIdx[1] <= j) && (j < interpIdx[2]) ) // east
+      {
+        GISMO_ENSURE(m_param_values(0,j)==1, internal::to_string(j) + "-th parameter NOT on EAST boundary");
+        ps = patchSide(0,boundary::east);
+        normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
+      }
+      else if ( (interpIdx[2] <= j) && (j < interpIdx[3]) )
+      {
+        GISMO_ENSURE(m_param_values(1,j)==1, internal::to_string(j) + "-th parameter NOT on NORTH boundary");
+        ps = patchSide(0,boundary::north);
+        normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
+      }
+      else if ( interpIdx[3] <= j)
+      {
+        GISMO_ENSURE(m_param_values(0,j)==0, internal::to_string(j) + "-th parameter NOT on WEST boundary");
+        ps = patchSide(0,boundary::west);
+        normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
+      }
+      else
+      {
+        GISMO_ENSURE(m_param_values(1,j)==0, internal::to_string(j) + "-th parameter NOT on SOUTH boundary");
+        ps = patchSide(0,boundary::south);
+        normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
+      }
+
+
+      N_diag(j,j) = normals(0,j);
+      N_diag(m_points.rows()+j,j) = normals(1,j);
+      N_diag(2*m_points.rows()+j,j) = normals(2,j);
+    }// normals on boundary
+    } //fi
+
+    gsSparseMatrix<T> sparseColloc(m_points.rows(), num_basis);
+
+    gsInfo << "--------------------------------------------------------\n";
+    gsInfo << "space dimension = " << num_basis << "\n";
+    gsDebugVar(m_result->basis());
+    sparseColloc = m_result->basis().collocationMatrix( m_param_values ) ;
+
+    gsMatrix<T> tmp = sparseColloc;
+    gsMatrix<T> Bb(m_points.rows() * 3, m_basis->size() * 3);
+    Bb.setZero();
+    Bb.block(0,0,tmp.rows(),tmp.cols()) = tmp;
+    Bb.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
+    Bb.block(2*tmp.rows(),2*tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
+
+    writeToCSVfile(internal::to_string(num_basis)+"Bb.csv", Bb);
+
+    gsSparseMatrix<T> B_mat(m_points.rows() * 3, m_basis->size() * 3);
+    B_mat = Bb.sparseView();
+
+    gsMatrix<T> X_tilde(m_points.rows() * 3, 1);
+    // gsDebugVar(m_points.col(0));
+    X_tilde << m_points.col(0), m_points.col(1), m_points.col(2);
+
+    gsSparseMatrix<T> A_tilde(B_mat.cols(), B_mat.cols());
+    gsSparseMatrix<T> Im(3*m_points.rows(), 3*m_points.rows());
+    Im.setIdentity();
+    gsMatrix<T> rhs(B_mat.cols(),1);
+
+    if ( mu > 0 && sigma > 0)
+    {
+      gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
+      A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
+      rhs =  B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose() ) * X_tilde ;
+    }
+    else if (mu > 0 && sigma == 0)
+    {
+      gsInfo << "PDM.\n";
+      A_tilde = B_mat.transpose() *  B_mat;
+      rhs = B_mat.transpose() * X_tilde ;
+    }
+    else if (sigma > 0 && mu == 0)
+    {
+      gsInfo << "TDM.\n";
+      A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
+      rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
+    }
+    else
+    {
+      gsWarn<<  "No available fitting method. Aborting.\n";
+      return;
+    }
+
+    gsSparseMatrix<T> m_G;
+    m_G.resize(m_basis->size(), m_basis->size());
+    gsSparseMatrix<T> G_mat(A_tilde.rows(), A_tilde.cols());
+    gsMatrix<T> Gg(A_tilde.rows(), A_tilde.cols());
+    Gg.setZero();
+
+    if(lambda > 0)
+    {
+      gsInfo << "Penalization.\n";
+      applySmoothing(lambda, m_G);
+      Gg.block(0,0,m_G.rows(),m_G.cols()) = m_G;
+      Gg.block(m_G.rows(),m_G.cols(),m_G.rows(),m_G.cols()) = m_G;
+      Gg.block(2*m_G.rows(),2*m_G.cols(),m_G.rows(),m_G.cols()) = m_G;
+      G_mat = Gg.sparseView();
+      A_tilde += lambda * G_mat;
+    }
+
+    gsInfo << "Solving the linear system.\n";
+    A_tilde.makeCompressed();
+
+    gsMatrix<T> A_csv(A_tilde);
+    writeToCSVfile("A_tilde.csv", A_csv);
+    writeToCSVfile("X_tilde.csv", X_tilde);
+    writeToCSVfile("rhs.csv", rhs);
+    gsInfo << "Written\n";
+
+    // typename gsSparseSolver<T>::BiCGSTABILUT solver( A_tilde );
+    //
+    // if ( solver.preconditioner().info() != gsEigen::Success )
+    // {
+    //     gsWarn<<  "The preconditioner failed. Aborting.\n";
+    //
+    //     return;
+    // }
+
+    typename gsSparseSolver<T>::QR solver(A_tilde);
+    gsMatrix<T> sol_tilde = solver.solve(rhs); //toDense()
+    gsInfo << "Solved.\n";
+
+    // gsDebugVar(sol_tilde.rows());
+    // gsDebugVar(sol_tilde.cols());
+
+    gsMatrix<T> coefs_tilde(m_basis->size(), 3);
+    for(index_t j=0; j<m_basis->size(); j++)
+    {
+      coefs_tilde(j,0) = sol_tilde(j);
+      coefs_tilde(j,1) = sol_tilde(m_basis->size()+j);
+      coefs_tilde(j,2) = sol_tilde(2*m_basis->size()+j);
+    }
+
+    gsDebugVar(coefs_tilde);
+
+    // Wipe out previous result
+    if ( m_result )
+        delete m_result;
+
+    if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
+        m_result = bb->makeGeometry( give(coefs_tilde) ).release();
+    else
+        m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(coefs_tilde));
+
+    gsDebugVar(*m_result);
+}
+
+
+template <class T>
+bool gsFitting<T>::is_corner(gsMatrix<T> & p_domain,
+                             gsVector<T> & param)
+{
+  bool corner_check = false;
+  if( (math::abs(param(0) - p_domain(0,0)) < 1e-15) && (math::abs(param(1) - p_domain(1,0)) < 1e-15) ){
+    // gsInfo << "param:\n" << param << "\n";
+    // gsInfo << param(0,0) << " == " << p_domain(0,0) << "\n";
+    // gsInfo << param(0,1) << " == " << p_domain(1,0) << "\n";
+    corner_check = true;
+  }
+  else if( (math::abs(param(0) - p_domain(0,1)) < 1e-15) && (math::abs(param(1) - p_domain(1,0)) < 1e-15) ){
+    corner_check = true;
+  }
+  else if( (math::abs(param(0) - p_domain(0,1)) < 1e-15) && (math::abs(param(1) - p_domain(1,1)) < 1e-15) ){
+    corner_check = true;
+  }
+  else if( (math::abs(param(0) - p_domain(0,0)) < 1e-15) && (math::abs(param(1) - p_domain(1,1)) < 1e-15) ){
+    corner_check = true;
+  }
+  else{
+    corner_check = false;
+  }
+  return corner_check;
+}
+
+template <class T>
+void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
+                                                    index_t maxIter,
+                                                    T mu, T sigma,
+                                                    const std::vector<index_t>& interpIdx)
+{
+    index_t sepIndex = interpIdx[0];
+
+    if ( !m_result )
+    {
+      compute(m_last_lambda);
+    }
+
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+
+      gsVector<T> newParam;
+      gsMatrix<T> geoSupport = m_result->support();
+#     pragma omp parallel for default(shared) private(newParam)
+      for (index_t i = 0; i < sepIndex; ++i)
+      {
+          // gsInfo << "Interior:\n" << newParam << "\n";
+          const auto & curr = m_points.row(i).transpose();
+          newParam = m_param_values.col(i);
+          m_result->closestPointTo(curr, newParam, accuracy, true);
+
+          // Decide whether to accept the correction or to drop it
+          // gsInfo << "Correction:\n" << newParam << "\n";
+          // gsInfo << "On the boundary ? " << "\n";
+          // gsInfo << geoSupport(0,0) << "<" << newParam(0) << "<" << geoSupport(0,1) << "\n";
+          // gsInfo << geoSupport(1,0) << "<" << newParam(1) << "<" << geoSupport(1,1) << "\n";
+          // if( ( geoSupport(0,0) < newParam(0) ) && ( newParam(0) < geoSupport(0,1) ) && ( geoSupport(1,0) < newParam(1) ) && ( newParam(1) < geoSupport(1,1) ) )
+          // {
+            // gsInfo << "And we get here.\n";
+          if ((m_result->eval(newParam) - curr).norm() < (m_result->eval(m_param_values.col(i))- curr).norm()){
+            m_param_values.col(i) = newParam;
+          }
+
+          // (!) There might be the same parameter for two points
+          // or ordering constraints in the case of structured/grid data
+      }
+
+      }
+
+      // refit
+      compute_tdm(m_last_lambda, mu, sigma, interpIdx);
+}
+
+template <class T>
+void gsFitting<T>::parameterCorrectionSepBoundary(T accuracy,
+                                                  index_t maxIter,
+                                                  T mu, T sigma,
+                                                  const std::vector<index_t>& interpIdx)
+{
+  index_t sepIndex = interpIdx[0];
+
+    if ( !m_result )
+      compute(m_last_lambda);
+
+    for (index_t it = 0; it!=maxIter; ++it)
+    {
+
+      gsVector<T> newParam;
+      gsMatrix<T> geoSupport = m_result->support();
+#     pragma omp parallel for default(shared) private(newParam)
+      for (index_t i = 0; i < sepIndex; ++i)
+      //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
+      {
+          // gsInfo << "Interior:\n" << newParam << "\n";
+          const auto & curr = m_points.row(i).transpose();
+          newParam = m_param_values.col(i);
+          m_result->closestPointTo(curr, newParam, accuracy, true);
+
+          // Decide whether to accept the correction or to drop it
+          // gsInfo << "Correction:\n" << newParam << "\n";
+          // gsInfo << "On the boundary ? " << "\n";
+          // gsInfo << geoSupport(0,0) << "<" << newParam(0) << "<" << geoSupport(0,1) << "\n";
+          // gsInfo << geoSupport(1,0) << "<" << newParam(1) << "<" << geoSupport(1,1) << "\n";
+          // if( ( geoSupport(0,0) < newParam(0) ) && ( newParam(0) < geoSupport(0,1) ) && ( geoSupport(1,0) < newParam(1) ) && ( newParam(1) < geoSupport(1,1) ) )
+          // {
+            // gsInfo << "And we get here.\n";
+          if ((m_result->eval(newParam) - curr).norm() < (m_result->eval(m_param_values.col(i))- curr).norm()){
+            m_param_values.col(i) = newParam;
+          }
+          //}
+
+          // (!) There might be the same parameter for two points
+          // or ordering constraints in the case of structured/grid data
+      }
+
+      // Correct the parameters, but keep them on the boundary
+
+
+      for (index_t i = sepIndex; i < m_points.rows(); ++i)
+      {
+          gsVector<T> newBoundaryParam(1);
+          gsVector<T> oldBoundaryParam(1);
+          const auto & curr = m_points.row(i).transpose();
+          newParam = m_param_values.col(i);
+
+          //if (!is_corner(geoSupport, newParam)){
+
+            // gsInfo << "West  : " << newParam(0) << "==" << geoSupport(0,0) << "\n";
+            // gsInfo << "East  : " << newParam(0) << "==" << geoSupport(0,1) << "\n";
+            // gsInfo << "South : " << newParam(1) << "==" << geoSupport(1,0) << "\n";
+            // gsInfo << "North : " << newParam(1) << "==" << geoSupport(1,1) << "\n";
+
+
+            gsVector<T> leftParam = m_param_values.col(i);
+            gsVector<T> rightParam = m_param_values.col(i);
+
+            if ( (i==sepIndex) && !is_corner(geoSupport, newParam) ){
+              leftParam = m_param_values.col(m_points.rows()-1);
+              rightParam = m_param_values.col(i+1);
+            }
+
+            if ( (i==m_points.rows()-1) && !is_corner(geoSupport, newParam) ){
+              leftParam = m_param_values.col(i-1);
+              rightParam = m_param_values.col(sepIndex);
+            }
+
+            if ( (i>sepIndex) && (i < m_points.rows()-1) && !is_corner(geoSupport, newParam) ){
+
+              leftParam = m_param_values.col(i-1);
+              rightParam = m_param_values.col(i+1);
+            }
+
+            if( math::abs(newParam(0) - geoSupport(0,0)) < 1e-15 )
+            {
+              // gsInfo << newParam(0) << " == " << geoSupport(0,0) << "\n";
+              // gsInfo << "1 = West-boundary:\n" << newParam << "\n";
+              typename gsGeometry<T>::uPtr b = m_result->boundary(1);
+
+
+              newBoundaryParam << newParam(1);
+              oldBoundaryParam << newParam(1);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "West-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+
+              // assumption: boundary parameters in anti-clockwise order
+              if( (leftParam(1) > newBoundaryParam(0)) && (newBoundaryParam(0) > rightParam(1)) ){
+                newParam(1) = newBoundaryParam(0);
+              }
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
+
+            }
+            else if ( math::abs(newParam(0) - geoSupport(0,1)) < 1e-15 )
+            {
+              // gsInfo << newParam(0) << " == " << geoSupport(0,1) << "\n";
+              // gsInfo << "2 = East-boundary:\n" << newParam << "\n";
+              typename gsGeometry<T>::uPtr b = m_result->boundary(2);
+
+
+              newBoundaryParam << newParam(1);
+              oldBoundaryParam << newParam(1);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "East-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+              if( (leftParam(1) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(1)) ){
+                newParam(1) = newBoundaryParam(0);
+              }
+
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
+
+            }
+            else if ( math::abs(newParam(1) - geoSupport(1,0)) < 1e-15 )
+            {
+              // gsInfo << newParam(1) << " == " << geoSupport(1,0) << "\n";
+              // gsInfo << "3 = South-boundary:\n" << newParam << "\n";
+              typename gsGeometry<T>::uPtr b = m_result->boundary(3);
+
+
+              newBoundaryParam << newParam(0);
+              oldBoundaryParam << newParam(0);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "South-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+              if( (leftParam(0) < newBoundaryParam(0)) && (newBoundaryParam(0) < rightParam(0)) ){
+                newParam(0) = newBoundaryParam(0);
+              }
+
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
+            }
+            else{
+              // gsInfo << newParam(1) << " == " << geoSupport(1,1) << "\n";
+              // gsInfo << i << "-th point:\n" << "\n";
+              // gsInfo << rightParam(0)<< " < " << newParam(0) << " < " << leftParam(0) << "\n";
+              typename gsGeometry<T>::uPtr b = m_result->boundary(4);
+
+              // gsInfo << newParam(1) << "==" << geoSupport(1,1) << "\n";
+              newBoundaryParam << newParam(0);
+              oldBoundaryParam << newParam(0);
+              // gsInfo << "param to optimize: " << newBoundaryParam << "\n";
+              // gsInfo << "North-boundary correction:\n";
+              b->closestPointTo(curr, newBoundaryParam, accuracy, true);
+              // gsInfo << "optimized: " << newBoundaryParam << "\n";
+              // assumption: paramters in anti-clockwise order
+              // gsInfo << "Projection:\n";
+              // gsInfo << rightParam(0)<< " < " << newBoundaryParam(0) << " < " << leftParam(0) << "\n";
+              if( (leftParam(0) > newBoundaryParam(0)) && (newBoundaryParam(0) > rightParam(0)) ){
+                // gsInfo << "Before:\n" << newParam << "\n";
+                newParam(0) = newBoundaryParam(0);
+                // gsInfo << "After:\n" << newParam << "\n";
+              }
+              if ((b->eval(newBoundaryParam) - curr).norm() < (b->eval(oldBoundaryParam)- curr).norm()){
+                m_param_values.col(i) = newParam;
+              }
+            }
+
+
+          //} // corner: to be moved or not.
+      }
+
+      // refit
+      compute_tdm(m_last_lambda, mu, sigma, interpIdx);
+    }
+}
+
+
+template <class T>
+void gsFitting<T>::parameterCorrection_tdm(T accuracy,
+                                            index_t maxIter,
+                                            T mu, T sigma,
+                                            const std::vector<index_t>& interpIdx)
+{
+    if ( !m_result )
+    {
+      compute(m_last_lambda);
+    }
+
+    const index_t d = m_param_values.rows();
+    const index_t n = m_points.cols();
+    for (index_t it = 0; it<maxIter; ++it)
+    {
+//#       pragma omp parallel for default(shared) private(newParam)
+      gsInfo << "Parameter correction for interior points...\n";
+      index_t trackCorrection = 0;
+      for (index_t i = 0; i < interpIdx[0]; ++i)
+      {
+        gsVector<T> newParam;
+        const auto & curr = m_points.row(i).transpose();
+        newParam = m_param_values.col(i);
+        m_result->closestPointTo(curr, newParam, accuracy, true);
+
+        // Decide whether to accept the correction or to drop it
+        if ((m_result->eval(newParam) - curr).norm()
+            < (m_result->eval(m_param_values.col(i)) - curr).norm())
+        {
+          m_param_values.col(i) = newParam;
+          trackCorrection += 1;
+        }
+      }
+      gsInfo << "... applied to " << trackCorrection << " interior points, out of " << interpIdx[0] <<".\n";
+      // parameter correction on boundary curves
+      // south: (u,0)
+      gsInfo << "Parameter correction for south boundary points...\n";
+      trackCorrection = 0;
+      for (index_t i = interpIdx[0]+1; i < interpIdx[1]; ++i)
+      {
+        gsVector<> newParam(1,1);
+        gsVector<> oldParam(1,1);
+        newParam(0,0) = m_param_values(0,i);
+        oldParam(0,0) = m_param_values(0,i);
+        const auto & curr = m_points.row(i).transpose();
+        typename gsGeometry<T>::uPtr b = m_result->boundary(3); // south edge
+        b->closestPointTo(curr, newParam, accuracy, true);
+
+        if ((b->eval(newParam) - curr).norm()
+            < (b->eval(oldParam) - curr).norm())
+        {
+          m_param_values(0,i) = newParam(0,0);
+          trackCorrection += 1;
+        }
+      }
+      gsInfo << "... applied to " << trackCorrection << " interior points, out of " << interpIdx[1]-interpIdx[0] <<".\n";
+      // east (1,v)
+      for (index_t i = interpIdx[1]+1; i < interpIdx[2]; ++i)
+      {
+        gsVector<> newParam(1,1);
+        gsVector<> oldParam(1,1);
+        newParam(0,0) = m_param_values(1,i); // we consider the v of the i-th parameter
+        oldParam(0,0) = m_param_values(1,i); // we consider the v of the i-th parameter
+        const auto & curr = m_points.row(i).transpose();
+        typename gsGeometry<T>::uPtr b = m_result->boundary(2); // east edge
+        b->closestPointTo(curr, newParam, accuracy, true);
+
+        if ((b->eval(newParam) - curr).norm()
+            < (b->eval(oldParam) - curr).norm())
+            m_param_values(1,i) = newParam(0,0);
+      }
+      //north (u,1)
+      for (index_t i = interpIdx[2]+1; i < interpIdx[3]; ++i)
+      {
+
+        gsVector<> newParam(1,1);
+        gsVector<> oldParam(1,1);
+        newParam(0,0) = m_param_values(0,i); // we consider the u of the i-th parameter
+        oldParam(0,0) = m_param_values(0,i); // we consider the u of the i-th parameter
+        const auto & curr = m_points.row(i).transpose();
+        typename gsGeometry<T>::uPtr b = m_result->boundary(4); // north edge
+        b->closestPointTo(curr, newParam, accuracy, true);
+
+        if ((b->eval(newParam) - curr).norm()
+            < (b->eval(oldParam) - curr).norm())
+            m_param_values(0,i) = newParam(0,0);
+      }
+      //west (0,v)
+      for (index_t i = interpIdx[3]+1; i < m_points.rows(); ++i)
+      {
+
+        gsVector<> newParam(1,1);
+        gsVector<> oldParam(1,1);
+        newParam(0,0) = m_param_values(1,i); // we consider the v of the i-th parameter
+        oldParam(0,0) = m_param_values(1,i); // we consider the v of the i-th parameter
+        const auto & curr = m_points.row(i).transpose();
+        typename gsGeometry<T>::uPtr b = m_result->boundary(1); // west edge
+        b->closestPointTo(curr, newParam, accuracy, true);
+
+        if ((b->eval(newParam) - curr).norm()
+            < (b->eval(oldParam) - curr).norm())
+            m_param_values(1,i) = newParam(0,0);
+      }
+          // refit
+          compute_tdm(m_last_lambda, mu, sigma, interpIdx);
+    }// step of PC
+}
+
+/*
+
+for (index_t i = 0; i < interpIdx[0]; ++i)
+{
+  gsVector<> newParam;
+  original.closestPointTo(X.col(i), newParam, 1e-10, true);
+  params.col(i) = newParam;
+}
+// parameter correction on boundary curves
+// south: (u,0)
+for (index_t i = interpIdx[0]+1; i < interpIdx[1]; ++i)
+{
+  gsVector<> newParam;
+  original.closestPointTo(X.col(i), newParam, 1e-10, true);
+  params(0,i) = newParam(0,0);
+}
+// east (1,v)
+for (index_t i = interpIdx[1]+1; i < interpIdx[2]; ++i)
+{
+  gsVector<> newParam;
+  original.closestPointTo(X.col(i), newParam, 1e-10, true);
+  params(1,i) = newParam(1,0);
+}
+//north (u,1)
+for (index_t i = interpIdx[2]+1; i < interpIdx[3]; ++i)
+{
+  gsVector<> newParam;
+  original.closestPointTo(X.col(i), newParam, 1e-10, true);
+  params(0,i) = newParam(0,0);
+}
+//west (0,v)
+for (index_t i = interpIdx[3]+1; i < X.cols(); ++i)
+{
+  gsVector<> newParam;
+  original.closestPointTo(X.col(i), newParam, 1e-10, true);
+  params(1,i) = newParam(1,0);
+}
+*/
+
+
+
+
+
+
 template <class T>
 void gsFitting<T>::parameterCorrection(T accuracy,
                                        index_t maxIter,
@@ -150,54 +802,15 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 
     const index_t d = m_param_values.rows();
     const index_t n = m_points.cols();
-    T maxAng, avgAng;
-    std::vector<gsMatrix<T> > vals;
-    gsMatrix<T> DD, der;
+
     for (index_t it = 0; it<maxIter; ++it)
     {
-        maxAng = -1;
-        avgAng = 0;
-        //auto der = gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,-1> >
-        //(vals[1].data()+k, n, m_points.rows(), gsEigen::Stride<-1,-1>(d*n,d) );
-
-#       pragma omp parallel for default(shared) private(der,DD,vals)
-        for (index_t s = 0; s<m_points.rows(); ++s)
-            //for (index_t s = 1; s<m_points.rows()-1; ++s) //(! curve) skip first and last point
-        {
-            vals = m_result->evalAllDers(m_param_values.col(s), 1);
-            for (index_t k = 0; k<d; ++k)
-            {
-                der = vals[1].reshaped(d,n);
-                DD = vals[0].transpose() - m_points.row(s);
-                const T cv = ( DD.normalized() * der.row(k).transpose().normalized() ).value();
-                const T a = math::abs(0.5*EIGEN_PI-math::acos(cv));
-#               pragma omp critical (max_avg_ang)
-                {
-                    maxAng = math::max(maxAng, a );
-                    avgAng += a;
-                }
-            }
-            /*
-            auto der = gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,-1> >
-                (vals[1].data()+k, n, m_points.rows(), gsEigen::Stride<-1,-1>(d*n,d) );
-            maxAng = ( DD.colwise().normalized() *
-                       der.colwise().normalized().transpose()
-                ).array().acos().maxCoeff();
-            */
-        }
-
-        avgAng /= d*m_points.rows();
-        //gsInfo << "Avg-deviation: "<< avgAng << " / max: "<<maxAng<<"\n";
-
-        // if (math::abs(0.5*EIGEN_PI-maxAng) <= tolOrth ) break;
-
-        gsVector<T> newParam;
-#       pragma omp parallel for default(shared) private(newParam)
+//#       pragma omp parallel for
         for (index_t i = 0; i<m_points.rows(); ++i)
         //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
         {
             const auto & curr = m_points.row(i).transpose();
-            newParam = m_param_values.col(i);
+            gsVector<T> newParam = m_param_values.col(i);
             m_result->closestPointTo(curr, newParam, accuracy, true);
 
             // Decide whether to accept the correction or to drop it

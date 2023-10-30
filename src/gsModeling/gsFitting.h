@@ -58,9 +58,18 @@ public:
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
 
+    void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx);
+
     void parameterCorrection(T accuracy = 1e-8,
                              index_t maxIter = 10,
                              T tolOrth = 1e-6);
+
+    bool is_corner(gsMatrix<T> & parametric_domain, gsVector<T> & parameter);
+
+    void parameterCorrection_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& interpIdx);
+    void parameterCorrectionSepBoundary(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex);
+    void parameterCorrectionFixedBoundary(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& interpIdx);
+
 
     /// Computes the euclidean error for each point
     void computeErrors();
