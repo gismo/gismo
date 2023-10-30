@@ -264,7 +264,7 @@ public:
 
     /// Add the object to the Xml tree, same as <<, but also allows to set the XML id and label attributes
     template<class Object>
-    void add (const Object & obj, int id = -1, std::string label="")
+    void add (const Object & obj, int id = -1)
     {
         gsXmlNode* node =
             internal::gsXml<Object>::put(obj, *data);
@@ -275,7 +275,7 @@ public:
         }
         else
         {
-            data->appendToRoot(node,id, label);
+            data->appendToRoot(node,id);
         }
     }
 
@@ -283,7 +283,17 @@ public:
     template<class Object>
     void addWithLabel (const Object & obj, std::string label)
     {
-        add(obj, -1, label);
+        gsXmlNode* node =
+            internal::gsXml<Object>::put(obj, *data);
+        if ( ! node )
+        {
+            gsInfo<<"gsFileData: Trouble inserting "<<internal::gsXml<Object>::tag()
+                         <<" to the XML tree. is \"put\" implemented ??\n";
+        }
+        else
+        {
+            data->appendToRoot(node,-1,label);
+        }
     }
 
     /// Add a string to the Xml tree
