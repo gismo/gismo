@@ -53,7 +53,7 @@ void scalePoints(const gsMatrix<T> & xyz,
 
   points.resize(xyz.rows(), xyz.cols());
   points = (1/den)*(xyz - p_min * gsMatrix<T>::Ones(xyz.rows(), xyz.cols()));
-  gsWriteParaviewPoints(points, "scaled_points");
+  //gsWriteParaviewPoints(points, "scaled_points");
 }
 
 /* input : a parametrized point cloud with parameters and points
@@ -224,15 +224,16 @@ int main(int argc, char *argv[])
     bool uvcorrection = false; // g
     // h
     index_t maxIter = 0; // i
-    //j, k, l,
-    real_t sigma = 0; // m
+    //j, k, l
+    real_t penlm = 0.;
     index_t numKnots = 5; // n
     // o
-    real_t mu = 1; // p
+    real_t mu = 0; // p parameter to fine tune pdm
     index_t deg_x = -1; // q
     index_t deg_y = -1; // r
     real_t lambda = 0; // s
-    // t, u, v, w,
+    real_t sigma = 1; // t parameter to fineture tdm
+    //u, v, w,
     index_t kx = -1; // x
     index_t ky = -1; // y
     // z
@@ -246,15 +247,16 @@ int main(int argc, char *argv[])
     cmd.addSwitch("g", "uvc", "apply parameter correction.", uvcorrection);
     // h
     cmd.addInt("i", "iter", "number of maximum iterations of the optimization algorithm(s).", maxIter);
-    //j, k, l,
-    cmd.addReal("m", "tdm", "add TDM to the system", sigma);
+    //j, k, l
+    cmd.addReal("m", "lm", "LM penalisation of linear system", penlm);
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
     // o
     cmd.addReal("p", "pdm", "add PDM to the system", mu);
     cmd.addInt("q", "xdeg", "x-degree (dx,dy).", deg_x);
     cmd.addInt("r", "ydeg", "y-degree (dy,dy).", deg_y);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
-    // t, u, v, w,
+    cmd.addReal("t", "tdm", "add TDM to the system", sigma);
+    //u, v, w,
     cmd.addInt("x", "xknt", "number of interior knots in x-direction.", kx);
     cmd.addInt("y", "yknt", "number of interior knots in y-direction.", ky);
     // z
@@ -291,8 +293,8 @@ int main(int argc, char *argv[])
     std::vector<index_t> interpIdx;
     sortPointCloud(uv, X, interpIdx);
 
-    gsWriteParaviewPoints(uv, "0parameters");
-    gsWriteParaviewPoints(X, "points");
+    //gsWriteParaviewPoints(uv, "0parameters");
+    //gsWriteParaviewPoints(X, "points");
 
 
     std::ofstream pdm_results;
@@ -321,8 +323,8 @@ int main(int argc, char *argv[])
     gsTensorBSpline<2, real_t> original(basis, coefs);
 
     gsInfo << "Least square fitting, with smoothing:\n " << original << "\n";
-    gsWriteParaview( original, "0pdm", 1000, true, false);
-    gsWriteParaview( original, "0pdm", 1000, false, true);
+    // gsWriteParaview( original, "0pdm", 1000, true, false);
+    // gsWriteParaview( original, "0pdm", 1000, false, true);
     // writeSingleControlNet(original, "pdm_0_cnet");
 
     std::vector<real_t> pdm_min_max_mse = original.MinMaxMseErrors(uv,X);
@@ -338,7 +340,7 @@ int main(int argc, char *argv[])
     gsMatrix<> pdmColors(4, X.cols());
     pdmColors << X.row(0), X.row(1), X.row(2), original.pointWiseErrors(uv,X);
 
-    gsWriteParaviewPoints(pdmColors, "pdm_colors");
+    //gsWriteParaviewPoints(pdmColors, "pdm_colors");
 
 
     // Standard least square approximation is our starting point.
@@ -346,6 +348,7 @@ int main(int argc, char *argv[])
     // 1 step of control point update.
     // These two steps represent one iteration of TDM method.
     gsMatrix<> params(2, X.cols());
+    params << uv;
     // gsDebugVar(coefs);
     gsMatrix<> sol(coefs.rows(), coefs.cols());
     sol = coefs;
@@ -354,22 +357,65 @@ int main(int argc, char *argv[])
     gsInfo << "Start alternating loop.\n";
     // alternating loop
     std::ofstream results;
-    results.open(std::to_string(now) + "results.csv");
-    results << "m, deg, mesh, dofs, it, time, pen, min, max, mse, rmse, mu*PDM, sigma*TDM, boundary, cond, s_min, s_max, s-free\n";
+    results.open(std::to_string(now) + "decoupled_results.csv");
+    results << "m, deg, mesh, dofs, it, time, pen, min, max, mse, rmse, mu*PDM, sigma*TDM, boundary, LM, cond, s_min, s_max, s-free\n";
 
     for (index_t iter = 0; iter < maxIter; iter ++)
     {
       gsInfo << "Iteration ... " << iter << " ...\n";
       // Apply parameter correction
+      gsInfo << "Corners: " << interpIdx[0] << ", "  << interpIdx[1] << ", "
+                             << interpIdx[2] << ", "  << interpIdx[3] << ".\n";
+
+      gsDebugVar(params.col(interpIdx[0]));
+      gsDebugVar(params.col(interpIdx[1]));
+      gsDebugVar(params.col(interpIdx[2]));
+      gsDebugVar(params.col(interpIdx[3]));
+
       gsInfo << "Apply parameter correction.\n";
       gsTime.restart();
-      for (index_t i = 0; i < X.cols(); ++i)
+      for (index_t i = 0; i < interpIdx[0]; ++i)
       {
         gsVector<> newParam;
         original.closestPointTo(X.col(i), newParam, 1e-10, true);
         params.col(i) = newParam;
       }
+      // parameter correction on boundary curves
+      // south: (u,0)
+      for (index_t i = interpIdx[0]+1; i < interpIdx[1]; ++i)
+      {
+        gsVector<> newParam;
+        original.closestPointTo(X.col(i), newParam, 1e-10, true);
+        params(0,i) = newParam(0,0);
+      }
+      // east (1,v)
+      for (index_t i = interpIdx[1]+1; i < interpIdx[2]; ++i)
+      {
+        gsVector<> newParam;
+        original.closestPointTo(X.col(i), newParam, 1e-10, true);
+        params(1,i) = newParam(1,0);
+      }
+      //north (u,1)
+      for (index_t i = interpIdx[2]+1; i < interpIdx[3]; ++i)
+      {
+        gsVector<> newParam;
+        original.closestPointTo(X.col(i), newParam, 1e-10, true);
+        params(0,i) = newParam(0,0);
+      }
+      //west (0,v)
+      for (index_t i = interpIdx[3]+1; i < X.cols(); ++i)
+      {
+        gsVector<> newParam;
+        original.closestPointTo(X.col(i), newParam, 1e-10, true);
+        params(1,i) = newParam(1,0);
+      }
+
       computeTime += gsTime.stop();
+
+
+      sortPointCloud(uv, X, interpIdx);
+      gsInfo << "Corners: " << interpIdx[0] << ", "  << interpIdx[1] << ", "
+                             << interpIdx[2] << ", "  << interpIdx[3] << ".\n";
 
 
       gsInfo << "Normals computation.\n";
@@ -380,9 +426,51 @@ int main(int argc, char *argv[])
       gsMatrix<> normals(3, params.cols());
       gsSparseMatrix<> N_diag(X.cols() * 3, X.cols());
       N_diag.setZero();
-      for(index_t j=0; j< params.cols(); j++)
+
+      //for(index_t j=0; j< params.cols(); j++)
+      for(index_t j=0; j < interpIdx[0]; j++)
       {
         normals.col(j) = ev.eval(sn(G).normalized(),params.col(j));
+        // normals.col(j) = ev.evalBdr(sn(G).normalized(),params.col(j));
+        N_diag(j,j) = normals(0,j);
+        N_diag(X.cols()+j,j) = normals(1,j);
+        N_diag(2*X.cols()+j,j) = normals(2,j);
+      }
+
+      for(index_t j=interpIdx[0]; j<params.cols(); j++)
+      {
+        // south, east, north, west
+        patchSide ps;
+        if ( (interpIdx[1] <= j) && (j < interpIdx[2]) )
+        {
+          gsDebugVar(j);
+          gsDebugVar(params.col(j));
+          ps = patchSide(0,boundary::east);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(),params.col(j), ps);
+        }
+        else if ( (interpIdx[2] <= j) && (j < interpIdx[3]) )
+        {
+          gsDebugVar(j);
+          gsDebugVar(params.col(j));
+          ps = patchSide(0,boundary::north);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(),params.col(j), ps);
+        }
+        else if ( interpIdx[3] <= j)
+        {
+          gsDebugVar(j);
+          gsDebugVar(params.col(j));
+          ps = patchSide(0,boundary::west);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(),params.col(j), ps);
+        }
+        else
+        {
+          gsDebugVar(j);
+          gsDebugVar(params.col(j));
+          ps = patchSide(0,boundary::south);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(),params.col(j), ps);
+        }
+
+
         N_diag(j,j) = normals(0,j);
         N_diag(X.cols()+j,j) = normals(1,j);
         N_diag(2*X.cols()+j,j) = normals(2,j);
@@ -414,48 +502,63 @@ int main(int argc, char *argv[])
 
       gsSparseMatrix<> A_tilde(B_mat.cols(), B_mat.cols());
       gsMatrix<> rhs(B_mat.cols(),1);
-      if ( mu > 0 && sigma > 0)
+      if ( penlm > 0)
       {
-        gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
-        gsTime.restart();
-        gsSparseMatrix<> Im(3*X.cols(), 3*X.cols());
-        Im.setIdentity();
-        A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
-        rhs =  B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose() ) * X_tilde ;
-        computeTime += gsTime.stop();
-      }
-      else if (mu > 0 && sigma == 0)
-      {
-        gsInfo << "PDM.\n";
-        gsTime.restart();
-        A_tilde = B_mat.transpose() *  B_mat;
-        rhs = B_mat.transpose() * X_tilde ;
-      }
-      else if (sigma > 0 && mu == 0)
-      {
+        gsInfo << "TDMLM, penalisation lm = " << penlm << "\n";
         gsInfo << "TDM.\n";
         gsTime.restart();
-        gsSparseMatrix<> Im(3*X.cols(), 3*X.cols());
-        Im.setIdentity();
         A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
+        gsSparseMatrix<> Im(A_tilde.rows(), A_tilde.cols());
+        Im.setIdentity();
+        A_tilde = A_tilde + penlm * Im;
         rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
         computeTime += gsTime.stop();
       }
       else
       {
-        gsWarn<<  "No available fitting method. Aborting.\n";
-        results.close();
-        return 0;
+        if ( mu > 0 && sigma > 0)
+        {
+          gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
+          gsTime.restart();
+          gsSparseMatrix<> Im(3*X.cols(), 3*X.cols());
+          Im.setIdentity();
+          A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
+          rhs =  B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose() ) * X_tilde ;
+          computeTime += gsTime.stop();
+        }
+        else if (mu > 0 && sigma == 0)
+        {
+          gsInfo << "PDM.\n";
+          gsTime.restart();
+          A_tilde = B_mat.transpose() *  B_mat;
+          rhs = B_mat.transpose() * X_tilde ;
+        }
+        else if (sigma > 0 && mu == 0)
+        {
+          gsInfo << "TDM.\n";
+          gsTime.restart();
+          gsSparseMatrix<> Im(3*X.cols(), 3*X.cols());
+          Im.setIdentity();
+          A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
+          rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
+          computeTime += gsTime.stop();
+        }
+        else
+        {
+          gsWarn<<  "No available fitting method. Aborting.\n";
+          results.close();
+          return 0;
+        }
+        gsInfo << "NO LM penalisation.\n";
       }
 
-
+      gsSparseMatrix<> m_G;
+      m_G.resize(basis.size(), basis.size());
+      m_G.reservePerColumn( cast<real_t,index_t>( (2 * basis.maxDegree() + 1) * 1.333 ) );
       if (lambda > 0)
       {
         gsInfo << "Applying thin-plate energy smoothing...\n";
         gsTime.restart();
-        gsSparseMatrix<> m_G;
-        m_G.resize(basis.size(), basis.size());
-        m_G.reservePerColumn( cast<real_t,index_t>( (2 * basis.maxDegree() + 1) * 1.333 ) );
         fitting_object.applySmoothing(lambda, m_G);
 
         gsSparseMatrix<> G_mat(A_tilde.rows(), A_tilde.cols());
@@ -589,14 +692,17 @@ int main(int argc, char *argv[])
       gsTime.restart();
       A_tilde.makeCompressed();
 
-      typename gsSparseSolver<real_t>::BiCGSTABILUT solver( A_tilde );
+      // typename gsSparseSolver<real_t>::BiCGSTABILUT solver( A_tilde );
+      typename gsSparseSolver<>::QR solver(A_tilde);
 
-      if ( solver.preconditioner().info() != gsEigen::Success )
-      {
-          gsWarn<<  "The preconditioner failed. Aborting.\n";
-          results.close();
-          return 0;
-      }
+      // use sparse QR solver;
+
+      // if ( solver.preconditioner().info() != gsEigen::Success )
+      // {
+      //     gsWarn<<  "The preconditioner failed. Aborting.\n";
+      //     results.close();
+      //     return 0;
+      // }
       // Solves for many right hand side  columns
 
       gsMatrix<> sol_tilde = solver.solve(rhs); //toDense()
@@ -619,8 +725,8 @@ int main(int argc, char *argv[])
 
       //gsTensorBSpline<2, real_t> surface_tilde(basis, coefs_tilde);
       original.coefs() = coefs_tilde;
-      gsWriteParaview( original, internal::to_string(iter)+"surf", 1000);
-      gsWriteParaview( original, internal::to_string(iter)+"cnet", 1000, false, true);
+      //gsWriteParaview( original, internal::to_string(iter)+"surf", 1000);
+      //gsWriteParaview( original, internal::to_string(iter)+"cnet", 1000, false, true);
 
       std::vector<real_t> sol_min_max_mse = original.MinMaxMseErrors(params,X);
       // results << "m, deg, mesh, dofs, it, time, pen, min, max, mse, rmse, mu*PDM, sigma*TDM, boundary, cond, s_min, s_max, s-free\n";
@@ -634,14 +740,14 @@ int main(int argc, char *argv[])
                   << mu << ","
                   << sigma << ","
                   << boundary_curves << ","
-                  << cond << "," << sigma_min << "," << sigma_max << ","
+                  << penlm << "," << cond << "," << sigma_min << "," << sigma_max << ","
                   << Rb.sum() << "\n";
 
 
       gsMatrix<> tdmColors(4, X.cols());
       tdmColors << X.row(0), X.row(1), X.row(2), original.pointWiseErrors(params,X);
 
-      gsWriteParaviewPoints(tdmColors, "tdm_colors");
+      //gsWriteParaviewPoints(tdmColors, "tdm_colors");
 
     } // end A-TDM loop
     results.close();
