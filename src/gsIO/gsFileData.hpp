@@ -321,21 +321,13 @@ gsFileData<T> gsFileData<T>::getInclude(index_t id, real_t time, std::string lab
     bool found=false;
     gsXmlNode * root = getXmlRoot();
     const gsXmlAttribute * attribute;
-    for (gsXmlNode * child = root->first_node("xmlfile");
-            child; child = child->next_sibling("xmlfile"))
+
+    gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
+    if (nd)
     {
-        attribute = child->first_attribute(attr_name.c_str());
-
-        if (id!=-1 && attribute && atoi(attribute->value()) == id ) found=true; 
-        else if (time!=-1. && attribute && atof(attribute->value()) == time ) found=true; 
-        else if ( label!="" && attribute && attribute->value() == label) found=true; 
-
-        if (found)
-        {
-            std::string filename = gsFileManager::getPath(m_lastPath) +  child->value();
-            gsFileData res(filename);
-            return res;
-        }
+        std::string filename = gsFileManager::getPath(m_lastPath) +  nd->value();
+        gsFileData res(filename);
+        return res;
     }
     GISMO_ERROR("Include with " << attr_name << "=" << attr_string << " does not exist!");
 }

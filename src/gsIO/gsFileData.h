@@ -228,14 +228,8 @@ public:
     {
         gsXmlNode * root = getXmlRoot();
         const gsXmlAttribute * id_at;
-        for (gsXmlNode * child = root->first_node();
-             child; child = child->next_sibling())
-        {
-            id_at = child->first_attribute("id");
-            if (id_at && atoi(id_at->value()) == id )
-                return true;
-        }
-        return false;
+        gsXmlNode * nd = internal::searchId(id, root);
+        return (bool) nd;
     }
 
     /// Returns true if an Object exists in the filedata, even nested
@@ -365,14 +359,11 @@ public:
 
         gsXmlNode * root = getXmlRoot();
         const gsXmlAttribute * id_at;
-        for (gsXmlNode * child = root->first_node();
-             child; child = child->next_sibling())
+        gsXmlNode * nd = internal::searchId(id, root, "string");
+        if (nd)
         {
-            id_at = child->first_attribute("id");
-            if (id_at && atoi(id_at->value()) == id ) {
-                std::string res(child->value());
-                return res;
-            }
+            std::string res(nd->value());
+            return res;
         }
         GISMO_ERROR("String with id " << id << " does not exist!");
     }
@@ -383,14 +374,11 @@ public:
 
         gsXmlNode * root = getXmlRoot();
         const gsXmlAttribute * id_at;
-        for (gsXmlNode * child = root->first_node();
-             child; child = child->next_sibling())
+        gsXmlNode * nd = internal::searchNode( root, "label", label, "string");
+        if (nd)
         {
-            id_at = child->first_attribute("label");
-            if (id_at && id_at->value() == label ) {
-                std::string res(child->value());
-                return res;
-            }
+            std::string res(nd->value());
+            return res;
         }
         GISMO_ERROR("String with label " << label << " does not exist!");
     }
