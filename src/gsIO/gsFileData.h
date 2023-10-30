@@ -323,7 +323,7 @@ public:
     /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
     /// @param id Index of the <xmlfile> node
     /// @return A new gsFileData object with the contents of the referenced file
-    gsFileData getInclude(index_t id)
+    gsFileData getIncludeById(index_t id)
     {
         return getInclude(id, -1., "");
     }
@@ -331,7 +331,7 @@ public:
     /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
     /// @param time Time attribute of the <xmlfile> node
     /// @return A new gsFileData object with the contents of the referenced file
-    gsFileData getInclude(real_t time)
+    gsFileData getIncludeByTime(real_t time)
     {
         return getInclude(-1,time, "");
     }
@@ -339,7 +339,7 @@ public:
     /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
     /// @param label Label of the <xmlfile> node
     /// @return A new gsFileData object with the contents of the referenced file
-    gsFileData getInclude(std::string label)
+    gsFileData getIncludeByLabel(std::string label)
     {
         return getInclude(-1,-1.,label);
     }
