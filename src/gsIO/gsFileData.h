@@ -287,7 +287,7 @@ public:
 
     /// Add the object to the Xml tree, same as <<, but also allows to set the XML label attribute
     template<class Object>
-    void add (const Object & obj, std::string label)
+    void addWithLabel (const Object & obj, std::string label)
     {
         add(obj, -1, label);
     }
