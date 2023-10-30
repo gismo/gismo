@@ -227,16 +227,39 @@ public:
 /// \param root parent node, we check if it's children attribute value matches the given \em value
 /// \param attr_name Attribute's name
 /// \param value the attribute's value number which is seeked for
-inline gsXmlNode * searchNode(gsXmlNode * root,const std::string & attr_name, const std::string & value)
+/// \param tag_name Limit search to tags named \em tag_name .
+inline gsXmlNode * searchNode(gsXmlNode * root,
+                              const std::string & attr_name,
+                              const std::string & value,
+                              const char *tag_name = NULL )
 {
-    for (gsXmlNode * child = root->first_node();
-         child; child = child->next_sibling())
+    for (gsXmlNode * child = root->first_node(tag_name);
+         child; child = child->next_sibling(tag_name))
     {
         const gsXmlAttribute * attribute = child->first_attribute(attr_name.c_str());
         if ( attribute &&  !strcmp(attribute->value(),value.c_str()) )
             return child;
+        else if ( attribute && "time"==attr_name && atof(value.c_str()) == atof(attribute->value()) )
+            return child;
     }
-    gsWarn <<"gsXmlUtils: No object with attribute '"<<attr_name<<" = "<< value<<"' found.\n";
+    gsWarn <<"gsXmlUtils: No "<< tag_name <<" object with attribute '"<<attr_name<<" = "<< value<<"' found.\n";
+    return NULL;
+}
+
+/// Helper to fetch a node with a certain \em id value.
+/// \param root parent node, we check his children for the given \em id
+/// \param id the ID number which is seeked for
+/// \param tag_name Limit search to tags named \em tag_name .
+inline gsXmlNode * searchId(const int id, gsXmlNode * root, const char *tag_name = NULL)
+{
+    for (gsXmlNode * child = root->first_node(tag_name);
+         child; child = child->next_sibling(tag_name))
+    {
+        const gsXmlAttribute * id_at = child->first_attribute("id");
+        if ( id_at &&  atoi(id_at->value()) == id )
+            return child;
+    }
+    gsWarn <<"gsXmlUtils: No object with id = "<<id<<" found.\n";
     return NULL;
 }
 
@@ -247,18 +270,11 @@ template<class Object>
 Object * getByLabel(gsXmlNode * node, const std::string & label)
 {
     std::string tag = internal::gsXml<Object>::tag();
-    gsXmlNode * nd  = searchNode(node, "label", label);
+    gsXmlNode * nd  = searchNode(node, "label", label, tag.c_str());
     if (nd)
     {
         return internal::gsXml<Object>::get(nd);
     }
-    // for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
-    //      child; child = child->next_sibling(tag.c_str()))
-    // {
-    //     const gsXmlAttribute * label_at = child->first_attribute("label");
-    //     if (label_at && !strcmp(label_at->value(),label.c_str()) )
-    //         return internal::gsXml<Object>::get(child);
-    // }
     std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
              <<" with label="<<label<<" not found.\n";
     return NULL;
@@ -273,34 +289,15 @@ template<class Object>
 Object * getById(gsXmlNode * node, const int & id)
 {
     std::string tag = internal::gsXml<Object>::tag();
-    for (gsXmlNode * child = node->first_node(tag.c_str()); //note: gsXmlNode object in use
-         child; child = child->next_sibling(tag.c_str()))
+    gsXmlNode * nd  = searchId(id, node, tag.c_str());
+    if (nd)
     {
-        const gsXmlAttribute * id_at = child->first_attribute("id");
-        if (id_at && atoi(id_at->value()) == id )
-            return internal::gsXml<Object>::get(child);
+        return internal::gsXml<Object>::get(nd);
     }
     std::cerr<<"gsXmlUtils Warning: "<< internal::gsXml<Object>::tag()
              <<" with id="<<id<<" not found.\n";
     return NULL;
 }
-
-/// Helper to fetch a node with a certain \em id value.
-/// \param root parent node, we check his children for the given \em id
-/// \param id the ID number which is seeked for
-inline gsXmlNode * searchId(const int id, gsXmlNode * root)
-{
-    for (gsXmlNode * child = root->first_node();
-         child; child = child->next_sibling())
-    {
-        const gsXmlAttribute * id_at = child->first_attribute("id");
-        if ( id_at &&  atoi(id_at->value()) == id )
-            return child;
-    }
-    gsWarn <<"gsXmlUtils: No object with id = "<<id<<" found.\n";
-    return NULL;
-}
-
 /// Helper to allocate XML value
 GISMO_EXPORT char * makeValue( const std::string & value, gsXmlTree & data);
 
