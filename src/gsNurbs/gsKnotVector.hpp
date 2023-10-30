@@ -712,6 +712,28 @@ typename gsKnotVector<T>::multContainer gsKnotVector<T>::multiplicities() const
 }
 
 template<typename T>
+typename gsKnotVector<T>::mult_t gsKnotVector<T>::maxInteriorMultiplicity() const
+{
+    mult_t result = 0;
+    for( uiterator uit = std::next(ubegin()); uit != std::prev(uend()); ++uit )
+        result = std::max(result,uit.multiplicity());
+    return result;
+}
+
+template<typename T>
+typename gsKnotVector<T>::mult_t gsKnotVector<T>::minInteriorMultiplicity() const
+{
+    // No interior knots
+    if (uSize()==2) 
+        return 0;
+
+    mult_t result = m_deg+2;
+    for( uiterator uit = std::next(ubegin()); uit != std::prev(uend()); ++uit )
+        result = std::min(result,uit.multiplicity());
+    return result;
+}
+
+template<typename T>
 typename gsKnotVector<T>::uiterator
 gsKnotVector<T>::uFind( const T u ) const
 {

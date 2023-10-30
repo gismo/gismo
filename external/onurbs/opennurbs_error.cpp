@@ -120,17 +120,17 @@ static bool ON_PrintErrorHeader(
   bool bPrintMessage = false;
   sMessage[0] = 0;
 
+  size_t sz = (sizeof(sMessage)/sizeof(sMessage[0])) - 1;
 #if defined(ON_COMPILER_MSC)
   // use sprintf_s() ...
-  size_t sz = (sizeof(sMessage)/sizeof(sMessage[0])) - 1;
 #define ON_SPRINTF4(s,count,fname,ln,func) sprintf_s(sMessage,sz,s,count,fname,ln,func)
 #define ON_SPRINTF3(s,count,fname,ln) sprintf_s(sMessage,sz,s,count,fname,ln)
 #define ON_SPRINTF1(s,count) sprintf_s(sMessage,sz,s,count)
 #else
   // use sprintf() ...
-#define ON_SPRINTF4(s,count,fname,ln,func) sprintf(sMessage,s,count,fname,ln,func)
-#define ON_SPRINTF3(s,count,fname,ln) sprintf(sMessage,s,count,fname,ln)
-#define ON_SPRINTF1(s,count) sprintf(sMessage,s,count)
+#define ON_SPRINTF4(s,count,fname,ln,func) snprintf(sMessage,sz,s,count,fname,ln,func)
+#define ON_SPRINTF3(s,count,fname,ln) snprintf(sMessage,sz,s,count,fname,ln)
+#define ON_SPRINTF1(s,count) snprintf(sMessage,sz,s,count)
 #endif
 
   if ( ON_DEBUG_ERROR_MESSAGE_OPTION )

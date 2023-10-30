@@ -18,7 +18,15 @@
 
 #pragma once
 
-#include <gismo.h>
+
+#include <gsUtils/gsStopwatch.h>
+#include <gsCore/gsLinearAlgebra.h>
+#include <gsCore/gsBasis.h>
+
+#include <gsAssembler/gsExprHelper.h>
+#include <gsAssembler/gsExprEvaluator.h>
+#include <gsAssembler/gsExprAssembler.h>
+
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
@@ -26,8 +34,6 @@
 
 //#include <gsLBFGSpp/gsLBFGSpp.h>
 //#include <gsPreAA/gsPreAA.h>
-
-using namespace gismo;
 
 namespace gismo {
 /**
@@ -98,7 +104,8 @@ void verboseLog(const std::string &message, const index_t &verbose) {
 
 /// gsBarrierCore
 template<short_t d, typename T= real_t>
-struct gsBarrierCore {
+class gsBarrierCore
+{
  private:
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::space space;
@@ -490,8 +497,6 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 };
 #endif
 
-}// namespace gismo
-
 ///
 /// Parameters to control the preconditioned Anderson Acceleration algorithm
 ///
@@ -858,3 +863,5 @@ class AndersonAcceleration {
 };
 
 }
+
+}// namespace gismo

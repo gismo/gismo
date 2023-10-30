@@ -28,7 +28,7 @@ ${gismo_externals}/HLBFGS/LineSearch.h
 include(gsConfig)
 set(CMAKE_CXX_VISIBILITY_PRESET default)
 
-add_library(${PROJECT_NAME} OBJECT ${HLBFGS_SOURCES}) #STATIC
+add_library(${PROJECT_NAME} OBJECT ${HLBFGS_SOURCES} gsHLBFGS.h) #STATIC
 #target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
