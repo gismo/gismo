@@ -271,7 +271,7 @@ public:
                         index_t c2, // corner 1, east edge
                         index_t c3, // corner 2, north edge
                         index_t c4, // corner 3, west edge
-						bool constrainCorners)
+						            bool constrainCorners)
     :
     m_mp(&mp),
     m_params(params),
@@ -279,9 +279,9 @@ public:
     m_c1(c1), m_c2(c2), m_c3(c3), m_c4(c4)
     {
         T u_min = m_params.row(0).minCoeff(),
-            u_max = m_params.row(0).maxCoeff(),
-            v_min = m_params.row(1).minCoeff(),
-            v_max = m_params.row(1).maxCoeff();
+          u_max = m_params.row(0).maxCoeff(),
+          v_min = m_params.row(1).minCoeff(),
+          v_max = m_params.row(1).maxCoeff();
 
         // Number of design variables: how many variables we optimize, i.e. coefficiets + parametric values
         // m_numDesignVars  = m_mp[0].coefs().size() + m_params.size(); // dim * spline-dofs + numPts
@@ -500,14 +500,14 @@ int main(int argc, char *argv[])
     index_t maxRef = 1; // for the adaptive loop
     std::string fn = "../filedata/fitting/shipHullPts55_scale01.xml"; // f, string file input data
     real_t gtoll = 1e-6; // g, HLBFGS stopping criteria
-    // h
+    bool atdm = false; // h, run a-tdm
     index_t maxIter = 200; // i, max number of iteration for the hlbfgs optimization algorithm
     // j, k
     index_t numURef = 0; // l, maximum number of refinement iterations
     index_t mupdate = 20; // m, HLBFGS hessian updates
     index_t numKnots = 2; // n, fitting initial number of knots in each direction
     // o, p, q
-	bool constrainCorners = false;
+	  bool constrainCorners = false;
     real_t lambda = 1e-6; // s, fitting smoothing weight
 
     index_t extension = 2;
@@ -522,7 +522,7 @@ int main(int argc, char *argv[])
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("f", "filename", "name of the .xml file containing the data", fn);
     cmd.addReal("g", "gtoll", "stopping criteria on ||g||", gtoll);
-    // h
+    cmd.addSwitch("H", "atdm", "run the A-TDM algorithm.", atdm);
     cmd.addInt("i", "iter", "number of maximum iterations for the optimization algorithm for CPDM.", maxIter);
     // j, k
     cmd.addInt("l", "level", "number of maximum iterations for the adaptive loop.", maxRef);
@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
     gsStopwatch gsTime;
     time_t now = time(0);
 
-    std::ofstream file_opt, file_pc;
+    std::ofstream file_opt, file_pc, file_tdm;
 
     gsFileData<> fd_in(fn);
     gsMatrix<> uv, P, X;
@@ -557,8 +557,8 @@ int main(int argc, char *argv[])
 
     gsInfo << "Reordering parameters and points as interiors,\n"
               "and anticlockwise boundaried, i.e. south edge, east edge, north edge, west edge.\n";
-    //scalePoints(P,X);
-    X = P;
+    scalePoints(P,X);
+    //X = P;
 
     sortPointCloud(uv,X,corners);
     index_t c1 = corners[0];
@@ -607,9 +607,14 @@ int main(int argc, char *argv[])
     file_pc.open(std::to_string(now)+"results_adaptive_APDM.csv");
     file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
+    file_tdm.open(std::to_string(now)+"results_adaptive_ATDM.csv");
+    file_tdm << "m, deg, pen, mu, sigma, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
+
     real_t finaltime_adaptiveLoop = 0;
-    //gtoll = gtoll * 4;
-    //maxIter = maxIter / 2;
+    // gtoll = gtoll * 4;
+    // maxIter = maxIter / 2;
+    //if (false)
+    {
     for(int refIt = 0; refIt <= maxRef; refIt++) // adaptive loop on the spline space
     {
         gsInfo<<"------------------------------------------------\n";
@@ -619,27 +624,30 @@ int main(int argc, char *argv[])
         real_t finaltime_itLoop = 0.;
 
         gsTime.restart();
-        opt_f.nextIteration(tolerance, threshold, maxPcIter); // no parameter correction here, but the combined approach.
+        // opt_f.nextIteration(tolerance, threshold, maxPcIter); // no parameter correction here, but the combined approach.
+        opt_f.nextRefinement(tolerance, threshold, maxPcIter); // no parameter correction here, but the combined approach.
         finaltime_itLoop += gsTime.stop();
         // the first opt_f is empty, therefore only the fitting and the computation of the errors is applied.
         // the computation of the errors is not needed, but it is by default done.
 
         gsWriteParaview(*opt_f.result(), prefix + "cpdm_geo_in", 100000, true);
+        gsInfo << opt_f.result()->basis().size() << ", " << opt_f.result()->coefs().rows() << " x " << opt_f.result()->coefs().cols() << "\n";
 
         // after the least square fitting with THB-splines, we optimize the control points and the parametric values.
-        gsMatrix<> coefs(basis.size(), 3);
+        gsMatrix<> coefs(opt_f.result()->basis().size(), 3);
         coefs = opt_f.result()->coefs();
         gsMatrix<> params(2, X.cols());
         params = opt_f.returnParamValues();
 
-        // gsOptProblemExample<real_t> problem(opt_f, params, X); // FIRST THE fitting_object, THEN THE PARAMETERS AND THEN THE POINTS.
-        gsOptProblemExample<real_t> problem(opt_f, params, X, c1, c2, c3, c4, constrainCorners); // FIRST THE fitting object, THEN THE PARAMETERS AND THEN THE POINTS.
-        // the params here are not the original ones, as in the tensor product approach,
-        // but the ones computed in each adaptive loop.
-        gsOptimizer<real_t> * optimizer;
+
+        gsInfo << "MAKE GEOMETRY ???\n";
+        gsInfo << "basis = \n" << opt_f.result()->basis().size() << "\n";
+        gsInfo << "coefs = \n" << opt_f.result()->coefs().rows() << " x " <<  opt_f.result()->coefs().cols() << "\n";
         gsGeometry<>::uPtr tmp = (opt_f.result()->basis().makeGeometry(opt_f.result()->coefs()));
         gsTHBSpline<2,real_t> & original = dynamic_cast<gsTHBSpline<2,real_t> &>(*tmp);
         // gsTHBSpline<2, real_t> original(opt_f.result()->basis(), opt_f.result()->coefs());
+
+        gsInfo << "Input geometry = \n"<< original << "\n";
 
         gsMatrix<> currentparams(2, X.cols());
         gsMatrix<> currentcoefs( original.coefs().rows(), original.coefs().cols() ); // the original for each iteration of the adaptive loop.
@@ -648,23 +656,22 @@ int main(int argc, char *argv[])
         //gtoll = gtoll / 4;
         //maxIter = maxIter * 2;
 
+        gsInfo << "Initialization of the optimization problem:\n";
+
+        // gsOptProblemExample<real_t> problem(opt_f, params, X); // FIRST THE fitting_object, THEN THE PARAMETERS AND THEN THE POINTS.
+        gsInfo << opt_f.result()->coefs().rows() << " * " << opt_f.result()->coefs().cols() << " + "
+               << opt_f.returnParamValues().rows() << " * " << opt_f.returnParamValues().cols() << " = "
+               << opt_f.result()->coefs().rows() * opt_f.result()->coefs().cols() + opt_f.returnParamValues().rows() * opt_f.returnParamValues().cols() << "\n";
+        gsOptProblemExample<real_t> problem(opt_f, params, X, c1, c2, c3, c4, constrainCorners); // FIRST THE fitting object, THEN THE PARAMETERS AND THEN THE POINTS.
+        // the params here are not the original ones, as in the tensor product approach,
+        // but the ones computed in each adaptive loop.
+        gsOptimizer<real_t> * optimizer;
         optimizer = new gsHLBFGS<real_t>(&problem);
         optimizer->options().setInt("Verbose",verbosity);
         optimizer->options().setReal("MinGradLen", gtoll); // 1e-6 : more or less as refinement tolerance; there should be a balance between the two;
         optimizer->options().setInt("LBFGSUpdates", mupdate);
         optimizer->options().setReal("MinStepLen", 1e-12);
         optimizer->options().setInt("MaxEval", 100);
-        /*
-        m_options.addReal("GradTol",    "gradient tolerance used in line-search", 0.9);
-        m_options.addReal("StpMin",     "stpmin used in line-search",             1e-20);
-        m_options.addReal("StpMax",     "stpmax used in line-search",             1e+20);
-        m_options.addReal("MinGradLen", "Minimal gradient length",                1e-9);
-        m_options.addReal("MinStepLen", "Minimal step length",                    1e-10);
-
-        // infos 0 ... 2, 6 ... 12:
-        m_options.addInt("MaxEval",    "the max number of evaluation in line-search", 20);
-        */
-
 
 
         //! [Solve]
@@ -675,6 +682,9 @@ int main(int argc, char *argv[])
         in << original.coefs().reshape( original.coefs().size() ,1), t_params.reshape( t_params.size() ,1);
         optimizer->options().setInt("MaxIterations", maxIter);
         gsTime.restart();
+
+        gsInfo << "optimizer = " << optimizer << "\n";
+        gsInfo << "input = " << in.rows() << " x " << in.cols() << "\n";
         optimizer->solve(in);
         finaltime_itLoop += gsTime.stop();
         gsInfo << "Optimization loop, for " << optimizer->iterations() << " iterations.\n";
@@ -702,11 +712,12 @@ int main(int argc, char *argv[])
 
         }
 
+        opt_f.updateGeometry(currentcoefs, currentparams); // inside we comput the erros again.
+
         // gsDebugVar(currentparams);
 
         gsWriteParaviewPoints(currentparams, prefix + "_adaptive_params");
         gsInfo << "max error before optimization: " << opt_f.maxPointError() << "\n";
-        opt_f.updateGeometry(currentcoefs, currentparams);
         gsInfo << "max error after optimization: " << opt_f.maxPointError() << "\n";
 
         gsMesh<> mesh(opt_f.result()->basis());
@@ -767,6 +778,7 @@ int main(int argc, char *argv[])
         }
 
     } // adaptive loop
+  }
     file_opt.close();
     gsInfo << "C-PDM total time: " << finaltime_adaptiveLoop << "\n";
 
@@ -843,6 +855,93 @@ int main(int argc, char *argv[])
       file_pc.close();
       gsInfo << "A-PDM total time: " << finaltime_adaptiveLoop << "\n";
     } // apdm
+
+    if(atdm)
+    {
+      real_t mu = 0.1;
+      real_t sigma = 1;
+      finaltime_adaptiveLoop = 0;
+      gsInfo << "Running the A-TDM algorithm for comparison.\n";
+      gsTHBSplineBasis<2>  refbasis ( T_tbasis ) ;
+      gsHFitting<2, real_t> ref(uv, X, refbasis, 0, ext, lambda); // gsHFitting object for A-TDM
+      ref.compute(lambda);
+      ref.parameterCorrection_tdm(1e-7, 1, mu, sigma, corners);
+      const std::vector<real_t> & adapt_errors = ref.pointWiseErrors();
+      std::vector<real_t> adapt_errors2;
+      real_t adapt_sum_of_errors2;
+
+
+      //file_pc << "it, time, fraction, dofs, rmse\n";
+      prefix = "adaptive";
+      for(int refIt = 0; refIt <= maxRef; refIt++) // adaptive loop on the spline space
+      {
+          gsInfo<<"------------------------------------------------\n";
+          gsInfo << "A-TDM for the adaptive loop.\n";
+          gsInfo<<"Adaptive loop iteration "<< refIt <<".."<<"\n";
+          prefix = std::to_string(now) + "adaptive" + internal::to_string(refIt) + "it_";
+          real_t finaltime_itLoop = 0.;
+
+          gsTime.restart();
+          ref.nextIteration_tdm(tolerance, threshold, maxPcIter, mu, sigma, corners);
+          // ref.nextIteration(tolerance, threshold, maxPcIter);
+          finaltime_itLoop += gsTime.stop();
+
+          real_t rmse = 0.; // fitting error
+          gsMatrix<> mtmp = ref.result()->eval(ref.returnParamValues()) - X;
+          real_t pred_eval = (mtmp * mtmp.transpose()).trace();
+          rmse += math::pow(pred_eval/X.cols(), 0.5);
+
+          gsMesh<> mesh(ref.result()->basis());
+          gsMatrix<> uv_fitting = ref.returnParamValues() ;
+          // gsWriteParaview(mesh, prefix + "atdm_mesh");
+          // gsWriteParaview(*ref.result(), prefix + "atdm_geo", 100000, true);
+          // gsWriteParaviewPoints(uv_fitting, prefix + "atdm_parameters");
+
+          ref.get_Error(adapt_errors2, 0);
+          adapt_sum_of_errors2 = std::accumulate(errors2.begin(), errors2.end(), 0.0);
+
+          gsInfo<<"Fitting time: "<< finaltime_itLoop <<"\n";
+
+          std::vector<real_t> sol_min_max_mse = ref.result()->MinMaxMseErrors(ref.returnParamValues(), X);
+          index_t dofs = ref.result()->basis().size();
+          real_t minPointError = ref.minPointError();
+          real_t maxPointError = ref.maxPointError();
+          real_t mseError = adapt_sum_of_errors2/adapt_errors2.size();
+          real_t percentagePoint = 100.0 * ref.numPointsBelow(tolerance)/adapt_errors.size();
+
+          gsInfo<<"Fitted with "<< ref.result()->basis() <<"\n";
+          gsInfo    << "DOFs         : "<< dofs <<"\n";
+          std::cout << "Min distance : "<< sol_min_max_mse[0] << std::scientific <<"\n";
+          std::cout << "Max distance : "<< sol_min_max_mse[1] << std::scientific <<"\n";
+          std::cout << "         MSE : "<< sol_min_max_mse[2] << std::scientific <<"\n";
+          std::cout << "        RMSE : "<< math::sqrt(sol_min_max_mse[2]) << std::scientific <<"\n";
+          gsInfo<<"Points below tolerance: "<< percentagePoint <<"%.\n";
+
+          finaltime_adaptiveLoop += finaltime_itLoop;
+          // std::setprecision(12);
+          // file_pc << std::to_string(refIt+1) << "," << std::to_string(finaltime_adaptiveLoop) << "," << std::to_string(finaltime_itLoop) << "," << std::to_string(dofs) << "," << std::to_string(rmse) << "\n";
+          // file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
+          file_tdm << X.cols() << "," << deg << "," << lambda << ","
+                  << mu << "," << sigma << ","
+                  << dofs << ","<< refIt << "," << maxPcIter << ","
+                  << sol_min_max_mse[0] << std::scientific << ","
+      					  << sol_min_max_mse[1] << std::scientific << ","
+      					  << sol_min_max_mse[2] << std::scientific << ","
+                  << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+                  << percentagePoint << "," << tolerance << ","
+                  << finaltime_itLoop << "\n";
+
+          if ( ref.maxPointError() < tolerance )
+          {
+              gsInfo<<"Error tolerance achieved after "<< refIt <<" iterations.\n";
+              break;
+          }
+
+      }
+      file_tdm.close();
+      gsInfo << "A-TDM total time: " << finaltime_adaptiveLoop << "\n";
+    } // atdm
+
 
     return EXIT_SUCCESS;
 
