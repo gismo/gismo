@@ -8,7 +8,13 @@
 #include <gsIO/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
+
+#ifdef _OPENMP
+#define USE_OPENMP
+#endif
 #include "HLBFGS/HLBFGS.h"
+#undef USE_OPENMP
+
 /*
 To do:
 - Use Eigen

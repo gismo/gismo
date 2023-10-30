@@ -191,15 +191,17 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
     //gsInfo << "collocation matrix rows x cols = " << u.cols() << " x " << this->size() << "\n";
 
     gsVector<index_t> nact( this->size() );
-    nact.setOnes();
+    nact.setOnes(this->size());
     gsMatrix<index_t> tmp;
 
-#   pragma omp parallel for default(shared) private(tmp, nact)
+#   pragma omp parallel for default(shared) private(tmp) //firstprivate(nact)
     for (index_t k=0; k<u.cols(); k++)
     {
         active_into(u.col(k), tmp);
         for (index_t t = 0; t<tmp.size(); t++)
         {
+//#       pragma omp critical (collocation_nact)
+#         pragma omp atomic
           nact[tmp(t,0)] += 1;//tmp.rows();
         }
         // nact[k] = tmp.rows();
@@ -757,12 +759,13 @@ gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> &
     gsVector<index_t> nact(b.size());
     nact.setOnes();
     gsMatrix<index_t> tmp;
-#   pragma omp parallel for
+#   pragma omp parallel for default(shared) private(tmp)
     for (index_t k=0; k<u.cols(); k++)
     {
       b.active_into(u.col(k), tmp);
       for (index_t t = 0; t<tmp.size(); t++)
       {
+#       pragma omp atomic
         nact[tmp(t,0)] += 1;//tmp.rows();
       }
       // active_into(u.col(k), tmp);
