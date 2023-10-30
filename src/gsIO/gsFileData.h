@@ -368,7 +368,7 @@ public:
         GISMO_ERROR("String with id " << id << " does not exist!");
     }
 
-    std::string getString (const std::string & label) const
+    std::string getStringByLabel (const std::string & label) const
     {
         //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
 
