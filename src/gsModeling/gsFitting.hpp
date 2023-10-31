@@ -227,7 +227,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
       N_diag(m_points.rows()+j,j) = normals(1,j);
       N_diag(2*m_points.rows()+j,j) = normals(2,j);
     }
-    writeToCSVfile(internal::to_string(num_basis)+"normals.csv", N_diag);
+    // writeToCSVfile(internal::to_string(num_basis)+"normals.csv", N_diag);
 
     // nv: outer normals for boundary curves.
     if(false)
@@ -270,9 +270,9 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
     gsSparseMatrix<T> sparseColloc(m_points.rows(), num_basis);
 
-    gsInfo << "--------------------------------------------------------\n";
-    gsInfo << "space dimension = " << num_basis << "\n";
-    gsDebugVar(m_result->basis());
+    // gsInfo << "--------------------------------------------------------\n";
+    // gsInfo << "space dimension = " << num_basis << "\n";
+    // gsDebugVar(m_result->basis());
     sparseColloc = m_result->basis().collocationMatrix( m_param_values ) ;
 
     gsMatrix<T> tmp = sparseColloc;
@@ -282,7 +282,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     Bb.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
     Bb.block(2*tmp.rows(),2*tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
 
-    writeToCSVfile(internal::to_string(num_basis)+"Bb.csv", Bb);
+    // writeToCSVfile(internal::to_string(num_basis)+"Bb.csv", Bb);
 
     gsSparseMatrix<T> B_mat(m_points.rows() * 3, m_basis->size() * 3);
     B_mat = Bb.sparseView();
@@ -340,11 +340,11 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     gsInfo << "Solving the linear system.\n";
     A_tilde.makeCompressed();
 
-    gsMatrix<T> A_csv(A_tilde);
-    writeToCSVfile("A_tilde.csv", A_csv);
-    writeToCSVfile("X_tilde.csv", X_tilde);
-    writeToCSVfile("rhs.csv", rhs);
-    gsInfo << "Written\n";
+    // gsMatrix<T> A_csv(A_tilde);
+    // writeToCSVfile("A_tilde.csv", A_csv);
+    // writeToCSVfile("X_tilde.csv", X_tilde);
+    // writeToCSVfile("rhs.csv", rhs);
+    // gsInfo << "Written\n";
 
     // typename gsSparseSolver<T>::BiCGSTABILUT solver( A_tilde );
     //
@@ -357,7 +357,13 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
     typename gsSparseSolver<T>::QR solver(A_tilde);
     gsMatrix<T> sol_tilde = solver.solve(rhs); //toDense()
+    gsInfo << "rank = " << solver.rank() / 3 << " = " << m_basis->size() << "\n";
     gsInfo << "Solved.\n";
+
+    if (solver.info() != gsEigen::Success)
+    {
+      gsInfo << "QR: " << solver.lastErrorMessage();
+    }
 
     // gsDebugVar(sol_tilde.rows());
     // gsDebugVar(sol_tilde.cols());
@@ -429,7 +435,7 @@ void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
 
       gsVector<T> newParam;
       gsMatrix<T> geoSupport = m_result->support();
-#     pragma omp parallel for default(shared) private(newParam)
+// #     pragma omp parallel for default(shared) private(newParam)
       for (index_t i = 0; i < sepIndex; ++i)
       {
           // gsInfo << "Interior:\n" << newParam << "\n";
@@ -475,7 +481,7 @@ void gsFitting<T>::parameterCorrectionSepBoundary(T accuracy,
 
       gsVector<T> newParam;
       gsMatrix<T> geoSupport = m_result->support();
-#     pragma omp parallel for default(shared) private(newParam)
+// #     pragma omp parallel for default(shared) private(newParam)
       for (index_t i = 0; i < sepIndex; ++i)
       //for (index_t i = 1; i<m_points.rows()-1; ++i) //(!curve) skip first last pt
       {

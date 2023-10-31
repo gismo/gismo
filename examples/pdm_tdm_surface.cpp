@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
     // t, u, v, w,
     index_t kx = -1; // x
     index_t ky = -1; // y
-    index_t pc_step = 0; // y
+    index_t maxPC_step = 0; // y
 
 
     gsCmdLine cmd("Tensor product B-spline surface fitting with Point/Tangent Distance Minimization.");
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
     // t, u, v, w,
     cmd.addInt("x", "xknt", "number of interior knots in x-direction.", kx);
     cmd.addInt("y", "yknt", "number of interior knots in y-direction.", ky);
-    cmd.addInt("z", "pc", "parameter correction step.", pc_step);
+    cmd.addInt("z", "pc", "parameter correction step.", maxPC_step);
 
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -335,24 +335,51 @@ int main(int argc, char *argv[])
 
     std::ofstream pdm_results;
     pdm_results.open(std::to_string(now) + "pdm_results.csv");
-    pdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse\n";
+    pdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse\n";
 
     std::ofstream tdm_results;
     tdm_results.open(std::to_string(now) + "tdm_results.csv");
     // tdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse, mu*PDM, sigma*TDM, boundary, pos-semi-def, cond, s_min, s_max, s-free\n";
-    tdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse, mu*PDM, sigma*TDM, boundary, cond, s_min, s_max, s-free\n";
+    tdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse, mu*PDM, sigma*TDM\n";
 
+    // index_t pc_step = maxPC_step;
+    for(index_t pc_step = 0; pc_step < 100; pc_step++)
+    {
     gsFitting<real_t> pdm_obj( uv, X, tbasis);
     pdm_obj.compute(lambda);
-    pdm_obj.parameterCorrection(1e-6,pc_step,1e-6);
+    // pdm_obj.parameterCorrection(1e-6,pc_step,1e-6);
+    pdm_obj.parameterCorrectionSepBoundary(1e-6,pc_step, 1, 0, interpIdx);
 
-    gsWriteParaview(*pdm_obj.result(), "pdm_geo");
+    std::vector<real_t> pdm_min_max_mse = pdm_obj.result()->MinMaxMseErrors(pdm_obj.returnParamValues(),X);
+
+    //pdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse\n";
+    pdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
+                << pc_step << ","
+                << pdm_min_max_mse[0] << std::scientific << ","
+                << pdm_min_max_mse[1] << std::scientific << ","
+                << pdm_min_max_mse[2] << std::scientific << ","
+                << math::sqrt(pdm_min_max_mse[2]) << std::scientific << "\n";
+
+    // gsWriteParaview(*pdm_obj.result(), "pdm_geo");
 
     gsFitting<real_t> tdm_obj( uv, X, tbasis);
     tdm_obj.compute_tdm(lambda, mu, sigma, interpIdx);
-    tdm_obj.parameterCorrection_tdm(1e-6,pc_step, mu, sigma, interpIdx);
+    // tdm_obj.parameterCorrection_tdm(1e-6,pc_step, mu, sigma, interpIdx);
+    tdm_obj.parameterCorrectionSepBoundary(1e-6, pc_step, mu, sigma, interpIdx);
 
-    gsWriteParaview(*tdm_obj.result(), "tdm_geo");
+    std::vector<real_t> tdm_min_max_mse = tdm_obj.result()->MinMaxMseErrors(tdm_obj.returnParamValues(),X);
+    tdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
+                << pc_step << ","
+                << tdm_min_max_mse[0] << std::scientific << ","
+                << tdm_min_max_mse[1] << std::scientific << ","
+                << tdm_min_max_mse[2] << std::scientific << ","
+                << math::sqrt(tdm_min_max_mse[2]) << std::scientific << ","
+                << mu << "," << sigma << "\n";
+
+    }
+    pdm_results.close();
+    tdm_results.close();
+    // gsWriteParaview(*tdm_obj.result(), "tdm_geo");
 
 
     // gsFitting<2, real_t> tdm_obj( uv, X, tbasis, lambda);
