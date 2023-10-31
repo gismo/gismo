@@ -613,7 +613,7 @@ int main(int argc, char *argv[])
     real_t finaltime_adaptiveLoop = 0;
     // gtoll = gtoll * 4;
     // maxIter = maxIter / 2;
-    //if (false)
+    // if (false)
     {
     for(int refIt = 0; refIt <= maxRef; refIt++) // adaptive loop on the spline space
     {
@@ -625,7 +625,7 @@ int main(int argc, char *argv[])
 
         gsTime.restart();
         // opt_f.nextIteration(tolerance, threshold, maxPcIter); // no parameter correction here, but the combined approach.
-        opt_f.nextRefinement(tolerance, threshold, maxPcIter); // no parameter correction here, but the combined approach.
+        opt_f.nextRefinement(tolerance, threshold, 0); //(tolerance, threshold, maxPcIter = 0); // no parameter correction here, but the combined approach.
         finaltime_itLoop += gsTime.stop();
         // the first opt_f is empty, therefore only the fitting and the computation of the errors is applied.
         // the computation of the errors is not needed, but it is by default done.
@@ -653,7 +653,7 @@ int main(int argc, char *argv[])
         gsMatrix<> currentcoefs( original.coefs().rows(), original.coefs().cols() ); // the original for each iteration of the adaptive loop.
 
 
-        //gtoll = gtoll / 4;
+        // gtoll = gtoll / 4;
         //maxIter = maxIter * 2;
 
         gsInfo << "Initialization of the optimization problem:\n";
@@ -662,6 +662,7 @@ int main(int argc, char *argv[])
         gsInfo << opt_f.result()->coefs().rows() << " * " << opt_f.result()->coefs().cols() << " + "
                << opt_f.returnParamValues().rows() << " * " << opt_f.returnParamValues().cols() << " = "
                << opt_f.result()->coefs().rows() * opt_f.result()->coefs().cols() + opt_f.returnParamValues().rows() * opt_f.returnParamValues().cols() << "\n";
+
         gsOptProblemExample<real_t> problem(opt_f, params, X, c1, c2, c3, c4, constrainCorners); // FIRST THE fitting object, THEN THE PARAMETERS AND THEN THE POINTS.
         // the params here are not the original ones, as in the tensor product approach,
         // but the ones computed in each adaptive loop.

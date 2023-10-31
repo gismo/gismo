@@ -373,18 +373,20 @@ bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold,
                 return false;
 
             gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
-            //basis->refineElements(boxes);
-            gsInfo << "Basis size before refinement: = " << basis->size() << "\n";
-            gsInfo << "Coefficients size before refinement: = " << this->m_result->coefs().rows() << " x " << this->m_result->coefs().cols() << "\n";
-            basis->refineElements_withCoefs(this->m_result->coefs(), boxes);
-            gsInfo << "Basis size after refinement: = " << this->m_basis->size() << "\n";
-            gsInfo << "Coefficients size after refinement: = " << this->m_result->coefs().rows() << " x " << this->m_result->coefs().cols() << "\n";
+            basis->refineElements(boxes);
+            m_result->refineElements(boxes);
+            // gsInfo << "Basis size before refinement: = " << basis->size() << "\n";
+            // gsInfo << "Coefficients size before refinement: = " << this->m_result->coefs().rows() << " x " << this->m_result->coefs().cols() << "\n";
+            // basis->refineElements_withCoefs(this->m_result->coefs(), boxes);
+            // gsInfo << "Basis size after refinement: = " << this->m_basis->size() << "\n";
+            // gsInfo << "Coefficients size after refinement: = " << this->m_result->coefs().rows() << " x " << this->m_result->coefs().cols() << "\n";
             //this->updateGeometry(this->m_result->coefs(), this->m_param_values);
 
 
             // If there are any fixed sides, prescribe the coefs in the finer basis.
             if(m_result != NULL && fixedSides.size() > 0)
             {
+              gsInfo << "Constrained fitting of Dominik.\n";
                 gsDebugVar(fixedSides.size());
                 m_result->refineElements(boxes);
                 gsFitting<T>::setConstraints(fixedSides);
@@ -396,21 +398,17 @@ bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold,
             gsInfo << "Tolerance reached.\n";
             return false;
         }
-
-        const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis);
-        m_result = bb->makeGeometry( give(this->m_result->coefs()) ).release();
+        // const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis);
+        // m_result = bb->makeGeometry( give(this->m_result->coefs()) ).release();
 
     }
     else
     {
       gsInfo << "First fitting: compute with LS.\n";
-
       this->compute(m_lambda);
-
-      this->parameterCorrection(1e-7, maxPcIter, 1e-4);
-
     }
 
+    this->parameterCorrection(1e-7, maxPcIter, 1e-4);
     this->computeErrors();
 
     return true;
