@@ -232,6 +232,12 @@ public:
         return (bool) nd;
     }
 
+    /// Returns true if an entry of \em tag exists in the xml file
+    inline bool hasTag(std::string tag) const
+    {
+       return getAnyFirstNode(tag.c_str());
+    }
+
     /// Returns true if an Object exists in the filedata, even nested
     /// inside other objects
     template<class Object>
@@ -326,7 +332,7 @@ public:
         data->appendToRoot(node,id, label);
     }
 
-private:
+protected:
     gsFileData getInclude(index_t id, real_t time, std::string label);
 
 public:
