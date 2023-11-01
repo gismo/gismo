@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
     gsStopwatch gsTime;
     time_t now = time(0);
 
-    std::ofstream file_opt, file_pc, file_tdm;
+    std::ofstream file_opt, file_ls_opt, file_pc, file_tdm;
 
     gsFileData<> fd_in(fn);
     gsMatrix<> uv, P, X;
@@ -607,8 +607,8 @@ int main(int argc, char *argv[])
     file_pc.open(std::to_string(now)+"results_adaptive_APDM.csv");
     file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
-    file_tdm.open(std::to_string(now)+"results_adaptive_ATDM.csv");
-    file_tdm << "m, deg, pen, mu, sigma, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
+    // file_tdm.open(std::to_string(now)+"results_adaptive_ATDM.csv");
+    // file_tdm << "m, deg, pen, mu, sigma, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
     real_t finaltime_adaptiveLoop = 0;
     // gtoll = gtoll * 4;
@@ -779,6 +779,10 @@ int main(int argc, char *argv[])
         }
 
     } // adaptive loop
+
+    
+
+
   }
     file_opt.close();
     gsInfo << "C-PDM total time: " << finaltime_adaptiveLoop << "\n";
@@ -857,7 +861,7 @@ int main(int argc, char *argv[])
       gsInfo << "A-PDM total time: " << finaltime_adaptiveLoop << "\n";
     } // apdm
 
-    if(atdm)
+    if(false) // we are not ready yet for TDM
     {
       real_t mu = 0.1;
       real_t sigma = 1;
@@ -939,7 +943,7 @@ int main(int argc, char *argv[])
           }
 
       }
-      file_tdm.close();
+      // file_tdm.close();
       gsInfo << "A-TDM total time: " << finaltime_adaptiveLoop << "\n";
     } // atdm
 
