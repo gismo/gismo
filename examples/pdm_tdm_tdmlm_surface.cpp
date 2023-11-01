@@ -1,4 +1,4 @@
-/** @file pdm_tdm_surface.cpp
+/** @file pdm_tdm_tdmlm_surface.cpp
 
     @brief Tutorial on gsBSpline class.
 
@@ -256,7 +256,8 @@ int main(int argc, char *argv[])
     index_t deg_x = -1; // q
     index_t deg_y = -1; // r
     real_t lambda = 0; // s
-    // t, u, v, w,
+    real_t lm = 1; //
+    //u, v, w,
     index_t kx = -1; // x
     index_t ky = -1; // y
     index_t maxPC_step = 0; // y
@@ -275,6 +276,7 @@ int main(int argc, char *argv[])
     cmd.addInt("q", "xdeg", "x-degree (dx,dy).", deg_x);
     cmd.addInt("r", "ydeg", "y-degree (dy,dy).", deg_y);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
+    cmd.addReal("t", "lmreg", "lm system regularizer", lm);
     // t, u, v, w,
     cmd.addInt("x", "xknt", "number of interior knots in x-direction.", kx);
     cmd.addInt("y", "yknt", "number of interior knots in y-direction.", ky);
@@ -346,28 +348,38 @@ int main(int argc, char *argv[])
    gsGeometry<>::uPtr initGeom = tbasis.interpolateAtAnchors(fit_plane.result()->eval(tbasis.anchors()));
 
    gsMatrix<> params(uv.rows(), uv.cols());
-   for (index_t i = 0; i<X.cols(); ++i)
-   {
-       const auto & curr = X.col(i);
-       gsVector<> newParam = params.col(i);
-       initGeom->closestPointTo(curr, newParam, 1e-6, false);
-       params.col(i) = newParam;
-   }
+   params = uv;
+   // for (index_t i = 0; i<X.cols(); ++i)
+   // {
+   //     const auto & curr = X.col(i);
+   //     gsVector<> newParam = params.col(i);
+   //     initGeom->closestPointTo(curr, newParam, 1e-6, false);
+   //     params.col(i) = newParam;
+   // }
 
-   gsInfo << "Initial parameters obtained by projection.\n";
+   // gsInfo << "Initial parameters obtained by projection.\n";
 
    gsInfo << "Initial pdm fitting object.\n";
    gsFitting<real_t> pdm_obj( params, X, tbasis);
    pdm_obj.updateGeometry(initGeom->coefs(), params);
    gsInfo << *pdm_obj.result() << "\n";
    gsWriteParaview(*pdm_obj.result(), "pdm_0");
+   pdm_obj.parameterProjectionSepBoundary(1e-8, interpIdx);
 
    gsInfo << "Initial tdm fitting object.\n";
    gsFitting<real_t> tdm_obj( params, X, tbasis);
    tdm_obj.updateGeometry(initGeom->coefs(), params);
-
    gsInfo << *tdm_obj.result() << "\n";
    gsWriteParaview(*tdm_obj.result(), "tdm_0");
+   tdm_obj.parameterProjectionSepBoundary(1e-8, interpIdx);
+
+   gsInfo << "Initial tdmlm fitting object.\n";
+   gsFitting<real_t> tdmlm_obj( params, X, tbasis);
+   tdmlm_obj.updateGeometry(initGeom->coefs(), params);
+   gsInfo << *tdmlm_obj.result() << "\n";
+   gsWriteParaview(*tdmlm_obj.result(), "tdmlm_0");
+   tdmlm_obj.parameterProjectionSepBoundary(1e-8, interpIdx);
+
 
 
    std::ofstream pdm_results;
@@ -376,16 +388,18 @@ int main(int argc, char *argv[])
 
    std::ofstream tdm_results;
    tdm_results.open(std::to_string(now) + "tdm_results.csv");
-   // tdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse, mu*PDM, sigma*TDM, boundary, pos-semi-def, cond, s_min, s_max, s-free\n";
    tdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse, mu*PDM, sigma*TDM\n";
+
+   std::ofstream tdmlm_results;
+   tdmlm_results.open(std::to_string(now) + "tdmLM_results.csv");
+   tdmlm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse, lm\n";
 
     // index_t pc_step = maxPC_step;
     for(index_t pc_step = 0; pc_step < maxPC_step; pc_step++)
     {
     // gsFitting<real_t> pdm_obj( uv, X, tbasis);
     pdm_obj.compute(lambda);
-    // pdm_obj.parameterCorrection(1e-6,pc_step,1e-6);
-    pdm_obj.parameterCorrectionSepBoundary(1e-6,pc_step, 1, 0, interpIdx);
+    pdm_obj.parameterCorrectionSepBoundary_pdm(1e-6, pc_step, interpIdx);
 
     std::vector<real_t> pdm_min_max_mse = pdm_obj.result()->MinMaxMseErrors(pdm_obj.returnParamValues(),X);
 
@@ -397,12 +411,10 @@ int main(int argc, char *argv[])
                 << pdm_min_max_mse[2] << std::scientific << ","
                 << math::sqrt(pdm_min_max_mse[2]) << std::scientific << "\n";
 
-    // gsWriteParaview(*pdm_obj.result(), "pdm_geo");
 
-    // gsFitting<real_t> tdm_obj( uv, X, tbasis);
+
     tdm_obj.compute_tdm(lambda, mu, sigma, interpIdx);
-    // tdm_obj.parameterCorrection_tdm(1e-6,pc_step, mu, sigma, interpIdx);
-    tdm_obj.parameterCorrectionSepBoundary(1e-6, pc_step, mu, sigma, interpIdx);
+    tdm_obj.parameterCorrectionSepBoundary_tdm(1e-6, pc_step, mu, sigma, interpIdx);
 
     std::vector<real_t> tdm_min_max_mse = tdm_obj.result()->MinMaxMseErrors(tdm_obj.returnParamValues(),X);
     tdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
@@ -413,12 +425,28 @@ int main(int argc, char *argv[])
                 << math::sqrt(tdm_min_max_mse[2]) << std::scientific << ","
                 << mu << "," << sigma << "\n";
 
+    tdmlm_obj.compute_tdmlm(lambda, lm, interpIdx);
+    tdmlm_obj.parameterCorrectionSepBoundary_tdmlm(1e-6, pc_step, 1, interpIdx);
+
+    std::vector<real_t> tdmlm_min_max_mse = tdmlm_obj.result()->MinMaxMseErrors(tdmlm_obj.returnParamValues(),X);
+    tdmlm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
+                << pc_step << ","
+                << tdmlm_min_max_mse[0] << std::scientific << ","
+                << tdmlm_min_max_mse[1] << std::scientific << ","
+                << tdmlm_min_max_mse[2] << std::scientific << ","
+                << math::sqrt(tdmlm_min_max_mse[2]) << std::scientific << ","
+                << lm << "\n";
     }
+
+    gsInfo << "Final PDM geometry:\n" << *pdm_obj.result() << "\n";
+    gsInfo << "Final TDM geometry:\n" << *tdm_obj.result() << "\n";
+    gsInfo << "Final TDMLM geometry:\n" << *tdmlm_obj.result() << "\n";
     gsWriteParaview(*pdm_obj.result(), "pdm_it"+internal::to_string(maxPC_step));
     gsWriteParaview(*tdm_obj.result(), "tdm_it"+internal::to_string(maxPC_step));
+    gsWriteParaview(*tdmlm_obj.result(), "tdmlm_it"+internal::to_string(maxPC_step));
     pdm_results.close();
     tdm_results.close();
-    // gsWriteParaview(*tdm_obj.result(), "tdm_geo");
+    tdmlm_results.close();
 
 
     // gsFitting<2, real_t> tdm_obj( uv, X, tbasis, lambda);
