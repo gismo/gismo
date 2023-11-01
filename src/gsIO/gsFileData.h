@@ -333,31 +333,31 @@ public:
     }
 
 protected:
-    gsFileData getInclude(index_t id, real_t time, std::string label);
+    void getInclude(gsFileData & res, index_t id, real_t time, std::string label);
 
 public:
-    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it in the gsFileData \em res object
+    /// @param res The gsFileData object where the referenced file will be loaded into
     /// @param id Index of the <xmlfile> node
-    /// @return A new gsFileData object with the contents of the referenced file
-    gsFileData getIncludeById(index_t id)
+    void getIncludeById(gsFileData & res, index_t id)
     {
-        return getInclude(id, -1., "");
+        return getInclude(res, id, -1., "");
     }
 
-    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it in the gsFileData \em res object
+    /// @param res The gsFileData object where the referenced file will be loaded into
     /// @param time Time attribute of the <xmlfile> node
-    /// @return A new gsFileData object with the contents of the referenced file
-    gsFileData getIncludeByTime(real_t time)
+    void getIncludeByTime(gsFileData & res, real_t time)
     {
-        return getInclude(-1,time, "");
+        return getInclude(res, -1,time, "");
     }
 
-    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it and returns it as a new gsFileData object
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it in the gsFileData \em res object
+    /// @param res The gsFileData object where the referenced file will be loaded into
     /// @param label Label of the <xmlfile> node
-    /// @return A new gsFileData object with the contents of the referenced file
-    gsFileData getIncludeByLabel(std::string label)
+    void getIncludeByLabel(gsFileData & res, std::string label)
     {
-        return getInclude(-1,-1.,label);
+        return getInclude(res, -1,-1.,label);
     }
 
     std::string getString () const

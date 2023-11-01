@@ -293,7 +293,7 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
 }
 
 template<class T>
-gsFileData<T> gsFileData<T>::getInclude(index_t id, real_t time, std::string label)
+void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std::string label)
 {   
     // Ensures that only one argument is actually provided
     GISMO_ENSURE((id!=-1 ^  time!=-1. ^  label!="") &&
@@ -326,8 +326,9 @@ gsFileData<T> gsFileData<T>::getInclude(index_t id, real_t time, std::string lab
     if (nd)
     {
         std::string filename = gsFileManager::getPath(m_lastPath) +  nd->value();
-        gsFileData res(filename);
-        return res;
+        res.clear();
+        res.read(filename);
+        return;
     }
     GISMO_ERROR("Include with " << attr_name << "=" << attr_string << " does not exist!");
 }
