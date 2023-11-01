@@ -58,7 +58,11 @@ public:
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
 
+    void updateGeometry(gsMatrix<T> coefficients, gsMatrix<T> parameters);
+
     void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx);
+
+    void compute_tdmlm(T lambda, T lm, const std::vector<index_t> & interpIdx);
 
     void parameterCorrection(T accuracy = 1e-8,
                              index_t maxIter = 10,
@@ -66,8 +70,15 @@ public:
 
     bool is_corner(gsMatrix<T> & parametric_domain, gsVector<T> & parameter);
 
+
     void parameterCorrection_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& interpIdx);
     void parameterCorrectionSepBoundary(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex);
+
+    void parameterProjectionSepBoundary(T accuracy,const std::vector<index_t>& interpIdx);
+    void parameterCorrectionSepBoundary_pdm(T accuracy, index_t maxIter, const std::vector<index_t>& sepIndex);
+    void parameterCorrectionSepBoundary_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex);
+    void parameterCorrectionSepBoundary_tdmlm(T accuracy, index_t maxIter, T lm, const std::vector<index_t>& sepIndex);
+
     void parameterCorrectionFixedBoundary(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& interpIdx);
 
 
