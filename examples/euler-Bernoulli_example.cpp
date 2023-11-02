@@ -302,8 +302,8 @@ private:
  */
 
 
-template<class E>
-class curve_bvar1_expr : public _expr<curve_bvar1_expr<E> >
+template<short_t targetDim, class E>
+class curve_bvar1_expr : public _expr<curve_bvar1_expr<targetDim,E> >
 {
 public:
     typedef typename E::Scalar Scalar;
@@ -313,7 +313,8 @@ private:
     typename gsGeometryMap<Scalar>::Nested_t _G;
 
     mutable gsMatrix<Scalar> res;
-    mutable gsMatrix<Scalar> bGrad, bHess, cJac, cHess;
+    mutable gsMatrix<Scalar> bGrad, bHess;
+    mutable gsVector<Scalar,3> cJac, cHess;
     mutable gsVector<Scalar,3> binormal, normal;
 
     mutable gsMatrix<Scalar> der1, der2;
@@ -327,7 +328,7 @@ public:
     curve_bvar1_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G)
     {
         GISMO_ASSERT(G.domainDim()==1,"Domain dimension should be 1, but is "<<G.domainDim());
-        GISMO_ASSERT(G.targetDim()==3,"Target dimension should be 3, but is "<<G.targetDim());
+        GISMO_ASSERT(G.targetDim()==targetDim,"Target dimension should be "<<targetDim<<", but is "<<G.targetDim());
     }
 
 #   define Eigen gsEigen
@@ -345,14 +346,11 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
 
     index_t rows() const { return 1; }
-    index_t cols() const { return _u.dim(); }
+    index_t cols() const { return 3; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);
-        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // need actives for cardinality
-        evList.add(_G);
-        _G.data().flags |= NEED_DERIV | NEED_DERIV2;
+        parse_impl<targetDim>(evList);
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
@@ -363,6 +361,82 @@ public:
 
 private:
 
+    template<short_t _targetDim> inline
+    typename util::enable_if< _targetDim==2, void >::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // need actives for cardinality
+        evList.add(_G);
+        _G.data().flags |= NEED_DERIV | NEED_DERIV2 | NEED_NORMAL;
+    }
+
+    template<short_t _targetDim> inline
+    typename util::enable_if< _targetDim==3, void >::type
+    parse_impl(gsExprHelper<Scalar> & evList) const
+    {
+        evList.add(_u);
+        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // need actives for cardinality
+        evList.add(_G);
+        _G.data().flags |= NEED_DERIV | NEED_DERIV2;
+    }
+
+    // returns binormal (first) and normal (second) (not normalized)
+    template<short_t _targetDim> inline
+    typename util::enable_if< _targetDim==2, std::pair<gsVector<Scalar,3>,gsVector<Scalar,3>> >::type
+    basisVectors(const index_t k)  const
+    {
+        gsVector<Scalar,3> b, n;
+        n.setZero();
+        n.head(2) = _G.data().normals.col(k);
+        b<<0,0,1;
+        return std::make_pair(b,n);
+    }
+
+    // returns binormal (not normalized)
+    template<short_t _targetDim> inline
+    typename util::enable_if< _targetDim==2, std::pair<gsVector<Scalar,3>,gsVector<Scalar,3>> >::type
+    curveDerivatives(const index_t k)  const
+    {
+        gsVector<Scalar,3> deriv1, deriv2;
+        deriv1.setZero();
+        deriv2.setZero();
+        // Compute first and second derivative of the geometry map
+        deriv1.head(2) = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
+        deriv2.head(2) = _G.data().values[2].col(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
+        return std::make_pair(deriv1,deriv2);
+    }
+
+    // returns binormal (first) and normal (second) (not normalized)
+    template<short_t _targetDim> inline
+    typename util::enable_if< _targetDim==3, std::pair<gsVector<Scalar,3>,gsVector<Scalar,3>> >::type
+    basisVectors(const index_t k)  const
+    {
+        gsVector<Scalar,3> b, n;
+        // Compute first and second derivative of the geometry map
+        gsVector<Scalar,3> deriv1 = _G.data().values[1].col3d(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
+        gsVector<Scalar,3> deriv2 = _G.data().values[2].col3d(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
+
+        // Compute unit bi-normals
+        b = (deriv1.cross(deriv2));
+        // Compute unit normals
+        n = (b.cross(deriv1));
+
+        return std::make_pair(b,n);
+    }
+
+    // HV: Can we re-use this function outside of the class??
+    // returns binormal (not normalized)
+    template<short_t _targetDim> inline
+    typename util::enable_if< _targetDim==3, std::pair<gsVector<Scalar,3>,gsVector<Scalar,3>> >::type
+    curveDerivatives(const index_t k)  const
+    {
+        // Compute first and second derivative of the geometry map
+        gsVector<Scalar,3> deriv1 = _G.data().values[1].col3d(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
+        gsVector<Scalar,3> deriv2 = _G.data().values[2].col3d(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
+        return std::make_pair(deriv1,deriv2);
+    }
+
     template<class U> inline
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
@@ -370,307 +444,36 @@ private:
         const index_t N = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
         res.resize(_u.cardinality(), cols()); // rows()*
 
-        // Compute first and second derivative of the geometry map
-        der1 = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
-        der2 = _G.data().values[2].col(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
+        std::tie(binormal,normal) = basisVectors<targetDim>(k);
+
         // Compute unit bi-normals
-        binormal = (der1.cross(der2));
         binormal_norm = binormal.norm();
         binormal /= binormal_norm;
         // Compute unit normals
-        normal = (binormal.cross(der1));
         normal_norm = normal.norm();
         normal /= normal_norm;
 
         // Compute B tensor
         I.setIdentity();
 
-        gsDebugVar(binormal * binormal.transpose());
         B = ( I - binormal * binormal.transpose() ) / binormal_norm;
 
         bGrad = _u.data().values[1].col(k);
         bHess = _u.data().values[2].col(k);
-        cJac = _G.data().values[1].reshapeCol(k, 1, 3).transpose();  // [dG1/dx;     dG2/dx;     dG3/dx]
-        cHess = _G.data().values[2].reshapeCol(k, 1, 3).transpose(); // [d^2G1/dx^2; d^2G2/dx^2; d^2G3/dx^2]
+        std::tie(cJac,cHess) = basisVectors<targetDim>(k);
 
-        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
+        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis function components [Target dim]
         {
             const short_t s = d*N;
             for (index_t j = 0; j!= N; ++j) // for all actives
                 res.row(s+j).noalias() = B*(
-                                    vecFun(d, bGrad.at(j) ).cross( cHess.col3d(0) ) +
-                                    cJac.col3d(0).cross( vecFun(d, bHess.at(j) ) )
+                                    vecFun(d, bGrad.at(j) ).cross( cHess ) +
+                                    cJac.cross( vecFun(d, bHess.at(j) ) )
                                    );
         }
         return res;
     }
 };
-
-
-//Use this one
-//template<class E>
-//class curve_bvar2_expr : public _expr<curve_bvar2_expr<E> >
-//{
-//
-//
-//public:
-//    typedef typename E::Scalar Scalar;
-//
-//private:
-//    typename E::Nested_t _u;
-//    typename gsGeometryMap<Scalar>::Nested_t _G;
-//
-//    mutable gsMatrix<Scalar> res;
-//    mutable gsMatrix<Scalar> bGrad, bHess, cJac, cHess, u_val;
-//    mutable gsVector<Scalar,3> binormal, normal, bvar1, bvar1_without_B, bvar2;
-//
-//    mutable gsMatrix<Scalar> der1, der2;
-//    mutable gsMatrix<Scalar,3,3> B, I, Bvar1;
-//
-//    mutable Scalar binormal_norm, normal_norm, binormal_norm_var1;
-//
-//public:
-//    enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
-//
-//    curve_bvar2_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G)
-//    {
-//        GISMO_ASSERT(G.domainDim()==1,"Domain dimension should be 1, but is "<<G.domainDim());
-//        GISMO_ASSERT(G.targetDim()==3,"Target dimension should be 3, but is "<<G.targetDim());
-//    }
-//
-//#   define Eigen gsEigen
-//    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-//#   undef Eigen
-//
-//    // helper function
-//    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
-//    {
-//        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
-//        result[pos] = val;
-//        return result;
-//    }
-//
-//    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
-//
-//    index_t rows() const { return 1; }
-//    index_t cols() const { return _u.dim(); }
-//
-//    void parse(gsExprHelper<Scalar> & evList) const
-//    {
-//        evList.add(_u);
-//        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2 | NEED_DIV; // need actives for cardinality
-//        evList.add(_G);
-//        _G.data().flags |= NEED_DERIV | NEED_DERIV2;
-//    }
-//
-//    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-//    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-//    index_t cardinality_impl() const { return _u.cardinality_impl(); }
-//
-//    void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
-//
-//private:
-//
-//    template<class U> inline
-//    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
-//    eval_impl(const U & u, const index_t k)  const
-//    {
-//        const index_t N = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-//        res.resize(_u.cardinality(), cols()); // rows()*
-//
-//        // Compute first and second derivative of the geometry map
-//        der1 = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
-//        der2 = _G.data().values[2].col(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
-//        // Compute unit bi-normals
-//        binormal = (der1.cross(der2));
-//        binormal_norm = binormal.norm();
-//        binormal /= binormal_norm;
-//        // Compute unit normals
-//        normal = (binormal.cross(der1));
-//        normal_norm = normal.norm();
-//        normal /= normal_norm;
-//
-//        // Compute B tensor
-//        I.setIdentity();
-//
-//        gsDebugVar(binormal * binormal.transpose());
-//        B = ( I - binormal * binormal.transpose() ) / binormal_norm;
-//
-//        u_val = _u.data().values[0].col(k);
-//        bGrad = _u.data().values[1].col(k);
-//        bHess = _u.data().values[2].col(k);
-//        cJac = _G.data().values[1].reshapeCol(k, 1, 3).transpose();  // [dG1/dx;     dG2/dx;     dG3/dx]
-//        cHess = _G.data().values[2].reshapeCol(k, 1, 3).transpose(); // [d^2G1/dx^2; d^2G2/dx^2; d^2G3/dx^2]
-//
-//
-//        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
-//        {
-//            const short_t s = d*N;
-//            for (index_t j = 0; j!= N; ++j) // for all actives
-//            {
-//                bvar1_without_B = (
-//                        vecFun(d, bGrad.at(j)).cross(cHess.col3d(0)) +
-//                        cJac.col3d(0).cross(vecFun(d, bHess.at(j)))
-//                        ).transpose();
-//            }
-//        }
-//        Bvar1 = (-(bvar1_without_B * binormal.transpose()+ binormal * bvar1_without_B.transpose()) * binormal_norm - (I - binormal * binormal.transpose()) * binormal_norm_var1)/(binormal_norm * binormal_norm);
-//        // JL: Not too sure about '*' between (-(bvar1_v * binormal + binormal * bvar1_v) and binormal_norm. HV derived the cross product but why???
-//
-//        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
-//        {
-//            const short_t s = d*N;
-//            for (index_t j = 0; j!= N; ++j) // for all actives
-////                res.row(s+j).noalias() = B * (vecFun(d, bvar1_without_B)).transpose() + Bvar1*bvar1_without_B.transpose();
-//        }
-//
-//        return res;
-//    }
-//};
-
-
-//template<class E1, class E2>
-//class curve_bvar2_expr : public _expr<curve_bvar2_expr<E1, E2> >{
-//public:
-//    typedef typename E1::Scalar Scalar;
-//
-//private:
-//    typename E1::Nested_t _u;
-//    typename E2::Nested_t _v;
-//    typename gsGeometryMap<Scalar>::Nested_t _G;
-//
-//    mutable gsMatrix<Scalar> res;
-//    mutable gsMatrix<Scalar> bGradu, bGradv, bHessu, bHessv, cJac, cHess;
-//    mutable gsVector<Scalar,3> binormal, normal, bvar1_v, bvar1_u, bvar1_u_without_B, bvar2;// I am sorry, please refer to appendix
-//
-//    mutable gsMatrix<Scalar> der1, der2;
-//    mutable gsMatrix<Scalar,3,3> B, I, Bvar1;
-//
-//    mutable Scalar binormal_norm, normal_norm, binormal_norm_var1;
-//
-//public:
-//    enum{ Space = 3, ScalarValued= 0, ColBlocks= 0};
-//
-//    curve_bvar2_expr(const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G) : _u(u), _v(v), _G(G)
-//    {
-//        GISMO_ASSERT(G.domainDim()==2,"Domain dimension should be 2, but is "<<G.domainDim());
-//        GISMO_ASSERT(G.targetDim()==3,"Target dimension should be 3, but is "<<G.targetDim());
-//    }
-//
-//#   define Eigen gsEigen
-//    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-//#   undef Eigen
-//
-//    // helper function
-//    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
-//    {
-//        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
-//        result[pos] = val;
-//        return result;
-//    }
-//
-//    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
-//
-//    index_t rows() const { return 1; }
-//    index_t cols() const { return _u.dim(); }
-//
-//    void parse(gsExprHelper<Scalar> & evList) const
-//    {
-//        evList.add(_u);
-//        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // need actives for cardinality
-//        evList.add(_v);
-//        _v.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // I forgot what this does
-//        evList.add(_G);
-//        _G.data().flags |= NEED_DERIV | NEED_DERIV2;
-//    }
-//
-//    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-//    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-//    index_t cardinality_impl() const { return _u.cardinality_impl(); }
-//
-//    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
-//
-//private:
-//
-//    template<class U> inline
-//    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
-//    eval_impl(const U & u, const index_t k)  const
-//    {
-//        const index_t N = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-//        const index_t N2 = _v.cadinality()/_v.dim(); // _v.data().actives.rows()
-//        res.resize(_u.cardinality(), _v.cadinality()); // rows()*
-//
-//        const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
-//        const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
-//
-//
-//        // Compute first and second derivative of the geometry map
-//        der1 = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
-//        der2 = _G.data().values[2].col(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
-//        // Compute unit bi-normals
-//        binormal = (der1.cross(der2));
-//        binormal_norm = binormal.norm();
-//        binormal /= binormal_norm;
-//        // Compute unit normals
-//        normal = (binormal.cross(der1));
-//        normal_norm = normal.norm();
-//        normal /= normal_norm;
-//
-//        bGradu = _u.data().values[1].col(k);
-//        bHessu = _u.data().values[2].col(k);
-//        bGradv = _v.data().values[1].col(k);
-//        bHessv = _v.data().values[2].col(k);
-//        cJac = _G.data().values[1].reshapeCol(k, 1, 3).transpose();  // [dG1/dx;     dG2/dx;     dG3/dx]
-//        cHess = _G.data().values[2].reshapeCol(k, 1, 3).transpose(); // [d^2G1/dx^2; d^2G2/dx^2; d^2G3/dx^2]
-//
-//
-//        // Compute B tensor
-//        I.setIdentity();
-//
-//        gsDebugVar(binormal * binormal.transpose());
-//        B = ( I - binormal * binormal.transpose() ) / binormal_norm;
-//
-//        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
-//        {
-//            for (index_t j = 0; j != cardU; ++j) //for all basis functions v(1)
-//            {
-//                bvar1_u_without_B =  vecFun(d, bGradu.at(j) ).cross( cHess.col3d(0) ) +
-//                                     cJac.col3d(0).cross( vecFun(d, bHessu.at(j) ) ).transpose();
-//                bvar1_u = B*(
-//                        vecFun(d, bGradu.at(j) ).cross( cHess.col3d(0) ) +
-//                        cJac.col3d(0).cross( vecFun(d, bHessu.at(j) ) )
-//                ).transpose();
-//
-//            }
-//
-//            for (index_t i = 0; i != cardV; ++i) //for all basis functions v(1)
-//            {
-//                binormal_norm_var1 = (vecFun(d, bGradv.at(i)).cross(cHess.col3d(0))) +
-//                                    cJac.col3d(0).cross(vecFun(d, bHessv.at(i))) * binormal/binormal_norm;
-//                bvar1_v = B*(
-//                        vecFun(d, bGradv.at(i) ).cross( cHess.col3d(0) ) +
-//                        cJac.col3d(0).cross( vecFun(d, bHessv.at(i) ) )
-//                ).transpose();
-//            }
-//
-//        }
-//        Bvar1 = (-(bvar1_v * binormal + binormal * bvar1_v) * binormal_norm - (I - binormal*binormal) * binormal_norm_var1)/binormal_norm^2;
-//        // JL: Not too sure about '*' between (-(bvar1_v * binormal + binormal * bvar1_v) and binormal_norm. HV derived the cross product but why???
-//
-//        // Compute B tensor variation
-//
-////        bvar2 = B * (vecFun(d, grad(bvar1_u))) + Bvar1*bvar1_v;
-//        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
-//        {
-//            for (index_t i = 0; i != cardV; ++i) //for all basis functions v(1)
-//            {
-//                res = B * (vecFun(d, grad(bvar1_u))) + Bvar1*bvar1_v;
-//            }
-//
-//        }
-//        return res;
-//    }
-//};
 
 
 template<class E>
@@ -716,7 +519,7 @@ public:
     const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
 
     index_t rows() const { return 1; }
-    index_t cols() const { return _u.dim(); }
+    index_t cols() const { return 3; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
@@ -738,8 +541,8 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        const index_t N = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-        res.resize(_u.cardinality(), cols()); // rows()*
+        const index_t N = _u.cardinality(); // _u.data().actives.rows()
+        res.resize(_u.cardinality() * _u.dim(), cols()); // rows()*
 
         // Compute first and second derivative of the geometry map
         der1 = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
@@ -766,7 +569,7 @@ private:
         cJac = _G.data().values[1].reshapeCol(k, 1, 3).transpose();  // [dG1/dx;     dG2/dx;     dG3/dx]
         cHess = _G.data().values[2].reshapeCol(k, 1, 3).transpose(); // [d^2G1/dx^2; d^2G2/dx^2; d^2G3/dx^2]
 
-        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
+        for (index_t d = 0; d!= _u.dim(); ++d) // for all basis function components [Target dim]
         {
             const short_t s = d*N;
             for (index_t j = 0; j!= N; ++j) // for all actives
@@ -787,32 +590,40 @@ private:
     }
 };
 
-template<class E>
-class curve_Avar1_expr : public _expr<curve_Avar1_expr<E> >
-{
+template<class E1, class E2>
+class curve_nvar2_expr : public _expr<curve_nvar2_expr<E1, E2> >{
 public:
-    typedef typename E::Scalar Scalar;
+    typedef typename E1::Scalar Scalar;
 
 private:
-    typename E::Nested_t _u;
+    typename E1::Nested_t _u;
+    typename E2::Nested_t _v;
     typename gsGeometryMap<Scalar>::Nested_t _G;
 
+    // Result
     mutable gsMatrix<Scalar> res;
-    mutable gsMatrix<Scalar> bGrad, bHess, cJac, cHess;
-    mutable gsVector<Scalar,3> binormal, normal, bvar1, bvar1_without_B, bvar2, nvar1, normal_norm_var1;
-
-    mutable gsMatrix<Scalar> der1, der2;
-    mutable gsMatrix<Scalar,3,3> A, B, I, Bvar1, Avar1;
-
-    mutable Scalar binormal_norm, normal_norm; //binormal_norm_var1, normal_norm_var1;
+    // Derivatives of the curve
+    mutable gsVector<Scalar,3> der1, der2;
+    // Basis function derivatives
+    mutable gsMatrix<Scalar> bGradu, bGradv, bHessu, bHessv;
+    // Binormal vector and its variations
+    mutable gsVector<Scalar,3> binormal, bvar1_u_without_B, bvar1_v_without_B, bvar1_u, bvar1_v, bvar2_uv, binormal_norm_var1;
+    // Normal vector and its variations
+    mutable gsVector<Scalar,3> normal, nvar1_u_without_A, nvar1_v_without_A, nvar1_u, nvar1_v,nvar2_uv, normal_norm_var1;
+    // Norms of vectors
+    mutable Scalar binormal_norm, normal_norm;
+    // First and second derivative of the curve.
+    mutable gsVector<Scalar,3> dx_var1_u, dx_var1_v, ddx_var1_u, ddx_var1_v;
+    // A and B matrix and their variations
+    mutable gsMatrix<Scalar,3,3> A, B, I, Bvar1, Avar1, Bvar1_v, Avar1_v;
 
 public:
-    enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
+    enum{ Space = 3, ScalarValued= 0, ColBlocks= 0};
 
-    curve_Avar1_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G)
+    curve_nvar2_expr(const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G) : _u(u), _v(v), _G(G)
     {
-        GISMO_ASSERT(_G.data().dim.first==1,"Domain dimension should be 1, but is "<<_G.data().dim.first);
-        GISMO_ASSERT(_G.data().dim.second==3,"Target dimension should be 3, but is "<<_G.data().dim.second);
+       GISMO_ASSERT(G.domainDim()==2,"Domain dimension should be 2, but is "<<G.domainDim());
+       GISMO_ASSERT(G.targetDim()==3,"Target dimension should be 3, but is "<<G.targetDim());
     }
 
 #   define Eigen gsEigen
@@ -822,9 +633,9 @@ public:
     // helper function
     static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
     {
-        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
-        result[pos] = val;
-        return result;
+       gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
+       result[pos] = val;
+       return result;
     }
 
     const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
@@ -834,17 +645,19 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
-        evList.add(_u);
-        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // need actives for cardinality
-        evList.add(_G);
-        _G.data().flags |= NEED_DERIV | NEED_2ND_DER;
+       evList.add(_u);
+       _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2;
+       evList.add(_v);
+       _v.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2;
+       evList.add(_G);
+       _G.data().flags |= NEED_DERIV | NEED_DERIV2;
     }
 
     const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
-    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
+    void print(std::ostream &os) const { os << "var2("; _u.print(os); os <<")"; }
 
 private:
 
@@ -852,12 +665,14 @@ private:
     typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
     eval_impl(const U & u, const index_t k)  const
     {
-        const index_t N = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-        res.resize(_u.cardinality(), cols()); // rows()*
+        const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
+        const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
+
+        res.resize(cardU * _u.dim(), cardV * _v.dim()); // total number of actives
 
         // Compute first and second derivative of the geometry map
-        der1 = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
-        der2 = _G.data().values[2].col(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
+        der1 = _G.data().values[1].col3d(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
+        der2 = _G.data().values[2].col3d(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
         // Compute unit bi-normals
         binormal = (der1.cross(der2));
         binormal_norm = binormal.norm();
@@ -867,305 +682,85 @@ private:
         normal_norm = normal.norm();
         normal /= normal_norm;
 
-        // Compute B tensor
-        I.setIdentity();
-
-        gsDebugVar(binormal * binormal.transpose());
-        B = ( I - binormal * binormal.transpose() ) / binormal_norm;
-        A = ( I - normal * normal.transpose() ) / normal_norm;
-
-
-        bGrad = _u.data().values[1].col(k);
-        bHess = _u.data().values[2].col(k);
-        cJac = _G.data().values[1].reshapeCol(k, 1, 3).transpose();  // [dG1/dx;     dG2/dx;     dG3/dx]
-        cHess = _G.data().values[2].reshapeCol(k, 1, 3).transpose(); // [d^2G1/dx^2; d^2G2/dx^2; d^2G3/dx^2]
-
-        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
-        {
-            const short_t s = d*N;
-            for (index_t j = 0; j!= N; ++j) // for all actives
-            {
-                bvar1 = B*(
-                        vecFun(d, bGrad.at(j) ).cross( cHess.col3d(0) ) +
-                        cJac.col3d(0).cross( vecFun(d, bHess.at(j) ) )
-                ).transpose();
-
-                nvar1 = A * (
-                        bvar1.cross( cJac.col(0) ) +
-                        binormal.cross( vecFun(d, bGrad.at(j) ) )
-                );
-
-                normal_norm_var1 = (
-                        bvar1.cross( cJac.col(0) ) +
-                        binormal.cross( vecFun(d, bGrad.at(j) ) )
-                )*normal/normal_norm;
-
-                Avar1 = (-(nvar1 * normal.transpose() + normal * nvar1.transpose()) * normal_norm - (I - normal*normal.transpose()) * normal_norm_var1.transpose())/(normal_norm* normal_norm);
-            }
-        }
-        return Avar1;
-    }
-};
-//template<class E1, class E2>
-//class curve_nvar2_expr : public _expr<curve_nvar2_expr<E1, E2> >{
-//public:
-//    typedef typename E1::Scalar Scalar;
-//
-//private:
-//    typename E1::Nested_t _u;
-//    typename E2::Nested_t _v;
-//    typename gsGeometryMap<Scalar>::Nested_t _G;
-//
-//    mutable gsMatrix<Scalar> res;
-//    mutable gsMatrix<Scalar> bGradu, bGradv, bHessu, bHessv, cJac, cHess;
-//    mutable gsVector<Scalar,3> binormal, normal, bvar1_v, bvar1_u, bvar1_u_without_B, bvar2, nvar1;// I am sorry, please refer to appendix
-//
-//    mutable gsMatrix<Scalar> der1, der2;
-//    mutable gsMatrix<Scalar,3,3> A, B, I, Bvar1, Avar1;
-//
-//    mutable Scalar binormal_norm, normal_norm, binormal_norm_var1, normal_norm_var1;
-//
-//public:
-//    enum{ Space = 3, ScalarValued= 0, ColBlocks= 0};
-//
-//    curve_nvar2_expr(const E1 & u, const E2 & v, const gsGeometryMap<Scalar> & G) : _u(u), _v(v), _G(G)
-//    {
-//        GISMO_ASSERT(G.domainDim()==2,"Domain dimension should be 2, but is "<<G.domainDim());
-//        GISMO_ASSERT(G.targetDim()==3,"Target dimension should be 3, but is "<<G.targetDim());
-//    }
-//
-//#   define Eigen gsEigen
-//    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-//#   undef Eigen
-//
-//    // helper function
-//    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
-//    {
-//        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
-//        result[pos] = val;
-//        return result;
-//    }
-//
-//    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
-//
-//    index_t rows() const { return 1; }
-//    index_t cols() const { return _u.dim(); }
-//
-//    void parse(gsExprHelper<Scalar> & evList) const
-//    {
-//        evList.add(_u);
-//        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // need actives for cardinality
-//        evList.add(_v);
-//        _v.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // I forgot what this does
-//        evList.add(_G);
-//        _G.data().flags |= NEED_DERIV | NEED_DERIV2;
-//    }
-//
-//    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-//    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-//    index_t cardinality_impl() const { return _u.cardinality_impl(); }
-//
-//    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
-//
-//private:
-//
-//    template<class U> inline
-//    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
-//    eval_impl(const U & u, const index_t k)  const
-//    {
-////        const index_t N = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-////        const index_t N2 = _v.cadinality()/_v.dim(); // _v.data().actives.rows()
-//        res.resize(rows()*_v.cadinality(), cols()); // total number of actives
-//
-//        const index_t cardU = _u.data().values[0].rows(); // number of actives per component of u
-//        const index_t cardV = _v.data().values[0].rows(); // number of actives per component of v
-//
-//
-//        // Compute first and second derivative of the geometry map
-//        der1 = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
-//        der2 = _G.data().values[2].col(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
-//        // Compute unit bi-normals
-//        binormal = (der1.cross(der2));
-//        binormal_norm = binormal.norm();
-//        binormal /= binormal_norm;
-//        // Compute unit normals
-//        normal = (binormal.cross(der1));
-//        normal_norm = normal.norm();
-//        normal /= normal_norm;
-//
-//        bGradu = _u.data().values[1].col(k);
-//        bHessu = _u.data().values[2].col(k);
-//        bGradv = _v.data().values[1].col(k);
-//        bHessv = _v.data().values[2].col(k);
-//        cJac = _G.data().values[1].reshapeCol(k, 1, 3).transpose();  // [dG1/dx;     dG2/dx;     dG3/dx]
-//        cHess = _G.data().values[2].reshapeCol(k, 1, 3).transpose(); // [d^2G1/dx^2; d^2G2/dx^2; d^2G3/dx^2]
-//
-//
-//        // Compute B tensor
-//        I.setIdentity();
-//
-//        gsDebugVar(binormal * binormal.transpose());
-//        A = ( I - normal * normal.transpose() ) / normal_norm;
-//        B = ( I - binormal * binormal.transpose() ) / binormal_norm;
-//
-//
-//        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
-//        {
-//            for (index_t j = 0; j != cardU; ++j) //for all basis functions v(1)
-//            {
-//                bvar1_u_without_B =  vecFun(d, bGradu.at(j) ).cross( cHess.col3d(0) ) +
-//                                     cJac.col3d(0).cross( vecFun(d, bHessu.at(j) ) ).transpose();
-//                bvar1_u = B*(
-//                        vecFun(d, bGradu.at(j) ).cross( cHess.col3d(0) ) +
-//                        cJac.col3d(0).cross( vecFun(d, bHessu.at(j) ) )
-//                ).transpose();
-//                nvar1 = A * (
-//                        bvar1_u.cross( cJac.col(0) ) +
-//                        binormal.cross( vecFun(d, bGradu.at(j) ) )
-//                );
-//
-//            }
-//
-//            for (index_t i = 0; i != cardV; ++i) //for all basis functions v(1)
-//            {
-//                binormal_norm_var1 = (vecFun(d, bGradv.at(i)).cross(cHess.col3d(0))) +
-//                                     cJac.col3d(0).cross(vecFun(d, bHessv.at(i))) * binormal/binormal_norm;
-//                normal_norm_var1 = bvar1_v.cross(cJac.col3d(0)) + binormal.cross(bGradv.at(i)) * normal/normal_norm;
-//                bvar1_v = B*(
-//                        vecFun(d, bGradv.at(i) ).cross( cHess.col3d(0) ) +
-//                        cJac.col3d(0).cross( vecFun(d, bHessv.at(i) ) )
-//                ).transpose();
-//            }
-//
-//        }
-//        Avar1 = (-(nvar1*normal + normal*nvar1)*normal_norm - (I - normal*normal)*normal_norm_var1)/normal_norm^2;
-//        Bvar1 = (-(bvar1_v * binormal + binormal * bvar1_v) * binormal_norm - (I - binormal*binormal) * binormal_norm_var1)/binormal_norm^2;
-//        // JL: Not too sure about '*' between (-(bvar1_v * binormal + binormal * bvar1_v) and binormal_norm. HV derived the cross product but why???
-//
-//        // Compute B tensor variation
-//
-////        bvar2 = B * (vecFun(d, grad(bvar1_u))) + Bvar1*bvar1_v;
-//        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
-//        {
-//            for (index_t i = 0; i != cardV; ++i) //for all basis functions v(1)
-//            {
-//                bvar2 = B * (vecFun(d, grad(bvar1_u))) + Bvar1*bvar1_v;
-//                res = A * (vecFun(d, grad(nvar1))) +  Avar1*nvar1;
-//            }
-//        }
-//        return res;
-//    }
-//};
-
-
-template<class E>
-class curve_nvar2_expr : public _expr<curve_nvar2_expr<E> >
-{
-public:
-    typedef typename E::Scalar Scalar;
-
-private:
-    typename E::Nested_t _u;
-    typename gsGeometryMap<Scalar>::Nested_t _G;
-
-    mutable gsMatrix<Scalar> res;
-    mutable gsMatrix<Scalar> bGrad, bHess, cJac, cHess;
-    mutable gsVector<Scalar,3> binormal, normal, bvar1, bvar1_without_B, bvar2, nvar1;
-
-    mutable gsMatrix<Scalar> der1, der2;
-    mutable gsMatrix<Scalar,3,3> A, B, I, Bvar1, Avar1;
-
-    mutable Scalar binormal_norm, normal_norm, binormal_norm_var1, normal_norm_var1;
-
-public:
-    enum{ Space = E::Space, ScalarValued= 0, ColBlocks= 0};
-
-    curve_nvar2_expr(const E & u, const gsGeometryMap<Scalar> & G) : _u(u), _G(G)
-    {
-        GISMO_ASSERT(_G.data().dim.first==1,"Domain dimension should be 1, but is "<<_G.data().dim.first);
-        GISMO_ASSERT(_G.data().dim.second==3,"Target dimension should be 3, but is "<<_G.data().dim.second);
-    }
-
-#   define Eigen gsEigen
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
-
-    // helper function
-    static inline gsVector<Scalar,3> vecFun(index_t pos, Scalar val)
-    {
-        gsVector<Scalar,3> result = gsVector<Scalar,3>::Zero();
-        result[pos] = val;
-        return result;
-    }
-
-    const gsMatrix<Scalar> & eval(const index_t k) const {return eval_impl(_u,k); }
-
-    index_t rows() const { return 1; }
-    index_t cols() const { return _u.dim(); }
-
-    void parse(gsExprHelper<Scalar> & evList) const
-    {
-        evList.add(_u);
-        _u.data().flags |= NEED_ACTIVE | NEED_GRAD | NEED_DERIV2; // need actives for cardinality
-        evList.add(_G);
-        _G.data().flags |= NEED_DERIV | NEED_2ND_DER;
-    }
-
-    const gsFeSpace<Scalar> & rowVar() const { return _u.rowVar(); }
-    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
-    index_t cardinality_impl() const { return _u.cardinality_impl(); }
-
-    void print(std::ostream &os) const { os << "var1("; _u.print(os); os <<")"; }
-
-private:
-
-    template<class U> inline
-    typename util::enable_if< util::is_same<U,gsFeSpace<Scalar> >::value, const gsMatrix<Scalar> & >::type
-    eval_impl(const U & u, const index_t k)  const
-    {
-        const index_t N = _u.cardinality()/_u.dim(); // _u.data().actives.rows()
-        res.resize(_u.cardinality(), cols()); // rows()*
-
-        // Compute first and second derivative of the geometry map
-        der1 = _G.data().values[1].col(k); // [dG_1/dxi1, dG_2/dxi1, dG_3/dxi1]
-        der2 = _G.data().values[2].col(k); // [d^2 G_1/d^2 xi1, d^2 G_2/d^2 xi1, d^2 G_3/d^2 xi1]
-        // Compute unit bi-normals
-        binormal = (der1.cross(der2));
-        binormal_norm = binormal.norm();
-        binormal /= binormal_norm;
-        // Compute unit normals
-        normal = (binormal.cross(der1));
-        normal_norm = normal.norm();
-        normal /= normal_norm;
+        // basis function derivatives
+        // first
+        bGradu = _u.data().values[1].col(k);
+        bHessu = _u.data().values[2].col(k);
+        // second
+        bGradv = _v.data().values[1].col(k);
+        bHessv = _v.data().values[2].col(k);
 
         // Compute B tensor
         I.setIdentity();
 
-        gsDebugVar(binormal * binormal.transpose());
-        B = ( I - binormal * binormal.transpose() ) / binormal_norm;
         A = ( I - normal * normal.transpose() ) / normal_norm;
+        B = ( I - binormal * binormal.transpose() ) / binormal_norm;
 
-
-        bGrad = _u.data().values[1].col(k);
-        bHess = _u.data().values[2].col(k);
-        cJac = _G.data().values[1].reshapeCol(k, 1, 3).transpose();  // [dG1/dx;     dG2/dx;     dG3/dx]
-        cHess = _G.data().values[2].reshapeCol(k, 1, 3).transpose(); // [d^2G1/dx^2; d^2G2/dx^2; d^2G3/dx^2]
-
-        for (index_t d = 0; d!= cols(); ++d) // for all basis function components [Target dim]
+        for (index_t j = 0; j!= cardU; ++j) // for all basis functions u (1)
         {
-            const short_t s = d*N;
-            for (index_t j = 0; j!= N; ++j) // for all actives
+            for (index_t i = 0; i!= cardV; ++i) // for all basis functions v (1)
             {
-                bvar1 = B*(
-                        vecFun(d, bGrad.at(j) ).cross( cHess.col3d(0) ) +
-                        cJac.col3d(0).cross( vecFun(d, bHess.at(j) ) )
-                ).transpose();
+                for (index_t d = 0; d!= _u.dim(); ++d) // for all basis functions u (2)
+                {
+                    const short_t s = d*cardU;
 
-                res.row(s+j).noalias() = A * (
-                        bvar1.cross( cJac.col(0) ) +
-                        binormal.cross( vecFun(d, bGrad.at(j) ) )
-                );
+                    dx_var1_u   = vecFun(d, bGradu.at(j) );
+                    ddx_var1_u  = vecFun(d, bHessu.at(j) );
 
+                    // bvar1_u (column vector)
+                    bvar1_u_without_B = dx_var1_u.cross( der2 ) + der1.cross( ddx_var1_u );
+                    bvar1_u = B*bvar1_u_without_B;
+
+                    // nvar1_u_without_A (column vector)
+                    nvar1_u_without_A = bvar1_u.cross(der1) + binormal.cross(dx_var1_u);
+                    nvar1_u = A*nvar1_u_without_A;
+
+                    for (index_t c = 0; c!= _v.dim(); ++c) // for all basis functions v (2)
+                    {
+                        const short_t r = c*cardV;
+
+                        // \delta_u x'
+                        dx_var1_v   = vecFun(c, bGradv.at(i) );
+                        ddx_var1_v  = vecFun(c, bHessv.at(i) );
+
+                        // bvar1_v (column vector)
+                        bvar1_v_without_B = dx_var1_v.cross( der2 ) + der1.cross( ddx_var1_v );
+                        bvar1_v = B*bvar1_v_without_B;
+
+                        // nvar1_v_without_A (column vector)
+                        nvar1_v_without_A = bvar1_v.cross(der1) + binormal.cross(dx_var1_v);
+                        nvar1_v = A*nvar1_v_without_A;
+
+                        // Avar1_v
+                        normal_norm_var1 = (bvar1_v.cross(der1) + binormal.cross(dx_var1_v)) * normal;
+                        Avar1_v = - (
+                                    ( nvar1_v * normal.transpose() + normal * nvar1_v.transpose() ) * normal_norm
+                                    +
+                                    ( ( I - normal * normal.transpose() ) * normal_norm_var1 )
+                                   ) / math::pow(normal_norm,2);
+
+                        // Bvar1_v
+                        binormal_norm_var1 = (dx_var1_v.cross(der2) + der1.cross(ddx_var1_v)) * binormal;
+                        Bvar1_v = - (
+                                    ( bvar1_v * binormal.transpose() + binormal * bvar1_v.transpose() ) * binormal_norm
+                                    +
+                                    ( ( I - binormal * binormal.transpose() ) * binormal_norm_var1 )
+                                   ) / math::pow(binormal_norm,2);
+
+
+                        // bvar2_uv
+                        bvar2_uv = Bvar1_v * ( bvar1_u_without_B )
+                                    +
+                                   B * ( dx_var1_u.cross( ddx_var1_v ) + dx_var1_v.cross(ddx_var1_u) ); // \delta_{uv}x' x x'' = 0 and \delta_{uv}x'' x x'= 0, since \delta_{uv}x' = 0 and \delta_{uv}x'' = 0
+
+                        // nvar2_uv
+                        nvar2_uv = Avar1_v * nvar1_u_without_A
+                                    +
+                                   A * ( bvar2_uv.cross(der1) + bvar1_u.cross(dx_var1_v) + bvar1_v.cross(dx_var1_u) ); // b x \delta_{uv}x' = 0, since \delta_{uv}x^\prime = 0
+
+                        res(s + j, r + i) = der2.transpose() * nvar2_uv;
+                    }
+                }
             }
         }
         return res;
@@ -1189,20 +784,16 @@ template<class E1, class E2> EIGEN_STRONG_INLINE
 curve_deriv2dot_expr<E1, E2> cderiv2dot(const E1 & u, const E2 & v) { return curve_deriv2dot_expr<E1, E2>(u,v); }
 
 /// Curve Bi-Normal (CBN) first variation (var1)
-template<class E> EIGEN_STRONG_INLINE
-curve_bvar1_expr<E> cbnvar1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return curve_bvar1_expr<E>(u,G); }
+template<short_t targetDim, class E> EIGEN_STRONG_INLINE
+curve_bvar1_expr<targetDim,E> cbnvar1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return curve_bvar1_expr<targetDim,E>(u,G); }
 
 /// Curve Normal (CN) first variation (var1)
 template<class E> EIGEN_STRONG_INLINE
 curve_nvar1_expr<E> cnvar1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return curve_nvar1_expr<E>(u,G); }
 
-template<class E> EIGEN_STRONG_INLINE
-curve_Avar1_expr<E> Avar1(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return curve_Avar1_expr<E>(u,G); }
-
 /// Curve Normal (CN) first variation (var1)
-//template<class E> EIGEN_STRONG_INLINE
-//curve_bvar2_expr<E> cbvar2(const E & u, const gsGeometryMap<typename E::Scalar> & G) { return curve_bvar2_expr<E>(u,G); }
-
+template<class E1, class E2> EIGEN_STRONG_INLINE
+curve_nvar2_expr<E1,E2> cnvar2(const E1 & u, const E2 & v, const gsGeometryMap<typename E1::Scalar> & G) { return curve_nvar2_expr<E1,E2>(u,v,G); }
 
 }
 }
@@ -1339,9 +930,13 @@ int main(int argc, char *argv[])
     GISMO_ASSERT(mp_ori.targetDim()==2,"Target dimension must be 2");
     auto normalX = sn(X);
     auto normalx = sn(x);
+    // GISMO_ASSERT(mp_ori.targetDim()==3,"Target dimension must be 3");
+    // auto normalX = normal(X);
+    // auto normalx = normal(x);
+
 
 //
-//     gsDebugVar(ev.eval(cbnvar1(u,X),pt));
+    gsDebugVar(ev.eval(gismo::expr::cbnvar1<2>(u,X),pt));
     // gsDebugVar(ev.eval(cnvar1(u,X),pt));
 
 //    gsDebugVar(ev.eval(Avar1(u, X),pt));
@@ -1349,9 +944,7 @@ int main(int argc, char *argv[])
     // cbnvar2dot(u,v,deriv2(G));
     // cbnvar2dot(u,v,G);
 
-    // GISMO_ASSERT(mp_ori.targetDim()==3,"Target dimension must be 3");
-    // auto normalX = normal(X);
-    // auto normalx = normal(x);
+
     auto E_m = jac(x).tr()*jac(x) - jac(X).tr()*jac(X); // HV: why no 1/2? maybe you mean x in front of the equation
     auto E_b = cderiv2(x)*normalx - cderiv2(X)*normalX;
     auto S_m = area*youngs*E_m;
@@ -1391,41 +984,9 @@ int main(int argc, char *argv[])
 
 
     gsDebugVar(ev.eval(E_m * S_m_der,pt));
-    gsDebugVar(ev.eval(E_m * S_m_der.cwisetr(),pt));
-    gsDebugVar(ev.eval(E_m * S_m_der.tr(),pt));
-    gsDebugVar(ev.eval(E_m * S_m_der.cwisetr().tr(),pt));
-    gsDebugVar(ev.eval(S_m_der.nocb(),pt));
-    gsDebugVar(ev.eval(E_m,pt));
-    // gsDebugVar(ev.eval(E_m.val() * S_m_der.nocb(),pt));
 
-    gsDebugVar((E_m.val() * S_m_der.nocb()).rows());
-    gsDebugVar((E_m.val() * S_m_der.nocb()).cols());
-    // gsDebugVar((E_m.val() * S_m_der.nocb()).rows());
-
-
-    // gsDebugVar(ev.eval(E_m * S_m_der.nocb(),pt));
-
-    // gsDebugVar((E_m * S_m_der).ColBlocks);
-    // gsDebugVar((E_m * S_m_der.cwisetr()).ColBlocks);
-    // gsDebugVar((E_m * S_m_der.tr()).ColBlocks);
-    // gsDebugVar((E_m * S_m_der.cwisetr().tr()).ColBlocks);
-    // gsDebugVar((E_m * S_m_der.trace()).ColBlocks);
-
-    // gsDebugVar(ev.eval(E_m.val() * S_m_der,pt));
-    // gsDebugVar(ev.eval(E_m.val() * S_m_der.cwisetr(),pt));
-    // gsDebugVar(ev.eval(E_m.val() * S_m_der.tr(),pt));
-    // gsDebugVar(ev.eval(E_m.val() * S_m_der.cwisetr().tr(),pt));
-
-
-
-    gsDebugVar(ev.eval(F_m,pt));
-    gsDebugVar(ev.eval(F_m.cwisetr().tr(),pt));
-
-    gsDebugVar(F_m.rows());
-    gsDebugVar(F_m.cols());
-
-    assembler.assemble(F_m);
-    gsDebugVar(assembler.matrix());
+    auto S_b_der2dot = cnvar2(u,u,x);
+    gsDebugVar(ev.eval(S_b_der2dot,pt));
 
     // Assemble K_m (linear)
     gsDebug<<"1\n";
