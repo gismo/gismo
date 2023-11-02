@@ -645,6 +645,7 @@ public:
     }
 
     index_t targetDim() const { return m_fs->targetDim();}
+    index_t domainDim() const { return m_fs->domainDim();}
  
     /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
     void copyCoefs( const gsGeometryMap<T> & other) const
@@ -1248,9 +1249,9 @@ public:
                 // m_sd->mapper.markBoundary(0, bnd, 0);
             }
         } else if (const gsMappedBasis<2, T> *mapb =
-                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source())) {
+                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source()))
+        {
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size(), this->dim());
-            const index_t dim = this->dim();
 
             if (0 == this->interfaceCont()) // C^0 matching interface
             {
@@ -3817,9 +3818,7 @@ public:
         return _u.rows();
     }
     index_t cols() const {
-        // DEBUG changed by asgl, perhaps there was a bug here?
-        //return _v.cols() * (_u.cols()/_u.rows());
-        return _u.cols();
+        return _v.cols();
     }
 
     void parse(gsExprHelper<Scalar> & evList) const

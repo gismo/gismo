@@ -104,6 +104,11 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
 endif()
 
+if (GISMO_WITH_ADIFF)
+   set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
+     "${gismo_SOURCE_DIR}/external/gsAutoDiff.h")
+endif()
+
 if (GISMO_WITH_XDEBUG)
   if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
     set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
