@@ -23,6 +23,9 @@
 #include <gsIpOpt/gsIpOpt.h>
 #endif
 
+#ifdef gsParasolid_ENABLED
+#include <gsParasolid/gsWriteParasolid.h>
+#endif
 
 using namespace gismo;
 
@@ -271,7 +274,7 @@ public:
                         index_t c2, // corner 1, east edge
                         index_t c3, // corner 2, north edge
                         index_t c4, // corner 3, west edge
-						            bool constrainCorners)
+                        bool constrainCorners)
     :
     m_mp(&mp),
     m_params(params),
@@ -476,7 +479,7 @@ private:
     index_t m_c4;
     gsSparseMatrix<T> m_G;
 
-    // Lastly, we forward the memebers of the base clase gsOptProblem
+    // Last, we forward the members of the base clase gsOptProblem.
     using gsOptProblem<T>::m_numDesignVars;
 
     using gsOptProblem<T>::m_desLowerBounds;
@@ -506,8 +509,9 @@ int main(int argc, char *argv[])
     index_t numURef = 0; // l, maximum number of refinement iterations
     index_t mupdate = 20; // m, HLBFGS hessian updates
     index_t numKnots = 2; // n, fitting initial number of knots in each direction
-    // o, p, q
-	  bool constrainCorners = false;
+    // o, p,
+    bool callScalePoints = false; // q, whether to use scalePoints
+    bool constrainCorners = false;
     real_t lambda = 1e-6; // s, fitting smoothing weight
 
     index_t extension = 2;
@@ -528,7 +532,8 @@ int main(int argc, char *argv[])
     cmd.addInt("l", "level", "number of maximum iterations for the adaptive loop.", maxRef);
     cmd.addInt("m", "update", "number of LBFGS updates.", mupdate);
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
-    // o, p, q
+    // o, p
+    cmd.addSwitch("w", "scalePoints", "whether to ensure everything is in unit cube.", callScalePoints);
     cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
     // t, u, v, w, x, y, z
@@ -557,8 +562,11 @@ int main(int argc, char *argv[])
 
     gsInfo << "Reordering parameters and points as interiors,\n"
               "and anticlockwise boundaried, i.e. south edge, east edge, north edge, west edge.\n";
-    scalePoints(P,X);
-    //X = P;
+
+    if(callScalePoints)
+        scalePoints(P,X);
+    else
+        X = P;
 
     sortPointCloud(uv,X,corners);
     index_t c1 = corners[0];
@@ -610,6 +618,24 @@ int main(int argc, char *argv[])
     // file_tdm.open(std::to_string(now)+"results_adaptive_ATDM.csv");
     // file_tdm << "m, deg, pen, mu, sigma, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
+    ////////////////////////////////////////////////////////////////////////////////
+    //
+    // @Sofia: Can we please partition the main function a bit?
+    // Something like
+    //
+    // callJPDM(...);
+    //
+    // if(apdm)
+    //     callAPDM(...);
+    //
+    // if(tdm)
+    //     callTDM(...);
+    //
+    // Also, there is quite some copy-pasting that could be turned into functions,
+    // e.g., writing the CSV files.
+    //
+    ////////////////////////////////////////////////////////////////////////////////
+
     real_t finaltime_adaptiveLoop = 0;
     // gtoll = gtoll * 4;
     // maxIter = maxIter / 2;
@@ -632,6 +658,15 @@ int main(int argc, char *argv[])
 
         gsWriteParaview(*opt_f.result(), prefix + "cpdm_geo_in", 100000, true);
         gsInfo << opt_f.result()->basis().size() << ", " << opt_f.result()->coefs().rows() << " x " << opt_f.result()->coefs().cols() << "\n";
+
+#ifdef gsParasolid_ENABLED
+        gsTHBSpline<2>* result = static_cast<gsTHBSpline<2>*>(opt_f.result());
+        extensions::gsWriteParasolid<real_t>(*result, "result_assembly");
+        gsTensorBSpline<2> TP_spline;
+        result->convertToBSpline(TP_spline);
+        extensions::gsWritePK_SHEET(TP_spline, "result_tp");
+#endif
+
 
         // after the least square fitting with THB-splines, we optimize the control points and the parametric values.
         gsMatrix<> coefs(opt_f.result()->basis().size(), 3);
@@ -763,12 +798,12 @@ int main(int argc, char *argv[])
         // file_opt << "m, deg, pen, dofs, optTol, optIt, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
         file_opt << X.cols() << "," << deg << "," << lambda << "," << basis.size()<< ","
                  << gtoll << ", " << optimizer->iterations() << "," << refIt << "," << maxPcIter << ","
-                    << sol_min_max_mse[0] << std::scientific << ","
-    					      << sol_min_max_mse[1] << std::scientific << ","
-    					      << sol_min_max_mse[2] << std::scientific << ","
-                    << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
-                    << percentagePoint << "," << tolerance << ","
-                    << finaltime_itLoop << "\n";
+                 << sol_min_max_mse[0] << std::scientific << ","
+                 << sol_min_max_mse[1] << std::scientific << ","
+                 << sol_min_max_mse[2] << std::scientific << ","
+                 << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+                 << percentagePoint << "," << tolerance << ","
+                 << finaltime_itLoop << "\n";
 
 
 
@@ -844,8 +879,8 @@ int main(int argc, char *argv[])
           file_pc << X.cols() << "," << deg << "," << lambda << ","
                   << dofs << ","<< refIt << "," << maxPcIter << ","
                   << sol_min_max_mse[0] << std::scientific << ","
-      					  << sol_min_max_mse[1] << std::scientific << ","
-      					  << sol_min_max_mse[2] << std::scientific << ","
+                  << sol_min_max_mse[1] << std::scientific << ","
+                  << sol_min_max_mse[2] << std::scientific << ","
                   << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
                   << percentagePoint << "," << tolerance << ","
                   << finaltime_itLoop << "\n";
@@ -927,14 +962,14 @@ int main(int argc, char *argv[])
           // file_pc << std::to_string(refIt+1) << "," << std::to_string(finaltime_adaptiveLoop) << "," << std::to_string(finaltime_itLoop) << "," << std::to_string(dofs) << "," << std::to_string(rmse) << "\n";
           // file_pc << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
           file_tdm << X.cols() << "," << deg << "," << lambda << ","
-                  << mu << "," << sigma << ","
-                  << dofs << ","<< refIt << "," << maxPcIter << ","
-                  << sol_min_max_mse[0] << std::scientific << ","
-      					  << sol_min_max_mse[1] << std::scientific << ","
-      					  << sol_min_max_mse[2] << std::scientific << ","
-                  << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
-                  << percentagePoint << "," << tolerance << ","
-                  << finaltime_itLoop << "\n";
+                   << mu << "," << sigma << ","
+                   << dofs << ","<< refIt << "," << maxPcIter << ","
+                   << sol_min_max_mse[0] << std::scientific << ","
+                   << sol_min_max_mse[1] << std::scientific << ","
+                   << sol_min_max_mse[2] << std::scientific << ","
+                   << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
+                   << percentagePoint << "," << tolerance << ","
+                   << finaltime_itLoop << "\n";
 
           if ( ref.maxPointError() < tolerance )
           {
