@@ -661,10 +661,7 @@ int main(int argc, char *argv[])
 
 #ifdef gsParasolid_ENABLED
         gsTHBSpline<2>* result = static_cast<gsTHBSpline<2>*>(opt_f.result());
-        extensions::gsWriteParasolid<real_t>(*result, "result_assembly");
-        gsTensorBSpline<2> TP_spline;
-        result->convertToBSpline(TP_spline);
-        extensions::gsWritePK_SHEET(TP_spline, "result_tp");
+        extensions::gsWriteParasolid<real_t>(*result, prefix + "cpdm_geo_in");
 #endif
 
 
@@ -760,6 +757,10 @@ int main(int argc, char *argv[])
         gsMatrix<> uv_fitting = opt_f.returnParamValues() ;
         gsWriteParaview(mesh, prefix + "cpdm_mesh");
         gsWriteParaview(*opt_f.result(), prefix + "cpdm_geo_moved", 100000, true);
+#ifdef gsParasolid_ENABLED
+        result = static_cast<gsTHBSpline<2>*>(opt_f.result());
+        extensions::gsWriteParasolid<real_t>(*result, prefix + "cpdm_geo_moved");
+#endif
         gsWriteParaviewPoints(uv_fitting, prefix + "cpdm_parameters");
 
         // compute mean squared error
