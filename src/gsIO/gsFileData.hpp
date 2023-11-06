@@ -50,11 +50,11 @@ gsFileData<T>::gsFileData()
 }
 
 template<class T>
-gsFileData<T>::gsFileData(String const & fn)
+gsFileData<T>::gsFileData(String const & fn, bool recursive)
 {
     data = new FileData;
     data->makeRoot();
-    this->read(fn);
+    this->read(fn, recursive);
 }
 
 template<class T>
@@ -159,7 +159,7 @@ gsFileData<T>::ioError(int lineNumber, const std::string& str)
 }
 
 template<class T>
-bool gsFileData<T>::read(String const & fn)
+bool gsFileData<T>::read(String const & fn, bool recursive)
 {
     m_lastPath = gsFileManager::find(fn);
     if ( m_lastPath.empty() )
@@ -173,9 +173,9 @@ bool gsFileData<T>::read(String const & fn)
     String ext = gsFileManager::getExtension(fn);
 
     if (ext== "xml")
-        return readXmlFile(m_lastPath);
+        return readXmlFile(m_lastPath, recursive);
     else if (ext== "gz" && util::ends_with(m_lastPath, ".xml.gz") )
-        return readXmlGzFile(m_lastPath);
+        return readXmlGzFile(m_lastPath, recursive);
     else if (ext== "txt")
         return readGeompFile(m_lastPath);
     else if (ext== "g2")
@@ -226,42 +226,111 @@ bool gsFileData<T>::read(String const & fn)
 /*---------- Native Gismo format */
 
 template<class T>
-bool gsFileData<T>::readXmlFile( String const & fn )
+bool gsFileData<T>::readXmlFile( String const & fn, bool recursive)
 {
     // Open file
     std::ifstream file(fn.c_str(), std::ios::in);
     if ( file.fail() )
     {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    return readGismoXmlStream(file);
+    return readGismoXmlStream(file, recursive);
 }
 
 template<class T>
-bool gsFileData<T>::readXmlGzFile( String const & fn )
+bool gsFileData<T>::readXmlGzFile( String const & fn, bool recursive)
 {
     // Open file
     igzstream file(fn.c_str(), std::ios::in);
     if ( file.fail() )
     {gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    return readGismoXmlStream(file);
+    return readGismoXmlStream(file, recursive);
 }
 
 
 template<class T>
-bool gsFileData<T>::readGismoXmlStream(std::istream & is)
+bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
 {
-    std::vector<char> buffer(
-        std::istreambuf_iterator<char>(is.rdbuf() ),
-        std::istreambuf_iterator<char>() );
+    m_buffer.emplace_back();
+    std::vector<char> & buffer = m_buffer.back();
+    buffer.assign( std::istreambuf_iterator<char>(is.rdbuf() ),
+                   std::istreambuf_iterator<char>() );
     buffer.push_back('\0');
-    m_buffer.swap(buffer);
-
     // Load file contents
-    data->parse<0>(&m_buffer[0]);
+    data->parse<0>(&buffer[0], true);
+
+    gsXmlNode * ln = data->last_node("xml");
+    if ( !ln )
+    {
+        gsWarn<< "gsFileData: Problem with file "<<m_lastPath
+              <<": Invalid XML file, no root tag <xml> found.\n";
+        assert( ln ) ;
+    }
+
+    if (recursive)
+    {
+        std::list<std::string> ifn;
+        for (gsXmlNode * child = ln->first_node("xmlfile") ;
+            child; child = child->next_sibling("xmlfile") )
+        {
+            ifn.push_back( child->value() );
+            //ln->remove_node(child);
+        }
+
+        std::string cfn = gsFileManager::getPath(m_lastPath);
+        for (auto & f : ifn)
+        {
+            readXmlFile(cfn + f);
+        }
+    }
+
+    gsXmlNode * root = data->getRoot();
+    root->merge_sibling(ln);
+    data->remove_node(ln);
 
     // TO DO: Check if it contains unknown tags...
     return true;
+}
+
+template<class T>
+void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std::string label)
+{   
+    // Ensures that only one argument is actually provided
+    GISMO_ENSURE((id!=-1 ^  time!=-1. ^  label!="") &&
+                !(id!=-1 && time!=-1. && label!=""),
+                "gsFileData::getInclude("<<id<<","<<time<<","<<label<<"), too many arguments provided!");
+    std::string attr_name, attr_string;
+
+    // Attribute name and string representation, depending on pprovided input.
+    if ( id!=-1 )
+    {
+        attr_name   = "id";
+        attr_string = std::to_string(id); 
+    }
+    else if ( time!=-1)
+    {
+        attr_name   = "time";
+        attr_string = std::to_string(time);
+    }
+    else if ( label!="")
+    {
+        attr_name   = "label";
+        attr_string = label;
+    } 
+
+    bool found=false;
+    gsXmlNode * root = getXmlRoot();
+    const gsXmlAttribute * attribute;
+
+    gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
+    if (nd)
+    {
+        std::string filename = gsFileManager::getPath(m_lastPath) +  nd->value();
+        res.clear();
+        res.read(filename);
+        return;
+    }
+    GISMO_ERROR("Include with " << attr_name << "=" << attr_string << " does not exist!");
 }
 
 /*---------- Axl file */
