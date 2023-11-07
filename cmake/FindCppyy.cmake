@@ -93,10 +93,8 @@ function(cppyy_generate_init)
     get_filename_component(CPPYY_LIB_SO ${ARG_LIB_FILE} NAME)
     get_filename_component(CPPYY_MAP ${ARG_MAP_FILE} NAME)
 
-    string(REPLACE "${ARG_NAMESPACES}" ";" ", " _namespaces)
-
+    string(REPLACE ";" ", " _namespaces "${ARG_NAMESPACES}") # In the original file there was a bug here
     if(NOT "${ARG_NAMESPACES}" STREQUAL "")
-        string(REPLACE "${ARG_NAMESPACES}" ";" ", " _namespaces)
         set(NAMESPACE_INJECTIONS "from cppyy.gbl import ${_namespaces}")
     else()
         set(NAMESPACE_INJECTIONS "")
