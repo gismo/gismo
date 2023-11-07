@@ -17,11 +17,13 @@
 
 #include <gsNurbs/gsBoehm.h>
 #include <gsNurbs/gsDeboor.hpp>
+#include <gsNurbs/gsTensorBSpline.h>
 
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
 #include <gsTensor/gsTensorTools.h>
+
 
 namespace gismo
 {

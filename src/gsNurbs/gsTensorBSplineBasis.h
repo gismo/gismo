@@ -17,7 +17,8 @@
 #include <gsTensor/gsTensorBasis.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsBSpline.h>
-#include <gsNurbs/gsTensorBSpline.h>
+#include <gsCore/gsForwardDeclarations.h>
+//#include <gsNurbs/gsTensorBSpline.h>
 
 namespace gismo
 {
@@ -356,7 +357,9 @@ public:
      */
     void refine( gsMatrix<T> const & boxes, int refExt = 0);
 
-    GISMO_MAKE_GEOMETRY_NEW
+
+    virtual memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const;
+
 
     /// \brief Reduces spline continuity (in all directions) at
     /// interior knots by \a i

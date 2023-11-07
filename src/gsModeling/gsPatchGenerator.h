@@ -14,6 +14,7 @@
 #pragma once
 
 #include<gsCore/gsMultiPatch.h>
+#include <gsNurbs/gsTensorBSpline.h>
 
 namespace gismo
 {

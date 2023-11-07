@@ -16,6 +16,7 @@
 #include <gsCore/gsTemplateTools.h>
 #include <gsTensor/gsTensorTools.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsBoehm.h>
 
@@ -186,8 +187,14 @@ active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     }
 }
 
+    template<int d, class T>
+    memory::unique_ptr< gsGeometry<T> > gsTensorBSplineBasis<d, T>::makeGeometry(gsMatrix<T> coefs) const {
 
-namespace internal
+        return memory::unique_ptr<gsGeometry<T> >(new gsTensorBSpline<d, T>(*this, give(coefs)));
+    }
+
+
+    namespace internal
 {
 
 /// @brief Get a TensorBSplineBasis from XML data
