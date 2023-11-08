@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  
+  <!-- Computational domain -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">100 100</patches>
+    <boundary>
+      100 1 
+      100 2 
+      100 3 
+      100 4
+    </boundary>
+  </MultiPatch>
+
+  <!-- Right-hand side function -->
+  <Function type="FunctionExpr" id="1" dim="2">1</Function>
+
+  <!-- The boundary conditions (multipatch=number of patches)-->
+  <boundaryConditions id="2" multipatch="1">
+    <Function type="FunctionExpr" dim="2" index="0">0</Function>
+    <Function type="FunctionExpr" dim="2" index="1">1</Function>
+    
+    <!-- Dirichlet conditions (patch,side) -->
+    <bc type="Dirichlet" function="0" unknown="0">
+      0 1 0 2 0 3
+    </bc>
+    
+    <!-- Neumann conditions (patch,side)-->
+    <bc unknown="0" type="Neumann" function="1">
+      0 4
+    </bc>
+  </boundaryConditions>
+
+  <!-- The initial solution -->
+  <Function type="FunctionExpr" id="3" dim="2">0</Function>
+
+  <!-- The manufactured exact solution (for reference) -->
+  <Function type="FunctionExpr" id="4" dim="2">0</Function>
+
+  <!-- Assembler options -->
+  <OptionList id="5">
+    <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+    <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+    <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+    <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+    <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+    <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+    <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+    <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+    <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+
+  </OptionList>
+
+  <!-- Multigrid-in-time options -->
+  <OptionList id="6">
+    <int label="CFactor" desc="Coarsening factor of the parallel-in-time multigrid solver" value="2"/>
+    <int label="access" desc="Access level (never [=0], =after finished [=1(default)], each iteration [=2]" value="1"/>
+    <int label="maxIter" desc="Maximum iteration numbers  of the parallel-in-time multigrid solver" value="100"/>
+    <int label="maxLevel" desc="Maximum numbers of parallel-in-time multigrid levels" value="30"/>
+    <int label="minCLevel" desc="Minimum level of the parallel-in-time multigrid solver" value="2"/>
+    <int label="numFMG" desc="Number of full multigrid steps of the parallel-in-time multigrid solver" value="1"/>
+    <int label="numFMGVcyc" desc="Number of full multigrid V-cycles of the parallel-in-time multigrid solver" value="1"/>
+    <int label="numMaxRef" desc="Maximum number of refinements of the parallel-in-time multigrid solver" value="1"/>
+    <int label="numRelax" desc="Number of relaxation steps of the parallel-in-time multigrid solver" value="1"/>
+    <int label="numStorage" desc="Number of storage of the parallel-in-time multigrid solver" value="-1"/>
+    <int label="print" desc="Print level (no output [=0], =runtime inforation [=1], run statistics [=2(default)], debug [=3])" value="2"/>
+    <int label="norm" desc="Temporal norm of the parallel-in-time multigrid solver (1-norm [=1], 2-norm [=2(default)], inf-norm [=3])" value="2"/>
+    <real label="absTol" desc="Absolute tolerance of the parallel-in-time multigrid solver" value="1e-10"/>
+    <real label="relTol" desc="Relative tolerance of the parallel-in-time multigrid solver" value="1e-3"/>
+    <bool label="fmg" desc="Perform full multigrid (default is off)" value="0"/>
+    <bool label="incrMaxLevels" desc="Increase the maximum number of parallel-in-time multigrid levels after performing a refinement (default is off)" value="0"/>
+    <bool label="periodic" desc="Periodic time grid (default is off)" value="0"/>
+    <bool label="refine" desc="Perform refinement in time (default off)" value="0"/>
+    <bool label="sequential" desc="Set the initial guess of the parallel-in-time multigrid solver as the sequential time stepping solution (default is off)" value="0"/>
+    <bool label="skip" desc="Skip all work on the first down cycle of the parallel-in-time multigrid solver (default on)" value="1"/>
+
+  </OptionList>
+  
+  <!-- Spatial solver options -->
+  <OptionList id="7">
+    <int label="numSmoothing" desc="Number of pre/post smoothing steps" value=""/>
+    <int label="solver" desc="Type of solver: (1) multigrid as stand-alone solver (2) multigrid as preconditioner in BiCGStab solver (3) multigrid as preconditioner in CG solver" value="1"/>
+    <int label="multigrid" desc="p-multigrid (1) or h-multigrid (2)" value="1"/>
+    <int label="cycle_p" desc="Type of cycle in p-multigrid, V-cycle (1) or W-cycle (2)" value="1"/>
+    <int label="cycle_h" desc="Type of cycle in h-multigrid, V-cycle (1) or W-cycle (2)" value="1"/>
+    <int label="lumping" desc="Restriction and Prolongation performed with the lumped (1) or consistent (2) mass matrix" value="1"/>
+    <int label="projection" desc="Direct projection on coarsest level (1) or via all other levels (2)" value="1"/>
+    <int label="smoother" desc="Type of smoother: (1) ILUT (2) Gauss-Seidel (3) SCMS (4) Block ILUT (5) Block Gauss-Seidel" value="1"/>
+    <int label="coarseOperator" desc="Type of coarse operator in h-multigrid: (1) Rediscretization (2) Galerkin Projection" value="1"/>
+    <string label="coarseStrategy" desc="Expression that defines coarsening strategy" value="1"/>
+  </OptionList>
+
+  <!-- other options -->
+
+  <!-- Spline data -->
+  <Geometry type="TensorBSpline2" id="100">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+        <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+        <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="2">0 0 1 0 0 1 1 1 </coefs>
+  </Geometry>
+  
+</xml>
