@@ -243,6 +243,12 @@ public:
                        gsMatrix<T> init = gsMatrix<T>(),
                        double damping_factor = 1) const;
 
+    /// Recovers a point on the (geometry) together with its parameters
+    /// \a uv, assuming that the \a k-th coordinate of the point \a
+    /// xyz is not known (and has a random value as input argument).
+    void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                           const T accuracy = 1e-6) const;
+
     /// Returns a "central" point inside inside the parameter domain
     virtual gsMatrix<T> parameterCenter() const
     { 
