@@ -220,11 +220,11 @@ if (GISMO_WITH_OPENMP)
    if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
        "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       find_path(OpenMP_C_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES include)
       find_path(OpenMP_CXX_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES include)
       find_library(OpenMP_libomp_LIBRARY
-        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES lib)
+        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES lib)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fopenmp -I${OpenMP_C_INCLUDE_DIR}")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp -I${OpenMP_CXX_INCLUDE_DIR}")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
