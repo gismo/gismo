@@ -169,6 +169,149 @@ struct gsQuadrature
             nnodes[i] = cast<Real,index_t>(quA * basis.degree(i) + quB + 0.5);
         return nnodes;
     }
+
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
+                             const gsOptionList & options)
+    {
+        typename gsBasis<real_t>::domainIter domIt = basis.makeDomainIterator();
+
+        index_t quadSize = 0;
+        typename gsQuadRule<T>::uPtr QuRule;
+        QuRule = getPtr(basis, options);
+
+        for (; domIt->good(); domIt->next())
+        {
+            QuRule = gsQuadrature::getPtr(basis);
+            quadSize+=QuRule->numNodes();
+        }
+
+        gsMatrix<T> result(basis->domainDim(),quadSize);
+
+        index_t offset = 0;
+        gsMatrix<> nodes;
+        for (domIt->reset(); domIt->good(); domIt->next() )
+        {
+            QuRule = gsQuadrature::getPtr(basis);
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           nodes, std::ignore);
+            result.block(0,offset,basis.domainDim(),QuRule->numNodes()) = nodes;
+            offset += QuRule->numNodes();
+        }
+    }
+
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
+                             const gsOptionList & options, const patchSide side)
+    {
+        typename gsBasis<real_t>::domainIter domIt = basis.makeDomainIterator(side);
+
+        index_t quadSize = 0;
+        typename gsQuadRule<T>::uPtr QuRule;
+        QuRule = getPtr(basis, options,side.side().direction());
+
+        for (; domIt->good(); domIt->next())
+        {
+            QuRule = gsQuadrature::getPtr(basis, options, side.side().direction());
+            quadSize+=QuRule->numNodes();
+        }
+
+        gsMatrix<T> result(basis.domainDim(),quadSize);
+
+        index_t offset = 0;
+        gsMatrix<> nodes;
+        gsVector<T> weights;
+        for (domIt->reset(); domIt->good(); domIt->next() )
+        {
+            QuRule = gsQuadrature::getPtr(basis, options, side.side().direction());
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                           nodes, weights);
+            result.block(0,offset,basis.domainDim(),QuRule->numNodes()) = nodes;
+            offset += QuRule->numNodes();
+        }
+        return result;
+    }
+
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
+                             const gsOptionList & options, const patchSide side)
+    {
+        gsMatrix<T> nodes = getAllNodes(basis,options,side);
+        return geom.eval(nodes);
+    }
+
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
+                             const gsOptionList & options, const std::vector<patchSide> sides)
+    {
+        std::vector<gsMatrix<T>> nodes(sides.size());
+        index_t cols = 0;
+        for (index_t s = 0; s != sides.size(); s++)
+        {
+            nodes[s] = getAllNodes(basis,options,sides[s]);
+            cols += nodes[s].cols();
+        }
+        gsMatrix<T> result(basis.domainDim(),cols);
+        cols = 0;
+
+        for (index_t s = 0; s != sides.size(); s++)
+        {
+            result.block(0,cols,nodes[s].rows(),nodes[s].cols()) = nodes[s];
+            cols += nodes[s].cols();
+        }
+
+        return result;
+    }
+
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsBasis<T> & basis, const gsGeometry<T> & geom,
+                             const gsOptionList & options, const std::vector<patchSide> sides)
+    {
+        gsMatrix<T> nodes = getAllNodes(basis,options,sides);
+        return geom.eval(nodes);
+    }
+
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases,
+                             const gsOptionList & options)
+    {
+        return getAllNodes(bases,options);
+    }
+
+    template<class T>
+    static std::vector<gsMatrix<T>> getAllNodes(const gsMultiBasis<T> & bases,
+                             const gsOptionList & options, const std::vector<patchSide> sides)
+    {
+        GISMO_ASSERT(bases.nBases()==sides.size(),"Number of bases must be equal to the number of fixed directions");
+        std::vector<gsMatrix<T>> nodes(bases.nBases());
+        for (size_t p = 0; p != bases.nBases(); p++)
+            nodes[p] = getAllNodes(bases.basis(p),options,sides[p]);
+
+        return nodes;
+    }
+
+    template<class T>
+    static gsMatrix<T> getAllNodes(const gsMultiBasis<T> & bases, const gsMultiPatch<T> & mp,
+                             const gsOptionList & options, const std::vector<patchSide> sides)
+    {
+        std::vector<gsMatrix<T>> nodes = getAllNodes(bases,options,sides);
+        index_t cols = 0;
+        for (size_t p = 0; p != nodes.size(); p++)
+            cols += nodes[p].cols();
+
+        gsMatrix<T> result(mp.targetDim(),cols);
+        cols = 0;
+        for (size_t p = 0; p != nodes.size(); p++)
+        {
+            result.block(0,cols,mp.targetDim(),nodes[p].cols()) = mp.patch(p).eval(nodes[p]);
+            cols += nodes[p].cols();
+        }
+
+        return result;
+    }
 };
+
 
 }// namespace gismo

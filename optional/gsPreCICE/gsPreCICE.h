@@ -141,12 +141,10 @@ public:
      * @param[in]  IDs     The IDs of the points
      * @param      values  The values (column-wise)
      */
-    void readBlockScalarData(const index_t & dataID, const index_t & size, const index_t * IDs, gsMatrix<T> & values) const
+    void readBlockScalarData(const index_t & dataID, const index_t & size, const gsVector<index_t> & IDs, gsMatrix<T> & values) const
     {
-        T * values_ptr = new T[size];
-        m_interface.readBlockScalarData(dataID,size,IDs,values_ptr);
-
-        values = gsEigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size);
+        values.resize(1,size);
+        m_interface.readBlockScalarData(dataID,size,IDs.data(),values.data());
     }
 
     /**
@@ -159,24 +157,28 @@ public:
      */
     void readBlockScalarData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, gsMatrix<T> & values) const
     {
-        index_t * IDs = new index_t[coords.cols()];
+        gsVector<index_t> IDs;
         this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
-
         this->readBlockScalarData(dataID,coords.cols(),IDs,values);
     }
 
-    void readBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, gsMatrix<T> & values) const
+    void readBlockVectorData(const index_t & dataID, const index_t & size, const gsVector<index_t> & IDs, gsMatrix<T> & values) const
     {
         int d = m_interface.getDimensions();
-        T * values_ptr = new T[size*d];
-        m_interface.readBlockVectorData(dataID,size,IDs,values_ptr);
-        values = gsEigen::Map<typename gsMatrix<T>::Base>(values_ptr,1,size*d);
-        values.blockTransposeInPlace(d);
+        values.resize(d,size);
+        m_interface.readBlockVectorData(dataID,size,IDs.data(),values.data());
+    }
+
+    gsMatrix<T>  readBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords) const
+    {
+        gsMatrix<T> result;
+        this->readBlockVectorData(meshID,dataID,coords,result);
+        return result;
     }
 
     void readBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, gsMatrix<T> & values) const
     {
-        index_t * IDs = new index_t[coords.cols()];
+        gsVector<index_t> IDs;
         this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
         this->readBlockVectorData(dataID,coords.cols(),IDs,values);
     }
@@ -189,9 +191,9 @@ public:
      * @param[in]  IDs     The IDs of the points
      * @param[in]  values  The values (column-wise)
      */
-    void writeBlockScalarData(const index_t & dataID, const index_t & size, const index_t * IDs, const gsMatrix<T> & values)
+    void writeBlockScalarData(const index_t & dataID, const index_t & size, const gsVector<index_t> & IDs, const gsMatrix<T> & values)
     {
-        m_interface.writeBlockScalarData(dataID,size,IDs,values.data());
+        m_interface.writeBlockScalarData(dataID,size,IDs.data(),values.data());
     }
 
     /**
@@ -204,22 +206,20 @@ public:
      */
     void writeBlockScalarData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, const gsMatrix<T> & values)
     {
-        index_t * IDs = new index_t[coords.cols()];
+        gsVector<index_t> IDs;
         this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
-
         this->writeBlockScalarData(dataID,coords.cols(),IDs,values);
     }
 
-    void writeBlockVectorData(const index_t & dataID, const index_t & size, const index_t * IDs, const gsMatrix<T> & values)
+    void writeBlockVectorData(const index_t & dataID, const index_t & size, const gsVector<index_t> & IDs, const gsMatrix<T> & values)
     {
-        m_interface.writeBlockVectorData(dataID,size,IDs,values.data());
+        m_interface.writeBlockVectorData(dataID,size,IDs.data(),values.data());
     }
 
     void writeBlockVectorData(const index_t & meshID, const index_t & dataID, const gsMatrix<T> & coords, const gsMatrix<T> & values)
     {
-        index_t * IDs = new index_t[coords.cols()];
+        gsVector<index_t> IDs;
         this->getMeshVertexIDsFromPositions(meshID,coords,IDs);
-
         this->writeBlockVectorData(dataID,coords.cols(),IDs,values);
     }
 
@@ -230,29 +230,12 @@ public:
      * @param[in]  coords  The coordinates of the points
      * @param      IDs     The IDs of the points
      */
-    void getMeshVertexIDsFromPositions(const index_t & meshID, const gsMatrix<T> & coords, gsMatrix<index_t> & IDs) const
+    void getMeshVertexIDsFromPositions(const index_t & meshID, const gsMatrix<T> & coords, gsVector<index_t> & IDs) const
     {
-        index_t * ID_ptr;
-        this->getMeshVertexIDsFromPositions(meshID,coords,ID_ptr);
-        for (index_t k=0; k!=coords.cols(); k++)
-            gsDebugVar(ID_ptr[k]);
-
-        IDs = gsEigen::Map<typename gsMatrix<index_t>::Base>(ID_ptr,1,coords.cols());
-    }
-
-    /**
-     * @brief      Gets the mesh vertex IDs from positions of the points.
-     *
-     * @param[in]  meshID  The mesh ID
-     * @param[in]  coords  The coordinates of the points
-     * @param      ID_ptr  The IDs of the points
-     */
-    void getMeshVertexIDsFromPositions(const index_t & meshID, const gsMatrix<T> & coords, index_t * ID_ptr) const
-    {
+        IDs.resize(coords.cols());
         gsMatrix<T> coordsTranspose = coords;
         coordsTranspose.blockTransposeInPlace(1);
-        T * positions = coordsTranspose.data();
-        m_interface.getMeshVertexIDsFromPositions(meshID,coords.cols(),positions,ID_ptr);
+        m_interface.getMeshVertexIDsFromPositions(meshID,coords.cols(),coordsTranspose.data(),IDs.data());
     }
 
     /**

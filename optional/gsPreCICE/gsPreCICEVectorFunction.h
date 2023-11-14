@@ -80,11 +80,8 @@ public:
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
     {
         gsMatrix<T> coords;
-        gsMatrix<T> tmp;
         _getCoords(u,coords);
-
-        m_interface->readBlockVectorData(m_meshID,m_dataID,coords,tmp);
-        result = tmp;
+        m_interface->readBlockVectorData(m_meshID,m_dataID,coords,result);
     }
 
     /// See \a gsFunction
