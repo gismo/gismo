@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsMpi/gsMpi.h>
+#include <gsParallel/gsMpi.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include "gsTrilinosHeaders.h"
 
