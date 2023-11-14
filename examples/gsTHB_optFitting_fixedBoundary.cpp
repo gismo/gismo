@@ -508,8 +508,9 @@ int main(int argc, char *argv[])
     // j, k
     index_t numURef = 0; // l, maximum number of refinement iterations
     index_t mupdate = 20; // m, HLBFGS hessian updates
-    index_t numKnots = 2; // n, fitting initial number of knots in each direction
-    // o, p,
+    index_t numUKnots = 2; // n, fitting initial number of knots in the u-direction
+    index_t numVKnots = -1; // o, initial number of knots in the v-direction, default is equal to -n
+    // p,
     bool callScalePoints = false; // q, whether to use scalePoints
     bool constrainCorners = false;
     real_t lambda = 1e-6; // s, fitting smoothing weight
@@ -531,8 +532,9 @@ int main(int argc, char *argv[])
     // j, k
     cmd.addInt("l", "level", "number of maximum iterations for the adaptive loop.", maxRef);
     cmd.addInt("m", "update", "number of LBFGS updates.", mupdate);
-    cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
-    // o, p
+    cmd.addInt("n", "uInteriors", "number of interior knots in u-direction.", numUKnots);
+    cmd.addInt("o", "vInteriors", "number of interior knots in v-direction. Default: -n.", numVKnots);
+    // p
     cmd.addSwitch("w", "scalePoints", "whether to ensure everything is in unit cube.", callScalePoints);
     cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
@@ -586,9 +588,13 @@ int main(int argc, char *argv[])
         v_min = uv.row(1).minCoeff(),
         v_max = uv.row(1).maxCoeff();
 
+    // Set the default
+    if(numVKnots == -1)
+        numVKnots = numUKnots;
+
     // Create knot-vectors without interior knots
-    gsKnotVector<> u_knots (u_min, u_max, numKnots, deg+1 ) ;
-    gsKnotVector<> v_knots (v_min, v_max, numKnots, deg+1 ) ;
+    gsKnotVector<> u_knots (u_min, u_max, numUKnots, deg+1 ) ;
+    gsKnotVector<> v_knots (v_min, v_max, numVKnots, deg+1 ) ;
 
     // Create a tensor-basis and apply initial uniform refinement
     gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );
