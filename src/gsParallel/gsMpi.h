@@ -25,11 +25,11 @@
 // #    warning "The MPI version is older than MPI-2."
 // #  endif
 //#endif
-#include <gsMpi/gsMpiTraits.h>
-#include <gsMpi/gsBinaryFunctions.h>
+#include <gsParallel/gsMpiTraits.h>
+#include <gsParallel/gsBinaryFunctions.h>
 #endif
 
-#include <gsMpi/gsMpiComm.h>
+#include <gsParallel/gsMpiComm.h>
 
 namespace gismo
 {

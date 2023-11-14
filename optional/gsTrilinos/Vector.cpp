@@ -13,7 +13,7 @@
 
 #include <gsTrilinos/Vector.h>
 
-#include <gsMpi/gsMpi.h>
+#include <gsParallel/gsMpi.h>
 #include <gsTrilinos/gsTrilinosHeaders.h>
 #include <gsCore/gsLinearAlgebra.h>
 
