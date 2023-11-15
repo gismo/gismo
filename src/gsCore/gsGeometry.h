@@ -584,12 +584,11 @@ public:
     /// \a par in direction \a dim_fixed as an gsGeometrySlice object.
     gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const;
 
-    /// Takes the physical \a points and computes the corresponding
-    /// parameter values.  If the point cannot be inverted (eg. is not
-    /// part of the geometry) the corresponding parameter values will be undefined
-    virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
-                              const T accuracy = 1e-6,
-                              const bool useInitialPoint = false) const;
+    /// Recovers a point on the geometry together with its parameters
+    /// \a uv, assuming that the \a k-th coordinate of the point \a
+    /// xyz is not known (and has a random value as input argument).
+    void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                           const T accuracy = 1e-6) const;
 
     /// Computes the Hausdorff distance in a single direction from *this to \a other.
     /// The Hausdorff distance is computed by taking the maximum of the shortest distances

@@ -57,6 +57,8 @@ public:
     util::conditional<d==1, gsConstantBasis<T>, gsTHBSplineBasis<static_cast<short_t>(d-1),T> >::type BoundaryBasisType;
 
     using gsHTensorBasis<d, T>::flatTensorIndexOf;
+    using gsHTensorBasis<d, T>::m_manualLevels;
+    using gsHTensorBasis<d, T>::_diadicIndexToKnotIndex;
 
     // polygon lines in parameter domain
     // the stucture is [levels [ line [ segments [ x y z w ] ] ] ],

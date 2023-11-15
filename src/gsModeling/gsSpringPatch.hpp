@@ -116,7 +116,9 @@ void gsSpringPatch<T>::compute_impl()
     A.makeCompressed();
 
     // Solve system
-    typename gsSparseSolver<T>::QR  solver(A);
+  // too slow to large-scale problem
+//    typename gsSparseSolver<T>::QR  solver(A);
+    typename gsSparseSolver<T>::LU  solver(A);
     gsMatrix<T> solution = solver.solve ( b );
 
     // Fill in interior coefficients

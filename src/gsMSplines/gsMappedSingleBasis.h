@@ -116,13 +116,13 @@ public:
         return m_basis->getBase(m_index).support();
     }
 
-    /// Returns a bounding box for the basis' domain on the domain of *this
-    gsMatrix<T> support(const index_t & i) const
+    /// Returns a bounding box for basis function \a kk domain on the domain of *this
+    gsMatrix<T> support(const index_t & kk) const
     {
         typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
-        m_basis->getMapper().targetToSource(i,sourceIndices);
+        m_basis->getMapper().targetToSource(kk,sourceIndices);
         // Get the support on the whole patch
-        gsMatrix<T> supp;
+        gsMatrix<T> supp = gsMatrix<T>::Zero(d,2);
         gsMatrix<T> localSupp;
         for (typename gsMappedBasis<d,T>::IndexContainer::iterator i = sourceIndices.begin(); i!=sourceIndices.end(); i++)
         {
@@ -145,7 +145,6 @@ public:
                     supp(dim,1) = localSupp(dim,1);
             }
         }
-
         return supp;
         // return m_basis->getBase(m_index).support();
     }
@@ -230,7 +229,8 @@ public:
     std::ostream &print(std::ostream &os) const
     {
         GISMO_UNUSED(os);
-        GISMO_NO_IMPLEMENTATION;
+        os << "Mapped basis function "<< m_index << " / "<< m_basis->size()-1 <<"\n";
+        return os;
     }
 
     /// Prints the object as a string with extended details.

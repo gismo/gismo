@@ -76,6 +76,8 @@ namespace internal
 
 #include <gsCore/gsDomainIterator.h>
 
+#include <gsCore/gsSysInfo.h>
+
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
 // Tensors
@@ -127,6 +129,7 @@ namespace internal
 #include <gsModeling/gsSpringPatch.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsModeling/gsCrossApPatch.h>
+#include <gsModeling/gsBarrierPatch.h>
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
@@ -182,6 +185,7 @@ namespace internal
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
+#include <gsSolver/gsMinResQLP.h>
 
 /* ----------- Ieti ----------- */
 #include <gsIeti/gsIetiMapper.h>
@@ -201,8 +205,8 @@ namespace internal
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
 
-/* ----------- MPI ----------- */
-#include <gsMpi/gsMpi.h>
+/* ----------- Parallel ----------- */
+#include <gsParallel/gsMpi.h>
 
 /* ----------- Utilities ----------- */
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h

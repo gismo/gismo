@@ -252,6 +252,8 @@ public:
     const std::string & label() const {return m_label;}
     std::string & label() {return m_label;}
 
+    void setLabel(std::string label) { m_label = label; };
+
     /**
      * @brief returns the vector of the corners contained in the side
      * @param dim is the ambient dimension

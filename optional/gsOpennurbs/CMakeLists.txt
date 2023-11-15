@@ -348,3 +348,10 @@ endif()
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo
         FILES_MATCHING PATTERN "*.h")
+
+if(TARGET gmp)
+  add_dependencies(${PROJECT_NAME} gmp)
+endif()
+if (TARGET mpfr)
+  add_dependencies(${PROJECT_NAME} mpfr)
+endif()

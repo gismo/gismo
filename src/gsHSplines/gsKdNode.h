@@ -335,8 +335,8 @@ struct kdnode
     // Splits the node (ie. two children are added)
     void split(int splitAxis, Z splitPos)
     {
-        GISMO_ASSERT( box->second[splitAxis] != splitPos, "Degenerate split");
-        GISMO_ASSERT( box->first [splitAxis] != splitPos, "Degenerate split");
+        GISMO_ASSERT( box->second[splitAxis] != splitPos, "Degenerate split " << box->second[splitAxis] <<" != "<<splitPos);
+        GISMO_ASSERT( box->first [splitAxis] != splitPos, "Degenerate split " << box->first[splitAxis]  <<" != "<<splitPos);
         axis = splitAxis;
         pos  = splitPos;
         split();

@@ -104,6 +104,10 @@ install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
               ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
         DESTINATION include/${PROJECT_NAME}/rapidxml/ )
 
+if (GISMO_WITH_ADIFF)
+  install(FILES ${PROJECT_SOURCE_DIR}/external/gsAutoDiff.h
+    DESTINATION include/${PROJECT_NAME}/)
+ endif()
 
 # For pure install
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/rapidxml
@@ -134,6 +138,7 @@ install(FILES
   "${PROJECT_SOURCE_DIR}/cmake/CodeCoverage.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/AddCompilerFlag.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/AddCXXCompileOptions.cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/OptimizeForArchitecture.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/ofa/AddCXXCompilerFlag.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/ofa/CheckCXXCompilerFlag.cmake"
   "${PROJECT_SOURCE_DIR}/cmake/ofa/AutodetectArm.cmake"

@@ -349,7 +349,7 @@ T gsAdaptiveMeshing<T>::_totalError(const boxMapType & elements)
     // Accumulation operator for boxMapType
     auto accumulate_error_ptr = [](const T & val, const typename boxMapType::value_type & b)
     { return val + b.second->error(); };
-    T totalError = std::accumulate(elements.begin(),elements.end(),0.0,accumulate_error_ptr);
+    T totalError = std::accumulate(elements.begin(),elements.end(),(T)( 0 ),accumulate_error_ptr);
     return totalError;
 }
 
@@ -386,7 +386,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
             return false;
 
         HBoxContainer siblings(sibs);
-        T siblingError = std::accumulate(sibs.begin(),sibs.end(),0.0,accumulate_error);
+        T siblingError = std::accumulate(sibs.begin(),sibs.end(),(T)( 0 ),accumulate_error);
 
         // Check all siblings if they satisfy the predicates
         if (_checkBoxes(sibs,predicates))
@@ -462,7 +462,7 @@ gsAdaptiveMeshing<T>::_markFraction_impl( const boxMapType & elements, const std
         // Get the neighborhoods
         typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
         _setContainerProperties(neighborhood);
-        T neighborhoodError = std::accumulate(neighborhood.begin(),neighborhood.end(),0.0,accumulate_error);
+        T neighborhoodError = std::accumulate(neighborhood.begin(),neighborhood.end(),(T)( 0 ),accumulate_error);
 
         // if the errorMarkSum is exceeded with the current contribution, return true
         // NOTE: this can mean that this element suddenly has a large contribution! i.e., larger then the next element in lin
@@ -553,7 +553,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
             return false;
 
         HBoxContainer siblings(sibs);
-        T siblingSetBack = std::accumulate(sibs.begin(),sibs.end(),0.0,accumulate_improvement);
+        T siblingSetBack = std::accumulate(sibs.begin(),sibs.end(),(T)( 0 ),accumulate_improvement);
 
         // Check all siblings if they satisfy the predicates
         if (_checkBoxes(sibs,predicates))
@@ -643,7 +643,7 @@ gsAdaptiveMeshing<T>::_markProjectedFraction_impl( const boxMapType & elements, 
         typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
         HBoxContainer neighborhoodtmp = HBoxContainer(neighborhood);
         _setContainerProperties(neighborhood);
-        T neighborhoodImprovement = std::accumulate(neighborhood.begin(),neighborhood.end(),0.0,accumulate_improvement);
+        T neighborhoodImprovement = std::accumulate(neighborhood.begin(),neighborhood.end(),(T)( 0 ),accumulate_improvement);
 
         // Check all elements in the neighborhood if they satisfy the predicates
         if (_checkBoxes(neighborhood,predicates))
@@ -1254,8 +1254,8 @@ void gsAdaptiveMeshing<T>::_refineMarkedElements(   const HBoxContainer & marked
 
     for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
-        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
+        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) != nullptr ) basis = &(mp->basis(pn));
+        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) != nullptr ) basis = &(mb->basis(pn));
         GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
 
         // if (m_options.getSwitch("Admissible"))
@@ -1369,13 +1369,13 @@ void gsAdaptiveMeshing<T>::_unrefineMarkedElements(     const HBoxContainer & ma
             else
                 GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
         else
-            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input))!= nullptr)
             {
                 // Unrefine all of the found refBoxes in this patch
                 std::vector<index_t> elements = mp->patch(pn).basis().asElementsUnrefine(markedCrs.toCoords(pn), crsExtension);
                 mp->patch(pn).unrefineElements( elements );
             }
-            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr)
             {
                 // Unrefine all of the found refBoxes in this patch
                 mb->unrefine( pn, markedCrs.toCoords(pn), crsExtension );
@@ -1410,8 +1410,8 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
         for (index_t patchInd=0; patchInd < m_input->nPieces(); ++patchInd)
         {
             // Initialize domain element iterator
-            if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(patchInd));
-            if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(patchInd));
+            if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input))!= nullptr ) basis = &(mp->basis(patchInd));
+            if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr ) basis = &(mb->basis(patchInd));
             GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             domIt  = basis->makeDomainIterator();

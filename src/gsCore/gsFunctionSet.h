@@ -211,6 +211,7 @@ template <typename T>
 class gsFunctionSet
 {
 public:
+
     /// Shared pointer for gsFunctionSet
     typedef memory::shared_ptr< gsFunctionSet > Ptr;
 

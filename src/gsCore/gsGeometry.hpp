@@ -16,6 +16,7 @@
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsFuncCoordinate.h>
 
 #include <gsCore/gsGeometrySlice.h>
 
@@ -26,6 +27,80 @@ namespace gismo
 {
 
 
+    // f  = (1/2)*||x-pt||^2
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        m_g->eval_into(u, m_gd[0]);
+        result.resize(1, u.cols());
+        result.at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
+    }
+
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> > & result) const
+    {
+        GISMO_ASSERT(1==u.cols(), "Single argument assumed");
+        result.resize(n+1);
+        m_g->evalAllDers_into(u, n, m_gd);
+
+        // f  = (1/2)*||x-pt||^2
+        result[0].resize(1, 1);
+        result[0].at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
+        if (n==0) return;
+
+        // f' = x'*(x-pt)        
+        auto jacT = m_gd[1].reshaped(u.rows(),m_pt->rows());
+        result[1].noalias() = jacT * (m_gd[0] - *m_pt);
+        if (n==1) return;
+
+        // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
+        tmp.noalias() = jacT * jacT.transpose();
+        index_t d2  = u.rows() * (u.rows()+1) / 2;
+        gsMatrix<T> hm;
+        for ( index_t k=0; k < m_g->coefs().cols(); ++k )
+        {
+            hm = util::secDerToHessian(m_gd[2].block(k*d2,0,d2,1),u.rows()).reshaped(u.rows(),u.rows());
+            tmp += (m_gd[0].at(k)-m_pt->at(k)) * hm;
+        }
+        util::hessianToSecDer(tmp,u.rows(),result[2]);
+    }
+
+    // f' = x'*(x-pt)
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        result.resize(u.rows(), u.cols());
+        for ( index_t i=0; i != u.cols(); i++ )
+        {
+            tmp = u.col(i);
+            m_g->eval_into(tmp,m_gd[0]);
+            m_g->jacobian_into(tmp,m_gd[1]);
+            result.col(i).noalias() = m_gd[1].transpose() * (m_gd[0] - *m_pt);
+        }
+    }
+
+    // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
+    void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
+                      index_t) const
+    {
+        m_g->eval_into(u,m_gd[0]);
+        m_g->jacobian_into(u,m_gd[1]);
+        result.noalias() = m_gd[1].transpose() * m_gd[1];
+        for ( index_t k=0; k < m_g->coefs().cols(); ++k )
+        {
+            tmp = m_g->hessian(u,k);
+            result.noalias() += (m_gd[0].at(k)-m_pt->at(k))*tmp;
+        }
+    }
+
+    gsMatrix<T> support() const {return m_g->support()  ;}
+    short_t domainDim ()  const {return m_g->domainDim();}
+    short_t targetDim ()  const {return 1;}
+
+private:
+    const gsGeometry<T> * m_g;
+    const gsVector<T> * m_pt;
+    mutable std::vector<gsMatrix<T> > m_gd;
+    mutable gsMatrix<T> tmp;
+};
 
     /*
 template<class T>
@@ -260,7 +335,7 @@ T gsGeometry<T>::directedHausdorffDistance(const gsGeometry & other, const index
     {
         maxDist = std::max(maxDist,other.closestPointTo(pts.col(k),tmp,accuracy,false));
     }
-    return std::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
+    return math::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
 }
 
 template<class T>
@@ -280,56 +355,23 @@ T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamp
 // template<class T>
 // T gsGeometry<T>::hausdorffDistance() const
 
+
 template<class T>
-void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
-                                 gsMatrix<T> & result,
-                                 const T accuracy, const bool useInitialPoint) const
+void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                                  const T accuracy) const
 {
-    result.resize(parDim(), points.cols() );
-    gsVector<T> arg;
-    for ( index_t i = 0; i!= points.cols(); ++i)
-    {
-        if (useInitialPoint)
-            arg = result.col(i);
-        else
-            arg = this->parameterCenter();
+    gsVector<index_t> ind(xyz.rows()-1);
+    for (index_t i = 0; i!= xyz.rows(); ++i)
+        if (i<k) ind[i]=i;
+        else if (i>k) ind[i-1]=i;       
 
-        //const int iter =
-        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
-        //gsInfo<< "Iterations: "<< iter <<"\n";
-        //  if (-1==iter)
-        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
-        result.col(i) = arg;
-        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
-            result.col(i) = arg;
-        else
-        {
-            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
-            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
-        }
-    }
+    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsFuncCoordinate<T> fc(*this, give(ind));
+    fc.invertPoints(pt,uv,accuracy,false);
+    xyz = this->eval(uv);
+    //possible check: pt close to xyz
 }
-/* // alternative impl using closestPointTo
-{
-    result.resize(parDim(), points.cols() );
-    gsVector<T> pt, arg;
-    for ( index_t i = 0; i!= points.cols(); ++i )
-    {
-        pt = points.col(i);
-        if (useInitialPoint)
-            arg = result.col(i);
 
-        this->closestPointTo(pt, arg, accuracy, useInitialPoint);
-        if ( (this->eval(arg)-pt).norm()<=accuracy )
-            result.col(i) = arg;
-        else
-        {
-            //result.col(i) = arg;
-            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
-        }
-    }
-}
-*/
 
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const

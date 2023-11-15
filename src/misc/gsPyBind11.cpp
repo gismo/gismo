@@ -65,6 +65,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsGeometry( core );
   gismo::pybind11_init_gsMultiPatch( core );
   gismo::pybind11_init_gsMultiBasis( core );
+  gismo::pybind11_init_gsDofMapper( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
@@ -72,18 +73,18 @@ PYBIND11_MODULE(pygismo, m) {
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
 
-  gismo::pybind11_init_gsHBSplineBasis2( core );
-  gismo::pybind11_init_gsHBSplineBasis3( core );
-  gismo::pybind11_init_gsHBSplineBasis4( core );
-  gismo::pybind11_init_gsHBSpline2( core );
-  gismo::pybind11_init_gsHBSpline3( core );
-  gismo::pybind11_init_gsHBSpline4( core );
-  gismo::pybind11_init_gsTHBSplineBasis2( core );
-  gismo::pybind11_init_gsTHBSplineBasis3( core );
-  gismo::pybind11_init_gsTHBSplineBasis4( core );
-  gismo::pybind11_init_gsTHBSpline2( core );
-  gismo::pybind11_init_gsTHBSpline3( core );
-  gismo::pybind11_init_gsTHBSpline4( core );
+  gismo::pybind11_init_gsHBSplineBasis2( hsplines );
+  gismo::pybind11_init_gsHBSplineBasis3( hsplines );
+  gismo::pybind11_init_gsHBSplineBasis4( hsplines );
+  gismo::pybind11_init_gsHBSpline2( hsplines );
+  gismo::pybind11_init_gsHBSpline3( hsplines );
+  gismo::pybind11_init_gsHBSpline4( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis2( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis3( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis4( hsplines );
+  gismo::pybind11_init_gsTHBSpline2( hsplines );
+  gismo::pybind11_init_gsTHBSpline3( hsplines );
+  gismo::pybind11_init_gsTHBSpline4( hsplines );
   
   py::module io = m.def_submodule("io");
 
@@ -117,6 +118,10 @@ PYBIND11_MODULE(pygismo, m) {
 
 
   gismo::pybind11_init_gsFitting( modelling );
+  gismo::pybind11_init_gsCoonsPatch( modelling );
+  gismo::pybind11_init_gsSpringPatch( modelling );
+  gismo::pybind11_init_gsBarrierPatch2( modelling );
+  gismo::pybind11_init_gsBarrierPatch3( modelling );
 
   py::module msplines = m.def_submodule("msplines");
 

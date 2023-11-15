@@ -136,6 +136,8 @@ template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class E> class ppart_expr;
+template<class E> class exp_expr;
+template<class E> class ppartval_expr;
 template<class T> class cdiam_expr;
 template<class E> class temp_expr;
 template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::ScalarValued> class mult_expr
@@ -243,9 +245,15 @@ public:
     sign_expr<E> sgn(Scalar tolerance=0) const
     { return sign_expr<E>(static_cast<E const&>(*this), tolerance); }
 
+    /// Returns exp(expression)
+    exp_expr<E> exp() const
+    { return exp_expr<E>(static_cast<E const&>(*this)); }
+
     /// Returns the expression's positive part
     ppart_expr<E> ppart() const
     { return ppart_expr<E>(static_cast<E const&>(*this)); }
+    ppartval_expr<E> ppartval() const
+    { return ppartval_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns the expression's negative part
     mult_expr<real_t, ppart_expr<mult_expr<double,E,false>> , false> 
@@ -637,6 +645,7 @@ public:
     }
 
     index_t targetDim() const { return m_fs->targetDim();}
+    index_t domainDim() const { return m_fs->domainDim();}
  
     /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
     void copyCoefs( const gsGeometryMap<T> & other) const
@@ -1239,9 +1248,9 @@ public:
                 // m_sd->mapper.markBoundary(0, bnd, 0);
             }
         } else if (const gsMappedBasis<2, T> *mapb =
-                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source())) {
+                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source()))
+        {
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size(), this->dim());
-            const index_t dim = this->dim();
 
             if (0 == this->interfaceCont()) // C^0 matching interface
             {
@@ -2381,6 +2390,39 @@ public:
 };
 
 /**
+   Expression for the exponentiation of a given expression.
+*/
+template<class E>
+class exp_expr : public _expr<exp_expr<E> >
+{
+  typename E::Nested_t _u;
+ public:
+  typedef typename E::Scalar Scalar;
+  enum {ScalarValued = 1, Space = E::Space, ColBlocks= 0};
+
+  exp_expr(_expr<E> const& u) : _u(u) { }
+
+  Scalar eval(const index_t k) const
+  {
+    const Scalar v = _u.val().eval(k);
+    return math::exp(v);
+  }
+
+  static index_t rows() { return 0; }
+  static index_t cols() { return 0; }
+
+  void parse(gsExprHelper<Scalar> & el) const
+  { _u.parse(el); }
+
+  static bool isScalar() { return true; }
+
+  const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+  const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+  void print(std::ostream &os) const { os<<"exp("; _u.print(os); os <<")"; }
+};
+
+/**
    Expression for the component-wise positive part
 */
 template<class E>
@@ -2415,7 +2457,42 @@ public:
     void print(std::ostream &os) const { os<<"posPart("; _u.print(os); os <<")"; }
 };
 
+/**
+   Expression for the positive part of a given expression
+*/
+template<class E>
+class ppartval_expr : public _expr<ppartval_expr<E> >
+{
+  typename E::Nested_t _u;
+ public:
+  typedef typename E::Scalar Scalar;
+  enum {ScalarValued = 1, Space = 0, ColBlocks= 0};
+  mutable Scalar res;
+ public:
 
+  ppartval_expr(_expr<E> const& u) : _u(u) { }
+
+  Scalar & eval(index_t k) const
+  {
+    res = std::max(0.0,_u.eval(k));
+    return res; // component-wise maximum with zero
+  }
+
+  const index_t rows() const { return 0; }
+  const index_t cols() const { return 0; }
+
+  void parse(gsExprHelper<Scalar> & evList) const
+  { _u.parse(evList); }
+
+  const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+  const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+  void print(std::ostream &os) const { os<<"posPart("; _u.print(os); os <<")"; }
+};
+
+/**
+   Expression pow(a,b) returns the value of 'a' raised to the power of 'b'
+*/
 template<class E>
 class pow_expr : public _expr<pow_expr<E> >
 {
@@ -2965,7 +3042,10 @@ public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    normal_expr(const gsGeometryMap<T> & G) : _G(G) { }
+    normal_expr(const gsGeometryMap<T> & G) : _G(G)
+    {
+        GISMO_ENSURE( _G.source().domainDim()+1 == _G.source().targetDim(), "Surface normal requires codimension 1");
+    }
 
     auto eval(const index_t k) const -> decltype(_G.data().normals.col(k))
     { return _G.data().normals.col(k); }
@@ -3732,9 +3812,7 @@ public:
         return _u.rows();
     }
     index_t cols() const {
-        // DEBUG changed by asgl, perhaps there was a bug here?
-        //return _v.cols() * (_u.cols()/_u.rows());
-        return _u.cols();
+        return _v.cols();
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
