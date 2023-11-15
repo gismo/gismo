@@ -16,6 +16,7 @@
 #include <gsCore/gsBasis.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsCore/gsFuncData.h>
+#include <gsCore/gsFuncCoordinate.h>
 
 #include <gsCore/gsGeometrySlice.h>
 
@@ -41,7 +42,7 @@ public:
         result.at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
     }
 
-    void evalAllDers_into(const gsMatrix<T> & u, const int n,
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result) const
     {
         GISMO_ASSERT(1==u.cols(), "Single argument assumed");
@@ -363,7 +364,7 @@ T gsGeometry<T>::directedHausdorffDistance(const gsGeometry & other, const index
     {
         maxDist = std::max(maxDist,other.closestPointTo(pts.col(k),tmp,accuracy,false));
     }
-    return std::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
+    return math::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
 }
 
 template<class T>
@@ -383,56 +384,23 @@ T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamp
 // template<class T>
 // T gsGeometry<T>::hausdorffDistance() const
 
+
 template<class T>
-void gsGeometry<T>::invertPoints(const gsMatrix<T> & points,
-                                 gsMatrix<T> & result,
-                                 const T accuracy, const bool useInitialPoint) const
+void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                                  const T accuracy) const
 {
-    result.resize(parDim(), points.cols() );
-    gsVector<T> arg;
-    for ( index_t i = 0; i!= points.cols(); ++i)
-    {
-        if (useInitialPoint)
-            arg = result.col(i);
-        else
-            arg = this->parameterCenter();
+    gsVector<index_t> ind(xyz.rows()-1);
+    for (index_t i = 0; i!= xyz.rows(); ++i)
+        if (i<k) ind[i]=i;
+        else if (i>k) ind[i-1]=i;       
 
-        //const int iter =
-        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
-        //gsInfo<< "Iterations: "<< iter <<"\n";
-        //  if (-1==iter)
-        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
-        result.col(i) = arg;
-        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
-            result.col(i) = arg;
-        else
-        {
-            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
-            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
-        }
-    }
+    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsFuncCoordinate<T> fc(*this, give(ind));
+    fc.invertPoints(pt,uv,accuracy,false);
+    xyz = this->eval(uv);
+    //possible check: pt close to xyz
 }
-/* // alternative impl using closestPointTo
-{
-    result.resize(parDim(), points.cols() );
-    gsVector<T> pt, arg;
-    for ( index_t i = 0; i!= points.cols(); ++i )
-    {
-        pt = points.col(i);
-        if (useInitialPoint)
-            arg = result.col(i);
 
-        this->closestPointTo(pt, arg, accuracy, useInitialPoint);
-        if ( (this->eval(arg)-pt).norm()<=accuracy )
-            result.col(i) = arg;
-        else
-        {
-            //result.col(i) = arg;
-            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
-        }
-    }
-}
-*/
 
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const

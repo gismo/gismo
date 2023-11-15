@@ -12,7 +12,7 @@
 */
 
 #include <gsTrilinos/SparseMatrix.h>
-#include <gsMpi/gsMpi.h>
+#include <gsParallel/gsMpi.h>
 #include <gsTrilinos/gsTrilinosHeaders.h>
 
 

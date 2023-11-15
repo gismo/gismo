@@ -947,6 +947,7 @@ quad_split(Face f, Vertex v, Halfedge s)
 
     // ---------------
     Halfedge e = new_edge(from_vertex(hnext),v);
+    set_face(e, f);
 
     set_next_halfedge(prev_halfedge(hnext),e);//sets next(h) and also prev(last)
     set_next_halfedge(e,e0);//sets next(h) and also prev(last)
@@ -968,10 +969,13 @@ quad_split(Face f, Vertex v, Halfedge s)
         //std::cout<< "e: "<< from_vertex(e) <<"->"<<to_vertex(e) <<std::endl;
         set_halfedge(f, e0);
         set_face(e0, f); // 1
+
         set_next_halfedge(e0,h);
         set_face(h, f); // 2
+
         set_face(next_halfedge(h), f); // 3
         set_next_halfedge(next_halfedge(h),e);
+
         set_face(e, f); //4
         set_next_halfedge(e,e0);
 
@@ -2099,82 +2103,101 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
 
         for ( auto he : halfedges(*fit) )
         {
-            auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
-            auto c10 = coefs.row(face_pt_idx(1,0,s,4)).transpose();
-            auto c01 = coefs.row(face_pt_idx(0,1,s,4)).transpose();
-            auto c11 = coefs.row(face_pt_idx(1,1,s,4)).transpose();
-            ++s;
             v = from_vertex(he);
             n = valence(v);
+            auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
+            auto c11 = coefs.row(face_pt_idx(1,1,s,4)).transpose();
+            auto c10 = coefs.row(face_pt_idx(1,0,s,4)).transpose();
+            auto c01 = coefs.row(face_pt_idx(0,1,s,4)).transpose();
+            h2 = opposite_halfedge(prev_halfedge(he));
+            if (is_boundary(v))
+            {
+                c10 = ( 2*points[v] + points[to_vertex(he)] ) / 3;
+                c01 = ( 2*points[v] + points[to_vertex(h2)] ) / 3;
+
+                if (n>2)
+                {
+                    h2 = he; //find boundary edge
+                    while ( !is_boundary(opposite_halfedge(h2)) )
+                        h2 = cw_rotated_halfedge(h2);
+                    c00 = (4*points[v] + points[to_vertex(h2)] +
+                           points[to_vertex(next_halfedge((opposite_halfedge(h2))))] )/6;
+                }
+                else//single face at corner
+                {
+                    c00 = points[v];
+                    n=3; // for c11
+                }
+
+                c11 = 2*(n-1) * points[v] +
+                    2 * points[to_vertex(he)] +
+                    points[to_vertex(next_halfedge(he))] +
+                    2 * points[to_vertex(ccw_rotated_halfedge(he))];
+                c11 /= 2*n+3;
+            }
+            else // interior vertex
+            {
+                c00 = n*n*points[v];
+                for (auto h : halfedges(v))
+                    c00 += 4 * points[ to_vertex(h) ] +
+                        points[ to_vertex(next_halfedge(h)) ] ;
+                c00 /= n*(n+5);
+                c11 = n * points[v] +
+                    2 * points[to_vertex(he)] +
+                    points[to_vertex(next_halfedge(he))] +
+                    2 * points[to_vertex(ccw_rotated_halfedge(he))];
+                c11 /= n+5;
+                c10 = n * points[v]
+                    + 2 * points[to_vertex(he)]+
+                    points[to_vertex(ccw_rotated_halfedge(he))]+
+                    points[to_vertex(cw_rotated_halfedge(he)) ]+
+                    0.5 * points[to_vertex(next_halfedge(he))] +
+                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
+                c10 /= n+5;
+                c01 = n * points[v]
+                    + 2 * points[to_vertex(h2)]+
+                    points[to_vertex(ccw_rotated_halfedge(h2))]+
+                    points[to_vertex(cw_rotated_halfedge(h2)) ]+
+                    0.5 * points[to_vertex(next_halfedge(h2))] +
+                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
+                c01 /= n+5;
+            }
 
             /*
-              if (is_boundary(v))
-              {
-              gsInfo <<"Boundary vertex.....\n";
+            h2 = opposite_halfedge(prev_halfedge(he));
+            n = valence(v);
+            if ( is_boundary( opposite_halfedge(he) ) )
+            {
+                c10 = ( 2*points[v] + points[to_vertex(he)] ) / 3;
+            }
+            else //interior edge
+            {
+                c10 = n * points[v] + 2 * points[to_vertex(he)] +
+                    points[to_vertex(ccw_rotated_halfedge(he))]+
+                    points[to_vertex(cw_rotated_halfedge(he)) ]+
+                    0.5 * points[to_vertex(next_halfedge(he))] +
+                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
+                c10 /= n+5;
+            }
 
-              auto vv = vertices(v);
-                
-              c11 *= (real_t)(n+5)/(2*n+3);
-
-              if ( is_boundary(to_vertex(he)) )//boundary edge
-              {
-              c10 = ( 2*points[v] + points[*vv] ) / 3;
-
-              h2 = ccw_rotated_halfedge(he);
-              c01 += 2 * points[to_vertex(h2)] +
-              0.5 * points[to_vertex(next_halfedge(h2))] +
-              points[to_vertex(ccw_rotated_halfedge(h2))]+
-              points[to_vertex(cw_rotated_halfedge(h2)) ]+
-              0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
-              c01 /= n+5;
-              }
-              else //edge in the interior
-              {
-              c01 = ( 2*points[v] + points[from_vertex(prev_halfedge(he))] ) / 3;
-
-              c10 += 2 * points[to_vertex(he)] +
-              0.5 * points[to_vertex(next_halfedge(he))] +
-              points[to_vertex(ccw_rotated_halfedge(he))]+
-              points[to_vertex(cw_rotated_halfedge(he)) ]+
-              0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
-              c10 /= n+5;
-              }
-
-              if (2>n)
-              c00 = (4*points[v] + points[*vv] + points[*(--vv.end())])/6;
-              else//corner
-              c00 = points[v];
-              continue;
-              }
+            h2 = opposite_halfedge(prev_halfedge(he));
+            //if ( is_boundary(h2) )
+            if (is_boundary(v))
+            {
+                c01 = ( 2 * points[v] + points[to_vertex(h2)] ) / 3;
+            }
+            else //interior edge
+            {
+                c01 = n * points[v] + 2 * points[to_vertex(h2)] +
+                    points[to_vertex(ccw_rotated_halfedge(h2))]+
+                    points[to_vertex(cw_rotated_halfedge(h2)) ]+
+                    0.5 * points[to_vertex(next_halfedge(h2))] +
+                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
+                c01 /= n+5;
+            }
             */
 
-            c10 = c01 = c11 = n * points[v];
-                        
-            c00 = n*n*points[v];
-            for (auto h : halfedges(v))
-                c00 += 4 * points[ to_vertex(h) ] +
-                    points[ to_vertex(next_halfedge(h)) ] ;
-            c00 /= n*(n+5);
-
-            c11 += 2 * points[to_vertex(he)] +
-                points[to_vertex(next_halfedge(he))] +
-                2 * points[to_vertex(ccw_rotated_halfedge(he))];
-            c11 /= n+5;
-
-            c10 += 2 * points[to_vertex(he)] +
-                0.5 * points[to_vertex(next_halfedge(he))] +
-                points[to_vertex(ccw_rotated_halfedge(he))]+
-                points[to_vertex(cw_rotated_halfedge(he)) ]+
-                0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
-            c10 /= n+5;
-
-            h2 = ccw_rotated_halfedge(he);
-            c01 += 2 * points[to_vertex(h2)] +
-                0.5 * points[to_vertex(next_halfedge(h2))] +
-                points[to_vertex(ccw_rotated_halfedge(h2))]+
-                points[to_vertex(cw_rotated_halfedge(h2)) ]+
-                0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
-            c01 /= n+5;
+            ++s;//next halfedge
         }
 
 #       pragma omp critical (mp_addPatch)
