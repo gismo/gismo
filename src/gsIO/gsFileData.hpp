@@ -310,7 +310,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
     else if ( time!=-1)
     {
         attr_name   = "time";
-        attr_string = std::to_string(time);
+        attr_string = std::to_string( static_cast< double >( time ) );
     }
     else if ( label!="")
     {
