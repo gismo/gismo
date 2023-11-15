@@ -25,7 +25,6 @@
 #include <Spectra/include/Spectra/SymGEigsSolver.h>
 #include <Spectra/include/Spectra/SymGEigsShiftSolver.h>
 #include <Spectra/include/Spectra/GenEigsSolver.h>
-#include <Spectra/include/Spectra/MatOp/DenseCholesky.h>
 #include <Spectra/include/Spectra/MatOp/SparseSymShiftSolve.h>
 
 namespace gismo {
@@ -163,13 +162,8 @@ public:
     typedef typename MatrixType::Nested NestedMatrix;
     NestedMatrix m_mat;
     const index_t m_n;
-// #ifdef GISMO_WITH_PARDISO
-//     typename gsSparseSolver<Scalar>::PardisoLLT m_solver;
-// #elif  GISMO_WITH_SUPERLU
-//     typename gsSparseSolver<Scalar>::SuperLU m_solver;
-// #else
-    typename gsSparseSolver<Scalar>::SimplicialLLT m_solver;
-// #endif
+    // NOTE: Does not work for gsSparseSolver<Scalar>::SimplicialLLT!
+    gsEigen::SimplicialLLT<gsSparseMatrix<Scalar>, gsEigen::Lower> m_solver;
 
     Spectra::CompInfo m_info;  // status of the decomposition
 
@@ -209,18 +203,6 @@ public:
         y.noalias() = m_solver.matrixU().solve(x);
         y = (m_solver.permutationPinv() * y).eval();
     }
-};
-
-// Cholesky wrapper (see Spectra::DenseCholesky)
-template <class T>
-class SpectraCholesky<gsMatrix<T>>
-{
-public:
-    typedef Spectra::DenseCholesky<T> Op;
-    typedef gsMatrix<T> MatrixType;
-public:
-    SpectraCholesky(const MatrixType& mat) : op(mat) { }
-    Op op;
 };
 
 // Regular inverse wrapper

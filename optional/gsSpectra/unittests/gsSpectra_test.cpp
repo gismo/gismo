@@ -41,28 +41,32 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                                 index_t nvalues,
                                 index_t nfac,
                                 index_t niter,
-                                Spectra::SortRule sortRule);
+                                Spectra::SortRule sortRule,
+                                bool allowFail = false);
 
     void SparseSymmShiftSolver_CHECK(const gsSparseMatrix<real_t> & A,
                                      real_t sigma,
                                      index_t nvalues,
                                      index_t nfac,
                                      index_t niter,
-                                     Spectra::SortRule sortRule);
+                                     Spectra::SortRule sortRule,
+                                     bool allowFail = false);
 
     void SparseCholesky_CHECK(const gsSparseMatrix<real_t> & A,
                               const gsSparseMatrix<real_t> & B,
                               index_t nvalues,
                               index_t nfac,
                               index_t niter,
-                              Spectra::SortRule sortRule);
+                              Spectra::SortRule sortRule,
+                              bool allowFail = false);
 
     void SparseRegularInverse_CHECK(const gsSparseMatrix<real_t> & A,
                                     const gsSparseMatrix<real_t> & B,
                                     index_t nvalues,
                                     index_t nfac,
                                     index_t niter,
-                                    Spectra::SortRule sortRule);
+                                    Spectra::SortRule sortRule,
+                                    bool allowFail = false);
 
     void SparseShiftInvert_CHECK(const gsSparseMatrix<real_t> & A,
                                  const gsSparseMatrix<real_t> & B,
@@ -70,7 +74,8 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                                  index_t nvalues,
                                  index_t nfac,
                                  index_t niter,
-                                 Spectra::SortRule sortRule);
+                                 Spectra::SortRule sortRule,
+                                 bool allowFail = false);
 
     void SparseBuckling_CHECK(const gsSparseMatrix<real_t> & A,
                               const gsSparseMatrix<real_t> & B,
@@ -78,7 +83,8 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                               index_t nvalues,
                               index_t nfac,
                               index_t niter,
-                              Spectra::SortRule sortRule);
+                              Spectra::SortRule sortRule,
+                              bool allowFail = false);
 
     void SparseCayley_CHECK(const gsSparseMatrix<real_t> & A,
                             const gsSparseMatrix<real_t> & B,
@@ -86,7 +92,8 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                             index_t nvalues,
                             index_t nfac,
                             index_t niter,
-                            Spectra::SortRule sortRule);
+                            Spectra::SortRule sortRule,
+                            bool allowFail = false);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Auxiliary functions
@@ -153,7 +160,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         gen_sparse_data(10,A,B,0.5);
         index_t k = 3;
         index_t m = 6;
-        index_t niter = 100;
+        index_t niter = 1000;
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::LargestAlge);
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::SmallestMagn);
@@ -167,7 +174,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         gen_sparse_data(100,A,B,0.1);
         index_t k = 10;
         index_t m = 20;
-        index_t niter = 100;
+        index_t niter = 1000;
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::LargestAlge);
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::SmallestMagn);
@@ -181,7 +188,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         gen_sparse_data(1000,A,B,0.01);
         index_t k = 20;
         index_t m = 50;
-        index_t niter = 100;
+        index_t niter = 1000;
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::LargestAlge);
         SparseSymmSolver_CHECK(A,k,m,niter,Spectra::SortRule::SmallestMagn);
@@ -201,7 +208,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         real_t sigma = 1.0;
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -216,7 +223,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         real_t sigma = 10.0;
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -231,7 +238,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         real_t sigma = 100.0;
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseSymmShiftSolver_CHECK(A,sigma,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -244,10 +251,10 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         gen_sparse_data(10,A,B,0.5);
         index_t k = 3;
         index_t m = 6;
-        index_t niter = 100;
+        index_t niter = 300;
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -258,11 +265,10 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         gen_sparse_data(100,A,B,0.1);
         index_t k = 10;
         index_t m = 20;
-        index_t niter = 100;
-        real_t sigma = 10.0;
+        index_t niter = 300;
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -273,10 +279,10 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         gen_sparse_data(1000,A,B,0.01);
         index_t k = 20;
         index_t m = 50;
-        index_t niter = 100;
+        index_t niter = 300;
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseCholesky_CHECK(A,B,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -292,7 +298,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         index_t niter = 100;
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -304,10 +310,9 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         index_t k = 10;
         index_t m = 20;
         index_t niter = 100;
-        real_t sigma = 10.0;
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -321,7 +326,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         index_t niter = 100;
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseRegularInverse_CHECK(A,B,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -337,7 +342,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         real_t sigma = 1.2345;
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -355,7 +360,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         real_t sigma = 1.2345;
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -373,7 +378,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
         real_t sigma = 1.2345;
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::LargestMagn);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::LargestAlge);
-        SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestMagn);
+        SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestMagn,true);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::SmallestAlge);
         SparseShiftInvert_CHECK(A,B,sigma,k,m,niter,Spectra::SortRule::BothEnds);
     }
@@ -385,16 +390,15 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                                 index_t nvalues,
                                 index_t nfac,
                                 index_t niter,
-                                Spectra::SortRule sortRule)
+                                Spectra::SortRule sortRule,
+                                bool allowFail)
     {
         gsSpectraSymSolver<gsSparseMatrix<real_t>> eigs(A,nvalues,nfac);
         eigs.compute(sortRule,niter);
-        if (eigs.info() != Spectra::CompInfo::Successful)
-            gsWarn<<"Solver failed\n";
-
+        GISMO_ENSURE(eigs.info() == Spectra::CompInfo::Successful || allowFail,"Solver failed, but it is not supposed to do so");
         gsVector<real_t> eigvals = eigs.eigenvalues();
         gsMatrix<real_t> eigvecs = eigs.eigenvectors();
-        CHECK_EQUAL(check(A,eigvals,eigvecs),true);
+        CHECK_EQUAL(check(A,eigvals,eigvecs) || allowFail,true);
     }
 
     void SparseSymmShiftSolver_CHECK(const gsSparseMatrix<real_t> & A,
@@ -402,16 +406,14 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                                      index_t nvalues,
                                      index_t nfac,
                                      index_t niter,
-                                     Spectra::SortRule sortRule)
+                                     Spectra::SortRule sortRule,
+                                     bool allowFail)
     {
         gsSpectraSymShiftSolver<gsSparseMatrix<real_t>> eigs(A,nvalues,nfac,sigma);
         eigs.compute(sortRule,niter);
-        if (eigs.info() != Spectra::CompInfo::Successful)
-            gsWarn<<"Solver failed\n";
-
-        gsVector<real_t> eigvals = eigs.eigenvalues();
+        GISMO_ENSURE(eigs.info() == Spectra::CompInfo::Successful || allowFail,"Solver failed, but it is not supposed to do so");        gsVector<real_t> eigvals = eigs.eigenvalues();
         gsMatrix<real_t> eigvecs = eigs.eigenvectors();
-        CHECK_EQUAL(check(A,eigvals,eigvecs),true);
+        CHECK_EQUAL(check(A,eigvals,eigvecs) || allowFail,true);
     }
 
     void SparseCholesky_CHECK(const gsSparseMatrix<real_t> & A,
@@ -419,16 +421,14 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                               index_t nvalues,
                               index_t nfac,
                               index_t niter,
-                              Spectra::SortRule sortRule)
+                              Spectra::SortRule sortRule,
+                              bool allowFail)
     {
         gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cholesky> eigs(A,B,nvalues,nfac);
         eigs.compute(sortRule,niter);
-        if (eigs.info() != Spectra::CompInfo::Successful)
-            gsWarn<<"Solver failed\n";
-
-        gsVector<real_t> eigvals = eigs.eigenvalues();
+        GISMO_ENSURE(eigs.info() == Spectra::CompInfo::Successful || allowFail,"Solver failed, but it is not supposed to do so");        gsVector<real_t> eigvals = eigs.eigenvalues();
         gsMatrix<real_t> eigvecs = eigs.eigenvectors();
-        CHECK_EQUAL(check(A,B,eigvals,eigvecs),true);
+        CHECK_EQUAL(check(A,B,eigvals,eigvecs) || allowFail,true);
     }
 
     void SparseRegularInverse_CHECK(const gsSparseMatrix<real_t> & A,
@@ -436,16 +436,14 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                                     index_t nvalues,
                                     index_t nfac,
                                     index_t niter,
-                                    Spectra::SortRule sortRule)
+                                    Spectra::SortRule sortRule,
+                                    bool allowFail)
     {
         gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::RegularInverse> eigs(A,B,nvalues,nfac);
         eigs.compute(sortRule,niter);
-        if (eigs.info() != Spectra::CompInfo::Successful)
-            gsWarn<<"Solver failed\n";
-
-        gsVector<real_t> eigvals = eigs.eigenvalues();
+        GISMO_ENSURE(eigs.info() == Spectra::CompInfo::Successful || allowFail,"Solver failed, but it is not supposed to do so");        gsVector<real_t> eigvals = eigs.eigenvalues();
         gsMatrix<real_t> eigvecs = eigs.eigenvectors();
-        CHECK_EQUAL(check(A,B,eigvals,eigvecs),true);
+        CHECK_EQUAL(check(A,B,eigvals,eigvecs) || allowFail,true);
     }
 
     void SparseShiftInvert_CHECK(const gsSparseMatrix<real_t> & A,
@@ -454,16 +452,14 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                                  index_t nvalues,
                                  index_t nfac,
                                  index_t niter,
-                                 Spectra::SortRule sortRule)
+                                 Spectra::SortRule sortRule,
+                                 bool allowFail)
     {
         gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::ShiftInvert> eigs(A,B,nvalues,nfac,sigma);
         eigs.compute(sortRule,niter);
-        if (eigs.info() != Spectra::CompInfo::Successful)
-            gsWarn<<"Solver failed\n";
-
-        gsVector<real_t> eigvals = eigs.eigenvalues();
+        GISMO_ENSURE(eigs.info() == Spectra::CompInfo::Successful || allowFail,"Solver failed, but it is not supposed to do so");        gsVector<real_t> eigvals = eigs.eigenvalues();
         gsMatrix<real_t> eigvecs = eigs.eigenvectors();
-        CHECK_EQUAL(check(A,B,eigvals,eigvecs),true);
+        CHECK_EQUAL(check(A,B,eigvals,eigvecs) || allowFail,true);
     }
 
     void SparseBuckling_CHECK(const gsSparseMatrix<real_t> & A,
@@ -472,16 +468,14 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                               index_t nvalues,
                               index_t nfac,
                               index_t niter,
-                              Spectra::SortRule sortRule)
+                              Spectra::SortRule sortRule,
+                              bool allowFail)
     {
         gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Buckling> eigs(A,B,nvalues,nfac,sigma);
         eigs.compute(sortRule,niter);
-        if (eigs.info() != Spectra::CompInfo::Successful)
-            gsWarn<<"Solver failed\n";
-
-        gsVector<real_t> eigvals = eigs.eigenvalues();
+        GISMO_ENSURE(eigs.info() == Spectra::CompInfo::Successful || allowFail,"Solver failed, but it is not supposed to do so");        gsVector<real_t> eigvals = eigs.eigenvalues();
         gsMatrix<real_t> eigvecs = eigs.eigenvectors();
-        CHECK_EQUAL(check(A,B,eigvals,eigvecs),true);
+        CHECK_EQUAL(check(A,B,eigvals,eigvecs) || allowFail,true);
     }
 
     void SparseCayley_CHECK(const gsSparseMatrix<real_t> & A,
@@ -490,15 +484,13 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
                             index_t nvalues,
                             index_t nfac,
                             index_t niter,
-                            Spectra::SortRule sortRule)
+                            Spectra::SortRule sortRule,
+                            bool allowFail)
     {
         gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cayley> eigs(A,B,nvalues,nfac,sigma);
         eigs.compute(sortRule,niter);
-        if (eigs.info() != Spectra::CompInfo::Successful)
-            gsWarn<<"Solver failed\n";
-
-        gsVector<real_t> eigvals = eigs.eigenvalues();
+        GISMO_ENSURE(eigs.info() == Spectra::CompInfo::Successful || allowFail,"Solver failed, but it is not supposed to do so");        gsVector<real_t> eigvals = eigs.eigenvalues();
         gsMatrix<real_t> eigvecs = eigs.eigenvectors();
-        CHECK_EQUAL(check(A,B,eigvals,eigvecs),true);
+        CHECK_EQUAL(check(A,B,eigvals,eigvecs) || allowFail,true);
     }
 }
