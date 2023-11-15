@@ -26,6 +26,13 @@
 namespace gismo
 {
 
+/// Squared distance function from a fixed point to a gsGeometry
+template<class T>
+class gsSquaredDistance GISMO_FINAL : public gsFunction<T>
+{
+public:
+    gsSquaredDistance(const gsGeometry<T> & g, const gsVector<T> & pt)
+        : m_g(&g), m_pt(&pt), m_gd(2) { }
 
     // f  = (1/2)*||x-pt||^2
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
