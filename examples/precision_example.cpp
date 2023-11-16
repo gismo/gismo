@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 
     int defaultDegree = 5;
     dataIn.degree = defaultDegree;
-    int maxRefine = 9;
+    int maxRefine = 7;
 
     // Setting default to IEEE 754 "double"
     int mantissa = 53;
