@@ -584,12 +584,6 @@ public:
     /// \a par in direction \a dim_fixed as an gsGeometrySlice object.
     gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const;
 
-    /// Recovers a point on the geometry together with its parameters
-    /// \a uv, assuming that the \a k-th coordinate of the point \a
-    /// xyz is not known (and has a random value as input argument).
-    void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
-                           const T accuracy = 1e-6) const;
-
     /// Returns the parameters of closest point to \a pt as an argument, and the
     /// Euclidean distance as a return value
     T closestPointTo(const gsVector<T> & pt,

@@ -385,22 +385,6 @@ T gsGeometry<T>::HausdorffDistance(const gsGeometry & other, const index_t nsamp
 // T gsGeometry<T>::hausdorffDistance() const
 
 
-template<class T>
-void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
-                                  const T accuracy) const
-{
-    gsVector<index_t> ind(xyz.rows()-1);
-    for (index_t i = 0; i!= xyz.rows(); ++i)
-        if (i<k) ind[i]=i;
-        else if (i>k) ind[i-1]=i;       
-
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
-    gsFuncCoordinate<T> fc(*this, give(ind));
-    fc.invertPoints(pt,uv,accuracy,false);
-    xyz = this->eval(uv);
-    //possible check: pt close to xyz
-}
-
 
 template<class T>
 std::ostream & gsGeometry<T>::print(std::ostream &os) const

@@ -98,40 +98,45 @@ if(GISMO_BUILD_LIB)
   #  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
   #endif()
 
-  if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
-     "x${CMAKE_GENERATOR}" STREQUAL "xXcode")
-    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
-      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
+   "x${CMAKE_GENERATOR}" STREQUAL "xXcode")
+ set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
+     "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
+endif()
+
+if (GISMO_WITH_ADIFF)
+   set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
+     "${gismo_SOURCE_DIR}/external/gsAutoDiff.h")
+endif()
+
+if (GISMO_WITH_XDEBUG)
+  if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
+    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
   endif()
+endif()
 
-  if (GISMO_WITH_XDEBUG)
-    if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
-      set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
-    endif()
+add_library(${PROJECT_NAME} SHARED
+  ${${PROJECT_NAME}_MODULES}
+  ${${PROJECT_NAME}_SOURCES}
+  ${${PROJECT_NAME}_EXTENSIONS}
+  )
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
+  VERSION "${${PROJECT_NAME}_VERSION}"
+  SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}"
+  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
+  POSITION_INDEPENDENT_CODE ON
+  LINKER_LANGUAGE CXX
+  CXX_VISIBILITY_PRESET "hidden"
+  #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
+  FOLDER "G+Smo libraries"
+  )
+  #generate_export_header(${PROJECT_NAME})
+
+  if (GISMO_WITH_PYBIND11)
+    target_link_libraries(${PROJECT_NAME} pybind11::embed)
   endif()
-
-  add_library(${PROJECT_NAME} SHARED
-    ${${PROJECT_NAME}_MODULES}
-    ${${PROJECT_NAME}_SOURCES}
-    ${${PROJECT_NAME}_EXTENSIONS}
-    )
-
-  set_target_properties(${PROJECT_NAME} PROPERTIES
-    #https://community.kde.org/Policies/Binary_Compatibility_Issues_With_C%2B%2B
-    VERSION "${${PROJECT_NAME}_VERSION}"
-    SOVERSION "${${PROJECT_NAME}_VERSION_MAJOR}"
-    PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.h"
-    POSITION_INDEPENDENT_CODE ON
-    LINKER_LANGUAGE CXX
-    CXX_VISIBILITY_PRESET "hidden"
-    #COMPILE_DEFINITIONS ${PROJECT_NAME}_EXPORTS # Used for DLL exporting (defined by default by CMake)
-    FOLDER "G+Smo libraries"
-    )
-    #generate_export_header(${PROJECT_NAME})
-
-    if (GISMO_WITH_PYBIND11)
-      target_link_libraries(${PROJECT_NAME} pybind11::embed)
-    endif()
 
   #if(gsMpfr_ENABLED OR gsGmp_ENABLED)
   #    find_package(GMP)
