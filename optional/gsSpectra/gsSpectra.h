@@ -331,6 +331,8 @@ public:
     gsSpectraSolver(const MatrixType &&   , index_t nev_, index_t ncv_) = delete;
     gsSpectraSolver(const MatrixType & mat, index_t nev_, index_t ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
+
+    bool converged() {return this->info()==Spectra::CompInfo::Successful; }
 };
 
 /// Eigenvalue solver for real symmetric matrices
@@ -344,6 +346,8 @@ public:
     gsSpectraSymSolver(const MatrixType &&   , index_t nev_, index_t ncv_) = delete;
     gsSpectraSymSolver(const MatrixType & mat, index_t nev_, index_t ncv_) :
     MatOp(mat), Base(*this, nev_, ncv_) { Base::init(); }
+
+    bool converged() {return this->info()==Spectra::CompInfo::Successful; }
 };
 
 /// Shifted Eigenvalue solver for real symmetric matrices
@@ -359,6 +363,8 @@ public:
     gsSpectraSymShiftSolver(const MatrixType &&   , index_t nev_, index_t ncv_, const Scalar& sigma) = delete;
     gsSpectraSymShiftSolver(const MatrixType & mat, index_t nev_, index_t ncv_, const Scalar& sigma) :
     Op(mat), Base(*this, nev_, ncv_,sigma) { Base::init(); }
+
+    bool converged() {return this->info()==Spectra::CompInfo::Successful; }
 };
 
 /// SpectraOps is for generalized eigenvalue problems
@@ -445,6 +451,8 @@ public:
     gsSpectraGenSymSolver(const MatrixType & Amat, const MatrixType & Bmat, index_t nev_, index_t ncv_)
     : OpType(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()))
     { Base::init(); }
+
+    bool converged() {return this->info()==Spectra::CompInfo::Successful; }
 };
 
 /// GE Solver with shifts. Works for GEigsMode = ShiftInvert, Buckling or Cayley
@@ -465,6 +473,8 @@ public:
     gsSpectraGenSymShiftSolver(const MatrixType & Amat, const MatrixType & Bmat, index_t nev_, index_t ncv_, const Scalar& sigma)
     : OpType(Amat,Bmat), Base(this->opA, this->opB, nev_, math::min(ncv_,Amat.rows()),sigma)
     { Base::init(); }
+
+    bool converged() {return this->info()==Spectra::CompInfo::Successful; }
 };
 
 } //namespace gismo

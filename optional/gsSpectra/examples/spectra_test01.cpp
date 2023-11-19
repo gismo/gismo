@@ -59,69 +59,147 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Test for eigenvalue solvers.\n A is a symmetric matrix and B is positive definite\n";
 
+    index_t Nhalf = math::floor(sz/2);
+    index_t N = std::min(10,Nhalf);
+
     gsMatrix<> Ad = A.toDense();
-    gsSpectraSymSolver<gsMatrix<real_t>> minev(Ad, math::floor(sz/2), sz);
+    gsSpectraSymSolver<gsMatrix<real_t>> minev(Ad, N, 2*N);
     minev.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
-    gsInfo << "Symmetric solver:\n";
+    gsInfo << "Symmetric solver ";
+    if (minev.converged())
+        gsInfo<<"(converged in "<<minev.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
     gsInfo << "Eigenvalues A*x=lambda*x:\n" << minev.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraSymShiftSolver<gsMatrix<real_t>> minev2(Ad, math::floor(sz/2), sz,0.0);
+    gsSpectraSymShiftSolver<gsMatrix<real_t>> minev2(Ad, N, 2*N,0.0);
     minev2.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
-    gsInfo << "Symmetric solver:\n";
+    gsInfo << "Symmetric solver";
+    if (minev2.converged())
+        gsInfo<<"(converged in "<<minev2.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*x:\n" << minev2.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraSymShiftSolver<gsSparseMatrix<real_t>> minev3(A, math::floor(sz/2), sz,0.0);
+    gsSpectraSymShiftSolver<gsSparseMatrix<real_t>> minev3(A, N, 2*N,0.0);
     minev3.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestAlge);
-    gsInfo << "Symmetric solver:\n";
+    gsInfo << "Symmetric solver";
+    if (minev3.converged())
+        gsInfo<<"(converged in "<<minev3.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*x:\n" << minev3.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cholesky> Chsolver(A,B,math::floor(sz/2),sz);
+    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cholesky> Chsolver(A,B,N,2*N);
     Chsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric solver, Cholesky:\n";
+    gsInfo << "General Symmetric solver, Cholesky: ";
+    if (Chsolver.converged())
+        gsInfo<<"(converged in "<<Chsolver.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x:\n" << Chsolver.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::RegularInverse> Rsolver(A,B,math::floor(sz/2),sz);
+    gsSpectraGenSymSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::RegularInverse> Rsolver(A,B,N,2*N);
     Rsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric solver, Regular Inverse:\n";
+    gsInfo << "General Symmetric solver, Regular Inverse: ";
+    if (Rsolver.converged())
+        gsInfo<<"(converged in "<<Rsolver.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x:\n" << Rsolver.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::ShiftInvert> Ssolver(A,B,2,sz,1e-3);
+    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::ShiftInvert> Ssolver(A,B,N,2*N,1e-3);
     Ssolver.compute(Spectra::SortRule::LargestMagn,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (LM sorting):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (LM sorting): ";
+    if (Ssolver.converged())
+        gsInfo<<"(converged in "<<Ssolver.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
     Ssolver.compute(Spectra::SortRule::LargestAlge,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (LA sorting):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (LA sorting): ";
+    if (Ssolver.converged())
+        gsInfo<<"(converged in "<<Ssolver.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
+
     Ssolver.compute(Spectra::SortRule::SmallestMagn,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (SM sorting):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (SM sorting): ";
+    if (Ssolver.converged())
+        gsInfo<<"(converged in "<<Ssolver.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
     Ssolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (SA sorting):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (SA sorting): ";
+    if (Ssolver.converged())
+        gsInfo<<"(converged in "<<Ssolver.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
     Ssolver.compute(Spectra::SortRule::BothEnds,1000,1e-10,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Shift Invert (BE sorting):\n";
+    gsInfo << "General Symmetric Shift solver, Shift Invert (BE sorting): ";
+    if (Ssolver.converged())
+        gsInfo<<"(converged in "<<Ssolver.num_iterations()<<"iterations)."<<"\n";
+    else
+        gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Ssolver.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cayley> Csolver(A,B,math::floor(sz/2),sz,1e-3);
+    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Cayley> Csolver(A,B,N,2*N,1e-3);
     Csolver.compute(Spectra::SortRule::LargestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (LAsorting):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (LAsorting): ";
+    if (Csolver.converged())
+            gsInfo<<"(converged in "<<Csolver.num_iterations()<<"iterations)."<<"\n";
+        else
+            gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::LargestMagn,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (LMsorting):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (LMsorting): ";
+    if (Csolver.converged())
+            gsInfo<<"(converged in "<<Csolver.num_iterations()<<"iterations)."<<"\n";
+        else
+            gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (SAsorting):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (SAsorting): ";
+    if (Csolver.converged())
+            gsInfo<<"(converged in "<<Csolver.num_iterations()<<"iterations)."<<"\n";
+        else
+            gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::SmallestMagn,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (SMsorting):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (SMsorting): ";
+    if (Csolver.converged())
+            gsInfo<<"(converged in "<<Csolver.num_iterations()<<"iterations)."<<"\n";
+        else
+            gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
     Csolver.compute(Spectra::SortRule::BothEnds,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Cayley (BEsorting):\n";
+    gsInfo << "General Symmetric Shift solver, Cayley (BEsorting): ";
+    if (Csolver.converged())
+            gsInfo<<"(converged in "<<Csolver.num_iterations()<<"iterations)."<<"\n";
+        else
+            gsInfo<<"(did not converge)\n";
+
     gsInfo << "Eigenvalues A*x=lambda*B*x (shift=1):\n" << Csolver.eigenvalues().transpose() <<"\n\n";
 
-    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Buckling> Bsolver(B,A,math::floor(sz/2),sz,1);
+    gsSpectraGenSymShiftSolver<gsSparseMatrix<real_t>,Spectra::GEigsMode::Buckling> Bsolver(B,A,N,2*N,1);
     Bsolver.compute(Spectra::SortRule::SmallestAlge,1000,1e-3,Spectra::SortRule::SmallestMagn);
-    gsInfo << "General Symmetric Shift solver, Buckling:\n";
+    gsInfo << "General Symmetric Shift solver, Buckling: ";
     gsInfo << "Eigenvalues B*x=lambda*A*x (!) (shift=1):\n" << Bsolver.eigenvalues().transpose() <<"\n\n";
 
     return EXIT_SUCCESS;
