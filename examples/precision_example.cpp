@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsAssembler/gsPoissonAssembler.h>
 
 using namespace gismo;
 
