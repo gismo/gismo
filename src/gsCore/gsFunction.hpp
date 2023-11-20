@@ -273,6 +273,9 @@ int gsFunction<T>::newtonRaphson_impl(
 
         residual.noalias() = value - scale*residual;
         rnorm[iter%2] = residual.norm();
+        //gsInfo << "Newton it " << iter << " arg " << arg.transpose() <<
+        //        " f(arg) " << (0==mode?fd.values[0]:fd.values[1]).transpose() << 
+        //        " res " <<residual.transpose() << " norm " << rnorm[iter%2] << "\n";
 
         if(rnorm[iter%2] <= accuracy) // residual below threshold
         {
@@ -280,9 +283,15 @@ int gsFunction<T>::newtonRaphson_impl(
             return iter;
         }
 
+        if( iter>4 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <0.99)
+        {
+            //gsInfo <<"--- Err: residual increasing, new= " << rnorm[iter%2] << ", prev= " <<rnorm[(iter-1)%2]<<", niter= "<<iter<<".\n";
+            return iter; //std::pair<iter,rnorm>
+        }
+
         if( iter>4 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <1.1)
         {
-            //gsInfo <<"--- OK: Converged to residual "<<rnorm[iter%2]<<"("<<rnorm[(iter-1)%2]/rnorm[iter%2]<<"), niter"<<iter<<".\n";
+            //gsInfo <<"--- OK: residual stagnating, new= "<<rnorm[iter%2]<<", new/prev= "<<rnorm[iter%2]/rnorm[(iter-1)%2]<<", niter= "<<iter<<".\n";
             return iter; //std::pair<iter,rnorm>
         }
 
