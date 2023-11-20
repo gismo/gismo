@@ -314,7 +314,7 @@ void ON_BezierCage::Dump( ON_TextLog& dump ) const
         if ( i > 0 || j > 0)
           dump.Print("\n");
         sPreamble[0] = 0;
-        sprintf(sPreamble,"  CV[%2d][%2d]",i,j);
+        snprintf(sPreamble,128,"  CV[%2d][%2d]",i,j);
         dump.PrintPointList( m_dim, m_is_rat, 
                           m_order[2], m_cv_stride[2],
                           CV(i,j,0), 

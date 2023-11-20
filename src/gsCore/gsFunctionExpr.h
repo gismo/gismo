@@ -44,6 +44,8 @@ namespace gismo
     Any function with domain dimension equal to 3 MUST use x,y,z as variables. the letters w...t are settable parameters.
     And so on.
 
+    Derivatives of an expression are approximated using finite differences with step size 10<sup>-5</sup>, unless automatic differentiation is activated.
+
     \ingroup function
     \ingroup Core
 */
