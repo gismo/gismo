@@ -53,6 +53,10 @@
 #include <pybind11/stl.h>
 #endif
 
+#ifdef gsHLBFGS_ENABLED
+#include <gsHLBFGS/gsHLBFGS.h>
+#endif
+
 namespace gismo
 {
 

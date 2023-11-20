@@ -488,7 +488,7 @@ public:
         gsMatrix result(r*ro, c*co);
         for (index_t i = 0; i != r; ++i) // for all rows
             for (index_t j = 0; j != c; ++j) // for all cols
-                result.block(i*ro, j*ro, ro, co) = this->coeff(i,j) * other;
+                result.block(i*ro, j*co, ro, co) = this->coeff(i,j) * other;
         return result;
     }
 
