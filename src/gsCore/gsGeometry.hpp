@@ -364,7 +364,7 @@ T gsGeometry<T>::directedHausdorffDistance(const gsGeometry & other, const index
     {
         maxDist = std::max(maxDist,other.closestPointTo(pts.col(k),tmp,accuracy,false));
     }
-    return std::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
+    return math::sqrt(2*maxDist); // euclidean distance since closestPointTo uses 1/2*||x-y||^2, see gsSquaredDistance
 }
 
 template<class T>

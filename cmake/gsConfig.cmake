@@ -45,9 +45,18 @@ if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING
    #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
    #set (GISMO_INDEX_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
-   "Index type(int, int32_t, int64_t, long, long long)" FORCE)
+   "Index type(int, int8_t, int16_t, int32_t, int64_t, long, long long)" FORCE)
    set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
-   "int" "int32_t" "int64_t" "long" "long long" )
+   "int" "int8_t" "int16_t" "int32_t" "int64_t" "long" "long long" )
+endif()
+
+if(NOT GISMO_SHORT_TYPE)
+   set (GISMO_SHORT_TYPE "int" CACHE STRING
+   #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
+   #set (GISMO_SHORT_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
+   "Index type(int, int8_t, int16_t, int32_t, int64_t, long, long long)" FORCE)
+   set_property(CACHE GISMO_SHORT_TYPE PROPERTY STRINGS
+   "int" "int8_t" "int16_t" "int32_t" "int64_t" "long" "long long" )
 endif()
 
 # Set a default build type if none was specified
@@ -220,11 +229,11 @@ if (GISMO_WITH_OPENMP)
    if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
        "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       find_path(OpenMP_C_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES include)
       find_path(OpenMP_CXX_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES include)
       find_library(OpenMP_libomp_LIBRARY
-        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES lib)
+        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES lib)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fopenmp -I${OpenMP_C_INCLUDE_DIR}")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp -I${OpenMP_CXX_INCLUDE_DIR}")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")

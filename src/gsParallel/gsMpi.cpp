@@ -1,6 +1,6 @@
 
 
-#include <gsMpi/gsMpi.h>
+#include <gsParallel/gsMpi.h>
 
 namespace gismo
 {
