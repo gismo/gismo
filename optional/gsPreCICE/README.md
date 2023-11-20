@@ -3,6 +3,28 @@
 ... General introduction ...
 
 ## Installation instructions
+**Prerequisite:** [Check where suits you best](https://precice.org/installation-overview.html) to install the preCICE dependencies.
+<p><b>Dependencies:</b></p>
+<html>
+<table>
+  <tr>
+    <th>preCICE</th>
+    <th>2.5.0</th>
+  </tr>
+  <tr>
+    <th> C++ compiler</th>
+    <th>C++14</th>
+  </tr>
+  <tr>
+    <th>CMake</th>
+    <th>>=3.16.1</th>
+  </tr>
+  <tr>
+    <th>Eigen</th>
+    <th>>=3.3.7</th>
+  </tr>
+</table> 
+</html>
 
 1. Check [this page](https://precice.org/quickstart.html#installation) to install PreCICE and openFOAM   
 ```
@@ -12,7 +34,15 @@ some code
 ```
 set(SUBMODULES_TXT "<other submodules>;gsPreCICE")
 ```
-3. Build a PreCICE example in G+Smo
+4. Build gismo PreCICE
+```
+cd gismo
+mkdir gismo_PreCICE
+cd gismo_PreCICE
+cmake -DCMAKE_BUILD_TYPE=Debug .. 
+make
+``` 
+5. Build a PreCICE example in G+Smo
 ```
 make flow-over-heated-plate
 ```
