@@ -23,14 +23,22 @@
     <th>Eigen</th>
     <th>>=3.3.7</th>
   </tr>
+  <tr>
+    <th>PETSc</th>
+    <th>>=3.12</th>
 </table> 
 </html>
 
-1. Check [this page](https://precice.org/quickstart.html#installation) to install PreCICE and openFOAM   
+1. Check [this page](https://precice.org/quickstart.html#installation) to install PreCICE and openFOAM. The dependencies for PreCICE can be found in the above table. For MacOS, you can install all dependencies using [Homebrew](https://brew.sh), as mentioned in PreCICE webpage.
 ```
-some code
+brew install cmake eigen libxml2 boost petsc openmpi python3 numpy
 ```
-2. Enable the `gsPreCICE` submodule in G+Smo, e.g. by modifying the following line in `gismo/submodules.txt`:
+Other than these package, you should also install [PETSc](https://petsc.org/release/install/install/#id16) and pkgconfig for PETSc.
+```
+brew install pkgconfig PETSc
+```
+After having all dependencies ready, go to the 
+3. Enable the `gsPreCICE` submodule in G+Smo, e.g. by modifying the following line in `gismo/submodules.txt`:
 ```
 set(SUBMODULES_TXT "<other submodules>;gsPreCICE")
 ```
