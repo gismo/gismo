@@ -2446,7 +2446,7 @@ namespace internal {
 
 void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 {
-    assert( ( !strcmp( node->name(),"SurfMesh") )
+    assert( ( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh") )
             &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
 
     result = gsSurfMesh();
