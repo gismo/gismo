@@ -56,8 +56,7 @@ public:
                         const gsMultiPatch<T> & patches,
                         const bool parametric = false)
     :
-    Base(interface,meshID,dataID,patches,1,parametric)
-    {}
+    Base(interface,meshID,dataID,patches,parametric){}
 
     /// Constructs a function pointer
     static uPtr make(   const gsPreCICE<T> *    interface,
