@@ -33,24 +33,41 @@
 ```
 brew install cmake eigen libxml2 boost petsc openmpi python3 numpy
 ```
-Other than these package, you should also install [PETSc](https://petsc.org/release/install/install/#id16) and pkgconfig for PETSc.
+2. Install few common dependencies
 ```
-brew install pkgconfig PETSc
+brew install pkg-config cmake git
 ```
-After having all dependencies ready, go to the 
-3. Enable the `gsPreCICE` submodule in G+Smo, e.g. by modifying the following line in `gismo/submodules.txt`:
+3. Download and install OpenFOAM-preCICE adapter
+```
+git clone --branch=master --depth 1 https://github.com/precice/openfoam-adapter
+cd openfoam-adapter
+./Allwmake
+cd ..
+```
+4. Enable the `gsPreCICE` submodule in G+Smo, e.g. by modifying the following line in `gismo/submodules.txt`:
 ```
 set(SUBMODULES_TXT "<other submodules>;gsPreCICE")
 ```
-4. Build gismo PreCICE
+5. Build gismo PreCICE
 ```
 cd gismo
 mkdir gismo_PreCICE
 cd gismo_PreCICE
 cmake -DCMAKE_BUILD_TYPE=Debug .. 
 make
-``` 
-5. Build a PreCICE example in G+Smo
+```
+*NOTES:* macOS users might encounter `dyld[#]:library not loaded:@rpath/library_name.dylib` error. If the library exists but is not in a standard location, you may need to update your library paths. 
+'''
+find / -name library_name.11.dylib 2>/dev/null
+'''
+This gives you the directory of the library. 
+
+Set the `DYLD_LIBRARY_PATH` environment variable to include the directory where `library_name.dylib` is located:
+```
+export DYLD_LIBRARY_PATH=/path/to/your/lib:$DYLD_LIBRARY_PATH
+```
+Replace `/path/to/your/lib` with the actual path where `library_name.dylib` is located.
+6. Build a PreCICE example in G+Smo
 ```
 make flow-over-heated-plate
 ```
