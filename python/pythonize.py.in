@@ -20,6 +20,8 @@ def pythonize_gismo(klass, name):
             import numpy as np
             rows = self.rows()
             cols = self.cols()
-            numpyarray = np.frombuffer(self.data(), dtype=np.double, count=rows*cols).reshape(rows, cols)
+            arr = self.data()
+            arr.reshape((rows * cols, ))
+            numpyarray = np.frombuffer(arr, dtype=np.double, count=rows*cols).reshape(cols, rows).transpose()
             return numpyarray
         setattr(klass, "tonumpy", tonumpy)
