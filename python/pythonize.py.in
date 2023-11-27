@@ -36,3 +36,9 @@ def pythonize_gismo(klass, name):
                 raise TypeError("Data type needs to be double.")
             return cls(numpyarray, numpyarray.shape[0], numpyarray.shape[1])
         setattr(klass, "fromnumpy", fromnumpy)
+
+    # Add length as len
+    try:
+        klass.__len__ = klass.__dict__['size']
+    except KeyError:
+        pass
