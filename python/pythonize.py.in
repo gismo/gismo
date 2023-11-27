@@ -25,3 +25,14 @@ def pythonize_gismo(klass, name):
             numpyarray = np.frombuffer(arr, dtype=np.double, count=rows*cols).reshape(cols, rows).transpose()
             return numpyarray
         setattr(klass, "tonumpy", tonumpy)
+
+        # Constructor from numpy array
+        @classmethod
+        def fromnumpy(cls, numpyarray):
+            import numpy as np
+            if not numpyarray.ndim == 2:
+                raise TypeError("Input needs to be a two-dimensional numpy array.")
+            if not numpyarray.dtype == np.double:
+                raise TypeError("Data type needs to be double.")
+            return cls(numpyarray, numpyarray.shape[0], numpyarray.shape[1])
+        setattr(klass, "fromnumpy", fromnumpy)

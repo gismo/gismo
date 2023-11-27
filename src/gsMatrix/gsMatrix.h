@@ -158,6 +158,9 @@ public:
     template<typename OtherDerived>
     gsMatrix(const gsEigen::ReturnByValue<OtherDerived>& other) : Base(other) { }
 
+    /// This constructor allows constructing a gsMatrix from an array
+    gsMatrix(T * array, int rows, int cols) : Base(gsEigen::Map<gsEigen::Matrix<T,_Rows, _Cols, gsEigen::RowMajor> >(array, rows, cols)) { }
+
     inline operator Ref () { return Ref(*this); }
 
     inline operator const constRef () { return constRef(*this); }
@@ -600,9 +603,8 @@ private:
 
         const T & m_tol;
     };
-    
-}; // class gsMatrix
 
+}; // class gsMatrix
 
 /*
 template<class T, int _Rows, int _Cols, int _Options> inline
@@ -652,12 +654,10 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 
 #endif // GISMO_WITH_PYBIND11
 
-
-} // namespace gismo
-
+  } // namespace gismo
 
 namespace gsEigen { namespace internal {
-template<class T, int _Rows, int _Cols, int _Options>
-struct traits<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
-gsEigen::internal::traits<gsEigen::Matrix<T,_Rows,_Cols,_Options> > { };
+template <class T, int _Rows, int _Cols, int _Options>
+struct traits<gismo::gsMatrix<T, _Rows, _Cols, _Options>>
+    : gsEigen::internal::traits<gsEigen::Matrix<T, _Rows, _Cols, _Options>> {};
 } }
