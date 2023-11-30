@@ -18,7 +18,12 @@
 
 #ifdef gsKLShell_ENABLED
 #include <gsKLShell/gsKLShell.h>
-#include <gsKLShell/gsMaterialMatrixLinear.h>
+#endif
+
+#ifdef gsRemappedBasis_ENABLED
+#include <gsRemappedBasis/src/gsBoxList.h>
+#include <gsRemappedBasis/src/gsSelector.h>
+#include <gsRemappedBasis/src/gsRemappedBasis.h>
 #endif
 
 #ifdef GISMO_WITH_PYBIND11
@@ -130,9 +135,14 @@ PYBIND11_MODULE(pygismo, m) {
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): MSplines module";
 
   // gismo::pybind11_init_gsMappedSpline( msplines );
+
   // gismo::pybind11_init_gsMappedBasis1( msplines );
   gismo::pybind11_init_gsMappedBasis2( msplines );
   // gismo::pybind11_init_gsMappedBasis3( msplines );
+
+  // gismo::pybind11_init_gsMappedSingleBasis1( msplines );
+  gismo::pybind11_init_gsMappedSingleBasis2( msplines );
+  // gismo::pybind11_init_gsMappedSingleBasis3( msplines );
 
   py::module mpi = m.def_submodule("mpi");
   
@@ -193,6 +203,18 @@ PYBIND11_MODULE(pygismo, m) {
   utils.doc() = "G+Smo (Geometry + Simulation Modules): Utils module";
 
   gismo::pybind11_init_PPN( m );
+
+#ifdef gsRemappedBasis_ENABLED
+  py::module rbasis = m.def_submodule("rbasis");
+
+  rbasis.attr("__name__") = "pygismo.rbasis";
+  rbasis.attr("__version__") = GISMO_VERSION;
+  rbasis.doc() = "G+Smo (Geometry + Simulation Modules): gsRemappedBasis module";
+
+  gismo::pybind11_init_gsBoxList( rbasis );
+  gismo::pybind11_init_gsSelector( rbasis );
+  gismo::pybind11_init_gsRemappedBasis( rbasis );
+#endif
 
 #ifdef gsKLShell_ENABLED
   py::module klshell = m.def_submodule("klshell");
