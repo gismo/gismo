@@ -101,13 +101,14 @@ public:
         m_meshNames.push_back(meshName);
         m_meshIDs.push_back(m_interface.getMeshID(m_meshNames.back()));
 
+        // Makes a hard-copy? Can we prevent it?
         gsMatrix<T> pointsTranspose = points;
         pointsTranspose.blockTransposeInPlace(1);
         m_sizes.push_back(points.cols());
-        m_positions.push_back(pointsTranspose.data());
+        m_positions.push_back(pointsTranspose);
 
-        index_t * vertexIDs;
-        m_interface.setMeshVertices(m_meshIDs.back(),m_sizes.back(),m_positions.back(),vertexIDs);
+        gsVector<index_t> vertexIDs;
+        m_interface.setMeshVertices(m_meshIDs.back(),m_sizes.back(),m_positions.back().data(),vertexIDs.data());
         m_vertexIDs.push_back(vertexIDs);
     }
 
@@ -281,9 +282,9 @@ private:
     /// Stores all mesh sizes (might be useful later)
     std::vector<index_t> m_sizes;
     /// Stores all mesh positions (might be useful later)
-    std::vector<T *> m_positions;
+    std::vector<gsMatrix<T>> m_positions;
     /// Stores all mesh vertex IDs (might be useful later)
-    std::vector<index_t *> m_vertexIDs;
+    std::vector<gsVector<index_t>> m_vertexIDs;
     /// Stores the precice::SolverInterface (see the precice Doxygen for details about this class)
     precice::SolverInterface m_interface;
     /// Stores the precice timestep
