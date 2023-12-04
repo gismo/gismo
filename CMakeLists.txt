@@ -390,6 +390,14 @@ if(GISMO_WITH_CPPYY)
   list(APPEND GISMO_HEADERS "gsAssembler/gsExpressions.h") # Access to the expressions
   list(FILTER GISMO_HEADERS EXCLUDE REGEX "gsIO/gsParaviewDataSet.h") # gsParaviewDataSet.h produces an error
 
+#  # Find all headers
+#  SUBDIRLIST(SUBDIRS ${SRC})
+#  LIST( APPEND SUBDIRS gsUtils/gsMesh)
+#  FOREACH(subdir ${SUBDIRS})
+#	aux_header_directory(${SRC}/${subdir} ${subdir}_H  )
+#	list(APPEND ALL_HEADERS ${${subdir}_H})
+#  ENDFOREACH()
+
   #message("HEADERS ${GISMO_HEADERS}")
   cppyy_add_bindings(
           "gismo" "${gismo_VERSION}" "G+Smo" "github.com/gismo"
@@ -398,6 +406,8 @@ if(GISMO_WITH_CPPYY)
           GENERATE_OPTIONS "-D__PIC__;-Wno-macro-redefined"
           INCLUDE_DIRS ${GISMO_INCLUDE_DIRS}
           LINK_LIBRARIES "gismo;${CPPYY_MODULE_PATH}/../lib/libCoreLegacy.so"
+          EXTRA_PKG_FILES pythonize.py
+  #        EXTRA_HEADERS ${GISMO_HEADERS}
           H_DIRS ${GISMO_INCLUDE_DIRS}
           H_FILES ${GISMO_HEADERS}
   )

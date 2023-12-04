@@ -29,7 +29,7 @@ CPPYY_MAP        = os.path.join(PKG, '@CPPYY_MAP@')
 EXTRA_PY         = '@EXTRA_PY@'
 
 CPPYY_PKG_DATA = [CPPYY_LIB_SO, CPPYY_ROOTMAP, CPPYY_PCM, CPPYY_MAP]
-CPPYY_PKG_DATA.extend([ep for ep in EXTRA_PY.split(';') if ep])
+CPPYY_PKG_DATA.extend([os.path.join(PKG, ep) for ep in EXTRA_PY.split(';') if ep])
 
 PKG_DESC = '''
 Bindings for {name}.

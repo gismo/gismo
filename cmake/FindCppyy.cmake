@@ -60,12 +60,13 @@ mark_as_advanced(Cppyy_VERSION)
 #
 # Generate setup.py from the setup.py.in template.
 #
-function(cppyy_generate_setup pkg version lib_so_file rootmap_file pcm_file map_file author email)
+function(cppyy_generate_setup pkg version lib_so_file rootmap_file pcm_file map_file author email extrapy)
     set(SETUP_PY_FILE ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
     set(CPPYY_PKG ${pkg})
     set(AUTHOR ${author})
     set(EMAIL ${email})
     set(PROJECT_VERSION ${version})
+    set(EXTRA_PY ${extrapy})
     get_filename_component(CPPYY_LIB_SO ${lib_so_file} NAME)
     get_filename_component(CPPYY_ROOTMAP ${rootmap_file} NAME)
     get_filename_component(CPPYY_PCM ${pcm_file} NAME)
@@ -267,7 +268,7 @@ endfunction(cppyy_generate_init)
 function(cppyy_add_bindings pkg pkg_version author author_email)
     set(simple_args URL LICENSE LICENSE_FILE LANGUAGE_STANDARD
         README_FILE)
-    set(list_args IMPORTS GENERATE_OPTIONS COMPILE_OPTIONS INCLUDE_DIRS LINK_LIBRARIES H_DIRS H_FILES LINKDEFS EXTRA_CODES EXTRA_HEADERS NAMESPACES)
+    set(list_args IMPORTS GENERATE_OPTIONS COMPILE_OPTIONS INCLUDE_DIRS LINK_LIBRARIES H_DIRS H_FILES LINKDEFS EXTRA_CODES EXTRA_HEADERS NAMESPACES EXTRA_PKG_FILES)
     cmake_parse_arguments(
         ARG
         ""
@@ -288,6 +289,7 @@ function(cppyy_add_bindings pkg pkg_version author author_email)
     set(pcm_file ${pkg_dir}/${pkg_simplename}_rdict.pcm)
     set(rootmap_file ${pkg_dir}/${pkg_simplename}.rootmap)
     set(extra_map_file ${pkg_dir}/${pkg_simplename}.map)
+    set(EXTRA_PKG_FILES ${ARG_EXTRA_PKG_FILES})
 
     ############################################################
     #
@@ -506,6 +508,7 @@ function(cppyy_add_bindings pkg pkg_version author author_email)
                          ${extra_map_file}
 			 ${author}
 			 ${author_email}
+            ${EXTRA_PKG_FILES}
     )
 
     #
