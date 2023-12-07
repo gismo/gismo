@@ -37,7 +37,7 @@ endforeach()
 
 # Add all targets to the build-tree export set
 if(GISMO_BUILD_LIB)
-export(TARGETS ${PROJECT_NAME}
+export(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_static
   FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
 endif()
 
@@ -53,6 +53,7 @@ export(PACKAGE gismo)
 # Create the gismoConfig.cmake and gismoConfigVersion.cmake files
 
 # ... for the build tree
+set(CONF_PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/gismo.h")
 set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}")
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
 set(CONF_MODULE_PATH  "${gismo_SOURCE_DIR}/cmake")
@@ -62,6 +63,7 @@ configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
 file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_DIR})
 
 # ... for the install tree
+set(CONF_PUBLIC_HEADER "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}/gismo.h")
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 set(CONF_MODULE_PATH  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}")
