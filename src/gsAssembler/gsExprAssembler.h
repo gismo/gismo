@@ -376,6 +376,8 @@ public:
     /// \sa gsExprAssembler::setIntegrationElements
     template<class... expr> void assemble(const expr &... args);
 
+    template<class... expr> void assemble(const gsMatrix<T> & quPoints, const gsMatrix<T> & quWeights, const expr &... args, const index_t patchInd = 0);
+
     /// \brief Adds the expressions \a args to the system matrix/rhs
     /// The arguments are considered as integrals over the boundary
     /// parts in \a BCs
@@ -820,6 +822,50 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
     m_matrix.makeCompressed();
 }
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::assemble(const gsMatrix<T> & quPoints, const gsMatrix<T> & quWeights, const expr &... args, const index_t patchInd )
+{
+    GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
+
+    bool failed = false;
+
+    auto arg_tpl = std::make_tuple(args...);
+
+    m_exprdata->parse(arg_tpl);
+    m_exprdata->activateFlags(SAME_ELEMENT);
+    //op_tuple(__printExpr(), arg_tpl);
+
+    _eval ee(m_matrix, m_rhs, quWeights);
+    // const index_t elim = m_options.getInt("DirichletStrategy");
+    // ee.setElim(dirichlet::elimination==elim);
+
+    // [HV] Do we need to do something with an element?
+    // Like this: m_exprdata->getElement().set(*domIt,quWeights);
+
+    m_exprdata->points() = quPoints;
+
+    // Perform required pre-computations on the quadrature nodes
+    try
+    {
+    m_exprdata->precompute(patchInd);
+    //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
+    }
+    catch (...)
+    {
+        failed = true;
+    }
+
+
+    // Assemble contributions of the element
+    op_tuple(ee, arg_tpl);
+
+    // Throw something else?? (floating point exception?)
+    GISMO_ENSURE(!failed,"Assembly failed due to an error");
+    m_matrix.makeCompressed();
+}
+
 
 template<class T>
 template<class... expr>
