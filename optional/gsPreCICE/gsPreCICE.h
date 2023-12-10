@@ -107,7 +107,7 @@ public:
         m_sizes.push_back(points.cols());
         m_positions.push_back(pointsTranspose);
 
-        gsVector<index_t> vertexIDs;
+        gsVector<index_t> vertexIDs(m_sizes.back());
         m_interface.setMeshVertices(m_meshIDs.back(),m_sizes.back(),m_positions.back().data(),vertexIDs.data());
         m_vertexIDs.push_back(vertexIDs);
     }
