@@ -388,6 +388,7 @@ protected:
 };
 
 /// For GEigsMode::RegularInverse
+/// NOTE: A must be symmetric and B positive semi-definite
 template <class MatrixType>
 class SpectraOps<MatrixType,Spectra::GEigsMode::RegularInverse>
 {
@@ -400,6 +401,7 @@ public:
 };
 
 /// For GEigsMode::ShiftInvert and GEigsMode::Cayley
+/// NOTE: A must be symmetric and B positive semi-definite
 template <class MatrixType, Spectra::GEigsMode GEigsMode = Spectra::GEigsMode::ShiftInvert>
 class SpectraShiftOps
 {
@@ -414,6 +416,7 @@ public:
 };
 
 /// Specialization for GEigsMode::Buckling
+/// NOTE: A must be positive semi-definite and B symmetric
 template <class MatrixType>
 class SpectraShiftOps<MatrixType,Spectra::GEigsMode::Buckling>
 {
@@ -422,7 +425,7 @@ public:
     typedef SpectraSymShiftInvert<MatrixType> InvOp;
     typedef SpectraSymMatProd<MatrixType>     ProdOp;
 
-    SpectraShiftOps(const MatrixType & A, const MatrixType & B) : opA(B,A), opB(B) { }
+    SpectraShiftOps(const MatrixType & A, const MatrixType & B) : opA(A,B), opB(A) { }
     InvOp  opA;
     ProdOp opB;
 };
