@@ -61,10 +61,10 @@ PYBIND11_MODULE(pygismo, m) {
   
   gismo::pybind11_enum_gsBoundary( core );
 
-  gismo::pybind11_init_gsBasis( core );
-  gismo::pybind11_init_gsBasisFun( core );
   gismo::pybind11_init_gsFunctionSet( core );
   gismo::pybind11_init_gsFunction( core );
+  gismo::pybind11_init_gsBasis( core );
+  gismo::pybind11_init_gsBasisFun( core );
   gismo::pybind11_init_gsFunctionExpr( core );
   gismo::pybind11_init_gsBoxTopology( core );
   gismo::pybind11_init_gsGeometry( core );
@@ -78,6 +78,9 @@ PYBIND11_MODULE(pygismo, m) {
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
 
+  gismo::pybind11_init_gsHTensorBasis2( hsplines );
+  gismo::pybind11_init_gsHTensorBasis3( hsplines );
+  gismo::pybind11_init_gsHTensorBasis4( hsplines );
   gismo::pybind11_init_gsHBSplineBasis2( hsplines );
   gismo::pybind11_init_gsHBSplineBasis3( hsplines );
   gismo::pybind11_init_gsHBSplineBasis4( hsplines );
@@ -100,7 +103,8 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsCmdLine( io );
   gismo::pybind11_init_gsFileData( io );
   gismo::pybind11_init_gsReadFile( io );
-  gismo::pybind11_init_gsOptionList (io );  
+  gismo::pybind11_init_gsOptionList (io );
+  gismo::pybind11_init_gsWriteParaview (io );
 
   py::module matrix = m.def_submodule("matrix");
 
@@ -226,7 +230,8 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsKLShell( klshell );
 #endif
 
-#ifdef gsStructuralAnalysis_ENABLED
+// #ifdef gsStructuralAnalysis_ENABLED
+#ifdef false
   py::module structuralanalysis = m.def_submodule("structuralanalysis");
 
   structuralanalysis.attr("__name__") = "pygismo.structuralanalysis";
