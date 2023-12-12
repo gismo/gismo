@@ -522,17 +522,18 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         solver.solve(result);
         result = solver.currentDesign();
     #else
-    switch (dd)
-    {
-    case 2:
-        newtonRaphson_impl<1,2>(gsVector<T>::Zero(dd), result, true,
-                                accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
-        break;
-    default:
-        newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
-                              accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
-    }
-#endif
+        int dd=domainDim();
+        switch (dd)
+        {
+        case 2:
+            newtonRaphson_impl<1,2>(gsVector<T>::Zero(dd), result, true,
+                                    accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
+            break;
+        default:
+            newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
+                                  accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
+        }
+    #endif
 
     return result;
 }
