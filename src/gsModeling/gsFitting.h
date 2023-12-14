@@ -35,8 +35,8 @@ public:
     /// default constructor
     gsFitting()
     {
-        m_basis = NULL;
-        m_result= NULL ;
+        m_basis = nullptr;
+        m_result= nullptr;
     }
 
     /// constructor
@@ -59,6 +59,8 @@ public:
     void compute(T lambda = 0);
 
     void updateGeometry(gsMatrix<T> coefficients, gsMatrix<T> parameters);
+
+    void initializeGeometry(const gsMatrix<T> & coefficients, const gsMatrix<T> & parameters);
 
     void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx);
 
