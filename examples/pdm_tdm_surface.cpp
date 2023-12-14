@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
     // t, u, v, w,
     index_t kx = -1; // x
     index_t ky = -1; // y
-    index_t maxPC_step = 0; // y
+    index_t maxPC_step = 0; // z
 
 
     gsCmdLine cmd("Tensor product B-spline surface fitting with Point/Tangent Distance Minimization.");
@@ -331,30 +331,39 @@ int main(int argc, char *argv[])
    gsInfo << "Initial planar fit:\n" << *fit_plane.result() << "\n";
    gsWriteParaview(*fit_plane.result(), "fit_plane");
 
-   gsFileData<> geo_in("../filedata/surfaces/simple.xml");
-   gsGeometry<>::uPtr pGeom = geo_in.getFirst< gsGeometry<> >();
+   // gsFileData<> geo_in("../filedata/surfaces/shiphull_simple.xml");
+   // gsFileData<> geo_in("../filedata/surfaces/simple.xml");
+   // gsGeometry<>::uPtr pGeom = geo_in.getFirst< gsGeometry<> >();
 
-   // gsKnotVector<> u_knots (u_min, u_max, numKnots, deg_x+1 ) ;
-   // gsKnotVector<> v_knots (v_min, v_max, numKnots, deg_y+1 ) ;
-   const gsBasis<>& basis = pGeom->basis();
+   gsKnotVector<> u_knots (u_min, u_max, kx, deg_x+1 ) ;
+   gsKnotVector<> v_knots (v_min, v_max, ky, deg_y+1 ) ;
+   gsTensorBSplineBasis<2> tbasis( u_knots, v_knots );
 
-   // Create a tensor-basis nad apply initial uniform refinement
-   gsTensorBSplineBasis<2> tbasis = static_cast< const gsTensorBSplineBasis<2>& > (basis);
+
+
+   // const gsBasis<>& basis = pGeom->basis();
+
+   // Create a tensor-basis (and apply initial uniform refinement)
+   // gsTensorBSplineBasis<2> tbasis = static_cast< const gsTensorBSplineBasis<2>& > (basis);
    // gsTensorBSplineBasis<2> tbasis( basis );
    //tbasis.uniformRefine( (1<<numURef)-1 );
 
-   gsGeometry<>::uPtr initGeom = tbasis.interpolateAtAnchors(fit_plane.result()->eval(tbasis.anchors()));
+   gsFitting<real_t> initObj( uv, X, tbasis);
+   initObj.compute(0);
+   gsGeometry<> * initGeom = initObj.result();
+   //gsGeometry<>::uPtr initGeom = memory::make_unique(initObj.result());
+   //gsGeometry<>::uPtr initGeom = tbasis.interpolateAtAnchors(fit_plane.result()->eval(tbasis.anchors()));
 
    gsMatrix<> params(uv.rows(), uv.cols());
-   for (index_t i = 0; i<X.cols(); ++i)
-   {
-       const auto & curr = X.col(i);
-       gsVector<> newParam = params.col(i);
-       initGeom->closestPointTo(curr, newParam, 1e-6, false);
-       params.col(i) = newParam;
-   }
-
-   gsInfo << "Initial parameters obtained by projection.\n";
+   params = uv;
+   // gsMatrix<> params(uv.rows(), uv.cols());
+   // for (index_t i = 0; i<X.cols(); ++i)
+   // {
+   //     const auto & curr = X.col(i);
+   //     gsVector<> newParam = params.col(i);
+   //     initGeom->closestPointTo(curr, newParam, 1e-6, false);
+   //     params.col(i) = newParam;
+   // }
 
    gsInfo << "Initial pdm fitting object.\n";
    gsFitting<real_t> pdm_obj( params, X, tbasis);
@@ -362,12 +371,32 @@ int main(int argc, char *argv[])
    gsInfo << *pdm_obj.result() << "\n";
    gsWriteParaview(*pdm_obj.result(), "pdm_0");
 
-   gsInfo << "Initial tdm fitting object.\n";
-   gsFitting<real_t> tdm_obj( params, X, tbasis);
-   tdm_obj.updateGeometry(initGeom->coefs(), params);
+   // pdm_obj.parameterProjectionSepBoundary(1e-6, interpIdx);
+   gsInfo << "pdm, parameters update:\n" << (params - pdm_obj.returnParamValues()).norm() << "\n";
+   // pdm_obj.updateGeometry(initGeom->coefs(), pdm_obj.returnParamValues());
+   // gsWriteParaviewPoints(params, "pdm_params_0");
+   // gsWriteParaviewPoints(pdm_obj.returnParamValues(), "pdm_projection_0");
+   // gsInfo << *pdm_obj.result() << "\n";
+   // gsWriteParaview(*pdm_obj.result(), "pdm_0");
 
-   gsInfo << *tdm_obj.result() << "\n";
-   gsWriteParaview(*tdm_obj.result(), "tdm_0");
+
+
+
+   gsInfo << "Initial tdm fitting object.\n";
+   gsFitting<real_t> tdm_obj( uv, X, tbasis);
+   tdm_obj.updateGeometry(initGeom->coefs(), tdm_obj.returnParamValues());
+   // gsInfo << *tdm_obj.result() << "\n";
+   // gsWriteParaview(*tdm_obj.result(), "tdm_0");
+   // gsWriteParaviewPoints(tdm_obj.returnParamValues(), "tdm_params_0");
+   // tdm_obj.parameterProjectionSepBoundary(1e-8, interpIdx);
+
+
+   // gsFitting<real_t> tdm_obj( params, X, tbasis);
+
+
+   // gsInfo << *tdm_obj.result() << "\n";
+   // gsWriteParaview(*tdm_obj.result(), "tdm_0");
+   // gsWriteParaviewPoints(tdm_obj.returnParamValues(), "tdm_projection_0");
 
 
    std::ofstream pdm_results;
@@ -378,14 +407,14 @@ int main(int argc, char *argv[])
    tdm_results.open(std::to_string(now) + "tdm_results.csv");
    // tdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse, mu*PDM, sigma*TDM, boundary, pos-semi-def, cond, s_min, s_max, s-free\n";
    tdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse, mu*PDM, sigma*TDM\n";
-
-    // index_t pc_step = maxPC_step;
-    for(index_t pc_step = 0; pc_step < maxPC_step; pc_step++)
+   // tdm_obj.compute_tdm(lambda, 0., 1., interpIdx);
+    //index_t pc_step = maxPC_step;
+    for(index_t pc_step = 1; pc_step <= maxPC_step; pc_step++)
     {
     // gsFitting<real_t> pdm_obj( uv, X, tbasis);
-    pdm_obj.compute(lambda);
+    //pdm_obj.compute(lambda);
     // pdm_obj.parameterCorrection(1e-6,pc_step,1e-6);
-    pdm_obj.parameterCorrectionSepBoundary(1e-6,pc_step, 1, 0, interpIdx);
+    pdm_obj.parameterCorrectionSepBoundary_pdm(1e-6,1,interpIdx);
 
     std::vector<real_t> pdm_min_max_mse = pdm_obj.result()->MinMaxMseErrors(pdm_obj.returnParamValues(),X);
 
@@ -400,9 +429,10 @@ int main(int argc, char *argv[])
     // gsWriteParaview(*pdm_obj.result(), "pdm_geo");
 
     // gsFitting<real_t> tdm_obj( uv, X, tbasis);
-    tdm_obj.compute_tdm(lambda, mu, sigma, interpIdx);
+
+
     // tdm_obj.parameterCorrection_tdm(1e-6,pc_step, mu, sigma, interpIdx);
-    tdm_obj.parameterCorrectionSepBoundary(1e-6, pc_step, mu, sigma, interpIdx);
+    tdm_obj.parameterCorrectionSepBoundary_tdm(1e-6, 1, mu, sigma, interpIdx);
 
     std::vector<real_t> tdm_min_max_mse = tdm_obj.result()->MinMaxMseErrors(tdm_obj.returnParamValues(),X);
     tdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","

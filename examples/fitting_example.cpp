@@ -19,12 +19,13 @@ int main(int argc, char *argv[])
 {
     // Options with default values
     bool save     = false;
-    index_t numURef   = 3;
+    index_t numURef   = 0;
+    index_t numKnots   = 0;
     index_t iter      = 2;
     index_t deg_x     = 2;
     index_t deg_y     = 2;
-    index_t maxPcIter = 1;
-    real_t lambda = 1e-07;
+    index_t maxPcIter = 0;
+    real_t lambda = 1e-06;
     real_t threshold = 1e-02;
     real_t tolerance = 1e-02;
     index_t extension = 2;
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
     cmd.addReal("p", "refPercent", "percentage of points to refine in each iteration", refPercent);
     cmd.addInt("q", "extension", "extension size", extension);
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
+    cmd.addInt("n", "iknots", "number of interior knots in each direction", numKnots);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
 
@@ -81,6 +83,9 @@ int main(int argc, char *argv[])
     fd_in.getId<gsMatrix<> >(1, xyz);
     //! [Read data]
 
+    gsWriteParaviewPoints(uv, "uv");
+    gsWriteParaviewPoints(xyz, "xyz");
+
     // This is for outputing an XML file, if requested
     gsFileData<> fd;
 
@@ -95,8 +100,8 @@ int main(int argc, char *argv[])
         v_max = uv.row(1).maxCoeff();
 
     // Create knot-vectors without interior knots
-    gsKnotVector<> u_knots (u_min, u_max, 0, deg_x+1 ) ;
-    gsKnotVector<> v_knots (v_min, v_max, 0, deg_y+1 ) ;
+    gsKnotVector<> u_knots (u_min, u_max, numKnots, deg_x+1 ) ;
+    gsKnotVector<> v_knots (v_min, v_max, numKnots, deg_y+1 ) ;
 
     // Create a tensor-basis nad apply initial uniform refinement
     gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );

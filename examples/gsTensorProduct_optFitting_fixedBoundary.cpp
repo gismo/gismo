@@ -17,6 +17,7 @@
 
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptimizer/gsLevenbergMarquardt.h>
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
@@ -657,15 +658,21 @@ int main(int argc, char *argv[])
     std::string prefix;
     for(index_t it_opt = 1; it_opt <= maxIter; it_opt++)
     {
-      optimizer = new gsHLBFGS<real_t>(&problem);
-      optimizer->options().setInt("Verbose",verbosity);
-      gsDebugVar(gtoll);
-      optimizer->options().setReal("MinGradLen", gtoll);
-      optimizer->options().setInt("LBFGSUpdates", mupdate);
 
-      optimizer->options().setReal("FuncTol", funcTol);
-      optimizer->options().setInt("MaxEval", maxEval);
+      optimizer = new gsLevenbergMarquardt<>(&problem);
+      optimizer->options().setInt("Verbose",verbosity);
+      optimizer->options().setReal("MinGradLen", gtoll);
       optimizer->options().setReal("MinStepLen", 1e-12);
+
+      // optimizer = new gsHLBFGS<real_t>(&problem);
+      // optimizer->options().setInt("Verbose",verbosity);
+      // gsDebugVar(gtoll);
+      // optimizer->options().setReal("MinGradLen", gtoll);
+      // optimizer->options().setInt("LBFGSUpdates", mupdate);
+
+      // optimizer->options().setReal("FuncTol", funcTol);
+      // optimizer->options().setInt("MaxEval", maxEval);
+      // optimizer->options().setReal("MinStepLen", 1e-12);
 
 
       //! [Solve]
