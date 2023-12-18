@@ -24,6 +24,14 @@ class gsBiharmonicExprAssembler
 {
 public:
 
+/**
+ * @brief      Constructs a new biharmonic assembler
+ *
+ * @param[in]  mp     A multi-patch
+ * @param[in]  mb     A multi-basis
+ * @param[in]  force  The force
+ * @param[in]  bcs    The bcs
+ */
 gsBiharmonicExprAssembler(  const gsMultiPatch<T> & mp,
                             const gsMultiBasis<T> & mb,
                             const gsFunctionSet<T> & force,
@@ -105,8 +113,10 @@ public:
     /// Set the options from an option list. Ignores unknown options
     void setOptions(gsOptionList & options);
 
+    /// Constructs the solution internally
     void constructSolution(gsMatrix<T> & solVector);
 
+    /// Returns a pointer to the solution
     typename gsFunctionSet<T>::Ptr getSolution() const;
 
 private:
