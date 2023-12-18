@@ -18,7 +18,10 @@
 
 #ifdef gsKLShell_ENABLED
 #include <gsKLShell/gsKLShell.h>
-#include <gsKLShell/gsMaterialMatrixLinear.h>
+#endif
+
+#ifdef gsStructuralAnalysis_ENABLED
+#include <gsStructuralAnalysis/gsStructuralAnalysis.h>
 #endif
 
 #ifdef GISMO_WITH_PYBIND11
@@ -47,6 +50,9 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.attr("__name__") = "pygismo.assembler";
   assembler.attr("__version__") = GISMO_VERSION;
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
+
+  gismo::pybind11_enum_gsBiharmonicExprAssembler( assembler );
+
 
   py::module core = m.def_submodule("core");
 
