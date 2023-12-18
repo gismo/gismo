@@ -220,6 +220,39 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
   time_t now = time(0);
 
+  // gsDebugVar(m_points); // m * 3
+
+  gsDebugVar(m_points.rows()) ; // m
+  gsDebugVar(m_points.cols()) ; // 3
+
+  // (0,0,tmp.rows(),tmp.cols())
+  index_t num_interiors = interpIdx[0];
+  index_t num_bdry = m_points.rows() - num_interiors;
+
+  gsMatrix<T> m_interiors(num_interiors,m_points.cols() );// = m_points.block();
+  gsMatrix<T> m_boundary(num_bdry,m_points.cols() );// = m_points.block();
+  m_interiors = m_points.block(0,0,num_interiors,m_points.cols());
+  m_boundary = m_points.block(num_interiors,0, num_bdry, m_points.cols());
+
+
+  gsDebugVar(m_param_values.rows()) ; // 2
+  gsDebugVar(m_param_values.cols()) ; // m
+  gsMatrix<T> m_params_interiors(m_param_values.rows(), num_interiors);
+  gsMatrix<T> m_params_bdry(m_param_values.rows(), num_bdry);
+
+  gsInfo << m_param_values.block(0, 0, m_param_values.rows(), num_interiors).rows()
+         << " x " << m_param_values.block(0, 0, m_param_values.rows(), num_interiors).cols() << "\n";
+
+  m_params_interiors = m_param_values.block(0, 0, m_param_values.rows(), num_interiors);
+  m_params_bdry = m_param_values.block(0, num_interiors, m_param_values.rows(), num_bdry);
+
+  writeToCSVfile(std::to_string(now)+"_params.csv", m_param_values);
+  writeToCSVfile(std::to_string(now)+"_params_interiors.csv", m_params_interiors);
+  writeToCSVfile(std::to_string(now)+"_params_boundary.csv", m_params_bdry);
+
+
+  // A_interiors + A_bdry
+
     m_last_lambda = lambda;
     if ( !m_result )
     {
@@ -267,28 +300,15 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
       //gsInfo << "and params:\n" << this->returnParamValues();
       gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_in_ctdm");
 
-      // Wipe out previous result
-      // if ( m_result )
-          // delete m_result;
-
-      // if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
-          // m_result = bb->makeGeometry( give(refCoefs) ).release();
-      // else
-          // m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(refCoefs));
-
-       // gsInfo << "It should be the same...\n";
-       // gsDebugVar(*m_result);
-       // gsInfo << "with same coefs:\n" << m_result->coefs() << "\n";
-      //gsInfo << "and same params:\n" << this->returnParamValues()<< "\n";
-
-
-
       gsExprEvaluator<T> ev;
       auto G = ev.getMap(*m_result);
       gsMatrix<T> normals(3, m_param_values.cols());
       normals.setZero();
+
       gsSparseMatrix<T> N_diag(m_points.rows() * 3, m_points.rows());
+      gsSparseMatrix<T> N_interiors(m_interiors.rows() * 3, m_interiors.rows());
       N_diag.setZero();
+      N_interiors.setZero();
       //
       // gsDebugVar(m_param_values.col(0));
       // gsDebugVar(m_points.rows());
@@ -302,12 +322,16 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         N_diag(j,j) = normals(0,j);
         N_diag(m_points.rows()+j,j) = normals(1,j);
         N_diag(2*m_points.rows()+j,j) = normals(2,j);
+
+        N_interiors(j,j) = normals(0,j);
+        N_interiors(m_interiors.rows()+j,j) = normals(1,j);
+        N_interiors(2*m_interiors.rows()+j,j) = normals(2,j);
       }
 
 
       // nv: outer normals for boundary curves.
       // normals.col(j) = (point - surface); to treat the boundary.
-      //if(false)
+      // if(false)
       {
       for(index_t j=interpIdx[0]; j < m_param_values.cols(); j++)
       {
@@ -348,56 +372,90 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
       writeToCSVfile(internal::to_string(num_basis)+"_" + std::to_string(now)+"_normals.csv", normals);
 
       gsSparseMatrix<T> sparseColloc(m_points.rows(), num_basis);
+      gsSparseMatrix<T> interiorColloc(m_interiors.rows(), num_basis);
+      gsSparseMatrix<T> bdryColloc(m_boundary.rows(), num_basis);
 
       // gsInfo << "--------------------------------------------------------\n";
       // gsInfo << "space dimension = " << num_basis << "\n";
       // gsDebugVar(m_result->basis());
       sparseColloc = m_result->basis().collocationMatrix( m_param_values ) ;
+      interiorColloc = m_result->basis().collocationMatrix( m_params_interiors ) ;
+      bdryColloc = m_result->basis().collocationMatrix( m_params_bdry ) ;
 
+
+      // points and parameters block collocation matrix
       gsMatrix<T> tmp = sparseColloc;
       gsMatrix<T> Bb(m_points.rows() * 3, m_basis->size() * 3);
       Bb.setZero();
       Bb.block(0,0,tmp.rows(),tmp.cols()) = tmp;
       Bb.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
       Bb.block(2*tmp.rows(),2*tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
-
-      // writeToCSVfile(internal::to_string(num_basis)+"Bb.csv", Bb);
-
       gsSparseMatrix<T> B_mat(m_points.rows() * 3, m_basis->size() * 3);
       B_mat = Bb.sparseView();
 
+
+      // Interior points and parameters block collocation matrix
+      gsMatrix<T> intmp = interiorColloc;
+      gsMatrix<T> Bint(m_interiors.rows() * 3, m_basis->size() * 3);
+      Bint.setZero();
+      Bint.block(0,0,intmp.rows(),intmp.cols()) = intmp;
+      Bint.block(intmp.rows(),intmp.cols(),intmp.rows(),intmp.cols()) = intmp;
+      Bint.block(2*intmp.rows(),2*intmp.cols(),intmp.rows(),intmp.cols()) = intmp;
+      gsSparseMatrix<T> B_int(m_interiors.rows() * 3, m_basis->size() * 3);
+      B_int = Bint.sparseView();
+
+
+      // boundary points and parameters block collocation matrix
+      gsMatrix<T> ytmp = bdryColloc;
+      gsMatrix<T> By(m_boundary.rows() * 3, m_basis->size() * 3);
+      By.setZero();
+      By.block(0,0,ytmp.rows(),ytmp.cols()) = ytmp;
+      By.block(ytmp.rows(),ytmp.cols(),ytmp.rows(),ytmp.cols()) = ytmp;
+      By.block(2*ytmp.rows(),2*ytmp.cols(),ytmp.rows(),ytmp.cols()) = ytmp;
+      gsSparseMatrix<T> B_bdry(m_boundary.rows() * 3, m_basis->size() * 3);
+      B_bdry = By.sparseView();
+
+
       gsMatrix<T> X_tilde(m_points.rows() * 3, 1);
-      // gsDebugVar(m_points.col(0));
       X_tilde << m_points.col(0), m_points.col(1), m_points.col(2);
 
-      gsSparseMatrix<T> A_tilde(B_mat.cols(), B_mat.cols());
-      gsSparseMatrix<T> Im(3*m_points.rows(), 3*m_points.rows());
-      Im.setIdentity();
-      gsMatrix<T> rhs(B_mat.cols(),1);
+      gsMatrix<T> X_int(m_interiors.rows() * 3, 1);
+      X_int << m_interiors.col(0), m_interiors.col(1), m_interiors.col(2);
 
-      if ( mu > 0 && sigma > 0)
-      {
-        gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
-        A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
-        rhs =  B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose() ) * X_tilde ;
-      }
-      else if (mu > 0 && sigma == 0)
-      {
-        gsInfo << "PDM.\n";
-        A_tilde = B_mat.transpose() *  B_mat;
-        rhs = B_mat.transpose() * X_tilde ;
-      }
-      else if (sigma > 0 && mu == 0)
-      {
-        gsInfo << "TDM.\n";
-        A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
-        rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
-      }
-      else
-      {
-        gsWarn<<  "No available fitting method. Aborting.\n";
-        return;
-      }
+      gsMatrix<T> X_bdry(m_boundary.rows() * 3, 1);
+      X_bdry << m_boundary.col(0), m_boundary.col(1), m_boundary.col(2);
+
+      gsSparseMatrix<T> A_tilde(m_basis->size() * 3, m_basis->size() * 3); //
+      gsMatrix<T> rhs(m_basis->size() * 3, 1);
+
+      // if ( mu > 0 && sigma > 0)
+      // {
+      //   gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
+      //   A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
+      //   rhs =  B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose() ) * X_tilde ;
+      // }
+      // else if (mu > 0 && sigma == 0)
+      // {
+      //   gsInfo << "PDM.\n";
+      //   A_tilde = B_mat.transpose() *  B_mat;
+      //   rhs = B_mat.transpose() * X_tilde ;
+      // }
+      // else if (sigma > 0 && mu == 0)
+      // {
+      // gsInfo << "TDM.\n";
+      //A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
+      //rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
+      // }
+      // else
+      // {
+      //   gsWarn<<  "No available fitting method. Aborting.\n";
+      //   return;
+      // }
+
+      gsInfo << "TDM.\n";
+      A_tilde = B_int.transpose() * (  N_interiors * N_interiors.transpose() ) * B_int + B_bdry.transpose() * B_bdry;
+      rhs =  B_int.transpose() * ( N_interiors * N_interiors.transpose() ) * X_int + B_bdry.transpose() * X_bdry ;
+
 
       gsSparseMatrix<T> m_G;
       m_G.resize(m_basis->size(), m_basis->size());

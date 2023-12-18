@@ -385,8 +385,10 @@ int main(int argc, char *argv[])
    gsInfo << "Initial tdm fitting object.\n";
    gsFitting<real_t> tdm_obj( uv, X, tbasis);
    tdm_obj.updateGeometry(initGeom->coefs(), tdm_obj.returnParamValues());
+   tdm_obj.compute_tdm(0, 0., 1., interpIdx);
+
    // gsInfo << *tdm_obj.result() << "\n";
-   // gsWriteParaview(*tdm_obj.result(), "tdm_0");
+   gsWriteParaview(*tdm_obj.result(), "tdm_0");
    // gsWriteParaviewPoints(tdm_obj.returnParamValues(), "tdm_params_0");
    // tdm_obj.parameterProjectionSepBoundary(1e-8, interpIdx);
 
