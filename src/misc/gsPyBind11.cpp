@@ -51,7 +51,7 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.attr("__version__") = GISMO_VERSION;
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
 
-  gismo::pybind11_enum_gsBiharmonicExprAssembler( assembler );
+  gismo::pybind11_init_gsBiharmonicExprAssembler( assembler );
 
 
   py::module core = m.def_submodule("core");
