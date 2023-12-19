@@ -776,7 +776,7 @@ void gsBiharmonicExprAssembler<T>::_computeStabilityParameter(
         ges.compute(Spectra::SortRule::LargestMagn,1000,1e-6,Spectra::SortRule::LargestMagn);
         T maxEV = ges.eigenvalues()(0,0);
 #else
-        gsEigen::GeneralizedSelfAdjointEigenSolver<gsMatrix<T>> ges(AA, BB);
+        gsEigen::GeneralizedSelfAdjointEigenSolver<typename gsMatrix<T>::Base > ges(AA, BB);
         T maxEV = ges.eigenvalues().array().maxCoeff();
 #endif
         T m_h      = dbasis_temp.basis(0).getMinCellLength(); // dbasis.basis(0).getMinCellLength();
