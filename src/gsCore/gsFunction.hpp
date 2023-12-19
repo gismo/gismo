@@ -376,8 +376,8 @@ int gsFunction<T>::newtonRaphson_impl(
         }
 
         const T rr = rnorm[(iter-1)%2]/rnorm[iter%2];
-        damping_factor = rr<1.01 ? damping_factor/2 : math::min((T)1,rr*damping_factor);
-        //gsDebugIf(damping_factor < accuracy, "Newton: rate too low ");
+        //damping_factor = rr<1.01 ? damping_factor/2 : math::min((T)1,rr*damping_factor);
+        damping_factor = rr<1.01 ? damping_factor*math::max((T)0.5,rr-0.01) : math::min((T)1,rr*damping_factor);
 
         // gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
         //        << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
