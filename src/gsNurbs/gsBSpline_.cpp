@@ -38,11 +38,14 @@ void pybind11_init_gsBSpline(py::module &m)
     .def("insertKnot", &Class::insertKnot, "Insert a knot")
     .def("degreeElevate", &Class::degreeElevate, "Elevate the degree")
     .def("coefDim", &Class::coefDim, "Returns the number of coefficients defining this B-Spline")
-    .def("coefs", (gsMatrix<real_t>& (Class::*)())&Class::coefs,
-           py::return_value_policy::reference_internal,
-           "Returns the coeffcient matrix (as a reference)") //there are 2 versions of coefs()
-    .def("knots", static_cast<gsKnotVector<real_t>& (Class::*)(int)> (&Class::knots), py::arg("direction") = 0, "Gets the knots")
-    .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots), py::arg("direction") = 0, "Gets the knots as a reference")
+    .def("knots", static_cast<gsKnotVector<real_t>& (Class::*)(int)> (&Class::knots),
+         py::arg("direction") = 0,
+         py::return_value_policy::reference_internal,
+          "Gets the knots")
+    .def("knots", static_cast<const gsKnotVector<real_t>& (Class::*)(int) const> (&Class::knots),
+         py::arg("direction") = 0,
+         py::return_value_policy::reference_internal,
+         "Gets the knots as a reference")
     .def("domainStart", &Class::domainStart, "Returns the left end of the domain")
     .def("domainEnd", &Class::domainEnd, "Returns the right end of the domain")
     .def("numCoefs", &Class::numCoefs, "Returns the number of coefficients")

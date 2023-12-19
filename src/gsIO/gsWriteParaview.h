@@ -422,7 +422,18 @@ void plot_errors(const gsMatrix<T> & orig,
                  std::string const & fn);
 
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsWriteParaview
+   */
+  void pybind11_init_gsWriteParaview(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
+
 } // namespace gismo
+
 
 
 #undef NS

@@ -456,6 +456,15 @@ void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index
 }
 
 template<short_t d,class T>
+std::ostream & gsMappedBasis<d,T>::print(std::ostream &os) const
+{
+    os << "gsMappedBasis:\n";
+    os << "\t Local size: "<<this->localSize()<<"\n";
+    os << "\t Global size: "<<this->globalSize()<<"\n";
+    return os;
+}
+
+template<short_t d,class T>
 index_t gsMappedBasis<d,T>::_getPatch(const index_t localIndex) const
 {
     size_t patch;
