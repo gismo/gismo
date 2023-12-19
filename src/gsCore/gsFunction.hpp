@@ -286,21 +286,17 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
         if (useInitialPoint)
             arg = result.col(i);
         else
-            arg = _argMinNormOnGrid(20);
+            arg = this->parameterCenter();
+            //arg = _argMinNormOnGrid(20);
 
-        //const int iter =
-        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
-        //gsInfo<< "Iterations: "<< iter <<"\n";
-        //  if (-1==iter)
-        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
-        result.col(i) = arg;
-        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
-            result.col(i) = arg;
-        else
+        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        if (-1==iter)
         {
-            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
+            //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
             result.col(i).setConstant( std::numeric_limits<T>::infinity() );
         }
+        else
+            result.col(i) = arg;
     }
 /* // alternative impl using closestPointTo
     result.resize(parDim(), points.cols() );
@@ -360,8 +356,8 @@ int gsFunction<T>::newtonRaphson_impl(
                       (arg.array()<=supp.col(1).array()).all(),
                       "Initial point is outside the domain.\n point = "<<arg<<"\n domain = "<<supp);
     }
-    int iter = 0;
-    T rnorm[2]; rnorm[1]=1;
+    int iter = 1;
+    T rnorm[2]; rnorm[0]=1e100;
     //T alpha=.5, beta=.5;
     gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
 
@@ -372,27 +368,20 @@ int gsFunction<T>::newtonRaphson_impl(
 
         residual.noalias() = value - scale*residual;
         rnorm[iter%2] = residual.norm();
-        //gsInfo << "Newton it " << iter << " arg " << arg.transpose() <<
-        //    " f(arg) " << (0==mode?fd.values[0]:fd.values[1]).transpose() << 
-        //    " res " <<residual.transpose() << " norm " << rnorm[iter%2] << "\n";
 
         if(rnorm[iter%2] <= accuracy) // residual below threshold
         {
-            //gsInfo <<"--- OK: Accuracy "<<rnorm[iter%2]<<" reached.\n";
+            //gsInfo <<"--- OK: Accuracy "<<rnorm[iter%2]<<" reached after "<<iter <<"iterations.\n";
             return iter;
         }
 
-        if( iter>8 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <0.99)
-        {
-            gsDebug <<"--- Err: residual increasing, new= " << rnorm[iter%2] << ", prev= " <<rnorm[(iter-1)%2]<<", niter= "<<iter<<".\n";
-            return iter; //std::pair<iter,rnorm>
-        }
+        const T rr = rnorm[(iter-1)%2]/rnorm[iter%2];
+        damping_factor = rr<1.01 ? damping_factor/2 : math::min((T)1,rr*damping_factor);
+        //gsDebugIf(damping_factor < accuracy, "Newton: rate too low ");
 
-        if( iter>8 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <1.1)
-        {
-            gsDebug <<"--- Err: residual stagnating, new= "<<rnorm[iter%2]<<", new/prev= "<<rnorm[iter%2]/rnorm[(iter-1)%2]<<", niter= "<<iter<<".\n";
-            return iter; //std::pair<iter,rnorm>
-        }
+        // gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
+        //        << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
+        //        <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
 
         // compute Jacobian
         if (0==mode)
@@ -441,7 +430,8 @@ gsVector<T> gsFunction<T>::_argMinOnGrid(index_t numpts) const
         T val, mval = this->eval(result).value();
         for(;pt; ++pt)
         {
-            if ( (val = this->eval(*pt).value())<mval )
+            val = this->eval(*pt).value();
+            if (val < mval )
             {
                 mval   = val;
                 result = *pt;
@@ -510,30 +500,34 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     if ( 0 != init.size() )
         result = give(init);
     else
+    {
         result = _argMinOnGrid(20);
+    }
 
     #ifdef gsHLBFGS_ENABLED
-        gsFunctionAdaptor<T> fmin(*this);
-        // gsIpOpt<T> solver( &fmin );
-        // gsGradientDescent<T> solver( &fmin );
-        gsHLBFGS<T> solver( &fmin );
-        solver.options().setInt("MaxIterations",100);
-        solver.options().setInt("Verbose",0);
-        solver.solve(result);
-        result = solver.currentDesign();
-    #else
-        int dd=domainDim();
-        switch (dd)
-        {
-        case 2:
-            newtonRaphson_impl<1,2>(gsVector<T>::Zero(dd), result, true,
-                                    accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
-            break;
-        default:
-            newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
-                                  accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
-        }
-    #endif
+    gsFunctionAdaptor<T> fmin(*this);
+    // gsIpOpt<T> solver( &fmin );
+    //gsGradientDescent<T> solver( &fmin );
+    gsHLBFGS<T> solver( &fmin );
+    solver.options().setInt("MaxIterations",100);
+    solver.options().setInt("Verbose",0);
+    solver.solve(result);
+    result = solver.currentDesign();
+    gsDebugVar(result);
+    return result;
+#else
+    int dd=domainDim();
+    switch (dd)
+    {
+    case 2:
+        newtonRaphson_impl<1,2>(gsVector<T>::Zero(dd), result, true,
+                                accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
+        break;
+    default:
+        newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
+                              accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
+    }
+#endif
 
     return result;
 }
@@ -563,11 +557,11 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
     gsFuncCoordinate<T> fc(*this, give(ind));
 
     //find low accuracy closest point
-    //uv.resize(this->domainDim(), xyz.cols() );
+    // uv.resize(this->domainDim(), xyz.cols() );
     // for (index_t i = 0; i!= xyz.cols(); ++i)
     // {
-    //    gsSquaredDistance2<T> dist2(fc, pt.col(i));
-    //    uv.col(i) = dist2.argMin(accuracy, 100) ;
+    //     gsSquaredDistance2<T> dist2(fc, pt.col(i));
+    //     uv.col(i) = dist2.argMin(accuracy, 100) ;
     // }
 
     fc.invertPoints(pt,uv,accuracy,false); //true
