@@ -289,10 +289,10 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
             arg = this->parameterCenter();
         //arg = _argMinNormOnGrid(16);
 
-        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 300);
         if (-1==iter)
         {
-            //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
+            gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
             result.col(i).setConstant( std::numeric_limits<T>::infinity() );
         }
         else
@@ -391,11 +391,11 @@ int gsFunction<T>::newtonRaphson_impl(
         }
 
         const T rr = ( 1==iter ? (T)1.01 : rnorm[(iter-1)%2]/rnorm[iter%2] );
-        damping_factor = rr<1.01 ? math::max(0.1,(rr-0.1)*damping_factor) : math::min((T)1,rr*damping_factor);
+        damping_factor = rr<1.11 ? math::max(0.1 + (rr/99),(rr-0.2)*damping_factor) : math::min((T)1,rr*damping_factor);
 
-        // gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
-        //        << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
-        //        <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
+        //gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
+        //       << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
+        //       <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
 
         // compute Jacobian
         if (0==mode)
@@ -419,6 +419,12 @@ int gsFunction<T>::newtonRaphson_impl(
             delta.noalias() = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
+        //Line search
+        //for(index_t i = 1; i!=11;++i)
+        // {
+        //    (this->eval(arg + 0.1*i*delta)*scale - value).norm() ;
+        // }
+
         // update arg
         arg += damping_factor * delta;
 
@@ -429,6 +435,7 @@ int gsFunction<T>::newtonRaphson_impl(
 
     gsWarn <<"--- Newton method did not converge after "<< max_loop
            <<" iterations. Residual norm: "<< rnorm[max_loop%2]<<".\n";
+
     return -1;
 }
 
