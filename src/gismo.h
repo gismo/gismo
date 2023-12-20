@@ -158,6 +158,7 @@ namespace internal
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
+#include <gsAssembler/gsBiharmonicExprAssembler.h>
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 

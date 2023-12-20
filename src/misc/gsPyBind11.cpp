@@ -20,6 +20,10 @@
 #include <gsKLShell/gsKLShell.h>
 #endif
 
+#ifdef gsStructuralAnalysis_ENABLED
+#include <gsStructuralAnalysis/gsStructuralAnalysis.h>
+#endif
+
 #ifdef gsRemappedBasis_ENABLED
 #include <gsRemappedBasis/src/gsBoxList.h>
 #include <gsRemappedBasis/src/gsSelector.h>
@@ -52,6 +56,9 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.attr("__name__") = "pygismo.assembler";
   assembler.attr("__version__") = GISMO_VERSION;
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
+
+  gismo::pybind11_init_gsBiharmonicExprAssembler( assembler );
+
 
   py::module core = m.def_submodule("core");
 
