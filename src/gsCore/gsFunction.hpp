@@ -390,7 +390,7 @@ int gsFunction<T>::newtonRaphson_impl(
             return iter;
         }
 
-        const T rr = ( 1==iter ? (T)1.01 : rnorm[(iter-1)%2]/rnorm[iter%2] );
+        const T rr = ( 1==iter ? (T)1.10 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
         damping_factor = rr<1.11 ? math::max(0.1 + (rr/99),(rr-0.2)*damping_factor) : math::min((T)1,rr*damping_factor);
 
         //gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
