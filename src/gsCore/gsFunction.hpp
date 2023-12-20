@@ -287,7 +287,7 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
             arg = result.col(i);
         else
             arg = this->parameterCenter();
-            //arg = _argMinNormOnGrid(20);
+        //arg = _argMinNormOnGrid(16);
 
         const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
         if (-1==iter)
@@ -320,13 +320,28 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
 }
 
 template<class T>
-void gsFunction<T>::invertPointGrid(const gsMatrix<T> & points,
-//                                    gsVector<index_t> & stride,
+void gsFunction<T>::invertPointGrid(const gsMatrix<T> & points, gsVector<index_t> & size_cw,
                                     gsMatrix<T> & result,
                                     const T accuracy, const bool useInitialPoint) const
 {
-    //first point: invert
-    // next points, 
+    result.resize(this->domainDim(), points.cols() );
+    gsVector<T> arg;
+    for ( index_t i = 0; i!= points.cols(); ++i)
+    {
+        //if (useInitialPoint)
+        //    arg = result.col(i);
+        //else
+        if(0==i)
+            arg = this->parameterCenter();
+        else
+            arg = (i%size_cw[0]==0 ? result.col(i-size_cw[0]) : result.col(i-1) );
+
+        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        if (-1==iter)
+            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        else
+            result.col(i) = arg;
+    }
 }
 
 template <class T>
@@ -375,9 +390,8 @@ int gsFunction<T>::newtonRaphson_impl(
             return iter;
         }
 
-        const T rr = rnorm[(iter-1)%2]/rnorm[iter%2];
-        //damping_factor = rr<1.01 ? damping_factor/2 : math::min((T)1,rr*damping_factor);
-        damping_factor = rr<1.01 ? damping_factor*math::max((T)0.5,rr-0.01) : math::min((T)1,rr*damping_factor);
+        const T rr = ( 1==iter ? (T)1.01 : rnorm[(iter-1)%2]/rnorm[iter%2] );
+        damping_factor = rr<1.01 ? math::max(0.1,(rr-0.1)*damping_factor) : math::min((T)1,rr*damping_factor);
 
         // gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
         //        << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
@@ -561,7 +575,7 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
     // for (index_t i = 0; i!= xyz.cols(); ++i)
     // {
     //     gsSquaredDistance2<T> dist2(fc, pt.col(i));
-    //     uv.col(i) = dist2.argMin(accuracy, 100) ;
+    //     uv.col(i) = dist2.argMin(accuracy, 10000) ;
     // }
 
     fc.invertPoints(pt,uv,accuracy,false); //true

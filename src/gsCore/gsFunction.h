@@ -227,8 +227,8 @@ public:
                               const T accuracy = 1e-6,
                               const bool useInitialPoint = false) const;
 
-    virtual void invertPointGrid(const gsMatrix<T> & points, gsMatrix<T> & result,
-                                 const T accuracy = 1e-6,
+    virtual void invertPointGrid(const gsMatrix<T> & points, gsVector<index_t> & size_cw,
+                                 gsMatrix<T> & result, const T accuracy = 1e-6,
                                  const bool useInitialPoint = false) const;
 
     /// Newton-Raphson method to find a solution of the equation f(\a
