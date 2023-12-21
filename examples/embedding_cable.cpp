@@ -5,6 +5,7 @@
 #include <gismo.h>
 #include <iostream>
 #include <gsAssembler/gsQuadrature.h>
+#include <gsCore/gsDofMapper.h>
 using namespace gismo;
 
 //TODO: write a class for the cable
@@ -60,7 +61,7 @@ gsMatrix<T> getCableParameterValue(gsMultiPatch<T> cable, real_t numSamples)
 //assemble(gsMatrix<T> qpoints,gsMatrix<T> qweights, expression)
 //slaveSamples: 2 x numSamples, here are quadrature points
 template<typename T>
-gsMatrix<T> evaluateCable(const gsGeometry<T> &geo,
+gsMatrix<T> evaluateCableMassLocal(const gsGeometry<T> &geo,
                    const gsMatrix<T> &slaveSamples,
                    const gsBasis<T> &basis)
 {
@@ -72,7 +73,8 @@ gsMatrix<T> evaluateCable(const gsGeometry<T> &geo,
     md.points = slaveSamples;
 
     // Assumes actives are the same for all quadrature points on the elements
-    //basis.active_into(md.points.col(0), actives);
+    basis.active_into(md.points.col(0), actives);
+    gsDebugVar(actives);
     gsMatrix<T> basisData;
     basis.eval_into(md.points, basisData);
     index_t numActive;
@@ -93,12 +95,11 @@ gsMatrix<T> evaluateCable(const gsGeometry<T> &geo,
     // Set up the weights, since the cable only follows the movement of the master surface
     // the weights are all 1
     gsVector<T> quWeights(slaveSamples.cols());
-
     quWeights.setOnes();
+
+
     gsMatrix<T> localMat;
     gsMatrix<T>  physGrad;
-    gsDebugVar(md.measures);
-    gsDebugVar(md.measures.dim());
 
     localMat.noalias() = basisData * quWeights.asDiagonal() *
             md.measures.asDiagonal() * basisData.transpose();
@@ -118,7 +119,44 @@ gsMatrix<T> evaluateCable(const gsGeometry<T> &geo,
     return localMat;
 }
 
+template<typename T>
+gsMatrix<T> evaluateCableMassGlobal(const std::vector<gsMatrix<T> > &,
+                                    const gsDofMapper & mapper,
+                                    const gsGeometry<T> &geo,
+                                    const gsMatrix<T> &slaveSamples,
+                                    const gsBasis<T> &basis){
+    gsMapData<T> md;
+    // Set Geometry evaluation flags
+    md.flags = NEED_MEASURE;
+    gsMatrix<index_t> globalActives;
+    //Set the curve quadrature points
+    md.points = slaveSamples;
 
+    // Assumes actives are the same for all quadrature points on the elements
+    basis.active_into(md.points.col(0), globalActives);
+    gsMatrix<T> basisData;
+    basis.eval_into(md.points, basisData);
+    index_t numActive;
+    numActive = globalActives.rows();
+
+    //TODO: add multipatch later
+    index_t patchIndex = 0;
+    gsVector<T> quWeights(slaveSamples.cols());
+    quWeights.setOnes();
+
+
+    gsMatrix<T> localMat;
+    gsMatrix<T>  physGrad;
+
+    localMat.noalias() = basisData * quWeights.asDiagonal() *
+                         md.measures.asDiagonal() * basisData.transpose();
+    //Get the dof for local matrix
+
+    const index_t localDofs = localMat.rows();
+    // Map patch-local DoFs to global DoFs
+//    system.mapColIndices(globalActives, patchIndex, globalActives);
+
+}
 
 
 
@@ -175,7 +213,7 @@ int main(int argc, char *argv[]){
     cables.addPatch(embedding_curve);
     gsMatrix<> slaveSamples = getCableParameterValue(cables, 10);
     gsDebugVar(slaveSamples);
-    gsMatrix<> localMat = evaluateCable(master, slaveSamples, master_basis);
+    gsMatrix<> localMat = evaluateCableMassLocal(master, slaveSamples, master_basis);
     gsDebugVar(localMat);
 
     gsMatrix<> derivedSlaveSamples = evaluateCable(master, slaveSamples);
