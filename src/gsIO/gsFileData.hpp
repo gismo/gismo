@@ -296,7 +296,7 @@ template<class T>
 void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std::string label)
 {   
     // Ensures that only one argument is actually provided
-    GISMO_ENSURE((id!=-1 ^  time!=-1. ^  label!="") &&
+    GISMO_ENSURE(( (id!=-1) ^  (time!=-1.) ^  (label!="") ) &&
                 !(id!=-1 && time!=-1. && label!=""),
                 "gsFileData::getInclude("<<id<<","<<time<<","<<label<<"), too many arguments provided!");
     std::string attr_name, attr_string;
@@ -318,9 +318,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
         attr_string = label;
     } 
 
-    bool found=false;
     gsXmlNode * root = getXmlRoot();
-    const gsXmlAttribute * attribute;
 
     gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
     if (nd)

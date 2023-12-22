@@ -18,7 +18,7 @@
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
-#include <gsIO/gsWriteParaview.h>
+//#include <gsIO/gsWriteParaview.h>
 
 namespace gismo
 {
@@ -878,6 +878,7 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
+
 
 template<class T>
 template<class E, bool gmap>
