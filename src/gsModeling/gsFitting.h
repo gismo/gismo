@@ -62,7 +62,10 @@ public:
 
     void initializeGeometry(const gsMatrix<T> & coefficients, const gsMatrix<T> & parameters);
 
-    void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx);
+    enum tdm_method {tdm_vanilla, tdm_boundary_pdm, tdm_boundary_tangent, hybrid_pdm_tdm, pdm};
+
+    void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx,
+                     tdm_method method = tdm_vanilla);
 
     void compute_tdmlm(T lambda, T lm, const std::vector<index_t> & interpIdx);
 
@@ -158,15 +161,15 @@ public:
     ///  \a lhs * \a x = \a rhs.
     void setConstraints(const gsSparseMatrix<T>& lhs, const gsMatrix<T>& rhs)
     {
-	m_constraintsLHS = lhs;
-	m_constraintsRHS = rhs;
+        m_constraintsLHS = lhs;
+        m_constraintsRHS = rhs;
     }
 
     /// Sets constraints on that the coefficients of the resulting geometry have to conform to.
     /// \param indices indices (in the coefficient vector) of the prescribed coefficients.
     /// \param coefs prescribed coefficients.
     void setConstraints(const std::vector<index_t>& indices,
-			const std::vector<gsMatrix<T> >& coefs);
+                        const std::vector<gsMatrix<T> >& coefs);
 
     /// Sets constraints in such a way that the previous values at \a
     /// fixedSides of the geometry remain intact.
@@ -182,14 +185,14 @@ public:
 
     void initParametricDomain()
     {
-      m_uMin = m_param_values.row(0).minCoeff();
-      m_uMax = m_param_values.row(0).maxCoeff();
-      m_vMin = m_param_values.row(1).minCoeff();
-      m_vMax = m_param_values.row(1).maxCoeff();
+        m_uMin = m_param_values.row(0).minCoeff();
+        m_uMax = m_param_values.row(0).maxCoeff();
+        m_vMin = m_param_values.row(1).minCoeff();
+        m_vMax = m_param_values.row(1).maxCoeff();
 
-      gsInfo << "Parametric domain: ["
-        	 << m_uMin << ", " << m_uMax << "] x ["
-        	 << m_vMin << ", " << m_vMax << "]" << std::endl;
+        gsInfo << "Parametric domain: ["
+               << m_uMin << ", " << m_uMax << "] x ["
+               << m_vMin << ", " << m_vMax << "]" << std::endl;
     }
 
     T lambda() const {return m_last_lambda;}
@@ -198,6 +201,50 @@ public:
 private:
     /// Extends the system of equations by taking constraints into account.
     void extendSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
+
+protected:
+
+    /**
+       Constructs a gsSparseMatrix<T> with \a rows rows and \a cols
+       cols with block repeated three times along the diagonal and
+       saves it to \a result.
+
+       TODO: Make more general and save somewhere in the linear algebra package.
+     */
+    void threeOnTop(const gsMatrix<T>& block,
+                    index_t rows,
+                    index_t cols,
+                    gsSparseMatrix<T>& result) const
+    {
+        gsMatrix<T> dense(rows, cols);
+        dense.setZero();
+        dense.block(0,                0,                block.rows(), block.cols()) = block;
+        dense.block(block.rows(),     block.cols(),     block.rows(), block.cols()) = block;
+        dense.block(2 * block.rows(), 2 * block.cols(), block.rows(), block.cols()) = block;
+        result = dense.sparseView();
+    }
+
+    /// Assembles 3xblock collocation matrix.
+    void assembleBlockB(const gsMatrix<T>& points,
+                        const gsMatrix<T>& params,
+                        index_t num_basis,
+                        gsSparseMatrix<T>& result) const
+    {
+        index_t num_pts = points.rows();
+        gsSparseMatrix<T> sparseColloc(num_pts, num_basis);
+        sparseColloc = m_result->basis().collocationMatrix(params);
+
+        gsMatrix<T> tmp = sparseColloc;
+        threeOnTop(tmp, 3 * num_pts, 3 * num_basis, result);
+    }
+
+    /// Assembles the right hand side vectors for PDM/TDM.
+    void assembleBlockX(const gsMatrix<T>& points,
+                        gsMatrix<T>& result) const
+    {
+        result.resize(points.rows() * 3, 1);
+        result << points.col(0), points.col(1), points.col(2);
+    }
 
 protected:
 
