@@ -18,19 +18,21 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     // Options with default values
-    bool save     = false;
-    index_t numURef   = 0;
-    index_t numKnots   = 0;
-    index_t iter      = 2;
-    index_t deg_x     = 2;
-    index_t deg_y     = 2;
-    index_t maxPcIter = 0;
-    real_t lambda = 1e-06;
-    real_t threshold = 1e-02;
-    real_t tolerance = 1e-02;
-    index_t extension = 2;
-    real_t refPercent = 0.1;
-    std::string fn = "fitting/deepdrawingC.xml";
+    bool save     = false;  // save
+    index_t numURef   = 0;  // r
+    index_t numKnots   = 0; // n
+    index_t nx   = -1; // a
+    index_t ny   = -1; // b
+    index_t iter      = 2;  // i
+    index_t deg_x     = 2;  // x
+    index_t deg_y     = 2;  // y
+    index_t maxPcIter = 0;  // c
+    real_t lambda = 1e-06;  // s
+    real_t threshold = 1e-02; // t
+    real_t tolerance = 1e-02; // e
+    index_t extension = 2;  // q
+    real_t refPercent = 0.1;// p
+    std::string fn = "fitting/deepdrawingC.xml"; // d
 
     // Reading options from the command line
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
@@ -48,6 +50,8 @@ int main(int argc, char *argv[])
     cmd.addInt("q", "extension", "extension size", extension);
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
     cmd.addInt("n", "iknots", "number of interior knots in each direction", numKnots);
+    cmd.addInt("a", "uknots", "number of interior knots in u-direction", nx);
+    cmd.addInt("b", "vknots", "number of interior knots in v-direction", ny);
     cmd.addReal("e", "tolerance", "error tolerance (desired upper bound for pointwise error)", tolerance);
     cmd.addString("d", "data", "Input sample data", fn);
 
@@ -90,8 +94,8 @@ int main(int argc, char *argv[])
     gsFileData<> fd;
 
     // Check if matrix sizes are OK
-    GISMO_ASSERT( uv.cols() == xyz.cols() && uv.rows() == 2 && xyz.rows() == 3,
-                  "Wrong input");
+    // GISMO_ASSERT( uv.cols() == xyz.cols() && uv.rows() == 2 && xyz.rows() == 3,
+                  // "Wrong input");
 
     // Determine the parameter domain by mi/max of parameter values
     real_t u_min = uv.row(0).minCoeff(),
@@ -100,8 +104,12 @@ int main(int argc, char *argv[])
         v_max = uv.row(1).maxCoeff();
 
     // Create knot-vectors without interior knots
-    gsKnotVector<> u_knots (u_min, u_max, numKnots, deg_x+1 ) ;
-    gsKnotVector<> v_knots (v_min, v_max, numKnots, deg_y+1 ) ;
+    if( nx < 0)
+      nx = numKnots;
+    if( ny < 0)
+      ny = numKnots;
+    gsKnotVector<> u_knots (u_min, u_max, nx, deg_x+1 ) ;
+    gsKnotVector<> v_knots (v_min, v_max, ny, deg_y+1 ) ;
 
     // Create a tensor-basis nad apply initial uniform refinement
     gsTensorBSplineBasis<2> T_tbasis( u_knots, v_knots );

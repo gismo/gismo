@@ -510,12 +510,16 @@ int main(int argc, char *argv[])
     index_t mupdate = 20; // m, HLBFGS hessian updates
     index_t numKnots = 2; // n, fitting initial number of knots in each direction
     bool jopt = false; // o, run joint optimization
+    real_t pdm_system = 0.;
+    real_t tdm_system = 1.;
     //p, q
 	  bool constrainCorners = false; //
     real_t lambda = 1e-7; // s, fitting smoothing weight
 
     index_t kx = -1; // x
     index_t ky = -1; // y
+
+    bool callScalePoints = false;
 
     index_t extension = 2;
 
@@ -536,10 +540,13 @@ int main(int argc, char *argv[])
     cmd.addInt("m", "update", "number of LBFGS updates.", mupdate);
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
     cmd.addSwitch("o", "jopt", "run the Joing OPTimization algorithm.", jopt); // enable for comparison
+    cmd.addReal("p", "pdm", "use pdm method", pdm_system);
+    cmd.addReal("q", "tdm", "use pdm method", tdm_system);
     // p, q
     cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
-    // t, u, v, w,
+    // t, u, v
+    cmd.addSwitch("w", "scale", "scale input data.", callScalePoints); // enable for comparison
     cmd.addInt("x", "xknt", "number of interior knots in x-direction.", kx);
     cmd.addInt("y", "yknt", "number of interior knots in y-direction.", ky);
     //z
@@ -597,9 +604,9 @@ int main(int argc, char *argv[])
         v_min = uv.row(1).minCoeff(),
         v_max = uv.row(1).maxCoeff();
 
-    // Set the default
-    if(numVKnots == -1)
-        numVKnots = numUKnots;
+    // // Set the default
+    // if(numVKnots == -1)
+    //     numVKnots = numUKnots;
 
     // Create knot-vectors without interior knots
     gsKnotVector<> u_knots (u_min, u_max, kx, deg+1 ) ;
@@ -921,7 +928,7 @@ int main(int argc, char *argv[])
 
           prefix = "adaptive";
           ref.initializeGeometry(initGeom->coefs(), ref.returnParamValues());
-          ref.compute_tdm(lambda, 0., 1., corners);
+          // ref.compute_tdm(lambda, 0., 1., corners);
           for(int refIt = 0; refIt <= maxRef; refIt++) // adaptive loop on the spline space
             {
               gsInfo<<"------------------------------------------------\n";
@@ -931,7 +938,7 @@ int main(int argc, char *argv[])
               real_t finaltime_itLoop = 0.;
 
               gsTime.restart();
-              ref.nextIteration_tdm(tolerance, threshold, stepPC, 0., 1., corners);
+              ref.nextIteration_tdm(tolerance, threshold, stepPC, pdm_system, tdm_system, corners);
               //(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx);
 
               finaltime_itLoop += gsTime.stop();

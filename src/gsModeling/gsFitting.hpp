@@ -315,7 +315,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
       // gsDebugVar(m_points.cols());
       //for(index_t j=0; j < interpIdx[0]; j++)
 
-      //for(index_t j=0; j < m_param_values.cols(); j++)
+      // for(index_t j=0; j < m_param_values.cols(); j++)
       for(index_t j=0; j < interpIdx[0]; j++)
       {
         normals.col(j) = ev.eval(sn(G).normalized(), m_param_values.col(j));
@@ -341,27 +341,24 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         {
           GISMO_ENSURE(m_param_values(0,j)==1, internal::to_string(j) + "-th parameter NOT on EAST boundary");
           ps = patchSide(0,boundary::east);
-          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
         else if ( (interpIdx[2] <= j) && (j < interpIdx[3]) )
         {
           GISMO_ENSURE(m_param_values(1,j)==1, internal::to_string(j) + "-th parameter NOT on NORTH boundary");
           ps = patchSide(0,boundary::north);
-          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
         else if ( interpIdx[3] <= j)
         {
           GISMO_ENSURE(m_param_values(0,j)==0, internal::to_string(j) + "-th parameter NOT on WEST boundary");
           ps = patchSide(0,boundary::west);
-          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
         else
         {
           GISMO_ENSURE(m_param_values(1,j)==0, internal::to_string(j) + "-th parameter NOT on SOUTH boundary");
           ps = patchSide(0,boundary::south);
-          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
 
+        normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
 
         N_diag(j,j) = normals(0,j);
         N_diag(m_points.rows()+j,j) = normals(1,j);
@@ -428,6 +425,9 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
       gsSparseMatrix<T> A_tilde(m_basis->size() * 3, m_basis->size() * 3); //
       gsMatrix<T> rhs(m_basis->size() * 3, 1);
 
+      gsSparseMatrix<T> Im(m_interiors.rows() * 3, m_interiors.rows() * 3);
+      Im.setIdentity();
+
       // if ( mu > 0 && sigma > 0)
       // {
       //   gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
@@ -443,8 +443,8 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
       // else if (sigma > 0 && mu == 0)
       // {
       // gsInfo << "TDM.\n";
-      //A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
-      //rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
+      // A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
+      // rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
       // }
       // else
       // {
@@ -452,9 +452,45 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
       //   return;
       // }
 
+
+      if ( mu > 0 && sigma > 0)
+      {
+        gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
+        // mu * B^t * B + sigma * B^t * N*N^t *B
+        A_tilde = B_int.transpose() * ( mu * Im + sigma * N_interiors * N_interiors.transpose() ) * B_int + B_bdry.transpose() * B_bdry;
+        rhs =  B_int.transpose() * ( mu * Im + sigma * N_interiors * N_interiors.transpose() ) * X_int + B_bdry.transpose() * X_bdry ;
+      }
+      else if (mu > 0 && sigma == 0.)
+      {
+        gsInfo << "PDM.\n";
+        A_tilde = B_mat.transpose() *  B_mat;
+        rhs = B_mat.transpose() * X_tilde ;
+      }
+      else if (sigma > 0 && mu == 0.)
+      {
       gsInfo << "TDM.\n";
       A_tilde = B_int.transpose() * (  N_interiors * N_interiors.transpose() ) * B_int + B_bdry.transpose() * B_bdry;
       rhs =  B_int.transpose() * ( N_interiors * N_interiors.transpose() ) * X_int + B_bdry.transpose() * X_bdry ;
+      }
+      else
+      {
+        gsWarn<<  "No available fitting method. Aborting.\n";
+        return;
+      }
+
+      // gsEigen::JacobiSVD<gsMatrix<T>> svd(A_tilde);
+      // real_t cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
+
+      gsEigen::JacobiSVD<gsMatrix<>::Base> svd(A_tilde);
+      real_t cond = svd.singularValues()(0)/ svd.singularValues()(svd.singularValues().size()-1);
+
+      gsMatrix<T> cond_tdm(1, 3);
+      cond_tdm << mu, sigma, cond;
+      writeToCSVfile(std::to_string(now)+"_cond.csv", cond_tdm);
+
+      // gsInfo << "TDM.\n";
+      // A_tilde = B_int.transpose() * (  N_interiors * N_interiors.transpose() ) * B_int + B_bdry.transpose() * B_bdry;
+      // rhs =  B_int.transpose() * ( N_interiors * N_interiors.transpose() ) * X_int + B_bdry.transpose() * X_bdry ;
 
 
       gsSparseMatrix<T> m_G;

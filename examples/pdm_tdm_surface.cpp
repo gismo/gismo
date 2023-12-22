@@ -311,6 +311,10 @@ int main(int argc, char *argv[])
     scalePoints(xyz, X);
     std::vector<index_t> interpIdx;
     sortPointCloud(uv, X, interpIdx);
+    writeToCSVfile("points.csv", X);
+
+    gsInfo << "fitting " << X.cols() << " points:\n";
+    gsInfo << interpIdx[0] << " interiors and " << X.cols() - interpIdx[0] << " boundary points.\n";
 
     GISMO_ENSURE( uv.cols() == X.cols() && uv.rows() == 2 && X.rows() == 3,
                   "Wrong input, check id of matrices in the .xml file");
@@ -385,10 +389,11 @@ int main(int argc, char *argv[])
    gsInfo << "Initial tdm fitting object.\n";
    gsFitting<real_t> tdm_obj( uv, X, tbasis);
    tdm_obj.updateGeometry(initGeom->coefs(), tdm_obj.returnParamValues());
-   tdm_obj.compute_tdm(0, 0., 1., interpIdx);
+   tdm_obj.compute_tdm(0., mu, sigma, interpIdx);
+   //compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx)
 
    // gsInfo << *tdm_obj.result() << "\n";
-   gsWriteParaview(*tdm_obj.result(), "tdm_0");
+   gsWriteParaview(*tdm_obj.result(), "tdm_0", 10000, false, true);
    // gsWriteParaviewPoints(tdm_obj.returnParamValues(), "tdm_params_0");
    // tdm_obj.parameterProjectionSepBoundary(1e-8, interpIdx);
 
