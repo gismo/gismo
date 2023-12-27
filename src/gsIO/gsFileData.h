@@ -227,7 +227,7 @@ public:
     inline bool hasId(int id) const
     {
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
+        //const gsXmlAttribute * id_at;
         gsXmlNode * nd = internal::searchId(id, root);
         return (bool) nd;
     }
@@ -374,7 +374,6 @@ public:
         //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
 
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
         gsXmlNode * nd = internal::searchId(id, root, "string");
         if (nd)
         {
@@ -389,7 +388,6 @@ public:
         //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
 
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
         gsXmlNode * nd = internal::searchNode( root, "label", label, "string");
         if (nd)
         {
