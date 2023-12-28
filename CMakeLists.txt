@@ -333,6 +333,17 @@ endif()
 add_subdirectory(doc)
 
 ## #################################################################
+## Python bindings with cppyy
+## #################################################################
+
+if(GISMO_WITH_CPPYY)
+  set(GISMO_LIB_DIR  "${PROJECT_BINARY_DIR}/${LIB_INSTALL_DIR}")
+  set(INIT_PY_FILE ${PROJECT_BINARY_DIR}/gismo/__init__.py)
+  configure_file(${PROJECT_SOURCE_DIR}/python/__init__.py.in ${INIT_PY_FILE})
+endif()
+
+
+## #################################################################
 ## Plugins
 ## #################################################################
 

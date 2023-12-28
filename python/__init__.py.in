@@ -1,0 +1,29 @@
+""""
+    @file Cppyy bindings
+
+    @brief Loads gismo using cppyy
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): F. Scholz
+"""
+
+import cppyy
+import builtins
+
+includedirs = '@GISMO_INCLUDE_DIRS@'.split(";")
+libdir = '@GISMO_LIB_DIR@'
+
+cppyy.add_library_path(libdir)
+for dir in includedirs:
+    cppyy.add_include_path(dir)
+
+cppyy.include("gismo.h")
+cppyy.load_library("gismo")
+
+gismo = cppyy.gbl.gismo
+builtins.__dict__["gismo"] = gismo
