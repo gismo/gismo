@@ -1154,6 +1154,18 @@ template<typename T> class gsHTensorBasis<0,T>
 {using T::GISMO_ERROR_gsHTensorBasis_cannot_have_dimension_zero;};
 
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsHTensorBasis
+   */
+  void pybind11_init_gsHTensorBasis2(pybind11::module &m);
+  void pybind11_init_gsHTensorBasis3(pybind11::module &m);
+  void pybind11_init_gsHTensorBasis4(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
+
 } // namespace gismo
 
 // ************************************************
