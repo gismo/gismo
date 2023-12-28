@@ -227,7 +227,7 @@ public:
     inline bool hasId(int id) const
     {
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
+        //const gsXmlAttribute * id_at;
         gsXmlNode * nd = internal::searchId(id, root);
         return (bool) nd;
     }
@@ -328,7 +328,7 @@ public:
         GISMO_ASSERT( filename!="", "No filename provided for include!");
         gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
         if (-1. != time)
-            node->append_attribute(internal::makeAttribute("time", std::to_string(time), *data));
+            node->append_attribute(internal::makeAttribute("time", std::to_string( static_cast< double >( time ) ), *data));
         data->appendToRoot(node,id, label);
     }
 
@@ -374,7 +374,6 @@ public:
         //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
 
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
         gsXmlNode * nd = internal::searchId(id, root, "string");
         if (nd)
         {
@@ -389,7 +388,6 @@ public:
         //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
 
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
         gsXmlNode * nd = internal::searchNode( root, "label", label, "string");
         if (nd)
         {

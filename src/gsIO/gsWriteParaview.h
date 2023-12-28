@@ -91,8 +91,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
 /// \param sl a gsMesh object
 /// \param fn filename where paraview file is written
 /// \param pvd if true, a .pvd file is generated (for compatibility)
-template <class T>
-void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+//template <class T>
+//void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
 
 /// \brief Exports a parametrized mesh.
 template <class T>
@@ -271,11 +271,11 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
 /// \param data
 /// \param np
 /// \param fn filename where paraview file is written
-template<class T>
-void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
-                           gsMatrix<T> const& data,
-                           const gsVector<index_t> & np,
-                           std::string const & fn);
+//template<class T>
+//void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+//                          gsMatrix<T> const& data,
+//                           const gsVector<index_t> & np,
+//                           std::string const & fn);
 
 /// \brief Depicting edge graph of each volume of one gsSolid with a segmenting loop
 ///
@@ -423,7 +423,18 @@ void plot_errors(const gsMatrix<T> & orig,
                  std::string const & fn);
 
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsWriteParaview
+   */
+  void pybind11_init_gsWriteParaview(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
+
 } // namespace gismo
+
 
 
 #undef NS

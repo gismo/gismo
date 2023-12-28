@@ -796,6 +796,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             if (m_exprdata->points().cols()==0)
                 continue;
 
+// Activate the try-catch only if G+Smo is not in DEBUG
+#ifdef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
@@ -809,6 +811,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 failed = true;
                 break;
             }
+#else
+            m_exprdata->precompute(patchInd);
+#endif
 
 
             // Assemble contributions of the element

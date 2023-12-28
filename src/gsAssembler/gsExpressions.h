@@ -1563,6 +1563,18 @@ public:
             }
     }
 
+    /// Extract this variable as a gsMappedSpline object
+    void extract(gsMappedSpline<2,T> & result) const
+    {
+        if( const gsMappedBasis<2,T>* basis = dynamic_cast<const gsMappedBasis<2,T>* >(&_u.source()) )
+        {
+            gsMatrix<T> coefs;
+            this->extractFull(coefs);
+            coefs.resize(coefs.rows()/_u.dim(),_u.dim());
+            result.init(*basis,coefs);
+        }
+    }
+
     /// Extract the piece \a p as a gsGeometry pointer
     memory::unique_ptr<gsGeometry<T> > extractPiece(const index_t p) const
     {
