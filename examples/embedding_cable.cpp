@@ -74,7 +74,7 @@ gsMatrix<T> evaluateCableMassLocal(const gsGeometry<T> &geo,
 
     // Assumes actives are the same for all quadrature points on the elements
     basis.active_into(md.points.col(0), actives);
-    gsDebugVar(actives);
+    gsDebugVar(actives.dim());
     gsMatrix<T> basisData;
     basis.eval_into(md.points, basisData);
     index_t numActive;
@@ -99,6 +99,9 @@ gsMatrix<T> evaluateCableMassLocal(const gsGeometry<T> &geo,
 
 
     gsMatrix<T> localMat;
+    // Initialize local matrix/rhs
+    localMat.setZero(numActive, numActive);
+
     gsMatrix<T>  physGrad;
 
     localMat.noalias() = basisData * quWeights.asDiagonal() *
@@ -119,12 +122,13 @@ gsMatrix<T> evaluateCableMassLocal(const gsGeometry<T> &geo,
     return localMat;
 }
 
+
 template<typename T>
-gsMatrix<T> evaluateCableMassGlobal(const std::vector<gsMatrix<T> > &,
-                                    const gsDofMapper & mapper,
-                                    const gsGeometry<T> &geo,
+gsMatrix<T> evaluateCableMassGlobal(const gsGeometry<T> &geo,
                                     const gsMatrix<T> &slaveSamples,
-                                    const gsBasis<T> &basis){
+                                    const gsBasis<T> &basis,
+                                    std::vector< gsSparseSystem<T> >     & system,
+                                    const std::vector<gsMatrix<T> >    & eliminatedDofs){
     gsMapData<T> md;
     // Set Geometry evaluation flags
     md.flags = NEED_MEASURE;
@@ -138,6 +142,8 @@ gsMatrix<T> evaluateCableMassGlobal(const std::vector<gsMatrix<T> > &,
     basis.eval_into(md.points, basisData);
     index_t numActive;
     numActive = globalActives.rows();
+    //Create the sparse system
+    gsMatrix<index_t> actives_temp;
 
     //TODO: add multipatch later
     index_t patchIndex = 0;
@@ -154,8 +160,10 @@ gsMatrix<T> evaluateCableMassGlobal(const std::vector<gsMatrix<T> > &,
 
     const index_t localDofs = localMat.rows();
     // Map patch-local DoFs to global DoFs
-//    system.mapColIndices(globalActives, patchIndex, globalActives);
+    system.mapColIndices(globalActives, patchIndex, globalActives);
 
+    // Add contributions to the system matrix
+    system.pushToMatrix(localMat, globalActives, eliminatedDofs.front(), 0, 0);
 }
 
 
@@ -196,6 +204,7 @@ int main(int argc, char *argv[]){
 
     gsTensorBSpline<2> master = gsTensorBSpline<2, real_t>( Kv, Kv, give(C) );
     gsTensorBSplineBasis<2> master_basis = master.basis();
+    gsMultiBasis<> geoBasis(master_basis);
     gsInfo << "master_basis = " << master_basis << "\n";
 
     /// An embedding curve
@@ -211,16 +220,50 @@ int main(int argc, char *argv[]){
     gsBSpline<> embedding_curve( slave_knots, give(coefs));
     gsMultiPatch<> cables;
     cables.addPatch(embedding_curve);
-    gsMatrix<> slaveSamples = getCableParameterValue(cables, 10);
-    gsDebugVar(slaveSamples);
+    gsMatrix<> slaveSamples = getCableParameterValue(cables, 100);
+
+    gsDebugVar(slaveSamples.dim());
     gsMatrix<> localMat = evaluateCableMassLocal(master, slaveSamples, master_basis);
-    gsDebugVar(localMat);
+//    gsDebugVar(localMat);
 
     gsMatrix<> derivedSlaveSamples = evaluateCable(master, slaveSamples);
-    gsDebugVar(derivedSlaveSamples);
     gsDebugVar(derivedSlaveSamples.dim());
-//    gsDebugVar(localMat.rows());
-//    gsDebugVar(localMat.cols());
+//    evaluateCableMassGlobal(master, slaveSamples, master_basis);
+    gsDebugVar(localMat.rows());
+    gsDebugVar(localMat.cols());
+
+    //! [Assembler]
+    gsOptionList opt = gsAssembler<>::defaultOptions();
+    opt.setInt("DirichletValues"  , dirichlet::l2Projection);
+    opt.setInt("DirichletStrategy", dirichlet::elimination );
+    opt.setInt("InterfaceStrategy", iFace    ::conforming  );
+    opt.setReal("quA", 1.0);
+    opt.setInt ("quB", 1  );
+    opt.setReal("bdA", 2.0);
+    opt.setInt ("bdB", 1  );
+//    gsInfo << "Assembler "<< opt;
+
+
+    //Setting up oundary conditions
+    gsBoundaryConditions<> bcInfo;
+    bcInfo.addCondition( 0,boundary::west,  condition_type::dirichlet, 0);//Annulus: small arch lenght
+    bcInfo.addCondition( 0,boundary::east,  condition_type::dirichlet, 0);//Annulus: Large arch lenght
+    bcInfo.addCondition( 0,boundary::north, condition_type::dirichlet, 0);
+    bcInfo.addCondition( 0,boundary::south, condition_type::dirichlet, 0);
+
+    // Setup sparse system
+    gsDofMapper mapper;
+    gsSparseMatrix<> globalsysMat;
+    geoBasis.getMapper((dirichlet::strategy)opt.getInt("DirichletStrategy"),
+                       (iFace::    strategy)opt.getInt("InterfaceStrategy"),
+                       bcInfo, mapper, 0);
+
+    gsDebugVar(mapper);
+
+    gsSparseSystem<> system(mapper);
+    gsMatrix<> eliminatedDofs =
+//    evaluateCableMassGlobal(master, slaveSamples, master_basis, globalsysMat, system, bcInfo);
+
 //
 //    gsWriteParaview(localMat, "localMat");
 
