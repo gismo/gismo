@@ -376,7 +376,7 @@ public:
     /// \sa gsExprAssembler::setIntegrationElements
     template<class... expr> void assemble(const expr &... args);
 
-    template<class... expr> void assemble(const gsMatrix<T> & quPoints, const gsMatrix<T> & quWeights, const expr &... args, const index_t patchInd = 0);
+    template<class... expr> void assembleQuadrature(const std::vector<gsMatrix<T>> & quPoints, const std::vector<gsVector<T>> & quWeights, const expr &... args);
 
     /// \brief Adds the expressions \a args to the system matrix/rhs
     /// The arguments are considered as integrals over the boundary
@@ -825,7 +825,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
 template<class T>
 template<class... expr>
-void gsExprAssembler<T>::assemble(const gsMatrix<T> & quPoints, const gsMatrix<T> & quWeights, const expr &... args, const index_t patchInd )
+void gsExprAssembler<T>::assembleQuadrature(const std::vector<gsMatrix<T>> & quPoints,
+                                            const std::vector<gsVector<T>> & quWeights,
+                                            const expr &... args)
 {
     GISMO_ASSERT(matrix().cols()==numDofs(), "System not initialized, matrix().cols() = "<<matrix().cols()<<"!="<<numDofs()<<" = numDofs()");
 
@@ -837,29 +839,40 @@ void gsExprAssembler<T>::assemble(const gsMatrix<T> & quPoints, const gsMatrix<T
     m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
-    _eval ee(m_matrix, m_rhs, quWeights);
-    // const index_t elim = m_options.getInt("DirichletStrategy");
-    // ee.setElim(dirichlet::elimination==elim);
+    gsVector<T> weight(1);
+    _eval ee(m_matrix, m_rhs, weight);
+    const index_t elim = m_options.getInt("DirichletStrategy");
+    ee.setElim(dirichlet::elimination==elim);
 
-    // [HV] Do we need to do something with an element?
-    // Like this: m_exprdata->getElement().set(*domIt,quWeights);
-
-    m_exprdata->points() = quPoints;
-
-    // Perform required pre-computations on the quadrature nodes
-    try
+    for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
-    m_exprdata->precompute(patchInd);
-    //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
-    }
-    catch (...)
-    {
-        failed = true;
-    }
+        // [HV] Do we need to do something with an element?
+        // Like this: m_exprdata->getElement().set(*domIt,quWeights);
+
+        #pragma omp parallel for
+        for ( index_t k = 0; k < quWeights[patchInd].size(); k++ )
+        {
+            m_exprdata->points() = quPoints[patchInd].col(k);
+            weight << quWeights[patchInd].at(k);
+            // Perform required pre-computations on the quadrature nodes
+            try
+            {
+            m_exprdata->precompute(patchInd);
+            //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
+            }
+            catch (...)
+            {
+                // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
+                #pragma omp atomic write
+                failed = true;
+                break;
+            }
 
 
-    // Assemble contributions of the element
-    op_tuple(ee, arg_tpl);
+            // Assemble contributions of the element
+            op_tuple(ee, arg_tpl);
+        }
+    }
 
     // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
@@ -1271,7 +1284,6 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
-    index_t count = 0;
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases(); ++patchInd)
     {
         auto & bb = m_exprdata->multiBasis().basis(patchInd);
@@ -1298,9 +1310,8 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                            m_exprdata->points(), quWeights);
 
-            cWeights[patchInd].segment(count, numNodes) = quWeights;
-            cPoints[patchInd].middleCols(count, numNodes) = m_exprdata->points();
-            count += numNodes;
+            cWeights[patchInd].segment(domIt->id()*numNodes, numNodes) = quWeights;
+            cPoints[patchInd].middleCols(domIt->id()*numNodes, numNodes) = m_exprdata->points();
         }
     }
 }//omp parallel

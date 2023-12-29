@@ -151,9 +151,6 @@ int main(int argc, char *argv[])
 
         ma_time += timer.stop();
 
-        // gsDebugVar(A.matrix().toDense());
-        // gsDebugVar(A.rhs().transpose()   );
-
         gsInfo<< "." <<std::flush;// Assemblying done
 
         timer.restart();
