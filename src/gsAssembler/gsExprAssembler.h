@@ -377,6 +377,7 @@ public:
     template<class... expr> void assemble(const expr &... args);
 
     template<class... expr> void assembleQuadrature(const std::vector<gsMatrix<T>> & quPoints, const std::vector<gsVector<T>> & quWeights, const expr &... args);
+    template<class... expr> void assembleQuadrature(const             gsMatrix<T>  & quPoints, const             gsVector<T>  & quWeights, const expr &... args);
 
     /// \brief Adds the expressions \a args to the system matrix/rhs
     /// The arguments are considered as integrals over the boundary
@@ -821,6 +822,18 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     // Throw something else?? (floating point exception?)
     GISMO_ENSURE(!failed,"Assembly failed due to an error");
     m_matrix.makeCompressed();
+}
+
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::assembleQuadrature(const gsMatrix<T> & quPoints,
+                                            const gsVector<T> & quWeights,
+                                            const expr &... args)
+{
+    GISMO_ASSERT(m_exprdata->multiBasis().nBases()==1,"Number of bases should be equal to 1, but is "<<m_exprdata->multiBasis().nBases());
+    std::vector<gsMatrix<T>> points = {quPoints};
+    std::vector<gsVector<T>> weights = {quWeights};
+    this->assembleQuadrature(points,weights,std::forward<const expr>(args)...);
 }
 
 template<class T>
