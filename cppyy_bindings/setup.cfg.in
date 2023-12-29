@@ -1,0 +1,14 @@
+[metadata]
+name = @PKG_NAME@
+version = @gismo_VERSION@
+author = G+Smo
+url = https://github.com/gismo
+description = Geometry + Simulation modules
+license = MPL-2.0 license
+long_description = G+Smo (pronounced gismo or gizmo) is a C++ library for isogeometric analysis (IGA). Geometry plus simulation modules aims at the seamless integration of Computer-aided Design (CAD) and Finite Element Analysis (FEA).
+keywords = isogeometric analysis, finite element method, computer-aided design
+
+[options]
+packages = @PKG_NAME@
+install_requires =
+    cppyy>=2.4.2,!=3.0.0

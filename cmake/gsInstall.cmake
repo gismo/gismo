@@ -159,6 +159,10 @@ install(FILES
 #install(EXPORT gismoTargets DESTINATION
 #  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
+if(GISMO_WITH_CPPYY)
+    install(CODE "execute_process(COMMAND pip install ${PY_WHEEL_FILE}")
+endif(GISMO_WITH_CPPYY)
+
 else(GISMO_BUILD_LIB)
    message ("Configure with -DGISMO_BUILD_LIB=ON to compile the library")
 endif(GISMO_BUILD_LIB)
