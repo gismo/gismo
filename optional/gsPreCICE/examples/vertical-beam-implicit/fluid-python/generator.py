@@ -27,7 +27,7 @@ vertex_ids = interface.set_mesh_vertices(meshID, positions)
 print(positions)
 
 # coupling data
-writeData = "Force"
+writeData = "Stress"
 readData = "Displacement"
 writedataID = interface.get_data_id(writeData, meshID)
 readdataID = interface.get_data_id(readData, meshID)
@@ -43,14 +43,13 @@ while interface.is_coupling_ongoing():
     # read displacements from interface
     if interface.is_read_data_available():
         v = interface.read_block_vector_data(readdataID, vertex_ids)
-        print(v)
 
     # save checkpoint
     if interface.is_action_required(precice.action_write_iteration_checkpoint()):
         interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
     # solve fluid equations
-    print(t)
+    print('t = ',t)
     u = [[-1e2 * np.sin(3.1415923565*t), 0] for y0 in y[:-1]]
 
     # if (t==0):
