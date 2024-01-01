@@ -58,6 +58,12 @@ inline long long to_int64_impl(const T& v, UNIVERSAL_TYPE_TAG)
     //return static_cast<long long int>(v.getValue());
 }
 
+template <typename T>
+inline unsigned long long to_uint64_impl(const T& v, UNIVERSAL_TYPE_TAG)
+{
+    return static_cast<unsigned long long int>(v);
+}
+
 template <typename T> inline T   abs_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::abs  (v); }
 template <typename T> inline T  acos_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::acos (v); }
 template <typename T> inline T acosh_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::acosh(v); }
@@ -73,8 +79,8 @@ template <typename T> inline T floor_impl(const T& v, UNIVERSAL_TYPE_TAG) { retu
 template <typename T> inline T   log_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::log  (v); }
 template <typename T> inline T log10_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::log10(v); }
 template <typename T> inline T  log2_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::log2 (v); }
-template <typename T> inline T   neg_impl(const T& v, UNIVERSAL_TYPE_TAG) { return -v;             }
-template <typename T> inline T   pos_impl(const T& v, UNIVERSAL_TYPE_TAG) { return  v;             }
+template <typename T> inline T   neg_impl(const T& v, UNIVERSAL_TYPE_TAG) { return -v;                      }
+template <typename T> inline T   pos_impl(const T& v, UNIVERSAL_TYPE_TAG) { return  v;                      }
 template <typename T> inline T   sin_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::sin  (v); }
 template <typename T> inline T  sinh_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::sinh (v); }
 template <typename T> inline T  sqrt_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::sqrt (v); }
@@ -85,8 +91,8 @@ template <typename T> inline T   sec_impl(const T& v, UNIVERSAL_TYPE_TAG) { retu
 template <typename T> inline T   csc_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::csc  (v); }
 template <typename T> inline T   r2d_impl(const T& v, UNIVERSAL_TYPE_TAG) { return (v  * exprtk::details::constant_universal::_180_pi); }
 template <typename T> inline T   d2r_impl(const T& v, UNIVERSAL_TYPE_TAG) { return (v  * exprtk::details::constant_universal::pi_180 ); }
-template <typename T> inline T   d2g_impl(const T& v, UNIVERSAL_TYPE_TAG) { return (v  * UNIVERSAL_TYPE(20.0/9.0)); }
-template <typename T> inline T   g2d_impl(const T& v, UNIVERSAL_TYPE_TAG) { return (v  * UNIVERSAL_TYPE(9.0/20.0)); }
+template <typename T> inline T   d2g_impl(const T& v, UNIVERSAL_TYPE_TAG) { return (v  * UNIVERSAL_TYPE(10.0/9.0)); }
+template <typename T> inline T   g2d_impl(const T& v, UNIVERSAL_TYPE_TAG) { return (v  * UNIVERSAL_TYPE(9.0/10.0)); }
 template <typename T> inline T  notl_impl(const T& v, UNIVERSAL_TYPE_TAG) { return (v != UNIVERSAL_TYPE(0) ? UNIVERSAL_TYPE(0) : UNIVERSAL_TYPE(1)); }
 template <typename T> inline T  frac_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::frac (v); }
 template <typename T> inline T trunc_impl(const T& v, UNIVERSAL_TYPE_TAG) { return sw::universal::trunc(v); }

@@ -4,13 +4,14 @@
  *                                                            *
  * MPFR Adaptor type                                          *
  * Authors: Arash Partow and Pavel Holoborodko                *
- * URL: http://www.partow.net/programming/exprtk/index.html   *
+ * URL: https://www.partow.net/programming/exprtk/index.html  *
  *                                                            *
  * Copyright notice:                                          *
  * Free use of the Mathematical Expression Toolkit Library is *
  * permitted under the guidelines and in accordance with the  *
  * most current version of the MIT License.                   *
- * http://www.opensource.org/licenses/MIT                     *
+ * https://www.opensource.org/licenses/MIT                    *
+ * SPDX-License-Identifier: MIT                               *
  *                                                            *
  **************************************************************
 */
@@ -23,7 +24,38 @@
 #include <string>
 #include <mpreal.h>
 
-#include "exprtk_mpfr_forward.hpp"
+
+namespace exprtk
+{
+   namespace details
+   {
+      namespace numeric { namespace details
+      {
+         struct mpfrreal_type_tag;
+
+         template <typename T> inline T const_pi_impl(mpfrreal_type_tag);
+         template <typename T> inline T const_e_impl (mpfrreal_type_tag);
+      }}
+
+      inline bool is_true (const mpfr::mpreal& v);
+      inline bool is_false(const mpfr::mpreal& v);
+
+      template <typename Iterator>
+      inline bool string_to_real(Iterator& itr_external, const Iterator end, mpfr::mpreal& t, numeric::details::mpfrreal_type_tag);
+
+   }
+
+   namespace rtl { namespace io
+   {
+      namespace details
+      {
+         void print_type(const std::string&, const mpfr::mpreal& v, exprtk::details::numeric::details::mpfrreal_type_tag);
+      }
+   }}
+
+   using details::is_true;
+}
+
 #include "exprtk.hpp"
 
 namespace exprtk
@@ -31,7 +63,7 @@ namespace exprtk
    namespace details
    {
 
-      namespace constant_mpfr
+      namespace constant
       {
          static const mp_prec_t  mpfr_precision = 128;
          static const mp_rnd_t   mpfr_round     = mpfr::mpreal::get_default_rnd();
@@ -57,7 +89,7 @@ namespace exprtk
             template<> struct number_type<mpfr::mpreal> { typedef mpfrreal_type_tag type; };
 
             template <>
-            struct epsilon_type<mpfrreal_type_tag>
+            struct epsilon_type<mpfr::mpreal>
             {
                static inline mpfr::mpreal value()
                {
@@ -88,6 +120,12 @@ namespace exprtk
                return static_cast<long long int>(v.toLLong());
             }
 
+            template <typename T>
+            inline long long to_uint64_impl(const T& v, mpfrreal_type_tag)
+            {
+               return static_cast<long long int>(v.toULLong());
+            }
+
             template <typename T> inline T   abs_impl(const T& v, mpfrreal_type_tag) { return mpfr::abs  (v); }
             template <typename T> inline T  acos_impl(const T& v, mpfrreal_type_tag) { return mpfr::acos (v); }
             template <typename T> inline T acosh_impl(const T& v, mpfrreal_type_tag) { return mpfr::acosh(v); }
@@ -113,16 +151,16 @@ namespace exprtk
             template <typename T> inline T   cot_impl(const T& v, mpfrreal_type_tag) { return mpfr::cot  (v); }
             template <typename T> inline T   sec_impl(const T& v, mpfrreal_type_tag) { return mpfr::sec  (v); }
             template <typename T> inline T   csc_impl(const T& v, mpfrreal_type_tag) { return mpfr::csc  (v); }
-            template <typename T> inline T   r2d_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant_mpfr::_180_pi); }
-            template <typename T> inline T   d2r_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant_mpfr::pi_180 ); }
-            template <typename T> inline T   d2g_impl(const T& v, mpfrreal_type_tag) { return (v  * mpfr::mpreal(20.0/9.0)); }
-            template <typename T> inline T   g2d_impl(const T& v, mpfrreal_type_tag) { return (v  * mpfr::mpreal(9.0/20.0)); }
-            template <typename T> inline T  notl_impl(const T& v, mpfrreal_type_tag) { return (v != mpfr::mpreal(0) ? mpfr::mpreal(0) : mpfr::mpreal(1)); }
+            template <typename T> inline T   r2d_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant::_180_pi); }
+            template <typename T> inline T   d2r_impl(const T& v, mpfrreal_type_tag) { return (v  * exprtk::details::constant::pi_180 ); }
+            template <typename T> inline T   d2g_impl(const T& v, mpfrreal_type_tag) { return (v  * T(10.0) / T(9.0)); }
+            template <typename T> inline T   g2d_impl(const T& v, mpfrreal_type_tag) { return (v  * T(9.0) / T(10.0)); }
+            template <typename T> inline T  notl_impl(const T& v, mpfrreal_type_tag) { return (v != T(0) ? T(0) : T(1)); }
             template <typename T> inline T  frac_impl(const T& v, mpfrreal_type_tag) { return mpfr::frac (v); }
             template <typename T> inline T trunc_impl(const T& v, mpfrreal_type_tag) { return mpfr::trunc(v); }
 
-            template <typename T> inline T const_pi_impl(mpfrreal_type_tag) { return mpfr::const_pi   (1024, exprtk::details::constant_mpfr::mpfr_round); }
-            template <typename T> inline T const_e_impl (mpfrreal_type_tag) { return mpfr::const_euler(1024, exprtk::details::constant_mpfr::mpfr_round); }
+            template <typename T> inline T const_pi_impl(mpfrreal_type_tag) { return mpfr::const_pi   (1024, exprtk::details::constant::mpfr_round); }
+            template <typename T> inline T const_e_impl (mpfrreal_type_tag) { return mpfr::const_euler(1024, exprtk::details::constant::mpfr_round); }
 
             inline bool is_true_impl (const mpfr::mpreal& v)
             {
@@ -157,7 +195,7 @@ namespace exprtk
             template <typename T>
             inline T nequal_impl(const T& v0, const T& v1, mpfrreal_type_tag)
             {
-               const T epsilon  = epsilon_type<mpfrreal_type_tag>::value();
+               const T epsilon  = epsilon_type<T>::value();
                const T eps_norm = (mpfr::max(T(1),mpfr::max(mpfr::abs(v0),mpfr::abs(v1))) * epsilon);
                return (mpfr::abs(v0 - v1) > eps_norm) ? T(1) : T(0);
             }
@@ -191,10 +229,8 @@ namespace exprtk
             template <typename T>
             inline T ncdf_impl(const T& v, mpfrreal_type_tag)
             {
-               T cnd = T(0.5) * (T(1) + erf_impl(
-                                           mpfr::abs(v) /
-                                           T(constant_mpfr::sqrt2),mpfrreal_type_tag()));
-               return  (v < T(0)) ? (T(1) - cnd) : cnd;
+               static const T _05 = T(0.5);
+               return _05 * erfc_impl(-(v / constant::sqrt2),mpfrreal_type_tag());
             }
 
             template <typename T>
@@ -218,7 +254,7 @@ namespace exprtk
             template <typename T>
             inline T sinc_impl(const T& v, mpfrreal_type_tag)
             {
-               if (mpfr::abs(v) >= epsilon_type<mpfrreal_type_tag>::value())
+               if (mpfr::abs(v) >= epsilon_type<mpfr::mpreal>::value())
                    return(mpfr::sin(v) / v);
                else
                   return T(1);
@@ -244,9 +280,10 @@ namespace exprtk
             template <typename T>
             inline T equal_impl(const T& v0, const T& v1, mpfrreal_type_tag)
             {
-               const T epsilon  = epsilon_type<mpfrreal_type_tag>::value();
+               const T epsilon  = epsilon_type<T>::value();
                const T eps_norm = (mpfr::max(T(1),mpfr::max(mpfr::abs(v0),mpfr::abs(v1))) * epsilon);
-               return (mpfr::abs(v0 - v1) <= eps_norm) ? T(1) : T(0);
+               const T diff     = mpfr::abs(v0 - v1);
+               return (diff <= eps_norm) ? T(1) : T(0);
             }
 
             template <typename T>
@@ -344,7 +381,23 @@ namespace exprtk
       {
          inline void print_type(const std::string&, const mpfr::mpreal& v, exprtk::details::numeric::details::mpfrreal_type_tag)
          {
+            #if defined(__clang__)
+               #pragma clang diagnostic push
+               #pragma clang diagnostic ignored "-Wformat-nonliteral"
+            #elif defined(__GNUC__) || defined(__GNUG__)
+               #pragma GCC diagnostic push
+               #pragma GCC diagnostic ignored "-Wformat-nonliteral"
+            #elif defined(_MSC_VER)
+            #endif
+
             printf("%s",v.toString().c_str());
+
+            #if defined(__clang__)
+               #pragma clang diagnostic pop
+            #elif defined(__GNUC__) || defined(__GNUG__)
+               #pragma GCC diagnostic pop
+            #elif defined(_MSC_VER)
+            #endif
          }
       }
    }}
