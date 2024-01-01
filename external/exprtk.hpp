@@ -29189,7 +29189,7 @@ namespace exprtk
               (vector_size <= T(0)) ||
               std::not_equal_to<T>()
               (T(0),vector_size - details::numeric::trunc(vector_size)) ||
-              (static_cast<std::size_t>(details::numeric::to_int32(vector_size)) > max_vector_size)
+              (static_cast<std::size_t>(vector_size) > max_vector_size)
             )
          {
             set_error(make_error(
@@ -29205,7 +29205,7 @@ namespace exprtk
 
          typename symbol_table_t::vector_holder_ptr vec_holder = typename symbol_table_t::vector_holder_ptr(0);
 
-         const std::size_t vec_size = static_cast<std::size_t>( details::numeric::to_int32(vector_size));
+         const std::size_t vec_size = static_cast<std::size_t>(details::numeric::to_int32(vector_size));
 
          scope_element& se = sem_.get_element(vec_name);
 

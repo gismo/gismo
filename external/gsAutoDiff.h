@@ -466,6 +466,9 @@ public:
     friend bool operator==(const Scalar s1, const DScalar1 & s2) { return  s1 == s2.value; }
     friend bool operator!=(const Scalar s1, const DScalar1 & s2) { return  s1 != s2.value; }
 
+    template <typename T>
+    inline operator T() const { return static_cast<T>(value); }
+
     /// @}
     // ======================================================================
 
@@ -1081,6 +1084,9 @@ public:
     friend bool operator<=(const Scalar s1, const DScalar2 & s2) { return  s1 <= s2.value; }
     friend bool operator==(const Scalar s1, const DScalar2 & s2) { return  s1 == s2.value; }
     friend bool operator!=(const Scalar s1, const DScalar2 & s2) { return  s1 != s2.value; }
+
+    template <typename T>
+    inline operator T() const { return static_cast<T>(value); }
 
     /// @}
     // ======================================================================
