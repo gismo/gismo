@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
     tdm_obj.updateGeometry(initGeom->coefs(), tdm_obj.returnParamValues());
     gsFitting<real_t>::tdm_method method_enum;
     if(method == 0)
-        method_enum = gsFitting<real_t>::tdm_vanilla;
+        method_enum = gsFitting<real_t>::tdm_boundary_tdm;
     else if(method == 1)
         method_enum = gsFitting<real_t>::tdm_boundary_pdm;
     else if(method == 2)
@@ -397,7 +397,9 @@ int main(int argc, char *argv[])
     else if(method == 3)
         method_enum = gsFitting<real_t>::pdm;
     else if(method == 4)
-        method_enum = gsFitting<real_t>::hybrid_pdm_tdm;
+        method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_pdm;
+    else if(method == 5)
+        method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_tangent;
     else
     {
         gsWarn << "Unknown method, exiting." << std::endl;

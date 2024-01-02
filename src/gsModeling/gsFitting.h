@@ -62,10 +62,18 @@ public:
 
     void initializeGeometry(const gsMatrix<T> & coefficients, const gsMatrix<T> & parameters);
 
-    enum tdm_method {tdm_vanilla, tdm_boundary_pdm, tdm_boundary_tangent, hybrid_pdm_tdm, pdm};
+    enum tdm_method
+    {
+        tdm_boundary_tdm,
+        tdm_boundary_pdm,
+        tdm_boundary_tangent,
+        pdm,
+        hybrid_pdm_tdm_boundary_pdm,
+        hybrid_pdm_tdm_boundary_tangent
+    };
 
     void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx,
-                     tdm_method method = tdm_vanilla);
+                     tdm_method method = tdm_boundary_tdm);
 
     void compute_tdmlm(T lambda, T lm, const std::vector<index_t> & interpIdx);
 

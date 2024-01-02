@@ -219,7 +219,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     gsInfo << "---------------------------------------------------------------------------------------------------------\n";
     gsInfo << "START compute_tdm(...)\n";
 
-    if (method == tdm_vanilla)
+    if (method == tdm_boundary_tdm)
         gsInfo << "TDM vanilla\n";
     else if (method == tdm_boundary_tangent)
         gsInfo << "TDM boundary tangent\n";
@@ -227,8 +227,10 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         gsInfo << "TDM boundary PDM\n";
     else if (method == pdm)
         gsInfo << "PDM\n";
-    else if (method == hybrid_pdm_tdm)
-        gsInfo << mu << "*PDM + " << sigma << "*TDM\n";
+    else if (method == hybrid_pdm_tdm_boundary_pdm)
+        gsInfo << mu << "*PDM + " << sigma << "*TDM with PDM on the boundary\n";
+    else if (method == hybrid_pdm_tdm_boundary_tangent)
+        gsInfo << mu << "*PDM + " << sigma << "*TDM with tangents on the boundary\n";
     else
         gsWarn << "Unknown method." << std::endl;
 
@@ -322,7 +324,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         N_int.setZero();
 
         index_t N_diag_cols;
-        if(method == tdm_vanilla)
+        if(method == tdm_boundary_tdm)
             N_diag_cols = m_param_values.cols();
         else // tdm_boundary_pdm or tdm_boundary_tangent
             N_diag_cols = interpIdx[0];
@@ -335,7 +337,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
             N_diag(2*num_pts+j, j) = normals(2, j);
         }
 
-        if(method == tdm_boundary_pdm)
+        if(method == tdm_boundary_pdm || method == hybrid_pdm_tdm_boundary_pdm)
         {
             for(index_t j=0; j < N_diag_cols; j++)
             {
@@ -345,7 +347,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
                 N_int(2*num_int+j, j) = normals(2, j);
             }
         }
-        else if(method == tdm_boundary_tangent)
+        else if(method == tdm_boundary_tangent || method == hybrid_pdm_tdm_boundary_tangent)
         {
             // nv: outer normals for boundary curves.
             // normals.col(j) = (point - surface); to treat the boundary.
@@ -388,10 +390,11 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         gsSparseMatrix<T> A_tilde;
         gsMatrix<T> rhs;
 
-        if(method == tdm_vanilla || method == tdm_boundary_tangent || method == pdm)
+        if(method == tdm_boundary_tdm ||
+           method == tdm_boundary_tangent ||
+           method == pdm ||
+           method == hybrid_pdm_tdm_boundary_tangent)
         {
-            // TODO: consider using the hybrid method here (i.e., without boundary PDM).
-
             // all points and parameters block collocation matrix
             gsSparseMatrix<T> B_mat;
             assembleBlockB(m_points, m_param_values, num_basis, B_mat);
@@ -406,12 +409,24 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
             }
             else
             {
-                gsSparseMatrix<T> NNT = (N_diag * N_diag.transpose());
+                gsSparseMatrix<T> NNT;
+                if(method == hybrid_pdm_tdm_boundary_tangent)
+                {
+                    gsSparseMatrix<T> Im(3 * num_pts, 3 * num_pts);
+                    Im.setIdentity();
+
+                    NNT = (mu * Im + sigma * N_diag * N_diag.transpose());
+                }
+                else // tdm methods
+                    NNT = (N_diag * N_diag.transpose());
+
                 A_tilde = B_mat.transpose() * NNT * B_mat;
-                rhs     = B_mat.transpose() * NNT * X_tilde ;
+                rhs     = B_mat.transpose() * NNT * X_tilde;
             }
         }
-        else if(method == tdm_boundary_pdm || method == hybrid_pdm_tdm)
+        else if(method == tdm_boundary_pdm ||
+                method == hybrid_pdm_tdm_boundary_pdm ||
+                method == hybrid_pdm_tdm_boundary_tangent)
         {
             // interior points and parameters block collocation matrix
             gsSparseMatrix<T> B_int;
@@ -429,8 +444,8 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
             gsSparseMatrix<T> NNT;
             if(method == tdm_boundary_pdm)
-                NNT = N_diag * N_diag.transpose();
-            else // hybrid
+                NNT = N_int * N_int.transpose();
+            else // hybrids
             {
                 gsSparseMatrix<T> Im(3 * num_int, 3 * num_int);
                 Im.setIdentity();
