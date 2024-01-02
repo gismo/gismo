@@ -134,9 +134,12 @@ int main(int argc, char *argv[])
     gsElasticityAssembler<real_t> assembler(patches,bases,bcInfo,g);
     assembler.options().setReal("YoungsModulus",E);
     assembler.options().setReal("PoissonsRatio",nu);
+    assembler.options().setInt("MaterialLaw",material_law::hooke);
+
 
     gsStopwatch stopwatch;
     assembler.assemble();
+    
 
     gsMatrix<real_t> Minv;
     gsSparseMatrix<> M = massAssembler.matrix();

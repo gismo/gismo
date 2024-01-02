@@ -20,7 +20,7 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 
 #ifdef gsStructuralAnalysis_ENABLED
-#include <gsStructuralAnalysis/gsTimeIntegrator.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
 #endif
 
 using namespace gismo;
