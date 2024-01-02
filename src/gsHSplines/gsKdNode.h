@@ -288,12 +288,9 @@ struct gsKdNode
         
         for (short_t i = 0; i < d; ++i)
         {
-            const index_t c1 = insBox. first[i] - insBox. first[i] % h;//floor
-            const index_t cc = insBox.second[i] % h;
-            const index_t c2 = insBox.second[i] + (cc ? h-cc : 0 ) ;// ceil
-
-            //const unsigned c1 = (insBox. first[i] & mask)    ;
-            //const unsigned c2 = (insBox.second[i] & mask) + ..;
+            const Z c1 = insBox. first[i] - insBox. first[i] % h; //floor
+            const Z cc = insBox.second[i] % h;
+            const Z c2 = insBox.second[i] + (cc ? h-cc : 0 ); // ceil
 
             if ( c1 > box->first[i] )
             {
