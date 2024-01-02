@@ -14,6 +14,8 @@
 #pragma once
 
 #include <gsIO/gsXml.h>
+#include <gsCore/gsLinearAlgebra.h>
+#include <gsHSplines/gsAABB.h>
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsHSplines/gsHBoxUtils.h>
@@ -112,7 +114,7 @@ public:
      * @param[in]  basis  The basis on which the element is defined
      * @param[in]  pid    The patch ID
      */
-    gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
+    gsHBox(const gsAABB<d, index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid = -1);
 
     /**
      * @brief      Constructs a gsHBox from an element
@@ -534,12 +536,12 @@ public:
 protected:
 
     void _computeIndices();
-    gsAabb<d,index_t> _computeIndices(const gsMatrix<T> & coords, index_t level);
-    gsAabb<d,index_t> _computeIndices(const gsMatrix<T> & coords, const gsMatrix<T> & center);
-    gsAabb<d,index_t> _computeIndices(const gsMatrix<T> & coords);
+    gsAABB<d, index_t> _computeIndices(const gsMatrix<T> & coords, index_t level);
+    gsAABB<d, index_t> _computeIndices(const gsMatrix<T> & coords, const gsMatrix<T> & center);
+    gsAABB<d, index_t> _computeIndices(const gsMatrix<T> & coords);
 
-    gsAabb<d,index_t> _elevateBox(const gsAabb<d,index_t> & box) const;
-    gsAabb<d,index_t> _lowerBox(const gsAabb<d,index_t> & box) const;
+    gsAABB<d, index_t> _elevateBox(const gsAABB<d, index_t> & box) const;
+    gsAABB<d, index_t> _lowerBox(const gsAABB<d, index_t> & box) const;
 
     Container  _getParents(typename gsHBox<d,T>::Container  & container) const;
     HContainer _getParents(typename gsHBox<d,T>::HContainer & container) const;
@@ -574,7 +576,7 @@ protected:
 
 
 protected:
-    gsAabb<d,index_t> m_indices;
+    gsAABB<d, index_t> m_indices;
 
     index_t m_pid;
     mutable gsMatrix<T> m_coords;

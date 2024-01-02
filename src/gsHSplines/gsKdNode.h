@@ -13,95 +13,9 @@
 
 # pragma once
 
+#include <gsHSplines/gsAABB.h>
+
 namespace gismo {
-
-
-/**
-    @brief Struct of for an Axis-aligned bounding box
-
-    Template parameters
-    \param d is the dimension
-    \param Z is the box-coordinate index type
-    
-    \ingroup HSplines
-*/
-template<short_t d, class Z = index_t>
-struct gsAabb
-{
-public:
-    typedef gsVector<Z,d> point;
-
-    gsAabb(const point & l, const point & u, index_t lvl)
-    :
-    first(l),second(u),level(lvl)
-    { }
-
-    gsAabb(const point & l, const point & u)
-    :
-    gsAabb(l,u,-1)
-    { }
-
-    gsAabb(const point & u)
-    :
-    second(u),level(-1)
-    {
-        first.setZero();
-    }
-
-    gsAabb()
-    :
-    level(-1)
-    {
-        first.setZero();
-        second.setZero();
-    }
-
-    /// Copy constructor (makes deep copy)
-    gsAabb( const gsAabb<d,Z>& other )
-    {
-        operator=(other);
-    }
-
-    /// Move constructor
-    gsAabb( gsAabb<d,Z>&& other )
-    {
-        operator=(give(other));
-    }
-
-    /// Assignment operator
-    gsAabb<d,Z>& operator= ( const gsAabb<d,Z>& other )
-    {
-        if (this!=&other)
-        {
-            first  = other.first;
-            second = other.second;
-            level  = other.level;
-        }
-        return *this;
-    }
-
-    /// Move assignment operator
-    gsAabb<d,Z>& operator= ( gsAabb<d,Z>&& other )
-    {
-        first  = give(other.first);
-        second = give(other.second);
-        level  = give(other.level);
-        return *this;
-    }
-
-public:
-
-    point first;
-    point second;
-
-    /// Level in which the box lives
-    index_t level;
-
-    // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-#   define Eigen gsEigen
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
-};
 
 /**
     @brief Struct representing a kd-tree node
@@ -120,7 +34,7 @@ template<short_t d, class Z = index_t>
 struct kdnode
 {
     // Defines the type of the box
-    typedef          gsAabb<d,Z> kdBox;
+    typedef          gsAABB<d, Z> kdBox;
     typedef typename kdBox::point point;
 
     /// axis in which the children of this node split the domain
