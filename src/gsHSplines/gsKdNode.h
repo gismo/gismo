@@ -116,20 +116,14 @@ struct gsKdNode
     /// Recursively deletes the whole subtree under this node
     ~gsKdNode()
     {
-        // to do: non-reccursive
+        // TODO: non-recursive
 
         if ( isLeaf() ) 
         {
-            // No throw in destructor
-            //GISMO_ASSERT( (left == 0) && (right == 0), 
-            //              "Problem: leaf with children." );
-                delete box;
+            delete box;
         }
         else
         {
-            // No throw in destructor
-            //GISMO_ASSERT( box == 0, 
-            //              "Problem: split node with box." );
             delete left;
             delete right;
         }
@@ -194,7 +188,7 @@ struct gsKdNode
         }
     }
 
-    // Splits the node (ie. two children are added)
+    /// Splits the node (i.e., two children are added)
     inline void split()
     {
         GISMO_ASSERT( (left == 0) && (right == 0),
@@ -223,7 +217,7 @@ struct gsKdNode
         right->box->first [axis] = pos;
     }
 
-    // Merges terminal node (ie. two children are joined)
+    /// Merges terminal node (i.e., two children are joined)
     inline void merge()
     {
         GISMO_ASSERT( (left->isLeaf()) && (right->isLeaf()),
@@ -244,7 +238,7 @@ struct gsKdNode
     }
 
 
-    // Splits the node (ie. two children are added)
+    /// Splits the node (i.e., two children are added)
     void split(int splitAxis, Z splitPos)
     {
         GISMO_ASSERT( box->second[splitAxis] != splitPos, "Degenerate split " << box->second[splitAxis] <<" != "<<splitPos);
@@ -255,7 +249,7 @@ struct gsKdNode
     }
 
     /// Splits the node in the middle (ie. two children are added)
-    // to do: remove
+    // TODO: remove
     void nextMidSplit()
     {        
         axis = ( parent == 0 ? 0 : (parent->axis+1)%d );        
@@ -283,7 +277,7 @@ struct gsKdNode
     }
 
 
-    /// Splits the node adaptively (ie. two children are added)
+    /// Splits the node adaptively (i.e., two children are added)
     /// according to \a insBox.  If non-degenerate split is impossible,
     /// then this is a no-op.
     /// Splitting is done on a coordinate of the current \a level (aligned)
@@ -291,9 +285,8 @@ struct gsKdNode
     gsKdNode * adaptiveAlignedSplit(kdBox const & insBox, int index_level)
     {
         const unsigned h = 1 << (index_level - level) ;
-        //const unsigned mask = ~(h - 1);
         
-        for ( short_t i = 0; i < d; ++i )
+        for (short_t i = 0; i < d; ++i)
         {
             const index_t c1 = insBox. first[i] - insBox. first[i] % h;//floor
             const index_t cc = insBox.second[i] % h;
@@ -318,17 +311,16 @@ struct gsKdNode
         return NULL;
     }
 
-    /// Splits the node adaptively (ie. two children are added)
-    /// according to \a insBox.  If non-degenerate split is impossible,
+    /// Splits the node adaptively (i.e., two children are added)
+    /// according to \a insBox. If non-degenerate split is impossible,
     /// then this is a no-op
-    // to do: remove
+    // TODO: remove
     gsKdNode * adaptiveSplit(kdBox const & insBox)
     {
         // assumption: insBox intersects box
         for ( unsigned i = 0; i < d; ++i )
         {
-            // to do: strategy: try to split as close to the middle as
-            // possible
+            // TODO: strategy: Try to split as close to the middle as possible.
             if ( insBox.first[i] > box->first[i] )
             {
                 axis = i;
@@ -359,7 +351,6 @@ struct gsKdNode
         {
             os << "Split node, axis= "<< n.axis <<", pos="<< n.pos <<"\n";
         }
-        //os<<"\n";
 
         return os;
     }
