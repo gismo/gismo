@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     std::string precice_config;
     int method = 2; // 1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe
 
-    index_t Nsteps = 100;
+    index_t Nsteps = 3;
 
     real_t dt = 1e-2;
 
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
     gsMatrix<real_t> Minv;
     gsSparseMatrix<> M = massAssembler.matrix();
-    gsSparseMatrix<> K = assembler.matrix();
+    gsSparseMatrix<> K = assembler.matrix().transpose();
     gsSparseMatrix<> K_T;
 
     real_t time = 0;
@@ -150,6 +150,8 @@ int main(int argc, char *argv[])
         stopwatch.restart();
         assembler.assemble(x, fixedDofs);
         time += stopwatch.stop();
+	//assembler.constructSolution(x, solution);
+	//status = assembler.assembleMatrix(solution);
         m = assembler.matrix();
         return true;
     };
@@ -160,7 +162,12 @@ int main(int argc, char *argv[])
     {
         stopwatch.restart();
         assembler.assemble(x,fixedDofs);
-        result = assembler.rhs();
+	//Add assemble vector JL
+	//assembler.constructSolution(x,solution);
+        //status = assembler.assembleVector(solution);
+	result = assembler.rhs();
+	gsInfo << "Residuals \n";
+	gsDebugVar(result);
         time += stopwatch.stop();
         return true;
     };
@@ -171,8 +178,8 @@ int main(int argc, char *argv[])
     timeIntegrator.setTolerance(1e-2);
     timeIntegrator.setMethod(methodName);
 
-    gsDebugVar(M.toDense());
-    gsDebugVar(K.toDense());
+    //gsDebugVar(M.toDense());
+    //gsDebugVar(K.toDense());
 
 
     size_t N = assembler.numDofs();
@@ -190,12 +197,21 @@ int main(int argc, char *argv[])
     timeIntegrator.setDisplacement(uNew);
     timeIntegrator.setVelocity(vNew);
     timeIntegrator.setAcceleration(aNew);
+    gsInfo << "Got here 5 \n";
 
+    timeIntegrator.constructSolution();
     gsParaviewCollection collection("./solution");
     for (index_t i=0; i<Nsteps; i++)
-    {
-        time += dt;
-        timeIntegrator.step();
+    {	        
+        gsDebugVar(assembler.rhs().rows());
+	gsDebugVar(M.cols());
+	gsStatus status = timeIntegrator.step();
+	if (status != gsStatus::Success)
+	    GISMO_ERROR("Time integrator did not succeed");
+		
+	gsInfo << "Solving timestep" << time << "...";
+
+	timeIntegrator.step();
         timeIntegrator.constructSolution();
         gsMatrix<> displacements = timeIntegrator.displacements();
 
@@ -210,7 +226,7 @@ int main(int argc, char *argv[])
         gsWriteParaview<>(solField, fileName, 500);
         fileName = "solution" + util::to_string(i) + "0";
         collection.addTimestep(fileName,time,".vts");
-
+	time += dt;
         // if (write)
         // {
         //   gsMatrix<> v(2,1);
