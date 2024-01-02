@@ -22,7 +22,7 @@
 #endif
 
 #ifdef gsStructuralAnalysis_ENABLED
-#include <gsStructuralAnalysis/gsTimeIntegrator.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
 #endif
 
 
@@ -121,26 +121,54 @@ int main(int argc, char *argv[])
     gsElasticityAssembler<real_t> assembler(patches,bases,bcInfo,g);
     assembler.options().setReal("YoungsModulus",E);
     assembler.options().setReal("PoissonsRatio",nu);
+
+    gsStopwatch stopwatch;
     assembler.assemble();
+
+    std::vector<gsMatrix<> > fixedDofs = assembler.allFixedDofs();
 
     gsMatrix<real_t> Minv;
     gsSparseMatrix<> M = massAssembler.matrix();
     gsSparseMatrix<> K = assembler.matrix();
     gsSparseMatrix<> K_T;
 
+    real_t time = 0;
+
     gsDebugVar(assembler.rhs());
 
+//    // Function for the Residual
+//    gsVector<> F = assembler.rhs();
+//    std::function<gsMatrix<real_t> (real_t) > Forcing;
+//    Forcing = [&F](real_t time)
+//    {
+//      return math::sin(3.1415923565 * time ) * F;
+//    };
+    
+    // Function for the Jacobian
+    gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) {
+        // to do: add time dependency of forcing
+        stopwatch.restart();
+        assembler.assemble(x, fixedDofs);
+        time += stopwatch.stop();
+        m = assembler.matrix();
+        return true;
+    };
+    gsInfo << "Got here 4\n";
+
     // Function for the Residual
-    gsVector<> F = assembler.rhs();
-    std::function<gsMatrix<real_t> (real_t) > Forcing;
-    Forcing = [&F](real_t time)
+    gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
     {
-      return math::sin(3.1415923565 * time ) * F;
+        stopwatch.restart();
+        assembler.assemble(x,fixedDofs);
+        result = assembler.rhs();
+        time += stopwatch.stop();
+        return true;
     };
 
-    gsTimeIntegrator<real_t> timeIntegrator(M,K,Forcing,dt);
+    //gsTimeIntegrator<real_t> timeIntegrator(M,K,Forcing,dt);
+    gsTimeIntegrator<real_t> timeIntegrator(M,Jacobian,Residual,dt);
     timeIntegrator.verbose();
-    timeIntegrator.setTolerance(1e-6);
+    timeIntegrator.setTolerance(1e-2);
     timeIntegrator.setMethod(methodName);
 
     gsDebugVar(M.toDense());
@@ -163,8 +191,6 @@ int main(int argc, char *argv[])
     timeIntegrator.setVelocity(vNew);
     timeIntegrator.setAcceleration(aNew);
 
-    real_t time = 0;
-    std::vector<gsMatrix<> > fixedDofs = assembler.allFixedDofs();
     gsParaviewCollection collection("./solution");
     for (index_t i=0; i<Nsteps; i++)
     {
