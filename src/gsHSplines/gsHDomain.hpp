@@ -48,7 +48,7 @@ namespace
         static return_type init() {return true;}
 
         template<short_t d, class T >
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        static void visitLeaf(gismo::gsKdNode<d,T> * leafNode , int level, return_type & res)
         {
             //if ( (!isDegenerate(*leafNode->box)) && leafNode->level != level )
             if ( leafNode->level != level )
@@ -66,7 +66,7 @@ namespace
         static return_type init() {return true;}
 
         template<short_t d, class T >
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        static void visitLeaf(gismo::gsKdNode<d,T> * leafNode , int level, return_type & res)
         {
             //if ( (!isDegenerate(*leafNode->box)) && leafNode->level <= level )
             if ( leafNode->level <= level )
@@ -84,7 +84,7 @@ namespace
         static return_type init() {return 1000000;}
 
         template<short_t d, class T >
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int , return_type & res)
+        static void visitLeaf(gismo::gsKdNode<d,T> * leafNode , int , return_type & res)
         {
             //if ( (!isDegenerate(*leafNode->box)) && leafNode->level < res )
             if ( leafNode->level < res )
@@ -102,7 +102,7 @@ namespace
         static return_type init() {return -1;}
 
         template<short_t d, class T >
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int , return_type & res)
+        static void visitLeaf(gismo::gsKdNode<d,T> * leafNode , int , return_type & res)
         {
             //if ( (!isDegenerate(*leafNode->box)) && leafNode->level > res )
             if ( leafNode->level > res )

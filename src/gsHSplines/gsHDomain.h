@@ -16,6 +16,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsHSplines/gsHDomainLeafIter.h>
 #include <gsHSplines/gsAAPolyline.h>
+#include <gsHSplines/gsKdNode.h>
 #include <gsCore/gsBoundary.h>
 
 namespace gismo 
@@ -68,7 +69,7 @@ template<short_t d, class T = index_t>
 class gsHDomain
 {
 public:
-    typedef kdnode<d,T> node;
+    typedef gsKdNode<d,T> node;
 
     typedef typename node::point point; // it's a gsVector<index_t,d>
 
@@ -681,7 +682,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &i)
+        static void visitLeaf(gsKdNode<d,T> * leafNode, return_type &i)
         {
             if (leafNode->level>i) i=leafNode->level;
         }
@@ -693,7 +694,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
+        static void visitLeaf(gsKdNode<d,T> * leafNode, return_type &)
         {
             leafNode->level++;
         }
@@ -705,7 +706,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
+        static void visitLeaf(gsKdNode<d,T> * leafNode, return_type &)
         {
             leafNode->level--;
         }
@@ -717,7 +718,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * , return_type & i)
+        static void visitLeaf(gsKdNode<d,T> * , return_type & i)
         {
             i++;
         }
@@ -729,7 +730,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitNode(kdnode<d,T> * , return_type & i)
+        static void visitNode(gsKdNode<d,T> * , return_type & i)
         {
             i++;
         }
@@ -741,7 +742,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitNode(kdnode<d,T> * leafNode, return_type &)
+        static void visitNode(gsKdNode<d,T> * leafNode, return_type &)
         {
             leafNode->multiplyByTwo();
         }
@@ -753,7 +754,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitNode(kdnode<d,T> * leafNode, return_type &)
+        static void visitNode(gsKdNode<d,T> * leafNode, return_type &)
         {
             leafNode->divideByTwo();
         }
@@ -765,7 +766,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
+        static void visitLeaf(gsKdNode<d,T> * leafNode, return_type &)
         {
             gsInfo << *leafNode;
         }
@@ -800,7 +801,7 @@ private:
             //return return_type();//!does not properly initialize the points
         }
 
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        static void visitLeaf(gismo::gsKdNode<d,T> * leafNode , int level, return_type & res)
         {
             if ( leafNode->level == level )
             {
