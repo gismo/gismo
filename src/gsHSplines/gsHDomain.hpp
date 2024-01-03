@@ -902,65 +902,65 @@ gsHDomain<d, Z>::connect_Boxes(std::vector<std::vector<Z>> &boxes) const
         size_t s = boxes.size();
         for(size_t i = 0; i < s; i++)
         {
-			for(size_t j = i+1; j < s; j++)
-			{
-				if(boxes[i][2*d]==boxes[j][2*d]) // if( the levels are the same )
-				{
-					unsigned nmCoordLo = 0;
-					unsigned nmCoordUp = 0;
-					unsigned nmCountUp = 0;
-					unsigned nmCountLo = 0; //...the "nm" is for non-matching
+            for(size_t j = i+1; j < s; j++)
+            {
+                if(boxes[i][2*d]==boxes[j][2*d]) // if( the levels are the same )
+                {
+                    unsigned nmCoordLo = 0;
+                    unsigned nmCoordUp = 0;
+                    unsigned nmCountUp = 0;
+                    unsigned nmCountLo = 0; //...the "nm" is for non-matching
 
-					// Compare the lower and upper corners of the boxes
-					// coordinate-wise, and check if there are differences.
-					// If there are differences, count and store the coordinate
-					for(short_t k=0; k < d; k++)
-					{
-						if( boxes[i][k] != boxes[j][k] )
-						{
-							nmCountLo++;
-							nmCoordLo = k;
-						}
+                    // Compare the lower and upper corners of the boxes
+                    // coordinate-wise, and check if there are differences.
+                    // If there are differences, count and store the coordinate
+                    for(short_t k=0; k < d; k++)
+                    {
+                        if( boxes[i][k] != boxes[j][k] )
+                        {
+                            nmCountLo++;
+                            nmCoordLo = k;
+                        }
 
-						if( boxes[i][d+k] != boxes[j][d+k] )
-						{
-							nmCountUp++;
-							nmCoordUp = k;
-						}
-					}
+                        if( boxes[i][d+k] != boxes[j][d+k] )
+                        {
+                            nmCountUp++;
+                            nmCoordUp = k;
+                        }
+                    }
 
-					// The boxes can only be merged if
-					// the lower and upper corners are the same,
-					// except in one coordinate direction.
-					if( nmCountLo == 1
-						&& nmCountUp == 1
-						&& nmCoordLo == nmCoordUp )
-					{
+                    // The boxes can only be merged if
+                    // the lower and upper corners are the same,
+                    // except in one coordinate direction.
+                    if( nmCountLo == 1
+                        && nmCountUp == 1
+                        && nmCoordLo == nmCoordUp )
+                    {
 
-						if( boxes[i][nmCoordLo] == boxes[j][d+nmCoordUp] )
-						{
-							// box i is "on top" of box j.
-							// It inherits the lower corner from box j:
-							boxes[i][nmCoordLo] = boxes[j][nmCoordLo];
-							boxes.erase( boxes.begin()+j );
-							s--;
-							j--;
-							change = true;
-						}
+                        if( boxes[i][nmCoordLo] == boxes[j][d+nmCoordUp] )
+                        {
+                            // box i is "on top" of box j.
+                            // It inherits the lower corner from box j:
+                            boxes[i][nmCoordLo] = boxes[j][nmCoordLo];
+                            boxes.erase( boxes.begin()+j );
+                            s--;
+                            j--;
+                            change = true;
+                        }
 
-						if( boxes[i][d+nmCoordUp] == boxes[i][nmCoordLo] )
-						{
-							// box i is "below" of box j.
-							// It inherits the upper corner from box j:
-							boxes[i][d+nmCoordUp] = boxes[j][d+nmCoordUp];
-							boxes.erase( boxes.begin()+j );
-							s--;
-							j--;
-							change = true;
-						}
-					}
-				} // if boxes same level
-			} // for j
+                        if( boxes[i][d+nmCoordUp] == boxes[i][nmCoordLo] )
+                        {
+                            // box i is "below" of box j.
+                            // It inherits the upper corner from box j:
+                            boxes[i][d+nmCoordUp] = boxes[j][d+nmCoordUp];
+                            boxes.erase( boxes.begin()+j );
+                            s--;
+                            j--;
+                            change = true;
+                        }
+                    }
+                } // if boxes same level
+            } // for j
         } // for i
     }
 }
@@ -979,7 +979,7 @@ void gsHDomain<d, Z>::connect_Boxes_2(std::vector<std::vector<Z> > &boxes) const
             for(size_t j = i+1; j < s; j++)
             {
                 if(boxes[i][4]==boxes[j][4])
-				{
+                {
                     if( (boxes[i][0]==boxes[j][0]) && (boxes[i][2]==boxes[j][2]))
                     {
                         if(boxes[i][1]==boxes[j][3])
