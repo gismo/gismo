@@ -12,10 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsPreCICE/gsPreCICE.h>
-// #include <gsPreCICE/gsPreCICEFunction.h>
-#include <gsPreCICE/gsPreCICEVectorFunction.h>
-
 #ifdef gsElasticity_ENABLED
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsElasticityAssembler.h>
@@ -34,15 +30,15 @@ int main(int argc, char *argv[])
 #ifdef gsStructuralAnalysis_ENABLED
 
     //! [Parse command line]
-    bool plot = false;
-    index_t numRefine  = 0;
+    bool plot = true;
+    index_t numRefine  = 1;
     index_t numElevate = 0;
     std::string precice_config;
-    int method = 2; // 1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe
+    int method = 3; // 1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe
 
-    index_t Nsteps = 3;
+    index_t Nsteps = 50;
 
-    real_t dt = 1e-2;
+    real_t dt = 1e-1;
 
     gsCmdLine cmd("Flow over heated plate for PreCICE.");
     cmd.addInt( "e", "degreeElevation",
@@ -97,7 +93,7 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
     // Neumann side
     gsVector<> neuData(2);
-    neuData<<-1e2,0;
+    neuData<<-1e4,0;
     gsConstantFunction<> g_N(neuData,patches.geoDim());
     bcInfo.addCondition(0, boundary::east, condition_type::neumann, &g_N);
     //
@@ -134,8 +130,6 @@ int main(int argc, char *argv[])
 
     real_t time = 0;
 
-    gsDebugVar(assembler.rhs());
-
 //    // Function for the Residual
 //    gsVector<> F = assembler.rhs();
 //    std::function<gsMatrix<real_t> (real_t) > Forcing;
@@ -150,12 +144,13 @@ int main(int argc, char *argv[])
         stopwatch.restart();
         assembler.assemble(x, fixedDofs);
         time += stopwatch.stop();
+        // For the shell
 	//assembler.constructSolution(x, solution);
 	//status = assembler.assembleMatrix(solution);
         m = assembler.matrix();
         return true;
     };
-    gsInfo << "Got here 4\n";
+
 
     // Function for the Residual
     gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
@@ -166,8 +161,6 @@ int main(int argc, char *argv[])
 	//assembler.constructSolution(x,solution);
         //status = assembler.assembleVector(solution);
 	result = assembler.rhs();
-	gsInfo << "Residuals \n";
-	gsDebugVar(result);
         time += stopwatch.stop();
         return true;
     };
@@ -175,7 +168,7 @@ int main(int argc, char *argv[])
     //gsTimeIntegrator<real_t> timeIntegrator(M,K,Forcing,dt);
     gsTimeIntegrator<real_t> timeIntegrator(M,Jacobian,Residual,dt);
     timeIntegrator.verbose();
-    timeIntegrator.setTolerance(1e-2);
+    timeIntegrator.setTolerance(1e-5);
     timeIntegrator.setMethod(methodName);
 
     //gsDebugVar(M.toDense());
@@ -197,36 +190,27 @@ int main(int argc, char *argv[])
     timeIntegrator.setDisplacement(uNew);
     timeIntegrator.setVelocity(vNew);
     timeIntegrator.setAcceleration(aNew);
-    gsInfo << "Got here 5 \n";
 
     timeIntegrator.constructSolution();
-    gsParaviewCollection collection("./solution");
+    gsParaviewCollection collection("./output/solution");
     for (index_t i=0; i<Nsteps; i++)
     {	        
-        gsDebugVar(assembler.rhs().rows());
-	gsDebugVar(M.cols());
-	gsStatus status = timeIntegrator.step();
-	if (status != gsStatus::Success)
-	    GISMO_ERROR("Time integrator did not succeed");
-		
-	gsInfo << "Solving timestep" << time << "...";
-
-	timeIntegrator.step();
+    	gsStatus status = timeIntegrator.step();
+        GISMO_ASSERT(status == gsStatus::Success,"Time integrator did not succeed");
+    		
         timeIntegrator.constructSolution();
         gsMatrix<> displacements = timeIntegrator.displacements();
-
-        gsDebugVar(displacements.transpose());
 
         gsMultiPatch<> solution;
         assembler.constructSolution(displacements,fixedDofs,solution);
 
         // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
         gsField<> solField(patches,solution);
-        std::string fileName = "./solution" + util::to_string(i);
+        std::string fileName = "./output/solution" + util::to_string(i);
         gsWriteParaview<>(solField, fileName, 500);
         fileName = "solution" + util::to_string(i) + "0";
         collection.addTimestep(fileName,time,".vts");
-	time += dt;
+	   time += dt;
         // if (write)
         // {
         //   gsMatrix<> v(2,1);
@@ -255,6 +239,9 @@ int main(int argc, char *argv[])
     GISMO_ERROR("This file requires gsElasticity and gsStructuralAnalysis");
     return EXIT_FAILURE;
 #endif
+#else
+    GISMO_ERROR("This file requires gsElasticity");
+    return EXIT_FAILURE;
 #endif
 
 }

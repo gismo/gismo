@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     gsConstantFunction<> g_D(0,patches.geoDim());
     // Coupling side
     // gsFunctionExpr<> g_C("1","0",patches.geoDim());
-    gsInfo << "Got here 1\n";
+   // gsInfo << "Got here 1\n";
     gsPreCICEVectorFunction<real_t> g_C(&interface,meshID,forceID,patches,patches.geoDim());
     // Add all BCs
     // Coupling interface
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 1);
     // Assign geometry map
     bcInfo.setGeoMap(patches);
-    gsInfo << "Got here 2\n";
+   // gsInfo << "Got here 2\n";
 
 //----------------------------------------------------------------------------------------------
    // // source function, rhs
@@ -166,12 +166,12 @@ int main(int argc, char *argv[])
     A_checkpoint = gsVector<real_t>::Zero(assembler.numDofs(),1);
 
     // Define the solution collection for Paraview
-    gsParaviewCollection collection("solution");
+    gsParaviewCollection collection("./output/solution");
 
     index_t timestep = 0;
     index_t timestep_checkpoint = 0;
     real_t time = 0;
-    gsInfo << "Got here 3\n";
+
 
     // Function for the Jacobian
     gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) {
@@ -182,7 +182,6 @@ int main(int argc, char *argv[])
         m = assembler.matrix();
         return true;
     };
-    gsInfo << "Got here 4\n";
 
     // Function for the Residual
     gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
@@ -210,9 +209,9 @@ int main(int argc, char *argv[])
 
         // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
         gsField<> solField(patches,solution);
-        std::string fileName = "./solution" + util::to_string(timestep);
+        std::string fileName = "./output/solution" + util::to_string(timestep);
         gsWriteParaview<>(solField, fileName, 500);
-        fileName = "solution" + util::to_string(timestep) + "0";
+        fileName = "./output/solution" + util::to_string(timestep) + "0";
         collection.addTimestep(fileName,time,".vts");
     }
 
@@ -310,9 +309,9 @@ int main(int argc, char *argv[])
             {
                 // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
                 gsField<> solField(patches,solution);
-                std::string fileName = "./solution" + util::to_string(timestep);
+                std::string fileName = "./output/solution" + util::to_string(timestep);
                 gsWriteParaview<>(solField, fileName, 500);
-                fileName = "solution" + util::to_string(timestep) + "0";
+                fileName = "./output/solution" + util::to_string(timestep) + "0";
                 collection.addTimestep(fileName,time,".vts");
             }
         }
