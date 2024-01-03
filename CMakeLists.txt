@@ -56,7 +56,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(gismo_VERSION_MAJOR 23) #year
-set(gismo_VERSION_MINOR 09) #month
+set(gismo_VERSION_MINOR 12) #month
 set(gismo_VERSION_PATCH 0 ) #patch
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
