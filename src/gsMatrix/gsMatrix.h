@@ -606,6 +606,7 @@ private:
 
 }; // class gsMatrix
 
+
 /*
 template<class T, int _Rows, int _Cols, int _Options> inline
 gsMatrix<T,_Rows, _Cols, _Options>::gsMatrix() { }
@@ -654,10 +655,12 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 
 #endif // GISMO_WITH_PYBIND11
 
-  } // namespace gismo
+
+} // namespace gismo
+
 
 namespace gsEigen { namespace internal {
-template <class T, int _Rows, int _Cols, int _Options>
-struct traits<gismo::gsMatrix<T, _Rows, _Cols, _Options>>
-    : gsEigen::internal::traits<gsEigen::Matrix<T, _Rows, _Cols, _Options>> {};
+template<class T, int _Rows, int _Cols, int _Options>
+struct traits<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
+gsEigen::internal::traits<gsEigen::Matrix<T,_Rows,_Cols,_Options> > { };
 } }
