@@ -172,7 +172,7 @@ public:
 #endif
 
     /// Initialize the tree
-    void init(point const & upp, unsigned index_level = 13)
+    void init(point const & upp, unsigned index_level)
     {
         m_indexLevel = index_level;
         m_maxInsLevel = 0;
@@ -186,6 +186,34 @@ public:
         m_root = new node(m_upperIndex);
         m_maxPath = 1;
     }
+
+	/// Initialize the tree with computing the index_level.
+	void init(point const & upp)
+	{
+		// Idea: find index_level so that for each i, upp[i] ^ index_level does not overflow in Z.
+		// See issue #672 for more details.
+
+		// backwards compatibility
+		Z oldMax = 13;
+
+		Z numMax = std::numeric_limits<Z>::max();
+
+		std::vector<Z> logUpps(d);
+		for(short_t i=0; i<d; i++)
+		{
+			// prevent division by zero
+			if(upp[i] == 1)
+				logUpps[i] = oldMax;
+			else
+			{
+				// floor of log with basis upp[i] of numMax:
+				logUpps[i] = math::floor( math::log(numMax) / math::log(upp[i]) );
+			}
+		}
+
+		// If the computed number would be too big we take 13 as we used to.
+		init(upp, std::min( *std::min_element(logUpps.begin(), logUpps.end()), oldMax) );
+	}
 
     /// Destructor deletes the whole tree
     ~gsHDomain() { delete m_root; }
