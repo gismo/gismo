@@ -34,7 +34,7 @@ def pythonize_gismo(klass, name):
                 raise TypeError("Input needs to be a two-dimensional numpy array.")
             if not numpyarray.dtype == np.double:
                 raise TypeError("Data type needs to be double.")
-            return cls(numpyarray, numpyarray.shape[0], numpyarray.shape[1])
+            return cls(np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1])
         setattr(klass, "fromnumpy", fromnumpy)
 
     # Add length as len
