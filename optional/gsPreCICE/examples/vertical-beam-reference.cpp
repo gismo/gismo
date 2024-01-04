@@ -117,8 +117,6 @@ int main(int argc, char *argv[])
     gsElasticityAssembler<real_t> assembler(patches,bases,bcInfo,g);
     assembler.options().setReal("YoungsModulus",E);
     assembler.options().setReal("PoissonsRatio",nu);
-
-    gsStopwatch stopwatch;
     assembler.assemble();
 
     std::vector<gsMatrix<> > fixedDofs = assembler.allFixedDofs();
@@ -128,22 +126,11 @@ int main(int argc, char *argv[])
     gsSparseMatrix<> K = assembler.matrix().transpose();
     gsSparseMatrix<> K_T;
 
-    real_t time = 0;
-
-//    // Function for the Residual
-//    gsVector<> F = assembler.rhs();
-//    std::function<gsMatrix<real_t> (real_t) > Forcing;
-//    Forcing = [&F](real_t time)
-//    {
-//      return math::sin(3.1415923565 * time ) * F;
-//    };
-    
     // Function for the Jacobian
-    gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) {
+    gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&assembler,&fixedDofs](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) 
+    {
         // to do: add time dependency of forcing
-        stopwatch.restart();
         assembler.assemble(x, fixedDofs);
-        time += stopwatch.stop();
         // For the shell
 	//assembler.constructSolution(x, solution);
 	//status = assembler.assembleMatrix(solution);
@@ -153,15 +140,13 @@ int main(int argc, char *argv[])
 
 
     // Function for the Residual
-    gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
+    gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&assembler,&fixedDofs](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
     {
-        stopwatch.restart();
         assembler.assemble(x,fixedDofs);
 	//Add assemble vector JL
 	//assembler.constructSolution(x,solution);
         //status = assembler.assembleVector(solution);
-	result = assembler.rhs();
-        time += stopwatch.stop();
+    	result = assembler.rhs();
         return true;
     };
 
@@ -193,11 +178,12 @@ int main(int argc, char *argv[])
 
     timeIntegrator.constructSolution();
     gsParaviewCollection collection("./output/solution");
+    real_t time = 0;
     for (index_t i=0; i<Nsteps; i++)
     {	        
     	gsStatus status = timeIntegrator.step();
         GISMO_ASSERT(status == gsStatus::Success,"Time integrator did not succeed");
-    		
+    	time = timeIntegrator.currentTime();
         timeIntegrator.constructSolution();
         gsMatrix<> displacements = timeIntegrator.displacements();
 
@@ -210,7 +196,6 @@ int main(int argc, char *argv[])
         gsWriteParaview<>(solField, fileName, 500);
         fileName = "solution" + util::to_string(i) + "0";
         collection.addTimestep(fileName,time,".vts");
-	   time += dt;
         // if (write)
         // {
         //   gsMatrix<> v(2,1);
