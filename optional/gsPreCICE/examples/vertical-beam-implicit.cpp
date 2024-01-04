@@ -135,9 +135,6 @@ int main(int argc, char *argv[])
     assembler.options().setReal("YoungsModulus",E);
     assembler.options().setReal("PoissonsRatio",nu);
     assembler.options().setInt("MaterialLaw",material_law::hooke);
-
-
-    gsStopwatch stopwatch;
     assembler.assemble();
     
 
@@ -170,26 +167,20 @@ int main(int argc, char *argv[])
 
     index_t timestep = 0;
     index_t timestep_checkpoint = 0;
-    real_t time = 0;
-
 
     // Function for the Jacobian
-    gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) {
+    gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&assembler,&fixedDofs](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) {
         // to do: add time dependency of forcing
-        stopwatch.restart();
         assembler.assemble(x, fixedDofs);
-        time += stopwatch.stop();
         m = assembler.matrix();
         return true;
     };
 
     // Function for the Residual
-    gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&time,&stopwatch,&assembler,&fixedDofs](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
+    gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&assembler,&fixedDofs](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
     {
-        stopwatch.restart();
         assembler.assemble(x,fixedDofs);
         result = assembler.rhs();
-        time += stopwatch.stop();
         return true;
     };
     
@@ -201,6 +192,7 @@ int main(int argc, char *argv[])
     timeIntegrator.setVelocity(V_checkpoint);
     timeIntegrator.setAcceleration(A_checkpoint);
 
+    real_t time = 0;
     // Plot initial solution
     if (plot)
     {
