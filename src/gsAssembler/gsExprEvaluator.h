@@ -18,7 +18,7 @@
 #include <gsAssembler/gsQuadrature.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
-#include <gsIO/gsWriteParaview.h>
+//#include <gsIO/gsWriteParaview.h>
 
 namespace gismo
 {
@@ -28,6 +28,11 @@ namespace gismo
 
    The expressions may be scalar ot vector-valued. Computed quatities
    can be global or element.wise.
+
+   Note the following will not return correct result (return value is a reference):
+   gsInfo << "Eval:"<< ev.eval(a) + ev.eval(b) <<"\n";
+   Use the evaluator once at a time.
+
 */
 template<class T>
 class gsExprEvaluator
@@ -873,6 +878,7 @@ gsExprEvaluator<T>::evalIfc(const expr::_expr<E> & expr, const gsVector<T> & pt,
     gsAsMatrix<T>(m_elWise, r, c) = tmp; //expr.eval(0);
     return gsAsConstMatrix<T>(m_elWise, r, c);
 }
+
 
 template<class T>
 template<class E, bool gmap>

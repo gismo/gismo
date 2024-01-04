@@ -296,7 +296,7 @@ template<class T>
 void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std::string label)
 {   
     // Ensures that only one argument is actually provided
-    GISMO_ENSURE((id!=-1 ^  time!=-1. ^  label!="") &&
+    GISMO_ENSURE(( (id!=-1) ^  (time!=-1.) ^  (label!="") ) &&
                 !(id!=-1 && time!=-1. && label!=""),
                 "gsFileData::getInclude("<<id<<","<<time<<","<<label<<"), too many arguments provided!");
     std::string attr_name, attr_string;
@@ -310,7 +310,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
     else if ( time!=-1)
     {
         attr_name   = "time";
-        attr_string = std::to_string(time);
+        attr_string = std::to_string( static_cast< double >( time ) );
     }
     else if ( label!="")
     {
@@ -318,9 +318,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
         attr_string = label;
     } 
 
-    bool found=false;
     gsXmlNode * root = getXmlRoot();
-    const gsXmlAttribute * attribute;
 
     gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
     if (nd)
@@ -1269,7 +1267,7 @@ bool gsFileData<T>::readOffFile( String const & fn )
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
-    gsXmlNode* g = internal::makeNode("SurfMesh", *data);
+    gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "off", *data) );
     data->appendToRoot(g);
 

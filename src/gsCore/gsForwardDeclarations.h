@@ -320,6 +320,20 @@ template <short_t d, class T=real_t>     class gsHBoxContainer;
 
 class gsParaviewDataSet;
 class gsSurfMesh;
+
+// gsIO
+
+template<class T>
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           gsMatrix<T> const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn);
+
+template <class T>
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+
+
+
 /// @endcond
 
 ///@}

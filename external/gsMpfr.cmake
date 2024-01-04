@@ -57,7 +57,7 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${MPFR_INCLUDE_DIR}
   CACHE INTERNAL "gismo include directories" FORCE)
 
 # Link G+Smo to GMP, GMPXX and MPFR libraries (either dynamically or statically)
-set(gismo_LINKER ${gismo_LINKER} ${MPFR_LIBRARY}
+set(gismo_LINKER ${MPFR_LIBRARY} ${gismo_LINKER}
     CACHE INTERNAL "Gismo extra linker objects")
 
 set(GISMO_EXTERNALS ${GISMO_EXTERNALS} "gsMpfr"

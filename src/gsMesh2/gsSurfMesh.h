@@ -2004,7 +2004,7 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(gsSurfMesh)
     GSXML_GET_POINTER(gsSurfMesh)
-    static std::string tag () { return "SurfMesh"; }
+    static std::string tag () { return "Mesh"; }
     static std::string type() { return "off"; }
 
     static void get_into(gsXmlNode * node, gsSurfMesh & result);
