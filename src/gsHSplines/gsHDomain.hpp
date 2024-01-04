@@ -1332,18 +1332,18 @@ inline void gsHDomain<d, Z>::computeLevelIndex(gsVector<Z, d> const & index,
 }
 
 template<short_t d, class Z>
-inline void gsHDomain<d, Z>::local2globalIndex( gsVector<Z, d> const & index,
-                                                unsigned lvl,
-                                                gsVector<Z, d> & result) const
+inline void gsHDomain<d, Z>::local2globalIndex(gsVector<Z, d> const & index,
+                                               unsigned lvl,
+                                               gsVector<Z, d> & result) const
 {
     for(short_t i = 0; i!=d; ++i)
         result[i] = index[i] << (m_indexLevel-lvl) ;
 }
 
 template<short_t d, class Z>
- inline void gsHDomain<d, Z>::global2localIndex( gsVector<Z, d> const & index,
-                                                 unsigned lvl,
-                                                 gsVector<Z, d> & result) const
+inline void gsHDomain<d, Z>::global2localIndex(gsVector<Z, d> const & index,
+                                               unsigned lvl,
+                                               gsVector<Z, d> & result) const
 {
     for(short_t i = 0; i!=d; ++i)
         result[i] = index[i] >> (this->m_indexLevel-lvl) ;
