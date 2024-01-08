@@ -289,7 +289,11 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
             arg = this->parameterCenter();
         //arg = _argMinNormOnGrid(16);
 
-        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 300);
+        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 250);
+
+        if (iter>100)
+            gsWarn<< "Inversion took "<<iter<<" steps for "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
+
         if (-1==iter)
         {
             gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
@@ -320,27 +324,34 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
 }
 
 template<class T>
-void gsFunction<T>::invertPointGrid(const gsMatrix<T> & points, gsVector<index_t> & size_cw,
-                                    gsMatrix<T> & result,
-                                    const T accuracy, const bool useInitialPoint) const
+void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
+                                    gsMatrix<T> & result, const T accuracy,
+                                    const bool useInitialPoint) const
 {
-    result.resize(this->domainDim(), points.cols() );
+
+    result.resize(this->domainDim(), git.numPoints() );
     gsVector<T> arg;
-    for ( index_t i = 0; i!= points.cols(); ++i)
+    auto cw = git.numPointsCwise();
+    git.reset();
+    index_t i = 0;
+    int iter  = -1;
+    for(;git; ++git)
     {
-        //if (useInitialPoint)
-        //    arg = result.col(i);
-        //else
-        if(0==i)
+        if (-1==iter)
             arg = this->parameterCenter();
         else
-            arg = (i%size_cw[0]==0 ? result.col(i-size_cw[0]) : result.col(i-1) );
+            arg = (i%cw[0]==0 ? result.col(i-cw[0]) : result.col(i-1) );
 
-        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
+        iter = this->newtonRaphson(*git, arg, true, accuracy, 500);
         if (-1==iter)
-            result.col(i).setConstant( std::numeric_limits<T>::infinity() );
-        else
-            result.col(i) = arg;
+        {
+            gsWarn<< "--- Inversion failed for: "<< git->transpose() <<" ("
+                  << (i%cw[0]==0 ? result.col(i-cw[0]) : result.col(i-1) ).transpose() << " -> " << arg.transpose()<< " )\n";
+            //result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
+        //else gsWarn<< "+Inversion OK "<< git->transpose() <<" (result="<< arg.transpose()<< ")\n";
+
+        result.col(i++) = arg;
     }
 }
 
@@ -390,13 +401,6 @@ int gsFunction<T>::newtonRaphson_impl(
             return iter;
         }
 
-        const T rr = ( 1==iter ? (T)1.10 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
-        damping_factor = rr<1.11 ? math::max(0.1 + (rr/99),(rr-0.2)*damping_factor) : math::min((T)1,rr*damping_factor);
-
-        //gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
-        //       << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
-        //       <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
-
         // compute Jacobian
         if (0==mode)
             jac = scale * fd.jacobian(0);
@@ -419,11 +423,22 @@ int gsFunction<T>::newtonRaphson_impl(
             delta.noalias() = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
+        const T rr = ( 1==iter ? (T)1.10 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
+        damping_factor = rr<1.11 ? math::max(0.1 + (rr/99),(rr-0.2)*damping_factor) : math::min((T)1,rr*damping_factor);
+
         //Line search
-        //for(index_t i = 1; i!=11;++i)
-        // {
-        //    (this->eval(arg + 0.1*i*delta)*scale - value).norm() ;
-        // }
+        //if (false)
+
+        real_t val = (this->eval(arg + damping_factor*delta)*scale - value).norm();
+
+        for(index_t i = 1; i!=11; ++i)
+        {
+            val = 0 ;
+        }
+
+        //gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
+        //       << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
+        //       <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
 
         // update arg
         arg += damping_factor * delta;
@@ -532,9 +547,10 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     gsHLBFGS<T> solver( &fmin );
     solver.options().setInt("MaxIterations",100);
     solver.options().setInt("Verbose",0);
+    //MinStep..1e-12
     solver.solve(result);
     result = solver.currentDesign();
-    gsDebugVar(result);
+    //gsDebugVar(result);
     return result;
 #else
     int dd=domainDim();
@@ -590,6 +606,22 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
     //possible check: pt close to xyz
 }
 
+template<class T>
+void gsFunction<T>::recoverPointGrid(gsGridIterator<T,0> & git,
+                                     gsMatrix<T> & xyz, gsMatrix<T> & uv,
+                                     index_t k, const T accuracy) const
+{
+    gsVector<index_t> ind(xyz.rows()-1);
+    for (index_t i = 0; i!= xyz.rows(); ++i)
+        if (i<k) ind[i]=i;
+        else if (i>k) ind[i-1]=i;
+
+    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsFuncCoordinate<T> fc(*this, give(ind));
+
+    fc.invertPointGrid(git,uv,accuracy,false); //true
+    xyz = this->eval(uv);
+}
 
 template <class T>
 void gsFunction<T>::eval_component_into(const gsMatrix<T>&,
@@ -810,11 +842,16 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 alt_sgn = -alt_sgn;
             }
         }
+        //gsDebugVar(InOut.normals);
     }
 
     // Second Fundamantan form of surface
     if (InOut.flags & NEED_2ND_FFORM)
     {
+        // gsDebugVar(src);
+        // gsDebugVar(InOut.normals);
+        // gsDebugVar(n);
+        // gsDebugVar(d+1);
         //domDim=2, tarDim=3
         InOut.fundForms.resize(d*d, numPts);
         const index_t sz = d*(d+1)/2;

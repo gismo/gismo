@@ -227,7 +227,7 @@ public:
                               const T accuracy = 1e-6,
                               const bool useInitialPoint = false) const;
 
-    virtual void invertPointGrid(const gsMatrix<T> & points, gsVector<index_t> & size_cw,
+    virtual void invertPointGrid(gsGridIterator<T,0> & git,
                                  gsMatrix<T> & result, const T accuracy = 1e-6,
                                  const bool useInitialPoint = false) const;
 
@@ -252,6 +252,10 @@ public:
     /// xyz is not known (and has a random value as input argument).
     void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
                            const T accuracy = 1e-6) const;
+
+    void recoverPointGrid(gsGridIterator<T,0> & git,
+                          gsMatrix<T> & xyz, gsMatrix<T> & uv,
+                          index_t k, const T accuracy = 1e-6) const;
 
     /// Returns a "central" point inside inside the parameter domain
     virtual gsMatrix<T> parameterCenter() const
