@@ -541,8 +541,7 @@ int main(int argc, char *argv[])
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
     cmd.addSwitch("o", "jopt", "run the Joing OPTimization algorithm.", jopt); // enable for comparison
     cmd.addReal("p", "pdm", "use pdm method", pdm_system);
-    cmd.addReal("q", "tdm", "use pdm method", tdm_system);
-    // p, q
+    //cmd.addReal("q", "tdm", "use pdm method", tdm_system);
     cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
     // t, u, v
@@ -641,7 +640,7 @@ int main(int argc, char *argv[])
     file_apdm << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
     file_atdm.open(std::to_string(now)+"results_adaptive_ATDM.csv");
-    file_atdm << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
+    file_atdm << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, pdm, tdm, time\n";
 
     ////////////////////////////////////////////////////////////////////////////////
     //
@@ -660,6 +659,8 @@ int main(int argc, char *argv[])
     // e.g., writing the CSV files.
     //
     ////////////////////////////////////////////////////////////////////////////////
+
+    tdm_system = 1.-pdm_system;
 
     real_t finaltime_adaptiveLoop = 0;
     // gtoll = gtoll * 4;
@@ -978,6 +979,7 @@ int main(int argc, char *argv[])
           					  << sol_min_max_mse[2] << std::scientific << ","
                       << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
                       << percentagePoint << "," << tolerance << ","
+                      << pdm_system << "," << tdm_system << ","
                       << finaltime_itLoop << "\n";
 
               if ( ref.maxPointError() < tolerance )

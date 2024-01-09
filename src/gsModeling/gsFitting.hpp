@@ -264,9 +264,9 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     gsMatrix<T> params_int = m_param_values.block(0, 0,       dim_par, num_int);
     gsMatrix<T> params_bdy = m_param_values.block(0, num_int, dim_par, num_bdy);
 
-    writeToCSVfile(std::to_string(now)+"_params.csv",           m_param_values);
-    writeToCSVfile(std::to_string(now)+"_params_interiors.csv",   params_int  );
-    writeToCSVfile(std::to_string(now)+"_params_boundary.csv",    params_bdy  );
+    // writeToCSVfile(std::to_string(now)+"_params.csv",           m_param_values);
+    // writeToCSVfile(std::to_string(now)+"_params_interiors.csv",   params_int  );
+    // writeToCSVfile(std::to_string(now)+"_params_boundary.csv",    params_bdy  );
 
 
     // A_interiors + A_bdry
@@ -276,7 +276,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     {
         gsInfo << "No existing geometry...\n";
         //compute(m_last_lambda);
-        compute(0);
+        compute(m_last_lambda);
         gsInfo << "... now it does, as Ordinary Least Squares model.\n";
         gsMatrix<T> refCoefs = m_result->coefs();
         // gsInfo << "current geometry:\n" << *m_result << "\n";
@@ -304,14 +304,14 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
         // sn: compute the normals
 
-        gsMatrix<T> refCoefs = m_result->coefs();
+        //gsMatrix<T> refCoefs = m_result->coefs();
 
-        gsWriteParaview(*m_result, std::to_string(now) + "_geo_in_ctdm", 10000);
+        //gsWriteParaview(*m_result, std::to_string(now) + "_geo_in_ctdm", 10000);
 
-        gsMatrix<T> pltcoefs = refCoefs.transpose();
-        gsWriteParaviewPoints(pltcoefs, std::to_string(now) + "_coefs_in_ctdm");
+        //gsMatrix<T> pltcoefs = refCoefs.transpose();
+        //gsWriteParaviewPoints(pltcoefs, std::to_string(now) + "_coefs_in_ctdm");
         gsInfo << "and basis:\n" << m_result->basis()<< "\n";
-        gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_in_ctdm");
+        //gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_in_ctdm");
 
         gsExprEvaluator<T> ev;
         auto G = ev.getMap(*m_result);
@@ -384,8 +384,6 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
                 N_diag(2*num_pts+j, j) = normals(2, j);
             }// normals on boundary
         } //fi
-
-        writeToCSVfile(internal::to_string(num_basis)+"_" + std::to_string(now)+"_normals.csv", normals);
 
         gsSparseMatrix<T> A_tilde;
         gsMatrix<T> rhs;
@@ -517,15 +515,15 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
     }// fi
 
-    gsWriteParaview(*m_result, std::to_string(now) + "_geo_out_ctdm", 10000);
+    //gsWriteParaview(*m_result, std::to_string(now) + "_geo_out_ctdm", 10000);
 
     // gsInfo << "current geometry:\n" << *m_result << "\n";
 
-    gsMatrix<T> pltoutc = m_result->coefs().transpose();
-    gsWriteParaviewPoints(pltoutc, std::to_string(now) + "_coefs_out_ctdm");
-    gsInfo << "and basis:\n" << m_result->basis()<< "\n";
+    //gsMatrix<T> pltoutc = m_result->coefs().transpose();
+    //gsWriteParaviewPoints(pltoutc, std::to_string(now) + "_coefs_out_ctdm");
+    //gsInfo << "and basis:\n" << m_result->basis()<< "\n";
     //gsInfo << "and params:\n" << this->returnParamValues();
-    gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_out_ctdm");
+    //gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_out_ctdm");
 
     gsInfo << "END compute_tdm(...)\n";
     gsInfo << "---------------------------------------------------------------------------------------------------------\n";

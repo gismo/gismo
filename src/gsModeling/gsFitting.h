@@ -73,7 +73,7 @@ public:
     };
 
     void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx,
-                     tdm_method method = tdm_boundary_tdm);
+                     tdm_method method = hybrid_pdm_tdm_boundary_pdm);
 
     void compute_tdmlm(T lambda, T lm, const std::vector<index_t> & interpIdx);
 

@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
         gsWarn << "Unknown method, exiting." << std::endl;
         return -1;
     }
-        
+
     tdm_obj.compute_tdm(0., mu, sigma, interpIdx, method_enum);
 
     // gsInfo << *tdm_obj.result() << "\n";
