@@ -1883,7 +1883,7 @@ void gsSurfMesh::cc_subdivide()
         quad_split(fit,v,fv.he());
     }
 
-#   pragma omp parallel for default(none) shared(points,env,fnv) private(v,tmp)
+#   pragma omp parallel for default(shared) private(v,tmp)
     for (i = env; i<fnv;++i)
     {
         v = gsSurfMesh::Vertex(i); //edge points
@@ -1903,7 +1903,7 @@ void gsSurfMesh::cc_subdivide()
         points[v] = tmp;
     }
 
-#   pragma omp parallel for default(none) shared(env,points) private(v)
+#   pragma omp parallel for default(shared) private(v)
     for (i = 0; i<env;++i)
     {
         v = gsSurfMesh::Vertex(i); // original vertices
@@ -1944,7 +1944,7 @@ gsSurfMesh::cc_limit_points(std::string label)
     auto limits = add_vertex_property<Point>(
         (label == "v:point" ? "v:limit_points_2022" : label),Point(0,0,0));
     real_t n;
-#   pragma omp parallel for default(none) shared(std::cout,points,limits) private(n)
+#   pragma omp parallel for default(shared) private(n)
     for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
     {
         n = valence(*vit);
@@ -1993,7 +1993,7 @@ gsSurfMesh::cc_limit_normals(std::string label, bool normalize)
     real_t c1, c2, cc1, cc2;
     index_t i;
     gsSurfMesh::Halfedge h2;
-#   pragma omp parallel for default(none) shared(limits,points,normalize) private(h2,t1,t2,c1,c2,cc1,cc2,i)
+#   pragma omp parallel for default(shared) private(h2,t1,t2,c1,c2,cc1,cc2,i)
     for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
     {
         const real_t n = valence(*vit);
@@ -2034,7 +2034,7 @@ gsSurfMesh::cc_limit_tangent_vec(std::string label, bool normalize)
     Point t1, t2;
     real_t c1, c2, cc1, cc2;
     index_t i;
-#   pragma omp parallel for default(none) shared(limits,points,normalize) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
+#   pragma omp parallel for default(shared) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
     for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
     {
         const real_t n = valence(*vit);
@@ -2094,7 +2094,7 @@ gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
     gsSurfMesh::Halfedge h2;
     gsSurfMesh::Vertex v;
     real_t n;
-#   pragma omp parallel for default(none) shared(std::cout,points,bb) private(n,v,h2,coefs) shared(mp)
+#   pragma omp parallel for default(shared) private(n,v,h2,coefs) shared(mp)
     for (auto fit = faces_begin(); fit < faces_end(); ++fit)
     {
         //gsInfo << "face id: "<< fit->idx() <<"\n"; 
@@ -2446,7 +2446,7 @@ namespace internal {
 
 void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 {
-    assert( ( !strcmp( node->name(),"SurfMesh") )
+    assert( ( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh") )
             &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
 
     result = gsSurfMesh();

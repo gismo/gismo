@@ -734,7 +734,7 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
 }
 
 template<size_t I, class op, typename... Ts>
-void op_tuple_impl (op _op, const std::tuple<Ts...> &tuple)
+void op_tuple_impl (op & _op, const std::tuple<Ts...> &tuple)
 {
     _op(std::get<I>(tuple));
     if (I + 1 < sizeof... (Ts))
@@ -742,7 +742,7 @@ void op_tuple_impl (op _op, const std::tuple<Ts...> &tuple)
 }
 
 template<class op, typename... Ts>
-void op_tuple (op _op, const std::tuple<Ts...> &tuple)
+void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 { op_tuple_impl<0>(_op,tuple); }
 
 template<class T>
@@ -796,6 +796,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             if (m_exprdata->points().cols()==0)
                 continue;
 
+// Activate the try-catch only if G+Smo is not in DEBUG
+#ifdef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
@@ -809,6 +811,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 failed = true;
                 break;
             }
+#else
+            m_exprdata->precompute(patchInd);
+#endif
 
 
             // Assemble contributions of the element

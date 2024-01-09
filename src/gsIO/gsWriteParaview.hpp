@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
 #include <gsIO/gsIOUtils.h>
 

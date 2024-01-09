@@ -859,7 +859,7 @@ T gsMultiPatch<T>::averageHausdorffDistance(  const gsMultiPatch<T> & other,
                                                     bool directed)
 {
     std::vector<T> distances = HausdorffDistance(other,nsamples,accuracy,directed);
-    return std::accumulate(distances.begin(), distances.end(), 0.0) / distances.size();
+    return std::accumulate(distances.begin(), distances.end(), (T)( 0 ) ) / distances.size();
 }
 
 template<class T>
