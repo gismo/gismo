@@ -12,6 +12,7 @@
 #ifdef _OPENMP
 #define USE_OPENMP
 #endif
+#undef USE_OPENMP
 #include "HLBFGS/HLBFGS.h"
 #undef USE_OPENMP
 
@@ -233,7 +234,7 @@ public:
             m_op->gradObj_into(u,Gvec);
         };
 
-        local_func_grad = &wrapfunc;
+        local_func_grad = &wrapfunc; // !not parallel !!
 
         const std::function<void(int iter, int call_iter, T *x, T* f, T *g, T* gnorm)> wrapcallback =
             [this](int iter, int call_iter, T *x, T* f, T *g, T* gnorm)

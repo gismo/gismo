@@ -109,7 +109,7 @@ void gsFitting<T>::compute(T lambda)
       applySmoothing(lambda, A_mat);
 
     if(m_constraintsLHS.rows() > 0)
-    extendSystem(A_mat, m_B);
+	extendSystem(A_mat, m_B);
 
     //Solving the system of linear equations A*x=b (works directly for a right side which has a dimension with higher than 1)
 
@@ -212,318 +212,287 @@ void gsFitting<T>::initializeGeometry(const gsMatrix<T> & coefficients,
 
 
 template<class T>
-void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx,
-    tdm_method method)
+void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx)
 {
-    gsInfo << "---------------------------------------------------------------------------------------------------------\n";
-    gsInfo << "---------------------------------------------------------------------------------------------------------\n";
-    gsInfo << "START compute_tdm(...)\n";
+  gsInfo << "---------------------------------------------------------------------------------------------------------\n";
+  gsInfo << "---------------------------------------------------------------------------------------------------------\n";
+  gsInfo << "START compute_tdm(...)\n";
 
-    if (method == tdm_boundary_tdm)
-        gsInfo << "TDM vanilla\n";
-    else if (method == tdm_boundary_tangent)
-        gsInfo << "TDM boundary tangent\n";
-    else if (method == tdm_boundary_pdm)
-        gsInfo << "TDM boundary PDM\n";
-    else if (method == pdm)
-        gsInfo << "PDM\n";
-    else if (method == hybrid_pdm_tdm_boundary_pdm)
-        gsInfo << mu << "*PDM + " << sigma << "*TDM with PDM on the boundary\n";
-    else if (method == hybrid_pdm_tdm_boundary_tangent)
-        gsInfo << mu << "*PDM + " << sigma << "*TDM with tangents on the boundary\n";
-    else
-        gsWarn << "Unknown method." << std::endl;
-
-
-    time_t now = time(0);
-
-    // gsDebugVar(m_points); // m * 3
-
-    gsDebugVar(m_points.rows()) ; // m
-    gsDebugVar(m_points.cols()) ; // 3
-
-    // (0,0,tmp.rows(),tmp.cols())
-    const index_t dim_pts = m_points.cols();
-    const index_t dim_par = m_param_values.rows();
-    const index_t num_pts = m_points.rows();
-    const index_t num_int = interpIdx[0];
-    const index_t num_bdy = num_pts - num_int;
-
-    gsMatrix<T> points_int(num_int, dim_pts);
-    gsMatrix<T> points_bdy(num_bdy, dim_pts);
-    points_int = m_points.block(0,       0, num_int, dim_pts);
-    points_bdy = m_points.block(num_int, 0, num_bdy, dim_pts);
-
-
-    gsDebugVar(m_param_values.rows()) ; // 2
-    gsDebugVar(m_param_values.cols()) ; // m
-
-    gsInfo << m_param_values.block(0, 0, dim_par, num_int).rows() << " x "
-           << m_param_values.block(0, 0, dim_par, num_int).cols() << "\n";
-
-    gsMatrix<T> params_int = m_param_values.block(0, 0,       dim_par, num_int);
-    gsMatrix<T> params_bdy = m_param_values.block(0, num_int, dim_par, num_bdy);
-
-    // writeToCSVfile(std::to_string(now)+"_params.csv",           m_param_values);
-    // writeToCSVfile(std::to_string(now)+"_params_interiors.csv",   params_int  );
-    // writeToCSVfile(std::to_string(now)+"_params_boundary.csv",    params_bdy  );
-
-
-    // A_interiors + A_bdry
+  time_t now = time(0);
 
     m_last_lambda = lambda;
     if ( !m_result )
     {
-        gsInfo << "No existing geometry...\n";
+      gsInfo << "No existing geometry...\n";
         //compute(m_last_lambda);
-        compute(m_last_lambda);
-        gsInfo << "... now it does, as Ordinary Least Squares model.\n";
-        gsMatrix<T> refCoefs = m_result->coefs();
-        // gsInfo << "current geometry:\n" << *m_result << "\n";
-        // gsInfo << "with coefs:\n" << refCoefs << "\n";
+        compute(0);
+      gsInfo << "... now it does, as Ordinary Least Squares model.\n";
+      gsMatrix<T> refCoefs = m_result->coefs();
+      // gsInfo << "current geometry:\n" << *m_result << "\n";
+      // gsInfo << "with coefs:\n" << refCoefs << "\n";
 
-        // Wipe out previous result
-        if ( m_result )
-            delete m_result;
+      // Wipe out previous result
+      if ( m_result )
+          delete m_result;
 
-        if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
-            m_result = bb->makeGeometry( give(refCoefs) ).release();
-        else
-            m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(refCoefs));
+      if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
+          m_result = bb->makeGeometry( give(refCoefs) ).release();
+      else
+          m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(refCoefs));
     }
     else
     {
-        const index_t num_basis = m_basis->size();
+      const index_t num_basis = m_basis->size();
+      const index_t num_points = m_points.rows();
+      const index_t dimension = m_points.cols();
 
-        if( interpIdx.size() == 0)
+      if( interpIdx.size() == 0)
+      {
+        gsInfo << "Input point cloud needs to be ordered:\n"
+               << "interior points, south boundary curve, east boundary curve, north boundary curve, west boundary curve.\n";
+      return;
+      }
+
+      // sn: compute the normals
+
+      gsMatrix<T> refCoefs = m_result->coefs();
+
+      gsWriteParaview(*m_result, std::to_string(now) + "_geo_in_ctdm", 10000);
+
+      // gsInfo << "current geometry:\n" << *m_result << "\n";
+      gsInfo << "with coefs:\n" << refCoefs << "\n";
+      gsMatrix<T> pltcoefs = refCoefs.transpose();
+      gsWriteParaviewPoints(pltcoefs, std::to_string(now) + "_coefs_in_ctdm");
+      gsInfo << "and basis:\n" << m_result->basis()<< "\n";
+      //gsInfo << "and params:\n" << this->returnParamValues();
+      gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_in_ctdm");
+
+      // Wipe out previous result
+      // if ( m_result )
+          // delete m_result;
+
+      // if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
+          // m_result = bb->makeGeometry( give(refCoefs) ).release();
+      // else
+          // m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(refCoefs));
+
+       // gsInfo << "It should be the same...\n";
+       // gsDebugVar(*m_result);
+       // gsInfo << "with same coefs:\n" << m_result->coefs() << "\n";
+      //gsInfo << "and same params:\n" << this->returnParamValues()<< "\n";
+
+
+
+      gsExprEvaluator<T> ev;
+      auto G = ev.getMap(*m_result);
+      gsMatrix<T> normals(3, m_param_values.cols());
+      normals.setZero();
+      gsSparseMatrix<T> N_diag(m_points.rows() * 3, m_points.rows());
+      N_diag.setZero();
+      //
+      // gsDebugVar(m_param_values.col(0));
+      // gsDebugVar(m_points.rows());
+      // gsDebugVar(m_points.cols());
+      //for(index_t j=0; j < interpIdx[0]; j++)
+
+      for(index_t j=0; j < m_param_values.cols(); j++)
+          //for(index_t j=0; j < interpIdx[0]; j++)
+      {
+          normals.col(j) = ev.eval(sn(G).normalized(), m_param_values.col(j));
+          N_diag(j,j) = normals(0,j);
+          N_diag(m_points.rows()+j,j) = normals(1,j);
+          N_diag(2*m_points.rows()+j,j) = normals(2,j);
+      }
+
+      // nv: outer normals for boundary curves.
+      // normals.col(j) = (point - surface); to treat the boundary.
+      if(false)
+      {
+      for(index_t j=interpIdx[0]; j < m_param_values.cols(); j++)
+      {
+        // south, east, north, west
+        patchSide ps;
+        if ( (interpIdx[1] <= j) && (j < interpIdx[2]) ) // east
         {
-            gsInfo << "Input point cloud needs to be ordered:\n"
-                   << "interior points, south boundary curve, east boundary curve, north boundary curve, west boundary curve.\n";
-            return;
+          GISMO_ENSURE(m_param_values(0,j)==1, internal::to_string(j) + "-th parameter NOT on EAST boundary");
+          ps = patchSide(0,boundary::east);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
-
-        // sn: compute the normals
-
-        //gsMatrix<T> refCoefs = m_result->coefs();
-
-        //gsWriteParaview(*m_result, std::to_string(now) + "_geo_in_ctdm", 10000);
-
-        //gsMatrix<T> pltcoefs = refCoefs.transpose();
-        //gsWriteParaviewPoints(pltcoefs, std::to_string(now) + "_coefs_in_ctdm");
-        gsInfo << "and basis:\n" << m_result->basis()<< "\n";
-        //gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_in_ctdm");
-
-        gsExprEvaluator<T> ev;
-        auto G = ev.getMap(*m_result);
-        gsMatrix<T> normals(3, m_param_values.cols());
-        normals.setZero();
-
-        gsSparseMatrix<T> N_diag(num_pts * 3, num_pts);
-        gsSparseMatrix<T> N_int (num_int * 3, num_int);
-        N_diag.setZero();
-        N_int.setZero();
-
-        index_t N_diag_cols;
-        if(method == tdm_boundary_tdm)
-            N_diag_cols = m_param_values.cols();
-        else // tdm_boundary_pdm or tdm_boundary_tangent
-            N_diag_cols = interpIdx[0];
-
-        for(index_t j=0; j < N_diag_cols; j++)
+        else if ( (interpIdx[2] <= j) && (j < interpIdx[3]) )
         {
-            normals.col(j) = ev.eval(sn(G).normalized(), m_param_values.col(j));
-            N_diag(j,           j) = normals(0, j);
-            N_diag(num_pts+j,   j) = normals(1, j);
-            N_diag(2*num_pts+j, j) = normals(2, j);
+          GISMO_ENSURE(m_param_values(1,j)==1, internal::to_string(j) + "-th parameter NOT on NORTH boundary");
+          ps = patchSide(0,boundary::north);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
-
-        if(method == tdm_boundary_pdm || method == hybrid_pdm_tdm_boundary_pdm)
+        else if ( interpIdx[3] <= j)
         {
-            for(index_t j=0; j < N_diag_cols; j++)
-            {
-                normals.col(j) = ev.eval(sn(G).normalized(), m_param_values.col(j));
-                N_int(j,           j) = normals(0, j);
-                N_int(num_int+j,   j) = normals(1, j);
-                N_int(2*num_int+j, j) = normals(2, j);
-            }
-        }
-        else if(method == tdm_boundary_tangent || method == hybrid_pdm_tdm_boundary_tangent)
-        {
-            // nv: outer normals for boundary curves.
-            // normals.col(j) = (point - surface); to treat the boundary.
-
-            for(index_t j=interpIdx[0]; j < m_param_values.cols(); j++)
-            {
-                std::string message(internal::to_string(j) + "-th parameter NOT on ");
-                // south, east, north, west
-                patchSide ps;
-                if ( (interpIdx[1] <= j) && (j < interpIdx[2]) ) // east
-                {
-                    GISMO_ENSURE(m_param_values(0, j)==1, message + "EAST boundary");
-                    ps = patchSide(0,boundary::east);
-                }
-                else if ( (interpIdx[2] <= j) && (j < interpIdx[3]) )
-                {
-                    GISMO_ENSURE(m_param_values(1, j)==1, message + "NORTH boundary");
-                    ps = patchSide(0,boundary::north);
-                }
-                else if ( interpIdx[3] <= j)
-                {
-                    GISMO_ENSURE(m_param_values(0, j)==0, message + "WEST boundary");
-                    ps = patchSide(0,boundary::west);
-                }
-                else
-                {
-                    GISMO_ENSURE(m_param_values(1, j)==0, message + "SOUTH boundary");
-                    ps = patchSide(0, boundary::south);
-                }
-                normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
-
-                N_diag(j,           j) = normals(0, j);
-                N_diag(num_pts+j,   j) = normals(1, j);
-                N_diag(2*num_pts+j, j) = normals(2, j);
-            }// normals on boundary
-        } //fi
-
-        gsSparseMatrix<T> A_tilde;
-        gsMatrix<T> rhs;
-
-        if(method == tdm_boundary_tdm ||
-           method == tdm_boundary_tangent ||
-           method == pdm ||
-           method == hybrid_pdm_tdm_boundary_tangent)
-        {
-            // all points and parameters block collocation matrix
-            gsSparseMatrix<T> B_mat;
-            assembleBlockB(m_points, m_param_values, num_basis, B_mat);
-
-            gsMatrix<T> X_tilde;
-            assembleBlockX(m_points, X_tilde);
-
-            if(method == pdm)
-            {
-                A_tilde = B_mat.transpose() * B_mat;
-                rhs     = B_mat.transpose() * X_tilde ;
-            }
-            else
-            {
-                gsSparseMatrix<T> NNT;
-                if(method == hybrid_pdm_tdm_boundary_tangent)
-                {
-                    gsSparseMatrix<T> Im(3 * num_pts, 3 * num_pts);
-                    Im.setIdentity();
-
-                    NNT = (mu * Im + sigma * N_diag * N_diag.transpose());
-                }
-                else // tdm methods
-                    NNT = (N_diag * N_diag.transpose());
-
-                A_tilde = B_mat.transpose() * NNT * B_mat;
-                rhs     = B_mat.transpose() * NNT * X_tilde;
-            }
-        }
-        else if(method == tdm_boundary_pdm ||
-                method == hybrid_pdm_tdm_boundary_pdm ||
-                method == hybrid_pdm_tdm_boundary_tangent)
-        {
-            // interior points and parameters block collocation matrix
-            gsSparseMatrix<T> B_int;
-            assembleBlockB(points_int, params_int, num_basis, B_int);
-
-            gsMatrix<T> X_int;
-            assembleBlockX(points_int, X_int);
-
-            // boundary points and parameters block collocation matrix
-            gsSparseMatrix<T> B_bdy;
-            assembleBlockB(points_bdy, params_bdy, num_basis, B_bdy);
-
-            gsMatrix<T> X_bdy;
-            assembleBlockX(points_bdy, X_bdy);
-
-            gsSparseMatrix<T> NNT;
-            if(method == tdm_boundary_pdm)
-                NNT = N_int * N_int.transpose();
-            else // hybrids
-            {
-                gsSparseMatrix<T> Im(3 * num_int, 3 * num_int);
-                Im.setIdentity();
-                NNT = mu * Im + sigma * N_int * N_int.transpose();
-            }
-
-            A_tilde = B_int.transpose() * NNT * B_int + B_bdy.transpose() * B_bdy;
-            rhs     = B_int.transpose() * NNT * X_int + B_bdy.transpose() * X_bdy;
+          GISMO_ENSURE(m_param_values(0,j)==0, internal::to_string(j) + "-th parameter NOT on WEST boundary");
+          ps = patchSide(0,boundary::west);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
         else
-            gsWarn << "Unknown method, no matrices assembled." << std::endl;
-
-        if(lambda > 0)
         {
-            gsInfo << "Penalization.\n";
-
-            gsSparseMatrix<T> m_G;
-            m_G.resize(m_basis->size(), m_basis->size());
-            gsSparseMatrix<T> G_mat(A_tilde.rows(), A_tilde.cols());
-
-            applySmoothing(lambda, m_G);
-            threeOnTop(m_G, A_tilde.rows(), A_tilde.cols(), G_mat);
-            A_tilde += lambda * G_mat;
+          GISMO_ENSURE(m_param_values(1,j)==0, internal::to_string(j) + "-th parameter NOT on SOUTH boundary");
+          ps = patchSide(0,boundary::south);
+          normals.col(j) = ev.evalBdr(nv(G).normalized(), m_param_values.col(j), ps);
         }
 
 
-        gsSparseMatrix<T> LM(A_tilde.rows(), A_tilde.cols());
-        LM.setIdentity();
-        A_tilde = A_tilde + 1e-7 * LM;
+        N_diag(j,j) = normals(0,j);
+        N_diag(m_points.rows()+j,j) = normals(1,j);
+        N_diag(2*m_points.rows()+j,j) = normals(2,j);
+      }// normals on boundary
+      } //fi
 
-        gsInfo << "Solving the linear system.\n";
-        A_tilde.makeCompressed();
+      //for(index_t j=interpIdx[0]; j < m_param_values.cols(); j++)
+      //    N_diag(j,j) = N_diag(m_points.rows()+j,j) =  N_diag(2*m_points.rows()+j,j) = 1. / math::sqrt(3.0);
 
-        typename gsSparseSolver<T>::QR solver(A_tilde);
-        gsMatrix<T> sol_tilde = solver.solve(rhs); //toDense()
-        gsInfo << "rank = " << solver.rank() / 3 << " = " << m_basis->size() << "\n";
-        gsInfo << "Solved.\n";
+      writeToCSVfile(internal::to_string(num_basis)+"_" + std::to_string(now)+"_normals.csv", normals);
 
-        if (solver.info() != gsEigen::Success)
-        {
-            gsInfo << "QR: " << solver.lastErrorMessage();
-        }
+      gsSparseMatrix<T> sparseColloc(m_points.rows(), num_basis);
 
-        // If there were constraints, we obtained too many coefficients.
-        sol_tilde.conservativeResize(num_basis * 3, gsEigen::NoChange);
+      // gsInfo << "--------------------------------------------------------\n";
+      // gsInfo << "space dimension = " << num_basis << "\n";
+      // gsDebugVar(m_result->basis());
+      sparseColloc = m_result->basis().collocationMatrix( m_param_values ) ;
 
-        gsMatrix<T> coefs_tilde(m_basis->size(), 3);
-        for(index_t j=0; j<m_basis->size(); j++)
-        {
-            coefs_tilde(j,0) = sol_tilde(j);
-            coefs_tilde(j,1) = sol_tilde(m_basis->size()+j);
-            coefs_tilde(j,2) = sol_tilde(2*m_basis->size()+j);
-        }
+      gsMatrix<T> tmp = sparseColloc;
+      gsMatrix<T> Bb(m_points.rows() * 3, m_basis->size() * 3);
+      Bb.setZero();
+      Bb.block(0,0,tmp.rows(),tmp.cols()) = tmp;
+      Bb.block(tmp.rows(),tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
+      Bb.block(2*tmp.rows(),2*tmp.cols(),tmp.rows(),tmp.cols()) = tmp;
 
-        gsInfo << "New coefs computed with TDM.\n";
-        gsDebugVar(coefs_tilde);
-        //gsInfo << "and params:\n" << this->returnParamValues() << "\n";
-        // Wipe out previous result
-        if ( m_result )
-            delete m_result;
+      // writeToCSVfile(internal::to_string(num_basis)+"Bb.csv", Bb);
 
-        if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
-            m_result = bb->makeGeometry( give(coefs_tilde) ).release();
-        else
-            m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(coefs_tilde));
+      gsSparseMatrix<T> B_mat(m_points.rows() * 3, m_basis->size() * 3);
+      B_mat = Bb.sparseView();
 
-        gsInfo<< "Updated result.\n";
-        //gsDebugVar(*m_result);
+      gsMatrix<T> X_tilde(m_points.rows() * 3, 1);
+      gsDebugVar(m_points.col(0));
+      X_tilde << m_points.col(0), m_points.col(1), m_points.col(2);
+
+      gsSparseMatrix<T> A_tilde(B_mat.cols(), B_mat.cols());
+      gsSparseMatrix<T> Im(3*m_points.rows(), 3*m_points.rows());
+      Im.setIdentity();
+      gsMatrix<T> rhs(B_mat.cols(),1);
+
+      if ( mu > 0 && sigma > 0)
+      {
+        gsInfo << mu << "*PDM + " << sigma << "*TDM.\n";
+        A_tilde = B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose()) * B_mat;
+        rhs =  B_mat.transpose() * ( mu * Im + sigma * N_diag * N_diag.transpose() ) * X_tilde ;
+      }
+      else if (mu > 0 && sigma == 0)
+      {
+        gsInfo << "PDM.\n";
+        A_tilde = B_mat.transpose() *  B_mat;
+        rhs = B_mat.transpose() * X_tilde ;
+      }
+      else if (sigma > 0 && mu == 0)
+      {
+        gsInfo << "TDM.\n";
+        A_tilde = B_mat.transpose() * (  N_diag * N_diag.transpose() ) * B_mat;
+        rhs =  B_mat.transpose() * ( N_diag * N_diag.transpose() ) * X_tilde ;
+      }
+      else
+      {
+        gsWarn<<  "No available fitting method. Aborting.\n";
+        return;
+      }
+
+      gsSparseMatrix<T> m_G;
+      m_G.resize(m_basis->size(), m_basis->size());
+      gsSparseMatrix<T> G_mat(A_tilde.rows(), A_tilde.cols());
+      gsMatrix<T> Gg(A_tilde.rows(), A_tilde.cols());
+      Gg.setZero();
+
+      if(lambda > 0)
+      {
+        gsInfo << "Penalization.\n";
+        applySmoothing(lambda, m_G);
+        Gg.block(0,0,m_G.rows(),m_G.cols()) = m_G;
+        Gg.block(m_G.rows(),m_G.cols(),m_G.rows(),m_G.cols()) = m_G;
+        Gg.block(2*m_G.rows(),2*m_G.cols(),m_G.rows(),m_G.cols()) = m_G;
+        G_mat = Gg.sparseView();
+        A_tilde += lambda * G_mat;
+      }
+
+
+      gsSparseMatrix<T> LM(A_tilde.rows(), A_tilde.cols());
+      LM.setIdentity();
+      A_tilde = A_tilde + 1e-7 * LM;
+
+      gsInfo << "Solving the linear system.\n";
+      A_tilde.makeCompressed();
+
+
+
+      // gsMatrix<T> A_csv(A_tilde);
+      // writeToCSVfile(internal::to_string(num_basis)+"_" + std::to_string(now)+"_A_tilde.csv", A_csv);
+      // writeToCSVfile("X_tilde.csv", X_tilde);
+      // writeToCSVfile("rhs.csv", rhs);
+      // gsInfo << "Written\n";
+
+      // typename gsSparseSolver<T>::BiCGSTABILUT solver( A_tilde );
+      //
+      // if ( solver.preconditioner().info() != gsEigen::Success )
+      // {
+      //     gsWarn<<  "The preconditioner failed. Aborting.\n";
+      //
+      //     return;
+      // }
+
+      typename gsSparseSolver<T>::QR solver(A_tilde);
+      gsMatrix<T> sol_tilde = solver.solve(rhs); //toDense()
+      gsInfo << "rank = " << solver.rank() / 3 << " = " << m_basis->size() << "\n";
+      gsInfo << "Solved.\n";
+
+      if (solver.info() != gsEigen::Success)
+      {
+        gsInfo << "QR: " << solver.lastErrorMessage();
+      }
+
+      // If there were constraints, we obtained too many coefficients.
+      sol_tilde.conservativeResize(num_basis * 3, gsEigen::NoChange);
+
+      // gsDebugVar(sol_tilde.rows());
+      // gsDebugVar(sol_tilde.cols());
+
+      gsMatrix<T> coefs_tilde(m_basis->size(), 3);
+      for(index_t j=0; j<m_basis->size(); j++)
+      {
+        coefs_tilde(j,0) = sol_tilde(j);
+        coefs_tilde(j,1) = sol_tilde(m_basis->size()+j);
+        coefs_tilde(j,2) = sol_tilde(2*m_basis->size()+j);
+      }
+
+      gsInfo << "New coefs computed with TDM.\n";
+      gsDebugVar(coefs_tilde);
+      //gsInfo << "and params:\n" << this->returnParamValues() << "\n";
+      // Wipe out previous result
+      if ( m_result )
+          delete m_result;
+
+      if (const gsBasis<T> * bb = dynamic_cast<const gsBasis<T> *>(m_basis))
+          m_result = bb->makeGeometry( give(coefs_tilde) ).release();
+      else
+          m_mresult = gsMappedSpline<2,T> ( *static_cast<gsMappedBasis<2,T>*>(m_basis),give(coefs_tilde));
+
+      gsInfo<< "Updated result.\n";
+      //gsDebugVar(*m_result);
 
     }// fi
 
-    //gsWriteParaview(*m_result, std::to_string(now) + "_geo_out_ctdm", 10000);
+    gsWriteParaview(*m_result, std::to_string(now) + "_geo_out_ctdm", 10000);
 
     // gsInfo << "current geometry:\n" << *m_result << "\n";
 
-    //gsMatrix<T> pltoutc = m_result->coefs().transpose();
-    //gsWriteParaviewPoints(pltoutc, std::to_string(now) + "_coefs_out_ctdm");
-    //gsInfo << "and basis:\n" << m_result->basis()<< "\n";
+    gsMatrix<T> pltoutc = m_result->coefs().transpose();
+    gsWriteParaviewPoints(pltoutc, std::to_string(now) + "_coefs_out_ctdm");
+    gsInfo << "and basis:\n" << m_result->basis()<< "\n";
     //gsInfo << "and params:\n" << this->returnParamValues();
-    //gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_out_ctdm");
+    gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_out_ctdm");
 
     gsInfo << "END compute_tdm(...)\n";
     gsInfo << "---------------------------------------------------------------------------------------------------------\n";
@@ -544,6 +513,8 @@ void gsFitting<T>::compute_tdmlm(T lambda, T lm, const std::vector<index_t> & in
     }
 
     const index_t num_basis = m_basis->size();
+    const index_t num_points = m_points.rows();
+    const index_t dimension = m_points.cols();
 
     if( interpIdx.size() == 0)
     {
@@ -1071,12 +1042,14 @@ void gsFitting<T>::parameterCorrectionSepBoundary_tdm(T accuracy,
                                                 T mu, T sigma,
                                                 const std::vector<index_t>& interpIdx)
 {
-    gsInfo << "parameterCorrectionSepBoundary_tdm(...)\n";
+  gsInfo << "parameterCorrectionSepBoundary_tdm(...)\n";
     if ( !m_result )
     {
       compute(m_last_lambda);
     }
 
+    const index_t d = m_param_values.rows();
+    const index_t n = m_points.cols();
     for (index_t it = 0; it<maxIter; ++it)
     {
       time_t now = time(0);
@@ -1109,6 +1082,8 @@ void gsFitting<T>::parameterCorrectionSepBoundary_pdm(T accuracy,
       compute(m_last_lambda);
     }
 
+    const index_t d = m_param_values.rows();
+    const index_t n = m_points.cols();
     for (index_t it = 0; it<maxIter; ++it)
     {
 //#       pragma omp parallel for default(shared) private(newParam)
@@ -1132,6 +1107,8 @@ void gsFitting<T>::parameterCorrectionSepBoundary_tdmlm(T accuracy,
       compute(m_last_lambda);
     }
 
+    const index_t d = m_param_values.rows();
+    const index_t n = m_points.cols();
     for (index_t it = 0; it<maxIter; ++it)
     {
       gsInfo << "(a) projections.\n";
@@ -1198,6 +1175,9 @@ void gsFitting<T>::parameterCorrection(T accuracy,
 {
     if ( !m_result )
         compute(m_last_lambda);
+
+    const index_t d = m_param_values.rows();
+    const index_t n = m_points.cols();
 
     for (index_t it = 0; it<maxIter; ++it)
     {
@@ -1337,7 +1317,7 @@ void gsFitting<T>::assembleSystem(gsSparseMatrix<T>& A_mat,
 
 template <class T>
 void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
-                gsMatrix<T>& m_B)
+				gsMatrix<T>& m_B)
 {
     index_t basisSize = m_basis->size();
 
@@ -1350,11 +1330,11 @@ void gsFitting<T>::extendSystem(gsSparseMatrix<T>& A_mat,
 
     for (index_t k=0; k<m_constraintsLHS.outerSize(); ++k)
     {
-    for (typename gsSparseMatrix<T>::InnerIterator it(m_constraintsLHS,k); it; ++it)
-    {
-        A_mat(basisSize + it.row(), it.col()) = it.value();
-        A_mat(it.col(), basisSize + it.row()) = it.value();
-    }
+	for (typename gsSparseMatrix<T>::InnerIterator it(m_constraintsLHS,k); it; ++it)
+	{
+	    A_mat(basisSize + it.row(), it.col()) = it.value();
+	    A_mat(it.col(), basisSize + it.row()) = it.value();
+	}
     }
 }
 
@@ -1630,13 +1610,13 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
 template<class T>
 void gsFitting<T>::setConstraints(const std::vector<index_t>& indices,
-                  const std::vector<gsMatrix<T> >& coefs)
+				  const std::vector<gsMatrix<T> >& coefs)
 {
     if(coefs.size() == 0)
-    return;
+	return;
 
     GISMO_ASSERT(indices.size() == coefs.size(),
-         "Prescribed indices and coefs must have the same length.");
+		 "Prescribed indices and coefs must have the same length.");
 
     gsSparseMatrix<T> lhs(indices.size(), m_basis->size());
     gsMatrix<T> rhs(indices.size(), coefs[0].cols());
