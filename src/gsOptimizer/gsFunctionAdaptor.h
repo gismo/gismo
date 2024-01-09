@@ -1,6 +1,7 @@
-/** @file gsMinimizer.h
+/** @file gsFunctionAdaptor.h
 
-    @brief Class definiting an optimization problem for a gsFunction
+    @brief Class defining an adaptor for using a gsFunction in an
+    optimization problem
 
     This file is part of the G+Smo library.
 

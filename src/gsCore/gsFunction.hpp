@@ -28,91 +28,6 @@
 namespace gismo
 {
 
-
-/// Squared norm from a fixed point to a gsFunction
-template<class T>
-class gsSquaredDistance2 GISMO_FINAL : public gsFunction<T>
-{
-public:
-    gsSquaredDistance2(const gsFunction<T> & g, const gsVector<T> & pt)
-        : m_g(&g), m_pt(&pt), m_gd(2) { }
-
-    // f  = (1/2)*||x-pt||^2
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        m_g->eval_into(u, m_gd[0]);
-        result.resize(1, u.cols());
-        result.at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
-    }
-
-    void evalAllDers_into(const gsMatrix<T> & u, int n,
-                          std::vector<gsMatrix<T> > & result) const
-    {
-        GISMO_ASSERT(1==u.cols(), "Single argument assumed");
-        result.resize(n+1);
-        m_g->evalAllDers_into(u, n, m_gd);
-
-        // f  = (1/2)*||x-pt||^2
-        result[0].resize(1, 1);
-        result[0].at(0) = 0.5 * (m_gd[0]-*m_pt).squaredNorm();
-        if (n==0) return;
-
-        // f' = x'*(x-pt)
-        auto jacT = m_gd[1].reshaped(u.rows(),m_pt->rows());
-        result[1].noalias() = jacT * (m_gd[0] - *m_pt);
-        if (n==1) return;
-
-        // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
-        tmp.noalias() = jacT * jacT.transpose();
-        index_t d2  = u.rows() * (u.rows()+1) / 2;
-        gsMatrix<T> hm;
-        for ( index_t k=0; k < m_g->targetDim(); ++k )
-        {
-            hm = util::secDerToHessian(m_gd[2].block(k*d2,0,d2,1),u.rows()).reshaped(u.rows(),u.rows());
-            tmp += (m_gd[0].at(k)-m_pt->at(k)) * hm;
-        }
-        util::hessianToSecDer(tmp,u.rows(),result[2]);
-    }
-
-    // f' = x'*(x-pt)
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
-    {
-        result.resize(u.rows(), u.cols());
-        for ( index_t i=0; i != u.cols(); i++ )
-        {
-            tmp = u.col(i);
-            m_g->eval_into(tmp,m_gd[0]);
-            m_g->jacobian_into(tmp,m_gd[1]);
-            result.col(i).noalias() = m_gd[1].transpose() * (m_gd[0] - *m_pt);
-        }
-    }
-
-    // f'' = tr(x')*x' + sum_i[ (x_i-pt_i) * x_i'']
-    void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
-                      index_t) const
-    {
-        m_g->eval_into(u,m_gd[0]);
-        m_g->jacobian_into(u,m_gd[1]);
-        result.noalias() = m_gd[1].transpose() * m_gd[1];
-        for ( index_t k=0; k < m_g->targetDim(); ++k )
-        {
-            tmp = m_g->hessian(u,k);
-            result.noalias() += (m_gd[0].at(k)-m_pt->at(k))*tmp;
-        }
-    }
-
-    gsMatrix<T> support() const {return m_g->support()  ;}
-    short_t domainDim ()  const {return m_g->domainDim();}
-    short_t targetDim ()  const {return 1;}
-
-private:
-    const gsFunction<T> * m_g;
-    const gsVector<T> * m_pt;
-    mutable std::vector<gsMatrix<T> > m_gd;
-    mutable gsMatrix<T> tmp;
-};
-
-
 template <class T>
 gsFuncCoordinate<T> gsFunction<T>::coord(const index_t c) const
 {
@@ -290,7 +205,7 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
         //arg = _argMinNormOnGrid(16);
 
         const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 250);
-
+        gsInfo << " "<< iter;
         if (iter>100)
             gsWarn<< "Inversion took "<<iter<<" steps for "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
 
@@ -328,13 +243,13 @@ void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
                                     gsMatrix<T> & result, const T accuracy,
                                     const bool useInitialPoint) const
 {
-
     result.resize(this->domainDim(), git.numPoints() );
     gsVector<T> arg;
     auto cw = git.numPointsCwise();
     git.reset();
     index_t i = 0;
     int iter  = -1;
+    gsInfo << "Iterations: ";
     for(;git; ++git)
     {
         if (-1==iter)
@@ -343,9 +258,10 @@ void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
             arg = (i%cw[0]==0 ? result.col(i-cw[0]) : result.col(i-1) );
 
         iter = this->newtonRaphson(*git, arg, true, accuracy, 500);
+        if (100 < iter) gsInfo << " "<< iter;
         if (-1==iter)
         {
-            gsWarn<< "--- Inversion failed for: "<< git->transpose() <<" ("
+            gsWarn<< "--- "<<i<<" Inversion failed for: "<< git->transpose() <<" ("
                   << (i%cw[0]==0 ? result.col(i-cw[0]) : result.col(i-1) ).transpose() << " -> " << arg.transpose()<< " )\n";
             //result.col(i).setConstant( std::numeric_limits<T>::infinity() );
         }
@@ -353,6 +269,7 @@ void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
 
         result.col(i++) = arg;
     }
+    gsInfo << "\n";
 }
 
 template <class T>
@@ -423,22 +340,22 @@ int gsFunction<T>::newtonRaphson_impl(
             delta.noalias() = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
-        const T rr = ( 1==iter ? (T)1.10 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
-        damping_factor = rr<1.11 ? math::max(0.1 + (rr/99),(rr-0.2)*damping_factor) : math::min((T)1,rr*damping_factor);
+        const T rr = ( 1==iter ? (T)1.51 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
+        damping_factor = rr<1.5 ? math::max(0.1 + (rr/99),(rr-0.5)*damping_factor) : math::min((T)1,rr*damping_factor);
 
         //Line search
-        //if (false)
-
+        /*
         real_t val = (this->eval(arg + damping_factor*delta)*scale - value).norm();
 
         for(index_t i = 1; i!=11; ++i)
         {
             val = 0 ;
         }
+        */
 
-        //gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
-        //       << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
-        //       <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
+        // gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
+        //        << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
+        //        <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
 
         // update arg
         arg += damping_factor * delta;
