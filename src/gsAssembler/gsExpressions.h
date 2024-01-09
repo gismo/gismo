@@ -4675,6 +4675,7 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace()   )
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
+GISMO_SHORTCUT_VAR_EXPRESSION(shapeop, fform(u).inv() * fform2nd(u) )
 
 #undef GISMO_SHORTCUT_PHY_EXPRESSION
 #undef GISMO_SHORTCUT_VAR_EXPRESSION
