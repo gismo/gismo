@@ -22,6 +22,8 @@
 #include <gsNurbs/gsBSpline.h>
 #include <gsTensor/gsTensorDomainIterator.h>
 
+#include <gsIO/gsWriteParaview.h>
+
 
 
 namespace gismo
