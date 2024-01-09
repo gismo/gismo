@@ -32,8 +32,8 @@ macro(OFA_AutodetectArm)
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
     # macOS
-    exec_program("/usr/sbin/sysctl -n hw.cputype hw.cputype hw.cpusubtype hw.cpufamily hw.cpusubfamily"
-      OUTPUT_VARIABLE _sysctl_output_string RETURN_VALUE _error)
+    execute_process(COMMAND "/usr/sbin/sysctl -n hw.cputype hw.cputype hw.cpusubtype hw.cpufamily hw.cpusubfamily"
+      OUTPUT_VARIABLE _sysctl_output_string RESULT_VARIABLE _error)
     if(NOT _error)
       string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
       list(GET _sysctl_output 0 _cpu_implementer)
