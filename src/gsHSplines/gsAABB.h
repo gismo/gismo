@@ -1,6 +1,7 @@
-/** @file gsKdNode.h
+/** @file gsAABB.h
 
-    @brief Provides declaration of the tree node.
+    @brief Declarations of the class gsAABB, i.e., the axis-aligned
+    bounding box.
 
     This file is part of the G+Smo library.
     
