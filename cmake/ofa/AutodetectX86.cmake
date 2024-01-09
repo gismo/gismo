@@ -139,7 +139,7 @@ macro(OFA_AutodetectX86)
     if(_cpu_family EQUAL 6)
       # taken from the Intel ORM
       # http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html
-      # CPUID Signature Values of Of Recent Intel Microarchitectures
+      # CPUID Signature Values Of Recent Intel Microarchitectures
       # 4E 5E       | Skylake microarchitecture
       # 3D 47 56    | Broadwell microarchitecture
       # 3C 45 46 3F | Haswell microarchitecture
@@ -206,7 +206,7 @@ macro(OFA_AutodetectX86)
         set(TARGET_ARCHITECTURE "bonnell")
 
       # Big cores
-      elseif(_cpu_model EQUAL 183)
+      elseif(_cpu_model EQUAL 183 OR _cpu_model EQUAL 186)
         set(TARGET_ARCHITECTURE "raptorlake")
   
       elseif(_cpu_model EQUAL 167)
@@ -297,7 +297,7 @@ macro(OFA_AutodetectX86)
   elseif(_vendor_id STREQUAL "AuthenticAMD")
     # taken from the list of AMD CPU microarchitectures
     # https://en.wikipedia.org/wiki/List_of_AMD_CPU_microarchitectures
-    # CPUID Signature Values of Of Recent AMD Microarchitectures
+    # CPUID Signature Values Of Recent AMD Microarchitectures
     # 05 05h      | K6
     # 06 06h      | K7
     # 15 0Fh      | K8 / Hammer
@@ -309,10 +309,11 @@ macro(OFA_AutodetectX86)
     # 22 16h      | Jaguar / Puma
     # 23 17h      | Zen / Zen+ / Zen 2
     # 24 18h      | Hygon Dhyana
-    # 25 19h      | Zen 3 / Zen 4
+    # 25 19h      | Zen 3 / Zen 3+ / Zen 4
+    # 26 1Ah      | Zen 5
 
     if(_cpu_family EQUAL 25) # 19h
-      set(TARGET_ARCHITECTURE "zen3")
+      set(TARGET_ARCHITECTURE "zen3") # Some newer models will be Zen 4
 
     elseif(_cpu_family EQUAL 24) # 18h
       set(TARGET_ARCHITECTURE "zen")
