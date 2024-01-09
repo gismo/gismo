@@ -190,14 +190,8 @@ public:
 	/// Initialize the tree with computing the index_level.
     void init(point const & upp)
     {
-        // Idea: find index_level so that for each i, upp[i] * (2 ^ (2 * index_level)) does not overflow in Z.
+        // Idea: find index_level so that for each i, upp[i] * (2 ^ index_level) does not overflow in Z.
         // See issue #672 for more details.
-        //
-        // Note that index_level is multiplied by 2, because the
-        // recomputation to m_indexLevel is done in fact twice: once
-        // during init and the second time when handling the boxes,
-        // cf. issue #677. When that issue is fixed, we can remove
-        // this extra 2.
 
         // backwards compatibility
         Z oldMax = 13;
@@ -212,8 +206,8 @@ public:
                 logUpps[i] = oldMax;
             else
             {
-                // floor of 2 * log_2 (numMax / upp[i]):
-                logUpps[i] = math::floor( (math::log(numMax) - math::log(upp[i])) / (2 * math::log(2)) );
+                // floor of log_2 (numMax / upp[i]):
+                logUpps[i] = math::floor( (math::log(numMax) - math::log(upp[i])) / math::log(2) );
             }
         }
 
