@@ -305,7 +305,6 @@ int gsFunction<T>::newtonRaphson_impl(
     gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
 
     do {
-        //gsInfo <<"Newton it: "<< arg.transpose()<<"\n";
         this->compute(arg,fd);
         residual = (0==mode?fd.values[0]:fd.values[1]);
 
@@ -353,15 +352,22 @@ int gsFunction<T>::newtonRaphson_impl(
         }
         */
 
-        // gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
-        //        << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
-        //        <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
+        //gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
+        //       << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
+        //       <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
 
         // update arg
         arg += damping_factor * delta;
 
         if ( withSupport )
+        {
+            if ( delta.norm()<accuracy )
+            {
+                //gsInfo <<"OK: Newton reached boundary of support "<< delta.norm() <<"\n";
+                return iter;
+            }
             arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
+        }
 
     } while (++iter <= max_loop);
 
