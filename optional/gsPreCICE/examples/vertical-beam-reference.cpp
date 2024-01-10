@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
     // Neumann side
     gsVector<> neuData(2);
-    neuData<<-1e2,0;
+    neuData<<-1e4,0;
     gsConstantFunction<> g_N(neuData,patches.geoDim());
     bcInfo.addCondition(0, boundary::east, condition_type::neumann, &g_N);
     //

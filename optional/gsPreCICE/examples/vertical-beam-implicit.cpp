@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     
     gsTimeIntegrator<real_t> timeIntegrator(M,Jacobian,Residual,dt);
     timeIntegrator.verbose();
-    timeIntegrator.setTolerance(1e-2);
+    timeIntegrator.setTolerance(1e-4);
     timeIntegrator.setMethod("Newmark");
     timeIntegrator.setDisplacement(U_checkpoint);
     timeIntegrator.setVelocity(V_checkpoint);
