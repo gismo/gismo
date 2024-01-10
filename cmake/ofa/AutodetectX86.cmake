@@ -30,7 +30,7 @@ macro(OFA_AutodetectX86)
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
     # macOS
-    execute_process(COMMAND "/usr/sbin/sysctl -n machdep.cpu.vendor machdep.cpu.family machdep.cpu.model machdep.cpu.stepping machdep.cpu.features"
+    execute_process(COMMAND /usr/sbin/sysctl -n machdep.cpu.vendor machdep.cpu.family machdep.cpu.model machdep.cpu.stepping machdep.cpu.features
       OUTPUT_VARIABLE _sysctl_output_string RESULT_VARIABLE _error)
     if(NOT _error)
       string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
@@ -49,7 +49,7 @@ macro(OFA_AutodetectX86)
       # information via the sysctl command. We therefore generate fake
       # vendor, model, and stepping information based on the
       # macOS-specific CPU codes.
-      execute_process(COMMAND "/usr/sbin/sysctl -n hw.cputype machdep.cpu.family hw.cpufamily machdep.cpu.features"
+      execute_process(COMMAND /usr/sbin/sysctl -n hw.cputype machdep.cpu.family hw.cpufamily machdep.cpu.features
         OUTPUT_VARIABLE _sysctl_output_string RESULT_VARIABLE _error)
       if(NOT _error)
         string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
