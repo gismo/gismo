@@ -464,38 +464,6 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     }
 
     #ifdef gsHLBFGS_ENABLED
-<<<<<<< HEAD
-        //#ifdef gsIpOpt_ENABLED
-        gsFunctionAdaptor<T> fmin(*this);
-        // gsIpOpt<T> solver( &fmin );
-        // gsGradientDescent<T> solver( &fmin );
-        gsHLBFGS<T> solver( &fmin );
-
-        solver.options().setInt("MaxIterations",100);
-        solver.options().setInt("Verbose",0);
-        // add lower limits and upper limits for HLBFGS
-        // optimizer->solve(problem.currentDesign());
-        //gsInfo << "Initial guess:\n" << result << "\n";
-        //gsInfo << "alternative:\n" << solver.currentDesign() << "\n";
-        solver.solve(result);
-        //solver.solve(solver.currentDesign()); // this gives a segfault because solver.currentDesign() is empty.
-        result = solver.currentDesign();
-        //gsInfo << "final result:\n" << result << "\n";
-
-    #else
-        switch (dd)
-        {
-        case 2:
-            newtonRaphson_impl<1,2>(gsVector<T>::Zero(dd), result, true,
-                                    accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
-            break;
-        default:
-            newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
-                                  accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
-        }
-    #endif
-
-=======
     gsFunctionAdaptor<T> fmin(*this);
     // gsIpOpt<T> solver( &fmin );
     //gsGradientDescent<T> solver( &fmin );
@@ -509,7 +477,6 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
     return result;
 #else
     int dd=domainDim();
->>>>>>> origin/stable
     switch (dd)
     {
     case 2:
@@ -544,7 +511,7 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
     gsVector<index_t> ind(xyz.rows()-1);
     for (index_t i = 0; i!= xyz.rows(); ++i)
         if (i<k) ind[i]=i;
-        else if (i>k) ind[i-1]=i;       
+        else if (i>k) ind[i-1]=i;
 
     gsMatrix<T> pt = xyz(ind,gsEigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));

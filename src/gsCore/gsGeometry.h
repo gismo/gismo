@@ -609,6 +609,11 @@ public:
 
     std::vector<T> MinMaxMseErrors(const gsMatrix<T> & parameters,
                                    const gsMatrix<T> & points) const;
+
+    void recoverPoints(gsMatrix<T> & xyz,
+                       gsMatrix<T> & uv, index_t k,
+                       const T accuracy) const;
+
     /// Sets the patch index for this patch
     void setId(const size_t i) { m_id = i; }
 
