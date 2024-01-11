@@ -69,6 +69,8 @@ public:
         tdm_boundary_tangent,
         pdm,
         hybrid_pdm_tdm_boundary_pdm,
+        hybrid_error_pdm_tdm_boundary_pdm,
+        hybrid_curvature_pdm_tdm_boundary_pdm,
         hybrid_pdm_tdm_boundary_tangent
     };
 
@@ -89,7 +91,9 @@ public:
 
     void parameterProjectionSepBoundary(T accuracy,const std::vector<index_t>& interpIdx);
     void parameterCorrectionSepBoundary_pdm(T accuracy, index_t maxIter, const std::vector<index_t>& sepIndex);
-    void parameterCorrectionSepBoundary_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex);
+    //---
+    void parameterCorrectionSepBoundary_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex, tdm_method method = hybrid_pdm_tdm_boundary_pdm);
+    //--
     void parameterCorrectionSepBoundary_tdmlm(T accuracy, index_t maxIter, T lm, const std::vector<index_t>& sepIndex);
 
     void parameterCorrectionFixedBoundary(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& interpIdx);
@@ -219,7 +223,7 @@ protected:
 
        TODO: Make more general and save somewhere in the linear algebra package.
      */
-    void threeOnTop(const gsMatrix<T>& block,
+    void threeOnDiag(const gsMatrix<T>& block, // threeOnDiag?
                     index_t rows,
                     index_t cols,
                     gsSparseMatrix<T>& result) const
@@ -243,7 +247,7 @@ protected:
         sparseColloc = m_result->basis().collocationMatrix(params);
 
         gsMatrix<T> tmp = sparseColloc;
-        threeOnTop(tmp, 3 * num_pts, 3 * num_basis, result);
+        threeOnDiag(tmp, 3 * num_pts, 3 * num_basis, result);
     }
 
     /// Assembles the right hand side vectors for PDM/TDM.
