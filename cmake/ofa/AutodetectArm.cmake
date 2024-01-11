@@ -32,8 +32,8 @@ macro(OFA_AutodetectArm)
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
     # macOS
-    exec_program("/usr/sbin/sysctl -n hw.cputype hw.cputype hw.cpusubtype hw.cpufamily hw.cpusubfamily"
-      OUTPUT_VARIABLE _sysctl_output_string RETURN_VALUE _error)
+    execute_process(COMMAND /usr/sbin/sysctl -n hw.cputype hw.cputype hw.cpusubtype hw.cpufamily hw.cpusubfamily
+      OUTPUT_VARIABLE _sysctl_output_string RESULT_VARIABLE _error)
     if(NOT _error)
       string(REPLACE "\n" ";" _sysctl_output ${_sysctl_output_string})
       list(GET _sysctl_output 0 _cpu_implementer)
@@ -380,6 +380,12 @@ macro(OFA_AutodetectArm)
       set(TARGET_ARCHITECTURE "apple-m2")
     elseif(_cpu_part STREQUAL "0x8765edea" OR _cpu_part STREQUAL "2271604202")             # Everest Sawtooth (A16)
       set(TARGET_ARCHITECTURE "apple-a16")
+    elseif(_cpu_part STREQUAL "0xfa33415e" OR _cpu_part STREQUAL "4197663070")             # Ibiza (M3)
+      set(TARGET_ARCHITECTURE "apple-m3")
+    elseif(_cpu_part STREQUAL "0x72015832" OR _cpu_part STREQUAL "1912690738")             # Palma (M3 Pro)
+      set(TARGET_ARCHITECTURE "apple-m3")
+    elseif(_cpu_part STREQUAL "0x5f4dea93" OR _cpu_part STREQUAL "1598941843")             # Lobos (M3 Max)
+      set(TARGET_ARCHITECTURE "apple-m3")
     endif()
 
   else()
