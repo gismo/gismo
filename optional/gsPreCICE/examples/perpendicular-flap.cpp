@@ -75,60 +75,14 @@ int main(int argc, char *argv[])
     couplingInterfaces[1] = patchSide(0,boundary::north);
     couplingInterfaces[2] = patchSide(0,boundary::west);
 
-
-    // Set the dimension of the points
-    gsMatrix<> nodes;
-    // Start iteration over elements
-    gsVector<> tmp;
-
     // TEMPORARY: get assembler options. Should come from the gsElasticityAssembler, but the problem is that that one needs to be defined using the BCs, which need the interface...
 
     gsExprAssembler<> A(1,1);
     gsOptionList quadOptions = A.options();
 
-    index_t quadSize = 0;
-
-    for (std::vector<patchSide>::const_iterator it = couplingInterfaces.begin(); it!=couplingInterfaces.end(); it++)
-    {
-        // Get a domain iterator on the coupling interface
-        typename gsBasis<real_t>::domainIter domIt = bases.basis(it->patch).makeDomainIterator(it->side());
-
-        // First obtain the size of all quadrature points
-        typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
-        for (; domIt->good(); domIt->next() )
-        {
-            QuRule = gsQuadrature::getPtr(bases.basis(it->patch), quadOptions,it->side().direction());
-            quadSize+=QuRule->numNodes();
-        }
-    }
-
-    // Initialize parametric coordinates
-    gsMatrix<> uv(patches.domainDim(),quadSize);
-    // Initialize physical coordinates
-    gsMatrix<> xy(patches.targetDim(),quadSize);
-
-    // Grab all quadrature points
-    index_t offset = 0;
-
-    for (std::vector<patchSide>::const_iterator it = couplingInterfaces.begin(); it!=couplingInterfaces.end(); it++)
-    {
-        // Get a domain iterator on the coupling interface
-        typename gsBasis<real_t>::domainIter domIt = bases.basis(it->patch).makeDomainIterator(it->side());
-        typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
-        for (domIt->reset(); domIt->good(); domIt->next())
-        {
-            QuRule = gsQuadrature::getPtr(bases.basis(it->patch), quadOptions,it->side().direction());
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           nodes, tmp);
-            uv.block(0,offset,patches.domainDim(),QuRule->numNodes()) = nodes;
-
-            gsMatrix<> tmp2;
-            patches.patch(it->patch).eval_into(nodes,tmp2);
-            xy.block(0,offset,patches.targetDim(),QuRule->numNodes()) = patches.patch(it->patch).eval(nodes);
-            offset += QuRule->numNodes();
-        }
-    }
+    // Get the quadrature points
+    gsMatrix<> uv = gsQuadrature::getAllNodes(bases.basis(0),quadOptions,couplingInterfaces);
+    gsMatrix<> xy = patches.patch(0).eval(uv);
 
     // Define precice interface
     gsPreCICE<real_t> interface("Solid", precice_config);
@@ -227,8 +181,6 @@ int main(int argc, char *argv[])
     std::function<gsMatrix<real_t> (real_t) > Forcing;
     Forcing = [&F,&g_C,&xy](real_t time)
     {
-        gsDebugVar(g_C.eval(xy));
-        gsDebugVar(F.transpose());
         return F;
     };
 

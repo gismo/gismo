@@ -1,6 +1,6 @@
 /** @file flow-over-heated-plate.cpp
 
-    @brief Heat equation participant for the PreCICE example "flow over heated plate"
+    @brief Heat equation participant for the PreCICE example "flow over heated plate" (https://precice.org/tutorials-flow-over-heated-plate.html)
 
     This file is part of the G+Smo library.
 
@@ -80,45 +80,10 @@ int main(int argc, char *argv[])
     // Set the interface for the precice coupling
     patchSide couplingInterface(0,boundary::north);
 
-    // Get a domain iterator on the coupling interface
-    typename gsBasis<real_t>::domainIter domIt = bases.basis(couplingInterface.patch).makeDomainIterator(couplingInterface.side());
-
-    // Set the dimension of the points
-    gsMatrix<> nodes;
-    // Start iteration over elements
-    gsVector<> tmp;
-
     gsOptionList quadOptions = A.options();
-
-    // First obtain the size of all quadrature points
-    index_t quadSize = 0;
-    typename gsQuadRule<real_t>::uPtr QuRule; // Quadrature rule  ---->OUT
-    for (; domIt->good(); domIt->next() )
-    {
-        QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
-        quadSize+=QuRule->numNodes();
-    }
-
-    // Initialize parametric coordinates
-    gsMatrix<> uv(patches.domainDim(),quadSize);
-    // Initialize physical coordinates
-    gsMatrix<> xy(patches.targetDim(),quadSize);
-
-    // Grab all quadrature points
-    index_t offset = 0;
-    for (domIt->reset(); domIt->good(); domIt->next())
-    {
-        QuRule = gsQuadrature::getPtr(bases.basis(couplingInterface.patch), quadOptions,couplingInterface.side().direction());
-        // Map the Quadrature rule to the element
-        QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                       nodes, tmp);
-        uv.block(0,offset,patches.domainDim(),QuRule->numNodes()) = nodes;
-
-        gsMatrix<> tmp2;
-        patches.patch(couplingInterface.patch).eval_into(nodes,tmp2);
-        xy.block(0,offset,patches.targetDim(),QuRule->numNodes()) = patches.patch(couplingInterface.patch).eval(nodes);
-        offset += QuRule->numNodes();
-    }
+    // Get the quadrature points
+    gsMatrix<> uv = gsQuadrature::getAllNodes(bases.basis(0),quadOptions,couplingInterfaces);
+    gsMatrix<> xy = patches.patch(0).eval(uv);
 
     // Define precice interface
     gsPreCICE<real_t> interface("Solid", precice_config);

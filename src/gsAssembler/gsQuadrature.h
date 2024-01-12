@@ -170,6 +170,14 @@ struct gsQuadrature
         return nnodes;
     }
 
+    // template<class T>
+    // static std::pair<gsMatrix<T>,gsVector<T>> getAllNodesAndWeights(const gsBasis<T> & basis,
+    //                          const gsOptionList & options)
+    // {
+
+    // }
+
+    // HV DOCUMENT THIS
     template<class T>
     static gsMatrix<T> getAllNodes(const gsBasis<T> & basis,
                              const gsOptionList & options)
@@ -189,7 +197,7 @@ struct gsQuadrature
         gsMatrix<T> result(basis->domainDim(),quadSize);
 
         index_t offset = 0;
-        gsMatrix<> nodes;
+        gsMatrix<T> nodes;
         for (domIt->reset(); domIt->good(); domIt->next() )
         {
             QuRule = gsQuadrature::getPtr(basis);
@@ -220,7 +228,7 @@ struct gsQuadrature
         gsMatrix<T> result(basis.domainDim(),quadSize);
 
         index_t offset = 0;
-        gsMatrix<> nodes;
+        gsMatrix<T> nodes;
         gsVector<T> weights;
         for (domIt->reset(); domIt->good(); domIt->next() )
         {
