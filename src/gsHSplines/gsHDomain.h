@@ -15,16 +15,22 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsHSplines/gsHDomainLeafIter.h>
-#include <gsHSplines/gsAAPolyline.h>
-#include <gsHSplines/gsKdNode.h>
 #include <gsCore/gsBoundary.h>
 
 namespace gismo 
 {
 
-template<typename T, unsigned d> class gsHDomainIterator;
+template<typename T, unsigned d>
+class gsHDomainIterator;
 
-template<class T> class gsSegment;
+template<class T>
+class gsSegment;
+
+template <short_t d, class Z>
+class gsKdNode;
+
+template <class T>
+class gsVSegment;
 
 /**
 \brief

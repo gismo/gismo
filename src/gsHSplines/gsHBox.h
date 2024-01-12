@@ -14,14 +14,17 @@
 #pragma once
 
 #include <gsIO/gsXml.h>
-#include <gsCore/gsLinearAlgebra.h>
-#include <gsHSplines/gsAABB.h>
+#include <gsCore/gsLinearAlgebra.h> // due to EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 #include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsHSplines/gsHBoxUtils.h>
 
 namespace gismo
 {
+
+// forward declaration to move includes into the .hpp-file
+template<short_t d, class Z>
+struct gsAABB;
 
 /**
  * @brief      This class provides a Hierarchical Box (gsHBox)
