@@ -360,6 +360,7 @@ macro(OFA_HandleX86Options)
     elseif(TARGET_ARCHITECTURE STREQUAL "generic")
       list(APPEND _march_flag_list "generic")
       list(APPEND _available_extension_list "sse")
+      list(APPEND _available_extension_list "sse2")
     elseif(TARGET_ARCHITECTURE STREQUAL "none")
       # add this clause to remove it from the else clause
 
