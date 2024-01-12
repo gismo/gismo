@@ -299,15 +299,13 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     else
     {
         gsMatrix<T> points_int_errors(num_int, 1);
+        gsMatrix<T> rho_c(num_int, 1);
+        gsMatrix<T> dist_plus_rho(num_int, 1);
         T max_err_int = m_pointErrors[0];
-        for (index_t d = 0; d<num_int; d++)
-        {
-            points_int_errors(d,0) = m_pointErrors[d];
-            if (max_err_int < m_pointErrors[d])
-                max_err_int = m_pointErrors[d];
-        }
+        gsMatrix<> pc, result;
 
-        writeToCSVfile(std::to_string(now)+"_int_errors.csv", points_int_errors);
+
+        // writeToCSVfile(std::to_string(now)+"_int_errors.csv", points_int_errors);
 
         const index_t num_basis = m_basis->size();
 
@@ -331,6 +329,34 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
         gsExprEvaluator<T> ev;
         auto G = ev.getMap(*m_result);
+
+        if (method == hybrid_error_pdm_tdm_boundary_pdm || method == hybrid_curvature_pdm_tdm_boundary_pdm)
+        {
+          for (index_t d = 0; d<num_int; d++)
+          {
+              points_int_errors(d,0) = m_pointErrors[d];
+              if (max_err_int < m_pointErrors[d])
+                  max_err_int = m_pointErrors[d];
+          }
+        }
+
+        if(method == hybrid_curvature_pdm_tdm_boundary_pdm)
+        {
+          // rho = 1/max(c1, c2)
+          for (index_t d = 0; d<num_int; d++)
+          {
+            result = ev.eval( shapeop(G), params_int.col(d) );
+
+            pc = result.selfadjointView<gsEigen::Lower>().eigenvalues();
+            pc = pc.cwiseAbs();
+
+            T den = pc(0,0);
+            if ( pc(0,1) > pc(0,0))
+              den = pc(0,1);
+            rho_c(d,0) = 1./den;
+          }
+        }
+
         gsMatrix<T> normals(3, m_param_values.cols());
         normals.setZero();
 
@@ -478,11 +504,18 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
                 gsSparseMatrix<T> mki(num_int,num_int);
                 mki.setIdentity();
 
-                MK = (0.5/max_err_int) * points_int_errors.asDiagonal();
+                if ( method == hybrid_error_pdm_tdm_boundary_pdm )
+                {
+                  MK = (0.5/max_err_int) * points_int_errors.asDiagonal();
+                }
+                else
+                {
+                  dist_plus_rho = (points_int_errors + rho_c);
+                  MK = (points_int_errors.cwiseProduct( dist_plus_rho.cwiseInverse() )).asDiagonal();
+                }
 
                 threeOnDiag(MK, 3 * num_int, 3 * num_int, aMK);
                 bMK = mki - MK.sparseView();
-
 
                 NNT = aMK.transpose() + (N_int * bMK ) * N_int.transpose();
 
