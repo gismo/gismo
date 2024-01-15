@@ -54,6 +54,9 @@ int main(int argc, char *argv[])
     ev.setIntegrationElements(mb);
     auto G = ev.getMap(mp);
     auto f = ev.getVariable(fun,G);
+    typedef typename gsExprHelper<real_t>::element     element;     ///< Current element
+    element el= ev.getElement();
+
     gsDebugVar(ev.integral(f*meas(G)));
     ev.integralElWise(f*meas(G));
     gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()));
@@ -73,9 +76,70 @@ int main(int argc, char *argv[])
     gsWriteParaview(mpnew,"geomnew",5000);
 
     auto fsmooth = ev.getVariable(mpnew,G);
-    ev.integralElWise(fsmooth*meas(G));
+    ev.integralElWise(fsmooth*meas(G) / el.area());
     gsDebugVar((C.transpose() * F));
+    gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()));
+
     gsDebugVar((C.transpose() * F).sum());
+
+    ev.writeParaview(fsmooth/el.area(),G,"pressure");
+
+
+
+    ///////////////////////////////////////////////////////////
+
+    gsOptionList opt;
+    opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
+    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
+    opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
+    opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
+
+
+    gsSparseMatrix<> result( tbasis.numElements(), tbasis.size() );
+    gsBasis<>::domainIter domIt = tbasis.makeDomainIterator();
+
+    typename gsQuadRule<>::uPtr QuRule; // Quadrature rule
+    QuRule = gsQuadrature::getPtr(tbasis, opt);
+    gsVector<> quWeights; // quadrature weights
+    gsMatrix<> quPoints; // quadrature weights
+
+    gsMatrix<index_t> actives;
+    gsMatrix<> vals;
+    gsVector<> integrals;
+
+#pragma omp parallel
+{
+#   ifdef _OPENMP
+    const int tid = omp_get_thread_num();
+    const int nt  = omp_get_num_threads();
+#   endif
+
+    // Start iteration over elements of patchInd
+#   ifdef _OPENMP
+    for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+#   else
+    for (; domIt->good(); domIt->next() )
+#   endif
+    {
+
+        // Map the Quadrature rule to the element
+        QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+                       quPoints, quWeights);
+
+        tbasis.eval_into(quPoints,vals);
+        tbasis.active_into(domIt->centerPoint(),actives);
+
+        integrals = vals * quWeights;
+
+        for (index_t k=0; k!=actives.rows(); k++)
+#           pragma omp critical (int_colloc)
+            {
+                result(domIt->id(),actives(0,k)) = integrals.at(k);
+            }
+    }
+}
+
+    /// Next steps: Solve Cx = F. If square, use pseudo inverse
 
 
     return  EXIT_SUCCESS;
