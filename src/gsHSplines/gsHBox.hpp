@@ -16,6 +16,7 @@
 #include <gsUtils/gsCombinatorics.h>
 #include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsHSplines/gsAABB.h>
 
 #include <gsIO/gsXml.h>
 
@@ -77,7 +78,7 @@ m_marked(false)
 }
 
 template <short_t d, class T>
-gsHBox<d, T>::gsHBox(const gsAabb<d,index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid)
+gsHBox<d, T>::gsHBox(const gsAABB<d, index_t> & box, const gsHTensorBasis<d,T> * basis, const index_t pid)
 :
 m_indices(box),
 m_pid(pid),
@@ -108,7 +109,7 @@ m_marked(false)
         upp[k] = indices[k+d+1];
     }
 
-    m_indices = gsAabb<d,index_t>(low,upp,indices[0]);
+    m_indices = gsAABB<d, index_t>(low,upp,indices[0]);
     //  = gsAsVector<index_t,d>()
     // upp;
 
@@ -342,7 +343,7 @@ template <short_t d, class T>
 gsHBox<d,T> gsHBox<d, T>::getParent() const
 {
     GISMO_ENSURE(this->level()>0,"Box is at ground level and has no parent");
-    gsAabb<d,index_t> box = _elevateBox(m_indices);
+    gsAABB<d, index_t> box = _elevateBox(m_indices);
     return gsHBox<d,T>(box,m_basis,m_pid);
 }
 
@@ -372,7 +373,7 @@ gsHBox<d,T> gsHBox<d, T>::getAncestor(index_t k) const
 template <short_t d, class T>
 typename gsHBox<d,T>::Container gsHBox<d, T>::getChildren() const
 {
-    gsAabb<d,index_t> box = _lowerBox(m_indices);
+    gsAABB<d, index_t> box = _lowerBox(m_indices);
     gsHBox<d,T> childRegion(box,m_basis,m_pid);
     return childRegion.toUnitBoxes();
 }
@@ -452,7 +453,7 @@ typename gsHBox<d, T>::Container gsHBox<d, T>::getSupportExtension()
     gsMatrix<T> cells(d,2*acts.rows());
     gsMatrix<T> support;
     gsHBox<d,T> supportBox;
-    gsAabb<d,index_t> aabb;
+    gsAABB<d, index_t> aabb;
     Container container;
     Container tmpContainer;
     for (index_t act = 0; act!=acts.rows(); act++)
@@ -658,7 +659,7 @@ void gsHBox<d, T>::_computeIndices()
 }
 
 template <short_t d, class T>
-gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, index_t level)
+gsAABB<d, index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, index_t level)
 {
     typename gsHBox<d,T>::point low,upp;
     for(index_t j = 0; j < d;j++)
@@ -681,11 +682,11 @@ gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, inde
         low.at(j)  = k1;
         upp.at(j) = k2;
     }
-    return gsAabb<d,index_t>(low,upp,level);
+    return gsAABB<d, index_t>(low,upp,level);
 }
 
 template <short_t d, class T>
-gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords)
+gsAABB<d, index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords)
 {
     gsMatrix<T> center = (coords.col(0) + coords.col(1))/2;
     index_t level = m_basis->getLevelAtPoint(center);
@@ -693,14 +694,14 @@ gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords)
 }
 
 template <short_t d, class T>
-gsAabb<d,index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, const gsMatrix<T> & center)
+gsAABB<d, index_t> gsHBox<d, T>::_computeIndices(const gsMatrix<T> & coords, const gsMatrix<T> & center)
 {
     index_t level = m_basis->getLevelAtPoint(center);
     return _computeIndices(coords,level);
 }
 
 template <short_t d, class T>
-gsAabb<d,index_t> gsHBox<d, T>::_elevateBox(const gsAabb<d,index_t> & box) const
+gsAABB<d, index_t> gsHBox<d, T>::_elevateBox(const gsAABB<d, index_t> & box) const
 {
     typename gsHBox<d,T>::point low,upp;
     for (index_t i = 0; i!=d; i++)
@@ -708,11 +709,11 @@ gsAabb<d,index_t> gsHBox<d, T>::_elevateBox(const gsAabb<d,index_t> & box) const
         low.at(i) = box.first .at(i) / 2;
         upp.at(i) = box.second.at(i) / 2 + (index_t)(box.second.at(i) % 2 != 0);
     }
-    return gsAabb<d,index_t>(low,upp,box.level-1);
+    return gsAABB<d, index_t>(low,upp,box.level-1);
 }
 
 template <short_t d, class T>
-gsAabb<d,index_t> gsHBox<d, T>::_lowerBox(const gsAabb<d,index_t> & box) const
+gsAABB<d, index_t> gsHBox<d, T>::_lowerBox(const gsAABB<d, index_t> & box) const
 {
     typename gsHBox<d,T>::point low,upp;
     for (index_t i = 0; i!=d; i++)
@@ -720,7 +721,7 @@ gsAabb<d,index_t> gsHBox<d, T>::_lowerBox(const gsAabb<d,index_t> & box) const
         low.at(i) = box.first .at(i) * 2;
         upp.at(i) = box.second.at(i) * 2;
     }
-    return gsAabb<d,index_t>(low,upp,box.level+1);
+    return gsAABB<d, index_t>(low,upp,box.level+1);
 }
 
 template <short_t d, class T>

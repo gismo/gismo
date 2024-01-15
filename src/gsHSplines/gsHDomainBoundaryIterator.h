@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsHSplines/gsHDomain.h>
-
+#include <gsHSplines/gsKdNode.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsCore/gsDomainIterator.h>
@@ -41,7 +41,7 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef kdnode<d, index_t> node;
+    typedef gsKdNode<d, index_t> node;
 
     typedef typename node::point point; 
 
