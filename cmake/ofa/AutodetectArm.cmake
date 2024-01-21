@@ -46,11 +46,27 @@ macro(OFA_AutodetectArm)
       message(WARNING "Auto-detection of optimization flags failed and will use the generic CPU settings.")
     endif()
 
-    # TODO: Windows, FreeBSD, ...
-    
   else()
+
+    # Try to retrieve CPUID directly
+    try_run(_exit _ok
+      ${CMAKE_CURRENT_BINARY_DIR}
+      ${CMAKE_SOURCE_DIR}/cmake/ofa/cpuinfo_arm.c
+      RUN_OUTPUT_VARIABLE _cpuinfo)
+
+    message(${_cpuinfo})
     
-    message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+    if(_ok AND ${_exit} EQUAL 0)    
+      string(REGEX REPLACE ".*implementer[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_implementer "${_cpuinfo}")
+      string(REGEX REPLACE ".*architecture[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_architecture "${_cpuinfo}")
+      string(REGEX REPLACE ".*variant[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_variant "${_cpuinfo}")
+      string(REGEX REPLACE ".*part[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_part "${_cpuinfo}")
+      string(REGEX REPLACE ".*revision[ \t]*:[ \t]+([^\n]+).*" "\\1" _cpu_revision "${_cpuinfo}")
+
+    else()
+      
+      message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+    endif()
   endif()
 
   # Determine CPU from CPUID
