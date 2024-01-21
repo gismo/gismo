@@ -54,8 +54,6 @@ macro(OFA_AutodetectArm)
       ${CMAKE_SOURCE_DIR}/cmake/ofa/cpuinfo_arm.c
       RUN_OUTPUT_VARIABLE _cpuinfo)
 
-    message(${_cpuinfo})
-    
     if(_ok AND ${_exit} EQUAL 0)    
       string(REGEX REPLACE ".*implementer[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_implementer "${_cpuinfo}")
       string(REGEX REPLACE ".*architecture[ \t]*:[ \t]+([a-zA-Z0-9_-]+).*" "\\1" _cpu_architecture "${_cpuinfo}")
