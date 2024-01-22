@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
     for (index_t k=0; k!=numRefine; k++)
         mp.uniformRefine();
 
+
     gsKnotVector<>::knotContainer kc0 = dynamic_cast<gsBSplineBasis<real_t> *>(&mp.basis(0).component(0))->knots().unique();
     gsKnotVector<>::knotContainer kc1 = dynamic_cast<gsBSplineBasis<real_t> *>(&mp.basis(0).component(1))->knots().unique();
     gsKnotVector<> kv0(kc0,0);
@@ -62,27 +63,29 @@ int main(int argc, char *argv[])
     gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()));
     gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()).sum());
 
+    gsAsConstVector<real_t> F(ev.elementwise());
+
     gsMultiPatch<> mp0;
     mp0.addPatch(tbasis.makeGeometry(gsAsConstVector<real_t>(ev.elementwise())));
     gsWriteParaview(mp0,"geom",5000);
 
-    gsMatrix<> points = mp.basis(0).anchors();
-    gsSparseMatrix<> C = mp.basis(0).collocationMatrix(points);
-    gsMatrix<> F = mp0.piece(0).eval(points).transpose();
-    gsMultiPatch<> mpnew;
+    // gsMatrix<> points = mp.basis(0).anchors();
+    // gsSparseMatrix<> C = mp.basis(0).collocationMatrix(points);
+    // gsMatrix<> F = mp0.piece(0).eval(points).transpose();
+    // gsMultiPatch<> mpnew;
 
-    gsDebugVar(mp.basis(0));
-    mpnew.addPatch(mp.basis(0).makeGeometry(C.transpose()*F));
-    gsWriteParaview(mpnew,"geomnew",5000);
+    // gsDebugVar(mp.basis(0));
+    // mpnew.addPatch(mp.basis(0).makeGeometry(C.transpose()*F));
+    // gsWriteParaview(mpnew,"geomnew",5000);
 
-    auto fsmooth = ev.getVariable(mpnew,G);
-    ev.integralElWise(fsmooth*meas(G) / el.area());
-    gsDebugVar((C.transpose() * F));
-    gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()));
+    // auto fsmooth = ev.getVariable(mpnew,G);
+    // ev.integralElWise(fsmooth*meas(G) / el.area());
+    // gsDebugVar((C.transpose() * F));
+    // gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()));
 
-    gsDebugVar((C.transpose() * F).sum());
+    // gsDebugVar((C.transpose() * F).sum());
 
-    ev.writeParaview(fsmooth/el.area(),G,"pressure");
+    // ev.writeParaview(fsmooth/el.area(),G,"pressure");
 
 
 
@@ -95,17 +98,26 @@ int main(int argc, char *argv[])
     opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
 
 
-    gsSparseMatrix<> result( tbasis.numElements(), tbasis.size() );
+    gsSparseMatrix<> result( mp.basis(0).numElements(), mp.basis(0).size() );
     gsBasis<>::domainIter domIt = tbasis.makeDomainIterator();
 
     typename gsQuadRule<>::uPtr QuRule; // Quadrature rule
-    QuRule = gsQuadrature::getPtr(tbasis, opt);
+    QuRule = gsQuadrature::getPtr(mp.basis(0), opt);
     gsVector<> quWeights; // quadrature weights
     gsMatrix<> quPoints; // quadrature weights
 
     gsMatrix<index_t> actives;
     gsMatrix<> vals;
     gsVector<> integrals;
+
+    gsMatrix<> centerPoints(2,mp.basis(0).numElements());
+
+
+    gsMatrix<> evals(mp.basis(0).numElements(),1);
+
+    gsDebugVar(mp.basis(0).numElements());
+
+    gsDebugVar(mp.basis(0).size());
 
 #pragma omp parallel
 {
@@ -126,21 +138,61 @@ int main(int argc, char *argv[])
         QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
                        quPoints, quWeights);
 
-        tbasis.eval_into(quPoints,vals);
-        tbasis.active_into(domIt->centerPoint(),actives);
+        mp.basis(0).eval_into(quPoints,vals);
+        mp.basis(0).active_into(domIt->centerPoint(),actives);
+
+        centerPoints.col(domIt->id()) = domIt->centerPoint();
 
         integrals = vals * quWeights;
 
         for (index_t k=0; k!=actives.rows(); k++)
 #           pragma omp critical (int_colloc)
             {
-                result(domIt->id(),actives(0,k)) = integrals.at(k);
+                result(domIt->id(),actives(k,0)) = integrals.at(k);
             }
     }
 }
 
-    /// Next steps: Solve Cx = F. If square, use pseudo inverse
+    gsMatrix<> RHS = mp0.piece(0).eval(centerPoints).transpose();
+    gsDebugVar(RHS.transpose());
 
+
+    /// Next steps: Solve Cx = F. If not square, use pseudo inverse
+    // typename gsMatrix<T>::BCSVD bcSvd = derivs.jacobiSvd(gsEigen::ComputeFullV);
+
+    // gsSparseSolver<>::CGDiagonal solver;
+    // gsSparseMatrix<> A = result.transpose()*result;
+
+    // gsDebugVar(A.rows());
+    // gsDebugVar(A.cols());
+
+    // gsMatrix<> B = result.transpose()*RHS;
+    // solver.compute(A);
+    // gsMatrix<> X = solver.solve(B);
+
+    // gsDebugVar(X);
+
+
+    gsMultiPatch<> mpnew;
+
+    gsMatrix<> dense = result.toDense();
+    gsMatrix<>::JacobiSVD jacobiSvd(dense,gsEigen::ComputeFullU | gsEigen::ComputeFullV);
+    gsMatrix<> X = jacobiSvd.solve(RHS);
+
+
+    mpnew.addPatch(mp.basis(0).makeGeometry(X));
+    gsWriteParaview(mpnew,"geomnew",5000);
+
+    auto FF = ev.getVariable(mpnew,G);
+
+    ev.integralElWise(FF*meas(G));
+    gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()));
+    gsDebugVar(gsAsConstVector<real_t>(ev.elementwise()).sum());
+
+
+
+
+    // A.template bdcSvd<Eigen::ComputeThinU | Eigen::ComputeThinV>().solve(b)
 
     return  EXIT_SUCCESS;
 }
