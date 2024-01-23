@@ -463,7 +463,8 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         result = _argMinOnGrid(20);
     }
 
-    #ifdef gsHLBFGS_ENABLED
+#ifdef gsHLBFGS_ENABLED
+// #ifdef false
     gsFunctionAdaptor<T> fmin(*this);
     // gsIpOpt<T> solver( &fmin );
     //gsGradientDescent<T> solver( &fmin );
