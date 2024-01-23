@@ -510,9 +510,10 @@ int main(int argc, char *argv[])
     index_t mupdate = 20; // m, HLBFGS hessian updates
     index_t numKnots = 2; // n, fitting initial number of knots in each direction
     bool jopt = false; // o, run joint optimization
-    real_t pdm_system = 0.;
+    real_t pdm_system = 0.01;
     real_t tdm_system = 1.;
     //p, q
+    index_t method = 4;
 	  bool constrainCorners = false; //
     real_t lambda = 1e-7; // s, fitting smoothing weight
 
@@ -541,7 +542,7 @@ int main(int argc, char *argv[])
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
     cmd.addSwitch("o", "jopt", "run the Joing OPTimization algorithm.", jopt); // enable for comparison
     cmd.addReal("p", "pdm", "use pdm method", pdm_system);
-    //cmd.addReal("q", "tdm", "use pdm method", tdm_system);
+    cmd.addInt("q", "tdm_method", "specify tdm method", method);
     cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
     // t, u, v
@@ -551,6 +552,58 @@ int main(int argc, char *argv[])
     //z
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+
+    std::string method_name = "";
+
+    gsFitting<real_t>::tdm_method method_enum;
+    if(method == 0)
+        {
+          method_enum = gsFitting<real_t>::tdm_boundary_tdm;
+          method_name = "tdm";
+        }
+    else if(method == 1)
+      {
+        method_enum = gsFitting<real_t>::tdm_boundary_pdm;
+        method_name = "tdm_brd_pdm";
+      }
+    else if(method == 2)
+    {
+        method_enum = gsFitting<real_t>::tdm_boundary_tangent;
+        method_name = "tdm_bdr_tan";
+      }
+    else if(method == 3)
+    {
+        method_enum = gsFitting<real_t>::pdm;
+        method_name = "pdm";
+      }
+    else if(method == 4)
+    {
+        method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_pdm;
+        method_name = "constant = " + std::to_string(pdm_system);
+      }
+    else if(method == 5)
+    {
+        method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_tangent;
+        method_name = "hdm_constant_bdr_tan";
+      }
+    else if(method == 6)
+    {
+        method_enum = gsFitting<real_t>::hybrid_error_pdm_tdm_boundary_pdm;
+        method_name = "error";
+      }
+    else if(method == 7)
+    {
+        method_enum = gsFitting<real_t>::hybrid_curvature_pdm_tdm_boundary_pdm;
+        method_name = "curvature";
+    }
+    else
+    {
+        gsWarn << "Unknown method, exiting." << std::endl;
+        return -1;
+    }
+
+
 
 
     if(kx < 0)
@@ -640,7 +693,7 @@ int main(int argc, char *argv[])
     file_apdm << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, time\n";
 
     file_atdm.open(std::to_string(now)+"results_adaptive_ATDM.csv");
-    file_atdm << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, pdm, tdm, time\n";
+    file_atdm << "m, deg, pen, dofs, refIt, pc, min, max, mse, rmse, perc, refTol, weights, time\n";
 
     ////////////////////////////////////////////////////////////////////////////////
     //
@@ -783,6 +836,13 @@ int main(int argc, char *argv[])
         gsMatrix<> uv_fitting = opt_f.returnParamValues() ;
         gsWriteParaview(mesh, prefix + "cpdm_mesh");
         gsWriteParaview(*opt_f.result(), prefix + "cpdm_geo_moved", 100000, true);
+
+        gsMatrix<> ptwise = opt_f.pointWiseErrors(opt_f.returnParamValues(), X);
+        gsMatrix<> point_colors(4, X.cols());
+        point_colors << X.row(0), X.row(1), X.row(2), ptwise.row(0);
+
+        gsWriteParaviewPoints(point_colors, prefix + "cpdm_colors");
+
 #ifdef gsParasolid_ENABLED
         result = static_cast<gsTHBSpline<2>*>(opt_f.result());
         extensions::gsWriteParasolid<real_t>(*result, prefix + "cpdm_geo_moved");
@@ -848,6 +908,7 @@ int main(int argc, char *argv[])
         gsInfo << "Running the A-PDM algorithm for comparion.\n";
         gsTHBSplineBasis<2>  refbasis ( T_tbasis ) ;
         gsHFitting<2, real_t> ref(initParam, X, refbasis, 0, ext, lambda); // gsHFitting object for A-PDM
+        ref.compute(lambda);
         const std::vector<real_t> & adapt_errors = ref.pointWiseErrors();
         std::vector<real_t> adapt_errors2;
 
@@ -901,6 +962,11 @@ int main(int argc, char *argv[])
                   << percentagePoint << "," << tolerance << ","
                   << finaltime_itLoop << "\n";
 
+          gsMatrix<> ptwise = ref.pointWiseErrors(ref.returnParamValues(), X);
+          gsMatrix<> point_colors(4, X.cols());
+          point_colors << X.row(0), X.row(1), X.row(2), ptwise.row(0);
+          gsWriteParaviewPoints(point_colors, prefix + "APDM_colors");
+
           if ( ref.maxPointError() < tolerance )
           {
               gsInfo<<"Error tolerance achieved after "<< refIt <<" iterations.\n";
@@ -921,14 +987,15 @@ int main(int argc, char *argv[])
           finaltime_adaptiveLoop = 0;
           gsInfo << "Running the A-TDM algorithm for comparion.\n";
           gsTHBSplineBasis<2>  refbasis ( T_tbasis ) ;
-          gsHFitting<2, real_t> ref(initParam, X, refbasis, 0, ext, lambda); // gsHFitting object for A-TDM
+          gsHFitting<2, real_t> ref(initParam, X, refbasis, 0, ext, lambda);
+          ref.compute(lambda);
           // ref.initializeGeometry(initGeom->coefs(), ref.returnParamValues());
           // ref.parameterProjectionSepBoundary(1e-8, corners);
           const std::vector<real_t> & adapt_errors = ref.pointWiseErrors();
           std::vector<real_t> adapt_errors2;
 
           prefix = "adaptive";
-          ref.initializeGeometry(initGeom->coefs(), ref.returnParamValues());
+          // ref.initializeGeometry(initGeom->coefs(), ref.returnParamValues());
           // ref.compute_tdm(lambda, 0., 1., corners);
           for(int refIt = 0; refIt <= maxRef; refIt++) // adaptive loop on the spline space
             {
@@ -939,7 +1006,7 @@ int main(int argc, char *argv[])
               real_t finaltime_itLoop = 0.;
 
               gsTime.restart();
-              ref.nextIteration_tdm(tolerance, threshold, stepPC, pdm_system, tdm_system, corners);
+              ref.nextIteration_tdm(tolerance, threshold, stepPC, pdm_system, tdm_system, corners, method_enum);
               //(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx);
 
               finaltime_itLoop += gsTime.stop();
@@ -979,8 +1046,13 @@ int main(int argc, char *argv[])
           					  << sol_min_max_mse[2] << std::scientific << ","
                       << math::sqrt(sol_min_max_mse[2]) << std::scientific << ","
                       << percentagePoint << "," << tolerance << ","
-                      << pdm_system << "," << tdm_system << ","
+                      << method_name << ","
                       << finaltime_itLoop << "\n";
+
+              gsMatrix<> ptwise = ref.pointWiseErrors(ref.returnParamValues(), X);
+              gsMatrix<> point_colors(4, X.cols());
+              point_colors << X.row(0), X.row(1), X.row(2), ptwise.row(0);
+              gsWriteParaviewPoints(point_colors, prefix + "ATDM_colors");
 
               if ( ref.maxPointError() < tolerance )
               {

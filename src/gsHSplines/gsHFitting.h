@@ -33,6 +33,7 @@ class gsHFitting : public gsFitting<T>
 public:
 
     typedef typename gsBSplineTraits<d,T>::Basis tensorBasis;
+    typedef typename gsFitting<T>::tdm_method tdm_method;
 
 public:
     /// Default constructor
@@ -112,7 +113,7 @@ public:
      * @param mu is the amount of PDM, to be set between 0.1 and 1;
      * @param sigma is the amount of TDM, to be set to 1;
      */
-    bool nextIteration_tdm(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx);
+    bool nextIteration_tdm(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx, tdm_method method);
 
     /**
      * @brief Like \a nextIteration without \a fixedSides but keeping the values
@@ -130,7 +131,8 @@ public:
                           const std::vector<boxSide>& fixedSides,
                           index_t maxPcIter,
                           T mu, T sigma,
-                          const std::vector<index_t>& interpIdx);
+                          const std::vector<index_t>& interpIdx,
+                          tdm_method method);
 
     bool nextIteration_pdm(T tolerance, T err_threshold, index_t maxPcIter, const std::vector<index_t> & interpIdx);
     bool nextIteration_pdm(T tolerance, T err_threshold,
@@ -234,10 +236,11 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
 template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
                                          index_t maxPcIter, T mu, T sigma,
-                                         const std::vector<index_t>& interpIdx)
+                                         const std::vector<index_t>& interpIdx,
+                                         tdm_method method)
 {
     std::vector<boxSide> dummy;
-    return nextIteration_tdm(tolerance, err_threshold, dummy, maxPcIter, mu, sigma, interpIdx);
+    return nextIteration_tdm(tolerance, err_threshold, dummy, maxPcIter, mu, sigma, interpIdx, method);
 }
 
 
@@ -275,7 +278,7 @@ bool gsHFitting<d, T>::nextIteration(T tolerance, T err_threshold,
         {
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
             T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
-
+            gsInfo << threshold << "\n";
             std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
             if(boxes.size()==0)
                 return false;
@@ -377,68 +380,55 @@ template<short_t d, class T>
 bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
                                         const std::vector<boxSide>& fixedSides,
                                         index_t maxPcIter, T mu, T sigma,
-                                        const std::vector<index_t>& interpIdx)
+                                        const std::vector<index_t>& interpIdx,
+                                        tdm_method method)
 {
-    // INVARIANT
-    // look at iterativeRefine
+
     time_t now = time(0);
-    gsWriteParaview(*m_result, std::to_string(now)+ "_geo_in_nextIt_tdm");
-    gsMatrix<T> cp = m_result->coefs().transpose();
-    gsWriteParaviewPoints(cp, std::to_string(now)+ "_cnet_in_nextIt_tdm");
-    gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now)+ "_params_in_nextIt_tdm");
+
     if ( m_pointErrors.size() != 0 )
     {
-      gsDebugVar(m_pointErrors.size());
-        if ( m_max_error > tolerance )
+    gsDebugVar(m_pointErrors.size());
+    if ( m_max_error > tolerance )
+    {
+      // if err_treshold is -1 we refine the m_ref percent of the whole domain
+      T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+      // MARK
+      std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
+      if(boxes.size()==0)
+          return false;
+
+      // REFINE
+      gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+      basis->refineElements(boxes);
+      m_result->refineElements(boxes);
+
+      // If there are any fixed sides, prescribe the coefs in the finer basis.
+      if(m_result != NULL && fixedSides.size() > 0)
         {
-            // if err_treshold is -1 we refine the m_ref percent of the whole domain
-            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
-
-            std::vector<index_t> boxes = getBoxes(m_pointErrors, threshold);
-            if(boxes.size()==0)
-                return false;
-
-            //gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
-            //basis->refineElements(boxes);
-            //basis->refineElements_withCoefs(this->m_result->coefs(), boxes);
-
-            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
-            basis->refineElements(boxes);
-            m_result->refineElements(boxes);
-            gsWriteParaview(*m_result, std::to_string(now) + "_geo_ref_nextIt_tdm");
-            gsMatrix<T> cc = m_result->coefs().transpose();
-            gsWriteParaviewPoints(cc, std::to_string(now)+ "_cnet_ref_nextIt_tdm");
-            gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now)+ "_params_ref_nextIt_tdm");
-
-
-
-            // If there are any fixed sides, prescribe the coefs in the finer basis.
-            if(m_result != NULL && fixedSides.size() > 0)
-            {
-                gsDebugVar(fixedSides.size());
-                m_result->refineElements(boxes);
-                gsFitting<T>::setConstraints(fixedSides);
-            }
+          gsDebugVar(fixedSides.size());
+          m_result->refineElements(boxes);
+          gsFitting<T>::setConstraints(fixedSides);
+        }
             gsDebug << "inserted " << boxes.size() / (2 * d + 1) << " boxes.\n";
-        }
-        else
-        {
-            gsInfo << "Tolerance reached.\n";
-            return false;
-        }
+    }
+    else
+    {
+      gsInfo << "Tolerance reached.\n";
+      return false;
+    }
     }
 
-    // We run one fitting step and compute the errors
-    //this->compute(m_lambda);
+    // SOLVE
+    this->compute_tdm(m_lambda, mu, sigma, interpIdx, method);
 
-    //gsInfo << "compute_tdm...\n";
-    //this->compute_tdm(m_lambda, mu, sigma, interpIdx);
-    // m_results->coefs() = coefs_tilde;
 
-    //parameter correction
+    // PARAMETER CORRECTION
     gsInfo << "apply "<< maxPcIter << " steps of parameter correction for tdm...\n";
-    // this->parameterCorrection_tdm(1e-7, maxPcIter, mu, sigma, interpIdx);
-    this->parameterCorrectionSepBoundary_tdm(1e-6, maxPcIter, mu, sigma, interpIdx);
+    this->parameterCorrectionSepBoundary_tdm(1e-6, maxPcIter, mu, sigma, interpIdx, method); // refit
+
+    // ESTIMATE
     this->computeErrors();
 
     return true;

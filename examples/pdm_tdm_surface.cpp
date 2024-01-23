@@ -249,10 +249,10 @@ int main(int argc, char *argv[])
     // e
     std::string fn = "fitting/simple_grid.xml"; // f
     // g, h, i, j, k, l,
-    real_t sigma = 1; // m
+    // real_t sigma = 1; // m
     index_t numKnots = 5; // n
     index_t method = 0; // o
-    real_t mu = 0; // p
+    real_t mu = 0.1; // p
     index_t deg_x = -1; // q
     index_t deg_y = -1; // r
     real_t lambda = 0; // s
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
     // e
     cmd.addString("f", "filename", "name of the .xml file containing the data", fn);
     // h, i, j, k, l,
-    cmd.addReal("m", "tdm", "add TDM to the system", sigma);
+    // cmd.addReal("m", "tdm", "add TDM to the system", sigma);
     cmd.addInt("n", "interiors", "number of interior knots in each direction.", numKnots);
     cmd.addInt("o", "method", "which TDM version to use", method);
     cmd.addReal("p", "pdm", "add PDM to the system", mu);
@@ -293,6 +293,8 @@ int main(int argc, char *argv[])
     if(ky < 0)
         ky = numKnots;
 
+
+    real_t sigma = 1.-mu;
 
     time_t now = time(0);
 
@@ -350,14 +352,14 @@ int main(int argc, char *argv[])
     // gsTensorBSplineBasis<2> tbasis( basis );
     //tbasis.uniformRefine( (1<<numURef)-1 );
 
-    gsFitting<real_t> initObj( uv, X, tbasis);
-    initObj.compute(lambda);
-    gsGeometry<> * initGeom = initObj.result();
+    // gsFitting<real_t> initObj( uv, X, tbasis);
+    // initObj.compute(lambda);
+    // gsGeometry<> * initGeom = initObj.result();
     //gsGeometry<>::uPtr initGeom = memory::make_unique(initObj.result());
     //gsGeometry<>::uPtr initGeom = tbasis.interpolateAtAnchors(fit_plane.result()->eval(tbasis.anchors()));
 
-    gsMatrix<> params(uv.rows(), uv.cols());
-    params = uv;
+    // gsMatrix<> params(uv.rows(), uv.cols());
+    // params = uv;
     // gsMatrix<> params(uv.rows(), uv.cols());
     // for (index_t i = 0; i<X.cols(); ++i)
     // {
@@ -367,53 +369,80 @@ int main(int argc, char *argv[])
     //     params.col(i) = newParam;
     // }
 
-    gsInfo << "Initial pdm fitting object.\n";
-    gsFitting<real_t> pdm_obj( params, X, tbasis);
-    pdm_obj.updateGeometry(initGeom->coefs(), params);
+    gsInfo << "Initial P DM fitting object.\n";
+    gsFitting<real_t> pdm_obj( uv, X, tbasis);
+    pdm_obj.compute(lambda);
+    // pdm_obj.updateGeometry(initGeom->coefs(), params);
 
     gsInfo << *pdm_obj.result() << "\n";
     gsWriteParaview(*pdm_obj.result(), "pdm_0");
 
     // pdm_obj.parameterProjectionSepBoundary(1e-6, interpIdx);
-    gsInfo << "pdm, parameters update:\n" << (params - pdm_obj.returnParamValues()).norm() << "\n";
+    // gsInfo << "pdm, parameters update:\n" << (params - pdm_obj.returnParamValues()).norm() << "\n";
     // pdm_obj.updateGeometry(initGeom->coefs(), pdm_obj.returnParamValues());
     // gsWriteParaviewPoints(params, "pdm_params_0");
     // gsWriteParaviewPoints(pdm_obj.returnParamValues(), "pdm_projection_0");
     // gsInfo << *pdm_obj.result() << "\n";
-    gsWriteParaview(*pdm_obj.result(), "pdm_0", 10000, false, true);
+    // gsWriteParaview(*pdm_obj.result(), "pdm_0", 10000, false, true);
 
 
 
 
-    gsInfo << "Initial tdm fitting object.\n";
+    gsInfo << "Initial H DM fitting object.\n";
     gsFitting<real_t> tdm_obj( uv, X, tbasis);
-    tdm_obj.updateGeometry(initGeom->coefs(), params);
+    tdm_obj.compute(lambda);
+    // tdm_obj.updateGeometry(initGeom->coefs(), params);
     gsWriteParaview(*tdm_obj.result(), "tdm_0", 10000, false, true);
+    std::string method_name = "";
 
     gsFitting<real_t>::tdm_method method_enum;
     if(method == 0)
-        method_enum = gsFitting<real_t>::tdm_boundary_tdm;
+        {
+          method_enum = gsFitting<real_t>::tdm_boundary_tdm;
+          method_name = "tdm";
+        }
     else if(method == 1)
+      {
         method_enum = gsFitting<real_t>::tdm_boundary_pdm;
+        method_name = "tdm_brd_pdm";
+      }
     else if(method == 2)
+    {
         method_enum = gsFitting<real_t>::tdm_boundary_tangent;
+        method_name = "tdm_bdr_tan";
+      }
     else if(method == 3)
+    {
         method_enum = gsFitting<real_t>::pdm;
+        method_name = "pdm";
+      }
     else if(method == 4)
+    {
         method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_pdm;
+        method_name = "constant = " + std::to_string(mu);
+      }
     else if(method == 5)
+    {
         method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_tangent;
+        method_name = "hdm_constant_bdr_tan";
+      }
     else if(method == 6)
+    {
         method_enum = gsFitting<real_t>::hybrid_error_pdm_tdm_boundary_pdm;
+        method_name = "error";
+      }
     else if(method == 7)
+    {
         method_enum = gsFitting<real_t>::hybrid_curvature_pdm_tdm_boundary_pdm;
+        method_name = "curvature";
+    }
     else
     {
         gsWarn << "Unknown method, exiting." << std::endl;
         return -1;
     }
 
-    //tdm_obj.compute_tdm(0., mu, sigma, interpIdx, method_enum);
+    // tdm_obj.compute_tdm(lambda, mu, sigma, interpIdx, method_enum);
 
     // gsInfo << *tdm_obj.result() << "\n";
 
@@ -433,20 +462,41 @@ int main(int argc, char *argv[])
     pdm_results.open(std::to_string(now) + "pdm_results.csv");
     pdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse\n";
 
+    std::vector<real_t> pdm_min_max_mse = pdm_obj.result()->MinMaxMseErrors(pdm_obj.returnParamValues(),X);
+    pdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
+                << 0 << ","
+                << pdm_min_max_mse[0] << std::scientific << ","
+                << pdm_min_max_mse[1] << std::scientific << ","
+                << pdm_min_max_mse[2] << std::scientific << ","
+                << math::sqrt(pdm_min_max_mse[2]) << std::scientific << "\n";
+
+
+
+
     std::ofstream tdm_results;
-    tdm_results.open(std::to_string(now) + "tdm_results.csv");
-    // tdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse, mu*PDM, sigma*TDM, boundary, pos-semi-def, cond, s_min, s_max, s-free\n";
-    tdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse, mu*PDM, sigma*TDM\n";
+    tdm_results.open(std::to_string(now) + "hdm_results.csv");
+    tdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse, weights\n";
+    std::vector<real_t> tdm_min_max_mse = tdm_obj.result()->MinMaxMseErrors(tdm_obj.returnParamValues(),X);
+    tdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
+                << 0 << ","
+                << tdm_min_max_mse[0] << std::scientific << ","
+                << tdm_min_max_mse[1] << std::scientific << ","
+                << tdm_min_max_mse[2] << std::scientific << ","
+                << math::sqrt(tdm_min_max_mse[2]) << std::scientific << ","
+                <<  method_name << "\n";
+
     // tdm_obj.compute_tdm(lambda, 0., 1., interpIdx);
     //index_t pc_step = maxPC_step;
+
     for(index_t pc_step = 1; pc_step <= maxPC_step; pc_step++)
     {
         // gsFitting<real_t> pdm_obj( uv, X, tbasis);
         //pdm_obj.compute(lambda);
         // pdm_obj.parameterCorrection(1e-6,pc_step,1e-6);
-        pdm_obj.parameterCorrectionSepBoundary_pdm(1e-6,1,interpIdx);
+        pdm_obj.parameterCorrectionSepBoundary_pdm(1e-6, 1, interpIdx);
 
-        std::vector<real_t> pdm_min_max_mse = pdm_obj.result()->MinMaxMseErrors(pdm_obj.returnParamValues(),X);
+        // std::vector<real_t> pdm_min_max_mse = pdm_obj.result()->MinMaxMseErrors(pdm_obj.returnParamValues(),X);
+        pdm_min_max_mse = pdm_obj.result()->MinMaxMseErrors(pdm_obj.returnParamValues(),X);
 
         //pdm_results << "m, deg, mesh, dofs, pc, pen, min, max, mse\n";
         pdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
@@ -464,16 +514,19 @@ int main(int argc, char *argv[])
         // tdm_obj.parameterCorrection_tdm(1e-6,pc_step, mu, sigma, interpIdx);
         tdm_obj.parameterCorrectionSepBoundary_tdm(1e-6, 1, mu, sigma, interpIdx, method_enum);
 
-        std::vector<real_t> tdm_min_max_mse = tdm_obj.result()->MinMaxMseErrors(tdm_obj.returnParamValues(),X);
+        // std::vector<real_t> tdm_min_max_mse = tdm_obj.result()->MinMaxMseErrors(tdm_obj.returnParamValues(),X);
+        tdm_min_max_mse = tdm_obj.result()->MinMaxMseErrors(tdm_obj.returnParamValues(),X);
+
         tdm_results << X.cols() << "," << deg << "," << lambda << "," << tbasis.size()<< ","
                     << pc_step << ","
                     << tdm_min_max_mse[0] << std::scientific << ","
                     << tdm_min_max_mse[1] << std::scientific << ","
                     << tdm_min_max_mse[2] << std::scientific << ","
                     << math::sqrt(tdm_min_max_mse[2]) << std::scientific << ","
-                    << mu << "," << sigma << "\n";
+                    <<  method_name << "\n";
 
     }
+
     gsWriteParaview(*pdm_obj.result(), "pdm_it"+internal::to_string(maxPC_step), 10000, false, true);
     gsWriteParaview(*tdm_obj.result(), "tdm_it"+internal::to_string(maxPC_step), 10000, false, true);
     pdm_results.close();
