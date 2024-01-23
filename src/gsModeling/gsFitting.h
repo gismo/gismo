@@ -75,7 +75,7 @@ public:
     };
 
     void compute_tdm(T lambda, T mu, T sigma, const std::vector<index_t> & interpIdx,
-                     tdm_method method = hybrid_pdm_tdm_boundary_pdm);
+                     tdm_method method = hybrid_curvature_pdm_tdm_boundary_pdm);
 
     void compute_tdmlm(T lambda, T lm, const std::vector<index_t> & interpIdx);
 
@@ -90,9 +90,10 @@ public:
     void parameterCorrectionSepBoundary(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex);
 
     void parameterProjectionSepBoundary(T accuracy,const std::vector<index_t>& interpIdx);
+    void parameterProjectionFixedBoundary(T accuracy,const std::vector<index_t>& interpIdx);
     void parameterCorrectionSepBoundary_pdm(T accuracy, index_t maxIter, const std::vector<index_t>& sepIndex);
     //---
-    void parameterCorrectionSepBoundary_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex, tdm_method method = hybrid_pdm_tdm_boundary_pdm);
+    void parameterCorrectionSepBoundary_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex, tdm_method method = hybrid_curvature_pdm_tdm_boundary_pdm);
     //--
     void parameterCorrectionSepBoundary_tdmlm(T accuracy, index_t maxIter, T lm, const std::vector<index_t>& sepIndex);
 
@@ -102,8 +103,10 @@ public:
     /// Computes the euclidean error for each point
     void computeErrors();
 
-    /// Computes min, max and mse errors
+    /// compute point-wise error
+    gsMatrix<T> pointWiseErrors(const gsMatrix<> & parameters,const gsMatrix<> & points);
 
+    /// Computes min, max and mse errors
     std::vector<T> computeErrors(const gsMatrix<> & param_values,const gsMatrix<> & points);
 
     /// Computes the maximum norm error for each point

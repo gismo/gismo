@@ -223,8 +223,8 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
     if (method == tdm_boundary_tdm)
         gsInfo << "TDM vanilla\n";
-    else if (method == tdm_boundary_tangent)
-        gsInfo << "TDM boundary tangent\n";
+    // else if (method == tdm_boundary_tangent)
+    //     gsInfo << "TDM boundary tangent\n";
     else if (method == tdm_boundary_pdm)
         gsInfo << "TDM boundary PDM\n";
     else if (method == pdm)
@@ -234,9 +234,9 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     else if (method == hybrid_error_pdm_tdm_boundary_pdm)
         gsInfo << "err*PDM + (1-err)*TDM with PDM on the boundary\n";
     else if (method == hybrid_curvature_pdm_tdm_boundary_pdm)
-        gsInfo << mu << "c1*PDM + c2*TDM with PDM on the boundary\n";
-    else if (method == hybrid_pdm_tdm_boundary_tangent)
-        gsInfo << mu << "*PDM + " << sigma << "*TDM with tangents on the boundary\n";
+        gsInfo << "c1*PDM + c2*TDM with PDM on the boundary\n";
+    // else if (method == hybrid_pdm_tdm_boundary_tangent)
+    //     gsInfo << mu << "*PDM + " << sigma << "*TDM with tangents on the boundary\n";
     else
         gsWarn << "Unknown method." << std::endl;
 
@@ -298,14 +298,13 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
     }
     else
     {
+        if (m_pointErrors.size() == 0)
+            computeErrors();
         gsMatrix<T> points_int_errors(num_int, 1);
         gsMatrix<T> rho_c(num_int, 1);
         gsMatrix<T> dist_plus_rho(num_int, 1);
         T max_err_int = m_pointErrors[0];
-        gsMatrix<> pc, result;
-
-
-        // writeToCSVfile(std::to_string(now)+"_int_errors.csv", points_int_errors);
+        gsMatrix<> pcs, out;
 
         const index_t num_basis = m_basis->size();
 
@@ -332,30 +331,45 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
         if (method == hybrid_error_pdm_tdm_boundary_pdm || method == hybrid_curvature_pdm_tdm_boundary_pdm)
         {
+          gsInfo << "Am I here ???????\n";
+          // computeErrors();
+          gsInfo << m_pointErrors[0] << "\n";
           for (index_t d = 0; d<num_int; d++)
           {
               points_int_errors(d,0) = m_pointErrors[d];
               if (max_err_int < m_pointErrors[d])
                   max_err_int = m_pointErrors[d];
           }
-        }
 
+          //writeToCSVfile(std::to_string(now)+"_int_errors.csv", points_int_errors);
+        }
+        //writeToCSVfile(std::to_string(now)+"_int_errors.csv", points_int_errors);
+
+        //gsMatrix<> c1c2(2, num_int);
         if(method == hybrid_curvature_pdm_tdm_boundary_pdm)
         {
           // rho = 1/max(c1, c2)
           for (index_t d = 0; d<num_int; d++)
           {
-            result = ev.eval( shapeop(G), params_int.col(d) );
+            gsVector<> pm(2);
+            pm = params_int.col(d);
+            out = ev.eval( shapeop(G), pm );
 
-            pc = result.selfadjointView<gsEigen::Lower>().eigenvalues();
-            pc = pc.cwiseAbs();
+            pcs = out.selfadjointView<gsEigen::Lower>().eigenvalues();
+            pcs = pcs.cwiseAbs();
 
-            T den = pc(0,0);
-            if ( pc(0,1) > pc(0,0))
-              den = pc(0,1);
+            //c1c2.col(d) = pcs;
+
+            T den = pcs(0,0);
+            if ( pcs(1,0) > pcs(0,0) )
+              den = pcs(1,0);
+
             rho_c(d,0) = 1./den;
           }
         }
+
+        //writeToCSVfile(std::to_string(now)+"_int_rho.csv", rho_c);
+        //writeToCSVfile(std::to_string(now)+"_int_curvatures.csv", c1c2);
 
         gsMatrix<T> normals(3, m_param_values.cols());
         normals.setZero();
@@ -391,7 +405,8 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         }
         else if(method == tdm_boundary_tangent || method == hybrid_pdm_tdm_boundary_tangent)
         {
-            gsInfo << "method :" << method << "\n";
+
+            gsInfo << "DO NOT USE method : " << method << " !!!!!!!!!\n";
             // nv: outer normals for boundary curves.
             // normals.col(j) = (point - surface); to treat the boundary.
 
@@ -497,24 +512,34 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
             {
               if(method == hybrid_error_pdm_tdm_boundary_pdm || method == hybrid_curvature_pdm_tdm_boundary_pdm)
               {
-                gsMatrix<T> MK(num_int, num_int); // delta
+                gsMatrix<T> MK(num_int, num_int); // gamma
+
                 gsSparseMatrix<T> aMK(3 * num_int, 3 * num_int);
-                gsSparseMatrix<T> bMK(num_int, num_int); // 1 - delta
+                gsSparseMatrix<T> bMK(num_int, num_int); // 1 - gamma
+
 
                 gsSparseMatrix<T> mki(num_int,num_int);
                 mki.setIdentity();
 
                 if ( method == hybrid_error_pdm_tdm_boundary_pdm )
                 {
+                  gsInfo << "ERROR BLENDING WEIGHTS.\n";
+                  gsDebugVar(max_err_int);
+                  gsDebugVar(points_int_errors);
                   MK = (0.5/max_err_int) * points_int_errors.asDiagonal();
                 }
                 else
                 {
+                  gsInfo << "CURVATURE BLENDING WEIGHTS.\n";
+                  gsDebugVar(points_int_errors);
+                  gsDebugVar(rho_c);
                   dist_plus_rho = (points_int_errors + rho_c);
+                  gsDebugVar(dist_plus_rho);
                   MK = (points_int_errors.cwiseProduct( dist_plus_rho.cwiseInverse() )).asDiagonal();
                 }
 
                 threeOnDiag(MK, 3 * num_int, 3 * num_int, aMK);
+
                 bMK = mki - MK.sparseView();
 
                 NNT = aMK.transpose() + (N_int * bMK ) * N_int.transpose();
@@ -522,11 +547,14 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
               }
               else
               {
+                gsInfo << "CONSTANT BLENDING WEIGHTS.\n";
                 gsSparseMatrix<T> Im(3 * num_int, 3 * num_int);
                 Im.setIdentity();
                 NNT = mu * Im + sigma * N_int * N_int.transpose();
               }
             }
+            // NNT = ~Gamma + N*(1-Gamma)N^T
+            // B^T( ~Gamma + N*(1-Gamma)N^T )B
 
             A_tilde = B_int.transpose() * NNT * B_int + B_bdy.transpose() * B_bdy;
             rhs     = B_int.transpose() * NNT * X_int + B_bdy.transpose() * X_bdy;
@@ -548,22 +576,32 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         }
 
 
-        gsSparseMatrix<T> LM(A_tilde.rows(), A_tilde.cols());
-        LM.setIdentity();
-        A_tilde = A_tilde + 1e-7 * LM;
+        // gsSparseMatrix<T> LM(A_tilde.rows(), A_tilde.cols());
+        // LM.setIdentity();
+        // A_tilde = A_tilde + 1e-5 * LM;
 
         gsInfo << "Solving the linear system.\n";
         A_tilde.makeCompressed();
 
-        typename gsSparseSolver<T>::QR solver(A_tilde);
+        typename gsSparseSolver<T>::BiCGSTABILUT solver( A_tilde );
+
+        if ( solver.preconditioner().info() != gsEigen::Success )
+        {
+            gsWarn<<  "The preconditioner failed. Aborting.\n";
+
+            return;
+        }
+
+
+        // typename gsSparseSolver<T>::QR solver(A_tilde);
         gsMatrix<T> sol_tilde = solver.solve(rhs); //toDense()
-        gsInfo << "rank = " << solver.rank() / 3 << " = " << m_basis->size() << "\n";
+        // gsInfo << "rank = " << solver.rank() / 3 << " = " << m_basis->size() << "\n";
         gsInfo << "Solved.\n";
 
-        if (solver.info() != gsEigen::Success)
-        {
-            gsInfo << "QR: " << solver.lastErrorMessage();
-        }
+        // if (solver.info() != gsEigen::Success)
+        // {
+        //     gsInfo << "QR: " << solver.lastErrorMessage();
+        // }
 
         // If there were constraints, we obtained too many coefficients.
         sol_tilde.conservativeResize(num_basis * 3, gsEigen::NoChange);
@@ -592,16 +630,6 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         //gsDebugVar(*m_result);
 
     }// fi
-
-    //gsWriteParaview(*m_result, std::to_string(now) + "_geo_out_ctdm", 10000);
-
-    // gsInfo << "current geometry:\n" << *m_result << "\n";
-
-    //gsMatrix<T> pltoutc = m_result->coefs().transpose();
-    //gsWriteParaviewPoints(pltoutc, std::to_string(now) + "_coefs_out_ctdm");
-    //gsInfo << "and basis:\n" << m_result->basis()<< "\n";
-    //gsInfo << "and params:\n" << this->returnParamValues();
-    //gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "_params_out_ctdm");
 
     gsInfo << "END compute_tdm(...)\n";
     gsInfo << "---------------------------------------------------------------------------------------------------------\n";
@@ -1146,6 +1174,50 @@ void gsFitting<T>::parameterProjectionSepBoundary(T accuracy,const std::vector<i
 }
 
 
+
+
+
+template <class T>
+void gsFitting<T>::parameterProjectionFixedBoundary(T accuracy,const std::vector<index_t>& interpIdx)
+{
+
+  gsInfo << "parameterProjectionSepBoundary(...)\n";
+  if ( !m_result )
+  {
+    compute(m_last_lambda);
+  }
+//#       pragma omp parallel for default(shared) private(newParam)
+  gsInfo << "Parameter projection for interior points...\n";
+  index_t trackCorrection = 0;
+  for (index_t i = 0; i < interpIdx[0]; ++i)
+  {
+    gsVector<T> newParam;
+    const auto & curr = m_points.row(i).transpose();
+    newParam = m_param_values.col(i);
+    m_result->closestPointTo(curr, newParam, accuracy, true); // true: use initial point
+
+    // Decide whether to accept the correction or to drop it
+    if ((m_result->eval(newParam) - curr).norm()
+            < (m_result->eval(m_param_values.col(i)) - curr).norm())
+    {
+      m_param_values.col(i) = newParam;
+      trackCorrection += 1;
+    }
+  }
+  gsInfo << "... applied to " << trackCorrection << " interior points, out of " << interpIdx[0] <<".\n";
+}
+
+
+
+
+
+
+
+
+
+
+
+
 template <class T>
 void gsFitting<T>::parameterCorrectionSepBoundary_tdm(T accuracy,
                                                 index_t maxIter,
@@ -1168,7 +1240,8 @@ void gsFitting<T>::parameterCorrectionSepBoundary_tdm(T accuracy,
       gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "tmd_uv_in");
       gsInfo << "(a.) Projections.\n";
       parameterProjectionSepBoundary(accuracy, interpIdx);
-      gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "tdm_uv_out");
+      // parameterProjectionFixedBoundary(accuracy, interpIdx);
+      //gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "tdm_uv_out");
       gsInfo << "(b.) compute T DM coefs again;";
       compute_tdm(m_last_lambda, mu, sigma, interpIdx, method);
       gsInfo << "+++++++++++++++++++++++++++++++++++++++++++\n";
@@ -1195,10 +1268,11 @@ void gsFitting<T>::parameterCorrectionSepBoundary_pdm(T accuracy,
 
       time_t now = time(0);
 //#       pragma omp parallel for default(shared) private(newParam)
-      gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "pdm_uv_in");
+      // gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "pdm_uv_in");
       gsInfo << "(a.) Projections.\n";
       parameterProjectionSepBoundary(accuracy, interpIdx);
-      gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "pdm_uv_out");
+      // parameterProjectionFixedBoundary(accuracy, interpIdx);
+      // gsWriteParaviewPoints(this->returnParamValues(), std::to_string(now) + "pdm_uv_out");
       gsInfo << "(b) P DM coefficients computation.\n";
       compute(m_last_lambda);
     }// step of PC
@@ -1640,23 +1714,41 @@ void gsFitting<T>::computeApproxError(T& error, int type) const
     }
 }
 
+
+template<class T>
+gsMatrix<T> gsFitting<T>::pointWiseErrors(const gsMatrix<> & parameters,const gsMatrix<> & points)
+{
+
+  gsMatrix<T> eval;
+  m_result->eval_into(parameters, eval);
+  gsMatrix<T> ptwErrors(1, eval.cols());
+
+  for (index_t col = 0; col != eval.cols(); col++)
+  {
+      ptwErrors(0, col) = (eval.col(col) - points.col(col)).norm();
+  }
+
+  return ptwErrors;
+}
+
+
 template<class T>
 std::vector<T> gsFitting<T>::computeErrors(const gsMatrix<> & parameters,const gsMatrix<> & points)
 {
   std::vector<T> min_max_mse;
-  gsMatrix<> eval;
+  gsMatrix<T> eval;
   m_result->eval_into(parameters, eval);
 
-  gsMatrix<> pointWiseErrors(1, eval.cols());
+  gsMatrix<T> pointWiseErrors(1, eval.cols());
 
   for (index_t col = 0; col != eval.cols(); col++)
   {
       pointWiseErrors(0, col) = (eval.col(col) - points.col(col)).norm();
   }
 
-  real_t min_error = 1e6;
-  real_t max_error = 0;
-  real_t mse_error = 0;
+  T min_error = 1e6;
+  T max_error = 0;
+  T mse_error = 0;
 
   for (index_t i = 1; i < pointWiseErrors.cols(); i++)
   {
