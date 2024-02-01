@@ -89,26 +89,6 @@ jobs:
       with:
         path: ./wheelhouse/*.whl
 
-  # build wheels for windows cpython / AMD64 
-  windows_wheel:
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - name: build wheels
-      uses: pypa/cibuildwheel@v2.16.5
-      env:
-        CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
-        CIBW_ARCHS: "AMD64"
-        CIBW_BUILD: "cp*"
-        CIBW_SKIP: "*36* *37*"
-
-
-    - uses: actions/upload-artifact@v3
-      with:
-        path: ./wheelhouse/*.whl
 
   source_dist:
     runs-on: ubuntu-latest
@@ -124,8 +104,9 @@ jobs:
       with:
         path: ./dist/*
 
+
   upload_test_pypi:
-    needs: [macos_wheel, linux_wheel, linux_wheel_qemu, windows_wheel, source_dist]
+    needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]
     runs-on: ubuntu-latest
     # try to publish only if this is a push to stable branch
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stable' }}
