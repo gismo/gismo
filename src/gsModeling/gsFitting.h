@@ -226,17 +226,44 @@ protected:
 
        TODO: Make more general and save somewhere in the linear algebra package.
      */
-    void threeOnDiag(const gsMatrix<T>& block, // threeOnDiag?
-                    index_t rows,
-                    index_t cols,
+    // void threeOnDiag(const gsMatrix<T>& block, // threeOnDiag?
+    //                 index_t rows,
+    //                 index_t cols,
+    //                 gsSparseMatrix<T>& result) const
+    // {
+    //     gsMatrix<T> dense(rows, cols);
+    //     dense.setZero();
+    //     dense.block(0,                0,                block.rows(), block.cols()) = block;
+    //     dense.block(block.rows(),     block.cols(),     block.rows(), block.cols()) = block;
+    //     dense.block(2 * block.rows(), 2 * block.cols(), block.rows(), block.cols()) = block;
+    //     result = dense.sparseView();
+    // }
+
+
+    void threeOnDiag(const gsSparseMatrix<T>& block,
                     gsSparseMatrix<T>& result) const
     {
-        gsMatrix<T> dense(rows, cols);
-        dense.setZero();
-        dense.block(0,                0,                block.rows(), block.cols()) = block;
-        dense.block(block.rows(),     block.cols(),     block.rows(), block.cols()) = block;
-        dense.block(2 * block.rows(), 2 * block.cols(), block.rows(), block.cols()) = block;
-        result = dense.sparseView();
+
+      index_t brows = block.rows();
+      index_t bcols = block.cols();
+
+      result = gsSparseMatrix<T>(3*brows,3*bcols);
+      result.reservePerColumn(block.nonZeros() / bcols);
+      // result.reserve(sparseColloc.nonZerosPerCol().template replicate<3,1>());
+      // sparseColloc.makeCompressed();
+
+
+
+      for(index_t j = 0; j != bcols; j++)
+      {
+        for (auto it = block.begin(j); it; ++it)
+        {
+            result.insertTo(it.row(), j, it.value());
+            result.insertTo(brows+it.row(), bcols+j, it.value());
+            result.insertTo(2*brows+it.row(), 2*bcols+j, it.value());
+        }
+      }
+      result.makeCompressed();
     }
 
     /// Assembles 3xblock collocation matrix.
@@ -246,11 +273,19 @@ protected:
                         gsSparseMatrix<T>& result) const
     {
         index_t num_pts = points.rows();
-        gsSparseMatrix<T> sparseColloc(num_pts, num_basis);
-        sparseColloc = m_result->basis().collocationMatrix(params);
+        // gsSparseMatrix<T> sparseColloc(num_pts, num_basis);
+        // sparseColloc = m_result->basis().collocationMatrix(params);
 
-        gsMatrix<T> tmp = sparseColloc;
-        threeOnDiag(tmp, 3 * num_pts, 3 * num_basis, result);
+        gsSparseMatrix<T> sparseColloc = m_result->basis().collocationMatrix(params);
+
+        threeOnDiag(sparseColloc, result);
+
+        // result.block(0, 0, num_pts, num_basis) = sparseColloc;
+        // result.block(num_pts, num_basis, num_pts, num_basis) = sparseColloc;
+        // result.block(2 * num_pts, 2 * num_basis, num_pts, num_basis) = sparseColloc;
+
+        // gsMatrix<T> tmp = sparseColloc;
+        // threeOnDiag(tmp, 3 * num_pts, 3 * num_basis, result);
     }
 
     /// Assembles the right hand side vectors for PDM/TDM.

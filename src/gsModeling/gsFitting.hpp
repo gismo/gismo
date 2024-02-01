@@ -392,6 +392,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
             N_diag(num_pts+j,   j) = normals(1, j);
             N_diag(2*num_pts+j, j) = normals(2, j);
         }
+        N_diag.makeCompressed();
 
         if(method == tdm_boundary_pdm || method == hybrid_pdm_tdm_boundary_pdm || method == hybrid_error_pdm_tdm_boundary_pdm || method == hybrid_curvature_pdm_tdm_boundary_pdm )
         {
@@ -402,6 +403,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
                 N_int(num_int+j,   j) = normals(1, j);
                 N_int(2*num_int+j, j) = normals(2, j);
             }
+            N_int.makeCompressed();
         }
         else if(method == tdm_boundary_tangent || method == hybrid_pdm_tdm_boundary_tangent)
         {
@@ -512,21 +514,22 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
             {
               if(method == hybrid_error_pdm_tdm_boundary_pdm || method == hybrid_curvature_pdm_tdm_boundary_pdm)
               {
-                gsMatrix<T> MK(num_int, num_int); // gamma
+                // gsMatrix<T> MK(num_int, num_int); // gamma
+                gsVector<T> MK(num_int);
 
-                gsSparseMatrix<T> aMK(3 * num_int, 3 * num_int);
-                gsSparseMatrix<T> bMK(num_int, num_int); // 1 - gamma
+                //gsSparseMatrix<T> aMK(3 * num_int, 3 * num_int);
+                //gsSparseMatrix<T> bMK(num_int, num_int); // 1 - gamma
 
 
-                gsSparseMatrix<T> mki(num_int,num_int);
-                mki.setIdentity();
+                // gsSparseMatrix<T> mki(num_int,num_int);
+                // mki.setIdentity();
 
                 if ( method == hybrid_error_pdm_tdm_boundary_pdm )
                 {
                   gsInfo << "ERROR BLENDING WEIGHTS.\n";
                   gsDebugVar(max_err_int);
                   gsDebugVar(points_int_errors);
-                  MK = (0.5/max_err_int) * points_int_errors.asDiagonal();
+                  MK = (0.5/max_err_int) * points_int_errors;//.asDiagonal();
                 }
                 else
                 {
@@ -535,14 +538,23 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
                   gsDebugVar(rho_c);
                   dist_plus_rho = (points_int_errors + rho_c);
                   gsDebugVar(dist_plus_rho);
-                  MK = (points_int_errors.cwiseProduct( dist_plus_rho.cwiseInverse() )).asDiagonal();
+                  MK = (points_int_errors.cwiseProduct( dist_plus_rho.cwiseInverse() ));//.asDiagonal();
                 }
 
-                threeOnDiag(MK, 3 * num_int, 3 * num_int, aMK);
+                gsInfo << "Weights are comptuted!\n";
+                // threeOnDiag(MK, 3 * num_int, 3 * num_int, aMK);
 
-                bMK = mki - MK.sparseView();
+                // bMK = mki - MK.sparseView();
+                // gsVector<T> ones = gsVector<T>::Ones(num_int);
 
-                NNT = aMK.transpose() + (N_int * bMK ) * N_int.transpose();
+
+
+                // NNT = aMK.transpose() + (N_int * bMK ) * N_int.transpose();
+
+
+                NNT = MK.replicate(3,1).asDiagonal();// + (N_int * bMK ) * N_int.transpose();
+                gsSparseMatrix<T> N_int_tr = N_int.transpose();
+                NNT += ( N_int * ( gsVector<T>::Ones(num_int) - MK).asDiagonal() ) * N_int_tr ;
 
               }
               else
@@ -571,14 +583,13 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
             gsSparseMatrix<T> G_mat(A_tilde.rows(), A_tilde.cols());
 
             applySmoothing(lambda, m_G);
-            threeOnDiag(m_G, A_tilde.rows(), A_tilde.cols(), G_mat);
+            // threeOnDiag(m_G, A_tilde.rows(), A_tilde.cols(), G_mat);
+            threeOnDiag(m_G, G_mat);
             A_tilde += lambda * G_mat;
         }
 
 
-        // gsSparseMatrix<T> LM(A_tilde.rows(), A_tilde.cols());
-        // LM.setIdentity();
-        // A_tilde = A_tilde + 1e-5 * LM;
+
 
         gsInfo << "Solving the linear system.\n";
         A_tilde.makeCompressed();
@@ -597,6 +608,9 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         gsMatrix<T> sol_tilde = solver.solve(rhs); //toDense()
         // gsInfo << "rank = " << solver.rank() / 3 << " = " << m_basis->size() << "\n";
         gsInfo << "Solved.\n";
+
+
+
 
         // if (solver.info() != gsEigen::Success)
         // {
