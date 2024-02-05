@@ -398,23 +398,23 @@ int main(int argc, char *argv[])
     gsFitting<real_t>::tdm_method method_enum;
     if(method == 0)
         {
-          method_enum = gsFitting<real_t>::tdm_boundary_tdm;
-          method_name = "tdm";
+          gsWarn << "Vanilla TDM method, do not use." << std::endl;
+          return -1;
         }
     else if(method == 1)
       {
-        method_enum = gsFitting<real_t>::tdm_boundary_pdm;
-        method_name = "tdm_brd_pdm";
+        gsWarn << "TDM method with boundary PDM, do not use." << std::endl;
+        return -1;
       }
     else if(method == 2)
     {
-        method_enum = gsFitting<real_t>::tdm_boundary_tangent;
-        method_name = "tdm_bdr_tan";
+      gsWarn << "TDM method with boundary TANGENT, do not use." << std::endl;
+      return -1;
       }
     else if(method == 3)
     {
-        method_enum = gsFitting<real_t>::pdm;
-        method_name = "pdm";
+      gsWarn << "PDM method, use its own implementation." << std::endl;
+      return -1;
       }
     else if(method == 4)
     {
@@ -423,9 +423,9 @@ int main(int argc, char *argv[])
       }
     else if(method == 5)
     {
-        method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_tangent;
-        method_name = "hdm_constant_bdr_tan";
-      }
+      gsWarn << "HDM method with boundary TANGENT, do not use." << std::endl;
+      return -1;
+    }
     else if(method == 6)
     {
         method_enum = gsFitting<real_t>::hybrid_error_pdm_tdm_boundary_pdm;
