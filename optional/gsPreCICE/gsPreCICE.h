@@ -14,8 +14,8 @@
 #pragma once
 
 #include <gsCore/gsConfig.h>
-#include <precice/SolverInterface.hpp>
-
+#include <precice/Participant.hpp>
+// In precice 3.0 they renamed SolverInterface.hpp to Participant.hpp
 namespace gismo {
 
 template<class T>
@@ -50,24 +50,28 @@ public:
 
     /// See precice::SolverInterface::isCouplingOngoing
     bool isCouplingOngoing() const { return m_interface.isCouplingOngoing(); }
+    ///isReadDataAvailble() and isWriteDataRequiared() moved since precice3.0
     /// See precice::SolverInterface::isReadDataAvailable
-    bool isReadDataAvailable() const { return m_interface.isReadDataAvailable(); }
+    // bool isReadDataAvailable() const { return m_interface.isReadDataAvailable(); }
     /// See precice::SolverInterface::isWriteDataRequired
-    bool isWriteDataRequired(real_t computedTimestepLength) const { return m_interface.isWriteDataRequired(computedTimestepLength); }
+    // bool isWriteDataRequired(real_t computedTimestepLength) const { return m_interface.isWriteDataRequired(computedTimestepLength); }
     /// See precice::SolverInterface::isTimeWindowComplete
     bool isTimeWindowComplete() const { return m_interface.isTimeWindowComplete(); }
+    // Replaced `isActionRequired()` and `markActionFulfilled()` with explicit calls `requiresInitialData()`, `requiresReadingCheckpoint()`, and `requiresWritingCheckpoint()`. Invoking these functions
     /// See precice::SolverInterface::isActionRequired
-    bool isActionRequired(const std::string &action) const { return m_interface.isActionRequired(action); }
+    //bool isActionRequired(const std::string &action) const { return m_interface.isActionRequired(action); }
     /// See precice::SolverInterface::markActionFulfilled
-    void markActionFulfilled(const std::string &action) { m_interface.markActionFulfilled(action); }
+    //void markActionFulfilled(const std::string &action) { m_interface.markActionFulfilled(action); }
 
     // TODO: These functions are precice constants and are preferably called outside of the class
     /// See precice::SolverInterface::actionWriteInitialData
-    const std::string actionWriteInitialData() { return precice::constants::actionWriteInitialData(); }
-    /// See precice::SolverInterface::actionWriteIterationCheckpoint
-    const std::string actionWriteIterationCheckpoint() { return precice::constants::actionWriteIterationCheckpoint(); }
-    /// See precice::SolverInterface::actionReadIterationCheckpoint
-    const std::string actionReadIterationCheckpoint() { return precice::constants::actionReadIterationCheckpoint(); }
+
+    // precice-3.0.0: Removed precice::constants from the C++ API and the C and Fortran bindings. (#1487)
+    // const std::string actionWriteInitialData() { return precice::constants::actionWriteInitialData(); }
+    // /// See precice::SolverInterface::actionWriteIterationCheckpoint
+    // const std::string actionWriteIterationCheckpoint() { return precice::constants::actionWriteIterationCheckpoint(); }
+    // /// See precice::SolverInterface::actionReadIterationCheckpoint
+    // const std::string actionReadIterationCheckpoint() { return precice::constants::actionReadIterationCheckpoint(); }
 
 
     /**
@@ -85,7 +89,7 @@ public:
 
     void initialize_data()
     {
-        m_interface.initializeData();
+        m_interface.initialize();
     }
 
 
@@ -99,7 +103,7 @@ public:
     void addMesh(const std::string & meshName, const gsMatrix<T> & points)
     {
         m_meshNames.push_back(meshName);
-        m_meshIDs.push_back(m_interface.getMeshID(m_meshNames.back()));
+        // m_meshIDs.push_back(m_interface.getMeshID(m_meshNames.back()));
 
         // Makes a hard-copy? Can we prevent it?
         gsMatrix<T> pointsTranspose = points;
@@ -108,7 +112,11 @@ public:
         m_positions.push_back(pointsTranspose);
 
         gsVector<index_t> vertexIDs(m_sizes.back());
-        m_interface.setMeshVertices(m_meshIDs.back(),m_sizes.back(),m_positions.back().data(),vertexIDs.data());
+        //void Participant::setMeshVertices(
+        //::precice::string_view        meshName,
+        //::precice::span<const double> coordinates,
+        //::precice::span<VertexID>     ids)
+        m_interface.setMeshVertices(m_meshNames.back(),m_positions.back().data(),vertexIDs.data());
         m_vertexIDs.push_back(vertexIDs);
     }
 
@@ -246,10 +254,10 @@ public:
      *
      * @return     The mesh ID.
      */
-    index_t getMeshID(const std::string &dataName) const
-    {
-        return m_interface.getMeshID(dataName);
-    }
+    // index_t getMeshID(const std::string &dataName) const
+    // {
+    //     return m_interface.getMeshID(dataName);
+    // }
 
     /**
      * @brief      Returns the ID of the data
@@ -286,7 +294,7 @@ private:
     /// Stores all mesh vertex IDs (might be useful later)
     std::vector<gsVector<index_t>> m_vertexIDs;
     /// Stores the precice::SolverInterface (see the precice Doxygen for details about this class)
-    precice::SolverInterface m_interface;
+    precice::Participant m_interface;
     /// Stores the precice timestep
     T m_precicedt;
 };
