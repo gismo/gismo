@@ -306,7 +306,10 @@ void gsFitting<T>::blending_weights(const gsSparseMatrix<T> & N_int, const index
 
       gsMatrix<T> points_int_errors, rho_c, dist_plus_rho;
 
+      time_t now = time(0);
       points_int_errors = fill_pointWiseErrors(num_int, max_err_int);
+
+      writeToCSVfile(std::to_string(now) + "err_w.csv", points_int_errors);
 
       if (method == hybrid_error_pdm_tdm_boundary_pdm)
       {
@@ -319,7 +322,9 @@ void gsFitting<T>::blending_weights(const gsSparseMatrix<T> & N_int, const index
         gsInfo << "CURVATURE BLENDING WEIGHTS.\n";
         gsInfo << "c1*PDM + c2*TDM with PDM on the boundary\n";
         rho_c = inverse_principal_curvatures(num_int, params_int);
+        writeToCSVfile(std::to_string(now) + "rho_c.csv", rho_c);
         dist_plus_rho = (points_int_errors + rho_c);
+        writeToCSVfile(std::to_string(now) + "dpr_c.csv", dist_plus_rho);
         MK = (points_int_errors.cwiseProduct( dist_plus_rho.cwiseInverse() ));//.asDiagonal();
       }
       else
@@ -412,8 +417,8 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         gsMatrix<T> rhs;
 
         // compute the error of the current geometry.
-        if(m_pointErrors.size() == 0)
-          computeErrors();
+        //if(m_pointErrors.size() == 0)
+        computeErrors();
 
         T max_err_int = m_pointErrors[0];
 
@@ -908,6 +913,7 @@ void gsFitting<T>::parameterCorrectionSepBoundary_tdm(T accuracy,
       gsInfo << "(b.) compute T DM coefs again;\n";
       compute_tdm(m_last_lambda, mu, sigma, interpIdx, method);
       gsInfo << "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n";
+      // computeErrors();
     }// step of PC
 
 
