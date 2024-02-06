@@ -153,6 +153,27 @@ public:
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
 
+    // compute the sn nomals of *result at input parameter points
+    void compute_normals(const index_t & num_int, const gsMatrix<T> & params_int, gsSparseMatrix<T> & N_int);
+
+    // vector of size (num_int, 1) containing all the point-wise errors; store also the max err value.
+    gsMatrix<T> fill_pointWiseErrors(const index_t & num_int, T & max_err_int);
+
+    // vector of size (num_int, 1) containing rho = 1/max(c1, c2), where c1, c2 are the principal curvature values computed at every parametric point.
+    gsMatrix<T> inverse_principal_curvatures(const index_t & num_int, const gsMatrix<T> & params_int);
+
+    // compute the weights for the pdm-tdm balance in the hybrid method.
+    void blending_weights(const gsSparseMatrix<T> & N_int, const index_t & num_int, const T & mu, const T & sigma,
+                          const gsMatrix<T> & params_int, tdm_method method, gsSparseMatrix<T> & NNT);
+
+    // Assemble system for Hybrid Distance Minimization
+    void assembleSystem(const gsMatrix<T> & points_int, const gsMatrix<T> & params_int,
+                        const gsMatrix<T> & points_bdy, const gsMatrix<T> & params_bdy,
+                        const index_t & num_basis, const gsSparseMatrix<T> & NNT,
+                        gsSparseMatrix<T> & A_tilde, gsMatrix<T> & rhs);
+
+    // apply smoothing
+    void applySmoothing(T lambda, const index_t & num_basis, gsSparseMatrix<T> & m_G, gsSparseMatrix<T> & G_mat, gsSparseMatrix<T> & A_tilde);
 
 public:
 

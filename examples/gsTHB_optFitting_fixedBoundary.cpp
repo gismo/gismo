@@ -559,41 +559,44 @@ int main(int argc, char *argv[])
     gsFitting<real_t>::tdm_method method_enum;
     if(method == 0)
         {
-          method_enum = gsFitting<real_t>::tdm_boundary_tdm;
-          method_name = "tdm";
+          gsInfo << "Vanilla TDM: do not use.\n";
+          return -1;
         }
     else if(method == 1)
       {
-        method_enum = gsFitting<real_t>::tdm_boundary_pdm;
-        method_name = "tdm_brd_pdm";
+        gsInfo << "TDM with boundary PDM: do not use.\n";
+        return -1;
       }
     else if(method == 2)
     {
-        method_enum = gsFitting<real_t>::tdm_boundary_tangent;
-        method_name = "tdm_bdr_tan";
+        gsInfo << "TDM with boundary TANGENT: do not use.\n";
+        return -1;
       }
     else if(method == 3)
     {
-        method_enum = gsFitting<real_t>::pdm;
-        method_name = "pdm";
+        gsInfo << "PDM: use different implementation.\n";
+        return -1;
       }
     else if(method == 4)
     {
+        gsInfo << "HDM with CONSTANT blending weights.\n";
         method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_pdm;
         method_name = "constant = " + std::to_string(pdm_system);
       }
     else if(method == 5)
     {
-        method_enum = gsFitting<real_t>::hybrid_pdm_tdm_boundary_tangent;
-        method_name = "hdm_constant_bdr_tan";
+        gsInfo << "HDM with boundary TANGENT: do not use.\n";
+        return -1;
       }
     else if(method == 6)
     {
+        gsInfo << "HDM with ERROR blending weights.\n";
         method_enum = gsFitting<real_t>::hybrid_error_pdm_tdm_boundary_pdm;
         method_name = "error";
       }
     else if(method == 7)
     {
+        gsInfo << "HDM with CURVATURE blending weights.\n";
         method_enum = gsFitting<real_t>::hybrid_curvature_pdm_tdm_boundary_pdm;
         method_name = "curvature";
     }
@@ -602,8 +605,6 @@ int main(int argc, char *argv[])
         gsWarn << "Unknown method, exiting." << std::endl;
         return -1;
     }
-
-
 
 
     if(kx < 0)
@@ -751,7 +752,7 @@ int main(int argc, char *argv[])
         params = opt_f.returnParamValues();
 
 
-        gsInfo << "MAKE GEOMETRY ???\n";
+        gsInfo << "MAKE GEOMETRY.\n";
         gsInfo << "basis = \n" << opt_f.result()->basis().size() << "\n";
         gsInfo << "coefs = \n" << opt_f.result()->coefs().rows() << " x " <<  opt_f.result()->coefs().cols() << "\n";
         gsGeometry<>::uPtr tmp = (opt_f.result()->basis().makeGeometry(opt_f.result()->coefs()));
@@ -766,7 +767,7 @@ int main(int argc, char *argv[])
 
 
         // gtoll = gtoll / 4;
-        //maxIter = maxIter * 2;
+        // maxIter = maxIter * 2;
 
         gsInfo << "Initialization of the optimization problem:\n";
 
