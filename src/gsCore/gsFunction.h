@@ -240,12 +240,12 @@ public:
                       bool withSupport = true, 
                       const T accuracy = 1e-6,
                       int max_loop = 100,
-                      double damping_factor = 1) const;
+                      T damping_factor = 1) const;
 
     gsMatrix<T> argMin(const T accuracy = 1e-6,//index_t coord = 0
                        int max_loop = 100,
                        gsMatrix<T> init = gsMatrix<T>(),
-                       double damping_factor = 1) const;
+                       T damping_factor = 1) const;
 
     /// Recovers a point on the (geometry) together with its parameters
     /// \a uv, assuming that the \a k-th coordinate of the point \a
@@ -301,7 +301,7 @@ private:
         const gsVector<T> & value,
         gsVector<T> & arg, bool withSupport = true,
         const T accuracy = 1e-6, int max_loop = 100,
-        double damping_factor = 1, T scale = 1.0) const;
+        T damping_factor = 1, T scale = 1.0) const;
 
     gsVector<T> _argMinOnGrid(index_t numpts = 20) const;
 
