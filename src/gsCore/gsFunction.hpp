@@ -280,7 +280,7 @@ int gsFunction<T>::newtonRaphson_impl(
     bool withSupport,
     const T accuracy,
     int max_loop,
-    double damping_factor, T scale) const
+    T damping_factor, T scale) const
 {
     const index_t n = value.rows();
     const bool squareJac = (n == domainDim());//assumed for _Dim!=-1
@@ -302,7 +302,7 @@ int gsFunction<T>::newtonRaphson_impl(
     int iter = 1;
     T rnorm[2]; rnorm[0]=1e100;
     //T alpha=.5, beta=.5;
-    gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
+    gsFuncData<T> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
 
     do {
         this->compute(arg,fd);
@@ -340,7 +340,7 @@ int gsFunction<T>::newtonRaphson_impl(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
         const T rr = ( 1==iter ? (T)1.51 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
-        damping_factor = rr<1.5 ? math::max(0.1 + (rr/99),(rr-0.5)*damping_factor) : math::min((T)1,rr*damping_factor);
+        damping_factor = rr<1.5 ? math::max((T)0.1 + (rr/99),(rr-(T)0.5)*damping_factor) : math::min((T)1,rr*damping_factor);
 
         //Line search
         /*
@@ -438,7 +438,7 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
                                  bool withSupport,
                                  const T accuracy,
                                  int max_loop,
-                                 double damping_factor) const
+                                 T damping_factor) const
 {
     GISMO_ASSERT( value.rows() == targetDim(),
                   "Invalid input values:"<< value.rows()<<"!="<<targetDim());
@@ -450,7 +450,7 @@ template <class T>
 gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
                                   int max_loop,
                                   gsMatrix<T> init,
-                                  double damping_factor) const
+                                  T damping_factor) const
 {
     GISMO_ASSERT(1==targetDim(), "Currently argMin works for scalar functions");
     gsVector<T> result;
