@@ -54,6 +54,7 @@ namespace internal
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
+#include <gsCore/gsGeometryTransform.h>
 #include <gsCore/gsCurve.h>
 #include <gsCore/gsSurface.h>
 #include <gsCore/gsVolume.h>
@@ -158,6 +159,7 @@ namespace internal
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
+#include <gsAssembler/gsBiharmonicExprAssembler.h>
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 

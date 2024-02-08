@@ -13,95 +13,9 @@
 
 # pragma once
 
+#include <gsHSplines/gsAABB.h>
+
 namespace gismo {
-
-
-/**
-    @brief Struct of for an Axis-aligned bounding box
-
-    Template parameters
-    \param d is the dimension
-    \param Z is the box-coordinate index type
-    
-    \ingroup HSplines
-*/
-template<short_t d, class Z = index_t>
-struct gsAabb
-{
-public:
-    typedef gsVector<Z,d> point;
-
-    gsAabb(const point & l, const point & u, index_t lvl)
-    :
-    first(l),second(u),level(lvl)
-    { }
-
-    gsAabb(const point & l, const point & u)
-    :
-    gsAabb(l,u,-1)
-    { }
-
-    gsAabb(const point & u)
-    :
-    second(u),level(-1)
-    {
-        first.setZero();
-    }
-
-    gsAabb()
-    :
-    level(-1)
-    {
-        first.setZero();
-        second.setZero();
-    }
-
-    /// Copy constructor (makes deep copy)
-    gsAabb( const gsAabb<d,Z>& other )
-    {
-        operator=(other);
-    }
-
-    /// Move constructor
-    gsAabb( gsAabb<d,Z>&& other )
-    {
-        operator=(give(other));
-    }
-
-    /// Assignment operator
-    gsAabb<d,Z>& operator= ( const gsAabb<d,Z>& other )
-    {
-        if (this!=&other)
-        {
-            first  = other.first;
-            second = other.second;
-            level  = other.level;
-        }
-        return *this;
-    }
-
-    /// Move assignment operator
-    gsAabb<d,Z>& operator= ( gsAabb<d,Z>&& other )
-    {
-        first  = give(other.first);
-        second = give(other.second);
-        level  = give(other.level);
-        return *this;
-    }
-
-public:
-
-    point first;
-    point second;
-
-    /// Level in which the box lives
-    index_t level;
-
-    // see http://eigen.tuxfamily.org/dox-devel/group__TopicStructHavingEigenMembers.html
-#   define Eigen gsEigen
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
-};
 
 /**
     @brief Struct representing a kd-tree node
@@ -117,10 +31,10 @@ public:
     \ingroup HSplines
 */
 template<short_t d, class Z = index_t>
-struct kdnode
+struct gsKdNode
 {
     // Defines the type of the box
-    typedef          gsAabb<d,Z> kdBox;
+    typedef          gsAABB<d, Z> kdBox;
     typedef typename kdBox::point point;
 
     /// axis in which the children of this node split the domain
@@ -140,47 +54,45 @@ struct kdnode
     kdBox * box;
 
     /// Pointer to the parent node
-    kdnode * parent; 
+    gsKdNode * parent;
 
     /// Pointer to the left child of this split node (if it is one)
-    kdnode * left ; 
+    gsKdNode * left;
 
     /// Pointer to the right child of this split node (if it is one)
-    kdnode * right; 
+    gsKdNode * right;
 
     /// Constructor (empty node)
-    kdnode() : axis(-2) ,level(0), box(0), 
-               parent(0), left(0), right(0)
+    gsKdNode() : axis(-2) ,level(0), box(0),
+                 parent(0), left(0), right(0)
     { }
 
     /// Constructor (root node)
-    kdnode(point const & upp) : axis(-1) , level(0),
-                                parent(0), left(0) , right(0)
+    gsKdNode(point const & upp) : axis(-1) , level(0),
+                                  parent(0), left(0) , right(0)
     { 
         // Initial box, upp is expected to be indexed in finest level
         box = new kdBox( point::Zero(), upp);
     }
 
     /// Constructor (root node)
-    kdnode(point const & low, point const & upp) : axis(-1) , level(0),
-                                  parent(0), left(0) , right(0)
+    gsKdNode(point const & low, point const & upp) : axis(-1) , level(0),
+                                                     parent(0), left(0) , right(0)
     {
         // Initial box, upp is expected to be indexed in finest level
         box = new kdBox( low, upp);
     }
 
     /// Constructor (leaf node)
-    kdnode(kdBox const & bb) 
-        : axis(-1) , level(0),
-          parent(0), left(0) , right(0)
+    gsKdNode(kdBox const & bb) : axis(-1) , level(0),
+                                 parent(0), left(0) , right(0)
     { 
         // ..
     }
     
     /// Recursively copies the whole subtree under \a o, and sets it's
     /// parent to \a parentNode
-    kdnode(const kdnode & o, kdnode * parentNode = NULL) : 
-        axis(o.axis), level(o.level)
+    gsKdNode(const gsKdNode & o, gsKdNode * parentNode = NULL) : axis(o.axis), level(o.level)
     {
         parent = parentNode;
         if ( axis == -1 )
@@ -195,29 +107,23 @@ struct kdnode
             GISMO_ASSERT( o.box == 0, 
                           "Problem: split node with box." );
             pos   = o.pos;
-            left  = new kdnode(*o.left , this);
-            right = new kdnode(*o.right, this);
+            left  = new gsKdNode(*o.left , this);
+            right = new gsKdNode(*o.right, this);
             box   = NULL;
         }
     }
 
     /// Recursively deletes the whole subtree under this node
-    ~kdnode()
+    ~gsKdNode()
     {
-        // to do: non-reccursive
+        // TODO: non-recursive
 
         if ( isLeaf() ) 
         {
-            // No throw in destructor
-            //GISMO_ASSERT( (left == 0) && (right == 0), 
-            //              "Problem: leaf with children." );
-                delete box;
+            delete box;
         }
         else
         {
-            // No throw in destructor
-            //GISMO_ASSERT( box == 0, 
-            //              "Problem: split node with box." );
             delete left;
             delete right;
         }
@@ -250,7 +156,7 @@ struct kdnode
     bool isDegenerate() const
     { return (box->first.array() >= box->second.array()).any(); }
 
-    kdnode * sibling() const 
+    gsKdNode * sibling() const
     { 
         GISMO_ASSERT( parent != 0, "Root does not have a sibling.");
         return (parent->left == this ? parent->right : parent->left ); 
@@ -282,7 +188,7 @@ struct kdnode
         }
     }
 
-    // Splits the node (ie. two children are added)
+    /// Splits the node (i.e., two children are added)
     inline void split()
     {
         GISMO_ASSERT( (left == 0) && (right == 0),
@@ -290,8 +196,8 @@ struct kdnode
         GISMO_ASSERT( axis > -1, "Split axis not prescribed.");
 
         // Make new left and right children
-        left          = new kdnode;
-        right         = new kdnode;
+        left          = new gsKdNode;
+        right         = new gsKdNode;
         // Set axis to -1 (since they are leaves)
         left ->axis   =
         right->axis   = -1;
@@ -311,7 +217,7 @@ struct kdnode
         right->box->first [axis] = pos;
     }
 
-    // Merges terminal node (ie. two children are joined)
+    /// Merges terminal node (i.e., two children are joined)
     inline void merge()
     {
         GISMO_ASSERT( (left->isLeaf()) && (right->isLeaf()),
@@ -332,7 +238,7 @@ struct kdnode
     }
 
 
-    // Splits the node (ie. two children are added)
+    /// Splits the node (i.e., two children are added)
     void split(int splitAxis, Z splitPos)
     {
         GISMO_ASSERT( box->second[splitAxis] != splitPos, "Degenerate split " << box->second[splitAxis] <<" != "<<splitPos);
@@ -343,7 +249,7 @@ struct kdnode
     }
 
     /// Splits the node in the middle (ie. two children are added)
-    // to do: remove
+    // TODO: remove
     void nextMidSplit()
     {        
         axis = ( parent == 0 ? 0 : (parent->axis+1)%d );        
@@ -371,24 +277,20 @@ struct kdnode
     }
 
 
-    /// Splits the node adaptively (ie. two children are added)
+    /// Splits the node adaptively (i.e., two children are added)
     /// according to \a insBox.  If non-degenerate split is impossible,
     /// then this is a no-op.
     /// Splitting is done on a coordinate of the current \a level (aligned)
     /// returns the child that intersects \a insBox or NULL (if no split)
-    kdnode * adaptiveAlignedSplit(kdBox const & insBox, int index_level)
+    gsKdNode * adaptiveAlignedSplit(kdBox const & insBox, int index_level)
     {
         const unsigned h = 1 << (index_level - level) ;
-        //const unsigned mask = ~(h - 1);
         
-        for ( short_t i = 0; i < d; ++i )
+        for (short_t i = 0; i < d; ++i)
         {
-            const index_t c1 = insBox. first[i] - insBox. first[i] % h;//floor
-            const index_t cc = insBox.second[i] % h;
-            const index_t c2 = insBox.second[i] + (cc ? h-cc : 0 ) ;// ceil
-
-            //const unsigned c1 = (insBox. first[i] & mask)    ;
-            //const unsigned c2 = (insBox.second[i] & mask) + ..;
+            const Z c1 = insBox. first[i] - insBox. first[i] % h; //floor
+            const Z cc = insBox.second[i] % h;
+            const Z c2 = insBox.second[i] + (cc ? h-cc : 0 ); // ceil
 
             if ( c1 > box->first[i] )
             {
@@ -406,17 +308,16 @@ struct kdnode
         return NULL;
     }
 
-    /// Splits the node adaptively (ie. two children are added)
-    /// according to \a insBox.  If non-degenerate split is impossible,
+    /// Splits the node adaptively (i.e., two children are added)
+    /// according to \a insBox. If non-degenerate split is impossible,
     /// then this is a no-op
-    // to do: remove
-    kdnode * adaptiveSplit(kdBox const & insBox)
+    // TODO: remove
+    gsKdNode * adaptiveSplit(kdBox const & insBox)
     {
         // assumption: insBox intersects box
         for ( unsigned i = 0; i < d; ++i )
         {
-            // to do: strategy: try to split as close to the middle as
-            // possible
+            // TODO: strategy: Try to split as close to the middle as possible.
             if ( insBox.first[i] > box->first[i] )
             {
                 axis = i;
@@ -436,7 +337,7 @@ struct kdnode
         return NULL;
     }
 
-    friend std::ostream & operator<<(std::ostream & os, const kdnode & n)
+    friend std::ostream & operator<<(std::ostream & os, const gsKdNode & n)
     {
         if ( n.isLeaf() ) 
         {
@@ -447,7 +348,6 @@ struct kdnode
         {
             os << "Split node, axis= "<< n.axis <<", pos="<< n.pos <<"\n";
         }
-        //os<<"\n";
 
         return os;
     }

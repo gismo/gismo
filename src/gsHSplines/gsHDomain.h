@@ -15,15 +15,22 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsHSplines/gsHDomainLeafIter.h>
-#include <gsHSplines/gsAAPolyline.h>
 #include <gsCore/gsBoundary.h>
 
 namespace gismo 
 {
 
-template<typename T, unsigned d> class gsHDomainIterator;
+template<typename T, unsigned d>
+class gsHDomainIterator;
 
-template<class T> class gsSegment;
+template<class T>
+class gsSegment;
+
+template <short_t d, class Z>
+class gsKdNode;
+
+template <class T>
+class gsVSegment;
 
 /**
 \brief
@@ -59,20 +66,20 @@ Regarding the mentioned technical differences: A binary tree is used instead of 
 
 Template parameters
 \param d is the dimension
-\param T is the box-index type
+\param Z is the box-index type
 
 \ingroup HSplines
 */
 
-template<short_t d, class T = index_t>
+template<short_t d, class Z = index_t>
 class gsHDomain
 {
 public:
-    typedef kdnode<d,T> node;
+    typedef gsKdNode<d, Z> node;
 
     typedef typename node::point point; // it's a gsVector<index_t,d>
 
-    typedef typename node::kdBox box; // it's a gsAabb<d,unsigned>
+    typedef typename node::kdBox box; // it's a gsAABB<d,unsigned>
 
     typedef gsHDomainLeafIter<node,false> literator;
 
@@ -121,17 +128,6 @@ public:
         m_maxPath = 0;
         init(upp);
     }
-
-/*
-    /// Constructor using a given node 
-    gsHDomain(const node & root_node, unsigned index_level_ , unsigned max_ins_level_ )
-    {
-        m_root          = new node(root_node) ;
-        m_root->parent  = NULL                ;
-        m_index_level = index_level_        ;
-        max_ins_level = max_ins_level_      ;
-    }
-*/
 
     /// Copy constructor (makes a deep copy)
     gsHDomain( const gsHDomain & o) :
@@ -182,7 +178,7 @@ public:
 #endif
 
     /// Initialize the tree
-    void init(point const & upp, unsigned index_level = 13)
+    void init(point const & upp, unsigned index_level)
     {
         m_indexLevel = index_level;
         m_maxInsLevel = 0;
@@ -197,6 +193,34 @@ public:
         m_maxPath = 1;
     }
 
+	/// Initialize the tree with computing the index_level.
+    void init(point const & upp)
+    {
+        // Idea: find index_level so that for each i, upp[i] * (2 ^ index_level) does not overflow in Z.
+        // See issue #672 for more details.
+
+        // backwards compatibility
+        Z oldMax = 13;
+
+        Z numMax = std::numeric_limits<Z>::max();
+
+        std::vector<Z> logUpps(d);
+        for(short_t i=0; i<d; i++)
+        {
+            // prevent division by zero
+            if(upp[i] == 1)
+                logUpps[i] = oldMax;
+            else
+            {
+                // floor of log_2 (numMax / upp[i]):
+                logUpps[i] = math::floor( (math::log(numMax) - math::log(upp[i])) / math::log(2) );
+            }
+        }
+
+        // If the computed number would be too big we take 13 as we used to.
+        init(upp, std::min( *std::min_element(logUpps.begin(), logUpps.end()), oldMax) );
+    }
+
     /// Destructor deletes the whole tree
     ~gsHDomain() { delete m_root; }
 
@@ -205,25 +229,21 @@ public:
 
 public:
 
-    void computeFinestIndex( gsVector<index_t,d> const & index,
-                             unsigned lvl,
-                             gsVector<index_t,d> & result
-        ) const;
-
-    void computeLevelIndex( gsVector<index_t,d> const & index,
+    void computeFinestIndex(gsVector<Z, d> const & index,
                             unsigned lvl,
-                            gsVector<index_t,d> & result
-        ) const;
+                            gsVector<Z, d> & result) const;
 
-    void local2globalIndex( gsVector<index_t,d> const & index,
-                            unsigned lvl,
-                            gsVector<index_t,d> & result
-        ) const;
+    void computeLevelIndex(gsVector<Z, d> const & index,
+                           unsigned lvl,
+                           gsVector<Z, d> & result) const;
 
-    void global2localIndex( gsVector<index_t,d> const & index,
-                            unsigned lvl,
-                            gsVector<index_t,d> & result
-        ) const;
+    void local2globalIndex(gsVector<Z, d> const & index,
+                           unsigned lvl,
+                           gsVector<Z, d> & result) const;
+
+    void global2localIndex(gsVector<Z, d> const & index,
+                           unsigned lvl,
+                           gsVector<Z, d> & result) const;
 
     /// Accessor for gsHDomain::m_upperIndex
     const point & upperCorner() const
@@ -240,7 +260,7 @@ public:
         return ind;
     }
 
-    /* \brief The insert function which insert box
+    /** \brief The insert function which insert box
     defined by points \em lower and \em upper to level \em lvl.
 
     [\em lower, \em upper] are given by unique knot indices of level \em lvl
@@ -294,8 +314,6 @@ public:
     */
     void sinkBox (point const & lower, point const & upper, int lvl);
 
-    // void raiseBox (point const & lower, point const & upper, int lvl);
-
     /// Returns the internal coordinates of point \a point_idx of level \a lvl
     void internalIndex (point const & point_idx, int lvl, point & internal_idx)
     {
@@ -304,7 +322,7 @@ public:
     }
 
 
-    /*
+    /**
     \brief Returns true if the box defined by \em lower and \em upper
     is completely contained in level and
     does not overlap with any higher level.
@@ -370,7 +388,7 @@ public:
     bool query1 (point const & lower, point const & upper,
                  int level) const;
 
-    /* \brief Returns true if the box defined by \em lower and \em upper
+    /** \brief Returns true if the box defined by \em lower and \em upper
      is contained in a domain with a higher level than \em level
     \param lower lower left corner of the cube [k1,k2]
     \param upper upper right corner of the cube [k1,k2]
@@ -398,13 +416,14 @@ public:
     bool query2 (point const & lower, point const & upper,
                  int level) const;
 
-    // query3 is used if both query1 and query2 are false to decide if the
-    // coresponding basis function is active or not.  it returns the
-    // smallest level in which [k1,k2] is completely contained and not
-    // completely overlaped by higher omega structure. The idea is
-    // the same as in case of query1 and query2 but instead of returning a
-    // true or false value we remember the lowest level, which is returned
-    // at the end.
+    /** query3 is used if both query1 and query2 are false to decide if the
+     * coresponding basis function is active or not.  it returns the
+     * smallest level in which [k1,k2] is completely contained and not
+     * completely overlaped by higher omega structure. The idea is
+     * the same as in case of query1 and query2 but instead of returning a
+     * true or false value we remember the lowest level, which is returned
+     * at the end.
+     */
     int query3(point const & k1, point const & k2, 
                int level, node *_node ) const;
 
@@ -423,8 +442,8 @@ public:
     int query3(point const & lower, point const & upper,
                int level) const;
 
-    // query4 returns the highest level with which box [k1, k2]
-    // overlaps
+    /// query4 returns the highest level with which box [k1, k2]
+    /// overlaps
     int query4(point const & lower, point const & upper,
                int level, node  *_node) const;
 
@@ -511,9 +530,9 @@ public:
     */
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxes(gsMatrix<index_t>& b1,
-                  gsMatrix<index_t>& b2,
-                  gsVector<index_t>& level) const;
+    void getBoxes(gsMatrix<Z>& b1,
+                  gsMatrix<Z>& b2,
+                  gsVector<Z>& level) const;
 
     /** \brief Returns the boxes which make up the hierarchical domain
     * and the respective levels touching side \em s.
@@ -529,9 +548,9 @@ public:
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
     void getBoxesOnSide(boundary::side s,
-                        gsMatrix<index_t>& b1,
-                        gsMatrix<index_t>& b2,
-                        gsVector<index_t>& level) const;
+                        gsMatrix<Z>& b1,
+                        gsMatrix<Z>& b2,
+                        gsVector<Z>& level) const;
 
 
 
@@ -544,15 +563,15 @@ public:
     /// \param level corresponding levels
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxesInLevelIndex(gsMatrix<index_t>& b1,
-                  gsMatrix<index_t>& b2,
-                  gsVector<index_t>& level) const;
+    void getBoxesInLevelIndex(gsMatrix<Z>& b1,
+                              gsMatrix<Z>& b2,
+                              gsVector<index_t>& level) const;
 
     ///return a list of polylines- boundaries of each connected
     ///component for all levels in the parameter space
-    std::vector< std::vector< std::vector< std::vector< index_t > > > > getPolylines() const;
+    std::vector<std::vector<std::vector<std::vector<Z>>>> getPolylines() const;
 
-    std::vector< std::vector< std::vector< index_t > > > getPolylinesSingleLevel(std::vector<gsVSegment<T> >& seg) const;
+    std::vector<std::vector<std::vector<Z>>> getPolylinesSingleLevel(std::vector<gsVSegment<Z>>& seg) const;
 
 
     inline unsigned getIndexLevel() const
@@ -588,7 +607,7 @@ private:
                                               point const & k3, point const & k4);
     
     static void bisectBox(box const & original, 
-                          int k, T coord,
+                          int k, Z coord,
                           box & leftBox,
                           box & rightBox );
 
@@ -620,7 +639,7 @@ private:
     /// All indexing is in terms of level gsHDomain::m_maxInsLevel. \n
     // getBoxes-functions might get removed at some point of time.
     // Use iterators instead whenever possible.
-    void getBoxes_vec(std::vector<std::vector<index_t> >& boxes) const;
+    void getBoxes_vec(std::vector<std::vector<Z>>& boxes) const;
 
     /// \brief connect the boxes returned from quadtree getBoxes_vec()
     ///
@@ -632,19 +651,19 @@ private:
     /// is represented as vector of size <em>2*d + 1</em> containing
     /// [ [lower corner],[upper corner], Level ], where the corners
     /// are defined by the knot indices on level gsHDomain::m_maxInsLevel.
-    void connect_Boxes(std::vector<std::vector<index_t> > &boxes) const;
-    void connect_Boxes2d(std::vector<std::vector<index_t> > &boxes) const;
+    void connect_Boxes(std::vector<std::vector<Z> > &boxes) const;
+    void connect_Boxes2d(std::vector<std::vector<Z> > &boxes) const;
 
-    void connect_Boxes_2(std::vector<std::vector<index_t> > &boxes) const;
+    void connect_Boxes_2(std::vector<std::vector<Z> > &boxes) const;
 
     /// For each x-coordinate delete repeated parts of vertical segments.
     /// \a vert_seg_lists list, where for each x coordinate (sorted increasingly) a list of vertical segments
     /// with that coordinate is saved.
-    void getRidOfOverlaps( std::list< std::list< gsVSegment<T> > >& vert_seg_lists ) const;
+    void getRidOfOverlaps( std::list< std::list< gsVSegment<Z> > >& vert_seg_lists ) const;
 
     /// Sweepline algorithm.
-    void sweeplineConnectAndMerge( std::vector< std::vector< std::vector<index_t> > >& result,
-                                   std::list< std::list< gsVSegment<T> > >& vert_seg_lists ) const;
+    void sweeplineConnectAndMerge( std::vector< std::vector< std::vector<Z> > >& result,
+                                   std::list< std::list< gsVSegment<Z> > >& vert_seg_lists ) const;
     
 
 private:
@@ -675,37 +694,37 @@ private:
     /// [a_1,b_1) x [a_2,b_2)
     node * pointSearch(const point & p, int level, node  *_node) const;
 
-        // Decreases the level by 1 for all leaves
+    /// Decreases the level by 1 for all leaves
     struct maxLevel_visitor
     {
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &i)
+        static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &i)
         {
             if (leafNode->level>i) i=leafNode->level;
         }
     };
     
-    // Increases the level by 1 for all leaves
+    /// Increases the level by 1 for all leaves
     struct levelUp_visitor
     {
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
+        static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->level++;
         }
     };
 
-    // Decreases the level by 1 for all leaves
+    /// Decreases the level by 1 for all leaves
     struct levelDown_visitor
     {
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
+        static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->level--;
         }
@@ -717,7 +736,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * , return_type & i)
+        static void visitLeaf(gsKdNode<d, Z> * , return_type & i)
         {
             i++;
         }
@@ -729,7 +748,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitNode(kdnode<d,T> * , return_type & i)
+        static void visitNode(gsKdNode<d, Z> * , return_type & i)
         {
             i++;
         }
@@ -741,7 +760,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitNode(kdnode<d,T> * leafNode, return_type &)
+        static void visitNode(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->multiplyByTwo();
         }
@@ -753,7 +772,7 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
 
-        static void visitNode(kdnode<d,T> * leafNode, return_type &)
+        static void visitNode(gsKdNode<d, Z> * leafNode, return_type &)
         {
             leafNode->divideByTwo();
         }
@@ -765,30 +784,14 @@ private:
         typedef int return_type;
         static return_type init() {return 0;}
         
-        static void visitLeaf(kdnode<d,T> * leafNode, return_type &)
+        static void visitLeaf(gsKdNode<d, Z> * leafNode, return_type &)
         {
             gsInfo << *leafNode;
         }
     };
 
-    /*
-    struct toGlobalIndex 
-    {
-        toGlobalIndex(T lvl, T ilevel) : m_pow(ilevel-lvl) {}
-        const T operator()(const T & x) const { return x << m_pow; }        
-        T m_pow;
-    };
-
-    struct toLocalIndex 
-    {
-        toLocalIndex(T lvl, T ilevel) : m_pow(ilevel-lvl) {}
-        const T operator()(const T & x) const { return x >> m_pow; }        
-        T m_pow;
-    };
-    */
-
-    // Returns an cell/element box of a requested level
-    //(todo: stop traverse as soon as it is found for the first time..)
+    /// Returns an cell/element box of a requested level
+    // TODO: stop traverse as soon as it is found for the first time..
     struct get_cell_visitor
     {
         typedef std::pair<point,point> return_type;
@@ -800,7 +803,7 @@ private:
             //return return_type();//!does not properly initialize the points
         }
 
-        static void visitLeaf(gismo::kdnode<d,T> * leafNode , int level, return_type & res)
+        static void visitLeaf(gismo::gsKdNode<d, Z> * leafNode , int level, return_type & res)
         {
             if ( leafNode->level == level )
             {

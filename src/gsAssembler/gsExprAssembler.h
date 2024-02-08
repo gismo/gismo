@@ -309,11 +309,15 @@ public:
      * @param save_sparsety_pattern only modify values but keep sparsety
      * information by multiplying matrix by zero in-place
      */
-    void clearMatrix(const bool& save_sparsety_pattern = true) {
-        if (save_sparsety_pattern) {
+    void clearMatrix(const bool& save_sparsety_pattern = true)
+    {
+        if (m_matrix.nonZeros() && save_sparsety_pattern)
+        {
             std::fill(m_matrix.valuePtr(),
                       m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
-        } else {
+        }
+        else
+        {
             m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
             if (0 == m_matrix.rows() || 0 == m_matrix.cols())
@@ -796,6 +800,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             if (m_exprdata->points().cols()==0)
                 continue;
 
+// Activate the try-catch only if G+Smo is not in DEBUG
+#ifdef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
@@ -809,6 +815,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 failed = true;
                 break;
             }
+#else
+            m_exprdata->precompute(patchInd);
+#endif
 
 
             // Assemble contributions of the element

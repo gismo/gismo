@@ -132,7 +132,7 @@ public:
         {
             const int i = atoi(child->first_attribute("index")->value());
             func[i] = memory::make_shared(new gsFunctionExpr<T>);
-            getFunctionFromXml(child, *func[i]);
+            internal::gsXml<gsFunctionExpr<T> >::get_into(child, *func[i]);
         }
 
         // Read boundary conditions
