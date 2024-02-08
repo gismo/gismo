@@ -377,11 +377,6 @@ gsXmlNode * makeNode( const std::string & name,
                       const gsMatrix<T> & value, gsXmlTree & data,
                       bool transposed = false );
 
-/// Helper to fetch functions
-///\todo read gsFunction instead
-template<class T>
-void getFunctionFromXml ( gsXmlNode * node, gsFunctionExpr<T> & result );
-
 /// Helper to fetch matrices
 template<class T>
 void getMatrixFromXml ( gsXmlNode * node,

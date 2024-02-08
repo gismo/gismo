@@ -795,6 +795,7 @@ class SparseMatrix
 
     friend std::ostream & operator << (std::ostream & s, const SparseMatrix& m)
     {
+        /* //G+Smo
       EIGEN_DBG_SPARSE(
         s << "Nonzero entries:\n";
         if(m.isCompressed())
@@ -834,6 +835,7 @@ class SparseMatrix
         }
         s << std::endl;
       );
+        */
       s << static_cast<const SparseMatrixBase<SparseMatrix>&>(m);
       return s;
     }
