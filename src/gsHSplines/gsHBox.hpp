@@ -994,7 +994,6 @@ public:
         }
         else
             obj = gsHBox<d,T>(box,nullptr);
-        // getFunctionFromXml(node, obj);
     }
 
     static gsXmlNode * put (const Object & obj,
