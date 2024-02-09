@@ -13,8 +13,8 @@
 
 #include <gismo.h>
 #include <gsPreCICE/gsPreCICE.h>
-// #include <gsPreCICE/gsPreCICEFunction.h>
-#include <gsPreCICE/gsPreCICEVectorFunction.h>
+#include <gsPreCICE/gsPreCICEFunction.h>
+// #include <gsPreCICE/gsPreCICEVectorFunction.h>
 
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsElasticityAssembler.h>
@@ -22,6 +22,7 @@
 
 #ifdef gsStructuralAnalysis_ENABLED
 #include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
+#include <gsStructuralAnalysis/src/gsStructuralAnalysisTools/gsStructuralAnalysisUtils.h>
 #endif
 
 using namespace gismo;
@@ -31,7 +32,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     index_t plotmod = 1;
-    index_t numRefine  = 0;
+    index_t numRefine  = 1;
     index_t numElevate = 0;
     std::string precice_config;
 
@@ -85,14 +86,19 @@ int main(int argc, char *argv[])
     gsMatrix<> uv = gsQuadrature::getAllNodes(bases.basis(0),quadOptions,couplingInterfaces);
     gsMatrix<> xy = patches.patch(0).eval(uv);
 
+    std::string participantName = "Solid";
+    std::string meshName = "Solid-Mesh";
+    std::string dispName = "Displacement";
+    std::string forceName = "Stress";
+
     // Define precice interface
-    gsPreCICE<real_t> interface("Solid", precice_config);
-    interface.addMesh("Solid-Mesh",xy);
+    gsPreCICE<real_t> interface(participantName, precice_config);
+    interface.addMesh(meshName,xy);
+
+    gsDebugVar(xy);
+
     real_t precice_dt = interface.initialize();
 
-    index_t meshID = interface.getMeshID("Solid-Mesh");
-    index_t dispID = interface.getDataID("Displacement",meshID);
-    index_t forceID = interface.getDataID("Stress",meshID);
 
 //----------------------------------------------------------------------------------------------
 
@@ -103,7 +109,7 @@ int main(int argc, char *argv[])
     // Coupling side
     // gsFunctionExpr<> g_C("1","0",patches.geoDim());
    // gsInfo << "Got here 1\n";
-    gsPreCICEVectorFunction<real_t> g_C(&interface,meshID,forceID,patches,patches.geoDim());
+    gsPreCICEFunction<real_t> g_C(&interface,meshName,forceName,patches,patches.geoDim());
     // Add all BCs
     // Coupling interface
     // bcInfo.addCondition(0, boundary::north,  condition_type::neumann , &g_C);
@@ -203,7 +209,7 @@ int main(int argc, char *argv[])
         gsField<> solField(patches,solution);
         std::string fileName = "./output/solution" + util::to_string(timestep);
         gsWriteParaview<>(solField, fileName, 500);
-        fileName = "./output/solution" + util::to_string(timestep) + "0";
+        fileName = "solution" + util::to_string(timestep) + "0";
         collection.addTimestep(fileName,time,".vts");
     }
 
@@ -222,26 +228,34 @@ int main(int argc, char *argv[])
     timeIntegrator.setAcceleration(A_checkpoint);
     timeIntegrator.constructSolution();
 
+    gsMatrix<> points(2,1);
+    points.col(0)<<0.5,1;
+
+    gsStructuralAnalysisOutput<real_t> writer("pointData.csv",points);
+    writer.init({"x","y"},{"time"});
+
+    gsMatrix<> pointDataMatrix;
+    gsMatrix<> otherDataMatrix(1,1);
+
     // Time integration loop
     while (interface.isCouplingOngoing())
     {
-        if (interface.isActionRequired(interface.actionWriteIterationCheckpoint()))
+        if (interface.requiresWritingCheckpoint())
         {
-        gsStatus status = timeIntegrator.step();
-        if (status != gsStatus::Success)
-        GISMO_ERROR("Time integrator did not succeed");
-            U_checkpoint = timeIntegrator.displacements();
-            V_checkpoint = timeIntegrator.velocities();
-            A_checkpoint = timeIntegrator.accelerations();
+            gsStatus status = timeIntegrator.step();
+            if (status != gsStatus::Success)
+            GISMO_ERROR("Time integrator did not succeed");
+                U_checkpoint = timeIntegrator.displacements();
+                V_checkpoint = timeIntegrator.velocities();
+                A_checkpoint = timeIntegrator.accelerations();
 
-            gsInfo<<"Checkpoint written:\n";
-            gsInfo<<"\t ||U|| = "<<timeIntegrator.displacements().norm()<<"\n";
-            gsInfo<<"\t ||V|| = "<<timeIntegrator.velocities().norm()<<"\n";
-            gsInfo<<"\t ||A|| = "<<timeIntegrator.accelerations().norm()<<"\n";
+                gsInfo<<"Checkpoint written:\n";
+                gsInfo<<"\t ||U|| = "<<timeIntegrator.displacements().norm()<<"\n";
+                gsInfo<<"\t ||V|| = "<<timeIntegrator.velocities().norm()<<"\n";
+                gsInfo<<"\t ||A|| = "<<timeIntegrator.accelerations().norm()<<"\n";
 
 
-            timestep_checkpoint = timestep;
-            interface.markActionFulfilled(interface.actionWriteIterationCheckpoint());
+                timestep_checkpoint = timestep;
         }
 
         assembler.assemble();
@@ -267,12 +281,12 @@ int main(int argc, char *argv[])
             // gsDebugVar(ev.eval(nv(G),uv.col(k)));
             result.col(k) = solution.patch(0).eval(uv.col(k));
         }
-        interface.writeBlockVectorData(meshID,dispID,xy,result);
+        interface.writeData(meshName,dispName,xy,result);
 
         // do the coupling
-        precice_dt = interface.advance(dt);
+        precice_dt =interface.advance(dt);
 
-        if (interface.isActionRequired(interface.actionReadIterationCheckpoint()))
+        if (interface.requiresReadingCheckpoint())
         {
             /// Not converged. gsTimeIntegrator should NOT advance
             timeIntegrator.setTime(time);
@@ -288,7 +302,6 @@ int main(int argc, char *argv[])
             gsInfo<<"\t ||A|| = "<<timeIntegrator.accelerations().norm()<<"\n";
 
             timestep = timestep_checkpoint;
-            interface.markActionFulfilled(interface.actionReadIterationCheckpoint());
         }
         else
         {
@@ -297,15 +310,20 @@ int main(int argc, char *argv[])
             time += dt;
             timestep++;
 
+            gsField<> solField(patches,solution);
             if (timestep % plotmod==0 && plot)
             {
                 // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
-                gsField<> solField(patches,solution);
                 std::string fileName = "./output/solution" + util::to_string(timestep);
                 gsWriteParaview<>(solField, fileName, 500);
-                fileName = "./output/solution" + util::to_string(timestep) + "0";
+                fileName = "solution" + util::to_string(timestep) + "0";
                 collection.addTimestep(fileName,time,".vts");
             }
+
+            solution.patch(0).eval_into(points,pointDataMatrix);
+            otherDataMatrix<<time;
+            writer.add(pointDataMatrix,otherDataMatrix);
+
         }
     }
 

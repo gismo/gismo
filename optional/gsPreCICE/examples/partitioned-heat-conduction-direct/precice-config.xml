@@ -22,7 +22,7 @@
 
   <participant name="Dirichlet">
     <provide-mesh name="Dirichlet-Mesh"/>
-    <receive-mesh name="Neumann-Mesh" from="Neumann" />
+    <receive-mesh name="Neumann-Mesh" from="Neumann" direct-access="true"/>
     <write-data name="Heat-Flux" mesh="Dirichlet-Mesh" />
     <read-data name="Temperature" mesh="Dirichlet-Mesh" />
     <mapping:rbf-global-direct
@@ -37,7 +37,7 @@
 
   <participant name="Neumann">
     <provide-mesh name="Neumann-Mesh"/>
-    <receive-mesh name="Dirichlet-Mesh" from="Dirichlet" />
+    <receive-mesh name="Dirichlet-Mesh" from="Dirichlet" direct-access="true"/>
     <write-data name="Temperature" mesh="Neumann-Mesh" />
     <read-data name="Heat-Flux" mesh="Neumann-Mesh" />
     <mapping:rbf-global-direct

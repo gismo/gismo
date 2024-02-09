@@ -15,66 +15,68 @@ configFileName = "../precice-config.xml"
 participantName = "Fluid"
 solverProcessIndex = 0
 solverProcessSize = 1
-interface = precice.Interface(participantName, configFileName, solverProcessIndex, solverProcessSize)
+participant = precice.Participant(participantName, configFileName, solverProcessIndex, solverProcessSize)
 
 # define coupling meshes
 meshName = "Fluid-Mesh"
-meshID = interface.get_mesh_id(meshName)
+# meshID = participant.get_mesh_id(meshName)
 
 positions = [[-0.5, y0] for y0 in y[:-1]]
-vertex_ids = interface.set_mesh_vertices(meshID, positions)
+vertex_ids = participant.set_mesh_vertices(meshName, positions)
 
 print(positions)
 
 # coupling data
 writeData = "Stress"
 readData = "Displacement"
-writedataID = interface.get_data_id(writeData, meshID)
-readdataID = interface.get_data_id(readData, meshID)
+# writedataID = participant.get_data_id(writeData, meshID)
+# readdataID = participant.get_data_id(readData, meshID)
 
 # initialize preCICE
-precice_dt = interface.initialize()
+participant.initialize()
+precice_dt = participant.get_max_time_step_size()
 dt = min(precice_dt, timestepsize)
 
 timestep = 0
 t = 0
 
-while interface.is_coupling_ongoing():
-    # read displacements from interface
-    if interface.is_read_data_available():
-        v = interface.read_block_vector_data(readdataID, vertex_ids)
+while participant.is_coupling_ongoing():
+    # read displacements from participant
+    v = participant.read_data(meshName, readData, vertex_ids, dt)
 
     # save checkpoint
-    if interface.is_action_required(precice.action_write_iteration_checkpoint()):
-        interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
+    if participant.requires_writing_checkpoint():
+        print("DUMMY: Writing iteration checkpoint")
 
     # solve fluid equations
     print('t = ',t)
-    u = [[-1e2 * np.sin(3.1415923565*t), 0] for y0 in y[:-1]]
+    # u = [[-1e4 * np.sin(3.1415923565*t), 0] for y0 in y[:-1]]
+    u = [[-1e4, 0] for y0 in y[:-1]]
 
     # if (t==0):
     #     u = [[-1e4, 0] for y0 in y[:-1]]
     # else:
     #     u = [[0, 0] for y0 in y[:-1]]
 
-    # write forces to interface
-    if interface.is_write_data_required(dt):
-        interface.write_block_vector_data(writedataID, vertex_ids, u)
+    # write forces to participant
+    participant.write_data(meshName, writeData, vertex_ids, u)
 
     # do the coupling
-    precice_dt = interface.advance(dt)
+    participant.advance(dt)
+    precice_dt = participant.get_max_time_step_size()
+
     dt = min(precice_dt, timestepsize)
 
     # read checkpoint if required
-    if interface.is_action_required(precice.action_read_iteration_checkpoint()):
-        interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
+    if participant.requires_reading_checkpoint():
+        print("DUMMY: Reading iteration checkpoint")
 
-    if interface.is_time_window_complete():
+    if participant.is_time_window_complete():
         # advance variables
         timestep += 1
         t += dt
 
-interface.finalize()
+participant.finalize()
 
 
 

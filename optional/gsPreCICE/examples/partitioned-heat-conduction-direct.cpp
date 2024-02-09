@@ -131,17 +131,14 @@ int main(int argc, char *argv[])
         offset += QuRule->numNodes();
     }
 
-    std::string membername;
-    if (side==0) //left
-        membername = "Dirichlet";
-    else if (side==1) //right
-        membername = "Neumann";
-    else
-        GISMO_ERROR("Side unknown");
+    GISMO_ASSERT(side==0 || side==1,"Side must be west or east");
+    std::string readName = (side == 0) ? "Dirichlet" : "Neumann";
+    std::string writeName = (side == 0) ? "Neumann" : "Dirichlet";
 
     gsPreCICE<real_t> interface(membername, precice_config);
-    std::string meshName = membername + "-Mesh";
-    interface.addMesh(meshName,xy);
+    std::string readMeshName = readName + "-Mesh";
+    std::string writeMeshName = writeName + "-Mesh";
+    interface.addMesh(readMeshName,xy);
 
     interface.requiresInitialData();
 
@@ -150,11 +147,23 @@ int main(int argc, char *argv[])
     std::string tempName = "Temperature";
     std::string fluxName = "Heat-Flux";
 
+    gsMatrix<> bbox(2,2);
+    bbox<<0.9,1.1,-0.1,1.1;
+    interface.setMeshAccessRegion(writeMeshName,bbox);
+
+    std::vector<index_t> writeIDs;
+    gsMatrix<> writePoints;
+    interface.getMeshVertexIDsAndCoordinates(writeMeshName,writeIDs,writePoints);
+
+/*
+    TO DO:
+    * Write the evaluation on the other coordinates on the other IDs
+*/
 // ----------------------------------------------------------------------------------------------
 
     gsBoundaryConditions<> bcInfo;
-    gsPreCICEFunction<real_t> g_CD(&interface,meshName,(side==0 ? tempName : fluxName),patches,1);
-    gsPreCICEFunction<real_t> g_CN(&interface,meshName,(side==0 ? tempName : fluxName),patches,1);
+    gsPreCICEFunction<real_t> g_CD(&interface,readMeshName,(side==0 ? tempName : fluxName),patches,1);
+    gsPreCICEFunction<real_t> g_CN(&interface,readMeshName,(side==0 ? tempName : fluxName),patches,1);
     gsFunction<> * g_C = &u_ex;
 
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &u_ex, 0, false, 0);
@@ -222,21 +231,21 @@ int main(int argc, char *argv[])
             if (side==0)
             {
                 gsWarn<<"Write the flux here!!!\n";
-                tmp2 = ev.eval( - jac(u_sol) * nv(G).normalized(),uv.col(k));
+                tmp2 = ev.eval( - jac(u_sol) * nv(G).normalized(),writePoints.col(k));
                 result(0,k) = tmp2.at(0);
             }
             else
             {
-                tmp2 = ev.eval(u_sol,uv.col(k));
+                tmp2 = ev.eval(u_sol,writePoints.col(k));
                 result(0,k) = tmp2.at(0);
             }
         }
         // gsDebugVar(result);
-        interface.writeData(meshName,side==0 ? fluxName : tempName,xy,result);
+        interface.writeData(writeMeshName,writeName=="Dirichlet" ? fluxName : tempName,writeIDs,result);
     }
     // interface.initialize_data();
 
-    // interface.readBlockScalarData(meshName,side==0 ? tempName : fluxName,xy,result);
+    // interface.readBlockScalarData(readMeshName,side==0 ? tempName : fluxName,xy,result);
     // gsDebugVar(result);
 
     // Initialize the RHS for assembly
@@ -300,7 +309,7 @@ int main(int argc, char *argv[])
             F = dt*A.rhs() + M*solVector;
 
             // gsMatrix<> result;
-            // interface.readBlockScalarData(meshName,side==0 ? tempName : fluxName,xy,result);
+            // interface.readBlockScalarData(readMeshName,side==0 ? tempName : fluxName,xy,result);
             // gsDebugVar(result);
         // }
 
@@ -344,7 +353,7 @@ int main(int argc, char *argv[])
             }
         }
         // TODO
-        interface.writeData(meshName,side==0 ? fluxName : tempName,xy,result);
+        interface.writeData(readMeshName,side==0 ? fluxName : tempName,xy,result);
 
         // do the coupling
         precice_dt = interface.advance(dt);

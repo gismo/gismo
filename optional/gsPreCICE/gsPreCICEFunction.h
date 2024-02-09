@@ -44,35 +44,37 @@ public:
      * @brief      Constructs a new instance of the gsPreCICEFunction
      *
      * @param      interface   The precice::SolverInterface (see \a gsPreCICE)
-     * @param[in]  meshID      The ID of the mesh on which the data is located
-     * @param[in]  dataID      The ID of the data
+     * @param[in]  meshName      The ID of the mesh on which the data is located
+     * @param[in]  dataName      The ID of the data
      * @param[in]  patches     The geometry
      * @param[in]  parametric  Specifies whether the data is defined on the parametric domain or not
      */
     gsPreCICEFunction(        gsPreCICE<T> *    interface,
-                        const index_t &         meshID,
-                        const index_t &         dataID,
+                        const std::string &     meshName,
+                        const std::string &     dataName,
                         const gsMultiPatch<T> & patches,
+                        const index_t &         targetDim,
                         const bool parametric = false)
     :
     m_interface(interface),
-    m_meshID(meshID),
-    m_dataID(dataID),
+    m_meshName(meshName),
+    m_dataName(dataName),
     m_patches(patches),
     m_parametric(parametric),
     m_patchID(0),
     m_domainDim(m_patches.domainDim()),
-    m_targetDim(1)
+    m_targetDim(targetDim)
     {
     }
 
     /// Constructs a function pointer
     static uPtr make(   const gsPreCICE<T> *    interface,
-                        const index_t &         meshID,
-                        const index_t &         dataID,
+                        const std::string &     meshName,
+                        const std::string &     dataName,
                         const gsMultiPatch<T> & patches,
+                        const index_t &         targetDim,
                         const bool parametric = false)
-    { return uPtr(new gsPreCICEFunction(interface, meshID, dataID, patches, parametric)); }
+    { return uPtr(new gsPreCICEFunction(interface, meshName, dataName, patches, targetDim, parametric)); }
 
     GISMO_CLONE_FUNCTION(gsPreCICEFunction)
 
@@ -95,7 +97,7 @@ public:
     {
         gsMatrix<T> coords;
         this->_getCoords(u,coords);
-        m_interface->readBlockScalarData(m_meshID,m_dataID,coords,result);
+        m_interface->readData(m_meshName,m_dataName,coords,result);
     }
 
     /// See \a gsFunction
@@ -138,9 +140,9 @@ protected:
 
         // Does not work
         // if (m_parametric)
-        //     m_interface->readBlockScalarData(m_meshID,m_dataID,m_patches.patch(m_patchID).eval(u),result);
+        //     m_interface->readBlockScalarData(m_meshName,m_dataName,m_patches.patch(m_patchID).eval(u),result);
         // if (m_parametric)
-        //     m_interface->readBlockScalarData(m_meshID,m_dataID,u,result);
+        //     m_interface->readBlockScalarData(m_meshName,m_dataName,u,result);
 
         result.resize(m_patches.targetDim(),u.cols());
         if (m_parametric)
@@ -152,7 +154,8 @@ protected:
 protected:
 
     gsPreCICE<T> * m_interface;
-    index_t m_meshID, m_dataID;
+    std::string m_meshName;
+    std::string m_dataName;
     gsMultiPatch<T> m_patches;
     bool m_parametric;
     index_t m_patchID;

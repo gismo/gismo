@@ -19,6 +19,7 @@
 
 #ifdef gsStructuralAnalysis_ENABLED
 #include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
+#include <gsStructuralAnalysis/src/gsStructuralAnalysisTools/gsStructuralAnalysisUtils.h>
 #endif
 
 
@@ -30,7 +31,7 @@ int main(int argc, char *argv[])
 #ifdef gsStructuralAnalysis_ENABLED
 
     //! [Parse command line]
-    bool plot = true;
+    bool plot = false;
     index_t numRefine  = 1;
     index_t numElevate = 0;
     std::string precice_config;
@@ -179,6 +180,15 @@ int main(int argc, char *argv[])
     timeIntegrator.constructSolution();
     gsParaviewCollection collection("./output/solution");
     real_t time = 0;
+
+    gsMatrix<> points(2,1);
+    points.col(0)<<0.5,1;
+
+    gsStructuralAnalysisOutput<real_t> writer("pointData.csv",points);
+    writer.init({"x","y"},{"time"});
+
+    gsMatrix<> pointDataMatrix;
+    gsMatrix<> otherDataMatrix(1,1);
     for (index_t i=0; i<Nsteps; i++)
     {	        
     	gsStatus status = timeIntegrator.step();
@@ -196,6 +206,11 @@ int main(int argc, char *argv[])
         gsWriteParaview<>(solField, fileName, 500);
         fileName = "solution" + util::to_string(i) + "0";
         collection.addTimestep(fileName,time,".vts");
+
+        solution.patch(0).eval_into(points,pointDataMatrix);
+        otherDataMatrix<<time;
+        writer.add(pointDataMatrix,otherDataMatrix);
+
         // if (write)
         // {
         //   gsMatrix<> v(2,1);
