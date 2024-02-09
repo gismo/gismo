@@ -289,7 +289,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
         const int unk = iter->unknown();
         if(unk != u.id()) continue;
 
-        const index_t com = iter->unkComponent();// == -1 ? 0 : iter->unkComponent(); // TODO should loop
+        const index_t com = iter->unkComponent();
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = u.source().basis(patchIdx);
         const gsFunction<T> & patch = gmap.function(patchIdx);
