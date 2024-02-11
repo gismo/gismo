@@ -447,7 +447,7 @@ bool write_off(const gsSurfMesh& mesh, const std::string& filename)
     gsSurfMesh::Vertex_property<Point> points = mesh.get_vertex_property<Point>("v:point");
     for (gsSurfMesh::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
-        const Point& p = points[*vit];
+        const Point& p = points[*vit]; //cast<Scalar,double>(p[0])
         fprintf(out, "%.10f %.10f %.10f", (double)p[0], (double)p[1], (double)p[2]);
 
         if (has_normals)

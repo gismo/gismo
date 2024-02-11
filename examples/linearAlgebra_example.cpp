@@ -143,6 +143,9 @@ int main(int argc, char**argv)
     B.insert(2,2) = 3 ;
     B(1,1) += 3 ;
 
+    gsSparseMatrix<> Btr( B.transpose() );
+    gsInfo << (B - Btr).squaredNorm() <<"\n";
+
     gsInfo << "Here is a sparse matrix B:\n" << B<< " and B(1,1) is "<< B.coeffRef(1,1) << "\n";
     gsInfo << "Matrix B has "<<B.nonZeros()  << " non-zero elements"<< "\n";
     gsInfo << "Here is the product A*B:\n" << A*B << "\n";

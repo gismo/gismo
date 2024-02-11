@@ -71,6 +71,7 @@ public:
     /// Computes the approximation error of the fitted curve to the original point cloud
     void computeApproxError(T & error, int type = 0) const;
 
+    //TODO: rename as component-wise maximum errors... function is misleading
     ///return the errors for each point
     void get_Error(std::vector<T>& errors, int type = 0) const;
 

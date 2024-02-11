@@ -126,11 +126,12 @@ int main(int argc, char *argv[])
     cmd.addMultiInt("c", "corners", "vector for corners, call it every time for an entry (-c 3 -c 1 -c 2 => {3,1,2})", corners);
     cmd.addSwitch("plot","Plot with Paraview",paraview);
     cmd.addSwitch("fit", "Create an .xml file suitable for surface fitting with G+Smo.", fitting);
-    cmd.getValues(argc, argv);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    gsFileData<> fd(cmd.getString("filenameIn"));
+    //gsFileData<> fd(cmd.getString("filenameIn"));
+    gsFileData<> fd(filenameIn);
 
-    gsInfo << "Reading input into gsMesh<real_t>::uPtr: ";
+    gsInfo << "Reading "<<filenameIn<<" into gsMesh<real_t>::uPtr: ";
     gsStopwatch stopwatch;
     gsMesh<real_t>::uPtr mm = fd.getFirst<gsMesh<real_t> >();
     stopwatch.stop();
@@ -160,6 +161,16 @@ int main(int argc, char *argv[])
 
     stopwatch.stop();
     gsInfo << stopwatch << "\n";
+
+
+    gsMatrix<index_t> bi(2,1);
+    bi << pm->mesh().getNumberOfInnerVertices(),
+        pm->mesh().getNumberOfBoundaryVertices();
+    gsInfo <<"Boundary points: "<< bi(0,0)<<"\n";
+    gsInfo <<"Interior points: "<< bi(1,0)<<"\n";
+
+    //gsInfo <<"All Parameters: "<< pm->pointParameters() <<"\n";
+    //gsInfo <<"Boundary Parameters: "<< pm->mesh().getNumberOfInnerVertices() <<"\n";
 
     gsInfo << "gsParametrization::createFlatMesh()      ";
     gsMesh<> flatMesh;
@@ -209,8 +220,9 @@ int main(int argc, char *argv[])
     {
         gsInfo << "Writing to G+Smo XML." << std::endl;
         gsFileData<> output;
-        output << uv;
-        output << xyz;
+        output.add(xyz,1);
+        output.add(uv,0);
+        output << bi;
         output.save(cmd.getString("filenameOut"));
     }
 

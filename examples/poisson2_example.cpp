@@ -202,6 +202,18 @@ int main(int argc, char *argv[])
     }
     //! [Error and convergence rates]
 
+    if (plot)
+    {
+        gsExprEvaluator<> ev;
+        gsInfo<<"Plotting in Paraview...\n";
+        ev.options().setSwitch("plot.elements", false);
+        ev.options().setInt   ("plot.npts"    , 900);
+        ev.writeParaview( u_sol, G, "solution");
+        gsFileManager::open("solution.pvd");
+    }
+    
+    
+        
     //! [Export visualization in ParaView]
     if (plot)
     {

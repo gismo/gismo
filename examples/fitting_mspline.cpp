@@ -121,6 +121,8 @@ int main(int argc, char* argv[])
     if (plot)
     {
         gsInfo << "Plotting in Paraview..." << "\n";
+        fval.conservativeResize(fval.rows()+1, fval.cols());
+        fval.bottomRows(1) = gsAsVector<>(errors);
         gsWriteParaviewPoints(fval, "point_data");
         gsWriteParaview(surf, "multipatch_spline", np);
         gsFileManager::open("multipatch_spline.pvd");

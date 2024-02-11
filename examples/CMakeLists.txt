@@ -36,15 +36,18 @@ if ("x${CMAKE_CXX_STANDARD}" STREQUAL "x98")
   endforeach()
 endif()
 
+add_custom_target(gismo-examples)
+set_target_properties(gismo-examples PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 foreach(file ${FILES})
   get_filename_component(tarname ${file} NAME_WE) # name without extension
   add_gismo_executable(${file})
   set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
   set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
   add_dependencies(${PROJECT_NAME} ${tarname})
+  add_dependencies(gismo-examples  ${tarname})
 
   # install the example executables (optionally)
-  install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
+#  install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
 
 list(LENGTH FILES len)

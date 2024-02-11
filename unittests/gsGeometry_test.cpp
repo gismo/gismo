@@ -33,7 +33,15 @@ SUITE(gsGeometry_test)                 // The suite should have the same name as
     gsGeometry<>::uPtr g = gsReadFile<>("surfaces/simple.xml");   
     gsMatrix<> uv = gsPointGrid<>(g->support(), 5);
     gsMatrix<> xyz = g->eval(uv);
-    
+
+    TEST(invertPoints)
+    {
+        //gsMatrix<> puv, pxy = xyz;
+        //g->invertPoints(pxy, puv, 2, 1e-8);
+        //CHECK(  (puv-uv ).norm() < 1e-6 );
+        //CHECK(  (pxy-xyz).norm() < 1e-6 );
+    }
+
     TEST(recoverPoints)
     {
         gsMatrix<> puv, pxy = xyz;

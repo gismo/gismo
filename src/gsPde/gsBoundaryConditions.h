@@ -129,66 +129,8 @@ struct boundary_condition
     }
 
     boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
-                        condition_type::type t, short_t unknown, bool parametric)
-            : ps(p, s),
-              m_function(f_shptr),
-              m_type(t),
-              m_unknown(unknown),
-              m_unkcomp(-1),
-              m_parametric(parametric)
-    {
-        switch (t)
-        {
-            case condition_type::dirichlet:
-            {
-                GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
-                m_label = "Dirichlet";
-                break;
-            }
-            case condition_type::weak_dirichlet:
-            {
-                GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
-                m_label = "Weak Dirichlet";
-                break;
-            }
-            case condition_type::neumann:
-            {
-                m_label = "Neumann";
-                break;
-            }
-            case condition_type::robin:
-            {
-                m_label = "Robin";
-                break;
-            }
-            case condition_type::clamped:
-            {
-                m_label = "Clamped";
-                break;
-            }
-            case condition_type::weak_clamped:
-            {
-                m_label = "weak Clamped";
-                break;
-            }
-            case condition_type::collapsed:
-            {
-                m_label = "Collapsed";
-                break;
-            }
-            case condition_type::laplace:
-            {
-                m_label = "Laplace";
-                break;
-            }
-            default:
-                m_label = "Unknown";
-                break;
-        };
-    }
-
-    boundary_condition( int p, boxSide s, const function_ptr & f_shptr,
-                        condition_type::type t, int unknown, int unkcomp, bool parametric)
+                        condition_type::type t, short_t unknown,
+                        short_t unkcomp, bool parametric)
             : ps(p, s),
               m_function(f_shptr),
               m_type(t),
@@ -200,7 +142,7 @@ struct boundary_condition
         {
             case condition_type::dirichlet:
             {
-                GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
+                //GISMO_ASSERT(!m_function || m_function->targetDim()==1,"Expecting scalar function");
                 m_label = "Dirichlet";
                 break;
             }

@@ -19,6 +19,27 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
+#ifdef gsLsdyna_ENABLED
+    gsInfo<< "\nENABLED LS DYNA\n";
+#endif
+    gsNewtonCotesRule<> ncr(1);
+    gsInfo<< "\nNodes  : "<< ncr.referenceNodes();
+    gsInfo<< "\nWeights: "<< ncr.referenceWeights().transpose();
+    ncr.setNodes(2);
+    gsInfo<< "\nNodes  : "<< ncr.referenceNodes();
+    gsInfo<< "\nWeights: "<< ncr.referenceWeights().transpose();
+    ncr.setNodes(3);
+    gsInfo<< "\nNodes  : "<< ncr.referenceNodes();
+    gsInfo<< "\nWeights: "<< ncr.referenceWeights().transpose();
+    ncr.setNodes(4);
+    gsInfo<< "\nNodes  : "<< ncr.referenceNodes();
+    gsInfo<< "\nWeights: "<< ncr.referenceWeights().transpose();
+    ncr.setNodes(5);
+    gsInfo<< "\nNodes  : "<< ncr.referenceNodes();
+    gsInfo<< "\nWeights: "<< ncr.referenceWeights().transpose();
+    ncr.setNodes(6);
+    gsInfo<< "\nNodes  : "<< ncr.referenceNodes();
+    gsInfo<< "\nWeights: "<< ncr.referenceWeights().transpose();
     std::string pname("gsview"), fn("");
     index_t numSamples(1000);
     index_t choice(0);
@@ -102,7 +123,7 @@ int main(int argc, char *argv[])
             gsInfo<< "Did not find any geometry to plot in "<<fn<<", quitting."<<"\n";
             return 0;
         }
-
+       
         gsWriteParaview( *geo , pname, numSamples, plot_mesh, plot_net);
         break;
     }
@@ -111,6 +132,12 @@ int main(int argc, char *argv[])
         {
             gsMultiPatch<> mp;
             filedata.getFirst(mp);
+
+
+            gsKnotVector<> KV0, KV1;
+            gsMatrix<> C;
+            mp.addPatch(gsTensorBSpline<2, real_t>(give(KV0), give(KV1), give(C)));
+            
             gsInfo<< "Got "<< mp <<"\n";
 
             if (plot_patchid)

@@ -207,7 +207,7 @@ endif()
 
 if (GISMO_WITH_PYBIND11)
    find_package(pybind11 REQUIRED)
-   include_directories(${pybind11_INCLUDE_DIR})
+   include_directories(${pybind11_INCLUDE_DIR}) #!install
   
    #find_package(PythonLibs REQUIRED)# deprecated since cmake 3.12
    #PYTHON_LIBRARY

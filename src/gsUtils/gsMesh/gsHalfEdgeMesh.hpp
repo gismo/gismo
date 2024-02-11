@@ -40,12 +40,12 @@ gsHalfEdgeMesh<T>::gsHalfEdgeMesh(const gsMesh<T> &mesh, T precision, bool perio
     //typename std::vector<gsVertex<T> *, std::allocator<gsVertex<T> *> >::iterator
     //last = std::unique(this->m_vertex.begin(), this->m_vertex.end(), equal_ptr());
 
+    index_t k = 0;
     m_halfedges.reserve(3*this->m_face.size());
     for (size_t i = 0; i < this->m_face.size(); i++)
     {
-        m_halfedges.push_back(getInternHalfedge(this->m_face[i], 1));
-        m_halfedges.push_back(getInternHalfedge(this->m_face[i], 2));
-        m_halfedges.push_back(getInternHalfedge(this->m_face[i], 3));
+        for (size_t j = 0; j != this->m_face[i]->vertices.size(); j++)
+            m_halfedges.push_back(getInternHalfedge(this->m_face[i], ++k));
     }
 
     m_boundary = Boundary(m_halfedges);
@@ -263,40 +263,14 @@ template<class T>
 const typename gsHalfEdgeMesh<T>::Halfedge
 gsHalfEdgeMesh<T>::getInternHalfedge(const typename gsMesh<T>::gsFaceHandle &triangle, size_t numberOfHalfedge) const
 {
-    size_t index1 = triangle->vertices[0]->getId();
-    size_t index2 = triangle->vertices[1]->getId();
-    size_t index3 = triangle->vertices[2]->getId();
-    if (numberOfHalfedge < 1 || numberOfHalfedge > 3)
-    {
-        gsWarn << "gsHalfEdgeMesh::getInternHalfedge: The inputted number of the halfedge " << numberOfHalfedge
-                  << "  is supposed to be 1,2 or 3. Because input was not expected, first halfedge is returned.\n";
-        numberOfHalfedge = 1;
-    }
-    if (numberOfHalfedge == 1)
-    {
-        return Halfedge(index2, index1,
-                                         gsVector3d<T>(
-                                             triangle->vertices[1]->x() - triangle->vertices[0]->x(),
-                                             triangle->vertices[1]->y() - triangle->vertices[0]->y(),
-                                             triangle->vertices[1]->z() - triangle->vertices[0]->z()).norm());
-    }
-    if (numberOfHalfedge == 2)
-    {
-        return Halfedge(index3, index2,
-                                         gsVector3d<T>(
-                                             triangle->vertices[2]->x() - triangle->vertices[1]->x(),
-                                             triangle->vertices[2]->y() - triangle->vertices[1]->y(),
-                                             triangle->vertices[2]->z() - triangle->vertices[1]->z()).norm());
-    }
-    if (numberOfHalfedge == 3)
-    {
-        return Halfedge(index1, index3,
-                                         gsVector3d<T>(
-                                             triangle->vertices[0]->x() - triangle->vertices[2]->x(),
-                                             triangle->vertices[0]->y() - triangle->vertices[2]->y(),
-                                             triangle->vertices[0]->z() - triangle->vertices[2]->z()).norm());
-    }
-    return Halfedge();
+    size_t sz = triangle->vertices.size();
+    if (numberOfHalfedge>sz)
+        return Halfedge();
+    size_t p1 = numberOfHalfedge-1;
+    size_t p2 = ( sz==numberOfHalfedge ? 0 : numberOfHalfedge);
+    auto v1 = triangle->vertices[p1];
+    auto v2 = triangle->vertices[p2];
+    return Halfedge(v2->getId(), v1->getId(), (*v2-*v1).norm());
 }
 
 template<class T>

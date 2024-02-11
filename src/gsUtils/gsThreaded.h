@@ -30,7 +30,7 @@ template<class C, class Allocator = std::allocator<C> >
 class gsThreaded
 {
 #ifdef _OPENMP
-    std::vector<C,Allocator> m_array;
+    std::vector< std::vector<C,Allocator> > m_array;
     #else
     C m_c;
 #endif
@@ -38,27 +38,35 @@ class gsThreaded
 public:
 
 #ifdef _OPENMP
-    gsThreaded() : m_array(omp_get_max_threads()) { }
+    gsThreaded()
+    : m_array(omp_get_max_active_levels(), std::vector<C>(omp_get_max_threads()))
+    { }
 
     /// Casting to the local data
-    operator C&()             { return m_array[omp_get_thread_num()]; }
-    operator const C&() const { return m_array[omp_get_thread_num()]; }
+    inline operator C&()             { return mine(); }
+    inline operator const C&() const { return mine(); }
 
     /// Returning the local data
-    C&       mine() { return m_array[omp_get_thread_num()]; }
-    const C& mine() const { return m_array[omp_get_thread_num()]; }
+    inline const C& mine() const
+    {
+        //omp_get_ancestor_thread_num(omp_get_active_level())
+        return m_array[omp_get_active_level()][omp_get_thread_num()];
+    }
+
+    inline C&       mine()
+    {return const_cast<C &>(static_cast<const gsThreaded &>(*this).mine());}
 
     /// Assigning to the local data
-    C& operator = (C other) { return m_array[omp_get_thread_num()] = give(other); }
+    C& operator = (C other) { return mine() = give(other); }
 #else
     /// Casting to the local data
-    operator C&()             { return m_c; }
-    operator const C&() const { return m_c; }
-    
+    inline operator C&()             { return m_c; }
+    inline operator const C&() const { return m_c; }
+
     /// Returning the local data
-    C&       mine() { return m_c; }
-    const C& mine() const { return m_c; }
-    
+    inline C&       mine() { return m_c; }
+    inline const C& mine() const { return m_c; }
+
     /// Assigning to the local data
     C& operator = (C other) { return m_c = give(other); }
 #endif
