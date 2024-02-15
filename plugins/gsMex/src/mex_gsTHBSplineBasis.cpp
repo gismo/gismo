@@ -150,7 +150,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
             gsTHBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTHBSplineBasis < __DIM__ > > (prhs[1]);
             // Copy the input (FIXME: this should be avoided)
-            const mwIndex ind = (mwIndex) * mxGetPr(prhs[2]);
+            const mwIndex ind = (mwIndex) * mxGetDoubles(prhs[2]);
             const gsMatrix <real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
             // Call the method
             gsMatrix <real_t> vals = instance->evalSingle(ind-1, pts);
