@@ -38,7 +38,7 @@ foreach(f ${CXX_SRCS})
 
   #matlab_add_mex(-- todo
   add_custom_command(OUTPUT "${fmex}"
-      COMMAND ${Matlab_MEX_COMPILER} ${INCLUDE_COMPILER_STRING} -v 
+      COMMAND ${Matlab_MEX_COMPILER} ${INCLUDE_COMPILER_STRING} -v -R2018a
       -cxx
       #-I${gsMex_SOURCE_DIR}/include does not exist
       -L${CMAKE_BINARY_DIR}/lib -lgismo
