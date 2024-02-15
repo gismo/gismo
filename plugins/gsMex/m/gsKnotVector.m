@@ -39,6 +39,7 @@ classdef gsKnotVector < handle
                 error('Invalid number of input and/or output arguments.')
             end
             
+            % HV: WHAT DOES THIS ONE DO??
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
             else
