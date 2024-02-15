@@ -90,6 +90,69 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 }
 
             }
+            else if (nrhs==4)
+            {
+                if (mxIsDouble(prhs[1]) && mxIsDouble(prhs[2]) && mxIsDouble(prhs[3])) // three knot vectors are directly passed from Matlab
+                {
+                    // argument 2: list of knots
+                    if (mxIsScalar(prhs[1])) { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument has to be double vector.");
+                    }
+                    if (!mxGetM(prhs[1])==1) { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument must be a row vector.");
+                    }
+
+                    // argument 3: list of knots
+                    if (mxIsScalar(prhs[2])) { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument has to be double vector.");
+                    }
+                    if (!mxGetM(prhs[2])==1) { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument must be a row vector.");
+                    }
+
+                    // argument 3: list of knots
+                    if (mxIsScalar(prhs[3])) { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument has to be double vector.");
+                    }
+                    if (!mxGetM(prhs[3])==1) { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument must be a row vector.");
+                    }
+
+                    T *knots1 = mxGetDoubles(prhs[1]);
+                    T *knots2 = mxGetDoubles(prhs[2]);
+                    T *knots3 = mxGetDoubles(prhs[3]);
+
+                    gsKnotVector<T> kv1(*knots1);
+                    gsKnotVector<T> kv2(*knots2);
+                    gsKnotVector<T> kv3(*knots3);
+                    gsTensorBSplineBasis<3,T> * tbasis = new gsTensorBSplineBasis<3,T>(kv1,kv2,kv3);
+                    plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<3,T> >(tbasis);
+                }
+                else if (mxIsChar(prhs[1]) && mxIsChar(prhs[2]) && mxIsChar(prhs[3])) // three knot vectors are passed as G+Smo types
+                {
+                    char constructSwitch1[__MAXSTRLEN__];
+                    char constructSwitch2[__MAXSTRLEN__];
+                    char constructSwitch3[__MAXSTRLEN__];
+                    if (mxGetString(prhs[1], constructSwitch1, sizeof(constructSwitch1)))
+                        throw("Second input argument should be a string"
+                              "less than MAXSTRLEN characters long.");
+                    if (mxGetString(prhs[2], constructSwitch2, sizeof(constructSwitch2)))
+                        throw("Third input argument should be a string"
+                              "less than MAXSTRLEN characters long.");
+                    if (mxGetString(prhs[3], constructSwitch3, sizeof(constructSwitch3)))
+                        throw("Fourth input argument should be a string"
+                              "less than MAXSTRLEN characters long.");
+                    if (!strcmp(constructSwitch1,"gsKnotVector") && strcmp(constructSwitch2,"gsKnotVector") && strcmp(constructSwitch3,"gsKnotVector"))
+                    {
+                        gsKnotVector<T> *kv1 = convertMat2Ptr<gsKnotVector<T> >(prhs[4]);
+                        gsKnotVector<T> *kv2 = convertMat2Ptr<gsKnotVector<T> >(prhs[5]);
+                        gsKnotVector<T> *kv3 = convertMat2Ptr<gsKnotVector<T> >(prhs[6]);
+                        gsTensorBSplineBasis<3,T> * tbasis = new gsTensorBSplineBasis<3,T>(*kv1,*kv2,*kv3);
+                        plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<3,T> >(tbasis);
+                    }
+                }
+
+            }
             else
             {
                 // INVALID constructor
