@@ -832,6 +832,7 @@ EXCLUDE_PATTERNS       = CMake* \
                          *.suo \
                          *.swp \
                          *.in \
+                         sw_secPart.* \
                          *_.cpp
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names

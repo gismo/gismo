@@ -16,6 +16,12 @@
 #include <gsCore/gsFuncCoordinate.h>
 #include <gsTensor/gsGridIterator.h>
 
+#ifdef gsHLBFGS_ENABLED
+#include <gsHLBFGS/gsHLBFGS.h>
+#endif
+//#include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptimizer/gsFunctionAdaptor.h>
+
 #pragma once
 
 
@@ -196,24 +202,22 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
             arg = result.col(i);
         else
             arg = this->parameterCenter();
+        //arg = _argMinNormOnGrid(16);
 
-        //const int iter =
-        this->newtonRaphson(points.col(i), arg, true, accuracy, 100);
-        //gsInfo<< "Iterations: "<< iter <<"\n";
-        //  if (-1==iter)
-        //    gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
-        result.col(i) = arg;
-        if ( (this->eval(arg)-points.col(i)).norm()<=accuracy )
-            result.col(i) = arg;
-        else
+        const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 250);
+        gsInfo << " "<< iter;
+        if (iter>100)
+            gsWarn<< "Inversion took "<<iter<<" steps for "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
+
+        if (-1==iter)
         {
-            //gsDebugVar((this->eval(arg)-points.col(i)).norm());
+            gsWarn<< "Inversion failed for: "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
             result.col(i).setConstant( std::numeric_limits<T>::infinity() );
         }
+        else
+            result.col(i) = arg;
     }
-}
 /* // alternative impl using closestPointTo
-{
     result.resize(parDim(), points.cols() );
     gsVector<T> pt, arg;
     for ( index_t i = 0; i!= points.cols(); ++i )
@@ -231,8 +235,42 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
             result.col(i).setConstant( std::numeric_limits<T>::infinity() );
         }
     }
-}
 */
+}
+
+template<class T>
+void gsFunction<T>::invertPointGrid(gsGridIterator<T,0> & git,
+                                    gsMatrix<T> & result, const T accuracy,
+                                    const bool useInitialPoint) const
+{
+    result.resize(this->domainDim(), git.numPoints() );
+    gsVector<T> arg;
+    auto cw = git.numPointsCwise();
+    git.reset();
+    index_t i = 0;
+    int iter  = -1;
+    gsInfo << "Iterations: ";
+    for(;git; ++git)
+    {
+        if (-1==iter)
+            arg = this->parameterCenter();
+        else
+            arg = (i%cw[0]==0 ? result.col(i-cw[0]) : result.col(i-1) );
+
+        iter = this->newtonRaphson(*git, arg, true, accuracy, 500);
+        if (100 < iter) gsInfo << " "<< iter;
+        if (-1==iter)
+        {
+            gsWarn<< "--- "<<i<<" Inversion failed for: "<< git->transpose() <<" ("
+                  << (i%cw[0]==0 ? result.col(i-cw[0]) : result.col(i-1) ).transpose() << " -> " << arg.transpose()<< " )\n";
+            //result.col(i).setConstant( std::numeric_limits<T>::infinity() );
+        }
+        //else gsWarn<< "+Inversion OK "<< git->transpose() <<" (result="<< arg.transpose()<< ")\n";
+
+        result.col(i++) = arg;
+    }
+    gsInfo << "\n";
+}
 
 template <class T>
 template <int mode,int _Dim>
@@ -242,7 +280,7 @@ int gsFunction<T>::newtonRaphson_impl(
     bool withSupport,
     const T accuracy,
     int max_loop,
-    double damping_factor, T scale) const
+    T damping_factor, T scale) const
 {
     const index_t n = value.rows();
     const bool squareJac = (n == domainDim());//assumed for _Dim!=-1
@@ -261,13 +299,12 @@ int gsFunction<T>::newtonRaphson_impl(
                       (arg.array()<=supp.col(1).array()).all(),
                       "Initial point is outside the domain.\n point = "<<arg<<"\n domain = "<<supp);
     }
-    int iter = 0;
-    T rnorm[2]; rnorm[1]=1;
+    int iter = 1;
+    T rnorm[2]; rnorm[0]=1e100;
     //T alpha=.5, beta=.5;
-    gsFuncData<> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
+    gsFuncData<T> fd(0==mode?(NEED_VALUE|NEED_DERIV):(NEED_DERIV|NEED_HESSIAN));
 
     do {
-        //gsInfo <<"Newton it: "<< arg.transpose()<<"\n";
         this->compute(arg,fd);
         residual = (0==mode?fd.values[0]:fd.values[1]);
 
@@ -276,14 +313,8 @@ int gsFunction<T>::newtonRaphson_impl(
 
         if(rnorm[iter%2] <= accuracy) // residual below threshold
         {
-            //gsInfo <<"--- OK: Accuracy "<<rnorm[iter%2]<<" reached.\n";
+            //gsInfo <<"--- OK: Accuracy "<<rnorm[iter%2]<<" reached after "<<iter <<"iterations.\n";
             return iter;
-        }
-
-        if( iter>4 && (rnorm[(iter-1)%2]/rnorm[iter%2]) <1.1)
-        {
-            //gsInfo <<"--- OK: Converged to residual "<<rnorm[iter%2]<<"("<<rnorm[(iter-1)%2]/rnorm[iter%2]<<"), niter"<<iter<<".\n";
-            return iter; //std::pair<iter,rnorm>
         }
 
         // compute Jacobian
@@ -308,17 +339,97 @@ int gsFunction<T>::newtonRaphson_impl(
             delta.noalias() = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
+        const T rr = ( 1==iter ? (T)1.51 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
+        damping_factor = rr<1.5 ? math::max((T)0.1 + (rr/99),(rr-(T)0.5)*damping_factor) : math::min((T)1,rr*damping_factor);
+
+        //Line search
+        /*
+        real_t val = (this->eval(arg + damping_factor*delta)*scale - value).norm();
+
+        for(index_t i = 1; i!=11; ++i)
+        {
+            val = 0 ;
+        }
+        */
+
+        //gsInfo << "Newton it " << iter << " arg=" << arg.transpose() << ", f(arg)="
+        //       << (0==mode?fd.values[0]:fd.values[1]).transpose() << ", res=" << residual.transpose()
+        //       <<" ("<<rr<<" ~ "<<damping_factor<<"), norm=" << rnorm[iter%2] << "\n";
+
         // update arg
         arg += damping_factor * delta;
 
         if ( withSupport )
+        {
+            if ( delta.norm()<accuracy )
+            {
+                //gsInfo <<"OK: Newton reached boundary of support "<< delta.norm() <<"\n";
+                return iter;
+            }
             arg = arg.cwiseMax( supp.col(0) ).cwiseMin( supp.col(1) );
+        }
 
     } while (++iter <= max_loop);
 
     gsWarn <<"--- Newton method did not converge after "<< max_loop
            <<" iterations. Residual norm: "<< rnorm[max_loop%2]<<".\n";
+
     return -1;
+}
+
+template <class T>
+gsVector<T> gsFunction<T>::_argMinOnGrid(index_t numpts) const
+{
+    gsVector<T> result;
+    gsMatrix<T> supp = this->support();
+    if (0!=supp.size())
+    {
+        result = this->parameterCenter();
+        gsGridIterator<T,CUBE> pt(supp, numpts);//per direction
+        T val, mval = this->eval(result).value();
+        for(;pt; ++pt)
+        {
+            val = this->eval(*pt).value();
+            if (val < mval )
+            {
+                mval   = val;
+                result = *pt;
+            }
+        }
+    }
+    else
+    {
+        //take random points?
+        result.setZero( domainDim() );
+    }
+    return result;
+}
+
+template <class T>
+gsVector<T> gsFunction<T>::_argMinNormOnGrid(index_t numpts) const
+{
+    gsVector<T> result;
+    gsMatrix<T> supp = this->support();
+    if (0!=supp.size())
+    {
+        result = this->parameterCenter();
+        gsGridIterator<T,CUBE> pt(supp, numpts);//per direction
+        T val, mval = this->eval(result).squaredNorm();
+        for(;pt; ++pt)
+        {
+            if ( (val = this->eval(*pt).squaredNorm())<mval )
+            {
+                mval   = val;
+                result = *pt;
+            }
+        }
+    }
+    else
+    {
+        //take random points?
+        result.setZero( domainDim() );
+    }
+    return result;
 }
 
 template <class T>
@@ -327,7 +438,7 @@ int gsFunction<T>::newtonRaphson(const gsVector<T> & value,
                                  bool withSupport,
                                  const T accuracy,
                                  int max_loop,
-                                 double damping_factor) const
+                                 T damping_factor) const
 {
     GISMO_ASSERT( value.rows() == targetDim(),
                   "Invalid input values:"<< value.rows()<<"!="<<targetDim());
@@ -339,10 +450,9 @@ template <class T>
 gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
                                   int max_loop,
                                   gsMatrix<T> init,
-                                  double damping_factor) const
+                                  T damping_factor) const
 {
     GISMO_ASSERT(1==targetDim(), "Currently argMin works for scalar functions");
-    const index_t dd = domainDim();
     gsVector<T> result;
 
     // Initial point
@@ -350,25 +460,23 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         result = give(init);
     else
     {
-        gsMatrix<T> supp = this->support();
-        if (0!=supp.size())
-        {
-            gsGridIterator<T,CUBE> pt(supp, 20);//per direction
-            T val, mval = std::numeric_limits<T>::max();
-            for(;pt; ++pt)
-            {
-                if ( (val = this->eval(*pt).value())<mval )
-                {
-                    mval   = val;
-                    result = *pt;
-                }
-            }
-            //result = 0.5 * ( supp.col(0) + supp.col(1) );
-        }
-        else
-            result.setZero( dd );
+        result = _argMinOnGrid(20);
     }
 
+    #ifdef gsHLBFGS_ENABLED
+    gsFunctionAdaptor<T> fmin(*this);
+    // gsIpOpt<T> solver( &fmin );
+    //gsGradientDescent<T> solver( &fmin );
+    gsHLBFGS<T> solver( &fmin );
+    solver.options().setInt("MaxIterations",100);
+    solver.options().setInt("Verbose",0);
+    //MinStep..1e-12
+    solver.solve(result);
+    result = solver.currentDesign();
+    //gsDebugVar(result);
+    return result;
+#else
+    int dd=domainDim();
     switch (dd)
     {
     case 2:
@@ -379,6 +487,7 @@ gsMatrix<T> gsFunction<T>::argMin(const T accuracy,
         newtonRaphson_impl<1>(gsVector<T>::Zero(dd), result, true,
                               accuracy,max_loop,damping_factor,(T)1);//argMax: (T)(-1)
     }
+#endif
 
     return result;
 }
@@ -394,6 +503,48 @@ template <class T>
 int gsFunction<T>::targetDim() const
 { GISMO_NO_IMPLEMENTATION }
 */
+
+template<class T>
+void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                                  const T accuracy) const
+{
+    gsVector<index_t> ind(xyz.rows()-1);
+    for (index_t i = 0; i!= xyz.rows(); ++i)
+        if (i<k) ind[i]=i;
+        else if (i>k) ind[i-1]=i;       
+
+    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsFuncCoordinate<T> fc(*this, give(ind));
+
+    //find low accuracy closest point
+    // uv.resize(this->domainDim(), xyz.cols() );
+    // for (index_t i = 0; i!= xyz.cols(); ++i)
+    // {
+    //     gsSquaredDistance2<T> dist2(fc, pt.col(i));
+    //     uv.col(i) = dist2.argMin(accuracy, 10000) ;
+    // }
+
+    fc.invertPoints(pt,uv,accuracy,false); //true
+    xyz = this->eval(uv);
+    //possible check: pt close to xyz
+}
+
+template<class T>
+void gsFunction<T>::recoverPointGrid(gsGridIterator<T,0> & git,
+                                     gsMatrix<T> & xyz, gsMatrix<T> & uv,
+                                     index_t k, const T accuracy) const
+{
+    gsVector<index_t> ind(xyz.rows()-1);
+    for (index_t i = 0; i!= xyz.rows(); ++i)
+        if (i<k) ind[i]=i;
+        else if (i>k) ind[i-1]=i;
+
+    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsFuncCoordinate<T> fc(*this, give(ind));
+
+    fc.invertPointGrid(git,uv,accuracy,false); //true
+    xyz = this->eval(uv);
+}
 
 template <class T>
 void gsFunction<T>::eval_component_into(const gsMatrix<T>&,
@@ -614,11 +765,16 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 alt_sgn = -alt_sgn;
             }
         }
+        //gsDebugVar(InOut.normals);
     }
 
     // Second Fundamantan form of surface
     if (InOut.flags & NEED_2ND_FFORM)
     {
+        // gsDebugVar(src);
+        // gsDebugVar(InOut.normals);
+        // gsDebugVar(n);
+        // gsDebugVar(d+1);
         //domDim=2, tarDim=3
         InOut.fundForms.resize(d*d, numPts);
         const index_t sz = d*(d+1)/2;
