@@ -107,13 +107,13 @@ public:
     /// This routine uses the expression assembler and always overwrites already assembled matrices.
     const gsSparseMatrix<T> & assembleMass2()
     {
-        typedef gsExprAssembler<>::geometryMap geometryMap;
-        typedef gsExprAssembler<>::variable    variable;
-        typedef gsExprAssembler<>::space       space;
-        typedef gsExprAssembler<>::solution    solution;
+        typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+        typedef typename gsExprAssembler<T>::variable    variable;
+        typedef typename gsExprAssembler<T>::space       space;
+        typedef typename gsExprAssembler<T>::solution    solution;
 
         // Elements used for numerical integration
-        gsExprAssembler<> A(1,1);
+        gsExprAssembler<T> A(1,1);
         A.setIntegrationElements(m_bases.front());
         geometryMap G = A.getMap(m_pde_ptr->patches());
         space u = A.getSpace(m_bases.front());
