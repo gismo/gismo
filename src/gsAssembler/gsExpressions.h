@@ -136,6 +136,7 @@ template<class E> class abs_expr;
 template<class E> class pow_expr;
 template<class E> class sign_expr;
 template<class E> class ppart_expr;
+template<class E> class log_expr;
 template<class E> class exp_expr;
 template<class E> class ppartval_expr;
 template<class T> class cdiam_expr;
@@ -244,6 +245,10 @@ public:
     /// Returns the sign of the expression
     sign_expr<E> sgn(Scalar tolerance=0) const
     { return sign_expr<E>(static_cast<E const&>(*this), tolerance); }
+
+    /// Returns log(expression)
+    log_expr<E> log() const
+    { return log_expr<E>(static_cast<E const&>(*this)); }
 
     /// Returns exp(expression)
     exp_expr<E> exp() const
@@ -2399,6 +2404,40 @@ public:
     const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os<<"sgn("; _u.print(os); os <<")"; }
+};
+
+
+/**
+   Expression for the logarithm of a given expression.
+*/
+template<class E>
+class log_expr : public _expr<log_expr<E> >
+{
+  typename E::Nested_t _u;
+ public:
+  typedef typename E::Scalar Scalar;
+  enum {ScalarValued = 1, Space = E::Space, ColBlocks= 0};
+
+  log_expr(_expr<E> const& u) : _u(u) { }
+
+  Scalar eval(const index_t k) const
+  {
+    const Scalar v = _u.val().eval(k);
+    return math::log(v);
+  }
+
+  static index_t rows() { return 0; }
+  static index_t cols() { return 0; }
+
+  void parse(gsExprHelper<Scalar> & el) const
+  { _u.parse(el); }
+
+  static bool isScalar() { return true; }
+
+  const gsFeSpace<Scalar> & rowVar() const {return gsNullExpr<Scalar>::get();}
+  const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
+
+  void print(std::ostream &os) const { os<<"log("; _u.print(os); os <<")"; }
 };
 
 /**
