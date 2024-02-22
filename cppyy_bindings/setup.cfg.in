@@ -12,3 +12,4 @@ keywords = isogeometric analysis, finite element method, computer-aided design
 packages = @PKG_NAME@
 install_requires =
     cppyy>=2.4.2,!=3.0.0
+    numpy

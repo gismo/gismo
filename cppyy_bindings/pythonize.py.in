@@ -11,31 +11,52 @@
 
     Author(s): F. Scholz
 """
+import numpy as np
+
+# Equivalent numpy types for C types, see https://numpy.org/doc/stable/user/basics.types.html
+typeconversion = {"bool": np.bool_,
+                  "signed char": np.byte,
+                  "unsigned char": np.ubyte,
+                  "short": np.short,
+                  "unsigned short": np.ushort,
+                  "int": np.intc,
+                  "unsigned int": np.uintc,
+                  "long": np.int_,
+                  "unsigned long": np.uint,
+                  "long long": np.longlong,
+                  "unsigned long long": np.ulonglong,
+                  "float": np.single,
+                  "double": np.double,
+                  "long double": np.longdouble,
+                  "float complex": np.csingle,
+                  "double complex": np.cdouble,
+                  "long double complex": np.clongdouble}
 
 # Pythonizations for the gismo namespace
 def pythonize_gismo(klass, name):
     # Enable conversion to numpy
-    if name.startswith("gsMatrix<double"):
-        def tonumpy(self):
-            import numpy as np
-            rows = self.rows()
-            cols = self.cols()
-            arr = self.data()
-            arr.reshape((rows * cols, ))
-            numpyarray = np.frombuffer(arr, dtype=np.double, count=rows*cols).reshape(cols, rows).transpose()
-            return numpyarray
-        setattr(klass, "tonumpy", tonumpy)
+    if name.startswith("gsMatrix<"):
+        datatype = name.split("<")[1].split(",")[0]
 
-        # Constructor from numpy array
-        @classmethod
-        def fromnumpy(cls, numpyarray):
-            import numpy as np
-            if not numpyarray.ndim == 2:
-                raise TypeError("Input needs to be a two-dimensional numpy array.")
-            if not numpyarray.dtype == np.double:
-                raise TypeError("Data type needs to be double.")
-            return cls(np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1])
-        setattr(klass, "fromnumpy", fromnumpy)
+        if datatype in typeconversion.keys():
+            def tonumpy(self):
+                rows = self.rows()
+                cols = self.cols()
+                arr = self.data()
+                arr.reshape((rows * cols, ))
+                numpyarray = np.frombuffer(arr, dtype=typeconversion[datatype], count=rows*cols).reshape(cols, rows).transpose()
+                return numpyarray
+            setattr(klass, "tonumpy", tonumpy)
+
+            # Constructor from numpy array
+            @classmethod
+            def fromnumpy(cls, numpyarray):
+                if not numpyarray.ndim == 2:
+                    raise TypeError("Input needs to be a two-dimensional numpy array.")
+                if not numpyarray.dtype == typeconversion[datatype]:
+                    raise TypeError(f"Data type needs to be {datatype}.")
+                return cls(np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1])
+            setattr(klass, "fromnumpy", fromnumpy)
 
     # Add length as len
     try:
