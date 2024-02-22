@@ -359,7 +359,7 @@ if(GISMO_WITH_CPPYY)
           RESULT_VARIABLE EXIT_CODE
           OUTPUT_QUIET)
   if(NOT ${EXIT_CODE} EQUAL 0)
-    message("Python package \"build\" not found. In order to generate the wheel, please install it using \"pip install build\"")
+    message("Python package \"build\" not found. If you want to generate the wheel, please install it with \"pip install build\"")
   endif ()
 
   add_custom_command(OUTPUT ${PY_WHEEL_FILE}
@@ -369,7 +369,7 @@ if(GISMO_WITH_CPPYY)
   add_custom_target(wheel ALL DEPENDS ${PY_WHEEL_FILE})
 
   add_custom_target(install-bindings COMMAND pip install ${PY_WHEEL_FILE}
-          COMMENT "Install the cppyy Python bindings using pip"
+          COMMENT "Installing the cppyy Python bindings using pip"
           DEPENDS wheel gismo)
 endif()
 

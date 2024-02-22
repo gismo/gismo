@@ -58,7 +58,7 @@ def pythonize_gismo(klass, name):
                 return cls(np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1])
             setattr(klass, "fromnumpy", fromnumpy)
 
-    # Add length as len
+    # Add size as len
     try:
         klass.__len__ = klass.__dict__['size']
     except KeyError:
