@@ -14,7 +14,9 @@
 
 import math
 import argparse
+import time
 from gismo_cppyy import gismo
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -28,12 +30,12 @@ def main():
                         type=int,
                         dest="numElevate")
     parser.add_argument("-r", "--uniformRefine",
-                        default = 5,
+                        default=5,
                         help="Number of Uniform h-refinement loops",
                         type=int,
                         dest="numRefine")
     parser.add_argument("-f", "--file",
-                        default = "pde/poisson2d_bvp.xml",
+                        default="pde/poisson2d_bvp.xml",
                         help="Input XML file",
                         type=str,
                         dest="fn")
@@ -102,7 +104,7 @@ def main():
     # Elements used for numerical integration
     A.setIntegrationElements(dbasis)
 
-    #Expression evaluator
+    # Expression evaluator
     ev = gismo.gsExprEvaluator["double"](A)
 
     # Expressions
@@ -114,10 +116,12 @@ def main():
     # Solver
     solver = gismo.gsSparseSolver["double"].CGDiagonal()
 
-    for r in range(numRefine+1):
+    for r in range(numRefine + 1):
         print(f"Refinement step {r}")
 
-        if r>0:
+        startingtime = time.time()
+
+        if r > 0:
             dbasis.uniformRefine()
 
         # Set up the space and initialize
@@ -128,7 +132,8 @@ def main():
         print(f"Number of degrees of freedom: {A.numDofs()}")
 
         # Assemble the bilinear form
-        A.assemble(gismo.expr.igrad(u, G) * gismo.expr.igrad(u, G).tr() * gismo.expr.meas(G), u * ff * gismo.expr.meas(G))
+        A.assemble(gismo.expr.igrad(u, G) * gismo.expr.igrad(u, G).tr() * gismo.expr.meas(G),
+                   u * ff * gismo.expr.meas(G))
         g_N = A.getBdrFunction(G)
         A.assembleBdr(boundarycondition.get("Neumann"), u * g_N.tr() * gismo.expr.nv(G))
 
@@ -137,26 +142,29 @@ def main():
         solVector = solver.solve(A.rhs())
         u_sol = A.getSolution(u, solVector)
 
-
-
         # Compute the L2 and H1-errors
         l2error = math.sqrt(ev.integral((u_ex - u_sol).sqNorm() * gismo.expr.meas(G)))
-        h1error = math.sqrt(ev.integral((gismo.expr.igrad(u_ex) - gismo.expr.igrad(u_sol, G)).sqNorm() * gismo.expr.meas(G)))
+        h1error = math.sqrt(
+            ev.integral((gismo.expr.igrad(u_ex) - gismo.expr.igrad(u_sol, G)).sqNorm() * gismo.expr.meas(G)))
 
-        print(f"L2 error: {l2error}\nH1 error: {h1error}", flush=True)
+        totaltime = time.time() - startingtime
+
+        print(f"L2 error: {l2error}\nH1 error: {h1error}\n"
+              f"Total computation time: {totaltime}", flush=True)
 
     if plot:
         print("Plotting in Paraview...\n")
         collection = gismo.gsParaviewCollection("ParaviewOutput/solution", ev)
-        collection.options().setSwitch("plotElements", True);
-        collection.options().setInt("plotElements.resolution", 16);
-        collection.newTimeStep(geometry);
-        collection.addField(u_sol,"numerical solution");
-        collection.addField(u_ex, "exact solution");
-        collection.saveTimeStep();
-        collection.save();
+        collection.options().setSwitch("plotElements", True)
+        collection.options().setInt("plotElements.resolution", 16)
+        collection.newTimeStep(geometry)
+        collection.addField(u_sol, "numerical solution")
+        collection.addField(u_ex, "exact solution")
+        collection.saveTimeStep()
+        collection.save()
     else:
         print("Done. No output created, re-run with --plot to get a ParaView file containing the solution.")
+
 
 if __name__ == "__main__":
     main()
