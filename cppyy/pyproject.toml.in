@@ -3,4 +3,4 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.cibuildwheel]
-test-command = "python3 {project}/python_examples/poisson_example.py"
+test-command = "python3 {project}/python_examples/poisson_example_cppyy.py"
