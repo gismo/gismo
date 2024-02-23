@@ -84,7 +84,7 @@ template<class base> inline mxArray *convertPtr2Mat(base *ptr)
 {
     mexLock();
     mxArray *out = mxCreateNumericMatrix(1, 1, mxUINT64_CLASS, mxREAL);
-    *((uint64_t *)mxGetInt64s(out)) = reinterpret_cast<uint64_t>(new class_handle<base>(ptr));
+    *((uint64_t *)mxGetData(out)) = reinterpret_cast<uint64_t>(new class_handle<base>(ptr));
     return out;
 }
 
@@ -92,8 +92,8 @@ template<class base> inline class_handle<base> *convertMat2HandlePtr(const mxArr
 {
     if (mxGetNumberOfElements(in) != 1 || mxGetClassID(in) != mxUINT64_CLASS || mxIsComplex(in))
         mexErrMsgTxt("Input must be a real uint64 scalar.");
-    class_handle<base> *ptr = reinterpret_cast<class_handle<base> *>(*((uint64_t *)mxGetInt64s(in)));
-    //class_handle<base> *ptr = static_cast<class_handle<base> *>((void*)mxGetInt64s(in)); // for virtual
+    class_handle<base> *ptr = reinterpret_cast<class_handle<base> *>(*((uint64_t *)mxGetData(in)));
+    //class_handle<base> *ptr = static_cast<class_handle<base> *>((void*)mxGetData(in)); // for virtual
     if (!ptr->isValid())
         mexErrMsgTxt("Handle not valid.");
     return ptr;
@@ -103,8 +103,8 @@ template<class base> inline class_wrapper<base> *convertMat2WrapperPtr(const mxA
 {
     if (mxGetNumberOfElements(in) != 1 || mxGetClassID(in) != mxUINT64_CLASS || mxIsComplex(in))
         mexErrMsgTxt("Input must be a real uint64 scalar.");
-    class_wrapper<base> *ptr = reinterpret_cast<class_wrapper<base> *>(*((uint64_t *)mxGetInt64s(in)));
-    //class_wrapper<base> *ptr = dynamic_cast<class_wrapper<base> *>(*((uint64_t *)mxGetInt64s(in))); // for virtual
+    class_wrapper<base> *ptr = reinterpret_cast<class_wrapper<base> *>(*((uint64_t *)mxGetData(in)));
+    //class_wrapper<base> *ptr = dynamic_cast<class_wrapper<base> *>(*((uint64_t *)mxGetData(in))); // for virtual
     if (!ptr->isValid())
         mexErrMsgTxt("Handle not valid.");
     return ptr;
