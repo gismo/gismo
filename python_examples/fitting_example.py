@@ -159,7 +159,7 @@ def main():
         ref.nextIteration(args.tolerance, args.threshold, args.maxPcIter)
         runtime = time.time() - starttime
 
-        print(f"Fitting time: {time}")
+        print(f"Fitting time: {runtime}")
         print(f"Fitted with {ref.result().basis()}")
         print(f"Min distance : {ref.minPointError()} / Max distance: {ref.maxPointError()}")
         print(f"Points below tolerance {100. * ref.numPointsBelow(args.tolerance) / len(errors)}%")
