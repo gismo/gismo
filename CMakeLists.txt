@@ -339,14 +339,14 @@ add_subdirectory(doc)
 
 if(GISMO_WITH_CPPYY)
   set(GISMO_LIB_DIR  "${PROJECT_BINARY_DIR}/${LIB_INSTALL_DIR}")
-  set(PYTHON_PACKAGE_DIR ${PROJECT_BINARY_DIR}/cppyy_bindings)
+  set(PYTHON_PACKAGE_DIR ${PROJECT_BINARY_DIR}/cppyy)
 
   set(PKG_NAME "gismo_cppyy")
 
-  configure_file(${PROJECT_SOURCE_DIR}/cppyy_bindings/__init__.py.in ${PYTHON_PACKAGE_DIR}/${PKG_NAME}/__init__.py)
-  configure_file(${PROJECT_SOURCE_DIR}/cppyy_bindings/pythonize.py.in ${PYTHON_PACKAGE_DIR}/${PKG_NAME}/pythonize.py)
-  configure_file(${PROJECT_SOURCE_DIR}/cppyy_bindings/pyproject.toml.in ${PYTHON_PACKAGE_DIR}/pyproject.toml)
-  configure_file(${PROJECT_SOURCE_DIR}/cppyy_bindings/setup.cfg.in ${PYTHON_PACKAGE_DIR}/setup.cfg)
+  configure_file(${PROJECT_SOURCE_DIR}/cppyy/__init__.py.in ${PYTHON_PACKAGE_DIR}/${PKG_NAME}/__init__.py)
+  configure_file(${PROJECT_SOURCE_DIR}/cppyy/pythonize.py.in ${PYTHON_PACKAGE_DIR}/${PKG_NAME}/pythonize.py)
+  configure_file(${PROJECT_SOURCE_DIR}/cppyy/pyproject.toml.in ${PYTHON_PACKAGE_DIR}/pyproject.toml)
+  configure_file(${PROJECT_SOURCE_DIR}/cppyy/setup.cfg.in ${PYTHON_PACKAGE_DIR}/setup.cfg)
 
   set(PY_WHEEL_FILE "${PYTHON_PACKAGE_DIR}/dist/${PKG_NAME}-${gismo_VERSION}-py3-none-any.whl")
 

@@ -26,7 +26,7 @@ for dir in includedirs:
 cppyy.include("gismo.h")
 cppyy.load_library("gismo")
 
-cppyy.py.add_pythonization(pythonize.pythonize_gismo, scope="gismo")
+cppyy.py.add_pythonization(pythonize_gismo, scope="gismo")
 
 gismo = cppyy.gbl.gismo
 builtins.__dict__["gismo"] = gismo
