@@ -1,4 +1,4 @@
-""""
+"""
     @file Poisson equation example
 
     @brief Solve the Poisson equation using the expression assembler in Python. Needs the gismo cppyy bindings.
@@ -20,7 +20,7 @@ from gismo_cppyy import gismo
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="poissonexample",
+        prog="poisson_example",
         description="Tutorial on solving a Poisson problem."
     )
     parser.add_argument("-e", "--degreeElevation",
@@ -59,25 +59,25 @@ def main():
     plot = args.plot
 
     # Read the data from file
-    fd = gismo.gsFileData["double"](fn)
+    fd = gismo.gsFileData["real_t"](fn)
 
     # Get the multipatch geometry
-    geometry = gismo.gsMultiPatch['double']()
+    geometry = gismo.gsMultiPatch['real_t']()
     fd.getId(0, geometry)
 
     # Get the right-hand side
-    righthandside = gismo.gsFunctionExpr['double']()
+    righthandside = gismo.gsFunctionExpr['real_t']()
     fd.getId(1, righthandside)
     print(f"Source function {righthandside}")
 
     # Load the boundary conditions
-    boundarycondition = gismo.gsBoundaryConditions["double"]()
+    boundarycondition = gismo.gsBoundaryConditions["real_t"]()
     fd.getId(2, boundarycondition)
     boundarycondition.setGeoMap(geometry)
     print(f"Boundary conditions:\n{boundarycondition}")
 
     # Get the exact solution
-    exactsolution = gismo.gsFunctionExpr["double"]()
+    exactsolution = gismo.gsFunctionExpr["real_t"]()
     fd.getId(3, exactsolution)
 
     # Get options
@@ -85,7 +85,7 @@ def main():
     fd.getId(4, Aopt)
 
     # Create basis for solution
-    dbasis = gismo.gsMultiBasis["double"](geometry, True)
+    dbasis = gismo.gsMultiBasis["real_t"](geometry, True)
     dbasis.setDegree(dbasis.maxCwiseDegree() + numElevate)
 
     # h-refine each basis
@@ -97,7 +97,7 @@ def main():
     print(f"Number of patches: {geometry.nPatches()}, degree for solution: {dbasis.minCwiseDegree()}")
 
     # Get expression assembler
-    A = gismo.gsExprAssembler["double"]()
+    A = gismo.gsExprAssembler["real_t"]()
     A.setOptions(Aopt)
     print(f"Active Options:\n{A.options()}")
 
@@ -105,7 +105,7 @@ def main():
     A.setIntegrationElements(dbasis)
 
     # Expression evaluator
-    ev = gismo.gsExprEvaluator["double"](A)
+    ev = gismo.gsExprEvaluator["real_t"](A)
 
     # Expressions
     G = A.getMap(geometry)
@@ -114,7 +114,7 @@ def main():
     u_ex = ev.getVariable(exactsolution, G)
 
     # Solver
-    solver = gismo.gsSparseSolver["double"].CGDiagonal()
+    solver = gismo.gsSparseSolver["real_t"].CGDiagonal()
 
     for r in range(numRefine + 1):
         print(f"Refinement step {r}")
