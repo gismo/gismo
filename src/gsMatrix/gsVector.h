@@ -111,6 +111,9 @@ public:
         GISMO_ASSERT(1==_cols,"Columns should be 1");
     }
 
+    /// This constructor allows constructing a gsVector from an array
+    gsVector(T * array, int rows, int cols) : gsBase(array, rows, cols) { }
+
     inline operator Ref () { return Ref(*this); }
 
     inline operator const ConstRef () { return ConstRef(*this); }

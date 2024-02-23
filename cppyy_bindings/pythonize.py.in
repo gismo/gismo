@@ -35,7 +35,7 @@ typeconversion = {"bool": np.bool_,
 # Pythonizations for the gismo namespace
 def pythonize_gismo(klass, name):
     # Enable conversion to numpy
-    if name.startswith("gsMatrix<"):
+    if name.startswith("gsMatrix<") or name.startswith("gsVector<"):
         datatype = name.split("<")[1].split(",")[0]
 
         if datatype in typeconversion.keys():
