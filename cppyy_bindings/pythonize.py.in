@@ -39,6 +39,7 @@ def pythonize_gismo(klass, name):
         datatype = name.split("<")[1].split(",")[0]
 
         if datatype in typeconversion.keys():
+            # Conversion to numpy without copying the data
             def tonumpy(self):
                 rows = self.rows()
                 cols = self.cols()
@@ -48,7 +49,30 @@ def pythonize_gismo(klass, name):
                 return numpyarray
             setattr(klass, "tonumpy", tonumpy)
 
-            # Constructor from numpy array
+            # Constructor from numpy array, copies the data
+            @classmethod
+            def fromnumpy(cls, numpyarray):
+                if not numpyarray.ndim == 2:
+                    raise TypeError("Input needs to be a two-dimensional numpy array.")
+                if not numpyarray.dtype == typeconversion[datatype]:
+                    raise TypeError(f"Data type needs to be {datatype}.")
+                return cls(gismo.gsAsMatrix[datatype](np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1]))
+            setattr(klass, "fromnumpy", fromnumpy)
+
+    if name.startswith("gsAsMatrix<"):
+        datatype = name.split("<")[1].split(",")[0]
+        if datatype in typeconversion.keys():
+            # Conversion to numpy without copying the data
+            def tonumpy(self):
+                rows = self.rows()
+                cols = self.cols()
+                arr = self.data()
+                arr.reshape((rows * cols, ))
+                numpyarray = np.frombuffer(arr, dtype=typeconversion[datatype], count=rows*cols).reshape(cols, rows).transpose()
+                return numpyarray
+            setattr(klass, "tonumpy", tonumpy)
+
+            # Constructor from numpy array without copying the data
             @classmethod
             def fromnumpy(cls, numpyarray):
                 if not numpyarray.ndim == 2:
@@ -58,7 +82,7 @@ def pythonize_gismo(klass, name):
                 return cls(np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1])
             setattr(klass, "fromnumpy", fromnumpy)
 
-    # Add size as len
+# Add size as len
     try:
         klass.__len__ = klass.__dict__['size']
     except KeyError:

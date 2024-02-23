@@ -158,9 +158,6 @@ public:
     template<typename OtherDerived>
     gsMatrix(const gsEigen::ReturnByValue<OtherDerived>& other) : Base(other) { }
 
-    /// This constructor allows constructing a gsMatrix from an array
-    gsMatrix(T * array, int rows, int cols) : Base(gsEigen::Map<gsEigen::Matrix<T,_Rows, _Cols, gsEigen::RowMajor> >(array, rows, cols)) { }
-
     inline operator Ref () { return Ref(*this); }
 
     inline operator const constRef () { return constRef(*this); }
