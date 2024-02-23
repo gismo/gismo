@@ -62,13 +62,15 @@ int main(int argc, char *argv[])
     // bbox.row(1)<<points.row(1).minCoeff(),points.row(1).maxCoeff();
     bbox.row(0)<<-1,1;
     bbox.row(1)<<-1,1;
+    // Convert to the PreCICE bounding box format
     bbox.transposeInPlace();
     bbox.resize(1,bbox.rows()*bbox.cols());
     gsDebugVar(bbox);
 
+    // Needed for direct mesh coupling
     interface.setMeshAccessRegion(otherMeshName,bbox);
-    real_t precice_dt = interface.initialize();
 
+    real_t precice_dt = interface.initialize();
 
     std::vector<index_t> writeIDs;
     gsMatrix<> writePoints;
@@ -85,6 +87,7 @@ int main(int argc, char *argv[])
 
     gsMatrix<> writeData;
     writeData.setRandom(1,writeIDs.size());
+    // Write
     interface.writeData(otherMeshName,otherDataName,writeIDs,writeData);
     gsInfo<<"Wrote the following data ("<<participantName<<" -> "<<otherName<<"):\n"
           <<writeData

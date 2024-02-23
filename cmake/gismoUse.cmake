@@ -91,6 +91,17 @@ endmacro(mark_gismo_optional)
 ######################################################################
 
 # list all subdirectories of the current directory
+MACRO(ALLSUBDIRS result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+        LIST(APPEND dirlist ${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO(ALLSUBDIRS)
+
 MACRO(SUBDIRLIST result curdir)
   FILE(GLOB children RELATIVE ${curdir} ${curdir}/gs*)
   SET(dirlist "")
