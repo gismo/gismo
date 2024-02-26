@@ -39,24 +39,24 @@ classdef gsTensorBSplineBasis < handle
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
             elseif (nargin==2)
-                if (~(isa(varargin{1},'double')))
+                if (~(isa(varargin{1},'double') || isa(varargin{1},'gsKnotVector')))
                     error('Input argument no. 1 should be of type ''double''.')
                 end
-                if (~(isa(varargin{2},'double')))
+                if (~(isa(varargin{2},'double') || isa(varargin{2},'gsKnotVector')))
                     error('Input argument no. 2 should be of type ''double''.')
                 end
-                this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), class(varargin{2}), varargin{:});
+                this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
             elseif (nargin==3)
-                if (~(isa(varargin{1},'double')))
+                if (~(isa(varargin{1},'double') || isa(varargin{1},'gsKnotVector')))
                     error('Input argument no. 1 should be of type ''double''.')
                 end
-                if (~(isa(varargin{2},'double')))
+                if (~(isa(varargin{2},'double') || isa(varargin{2},'gsKnotVector')))
                     error('Input argument no. 2 should be of type ''double''.')
                 end
-                if (~(isa(varargin{3},'double')))
+                if (~(isa(varargin{3},'double') || isa(varargin{3},'gsKnotVector')))
                     error('Input argument no. 3 should be of type ''double''.')
                 end
-                this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), class(varargin{2}), class(varargin{3}), varargin{:});
+                this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
             end
         end
 

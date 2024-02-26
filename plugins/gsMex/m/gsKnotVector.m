@@ -46,7 +46,7 @@ classdef gsKnotVector < handle
                 if (~(isa(varargin{1},'double')))
                     error('Input argument no. 2 should be of type ''double''.')
                 end
-                this.objectHandle = mex_gsKnotVector('constructor', varargin{1}, varargin{:});
+                this.objectHandle = mex_gsKnotVector('constructor', class(varargin{1}), varargin{:});
             end
         end
         

@@ -48,23 +48,37 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // Constructors
 
-            if (nrhs==2)
+            if (nrhs==3)
             {
-                // argument 2: list of knots
-                if (!mxIsDouble(prhs[1]) || // not double
-                     mxIsScalar(prhs[1])) { // or not scalar
-                    mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument has to be double vector.");
+                // constructor from 1 argument (+ 1 type switch)
+                char constructSwitch[__MAXSTRLEN__];
+                if (mxGetString(prhs[1], constructSwitch, sizeof(constructSwitch)))
+                    throw("Second input argument should be a string"
+                          "less than MAXSTRLEN characters long.");
+                if (!strcmp(constructSwitch,"double"))
+                {
+                    // argument 2: list of knots
+                    if (!mxIsDouble(prhs[2]) || // not double
+                         mxIsScalar(prhs[2]))
+                    { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument has to be double vector.");
+                    }
+                    if (!mxGetM(prhs[2])==1)
+                    { // or not scalar
+                        mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument must be a row vector.");
+                    }
+
+                    T *knotptr = mxGetDoubles(prhs[2]);
+                    std::vector<real_t> knots(knotptr,knotptr+mxGetN(prhs[2]));
+                    gsKnotVector<T> * kv = new gsKnotVector<T>(knots);
+                    plhs[0] = convertPtr2Mat<gsKnotVector<T> >(kv);
                 }
-                if (!mxGetM(prhs[1])==1) { // or not scalar
-                    mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument must be a row vector.");
+                else
+                {
+                    throw ("Invalid construction.");
                 }
-
-                T *knots = mxGetDoubles(prhs[2]);
-
-                gsKnotVector<T> * kv = new gsKnotVector<T>(*knots);
-                plhs[0] = convertPtr2Mat<gsKnotVector<T> >(kv);
-
-            } else {
+            } else
+            {
                 // INVALID constructor
                 throw("Invalid construction.");
             }
