@@ -257,12 +257,8 @@ classdef gsKnotVector < handle
             %  deg: double, [1 x 1].
             %    Degree of the gsKnotVector object in direction dir.
             
-            if (nargin~=2 || nargout>1)
+            if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
-                    ~(mod(varargin{1},1)==0) || varargin{1}>this.dim())
-                error('Input argument must be an integer less than %d.', this.dim())
             end
             [varargout{1:nargout}] = mex_gsKnotVector('degree', this.objectHandle, varargin{:});
         end
