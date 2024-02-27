@@ -34,14 +34,31 @@ The bindings can be imported in Python using
 ```
 from gismo_cppyy import gismo
 ```
-All classes and functions from G+Smo can be found in the `gismo` namespace. 
+All classes and functions from G+Smo can be found in the `gismo` namespace, 
+templates are resolved using brackets containing either a string or a Python type.
+For example, you can access the expression assembler using
+```
+A = gismo.gsExprAssembler["real_t"]()
+```
+and, after defining the spaces and variables, assemble the matrix using
+```
+A.assemble(gismo.expr.igrad(u, G) * gismo.expr.igrad(u, G).tr() * gismo.expr.meas(G), u * ff * gismo.expr.meas(G))
+```
+just as in C++. Before evaluating the `assemble()` method, the just-in-time compiler
+will compile the templated method
+```
+template<class... expr> void assemble(const expr &... args);
+```
+of gismo::gsExprAssembler for the employed expressions.
 
-Examples can be found in `python_examples/poisson_example_cppyy.py` and `python_examples/fitting_example_cppyy.py`.
+An example for solving the Poisson equation can be found in `python_examples/poisson_example_cppyy.py`.
+An additional example for adaptive fitting using THB-splines is in `python_examples/fitting_example_cppyy.py`.
 
 ### Numpy compatibility
-Data can be exchanged with numpy by converting numpy arrays into gismo objects and vice versa using the
-`tonumpy()` method of gismo::gsVector, gismo::gsMatrix and gismo::gsAsMatrix, 
-and the respective `fromnumpy()` class methods.
+Data can be exchanged with numpy by converting numpy arrays into gismo objects and vice versa.
+The conversion from gismo objects to numpy arrays is done using the
+ method `tonumpy()` of gismo.gsVector, gismo.gsMatrix and gismo.gsAsMatrix. 
+The class method `fromnumpy()` of these classes constructs a gismo object from a numpy array.
 
 For example, you can run
 ```
@@ -54,4 +71,5 @@ For example, you can run
 ```
 
 Note that `gismo.gsMatrix["double"].fromnumpy()`
-copies the underlying data while `gismo.gsAsMatrix["double"].fromnumpy()` does not.
+copies the underlying data, while `gismo.gsAsMatrix["double"].fromnumpy()` does not.
+`tonumpy()` never copies the data.
