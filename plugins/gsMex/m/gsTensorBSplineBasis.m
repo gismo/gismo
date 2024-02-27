@@ -77,6 +77,14 @@ classdef gsTensorBSplineBasis < handle
             mex_gsTensorBSplineBasis('destructor', this.objectHandle);
         end
 
+         % This function returns the address of the C++ pointer
+         function varargout = ptr(this, varargin)
+             if (nargin~=1 || nargout>1)
+                 error('Invalid number of input and/or output arguments.')
+             end
+             varargout{1} = this.objectHandle;
+         end
+
         % dim - call class method
         function varargout = dim(this, varargin)
             %dim - dimension of the parameter space of a gsTensorBSplineBasis object
@@ -95,7 +103,7 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'dim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('dim', this.objectHandle,  varargin{:});
         end
         
         % numElements - call class method
@@ -116,7 +124,7 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'numElements',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('numElements', this.objectHandle,  varargin{:});
         end
         
         % support - call class method
@@ -140,7 +148,7 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('support', this.objectHandle,  varargin{:});
         end
 
         % size - call class method
@@ -161,91 +169,7 @@ classdef gsTensorBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'size',  varargin{:});
-        end
-
-        % treeSize - call class method
-        function varargout = treeSize(this, varargin)
-            %treeSize - size of the tree of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  num = thb.treeSize()
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  num: double, [1 x 1].
-            %    Size of the tree of the gsTensorBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'treeSize',  varargin{:});
-        end
-        
-        % treeLeafSize - call class method
-        function varargout = treeLeafSize(this, varargin)
-            %treeLeafSize - size of the leaf in the tree of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  num = thb.treeLeafSize()
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  num: double, [1 x 1].
-            %    Size of the leaf in the tree of the gsTensorBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'treeLeafSize',  varargin{:});
-        end
-
-        % maxLevel - call class method
-        function varargout = maxLevel(this, varargin)
-            %maxLevel - maximum level of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  lev = thb.maxLevel()
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  lev: double, [1 x 1].
-            %    Maximum level present in the hierarchy of the
-            %    gsTensorBSplineBasis object.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('accessor', this.objectHandle, 'maxLevel',  varargin{:});
-        end
-        
-        % treePrintLeaves - call class method
-        function varargout = treePrintLeaves(this, varargin)
-            %treePrintLeaves - print the leaves in the tree of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  thb.treePrintLeaves()
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  (none - outputs to the screen).
-            
-            if (nargin~=1 || nargout>0)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('treePrintLeaves', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('size', this.objectHandle,  varargin{:});
         end
 
         % degree - call class method

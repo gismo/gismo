@@ -44,7 +44,6 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
         if (!strcmp(cmd,"constructor"))
         {
-
             // ----------------------------------------------------------------------
             // Constructors
 

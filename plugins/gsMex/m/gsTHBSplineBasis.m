@@ -41,10 +41,12 @@ classdef gsTHBSplineBasis < handle
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
             else
-                if (~(isa(varargin{1},'char')))
-                    error('Input argument no. 1 should be of type ''char''.')
-                elseif (~exist(varargin{1},'file'))
-                    error('File does not exist: %s.',varargin{1})
+                if ( isa(varargin{1},'char') || exist(varargin{1},'file') ) % construct using XML filename string
+                    this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});
+                elseif ( isa(varargin{1},'gsTensorBSplineBasis') )
+                    this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{1}.ptr());
+                else
+                    error('Input argument no. 1 should be of type ''char'' or file.')
                 end
                 this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});
             end
@@ -67,6 +69,14 @@ classdef gsTHBSplineBasis < handle
             mex_gsTHBSplineBasis('destructor', this.objectHandle);
         end
 
+         % This function returns the address of the C++ pointer
+         function varargout = ptr(this, varargin)
+             if (nargin~=1 || nargout>1)
+                 error('Invalid number of input and/or output arguments.')
+             end
+             varargout{1} = this.objectHandle;
+         end
+
         % dim - call class method
         function varargout = dim(this, varargin)
             %dim - dimension of the parameter space of a gsTHBSplineBasis object
@@ -85,7 +95,8 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'dim',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('dim', this.objectHandle,  varargin{:});
+            %mex_gsBasis('dim', this.objectHandle, varargin{:});
         end
         
         % numElements - call class method
@@ -106,7 +117,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'numElements',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('numElements', this.objectHandle, varargin{:});
         end
         
         % support - call class method
@@ -130,7 +141,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'support',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('support', this.objectHandle,  varargin{:});
         end
 
         % size - call class method
@@ -151,7 +162,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'size',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('size', this.objectHandle,  varargin{:});
         end
 
         % treeSize - call class method
@@ -172,7 +183,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeSize',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('treeSize', this.objectHandle, varargin{:});
         end
         
         % treeLeafSize - call class method
@@ -193,7 +204,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'treeLeafSize',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('treeLeafSize', this.objectHandle,  varargin{:});
         end
 
         % maxLevel - call class method
@@ -215,7 +226,7 @@ classdef gsTHBSplineBasis < handle
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            [varargout{1:nargout}] = mex_gsTHBSplineBasis('accessor', this.objectHandle, 'maxLevel',  varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('maxLevel', this.objectHandle,  varargin{:});
         end
         
         % treePrintLeaves - call class method
