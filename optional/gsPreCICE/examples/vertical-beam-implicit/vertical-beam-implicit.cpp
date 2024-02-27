@@ -18,7 +18,6 @@
 
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsElasticityAssembler.h>
-#
 
 #ifdef gsStructuralAnalysis_ENABLED
 #include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>

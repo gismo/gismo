@@ -190,23 +190,25 @@ struct gsQuadrature
 
         for (; domIt->good(); domIt->next())
         {
-            QuRule = gsQuadrature::getPtr(basis);
+            QuRule = gsQuadrature::getPtr(basis, options);
             quadSize+=QuRule->numNodes();
         }
 
-        gsMatrix<T> result(basis->domainDim(),quadSize);
+        gsMatrix<T> result(basis.domainDim(),quadSize);
 
         index_t offset = 0;
         gsMatrix<T> nodes;
+        gsVector<T> weights;
         for (domIt->reset(); domIt->good(); domIt->next() )
         {
-            QuRule = gsQuadrature::getPtr(basis);
+            QuRule = gsQuadrature::getPtr(basis, options);
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           nodes, std::ignore);
+                           nodes, weights);
             result.block(0,offset,basis.domainDim(),QuRule->numNodes()) = nodes;
             offset += QuRule->numNodes();
         }
+        return result;
     }
 
     template<class T>

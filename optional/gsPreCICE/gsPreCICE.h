@@ -121,25 +121,26 @@ public:
      * @param[in]  meshName  The mesh name
      * @param[in]  points    The points stored in columns
      */
-    void addMesh(const std::string & meshName, const gsMatrix<T> & points)
+    void addMesh(const std::string & meshName, const gsMatrix<T> & points, gsVector<index_t> & vertexIDs)
     {
         index_t index = m_meshNames.size();
         m_meshNames[meshName] = index;
 
-        // Makes a hard-copy? Can we prevent it?
-        std::vector<T> tmp_positions(points.data(), points.data() + points.rows() * points.cols());
-        m_positions.push_back(tmp_positions);
-
-        std::vector<index_t> vertexIDs(points.cols());
-        m_interface.setMeshVertices(meshName,tmp_positions,vertexIDs);
-        m_vertexIDs.push_back(vertexIDs);
+        vertexIDs.resize(points.cols());
+        m_interface.setMeshVertices(meshName,points,vertexIDs);
 
         // Create a look-up table from points to IDs
         std::map<gsVector<T>,index_t,mapCompare> map;
         for (index_t k=0; k!=points.cols(); k++)
-            map[points.col(k)] = m_vertexIDs.back().at(k);
+            map[points.col(k)] = vertexIDs.at(k);
 
         m_maps.push_back(map);
+    }
+
+    void addMesh(const std::string & meshName, const gsMatrix<T> & points)
+    {
+        gsVector<index_t> vertexIDs;
+        this->addMesh(meshName,points,vertexIDs);
     }
 
     /**
@@ -175,26 +176,27 @@ public:
      */
     void readData(const std::string & meshName, const std::string & dataName, const gsMatrix<T> & coords, gsMatrix<T> & values) const
     {
-        int d = m_interface.getDataDimensions(meshName,dataName);
-        // values.resize(d,coords.cols());
-        std::vector<index_t> IDs;
-        std::vector<T> tmp_values(coords.cols()*d);
-        this->getMeshVertexIDsFromPositions(meshName,coords,IDs);
-        // We use the end of the interval, i.e. m_interface.getMaxTimeStepSize()
-        m_interface.readData(meshName,dataName,IDs,m_interface.getMaxTimeStepSize(),tmp_values);
-        values = gsAsMatrix<T>(tmp_values,d,coords.cols());
+        this->readData(meshName,dataName,coords,m_interface.getMaxTimeStepSize(),values);
     }
 
     void readData(const std::string & meshName, const std::string & dataName, const gsMatrix<T> & coords, const T & timestep, gsMatrix<T> & values) const
     {
-        int d = m_interface.getDataDimensions(meshName,dataName);
-        // values.resize(d,coords.cols());
-        std::vector<index_t> IDs;
-        std::vector<T> tmp_values(coords.cols()*d);
+        gsVector<index_t> IDs;
         this->getMeshVertexIDsFromPositions(meshName,coords,IDs);
-        // We use the end of the interval, i.e. m_interface.getMaxTimeStepSize()
-        m_interface.readData(meshName,dataName,IDs,timestep,tmp_values);
-        values = gsAsMatrix<T>(tmp_values,d,coords.cols());
+        this->readData(meshName,dataName,IDs,timestep,values);
+    }
+
+    void readData(const std::string & meshName, const std::string & dataName, const gsVector<index_t> & IDs, gsMatrix<T> & values) const
+    {
+        this->readData(meshName,dataName,IDs,m_interface.getMaxTimeStepSize(),values);
+    }
+
+    void readData(const std::string & meshName, const std::string & dataName, const gsVector<index_t> & IDs, const T & timestep, gsMatrix<T> & values) const
+    {
+        int d = m_interface.getDataDimensions(meshName,dataName);
+        values.resize(1,d*IDs.size());
+        m_interface.readData(meshName,dataName,IDs,timestep,values);
+        values.resize(d,IDs.size());
     }
 
     gsMatrix<T>  readData(const std::string & meshName, const std::string & dataName, const gsMatrix<T> & coords) const
@@ -214,7 +216,7 @@ public:
      */
     void writeData(const std::string & meshName, const std::string & dataName, const gsMatrix<T> & coords, const gsMatrix<T> & values)
     {
-        std::vector<index_t> IDs;
+        gsVector<index_t> IDs;
         this->getMeshVertexIDsFromPositions(meshName,coords,IDs);
         m_interface.writeData(meshName,dataName,IDs,values);
     }
@@ -227,7 +229,7 @@ public:
      * @param[in]  IDs     The IDs of the points to write on
      * @param      values  The values (column-wise)
      */
-    void writeData(const std::string & meshName, const std::string & dataName, const std::vector<index_t> & IDs, const gsMatrix<T> & values)
+    void writeData(const std::string & meshName, const std::string & dataName, const gsVector<index_t> & IDs, const gsMatrix<T> & values)
     {
         m_interface.writeData(meshName,dataName,IDs,values);
     }
@@ -239,7 +241,7 @@ public:
      * @param[in]  coords   The coordinates of the points
      * @param      IDs      The IDs of the points
      */
-    void getMeshVertexIDsFromPositions(const std::string & meshName, const gsMatrix<T> & coords, std::vector<index_t> & IDs) const
+    void getMeshVertexIDsFromPositions(const std::string & meshName, const gsMatrix<T> & coords, gsVector<index_t> & IDs) const
     {
         IDs.resize(coords.cols());
         for (index_t k=0; k!=coords.cols(); k++)
@@ -258,7 +260,29 @@ public:
         m_interface.setMeshAccessRegion(meshName,bbox);
     }
 
-    void getMeshVertexIDsAndCoordinates(const std::string & meshName, std::vector<index_t> & IDs, gsMatrix<T> & coords) const
+    /**
+     * [FROM PRECICE MANUAL]
+     * @brief getMeshVertexIDsAndCoordinates Iterates over the region of
+     *        interest defined by bounding boxes and reads the corresponding
+     *        coordinates omitting the mapping.
+     *
+     * @param[in]  meshName corresponding mesh name
+     * @param[out] ids ids corresponding to the coordinates
+     * @param[out] coordinates the coordinates associated to the \p ids and
+     *             corresponding data values
+     *
+     * @pre ids.size() == getMeshVertexSize(meshName)
+     * @pre coordinates.size() == getMeshVertexSize(meshName) * getMeshDimensions(meshName)
+     *
+     * @pre This function can be called on received meshes as well as provided
+     * meshes. However, you need to call this function after @p initialize(),
+     * if the \p meshName corresponds to a received mesh, since the relevant mesh data
+     * is exchanged during the @p initialize() call.
+     *
+     * @see getMeshVertexSize() to get the amount of vertices in the mesh
+     * @see getMeshDimensions() to get the spacial dimensionality of the mesh
+     */
+    void getMeshVertexIDsAndCoordinates(const std::string & meshName, gsVector<index_t> & IDs, gsMatrix<T> & coords) const
     {
         const index_t nPoints = m_interface.getMeshVertexSize(meshName);
         index_t d = m_interface.getMeshDimensions(meshName);
