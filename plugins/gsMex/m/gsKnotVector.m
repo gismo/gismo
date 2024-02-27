@@ -67,6 +67,14 @@ classdef gsKnotVector < handle
             mex_gsKnotVector('destructor', this.objectHandle);
         end
 
+         % This function returns the address of the C++ pointer
+         function varargout = ptr(this, varargin)
+             if (nargin~=1 || nargout>1)
+                 error('Invalid number of input and/or output arguments.')
+             end
+             varargout{1} = this.objectHandle;
+         end
+
         % % dim - call class method
         % function varargout = dim(this, varargin)
         %     %dim - dimension of the parameter space of a gsKnotVector object

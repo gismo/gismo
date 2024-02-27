@@ -39,13 +39,13 @@ classdef gsTensorBSplineBasis < handle
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
             elseif (nargin==2)
-                if (~(isa(varargin{1},'double') || isa(varargin{1},'gsKnotVector')))
+                if ( isa(varargin{1},'double') && isa(varargin{2},'double') )
+                    this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
+                elseif ( isa(varargin{1},'gsKnotVector') && isa(varargin{2},'gsKnotVector') )
+                    this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{1}.ptr(), varargin{2}.ptr());
+                else
                     error('Input argument no. 1 should be of type ''double''.')
                 end
-                if (~(isa(varargin{2},'double') || isa(varargin{2},'gsKnotVector')))
-                    error('Input argument no. 2 should be of type ''double''.')
-                end
-                this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
             elseif (nargin==3)
                 if (~(isa(varargin{1},'double') || isa(varargin{1},'gsKnotVector')))
                     error('Input argument no. 1 should be of type ''double''.')
@@ -54,7 +54,7 @@ classdef gsTensorBSplineBasis < handle
                     error('Input argument no. 2 should be of type ''double''.')
                 end
                 if (~(isa(varargin{3},'double') || isa(varargin{3},'gsKnotVector')))
-                    error('Input argument no. 3 should be of type ''double''.')
+                    error('Input arguments should be of type ''double'' or ''gsKnotVector''.')
                 end
                 this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
             end
@@ -380,15 +380,10 @@ classdef gsTensorBSplineBasis < handle
             %    Knot vector corresponding to level lev in the direction
             %    dir. 
             
-            if (nargin~=3 || nargout>1)
+            if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
-            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ~(mod(varargin{1},1)==0) || varargin{1}<1)
-                error('Input argument no. 1 must be a strictly positive integer.')
-            elseif (~isa(varargin{2},'numeric') || ~isscalar(varargin{2}) || ...
-                    ~(mod(varargin{2},1)==0) || varargin{2}<1 || varargin{2}>this.dim())
-                error('Input argument no. 2 must be a strictly positive integer smaller than %d.', this.dim())
-            end
+
             [varargout{1:nargout}] = mex_gsTensorBSplineBasis('knots', this.objectHandle, varargin{:});
         end
         
