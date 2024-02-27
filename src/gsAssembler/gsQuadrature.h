@@ -258,7 +258,7 @@ struct gsQuadrature
     {
         std::vector<gsMatrix<T>> nodes(sides.size());
         index_t cols = 0;
-        for (index_t s = 0; s != sides.size(); s++)
+        for (size_t s = 0; s != sides.size(); s++)
         {
             nodes[s] = getAllNodes(basis,options,sides[s]);
             cols += nodes[s].cols();
@@ -266,7 +266,7 @@ struct gsQuadrature
         gsMatrix<T> result(basis.domainDim(),cols);
         cols = 0;
 
-        for (index_t s = 0; s != sides.size(); s++)
+        for (size_t s = 0; s != sides.size(); s++)
         {
             result.block(0,cols,nodes[s].rows(),nodes[s].cols()) = nodes[s];
             cols += nodes[s].cols();

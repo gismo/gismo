@@ -23,9 +23,7 @@
 #include <gsKLShell/src/gsMaterialMatrixContainer.h>
 #include <gsKLShell/src/gsMaterialMatrixEval.h>
 #include <gsKLShell/src/gsMaterialMatrixIntegrate.h>
-
 #endif
-
 
 #ifdef gsStructuralAnalysis_ENABLED
 #include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicExplicitEuler.h>
@@ -35,10 +33,7 @@
 #include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicWilson.h>
 #endif
 
-
 using namespace gismo;
-
-
 
 int main(int argc, char *argv[])
 {
@@ -102,8 +97,6 @@ int main(int argc, char *argv[])
 
     gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
 
-
-    
     real_t rho = 3000;
     real_t E = 4e6;
     real_t nu = 0.3;
@@ -113,7 +106,6 @@ int main(int argc, char *argv[])
     // Define boundary conditions
     gsBoundaryConditions<> bcInfo;
     // Dirichlet side
-    gsDebugVar(patches.geoDim());
     gsConstantFunction<> g_D(0,patches.geoDim());
     // Bottom side (fixed)
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 0);
@@ -126,15 +118,12 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 1);
     bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 2);
 
-
-
     bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 0);
     bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 1);
     bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 2);
 
     gsPointLoads<real_t> pLoads = gsPointLoads<real_t>();
     gsFunctionExpr<> surfForce("0","0","-1e4",3);
-
 
     // Assign geometry map
     bcInfo.setGeoMap(patches);
@@ -146,7 +135,7 @@ int main(int argc, char *argv[])
     // source function, rhs
     // gsConstantFunction<> g(0.,0.,0.,3);
 
-    // Set up the material matrixs
+    // Set up the material matrices
     gsFunctionExpr<> E_modulus(std::to_string(E),3);
     gsFunctionExpr<> PoissonRatio(std::to_string(nu),3);
     gsFunctionExpr<> Density(std::to_string(rho),3);
@@ -168,25 +157,13 @@ int main(int argc, char *argv[])
 
     materialMatrix = getMaterialMatrix<3,real_t>(patches,t,parameters,Density,options);
 
-    gsMaterialMatrixContainer<real_t> materialMats(patches.nPatches());
-    for (size_t p = 0; p!=patches.nPatches(); p++)
-        materialMats.add(materialMatrix);
-
-    // Construct the gsThinShellAssembler
-    //gsThinShellAssemblerBase<real_t>* assembler;
-
-    gsThinShellAssembler<3, real_t, true> assembler(patches,bases,bcInfo,surfForce,materialMatrix); 
-    assembler.initInterfaces();
-
+    gsThinShellAssembler<3, real_t, true> assembler(patches,bases,bcInfo,surfForce,materialMatrix);
 
     // Compute mass matrix (since it is constant over time)
     assembler.assembleMass();
     gsSparseMatrix<> M = assembler.massMatrix();
     assembler.assemble();
-
     gsSparseMatrix<> K = assembler.matrix();
-
-    real_t fixedDofs = assembler.numDofs();
 
     gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&assembler,&solutions](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) 
     {
@@ -203,7 +180,7 @@ int main(int argc, char *argv[])
     // Function for the Residual
     gsStructuralAnalysisOps<real_t>::TResidual_t Residual = [&assembler,&solutions](gsMatrix<real_t> const &x, real_t t, gsVector<real_t> & result)
     {
-    //Add assemble vector JL
+        //Add assemble vector JL
         ThinShellAssemblerStatus status;
         assembler.constructSolution(x,solutions);
         status = assembler.assembleVector(solutions);
@@ -238,34 +215,6 @@ int main(int argc, char *argv[])
     timeIntegrator->options().setReal("TolU",1e-3);
     timeIntegrator->options().setSwitch("Verbose",true);
 
-
-    ThinShellAssemblerStatus status;
-    status = assembler.assemble();
-    GISMO_ENSURE(status==ThinShellAssemblerStatus::Success,"Assembly failed");
-
-    //! [Assemble linear part]
-    gsSparseMatrix<> matrix = assembler.matrix();
-    gsVector<> vector = assembler.rhs();
-    gsDebugVar(vector.dim());
-    gsDebugVar(matrix.dim());
-    //! [Assemble linear part]
-
-    //! [Solve linear problem]
-    gsInfo<<"Solving system with "<<assembler.numDofs()<<" DoFs\n";
-    gsVector<> solVector;
-    gsSparseSolver<>::CGDiagonal solver;
-    gsDebugVar(solver);
-    solver.compute( matrix );
-    gsDebugVar(matrix.dim());
-    solVector = solver.solve(vector);
-
-
-    //! [Solve linear problem]
-
-    //! [Construct and evaluate solution]
-    // solutions = assembler.constructSolution(solVector);
-    // gsMultiPatch<> deformation = assembler.constructDisplacement(solVector);
-
     //------------------------------------------------------------------------------
     // Initial Conditions
     //------------------------------------------------------------------------------
@@ -291,14 +240,17 @@ int main(int argc, char *argv[])
         gsStatus status = timeIntegrator->step(time,dt,uNew,vNew,aNew);
         GISMO_ASSERT(status == gsStatus::Success,"Time integrator did not succeed");
 
-        // Update the displacement vector
-        gsVector<> displacements = uNew;
-        gsMultiPatch<> solution = assembler.constructDisplacement(displacements);
-        gsField<> solField(patches,solution);
-        std::string fileName = "./output/solution" + util::to_string(i);
-        gsWriteParaview<>(solField, fileName, 500);
-        fileName = "solution" + util::to_string(i) + "0";
-        collection.addTimestep(fileName,time,".vts");
+        if (plot)
+        {
+            // Update the displacement vector
+            gsVector<> displacements = uNew;
+            gsMultiPatch<> solution = assembler.constructDisplacement(displacements);
+            gsField<> solField(patches,solution);
+            std::string fileName = "./output/solution" + util::to_string(i);
+            gsWriteParaview<>(solField, fileName, 500);
+            fileName = "solution" + util::to_string(i) + "0";
+            collection.addTimestep(fileName,time,".vts");
+        }
     }
 
     if (plot)

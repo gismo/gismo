@@ -30,9 +30,9 @@ inline void getKnots(const gsBasis<T> & source, std::vector<gsKnotVector<T>> & t
  * @brief      { function_description }
  *
  *  Make a matrix with the knot vectors
- *  [[x1_1, x1_2, ..., 0   , 0   ,..., 0   , 0   , ...]
- *   [0   , 0   , ..., x2_1, x2_2,..., 0   , 0   , ...]
- *   [0   , 0   , ..., 0   , 0   ,..., x2_1, x2_2, ...]]
+ *  [[x1_1, x1_2, ..., nan , nan ,..., nan , nan , ...]
+ *   [nan , nan , ..., x2_1, x2_2,..., nan , nan , ...]
+ *   [nan , nan , ..., nan , nan ,..., x2_1, x2_2, ...]]
  *
  * @param[in]  basis  The basis
  *

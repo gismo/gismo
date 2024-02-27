@@ -21,7 +21,13 @@
 #include <gsElasticity/gsElasticityAssembler.h>
 
 #ifdef gsStructuralAnalysis_ENABLED
-#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicExplicitEuler.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicImplicitEuler.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicNewmark.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicBathe.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicWilson.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicRK4.h>
+
 #include <gsStructuralAnalysis/src/gsStructuralAnalysisTools/gsStructuralAnalysisUtils.h>
 #endif
 
@@ -35,6 +41,7 @@ int main(int argc, char *argv[])
     index_t numRefine  = 1;
     index_t numElevate = 0;
     std::string precice_config;
+    int method = 3; // 1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe, 5: Wilson, 6 RK4
 
     gsCmdLine cmd("Flow over heated plate for PreCICE.");
     cmd.addInt( "e", "degreeElevation",
@@ -43,8 +50,9 @@ int main(int argc, char *argv[])
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addInt("m","plotmod", "Modulo for plotting, i.e. if plotmod==1, plots every timestep", plotmod);
+    cmd.addInt("M", "method","1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe, 5: Wilson, 6: RK4",method);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-  
+
     //! [Read input file]
     GISMO_ASSERT(gsFileManager::fileExists(precice_config),"No precice config file has been defined");
 
@@ -64,12 +72,10 @@ int main(int argc, char *argv[])
     gsMultiBasis<> bases(patches);//true: poly-splines (not NURBS)
 
     gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
-    
+
     real_t rho = 3000;
     real_t E = 4e6;
     real_t nu = 0.3;
-    real_t mu = E / (2.0 * (1.0 + nu));
-    real_t lambda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu));
 
     // Set the interface for the precice coupling
     std::vector<patchSide> couplingInterfaces(1);
@@ -120,10 +126,7 @@ int main(int argc, char *argv[])
 
     // Step 1c: ForceMesh
     // Get the quadrature nodes on the coupling interface
-
-    // TEMPORARY: get assembler options. Should come from the gsElasticityAssembler, but the problem is that that one needs to be defined using the BCs, which need the coupling interface...
-    gsExprAssembler<> A(1,1);
-    gsOptionList quadOptions = A.options();
+    gsOptionList quadOptions = gsAssembler<>::defaultOptions();
 
     // Get the quadrature points
     gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions,couplingInterfaces);
@@ -178,7 +181,7 @@ int main(int argc, char *argv[])
     assembler.options().setReal("PoissonsRatio",nu);
     assembler.options().setInt("MaterialLaw",material_law::hooke);
     assembler.assemble();
-    
+
 
     gsMatrix<real_t> Minv;
     gsSparseMatrix<> M = massAssembler.matrix();
@@ -195,14 +198,13 @@ int main(int argc, char *argv[])
 
     std::vector<gsMatrix<> > fixedDofs = assembler.allFixedDofs();
     // Assemble the RHS
-    gsMatrix<> F = assembler.rhs();
-    gsMatrix<> F0;
-    gsMatrix<> F_checkpoint, U_checkpoint, V_checkpoint, A_checkpoint;
+    gsVector<> F = assembler.rhs();
+    gsVector<> F_checkpoint, U_checkpoint, V_checkpoint, A_checkpoint, U, V, A;
 
-    F_checkpoint = F0 = F;
-    U_checkpoint = gsVector<real_t>::Zero(assembler.numDofs(),1);
-    V_checkpoint = gsVector<real_t>::Zero(assembler.numDofs(),1);
-    A_checkpoint = gsVector<real_t>::Zero(assembler.numDofs(),1);
+    F_checkpoint = F;
+    U_checkpoint = U = gsVector<real_t>::Zero(assembler.numDofs(),1);
+    V_checkpoint = V = gsVector<real_t>::Zero(assembler.numDofs(),1);
+    A_checkpoint = A = gsVector<real_t>::Zero(assembler.numDofs(),1);
 
     // Define the solution collection for Paraview
     gsParaviewCollection collection("./output/solution");
@@ -225,14 +227,33 @@ int main(int argc, char *argv[])
         result = assembler.rhs();
         return true;
     };
-    
-    gsTimeIntegrator<real_t> timeIntegrator(M,Jacobian,Residual,dt);
-    timeIntegrator.verbose();
-    timeIntegrator.setTolerance(1e-4);
-    timeIntegrator.setMethod("Newmark");
-    timeIntegrator.setDisplacement(U_checkpoint);
-    timeIntegrator.setVelocity(V_checkpoint);
-    timeIntegrator.setAcceleration(A_checkpoint);
+
+    gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
+    gsStructuralAnalysisOps<real_t>::Damping_t Damping = [&C](const gsVector<real_t> &, gsSparseMatrix<real_t> & m) { m = C; return true; };
+    gsStructuralAnalysisOps<real_t>::Mass_t    Mass    = [&M](                          gsSparseMatrix<real_t> & m) { m = M; return true; };
+
+    gsDynamicBase<real_t> * timeIntegrator;
+    if (method==1)
+        timeIntegrator = new gsDynamicExplicitEuler<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==2)
+        timeIntegrator = new gsDynamicImplicitEuler<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==3)
+        timeIntegrator = new gsDynamicNewmark<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==4)
+        timeIntegrator = new gsDynamicBathe<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==5)
+    {
+        timeIntegrator = new gsDynamicWilson<real_t,true>(Mass,Damping,Jacobian,Residual);
+        timeIntegrator->options().setReal("gamma",1.4);
+    }
+    else if (method==6)
+        timeIntegrator = new gsDynamicRK4<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else
+        GISMO_ERROR("Method "<<method<<" not known");
+
+    timeIntegrator->options().setReal("DT",dt);
+    timeIntegrator->options().setReal("TolU",1e-3);
+    timeIntegrator->options().setSwitch("Verbose",true);
 
     real_t time = 0;
     // Plot initial solution
@@ -249,64 +270,46 @@ int main(int argc, char *argv[])
         collection.addTimestep(fileName,time,".vts");
     }
 
-
-    // Function for the Residual
-    //std::function<gsMatrix<real_t> (real_t) > Forcing;
-    //Forcing = [&F,&g_C,&xy](real_t time)
-    //{
-    //    return F;
-    //};
-
-    //gsTimeIntegrator<real_t> timeIntegrator(M,K,Forcing,dt);
-
-    timeIntegrator.setDisplacement(U_checkpoint);
-    timeIntegrator.setVelocity(V_checkpoint);
-    timeIntegrator.setAcceleration(A_checkpoint);
-    timeIntegrator.constructSolution();
-
     gsMatrix<> points(2,1);
     points.col(0)<<0.5,1;
 
     gsStructuralAnalysisOutput<real_t> writer("pointData.csv",points);
-    writer.init({"x","y"},{"time"});
+    writer.init({"x","y"},{"time"}); // point1 - x, point1 - y, time
 
     gsMatrix<> pointDataMatrix;
     gsMatrix<> otherDataMatrix(1,1);
+
+    gsDebugVar(dt);
 
     // Time integration loop
     while (participant.isCouplingOngoing())
     {
         if (participant.requiresWritingCheckpoint())
         {
-            gsStatus status = timeIntegrator.step();
-            if (status != gsStatus::Success)
-            GISMO_ERROR("Time integrator did not succeed");
-                U_checkpoint = timeIntegrator.displacements();
-                V_checkpoint = timeIntegrator.velocities();
-                A_checkpoint = timeIntegrator.accelerations();
+            U_checkpoint = U;
+            V_checkpoint = V;
+            A_checkpoint = A;
 
-                gsInfo<<"Checkpoint written:\n";
-                gsInfo<<"\t ||U|| = "<<timeIntegrator.displacements().norm()<<"\n";
-                gsInfo<<"\t ||V|| = "<<timeIntegrator.velocities().norm()<<"\n";
-                gsInfo<<"\t ||A|| = "<<timeIntegrator.accelerations().norm()<<"\n";
+            gsInfo<<"Checkpoint written:\n";
+            gsInfo<<"\t ||U|| = "<<U.norm()<<"\n";
+            gsInfo<<"\t ||V|| = "<<V.norm()<<"\n";
+            gsInfo<<"\t ||A|| = "<<A.norm()<<"\n";
 
 
-                timestep_checkpoint = timestep;
+            timestep_checkpoint = timestep;
         }
 
         assembler.assemble();
         F = assembler.rhs();
 
         // solve gismo timestep
-        gsInfo << "Solving timestep " << time << "...";
-        timeIntegrator.step();
-        timeIntegrator.constructSolution();
-        solVector = timeIntegrator.displacements();
+        gsInfo << "Solving timestep " << time << "...\n";
+        timeIntegrator->step(time,dt,U,V,A);
+        solVector = U;
         gsInfo<<"Finished\n";
 
         // potentially adjust non-matching timestep sizes
         dt = std::min(dt,precice_dt);
-        timeIntegrator.setTimeStep(dt);
 
         gsMultiPatch<> solution;
         assembler.constructSolution(solVector,fixedDofs,solution);
@@ -319,19 +322,9 @@ int main(int argc, char *argv[])
 
         if (participant.requiresReadingCheckpoint())
         {
-            /// Not converged. gsTimeIntegrator should NOT advance
-            timeIntegrator.setTime(time);
-            timeIntegrator.setTimeStep(dt);
-            timeIntegrator.setDisplacement(U_checkpoint);
-            timeIntegrator.setVelocity(V_checkpoint);
-            timeIntegrator.setAcceleration(A_checkpoint);
-            timeIntegrator.constructSolution();
-
-            gsInfo<<"Checkpoint loaded:\n";
-            gsInfo<<"\t ||U|| = "<<timeIntegrator.displacements().norm()<<"\n";
-            gsInfo<<"\t ||V|| = "<<timeIntegrator.velocities().norm()<<"\n";
-            gsInfo<<"\t ||A|| = "<<timeIntegrator.accelerations().norm()<<"\n";
-
+            U = U_checkpoint;
+            V = V_checkpoint;
+            A = A_checkpoint;
             timestep = timestep_checkpoint;
         }
         else
@@ -362,6 +355,6 @@ int main(int argc, char *argv[])
         collection.save();
     }
 
-
+    delete timeIntegrator;
     return  EXIT_SUCCESS;
 }

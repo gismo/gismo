@@ -739,9 +739,7 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     gsVector<T> quWeights;         // Mapped weights
     
     // Initialize
-        gsDebugVar("Hi");
     visitor.initialize(B1, B2, bi, m_options, quRule);
-        gsDebugVar("Hi");
 
     const gsGeometry<T> & patch1 = m_pde_ptr->patches()[patchIndex1];
     const gsGeometry<T> & patch2 = m_pde_ptr->patches()[patchIndex2];
