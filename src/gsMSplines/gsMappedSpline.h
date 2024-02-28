@@ -167,10 +167,24 @@ public:
     gsMultiPatch<T> exportToPatches() const;
 
     // support (domain of definition)
-    gsMatrix<T> support(index_t k) const
+    gsMatrix<T> support(const index_t & k) const
     { return m_mbases->getBase(k).support(); }
 
     gsGeometry<T> * exportPatch(int i,gsMatrix<T> const & localCoef) const;
+
+private:
+    // Avoid warnings for hidden overloads w.r.t gsFunctionSet
+    void active_into(const gsMatrix<T> & u,gsMatrix<index_t>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void eval_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void evalAllDers_into(const gsMatrix<T> & u, const index_t n,
+                          std::vector<gsMatrix<T> >& result ) const
+    { GISMO_NO_IMPLEMENTATION; }
 
 public:
     //////////////////////////////////////////////////

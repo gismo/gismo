@@ -239,6 +239,12 @@ public:
         return new BoundaryBasisType(bb.release(), give(ww));// note: constructor consumes the pointer
     }
 
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                   gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const
+    {
+        this->matchWith(bi,other,bndThis,bndOther,0);
+    }
+
     // see gsBasis for documentation
     void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther, index_t offset) const
