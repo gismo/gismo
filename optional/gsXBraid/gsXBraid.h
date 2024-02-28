@@ -19,7 +19,7 @@
 #define braid_SEQUENTIAL 1
 #endif
 
-#include <braid.hpp>
+#include <XBraid/braid/braid.hpp>
 
 namespace gismo {
 
