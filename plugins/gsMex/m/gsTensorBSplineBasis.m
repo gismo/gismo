@@ -10,11 +10,11 @@
 %
 %    Author(s): O. Chanon, P. Noertoft
 
-classdef gsTensorBSplineBasis < handle
+classdef gsTensorBSplineBasis < gsBasis
 
-    properties (SetAccess = private, Hidden = true)
-        objectHandle; % Handle to the underlying C++ class instance
-    end
+    % properties (SetAccess = private, Hidden = true)
+    %     objectHandle; % Handle to the underlying C++ class instance
+    % end
 
     methods(Access = public)
 
@@ -47,16 +47,13 @@ classdef gsTensorBSplineBasis < handle
                     error('Input argument no. 1 should be of type ''double''.')
                 end
             elseif (nargin==3)
-                if (~(isa(varargin{1},'double') || isa(varargin{1},'gsKnotVector')))
+                if ( isa(varargin{1},'double') && isa(varargin{2},'double') && isa(varargin{3},'double') )
+                    this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
+                elseif ( isa(varargin{1},'gsKnotVector') && isa(varargin{2},'gsKnotVector') && isa(varargin{3},'gsKnotVector') )
+                    this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{1}.ptr(), varargin{2}.ptr(), varargin{3}.ptr());
+                else
                     error('Input argument no. 1 should be of type ''double''.')
                 end
-                if (~(isa(varargin{2},'double') || isa(varargin{2},'gsKnotVector')))
-                    error('Input argument no. 2 should be of type ''double''.')
-                end
-                if (~(isa(varargin{3},'double') || isa(varargin{3},'gsKnotVector')))
-                    error('Input arguments should be of type ''double'' or ''gsKnotVector''.')
-                end
-                this.objectHandle = mex_gsTensorBSplineBasis('constructor', class(varargin{1}), varargin{:});
             end
         end
 
@@ -85,257 +82,60 @@ classdef gsTensorBSplineBasis < handle
              varargout{1} = this.objectHandle;
          end
 
-        % dim - call class method
-        function varargout = dim(this, varargin)
-            %dim - dimension of the parameter space of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  val = thb.dim()
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  val: double, [1 x 1].
-            %    Dimension of the parameter space of the gsTensorBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('dim', this.objectHandle,  varargin{:});
-        end
-        
-        % numElements - call class method
-        function varargout = numElements(this, varargin)
-            %numElements - number of elements of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  num = thb.numElements()
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  num: double, [1 x 1].
-            %    Number of elements of the gsTensorBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('numElements', this.objectHandle,  varargin{:});
-        end
-        
-        % support - call class method
-        function varargout = support(this, varargin)
-            %support - support of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  supp = thb.support()
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  supp: double, [1 x 2*d].
-            %    Support of the gsTensorBSplineBasis, ordered like
-            %      [u1_min, ..., ud_min, u1_max, ..., ud_max]
-            %    where d is the parametric dimennsion of the 
-            %    gsTensorBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('support', this.objectHandle,  varargin{:});
-        end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%Member function implementations%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-        % size - call class method
-        function varargout = size(this, varargin)
-            %size - size of a gsTensorBSplineBasis object
+        % knots - call class method
+        function [varargout] = knots(this, varargin)
+            %knots - returns the knot vector of a gsBasis object
+            %   of the specified level on the specified direction
             %
             %Usage:
-            %  num = thb.size()
+            %  knt = thb.knots( dir )
             %
             %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %
-            %Output:
-            %  num: double, [1 x 1].
-            %    Size of the gsTensorBSplineBasis.
-            
-            if (nargin~=1 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('size', this.objectHandle,  varargin{:});
-        end
-
-        % degree - call class method
-        function [varargout] = degree(this, varargin)
-            %degree - the degree for a specified direction of a 
-            %   gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  deg = thb.degree( dir )
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
+            %  thb: gsBasis, [1 x 1].
+            %    The gsBasis object.
             %  dir: int, [1 x 1].
-            %    Direction of space for which we want to know the degree of 
-            %    the gsTensorBSplineBasis.
+            %    index of the direction of space to consider.
             %
             %Output:
-            %  deg: double, [1 x 1].
-            %    Degree of the gsTensorBSplineBasis object in direction dir.
-            
+            %  knt: double, [1 x numKnots].
+            %    Knot vector corresponding to level lev in the direction
+            %    dir.
+
             if (nargin~=2 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end
             if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
-                    ~(mod(varargin{1},1)==0) || varargin{1}>this.dim())
-                error('Input argument must be an integer less than %d.', this.dim())
+                    ~(mod(varargin{1},1)==0) || varargin{1}<1 || varargin{1}>this.dim())
+                error('Input argument no. 1 must be a strictly positive integer smaller than %d.', this.dim())
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('degree', this.objectHandle, varargin{:});
-        end
-        
-        % eval - call class method
-        function [varargout] = eval(this, varargin)
-            %eval - evaluate a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  val = thb.eval( pts )
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %  pts: double, [d x numPts].
-            %    Points in which to evaluate the gsTensorBSplineBasis.
-            %
-            %Output:
-            %  val: double, [numFun x numPts].
-            %    Value of all active functions in each of the specified
-            %    points.
-            
-            if (nargin~=2 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('eval', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('knots', this.objectHandle, varargin{:});
         end
 
-        % evalSingle - call class method
-        function [varargout] = evalSingle(this, varargin)
-            %evalSingle - evaluate a single function in a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  valSingle = thb.evalSingle( fun, pts )
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %  fun: double, [1 x 1].
-            %    Index of function to evaluate.
-            %  pts: double, [d x numPts].
-            %    Points in which to evaluate the function.
-            %
-            %Output:
-            %  val: double, [1 x numPts].
-            %    Value of the specified function in each of the specified
-            %    points.
-            
-            if (nargin~=3 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~isscalar(varargin{1}) || ...
-                    ~(mod(varargin{1},1)==0) || varargin{1}<1)
-                error('Input argument no. 1 must be an strictly positive integer.')
-            elseif (~isa(varargin{2},'numeric') || ~ismatrix(varargin{2}) || ~isequal(size(varargin{2},1),this.dim()))
-                error('Input argument no. 2 must be numeric, 2-dimensional, and with d rows.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('evalSingle', this.objectHandle, varargin{:});
-        end
-        
         % save - call class method
         function [varargout] = save(this, varargin)
-            %save - save a gsTensorBSplineBasis object as xml object
+            %save - save a gsTHBSplineBasis object as xml object
             %
             %Usage:
             %  thb.save();
             %
             %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
+            %  thb: gsTHBSplineBasis, [1 x 1].
+            %    The gsTHBSplineBasis object.
             %
             %Output:
             %   (none - saved into an xml file)
-            
+
             if (nargin~=2)
                 error('Invalid number of input arguments.')
             end
             if (~(isa(varargin{1},'char')))
                 error('Input argument no. 1 should be of type ''char''.')
             end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('save', this.objectHandle, varargin{:});
+            [varargout{1:nargout}] = mex_gsTHBSplineBasis('save', this.objectHandle, varargin{:});
         end
-        
-        % knots - call class method
-        function [varargout] = knots(this, varargin)
-            %knots - returns the knot vector of a gsTensorBSplineBasis object
-            %   of the specified level on the specified direction
-            %
-            %Usage:
-            %  knt = thb.knots( lev, dir )
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %  lev: int, [1 x 1].
-            %    Index of the level of the hierarchy to consider.
-            %  dir: int, [1 x 1].
-            %    index of the direction of space to consider. 
-            %
-            %Output:
-            %  knt: double, [1 x numKnots].
-            %    Knot vector corresponding to level lev in the direction
-            %    dir. 
-            
-            if (nargin~=2 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('knots', this.objectHandle, varargin{:});
-        end
-        
-        % active - call class method
-        function [varargout] = active(this, varargin)
-            %active - active functions of a gsTensorBSplineBasis object
-            %
-            %Usage:
-            %  act = thb.active( pts )
-            %
-            %Input:
-            %  thb: gsTensorBSplineBasis, [1 x 1].
-            %    The gsTensorBSplineBasis object.
-            %  pts: double, [d x numPts].
-            %    Points in which to evaluate the function.
-            %
-            %Output:
-            %  act: double, [numFun x numPts].
-            %    Index of active functions in each of the specified points.
-            
-            if (nargin~=2 || nargout>1)
-                error('Invalid number of input and/or output arguments.')
-            end
-            if (~isa(varargin{1},'numeric') || ~ismatrix(varargin{1}) || ~isequal(size(varargin{1},1),this.dim()))
-                error('Input argument no. 1 must be numeric, 2-dimensional, and with d rows.')
-            end
-            [varargout{1:nargout}] = mex_gsTensorBSplineBasis('active', this.objectHandle, varargin{:});
-        end
-
     end
 end

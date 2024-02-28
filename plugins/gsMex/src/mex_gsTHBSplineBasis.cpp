@@ -16,99 +16,55 @@
 
 using namespace gismo;
 
-
+#define T real_t
+#define Z index_t
 
 template<int D> void
-callMember(const gsTHBSplineBasis<D,double> & instance,  char * prop,
+callMember(const gsTHBSplineBasis<D,T> & instance,  char * prop,
            mxArray* plhs[], const mxArray* prhs[])
 {
-            // Call method as specified by the input string
-            if (!strcmp(prop,"dim")) {
-                int val      = instance.dim();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"numElements")) {
-                int val      = instance.numElements();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"size")) {
-                int val      = instance.size();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"treeSize")) {
-                int val      = instance.treeSize();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"treeLeafSize")) {
-                int val      = instance.tree().leafSize();
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            } else if (!strcmp(prop,"support")) {
-                gsMatrix<real_t> supp = instance.support();
-                plhs[0] = createPointerFromMatrix(supp);
-            } else if (!strcmp(prop,"maxLevel")) {
-                int val      = instance.maxLevel()+1;
-                mxArray *out = mxCreateDoubleScalar((double)val);
-                plhs[0]      = out;
-            }
-            else if (!strcmp(prop,"treePrintLeaves"))
-            {
-            // ----------------------------------------------------------------------
-            // tree().printLeaves()
-                instance.tree().printLeaves();
-            }
-            else if (!strcmp(prop,"degree"))
-            {
-                mwIndex deg = (mwIndex) mxGetScalar(prhs[2]);
-                mxArray *out = mxCreateDoubleScalar((double)instance.degree(deg));
-                plhs[0] = out;
-            }
-            else if (!strcmp(prop,"eval"))
-            {
-                // Copy the input (FIXME: this should be avoided)
-                const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-                // Call the method
-                gsMatrix<real_t> vals = instance.eval(pts);
-                // Copy result to output (FIXME: this should be avoided)
-                plhs[0] = createPointerFromMatrix<real_t>(vals);
-            }
-            else if (!strcmp(prop,"evalSingle"))
-            {
-                // Copy the input (FIXME: this should be avoided)
-                const mwIndex ind = (mwIndex) * mxGetDoubles(prhs[2]);
-                const gsMatrix <real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
-                // Call the method
-                gsMatrix <real_t> vals = instance.evalSingle(ind-1, pts);
-                // Copy result to output (FIXME: this should be avoided)
-                plhs[0] = createPointerFromMatrix<real_t>(vals);
-            }
-            else if (!strcmp(prop,"save"))
-            {
-                char* input_buf = mxArrayToString(prhs[2]);
-                // Save the THB-spline basis in the specified file
-                std::string filename(input_buf); // Reading requires a std::string
-                gsWrite(instance, filename);
-            }
-            else if (!strcmp(prop,"knots"))
-            {
-                mwIndex level = (mwIndex) mxGetScalar(prhs[2]);
-                mwIndex direction = (mwIndex) mxGetScalar(prhs[3]);
-                const gsKnotVector<>& kv = instance.tensorLevel(level-1).knots(direction-1);
-                plhs[0] = createPointerFromStdVector(kv);
-            }
-            else if (!strcmp(prop,"active"))
-            {
-                // Copy the input (FIXME: this should be avoided)
-                gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-                // Call method
-                const gsMatrix<unsigned> vals = instance.active(pts);
-                // Copy the result for output (FIXME: this should be avoided)
-                plhs[0] = createPointerFromMatrix<unsigned>(vals);
-            }
-            else
-            {
-                throw("call Member: unknown command.");
-            }
+    if      (!strcmp(prop,"treeSize"))
+    {
+        int val      = instance.treeSize();
+        mxArray *out = mxCreateDoubleScalar((T)val);
+        plhs[0]      = out;
+    }
+    else if (!strcmp(prop,"treeLeafSize"))
+    {
+        int val      = instance.tree().leafSize();
+        mxArray *out = mxCreateDoubleScalar((T)val);
+        plhs[0]      = out;
+    }
+    else if (!strcmp(prop,"maxLevel"))
+    {
+        int val      = instance.maxLevel()+1;
+        mxArray *out = mxCreateDoubleScalar((T)val);
+        plhs[0]      = out;
+    }
+    else if (!strcmp(prop,"treePrintLeaves"))
+    {
+    // ----------------------------------------------------------------------
+    // tree().printLeaves()
+        instance.tree().printLeaves();
+    }
+    else if (!strcmp(prop,"save"))
+    {
+        char* input_buf = mxArrayToString(prhs[2]);
+        // Save the THB-spline basis in the specified file
+        std::string filename(input_buf); // Reading requires a std::string
+        gsWrite(instance, filename);
+    }
+    else if (!strcmp(prop,"knots"))
+    {
+        mwIndex level = (mwIndex) mxGetScalar(prhs[2]);
+        mwIndex direction = (mwIndex) mxGetScalar(prhs[3]);
+        const gsKnotVector<>& kv = instance.tensorLevel(level-1).knots(direction-1);
+        plhs[0] = createPointerFromStdVector(kv);
+    }
+    else
+    {
+        throw("call Member: unknown command.");
+    }
 }
 
 // --------------------------------------------------------------------------
@@ -148,7 +104,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                     char* input_buf = mxArrayToString(prhs[2]);
                     // Read the THB-spline basis from the specified file
                     std::string filename(input_buf); // Reading requires a std::string
-                    gsFileData<real_t>  data( filename );
+                    gsFileData<T>  data( filename );
                     gsTHBSplineBasis<__DIM__> * hbs = data.getFirst< gsTHBSplineBasis<2> >().release();
                     plhs[0] = convertPtr2Mat<gsTHBSplineBasis<__DIM__> >(hbs);
                     // Free the memory allocated by mxArrayToString
@@ -156,7 +112,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 }
                 else if (!strcmp(constructSwitch,"gsTensorBSplineBasis"))
                 {
-                    gsBasis<real_t> * instance = convertMat2Ptr<gsBasis<real_t> >(prhs[2]);
+                    gsBasis<T> * instance = convertMat2Ptr<gsBasis<T> >(prhs[2]);
                     const int dim = instance->domainDim();
                     // Use preprocessor to shorten switch ??
                     switch (dim)
@@ -179,12 +135,13 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 throw("Invalid construction.");
             }
 
-        } else if (!strcmp(cmd,"destructor"))
+        }
+        else if (!strcmp(cmd,"destructor"))
         {
 
             // ----------------------------------------------------------------------
             // Destructor
-            destroyObject<gsBasis<real_t> >(prhs[1]);
+            destroyObject<gsBasis<T> >(prhs[1]);
 
         }
         else
@@ -192,7 +149,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // Member functions
             // Fetch instance and property to be accessed
-            gsBasis<real_t> * instance = convertMat2Ptr<gsBasis<real_t> >(prhs[1]);
+            gsBasis<T> * instance = convertMat2Ptr<gsBasis<T> >(prhs[1]);
             const int dim = instance->domainDim();
             switch (dim)
             {

@@ -18,7 +18,6 @@ using namespace std;
 using namespace gismo;
 
 typedef size_t gs_vec_sz;
-const mwSize PARDIM = 2;
 
 // --------------------------------------------------------------------------
 // "main" gateway function
@@ -29,6 +28,11 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
     real_t *pupper = mxGetPr(prhs[1]);
     mwIndex numPoints = (mwIndex) mxGetScalar(prhs[2]);
     // Make copies of inputs
+
+    GISMO_ENSURE(mxGetM(prhs[0])==1 && mxGetM(prhs[1])==1,"Input must have one row");
+    GISMO_ENSURE(mxGetN(prhs[0])==mxGetN(prhs[1]),"Input vectors must have the same number of rows");
+    size_t PARDIM = mxGetN(prhs[0]);
+
     gsVector<real_t> lower(PARDIM), upper(PARDIM);
     for (gs_vec_sz i=0; i<PARDIM; ++i) {
         lower(i) = *plower++;

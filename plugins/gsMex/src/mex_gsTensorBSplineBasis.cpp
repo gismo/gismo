@@ -19,6 +19,29 @@
 
 using namespace gismo;
 
+template<int D> void
+callMember(const gsTensorBSplineBasis<D,T> & instance,  char * prop,
+           mxArray* plhs[], const mxArray* prhs[])
+{
+    if (!strcmp(prop,"save"))
+    {
+        char* input_buf = mxArrayToString(prhs[2]);
+        // Save the THB-spline basis in the specified file
+        std::string filename(input_buf); // Reading requires a std::string
+        gsWrite(instance, filename);
+    }
+    else if (!strcmp(prop,"knots"))
+    {
+        mwIndex direction = (mwIndex) mxGetScalar(prhs[2]);
+        const gsKnotVector<>& kv = instance.knots(direction-1);
+        plhs[0] = createPointerFromStdVector(kv);
+    }
+    else
+    {
+        throw("call Member: unknown command.");
+    }
+}
+
 // --------------------------------------------------------------------------
 // "main" gateway function
 //
@@ -45,14 +68,15 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
             if (nrhs>3)
             {
-                GISMO_ENSURE(__DIM__==nrhs-2,"Number of input arguments should be "<<__DIM__-2);
+                const short_t DIM = nrhs-2;
+                // GISMO_ENSURE(__DIM__==nrhs-2,"Number of input arguments should be "<<__DIM__-2);
                 char constructSwitch[__MAXSTRLEN__];
                 if (mxGetString(prhs[1], constructSwitch, sizeof(constructSwitch)))
                     throw("Second input argument should be a string"
                           "less than MAXSTRLEN characters long.");
 
-                std::vector<gsKnotVector<T>> kvs(__DIM__);
-                for (index_t d=0; d!=__DIM__; d++)
+                std::vector<gsKnotVector<T>> kvs(DIM);
+                for (index_t d=0; d!=DIM; d++)
                 {
                     if (!strcmp(constructSwitch,"gsKnotVector"))
                     {
@@ -77,8 +101,24 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                         throw ("Invalid construction.");
                     }
                 }
-                gsTensorBSplineBasis<__DIM__> * tbasis = new gsTensorBSplineBasis<__DIM__>(kvs);
-                plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<__DIM__> >(tbasis);
+
+                switch (DIM)
+                {
+                case 2:
+                {
+                    gsTensorBSplineBasis<2> * tbasis = new gsTensorBSplineBasis<2>(kvs);
+                    plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<2> >(tbasis);
+                    break;
+                }
+                case 3:
+                {
+                    gsTensorBSplineBasis<3> * tbasis = new gsTensorBSplineBasis<3>(kvs);
+                    plhs[0] = convertPtr2Mat<gsTensorBSplineBasis<3> >(tbasis);
+                    break;
+                }
+                default:
+                    GISMO_ERROR("Error in gsTensorBSplineBasis constructor.");
+                }
             }
             else
             {
@@ -86,86 +126,33 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 throw("Invalid construction.");
             }
 
-        } else if (!strcmp(cmd,"destructor")) {
+        }
+        else if (!strcmp(cmd,"destructor"))
+        {
 
             // ----------------------------------------------------------------------
             // Destructor
-            destroyObject<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
+            destroyObject<gsBasis<T> >(prhs[1]);
 
-        } else if (!strcmp(cmd,"degree")) {
-
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
-            mwIndex deg = (mwIndex) mxGetScalar(prhs[2]);
-            mxArray *out = mxCreateDoubleScalar((double)instance->degree(deg));
-            plhs[0] = out;
-
-        } else if (!strcmp(cmd,"eval")) {
-
+        }
+        else
+        {
             // ----------------------------------------------------------------------
-            // eval(pts)
-
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            const gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-            // Call the method
-            gsMatrix<real_t> vals = instance->eval(pts);
-            // Copy result to output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<real_t>(vals);
-
-        } else if (!strcmp(cmd,"evalSingle")) {
-
-            // ----------------------------------------------------------------------
-            // evalSingle(ind,pts)
-
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            const mwIndex ind = (mwIndex) * mxGetPr(prhs[2]);
-            const gsMatrix <real_t> pts = extractMatrixFromPointer<real_t>(prhs[3]);
-            // Call the method
-            gsMatrix <real_t> vals = instance->evalSingle(ind-1, pts);
-            // Copy result to output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<real_t>(vals);
-
-        } else if (!strcmp(cmd,"save")) {
-
-            // ----------------------------------------------------------------------
-            // save(file)
-
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
-            char* input_buf = mxArrayToString(prhs[2]);
-            // Save the THB-spline basis in the specified file
-            std::string filename(input_buf); // Reading requires a std::string
-            gsWrite(*instance, filename);
-
-        } else if (!strcmp(cmd,"knots")) {
-
-            // ----------------------------------------------------------------------
-            // knots(level, direction)
-
-            gsTensorBSplineBasis <__DIM__> *instance = convertMat2Ptr < gsTensorBSplineBasis < __DIM__ > > (prhs[1]);
-            mwIndex direction = (mwIndex) mxGetScalar(prhs[2]);
-            const gsKnotVector<>& kv = instance->knots(direction-1);
-            plhs[0] = createPointerFromStdVector(kv);
-
-        } else if (!strcmp(cmd,"active")) {
-
-            // ----------------------------------------------------------------------
-            // active(pts)
-
-            gsTensorBSplineBasis<__DIM__> *instance = convertMat2Ptr<gsTensorBSplineBasis<__DIM__> >(prhs[1]);
-            // Copy the input (FIXME: this should be avoided)
-            gsMatrix<real_t> pts = extractMatrixFromPointer<real_t>(prhs[2]);
-            // Call method
-            const gsMatrix<unsigned> vals = instance->active(pts);
-            // Copy the result for output (FIXME: this should be avoided)
-            plhs[0] = createPointerFromMatrix<unsigned>(vals);
-
-        } else {
-
-            // ----------------------------------------------------------------------
-            // Unknown command
-            throw("unknown command.");
-
+            // Member functions
+            // Fetch instance and property to be accessed
+            gsBasis<T> * instance = convertMat2Ptr<gsBasis<T> >(prhs[1]);
+            const int dim = instance->domainDim();
+            switch (dim)
+            {
+            case 2:
+                callMember(*convertMat2Ptr<gsTensorBSplineBasis<2> >(prhs[1]), cmd, plhs, prhs);
+                break;
+            case 3:
+                callMember(*convertMat2Ptr<gsTensorBSplineBasis<3> >(prhs[1]), cmd, plhs, prhs);
+                break;
+            default:
+                GISMO_ERROR("Error in gsTensorBSplineBasis accessor.");
+            }
         }
 
         // ------------------------------------------------------------------------
