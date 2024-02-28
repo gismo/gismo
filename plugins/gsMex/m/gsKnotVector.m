@@ -11,8 +11,8 @@
 %    Author(s): O. Chanon, P. Noertoft
 
 classdef gsKnotVector < handle
-
-    properties (SetAccess = private, Hidden = true)
+% try: Custom Display Interface ? override disp ?
+    properties (SetAccess = private, Hidden = false)
         objectHandle; % Handle to the underlying C++ class instance
     end
 
@@ -34,7 +34,6 @@ classdef gsKnotVector < handle
             %Output:
             %  gsKv: gsKnotVector, [1 x 1].
             %    The gsKnotVector object.
-
             if (nargin~=1 || nargout>1)
                 error('Invalid number of input and/or output arguments.')
             end

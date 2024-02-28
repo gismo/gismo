@@ -134,7 +134,8 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             // ----------------------------------------------------------------------
             // Constructors
 
-            if (nrhs==3) {
+            if (nrhs==3)
+            {
                 // constructor from 1 argument (+ 1 type switch)
                 char constructSwitch[__MAXSTRLEN__];
                 if (mxGetString(prhs[1], constructSwitch, sizeof(constructSwitch)))
@@ -155,7 +156,7 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                 }
                 else if (!strcmp(constructSwitch,"gsTensorBSplineBasis"))
                 {
-                    gsBasis<real_t> * instance = convertMat2Ptr<gsBasis<real_t> >(prhs[1]);
+                    gsBasis<real_t> * instance = convertMat2Ptr<gsBasis<real_t> >(prhs[2]);
                     const int dim = instance->domainDim();
                     // Use preprocessor to shorten switch ??
                     switch (dim)

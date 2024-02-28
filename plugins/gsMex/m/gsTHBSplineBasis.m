@@ -41,14 +41,14 @@ classdef gsTHBSplineBasis < handle
             if (isa(varargin{1},'uint64'))
                 this.objectHandle = varargin{1};
             else
-                if ( isa(varargin{1},'char') || exist(varargin{1},'file') ) % construct using XML filename string
+                if ( isa(varargin{1},'char') ) % construct using XML filename string
+                    % if exist(varargin{1},'file') then read from file..
                     this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});
                 elseif ( isa(varargin{1},'gsTensorBSplineBasis') )
                     this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{1}.ptr());
                 else
-                    error('Input argument no. 1 should be of type ''char'' or file.')
+                    error('Input argument no. 1 should be of type char, file or gsTensorBSplineBasis.')
                 end
-                this.objectHandle = mex_gsTHBSplineBasis('constructor', class(varargin{1}), varargin{:});
             end
         end
         
