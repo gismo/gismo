@@ -650,8 +650,6 @@ public:
     /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
     void copyCoefs( const gsGeometryMap<T> & other) const
     {
-        const index_t dim = m_fs->domainDim();
-
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( this->m_fs ), "error");
         const gsMultiPatch<T> & thisMP  = static_cast<const gsMultiPatch<T>&>(*this->m_fs );
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( other.m_fs ), "error");

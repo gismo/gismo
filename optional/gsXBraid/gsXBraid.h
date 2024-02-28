@@ -15,7 +15,7 @@
 
 #include <gismo.h>
 
-#if !defined(GISMO_WITH_MPI)
+#ifndef GISMO_WITH_MPI
 #define braid_SEQUENTIAL 1
 #endif
 
