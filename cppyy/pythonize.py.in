@@ -59,7 +59,7 @@ def pythonize_gismo(klass, name):
                 return cls(gismo.gsAsMatrix[datatype](np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1]))
             setattr(klass, "fromnumpy", fromnumpy)
 
-    if name.startswith("gsAsMatrix<"):
+    if name.startswith("gsAsMatrix<") or name.startswith("gsAsVector<"):
         datatype = name.split("<")[1].split(",")[0]
         if datatype in typeconversion.keys():
             # Conversion to numpy without copying the data
