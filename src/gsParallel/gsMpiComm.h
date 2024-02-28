@@ -22,7 +22,6 @@ namespace gismo
 typedef int MPI_Comm;
 typedef int MPI_Group;
 typedef int MPI_Request;
-struct MPI_Status {};
 #endif
 
 /**
@@ -150,6 +149,7 @@ inline std::ostream& operator<<(std::ostream& os, const gsSerialGroup& obj)
 class GISMO_EXPORT gsSerialStatus
 {
 public:
+    struct MPI_Status {};
     /**
        @brief Returns the rank of the status
     */
@@ -500,7 +500,7 @@ public:
      * @param[in] tag Specifies the message ID
      */
     template<typename T>
-    static int recv (T*, int, int, int = 0, const MPI_Status* = NULL)
+    static int recv (T*, int, int, int = 0, const void* = NULL)
     {
         return 0;
     }

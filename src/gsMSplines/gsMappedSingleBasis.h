@@ -104,7 +104,7 @@ public:
     }
 
     /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const
+    void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const
     {
         // Assuming all patches have the same degree
         m_basis->numActive_into(m_index,u,result);

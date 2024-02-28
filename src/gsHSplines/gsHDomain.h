@@ -26,8 +26,8 @@ class gsHDomainIterator;
 template<class T>
 class gsSegment;
 
-template <short_t d, class Z>
-class gsKdNode;
+// template <short_t d, class Z>
+// class gsKdNode;
 
 template <class T>
 class gsVSegment;
