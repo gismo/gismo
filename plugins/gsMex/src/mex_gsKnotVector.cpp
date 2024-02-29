@@ -207,6 +207,11 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         } else if (!strcmp(cmd,"get")) {
             gsKnotVector<T> *instance = convertMat2Ptr< gsKnotVector<T> >(prhs[1]);
             plhs[0] = createPointerFromStdVector(*instance);
+        } else if (!strcmp(cmd,"print")) {
+            gsKnotVector<T> *instance = convertMat2Ptr< gsKnotVector<T> >(prhs[1]);
+            std::ostringstream a;
+            instance->print(a);
+            mexPrintf("%s\n", a.str().c_str());
         } else {
 
             // ----------------------------------------------------------------------

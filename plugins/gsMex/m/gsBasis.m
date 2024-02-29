@@ -26,6 +26,10 @@ classdef gsBasis < handle
              varargout{1} = this.objectHandle;
          end
 
+        function disp(this, var_name)
+             mex_gsBasis('print',this.objectHandle,[]);
+        end
+
         % dim - call class method
         function varargout = dim(this, varargin)
             %dim - dimension of the parameter space of a gsBasis object
