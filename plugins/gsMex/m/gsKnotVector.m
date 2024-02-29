@@ -76,8 +76,11 @@ classdef gsKnotVector < handle
 
         function disp(this, var_name)
             a = mex_gsKnotVector('get',this.objectHandle,[]);
-            fmt=['gsknotVector(0x%s):' repmat(' %1.0f',1,numel(a)) '\n'];
-            fprintf(fmt,dec2hex(this.objectHandle),a)
+            %with pointer address:
+            %fmt=['gsknotVector(0x%s):' repmat(' %1.0f',1,numel(a)) '\n'];
+            %fprintf(fmt,dec2hex(this.objectHandle),a);
+            fmt=['gsknotVector {' repmat(' %1.0f',1,numel(a)) ' }\n'];
+            fprintf(fmt,a);
         end
 
         % % dim - call class method
