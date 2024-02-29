@@ -13,6 +13,7 @@
 
 #include <gsOpenCascade/gsWriteOcct.h>
 #include <gsCore/gsSurface.h>
+#include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsBSplineBasis.h>
 
 #include <TopoDS.hxx>
@@ -165,6 +166,32 @@ bool writeOcctIges(const gsSurface<real_t> & srf, const std::string & name)
     header.SetFileName(new TCollection_HAsciiString(name.c_str()));
     writer.Model()->SetGlobalSection(header);                
     writer.AddGeom( makeOcctGeom(srf) );
+    const std::string fname = name + ".igs";
+    return writer.Write(fname.c_str());;
+}
+
+bool writeOcctIgesMp(const gsMultiPatch<real_t> & mp, const std::string & name)
+{
+    IGESControl_Writer writer;
+    // Interface_Static::SetCVal("write.iges.header.product", "G+Smo");
+    // Interface_Static::SetCVal("write.iges.header.receiver", "G+SmoFriend");
+    // Interface_Static::SetCVal("write.iges.header.author", "G+SmoUser");
+    // Interface_Static::SetCVal("write.iges.header.company", "Inria");
+    IGESData_GlobalSection header = writer.Model()->GlobalSection();
+    header.SetAuthorName(new TCollection_HAsciiString("G+Smo"));
+    header.SetCompanyName(new TCollection_HAsciiString("Inria"));
+    header.SetSendName(new TCollection_HAsciiString("G+SmoSender"));
+    header.SetSystemId(new TCollection_HAsciiString("G+Smo"));
+    header.SetUnitName(new TCollection_HAsciiString("G+Smo"));
+    header.SetReceiveName(new TCollection_HAsciiString("G+Smo"));
+    header.SetFileName(new TCollection_HAsciiString(name.c_str()));
+    writer.Model()->SetGlobalSection(header);                
+
+    for (size_t i = 0; i!= mp.nPatches(); ++i)
+    {
+        writer.AddGeom( makeOcctGeom( (const gsSurface<real_t>&)mp.patch(i) ) );
+    }
+
     const std::string fname = name + ".igs";
     return writer.Write(fname.c_str());;
 }

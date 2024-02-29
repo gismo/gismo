@@ -227,6 +227,10 @@ public:
                               const T accuracy = 1e-6,
                               const bool useInitialPoint = false) const;
 
+    virtual void invertPointGrid(gsGridIterator<T,0> & git,
+                                 gsMatrix<T> & result, const T accuracy = 1e-6,
+                                 const bool useInitialPoint = false) const;
+
     /// Newton-Raphson method to find a solution of the equation f(\a
     /// arg) = \a value with starting vector \a arg.
     /// If the point cannot be inverted the corresponding parameter
@@ -242,6 +246,16 @@ public:
                        int max_loop = 100,
                        gsMatrix<T> init = gsMatrix<T>(),
                        double damping_factor = 1) const;
+
+    /// Recovers a point on the (geometry) together with its parameters
+    /// \a uv, assuming that the \a k-th coordinate of the point \a
+    /// xyz is not known (and has a random value as input argument).
+    void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                           const T accuracy = 1e-6) const;
+
+    void recoverPointGrid(gsGridIterator<T,0> & git,
+                          gsMatrix<T> & xyz, gsMatrix<T> & uv,
+                          index_t k, const T accuracy = 1e-6) const;
 
     /// Returns a "central" point inside inside the parameter domain
     virtual gsMatrix<T> parameterCenter() const
@@ -289,6 +303,10 @@ private:
         const T accuracy = 1e-6, int max_loop = 100,
         double damping_factor = 1, T scale = 1.0) const;
 
+    gsVector<T> _argMinOnGrid(index_t numpts = 20) const;
+
+    gsVector<T> _argMinNormOnGrid(index_t numpts = 20) const;
+    
 }; // class gsFunction
 
 

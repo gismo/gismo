@@ -137,7 +137,7 @@ with different datatypes and maybe architectures.
 To ensure this, and still be able to use some of the benefits of newer
 compilers like C++11, there are some helping functions inside gsUtils and
 gsMemory that should be used instead of native C++11 calls. It is helpful
-to keep in mind, that real_t and size_t are definitions, that will be
+to keep in mind that real_t and size_t are definitions that will be
 exchanged by cmake and should be used instead of double and int.
 
 Cxx(11)                             | Gismo
@@ -149,8 +149,8 @@ std::unique_ptr                     | memory::unique_ptr or gs...\::uPtr
 std::shared_ptr                     | memory::shared_ptr or gs...\::Ptr
 std::to_string                      | util::to_string
 
-Also keep in mind, that C++98 std::ios doesn't like "strings". Therefore,
-just call .c_str() if you give a string to a fstream (like ofstream::open).
+Also keep in mind that C++98 std::ios doesn't like "strings". Therefore,
+just call .c_str() if you give a string to an fstream (like ofstream::open).
 
 And please don't use auto and the fancy new foreach loop.
 
@@ -182,13 +182,13 @@ And please don't use auto and the fancy new foreach loop.
 
 
 - Try to fit your work in the general framework of Gismo, and derive
-  your classes from the existing Core classes. FOr instance, if you
+  your classes from the existing Core classes. For instance, if you
   implement a different function type, inherit from gsFunction and
   implement the evaluation interface.
 
 
 - Add Doxygen comments to all of your functions and classes. There are
-  a lot of resources online in using doxygen documentation.  The basic
+  a lot of resources online in using Doxygen documentation.  The basic
   usage is quite straightforward.
 
   + <a href="https://www.stack.nl/~dimitri/doxygen/manual/markdown.html" target="_blank">Doxygen manual pages</a>.

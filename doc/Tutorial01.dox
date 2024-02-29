@@ -10,16 +10,18 @@ program.
 
 \subsection Obtaining01 Obtaining and compiling
 
-The source code can be obtained via subversion or Git.
-See <a href="https://github.com/gismo/gismo/wiki/Downloads" target="_parent">section downloads of the wiki</a> for downloading information.
+The source code can be obtained via Subversion or Git.
+See the section <a href="https://github.com/gismo/gismo/wiki/Downloads" target="_parent">Downloads</a>
+of the wiki for downloading information.
 
 The configuration/compilation is based on the CMake build management
 system. A C++ compiler should be available in the system.
-See <a href="https://github.com/gismo/gismo/wiki/Compiling" target="_parent">section compiling of the wiki</a> for information on compilation.
+See the section <a href="https://github.com/gismo/gismo/wiki/Compiling" target="_parent">Compiling</a>
+of the wiki for information on compilation.
 
 \subsection Source01 The source folder
 
-There source folder contains the following sub-folders:
+The source folder contains the following sub-folders:
 
 - \b src
 
@@ -490,7 +492,7 @@ The quick reference pages give a summary of the functionality:
 
 - \ref SparseQuickRefPage
 
-There is also a list with the [correspondance to matlab
+There is also a list with the [correspondance to Matlab
 functions](http://eigen.tuxfamily.org/dox/AsciiQuickReference.txt). However,
 note that some operations of Matlab are not mirrored (yet) with
 functionality in Eigen. For example, a \em reshape function does not
@@ -547,17 +549,17 @@ descendants of gsFunctionSet are two:
   possibly vector-valued. The function is defined over an (arbitrary)
   square domain, referred to as its support.  One characteristic of
   the function is that in principle it takes non-zero values \a
-  throughout is support.
-
-  One instance of function is the gsFunctionExpr. This class can be
-  defined by a string containing the mathematical formula of a
-  function. It makes it very easy ad efficient to define and work with
-  complicated mathematical function with minimal effort.
+  throughout its support.
 
   The main attributes of functions (and bases) are the dimension of the
   parameter domain and the target domain, as well as their support.  The
   main functionality is the ability to evaluate the function and its
   derivatives at given points inside the support.
+
+  One instance of function is the gsFunctionExpr. This class can be
+  defined by a string containing the mathematical formula of a
+  function. It makes it very easy ad efficient to define and work with
+  complicated mathematical function with minimal effort.
 
 
 \subsection Basis01 gsBasis
