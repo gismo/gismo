@@ -194,6 +194,22 @@ public:
     /// Merge other B-spline into this one.
     void merge( gsGeometry<T> * otherG );
 
+    /// Segment this BSpline curve between u0 and u1. Either of these values
+    /// can be outside the parameter range of the curve, but u1 must be
+    /// greater than u0. The degree of the curve is not modified.
+    /// \param u0 starting parameter
+    /// \param u1 end parameter
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    gsBSpline<T> segmentFromTo(T u0, T u1, T tolerance=1e-15) const;
+
+    /// Split this BSpline curve at u0. This value must be inside the
+    /// parameter range of the curve.
+    /// \param u0 split parameter
+    /// \param left curve segment from the left of parameter domain to u0
+    /// \param right curve segment from u0 to the right of parameter domain
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    void splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance=1e-15) const;
+
     /// Insert the given new knot (multiplicity \a i) without changing the curve.
     void insertKnot( T knot, int i = 1)
     {

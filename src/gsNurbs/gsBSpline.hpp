@@ -80,6 +80,63 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
     delete other;
 }
 
+template<class T>
+gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
+{
+
+  GISMO_ASSERT(domainStart()-tolerance < u0 && u0 < domainEnd()+tolerance,
+               "starting point "<< u0 <<" not in the knot vector");
+  GISMO_ASSERT(domainStart()-tolerance < u1 && u1 < domainEnd()+tolerance,
+               "end point "<< u1 <<" not in the knot vector");
+
+  //First make a copy of the actual object, to allow const
+  gsBSpline<T> copy(*this);
+
+  // Extract a reference to the knots, the basis and coefs of the copy
+  KnotVectorType & knots = copy.basis().knots();
+
+  // some constants
+  const int p = basis().degree();                         // degree
+  const index_t multStart = p + 1 - knots.multiplicity(u0); // multiplicity
+  const index_t multEnd   = p + 1 - knots.multiplicity(u1);   // multiplicity
+
+  // insert the knot, such that its multiplicity is p+1
+  if (multStart>0) { copy.insertKnot(u0, multStart); }
+  if (multEnd>0) { copy.insertKnot(u1, multEnd); }
+
+  gsMatrix<T>& coefs = copy.coefs();
+  const index_t tDim  = coefs.cols();
+
+  // Split the coefficients
+  // find the number of coefs left from u0
+  const index_t nL  = knots.uFind(u0).firstAppearance();
+  // find the number of coefs left from u1
+  index_t nL2 = knots.uFind(u1).firstAppearance();
+  bool isEnd = std::abs(u1 - this->domainEnd()) < tolerance;
+  if ( isEnd ) { nL2 += 1; }       // Adjust for end parameter
+
+  // Prepare control points for new geometry
+  gsMatrix<T> coefRes = coefs.block(nL, 0, nL2-nL, tDim);
+
+  // Prepare new knot vector
+  typename KnotVectorType::iterator itStart = knots.iFind(u0);
+  typename KnotVectorType::iterator itEnd = knots.iFind(u1) + (isEnd ? p + 1 : 0);
+  typename KnotVectorType::knotContainer matRes(itStart-p, itEnd+1);
+  KnotVectorType knotsRes(give(matRes), p);
+
+  return gsBSpline<T>(Basis(give(knotsRes)), give(coefRes));
+}
+
+template<class T>
+void gsBSpline<T>::splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance) const
+{
+  GISMO_ASSERT(domainStart()-tolerance < u0 && u0 < domainEnd()+tolerance,
+               "splitting point "<< u0 <<" not in the knot vector");
+
+  left  = segmentFromTo(this->domainStart(), u0, tolerance);
+  right = segmentFromTo(u0, this->domainEnd(), tolerance);
+}
+
 template<class T>    
 bool gsBSpline<T>::isOn(gsMatrix<T> const &u, T tol) const
 {
