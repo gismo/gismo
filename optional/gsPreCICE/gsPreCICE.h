@@ -123,18 +123,32 @@ public:
      */
     void addMesh(const std::string & meshName, const gsMatrix<T> & points, gsVector<index_t> & vertexIDs)
     {
-        index_t index = m_meshNames.size();
-        m_meshNames[meshName] = index;
+        const index_t dMesh   = m_interface.getMeshDimensions(meshName);
+        const index_t dPoints = points.rows();
+        const index_t nPoints = points.cols();
 
-        vertexIDs.resize(points.cols());
-        m_interface.setMeshVertices(meshName,points,vertexIDs);
+        // Get the mesh dimensions
+        GISMO_ASSERT(dPoints<=dMesh,"The points must have a dimension smaller or equal to the mesh dimensions, but dpoints="<<dPoints<<">dmesh="<<dMesh);
 
-        // Create a look-up table from points to IDs
+        // Add a row of zeros to the points, such that dMesh==dPoints in the communication to PreCICE (needed..)
+        gsMatrix<T> dimPoints(dMesh,nPoints);
+        dimPoints.setZero();
+        dimPoints.topRows(dPoints) = points; // deep copy...
+
+        vertexIDs.resize(nPoints);
+        m_interface.setMeshVertices(meshName,dimPoints,vertexIDs);
+
+        // Create a look-up table from points (dPoints!!) to IDs
         std::map<gsVector<T>,index_t,mapCompare> map;
-        for (index_t k=0; k!=points.cols(); k++)
+        for (index_t k=0; k!=nPoints; k++)
             map[points.col(k)] = vertexIDs.at(k);
 
+        // Store the map
         m_maps.push_back(map);
+
+        // Store mesh name and index
+        index_t index = m_meshNames.size();
+        m_meshNames[meshName] = index;
     }
 
     void addMesh(const std::string & meshName, const gsMatrix<T> & points)

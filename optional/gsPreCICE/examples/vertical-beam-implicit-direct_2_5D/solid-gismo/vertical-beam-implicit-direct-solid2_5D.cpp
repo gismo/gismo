@@ -97,14 +97,6 @@ int main(int argc, char *argv[])
     // real_t mu = E / (2.0 * (1.0 + nu));
     // real_t lambda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu));
 
-    // Set the interface for the precice coupling
-    // Not sure about this, since we use surface force on the geometry instead, so the interface should be the surface.
-    std::vector<patchSide> couplingInterfaces(1);
-    couplingInterfaces[0] = patchSide(0,boundary::east);
-    couplingInterfaces[1] = patchSide(0,boundary::north);
-    couplingInterfaces[2] = patchSide(0,boundary::west);
-
-
     /*
      * Initialize the preCICE participant
      *
@@ -148,18 +140,11 @@ int main(int argc, char *argv[])
 
     // Step 1c: ForceMesh
     // Get the quadrature nodes on the coupling interface
-    gsOptionList quadOptions = gsAssembler<>::defaultOptions();
+    gsOptionList quadOptions = gsExprAssembler<>::defaultOptions();
 
     // Get the quadrature points
     gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions);
-    gsMatrix<> quadPoints3D(quadPoints.rows()+1,  quadPoints.cols());
-    quadPoints3D.setZero();
-    quadPoints3D.block(0,0,quadPoints.rows(),quadPoints.cols()) = quadPoints;
-    // quadPoints3D.row(0) = quadPoints.row(0);
-    // quadPoints3D.row(1) = quadPoints.row(1);
-    // quadPoints3D.row(2).setZero();
-    participant.addMesh(ForceMesh,quadPoints3D);
-
+    participant.addMesh(ForceMesh,quadPoints);
 
     // Step 2 (not needed???)
     // Needed for direct mesh coupling
@@ -182,49 +167,17 @@ int main(int argc, char *argv[])
 
     // Define boundary conditions
     gsBoundaryConditions<> bcInfo;
-    // Dirichlet side
-    gsConstantFunction<> g_D(0., 0., 0., 3);
-    // Coupling side
-    // gsFunctionExpr<> g_C("1","0",patches.geoDim());
 
-    // Surface force
-    gsPreCICEFunction<real_t> surfForce(&participant,ForceMesh,ForceData,patches,patches.geoDim(),patches.geoDim(),false);
-    // gsDebugVar(g_C);
-    gsConstantFunction<> g_C(0., 0., 0., 3);
-
-    // Add all BCs
-    // Coupling interface
-    // bcInfo.addCondition(0, boundary::north,  condition_type::neumann , &g_C);
-    //bcInfo.addCondition(0, couplingInterfaces[0],  condition_type::neumann  , &g_C, -1, true);
-    // bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_C);
-    // Bottom side (prescribed temp)
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 0);
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 2);
-
+    // Bottom side
+    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, -1);
     bcInfo.addCondition(0, boundary::south, condition_type::clamped, nullptr, 2);
-    //West and east side (clamped)
-    // bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 0);
-    // bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 1);
-    // bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 2);
-
-    // bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 0);
-    // bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 1);
-    // bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 2);
-
-    // gsFunctionExpr<> surfForce("0","0","-1e3",3);
-
-
 
     // Assign geometry map
     bcInfo.setGeoMap(patches);
 
-//----------------------------------------------------------------------------------------------
-   // // source function, rhs
-    gsConstantFunction<> g(0.,0.,0.,3);
+    // Surface force
+    gsPreCICEFunction<real_t> surfForce(&participant,ForceMesh,ForceData,patches,patches.parDim(),patches.geoDim(),false);
 
-    // source function, rhs
-    gsConstantFunction<> gravity(0.,0.,0.,3);
 
 //------------------------------------------IF gsElasticity is Used------------------------------
     // // creating mass assembler
@@ -269,6 +222,8 @@ int main(int argc, char *argv[])
     materialMatrix = getMaterialMatrix<3, real_t>(patches, t, parameters, Density, options);
 
     gsThinShellAssembler<3, real_t, true> assembler(patches, bases, bcInfo, surfForce, materialMatrix);
+    gsOptionList assemblerOptions = quadOptions.wrapIntoGroup("ExprAssembler");
+    assembler.setOptions(assemblerOptions);
 
     index_t timestep = 0;
     index_t timestep_checkpoint = 0;
@@ -306,7 +261,6 @@ int main(int argc, char *argv[])
         assembler.constructSolution(x,solutions);
         status = assembler.assembleVector(solutions);
         result = assembler.rhs();
-        gsDebugVar(result.transpose());
         return true;
     };
 

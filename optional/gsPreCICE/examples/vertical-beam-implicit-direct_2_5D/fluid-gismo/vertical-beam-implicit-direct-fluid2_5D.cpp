@@ -128,8 +128,7 @@ int main(int argc, char *argv[])
 
         // Write data at the quadrature points
         quadPointData.setZero();
-        quadPointData.row(1).setConstant(-1e3);
-        gsDebugVar(quadPointData);
+        quadPointData.row(2).setConstant(-1e4);
         participant.writeData(ForceMesh,ForceData,quadPointIDs,quadPointData);
 
         // do the coupling

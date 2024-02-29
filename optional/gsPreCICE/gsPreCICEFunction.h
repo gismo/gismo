@@ -128,8 +128,6 @@ public:
         gsMatrix<T> coords;
         this->_getCoords(u,coords);
         m_interface->readData(m_meshName,m_dataName,coords,result);
-        gsDebugVar(coords);
-        gsDebugVar(result);
     }
 
     /// See \a gsFunction
@@ -150,10 +148,11 @@ public:
     void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> > & result) const
     {
+        result.resize(1);
         // This would be nice to have with higher-order (IGA) coupling of precice
         gsMatrix<T> tmp;
         this->eval_into(u,tmp);
-        result.push_back(tmp);
+        result[0]= tmp;
     }
 
     /// See \a gsFunction
