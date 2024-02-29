@@ -204,13 +204,14 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         //     const gsMatrix<unsigned> vals = instance->active(pts);
         //     // Copy the result for output (FIXME: this should be avoided)
         //     plhs[0] = createPointerFromMatrix<unsigned>(vals);
-
+        } else if (!strcmp(cmd,"get")) {
+            gsKnotVector<T> *instance = convertMat2Ptr< gsKnotVector<T> >(prhs[1]);
+            plhs[0] = createPointerFromStdVector(*instance);
         } else {
 
             // ----------------------------------------------------------------------
             // Unknown command
             throw("unknown command.");
-
         }
 
         // ------------------------------------------------------------------------

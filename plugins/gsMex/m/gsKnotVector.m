@@ -12,7 +12,7 @@
 
 classdef gsKnotVector < handle
 % try: Custom Display Interface ? override disp ?
-    properties (SetAccess = private, Hidden = false)
+    properties (SetAccess = private, Hidden = true)
         objectHandle; % Handle to the underlying C++ class instance
     end
 
@@ -73,6 +73,12 @@ classdef gsKnotVector < handle
              end
              varargout{1} = this.objectHandle;
          end
+
+        function disp(this, var_name)
+            a = mex_gsKnotVector('get',this.objectHandle,[]);
+            fmt=['gsknotVector(0x%s):' repmat(' %1.0f',1,numel(a)) '\n'];
+            fprintf(fmt,dec2hex(this.objectHandle),a)
+        end
 
         % % dim - call class method
         % function varargout = dim(this, varargin)
