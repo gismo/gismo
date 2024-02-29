@@ -108,9 +108,7 @@ public:
     const gsSparseMatrix<T> & assembleMass2()
     {
         typedef typename gsExprAssembler<T>::geometryMap geometryMap;
-        typedef typename gsExprAssembler<T>::variable    variable;
         typedef typename gsExprAssembler<T>::space       space;
-        typedef typename gsExprAssembler<T>::solution    solution;
 
         // Elements used for numerical integration
         gsExprAssembler<T> A(1,1);
