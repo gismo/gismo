@@ -67,6 +67,36 @@ public:
     {
     }
 
+    /**
+     * @brief      Constructs a new instance of the gsPreCICEFunction
+     *
+     * @param      interface   The precice::SolverInterface (see \a gsPreCICE)
+     * @param[in]  meshName      The ID of the mesh on which the data is located
+     * @param[in]  dataName      The ID of the data
+     * @param[in]  patches     The geometry
+     * @param[in]  parametric  Specifies whether the data is defined on the parametric domain or not
+     */
+
+    gsPreCICEFunction(        gsPreCICE<T> *    interface,
+                        const std::string &     meshName,
+                        const std::string &     dataName,
+                        const gsMultiPatch<T> & patches,
+                        const index_t &         domainDim,
+                        const index_t &         targetDim,
+                        const bool parametric = false)
+    :
+    m_interface(interface),
+    m_meshName(meshName),
+    m_dataName(dataName),
+    m_patches(patches),
+    m_parametric(parametric),
+    m_patchID(0),
+    m_domainDim(domainDim),
+    m_targetDim(targetDim)
+    {
+    }
+
+
     /// Constructs a function pointer
     static uPtr make(   const gsPreCICE<T> *    interface,
                         const std::string &     meshName,
@@ -98,6 +128,8 @@ public:
         gsMatrix<T> coords;
         this->_getCoords(u,coords);
         m_interface->readData(m_meshName,m_dataName,coords,result);
+        gsDebugVar(coords);
+        gsDebugVar(result);
     }
 
     /// See \a gsFunction
