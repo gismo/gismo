@@ -18,7 +18,12 @@
 #endif
 
 #ifdef gsStructuralAnalysis_ENABLED
-#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicExplicitEuler.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicImplicitEuler.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicNewmark.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicBathe.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicWilson.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicRK4.h>
 #include <gsStructuralAnalysis/src/gsStructuralAnalysisTools/gsStructuralAnalysisUtils.h>
 #endif
 
@@ -33,14 +38,16 @@ int main(int argc, char *argv[])
 
     //! [Parse command line]
     bool plot = false;
+    bool write = false;
     index_t numRefine  = 1;
     index_t numElevate = 0;
-    std::string precice_config;
     int method = 3; // 1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe
 
     index_t Nsteps = 50;
 
     real_t dt = 1e-1;
+
+    std::string dirname = "output";
 
     gsCmdLine cmd("Flow over heated plate for PreCICE.");
     cmd.addInt( "e", "degreeElevation",
@@ -49,57 +56,23 @@ int main(int argc, char *argv[])
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "N", "Nsteps", "Number of steps",  Nsteps );
     cmd.addReal("t","dt","time step",dt);
+    cmd.addString("o", "outputDir","Output directory",dirname);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("write", "Create a file with point data", write);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
-    std::string methodName;
-    if (method==1)
-      methodName = "ExplEuler";
-    else if (method==2)
-      methodName = "ImplEuler";
-    else if (method==3)
-      methodName = "Newmark";
-    else if (method==4)
-      methodName = "Bathe";
-    else if (method==5)
-      methodName = "CentralDiff";
-    else if (method==6)
-      methodName = "RK4";
-  
     //! [Read input file]
-    std::string fn("/Users/jli51/MyCodes/gismo/filedata/volumes/cube.xml");
-    // patches.addPatch(gsNurbsCreator<>::BSplineRectangle(0.0,0.0,0.5,1.0));
-
     gsMultiPatch<> patches;
-    gsReadFile<>(fn,patches);
-
-    // gsDebugVar(patches.patch(0).coefs());
-    //patches.addPatch(gsNurbsCreator<real_t>::BSplineCube(3));
-
+    patches.addPatch(gsNurbsCreator<>::BSplineCube());
 
     real_t L, B, H;
     L = 0.1;
     B = 0.5;
     H = 1.0;
-    patches.patch(0).coefs().row(0)<< 0,0,0;
-    patches.patch(0).coefs().row(1)<< B,0,0;
-    patches.patch(0).coefs().row(2)<< 0,H,0;
-    patches.patch(0).coefs().row(3)<< B,H,0;
-    patches.patch(0).coefs().row(4)<< 0,0,L;
-    patches.patch(0).coefs().row(5)<< B,0,L;
-    patches.patch(0).coefs().row(6)<< 0,H,L;
-    patches.patch(0).coefs().row(7)<< B,H,L;
-
-    // patches.patch(0).col(0).array() *= L
-    gsDebugVar(patches.patch(0).coefs());
-
-
-
-
-
-
-    // int dim = 3; //physical dimension
-    // patches = Brick(L, B, H, 0.0,0.0,0.0);
+    patches.patch(0).coefs().col(0).array() *= B;
+    patches.patch(0).coefs().col(1).array() *= H;
+    patches.patch(0).coefs().col(2).array() *= L;
+    patches.patch(0).coefs().col(2).array() -= L/2;
 
     // Make basis
     gsMultiBasis<> bases(patches);
@@ -110,15 +83,13 @@ int main(int argc, char *argv[])
     for (index_t i = 0; i < numRefine; ++i)
         bases.uniformRefine();
 
-    gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
-    
+    gsInfo << "Patches: "<< patches.nPatches() <<", max degree: "<< bases.minCwiseDegree() <<"\n";
+    for (size_t p=0; p!=patches.nPatches(); p++)
+        gsInfo<<"Basis "<<p<<":\n"<<patches.basis(p)<<"\n";
+
     real_t rho = 3000;
     real_t E = 4e6;
     real_t nu = 0.3;
-    real_t mu = E / (2.0 * (1.0 + nu));
-    real_t lambda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu));
-
-
 
     // Define boundary conditions
     gsBoundaryConditions<> bcInfo;
@@ -139,7 +110,6 @@ int main(int argc, char *argv[])
     //
     // Assign geometry map
     bcInfo.setGeoMap(patches);
-    gsInfo<<"Basis (patch 0): "<< bases.basis(0) << "\n";
 
 // ----------------------------------------------------------------------------------------------
 
@@ -196,87 +166,82 @@ int main(int argc, char *argv[])
         return true;
     };
 
-    //gsTimeIntegrator<real_t> timeIntegrator(M,K,Forcing,dt);
-    gsTimeIntegrator<real_t> timeIntegrator(M,Jacobian,Residual,dt);
-    timeIntegrator.verbose();
-    timeIntegrator.setTolerance(1e-5);
-    timeIntegrator.setMethod(methodName);
+    gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
+    gsStructuralAnalysisOps<real_t>::Damping_t Damping = [&C](const gsVector<real_t> &, gsSparseMatrix<real_t> & m) { m = C; return true; };
+    gsStructuralAnalysisOps<real_t>::Mass_t    Mass    = [&M](                          gsSparseMatrix<real_t> & m) { m = M; return true; };
 
-    //gsDebugVar(M.toDense());
-    //gsDebugVar(K.toDense());
+    gsDynamicBase<real_t> * timeIntegrator;
+    if (method==1)
+        timeIntegrator = new gsDynamicExplicitEuler<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==2)
+        timeIntegrator = new gsDynamicImplicitEuler<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==3)
+        timeIntegrator = new gsDynamicNewmark<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==4)
+        timeIntegrator = new gsDynamicBathe<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else if (method==5)
+    {
+        timeIntegrator = new gsDynamicWilson<real_t,true>(Mass,Damping,Jacobian,Residual);
+        timeIntegrator->options().setReal("gamma",1.4);
+    }
+    else if (method==6)
+        timeIntegrator = new gsDynamicRK4<real_t,true>(Mass,Damping,Jacobian,Residual);
+    else
+        GISMO_ERROR("Method "<<method<<" not known");
 
+    timeIntegrator->options().setReal("DT",dt);
+    timeIntegrator->options().setReal("TolU",1e-3);
+    timeIntegrator->options().setSwitch("Verbose",true);
 
     size_t N = assembler.numDofs();
-    gsMatrix<> uOld(N,1);
-    gsMatrix<> vOld(N,1);
-    gsMatrix<> aOld(N,1);
-    uOld.setZero();
-    vOld.setZero();
-    aOld.setZero();
+    gsVector<> U(N), V(N), A(N);
+    U.setZero();
+    V.setZero();
+    A.setZero();
 
-    gsMatrix<> uNew,vNew,aNew;
-    uNew = uOld;
-    vNew = vOld;
-    aNew = aOld;
-    timeIntegrator.setDisplacement(uNew);
-    timeIntegrator.setVelocity(vNew);
-    timeIntegrator.setAcceleration(aNew);
+    gsFileManager::mkdir(dirname);
 
-    timeIntegrator.constructSolution();
-    gsParaviewCollection collection("./output/solution");
+    gsParaviewCollection collection(dirname + "/solution");
     real_t time = 0;
 
     gsMatrix<> points(3,1);
     points.col(0)<<0.5,1,0.0;
 
-    gsStructuralAnalysisOutput<real_t> writer("pointData.csv",points);
+    gsStructuralAnalysisOutput<real_t> writer(dirname + "/pointData.csv",points);
     writer.init({"x","y","z"},{"time"});
 
     gsMatrix<> pointDataMatrix;
     gsMatrix<> otherDataMatrix(1,1);
     for (index_t i=0; i<Nsteps; i++)
     {           
-        gsStatus status = timeIntegrator.step();
+        gsStatus status = timeIntegrator->step(time,dt,U,V,A);
         GISMO_ASSERT(status == gsStatus::Success,"Time integrator did not succeed");
-        time = timeIntegrator.currentTime();
-        timeIntegrator.constructSolution();
-        gsMatrix<> displacements = timeIntegrator.displacements();
+        time += dt;
 
-        gsMultiPatch<> solution;
-        assembler.constructSolution(displacements,fixedDofs,solution);
-
-        // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
-        gsField<> solField(patches,solution);
-        std::string fileName = "./output/solution" + util::to_string(i);
-        gsWriteParaview<>(solField, fileName, 500);
-        fileName = "solution" + util::to_string(i) + "0";
-        collection.addTimestep(fileName,time,".vts");
-
-        solution.patch(0).eval_into(points,pointDataMatrix);
-        otherDataMatrix<<time;
-        writer.add(pointDataMatrix,otherDataMatrix);
-
-        // if (write)
-        // {
-        //   gsMatrix<> v(2,1);
-        //   v<<  0.0,0.0;
-        //   gsMatrix<> res2;
-        //   solution.patch(0).eval_into(v,res2);
-        //   time = timeIntegrator.currentTime();
-        //   std::ofstream file;
-        //   file.open(wn,std::ofstream::out | std::ofstream::app);
-        //   file  << std::setprecision(10)
-        //         << time << ","
-        //         << res2(2,0) <<"\n";
-        //   file.close();
-        // }
-        // Update solution with multipatch coefficients to generate geometry again
+        if (plot||write)
+        {
+            // Update the displacement vector
+            gsMultiPatch<> solution;
+            assembler.constructSolution(U,fixedDofs,solution);
+            if (plot)
+            {
+                gsField<> solField(patches,solution);
+                std::string fileName = dirname + "/solution" + util::to_string(i);
+                gsWriteParaview<>(solField, fileName, 500);
+                fileName = "solution" + util::to_string(i) + "0";
+                collection.addTimestep(fileName,time,".vts");
+            }
+            if (write)
+            {
+                solution.patch(0).eval_into(points,pointDataMatrix);
+                otherDataMatrix<<time;
+                writer.add(pointDataMatrix,otherDataMatrix);
+            }
+        }
     }
 
     if (plot)
-    {
       collection.save();
-    }
 
     return  EXIT_SUCCESS;
 
