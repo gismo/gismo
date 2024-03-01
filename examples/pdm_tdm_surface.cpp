@@ -113,6 +113,9 @@ void sortPointCloud(gsMatrix<T> & parameters,
 
     uv_interiors.resize(2, interiors.size());
     p_interiors.resize(3, interiors.size());
+    gsDebugVar(interiors.size());
+    gsDebugVar(parameters.cols());
+    gsDebugVar(points.cols());
     for( size_t i = 0; i < interiors.size(); i++ )
     {
         uv_interiors.col(i) = parameters.col(interiors[i]);
@@ -256,7 +259,8 @@ int main(int argc, char *argv[])
     index_t deg_x = -1; // q
     index_t deg_y = -1; // r
     real_t lambda = 0; // s
-    // t, u, v, w,
+    // t, u, v,
+    index_t pc0 = 0;
     index_t kx = -1; // x
     index_t ky = -1; // y
     index_t maxPC_step = 0; // z
@@ -275,7 +279,8 @@ int main(int argc, char *argv[])
     cmd.addInt("q", "xdeg", "x-degree (dx,dy).", deg_x);
     cmd.addInt("r", "ydeg", "y-degree (dy,dy).", deg_y);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
-    // t, u, v, w,
+    // t, u, v,
+    cmd.addInt("w", "pc0", "number of initial parameter correction steps.", pc0);
     cmd.addInt("x", "xknt", "number of interior knots in x-direction.", kx);
     cmd.addInt("y", "yknt", "number of interior knots in y-direction.", ky);
     cmd.addInt("z", "pc", "parameter correction step.", maxPC_step);
@@ -302,13 +307,14 @@ int main(int argc, char *argv[])
     gsMatrix<> uv, xyz, X;
     fd_in.getId<gsMatrix<> >(0, uv );
     fd_in.getId<gsMatrix<> >(1, xyz);
+    X = xyz;
     //! [Read data]
 
 
     GISMO_ENSURE( uv.cols() == xyz.cols() && uv.rows() == 2 && xyz.rows() == 3,
                   "Wrong input, check id of matrices in the .xml file");
 
-    scalePoints(xyz, X);
+    // scalePoints(xyz, X);
     std::vector<index_t> interpIdx;
     sortPointCloud(uv, X, interpIdx);
     writeToCSVfile("points.csv", X);
@@ -344,54 +350,22 @@ int main(int argc, char *argv[])
     gsTensorBSplineBasis<2> tbasis( u_knots, v_knots );
 
 
-
-    // const gsBasis<>& basis = pGeom->basis();
-
-    // Create a tensor-basis (and apply initial uniform refinement)
-    // gsTensorBSplineBasis<2> tbasis = static_cast< const gsTensorBSplineBasis<2>& > (basis);
-    // gsTensorBSplineBasis<2> tbasis( basis );
-    //tbasis.uniformRefine( (1<<numURef)-1 );
-
-    // gsFitting<real_t> initObj( uv, X, tbasis);
-    // initObj.compute(lambda);
-    // gsGeometry<> * initGeom = initObj.result();
-    //gsGeometry<>::uPtr initGeom = memory::make_unique(initObj.result());
-    //gsGeometry<>::uPtr initGeom = tbasis.interpolateAtAnchors(fit_plane.result()->eval(tbasis.anchors()));
-
-    // gsMatrix<> params(uv.rows(), uv.cols());
-    // params = uv;
-    // gsMatrix<> params(uv.rows(), uv.cols());
-    // for (index_t i = 0; i<X.cols(); ++i)
-    // {
-    //     const auto & curr = X.col(i);
-    //     gsVector<> newParam = params.col(i);
-    //     initGeom->closestPointTo(curr, newParam, 1e-6, false);
-    //     params.col(i) = newParam;
-    // }
-
     gsInfo << "Initial P DM fitting object.\n";
     gsFitting<real_t> pdm_obj( uv, X, tbasis);
     pdm_obj.compute(lambda);
+    pdm_obj.parameterCorrectionSepBoundary_pdm(1e-6, pc0, interpIdx);
+
+
     // pdm_obj.updateGeometry(initGeom->coefs(), params);
 
     gsInfo << *pdm_obj.result() << "\n";
     gsWriteParaview(*pdm_obj.result(), "pdm_0");
 
-    // pdm_obj.parameterProjectionSepBoundary(1e-6, interpIdx);
-    // gsInfo << "pdm, parameters update:\n" << (params - pdm_obj.returnParamValues()).norm() << "\n";
-    // pdm_obj.updateGeometry(initGeom->coefs(), pdm_obj.returnParamValues());
-    // gsWriteParaviewPoints(params, "pdm_params_0");
-    // gsWriteParaviewPoints(pdm_obj.returnParamValues(), "pdm_projection_0");
-    // gsInfo << *pdm_obj.result() << "\n";
-    // gsWriteParaview(*pdm_obj.result(), "pdm_0", 10000, false, true);
-
-
-
-
     gsInfo << "Initial H DM fitting object.\n";
     gsFitting<real_t> tdm_obj( uv, X, tbasis);
     tdm_obj.compute(lambda);
-    // tdm_obj.updateGeometry(initGeom->coefs(), params);
+    tdm_obj.parameterCorrectionSepBoundary_pdm(1e-6, pc0, interpIdx);
+
     gsWriteParaview(*tdm_obj.result(), "tdm_0", 10000, false, true);
     std::string method_name = "";
 
@@ -442,22 +416,6 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // tdm_obj.compute_tdm(lambda, mu, sigma, interpIdx, method_enum);
-
-    // gsInfo << *tdm_obj.result() << "\n";
-
-    // gsWriteParaviewPoints(tdm_obj.returnParamValues(), "tdm_params_0");
-    // tdm_obj.parameterProjectionSepBoundary(1e-8, interpIdx);
-
-
-    // gsFitting<real_t> tdm_obj( params, X, tbasis);
-
-
-    // gsInfo << *tdm_obj.result() << "\n";
-    // gsWriteParaview(*tdm_obj.result(), "tdm_0");
-    // gsWriteParaviewPoints(tdm_obj.returnParamValues(), "tdm_projection_0");
-
-
     std::ofstream pdm_results;
     pdm_results.open(std::to_string(now) + "pdm_results.csv");
     pdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse\n";
@@ -471,8 +429,6 @@ int main(int argc, char *argv[])
                 << math::sqrt(pdm_min_max_mse[2]) << std::scientific << "\n";
 
 
-
-
     std::ofstream tdm_results;
     tdm_results.open(std::to_string(now) + "hdm_results.csv");
     tdm_results << "m, deg, pen, dofs, pc, min, max, mse, rmse, weights\n";
@@ -484,6 +440,7 @@ int main(int argc, char *argv[])
                 << tdm_min_max_mse[2] << std::scientific << ","
                 << math::sqrt(tdm_min_max_mse[2]) << std::scientific << ","
                 <<  method_name << "\n";
+
 
     // tdm_obj.compute_tdm(lambda, 0., 1., interpIdx);
     //index_t pc_step = maxPC_step;
