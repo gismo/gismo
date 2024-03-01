@@ -1,7 +1,7 @@
 """
-    @file Poisson equation example
+    @file Heat equation example
 
-    @brief Solve the Poisson equation using the expression assembler in Python. Needs the gismo cppyy bindings.
+    @brief Solve the heat equation using the expression assembler in Python. Needs the gismo cppyy bindings.
 
     This file is part of the G+Smo library.
 
@@ -25,18 +25,16 @@ def plotField(field, evaluator, time, ax, n=10):
     gismogrid = gismo.gsGridIterator["double", gismo.CUBE, 2](corners, numpoints)
 
     evaluator.eval(field, gismogrid, 0)
-
     evalpoints = gismo.gsVector["real_t"](evaluator.allValues()).tonumpy()
 
     ax.set_title(f"Time: {time}s", loc="left")
     ax.imshow(evalpoints.reshape(n, n), interpolation="bilinear", cmap="coolwarm", vmin=0.0, vmax=.5)
-    #plt.show()
 
 
 def main():
     numRefine = 5
     theta = 0.5  # 0.0 explicit Euler, 1.0 implicit Euler, 0.5 Crank Nicolson
-    endTime = 1
+    endTime = 1.
     numSteps = 400
 
     plotresolution = 100
@@ -86,15 +84,11 @@ def main():
 
     massMatrix = A_mass.matrix()
 
-
     solver = gismo.gsSparseSolver["real_t"].LU()
     solvector = gismo.gsMatrix["real_t"]()
     solvector.setZero(A_stiff.numDofs(), 1)
 
     ev = gismo.gsExprEvaluator["real_t"](A_stiff)
-    collection = gismo.gsParaviewCollection("ParaviewOutput/heat", ev)
-    #collection.options().setSwitch("plotElements", True)
-    #collection.options().setInt("plotElements.resolution", 16)
 
     # Initial plot
     plt.ion()
@@ -106,23 +100,16 @@ def main():
     fig.canvas.draw()
     fig.canvas.flush_events()
 
-
-
     solver.compute(massMatrix + systemMatrix * Dt * theta)
     for step in range(numSteps):
-        #print(f"Time step {step}")
         solvector = solver.solve(A_stiff.rhs() * Dt + (massMatrix - systemMatrix * Dt*(1-theta)) * solvector)
 
-        # collection.newTimeStep(multipatch)
-        # collection.addField(u_sol, "Temperature")
-        # collection.saveTimeStep()
         u_sol = A_stiff.getSolution(u_stiff, solvector)
         plotField(field=u_sol, evaluator=ev, time=step*Dt, ax=ax, n=plotresolution)
         fig.canvas.draw()
         fig.canvas.flush_events()
         plt.pause(1/24)
     plt.show()
-    # collection.save()
 
 
 if __name__ == "__main__":
