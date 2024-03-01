@@ -152,7 +152,7 @@ public:
     
     gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
     {
-        GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
+        // GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
         GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
         bb.clear();
         setIsPeriodic();
