@@ -260,7 +260,7 @@ public:
      */
     void getMeshVertexIDsFromPositions(const std::string & meshName, const gsMatrix<T> & coords, gsVector<index_t> & IDs) const
     {
-        GISMO_ASSERT(coords.rows()==m_meshDims[meshName],"Dimension of the points ("<<coords.rows()<<") is not equal to the dimension of mesh "<<meshName<<"("<<m_meshDims[meshName]<<")\n");
+        GISMO_ASSERT(coords.rows()==m_meshDims.at(meshName),"Dimension of the points ("<<coords.rows()<<") is not equal to the dimension of mesh "<<meshName<<"("<<m_meshDims.at(meshName)<<")\n");
         IDs.resize(coords.cols());
         for (index_t k=0; k!=coords.cols(); k++)
 #ifndef NDEBUG
