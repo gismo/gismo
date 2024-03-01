@@ -149,6 +149,9 @@ public:
         // Store mesh name and index
         index_t index = m_meshNames.size();
         m_meshNames[meshName] = index;
+
+        // Store mesh dimension
+        m_meshDims[meshName] = dPoints;
     }
 
     void addMesh(const std::string & meshName, const gsMatrix<T> & points)
@@ -257,9 +260,18 @@ public:
      */
     void getMeshVertexIDsFromPositions(const std::string & meshName, const gsMatrix<T> & coords, gsVector<index_t> & IDs) const
     {
+        GISMO_ASSERT(coords.rows()==m_meshDims[meshName],"Dimension of the points ("<<coords.rows()<<") is not equal to the dimension of mesh "<<meshName<<"("<<m_meshDims[meshName]<<")\n");
         IDs.resize(coords.cols());
         for (index_t k=0; k!=coords.cols(); k++)
+#ifndef NDEBUG
             IDs.at(k) = m_maps.at(this->getMeshID(meshName)).at(coords.col(k));
+#else
+        {
+            std::map<gsVector<T>,index_t,mapCompare>::iterator it = m_maps.at(this->getMeshID(meshName)).find(coords.col(k));
+            GISMO_ASSERT(it!=m_maps.at(this->getMeshID(meshName)).end(),"Coordinate "<<coords.col(k).transpose()<<" is not registered in the vertex ID map of mesh "<<meshName);
+            IDs.at(k) = it->second;
+        }
+#endif
     }
 
     /**
@@ -329,8 +341,10 @@ public:
     }
 
 private:
-    /// Stores all mesh names (might be useful later)
+    /// Stores all mesh names and IDs (might be useful later)
     std::map<std::string,index_t> m_meshNames;
+    /// Stores all mesh dimensions
+    std::map<std::string,index_t> m_meshDims;
     /// Stores all mesh positions (might be useful later)
     std::vector<std::vector<T>> m_positions;
     /// Stores all mesh vertex IDs (might be useful later)
