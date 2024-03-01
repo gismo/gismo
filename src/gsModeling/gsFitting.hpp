@@ -250,30 +250,74 @@ gsMatrix<T> gsFitting<T>::fill_pointWiseErrors(const index_t & num_int, T & max_
 }
 
 template<class T>
+gsMatrix<T> gsFitting<T>::principal_curvatures(const gsMatrix<T> & params)
+{
+    index_t numData = params.cols();
+    m_pointCurvature.resize(numData, 2);
+    gsExprEvaluator<T> ev;
+    auto G = ev.getMap(*m_result);
+
+    gsVector<T> pm(2);
+    gsMatrix<T> pcs, out;
+
+    // rho = 1/max(c1, c2)
+    for (index_t d = 0; d<numData; d++)
+    {
+      pm = params.col(d);
+      out = ev.eval( shapeop(G), pm );
+
+      pcs = out.template selfadjointView<gsEigen::Lower>().eigenvalues();
+
+      m_pointCurvature.row(d) = pcs.transpose();
+
+    }
+
+    return m_pointCurvature;
+
+}
+
+
+
+
+template<class T>
 gsMatrix<T> gsFitting<T>::inverse_principal_curvatures(const index_t & num_int, const gsMatrix<T> & params_int)
 {
 
   gsMatrix<T> inv_c(num_int, 1);
+  //
+  // gsExprEvaluator<T> ev;
+  // auto G = ev.getMap(*m_result);
+  //
+  // gsVector<T> pm(2);
+  // gsMatrix<T> pcs, out;
 
-  gsExprEvaluator<T> ev;
-  auto G = ev.getMap(*m_result);
+  gsMatrix<T> pcs;
+  if (m_pointCurvature.size() == 0)
+  {
+    gsInfo << "First curvatures computation.\n";
+    pcs = principal_curvatures(params_int);
+  }
+  else
+  {
+    gsInfo << "Curvatures already computed.\n";
+    pcs = m_pointCurvature;
+  }
 
-  gsVector<T> pm(2);
-  gsMatrix<T> pcs, out;
+  pcs = pcs.cwiseAbs();
 
   // rho = 1/max(c1, c2)
   for (index_t d = 0; d<num_int; d++)
   {
 
-    pm = params_int.col(d);
-    out = ev.eval( shapeop(G), pm );
+    // pm = params_int.col(d);
+    // out = ev.eval( shapeop(G), pm );
+    //
+    // pcs = out.template selfadjointView<gsEigen::Lower>().eigenvalues();
+    // pcs = pcs.cwiseAbs();
 
-    pcs = out.template selfadjointView<gsEigen::Lower>().eigenvalues();
-    pcs = pcs.cwiseAbs();
-
-    T den = pcs(0,0);
-    if ( pcs(1,0) > pcs(0,0) )
-      den = pcs(1,0);
+    T den = pcs(d,0);
+    if ( pcs(d,1) > pcs(d,0) )
+      den = pcs(d,1);
 
     inv_c(d,0) = 1./den;
   }
@@ -301,7 +345,12 @@ void gsFitting<T>::blending_weights(const gsSparseMatrix<T> & N_int, const index
     {
       gsVector<T> MK(num_int);
       if (m_pointErrors.size() == 0)
+      {
+        gsInfo << " ???????????????????????????????????????????? Am I here ????????????????????????????????????????????\n";
+        gsInfo << "In case I should not. :-(\n";
         computeErrors();
+      }
+
       T max_err_int = m_pointErrors[0];
 
       gsMatrix<T> points_int_errors, rho_c, dist_plus_rho;
@@ -321,10 +370,10 @@ void gsFitting<T>::blending_weights(const gsSparseMatrix<T> & N_int, const index
       {
         gsInfo << "CURVATURE BLENDING WEIGHTS.\n";
         gsInfo << "c1*PDM + c2*TDM with PDM on the boundary\n";
-        rho_c = inverse_principal_curvatures(num_int, params_int);
-        writeToCSVfile(std::to_string(now) + "rho_c.csv", rho_c);
+        rho_c = inverse_principal_curvatures(num_int, params_int); // not to be recomputed, but to be given in input.
+        // writeToCSVfile(std::to_string(now) + "rho_c.csv", rho_c);
         dist_plus_rho = (points_int_errors + rho_c);
-        writeToCSVfile(std::to_string(now) + "dpr_c.csv", dist_plus_rho);
+        // writeToCSVfile(std::to_string(now) + "dpr_c.csv", dist_plus_rho);
         MK = (points_int_errors.cwiseProduct( dist_plus_rho.cwiseInverse() ));//.asDiagonal();
       }
       else

@@ -162,6 +162,8 @@ public:
     // vector of size (num_int, 1) containing rho = 1/max(c1, c2), where c1, c2 are the principal curvature values computed at every parametric point.
     gsMatrix<T> inverse_principal_curvatures(const index_t & num_int, const gsMatrix<T> & params_int);
 
+    gsMatrix<T> principal_curvatures(const gsMatrix<T> & params);
+
     // compute the weights for the pdm-tdm balance in the hybrid method.
     void blending_weights(const gsSparseMatrix<T> & N_int, const index_t & num_int, const T & mu, const T & sigma,
                           const gsMatrix<T> & params_int, tdm_method method, gsSparseMatrix<T> & NNT);
@@ -345,6 +347,9 @@ protected:
 
     // All point-wise errors
     std::vector<T> m_pointErrors;
+
+    // Interior c1 and c2 curvature, as column of the matrix
+    gsMatrix<T> m_pointCurvature;
 
     mutable T m_last_lambda;
 
