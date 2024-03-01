@@ -12,6 +12,7 @@
     Author(s): F. Scholz
 """
 import numpy as np
+import ctypes
 
 # Equivalent numpy types for C types, see https://numpy.org/doc/stable/user/basics.types.html
 typeconversion = {"bool": np.bool_,
@@ -56,7 +57,7 @@ def pythonize_gismo(klass, name):
                     raise TypeError("Input needs to be a two-dimensional numpy array.")
                 if not numpyarray.dtype == typeconversion[datatype]:
                     raise TypeError(f"Data type needs to be {datatype}.")
-                return cls(gismo.gsAsMatrix[datatype](np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1]))
+                return cls(gismo.gsAsMatrix[datatype](np.asfortranarray(numpyarray).ctypes.data_as(ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0], numpyarray.shape[1]))
             setattr(klass, "fromnumpy", fromnumpy)
 
     if name.startswith("gsAsMatrix<") or name.startswith("gsAsVector<"):
@@ -79,7 +80,7 @@ def pythonize_gismo(klass, name):
                     raise TypeError("Input needs to be a two-dimensional numpy array.")
                 if not numpyarray.dtype == typeconversion[datatype]:
                     raise TypeError(f"Data type needs to be {datatype}.")
-                return cls(np.ascontiguousarray(numpyarray), numpyarray.shape[0], numpyarray.shape[1])
+                return cls(np.asfortranarray(numpyarray).ctypes.data_as(ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0], numpyarray.shape[1])
             setattr(klass, "fromnumpy", fromnumpy)
 
 # Add size as len
