@@ -258,59 +258,21 @@ public:
      * @param[in]  coords   The coordinates of the points
      * @param      IDs      The IDs of the points
      */
-//     void getMeshVertexIDsFromPositions(const std::string & meshName, const gsMatrix<T> & coords, gsVector<index_t> & IDs) const
-//     {
-//         gsDebugVar(coords.rows());
-//         gsDebugVar(m_meshDims.at(meshName));
-//         GISMO_ASSERT(coords.rows()==m_meshDims.at(meshName),"Dimension of the points ("<<coords.rows()<<") is not equal to the dimension of mesh "<<meshName<<"("<<m_meshDims.at(meshName)<<")\n");
-//         IDs.resize(coords.cols());
-//         gsDebugVar(coords.cols());
-//         for (index_t k=0; k!=coords.cols(); k++)
-// #ifndef NDEBUG
-//             IDs.at(k) = m_maps.at(this->getMeshID(meshName)).at(coords.col(k));
-// #else
-//         {
-//             //std::map<gsVector<T>,index_t,mapCompare>::iterator it = m_maps.at(this->getMeshID(meshName)).find(coords.col(k));
-//             //GISMO_ASSERT(it!=m_maps.at(this->getMeshID(meshName)).end(),"Coordinate "<<coords.col(k).transpose()<<" is not registered in the vertex ID map of mesh "<<meshName);
-//             auto& vertexIDMap = m_maps.at(this->getMeshID(meshName));
-//             auto it = vertexIDMap.find(coords.col(k));
-//             GISMO_ASSERT(it != vertexIDMap.end(), "Coordinate " << coords.col(k).transpose() << " is not registered in the vertex ID map of mesh " << meshName);
-//             gsDebugVar("Got here");
-//             IDs.at(k) = it->second;
-//         }
-// #endif
-//     }
-
-    void getMeshVertexIDsFromPositions(const std::string &meshName, const gsMatrix<T> &coords, gsVector<index_t> &IDs) const
+    void getMeshVertexIDsFromPositions(const std::string & meshName, const gsMatrix<T> & coords, gsVector<index_t> & IDs) const
     {
-        GISMO_ASSERT(coords.rows() == m_meshDims.at(meshName), "Dimension of the points (" << coords.rows() << ") is not equal to the dimension of mesh " << meshName << "(" << m_meshDims.at(meshName) << ")\n");
-        
+        GISMO_ASSERT(coords.rows()==m_meshDims.at(meshName),"Dimension of the points ("<<coords.rows()<<") is not equal to the dimension of mesh "<<meshName<<"("<<m_meshDims.at(meshName)<<")\n");
         IDs.resize(coords.cols());
-
-        for (index_t k = 0; k != coords.cols(); ++k)
+        const std::map<gsVector<T>,index_t,mapCompare> & map = m_maps.at(this->getMeshID(meshName));
+        for (index_t k=0; k!=coords.cols(); k++)
+#ifdef  NDEBUG
+            IDs.at(k) = map.at(coords.col(k));
+#else
         {
-            try 
-            {
-                const index_t meshID = this->getMeshID(meshName);
-                auto& vertexIDMap = m_maps.at(meshID); // Access the map once
-                auto it = vertexIDMap.find(coords.col(k));
-                if (it != vertexIDMap.end()) 
-                {
-                    IDs.at(k) = it->second; // Key found, assign the ID
-                } 
-                else 
-                {
-                    // Key not found, handle appropriately
-                    std::cerr << "Missing coordinate: " << coords.col(k).transpose() << " in mesh " << meshName << std::endl;
-                    // Decide how to handle this case: skip, use a default ID, throw, etc.
-                }
-            } 
-            catch (const std::out_of_range& e) 
-            {
-                // Log the error along with additional context
-                std::cerr << "Out of range error: " << e.what() << ". Mesh name: " << meshName << " at column " << k << std::endl;
-            }
+            typename std::map<gsVector<T>,index_t,mapCompare>::const_iterator it = map.find(coords.col(k));
+            GISMO_ASSERT(it!=map.end(),"Coordinate "<<coords.col(k).transpose()<<" is not registered in the vertex ID map of mesh "<<meshName<<".\nThis error could be because you registered points in the parametric domain for the mesh, but you try to read (i.e. evaluate) points defined in the physical domain or vice versa.");
+            IDs.at(k) = it->second;
         }
+#endif
     }
 
     /**

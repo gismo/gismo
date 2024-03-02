@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 2);
     // bcInfo.addCondition(0, boundary::south, condition_type::clamped, nullptr, 2);
 
-    bcInfo.addCondition(0, boundary::front,  condition_type::neumann , &g_C);
+    bcInfo.addCondition(0, boundary::front,  condition_type::neumann , &g_C,-1,true);
 
     // Assign geometry map
     bcInfo.setGeoMap(patches);
