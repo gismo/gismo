@@ -33,23 +33,37 @@ typeconversion = {"bool": np.bool_,
                   "double complex": np.cdouble,
                   "long double complex": np.clongdouble}
 
+
+def getdatatype(name):
+    return name.split("<")[1].split(",")[0]
+
+
 # Pythonizations for the gismo namespace
 def pythonize_gismo(klass, name):
     # Enable conversion to numpy
-    if name.startswith("gsMatrix<") or name.startswith("gsVector<"):
-        datatype = name.split("<")[1].split(",")[0]
 
+    # Convert all classes to numpy
+    if name.startswith(
+            ("gsMatrix<", "gsVector<", "gsAsMatrix<", "gsAsVector<", "gsAsConstMatrix<", "gsAsConstVector<")):
+        datatype = getdatatype(name)
         if datatype in typeconversion.keys():
             # Conversion to numpy without copying the data
             def tonumpy(self):
                 rows = self.rows()
                 cols = self.cols()
                 arr = self.data()
-                arr.reshape((rows * cols, ))
-                numpyarray = np.frombuffer(arr, dtype=typeconversion[datatype], count=rows*cols).reshape(cols, rows).transpose()
+                arr.reshape((rows * cols,))
+                numpyarray = np.frombuffer(arr, dtype=typeconversion[datatype], count=rows * cols).reshape(cols,
+                                                                                                           rows).transpose()
                 return numpyarray
+
             setattr(klass, "tonumpy", tonumpy)
 
+    # Convert from numpy to gsMatrix and gsVector, copies the data
+    if name.startswith(("gsMatrix<", "gsVector<")):
+        datatype = getdatatype(name)
+
+        if datatype in typeconversion.keys():
             # Constructor from numpy array, copies the data
             @classmethod
             def fromnumpy(cls, numpyarray):
@@ -57,22 +71,17 @@ def pythonize_gismo(klass, name):
                     raise TypeError("Input needs to be a two-dimensional numpy array.")
                 if not numpyarray.dtype == typeconversion[datatype]:
                     raise TypeError(f"Data type needs to be {datatype}.")
-                return cls(gismo.gsAsMatrix[datatype](np.asfortranarray(numpyarray).ctypes.data_as(ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0], numpyarray.shape[1]))
+                return cls(gismo.gsAsMatrix[datatype](np.asfortranarray(numpyarray).ctypes.data_as(
+                    ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0],
+                                                      numpyarray.shape[1]))
+
             setattr(klass, "fromnumpy", fromnumpy)
 
-    if name.startswith("gsAsMatrix<") or name.startswith("gsAsVector<"):
+    # Convert from numpy to gsAsMatrix or gsAsConstMatrix, might copy the data depending on order of the numpy array
+    if name.startswith(("gsAsMatrix<", "gsAsConstMatrix<")):
         datatype = name.split("<")[1].split(",")[0]
-        if datatype in typeconversion.keys():
-            # Conversion to numpy without copying the data
-            def tonumpy(self):
-                rows = self.rows()
-                cols = self.cols()
-                arr = self.data()
-                arr.reshape((rows * cols, ))
-                numpyarray = np.frombuffer(arr, dtype=typeconversion[datatype], count=rows*cols).reshape(cols, rows).transpose()
-                return numpyarray
-            setattr(klass, "tonumpy", tonumpy)
 
+        if datatype in typeconversion.keys():
             # Constructor from numpy array without copying the data
             @classmethod
             def fromnumpy(cls, numpyarray):
@@ -80,10 +89,30 @@ def pythonize_gismo(klass, name):
                     raise TypeError("Input needs to be a two-dimensional numpy array.")
                 if not numpyarray.dtype == typeconversion[datatype]:
                     raise TypeError(f"Data type needs to be {datatype}.")
-                return cls(np.asfortranarray(numpyarray).ctypes.data_as(ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0], numpyarray.shape[1])
+                return cls(np.asfortranarray(numpyarray).ctypes.data_as(
+                    ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0],
+                           numpyarray.shape[1])
+
             setattr(klass, "fromnumpy", fromnumpy)
 
-# Add size as len
+    # Convert from numpy array to gsAsVector or gsAsConstVector, does not copy the data
+    if name.startswith(("gsAsVector<", "gsAsConstVector<")):
+        datatype = name.split("<")[1].split(",")[0]
+
+        if datatype in typeconversion.keys():
+            @classmethod
+            def fromnumpy(cls, numpyarray):
+                if not numpyarray.ndim == 2:
+                    raise TypeError("Input needs to be a two-dimensional numpy array.")
+                if not numpyarray.dtype == typeconversion[datatype]:
+                    raise TypeError(f"Data type needs to be {datatype}.")
+                return cls(np.asfortranarray(numpyarray).ctypes.data_as(
+                    ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))),
+                           numpyarray.shape[0] * numpyarray.shape[1])
+
+            setattr(klass, "fromnumpy", fromnumpy)
+
+    # Add size as len
     try:
         klass.__len__ = klass.__dict__['size']
     except KeyError:
