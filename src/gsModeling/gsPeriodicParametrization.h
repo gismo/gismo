@@ -142,3 +142,7 @@ protected: // members
 };
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsPeriodicParametrization.hpp)
+#endif
