@@ -37,6 +37,7 @@ typeconversion = {"bool": np.bool_,
 def getdatatype(name):
     return name.split("<")[1].split(",")[0]
 
+matrixtypes = ("gsMatrix<", "gsVector<", "gsAsMatrix<", "gsAsVector<", "gsAsConstMatrix<", "gsAsConstVector<")
 
 # Pythonizations for the gismo namespace
 def pythonize_gismo(klass, name):
@@ -46,6 +47,8 @@ def pythonize_gismo(klass, name):
     if name.startswith(
             ("gsMatrix<", "gsVector<", "gsAsMatrix<", "gsAsVector<", "gsAsConstMatrix<", "gsAsConstVector<")):
         datatype = getdatatype(name)
+
+        # Convert all classes to numpy
         if datatype in typeconversion.keys():
             # Conversion to numpy without copying the data
             def tonumpy(self):
@@ -59,7 +62,12 @@ def pythonize_gismo(klass, name):
 
             setattr(klass, "tonumpy", tonumpy)
 
-    # Convert from numpy to gsMatrix and gsVector, copies the data
+        # Better printing
+        setattr(klass, "__str__", lambda self: "\n".join(
+        [" ".join([str(self[i, j]) for j in range(self.cols())]) for i in range(self.rows())]))
+
+
+# Convert from numpy to gsMatrix and gsVector, copies the data
     if name.startswith(("gsMatrix<", "gsVector<")):
         datatype = getdatatype(name)
 
@@ -73,7 +81,7 @@ def pythonize_gismo(klass, name):
                     raise TypeError(f"Data type needs to be {datatype}.")
                 return cls(gismo.gsAsMatrix[datatype](np.asfortranarray(numpyarray).ctypes.data_as(
                     ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0],
-                                                      numpyarray.shape[1]))
+                    numpyarray.shape[1]))
 
             setattr(klass, "fromnumpy", fromnumpy)
 
@@ -91,7 +99,7 @@ def pythonize_gismo(klass, name):
                     raise TypeError(f"Data type needs to be {datatype}.")
                 return cls(np.asfortranarray(numpyarray).ctypes.data_as(
                     ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))), numpyarray.shape[0],
-                           numpyarray.shape[1])
+                    numpyarray.shape[1])
 
             setattr(klass, "fromnumpy", fromnumpy)
 
@@ -108,7 +116,7 @@ def pythonize_gismo(klass, name):
                     raise TypeError(f"Data type needs to be {datatype}.")
                 return cls(np.asfortranarray(numpyarray).ctypes.data_as(
                     ctypes.POINTER(np.ctypeslib.as_ctypes_type(typeconversion[datatype]))),
-                           numpyarray.shape[0] * numpyarray.shape[1])
+                    numpyarray.shape[0] * numpyarray.shape[1])
 
             setattr(klass, "fromnumpy", fromnumpy)
 
