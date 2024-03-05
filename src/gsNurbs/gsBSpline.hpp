@@ -102,7 +102,7 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
 
   // insert the knot, such that its multiplicity is p+1
   if (multStart>0) { copy.gsBSpline<T>::insertKnot(u0, multStart); }
-  if (multEnd>0) { copy.insertKnot(u1, multEnd); }
+  if (multEnd>0) { copy.gsBSpline<T>::insertKnot(u1, multEnd); }
 
   gsMatrix<T>& coefs = copy.coefs();
   const index_t tDim  = coefs.cols();
