@@ -211,7 +211,7 @@ public:
     void splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance=1e-15) const;
 
     /// Insert the given new knot (multiplicity \a i) without changing the curve.
-    void insertKnot( T knot, int i = 1)
+    void insertKnot( T knot, index_t i = 1)
     {
         if (i==0) return;
         //if ( i==1)
