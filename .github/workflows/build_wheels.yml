@@ -6,31 +6,89 @@ on:
   pull_request:
 
 jobs:
-  wheel_build_full:
-    runs-on: ${{ matrix.os }}
+
+  # build wheels for macos cpython (both archs)
+  macos_wheel:
+    runs-on: macos-latest
     strategy:
       matrix:
         arch: [x86_64, arm64]
-        os: [macos-latest, ubuntu-latest]
+        cw_build: ["cp*"]
         exclude:
-          - os: ubuntu-latest
-            arch: arm64
+          - arch: arm64
+            cw_build: "pp*"
 
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-    - name:  build wheels
-      uses: pypa/cibuildwheel@v2.12.1
+    - name: build wheels
+      uses: pypa/cibuildwheel@v2.16.5
       env:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: ${{ matrix.arch }}
-        CIBW_SKIP: "pp* *musllinux*"
-        CIBW_TEST_SKIP: "*-macosx_arm64 *-*linux_{aarch64,ppc64le,s390x}"
+        CIBW_BUILD: ${{ matrix.cw_build }}
+        CIBW_TEST_SKIP: "*-macosx_arm64"
+        CIBW_SKIP: "*36* *37*"
 
     - uses: actions/upload-artifact@v3
       with:
         path: ./wheelhouse/*.whl
+
+  # build wheels for linux cpython / x86_64
+  linux_wheel:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: build wheels
+      uses: pypa/cibuildwheel@v2.16.5
+      env:
+        CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
+        CIBW_ARCHS: "x86_64"
+        CIBW_BUILD: "cp*manylinux*"
+        CIBW_SKIP: "*36* *37*"
+
+    - uses: actions/upload-artifact@v3
+      with:
+        path: ./wheelhouse/*.whl
+
+
+  # build wheels for linux cpython / {aarch64, ppc64le}
+  # here, we pack each wheel in a separate job, since it requires a longer time
+  # to build
+  linux_wheel_qemu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [aarch64, ppc64le]
+        cw_build: ["cp38*many*", "cp39*many*", "cp310*many*", "cp311*many*", "cp312*many*"]
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Set up QEMU
+      if: runner.os == 'Linux'
+      uses: docker/setup-qemu-action@v2
+      with:
+        platforms: arm64, ppc64le
+
+    - name: build wheels
+      uses: pypa/cibuildwheel@v2.16.5
+      env:
+        CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
+        CIBW_ARCHS: ${{ matrix.arch }}
+        CIBW_BUILD: ${{ matrix.cw_build }}
+        CIBW_TEST_SKIP: "*-*linux_{aarch64,ppc64le,s390x}"
+
+    - uses: actions/upload-artifact@v3
+      with:
+        path: ./wheelhouse/*.whl
+
 
   source_dist:
     runs-on: ubuntu-latest
@@ -46,8 +104,9 @@ jobs:
       with:
         path: ./dist/*
 
+
   upload_test_pypi:
-    needs: [wheel_build_full, source_dist]
+    needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]
     runs-on: ubuntu-latest
     # try to publish only if this is a push to stable branch
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stable' }}

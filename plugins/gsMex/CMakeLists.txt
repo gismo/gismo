@@ -60,7 +60,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER
 add_custom_command(TARGET ${PROJECT_NAME}
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E echo 'To get started in Matlab execute set_path.m from  ${CMAKE_CURRENT_BINARY_DIR}'
-  COMMAND ${CMAKE_COMMAND} -E echo 'Tests are located at ${CMAKE_CURRENT_SOURCE_DIR}/tests'
+  COMMAND ${CMAKE_COMMAND} -E echo 'Tests are located at ${CMAKE_CURRENT_SOURCE_DIR}/test'
   )
       
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/set_path.m.in" "${CMAKE_CURRENT_BINARY_DIR}/set_path.m")
