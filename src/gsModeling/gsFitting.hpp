@@ -365,6 +365,7 @@ void gsFitting<T>::blending_weights(const gsSparseMatrix<T> & N_int, const index
         gsInfo << "ERROR BLENDING WEIGHTS.\n";
         gsInfo << "err*PDM + (1-err)*TDM with PDM on the boundary\n";
         MK = (0.5/max_err_int) * points_int_errors;//.asDiagonal();
+        // MK = points_int_errors/max_err_int;//.asDiagonal();
       }
       else if (method == hybrid_curvature_pdm_tdm_boundary_pdm)
       {
@@ -564,6 +565,51 @@ bool gsFitting<T>::is_corner(gsMatrix<T> & p_domain,
   }
   return corner_check;
 }
+
+// difference with is_point_inside_cell in the inclusion of the left and right interval extremes.
+template <class T>
+bool is_point_within_cell(const gsMatrix<T>& parameter,
+                          const gsMatrix<T>& element)
+{
+    const real_t x = parameter(0, 0);
+    const real_t y = parameter(1, 0);
+
+    return element(0, 0) < x && x < element(0, 1) &&
+           element(1, 0) < y && y < element(1, 1);
+}
+
+template <class T>
+bool is_point_within_cell(const T x,
+                          const T y,
+                          const gsMatrix<T>& element)
+{
+    bool condition = (element(0, 0) < x && x < element(0, 1) && element(1, 0) < y && y < element(1, 1));
+    return condition;
+}
+
+template <class T>
+bool is_point_inside_support(const gsMatrix<T>& parameter,
+                             const gsMatrix<T>& support)
+{
+    const real_t x = parameter(0, 0);
+    const real_t y = parameter(1, 0);
+
+    return support(0, 0) <= x && x < support(0, 1) &&
+        support(1, 0) <= y && y < support(1, 1);
+}
+
+template <class T>
+bool is_point_inside_support(const T x,
+                             const T y,
+                             const gsMatrix<T>& support)
+{
+    return support(0, 0) <= x && x < support(0, 1) &&
+        support(1, 0) <= y && y < support(1, 1);
+}
+
+
+
+
 
 template <class T>
 void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,

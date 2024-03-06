@@ -497,32 +497,31 @@ int main(int argc, char *argv[])
     index_t verbosity = 1; // b, b=2 prints a lot of gsInfo
     index_t maxPcIter = 0; // c, parameter correction steps
     index_t deg = 2; // d, fitting degree
-    real_t tolerance = 1e-4; // hierarchical refinement tolerance
-
-
-    index_t maxRef = 1; // for the adaptive loop
+    real_t tolerance = 1e-4; // e hierarchical refinement tolerance
     std::string fn = "../filedata/fitting/shipHullPts55_scale01.xml"; // f, string file input data
     real_t gtoll = 1e-6; // g, HLBFGS stopping criteria
     index_t maxIter = 200; // i, max number of iteration for the hlbfgs optimization algorithm
     bool atdm = false; // j, run a-tdm
     // k
-    index_t numURef = 0; // l, maximum number of refinement iterations
+    index_t maxRef = 1; // l for the adaptive loop
     index_t mupdate = 20; // m, HLBFGS hessian updates
     index_t numKnots = 2; // n, fitting initial number of knots in each direction
     bool jopt = false; // o, run joint optimization
-    real_t pdm_system = 0.01;
-    real_t tdm_system = 1.;
-    //p, q
-    index_t method = 4;
-	  bool constrainCorners = false; //
+    real_t pdm_system = 0.01; // p
+    index_t method = 4; // q
+	  bool constrainCorners = false; // r
     real_t lambda = 1e-7; // s, fitting smoothing weight
-
+    bool callScalePoints = false; // t
+    // u, v
+    index_t pc0 = 0; // w
     index_t kx = -1; // x
     index_t ky = -1; // y
+    bool admissibleRef = false; // z admissible refinement method.
 
-    bool callScalePoints = false;
-
+    // default settings, not to be changed
+    real_t tdm_system = 1.;
     index_t extension = 2;
+    index_t numURef = 0; // number of initial uniform refinements
 
     gsCmdLine cmd("Adaptive global THB-spline surface fitting by L-BFGS: http://dx.doi.org/10.1016/j.cagd.2012.03.004");
 
@@ -545,11 +544,12 @@ int main(int argc, char *argv[])
     cmd.addInt("q", "tdm_method", "specify tdm method", method);
     cmd.addSwitch("r", "constrainCorners", "constrain the corners", constrainCorners);
     cmd.addReal("s", "smoothing", "smoothing weight", lambda);
-    // t, u, v
-    cmd.addSwitch("w", "scale", "scale input data.", callScalePoints); // enable for comparison
+    cmd.addSwitch("t", "scale", "scale input data.", callScalePoints); // enable for comparison
+    //u, v
+    cmd.addInt("w", "pc0", "number of initial parameter correction steps.", pc0);
     cmd.addInt("x", "xknt", "number of interior knots in x-direction.", kx);
     cmd.addInt("y", "yknt", "number of interior knots in y-direction.", ky);
-    //z
+    cmd.addSwitch("z", "admRef", "Enable admissible refinement.", admissibleRef); // enable for admissibiliy
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -731,7 +731,7 @@ int main(int argc, char *argv[])
 
         gsTime.restart();
         // opt_f.nextIteration(tolerance, threshold, maxPcIter); // no parameter correction here, but the combined approach.
-        opt_f.nextRefinement(tolerance, threshold, 0); //(tolerance, threshold, maxPcIter = 0); // no parameter correction here, but the combined approach.
+        opt_f.nextRefinement(tolerance, threshold, 0, admissibleRef); //(tolerance, threshold, maxPcIter = 0); // no parameter correction here, but the combined approach.
         finaltime_itLoop += gsTime.stop();
         // the first opt_f is empty, therefore only the fitting and the computation of the errors is applied.
         // the computation of the errors is not needed, but it is by default done.
@@ -923,7 +923,7 @@ int main(int argc, char *argv[])
           real_t finaltime_itLoop = 0.;
 
           gsTime.restart();
-          ref.nextIteration_pdm(tolerance, threshold, stepPC, corners);
+          ref.nextIteration_pdm(tolerance, threshold, stepPC, corners, admissibleRef);
           finaltime_itLoop += gsTime.stop();
 
           real_t rmse = 0.; // fitting error
@@ -1007,7 +1007,7 @@ int main(int argc, char *argv[])
               real_t finaltime_itLoop = 0.;
 
               gsTime.restart();
-              ref.nextIteration_tdm(tolerance, threshold, stepPC, pdm_system, tdm_system, corners, method_enum);
+              ref.nextIteration_tdm(tolerance, threshold, stepPC, pdm_system, tdm_system, corners, method_enum, admissibleRef);
               //(T tolerance, T err_threshold, index_t maxPcIter, T mu, T sigma, const std::vector<index_t> & interpIdx);
 
               finaltime_itLoop += gsTime.stop();

@@ -90,6 +90,14 @@ public:
     bool is_corner(gsMatrix<T> & parametric_domain, gsVector<T> & parameter);
 
 
+    // difference with is_point_inside_cell in the inclusion of the left and right interval extremes.
+    bool is_point_within_cell(const gsMatrix<T>& parameter, const gsMatrix<T>& element);
+    bool is_point_within_cell(const T x, const T y, const gsMatrix<T>& element);
+    bool is_point_inside_support(const gsMatrix<T>& parameter, const gsMatrix<T>& support);
+    bool is_point_inside_support(const T x, const T y, const gsMatrix<T>& support);
+
+
+
     void parameterCorrection_tdm(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& interpIdx);
     void parameterCorrectionSepBoundary(T accuracy, index_t maxIter, T mu, T sigma, const std::vector<index_t>& sepIndex);
 

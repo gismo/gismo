@@ -446,7 +446,7 @@ void gsGeometry<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
     gsVector<index_t> ind(xyz.rows()-1);
     for (index_t i = 0; i!= xyz.rows(); ++i)
         if (i<k) ind[i]=i;
-        else if (i>k) ind[i-1]=i;       
+        else if (i>k) ind[i-1]=i;
 
     gsMatrix<T> pt = xyz(ind,gsEigen::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
