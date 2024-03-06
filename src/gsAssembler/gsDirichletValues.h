@@ -363,11 +363,15 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                 // if the component is not specified and the function evaluates
                 // for all target dimensions simultaneous, rhsValues does not
                 // need to be updated
-                if ((com != -1) || (r == 0)) {
+                if ((com != -1) || (r == 0))
+                {
                   // If the condition is homogeneous then fill with zeros
-                  if (iter->isHomogeneous()) {
+                  if (iter->isHomogeneous())
+                  {
                     rhsVals.setZero(u.dim(), md.points.size());
-                  } else {
+                  }
+                  else
+                  {
                     if (iter->parametric())
                       rhsVals =
                           iter->function()->piece(patchIdx).eval(md.points);
