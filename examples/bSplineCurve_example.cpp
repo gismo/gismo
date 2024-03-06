@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): A. Mantzaflaris, Ye Ji
 */
 
 #include <iostream>
@@ -20,10 +20,11 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     bool plot = false; // If set to true, paraview file is generated and launched on exit
-
+    bool trim = false; // If set to true, paraview file is generated and launched on exit
 
     gsCmdLine cmd("Tutorial 01 shows the use of BSpline curves.");
     cmd.addSwitch("plot", "Plot result in ParaView format", plot);
+    cmd.addSwitch("trim", "Basic trim/merge operations", trim);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -50,6 +51,36 @@ int main(int argc, char *argv[])
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
+
+    // Basic trim/merge operations on BSpline curves - @Ye
+    if (trim)
+    {
+      gsInfo << "Original BSpline curve: " << curve << "\n";
+      gsWriteParaview( curve, "originalCurve", 100);  // Output the original curve
+
+      // Segment this BSpline curve between parameters 0.3 and 0.8
+      gsBSpline<> segment = curve.segmentFromTo(0.3, 0.8);
+      gsInfo << "Curve segment from u0 = 0.3 to u1 = 0.8: " << segment << "\n";
+      gsWriteParaview(segment, "segment", 100);  // Output the curve segment
+
+      // Split the curve at parameter 0.4 into two parts
+      gsBSpline<> segmentLeft, segmentRight;
+      curve.splitAt(0.4, segmentLeft, segmentRight);
+      gsInfo << "Curve segment from u0 = 0.0 to u1 = 0.4: " << segmentLeft << "\n";
+      gsInfo << "Curve segment from u0 = 0.4 to u1 = 1.0: " << segmentRight << "\n";
+      gsWriteParaview( segmentLeft, "segmentLeft", 100);
+      gsWriteParaview( segmentRight, "segmentRight", 100);
+
+      // Merge the left and right segments back to the original curve
+      // Note: Due to the segmentation, an inner knot value of 0.4 is introduced, while
+      // the geometry remains exactly the same as the original one
+      gsBSpline<> mergedCurve = segmentLeft;
+      mergedCurve.merge(&segmentRight);
+      gsInfo << "The merged curve: " << mergedCurve << "\n";
+      gsWriteParaview( mergedCurve, "mergedCurve", 100);
+    }
+    else
+      gsInfo << "Done. Re-run with --trim to learn basic trim/merge operations\n";
 
     return 0;
 }
