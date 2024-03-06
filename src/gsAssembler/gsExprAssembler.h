@@ -445,7 +445,9 @@ private:
         {
             auto u = ee.rowVar();
             auto v = ee.colVar();
+#ifndef NDEBUG
             const bool m = E::isMatrix();
+#endif
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!m || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(m || (ea.numDofs()==ee.rhs().size()), "The right-hand side vector is not initialized");

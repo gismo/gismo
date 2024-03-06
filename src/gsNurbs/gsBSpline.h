@@ -398,6 +398,11 @@ public:
 
     void swapDirections(const unsigned i, const unsigned j);
     
+private:
+
+    // Avoid hidden overloads w.r.t. gsGeometry
+    using Base::insertKnot;
+
 protected:
     
     using Base::m_coefs;

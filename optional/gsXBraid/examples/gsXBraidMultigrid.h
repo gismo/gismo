@@ -934,12 +934,12 @@ namespace gismo {
       space u_n = ex.getTestSpace(v_n , basesL);
       u_n.setInterfaceCont(0);
       if (Base::typeBCHandling == 1)
-        {
-	  v_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
-	  u_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
-          //#v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
-          //#u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
-        }
+      {
+        v_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+        u_n.setup(*m_bcInfo_ptr, dirichlet::l2Projection, 0);
+        //#v_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+        //#u_n.addBc(m_bcInfo_ptr->get("Dirichlet"));
+      }
       ex.setIntegrationElements(basesH);
       ex.initSystem();
       ex.assemble(u_n*meas(G) * v_n.tr()); 
