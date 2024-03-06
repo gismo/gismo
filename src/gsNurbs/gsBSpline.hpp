@@ -101,8 +101,8 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   const index_t multEnd   = p + 1 - knots.multiplicity(u1);   // multiplicity
 
   // insert the knot, such that its multiplicity is p+1
-  if (multStart>0) { copy.gsBSpline<T>::insertKnot(u0, multStart); }
-  if (multEnd>0) { copy.gsBSpline<T>::insertKnot(u1, multEnd); }
+  if (multStart>0) { copy.insertKnot(u0, 0, multStart); }
+  if (multEnd>0)   { copy.insertKnot(u1, 0, multEnd  ); }
 
   gsMatrix<T>& coefs = copy.coefs();
   const index_t tDim  = coefs.cols();
@@ -125,6 +125,57 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   KnotVectorType knotsRes(give(matRes), p);
 
   return gsBSpline<T>(Basis(give(knotsRes)), give(coefRes));
+}
+
+template<class T>
+void gsBSpline<T>::insertKnot( T knot, index_t dir, index_t i)
+{
+    GISMO_UNUSED(dir);
+    if (i==0) return;
+    //if ( i==1)
+    //single knot insertion: Boehm's algorithm
+    //else
+    //knot with multiplicity:   Oslo algorithm
+    if( this->basis().isPeriodic() )
+    {
+        int borderKnotMult = this->basis().borderKnotMult();
+        KnotVectorType & knots = this->knots();
+        unsigned deg = this->basis().degree();
+
+        GISMO_ASSERT( knot != knots[deg] && knot != knots[knots.size() - deg - 1],
+                      "You are trying to increase the multiplicity of the p+1st knot but the code is not ready for that.\n");
+
+        // If we would be inserting to "passive" regions, we
+        // rather insert the knot into the mirrored part.
+        // Adjustment of the mirrored knots is then desirable.
+        if( knot < knots[deg - borderKnotMult + 1] )
+        {
+            knot += this->basis()._activeLength();
+        }
+        else if( knot > knots[knots.size() - deg + borderKnotMult - 2] )
+        {
+            knot -= this->basis()._activeLength();
+        }
+        // If necessary, we update the mirrored part of the knot vector.
+        if((knot < knots[2*deg + 1 - borderKnotMult]) || (knot >= knots[knots.size() - 2*deg - 2 + borderKnotMult]))
+            this->basis().enforceOuterKnotsPeriodic();
+
+        // We copy some of the control points to pretend for a while
+        // that the basis is not periodic.
+
+        //gsMatrix<T> trueCoefs = this->basis().perCoefs( this->coefs() );
+        gsBoehm( this->basis().knots(), this->coefs(), knot, i );
+        //this->coefs() = trueCoefs;
+        //this->coefs().conservativeResize( this->basis().size(), this->coefs().cols() );
+    }
+    else // non-periodic
+        gsBoehm( this->basis().knots(), this->coefs() , knot, i);
+}
+
+template<class T>
+void gsBSpline<T>::insertKnot( T knot, index_t i)
+{
+    insertKnot(knot,0,i);
 }
 
 template<class T>
