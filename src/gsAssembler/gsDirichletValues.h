@@ -381,8 +381,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                   }
                 }
 
-                GISMO_ASSERT(
-                    (com == -1) && (rhsVals.rows() == u.dim()),
+                GISMO_ASSERT((com!=-1) || rhsVals.rows() == u.dim(),
                     "If no component is specified for Dirichlet boundary, "
                     "target dimension must match field dimension.");
 
