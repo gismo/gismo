@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     index_t refinements = 1;
     index_t degree = 2;
     std::string boundaryConditions("d");
-    real_t tolerance = 1.e-8;
+    real_t tolerance = (std::is_same<real_t, double>::value ? 1.e-8 : 1.e-5);
     index_t maxIterations = 100;
     std::string out;
     bool plot = false;

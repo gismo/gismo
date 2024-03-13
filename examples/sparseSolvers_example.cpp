@@ -18,7 +18,7 @@ using namespace gismo;
 void report( const gsVector<>& computedSolution, const gsVector<>& exactSolution, bool& succeeded )
 {
     gsInfo << "  Computed solution: " << computedSolution.transpose() << "\n";
-    if ( (computedSolution-exactSolution).norm() <= 1.e-10 )
+    if ( (computedSolution-exactSolution).norm() <= (std::is_same<real_t, double>::value ? 1.e-10 : 1.e-5) )
     {
         gsInfo << "  Test passed.\n";
     }
