@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
     real_t dt = 1e-3;
     index_t maxSteps = 10;
 
+    index_t plotmod = 1;
+
     //! [Parse command line]
     bool plot = false;
     index_t numRefine  = 1;
@@ -44,6 +46,7 @@ int main(int argc, char *argv[])
     cmd.addReal( "L", "L0","L0 parameter",L0);
     cmd.addReal( "M", "M0","M0 parameter",M0);
     cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
+    cmd.addInt ( "m", "PlotMod", "Modulo for plotting",  plotmod );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -121,7 +124,7 @@ int main(int argc, char *argv[])
     real_t alpha_f = 1 / (1+rho_inf);
     real_t delta   = 0.5 + alpha_m - alpha_f;
     // time stepping options
-    index_t maxIt = 10;
+    index_t maxIt = 20;
 
     gsMatrix<> Q;
     gsSparseMatrix<> K, K_m, K_f;
@@ -136,7 +139,6 @@ int main(int argc, char *argv[])
     w.setup(bc, dirichlet::l2Projection, 0);
 
     // Initialize the system
-    A.initSystem();
     gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
     Cold = tmp.array()*0.1/2;
     Cold.array() += 0.5;
@@ -149,51 +151,104 @@ int main(int argc, char *argv[])
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 16);
 
+    real_t t_rho = 0.85;
+    real_t t_err = 1;
+    index_t lmax = 10;
+    real_t TOL = 1e-3;
+    std::vector<gsMatrix<>> Csols(2);
+
+    real_t tmp_alpha_m = 1;
+    real_t tmp_alpha_f = 1;
+    real_t tmp_delta   = 1;
+
+    real_t time = 0;
+    bool converged = false;
     for (index_t step = 0; step!=maxSteps; step++)
     {
-        // Predictor
-        Cnew = Cold;
-        dCnew = (delta-1)/delta * dCold;
-
-        Q0norm = 1;
-        Qnorm = 10;
-        gsInfo<<"Time "<<step*dt<<" ("<<step<<"/"<<maxSteps<<"):\n";
-
-        for (index_t it = 0; it!= maxIt; it++)
+        for (index_t dt_it = 0; dt_it != lmax; dt_it++)
         {
-            Calpha  = Cold  + alpha_f * ( Cnew  - Cold );
-            dCalpha = dCold + alpha_m * ( dCnew - dCold);
-            A.assemble(residual * meas(G));
-            Q = A.rhs();
+            gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
+            tmp_alpha_m = tmp_alpha_f = tmp_delta = 1;
+            for (index_t k = 0; k!=2; k++)
+            {
+                converged = false;
+                std::string method = (k==0) ? "Backward Euler " : "Generalized Alpha ";
+                // ==================================================================================
+                // Predictor
+                Cnew = Cold;
+                dCnew = (tmp_delta-1)/tmp_delta * dCold;
 
-            if (it == 0) Q0norm = Q.norm();
-            else         Qnorm = Q.norm();
+                Q0norm = 1;
+                Qnorm = 10;
 
-            gsInfo<<"\tIteration "<<it<<": Qnorm = "<<Qnorm<<"; Q0norm = "<<Q0norm<<"; Qnorm/Q0norm = "<<Qnorm/Q0norm<<"\n";
-            if (Qnorm/Q0norm < tol)
-                break;
+                for (index_t it = 0; it!= maxIt; it++)
+                {
+                    A.initSystem();
+                    A.initVector(1);
+                    Calpha  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
+                    dCalpha = dCold + tmp_alpha_m * ( dCnew - dCold);
+                    A.assemble(residual * meas(G));
+                    Q = A.rhs();
 
-            A.assembleJacobian( residual * meas(G), dc );
-            K_m = alpha_m * A.matrix();
+                    if (it == 0) Q0norm = Q.norm();
+                    else         Qnorm = Q.norm();
 
-            A.assembleJacobian( residual * meas(G), c );
-            K_f = alpha_f * delta * dt * A.matrix();
+                    // gsInfo<<"\t\tIteration "<<it<<": Qnorm = "<<Qnorm<<"; Q0norm = "<<Q0norm<<"; Qnorm/Q0norm = "<<Qnorm/Q0norm<<"\n";
+                    if (Qnorm/Q0norm < tol)
+                    {
+                        gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
+                        converged = true;
+                        break;
+                    }
+                    else if (it==maxIt-1)
+                    {
+                        gsInfo<<"\t\t"<<method<<"did not converge!\n";
+                        converged = false;
+                        break;
+                    }
 
-            K = K_m + K_f;
+                    A.assembleJacobian( residual * meas(G), dc );
+                    K_m = tmp_alpha_m * A.matrix();
 
-            solver.compute(K);
-            dCupdate = solver.solve(-Q);
+                    A.assembleJacobian( residual * meas(G), c );
+                    K_f = tmp_alpha_f * tmp_delta * dt * A.matrix();
+
+                    K = K_m + K_f;
+
+                    solver.compute(K);
+                    dCupdate = solver.solve(-Q);
 
 
-            dCnew += dCupdate;
-            Cnew  += delta*dt*dCupdate;
+                    dCnew += dCupdate;
+                    Cnew  += tmp_delta*dt*dCupdate;
+                }
+                if (!converged)
+                    break;
+                // ==================================================================================
+                tmp_alpha_m = alpha_m;
+                tmp_alpha_f = alpha_f;
+                tmp_delta = delta;
+
+                Csols[k] = Cnew; // k=0: BE, k=1: alpha
+            }
+
+            if (converged)
+            {
+                t_err = (Csols[0] - Csols[1]).norm() / (Csols[1]).norm();
+                dt *= t_rho * math::sqrt(TOL / t_err);
+                if (t_err < TOL)
+                    break;
+            }
+            else
+                dt *= t_rho;
         }
 
+        time += dt;
         Cold = Cnew;
         dCold = dCnew;
 
         //! [Export visualization in ParaView]
-        if (plot)
+        if (plot && step % plotmod==0)
         {
             // Calpha = Cnew;
             collection.newTimeStep(&mp);
