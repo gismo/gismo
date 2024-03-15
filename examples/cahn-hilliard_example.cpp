@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     real_t alpha_f = 1 / (1+rho_inf);
     real_t delta   = 0.5 + alpha_m - alpha_f;
     // time stepping options
-    index_t maxIt = 20;
+    index_t maxIt = 50;
 
     gsMatrix<> Q;
     gsSparseMatrix<> K, K_m, K_f;
@@ -151,9 +151,10 @@ int main(int argc, char *argv[])
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 16);
 
+    real_t dt_old = dt;
     real_t t_rho = 0.85;
     real_t t_err = 1;
-    index_t lmax = 10;
+    index_t lmax = 100;
     real_t TOL = 1e-3;
     std::vector<gsMatrix<>> Csols(2);
 
@@ -194,7 +195,7 @@ int main(int argc, char *argv[])
                     else         Qnorm = Q.norm();
 
                     // gsInfo<<"\t\tIteration "<<it<<": Qnorm = "<<Qnorm<<"; Q0norm = "<<Q0norm<<"; Qnorm/Q0norm = "<<Qnorm/Q0norm<<"\n";
-                    if (Qnorm/Q0norm < tol)
+                    if (it>0 && Qnorm/Q0norm < tol)
                     {
                         gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
                         converged = true;
@@ -235,15 +236,19 @@ int main(int argc, char *argv[])
             if (converged)
             {
                 t_err = (Csols[0] - Csols[1]).norm() / (Csols[1]).norm();
+                dt_old = dt;
                 dt *= t_rho * math::sqrt(TOL / t_err);
                 if (t_err < TOL)
                     break;
             }
             else
+            {
+                dt_old = dt;
                 dt *= t_rho;
+            }
         }
 
-        time += dt;
+        time += dt_old;
         Cold = Cnew;
         dCold = dCnew;
 
