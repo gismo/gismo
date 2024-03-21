@@ -5,6 +5,17 @@
 
  * This is a MEX (Matlab EXecutable) interface for G+SMO.
 
+  * CMake options to help CMake find Matlab correctly:
+
+Matlab_ROOT
+    Default value for Matlab_ROOT_DIR, the root of the Matlab installation.
+Matlab_ROOT_DIR
+    The root of the Matlab installation.
+MATLAB_FIND_DEBUG
+    outputs debug information
+MATLAB_ADDITIONAL_VERSIONS
+    additional versions of Matlab for the automatic retrieval of the installed versions.
+
 ----------------------------------------------------------------------
  Dependecies
 ----------------------------------------------------------------------

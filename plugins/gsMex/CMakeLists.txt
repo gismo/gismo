@@ -41,7 +41,7 @@ foreach(f ${CXX_SRCS})
       COMMAND ${Matlab_MEX_COMPILER} ${INCLUDE_COMPILER_STRING} -v -R2018a
       -cxx
       #-I${gsMex_SOURCE_DIR}/include does not exist
-      -L${CMAKE_BINARY_DIR}/lib -lgismo
+      -L${CMAKE_BINARY_DIR}/lib -lgismo # problem on windows: DLL not at the right place
       -output ${fout} ${f}
       #&& install_name_tool -change @rpath/libgismo.0.dylib ${CMAKE_BINARY_DIR}/lib/libgismo.0.dylib ${fmex}
       DEPENDS ${f} src/mex_common.h
