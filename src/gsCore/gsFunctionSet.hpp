@@ -51,7 +51,7 @@ gsMatrix<T> gsFunctionSet<T>::support() const
 }
 
 template <class T>
-gsMatrix<T> gsFunctionSet<T>::support(index_t i) const
+gsMatrix<T> gsFunctionSet<T>::support(const index_t & i) const
 {
     GISMO_NO_IMPLEMENTATION
 }

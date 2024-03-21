@@ -32,27 +32,7 @@ set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
 add_library(${PROJECT_NAME} INTERFACE)
 target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
 
-#target_include_directories(${PROJECT_NAME} INTERFACE
-#  $<BUILD_INTERFACE:${gismo_SOURCE_DIR}/external/Spectra
-#  #$<INSTALL_INTERFACE:gismo/gsSpectra>
-#)
-
 add_dependencies(${PROJECT_NAME} Spectra)
-
-#set_target_properties(${PROJECT_NAME} PROPERTIES
-#    COMPILE_DEFINITIONS gismo_EXPORTS
-#    POSITION_INDEPENDENT_CODE ON
-#    LINKER_LANGUAGE CXX
-#    CXX_VISIBILITY_PRESET hidden
-#    VISIBILITY_INLINES_HIDDEN ON
-#    FOLDER "G+Smo extensions"
-#    )
-
-#set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-#    CACHE INTERNAL "${PROJECT_NAME} extensions to be included")
-
-#set(gismo_LINKER ${gismo_LINKER} ${PROJECT_NAME}
-#    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo

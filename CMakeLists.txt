@@ -96,7 +96,7 @@ endif()
 
 #Fix for Eigen directory
 if (NOT EXISTS "${PROJECT_SOURCE_DIR}/external/Eigen")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_SOURCE_DIR}/external/Eigen)
+  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
 endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
@@ -332,6 +332,15 @@ else()
   add_subdirectory(doc/snippets)
 endif()
 add_subdirectory(doc)
+
+## #################################################################
+## Python bindings with cppyy
+## #################################################################
+
+if(GISMO_WITH_CPPYY)
+  add_subdirectory(cppyy)
+endif()
+
 
 ## #################################################################
 ## Plugins

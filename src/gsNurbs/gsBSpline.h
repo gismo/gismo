@@ -194,47 +194,29 @@ public:
     /// Merge other B-spline into this one.
     void merge( gsGeometry<T> * otherG );
 
-    /// Insert the given new knot (multiplicity \a i) without changing the curve.
-    void insertKnot( T knot, int i = 1)
-    {
-        if (i==0) return;
-        //if ( i==1)
-        //single knot insertion: Boehm's algorithm
-        //else
-        //knot with multiplicity:   Oslo algorithm
-        if( this->basis().isPeriodic() )
-        {
-            int borderKnotMult = this->basis().borderKnotMult();
-            KnotVectorType & knots = this->knots();
-            unsigned deg = this->basis().degree();
+    /// Segment this BSpline curve between u0 and u1. Either of these values
+    /// can be outside the parameter range of the curve, but u1 must be
+    /// greater than u0. The degree of the curve is not modified.
+    /// \param u0 starting parameter
+    /// \param u1 end parameter
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    gsBSpline<T> segmentFromTo(T u0, T u1, T tolerance=1e-15) const;
 
+    /// Split this BSpline curve at u0. This value must be inside the
+    /// parameter range of the curve.
+    /// \param u0 split parameter
+    /// \param left curve segment from the left of parameter domain to u0
+    /// \param right curve segment from u0 to the right of parameter domain
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    void splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance=1e-15) const;
 
-            GISMO_ASSERT( knot != knots[deg] && knot != knots[knots.size() - deg - 1],
-                          "You are trying to increase the multiplicity of the p+1st knot but the code is not ready for that.\n");
-
-            // If we would be inserting to "passive" regions, we rather insert the knot into the mirrored part.
-            // Adjustment of the mirrored knots is then desirable.
-            if( knot < knots[deg - borderKnotMult + 1] )
-            {
-                knot += this->basis()._activeLength();
-            }
-            else if( knot > knots[knots.size() - deg + borderKnotMult - 2] )
-            {
-                knot -= this->basis()._activeLength();
-            }
-            // If necessary, we update the mirrored part of the knot vector.
-            if((knot < knots[2*deg + 1 - borderKnotMult]) || (knot >= knots[knots.size() - 2*deg - 2 + borderKnotMult]))
-                this->basis().enforceOuterKnotsPeriodic();
-
-            // We copy some of the control points to pretend for a while that the basis is not periodic.
-            //gsMatrix<T> trueCoefs = this->basis().perCoefs( this->coefs() );
-            gsBoehm( this->basis().knots(), this->coefs(), knot, i );
-            //this->coefs() = trueCoefs;
-            //this->coefs().conservativeResize( this->basis().size(), this->coefs().cols() );
-        }
-        else // non-periodic
-            gsBoehm( this->basis().knots(), this->coefs() , knot, i);
-    }
+    /// Insert the given new knot (multiplicity \a i) without changing
+    /// the curve.
+    void insertKnot( T knot, index_t i = 1);
+private:
+    // Resolve hidden overload w.r.t. gsGeometry
+    virtual void insertKnot( T knot, index_t dir, index_t i = 1);
+public:
 
     /// Insert the given new knots in the range \a [\em inBegin .. \em inEend )
     /// without changing the curve.
@@ -381,14 +363,13 @@ public:
     void setFurthestCorner(gsMatrix<T> const &v);
 
     void swapDirections(const unsigned i, const unsigned j);
-    
+
 protected:
     
     using Base::m_coefs;
     
     // TODO Check function
     // check function: check the coefficient number, degree, knot vector ...
-
 }; // class gsBSpline
 
 

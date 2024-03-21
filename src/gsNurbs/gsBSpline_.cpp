@@ -35,7 +35,11 @@ void pybind11_init_gsBSpline(py::module &m)
 
     // Member functions
     .def("degree", &Class::degree,py::arg("direction") = 0, "Returns the degree of the B-Spline")
-    .def("insertKnot", &Class::insertKnot, "Insert a knot")
+    .def("insertKnot", static_cast<void (Class::*)(real_t,int)> (&Class::insertKnot),
+          py::arg("knot"),
+          py::arg("i") = 1,
+          "Insert a knot with multiplicity i without changing the curve")
+
     .def("degreeElevate", &Class::degreeElevate, "Elevate the degree")
     .def("coefDim", &Class::coefDim, "Returns the number of coefficients defining this B-Spline")
     .def("knots", static_cast<gsKnotVector<real_t>& (Class::*)(int)> (&Class::knots),
