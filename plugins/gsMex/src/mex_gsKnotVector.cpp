@@ -67,9 +67,10 @@ void mexFunction ( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                         mexErrMsgIdAndTxt("MATLAB:mexcpp:typeargin", "Second argument must be a row vector.");
                     }
 
-                    T *knotptr = mxGetDoubles(prhs[2]);
-                    std::vector<real_t> knots(knotptr,knotptr+mxGetN(prhs[2]));
-                    gsKnotVector<T> * kv = new gsKnotVector<T>(knots);
+                    T * knotptr = mxGetDoubles(prhs[2]);
+                    gsKnotVector<T> * kv = new gsKnotVector<T>(-1,knotptr,knotptr+mxGetN(prhs[2]));
+                    //std::vector<real_t> knots(knotptr,knotptr+mxGetN(prhs[2]));
+                    //gsKnotVector<T> * kv = new gsKnotVector<T>(knots);
                     plhs[0] = convertPtr2Mat<gsKnotVector<T> >(kv);
                 }
                 else
