@@ -476,8 +476,8 @@ SUITE(gsKnotVectors_test_2)
     TEST( findElements )
     {
         real_t knots[] = {0, 0, 0, .25, .25, .5, .5, .75, .75, 1, 1, 1};
-        // The degree is intentionally -1.
-        gsKnotVector<real_t> KV(-1, knots, knots + sizeof(knots)/sizeof(real_t));  //(0,1,3,3,2);
+        // The degree is intentionally 0.
+        gsKnotVector<real_t> KV(0, knots, knots + sizeof(knots)/sizeof(real_t));  //(0,1,3,3,2);
 
         std::vector<index_t> spans;
         spans.push_back(0);
@@ -486,7 +486,7 @@ SUITE(gsKnotVectors_test_2)
             real_t corrKnots[] = {0, 0, 0, 0.125, 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 1, 1, 1};
             real_t corrUKnots[] = {0, 0.125, 0.25, 0.5, 0.75, 1};
             mult_t corrEndPos[] = {3, 4, 6, 8, 10, 13};
-            compareUKVs( KV, corrKnots, corrUKnots, corrEndPos, -1 );
+            compareUKVs( KV, corrKnots, corrUKnots, corrEndPos, 0 );
         }
         spans[0] = 3;
         spans.push_back(4);
@@ -495,7 +495,7 @@ SUITE(gsKnotVectors_test_2)
             real_t corrKnots[] = {0, 0, 0, 0.125, 0.25, 0.25, 0.5, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.75, 0.8125, 0.875, 0.9375, 1, 1, 1};
             real_t corrUKnots[] = {0, 0.125, 0.25, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375, 1};
             mult_t corrEndPos[] = {3, 4, 6, 8, 9, 10, 11, 13, 14, 15, 16, 19};
-            compareUKVs( KV, corrKnots, corrUKnots, corrEndPos, -1 );
+            compareUKVs( KV, corrKnots, corrUKnots, corrEndPos, 0 );
         }
     }
 
