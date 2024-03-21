@@ -72,11 +72,13 @@ void gsAdaptiveMeshing<T>::_makeMap(const gsFunctionSet<T> * input, typename gsA
 // #endif
 
         index_t c = 0;
+        const gsMultiPatch<T> * mp;
+        const gsMultiBasis<T> * mb;
         for (index_t patchInd=0; patchInd < input->nPieces(); ++patchInd)
         {
             // Initialize domain element iterator
-            if ( const gsMultiPatch<T> * mp = dynamic_cast<const gsMultiPatch<T>*>(input) ) basis = &(mp->basis(patchInd));
-            if ( const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(input) ) basis = &(mb->basis(patchInd));
+            if ( nullptr != (mp = dynamic_cast<const gsMultiPatch<T>*>(input)) ) basis = &(mp->basis(patchInd));
+            if ( nullptr != (mb = dynamic_cast<const gsMultiBasis<T>*>(input)) ) basis = &(mb->basis(patchInd));
             GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             typename gsBasis<T>::domainIter domIt = basis->makeDomainIterator();
@@ -136,8 +138,10 @@ void gsAdaptiveMeshing<T>::_assignErrors(boxMapType & container, const std::vect
     {
         const gsBasis<T> * basis = nullptr;
         index_t patchInd=0; // Assymes now that the minDegree is lowest on patch 0, or that the degree there is representative
-        if ( const gsMultiPatch<T> * mp = dynamic_cast<const gsMultiPatch<T>*>(m_input) ) basis = &(mp->basis(patchInd));
-        if ( const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(m_input) ) basis = &(mb->basis(patchInd));
+        const gsMultiPatch<T> * mp;
+        const gsMultiBasis<T> * mb;
+        if ( nullptr != (mp = dynamic_cast<const gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(patchInd));
+        if ( nullptr != (mb = dynamic_cast<const gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(patchInd));
         GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
 
         m_uniformRefError = math::pow(1/2.,m_alpha * basis->minDegree() + m_beta) * m_totalError;
@@ -1291,20 +1295,20 @@ void gsAdaptiveMeshing<T>::_refineMarkedElements(   const HBoxContainer & marked
             gsHBoxContainer<2,T> container = markedRef.patch(pn);
             container.toUnitBoxes();
             if (refExtension==0)
-                if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+                if (nullptr != (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
                     mp->patch(pn).refineElements( container.toRefBoxes(pn) );
-                else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+                else if (nullptr != (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
                     mb->basis( pn).refineElements( container.toRefBoxes(pn) );
                 else
                     GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
             else
-                if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+                if (nullptr != (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
                 {
                     // Refine all of the found refBoxes in this patch
                     std::vector<index_t> elements = mp->patch(pn).basis().asElements(container.toCoords(pn), refExtension);
                     mp->patch(pn).refineElements( elements );
                 }
-                else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+                else if (nullptr != (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
                 {
                     // Refine all of the found refBoxes in this patch
                     mb->basis( pn).refine(container.toCoords(pn), refExtension );
@@ -1327,8 +1331,8 @@ void gsAdaptiveMeshing<T>::_unrefineMarkedElements(     const HBoxContainer & ma
 
     for (index_t pn=0; pn < m_input->nPieces(); ++pn )// for all patches
     {
-        if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
-        if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
+        if (nullptr !=  (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) ) basis = &(mp->basis(pn));
+        if (nullptr !=  (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) ) basis = &(mb->basis(pn));
         GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
 
         // if (m_options.getSwitch("Admissible"))
@@ -1362,9 +1366,9 @@ void gsAdaptiveMeshing<T>::_unrefineMarkedElements(     const HBoxContainer & ma
         gsHBoxContainer<2,T> container = markedCrs.patch(pn);
         container.toUnitBoxes();
         if (crsExtension==0)
-            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
+            if (nullptr != (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
                 mp->patch(pn).unrefineElements( container.toCrsBoxes(pn) );
-            else if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
+            else if (nullptr != (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
                 mb->basis( pn).unrefineElements( container.toCrsBoxes(pn) );
             else
                 GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
@@ -1410,8 +1414,8 @@ typename gsAdaptiveMeshing<T>::HBoxContainer gsAdaptiveMeshing<T>::_toContainer(
         for (index_t patchInd=0; patchInd < m_input->nPieces(); ++patchInd)
         {
             // Initialize domain element iterator
-            if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input))!= nullptr ) basis = &(mp->basis(patchInd));
-            if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr ) basis = &(mb->basis(patchInd));
+            if ((mp = dynamic_cast<gsMultiPatch<T>*>(m_input))!= nullptr ) basis = &(mp->basis(patchInd));
+            if ((mb = dynamic_cast<gsMultiBasis<T>*>(m_input))!= nullptr ) basis = &(mb->basis(patchInd));
             GISMO_ASSERT(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
             // for all elements in patch pn
             domIt  = basis->makeDomainIterator();
