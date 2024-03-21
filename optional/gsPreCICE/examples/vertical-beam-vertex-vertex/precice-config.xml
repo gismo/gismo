@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<precice-configuration>
+  <log>
+    <sink
+      filter="%Severity% > info and %Rank% = 0"
+      format="---[precice] %ColorizedSeverity% %Message%"
+      enabled="true" />
+
+    <sink
+      filter="%Severity% > debug and %Rank% = 0"
+      format="---[precice] %ColorizedSeverity% %Message%"
+      enabled="true" />
+  </log>
+
+  <data:vector name="StressData" />
+  <data:vector name="DisplacementData" />
+
+
+  <mesh name="SolidMesh" dimensions="3">
+    <use-data name="StressData" />
+    <use-data name="DisplacementData" />
+  </mesh>
+
+
+  <mesh name="FluidMesh" dimensions="3">
+    <use-data name="DisplacementData" />
+    <use-data name="StressData" />
+  </mesh>
+
+
+  <participant name="Solid">
+    <provide-mesh name="SolidMesh"/>
+    <write-data name="DisplacementData" mesh="SolidMesh" />
+    <read-data name="StressData" mesh="SolidMesh" />
+  </participant>
+  
+    <participant name="Fluid">
+        <provide-mesh name="FluidMesh"/>
+        <receive-mesh name="SolidMesh" from="Solid" />
+         <read-data name="DisplacementData" mesh="FluidMesh" />
+         <write-data name="StressData" mesh="FluidMesh" />
+    </participant>
+    
+  <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory=".." />
+  <!-- Change a mesh side for communication, in this case SolidMesh -->
+  <coupling-scheme:parallel-implicit>
+    <participants first="Fluid" second="Solid"/>
+    <time-window-size value="0.1" />
+    <max-time value="50" />
+    <exchange data="DisplacementData" mesh="SolidMesh" from="Solid"   to="Fluid"/>
+    <exchange data="StressData"       mesh="SolidMesh" from="Fluid"   to="Solid"/>
+    <max-iterations value="50" />
+    <relative-convergence-measure limit="5e-3" data="DisplacementData"  mesh="SolidMesh"/>
+    <relative-convergence-measure limit="5e-3" data="StressData"        mesh="SolidMesh"/>
+    <acceleration:IQN-ILS>
+      <data name="DisplacementData" mesh="SolidMesh" />
+      <data name="StressData"       mesh="SolidMesh" />
+      <preconditioner type="residual-sum" />
+      <filter type="QR2" limit="1e-4" />
+      <initial-relaxation value="1.0" />
+      <max-used-iterations value="100" />
+      <time-windows-reused value="15" />
+    </acceleration:IQN-ILS>
+    <acceleration:constant>
+      <relaxation value="1.0" />
+    </acceleration:constant>
+  </coupling-scheme:parallel-implicit>
+</precice-configuration>
