@@ -1195,18 +1195,17 @@ void gsAdaptiveMeshing<T>::markCrs(const std::vector<T> & errors)
 template<class T>
 bool gsAdaptiveMeshing<T>::refine(const HBoxContainer & markedRef)
 {
-    bool refine;
-    if ((refine = markedRef.totalSize()>0))
+    bool refine = (markedRef.totalSize()>0);
+    if ( refine )
         _refineMarkedElements(markedRef,m_refExt);
-
     return refine;
 }
 
 template<class T>
 bool gsAdaptiveMeshing<T>::unrefine(const HBoxContainer & markedCrs)
 {
-    bool coarsen;
-    if ((coarsen = markedCrs.totalSize()>0))
+    bool coarsen= (markedCrs.totalSize()>0);
+    if (coarsen)
         _unrefineMarkedElements(markedCrs,m_crsExt);
     return coarsen;
 }
