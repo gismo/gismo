@@ -17,7 +17,7 @@ version: "G+Smo-stable.{build}"
 #  - Visual Studio 2015
 
 image:
-- Visual Studio 2015
+- Visual Studio 14 2015
 - Ubuntu
 
 #clone_depth: 5 # clone entire repository history if not defined
