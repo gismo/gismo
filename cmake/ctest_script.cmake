@@ -406,7 +406,7 @@ message("Site: ${CTEST_SITE}")
 message("Build Name: ${CTEST_BUILD_NAME}")
 string(TIMESTAMP TODAY "%Y-%m-%d")
 message("Date: ${TODAY}")
-message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
+message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=${PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
 
 if(NOT CTEST_BUILD_JOBS)
   include(ProcessorCount)

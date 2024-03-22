@@ -4,7 +4,7 @@ stages: ["G+Smo"]
 
 test:
   stage: "G+Smo"
-  #interruptible: true
+  interruptible: true
   tags:
     - ci.inria.fr
     - large
@@ -12,7 +12,7 @@ test:
   before_script:
     -  apk add --update doxygen g++ cmake ninja git
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release -D TARGET_ARCHITECTURE=none ##-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="inria-shared" -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release -D CMAKE_ARGS="'-DGISMO_BUILD_UNITTESTS=ON;TARGET_ARCHITECTURE=none'" ##-VV
     #- cmake --build ./build --target doc
     - cd ./build/doc; ls index.html
 
@@ -20,7 +20,7 @@ doc:
   stage: "G+Smo"
   needs:  # Defined a "needs" relationship with job1
     - test
-  #interruptible: true
+  interruptible: false
   tags:
     - ci.inria.fr
     - large
