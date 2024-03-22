@@ -1,8 +1,8 @@
 #https://gitlab.inria.fr/gitlabci_gallery/windows/windows-10
 
-stages: ["G+Smo", "G+Smo-doc"]
+stages: ["G+Smo"]
 
-job1:
+test:
   stage: "G+Smo"
   #interruptible: true
   tags:
@@ -11,27 +11,31 @@ job1:
   image: docker:20.10.16
   before_script:
     -  apk add --update doxygen g++ cmake ninja git
-    #- docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo ##-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Unix Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release ##-VV
+    #- cmake --build ./build --target doc
+    - cd ./build/doc; ls index.html
 
-# Deploy the documentation on the main branch
-pages:
-  stage: "G+Smo-doc"
+doc:
+  stage: "G+Smo"
+  needs:  # Defined a "needs" relationship with job1
+    - test
   #interruptible: true
   tags:
     - ci.inria.fr
     - large
   image: docker:20.10.16
-  #rules:
-  #  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   before_script:
-    - apk add --update doxygen
+    -  apk add --update doxygen g++ cmake ninja git
   script:
     - pwd
     - cmake --build ./build --target doc
     - cd ./build/doc; ls index.html
-#  artifacts:
-#    when: always
-#    paths:
-#      - public
+
+#    - rm -rf .git
+#    - git init
+#    - git config user.email "doc@gismo.ci"
+#    - git config user.name "doc-ci"
+#    - git add .
+#    - git commit --quiet -m "G+Smo doc"
+#    - git push --force --quiet https://oauth2:$GITHUB@github.com/gismo/gismo.github.io.git master:master
