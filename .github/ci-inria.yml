@@ -1,9 +1,9 @@
 #https://gitlab.inria.fr/gitlabci_gallery/windows/windows-10
 
-stages: ["G+Smo 1", "G+Smo doc"]
+stages: ["G+Smo", "G+Smo-doc"]
 
 job1:
-  stage: "G+Smo 1"
+  stage: "G+Smo"
   #interruptible: true
   tags:
     - ci.inria.fr
