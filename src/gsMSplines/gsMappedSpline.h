@@ -182,7 +182,7 @@ private:
     { GISMO_NO_IMPLEMENTATION; }
     void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
     { GISMO_NO_IMPLEMENTATION; }
-    void evalAllDers_into(const gsMatrix<T> & u, const index_t n,
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
                           std::vector<gsMatrix<T> >& result ) const
     { GISMO_NO_IMPLEMENTATION; }
 

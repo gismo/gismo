@@ -173,16 +173,17 @@ int main(int argc, char *argv[])
       gsInfo<< "  "<<*o ;
 
       if ( gsSurface<> * srf = dynamic_cast<gsSurface<>*>(o.get()) )
-      {      
+      {
+          GISMO_UNUSED(srf);
 #ifdef gsOpennurbs_ENABLED
-      //gsInfo<< "  Write back to geo.3dm\n";
-      //extensions::writeON_NurbsSurface(*srf,"geo");
+          gsInfo<< "  Write back to geo.3dm\n";
+          extensions::writeON_NurbsSurface(*srf,"geo");
 #endif
 #ifdef gsOpenCascade_ENABLED
-      gsInfo<< "  Write back to geo.igs\n";
-      extensions::writeOcctIges(*srf,"geo");
-      gsInfo<< "  Write back to geo.step\n";
-      extensions::writeOcctStep(*srf,"geo");
+          gsInfo<< "  Write back to geo.igs\n";
+          extensions::writeOcctIges(*srf,"geo");
+          gsInfo<< "  Write back to geo.step\n";
+          extensions::writeOcctStep(*srf,"geo");
 #endif
       }
   }
