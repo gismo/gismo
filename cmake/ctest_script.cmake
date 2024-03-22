@@ -535,6 +535,7 @@ macro(run_ctests)
 
   if (NOT confResult EQUAL 0)
     message(SEND_ERROR "CMake Configuration failed.")
+    message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&date=${TODAY}&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
     return()
   endif()
 
