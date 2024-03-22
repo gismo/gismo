@@ -12,9 +12,8 @@ test:
   before_script:
     -  apk add --update cmake git g++ doxygen graphviz ninja #make
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="inria-shared" -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release -D CMAKE_ARGS="'-DCMAKE_BUILD_TYPE=Release;-DGISMO_BUILD_UNITTESTS=ON;-DTARGET_ARCHITECTURE=none'" ##-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="inria-shared" -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release -D CMAKE_ARGS="'-DCMAKE_BUILD_TYPE=Release;-DGISMO_BUILD_UNITTESTS=ON;-DTARGET_ARCHITECTURE=none'" #-VV
     #- cmake --build ./build --target doc
-    - cd ./build/doc; ls index.html
 
 doc:
   stage: "G+Smo"
