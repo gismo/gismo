@@ -15,20 +15,23 @@ job1:
   script:
     - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo ##-VV
 
-
 # Deploy the documentation on the main branch
 pages:
   stage: "G+Smo-doc"
   #interruptible: true
-  rules:
-    #- if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  dependencies: []
+  tags:
+    - ci.inria.fr
+    - large
+  image: docker:20.10.16
+  #rules:
+  #  - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   before_script:
     - apk add --update doxygen
   script:
+    - pwd
     - cmake --build ./build --target doc
     - cd ./build/doc; ls index.html
-  artifacts:
-    when: always
-    paths:
-      - public
+#  artifacts:
+#    when: always
+#    paths:
+#      - public
