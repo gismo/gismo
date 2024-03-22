@@ -1,0 +1,18 @@
+name: checkout
+
+on:
+  push:
+    branches:
+      - ci_test
+
+jobs:
+  build:
+    name: "Run for ${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v2
+      run: pwd
