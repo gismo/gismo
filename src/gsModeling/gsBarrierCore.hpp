@@ -1117,8 +1117,8 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   int preconditionerType = options.askInt("AAPreconditionType", 0);
   switch (preconditionerType) {
     case 1:
-      Jacobian = [&Residual, &assembler, &mapper, &mpSubstitute, &space1](
-          gsVector<T> const &x) {
+      Jacobian = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
+      {
         // diagonal Jacobian matrix as a preconditioner
         convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
         geometryMap G = assembler.getMap(mpSubstitute);
@@ -1132,8 +1132,8 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
       break;
 
     case 2:
-      Jacobian = [&Residual, &assembler, &mapper, &mpSubstitute, &space1](
-          gsVector<T> const &x) {
+      Jacobian = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
+      {
         // diagonal-block Jacobian matrix as a preconditioner
         convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
         geometryMap G = assembler.getMap(mpSubstitute);
@@ -1148,8 +1148,8 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
 
     default:
       // analytical Jacobian matrix as a preconditioner
-      Jacobian = [&assembler, &mapper, &mpSubstitute, &space1](
-          gsVector<T> const &x) {
+      Jacobian = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
+      {
         convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
         geometryMap G = assembler.getMap(mpSubstitute);
 
@@ -1168,14 +1168,13 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   param.epsilon = 1e-5;
 
   preAApp::AndersonAcceleration<T> AASolver(param);
-  gsVector<T> solVector = AASolver.compute(initialGuessVector,
-                                           Residual, Jacobian);
+  gsVector<T> solVector = AASolver.compute(initialGuessVector,Residual, Jacobian);
 
-  if (options.askSwitch("needPDEH1", true)) {
-    verboseLog("\nStart parameterization improvement by H1 discrezation...",
-               options.askInt("Verbose", 0));
-    Residual = [&assembler, &mapper, &mpSubstitute, &space1](
-        gsVector<T> const &x) {
+  if (options.askSwitch("needPDEH1", true))
+  {
+    verboseLog("\nStart parameterization improvement by H1 discrezation...",options.askInt("Verbose", 0));
+    Residual = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
+    {
       // H1 discretization
       convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
       geometryMap G = assembler.getMap(mpSubstitute);
@@ -1192,8 +1191,8 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
     preconditionerType = options.askInt("AAPreconditionType", 0);
     switch (preconditionerType) {
       case 1:
-        Jacobian = [&assembler, &mapper, &mpSubstitute, &mb, &space1](
-            gsVector<T> const &x) {
+        Jacobian = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
+        {
           // diagonal block Jacobian matrix as a preconditioner
           convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
           geometryMap G = assembler.getMap(mpSubstitute);
@@ -1208,8 +1207,8 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
         break;
 
       default:
-        Jacobian = [&assembler, &mapper, &mpSubstitute,
-            &space1](gsVector<T> const &x) {
+        Jacobian = [&assembler, &mapper, &mpSubstitute,&space1](gsVector<T> const &x)
+        {
           // analytical Jacobian matrix as a preconditioner
           convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
           geometryMap G = assembler.getMap(mpSubstitute);
