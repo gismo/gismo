@@ -88,7 +88,7 @@ linux_x86_64_clang11_cxx20_release_mpq_long:
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
 
-# Clang 13 (latest), C++23, Release
+# Clang 13 (latest), C++23, Release  (works!!!!)
 linux_x86_64_clang13_cxx23_release_float_int:
   extends: .test:linux:base
   variables:
