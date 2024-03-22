@@ -13,7 +13,7 @@ test1:
     -  apk add --update doxygen g++ cmake ninja
     #- docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja"
+    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja" -VV
 
 
 # Deploy the documentation on the main branch
