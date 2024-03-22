@@ -534,6 +534,7 @@ macro(run_ctests)
 
   if (NOT confResult EQUAL 0)
     message(SEND_ERROR "CMake Configuration failed.")
+    return()
   endif()
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
@@ -545,7 +546,7 @@ macro(run_ctests)
         set_property(GLOBAL PROPERTY SubProject ${subproject})
         set_property(GLOBAL PROPERTY Label ${subproject})
       endif()
-      ctest_build(TARGET ${subproject} APPEND)
+      ctest_build(TARGET ${subproject} APPEND CONFIGURATION ${CTEST_CONFIGURATION_TYPE})
       ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
       if (DO_TESTS)
 	ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)

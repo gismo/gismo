@@ -1,10 +1,10 @@
 #https://gitlab.inria.fr/gitlabci_gallery/windows/windows-10
 
-stages: ["G+Smo 1"]
+stages: ["G+Smo 1", "G+Smo doc"]
 
-test1:
+job1:
   stage: "G+Smo 1"
-  interruptible: true
+  #interruptible: true
   tags:
     - ci.inria.fr
     - large
@@ -13,21 +13,22 @@ test1:
     -  apk add --update doxygen g++ cmake ninja git
     #- docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja" -VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo ##-VV
 
 
 # Deploy the documentation on the main branch
-#pages:
-#  stage: G+Smo-doc
-#  interruptible: true
-#  rules:
-#    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-#  dependencies: []
-#  before_script:
-#    - apk add --update doxygen
-#  script:
-#    - doxygen
-#  artifacts:
-#    when: always
-#    paths:
-#      - public
+pages:
+  stage: "G+Smo-doc"
+  #interruptible: true
+  rules:
+    #- if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  dependencies: []
+  before_script:
+    - apk add --update doxygen
+  script:
+    - cmake --build ./build --target doc
+    - cd ./build/doc; ls index.html
+  artifacts:
+    when: always
+    paths:
+      - public
