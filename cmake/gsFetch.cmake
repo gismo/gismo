@@ -102,7 +102,7 @@ function(gismo_fetch_module SUBMODULE)
   if(EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/CMakeLists.txt")
     #Update to current HEAD
     if(GISMO_SUBMODULES_HEAD AND EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/.git")
-      message("Git fetch ${SUBMODULE}")
+      message("Git fetch submodule ${SUBMODULE}")
       execute_process(COMMAND "${GIT_EXECUTABLE}" "fetch" "--depth" "1"
 	ERROR_QUIET
 	WORKING_DIRECTORY ${gismo_SOURCE_DIR}/optional/${SUBMODULE})
