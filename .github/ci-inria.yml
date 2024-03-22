@@ -12,7 +12,7 @@ test:
   before_script:
     -  apk add --update doxygen g++ cmake ninja git
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Unix Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release ##-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_CMAKE_GENERATOR="Ninja" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release ##-VV
     #- cmake --build ./build --target doc
     - cd ./build/doc; ls index.html
 
