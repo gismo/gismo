@@ -101,6 +101,10 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
 install(FILES ${PROJECT_SOURCE_DIR}/external/eiquadprog.hpp
         DESTINATION include/${PROJECT_NAME})
 
+# For gdcpp.h
+install(FILES ${PROJECT_SOURCE_DIR}/external/gdcpp.h
+        DESTINATION include/${PROJECT_NAME})
+
 # For gsXmlUtils.h
 install(FILES ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml.hpp
               ${PROJECT_SOURCE_DIR}/external/rapidxml/rapidxml_print.hpp
