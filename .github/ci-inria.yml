@@ -87,10 +87,21 @@ doc:
     - git push --force --quiet https://$GITHUB@github.com/gismo/gismo.github.io.git master:master
     - echo "CDASH report with Doxygen log:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=Superbuild-CentOS_[inria-ci]"
 
-    
-compile-test-msvc:
+compile-msvc:
   extends: .windows
   stage: compile
+  script:
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="Windows_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Superbuild-VS_17_2022_%CI_COMMIT_SHORT_SHA%" -D DO_TESTS=FALSE -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+
+test-msvc:
+  extends: .windows
+  stage: test
+  needs:
+    - compile-msvc
+    - cd build
+    - ctest -D TEST_SITE="Windows_[inria-ci]" -D BUILD_NAME="Superbuild-VS_17_2022_$CI_COMMIT_SHORT_SHA" -D ExperimentalTest -D ExperimentalSubmit
+    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-VS_17_2022_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=Windows_[inria-ci]"
+
   script:
     - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="Windows_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Superbuild-VS_17_2022_%CI_COMMIT_SHORT_SHA%" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
 
@@ -108,4 +119,4 @@ test-macos:
   script:
     - cd build
     - ctest -D TEST_SITE="MacOS_[inria-ci]" -D BUILD_NAME="Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA" -D ExperimentalTest -D ExperimentalSubmit
-    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=Superbuild-MacOS_[inria-ci]"
+    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=MacOS_[inria-ci]"
