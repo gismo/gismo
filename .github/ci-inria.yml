@@ -1,21 +1,30 @@
-#https://gitlab.inria.fr/gitlabci_gallery/windows/windows-10
+stages:
+  - compile
+  - doc
+  #- test
 
-stages: ["G+Smo"]
+only:
+  - ci
 
-superbuild:
-  stage: "G+Smo"
+tags:
+  #- linux
+  - ci.inria.fr
+  - large
+
+compile:
+  stage: compile
   interruptible: true
-  tags:
-    - linux
-    #- ci.inria.fr
-    3- large
-  only:
-    - ci
   before_script:
     -  apk add --update cmake git g++ doxygen graphviz make
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" -D CTEST_BUILD_NAME="Publish_Doxygen_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Publish_Doxygen_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+
+doc:
+  stage: doc
+  interruptible: false
+  script:
     - cmake --build ./build --target doc
+    - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
     - cd build/doc/html
     - rm -rf .git
     - git init -b master
