@@ -50,6 +50,7 @@ compile-intel:
   extends: .linux-intel
   stage: compile
   before_script:
+    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
     - export CC=icx
     - export CXX=icpx
   script:
