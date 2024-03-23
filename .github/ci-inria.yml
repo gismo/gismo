@@ -10,6 +10,7 @@ stages:
     #- linux
     - ci.inria.fr
     - large
+  image: docker:20.10.16
 
 compile:
   extends: .base
@@ -24,6 +25,8 @@ doc:
   extends: .base
   stage: doc
   interruptible: false
+  needs:
+    - compile
   script:
     - cmake --build ./build --target doc
     - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
@@ -35,3 +38,5 @@ doc:
     - git add .
     - git commit --quiet -m "G+Smo doc"
     - git push --force --quiet https://$GITHUB@github.com/gismo/gismo.github.io.git master:master
+
+#
