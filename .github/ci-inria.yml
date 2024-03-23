@@ -33,10 +33,12 @@ compile-intel:
   extends: .linux-intel
   stage: compile
   interruptible: true
-  #before_script:
-  #  -  apk add --update cmake git g++ doxygen graphviz make
+  before_script:
+    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
+    - export CC=icx
+    - export CXX=icpx
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
 
 doc:
   extends: .linux-intel
