@@ -36,7 +36,7 @@ compile-intel:
   #before_script:
   #  -  apk add --update cmake git g++ doxygen graphviz make
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Publish_Doxygen_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
 
 doc:
   extends: .linux-intel
@@ -61,4 +61,4 @@ compile-test-msvc:
   stage: compile
   interruptible: true
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Publish_Doxygen_$CI_COMMIT_SHORT_SHA" #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Windows_VS_17_2022_$CI_COMMIT_SHORT_SHA" #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
