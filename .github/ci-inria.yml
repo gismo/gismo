@@ -54,24 +54,14 @@ compile-intel:
     - export CC=icx
     - export CXX=icpx
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
-
-test-intel:
-  extends: .linux-intel
-  needs:
-    - compile-intel
-  stage: test
-  script:
-    - cd build
-    - ctest -D BUILD_JOBS=15 -D TEST_SITE="CentOS_[inria-ci]" -D BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -D ExperimentalTest -D ExperimentalSubmit
-    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=Superbuild-CentOS_[inria-ci]"
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D LABELS_FOR_SUBPROJECTS="gismo;examples;doc-snippets" -D CTEST_BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
 
 doc:
   extends: .linux-intel
   stage: doc
-  interruptible: false
   needs:
     - compile-intel
+  interruptible: false
   script:
     - cd build
     - cmake --build . --target doc
@@ -87,34 +77,14 @@ doc:
     - git push --force --quiet https://$GITHUB@github.com/gismo/gismo.github.io.git master:master
     - echo "CDASH report with Doxygen log:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=Superbuild-CentOS_[inria-ci]"
 
-compile-msvc:
+compile-test-msvc:
   extends: .windows
   stage: compile
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="Windows_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Superbuild-VS_17_2022_%CI_COMMIT_SHORT_SHA%" -D DO_TESTS=FALSE -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="Windows_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Superbuild-VS_17_2022_%CI_COMMIT_SHORT_SHA%" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
 
-test-msvc:
-  extends: .windows
-  stage: test
-  needs:
-    - compile-msvc
-  script:
-    - cd build
-    - ctest -D BUILD_JOBS=10 -D TEST_SITE="Windows_[inria-ci]" -D BUILD_NAME="Superbuild-VS_17_2022_$CI_COMMIT_SHORT_SHA" -D ExperimentalTest -D ExperimentalSubmit
-    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-VS_17_2022_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=Windows_[inria-ci]"
-
-compile-macos:
+compile-test-macos:
   extends: .macos-clang
   stage: compile
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="MacOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BUILD_NAME="Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
-
-test-macos:
-  extends: .linux-intel
-  needs:
-    - compile-intel
-  stage: test
-  script:
-    - cd build
-    - ctest -D BUILD_JOBS=15 -D TEST_SITE="MacOS_[inria-ci]" -D BUILD_NAME="Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA" -D ExperimentalTest -D ExperimentalSubmit
-    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=MacOS_[inria-ci]"
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="MacOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BUILD_NAME="Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
