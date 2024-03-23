@@ -3,13 +3,13 @@ stages:
   - doc
   #- test
 
-only:
-  - ci
-
-tags:
-  #- linux
-  - ci.inria.fr
-  - large
+.base:
+  only:
+    - ci
+  tags:
+    #- linux
+    - ci.inria.fr
+    - large
 
 compile:
   stage: compile
