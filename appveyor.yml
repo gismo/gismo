@@ -38,6 +38,8 @@ init:
 build:
   verbosity: minimal
   parallel: true
+  configuration: Release
+  generator: "Visual Studio 14 2015"
 
 # Do not build on tags (GitHub only)
 skip_tags: true
@@ -65,7 +67,7 @@ before_build:
 build_script:
 #  - cmd: ctest --output-on-failure -j5 -C %configuration% -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit #-V
 #  - sh: ctest --output-on-failure -j5 -C $configuration -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
-  - cmd: ctest -S ../gismo/cmake/ctest_script.cmake -D CTEST_CONFIGURATION_TYPE=%configuration% -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
+  - cmd: ctest -S ../gismo/cmake/ctest_script.cmake -C %configuration% -D CTEST_CONFIGURATION_TYPE=%configuration% -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
   - sh: ctest -S ../gismo/cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
 
 # NuGet
