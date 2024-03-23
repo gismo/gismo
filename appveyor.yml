@@ -83,7 +83,7 @@ for:
 -
   branches:
     only:
-    - stable
+    - ci
 
   environment:
     CTEST_OUTPUT_ON_FAILURE: 1
