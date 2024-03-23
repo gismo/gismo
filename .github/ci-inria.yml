@@ -14,7 +14,7 @@ test+doc:
   before_script:
     -  apk add --update cmake git g++ doxygen graphviz make
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" -D CTEST_BUILD_NAME="Linux_Superbuild+Doc-$CI_COMMIT_SHORT_SHA" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" -D CTEST_BUILD_NAME="Linux_Superbuild-and-Doc_$CI_COMMIT_SHORT_SHA" #-VV
     - cmake --build ./build --target doc
     - cd build/doc/html
     - rm -rf .git
