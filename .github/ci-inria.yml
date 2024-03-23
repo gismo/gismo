@@ -12,12 +12,14 @@ stages:
   image: docker:20.10.16
 
 .linux-intel:
+  before_script:
+    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
   variables:
     GIT_CLEAN_FLAGS: none
   only:
     - ci
   tags:
-    - CentOS
+    - CentOS-gs
 
 .windows:
   only:
@@ -29,18 +31,24 @@ stages:
   only:
     - ci
   tags:
-    - macos
+    - macos-gs
 
 compile-intel:
   extends: .linux-intel
   stage: compile
   interruptible: true
   before_script:
-    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
     - export CC=icx
     - export CXX=icpx
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+
+test-intel:
+  extends: .linux-intel
+  stage: test
+  interruptible: true
+  script:
+    - ctest -D ExperimentalTest -D ExperimentalSubmit
 
 doc:
   extends: .linux-intel
@@ -65,4 +73,11 @@ compile-test-msvc:
   stage: compile
   interruptible: true
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Windows_VS_17_2022_%CI_COMMIT_SHORT_SHA%" #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="Windows_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="VS_17_2022_%CI_COMMIT_SHORT_SHA%" #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+
+compile-macos:
+  extends: .macos-clang
+  stage: compile
+  interruptible: true
+  script:
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="MacOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BUILD_NAME="OSX-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=TRUE -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
