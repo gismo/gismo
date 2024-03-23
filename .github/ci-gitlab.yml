@@ -231,6 +231,6 @@ install_and_deploy_linux:
     - if [ ! -f "poisson_example.out" ]; then cat compile.log; fi
     - ./poisson_example.out
   only:
-    - stable
+    - ci
     - external_pull_requests
 

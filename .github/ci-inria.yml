@@ -16,9 +16,10 @@ test+doc:
     - cmake --build ./build --target doc
     - cd build/doc/html
     #- rm -rf .git
-    - git init
+    - git config --global init.defaultBranch master
     - git config user.email "doc@gismo.ci"
     - git config user.name "doc-ci"
+    - git init
     - git add .
     - git commit --quiet -m "G+Smo doc"
-    - git push --force --quiet https://oauth2:$GITHUB@github.com/gismo/gismo.github.io.git master:master
+    - git push --force --quiet https://$GITHUB@github.com/gismo/gismo.github.io.git master:master
