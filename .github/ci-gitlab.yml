@@ -202,6 +202,7 @@ install_and_deploy_linux:
     - linux
   stage: test #deploy #(deploy will only run only when all test succeeds)
   image: gcc:9
+  interruptible: true
   script:
     - apt-get update -y
     - apt-get install cmake g++ -y
