@@ -445,15 +445,7 @@ macro(get_git_status res)
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
       OUTPUT_STRIP_TRAILING_WHITESPACE
       OUTPUT_VARIABLE commitMessage)
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule status
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE submoduleHashes)
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule summary
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE submoduleSummary)
-    set(${res} "${commitMessage}\n\nSubmodule status:\n${submoduleHashes}\n\nSubmodule summary:\n${submoduleSummary}\n")
+    set(${res} "${commitMessage}\n")
   endif()
 endmacro(get_git_status)
 
