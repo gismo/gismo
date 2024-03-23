@@ -15,13 +15,13 @@ stages:
   only:
     - ci
   tags:
-    - linux
+    - CentOS
 
 .windows:
   only:
     - ci
   tags:
-    - windows
+    - windows-gsx
 
 .macos-clang:
   only:
@@ -35,7 +35,7 @@ compile-intel:
   interruptible: true
   #before_script:
   #  -  apk add --update cmake git g++ doxygen graphviz make
-  script:
+  script:s
     - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="shared_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=4 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
 
 doc:
