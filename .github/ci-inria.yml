@@ -49,7 +49,7 @@ compile-intel:
     - export CC=icx
     - export CXX=icpx
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
 
 test-intel:
   extends: .linux-intel
@@ -58,7 +58,7 @@ test-intel:
   stage: test
   script:
     - cd build
-    - ctest -D ExperimentalTest -D ExperimentalSubmit
+    - ctest -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_BUILD_NAME="Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -D ExperimentalTest -D ExperimentalSubmit
 
 doc:
   extends: .linux-intel
@@ -69,10 +69,11 @@ doc:
   script:
     - cd build
     - cmake --build . --target doc
-    - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
+    - ctest --add-notes doc/doxygen.log -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_BUILD_NAME="Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -M Experimental -T Submit
     - cd doc/html
     - rm -rf .git
-    - git init -b master
+    - git config --global init.defaultBranch master
+    - git init
     - git config user.email "doc@gismo.ci"
     - git config user.name "doc-ci"
     - git add .
