@@ -40,7 +40,7 @@ compile-intel:
     - export CC=icx
     - export CXX=icpx
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_NAME="Intel-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=FALSE #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
 
 test-intel:
   extends: .linux-intel
@@ -48,6 +48,7 @@ test-intel:
     - compile-intel
   stage: test
   script:
+    - cd build
     - ctest -D ExperimentalTest -D ExperimentalSubmit
 
 doc:
@@ -58,7 +59,7 @@ doc:
     - compile-intel
   script:
     - cd build
-    - cmake --build . --target doc    -
+    - cmake --build . --target doc
     - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
     - cd doc/html
     - rm -rf .git
@@ -73,10 +74,10 @@ compile-test-msvc:
   extends: .windows
   stage: compile
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="Windows_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="VS_17_2022_%CI_COMMIT_SHORT_SHA%" #-D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="Windows_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="Superbuild-VS_17_2022_%CI_COMMIT_SHORT_SHA%" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS"#-VV
 
 compile-macos:
   extends: .macos-clang
   stage: compile
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="MacOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BUILD_NAME="OSX-ICC_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=TRUE -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="MacOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BUILD_NAME="Superbuild-OSX-AppleClang_$CI_COMMIT_SHORT_SHA" -D DO_TESTS=TRUE -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
