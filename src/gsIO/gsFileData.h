@@ -328,7 +328,7 @@ public:
         GISMO_ASSERT( filename!="", "No filename provided for include!");
         gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
         if (-1. != time)
-            node->append_attribute(internal::makeAttribute("time", std::to_string( static_cast< double >( time ) ), *data));
+            node->append_attribute(internal::makeAttribute("time", std::to_string( cast<real_t,double >( time ) ), *data));
         data->appendToRoot(node,id, label);
     }
 

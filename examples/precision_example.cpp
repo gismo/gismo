@@ -124,12 +124,12 @@ int main(int argc, char *argv[])
 {
     DataIn dataIn;
 
-    int defaultDegree = 5;
+    index_t defaultDegree = 5;
     dataIn.degree = defaultDegree;
-    int maxRefine = 7;
+    index_t maxRefine = 7;
 
     // Setting default to IEEE 754 "double"
-    int mantissa = 53;
+    index_t mantissa = 53;
 
     gsCmdLine cmd("Example for solving the Poisson problem.");
     cmd.addInt("r", "refine", "Number of refinement steps", maxRefine);
