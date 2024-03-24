@@ -123,10 +123,8 @@ DataOut test(DataIn dataIn)
 int main(int argc, char *argv[])
 {
     DataIn dataIn;
-
-    index_t defaultDegree = 5;
-    dataIn.degree = defaultDegree;
-    index_t maxRefine = 7;
+    dataIn.degree = 2;
+    index_t maxRefine = 4;
 
     // Setting default to IEEE 754 "double"
     index_t mantissa = 53;

@@ -40,15 +40,15 @@ public:
 
     bool operator()(const Point& v0, const Point& v1) const
     {
-        if (fabs(v0[0] - v1[0]) <= eps_)
+        if (std::abs(v0[0] - v1[0]) <= eps_)
         {
-            if (fabs(v0[1] - v1[1]) <= eps_)
+            if (std::abs(v0[1] - v1[1]) <= eps_)
             {
                 return (v0[2] < v1[2] - eps_);
             }
             else return (v0[1] < v1[1] - eps_);
         }
-        else return (v0[0] < v1[0] - eps_);
+        return (v0[0] < v1[0] - eps_);
     }
 
 private:
