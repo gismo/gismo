@@ -33,6 +33,7 @@ jobs:
       # access regardless of the host operating system
       shell: bash
       working-directory: ${{runner.workspace}}
-      run: export GIT_BRANCH=$(git rev-parse --short "$GITHUB_SHA")
-      run: export GIT_COMMIT=${GITHUB_REF#refs/heads/}
-      run: ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$GITHUB_RUN_NUMBER-${{ matrix.os }}(${{ github.event.number }})" -D CTEST_SITE="$GIT_BRANCH-$GIT_COMMIT_[actions]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="gsOpennurbs" -D CTEST_BUILD_JOBS=4 -Q
+      run: |
+        export GIT_COMMIT=$(git rev-parse --short "$GITHUB_SHA")
+        export GIT_BRANCH=${GITHUB_REF#refs/heads/}
+        ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$GITHUB_RUN_NUMBER-${{ matrix.os }}[${{ github.event.number }}]" -D CTEST_SITE="$GIT_BRANCH-$GIT_COMMIT_[actions]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="gsOpennurbs" -D CTEST_BUILD_JOBS=4 -Q
