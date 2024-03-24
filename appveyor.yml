@@ -58,3 +58,21 @@ build_script:
   - sh: ctest -S ../gismo/cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
 
 #validate: https://codebeautify.org/yaml-validator
+
+
+##############################################################
+for:
+##############################################################
+
+# Stable branch
+-
+  branches:
+    only:
+    - stable
+
+  environment:
+    CTEST_OUTPUT_ON_FAILURE: 1
+    matrix:
+    - BUILD: msvc2015
+      configuration: Release
+      generator: "Visual Studio 14 2015"
