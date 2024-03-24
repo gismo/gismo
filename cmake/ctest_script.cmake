@@ -173,27 +173,6 @@ if(DEFINED CXXNAME)
   set(ENV{CXX}  ${CXX})
 endif()
 
-# Other Environment variables and scripts
-#set(ENV{OMP_NUM_THREADS} 3)
-#set(ENV{CXXFLAGS} "-Ofast")
-#execute_process(COMMAND source "/path/to/iccvars.sh intel64")
-#set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
-#set(ENV{MAKEFLAGS} "-j12")
-
-# Build options
-if(NOT DEFINED CMAKE_ARGS)
-  set(CMAKE_ARGS
-    -DGISMO_SUBMODULES_HEAD=ON
-    -DGISMO_WITH_WARNINGS=OFF
-    -DGISMO_COEFF_TYPE=double
-    -DGISMO_BUILD_LIB=ON
-    #-DCMAKE_CXX_STANDARD=11
-    -DGISMO_BUILD_EXAMPLES=ON
-    -DGISMO_BUILD_UNITTESTS=ON
-    -DNOSNIPPETS=OFF
-    )
-endif()
-
 # Source folder (defaults inside the script directory)
 if(NOT DEFINED CTEST_SOURCE_DIRECTORY)
   if(EXISTS ${CTEST_SCRIPT_DIRECTORY}/gismoConfig.cmake.in
@@ -401,6 +380,29 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
 endif()
 STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
+
+# Other Environment variables and scripts
+#set(ENV{OMP_NUM_THREADS} 3)
+#set(ENV{CXXFLAGS} "-Ofast")
+#execute_process(COMMAND source "/path/to/iccvars.sh intel64")
+#set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
+#set(ENV{MAKEFLAGS} "-j12")
+
+# Build options
+if(NOT DEFINED CMAKE_ARGS)
+  set(CMAKE_ARGS
+    -DSIDE=${CTEST_BUILD_NAME}
+    -DDBUILDNAME=${CTEST_SITE}
+    -DGISMO_SUBMODULES_HEAD=ON
+    -DGISMO_WITH_WARNINGS=OFF
+    -DGISMO_COEFF_TYPE=double
+    -DGISMO_BUILD_LIB=ON
+    #-DCMAKE_CXX_STANDARD=11
+    -DGISMO_BUILD_EXAMPLES=ON
+    -DGISMO_BUILD_UNITTESTS=ON
+    -DNOSNIPPETS=OFF
+    )
+endif()
 
 #Output details
 message("Site: ${CTEST_SITE}")

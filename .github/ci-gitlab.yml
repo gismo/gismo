@@ -180,7 +180,7 @@ linux_x86_64_gcc10_cxx14_release_mpq_long:
     GENERATOR:        "Unix Makefiles"
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int64_t'"    
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
-    except:
+  except:
     - ci_test
     - coverity_scan   
     
