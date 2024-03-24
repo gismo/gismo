@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Finished.\n";
 
         gsMatrix<> hausdorff(3,1);
-        hausdorff(0,0) = std::accumulate(hausdorffs.begin(),hausdorffs.end(),real_t(0)) / hausdorffs.size();
+        hausdorff(0,0) = std::accumulate(hausdorffs.begin(),hausdorffs.end(),(real_t)(0)) / hausdorffs.size();
         hausdorff(1,0) = *std::max_element(hausdorffs.begin(),hausdorffs.end());
         hausdorff(2,0) = *std::min_element(hausdorffs.begin(),hausdorffs.end());
 
