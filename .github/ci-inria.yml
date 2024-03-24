@@ -23,6 +23,7 @@ stages:
   before_script:
     - source /opt/intel/oneapi/compiler/latest/env/vars.sh
   variables:
+    #GIT_STRATEGY: clone
     GIT_CLEAN_FLAGS: none
   only:
     - ci
@@ -53,7 +54,7 @@ compile-intel:
     - export CC=icx
     - export CXX=icpx
   script:
-    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=./build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D LABELS_FOR_SUBPROJECTS="gismo;examples;doc-snippets" -D CTEST_BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="CentOS_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D LABELS_FOR_SUBPROJECTS="gismo;examples;doc-snippets" -D CTEST_BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
 
 doc:
   extends: .linux-intel
@@ -61,10 +62,8 @@ doc:
   needs:
     - compile-intel
   interruptible: false
-  variables:
-     GIT_STRATEGY: clone
   script:
-    - cd build
+    - cd ../build
     - cmake --build . --target doc
     - ctest --add-notes doc/doxygen.log -D SITE="Superbuild-CentOS_[inria-ci]" -D BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -M Experimental -T Submit
     - cd doc/html
