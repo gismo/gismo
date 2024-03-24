@@ -130,7 +130,6 @@ linux_x86_64_gcc10_cxx17_release_double_int32t:
     CXXNAME:          "g++"
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
     GISMO_OPTIONAL: "gsOpennurbs\\;"
-    CTEST_ARGS:       "-D DO_TESTS=FALSE"
 
 # GCC 11, C++20, Release
 linux_x86_64_gcc11_cxx20_release_float_int:
@@ -180,7 +179,8 @@ linux_x86_64_gcc10_cxx14_release_mpq_long:
     CXXNAME:          "g++"
     GENERATOR:        "Unix Makefiles"
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int64_t'"    
-  except:
+    CTEST_ARGS:       "-D DO_TESTS=FALSE"
+    except:
     - ci_test
     - coverity_scan   
     
@@ -230,15 +230,12 @@ install_and_deploy_linux:
     # III. Test direct use of -lgismo
     - rm -rf ./poisson2_example.out
     #- g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson2_example.out -I/usr/include/gismo -lgismo
-    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson2_example.out -I/usr/include/gismo -lgismo > compile.log
-    - ls poisson2_example.out
-    - ls compile.log
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson2_example.out -I/usr/include/gismo -lgismo #> compile.log
     #- ctest --output-on-failure -A compile.log -M Experimental -T Submit
     - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=65&value1=$CI_JOB_NAME&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH"
-  after_script:
-    - pwd
-    - cd /builds/gismo-ci/buildlib
-    - if [ ! -f "poisson2_example.out" ]; then cat compile.log; fi
+#  after_script:
+#    - cd /builds/gismo-ci/buildproj
+#    - if [ ! -f "poisson2_example.out" ]; then cat compile.log; fi
     - ./poisson2_example.out
 
   only:
