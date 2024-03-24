@@ -212,7 +212,7 @@ install_and_deploy_linux:
 
   script:
     - cd /builds/gismo-ci/buildlib
-    - cmake ../gismo -DBUILDNAME="$CI_JOB_NAME" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA-[gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" -D CMAKE_INSTALL_PREFIX=/usr -D CMAKE_BUILD_TYPE=Release -DTARGET_ARCHITECTURE=generic #-D GISMO_OPTIONAL="gsOpennurbs\\;gsIpOpt\\;gsSpectra"
+    - cmake ../gismo -DBUILDNAME="$CI_JOB_NAME" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA-[gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" -D CMAKE_INSTALL_PREFIX=/usr -D CMAKE_BUILD_TYPE=Release -DTARGET_ARCHITECTURE=none #-D GISMO_OPTIONAL="gsOpennurbs\\;gsIpOpt\\;gsSpectra"
     - cmake --build . --target gismo #--parallel 3
     # I. Test deploy from build tree
     - cp /builds/gismo-ci/gismo/CTestConfig.cmake /builds/gismo-ci/gismo/deploy/
@@ -229,11 +229,12 @@ install_and_deploy_linux:
     - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
     # III. Test direct use of -lgismo
     - rm -rf ./poisson2_example.out
-    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson2_example.out -I/usr/include/gismo -lgismo 2> compile.log
-    - ctest --output-on-failure -A compile.log -M Experimental -T Submit
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson2_example.out -I/usr/include/gismo -lgismo
+    - ls
+    #- g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson2_example.out -I/usr/include/gismo -lgismo 2> compile.log
+    #- ctest --output-on-failure -A compile.log -M Experimental -T Submit
 
   after_script:
-    - cd /builds/gismo-ci/buildproj
     - if [ ! -f "poisson2_example.out" ]; then cat compile.log; fi
     - ./poisson2_example.out
     - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=65&value1=$CI_JOB_NAME&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH"
