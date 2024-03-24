@@ -1,7 +1,6 @@
 branches:
   only:
     - stable
-    - ci
 
 # Specify version format
 version: "G+Smo-stable.{build}"
