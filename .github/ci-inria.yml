@@ -23,7 +23,6 @@ stages:
   before_script:
     - source /opt/intel/oneapi/compiler/latest/env/vars.sh
   variables:
-    GIT_STRATEGY: clone
     GIT_CLEAN_FLAGS: none
   only:
     - ci
@@ -62,6 +61,8 @@ doc:
   needs:
     - compile-intel
   interruptible: false
+  variables:
+     GIT_STRATEGY: clone
   script:
     - cd build
     - cmake --build . --target doc
