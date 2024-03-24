@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
         ab = mp0->patch(p).support();
         a = ab.col(0);
         b = ab.col(1);
-        np.setConstant((math::ceil(math::pow(npts,1./mp.parDim()))));
+        np.setConstant(cast<real_t,unsigned>(math::ceil(math::pow(npts,1./mp.parDim()))));
         // Uniform parameters for evaluation
         pts = gsPointGrid(a, b, np);
 
@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
             ev.setIntegrationElements(dbasis);
             geometryMap G = ev.getMap(mp_tmp);
             area = ev.integral(meas(G));
-            funcs.at(p) = gsConstantFunction<>(hausdorffs.at(p) / std::sqrt(area),2);
+            funcs.at(p) = gsConstantFunction<>(hausdorffs.at(p) / math::sqrt(area),2);
             distances.addPiece(funcs.at(p));
             gsDebugVar(hausdorffs.at(p));
         }
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Finished.\n";
 
         gsMatrix<> hausdorff(3,1);
-        hausdorff(0,0) = std::accumulate(hausdorffs.begin(),hausdorffs.end(),0.0) / hausdorffs.size();
+        hausdorff(0,0) = std::accumulate(hausdorffs.begin(),hausdorffs.end(),real_t(0)) / hausdorffs.size();
         hausdorff(1,0) = *std::max_element(hausdorffs.begin(),hausdorffs.end());
         hausdorff(2,0) = *std::min_element(hausdorffs.begin(),hausdorffs.end());
 
