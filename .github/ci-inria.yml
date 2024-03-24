@@ -65,7 +65,7 @@ doc:
   script:
     - cd ../build
     - cmake --build . --target doc
-    - ctest --add-notes doc/doxygen.log -D SITE="Superbuild-CentOS_[inria-ci]" -D BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -M Experimental -T Submit
+    - ctest --add-notes doc/doxygen.log -D SITE="CentOS_[inria-ci]" -D BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -M Experimental -T Submit
     - cd doc/html
     - rm -rf .git
     - git config --global init.defaultBranch master
@@ -75,7 +75,7 @@ doc:
     - git add .
     - git commit --quiet -m "G+Smo doc"
     - git push --force --quiet https://$GITHUB@github.com/gismo/gismo.github.io.git master:master
-    - echo "CDASH report with Doxygen log:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=Superbuild-CentOS_[inria-ci]"
+    - echo "CDASH report with Doxygen log:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA&field2=site&compare2=65&value2=CentOS_[inria-ci]"
 
 compile-test-msvc:
   extends: .windows
