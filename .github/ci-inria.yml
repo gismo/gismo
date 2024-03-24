@@ -65,7 +65,7 @@ doc:
   script:
     - cd ../build
     - cmake --build . --target doc
-    - ctest --add-notes doc/doxygen.log -D SITE="CentOS_[inria-ci]" -D BUILD_NAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -M Experimental -T Submit
+    - ctest --add-notes doc/doxygen.log -D SITE="CentOS_[inria-ci]" -D BUILDNAME="Superbuild-Intel-oneAPI_$CI_COMMIT_SHORT_SHA" -M Experimental -T Submit
     - cd doc/html
     - rm -rf .git
     - git config --global init.defaultBranch master

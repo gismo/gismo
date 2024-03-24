@@ -1,26 +1,15 @@
 branches:
   only:
     - stable
-    - ci_test
     - ci
-    
+
 # Specify version format
 version: "G+Smo-stable.{build}"
-
-# Operating system (build VM template)
-#os:
-#  - Windows Server 2012 R2
-#  - Default Azure
-#  - SharePoint 2013
-#  - MinGW
-#  - Visual Studio 2014 CTP4
-#  - Visual Studio 2015
 
 image:
 - Visual Studio 2015
 - Ubuntu
 
-#clone_depth: 5 # clone entire repository history if not defined
 shallow_clone: true
 
 # scripts that are called at very beginning, before repo cloning
@@ -33,8 +22,7 @@ init:
 #  - cmd: wmic os get osarchitecture
 
 # clone directory (default)
-#clone_folder: C:\projects\gismo
-
+# clone_folder: C:\projects\gismo
 build:
   verbosity: minimal
   parallel: true
@@ -61,7 +49,7 @@ before_build:
   - cmd: cd C:\projects	&& md build-gismo && cd build-gismo
   - cmd: set PATH=%envpath%;%PATH%
   - sh: cd ~/projects && mkdir build-gismo && cd build-gismo  
-  - cmd: cmake -DCMAKE_QUIET=ON -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=TRUE -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%generator%-%configuration%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_OPTIONAL="gsOpennurbs" -DGISMO_BUILD_UNITTESTS=ON ../gismo #-DGISMO_WITH_XDEBUG=ON -DDbgHelp_DIR="%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers" ../gismo
+  - cmd: cmake -DCMAKE_QUIET=ON -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=TRUE -DSITE="%APPVEYOR_PULL_REQUEST_NUMBER%-%APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH% [appVeyor]" -DBUILDNAME="%VS_14_2025-%configuration%" -G "%generator%" -DCMAKE_BUILD_TYPE=%configuration% -DGISMO_OPTIONAL="gsOpennurbs" -DGISMO_BUILD_UNITTESTS=ON ../gismo #-DGISMO_WITH_XDEBUG=ON -DDbgHelp_DIR="%ProgramFiles(x86)%\Windows Kits\8.1\Debuggers" ../gismo
   - sh: cmake -DCMAKE_QUIET=ON -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=TRUE -DSITE="$APPVEYOR_PULL_REQUEST_NUMBER-$APPVEYOR_PULL_REQUEST_HEAD_REPO_BRANCH [appVeyor]" -DBUILDNAME="Ubuntu-Makefiles-$configuration" -DCMAKE_BUILD_TYPE=$configuration -DGISMO_BUILD_UNITTESTS=ON -DGISMO_ZLIB_STATIC=1 -DGISMO_OPTIONAL="gsOpennurbs" ../gismo
 
 build_script:
@@ -69,92 +57,5 @@ build_script:
 #  - sh: ctest --output-on-failure -j5 -C $configuration -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
   - cmd: ctest -S ../gismo/cmake/ctest_script.cmake -C %configuration% -D CTEST_CONFIGURATION_TYPE=%configuration% -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
   - sh: ctest -S ../gismo/cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=5
-
-# NuGet
-#publish_nuget: true
-#publish_nuget_symbols: true
-#include_nuget_references: true
-
-##############################################################
-for:
-##############################################################
-
-# Stable branch
--
-  branches:
-    only:
-    - ci
-
-  environment:
-    CTEST_OUTPUT_ON_FAILURE: 1
-    matrix:
-    - BUILD: msvc2015
-      configuration: Release
-      #configuration: Debug
-      generator: "Visual Studio 14 2015"
-#      MAKEFLAGS: -j2
-
-####################
--
-  branches:
-    only:
-    - ci_test
-
-  environment:
-    # custom environment variables, see http://www.appveyor.com/docs/installed-software
-    CTEST_OUTPUT_ON_FAILURE: 1
-    #BOOST_ROOT: c:\Libraries\boost
-    #BOOST_LIBRARYDIR: c:\Libraries\boost\stage\lib
-    matrix:
-    - BUILD: msvc2015
-      configuration: Release
-      generator: "Visual Studio 14 2015"
-
-    - BUILD: msvc2015
-      configuration: Release
-      generator: "Visual Studio 14 2015 Win64"
-
-    - BUILD: msvc2015
-      configuration: Debug
-      generator: "Visual Studio 14 2015 Win64"
-
-    - BUILD: mingw
-      envpath: C:\mingw64\bin
-      configuration: Release
-      generator: "MinGW Makefiles"
-      #MSYS Makefiles
-
-    - BUILD: msvc2013
-      configuration: Release
-      generator: "Visual Studio 12"
-
-    - BUILD: msvc2012
-      configuration: Release
-      generator: "Visual Studio 11"
-
-    - BUILD: msvc2010
-      configuration: Release
-      generator: "Visual Studio 10"
-
-#  - BUILD: msvc2008
-#  Note:  error C2039: 'data' : is not a member of 'std::vector<_Ty>'
-#  ( &std::vector<_Ty>::front() would work)
-#    configuration: Release
-#    generator: "Visual Studio 9 2008"
-
-#configuration:
-#  - Debug
-#  - RelWithDebInfo
-#  - Release
-
-# build platform, i.e. Win32 (instead of x86), x64, Any CPU. This setting is optional.
-#platform:
-#  - Win32
-#  - x64
-
-#artifacts:
-#  - path: tt
-#    name: ipopt
-#    type: dll
 
 #validate: https://codebeautify.org/yaml-validator
