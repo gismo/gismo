@@ -1,1 +1,96 @@
-#https://gitlab.inria.fr/gitlabci_gallery/windows/windows-10
+#####################################################################
+## CMakeLists.txt --- ci-inria.yml
+## CI script for https://gitlab.inria.fr/gismo/gismo
+## This file is part of the G+Smo library.
+##
+## Author: Angelos Mantzaflaris
+##
+######################################################################
+stages:
+  - compile
+  - test
+  - doc
+
+.linux-gcc:
+  only:
+    - stable
+    - external_pull_requests
+  tags:
+    - ci.inria.fr
+    - large
+  image: docker:20.10.16
+
+.linux-intel:
+  before_script:
+    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
+  variables:
+    #GIT_STRATEGY: clone
+    GIT_CLEAN_FLAGS: none
+  only:
+    - stable
+    - external_pull_requests
+  tags:
+    - CentOS-gs
+
+.windows:
+  variables:
+    GIT_CLEAN_FLAGS: none
+  only:
+    - stable
+    - external_pull_requests
+  tags:
+    - windows-gs
+
+.macos-clang:
+  variables:
+    GIT_CLEAN_FLAGS: none
+  only:
+    - stable
+    - external_pull_requests
+  tags:
+    - macos-gs
+
+Superbuild-Intel-oneAPI:
+  extends: .linux-intel
+  stage: compile
+  before_script:
+    - source /opt/intel/oneapi/compiler/latest/env/vars.sh
+    - export CC=icx
+    - export CXX=icpx
+  script:
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BINARY_DIRECTORY=../build -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D LABELS_FOR_SUBPROJECTS="gismo;examples;doc-snippets" -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+
+doc:
+  extends: .linux-intel
+  stage: doc
+  needs:
+    - Superbuild-Intel-oneAPI
+  except:
+    - external_pull_requests
+  interruptible: false
+  script:
+    - cd ../build
+    - cmake --build . --target doc
+    - ctest --add-notes doc/doxygen.log -M Experimental -T Submit
+    - cd doc/html
+    - rm -rf .git
+    - git config --global init.defaultBranch master
+    - git init
+    - git config user.email "doc@gismo.ci"
+    - git config user.name "doc-ci"
+    - git add .
+    - git commit --quiet -m "G+Smo doc"
+    - git push --force --quiet https://$GITHUB@github.com/gismo/gismo.github.io.git master:master
+    - echo "CDASH report with Doxygen log:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=Superbuild-Intel-oneAPI&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA_[inria-ci]"
+
+Superbuild-VS_17_2022:
+  extends: .windows
+  stage: compile
+  script:
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="%CI_COMMIT_BRANCH%-%CI_COMMIT_SHORT_SHA%_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Visual Studio 17 2022" -D CTEST_BUILD_JOBS=10 -D CTEST_CONFIGURATION_TYPE=RelWithDebInfo -D CTEST_BUILD_NAME="%CI_JOB_NAME%[%CI_EXTERNAL_PULL_REQUEST_IID%]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV
+
+Superbuild-OSX-AppleClang:
+  extends: .macos-clang
+  stage: compile
+  script:
+    - ctest -S cmake/ctest_script.cmake -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA_[inria-ci]" -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CTEST_BUILD_JOBS=15 -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D GISMO_OPTIONAL="gsModule\\;gsOpennurbs\\;gsSpectra\\;gsElasticity\\;gsKLShell\\;gsStructuralAnalysis\\;gsUnstructuredSplines\\;gsPolynomial\\;gsHLBFGS" #-VV

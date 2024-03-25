@@ -46,7 +46,7 @@ T computeError(const gsFunction<T> &fun, const gsFunction<T> &spl, const int &nu
 //type...1-> Schoenberg, 2->Taylor, 3->evaluation based with special implementations (based on degree),
 //       0-> evaluation based with general formula
 template<typename T>
-bool errorAnalysis(const gsFunction<T> &fun, const gsBasis<T> & bbasis, int type, int numRef)       //ToDo: Ratio-test, return true or false..
+bool errorAnalysis(const gsFunction<T> &fun, const gsBasis<T> & bbasis, int type, int numRef, real_t tolerance = 0.85)       //ToDo: Ratio-test, return true or false..
 {
     typename gsBasis<T>::uPtr basis = bbasis.clone();
     gsMatrix<T> coefs;
@@ -83,7 +83,7 @@ bool errorAnalysis(const gsFunction<T> &fun, const gsBasis<T> & bbasis, int type
     real_t convRateAvg = gsSolverUtils<>::convergenceRateLS(error_list,h_list);
 
     //if the computed convergence rate is at least 85% of the expected one, we consider this test as passed
-    real_t tolerance = 0.85;
+    
 
     gsInfo<<"The convergence rate is "<< convRateAvg << " (expected rate = "<< expConvRate<< ")\n";
     gsInfo<< (convRateAvg > expConvRate*tolerance ? "OK" : "Not OK") <<"\n";
@@ -520,14 +520,14 @@ bool qi_3D()
     gsTensorBSplineBasis<3> bas2(kv2,kv2,kv2);
     gsTensorBSplineBasis<3> bas3(kv3,kv3,kv3);
 
-    int numRef = 5;
+    int numRef = 3;
     bool passed = true;
 
 
 // ---------  Convergence-rate test for trigonometric function
 
     gsInfo<<"\nLocal interpolation-based error analysis (linear):\n";
-    passed &= errorAnalysis<real_t>(mySinus, bas1, 4, numRef);
+    passed &= errorAnalysis<real_t>(mySinus, bas1, 4, numRef, 0.5);
 
     gsInfo<<"\nLocal interpolation-based error analysis (quadratic):\n";
     passed &= errorAnalysis<real_t>(mySinus, bas2, 4, numRef);

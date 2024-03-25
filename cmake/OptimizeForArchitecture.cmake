@@ -133,4 +133,9 @@ macro(OptimizeForArchitecture)
     include(ofa/HandlePpcOptions)
     OFA_HandlePpcOptions()
   endif()
+
+  if(ARCHITECTURE_CXX_FLAGS)
+    message(WARNING "${CMAKE_SYSTEM_PROCESSOR} architecture aptimization flags applied: ${ARCHITECTURE_CXX_FLAGS}\nIn case of runtime errors re-compile with\nTARGET_ARCHITECTURE=none or TARGET_ARCHITECTURE=generic")
+  endif()
+  
 endmacro(OptimizeForArchitecture)
