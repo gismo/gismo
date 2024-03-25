@@ -14,5 +14,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         respondableId: ${{ github.event.pull_request.node_id }}
-        response: "Thank you for opening your Pull Request !\nIn the next 30 minutes several tests will run. The detailed reports will be available at:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&showfilters=1&field1=buildname&compare1=66&value1=[${{ github.event.number }}]"
+        response: "Thank you for opening a Pull Request !\nIn the next 30 minutes several tests will run. The detailed reports will be available at:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&filtercombine=or&field1=buildname&compare1=66&value1=[${{ github.event.number }}]&field2=buildname&compare2=65&value2=${{ github.head_ref }}\n\nYou can add more commits without triggering new tests by putting [skip ci] in your commit message."
         author: ${{ github.event.pull_request.user.login }}
