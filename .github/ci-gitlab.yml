@@ -179,22 +179,6 @@ clang10_cxx17_release_mpreal_long:
     - ci_test
     - coverity_scan
 
-# GCC 10, C++14, Release
-gcc10_cxx14_release_mpq_long:
-  extends: .test:linux:base
-  #after_script:
-  #  - cat /builds/gismo-ci/build_ExperimentalRelease_g++/gmp-prefix/src/gmp-stamp/gmp-configure
-  variables:
-    IMAGE:            "gcc:10"
-    CNAME:            "gcc"
-    CXXNAME:          "g++"
-    GENERATOR:        "Unix Makefiles"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int64_t'"    
-    CTEST_ARGS:       "-D DO_TESTS=FALSE"
-  except:
-    - ci_test
-    - coverity_scan
-
 # Standard installation and deployment on linux
 install_and_deploy_linux:
   tags:
