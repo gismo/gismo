@@ -32,7 +32,7 @@
 #define index_t          @GISMO_INDEX_TYPE@
 
 /** Define default dimension type. */
-#define short_t          int //short
+#define short_t          @GISMO_SHORT_TYPE@
 
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
@@ -55,20 +55,6 @@
 #cmakedefine GISMO_WITH_TAUCS
 #cmakedefine GISMO_WITH_UMFPACK
 
-/* Only include new types here that can be set as real_t */
-
-#ifdef gsMpfr_ENABLED
-#include <mpreal.h>
-#endif
-
-#ifdef gsGmp_ENABLED
-#include <gmpxx.h>
-#include <unsupported/Eigen/MPQClassExtra>
-#endif
-
-#ifdef gsUniversal_ENABLED
-#include <gsUniversal/gsUniversal.h>
-#endif
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
@@ -76,13 +62,6 @@
 
 /* Determine if Python module should be built. */
 #cmakedefine GISMO_WITH_PYBIND11
-
-#ifdef GISMO_WITH_PYBIND11
-#include <pybind11/iostream.h>
-#include <pybind11/operators.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#endif
 
 /* Debug settings. */
 #cmakedefine GISMO_WITH_XDEBUG

@@ -15,8 +15,10 @@
 
 #include <iostream>
 #include <string>
+#include <list>
 
 #include <gsIO/gsXml.h>
+#include <gsIO/gsFileManager.h>
 
 namespace gismo
 {
@@ -46,17 +48,19 @@ public:
      * Initializes a gsFileData object with the contents of a file
      *
      * @param fn filename string
+     * @param recursive if true, then all referenced xml files will be read as one gsFileData object recursively
      */
-    explicit gsFileData(String const & fn);
+    explicit gsFileData(String const & fn, bool recursive=false);
 
     /**
      * Loads the contents of a file into a gsFileData object
      *
      * @param fn filename string
+     * @param recursive if true, then all referenced xml files will be read as one gsFileData object recursively
      *
      * Returns true on success, false on failure.
      */
-    bool read(String const & fn) ;
+    bool read(String const & fn, bool recursive=false) ;
 
     ~gsFileData();
 
@@ -101,7 +105,7 @@ private:
     FileData * data;
 
     // Used to hold parsed data of native gismo XML files
-    std::vector<char> m_buffer;
+    std::list<std::vector<char> > m_buffer;
 
     // Holds the last path that was used in an I/O operation
     mutable String m_lastPath;
@@ -113,13 +117,13 @@ protected:
  */
 
     /// Reads a file with xml extension
-    bool readXmlFile( String const & fn );
+    bool readXmlFile( String const & fn, bool recursive=false);
 
     /// Reads a file with xml.gz extension
-    bool readXmlGzFile( String const & fn );
+    bool readXmlGzFile( String const & fn, bool recursive=false);
 
     /// Reads Gismo's native XML file
-    bool readGismoXmlStream(std::istream & is);
+    bool readGismoXmlStream(std::istream & is, bool recursive=false);
 
     /// Reads Axel file
     bool readAxelFile(String const & fn);
@@ -186,6 +190,21 @@ public:
         result = give(*obj);
     }
 
+    /// Searches and fetches a poitner to a Gismo object with a given label
+    template<class Object>
+    inline memory::unique_ptr<Object> getLabel(const std::string & name)  const
+    {
+        return memory::make_unique( internal::gsXml<Object>::getLabel( getXmlRoot(), name ) );
+    }
+
+    /// Searches and fetches the Gismo object with a given label
+    template<class Object>
+    inline void getLabel(const std::string & name, Object& result)  const
+    {
+        memory::unique_ptr<Object> obj = getLabel<Object>(name);
+        result = give(*obj);
+    }
+
     /// Prints the XML tag of a Gismo object
     template<class Object>
     inline String tag() const
@@ -208,15 +227,15 @@ public:
     inline bool hasId(int id) const
     {
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
-        for (gsXmlNode * child = root->first_node();
-             child; child = child->next_sibling())
-        {
-            id_at = child->first_attribute("id");
-            if (id_at && atoi(id_at->value()) == id )
-                return true;
-        }
-        return false;
+        //const gsXmlAttribute * id_at;
+        gsXmlNode * nd = internal::searchId(id, root);
+        return (bool) nd;
+    }
+
+    /// Returns true if an entry of \em tag exists in the xml file
+    inline bool hasTag(std::string tag) const
+    {
+       return getAnyFirstNode(tag.c_str());
     }
 
     /// Returns true if an Object exists in the filedata, even nested
@@ -249,7 +268,7 @@ public:
         this->add<Object>(obj);
     }
 
-    /// Add the object to the Xml tree, same as <<, but also allows to set the XML id attribute
+    /// Add the object to the Xml tree, same as <<, but also allows to set the XML id and label attributes
     template<class Object>
     void add (const Object & obj, int id = -1)
     {
@@ -263,6 +282,23 @@ public:
         else
         {
             data->appendToRoot(node,id);
+        }
+    }
+
+    /// Add the object to the Xml tree, same as <<, but also allows to set the XML label attribute
+    template<class Object>
+    void addWithLabel (const Object & obj, std::string label)
+    {
+        gsXmlNode* node =
+            internal::gsXml<Object>::put(obj, *data);
+        if ( ! node )
+        {
+            gsInfo<<"gsFileData: Trouble inserting "<<internal::gsXml<Object>::tag()
+                         <<" to the XML tree. is \"put\" implemented ??\n";
+        }
+        else
+        {
+            data->appendToRoot(node,-1,label);
         }
     }
 
@@ -281,6 +317,42 @@ public:
         data->appendToRoot(node);
     }
 
+    /// @brief Add a reference ( <xmlfile> tag ) to another Gismo .xml file to the xml tree
+    /// @param filename The path of the referenced file, relative to the path of the current file
+    /// @param time for time series data, optional
+    /// @param id Integer for identification purposes, optional
+    /// @param label String for identification purposes, optional
+    void addInclude( const std::string & filename, const real_t & time=-1.,
+                     const index_t & id=-1, const std::string & label="");
+
+protected:
+    void getInclude(gsFileData & res, index_t id, real_t time, std::string label);
+
+public:
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it in the gsFileData \em res object
+    /// @param res The gsFileData object where the referenced file will be loaded into
+    /// @param id Index of the <xmlfile> node
+    void getIncludeById(gsFileData & res, index_t id)
+    {
+        return getInclude(res, id, -1., "");
+    }
+
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it in the gsFileData \em res object
+    /// @param res The gsFileData object where the referenced file will be loaded into
+    /// @param time Time attribute of the <xmlfile> node
+    void getIncludeByTime(gsFileData & res, real_t time)
+    {
+        return getInclude(res, -1,time, "");
+    }
+
+    /// @brief Looks for a referenced Gismo .xml file ( <xmlfile> tag ) in the current xml tree, parses it in the gsFileData \em res object
+    /// @param res The gsFileData object where the referenced file will be loaded into
+    /// @param label Label of the <xmlfile> node
+    void getIncludeByLabel(gsFileData & res, std::string label)
+    {
+        return getInclude(res, -1,-1.,label);
+    }
+
     std::string getString () const
     {
 
@@ -295,39 +367,31 @@ public:
         //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
 
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
-        for (gsXmlNode * child = root->first_node();
-             child; child = child->next_sibling())
+        gsXmlNode * nd = internal::searchId(id, root, "string");
+        if (nd)
         {
-            id_at = child->first_attribute("id");
-            if (id_at && atoi(id_at->value()) == id ) {
-                std::string res(child->value());
-                return res;
-            }
+            std::string res(nd->value());
+            return res;
         }
         GISMO_ERROR("String with id " << id << " does not exist!");
     }
 
-    std::string getString (const std::string & label) const
+    std::string getStringByLabel (const std::string & label) const
     {
         //GISMO_ASSERT(id < 0, "Id " << id << " should be >= 0!");
 
         gsXmlNode * root = getXmlRoot();
-        const gsXmlAttribute * id_at;
-        for (gsXmlNode * child = root->first_node();
-             child; child = child->next_sibling())
+        gsXmlNode * nd = internal::searchNode( root, "label", label, "string");
+        if (nd)
         {
-            id_at = child->first_attribute("label");
-            if (id_at && id_at->value() == label ) {
-                std::string res(child->value());
-                return res;
-            }
+            std::string res(nd->value());
+            return res;
         }
         GISMO_ERROR("String with label " << label << " does not exist!");
     }
 
     /// Returns the size of the data
-    size_t bufferSize() const { return m_buffer.size(); };
+    size_t bufferSize() const { return m_buffer.front().size(); };
 
     /// Prints the XML data as a string
     std::ostream &print(std::ostream &os) const;
@@ -534,5 +598,6 @@ std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB
+
 #include GISMO_HPP_HEADER(gsFileData.hpp)
 #endif

@@ -309,11 +309,15 @@ public:
      * @param save_sparsety_pattern only modify values but keep sparsety
      * information by multiplying matrix by zero in-place
      */
-    void clearMatrix(const bool& save_sparsety_pattern = true) {
-        if (save_sparsety_pattern) {
+    void clearMatrix(const bool& save_sparsety_pattern = true)
+    {
+        if (m_matrix.nonZeros() && save_sparsety_pattern)
+        {
             std::fill(m_matrix.valuePtr(),
                       m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
-        } else {
+        }
+        else
+        {
             m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
             if (0 == m_matrix.rows() || 0 == m_matrix.cols())
@@ -441,7 +445,9 @@ private:
         {
             auto u = ee.rowVar();
             auto v = ee.colVar();
+#ifndef NDEBUG
             const bool m = E::isMatrix();
+#endif
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!m || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(m || (ea.numDofs()==ee.rhs().size()), "The right-hand side vector is not initialized");
@@ -734,7 +740,7 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
 }
 
 template<size_t I, class op, typename... Ts>
-void op_tuple_impl (op _op, const std::tuple<Ts...> &tuple)
+void op_tuple_impl (op & _op, const std::tuple<Ts...> &tuple)
 {
     _op(std::get<I>(tuple));
     if (I + 1 < sizeof... (Ts))
@@ -742,7 +748,7 @@ void op_tuple_impl (op _op, const std::tuple<Ts...> &tuple)
 }
 
 template<class op, typename... Ts>
-void op_tuple (op _op, const std::tuple<Ts...> &tuple)
+void op_tuple (op & _op, const std::tuple<Ts...> &tuple)
 { op_tuple_impl<0>(_op,tuple); }
 
 template<class T>
@@ -796,6 +802,8 @@ void gsExprAssembler<T>::assemble(const expr &... args)
             if (m_exprdata->points().cols()==0)
                 continue;
 
+// Activate the try-catch only if G+Smo is not in DEBUG
+#ifdef NDEBUG
             // Perform required pre-computations on the quadrature nodes
             try
             {
@@ -809,6 +817,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
                 failed = true;
                 break;
             }
+#else
+            m_exprdata->precompute(patchInd);
+#endif
 
 
             // Assemble contributions of the element

@@ -70,9 +70,8 @@ SUITE(gsExprAssembler_test)
         typedef gsExprAssembler<>::element element;
         element el = ev.getElement();
 
-
         // Test measure of a curve in 3D
-        CHECK(math::abs(ev.integralBdr(meas(G))-2*EIGEN_PI) < 1e-10);
+        CHECK_CLOSE(ev.integralBdr(meas(G)), 2*EIGEN_PI, EPSILON);
         // Test tangent of a curve in 3D
         CHECK(math::abs(ev.integralBdr(tv(G).norm())-2*EIGEN_PI) < 1e-10);
 

@@ -29,8 +29,28 @@
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
 
+#ifdef gsMpfr_ENABLED
+#include <mpreal.h>
+#endif
+
+#ifdef gsGmp_ENABLED
+#include <gmpxx.h>
+#include <unsupported/Eigen/MPQClassExtra>
+#endif
+
+#ifdef gsUniversal_ENABLED
+#include <gsUniversal/gsUniversal.h>
+#endif
+
 #ifdef gsCoDiPack_ENABLED
 #include <gsCoDiPack/gsCoDiPack.h>
+#endif
+
+#ifdef GISMO_WITH_PYBIND11
+#include <pybind11/iostream.h>
+#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #endif
 
 namespace gismo
@@ -300,6 +320,20 @@ template <short_t d, class T=real_t>     class gsHBoxContainer;
 
 class gsParaviewDataSet;
 class gsSurfMesh;
+
+// gsIO
+
+template<class T>
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           gsMatrix<T> const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn);
+
+template <class T>
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+
+
+
 /// @endcond
 
 ///@}

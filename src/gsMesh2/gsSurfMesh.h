@@ -1265,6 +1265,11 @@ public: //---------------------------------------------- low-level connectivity
         return !face(h).is_valid();
     }
 
+    /// returns whether h touches the boundary, i.e., its opposite is a boundary halfedge.
+    bool touches_boundary(Halfedge h) const
+    {
+        return is_boundary(opposite_halfedge(h));
+    }
 
     /// returns the \c i'th halfedge of edge \c e. \c i has to be 0 or 1.
     Halfedge halfedge(Edge e, unsigned int i) const
@@ -1999,7 +2004,7 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(gsSurfMesh)
     GSXML_GET_POINTER(gsSurfMesh)
-    static std::string tag () { return "SurfMesh"; }
+    static std::string tag () { return "Mesh"; }
     static std::string type() { return "off"; }
 
     static void get_into(gsXmlNode * node, gsSurfMesh & result);

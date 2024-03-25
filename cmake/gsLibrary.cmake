@@ -21,32 +21,32 @@ add_library(${PROJECT_NAME}_static STATIC
   ${${PROJECT_NAME}_EXTENSIONS}
   )
 
-  #generate_export_header(${PROJECT_NAME}_static)
+#generate_export_header(${PROJECT_NAME}_static)
 
-  if(${PROJECT_NAME}_LINKER)
-    target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
-  endif()
+if(${PROJECT_NAME}_LINKER)
+  target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
+endif()
 
-  if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
-     target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY})
-  ENDIF()
+if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
+  target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY})
+ENDIF()
 
-  if (GISMO_GCC_STATIC_LINKAGE)
-    target_link_libraries(${PROJECT_NAME}_static -static-libgcc -static-libstdc++)
-  endif()
+if (GISMO_GCC_STATIC_LINKAGE)
+  target_link_libraries(${PROJECT_NAME}_static -static-libgcc -static-libstdc++)
+endif()
 
-  # Avoid naming conflic on MSVC
-  if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
-    set(gs_static_lib_suffix _static)
-  endif()
+# Avoid naming conflic on MSVC
+if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+  set(gs_static_lib_suffix _static)
+endif()
 
-  set_target_properties(${PROJECT_NAME}_static PROPERTIES
-  COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
-  POSITION_INDEPENDENT_CODE ON
-  LINKER_LANGUAGE CXX
-  CXX_VISIBILITY_PRESET "hidden"
-  FOLDER "G+Smo libraries"
-  OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
+set_target_properties(${PROJECT_NAME}_static PROPERTIES
+COMPILE_DEFINITIONS ${PROJECT_NAME}_STATIC
+POSITION_INDEPENDENT_CODE ON
+LINKER_LANGUAGE CXX
+CXX_VISIBILITY_PRESET "hidden"
+FOLDER "G+Smo libraries"
+OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 
 ###################################################################
 # Pygismo
@@ -94,14 +94,19 @@ endif(GISMO_WITH_PYBIND11)
 
 if(GISMO_BUILD_LIB)
 
-#if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xGNU")
-#  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
-#endif()
+  #if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xGNU")
+  #  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
+  #endif()
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
    "x${CMAKE_GENERATOR}" STREQUAL "xXcode")
  set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
      "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
+endif()
+
+if (GISMO_WITH_ADIFF)
+   set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
+     "${gismo_SOURCE_DIR}/external/gsAutoDiff.h")
 endif()
 
 if (GISMO_WITH_XDEBUG)
@@ -133,54 +138,54 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     target_link_libraries(${PROJECT_NAME} pybind11::embed)
   endif()
 
-#if(gsMpfr_ENABLED OR gsGmp_ENABLED)
-#    find_package(GMP)
-#    find_package(MPFR)
-#
-#    if (GMP_FOUND AND MPFR_FOUND)
-#      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
-#    endif()
-#endif()
+  #if(gsMpfr_ENABLED OR gsGmp_ENABLED)
+  #    find_package(GMP)
+  #    find_package(MPFR)
+  #
+  #    if (GMP_FOUND AND MPFR_FOUND)
+  #      target_link_libraries(${PROJECT_NAME} ${MPFR_LIBRARY};${GMP_LIBRARY};${GMPXX_LIBRARY})
+  #    endif()
+  #endif()
 
-if (GISMO_WITH_SUPERLU)
-  target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
-endif()
+  if (GISMO_WITH_SUPERLU)
+    target_link_libraries(${PROJECT_NAME} ${SUPERLU_LIBRARIES})
+  endif()
 
-if (GISMO_WITH_TAUCS)
-  target_link_libraries(${PROJECT_NAME} ${TAUCS_LIBRARIES})
-endif()
+  if (GISMO_WITH_TAUCS)
+    target_link_libraries(${PROJECT_NAME} ${TAUCS_LIBRARIES})
+  endif()
 
-if (GISMO_WITH_UMFPACK)
-  target_link_libraries(${PROJECT_NAME} ${UMFPACK_LIBRARIES})
-endif()
+  if (GISMO_WITH_UMFPACK)
+    target_link_libraries(${PROJECT_NAME} ${UMFPACK_LIBRARIES})
+  endif()
 
-if (GISMO_WITH_PARDISO)
-   if (PARDISO_USE_MKL)
-     find_package(MKL REQUIRED)
-     target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
-   else()
-     find_package(Pardiso REQUIRED)
-     target_link_libraries(${PROJECT_NAME} Pardiso)
-   endif()
-endif()
+  if (GISMO_WITH_PARDISO)
+     if (PARDISO_USE_MKL)
+       find_package(MKL REQUIRED)
+       target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
+     else()
+       find_package(Pardiso REQUIRED)
+       target_link_libraries(${PROJECT_NAME} Pardiso)
+     endif()
+  endif()
 
-if(${PROJECT_NAME}_LINKER)
-  target_link_libraries(${PROJECT_NAME} "${${PROJECT_NAME}_LINKER}")
-endif()
+  if(${PROJECT_NAME}_LINKER)
+    target_link_libraries(${PROJECT_NAME} "${${PROJECT_NAME}_LINKER}")
+  endif()
 
   if (GISMO_GCC_STATIC_LINKAGE)
     target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++)
   endif()
 
-#  if (GISMO_WITH_OPENMP)
-#    find_package(OpenMP REQUIRED)
-#  endif()
+  #  if (GISMO_WITH_OPENMP)
+  #    find_package(OpenMP REQUIRED)
+  #  endif()
 
-if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
-  target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY})
-endif()
+  if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
+    target_link_libraries(${PROJECT_NAME} ${DBGHELP_LIBRARY})
+  endif()
 
-if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
+  if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
     if(CMAKE_CONFIGURATION_TYPES)
       add_custom_command(
       TARGET ${PROJECT_NAME}
@@ -198,13 +203,13 @@ if( WIN32 ) # Copy the dll to the bin folder to allow executables to find it
       COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${PROJECT_NAME}> ${CMAKE_BINARY_DIR}/bin
       COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
     endif()
-endif( WIN32 )
+  endif( WIN32 )
 
 endif(GISMO_BUILD_LIB)
 
-  if (EIGEN_USE_MKL_ALL)
-    target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
-  endif()
+if (EIGEN_USE_MKL_ALL)
+  target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
+endif()
 
 ## #################################################################
 ## Installation

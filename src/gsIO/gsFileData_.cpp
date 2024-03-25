@@ -8,6 +8,8 @@
 #include <gsCore/gsMultiBasis.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSpline.h>
+#include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsCore/gsFunctionExpr.h>
@@ -44,24 +46,37 @@ namespace py = pybind11;
       .def("read", &Class::read)
       .def("clear", &Class::clear)
       .def("numData", &Class::numData)
-      .def("save", (void (Class::*) ())                         &Class::save)
-      .def("save", (void (Class::*) (const std::string&))       &Class::save)
-      .def("save", (void (Class::*) (const std::string&, bool)) &Class::save)
-      .def("saveCompressed", (void (Class::*) ())
-           &Class::saveCompressed)
-      .def("saveCompressed", (void (Class::*) (const std::string&))
-           &Class::saveCompressed)
-      .def("dump", (void (Class::*) ())                         &Class::dump)
-      .def("dump", (void (Class::*) (const std::string&))       &Class::dump)
+      .def("save",           &Class::save,           py::arg("fname")="dump", py::arg("compress")=false)
+      .def("saveCompressed", &Class::saveCompressed, py::arg("fname")="dump")
+      .def("dump",           &Class::dump,           py::arg("fname")="dump")
+
       .def("addComment", &Class::addComment)
       .def("lastPath", &Class::lastPath)
       .def("setFloatPrecision", &Class::setFloatPrecision)
       .def("getFloatPrecision", &Class::getFloatPrecision)
 
       // .def("getId", static_cast<const gsBasis<real_t> & (Class::*)(const size_t) const > (&Class::getId))
-      .def("getId", static_cast<void (Class::*)(const int &, gsMultiPatch<real_t> &) const > (&Class::getId<gsMultiPatch<real_t>>), "Gets a const reference to basis with index i")
-      .def("getId", static_cast<void (Class::*)(const int &, gsGeometry<real_t> &) const > (&Class::getId<gsGeometry<real_t>>), "Gets a const reference to basis with index i")
+      .def("getId", static_cast<void (Class::*)(const int &, gsMultiPatch<real_t> &           ) const > (&Class::getId<gsMultiPatch<real_t>>), "Gets a gsMultiPatch by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsGeometry<real_t> &             ) const > (&Class::getId<gsGeometry<real_t>>  ), "Gets a gsGeometry by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsBSpline<real_t> &              ) const > (&Class::getId<gsBSpline<real_t>>   ), "Gets a gsBSpline by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsTensorBSpline<2,real_t> &      ) const > (&Class::getId<gsTensorBSpline<2,real_t>>), "Gets a gsTensorBSpline by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsTensorBSpline<3,real_t> &      ) const > (&Class::getId<gsTensorBSpline<3,real_t>>), "Gets a gsTensorBSpline by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsTensorBSpline<4,real_t> &      ) const > (&Class::getId<gsTensorBSpline<4,real_t>>), "Gets a gsTensorBSpline by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsBSplineBasis<real_t>  &        ) const > (&Class::getId<gsBSplineBasis<real_t>>), "Gets a gsBSplineBasis by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsTensorBSplineBasis<2,real_t>  &) const > (&Class::getId<gsTensorBSplineBasis<2,real_t>>), "Gets a gsTensorBSplineBasis by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsTensorBSplineBasis<3,real_t>  &) const > (&Class::getId<gsTensorBSplineBasis<3,real_t>>), "Gets a gsTensorBSplineBasis by id")
+      .def("getId", static_cast<void (Class::*)(const int &, gsTensorBSplineBasis<4,real_t>  &) const > (&Class::getId<gsTensorBSplineBasis<4,real_t>>), "Gets a gsTensorBSplineBasis by id")
 
+      .def("getId", static_cast<memory::unique_ptr<gsMultiPatch<real_t>>            (Class::*)(const int &) const > (&Class::getId<gsMultiPatch<real_t>>), "Gets a gsMultiPatch by id")
+      .def("getId", static_cast<memory::unique_ptr<gsGeometry<real_t>>              (Class::*)(const int &) const > (&Class::getId<gsGeometry<real_t>>  ), "Gets a gsGeometry by id")
+      .def("getId", static_cast<memory::unique_ptr<gsBSpline<real_t>>               (Class::*)(const int &) const > (&Class::getId<gsBSpline<real_t>>   ), "Gets a gsBSpline by id")
+      .def("getId", static_cast<memory::unique_ptr<gsTensorBSpline<2,real_t>>       (Class::*)(const int &) const > (&Class::getId<gsTensorBSpline<2,real_t>>), "Gets a gsTensorBSpline by id")
+      .def("getId", static_cast<memory::unique_ptr<gsTensorBSpline<3,real_t>>       (Class::*)(const int &) const > (&Class::getId<gsTensorBSpline<3,real_t>>), "Gets a gsTensorBSpline by id")
+      .def("getId", static_cast<memory::unique_ptr<gsTensorBSpline<4,real_t>>       (Class::*)(const int &) const > (&Class::getId<gsTensorBSpline<4,real_t>>), "Gets a gsTensorBSpline by id")
+      .def("getId", static_cast<memory::unique_ptr<gsBSplineBasis<real_t>>          (Class::*)(const int &) const > (&Class::getId<gsBSplineBasis<real_t>>), "Gets a gsBSplineBasis by id")
+      .def("getId", static_cast<memory::unique_ptr<gsTensorBSplineBasis<2,real_t>>  (Class::*)(const int &) const > (&Class::getId<gsTensorBSplineBasis<2,real_t>>), "Gets a gsTensorBSplineBasis by id")
+      .def("getId", static_cast<memory::unique_ptr<gsTensorBSplineBasis<3,real_t>>  (Class::*)(const int &) const > (&Class::getId<gsTensorBSplineBasis<3,real_t>>), "Gets a gsTensorBSplineBasis by id")
+      .def("getId", static_cast<memory::unique_ptr<gsTensorBSplineBasis<4,real_t>>  (Class::*)(const int &) const > (&Class::getId<gsTensorBSplineBasis<4,real_t>>), "Gets a gsTensorBSplineBasis by id")
 
       .def("add", static_cast<void (Class::*)(const gsMultiPatch<real_t> &, int) > (&Class::add<gsMultiPatch<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMultiPatch to the filedata.")
       .def("add", static_cast<void (Class::*)(const gsMultiBasis<real_t> &, int) > (&Class::add<gsMultiBasis<real_t>>), py::arg("object"), py::arg("id")=-1, "Add gsMultiBasis to the filedata.")

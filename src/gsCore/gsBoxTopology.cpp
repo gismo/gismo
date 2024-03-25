@@ -173,6 +173,17 @@ const boundaryInterface * gsBoxTopology::findInterface(const index_t b1, const i
     return NULL;
 }
 
+patchSide * gsBoxTopology::getBoundary(const patchSide& ps )
+{
+    for ( size_t i = 0; i < m_boundary.size(); ++i )
+    {
+        if ( (m_boundary[i] == ps) )
+            return & m_boundary[i];
+    }
+    return NULL;
+}
+
+
 bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const
 {
     bool innerVertex=true;

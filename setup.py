@@ -110,6 +110,7 @@ class CMakeBuild(build_ext):
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
             # option flags for gismo
+            f"-DCMAKE_BUILD_TYPE=Release",
             f"-DGISMO_WITH_PYBIND11=ON",
             f"-DGISMO_BUILD_EXAMPLES=OFF",
             f"-DNOSNIPPETS=ON",
@@ -242,12 +243,11 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Natural Language :: English",
         "Topic :: Scientific/Engineering",
     ],

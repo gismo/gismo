@@ -72,7 +72,7 @@
 #=============================================================================
 
 macro(OFA_AutodetectHostArchitecture)
-  set(TARGET_ARCHITECTURE "generic")
+  set(TARGET_ARCHITECTURE "none")
   set(ARCHITECTURE_CXX_FLAGS CACHE STRING "CPU architecture compiler flags")
   
   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "i686.*|i386.*|x86.*|amd64.*|x86_64.*|AMD64.*")
@@ -133,4 +133,9 @@ macro(OptimizeForArchitecture)
     include(ofa/HandlePpcOptions)
     OFA_HandlePpcOptions()
   endif()
+
+  if(ARCHITECTURE_CXX_FLAGS)
+    message(STATUS "(!) ${CMAKE_SYSTEM_PROCESSOR} architecture optimization flags applied: ${ARCHITECTURE_CXX_FLAGS}. In case of runtime errors re-compile with\nTARGET_ARCHITECTURE=none or TARGET_ARCHITECTURE=generic")
+  endif()
+  
 endmacro(OptimizeForArchitecture)

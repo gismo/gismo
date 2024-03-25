@@ -5,9 +5,8 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
-#include <gsOptimizer/gsOptProblem.h>
+
 #include "HLBFGS/HLBFGS.h"
 /*
 To do:
@@ -25,7 +24,7 @@ namespace gismo
 
 struct gsHLBFGSObjective
 {
-    typedef double T;
+    typedef real_t T;
     typedef gsEigen::Matrix<T, gsEigen::Dynamic, 1> Vector;
     // typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 
@@ -123,9 +122,9 @@ public:
         this->getOptions();
         // std::function<void(index_t N, T* x, T* prev_x, T* f, T* g)>
 
-        const std::function<void(int N, double* x, double* prev_x, double* f, double* g)> wrapfunc =
-            [&](int N, double* x, double*, double* f, double* g) {
-            std::vector<double> array_x(N), array_g(N);
+        const std::function<void(int N, real_t* x, real_t* prev_x, real_t* f, real_t* g)> wrapfunc =
+            [&](int N, real_t* x, real_t*, real_t* f, real_t* g) {
+            std::vector<real_t> array_x(N), array_g(N);
 
             gsAsConstVector<real_t> u(x,N);
             *f = m_op->evalObj(u);

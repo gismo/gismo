@@ -82,6 +82,7 @@ void gsMappedBasis<d,T>::addLocalIndicesOfPatchSide(const patchSide& ps,index_t 
     }
 }
 
+// HV[05/10/2023]: check for correctness
 template<short_t d,class T>
 void gsMappedBasis<d,T>::boundary(std::vector<index_t> & indices,index_t offset) const
 {
@@ -95,6 +96,7 @@ void gsMappedBasis<d,T>::boundary(std::vector<index_t> & indices,index_t offset)
     m_mapper->sourceToTarget(locals,indices);
 }
 
+// HV[05/10/2023]: check for correctness
 template<short_t d,class T>
 void gsMappedBasis<d,T>::innerBoundaries(std::vector<index_t> & indices,index_t offset) const
 {
@@ -409,13 +411,13 @@ void gsMappedBasis<d,T>::evalAllDers_into(const index_t patch, const gsMatrix<T>
             result[2].swap(tmp);
         }
     }
-    GISMO_ASSERT( n < 3, "gsMappedBasis::evalAllDers() not implemented for n > 2." );
+    GISMO_ASSERT( n < 3, "gsMappedBasis::evalAllDers() not implemented for 2<n." );
 }
 
 template<short_t d,class T>
 void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const
 {
-    GISMO_ASSERT( n<2, "gsTensorBasis::evalAllDers() not implemented for n > 1." );
+    GISMO_ASSERT( n<2, "gsTensorBasis::evalAllDers() not implemented for 1<n." );
     result.resize(( 2*n + 1 ), u.cols());
     BasisType * this_patch = m_bases[patch];
     result.setZero();
@@ -451,6 +453,15 @@ void gsMappedBasis<d,T>::evalAllDersSingle_into(const index_t patch, const index
             ++wIter;
         }
     }
+}
+
+template<short_t d,class T>
+std::ostream & gsMappedBasis<d,T>::print(std::ostream &os) const
+{
+    os << "gsMappedBasis:\n";
+    os << "\t Local size: "<<this->localSize()<<"\n";
+    os << "\t Global size: "<<this->globalSize()<<"\n";
+    return os;
 }
 
 template<short_t d,class T>

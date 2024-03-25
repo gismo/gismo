@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
         ab = mp0->patch(p).support();
         a = ab.col(0);
         b = ab.col(1);
-        np.setConstant((math::ceil(math::pow(npts,1./mp.parDim()))));
+        np.setConstant(cast<real_t,unsigned>(math::ceil(math::pow(npts,1./mp.parDim()))));
         // Uniform parameters for evaluation
         pts = gsPointGrid(a, b, np);
 
@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
         pbdr[p].second.resize(sbasis.size(),mp.targetDim());
     }
 
-    index_t k=0;
+    index_t k = 0;
     for (auto it = irep.begin(); it!=irep.end(); ++it, k++)
     {
         gsMatrix<index_t> bndThis,bndOther;
@@ -244,12 +244,12 @@ int main(int argc, char *argv[])
         GISMO_ASSERT(bndOther.rows()==cfit.result()->coefs().rows(),"Coefficients and indices do not match!");
 
         pbdr[it->first.first() .patch].first.at(it->first.first() .side()-1) = bndThis;
-        for (index_t k=0; k!=bndThis .rows(); k++)
-            pbdr[it->first.first() .patch].second.row(bndThis (k,0)) = cfit.result()->coefs().row(k);
+        for (index_t l=0; l!=bndThis .rows(); l++)
+            pbdr[it->first.first() .patch].second.row(bndThis (l,0)) = cfit.result()->coefs().row(l);
 
         pbdr[it->first.second() .patch].first.at(it->first.second() .side()-1) = bndOther;
-        for (index_t k=0; k!=bndOther.rows(); k++)
-            pbdr[it->first.second() .patch].second.row(bndOther(k,0)) = cfit.result()->coefs().row(k);
+        for (index_t l=0; l!=bndOther.rows(); l++)
+            pbdr[it->first.second() .patch].second.row(bndOther(l,0)) = cfit.result()->coefs().row(l);
 
         crv_net.addPatch( *cfit.result() );
     }
@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
             ev.setIntegrationElements(dbasis);
             geometryMap G = ev.getMap(mp_tmp);
             area = ev.integral(meas(G));
-            funcs.at(p) = gsConstantFunction<>(hausdorffs.at(p) / std::sqrt(area),2);
+            funcs.at(p) = gsConstantFunction<>(hausdorffs.at(p) / math::sqrt(area),2);
             distances.addPiece(funcs.at(p));
             gsDebugVar(hausdorffs.at(p));
         }
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Finished.\n";
 
         gsMatrix<> hausdorff(3,1);
-        hausdorff(0,0) = std::accumulate(hausdorffs.begin(),hausdorffs.end(),0.0) / hausdorffs.size();
+        hausdorff(0,0) = std::accumulate(hausdorffs.begin(),hausdorffs.end(),(real_t)(0)) / hausdorffs.size();
         hausdorff(1,0) = *std::max_element(hausdorffs.begin(),hausdorffs.end());
         hausdorff(2,0) = *std::min_element(hausdorffs.begin(),hausdorffs.end());
 

@@ -130,6 +130,13 @@
         __DEC0(type, clone, void) { return new type(*this); } \
         __DEF0(type, clone, void)
 
+// Declaration, definition and implementation of clone function which overrides
+// 1st: return type
+#define GISMO_OVERRIDE_CLONE_FUNCTION(type) \
+        __DEC0(type, clone, void) override { return new type(*this); } \
+        __DEF0(type, clone, void)
+
+
 namespace gismo {
 
 /**
@@ -211,6 +218,7 @@ template <typename T>
 class gsFunctionSet
 {
 public:
+
     /// Shared pointer for gsFunctionSet
     typedef memory::shared_ptr< gsFunctionSet > Ptr;
 
@@ -254,7 +262,7 @@ public:
      of definition is the whole of \f$R^{domainDim}\f$
     */
     virtual gsMatrix<T> support() const;
-    virtual gsMatrix<T> support(index_t i) const;
+    virtual gsMatrix<T> support(const index_t & i) const;
 
     /**
       @brief Indices of active (non-zero) function(s) for each point.

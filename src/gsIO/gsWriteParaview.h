@@ -11,7 +11,6 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsCore/gsGeometry.h>
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsExport.h>
 
@@ -79,7 +78,8 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
  * 
  */
 template<class T>
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  const& mbasis,
+void gsWriteParaview(gsFunctionSet<T> const& geom,
+                     gsMappedBasis<2,T>  const& mbasis,
                      std::string const & fn,unsigned npts = NS, 
                      const bool fullsupport = false,
                      const std::vector<index_t> indices = std::vector<index_t>());
@@ -89,8 +89,8 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,gsMappedBasis<2,T>  cons
 /// \param sl a gsMesh object
 /// \param fn filename where paraview file is written
 /// \param pvd if true, a .pvd file is generated (for compatibility)
-template <class T>
-void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+//template <class T>
+//void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
 
 /// \brief Exports a parametrized mesh.
 template <class T>
@@ -114,9 +114,10 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each patch
 /// \param mesh if true, the parameter mesh is plotted as well
+/// \param pDelim is the delimiter that is used to separate fn from the patch index
 template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
-                     unsigned npts=NS, bool mesh = false);
+                     unsigned npts=NS, bool mesh = false, const std::string pDelim = "");
 
 /// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
 ///
@@ -126,7 +127,7 @@ void gsWriteParaview(const gsField<T> & field, std::string const & fn,
 /// \param npts number of points used for sampling each patch
 template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
-                     std::string const & fn, unsigned npts = NS);
+                     std::string const & fn, unsigned npts = NS, const std::string pDelim = "");
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
@@ -137,9 +138,9 @@ void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
 /// \param ctrlNet if true, the control net is plotted as well
 template<class T>
 void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn, 
-                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false)
+                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_")
 {
-    gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet);
+    gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet, pDelim);
 }
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
@@ -152,7 +153,7 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
 template<class T>
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, 
                       std::string const & fn, unsigned npts=NS,
-                      bool mesh = false, bool ctrlNet = false);
+                      bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_");
 
 /// \brief Export a computational mesh to paraview file
 template<class T>
@@ -268,11 +269,11 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
 /// \param data
 /// \param np
 /// \param fn filename where paraview file is written
-template<class T>
-void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
-                           gsMatrix<T> const& data,
-                           const gsVector<index_t> & np,
-                           std::string const & fn);
+//template<class T>
+//void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+//                          gsMatrix<T> const& data,
+//                           const gsVector<index_t> & np,
+//                           std::string const & fn);
 
 /// \brief Depicting edge graph of each volume of one gsSolid with a segmenting loop
 ///
@@ -420,7 +421,18 @@ void plot_errors(const gsMatrix<T> & orig,
                  std::string const & fn);
 
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsWriteParaview
+   */
+  void pybind11_init_gsWriteParaview(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
+
 } // namespace gismo
+
 
 
 #undef NS

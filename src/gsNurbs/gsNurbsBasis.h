@@ -159,8 +159,9 @@ public:
     }
   
     /// Refine the basis uniformly by inserting \a numKnots new knots per knot span.
-    void uniformRefine(int numKnots = 1, int mul=1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir = -1)
     { 
+        GISMO_UNUSED(dir);
         // TO DO ; replace this with global refinemnt by
         // Lane-Riesenfeld-like  Algorithm
         std::vector<T> newKnots;
@@ -175,7 +176,7 @@ public:
         //m_knots->degreeElevate(i);
         //m_knots->uniformRefine();
     };
-  
+
 }; // class gsNurbsBasis
 
 

@@ -104,7 +104,7 @@ public:
     }
 
     /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const
+    void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const
     {
         // Assuming all patches have the same degree
         m_basis->numActive_into(m_index,u,result);
@@ -116,13 +116,13 @@ public:
         return m_basis->getBase(m_index).support();
     }
 
-    /// Returns a bounding box for the basis' domain on the domain of *this
-    gsMatrix<T> support(const index_t & i) const
+    /// Returns a bounding box for basis function \a kk domain on the domain of *this
+    gsMatrix<T> support(const index_t & kk) const
     {
         typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
-        m_basis->getMapper().targetToSource(i,sourceIndices);
+        m_basis->getMapper().targetToSource(kk,sourceIndices);
         // Get the support on the whole patch
-        gsMatrix<T> supp;
+        gsMatrix<T> supp = gsMatrix<T>::Zero(d,2);
         gsMatrix<T> localSupp;
         for (typename gsMappedBasis<d,T>::IndexContainer::iterator i = sourceIndices.begin(); i!=sourceIndices.end(); i++)
         {
@@ -145,7 +145,6 @@ public:
                     supp(dim,1) = localSupp(dim,1);
             }
         }
-
         return supp;
         // return m_basis->getBase(m_index).support();
     }
@@ -378,5 +377,15 @@ private:
 
 }; // class gsMappedSingleBasis
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMappedSingleBasis
+   */
+  // void pybind11_init_gsMappedSingleBasis1(pybind11::module &m);
+  void pybind11_init_gsMappedSingleBasis2(pybind11::module &m);
+  // void pybind11_init_gsMappedSingleBasis3(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

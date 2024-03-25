@@ -78,15 +78,11 @@ public:
 
         freeAll(m_bases);
         m_bases.reserve(mb.nBases());
+        cloneAll(mb.patchBases(),m_bases);
         m_sb.clear();
-        m_sb.reserve(mb.nBases());
-        index_t q = 0;
-        for ( typename std::vector<BasisType*>::const_iterator
-                  it = mb.begin(); it != mb.end(); ++it, ++q )
-        {
-            m_bases.push_back( (*it)->clone().release() );
+        m_sb.reserve(m_bases.size());
+        for ( size_t q=0; q!=m_bases.size(); ++q )
             m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-        }
 
         m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
     }
@@ -231,6 +227,20 @@ public:
      */
     gsMultiPatch<T> exportToPatches(gsMatrix<T> const & localCoef) const;
 
+private:
+    // Avoid warnings for hidden overloads w.r.t gsFunctionSet
+    void active_into(const gsMatrix<T> & u,gsMatrix<index_t>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void eval_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> >& result ) const
+    { GISMO_NO_IMPLEMENTATION; }
+
 public:
     //////////////////////////////////////////////////
     // functions for evaluating and derivatives
@@ -283,7 +293,6 @@ public:
     void deriv_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
     void deriv2_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
-
     gsPiecewiseFunction<T> basisFunction(index_t global_BF)
     {
         const size_t np = nPatches();
@@ -298,6 +307,30 @@ public:
     void derivSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
     void deriv2Single_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
+    /// Evaluate a single basis function \a i at points \a u.
+    gsMatrix<T> evalSingle(const index_t patch, const index_t global_BF, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->evalSingle_into(patch, global_BF, u, result);
+        return result;
+    }
+
+    /// Evaluate a single basis function \a i derivative at points \a u.
+    gsMatrix<T> derivSingle(const index_t patch, const index_t global_BF, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->derivSingle_into(patch, global_BF, u, result);
+        return result;
+    }
+
+    /// Evaluate the second derivative of a single basis function \a i at points \a u.
+    gsMatrix<T> deriv2Single(const index_t patch, const index_t global_BF, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->deriv2Single_into(patch, global_BF, u, result);
+        return result;
+    }
+
     /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
     /// to order \a n at points \a u into \a result.
     void evalAllDers_into(const index_t patch, const gsMatrix<T> & u,
@@ -308,6 +341,9 @@ public:
     void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const;
 
     /// @}
+
+    /// @brief Prints the object as a string.
+    std::ostream &print(std::ostream &os) const;
 
 public:
     //////////////////////////////////////////////////

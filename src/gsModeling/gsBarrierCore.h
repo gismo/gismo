@@ -104,7 +104,8 @@ void verboseLog(const std::string &message, const index_t &verbose) {
 
 /// gsBarrierCore
 template<short_t d, typename T= real_t>
-struct gsBarrierCore {
+class gsBarrierCore
+{
  private:
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::space space;
@@ -760,7 +761,7 @@ class AndersonAcceleration {
 
   inline void printIterationInfo() {
     if (m_printInfo) {
-      printf(" %d         %.4e\n", m_iter, m_currResidualNorm);
+        printf(" %d         %.4e\n", m_iter, cast<Scalar,double>( m_currResidualNorm ));
     }
   }
 
@@ -783,7 +784,7 @@ class AndersonAcceleration {
       m_alpha(0) = 0;
       Scalar dF_squaredNorm = m_prevdF.col(m_columnIndex).squaredNorm();
       m_normalEquationMatrix(0, 0) = dF_squaredNorm;
-      Scalar dF_norm = std::sqrt(dF_squaredNorm);
+      Scalar dF_norm = math::sqrt(dF_squaredNorm);
 
       // For better numerical stability
       if (dF_norm > EPSILON) {
@@ -864,3 +865,7 @@ class AndersonAcceleration {
 }
 
 }// namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsBarrierCore.hpp)
+#endif

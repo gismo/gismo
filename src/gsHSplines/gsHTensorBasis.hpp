@@ -15,6 +15,8 @@
 
 #include <gsUtils/gsMesh/gsMesh.h>
 
+#include <gsUtils/gsPointGrid.h>
+
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
@@ -30,6 +32,95 @@ namespace gismo
 // }
 
 template<short_t d, class T>
+void gsHTensorBasis<d,T>::addLevel( const gsTensorBSplineBasis<d, T>& next_basis)
+{
+    GISMO_ENSURE(m_manualLevels,"Add level only works when m_manualLevels==true");
+    // Fill the unique indices
+    std::vector<std::vector<index_t>> lvlIndices(d);
+    const tensorBasis * tb2 = dynamic_cast<const tensorBasis*>(m_bases.back());
+    std::vector<T> difference, intersection;
+    std::vector<T> knots1, knots2;
+    std::vector<index_t> dirIndices;
+    gsKnotVector<T> tmpknots;
+    for (short_t dim=0; dim!=d; dim++)
+    {
+        dirIndices = m_uIndices.back()[dim];
+        // Take the difference of the knot vectors
+        tmpknots= tb2->knots(dim);
+
+        GISMO_ASSERT(tmpknots.maxInteriorMultiplicity()<tmpknots.degree()+1,"Knot vector cannot have knot multiplicities higher than p="<<tmpknots.degree());
+
+        knots1  = tb2->knots(dim).unique();
+        knots2  = next_basis.knots(dim).unique();
+
+        // Check nestedness. 
+        intersection.clear();
+        difference.clear();
+        // The unique knots of the new basis must contain the ones of the previous level
+        std::set_intersection(  knots2.begin(), knots2.end(),
+                                knots1.begin(), knots1.end(), 
+                                std::back_inserter(intersection) );
+        // The difference of the two must not contain any knot in knots1!
+        std::set_difference(  knots1.begin(), knots1.end(),
+                                intersection.begin(), intersection.end(), 
+                                std::back_inserter(difference) );
+        GISMO_ASSERT(difference.size()==0,"Knot vector is not nested!");
+
+        difference.clear();
+        // The difference of the two must not contain any knot in knots1!
+        std::set_difference(knots2.begin(), knots2.end(),
+                            knots1.begin(), knots1.end(), 
+                                std::back_inserter(difference) );
+
+        // We reverse since later on we loop and pop the elements on the back
+        std::reverse(difference.begin(),difference.end());
+        // Double all indices in dirIndices. These correspond to the indices that come from the nested bases
+        std::transform(dirIndices.begin(), dirIndices.end(), dirIndices.begin(), [=](index_t& i){return 2*i;});
+
+        // Find the extra indices for the nodes in difference
+        while (difference.size()!=0)
+        {
+            index_t i, n;
+            typename std::vector<T>::iterator diff_ptr = difference.begin();
+            // Find the index of the highest knot below the different knot
+            i = tmpknots.uFind(*diff_ptr).uIndex(); // index of the knot span in which *it is located
+            
+            // Count how many difference knots lay in the same span
+            for (n = 0, diff_ptr = difference.begin(); diff_ptr!=difference.end() && tmpknots.uFind(*diff_ptr).uIndex()==i; n++, diff_ptr++);
+            // Count the distance between two element indices. It should be larger than n
+            GISMO_ENSURE(n < dirIndices[i+1] - dirIndices[i],"Trying to insert more knots than available in the tensor structure");
+
+            index_t newIdx;
+            if (n % 2 != 0)
+            {
+                // We add the middle knot
+                diff_ptr = std::next(difference.begin(),(n-1)/2);
+                newIdx = (dirIndices[i] + dirIndices[i+1]) / 2;
+            }
+            else
+            {
+                // We add the first knot
+                diff_ptr = difference.begin();                
+                newIdx = dirIndices[i] + 1;
+            }
+
+            // Add the correct index
+            dirIndices.insert(std::upper_bound( dirIndices.begin(), dirIndices.end(), newIdx ),newIdx);
+            // Insert the removed difference knot in the temporary knot vector
+            tmpknots.insert(*diff_ptr);
+            // Remove the difference knot, since it is treated
+            difference.erase(diff_ptr);
+        }
+        
+        lvlIndices[dim] = dirIndices;
+    }
+    m_uIndices.push_back(lvlIndices);
+
+    // m_bases.push_back( new gsTensorBSplineBasis<d, T>( give( next_basis ) ));
+    m_bases.push_back( next_basis.clone().release() );
+}
+
+template<short_t d, class T>
 gsMatrix<T> gsHTensorBasis<d,T>::support() const
 {
     return m_bases[0]->support();
@@ -42,7 +133,7 @@ gsMatrix<T> gsHTensorBasis<d,T>::support(const index_t & i) const
     // Get the level
     int lvl = levelOf(i);
     // Return the the support
-    return m_bases[lvl]->support( m_xmatrix[lvl][ i - m_xmatrix_offset[lvl] ] );
+    return m_bases[lvl]->support( this->flatTensorIndexOf(i) );
 }
 
 // S.K.
@@ -59,6 +150,9 @@ index_t gsHTensorBasis<d,T>::getLevelAtPoint(const gsMatrix<T> & Pt) const
     for( int i =0; i < Dim; i++)
         loIdx[i] = m_bases[maxLevel]->knots(i).uFind( Pt(i,0) ).uIndex();
 
+    if (m_manualLevels)
+        this->_knotIndexToDiadicIndex(maxLevel,loIdx);
+    
     return m_tree.levelOf( loIdx, maxLevel);
 }
 
@@ -233,6 +327,13 @@ void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const
     this->transfer(OX, tran);
 }
 
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
+{
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    this->refineElements(boxes);
+    this->transfer2(OX, tran);
+}
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
@@ -467,10 +568,10 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
         {
             // Convert the parameter coordinates to (unique) knot indices
             const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
-            int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
-                                       boxes(j,2*i  ) ) - 1).uIndex();
-            int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
-                                       boxes(j,2*i+1) ) - 1).uIndex();
+            index_t k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                           boxes(j,2*i  ) ) - 1).uIndex();
+            index_t k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+                                           boxes(j,2*i+1) ) - 1).uIndex();
 
             // Trivial boxes trigger some refinement
             if ( k1 == k2)
@@ -479,11 +580,18 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
                 ++k2;
             }
 
+            index_t maxKtIndex = kv.size();
+            if (m_manualLevels)
+            {
+                _knotIndexToDiadicIndex(refLevel,j,k1);
+                _knotIndexToDiadicIndex(refLevel,j,k2);
+
+                _knotIndexToDiadicIndex(refLevel,j,maxKtIndex);
+            }
             // If applicable, add the refinement extension.
             // Note that extending by one cell on level L means
             // extending by two cells in level L+1
             ( k1 < 2*refExt ? k1=0 : k1-=2*refExt );
-            const index_t maxKtIndex = kv.size();
             ( k2 + 2*refExt >= maxKtIndex ? k2=maxKtIndex-1 : k2+=2*refExt);
 
             // Store the data...
@@ -550,9 +658,17 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElementsUnrefine(gsMatrix<T> const &
                 ++k2;
             }
 
+            index_t maxKtIndexd = kv.size();
+            if (m_manualLevels)
+            {
+                _knotIndexToDiadicIndex(refLevel,j,k1);
+                _knotIndexToDiadicIndex(refLevel,j,k2);
+
+                _knotIndexToDiadicIndex(refLevel,j,maxKtIndexd);
+            }
+
             // If applicable, add the refinement extension.
             ( k1 < refExt ? k1=0 : k1-=refExt );
-            const index_t maxKtIndexd = kv.uSize();
             ( k2 + refExt >= maxKtIndexd ? k2=maxKtIndexd-1 : k2+=refExt);
 
             // go one level up;
@@ -611,6 +727,12 @@ void gsHTensorBasis<d,T>::refine(gsMatrix<T> const & boxes)
                 if (0!=k1[j]) {--k1[j];}
                 ++k2[j];
             }
+        }
+
+        if (m_manualLevels)
+        {
+            _knotIndexToDiadicIndex(fLevel,k1);
+            _knotIndexToDiadicIndex(fLevel,k2);
         }
 
         // 2. Find the smallest level in which the box is completely contained
@@ -936,7 +1058,14 @@ void gsHTensorBasis<d,T>::set_activ1(int level)
             ind[i]  = curr[i].index(); // index of the function in the matrix
         }
 
-        if ( m_tree.query3(low, upp,level) == level) //if active
+        //Here: get knot indices in some standard indexing (eg. dyadic)
+        if (m_manualLevels)
+        {
+            _knotIndexToDiadicIndex(level,low);
+            _knotIndexToDiadicIndex(level,upp);
+        }
+
+        if ( m_tree.query3(low, upp,level) == level) //if active ????
             cmat.push_unsorted( m_bases[level]->index( ind ) );
 
     }
@@ -1207,6 +1336,7 @@ void gsHTensorBasis<d,T>::update_structure() // to do: rename as updateHook
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
 {
+    GISMO_ENSURE(!m_manualLevels || (size_t)(maxLevel)<m_uIndices.size(),"Maximum manual level reached, maxLevel = "<<maxLevel<<", m_uIndices.size() = "<<m_uIndices.size());
     // +1 for the initial basis in m_bases
     const int extraLevels = maxLevel + 1 - m_bases.size();
     for ( int i = 0; i < extraLevels; ++i )
@@ -1268,9 +1398,11 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
         for(short_t i = 0; i != d; ++i)
             low[i] = m_bases[maxLevel]->knots(i).uFind( currPoint(i,0) ).uIndex();
 
+        if (m_manualLevels)
+            this->_knotIndexToDiadicIndex(maxLevel,low);
+
         // Identify the level of the point
         const int lvl = m_tree.levelOf(low, maxLevel);
-
         for(int i = 0; i <= lvl; i++)
         {
             /*
@@ -1757,6 +1889,37 @@ void gsHTensorBasis<d,T>::getBoxesAlongSlice( int dir, T par,std::vector<index_t
 }
 
 template<short_t d, class T>
+void gsHTensorBasis<d,T>::_knotIndexToDiadicIndex(const index_t level, const index_t dir, index_t & knotIndex) const
+{
+    GISMO_ASSERT(m_manualLevels,"Only works for manual levels");
+    knotIndex = m_uIndices[level][dir][knotIndex];
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::_knotIndexToDiadicIndex(const index_t level, gsVector<index_t,d> & knotIndex) const
+{
+    for (index_t r = 0; r != d; r++)
+        this->_knotIndexToDiadicIndex(level,r,knotIndex[r]);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::_diadicIndexToKnotIndex(const index_t level, const index_t dir, index_t & diadicIndex) const
+{
+    GISMO_ASSERT(m_manualLevels,"Only works for manual levels");
+    typename std::vector<index_t>::const_iterator it = std::find_if(m_uIndices[level][dir].begin(),m_uIndices[level][dir].end(),[&diadicIndex](const index_t i) { return i >= diadicIndex; });
+    GISMO_ASSERT(it!=m_uIndices[level][dir].end(),"Index not found");
+    diadicIndex = std::distance(m_uIndices[level][dir].begin(),it);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::_diadicIndexToKnotIndex(const index_t level, gsVector<index_t,d> & diadicIndex) const
+{
+    for (index_t r = 0; r != d; r++)
+        this->_diadicIndexToKnotIndex(level,r,diadicIndex[r]);
+}
+
+
+template<short_t d, class T>
 void gsHTensorBasis<d,T>::degreeElevate(int const & i, int const dir)
 {
     for (size_t level=0;level<m_bases.size();++level)
@@ -1803,6 +1966,20 @@ void gsHTensorBasis<d,T>::degreeDecrease(int const & i, int const dir)
 
     this->update_structure();
 }
+
+template<short_t d, class T>
+bool gsHTensorBasis<d,T>::testPartitionOfUnity(const index_t npts, const T tol) const
+{
+    gsVector<unsigned> np(d);
+    np.setConstant(npts);
+    gsMatrix<T> supp = this->support();
+    gsMatrix<T> grid = gsPointGrid<T>(supp.col(0),supp.col(1),np);
+    gsMatrix<T> res;
+    this->eval_into(grid,res);
+    gsVector<T> sums = res.colwise().sum();
+    return ((sums.array()>1-tol && sums.array()<1+tol).all());
+}
+
 
 namespace internal
 {

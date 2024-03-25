@@ -121,3 +121,35 @@ v23.09.0 (https://github.com/gismo/gismo/releases/tag/v23.09.0)
   - Eigen library version used is now 3.4.0
   - ExprTk library updated
 
+
+v23.12.0 (https://github.com/gismo/gismo/releases/tag/v23.12.0)
+------
+* NEW
+  - Floating point precision showcase, quadrature lookup guard
+  - Introduce gsFunction::recoverPoints, moved includes of third parties
+  - Biharmonic equation assembler
+  - Unittest gsGeometry_test
+  - Example file: precision_example
+  - Labels and file includes in XML file format
+
+* IMPROVED
+  - Python bindings (pygismo)
+  - XML file indenting
+  - Add unittests for spectra
+  - ACC3 scheme for boudaries
+  - gsFuncCoordinate is now more general
+  - Option to keep Sparsity Pattern when reseting the sparse matrix in gsExpAssembler
+  - Parallelization structs (gsParallel)
+  - Optional gsSpectra module
+  - Several fixes in expressions
+* FIXED
+  - CI scripts
+  - Header only and mpfr compilation
+  - Linking of MPFR with gcc
+  - Replace 'sprintf' by 'snprintf' as the former is marked deprecated
+  - Checking if the Eigen symlink already exists before creating a new one
+  - Static linking for pygismo
+  - Make G+Smo compile on Ookami (Fujitsu A64FX)
+
+* API
+  - Several changes in expressions

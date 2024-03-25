@@ -46,7 +46,7 @@ template <short_t d, class T>
 class gsMinLvlCompare : public gsHBoxCheck<d,T>
 {
 public:
-    gsMinLvlCompare(const T & minlevel = 0)
+    explicit gsMinLvlCompare(index_t minlevel = 0)
     :
     m_minLevel(minlevel)
     {}
@@ -68,7 +68,7 @@ template <short_t d, class T>
 class gsMaxLvlCompare : public gsHBoxCheck<d,T>
 {
 public:
-    gsMaxLvlCompare(const T & maxLevel)
+    explicit gsMaxLvlCompare(index_t maxLevel)
     :
     m_maxLevel(maxLevel)
     {}

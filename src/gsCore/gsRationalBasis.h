@@ -142,6 +142,9 @@ public:
     size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
     //using Base::numElements; //unhide
 
+    /// See \ref gsBasis for a description
+    size_t elementIndex(const gsVector<T> & u ) const { return m_src->elementIndex(u); }
+
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
     
@@ -205,6 +208,15 @@ public:
     {
         typename SourceBasis::GeometryType tmp(*m_src,give(m_weights));
         tmp.degreeElevate(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
+    // todo (HV): test!!
+    void degreeIncrease(short_t const& i = 1, short_t const dir = -1)
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeIncrease(i,dir);
         tmp.coefs().swap(m_weights);
         std::swap(*m_src, tmp.basis() );
     }

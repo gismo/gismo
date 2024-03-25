@@ -646,12 +646,11 @@ public:
     }
 
     index_t targetDim() const { return m_fs->targetDim();}
+    index_t domainDim() const { return m_fs->domainDim();}
  
     /// Copy the coefficients of another gsGeometryMap to this one, if they are compatible.
     void copyCoefs( const gsGeometryMap<T> & other) const
     {
-        const index_t dim = m_fs->domainDim();
-
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( this->m_fs ), "error");
         const gsMultiPatch<T> & thisMP  = static_cast<const gsMultiPatch<T>&>(*this->m_fs );
         GISMO_ASSERT( dynamic_cast<const gsMultiPatch<T>*>( other.m_fs ), "error");
@@ -1250,9 +1249,9 @@ public:
                 // m_sd->mapper.markBoundary(0, bnd, 0);
             }
         } else if (const gsMappedBasis<2, T> *mapb =
-                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source())) {
+                   dynamic_cast<const gsMappedBasis<2, T> *>(&this->source()))
+        {
             m_sd->mapper.setIdentity(mapb->nPatches(), mapb->size(), this->dim());
-            const index_t dim = this->dim();
 
             if (0 == this->interfaceCont()) // C^0 matching interface
             {
@@ -1563,6 +1562,18 @@ public:
             }
     }
 
+    /// Extract this variable as a gsMappedSpline object
+    void extract(gsMappedSpline<2,T> & result) const
+    {
+        if( const gsMappedBasis<2,T>* basis = dynamic_cast<const gsMappedBasis<2,T>* >(&_u.source()) )
+        {
+            gsMatrix<T> coefs;
+            this->extractFull(coefs);
+            coefs.resize(coefs.rows()/_u.dim(),_u.dim());
+            result.init(*basis,coefs);
+        }
+    }
+
     /// Extract the piece \a p as a gsGeometry pointer
     memory::unique_ptr<gsGeometry<T> > extractPiece(const index_t p) const
     {
@@ -1578,7 +1589,6 @@ public:
     // insert g-coefficients to the solution vector
     void insert(const gsGeometry<T> & g, const index_t p = 0) const
     {
-        const index_t dim = _u.dim();
         const gsMatrix<T> & cf = g.coefs();
         gsMatrix<T> & sol = *_Sv;
         //gsMatrix<T> & fixedPart = _u.fixedPart();
@@ -3814,9 +3824,7 @@ public:
         return _u.rows();
     }
     index_t cols() const {
-        // DEBUG changed by asgl, perhaps there was a bug here?
-        //return _v.cols() * (_u.cols()/_u.rows());
-        return _u.cols();
+        return _v.cols();
     }
 
     void parse(gsExprHelper<Scalar> & evList) const
@@ -4679,6 +4687,7 @@ GISMO_SHORTCUT_PHY_EXPRESSION(ilapl, ihess(u,G).trace()   )
 GISMO_SHORTCUT_VAR_EXPRESSION(ilapl, hess(u).trace() )
 
 GISMO_SHORTCUT_VAR_EXPRESSION(fform, jac(u).tr()*jac(u) )
+GISMO_SHORTCUT_VAR_EXPRESSION(shapeop, fform(u).inv() * fform2nd(u) )
 
 #undef GISMO_SHORTCUT_PHY_EXPRESSION
 #undef GISMO_SHORTCUT_VAR_EXPRESSION

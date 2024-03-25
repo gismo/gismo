@@ -220,6 +220,17 @@ public:
     virtual T distanceL2(gsFunction<T> const &) const
     { GISMO_NO_IMPLEMENTATION }
 
+    /// Takes the physical \a points and computes the corresponding
+    /// parameter values.  If the point cannot be inverted (eg. is not
+    /// part of the geometry) the corresponding parameter values will be undefined
+    virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
+                              const T accuracy = 1e-6,
+                              const bool useInitialPoint = false) const;
+
+    virtual void invertPointGrid(gsGridIterator<T,0> & git,
+                                 gsMatrix<T> & result, const T accuracy = 1e-6,
+                                 const bool useInitialPoint = false) const;
+
     /// Newton-Raphson method to find a solution of the equation f(\a
     /// arg) = \a value with starting vector \a arg.
     /// If the point cannot be inverted the corresponding parameter
@@ -229,12 +240,22 @@ public:
                       bool withSupport = true, 
                       const T accuracy = 1e-6,
                       int max_loop = 100,
-                      double damping_factor = 1) const;
+                      T damping_factor = 1) const;
 
     gsMatrix<T> argMin(const T accuracy = 1e-6,//index_t coord = 0
                        int max_loop = 100,
                        gsMatrix<T> init = gsMatrix<T>(),
-                       double damping_factor = 1) const;
+                       T damping_factor = 1) const;
+
+    /// Recovers a point on the (geometry) together with its parameters
+    /// \a uv, assuming that the \a k-th coordinate of the point \a
+    /// xyz is not known (and has a random value as input argument).
+    void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                           const T accuracy = 1e-6) const;
+
+    void recoverPointGrid(gsGridIterator<T,0> & git,
+                          gsMatrix<T> & xyz, gsMatrix<T> & uv,
+                          index_t k, const T accuracy = 1e-6) const;
 
     /// Returns a "central" point inside inside the parameter domain
     virtual gsMatrix<T> parameterCenter() const
@@ -280,8 +301,12 @@ private:
         const gsVector<T> & value,
         gsVector<T> & arg, bool withSupport = true,
         const T accuracy = 1e-6, int max_loop = 100,
-        double damping_factor = 1, T scale = 1.0) const;
+        T damping_factor = 1, T scale = 1.0) const;
 
+    gsVector<T> _argMinOnGrid(index_t numpts = 20) const;
+
+    gsVector<T> _argMinNormOnGrid(index_t numpts = 20) const;
+    
 }; // class gsFunction
 
 
