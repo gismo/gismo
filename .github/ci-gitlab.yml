@@ -21,11 +21,6 @@
 # 6. Building docker images and pushing them to DockerHub
 ################################################################################
 
-################################################################################
-# 1. Building and testing of commits to all branches except 'ci_test' and 
-#    'coverity_scan' and sending of the ctest results to the CDASH server
-################################################################################
-
 # Avoid duplicate runs on PRs
 workflow:
   rules:
@@ -55,18 +50,13 @@ workflow:
     - coverity_scan
     - external_pull_requests
 
-#-------------------------------------------------------------------------------
-# Clang 8-13, C++11,14,17,20,23
-#-------------------------------------------------------------------------------
+################################################################################
+# 1. Building and testing of commits to stable branch only
+################################################################################
 
-# Clang 8, C++11, Release
-clang8_cxx11_release_double_int32t:
-  extends: .test:linux:base
-  variables:
-    IMAGE:            "silkeh/clang:8"
-    CNAME:            "clang"
-    CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+#-------------------------------------------------------------------------------
+# Clang 8-13, 14,17,20,23
+#-------------------------------------------------------------------------------
 
 # Clang 9, C++14, Release
 clang9_cxx14_release_longdouble_int64t:
@@ -160,10 +150,22 @@ gcc12_cxx23_release_float_int:
     CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE"
     GISMO_OPTIONAL: "gsOpennurbs\\;gsSpectra"
-    
+
 ################################################################################
-# 2. Building and testing of external pull requests (PRs)
+# 2. Building and testing of all branches and external pull requests (PRs)
 ################################################################################
+
+# Clang 8, C++11, Release
+clang8_cxx11_release_double_int32t:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:8"
+    CNAME:            "clang"
+    CXXNAME:          "clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+  except:
+    - ci_test
+    - coverity_scan
 
 # Clang 10, C++17, Release
 clang10_cxx17_release_mpreal_long:
@@ -176,34 +178,6 @@ clang10_cxx17_release_mpreal_long:
   except:
     - ci_test
     - coverity_scan
-
-# GCC 10, C++14, Release
-gcc10_cxx14_release_mpq_long:
-  extends: .test:linux:base
-  #after_script:
-  #  - cat /builds/gismo-ci/build_ExperimentalRelease_g++/gmp-prefix/src/gmp-stamp/gmp-configure
-  variables:
-    IMAGE:            "gcc:10"
-    CNAME:            "gcc"
-    CXXNAME:          "g++"
-    GENERATOR:        "Unix Makefiles"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=int64_t'"    
-    CTEST_ARGS:       "-D DO_TESTS=FALSE"
-  except:
-    - ci_test
-    - coverity_scan
-
-################################################################################
-# 3. Building and extensive testing of commits to branch 'ci_test'
-################################################################################
-
-################################################################################
-# 4. Coverity scan of commits to branch 'coverity_scan'
-################################################################################
-
-################################################################################
-# 5. Test installation and deployment
-################################################################################
 
 # Standard installation and deployment on linux
 install_and_deploy_linux:
@@ -246,3 +220,11 @@ install_and_deploy_linux:
     #- ctest --output-on-failure -A compile.log -M Experimental -T Submit
     - ./poisson2_example.out -r 2
     - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=65&value1=$CI_JOB_NAME&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH"
+
+################################################################################
+# 3. Building and extensive testing of commits to branch 'ci_test'
+################################################################################
+
+################################################################################
+# 4. Coverity scan of commits to branch 'coverity_scan'
+################################################################################
