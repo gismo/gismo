@@ -568,10 +568,10 @@ std::vector<index_t> gsHTensorBasis<d,T>::asElements(gsMatrix<T> const & boxes, 
         {
             // Convert the parameter coordinates to (unique) knot indices
             const gsKnotVector<T> & kv = m_bases[refLevel]->knots(j);
-            int k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
-                                       boxes(j,2*i  ) ) - 1).uIndex();
-            int k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
-                                       boxes(j,2*i+1) ) - 1).uIndex();
+            index_t k1 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),
+                                           boxes(j,2*i  ) ) - 1).uIndex();
+            index_t k2 = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,
+                                           boxes(j,2*i+1) ) - 1).uIndex();
 
             // Trivial boxes trigger some refinement
             if ( k1 == k2)

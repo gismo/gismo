@@ -72,7 +72,7 @@ namespace gismo
             m_time += 1.0;
             time = m_time;
         }
-        else { m_time = static_cast< int >( time ); }
+        else { m_time = cast<real_t,int>( time ); }
 
         std::string name;
         if ( m_options.askSwitch("makeSubfolder",true) )
@@ -90,7 +90,7 @@ namespace gismo
         }
 
 
-        name += "_t" + std::to_string( static_cast< double >( time ) );
+        name += "_t" + std::to_string( cast<real_t, double>( time ) );
        
         m_dataset = gsParaviewDataSet(name, geometry, m_evaluator, m_options);
     }

@@ -293,6 +293,18 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
 }
 
 template<class T>
+void gsFileData<T>::addInclude( const std::string & filename, const real_t & time,
+                                const index_t & id, const std::string & label)
+{
+    GISMO_ASSERT( filename!="", "No filename provided for include!");
+    gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
+    if (-1. != time)
+        node->append_attribute(internal::makeAttribute("time", std::to_string( cast<real_t,double >( time ) ), *data));
+    data->appendToRoot(node,id, label);
+}
+
+
+template<class T>
 void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std::string label)
 {   
     // Ensures that only one argument is actually provided
@@ -310,7 +322,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
     else if ( time!=-1)
     {
         attr_name   = "time";
-        attr_string = std::to_string( static_cast< double >( time ) );
+        attr_string = cast<real_t,double>( time );
     }
     else if ( label!="")
     {

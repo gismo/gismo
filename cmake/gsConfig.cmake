@@ -7,6 +7,8 @@
 
 #find_package(Metis REQUIRED)
 
+include(CheckCXXCompilerFlag)
+
 #Remove NDEBUG from RelWithDebInfo builds
 string(REPLACE "-DNDEBUG" "" replacementFlags "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${replacementFlags} CACHE INTERNAL "" FORCE)
