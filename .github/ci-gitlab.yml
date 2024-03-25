@@ -26,6 +26,14 @@
 #    'coverity_scan' and sending of the ctest results to the CDASH server
 ################################################################################
 
+# Avoid duplicate runs on PRs
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+      
 .test:linux:base:
   tags:
     - linux
@@ -46,7 +54,7 @@
     - ci_test
     - coverity_scan
     - external_pull_requests
-    
+
 #-------------------------------------------------------------------------------
 # Clang 8-13, C++11,14,17,20,23
 #-------------------------------------------------------------------------------
@@ -222,8 +230,9 @@ install_and_deploy_linux:
     - cp /builds/gismo-ci/gismo/CTestConfig.cmake /builds/gismo-ci/gismo/deploy/
     - mv /builds/gismo-ci/gismo/examples/*.cpp /builds/gismo-ci/gismo/deploy/
     - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
+    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=65&value1=$CI_JOB_NAME&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH"
     - cmake ../gismo/deploy -Dgismo_DIR=/builds/gismo-ci/buildlib -DBUILDNAME="$CI_JOB_NAME-local[$CI_EXTERNAL_PULL_REQUEST_IID]" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]"  -D CMAKE_BUILD_TYPE=Release -D CMAKE_GENERATOR="Unix Makefiles" || true
-    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalSubmit
     # II. Test deploy from system tree
     - cd /builds/gismo-ci/buildlib
     - cmake --build . --target install

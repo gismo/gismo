@@ -35,4 +35,4 @@ jobs:
       working-directory: ${{runner.workspace}}
       run: |
         export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
-        ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$GITHUB_RUN_NUMBER-${{ matrix.os }}[${{ github.event.number }}]" -D CTEST_SITE="${{ github.head_ref }}-$GIT_COMMIT_[github]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="gsOpennurbs" -D CTEST_BUILD_JOBS=4 -Q
+        ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$GITHUB_RUN_NUMBER-${{ matrix.os }}[${{ github.event.number }}]" -D CTEST_SITE="${{ github.head_ref }}-$GIT_COMMIT [github]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=11;-DGISMO_WITH_XDEBUG=ON;-DGISMO_BUILD_UNITTESTS=ON" -D GISMO_OPTIONAL="gsOpennurbs" -D CTEST_BUILD_JOBS=4 -Q
