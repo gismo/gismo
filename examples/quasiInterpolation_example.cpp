@@ -520,7 +520,7 @@ bool qi_3D()
     gsTensorBSplineBasis<3> bas2(kv2,kv2,kv2);
     gsTensorBSplineBasis<3> bas3(kv3,kv3,kv3);
 
-    int numRef = 5;
+    int numRef = 3;
     bool passed = true;
 
 
