@@ -250,17 +250,19 @@ inline gsXmlNode * searchNode(gsXmlNode * root,
 /// \param root parent node, we check his children for the given \em id
 /// \param id the ID number which is seeked for
 /// \param tag_name Limit search to tags named \em tag_name .
-inline gsXmlNode * searchId(const int id, gsXmlNode * root, const char *tag_name = NULL)
-{
-    for (gsXmlNode * child = root->first_node(tag_name);
-         child; child = child->next_sibling(tag_name))
-    {
-        const gsXmlAttribute * id_at = child->first_attribute("id");
-        if ( id_at &&  atoi(id_at->value()) == id )
-            return child;
-    }
-    gsWarn <<"gsXmlUtils: No object with id = "<<id<<" found.\n";
-    return NULL;
+/// \param print_warning Print warning if search was not successful
+inline gsXmlNode* searchId(const int id, gsXmlNode* root,
+                           const char* tag_name = NULL,
+                           const bool print_warning = true) {
+  for (gsXmlNode* child = root->first_node(tag_name); child;
+       child = child->next_sibling(tag_name)) {
+    const gsXmlAttribute* id_at = child->first_attribute("id");
+    if (id_at && atoi(id_at->value()) == id) return child;
+  }
+  if (print_warning) {
+    gsWarn << "gsXmlUtils: No object with id = " << id << " found.\n";
+  }
+  return NULL;
 }
 
 /// Helper to read an object by a given \em label :

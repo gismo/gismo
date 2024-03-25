@@ -224,12 +224,11 @@ public:
     }
 
     /// Returns true if an Object exists in the filedata
-    inline bool hasId(int id) const
-    {
-        gsXmlNode * root = getXmlRoot();
-        //const gsXmlAttribute * id_at;
-        gsXmlNode * nd = internal::searchId(id, root);
-        return (bool) nd;
+    inline bool hasId(int id) const {
+      gsXmlNode* root = getXmlRoot();
+      // const gsXmlAttribute * id_at;
+      gsXmlNode* nd = internal::searchId(id, root, NULL, false);
+      return (bool)nd;
     }
 
     /// Returns true if an entry of \em tag exists in the xml file
