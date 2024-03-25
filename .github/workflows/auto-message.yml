@@ -1,7 +1,8 @@
 name: Response bot
 
 on:
-  - pull_request
+  pull_request:
+    types: [created] #edited
 
 jobs:
   auto-response:
