@@ -12,9 +12,6 @@ stages:
   - doc
 
 .linux-gcc:
-  only:
-    - stable
-    - external_pull_requests
   tags:
     - ci.inria.fr
     - large
@@ -26,27 +23,18 @@ stages:
   variables:
     #GIT_STRATEGY: clone
     GIT_CLEAN_FLAGS: none
-  only:
-    - stable
-    - external_pull_requests
   tags:
     - CentOS-gs
 
 .windows:
   variables:
     GIT_CLEAN_FLAGS: none
-  only:
-    - stable
-    - external_pull_requests
   tags:
     - windows-gs
 
 .macos-clang:
   variables:
     GIT_CLEAN_FLAGS: none
-  only:
-    - stable
-    - external_pull_requests
   tags:
     - macos-gs
 
@@ -65,8 +53,8 @@ doc:
   stage: doc
   needs:
     - Superbuild-Intel-oneAPI
-  except:
-    - external_pull_requests
+  only:
+    - stable
   interruptible: false
   script:
     - cd ../build

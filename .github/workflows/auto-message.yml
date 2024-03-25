@@ -1,11 +1,18 @@
-name: Auto message for PR's and Issues
-on: [pull_request] #issues
+name: Response bot
+
+on:
+  pull_request:
+    types: [created] #edited
+
 jobs:
-  build:
-    name: Open PR
+  auto-response:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/first-interaction@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          pr-message: "Thank you for opening your Pull Request !\nIn the next 30 minutes several tests will run. The detailed reports will be available at:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&showfilters=1&field1=buildname&compare1=66&value1=[${{ github.event.number }}]"
+    - uses: derekprior/add-autoresponse@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        respondableId: ${{ github.event.pull_request.node_id }}
+        response: "Thank you for opening a Pull Request !\nIn the next 30 minutes several tests will run. The detailed reports will be available at:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&filtercombine=or&field1=buildname&compare1=66&value1=[${{ github.event.number }}]&field2=buildname&compare2=65&value2=${{ github.head_ref }}\n\nYou can add more commits without triggering new tests by putting [skip ci] in your commit message."
+        author: ${{ github.event.pull_request.user.login }}
