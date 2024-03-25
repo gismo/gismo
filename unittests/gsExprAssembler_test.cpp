@@ -19,13 +19,11 @@ SUITE(gsExprAssembler_test)
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
-        gsVector<> translation(2);
-        translation << -0.5, -1;
-        gsFunctionExpr<> ff("if(x>0,1,-1)", 2); // function with jump
-        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
-        patches.patch(0).translate(translation);
-        patches.patch(1).translate(translation);
-
+        gsPiecewiseFunction<> ff;
+        ff.addPiece( gsFunctionExpr<>("100", 2) );
+        ff.addPiece( gsFunctionExpr<>("-100", 2) );
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(2,1, 1, -1,0);
+        gsWrite(patches, "patches");
         gsMultiBasis<> mb(patches);
 
         for(index_t i = 0; i < numRef; i++)
@@ -41,7 +39,7 @@ SUITE(gsExprAssembler_test)
         CHECK( v*v < 1e-10 );
 
         CHECK(1==patches.interfaces().size());
-        ev.integralInterface(f.left() + f.right() , patches.interfaces());
+        ev.integralInterface(f.left()+f.right() , patches.interfaces());
         const real_t w = ev.value();
         CHECK( w*w < 1e-10 );
     }

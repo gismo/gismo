@@ -17,6 +17,7 @@
 #include <gsAssembler/gsDirichletValues.h>
 #include <gsMSplines/gsMappedBasis.h>
 
+#include <gsUtils/gsThreaded.h>
 
 namespace gismo
 {
@@ -789,9 +790,9 @@ class gsFeElement
 {
     friend class cdiam_expr<T>;
 
-    const gsDomainIterator<T> * m_di; ///< Pointer to the domain iterator
+    util::gsThreaded<const gsDomainIterator<T> *> m_di; ///< Pointer to the domain iterator
 
-    const gsVector<T> * m_weights;
+    util::gsThreaded<const gsVector<T> *> m_weights;
     //const gsMatrix<T> * m_points;
 
     gsFeElement(const gsFeElement &);
@@ -801,7 +802,7 @@ public:
     gsFeElement() : m_di(NULL), m_weights(nullptr) { }
 
     void set(const gsDomainIterator<T> & di, const gsVector<T> & weights)
-    { m_di = &di, m_weights = &weights; }
+    { m_di.mine() = &di, m_weights.mine() = &weights; }
 
     bool isValid() const { return nullptr!=m_weights; }
 
@@ -869,6 +870,8 @@ public:
         // if (0==k)
         {
             const Scalar * w = _e.weights().data();
+            //gsDebugVar(omp_get_thread_num());
+            //gsDebugVar(w);
             m_val = (*w) * _ff.val().eval(0);
             for (index_t j = 1; j != _e.weights().rows(); ++j)
                 m_val += (*(++w)) * _ff.val().eval(j);
