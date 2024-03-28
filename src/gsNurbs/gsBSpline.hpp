@@ -129,6 +129,24 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
 }
 
 template<class T>
+std::vector<gsBSpline<T>> gsBSpline<T>::toBezier(T tolerance) const {
+  std::vector<gsBSpline<T>> bezierSegments;
+  const size_t numSegments = this->knots(0).size() - 1; // Assuming this is valid
+  bezierSegments.reserve(numSegments);
+
+  gsBSpline<T> currentSegment(*this);
+  gsBSpline<T> leftPart;
+
+  for (auto iter = this->knots().ubegin() + 1; iter != this->knots().uend() - 1; ++iter) {
+    currentSegment.splitAt(*iter, leftPart, currentSegment, tolerance);
+    bezierSegments.push_back(std::move(leftPart));
+  }
+
+  bezierSegments.push_back(std::move(currentSegment)); // Add the last segment
+  return bezierSegments;
+}
+
+template<class T>
 void gsBSpline<T>::insertKnot( T knot, index_t dir, index_t i)
 {
     GISMO_UNUSED(dir);

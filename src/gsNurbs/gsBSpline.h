@@ -210,6 +210,11 @@ public:
     /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
     void splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance=1e-15) const;
 
+    /// Convert BSpline curve into Bezier segments
+    /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
+    /// @note: parameter range do NOT change, extra knot().affineTransform() needed
+    std::vector<gsBSpline<T>> toBezier(T tolerance=1e-15) const;
+
     /// Insert the given new knot (multiplicity \a i) without changing
     /// the curve.
     void insertKnot( T knot, index_t i = 1);
