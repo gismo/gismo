@@ -98,6 +98,10 @@ public:
         gsMatrix<T> coords = m_composition->eval(u);
         this->_applyBounds(coords);
         m_basis->eval_into(coords,result);
+
+        // The reason for an opposite pattern of basis functions is due to
+        // a different numbering fashion is adopted in G+Smo. @Ye
+//      gsDebugVar(result);
     }
 
     void evalSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override
