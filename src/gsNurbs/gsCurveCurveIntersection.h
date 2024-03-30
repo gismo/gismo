@@ -19,7 +19,7 @@ namespace gismo{
 
 namespace internal {
 
-#define EPSILON ( 100*std::numeric_limits<T>::epsilon() )
+#define EPSILON_CCI ( 100*std::numeric_limits<T>::epsilon() )
 
 template<class T=real_t>
 struct gsPoint2d{
@@ -136,7 +136,7 @@ class gsInterval {
  public:
   gsInterval(T min, T max) : m_min(min), m_max(max) {}
 
-  bool almostEqual(T a, T b, T tolerance = EPSILON) const {
+  bool almostEqual(T a, T b, T tolerance = EPSILON_CCI) const {
     return std::abs(a - b) <= tolerance;
   }
 
@@ -177,7 +177,7 @@ class gsCurveBoundingBox {
   }
 
   [[nodiscard]] bool intersect(const gsCurveBoundingBox<T> &other,
-                                T eps = EPSILON) const {
+                                T eps = EPSILON_CCI) const {
     assert( this->getLow().size() == other.getLow().size() );
     for (int i = 0; i != other.getLow().size(); ++i) {
       if (std::max(low[i], other.low[i]) > std::min(high[i], other.high[i]) + eps) {
@@ -332,7 +332,7 @@ class gsCurveCurveDistanceSystem {
 
       T delta = (uv - newUv).norm();
       uv = newUv;
-      if (delta > EPSILON) {
+      if (delta > EPSILON_CCI) {
         Values(uv, funVal, invJac); // Re-evaluate funVal and invJac
         currentResidual = funVal.norm();
         break;
