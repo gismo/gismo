@@ -147,6 +147,44 @@ std::vector<gsBSpline<T>> gsBSpline<T>::toBezier(T tolerance) const {
 }
 
 template<class T>
+std::vector<internal::gsCurveIntersectionResult<T>> gsBSpline<T>::intersect(const gsBSpline<T>& other,
+                                                    T tolerance) const {
+  std::vector<internal::gsBoundingBoxPair<T>> hulls = internal::getPotentialIntersectionRanges<T>(*this, other);
+
+  std::vector<internal::gsCurveIntersectionResult<T>> results;
+  for (const auto &hull : hulls) {
+    gsBSpline<T> crv1 = this->segmentFromTo(hull.b1.getRange().getMin(), hull.b1.getRange().getMax());
+    gsBSpline<T> crv2 = other.segmentFromTo(hull.b2.getRange().getMin(), hull.b2.getRange().getMax());
+
+    internal::gsCurveCurveDistanceSystem<T> obj(crv1, crv2);
+    gsMatrix<T, 2, 1> uv;
+    uv(0, 0) = 0.5 * (crv1.domainStart() + crv1.domainEnd());
+    uv(1, 0) = 0.5 * (crv2.domainStart() + crv2.domainEnd());
+    T distance = obj.compute(uv, tolerance);
+
+    if (distance < std::max(1e-10, tolerance)) {
+      internal::gsCurveIntersectionResult<T> result(uv(0), uv(1), 0.5 * (crv1.eval(uv.row(0)) + crv2.eval(uv.row(1))));
+      results.push_back(result);
+    }
+  }
+
+  return results;
+}
+
+template<class T>
+T gsBSpline<T>::pseudoCurvature() const {
+  int coefsSize = m_coefs.rows();
+
+  T len = (m_coefs.row(0)-m_coefs.row(coefsSize-1)).norm();
+  T total = 0.0;
+  for (int ipt = 0; ipt != coefsSize - 1; ++ipt) {
+    T dist = (m_coefs.row(ipt) - m_coefs.row(ipt + 1)).norm();
+    total += dist;
+  }
+  return total / len;
+}
+
+template<class T>
 void gsBSpline<T>::insertKnot( T knot, index_t dir, index_t i)
 {
     GISMO_UNUSED(dir);
