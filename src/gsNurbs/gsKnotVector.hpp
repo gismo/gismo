@@ -696,9 +696,10 @@ int gsKnotVector<T>::degree() const
 template<typename T>
 int gsKnotVector<T>::deduceDegree() const
 {
-    return uSize() == 0 ? -1 :
-        (std::max)(( ubegin() ).multiplicity(),
-                   ( uend()-1 ).multiplicity()) - 1;
+    const size_t sz = uSize();
+    if (0==sz) return -1;
+    smart_iterator it1(*this,0), it2(*this,sz-1);
+    return (std::max)(it1.multiplicity(), it2.multiplicity()) - 1;
 }
 
 template<typename T>

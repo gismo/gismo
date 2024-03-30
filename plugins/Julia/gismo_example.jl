@@ -1,27 +1,34 @@
 include("./Gismo.jl")
 import .Gismo
 
-path_to_lib::String = "build/lib/libgismo"
-geom = Gismo.read("filedata/domain2d/lake.xml")
-Gismo.print(geom)
+m = Gismo.EigenMatrix(3,3)
+Gismo.setZero(m)
+display(m)
+
+geom = Gismo.Geometry( "filedata/surfaces/simple.xml" )
+println(geom)
+println("Domain dim: ", Gismo.domainDim(geom) )
+println("Target dim: ", Gismo.targetDim(geom) )
 
 pts = zeros((2, 3))
-display(pts)
-
+pts[:,2] .= 0.5;
+pts[:,3] .= 0.99;
+println(pts)
 result = Gismo.eval(geom,pts)
-
-knots = [0.0,0.0,1.0,1.0]
+println("Rows: ", Gismo.rows(result) )
+println("Cols: ", Gismo.cols(result) )
 display(result)
-# Print the geometry
 
-kv = Gismo.knotVector(knots)
-# basis = Gismo.bsplineBasis(kv)
-basis = Gismo.tensorBSplineBasis(kv,kv)
-basis = Gismo.THBSplineBasis(basis)
-Gismo.print(basis)
+knots = [0.0,0.0,0.5,1.0,1.0]
+kv = Gismo.KnotVector(knots)
+println(kv)
 
-coefs = zeros((4, 3))
-geom = Gismo.THBSpline(basis,coefs)
+#basis = Gismo.TensorBSplineBasis(kv,kv)
+#println(basis)
 
-Gismo.print(geom)
+#basis = Gismo.THBSplineBasis(basis)
+#println(basis)
 
+#coefs = zeros((4, 3))
+#geom = Gismo.THBSpline(basis,coefs)
+#println(geom)
