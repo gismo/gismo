@@ -22,6 +22,7 @@
 
 #include <gsUtils/gsPointGrid.h>
 
+#include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsCurveCurveIntersection.h>
 namespace gismo {
 namespace internal {
@@ -222,7 +223,7 @@ public:
     /// Convert BSpline curve into Bezier segments
     /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
     /// @note: parameter range do NOT change, extra knots().affineTransform() needed
-    std::vector<gsBSpline<T>> toBezier(T tolerance=1e-15) const;
+    gsMultiPatch<T> toBezier(T tolerance=1e-15) const;
 
     /// Compute all intersections with another B-Spline curve
     std::vector<internal::gsCurveIntersectionResult<T>> intersect(const gsBSpline<T>& other, T tolerance = 1e-5) const;

@@ -82,12 +82,8 @@ int main(int argc, char *argv[])
       gsWriteParaview( mergedCurve, "mergedCurve", 100);
 
       // convert it into bezier segments
-      std::vector<gsBSpline<>> bezSegments = mergedCurve.toBezier();
-      gsMultiPatch<> bezierContainer;
-      for (const gsBSpline<>& bezSegment:bezSegments) {
-        bezierContainer.addPatch(bezSegment);
-      }
-      gsWriteParaview( bezierContainer, "bezierContainer", 100);
+      gsMultiPatch<> bezSegments = mergedCurve.toBezier();
+      gsWriteParaview(bezSegments, "bezierContainer", 100);
     }
     else
       gsInfo << "Done. Re-run with --trim to learn basic trim/merge operations\n";
