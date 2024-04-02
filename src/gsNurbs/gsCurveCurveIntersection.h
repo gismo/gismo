@@ -54,8 +54,8 @@ int orientationxx(const gsPoint2d<T> &p, const gsPoint2d<T> &q, const gsPoint2d<
 // point q lies on the line segment 'pr'
 template<class T>
 bool onSegment(const gsPoint2d<T> &p, const gsPoint2d<T> &q, const gsPoint2d<T> &r) {
-  if (q.x() <= std::max(p.x(), r.x()) && q.x() >= std::min(p.x(), r.x()) &&
-      q.y() <= std::max(p.y(), r.y()) && q.y() >= std::min(p.y(), r.y()))
+  if (q.x() <= math::max(p.x(), r.x()) && q.x() >= math::min(p.x(), r.x()) &&
+      q.y() <= math::max(p.y(), r.y()) && q.y() >= math::min(p.y(), r.y()))
     return true;
 
   return false;
@@ -170,8 +170,8 @@ class gsCurveBoundingBox {
     for (int ipt = 0; ipt != curve.coefsSize(); ++ipt) {
       const auto &p = curve.coef(ipt); // Access once per iteration
       for (int i = 0; i != curve.geoDim(); ++i) {
-        high[i] = std::max(high[i], p(i));
-        low[i] = std::min(low[i], p(i));
+        high[i] = math::max(high[i], p(i));
+        low[i] = math::min(low[i], p(i));
       }
     }
   }
@@ -180,7 +180,7 @@ class gsCurveBoundingBox {
                                 T eps = EPSILON_CCI) const {
     assert( this->getLow().size() == other.getLow().size() );
     for (int i = 0; i != other.getLow().size(); ++i) {
-      if (std::max(low[i], other.low[i]) > std::min(high[i], other.high[i]) + eps) {
+      if (math::max(low[i], other.low[i]) > math::min(high[i], other.high[i]) + eps) {
         return false;
       }
     }
@@ -324,8 +324,8 @@ class gsCurveCurveDistanceSystem {
       uv -= deltaUv; // update uv
 
       // project uv into its parameter range
-      newUv(0, 0) = std::min(std::max(uv(0, 0), m_crv1.domainStart()), m_crv1.domainEnd());
-      newUv(1, 0) = std::min(std::max(uv(1, 0), m_crv2.domainStart()), m_crv2.domainEnd());
+      newUv(0, 0) = math::min(math::max(uv(0, 0), m_crv1.domainStart()), m_crv1.domainEnd());
+      newUv(1, 0) = math::min(math::max(uv(1, 0), m_crv2.domainStart()), m_crv2.domainEnd());
       // using C++17 standard
 //      newUv(0, 0) = std::clamp(newUv(0, 0), m_crv1.domainStart(), m_crv1.domainEnd());
 //      newUv(1, 0) = std::clamp(newUv(1, 0), m_crv2.domainStart(), m_crv2.domainEnd());
