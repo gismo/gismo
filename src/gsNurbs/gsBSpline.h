@@ -23,6 +23,14 @@
 #include <gsUtils/gsPointGrid.h>
 
 #include <gsNurbs/gsCurveCurveIntersection.h>
+namespace gismo {
+namespace internal {
+
+template<class T>
+struct gsCurveIntersectionResult;
+
+} // namespace internal
+} // namespace gismo
 
 namespace gismo
 {
