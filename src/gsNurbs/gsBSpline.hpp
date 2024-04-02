@@ -18,6 +18,8 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
+#include <gsNurbs/gsCurveCurveIntersection.h>
+
 namespace gismo
 {
 
