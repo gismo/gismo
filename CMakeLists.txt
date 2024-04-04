@@ -46,8 +46,8 @@ if(NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
-   # Set default build type to Release
-   set(CMAKE_BUILD_TYPE Release CACHE STRING
+   # Set default build type to RelWithDebInfo
+   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
    "Type of build (None Debug Release RelWithDebInfo MinSizeRel)" FORCE)
    if(NOT CMAKE_CONFIGURATION_TYPES)
    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
@@ -95,8 +95,8 @@ endif()
 ## #################################################################
 
 #Fix for Eigen directory
-if (NOT EXISTS "${PROJECT_SOURCE_DIR}/external/Eigen")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_SOURCE_DIR}/external/Eigen)
+if (NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
 endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)

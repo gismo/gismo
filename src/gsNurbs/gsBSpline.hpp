@@ -112,7 +112,7 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   const index_t nL  = knots.uFind(u0).firstAppearance();
   // find the number of coefs left from u1
   index_t nL2 = knots.uFind(u1).firstAppearance();
-  bool isEnd = std::abs(u1 - this->domainEnd()) < tolerance;
+  bool isEnd = math::abs(u1 - this->domainEnd()) < tolerance;
   if ( isEnd ) { nL2 += 1; }       // Adjust for end parameter
 
   // Prepare control points for new geometry
