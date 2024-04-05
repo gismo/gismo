@@ -43,8 +43,9 @@ template<class T>
 int orientationxx(const gsPoint2d<T> &p, const gsPoint2d<T> &q, const gsPoint2d<T> &r) {
   // See https://www.geeksforgeeks.org/orientation-3-ordered-points/
   // for details of below formula.
-  double val = (q.y() - p.y()) * (r.x() - q.x()) - (q.x() - p.x()) * (r.y() - q.y());
+  T val = (q.y() - p.y()) * (r.x() - q.x()) - (q.x() - p.x()) * (r.y() - q.y());
 
+  // Caution: numerically val is almost never exactly zero
   if (val == 0) return 0;  // collinear
 
   return (val > 0) ? 1 : 2; // clock or counterclock wise
