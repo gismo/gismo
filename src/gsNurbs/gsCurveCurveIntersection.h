@@ -220,7 +220,7 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
 
   T crv1Curvature = curve1.pseudoCurvature();
   T crv2Curvature = curve2.pseudoCurvature();
-  constexpr T MAX_CURVATURE = 1.0 + 5e-6;
+  static const T MAX_CURVATURE = 1.0 + 5e-6;
 
   // Check for intersection between endpoint line segments if curves are linear enough
   if (crv1Curvature <= MAX_CURVATURE && crv2Curvature <= MAX_CURVATURE) {
