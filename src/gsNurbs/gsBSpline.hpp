@@ -18,6 +18,9 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
+#include <gsCore/gsMultiPatch.h>
+#include <gsNurbs/gsCurveCurveIntersection.h>
+
 namespace gismo
 {
 
@@ -113,7 +116,8 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   // find the number of coefs left from u1
   index_t nL2 = knots.uFind(u1).firstAppearance();
   bool isEnd = math::abs(u1 - this->domainEnd()) < tolerance;
-  if ( isEnd ) { nL2 += 1; }       // Adjust for end parameter
+//  if ( isEnd ) { nL2 += 1; }       // Adjust for end parameter
+  if ( isEnd ) { nL2 = copy.numCoefs(); }       // Adjust for end parameter
 
   // Prepare control points for new geometry
   gsMatrix<T> coefRes = coefs.block(nL, 0, nL2-nL, tDim);
@@ -125,6 +129,60 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   KnotVectorType knotsRes(give(matRes), p);
 
   return gsBSpline<T>(Basis(give(knotsRes)), give(coefRes));
+}
+
+template<class T>
+gsMultiPatch<T> gsBSpline<T>::toBezier(T tolerance) const {
+  gsMultiPatch<T> bezierSegments;
+
+  gsBSpline<T> currentSegment(*this);
+  gsBSpline<T> leftPart;
+
+  for (auto iter = this->knots().ubegin() + 1; iter != this->knots().uend() - 1; ++iter) {
+    currentSegment.splitAt(*iter, leftPart, currentSegment, tolerance);
+    bezierSegments.addPatch(leftPart);
+  }
+
+  bezierSegments.addPatch(currentSegment); // Add the last segment
+  return bezierSegments;
+}
+
+template<class T>
+std::vector<internal::gsCurveIntersectionResult<T>> gsBSpline<T>::intersect(const gsBSpline<T>& other,
+                                                    T tolerance, T curvatureTolerance) const {
+  std::vector<internal::gsBoundingBoxPair<T>> hulls = internal::getPotentialIntersectionRanges<T>(*this, other, curvatureTolerance);
+
+  std::vector<internal::gsCurveIntersectionResult<T>> results;
+  for (const auto &hull : hulls) {
+    gsBSpline<T> crv1 = this->segmentFromTo(hull.b1.getRange().getMin(), hull.b1.getRange().getMax());
+    gsBSpline<T> crv2 = other.segmentFromTo(hull.b2.getRange().getMin(), hull.b2.getRange().getMax());
+
+    internal::gsCurveCurveDistanceSystem<T> obj(crv1, crv2);
+    gsMatrix<T, 2, 1> uv;
+    uv(0, 0) = 0.5 * (crv1.domainStart() + crv1.domainEnd());
+    uv(1, 0) = 0.5 * (crv2.domainStart() + crv2.domainEnd());
+    T distance = obj.compute(uv, tolerance);
+
+    if (distance < math::max((T)1e-10, tolerance)) {
+      internal::gsCurveIntersectionResult<T> result(uv(0), uv(1), 0.5 * (crv1.eval(uv.row(0)) + crv2.eval(uv.row(1))));
+      results.push_back(result);
+    }
+  }
+
+  return results;
+}
+
+template<class T>
+T gsBSpline<T>::pseudoCurvature() const {
+  int coefsSize = m_coefs.rows();
+
+  T len = (m_coefs.row(0)-m_coefs.row(coefsSize-1)).norm();
+  T total = 0.0;
+  for (int ipt = 0; ipt != coefsSize - 1; ++ipt) {
+    T dist = (m_coefs.row(ipt) - m_coefs.row(ipt + 1)).norm();
+    total += dist;
+  }
+  return total / len;
 }
 
 template<class T>
