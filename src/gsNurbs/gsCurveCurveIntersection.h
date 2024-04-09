@@ -208,9 +208,15 @@ struct gsBoundingBoxPair {
 
 /// compute potential intersection range by recursively subdividing curves
 /// and bounding box intersection detection
+/// @param curve1 first B-Spline curve
+/// @param curve2 second B-Spline curve
+/// @param MAX_CURVATURE maximum curvature for recursive subdivision
+/// @note MAX_CURVATURE should be set to a value slightly larger than 1.0, say, 1.0+1e-6
+/// @return a list of potential intersection ranges for the two input
 template<class T=real_t>
 std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline<T> &curve1,
-                                                                 const gsBSpline<T> &curve2) {
+                                                                 const gsBSpline<T> &curve2,
+                                                                 const T MAX_CURVATURE) {
   gsCurveBoundingBox<T> h1(curve1);
   gsCurveBoundingBox<T> h2(curve2);
 
@@ -221,7 +227,7 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
 
   T crv1Curvature = curve1.pseudoCurvature();
   T crv2Curvature = curve2.pseudoCurvature();
-  static const T MAX_CURVATURE = 1.0 + 5e-6;
+//  static const T MAX_CURVATURE = 1.0 + 5e-6;
 
   // Check for intersection between endpoint line segments if curves are linear enough
   if (crv1Curvature <= MAX_CURVATURE && crv2Curvature <= MAX_CURVATURE) {
@@ -250,10 +256,10 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
     curve1.splitAt(curve1MidParm, c11, c12);
     curve2.splitAt(curve2MidParm, c21, c22);
 
-    auto result1 = getPotentialIntersectionRanges<T>(c11, c21);
-    auto result2 = getPotentialIntersectionRanges<T>(c11, c22);
-    auto result3 = getPotentialIntersectionRanges<T>(c12, c21);
-    auto result4 = getPotentialIntersectionRanges<T>(c12, c22);
+    auto result1 = getPotentialIntersectionRanges<T>(c11, c21, MAX_CURVATURE);
+    auto result2 = getPotentialIntersectionRanges<T>(c11, c22, MAX_CURVATURE);
+    auto result3 = getPotentialIntersectionRanges<T>(c12, c21, MAX_CURVATURE);
+    auto result4 = getPotentialIntersectionRanges<T>(c12, c22, MAX_CURVATURE);
 
     // append all results
     result1.insert(result1.end(), result2.begin(), result2.end());
@@ -267,8 +273,8 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
     gsBSpline<T> c21, c22;
     curve2.splitAt(curve2MidParm, c21, c22);
 
-    auto result1 = getPotentialIntersectionRanges<T>(curve1, c21);
-    auto result2 = getPotentialIntersectionRanges<T>(curve1, c22);
+    auto result1 = getPotentialIntersectionRanges<T>(curve1, c21, MAX_CURVATURE);
+    auto result2 = getPotentialIntersectionRanges<T>(curve1, c22, MAX_CURVATURE);
 
     result1.insert(result1.end(), result2.begin(), result2.end());
     return result1;
@@ -278,8 +284,8 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
     gsBSpline<T> c11, c12;
     curve1.splitAt(curve1MidParm, c11, c12);
 
-    auto result1 = getPotentialIntersectionRanges<T>(c11, curve2);
-    auto result2 = getPotentialIntersectionRanges<T>(c12, curve2);
+    auto result1 = getPotentialIntersectionRanges<T>(c11, curve2, MAX_CURVATURE);
+    auto result2 = getPotentialIntersectionRanges<T>(c12, curve2, MAX_CURVATURE);
 
     result1.insert(result1.end(), result2.begin(), result2.end());
     return result1;
