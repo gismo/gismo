@@ -149,8 +149,8 @@ gsMultiPatch<T> gsBSpline<T>::toBezier(T tolerance) const {
 
 template<class T>
 std::vector<internal::gsCurveIntersectionResult<T>> gsBSpline<T>::intersect(const gsBSpline<T>& other,
-                                                    T tolerance) const {
-  std::vector<internal::gsBoundingBoxPair<T>> hulls = internal::getPotentialIntersectionRanges<T>(*this, other);
+                                                    T tolerance, T curvatureTolerance) const {
+  std::vector<internal::gsBoundingBoxPair<T>> hulls = internal::getPotentialIntersectionRanges<T>(*this, other, curvatureTolerance);
 
   std::vector<internal::gsCurveIntersectionResult<T>> results;
   for (const auto &hull : hulls) {

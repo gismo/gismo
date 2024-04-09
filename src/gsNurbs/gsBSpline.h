@@ -22,8 +22,6 @@
 
 #include <gsUtils/gsPointGrid.h>
 
-#include <gsCore/gsMultiPatch.h>
-#include <gsNurbs/gsCurveCurveIntersection.h>
 namespace gismo {
 namespace internal {
 
@@ -226,7 +224,12 @@ public:
     gsMultiPatch<T> toBezier(T tolerance=1e-15) const;
 
     /// Compute all intersections with another B-Spline curve
-    std::vector<internal::gsCurveIntersectionResult<T>> intersect(const gsBSpline<T>& other, T tolerance = 1e-5) const;
+    /// \param other the other B-Spline curve
+    /// \param tolerance the tolerance for computing the intersection
+    /// \param curvatureTolerance the curvature tolerance for the splitting stage
+    /// @note curvatureTolerance should be slightly greater than 1.0, e.g., 1+1e-6
+    /// \return a vector of intersection results
+    std::vector<internal::gsCurveIntersectionResult<T>> intersect(const gsBSpline<T>& other, T tolerance = 1e-5, T curvatureTolerance=1+1e-6) const;
 
     /// calculates curvature approximation for a B-spline curve by dividing
     /// the total length of the polyline formed by its control points by
