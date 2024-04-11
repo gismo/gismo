@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
 {
 
     //! [Parse command line]
+    bool plot = false;
+    index_t plotmod = 1;
     std::string precice_config("../precice_config.xml");
 
     gsCmdLine cmd("Coupled heat equation using PreCICE.");
@@ -81,6 +83,8 @@ int main(int argc, char *argv[])
     // Data
     std::string GeometryControlPointData		= "GeometryControlPointData";
     std::string ForceControlPointData			= "ForceControlPointData";
+    // std::string GeometryKnotData                = "GeometryKnotData";
+    // std::string ForceKnotData                   = "ForceKnotMeshData";
 
     gsMatrix<> bbox(3,2);
     bbox << -1e300, 1e300, // X dimension limits
@@ -93,18 +97,21 @@ int main(int argc, char *argv[])
 
     // Step 2.1: Define force knot mesh
     gsVector<index_t> forceKnotIDs;
-    gsMultiPatch<> forceMesh;
     gsKnotVector<> kv(0,1,10,3,1); //begin, end, # interiors, mult, by default =1
     gsTensorBSplineBasis<2, real_t> forceBasis(kv,kv);
-    gsMatrix<> forceControlPoints(forceBasis.size(), 2);
-    forceControlPoints.setConstant(-1e4);
-    gsDebugVar(forceControlPoints.dim());
-    forceMesh.addPatch(give(forceBasis.makeGeometry(forceControlPoints)));
+    gsMatrix<> forceControlPoints(forceBasis.size(), 3);
+    forceControlPoints.setZero();
+    forceControlPoints.col(2).setConstant(-1e4);
+    forceControlPoints.transposeInPlace();
+
+    gsMatrix<> forceKnots = knotsToMatrix(forceBasis);
 
 
-    gsMultiBasis<> bases(forceMesh);
-    gsMatrix<> forceKnots = knotsToMatrix(bases.basis(0));
-    gsDebugVar(forceKnots.dim());
+    // gsMultiBasis<> bases(forceMesh);
+    // gsMatrix<> forceKnots = knotsToMatrix(bases.basis(0));
+    // gsDebugVar(forceKnots.dim());
+    // 
+    
 
 
     // Regenerate the geometry in another solver
@@ -113,8 +120,9 @@ int main(int argc, char *argv[])
     // Step 2.1: Define force control point mesh
     gsVector<index_t> forceControlPointIDs;
     participant.addMesh(ForceKnotMesh,forceKnots,forceKnotIDs);
-    participant.addMesh(ForceControlPointMesh,forceControlPoints.transpose(),forceControlPointIDs);
+    participant.addMesh(ForceControlPointMesh,forceControlPoints,forceControlPointIDs);
     participant.setMeshAccessRegion(GeometryControlPointMesh, bbox);
+
 
 
     real_t precice_dt = participant.initialize();
@@ -133,6 +141,76 @@ int main(int argc, char *argv[])
     participant.getMeshVertexIDsAndCoordinates(GeometryControlPointMesh, geometryControlPointIDs, geometryControlPoints);
     gsDebugVar(geometryControlPoints.dim());
 
+    gsMultiPatch<> mp, deformation;
+    gsDebugVar(*geometryKnotBasis);
+    gsDebugVar(geometryKnotBasis->size());
+    gsDebugVar(geometryControlPoints.rows());
+    mp.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
+
+    deformation = mp;
+
+
+    real_t t=0;
+    real_t dt = precice_dt;
+
+    index_t timestep = 0;
+
+    // Define the solution collection for Paraview
+    gsParaviewCollection collection("./output/solution");
+
+    // Time integration loop
+    while(participant.isCouplingOngoing())
+    {
+
+        // Read control point displacements
+        participant.readData(GeometryControlPointMesh, GeometryControlPointData, geometryControlPointIDs, geometryControlPoints);
+        deformation.patch(0).coefs() = geometryControlPoints.transpose();
+
+        gsDebugVar(forceControlPoints);
+
+        participant.writeData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
+
+        // bool requiresWritingCheckpoint and requiresReadingCheckpoint are **REQUIRED** in PreCICE. 
+        // And the requiresWritingCheckpoint() should be called before advance()
+        if (participant.requiresWritingCheckpoint())
+        {
+            gsInfo<<"Reading Checkpoint\n";
+        }
+
+        // do the coupling
+        precice_dt = participant.advance(dt);
+
+        dt = std::min(precice_dt, dt);
+
+        if (participant.requiresReadingCheckpoint())
+        {    
+            gsInfo<<"Writing Checkpoint \n";
+        }
+        else
+        {
+            t += dt;
+            timestep++;
+
+            gsField<> solution(mp,deformation);
+            if (timestep % plotmod==0 && plot)
+            {
+                // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
+                std::string fileName = "./output/solution" + util::to_string(timestep);
+                gsWriteParaview<>(solution, fileName, 500);
+                fileName = "solution" + util::to_string(timestep) + "0";
+                collection.addTimestep(fileName,t,".vts");
+            }
+
+            // solution.patch(0).eval_into(points,pointDataMatrix);
+            // otherDataMatrix<<time;
+            // writer.add(pointDataMatrix,otherDataMatrix);
+        }
+    }
+
+    if (plot)
+    {
+        collection.save();
+    }
 
 
 
