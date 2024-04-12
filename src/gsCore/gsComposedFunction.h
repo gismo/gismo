@@ -98,6 +98,11 @@ public:
         result = tmpresult;
     }
 
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    {
+        GISMO_NO_IMPLEMENTATION;
+    }
+
     std::ostream &print(std::ostream &os) const
     {
         os <<"Composite function:\n";

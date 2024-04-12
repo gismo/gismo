@@ -38,7 +38,11 @@ class gsComposedBasis : public gsBasis<T>
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
 public:
-    gsComposedBasis(const gsFunction<T> & composition, const gsBasis<T> & basis)
+    typedef gsBasis<T>      BasisT;
+    typedef gsFunction<T>   CompositionT;
+
+public:
+    gsComposedBasis(const CompositionT & composition, const BasisT & basis)
     :
     m_composition(&composition),
     m_basis(&basis)
@@ -109,6 +113,12 @@ public:
 
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
+        /*
+         * WARNING!: This function is not yet tested.
+         * It could be that it does not work, especially if the number of actives
+         * is different per point in u. PLEASE CHECK THIS!
+         */
+
         const size_t DIM = m_basis->domainDim();
         index_t domainDim, targetDim;
         gsMatrix<T> coord, deriv, tmp, compderiv;
@@ -133,22 +143,6 @@ public:
 
             }
         }
-
-        // m_basis->deriv_into(coord,deriv);
-
-        // tmp.resize(m_basis->targetDim()*domainDim,u.cols());
-
-        //     gsAsMatrix<T,Dynamic,Dynamic> resultMat = result.reshapeCol(k,domainDim,targetDim);
-        //     gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_basis->domainDim(),m_basis->targetDim());
-        //     // The product has size:
-        //     // (domainDim x targetDim) x (m_basis->domainDim(),m_basis->targetDim())
-        //     //  =
-        //     // (domainDim x m_basis->targetDim())
-        //     gsAsMatrix<T,Dynamic,Dynamic> tmpMat = tmp.reshapeCol(k,domainDim,m_basis->targetDim());
-        //     tmpMat = resultMat*derivMat;
-
-        // }
-        // result = tmp;
     }
 
     void derivSingle_into(index_t i, const gsMatrix<T>& u, gsMatrix<T>& result) const override
@@ -178,6 +172,32 @@ public:
         }
         result = tmp;
     }
+
+    // void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result)
+    // {
+    //     // The number of rows is the target dimension times the number of controls
+    //     // The number of cols is the number of points
+    //     result.resize(targetDim()*m_composition->nControls(),points.cols());
+
+    //     // Pre-compute the coordinates of the composition, the derivatives of G and the derivatives of the composition
+    //     gsMatrix<T> c, dc, dG;
+    //     m_composition->eval_into(points,c);
+    //     m_composition->control_deriv_into(points,dc);
+    //     m_geom->deriv_into(c,dG);
+
+    //     // Store some sizes
+    //     index_t nControls = m_composition->nControls();
+    //     index_t dd = m_geom->domainDim();
+    //     index_t td = m_geom->targetDim();
+
+    //     // Loop over the points
+    //     for (index_t k=0; k!=points.cols(); k++)
+    //     {
+    //         // We need to compute dG/dpi = dG/dc * dc/dpi
+    //         gsAsMatrix<T> DG = result.reshapeCol(k,nControls,td);
+    //         DG = dc.reshapeCol(k,nControls,dd) * dG.reshapeCol(k,dd,td);
+    //     }
+    // }
 
     // memory::unique_ptr<gsGeometry<T> > makeGeometry(gsMatrix<T> coefs) const override
     // {
@@ -232,8 +252,10 @@ public:
     }
 
 
-
-
+    /// Return the composition
+    const CompositionT * composition() const { return m_composition; }
+    /// Return the basis
+    const BasisT * basis() const { return m_basis; }
 
     std::ostream &print(std::ostream &os) const
     {
@@ -258,8 +280,8 @@ private:
     }
 
 protected:
-    const gsFunction<T> * m_composition;
-    const gsBasis<T> * m_basis;
+    const CompositionT * m_composition;
+    const BasisT * m_basis;
 
 };
 }

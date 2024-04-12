@@ -294,6 +294,49 @@ public:
 
     index_t size() const { return 1;}
 
+    /// Returns the controls of the function
+    virtual const gsVector<T> & controls() const { GISMO_NO_IMPLEMENTATION; };
+    virtual       gsVector<T> & controls()       { GISMO_NO_IMPLEMENTATION; };
+
+    /// Returns the number of controls of the function
+    virtual size_t nControls() const { GISMO_NO_IMPLEMENTATION;}
+
+    /// Returns a reference to the ith control
+    virtual T & control(index_t i) { GISMO_NO_IMPLEMENTATION;}
+
+    /// Returns the control derivative
+
+
+
+
+    /**
+     * @brief      { function_description }
+     *
+     * \f[
+     \left[
+     \begin{array}{cccc}
+     TOTOTOTOTOTOTOTOTODODODODODODODODODO
+        \partial_{c_1} f^{(1)}(u_1) & \partial_{c_1} f^{(1)}(u_1) & \partial_{c_1} f^{(1)}(u_N) \\
+        \partial_{c_2} f^{(1)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
+        \vdots                      & \vdots                    & \ldots & \vdots
+        \partial_{c_M} f^{(1)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
+        \partial_{c_1} f^{(2)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
+        \partial_{c_2} f^{(2)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
+        \vdots                      & \vdots                    & \ldots & \vdots
+        \partial_{c_M} f^{(2)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
+        \partial_{c_1} f^{(3)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
+        \partial_{c_2} f^{(3)}(u_1) & \partial_y f^{(1)}(u_2)   & \ldots & \partial_y f^{(1)}(u_N) \\
+        \vdots                      & \vdots                    & \ldots & \vdots
+     \end{array}
+     \right]
+     \f]
+     *
+     * @param[in]  points  The points
+     * @param      result  The result
+     */
+    virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const { GISMO_NO_IMPLEMENTATION;}
+
+
 private:
 
     template<int mode, int _Dim=-1>
