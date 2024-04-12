@@ -232,6 +232,12 @@ int main(int argc, char* argv[])
     gsWriteParaview(cgeom,"geom_after",1000,false);
     gsWriteParaview(cbasis,"basis_after",1000,true);
     gsWriteParaview(cgeom,"geom_after",1000,false);
+    // TEST @Ye
+//  gsMatrix<> u(2,1), xi;
+//  u << 0.3, 0.5;
+//  cbasis.eval_into(u, xi);
+//  gsDebugVar(xi);
+/////////////////////////////////////////////////////////////////////////////////
     cbasis.mapMesh(mesh);
     gsWriteParaview(mesh,"mesh_after",true);
 
