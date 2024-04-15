@@ -67,7 +67,7 @@ public:
         m_composition->invertPoints(supp,result,1e-10,true);
 
         supp.conservativeResize(this->domainDim(),2);
-        for (size_t d=0; d!=this->domainDim(); d++)
+        for (short_t d=0; d!=this->domainDim(); d++)
             supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
 
         return supp;
@@ -75,18 +75,19 @@ public:
 
     gsMatrix<T> support(const index_t & i) const override
     {
-        gsMatrix<T> supp = m_basis->support(i);
-        gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
-        supp = pt.toMatrix();
-        gsMatrix<T> result = supp;
+        // gsMatrix<T> supp = m_basis->support(i);
+        // gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
+        // supp = pt.toMatrix();
+        // gsMatrix<T> result = supp;
 
-        m_composition->invertPoints(supp,result,1e-10,true);
+        // m_composition->invertPoints(supp,result,1e-10,true);
 
-        supp.conservativeResize(this->domainDim(),2);
-        for (size_t d=0; d!=this->domainDim(); d++)
-            supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
+        // supp.conservativeResize(this->domainDim(),2);
+        // for (size_t d=0; d!=this->domainDim(); d++)
+        //     supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
 
-        return supp;
+        // return supp;
+        return this->support();
     } // This should be the inverse map
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override
@@ -133,18 +134,16 @@ public:
 
         m_composition->eval_into(u,coord);
         m_basis->deriv_into(coord,deriv);
-        const size_t numAct = deriv.rows() / DIM;
+        const index_t numAct = deriv.rows() / DIM;
 
         result.resize(numAct*domainDim*m_basis->targetDim(),u.cols());
         for (index_t k = 0; k!=u.cols(); k++)
         {
             gsAsMatrix<T,Dynamic,Dynamic> resultMat = compderiv.reshapeCol(k,domainDim,targetDim);
-            gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_basis->domainDim(),m_basis->targetDim());
+            // gsAsMatrix<T,Dynamic,Dynamic> derivMat = deriv.reshapeCol(k,m_basis->domainDim(),m_basis->targetDim());
             for (index_t act = 0; act!=numAct; act++)
             {
-                gsDebugVar(resultMat*deriv.block(act*DIM,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim()));
                 result.block(act*DIM,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim()) = resultMat*deriv.block(act*DIM,k,domainDim*m_basis->targetDim(),1).reshaped(domainDim,m_basis->targetDim());
-
             }
         }
     }
@@ -212,7 +211,20 @@ public:
     ////// Pass throughs of basis
 
     /// See \ref gsBasis for documentation
+    short_t degree(short_t i) const override { return m_basis->degree(i); }
+
+    /// See \ref gsBasis for documentation
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override { return m_basis->boundaryOffset(s,offset); }
+
+    /// See \ref gsBasis for documentation
+    void matchWith(const boundaryInterface & bi, const gsBasis<T> & other,
+                    gsMatrix<index_t> & bndThis, gsMatrix<index_t> & bndOther) const override { return m_basis->matchWith(bi,other,bndThis,bndOther); }
+
+    /// See \ref gsBasis for documentation
     domainIter makeDomainIterator() const override { return m_basis->makeDomainIterator(); }
+
+    /// See \ref gsBasis for documentation
+    virtual domainIter makeDomainIterator(const boxSide & s) const { return m_basis->makeDomainIterator(s); }
 
     /// See \ref gsBasis for documentation
     std::string detail() const override { return m_basis->detail(); };

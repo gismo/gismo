@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
 
 
 
-    // Degine a composite basis and composite geometry
+    // Define a composite basis and composite geometry
     // The basis is composed by the square domain
     gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
