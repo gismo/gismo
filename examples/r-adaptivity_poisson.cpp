@@ -1,4 +1,4 @@
-/** @file poisson2_example.cpp
+/** @file r-adaptivity_poisson.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 

@@ -1,4 +1,4 @@
-/** @file composed_domain_poisson.cpp
+/** @file composed_hdomain_poisson.cpp
 
     @brief Tutorial on how to use expression assembler to solve the Poisson equation
 
@@ -34,17 +34,25 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    gsMultiPatch<> mp0;
-    mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
-    mp0.patch(0).coefs().array() -= 0.5;
+    gsMultiPatch<> s0, mp0;
+    s0.addPatch(gsNurbsCreator<>::BSplineSquare());
+    s0.patch(0).coefs().array() -= 0.5;
 
+    gsInfo << s0.patch(0).basis() << "\n";
+    gsInfo << s0.patch(0).coefs() << "\n";
+
+    // degree elevation
     if (numElevate!=0)
-        mp0.degreeElevate(numElevate);
-
-    // h-refine
+        s0.degreeElevate(numElevate);
+    // local h-refine
     for (int r =0; r < numRefine; ++r)
-        mp0.uniformRefine();
+        s0.uniformRefine();
 
+
+    gsTHBSpline<2, real_t>  thb( s0.patch(0).basis(), s0.patch(0).coefs()) ;
+    gsInfo << thb << "\n";
+
+    mp0.addPatch(thb);
 
     // Make composed geometry and basis
     const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
