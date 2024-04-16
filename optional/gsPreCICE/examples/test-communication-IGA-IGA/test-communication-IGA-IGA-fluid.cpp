@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     gsTensorBSplineBasis<2, real_t> forceBasis(kv,kv);
     gsMatrix<> forceControlPoints(forceBasis.size(), 3);
     forceControlPoints.setZero();
-    forceControlPoints.col(2).setConstant(-1e4);
+    forceControlPoints.col(2).setConstant(-5e3);
     forceControlPoints.transposeInPlace();
 
     gsMatrix<> forceKnots = knotsToMatrix(forceBasis);
@@ -122,8 +122,6 @@ int main(int argc, char *argv[])
     participant.addMesh(ForceKnotMesh,forceKnots,forceKnotIDs);
     participant.addMesh(ForceControlPointMesh,forceControlPoints,forceControlPointIDs);
     participant.setMeshAccessRegion(GeometryControlPointMesh, bbox);
-
-
 
     real_t precice_dt = participant.initialize();
 
@@ -167,6 +165,14 @@ int main(int argc, char *argv[])
         deformation.patch(0).coefs() = geometryControlPoints.transpose();
 
         gsDebugVar(forceControlPoints);
+
+        /*
+         * Two projection approaches:
+         * - gsQuasiInterpolate<real_t>::localIntpl(forceBasis, deformation.patch(0), coefs);
+         * - gsL2Projection<real_t>::projectFunction(forceBasis, deformation, mp, coefs)
+         *
+         * Check if forceBasis + coefs gives the same as deformation.patch(0)
+         */
 
         participant.writeData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
 

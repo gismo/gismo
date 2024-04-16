@@ -37,12 +37,14 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     index_t plotmod = 1;
+    index_t loadCase = 0;
     std::string precice_config;
 
     gsCmdLine cmd("Flow over heated plate for PreCICE.");
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addInt("m","plotmod", "Modulo for plotting, i.e. if plotmod==1, plots every timestep", plotmod);
+    cmd.addInt("l","loadCase", "Load case: 0=constant load, 1='spring' load", loadCase);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
   
     //! [Read input file]
@@ -58,14 +60,9 @@ int main(int argc, char *argv[])
     // Generate discrete fluid mesh
     gsMatrix<> bbox = patches.patch(0).support();
 
-
-
     int numPoints = 100;
     gsMatrix<> pointGrid = gsPointGrid<>(bbox, numPoints);
- 
     gsMatrix<> mesh = patches.patch(0).eval(pointGrid);
-
-
 
     // Embed the 2D geometry to 3D
 
@@ -96,12 +93,8 @@ int main(int argc, char *argv[])
 
 
     // Step 1: FluidMesh
-    // Get the quadrature nodes on the coupling interface
-    gsOptionList quadOptions = gsExprAssembler<>::defaultOptions();
-
     // Get the quadrature points
     gsVector<index_t> FluidMeshIDs;
-    // gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions);
     gsDebugVar(mesh);
     participant.addMesh(FluidMesh,mesh,FluidMeshIDs);
 
@@ -120,7 +113,6 @@ int main(int argc, char *argv[])
     gsParaviewCollection collection("./output/solution");
 
     gsMatrix<> StressPointData(patches.geoDim(),mesh.cols());
-    gsDebugVar("Got here 2");
 
     // Time integration loop
     while (participant.isCouplingOngoing())
@@ -130,15 +122,34 @@ int main(int argc, char *argv[])
 
         // Read control point displacements
         gsMatrix<> meshPointDisplacements;
-        gsDebugVar("Got here 2");
         participant.readData(FluidMesh,DisplacementData,FluidMeshIDs,meshPointDisplacements);
 
-        // Write data at the quadrature points
-        StressPointData.setZero();
-        StressPointData.row(3).setConstant(-1e4);
-        gsDebugVar("Got here 2");
+
+        if (loadCase==0)
+        {
+            // Write data at the quadrature points
+            StressPointData.setZero();
+            StressPointData.row(2).setConstant(-5e3);
+        }
+        else if (loadCase==1)
+        {
+            StressPointData.setZero();
+            for (index_t k = 0; k!=meshPointDisplacements.cols(); k++)
+            {
+                StressPointData(2,k) = -meshPointDisplacements(2,k);
+            }
+            // impact loading at t==0
+            if (t==0)
+                StressPointData.row(2).array() += -5e3;
+        }
+        else
+            GISMO_ERROR("Load case "<<loadCase<<" unknown.");
+
+
         participant.writeData(FluidMesh,StressData,FluidMeshIDs,StressPointData);
-        gsDebugVar("Got here 2");
+
+
+        /// TO DO
 
         // do the coupling
         precice_dt =participant.advance(dt);

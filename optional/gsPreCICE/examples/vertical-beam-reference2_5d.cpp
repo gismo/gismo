@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 
     bcInfo.addCondition(0, boundary::south, condition_type::clamped, nullptr, 2);
 
-    gsFunctionExpr<> surfForce("0","0","-1e4",3);
+    gsFunctionExpr<> surfForce("0","0","-5e3",3);
 
     // Assign geometry map
     bcInfo.setGeoMap(patches);

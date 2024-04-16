@@ -324,8 +324,6 @@ int main(int argc, char *argv[])
     gsMatrix<> pointDataMatrix;
     gsMatrix<> otherDataMatrix(1,1);
 
-    // gsDebugVar(dt);
-
     // Time integration loop
     while (participant.isCouplingOngoing())
     {
@@ -362,7 +360,6 @@ int main(int argc, char *argv[])
         solution = assembler.constructDisplacement(displacements);
         gsMatrix<> quadPointsDisplacements = solution.patch(0).eval(quadPoints);
         participant.writeData(SolidMesh,DisplacementData,quadPointIDs,quadPointsDisplacements);
-        gsDebugVar(DisplacementData);
 
         // do the coupling
         precice_dt =participant.advance(dt);
@@ -387,7 +384,7 @@ int main(int argc, char *argv[])
                 // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
                 std::string fileName = dirname + "/solution" + util::to_string(timestep);
                 gsWriteParaview<>(solField, fileName, 500);
-                fileName = dirname + "solution" + util::to_string(timestep) + "0";
+                fileName = "solution" + util::to_string(timestep) + "0";
                 collection.addTimestep(fileName,time,".vts");
             }
             solution.patch(0).eval_into(points,pointDataMatrix);

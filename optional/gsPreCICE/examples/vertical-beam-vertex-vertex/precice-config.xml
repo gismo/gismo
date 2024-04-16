@@ -27,26 +27,32 @@
     <use-data name="StressData" />
   </mesh>
 
+  <participant name="Fluid">
+    <provide-mesh name="FluidMesh" />
+    <receive-mesh name="SolidMesh" from="Solid" />
+    <write-data name="StressData" mesh="FluidMesh" />
+    <read-data name="DisplacementData" mesh="FluidMesh" />
+    <mapping:rbf direction="write" from="FluidMesh" to="SolidMesh" constraint="consistent">
+      <basis-function:compact-polynomial-c6 support-radius="1." />
+    </mapping:rbf>
+    <mapping:rbf direction="read" from="SolidMesh" to="FluidMesh" constraint="consistent">
+      <basis-function:compact-polynomial-c6 support-radius="1." />
+    </mapping:rbf>
+  </participant>
 
   <participant name="Solid">
-    <provide-mesh name="SolidMesh"/>
+    <provide-mesh name="SolidMesh" />
     <write-data name="DisplacementData" mesh="SolidMesh" />
     <read-data name="StressData" mesh="SolidMesh" />
+    <!-- <watch-point mesh="SolidMesh" name="Flap-Tip" coordinate="0.0;1;0" /> -->
   </participant>
-  
-    <participant name="Fluid">
-        <provide-mesh name="FluidMesh"/>
-        <receive-mesh name="SolidMesh" from="Solid" />
-         <read-data name="DisplacementData" mesh="FluidMesh" />
-         <write-data name="StressData" mesh="FluidMesh" />
-    </participant>
     
   <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory=".." />
   <!-- Change a mesh side for communication, in this case SolidMesh -->
   <coupling-scheme:parallel-implicit>
     <participants first="Fluid" second="Solid"/>
-    <time-window-size value="0.1" />
-    <max-time value="50" />
+    <time-window-size value="0.005" />
+    <max-time value="2" />
     <exchange data="DisplacementData" mesh="SolidMesh" from="Solid"   to="Fluid"/>
     <exchange data="StressData"       mesh="SolidMesh" from="Fluid"   to="Solid"/>
     <max-iterations value="50" />

@@ -331,16 +331,14 @@ int main(int argc, char *argv[])
         collection.addTimestep(fileName,time,".vts");
     }
 
-    gsMatrix<> points(3,1);
-    points.col(0)<<0.5,0.5,1;
+    gsMatrix<> points(2,1);
+    points.col(0)<<0.5,1;
 
     gsStructuralAnalysisOutput<real_t> writer("./output/pointData.csv",points);
     writer.init({"x","y","z"},{"time"}); // point1 - x, point1 - y, point1 - z, time
 
     gsMatrix<> pointDataMatrix;
     gsMatrix<> otherDataMatrix(1,1);
-
-    // gsDebugVar(dt);
 
     // Time integration loop
     while (participant.isCouplingOngoing())
@@ -376,7 +374,6 @@ int main(int argc, char *argv[])
         gsMultiPatch<> solution;
         gsVector<> displacements = U;
         solution = assembler.constructDisplacement(displacements);
-        // write heat fluxes to interface
         controlPoints = solution.patch(0).coefs().transpose();
         participant.writeData(ControlPointMesh,ControlPointData,controlPointIDs,controlPoints);
 
