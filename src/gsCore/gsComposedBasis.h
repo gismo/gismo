@@ -133,6 +133,7 @@ public:
         targetDim = m_composition->targetDim();
 
         m_composition->eval_into(u,coord);
+        this->_applyBounds(coord);
         m_basis->deriv_into(coord,deriv);
         const index_t numAct = deriv.rows() / DIM;
 
