@@ -1,4 +1,4 @@
-/** @file geometry_example.cpp
+/** @file controlled_function_example.cpp
 
     @brief Tutorial on gsGeometry abstract class.
 
@@ -243,5 +243,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-
-
