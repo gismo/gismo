@@ -60,15 +60,15 @@ public:
     gsMatrix<T> support() const override
     {
         gsMatrix<T> supp = m_basis->support();
-        gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
-        supp = pt.toMatrix();
-        gsMatrix<T> result = supp;
+        // gsGridIterator<T,CUBE> pt(supp,math::pow(2,this->domainDim()));
+        // supp = pt.toMatrix();
+        // gsMatrix<T> result = supp;
 
-        m_composition->invertPoints(supp,result,1e-10,true);
+        // m_composition->invertPoints(supp,result,1e-10,true);
 
-        supp.conservativeResize(this->domainDim(),2);
-        for (short_t d=0; d!=this->domainDim(); d++)
-            supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
+        // supp.conservativeResize(this->domainDim(),2);
+        // for (short_t d=0; d!=this->domainDim(); d++)
+        //     supp.row(d)<<result.row(d).array().minCoeff(),result.row(d).array().maxCoeff();
 
         return supp;
     } // This should be the inverse map
@@ -99,7 +99,6 @@ public:
 
     void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
-
         gsMatrix<T> coords = m_composition->eval(u);
         this->_applyBounds(coords);
         m_basis->eval_into(coords,result);

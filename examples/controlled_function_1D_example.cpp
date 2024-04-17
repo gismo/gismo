@@ -1,6 +1,6 @@
-/** @file gsMultiBasis.h
+/** @file geometry_example.cpp
 
-    @brief Provides declaration of MultiBasis class.
+    @brief Tutorial on gsGeometry abstract class.
 
     This file is part of the G+Smo library.
 
@@ -8,34 +8,30 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): J. Speh
 */
 
-#pragma once
+#include <iostream>
+#include <gismo.h>
+#include <gsCore/gsComposedBasis.h>
 
-#include <gsCore/gsFunction.h>
-#include <gsCore/gsDofMapper.h>
+using namespace gismo;
 
-namespace gismo
-{
-
-template <short_t DIM, class T>
-class gsSquareDomain : public gsFunction<T>
+template <class T>
+class gsSquareDomain1D : public gsFunction<T>
 {
     using Base = gsFunction<T> ;
 
 public:
-    gsSquareDomain()
+    gsSquareDomain1D()
     {
-        m_domain = *gsNurbsCreator<T>::BSplineSquare();
-       m_domain.degreeElevate();
-      m_domain.uniformRefine();
-       // m_domain.uniformRefine(15);
-       gsInfo << " m_domain.coefsSize() = " << m_domain.coefsSize() << "\n";
-//      gsDebugVar(m_domain.coefsSize());
-      // m_domain.uniformRefine();
-        // m_domain.uniformRefine();
-        // Mapper storing control points
+        index_t nInterior = 2;
+        index_t degree = 2;
+        gsKnotVector<T> kv(0,1,nInterior,degree+1);
+
+        m_basis = gsBSplineBasis<T>(kv);
+        m_domain = gsBSpline<T>(m_basis,m_basis.anchors().transpose());
+
         m_mapper = gsDofMapper(m_domain.basis(),m_domain.targetDim());
 
         gsMatrix<index_t> boundary = m_domain.basis().allBoundary();
@@ -62,10 +58,9 @@ public:
         // gsDebugVar(m_domain.coefs()(i,j).diagonal()(0));
         // m_domain.coefs()(i,j).diagonal()(0) = 0.5;
         // gsDebugVar(m_domain.coefs()(i,j).diagonal()(0));
-
     }
 
-    const gsTensorBSpline<DIM,T> & domain() const
+    const gsBSpline<T> & domain() const
     {
         return m_domain;
     }
@@ -113,13 +108,13 @@ public:
     /// Returns the control derivative
     virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const override
     {
-        gsMatrix<T> tmp;
+        gsMatrix<> tmp;
 
-        result.resize(targetDim()*nControls(), points.cols());
+        result.resize(targetDim()*nControls(),points.cols());
         result.setZero();
         for (index_t p = 0; p!=points.cols(); p++)
         {
-            gsAsMatrix<T> res = result.reshapeCol(p,nControls(),targetDim());
+            gsAsMatrix<> res = result.reshapeCol(p,nControls(),targetDim());
             for (index_t k = 0; k!=m_domain.coefs().rows(); k++)
                 for (index_t d = 0; d!=m_domain.targetDim(); d++)
                     if (m_mapper.is_free(k,0,d))
@@ -131,10 +126,48 @@ public:
     }
 
 protected:
-    gsTensorBSpline<DIM,T> m_domain;
+    gsBSplineBasis<T> m_basis;
+    gsBSpline<T> m_domain;
     gsDofMapper m_mapper;
     gsVector<T> m_parameters;
 };
 
-} // namespace gismo
+
+int main(int argc, char* argv[])
+{
+
+    // std::string input("surfaces/simple.xml");
+    std::string output("");
+
+    gsCmdLine cmd("Tutorial on gsGeometry class.");
+    // cmd.addPlainString("filename", "G+Smo input geometry file.", input);
+    cmd.addString("o", "output", "Name of the output file", output);
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+    // ======================================================================
+    // reading the geometry
+    // ======================================================================
+
+    // Define a square domain: this is the intermediate map
+    gsSquareDomain1D<real_t> domain;
+
+    gsKnotVector<> kv(0,1,10,4);
+    gsBSplineBasis<> basis(kv);
+
+    // Define a composite basis and composite geometry
+    // The basis is composed by the square domain
+    gsComposedBasis<real_t> cbasis(domain,basis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
+    // The geometry is defined using the composite basis and some coefficients
+
+    gsMatrix<> pars = domain.controls();
+    pars *= 0.75;
+    domain.controls() = pars.col(0);
+    domain.updateGeom();
+
+    gsWriteParaview(cbasis,"cbasis");
+
+
+    return 0;
+}
+
 

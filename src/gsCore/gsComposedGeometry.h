@@ -52,7 +52,7 @@ public:
     :
     Base(basis, give(coefs) ),
     m_composition(basis.composition()),
-    m_geom(basis.basis()->makeGeometry(coefs).release()),
+    m_geom(give(basis.basis()->makeGeometry(coefs))),
     m_domainDim(basis.domainDim())
     { }
 
@@ -66,11 +66,56 @@ public:
     :
     Base(gsComposedBasis<T>(composition,geom.basis()), give(geom.coefs()) ),
     m_composition(&composition),
-    m_geom(geom.clone().release()),
+    m_geom(geom.clone()),
     m_domainDim(geom.domainDim())
     {
         GISMO_ASSERT(geom.domainDim()==composition.targetDim(),"Domain dimension of the geometry does not correspond with the target dimension of the composition!");
     }
+
+    /// Copy constructor (makes deep copy)
+    gsComposedGeometry(const gsComposedGeometry& other)
+    :
+    Base(other),
+    m_composition(other.m_composition),
+    m_geom(other.m_geom->clone()),
+    m_domainDim(other.m_domainDim)
+    { }
+
+    /// Move constructor
+    gsComposedGeometry( gsComposedGeometry&& other )
+    :
+    Base(give(other)),
+    m_composition(other.m_composition),
+    m_geom(give(other.m_geom)),
+    m_domainDim(other.m_domainDim)
+    { }
+
+    /// Assignment operator
+    gsComposedGeometry& operator= ( const gsComposedGeometry& other )
+    {
+        if (this != &other)
+        {
+            m_composition = other.m_composition;
+            m_geom = other.m_geom->clone();
+            m_domainDim = other.m_domainDim;
+            Base::operator=(other);
+        }
+        return *this;
+    }
+
+    /// Move assignment operator
+    gsComposedGeometry& operator= ( gsComposedGeometry&& other )
+    {
+        if (this != &other)
+        {
+            m_composition = other.m_composition;
+            m_geom = give(other.m_geom);
+            m_domainDim = other.m_domainDim;
+            Base::operator=(other);
+        }
+        return *this;
+    }
+
 
     ~gsComposedGeometry()
     {
@@ -122,7 +167,7 @@ protected:
     using Base::m_basis;
 
     // Map from composition to geometry
-    gsGeometry<T> * m_geom;
+    typename gsGeometry<T>::uPtr m_geom;
 
     short_t m_domainDim;
 };

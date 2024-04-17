@@ -34,23 +34,17 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    gsMultiPatch<> s0, mp0;
-    s0.addPatch(gsNurbsCreator<>::BSplineSquare());
-    s0.patch(0).coefs().array() -= 0.5;
-
-    gsInfo << s0.patch(0).basis() << "\n";
-    gsInfo << s0.patch(0).coefs() << "\n";
+    gsTensorBSpline<2,real_t> tbspline = *gsNurbsCreator<>::BSplineSquare();
 
     // degree elevation
     if (numElevate!=0)
-        s0.degreeElevate(numElevate);
+        tbspline.degreeElevate(numElevate);
     // local h-refine
     for (int r =0; r < numRefine; ++r)
-        s0.uniformRefine();
+        tbspline.uniformRefine();
 
-
-    gsTHBSpline<2, real_t>  thb( s0.patch(0).basis(), s0.patch(0).coefs()) ;
-    gsInfo << thb << "\n";
+    gsTHBSpline<2, real_t>  thbgeom(tbspline);
+    gsInfo << thbgeom << "\n";
 
     // local h-refine
     std::vector<index_t> boxes;
@@ -58,15 +52,12 @@ int main(int argc, char *argv[])
     boxes[0] = 1;
     boxes[1] = boxes[2] = 0;
     boxes[3] = boxes[4] = 4;
-    thb.refineElements(boxes);
-    gsWriteParaview( thb , "thb_refined", 1000, true);
-    gsInfo << thb << "\n";
+    thbgeom.refineElements(boxes);
 
+    gsWriteParaview( thbgeom , "thbgeom_refined", 1000, true);
+    gsInfo << thbgeom << "\n";
 
-    mp0.addPatch(thb);
-    // Make composed geometry and basis
-    const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
-    const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
+    gsTHBSplineBasis<2,real_t> thbbasis = thbgeom.basis();
 
     // The domain sigma
     gsSquareDomain<2,real_t> domain;
@@ -79,14 +70,14 @@ int main(int argc, char *argv[])
 
     // Define a composite basis and composite geometry
     // The basis is composed by the square domain
-    gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
+    gsComposedBasis<real_t> cbasis(domain,thbbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
-    gsComposedGeometry<real_t> cgeom(cbasis,tgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+    gsComposedGeometry<real_t> cgeom(cbasis,thbgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
 
     gsMultiPatch<> mp;
     mp.addPatch(cgeom);
 
-    gsMultiBasis<> dbasis(mp,true);
+    gsMultiBasis<> dbasis(mp,false);
 
     //! [Refinement]
 
@@ -141,6 +132,20 @@ int main(int argc, char *argv[])
     A.initSystem();
 
     gsInfo<< A.numDofs() <<std::flush;
+
+    gsMatrix<> points(2,2);
+    points.col(0).setConstant(0.25);
+    points.col(1).setConstant(0.50);
+
+    // gsDebugVar(ev.eval(u_ex,points));
+
+    // gsDebugVar(cbasis.eval(points));
+    // gsDebugVar(ev.eval(u,points.col(0)));
+    // gsDebugVar(ev.eval(u,points));
+
+    // gsDebugVar(cgeom.eval(points));
+    // gsDebugVar(ev.eval(G,points.col(0)));
+    // gsDebugVar(ev.eval(G,points));
 
     // Compute the system matrix and right-hand side
     A.assemble(
