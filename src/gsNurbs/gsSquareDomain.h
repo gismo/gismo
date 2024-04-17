@@ -28,13 +28,14 @@ public:
     gsSquareDomain()
     {
         m_domain = *gsNurbsCreator<T>::BSplineSquare();
-        m_domain.degreeElevate();
-        // m_domain.uniformRefine();
-        // m_domain.uniformRefine();
+//        m_domain.degreeElevate();
+       m_domain.uniformRefine(15);
+       gsInfo << " m_domain.coefsSize() = " << m_domain.coefsSize() << "\n";
+//      gsDebugVar(m_domain.coefsSize());
+//       m_domain.uniformRefine();
         // m_domain.uniformRefine();
         // Mapper storing control points
         m_mapper = gsDofMapper(m_domain.basis(),m_domain.targetDim());
-
 
         gsMatrix<index_t> boundary = m_domain.basis().allBoundary();
         for (index_t a = 0; a!=boundary.rows(); a++)
@@ -113,7 +114,7 @@ public:
     {
         gsMatrix<T> tmp;
 
-        result.resize(targetDim()*nControls(),points.cols());
+        result.resize(targetDim()*nControls(), points.cols());
         result.setZero();
         for (index_t p = 0; p!=points.cols(); p++)
         {

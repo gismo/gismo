@@ -67,6 +67,8 @@ public:
         mp0.addPatch(gsNurbsCreator<T>::BSplineSquare());
         mp0.patch(0).coefs().array() -= 0.5;
 
+//        mp0.embed(3);
+
         if (m_numElevate!=0)
             mp0.degreeElevate(m_numElevate);
 
@@ -146,11 +148,16 @@ public:
         A.initSystem();
 
         // Compute the system matrix and right-hand side
-        A.assemble(
-            igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
-            ,
-            u * ff * meas(G) //rhs vector
-            );
+//        A.assemble(
+//            igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
+//            ,
+//            u * ff * meas(G) //rhs vector
+//            );
+      A.assemble(
+          (grad(u)*(jac(G).ginv().tr())) * (grad(u)*(jac(G).ginv().tr())).tr() * meas(G) //matrix
+          ,
+          u * ff * meas(G) //rhs vector
+      );
 
         solver.compute( A.matrix() );
         m_solution = solver.solve(A.rhs());
@@ -158,8 +165,36 @@ public:
         return math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
     }
 
-    // void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
-    // {}
+     void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const override
+     {
+       const index_t n = u.rows();
+       //GISMO_ASSERT((index_t)m_numDesignVars == n*m, "Wrong design.");
+
+       gsMatrix<T> uu = u;//copy
+       gsAsVector<T> tmp(uu.data(), n);
+       gsAsConstVector<T> ctmp(uu.data(), n);
+       index_t c = 0;
+
+       const T e0 = this->evalObj(ctmp);
+       // for all partial derivatives (column-wise)
+       for ( index_t i = 0; i!=n; i++ )
+       {
+         // to do: add m_desLowerBounds m_desUpperBounds check
+         tmp[i]  += T(0.00001);
+         const T e1 = this->evalObj(ctmp);
+         tmp[i]   = u[i];
+         result[c++]= ( e1 - e0 ) / T(0.00001);
+//         tmp[i]   = u[i] + T(0.00002);
+//         tmp[i]   = u[i] + T(0.00002);
+//         const T e3 = this->evalObj(ctmp);
+//         tmp[i]   = u[i] - T(0.00001);
+//         const T e2 = this->evalObj(ctmp);
+//         tmp[i]   = u[i] - T(0.00002);
+//         const T e4 = this->evalObj(ctmp);
+//         tmp[i]   = u[i];
+//         result[c++]= ( 8 * (e1 - e2) + e4 - e3 ) / T(0.00012);
+       }
+     }
 
     void evalCon_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     {
@@ -233,6 +268,8 @@ int main(int argc, char *argv[])
     mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
     mp0.patch(0).coefs().array() -= 0.5;
 
+//  mp0.embed(3);
+
     if (numElevate!=0)
         mp0.degreeElevate(numElevate);
 
@@ -305,8 +342,8 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
 
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setInt("plotElements.resolution", 100);
+//        collection.options().setSwitch("plotElements", true);
+//        collection.options().setInt("plotElements.resolution", 100);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
         collection.addField(u_ex, "exact solution");

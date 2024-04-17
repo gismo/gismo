@@ -54,8 +54,8 @@ int main(int argc, char *argv[])
     gsSquareDomain<2,real_t> domain;
 
     gsMatrix<> pars = domain.controls();
-    gsDebugVar(pars);
-    pars *= 0.9;
+//    gsDebugVar(pars);
+    pars *= 0.95;
     domain.controls() = pars.col(0);
     domain.updateGeom();
 
@@ -63,27 +63,26 @@ int main(int argc, char *argv[])
     // The basis is composed by the square domain
     gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
-    gsComposedGeometry<real_t> cgeom(cbasis,tgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+    gsComposedGeometry<real_t> cgeom(cbasis, tgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
 
     gsMultiPatch<> mp;
     mp.addPatch(cgeom);
 
-    gsMultiBasis<> dbasis(mp,true);
+    gsMultiBasis<> dbasis(mp, true);
 
     //! [Refinement]
 
-    // // Source function:
-    // gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",2);
+     // Source function:
+     gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",2);
 
-    // // Exact solution
-    // gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
+     // Exact solution
+     gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
 
     // Source function:
-    gsFunctionExpr<> f("2*pi^2*cos(pi*x)*cos(pi*y)",2);
+//    gsFunctionExpr<> f("2*pi^2*cos(pi*x)*cos(pi*y)",2);
 
     // Exact solution
-    gsFunctionExpr<> ms("cos(pi*x)*cos(pi*y)",2);
-
+//    gsFunctionExpr<> ms("cos(pi*x)*cos(pi*y)",2);
 
     gsBoundaryConditions<> bc;
     bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
@@ -129,21 +128,28 @@ int main(int argc, char *argv[])
     // Initialize the system
     A.initSystem();
 
-    gsInfo<< A.numDofs() <<std::flush;
+    gsInfo<< "A.numDofs() = " << A.numDofs() <<std::flush;
 
     // Compute the system matrix and right-hand side
-    A.assemble(
-        igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
-        ,
-        u * ff * meas(G) //rhs vector
-        );
+//    A.assemble(
+//        igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
+//        ,
+//        u * ff * meas(G) //rhs vector
+//        );
+
+//  grad(u)*jac(G).ginv()
+  A.assemble(
+      (grad(u)*(jac(G).ginv().tr())) * (grad(u)*(jac(G).ginv().tr())).tr() * meas(G) //matrix
+      ,
+      u * ff * meas(G) //rhs vector
+  );
 
     solver.compute( A.matrix() );
     solVector = solver.solve(A.rhs());
 
     // Compute the error
     real_t L2err = math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-    gsInfo<<"L2 error = "<<L2err<<"\n";
+    gsInfo<<"\nL2 error = "<<L2err<<"\n";
 
     //! [Export visualization in ParaView]
     if (plot)
@@ -153,13 +159,13 @@ int main(int argc, char *argv[])
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
         collection.options().setSwitch("plotElements", true);
         collection.options().setInt("plotElements.resolution", 100);
+//        collection.options().setInt("plotElements.resolution", 16);
         collection.newTimeStep(&mp);
         collection.addField(u_sol,"numerical solution");
         collection.addField(u_ex, "exact solution");
         collection.addField((u_ex-u_sol).sqNorm(), "error");
         collection.saveTimeStep();
         collection.save();
-
 
         // gsFileManager::open("ParaviewOutput/solution.pvd");
     }
@@ -171,45 +177,51 @@ int main(int argc, char *argv[])
 
 
 
-    gsDebug<<"GEOMETRY==================================================================\n";
+//    gsDebug<<"GEOMETRY==================================================================\n";
+//
+//    gsMatrix<> point(2,1);
+//    point.col(0) << 0.5, 0.25;
+//    gsDebugVar(ev.eval(jac(G), point));
+//
+////    gsDebugVar( ev.integral(jac(G).det()) );
+////    gsDebugVar( ev.integral( meas(G) ) );
+//
+//    gsVector<> pp = point.col(0);
+//    gsMatrix<> ev1, ev2;
+//    gsMatrix<> der;
+//
+//    real_t delta = 1e-6;
+//    gsVector<> pt1 = pp, pt2 = pp;
+//    pt1.at(1) += delta;
+//    pt2.at(1) -= delta;
+//    cgeom.eval_into(pt1,ev1);
+//    cgeom.eval_into(pt2,ev2);
+//    gsVector<> der_eta = (ev1-ev2)/(2*delta);
+//    gsDebugVar(der_eta);
+//
+//    pt1 = pp, pt2 = pp;
+//    pt1.at(0) += delta;
+//    pt2.at(0) -= delta;
+//    cgeom.eval_into(pt1, ev1);
+//    cgeom.eval_into(pt2, ev2);
+//    gsVector<> der_xi = (ev1-ev2)/(2*delta);
+//    gsDebugVar(der_xi);
+//
+//    cgeom.deriv_into(pp,der);
+////  gsDebugVar(der);
+//    gsDebugVar(der.reshape(2,2));
 
-    gsMatrix<> point(2,1);
-    point.col(0)<<0.5,0.25;
-    gsDebugVar(ev.eval(jac(G),point));
-
-
-
-    gsVector<> pp = point.col(0);
-    gsMatrix<> ev1, ev2;
-    gsMatrix<> der;
-
-    real_t delta = 0.0001;
-    gsVector<> pt1 = pp, pt2 = pp;
-    pt1.at(1) += delta;
-    pt2.at(1) -= delta;
-    cgeom.eval_into(pt1,ev1);
-    cgeom.eval_into(pt2,ev2);
-
-
-    gsVector<> der2 = (ev1-ev2)/(2*delta);
-    gsDebugVar(der2);
-
-    cgeom.deriv_into(pp,der);
-    gsDebugVar(der.reshape(2,2));
-
-    gsDebug<<"BASIS==================================================================\n";
-    gsMatrix<index_t> act;
-    cbasis.active_into(pp,act);
-    cbasis.evalSingle_into(act(0,0),pt1,ev1);
-    cbasis.evalSingle_into(act(0,0),pt2,ev2);
-
-
-    der2 = (ev1-ev2)/(2*delta);
-    gsDebugVar(der2);
-
-    cbasis.derivSingle_into(act(0,0),pp,der);
-    gsDebugVar(der);
-
+//    gsDebug<<"BASIS==================================================================\n";
+//    gsMatrix<index_t> act;
+//    cbasis.active_into(pp,act);
+//    cbasis.evalSingle_into(act(0,0),pt1,ev1);
+//    cbasis.evalSingle_into(act(0,0),pt2,ev2);
+//
+//    gsVector<> der2 = (ev1-ev2)/(2*delta);
+//    gsDebugVar(der2);
+//
+//    cbasis.derivSingle_into(act(0,0),pp,der);
+//    gsDebugVar(der);
 
     return EXIT_SUCCESS;
 
