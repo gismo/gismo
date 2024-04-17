@@ -29,7 +29,7 @@ public:
     {
         m_domain = *gsNurbsCreator<T>::BSplineSquare();
         m_domain.degreeElevate();
-        m_domain.uniformRefine();
+        // m_domain.uniformRefine();
         // m_domain.uniformRefine();
         // m_domain.uniformRefine();
         // Mapper storing control points

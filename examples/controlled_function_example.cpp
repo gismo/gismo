@@ -241,5 +241,58 @@ int main(int argc, char* argv[])
     cbasis.mapMesh(mesh);
     gsWriteParaview(mesh,"mesh_after",true);
 
+    gsMatrix<> point(2,2);
+    point.col(0).setConstant(0.25);
+    point.col(1).setConstant(0.50);
+    gsMatrix<> der;
+    gsMatrix<index_t> act;
+    cbasis.active_into(point,act);
+    gsDebugVar(act);
+
+    cbasis.deriv_into(point,der);
+    gsDebugVar(der);
+
+    for (index_t p=0; p!=act.cols(); p++)
+        for (index_t k=0; k!=act.rows(); k++)
+        {
+            cbasis.derivSingle_into(act(k,p),point,der);
+            gsDebugVar(act(k,p));
+            gsDebugVar(der);
+        }
+
+    testBasis<real_t> tb(cbasis,point.col(0));
+    gsMatrix<> ev;
+    tb.eval_into(point.col(0),ev);
+    gsDebugVar(ev);
+    cbasis.eval_into(point.col(0),ev);
+    gsDebugVar(ev);
+
+    tb.deriv_into(point.col(0),der);
+    gsDebugVar(der);
+    tb.deriv_into2(point.col(0),der);
+    gsDebugVar(der);
+
+
+
+
+    gsVector<> pp = point.col(0);
+    gsMatrix<> ev1, ev2;
+
+    real_t delta = 0.0001;
+    gsVector<> pt1 = pp, pt2 = pp;
+    pt1.at(1) += delta;
+    pt2.at(1) -= delta;
+    cbasis.evalSingle_into(7,pt1,ev1);
+    cbasis.evalSingle_into(7,pt2,ev2);
+
+
+    gsVector<> der2 = (ev1-ev2)/(2*delta);
+    gsDebugVar(der2);
+
+    cbasis.derivSingle_into(7,pp,der);
+    gsDebugVar(der);
+
     return 0;
 }
+
+

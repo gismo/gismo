@@ -48,11 +48,11 @@ public:
         m_desLowerBounds.resize(m_numDesignVars);
         m_desUpperBounds.resize(m_numDesignVars);
 
-        // m_desLowerBounds.array() = std::numeric_limits<T>::min();
-        // m_desUpperBounds.array() = std::numeric_limits<T>::max();
+        m_desLowerBounds.array() = std::numeric_limits<T>::min();
+        m_desUpperBounds.array() = std::numeric_limits<T>::max();
 
-        m_desLowerBounds.array() = m_curDesign.col(0).array()-0.1;
-        m_desUpperBounds.array() = m_curDesign.col(0).array()+0.1;
+        // m_desLowerBounds.array() = m_curDesign.col(0).array()-0.1;
+        // m_desUpperBounds.array() = m_curDesign.col(0).array()+0.1;
 
         m_conJacRows.resize(m_numConJacNonZero);
         m_conJacCols.resize(m_numConJacNonZero);
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
     solver.options().setReal("MinGradientLength", 1e-9); // 1e-6 : more or less as refinement tolerance; there should be a balance between the two;
     solver.options().setInt("LBFGSUpdates", 20);
     solver.options().setReal("MinStepLength", 1e-12);
-    solver.options().setInt("MaxIterations",10);
+    solver.options().setInt("MaxIterations",100);
 
     solver.solve(currentDesign);
 

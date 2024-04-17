@@ -72,11 +72,18 @@ int main(int argc, char *argv[])
 
     //! [Refinement]
 
+    // // Source function:
+    // gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",2);
+
+    // // Exact solution
+    // gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
+
     // Source function:
-    gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",2);
+    gsFunctionExpr<> f("2*pi^2*cos(pi*x)*cos(pi*y)",2);
 
     // Exact solution
-    gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
+    gsFunctionExpr<> ms("cos(pi*x)*cos(pi*y)",2);
+
 
     gsBoundaryConditions<> bc;
     bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
@@ -160,6 +167,49 @@ int main(int argc, char *argv[])
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
     //! [Export visualization in ParaView]
+
+
+
+
+    gsDebug<<"GEOMETRY==================================================================\n";
+
+    gsMatrix<> point(2,1);
+    point.col(0)<<0.5,0.25;
+    gsDebugVar(ev.eval(jac(G),point));
+
+
+
+    gsVector<> pp = point.col(0);
+    gsMatrix<> ev1, ev2;
+    gsMatrix<> der;
+
+    real_t delta = 0.0001;
+    gsVector<> pt1 = pp, pt2 = pp;
+    pt1.at(1) += delta;
+    pt2.at(1) -= delta;
+    cgeom.eval_into(pt1,ev1);
+    cgeom.eval_into(pt2,ev2);
+
+
+    gsVector<> der2 = (ev1-ev2)/(2*delta);
+    gsDebugVar(der2);
+
+    cgeom.deriv_into(pp,der);
+    gsDebugVar(der.reshape(2,2));
+
+    gsDebug<<"BASIS==================================================================\n";
+    gsMatrix<index_t> act;
+    cbasis.active_into(pp,act);
+    cbasis.evalSingle_into(act(0,0),pt1,ev1);
+    cbasis.evalSingle_into(act(0,0),pt2,ev2);
+
+
+    der2 = (ev1-ev2)/(2*delta);
+    gsDebugVar(der2);
+
+    cbasis.derivSingle_into(act(0,0),pp,der);
+    gsDebugVar(der);
+
 
     return EXIT_SUCCESS;
 

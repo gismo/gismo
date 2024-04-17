@@ -159,6 +159,7 @@ public:
         targetDim = m_composition->targetDim();
 
         m_composition->eval_into(u,coord);
+        this->_applyBounds(coord);
         m_basis->derivSingle_into(i,coord,deriv);
 
         tmp.resize(m_basis->targetDim()*domainDim,u.cols());
