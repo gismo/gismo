@@ -37,11 +37,15 @@ int main(int argc, char *argv[])
 
     //! [Parse command line]
     bool plot = false;
+    bool write = false;
     index_t plotmod = 1;
+    index_t loadCase = 1;
     std::string precice_config("../precice_config.xml");
 
     gsCmdLine cmd("Coupled heat equation using PreCICE.");
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
+    cmd.addInt("l","loadCase", "Load case: 0=constant load, 1='spring' load", loadCase);
+    cmd.addSwitch("write", "Create a file with point data", write);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     GISMO_ASSERT(gsFileManager::fileExists(precice_config),"No precice config file has been defined");
@@ -107,6 +111,8 @@ int main(int argc, char *argv[])
     gsMatrix<> forceKnots = knotsToMatrix(forceBasis);
 
 
+
+
     // gsMultiBasis<> bases(forceMesh);
     // gsMatrix<> forceKnots = knotsToMatrix(bases.basis(0));
     // gsDebugVar(forceKnots.dim());
@@ -156,6 +162,12 @@ int main(int argc, char *argv[])
     // Define the solution collection for Paraview
     gsParaviewCollection collection("./output/solution");
 
+    gsMatrix<> points(2,1);
+    points.col(0)<<0.5,1;
+
+    gsStructuralAnalysisOutput<real_t> writer("./output/pointData.csv",points);
+    writer.init({"x","y","z"},{"time"});
+
     // Time integration loop
     while(participant.isCouplingOngoing())
     {
@@ -164,8 +176,6 @@ int main(int argc, char *argv[])
         participant.readData(GeometryControlPointMesh, GeometryControlPointData, geometryControlPointIDs, geometryControlPoints);
         deformation.patch(0).coefs() = geometryControlPoints.transpose();
 
-        gsDebugVar(forceControlPoints);
-
         /*
          * Two projection approaches:
          * - gsQuasiInterpolate<real_t>::localIntpl(forceBasis, deformation.patch(0), coefs);
@@ -173,11 +183,33 @@ int main(int argc, char *argv[])
          *
          * Check if forceBasis + coefs gives the same as deformation.patch(0)
          */
+        if (loadCase == 0)
+        {
+            gsInfo << "Load case 0: Constant load\n";
+        }    
+        else if (loadCase == 1)
+        {
+            gsInfo << "Load case 1: Spring load\n";
+            if(timestep > 0)
+            {
+                gsMatrix<> coefs;
+                gsL2Projection<real_t>::projectFunction(forceBasis, deformation, mp, coefs);
+                coefs.resize(forceControlPoints.rows(),forceControlPoints.cols());
+                forceControlPoints.row(2) = -coefs.row(2);
+            }    
+        }
+        else
+        {
+            GISMO_ERROR("Load case "<<loadCase<<" unknown.");
+        }
+
 
         participant.writeData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
 
         // bool requiresWritingCheckpoint and requiresReadingCheckpoint are **REQUIRED** in PreCICE. 
         // And the requiresWritingCheckpoint() should be called before advance()
+        gsMatrix<> pointDataMatrix;
+        gsMatrix<> otherDataMatrix(1,1);
         if (participant.requiresWritingCheckpoint())
         {
             gsInfo<<"Reading Checkpoint\n";
@@ -206,6 +238,12 @@ int main(int argc, char *argv[])
                 fileName = "solution" + util::to_string(timestep) + "0";
                 collection.addTimestep(fileName,t,".vts");
             }
+            if (write)
+            {
+                solution.patch(0).eval_into(points,pointDataMatrix);
+                otherDataMatrix<<t;
+                writer.add(pointDataMatrix,otherDataMatrix);
+            }    
 
             // solution.patch(0).eval_into(points,pointDataMatrix);
             // otherDataMatrix<<time;

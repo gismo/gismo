@@ -20,11 +20,16 @@
 #include <gsElasticity/gsMassAssembler.h>
 #include <gsElasticity/gsElasticityAssembler.h>
 
+
 #ifdef gsStructuralAnalysis_ENABLED
-#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicExplicitEuler.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicImplicitEuler.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicNewmark.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicBathe.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicWilson.h>
+#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicRK4.h>
 #include <gsStructuralAnalysis/src/gsStructuralAnalysisTools/gsStructuralAnalysisUtils.h>
 #endif
-
 using namespace gismo;
 
 int main(int argc, char *argv[])
@@ -32,11 +37,14 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     index_t plotmod = 1;
+    index_t loadCase = 1;
+
     std::string precice_config;
 
     gsCmdLine cmd("Flow over heated plate for PreCICE.");
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addInt("l","loadCase", "Load case: 0=constant load, 1='spring' load", loadCase);
     cmd.addInt("m","plotmod", "Modulo for plotting, i.e. if plotmod==1, plots every timestep", plotmod);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
   
@@ -126,9 +134,25 @@ int main(int argc, char *argv[])
         participant.readData(ControlPointMesh,ControlPointData,controlPointIDs,controlPoints);
         deformation.patch(0).coefs() = controlPoints.transpose();
 
-        // Write data at the quadrature points
-        quadPointData.setZero();
-        quadPointData.row(2).setConstant(-1e4);
+        if (loadCase==0)
+        {
+            // Write data at the quadrature points
+            quadPointData.setZero();
+            quadPointData.row(2).setConstant(-5e3);
+        }
+        else if (loadCase==1)
+        {
+            quadPointData.setZero();
+            for (index_t k = 0; k!=controlPoints.cols(); k++)
+            {
+                quadPointData(2,k) = -controlPoints(2,k);
+            }
+            // impact loading at t==0
+            if (t==0)
+                quadPointData.row(2).array() += -5e3;
+        }
+        else
+            GISMO_ERROR("Load case "<<loadCase<<" unknown.");
         participant.writeData(ForceMesh,ForceData,quadPointIDs,quadPointData);
 
         // do the coupling

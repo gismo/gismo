@@ -306,6 +306,7 @@ int main(int argc, char *argv[])
 
     // Assemble the RHS
     gsVector<> F = assembler.rhs();
+
     gsVector<> F_checkpoint, U_checkpoint, V_checkpoint, A_checkpoint, U, V, A;
 
     F_checkpoint = F;
@@ -360,6 +361,7 @@ int main(int argc, char *argv[])
 
         assembler.assemble();
         F = assembler.rhs();
+        gsDebugVar(F);
 
         // solve gismo timestep
         gsInfo << "Solving timestep " << time << "...\n";

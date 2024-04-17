@@ -166,11 +166,8 @@ int main(int argc, char *argv[])
 
     // Setup the geometry knot mesh
     gsMatrix<> geometryKnots = knotsToMatrix(bases.basis(0)); 
-    gsDebugVar(bases.basis(0));
-    gsDebugVar(bases.basis(0).size());
-    gsDebugVar(geometryControlPoints.transpose().rows());
 
-    gsDebugVar(geometryKnots);
+
     participant.addMesh(GeometryKnotMesh,geometryKnots);
 
     real_t precice_dt = participant.initialize();
@@ -179,7 +176,6 @@ int main(int argc, char *argv[])
     gsVector<index_t> forceKnotIDs;
     gsMatrix<> forceKnots;
     participant.getMeshVertexIDsAndCoordinates(ForceKnotMesh,forceKnotIDs,forceKnots);
-    gsDebugVar(forceKnots);
 
     gsBasis<> * basis = knotMatrixToBasis<real_t>(forceKnots).get();
 
@@ -187,12 +183,10 @@ int main(int argc, char *argv[])
     gsMatrix<> forceControlPoints;
     participant.getMeshVertexIDsAndCoordinates(ForceControlPointMesh, forceControlPointIDs,forceControlPoints);
 
-    gsDebugVar(forceControlPoints.dim());
 
     // // Step 2: Regenerate the geometry
     gsMultiPatch<> forceMesh; //Geometry object belongs to gsFunctionSet
     forceMesh.addPatch(give(basis->makeGeometry(forceControlPoints.transpose())));
-    gsDebugVar(forceMesh);
 
 
     // Define boundary condition for solid mesh
@@ -340,7 +334,6 @@ gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
         gsMultiPatch<> solution;
         gsVector<> displacements = U;
         solution = assembler.constructDisplacement(displacements);
-        gsDebugVar(displacements);
         solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
         gsField<> solField(patches,solution);
         std::string fileName = dirname + "/solution" + util::to_string(timestep);
@@ -404,7 +397,6 @@ gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
 
 
         // do the coupling
-        gsDebugVar(dt);
         precice_dt =participant.advance(dt);
 
         if (participant.requiresReadingCheckpoint())

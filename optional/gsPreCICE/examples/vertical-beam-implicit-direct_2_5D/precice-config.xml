@@ -49,7 +49,7 @@
   <coupling-scheme:parallel-implicit>
     <participants first="Fluid" second="Solid"/>
     <time-window-size value="0.1" />
-    <max-time value="50" />
+    <max-time value="2" />
     <exchange data="ControlPointData" mesh="ControlPointMesh" from="Solid"   to="Fluid"/>
     <exchange data="ForceData"        mesh="ForceMesh"        from="Fluid"   to="Solid"  />
     <max-iterations value="50" />
