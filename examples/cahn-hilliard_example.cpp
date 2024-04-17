@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     real_t alpha_f = 1 / (1+rho_inf);
     real_t delta   = 0.5 + alpha_m - alpha_f;
     // time stepping options
-    index_t maxIt = 20;
+    index_t maxIt = 200;
 
     gsMatrix<> Q;
     gsSparseMatrix<> K, K_m, K_f;
@@ -140,8 +140,8 @@ int main(int argc, char *argv[])
 
     // Initialize the system
     gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-    Cold = tmp.array()*0.1/2;
-    Cold.array() += 0.5;
+    Cold = tmp.array()*0.1/2; //random uniform variable in [-0.05,0.05]
+    Cold.array() += 0.45;
     dCold.setZero(A.numDofs(),1);
 
     real_t Q0norm = 1, Qnorm = 10;
@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 16);
 
-    real_t t_rho = 0.85;
+    real_t t_rho = 0.9;
     real_t t_err = 1;
     index_t lmax = 10;
     real_t TOL = 1e-3;
