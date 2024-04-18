@@ -287,19 +287,24 @@ int main(int argc, char *argv[])
     domain.controls() = solver.currentDesign();
     domain.updateGeom();
 
-    gsDebugVar(solver.currentDesign());
+    gsDebugVar(solver.currentDesign().minCoeff());
+    gsDebugVar(solver.currentDesign().maxCoeff());
 
 
     // Define a composite basis and composite geometry
     // The basis is composed by the square domain
     gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
-    gsComposedGeometry<real_t> cgeom(cbasis,tgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+    // gsComposedGeometry<real_t> cgeom(domain,tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+
+    // const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
+    const gsGeometry<> & cgeom = tgeom; //G(u,v) -> deriv will give dG/du, dG/dv
+
 
     gsMultiPatch<> mp;
     mp.addPatch(cgeom);
 
-    gsMultiBasis<> dbasis(mp,true);
+    gsMultiBasis<> dbasis(cbasis);
 
     gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
 

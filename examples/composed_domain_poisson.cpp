@@ -65,12 +65,19 @@ int main(int argc, char *argv[])
     // The basis is composed by the square domain
     gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
-    gsComposedGeometry<real_t> cgeom(cbasis, tgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+    // gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+
+
+    // const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
+    const gsGeometry<> & cgeom = tgeom;
+
 
     gsMultiPatch<> mp;
     mp.addPatch(cgeom);
 
-    gsMultiBasis<> dbasis(mp, true);
+    gsMultiBasis<> dbasis(cbasis);
+
+    // gsMultiBasis<> dbasis(mp, true);
 
     //! [Refinement]
 
