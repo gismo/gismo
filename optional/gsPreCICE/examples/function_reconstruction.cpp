@@ -91,70 +91,72 @@ int main(int argc, char *argv[])
 
     ///////////////////////////////////////////////////////////
 
-    gsOptionList opt;
-    opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
-    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
-    opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
-    opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
+    // gsOptionList opt;
+    // opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
+    // opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
+    // opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
+    // opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
 
 
-    gsSparseMatrix<> result( mp.basis(0).numElements(), mp.basis(0).size() );
-    gsBasis<>::domainIter domIt = tbasis.makeDomainIterator();
+    // gsSparseMatrix<> result( mp.basis(0).numElements(), mp.basis(0).size() );
+    // gsBasis<>::domainIter domIt = tbasis.makeDomainIterator();
 
-    typename gsQuadRule<>::uPtr QuRule; // Quadrature rule
-    QuRule = gsQuadrature::getPtr(mp.basis(0), opt);
-    gsVector<> quWeights; // quadrature weights
-    gsMatrix<> quPoints; // quadrature weights
+    // typename gsQuadRule<>::uPtr QuRule; // Quadrature rule
+    // QuRule = gsQuadrature::getPtr(mp.basis(0), opt);
+    // gsVector<> quWeights; // quadrature weights
+    // gsMatrix<> quPoints; // quadrature weights
 
-    gsMatrix<index_t> actives;
-    gsMatrix<> vals;
-    gsVector<> integrals;
+    // gsMatrix<index_t> actives;
+    // gsMatrix<> vals;
+    // gsVector<> integrals;
 
     gsMatrix<> centerPoints(2,mp.basis(0).numElements());
 
 
-    gsMatrix<> evals(mp.basis(0).numElements(),1);
+    // gsMatrix<> evals(mp.basis(0).numElements(),1);
 
-    gsDebugVar(mp.basis(0).numElements());
+    // gsDebugVar(mp.basis(0).numElements());
 
-    gsDebugVar(mp.basis(0).size());
+    // gsDebugVar(mp.basis(0).size());
 
-#pragma omp parallel
-{
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
+// #pragma omp parallel
+// {
+// #   ifdef _OPENMP
+//     const int tid = omp_get_thread_num();
+//     const int nt  = omp_get_num_threads();
+// #   endif
 
     // Start iteration over elements of patchInd
-#   ifdef _OPENMP
-    for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#   else
-    for (; domIt->good(); domIt->next() )
-#   endif
-    {
+// #   ifdef _OPENMP
+//     for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+// #   else
+     for (; domIt->good(); domIt->next() )
+// #   endif
+     {
 
         // Map the Quadrature rule to the element
-        QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                       quPoints, quWeights);
+        // QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+        //                quPoints, quWeights);
 
-        mp.basis(0).eval_into(quPoints,vals);
-        mp.basis(0).active_into(domIt->centerPoint(),actives);
+        // mp.basis(0).eval_into(quPoints,vals);
+        // mp.basis(0).active_into(domIt->centerPoint(),actives);
 
         centerPoints.col(domIt->id()) = domIt->centerPoint();
 
-        integrals = vals * quWeights;
+//         integrals = vals * quWeights;
 
-        for (index_t k=0; k!=actives.rows(); k++)
-#           pragma omp critical (int_colloc)
-            {
-                result(domIt->id(),actives(k,0)) = integrals.at(k);
-            }
-    }
-}
+//         for (index_t k=0; k!=actives.rows(); k++)
+// #           pragma omp critical (int_colloc)
+//             {
+//                 // Element*basis function
+//                 result(domIt->id(),actives(k,0)) = integrals.at(k);
+//             }
+     }
+//}
 
     gsMatrix<> RHS = mp0.piece(0).eval(centerPoints).transpose();
-    gsDebugVar(RHS.transpose());
+    gsSparseMatrix<> results = mp.basis(0).collocationMatrixIntegrated();
+    // gsDebugVar(RHS.transpose());
 
 
     /// Next steps: Solve Cx = F. If not square, use pseudo inverse
@@ -172,9 +174,12 @@ int main(int argc, char *argv[])
 
     // gsDebugVar(X);
 
+    // 
 
     gsMultiPatch<> mpnew;
 
+    // TODO: Rewrite the collocation solver for the SVD problem
+    
     gsMatrix<> dense = result.toDense();
     gsMatrix<>::JacobiSVD jacobiSvd(dense,gsEigen::ComputeFullU | gsEigen::ComputeFullV);
     gsMatrix<> X = jacobiSvd.solve(RHS);
