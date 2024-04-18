@@ -970,7 +970,27 @@ public:
     /// basis function \em j at evaluation point \em i.
     gsSparseMatrix<T> collocationMatrix(gsMatrix<T> const& u) const;
 
+    /**
+     * @brief      { function_description }
+     *
+     * @param[in]  b     { parameter_description }
+     * @param[in]  u     { parameter_description }
+     *
+     * @return     { description_of_the_return_value }
+     */
+
     std::vector<gsSparseMatrix<T> > collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u);
+
+    /**
+     * @brief      { function_description }
+     *
+     * @param      u     { parameter_description }
+     *
+     * @return     { description_of_the_return_value }
+     */
+
+    gsSparseMatrix<T> collocationMatrixIntegrated() const;
+    
     
     /// Reverse the basis
     virtual void reverse();
