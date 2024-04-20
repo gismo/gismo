@@ -151,7 +151,7 @@ int main(int argc, char* argv[])
     // Define a square domain: this is the intermediate map
     gsSquareDomain1D<real_t> domain;
 
-    gsKnotVector<> kv(0,1,10,4);
+    gsKnotVector<> kv(0,1,4,4);
     gsBSplineBasis<> basis(kv);
 
     // Define a composite basis and composite geometry
@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
     // The geometry is defined using the composite basis and some coefficients
 
     gsMatrix<> pars = domain.controls();
-    pars *= 0.75;
+    pars *= 0.5;
     domain.controls() = pars.col(0);
     domain.updateGeom();
 

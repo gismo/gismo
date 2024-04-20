@@ -356,6 +356,9 @@ int main(int argc, char *argv[])
         collection.saveTimeStep();
         collection.save();
 
+        gsComposedGeometry<real_t> cgeom2(domain,tgeom);
+        gsWriteParaview(cbasis,"cbasis",2000);
+        gsWriteParaview(cgeom2,"cgeom",1000);
 
         // gsFileManager::open("ParaviewOutput/solution.pvd");
     }

@@ -35,8 +35,14 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     gsTensorBSpline<2,real_t> tbspline = *gsNurbsCreator<>::BSplineSquare();
+    if (numElevate!=0)
+        tbspline.degreeElevate(numElevate);
 
-    // degree elevation
+    // h-refine
+    for (int r =0; r < numRefine; ++r)
+        tbspline.uniformRefine();
+
+/*    // degree elevation
     if (numElevate!=0)
         tbspline.degreeElevate(numElevate);
     // local h-refine
@@ -58,21 +64,20 @@ int main(int argc, char *argv[])
     gsInfo << thbgeom << "\n";
 
     gsTHBSplineBasis<2,real_t> thbbasis = thbgeom.basis();
-
+*/
     // The domain sigma
     gsSquareDomain<2,real_t> domain;
 
     gsMatrix<> pars = domain.controls();
-    gsDebugVar(pars);
     pars *= 0.75;
     domain.controls() = pars.col(0);
     domain.updateGeom();
 
     // Define a composite basis and composite geometry
     // The basis is composed by the square domain
-    gsComposedBasis<real_t> cbasis(domain,thbbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
+    gsComposedBasis<real_t> cbasis(domain,tbspline.basis()); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
-    gsComposedGeometry<real_t> cgeom(cbasis,thbgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+    gsComposedGeometry<real_t> cgeom(cbasis,tbspline.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
 
     gsMultiPatch<> mp;
     mp.addPatch(cgeom);

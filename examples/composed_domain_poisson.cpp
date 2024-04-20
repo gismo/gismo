@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    bool plotbasis = false;
     index_t numRefine  = 1;
     index_t numElevate = 0;
 
@@ -30,6 +31,7 @@ int main(int argc, char *argv[])
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("plotB", "Create a ParaView visualization file with the solution", plotbasis);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -52,24 +54,32 @@ int main(int argc, char *argv[])
     const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
 
     // The domain sigma
-    gsSquareDomain<2,real_t> domain;
+    // gsSquareDomain<2,real_t> domain;
 
-    gsMatrix<> pars = domain.controls();
-//    gsDebugVar(pars);
-    // pars *= 0.95;
-    pars(0,0) -= 0.1;
-    domain.controls() = pars.col(0);
-    domain.updateGeom();
+    // gsMatrix<> pars = domain.controls();
+    // pars *= 0.99;
+    // // pars(0,0) -= 0.1;
+    // domain.controls() = pars.col(0);
+    // domain.updateGeom();
+
+    gsFunctionExpr<> domain("(x)^(2)","(y)^(2)",2);
+    // gsFunctionExpr<> domain("(x","y",2);
+
 
     // Define a composite basis and composite geometry
     // The basis is composed by the square domain
     gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
-    // gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+    gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
 
+    if (plotbasis)
+    {
+        gsWriteParaview(cbasis,"cbasis");
+        gsWriteParaview(tbasis,"tbasis");
+    }
 
     // const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
-    const gsGeometry<> & cgeom = tgeom;
+    // const gsGeometry<> & cgeom = tgeom;
 
 
     gsMultiPatch<> mp;
@@ -177,6 +187,8 @@ int main(int argc, char *argv[])
         collection.addField((u_ex-u_sol).sqNorm(), "error");
         collection.saveTimeStep();
         collection.save();
+
+        gsWriteParaview(cgeom,"cgeom");
 
         // gsFileManager::open("ParaviewOutput/solution.pvd");
     }
