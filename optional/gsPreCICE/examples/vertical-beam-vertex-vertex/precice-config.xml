@@ -51,7 +51,7 @@
   <!-- Change a mesh side for communication, in this case SolidMesh -->
   <coupling-scheme:parallel-implicit>
     <participants first="Fluid" second="Solid"/>
-    <time-window-size value="0.005" />
+    <time-window-size value="0.01" />
     <max-time value="2" />
     <exchange data="DisplacementData" mesh="SolidMesh" from="Solid"   to="Fluid"/>
     <exchange data="StressData"       mesh="SolidMesh" from="Fluid"   to="Solid"/>

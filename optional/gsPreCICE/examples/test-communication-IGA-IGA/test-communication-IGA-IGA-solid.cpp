@@ -85,7 +85,12 @@ int main(int argc, char *argv[])
     std::string precice_config("../precice_config.xml");
 
     gsCmdLine cmd("Coupled heat equation using PreCICE.");
+    cmd.addInt( "e", "degreeElevation",
+                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addInt("m", "method","1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe, 5: Wilson",method);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     GISMO_ASSERT(gsFileManager::fileExists(precice_config),"No precice config file has been defined");

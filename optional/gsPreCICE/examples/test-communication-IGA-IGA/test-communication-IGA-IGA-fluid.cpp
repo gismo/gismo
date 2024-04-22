@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     bool plot = false;
     bool write = false;
     index_t plotmod = 1;
-    index_t loadCase = 1;
+    index_t loadCase = 0;
     std::string precice_config("../precice_config.xml");
 
     gsCmdLine cmd("Coupled heat equation using PreCICE.");
