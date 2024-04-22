@@ -990,7 +990,8 @@ public:
      */
 
     gsSparseMatrix<T> collocationMatrixIntegrated() const;
-    
+    gsSparseMatrix<T> collocationMatrixIntegrated(const gsBasis<T> & other) const;
+
     
     /// Reverse the basis
     virtual void reverse();

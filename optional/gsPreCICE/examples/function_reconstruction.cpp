@@ -43,8 +43,8 @@ int main(int argc, char *argv[])
     gsKnotVector<> kv0(kc0,0);
     gsKnotVector<> kv1(kc1,0);
 
-    gsTensorBSplineBasis<2,real_t> tbasis(kv0,kv1);
-
+    // gsTensorBSplineBasis<2,real_t> tbasis(kv0,kv1);
+    const gsBasis<> & tbasis = mp.basis(0);
 
     gsMultiBasis<> mb(mp);
 
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 
 
     // gsSparseMatrix<> result( mp.basis(0).numElements(), mp.basis(0).size() );
-    // gsBasis<>::domainIter domIt = tbasis.makeDomainIterator();
+    gsBasis<>::domainIter domIt = tbasis.makeDomainIterator();
 
     // typename gsQuadRule<>::uPtr QuRule; // Quadrature rule
     // QuRule = gsQuadrature::getPtr(mp.basis(0), opt);
@@ -155,8 +155,11 @@ int main(int argc, char *argv[])
 //}
 
     gsMatrix<> RHS = mp0.piece(0).eval(centerPoints).transpose();
-    gsSparseMatrix<> results = mp.basis(0).collocationMatrixIntegrated();
+
+
+    gsSparseMatrix<> result = mp.basis(0).collocationMatrixIntegrated();
     // gsDebugVar(RHS.transpose());
+    /*
 
 
     /// Next steps: Solve Cx = F. If not square, use pseudo inverse
@@ -198,6 +201,8 @@ int main(int argc, char *argv[])
 
 
     // A.template bdcSvd<Eigen::ComputeThinU | Eigen::ComputeThinV>().solve(b)
+
+    */
 
     return  EXIT_SUCCESS;
 }

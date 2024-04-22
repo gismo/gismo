@@ -211,7 +211,7 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 }
 
 template<class T>
-gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated() const
+gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated(const gsBasis<T> & other) const
 {
     gsOptionList opt;
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
@@ -220,8 +220,8 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated() const
     opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
 
 
-    gsSparseMatrix<T> result( this->numElements(), this->size() );
-    gsBasis<T>::domainIter domIt = this->makeDomainIterator();
+    gsSparseMatrix<T> result( mesh.numElements(), this->size() );
+    gsBasis<T>::domainIter domIt = mesh.makeDomainIterator();
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
     QuRule = gsQuadrature::getPtr(*this,opt);
@@ -269,8 +269,14 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated() const
             }
     }
 }
-    result.makeCompressed(); 
+    result.makeCompressed();
     return result;
+}
+
+template<class T>
+gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated() const
+{
+    return collocationMatrixIntegrated(*this);
 }
 
 template<class T> inline
