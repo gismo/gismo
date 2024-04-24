@@ -41,6 +41,32 @@ inline void getKnots(const gsBasis<T> & source, std::vector<gsKnotVector<T>> & t
  * @return     { description_of_the_return_value }
  */
 template<class T>
+gsVector<T> knotsToVector(const gsBasis<T> & basis)
+{
+    const size_t DIM = 1;
+    std::vector<gsKnotVector<T>> tensorKnots(DIM);
+    switch (DIM)
+    {
+        case 1:
+            getKnots<1,T,gsTensorBSplineBasis>(basis,tensorKnots);
+            getKnots<1,T,gsTensorNurbsBasis>(basis,tensorKnots);
+            break;
+        default:
+            GISMO_ERROR("Basis type not understood");
+            break;
+    }
+    gsDebugVar(tensorKnots[0]);
+    std::vector<size_t> sizes(DIM);
+    sizes[0] = tensorKnots[0].size();
+
+    gsVector<T> knots(std::accumulate(sizes.begin(),sizes.end(),0));
+
+    for (index_t i = 0; i < knots.size(); ++i)
+        knots[i] = tensorKnots[0][i];
+    return knots;
+}
+
+template<class T>
 gsMatrix<T> knotsToMatrix(const gsBasis<T> & basis)
 {
     const size_t DIM = basis.domainDim();
@@ -80,6 +106,49 @@ gsMatrix<T> knotsToMatrix(const gsBasis<T> & basis)
 
     return knots;
 }
+
+template<class T>
+gsMatrix<T> knotVectorUnpack(const gsMatrix<T> & knots, index_t numBoundaries)
+{
+    gsMatrix<> kv_unpacked;
+    kv_unpacked = knots.row(0);
+    kv_unpacked.resize(knots.cols()/numBoundaries,numBoundaries);
+
+    return kv_unpacked;
+}
+
+template<class T>
+gsMatrix<T> unPackControlPoints(const gsMatrix<T> & controlPoints, const gsMatrix<T> & kv_unpacked, index_t knot_index, index_t cp_index)
+{
+    // number of cps n = N_knot - p - 1
+    int counter = cp_index;
+    gsVector<> temp = kv_unpacked.row(knot_index);
+
+    // Calculate the amount of control points based on the knot vector
+    for (index_t i = 0; i < temp.size(); ++i)
+    {
+        if(temp[i] == 0)
+            counter ++;
+    }
+    counter++;
+
+    gsMatrix<T> unpackedCps(controlPoints.rows(), counter - cp_index);
+
+
+    // Simplified copying of control points (just a placeholder)
+    for (index_t i = 0; i < controlPoints.rows(); ++i) 
+    {
+        index_t diff = counter - cp_index;
+        index_t startIndex = cp_index - diff + 1;  // Calculate the start index
+        for (size_t j = 0; j < diff; ++j) 
+        {
+            unpackedCps(i,j) = controlPoints(i,j + startIndex);
+        }
+    }
+    return unpackedCps;
+}
+
+
 
 template<class T>
 typename gsBasis<T>::Ptr knotMatrixToBasis(const gsMatrix<T> & knots)
