@@ -348,6 +348,10 @@ endif()
 
 add_custom_target(plugins)
 
+if(GISMO_PLUGIN_JULIA)
+  add_subdirectory(plugins/Julia)
+endif(GISMO_PLUGIN_JULIA)
+
 if(GISMO_PLUGIN_AXL)
   add_subdirectory(plugins/gsAxel)
 endif(GISMO_PLUGIN_AXL)
