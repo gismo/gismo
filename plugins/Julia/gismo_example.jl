@@ -5,7 +5,7 @@ m = Gismo.EigenMatrix(3,3)
 Gismo.setZero(m)
 display(Gismo.asMatrix(m))
 
-geom = Gismo.Geometry( "filedata/surfaces/simple.xml" )
+geom = Gismo.Geometry( "surfaces/simple.xml" )
 println("Geometry:")
 println(geom)
 println("Domain dim: ", Gismo.domainDim(geom) )
