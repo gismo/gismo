@@ -15,7 +15,7 @@ file( GLOB JL_SRCS src/*.jl)
 
 add_custom_target(${PROJECT_NAME} ALL DEPENDS gismo ${JL_OUTS})
       
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Gismo_path.toml.in" "${CMAKE_CURRENT_SOURCE_DIR}/Gismo_path.toml")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/Gismo_path.jl.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/Gismo_path.jl")
 
 #INSTALL ...
 

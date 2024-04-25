@@ -1,7 +1,7 @@
 module Gismo
 
 # Get the path to the library
-include("src/getPath.jl")
+include("src/Gismo_path.jl")
 
 # Forward declaration of structs
 include("src/Declarations.jl")
