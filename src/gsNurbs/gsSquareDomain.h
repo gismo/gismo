@@ -28,9 +28,10 @@ public:
     gsSquareDomain()
     {
         m_domain = *gsNurbsCreator<T>::BSplineSquare();
-       m_domain.degreeElevate();
-      m_domain.uniformRefine();
+        m_domain.degreeElevate();
+        m_domain.uniformRefine();
        // m_domain.uniformRefine(15);
+       gsInfo << " m_domain bi-degree = (" << m_domain.degree(0) <<", " << m_domain.degree(1) << ")\n";
        gsInfo << " m_domain.coefsSize() = " << m_domain.coefsSize() << "\n";
 //      gsDebugVar(m_domain.coefsSize());
       // m_domain.uniformRefine();
@@ -142,4 +143,3 @@ protected:
 };
 
 } // namespace gismo
-
