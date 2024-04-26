@@ -25,11 +25,14 @@ class gsSquareDomain : public gsFunction<T>
     using Base = gsFunction<T> ;
 
 public:
-    gsSquareDomain()
+    // default constructor
+    // gsSquareDomain()
+    gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0)
     {
         m_domain = *gsNurbsCreator<T>::BSplineSquare();
-        m_domain.degreeElevate();
-        m_domain.uniformRefine();
+        m_domain.degreeElevate(numElevation);
+        index_t numKts = pow(2, numRefine) - 1;
+        m_domain.uniformRefine(numKts);
        // m_domain.uniformRefine(15);
        gsInfo << " m_domain bi-degree = (" << m_domain.degree(0) <<", " << m_domain.degree(1) << ")\n";
        gsInfo << " m_domain.coefsSize() = " << m_domain.coefsSize() << "\n";

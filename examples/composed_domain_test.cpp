@@ -79,6 +79,8 @@ int main(int argc, char *argv[])
     if (numElevate!=0)
         mp0.degreeElevate(numElevate);
 
+    gsInfo << "degree: (" << mp0.patch(0).degree(0) << "," << mp0.patch(0).degree(1) << ")\n";
+
     for(index_t refCount = 1; refCount <= numRefine; refCount++)
     {
 
@@ -96,7 +98,7 @@ int main(int argc, char *argv[])
         const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
 
         // The domain sigma
-        gsSquareDomain<2,real_t> domain;
+        gsSquareDomain<2,real_t> domain(1, 1);
         gsMatrix<> pars = domain.controls();
 
         gsInfo << domain << "\n";
