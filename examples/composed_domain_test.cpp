@@ -85,8 +85,8 @@ int main(int argc, char *argv[])
         if(ref_last)
         {
           refCount = numRefine+1;
-          for (int r =0; r < numRefine; ++r)
-            mp0.uniformRefine();
+          index_t numKnts = pow(2, numRefine) -1;
+          mp0.uniformRefine(numKnts);
         }
         else
           mp0.uniformRefine();
