@@ -90,6 +90,11 @@ public:
         m_domain.eval_into(u,result);
     }
 
+    void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+    {
+        m_domain.deriv_into(u,result);
+    }
+
     void updateGeom()
     {
         for (index_t k = 0; k!=m_domain.coefs().rows(); k++)
