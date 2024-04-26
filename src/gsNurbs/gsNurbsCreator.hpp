@@ -1574,9 +1574,9 @@ gsNurbsCreator<T>::NurbsDisk(T const & r, T const & x, T const & y)
     gsKnotVector<T> kv(0,1,0,3);
     gsMatrix<T> C(9,2);
 
-    C << 0, -2 ,  2,-2 , 2, 0
-        ,-2, -2 ,  0, 0 , 2 ,2
-        ,-2 , 0 , -2, 2 , 0 ,2 ;
+    C << 0, -1 ,  1,-1 , 1, 0
+        ,-1, -1 ,  0, 0 , 1 ,1
+        ,-1 , 0 , -1, 1 , 0 ,1 ;
 
     C *= r;
 
