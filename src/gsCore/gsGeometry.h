@@ -369,7 +369,7 @@ public:
     void setCoefs(gsMatrix<T> cc) { this->m_coefs.swap(cc); }
 
     /// Return the number of coefficients (control points)
-    unsigned coefsSize() const { return m_coefs.rows(); }
+    index_t coefsSize() const { return m_coefs.rows(); }
     // Warning: This can cause some clash while using periodic basis, since the ghost coefs are stored but ignored.
 
 

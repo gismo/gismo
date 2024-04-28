@@ -168,7 +168,7 @@ class gsCurveBoundingBox {
       high[i] = std::numeric_limits<T>::lowest();
     }
     // compute min / max from control points
-    for (int ipt = 0; ipt != curve.coefsSize(); ++ipt) {
+    for (index_t ipt = 0; ipt != curve.coefsSize(); ++ipt) {
       const auto &p = curve.coef(ipt); // Access once per iteration
       for (int i = 0; i != curve.geoDim(); ++i) {
         high[i] = math::max(high[i], p(i));
