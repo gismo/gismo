@@ -14,6 +14,8 @@
 
 include(ofa/CommonMacros)
 
+#Requires CMake 3.2
+
 macro(OFA_HandleX86Options)
 
   # Special treatment for "native" flag

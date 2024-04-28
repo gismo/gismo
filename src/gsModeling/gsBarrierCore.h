@@ -761,7 +761,7 @@ class AndersonAcceleration {
 
   inline void printIterationInfo() {
     if (m_printInfo) {
-      printf(" %d         %.4e\n", m_iter, static_cast< double >( m_currResidualNorm ));
+        printf(" %d         %.4e\n", m_iter, cast<Scalar,double>( m_currResidualNorm ));
     }
   }
 
