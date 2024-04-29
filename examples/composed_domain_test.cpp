@@ -21,12 +21,19 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     //! [Parse command line]
+    // a
     bool b_morph = false;   // b, composition on the basis
+    // c
+    index_t spaceDim = 2;   // d, dimension of the physical solution
     index_t numElevate = 0; // e, deg elevation
+    // f
     bool g_morph = false;   // g, composition on the geometry
-    bool ref_last = false;  // last, perform last refinement only
+    // i, j, k, l, m, n, o
     index_t problem = 0;    // p, problem: 0 --> poisson, 1 -->  L2, 2 --> another pde;
+    // q
     index_t numRefine  = 1; // r, uniform refiment
+    // s, t, u, v, w, x, y, z
+    bool ref_last = false;  // last, perform last refinement only
     bool plot = false;
     bool plotbasis = false;
 
@@ -34,6 +41,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt("d", "dimension", "specify the problem dimension", spaceDim);
     cmd.addInt("p", "equation", "specify the problem", problem);
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
@@ -49,9 +57,8 @@ int main(int argc, char *argv[])
     time_t now = time(0);
 
     std::ofstream file_out;
-    file_out.open(std::to_string(now)+"radaptivity_results.csv");
+    file_out.open(std::to_string(now)+"composedDomain_results.csv");
     file_out << "problem, cbasis, cgeom, deg, ref, dofs, L2err\n";
-
 
     std::string problem_name = "";
     if(problem == 0)
@@ -74,7 +81,8 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp0;
     mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
     mp0.patch(0).coefs().array() -= 0.5;
-    mp0.embed(3);
+    if (spaceDim > 2)
+      mp0.embed(spaceDim);
 
     if (numElevate!=0)
         mp0.degreeElevate(numElevate);
@@ -129,16 +137,19 @@ int main(int argc, char *argv[])
           cbasis = memory::make_shared_not_owned(&tbasis);
           // const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
         }
-        //
-        // if(g_morph)
-        // {
-        //   gsInfo << "Composed geometry.\n"
-        //   gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
-        // }
-        // else
-        // {
-          const gsGeometry<> & cgeom = tgeom;
-        // }
+
+
+        // const gsGeometry<> & cgeom = tgeom;
+        gsGeometry<>::Ptr cgeom;
+        if(g_morph)
+        {
+          gsInfo << "Composed geometry.\n";
+          cgeom = memory::make_shared(new gsComposedGeometry<real_t>(domain,tgeom));
+          //gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
+        }
+        else
+          cgeom = memory::make_shared_not_owned(&tgeom);
+
 
         if (plotbasis)
         {
@@ -148,7 +159,7 @@ int main(int argc, char *argv[])
 
 
         gsMultiPatch<> mp;
-        mp.addPatch(cgeom);
+        mp.addPatch(*cgeom);
 
         gsMultiBasis<> dbasis(*cbasis);
 
@@ -157,16 +168,16 @@ int main(int argc, char *argv[])
         //! [Refinement]
 
          // Source function:
-         gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",3);
+         gsFunctionExpr<> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",spaceDim);
 
          // Exact solution
-         gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",3);
+         gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",spaceDim);
 
         // Source function:
-    //    gsFunctionExpr<> f("2*pi^2*cos(pi*x)*cos(pi*y)",2);
+    //    gsFunctionExpr<> f("2*pi^2*cos(pi*x)*cos(pi*y)",spaceDim);
 
         // Exact solution
-    //    gsFunctionExpr<> ms("cos(pi*x)*cos(pi*y)",2);
+    //    gsFunctionExpr<> ms("cos(pi*x)*cos(pi*y)",spaceDim);
 
         gsBoundaryConditions<> bc;
         if (problem == 0)
@@ -276,7 +287,7 @@ int main(int argc, char *argv[])
             collection.saveTimeStep();
             collection.save();
 
-            gsWriteParaview(cgeom,"cgeom");
+            gsWriteParaview(*cgeom,"cgeom");
 
             // gsFileManager::open("ParaviewOutput/solution.pvd");
         }
