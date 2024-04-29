@@ -71,7 +71,9 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    bool plot = true;
+    bool plot = false;
+    bool get_readTime = false;
+    bool get_writeTime = false;
     index_t plotmod = 1;
     index_t numRefine  = 1;
     index_t numElevate = 0;
@@ -91,6 +93,8 @@ int main(int argc, char *argv[])
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addInt("m", "method","1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe, 5: Wilson",method);
+    cmd.addSwitch("readTime", "Get the read time", get_readTime);
+    cmd.addSwitch("writeTime", "Get the write time", get_writeTime);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     GISMO_ASSERT(gsFileManager::fileExists(precice_config),"No precice config file has been defined");
@@ -261,6 +265,8 @@ int main(int argc, char *argv[])
 
     // Time step
     real_t dt = precice_dt;
+    real_t t_read = 0;
+    real_t t_write = 0;
 
     gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&assembler,&solutions](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) 
     {
@@ -377,6 +383,8 @@ gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
         }
         participant.readData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
 
+        if (get_readTime)
+            t_read += participant.readTime();
         forceMesh.patch(0).coefs() = forceControlPoints.transpose();
         // forceMesh.embed(3);
         assembler.assemble();
@@ -399,6 +407,9 @@ gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
         // write heat fluxes to interface
         geometryControlPoints = solution.patch(0).coefs().transpose();
         participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
+        
+        if (get_writeTime)
+            t_write +=participant.writeTime();
 
 
         // do the coupling
@@ -431,6 +442,15 @@ gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
             otherDataMatrix<<time;
             writer.add(pointDataMatrix,otherDataMatrix);
         }
+    }
+    if (get_readTime)
+    {
+        gsInfo << "Read time: " << t_read << "\n";
+    }
+
+    if (get_writeTime)
+    {
+        gsInfo << "Write time: " << t_write << "\n";
     }
 
     if (plot)

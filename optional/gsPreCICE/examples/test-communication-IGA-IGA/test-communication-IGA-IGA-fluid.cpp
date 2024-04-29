@@ -38,6 +38,8 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot = false;
     bool write = false;
+    bool get_readTime = false;
+    bool get_writeTime = false;
     index_t plotmod = 1;
     index_t loadCase = 0;
     std::string precice_config("../precice_config.xml");
@@ -46,6 +48,8 @@ int main(int argc, char *argv[])
     cmd.addString( "c", "config", "PreCICE config file", precice_config );
     cmd.addInt("l","loadCase", "Load case: 0=constant load, 1='spring' load", loadCase);
     cmd.addSwitch("write", "Create a file with point data", write);
+    cmd.addSwitch("readTime", "Get the read time", get_readTime);
+    cmd.addSwitch("writeTime", "Get the write time", get_writeTime);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     GISMO_ASSERT(gsFileManager::fileExists(precice_config),"No precice config file has been defined");
@@ -156,6 +160,8 @@ int main(int argc, char *argv[])
 
     real_t t=0;
     real_t dt = precice_dt;
+    real_t t_read = 0;
+    real_t t_write = 0;
 
     index_t timestep = 0;
 
@@ -175,6 +181,8 @@ int main(int argc, char *argv[])
         // Read control point displacements
         participant.readData(GeometryControlPointMesh, GeometryControlPointData, geometryControlPointIDs, geometryControlPoints);
         deformation.patch(0).coefs() = geometryControlPoints.transpose();
+        if (get_readTime)
+            t_read += participant.readTime();
 
         /*
          * Two projection approaches:
@@ -206,6 +214,8 @@ int main(int argc, char *argv[])
 
         participant.writeData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
 
+        if (get_writeTime)
+            t_write +=participant.writeTime();
         // bool requiresWritingCheckpoint and requiresReadingCheckpoint are **REQUIRED** in PreCICE. 
         // And the requiresWritingCheckpoint() should be called before advance()
         gsMatrix<> pointDataMatrix;
@@ -250,9 +260,19 @@ int main(int argc, char *argv[])
             // writer.add(pointDataMatrix,otherDataMatrix);
         }
     }
+    if (get_readTime)
+    {
+        gsInfo << "Read time: " << t_read << "\n";
+    }
+
+    if (get_writeTime)
+    {
+        gsInfo << "Write time: " << t_write << "\n";
+    }
 
     if (plot)
     {
+        // Refer to gsParaviewCollection
         collection.save();
     }
 

@@ -101,8 +101,13 @@ public:
      */
     T initialize()
     {
+        
+        m_initializationTime = m_readTime=m_writeTime=0;
+        m_stopWatchInitialize.stop();
         m_interface.initialize();
+        m_initializationTime += m_stopWatchInitialize.stop();
         m_precicedt = m_interface.getMaxTimeStepSize();
+        gsDebugVar(m_precicedt);
         return m_precicedt;
     }
 
@@ -137,6 +142,7 @@ public:
 
         vertexIDs.resize(nPoints);
         m_interface.setMeshVertices(meshName,dimPoints,vertexIDs);
+        gsDebugVar("setMeshVertices");
 
         // Create a look-up table from points (dPoints!!) to IDs
         std::map<gsVector<T>,index_t,mapCompare> map;
@@ -212,7 +218,9 @@ public:
     {
         int d = m_interface.getDataDimensions(meshName,dataName);
         values.resize(1,d*IDs.size());
+        m_stopWatchRead.restart();
         m_interface.readData(meshName,dataName,IDs,timestep,values);
+        m_readTime += m_stopWatchRead.stop();
         values.resize(d,IDs.size());
     }
 
@@ -248,7 +256,9 @@ public:
      */
     void writeData(const std::string & meshName, const std::string & dataName, const gsVector<index_t> & IDs, const gsMatrix<T> & values)
     {
+        m_stopWatchWrite.restart();
         m_interface.writeData(meshName,dataName,IDs,values);
+        m_writeTime += m_stopWatchWrite.stop();
     }
 
     /**
@@ -341,6 +351,10 @@ public:
         return os;
     }
 
+    T readTime() const { return m_readTime; }
+    T writeTime() const {return m_writeTime;}
+    T initializeTime() const {return m_initializationTime;}
+
 private:
     /// Stores all mesh names and IDs (might be useful later)
     std::map<std::string,index_t> m_meshNames;
@@ -356,6 +370,16 @@ private:
     precice::Participant m_interface;
     /// Stores the precice timestep
     T m_precicedt;
+    /// Stores the write time
+    mutable T m_writeTime;
+    /// Stores the read time
+    mutable T m_readTime;
+
+    T m_initializationTime;
+    mutable gsStopwatch m_stopWatchRead;
+    mutable gsStopwatch m_stopWatchWrite;
+    mutable gsStopwatch m_stopWatchInitialize;
+
 };
 
 } //namespace gismo
