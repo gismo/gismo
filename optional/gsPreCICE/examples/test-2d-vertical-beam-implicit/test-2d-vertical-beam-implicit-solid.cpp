@@ -78,6 +78,7 @@ int main(int argc, char *argv[])
     for (int r =0; r < numRefine; ++r)
         patches.uniformRefine();
 
+    // patches.embed(3);
     // Create bases
     gsMultiBasis<> bases(patches);//true: poly-splines (not NURBS)
 
@@ -220,7 +221,9 @@ int main(int argc, char *argv[])
     // Step 1b: ControlPointMesh
     // get the control points, in the format where every column is a control point
     gsVector<index_t> controlPointIDs; // needed for writing
-    gsMatrix<> controlPoints = patches.patch(0).coefs().transpose();
+    gsMatrix<> controlPoints = derived_control_points;
+    // gsDebugVar(controlPoints);
+
     participant.addMesh(ControlPointMesh,derived_control_points.transpose(),controlPointIDs);
 
     // Step 1c: ForceMesh
@@ -229,17 +232,21 @@ int main(int argc, char *argv[])
 
     // Get the quadrature points
     gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions,couplingInterfaces);
+    gsDebugVar(quadPoints.dim());
     participant.addMesh(ForceMesh,quadPoints);
+
 
     // Step 2 (not needed???)
     // Needed for direct mesh coupling
-    gsMatrix<> bbox = bases.basis(0).support();
+    gsMatrix<> bbox(2,2);
+    bbox.col(0).setConstant(-1e300);
+    bbox.col(1).setConstant(1e300);
     bbox.transposeInPlace();
-    bbox.resize(1,bbox.rows()*bbox.cols());
     participant.setMeshAccessRegion(ForceMesh,bbox);
 
 
     real_t precice_dt = participant.initialize();
+
 
 
     // for (index_t i = 0; i < couplingInterfaces.size(); ++i) {
@@ -408,7 +415,7 @@ int main(int argc, char *argv[])
         gsMultiPatch<> solution;
         assembler.constructSolution(solVector,fixedDofs,solution);
         // write heat fluxes to interface
-        solution.embed(3);
+        // solution.embed(3);
         controlPoints = solution.patch(0).coefs().transpose();
 
         participant.writeData(ControlPointMesh,ControlPointData,controlPointIDs,controlPoints);

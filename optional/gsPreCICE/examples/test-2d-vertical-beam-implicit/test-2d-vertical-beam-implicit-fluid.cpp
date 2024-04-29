@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     std::string ControlPointData= "ControlPointData";
     std::string ForceData       = "ForceData";
 
-    gsMatrix<> bbox(3,2);
+    gsMatrix<> bbox(2,2);
     bbox.col(0).setConstant(-1e300);
     bbox.col(1).setConstant(1e300);
     bbox.transposeInPlace();
@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
      *
      */
 
+    // It is needed to specify the number of boundaries
     index_t numBoundaries = 3;
 
     gsVector<index_t> knotIDs;
@@ -103,10 +104,8 @@ int main(int argc, char *argv[])
     // temp = knots.row(0);
     // temp.resize(knots.cols()/numBoundaries,numBoundaries);
     gsMatrix<> kv_unpacked = knotVectorUnpack(knots, numBoundaries);
+    gsDebugVar(kv_unpacked);
 
-
-    // gsMatrix<> knotMatrix = temp.resize(3);
-    // gsDebugVar(knotMatrix);
 
     gsVector<index_t> controlPointIDs;
     gsMatrix<> controlPoints;
@@ -131,84 +130,99 @@ int main(int argc, char *argv[])
         N_cp[i] = counter+i;
     }
 
+    // A vector that each element is a gsMatrix, which stores the control points for each boundary 
     for (index_t i = 0; i < numBoundaries; ++i)
     {
         gsMatrix<> upackedCP_temp = unPackControlPoints(controlPoints, kv_unpacked, i, N_cp[i]);
 
         controlPoints_unpacked.push_back(upackedCP_temp);
-        gsDebugVar(controlPoints_unpacked[i]);
     }
 
 
 
-    // gsMatrix<> controlPoints_unpacked = unPackControlPoints(controlPoints, kv_unpacked, 0);
+    gsMultiPatch<> mp;
+    // Reconstruct the boundary curve given knot vector and control point, and add it to the multipatch
+    for (index_t i=0; i < numBoundaries; ++i)
+    {
+        gsMatrix<> temp = kv_unpacked.col(i);
+        temp.transposeInPlace();
+        gsDebugVar(temp);
+        gsBasis<> * basis = knotMatrixToBasis<real_t>(temp).get(); 
+
+        mp.addPatch(give(basis->makeGeometry(controlPoints_unpacked[i].transpose())));
+    }    
+
+    gsDebugVar(mp);
 
 
-    // gsMultiPatch<> mp, deformation;
-    // // mp.addPatch(give(basis->makeGeometry(CPs.transpose())));
+
+    gsMultiPatch<> deformation;
+
+
+    // mp.addPatch(give(basis->makeGeometry(CPs.transpose())));
 
     // mp.addPatch(give(basis->makeGeometry(controlPoints.transpose())));
-    // deformation = mp;
-    // deformation.patch(0).coefs().setZero();
+    deformation = mp;
+    deformation.patch(0).coefs().setZero();
 
 
 
-    // gsVector<index_t> quadPointIDs;
-    // gsMatrix<> quadPoints;
-    // participant.getMeshVertexIDsAndCoordinates(ForceMesh,quadPointIDs,quadPoints);
-    // gsMatrix<> quadPointData(mp.geoDim(),quadPoints.cols());
+    gsVector<index_t> quadPointIDs;
+    gsMatrix<> quadPoints;
+    participant.getMeshVertexIDsAndCoordinates(ForceMesh,quadPointIDs,quadPoints);
+    gsMatrix<> quadPointData(mp.geoDim(),quadPoints.cols());
 
-    // real_t t = 0, dt = precice_dt;
-    // index_t timestep = 0;
-    // // Define the solution collection for Paraview
-    // gsParaviewCollection collection("./output/solution");
-    // // Time integration loop
-    // while (participant.isCouplingOngoing())
-    // {
-    //     if (participant.requiresWritingCheckpoint())
-    //         gsInfo<<"Writing Checkpoint\n";
+    real_t t = 0, dt = precice_dt;
+    index_t timestep = 0;
+    // Define the solution collection for Paraview
+    gsParaviewCollection collection("./output/solution");
+    // Time integration loop
+    while (participant.isCouplingOngoing())
+    {
+        if (participant.requiresWritingCheckpoint())
+            gsInfo<<"Writing Checkpoint\n";
 
-    //     // Read control point displacements
-    //     participant.readData(ControlPointMesh,ControlPointData,controlPointIDs,controlPoints);
-    //     deformation.patch(0).coefs() = controlPoints.transpose();
+        // Read control point displacements
+        participant.readData(ControlPointMesh,ControlPointData,controlPointIDs,controlPoints);
+        deformation.patch(0).coefs() = controlPoints.transpose();
 
-    //     // Write data at the quadrature points
-    //     quadPointData.setZero();
-    //     quadPointData.row(0).setConstant(-1e3);
-    //     participant.writeData(ForceMesh,ForceData,quadPointIDs,quadPointData);
+        // Write data at the quadrature points
+        quadPointData.setZero();
+        quadPointData.row(0).setConstant(-1e3);
+        participant.writeData(ForceMesh,ForceData,quadPointIDs,quadPointData);
 
-    //     // do the coupling
-    //     precice_dt =participant.advance(dt);
+        // do the coupling
+        precice_dt =participant.advance(dt);
 
-    //     dt = std::min(precice_dt, dt);
+        dt = std::min(precice_dt, dt);
 
-    //     if (participant.requiresReadingCheckpoint())
-    //         gsInfo<<"Reading Checkpoint\n";
-    //     else
-    //     {
-    //         t += dt;
-    //         timestep++;
+        if (participant.requiresReadingCheckpoint())
+            gsInfo<<"Reading Checkpoint\n";
+        else
+        {
+            t += dt;
+            timestep++;
 
-    //         gsField<> solution(mp,deformation);
-    //         if (timestep % plotmod==0 && plot)
-    //         {
-    //             // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
-    //             std::string fileName = "./output/solution" + util::to_string(timestep);
-    //             gsWriteParaview<>(solution, fileName, 500);
-    //             fileName = "solution" + util::to_string(timestep) + "0";
-    //             collection.addTimestep(fileName,t,".vts");
-    //         }
+            gsField<> solution(mp,deformation);
+            if (timestep % plotmod==0 && plot)
+            {
+                // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
+                std::string fileName = "./output/solution" + util::to_string(timestep);
+                gsWriteParaview<>(solution, fileName, 500);
+                fileName = "solution" + util::to_string(timestep) + "0";
+                collection.addTimestep(fileName,t,".vts");
+            }
 
-    //         // solution.patch(0).eval_into(points,pointDataMatrix);
-    //         // otherDataMatrix<<time;
-    //         // writer.add(pointDataMatrix,otherDataMatrix);
-    //     }
-    // }
+            // solution.patch(0).eval_into(points,pointDataMatrix);
+            // otherDataMatrix<<time;
+            // writer.add(pointDataMatrix,otherDataMatrix);
+        }
+    }
 
-    // if (plot)
-    // {
-    //     collection.save();
-    // }
+    if (plot)
+    {
+        collection.save();
+    }
 
 
     return  EXIT_SUCCESS;
