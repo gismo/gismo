@@ -16,6 +16,7 @@
 #include <gsHSplines/gsKdNode.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsBoundary.h>
+#include <gsTensor/gsGridIterator.h>
 
 #include <queue>
 
@@ -190,7 +191,7 @@ gsHDomain<d, Z>::insertBox ( point const & k1, point const & k2,
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
             {
-                // Increase level and reccurse
+                // Increase level and recurse
                 if ( ++curNode->level != lvl)
                     stack.push_back(curNode);
             }
@@ -220,6 +221,78 @@ gsHDomain<d, Z>::insertBox ( point const & k1, point const & k2,
     if ( static_cast<unsigned>(lvl) > m_maxInsLevel)
         m_maxInsLevel = lvl;
 }
+
+template<short_t d, class Z>
+gsMatrix<real_t> gsHDomain<d,Z>::coordinates(node * _node)
+{
+    // Computes the corner point and the center of the current node
+
+    // Compute the center point of the current node
+
+    // point center = 0.5 * (_node->box.first + _node->box.second);
+
+    gsGridIterator<Z,VERTEX> grid(_node->box->first, _node->box->second);
+    gsMatrix<real_t> result(2, grid.numPoints()+1);
+    // Fill the result with the center in the first column, and the corner points afterwards
+    result.col(0).array() = (_node->box->first.array() + _node->box->second.array()) / m_upperIndex.array();
+    result.col(0) *= 0.5;
+    for ( index_t i=1; grid; ++grid, ++i)
+        result.col(i).array() = (*grid).array()  / m_upperIndex.array();
+
+    return result;
+}
+
+
+//
+template<short_t d, class Z> void
+gsHDomain<d, Z>::construct ( const gsFunction<real_t> & inOut) // TODO: add max level or tolerance
+{
+    //
+    // Initialize stack
+    std::vector<node*> stack;
+    stack.reserve( 2 * (m_maxPath + d) );
+    stack.push_back(m_root);
+
+    node * curNode;
+    gsMatrix<real_t> coords, vals;
+    while ( ! stack.empty() )
+    {
+        curNode = stack.back(); //top();
+        stack.pop_back();       //pop();
+
+        if ( curNode->isLeaf() ) // reached a leaf
+        {
+            // Check the inOut predicate on the boundary vertices and the center
+            coord = coordinates(curNode);
+            inOut.eval_into(coord,vals);
+
+            if ( (vals.array()==0).all() )
+            {
+                // The domain is outside
+                curNode->level = -1;
+                continue;
+            }
+
+            if ( (vals.array() ==1).all() )//|| (vals.array() ==0).all() )
+                continue;
+
+            // This should be a 4-split
+            curNode->split();
+
+            ++curNode->left ->level;
+            ++curNode->right->level;
+
+            if (curNode->left ->level != m_indexLevel)
+                stack.push_back(curNode->left);
+            if (curNode->right ->level != m_indexLevel)
+                stack.push_back(curNode->right);
+        }
+    }
+
+    // Update maximum inserted level
+    m_maxInsLevel = m_indexLevel;
+}
+
 
 template<short_t d, class Z> void
 gsHDomain<d, Z>::clearBox ( point const & k1, point const & k2,

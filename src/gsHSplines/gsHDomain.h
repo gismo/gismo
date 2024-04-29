@@ -278,6 +278,14 @@ public:
     void insertBox (point const & lower, point const & upper,
                     node * _node, int lvl);
 
+    /// TODO
+    gsMatrix<real_t> coordinates(node * _node);
+
+    /// TODO
+    void construct( const gsFunction<real_t> & inOut);
+
+
+
     /** \brief The insert function which insert box
     defined by points \em lower and \em upper to level \em lvl.
 
