@@ -194,6 +194,19 @@ public:
     }
 
     /**
+     * @brief      { function_description }
+     *
+     * @param      boxes   The boxes
+     * @param[in]  refExt  The reference extent
+     */
+
+    void refine(gsMatrix<T> const & boxes, int refExt = 0)
+    {
+        // m_src->refine_withCoefs(m_weights, boxes, refExt);
+    }
+
+
+    /**
      * @brief Refines specified areas or boxes, depending on underlying basis.
      *
      * @param coefs Coefficients, given as gsMatrix of size \f$ n \times d\f$,
@@ -660,6 +673,5 @@ void gsRationalBasis<SrcT>::refineElements_withCoefs(gsMatrix<T> & coefs,
     // weights.
     setFromProjectiveCoefs(rw, coefs, m_weights);
 }
-
 
 } // namespace gismo

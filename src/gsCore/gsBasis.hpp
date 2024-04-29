@@ -211,7 +211,7 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 }
 
 template<class T>
-gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated(const gsBasis<T> & other) const
+gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated(const gsBasis<T> & mesh) const
 {
     gsOptionList opt;
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );

@@ -19,6 +19,7 @@
 #include <gsAssembler/gsNewtonCotesRule.h>
 #include <gsAssembler/gsPatchRule.h>
 #include <gsAssembler/gsOverIntegrateRule.h>
+#include <gsAssembler/gsGaussRule.h>
 
 namespace gismo
 {
