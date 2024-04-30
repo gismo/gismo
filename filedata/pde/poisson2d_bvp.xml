@@ -15,16 +15,16 @@
   </MultiPatch>
 
   <!-- Right-hand side function -->
-  <Function type="FunctionExpr" id="1" dim="2">2*pi^2*sin(pi*x)*sin(pi*y)</Function>
+  <Function type="FunctionExpr" id="1" dim="3">2*pi^2*sin(pi*x)*sin(pi*y)</Function>
 
   <!-- The boundary conditions (multipatch=number of patches)-->
   <boundaryConditions id="2" multipatch="0">
-    <Function type="FunctionExpr" dim="2" index="0">sin(pi*x) * sin(pi*y)</Function>
-    <Function type="FunctionExpr" dim="2" index="1" c="2">
+    <Function type="FunctionExpr" dim="3" index="0">sin(pi*x) * sin(pi*y)</Function>
+    <Function type="FunctionExpr" dim="3" index="1" c="2">
       <c index="0">pi*cos(pi*x) * sin(pi*y)</c>
       <c index="1">pi*sin(pi*x) * cos(pi*y)</c>
     </Function>
-    <Function type="FunctionExpr" dim="2" index="2">0</Function><!--unused-->
+    <Function type="FunctionExpr" dim="3" index="2">0</Function><!--unused-->
 
     <!-- Dirichlet conditions (patch,side) -->
     <bc type="Dirichlet" function="0" unknown="0" name="dirichlet">
@@ -35,7 +35,7 @@
   </boundaryConditions>
 
   <!-- The manufactured exact solution (for reference) -->
-  <Function type="FunctionExpr" id="3" dim="2">sin(pi*x) * sin(pi*y)</Function>
+  <Function type="FunctionExpr" id="3" dim="3">sin(pi*x) * sin(pi*y)</Function>
 
   <!-- Assembler options -->
  <OptionList id="4">
