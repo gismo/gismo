@@ -3,18 +3,14 @@
 
   <!-- Computational domain -->
   <MultiPatch parDim="2" id="0">
-    <patches type="id_range">500 501</patches>
-    <interfaces>501 1 500 2 0 1 1 1
-    </interfaces>
+    <patches type="id_range">0</patches>
     <boundary name="dirichlet">
-      501 4
-      500 3
-      501 3
+      0 1
+      0 3
     </boundary>
     <boundary name="neumann">
-      500 4
-      500 1
-      501 2
+      0 2
+      0 4
     </boundary>
   </MultiPatch>
 

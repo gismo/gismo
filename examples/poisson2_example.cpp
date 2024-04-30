@@ -43,8 +43,12 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
     gsMultiPatch<> mp;
-    fd.getId(0, mp); // id=0: Multipatch domain
+    mp.addPatch(gsNurbsCreator<>::NurbsSphere(1.0, 0.0, 0.0, 0.0));
+    mp.computeTopology();
+    //fd.getId(0, mp); // id=0: Multipatch domain
 
+    gsInfo << mp << std::endl;
+    
     gsFunctionExpr<> f;
     fd.getId(1, f); // id=1: source function
     gsInfo<<"Source function "<< f << "\n";
