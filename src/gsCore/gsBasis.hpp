@@ -210,74 +210,74 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
     return result;
 }
 
-template<class T>
-gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated(const gsBasis<T> & mesh) const
-{
-    gsOptionList opt;
-    opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
-    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
-    opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
-    opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
+// template<class T>
+// gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated(const gsBasis<T> & mesh) const
+// {
+//     gsOptionList opt;
+//     opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
+//     opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
+//     opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
+//     opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
 
 
-    gsSparseMatrix<T> result( mesh.numElements(), this->size() );
-    gsBasis<T>::domainIter domIt = mesh.makeDomainIterator();
+//     gsSparseMatrix<T> result( mesh.numElements(), this->size() );
+//     gsBasis<T>::domainIter domIt = mesh.makeDomainIterator();
 
-    typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
-    QuRule = gsQuadrature::getPtr(*this,opt);
-    gsVector<T> quWeights; // quadrature weights
-    gsMatrix<T> quPoints; // quadrature weights
+//     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
+//     QuRule = gsQuadrature::getPtr(*this,opt);
+//     gsVector<T> quWeights; // quadrature weights
+//     gsMatrix<T> quPoints; // quadrature weights
 
-    gsMatrix<index_t> actives;
-    gsMatrix<T> vals;
-    gsVector<T> integrals;
+//     gsMatrix<index_t> actives;
+//     gsMatrix<T> vals;
+//     gsVector<T> integrals;
 
 
-    this->eval_into  (domIt->centerPoint(), vals);
-    this->active_into(domIt->centerPoint(), actives);
-    result.reservePerColumn( actives.rows() );
+//     this->eval_into  (domIt->centerPoint(), vals);
+//     this->active_into(domIt->centerPoint(), actives);
+//     result.reservePerColumn( actives.rows() );
 
-#pragma omp parallel private(actives, vals)
-{
-#   ifdef _OPENMP
-    const int tid = omp_get_thread_num();
-    const int nt  = omp_get_num_threads();
-#   endif
+// #pragma omp parallel private(actives, vals)
+// {
+// #   ifdef _OPENMP
+//     const int tid = omp_get_thread_num();
+//     const int nt  = omp_get_num_threads();
+// #   endif
 
-    // Start iteration over elements of patchInd
-#   ifdef _OPENMP
-    for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
-#   else
-    for (; domIt->good(); domIt->next() )
-#   endif
-    {
+//     // Start iteration over elements of patchInd
+// #   ifdef _OPENMP
+//     for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+// #   else
+//     for (; domIt->good(); domIt->next() )
+// #   endif
+//     {
 
-        // Map the Quadrature rule to the element
-        QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                       quPoints, quWeights);
+//         // Map the Quadrature rule to the element
+//         QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+//                        quPoints, quWeights);
 
-        this->eval_into(quPoints,vals);
-        this->active_into(domIt->centerPoint(),actives); //Update new actives
+//         this->eval_into(quPoints,vals);
+//         this->active_into(domIt->centerPoint(),actives); //Update new actives
 
-        integrals = vals * quWeights;
+//         integrals = vals * quWeights;
 
-        for (index_t k=0; k!=actives.rows(); k++)
-#           pragma omp critical (int_colloc)
-            {
-                // Element*basis function
-                result(domIt->id(),actives(k,0)) = integrals.at(k);
-            }
-    }
-}
-    result.makeCompressed();
-    return result;
-}
+//         for (index_t k=0; k!=actives.rows(); k++)
+// #           pragma omp critical (int_colloc)
+//             {
+//                 // Element*basis function
+//                 result(domIt->id(),actives(k,0)) = integrals.at(k);
+//             }
+//     }
+// }
+//     result.makeCompressed();
+//     return result;
+// }
 
-template<class T>
-gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated() const
-{
-    return collocationMatrixIntegrated(*this);
-}
+// template<class T>
+// gsSparseMatrix<T> gsBasis<T>::collocationMatrixIntegrated() const
+// {
+//     return collocationMatrixIntegrated(*this);
+// }
 
 template<class T> inline
 memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> const& vals,

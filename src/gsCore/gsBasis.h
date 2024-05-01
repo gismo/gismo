@@ -989,8 +989,8 @@ public:
      * @return     { description_of_the_return_value }
      */
 
-    gsSparseMatrix<T> collocationMatrixIntegrated() const;
-    gsSparseMatrix<T> collocationMatrixIntegrated(const gsBasis<T> & other) const;
+    // gsSparseMatrix<T> collocationMatrixIntegrated() const;
+    // gsSparseMatrix<T> collocationMatrixIntegrated(const gsBasis<T> & other) const;
 
     
     /// Reverse the basis
