@@ -29,7 +29,7 @@
 
 #include <gsHSplines/gsHBoxContainer.h>
 
-#define PLOT_PRECISION 12
+#define PLOT_PRECISION 16
 
 namespace gismo
 {

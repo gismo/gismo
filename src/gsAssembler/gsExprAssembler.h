@@ -767,7 +767,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     auto arg_tpl = std::make_tuple(args...);
 
     m_exprdata->parse(arg_tpl);
-    // m_exprdata->activateFlags(SAME_ELEMENT);
+    m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
@@ -776,10 +776,6 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     _eval ee(m_matrix, m_rhs, quWeights);
     const index_t elim = m_options.getInt("DirichletStrategy");
     ee.setElim(dirichlet::elimination==elim);
-
-    gsMatrix<T> tmpPoints;
-    gsVector<T> tmpWeights;
-
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
@@ -799,47 +795,35 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         for (; domIt->good(); domIt->next() )
 #       endif
         {
-            // m_exprdata->points().resize( m_exprdata->multiBasis().domainDim(), 1);
-            // quWeights.resize(1);
-
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                           tmpPoints, tmpWeights);
+                           m_exprdata->points(), quWeights);
 
-            for (index_t p = 0; p!=tmpPoints.cols(); p++)
+            if (m_exprdata->points().cols()==0)
+                continue;
+
+// Activate the try-catch only if G+Smo is not in DEBUG
+#ifdef NDEBUG
+            // Perform required pre-computations on the quadrature nodes
+            try
             {
-                // m_exprdata->points().col(0) = tmpPoints.col(p);
-                // quWeights.at(0) = tmpweights.at(p);
-                m_exprdata->points() = tmpPoints.col(p);
-                quWeights = tmpWeights.row(p);
-                if (m_exprdata->points().cols()==0)
-                    continue;
-
-    // Activate the try-catch only if G+Smo is not in DEBUG
-    #ifdef NDEBUG
-                // Perform required pre-computations on the quadrature nodes
-                try
-                {
-                m_exprdata->precompute(patchInd);
-                //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
-                }
-                catch (...)
-                {
-                    // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
-                    #pragma omp atomic write
-                    failed = true;
-                    break;
-                }
-    #else
-                m_exprdata->precompute(patchInd);
-    #endif
-
-
-                // Assemble contributions of the element
-                op_tuple(ee, arg_tpl);
+            m_exprdata->precompute(patchInd);
+            //m_exprdata->precompute(patchInd, QuRule, *domIt); // todo
             }
+            catch (...)
+            {
+                // #pragma omp single copyprivate(failed) // broadcasting "failed". Does not work
+                #pragma omp atomic write
+                failed = true;
+                break;
+            }
+#else
+            m_exprdata->precompute(patchInd);
+#endif
 
 
+            // Assemble contributions of the element
+            op_tuple(ee, arg_tpl);
         }
     }
 }//omp parallel
