@@ -89,7 +89,7 @@ public:
         // h-refine
         if(m_ref)
         {
-          index_t numKnts = pow(2, m_numRefine) -1;
+          index_t numKnts = pow(2, m_numRefine+2) -1;
           mp0.uniformRefine(numKnts);
         }
         else
@@ -484,15 +484,19 @@ int main(int argc, char *argv[])
       // Solution vector and solution variable
       gsMatrix<> sol = problem.solution();
       solution u_sol = A.getSolution(u, sol);
+      gsInfo << sol.rows() << " x " << sol.cols() << "\n";
+
+
 
       //! [Export visualization in ParaView]
       real_t L2err = math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
-      gsInfo<<"\nL2 error = "<<L2err<<"\n";
+      std::cout << "\nL2 error = " << std::setprecision(10) << std::scientific << L2err<<"\n";
+
 
       // file_out << "problem, morph, deg, ref, dofs, L2err\n";
       file_out << problem_name << "," << b_morph << "," << g_morph << ","
                << std::max(mp0.patch(0).degree(0),mp0.patch(0).degree(1))   << "," << refCount << ","
-               << A.numDofs()  << "," << L2err     << "\n";
+               << A.numDofs()  << "," << std::setprecision(10) << std::scientific << L2err<<"\n";
 
       if (plot)
       {
