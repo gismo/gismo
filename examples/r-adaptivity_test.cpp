@@ -302,23 +302,28 @@ int main(int argc, char *argv[])
     bool g_morph = false;   // g, composition on the geometry
     // i, j, k, l, m, n, o
     index_t pdeDef = 0; // p, definition of the pde to be solved: 0 for poisso; 1 for L2 projection;
-    // q
+    index_t numSquareElev  = 1; // q, uniform refiment
     index_t numRefine  = 1; // r, uniform refiment
     index_t numGeoRefine  = 1; // R, uniform refiment
-    // s, t u, v, w, x, y, z
+    index_t numSquareRefine  = 1; // s, uniform refiment
+    //t, u, v, w, x, y, z
     bool plot = false;
     bool ref_last = false;  // last, perform last refinement only
+    bool writeData = false;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addInt( "R", "uniformRefineGeom", "Number of uniform refinements of the geometry",  numGeoRefine );
+    cmd.addInt( "s", "uniformRefineSquare", "Number of uniform refinements of the sigma square",  numSquareRefine );
+    cmd.addInt( "q", "degElevSquare", "Number of degree elevation of the sigma square",  numSquareElev );
     cmd.addInt("p", "pde", "specify the pde problem", pdeDef);
     cmd.addSwitch("b", "basis", "Apply composition to the basis", b_morph);
     cmd.addSwitch("g", "geom", "Apply composition to the geometry", g_morph);
     cmd.addSwitch("last", "one-shot uniform refinement", ref_last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("csv", "Save the data in .csv file", writeData);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -327,8 +332,11 @@ int main(int argc, char *argv[])
     time_t now = time(0);
 
     std::ofstream file_out;
-    file_out.open(std::to_string(now)+"radaptivity_results.csv");
-    file_out << "problem, cbasis, cgeom, optDim, deg, ref, dofs, L2err\n";
+    if (writeData)
+    {
+      file_out.open(std::to_string(now)+"radaptivity_results.csv");
+      file_out << "problem, cbasis, cgeom, a-deg, a-ref, a-dofs, opt-deg, opt-dofs, geo-deg, geo-dofs, L2err\n";
+    }
 
 
     std::string problem_name = "";
@@ -361,7 +369,7 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::side::north,condition_type::dirichlet,&ms);
     }
 
-    gsSquareDomain<2,real_t> composition(3,1);
+    gsSquareDomain<2,real_t> composition(numSquareElev,numSquareRefine);
 
     gsMultiPatch<> mp0;
     mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
@@ -432,15 +440,21 @@ int main(int argc, char *argv[])
         //! [Export visualization in ParaView]
         std::cout << "\nL2 error = " << std::setprecision(10) << std::scientific << L2err<<"\n";
 
-        // file_out << "problem, cbasis, cgeom, optDim, deg, ref, dofs, L2err\n";
-        file_out << problem_name << ","
+        // file_out << "problem, cbasis, cgeom, a-deg, a-ref, a-dofs, opt-deg, opt-dofs, geo-deg, geo-dofs, L2err\n";
+        if (writeData)
+        {
+          file_out << problem_name << ","
                  << b_morph << ","
                  << g_morph << ","
-                 << composition.nControls() << ","
-                 << std::max(mp0.patch(0).degree(0),mp0.patch(0).degree(1))   << ","
-                 << refCount << ","
-                 << problem.numDofs()  << ","
+                 << std::max(mp0.patch(0).degree(0),mp0.patch(0).degree(1))   << "," // analysis degree
+                 << refCount << "," // analysis unif refinement
+                 << problem.numDofs()  << "," // analysis dofs
+                 << composition.maxDegree() << "," // opt degree
+                 << composition.nControls() << "," // optDim
+                 << mp0.patch(0).basis().maxDegree() << ","
+                 << mp0.patch(0).basis().size() << ","
                  << std::setprecision(10) << std::scientific << L2err<<"\n";
+        }
 
 
         if (plot)
@@ -455,7 +469,9 @@ int main(int argc, char *argv[])
         }
 
     }
-    file_out.close();
+    
+    if (writeData)
+      file_out.close();
     return EXIT_SUCCESS;
 
 }// end main

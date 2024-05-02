@@ -81,6 +81,11 @@ public:
         return m_domain.support();
     }
 
+    short_t maxDegree() const
+    {
+        return m_domain.basis().maxDegree();
+    }
+
     short_t domainDim() const override
     {
         return m_domain.domainDim();
