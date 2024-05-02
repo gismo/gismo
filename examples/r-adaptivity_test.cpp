@@ -32,7 +32,8 @@ public:
                 const index_t numElevate,
                 const index_t numRefine,
                 const bool composeBasis,
-                const bool composeGeom)
+                const bool composeGeom,
+                const bool ref_last)
     :
     m_problemType(pdeDef),
     m_Dim(spaceDim),
@@ -40,6 +41,7 @@ public:
     m_numRefine(numRefine),
     m_Bmorph(composeBasis),
     m_Gmorph(composeGeom),
+    m_ref(ref_last),
     m_domain(gsSquareDomain<2,T>(1,1))
     {
         // Number of design variables
@@ -74,12 +76,6 @@ public:
         // gsDebugVar(C.transpose());
         // gsDebugVar(m_curDesign.transpose());
 
-        // gsMultiPatch<T> mp0;
-        // mp0.addPatch(gsNurbsCreator<T>::BSplineSquare());
-        // mp0.patch(0).coefs().array() -= 0.5; // This I do not remember why we put here.
-        //
-        // if (m_numElevate!=0)
-        //     mp0.degreeElevate(m_numElevate);
 
         gsMultiPatch<T> mp0;
         mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
@@ -87,19 +83,32 @@ public:
         if (m_Dim > 2)
           mp0.embed(m_Dim);
 
-          if (m_numElevate!=0)
-              mp0.degreeElevate(m_numElevate);
+        if (m_numElevate!=0)
+            mp0.degreeElevate(m_numElevate);
 
         // h-refine
-        for (int r =0; r < m_numRefine; ++r) // to be removed.
-            mp0.uniformRefine();
+        if(m_ref)
+        {
+          index_t numKnts = pow(2, m_numRefine) -1;
+          mp0.uniformRefine(numKnts);
+        }
+        else
+        {
+          for (int r =0; r < m_numRefine; ++r) // to be removed.
+              mp0.uniformRefine();
+        }
+        //
+        // gsInfo << "++++++++++++++++++++++++++++++++\n";
+        // gsInfo << "patch dimension in optimizer:\n";
+        // gsInfo << mp0.patch(0).basis().size() << "\n";
+        // gsInfo << "patch degree:\n";
+        // gsInfo << mp0.patch(0).degree(0) << "\n";
+        // gsInfo << "++++++++++++++++++++++++++++++++\n";
 
 
         // Make composed geometry and basis
         const gsBasis<T> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
         const gsGeometry<T> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
-
-
 
         // apply sigma
         if(m_Bmorph || m_Gmorph)
@@ -194,12 +203,7 @@ public:
 
         if (m_problemType == 0)
         {
-          //gsInfo << "Assemble poisson.\n";
-          // A.assemble( igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
-          //  ,
-          //  u * ff * meas(G) //rhs vector
-          //  );
-          A.assemble(
+            A.assemble(
             (grad(u)*(jac(G).ginv().tr())) * (grad(u)*(jac(G).ginv().tr())).tr() * meas(G) //matrix
             ,
             u * ff * meas(G) //rhs vector
@@ -217,12 +221,6 @@ public:
           gsWarn << "Unknown problem, exiting." << std::endl;
           return -1;
         }
-
-        // A.assemble(
-        //   (grad(u)*(jac(G).ginv().tr())) * (grad(u)*(jac(G).ginv().tr())).tr() * meas(G) //matrix
-        //   ,
-        //   u * ff * meas(G) //rhs vector
-        // );
 
         solver.compute( A.matrix() );
         m_solution = solver.solve(A.rhs());
@@ -279,8 +277,8 @@ private:
 
     const index_t m_problemType;
     const index_t m_Dim;
-    index_t m_numElevate, m_numRefine;
-    const bool m_Bmorph, m_Gmorph;
+    const index_t m_numElevate, m_numRefine;
+    const bool m_Bmorph, m_Gmorph, m_ref;
     mutable gsMatrix<T> m_solution;
     mutable gsSquareDomain<2,T> m_domain;
 
@@ -360,16 +358,7 @@ int main(int argc, char *argv[])
 
 
     // solvePoisson<real_t> problem(numElevate,numRefine);
-    solvePde<real_t> problem(pdeDef, spaceDim, numElevate, numRefine, b_morph, g_morph);
-    gsMatrix<> currentDesign = problem.currentDesign();
-    gsHLBFGS<real_t> solver(&problem);
-    solver.options().setInt("Verbose",2);
-    solver.options().setReal("MinGradientLength", 1e-6); // 1e-6 : more or less as refinement tolerance; there should be a balance between the two;
-    solver.options().setInt("LBFGSUpdates", 20);
-    solver.options().setReal("MinStepLength", 1e-12);
-    solver.options().setInt("MaxIterations",1000); // this can help
 
-    solver.solve(currentDesign);
 
     /**
      * ONLY FOR RECONSTRUCTION OF THE SOLUTION
@@ -385,114 +374,151 @@ int main(int argc, char *argv[])
     if (numElevate!=0)
         mp0.degreeElevate(numElevate);
 
-    // h-refine
-    for (int r =0; r < numRefine; ++r)
+    for(index_t refCount = 1; refCount <= numRefine; refCount++)
+    {
+
+      solvePde<real_t> problem(pdeDef, spaceDim, numElevate, refCount, b_morph, g_morph, ref_last);
+      gsMatrix<> currentDesign = problem.currentDesign();
+      gsHLBFGS<real_t> solver(&problem);
+      solver.options().setInt("Verbose",2);
+      solver.options().setReal("MinGradientLength", 1e-6); // 1e-6 : more or less as refinement tolerance; there should be a balance between the two;
+      solver.options().setInt("LBFGSUpdates", 20);
+      solver.options().setReal("MinStepLength", 1e-12);
+      solver.options().setInt("MaxIterations",1000); // this can help
+
+      solver.solve(currentDesign);
+
+      if(ref_last)
+      {
+        refCount = numRefine+1;
+        index_t numKnts = pow(2, numRefine) -1;
+        mp0.uniformRefine(numKnts);
+      }
+      else
         mp0.uniformRefine();
 
+      // gsInfo << "-------------------------------------\n";
+      // gsInfo << "patch dimension after refinement:\n";
+      // gsInfo << mp0.patch(0).basis().size() << "\n";
+      // gsInfo << "patch degree:\n";
+      // gsInfo << mp0.patch(0).degree(0) << "\n";
+      // gsInfo << "-------------------------------------\n";
 
-    // Make composed geometry and basis
-    const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
-    const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
-
-    // The domain sigma
-    // gsSquareDomain<2,real_t> domain;
-    gsSquareDomain<2,real_t> domain(1, 1);
-    domain.controls() = solver.currentDesign();
-    domain.updateGeom();
-
-    gsDebugVar(solver.currentDesign().minCoeff());
-    gsDebugVar(solver.currentDesign().maxCoeff());
+    // for (int r =0; r < numRefine; ++r)
+    //     mp0.uniformRefine();
 
 
-    // Define a composite basis and composite geometry
+      // Make composed geometry and basis
+      const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
+      const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
 
-    gsBasis<>::Ptr cbasis;
-    if(b_morph)
-    {
-      gsInfo << "Composed basis.\n";
-      cbasis = memory::make_shared(new gsComposedBasis<real_t>(domain,tbasis));
+      // The domain sigma
+      // gsSquareDomain<2,real_t> domain;
+      gsSquareDomain<2,real_t> domain(1, 1);
+      domain.controls() = solver.currentDesign();
+      domain.updateGeom();
+
+      // gsDebugVar(solver.currentDesign().minCoeff());
+      // gsDebugVar(solver.currentDesign().maxCoeff());
+
+      // Define a composite basis and composite geometry
+
+      gsBasis<>::Ptr cbasis;
+      if(b_morph)
+      {
+        gsInfo << "Composed basis.\n";
+        cbasis = memory::make_shared(new gsComposedBasis<real_t>(domain,tbasis));
+      }
+      else
+        cbasis = memory::make_shared_not_owned(&tbasis);
+
+      gsGeometry<>::Ptr cgeom;
+      if(g_morph)
+      {
+        gsInfo << "Composed geometry.\n";
+        cgeom = memory::make_shared(new gsComposedGeometry<real_t>(domain,tgeom));
+      }
+      else
+        cgeom = memory::make_shared_not_owned(&tgeom);
+
+
+      gsMultiPatch<> mp;
+      mp.addPatch(*cgeom);
+
+      gsMultiBasis<> dbasis(*cbasis);
+
+      gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",spaceDim);
+
+      gsBoundaryConditions<> bc;
+      if(pdeDef == 0)
+      {
+        bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
+        bc.addCondition(boundary::side::east ,condition_type::dirichlet,&ms);
+        bc.addCondition(boundary::side::south,condition_type::dirichlet,&ms);
+        bc.addCondition(boundary::side::north,condition_type::dirichlet,&ms);
+      }
+      bc.setGeoMap(mp);
+
+      //! [Problem setup]
+      gsExprAssembler<> A(1,1);
+
+      typedef gsExprAssembler<>::geometryMap geometryMap;
+      typedef gsExprAssembler<>::variable    variable;
+      typedef gsExprAssembler<>::space       space;
+      typedef gsExprAssembler<>::solution    solution;
+
+      // Elements used for numerical integration
+      A.setIntegrationElements(dbasis);
+      gsExprEvaluator<> ev(A);
+
+      // Set the geometry map
+      geometryMap G = A.getMap(mp);
+
+      // Set the discretization space
+      space u = A.getSpace(dbasis);
+      u.setup(bc, dirichlet::l2Projection, 0);
+
+      // Recover manufactured solution
+      auto u_ex = ev.getVariable(ms, G);
+
+      // Solution vector and solution variable
+      gsMatrix<> sol = problem.solution();
+      solution u_sol = A.getSolution(u, sol);
+
+      //! [Export visualization in ParaView]
+      real_t L2err = math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+      gsInfo<<"\nL2 error = "<<L2err<<"\n";
+
+      // file_out << "problem, morph, deg, ref, dofs, L2err\n";
+      file_out << problem_name << "," << b_morph << "," << g_morph << ","
+               << std::max(mp0.patch(0).degree(0),mp0.patch(0).degree(1))   << "," << refCount << ","
+               << A.numDofs()  << "," << L2err     << "\n";
+
+      if (plot)
+      {
+          gsInfo<<"Plotting in Paraview...\n";
+
+          gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+  //        collection.options().setSwitch("plotElements", true);
+  //        collection.options().setInt("plotElements.resolution", 100);
+          collection.newTimeStep(&mp);
+          collection.addField(u_sol,"numerical solution");
+          collection.addField(u_ex, "exact solution");
+          collection.addField((u_ex-u_sol).sqNorm(), "error");
+          collection.saveTimeStep();
+          collection.save();
+
+          gsComposedGeometry<real_t> cgeom2(domain,tgeom);
+          gsWriteParaview(*cbasis,"cbasis",2000);
+          gsWriteParaview(cgeom2,"cgeom",1000);
+
+          // gsFileManager::open("ParaviewOutput/solution.pvd");
+      }
+      else
+          gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
+                    "file containing the solution.\n";
+      //! [Export visualization in ParaView]
     }
-    else
-      cbasis = memory::make_shared_not_owned(&tbasis);
-
-    gsGeometry<>::Ptr cgeom;
-    if(g_morph)
-    {
-      gsInfo << "Composed geometry.\n";
-      cgeom = memory::make_shared(new gsComposedGeometry<real_t>(domain,tgeom));
-    }
-    else
-      cgeom = memory::make_shared_not_owned(&tgeom);
-
-
-    gsMultiPatch<> mp;
-    mp.addPatch(*cgeom);
-
-    gsMultiBasis<> dbasis(*cbasis);
-
-    gsFunctionExpr<> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",spaceDim);
-
-    gsBoundaryConditions<> bc;
-    if(pdeDef == 0)
-    {
-      bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
-      bc.addCondition(boundary::side::east ,condition_type::dirichlet,&ms);
-      bc.addCondition(boundary::side::south,condition_type::dirichlet,&ms);
-      bc.addCondition(boundary::side::north,condition_type::dirichlet,&ms);
-    }
-    bc.setGeoMap(mp);
-
-    //! [Problem setup]
-    gsExprAssembler<> A(1,1);
-
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
-    // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-    gsExprEvaluator<> ev(A);
-
-    // Set the geometry map
-    geometryMap G = A.getMap(mp);
-
-    // Set the discretization space
-    space u = A.getSpace(dbasis);
-    u.setup(bc, dirichlet::l2Projection, 0);
-
-    // Recover manufactured solution
-    auto u_ex = ev.getVariable(ms, G);
-
-    // Solution vector and solution variable
-    gsMatrix<> sol = problem.solution();
-    solution u_sol = A.getSolution(u, sol);
-
-    //! [Export visualization in ParaView]
-    if (plot)
-    {
-        gsInfo<<"Plotting in Paraview...\n";
-
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-//        collection.options().setSwitch("plotElements", true);
-//        collection.options().setInt("plotElements.resolution", 100);
-        collection.newTimeStep(&mp);
-        collection.addField(u_sol,"numerical solution");
-        collection.addField(u_ex, "exact solution");
-        collection.addField((u_ex-u_sol).sqNorm(), "error");
-        collection.saveTimeStep();
-        collection.save();
-
-        gsComposedGeometry<real_t> cgeom2(domain,tgeom);
-        gsWriteParaview(*cbasis,"cbasis",2000);
-        gsWriteParaview(cgeom2,"cgeom",1000);
-
-        // gsFileManager::open("ParaviewOutput/solution.pvd");
-    }
-    else
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
-    //! [Export visualization in ParaView]
     file_out.close();
     return EXIT_SUCCESS;
 
