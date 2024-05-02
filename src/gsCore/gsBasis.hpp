@@ -17,8 +17,6 @@
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsGeometry.h>
-#include <gsCore/gsForwardDeclarations.h>
-#include <gsAssembler/gsQuadrature.h>
 
 namespace gismo
 {
