@@ -6,7 +6,7 @@
 ######################################################################
 
 # Look for pre-installed GMP library
-#find_package(GMP) #QUIET
+find_package(GMP) #QUIET
 
 if (NOT GMP_FOUND)
   # Set GMP version

@@ -224,12 +224,11 @@ public:
     }
 
     /// Returns true if an Object exists in the filedata
-    inline bool hasId(int id) const
-    {
-        gsXmlNode * root = getXmlRoot();
-        //const gsXmlAttribute * id_at;
-        gsXmlNode * nd = internal::searchId(id, root);
-        return (bool) nd;
+    inline bool hasId(int id) const {
+      gsXmlNode* root = getXmlRoot();
+      // const gsXmlAttribute * id_at;
+      gsXmlNode* nd = internal::searchId(id, root, NULL, false);
+      return (bool)nd;
     }
 
     /// Returns true if an entry of \em tag exists in the xml file
@@ -323,14 +322,7 @@ public:
     /// @param id Integer for identification purposes, optional
     /// @param label String for identification purposes, optional
     void addInclude( const std::string & filename, const real_t & time=-1.,
-                     const index_t & id=-1, const std::string & label="")
-    {
-        GISMO_ASSERT( filename!="", "No filename provided for include!");
-        gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
-        if (-1. != time)
-            node->append_attribute(internal::makeAttribute("time", std::to_string( static_cast< double >( time ) ), *data));
-        data->appendToRoot(node,id, label);
-    }
+                     const index_t & id=-1, const std::string & label="");
 
 protected:
     void getInclude(gsFileData & res, index_t id, real_t time, std::string label);

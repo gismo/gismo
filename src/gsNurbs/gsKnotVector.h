@@ -471,7 +471,7 @@ public: // Deprecated functions required by gsKnotVector.
     gsKnotVector(short_t deg, const iterType begOfKnots, const iterType endOfKnots)
     {
         insert(begOfKnots,endOfKnots);
-        m_deg = deg;
+        m_deg = (deg == - 1 ? deduceDegree() : deg);
     }
 
 public:
