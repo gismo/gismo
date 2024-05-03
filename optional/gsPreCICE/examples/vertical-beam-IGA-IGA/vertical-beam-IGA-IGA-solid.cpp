@@ -49,9 +49,6 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
-    bool write = false;
-    bool get_readTime = false;
-    bool get_writeTime = false;
     index_t plotmod = 1;
     index_t numRefine  = 1;
     index_t numElevate = 0;
@@ -69,9 +66,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     //cmd.addInt("m","plotmod", "Modulo for plotting, i.e. if plotmod==1, plots every timestep", plotmod);
     cmd.addInt("m", "method","1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe, 5: Wilson",method);
-    cmd.addSwitch("write", "Create a file with point data", write);
-    cmd.addSwitch("readTime", "Get the read time", get_readTime);
-    cmd.addSwitch("writeTime", "Get the write time", get_writeTime);
+    // cmd.addSwitch("write", "Create a file with point data", write);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //! [Read input file]
@@ -134,19 +129,57 @@ int main(int argc, char *argv[])
      *   + DisplacementData:    This data is defined on the SolidMesh and stores the displacement at the integration points
      *   + StressData:           This data is defined on the SolidMesh and stores pressure/forces at the integration points
      */
-    std::string SolidMesh        = "SolidMesh";
-    std::string StressData       = "StressData";
-    std::string DisplacementData       = "DisplacementData";
+    
 
 
-    // Step 1: SolidMesh
-    // Get the quadrature nodes on the coupling interface
-    gsOptionList quadOptions = gsExprAssembler<>::defaultOptions();
+    std::string SolidMesh               = "SolidMesh";
+    std::string ForceKnotMesh           = "ForceKnotMesh";
+    std::string ForceControlPointMesh   = "ForceControlPointMesh";
 
-    // Get the quadrature points
-    gsVector<index_t> quadPointIDs;
-    gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions);
-    participant.addMesh(SolidMesh,quadPoints,quadPointIDs);
+    // std::string StressData       = "StressData";
+    std::string DisplacementData        = "DisplacementData";
+    std::string ForceKnotData           = "ForceKnotMeshData";
+    std::string ForceControlPointData   = "ForceControlPointData";
+
+
+
+    // // Step 1: SolidMesh
+    // // Get the quadrature nodes on the coupling interface
+    // gsOptionList quadOptions = gsExprAssembler<>::defaultOptions();
+
+    // Get the force mesh on the coupling interface
+    gsVector<index_t> forceKnotIDs;
+    gsMatrix<> forceKnots;
+    participant.getMeshVertexIDsAndCoordinates(ForceKnotMesh,forceKnotIDs,forceKnots);
+
+    gsBasis<> * basis = knotMatrixToBasis<real_t>(forceKnots).get();
+
+
+    gsDebugVar(basis);
+
+
+    gsVector<index_t> forceControlPointIDs;
+    gsMatrix<> forceControlPoints;
+    participant.getMeshVertexIDsAndCoordinates(ForceControlPointMesh, forceControlPointIDs,forceControlPoints);
+
+
+    // Step 2: Regenerate the geometry
+    gsMultiPatch<> forceMesh;
+
+    forceMesh.addPatch(give(basis->makeGeometry(forceControlPoints.transpose())));
+
+    // Maybe re-write this to a setter?
+    gsFunctionExpr<> surfForce;
+     
+    
+
+
+    // forceMesh.patch(0).
+
+    // // Get the quadrature points
+    // gsVector<index_t> quadPointIDs;
+    // gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions);
+    // participant.addMesh(SolidMesh,quadPoints,quadPointIDs);
 
 
     // Step 2: initialize the participant
@@ -164,8 +197,11 @@ int main(int argc, char *argv[])
     // Assign geometry map
     bcInfo.setGeoMap(patches);
 
+
+
+
     // Surface force
-    gsPreCICEFunction<real_t> surfForce(&participant,SolidMesh,StressData,patches,patches.parDim(),patches.geoDim(),false);
+    // gsPreCICEFunction<real_t> surfForce(&participant,SolidMesh,StressData,patches,patches.parDim(),patches.geoDim(),false);
 
 
 
@@ -303,8 +339,6 @@ int main(int argc, char *argv[])
 
 
     real_t time = 0;
-    real_t t_read = 0;
-    real_t t_write = 0;
     // Plot initial solution
     if (plot)
     {
@@ -330,6 +364,8 @@ int main(int argc, char *argv[])
 
     gsMatrix<> pointDataMatrix;
     gsMatrix<> otherDataMatrix(1,1);
+
+    // gsDebugVar(dt);
 
     // Time integration loop
     while (participant.isCouplingOngoing())
@@ -367,9 +403,7 @@ int main(int argc, char *argv[])
         solution = assembler.constructDisplacement(displacements);
         gsMatrix<> quadPointsDisplacements = solution.patch(0).eval(quadPoints);
         participant.writeData(SolidMesh,DisplacementData,quadPointIDs,quadPointsDisplacements);
-
-        if (get_writeTime)
-            t_write +=participant.writeTime();
+        gsDebugVar(DisplacementData);
 
         // do the coupling
         precice_dt =participant.advance(dt);
@@ -394,25 +428,13 @@ int main(int argc, char *argv[])
                 // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
                 std::string fileName = dirname + "/solution" + util::to_string(timestep);
                 gsWriteParaview<>(solField, fileName, 500);
-                fileName = "solution" + util::to_string(timestep) + "0";
+                fileName = dirname + "solution" + util::to_string(timestep) + "0";
                 collection.addTimestep(fileName,time,".vts");
             }
             solution.patch(0).eval_into(points,pointDataMatrix);
-            if (get_readTime)
-                t_read += participant.readTime();
             otherDataMatrix<<time;
             writer.add(pointDataMatrix,otherDataMatrix);
         }
-    }
-
-    if (get_readTime)
-    {
-        gsInfo << "Read time: " << t_read << "\n";
-    }
-
-    if (get_writeTime)
-    {
-        gsInfo << "Write time: " << t_write << "\n";
     }
 
     if (plot)

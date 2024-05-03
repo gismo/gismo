@@ -48,7 +48,7 @@
   </participant>
     
   <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory=".." />
-  <!-- Change a mesh side for communication, in this case SolidMesh -->
+  <!-- Cange a mesh side for communication, in this case SolidMesh -->
   <coupling-scheme:parallel-implicit>
     <participants first="Fluid" second="Solid"/>
     <time-window-size value="0.01" />
