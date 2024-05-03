@@ -16,6 +16,7 @@
 #include <gsHSplines/gsKdNode.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsBoundary.h>
+#include <gsCore/gsFunction.h>
 #include <gsTensor/gsGridIterator.h>
 
 #include <queue>
@@ -254,7 +255,7 @@ gsHDomain<d, Z>::construct ( const gsFunction<real_t> & inOut) // TODO: add max 
     stack.push_back(m_root);
 
     node * curNode;
-    gsMatrix<real_t> coords, vals;
+    gsMatrix<real_t> coord, vals;
     while ( ! stack.empty() )
     {
         curNode = stack.back(); //top();
@@ -282,9 +283,9 @@ gsHDomain<d, Z>::construct ( const gsFunction<real_t> & inOut) // TODO: add max 
             ++curNode->left ->level;
             ++curNode->right->level;
 
-            if (curNode->left ->level != m_indexLevel)
+            if (curNode->left ->level != (int)m_indexLevel)
                 stack.push_back(curNode->left);
-            if (curNode->right ->level != m_indexLevel)
+            if (curNode->right ->level != (int)m_indexLevel)
                 stack.push_back(curNode->right);
         }
     }
