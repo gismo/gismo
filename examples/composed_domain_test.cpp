@@ -91,7 +91,6 @@ int main(int argc, char *argv[])
 
     for(index_t refCount = 1; refCount <= numRefine; refCount++)
     {
-
         if(ref_last)
         {
           refCount = numRefine+1;

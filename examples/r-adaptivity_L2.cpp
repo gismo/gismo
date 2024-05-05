@@ -22,14 +22,24 @@ template <typename T>
 class solvePoisson : public gsOptProblem<T>
 //! [OptProblemExample Class]
 {
+
+    typedef typename gsExprAssembler<T>::geometryMap geometryMap;
+    typedef typename gsExprAssembler<T>::variable    variable;
+    typedef typename gsExprAssembler<T>::space       space;
+    typedef typename gsExprAssembler<T>::solution    solution;
+
 public:
 
-    solvePoisson(   const index_t numElevate,
-                    const index_t numRefine)
+    solvePoisson(   const gsGeometry<T> & geom,
+                    const gsBasis<T> & basis,
+                    // const gsFunction<T> & source,
+                    const gsFunction<T> & exact)
     :
-    m_numElevate(numElevate),
-    m_numRefine(numRefine),
-    m_domain(gsSquareDomain<2,T>())
+    m_domain(gsSquareDomain<2,T>()),
+    m_geom(&geom),
+    m_basis(&basis),
+    // m_source(&source),
+    m_exact(&exact)
     {
         // Number of design variables
         m_numDesignVars = m_domain.nControls();
@@ -56,82 +66,41 @@ public:
 
         m_conJacRows.resize(m_numConJacNonZero);
         m_conJacCols.resize(m_numConJacNonZero);
+
+        m_cbasis = gsComposedBasis<T>(m_domain,*m_basis);
     }
 
     T evalObj( const gsAsConstVector<T> & C ) const
     {
-        // gsDebugVar(C.transpose());
-        // gsDebugVar(m_curDesign.transpose());
-
-        gsMultiPatch<T> mp0;
-        mp0.addPatch(gsNurbsCreator<T>::BSplineSquare());
-        mp0.patch(0).coefs().array() -= 0.5;
-
-        if (m_numElevate!=0)
-            mp0.degreeElevate(m_numElevate);
-
-        // h-refine
-        for (int r =0; r < m_numRefine; ++r)
-            mp0.uniformRefine();
-
-
-        // Make composed geometry and basis
-        const gsBasis<T> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
-        const gsGeometry<T> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
-
         // The domain sigma
         m_domain.controls() = C;
         m_domain.updateGeom();
-
-        // Define a composite basis and composite geometry
-        // The basis is composed by the square domain
-        gsComposedBasis<real_t> cbasis(m_domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
-        // The geometry is defined using the composite basis and some coefficients
-        // gsComposedGeometry<real_t> cgeom(cbasis,tgeom.coefs()); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
-        gsComposedGeometry<real_t> cgeom(m_domain,tgeom);
-
-        gsMultiPatch<T> mp;
-        mp.addPatch(cgeom);
-
-        gsMultiBasis<T> dbasis(mp,true);
-
-
-        // Source function:
-        // gsFunctionExpr<T> f("((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)",2);
-
-        // Exact solution
-        gsFunctionExpr<T> ms("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
 
         gsBoundaryConditions<T> bc;
         // bc.addCondition(boundary::side::west ,condition_type::dirichlet,&ms);
         // bc.addCondition(boundary::side::east ,condition_type::dirichlet,&ms);
         // bc.addCondition(boundary::side::south,condition_type::dirichlet,&ms);
         // bc.addCondition(boundary::side::north,condition_type::dirichlet,&ms);
-        bc.setGeoMap(mp);
+        bc.setGeoMap(m_geom);
 
         //! [Problem setup]
         gsExprAssembler<T> A(1,1);
 
-        typedef typename gsExprAssembler<T>::geometryMap geometryMap;
-        typedef typename gsExprAssembler<T>::variable    variable;
-        typedef typename gsExprAssembler<T>::space       space;
-        typedef typename gsExprAssembler<T>::solution    solution;
-
         // Elements used for numerical integration
-        A.setIntegrationElements(dbasis);
+        A.setIntegrationElements(m_cbasis);
         gsExprEvaluator<T> ev(A);
 
         // Set the geometry map
-        geometryMap G = A.getMap(mp);
+        geometryMap G = A.getMap(m_geom);
 
         // Set the discretization space
-        space u = A.getSpace(dbasis);
+        space u = A.getSpace(m_cbasis);
 
         // Set the source term
         // auto ff = A.getCoeff(f, G);
 
         // Recover manufactured solution
-        auto u_ex = ev.getVariable(ms, G);
+        auto u_ex = ev.getVariable(m_exact, G);
 
         // Solution vector and solution variable
         solution u_sol = A.getSolution(u, m_solution);
@@ -158,6 +127,18 @@ public:
         return math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
     }
 
+    std::vector<T> elErrors() const
+    {
+        // gsExprEvaluator<T> ev;
+        // ev.setIntegrationElements(m_cbasis);
+
+        // space u = A.getSpace(m_cbasis);
+
+
+        // ev.integralElWise( (ilapl(f1,Gm) + ff).sqNorm() * meas(Gm) );
+        // const std::vector<real_t> & elErrEst = ev.elementwise();
+    }
+
     // void gradObj_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
     // {}
 
@@ -180,6 +161,13 @@ private:
     index_t m_numElevate, m_numRefine;
     mutable gsMatrix<T> m_solution;
     mutable gsSquareDomain<2,T> m_domain;
+
+    const gsBasis<T> * m_basis;
+    const gsGeometry<T> * m_geom;
+    // const gsFunction<T> * m_source;
+    const gsFunction<T> * m_exact;
+
+    gsComposedBasis<T> m_cbasis;
 
     // Lastly, we forward the memebers of the base clase gsOptProblem
     using gsOptProblem<T>::m_numDesignVars;
@@ -215,20 +203,48 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    solvePoisson<real_t> problem(numElevate,numRefine);
+    gsMultiPatch<> mp0;
+    mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
+    mp0.patch(0).coefs().array() -= 0.5;
+
+    if (numElevate!=0)
+        mp0.degreeElevate(numElevate);
+
+    // h-refine
+    for (int r =0; r < numRefine; ++r)
+        mp0.uniformRefine();
+
+
+    // Make composed geometry and basis
+    const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
+    const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
+
+    // Exact solution
+    gsFunctionExpr<> exact("tanh((0.25-sqrt(x^2+y^2))/0.05)+1",2);
+
+
+
+
+
+
+    solvePoisson<real_t> problem(tgeom,tbasis,exact);
     gsMatrix<> currentDesign = problem.currentDesign();
-    gsHLBFGS<real_t> solver(&problem);
-    solver.options().setInt("Verbose",2);
-    solver.options().setReal("MinGradientLength", 1e-9); // 1e-6 : more or less as refinement tolerance; there should be a balance between the two;
-    solver.options().setInt("LBFGSUpdates", 20);
-    solver.options().setReal("MinStepLength", 1e-12);
-    solver.options().setInt("MaxIterations",10);
+    problem.evalObj(currentDesign);
+    currentDesign = problem.currentDesign();
 
-    solver.solve(currentDesign);
+    // gsHLBFGS<real_t> solver(&problem);
+    // solver.options().setInt("Verbose",2);
+    // solver.options().setReal("MinGradientLength", 1e-9); // 1e-6 : more or less as refinement tolerance; there should be a balance between the two;
+    // solver.options().setInt("LBFGSUpdates", 20);
+    // solver.options().setReal("MinStepLength", 1e-12);
+    // solver.options().setInt("MaxIterations",10);
 
-    /**
-     * ONLY FOR RECONSTRUCTION OF THE SOLUTION
-     */
+    // solver.solve(currentDesign);
+    // currentDesign = solver.currentDesign();
+
+    ////
+    // ONLY FOR RECONSTRUCTION OF THE SOLUTION
+    ///
     gsMultiPatch<> mp0;
     mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
     mp0.patch(0).coefs().array() -= 0.5;
@@ -247,10 +263,8 @@ int main(int argc, char *argv[])
 
     // The domain sigma
     gsSquareDomain<2,real_t> domain;
-    domain.controls() = solver.currentDesign();
+    domain.controls() = currentDesign;
     domain.updateGeom();
-
-    gsDebugVar(solver.currentDesign());
 
 
     // Define a composite basis and composite geometry

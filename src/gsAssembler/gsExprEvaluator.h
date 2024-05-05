@@ -399,11 +399,8 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
-    // m_exprdata->activateFlags(SAME_ELEMENT);
+    m_exprdata->activateFlags(SAME_ELEMENT);
     
-    gsMatrix<T> tmpPoints;
-    gsVector<T> tmpWeights;
-
     // Computed value on element
     T elVal;
     index_t c = 0;
@@ -415,7 +412,7 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
             m_exprdata->multiBasis().piece(patchInd).makeDomainIterator();
-        m_exprdata->getElement().set(*domIt,tmpWeights);
+        m_exprdata->getElement().set(*domIt,quWeights);
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
@@ -431,34 +428,28 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
         {
             // Map the Quadrature rule to the element
             QuRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(),
-                          tmpPoints, tmpWeights);
+                          m_exprdata->points(), quWeights);
 
-            for (index_t p = 0; p!=tmpPoints.cols(); p++)
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(patchInd);
+
+            // Compute on element
+            elVal = _op::init();
+            for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
+                _op::acc(_arg.eval(k), quWeights[k], elVal);
+
+            if ( storeElWise )
             {
-                m_exprdata->points() = tmpPoints.col(p);
-                quWeights = tmpWeights.row(p);
-
-                // Perform required pre-computations on the quadrature nodes
-                m_exprdata->precompute(patchInd);
-
-                // Compute on element
-                elVal = _op::init();
-                for (index_t k = 0; k != quWeights.rows(); ++k) // loop over quad. nodes
-                    _op::acc(_arg.eval(k), quWeights[k], elVal);
-
-                if ( storeElWise )
-                {
-    #               ifdef _OPENMP
-                    m_elWise[c] = elVal;
-                    c += nt;
-    #               else
-                    m_elWise[c++] = elVal;
-    #               endif
-                }
-
-    #           pragma omp critical (_op_acc)
-                _op::acc(elVal, 1, m_value);
+#               ifdef _OPENMP
+                m_elWise[c] = elVal;
+                c += nt;
+#               else
+                m_elWise[c++] = elVal;
+#               endif
             }
+
+#           pragma omp critical (_op_acc)
+            _op::acc(elVal, 1, m_value);
         }
     }
 

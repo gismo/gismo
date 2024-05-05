@@ -57,6 +57,8 @@ public:
     short_t domainDim() const override { return m_composition->domainDim(); }
     short_t targetDim() const override { return m_basis->targetDim(); }
 
+    short_t maxDegree() const override { return m_basis->maxDegree(); }
+
     gsMatrix<T> support() const override
     {
         gsMatrix<T> supp = m_basis->support();

@@ -27,18 +27,20 @@ class gsSquareDomain : public gsFunction<T>
 public:
     // default constructor
     // gsSquareDomain()
+
+    // Constructor with a basis
+    // gsSquareDomain(const gsTensorBSpline<DIM,T> & domain)
+    // {
+
+    // }
+
+
     gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0)
     {
         m_domain = *gsNurbsCreator<T>::BSplineSquare();
         m_domain.degreeElevate(numElevation);
         index_t numKts = pow(2, numRefine) - 1;
         m_domain.uniformRefine(numKts);
-       // m_domain.uniformRefine(15);
-       gsInfo << " m_domain bi-degree = (" << m_domain.degree(0) <<", " << m_domain.degree(1) << ")\n";
-       gsInfo << " m_domain.coefsSize() = " << m_domain.coefsSize() << "\n";
-//      gsDebugVar(m_domain.coefsSize());
-      // m_domain.uniformRefine();
-        // m_domain.uniformRefine();
         // Mapper storing control points
         m_mapper = gsDofMapper(m_domain.basis(),m_domain.targetDim());
 
@@ -77,6 +79,11 @@ public:
     gsMatrix<T> support() const override
     {
         return m_domain.support();
+    }
+
+    short_t maxDegree() const
+    {
+        return m_domain.basis().maxDegree();
     }
 
     short_t domainDim() const override

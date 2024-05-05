@@ -53,11 +53,12 @@ int main(int argc, char *argv[])
     const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
     const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
 
-    // The domain sigma
+    // // The domain sigma
     // gsSquareDomain<2,real_t> domain;
 
     // gsMatrix<> pars = domain.controls();
-    // pars *= 0.99;
+    // // pars *= 0.99;
+    // pars *= 0.95;
     // // pars(0,0) -= 0.1;
     // domain.controls() = pars.col(0);
     // domain.updateGeom();
@@ -68,17 +69,17 @@ int main(int argc, char *argv[])
 
     // Define a composite basis and composite geometry
     // The basis is composed by the square domain
-    gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
+    // gsComposedBasis<real_t> cbasis(domain,tbasis); // basis(u,v) = basis(sigma(xi,eta)) -> deriv will give dphi/dxi, dphi/deta
     // The geometry is defined using the composite basis and some coefficients
     gsComposedGeometry<real_t> cgeom(domain, tgeom); // G(u,v) = G(sigma(xi,eta))  -> deriv will give dG/dxi, dG/deta
 
     if (plotbasis)
     {
-        gsWriteParaview(cbasis,"cbasis");
+        // gsWriteParaview(cbasis,"cbasis");
         gsWriteParaview(tbasis,"tbasis");
     }
 
-    // const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
+    const gsBasis<> & cbasis = tbasis; // basis(u,v) -> deriv will give dphi/du ,dphi/dv
     // const gsGeometry<> & cgeom = tgeom;
 
 
@@ -176,8 +177,8 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
 
         gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
-        collection.options().setInt("plotElements.resolution", 16);
+        // collection.options().setSwitch("plotElements", true);
+        // collection.options().setInt("plotElements.resolution", 16);
         collection.options().setInt("numPoints", 1000);
         collection.options().setInt("precision", 12);
 //        collection.options().setInt("plotElements.resolution", 16);

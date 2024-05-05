@@ -209,7 +209,8 @@ int main(int argc, char* argv[])
         //     pars.row(r)<<0.25*math::cos(angle)+0.5,0.25*math::sin(angle)+0.5;
         // }
         // pars.resize(pars.rows()*pars.cols(),1);
-    pars *= 0.75;
+    // pars *= 0.75;
+    pars(0,0) *= 0.75;
     // Register the changed parameters back to the parametric domain and update
     domain.controls() = pars.col(0);
     domain.updateGeom();
