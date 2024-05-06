@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     bool get_readTime = false;
     bool get_writeTime = false;
     index_t plotmod = 1;
-    index_t loadCase = 1;
+    index_t loadCase = 0;
 
     std::string precice_config;
 

@@ -367,7 +367,6 @@ int main(int argc, char *argv[])
 
         assembler.assemble();
         F = assembler.rhs();
-        gsDebugVar(F);
 
         // solve gismo timestep
         gsInfo << "Solving timestep " << time << "...\n";
