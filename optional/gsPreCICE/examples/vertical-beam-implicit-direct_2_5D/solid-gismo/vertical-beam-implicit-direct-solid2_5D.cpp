@@ -46,6 +46,9 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot = false;
+    bool get_readTime = false;
+    bool get_writeTime = false;
+    bool write = false;
     index_t plotmod = 1;
     index_t numRefine  = 1;
     index_t numElevate = 0;
@@ -63,7 +66,9 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     //cmd.addInt("m","plotmod", "Modulo for plotting, i.e. if plotmod==1, plots every timestep", plotmod);
     cmd.addInt("m", "method","1: Explicit Euler, 2: Implicit Euler, 3: Newmark, 4: Bathe, 5: Wilson",method);
-    // cmd.addSwitch("write", "Create a file with point data", write);
+    cmd.addSwitch("write", "Create a file with point data", write);
+    cmd.addSwitch("readTime", "Get the read time", get_readTime);
+    cmd.addSwitch("writeTime", "Get the write time", get_writeTime);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     //! [Read input file]
@@ -378,6 +383,8 @@ int main(int argc, char *argv[])
         solution = assembler.constructDisplacement(displacements);
         controlPoints = solution.patch(0).coefs().transpose();
         participant.writeData(ControlPointMesh,ControlPointData,controlPointIDs,controlPoints);
+        if (get_writeTime)
+            t_write +=participant.writeTime();
 
         // do the coupling
         precice_dt =participant.advance(dt);
@@ -406,9 +413,23 @@ int main(int argc, char *argv[])
                 collection.addTimestep(fileName,time,".vts");
             }
             solution.patch(0).eval_into(points,pointDataMatrix);
+
+            if (get_readTime)
+                t_read += participant.readTime();
+
             otherDataMatrix<<time;
             writer.add(pointDataMatrix,otherDataMatrix);
         }
+    }
+
+    if (get_readTime)
+    {
+        gsInfo << "Read time: " << t_read << "\n";
+    }
+
+    if (get_writeTime)
+    {
+        gsInfo << "Write time: " << t_write << "\n";
     }
 
     if (plot)
