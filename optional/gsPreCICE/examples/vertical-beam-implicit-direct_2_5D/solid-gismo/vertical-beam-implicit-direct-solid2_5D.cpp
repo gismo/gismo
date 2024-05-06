@@ -249,7 +249,8 @@ int main(int argc, char *argv[])
 
         // Time step
     real_t dt = precice_dt;
-
+    real_t t_read = 0;
+    real_t t_write = 0;
     gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&assembler,&solutions](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) 
     {
         // to do: add time dependency of forcing
