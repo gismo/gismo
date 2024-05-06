@@ -98,24 +98,25 @@ int main(int argc, char *argv[])
     // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
     // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 2);
 
-    bcInfo.addCondition(0, boundary::south, condition_type::clamped, nullptr, 2);
-    bcInfo.addCondition(0, boundary::north, condition_type::clamped, nullptr, 2);
-    bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 2);
-    bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 2);
+    // bcInfo.addCondition(0, boundary::south, condition_type::clamped, nullptr, 2);
+    // bcInfo.addCondition(0, boundary::north, condition_type::clamped, nullptr, 2);
+    // bcInfo.addCondition(0, boundary::east, condition_type::clamped, nullptr, 2);
+    // bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 2);
 
     // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
-    // bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, nullptr, 1);
-    // bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, nullptr, 1);
+    // bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, nullptr, 0);
+    // bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, nullptr, 0);
     // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 1);
 
-    bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
-    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, nullptr, 1);
-    bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, nullptr, 0);
-    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 0);
+    // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
+    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, nullptr, 0);
+    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 1);
+    bcInfo.addCondition(0, boundary::north, condition_type::clamped, nullptr, 2);
+    bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 2);    // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 0);
 
 
     gsVector<> loadVec(3);
-    loadVec<<0.5,0.5,-5e3;
+    loadVec<<0,1,-5e2;
     gsConstantFunction<> surfForce(loadVec,3);
 
     // Assign geometry map
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
 
     materialMatrix = getMaterialMatrix<3,real_t>(patches,t,parameters,Density,options);
 
-    gsFunctionExpr<> foundation("0","0","1e3",3);
+    gsFunctionExpr<> foundation("0","0","0",3);
 
     gsThinShellAssembler<3, real_t, true> assembler(patches,bases,bcInfo,surfForce,materialMatrix);
     assembler.setFoundation(foundation);
@@ -270,6 +271,16 @@ int main(int argc, char *argv[])
                 writer.add(pointDataMatrix,otherDataMatrix);
             }
         }
+    }
+
+    if (get_readTime)
+    {
+        gsInfo << "Read time: " << t_read << "\n";
+    }
+
+    if (get_writeTime)
+    {
+        gsInfo << "Write time: " << t_write << "\n";
     }
 
     if (plot)
