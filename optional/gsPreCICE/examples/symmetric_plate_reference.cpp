@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
                                                  
     // Define boundary conditions
     gsBoundaryConditions<> bcInfo;
+    gsPointLoads<real_t> pLoads = gsPointLoads<real_t>();
     // Dirichlet side
     gsConstantFunction<> g_D(0,patches.geoDim());
     // Bottom side (fixed)
@@ -109,18 +110,29 @@ int main(int argc, char *argv[])
     // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 1);
 
     // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
-    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet, nullptr, 0);
-    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 1);
-    bcInfo.addCondition(0, boundary::north, condition_type::clamped, nullptr, 2);
-    bcInfo.addCondition(0, boundary::west, condition_type::clamped, nullptr, 2);    // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 0);
+    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet,0,0,false, 0);
+    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet,0,0, false, 1);
+    bcInfo.addCondition(0, boundary::north, condition_type::clamped,0,0, false, 2);
+    bcInfo.addCondition(0, boundary::west, condition_type::clamped,0,0, false, 2);    // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 0);
 
+
+
+    
+    gsVector<> point(2);
+    point << 0, 0;
 
     gsVector<> loadVec(3);
-    loadVec<<0,1,-5e2;
-    gsConstantFunction<> surfForce(loadVec,3);
+    loadVec<<0,0, -5e3;
+
+    // gsVector<> loadVec(3);
+    // loadVec<<0,1,-5e2;
+    // gsConstantFunction<> surfForce(loadVec,3);
+    pLoads.addLoad(point, loadVec, 0 );
+    gsFunctionExpr<> force("0","0","-5e3",3);
 
     // Assign geometry map
     bcInfo.setGeoMap(patches);
+
 
     gsDebugVar(bcInfo);
 
@@ -151,10 +163,11 @@ int main(int argc, char *argv[])
 
     materialMatrix = getMaterialMatrix<3,real_t>(patches,t,parameters,Density,options);
 
-    gsFunctionExpr<> foundation("0","0","0",3);
+    gsFunctionExpr<> foundation("0","0","1e3",3);
 
-    gsThinShellAssembler<3, real_t, true> assembler(patches,bases,bcInfo,surfForce,materialMatrix);
+    gsThinShellAssembler<3, real_t, true> assembler(patches,bases,bcInfo,force,materialMatrix);
     assembler.setFoundation(foundation);
+    assembler.setPointLoads(pLoads);
 
     // Compute mass matrix (since it is constant over time)
     assembler.assembleMass();
@@ -163,7 +176,7 @@ int main(int argc, char *argv[])
     gsSparseMatrix<> K = assembler.matrix();
     gsVector<> Fext = assembler.rhs();
     loadVec.setZero();
-    surfForce.setValue(loadVec,3);
+    // surfForce.setValue(loadVec,3);
     assembler.assemble(); // Reset RHS with homogeneous surface force. HV: Bit inefficient, maybe replace with assembleLinearVector in the future.
 
     gsStructuralAnalysisOps<real_t>::Jacobian_t Jacobian = [&assembler,&solutions](gsMatrix<real_t> const &x, gsSparseMatrix<real_t> & m) 
@@ -273,15 +286,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (get_readTime)
-    {
-        gsInfo << "Read time: " << t_read << "\n";
-    }
-
-    if (get_writeTime)
-    {
-        gsInfo << "Write time: " << t_write << "\n";
-    }
 
     if (plot)
       collection.save();
