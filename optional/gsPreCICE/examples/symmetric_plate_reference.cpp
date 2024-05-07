@@ -110,25 +110,28 @@ int main(int argc, char *argv[])
     // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 1);
 
     // bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, 1);
-    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet,0,0,false, 0);
-    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet,0,0, false, 1);
+    bcInfo.addCondition(0, boundary::north, condition_type::dirichlet,0,0,false, 1);
+    bcInfo.addCondition(0, boundary::west, condition_type::dirichlet,0,0, false, 0);
+
+    bcInfo.addCondition(0, boundary::north, condition_type::clamped,0,0, false, 0);
+    bcInfo.addCondition(0, boundary::west, condition_type::clamped,0,0, false, 1);
+
     bcInfo.addCondition(0, boundary::north, condition_type::clamped,0,0, false, 2);
     bcInfo.addCondition(0, boundary::west, condition_type::clamped,0,0, false, 2);    // bcInfo.addCondition(0, boundary::west, condition_type::dirichlet, nullptr, 0);
 
-
-
     
     gsVector<> point(2);
-    point << 0, 0;
+    point << 0, 1;
 
     gsVector<> loadVec(3);
-    loadVec<<0,0, -5e3;
+    loadVec<<0,0, -5e1;
 
     // gsVector<> loadVec(3);
     // loadVec<<0,1,-5e2;
-    // gsConstantFunction<> surfForce(loadVec,3);
     pLoads.addLoad(point, loadVec, 0 );
-    gsFunctionExpr<> force("0","0","-5e3",3);
+    // gsConstantFunction<> force(loadVec,3);
+    // gsFunctionExpr<> force("0","0","-5e3",3);
+    gsFunctionExpr<> force("0","0","0",3);
 
     // Assign geometry map
     bcInfo.setGeoMap(patches);
@@ -163,7 +166,7 @@ int main(int argc, char *argv[])
 
     materialMatrix = getMaterialMatrix<3,real_t>(patches,t,parameters,Density,options);
 
-    gsFunctionExpr<> foundation("0","0","1e3",3);
+    gsFunctionExpr<> foundation("0","0","-1e4",3);
 
     gsThinShellAssembler<3, real_t, true> assembler(patches,bases,bcInfo,force,materialMatrix);
     assembler.setFoundation(foundation);
@@ -175,6 +178,8 @@ int main(int argc, char *argv[])
     assembler.assemble();
     gsSparseMatrix<> K = assembler.matrix();
     gsVector<> Fext = assembler.rhs();
+    // pLoads.clear();
+    // assembler.setPointLoads(pLoads);
     loadVec.setZero();
     // surfForce.setValue(loadVec,3);
     assembler.assemble(); // Reset RHS with homogeneous surface force. HV: Bit inefficient, maybe replace with assembleLinearVector in the future.
