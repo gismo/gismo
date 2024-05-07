@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 
       gsInfo << intersectPts.size() << " intersections are found!" << "\n";
       gsMatrix<> iPts(bsp1.geoDim(), intersectPts.size());
-      for (int j = 0; j < intersectPts.size(); ++j) {
+      for (size_t j = 0; j < intersectPts.size(); ++j) {
         iPts.col(j) = intersectPts[j].getPoint();
       }
       if (!intersectPts.empty()) {
