@@ -61,12 +61,10 @@ public:
                         const gsMatrix<T> & data   )
     :
     m_points(points),
-    m_data(data),
+    m_data(data)
     {
-        GISMO_ASSERT(m_points.cols()==m_data.cols(),"Points and data must have the same number of columns");
-        for (index_t k = 0; m_points.cols(); k++)
-            m_map.insert({m_points.col(k),k}); // m_map.at(vector) returns the column index of vector
-    }
+        this->update();
+    }   
 
     /// Constructs a function pointer
     static uPtr make(   const gsMatrix<T> & points,
@@ -95,9 +93,10 @@ public:
         index_t col;
         result.resize(this->targetDim(),u.cols());
         result.setZero();
-        for (index_t k = 0; u.cols(); k++)
+        for (index_t k = 0; k!= u.cols(); k++)
         {
-            GISMO_ASSERT(m_map.find(u.col(k))!=m_map.end(),"Coordinate " + u.col(k).transpose() + " not registered in the table");
+            
+            GISMO_ASSERT(m_map.find(u.col(k))!=m_map.end(),"Coordinate " + std::to_string(k) + " not registered in the table");
             col = m_map.at(u.col(k));
             result.col(k) = m_data.col(col);
         }
@@ -126,6 +125,14 @@ public:
         gsMatrix<T> tmp;
         this->eval_into(u,tmp);
         result[0]= tmp;
+    }
+
+    void update()
+    {
+        m_map.clear();
+        GISMO_ASSERT(m_points.cols()==m_data.cols(),"Points and data must have the same number of columns");
+        for (index_t k = 0; k != m_points.cols(); k++)
+            m_map.insert({m_points.col(k),k}); // m_map.at(vector) returns the column index of vector
     }
 
     /// See \a gsFunction
