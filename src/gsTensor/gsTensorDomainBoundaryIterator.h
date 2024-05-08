@@ -38,6 +38,48 @@ class gsTensorDomainBoundaryIterator : public gsDomainIterator<T>
 {
 public:
 
+    gsTensorDomainBoundaryIterator( const std::vector< std::vector<T> > & breaks_, const boxSide & s )
+    : d( breaks_.size() ),
+      lower ( gsVector<T, D>::Zero(d) ),
+      upper ( gsVector<T, D>::Zero(d) )
+    {
+        center =  gsVector<T, D>::Zero(d);
+        par = s.parameter();
+        dir = s.direction();
+        meshBegin.resize(d);
+        meshEnd.resize(d);
+        curElement.resize(d);
+        breaks = breaks_;
+
+        for (int i=0; i < dir; ++i)
+        {
+            meshEnd[i]   = breaks[i].end() - 1;
+            meshBegin[i] = curElement[i] = breaks[i].begin();
+            if (meshEnd[i] == curElement[i])
+                m_isGood = false;
+        }
+
+        meshEnd[dir]    = ( par ? breaks[dir].end() - 1 : breaks[dir].begin() + 1 );
+        curElement[dir] =
+        meshBegin[dir]  = ( par ? breaks[dir].end() - 2 : breaks[dir].begin()     );
+        tindex = curElement[dir] - breaks[dir].begin();
+
+        for (int i=dir+1; i < d; ++i)
+        {
+            meshEnd[i]   = breaks[i].end() - 1;
+            meshBegin[i] = curElement[i] = breaks[i].begin();
+
+            if (meshEnd[i] == curElement[i])
+                m_isGood = false;
+        }
+
+        // Set to one quadrature point by default
+        m_quadrature.setNodes( gsVector<index_t>::Ones(d) );
+
+        if (m_isGood)
+            update();
+    }
+
     gsTensorDomainBoundaryIterator( const gsBasis<T>& b, const boxSide & s )
     : gsDomainIterator<T>(b, s),
       d( m_basis->dim() ),

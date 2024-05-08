@@ -941,6 +941,34 @@ std::ostream& operator << (std::ostream& out, const gsKnotVector<T> KV )
 }
 
 
+/**
+ * @brief      Checks if \a SubSpace is a subspace of \a Space,
+ *             i.e. if the knots of \a Space are contained in \a SubSpace
+ *
+ * @param[in]  SubSpace  The sub space
+ * @param[in]  Space     The space
+ *
+ * @tparam     T         Real tyoe
+ *
+ * @return     True if nested, False otherwise.
+ */
+template<typename T>
+static bool isNested(const gsKnotVector<T> & SubSpace, const gsKnotVector<T> & Space)
+{
+    std::vector<T> difference, intersection;
+    std::vector<T> knots1, knots2;
+    // The unique knots of \a SubSpace contain the ones of \a Space
+    std::set_intersection(  SubSpace.ubegin(), SubSpace.uend(),
+                            Space.ubegin(), Space.uend(),
+                            std::back_inserter(intersection) );
+    // The difference of the two must not contain any knot in knots1!
+    std::set_difference(    Space.ubegin(), Space.uend(),
+                            intersection.begin(), intersection.end(),
+                            std::back_inserter(difference) );
+
+    return (difference.size()==0);
+}
+
 #ifdef GISMO_WITH_PYBIND11
 
   /**

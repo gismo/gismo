@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasisFun.h>
+#include <gsCore/gsFuncData.h>
 #include <gsCore/gsDomainIterator.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsGeometry.h>
@@ -172,6 +173,33 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
                 result.block( stride * c, pt, stride, 1).noalias() +=
                     coefs( actives(i,pt), c) * values.block( stride * i, pt, stride, 1);
             }
+}
+
+template <typename T>
+void gsBasis<T>::computeSingle(index_t i, const gsMatrix<T> & in,
+                               gsFuncData<T> & out   ) const
+{
+    const unsigned flags = out.flags;
+
+    out.dim = this->dimensions();
+
+    const int md = out.maxDeriv();
+    if (md != -1)
+        evalAllDersSingle_into(i, in, md, out.values);
+
+    if (flags & NEED_ACTIVE)
+        out.actives.setConstant(i);
+
+    // if ( flags & NEED_DIV )
+    //     convertValue<T>::derivToDiv(out.values[1], out.divs, info());
+    // if ( flags & NEED_CURL )
+    //     convertValue<T>::derivToCurl(out.values[1], out.curls, info());
+    if (flags & NEED_LAPLACIAN)
+    {
+        const index_t dsz    = out.deriv2Size();
+        out.laplacians.resize(1, in.cols());
+        out.laplacians.row(0) = out.values[2].middleRows(dsz*0,out.dim.first).colwise().sum();
+    }
 }
 
 
@@ -481,6 +509,32 @@ void gsBasis<T>::evalAllDers_into(const gsMatrix<T> & u, int n,
         eval_into  (u, result[0]);
         deriv_into (u, result[1]);
         deriv2_into(u, result[2]);
+        break;
+    default:
+        GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n<< " for "<<*this);
+        break;
+    }
+}
+
+template<class T>
+void gsBasis<T>::evalAllDersSingle_into(index_t i, const gsMatrix<T> & u, int n,
+                                        std::vector<gsMatrix<T> >& result) const
+{
+    result.resize(n+1);
+
+    switch(n)
+    {
+    case 0:
+        evalSingle_into(i,u, result[0]);
+        break;
+    case 1:
+        evalSingle_into (i,u, result[0]);
+        derivSingle_into(i,u, result[1]);
+        break;
+    case 2:
+        evalSingle_into  (i,u, result[0]);
+        derivSingle_into (i,u, result[1]);
+        deriv2Single_into(i,u, result[2]);
         break;
     default:
         GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n<< " for "<<*this);

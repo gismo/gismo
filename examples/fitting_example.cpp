@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     cmd.addInt("x", "deg_x", "degree in x direction", deg_x);
     cmd.addInt("y", "deg_y", "degree in y direction", deg_y);
     cmd.addReal("s", "lambda", "smoothing coefficient", lambda);
-    cmd.addReal("t", "threshold", "error threshold (special valule -1)", threshold);
+    cmd.addReal("t", "threshold", "error threshold (special value -1)", threshold);
     cmd.addReal("p", "refPercent", "percentage of points to refine in each iteration", refPercent);
     cmd.addInt("q", "extension", "extension size", extension);
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);

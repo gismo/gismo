@@ -215,14 +215,39 @@ template<class T>
 void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn, 
                      unsigned npts =NS, bool mesh = false);
 
-/// \brief Export gsHBox to paraview files
+/// \brief Export Basis functions to paraview files
 ///
 /// \param basis a basis object
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each curve
 /// \param mesh if true, the parameter mesh is plotted as well
 template<class T>
-void gsWriteParaview(gsHBox<2,T> & box, std::string const & fn);
+void gsWriteParaview(gsBasis<T> const& basis,
+                     std::vector<index_t> const & indices,
+                     std::string const & fn,
+                     unsigned npts =NS, bool mesh = false);
+
+/// \brief Export an element \a box to paraview files
+///
+/// \param box an element represented by a bounding box
+/// \param fn filename where paraview file is written
+/// \param value to write
+template<class T>
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value = 0.0);
+
+/// \brief Export an element \a box to paraview files
+///
+/// \param box an element represented by a bounding box
+/// \param fn filename where paraview file is written
+template<class T>
+void gsWriteParaview(const gsMatrix<T> & box, const gsVector<T> & values, std::string const & fn);
+
+/// \brief Export gsHBox to paraview files
+///
+/// \param box a gsHBox
+/// \param fn filename where paraview file is written
+template<class T>
+void gsWriteParaview(const gsHBox<2,T> & box, std::string const & fn);
 
 /// \brief Export gsHBox to paraview files
 ///
@@ -231,7 +256,7 @@ void gsWriteParaview(gsHBox<2,T> & box, std::string const & fn);
 /// \param npts number of points used for sampling each curve
 /// \param mesh if true, the parameter mesh is plotted as well
 template<class T>
-void gsWriteParaview(gsHBoxContainer<2,T> & box, std::string const & fn);
+void gsWriteParaview(const gsHBoxContainer<2,T> & box, std::string const & fn);
 
 
 /// \brief Export 2D Point set to Paraview file
@@ -254,6 +279,20 @@ template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& X,
                            gsMatrix<T> const& Y,
                            gsMatrix<T> const& Z,
+                           std::string const & fn);
+
+/// \brief Export 3D Point set to Paraview file
+///
+/// \param X  1 times n matrix of values for x direction
+/// \param Y  1 times n matrix of values for y direction
+/// \param Z  1 times n matrix of values for z-direction
+/// \param V  1 times n matrix of values for values
+/// \param fn filename where paraview file is written
+template<class T>
+void gsWriteParaviewPoints(gsMatrix<T> const& X,
+                           gsMatrix<T> const& Y,
+                           gsMatrix<T> const& Z,
+                           gsMatrix<T> const& V,
                            std::string const & fn);
 
 /// \brief Export Point set to Paraview file
@@ -404,9 +443,13 @@ template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution = 8);
 
+/// Export an element \a box
+template<class T>
+void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
+
 /// Export a gsHBox
 template<class T>
-void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
+void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn);
 
 /// Export a control net
 template<class T>
