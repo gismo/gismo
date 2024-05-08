@@ -17,7 +17,8 @@
 #include <gismo.h>
 #include <gsPreCICE/gsPreCICE.h>
 #include <gsPreCICE/gsPreCICEUtils.h>
-#include <gsPreCICE/gsPreCICEFunction.h>
+//#include <gsPreCICE/gsPreCICEFunction.h>
+#include <gsPreCICE/gsLookupFunction.h>
 // #include <gsPreCICE/gsPreCICEVectorFunction.h>
 
 #include <gsElasticity/gsMassAssembler.h>
@@ -136,7 +137,7 @@ int main(int argc, char *argv[])
      */
     std::string SolidMesh        = "SolidMesh";
     std::string StressData       = "StressData";
-    std::string DisplacementData       = "DisplacementData";
+    std::string DisplacementData = "DisplacementData";
 
 
     // Step 1: SolidMesh
@@ -147,6 +148,8 @@ int main(int argc, char *argv[])
     gsVector<index_t> quadPointIDs;
     gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions);
     participant.addMesh(SolidMesh,quadPoints,quadPointIDs);
+    gsMatrix<> quadPointsData(3, quadPoints.cols());
+    quadPointsData.setZero();
 
 
     // Step 2: initialize the participant
@@ -165,7 +168,8 @@ int main(int argc, char *argv[])
     bcInfo.setGeoMap(patches);
 
     // Surface force
-    gsPreCICEFunction<real_t> surfForce(&participant,SolidMesh,StressData,patches,patches.parDim(),patches.geoDim(),false);
+    // gsPreCICEFunction<real_t> surfForce(&participant,SolidMesh,StressData,patches,patches.parDim(),patches.geoDim(),false);
+    gsLookupFunction<real_t> surfForce(quadPoints, quadPointsData);
 
 
 
@@ -349,6 +353,7 @@ int main(int argc, char *argv[])
             timestep_checkpoint = timestep;
         }
 
+        participant.readData(SolidMesh,StressData, quadPointIDs, quadPointsData);
         assembler.assemble();
         F = assembler.rhs();
 
