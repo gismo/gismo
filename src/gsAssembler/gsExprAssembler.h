@@ -309,11 +309,15 @@ public:
      * @param save_sparsety_pattern only modify values but keep sparsety
      * information by multiplying matrix by zero in-place
      */
-    void clearMatrix(const bool& save_sparsety_pattern = true) {
-        if (save_sparsety_pattern) {
+    void clearMatrix(const bool& save_sparsety_pattern = true)
+    {
+        if (m_matrix.nonZeros() && save_sparsety_pattern)
+        {
             std::fill(m_matrix.valuePtr(),
                       m_matrix.valuePtr() + m_matrix.nonZeros(), 0.);
-        } else {
+        }
+        else
+        {
             m_matrix = gsSparseMatrix<T>(numTestDofs(), numDofs());
 
             if (0 == m_matrix.rows() || 0 == m_matrix.cols())
@@ -441,7 +445,9 @@ private:
         {
             auto u = ee.rowVar();
             auto v = ee.colVar();
+#ifndef NDEBUG
             const bool m = E::isMatrix();
+#endif
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!m || u.isValid(), "The column space is not valid");
             GISMO_ASSERT(m || (ea.numDofs()==ee.rhs().size()), "The right-hand side vector is not initialized");

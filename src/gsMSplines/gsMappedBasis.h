@@ -227,6 +227,20 @@ public:
      */
     gsMultiPatch<T> exportToPatches(gsMatrix<T> const & localCoef) const;
 
+private:
+    // Avoid warnings for hidden overloads w.r.t gsFunctionSet
+    void active_into(const gsMatrix<T> & u,gsMatrix<index_t>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void eval_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> >& result ) const
+    { GISMO_NO_IMPLEMENTATION; }
+
 public:
     //////////////////////////////////////////////////
     // functions for evaluating and derivatives

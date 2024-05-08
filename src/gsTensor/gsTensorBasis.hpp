@@ -733,13 +733,11 @@ void gsTensorBasis<d,T>::deriv2_into(const gsMatrix<T> & u,
     std::vector< gsMatrix<T> >values[d];
     gsVector<unsigned, d> v, nb_cwise;
 
-    unsigned nb = 1;
     for (short_t i = 0; i < d; ++i)
     {
         m_bases[i]->evalAllDers_into( u.row(i), 2, values[i]); 
         const int num_i = values[i].front().rows();
         nb_cwise[i] = num_i;
-        nb     *= num_i;
     }
 
     deriv2_tp(values, nb_cwise, result);

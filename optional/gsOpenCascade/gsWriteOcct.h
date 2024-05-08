@@ -27,6 +27,8 @@ namespace extensions {
 
 GISMO_EXPORT bool writeOcctStep(const gsSurface<real_t> & srf, const std::string & name);
 GISMO_EXPORT bool writeOcctIges(const gsSurface<real_t> & srf, const std::string & name);
+GISMO_EXPORT bool writeOcctIgesMp(const gsMultiPatch<real_t> & srf, const std::string & name);
+
 
 } //extensions
 

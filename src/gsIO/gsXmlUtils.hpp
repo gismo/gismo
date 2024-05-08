@@ -1369,13 +1369,13 @@ public:
         {
             gsXmlNode * tmp = node->first_node("rhs");
             gsFunctionExpr<T>  rhs_fnct;
-            getFunctionFromXml(tmp, rhs_fnct);
+            internal::gsXml<gsFunctionExpr<T> >::get_into(tmp, rhs_fnct);
             
             tmp = node->first_node("solution");
             if ( tmp )
             {
                 gsFunctionExpr<T> msol;
-                getFunctionFromXml(tmp, msol);
+                internal::gsXml<gsFunctionExpr<T> >::get_into(tmp, msol);
                 
                 return new gsPoissonPde<T>(rhs_fnct, d, msol );
             }

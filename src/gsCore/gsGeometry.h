@@ -63,7 +63,7 @@ namespace gismo
     The dimension \em n of the resulting geometry,
     i.e., of the image of the geometry map, is defined by the
     size of the given coefficients, and may be larger than \em d
-    (see gsGeometry::geoDim()). $\,$
+    (see gsGeometry::geoDim()).
 
     For instance, for a B-spline basis (<em>d = 1</em>), we could
     have coefficients of dimension <em>n = 1</em>, which results
@@ -583,12 +583,6 @@ public:
     /// Gives back an isoParametric slice of the geometry with fixed
     /// \a par in direction \a dim_fixed as an gsGeometrySlice object.
     gsGeometrySlice<T> getIsoParametricSlice(index_t dir_fixed, T par) const;
-
-    /// Recovers a point on the geometry together with its parameters
-    /// \a uv, assuming that the \a k-th coordinate of the point \a
-    /// xyz is not known (and has a random value as input argument).
-    void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
-                           const T accuracy = 1e-6) const;
 
     /// Returns the parameters of closest point to \a pt as an argument, and the
     /// Euclidean distance as a return value

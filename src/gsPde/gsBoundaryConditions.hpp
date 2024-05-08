@@ -124,61 +124,59 @@ public:
 //            gsWarn<<"Incomplete tag \"patch\" in boundaryConditions.\n";
 //        }
 
-        // Read function inventory
-        int count = countByTag("Function", node);
-        std::vector<typename gsFunctionExpr<T>::Ptr> func(count); // todo: gsFunction::Ptr
-        for (gsXmlNode * child = node->first_node("Function"); child; child =
-                child->next_sibling("Function"))
-        {
-            const int i = atoi(child->first_attribute("index")->value());
-            func[i] = memory::make_shared(new gsFunctionExpr<T>);
-            getFunctionFromXml(child, *func[i]);
+        // Read function inventory using a map, in case indices are not
+        // consecutive
+        std::map<int, typename gsFunctionExpr<T>::Ptr> function_map{};
+        for (gsXmlNode* child = node->first_node("Function"); child;
+             child = child->next_sibling("Function")) {
+          const int function_index =
+              atoi(child->first_attribute("index")->value());
+          function_map[function_index] =
+              memory::make_shared(new gsFunctionExpr<T>);
+          internal::gsXml<gsFunctionExpr<T> >::get_into(
+              child, *function_map[function_index]);
         }
 
         // Read boundary conditions
         std::vector<patchSide> boundaries;
-        for (gsXmlNode * child = node->first_node("bc"); child;
-                child = child->next_sibling("bc"))
-        {
-            const int uIndex = atoi(child->first_attribute("unknown")->value());
-            const int fIndex = atoi(
-                    child->first_attribute("function")->value());
+        for (gsXmlNode* child = node->first_node("bc"); child;
+             child = child->next_sibling("bc")) {
+          const int uIndex = atoi(child->first_attribute("unknown")->value());
+          const int fIndex = atoi(child->first_attribute("function")->value());
 
-            const gsXmlAttribute * comp = child->first_attribute("component");
-            int cIndex = -1;
-            if (NULL != comp)
-                cIndex = atoi( comp->value() );
+          const gsXmlAttribute* comp = child->first_attribute("component");
+          int cIndex = -1;
+          if (NULL != comp) cIndex = atoi(comp->value());
 
-            const gsXmlAttribute * att_ispar = child->first_attribute("parametric");
-            bool ispar = false;
-            if (NULL != att_ispar)
-                ispar = atoi( att_ispar->value() );
+          const gsXmlAttribute* att_ispar =
+              child->first_attribute("parametric");
+          bool ispar = false;
+          if (NULL != att_ispar) ispar = atoi(att_ispar->value());
 
-            const gsXmlAttribute * att_name = child->first_attribute("name");
-            if (NULL != att_name)
-            {
-                boundaries.clear();
-                std::string name = att_name->value();
-                for (typename std::vector<patchSide>::const_iterator it=allboundaries.begin(); it!=allboundaries.end(); it++)
-                    if (it->label()==name)
-                        boundaries.push_back(*it);
-            }
-            else
-                getBoundaries(child, ids, boundaries);
+          const gsXmlAttribute* att_name = child->first_attribute("name");
+          if (NULL != att_name) {
+            boundaries.clear();
+            std::string name = att_name->value();
+            for (typename std::vector<patchSide>::const_iterator it =
+                     allboundaries.begin();
+                 it != allboundaries.end(); it++)
+              if (it->label() == name) boundaries.push_back(*it);
+          } else
+            getBoundaries(child, ids, boundaries);
 
-            if (boundaries.size() == 0) {
-              gsWarn << "Boundary condition without boundary to apply to. The"
-                        " following bc will be unused\n" << *child
-                     << std::endl;
-            }
+          if (boundaries.size() == 0) {
+            gsWarn << "Boundary condition without boundary to apply to. The"
+                      " following bc will be unused\n"
+                   << *child << std::endl;
+          }
 
-            const gsXmlAttribute * bcat = child->first_attribute("type");
-            GISMO_ASSERT(NULL != bcat, "No type provided");
-            const char * bctype = bcat->value();
-            for (std::vector<patchSide>::const_iterator it = boundaries.begin();
-                    it != boundaries.end(); ++it)
-                result.add(it->patch, it->side(), bctype,
-                           func[fIndex], uIndex,cIndex, ispar);
+          const gsXmlAttribute* bcat = child->first_attribute("type");
+          GISMO_ASSERT(NULL != bcat, "No type provided");
+          const char* bctype = bcat->value();
+          for (std::vector<patchSide>::const_iterator it = boundaries.begin();
+               it != boundaries.end(); ++it)
+            result.add(it->patch, it->side(), bctype, function_map[fIndex], uIndex,
+                       cIndex, ispar);
         }
 
         T val(0);

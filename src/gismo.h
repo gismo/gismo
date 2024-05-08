@@ -54,6 +54,7 @@ namespace internal
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
+#include <gsCore/gsGeometryTransform.h>
 #include <gsCore/gsCurve.h>
 #include <gsCore/gsSurface.h>
 #include <gsCore/gsVolume.h>
@@ -97,6 +98,7 @@ namespace internal
 #include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
+#include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
 #include <gsHSplines/gsHBSplineBasis.h>
