@@ -303,18 +303,18 @@ public:
         return MAPPER_PATCH_DOF(i,k,c);
     }
 
- index_t componentOf(index_t gl) const
- {
-     GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
-     //index_t c = 1; // could do some binary search
-     //in place
-     //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
-     //elim
-     return (gl<m_numFreeDofs.back() ?
-       std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
-	     : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
-     //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;
- }
+    index_t componentOf(index_t gl) const
+    {
+         GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
+         //index_t c = 1; // could do some binary search
+         //in place
+         //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
+         //elim
+         return (gl<m_numFreeDofs.back() ?
+                std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
+              : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
+         //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;
+    }
 
     /** \brief Returns the global dof index associated to local dof \a i of patch \a k.
      *

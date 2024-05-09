@@ -14,6 +14,7 @@
 //! [Include namespace]
 #include <gismo.h>
 #include <gsNurbs/gsSquareDomain.h>
+#include <gsNurbs/gsMobiusDomain.h>
 #include <gsOptimizer/gsGradientDescent.h>
 
 using namespace gismo;
@@ -33,7 +34,7 @@ class solvePde : public gsOptProblem<T>
 public:
     solvePde(   const gsBasis<T> &              basis,
                 const gsGeometry<T> &           geom,
-                const gsSquareDomain<2,T> &     composition,
+                gsFunction<T> &                 composition,
                 const gsBoundaryConditions<T> & BCs,
                 const gsFunction<T> *           exact,
                 const bool                      bmorph = false,
@@ -95,7 +96,7 @@ public:
         // apply sigma
         if(m_Bmorph || m_Gmorph)
             m_composition.controls() = C;
-        m_composition.updateGeom();
+        // m_composition.updateGeom();
 
         typename gsBasis<T>::Ptr cbasis;
         if(m_Bmorph)
@@ -255,7 +256,7 @@ private:
 
     const gsBasis<T> & m_basis;
     const gsGeometry<T> & m_geom;
-    mutable gsSquareDomain<2,T> m_composition;
+    gsFunction<T> & m_composition;
     mutable gsBoundaryConditions<T> m_BCs;
     const gsFunction<T> * m_source;
     const gsFunction<T> * m_exact;
@@ -369,7 +370,8 @@ int main(int argc, char *argv[])
         bc.addCondition(boundary::side::north,condition_type::dirichlet,&ms);
     }
 
-    gsSquareDomain<2,real_t> composition(numSquareElev,numSquareRefine);
+    // gsSquareDomain<2,real_t> composition(numSquareElev,numSquareRefine);
+    gsMobiusDomain<2,real_t> composition;
 
     gsMultiPatch<> mp0;
     mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
@@ -427,7 +429,8 @@ int main(int argc, char *argv[])
             gsInfo<<"Solving r-adaptivity..."<<std::flush;
             solver.solve(currentDesign);
             currentDesign = solver.currentDesign();
-            L2err = problem.evalObj(gsAsConstVector<real_t>(currentDesign.data(),currentDesign.rows()),true,true);
+            gsAsConstVector<real_t> curr(currentDesign.data(),currentDesign.rows());
+            L2err = problem.evalObj(curr,true,true);
             gsInfo<<"Finished\n";
         }
         else
@@ -449,7 +452,8 @@ int main(int argc, char *argv[])
                  << std::max(mp0.patch(0).degree(0),mp0.patch(0).degree(1))   << "," // analysis degree
                  << refCount << "," // analysis unif refinement
                  << problem.numDofs()  << "," // analysis dofs
-                 << composition.maxDegree() << "," // opt degree
+                 // << composition.maxDegree() << "," // opt degree
+                 << "" << ","
                  << composition.nControls() << "," // optDim
                  << mp0.patch(0).basis().maxDegree() << ","
                  << mp0.patch(0).basis().size() << ","
@@ -463,8 +467,8 @@ int main(int argc, char *argv[])
             gsWriteParaview(field,"radaptivity_solution",1000,true);
             gsWriteParaview(*problem.geometry(),"radaptivity_geometry",1000,true);
             composition.controls() = currentDesign;
-            composition.updateGeom();
-            gsWriteParaview(composition.domain(),"radaptivity_composition",1000,true,true);
+            // composition.updateGeom();
+            // gsWriteParaview(composition.domain(),"radaptivity_composition",1000,true,true);
 
         }
 

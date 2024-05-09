@@ -28,52 +28,59 @@ public:
     // default constructor
     // gsSquareDomain()
 
-    // Constructor with a basis
-    // gsSquareDomain(const gsTensorBSpline<DIM,T> & domain)
-    // {
+    /**
+     * @brief      Constructs a new instance.
+     *
+     * @param[in]  domain  The domain
+     */
+    gsSquareDomain(const gsTensorBSpline<DIM,T> & domain)
+    {
+        m_domain = domain;
+        this->_initMapper(m_domain,m_mapper);
+        this->_initIndices(m_domain,m_mapper,m_indices);
+    }
 
-    // }
+    /**
+     * @brief      Constructs a new instance.
+     *
+     * @param[in]  basis  The basis
+     * @param[in]  domain  The domain
+     */
+    gsSquareDomain(const gsTensorBSplineBasis<DIM,T> & basis)
+    {
+        gsMatrix<T> coefs = basis.anchors();
+        coefs.transposeInPlace();
+        m_domain = gsTensorBSpline<DIM,T>(basis,coefs);
+        this->_initMapper(m_domain,m_mapper);
+        this->_initIndices(m_domain,m_mapper,m_indices);
+    }
 
 
+    /**
+     * @brief      Constructs a new instance.
+     *
+     * @param[in]  numElevation  The number elevation
+     * @param[in]  numRefine     The number refine
+     */
     gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0)
     {
         m_domain = *gsNurbsCreator<T>::BSplineSquare();
         m_domain.degreeElevate(numElevation);
         index_t numKts = pow(2, numRefine) - 1;
         m_domain.uniformRefine(numKts);
-        // Mapper storing control points
-        m_mapper = gsDofMapper(m_domain.basis(),m_domain.targetDim());
 
-        gsMatrix<index_t> boundary = m_domain.basis().allBoundary();
-        for (index_t a = 0; a!=boundary.rows(); a++)
-            for (index_t d = 0; d!=m_domain.targetDim(); d++)
-                m_mapper.eliminateDof(boundary(a,0),0,d);
-        m_mapper.finalize();
-
-        m_parameters.resize(m_mapper.freeSize());
-        // std::vector<index_t> i(m_mapper.freeSize());
-        // std::vector<index_t> j(m_mapper.freeSize());
-        for (index_t k = 0; k!=m_domain.coefs().rows(); k++)
-            for (index_t d = 0; d!=m_domain.targetDim(); d++)
-                if (m_mapper.is_free(k,0,d))
-                {
-                    m_parameters[m_mapper.index(k,0,d)] = m_domain.coefs()(k,d);
-                    // i[m_mapper.index(k,0,d)] = k; // i index of free entries
-                    // j[m_mapper.index(k,0,d)] = d; // j index of free entries
-                }
-
-        // This is a way to cast only the free coefficients to a vector, and change an entry of that vector.
-        // However, it cannot be used in ''gsVector<T> & controls() override { return m_parameters; };''
-        //
-        // gsDebugVar(m_domain.coefs()(i,j).diagonal()(0));
-        // m_domain.coefs()(i,j).diagonal()(0) = 0.5;
-        // gsDebugVar(m_domain.coefs()(i,j).diagonal()(0));
-
+        this->_initMapper(m_domain,m_mapper);
+        this->_initIndices(m_domain,m_mapper,m_indices);
     }
 
     const gsTensorBSpline<DIM,T> & domain() const
     {
         return m_domain;
+    }
+
+    const gsDofMapper & mapper() const
+    {
+        return m_mapper;
     }
 
     gsMatrix<T> support() const override
@@ -106,19 +113,18 @@ public:
         m_domain.deriv_into(u,result);
     }
 
-    void updateGeom()
-    {
-        for (index_t k = 0; k!=m_domain.coefs().rows(); k++)
-            for (index_t d = 0; d!=m_domain.targetDim(); d++)
-            {
-                if (m_mapper.is_free(k,0,d))
-                    m_domain.coefs()(k,d) = m_parameters[m_mapper.index(k,0,d)];
-            }
-    }
-
     /// Returns the controls of the function
-    const gsVector<T> & controls() const override { return m_parameters; };
-          gsVector<T> & controls()       override { return m_parameters; };
+    // const gsAsVector<T> controls() const override { return gsAsVector<T>(m_domain.coefs(),m_indices); };
+          gsAsVector<T> controls()       override { return gsAsVector<T>(m_domain.coefs(),m_indices); };
+
+    /// Returns the \a i th control of the function
+    // const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const override { return gsAsConstVector<T>(m_parameters.data(),m_parameters.size())(i);}
+    const T & control(index_t i) const override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
+          T & control(index_t i)       override { return m_domain.coefs()(m_indices[i].first,m_indices[i].second);}
+
+
+    // const gsVector<T> & parameters() const { return m_parameters; };
+    //       gsVector<T> & parameters()       { return m_parameters; };
 
     /// Returns the number of controls of the function
     size_t nControls() const override
@@ -146,10 +152,42 @@ public:
         }
     }
 
+private:
+    void _initMapper(const gsTensorBSpline<DIM,T> & domain, gsDofMapper & mapper) const
+    {
+        // Mapper storing control points
+        mapper = gsDofMapper(domain.basis(),domain.targetDim());
+
+        gsBoxTopology topology(DIM,1);
+        topology.addAutoBoundaries();
+        // gsMatrix<index_t> boundary = domain.basis().allBoundary();
+        gsDebugVar(topology);
+        for (typename gsBoxTopology::biterator it = topology.bBegin(); it != topology.bEnd(); ++it)
+        {
+            gsMatrix<index_t> boundary = domain.basis().boundary(*it);
+            gsDebugVar(boundary);
+            // for (index_t a = 0; a!=boundary.rows(); a++)
+                // for (index_t d = 0; d!=domain.targetDim(); d++)
+                mapper.markBoundary(0,boundary,it->direction());
+        }
+        mapper.finalize();
+    }
+
+    void _initIndices(const gsTensorBSpline<DIM,T> & domain, const gsDofMapper & mapper, std::vector<std::pair<index_t,index_t>> & indices) const
+    {
+        indices.resize(mapper.freeSize());
+        // std::vector<index_t> i(mapper.freeSize());
+        // std::vector<index_t> j(mapper.freeSize());
+        for (index_t k = 0; k!=domain.coefs().rows(); k++)
+            for (index_t d = 0; d!=domain.targetDim(); d++)
+                if (mapper.is_free(k,0,d))
+                    indices[mapper.index(k,0,d)] = std::make_pair(k,d);
+    }
+
 protected:
     gsTensorBSpline<DIM,T> m_domain;
     gsDofMapper m_mapper;
-    gsVector<T> m_parameters;
+    std::vector<std::pair<index_t,index_t>> m_indices;
 };
 
 } // namespace gismo

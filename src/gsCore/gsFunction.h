@@ -295,14 +295,16 @@ public:
     index_t size() const { return 1;}
 
     /// Returns the controls of the function
-    virtual const gsVector<T> & controls() const { GISMO_NO_IMPLEMENTATION; };
-    virtual       gsVector<T> & controls()       { GISMO_NO_IMPLEMENTATION; };
+    virtual  gsAsConstVector<T> controls() const { GISMO_NO_IMPLEMENTATION; };
+    virtual       gsAsVector<T> controls()       { GISMO_NO_IMPLEMENTATION; };
 
     /// Returns the number of controls of the function
     virtual size_t nControls() const { GISMO_NO_IMPLEMENTATION;}
 
     /// Returns a reference to the ith control
-    virtual T & control(index_t i) { GISMO_NO_IMPLEMENTATION;}
+    // virtual const typename gsMatrix<T>::CoeffReturnType & control(index_t i) const { GISMO_NO_IMPLEMENTATION;}
+    virtual const T & control(index_t i) const { GISMO_NO_IMPLEMENTATION;}
+    virtual       T & control(index_t i)       { GISMO_NO_IMPLEMENTATION;}
 
     /// Returns the control derivative
 
