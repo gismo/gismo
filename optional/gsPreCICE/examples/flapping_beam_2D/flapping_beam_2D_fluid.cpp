@@ -2,6 +2,17 @@
 /// "Proposal for numerical benchmarking of fluid-structure interaction between an elastic object and laminar incompressible flow"
 /// Stefan Turek and Jaroslav Hron, <Fluid-Structure Interaction>, 2006.
 ///
+///
+///
+///TODO: FIX THE MEMORY LEAK 
+/**
+
+GISMO_DEBUG: flapping_beam_2D_solid.cpp:147, forceControlPoints.cols(): 
+608
+GISMO_DEBUG: flapping_beam_2D_solid.cpp:148, basis->size(): 
+612
+
+**/
 /// Author: A.Shamanskiy (2016 - ...., TU Kaiserslautern)
 #include <gismo.h>
 #include <gsElasticity/gsElasticityAssembler.h>
@@ -13,6 +24,7 @@
 #include <gsElasticity/gsPartitionedFSI.h>
 #include <gsElasticity/gsWriteParaviewMultiPhysics.h>
 #include <gsElasticity/gsGeoUtils.h>
+
 
 #include <gsPreCICE/gsPreCICE.h>
 #include <gsPreCICE/gsPreCICEUtils.h>
@@ -30,7 +42,7 @@ int main(int argc, char* argv[])
     //=====================================//
 
     // flow parameters
-    std::string filenameFlow = ELAST_DATA_DIR"/flappingBeam_flow.xml";
+    std::string filenameFlow = "flappingBeam_flow.xml";
     real_t viscosity = 0.001;
     real_t meanVelocity = 1.;
     real_t densityFluid = 1.0e3;
@@ -56,14 +68,12 @@ int main(int argc, char* argv[])
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the two-way fluid-structure interaction solver in 2D.");
     cmd.addReal("m","mesh","Poisson's ratio for ALE",meshPR);
-    cmd.addReal("l","load","Gravitation acceleration acting on the beam",beamLoad);
     cmd.addReal("x","chi","Local stiffening degree for ALE",meshStiff);
     cmd.addSwitch("o","oneway","Run as a oneway coupled simulation: beam-to-flow",oneWay);
     cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
-    cmd.addInt("i","iter","Number of coupling iterations",maxCouplingIter);
     cmd.addSwitch("w","warmup","Use large time steps during the first 2 seconds",warmUp);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addInt("v","verbosity","Amount of info printed to the prompt: 0 - none, 1 - crucial, 2 - all",verbosity);
@@ -127,17 +137,28 @@ int main(int argc, char* argv[])
     bbox.resize(1,bbox.rows()*bbox.cols());
     participant.setMeshAccessRegion(GeometryControlPointMesh, bbox);
 
-    // Setup force control point mesh
-    /*
-     * TODO: communicate the control points of the boundaries of the ALE interface
-    */
+    // Setup force control point mesh (and force knot vectors)
 
-    // geoFlow.patch(3).boundary(boundary::south).coefs();
+    GISMO_ASSERT(((dynamic_cast<gsTensorNurbsBasis<2, real_t>*>(&basisVelocity.basis(4))->knots(0) )
+                == (dynamic_cast<gsTensorNurbsBasis<2, real_t>*>(&basisVelocity.basis(3))->knots(0))), "Knot vectors don't match!!!");
 
-    // Setup the force knot mesh
-    /*
-     * TODO: communicate knot vectors of 'artificial' beam patch
-    */
+
+    gsTensorBSplineBasis<2, real_t> forceBasis(dynamic_cast<gsTensorNurbsBasis<2, real_t>*>(&basisVelocity.basis(4))->knots(0),
+                                               dynamic_cast<gsTensorNurbsBasis<2, real_t>*>(&basisVelocity.basis(5))->knots(1));
+
+    gsMatrix<> forceKnotMatrix = knotsToMatrix(forceBasis);
+
+
+    participant.addMesh(ForceKnotMesh, forceKnotMatrix);
+
+    gsMatrix<> forceControlPoints(2,forceBasis.size());
+    gsDebugVar(forceControlPoints.rows());
+
+    gsVector<index_t> forceControlPointsIDs;
+
+
+    // TODO: This communicates all of the control points but we only need to communicate the boundaries
+    participant.addMesh(ForceControlPointMesh,forceControlPoints, forceControlPointsIDs);
 
     // Initialize preCICE (send fluid mesh to API)
     real_t precice_dt = participant.initialize();
@@ -157,6 +178,7 @@ int main(int argc, char* argv[])
 
     // Reconstruct the beam geometry in its own mesh
     gsMultiPatch<> beam;
+
     beam.addPatch(give(geometryKnotBasis->makeGeometry(geometryControlPoints.transpose())));
 
     //=============================================//
@@ -170,6 +192,9 @@ int main(int argc, char* argv[])
 
     // containers for solution as IGA functions
     gsMultiPatch<> velFlow, presFlow, dispBeam, dispALE, velALE;
+
+    dispBeam.addPatch(forceBasis.makeGeometry(forceControlPoints.transpose()));
+   
     // boundary conditions: flow
     gsBoundaryConditions<> bcInfoFlow;
     bcInfoFlow.addCondition(0,boundary::west,condition_type::dirichlet,&inflow,0);
@@ -298,28 +323,43 @@ int main(int argc, char* argv[])
     // Time integration loop
     gsMultiPatch<> beamNew, beamOld, dbeam;
     beamNew = beamOld = beam;
-    dbeam = beam;
+    dbeam = beamNew;
     dbeam.patch(0).coefs().setZero();
+
+
+    index_t timestep_checkpoint = 0;
 
     gsMultiPatch<> geoALEDisp, geoALEVelo;
     while (participant.isCouplingOngoing())
     {
+
         if (participant.requiresWritingCheckpoint())
         {
-            nsTimeSolver.saveState();
-            moduleALE.saveState();
+            // nsTimeSolver.saveState();
+            // moduleALE.saveState();
 
-            IMPORTANT!!
+            // IMPORTANT!!
             //////// do something with beamNew, beamOld
+            //
+
+            gsInfo << "Writing checkpoint \n";
         }
 
-        /*
-         *
-         * Read geometry displacements of the 'beam'
-         * compute dbeam = beamNew-beamOld
-         * project dbeam onto dispBeam
-         *
-         */
+
+        participant.readData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
+
+        beamNew.patch(0).coefs() = geometryControlPoints.transpose();
+
+        gsDebugVar(beamNew.patch(0).coefs().rows());
+        gsDebugVar(beamOld.patch(0).coefs().rows());
+        dbeam.patch(0).coefs() = beamNew.patch(0).coefs() - beamOld.patch(0).coefs();
+
+
+
+        // project dbeam onto dispBeam
+        // Represent dbeam onto disp beam's basis
+        gsQuasiInterpolate<real_t>::localIntpl(dispBeam.basis(0), dbeam.patch(0), dispBeam.patch(0).coefs());
+
 
         /*
          * MESH DEFORMATION STEP
@@ -334,9 +374,10 @@ int main(int argc, char* argv[])
         // Update the fluid mesh displacements
         moduleALE.constructSolution(geoALEDisp);
 
+
         // Update the fluid mesh velocities (v = (u_t - u_t-1) / dt)
         for (size_t p = 0; p < geoALEVelo.nPatches(); ++p)
-            geoALEVelo.patch(p).coefs() = (geoFlowDisp.patch(p).coefs() - geoALEVelo.patch(p).coefs()) / timeStep;
+            geoALEVelo.patch(p).coefs() = (geoALEDisp.patch(p).coefs() - geoALEVelo.patch(p).coefs()) / timeStep;
 
         // apply new ALE deformation to the flow domain
         for (size_t p = 0; p < nsTimeSolver.aleInterface().patches.size(); ++p)
@@ -374,15 +415,30 @@ int main(int argc, char* argv[])
         nsTimeSolver.constructSolution(velFlow,presFlow);
 
         gsMatrix<> coefsSouth;
-        gsQuasiInterpolate<real_t>::localIntpl(basisVelocity.basis(4).boundary(boundary::north), fSouth, coefsSouth);
+        gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(4).boundaryBasis(boundary::north), fSouth, coefsSouth);
         gsMatrix<> coefsEast;
-        gsQuasiInterpolate<real_t>::localIntpl(basisVelocity.basis(5).boundary(boundary::west), fEast, coefsEast);
+        gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(5).boundaryBasis(boundary::west), fEast, coefsEast);
         gsMatrix<> coefsNorth;
-        gsQuasiInterpolate<real_t>::localIntpl(basisVelocity.basis(3).boundary(boundary::south), fNorth, coefsNorth);
-        /*
-         * TO CHECK:
-         * Is basisVelocity.basis(4).boundary(boundary::north) the same as the basis we communicate to the solid???
-         */
+        gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(3).boundaryBasis(boundary::south), fNorth, coefsNorth);
+
+        forceControlPoints.setZero();
+
+        gsMatrix<index_t> indexSouth = basisVelocity.basis(4).boundary(boundary::north);
+        gsMatrix<index_t> indexEast = basisVelocity.basis(5).boundary(boundary::west);
+        gsMatrix<index_t> indexNorth = basisVelocity.basis(3).boundary(boundary::south);
+
+        for (index_t k =0 ; k != indexSouth.size(); ++k)
+            forceControlPoints.col(indexSouth[k]) = coefsSouth.row(k).transpose();
+
+        for (index_t k =0 ; k != indexEast.size(); ++k)
+            forceControlPoints.col(indexEast[k]) = coefsEast.row(k).transpose();
+
+        for (index_t k =0 ; k != indexNorth.size(); ++k)
+            forceControlPoints.col(indexNorth[k]) = coefsNorth.row(k).transpose();
+
+        gsDebugVar(forceControlPoints);
+
+        // Write the force to the solid solver
 
         /*
          *
@@ -390,23 +446,28 @@ int main(int argc, char* argv[])
          *
          */
         // // Write the beam displacements to the fluid solver
-        // participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
+        participant.writeData(ForceControlPointMesh,ForceControlPointData,forceControlPointsIDs,forceControlPoints);
 
         // do the coupling
         precice_dt =participant.advance(timeStep);
 
+
+
         if (participant.requiresReadingCheckpoint())
         {
             nsTimeSolver.recoverState();
-            timestep = timestep_checkpoint;
+            timeStep = timestep_checkpoint;
 
-            IMPORTANT!!
+            gsInfo << "Read Checkpoint\n";
+
+            // IMPORTANT!!
             //////// do something with beamNew, beamOld
         }
         else
         {
             // gsTimeIntegrator advances the time step
             // advance variables
+            beamOld = beamNew;
             timeALE += timeStep;
             timeFlow += timeStep;
             numTimeStep++;

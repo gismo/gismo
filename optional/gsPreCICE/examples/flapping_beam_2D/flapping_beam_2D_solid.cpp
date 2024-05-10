@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
     //=====================================//
 
     // beam parameters
-    std::string filenameBeam = ELAST_DATA_DIR"/flappingBeam_beam.xml";
+    std::string filenameBeam = "flappingBeam_beam.xml";
     real_t youngsModulus = 1.4e6;
     real_t poissonsRatio = 0.4;
     real_t densitySolid = 1.0e4;
@@ -51,15 +51,10 @@ int main(int argc, char* argv[])
 
     // minimalistic user interface for terminal
     gsCmdLine cmd("Testing the two-way fluid-structure interaction solver in 2D.");
-    cmd.addReal("m","mesh","Poisson's ratio for ALE",meshPR);
     cmd.addReal("l","load","Gravitation acceleration acting on the beam",beamLoad);
-    cmd.addReal("x","chi","Local stiffening degree for ALE",meshStiff);
-    cmd.addSwitch("o","oneway","Run as a oneway coupled simulation: beam-to-flow",oneWay);
-    cmd.addInt("a","ale","ALE mesh method: 0 - HE, 1 - IHE, 2 - LE, 3 - ILE, 4 - TINE, 5 - BHE",ALEmethod);
     cmd.addInt("r","refine","Number of uniform refinement applications",numUniRef);
     cmd.addReal("t","time","Time span, sec",timeSpan);
     cmd.addReal("s","step","Time step",timeStep);
-    cmd.addInt("i","iter","Number of coupling iterations",maxCouplingIter);
     cmd.addSwitch("w","warmup","Use large time steps during the first 2 seconds",warmUp);
     cmd.addInt("p","points","Number of points to plot to Paraview",numPlotPoints);
     cmd.addInt("v","verbosity","Amount of info printed to the prompt: 0 - none, 1 - crucial, 2 - all",verbosity);
@@ -77,9 +72,10 @@ int main(int argc, char* argv[])
     gsReadFile<>(filenameBeam, geoBeam);
 
     // creating bases
-    gsMultiBasis<> basisDisplacement(geoBeam);
     for (index_t i = 0; i < numUniRef; ++i)
-        basisDisplacement.uniformRefine();
+        geoBeam.uniformRefine();
+    gsMultiBasis<> basisDisplacement(geoBeam);
+
 
     //=============================================//
         // Define preCICE setup //
@@ -112,11 +108,11 @@ int main(int argc, char* argv[])
 
     // Setup geometry control point mesh
     gsVector<index_t> geometryControlPointIDs;
-    gsMatrix<> geometryControlPoints = patches.patch(0).coefs().transpose();
+    gsMatrix<> geometryControlPoints = geoBeam.patch(0).coefs().transpose();
     participant.addMesh(GeometryControlPointMesh, geometryControlPoints, geometryControlPointIDs);
 
     // Setup the geometry knot mesh
-    gsMatrix<> geometryKnots = knotsToMatrix(bases.basis(0));
+    gsMatrix<> geometryKnots = knotsToMatrix(basisDisplacement.basis(0));
     participant.addMesh(GeometryKnotMesh,geometryKnots);
 
     // Initialize preCICE (send solid mesh to API)
@@ -131,22 +127,28 @@ int main(int argc, char* argv[])
     // Gives a full tensor product basis
     gsBasis<> * basis = knotMatrixToBasis<real_t>(forceKnots).get();
 
-    gsMatrix<> forceControlPoints(basis.size(),2);
+    gsMatrix<> forceControlPoints(basis->size(),2);
     forceControlPoints.setZero();
 
 
     // Gives the coefficients of the control points ONLY ON THE BOUNDARIES
+
+    // IMPORTANT: THE control points now are all control points!!!
     gsVector<index_t> forceControlPointIDs;
-    gsMatrix<> forceControlPointsBdr;
-    participant.getMeshVertexIDsAndCoordinates(ForceControlPointMesh, forceControlPointIDs,forceControlPointsBdr);
+    participant.getMeshVertexIDsAndCoordinates(ForceControlPointMesh, forceControlPointIDs,forceControlPoints);
 
     /*
      * TODO: ADD forceControlPointsBdr on the right rows of forceControlPoints
      */
 
+
+
     // // Step 2: Regenerate the geometry
+    gsDebugVar(forceControlPoints.cols());
+    gsDebugVar(basis->size());
     gsMultiPatch<> forceMesh; //Geometry object belongs to gsFunctionSet
     forceMesh.addPatch(give(basis->makeGeometry(forceControlPoints.transpose())));
+
 
     // NOTE: forceMesh should have domainDim 2!!
 
@@ -156,8 +158,10 @@ int main(int argc, char* argv[])
 
     // source function, rhs
     gsConstantFunction<> g(0.,beamLoad,2);
+
+    gsConstantFunction<> gZero(0.,0.,2);
     // inflow velocity profile U(y) = 1.5*U_mean*y*(H-y)/(H/2)^2; channel height H = 0.41
-    gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
+    // gsFunctionExpr<> inflow(util::to_string(meanVelocity) + "*6*y*(0.41-y)/0.41^2",2);
 
     // containers for solution as IGA functions
     gsMultiPatch<> dispBeam;
@@ -168,9 +172,9 @@ int main(int argc, char* argv[])
     // flow to beam interface: these Neumann boundary condtions contain references to flow and ALE solutions;
     // by updating them, we update the boundary load as well
 
-    bcInfoBeam.addCondition(0,boundary::south,condition_type::neumann,&forceMesh);
-    bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&forceMesh);
-    bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&forceMesh);
+    bcInfoBeam.addCondition(0,boundary::south,condition_type::neumann,&forceMesh.patch(0));
+    bcInfoBeam.addCondition(0,boundary::east,condition_type::neumann,&forceMesh.patch(0));
+    bcInfoBeam.addCondition(0,boundary::north,condition_type::neumann,&forceMesh.patch(0));
 
     //=============================================//
           // Setting assemblers and solvers //
@@ -234,6 +238,8 @@ int main(int argc, char* argv[])
     real_t numTimeStep = 0;
     real_t timeBeam = 0.;
 
+    index_t timestep_checkpoint = 0;
+
     // totalClock.restart();
 
     gsInfo << "Running the simulation...\n";
@@ -242,10 +248,10 @@ int main(int argc, char* argv[])
     {
         if (participant.requiresWritingCheckpoint())
         {
-            elTimeSolver.saveState();
+            // elTimeSolver.saveState();
         }
 
-        participant.readData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPointsBdr);
+        participant.readData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
 
         /*
          * TODO: ADD forceControlPointsBdr on the right rows of forceControlPoints
@@ -272,7 +278,7 @@ int main(int argc, char* argv[])
         if (participant.requiresReadingCheckpoint())
         {
             elTimeSolver.recoverState();
-            timestep = timestep_checkpoint;
+            timeStep = timestep_checkpoint;
         }
         else
         {
@@ -282,11 +288,9 @@ int main(int argc, char* argv[])
             numTimeStep++;
 
             gsWriteParaviewMultiPhysicsTimeStep(fieldsBeam,"flapping_beam_2D_beam",collectionBeam,numTimeStep,1000);
-            }
         }
 
     }
-
 
     // while (simTime < timeSpan)
     // {
@@ -343,6 +347,5 @@ int main(int argc, char* argv[])
     // }
     // logFile.close();
     // gsInfo << "Log file created in \"flapping_beam_2D.txt\".\n";
-
     return 0;
 }
