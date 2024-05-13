@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
         gsInfo << "No output created, re-run with --plot to get a ParaView "
                   "file containing the solution or --fn to write solution to xml file.\n";
     }
-    return true;
+    return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 // Helper functions
