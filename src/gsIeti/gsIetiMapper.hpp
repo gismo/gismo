@@ -395,4 +395,21 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
 
 }
 
+template <class T>
+gsMatrix<T> gsIetiMapper<T>::incorporateFixedPart(index_t k, const gsMatrix<T>& localSolution) const
+{
+    GISMO_ASSERT(localSolution.cols() == m_fixedPart[k].cols(), "gsIetiMapper::incorporateFixedPart: Dimension missmatch.");
+    const std::size_t sz = m_dofMapperLocal[k].totalSize();
+    Matrix coeffs(sz, localSolution.cols());
+    for (std::size_t i = 0; i < sz; ++i)
+    {
+        if ( m_dofMapperLocal[k].is_free(i, 0) )
+            coeffs.row(i) = localSolution.row( m_dofMapperLocal[k].index(i, 0) );
+        else
+            coeffs.row(i) = m_fixedPart[k].row( m_dofMapperLocal[k].bindex(i, 0) );
+    }
+    return coeffs;
+}
+
+
 } // namespace gismo

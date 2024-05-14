@@ -31,7 +31,7 @@ template<class Container>
 std::vector<index_t> combinedSkeletonDofs(const Container& ietiMapper, index_t k);
 
 template<class Container>
-std::vector<gsMatrix<>> decomposeSolution(const Container& ietiMapper, const std::vector<gsMatrix<>>& solution, index_t component);
+std::vector<std::vector<gsMatrix<>>> decomposeSolution(const Container& ietiMapper, const std::vector<gsMatrix<>>& solution);
 
 int main(int argc, char *argv[])
 {
@@ -338,13 +338,14 @@ int main(int argc, char *argv[])
     gsInfo << "\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
 
     // Now, we want to reconstruct the solution
-    std::vector<gsMatrix<>> solutionPatches = primal.distributePrimalSolution(
-                                                  ieti.constructSolutionFromLagrangeMultipliers(lambda)
-                                              );
-
+    std::vector<std::vector<gsMatrix<>>> solutionPatches = decomposeSolution(ietiMapper,
+                                                               primal.distributePrimalSolution(
+                                                                   ieti.constructSolutionFromLagrangeMultipliers(lambda)
+                                                               )
+                                                           );
     std::vector<gsMatrix<>> solutions;
     for (std::size_t r=0; r<ietiMapper.size(); ++r)
-        solutions.push_back( ietiMapper[r].constructGlobalSolutionFromLocalSolutions(decomposeSolution(ietiMapper, solutionPatches, r)));
+        solutions.push_back( ietiMapper[r].constructGlobalSolutionFromLocalSolutions(solutionPatches[r]));
 
     gsInfo << "done.\nDone.\n";
 
@@ -366,15 +367,12 @@ int main(int argc, char *argv[])
         for (std::size_t r=0; r<ietiMapper.size(); ++r)
         {
             std::string filename(r==dim?"ieti_pressure":"ieti_velocity_x");
-            if (r<dim) filename[14]+=r;
+            if (r<dim&&r<3) filename[14]+=r;
             gsInfo << "Write Paraview data to file \"" << filename << ".pvd\".\n";
-            gsConstantFunction<> zero(0.0, 2);
-            gsPoissonAssembler<> assembler(mp, mb[r], bc[r], zero, dirichlet::elimination, r<dim ? iFace::glue : iFace::none);
-            assembler.options().setInt("DirichletValues", dirichlet::interpolation);
-            assembler.computeDirichletDofs();
             gsMultiPatch<> mpsol;
-            assembler.constructSolution(solutions[r], mpsol);
-            gsWriteParaview<>( gsField<>( assembler.patches(), mpsol ), filename.c_str(), 1000);
+            for (index_t k=0; k<nPatches; ++k)
+                mpsol.addPatch( mb[r][k].makeGeometry( ietiMapper[r].incorporateFixedPart(k, solutionPatches[r][k])  ) );
+            gsWriteParaview<>( gsField<>( mp, mpsol ), filename.c_str(), 1000);
         }
     }
 
@@ -477,17 +475,21 @@ std::vector<index_t> combinedSkeletonDofs(const Container& ietiMapper, index_t k
 }
 
 template<class Container>
-std::vector<gsMatrix<>> decomposeSolution(const Container& ietiMapper, const std::vector<gsMatrix<>>& solution, index_t component)
+std::vector<std::vector<gsMatrix<>>> decomposeSolution(const Container& ietiMapper, const std::vector<gsMatrix<>>& solution)
 {
-    std::vector<gsMatrix<>> result;
-    result.reserve(solution.size());
+    std::size_t components = ietiMapper.size();
+    std::vector<std::vector<gsMatrix<>>> result(components);
+    for (std::size_t r=0; r<components; ++r)
+        result[r].reserve(solution.size());
     for (std::size_t k=0; k<solution.size(); ++k)
     {
         index_t offset = 0;
-        for (index_t r=0; r<component; ++r)
+        for (std::size_t r=0; r<components; ++r)
+        {
+            const index_t sz = ietiMapper[r].jumpMatrix(k).cols();
+            result[r].push_back(solution[k].block(offset,0,sz,1));
             offset += ietiMapper[r].jumpMatrix(k).cols();
-        const index_t sz = ietiMapper[component].jumpMatrix(k).cols();
-        result.push_back(solution[k].block(offset,0,sz,1));
+        }
     }
     return result;
 }
