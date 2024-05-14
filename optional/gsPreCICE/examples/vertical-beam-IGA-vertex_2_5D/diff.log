@@ -1,0 +1,89 @@
+diff --git a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_2_5D/fluid-gismo/vertical-beam-implicit-direct-fluid2_5D.cpp b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_2_5D/fluid-gismo/vertical-beam-implicit-direct-fluid2_5D.cpp
+index 78eaeb6e..5d7b14af 100644
+--- a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_2_5D/fluid-gismo/vertical-beam-implicit-direct-fluid2_5D.cpp
++++ b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_2_5D/fluid-gismo/vertical-beam-implicit-direct-fluid2_5D.cpp
+@@ -20,11 +20,16 @@
+ #include <gsElasticity/gsMassAssembler.h>
+ #include <gsElasticity/gsElasticityAssembler.h>
+ 
++
+ #ifdef gsStructuralAnalysis_ENABLED
+-#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsTimeIntegrator.h>
++#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicExplicitEuler.h>
++#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicImplicitEuler.h>
++#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicNewmark.h>
++#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicBathe.h>
++#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicWilson.h>
++#include <gsStructuralAnalysis/src/gsDynamicSolvers/gsDynamicRK4.h>
+ #include <gsStructuralAnalysis/src/gsStructuralAnalysisTools/gsStructuralAnalysisUtils.h>
+ #endif
+-
+ using namespace gismo;
+ 
+ int main(int argc, char *argv[])
+diff --git a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/fluid-gismo/vertical-beam-implicit-direct-fluid3D.cpp b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/fluid-gismo/vertical-beam-implicit-direct-fluid3D.cpp
+index 2b5d3a66..74bc5403 100644
+--- a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/fluid-gismo/vertical-beam-implicit-direct-fluid3D.cpp
++++ b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/fluid-gismo/vertical-beam-implicit-direct-fluid3D.cpp
+@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
+ 
+         // Write data at the quadrature points
+         quadPointData.setZero();
+-        quadPointData.row(0).setConstant(-1e4);
++        quadPointData.row(2).setConstant(-1e3);
+         participant.writeData(ForceMesh,ForceData,quadPointIDs,quadPointData);
+ 
+         // do the coupling
+diff --git a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/precice-config.xml b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/precice-config.xml
+index e6d1fb2d..6afdd24d 100644
+--- a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/precice-config.xml
++++ b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/precice-config.xml
+@@ -48,7 +48,7 @@
+ 
+   <coupling-scheme:parallel-implicit>
+     <participants first="Fluid" second="Solid"/>
+-    <time-window-size value="0.25" />
++    <time-window-size value="0.025" />
+     <max-time value="5" />
+     <exchange data="ControlPointData" mesh="ControlPointMesh" from="Solid"   to="Fluid"/>
+     <exchange data="ForceData"        mesh="ForceMesh"        from="Fluid"   to="Solid"  />
+diff --git a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/solid-gismo/vertical-beam-implicit-direct-solid3D.cpp b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/solid-gismo/vertical-beam-implicit-direct-solid3D.cpp
+index 12bf3c1b..701c3f24 100644
+--- a/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/solid-gismo/vertical-beam-implicit-direct-solid3D.cpp
++++ b/optional/gsPreCICE/examples/vertical-beam-implicit-direct_3D/solid-gismo/vertical-beam-implicit-direct-solid3D.cpp
+@@ -140,6 +140,7 @@ int main(int argc, char *argv[])
+     // Get the quadrature points
+     gsMatrix<> quadPoints = gsQuadrature::getAllNodes(bases.basis(0),quadOptions,couplingInterfaces);
+     participant.addMesh(ForceMesh,quadPoints);
++    gsDebugVar(quadPoints);
+ 
+     // Step 2 (not needed???)
+     // Needed for direct mesh coupling
+@@ -163,7 +164,7 @@ int main(int argc, char *argv[])
+     bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, &g_D, 2);
+     // bcInfo.addCondition(0, boundary::south, condition_type::clamped, nullptr, 2);
+ 
+-    bcInfo.addCondition(0, boundary::front,  condition_type::neumann , &g_C,-1,true);
++    bcInfo.addCondition(0,couplingInterfaces[0],  condition_type::neumann , &g_C,-1,true);
+ 
+     // Assign geometry map
+     bcInfo.setGeoMap(patches);
+diff --git a/optional/gsPreCICE/gsPreCICE.h b/optional/gsPreCICE/gsPreCICE.h
+index 23107406..d31d4881 100644
+--- a/optional/gsPreCICE/gsPreCICE.h
++++ b/optional/gsPreCICE/gsPreCICE.h
+@@ -210,10 +210,14 @@ public:
+ 
+     void readData(const std::string & meshName, const std::string & dataName, const gsVector<index_t> & IDs, const T & timestep, gsMatrix<T> & values) const
+     {
++        gsDebugVar("1");
+         int d = m_interface.getDataDimensions(meshName,dataName);
+         values.resize(1,d*IDs.size());
++        gsDebugVar("2");
+         m_interface.readData(meshName,dataName,IDs,timestep,values);
++        gsDebugVar("3");
+         values.resize(d,IDs.size());
++        gsDebugVar("4");
+     }
+ 
+     gsMatrix<T>  readData(const std::string & meshName, const std::string & dataName, const gsMatrix<T> & coords) const
