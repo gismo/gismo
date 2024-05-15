@@ -1,0 +1,230 @@
+################################################################################
+# GitLab CI is used for multiple purposes
+#
+# 1. Building and testing of commits to all branches except 'ci_test' and 
+#   'coverity_scan' and sending of the ctest results to the CDASH server
+#    - these jobs exclude external pull requests and the two branches 
+#      'ci_test' and 'coverity_scan' by the rule
+#       except:
+#       - external_pull_requests
+#       - ci_test
+#       - coverity_scan
+#
+# 2. Building and testing of external pull requests (PRs) [to be added]
+#
+# 3. Building and extensive testing of commits to branch 'ci_test' [to be added]
+#
+# 4. Coverity scan of commits to branch 'coverity_scan' [to be added]
+#
+# 5. Test installation and deployment
+#
+# 6. Building docker images and pushing them to DockerHub
+################################################################################
+
+# Avoid duplicate runs on PRs
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+      
+.test:linux:base:
+  tags:
+    - linux
+  stage: test
+  image: $CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/$IMAGE
+  variables:
+    BUILD_TYPE:             "Release"
+    GENERATOR:              "Ninja"
+    GISMO_OPTIONAL:       "gsOpennurbs"
+    LABELS_FOR_SUBPROJECTS: "'gismo;examples;unittests;doc-snippets'"
+    CTEST_ARGS:             ""
+  script:
+    - apt-get update -y
+    - apt-get install g++ cmake git ninja-build libgmp-dev libmpfr-dev -y
+    - ctest -S /builds/gismo-ci/gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -D CTEST_SITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CTEST_SOURCE_DIRECTORY=/builds/gismo-ci/gismo -D CTEST_CONFIGURATION_TYPE="$BUILD_TYPE" -D UPDATE_REPO=ON -D CTEST_CMAKE_GENERATOR="$GENERATOR" -D CNAME=$CNAME -D CXXNAME=$CXXNAME -D CTEST_TEST_TIMEOUT=150 -D GISMO_OPTIONAL="$GISMO_OPTIONAL" -D LABELS_FOR_SUBPROJECTS="$LABELS_FOR_SUBPROJECTS" -D CMAKE_ARGS="$CMAKE_ARGS" $CTEST_ARGS #-VV
+  interruptible: true
+  except:
+    - ci_test
+    - coverity_scan
+    - external_pull_requests
+
+################################################################################
+# 1. Building and testing of commits to stable branch only
+################################################################################
+
+#-------------------------------------------------------------------------------
+# Clang 8-13, 14,17,20,23
+#-------------------------------------------------------------------------------
+
+# Clang 9, C++14, Release
+clang9_cxx14_release_longdouble_int64t:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:9"
+    CNAME:            "clang"
+    CXXNAME:          "clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
+    
+# Clang 10, C++17, Release
+clang10_cxx17_release_mpreal_long:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:10"
+    CNAME:            "clang"
+    CXXNAME:          "clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+
+# Clang 11, C++20, Release
+clang11_cxx20_release_mpq_long:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:11"
+    CNAME:            "clang"
+    CXXNAME:          "clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpq_class;-DGISMO_INDEX_TYPE=long'"
+    CTEST_ARGS:       "-D DO_TESTS=FALSE"
+
+# Clang 13 (latest), C++23, Release  (works!!!!)
+clang13_cxx23_release_float_int:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:latest"
+    CNAME:            "clang"
+    CXXNAME:          "clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=23;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    GISMO_OPTIONAL: "gsOpennurbs\\;"
+    CTEST_ARGS:       "-D DO_TESTS=FALSE"
+
+#-------------------------------------------------------------------------------
+# GCC 8-12, C++11,14,17,20
+#-------------------------------------------------------------------------------
+    
+# GCC 8, C++11, Release
+gcc8_cxx11_release_mpreal_long:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "gcc:8"
+    CNAME:            "gcc"
+    CXXNAME:          "g++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+    CTEST_ARGS:       "-D DO_TESTS=FALSE" #only one test failing!
+
+# GCC 9, C++14, Release
+gcc9_cxx14_release_longdouble_int64t:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "gcc:9"
+    CNAME:            "gcc"
+    CXXNAME:          "g++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=long double;-DGISMO_INDEX_TYPE=int64_t'"
+    
+# GCC 10, C++17, Release
+gcc10_cxx17_release_double_int32t:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "gcc:10"
+    CNAME:            "gcc"
+    CXXNAME:          "g++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+    GISMO_OPTIONAL: "gsOpennurbs\\;"
+
+# GCC 11, C++20, Release
+gcc11_cxx20_release_float_int:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "gcc:11"
+    CNAME:            "gcc"
+    CXXNAME:          "g++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    CTEST_ARGS:       "-D DO_TESTS=FALSE"
+
+# GCC 12 (latest), C++23, Release
+gcc12_cxx23_release_float_int:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "gcc:latest"
+    CNAME:            "gcc"
+    CXXNAME:          "g++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=20;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=float;-DGISMO_INDEX_TYPE=int'"
+    CTEST_ARGS:       "-D DO_TESTS=FALSE"
+    GISMO_OPTIONAL: "gsOpennurbs\\;gsSpectra"
+
+################################################################################
+# 2. Building and testing of all branches and external pull requests (PRs)
+################################################################################
+
+# Clang 8, C++11, Release
+clang8_cxx11_release_double_int32t:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:8"
+    CNAME:            "clang"
+    CXXNAME:          "clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+  except:
+    - ci_test
+    - coverity_scan
+
+# Clang 10, C++17, Release
+clang10_cxx17_release_mpreal_long:
+  extends: .test:linux:base
+  variables:
+    IMAGE:            "silkeh/clang:10"
+    CNAME:            "clang"
+    CXXNAME:          "clang++"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+  except:
+    - ci_test
+    - coverity_scan
+
+# Standard installation and deployment on linux
+install_and_deploy_linux:
+  tags:
+    - linux
+  stage: test #deploy #(deploy will only run only when all test succeeds)
+  image: gcc:9
+  interruptible: true
+  only:
+    - stable
+    - external_pull_requests
+  before_script:
+    - apt-get update -y
+    - apt-get install cmake g++ -y
+    - export MAKEFLAGS=-j3
+    - rm -rf ~/.cmake /builds/gismo-ci/buildlib/CMakeCache.txt /builds/gismo-ci/buildlib/lib /usr/lib*/gismo /usr/lib*/*gismo*.* /usr/include/gismo /usr/share/gismodata /builds/gismo-ci/buildproj # Cleanup folders
+    - if [ ! -d "/builds/gismo-ci/buildlib" ]; then mkdir /builds/gismo-ci/buildlib; fi
+
+  script:
+    - cd /builds/gismo-ci/buildlib
+    - cmake ../gismo -DBUILDNAME="$CI_JOB_NAME[$CI_EXTERNAL_PULL_REQUEST_IID]" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]" -D CMAKE_GENERATOR="Unix Makefiles" -D CMAKE_INSTALL_PREFIX=/usr -D CMAKE_BUILD_TYPE=Release -DTARGET_ARCHITECTURE=none #-D GISMO_OPTIONAL="gsOpennurbs\\;gsIpOpt\\;gsSpectra"
+    - cmake --build . --target gismo #--parallel 3
+    # I. Test deploy from build tree
+    - cp /builds/gismo-ci/gismo/CTestConfig.cmake /builds/gismo-ci/gismo/deploy/
+    - mv /builds/gismo-ci/gismo/examples/*.cpp /builds/gismo-ci/gismo/deploy/
+    - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
+    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=65&value1=$CI_JOB_NAME&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH"
+    - cmake ../gismo/deploy -Dgismo_DIR=/builds/gismo-ci/buildlib -DBUILDNAME="$CI_JOB_NAME-local[$CI_EXTERNAL_PULL_REQUEST_IID]" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]"  -D CMAKE_BUILD_TYPE=Release -D CMAKE_GENERATOR="Unix Makefiles" || true
+    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalSubmit
+    # II. Test deploy from system tree
+    - cd /builds/gismo-ci/buildlib
+    - cmake --build . --target install
+    - rm -rf ~/.cmake /builds/gismo-ci/buildproj
+    - mkdir /builds/gismo-ci/buildproj; cd /builds/gismo-ci/buildproj
+    - cmake ../gismo/deploy -DBUILDNAME="$CI_JOB_NAME-system[$CI_EXTERNAL_PULL_REQUEST_IID]" -DSITE="$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA [gitlab-ci]"  -D CMAKE_BUILD_TYPE=Release -D CMAKE_GENERATOR="Unix Makefiles" || true
+    - ctest $MAKEFLAGS --output-on-failure -D ExperimentalStart -D ExperimentalConfigure -D ExperimentalBuild -D ExperimentalTest -D ExperimentalSubmit
+    # III. Test direct use of -lgismo
+    - rm -rf ./poisson2_example.out
+    - g++ -v /builds/gismo-ci/gismo/deploy/poisson2_example.cpp -o poisson2_example.out -I/usr/include/gismo -lgismo #> compile.log
+    #- ctest --output-on-failure -A compile.log -M Experimental -T Submit
+    - ./poisson2_example.out -r 2
+    - echo "CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=65&value1=$CI_JOB_NAME&field2=site&compare2=65&value2=$CI_COMMIT_BRANCH"
+
+################################################################################
+# 3. Building and extensive testing of commits to branch 'ci_test'
+################################################################################
+
+################################################################################
+# 4. Coverity scan of commits to branch 'coverity_scan'
+################################################################################

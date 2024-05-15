@@ -111,15 +111,16 @@ The source folder contains the following sub-folders:
     Contains some example data files in the XML format the G+Smo can
     read and write.
 
-- \b extensions
+- \b optional
 
-    Optional additional features that can be compiled along G+Smo,
-    typically requiring external packages. For instance, the
-    Parasolid extensions require the Parasolid library, and IpOpt
-    extensions require the IpOpt optimization library. The OpenNurbs
-    extensions are used to read and write the Rhino3D 3DM file format,
-    but they do not require any external package, since the source
-    code of the OpenNurbs library is shipped together with \gismo.
+    Optional additional modules that can be compiled along G+Smo,
+    typically extending functionality, sometimes also requiring
+    external packages, which may be automatically downloaded. For
+    instance, the Parasolid module requires the Parasolid library, and
+    IpOpt module requires the IpOpt optimization library. The
+    OpenNurbs module is used to read and write the Rhino3D 3DM file
+    format, but it does not require any external package, since the
+    source code of the OpenNurbs library is already in /external.
 
 - \b plugins
 
