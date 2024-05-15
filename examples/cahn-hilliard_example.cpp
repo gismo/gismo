@@ -55,9 +55,17 @@ int main(int argc, char *argv[])
     //! [Parse command line]
 
     //! [Read input file]
-
+    gsFileData<> data(fn);
     gsMultiPatch<> mp;
-    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+    //mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+    gsMultiBasis<> mb;
+    gsSparseMatrix<> cf;
+    gsMappedBasis<2, real_t> mbasis;
+
+    data.getFirst(mp);
+    data.getFirst(mb);
+    data.getFirst(cf);
+    
 
     gsBoundaryConditions<> bc;
     // TODO
@@ -65,16 +73,16 @@ int main(int argc, char *argv[])
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
     //! [Refinement]
-    gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
+    //gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
 
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-    for (int r =0; r < numRefine; ++r)
-        dbasis.uniformRefine();
+    //dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+    //for (int r =0; r < numRefine; ++r)
+    //   dbasis.uniformRefine();
 
-    for (size_t p = 0; p!=dbasis.nBases(); p++)
-        gsInfo<<"Basis "<<p<<": "<<dbasis.basis(p).maxDegree()<<"\n";
+    //for (size_t p = 0; p!=dbasis.nBases(); p++)
+        //gsInfo<<"Basis "<<p<<": "<<dbasis.basis(p).maxDegree()<<"\n";
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -85,14 +93,16 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
+    A.setIntegrationElements(mb);
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
     geometryMap G = A.getMap(mp);
-
+     
     // Set the discretization space
-    space w = A.getSpace(dbasis);
+    space w = A.getSpace(mbasis);
+
+    mbasis.init(mb, cf);
 
     // Solution vector and solution variable
     gsMatrix<> Cnew, Calpha, Cold;
@@ -140,8 +150,8 @@ int main(int argc, char *argv[])
 
     // Initialize the system
     gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-    Cold = tmp.array()*0.1/2;
-    Cold.array() += 0.5;
+    Cold = tmp.array()*0.1/2; //random uniform variable in [-0.05,0.05]
+    Cold.array() += 0.45;
     dCold.setZero(A.numDofs(),1);
 
     real_t Q0norm = 1, Qnorm = 10;
