@@ -80,10 +80,9 @@ int main(int argc, char *argv[])
     }
     gsMultiPatch<>& mp = *mpPtr;
 
-    GISMO_ENSURE (mp.geoDim() == 2, "Expect 2D geometry.");
     const std::size_t dim = mp.geoDim();
 
-    for (index_t i=0; i<splitPatches; ++i)
+    for (std::size_t i=0; i<splitPatches; ++i)
     {
         gsInfo << "split patches uniformly... " << std::flush;
         mp = mp.uniformSplit();
@@ -93,9 +92,12 @@ int main(int argc, char *argv[])
 
     /************** Define boundary conditions **************/
 
-    gsInfo << "Define right-hand-side and boundary conditions... " << std::flush;
+    gsInfo << "Define boundary conditions... " << std::flush;
 
-    // Some functions
+    // The following boundary conditions are set up to make sense for the
+    // "rectangle with disk hole"-domain.
+
+    // Functions used to describe boundary data
     gsConstantFunction<> zero( 0.0, mp.geoDim() );
     gsFunctionExpr<> inflow( "sin(pi*(2+y)/4)", dim );
 
@@ -128,6 +130,7 @@ int main(int argc, char *argv[])
 
 
     /************ Setup bases and adjust degree *************/
+    //! [Define Bases]
     std::vector<gsMultiBasis<>> mb;
     for (std::size_t r=0; r<dim+1; ++r)
         mb.emplace_back(mp,true);
@@ -151,17 +154,19 @@ int main(int argc, char *argv[])
         mb[dim].uniformRefine();
 
     gsInfo << "done.\n";
+    //! [Define Bases]
 
     /********* Setup assembler and assemble matrix **********/
 
     gsInfo << "Setup assembler and assemble matrix for patch... " << std::flush;
 
+    //! [Define Mapper]
     std::vector<gsIetiMapper<>> ietiMapper;
     ietiMapper.resize(dim+1);
 
     // We start by setting up a global assembler for each component to
     // obtain a dof mapper and the Dirichlet data
-    for (size_t r=0; r<dim+1; ++r)
+    for (std::size_t r=0; r<dim+1; ++r)
     {
         // Velocity is C^0 continuous, but pressure discontinuous.
         const index_t continuity = r<dim ? 0 : -1;
@@ -170,20 +175,24 @@ int main(int argc, char *argv[])
         u.setup(bc[r], dirichlet::interpolation, continuity);
         ietiMapper[r].init( mb[r], u.mapper(), u.fixedPart() );
     }
+    //! [Define Mapper]
 
     // Compute the jump matrices (Fully redundant, exclude corners)
-    for (size_t r=0; r<dim+1; ++r)
+    for (std::size_t r=0; r<dim+1; ++r)
         ietiMapper[r].computeJumpMatrices(true, true);
 
     // We tell the ieti mapper which primal constraints we want; calling
     // more than one such function is possible.
-    for (size_t r=0; r<dim; ++r)
+    //! [Define Primals]
+    for (std::size_t r=0; r<dim; ++r)
     {
         ietiMapper[r].cornersAsPrimals();
         ietiMapper[r].interfaceAveragesAsPrimals(mp,1);
     }
-    ietiMapper[dim].interfaceAveragesAsPrimals(mp,2);
+    ietiMapper[dim].interfaceAveragesAsPrimals(mp,dim);
+    //! [Define Primals]
 
+    //! [Define System]
     // The ieti system does not have a special treatment for the
     // primal dofs. They are just one more subdomain
     gsIetiSystem<> ieti;
@@ -195,11 +204,14 @@ int main(int argc, char *argv[])
     prec.reserve(nPatches);
 
     // Setup the primal system, which needs to know the number of primal dofs.
+    //! [Define System]
     index_t nPrimals = 0;
-    for (std::size_t r=0; r<ietiMapper.size(); ++r)
+    for (std::size_t r=0; r<dim+1; ++r)
         nPrimals += ietiMapper[r].nPrimalDofs();
 
+    //! [Define System2]
     gsPrimalSystem<> primal(nPrimals);
+    //! [Define System2]
     primal.setEliminatePointwiseConstraints(false);
 
     for (index_t k=0; k<nPatches; ++k)
@@ -209,9 +221,9 @@ int main(int argc, char *argv[])
         // We use the local variants of everything
         gsMultiPatch<>                      mp_local = mp[k];
         std::vector<gsMultiBasis<>>         mb_local;
-        std::vector<gsBoundaryConditions<>> bc_local(ietiMapper.size());
-        mb_local.reserve(ietiMapper.size());
-        for (std::size_t r=0; r<ietiMapper.size(); ++r)
+        std::vector<gsBoundaryConditions<>> bc_local(dim+1);
+        mb_local.reserve(dim+1);
+        for (std::size_t r=0; r<dim+1; ++r)
         {
             mb_local.push_back(mb[r][k]);
             bc[r].getConditionsForPatch(k,bc_local[r]);
@@ -224,7 +236,7 @@ int main(int argc, char *argv[])
         typedef gsExprAssembler<>::space       space;
         typedef gsExprAssembler<>::solution    solution;
 
-        gsExprAssembler<> assembler(ietiMapper.size(),ietiMapper.size());
+        gsExprAssembler<> assembler(dim+1,dim+1);
         assembler.setIntegrationElements(mb_local[0]);
         gsExprEvaluator<> ev(assembler);
         geometryMap G = assembler.getMap(mp_local);
@@ -244,21 +256,25 @@ int main(int argc, char *argv[])
         ietiMapper[dim].initFeSpace(p,k);
 
         assembler.initSystem();
-
+        //! [Assemble]
         for (std::size_t r=0; r<dim; ++r)
         {
             assembler.assemble( igrad(v[r], G)   * igrad(v[r], G).tr()   * meas(G) );
             assembler.assemble( igrad(v[r],G)[r] * p.tr()                * meas(G) );
             assembler.assemble( p                * igrad(v[r],G)[r].tr() * meas(G) );
         }
+        //! [Assemble]
 
         // Fetch data
         gsSparseMatrix<>                 localMatrix   = assembler.matrix();
         gsMatrix<>                       localRhs      = assembler.rhs();
+        //! [Jump Matrix]
         gsSparseMatrix<real_t,RowMajor>  jumpMatrix    = combinedJumpMatrix(ietiMapper, k);
+        //! [Jump Matrix]
 
         // For preconditioning, we only use the Poisson part
         {
+            //! [Preconditioner]
             const index_t sz = ietiMapper[0].jumpMatrix(k).cols() + ietiMapper[1].jumpMatrix(k).cols();
             gsSparseMatrix<> velocityJumpMatrix = jumpMatrix.block(0,0,jumpMatrix.rows(),sz);
             gsSparseMatrix<> poissonMatrix = localMatrix.block(0,0,sz,sz);
@@ -270,12 +286,16 @@ int main(int argc, char *argv[])
                 gsScaledDirichletPrec<>::restrictJumpMatrix( velocityJumpMatrix, skeletonDofs ).moveToPtr(),
                 gsScaledDirichletPrec<>::schurComplement( blocks, makeSparseCholeskySolver(blocks.A11) )
             );
+            //! [Preconditioner]
         }
 
         // Collecting the primal DoFs
+        //! [Primals]
         std::vector<index_t> primalDofIndices                 = combinedPrimalDofIndices(ietiMapper,k);
         std::vector<gsSparseVector<real_t>> primalConstraints = combinedPrimalConstraints(ietiMapper,k);
+        //! [Primals]
 
+        //! [Register]
         // This function writes back to jumpMatrix, localMatrix, and localRhs,
         // so it must be called after prec.addSubdomain().
         primal.handleConstraints(primalConstraints, primalDofIndices, jumpMatrix, localMatrix, localRhs);
@@ -286,11 +306,13 @@ int main(int argc, char *argv[])
                           give(localRhs),
                           makeSparseLUSolver(localMatrix)
                          );
+        //! [Register]
 
     } // End of local assemblers
 
     // Add the primal problem
     {
+        //! [Register primal]
         gsLinearOperator<>::Ptr localSolver = makeSparseLUSolver(primal.localMatrix());
 
         ieti.addSubdomain(
@@ -299,6 +321,7 @@ int main(int argc, char *argv[])
             give(primal.localRhs()),
             localSolver
         );
+        //! [Register primal]
     }
     gsInfo << "done.\n";
 
@@ -315,15 +338,19 @@ int main(int argc, char *argv[])
     // Solve for Lagrange multipliers
     gsMatrix<> lambda;
     lambda.setRandom( ieti.nLagrangeMultipliers(), 1 );
-    gsConjugateGradient<> solver( ieti.schurComplement(), prec.preconditioner() );
-    solver.setCalcEigenvalues(true);
-    solver.setOptions(cmd.getGroup("Solver"));
+
     gsMatrix<> errorHistory;
-    solver.solveDetailed( ieti.rhsForSchurComplement(), lambda, errorHistory);
+
+    //! [Solve]
+    gsConjugateGradient<> PCG( ieti.schurComplement(), prec.preconditioner() );
+    PCG.setCalcEigenvalues(true);
+    PCG.setOptions(cmd.getGroup("Solver"));
+    PCG.solveDetailed( ieti.rhsForSchurComplement(), lambda, errorHistory);
+    //! [Solve]
 
     // Report on behavior of solver
     const index_t iter = errorHistory.rows()-1;
-    const bool success = errorHistory(iter,0) < solver.tolerance();
+    const bool success = errorHistory(iter,0) < PCG.tolerance();
     if (success)
         gsInfo << "        Reached desired tolerance after " << iter << " iterations:\n        ";
     else
@@ -332,7 +359,7 @@ int main(int argc, char *argv[])
         gsInfo << errorHistory.transpose() << "\n\n";
     else
         gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
-    gsInfo << "        Calculated condition number is " << solver.getConditionNumber() << ".";
+    gsInfo << "        Calculated condition number is " << PCG.getConditionNumber() << ".";
 
 
     gsInfo << "\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
@@ -477,14 +504,13 @@ std::vector<index_t> combinedSkeletonDofs(const Container& ietiMapper, index_t k
 template<class Container>
 std::vector<std::vector<gsMatrix<>>> decomposeSolution(const Container& ietiMapper, const std::vector<gsMatrix<>>& solution)
 {
-    std::size_t components = ietiMapper.size();
-    std::vector<std::vector<gsMatrix<>>> result(components);
-    for (std::size_t r=0; r<components; ++r)
+    std::vector<std::vector<gsMatrix<>>> result(ietiMapper.size());
+    for (std::size_t r=0; r<ietiMapper.size(); ++r)
         result[r].reserve(solution.size());
     for (std::size_t k=0; k<solution.size(); ++k)
     {
         index_t offset = 0;
-        for (std::size_t r=0; r<components; ++r)
+        for (std::size_t r=0; r<ietiMapper.size(); ++r)
         {
             const index_t sz = ietiMapper[r].jumpMatrix(k).cols();
             result[r].push_back(solution[k].block(offset,0,sz,1));
