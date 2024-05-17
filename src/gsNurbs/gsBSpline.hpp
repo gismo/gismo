@@ -166,16 +166,18 @@ std::vector<internal::gsCurveIntersectionResult<T>> gsBSpline<T>::intersect(cons
         gsBSpline<T> crv2 = other.segmentFromTo(hull->b2.getRange().getMin(), hull->b2.getRange().getMax());
 
         internal::gsCurveCurveDistanceSystem<T> obj(crv1, crv2);
-        gsMatrix<T> uv(2,1);
-        uv(0,0) = 0.5 * (crv1.domainStart() + crv1.domainEnd());
-        uv(1,0) = 0.5 * (crv2.domainStart() + crv2.domainEnd());
+		gsVector<T,2> uv;
+        uv(0) = 0.5 * (crv1.domainStart() + crv1.domainEnd());
+        uv(1) = 0.5 * (crv2.domainStart() + crv2.domainEnd());
         T distance = obj.compute(uv, tolerance);
 
         if (distance < math::max(1e-10, tolerance))
         {
-            gsMatrix<T> pt(1,1);
-            pt<<0.5 * (crv1.eval(uv.row(0)) + crv2.eval(uv.row(1)));
-            internal::gsCurveIntersectionResult<T> result(uv(0,0), uv(1,0), pt);
+            gsMatrix<T> uCrv1(1,1), uCrv2(1,1);
+			uCrv1(0,0) = uv(0);
+			uCrv2(0,0) = uv(1);
+		  	gsMatrix<T> pt = 0.5 * (crv1.eval(uCrv1) + crv2.eval(uCrv2));
+            internal::gsCurveIntersectionResult<T> result(uv(0), uv(1), pt);
             results.push_back(result);
         }
     }

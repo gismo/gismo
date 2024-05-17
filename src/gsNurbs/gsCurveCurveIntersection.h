@@ -312,7 +312,7 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
         result.insert(result.end(), result3.begin(), result3.end());
         result.insert(result.end(), result4.begin(), result4.end());
 
-        return result1;
+        return result;
     }
     else if (crv1Curvature <= MAX_CURVATURE && MAX_CURVATURE < crv2Curvature)
     {
@@ -326,7 +326,7 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
 
         result.insert(result.end(), result1.begin(), result1.end());
         result.insert(result.end(), result2.begin(), result2.end());
-        return result1;
+        return result;
     }
     else if (crv2Curvature <= MAX_CURVATURE && MAX_CURVATURE < crv1Curvature)
     {
@@ -340,7 +340,7 @@ std::vector<gsBoundingBoxPair<T>> getPotentialIntersectionRanges(const gsBSpline
 
         result.insert(result.end(), result1.begin(), result1.end());
         result.insert(result.end(), result2.begin(), result2.end());
-        return result1;
+        return result;
     }
 
     return result;
