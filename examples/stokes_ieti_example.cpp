@@ -33,10 +33,14 @@ std::vector<index_t> combinedSkeletonDofs(const Container& ietiMapper, index_t k
 template<class Container>
 std::vector<std::vector<gsMatrix<>>> decomposeSolution(const Container& ietiMapper, const std::vector<gsMatrix<>>& solution);
 
+template<class T>
+typename gsMultiPatch<T>::uPtr lift3D( const gsMultiPatch<T>& mp, T z );
+
 int main(int argc, char *argv[])
 {
     /************** Define command line options *************/
 
+    bool liftGeo = false;
     index_t splitPatches = 0;
     index_t refinements = 1;
     index_t degree = 2;
@@ -46,6 +50,7 @@ int main(int argc, char *argv[])
     bool plot = false;
 
     gsCmdLine cmd("Solves the Stokes system with an isogeometric discretization using an isogeometric tearing and interconnecting (IETI) solver.");
+    cmd.addSwitch("",  "3D",                    "Lift geometry to 3D.", liftGeo);
     cmd.addInt   ("",  "SplitPatches",          "Split every patch that many times in 2^d patches", splitPatches);
     cmd.addInt   ("r", "Refinements",           "Number of uniform h-refinement steps to perform before solving", refinements);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space (for pressure)", degree);
@@ -78,6 +83,8 @@ int main(int argc, char *argv[])
         gsInfo << "No geometry found in file " << geometry << ".\n";
         return EXIT_FAILURE;
     }
+    if (liftGeo)
+        mpPtr = lift3D(*mpPtr,real_t(10));
     gsMultiPatch<>& mp = *mpPtr;
 
     const std::size_t dim = mp.geoDim();
@@ -98,8 +105,8 @@ int main(int argc, char *argv[])
     // "rectangle with disk hole"-domain.
 
     // Functions used to describe boundary data
-    gsConstantFunction<> zero( 0.0, mp.geoDim() );
-    gsFunctionExpr<> inflow( "sin(pi*(2+y)/4)", dim );
+    gsConstantFunction<> zero( 0.0, dim );
+    gsFunctionExpr<> inflow( dim<3 ? "sin(pi*(2+y)/4)" : "sin(pi*(2+y)/4)*z*(10-z)", dim );
 
     // Boundary conditions
     std::vector<gsBoundaryConditions<>> bc;
@@ -111,30 +118,28 @@ int main(int argc, char *argv[])
         if (it->patch / math::exp2(mp.geoDim()*splitPatches) == 3 && it->side() == 4) // Inlet
         {
             bc[0].addCondition( *it, condition_type::dirichlet, &inflow );
-            bc[1].addCondition( *it, condition_type::dirichlet, &zero );
+            for (std::size_t r=1; r<dim; ++r)
+                bc[r].addCondition( *it, condition_type::dirichlet, &zero );
             ++inlets;
-            ++bccount;
         }
         else if (it->patch / math::exp2(mp.geoDim()*splitPatches) == 10 && it->side() == 2) // Outlet
         {
-            bc[0].addCondition( *it, condition_type::neumann, &zero );
-            bc[1].addCondition( *it, condition_type::neumann, &zero );
+            for (std::size_t r=0; r<dim; ++r)
+                bc[r].addCondition( *it, condition_type::neumann, &zero );
             ++outlets;
-            ++bccount;
         }
         else
         {
-            bc[0].addCondition( *it, condition_type::dirichlet, &zero );
-            bc[1].addCondition( *it, condition_type::dirichlet, &zero );
-            ++bccount;
+            for (std::size_t r=0; r<dim; ++r)
+                bc[r].addCondition( *it, condition_type::dirichlet, &zero );
         }
+        ++bccount;
     }
     for (std::size_t r=0; r<dim+1; ++r)
         bc[r].setGeoMap(mp);
 
     gsInfo << "done: "<<bccount<<" conditions, including "
            <<inlets<<" inlet and "<<outlets<<" outlet, set.\n";
-
 
     /************ Setup bases and adjust degree *************/
     //! [Define Bases]
@@ -194,7 +199,7 @@ int main(int argc, char *argv[])
     for (std::size_t r=0; r<dim; ++r)
     {
         ietiMapper[r].cornersAsPrimals();
-        ietiMapper[r].interfaceAveragesAsPrimals(mp,1);
+        ietiMapper[r].interfaceAveragesAsPrimals(mp,dim-1);
     }
     ietiMapper[dim].interfaceAveragesAsPrimals(mp,dim);
     //! [Define Primals]
@@ -282,7 +287,9 @@ int main(int argc, char *argv[])
         // For preconditioning, we only use the Poisson part
         {
             //! [Preconditioner]
-            const index_t sz = ietiMapper[0].jumpMatrix(k).cols() + ietiMapper[1].jumpMatrix(k).cols();
+            index_t sz = 0;
+            for (std::size_t r=0; r<dim; ++r)
+                sz += ietiMapper[r].jumpMatrix(k).cols();
             gsSparseMatrix<> velocityJumpMatrix = jumpMatrix.block(0,0,jumpMatrix.rows(),sz);
             gsSparseMatrix<> poissonMatrix = localMatrix.block(0,0,sz,sz);
 
@@ -400,13 +407,13 @@ int main(int argc, char *argv[])
     {
         for (std::size_t r=0; r<ietiMapper.size(); ++r)
         {
-            std::string filename(r==dim?"ieti_pressure":"ieti_velocity_x");
-            if (r<dim&&r<3) filename[14]+=r;
+            const char* filenames[] = { "ieti_velocity_x", "ieti_velocity_y", "ieti_velocity_z", "ieti_pressure" };
+            const char* filename = filenames[(r<dim&&r<3)?r:3];
             gsInfo << "Write Paraview data to file \"" << filename << ".pvd\".\n";
             gsMultiPatch<> mpsol;
             for (index_t k=0; k<nPatches; ++k)
-                mpsol.addPatch( mb[r][k].makeGeometry( ietiMapper[r].incorporateFixedPart(k, solutionPatches[r][k])  ) );
-            gsWriteParaview<>( gsField<>( mp, mpsol ), filename.c_str(), 1000);
+                mpsol.addPatch( mb[r][k].makeGeometry( ietiMapper[r].incorporateFixedPart(k, solutionPatches[r][k]) ) );
+            gsWriteParaview<>( gsField<>( mp, mpsol ), filename, dim < 3 ? 1000 : 10000);
         }
     }
 
@@ -524,5 +531,32 @@ std::vector<std::vector<gsMatrix<>>> decomposeSolution(const Container& ietiMapp
             offset += ietiMapper[r].jumpMatrix(k).cols();
         }
     }
+    return result;
+}
+
+template<class T>
+typename gsMultiPatch<T>::uPtr lift3D( const gsMultiPatch<T>& mp, T z )
+{
+    std::vector<gsGeometry<T>*> geos;
+    geos.reserve(mp.nPatches());
+    for (typename std::vector<gsGeometry<T>*>::const_iterator it = mp.begin();
+        it != mp.end(); ++it)
+    {
+        const gsTensorBSpline<2,T>* tb = dynamic_cast<const gsTensorBSpline<2,T>*>(*it);
+        if (tb)
+        {
+            geos.push_back(gsNurbsCreator<T>::lift3D(*tb, z).release());
+            continue;
+        }
+        const gsTensorNurbs<2,T>* tn = dynamic_cast<const gsTensorNurbs<2,T>*>(*it);
+        if (tn)
+        {
+            geos.push_back(gsNurbsCreator<T>::lift3D(*tn, z).release());
+            continue;
+        }
+        GISMO_ENSURE(false, "lift3D only available for gsTensorBSpline<2,T> and gsTensorNurbs<2,T>.");
+    }
+    typename gsMultiPatch<T>::uPtr result = memory::make_unique(new gsMultiPatch<T>(geos));
+    result->computeTopology();
     return result;
 }
