@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
     const std::size_t dim = mp.geoDim();
 
-    for (std::size_t i=0; i<splitPatches; ++i)
+    for (index_t i=0; i<splitPatches; ++i)
     {
         gsInfo << "split patches uniformly... " << std::flush;
         mp = mp.uniformSplit();
@@ -105,28 +105,35 @@ int main(int argc, char *argv[])
     std::vector<gsBoundaryConditions<>> bc;
     bc.resize(dim+1);
 
+    index_t inlets = 0, outlets = 0, bccount = 0;
     for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
     {
-        if (it->patch == 3 && it->side() == 4) // Inlet
+        if (it->patch / math::exp2(mp.geoDim()*splitPatches) == 3 && it->side() == 4) // Inlet
         {
             bc[0].addCondition( *it, condition_type::dirichlet, &inflow );
             bc[1].addCondition( *it, condition_type::dirichlet, &zero );
+            ++inlets;
+            ++bccount;
         }
-        else if (it->patch == 10 && it->side() == 2) // Outlet
+        else if (it->patch / math::exp2(mp.geoDim()*splitPatches) == 10 && it->side() == 2) // Outlet
         {
             bc[0].addCondition( *it, condition_type::neumann, &zero );
             bc[1].addCondition( *it, condition_type::neumann, &zero );
+            ++outlets;
+            ++bccount;
         }
         else
         {
             bc[0].addCondition( *it, condition_type::dirichlet, &zero );
             bc[1].addCondition( *it, condition_type::dirichlet, &zero );
+            ++bccount;
         }
     }
     for (std::size_t r=0; r<dim+1; ++r)
         bc[r].setGeoMap(mp);
 
-    gsInfo << "done.\n";
+    gsInfo << "done: "<<bccount<<" conditions, including "
+           <<inlets<<" inlet and "<<outlets<<" outlet, set.\n";
 
 
     /************ Setup bases and adjust degree *************/
@@ -173,7 +180,7 @@ int main(int argc, char *argv[])
         gsExprAssembler<> assembler;
         gsExprAssembler<>::space u = assembler.getSpace(mb[r]);
         u.setup(bc[r], dirichlet::interpolation, continuity);
-        ietiMapper[r].init( mb[r], u.mapper(), u.fixedPart() );
+        ietiMapper[r].init(mb[r], u.mapper(), u.fixedPart());
     }
     //! [Define Mapper]
 
