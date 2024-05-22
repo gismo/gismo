@@ -76,28 +76,65 @@ protected:
     void defaultOptions()
     {
         Base::defaultOptions();
-        m_options.addReal("MinGradientLength","Minimal gradient length",1e-9);
-        m_options.addReal("MinStepLength","Minimal step length",1e-9);
+        // See https://xueyuhanlang.github.io/software/HLBFGS/
+
+        // Options from PARAMETERS
+        m_options.addReal("tolF","Function tolerance (default 1e-4)",1e-4);
+        m_options.addReal("tolL","Line search tolerance (default 1e-16)",1e-16);
+        m_options.addReal("tolLG","Line search gradient tolerance (default 0.9)",0.9);
+        m_options.addReal("minStepL","Minimal step size used in line-search (default 1e-20)",1e-20);
+        m_options.addReal("maxStepL","Maximum step size used in line-search (default 1e+20)",1e20);
+        m_options.addReal("tolRelG","Relative tolerance for the gradient (default 1e-9)",1e-9);
+        m_options.addReal("tolG","Tolerance for the gradient (default 1e-10)",1e-10);
+
+        // Options from INFO
+        m_options.addInt("maxItL","the max number of evaluation in line-search (default 20)",20);
+        m_options.addInt("strategy","The lbfgs strategy. 0: standard (default), 1: M1QN3 strategy [recommended].",0);
+        m_options.addInt("hessUpdate","T: the update interval of Hessian [typical choices: 0-200] (default 10)",10);
+        m_options.addInt("hessian","0: with hessian (default), 1: without hessian",0);
+        m_options.addInt("ICFS","ICFS parameter (default 15)",15);
+        m_options.addInt("linesearch","0: classical line-search (default), 1: modified line-search [not useful in practice]",0);
+        m_options.addInt("preconditionedCG","0: disable preconditioned CG (default), 1: enable preconditioned CG",0);
+        m_options.addInt("preconditionedCGpar","0 or 1 defines different methods for choosing beta in CG. (default 0)",1);
+        // m_options.addInt("diagonalUpdate","internal usage. 0: only update the diag in USER_DEFINED_HLBFGS_UPDATE_H; 1: default. ",0);
+
+        // Option M
         m_options.addInt("LBFGSUpdates","Number of LBFGS updates (typically 3-20, put to 0 for gradient descent)",20);
     }
 
     void getOptions()
     {
         Base::getOptions();
-        m_minGradientLength = m_options.getReal("MinGradientLength");
-        m_minStepLength = m_options.getReal("MinStepLength");
+
+        // PARAMETERS
+        m_hlbfgs_pars[0] = m_options.getReal("tolF");
+        m_hlbfgs_pars[1] = m_options.getReal("tolL");
+        m_hlbfgs_pars[2] = m_options.getReal("tolLG");
+        m_hlbfgs_pars[3] = m_options.getReal("minStepL");
+        m_hlbfgs_pars[4] = m_options.getReal("maxStepL");
+        m_hlbfgs_pars[5] = m_options.getReal("tolRelG");
+        m_hlbfgs_pars[6] = m_options.getReal("tolG");
+
+        // INFO
+        //      INFO[1,2] are output, INFO[4,5] come from Base
+        m_hlbfgs_info[0]  = m_options.getInt("maxItL");
+        m_hlbfgs_info[3]  = m_options.getInt("strategy");
+        m_hlbfgs_info[4]  = static_cast<index_t>(m_maxIterations);
+        m_hlbfgs_info[5]  = static_cast<index_t>(m_verbose);
+        m_hlbfgs_info[6]  = m_options.getInt("hessUpdate");
+        m_hlbfgs_info[7]  = m_options.getInt("hessian");
+        m_hlbfgs_info[8]  = m_options.getInt("ICFS");
+        m_hlbfgs_info[9]  = m_options.getInt("linesearch");
+        m_hlbfgs_info[10] = m_options.getInt("preconditionedCG");
+        m_hlbfgs_info[11] = m_options.getInt("preconditionedCGpar");
+        // m_hlbfgs_info[12] = m_options.getInt("");
+
+        // M
         m_M = m_options.getInt("LBFGSUpdates");
 
         // m_hlbfgs_info[3]:The lbfgs strategy. 0: standard, 1: M1QN3 strategy (recommended)
         // Gilbert, J. C., & Lemaréchal, C. (1989). Some numerical experiments with variable-storage
         // quasi-Newton algorithms. Mathematical programming, 45(1), 407-435.
-        m_hlbfgs_info[3] = 1;
-
-        m_hlbfgs_info[4] = static_cast<index_t>(m_maxIterations);
-        m_hlbfgs_info[5] = static_cast<index_t>(m_verbose);
-
-        m_hlbfgs_pars[5] = m_minGradientLength;
-        m_hlbfgs_pars[6] = m_minStepLength;
     }
 
 protected:
