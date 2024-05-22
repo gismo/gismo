@@ -206,13 +206,14 @@ public:
     {
         result.resize(DIM, u.cols());
 
-        GISMO_ASSERT(m_alpha.array().minCoeff() > 0 && m_alpha.array().maxCoeff() < 1, "The Möbius domain is only defined for 0<alpha<1");
+        GISMO_ASSERT(m_alpha.array().minCoeff() > 0 && m_alpha.array().maxCoeff() < 1, "The Möbius domain is only defined for 0<alpha<1,\ninstead we have:\n m_alpha_min = " << m_alpha.array().minCoeff() << ", m_alpha_max = " << m_alpha.array().maxCoeff() << "\n");
+
 
         gsMatrix<T> alpha = m_alpha(0,0) * u.row(0).array() + m_alpha(1,0) * (1.0-u.row(0).array());
         gsMatrix<T> beta  = m_alpha(0,1) * u.row(1).array() + m_alpha(1,1) * (1.0-u.row(1).array());
 
-        gsDebugVar(alpha.cols());
-        gsDebugVar(u.cols());
+        // gsDebugVar(alpha.cols());
+        // gsDebugVar(u.cols());
 
 
 
@@ -335,7 +336,7 @@ public:
     {
         result.resize(DIM, u.cols());
 
-        GISMO_ASSERT(m_alpha.array().minCoeff() > 0 && m_alpha.array().maxCoeff() < 1, "The Möbius domain is only defined for 0<alpha<1");
+        GISMO_ASSERT(m_alpha.array().minCoeff() > 0 && m_alpha.array().maxCoeff() < 1, "The Möbius domain is only defined for 0<alpha<1,\ninstead we have:\n m_alpha_min = " << m_alpha.array().minCoeff() << ", m_alpha_max = " << m_alpha.array().maxCoeff() << "\n");
 
         for (short_t d = 0; d!=DIM; d++)
             result.row(d) = (m_alpha[d]-1)*u.row(d).array() / ( 2*m_alpha[d]*u.row(d).array() - u.row(d).array() - m_alpha[d]);
@@ -346,7 +347,19 @@ public:
         result.resize(4, u.cols());
         result.setZero();
 
-        GISMO_ERROR("TODO");
+        for(index_t k = 0; k != u.cols(); k++)
+        {
+            T uu = u(0,k);
+            T vv = u(1,k);
+
+            T den_u = pow(2*m_alpha[0]*uu - uu - m_alpha[0], 2) ;
+            T den_v = pow(2*m_alpha[1]*vv - vv - m_alpha[1], 2) ;
+
+            result(0,k) = uu*(uu-1)/(den_u*den_u);
+            result(1,k) = 0;
+            result(2,k) = 0;
+            result(3,k) = vv*(vv-1)/(den_v*den_v);
+        }
     }
 
     /// Returns the controls of the function

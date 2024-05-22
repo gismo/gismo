@@ -185,7 +185,7 @@ public:
         // WHAT ABOUT CONSTRAINTS????
         HLBFGS(
                 sol.size(),
-                m_M, // hardcoded??? -->>> change to an option of the class
+                m_M,
                 sol.data(),
                 static_func_grad,
 //                obj,
@@ -278,11 +278,6 @@ protected:
 
     using Base::defaultOptions;
     using Base::getOptions;
-
-// Options
-protected:
-    T m_minGradientLength;
-    T m_minStepLength;
 
 // HLBFGS options
 protected:
