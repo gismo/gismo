@@ -8,19 +8,18 @@ unloadlibrary libgismo
 end
 
 path_to_main = '/home/hverhelst/Documents/code/gismo_mex';
-path_to_gismo = [path_to_main,'/build/lib/libgismo'];
-path_to_Cinterface = '/optional/gsCInterface/src/Cgismo.h';
+path_to_libgismo = [path_to_main,'/build/lib/libgismo'];
+path_to_gsCInterface = '/optional/gsCInterface/';
+path_to_CinterfaceFile = '/optional/gsCInterface/src/Cgismo.h';
 % path_to_Minterface = './optional/gsCInterface/MATLAB/';
-path_to_gsCore = '/home/hverhelst/Documents/code/gismo_mex/build';
-path_to_gsCInterface = '/optional/gsCInterface/src/';
+path_to_gsCore = [path_to_main,'/build'];
 
-addpath(genpath(path_to_gsCInterface));
 
-% addpath(path_to_Minterface)
+addpath(genpath([path_to_main,path_to_gsCInterface]));
 
 % The following will create the library 'libgismo'
-loadlibrary(path_to_gismo,...
-            path_to_Cinterface,... Path where to find the C interface
+loadlibrary(path_to_libgismo,...
+            path_to_CinterfaceFile,... Path where to find the C interface
             'addheader','gsCTypes.h',...
             'addheader','gsCMatrix.h',...
             'addheader','gsCMatrixInt.h',...
@@ -37,7 +36,7 @@ loadlibrary(path_to_gismo,...
                 path_to_gsCore... Path where to find gsCore
                 );
 
-libfunctions('libgismo')
+libfunctions('libgismo');
 
 
 
