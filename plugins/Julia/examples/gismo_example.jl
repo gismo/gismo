@@ -1,5 +1,4 @@
-include("./Gismo.jl")
-import .Gismo
+include("../Gismo/src/Gismo.jl")
 
 m = Gismo.EigenMatrix(3,3)
 Gismo.setZero(m)

@@ -1,0 +1,12 @@
+name = "Gismo"
+uuid = "f019f137-166b-4455-b646-ee200b009b83"
+authors = ["Hugo Verhelst <hugoverhelst1995@gmail.com>"]
+version = "0.1.0"
+
+[extras]
+BenchmarkPlots = "ab8c0f59-4072-4e0d-8f91-a91e1495eb26"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
+
+[targets]
+test = ["BenchmarkPlots", "BenchmarkTools", "StatsPlots"]

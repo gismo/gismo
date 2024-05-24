@@ -211,7 +211,7 @@ mutable struct MultiPatch
     end
 
     function destroy(m::MultiPatch)
-        ccall((:gsFunctionSet_delete,libgismo),Cvoid,(Ptr{gsCFunctionSet},),m.ptr)
+        ccall((:gsMultiPatch_delete,libgismo),Cvoid,(Ptr{gsCFunctionSet},),m.ptr)
     end
 end
 
