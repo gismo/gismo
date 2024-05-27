@@ -117,6 +117,154 @@ gsMatrix<T> knotVectorUnpack(const gsMatrix<T> & knots, index_t numBoundaries)
     return kv_unpacked;
 }
 
+
+
+
+// template <class T>
+// std::pair<gsMatrix<T>, gsMatrix<T>> packMultiPatch(const gsMultiPatch<T> &mp) {
+//     std::vector<gsMatrix<T>> knotMatrices;
+//     knotMatrices.reserve(mp.nPatches());
+//     std::vector<gsMatrix<T>> coefMatrices;
+//     coefMatrices.reserve(mp.nPatches());
+
+//     for (typename gsMultiPatch<T>::const_iterator patch = mp.begin(); patch != mp.end(); ++patch) {
+//         // Dereference the patch pointer to access its members
+//         knotMatrices.push_back(knotsToMatrix((*patch)->basis()));
+//         coefMatrices.push_back((*patch)->coefs().transpose());
+//     }
+
+//     index_t knotRows = mp.domainDim();
+//     index_t coefRows = mp.targetDim();
+//     index_t knotCols = 0;
+//     index_t coefCols = 0;
+
+//     for (size_t p = 0; p != mp.nPatches(); ++p) {
+//         knotCols += knotMatrices[p].cols();
+//         coefCols += coefMatrices[p].cols();
+//     }
+
+//     gsMatrix<T> knotMatrix(knotRows, knotCols);
+//     gsMatrix<T> coefMatrix(coefRows, coefCols);
+
+//     size_t currentKnotCol = 0;
+//     size_t currentCoefCol = 0;
+
+//     for (size_t p = 0; p != mp.nPatches(); ++p) {
+//         const auto& km = knotMatrices[p];
+//         const auto& cm = coefMatrices[p];
+
+//         // Validate block dimensions before assignment
+//         if (currentKnotCol + km.cols() <= knotCols && km.rows() == knotRows &&
+//             currentCoefCol + cm.cols() <= coefCols && cm.rows() == coefRows) {
+//             knotMatrix.block(0, currentKnotCol, knotRows, km.cols()) = km;
+//             coefMatrix.block(0, currentCoefCol, coefRows, cm.cols()) = cm;
+
+//             currentKnotCol += km.cols();
+//             currentCoefCol += cm.cols();
+//         } else {
+//             std::cerr << "Invalid block parameters for patch " << p << std::endl;
+//             throw std::logic_error("Block parameters out of range");
+//         }
+//     }
+
+//     return std::make_pair(knotMatrix, coefMatrix);
+// }
+
+template <class T>
+std::tuple<gsMatrix<T>, gsMatrix<T>, std::vector<index_t>, std::vector<index_t>> packMultiPatch(const gsMultiPatch<T> &mp) {
+    std::vector<gsMatrix<T>> knotMatrices;
+    knotMatrices.reserve(mp.nPatches());
+    std::vector<gsMatrix<T>> coefMatrices;
+    coefMatrices.reserve(mp.nPatches());
+    std::vector<index_t> knotCols;
+    std::vector<index_t> coefCols;
+
+    for (typename gsMultiPatch<T>::const_iterator patch = mp.begin(); patch != mp.end(); ++patch) {
+        // Dereference the patch pointer to access its members
+        knotMatrices.push_back(knotsToMatrix((*patch)->basis()));
+        coefMatrices.push_back((*patch)->coefs().transpose());
+        knotCols.push_back(knotMatrices.back().cols());
+        coefCols.push_back(coefMatrices.back().cols());
+    }
+
+    index_t knotRows = mp.domainDim();
+    index_t coefRows = mp.targetDim();
+    index_t knotColsSum = 0;
+    index_t coefColsSum = 0;
+
+    for (size_t p = 0; p != mp.nPatches(); ++p) {
+        knotColsSum += knotMatrices[p].cols();
+        coefColsSum += coefMatrices[p].cols();
+    }
+
+    gsMatrix<T> knotMatrix(knotRows, knotColsSum);
+    gsMatrix<T> coefMatrix(coefRows, coefColsSum);
+
+    size_t currentKnotCol = 0;
+    size_t currentCoefCol = 0;
+
+    for (size_t p = 0; p != mp.nPatches(); ++p) {
+        const auto& km = knotMatrices[p];
+        const auto& cm = coefMatrices[p];
+
+        // Validate block dimensions before assignment
+        if (currentKnotCol + km.cols() <= knotColsSum && km.rows() == knotRows &&
+            currentCoefCol + cm.cols() <= coefColsSum && cm.rows() == coefRows) {
+            knotMatrix.block(0, currentKnotCol, knotRows, km.cols()) = km;
+            coefMatrix.block(0, currentCoefCol, coefRows, cm.cols()) = cm;
+
+            currentKnotCol += km.cols();
+            currentCoefCol += cm.cols();
+        } else {
+            std::cerr << "Invalid block parameters for patch " << p << std::endl;
+            throw std::logic_error("Block parameters out of range");
+        }
+    }
+
+    return std::make_tuple(knotMatrix, coefMatrix, knotCols, coefCols);
+}
+
+
+/**
+ * @brief      Convert the packed matrices into back into a gsMultiPatch<T> object. 
+ *
+ * @param[in]  knotMatrices  The knot matrices
+ * @param[in]  coefMatrices  The ratio matrices
+ *
+ * @tparam     T             { description }
+ *
+ * @return     { description_of_the_return_value }
+ */
+
+
+template <class T>
+gsMultiPatch<T> unpackMultiPatch(const gsMatrix<T> &knotMatrix, const gsMatrix<T> &coefMatrix, const std::vector<index_t> &knotCols, const std::vector<index_t> &coefCols) {
+    gsMultiPatch<T> mp;
+    size_t currentKnotCol = 0;
+    size_t currentCoefCol = 0;
+
+    for (size_t p = 0; p < knotCols.size(); ++p) {
+        gsMatrix<T> km = knotMatrix.block(0, currentKnotCol, knotMatrix.rows(), knotCols[p]);
+        gsMatrix<T> cm = coefMatrix.block(0, currentCoefCol, coefMatrix.rows(), coefCols[p]).transpose();
+
+        // Create the gsBasis object from the knot matrix
+        std::shared_ptr<gsBasis<T>> KnotBasis = knotMatrixToBasis(km);
+        
+        // Create the gsGeometry object
+        auto geom = KnotBasis->makeGeometry(cm);
+
+        // Add the gsGeometry object to gsMultiPatch
+        mp.addPatch(std::move(geom));
+
+        currentKnotCol += knotCols[p];
+        currentCoefCol += coefCols[p];
+    }
+
+    return mp;
+}
+
+
+
 template<class T>
 gsMatrix<T> unPackControlPoints(const gsMatrix<T> & controlPoints, const gsMatrix<T> & kv_unpacked, index_t knot_index, index_t cp_index)
 {
@@ -147,6 +295,7 @@ gsMatrix<T> unPackControlPoints(const gsMatrix<T> & controlPoints, const gsMatri
     }
     return unpackedCps;
 }
+
 
 
 
