@@ -207,12 +207,12 @@ int main(int argc, char *argv[])
     }
     if (get_readTime)
     {
-        gsInfo << "Read time: " << t_read << "\n";
+        gsInfo << "Fluid Read time: " << t_read << "\n";
     }
 
     if (get_writeTime)
     {
-        gsInfo << "Write time: " << t_write << "\n";
+        gsInfo << "Fluid Write time: " << t_write << "\n";
     }
 
 

@@ -445,12 +445,12 @@ gsSparseMatrix<> C = gsSparseMatrix<>(assembler.numDofs(),assembler.numDofs());
     }
     if (get_readTime)
     {
-        gsInfo << "Read time: " << t_read << "\n";
+        gsInfo << "Solid Read time: " << t_read << "\n";
     }
 
     if (get_writeTime)
     {
-        gsInfo << "Write time: " << t_write << "\n";
+        gsInfo << "Solid Write time: " << t_write << "\n";
     }
 
     if (plot)
