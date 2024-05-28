@@ -4,7 +4,7 @@
     <sink
       filter="%Severity% > info and %Rank% = 0"
       format="---[precice] %ColorizedSeverity% %Message%"
-      enabled="false" />
+      enabled="true" />
 
     <sink
       filter="%Severity% > debug and %Rank% = 0"
