@@ -125,6 +125,11 @@ int main(int argc, char *argv[])
 
 
     // Time integration loop
+    real_t read_time = 0;
+    real_t write_time = 0;
+    index_t read_calls = 0;
+    index_t write_calls = 0;
+    gsStopwatch timer;
     while(participant.isCouplingOngoing())
     {
 
@@ -136,14 +141,20 @@ int main(int argc, char *argv[])
         }
 
         // Read control point displacements
+        timer.restart();
         participant.readData(ControlPointMesh,ControlPointData,controlPointIDs,controlPoints);
+        read_time += timer.stop();
+        read_calls++;
 
         if (get_readTime)
             t_read += participant.readTime();
 
     
         quadPointData.setRandom();
+        timer.restart();
         participant.writeData(ForceMesh,ForceData,quadPointIDs,quadPointData);
+        write_time += timer.stop();
+        write_calls++;
 
         if (get_writeTime)
             t_write +=participant.writeTime();
@@ -176,15 +187,18 @@ int main(int argc, char *argv[])
     }
     if (get_readTime)
     {
-        gsInfo << "Fluid Read time: " << t_read << "\n";
+        gsInfo << "Fluid Read time: "<<read_time<<" in "<<read_calls<<"calls.\n";
     }
 
     if (get_writeTime)
     {
-        gsInfo << "Fluid Write time: " << t_write << "\n";
+        gsInfo << "Fluid Write time: " <<write_time<<" in "<<write_calls<<"calls.\n";
     }
 
-
+    std::ofstream file("./IGA-vertex-fluid_times.csv");
+    file<<"read time, read calls, write time, write calls\n";
+    file<<read_time<<","<<read_calls<<","<<write_time<<","<<write_calls<<"\n";
+    file.close();
 
 	return EXIT_SUCCESS;
 }	

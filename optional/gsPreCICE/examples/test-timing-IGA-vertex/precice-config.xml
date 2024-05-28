@@ -4,12 +4,12 @@
     <sink
       filter="%Severity% > info and %Rank% = 0"
       format="---[precice] %ColorizedSeverity% %Message%"
-      enabled="true" />
+      enabled="false" />
 
     <sink
       filter="%Severity% > debug and %Rank% = 0"
       format="---[precice] %ColorizedSeverity% %Message%"
-      enabled="true" />
+      enabled="false" />
   </log>
 
   <data:vector name="KnotData" />
@@ -48,7 +48,7 @@
   
   <coupling-scheme:serial-explicit>
   <participants first="Solid" second="Fluid" />
-  <time-window-size value="0.01" />
+  <time-window-size value="0.0001" />
   <max-time value="1" />
   <exchange data="ControlPointData" mesh="ControlPointMesh" from="Solid" to="Fluid" />
   <exchange data="ForceData" mesh="ForceMesh" from="Fluid" to="Solid" />
