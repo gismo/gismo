@@ -235,7 +235,8 @@ gsMatrix<real_t> gsHDomain<d,Z>::coordinates(node * _node)
     gsGridIterator<Z,VERTEX> grid(_node->box->first, _node->box->second);
     gsMatrix<real_t> result(2, grid.numPoints()+1);
     // Fill the result with the center in the first column, and the corner points afterwards
-    result.col(0).array() = (_node->box->first.array() + _node->box->second.array()) / m_upperIndex.array();
+    result.col(0).array() = (_node->box->first.array() + _node->box->second.array()).template cast<real_t>()
+        / m_upperIndex.template cast<real_t>().array();
     result.col(0) *= 0.5;
     for ( index_t i=1; grid; ++grid, ++i)
         result.col(i).array() = (*grid).array()  / m_upperIndex.array();
@@ -246,7 +247,7 @@ gsMatrix<real_t> gsHDomain<d,Z>::coordinates(node * _node)
 
 //
 template<short_t d, class Z> void
-gsHDomain<d, Z>::construct ( const gsFunction<real_t> & inOut) // TODO: add max level or tolerance
+gsHDomain<d, Z>::construct( const gsFunction<real_t> & inOut) // TODO: add max level or tolerance
 {
     //
     // Initialize stack
