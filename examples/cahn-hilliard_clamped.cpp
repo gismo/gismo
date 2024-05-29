@@ -26,9 +26,9 @@ int main(int argc, char *argv[])
     real_t M0 = 0.005;
     // real_t dt = 1e-7;
     real_t dt = 1e-3;
-    index_t maxSteps = 80;
+    index_t maxSteps = 10;
 
-    index_t eps_penalty = 1e4;   // not sure about the value!
+    index_t eps_penalty = 1e4 *lambda;   // not sure about the value!
 
 
     bool output = true;
@@ -116,15 +116,15 @@ int main(int argc, char *argv[])
     bc.setGeoMap(mp);
     // gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
-    // gsConstantFunction<> g_N(1,3); // Neumann
-    // bc.addCondition(boundary::west,  condition_type::neumann, &g_N);
-    // bc.addCondition(boundary::east,  condition_type::neumann, &g_N);
-    // bc.addCondition(boundary::north, condition_type::neumann, &g_N);
-    // bc.addCondition(boundary::south, condition_type::neumann, &g_N);
-    bc.addCondition(boundary::east, condition_type::clamped, 0); // 0 is the component!
-    bc.addCondition(boundary::west, condition_type::clamped, 0);
-    bc.addCondition(boundary::north, condition_type::clamped, 0);
-    bc.addCondition(boundary::south, condition_type::clamped, 0);
+    gsConstantFunction<> g_N(1,3); // Neumann
+    bc.addCondition(boundary::west,  condition_type::neumann, &g_N);
+    bc.addCondition(boundary::east,  condition_type::neumann, &g_N);
+    bc.addCondition(boundary::north, condition_type::neumann, &g_N);
+    bc.addCondition(boundary::south, condition_type::neumann, &g_N);
+    // bc.addCondition(boundary::east, condition_type::clamped, 0); // 0 is the component!
+    // bc.addCondition(boundary::west, condition_type::clamped, 0);
+    // bc.addCondition(boundary::north, condition_type::clamped, 0);
+    // bc.addCondition(boundary::south, condition_type::clamped, 0);
 
    
     //! [Problem setup]
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
     geometryMap G = A.getMap(mp);
 
     // Set the discretization space
-    space w = A.getSpace(basis);
+    space w = A.getSpace(dbasis);
 
     // basis.init(dbasis, cf);
 
@@ -167,7 +167,6 @@ int main(int argc, char *argv[])
     // auto mu_c= -c.val() * (1.0 - (c*c).val());
     // auto dmu_c = -igrad(c,G) * (1.0 - (c*c).val()) - c.val() * (1.0 - 2.0 * c.val() * igrad(c,G));
 
-
     // auto M_c  = M0 * c * (1.0-c.val());
     // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
 
@@ -176,9 +175,14 @@ int main(int argc, char *argv[])
 
     // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
     //                 lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-    auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
-                lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
+    // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
+    //                     lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
 
+    auto residual = w*dc + // M
+                    igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar 
+                    // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
+                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
+    
     //! [Problem setup]
 
     // Define linear solver
@@ -189,11 +193,11 @@ int main(int argc, char *argv[])
     real_t rho_inf = 0.5;
     real_t alpha_m = 0.5*(3-rho_inf) / (1+rho_inf);
     real_t alpha_f = 1 / (1+rho_inf);
-    real_t delta   = 0.5 + alpha_m - alpha_f;
+    real_t gamma   = 0.5 + alpha_m - alpha_f;
     // time stepping options
     index_t maxIt = 50;
 
-    gsMatrix<> Q;
+    gsMatrix<> Q, Q1, Q2;
     gsSparseMatrix<> K, K_m, K_f;
 
     // Legend:
@@ -246,30 +250,52 @@ int main(int argc, char *argv[])
     real_t dt_old = dt;
     real_t t_rho = 0.85;
     real_t t_err = 1;
-    index_t lmax = 100;
+    index_t lmax = 1;
     real_t TOL = 1e-3;
     std::vector<gsMatrix<>> Csols(2);
 
     real_t tmp_alpha_m = 1;
     real_t tmp_alpha_f = 1;
-    real_t tmp_delta   = 1;
+    real_t tmp_gamma   = 1;
 
     real_t time = 0;
     bool converged = false;
+
+    A.initSystem();
+    // A.assembleBdr(bc.get("Neumann"), - lambda * M_c.val() * igrad(w,G) *  nv(G).normalized()  * ilapl(w,G).tr()  * meas(G)); // consistency term
+    // A.assembleBdr(bc.get("Neumann"), eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G).normalized()).tr() * meas(G)); // penalty term
+    // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * (igrad(w,G)  * nv(G).normalized()).tr() * meas(G)); // symmetry term 
+    
+    A.assembleBdr(bc.get("Neumann"), meas(G)*(- lambda * igrad(w,G) *  nv(G).normalized()  * ilapl(w,G).tr() +
+                                        eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G).normalized()).tr() -
+                                        lambda * ilapl(w,G) * (igrad(w,G)  * nv(G).normalized()).tr())); // consistency term
+    gsDebugVar(A.matrix().toDense());
+    gsSparseMatrix<>K_1 = A.matrix();
+
+    A.initSystem();
+    A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G).normalized()  * ilapl(w,G).tr()  * meas(G) ); // consistency term
+    A.assembleBdr(bc.get("Neumann"), (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(w,G) * nv(G).normalized()).tr() * meas(G)); // penalty term
+    A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * (igrad(w,G)  * nv(G).normalized()).tr() * meas(G)); // symmetry term 
+    gsSparseMatrix<>K_nitsche = A.matrix();
+    gsDebugVar(A.matrix().toDense());
+
+
     for (index_t step = 0; step!=maxSteps; step++)
     {
         for (index_t dt_it = 0; dt_it != lmax; dt_it++)
         {
             gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
-            tmp_alpha_m = tmp_alpha_f = tmp_delta = 1;
-            for (index_t k = 0; k!=2; k++)
+            tmp_alpha_m = tmp_alpha_f = tmp_gamma = 1;
+
+            for (index_t k = 0; k!=1; k++)
+            // for (index_t k = 1; k!=2; k++)
             {
                 converged = false;
                 std::string method = (k==0) ? "Backward Euler " : "Generalized Alpha ";
                 // ==================================================================================
                 // Predictor
                 Cnew = Cold;
-                dCnew = (tmp_delta-1)/tmp_delta * dCold;
+                dCnew = (tmp_gamma-1)/tmp_gamma * dCold;
 
                 Q0norm = 1;
                 Qnorm = 10;
@@ -280,6 +306,23 @@ int main(int argc, char *argv[])
                     A.initVector(1);
                     Calpha  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
                     dCalpha = dCold + tmp_alpha_m * ( dCnew - dCold);
+                    
+                    // it detects vectors as RHS
+                    // A.assembleBdr(bc.get("Neumann"), - lambda * M_c.val() * igrad(w,G)*  nv(G).normalized()  * ilapl(c,G).val()  * meas(G)); // consistency term
+                    // A.assembleBdr(bc.get("Neumann"), eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(c,G) * nv(G).normalized()) * meas(G)); // penalty term
+                    // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G).normalized() * meas(G)); // symmetry term 
+                    
+                    A.assembleBdr(bc.get("Neumann"), meas(G)*(- lambda * igrad(w,G) * nv(G).normalized() * ilapl(c,G).val() +
+                                                      eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(c,G) * nv(G).normalized()) -
+                                                      lambda * ilapl(w,G) * igrad(c,G) * nv(G).normalized() * meas(G)- lambda * ilapl(w,G) * igrad(c,G) * nv(G).normalized())); 
+                    gsDebugVar(A.rhs().transpose());
+                    A.initSystem();
+
+                    A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G).normalized() * lambda * ilapl(c,G).val() * meas(G)); // consistency term
+                    A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G).normalized()) * meas(G)); // penalty term
+                    A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G).normalized() * meas(G)); // symmetry term
+                    gsDebugVar(A.rhs().transpose());
+                    return 0;
                     A.assemble(residual * meas(G));
                     Q = A.rhs();
 
@@ -301,46 +344,65 @@ int main(int argc, char *argv[])
                         break;
                     }
 
-                    // gsInfo<<"Assembly K_m\n";
-                    A.assembleJacobian( residual * meas(G), dc );
-                    K_m = tmp_alpha_m * A.matrix();
+                    // // gsInfo<<"Assembly K_m\n";
+                    // A.assembleJacobian( residual * meas(G), dc );
+                    // K_m = tmp_alpha_m * A.matrix(); 
 
-                    // gsInfo<<"Assembly K_f\n";
-                    A.assembleJacobian( residual * meas(G), c );
-                    K_f = tmp_alpha_f * tmp_delta * dt * A.matrix();
 
-                    K = K_m + K_f;
+                    // // gsInfo<<"Assembly K_f\n";
+                    // A.assembleJacobian( residual * meas(G), c );
+                    // K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
+
+                    // Assembly of the tangent stiffness matrix (check term F)
+                    A.initSystem(); //// ???????  not sure
+                    A.assemble(w*w.tr()*meas(G));
+                    K_m = tmp_alpha_m * A.matrix(); 
+
+                    A.initSystem();
+                    // A.assemble(M_c.val() * igrad(w,G).tr() * igrad(w,G) * (- 1.0 + 3.0 * (c*c).val()) +
+                    //             lambda*ilapl(w,G).tr()*igrad(w,G)*dM_c.tr() +
+                    //             M_c.val() * ilapl(w,G)*lambda*ilapl(w,G).tr());
+
+                    // remove mobility!
+                    A.assemble(meas(G) * (igrad(w,G) * (- 1.0 + 3.0 * (c*c).val())* igrad(w,G).tr()  + // K_f1
+                                        igrad(w,G) * ((6.0 * c.val()) * igrad(c,G).tr() * w.tr()) + // K_f2
+                                        // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
+                                        lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian
+                    
+                    K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
+
+                    K = K_m + K_f + tmp_alpha_f * tmp_gamma * dt * K_nitsche;
 
                     // gsInfo<<"Update delta_C\n";
                     solver.compute(K);
                     dCupdate = solver.solve(-Q);
 
                     dCnew += dCupdate;
-                    Cnew  += tmp_delta*dt*dCupdate;
+                    Cnew  += tmp_gamma*dt*dCupdate;
                 }
                 if (!converged)
                     break;
                 // ==================================================================================
                 tmp_alpha_m = alpha_m;
                 tmp_alpha_f = alpha_f;
-                tmp_delta = delta;
+                tmp_gamma = gamma;
 
                 Csols[k] = Cnew; // k=0: BE, k=1: alpha
             }
 
-            if (converged)
-            {
-                t_err = (Csols[0] - Csols[1]).norm() / (Csols[1]).norm();
-                dt_old = dt;
-                dt *= t_rho * math::sqrt(TOL / t_err);
-                if (t_err < TOL)
-                    break;
-            }
-            else
-            {
-                dt_old = dt;
-                dt *= t_rho;
-            }
+            // if (converged)
+            // {
+            //     t_err = (Csols[0] - Csols[1]).norm() / (Csols[1]).norm();
+            //     dt_old = dt;
+            //     // dt *= t_rho * math::sqrt(TOL / t_err);
+            //     if (t_err < TOL)
+            //         break;
+            // }
+            // else
+            // {
+            //     dt_old = dt;
+            //     // dt *= t_rho;
+            // }
         }
 
         time += dt_old;
