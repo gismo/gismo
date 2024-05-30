@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
         Cold.setZero(A.numDofs(),1);
         real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
         // gsInfo << "L2 projection error "<<error<<"\n";
-        for (index_t i = 0; i < basis.size(); i++)
+        for (index_t i = 0; i < dbasis.basis(0).size(); i++)
             if (w.mapper().is_free(i))
                 Cold(w.mapper().index(i),0) = tmp(i,0);
     }
@@ -420,7 +420,7 @@ int main(int argc, char *argv[])
         //! [Export visualization in ParaView]
         if (plot && step % plotmod==0)
         {
-            // Calpha = Cnew;
+            Calpha = Cnew;
             // collection.newTimeStep(&mp);
             collection.newTimeStep(&mp);
             collection.addField(c,"numerical solution");
