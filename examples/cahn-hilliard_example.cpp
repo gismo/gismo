@@ -10,6 +10,18 @@
 
     Author(s): M. Marsala (UniFi)
                H.M. Verhelst (UniFi)
+               L. Venta Viñuela (UniPv)
+    
+    
+    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Strong enforcement) (Gomez et al., 2014)
+    ./bin/cahn-hilliard_example --plot -N 80 --clamped
+    
+    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) 
+    ./bin/cahn-hilliard_example --plot -N 80 
+
+    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" until equilibrium (Nitsche)
+    ./bin/cahn-hilliard_example --plot -N 1000     
+    
 */
 
 //! [Include namespace]
@@ -22,6 +34,7 @@ int main(int argc, char *argv[])
 {
     real_t theta = 1.5;
     real_t lambda = 1/(32*pow(EIGEN_PI,2));
+    // real_t lambda = 6.15e-4;
     real_t L0 = 1;
     real_t M0 = 0.005;
     // real_t dt = 1e-7;
@@ -41,7 +54,15 @@ int main(int argc, char *argv[])
     index_t numRefine  = 1;
     index_t numElevate = 1;
     bool last = false;
+    bool nitsche = false;
+    real_t mean = 0.0;
     // std::string fn("pde/ch_bvp_square.xml");
+
+    bool random = false;
+
+    bool do3D = false;
+
+
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -53,11 +74,14 @@ int main(int argc, char *argv[])
     cmd.addReal( "L", "L0","L0 parameter",L0);
     cmd.addReal( "M", "M0","M0 parameter",M0);
     cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
-    cmd.addInt ( "m", "PlotMod", "Modulo for plotting",  plotmod );
+    cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
     // cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    
+    cmd.addSwitch("nitsche", "Weak BC enforcement with Nitsche", nitsche);
+    cmd.addReal("m","mean", "Mean value of the normal random initial condition", mean);
+    cmd.addSwitch("initial", "Initial condition of the CH problem", random);
+    cmd.addSwitch("3D", "Flag for 3D CH", do3D);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
@@ -70,7 +94,7 @@ int main(int argc, char *argv[])
     index_t degree = 2;
 
     // !!!!!
-    real_t hmax = 1/(n-degree);
+    real_t hmax = 1.0/(n-degree);
     // !!!!!
 
     // 1. construction of a knot vector for each direction
@@ -109,6 +133,7 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp;
     mp.addPatch(surface);
+    mp.computeTopology();
     gsMultiBasis<> dbasis(basis, true); //true: poly-splines (not NURBS)
     // gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
 
@@ -119,16 +144,17 @@ int main(int argc, char *argv[])
     bc.setGeoMap(mp);
     // gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
 
-    gsConstantFunction<> g_N(1,3); // Neumann
+    // gsConstantFunction<> g_N(1,3); // Neumann
     // bc.addCondition(boundary::west,  condition_type::neumann, &g_N);
     // bc.addCondition(boundary::east,  condition_type::neumann, &g_N);
     // bc.addCondition(boundary::north, condition_type::neumann, &g_N);
     // bc.addCondition(boundary::south, condition_type::neumann, &g_N);
-    bc.addCondition(boundary::east, condition_type::clamped, 0); // 0 is the component!
-    bc.addCondition(boundary::west, condition_type::clamped, 0);
-    bc.addCondition(boundary::north, condition_type::clamped, 0);
-    bc.addCondition(boundary::south, condition_type::clamped, 0);
-
+    
+    // bc.addCondition(boundary::east, condition_type::clamped, 0); // 0 is the component!
+    // bc.addCondition(boundary::west, condition_type::clamped, 0);
+    // bc.addCondition(boundary::north, condition_type::clamped, 0);
+    // bc.addCondition(boundary::south, condition_type::clamped, 0);
+    
    
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -158,6 +184,32 @@ int main(int argc, char *argv[])
 
     solution c = A.getSolution(w, Calpha); // C
     solution dc = A.getSolution(w, dCalpha); // \dot{C}
+
+    gsSparseMatrix<>K_nitsche; // empty variable
+
+    if (nitsche) 
+    {   
+        for ( gsMultiPatch<>::const_biterator
+            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+            {
+                bc.addCondition( *bit, condition_type::neumann, nullptr); 
+            }
+        A.initSystem();
+        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr()); // consistency term
+        A.assembleBdr(bc.get("Neumann"), eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr()); // penalty (stabilizing) term
+        A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+        K_nitsche = A.matrix();
+        // gsInfo<<K_nitsche.toDense()<<"\n";
+    }
+    else
+    {
+        for ( gsMultiPatch<>::const_biterator
+            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+            {
+                bc.addCondition( *bit, condition_type::clamped,0);
+            }
+
+    }
 
     // real_t N2   = L0*L0/lambda;
     // real_t N2   = 41.7313;
@@ -221,42 +273,28 @@ int main(int argc, char *argv[])
     // Setup the space (compute Dirichlet BCs)
     w.setup(bc, dirichlet::l2Projection, 0);
 
-    // %%%%%%%%%%%%%%%%%%%%%%%% INITIAL CONDITION %%%%%%%%%%%%%%%%%%%%%%%%
-    // gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-    // Cold = tmp.array()*0.1/2; //random uniform variable in [-0.05,0.05]
-    // Cold.array() += 0.45;
-    // dCold.setZero(A.numDofs(),1);
-
-    // with L2 interpolation (?)
-    // get coordinates (sample?) --- x_geom
-    // gsInfo<<"L2-Projection error of geom0 on bb2 = "<<gsL2Projection<real_t>::projectGeometry(dbasis,bb2,geom0,coefs)<<"\n";
+    if (random) 
+    {
+        // %%%%%%%%%%%%%%%%%%%%%%%% random INITIAL CONDITION %%%%%%%%%%%%%%%%%%%%%%%%
+        gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
+        Cold = tmp.array()*0.01/2; //random uniform variable in [-0.05,0.05]
+        Cold.array() += mean; // 0.45
+    }
+    else 
+    {
+        // %%%%%%%%%%%%%%%%%%%%%%%% analytical INITIAL CONDITION %%%%%%%%%%%%%%%%%%%%%%%%
+        gsFunctionExpr<> source  ("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
+        gsMatrix<> tmp;
+        Cold.setZero(A.numDofs(),1);
+        real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
+        // gsInfo << "L2 projection error "<<error<<"\n";
+        for (index_t i = 0; i < basis.size(); i++)
+            if (w.mapper().is_free(i))
+                Cold(w.mapper().index(i),0) = tmp(i,0);
+    }
     
-    // this gives the error?
-    // Cold is a gsMatrix
-    //  static T projectFunction(   const gsMultiBasis<T> & basis,
-    //                             const gsFunctionSet<T> & source,
-    //                             const gsMultiPatch<T> & geometry,
-    //                             gsMatrix<T> & result);
-
-    gsFunctionExpr<> source  ("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
-    gsMatrix<> tmp;
-    Cold.setZero(A.numDofs(),1);
-    real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
-    for (index_t i = 0; i < basis.size(); i++)
-        if (w.mapper().is_free(i))
-            Cold(w.mapper().index(i),0) = tmp(i,0);
-
-    gsInfo << "L2 projection error "<<error<<"\n";
     Calpha = Cold;
-    
-    ev.writeParaview(c,G,"initial_condition_CH");
     dCold.setZero(A.numDofs(),1);
-
-    // gsMesh<> mesh;
-    // surface.controlNet(mesh);
-    // gsWriteParaview(mesh,"control_mesh");
-    
-    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     real_t Q0norm = 1, Qnorm = 10;
     real_t tol = 1e-4;
@@ -279,11 +317,8 @@ int main(int argc, char *argv[])
     real_t time = 0;
     bool converged = false;
 
-    // A.initSystem();
-    // A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G).normalized()  * ilapl(w,G).tr()  * meas(G) ); // consistency term
-    // A.assembleBdr(bc.get("Neumann"), eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G).normalized()).tr() * meas(G)); // penalty term
-    // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * (igrad(w,G)  * nv(G).normalized()).tr() * meas(G)); // symmetry term
-    // gsSparseMatrix<>K_nitsche = A.matrix();
+
+
     for (index_t step = 0; step!=maxSteps; step++)
     {
         for (index_t dt_it = 0; dt_it != lmax; dt_it++)
@@ -292,7 +327,7 @@ int main(int argc, char *argv[])
             tmp_alpha_m = tmp_alpha_f = tmp_gamma = 1;
 
             // for (index_t k = 0; k!=1; k++)
-            for (index_t k = 0; k!=2; k++)
+            for (index_t k = 0; k!=1; k++)
             {
                 converged = false;
                 std::string method = (k==0) ? "Backward Euler " : "Generalized Alpha ";
@@ -312,9 +347,16 @@ int main(int argc, char *argv[])
                     dCalpha = dCold + tmp_alpha_m * ( dCnew - dCold);
                     
                     // // it detects vectors as RHS
-                    // A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G).normalized() * lambda * ilapl(c,G).val() * meas(G)); // consistency term
-                    // A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G).normalized()) * meas(G)); // penalty term
-                    // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G).normalized() * meas(G)); // symmetry term
+
+                    if (nitsche) 
+                    {      
+                        A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G) * lambda * ilapl(c,G).val()); // consistency term
+                        A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G)) ); // penalty term
+                        A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
+                    }
+
+                    //gsInfo<<tmp_gamma<<" "<<tmp_alpha_f<<" "<<tmp_alpha_m<<"\n";
+
                     A.assemble(residual * meas(G));
                     Q = A.rhs();
 
@@ -368,7 +410,10 @@ int main(int argc, char *argv[])
                     
                     K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
 
-                    K = K_m + K_f;// + tmp_alpha_f * tmp_gamma * dt * K_nitsche;
+                    K = K_m + K_f;
+                    
+                    if (nitsche) 
+                        K = K + tmp_alpha_f * tmp_gamma * dt * K_nitsche; // add the Nitsche term to the stiffness matrix
 
                     // gsInfo<<"Update delta_C\n";
                     solver.compute(K);
