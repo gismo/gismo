@@ -21,7 +21,7 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     real_t theta = 1.5;
-    real_t lambda = 1/(32*EIGEN_PI);
+    real_t lambda = 1/(32*pow(EIGEN_PI,2));
     real_t L0 = 1;
     real_t M0 = 0.005;
     // real_t dt = 1e-7;
@@ -161,32 +161,41 @@ int main(int argc, char *argv[])
     // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
     // auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
     
-    auto mu_c = pow(c,3) - c.val();
+    auto mu_c = pow(c,3).val() - c.val();
     auto dmu_c= igrad(c,G) * (- 1.0 + 3.0 * (c*c).val());
 
     // auto mu_c= -c.val() * (1.0 - (c*c).val());
     // auto dmu_c = -igrad(c,G) * (1.0 - (c*c).val()) - c.val() * (1.0 - 2.0 * c.val() * igrad(c,G));
-
     // auto M_c  = M0 * c * (1.0-c.val());
     // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
 
+    // Derivatives of the double well potential
+    auto f_2 = - 1.0 + 3.0 * (c*c).val();
+    auto f_3 = 6*c.val();
+
+    // Mobility
     auto M_c  = 1.0 + 0.0*c.val();
-    auto dM_c = 0.0*igrad(c,G);
+    auto dM_c = 0.0 * igrad(c,G);
 
     // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
     //                 lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
     // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
     //                     lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-
-    auto residual = w*dc + // M
-                    igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar 
-                    // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
-                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
+    // // auto residual = w*dc + // M
+    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar 
+    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar 
+    //                 // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
+    //                 ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
     
+    auto residual = w*dc + // M
+                    M_c.val() * igrad(w,G)  * f_2 * igrad(c,G).tr() + // F_bar
+                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian 
+                    // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
+
     //! [Problem setup]
 
     // Define linear solver
-    gsSparseSolver<>::CGDiagonal solver;
+    gsSparseSolver<>::LU solver;
 
     // TIME INTEGRATION
     // constants
@@ -254,7 +263,7 @@ int main(int argc, char *argv[])
     collection.options().setInt("plotElements.resolution", 16);
 
     real_t dt_old = dt;
-    real_t t_rho = 0.85;
+    real_t t_rho = 0.9;
     real_t t_err = 1;
     index_t lmax = 1;
     real_t TOL = 1e-3;
@@ -335,7 +344,7 @@ int main(int argc, char *argv[])
 
                     // Assembly of the tangent stiffness matrix (check term F)
                     A.initSystem(); //// ???????  not sure
-                    A.assemble(w*w.tr()*meas(G));
+                    A.assemble(meas(G)* w*w.tr());
                     K_m = tmp_alpha_m * A.matrix(); 
 
                     A.initSystem();
@@ -344,10 +353,15 @@ int main(int argc, char *argv[])
                     //             M_c.val() * ilapl(w,G)*lambda*ilapl(w,G).tr());
 
                     // remove mobility!
-                    A.assemble(meas(G) * (igrad(w,G) * (- 1.0 + 3.0 * (c*c).val())* igrad(w,G).tr()  + // K_f1
-                                        igrad(w,G) * ((6.0 * c.val()) * igrad(c,G).tr() * w.tr()) + // K_f2
+                    // A.assemble(meas(G) * (igrad(w,G) * (- 1.0 + 3.0 * (c*c).val())* igrad(w,G).tr()  + // K_f1
+                    //                     igrad(w,G) * ((6.0 * c.val()) * igrad(c,G).tr() * w.tr()) + // K_f2
+                    //                     // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
+                    //                     lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian
+
+                    A.assemble(meas(G) * (igrad(w,G) * f_2 * igrad(w,G).tr()  + // K_f1
+                                        igrad(w,G) * f_3 * igrad(c,G).tr() * w.tr() + // K_f2
+                                        lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian                    
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                                        lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian
                     
                     K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
 
@@ -366,7 +380,8 @@ int main(int argc, char *argv[])
                 tmp_alpha_m = alpha_m;
                 tmp_alpha_f = alpha_f;
                 tmp_gamma = gamma;
-
+                // gsInfo<<"\t\t alphas and gamma "<<tmp_alpha_m<<": res = "<<tmp_alpha_f<<" "<<tmp_gamma<<"\n";
+                // break;
                 Csols[k] = Cnew; // k=0: BE, k=1: alpha
             }
 
