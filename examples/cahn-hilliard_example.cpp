@@ -269,6 +269,7 @@ int main(int argc, char *argv[])
     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("numPoints",(do3D) ? 10000 : 100);
 
     real_t dt_old = dt;
     real_t t_rho = 0.9;
