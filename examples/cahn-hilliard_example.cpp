@@ -90,7 +90,6 @@ int main(int argc, char *argv[])
 
     // Single patch construction
     index_t n = 20;
-    index_t m = 20;
     index_t degree = 2;
 
     // !!!!!
@@ -101,61 +100,28 @@ int main(int argc, char *argv[])
     // n - degree - 1 interior knots
     // degree + 1 multiplicity at the ends
     // In total: n-p elements!
-    gsKnotVector<> kv1(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
-    gsKnotVector<> kv2(0, 1, m - degree - 1, degree + 1);
-    // gsKnotVector<> kv3(0, 1, m - degree - 1, degree + 1);
+    gsKnotVector<> kv(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
 
-
-    // 2. construction of a basis
-    gsTensorBSplineBasis<2, real_t> basis(kv1, kv2);
-
-    // 3. construction of a coefficients
-    gsMatrix<> greville = basis.anchors();
-    gsMatrix<> coefs (greville.cols(), 3);
-
-    // Adjust values to the minimum required
-    degree = math::max((index_t)(0), degree);
-    n      = math::max(n, degree + 1);
-    m      = math::max(m, degree + 1);
-
-    for (index_t col = 0; col != greville.cols(); col++)
-    {
-        real_t x = greville(0, col);
-        real_t y = greville(1, col);
-
-        coefs(col, 0) = x;
-        coefs(col, 1) = y;
-        coefs(col, 2) = 0; // the z coordinate of the curve!
-    }
-
-    // 4. putting basis and coefficients toghether
-    gsTensorBSpline<2, real_t>  surface(basis, coefs);
+    // 2. construction of a basis    
+    gsMultiBasis<> dbasis;
+    if (do3D)
+        dbasis.addBasis(new gsTensorBSplineBasis<3>(kv, kv, kv) );
+    else
+        dbasis.addBasis(new gsTensorBSplineBasis<2>(kv, kv) );
 
     gsMultiPatch<> mp;
-    mp.addPatch(surface);
+    if (do3D)
+        mp.addPatch( *gsNurbsCreator<>::BSplineCube(1) );
+    else
+        mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
     mp.computeTopology();
-    gsMultiBasis<> dbasis(basis, true); //true: poly-splines (not NURBS)
-    // gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    // NEW!!!! Boundary conditions
+    // Boundary conditions
     gsBoundaryConditions<> bc;
-    bc.setGeoMap(mp);
-    // gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    bc.setGeoMap(mp);    
 
-    // gsConstantFunction<> g_N(1,3); // Neumann
-    // bc.addCondition(boundary::west,  condition_type::neumann, &g_N);
-    // bc.addCondition(boundary::east,  condition_type::neumann, &g_N);
-    // bc.addCondition(boundary::north, condition_type::neumann, &g_N);
-    // bc.addCondition(boundary::south, condition_type::neumann, &g_N);
-    
-    // bc.addCondition(boundary::east, condition_type::clamped, 0); // 0 is the component!
-    // bc.addCondition(boundary::west, condition_type::clamped, 0);
-    // bc.addCondition(boundary::north, condition_type::clamped, 0);
-    // bc.addCondition(boundary::south, condition_type::clamped, 0);
-    
-   
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
 
@@ -163,10 +129,9 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::variable    variable;
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
-    
 
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis); //?
+    A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
@@ -185,7 +150,7 @@ int main(int argc, char *argv[])
     solution c = A.getSolution(w, Calpha); // C
     solution dc = A.getSolution(w, dCalpha); // \dot{C}
 
-    gsSparseMatrix<>K_nitsche; // empty variable
+    gsSparseMatrix<> K_nitsche; // empty variable
 
     if (nitsche) 
     {   
@@ -283,7 +248,9 @@ int main(int argc, char *argv[])
     else 
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% analytical INITIAL CONDITION %%%%%%%%%%%%%%%%%%%%%%%%
-        gsFunctionExpr<> source  ("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
+        gsFunctionExpr<> source = do3D ?
+            gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)",3) :
+            gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
         real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
@@ -316,8 +283,6 @@ int main(int argc, char *argv[])
 
     real_t time = 0;
     bool converged = false;
-
-
 
     for (index_t step = 0; step!=maxSteps; step++)
     {
