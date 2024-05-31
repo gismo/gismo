@@ -80,21 +80,18 @@ int main(int argc, char *argv[])
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("nitsche", "Weak BC enforcement with Nitsche", nitsche);
     cmd.addReal("m","mean", "Mean value of the normal random initial condition", mean);
-    cmd.addSwitch("initial", "Initial condition of the CH problem", random);
+    cmd.addSwitch("initial", "Initial random condition of the CH problem", random);
     cmd.addSwitch("3D", "Flag for 3D CH", do3D);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
 
-    // Single patch construction
+    // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
+    // 0. Single patch construction parameters
     index_t n = 20;
     index_t degree = 2;
-
-    // !!!!!
     real_t hmax = 1.0/(n-degree);
-    // !!!!!
 
     // 1. construction of a knot vector for each direction
     // n - degree - 1 interior knots
@@ -116,8 +113,7 @@ int main(int argc, char *argv[])
     else
         mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
     mp.computeTopology();
-
-    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     // Boundary conditions
     gsBoundaryConditions<> bc;
@@ -161,10 +157,10 @@ int main(int argc, char *argv[])
                 bc.addCondition( *bit, condition_type::neumann, nullptr); 
             }
         A.initSystem();
-        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr()); // consistency term
-        A.assembleBdr(bc.get("Neumann"), eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr()); // penalty (stabilizing) term
-        A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-        K_nitsche = A.matrix();
+        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                      eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                      lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
         // gsInfo<<K_nitsche.toDense()<<"\n";
     }
     else
@@ -177,8 +173,7 @@ int main(int argc, char *argv[])
 
     }
 
-    // real_t N2   = L0*L0/lambda;
-    // real_t N2   = 41.7313;
+
     // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
     // auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
     
@@ -222,8 +217,7 @@ int main(int argc, char *argv[])
     gsSparseSolver<>::LU solver;
 #endif
     
-    // TIME INTEGRATION
-    // constants
+    // Generalized-alpha method parameters
     real_t rho_inf = 0.5;
     real_t alpha_m = 0.5*(3-rho_inf) / (1+rho_inf);
     real_t alpha_f = 1 / (1+rho_inf);
@@ -249,14 +243,14 @@ int main(int argc, char *argv[])
     
     if (random) 
     {
-        // %%%%%%%%%%%%%%%%%%%%%%%% random INITIAL CONDITION %%%%%%%%%%%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
         Cold = tmp.array()*0.01/2; //random uniform variable in [-0.05,0.05]
         Cold.array() += mean; // 0.45
     }
     else 
     {
-        // %%%%%%%%%%%%%%%%%%%%%%%% analytical INITIAL CONDITION %%%%%%%%%%%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%%%%%%%%%%% Analytica intial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsFunctionExpr<> source = do3D ?
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)",3) :
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
@@ -316,23 +310,21 @@ int main(int argc, char *argv[])
                 for (index_t it = 0; it!= maxIt; it++)
                 {
                     A.initSystem();
-                    A.initVector(1);
-                    Calpha  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
-                    dCalpha = dCold + tmp_alpha_m * ( dCnew - dCold);
+                    //A.initVector(1); (BUG!)
+                    Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
+                    dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
                     
-                    // // it detects vectors as RHS
+                    A.assemble(residual * meas(G));
+                    Q = A.rhs();
 
                     if (nitsche) 
                     {      
-                        A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G) * lambda * ilapl(c,G).val()); // consistency term
-                        A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G)) ); // penalty term
-                        A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
+                        Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
+                        // Old code lines:
+                        // A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G) * lambda * ilapl(c,G).val()); // consistency term
+                        // A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G)) ); // penalty term
+                        // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
                     }
-
-                    //gsInfo<<tmp_gamma<<" "<<tmp_alpha_f<<" "<<tmp_alpha_m<<"\n";
-
-                    A.assemble(residual * meas(G));
-                    Q = A.rhs();
 
                     if (it == 0) Q0norm = Q.norm();
                     else         Qnorm = Q.norm();
@@ -356,40 +348,34 @@ int main(int argc, char *argv[])
                     // A.assembleJacobian( residual * meas(G), dc );
                     // K_m = tmp_alpha_m * A.matrix(); 
 
-
                     // // gsInfo<<"Assembly K_f\n";
                     // A.assembleJacobian( residual * meas(G), c );
                     // K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
 
-                    // Assembly of the tangent stiffness matrix (check term F)
-                    A.initSystem(); //// ???????  not sure
-                    A.assemble(meas(G)* w*w.tr());
-                    K_m = tmp_alpha_m * A.matrix(); 
 
-                    A.initSystem();
+
                     // A.assemble(M_c.val() * igrad(w,G).tr() * igrad(w,G) * (- 1.0 + 3.0 * (c*c).val()) +
                     //             lambda*ilapl(w,G).tr()*igrad(w,G)*dM_c.tr() +
                     //             M_c.val() * ilapl(w,G)*lambda*ilapl(w,G).tr());
 
-                    // remove mobility!
                     // A.assemble(meas(G) * (igrad(w,G) * (- 1.0 + 3.0 * (c*c).val())* igrad(w,G).tr()  + // K_f1
                     //                     igrad(w,G) * ((6.0 * c.val()) * igrad(c,G).tr() * w.tr()) + // K_f2
                     //                     // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
                     //                     lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian
 
-                    A.assemble(meas(G) * (igrad(w,G) * f_2 * igrad(w,G).tr()  + // K_f1
-                                        igrad(w,G) * f_3 * igrad(c,G).tr() * w.tr() + // K_f2
-                                        lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian                    
+                    //%% Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
+                    A.initSystem();
+                    A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
+                                        (tmp_alpha_f * tmp_gamma * dt)* (f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
+                                        f_3 * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
+                                        lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian                    
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
                     
-                    K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
-
-                    K = K_m + K_f;
+                    K = A.giveMatrix(); 
                     
                     if (nitsche) 
-                        K = K + tmp_alpha_f * tmp_gamma * dt * K_nitsche; // add the Nitsche term to the stiffness matrix
+                        K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
 
-                    // gsInfo<<"Update delta_C\n";
 #ifdef GISMO_WITH_SUPERLU
                     if (0==k)
                         solver.analyzePattern(K);
@@ -400,19 +386,21 @@ int main(int argc, char *argv[])
                     dCupdate = solver.solve(-Q);
 
                     dCnew += dCupdate;
-                    Cnew  += tmp_gamma*dt*dCupdate;
+                    Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
                 }
                 if (!converged)
                     break;
-                // ==================================================================================
+
+                // %% Switch to generalized-alpha parameters (k=1)
                 tmp_alpha_m = alpha_m;
                 tmp_alpha_f = alpha_f;
                 tmp_gamma = gamma;
-                // gsInfo<<"\t\t alphas and gamma "<<tmp_alpha_m<<": res = "<<tmp_alpha_f<<" "<<tmp_gamma<<"\n";
-                // break;
-                Csols[k] = Cnew; // k=0: BE, k=1: alpha
+
+                // %% For time step adaptivity %%
+                // Csols[k] = Cnew; // k=0: BE, k=1: alpha
             }
 
+            // %%%%%%%%%% For time step adaptivity %%%%%%%%%%
             // if (converged)
             // {
             //     t_err = (Csols[0] - Csols[1]).norm() / (Csols[1]).norm();
@@ -450,12 +438,6 @@ int main(int argc, char *argv[])
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
-
-
-
-
-    // solver.compute( A.matrix() );
-    // solVector = solver.solve(A.rhs());
 
     return EXIT_SUCCESS;
 
