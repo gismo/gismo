@@ -202,19 +202,19 @@ int main(int argc, char *argv[])
     gsMatrix<real_t> coefColsMatrix = convertVectorToMatrix(coefCols);
     participant.addMesh(GeometryControlMeshCols,coefColsMatrix);
 
-    // std::cout << "knotCols: ";
-    // for (const auto& col : knotCols) {
-    //         std::cout << col << " ";
-    // }
-    // std::cout << std::endl;
+    std::cout << "knotCols: ";
+    for (const auto& col : knotCols) {
+            std::cout << col << " ";
+    }
+    std::cout << std::endl;
 
-    // std::cout << "coefCols: ";
-    // for (const auto& col : coefCols) {
-    //         std::cout << col << " ";
-    // }
-    // std::cout << std::endl;
+    std::cout << "coefCols: ";
+    for (const auto& col : coefCols) {
+            std::cout << col << " ";
+    }
+    std::cout << std::endl;
 
-    // // Unpack the multipatch
+    // Unpack the multipatch
     // gsMultiPatch<real_t> unpackedMultiPatch = unpackMultiPatch(geometryKnots, geometryControlPoints, knotCols, coefCols);
     // unpackedMultiPatch.computeTopology();
 
@@ -232,11 +232,14 @@ int main(int argc, char *argv[])
     gsVector<index_t> forceControlPointIDs;
     gsMatrix<> forceControlPoints;
     participant.getMeshVertexIDsAndCoordinates(ForceControlPointMesh, forceControlPointIDs,forceControlPoints);
+    gsDebugVar(forceControlPoints.dim());
 
 
-//     // // Step 2: Regenerate the geometry
+    // // Step 2: Regenerate the geometry
     gsMultiPatch<> forceMesh; //Geometry object belongs to gsFunctionSet
-    forceMesh.addPatch(give(basis->makeGeometry(forceControlPoints.transpose())));
+    // forceMesh.addPatch(give(bases->makeGeometry(GeometryControlPointMesh.transpose())));
+    forceMesh=patches;
+
 
 
     // Define boundary condition for solid mesh
@@ -281,6 +284,8 @@ int main(int argc, char *argv[])
     options.addInt("Material","Material model: (0): SvK | (1): NH | (2): NH_ext | (3): MR | (4): Ogden",0);
     options.addInt("Implementation","Implementation: (0): Composites | (1): Analytical | (2): Generalized | (3): Spectral",1);
     materialMatrix = getMaterialMatrix<3, real_t>(patches, t, parameters, Density, options);
+    gsDebugVar(forceMesh.coefs().dim());
+
 
     // REMOVE IT LATER
     
@@ -288,6 +293,7 @@ int main(int argc, char *argv[])
 
     gsThinShellAssembler<3, real_t, true> assembler(patches, bases, bcInfo, forceMesh, materialMatrix);
     gsOptionList assemblerOptions = options.wrapIntoGroup("Assembler");
+
 
     assembler.assemble();
     // forceMesh.patch(0).coefs().setZero();
@@ -395,7 +401,8 @@ int main(int argc, char *argv[])
         gsMultiPatch<> solution;
         gsVector<> displacements = U;
         solution = assembler.constructDisplacement(displacements);
-        solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
+        for (index_t i = 0; i < patches.nPatches(); ++i)
+            solution.patch(i).coefs() -= patches.patch(i).coefs();// assuming 1 patch here
         gsField<> solField(patches,solution);
         std::string fileName = dirname + "/solution" + util::to_string(timestep);
         gsWriteParaview<>(solField, fileName, 500);
@@ -432,10 +439,11 @@ int main(int argc, char *argv[])
             timestep_checkpoint = timestep;
         }
         participant.readData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
+        gsDebugVar(forceControlPoints.dim());
 
         if (get_readTime)
             t_read += participant.readTime();
-        forceMesh.patch(0).coefs() = forceControlPoints.transpose();
+        forceMesh.coefs() = forceControlPoints.transpose();
         // forceMesh.embed(3);
         assembler.assemble();
         F = assembler.rhs();
@@ -454,9 +462,13 @@ int main(int argc, char *argv[])
         gsMultiPatch<> solution;
         gsVector<> displacements = U;
         solution = assembler.constructDisplacement(displacements);
+        // gsDebugVar(solution.size();
         // write heat fluxes to interface
-        geometryControlPoints = solution.patch(0).coefs().transpose();
+        gsDebugVar(solution.nPatches());
+        geometryControlPoints = solution.coefs().transpose();
+        gsDebugVar(geometryControlPoints.dim());
         participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
+
         
         if (get_writeTime)
             t_write +=participant.writeTime();

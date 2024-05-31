@@ -122,12 +122,16 @@ int main(int argc, char *argv[])
     gsVector<index_t> forceKnotIDs;
     gsKnotVector<> kv(0,1,10,3,1); //begin, end, # interiors, mult, by default =1
     gsTensorBSplineBasis<2, real_t> forceBasis(kv,kv);
-    gsMatrix<> forceControlPoints(forceBasis.size(), 3);
+    gsMatrix<> forceControlPoints(forceBasis.size(), 3); //Hard coded, has to match the dimension of the the geometry control points
     forceControlPoints.setZero();
     forceControlPoints.col(2).setConstant(-5e3);
     forceControlPoints.transposeInPlace();
 
+
     gsMatrix<> forceKnots = knotsToMatrix(forceBasis);
+    gsDebugVar(forceKnots);
+
+    // gsMultiPatch<> forceMesh;
 
 
     // gsMultiBasis<> bases(forceMesh);
@@ -178,6 +182,13 @@ int main(int argc, char *argv[])
     mp.computeTopology();
     gsDebugVar(mp);
 
+    forceKnots = geometryKnots;
+
+    forceControlPoints = geometryControlPoints;
+
+    forceControlPoints.col(2).setConstant(-5e3);
+
+
     deformation = mp;
 
 
@@ -203,7 +214,8 @@ int main(int argc, char *argv[])
 
         // Read control point displacements
         participant.readData(GeometryControlPointMesh, GeometryControlPointData, geometryControlPointIDs, geometryControlPoints);
-        deformation.patch(0).coefs() = geometryControlPoints.transpose();
+        gsDebugVar(geometryControlPoints.dim());
+        deformation.coefs() = geometryControlPoints.transpose();
         if (get_readTime)
             t_read += participant.readTime();
 
@@ -226,6 +238,7 @@ int main(int argc, char *argv[])
                 gsMatrix<> coefs;
                 gsL2Projection<real_t>::projectFunction(forceBasis, deformation, mp, coefs);
                 coefs.resize(forceControlPoints.rows(),forceControlPoints.cols());
+
                 forceControlPoints.row(2) = -coefs.row(2);
             }    
         }
@@ -234,7 +247,7 @@ int main(int argc, char *argv[])
             GISMO_ERROR("Load case "<<loadCase<<" unknown.");
         }
 
-
+        gsDebugVar(forceControlPoints.dim());
         participant.writeData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
 
         if (get_writeTime)
