@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
     else
         dbasis.addBasis(new gsTensorBSplineBasis<2>(kv, kv) );
 
+    // 3. Construction of a square or cube
     gsMultiPatch<> mp;
     if (do3D)
         mp.addPatch( *gsNurbsCreator<>::BSplineCube(1) );
@@ -214,9 +215,13 @@ int main(int argc, char *argv[])
 
     //! [Problem setup]
 
-    // Define linear solver
+    // Define linear solver (install SuperLUMT-devel)
+#ifdef GISMO_WITH_SUPERLU
+    gsSparseSolver<>::SuperLU solver;
+#   else
     gsSparseSolver<>::LU solver;
-
+#endif
+    
     // TIME INTEGRATION
     // constants
     real_t rho_inf = 0.5;
@@ -235,9 +240,13 @@ int main(int argc, char *argv[])
     // C_alpha = C_{n+alpha_f,i-1}
     // dC
 
+    gsInfo<<"Starting.."<<"\n";
+    
     // Setup the space (compute Dirichlet BCs)
     w.setup(bc, dirichlet::l2Projection, 0);
 
+    gsInfo<<"Initial condition.."<<"\n";
+    
     if (random) 
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% random INITIAL CONDITION %%%%%%%%%%%%%%%%%%%%%%%%
@@ -381,7 +390,13 @@ int main(int argc, char *argv[])
                         K = K + tmp_alpha_f * tmp_gamma * dt * K_nitsche; // add the Nitsche term to the stiffness matrix
 
                     // gsInfo<<"Update delta_C\n";
+#ifdef GISMO_WITH_SUPERLU
+                    if (0==k)
+                        solver.analyzePattern(K);
+                    solver.factorize(K);
+#else
                     solver.compute(K);
+#endif
                     dCupdate = solver.solve(-Q);
 
                     dCnew += dCupdate;
