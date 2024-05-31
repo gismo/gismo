@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     solution dc = A.getSolution(w, dCalpha); // \dot{C}
 
     gsSparseMatrix<> K_nitsche; // empty variable
-
+    
     if (nitsche) 
     {   
         for ( gsMultiPatch<>::const_biterator
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
             {
                 bc.addCondition( *bit, condition_type::neumann, nullptr); 
             }
-        A.initSystem();
+        A.initMatrix();
         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                       eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                       lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
@@ -288,6 +288,8 @@ int main(int argc, char *argv[])
     real_t time = 0;
     bool converged = false;
 
+    A.initSystem(); // Initialize the system (outside the loops)
+
     for (index_t step = 0; step!=maxSteps; step++)
     {
         for (index_t dt_it = 0; dt_it != lmax; dt_it++)
@@ -306,11 +308,10 @@ int main(int argc, char *argv[])
 
                 Q0norm = 1;
                 Qnorm = 10;
-
+                
                 for (index_t it = 0; it!= maxIt; it++)
                 {
-                    A.initSystem();
-                    //A.initVector(1); (BUG!)
+                    A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
                     Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
                     dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
                     
@@ -364,14 +365,14 @@ int main(int argc, char *argv[])
                     //                     lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian
 
                     //%% Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
-                    A.initSystem();
+                    A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
                     A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                         (tmp_alpha_f * tmp_gamma * dt)* (f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                         f_3 * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
                                         lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian                    
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
                     
-                    K = A.giveMatrix(); 
+                    K = A.matrix(); 
                     
                     if (nitsche) 
                         K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
