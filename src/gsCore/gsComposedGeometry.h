@@ -32,7 +32,7 @@ class gsComposedGeometry : public gsGeometry<T>
     typedef memory::shared_ptr< gsComposedGeometry > Ptr;
     typedef memory::unique_ptr< gsComposedGeometry > uPtr;
 
-    GISMO_CLONE_FUNCTION(gsComposedGeometry)
+    GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedGeometry)
 
 public:
     gsComposedGeometry()
@@ -159,7 +159,7 @@ public:
 
     using Base::targetDim;
 
-    GISMO_BASIS_ACCESSORS;
+    GISMO_OVERRIDE_BASIS_ACCESSORS;
 
 protected:
     // Map from parametric domain to geometry
