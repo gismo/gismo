@@ -268,8 +268,8 @@ int main(int argc, char *argv[])
 
     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     collection.options().setSwitch("plotElements", true);
-    collection.options().setInt("plotElements.resolution", 16);
-    collection.options().setInt("numPoints",(do3D) ? 10000 : 100);
+    collection.options().setInt("plotElements.resolution", 4);
+    collection.options().setInt("numPoints",(do3D) ? 10000 : 1000);
 
     real_t dt_old = dt;
     real_t t_rho = 0.9;
@@ -292,8 +292,7 @@ int main(int argc, char *argv[])
             gsInfo<<"Time step "<<step<<"/"<<maxSteps<<", iteration "<<dt_it<<": dt = "<<dt<<", [t_start,t_end] = ["<<time<<" , "<<time+dt<<"]"<<"\n";
             tmp_alpha_m = tmp_alpha_f = tmp_gamma = 1;
 
-            // for (index_t k = 0; k!=1; k++)
-            for (index_t k = 0; k!=1; k++)
+            for (index_t k = 0; k!=2; k++)
             {
                 converged = false;
                 std::string method = (k==0) ? "Backward Euler " : "Generalized Alpha ";
