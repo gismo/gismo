@@ -14,13 +14,13 @@
     
     
     Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Strong enforcement) (Gomez et al., 2014)
-    ./bin/cahn-hilliard_example --plot -N 80 --clamped
+    ./bin/cahn-hilliard_example --plot -N 80 --plot
     
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) 
-    ./bin/cahn-hilliard_example --plot -N 80 
+    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) (Bracco et al., 2023)
+    ./bin/cahn-hilliard_example --plot -N 80 --nitsche --plot
 
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" until equilibrium (Nitsche)
-    ./bin/cahn-hilliard_example --plot -N 1000     
+    Run a simple Cahn-Hilliard example with an random normal distribution of mean 0.0 "0.1 * cos(2*pi*x) * cos(2*pi*y)" until (almost) equilibrium (Nitsche)
+    ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
     
 */
 
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
     }
     else 
     {
-        // %%%%%%%%%%%%%%%%%%%%%%%% Analytica intial condition %%%%%%%%%%%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsFunctionExpr<> source = do3D ?
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)",3) :
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
