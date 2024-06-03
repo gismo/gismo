@@ -19,7 +19,7 @@
     Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) (Bracco et al., 2023)
     ./bin/cahn-hilliard_example --plot -N 80 --nitsche --plot
 
-    Run a simple Cahn-Hilliard example with an random normal distribution of mean 0.0 "0.1 * cos(2*pi*x) * cos(2*pi*y)" until (almost) equilibrium (Nitsche)
+    Run a simple Cahn-Hilliard example with a random normal initial concentration distribution of mean 0.0 until (almost) equilibrium (Nitsche)
     ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
     
 */
@@ -37,7 +37,6 @@ int main(int argc, char *argv[])
     // real_t lambda = 6.15e-4;
     real_t L0 = 1;
     real_t M0 = 0.005;
-    // real_t dt = 1e-7;
     real_t dt = 1e-3;
     index_t maxSteps = 10;
 
@@ -56,13 +55,10 @@ int main(int argc, char *argv[])
     bool last = false;
     bool nitsche = false;
     real_t mean = 0.0;
-    // std::string fn("pde/ch_bvp_square.xml");
 
     bool random = false;
 
     bool do3D = false;
-
-
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -86,7 +82,6 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-
     // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
     // 0. Single patch construction parameters
     index_t n = 20;
@@ -96,7 +91,7 @@ int main(int argc, char *argv[])
     // 1. construction of a knot vector for each direction
     // n - degree - 1 interior knots
     // degree + 1 multiplicity at the ends
-    // In total: n-p elements!
+    // n-p elements!
     gsKnotVector<> kv(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
 
     // 2. construction of a basis    
@@ -177,17 +172,17 @@ int main(int argc, char *argv[])
     // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
     // auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
     
-    auto mu_c = pow(c,3).val() - c.val();
-    auto dmu_c= igrad(c,G) * (- 1.0 + 3.0 * (c*c).val());
+    // auto mu_c = pow(c,3).val() - c.val();
+    // auto dmu_c= igrad(c,G) * (- 1.0 + 3.0 * (c*c).val());
 
     // auto mu_c= -c.val() * (1.0 - (c*c).val());
     // auto dmu_c = -igrad(c,G) * (1.0 - (c*c).val()) - c.val() * (1.0 - 2.0 * c.val() * igrad(c,G));
     // auto M_c  = M0 * c * (1.0-c.val());
     // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
 
-    // Derivatives of the double well potential
-    auto f_2 = - 1.0 + 3.0 * (c*c).val();
-    auto f_3 = 6*c.val();
+    // Derivatives of the double well potential (Gomez et al., 2008) 
+    auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
+    auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
 
     // Mobility
     auto M_c  = 1.0 + 0.0*c.val();
@@ -204,7 +199,7 @@ int main(int argc, char *argv[])
     //                 ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
     
     auto residual = w*dc + // M
-                    M_c.val() * igrad(w,G)  * f_2 * igrad(c,G).tr() + // F_bar
+                    M_c.val() * igrad(w,G)  * dmu_c * igrad(c,G).tr() + // F_bar
                     M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian 
                     // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
 
@@ -353,8 +348,6 @@ int main(int argc, char *argv[])
                     // A.assembleJacobian( residual * meas(G), c );
                     // K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
 
-
-
                     // A.assemble(M_c.val() * igrad(w,G).tr() * igrad(w,G) * (- 1.0 + 3.0 * (c*c).val()) +
                     //             lambda*ilapl(w,G).tr()*igrad(w,G)*dM_c.tr() +
                     //             M_c.val() * ilapl(w,G)*lambda*ilapl(w,G).tr());
@@ -367,8 +360,8 @@ int main(int argc, char *argv[])
                     //%% Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
                     A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
                     A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
-                                        (tmp_alpha_f * tmp_gamma * dt)* (f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
-                                        f_3 * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
+                                        (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
+                                        ddmu_c * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
                                         lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian                    
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
                     
