@@ -161,11 +161,16 @@ int main(int argc, char *argv[])
     // auto dM_c = 0.0;
     
     // Mobility and derivative (with respect to c)
-    // auto M_c  = M0 * c.val()*(1.0 - c.val());
+    // For H. Gomez initial condition: ./bin/cahn-hilliard_mobility_example -N 123
+    // auto M_c  = abs(M0 * c.val()*(1.0 - c.val()));
     // auto dM_c = M0 * (1.0 - 2.0*c.val()); // first derivative of M with respect to c
     // auto ddM_c = M0 * (- 2.0); // second derivative of M with respect to c
     
     // Modified mobility
+    // For H. Gomez initial condition:./bin/cahn-hilliard_mobility_example -N 60       
+    // auto M_c  = abs(1.0 - (c*c).val());
+
+    // auto M_c = if(abs(c.val())<1,1-pow(c,2),0);
     auto M_c  = (1.0 - (c*c).val());
     auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
     auto ddM_c = -2.0; // second derivative of M with respect to c
@@ -278,7 +283,7 @@ int main(int argc, char *argv[])
     }
     else 
     {
-        // %%%%%%%%%%%%%%%%%%%%%%%% Analytica intial condition %%%%%%%%%%%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsFunctionExpr<> source = do3D ?
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)",3) :
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
