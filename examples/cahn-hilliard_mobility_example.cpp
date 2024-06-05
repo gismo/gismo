@@ -170,7 +170,8 @@ int main(int argc, char *argv[])
     // For H. Gomez initial condition:./bin/cahn-hilliard_mobility_example -N 60       
     // auto M_c  = abs(1.0 - (c*c).val());
     // auto M_c = if(abs(c.val())<1,1-pow(c,2),0);
-    auto M_c  = abs(1.0 - (c*c).val());
+    // auto M_c  = abs(1.0 - (c*c).val());
+    auto M_c  = ternary(c.val(),1.0 - (c*c).val(),0*c.val()); //abs(1.0 - (c*c).val());
     auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
     auto ddM_c = -2.0; // second derivative of M with respect to c
 

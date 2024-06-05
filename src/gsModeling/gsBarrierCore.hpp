@@ -1240,8 +1240,6 @@ template<typename E1, typename E2>
 class frprod2_expr;
 template<typename E1, typename E2>
 class frprod3_expr;
-template<class E0, class E1, class E2>
-class ternary_expr; // ternary expression
 template<class E>
 class jacScaledLx_expr;
 template<class E>
@@ -1341,106 +1339,6 @@ frprod3_expr<E1, E2> const frprod3(E1 const &u,
   return frprod3_expr<E1, E2>(u, M);
 }
 
-template<class E0, class E1, class E2>
-class ternary_expr : public _expr<ternary_expr<E0, E1, E2> > {
-  typename E0::Nested_t _u;
-  typename E1::Nested_t _v;
-  typename E2::Nested_t _w;
- public:
-  typedef typename E1::Scalar Scalar;
-
-  explicit ternary_expr(_expr<E0> const &u,
-                        _expr<E1> const &v,
-                        _expr<E2> const &w)
-      :
-      _u(u),
-      _v(v),
-      _w(w) {
-    GISMO_ASSERT(E0::ScalarValued, "Condition must be scalar valued");
-    GISMO_ASSERT((int) E1::ScalarValued == (int) E2::ScalarValued,
-                 "Both v and w must be scalar valued (or not).");
-    GISMO_ASSERT((int) E1::ColBlocks == (int) E2::ColBlocks,
-                 "Both v and w must be colblocks (or not).");
-    GISMO_ASSERT((int) E1::Space == (int) E2::Space,
-                 "Both v and w must be space (or not), but E1::Space = "
-                     << E1::Space << " and E2::Space = " << E2::Space);
-    GISMO_ASSERT(_v.rows() == _w.rows(),
-                 "Rows of v and w differ. _v.rows() = " << _v.rows()
-                                                        << ", _w.rows() = "
-                                                        << _w.rows());
-    GISMO_ASSERT(_v.cols() == _w.cols(),
-                 "Columns of v and w differ. _v.cols() = " << _v.cols()
-                                                           << ", _w.cols() = "
-                                                           << _w.cols());
-    GISMO_ASSERT(_v.rowVar() == _w.rowVar(), "rowVar of v and w differ.");
-    GISMO_ASSERT(_v.colVar() == _w.colVar(), "colVar of v and w differ.");
-  }
- public:
-  enum {
-    ScalarValued = E1::ScalarValued,
-    ColBlocks = E1::ColBlocks,
-    Space = E1::Space
-  }; // == E2::Space
-
-//  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval
-//  (k) : _w.eval(k)); }
-
-  const Temporary_t eval(const index_t k) const {
-    return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
-  }
-
-  // { res = eval_impl(_u,_v,_w,k); return  res;}
-
-  index_t rows() const { return _v.rows(); }
-  index_t cols() const { return _v.cols(); }
-  void parse(gsExprHelper<Scalar> &evList) const {
-    _u.parse(evList);
-    _v.parse(evList);
-    _w.parse(evList);
-  }
-
-  const gsFeSpace<Scalar> &rowVar() const { return _v.rowVar(); }
-  const gsFeSpace<Scalar> &colVar() const { return _v.colVar(); }
-
-  /// Split needed for Temporary_t return type
-// private:
-//    typename util::enable_if<E1::ScalarValued,Scalar>::type
-//  eval_impl(const E0 & u, const E1 & v, const E2 & w, const index_t k) const
-//  {
-//    return (u.eval(k) > 0 ? v.eval(k) : w.eval(k));
-//  }
-
-//  typename util::enable_if<!ScalarValued,gsMatrix<Scalar>>::type
-//  eval_impl(const E0 & u, const E1 & v, const E2 & w, const index_t k)
-//  {
-//    return (u.eval(k).array() > 0 ? v.eval(k) : w.eval(k));
-//  }
-
-// private:
-//     template<class U, class V, class W> static inline
-//     typename util::enable_if<U::ScalarValued && V::ScalarValued,AutoReturn_t>::type
-//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
-//     {
-//         gsMatrix<Scalar> res(1,1);
-// //        bool test = u.eval(k) > 0;
-//         res<<(u.eval(k) > 0 ?  v.eval(k) : w.eval(k));
-//         return res;
-//     }
-
-//     template<class U, class V, class W> static inline
-//     typename util::enable_if<U::ScalarValued && !V::ScalarValued,AutoReturn_t>::type
-//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
-//     {
-//         return u.eval(k) > 0 ? v.eval(k) : w.eval(k);
-//     }
-
-//     template<class U, class V, class W> static inline
-//     typename util::enable_if<!U::ScalarValued,gsMatrix<Scalar>>::type
-//     eval_impl(const U &u, const V & v, const W & w, const index_t k)
-//     {
-//         GISMO_ERROR("Something went wrong");
-//     }
-};
 
 /*
   Expression for Jacobian matrix for PDE-based parameterization construction
@@ -2079,14 +1977,6 @@ frprod2_expr<E1, E2> const frprod2(E1 const &u,
   return frprod2_expr<E1, E2>(u, M);
 }
 
-/// Ternary ternary_expr
-template<class E0, class E1, class E2>
-EIGEN_STRONG_INLINE
-ternary_expr<E0, E1, E2> ternary(const E0 &u,
-                                 const E1 &v,
-                                 const E2 &w) {
-  return ternary_expr<E0, E1, E2>(u, v, w);
-}
 } // namespace expr
 
 }// namespace gismo

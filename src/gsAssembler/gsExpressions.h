@@ -3927,6 +3927,65 @@ public:
     void print(std::ostream &os) const { os << _c <<"*";_v.print(os); }
 };
 
+template <typename E1, typename E2, typename E3>
+class ternary_expr : public _expr<ternary_expr<E1, E2, E3> >
+{
+    typename E1::Nested_t _c;
+    typename E2::Nested_t _t;
+    typename E3::Nested_t _f;
+
+public:
+    enum {  ScalarValued = E2::ScalarValued,
+            ColBlocks = E2::ColBlocks,
+            Space = E2::Space };
+
+    typedef typename E1::Scalar Scalar;
+
+    ternary_expr(_expr<E1> const& c,
+                _expr<E2> const& t,
+                _expr<E3> const& f)
+    : _c(c), _t(t), _f(f)
+    {
+        GISMO_ASSERT(E1::ScalarValued, "Condition must be scalar valued");
+        GISMO_ASSERT((int) E2::ScalarValued == (int) E3::ScalarValued,"Both v and w must be scalar valued (or not).");
+        GISMO_ASSERT((int) E2::ColBlocks == (int) E3::ColBlocks,"Both v and w must be colblocks (or not).");
+        GISMO_ASSERT((int) E2::Space == (int) E3::Space,"Both v and w must be space (or not), but E2::Space = "
+                         << E2::Space << " and E3::Space = " << E3::Space);
+        GISMO_ASSERT(_t.rows() == _f.rows(),"Rows of v and w differ. _t.rows() = " << _t.rows()<< ", _f.rows() = "<< _f.rows());
+        GISMO_ASSERT(_t.cols() == _f.cols(),"Columns of v and w differ. _t.cols() = " << _t.cols()<< ", _f.cols() = "<< _f.cols());
+        GISMO_ASSERT(_t.rowVar() == _f.rowVar(), "rowVar of v and w differ.");
+        GISMO_ASSERT(_t.colVar() == _f.colVar(), "colVar of v and w differ.");
+    }
+
+
+    AutoReturn_t eval(const index_t k) const
+    {
+        return (_c.val().eval(k) > 0.0  ? _t.eval(k) : _f.eval(k));
+    }
+
+    index_t rows() const { return _t.rows(); }
+    index_t cols() const { return _t.cols(); }
+    void parse(gsExprHelper<Scalar> & evList) const
+    { _c.parse(evList); _t.parse(evList); _f.parse(evList); }
+
+
+    index_t cardinality_impl() const
+    { return _t.cardinality(); }
+
+    const gsFeSpace<Scalar> & rowVar() const
+    { return _t.rowVar(); }
+    const gsFeSpace<Scalar> & colVar() const
+    { return _t.colVar(); }
+
+    void print(std::ostream &os) const { os<<"( "; _c.print(os); os<<" > 0) ? "; _t.print(os); os<<" : "; _f.print(os); }
+};
+
+// Ternary expression, (c > 0) ? t : f
+template <typename E1, typename E2, typename E3> //EIGEN_STRONG_INLINE
+//collapse_expr<E1,E2> const  operator&(<E1> const& u, _expr<E2> const& v)
+ternary_expr<E1,E2,E3> ternary( _expr<E1> const& c, _expr<E1> const& t, _expr<E3> const& f)
+{ return ternary_expr<E1, E2, E3>(c, t, f); }
+
 
 template <typename E1, typename E2>
 class collapse_expr : public _expr<collapse_expr<E1, E2> >
@@ -4510,10 +4569,10 @@ public:
 /// The identity matrix of dimension \a dim
 EIGEN_STRONG_INLINE idMat_expr id(const index_t dim) { return idMat_expr(dim); }
 
-EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim) { 
+EIGEN_STRONG_INLINE constMat_expr ones(const index_t dim) {
     gsMatrix<real_t> ones(dim, dim);
     ones.fill(1);
-    return constMat_expr(ones); 
+    return constMat_expr(ones);
     }
 
 EIGEN_STRONG_INLINE constMat_expr mat(const gsMatrix<real_t> mat) { return constMat_expr(mat); }
@@ -4622,6 +4681,11 @@ operator*( gsMatrix<typename E::Scalar> const& u, _expr<E> const& v)
 template <typename E> mult_expr<E, constMat_expr> const
 operator*(_expr<E> const& u, gsMatrix<typename E::Scalar> const& v)
 { return mult_expr<E, constMat_expr>(u, mat(v) ); }
+
+/// Ternary expression, implementing (c>0) ? t : f
+template <typename E1, typename E2, typename E3> EIGEN_STRONG_INLINE
+ternary_expr<E1,E2,E3> const ternary(_expr<E1> const& c, _expr<E2> const& t, _expr<E3> const& f)
+{ return ternary_expr<E1, E2, E3>(c, t, f); }
 
 /// Frobenious product (also known as double dot product) operator for expressions
 template <typename E1, typename E2> EIGEN_STRONG_INLINE
