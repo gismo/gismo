@@ -169,9 +169,8 @@ int main(int argc, char *argv[])
     // Modified mobility
     // For H. Gomez initial condition:./bin/cahn-hilliard_mobility_example -N 60       
     // auto M_c  = abs(1.0 - (c*c).val());
-
     // auto M_c = if(abs(c.val())<1,1-pow(c,2),0);
-    auto M_c  = (1.0 - (c*c).val());
+    auto M_c  = abs(1.0 - (c*c).val());
     auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
     auto ddM_c = -2.0; // second derivative of M with respect to c
 
@@ -194,11 +193,11 @@ int main(int argc, char *argv[])
             {
                 bc.addCondition( *bit, condition_type::neumann, nullptr); 
             }
-        A.initMatrix();
-        A.assembleBdr(bc.get("Neumann"), - lambda * M_c.val() * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                                        (eps_penalty * hmax) * (igrad(w,G) * nv(G).normalized()) * (igrad(w,G) * nv(G)).tr()  // penalty (stabilizing) term
-                                        - lambda * M_c.val() * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
+        // A.initMatrix();
+        // A.assembleBdr(bc.get("Neumann"), - lambda * M_c.val() * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+        //                                 (eps_penalty * hmax) * (igrad(w,G) * nv(G).normalized()) * (igrad(w,G) * nv(G)).tr()  // penalty (stabilizing) term
+        //                                 - lambda * M_c.val() * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+        // K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
         // gsInfo<<K_nitsche.toDense()<<"\n";
     }
     else
@@ -344,6 +343,7 @@ int main(int argc, char *argv[])
                 
                 for (index_t it = 0; it!= maxIt; it++)
                 {
+                    A.initMatrix();
                     A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
                     Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
                     dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
@@ -353,6 +353,11 @@ int main(int argc, char *argv[])
 
                     if (nitsche) 
                     {      
+                        A.assembleBdr(bc.get("Neumann"), - lambda * M_c.val() * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                                                        (eps_penalty * hmax) * (igrad(w,G) * nv(G).normalized()) * (igrad(w,G) * nv(G)).tr()  // penalty (stabilizing) term
+                                                        - lambda * M_c.val() * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+                        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
+
                         Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
                         // Old code lines:
                         // A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G) * lambda * ilapl(c,G).val()); // consistency term
@@ -403,7 +408,7 @@ int main(int argc, char *argv[])
                     //                     (M_c.val() * lambda) * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian          
                     //                 // K_mobility    
 
-
+                    // A.initMatrix();
                     A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                     (tmp_alpha_f * tmp_gamma * dt)* ( M_c.val() * f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                     (M_c.val() * f_3) * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
