@@ -140,10 +140,10 @@ public:
     {
         GISMO_ASSERT( u.rows() == d, "Wrong vector dimension");
 
-        size_t ElIndex = m_bases[d-1]->elementIndex( u.col(d-1) );
+        size_t ElIndex = m_bases[d-1]->elementIndex( u.row(d-1) );
         for ( short_t i=d-2; i>=0; --i )
-            ElIndex = ElIndex * m_bases[i]->numElements() 
-                    + m_bases[i]->elementIndex( u.col(i) );
+            ElIndex = ElIndex * m_bases[i]->numElements()
+                    + m_bases[i]->elementIndex( u.row(i) );
 
         return ElIndex;        
     }
