@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 
     // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
     // 0. Single patch construction parameters
-    index_t n = 62;
+    index_t n = 40;
     index_t degree = 2;
     real_t hmax = 1.0/(n-degree);
 
@@ -149,12 +149,10 @@ int main(int argc, char *argv[])
 
     // Solution vector and solution variable
     gsMatrix<> Cnew, Calpha, Cold;
-    gsMatrix<> dCnew,dCalpha,dCold, dCupdate;
+    gsMatrix<> dCnew,dCalpha,dCold, dCupdate, temp_conc;
 
     solution c = A.getSolution(w, Calpha); // C
     solution dc = A.getSolution(w, dCalpha); // \dot{C}
-
-    gsSparseMatrix<> K_nitsche; // empty variable
 
     // Mobility
     // auto M_c  = 1.0 + 0.0*c.val();
@@ -166,14 +164,65 @@ int main(int argc, char *argv[])
     // auto dM_c = M0 * (1.0 - 2.0*c.val()); // first derivative of M with respect to c
     // auto ddM_c = M0 * (- 2.0); // second derivative of M with respect to c
     
+    // auto M_c  = ternary(1-abs(c.val()),1 + 0*c.val(), 1 + 0*c.val()); //abs(1.0 - (c*c).val());
+    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
+    // // auto ddM_c = -2.0; // second derivative of M with respect to c
+    // auto dM_c = ternary(1-abs(c.val()), 0*c.val(), 0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = ternary(1-abs(c.val()), 0*c.val(), 0*c.val()); // second derivative of M with respect to c
+    // real_t gamma_const = 0.87;// between 0 and 1
+    
+    // real_t gamma_const = 0.87;// between 0 and 1
+    // auto M_c  = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*(c*c).val()), 0*c.val()); //abs(1.0 - (c*c).val());
+    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
+    // // auto ddM_c = -2.0; // second derivative of M with respect to c
+    // auto dM_c = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*2*c.val()), 0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = ternary(1-abs(c.val()), M0*(-2*pow(gamma_const,2)) + 0*c.val(), 0*c.val()); // second derivative of M with respect to c
+
+    // auto M_c  = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*(c*c).val()), 0*c.val()); //abs(1.0 - (c*c).val());
+    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
+    // // auto ddM_c = -2.0; // second derivative of M with respect to c
+    // auto dM_c = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*2*c.val()), 0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = ternary(1-abs(c.val()), M0*(-2*pow(gamma_const,2)) + 0*c.val(), 0*c.val()); // second derivative of M with respect to c
+
+    // auto M_c  = ternary(1-abs(c.val()), 1.0 + 0*c.val(), 0*c.val()); //abs(1.0 - (c*c).val());
+    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
+    // // auto ddM_c = -2.0; // second derivative of M with respect to c
+    // auto dM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // second derivative of M with respect to c
+
+
+    //auto M_c  = M0 * c.val()*(1.0 - c.val());
+    // auto dM_c = M0 * (1.0 - 2.0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = M0 * (- 2.0); // second derivative of M with respect to c
+
+    // auto M_c  = M0 *(1.0 - (c*c).val());
+    // auto dM_c = M0 * (1.0 - 2.0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = M0 * (- 2.0); // second derivative of M with respect to c
+
+
+    // auto M_c  = 1 + 0*c.val();
+    // auto dM_c = 0 + 0*c.val(); // first derivative of M with respect to c
+    // auto ddM_c = 0 + 0*c.val(); // second derivative of M with respect to c
+    
+    
+    // auto M_c  = ; //abs(1.0 - (c*c).val());
+    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
+    // // auto ddM_c = -2.0; // second derivative of M with respect to c
+    // auto dM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // second derivative of M with respect to c
+
+
     // Modified mobility
     // For H. Gomez initial condition:./bin/cahn-hilliard_mobility_example -N 60       
     // auto M_c  = abs(1.0 - (c*c).val());
     // auto M_c = if(abs(c.val())<1,1-pow(c,2),0);
     // auto M_c  = abs(1.0 - (c*c).val());
-    auto M_c  = ternary(c.val(),1.0 - (c*c).val(),0*c.val()); //abs(1.0 - (c*c).val());
-    auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    auto ddM_c = -2.0; // second derivative of M with respect to c
+
+    auto M_c  = ternary(1-abs(c.val()), 1.0-(c*c).val(), 0*c.val()); //abs(1.0 - (c*c).val());
+    // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = -2.0; // second derivative of M with respect to c
+    auto dM_c = ternary(1-abs(c.val()), -2.0*c.val(), 0*c.val()); // first derivative of M with respect to c
+    auto ddM_c = ternary(1-abs(c.val()), -2.0 + 0*c.val(), 0*c.val()); // second derivative of M with respect to c
 
     // auto M_c  = (1.0 - (c*c).val());
     // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
@@ -238,7 +287,7 @@ int main(int argc, char *argv[])
     
     auto residual = w*dc + // M
                     (f_2 * M_c.val()) * igrad(w,G) * igrad(c,G).tr() + // F_bar
-                    (lambda * M_c.val()) * ilapl(w,G) * ilapl(c,G).val(); // K_laplacian 
+                    (lambda * M_c.val()) * ilapl(w,G) * ilapl(c,G).val() + // K_laplacian 
                     (lambda * dM_c.val())* igrad(w,G) * ilapl(c,G).val() * igrad(c,G).tr(); // mobility term!
 
     //! [Problem setup]
@@ -259,7 +308,8 @@ int main(int argc, char *argv[])
     index_t maxIt = 100; // max NR iterations
 
     gsMatrix<> Q;
-    gsSparseMatrix<> K;
+    gsSparseMatrix<> K, K_nitsche;
+    
 
     // Legend:
     // C_old   = C_n
@@ -278,7 +328,7 @@ int main(int argc, char *argv[])
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-        Cold = tmp.array()*0.01/2; //random uniform variable in [-0.05,0.05]
+        Cold = tmp.array()*0.1/2; //random uniform variable in [-0.05,0.05]
         Cold.array() += mean; // 0.45
     }
     else 
@@ -290,7 +340,7 @@ int main(int argc, char *argv[])
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
         real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
-        // gsInfo << "L2 projection error "<<error<<"\n";
+        gsInfo << "L2 projection error "<<error<<"\n";
         for (index_t i = 0; i < dbasis.basis(0).size(); i++)
             if (w.mapper().is_free(i))
                 Cold(w.mapper().index(i),0) = tmp(i,0);
@@ -355,7 +405,7 @@ int main(int argc, char *argv[])
                     if (nitsche) 
                     {      
                         A.assembleBdr(bc.get("Neumann"), - lambda * M_c.val() * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                                                        (eps_penalty * hmax) * (igrad(w,G) * nv(G).normalized()) * (igrad(w,G) * nv(G)).tr()  // penalty (stabilizing) term
+                                                        (eps_penalty * hmax) * (igrad(w,G) * nv(G).normalized()) * (igrad(w,G) * nv(G)).tr() + // penalty (stabilizing) term
                                                         - lambda * M_c.val() * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
@@ -365,7 +415,8 @@ int main(int argc, char *argv[])
                         // A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G)) ); // penalty term
                         // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
                     }
-
+                    //if (step > 59) gsInfo<<M_c.val()<<"\n";
+                    
                     if (it == 0) Q0norm = Q.norm();
                     else         Qnorm = Q.norm();
 
@@ -411,19 +462,31 @@ int main(int argc, char *argv[])
 
                     // A.initMatrix();
                     A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
-                                    (tmp_alpha_f * tmp_gamma * dt)* ( M_c.val() * f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
-                                    (M_c.val() * f_3) * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
-                                    (M_c.val() * lambda) * ilapl(w,G) * ilapl(w,G).tr() + // K_laplacian          
-                                    (lambda * dM_c.val() * ilapl(c,G).val()) * igrad(w,G) * igrad(w,G).tr() +  // K_mob_3      
-                                    (lambda * ddM_c * ilapl(c,G).val()) * igrad(w,G) * igrad(c,G).tr() * w.tr() +  // K_mob_2    
-                                    (lambda * dM_c.val()) * igrad(w,G) * igrad(c,G).tr() * ilapl(w,G).tr() )));  // K_mob_1   
-                
+                                        (tmp_alpha_f * tmp_gamma * dt)* ( M_c.val() * f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
+                                        (M_c.val() * f_3) * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
+                                        (M_c.val() * lambda) * ilapl(w,G) * ilapl(w,G).tr() + // K_laplacian          
+                                        (lambda * dM_c.val() * ilapl(c,G).val()) * igrad(w,G) * igrad(w,G).tr() +  // K_mob_3      
+                                        (lambda * ddM_c * ilapl(c,G).val()) * igrad(w,G) * igrad(c,G).tr() * w.tr() +  // K_mob_2    
+                                        (lambda * dM_c.val()) * igrad(w,G) * igrad(c,G).tr() * ilapl(w,G).tr() )));  // K_mob_1   
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
                     
                     K = A.matrix(); 
                     
                     if (nitsche) 
                         K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
+
+                    
+                    // A.clearMatrix();
+                    // A.assembleJacobian( residual * meas(G), dc );
+                    // K_m = tmp_alpha_m * A.matrix();
+
+                    // A.assembleJacobian( residual * meas(G), c );
+                    // K_f = tmp_alpha_f * tmp_delta * dt * A.matrix();    
+
+                    // K = K_m + K_f + (tmp_alpha_f * tmp_gamma * dt) * K_nitsche;
+
+
+
 
 #ifdef GISMO_WITH_SUPERLU
                     if (0==k)
@@ -436,6 +499,28 @@ int main(int argc, char *argv[])
 
                     dCnew += dCupdate;
                     Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
+
+                    // Check that all values from Cnew are within the concentration bounds
+                    // gsMatrix<> tmp = gsMatrix<>::setZero(A.numDofs(),1);
+                    // temp_conc.setZero(A.numDofs(),1);
+
+                    // temp_conc = Cnew; // Cnew to a vector
+
+                    // Cnew_vec within the range [-1, 1]
+                    // for (int i = 0; i < Cnew.size(); ++i) 
+                    // {
+                    //     if (Cnew(i) > 1.0) 
+                    //     {
+                    //         Cnew(i) = 1.0;
+                    //     } 
+                    //     else if (Cnew(i) < -1.0) 
+                    //     {
+                    //         Cnew(i) = -1.0;
+                    //     }
+                    // }
+
+                    // Convert the vector back to gsMatrix
+                    // Cnew = temp_conc;
                 }
                 if (!converged)
                     break;
@@ -454,14 +539,14 @@ int main(int argc, char *argv[])
             // {
             //     t_err = (Csols[0] - Csols[1]).norm() / (Csols[1]).norm();
             //     dt_old = dt;
-            //     // dt *= t_rho * math::sqrt(TOL / t_err);
+            //     dt *= t_rho * math::sqrt(TOL / t_err);
             //     if (t_err < TOL)
             //         break;
             // }
             // else
             // {
             //     dt_old = dt;
-            //     // dt *= t_rho;
+            //     dt *= t_rho;
             // }
         }
 
