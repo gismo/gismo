@@ -432,16 +432,17 @@ typename std::iterator_traits<Iterator>::value_type blockDiagonal( Iterator begi
 {
     typedef typename std::iterator_traits<Iterator>::value_type sparseMatrix;
     typedef typename sparseMatrix::Scalar T;
-    index_t nz = 0;
+    typedef typename sparseMatrix::Index Index;
+    Index nz = 0;
     for (Iterator sm_it=begin; sm_it!=end; ++sm_it)
         nz += sm_it->nonZeros();
     gsSparseEntries<T> se;
     se.reserve(nz);
-    index_t rows = 0, cols = 0;
+    Index rows = 0, cols = 0;
     for (Iterator sm_it=begin; sm_it!=end; ++sm_it)
     {
         const sparseMatrix& sm = *sm_it;
-        for(index_t j=0; j<sm.outerSize(); ++j)
+        for(Index j=0; j<sm.outerSize(); ++j)
             for(typename sparseMatrix::InnerIterator it(sm,j); it; ++it)
                 se.add(rows+it.row(), cols+it.col(), it.value());
         rows += sm.rows();
