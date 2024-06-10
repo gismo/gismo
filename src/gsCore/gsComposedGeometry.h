@@ -125,6 +125,49 @@ public:
 
     short_t domainDim() const override { return m_domainDim; }
 
+    void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const override
+    {
+        /*TAKEN FROM gsGeometry, WITHOUT SAME_ELEMENT*/
+        const unsigned flags = out.flags | NEED_ACTIVE;
+        const index_t  numPt = in.cols();
+        const index_t  numCo = m_coefs.cols();
+
+        gsFuncData<T> tmp(flags);
+        this->basis().compute(in, tmp);
+
+        out.values.resize(out.maxDeriv()+1);
+        out.dim.first  = tmp.dim.first;
+        out.dim.second = numCo;
+
+        gsMatrix<T> coefM;
+        const index_t derS = tmp.derivSize();
+        const index_t der2S = tmp.deriv2Size();
+
+        if (flags & NEED_VALUE)  out.values[0].resize(numCo,numPt);
+        if (flags & NEED_DERIV)  out.values[1].resize(numCo*derS,numPt);
+        if (flags & NEED_DERIV2) out.values[2].resize(numCo*der2S,numPt);
+        if (flags & NEED_ACTIVE)
+        {
+            this->basis().active_into(in, out.actives);
+            tmp.actives = out.actives;
+        }
+
+        for (index_t p=0; p<numPt;++p)
+        {
+            // extractRows(m_coefs,tmp.active(p),coefM);
+            coefM.resize(tmp.active(p).rows(), m_coefs.cols());
+            for (index_t r=0; r<tmp.active(p).rows();++r)
+                coefM.row(r)=m_coefs.row(tmp.active(p)(r,0));
+
+            if (flags & NEED_VALUE)
+                out.values[0].reshapeCol(p,1,numCo).noalias() = tmp.eval(p)*coefM;
+            if (flags & NEED_DERIV)
+                out.values[1].reshapeCol(p, derS, numCo).noalias() = tmp.deriv(p)*coefM;
+            if (flags & NEED_DERIV2)
+                out.values[2].reshapeCol(p, der2S, numCo).noalias() = tmp.deriv2(p)*coefM;
+        }
+    }
+
     /**
      * @brief      Gives the control point derivatives of \a *this. See gsFunction for more details
      *
@@ -165,6 +208,9 @@ protected:
     // Map from parametric domain to geometry
     const CompositionT * m_composition;
     using Base::m_basis;
+
+    // for compute();
+    using Base::m_coefs;
 
     // Map from composition to geometry
     typename gsGeometry<T>::uPtr m_geom;
