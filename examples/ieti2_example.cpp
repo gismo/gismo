@@ -338,11 +338,10 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n    Reconstruct solution from Lagrange multipliers... " << std::flush;
 
     // Now, we want to have the global solution for u
-    gsMatrix<> uVec = ietiMapper.constructGlobalSolutionFromLocalSolutions(
-        primal.distributePrimalSolution(
-            ieti.constructSolutionFromSaddlePoint(x)
-        )
+    std::vector<gsMatrix<>> uLocal = primal.distributePrimalSolution(
+        ieti.constructSolutionFromSaddlePoint(x)
     );
+    gsMatrix<> uGlobal = ietiMapper.constructGlobalSolutionFromLocalSolutions(uLocal);
     gsInfo << "done.\n\n";
 
     /******************** Print end Exit ********************/
@@ -364,7 +363,7 @@ int main(int argc, char *argv[])
         gsFileData<> fd;
         std::time_t time = std::time(NULL);
         fd.add(cmd);
-        fd.add(uVec);
+        fd.add(uGlobal);
         fd.addComment(std::string("ieti2_example   Timestamp:")+std::ctime(&time));
         fd.save(out);
         gsInfo << "Write solution to file " << out << "\n";
@@ -373,21 +372,13 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo << "Write Paraview data to file ieti_result.pvd\n";
-        gsPoissonAssembler<> assembler(
-            mp,
-            mb,
-            bc,
-            f,
-            dirichlet::elimination,
-            iFace::glue
-        );
-        assembler.computeDirichletDofs();
         gsMultiPatch<> mpsol;
-        assembler.constructSolution(uVec, mpsol);
-        gsField<> sol( assembler.patches(), mpsol );
-        gsWriteParaview<>(sol, "ieti_result", 1000);
+        for (index_t k=0; k<nPatches; ++k)
+            mpsol.addPatch( mb[k].makeGeometry( ietiMapper.incorporateFixedPart(k, uLocal[k])  ) );
+        gsWriteParaview<>( gsField<>( mp, mpsol ), "ieti_result", 1000);
         //gsFileManager::open("ieti_result.pvd");
     }
+
     if (!plot&&out.empty())
     {
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
