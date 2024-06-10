@@ -22,6 +22,12 @@
     const Basis & basis() const { return static_cast<const Basis&>(*this->m_basis); }
     // bool isProjective() const{ return Basis::IsRational; }
 
+#define GISMO_OVERRIDE_BASIS_ACCESSORS \
+    Basis & basis() override { return static_cast<Basis&>(*this->m_basis); } \
+    const Basis & basis() const override { return static_cast<const Basis&>(*this->m_basis); }
+    // bool isProjective() const{ return Basis::IsRational; }
+
+
 namespace gismo
 {
 

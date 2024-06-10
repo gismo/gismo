@@ -14,6 +14,7 @@
 //! [Include namespace]
 #include <gismo.h>
 #include <gsNurbs/gsSquareDomain.h>
+#include <gsNurbs/gsMobiusDomain.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -80,7 +81,7 @@ int main(int argc, char *argv[])
 
     gsMultiPatch<> mp0;
     mp0.addPatch(gsNurbsCreator<>::BSplineSquare());
-    mp0.patch(0).coefs().array() -= 0.5;
+    // mp0.patch(0).coefs().array() -= 0.5;
     if (spaceDim > 2)
       mp0.embed(spaceDim);
 
@@ -104,24 +105,56 @@ int main(int argc, char *argv[])
         const gsBasis<> & tbasis = mp0.basis(0); // basis(u,v) -> deriv will give dphi/du ,dphi/dv
         const gsGeometry<> & tgeom = mp0.patch(0); //G(u,v) -> deriv will give dG/du, dG/dv
 
-        // The domain sigma
-        gsSquareDomain<2,real_t> domain(1, 1);
-        gsMatrix<> pars = domain.controls();
+
+        // // The domain sigma
+        // gsFunctionExpr<> domain("(x)^(2)","(y)^(2)",spaceDim);
+        // gsFunctionExpr<> domain("(x","y",2);
+        // gsSquareDomain<2,real_t> domain(1,1);
+        // gsMobiusDomain<2,real_t> domain;
+        gsSimpleMobiusDomain<2,real_t> domain;
+        // gsWriteParaview(domain,mp0.patch(0).support(),"domain");
+
+        // // gsMatrix<> pars = domain.controls();
 
         gsInfo << domain << "\n";
-        gsInfo << "Domain coefficients:\n" << pars << "\n";
+        // gsInfo << "Domain coefficients before:\n" << domain.controls() << "...\n";
 
-        if(b_morph || g_morph)
+        // gsWriteParaview(domain,"domain_afterControls");
+
+
+        if((b_morph || g_morph))
         {
-          gsInfo << "Apply sigma.\n";
-          pars *= 0.8;
-          // pars(0,0) -= 0.1;
-          domain.controls() = pars.col(0);
-        }
-        domain.updateGeom();
 
-        //gsFunctionExpr<> domain("(x)^(2)","(y)^(2)",2);
-        //gsFunctionExpr<> domain("(x","y",2);
+          gsInfo << "Apply sigma.\n";
+          domain.control(0) = 0.75;
+          domain.control(1) = 0.45;
+          // domain.control(2) = 0.75;
+          // domain.control(3) = 0.45;
+          // gsDebugVar(domain.controls());
+          // domain.controls().array()*=0.5;
+          // domain.controls().array()+=0.5;
+          // pars *= 0.9;
+          // pars(0,0) -= 0.1;
+          // domain.controls() = pars;
+        }
+
+        // gsWriteParaview(domain,"domain_mod");
+
+        // gsInfo << "... and after:\n" << domain.controls() << "\n";
+
+        // gsVector<> pt(2);
+        // pt.setConstant(0.25);
+
+        // gsMatrix<> res;
+        // domain.eval_into(pt,res);
+        // gsDebugVar(res);
+
+        // domain.deriv_into(pt,res);
+        // gsDebugVar(res);
+
+        // domain.deriv_into2(pt,res);
+        // gsDebugVar(res);
+        
 
         gsBasis<>::Ptr cbasis;
         // Define a composite basis and composite geometry

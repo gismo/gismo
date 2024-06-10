@@ -19,6 +19,11 @@
 virtual memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const      \
     { return memory::unique_ptr<gsGeometry<T> >(new GeometryType(*this, give(coefs))); }
 
+
+#define GISMO_OVERRIDE_MAKE_GEOMETRY_NEW    \
+virtual memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T>coefs ) const override     \
+    { return memory::unique_ptr<gsGeometry<T> >(new GeometryType(*this, give(coefs))); }
+
 namespace gismo
 {
 

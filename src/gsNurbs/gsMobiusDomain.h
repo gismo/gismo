@@ -342,6 +342,7 @@ public:
             result.row(d) = (m_alpha[d]-1)*u.row(d).array() / ( 2*m_alpha[d]*u.row(d).array() - u.row(d).array() - m_alpha[d]);
     }
 
+
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
     {
         result.resize(4, u.cols());
@@ -355,10 +356,31 @@ public:
             T den_u = pow(2*m_alpha[0]*uu - uu - m_alpha[0], 2) ;
             T den_v = pow(2*m_alpha[1]*vv - vv - m_alpha[1], 2) ;
 
-            result(0,k) = uu*(uu-1)/(den_u*den_u);
+            result(0,k) = m_alpha[0]*(1-m_alpha[0])/den_u;
             result(1,k) = 0;
             result(2,k) = 0;
-            result(3,k) = vv*(vv-1)/(den_v*den_v);
+            result(3,k) = m_alpha[1]*(1-m_alpha[1])/den_v;
+        }
+    }
+
+
+    void control_deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
+    {
+        result.resize(4, u.cols());
+        result.setZero();
+
+        for(index_t k = 0; k != u.cols(); k++)
+        {
+            T uu = u(0,k);
+            T vv = u(1,k);
+
+            T den_u = pow(2*m_alpha[0]*uu - uu - m_alpha[0], 2) ;
+            T den_v = pow(2*m_alpha[1]*vv - vv - m_alpha[1], 2) ;
+
+            result(0,k) = uu*(uu-1)/den_u;
+            result(1,k) = 0;
+            result(2,k) = 0;
+            result(3,k) = vv*(vv-1)/den_v;
         }
     }
 

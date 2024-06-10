@@ -31,9 +31,9 @@ class gsComposedBasis : public gsBasis<T>
     // /// Geometry Type
     typedef gsComposedGeometry<T> GeometryType;
 
-    GISMO_CLONE_FUNCTION(gsComposedBasis)
+    GISMO_OVERRIDE_CLONE_FUNCTION(gsComposedBasis)
 //
-    GISMO_MAKE_GEOMETRY_NEW
+    GISMO_OVERRIDE_MAKE_GEOMETRY_NEW
 
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
@@ -227,7 +227,7 @@ public:
     domainIter makeDomainIterator() const override { return m_basis->makeDomainIterator(); }
 
     /// See \ref gsBasis for documentation
-    virtual domainIter makeDomainIterator(const boxSide & s) const { return m_basis->makeDomainIterator(s); }
+    virtual domainIter makeDomainIterator(const boxSide & s) const override { return m_basis->makeDomainIterator(s); }
 
     /// See \ref gsBasis for documentation
     std::string detail() const override { return m_basis->detail(); };
@@ -276,7 +276,7 @@ public:
     /// Return the basis
     const BasisT * basis() const { return m_basis; }
 
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os <<"Composite basis:\n";
         os << "* Compositoon "
