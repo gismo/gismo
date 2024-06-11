@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsSuperLU/SuperLUmtSupport>
 
 using namespace gismo;
 
@@ -66,6 +67,12 @@ int main(int argc, char** argv)
         report( x, x0, succeeded );
         return succeeded ? 0 : 1;
     }
+
+    gsEigen::SuperLU<real_t> solverSLU;
+    solverSLU.compute(Q);
+    x = solverSLU.solve(b);
+    gsInfo << "Solve Ax = b with Eigen's SuperLU.\n";
+    report( x, x0, succeeded );
 
     gsSparseSolver<>::CGIdentity solverCGI;
     solverCGI.compute(Q);

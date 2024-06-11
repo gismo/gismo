@@ -8,9 +8,9 @@
 #ifndef EIGEN_SUPERLUSUPPORT_MODULE_H
 #define EIGEN_SUPERLUSUPPORT_MODULE_H
 
-#include "SparseCore"
+#include "gsEigen/SparseCore"
 
-#include "src/Core/util/DisableStupidWarnings.h"
+#include "gsEigen/src/Core/util/DisableStupidWarnings.h"
 
 #ifdef EMPTY
 #define EIGEN_EMPTY_WAS_ALREADY_DEFINED
@@ -58,8 +58,8 @@ namespace Eigen { struct SluMatrix; }
   *
   */
 
-#include "src/SuperLUSupport/SuperLUSupport.h"
+#include "optional/gsSuperLU/SuperLUmtSupport.h"
 
-#include "src/Core/util/ReenableStupidWarnings.h"
+#include "gsEigen/src/Core/util/ReenableStupidWarnings.h"
 
 #endif // EIGEN_SUPERLUSUPPORT_MODULE_H
