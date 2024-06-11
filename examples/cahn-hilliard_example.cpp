@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     bool random = false;
 
     bool do3D = false;
+    std::string fn("pde/poisson2d_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -71,7 +72,7 @@ int main(int argc, char *argv[])
     cmd.addReal( "M", "M0","M0 parameter",M0);
     cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
     cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
-    // cmd.addString( "f", "file", "Input XML file", fn );
+    cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("nitsche", "Weak BC enforcement with Nitsche", nitsche);
@@ -84,18 +85,18 @@ int main(int argc, char *argv[])
 
     // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
     // 0. Single patch construction parameters
-    index_t n = 20;
-    index_t degree = 2;
-    real_t hmax = 1.0/(n-degree);
+    //index_t n = 20;
+    //index_t degree = 2;
+    //real_t hmax = 1.0/(n-degree);
 
     // 1. construction of a knot vector for each direction
     // n - degree - 1 interior knots
     // degree + 1 multiplicity at the ends
     // n-p elements!
-    gsKnotVector<> kv(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
+    //gsKnotVector<> kv(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
 
     // 2. construction of a basis    
-    gsMultiBasis<> dbasis;
+    /*gsMultiBasis<> dbasis;
     if (do3D)
         dbasis.addBasis(new gsTensorBSplineBasis<3>(kv, kv, kv) );
     else
@@ -107,8 +108,19 @@ int main(int argc, char *argv[])
         mp.addPatch( *gsNurbsCreator<>::BSplineCube(1) );
     else
         mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
-    mp.computeTopology();
+    mp.computeTopology();*/
+
+    gsFileData<> data(fn);
+    gsMultiPatch<> mp;
+    gsMultiBasis<> mb;
+    gsSparseMatrix<> cf;
+    gsMappedBasis<2, real_t> mbasis;
+
+    data.getFirst(mp);
+    data.getFirst(mb);
+    data.getFirst(cf);
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
     
     // Boundary conditions
     gsBoundaryConditions<> bc;
@@ -123,15 +135,19 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
+
+    A.setIntegrationElements(mb);
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
     // geometryMap G = A.getMap(surface);
     geometryMap G = A.getMap(mp);
 
+    mbasis.init(mb, cf);
+
+
     // Set the discretization space
-    space w = A.getSpace(dbasis);
+    space w = A.getSpace(mbasis);
 
     // basis.init(dbasis, cf);
 
@@ -146,7 +162,7 @@ int main(int argc, char *argv[])
     
     if (nitsche) 
     {   
-        for ( gsMultiPatch<>::const_biterator
+        /*for (gsMultiPatch<>::const_biterator
             bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
             {
                 bc.addCondition( *bit, condition_type::neumann, nullptr); 
@@ -156,7 +172,7 @@ int main(int argc, char *argv[])
                       eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                       lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
-        // gsInfo<<K_nitsche.toDense()<<"\n";
+        // gsInfo<<K_nitsche.toDense()<<"\n"; */
     }
     else
     {
@@ -245,17 +261,17 @@ int main(int argc, char *argv[])
     }
     else 
     {
-        // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
+       /* // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsFunctionExpr<> source = do3D ?
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)",3) :
             gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
-        real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
+        real_t error = gsL2Projection<real_t>::projectFunction(mbasis,source,mp,tmp);  // 3rd arg has to be multipatch
         // gsInfo << "L2 projection error "<<error<<"\n";
-        for (index_t i = 0; i < dbasis.basis(0).size(); i++)
+        for (index_t i = 0; i < mbasis.basis(0).size(); i++)
             if (w.mapper().is_free(i))
-                Cold(w.mapper().index(i),0) = tmp(i,0);
+                Cold(w.mapper().index(i),0) = tmp(i,0);*/
     }
     
     Calpha = Cold;
