@@ -116,7 +116,6 @@ int main(int argc, char *argv[])
     gsMultiPatch<real_t> patches;
     gsReadFile<real_t>( filenameSolid, patches);
     
-    std::tuple<gsMatrix<real_t>,gsMatrix<real_t>,std::vector<index_t>, std::vector<index_t>> result = packMultiPatch(patches);
 
     //! [GetGeometryData]
     gsInfo << "The domain is a "<< patches <<"\n";
@@ -128,18 +127,21 @@ int main(int argc, char *argv[])
     patches.embed(3);
 
     // Create bases
-        // p-refine
-    if (numElevate!=0)
-        patches.degreeElevate(numElevate);
+    // p-refine
+    // if (numElevate!=0)
+    //     patches.degreeElevate(numElevate);
 
-    // h-refine
-    for (int r =0; r < numRefine; ++r)
-        patches.uniformRefine();
+    // // h-refine
+    // for (int r =0; r < numRefine; ++r)
+    //     patches.uniformRefine();
+
+    std::tuple<gsMatrix<real_t>,gsMatrix<real_t>,std::vector<index_t>, std::vector<index_t>> packResult = packMultiPatch(patches);
 
     // Create bases
     gsMultiBasis<> bases(patches);//true: poly-splines (not NURBS)
 
     gsInfo << "Patches: "<< patches.nPatches() <<", degree: "<< bases.minCwiseDegree() <<"\n";
+    gsDebugVar(patches.coefs().dim());
 
         /*
      * Data initialization
@@ -186,19 +188,20 @@ int main(int argc, char *argv[])
     participant.setMeshAccessRegion(ForceControlPointMesh, bbox);
 
     gsVector<index_t> geometryControlPointIDs;
-    gsMatrix<> geometryControlPoints = std::get<1>(result);
+    gsMatrix<> geometryControlPoints = std::get<1>(packResult);
     participant.addMesh(GeometryControlPointMesh, geometryControlPoints, geometryControlPointIDs);
+    gsDebugVar(geometryControlPoints.dim());
 
-    gsMatrix<> geometryKnots = std::get<0>(result);
+    gsMatrix<> geometryKnots = std::get<0>(packResult);
     gsDebugVar(geometryKnots.dim());
     participant.addMesh(GeometryKnotMesh,geometryKnots);
 
-    std::vector<index_t> knotCols = std::get<2>(result);
+    std::vector<index_t> knotCols = std::get<2>(packResult);
     gsMatrix<real_t> knotColsMatrix = convertVectorToMatrix(knotCols);
     participant.addMesh(GeometryKnotMeshCols,knotColsMatrix);
             // Convert vectors to matrices
 
-    std::vector<index_t> coefCols = std::get<3>(result);
+    std::vector<index_t> coefCols = std::get<3>(packResult);
     gsMatrix<real_t> coefColsMatrix = convertVectorToMatrix(coefCols);
     participant.addMesh(GeometryControlMeshCols,coefColsMatrix);
 
@@ -239,6 +242,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<> forceMesh; //Geometry object belongs to gsFunctionSet
     // forceMesh.addPatch(give(bases->makeGeometry(GeometryControlPointMesh.transpose())));
     forceMesh=patches;
+    gsDebugVar(patches.coefs().dim());
 
 
 
@@ -247,8 +251,8 @@ int main(int argc, char *argv[])
     //Bottom Side
 
     // Patch 3 south is fixed in all directions see pg.39 H.Verhelst thesis
-    bcInfo.addCondition(3, boundary::south, condition_type::dirichlet, nullptr, -1);
-    bcInfo.addCondition(3, boundary::south, condition_type::clamped, nullptr, 2);
+    bcInfo.addCondition(3, boundary::south, condition_type::dirichlet, 0, 0, false, -1 ); // unknown 0 - x
+    bcInfo.addCondition(3, boundary::south, condition_type::clamped, 0, 0, false, 2 ); // unknown 0 - x
 
     //bcInfo.addCondition(0, boundary::south, condition_type::dirichlet, nullptr, -1);
     // bcInfo.addCondition(0, boundary::south, condition_type::clamped, nullptr, 2);
@@ -256,7 +260,6 @@ int main(int argc, char *argv[])
     // Assign geometry map
     bcInfo.setGeoMap(patches);
 
-    gsDebugVar(bcInfo);
 
 //     return 0;
 
@@ -284,6 +287,7 @@ int main(int argc, char *argv[])
     options.addInt("Material","Material model: (0): SvK | (1): NH | (2): NH_ext | (3): MR | (4): Ogden",0);
     options.addInt("Implementation","Implementation: (0): Composites | (1): Analytical | (2): Generalized | (3): Spectral",1);
     materialMatrix = getMaterialMatrix<3, real_t>(patches, t, parameters, Density, options);
+    gsDebugVar(patches.coefs().dim());
     gsDebugVar(forceMesh.coefs().dim());
 
 
@@ -293,6 +297,14 @@ int main(int argc, char *argv[])
 
     gsThinShellAssembler<3, real_t, true> assembler(patches, bases, bcInfo, forceMesh, materialMatrix);
     gsOptionList assemblerOptions = options.wrapIntoGroup("Assembler");
+
+    if (patches.nPatches()>1)
+    {
+      assembler.addWeakC0(patches.topology().interfaces());
+      assembler.addWeakC1(patches.topology().interfaces());
+      assembler.initInterfaces();
+    } //Multipatch to weak coupling, thin shell WeakIFC...option
+    // Reference: Herrema et al. (2019) Penelty coupling 
 
 
     assembler.assemble();
@@ -393,6 +405,12 @@ int main(int argc, char *argv[])
     V_checkpoint = V = gsVector<real_t>::Zero(assembler.numDofs(),1);
     A_checkpoint = A = gsVector<real_t>::Zero(assembler.numDofs(),1);
 
+    // size_t N = assembler->numDofs();
+    // gsVector<> U(N), V(N), A(N);
+    // U.setZero();
+    // V.setZero();
+    // A.setZero();
+
 
     real_t time = 0;
     // Plot initial solution
@@ -444,6 +462,7 @@ int main(int argc, char *argv[])
         if (get_readTime)
             t_read += participant.readTime();
         forceMesh.coefs() = forceControlPoints.transpose();
+        gsDebugVar(forceMesh.dim());
         // forceMesh.embed(3);
         assembler.assemble();
         F = assembler.rhs();
@@ -464,9 +483,7 @@ int main(int argc, char *argv[])
         solution = assembler.constructDisplacement(displacements);
         // gsDebugVar(solution.size();
         // write heat fluxes to interface
-        gsDebugVar(solution.nPatches());
         geometryControlPoints = solution.coefs().transpose();
-        gsDebugVar(geometryControlPoints.dim());
         participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
 
         
@@ -494,11 +511,13 @@ int main(int argc, char *argv[])
             gsField<> solField(patches,solution);
             if (timestep % plotmod==0 && plot)
             {
-                // solution.patch(0).coefs() -= patches.patch(0).coefs();// assuming 1 patch here
-                std::string fileName = dirname + "/solution" + util::to_string(timestep);
-                gsWriteParaview<>(solField, fileName, 500);
-                fileName = "solution" + util::to_string(timestep) + "0";
-                collection.addTimestep(fileName,time,".vts");
+                
+                for (size_t p = 0; p!=patches.nPatches(); p++)
+                {
+                    fileName = "./solution" + util::to_string(dt) + "0" + util::to_string(p);
+                    gsWriteParaview(solution.patch(p),solution.patch(p).support(),fileName,1000,true);
+                    collection.addPart(fileName + ".vts",time,"",p);
+                }
             }
             solution.patch(0).eval_into(points,pointDataMatrix);
             otherDataMatrix<<time;

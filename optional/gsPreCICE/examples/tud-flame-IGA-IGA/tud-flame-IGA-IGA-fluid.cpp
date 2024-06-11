@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     cmd.addInt("l","loadCase", "Load case: 0=constant load, 1='spring' load", loadCase);
     cmd.addSwitch("write", "Create a file with point data", write);
     cmd.addSwitch("readTime", "Get the read time", get_readTime);
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("writeTime", "Get the write time", get_writeTime);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -122,7 +123,7 @@ int main(int argc, char *argv[])
     gsVector<index_t> forceKnotIDs;
     gsKnotVector<> kv(0,1,10,3,1); //begin, end, # interiors, mult, by default =1
     gsTensorBSplineBasis<2, real_t> forceBasis(kv,kv);
-    gsMatrix<> forceControlPoints(forceBasis.size(), 3); //Hard coded, has to match the dimension of the the geometry control points
+    gsMatrix<> forceControlPoints(649, 3); //Hard coded, has to match the dimension of the the geometry control points
     forceControlPoints.setZero();
     forceControlPoints.col(2).setConstant(-5e3);
     forceControlPoints.transposeInPlace();
@@ -156,7 +157,7 @@ int main(int argc, char *argv[])
     gsVector<index_t> geometryKnotIDs;
     gsMatrix<> geometryKnots;
     participant.getMeshVertexIDsAndCoordinates(GeometryKnotMesh, geometryKnotIDs, geometryKnots);
-    gsDebugVar(geometryKnots);
+
 
 
 
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
     gsMultiPatch<real_t> mp, deformation;
     mp = unpackMultiPatch(geometryKnots, geometryControlPoints, knotColsVec, coefColsVec);
     mp.computeTopology();
-    gsDebugVar(mp);
+    gsDebugVar(mp.coefs().dim());
 
     forceKnots = geometryKnots;
 

@@ -73,8 +73,8 @@
   <m2n:sockets acceptor="Fluid" connector="Solid" exchange-directory="../"/>
   <coupling-scheme:serial-implicit>
       <participants first="Solid" second="Fluid" />
-      <max-time value="2" />
-      <time-window-size value="0.01" />
+      <max-time value="1" />
+      <time-window-size value="0.1" />
       <exchange data="GeometryControlPointData" mesh="GeometryControlPointMesh" from="Solid" to="Fluid" />
 <!--      <exchange data="GeometryKnotData" mesh="GeometryKnotMesh" from="Solid" to="Fluid" />-->
       <exchange data="ForceControlPointData" mesh="ForceControlPointMesh" from="Fluid" to="Solid" />
