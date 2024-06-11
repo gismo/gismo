@@ -69,23 +69,13 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
-    // 1. construction of a knot vector for each direction
-    // n - degree - 1 interior knots
-    // degree + 1 multiplicity at the ends
-    // n-p elements!
-    gsFileData<> data(fn);
     gsMultiPatch<> mp;
-    //mp.addPatch(gsNurbsCreator<>::BSplineSquare());
-    gsMultiBasis<> mb;
-    gsSparseMatrix<> cf;
-    gsMappedBasis<2, real_t> mbasis;
+    fd.getId(0, mp); // id=0: Multipatch domain
 
-    data.getFirst(mp);
-    data.getFirst(mb);
-    data.getFirst(cf);
-    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    // Boundary conditions
+    gsFunctionExpr<> source;
+    fd.getId(1, source); // id=1: initial condition function
+    gsInfo<<"Initial condition function "<< source << "\n";
+
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
     bc.setGeoMap(mp);
@@ -111,7 +101,16 @@ int main(int argc, char *argv[])
     for (size_t p=0; p!=mp.nPatches(); p++)
         hmax = math::max(hmax, mp.basis(p).getMaxCellLength());
 
-   
+    //! [Refinement]
+    gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
+
+    // Elevate and p-refine the basis to order p + numElevate
+    // where p is the highest degree in the bases
+    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
+
+    // h-refine each basis
+    for (int r =0; r < numRefine; ++r)
+        dbasis.uniformRefine();
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -124,19 +123,15 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::solution    solution;
 
     // Elements used for numerical integration
-
-    A.setIntegrationElements(mb);
+    A.setIntegrationElements(dbasis);
     gsExprEvaluator<> ev(A);
 
     // Set the geometry map
     // geometryMap G = A.getMap(surface);
     geometryMap G = A.getMap(mp);
 
-    mbasis.init(mb, cf);
-
-
     // Set the discretization space
-    space w = A.getSpace(mbasis);
+    space w = A.getSpace(dbasis);
 
     // basis.init(dbasis, cf);
 
@@ -148,7 +143,7 @@ int main(int argc, char *argv[])
     solution dc = A.getSolution(w, dCalpha); // \dot{C}
 
     gsSparseMatrix<> K_nitsche; // empty variable
-    
+
     // Assemble the Nitsche BC on the sides with Neumann condition
     A.initSystem();
     A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
@@ -168,7 +163,7 @@ int main(int argc, char *argv[])
     // auto M_c  = M0 * c * (1.0-c.val());
     // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
 
-    // Derivatives of the double well potential (Gomez et al., 2008) 
+    // Derivatives of the double well potential (Gomez et al., 2008)
     auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
     auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
 
@@ -181,14 +176,14 @@ int main(int argc, char *argv[])
     // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
     //                     lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
     // // auto residual = w*dc + // M
-    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar 
-    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar 
+    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar
+    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar
     //                 // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
     //                 ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
-    
+
     auto residual = w*dc + // M
                     M_c.val() * igrad(w,G)  * dmu_c * igrad(c,G).tr() + // F_bar
-                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian 
+                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
                     // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
 
     //! [Problem setup]
@@ -199,7 +194,7 @@ int main(int argc, char *argv[])
 #   else
     gsSparseSolver<>::LU solver;
 #endif
-    
+
     // Generalized-alpha method parameters
     real_t rho_inf = TIMEopt.askReal("rho_inf",0.5);
     real_t alpha_m = 0.5*(3-rho_inf) / (1+rho_inf);
@@ -218,30 +213,30 @@ int main(int argc, char *argv[])
     // dC
 
     gsInfo<<"Starting.."<<"\n";
-    
+
     // Setup the space (compute Dirichlet BCs)
     w.setup(bc, dirichlet::l2Projection, 0);
 
     gsInfo<<"Initial condition.."<<"\n";
-    
-    if (random) 
+
+    if (random)
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
         Cold = tmp.array()*CHopt.askReal("ampl"); //random uniform variable in [-0.05,0.05]
         Cold.array() += CHopt.askReal("mean"); // 0.45
     }
-    else 
+    else
     {
-       /* // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
+        // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
         GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
-        real_t error = gsL2Projection<real_t>::projectFunction(mbasis,source,mp,tmp);  // 3rd arg has to be multipatch
+        real_t error = gsL2Projection<real_t>::projectFunction(dbasis,source,mp,tmp);  // 3rd arg has to be multipatch
         // gsInfo << "L2 projection error "<<error<<"\n";
-        for (index_t i = 0; i < mbasis.basis(0).size(); i++)
+        for (index_t i = 0; i < dbasis.basis(0).size(); i++)
             if (w.mapper().is_free(i))
-                Cold(w.mapper().index(i),0) = tmp(i,0);*/
+                Cold(w.mapper().index(i),0) = tmp(i,0);
     }
     
     Calpha = Cold;
