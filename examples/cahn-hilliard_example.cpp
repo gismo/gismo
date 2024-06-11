@@ -48,12 +48,7 @@ int main(int argc, char *argv[])
 
     bool random = false;
 
-<<<<<<< HEAD
-    bool do3D = false;
-    std::string fn("pde/poisson2d_bvp.xml");
-=======
     std::string fn("pde/cahn_hilliard_bvp.xml");
->>>>>>> 139caa7bfefeb30b04dde3922af2bcdfd54a27d4
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -70,36 +65,17 @@ int main(int argc, char *argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-<<<<<<< HEAD
-    // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
-    // 0. Single patch construction parameters
-    //index_t n = 20;
-    //index_t degree = 2;
-    //real_t hmax = 1.0/(n-degree);
+    //! [Read input file]
+    gsFileData<> fd(fn);
+    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
 
     // 1. construction of a knot vector for each direction
     // n - degree - 1 interior knots
     // degree + 1 multiplicity at the ends
     // n-p elements!
-    //gsKnotVector<> kv(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
-
-    // 2. construction of a basis    
-    /*gsMultiBasis<> dbasis;
-    if (do3D)
-        dbasis.addBasis(new gsTensorBSplineBasis<3>(kv, kv, kv) );
-    else
-        dbasis.addBasis(new gsTensorBSplineBasis<2>(kv, kv) );
-
-    // 3. Construction of a square or cube
-    gsMultiPatch<> mp;
-    if (do3D)
-        mp.addPatch( *gsNurbsCreator<>::BSplineCube(1) );
-    else
-        mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
-    mp.computeTopology();*/
-
     gsFileData<> data(fn);
     gsMultiPatch<> mp;
+    //mp.addPatch(gsNurbsCreator<>::BSplineSquare());
     gsMultiBasis<> mb;
     gsSparseMatrix<> cf;
     gsMappedBasis<2, real_t> mbasis;
@@ -108,22 +84,8 @@ int main(int argc, char *argv[])
     data.getFirst(mb);
     data.getFirst(cf);
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
     
     // Boundary conditions
-=======
-    //! [Read input file]
-    gsFileData<> fd(fn);
-    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
-
-    gsMultiPatch<> mp;
-    fd.getId(0, mp); // id=0: Multipatch domain
-
-    gsFunctionExpr<> source;
-    fd.getId(1, source); // id=1: initial condition function
-    gsInfo<<"Initial condition function "<< source << "\n";
-
->>>>>>> 139caa7bfefeb30b04dde3922af2bcdfd54a27d4
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
     bc.setGeoMap(mp);
@@ -149,16 +111,7 @@ int main(int argc, char *argv[])
     for (size_t p=0; p!=mp.nPatches(); p++)
         hmax = math::max(hmax, mp.basis(p).getMaxCellLength());
 
-    //! [Refinement]
-    gsMultiBasis<> dbasis(mp, true);//true: poly-splines (not NURBS)
-
-    // Elevate and p-refine the basis to order p + numElevate
-    // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-
-    // h-refine each basis
-    for (int r =0; r < numRefine; ++r)
-        dbasis.uniformRefine();
+   
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -196,38 +149,12 @@ int main(int argc, char *argv[])
 
     gsSparseMatrix<> K_nitsche; // empty variable
     
-<<<<<<< HEAD
-    if (nitsche) 
-    {   
-        /*for (gsMultiPatch<>::const_biterator
-            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-            {
-                bc.addCondition( *bit, condition_type::neumann, nullptr); 
-            }
-        A.initMatrix();
-        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                      eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                      lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
-        // gsInfo<<K_nitsche.toDense()<<"\n"; */
-    }
-    else
-    {
-        for ( gsMultiPatch<>::const_biterator
-            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
-            {
-                bc.addCondition( *bit, condition_type::clamped,0);
-            }
-
-    }
-=======
     // Assemble the Nitsche BC on the sides with Neumann condition
     A.initSystem();
     A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                   penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                   lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
     K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
->>>>>>> 139caa7bfefeb30b04dde3922af2bcdfd54a27d4
 
 
     // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
@@ -306,15 +233,8 @@ int main(int argc, char *argv[])
     }
     else 
     {
-<<<<<<< HEAD
        /* // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
-        gsFunctionExpr<> source = do3D ?
-            gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)",3) :
-            gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
-=======
-        // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
         GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
->>>>>>> 139caa7bfefeb30b04dde3922af2bcdfd54a27d4
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
         real_t error = gsL2Projection<real_t>::projectFunction(mbasis,source,mp,tmp);  // 3rd arg has to be multipatch
