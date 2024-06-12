@@ -32,10 +32,20 @@ using namespace gismo;
 
 int main(int argc, char *argv[])
 {
+    real_t theta = 1.5;
+    real_t lambda = 1/(32*pow(EIGEN_PI,2));
+    // real_t lambda = 6.15e-4;
+    real_t L0 = 1;
+    real_t M0 = 0.005;
     real_t dt = 1e-3;
     index_t maxSteps = 10;
+    index_t numPts = 1000;
+
+    real_t eps_penalty = 1e4 *lambda;   // not sure about the value!
+
 
     bool output = true;
+
 
     index_t plotmod = 1;
 
@@ -44,38 +54,64 @@ int main(int argc, char *argv[])
     index_t numRefine  = 1;
     index_t numElevate = 1;
     bool last = false;
+    bool nitsche = false;
     real_t mean = 0.0;
 
     bool random = false;
 
-    std::string fn("pde/cahn_hilliard_bvp.xml");
+    std::string fn("pde/poisson2d_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
     cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     cmd.addReal( "t", "dt","dt parameter",dt); // -t () or --dt ()
+    cmd.addReal( "T", "theta","Theta parameter",theta);
+    cmd.addReal( "l", "lambda","lambda parameter",lambda);
+    cmd.addReal( "L", "L0","L0 parameter",L0);
+    cmd.addReal( "M", "M0","M0 parameter",M0);
     cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
+    cmd.addInt ( "s", "Npoints", "Number of points for plotting",  numPts );
     cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
     cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement", last);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("random", "Random initial condition of the CH problem", random);
+    cmd.addSwitch("nitsche", "Weak BC enforcement with Nitsche", nitsche);
+    cmd.addReal("m","mean", "Mean value of the normal random initial condition", mean);
+    cmd.addSwitch("random", "Initial random condition of the CH problem", random);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse command line]
 
-    //! [Read input file]
-    gsFileData<> fd(fn);
-    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+    // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
+    // 0. Single patch construction parameters
+    //index_t n = 20;
+    //index_t degree = 2;
+    //real_t hmax = 1.0/(n-degree);
 
     // 1. construction of a knot vector for each direction
     // n - degree - 1 interior knots
     // degree + 1 multiplicity at the ends
     // n-p elements!
+    //gsKnotVector<> kv(0, 1, n - degree - 1, degree + 1); // check definition of knot vectors
+
+    // 2. construction of a basis
+    /*gsMultiBasis<> dbasis;
+    if (do3D)
+        dbasis.addBasis(new gsTensorBSplineBasis<3>(kv, kv, kv) );
+    else
+        dbasis.addBasis(new gsTensorBSplineBasis<2>(kv, kv) );
+
+    // 3. Construction of a square or cube
+    gsMultiPatch<> mp;
+    if (do3D)
+        mp.addPatch( *gsNurbsCreator<>::BSplineCube(1) );
+    else
+        mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
+    mp.computeTopology();*/
+
     gsFileData<> data(fn);
     gsMultiPatch<> mp;
-    //mp.addPatch(gsNurbsCreator<>::BSplineSquare());
     gsMultiBasis<> mb;
     gsSparseMatrix<> cf;
     gsMappedBasis<2, real_t> mbasis;
@@ -84,36 +120,11 @@ int main(int argc, char *argv[])
     data.getFirst(mb);
     data.getFirst(cf);
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
+
+
     // Boundary conditions
     gsBoundaryConditions<> bc;
-    fd.getId(2, bc); // id=2: boundary conditions
     bc.setGeoMap(mp);
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-
-    gsOptionList CHopt;
-    fd.getId(3, CHopt); // id=3: reference solution
-
-    real_t theta    = CHopt.askReal("theta",1.5);
-    real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
-    real_t M0       = CHopt.askReal("M0",0.005);
-    real_t penalty  = CHopt.askReal("penalty",1e4*lambda);
-
-    gsOptionList TIMEopt;
-    fd.getId(4, TIMEopt); // id=4: time integrator options
-
-    gsOptionList Aopt;
-    fd.getId(5, Aopt); // id=5: assembler options
-    //! [Read input file]
-
-    // Determine maximum mesh size
-    real_t hmax = 0;
-    for (size_t p=0; p!=mp.nPatches(); p++)
-        hmax = math::max(hmax, mp.basis(p).getMaxCellLength());
-
-   
-
-    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -148,19 +159,36 @@ int main(int argc, char *argv[])
     solution dc = A.getSolution(w, dCalpha); // \dot{C}
 
     gsSparseMatrix<> K_nitsche; // empty variable
-    
-    // Assemble the Nitsche BC on the sides with Neumann condition
-    A.initSystem();
-    A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                  penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                  lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
-    K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
+
+    if (nitsche)
+    {
+        /*for (gsMultiPatch<>::const_biterator
+            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+            {
+                bc.addCondition( *bit, condition_type::neumann, nullptr);
+            }
+        A.initMatrix();
+        A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                      eps_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                      lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+        K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
+        // gsInfo<<K_nitsche.toDense()<<"\n"; */
+    }
+    else
+    {
+        for ( gsMultiPatch<>::const_biterator
+            bit = mp.bBegin(); bit != mp.bEnd(); ++bit)
+            {
+                bc.addCondition( *bit, condition_type::clamped,0);
+            }
+
+    }
 
 
     // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
     // auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
 
-     // auto mu_c = pow(c,3).val() - c.val();
+    // auto mu_c = pow(c,3).val() - c.val();
     // auto dmu_c= igrad(c,G) * (- 1.0 + 3.0 * (c*c).val());
 
     // auto mu_c= -c.val() * (1.0 - (c*c).val());
@@ -168,7 +196,7 @@ int main(int argc, char *argv[])
     // auto M_c  = M0 * c * (1.0-c.val());
     // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
 
-    // Derivatives of the double well potential (Gomez et al., 2008) 
+    // Derivatives of the double well potential (Gomez et al., 2008)
     auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
     auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
 
@@ -181,14 +209,14 @@ int main(int argc, char *argv[])
     // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
     //                     lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
     // // auto residual = w*dc + // M
-    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar 
-    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar 
+    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar
+    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar
     //                 // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
     //                 ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
-    
+
     auto residual = w*dc + // M
                     M_c.val() * igrad(w,G)  * dmu_c * igrad(c,G).tr() + // F_bar
-                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian 
+                    M_c.val() * ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
                     // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
 
     //! [Problem setup]
@@ -199,9 +227,9 @@ int main(int argc, char *argv[])
 #   else
     gsSparseSolver<>::LU solver;
 #endif
-    
+
     // Generalized-alpha method parameters
-    real_t rho_inf = TIMEopt.askReal("rho_inf",0.5);
+    real_t rho_inf = 0.5;
     real_t alpha_m = 0.5*(3-rho_inf) / (1+rho_inf);
     real_t alpha_f = 1 / (1+rho_inf);
     real_t gamma   = 0.5 + alpha_m - alpha_f;
@@ -218,23 +246,25 @@ int main(int argc, char *argv[])
     // dC
 
     gsInfo<<"Starting.."<<"\n";
-    
+
     // Setup the space (compute Dirichlet BCs)
     w.setup(bc, dirichlet::l2Projection, 0);
 
     gsInfo<<"Initial condition.."<<"\n";
-    
-    if (random) 
+
+    if (random)
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
         gsMatrix<> tmp = gsMatrix<>::Random(A.numDofs(),1);
-        Cold = tmp.array()*CHopt.askReal("ampl"); //random uniform variable in [-0.05,0.05]
-        Cold.array() += CHopt.askReal("mean"); // 0.45
+        Cold = tmp.array()*0.01/2; //random uniform variable in [-0.05,0.05]
+        Cold.array() += mean; // 0.45
     }
-    else 
+    else
     {
        /* // %%%%%%%%%%%%%%%%%%%%%%%% Analytical intial condition %%%%%%%%%%%%%%%%%%%%%%%%
-        GISMO_ASSERT(mp.geoDim()==source.domainDim(),"Domain dimension of the source function should be equal to the geometry dimension, but "<<source.domainDim()<<"!="<<mp.geoDim());
+        gsFunctionExpr<> source = do3D ?
+            gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)",3) :
+            gsFunctionExpr<>("0.1 * cos(2*pi*x) * cos(2*pi*y)",2);
         gsMatrix<> tmp;
         Cold.setZero(A.numDofs(),1);
         real_t error = gsL2Projection<real_t>::projectFunction(mbasis,source,mp,tmp);  // 3rd arg has to be multipatch
@@ -243,7 +273,7 @@ int main(int argc, char *argv[])
             if (w.mapper().is_free(i))
                 Cold(w.mapper().index(i),0) = tmp(i,0);*/
     }
-    
+
     Calpha = Cold;
     dCold.setZero(A.numDofs(),1);
 
@@ -253,10 +283,10 @@ int main(int argc, char *argv[])
     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 1000);
+    collection.options().setInt("numPoints", numPts);
 
     real_t dt_old = dt;
-    real_t t_rho = TIMEopt.askReal("t_rho",0.9);
+    real_t t_rho = 0.9;
     real_t t_err = 1;
     index_t lmax = 1;
     real_t TOL = 1e-3;
@@ -289,22 +319,22 @@ int main(int argc, char *argv[])
 
                 Q0norm = 1;
                 Qnorm = 10;
-                
+
                 for (index_t it = 0; it!= maxIt; it++)
                 {
                     A.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
                     Calpha.noalias()  = Cold  + tmp_alpha_f * ( Cnew  - Cold );
                     dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
-                    
+
                     A.assemble(residual * meas(G));
                     Q = A.rhs();
 
-                    if (bc.get("Neumann").size()!=0)
-                    {      
+                    if (nitsche)
+                    {
                         Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
                         // Old code lines:
                         // A.assembleBdr(bc.get("Neumann"), - igrad(w,G) * nv(G) * lambda * ilapl(c,G).val()); // consistency term
-                        // A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * penalty * (igrad(c,G) * nv(G)) ); // penalty term
+                        // A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G)) ); // penalty term
                         // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
                     }
 
@@ -312,7 +342,7 @@ int main(int argc, char *argv[])
                     else         Qnorm = Q.norm();
 
                     gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
-                    
+
                     if (it>0 && Qnorm/Q0norm < tol)
                     {
                         gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
@@ -328,7 +358,7 @@ int main(int argc, char *argv[])
 
                     // // gsInfo<<"Assembly K_m\n";
                     // A.assembleJacobian( residual * meas(G), dc );
-                    // K_m = tmp_alpha_m * A.matrix(); 
+                    // K_m = tmp_alpha_m * A.matrix();
 
                     // // gsInfo<<"Assembly K_f\n";
                     // A.assembleJacobian( residual * meas(G), c );
@@ -348,12 +378,12 @@ int main(int argc, char *argv[])
                     A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                         (tmp_alpha_f * tmp_gamma * dt)* (dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                         ddmu_c * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
-                                        lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian                    
+                                        lambda * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                    
-                    K = A.matrix(); 
 
-                    if (bc.get("Neumann").size()!=0)
+                    K = A.matrix();
+
+                    if (nitsche)
                         K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
 
 #ifdef GISMO_WITH_SUPERLU
