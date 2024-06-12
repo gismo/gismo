@@ -77,6 +77,8 @@ public:
             this->m_bases[i] = new Basis_t();
     }
 
+    virtual ~gsTensorBSplineBasis() { }
+
     void swap(gsTensorBSplineBasis & other)
     {
         this->Base::swap(static_cast<Base&>(other));
@@ -150,7 +152,7 @@ public:
         setIsPeriodic();
     }
     
-    gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
+    explicit gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
     {
         GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
         GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
