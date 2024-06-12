@@ -761,8 +761,18 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 #pragma omp parallel shared(failed)
 {
 #   ifdef _OPENMP
+    // Compute the average number of elements per patch
+    size_t nBases = m_exprdata->multiBasis().nBases();
+    size_t avgElements = m_exprdata->multiBasis().totalElements()/nBases;
     const int tid = omp_get_thread_num();
     const int nt  = omp_get_num_threads();
+    const int pstart = (avgElements < nBases) ? tid : 0;
+    const int pstep  = (avgElements < nBases) ? nt  : 1;
+    const int estart = (avgElements < nBases) ? 0 : tid;
+    const int estep  = (avgElements < nBases) ? 1 : nt ;
+    // gsDebug<<"pstart = "<<pstart<<"; pstep = "<<pstep<<"; estart = "<<estart<<"; estep = "<<estep<<"\n";
+    // std::string printstring = (avgElements < nBases) ? "patches":"elements";
+    // gsDebug<<"Parallel over "<<printstring<<"\n";
 #   endif
     auto arg_tpl = std::make_tuple(args...);
 
@@ -779,7 +789,11 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     // Note: omp thread will loop over all patches and will work on Ep/nt
     // elements, where Ep is the elements on the patch.
+#       ifdef _OPENMP
+    for (unsigned patchInd = pstart; patchInd < m_exprdata->multiBasis().nBases() && (!failed); patchInd+=pstep) //todo: distribute in parallel somehow?
+#       else
     for (unsigned patchInd = 0; patchInd < m_exprdata->multiBasis().nBases() && (!failed); ++patchInd) //todo: distribute in parallel somehow?
+#       endif
     {
         QuRule = gsQuadrature::getPtr(m_exprdata->multiBasis().basis(patchInd), m_options);
 
@@ -790,7 +804,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
         // Start iteration over elements of patchInd
 #       ifdef _OPENMP
-        for ( domIt->next(tid); domIt->good() && (!failed); domIt->next(nt) )
+        for ( domIt->next(estart); domIt->good() && (!failed); domIt->next(estep) )
 #       else
         for (; domIt->good(); domIt->next() )
 #       endif
