@@ -12,22 +12,14 @@
                H.M. Verhelst (UniFi)
                L. Venta Viñuela (UniPv)
     
-    
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Strong enforcement) (Gomez et al., 2014)
-    ./bin/cahn-hilliard_example --plot -N 80 --clamped
-    
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" (Nitsche) 
-    ./bin/cahn-hilliard_example --plot -N 80 
 
-    Run a simple Cahn-Hilliard example with an analytical initial condition "0.1 * cos(2*pi*x) * cos(2*pi*y)" until equilibrium (Nitsche)
-    ./bin/cahn-hilliard_example --plot -N 1000  
+    Run the Cahn-Hilliard equation with degenerate mobility and a random initial distribution of the concentration -> spinoidal decomposition
+    ./bin/cahn-hilliard_mobility_example --plot -N 500 -l 7e-3 -t 1e-3 --nitsche --initial
 
-    Mobility example (Gomez et al., 2014)
-    ./bin/cahn-hilliard_example_mobility_works --plot -N 57   
-
-    Mobility example (Random initial condition -- spinoidal decomposition)
-    ./bin/cahn-hilliard_example_mobility_works --plot -N 100 --initial   
+    Run the Cahn-Hilliard equation with degenerate mobility and a random initial distribution of the concentration -> nucleation
+    ./bin/cahn-hilliard_mobility_example  --plot  -N 1500 -l 7e-3 -t 1e-3 --nitsche --initial -m 0.4
     
+    Results TO BE CHECKED!
     
 */
 
@@ -40,19 +32,20 @@ using namespace gismo;
 int main(int argc, char *argv[])
 {
     real_t theta = 1.5;
-    real_t lambda = 1/(32*pow(EIGEN_PI,2));
+    // real_t lambda = 1/(32*pow(EIGEN_PI,2));
     // real_t lambda = 6.15e-4;
+    real_t lambda = 1e-3;
+
     real_t L0 = 1;
     real_t M0 = 1;
-    // real_t dt = 1e-7;
+    // real_t dt = 1e-7; 
     real_t dt = 1e-3;
+    // real_t dt = 1.1662e-3; // 20*20 elements
     index_t maxSteps = 10;
 
     real_t eps_penalty = 1e4 *lambda;   // not sure about the value!
 
-
     bool output = true;
-
 
     index_t plotmod = 1;
 
@@ -63,13 +56,8 @@ int main(int argc, char *argv[])
     bool last = false;
     bool nitsche = false;
     real_t mean = 0.0;
-    // std::string fn("pde/ch_bvp_square.xml");
-
     bool random = false;
-
     bool do3D = false;
-
-
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addInt( "e", "degreeElevation",
@@ -96,7 +84,7 @@ int main(int argc, char *argv[])
 
     // %%%%%%%%%%%%%%%%%% Definition of the geometry and the basis %%%%%%%%%%%%%%%%%%
     // 0. Single patch construction parameters
-    index_t n = 40;
+    index_t n = 20;
     index_t degree = 2;
     real_t hmax = 1.0/(n-degree);
 
@@ -145,8 +133,6 @@ int main(int argc, char *argv[])
     // Set the discretization space
     space w = A.getSpace(dbasis);
 
-    // basis.init(dbasis, cf);
-
     // Solution vector and solution variable
     gsMatrix<> Cnew, Calpha, Cold;
     gsMatrix<> dCnew,dCalpha,dCold, dCupdate, temp_conc;
@@ -154,88 +140,21 @@ int main(int argc, char *argv[])
     solution c = A.getSolution(w, Calpha); // C
     solution dc = A.getSolution(w, dCalpha); // \dot{C}
 
-    // Mobility
-    // auto M_c  = 1.0 + 0.0*c.val();
-    // auto dM_c = 0.0;
-    
-    // Mobility and derivative (with respect to c)
-    // For H. Gomez initial condition: ./bin/cahn-hilliard_mobility_example -N 123
-    // auto M_c  = abs(M0 * c.val()*(1.0 - c.val()));
-    // auto dM_c = M0 * (1.0 - 2.0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = M0 * (- 2.0); // second derivative of M with respect to c
-    
-    // auto M_c  = ternary(1-abs(c.val()),1 + 0*c.val(), 1 + 0*c.val()); //abs(1.0 - (c*c).val());
-    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    // // auto ddM_c = -2.0; // second derivative of M with respect to c
-    // auto dM_c = ternary(1-abs(c.val()), 0*c.val(), 0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = ternary(1-abs(c.val()), 0*c.val(), 0*c.val()); // second derivative of M with respect to c
-    // real_t gamma_const = 0.87;// between 0 and 1
-    
-    // real_t gamma_const = 0.87;// between 0 and 1
-    // auto M_c  = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*(c*c).val()), 0*c.val()); //abs(1.0 - (c*c).val());
-    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    // // auto ddM_c = -2.0; // second derivative of M with respect to c
-    // auto dM_c = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*2*c.val()), 0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = ternary(1-abs(c.val()), M0*(-2*pow(gamma_const,2)) + 0*c.val(), 0*c.val()); // second derivative of M with respect to c
+    // Quartic mobility
+    auto M_c  = pow(1.0-c.val(),2)*pow(1.0+c.val(),2); //abs(1.0 - (c*c).val());
+    auto dM_c = 2*(1-c.val())*(-1)*pow(1.0+c.val(),2) + pow(1.0-c.val(),2)*2*(1+c.val()); // first derivative of M with respect to c
+    auto ddM_c = 2*pow(1+(c*c).val(),2) - 8*(1-(c*c).val()) +2*pow(1-c.val(),2); // second derivative of M with respect to c
 
-    // auto M_c  = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*(c*c).val()), 0*c.val()); //abs(1.0 - (c*c).val());
-    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    // // auto ddM_c = -2.0; // second derivative of M with respect to c
-    // auto dM_c = ternary(1-abs(c.val()), M0*(1 - pow(gamma_const,2)*2*c.val()), 0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = ternary(1-abs(c.val()), M0*(-2*pow(gamma_const,2)) + 0*c.val(), 0*c.val()); // second derivative of M with respect to c
+    // Constant mobility
+    // auto M_c  = M0*(1.0 + 0*c.val()); //abs(1.0 - (c*c).val());
+    // auto dM_c = M0*(0.0 + 0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = M0*(0.0 + 0*c.val()); // second derivative of M with respect to c
 
-    // auto M_c  = ternary(1-abs(c.val()), 1.0 + 0*c.val(), 0*c.val()); //abs(1.0 - (c*c).val());
-    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    // // auto ddM_c = -2.0; // second derivative of M with respect to c
-    // auto dM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // second derivative of M with respect to c
+    // Degenerate mobility (ternary operator) -> M=1-c^2
+    // auto M_c  = ternary(1-abs(c.val()), 1.0-(c*c).val(), 0*c.val()); //abs(1.0 - (c*c).val());
+    // auto dM_c = ternary(1-abs(c.val()), -2.0*c.val(), 0*c.val()); // first derivative of M with respect to c
+    // auto ddM_c = ternary(1-abs(c.val()), -2.0 + 0*c.val(), 0*c.val()); // second derivative of M with respect to c
 
-
-    //auto M_c  = M0 * c.val()*(1.0 - c.val());
-    // auto dM_c = M0 * (1.0 - 2.0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = M0 * (- 2.0); // second derivative of M with respect to c
-
-    // auto M_c  = M0 *(1.0 - (c*c).val());
-    // auto dM_c = M0 * (1.0 - 2.0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = M0 * (- 2.0); // second derivative of M with respect to c
-
-
-    // auto M_c  = 1 + 0*c.val();
-    // auto dM_c = 0 + 0*c.val(); // first derivative of M with respect to c
-    // auto ddM_c = 0 + 0*c.val(); // second derivative of M with respect to c
-    
-    
-    // auto M_c  = ; //abs(1.0 - (c*c).val());
-    // // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    // // auto ddM_c = -2.0; // second derivative of M with respect to c
-    // auto dM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = ternary(1-abs(c.val()),0*c.val(),  0*c.val()); // second derivative of M with respect to c
-
-
-    // Modified mobility
-    // For H. Gomez initial condition:./bin/cahn-hilliard_mobility_example -N 60       
-    // auto M_c  = abs(1.0 - (c*c).val());
-    // auto M_c = if(abs(c.val())<1,1-pow(c,2),0);
-    // auto M_c  = abs(1.0 - (c*c).val());
-
-    auto M_c  = ternary(1-abs(c.val()), 1.0-(c*c).val(), 0*c.val()); //abs(1.0 - (c*c).val());
-    // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = -2.0; // second derivative of M with respect to c
-    auto dM_c = ternary(1-abs(c.val()), -2.0*c.val(), 0*c.val()); // first derivative of M with respect to c
-    auto ddM_c = ternary(1-abs(c.val()), -2.0 + 0*c.val(), 0*c.val()); // second derivative of M with respect to c
-
-    // auto M_c  = (1.0 - (c*c).val());
-    // auto dM_c = (-2.0*c.val()); // first derivative of M with respect to c
-    // auto ddM_c = -2.0; // second derivative of M with respect to c
-
-    // auto M_c  = M0 * c.val();
-    // auto dM_c = M0 + 0. * c.val(); // first derivative of M with respect to c
-    // auto ddM_c = 0.+ 0.* c.val(); // second derivative of M with respect to c
-
-    // auto M_c  = M0 * c.val()*(1.0 - c.val());
-    // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G); 
-
-    
     if (nitsche) 
     {   
         for ( gsMultiPatch<>::const_biterator
@@ -260,30 +179,13 @@ int main(int argc, char *argv[])
 
     }
 
-    // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
-    // auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
-    
-    auto mu_c = pow(c,3).val() - c.val();
-    auto dmu_c= igrad(c,G) * (- 1.0 + 3.0 * (c*c).val());
-
-    // auto mu_c= -c.val() * (1.0 - (c*c).val());
-    // auto dmu_c = -igrad(c,G) * (1.0 - (c*c).val()) - c.val() * (1.0 - 2.0 * c.val() * igrad(c,G));
-    // auto M_c  = M0 * c * (1.0-c.val());
-    // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
-
-    // Derivatives of the double well potential
+    // Derivatives of the double well potential -- polynomial
     auto f_2 = - 1.0 + 3.0 * (c*c).val();
     auto f_3 = 6*c.val();
 
-    // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
-    //                 lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-    // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
-    //                     lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-    // // auto residual = w*dc + // M
-    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar 
-    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar 
-    //                 // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
-    //                 ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
+    // Derivatives of the double well potential -- logarithmic (from equation (3) in Hector et al. (2008))
+    // auto f_2 =  - 2.0 + 1.0/(2*theta*(c-c*c).val());
+    // auto f_3 =  (-1.0+2*c.val())/(2*theta*pow((c-c*c),2));
     
     auto residual = w*dc + // M
                     (f_2 * M_c.val()) * igrad(w,G) * igrad(c,G).tr() + // F_bar
@@ -305,11 +207,10 @@ int main(int argc, char *argv[])
     real_t alpha_f = 1 / (1+rho_inf);
     real_t gamma   = 0.5 + alpha_m - alpha_f;
     // time stepping options
-    index_t maxIt = 100; // max NR iterations
+    index_t maxIt = 50; // max NR iterations
 
     gsMatrix<> Q;
-    gsSparseMatrix<> K, K_nitsche;
-    
+    gsSparseMatrix<> K, K_nitsche, K_trial, K_m, K_f;
 
     // Legend:
     // C_old   = C_n
@@ -350,12 +251,12 @@ int main(int argc, char *argv[])
     dCold.setZero(A.numDofs(),1);
 
     real_t Q0norm = 1, Qnorm = 10;
-    real_t tol = 1e-4;
+    real_t tol = 1e-10;
 
     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints",(do3D) ? 10000 : 1000);
+    collection.options().setInt("numPoints",(do3D) ? 10000 :5000);
 
     real_t dt_old = dt;
     real_t t_rho = 0.9;
@@ -404,9 +305,9 @@ int main(int argc, char *argv[])
 
                     if (nitsche) 
                     {      
-                        A.assembleBdr(bc.get("Neumann"), - lambda * M_c.val() * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                        A.assembleBdr(bc.get("Neumann"), - (lambda * M_c.val()) * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
                                                         (eps_penalty * hmax) * (igrad(w,G) * nv(G).normalized()) * (igrad(w,G) * nv(G)).tr() + // penalty (stabilizing) term
-                                                        - lambda * M_c.val() * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+                                                        - (lambda * M_c.val()) * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
                         Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
@@ -415,14 +316,13 @@ int main(int argc, char *argv[])
                         // A.assembleBdr(bc.get("Neumann"),  (igrad(w,G) * nv(G).normalized()) * hmax * eps_penalty * (igrad(c,G) * nv(G)) ); // penalty term
                         // A.assembleBdr(bc.get("Neumann"), - lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
                     }
-                    //if (step > 59) gsInfo<<M_c.val()<<"\n";
-                    
+
                     if (it == 0) Q0norm = Q.norm();
                     else         Qnorm = Q.norm();
 
-                    gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<"\n";
+                    gsInfo<<"\t\tNR iter   "<<it<<": res = "<<Qnorm/Q0norm<<" res_iteration = " <<Qnorm<<" res_iteration0 = " <<Q0norm<<"\n";
                     
-                    if (it>0 && Qnorm/Q0norm < tol)
+                    if (it>0 && (Qnorm/Q0norm < tol || Qnorm < 1e-12))
                     {
                         gsInfo<<"\t\t"<<method<<"converged in "<<it<<" iterations\n";
                         converged = true;
@@ -435,32 +335,8 @@ int main(int argc, char *argv[])
                         break;
                     }
 
-                    // // gsInfo<<"Assembly K_m\n";
-                    // A.assembleJacobian( residual * meas(G), dc );
-                    // K_m = tmp_alpha_m * A.matrix(); 
-
-                    // // gsInfo<<"Assembly K_f\n";
-                    // A.assembleJacobian( residual * meas(G), c );
-                    // K_f = tmp_alpha_f * tmp_gamma * dt * A.matrix();
-
-                    // A.assemble(M_c.val() * igrad(w,G).tr() * igrad(w,G) * (- 1.0 + 3.0 * (c*c).val()) +
-                    //             lambda*ilapl(w,G).tr()*igrad(w,G)*dM_c.tr() +
-                    //             M_c.val() * ilapl(w,G)*lambda*ilapl(w,G).tr());
-
-                    // A.assemble(meas(G) * (igrad(w,G) * (- 1.0 + 3.0 * (c*c).val())* igrad(w,G).tr()  + // K_f1
-                    //                     igrad(w,G) * ((6.0 * c.val()) * igrad(c,G).tr() * w.tr()) + // K_f2
-                    //                     // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
-                    //                     lambda * ilapl(w,G) * ilapl(w,G).tr())); // K_laplacian
-
                     //%% Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
                     A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
-                    // A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
-                    //                     (tmp_alpha_f * tmp_gamma * dt)* (M_c.val() * f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
-                    //                     (M_c.val() * f_3) * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
-                    //                     (M_c.val() * lambda) * ilapl(w,G) * ilapl(w,G).tr()))); // K_laplacian          
-                    //                 // K_mobility    
-
-                    // A.initMatrix();
                     A.assemble(meas(G) * (w*w.tr()*tmp_alpha_m +// K_m
                                         (tmp_alpha_f * tmp_gamma * dt)* ( M_c.val() * f_2 *igrad(w,G) * igrad(w,G).tr() + // K_f1
                                         (M_c.val() * f_3) * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
@@ -471,21 +347,8 @@ int main(int argc, char *argv[])
                                         // lambda * igrad(w,G)*dM_c.tr()*ilapl(w,G).tr()   +  // K_mobility
                     
                     K = A.matrix(); 
-                    
                     if (nitsche) 
                         K += (tmp_alpha_f * tmp_gamma * dt) * K_nitsche; // add the Nitsche term to the stiffness matrix
-
-                    
-                    // A.clearMatrix();
-                    // A.assembleJacobian( residual * meas(G), dc );
-                    // K_m = tmp_alpha_m * A.matrix();
-
-                    // A.assembleJacobian( residual * meas(G), c );
-                    // K_f = tmp_alpha_f * tmp_delta * dt * A.matrix();    
-
-                    // K = K_m + K_f + (tmp_alpha_f * tmp_gamma * dt) * K_nitsche;
-
-
 
 
 #ifdef GISMO_WITH_SUPERLU
@@ -499,28 +362,6 @@ int main(int argc, char *argv[])
 
                     dCnew += dCupdate;
                     Cnew.noalias() += (tmp_gamma*dt)*dCupdate;
-
-                    // Check that all values from Cnew are within the concentration bounds
-                    // gsMatrix<> tmp = gsMatrix<>::setZero(A.numDofs(),1);
-                    // temp_conc.setZero(A.numDofs(),1);
-
-                    // temp_conc = Cnew; // Cnew to a vector
-
-                    // Cnew_vec within the range [-1, 1]
-                    // for (int i = 0; i < Cnew.size(); ++i) 
-                    // {
-                    //     if (Cnew(i) > 1.0) 
-                    //     {
-                    //         Cnew(i) = 1.0;
-                    //     } 
-                    //     else if (Cnew(i) < -1.0) 
-                    //     {
-                    //         Cnew(i) = -1.0;
-                    //     }
-                    // }
-
-                    // Convert the vector back to gsMatrix
-                    // Cnew = temp_conc;
                 }
                 if (!converged)
                     break;
