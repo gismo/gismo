@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+  <!-- Computational domain -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">500 500</patches>
+    <boundary name="clamped">
+      500 1
+      500 2
+      500 3
+      500 4
+      500 5
+      500 6
+    </boundary>
+  </MultiPatch>
+
+  <!-- Initial condition -->
+  <Function type="FunctionExpr" id="1" dim="3">0.1 * cos(2*pi*x) * cos(2*pi*y) * cos(2*pi*z)</Function>
+
+  <!-- The boundary conditions (multipatch=number of patches)-->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="3" index="0">0</Function>
+
+    <bc type="Clamped" function="0" unknown="0" name="clamped">
+    </bc>
+
+    <bc unknown="0" type="Neumann" function="0" name="weak">
+    </bc>
+  </boundaryConditions>
+
+  <!-- Cahn Hilliard options -->
+ <OptionList id="3">
+  <real label="theta" desc="theta parameter" value="1.5"/>
+  <real label="lambda" desc="lambda parameter" value="0.003166287"/>
+  <real label="M0" desc="M0 parameter" value="0.005"/>
+  <real label="penalty" desc="penalty parameter" value="0.003166287*1e4"/>
+  <real label="mean" desc="mean of random initialization" value="0.1"/>
+  <real label="ampl" desc="amplitude of random initialization" value="0.005"/>
+ </OptionList>
+
+  <!-- Time integrator options -->
+ <OptionList id="4">
+  <real label="rho_inf" desc="rho_inf parameter" value="0.5"/>
+  <real label="t_rho" desc="t_rho parameter" value="0.9"/>
+  <real label="tol" desc="Relative residual tolerance" value="1e-4"/>
+ </OptionList>
+
+  <!-- Assembler options -->
+ <OptionList id="5">
+  <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+  <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+  <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+  <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+  <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+  <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+  <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+  <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+
+ </OptionList>
+
+
+  <!-- other options -->
+
+  <!-- Spline data -->
+<!--   <Geometry type="TensorNurbs2" id="500">
+  <Basis type="TensorNurbsBasis2">
+   <Basis type="TensorBSplineBasis2" parDim="2">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+   <weights>1 1 0.707106781186548 0.707106781186548 1 1 </weights>
+  </Basis>
+  <coefs geoDim="2">
+    1 0
+    2 0
+    1 1
+    2 2
+    0 1
+    0 2
+    </coefs>
+ </Geometry>
+ -->
+ <Geometry type="TensorBSpline3" id="500">
+   <Basis type="TensorBSplineBasis3" parDim="3">
+    <Basis type="BSplineBasis" index="0">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="1">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+    <Basis type="BSplineBasis" index="2">
+     <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+    </Basis>
+   </Basis>
+  <coefs geoDim="3">
+   0 0 0
+   1 0 0
+   0 1 0
+   1 1 0
+
+   0 0 1
+   1 0 1
+   0 1 1
+   1 1 1 </coefs>
+ </Geometry>
+
+</xml>
