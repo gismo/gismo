@@ -403,7 +403,8 @@ void gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &b,
     index_t dim = fun.targetDim();
     result.resize(n,dim);
 
-    for (index_t i = 0; i!=n; ++i)
+#   pragma omp parallel for private(cf)
+    for (index_t i = 0; i<n; ++i)
     {
         cf = localIntpl(b,fun,i);
         result.row(i) = cf;
