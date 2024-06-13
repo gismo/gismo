@@ -159,21 +159,9 @@ public:
         setIsPeriodic();
     }
     
-    explicit gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
-    {
-        GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
-        GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
-        bb.clear();
-        setIsPeriodic();
-    }
+    explicit gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb );
     
-    explicit gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) 
-    : Base( castVectorPtr<gsBasis<T> >(bb).data() )
-    {
-        GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
-        bb.clear();
-        setIsPeriodic();
-    }
+    explicit gsTensorBSplineBasis(std::vector< Basis_t*> & bb );
 
 #ifdef __DOXYGEN__
     /// \brief Returns the boundary basis for side s.
