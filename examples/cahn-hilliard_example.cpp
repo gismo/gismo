@@ -22,6 +22,14 @@
     Run a simple Cahn-Hilliard example with a random normal initial concentration distribution of mean 0.0 until (almost) equilibrium (Nitsche)
     ./bin/cahn-hilliard_example --plot -N 1000 --nitsche --initial --plot
     
+
+    -----------------------------------------------------------------------
+    TODO;
+    - Change hmax to a gsExprAssembler<>::element el; el.diam();
+    -----------------------------------------------------------------------
+
+
+
 */
 
 //! [Include namespace]

@@ -58,10 +58,20 @@
  </OptionList>
 
 
+  <!-- Mesher options -->
+ <OptionList id="6">
+  <int label="RefineRule" desc="Rule used for refinement: 1=GARU, 2=PUCA, 3=BULK, 4=PBULK." value="1"/>
+  <int label="CoarsenRule" desc="Rule used for coarsening: 1=GARU, 2=PUCA, 3=BULK, 4=PBULK." value="1"/>
+  <real label="RefineParam" desc="Parameter used for refinement" value="0.1"/>
+  <real label="CoarsenParam" desc="Parameter used for coarsening" value="0.1"/>
+  <bool label="Admissible" desc="Mark the admissible region" value="1"/>
+  <bool label="Absolute" desc="Take the threshold using refine/coarsen param not relatively" value="1"/>
+  <int label="RefIt" desc="Number of refinement iterations" value="5"/>
+ </OptionList>
   <!-- other options -->
 
   <!-- Spline data -->
-  <Geometry type="TensorNurbs2" id="500">
+<!--   <Geometry type="TensorNurbs2" id="500">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2" parDim="2">
     <Basis type="BSplineBasis" index="0">
@@ -82,8 +92,8 @@
     0 2
     </coefs>
  </Geometry>
-
-  <Geometry type="TensorBSpline2" id="501">
+ -->
+  <Geometry type="TensorBSpline2" id="500">
    <Basis type="TensorBSplineBasis2" parDim="2">
     <Basis type="BSplineBasis" index="0">
      <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
