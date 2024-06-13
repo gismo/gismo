@@ -148,35 +148,13 @@ int main(int argc, char *argv[])
                   lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
     K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
-
-    // auto mu_c = 1.0 / (2.0*theta) * (c / (1.0-c).val()).log() + 1 - 2*c;
-    // auto dmu_c= 1.0 / (2.0*theta) * igrad(c,G) / (c - c*c).val() - 2.0 * igrad(c,G);
-
-     // auto mu_c = pow(c,3).val() - c.val();
-    // auto dmu_c= igrad(c,G) * (- 1.0 + 3.0 * (c*c).val());
-
-    // auto mu_c= -c.val() * (1.0 - (c*c).val());
-    // auto dmu_c = -igrad(c,G) * (1.0 - (c*c).val()) - c.val() * (1.0 - 2.0 * c.val() * igrad(c,G));
-    // auto M_c  = M0 * c * (1.0-c.val());
-    // auto dM_c = M0 * igrad(c,G) - 2.0 * M0 * igrad(c,G);
-
     // Derivatives of the double well potential (Gomez et al., 2008)
     auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
     auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
 
     // Mobility
-    auto M_c  = 1.0 + 0.0*c.val();
-    auto dM_c = 0.0 * igrad(c,G);
-
-    // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
-    //                 lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-    // auto residual = w*dc + M_c.val()*igrad(w,G)*dmu_c.tr() +
-    //                     lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + M_c.val() * ilapl(w,G)*lambda*ilapl(c,G);
-    // // auto residual = w*dc + // M
-    //                 igrad(w,G)  * (- 1.0 + 3.0 * (c*c).val()) * igrad(c,G).tr() + // F_bar
-    //                 //igrad(w,G)  * (-1) * igrad(c,G).tr() + // F_bar
-    //                 // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
-    //                 ilapl(w,G)*lambda*ilapl(c,G).val(); // K_laplacian
+    auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
+    auto dM_c = 0.0 * igrad(c,G); // replace with const_expr(1.0) instead of using 0*c!!
 
     auto residual = w*dc + // M
                     M_c.val() * igrad(w,G)  * dmu_c * igrad(c,G).tr() + // F_bar
