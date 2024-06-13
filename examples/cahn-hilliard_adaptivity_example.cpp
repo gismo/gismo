@@ -38,71 +38,28 @@
 using namespace gismo;
 //! [Include namespace]
 
-int main(int argc, char *argv[])
+template <short_t dim, class T>
+void solve( gsMultiPatch<T> & mp,
+            gsFunctionExpr<T> & source,
+            gsBoundaryConditions<T> & bc,
+            gsOptionList & CHopt,
+            gsOptionList & TIMEopt,
+            gsOptionList & MESHopt,
+            gsOptionList & Aopt,
+            real_t & dt,
+            index_t & maxSteps,
+            index_t & plotmod,
+            bool & plot,
+            index_t & numRefine,
+            index_t & numElevate,
+            index_t & verbose,
+            bool & random)
 {
-    real_t dt = 1e-3;
-    index_t maxSteps = 10;
-
-    index_t plotmod = 1;
-
-    //! [Parse command line]
-    bool plot = false;
-    index_t numRefine  = 1;
-    index_t numElevate = 1;
-
-    index_t verbose = 1;
-    bool random = false;
-
-    std::string fn("pde/cahn_hilliard_bvp.xml");
-
-    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
-    cmd.addInt( "e", "degreeElevation",
-                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
-    cmd.addReal( "t", "dt","dt parameter",dt); // -t () or --dt ()
-    cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
-    cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
-    cmd.addInt ( "v", "verbose", "Verbosity level",  verbose );
-    cmd.addString( "f", "file", "Input XML file", fn );
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
-    cmd.addSwitch("random", "Random initial condition of the CH problem", random);
-
-    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-    //! [Parse command line]
-
-    //! [Read input file]
-    gsFileData<> fd(fn);
-    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
-
-    gsMultiPatch<> mp;
-    fd.getId(0, mp); // id=0: Multipatch domain
-
-    gsFunctionExpr<> source;
-    fd.getId(1, source); // id=1: initial condition function
-    gsInfo<<"Initial condition function "<< source << "\n";
-
-    gsBoundaryConditions<> bc;
-    fd.getId(2, bc); // id=2: boundary conditions
-    bc.setGeoMap(mp);
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
-
-    gsOptionList CHopt;
-    fd.getId(3, CHopt); // id=3: reference solution
 
     real_t theta    = CHopt.askReal("theta",1.5);
     real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
     real_t M0       = CHopt.askReal("M0",0.005);
     real_t penalty  = CHopt.askReal("penalty",1e4*lambda);
-
-    gsOptionList TIMEopt;
-    fd.getId(4, TIMEopt); // id=4: time integrator options
-
-    gsOptionList Aopt;
-    fd.getId(5, Aopt); // id=5: assembler options
-
-    gsOptionList MESHopt;
-    fd.getId(6, MESHopt); // id=6: mesher options
-    //! [Read input file]
 
     //! [Prepare the basis]
     gsMultiBasis<> dbasis_tmp(mp,true);
@@ -118,9 +75,9 @@ int main(int argc, char *argv[])
     for (size_t p=0; p!=dbasis_tmp.nBases(); p++)
     {
         // TODO: Make dimension-independent over the template
-        if (gsTensorBSplineBasis<2,real_t> * b = dynamic_cast<gsTensorBSplineBasis<2,real_t>*>(&dbasis_tmp.basis(p)))
-            dbasis.addBasis(new gsTHBSplineBasis<2,real_t>(*b));
-        else if (gsTHBSplineBasis<2,real_t> * b = dynamic_cast<gsTHBSplineBasis<2,real_t>*>(&dbasis_tmp.basis(p)))
+        if (gsTensorBSplineBasis<dim,real_t> * b = dynamic_cast<gsTensorBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
+            dbasis.addBasis(new gsTHBSplineBasis<dim,real_t>(*b));
+        else if (gsTHBSplineBasis<dim,real_t> * b = dynamic_cast<gsTHBSplineBasis<dim,real_t>*>(&dbasis_tmp.basis(p)))
             dbasis.addBasis(b->clone());
         else
             GISMO_ERROR("Basis is neither a gsTHBSplineBasis nor a gsTensorBSplineBasis");
@@ -283,10 +240,10 @@ int main(int argc, char *argv[])
     // DIMENSION-INDEPENDENT
     // gsAdaptiveMeshingBase<real_t> * mesher;
     // if(mp.geoDim()==2)
-    //     mesher = new gsAdaptiveMeshing<2,real_t>(dbasis);
+    //     mesher = new gsAdaptiveMeshing<dim,real_t>(dbasis);
     // else if(mp.geoDim()==2)
-    //     mesher = new gsAdaptiveMeshing<3,real_t>(dbasis);
-    gsAdaptiveMeshing<2,real_t> mesher(dbasis);
+    //     mesher = new gsAdaptiveMeshing<dim,real_t>(dbasis);
+    gsAdaptiveMeshing<dim,real_t> mesher(dbasis);
     mesher.options().setInt("RefineRule",MESHopt.askInt("RefineRule",1));
     mesher.options().setInt("CoarsenRule",MESHopt.askInt("CoarsenRule",1));
     mesher.options().setReal("RefineParam",MESHopt.askReal("RefineParam",0.1));
@@ -437,7 +394,7 @@ int main(int argc, char *argv[])
             cvec.array() = 1-(cvec.array().abs()/avec.array());
 
             // Mark the elements for refinement
-            gsHBoxContainer<2,real_t> refine;//, coarsen;
+            gsHBoxContainer<dim,real_t> refine;//, coarsen;
             mesher.markRef_into(cInt,refine);
 
             // If elements are marked for refinement
@@ -510,7 +467,7 @@ int main(int argc, char *argv[])
         cvec.array() = 1-(cvec.array().abs()/avec.array());
 
         // Coarsen everything above threshold (opposite of refinement)
-        gsHBoxContainer<2,real_t> coarsen;
+        gsHBoxContainer<dim,real_t> coarsen;
         mesher.markCrs_into(cInt,coarsen);
 
         // If elements are marked for refinement
@@ -574,6 +531,78 @@ int main(int argc, char *argv[])
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";
+
+
+}
+
+
+int main(int argc, char *argv[])
+{
+    real_t dt = 1e-3;
+    index_t maxSteps = 10;
+
+    index_t plotmod = 1;
+
+    //! [Parse command line]
+    bool plot = false;
+    index_t numRefine  = 1;
+    index_t numElevate = 1;
+
+    index_t verbose = 1;
+    bool random = false;
+
+    std::string fn("pde/cahn_hilliard_bvp.xml");
+
+    gsCmdLine cmd("Tutorial on solving a Poisson problem.");
+    cmd.addInt( "e", "degreeElevation",
+                "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
+    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addReal( "t", "dt","dt parameter",dt); // -t () or --dt ()
+    cmd.addInt ( "N", "Nsteps", "Number of time steps",  maxSteps );
+    cmd.addInt ( "p", "PlotMod", "Modulo for plotting",  plotmod );
+    cmd.addInt ( "v", "verbose", "Verbosity level",  verbose );
+    cmd.addString( "f", "file", "Input XML file", fn );
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
+    cmd.addSwitch("random", "Random initial condition of the CH problem", random);
+
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    //! [Parse command line]
+
+    //! [Read input file]
+    gsFileData<> fd(fn);
+    gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
+
+    gsMultiPatch<> mp;
+    fd.getId(0, mp); // id=0: Multipatch domain
+
+    gsFunctionExpr<> source;
+    fd.getId(1, source); // id=1: initial condition function
+    gsInfo<<"Initial condition function "<< source << "\n";
+
+    gsBoundaryConditions<> bc;
+    fd.getId(2, bc); // id=2: boundary conditions
+    bc.setGeoMap(mp);
+    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+
+    gsOptionList CHopt;
+    fd.getId(3, CHopt); // id=3: reference solution
+
+    gsOptionList TIMEopt;
+    fd.getId(4, TIMEopt); // id=4: time integrator options
+
+    gsOptionList Aopt;
+    fd.getId(5, Aopt); // id=5: assembler options
+
+    gsOptionList MESHopt;
+    fd.getId(6, MESHopt); // id=6: mesher options
+    //! [Read input file]
+
+    if (mp.geoDim()==2)
+        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, Aopt, MESHopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
+    else if (mp.geoDim()==3)
+        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, Aopt, MESHopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
+    else
+        GISMO_ERROR("Only 2D and 3D problems are supported.");
 
     return EXIT_SUCCESS;
 
