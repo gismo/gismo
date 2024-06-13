@@ -88,6 +88,13 @@ public:
 #if !EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBSplineBasis & operator=(gsTensorBSplineBasis other)
     { gsTensorBSplineBasis::swap(other); return *this;}
+#else
+    gsTensorBSplineBasis(gsTensorBSplineBasis && other) : Base(give(other)) { }
+    gsTensorBSplineBasis(const gsTensorBSplineBasis &  other) : Base(other) { }
+    gsTensorBSplineBasis & operator=(gsTensorBSplineBasis&& other)
+    { return (gsTensorBSplineBasis &)Base::operator=(give(other)); }
+    gsTensorBSplineBasis & operator=(const gsTensorBSplineBasis& other)
+    { return (gsTensorBSplineBasis &)Base::operator=(other); }
 #endif
     
     /**
