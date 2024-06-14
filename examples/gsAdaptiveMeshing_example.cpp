@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
         gsWriteParaview<>( elemError_eh, "error_elem_ref" + std::to_string(p), 10000, false);
     }
 
-    gsAdaptiveMeshing<real_t> mesher(mp);
+    gsAdaptiveMeshing<2,real_t> mesher(mp);
     mesher.options().setInt("RefineRule",rule);
     mesher.options().setInt("CoarsenRule",rule);
     mesher.options().setSwitch("Admissible",true);
