@@ -1,17 +1,14 @@
-include("./Gismo.jl")
-import .Gismo
+include("../src/Gismo.jl")
 using BenchmarkTools
-using BenchmarkPlots, StatsPlots
+using BenchmarkPlots
 
-path_to_lib::String = "build/lib/libgismo"
-geom = Gismo.Geometry( "filedata/surfaces/simple.xml" )
+using .Gismo
 
+geom = Geometry( "surfaces/simple.xml" )
 
-display(@benchmark Gismo.eval(geom,rand(Float64, (2, 1))))
+# display(@benchmark eval(geom,rand(Float64, (2, 1))))
 
-display(@benchmark Gismo.normal(geom,rand(Float64, (2, 1))))
-
-# display(@benchmark Gismo.closest(geom,rand(Float64, (3))))
+display(@benchmark normal(geom,rand(Float64, (2, 1))))
 
 
 

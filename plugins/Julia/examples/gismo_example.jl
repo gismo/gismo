@@ -82,7 +82,15 @@ display(vals)
 mp = Gismo.MultiPatch()
 Gismo.addPatch(mp,geom)
 display(mp)
-display(Gismo.patch(mp,0))
+patch = Gismo.patch(mp,0)
+display(patch)
+
+display(Gismo.basis(mp,0))
+display(Gismo.uniformRefine(Gismo.basis(mp,0)))
+display(Gismo.basis(mp,0))
+
+
+
 # display(dist)
 
 # knots = [0.0,0.0,0.5,1.0,1.0]
