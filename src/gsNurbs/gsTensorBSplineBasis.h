@@ -86,6 +86,13 @@ public:
 #if !EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBSplineBasis & operator=(gsTensorBSplineBasis other)
     { gsTensorBSplineBasis::swap(other); return *this;}
+// #else // defined implicitly
+//     gsTensorBSplineBasis(gsTensorBSplineBasis && other) : Base(give(other)) { }
+//     gsTensorBSplineBasis(const gsTensorBSplineBasis &  other) : Base(other) { }
+//     gsTensorBSplineBasis & operator=(gsTensorBSplineBasis&& other)
+//     { return (gsTensorBSplineBasis &)Base::operator=(give(other)); }
+//     gsTensorBSplineBasis & operator=(const gsTensorBSplineBasis& other)
+//     { return (gsTensorBSplineBasis &)Base::operator=(other); }
 #endif
     
     /**
@@ -150,21 +157,9 @@ public:
         setIsPeriodic();
     }
     
-    gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb ) : Base(bb.data())
-    {
-        GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
-        GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
-        bb.clear();
-        setIsPeriodic();
-    }
+    explicit gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb );
     
-    explicit gsTensorBSplineBasis(std::vector< Basis_t*> & bb ) 
-    : Base( castVectorPtr<gsBasis<T> >(bb).data() )
-    {
-        GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
-        bb.clear();
-        setIsPeriodic();
-    }
+    explicit gsTensorBSplineBasis(std::vector< Basis_t*> & bb );
 
 #ifdef __DOXYGEN__
     /// \brief Returns the boundary basis for side s.
