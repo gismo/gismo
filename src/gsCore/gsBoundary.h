@@ -248,7 +248,7 @@ public:
     boxSide& side()       {return *this;}
     const boxSide& side() const {return *this;}
 
-    index_t patchIndex() {return patch;}
+    index_t patchIndex() const {return patch;}
     const std::string & label() const {return m_label;}
     std::string & label() {return m_label;}
 
