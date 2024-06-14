@@ -295,6 +295,16 @@ void gsMultiPatch<T>::degreeIncrease(short_t const elevationSteps, short_t const
 }
 
 template<class T>
+void gsMultiPatch<T>::degreeDecrease(int elevationSteps)
+{
+    for ( typename PatchContainer::const_iterator it = m_patches.begin();
+          it != m_patches.end(); ++it )
+    {
+        ( *it )->degreeDecrease(elevationSteps, -1);
+    }
+}
+
+template<class T>
 void gsMultiPatch<T>::degreeReduce(int elevationSteps)
 {
     for ( typename PatchContainer::const_iterator it = m_patches.begin();

@@ -280,6 +280,9 @@ public:
     /// \brief Reduce the degree of all patches by \a elevationSteps.
     void degreeReduce(int elevationSteps = 1);
 
+    /// \brief Decrease the degree of all patches by \a elevationSteps.
+    void degreeDecrease(int elevationSteps = 1);
+
     /// \brief Coarsen uniformly all patches by removing \a numKnots
     /// in each knot-span
     void uniformCoarsen(int numKnots = 1);
