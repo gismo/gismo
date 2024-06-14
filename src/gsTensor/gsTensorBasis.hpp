@@ -833,7 +833,7 @@ void gsTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnot
     else
     {
         GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
-                      "Invalid basis component "<< dir <<" requested for degree elevation" );
+                      "Invalid basis component "<< dir <<" requested for uniform refinement." );
 
         gsVector<index_t,d> sz;
         this->size_cwise(sz);
