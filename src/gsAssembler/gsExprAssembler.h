@@ -247,9 +247,9 @@ public:
     {
         GISMO_ASSERT(NULL!=m_vrow[id], "Not set.");
         expr::gsFeSpace<T> s = m_exprdata->
-            getSpace(*m_vrow[id]->fs,m_vrow[id]->dim());
+            getSpace(*m_vrow[id]->fs,m_vrow[id]->dim);
         s.setSpaceData(*m_vrow[id]);
-        return *m_vrow[id];
+        return s;
     }
 
     /// Return the test space of a pre-existing trial space \a u

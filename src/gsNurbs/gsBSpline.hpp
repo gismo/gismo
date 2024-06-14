@@ -18,6 +18,9 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
+#include <gsCore/gsMultiPatch.h>
+#include <gsNurbs/gsCurveCurveIntersection.h>
+
 namespace gismo
 {
 
@@ -41,9 +44,9 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
                   "Cannot merge a closed curve with anything." );
 
     // check degree
-    const int mDeg = this ->basis().degree();
-    const int oDeg = other->basis().degree();
-    const int deg  = math::max(mDeg,oDeg);
+    const short_t mDeg = this ->basis().degree();
+    const short_t oDeg = other->basis().degree();
+    const short_t deg  = math::max(mDeg,oDeg);
 
     other->gsBSpline::degreeElevate( deg - oDeg ); // degreeElevate(0) does nothing (and very quickly)
     this ->gsBSpline::degreeElevate( deg - mDeg );
@@ -70,8 +73,8 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
     mKnots.append( oKnots.begin()+deg+1, oKnots.end());
 
     // merge coefficients
-    int n= this->coefsSize();
-    int skip = continuous ? 1 : 0;
+    unsigned n= this->coefsSize();
+    index_t skip = continuous ? 1 : 0;
     this->m_coefs.conservativeResize( n + other->coefsSize() -skip, gsEigen::NoChange ) ;
 
     this->m_coefs.block( n,0,other->coefsSize()-skip,other->geoDim() ) =
@@ -96,13 +99,15 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   KnotVectorType & knots = copy.basis().knots();
 
   // some constants
-  const int p = basis().degree();                         // degree
+  const short_t p = basis().degree();                       // degree
   const index_t multStart = p + 1 - knots.multiplicity(u0); // multiplicity
-  const index_t multEnd   = p + 1 - knots.multiplicity(u1);   // multiplicity
+  const index_t multEnd   = p + 1 - knots.multiplicity(u1); // multiplicity
 
   // insert the knot, such that its multiplicity is p+1
-  if (multStart>0) { copy.insertKnot(u0, 0, multStart); }
-  if (multEnd>0)   { copy.insertKnot(u1, 0, multEnd  ); }
+  if (multStart>0)
+    copy.insertKnot(u0, 0, multStart);
+  if (multEnd>0)
+    copy.insertKnot(u1, 0, multEnd  );
 
   gsMatrix<T>& coefs = copy.coefs();
   const index_t tDim  = coefs.cols();
@@ -113,7 +118,9 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   // find the number of coefs left from u1
   index_t nL2 = knots.uFind(u1).firstAppearance();
   bool isEnd = math::abs(u1 - this->domainEnd()) < tolerance;
-  if ( isEnd ) { nL2 += 1; }       // Adjust for end parameter
+//  if ( isEnd ) { nL2 += 1; }       // Adjust for end parameter
+  if ( isEnd )
+    nL2 = copy.numCoefs();       // Adjust for end parameter
 
   // Prepare control points for new geometry
   gsMatrix<T> coefRes = coefs.block(nL, 0, nL2-nL, tDim);
@@ -125,6 +132,72 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
   KnotVectorType knotsRes(give(matRes), p);
 
   return gsBSpline<T>(Basis(give(knotsRes)), give(coefRes));
+}
+
+template<class T>
+gsMultiPatch<T> gsBSpline<T>::toBezier(T tolerance) const
+{
+    gsMultiPatch<T> bezierSegments;
+
+    gsBSpline<T> currentSegment(*this);
+    gsBSpline<T> leftPart;
+
+    for (auto iter = this->knots().ubegin() + 1; iter != this->knots().uend() - 1; ++iter)
+    {
+        currentSegment.splitAt(*iter, leftPart, currentSegment, tolerance);
+        bezierSegments.addPatch(leftPart);
+    }
+
+    bezierSegments.addPatch(currentSegment); // Add the last segment
+    return bezierSegments;
+}
+
+template<class T>
+std::vector<internal::gsCurveIntersectionResult<T>> gsBSpline<T>::intersect(const gsBSpline<T>& other,
+                                                                            T tolerance,
+                                                                            T curvatureTolerance) const
+{
+    std::vector<internal::gsBoundingBoxPair<T>> hulls = internal::getPotentialIntersectionRanges<T>(*this, other, curvatureTolerance);
+
+    std::vector<internal::gsCurveIntersectionResult<T>> results;
+    for (typename std::vector<internal::gsBoundingBoxPair<T>>::const_iterator hull = hulls.begin(); hull!=hulls.end(); hull++)
+    {
+        gsBSpline<T> crv1 = this->segmentFromTo(hull->b1.getRange().getMin(), hull->b1.getRange().getMax());
+        gsBSpline<T> crv2 = other.segmentFromTo(hull->b2.getRange().getMin(), hull->b2.getRange().getMax());
+
+        internal::gsCurveCurveDistanceSystem<T> obj(crv1, crv2);
+		gsVector<T,2> uv;
+        uv(0) = 0.5 * (crv1.domainStart() + crv1.domainEnd());
+        uv(1) = 0.5 * (crv2.domainStart() + crv2.domainEnd());
+        T distance = obj.compute(uv, tolerance);
+
+        if (distance < math::max(1e-10, tolerance))
+        {
+            gsMatrix<T> uCrv1(1,1), uCrv2(1,1);
+			uCrv1(0,0) = uv(0);
+			uCrv2(0,0) = uv(1);
+		  	gsMatrix<T> pt = 0.5 * (crv1.eval(uCrv1) + crv2.eval(uCrv2));
+            internal::gsCurveIntersectionResult<T> result(uv(0), uv(1), pt);
+            results.push_back(result);
+        }
+    }
+
+  return results;
+}
+
+template<class T>
+T gsBSpline<T>::pseudoCurvature() const
+{
+    index_t coefsSize = m_coefs.rows();
+
+    T len = (m_coefs.row(0)-m_coefs.row(coefsSize-1)).norm();
+    T total = 0.0;
+    for (index_t ipt = 0; ipt != coefsSize - 1; ++ipt)
+    {
+        T dist = (m_coefs.row(ipt) - m_coefs.row(ipt + 1)).norm();
+        total += dist;
+    }
+    return total / len;
 }
 
 template<class T>

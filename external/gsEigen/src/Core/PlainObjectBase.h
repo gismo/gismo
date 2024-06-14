@@ -802,8 +802,8 @@ class PlainObjectBase : public internal::dense_xpr_base<Derived>::type
     EIGEN_DEVICE_FUNC
     EIGEN_STRONG_INLINE void _init2(Index rows, Index cols, typename internal::enable_if<Base::SizeAtCompileTime!=2,T0>::type* = 0)
     {
-      const bool t0_is_integer_alike = internal::is_valid_index_type<T0>::value; GISMO_UNUSED(t0_is_integer_alike);
-      const bool t1_is_integer_alike = internal::is_valid_index_type<T1>::value; GISMO_UNUSED(t1_is_integer_alike);
+      const bool t0_is_integer_alike = internal::is_valid_index_type<T0>::value; EIGEN_UNUSED_VARIABLE(t0_is_integer_alike);
+      const bool t1_is_integer_alike = internal::is_valid_index_type<T1>::value; EIGEN_UNUSED_VARIABLE(t1_is_integer_alike);
       EIGEN_STATIC_ASSERT(t0_is_integer_alike &&
                           t1_is_integer_alike,
                           FLOATING_POINT_ARGUMENT_PASSED__INTEGER_WAS_EXPECTED)

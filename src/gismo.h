@@ -98,6 +98,7 @@ namespace internal
 #include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
+#include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
 #include <gsHSplines/gsHBSplineBasis.h>
