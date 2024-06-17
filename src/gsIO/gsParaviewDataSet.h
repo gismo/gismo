@@ -327,9 +327,9 @@ private:
              // Prepend the number of bytes to be expected (using a
              // single-item array of unsigned 64 integers)
              data_array_stream
-                 << Base64::Encode(std::vector<uint64_t>{
-                        evaluated_values.cols() * evaluated_values.rows() *
-                        sizeof((real_t){})})
+                 << Base64::Encode(std::vector<uint64_t>(1,
+                   evaluated_values.cols() * evaluated_values.rows() *
+                                                         sizeof(real_t)))
                         // Write the actual data
                         // Vector-valued data is stored column-wise
                         + Base64::Encode(evaluated_values, false);
@@ -406,8 +406,8 @@ private:
          stream << "NumberOfComponents=\"3\">\n";
          // Prepend the number of bytes to be expected (using a single-item
          // array of unsigned 64 integers)
-         stream << Base64::Encode(std::vector<uint64_t>{copy_of_matrix.size() *
-                                                        sizeof(T{})})
+         stream << Base64::Encode(std::vector<uint64_t>(1,copy_of_matrix.size() *
+                                                        sizeof(T)))
                        // Write the actual data
                        + Base64::Encode(copy_of_matrix);
      } else {

@@ -17,9 +17,6 @@
 #include <gsIO/gsXml.h>
 #include <gsNurbs/gsKnotVector.h>
 
-#include <numeric>
-#include <algorithm>
-
 namespace gismo
 {
 

@@ -18,9 +18,6 @@
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsIO/gsBase64.h>
 
-#include <algorithm>
-#include <vector>
-
 namespace gismo {
 
 /// \brief Returns the computational mesh of \a basis.
