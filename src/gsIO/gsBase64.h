@@ -239,8 +239,8 @@ class GISMO_EXPORT Base64 {
     template <typename BaseType>
     static std::string Encode(const gsMatrix<BaseType>& data_vector,
                               const bool& row_wise = true) {
-        static_assert(std::is_arithmetic<BaseType>::value,
-                      "Encoding unsafe for non-arithmetic types.");
+        GISMO_ASSERT(std::is_arithmetic<BaseType>::value, // can be static
+                      "Encoding is unsafe for non-arithmetic types.");
         // We need to ensure that the export is in the demanded export order, if
         // the data is only a vector (i.e. either col or row is 1) or if the
         // storage scheme is coherent with the demanded export order

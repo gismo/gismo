@@ -309,8 +309,7 @@ private:
                  } else {
                      // Will only be triggered in debug mode, but export will
                      // still work, keyword needs to be added manually
-                     GISMO_ASSERT(false,
-                                  "Unspported floating point type requested");
+                     GISMO_ERROR("Unspported floating point type requested");
                  }
              }();
 
@@ -330,7 +329,7 @@ private:
              data_array_stream
                  << Base64::Encode(std::vector<uint64_t>{
                         evaluated_values.cols() * evaluated_values.rows() *
-                        sizeof(real_t{})})
+                        sizeof((real_t){})})
                         // Write the actual data
                         // Vector-valued data is stored column-wise
                         + Base64::Encode(evaluated_values, false);
