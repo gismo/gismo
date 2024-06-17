@@ -138,7 +138,7 @@ void solve( gsMultiPatch<T> & mp,
     solution dcold = A.getSolution(w, dCold); // \dot{Cold}
     solution dcnew = A.getSolution(w, dCnew); // \dot{Cnew}
 
-    // Derivatives of the double well potential (Gomez et al., 2008)
+    // Derivatives of the polynomial double well potential (M. Kästner et al., 2016)
     auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
     auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
 
@@ -173,8 +173,8 @@ void solve( gsMultiPatch<T> & mp,
     // time stepping options
     index_t maxIt = 50;
 
-    gsMatrix<> Q, Q1, Q2;
-    gsSparseMatrix<> K, K_m, K_f;
+    gsMatrix<> Q;
+    gsSparseMatrix<> K;
 
     // Legend:
     // C_old   = C_n
@@ -183,8 +183,6 @@ void solve( gsMultiPatch<T> & mp,
     // dC
 
     gsInfo<<"Starting.."<<"\n";
-
-
 
     gsInfo<<"Initial condition.."<<"\n";
 
@@ -217,7 +215,7 @@ void solve( gsMultiPatch<T> & mp,
     gsParaviewCollection collection("ParaviewOutput/solution", &ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 1000);
+    collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
 
     real_t dt_old = dt;
     real_t t_rho = TIMEopt.askReal("t_rho",0.9);
@@ -301,11 +299,11 @@ void solve( gsMultiPatch<T> & mp,
                         // A.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
                         A.initMatrix();
                         A.assembleBdr(bc.get("Neumann"), - lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
-                                      penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
-                                      lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
+                                    penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                                    lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
                         K_nitsche = A.giveMatrix(); // .giveMatrix() moves the matrix A into K_nitche (avoids having two matrices A and K_nitsche)
 
-                        if (bc.get("Neumann").size()!=0)
+                        if (bc.get("Neumann").size()!=0) 
                             Q.noalias() += K_nitsche * Calpha; // add the residual term from Nitche (using the matrix )
 
                         // Check the convergence conditions
@@ -523,7 +521,6 @@ void solve( gsMultiPatch<T> & mp,
             collection.saveTimeStep();
         }
     }
-
     if (plot)
     {
         collection.save();
