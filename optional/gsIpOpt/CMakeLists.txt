@@ -62,7 +62,7 @@ set(IPOPT_SOURCES gsIpOpt_.cpp)
 set(MUMPS_INST ${CMAKE_CURRENT_BINARY_DIR}/IpOpt-prefix) #install together with IpOpt
 
   gismo_fetch_directory(ThirdParty-Mumps
-    URL https://github.com/coin-or-tools/ThirdParty-Mumps/archive/refs/heads/stable/3.0.zip
+    URL https://github.com/coin-or-tools/ThirdParty-Mumps/archive/refs/tags/releases/3.0.7.zip
     DESTINATION    external)
 
   gismo_fetch_directory(MUMPS

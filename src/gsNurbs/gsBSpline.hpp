@@ -171,7 +171,7 @@ std::vector<internal::gsCurveIntersectionResult<T>> gsBSpline<T>::intersect(cons
         uv(1) = 0.5 * (crv2.domainStart() + crv2.domainEnd());
         T distance = obj.compute(uv, tolerance);
 
-        if (distance < math::max(1e-10, tolerance))
+        if (distance < math::max( (T)1e-10, tolerance))
         {
             gsMatrix<T> uCrv1(1,1), uCrv2(1,1);
 			uCrv1(0,0) = uv(0);

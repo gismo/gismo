@@ -180,6 +180,7 @@ private:
 
 /// representing and manipulating bounding boxes for gsBSpline object
 template<class T=real_t>
+
 class gsCurveBoundingBox
 {
 public:

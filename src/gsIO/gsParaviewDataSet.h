@@ -18,6 +18,7 @@
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
 #include <gsAssembler/gsExprHelper.h>  
 #include <gsAssembler/gsExprEvaluator.h>
+#include <gsIO/gsIOUtils.h>
 
 #include<fstream>
 
@@ -63,29 +64,32 @@ public:
     /// @brief Evaluates an expression, and writes that data to the vtk files.
     /// @tparam E 
     /// @param expr The gsExpression to be evaluated
-    /// @param label The name that will be displayed in Paraview for this field.   
-    template<class E>
-    void addField(const expr::_expr<E> & expr,
-                  std::string label)
-    {
-        GISMO_ENSURE( !m_isSaved, "You cannot add more fields if the gsParaviewDataSet has been saved.");
+    /// @param label The name that will be displayed in Paraview for this field.
+    template <class E>
+    void addField(const expr::_expr<E>& expr, std::string label) {
+        GISMO_ENSURE(!m_isSaved,
+                     "You cannot add more fields if the gsParaviewDataSet has "
+                     "been saved.");
         // evaluates the expression and appends it to the vts files
-        //for every patch
-        unsigned nPts = m_options.askInt("numPoints",1000);
-        unsigned precision = m_options.askInt("precision",5);
+        // for every patch
+        const unsigned nPts = m_options.askInt("numPoints", 1000);
+        const unsigned precision = m_options.askInt("precision", 5);
+        const bool export_base64 = m_options.askSwitch("base64", false);
 
-        //gsExprEvaluator<real_t> ev;
-        //gsMultiBasis<real_t> mb(*m_geometry);
-        //ev.setIntegrationElements(mb);
-        std::vector<std::string> tags = toVTK(expr,nPts,precision,label);
+        // gsExprEvaluator<real_t> ev;
+        // gsMultiBasis<real_t> mb(*m_geometry);
+        // ev.setIntegrationElements(mb);
+        const std::vector<std::string> tags =
+            toVTK(expr, nPts, precision, label, export_base64);
         std::vector<std::string> fnames = filenames();
 
-        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
+        for (index_t k = 0; k != m_geometry->nPieces();
+             k++)  // For every patch.
         {
             std::ofstream file;
-            file.open( fnames[k].c_str(), std::ios_base::app); // Append to file
+            file.open(fnames[k].c_str(), std::ios_base::app);  // Append to file
             file << tags[k];
-            file.close(); 
+            file.close();
         }
     }
 
@@ -110,33 +114,39 @@ public:
         addFields(   newlabels, rest...);   // Recursion
     }
 
-    /// @brief Evaluates a gsField ( the function part ), and writes that data to the vtk files.
+    /// @brief Evaluates a gsField ( the function part ), and writes that data
+    /// to the vtk files.
     /// @tparam T
     /// @param field The gsField to be evaluated
-    /// @param label The name that will be displayed in Paraview for this field.   
-    template<class T>
-    void addField(const gsField<T> field, std::string label)
-    {
-        GISMO_ENSURE( !m_isSaved, "You cannot add more fields if the gsParaviewDataSet has been saved.");
-        GISMO_ENSURE((field.parDim()  == m_geometry->domainDim() && 
-                      field.geoDim()  == m_geometry->targetDim() &&
-                      field.nPieces() == m_geometry->nPieces() && 
-                      field.patches().coefsSize() == m_geometry->coefsSize()),
-                    "Provided gsField and stored geometry are not compatible!" );
+    /// @param label The name that will be displayed in Paraview for this field.
+    template <class T>
+    void addField(const gsField<T> field, std::string label) {
+        GISMO_ENSURE(!m_isSaved,
+                     "You cannot add more fields if the gsParaviewDataSet has "
+                     "been saved.");
+        GISMO_ENSURE(
+            (field.parDim() == m_geometry->domainDim() &&
+             field.geoDim() == m_geometry->targetDim() &&
+             field.nPieces() == m_geometry->nPieces() &&
+             field.patches().coefsSize() == m_geometry->coefsSize()),
+            "Provided gsField and stored geometry are not compatible!");
         // evaluates the field  and appends it to the vts files
-        //for every patch
-        unsigned nPts = m_options.askInt("numPoints",1000);
-        unsigned precision = m_options.askInt("precision",5);
+        // for every patch
+        const unsigned nPts = m_options.askInt("numPoints", 1000);
+        const unsigned precision = m_options.askInt("precision", 5);
+        const bool export_base64 = m_options.askSwitch("base64", false);
 
-        std::vector<std::string> tags = toVTK( field, nPts, precision, label);
-        std::vector<std::string> fnames = filenames();
+        const std::vector<std::string> tags =
+            toVTK(field, nPts, precision, label, export_base64);
+        const std::vector<std::string> fnames = filenames();
 
-        for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
+        for (index_t k = 0; k != m_geometry->nPieces();
+             k++)  // For every patch.
         {
             std::ofstream file;
-            file.open( fnames[k].c_str(), std::ios_base::app); // Append to file
+            file.open(fnames[k].c_str(), std::ios_base::app);  // Append to file
             file << tags[k];
-            file.close(); 
+            file.close();
         }
     }
 
@@ -173,6 +183,7 @@ public:
         opt.addInt("precision", "Number of decimal digits.", 5);
         opt.addInt("plotElements.resolution", "Drawing resolution for element mesh.", -1);
         opt.addSwitch("makeSubfolder", "Export vtk files to subfolder ( below the .pvd file ).", true);
+        opt.addSwitch("base64", "Export in base64 binary format", false);
         opt.addString("subfolder","Name of subfolder where the vtk files will be stored.", "");
         opt.addSwitch("plotElements", "Controls plotting of element mesh.", false);
         opt.addSwitch("plotControlNet", "Controls plotting of control point grid.", false);
@@ -187,10 +198,15 @@ private:
     /// @param funSet gsFunctionSet to be evaluated
     /// @param nPts   Number of evaluation points, per patch.
     /// @param precision Number of decimal points in xml output
+    /// @param label
+    /// @param export_base64 export as base64 encoded string
     /// @return Vector of strings of all <DataArrays>
-    template< class T>
-    static std::vector<std::string> toVTK(const gsFunctionSet<T> & funSet, unsigned nPts=1000, unsigned precision=5, std::string label="")
-    {   
+ template <class T>
+ static std::vector<std::string> toVTK(const gsFunctionSet<T>& funSet,
+                                       unsigned nPts = 1000,
+                                       unsigned precision = 5,
+                                       std::string label = "",
+                                       const bool& export_base64 = false) {
         std::vector<std::string> out;
         gsMatrix<T> evalPoint, xyzPoints;
 
@@ -209,14 +225,17 @@ private:
                 col++;
             }
 
-            out.push_back( toDataArray(xyzPoints, label, precision)  );
+            out.push_back( toDataArray(xyzPoints, label, precision, export_base64)  );
         }
-        return out; 
-    }
+        return out;
+ }
 
-    template< class T>
-    static std::vector<std::string> toVTK(const gsField<T> & field, unsigned nPts=1000, unsigned precision=5, std::string label="")
-    {   
+ template <class T>
+ static std::vector<std::string> toVTK(const gsField<T>& field,
+                                       unsigned nPts = 1000,
+                                       unsigned precision = 5,
+                                       std::string label = "",
+                                       const bool& export_base64 = false) {
         std::vector<std::string> out;
         gsMatrix<T> evalPoint, xyzPoints;
 
@@ -235,94 +254,182 @@ private:
                 col++;
             }
 
-            out.push_back( toDataArray(xyzPoints, label, precision)  );
+            out.push_back(
+                toDataArray(xyzPoints, label, precision, export_base64));
         }
-        return out; 
-    }
+        return out;
+ }
 
-    /// @brief  Evaluates one expression over all patches and returns all <DataArray> xml tags as a vector of strings
-    /// @tparam T 
-    /// @param expr Expression to be evaluated
-    /// @param label The label with which the expression will appear in Paraview
-    /// @return Vector of strings of all <DataArrays>
-    template<class E>
-    std::vector<std::string> toVTK(const expr::_expr<E> & expr,
-                                            unsigned nPts=1000,
-                                            unsigned precision=5,
-                                            std::string label="SolutionField")
-    {   
-        std::vector<std::string> out;
-        std::stringstream dataArray;
-        dataArray.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-        dataArray.precision(precision);
-        // m_exprdata->parse(expr);
+ /// @brief  Evaluates one expression over all patches and returns all
+ /// <DataArray> xml tags as a vector of strings, as no points are exported, no
+ /// need to enforce 1:3D fields
+ /// @tparam T
+ /// @param expr Expression to be evaluated
+ /// @param label The label with which the expression will appear in Paraview
+ /// @param export_base64 export as base64 encoded string
+ /// @return Vector of strings of all <DataArrays>
+ template <class E>
+ std::vector<std::string> toVTK(const expr::_expr<E>& expr,
+                                unsigned nPts = 1000, unsigned precision = 5,
+                                std::string label = "SolutionField",
+                                const bool& export_base64 = false) {
+     std::vector<std::string> out;
+     std::stringstream data_array_stream;
+     // Write floating points in fixed value notation (@todo: necessary?),
+     // will be ignored in binary export
+     data_array_stream.setf(std::ios::fixed);
+     data_array_stream.precision(precision);
 
-        //if false, embed topology ?
-        const index_t n = m_evaltr->exprData()->multiBasis().nBases();
+     // if false, embed topology ?
+     const index_t n = m_evaltr->exprData()->multiBasis().nBases();
 
-        gsMatrix<real_t> pts, vals, ab;
+     gsMatrix<real_t> evaluated_values, bounding_box_dimensions;
 
-        for ( index_t i=0; i != n; ++i )
-        {
-            ab = m_evaltr->exprData()->multiBasis().piece(i).support();
-            gsGridIterator<real_t,CUBE> pt(ab, nPts);
-            m_evaltr->eval(expr, pt, i);
-            
-            vals = m_evaltr->allValues(m_evaltr->elementwise().size()/pt.numPoints(), pt.numPoints());
+     for (index_t i = 0; i != n; ++i) {
+         // Get bounding box and sample evaluation points on current patch
+         bounding_box_dimensions =
+             m_evaltr->exprData()->multiBasis().piece(i).support();
+         gsGridIterator<real_t, CUBE> grid_iterator(bounding_box_dimensions,
+                                                    nPts);
+         m_evaltr->eval(expr, grid_iterator, i);
 
-            dataArray <<"<DataArray type=\"Float32\" Name=\""<< label <<"\" format=\"ascii\" NumberOfComponents=\""<< ( vals.rows()==1 ? 1 : 3) <<"\">\n";
-            if ( vals.rows()==1 )
-                for ( index_t j=0; j<vals.cols(); ++j)
-                    dataArray<< vals.at(j) <<" ";
-            else
-            {
-                for ( index_t j=0; j<vals.cols(); ++j)
-                {
-                    for ( index_t k=0; k!=vals.rows(); ++k)
-                        dataArray<< vals(k,j) <<" ";
-                    for ( index_t k=vals.rows(); k<3; ++k)
-                        dataArray<<"0 ";
-                }
-            }
-            dataArray <<"\n</DataArray>\n";
-            out.push_back( dataArray.str() );
-            dataArray.str(std::string()); // Clear the dataArray stringstream
-        }
-        return out; 
-    }
+         // Evaluate Expression on grid_points
+         evaluated_values = m_evaltr->allValues(
+             m_evaltr->elementwise().size() / grid_iterator.numPoints(),
+             grid_iterator.numPoints());
 
+         // Data-Header
+         if (export_base64) {
+             // Only floating types are supported in this function
+             const std::string vtk_typename = []() {
+                 if (std::is_same<real_t, float>::value) {
+                     return std::string("Float32");
+                 } else if (std::is_same<real_t, double>::value) {
+                     return std::string("Float64");
+                 } else {
+                     // Will only be triggered in debug mode, but export will
+                     // still work, keyword needs to be added manually
+                     GISMO_ERROR("Unspported floating point type requested");
+                 }
+             }();
 
-    /// @brief Formats the coordinates of points as a <DataArray> xml tag for ParaView export.
-    /// @tparam T Arithmetic type
-    /// @param points A gsMatrix<T> with the coordinates of the points, stored column-wise. Its size is (numDims, numPoints)
-    /// @param label A string with the label of the data
-    /// @param precision Number of decimal points in xml output
-    /// @return The raw xml string 
-    template<class T>
-    static std::string toDataArray(const gsMatrix<T> & points, const std::string label, unsigned precision)
-    {
-        std::stringstream stream;
-        stream.setf( std::ios::fixed ); // write floating point values in fixed-point notation.
-        stream.precision(precision); 
-        // Format as vtk xml string
-        stream <<"<DataArray type=\"Float32\" format=\"ascii\" ";
-        if ( "" != label )
-            stream << "Name=\"" << label <<"\" ";
-        stream << "NumberOfComponents=\"3\">\n";
-        // For every point
-        for ( index_t j=0; j<points.cols(); ++j)
-        {
-            for ( index_t i=0; i!=points.rows(); ++i)
-                stream<< points(i,j) <<" ";
-            for ( index_t i=points.rows(); i<3; ++i)
-                stream<<"0 ";
-        }
-        stream <<"\n</DataArray>\n";
+             // Header
+             data_array_stream << "<DataArray type=\"" << vtk_typename
+                               << "\" format=\"binary\" ";
+             if ("" != label) {
+                 data_array_stream << "Name=\"" << label << "\" ";
+             };
+             // N-dimensional exports are supported (reshape to col might
+             // be required)
+             data_array_stream << "NumberOfComponents=\""
+                               << evaluated_values.rows() << "\">\n";
 
-        return stream.str();
-    }
+             // Prepend the number of bytes to be expected (using a
+             // single-item array of unsigned 64 integers)
+             data_array_stream
+                 << Base64::Encode(std::vector<uint64_t>(1,
+                   evaluated_values.cols() * evaluated_values.rows() *
+                                                         sizeof(real_t)))
+                        // Write the actual data
+                        // Vector-valued data is stored column-wise
+                        + Base64::Encode(evaluated_values, false);
+         } else {
+             data_array_stream << "<DataArray type=\"Float32\" Name=\"" << label
+                               << "\" format=\"ascii\" NumberOfComponents=\""
+                               << (evaluated_values.rows() == 1 ? 1 : 3)
+                               << "\">\n";
+             if (evaluated_values.rows() == 1)
+                 for (index_t j = 0; j < evaluated_values.cols(); ++j)
+                     data_array_stream << evaluated_values.at(j) << " ";
+             else {
+                 for (index_t j = 0; j < evaluated_values.cols(); ++j) {
+                     for (index_t k = 0; k != evaluated_values.rows(); ++k)
+                         data_array_stream << evaluated_values(k, j) << " ";
+                     for (index_t k = evaluated_values.rows(); k < 3; ++k)
+                         data_array_stream << "0 ";
+                 }
+             }
+         }
+         data_array_stream << "\n</DataArray>\n";
+         out.push_back(data_array_stream.str());
+         data_array_stream.str(
+             std::string());  // Clear the data_array_stream stringstream
+     }
+     return out;
+ }
 
-    void initFilenames();
+ /// @brief Formats the coordinates of points as a <DataArray> xml tag for
+ /// ParaView export.
+ /// @tparam T Arithmetic type
+ /// @param points A gsMatrix<T> with the coordinates of the points, stored
+ /// column-wise. Its size is (numDims, numPoints)
+ /// @param label A string with the label of the data
+ /// @param precision Number of decimal points in xml output
+ /// @param export_base64 (defaults true) export as base63 encoded string -
+ /// ignore precision
+ /// @return The raw xml string
+ template <class T>
+ static std::string toDataArray(const gsMatrix<T>& points,
+                                const std::string label, unsigned precision,
+                                const bool& export_base64) {
+     std::stringstream stream;
 
+     if (export_base64) {
+         // Only floating types are supported in this function
+         const std::string vtk_typename = []() {
+             if (std::is_same<T, float>::value) {
+                 return std::string("Float32");
+             } else if (std::is_same<T, double>::value) {
+                 return std::string("Float64");
+             }
+         }();
+
+         // Write data to vector to ensure it is 3D :/
+         std::vector<T> copy_of_matrix;
+         copy_of_matrix.reserve(points.cols() * 3);
+         // Note : Matrix is transposed
+         for (index_t j = 0; j < points.cols(); ++j) {
+             for (index_t i = 0; i < points.rows(); ++i) {
+                 copy_of_matrix.push_back(points(i, j));
+             }
+             for (index_t i = points.rows(); i < 3; ++i)
+                 copy_of_matrix.push_back(0);
+         }
+
+         // Header
+         stream << "<DataArray type=\"" << vtk_typename
+                << "\" format=\"binary\" ";
+         if ("" != label) {
+             stream << "Name=\"" << label << "\" ";
+         };
+         // Only 3D exports are supported
+         stream << "NumberOfComponents=\"3\">\n";
+         // Prepend the number of bytes to be expected (using a single-item
+         // array of unsigned 64 integers)
+         stream << Base64::Encode(std::vector<uint64_t>(1,copy_of_matrix.size() *
+                                                        sizeof(T)))
+                       // Write the actual data
+                       + Base64::Encode(copy_of_matrix);
+     } else {
+         stream.setf(std::ios::fixed);  // write floating point values in
+                                        // fixed-point notation.
+         stream.precision(precision);
+         // Format as vtk xml string
+         stream << "<DataArray type=\"Float32\" format=\"ascii\" ";
+         if ("" != label) stream << "Name=\"" << label << "\" ";
+         stream << "NumberOfComponents=\"3\">\n";
+         // For every point
+         for (index_t j = 0; j < points.cols(); ++j) {
+             for (index_t i = 0; i != points.rows(); ++i)
+                 stream << points(i, j) << " ";
+             for (index_t i = points.rows(); i < 3; ++i) stream << "0 ";
+         }
+     }
+     stream << "\n</DataArray>\n";
+
+     return stream.str();
+ }
+
+ void initFilenames();
 };
 } // End namespace gismo
