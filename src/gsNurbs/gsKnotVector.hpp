@@ -346,6 +346,9 @@ void gsKnotVector<T>::insert( T knot, mult_t mult )
 template<typename T>
 void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
 {
+    gsInfo <<"Remove "<< *uit <<" mult=" << mult <<"\n";
+
+    
     GISMO_ASSERT( uit.m_mlt == multSumData(),
                   "The iterator is invalid for this knot vector." );
 
@@ -360,6 +363,8 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
         upos = m_multSum.erase( upos );
 
     std::transform(upos, m_multSum.end(), upos, GS_BIND2ND(std::minus<mult_t>(),toRemove));
+
+    gsInfo <<"Result"<< *this <<"\n";
 }
 
 template<typename T>
