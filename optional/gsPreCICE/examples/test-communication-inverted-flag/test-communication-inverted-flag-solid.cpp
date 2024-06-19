@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
     bcInfo.addCondition(0, couplingInterfaces[2],  condition_type::neumann  , &g_C, -1, true);
     bcInfo.addCondition(0, couplingInterfaces[3],  condition_type::neumann  , &g_C, -1, true);
 
-    bcInfo.addCondition(0, couplingInterfaces[0],  condition_type::dirichlet  , &g_C, -1, true);
+    bcInfo.addCondition(0, couplingInterfaces[0],  condition_type::dirichlet  , &g_D, -1, true);
     // bcInfo.addCondition(0, boundary::west,  condition_type::neumann  , &g_C);
     // East side (prescribed temp)
     bcInfo.addCondition(0, boundary::east, condition_type::dirichlet, &g_D, 0);
