@@ -82,7 +82,8 @@ bool isCounterclockwise(const gsMatrix<>& points, const index_t patch_index)
 
 
 void ensureCounterclockwise(gsMatrix<>& controlPoints, index_t patch_index) {
-    if (!isCounterclockwise(controlPoints, patch_index)) {
+    if (isCounterclockwise(controlPoints, patch_index)>0) {
+        gsDebugVar(controlPoints);
         std::cout << "Reversing points to make counterclockwise for patch index " << patch_index << std::endl;
         for (int i = 0, j = controlPoints.rows() - 1; i < j; ++i, --j) {
             controlPoints.row(i).swap(controlPoints.row(j));
