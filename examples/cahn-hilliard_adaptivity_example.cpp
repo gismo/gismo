@@ -59,7 +59,7 @@ void solve( gsMultiPatch<T> & mp,
     real_t theta    = CHopt.askReal("theta",1.5);
     real_t lambda   = CHopt.askReal("lambda",1/(32*pow(EIGEN_PI,2)));
     real_t M0       = CHopt.askReal("M0",0.005);
-    real_t penalty  = CHopt.askReal("penalty",1e4*lambda);
+    real_t penalty  = 1e4*lambda;
 
     //! [Prepare the basis]
     gsMultiBasis<> dbasis_tmp(mp,true);
@@ -574,7 +574,7 @@ int main(int argc, char *argv[])
 
     gsFunctionExpr<> source;
     fd.getId(1, source); // id=1: initial condition function
-    gsInfo<<"Initial condition function "<< source << "\n";
+    // gsInfo<<"Initial condition function "<< source << "\n";
 
     gsBoundaryConditions<> bc;
     fd.getId(2, bc); // id=2: boundary conditions
@@ -584,6 +584,11 @@ int main(int argc, char *argv[])
     gsOptionList CHopt;
     fd.getId(3, CHopt); // id=3: reference solution
 
+    if (random)
+        gsInfo<<"Random normal initial distribution with mean "<< CHopt.askReal("mean",0.0) << " and amplitude "<< CHopt.askReal("ampl",0.005)<<"\n";
+    else
+        gsInfo<<"Initial condition function "<< source << "\n";
+        
     gsOptionList TIMEopt;
     fd.getId(4, TIMEopt); // id=4: time integrator options
 
@@ -595,9 +600,9 @@ int main(int argc, char *argv[])
     //! [Read input file]
 
     if (mp.geoDim()==2)
-        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, Aopt, MESHopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
+        solve<2,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
     else if (mp.geoDim()==3)
-        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, Aopt, MESHopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
+        solve<3,real_t>(mp, source, bc, CHopt, TIMEopt, MESHopt, Aopt, dt, maxSteps, plotmod, plot, numRefine, numElevate, verbose, random);
     else
         GISMO_ERROR("Only 2D and 3D problems are supported.");
 
