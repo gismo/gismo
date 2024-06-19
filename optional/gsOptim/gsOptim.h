@@ -55,7 +55,7 @@ struct gsOptimWrapper
 
     T operator() (const optim::ColVec_t& vals_in, optim::ColVec_t* grad_out, void* opt_data)
     {
-        gsAsConstVector<T> in(vals_in.data(),vals_in.size());
+        gsAsConstVector<T> in(vals_in.data(),vals_in.rows());
         if (grad_out)
         {
             grad_out->resize(vals_in.size());
@@ -196,6 +196,7 @@ public:
     virtual void solve(const gsMatrix<T> & initialGuess)
     {
         // Get the bounds
+        this->getOptions();
         this->setConstraints();
         GISMO_ASSERT(initialGuess.cols()==1,"The initial guess should have vector format");
         gsVector<T> x = initialGuess.col(0);
@@ -248,7 +249,10 @@ public:
 
 public:
 
-    gsOptimBFGS(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimBFGS(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -283,12 +287,16 @@ public:
 
 public:
 
-    gsOptimLBFGS(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimLBFGS(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
                     optim::algo_settings_t & optimSettings)
-    { return optim::lbfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
+    {   gsDebugVar(x);
+        return optim::lbfgs(x, gsOptimWrapper<T>(op), nullptr,optimSettings); }
 
     void defaultOptions() override
     {
@@ -320,7 +328,10 @@ public:
 
 public:
 
-    gsOptimCG(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimCG(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -361,7 +372,10 @@ public:
 
 public:
 
-    gsOptimGD(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimGD(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -440,7 +454,10 @@ protected:
 
 // public:
 
-//     gsOptimNewton(gsOptProblem<T> * problem) : Base(problem) {}
+//     gsOptimNewton(gsOptProblem<T> * problem) : Base(problem)
+// {
+//     this->defaultOptions();
+// }
 
 //     bool callOptim( gsVector<T> & x,
 //                     gsOptProblem<T> & op,
@@ -461,7 +478,10 @@ public:
 
 public:
 
-    gsOptimNM(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimNM(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -514,7 +534,10 @@ public:
 
 public:
 
-    gsOptimDE(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimDE(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -599,7 +622,10 @@ class gsOptimDEPRMM : public gsOptimDE<T>
 {
     using Base = gsOptimDE<T>;
 public:
-    gsOptimDEPRMM(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimDEPRMM(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -615,7 +641,10 @@ public:
 
 public:
 
-    gsOptimPSO(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimPSO(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -642,7 +671,7 @@ public:
         m_options.addReal("ParFinalCCog","final value for c_c.",0.5);
         // m_options.addReal("ParInitialCSoc","initial value for c_s.",0.5);
         m_options.addReal("ParFinalCSoc","final value c_s.",2.5);
-
+        m_options.addSwitch("ReturnPopulationMat","Whether to return the population matrix.",false);
     }
 
     /// Set the Upper and lower bounds of the uniform distributions used to generate the initial population
@@ -684,7 +713,7 @@ public:
         m_optimSettings.pso_settings.par_final_c_cog   = m_options.getReal("ParFinalCCog");
         // m_optimSettings.pso_settings.par_initial_c_soc = m_options.getReal("ParInitialCSoc");
         m_optimSettings.pso_settings.par_final_c_soc   = m_options.getReal("ParFinalCSoc");
-        m_optimSettings.pso_settings.return_position_mat = m_options.getSwitch("ReturnPositionMat");
+        m_optimSettings.pso_settings.return_position_mat = m_options.getSwitch("ReturnPopulationMat");
     }
 
 protected:
@@ -699,7 +728,10 @@ class gsOptimPSODV : public gsOptimPSO<T>
     using Base = gsOptimPSO<T>;
 public:
 
-    gsOptimPSODV(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimPSODV(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -715,7 +747,10 @@ public:
 
 public:
 
-    gsOptimSUMT(gsOptProblem<T> * problem) : Base(problem) {}
+    gsOptimSUMT(gsOptProblem<T> * problem) : Base(problem)
+    {
+        this->defaultOptions();
+    }
 
     bool callOptim( gsVector<T> & x,
                     gsOptProblem<T> & op,
@@ -725,6 +760,7 @@ public:
     void solve(const gsMatrix<T> & initialGuess) override
     {
         // Get the bounds
+        this->getOptions();
         this->setConstraints();
         GISMO_ASSERT(initialGuess.cols()==1,"The initial guess should have vector format");
         gsVector<T> x = initialGuess.col(0);

@@ -24,6 +24,10 @@
 #include <gsIpOpt/gsIpOpt.h>
 #endif
 
+#ifdef gsOptim_ENABLED
+#include <gsOptim/gsOptim.h>
+#endif
+
 using namespace gismo;
 
 /** 
@@ -226,6 +230,11 @@ int main(int argc, char* argv[])
 #ifdef gsIpOpt_ENABLED
         case 2:
         optimizer = new gsIpOpt<real_t>(&problem);
+        break;
+#endif
+#ifdef gsOptim_ENABLED
+        case 3 :
+        optimizer = new gsOptim<real_t>(&problem);
         break;
 #endif
         default:
