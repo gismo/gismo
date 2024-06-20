@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     if (liftGeo)
-        mpPtr = lift3D(*mpPtr,real_t(10));
+        mpPtr = lift3D(*mpPtr,(real_t)(10));
     gsMultiPatch<>& mp = *mpPtr;
 
     const std::size_t dim = mp.geoDim();

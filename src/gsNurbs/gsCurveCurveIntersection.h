@@ -180,6 +180,7 @@ private:
 
 /// representing and manipulating bounding boxes for gsBSpline object
 template<class T=real_t>
+
 class gsCurveBoundingBox
 {
 public:
@@ -196,7 +197,7 @@ public:
         }
 
         // compute min / max from control points
-        for (unsigned ipt = 0; ipt != curve.coefsSize(); ++ipt)
+        for (index_t ipt = 0; ipt != curve.coefsSize(); ++ipt)
         {
             typename gsMatrix<T>::ConstRowXpr p = curve.coef(ipt); // Access once per iteration
             for (short_t i = 0; i != curve.geoDim(); ++i)
