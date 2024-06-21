@@ -89,8 +89,17 @@ public:
                         m_options(gsParaviewDataSet::defaultOptions()),
                         counter(0)
     {
-        m_filename = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename) + ".pvd";
-        gsFileManager::mkdir( gsFileManager::getPath(m_filename) );
+        std::string path = gsFileManager::getPath(m_filename);
+
+        // If the path does not start with ./ or / , it is assumed to be a relative path
+        if ( (!gsFileManager::isExplicitlyRelative(path) && !gsFileManager::isFullyQualified(path)) )
+        {
+            path = "./" + path;
+        }
+
+        m_filename = path + gsFileManager::getBasename(m_filename) + ".pvd";
+        gsFileManager::mkdir( path );
+
         // if ( "" != m_filename.parent_path())
         // GISMO_ENSURE( fsystem::exists( m_filename.parent_path() ), 
         //     "The specified folder " << m_filename.parent_path() << " does not exist, please create it first.");  
