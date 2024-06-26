@@ -205,7 +205,6 @@ void gsFunction<T>::invertPoints(const gsMatrix<T> & points,
         //arg = _argMinNormOnGrid(16);
 
         const int iter = this->newtonRaphson(points.col(i), arg, true, accuracy, 250);
-        gsInfo << " "<< iter;
         if (iter>100)
             gsWarn<< "Inversion took "<<iter<<" steps for "<< points.col(i).transpose() <<" (result="<< arg.transpose()<< ")\n";
 

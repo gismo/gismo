@@ -248,7 +248,7 @@ int main(int argc, char* argv[])
     {
         if (participant.requiresWritingCheckpoint())
         {
-            // elTimeSolver.saveState();
+            elTimeSolver.saveState();
         }
 
         participant.readData(ForceControlPointMesh,ForceControlPointData,forceControlPointIDs,forceControlPoints);
@@ -267,7 +267,11 @@ int main(int argc, char* argv[])
 
         // Construct the displacment field
         elTimeSolver.constructSolution(dispBeam);
+
+        gsDebugVar(geometryControlPoints.transpose());
         geometryControlPoints = dispBeam.patch(0).coefs().transpose();
+        gsDebugVar(geometryControlPoints.transpose());
+        gsDebugVar(dispBeam.patch(0).coefs().transpose());
 
         // Write the beam displacements to the fluid solver
         participant.writeData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);

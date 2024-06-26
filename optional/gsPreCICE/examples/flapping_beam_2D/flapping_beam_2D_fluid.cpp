@@ -216,12 +216,30 @@ int main(int argc, char* argv[])
     }
     // flow to beam interface: these Neumann boundary condtions contain references to flow and ALE solutions;
     // by updating them, we update the boundary load as well
-    gsFsiLoad<real_t> fSouth(geoALE,dispALE,1,boundary::north,
-                             velFlow,presFlow,4,viscosity,densityFluid);
-    gsFsiLoad<real_t> fEast(geoALE,dispALE,2,boundary::west,
-                            velFlow,presFlow,5,viscosity,densityFluid);
-    gsFsiLoad<real_t> fNorth(geoALE,dispALE,0,boundary::south,
-                             velFlow,presFlow,3,viscosity,densityFluid);
+    gsFsiBoundaryLoad<real_t> fSouth(geoALE,patchSide(1,boundary::north),
+                                     dispALE,patchSide(1,boundary::north),
+                                     velFlow,patchSide(4,boundary::north),
+                                     presFlow,patchSide(4,boundary::north),
+                                     viscosity,densityFluid,true);
+    
+    gsFsiBoundaryLoad<real_t> fEast(geoALE,patchSide(2,boundary::west),
+                                     dispALE,patchSide(2,boundary::west),
+                                     velFlow,patchSide(5,boundary::west),
+                                     presFlow,patchSide(5,boundary::west),
+                                     viscosity,densityFluid,true);
+
+    gsFsiBoundaryLoad<real_t> fNorth(geoALE,patchSide(0,boundary::south),
+                                     dispALE,patchSide(0,boundary::south),
+                                     velFlow,patchSide(3,boundary::south),
+                                     presFlow,patchSide(3,boundary::south),
+                                     viscosity,densityFluid,true);
+
+    // gsFsiLoad<real_t> fSouth(geoALE,dispALE,1,boundary::north,
+    //                          velFlow,presFlow,4,viscosity,densityFluid,true);
+    // gsFsiLoad<real_t> fEast(geoALE,dispALE,2,boundary::west,
+    //                         velFlow,presFlow,5,viscosity,densityFluid,true);
+    // gsFsiLoad<real_t> fNorth(geoALE,dispALE,0,boundary::south,
+    //                          velFlow,presFlow,3,viscosity,densityFluid,true);
 
     // beam to ALE interface: ALE module contains a reference to the beam displacement field;
     // by updating the displacement field, we update the displacement of the FSI interface in ALE computations
@@ -321,22 +339,21 @@ int main(int argc, char* argv[])
     gsInfo << "Running the simulation...\n";
 
     // Time integration loop
-    gsMultiPatch<> beamNew, beamOld, dbeam;
-    beamNew = beamOld = beam;
-    dbeam = beamNew;
+    // gsMultiPatch<> beamNew, beamOld, dbeam;
+    gsMultiPatch<> dbeam = beam;
+    // beamNew = beamOld = beam;
+    // dbeam = beamNew;
     dbeam.patch(0).coefs().setZero();
 
 
     index_t timestep_checkpoint = 0;
-
-    gsMultiPatch<> geoALEDisp, geoALEVelo;
     while (participant.isCouplingOngoing())
     {
 
         if (participant.requiresWritingCheckpoint())
         {
-            // nsTimeSolver.saveState();
-            // moduleALE.saveState();
+            nsTimeSolver.saveState();
+            moduleALE.saveState();
 
             // IMPORTANT!!
             //////// do something with beamNew, beamOld
@@ -345,20 +362,28 @@ int main(int argc, char* argv[])
             gsInfo << "Writing checkpoint \n";
         }
 
+        if (timeFlow < 2.)
+            nsAssembler.setFixedDofs(0,boundary::west,inflowDDoFs*(1-cos(EIGEN_PI*(timeFlow+precice_dt)/2.))/2);
 
         participant.readData(GeometryControlPointMesh,GeometryControlPointData,geometryControlPointIDs,geometryControlPoints);
+        gsDebugVar(geometryControlPoints.transpose());
 
-        beamNew.patch(0).coefs() = geometryControlPoints.transpose();
+        // beamNew.patch(0).coefs() = beam.patch(0).coefs() + geometryControlPoints.transpose();
 
-        gsDebugVar(beamNew.patch(0).coefs().rows());
-        gsDebugVar(beamOld.patch(0).coefs().rows());
-        dbeam.patch(0).coefs() = beamNew.patch(0).coefs() - beamOld.patch(0).coefs();
-
+        // gsDebugVar(beamNew.patch(0).coefs().rows());
+        // gsDebugVar(beamOld.patch(0).coefs().rows());
+        dbeam.patch(0).coefs() = geometryControlPoints.transpose();
+        dbeam.patch(0).coefs().setZero();
+        // gsDebugVar(dbeam.patch(0).coefs().rows());
+        // gsDebugVar(beamNew.patch(0).coefs().transpose());
+        // gsDebugVar(beamOld.patch(0).coefs().transpose());
 
 
         // project dbeam onto dispBeam
         // Represent dbeam onto disp beam's basis
         gsQuasiInterpolate<real_t>::localIntpl(dispBeam.basis(0), dbeam.patch(0), dispBeam.patch(0).coefs());
+
+        gsDebugVar(dispBeam.patch(0).coefs().transpose());
 
 
         /*
@@ -366,26 +391,34 @@ int main(int argc, char* argv[])
          */
         // Given dispBeam, move the mesh and compute its velocities
         // Store the old fluid mesh in the velocity mesh
-        moduleALE.constructSolution(geoALEVelo);
-
+        moduleALE.constructSolution(velALE);
+        gsDebugVar(velALE.patch(0).coefs().transpose());
         // Compute the fluid mesh displacements
         moduleALE.updateMesh();
 
         // Update the fluid mesh displacements
-        moduleALE.constructSolution(geoALEDisp);
+        moduleALE.constructSolution(dispALE);
 
+        gsDebugVar(dispALE.patch(0).coefs().transpose());
+        gsDebugVar(dispALE.patch(1).coefs().transpose());
+        gsDebugVar(dispALE.patch(2).coefs().transpose());
 
         // Update the fluid mesh velocities (v = (u_t - u_t-1) / dt)
-        for (size_t p = 0; p < geoALEVelo.nPatches(); ++p)
-            geoALEVelo.patch(p).coefs() = (geoALEDisp.patch(p).coefs() - geoALEVelo.patch(p).coefs()) / timeStep;
+        for (size_t p = 0; p < velALE.nPatches(); ++p)
+            velALE.patch(p).coefs() = (dispALE.patch(p).coefs() - velALE.patch(p).coefs()) / timeStep;
+
+        gsDebugVar(velALE.patch(0).coefs().transpose());
+        gsDebugVar(velALE.patch(0).coefs().transpose());
+        gsDebugVar(velALE.patch(0).coefs().transpose());
+
 
         // apply new ALE deformation to the flow domain
         for (size_t p = 0; p < nsTimeSolver.aleInterface().patches.size(); ++p)
         {
             index_t pFlow = nsTimeSolver.aleInterface().patches[p].second;
             index_t pALE = nsTimeSolver.aleInterface().patches[p].first;
-            nsTimeSolver.assembler().patches().patch(pFlow).coefs() += geoALEDisp.patch(pALE).coefs();
-            nsTimeSolver.mAssembler().patches().patch(pFlow).coefs() += geoALEDisp.patch(pALE).coefs();
+            nsTimeSolver.assembler().patches().patch(pFlow).coefs() += dispALE.patch(pALE).coefs();
+            nsTimeSolver.mAssembler().patches().patch(pFlow).coefs() += dispALE.patch(pALE).coefs();
         }
 
         /*
@@ -399,7 +432,7 @@ int main(int argc, char* argv[])
             boxSide sFlow = nsTimeSolver.aleInterface().sidesB[p].side();
             index_t pALE = nsTimeSolver.aleInterface().sidesA[p].patch;
             boxSide sALE = nsTimeSolver.aleInterface().sidesA[p].side();
-            nsTimeSolver.assembler().setFixedDofs(pFlow,sFlow,geoALEVelo.patch(pALE).boundary(sALE)->coefs());
+            nsTimeSolver.assembler().setFixedDofs(pFlow,sFlow,velALE.patch(pALE).boundary(sALE)->coefs());
         }
 
         nsTimeSolver.makeTimeStep(timeStep);
@@ -413,6 +446,10 @@ int main(int argc, char* argv[])
 
         // Construct the velocity and pressure fields
         nsTimeSolver.constructSolution(velFlow,presFlow);
+        gsDebugVar(velFlow.patch(3).coefs().transpose());
+        gsDebugVar(velFlow.patch(4).coefs().transpose());
+        gsDebugVar(velFlow.patch(5).coefs().transpose());
+        gsWriteParaview(velFlow,"flapping_beam_2D_flow");
 
         gsMatrix<> coefsSouth;
         gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(4).boundaryBasis(boundary::north), fSouth, coefsSouth);
@@ -421,6 +458,16 @@ int main(int argc, char* argv[])
         gsMatrix<> coefsNorth;
         gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(3).boundaryBasis(boundary::south), fNorth, coefsNorth);
 
+        // gsMatrix<> coefsSouth;
+        // gsQuasiInterpolate<real_t>::localIntpl(basisVelocity.basis(4).boundaryBasis(), fSouth, coefsSouth);
+        // gsMatrix<> coefsEast;
+        // gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(5), fEast, coefsEast);
+        // gsMatrix<> coefsNorth;
+        // gsQuasiInterpolate<real_t>::localIntpl(*basisVelocity.basis(3), fNorth, coefsNorth);
+
+
+        // gsDebugVar(coefsSouth);
+
         forceControlPoints.setZero();
 
         gsMatrix<index_t> indexSouth = basisVelocity.basis(4).boundary(boundary::north);
@@ -428,15 +475,16 @@ int main(int argc, char* argv[])
         gsMatrix<index_t> indexNorth = basisVelocity.basis(3).boundary(boundary::south);
 
         for (index_t k =0 ; k != indexSouth.size(); ++k)
-            forceControlPoints.col(indexSouth[k]) = coefsSouth.row(k).transpose();
+            forceControlPoints.col(indexSouth(k,0)) = coefsSouth.row(k).transpose();
 
         for (index_t k =0 ; k != indexEast.size(); ++k)
-            forceControlPoints.col(indexEast[k]) = coefsEast.row(k).transpose();
+            forceControlPoints.col(indexEast(k,0)) = coefsEast.row(k).transpose();
 
         for (index_t k =0 ; k != indexNorth.size(); ++k)
-            forceControlPoints.col(indexNorth[k]) = coefsNorth.row(k).transpose();
+            forceControlPoints.col(indexNorth(k,0)) = coefsNorth.row(k).transpose();
 
         gsDebugVar(forceControlPoints);
+
 
         // Write the force to the solid solver
 
@@ -467,7 +515,7 @@ int main(int argc, char* argv[])
         {
             // gsTimeIntegrator advances the time step
             // advance variables
-            beamOld = beamNew;
+            // beamOld = beamNew;
             timeALE += timeStep;
             timeFlow += timeStep;
             numTimeStep++;
